@@ -332,6 +332,9 @@ def window_for_session_name(boss: BossType, session_name: str) -> WindowType | N
     return None
 
 
+seen_session_paths: dict[str, str] = {}
+
+
 def create_session(boss: BossType, path: str) -> str:
     session_name = ''
     for i, s in enumerate(create_sessions(get_options(), default_session=path)):
@@ -346,6 +349,7 @@ def create_session(boss: BossType, path: str) -> str:
                 tm.add_tabs_from_session(s)
         else:
             boss.add_os_window(s)
+    seen_session_paths[session_name] = path
     return session_name
 
 
@@ -367,9 +371,51 @@ def switch_to_session(boss: BossType, session_name: str) -> bool:
     return False
 
 
+def resolve_session_path_and_name(path: str) -> tuple[str, str]:
+    path = os.path.expanduser(path)
+    if not os.path.isabs(path):
+        path = os.path.join(config_dir, path)
+    path = os.path.abspath(path)
+    return path, session_arg_to_name(path)
+
+
+def get_all_known_sessions() -> dict[str, str]:
+    opts = get_options()
+    all_known_sessions = seen_session_paths.copy()
+    for km in opts.keyboard_modes.values():
+        for kdefs in km.keymap.values():
+            for kd in kdefs:
+                for key_action in opts.alias_map.resolve_aliases(kd.definition, 'map'):
+                    if key_action.func == 'goto_session':
+                        path = ''
+                        for x in key_action.args:
+                            if isinstance(x, str) and not x.startswith('-'):
+                                path = x
+                                break
+                        if path:
+                            path, session_name = resolve_session_path_and_name(path)
+                            if session_name not in all_known_sessions:
+                                all_known_sessions[session_name] = path
+    return all_known_sessions
+
+
+def choose_session(boss: BossType) -> None:
+    all_known_sessions = get_all_known_sessions()
+    hmap = {n: len(goto_session_history)-i for i, n in enumerate(goto_session_history)}
+    def skey(name: str) -> tuple[int, str]:
+        return hmap.get(name, len(goto_session_history)), name.lower()
+    names = sorted(all_known_sessions, key=skey)
+
+    def chosen(name: str | None) -> None:
+        if name:
+            goto_session(boss, (all_known_sessions[name],))
+    boss.choose_entry(
+        _('Select a session to activate'), ((name, name) for name in names), chosen)
+
+
 def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
     if not cmdline:
-        boss.show_error('TODO: implement interactive goto_session', 'implement me')
+        choose_session(boss)
         return
     path = cmdline[0]
     if len(cmdline) == 1:
@@ -386,11 +432,7 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
             if not x.startswith('-'):
                 path = x
                 break
-    path = os.path.expanduser(path)
-    if not os.path.isabs(path):
-        path = os.path.join(config_dir, path)
-    path = os.path.abspath(path)
-    session_name = session_arg_to_name(path)
+    path, session_name = resolve_session_path_and_name(path)
     if not session_name:
         boss.show_error(_('Invalid session'), _('{} is not a valid path for a session').format(path))
         return
@@ -401,6 +443,6 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
     except Exception:
         import traceback
         tb = traceback.format_exc()
-        boss.show_error(_('Failed to create session'), _('Could not create session from {0} with error: {1}').format(path, tb))
+        boss.show_error(_('Failed to create session'), _('Could not create session from {0} with error:\n{1}').format(path, tb))
     else:
         append_to_session_history(session_name)
