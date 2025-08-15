@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/kovidgoyal/kitty/kittens/choose_files"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/tui/readline"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -16,13 +17,16 @@ import (
 
 var _ = fmt.Print
 
-func get_line(o *Options) (result string, err error) {
+func get_line(o *Options, complete_file_names bool) (result string, err error) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors)
 	if err != nil {
 		return
 	}
 	cwd, _ := os.Getwd()
 	ropts := readline.RlInit{Prompt: o.Prompt}
+	if complete_file_names {
+		ropts.Completer = choose_files.FilePromptCompleter(nil)
+	}
 	if o.Name != "" {
 		base := filepath.Join(utils.CacheDir(), "ask")
 		ropts.HistoryPath = filepath.Join(base, o.Name+".history.json")

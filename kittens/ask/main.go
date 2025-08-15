@@ -50,7 +50,13 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		result.Response = pw
 	case "line":
 		show_message(o.Message)
-		result.Response, err = get_line(o)
+		result.Response, err = get_line(o, false)
+		if err != nil {
+			return 1, err
+		}
+	case "file":
+		show_message(o.Message)
+		result.Response, err = get_line(o, true)
 		if err != nil {
 			return 1, err
 		}

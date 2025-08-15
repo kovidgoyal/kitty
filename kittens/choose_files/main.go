@@ -776,7 +776,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	lp.ColorSchemeChangeNotifications()
 	handler := Handler{lp: lp, err_chan: make(chan error, 8), msg_printer: message.NewPrinter(utils.LanguageTag()), spinner: tui.NewSpinner("dots")}
 	handler.rl = readline.New(lp, readline.RlInit{
-		Prompt: "> ", ContinuationPrompt: ". ", Completer: handler.complete_save_prompt,
+		Prompt: "> ", ContinuationPrompt: ". ", Completer: FilePromptCompleter(handler.state.CurrentDir),
 	})
 	if err = handler.set_state_from_config(conf, opts); err != nil {
 		return 1, err

@@ -11,7 +11,7 @@ from ..tui.handler import result_handler
 def option_text() -> str:
     return '''\
 --type -t
-choices=line,yesno,choices,password
+choices=line,yesno,choices,password,file
 default=line
 Type of input. Defaults to asking for a line of text.
 
