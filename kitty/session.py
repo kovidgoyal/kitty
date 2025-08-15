@@ -288,8 +288,12 @@ def create_sessions(
                     f = open(resolve_custom_file(args.session))
                 with f:
                     session_data = f.read()
-            yield from parse_session(session_data, opts, environ=environ, session_arg=session_arg)
-            return
+            try:
+                yield from parse_session(session_data, opts, environ=environ, session_arg=session_arg)
+            except Exception as e:
+                log_error(f'Failed to parse session file with error: {e}')
+            else:
+                return
     if default_session and default_session != 'none' and not getattr(args, 'args', None):
         session_arg = session_arg_to_name(default_session)
         try:
@@ -298,8 +302,12 @@ def create_sessions(
         except OSError:
             log_error(f'Failed to read from session file, ignoring: {default_session}')
         else:
-            yield from parse_session(session_data, opts, session_arg=session_arg)
-            return
+            try:
+                yield from parse_session(session_data, opts, session_arg=session_arg)
+            except Exception as e:
+                log_error(f'Failed to parse session file with error: {e}')
+            else:
+                return
     ans = Session()
     current_layout = opts.enabled_layouts[0] if opts.enabled_layouts else 'tall'
     ans.add_tab(opts)
