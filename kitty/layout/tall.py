@@ -76,7 +76,8 @@ class TallLayoutOpts(LayoutOpts):
             self.bias = int(data.get('bias', 50))
         except Exception:
             self.bias = 50
-        self.mirrored = to_bool(data.get('mirrored', 'false'))
+        rv: bool | str = data.get('mirrored', 'false')
+        self.mirrored = to_bool(rv) if isinstance(rv, str) else bool(rv)
 
     def serialized(self) -> dict[str, Any]:
         return {'full_size': self.full_size, 'bias': self.bias, 'mirrored': 'y' if self.mirrored else 'n'}
