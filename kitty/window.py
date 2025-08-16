@@ -383,6 +383,7 @@ class WindowCreationSpec(NamedTuple):
     bias: float | None = None
     hold_after_ssh: bool = False
     spacing: tuple[str, ...] = ()
+    user_vars: tuple[tuple[str, str], ...] = ()
 
 
 def pagerhist(screen: Screen, as_ansi: bool = False, add_wrap_markers: bool = True, upto_output_start: bool = False) -> str:

@@ -801,7 +801,10 @@ def _launch(
         if opts.type == 'overlay-main':
             new_window.overlay_type = OverlayType.main
         if opts.var:
-            for key, val in parse_var(opts.var):
+            vars = tuple(parse_var(opts.var))
+            if new_window.creation_spec:
+                new_window.creation_spec = new_window.creation_spec._replace(user_vars=vars)
+            for key, val in vars:
                 new_window.set_user_var(key, val)
         return new_window
     return None
