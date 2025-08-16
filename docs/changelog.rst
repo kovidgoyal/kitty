@@ -130,6 +130,9 @@ Detailed list of changes
 
 - Fix a regression in 0.40.0 that broke handling of the VS16 variation selector when it caused a character to flow to the next line (:iss:`8848`)
 
+- Wayland: Update bundled copy of libwayland to 1.24 from 1.23.1 because the
+  just released mesa 25.2.0 breaks with libwayland < 1.24 (:iss:`8884`)
+
 0.42.2 [2025-07-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
