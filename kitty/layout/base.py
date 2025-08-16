@@ -7,7 +7,6 @@ from itertools import repeat
 from typing import Any, Callable, NamedTuple
 
 from kitty.borders import BorderColor
-from kitty.constants import serialize_user_var_name
 from kitty.fast_data_types import Region, set_active_window, viewport_for_window
 from kitty.options.types import Options
 from kitty.types import Edges, WindowGeometry, WindowMapper
@@ -216,15 +215,11 @@ def distribute_indexed_bias(base_bias: Sequence[float], index_bias_map: dict[int
     return normalize_biases(ans)
 
 
-def create_window_id_map_for_unserialize(all_windows: WindowList, serialize_user_var_name: str = serialize_user_var_name) -> dict[int, int]:
+def create_window_id_map_for_unserialize(all_windows: WindowList) -> dict[int, int]:
     window_id_map = {}
     for w in all_windows:
-        k = w.user_vars.pop(serialize_user_var_name, None)
-        if k is not None:
-            try:
-                window_id_map[int(k)] = w.id
-            except Exception:
-                pass
+        if w.serialized_id:
+            window_id_map[w.serialized_id] = w.id
     return window_id_map
 
 

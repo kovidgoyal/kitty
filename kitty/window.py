@@ -34,7 +34,7 @@ from .constants import (
     clear_handled_signals,
     config_dir,
     kitten_exe,
-    serialize_user_var_name,
+    unserialize_launch_flag,
     wakeup_io_loop,
 )
 from .fast_data_types import (
@@ -654,6 +654,7 @@ class Window:
     initial_ignore_focus_changes_context_manager_in_operation: bool = False
     creation_spec: WindowCreationSpec | None = None
     created_in_session_name: str = ''
+    serialized_id: int = 0
 
     @classmethod
     @contextmanager
@@ -1966,9 +1967,7 @@ class Window:
                 ans.append(f'--remote-control-password={shlex.join((pw,) + tuple(rcp_items))}')
         if self.creation_spec:
             if self.creation_spec.env:
-                env = dict(self.creation_spec.env)
-                env.pop('KITTY_PIPE_DATA', None)
-                for k, v in env.items():
+                for k, v in self.creation_spec.env:
                     if k not in ('KITTY_PIPE_DATA',):
                         ans.append(f'--env={k}={v}')
             for cs in self.creation_spec.colors:
@@ -1980,7 +1979,6 @@ class Window:
             if self.creation_spec.hold_after_ssh:
                 ans.append('--hold-after-ssh')
         ans.extend(f'--var={k}={v}' for k, v in self.user_vars.items())
-        ans.append(f'--var={serialize_user_var_name}={self.id}')
         ans.extend(self.padding.as_launch_args())
         ans.extend(self.margin.as_launch_args('margin'))
         if self.override_title:
@@ -2003,9 +2001,19 @@ class Window:
             t = 'overlay-main' if self.overlay_type is OverlayType.main else 'overlay'
             ans.append(f'--type={t}')
 
+        cmd: list[str] = []
         if self.creation_spec and self.creation_spec.cmd:
             if self.creation_spec.cmd != resolved_shell(get_options()):
-                ans.extend(self.creation_spec.cmd)
+                cmd = self.creation_spec.cmd
+        unserialize_data: dict[str, int | list[str]] = {'id': self.id}
+        if not cmd and ser_opts.use_foreground_process and self.child.pid != (pid := self.child.pid_for_cwd) and pid is not None:
+            # we have a shell running some command
+            with suppress(Exception):
+                fcmd = self.child.cmdline_of_pid(pid)
+                if fcmd:
+                    unserialize_data['cmd_at_shell_startup'] = fcmd
+        ans.insert(1, unserialize_launch_flag + json.dumps(unserialize_data))
+        ans.extend(cmd)
         return ans
 
 

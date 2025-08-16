@@ -257,9 +257,12 @@ class Tab:  # {{{
                 self.new_special_window(spec)
             else:
                 from .launch import launch
-                launched_window = launch(boss, spec.opts, spec.args, target_tab=target_tab, force_target_tab=True)
+                launched_window = launch(
+                    boss, spec.opts, spec.args, target_tab=target_tab, force_target_tab=True,
+                    startup_command_via_shell_integration=window.run_command_at_shell_startup)
                 if launched_window is not None:
                     launched_window.created_in_session_name = self.created_in_session_name
+                    launched_window.serialized_id = window.serialized_id
             if window.resize_spec is not None:
                 self.resize_window(*window.resize_spec)
             if window.focus_matching_window_spec:

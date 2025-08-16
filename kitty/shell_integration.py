@@ -3,13 +3,16 @@
 
 
 import os
+import re
 import subprocess
 from collections.abc import Callable
 from contextlib import suppress
+from typing import Iterable
 
 from .constants import shell_integration_dir
 from .fast_data_types import get_options
 from .options.types import Options, defaults
+from .types import run_once
 from .utils import log_error, which
 
 
@@ -182,6 +185,9 @@ ENV_SERIALIZERS: dict[str, Callable[[dict[str, str]], str]] = {
     'fish': fish_serialize_env,
 }
 
+QUOTERES =  {
+    'fish': as_fish_str_literal
+}
 
 def get_supported_shell_name(path: str) -> str | None:
     name = os.path.basename(path)
@@ -203,6 +209,22 @@ def serialize_env(path: str, env: dict[str, str]) -> str:
     if not name:
         raise ValueError(f'{path} is not a supported shell')
     return ENV_SERIALIZERS[name](env)
+
+
+@run_once
+def unsafe_pat() -> re.Pattern[str]:
+    return re.compile(r'[^\w@%+=:,./-]', re.ASCII)
+
+
+def join(path: str, cmd: Iterable[str]) -> str:
+    name = get_supported_shell_name(path)
+    _find_unsafe = unsafe_pat().search
+    if not name:
+        raise ValueError(f'{path} is not a supported shell')
+    q = QUOTERES.get(name, as_str_literal)
+    def quote(x: str) -> str:
+        return x if _find_unsafe(x) is None else q(x)
+    return ' '.join(map(quote, cmd))
 
 
 def get_effective_ksi_env_var(opts: Options | None = None) -> str:

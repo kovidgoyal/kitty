@@ -34,7 +34,7 @@ default_pager_for_help = ('less', '-iRXF')
 kitty_run_data: dict[str, Any] = getattr(sys, 'kitty_run_data', {})
 launched_by_launch_services = kitty_run_data.get('launched_by_launch_services', False)
 is_quick_access_terminal_app = kitty_run_data.get('is_quick_access_terminal_app', False)
-serialize_user_var_name = 'kitty_serialize_window_id'
+unserialize_launch_flag = 'kitty-unserialize-data='
 
 if getattr(sys, 'frozen', False):
     extensions_dir: str = kitty_run_data['extensions_dir']

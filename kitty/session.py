@@ -12,7 +12,7 @@ from gettext import gettext as _
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
 from .cli_stub import CLIOptions, SaveAsSessionOptions
-from .constants import config_dir
+from .constants import config_dir, unserialize_launch_flag
 from .fast_data_types import get_options
 from .layout.interface import all_layouts
 from .options.types import Options
@@ -41,11 +41,13 @@ ResizeSpec = tuple[str, int]
 
 class WindowSpec:
 
-    def __init__(self, launch_spec: Union['LaunchSpec', 'SpecialWindowInstance']):
+    def __init__(self, launch_spec: Union['LaunchSpec', 'SpecialWindowInstance'], serialized_id: int = 0, run_command_at_shell_startup: Sequence[str] = ()):
         self.launch_spec = launch_spec
         self.resize_spec: ResizeSpec | None = None
         self.focus_matching_window_spec: str = ''
         self.is_background_process = False
+        self.serialized_id = serialized_id
+        self.run_command_at_shell_startup = run_command_at_shell_startup
         if hasattr(launch_spec, 'opts'):  # LaunchSpec
             from .launch import LaunchSpec
             assert isinstance(launch_spec, LaunchSpec)
@@ -118,6 +120,10 @@ class Session:
         if isinstance(cmd, str) and cmd:
             needs_expandvars = True
             cmd = list(shlex_split(cmd))
+        serialize_data: dict[str, Any] = {'id': 0, 'cmd_at_shell_startup': ()}
+        if cmd and cmd[0].startswith(unserialize_launch_flag):
+            serialize_data = json.loads(cmd[0][len(unserialize_launch_flag):])
+            del cmd[0]
         spec = parse_launch_args(cmd)
         if needs_expandvars:
             assert isinstance(cmd, list)
@@ -132,7 +138,9 @@ class Session:
         if t.next_title and not spec.opts.window_title:
             spec.opts.window_title = t.next_title
         spec.opts.cwd = spec.opts.cwd or t.cwd
-        t.windows.append(WindowSpec(spec))
+        t.windows.append(WindowSpec(
+            spec, serialized_id=serialize_data['id'],
+            run_command_at_shell_startup=serialize_data.get('cmd_at_shell_startup', ())))
         t.next_title = None
         if t.pending_resize_spec is not None:
             t.windows[-1].resize_spec = t.pending_resize_spec
@@ -453,6 +461,18 @@ def save_as_session_options() -> str:
 --save-only
 type=bool-set
 Only save the specified session file, dont open it in an editor to review after saving.
+
+
+--use-foreground-process
+type=bool-set
+When saving windows that were started with the default shell but are currently running some
+other process inside that shell, save that process so that when the session is used
+both the shell :bold:`and` the process running inside it are re-started. This is most useful
+when you have opened programs like editors or similar inside windows that started out running
+the shell and you want to preserve that. WARNING: Be careful when using this option, if you are
+running some dangerous command like :file:`rm` or :file:`mv` or similar in a shell, it will be re-run when
+the session is executed if you use this option. Note that this option requires :ref:`shell_integration`
+to work.
 '''
 
 
@@ -461,7 +481,7 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str)
         return
     from .config import atomic_save
     path = os.path.abspath(os.path.expanduser(path))
-    session = '\n'.join(boss.serialize_state_as_session())
+    session = '\n'.join(boss.serialize_state_as_session(opts))
     atomic_save(session.encode(), path)
     if not opts.save_only:
         boss.edit_file(path)
