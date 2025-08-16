@@ -543,16 +543,16 @@ bool _glfwCreateContextEGL(_GLFWwindow* window,
             flags |= EGL_CONTEXT_OPENGL_ROBUST_ACCESS_BIT_KHR;
         }
 
-        if (ctxconfig->noerror)
-        {
-            if (_glfw.egl.KHR_create_context_no_error)
-                setAttrib(EGL_CONTEXT_OPENGL_NO_ERROR_KHR, true);
-        }
-
         if (ctxconfig->major != 1 || ctxconfig->minor != 0)
         {
             setAttrib(EGL_CONTEXT_MAJOR_VERSION_KHR, ctxconfig->major);
             setAttrib(EGL_CONTEXT_MINOR_VERSION_KHR, ctxconfig->minor);
+        }
+
+        if (ctxconfig->noerror)
+        {
+            if (_glfw.egl.KHR_create_context_no_error)
+                setAttrib(EGL_CONTEXT_OPENGL_NO_ERROR_KHR, true);
         }
 
         if (mask)
