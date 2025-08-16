@@ -400,11 +400,12 @@ bool _glfwInitEGL(void)
 
     free(attribs);
 
-    if (_glfw.egl.display == EGL_NO_DISPLAY)
+    EGLint egl_err;
+    if (_glfw.egl.display == EGL_NO_DISPLAY && (egl_err = eglGetError()) != EGL_SUCCESS)
     {
         _glfwInputError(GLFW_API_UNAVAILABLE,
                         "EGL: Failed to get EGL display: %s",
-                        getEGLErrorString(eglGetError()));
+                        getEGLErrorString(egl_err));
 
         _glfwTerminateEGL();
         return false;
@@ -413,8 +414,8 @@ bool _glfwInitEGL(void)
     if (!eglInitialize(_glfw.egl.display, &_glfw.egl.major, &_glfw.egl.minor))
     {
         _glfwInputError(GLFW_API_UNAVAILABLE,
-                        "EGL: Failed to initialize EGL: %s",
-                        getEGLErrorString(eglGetError()));
+                        "EGL: Failed to initialize EGL: %s display_present: %d egl_platform_present: %d",
+                        getEGLErrorString(eglGetError()), _glfw.egl.display != EGL_NO_DISPLAY, _glfw.egl.platform != 0);
 
         _glfwTerminateEGL();
         return false;
