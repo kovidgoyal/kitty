@@ -122,7 +122,7 @@ from .notifications import NotificationManager
 from .options.types import Options, nullable_colors
 from .options.utils import MINIMUM_FONT_SIZE, KeyboardMode, KeyDefinition
 from .os_window_size import initial_window_size_func
-from .session import Session, create_sessions, get_os_window_sizing_data, goto_session
+from .session import Session, create_sessions, get_os_window_sizing_data, goto_session, save_as_session
 from .shaders import load_shader_programs
 from .simple_cli_definitions import grab_keyboard_docs
 from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
@@ -1188,6 +1188,29 @@ class Boss:
             'ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''}, action_on_removal=on_popup_overlay_removal
         )
 
+    def get_save_filepath(
+        self, msg: str,  # can contain newlines and ANSI formatting
+        callback: Callable[..., None],  # called with the answer or empty string when aborted
+        window: Window | None = None,  # the window associated with the confirmation
+        prompt: str = '> ',
+        initial_value: str = ''
+    ) -> None:
+        result: str = ''
+
+        def callback_(res: dict[str, Any], x: int, boss: Boss) -> None:
+            nonlocal result
+            result = res.get('response') or ''
+
+        def on_popup_overlay_removal(wid: int, boss: Boss) -> None:
+            callback(result)
+
+        cmd = ['--type', 'file', '--message', msg, '--prompt', prompt]
+        if initial_value:
+            cmd.append('--default=' + initial_value)
+        self.run_kitten_with_metadata(
+            'ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''}, action_on_removal=on_popup_overlay_removal
+        )
+
     def confirm_tab_close(self, tab: Tab) -> None:
         msg, num_active_windows = self.close_windows_with_confirmation_msg(tab, tab.active_window)
         x = get_options().confirm_os_window_close[0]
@@ -1970,8 +1993,20 @@ class Boss:
     @ac('misc', 'Edit the kitty.conf config file in your favorite text editor')
     def edit_config_file(self, *a: Any) -> None:
         confpath = prepare_config_file_for_editing()
-        cmd = [kitty_exe(), '+edit'] + get_editor(get_options()) + [confpath]
-        self.new_os_window(*cmd)
+        self.edit_file(confpath)
+
+    def edit_file(self, path: str) -> None:
+        editor_cmd = get_editor(get_options())
+        exe = editor_cmd[0]
+        if not os.path.isabs(exe):
+            exe = which(exe) or ''
+            if not exe or not os.access(exe, os.X_OK):
+                self.show_error(_('Cannot find editor'), _(
+                    'Could not edit the file {0} because the editor {1} was not found.').format(editor_cmd[0]))
+                return
+            editor_cmd[0] = exe
+        path = os.path.abspath(os.path.expanduser(path))
+        self.new_os_window(*editor_cmd, path)
 
     def run_kitten_with_metadata(
         self,
@@ -2995,6 +3030,10 @@ class Boss:
     @ac('misc', 'Switch to the specified session, creating it if not already present.')
     def goto_session(self, *cmdline: str) -> None:
         goto_session(self, cmdline)
+
+    @ac('misc', 'Save the current kitty state as a session file')
+    def save_as_session(self, *cmdline: str) -> None:
+        save_as_session(self, cmdline)
 
     @ac('tab', 'Interactively select a tab to switch to')
     def select_tab(self) -> None:

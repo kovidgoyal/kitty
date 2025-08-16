@@ -72,26 +72,6 @@ def launch(args: list[str]) -> None:
     runpy.run_path(exe, run_name='__main__')
 
 
-def edit(args: list[str]) -> None:
-    import shutil
-
-    from .constants import is_macos
-    if is_macos:
-        # On macOS vim fails to handle SIGWINCH if it occurs early, so add a small delay.
-        import time
-        time.sleep(0.05)
-    exe = args[1]
-    if not os.path.isabs(exe):
-        exe = shutil.which(exe) or ''
-    if not exe or not os.access(exe, os.X_OK):
-        print('Cannot find an editor on your system. Set the \x1b[33meditor\x1b[39m value in kitty.conf'
-              ' to the absolute path of your editor of choice.', file=sys.stderr)
-        from kitty.utils import hold_till_enter
-        hold_till_enter()
-        raise SystemExit(1)
-    os.execv(exe, args[1:])
-
-
 def shebang(args: list[str]) -> None:
     from kitty.constants import kitten_exe
     os.execvp(kitten_exe(), ['kitten', '__shebang__', 'confirm-if-needed'] + args[1:])
@@ -107,14 +87,6 @@ def run_kitten(args: list[str]) -> None:
     sys.argv = args[1:]
     from kittens.runner import run_kitten as rk
     rk(kitten)
-
-
-def edit_config_file(args: list[str]) -> None:
-    from kitty.cli import create_default_opts
-    from kitty.fast_data_types import set_options
-    from kitty.utils import edit_config_file as f
-    set_options(create_default_opts())
-    f()
 
 
 def namespaced(args: list[str]) -> None:
@@ -144,9 +116,7 @@ namespaced_entry_points['runpy'] = runpy
 namespaced_entry_points['launch'] = launch
 namespaced_entry_points['open'] = open_urls
 namespaced_entry_points['kitten'] = run_kitten
-namespaced_entry_points['edit-config'] = edit_config_file
 namespaced_entry_points['shebang'] = shebang
-namespaced_entry_points['edit'] = edit
 
 
 def setup_openssl_environment(ext_dir: str) -> None:

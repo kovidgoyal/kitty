@@ -11,7 +11,7 @@ from functools import partial
 from gettext import gettext as _
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
-from .cli_stub import CLIOptions
+from .cli_stub import CLIOptions, SaveAsSessionOptions
 from .constants import config_dir
 from .fast_data_types import get_options
 from .layout.interface import all_layouts
@@ -446,3 +446,36 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
         boss.show_error(_('Failed to create session'), _('Could not create session from {0} with error:\n{1}').format(path, tb))
     else:
         append_to_session_history(session_name)
+
+
+def save_as_session_options() -> str:
+    return '''
+--save-only
+type=bool-set
+Only save the specified session file, dont open it in an editor to review after saving.
+'''
+
+
+def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str) -> None:
+    if not path:
+        return
+    from .config import atomic_save
+    path = os.path.abspath(os.path.expanduser(path))
+    session = '\n'.join(boss.serialize_state_as_session())
+    atomic_save(session.encode(), path)
+    if not opts.save_only:
+        boss.edit_file(path)
+
+
+def save_as_session(boss: BossType, cmdline: Sequence[str]) -> None:
+    from kitty.cli import parse_args
+    opts: SaveAsSessionOptions
+    opts, args = parse_args(
+        list(cmdline), save_as_session_options, result_class=SaveAsSessionOptions)
+    path = args[0] if args else ''
+    if path:
+        save_as_session_part2(boss, opts, path)
+    else:
+        boss.get_save_filepath(_(
+            'Enter the path at which to save the session, usually session files are given the .kitty-session file extension'),
+                               partial(save_as_session_part2, boss, opts))

@@ -13,7 +13,7 @@ class CLIOptions:
 LaunchCLIOptions = AskCLIOptions = ClipboardCLIOptions = DiffCLIOptions = CLIOptions
 HintsCLIOptions = IcatCLIOptions = PanelCLIOptions = ResizeCLIOptions = CLIOptions
 ErrorCLIOptions = UnicodeCLIOptions = RCOptions = RemoteFileCLIOptions = CLIOptions
-BroadcastCLIOptions = ShowKeyCLIOptions = CLIOptions
+BroadcastCLIOptions = ShowKeyCLIOptions = SaveAsSessionOptions = CLIOptions
 ThemesCLIOptions = TransferCLIOptions = LoadConfigRCOptions = ActionRCOptions = CLIOptions
 
 
@@ -73,6 +73,9 @@ def generate_stub() -> None:
 
     from kittens.transfer.main import option_text
     do(option_text(), 'TransferCLIOptions')
+
+    from kitty.session import save_as_session_options
+    do(save_as_session_options(), 'SaveAsSessionOptions')
 
     from kitty.rc.base import all_command_names, command_for_name
     for cmd_name in all_command_names():
