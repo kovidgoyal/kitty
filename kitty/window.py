@@ -2012,6 +2012,10 @@ class Window:
                 fcmd = self.child.cmdline_of_pid(pid)
                 if fcmd:
                     unserialize_data['cmd_at_shell_startup'] = fcmd
+                    if not os.path.isabs(fcmd[0]):
+                        with suppress(Exception):
+                            from .child import abspath_of_exe
+                            fcmd[0] = abspath_of_exe(pid)
         ans.insert(1, unserialize_launch_flag + json.dumps(unserialize_data))
         ans.extend(cmd)
         return ans

@@ -383,6 +383,8 @@ def cwd_of_process(pid: int) -> str:
     pass
 
 
+def abspath_of_process(pid: int) -> str: ...
+
 def default_color_table() -> Tuple[int, ...]:
     pass
 

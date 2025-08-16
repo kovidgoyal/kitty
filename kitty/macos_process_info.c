@@ -22,6 +22,19 @@ cwd_of_process(PyObject *self UNUSED, PyObject *pid_) {
     return PyUnicode_FromString(vpi.pvi_cdir.vip_path);
 }
 
+static PyObject*
+abspath_of_process(PyObject *self UNUSED, PyObject *pid_) {
+    if (!PyLong_Check(pid_)) { PyErr_SetString(PyExc_TypeError, "pid must be an int"); return NULL; }
+    long pid = PyLong_AsLong(pid_);
+    if (pid < 0) { PyErr_SetString(PyExc_TypeError, "pid cannot be negative"); return NULL; }
+    char pathbuf[PROC_PIDPATHINFO_MAXSIZE+1];
+    int ret = proc_pidpath(pid, pathbuf, sizeof(pathbuf));
+    if (ret <= 0) {
+        PyErr_SetFromErrno(PyExc_OSError); return NULL;
+    }
+    return PyUnicode_FromString(pathbuf);
+}
+
 // Read the maximum argument size for processes
 static int
 get_argmax(void) {
@@ -272,6 +285,7 @@ error:
 
 static PyMethodDef module_methods[] = {
     {"cwd_of_process", (PyCFunction)cwd_of_process, METH_O, ""},
+    {"abspath_of_process", (PyCFunction)abspath_of_process, METH_O, ""},
     {"cmdline_of_process", (PyCFunction)cmdline_of_process, METH_O, ""},
     {"environ_of_process", (PyCFunction)environ_of_process, METH_O, ""},
     {"get_all_processes", (PyCFunction)get_all_processes, METH_NOARGS, ""},

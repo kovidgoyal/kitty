@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 
 if is_macos:
+    from kitty.fast_data_types import abspath_of_process as _abspath_of_process
     from kitty.fast_data_types import cmdline_of_process as cmdline_
     from kitty.fast_data_types import cwd_of_process as _cwd
     from kitty.fast_data_types import environ_of_process as _environ_of_process
@@ -29,6 +30,9 @@ if is_macos:
         # The underlying code on macos returns a path with symlinks resolved
         # anyway but we use realpath for extra safety.
         return os.path.realpath(_cwd(pid))
+
+    def abspath_of_exe(pid: int) -> str:
+        return os.path.realpath(_abspath_of_process(pid))
 
     def process_group_map() -> DefaultDict[int, list[int]]:
         ans: DefaultDict[int, list[int]] = defaultdict(list)
@@ -81,6 +85,9 @@ else:
                 continue
             ans[q].append(pid)
         return ans
+
+    def abspath_of_exe(pid: int) -> str:
+        return os.path.realpath(f'/proc/{pid}/exe')
 
 
 @run_once
