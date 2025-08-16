@@ -40,6 +40,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <assert.h>
 
 #define debug debug_rendering
 
@@ -2869,6 +2870,8 @@ GLFWAPI struct wl_display* glfwGetWaylandDisplay(void)
 GLFWAPI struct wl_surface* glfwGetWaylandWindow(GLFWwindow* handle)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return window->wl.surface;
 }

@@ -658,6 +658,8 @@ bool _glfwChooseVisualGLX(const _GLFWwndconfig* wndconfig UNUSED,
 GLFWAPI GLXContext glfwGetGLXContext(GLFWwindow* handle)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
 
     if (window->context.client == GLFW_NO_API)
@@ -672,6 +674,8 @@ GLFWAPI GLXContext glfwGetGLXContext(GLFWwindow* handle)
 GLFWAPI GLXWindow glfwGetGLXWindow(GLFWwindow* handle)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
     _GLFW_REQUIRE_INIT_OR_RETURN(None);
 
     if (window->context.client == GLFW_NO_API)

@@ -352,6 +352,8 @@ GLFWAPI int glfwGetOSMesaDepthBuffer(GLFWwindow* handle,
 GLFWAPI OSMesaContext glfwGetOSMesaContext(GLFWwindow* handle)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
 
     if (window->context.client == GLFW_NO_API)

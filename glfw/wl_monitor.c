@@ -28,10 +28,10 @@
 
 #include "internal.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <assert.h>
 
 
 static void outputHandleGeometry(void* data,
@@ -241,6 +241,8 @@ void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor UNUSED,
 GLFWAPI struct wl_output* glfwGetWaylandMonitor(GLFWmonitor* handle)
 {
     _GLFWmonitor* monitor = (_GLFWmonitor*) handle;
+    assert(monitor != NULL);
+
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return monitor->wl.output;
 }
