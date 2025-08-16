@@ -8,7 +8,7 @@ import re
 import sys
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, Iterator, TypedDict
+from typing import Any, Iterator, Sequence, TypedDict
 
 try:
     from kitty.constants import appname, is_macos
@@ -118,7 +118,7 @@ class OptionDict(TypedDict):
     completion: CompletionSpec
 
 
-OptionSpecSeq = list[str | OptionDict]
+OptionSpecSeq = Sequence[str | OptionDict]
 
 
 def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpecSeq]:
@@ -129,8 +129,8 @@ def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpe
     lines = spec.splitlines()
     prev_line = ''
     prev_indent = 0
-    seq: OptionSpecSeq = []
-    disabled: OptionSpecSeq = []
+    seq: list[str | OptionDict] = []
+    disabled: list[str | OptionDict] = []
     mpat = re.compile('([a-z]+)=(.+)')
     current_cmd: OptionDict = {
         'dest': '', 'aliases': (), 'help': '', 'choices': (),
