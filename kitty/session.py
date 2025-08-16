@@ -467,6 +467,12 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str)
         boss.edit_file(path)
 
 
+def default_save_as_session_opts() -> SaveAsSessionOptions:
+    from kitty.cli import parse_args
+    return parse_args(
+        [], save_as_session_options, result_class=SaveAsSessionOptions)[0]
+
+
 def save_as_session(boss: BossType, cmdline: Sequence[str]) -> None:
     from kitty.cli import parse_args
     opts: SaveAsSessionOptions

@@ -27,7 +27,7 @@ from typing import (
 )
 
 from .child import ProcessDesc
-from .cli_stub import CLIOptions
+from .cli_stub import CLIOptions, SaveAsSessionOptions
 from .clipboard import ClipboardRequestManager, set_clipboard_string
 from .constants import (
     appname,
@@ -1945,7 +1945,7 @@ class Window:
         ' Return the last position at which a mouse event was received by this window '
         return get_mouse_data_for_window(self.os_window_id, self.tab_id, self.id)
 
-    def as_launch_command(self, is_overlay: bool = False) -> list[str]:
+    def as_launch_command(self, ser_opts: SaveAsSessionOptions, is_overlay: bool = False) -> list[str]:
         ' Return a launch command that can be used to serialize this window. Empty list indicates not serializable. '
         if self.actions_on_close or self.actions_on_focus_change or self.actions_on_removal:
             # such windows are typically UI kittens. The actions are not
