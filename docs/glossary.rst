@@ -224,6 +224,14 @@ Variables that kitty sets when running child programs
    Set when enabling :ref:`shell_integration`. It is automatically removed by
    the shell integration scripts.
 
+.. envvar:: KITTY_SI_RUN_COMMAND_AT_STARTUP
+
+   Set this to an expression that the kitty shell integration scripts will
+   ``eval`` after the shell is started. Note that this environment variable
+   is ignored when present in the environment in which kitty itself is launched
+   in. It is most useful with the ``--env`` flag for the :doc:`launch <launch>`
+   action.
+
 .. envvar:: ZDOTDIR
 
    Set when enabling :ref:`shell_integration` with :program:`zsh`, allowing

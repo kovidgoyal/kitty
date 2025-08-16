@@ -152,6 +152,7 @@ def process_env(env: Mapping[str, str] | None = None) -> dict[str, str]:
         ans.pop(ssl_env_var, None)
     ans.pop('XDG_ACTIVATION_TOKEN', None)
     ans.pop('VTE_VERSION', None)  # Used by the stupid VTE shell integration script that is installed system wide, sigh
+    ans.pop('KITTY_SI_RUN_COMMAND_AT_STARTUP', None)
     return ans
 
 

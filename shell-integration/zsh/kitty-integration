@@ -88,6 +88,8 @@ _ksi_deferred_init() {
     builtin local -a opt
     opt=(${(s: :)KITTY_SHELL_INTEGRATION})
     builtin unset KITTY_SHELL_INTEGRATION
+    builtin local krcs="$KITTY_SI_RUN_COMMAND_AT_STARTUP"
+    builtin unset KITTY_SI_RUN_COMMAND_AT_STARTUP
 
     if [[ -n "$SSH_KITTEN_KITTY_DIR" ]]; then
         if [[ ! "$PATH" =~ (^|:)${SSH_KITTEN_KITTY_DIR}(:|$) ]] && [[ -z "$(builtin command -v kitten)" ]]; then
@@ -424,6 +426,9 @@ _ksi_deferred_init() {
     # kitty-integration though because decent public functions aren't supposed to
     # to unfunction themselves when invoked. Unfunctioning is done by calling code.
     builtin unfunction _ksi_deferred_init
+
+    # run startup command
+    if [[ -n "$krcs" ]]; then builtin eval "$krcs"; fi
 }
 
 _ksi_transmit_data() {

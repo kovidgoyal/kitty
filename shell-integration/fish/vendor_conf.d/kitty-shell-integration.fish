@@ -37,6 +37,8 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         end
         set --erase SSH_KITTEN_KITTY_DIR
     end
+    set --local krcs "$KITTY_SI_RUN_COMMAND_AT_STARTUP"
+    set --erase KITTY_SI_RUN_COMMAND_AT_STARTUP
 
     # Enable cursor shape changes for default mode and vi mode
     if not contains "no-cursor" $_ksi
@@ -200,6 +202,9 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         end
         test (count $new_path) -eq (count $PATH)
         or set --global --export --path PATH $new_path
+    end
+    if test -n "$krcs"
+        eval "$krcs"
     end
 end
 

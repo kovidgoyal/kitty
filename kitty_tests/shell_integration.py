@@ -86,12 +86,14 @@ class ShellIntegration(BaseTest):
     with_kitten = False
 
     @contextmanager
-    def run_shell(self, shell='zsh', rc='', cmd='', setup_env=None):
+    def run_shell(self, shell='zsh', rc='', cmd='', setup_env=None, extra_env=None):
         home_dir = self.home_dir = os.path.realpath(tempfile.mkdtemp())
         cmd = cmd or shell
         cmd = shlex.split(cmd.format(**locals()))
         env = (setup_env or safe_env_for_running_shell)(cmd, home_dir, rc=rc, shell=shell, with_kitten=self.with_kitten)
         env['KITTY_RUNNING_SHELL_INTEGRATION_TEST'] = '1'
+        if extra_env:
+            env.update(extra_env)
         try:
             if self.with_kitten:
                 cmd = [kitten_exe(), 'run-shell', '--shell', shlex.join(cmd)]
@@ -183,6 +185,10 @@ RPS1="{rps1}"
             self.assert_command(pty)
             env = pty.callbacks.clone_cmds[0].env
             self.ae(env.get('ES'), 'a\n b c\nd')
+        with self.run_shell(rc='PS1=XXX', extra_env={'KITTY_SI_RUN_COMMAND_AT_STARTUP': 'echo pre-start'}) as pty:
+            pty.wait_till(lambda: 'XXX' in pty.screen_contents())
+            self.assertIn('pre-start', pty.screen_contents())
+            self.assertTrue(pty.screen_contents().startswith('pre-start'))
 
     @unittest.skipUnless(shutil.which('fish'), 'fish not installed')
     def test_fish_integration(self):
@@ -190,6 +196,7 @@ RPS1="{rps1}"
         completions_dir = os.path.join(kitty_base_dir, 'shell-integration', 'fish', 'vendor_completions.d')
         with self.run_shell(
             shell='fish',
+            extra_env={'KITTY_SI_RUN_COMMAND_AT_STARTUP': 'echo XXX'},
             rc=f'''
 set -g fish_greeting
 function fish_prompt; echo -n "{fish_prompt}"; end
@@ -198,7 +205,7 @@ function _test_comp_path; contains "{completions_dir}" $fish_complete_path; and 
 function _set_key; set -g fish_key_bindings fish_$argv[1]_key_bindings; end
 function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status {fish_prompt}"; end; end
 ''') as pty:
-            q = fish_prompt + ' ' * (pty.screen.columns - len(fish_prompt) - len(right_prompt)) + right_prompt
+            q = 'XXX\n' + fish_prompt + ' ' * (pty.screen.columns - len(fish_prompt) - len(right_prompt)) + right_prompt
             pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 1)
             self.ae(pty.screen_contents(), q)
 
@@ -366,6 +373,10 @@ PS1="{ps1}"
                 self.ae(ps1.splitlines()[-1] + 'echo $COLUMNS', str(pty.screen.line(pty.screen.cursor.y - 1 - len(ps1.splitlines()))))
                 self.assert_command(pty, 'echo $COLUMNS')
 
+        with self.run_shell(shell='bash', rc='PS1=XXX', extra_env={'KITTY_SI_RUN_COMMAND_AT_STARTUP': 'echo pre-start'}) as pty:
+            pty.wait_till(lambda: 'XXX' in pty.screen_contents())
+            self.assertIn('pre-start', pty.screen_contents())
+            self.assertTrue(pty.screen_contents().startswith('pre-start'))
         # test startup file sourcing
 
         def setup_env(excluded, argv, home_dir, rc='', shell='bash', with_kitten=self.with_kitten):
