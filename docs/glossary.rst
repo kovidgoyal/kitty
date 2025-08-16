@@ -224,6 +224,10 @@ Variables that kitty sets when running child programs
    Set when enabling :ref:`shell_integration`. It is automatically removed by
    the shell integration scripts.
 
+.. envvar:: KITTY_SUPPORTS_PROMPT_CLICK_EVENTS
+
+   Set in all kitty versions that support the `click_events=1` flag in :ref:`shell_integration`.
+
 .. envvar:: ZDOTDIR
 
    Set when enabling :ref:`shell_integration` with :program:`zsh`, allowing
