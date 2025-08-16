@@ -23,11 +23,20 @@ func FilePromptCompleter(getcwd func() string) func(string, string) *cli.Complet
 			return ans
 		}
 	}
-	return func(before_cursor, after_cursor string) *cli.Completions {
+	return func(before_cursor, after_cursor string) (ans *cli.Completions) {
+		defer func() {
+			if r := recover(); r != nil {
+				text, err := utils.Format_stacktrace_on_panic(r)
+				debugprintln(text)
+				debugprintln(err)
+			}
+		}()
+		ans = cli.NewCompletions()
 		path := before_cursor
 		prefix := ""
 		if idx := strings.Index(path, string(os.PathSeparator)); idx > -1 {
-			prefix = filepath.Dir(path) + string(os.PathSeparator)
+			d := filepath.Dir(path)
+			prefix = d + utils.IfElse(strings.HasSuffix(d, string(os.PathSeparator)), "", string(os.PathSeparator))
 		}
 		dir := ""
 		if path == "" {
@@ -46,7 +55,6 @@ func FilePromptCompleter(getcwd func() string) func(string, string) *cli.Complet
 		if err != nil {
 			return nil
 		}
-		ans := cli.NewCompletions()
 		dirs := ans.AddMatchGroup("Directories")
 		dirs.IsFiles = true
 		dirs.NoTrailingSpace = true
