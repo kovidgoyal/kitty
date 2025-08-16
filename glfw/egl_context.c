@@ -388,6 +388,7 @@ bool _glfwInitEGL(void)
     }
 
     _glfw.egl.platform = _glfwPlatformGetEGLPlatform(&attribs);
+    _glfw.egl.display = EGL_NO_DISPLAY;
     if (_glfw.egl.platform)
     {
         _glfw.egl.display =
@@ -395,10 +396,11 @@ bool _glfwInitEGL(void)
                                      _glfwPlatformGetEGLNativeDisplay(),
                                      attribs);
     }
-    else
+    free(attribs);
+
+    if (_glfw.egl.display == EGL_NO_DISPLAY)
         _glfw.egl.display = eglGetDisplay(_glfwPlatformGetEGLNativeDisplay());
 
-    free(attribs);
 
     EGLint egl_err;
     if (_glfw.egl.display == EGL_NO_DISPLAY && (egl_err = eglGetError()) != EGL_SUCCESS)
