@@ -753,24 +753,26 @@ draw_single_ascii_char(const char ch, size_t *result_width, size_t *result_heigh
 
 #else
 
-static FreeTypeRenderCtx csd_title_render_ctx = NULL;
+static FreeTypeRenderCtx bold_render_ctx = NULL, normal_render_ctx = NULL;
 
-static bool
-ensure_csd_title_render_ctx(void) {
-    if (!csd_title_render_ctx) {
-        csd_title_render_ctx = create_freetype_render_context(NULL, true, false);
-        if (!csd_title_render_ctx) {
+static FreeTypeRenderCtx
+freetype_render_ctx(bool bold) {
+    FreeTypeRenderCtx *which = bold ? &bold_render_ctx : &normal_render_ctx;
+    if (!*which) {
+        *which = create_freetype_render_context(NULL, bold, false);
+        if (!*which) {
             if (PyErr_Occurred()) PyErr_Print();
-            return false;
+            return NULL;
         }
     }
-    return true;
+    return *which;
 }
 
 static bool
 draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin, bool is_single_glyph) {
     if (!set_callback_window(window)) return false;
-    if (!ensure_csd_title_render_ctx()) return false;
+    FreeTypeRenderCtx ctx;
+    if (!(ctx = freetype_render_ctx(true))) return false;
     double xdpi, ydpi;
     get_window_dpi(window, &xdpi, &ydpi);
     unsigned px_sz = 2 * height / 3;
@@ -779,20 +781,21 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
         snprintf(title, sizeof(title), " ❭ %s", text);
         text = title;
     }
-    bool ok = render_single_line(csd_title_render_ctx, text, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset, right_margin, is_single_glyph);
+    bool ok = render_single_line(ctx, text, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset, right_margin, is_single_glyph);
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;
 }
 
 bool
 draw_window_title(double font_sz_pts, double ydpi, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
-    if (!ensure_csd_title_render_ctx()) return false;
+    FreeTypeRenderCtx ctx;
+    if (!(ctx = freetype_render_ctx(false))) return false;
     static char buf[2048];
     strip_csi_(text, buf, arraysz(buf));
     unsigned px_sz = (unsigned)(font_sz_pts * ydpi / 72.);
     px_sz = MIN(px_sz, 3 * height / 4);
 #define RGB2BGR(x) (x & 0xFF000000) | ((x & 0xFF0000) >> 16) | (x & 0x00FF00) | ((x & 0x0000FF) << 16)
-    bool ok = render_single_line(csd_title_render_ctx, buf, px_sz, RGB2BGR(fg), RGB2BGR(bg), output_buf, width, height, 0, 0, 0, false);
+    bool ok = render_single_line(ctx, buf, px_sz, RGB2BGR(fg), RGB2BGR(bg), output_buf, width, height, 0, 0, 0, false);
 #undef RGB2BGR
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;
@@ -800,8 +803,9 @@ draw_window_title(double font_sz_pts, double ydpi, const char *text, color_type 
 
 uint8_t*
 draw_single_ascii_char(const char ch, size_t *result_width, size_t *result_height) {
-    if (!ensure_csd_title_render_ctx()) return NULL;
-    uint8_t *ans = render_single_ascii_char_as_mask(csd_title_render_ctx, ch, result_width, result_height);
+    FreeTypeRenderCtx ctx;
+    if (!(ctx = freetype_render_ctx(true))) return false;
+    uint8_t *ans = render_single_ascii_char_as_mask(ctx, ch, result_width, result_height);
     if (PyErr_Occurred()) PyErr_Print();
     return ans;
 }
@@ -2671,7 +2675,8 @@ void cleanup_glfw(void) {
     Py_CLEAR(edge_spacing_func);
 #ifndef __APPLE__
     Py_CLEAR(dbus_notification_callback);
-    release_freetype_render_context(csd_title_render_ctx);
+    release_freetype_render_context(bold_render_ctx);
+    release_freetype_render_context(normal_render_ctx);
 #endif
 }
 

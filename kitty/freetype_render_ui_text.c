@@ -522,15 +522,16 @@ uint8_t*
 render_single_ascii_char_as_mask(FreeTypeRenderCtx ctx_, const char ch, size_t *result_width, size_t *result_height) {
     RenderCtx *ctx = (RenderCtx*)ctx_;
     if (!ctx->created) { PyErr_SetString(PyExc_RuntimeError, "freetype render ctx not created"); return NULL; }
-    RAII_TempFontData(temp);
+    size_t avail_height = *result_height;
+    if (avail_height < 4) { PyErr_Format(PyExc_ValueError, "Invalid available height: %zu", avail_height); return NULL; }
     Face *face = &main_face;
+    RAII_TempFontData(temp);
+    temp.face = face; temp.orig_sz = face->pixel_size;
+    set_pixel_size(ctx, face, avail_height, false);
     int glyph_index = FT_Get_Char_Index(face->freetype, ch);
     if (!glyph_index) { PyErr_Format(PyExc_KeyError, "character %c not found in font", ch); return NULL; }
     unsigned int height = font_units_to_pixels_y(face->freetype, face->freetype->height);
-    size_t avail_height = *result_height;
-    if (avail_height < 4) { PyErr_Format(PyExc_ValueError, "Invalid available height: %zu", avail_height); return NULL; }
     float ratio = ((float)height) / avail_height;
-    temp.face = face; temp.orig_sz = face->pixel_size;
     face->pixel_size = (FT_UInt)(face->pixel_size / ratio);
     if (face->pixel_size != temp.orig_sz) FT_Set_Pixel_Sizes(face->freetype, avail_height, avail_height);
     int error = FT_Load_Glyph(face->freetype, glyph_index, get_load_flags(face->hinting, face->hintstyle, FT_LOAD_DEFAULT));
