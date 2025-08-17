@@ -492,6 +492,13 @@ the shell and you want to preserve that. WARNING: Be careful when using this opt
 running some dangerous command like :file:`rm` or :file:`mv` or similar in a shell, it will be re-run when
 the session is executed if you use this option. Note that this option requires :ref:`shell_integration`
 to work.
+
+
+--relocatable
+type=bool-set
+When saving the working directory for windows, do so as paths relative to the directory in which
+the session file will be saved. This allows the session file to work even when its containing
+directory is moved elsewhere.
 '''
 
 
@@ -500,7 +507,7 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str)
         return
     from .config import atomic_save
     path = os.path.abspath(os.path.expanduser(path))
-    session = '\n'.join(boss.serialize_state_as_session(opts))
+    session = '\n'.join(boss.serialize_state_as_session(path, opts))
     atomic_save(session.encode(), path)
     if not opts.save_only:
         boss.edit_file(path)

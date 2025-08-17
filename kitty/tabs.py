@@ -295,12 +295,17 @@ class Tab:  # {{{
             'name': self.name,
         }
 
-    def serialize_state_as_session(self, ser_opts: SaveAsSessionOptions) -> list[str]:
+    def serialize_state_as_session(self, session_path: str, ser_opts: SaveAsSessionOptions) -> list[str]:
         import shlex
         launch_cmds = []
         active_idx = self.windows.active_group_idx
         groups = tuple(self.windows.iter_all_layoutable_groups())
-        cwds = {w.id: w.cwd_for_serialization for g in groups for w in g}
+        session_base_dir = os.path.dirname(session_path) if session_path else ''
+        def make_relative(cwd: str) -> str:
+            if session_base_dir and ser_opts.relocatable:
+                cwd = os.path.relpath(cwd, session_base_dir)
+            return cwd
+        cwds = {w.id: make_relative(w.cwd_for_serialization) for g in groups for w in g}
         from collections import Counter
         most_common_cwd, _ = Counter(cwds.values()).most_common(1)[0]
         for i, g in enumerate(groups):
@@ -1214,7 +1219,7 @@ class TabManager:  # {{{
             'active_tab_idx': self.active_tab_idx,
         }
 
-    def serialize_state_as_session(self, ser_opts: SaveAsSessionOptions, is_first: bool = False) -> list[str]:
+    def serialize_state_as_session(self, session_path: str, ser_opts: SaveAsSessionOptions, is_first: bool = False) -> list[str]:
         ans = []
         hmap = {tab_id: i for i, tab_id in enumerate(self.active_tab_history)}
         if (at := self.active_tab) is not None:
@@ -1222,7 +1227,7 @@ class TabManager:  # {{{
         def skey(tab: Tab) -> int:
             return hmap.get(tab.id, -1)
         for tab in sorted(self, key=skey):
-            ans.extend(tab.serialize_state_as_session(ser_opts))
+            ans.extend(tab.serialize_state_as_session(session_path, ser_opts))
         if ans:
             prefix = [] if is_first else ['', '', 'new_os_window']
             if self.wm_class and self.wm_class != appname:
