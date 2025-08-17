@@ -37,7 +37,7 @@ typedef struct {
     FontFeatures font_features;
 } CTFace;
 PyTypeObject CTFace_Type;
-static CTFontRef window_title_font = nil;
+static CTFontRef system_ui_font = nil;
 
 static BOOL
 CTFontSupportsColorGlyphs(CTFontRef font) {
@@ -714,8 +714,8 @@ finalize(void) {
     free(buffers.render_buf); free(buffers.glyphs); free(buffers.boxes); free(buffers.positions);
     memset(&buffers, 0, sizeof(struct RenderBuffers));
     if (all_fonts_collection_data) CFRelease(all_fonts_collection_data);
-    if (window_title_font) CFRelease(window_title_font);
-    window_title_font = nil;
+    if (system_ui_font) CFRelease(system_ui_font);
+    system_ui_font = nil;
     if (_nerd_font_descriptor) CFRelease(_nerd_font_descriptor);
     if (builtin_nerd_font_descriptor) CFRelease(builtin_nerd_font_descriptor);
     _nerd_font_descriptor = NULL; builtin_nerd_font_descriptor = NULL;
@@ -922,20 +922,20 @@ end:
 static bool
 ensure_ui_font(size_t in_height) {
     static size_t for_height = 0;
-    if (window_title_font) {
+    if (system_ui_font) {
         if (for_height == in_height) return true;
-        CFRelease(window_title_font);
+        CFRelease(system_ui_font);
     }
-    window_title_font = CTFontCreateUIFontForLanguage(kCTFontUIFontWindowTitle, 0.f, NULL);
-    if (!window_title_font) return false;
-    CGFloat line_height = MAX(1, floor(CTFontGetAscent(window_title_font) + CTFontGetDescent(window_title_font) + MAX(0, CTFontGetLeading(window_title_font)) + 0.5));
-    CGFloat pts_per_px = CTFontGetSize(window_title_font) / line_height;
+    system_ui_font = CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, 0.f, NULL);
+    if (!system_ui_font) return false;
+    CGFloat line_height = MAX(1, floor(CTFontGetAscent(system_ui_font) + CTFontGetDescent(system_ui_font) + MAX(0, CTFontGetLeading(system_ui_font)) + 0.5));
+    CGFloat pts_per_px = CTFontGetSize(system_ui_font) / line_height;
     CGFloat desired_size = in_height * pts_per_px;
-    if (desired_size != CTFontGetSize(window_title_font)) {
-        CTFontRef sized = CTFontCreateCopyWithAttributes(window_title_font, desired_size, NULL, NULL);
-        CFRelease(window_title_font);
-        window_title_font = sized;
-        if (!window_title_font) return false;
+    if (desired_size != CTFontGetSize(system_ui_font)) {
+        CTFontRef sized = CTFontCreateCopyWithAttributes(system_ui_font, desired_size, NULL, NULL);
+        CFRelease(system_ui_font);
+        system_ui_font = sized;
+        if (!system_ui_font) return false;
     }
     for_height = in_height;
     return true;
@@ -960,7 +960,7 @@ cocoa_render_line_of_text(const char *text, const color_type fg, const color_typ
     CGContextSetRGBStrokeColor(ctx, ((fg >> 16) & 0xff) / 255.f, ((fg >> 8) & 0xff) / 255.f, (fg & 0xff) / 255.f, 1.f);
 
     NSColor *color = [NSColor colorWithCalibratedRed:((fg >> 16) & 0xff) / 255.f green:((fg >> 8) & 0xff) / 255.f blue:(fg & 0xff) / 255.f alpha:1.0];
-    NSAttributedString *str = [[NSAttributedString alloc] initWithString:@(text) attributes:@{(NSString *)kCTFontAttributeName: (__bridge id)window_title_font, NSForegroundColorAttributeName: color}];
+    NSAttributedString *str = [[NSAttributedString alloc] initWithString:@(text) attributes:@{(NSString *)kCTFontAttributeName: (__bridge id)system_ui_font, NSForegroundColorAttributeName: color}];
     if (!str) { CGContextRelease(ctx); return false; }
     CTLineRef line = CTLineCreateWithAttributedString((CFAttributedStringRef)str);
     [str release];
@@ -979,9 +979,9 @@ render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *re
     if (!ensure_ui_font(*result_height)) { PyErr_SetString(PyExc_RuntimeError, "failed to create UI font"); return NULL; }
     unichar chars = ch;
     CGSize local_advances[1];
-    CTFontGetGlyphsForCharacters(window_title_font, &chars, buffers.glyphs, 1);
-    CTFontGetAdvancesForGlyphs(window_title_font, kCTFontOrientationDefault, buffers.glyphs, local_advances, 1);
-    CGRect bounding_box = CTFontGetBoundingRectsForGlyphs(window_title_font, kCTFontOrientationDefault, buffers.glyphs, buffers.boxes, 1);
+    CTFontGetGlyphsForCharacters(system_ui_font, &chars, buffers.glyphs, 1);
+    CTFontGetAdvancesForGlyphs(system_ui_font, kCTFontOrientationDefault, buffers.glyphs, local_advances, 1);
+    CGRect bounding_box = CTFontGetBoundingRectsForGlyphs(system_ui_font, kCTFontOrientationDefault, buffers.glyphs, buffers.boxes, 1);
 
     size_t width = (size_t)ceilf(bounding_box.size.width);
     size_t height = (size_t)ceilf(bounding_box.size.height);
@@ -993,9 +993,9 @@ render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *re
     CGColorSpaceRelease(gray_color_space);
     if (render_ctx == NULL) { PyErr_NoMemory(); free(canvas); return NULL; }
     setup_ctx_for_alpha_mask(render_ctx);
-    /* printf("origin.y: %f descent: %f ascent: %f height: %zu size.height: %f\n", bounding_box.origin.y, CTFontGetDescent(window_title_font), CTFontGetAscent(window_title_font), height, bounding_box.size.height); */
+    /* printf("origin.y: %f descent: %f ascent: %f height: %zu size.height: %f\n", bounding_box.origin.y, CTFontGetDescent(system_ui_font), CTFontGetAscent(system_ui_font), height, bounding_box.size.height); */
     CGContextSetTextPosition(render_ctx, -bounding_box.origin.x, -bounding_box.origin.y);
-    CTFontDrawGlyphs(window_title_font, buffers.glyphs, buffers.positions, 1, render_ctx);
+    CTFontDrawGlyphs(system_ui_font, buffers.glyphs, buffers.positions, 1, render_ctx);
     CGContextRelease(render_ctx);
     *result_width = width; *result_height = height;
     return canvas;
