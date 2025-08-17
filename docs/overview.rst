@@ -124,8 +124,6 @@ started.
    remote-control
 
 
-.. _sessions:
-
 Sessions
 ------------------
 
