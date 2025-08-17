@@ -9,6 +9,16 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+Sessions [0.43]
+~~~~~~~~~~~~~~~~
+
+kitty has long had support for :doc:`sessions`, aka simple text files where you
+can define what tabs, windows and programs you wish to run in kitty. Now in
+addition to that kitty has the ability to :ref:`create and switch between
+sessions <goto_session>` with a single keypress and also to manually setup some
+tabs/windows in kitty and :ref:`save it as a session file <complex_sessions>`,
+for seamless and intuitive session file creation.
+
 Access kitty with a single keypress [0.42]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -108,6 +118,9 @@ Detailed list of changes
 
 0.43.0 [2025-07-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- New support for creating and switching to :doc:`sessions` easily, allowing
+  users to define and use sessions/projects efficiently
 
 - A new :opt:`cursor_trail_color` setting to independently control the color of
   cursor trails (:pull:`8830`)
