@@ -553,7 +553,6 @@ render_single_ascii_char_as_mask(FreeTypeRenderCtx ctx_, const char ch, size_t *
             break;
         default:
             PyErr_Format(PyExc_TypeError, "Unknown FreeType bitmap type: 0x%x", face->freetype->glyph->bitmap.pixel_mode);
-            return false;
             break;
     }
     return rendered;
