@@ -1219,9 +1219,9 @@ class TabManager:  # {{{
             ans.extend(tab.serialize_state_as_session(ser_opts))
         if ans:
             prefix = [] if is_first else ['', '', 'new_os_window']
-            if self.wm_class:
+            if self.wm_class and self.wm_class != appname:
                 prefix.append(f'os_window_class {self.wm_class}')
-            if self.wm_name:
+            if self.wm_name and self.wm_name != appname:
                 prefix.append(f'os_window_name {self.wm_name}')
             ans = prefix + ans
         return ans
