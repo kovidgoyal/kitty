@@ -803,11 +803,17 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
         .height=bar_height + 2 * border_width, .left=ui->screen_left, .width=ui->screen_width, .top=ui->screen_top};
     if (along_bottom) border_rect.top += ui->screen_height - border_rect.height;
     const unsigned sh = ui->full_framebuffer_height;
+    // first blank the area to be drawn to background
+    enable_scissor_using_top_left_origin(border_rect, sh);
+    blank_canvas(1.f, bg);
+    disable_scissor();
+    // then draw the rendered text
     save_viewport_using_top_left_origin(
         border_rect.left + border_width, border_rect.top + border_width, bar_width, bar_height, sh);
     draw_graphics(GRAPHICS_PROGRAM, &data, 0, 1, 1.f);
     restore_viewport();
     free_texture(&data.texture_id);
+    // finally draw border with transparent bg
     draw_rounded_rect(ui->os_window, border_rect, sh, 1, ui->cell_width, fg, bg, 0.f);
     return border_rect.height;
 }

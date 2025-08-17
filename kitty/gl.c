@@ -186,6 +186,16 @@ restore_viewport(void) {
     glViewport(saved_viewport[0], saved_viewport[1], saved_viewport[2], saved_viewport[3]);
 }
 
+void
+enable_scissor_using_top_left_origin(Viewport vp, unsigned full_framebuffer_height) {
+    glEnable(GL_SCISSOR_TEST);
+    GLsizei newy = full_framebuffer_height - (vp.top + vp.height);
+    glScissor(vp.left, newy, vp.width, vp.height);
+}
+
+void
+disable_scissor(void) { glDisable(GL_SCISSOR_TEST); }
+
 static float
 linear_to_srgb(float c) { return (c <= 0.0031308f) ? 12.92f * c : 1.055f * powf(c, 1.0f / 2.4f) - 0.055f; }
 

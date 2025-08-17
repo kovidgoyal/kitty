@@ -67,3 +67,5 @@ void check_framebuffer_status_or_die(void);
 void restore_viewport(void);
 void bind_framebuffer_for_output(unsigned fbid);
 void set_framebuffer_to_use_for_output(unsigned fbid);
+void enable_scissor_using_top_left_origin(Viewport, unsigned);
+void disable_scissor(void);
