@@ -203,7 +203,11 @@ def detect_if_wayland_ok() -> bool:
     wayland = glfw_path('wayland')
     if not os.path.exists(wayland):
         return False
-    return True
+    import ctypes
+    with suppress(Exception):
+        setattr(detect_if_wayland_ok, 'keep_module_loaded', ctypes.CDLL(wayland))
+        return True
+    return False
 
 
 def is_wayland(opts: Optional['Options'] = None) -> bool:
