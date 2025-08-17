@@ -126,86 +126,14 @@ started.
 
 .. _sessions:
 
-Startup Sessions
+Sessions
 ------------------
 
 You can control the :term:`tabs <tab>`, :term:`kitty window <window>` layout,
 working directory, startup programs, etc. by creating a *session* file and using
 the :option:`kitty --session` command line flag or the :opt:`startup_session`
-option in :file:`kitty.conf`. An example, showing all available commands:
-
-.. code-block:: session
-
-    # Set the layout for the current tab
-    layout tall
-    # Set the working directory for windows in the current tab
-    cd ~
-    # Create a window and run the specified command in it
-    launch zsh
-    # Create a window with some environment variables set and run vim in it
-    launch --env FOO=BAR vim
-    # Set the title for the next window
-    launch --title "Chat with x" irssi --profile x
-    # Run a short lived command and see its output
-    launch --hold message-of-the-day
-
-    # Create a new tab
-    # The part after new_tab is the optional tab title which will be displayed in
-    # the tab bar, if omitted, the title of the active window will be used instead.
-    new_tab my tab
-    cd ~/somewhere
-    # Set the layouts allowed in this tab
-    enabled_layouts tall,stack
-    # Set the current layout
-    layout stack
-    launch zsh
-
-    # Create a new OS window
-    # Any definitions specified before the first new_os_window will apply to first OS window.
-    new_os_window
-    # Set new window size to 80x24 cells
-    os_window_size 80c 24c
-    # Set the --class for the new OS window
-    os_window_class mywindow
-    # Set the --name for the new OS window
-    os_window_name myname
-    # Change the OS window state to normal, fullscreen, maximized or minimized
-    os_window_state normal
-    launch sh
-    # Resize the current window (see the resize_window action for details)
-    resize_window wider 2
-    # Make the current window the active (focused) window in its tab
-    focus
-    # Make the current OS Window the globally active window (not supported on Wayland)
-    focus_os_window
-    launch emacs
-
-    # Create a complex layout using multiple splits. Creates two columns of
-    # windows with two windows in each column. The windows in the first column are
-    # split 50:50. In the second column the windows are not evenly split.
-    new_tab complex tab
-    layout splits
-    # First window, set a user variable on it so we can focus it later
-    launch --var window=first
-    # Create the second column by splitting the first window vertically
-    launch --location=vsplit
-    # Create the third window in the second column by splitting the second window horizontally
-    # Make it take 40% of the height instead of 50%
-    launch --location=hsplit --bias=40
-    # Go back to focusing the first window, so that we can split it
-    focus_matching_window var:window=first
-    # Create the final window in the first column
-    launch --location=hsplit
-
-
-.. note::
-    The :doc:`launch <launch>` command when used in a session file cannot create
-    new OS windows, or tabs.
-
-.. note::
-   Environment variables of the form :code:`${NAME}` or :code:`$NAME` are
-   expanded in the session file, except in the *arguments* (not options) to the
-   launch command.
+option in :file:`kitty.conf`. You can also easily switch between sessions with
+a keypress. See :doc:`sessions` for details.
 
 
 Creating tabs/windows

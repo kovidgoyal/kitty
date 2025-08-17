@@ -10,6 +10,7 @@ kitty
     overview
     faq
     support
+    sessions
     performance
     changelog
     integrations
