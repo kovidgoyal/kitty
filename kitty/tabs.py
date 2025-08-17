@@ -32,7 +32,6 @@ from .fast_data_types import (
     buffer_keys_in_window,
     current_focused_os_window_id,
     detach_window,
-    focus_os_window,
     get_boss,
     get_click_interval,
     get_options,
@@ -275,8 +274,7 @@ class Tab:  # {{{
                             tm.set_active_tab(target_tab)
                         if target_tab.active_window is not w:
                             target_tab.set_active_window(w)
-                        if current_focused_os_window_id() != w.os_window_id:
-                            focus_os_window(w.os_window_id, True)
+                        boss.focus_os_window(w.os_window_id)
 
         with suppress(IndexError):
             self.windows.set_active_window_group_for(self.windows.all_windows[session_tab.active_window_idx])

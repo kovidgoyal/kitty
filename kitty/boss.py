@@ -593,6 +593,20 @@ class Boss:
                 if q:
                     yield q
 
+    def focus_os_window(self, os_window_id: int, if_needed_only: bool = True) -> bool:
+        if if_needed_only and current_focused_os_window_id() == os_window_id:
+            return False
+
+        def doit(token: str = '') -> None:
+            focus_os_window(os_window_id, True, token)
+
+        if is_wayland():
+            if not run_with_activation_token(doit):
+                doit()
+        else:
+            doit()
+        return True
+
     def set_active_window(
         self, window: Window, switch_os_window_if_needed: bool = False, for_keep_focus: bool = False, activation_token: str = ''
     ) -> int | None:
@@ -1560,7 +1574,7 @@ class Boss:
                 initial_tab_id = tm.active_tab.id
             tm.set_active_tab(tab)
         if initial_os_window_id != tab.os_window_id:
-            focus_os_window(tab.os_window_id, True)
+            self.focus_os_window(tab.os_window_id, False)
         self.current_visual_select = VisualSelect(tab.id, tab.os_window_id, initial_tab_id, initial_os_window_id, choose_msg, callback, reactivate_prev_tab)
         if tab.current_layout.only_active_window_visible:
             self.select_window_in_tab_using_overlay(tab, choose_msg, only_window_ids)
@@ -1838,11 +1852,11 @@ class Boss:
             return
         if num == 0:
             os_window_id = current_focused_os_window_id() or last_focused_os_window_id()
-            focus_os_window(os_window_id, True)
+            self.focus_os_window(os_window_id)
         elif num > 0:
             ids = tuple(self.os_window_map.keys())
             os_window_id = ids[min(num, len(ids)) - 1]
-            focus_os_window(os_window_id, True)
+            self.focus_os_window(os_window_id)
         elif num < 0:
             fc_map = os_window_focus_counters()
             s = sorted(fc_map.keys(), key=fc_map.__getitem__)
@@ -1852,7 +1866,7 @@ class Boss:
                 os_window_id = s[num-1]
             except IndexError:
                 os_window_id = s[0]
-            focus_os_window(os_window_id, True)
+            self.focus_os_window(os_window_id)
 
     @ac('win', 'Close the currently active OS Window')
     def close_os_window(self) -> None:
@@ -1933,7 +1947,7 @@ class Boss:
                 if tab is not None:
                     ctm = tab.tab_manager_ref()
                     if ctm is not None and tab in ctm and w in tab:
-                        focus_os_window(ctm.os_window_id)
+                        self.focus_os_window(ctm.os_window_id)
                         ctm.set_active_tab(tab)
                         tab.set_active_window(w)
                         return
