@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <pwd.h>
 #include <sys/types.h>
+#include <stdlib.h>
 
 #define CHARSETS_STORAGE static inline
 #define NO_SINGLE_BYTE_CHARSETS
@@ -241,15 +242,23 @@ static void
 talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[], const CLIOptions *opts) {
     cleanup_entries.si.path2[0] = 0; cleanup_entries.si.path1[0] = 0;
     membuf session_data = {0};
+    char *session_path = NULL;
     if (opts->session && opts->session[0]) {
         if (strcmp(opts->session, "none") == 0) {
             session_data.data = "none"; session_data.used = 4;
         } else if (strcmp(opts->session, "-") == 0) {
             read_till_eof(stdin, &session_data);
+            session_path = malloc(PATH_MAX + 8);
+            if (!session_path) fail_on_errno("Failed to alloc space for session_path");
+            if (getcwd(session_path, PATH_MAX + 1) == NULL) fail_on_errno("Failed to getcwd()");
+            char *p = session_path + strlen(session_path);
+            *(p++) = '/'; *(p++) = '-'; *p = 0;
         } else {
             FILE *f = safe_fopen(opts->session, "r");
             if (f == NULL) fail_on_errno("Failed to open session file for reading");
             read_till_eof(f, &session_data);
+            session_path = realpath(opts->session, NULL);
+            if (session_path == NULL) fail_on_errno("Failed to call realpath() on session file");
         }
     }
     membuf output = {0};
@@ -260,6 +269,10 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
     w(",\"session_arg\":");
     if (opts->session && opts->session[0]) write_json_string(&output, opts->session, strlen(opts->session));
     else write_json_string(&output, "", 0);
+    w(",\"session_path\":");
+    if (session_path && session_path[0]) write_json_string(&output, session_path, strlen(session_path));
+    else write_json_string(&output, "", 0);
+    free(session_path);
     w(",\"args\":"); write_json_string_array(&output, argc, argv);
     char cwd[4096];
     if (!getcwd(cwd, sizeof(cwd))) fail_on_errno("Failed to get cwd");

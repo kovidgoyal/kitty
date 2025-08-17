@@ -177,8 +177,14 @@ class Session:
         if self.tabs[-1].layout not in self.tabs[-1].enabled_layouts:
             self.tabs[-1].layout = self.tabs[-1].enabled_layouts[0]
 
-    def set_cwd(self, val: str) -> None:
-        self.tabs[-1].cwd = val
+    def set_cwd(self, val: str, session_base_dir: str) -> None:
+        if val:
+            val = os.path.expanduser(val)
+            if not os.path.isabs(val):
+                val = os.path.abspath(os.path.join(session_base_dir, val))
+            self.tabs[-1].cwd = val
+        elif session_base_dir:
+            self.tabs[-1].cwd = session_base_dir
 
 
 def session_arg_to_name(session_arg: str) -> str:
@@ -191,8 +197,15 @@ def session_arg_to_name(session_arg: str) -> str:
 
 
 
-def parse_session(raw: str, opts: Options, environ: Mapping[str, str] | None = None, session_arg: str = '') -> Generator[Session, None, None]:
+def parse_session(
+    raw: str, opts: Options, environ: Mapping[str, str] | None = None, session_arg: str = '', session_path: str = ''
+) -> Generator[Session, None, None]:
     session_name = session_arg_to_name(session_arg)
+    if session_path:
+        session_base_dir = os.path.dirname(os.path.abspath(session_path))
+    else:
+        session_base_dir = os.getcwd()
+
     def finalize_session(ans: Session) -> Session:
         ans.session_name = session_name
         ans.num_of_windows_in_definition = sum(len(t.windows) for t in ans.tabs)
@@ -235,7 +248,7 @@ def parse_session(raw: str, opts: Options, environ: Mapping[str, str] | None = N
             elif cmd == 'enabled_layouts':
                 ans.set_enabled_layouts(rest)
             elif cmd == 'cd':
-                ans.set_cwd(rest)
+                ans.set_cwd(rest, session_base_dir)
             elif cmd == 'title':
                 ans.set_next_title(rest)
             elif cmd == 'os_window_size':
@@ -262,11 +275,13 @@ class PreReadSession(str):
 
     associated_environ: Mapping[str, str]
     session_arg: str
+    session_path: str
 
-    def __new__(cls, val: str, associated_environ: Mapping[str, str], session_arg: str) -> 'PreReadSession':
+    def __new__(cls, val: str, associated_environ: Mapping[str, str], session_arg: str, session_path: str) -> 'PreReadSession':
         ans: PreReadSession = str.__new__(cls, val)
         ans.associated_environ = associated_environ
         ans.session_arg = session_arg
+        ans.session_path = session_path
         return ans
 
 
@@ -284,11 +299,13 @@ def create_sessions(
             default_session = "none"
         else:
             session_arg = args.session
+            session_path = ''
             environ: Mapping[str, str] | None = None
             if isinstance(args.session, PreReadSession):
                 session_data = '' + str(args.session)
                 environ = args.session.associated_environ
                 session_arg = args.session.session_arg
+                session_path = args.session.session_path
             else:
                 if args.session == '-':
                     f = sys.stdin
@@ -296,17 +313,19 @@ def create_sessions(
                     f = open(resolve_custom_file(args.session))
                 with f:
                     session_data = f.read()
-            yield from parse_session(session_data, opts, environ=environ, session_arg=session_arg)
+                    session_path = f.name
+            yield from parse_session(session_data, opts, environ=environ, session_arg=session_arg, session_path=session_path)
             return
     if default_session and default_session != 'none' and not getattr(args, 'args', None):
         session_arg = session_arg_to_name(default_session)
         try:
             with open(default_session) as f:
                 session_data = f.read()
+                session_path = f.name
         except OSError:
             log_error(f'Failed to read from session file, ignoring: {default_session}')
         else:
-            yield from parse_session(session_data, opts, session_arg=session_arg)
+            yield from parse_session(session_data, opts, session_arg=session_arg, session_path=session_path)
             return
     ans = Session()
     current_layout = opts.enabled_layouts[0] if opts.enabled_layouts else 'tall'

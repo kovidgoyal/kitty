@@ -885,7 +885,7 @@ class Boss:
                     args.session = 'none'
                 else:
                     from .session import PreReadSession
-                    args.session = PreReadSession(data['session_data'], data['environ'], data['session_arg'])
+                    args.session = PreReadSession(data['session_data'], data['environ'], data['session_arg'], data['session_path'])
             else:
                 args.session = ''
             if not os.path.isabs(args.directory):

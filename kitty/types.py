@@ -19,6 +19,7 @@ class SingleInstanceData(TypedDict):
     cwd: str
     session_data: str
     session_arg: str
+    session_path: str
     environ: Mapping[str, str]
     notify_on_os_window_death: str | None
 

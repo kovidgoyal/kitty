@@ -546,7 +546,7 @@ def kitty_main(called_from_panel: bool = False) -> None:
     if cli_opts.detach:
         if cli_opts.session == '-':
             from .session import PreReadSession
-            cli_opts.session = PreReadSession(sys.stdin.read(), os.environ, '-')
+            cli_opts.session = PreReadSession(sys.stdin.read(), os.environ, '-', os.path.join(os.getcwd(), '-'))
     if cli_opts.replay_commands:
         from kitty.client import main as client_main
         client_main(cli_opts.replay_commands)
