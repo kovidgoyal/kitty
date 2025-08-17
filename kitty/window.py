@@ -1947,16 +1947,20 @@ class Window:
         ' Return the last position at which a mouse event was received by this window '
         return get_mouse_data_for_window(self.os_window_id, self.tab_id, self.id)
 
-    def as_launch_command(self, ser_opts: SaveAsSessionOptions, is_overlay: bool = False) -> list[str]:
+    @property
+    def cwd_for_serialization(self) -> str:
+        cwd = self.get_cwd_of_child(oldest=False) or self.get_cwd_of_child(oldest=True) or self.child.cwd
+        if self.screen.last_reported_cwd and self.at_prompt and not self.child_is_remote:
+            cwd = path_from_osc7_url(self.screen.last_reported_cwd) or cwd
+        return cwd
+
+    def as_launch_command(self, ser_opts: SaveAsSessionOptions, cwd: str, is_overlay: bool = False) -> list[str]:
         ' Return a launch command that can be used to serialize this window. Empty list indicates not serializable. '
         if self.actions_on_close or self.actions_on_focus_change or self.actions_on_removal:
             # such windows are typically UI kittens. The actions are not
             # serializable anyway, so skip.
             return []
         ans = ['launch']
-        cwd = self.get_cwd_of_child(oldest=False) or self.get_cwd_of_child(oldest=True)
-        if self.screen.last_reported_cwd and self.at_prompt and not self.child_is_remote:
-            cwd = path_from_osc7_url(self.screen.last_reported_cwd) or cwd
         if cwd:
             ans.append(f'--cwd={cwd}')
         if self.allow_remote_control:

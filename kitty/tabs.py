@@ -299,10 +299,15 @@ class Tab:  # {{{
         import shlex
         launch_cmds = []
         active_idx = self.windows.active_group_idx
-        for i, g in enumerate(self.windows.iter_all_layoutable_groups()):
+        groups = tuple(self.windows.iter_all_layoutable_groups())
+        cwds = {w.id: w.cwd_for_serialization for g in groups for w in g}
+        from collections import Counter
+        most_common_cwd, _ = Counter(cwds.values()).most_common(1)[0]
+        for i, g in enumerate(groups):
             gw: list[str] = []
             for window in g:
-                lc = window.as_launch_command(ser_opts, is_overlay=bool(gw))
+                cwd = cwds[window.id]
+                lc = window.as_launch_command(ser_opts, '' if cwd == most_common_cwd else cwd, is_overlay=bool(gw))
                 if lc:
                     gw.append(shlex.join(lc))
             if gw:
@@ -316,6 +321,7 @@ class Tab:  # {{{
                 f'layout {self._current_layout_name}',
                 f'enabled_layouts {",".join(self.enabled_layouts)}',
                 f'set_layout_state {json.dumps(self.current_layout.serialize(self.windows))}',
+                f'cd {most_common_cwd}',
                 ''
             ] + launch_cmds
         return []
