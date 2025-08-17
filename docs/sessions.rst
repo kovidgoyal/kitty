@@ -210,10 +210,10 @@ documentation for them.
     title behaves just as for a regular tab in kitty.
 
 ``os_window_class``
-    Set the :option:`class part of WM_CLASS or Wayland Application Id <kitty --class>` for the current OS Window
+    Set the class part of WM_CLASS or Wayland Application Id for the current OS Window
 
 ``os_window_name``
-    Set the :option:`name part of WM_CLASS or Wayland Window tag <kitty --name>` for the current OS Window
+    Set the name part of WM_CLASS or Wayland Window tag for the current OS Window
 
 ``os_window_size``
     Set the size of the current OS Window, can be specified in pixels or cells.
@@ -236,3 +236,14 @@ documentation for them.
     instead.
 
 
+.. _save_as_session:
+
+The save_as_session action
+------------------------------
+
+This action can be mapped to a key press in :file:`kitty.conf`. It will save
+the currently open OS Windows, tabs, windows, running programs, working
+directories, etc. into a session file. It is a convenient way to
+:ref:`complex_sessions`. The options this action takes are documented below.
+
+.. include:: generated/save-as-session.rst

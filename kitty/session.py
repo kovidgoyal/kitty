@@ -479,6 +479,11 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
         append_to_session_history(session_name)
 
 
+save_as_session_message = '''\
+Save the current state of kitty as a session file for easy re-use. If the path at which to save the session
+file is not specified, kitty will prompt you for one.'''
+
+
 def save_as_session_options() -> str:
     return '''
 --save-only
@@ -490,7 +495,7 @@ Only save the specified session file, dont open it in an editor to review after 
 type=bool-set
 When saving windows that were started with the default shell but are currently running some
 other process inside that shell, save that process so that when the session is used
-both the shell :bold:`and` the process running inside it are re-started. This is most useful
+both the shell **and** the process running inside it are re-started. This is most useful
 when you have opened programs like editors or similar inside windows that started out running
 the shell and you want to preserve that. WARNING: Be careful when using this option, if you are
 running some dangerous command like :file:`rm` or :file:`mv` or similar in a shell, it will be re-run when

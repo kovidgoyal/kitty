@@ -237,6 +237,13 @@ def write_cli_docs(all_kitten_names: Iterable[str]) -> None:
             usage='file-or-dir-to-copy ...', message=copy_message
         ))
     del sys.modules['kittens.ssh.main']
+    from kitty.session import save_as_session_message, save_as_session_options
+    with open('generated/save-as-session.rst', 'w') as f:
+        f.write(option_spec_as_rst(
+            appname='save_as_session', ospec=save_as_session_options, heading_char='^',
+            usage='[path-to-save-session-file-at]',
+            message=save_as_session_message,
+        ))
 
     from kitty.launch import options_spec as launch_options_spec
     with open('generated/launch.rst', 'w') as f:

@@ -3043,11 +3043,11 @@ class Boss:
         )
         return q if isinstance(q, Window) else None
 
-    @ac('misc', 'Switch to the specified session, creating it if not already present.')
+    @ac('misc', 'Switch to the specified session, creating it if not already present. See :ref:`goto_session`.')
     def goto_session(self, *cmdline: str) -> None:
         goto_session(self, cmdline)
 
-    @ac('misc', 'Save the current kitty state as a session file')
+    @ac('misc', 'Save the current kitty state as a session file. See :ref:`save_as_session`.')
     def save_as_session(self, *cmdline: str) -> None:
         save_as_session(self, cmdline)
 
