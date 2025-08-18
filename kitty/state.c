@@ -960,6 +960,7 @@ PYWRAP1(change_background_opacity) {
     WITH_OS_WINDOW(os_window_id)
         os_window->background_opacity = opacity;
         if (!os_window->redraw_count) os_window->redraw_count++;
+        set_os_window_chrome(os_window);  // on macOS titlebar opacity can depend on background_opacity
         Py_RETURN_TRUE;
     END_WITH_OS_WINDOW
     Py_RETURN_FALSE;

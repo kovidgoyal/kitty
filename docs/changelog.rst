@@ -122,6 +122,10 @@ Detailed list of changes
 - New support for creating and switching to :doc:`sessions` easily, allowing
   users to define and use sessions/projects efficiently
 
+- macOS: Allow the window title bar to be semi-transparent when
+  :opt:`background_opacity` is less than one and :opt:`macos_titlebar_color` is
+  set to ``background`` (:pull:`8906`)
+
 - A new :opt:`cursor_trail_color` setting to independently control the color of
   cursor trails (:pull:`8830`)
 

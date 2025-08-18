@@ -3168,34 +3168,60 @@ GLFWAPI GLFWcocoarenderframefun glfwCocoaSetWindowResizeCallback(GLFWwindow *w, 
     return current;
 }
 
-static void setTitlebarBackgroundColor(NSWindow *window, NSColor *backgroundColor) {
-    if (!window) return;
+@implementation NSView (FindByIdentifier)
 
-    NSView *contentView = window.contentView;
-    NSView *titlebarContainer = contentView.superview;
+- (NSArray<NSView *> *)viewsWithIdentifier:(NSUserInterfaceItemIdentifier)identifier {
+    NSMutableArray<NSView *> *result = [NSMutableArray array];
+    if ([self.identifier isEqual:identifier]) {
+        [result addObject:self];
+    }
+    for (NSView *sub in self.subviews) {
+        [result addObjectsFromArray:[sub viewsWithIdentifier:identifier]];
+    }
+    return result;
+}
+
+@end
+
+static CGFloat
+title_bar_and_tool_bar_height(NSWindow *window) {
+    NSRect frame = window.frame;
+    NSRect content = [window contentRectForFrameRect:frame];
+    return NSHeight(frame) - NSHeight(content);
+}
+
+static
+void clear_title_bar_background_views(NSWindow *window) {
+#define tag @"kitty-for-transparent-titlebar"
+    NSView *contentView = window.contentView, *titlebarContainer = contentView ? contentView.superview : nil;
+    if (titlebarContainer) {
+        for (NSView *subview in [titlebarContainer viewsWithIdentifier:tag]) [subview removeFromSuperview];
+    }
+}
+
+static void
+set_title_bar_background(NSWindow *window, NSColor *backgroundColor) {
+    NSView *contentView = window.contentView, *titlebarContainer = contentView ? contentView.superview : nil;
     if (!titlebarContainer) return;
+    for (NSView *subview in [titlebarContainer viewsWithIdentifier:tag]) [subview removeFromSuperview];
+    if (!backgroundColor) return;
 
-    NSMutableArray *toRemove = [NSMutableArray array];
-    for (NSView *subview in titlebarContainer.subviews) {
-        if ([subview isKindOfClass:NSClassFromString(@"NSVisualEffectView")]) {
-            [toRemove addObject:subview];
-        }
-    }
-    for (NSView *subview in toRemove) {
-        [subview removeFromSuperview];
-    }
-
-    NSView *bgView =
-        [[NSView alloc] initWithFrame:NSMakeRect(0, titlebarContainer.bounds.size.height - 28,
-                                                 titlebarContainer.bounds.size.width, 28)];
+    const CGFloat height = title_bar_and_tool_bar_height(window);
+    NSView *bgView = [[NSView alloc] initWithFrame:NSMakeRect(
+        0, titlebarContainer.bounds.size.height - height, titlebarContainer.bounds.size.width, height)];
     bgView.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
     bgView.wantsLayer = YES;
     bgView.layer.backgroundColor = backgroundColor.CGColor;
+    bgView.identifier = tag;
 
     NSView *containerView = [[NSView alloc] initWithFrame:window.contentView.bounds];
     containerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    containerView.identifier = tag;
     [containerView addSubview:bgView];
+    [bgView release];
     [window.contentView addSubview:containerView];
+    [containerView release];
+#undef tag
 }
 
 GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool use_system_color, unsigned int system_color, int background_blur, unsigned int hide_window_decorations, bool show_text_in_titlebar, int color_space, float background_opacity, bool resizable) { @autoreleasepool {
@@ -3291,8 +3317,8 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     [[window->ns.object standardWindowButton: NSWindowMiniaturizeButton] setHidden:hide_titlebar_buttons];
     [[window->ns.object standardWindowButton: NSWindowZoomButton] setHidden:hide_titlebar_buttons];
     if (background_opacity < 1.0 && !window->ns.titlebar_hidden && window->decorated) {
-        setTitlebarBackgroundColor(window->ns.object, [background colorUsingColorSpace:cs]);
-    }
+        set_title_bar_background(window->ns.object, [background colorUsingColorSpace:(cs ? cs : [NSColorSpace deviceRGBColorSpace])]);
+    } else clear_title_bar_background_views(window->ns.object);
     // Apple throws a hissy fit if one attempts to clear the value of NSWindowStyleMaskFullScreen outside of a full screen transition
     // event. See https://github.com/kovidgoyal/kitty/issues/7106
     NSWindowStyleMask fsmask = current_style_mask & NSWindowStyleMaskFullScreen;
