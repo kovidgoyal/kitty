@@ -141,6 +141,10 @@ Detailed list of changes
 - macOS: Fix hiding quick access terminal window not restoring focus to
   previously active application (:disc:`8840`)
 
+- macOS: Fix showing the quick access terminal on a space other than the space
+  it was last active on, after full screening some application causes the quick
+  access terminal to appear on the old space (:iss:`8740`)
+
 - Allow using backspace to move the cursor onto the previous line in cooked mode. This is indicated by the `bw` property in kitty's terminfo (:iss:`8841`)
 
 - Watchers: A new event for global watchers corresponding to the tab bar being changed (:disc:`8842`)

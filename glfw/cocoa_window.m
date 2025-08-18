@@ -2229,9 +2229,26 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 
 void _glfwPlatformShowWindow(_GLFWwindow* window)
 {
-    if (window->ns.layer_shell.is_active && window->ns.layer_shell.config.type == GLFW_LAYER_SHELL_BACKGROUND) {
-        [window->ns.object orderBack:nil];
-    } else [window->ns.object orderFront:nil];
+    const bool is_background = window->ns.layer_shell.is_active && window->ns.layer_shell.config.type == GLFW_LAYER_SHELL_BACKGROUND;
+    NSWindow *nw = window->ns.object;
+    if (is_background) {
+        [nw orderBack:nil];
+    } else {
+        // Cocoa has a bug where when showing a hidden window after
+        // fullscreening an application, the window does not get added
+        // to the current space even though it has NSWindowCollectionBehaviorCanJoinAllSpaces
+        // probably because it wasnt added to the temp space used for
+        // fullscreen. So to work around that, we change the collection
+        // behavior temporarily to NSWindowCollectionBehaviorMoveToActiveSpace
+        // and then change it back asynchronously.
+        // See https://github.com/kovidgoyal/kitty/issues/8740
+        NSWindowCollectionBehavior old = nw.collectionBehavior;
+        nw.collectionBehavior = (old & !NSWindowCollectionBehaviorCanJoinAllSpaces) | NSWindowCollectionBehaviorMoveToActiveSpace;
+        [nw orderFront:nil];
+        dispatch_async(dispatch_get_main_queue(), ^{
+			nw.collectionBehavior = old;
+		});
+    }
 }
 
 void _glfwPlatformHideWindow(_GLFWwindow* window)
