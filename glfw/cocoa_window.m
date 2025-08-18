@@ -1667,7 +1667,8 @@ handle_screen_size_change(_GLFWwindow *window, NSNotification *notification UNUS
 
 - (BOOL)canBecomeKeyWindow
 {
-    if (glfw_window && glfw_window->ns.layer_shell.is_active) {
+    if (!glfw_window) return NO;
+    if (glfw_window->ns.layer_shell.is_active) {
         if (glfw_window->ns.layer_shell.config.type == GLFW_LAYER_SHELL_BACKGROUND) return NO;
         switch(glfw_window->ns.layer_shell.config.focus_policy) {
             case GLFW_FOCUS_NOT_ALLOWED: return NO;
@@ -1676,7 +1677,8 @@ handle_screen_size_change(_GLFWwindow *window, NSNotification *notification UNUS
         }
     }
     // Required for NSWindowStyleMaskBorderless windows
-    return YES;
+    // Also miniaturized windows should not become key
+    return !_glfwPlatformWindowIconified(glfw_window);
 }
 
 - (BOOL)canBecomeMainWindow
