@@ -805,7 +805,7 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
     const unsigned sh = ui->full_framebuffer_height;
     // first blank the area to be drawn to background
     enable_scissor_using_top_left_origin(border_rect, sh);
-    blank_canvas(1.f, bg);
+    blank_canvas(ui->os_window->is_semi_transparent ? ui->os_window->background_opacity : 1.f, bg, false);
     disable_scissor();
     // then draw the rendered text
     save_viewport_using_top_left_origin(
@@ -1000,11 +1000,18 @@ draw_cells_with_layers(const UIRenderData *ui, ssize_t vao_idx) {
 }
 
 void
-blank_canvas(float background_opacity, color_type color) {
-    // See https://github.com/glfw/glfw/issues/1538 for why we use pre-multiplied alpha
-#define C(shift) srgb_color((color >> shift) & 0xFF)
-    glClearColor(C(16), C(8), C(0), background_opacity);
+blank_canvas(float background_opacity, color_type color_in_srgb, bool for_final_output) {
+    if (for_final_output) {
+        // we need to write pre-multiplied sRGB color to framebuffer
+#define C(shift) ((((color_in_srgb >> shift) & 0xFF) / 255.f) * background_opacity)
+        glClearColor(C(16), C(8), C(0), background_opacity);
 #undef C
+    } else {
+        // we need to write pre-multiplied linear color to framebuffer
+#define C(shift) srgb_color((color_in_srgb >> shift) & 0xFF) * background_opacity
+        glClearColor(C(16), C(8), C(0), background_opacity);
+#undef C
+    }
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
@@ -1220,6 +1227,22 @@ draw_resizing_text(OSWindow *w) {
             free(rendered.canvas);
         }
     }
+}
+
+void
+blank_os_window(OSWindow *osw) {
+    color_type color = OPT(background);
+    if (osw->num_tabs > 0) {
+        Tab *t = osw->tabs + osw->active_tab;
+        if (t->num_windows == 1) {
+            Window *w = t->windows + t->active_window;
+            Screen *s = w->render_data.screen;
+            if (s) {
+                color = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg).rgb;
+            }
+        }
+    }
+    blank_canvas(osw->is_semi_transparent ? osw->background_opacity : 1.0f, color, true);
 }
 
 static void

@@ -407,7 +407,7 @@ void free_texture(uint32_t*);
 void free_framebuffer(uint32_t*);
 void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool, bool, RepeatStrategy);
 void send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index, pixel*, sprite_index);
-void blank_canvas(float, color_type);
+void blank_canvas(float, color_type, bool);
 void blank_os_window(OSWindow *);
 void set_os_window_chrome(OSWindow *w);
 FONTS_DATA_HANDLE load_fonts_data(double, double, double);

@@ -299,22 +299,6 @@ cursor_active_callback(GLFWwindow *w, monotonic_t now) {
     }
 }
 
-void
-blank_os_window(OSWindow *osw) {
-    color_type color = OPT(background);
-    if (osw->num_tabs > 0) {
-        Tab *t = osw->tabs + osw->active_tab;
-        if (t->num_windows == 1) {
-            Window *w = t->windows + t->active_window;
-            Screen *s = w->render_data.screen;
-            if (s) {
-                color = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg).rgb;
-            }
-        }
-    }
-    blank_canvas(osw->is_semi_transparent ? osw->background_opacity : 1.0f, color);
-}
-
 static void
 window_pos_callback(GLFWwindow* window, int x UNUSED, int y UNUSED) {
     if (!set_callback_window(window)) return;
@@ -1466,7 +1450,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);
     // blank the window once so that there is no initial flash of color
     // changing, in case the background color is not black
-    blank_canvas(is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background));
+    blank_canvas(is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background), true);
     apply_swap_interval(-1);
     // On Wayland the initial swap is allowed only after the first XDG configure event
     if (glfwAreSwapsAllowed(glfw_window)) glfwSwapBuffers(glfw_window);
