@@ -143,7 +143,8 @@ of data packet.
 Avoiding repeated permission prompts
 --------------------------------------
 
-.. versionadded:: using a password to avoid repeated confirmations was added in version 0.43.0
+.. versionadded:: 0.42.2
+     using a password to avoid repeated confirmations
 
 If a program like an editor wants to make use of the system clipboard, by
 default, the user is prompted on every read request. This can become quite
