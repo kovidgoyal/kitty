@@ -189,8 +189,14 @@ option, like this:
 
 This will cause newly created windows, to belong to the currently active
 session, if any. Note that adding a window to a session in this way is
-temporary, it does not edit the session file, it is meant only to allow
-adding of windows to sessions in the current kitty instance.
+temporary, it does not edit the session file. If you wish to update the
+session file of the currently active session, you can use the following
+mapping for it::
+
+    map f5 save_as_session --relocatable --use-foreground-process --match=session:. .
+
+The two can be combined, using the :ac:`combine` action.
+
 
 Keyword reference
 ---------------------
