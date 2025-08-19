@@ -483,7 +483,9 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
 
 save_as_session_message = '''\
 Save the current state of kitty as a session file for easy re-use. If the path at which to save the session
-file is not specified, kitty will prompt you for one.'''
+file is not specified, kitty will prompt you for one. If the path is :code:`.` it will save the session
+to the path of the currently active session, if there is one, otherwise prompt you for a path.
+'''
 
 
 def save_as_session_options() -> str:
@@ -546,6 +548,9 @@ def default_save_as_session_opts() -> SaveAsSessionOptions:
 def save_as_session(boss: BossType, cmdline: Sequence[str]) -> None:
     opts, args = parse_save_as_options_spec_args(list(cmdline))
     path = args[0] if args else ''
+    if path == '.':
+        sn = boss.active_session
+        path = seen_session_paths.get(sn) or ''
     if path:
         save_as_session_part2(boss, opts, path)
     else:
