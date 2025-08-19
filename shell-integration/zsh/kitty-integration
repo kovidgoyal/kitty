@@ -350,6 +350,12 @@ _ksi_deferred_init() {
         fi
     done
 
+    # run startup command
+    if [[ -n "$krcs" ]]; then
+        builtin print -nu "$_ksi_fd" -f '\e]2;%s\e\\' "$krcs"
+        builtin eval "$krcs"
+    fi
+
     if (( $+functions[_ksi_preexec] )); then
         builtin typeset -ag preexec_functions
         preexec_functions+=(_ksi_preexec)
@@ -427,8 +433,6 @@ _ksi_deferred_init() {
     # to unfunction themselves when invoked. Unfunctioning is done by calling code.
     builtin unfunction _ksi_deferred_init
 
-    # run startup command
-    if [[ -n "$krcs" ]]; then builtin eval "$krcs"; fi
 }
 
 _ksi_transmit_data() {
