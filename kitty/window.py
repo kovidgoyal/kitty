@@ -2009,17 +2009,20 @@ class Window:
         if self.creation_spec and self.creation_spec.cmd:
             if self.creation_spec.cmd != resolved_shell(get_options()):
                 cmd = self.creation_spec.cmd
-        unserialize_data: dict[str, int | list[str]] = {'id': self.id}
-        if not cmd and ser_opts.use_foreground_process and self.child.pid != (pid := self.child.pid_for_cwd) and pid is not None:
-            # we have a shell running some command
-            with suppress(Exception):
-                fcmd = self.child.cmdline_of_pid(pid)
-                if fcmd:
-                    unserialize_data['cmd_at_shell_startup'] = fcmd
-                    if not os.path.isabs(fcmd[0]):
-                        with suppress(Exception):
-                            from .child import abspath_of_exe
-                            fcmd[0] = abspath_of_exe(pid)
+        unserialize_data: dict[str, int | list[str] | str] = {'id': self.id}
+        if not cmd and ser_opts.use_foreground_process:
+            if not self.at_prompt and self.last_cmd_cmdline:
+                unserialize_data['cmd_at_shell_startup'] = self.last_cmd_cmdline
+            elif self.child.pid != (pid := self.child.pid_for_cwd) and pid is not None:
+                # we have a shell running some command
+                with suppress(Exception):
+                    fcmd = self.child.cmdline_of_pid(pid)
+                    if fcmd:
+                        unserialize_data['cmd_at_shell_startup'] = fcmd
+                        if not os.path.isabs(fcmd[0]):
+                            with suppress(Exception):
+                                from .child import abspath_of_exe
+                                fcmd[0] = abspath_of_exe(pid)
         ans.insert(1, unserialize_launch_flag + json.dumps(unserialize_data))
         ans.extend(cmd)
         return ans

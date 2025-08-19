@@ -621,7 +621,7 @@ def _launch(
     rc_from_window: Window | None = None,
     base_env: dict[str, str] | None = None,
     child_death_callback: Callable[[int, Exception | None], None] | None = None,
-    startup_command_via_shell_integration: Sequence[str] = (),
+    startup_command_via_shell_integration: Sequence[str] | str = (),
 ) -> Window | None:
     source_window = boss.active_window_for_cwd
     if opts.source_window:
@@ -837,7 +837,7 @@ def launch(
     rc_from_window: Window | None = None,
     base_env: dict[str, str] | None = None,
     child_death_callback: Callable[[int, Exception | None], None] | None = None,
-    startup_command_via_shell_integration: Sequence[str] = (),
+    startup_command_via_shell_integration: Sequence[str] | str = (),
 ) -> Window | None:
     active = boss.active_window
     if opts.keep_focus and active:

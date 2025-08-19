@@ -41,7 +41,10 @@ ResizeSpec = tuple[str, int]
 
 class WindowSpec:
 
-    def __init__(self, launch_spec: Union['LaunchSpec', 'SpecialWindowInstance'], serialized_id: int = 0, run_command_at_shell_startup: Sequence[str] = ()):
+    def __init__(
+        self, launch_spec: Union['LaunchSpec', 'SpecialWindowInstance'], serialized_id: int = 0,
+        run_command_at_shell_startup: Sequence[str] | str = ()
+):
         self.launch_spec = launch_spec
         self.resize_spec: ResizeSpec | None = None
         self.focus_matching_window_spec: str = ''

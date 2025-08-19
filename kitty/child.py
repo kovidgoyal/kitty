@@ -230,7 +230,7 @@ class Child:
         pass_fds: tuple[int, ...] = (),
         remote_control_fd: int = -1,
         hold_after_ssh: bool = False,
-        startup_command_via_shell_integration: Sequence[str] = (),
+        startup_command_via_shell_integration: Sequence[str] | str = (),
     ):
         self.is_clone_launch = is_clone_launch
         self.id = next(child_counter)
@@ -298,12 +298,15 @@ class Child:
             env.pop('KITTY_IS_CLONE_LAUNCH', None)
         must_run_startup_command_via_kitten = False
         if self.startup_command_via_shell_integration:
-            from .shell_integration import join
-            scmd = self.argv or resolved_shell(fast_data_types.get_options())
-            try:
-                env['KITTY_SI_RUN_COMMAND_AT_STARTUP'] = join(scmd[0], self.startup_command_via_shell_integration)
-            except Exception:
-                must_run_startup_command_via_kitten = True  # unknown shell
+            if isinstance(self.startup_command_via_shell_integration, str):
+                env['KITTY_SI_RUN_COMMAND_AT_STARTUP'] = self.startup_command_via_shell_integration
+            else:
+                from .shell_integration import join
+                scmd = self.argv or resolved_shell(fast_data_types.get_options())
+                try:
+                    env['KITTY_SI_RUN_COMMAND_AT_STARTUP'] = join(scmd[0], self.startup_command_via_shell_integration)
+                except Exception:
+                    must_run_startup_command_via_kitten = True  # unknown shell
         return env, must_run_startup_command_via_kitten
 
     def fork(self) -> int | None:

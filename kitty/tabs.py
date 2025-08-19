@@ -537,7 +537,7 @@ class Tab:  # {{{
         pass_fds: tuple[int, ...] = (),
         remote_control_fd: int = -1,
         hold_after_ssh: bool = False,
-        startup_command_via_shell_integration: Sequence[str] = (),
+        startup_command_via_shell_integration: Sequence[str] | str = (),
     ) -> Child:
         check_for_suitability = True
         if cmd is None:
@@ -629,7 +629,7 @@ class Tab:  # {{{
         remote_control_fd: int = -1,
         next_to: Window | None = None,
         hold_after_ssh: bool = False,
-        startup_command_via_shell_integration: Sequence[str] = (),
+        startup_command_via_shell_integration: Sequence[str] | str = (),
     ) -> Window:
         cs = WindowCreationSpec(
             use_shell=use_shell, cmd=cmd, has_stdin=bool(stdin), override_title=override_title, cwd_from=cwd_from,
