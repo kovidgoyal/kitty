@@ -113,7 +113,8 @@ The field :code:`neighbor` refers to a neighbor of the active window in the spec
 :code:`left`, :code:`right`, :code:`top` or :code:`bottom`.
 
 The field :code:`session` matches windows that were created in the specified session.
-Use the expression :code:`^$` to match windows that were not created in a session.
+Use the expression :code:`^$` to match windows that were not created in a session and
+:code:`.` to match the currently active session.
 
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
 or a name and value, for example, :code:`env:MY_ENV_VAR=2`.
@@ -159,7 +160,8 @@ The :code:`recent` number matches recently active tabs in the currently active O
 active tab, one the previously active tab and so on.
 
 The field :code:`session` matches tabs that were created in the specified session.
-Use the expression :code:`^$` to match tabs that were not created in a session.
+Use the expression :code:`^$` to match tabs that were not created in a session and
+:code:`.` to match the currently active session.
 
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
 or a name and value, for example, :code:`env:MY_ENV_VAR=2`. Tabs containing any window with the specified environment

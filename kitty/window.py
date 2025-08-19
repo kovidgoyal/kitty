@@ -910,6 +910,8 @@ class Window:
                     return True
             return False
         if field == 'session':
+            if pat.pattern == '.':
+                return self.created_in_session_name == get_boss().active_session
             return pat.search(self.created_in_session_name) is not None
         return False
 

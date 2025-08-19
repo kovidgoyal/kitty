@@ -957,6 +957,8 @@ class Tab:  # {{{
                 return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager and self.os_window_id == last_focused_os_window_id()
             return False
         if field == 'session':
+            if query == '.':
+                return self.created_in_session_name == get_boss().active_session
             return re.search(query, self.created_in_session_name) is not None
         return False
 
