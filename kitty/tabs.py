@@ -137,8 +137,10 @@ class Tab:  # {{{
         session_tab: Optional['SessionTab'] = None,
         special_window: SpecialWindowInstance | None = None,
         cwd_from: CwdRequest | None = None,
-        no_initial_window: bool = False
+        no_initial_window: bool = False,
+        session_name: str = '',
     ):
+        self.created_in_session_name = session_name
         self.tab_manager_ref = weakref.ref(tab_manager)
         self.os_window_id: int = tab_manager.os_window_id
         self.id: int = add_tab(self.os_window_id)
@@ -1011,8 +1013,7 @@ class TabManager:  # {{{
     def add_tabs_from_session(self, session: SessionType) -> None:
         before = len(self.tabs)
         for t in session.tabs:
-            tab = Tab(self, session_tab=t)
-            tab.created_in_session_name = session.session_name
+            tab = Tab(self, session_tab=t, session_name=self.created_in_session_name)
             self._add_tab(tab)
         num_added = len(self.tabs) - before
         self._set_active_tab(max(0, min(num_added + session.active_tab_idx, len(self.tabs) - 1)))

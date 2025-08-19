@@ -365,7 +365,6 @@ seen_session_paths: dict[str, str] = {}
 def create_session(boss: BossType, path: str) -> str:
     session_name = ''
     for i, s in enumerate(create_sessions(get_options(), default_session=path)):
-
         if i == 0:
             session_name = s.session_name
             if s.num_of_windows_in_definition == 0:  # leading new_os_window
