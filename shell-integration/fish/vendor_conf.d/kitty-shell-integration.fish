@@ -27,8 +27,9 @@ or echo -en \eP@kitty-print\|V2FybmluZzogVXBkYXRlIGZpc2ggdG8gdmVyc2lvbiAzLjMuMCs
 
 if test -n "$KITTY_SI_RUN_COMMAND_AT_STARTUP"
     printf '\e]2;%s\a' (string replace -ra '[\x00-\x1F\x7F]' '' -- "$KITTY_SI_RUN_COMMAND_AT_STARTUP")
-    eval "$KITTY_SI_RUN_COMMAND_AT_STARTUP"
+    set --local _krcs "$KITTY_SI_RUN_COMMAND_AT_STARTUP"
     set --erase KITTY_SI_RUN_COMMAND_AT_STARTUP
+    eval "$_krcs"
 end
 
 function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
