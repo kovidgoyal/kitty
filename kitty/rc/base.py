@@ -91,7 +91,7 @@ MATCH_WINDOW_OPTION = '''\
 --match -m
 The window to match. Match specifications are of the form: :italic:`field:query`.
 Where :italic:`field` can be one of: :code:`id`, :code:`title`, :code:`pid`, :code:`cwd`, :code:`cmdline`, :code:`num`,
-:code:`env`, :code:`var`, :code:`state`, :code:`neighbor`, and :code:`recent`.
+:code:`env`, :code:`var`, :code:`state`, :code:`neighbor`, :code:`session` and :code:`recent`.
 :italic:`query` is the expression to match. Expressions can be either a number or a regular expression, and can be
 :ref:`combined using Boolean operators <search_syntax>`.
 
@@ -111,6 +111,9 @@ active window, one being the previously active window and so on.
 
 The field :code:`neighbor` refers to a neighbor of the active window in the specified direction, which can be:
 :code:`left`, :code:`right`, :code:`top` or :code:`bottom`.
+
+The field :code:`session` matches windows that were created in the specified session.
+Use the expression :code:`^$` to match windows that were not created in a session.
 
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
 or a name and value, for example, :code:`env:MY_ENV_VAR=2`.
@@ -135,7 +138,7 @@ MATCH_TAB_OPTION = '''\
 --match -m
 The tab to match. Match specifications are of the form: :italic:`field:query`.
 Where :italic:`field` can be one of: :code:`id`, :code:`index`, :code:`title`, :code:`window_id`, :code:`window_title`,
-:code:`pid`, :code:`cwd`, :code:`cmdline` :code:`env`, :code:`var`, :code:`state` and :code:`recent`.
+:code:`pid`, :code:`cwd`, :code:`cmdline` :code:`env`, :code:`var`, :code:`state`, :code:`session` and :code:`recent`.
 :italic:`query` is the expression to match. Expressions can be either a number or a regular expression, and can be
 :ref:`combined using Boolean operators <search_syntax>`.
 
@@ -154,6 +157,9 @@ id or title.
 The :code:`index` number is used to match the nth tab in the currently active OS window.
 The :code:`recent` number matches recently active tabs in the currently active OS window, with zero being the currently
 active tab, one the previously active tab and so on.
+
+The field :code:`session` matches tabs that were created in the specified session.
+Use the expression :code:`^$` to match tabs that were not created in a session.
 
 When using the :code:`env` field to match on environment variables, you can specify only the environment variable name
 or a name and value, for example, :code:`env:MY_ENV_VAR=2`. Tabs containing any window with the specified environment

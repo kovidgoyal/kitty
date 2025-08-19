@@ -956,6 +956,8 @@ class Tab:  # {{{
             if query == 'parent_focused':
                 return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager and self.os_window_id == last_focused_os_window_id()
             return False
+        if field == 'session':
+            return re.search(query, self.created_in_session_name) is not None
         return False
 
     def __iter__(self) -> Iterator[Window]:

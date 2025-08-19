@@ -909,6 +909,8 @@ class Window:
                 if pat.search(x) is not None:
                     return True
             return False
+        if field == 'session':
+            return pat.search(self.created_in_session_name) is not None
         return False
 
     def matches_query(self, field: str, query: str, active_tab: TabType | None = None, self_window: Optional['Window'] = None) -> bool:
