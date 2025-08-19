@@ -1528,6 +1528,14 @@ class Boss:
         t = self.active_tab
         return None if t is None else t.active_window
 
+    @property
+    def active_session(self) -> str:
+        if t := self.active_tab:
+            if w := t.active_window:
+                return w.created_in_session_name or t.created_in_session_name
+            return t.created_in_session_name
+        return ''
+
     def refresh_active_tab_bar(self) -> bool:
         tm = self.active_tab_manager
         if tm:

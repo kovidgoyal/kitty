@@ -177,6 +177,21 @@ all the major keywords you can use in kitty session files:
         launch --cwd=$THIS_IS_EXPANDED some-program $THIS_IS_NOT_EXPANDED
 
 
+Making newly created windows join an existing session
+---------------------------------------------------------
+
+Normally, after activating a session, if you create new windows/tabs
+they don't belong to the session. If you would prefer to have them belong
+to the currently active session, you can use the :opt:`launch --add-to-session`
+option, like this:
+
+    map kitty_mod+enter launch --add-to-session=.
+
+This will cause newly created windows, to belong to the currently active
+session, if any. Note that adding a window to a session in this way is
+temporary, it does not edit the session file, it is meant only to allow
+adding of windows to sessions in the current kitty instance.
+
 Keyword reference
 ---------------------
 

@@ -146,6 +146,16 @@ window to connect to a remote host, you can use the :option:`--hold-after-ssh`
 flag to prevent the new window from closing when the connection is terminated.
 
 
+--add-to-session
+Add the newly created window/tab to the specified session. Use :code:`.` to add
+to the currently active session, if any. See :ref:`sessions`
+for what a session is and how to use one. Adding a newly created window to a session
+is purely temporary, it does not change the actual session file, for that you have
+to resave the session. Note that using this flag in a launch
+command within a session file has no effect as the window is always added to the
+session belonging to that file.
+
+
 --env
 {env_docs}
 
@@ -438,7 +448,7 @@ def layer_shell_config_from_panel_opts(panel_opts: Iterable[str]) -> LayerShellC
     return layer_shell_config(opts)
 
 
-def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None, next_to: Window | None) -> Tab:
+def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None, next_to: Window | None, add_to_session: str) -> Tab:
 
     def create_tab(tm: TabManager | None = None) -> Tab:
         if tm is None:
@@ -454,6 +464,7 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None, n
         tab = tm.new_tab(empty_tab=True, location=opts.location)
         if opts.tab_title:
             tab.set_title(opts.tab_title)
+        tab.created_in_session_name = add_to_session
         return tab
 
     if opts.type == 'tab':
@@ -769,16 +780,20 @@ def _launch(
         if child_death_callback is not None:
             child_death_callback(0, None)
     else:
+        add_to_session = opts.add_to_session or ''
+        if add_to_session == '.':
+            add_to_session = boss.active_session
         kw['hold'] = opts.hold
         if force_target_tab and target_tab is not None:
             tab = target_tab
         else:
-            tab = tab_for_window(boss, opts, target_tab, next_to)
+            tab = tab_for_window(boss, opts, target_tab, next_to, add_to_session)
         watchers = load_watch_modules(opts.watcher)
         with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
             new_window: Window = tab.new_window(
                 env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to,
                 startup_command_via_shell_integration=startup_command_via_shell_integration, **kw)
+            new_window.created_in_session_name = add_to_session
             if child_death_callback is not None:
                 boss.monitor_pid(new_window.child.pid or 0, child_death_callback)
             if new_window.creation_spec:

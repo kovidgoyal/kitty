@@ -26,6 +26,7 @@ class Launch(RemoteCommand):
     source_window/str: The window to use as source for data or empty string to use active window
     window_title/str: Title for the new window
     cwd/str: Working directory for the new window
+    add_to_session/str: Session name to add created window/tab to
     env/list.str: List of environment variables of the form NAME=VALUE
     var/list.str: List of user variables of the form NAME=VALUE
     os_panel/list.str: List of panel settings
