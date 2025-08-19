@@ -206,6 +206,8 @@ def parse_session(
     session_name = session_arg_to_name(session_arg)
     if session_path:
         session_base_dir = os.path.dirname(os.path.abspath(session_path))
+        if session_name:
+            seen_session_paths[session_name] = session_path
     else:
         session_base_dir = os.getcwd()
 
@@ -382,7 +384,6 @@ def create_session(boss: BossType, path: str) -> str:
             os_window_id = boss.add_os_window(s)
         if s.focus_os_window:
             boss.focus_os_window(os_window_id)
-    seen_session_paths[session_name] = path
     return session_name
 
 
