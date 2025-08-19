@@ -17,7 +17,7 @@ from .fast_data_types import add_timer, get_boss, get_options, get_os_window_tit
 from .options.utils import env as parse_env
 from .tabs import Tab, TabManager
 from .types import LayerShellConfig, OverlayType, run_once
-from .utils import get_editor, log_error, resolve_custom_file, resolved_shell, which
+from .utils import get_editor, log_error, resolve_custom_file, which
 from .window import CwdRequest, CwdRequestType, Watchers, Window
 
 
@@ -776,19 +776,9 @@ def _launch(
             tab = tab_for_window(boss, opts, target_tab, next_to)
         watchers = load_watch_modules(opts.watcher)
         with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
-            startup_command_env_added = False
-            if startup_command_via_shell_integration:
-                from .shell_integration import join
-                try:
-                    scmd = kw.get('cmd') or resolved_shell(get_options())
-                    env = env or {}
-                    env['KITTY_SI_RUN_COMMAND_AT_STARTUP'] = join(scmd[0], startup_command_via_shell_integration)
-                    startup_command_env_added = True
-                except Exception:
-                    pass  # shell is not a known shell
-
             new_window: Window = tab.new_window(
-                env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to, **kw)
+                env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to,
+                startup_command_via_shell_integration=startup_command_via_shell_integration, **kw)
             if child_death_callback is not None:
                 boss.monitor_pid(new_window.child.pid or 0, child_death_callback)
             if new_window.creation_spec:
@@ -798,10 +788,6 @@ def _launch(
                     new_window.creation_spec = new_window.creation_spec._replace(spacing=tuple(opts.spacing))
                 if opts.color:
                     new_window.creation_spec = new_window.creation_spec._replace(colors=tuple(opts.color))
-                if startup_command_env_added and new_window.creation_spec.env:
-                    def is_not_scmd(x: tuple[str, str]) -> bool:
-                        return x[0] != 'KITTY_SI_RUN_COMMAND_AT_STARTUP'
-                    new_window.creation_spec = new_window.creation_spec._replace(env=tuple(filter(is_not_scmd, new_window.creation_spec.env)))
         if spacing:
             patch_window_edges(new_window, spacing)
             tab.relayout()

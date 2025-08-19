@@ -534,7 +534,8 @@ class Tab:  # {{{
         hold: bool = False,
         pass_fds: tuple[int, ...] = (),
         remote_control_fd: int = -1,
-        hold_after_ssh: bool = False
+        hold_after_ssh: bool = False,
+        startup_command_via_shell_integration: Sequence[str] = (),
     ) -> Child:
         check_for_suitability = True
         if cmd is None:
@@ -584,7 +585,9 @@ class Tab:  # {{{
             fenv['WINDOWID'] = str(pwid)
         ans = Child(
                 cmd, cwd or self.cwd, stdin, fenv, cwd_from, is_clone_launch=is_clone_launch,
-                add_listen_on_env_var=add_listen_on_env_var, hold=hold, pass_fds=pass_fds, remote_control_fd=remote_control_fd, hold_after_ssh=hold_after_ssh)
+                add_listen_on_env_var=add_listen_on_env_var, hold=hold, pass_fds=pass_fds,
+                remote_control_fd=remote_control_fd, hold_after_ssh=hold_after_ssh,
+                startup_command_via_shell_integration=startup_command_via_shell_integration)
         ans.fork()
         return ans
 
@@ -623,7 +626,8 @@ class Tab:  # {{{
         pass_fds: tuple[int, ...] = (),
         remote_control_fd: int = -1,
         next_to: Window | None = None,
-        hold_after_ssh: bool = False
+        hold_after_ssh: bool = False,
+        startup_command_via_shell_integration: Sequence[str] = (),
     ) -> Window:
         cs = WindowCreationSpec(
             use_shell=use_shell, cmd=cmd, has_stdin=bool(stdin), override_title=override_title, cwd_from=cwd_from,
@@ -637,7 +641,8 @@ class Tab:  # {{{
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env,
             is_clone_launch=is_clone_launch, add_listen_on_env_var=False if allow_remote_control and remote_control_passwords else True,
-            hold=hold, pass_fds=pass_fds, remote_control_fd=remote_control_fd, hold_after_ssh=hold_after_ssh
+            hold=hold, pass_fds=pass_fds, remote_control_fd=remote_control_fd, hold_after_ssh=hold_after_ssh,
+            startup_command_via_shell_integration=startup_command_via_shell_integration,
         )
         window = Window(
             self, child, self.args, override_title=override_title,

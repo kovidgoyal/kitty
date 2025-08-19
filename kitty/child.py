@@ -13,7 +13,7 @@ import kitty.fast_data_types as fast_data_types
 
 from .constants import handled_signals, is_freebsd, is_macos, kitten_exe, kitty_base_dir, shell_path, terminfo_dir
 from .types import run_once
-from .utils import cmdline_for_hold, log_error, which
+from .utils import cmdline_for_hold, log_error, resolved_shell, which
 
 if TYPE_CHECKING:
     from .window import CwdRequest
@@ -229,7 +229,8 @@ class Child:
         hold: bool = False,
         pass_fds: tuple[int, ...] = (),
         remote_control_fd: int = -1,
-        hold_after_ssh: bool = False
+        hold_after_ssh: bool = False,
+        startup_command_via_shell_integration: Sequence[str] = (),
     ):
         self.is_clone_launch = is_clone_launch
         self.id = next(child_counter)
@@ -247,12 +248,13 @@ class Child:
         self.cwd = os.path.abspath(cwd)
         self.stdin = stdin
         self.env = env or {}
+        self.startup_command_via_shell_integration = startup_command_via_shell_integration
         self.final_env:dict[str, str] = {}
         self.is_default_shell = bool(self.argv and self.argv[0] == shell_path)
         self.should_run_via_run_shell_kitten = is_macos and self.is_default_shell
         self.hold = hold
 
-    def get_final_env(self) -> dict[str, str]:
+    def get_final_env(self) -> tuple[dict[str, str], bool]:
         from kitty.options.utils import DELETE_ENV_VAR
         env = default_env().copy()
         opts = fast_data_types.get_options()
@@ -294,7 +296,15 @@ class Child:
             self.is_clone_launch = '1'  # free memory
         else:
             env.pop('KITTY_IS_CLONE_LAUNCH', None)
-        return env
+        must_run_startup_command_via_kitten = False
+        if self.startup_command_via_shell_integration:
+            from .shell_integration import join
+            scmd = self.argv or resolved_shell(fast_data_types.get_options())
+            try:
+                env['KITTY_SI_RUN_COMMAND_AT_STARTUP'] = join(scmd[0], self.startup_command_via_shell_integration)
+            except Exception:
+                must_run_startup_command_via_kitten = True  # unknown shell
+        return env, must_run_startup_command_via_kitten
 
     def fork(self) -> int | None:
         if self.forked:
@@ -312,13 +322,13 @@ class Child:
             os.set_inheritable(stdin_read_fd, True)
         else:
             stdin_read_fd = stdin_write_fd = -1
-        self.final_env = self.get_final_env()
+        self.final_env, must_run_startup_command_via_kitten = self.get_final_env()
         argv = list(self.argv)
         cwd = self.cwd
         pass_fds = self.pass_fds
         if self.remote_control_fd > -1:
             pass_fds += self.remote_control_fd,
-        if self.should_run_via_run_shell_kitten:
+        if self.should_run_via_run_shell_kitten or must_run_startup_command_via_kitten:
             # bash will only source ~/.bash_profile if it detects it is a login
             # shell (see the invocation section of the bash man page), which it
             # does if argv[0] is prefixed by a hyphen see
@@ -338,6 +348,8 @@ class Child:
             if ksi == 'invalid':
                 ksi = 'enabled'
             argv = [kitten_exe(), 'run-shell', '--shell', shlex.join(argv), '--shell-integration', ksi]
+            if must_run_startup_command_via_kitten:
+                argv.extend(self.startup_command_via_shell_integration)
             if is_macos and not pass_fds and not opts.forward_stdio:
                 # In addition for getlogin() to work we need to run the shell
                 # via the /usr/bin/login wrapper, sigh.
