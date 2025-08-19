@@ -25,11 +25,14 @@ cwd_of_process(PyObject *self UNUSED, PyObject *pid_) {
 static PyObject*
 abspath_of_process(PyObject *self UNUSED, PyObject *pid_) {
     if (!PyLong_Check(pid_)) { PyErr_SetString(PyExc_TypeError, "pid must be an int"); return NULL; }
-    long pid = PyLong_AsLong(pid_);
+    pid_t pid = PyLong_AsLong(pid_);
     if (pid < 0) { PyErr_SetString(PyExc_TypeError, "pid cannot be negative"); return NULL; }
-    char pathbuf[PROC_PIDPATHINFO_MAXSIZE+1];
+    char pathbuf[PROC_PIDPATHINFO_MAXSIZE];
     int ret = proc_pidpath(pid, pathbuf, sizeof(pathbuf));
-    if (ret <= 0) {
+    if (ret < 0) {
+        PyErr_SetFromErrno(PyExc_OSError); return NULL;
+    } else if (ret == 0) {
+        errno = EINVAL;
         PyErr_SetFromErrno(PyExc_OSError); return NULL;
     }
     return PyUnicode_FromString(pathbuf);
