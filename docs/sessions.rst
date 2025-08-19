@@ -187,7 +187,7 @@ option, like this:
 
     map kitty_mod+enter launch --add-to-session=.
 
-This will cause newly created windows, to belong to the currently active
+This will cause newly created windows to belong to the currently active
 session, if any. Note that adding a window to a session in this way is
 temporary, it does not edit the session file. If you wish to update the
 session file of the currently active session, you can use the following
