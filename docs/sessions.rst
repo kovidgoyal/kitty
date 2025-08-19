@@ -182,7 +182,7 @@ Making newly created windows join an existing session
 
 Normally, after activating a session, if you create new windows/tabs
 they don't belong to the session. If you would prefer to have them belong
-to the currently active session, you can use the :opt:`launch --add-to-session`
+to the currently active session, you can use the :option:`launch --add-to-session`
 option, like this:
 
     map kitty_mod+enter launch --add-to-session=.
