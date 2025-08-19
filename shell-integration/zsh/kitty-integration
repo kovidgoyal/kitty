@@ -352,7 +352,7 @@ _ksi_deferred_init() {
 
     # run startup command
     if [[ -n "$krcs" ]]; then
-        builtin print -nu "$_ksi_fd" -f '\e]2;%s\e\\' "$krcs"
+        builtin print -nu "$_ksi_fd" -f '\e]2;%s\e\\' -- "${(V)krcs}"
         builtin eval "$krcs"
     fi
 

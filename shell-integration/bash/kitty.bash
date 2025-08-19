@@ -353,7 +353,10 @@ _ksi_main() {
         fi
     fi
     builtin unset KITTY_IS_CLONE_LAUNCH KITTY_CLONE_SOURCE_STRATEGIES
-    if [[ -n "$krcs" ]]; then builtin eval "$krcs"; fi
+    if [[ -n "$krcs" ]]; then builtin
+        builtin printf "\e]2;%s\a" "${krcs//[[:cntrl:]]}" # removes any control characters
+        eval "$krcs";
+    fi
 }
 _ksi_main
 builtin unset -f _ksi_main
