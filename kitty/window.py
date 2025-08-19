@@ -888,7 +888,7 @@ class Window:
     def has_running_program(self) -> bool:
         return not self.at_prompt
 
-    def matches(self, field: str, pat: MatchPatternType) -> bool:
+    def matches(self, field: str, pat: MatchPatternType, active_session: str) -> bool:
         if isinstance(pat, tuple):
             if field == 'env':
                 return key_val_matcher(self.child.environ.items(), *pat)
@@ -911,11 +911,14 @@ class Window:
             return False
         if field == 'session':
             if pat.pattern == '.':
-                return self.created_in_session_name == get_boss().active_session
+                return self.created_in_session_name == active_session
             return pat.search(self.created_in_session_name) is not None
         return False
 
-    def matches_query(self, field: str, query: str, active_tab: TabType | None = None, self_window: Optional['Window'] = None) -> bool:
+    def matches_query(
+        self, field: str, query: str, active_tab: TabType | None = None,
+        self_window: Optional['Window'] = None, active_session: str = ''
+    ) -> bool:
         if field in ('num', 'recent'):
             if active_tab is not None:
                 try:
@@ -964,7 +967,7 @@ class Window:
             return gid is not None and t.windows.active_window_in_group_id(gid) is self
 
         pat = compile_match_query(query, field not in ('env', 'var'))
-        return self.matches(field, pat)
+        return self.matches(field, pat, active_session)
 
     def set_visible_in_layout(self, val: bool) -> None:
         val = bool(val)

@@ -535,6 +535,7 @@ class Boss:
             if tm is not None:
                 tab = tm.active_tab
         window_id_limit = max(self.window_id_map, default=-1) + 1
+        active_session = self.active_session
 
         def get_matches(location: str, query: str, candidates: set[int]) -> set[int]:
             if location == 'id' and query.startswith('-'):
@@ -544,7 +545,7 @@ class Boss:
                     return set()
                 if q < 0:
                     query = str(window_id_limit + q)
-            return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab, self_window)}
+            return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab, self_window, active_session)}
 
         for wid in search(match, (
             'id', 'title', 'pid', 'cwd', 'cmdline', 'num', 'env', 'var', 'recent', 'state', 'neighbor',
