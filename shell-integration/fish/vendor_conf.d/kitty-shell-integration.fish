@@ -24,6 +24,13 @@ not functions -q __ksi_schedule || exit 0
 set -q fish_killring || set -q status_generation || string match -qnv "3.1.*" "$version"
 or echo -en \eP@kitty-print\|V2FybmluZzogVXBkYXRlIGZpc2ggdG8gdmVyc2lvbiAzLjMuMCsgdG8gZW5hYmxlIGtpdHR5IHNoZWxsIGludGVncmF0aW9uLgo=\e\\ && exit 0 || exit 0
 
+
+if test -n "$KITTY_SI_RUN_COMMAND_AT_STARTUP"
+    printf '\e]2;%s\a' (string replace -ra '[\x00-\x1F\x7F]' '' -- "$KITTY_SI_RUN_COMMAND_AT_STARTUP")
+    eval "$KITTY_SI_RUN_COMMAND_AT_STARTUP"
+    set --erase KITTY_SI_RUN_COMMAND_AT_STARTUP
+end
+
 function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after other scripts have run, we hope"
     functions --erase __ksi_schedule
     test -n "$KITTY_SHELL_INTEGRATION" || return 0
@@ -37,9 +44,6 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         end
         set --erase SSH_KITTEN_KITTY_DIR
     end
-    set --local krcs "$KITTY_SI_RUN_COMMAND_AT_STARTUP"
-    set --erase KITTY_SI_RUN_COMMAND_AT_STARTUP
-
     # Enable cursor shape changes for default mode and vi mode
     if not contains "no-cursor" $_ksi
         function __ksi_set_cursor --on-variable fish_key_bindings -d "Set the cursor shape for different modes when switching key bindings"
@@ -202,10 +206,6 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         end
         test (count $new_path) -eq (count $PATH)
         or set --global --export --path PATH $new_path
-    end
-    if test -n "$krcs"
-        printf '\e]2;%s\a' (string replace -ra '[\x00-\x1F\x7F]' '' -- "$krcs")
-        eval "$krcs"
     end
 end
 
