@@ -510,6 +510,13 @@ type=bool-set
 When saving the working directory for windows, do so as paths relative to the directory in which
 the session file will be saved. This allows the session file to work even when its containing
 directory is moved elsewhere.
+
+
+--match
+If specified, only save all windows (and their parent tabs/OS Windows) that match the specified
+search expression. See :ref:`search_syntax` for details on the search language. In particular if
+you want to only save windows that are present in the currently active session,
+use :code:`--match=session:.`.
 '''
 
 

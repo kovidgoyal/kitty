@@ -295,7 +295,7 @@ class Tab:  # {{{
             'name': self.name,
         }
 
-    def serialize_state_as_session(self, session_path: str, ser_opts: SaveAsSessionOptions) -> list[str]:
+    def serialize_state_as_session(self, session_path: str, matched_windows: frozenset[Window] | None, ser_opts: SaveAsSessionOptions) -> list[str]:
         import shlex
         launch_cmds = []
         active_idx = self.windows.active_group_idx
@@ -311,6 +311,8 @@ class Tab:  # {{{
         for i, g in enumerate(groups):
             gw: list[str] = []
             for window in g:
+                if matched_windows is not None and window not in matched_windows:
+                    continue
                 cwd = cwds[window.id]
                 lc = window.as_launch_command(ser_opts, '' if cwd == most_common_cwd else cwd, is_overlay=bool(gw))
                 if lc:
@@ -1227,7 +1229,10 @@ class TabManager:  # {{{
             'active_tab_idx': self.active_tab_idx,
         }
 
-    def serialize_state_as_session(self, session_path: str, ser_opts: SaveAsSessionOptions, is_first: bool = False) -> list[str]:
+    def serialize_state_as_session(
+        self, session_path: str, matched_windows: frozenset[Window] | None, ser_opts: SaveAsSessionOptions,
+        is_first: bool = False
+    ) -> list[str]:
         ans = []
         hmap = {tab_id: i for i, tab_id in enumerate(self.active_tab_history)}
         if (at := self.active_tab) is not None:
@@ -1235,7 +1240,7 @@ class TabManager:  # {{{
         def skey(tab: Tab) -> int:
             return hmap.get(tab.id, -1)
         for tab in sorted(self, key=skey):
-            ans.extend(tab.serialize_state_as_session(session_path, ser_opts))
+            ans.extend(tab.serialize_state_as_session(session_path, matched_windows, ser_opts))
         if ans:
             prefix = [] if is_first else ['', '', 'new_os_window']
             if self.wm_class and self.wm_class != appname:
