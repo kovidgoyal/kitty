@@ -517,6 +517,7 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str)
     from .config import atomic_save
     path = os.path.abspath(os.path.expanduser(path))
     session = '\n'.join(boss.serialize_state_as_session(path, opts))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     atomic_save(session.encode(), path)
     if not opts.save_only:
         boss.edit_file(path)
