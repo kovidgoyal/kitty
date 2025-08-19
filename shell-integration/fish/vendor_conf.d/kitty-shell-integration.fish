@@ -204,6 +204,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         or set --global --export --path PATH $new_path
     end
     if test -n "$krcs"
+        printf '\e]2;%s\a' (string replace -ra '[\x00-\x1F\x7F]' '' -- "$krcs")
         eval "$krcs"
     end
 end
