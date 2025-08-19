@@ -51,6 +51,7 @@ class TabBarData(NamedTuple):
     num_of_windows_with_progress: int
     total_progress: int
     last_focused_window_with_progress_id: int
+    session_name: str
 
 
 class DrawData(NamedTuple):

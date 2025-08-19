@@ -60,6 +60,21 @@ In this manner you can define as many projects/sessions as you like and easily
 switch between them with a keypress.
 
 
+Displaying the currently active session name
+----------------------------------------------
+
+You can display the name of the currently active session file in the kitty tab
+bar using :opt:`tab_title_template`. For example, using the value::
+
+    {session_name} {title}
+
+will show you the name of the session file the current tab was loaded from, as
+well as the normal tab title. Or alternatively, you can set the tab title
+directly to a project name in the session file itself when creating the tab,
+like this::
+
+    new_tab My Project Name
+
 .. _complex_sessions:
 
 More complex sessions

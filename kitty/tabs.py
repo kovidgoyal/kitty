@@ -1374,6 +1374,7 @@ class TabManager:  # {{{
                 has_activity_since_last_focus, t.active_fg, t.active_bg,
                 t.inactive_fg, t.inactive_bg, t.num_of_windows_with_progress,
                 t.total_progress, t.last_focused_window_with_progress_id,
+                t.created_in_session_name,
             ))
         return ans
 
