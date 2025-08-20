@@ -460,6 +460,8 @@ class Boss:
             wclass = self.args.cls or appname
         tm = TabManager(os_window_id, self.args, wclass, wname, startup_session)
         self.os_window_map[os_window_id] = tm
+        if is_macos:
+            self.focus_os_window(os_window_id, False)
         return os_window_id
 
     def add_os_panel(self, cfg: LayerShellConfig, wclass: str | None = appname, wname: str | None = appname) -> int:
