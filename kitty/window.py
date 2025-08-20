@@ -2017,8 +2017,8 @@ class Window:
             if self.creation_spec.cmd != resolved_shell(get_options()):
                 cmd = self.creation_spec.cmd
         unserialize_data: dict[str, int | list[str] | str] = {'id': self.id}
-        if not cmd and ser_opts.use_foreground_process:
-            if not self.at_prompt and self.last_cmd_cmdline:
+        if not cmd and ser_opts.use_foreground_process and not self.at_prompt:
+            if self.last_cmd_cmdline:
                 unserialize_data['cmd_at_shell_startup'] = self.last_cmd_cmdline
             elif self.child.pid != (pid := self.child.pid_for_cwd) and pid is not None:
                 # we have a shell running some command
