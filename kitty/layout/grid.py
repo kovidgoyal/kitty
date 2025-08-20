@@ -316,6 +316,6 @@ class Grid(Layout):
         }
 
     def set_layout_state(self, layout_state: dict[str, Any], map_group_id: WindowMapper) -> bool:
-        self.biased_rows = layout_state['biased_rows']
-        self.biased_cols = layout_state['biased_cols']
+        self.biased_rows = {int(k): v for k, v in layout_state['biased_rows'].items()}
+        self.biased_cols = {int(k): v for k, v in layout_state['biased_cols'].items()}
         return True

@@ -141,7 +141,7 @@ class Vertical(Layout):
         return {'biased_map': self.biased_map}
 
     def set_layout_state(self, layout_state: dict[str, Any], map_group_id: WindowMapper) -> bool:
-        self.biased_map = layout_state['biased_map']
+        self.biased_map = {int(k): v for k, v in layout_state['biased_map'].items()}
         return True
 
 class Horizontal(Vertical):
