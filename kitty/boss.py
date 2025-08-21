@@ -548,7 +548,7 @@ class Boss:
             return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab, self_window, active_session)}
 
         for wid in search(match, (
-            'id', 'title', 'pid', 'cwd', 'cmdline', 'num', 'env', 'var', 'recent', 'state', 'neighbor',
+            'id', 'title', 'pid', 'cwd', 'cmdline', 'num', 'env', 'var', 'recent', 'state', 'neighbor', 'session',
         ), set(self.window_id_map), get_matches):
             yield self.window_id_map[wid]
 
