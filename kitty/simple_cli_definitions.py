@@ -661,7 +661,9 @@ The panel can only be displayed on a single monitor (output) at a time. This all
 you to specify which output is used, by name. If not specified the compositor will choose an
 output automatically, typically the last output the user interacted with or the primary monitor.
 Use the special value :code:`list` to get a list of available outputs. Use :code:`listjson` for
-a json encoded output.
+a json encoded output. Note that on Wayland the output can only be set at panel creation time,
+it cannot be changed after creation, nor is there anyway to display a single panel on all outputs.
+Please complain to the Wayland developers about this.
 
 
 --class --app-id
