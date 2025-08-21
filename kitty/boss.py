@@ -584,7 +584,7 @@ class Boss:
 
         found = False
         for tid in search(match, (
-                'id', 'index', 'title', 'window_id', 'window_title', 'pid', 'cwd', 'env', 'var', 'cmdline', 'recent', 'state'
+                'id', 'index', 'title', 'window_id', 'window_title', 'pid', 'cwd', 'env', 'var', 'cmdline', 'recent', 'state', 'session',
         ), set(tim), get_matches):
             found = True
             yield tim[tid]
