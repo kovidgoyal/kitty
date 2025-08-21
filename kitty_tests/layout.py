@@ -155,6 +155,8 @@ class TestLayout(BaseTest):
             self.ae(i, windows.active_group_idx)
             check_visible()
 
+        # Test
+
     def do_overlay_test(self, q):
         windows = create_windows(q)
         ids, visible_ids, expect_ids, check_visible = utils(self, q, windows)

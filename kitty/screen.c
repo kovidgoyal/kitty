@@ -189,6 +189,10 @@ screen_reset(Screen *self) {
     self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
     self->alt_savepoint.is_valid = false;
+    if (self->extra_cursors.count) {
+        self->extra_cursors.count = 0;
+        self->extra_cursors.dirty = true;
+    }
     linebuf_clear(self->linebuf, BLANK_CHAR);
     historybuf_clear(self->historybuf);
     clear_hyperlink_pool(self->hyperlink_pool);
@@ -673,6 +677,7 @@ dealloc(Screen* self) {
     free_hyperlink_pool(self->hyperlink_pool);
     free(self->as_ansi_buf.buf);
     free(self->last_rendered_window_char.canvas);
+    free(self->extra_cursors.locations); free(self->paused_rendering.extra_cursors.locations);
     if (self->lc) { cleanup_list_of_chars(self->lc); free(self->lc); self->lc = NULL; }
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
@@ -1546,6 +1551,10 @@ screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_scree
     self->is_dirty = true;
     grman_mark_layers_dirty(self->grman);
     clear_all_selections(self);
+    if (self->extra_cursors.count) {
+        self->extra_cursors.count = 0;
+        self->extra_cursors.dirty = true;
+    }
     global_state.check_for_active_animated_images = true;
 }
 
@@ -2475,6 +2484,10 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             /* fallthrough */
         case 2:
         case 3:
+            if (self->extra_cursors.count) {
+                self->extra_cursors.count = 0;
+                self->extra_cursors.dirty = true;
+            }
             grman_clear(self->grman, how == 3, self->cell_size);
             a = 0; b = self->lines; nuke_multicell_chars = false;
             break;
@@ -3079,8 +3092,11 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
         self->is_dirty = true;
         // ensure selection data is updated on GPU
         self->selections.last_rendered_count = SIZE_MAX; self->url_ranges.last_rendered_count = SIZE_MAX;
+        self->extra_cursors.dirty = true;
         // free grman data
         grman_pause_rendering(NULL, self->paused_rendering.grman);
+        // free extra cursors
+        free(self->paused_rendering.extra_cursors.locations); zero_at_ptr(&self->paused_rendering.extra_cursors);
         return true;
     }
     if (self->paused_rendering.expires_at) return false;
@@ -3107,6 +3123,14 @@ screen_pause_rendering(Screen *self, bool pause, int for_in_ms) {
     }
     copy_selections(&self->paused_rendering.selections, &self->selections);
     copy_selections(&self->paused_rendering.url_ranges, &self->url_ranges);
+    if (self->extra_cursors.count) {
+        self->paused_rendering.extra_cursors.locations = calloc(self->extra_cursors.count, sizeof(self->extra_cursors.locations[0]));
+        if (self->paused_rendering.extra_cursors.locations) {
+            self->paused_rendering.extra_cursors.count = self->extra_cursors.count;
+            self->paused_rendering.extra_cursors.dirty = self->extra_cursors.dirty;
+            memcpy(self->paused_rendering.extra_cursors.locations, self->extra_cursors.locations, sizeof(self->extra_cursors.locations[0]) * self->extra_cursors.count);
+        }
+    }
     grman_pause_rendering(self->grman, self->paused_rendering.grman);
     return true;
 }
@@ -3558,7 +3582,13 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
         if (OPT(underline_hyperlinks) == UNDERLINE_NEVER && s->is_hyperlink) continue;
         apply_selection(self, address, s, 2);
     }
+    uint8_t *a = address;
     sel->last_rendered_count = sel->count;
+    ExtraCursors *ec = self->paused_rendering.expires_at ? &self->paused_rendering.extra_cursors : &self->extra_cursors;
+    for (unsigned i = 0; i < ec->count; i++) {
+        if (ec->locations[i].cell < size) a[ec->locations[i].cell] |= (ec->locations[i].shape & 7) << 2;
+    }
+    ec->dirty = false;
 }
 
 static index_type
@@ -4804,7 +4834,7 @@ screen_is_selection_dirty(Screen *self) {
     IterationData q;
     if (self->paused_rendering.expires_at) return false;
     if (self->scrolled_by != self->last_rendered.scrolled_by) return true;
-    if (self->selections.last_rendered_count != self->selections.count || self->url_ranges.last_rendered_count != self->url_ranges.count) return true;
+    if (self->selections.last_rendered_count != self->selections.count || self->url_ranges.last_rendered_count != self->url_ranges.count || self->extra_cursors.dirty) return true;
     for (size_t i = 0; i < self->selections.count; i++) {
         iteration_data(self->selections.items + i, &q, self->columns, 0, self->scrolled_by);
         if (memcmp(&q, &self->selections.items[i].last_rendered, sizeof(IterationData)) != 0) return true;

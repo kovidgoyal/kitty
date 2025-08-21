@@ -11,7 +11,6 @@
 #include "monotonic.h"
 #include "line-buf.h"
 #include "history.h"
-#include "window_logo.h"
 
 typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } ScrollType;
 
@@ -87,6 +86,18 @@ typedef struct {
         index_type x, y;
     } last_ime_pos;
 } OverlayLine;
+
+typedef struct ExtraCursor {
+    CursorShape shape;
+    index_type cell;
+} ExtraCursor;
+
+typedef struct ExtraCursors {
+    ExtraCursor *locations;
+    unsigned count, capacity;
+    bool dirty;
+} ExtraCursors;
+
 
 typedef struct {
     PyObject_HEAD
@@ -171,10 +182,12 @@ typedef struct {
         LineBuf *linebuf;
         GraphicsManager *grman;
         Selections selections, url_ranges;
+        ExtraCursors extra_cursors;
     } paused_rendering;
     CharsetState charset;
     ListOfChars *lc;
     monotonic_t parsing_at;
+    ExtraCursors extra_cursors;
 } Screen;
 
 
