@@ -1827,7 +1827,7 @@ class Window:
     def child_is_remote(self) -> bool:
         for p in self.child.foreground_processes:
             q = list(p['cmdline'] or ())
-            if q and q[0].lower() == 'ssh':
+            if q and os.path.basename(q[0]).lower() == 'ssh':
                 return True
         return False
 
