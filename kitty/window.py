@@ -1831,15 +1831,18 @@ class Window:
                 return True
         return False
 
-    def ssh_kitten_cmdline(self) -> list[str]:
+    def ssh_kitten_cmdline_with_pid(self) -> tuple[int, list[str]]:
         from kittens.ssh.utils import is_kitten_cmdline
         for p in self.child.foreground_processes:
             q = list(p['cmdline'] or ())
             if len(q) > 3 and os.path.basename(q[0]) == 'kitten' and q[1] == 'run-shell':
                 q = q[2:]  # --hold-after-ssh causes kitten run-shell wrapper to be added
             if is_kitten_cmdline(q):
-                return q
-        return []
+                return p['pid'], q
+        return -1, []
+
+    def ssh_kitten_cmdline(self) -> list[str]:
+        return self.ssh_kitten_cmdline_with_pid()[1]
 
     def pipe_data(self, text: str, has_wrap_markers: bool = False) -> PipeData:
         text = text or ''
@@ -2017,19 +2020,25 @@ class Window:
             if self.creation_spec.cmd != resolved_shell(get_options()):
                 cmd = self.creation_spec.cmd
         unserialize_data: dict[str, int | list[str] | str] = {'id': self.id}
-        if not cmd and ser_opts.use_foreground_process and not self.at_prompt:
-            if self.last_cmd_cmdline:
-                unserialize_data['cmd_at_shell_startup'] = self.last_cmd_cmdline
-            elif self.child.pid != (pid := self.child.pid_for_cwd) and pid is not None:
-                # we have a shell running some command
-                with suppress(Exception):
-                    fcmd = self.child.cmdline_of_pid(pid)
-                    if fcmd:
-                        unserialize_data['cmd_at_shell_startup'] = fcmd
-                        if not os.path.isabs(fcmd[0]):
-                            with suppress(Exception):
-                                from .child import abspath_of_exe
-                                fcmd[0] = abspath_of_exe(pid)
+        if not cmd and ser_opts.use_foreground_process:
+            def make_exe_absolute(cmd: list[str], pid: int) -> None:
+                if cmd and not os.path.isabs(cmd[0]):
+                    with suppress(Exception):
+                        from .child import abspath_of_exe
+                        cmd[0] = abspath_of_exe(pid)
+            kssh_cmdline = self.ssh_kitten_cmdline()
+            if kssh_cmdline:
+                unserialize_data['cmd_at_shell_startup'] = kssh_cmdline
+            elif not self.at_prompt:
+                if self.last_cmd_cmdline:
+                    unserialize_data['cmd_at_shell_startup'] = self.last_cmd_cmdline
+                elif self.child.pid != (pid := self.child.pid_for_cwd) and pid is not None:
+                    # we have a shell running some command
+                    with suppress(Exception):
+                        fcmd = self.child.cmdline_of_pid(pid)
+                        if fcmd:
+                            make_exe_absolute(fcmd, pid)
+                            unserialize_data['cmd_at_shell_startup'] = fcmd
         ans.insert(1, unserialize_launch_flag + json.dumps(unserialize_data))
         ans.extend(cmd)
         return ans
