@@ -299,10 +299,14 @@ def multicell_command(payload: str) -> None:
     write(f'{OSC}{TEXT_SIZE_CODE};{m.rstrip(":")};{text}\a')
 
 
+def screen_multi_cursor(rest: str) -> None:
+    write(f'{CSI}>{rest.strip()} q')
+
+
 def replay(raw: str) -> None:
     specials = frozenset({
         'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color', 'select_graphic_rendition',
-        'process_cwd_notification', 'clipboard_control', 'shell_prompt_marking', 'multicell_command',
+        'process_cwd_notification', 'clipboard_control', 'shell_prompt_marking', 'multicell_command', 'screen_multi_cursor',
     })
     for line in raw.splitlines():
         if line.strip() and not line.startswith('#'):

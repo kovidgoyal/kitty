@@ -31,6 +31,7 @@
 #include "char-props.h"
 #include "wcswidth.h"
 #include <stdalign.h>
+#include <stdio.h>
 #include "keys.h"
 #include "vt-parser.h"
 #include "resize.h"
@@ -2848,6 +2849,106 @@ screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
                 self->cursor->shape = shape; self->cursor->non_blinking = !blink;
             }
             break;
+    }
+}
+
+#define NAME multi_cursor_map
+#define KEY_TY index_type
+#define VAL_TY uint8_t
+#include "kitty-verstable.h"
+
+void
+screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_params) {
+    // printf("%d;", queried_shape); for (unsigned i = 0; i < num_params; i++) {printf("%d:", params[i]);} printf("\n");
+    if (!num_params) {
+        if (params == NULL) {
+            write_escape_code_to_child(self, ESC_CSI, ">-1;1;2;3 q");
+        } else if (queried_shape == -2) {
+            size_t sz = self->extra_cursors.count * 32 + 64;
+            RAII_ALLOC(char, buf, malloc(sz));
+            if (buf) {
+                char *p = buf + snprintf(buf, sz, ">-2;");
+                for (unsigned i = 0; i < self->extra_cursors.count; i++) {
+                    index_type cell = self->extra_cursors.locations[i].cell, shape = self->extra_cursors.locations[i].shape;
+                    index_type y = cell / self->columns, x = cell - (y * self->columns);
+                    p += snprintf(p, sz - (p - buf), "%d:2:%u:%u;", shape > 3 ? -1 : (int)shape, y+1, x+1);
+                }
+                if (*(p-1) == ';') p--;
+                p += snprintf(p, sz - (p - buf), " q"); *p = 0;
+                write_escape_code_to_child(self, ESC_CSI, buf);
+            }
+        }
+        return;
+    }
+    uint8_t shape = 0;
+    if (queried_shape < 0) {
+        shape = 4;
+    } else {
+        shape = MIN(queried_shape, 3);
+    }
+    self->extra_cursors.dirty = true;
+    int type = params[0]; params++; num_params--;
+    switch (type) {
+    case 2: {
+        multi_cursor_map s; vt_init(&s);
+        for (unsigned i = 0; i < self->extra_cursors.count; i++) {
+            vt_insert(&s, self->extra_cursors.locations[i].cell, self->extra_cursors.locations[i].shape);
+        }
+        for (unsigned i = 0; i+1 < num_params; i+=2) {
+            index_type y = params[i]-1, x = params[i+1]-1;
+            if (!shape) { vt_erase(&s, y * self->columns + x); }
+            else if (y < self->lines && x < self->columns) vt_insert(&s, y * self->columns + x, shape);
+        }
+        self->extra_cursors.count = vt_size(&s);
+        ensure_space_for(&self->extra_cursors, locations, ExtraCursor, self->extra_cursors.count, capacity, 20 * 80, false);
+        self->extra_cursors.count = 0;
+        vt_create_for_loop(multi_cursor_map_itr, i, &s) {
+            self->extra_cursors.locations[self->extra_cursors.count++] = (ExtraCursor){
+                .shape = i.data->val, .cell = i.data->key};
+        }
+        vt_cleanup(&s);
+    } break;
+    case 4: {
+        if (!num_params) {  // full screen
+            switch(shape) {
+                default: self->extra_cursors.count = 0; break;
+                case 1: case 2: case 3: case 4:
+                    ensure_space_for(&self->extra_cursors, locations, ExtraCursor, self->lines * self->columns, capacity, 20 * 80, false);
+                    self->extra_cursors.count = self->lines * self->columns;
+                    for (index_type cell = 0; cell < self->lines * self->columns; cell++) {
+                        self->extra_cursors.locations[cell].shape = shape;
+                        self->extra_cursors.locations[cell].cell = cell;
+                    }
+                    break;
+            }
+            break;
+        }
+        unsigned count = 0;
+        for (unsigned i = 0; i < self->extra_cursors.count; i++) {
+            bool in_some_region = false;
+            index_type y = self->extra_cursors.locations[i].cell / self->columns, x = self->extra_cursors.locations[i].cell - (self->columns * y);
+            for (unsigned i = 0; i + 3 < num_params && !in_some_region; i += 4) {
+                index_type top = params[i]-1, left = params[i+1]-1, bottom = params[i+2]-1, right = params[i+3]-1;
+                in_some_region = top <= y && y <= bottom && left <= x && x <= right;
+            }
+            if (!in_some_region) self->extra_cursors.locations[count++] = self->extra_cursors.locations[i];
+        }
+        self->extra_cursors.count = count;
+        if (shape) {
+            for (unsigned i = 0; i + 3 < num_params; i += 4) {
+                index_type top = params[i]-1, left = params[i+1]-1, bottom = params[i+2]-1, right = params[i+3]-1;
+                index_type xnum = right + 1 - left, ynum = bottom + 1 - top;
+                ensure_space_for(&self->extra_cursors, locations, ExtraCursor,
+                        self->extra_cursors.count + xnum * ynum, capacity, 20 * 80, false);
+                for (index_type y = top; y <= bottom; y++) {
+                    for (index_type x = left; x <= right; x++) {
+                        self->extra_cursors.locations[self->extra_cursors.count++] = (ExtraCursor){
+                            .shape=shape, .cell=y*self->columns + x};
+                    }
+                }
+            }
+        }
+    } break;
     }
 }
 

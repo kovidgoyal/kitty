@@ -72,6 +72,21 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
     Py_XDECREF(PyObject_CallFunction(dump_callback, "Kss", window_id, name, buf)); PyErr_Clear();
 }
 
+static void
+_report_params_with_first(PyObject *dump_callback, id_type window_id, const char *name, int first_param, int *params, unsigned count) {
+    static char buf[MAX_CSI_PARAMS*3] = {0};
+    unsigned int i, p=0;
+    p += snprintf(buf + p, sizeof(buf) - 2, "%d;", first_param);
+    for(i = 0; i < count && p < arraysz(buf)-20; i++) {
+        int n = snprintf(buf + p, arraysz(buf) - p, "%i:", params[i]);
+        if (n < 0) break;
+        p += n;
+    }
+    buf[count ? p-1 : p] = 0;
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "Kss", window_id, name, buf)); PyErr_Clear();
+}
+
+
 #define DUMP_UNUSED
 
 #define REPORT_ERROR(...) _report_error(self->dump_callback, self->window_id, __VA_ARGS__);
@@ -110,7 +125,9 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 }
 
 
-#define REPORT_PARAMS(name, params, num, is_group, region) _report_params(self->dump_callback, self->window_id, name, params, num_params, is_group, region)
+#define REPORT_PARAMS(name, params, num, is_group, region) _report_params(self->dump_callback, self->window_id, name, params, num, is_group, region)
+
+#define REPORT_PARAMS_WITH_FIRST(name, first, params, num) _report_params_with_first(self->dump_callback, self->window_id, name, first, params, num)
 
 #define REPORT_OSC(name, string) \
     Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsO", self->window_id, #name, string)); PyErr_Clear();
@@ -127,6 +144,7 @@ _report_params(PyObject *dump_callback, id_type window_id, const char *name, int
 #define REPORT_VA_COMMAND(...)
 #define REPORT_DRAW(...)
 #define REPORT_PARAMS(...)
+#define REPORT_PARAMS_WITH_FIRST(...)
 #define REPORT_OSC(name, string)
 #define REPORT_OSC2(name, code, string)
 #define REPORT_HYPERLINK(id, url)
@@ -875,6 +893,35 @@ consume_csi(PS *self) {
     return csi_parse_loop(self, &self->csi, self->buf, &self->read.pos, self->read.sz, self->read.consumed);
 }
 
+static void
+_parse_multi_cursors(PS *self, ParsedCSI *csi) {
+    switch(csi->num_params) {
+    case 0:
+        REPORT_COMMAND("screen_multi_cursor");
+        screen_multi_cursor(self->screen, 0, NULL, 0);
+        break;
+    case 1:
+        REPORT_PARAMS_WITH_FIRST("screen_multi_cursor", csi->params[0], csi->params, 0);
+        screen_multi_cursor(self->screen, csi->params[0], csi->params, 0);
+        break;
+    default: {
+    unsigned pos = 1, first_param = pos;
+    for (; pos < csi->num_params; pos++) {
+        if (pos > first_param) {
+            if (!csi->is_sub_param[pos]) {
+                REPORT_PARAMS_WITH_FIRST("screen_multi_cursor", csi->params[0], csi->params + first_param, pos - first_param);
+                screen_multi_cursor(self->screen, csi->params[0], csi->params + first_param, pos - first_param);
+                first_param = pos;
+            }
+        }
+    }
+    if (pos > first_param) {
+        REPORT_PARAMS_WITH_FIRST("screen_multi_cursor", csi->params[0], csi->params + first_param, pos - first_param);
+        screen_multi_cursor(self->screen, csi->params[0], csi->params + first_param, pos - first_param);
+    }}}
+}
+
+
 static unsigned int
 parse_region(const ParsedCSI *csi, Region *r) {
     switch(csi->num_params) {
@@ -894,7 +941,6 @@ parse_region(const ParsedCSI *csi, Region *r) {
             return 4;
     }
 }
-
 
 static bool
 _parse_sgr(PS *self, ParsedCSI *csi) {
@@ -1297,10 +1343,13 @@ dispatch_csi(PS *self) {
             REPORT_ERROR("Unknown CSI x sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
             break;
         case DECSCUSR:
-            if (!start_modifier && end_modifier == ' ') {
-                CALL_CSI_HANDLER1M(screen_set_cursor, 1);
-            }
-            if (start_modifier == '>' && !end_modifier) {
+            if (end_modifier == ' ') {
+                if (!start_modifier) { CALL_CSI_HANDLER1M(screen_set_cursor, 1); }
+                if (start_modifier == '>') {
+                    _parse_multi_cursors(self, &self->csi);
+                    break;
+                }
+            } else if (end_modifier == 0 && start_modifier == '>') {
                 CALL_CSI_HANDLER1(screen_xtversion, 0);
             }
             REPORT_ERROR("Unknown CSI q sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);

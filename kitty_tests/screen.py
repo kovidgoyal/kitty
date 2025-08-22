@@ -1589,6 +1589,44 @@ class TestScreen(BaseTest):
         q({'transparent_background_color2': '#ffffff@-1'})
         q({'transparent_background_color2': '?'}, {'transparent_background_color2': (Color(255, 255, 255), 255)})
 
+    def test_multi_cursors(self):
+        s = self.create_screen()
+        c = s.callbacks
+        # Test detection
+        parse_bytes(s, b'\x1b[> q')  # ]
+        self.ae(c.wtcbuf, b'\x1b[>-1;1;2;3 q')  # ]
+
+        def current() -> dict[int, tuple[int, int]]:
+            ans = {}
+            c.clear()
+            parse_bytes(s, '\x1b[>-2 q'.encode())  # ]
+            for entry in c.wtcbuf[6:-2].decode().split(';'):
+                if entry:
+                    which, _, y, x = map(int, entry.split(':'))
+                    ans.setdefault(which, set()).add((x-1, y-1))
+            return ans
+        self.ae({}, current())
+
+        def a(which: int, *positions: tuple[int, int], region=None) -> dict[int, tuple[int, int]]:
+            if positions:
+                buf = [f'\x1b[>{which};']  # ]
+                buf.extend(f'2:{y+1}:{x+1};' for x, y in positions)
+                parse_bytes(s, ''.join(buf).encode() + b' q')
+            if region:
+                if region is True:
+                    parse_bytes(s, f'\x1b[>{which};4 q'.encode())  # ]
+                else:
+                    left, top, right, bottom = region
+                    parse_bytes(s, f'\x1b[>{which};4:{top+1}:{left+1}:{bottom+1}:{right+1} q'.encode())  # ]
+            return current()
+
+        self.ae(a(1, region=True), {1:{(x, y) for x in range(s.columns) for y in range(s.lines)}})
+        self.ae(a(0, region=True), {})
+        self.ae(a(-1, region=(1, 2, 2, 3)), {-1: {(1, 2), (2, 2), (1, 3), (2, 3)}})
+        self.ae(a(2, (1, 2), (1, 3)), {-1: {(2, 3), (2, 2)}, 2: {(1, 2), (1, 3)}})
+        self.ae(a(0, (1, 2), (2, 3)), {-1: {(2, 2)}, 2: {(1, 3)}})
+        self.ae(a(0, region=True), {})
+
 
 def detect_url(self, scale=1):
     s = self.create_screen(cols=30 * scale)
