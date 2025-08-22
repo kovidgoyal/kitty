@@ -208,6 +208,7 @@ def parse_session(
         session_base_dir = os.path.dirname(os.path.abspath(session_path))
         if session_name:
             seen_session_paths[session_name] = session_path
+            append_to_session_history(session_name)
     else:
         session_base_dir = os.getcwd()
 
