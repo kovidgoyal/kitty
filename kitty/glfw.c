@@ -178,7 +178,7 @@ static void get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale
 static bool
 set_layer_shell_config_for(OSWindow *w, GLFWLayerShellConfig *lsc) {
     if (lsc) {
-        lsc->related.background_opacity = w->background_opacity;
+        lsc->related.background_opacity = effective_os_window_alpha(w);
         lsc->related.background_blur = OPT(background_blur);
         lsc->related.color_space = OPT(macos_colorspace);
         w->hide_on_focus_loss = lsc->hide_on_focus_loss;
@@ -1121,9 +1121,9 @@ intercept_cocoa_fullscreen(GLFWwindow *w) {
 #endif
 
 static void
-init_window_chrome_state(WindowChromeState *s, color_type active_window_bg, bool is_semi_transparent, float background_opacity) {
+init_window_chrome_state(WindowChromeState *s, color_type active_window_bg, float background_opacity) {
     zero_at_ptr(s);
-    const bool should_blur = background_opacity < 1.f && OPT(background_blur) > 0 && is_semi_transparent;
+    const bool should_blur = background_opacity < 1.f && OPT(background_blur) > 0;
 #define SET_TCOL(val) \
         s->use_system_color = false; \
         switch (val & 0xff) { \
@@ -1191,7 +1191,7 @@ set_os_window_chrome(OSWindow *w) {
     }
 
     WindowChromeState new_state;
-    init_window_chrome_state(&new_state, bg, w->is_semi_transparent, w->background_opacity);
+    init_window_chrome_state(&new_state, bg, effective_os_window_alpha(w));
     if (memcmp(&new_state, &w->last_window_chrome, sizeof(WindowChromeState)) != 0) {
         int width, height;
         glfwGetWindowSize(w->handle, &width, &height);
@@ -1533,15 +1533,15 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     w->last_mouse_activity_at = now;
     w->mouse_activate_deadline = -1;
     w->mouse_show_threshold = 0;
-    w->is_semi_transparent = is_semi_transparent;
-    if (want_semi_transparent && !w->is_semi_transparent) {
+    w->background_opacity.supports_transparency = is_semi_transparent;
+    if (want_semi_transparent && !w->background_opacity.supports_transparency) {
         static bool warned = false;
         if (!warned) {
             log_error("Failed to enable transparency. This happens when your desktop environment does not support compositing.");
             warned = true;
         }
     }
-    init_window_chrome_state(&w->last_window_chrome, OPT(background), w->is_semi_transparent, w->background_opacity);
+    init_window_chrome_state(&w->last_window_chrome, OPT(background), effective_os_window_alpha(w));
     if (w->is_layer_shell) {
         if (global_state.is_apple) set_layer_shell_config_for(w, lsc);
     } else apply_window_chrome_state(

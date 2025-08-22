@@ -216,7 +216,7 @@ add_os_window(void) {
     zero_at_ptr(ans);
     ans->id = ++global_state.os_window_id_counter;
     ans->tab_bar_render_data.vao_idx = create_cell_vao();
-    ans->background_opacity = OPT(background_opacity);
+    ans->background_opacity.alpha = OPT(background_opacity);
     ans->created_at = monotonic();
 
     bool wants_bg = OPT(background_image) && OPT(background_image)[0] != 0;
@@ -958,7 +958,7 @@ PYWRAP1(change_background_opacity) {
     float opacity;
     PA("Kf", &os_window_id, &opacity);
     WITH_OS_WINDOW(os_window_id)
-        os_window->background_opacity = opacity;
+        os_window->background_opacity.alpha = opacity;
         if (!os_window->redraw_count) os_window->redraw_count++;
         set_os_window_chrome(os_window);  // on macOS titlebar opacity can depend on background_opacity
         Py_RETURN_TRUE;
@@ -970,7 +970,7 @@ PYWRAP1(background_opacity_of) {
     id_type os_window_id = PyLong_AsUnsignedLongLong(args);
     if (PyErr_Occurred()) return NULL;
     WITH_OS_WINDOW(os_window_id)
-        return PyFloat_FromDouble((double)os_window->background_opacity);
+        return PyFloat_FromDouble((double)effective_os_window_alpha(os_window));
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
 }
@@ -1169,7 +1169,7 @@ PYWRAP0(apply_options_update) {
     for (size_t o = 0; o < global_state.num_os_windows; o++) {
         OSWindow *os_window = global_state.os_windows + o;
         get_platform_dependent_config_values(os_window->handle);
-        os_window->background_opacity = OPT(background_opacity);
+        os_window->background_opacity.alpha = OPT(background_opacity);
         if (!os_window->redraw_count) os_window->redraw_count++;
         for (size_t t = 0; t < os_window->num_tabs; t++) {
             Tab *tab = os_window->tabs + t;

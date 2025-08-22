@@ -32,7 +32,7 @@ typedef struct UIRenderData {
     Window *window; Screen *screen; OSWindow *os_window;
     GraphicsRenderData grd;
     WindowLogoRenderData *window_logo;
-    float inactive_text_alpha;
+    float bg_alpha, inactive_text_alpha;
     bool has_background_image;
     color_type background_color; // RGB only
 } UIRenderData;
@@ -434,7 +434,7 @@ has_bgimage(OSWindow *w) {
 }
 
 static color_type
-cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, CursorRenderInfo *cursor, OSWindow *os_window, float inactive_text_alpha) {
+cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, CursorRenderInfo *cursor, OSWindow *os_window, float inactive_text_alpha, float bg_alpha) {
     struct GPUCellRenderData {
         GLfloat use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
@@ -457,7 +457,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, C
     rd->default_fg = COLOR(default_fg);
     rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
     rd->bg_colors0 = COLOR(default_bg);
-    rd->bg_opacities0 = os_window->is_semi_transparent ? os_window->background_opacity : 1.0f;
+    rd->bg_opacities0 = bg_alpha;
 #define SETBG(which) { \
     colorprofile_to_transparent_color(cp, which - 1, &rd->bg_colors##which, &rd->bg_opacities##which); }
     SETBG(1); SETBG(2); SETBG(3); SETBG(4); SETBG(5); SETBG(6); SETBG(7);
@@ -805,7 +805,7 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
     const unsigned sh = ui->full_framebuffer_height;
     // first blank the area to be drawn to background
     enable_scissor_using_top_left_origin(border_rect, sh);
-    blank_canvas(ui->os_window->is_semi_transparent ? ui->os_window->background_opacity : 1.f, bg, false);
+    blank_canvas(ui->bg_alpha, bg, false);
     disable_scissor();
     // then draw the rendered text
     save_viewport_using_top_left_origin(
@@ -1034,9 +1034,10 @@ draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_wind
     // - There's only a single window and the os window is not focused
     // - There are multiple windows and the current window is not active
     float current_inactive_text_alpha = is_tab_bar || (!is_single_window && is_active_window) || (is_single_window && screen->cursor_render_info.is_focused) ? 1.0f : (float)OPT(inactive_text_alpha);
+    float bg_alpha = effective_os_window_alpha(os_window);
 
     color_type default_bg = cell_update_uniform_block(
-            srd->vao_idx, screen, uniform_buffer, &screen->cursor_render_info, os_window, current_inactive_text_alpha);
+            srd->vao_idx, screen, uniform_buffer, &screen->cursor_render_info, os_window, current_inactive_text_alpha, bg_alpha);
     set_cell_uniforms(screen->reload_all_gpu_data);
     WindowLogoRenderData *wl;
     if (window && (wl = &window->window_logo) && wl->id && (wl->instance = find_window_logo(global_state.all_window_logos, wl->id)) && wl->instance->load_from_disk_ok) {
@@ -1054,7 +1055,7 @@ draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_wind
         .full_framebuffer_width = os_window->viewport_width, .full_framebuffer_height = os_window->viewport_height,
         .window = window, .screen = screen, .os_window = os_window, .grd = grman_render_data(grman), .window_logo = wl,
         .inactive_text_alpha = current_inactive_text_alpha, .has_background_image = has_bgimage(os_window),
-        .background_color = default_bg,
+        .background_color = default_bg, .bg_alpha=effective_os_window_alpha(os_window),
     };
     screen->reload_all_gpu_data = false;
     save_viewport_using_top_left_origin(
@@ -1094,7 +1095,7 @@ create_border_vao(void) {
 
 void
 draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
-    float background_opacity = w->is_semi_transparent ? w->background_opacity: 1.0f;
+    float background_opacity = effective_os_window_alpha(w);
     if (!num_border_rects) return;
     bind_program(BORDERS_PROGRAM); bind_vertex_array(vao_idx);
     const bool has_background_image = has_bgimage(w);
@@ -1153,7 +1154,7 @@ draw_bg_image(OSWindow *os_window) {
     BackgroundImageRenderSettings s = {
         .os_window.width = os_window->viewport_width, .os_window.height = os_window->viewport_height,
         .instance_id = os_window->bgimage->id, .layout=OPT(background_image_layout),
-        .linear=OPT(background_image_linear), .bgcolor=OPT(background), .opacity=os_window->background_opacity,
+        .linear=OPT(background_image_linear), .bgcolor=OPT(background), .opacity=effective_os_window_alpha(os_window),
     };
     bind_program(BGIMAGE_PROGRAM);
     GLfloat iwidth = os_window->bgimage->width, iheight = os_window->bgimage->height;
@@ -1242,7 +1243,7 @@ blank_os_window(OSWindow *osw) {
             }
         }
     }
-    blank_canvas(osw->is_semi_transparent ? osw->background_opacity : 1.0f, color, true);
+    blank_canvas(effective_os_window_alpha(osw), color, true);
 }
 
 static void

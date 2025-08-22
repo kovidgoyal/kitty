@@ -313,10 +313,10 @@ typedef struct OSWindow {
     bool viewport_size_dirty, viewport_updated_at_least_once;
     monotonic_t viewport_resized_at;
     LiveResizeInfo live_resize;
-    bool has_pending_resizes, is_semi_transparent, shown_once, ignore_resize_events;
+    bool has_pending_resizes, shown_once, ignore_resize_events;
     unsigned int redraw_count;
     WindowChromeState last_window_chrome;
-    float background_opacity;
+    struct { float alpha; bool os_forces_opaque, supports_transparency; } background_opacity;
     FONTS_DATA_HANDLE fonts_data;
     id_type temp_font_group_id;
     enum RENDER_STATE render_state;
@@ -327,6 +327,11 @@ typedef struct OSWindow {
     bool is_layer_shell, hide_on_focus_loss;
 } OSWindow;
 
+static inline float
+effective_os_window_alpha(OSWindow *w) {
+    return (!w->background_opacity.supports_transparency || w->background_opacity.os_forces_opaque) ?
+        1.f : w->background_opacity.alpha;
+}
 
 typedef struct GlobalState {
     Options opts;
