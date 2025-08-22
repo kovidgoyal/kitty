@@ -2015,10 +2015,16 @@ class Window:
             t = 'overlay-main' if self.overlay_type is OverlayType.main else 'overlay'
             ans.append(f'--type={t}')
 
+        from kittens.ssh.utils import is_kitten_cmdline as is_ssh_kitten_cmdline
+        from kittens.ssh.utils import remove_env_var_from_cmdline, set_cwd_in_cmdline, set_single_env_var_in_cmdline
         cmd: list[str] = []
         if self.creation_spec and self.creation_spec.cmd:
             if self.creation_spec.cmd != resolved_shell(get_options()):
                 cmd = self.creation_spec.cmd
+                if is_ssh_kitten_cmdline(cmd):
+                    if self.at_prompt:
+                        if self.screen.last_reported_cwd:
+                            set_cwd_in_cmdline(path_from_osc7_url(self.screen.last_reported_cwd), cmd)
         unserialize_data: dict[str, int | list[str] | str] = {'id': self.id}
         if not cmd and ser_opts.use_foreground_process:
             def make_exe_absolute(cmd: list[str], pid: int) -> None:
@@ -2028,7 +2034,6 @@ class Window:
                         cmd[0] = abspath_of_exe(pid)
             kssh_cmdline = self.ssh_kitten_cmdline()
             if kssh_cmdline:
-                from kittens.ssh.utils import remove_env_var_from_cmdline, set_cwd_in_cmdline, set_single_env_var_in_cmdline
                 remove_env_var_from_cmdline('KITTY_SI_RUN_COMMAND_AT_STARTUP', kssh_cmdline)
                 if self.at_prompt:
                     if self.screen.last_reported_cwd:
