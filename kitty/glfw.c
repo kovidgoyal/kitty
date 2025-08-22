@@ -1113,7 +1113,13 @@ on_application_reopen(int has_visible_windows) {
 
 static bool
 intercept_cocoa_fullscreen(GLFWwindow *w) {
-    if (!OPT(macos_traditional_fullscreen) || !set_callback_window(w)) return false;
+    if (!set_callback_window(w)) return false;
+    if (!OPT(macos_traditional_fullscreen)) {
+        // In non traditional fullscreen macOS forces the window to opaque
+        global_state.callback_os_window->background_opacity.os_forces_opaque = !is_os_window_fullscreen(
+                global_state.callback_os_window);
+        return false;
+    }
     toggle_fullscreen_for_os_window(global_state.callback_os_window);
     global_state.callback_os_window = NULL;
     return true;
