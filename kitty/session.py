@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, Optional, Sequence, Union
 
 from .cli_stub import CLIOptions, SaveAsSessionOptions
 from .constants import config_dir, unserialize_launch_flag
-from .fast_data_types import get_options, ring_bell
+from .fast_data_types import get_options
 from .layout.interface import all_layouts
 from .options.types import Options
 from .options.utils import resize_window, to_layout_names, window_size
@@ -467,8 +467,7 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
                 if goto_session_history:
                     switch_to_session(boss, goto_session_history[-1])
                     return
-            if get_options().enable_audio_bell:
-                ring_bell(getattr(boss.active_tab_manager, 'os_window_id', 0))
+            boss.ring_bell_if_allowed()
             return
     else:
         for x in cmdline:
