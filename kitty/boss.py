@@ -461,6 +461,7 @@ class Boss:
         tm = TabManager(os_window_id, self.args, wclass, wname, startup_session)
         self.os_window_map[os_window_id] = tm
         if is_macos:
+            log_error("is_macos focus_os_window")
             self.focus_os_window(os_window_id, False)
         return os_window_id
 
@@ -598,6 +599,9 @@ class Boss:
                     yield q
 
     def focus_os_window(self, os_window_id: int, if_needed_only: bool = True) -> bool:
+        # Debug: Log entry and parameters to stderr
+        log_error(f"[DEBUG] focus_os_window called with os_window_id={os_window_id}, if_needed_only={if_needed_only}", file=sys.stderr)
+
         if if_needed_only and current_focused_os_window_id() == os_window_id:
             return False
 
@@ -608,6 +612,7 @@ class Boss:
             if not run_with_activation_token(doit):
                 doit()
         else:
+            log_error("doit")
             doit()
         return True
 

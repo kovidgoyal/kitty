@@ -1627,6 +1627,13 @@ destroy_os_window(OSWindow *w) {
 
 void
 focus_os_window(OSWindow *w, bool also_raise, const char *activation_token) {
+    // Log if w->handle is null
+    if (!w || !w->handle) {
+        fprintf(stderr, "[GLFW Debug] w->handle is null or w is invalid\n");
+        return;
+    }
+    fprintf(stderr, "[GLFW Debug] w->handle is valid: %p\n", (void*)w->handle);
+
     if (w->handle) {
 #ifdef __APPLE__
         if (!also_raise) cocoa_focus_window(glfwGetCocoaWindow(w->handle));

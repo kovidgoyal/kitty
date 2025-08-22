@@ -905,7 +905,7 @@ PYWRAP1(focus_os_window) {
     const char *activation_token = NULL;
     PA("K|pz", &os_window_id, &also_raise, &activation_token);
     WITH_OS_WINDOW(os_window_id)
-        if (!os_window->is_focused || (activation_token && activation_token[0])) focus_os_window(os_window, also_raise, activation_token);
+        focus_os_window(os_window, also_raise, activation_token);
         Py_RETURN_TRUE;
     END_WITH_OS_WINDOW
     Py_RETURN_FALSE;

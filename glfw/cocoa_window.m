@@ -2291,11 +2291,26 @@ int _glfwPlatformWindowBell(_GLFWwindow* window UNUSED)
 
 void _glfwPlatformFocusWindow(_GLFWwindow* window)
 {
+ // Log window ID
+        uintptr_t windowID = (uintptr_t)window->ns.object;
+        NSInteger windowNumber = [window->ns.object windowNumber];
+        fprintf(stderr, "[GLFW Debug] Window ID: %p, NSWindow windowNumber: %ld\n", (void*)windowID, (long)windowNumber);
+
     // Make us the active application
     if ([window->ns.object canBecomeKeyWindow]) {
+        fprintf(stderr, "[GLFW Debug]  canBecomeKeyWindow: YES\n");
         [NSApp activateIgnoringOtherApps:YES];
+        fprintf(stderr, "[GLFW Debug]  [NSApp activateIgnoringOtherApps:YES]\n");
         [window->ns.object makeKeyAndOrderFront:nil];
+        fprintf(stderr, "[GLFW Debug]  [window->ns.object makeKeyAndOrderFront:nil]\n");
     }
+
+     // Final state check
+    fprintf(stderr, "[GLFW Debug] Final state: isKeyWindow: %s, isActive: %s, isOnActiveSpace: %s, canBecomeKeyWindow: %s\n",
+            [window->ns.object isKeyWindow] ? "YES" : "NO",
+            [NSApp isActive] ? "YES" : "NO",
+            [window->ns.object isOnActiveSpace] ? "YES" : "NO",
+            [window->ns.object canBecomeKeyWindow] ? "YES" : "NO");
 }
 
 void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
