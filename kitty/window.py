@@ -2028,10 +2028,14 @@ class Window:
                         cmd[0] = abspath_of_exe(pid)
             kssh_cmdline = self.ssh_kitten_cmdline()
             if kssh_cmdline:
-                from kittens.ssh.utils import set_cwd_in_cmdline
+                from kittens.ssh.utils import remove_env_var_from_cmdline, set_cwd_in_cmdline, set_single_env_var_in_cmdline
+                remove_env_var_from_cmdline('KITTY_SI_RUN_COMMAND_AT_STARTUP', kssh_cmdline)
                 if self.at_prompt:
                     if self.screen.last_reported_cwd:
                         set_cwd_in_cmdline(path_from_osc7_url(self.screen.last_reported_cwd), kssh_cmdline)
+                else:
+                    if self.last_cmd_cmdline:
+                        set_single_env_var_in_cmdline('KITTY_SI_RUN_COMMAND_AT_STARTUP', self.last_cmd_cmdline, kssh_cmdline)
                 unserialize_data['cmd_at_shell_startup'] = kssh_cmdline
             elif not self.at_prompt:
                 if self.last_cmd_cmdline:

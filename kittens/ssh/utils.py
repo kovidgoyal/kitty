@@ -32,7 +32,7 @@ def ssh_options() -> dict[str, str]:
     ans: dict[str, str] = {}
     pos = 0
     while True:
-        pos = raw.find('[', pos)
+        pos = raw.find('[', pos)  # ]
         if pos < 0:
             break
         num = 1
@@ -41,7 +41,7 @@ def ssh_options() -> dict[str, str]:
             epos += 1
             if raw[epos] not in '[]':
                 continue
-            num += 1 if raw[epos] == '[' else -1
+            num += 1 if raw[epos] == '[' else -1  # ]
         q = raw[pos+1:epos]
         pos = epos
         if len(q) < 2 or q[0] != '-':
@@ -79,6 +79,25 @@ def patch_cmdline(key: str, val: str, argv: list[str]) -> None:
             return
     idx = argv.index('ssh')
     argv.insert(idx + 1, f'--kitten={key}={val}')
+
+
+def remove_env_var_from_cmdline(key: str, argv: list[str]) -> None:
+    while True:
+        for i, arg in enumerate(tuple(argv)):
+            if arg.startswith(f'--kitten=env={key}='):
+                del argv[i]
+                break
+            elif i > 0 and argv[i-1] == '--kitten' and (arg.startswith(f'env={key}=') or arg.startswith(f'env {key}=')):
+                del argv[i-1:i+1]
+                break
+        else:
+            break
+
+
+def set_single_env_var_in_cmdline(key: str, val: str, argv: list[str]) -> None:
+    remove_env_var_from_cmdline(key, argv)
+    idx = argv.index('ssh')
+    argv.insert(idx+1, f'--kitten=env={key}={val}')
 
 
 def set_cwd_in_cmdline(cwd: str, argv: list[str]) -> None:
