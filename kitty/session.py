@@ -483,13 +483,12 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
         return
     try:
         session_name = create_session(boss, path)
-        switch_to_session(boss, session_name)
     except Exception:
         import traceback
         tb = traceback.format_exc()
         boss.show_error(_('Failed to create session'), _('Could not create session from {0} with error:\n{1}').format(path, tb))
     else:
-        append_to_session_history(session_name)
+        switch_to_session(boss, session_name)
 
 
 save_as_session_message = '''\
