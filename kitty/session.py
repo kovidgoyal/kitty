@@ -459,7 +459,7 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
             idx = 0
         if idx < 0:
             if boss.active_session:
-                nidx = max(0, len(goto_session_history) - 1 - idx)
+                nidx = max(0, len(goto_session_history) - 1 + idx)
                 if nidx < len(goto_session_history):
                     switch_to_session(boss, goto_session_history[nidx])
                     return
