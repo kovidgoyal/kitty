@@ -200,6 +200,28 @@ mapping for it::
 The two can be combined, using the :ac:`combine` action.
 
 
+Sessions with remote connections
+-------------------------------------
+
+If you use the :doc:`ssh kitten </kittens/ssh>` to connect to remote computers,
+:ac:`save_as_session` is smart enough to save the ssh kitten invocation to your
+session file, preserving the remote working directory and even the currently
+running program on the remote host! Try it, run kitty with::
+
+    kitty -o 'map f1 save_as_session --use-foreground-process --relocatable' --session <(echo "layout vertical\nlaunch\nlaunch")
+
+Now in both windows, run::
+
+    kitten ssh localhost
+
+To connect them both to a remote computer (replace ``localhost`` with another
+computer if you like). In one window change the directory to /tmp and in the
+other start some program. Then press :kbd:`F1` to save the session file.
+When you run the session file in another kitty instance you will see both
+windows re-created, as expected with the correct working directories and
+running programs.
+
+
 Keyword reference
 ---------------------
 
