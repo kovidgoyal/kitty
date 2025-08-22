@@ -482,6 +482,7 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
         return
     try:
         session_name = create_session(boss, path)
+        switch_to_session(boss, session_name)
     except Exception:
         import traceback
         tb = traceback.format_exc()
