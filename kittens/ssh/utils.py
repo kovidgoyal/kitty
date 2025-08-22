@@ -156,7 +156,7 @@ def set_env_in_cmdline(env: dict[str, str], argv: list[str], clone: bool = True)
     if clone:
         patch_cmdline('clone_env', create_shared_memory(env, 'ksse-'), argv)
         return
-    idx = argv.index('ssh')
+    idx = argv.index('ssh') - 1
     for i in range(idx, len(argv)):
         if argv[i] == '--kitten':
             idx = i + 1
