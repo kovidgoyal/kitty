@@ -321,11 +321,15 @@ class Tab:  # {{{
                 if i == active_idx:
                     launch_cmds.append('focus')
         if launch_cmds:
+            enabled_layouts = list(self.enabled_layouts)
+            layout = self._current_layout_name
+            if layout not in enabled_layouts:
+                enabled_layouts.append(layout)
             return [
                 '',
                 f'new_tab {self.name}'.rstrip(),
-                f'layout {self._current_layout_name}',
-                f'enabled_layouts {",".join(self.enabled_layouts)}',
+                f'layout {layout}',
+                f'enabled_layouts {",".join(enabled_layouts)}',
                 f'set_layout_state {json.dumps(self.current_layout.serialize(self.windows))}',
                 f'cd {most_common_cwd}',
                 ''
