@@ -488,6 +488,7 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
         tb = traceback.format_exc()
         boss.show_error(_('Failed to create session'), _('Could not create session from {0} with error:\n{1}').format(path, tb))
     else:
+        # Ensure newly created session is focused needed when it doesn't create its own OS Windows.
         switch_to_session(boss, session_name)
 
 
