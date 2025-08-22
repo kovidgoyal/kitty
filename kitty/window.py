@@ -820,55 +820,6 @@ class Window:
     def __repr__(self) -> str:
         return f'Window(title={self.title}, id={self.id})'
 
-    def as_dict(self, is_focused: bool = False, is_self: bool = False, is_active: bool = False) -> WindowDict:
-        return {
-            'id': self.id,
-            'is_focused': is_focused,
-            'is_active': is_active,
-            'title': self.title,
-            'pid': self.child.pid,
-            'cwd': self.child.current_cwd or self.child.cwd,
-            'cmdline': self.child.cmdline,
-            'last_reported_cmdline': self.last_cmd_cmdline,
-            'last_cmd_exit_status': self.last_cmd_exit_status,
-            'env': self.child.environ or self.child.final_env,
-            'foreground_processes': self.child.foreground_processes,
-            'is_self': is_self,
-            'at_prompt': self.at_prompt,
-            'lines': self.screen.lines,
-            'columns': self.screen.columns,
-            'user_vars': self.user_vars,
-            'created_at': self.created_at,
-            'in_alternate_screen': self.screen.is_using_alternate_linebuf(),
-        }
-
-    def serialize_state(self) -> dict[str, Any]:
-        ans = {
-            'version': 1,
-            'id': self.id,
-            'child_title': self.child_title,
-            'override_title': self.override_title,
-            'default_title': self.default_title,
-            'title_stack': list(self.title_stack),
-            'allow_remote_control': self.allow_remote_control,
-            'remote_control_passwords': self.remote_control_passwords,
-            'cwd': self.child.current_cwd or self.child.cwd,
-            'env': self.child.environ,
-            'cmdline': self.child.cmdline,
-            'last_reported_cmdline': self.last_cmd_cmdline,
-            'last_cmd_exit_status': self.last_cmd_exit_status,
-            'margin': self.margin.serialize(),
-            'user_vars': self.user_vars,
-            'padding': self.padding.serialize(),
-        }
-        if self.window_custom_type:
-            ans['window_custom_type'] = self.window_custom_type
-        if self.overlay_type is not OverlayType.transient:
-            ans['overlay_type'] = self.overlay_type.value
-        if self.user_vars:
-            ans['user_vars'] = self.user_vars
-        return ans
-
     @property
     def overlay_parent(self) -> Optional['Window']:
         tab = self.tabref()
@@ -1957,6 +1908,56 @@ class Window:
         ' Return the last position at which a mouse event was received by this window '
         return get_mouse_data_for_window(self.os_window_id, self.tab_id, self.id)
 
+    # Serialization {{{
+    def as_dict(self, is_focused: bool = False, is_self: bool = False, is_active: bool = False) -> WindowDict:
+        return {
+            'id': self.id,
+            'is_focused': is_focused,
+            'is_active': is_active,
+            'title': self.title,
+            'pid': self.child.pid,
+            'cwd': self.child.current_cwd or self.child.cwd,
+            'cmdline': self.child.cmdline,
+            'last_reported_cmdline': self.last_cmd_cmdline,
+            'last_cmd_exit_status': self.last_cmd_exit_status,
+            'env': self.child.environ or self.child.final_env,
+            'foreground_processes': self.child.foreground_processes,
+            'is_self': is_self,
+            'at_prompt': self.at_prompt,
+            'lines': self.screen.lines,
+            'columns': self.screen.columns,
+            'user_vars': self.user_vars,
+            'created_at': self.created_at,
+            'in_alternate_screen': self.screen.is_using_alternate_linebuf(),
+        }
+
+    def serialize_state(self) -> dict[str, Any]:
+        ans = {
+            'version': 1,
+            'id': self.id,
+            'child_title': self.child_title,
+            'override_title': self.override_title,
+            'default_title': self.default_title,
+            'title_stack': list(self.title_stack),
+            'allow_remote_control': self.allow_remote_control,
+            'remote_control_passwords': self.remote_control_passwords,
+            'cwd': self.child.current_cwd or self.child.cwd,
+            'env': self.child.environ,
+            'cmdline': self.child.cmdline,
+            'last_reported_cmdline': self.last_cmd_cmdline,
+            'last_cmd_exit_status': self.last_cmd_exit_status,
+            'margin': self.margin.serialize(),
+            'user_vars': self.user_vars,
+            'padding': self.padding.serialize(),
+        }
+        if self.window_custom_type:
+            ans['window_custom_type'] = self.window_custom_type
+        if self.overlay_type is not OverlayType.transient:
+            ans['overlay_type'] = self.overlay_type.value
+        if self.user_vars:
+            ans['user_vars'] = self.user_vars
+        return ans
+
     @property
     def cwd_for_serialization(self) -> str:
         cwd = self.get_cwd_of_child(oldest=False) or self.get_cwd_of_child(oldest=True) or self.child.cwd
@@ -2055,7 +2056,7 @@ class Window:
         ans.insert(1, unserialize_launch_flag + json.dumps(unserialize_data))
         ans.extend(cmd)
         return ans
-
+    # }}}
 
     # actions {{{
 
