@@ -627,23 +627,23 @@ class TabBar:
         if opts.tab_bar_margin_height:
             if opts.tab_bar_edge == BOTTOM_EDGE:
                 if opts.tab_bar_margin_height.outer:
-                    blank_rects.append(Border(0, tab_bar.bottom + 1, vw, vh, bg))
+                    blank_rects.append(Border(0, tab_bar.bottom, vw, vh, bg))
                 if opts.tab_bar_margin_height.inner:
-                    blank_rects.append(Border(0, central.bottom + 1, vw, vh, bg))
+                    blank_rects.append(Border(0, central.bottom, vw, vh, bg))
             else: # top
                 if opts.tab_bar_margin_height.outer:
                     blank_rects.append(Border(0, 0, vw, tab_bar.top, bg))
                 if opts.tab_bar_margin_height.inner:
-                    blank_rects.append(Border(0, tab_bar.bottom + 1, vw, central.top, bg))
+                    blank_rects.append(Border(0, tab_bar.bottom, vw, central.top, bg))
         g = self.window_geometry
         left_bg = right_bg = bg
         if opts.tab_bar_margin_color is None or opts.tab_bar_margin_width == 0:
             left_bg = BorderColor.tab_bar_left_edge_color
             right_bg = BorderColor.tab_bar_right_edge_color
         if g.left > 0:
-            blank_rects.append(Border(0, g.top, g.left, g.bottom + 1, left_bg))
+            blank_rects.append(Border(0, g.top, g.left, g.bottom, left_bg))
         if g.right - 1 < vw:
-            blank_rects.append(Border(g.right - 1, g.top, vw, g.bottom + 1, right_bg))
+            blank_rects.append(Border(g.right - 1, g.top, vw, g.bottom, right_bg))
         self.blank_rects = tuple(blank_rects)
 
     def layout(self) -> None:

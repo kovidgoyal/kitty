@@ -612,7 +612,7 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
                 break;
         }
         tab_bar->left = central->left; tab_bar->right = central->right;
-        tab_bar->bottom = tab_bar->top + tab_bar_height;
+        tab_bar->bottom = tab_bar->top + os_window->fonts_data->fcm.cell_height;
     } else {
         zero_at_ptr(tab_bar);
         central->left = 0; central->top = 0; central->right = os_window->viewport_width;
