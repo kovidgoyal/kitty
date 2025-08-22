@@ -129,7 +129,6 @@ class Tab:  # {{{
     has_indeterminate_progress: bool = False
     last_focused_window_with_progress_id: int = 0
     allow_relayouts: bool = True
-    created_in_session_name: str = ''
 
     def __init__(
         self,
@@ -1016,10 +1015,10 @@ class TabManager:  # {{{
         if startup_session is not None:
             self.add_tabs_from_session(startup_session)
 
-    def add_tabs_from_session(self, session: SessionType) -> None:
+    def add_tabs_from_session(self, session: SessionType, session_name: str = '') -> None:
         before = len(self.tabs)
         for t in session.tabs:
-            tab = Tab(self, session_tab=t, session_name=self.created_in_session_name)
+            tab = Tab(self, session_tab=t, session_name=session_name or self.created_in_session_name)
             self._add_tab(tab)
         num_added = len(self.tabs) - before
         self._set_active_tab(max(0, min(num_added + session.active_tab_idx, len(self.tabs) - 1)))

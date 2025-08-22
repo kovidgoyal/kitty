@@ -379,7 +379,7 @@ def create_session(boss: BossType, path: str) -> str:
                 os_window_id = boss.add_os_window(s)
             else:
                 os_window_id = tm.os_window_id
-                tm.add_tabs_from_session(s)
+                tm.add_tabs_from_session(s, session_name)
         else:
             os_window_id = boss.add_os_window(s)
         if s.focus_os_window:
