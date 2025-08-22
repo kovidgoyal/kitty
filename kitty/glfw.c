@@ -987,11 +987,19 @@ do_toggle_fullscreen(OSWindow *w, unsigned int flags, bool restore_sizes) {
     glfwGetWindowSize(w->handle, &width, &height);
     if (!global_state.is_wayland) glfwGetWindowPos(w->handle, &x, &y);
     bool was_maximized = glfwGetWindowAttrib(w->handle, GLFW_MAXIMIZED);
+    float background_opacity = w->background_opacity;
+    if (flags) {
+        w->background_opacity = 1.0;
+    }
     if (glfwToggleFullscreen(w->handle, flags)) {
         w->before_fullscreen.is_set = true;
+        w->before_fullscreen.background_opacity = background_opacity;
         w->before_fullscreen.w = width; w->before_fullscreen.h = height; w->before_fullscreen.x = x; w->before_fullscreen.y = y;
         w->before_fullscreen.was_maximized = was_maximized;
         return true;
+    }
+    if (w->before_fullscreen.is_set && flags) {
+        w->background_opacity = w->before_fullscreen.background_opacity;
     }
     if (w->before_fullscreen.is_set && restore_sizes) {
         glfwSetWindowSize(w->handle, w->before_fullscreen.w, w->before_fullscreen.h);

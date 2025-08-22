@@ -284,6 +284,7 @@ typedef struct {
     monotonic_t created_at;
     struct {
         int x, y, w, h;
+        float background_opacity;
         bool is_set, was_maximized;
     } before_fullscreen;
     int viewport_width, viewport_height, window_width, window_height;
