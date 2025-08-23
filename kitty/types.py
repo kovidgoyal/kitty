@@ -215,7 +215,7 @@ def modmap() -> dict[str, int]:
 
 if TYPE_CHECKING:
     from typing import Literal
-    ActionGroup = Literal['cp', 'sc', 'win', 'tab', 'mouse', 'mk', 'lay', 'misc', 'debug']
+    ActionGroup = Literal['cp', 'sc', 'win', 'tab', 'mouse', 'mk', 'lay', 'misc', 'debug', 'session']
 else:
     ActionGroup = str
 

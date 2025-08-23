@@ -122,7 +122,15 @@ from .notifications import NotificationManager
 from .options.types import Options, nullable_colors
 from .options.utils import MINIMUM_FONT_SIZE, KeyboardMode, KeyDefinition
 from .os_window_size import initial_window_size_func
-from .session import Session, create_sessions, default_save_as_session_opts, get_os_window_sizing_data, goto_session, save_as_session
+from .session import (
+    Session,
+    close_session_with_confirm,
+    create_sessions,
+    default_save_as_session_opts,
+    get_os_window_sizing_data,
+    goto_session,
+    save_as_session,
+)
 from .shaders import load_shader_programs
 from .simple_cli_definitions import grab_keyboard_docs
 from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
@@ -1025,7 +1033,7 @@ class Boss:
     def close_window(self) -> None:
         self.mark_window_for_close(self.window_for_dispatch)
 
-    def close_windows_with_confirmation_msg(self, windows: Iterable[Window], active_window: Window | None) -> tuple[str, int]:
+    def close_windows_with_confirmation_msg(self, windows: Iterable[Window], active_window: Window | None = None) -> tuple[str, int]:
         num_running_programs = 0
         num_background_programs = 0
         count_background = get_options().confirm_os_window_close[1]
@@ -1266,6 +1274,12 @@ class Boss:
         if self.current_visual_select is not None and self.current_visual_select.tab_id == tab.id:
             self.cancel_current_visual_select()
         for window in tab:
+            self.mark_window_for_close(window)
+
+    def close_windows_no_confirm(self, windows: Sequence[Window]) -> None:
+        if self.current_visual_select is not None:
+            self.cancel_current_visual_select()
+        for window in windows:
             self.mark_window_for_close(window)
 
     @ac('win', 'Toggle the fullscreen status of the active OS Window')
@@ -1537,6 +1551,14 @@ class Boss:
                 return w.created_in_session_name or t.created_in_session_name
             return t.created_in_session_name
         return ''
+
+    @property
+    def all_loaded_session_names(self) -> Iterator[str]:
+        seen = set()
+        for w in self.all_windows:
+            if w.created_in_session_name and w.created_in_session_name not in seen:
+                seen.add(w.created_in_session_name)
+                yield w.created_in_session_name
 
     def refresh_active_tab_bar(self) -> bool:
         tm = self.active_tab_manager
@@ -3057,13 +3079,28 @@ class Boss:
         )
         return q if isinstance(q, Window) else None
 
-    @ac('misc', 'Switch to the specified session, creating it if not already present. See :ref:`goto_session`.')
+    @ac('session', 'Switch to the specified session, creating it if not already present. See :ref:`goto_session`.')
     def goto_session(self, *cmdline: str) -> None:
         goto_session(self, cmdline)
 
-    @ac('misc', 'Save the current kitty state as a session file. See :ref:`save_as_session`.')
+    @ac('session', 'Save the current kitty state as a session file. See :ref:`save_as_session`.')
     def save_as_session(self, *cmdline: str) -> None:
         save_as_session(self, cmdline)
+
+    @ac('session', '''
+        Close a session, that is, close all windows that belong to the session.
+        Examples::
+            # Ask for the session to close
+            map f1 close_session
+            # Close the currently active session
+            map f1 close_session .
+            # Close session by name
+            map f1 close_session "my session"
+            # Close session by path to session file
+            map f1 close_session "/path/to/session/file.kitty-session"
+    ''')
+    def close_session(self, *cmdline: str) -> None:
+        close_session_with_confirm(self, cmdline)
 
     @ac('tab', 'Interactively select a tab to switch to')
     def select_tab(self) -> None:

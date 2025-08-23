@@ -61,6 +61,9 @@ easily swap between them, kitty has you covered. You can use the
 In this manner you can define as many projects/sessions as you like and easily
 switch between them with a keypress.
 
+You can also close sessions using the :ac:`close_session` action, which closes
+all windows in the session with a single keypress.
+
 
 Displaying the currently active session name
 ----------------------------------------------

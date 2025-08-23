@@ -27,6 +27,7 @@ groups: dict[ActionGroup, str] = {
     'lay': 'Layouts',
     'misc': 'Miscellaneous',
     'debug': 'Debugging',
+    'session': 'Sessions',
 }
 group_title = groups.__getitem__
 
