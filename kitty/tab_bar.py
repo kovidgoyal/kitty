@@ -52,6 +52,7 @@ class TabBarData(NamedTuple):
     total_progress: int
     last_focused_window_with_progress_id: int
     session_name: str
+    active_session_name: str
 
 
 class DrawData(NamedTuple):
@@ -278,6 +279,8 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int,
     eval_locals = {
         'index': index,
         'layout_name': tab.layout_name,
+        'session_name': tab.session_name,
+        'active_session_name': tab.active_session_name,
         'num_windows': tab.num_windows,
         'num_window_groups': tab.num_window_groups,
         'title': tab.title,

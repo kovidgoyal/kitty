@@ -1473,6 +1473,8 @@ use :code:`{sup.index}`. All data available is:
     The current layout name.
 :code:`session_name`
     The name of the kitty session file from which this tab was created, if any.
+:code:`active_session_name`
+    The name of the kitty session file from which the active window in this tab was created, if any.
 :code:`num_windows`
     The number of windows in the tab.
 :code:`num_window_groups`

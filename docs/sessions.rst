@@ -187,12 +187,13 @@ Making newly created windows join an existing session
 
 Normally, after activating a session, if you create new windows/tabs
 they don't belong to the session. If you would prefer to have them belong
-to the currently active session, you can use the :option:`launch --add-to-session`
-option, like this:
+to the currently active session, you can use the :ac:`new_window_with_cwd`
+and :ac:`new_tab_with_cwd` actions instead, like this::
 
-    map kitty_mod+enter launch --add-to-session=.
+    map kitty_mod+enter new_window_with_cwd
+    map kitty_mod+t new_tab_with_cwd
 
-This will cause newly created windows to belong to the currently active
+This will cause newly created windows and tabs to belong to the currently active
 session, if any. Note that adding a window to a session in this way is
 temporary, it does not edit the session file. If you wish to update the
 session file of the currently active session, you can use the following
@@ -201,6 +202,9 @@ mapping for it::
     map f5 save_as_session --relocatable --use-foreground-process --match=session:. .
 
 The two can be combined, using the :ac:`combine` action.
+For even more control of what session a window is added to use
+the :doc:`launch <launch>` command with the :option:`launch --add-to-session`
+flag.
 
 
 Sessions with remote connections

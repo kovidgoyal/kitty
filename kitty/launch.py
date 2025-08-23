@@ -26,6 +26,7 @@ class LaunchSpec(NamedTuple):
     args: list[str]
 
 
+# Options definition {{{
 env_docs = '''\
 type=list
 Environment variables to set in the child process. Can be specified multiple
@@ -148,10 +149,13 @@ flag to prevent the new window from closing when the connection is terminated.
 
 --add-to-session
 Add the newly created window/tab to the specified session. Use :code:`.` to add
-to the currently active session, if any. See :ref:`sessions`
-for what a session is and how to use one. Adding a newly created window to a session
-is purely temporary, it does not change the actual session file, for that you have
-to resave the session. Note that using this flag in a launch
+to the session of the :option:`source window <launch --source-window>`, if any. See :ref:`sessions`
+for what a session is and how to use one. By default, the window is added to the
+session of the :option:`source window <launch --source-window>` when :option:`launch --cwd`
+is set to use the the working directory from that window, otherwise the newly created window
+does not belong to any session. To force adding to no session, use the value :code:`!`.
+Adding a newly created window to a session is purely temporary, it does not change the actual
+session file, for that you have to resave the session. Note that using this flag in a launch
 command within a session file has no effect as the window is always added to the
 session belonging to that file.
 
@@ -415,6 +419,7 @@ When using :option:`--cwd`:code:`=current` or similar from a window that is runn
 the new window will run a local shell after disconnecting from the remote host, when this option
 is specified.
 """
+# }}}
 
 
 def parse_launch_args(args: Sequence[str] | None = None) -> LaunchSpec:
@@ -781,8 +786,14 @@ def _launch(
             child_death_callback(0, None)
     else:
         add_to_session = opts.add_to_session or ''
-        if add_to_session == '.':
-            add_to_session = boss.active_session
+        match add_to_session:
+            case '.':
+                add_to_session = source_window.created_in_session_name if source_window else ''
+            case '!':
+                add_to_session = ''
+            case '':
+                if kw['cwd_from'] is not None and source_window:
+                    add_to_session = source_window.created_in_session_name
         kw['hold'] = opts.hold
         if force_target_tab and target_tab is not None:
             tab = target_tab

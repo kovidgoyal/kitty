@@ -644,7 +644,14 @@ class Boss:
         else:
             sw = self.args_to_special_window(args, cwd_from) if args else None
         startup_session = next(create_sessions(get_options(), special_window=sw, cwd_from=cwd_from))
-        return self.add_os_window(startup_session)
+        startup_session.session_name = ''
+        ans = self.add_os_window(startup_session)
+        if cwd_from is not None and (sow := cwd_from.window) and (tm := self.os_window_map.get(ans)) and sow.created_in_session_name:
+            for tab in tm:
+                tab.created_in_session_name = sow.created_in_session_name
+                for w in tab:
+                    w.created_in_session_name = sow.created_in_session_name
+        return ans
 
     @ac('win', 'New OS Window')
     def new_os_window(self, *args: str) -> None:
@@ -2758,11 +2765,14 @@ class Boss:
             args = args[1:]
             allow_remote_control = True
         if args:
-            return tab.new_special_window(
+            w = tab.new_special_window(
                 self.args_to_special_window(args, cwd_from=cwd_from),
                 location=location, allow_remote_control=allow_remote_control)
         else:
-            return tab.new_window(cwd_from=cwd_from, location=location, allow_remote_control=allow_remote_control)
+            w = tab.new_window(cwd_from=cwd_from, location=location, allow_remote_control=allow_remote_control)
+        if cwd_from is not None and (sw := cwd_from.window):
+            w.created_in_session_name = sw.created_in_session_name
+        return w
 
     @ac('win', 'Create a new window')
     def new_window(self, *args: str) -> None:
