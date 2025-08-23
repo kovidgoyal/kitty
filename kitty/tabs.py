@@ -1153,17 +1153,16 @@ class TabManager:  # {{{
             self.set_active_tab_idx((self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs))
 
     def toggle_tab(self, match_expression: str) -> None:
-        tabs = set(get_boss().match_tabs(match_expression)) & set(self)
+        tabs = set(get_boss().match_tabs(match_expression, all_tabs=self))
         if not tabs:
             get_boss().show_error(_('No matching tab'), _('No tab found matching the expression: {}').format(match_expression))
             return
         if self.active_tab and self.active_tab in tabs:
             self.goto_tab(-1)
         else:
-            for x in self:
-                if x in tabs:
-                    self.set_active_tab(x)
-                    break
+            for x in tabs:
+                self.set_active_tab(x)
+                break
 
     def tab_at_location(self, loc: str) -> Tab | None:
         if loc == 'prev':
