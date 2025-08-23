@@ -1467,8 +1467,7 @@ class Window:
         self.kitten_result_processors.append(callback)
 
     def handle_overlay_ready(self, msg: memoryview) -> None:
-        boss = get_boss()
-        tab = boss.tab_for_window(self)
+        tab = self.tabref()
         if tab is not None:
             tab.move_window_to_top_of_group(self)
         if self.keys_redirected_till_ready_from:

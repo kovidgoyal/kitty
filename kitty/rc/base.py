@@ -390,8 +390,7 @@ class RemoteCommand:
                 raise MatchError(match, 'tabs')
             return tabs
         if window and payload_get('self') in (None, True):
-            q = boss.tab_for_window(window)
-            if q:
+            if q := window.tabref():
                 return [q]
         t = boss.active_tab
         if t:
