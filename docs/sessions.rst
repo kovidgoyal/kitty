@@ -192,6 +192,7 @@ and :ac:`new_tab_with_cwd` actions instead, like this::
 
     map kitty_mod+enter new_window_with_cwd
     map kitty_mod+t new_tab_with_cwd
+    map kitty_mod+n new_os_window_with_cwd
 
 This will cause newly created windows and tabs to belong to the currently active
 session, if any. Note that adding a window to a session in this way is
