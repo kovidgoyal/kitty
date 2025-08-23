@@ -2291,8 +2291,13 @@ int _glfwPlatformWindowBell(_GLFWwindow* window UNUSED)
 
 void _glfwPlatformFocusWindow(_GLFWwindow* window)
 {
-    // Make us the active application
+    if (_glfwPlatformWindowIconified(window)) {
+        // miniaturized windows return false in canBecomeKeyWindow therefore
+        // unminiaturize first
+        [window->ns.object deminiaturize:nil];
+    }
     if ([window->ns.object canBecomeKeyWindow]) {
+        // Make us the active application
         [NSApp activateIgnoringOtherApps:YES];
         [window->ns.object makeKeyAndOrderFront:nil];
     }
