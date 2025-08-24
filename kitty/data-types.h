@@ -221,9 +221,9 @@ typedef struct {
 } Cursor;
 
 typedef struct {
-    bool is_focused, render_even_when_unfocused;
+    bool is_focused, render_even_when_unfocused, is_visible;
     CursorShape shape;
-    unsigned int x, y;
+    unsigned x, y, multicursor_count;
     float opacity;
 } CursorRenderInfo;
 

@@ -1900,6 +1900,11 @@ screen_is_cursor_visible(const Screen *self) {
     return self->paused_rendering.expires_at ? self->paused_rendering.cursor_visible : self->modes.mDECTCEM;
 }
 
+unsigned
+screen_multi_cursor_count(const Screen *self) {
+    return self->paused_rendering.expires_at ? self->paused_rendering.extra_cursors.count : self->extra_cursors.count;
+}
+
 void
 screen_backspace(Screen *self) {
     screen_cursor_move(self, 1, -1, true);
@@ -3470,7 +3475,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         lnum = y - self->scrolled_by;
         linebuf_init_line(self->linebuf, lnum);
         if (self->linebuf->line->attrs.has_dirty_text ||
-            (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered.cursor_y == lnum))) {
+            (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered.cursor.y == lnum))) {
             render_line(fonts_data, self->linebuf->line, lnum, self->cursor, self->disable_ligatures, self->lc);
             screen_render_line_graphics(self, self->linebuf->line, y - self->scrolled_by);
             if (self->linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(

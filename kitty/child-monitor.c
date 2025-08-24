@@ -652,9 +652,7 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 
 static bool
 cursor_needs_render(Window *w) {
-#define cri w->render_data.screen->cursor_render_info
-    return w->cursor_opacity_at_last_render != cri.opacity || w->render_data.screen->last_rendered.cursor_x != cri.x || w->render_data.screen->last_rendered.cursor_y != cri.y || w->last_cursor_shape != cri.shape;
-#undef cri
+    return memcmp(&w->render_data.screen->last_rendered.cursor, &w->render_data.screen->cursor_render_info, sizeof(CursorRenderInfo)) != 0;
 }
 
 static bool
@@ -670,11 +668,13 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
         cursor = rd->screen->paused_rendering.expires_at ? &rd->screen->paused_rendering.cursor : rd->screen->cursor;
         ans->x = cursor->x; ans->y = cursor->y;
     }
-    ans->opacity = 0;
-    if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return cursor_needs_render(w);
+    ans->is_visible = false; ans->multicursor_count = 0; ans->opacity = 1;
+    if (rd->screen->scrolled_by) return cursor_needs_render(w);
+    ans->multicursor_count = screen_multi_cursor_count(rd->screen);
+    ans->is_visible = screen_is_cursor_visible(rd->screen);
+    if (!ans->is_visible && ans->multicursor_count == 0) return cursor_needs_render(w);
     monotonic_t time_since_start_blink = now - os_window->cursor_blink_zero_time;
     bool cursor_blinking = OPT(cursor_blink_interval) > 0 && !cursor->non_blinking && os_window->is_focused && (OPT(cursor_stop_blinking_after) == 0 || time_since_start_blink <= OPT(cursor_stop_blinking_after));
-    ans->opacity = 1;
     if (cursor_blinking) {
         if (animation_is_valid(OPT(animation.cursor))) {
             monotonic_t duration = OPT(cursor_blink_interval) * 2;
@@ -812,7 +812,6 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
             if (is_active_window) active_window = w;
             draw_cells(&WD, os_window, is_active_window, false, num_of_visible_windows == 1, w);
             if (WD.screen->start_visual_bell_at != 0) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
-            w->cursor_opacity_at_last_render = WD.screen->cursor_render_info.opacity; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }
     setup_os_window_for_rendering(os_window, tab, active_window, false);

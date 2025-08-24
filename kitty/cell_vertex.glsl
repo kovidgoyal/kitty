@@ -64,10 +64,8 @@ out float effective_text_alpha;
 const uint BYTE_MASK = uint(0xFF);
 const uint SPRITE_INDEX_MASK = uint(0x7fffffff);
 const uint SPRITE_COLORED_MASK = uint(0x80000000);
-const uint SPRITE_COLORED_SHIFT = uint(31);
-const uint ZERO = uint(0);
-const uint ONE = uint(1);
-const uint TWO = uint(2);
+const uint SPRITE_COLORED_SHIFT = 31u;
+const uint ONE = 1u;
 const uint DECORATION_MASK = uint({DECORATION_MASK});
 
 vec3 color_to_vec(uint c) {
@@ -168,9 +166,14 @@ CellData set_vertex_position() {
     sprite_pos = to_sprite_pos(pos, sprite_idx[0] & SPRITE_INDEX_MASK);
     colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
 #endif
-    float is_block_cursor = one_if_equal_zero_otherwise(cursor_shape, 1u);
-    float has_cursor = is_cursor(column, row);
-    return CellData(has_cursor, has_cursor * is_block_cursor, pos, cursor_shape_map[cursor_shape]);
+    float has_main_cursor = is_cursor(column, row);
+    float multicursor_shape = float((is_selected >> 2) & 3u);
+    float multicursor_uses_main_cursor_shape = float((is_selected >> 4) & ONE);
+    multicursor_shape = if_one_then(multicursor_uses_main_cursor_shape, cursor_shape, multicursor_shape);
+    float final_cursor_shape = if_one_then(has_main_cursor, cursor_shape, multicursor_shape);
+    float has_cursor = zero_or_one(final_cursor_shape);
+    float is_block_cursor = has_cursor * one_if_equal_zero_otherwise(final_cursor_shape, 1.0);
+    return CellData(has_cursor, is_block_cursor, pos, cursor_shape_map[int(final_cursor_shape)]);
 }
 
 float background_opacity_for(uint bg, uint colorval, float opacity_if_matched) {  // opacity_if_matched if bg == colorval else 1
@@ -261,7 +264,7 @@ void main() {
     foreground = color_to_vec(fg_as_uint);
     float has_dim = float((text_attrs >> DIM_SHIFT) & ONE);
     effective_text_alpha = inactive_text_alpha * mix(1.0, dim_opacity, has_dim);
-    float in_url = float((is_selected & TWO) >> 1);
+    float in_url = float((is_selected >> 1) & ONE);
     decoration_fg = if_one_then(in_url, color_to_vec(url_color), to_color(colors[2], fg_as_uint));
     // Selection
     vec3 selection_color = if_one_then(use_cell_bg_for_selection_fg, bg, color_to_vec(highlight_fg));

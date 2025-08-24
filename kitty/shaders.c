@@ -476,7 +476,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, C
     // Cursor position
     Line *line_for_cursor = NULL;
     rd->cursor_opacity = MAX(0, MIN(cursor->opacity, 1));
-    if (rd->cursor_opacity != 0) {
+    if (rd->cursor_opacity != 0 && cursor->is_visible) {
         rd->cursor_x1 = cursor->x, rd->cursor_y1 = cursor->y;
         rd->cursor_x2 = cursor->x, rd->cursor_y2 = cursor->y;
         CursorShape cs = (cursor->is_focused || OPT(cursor_shape_unfocused) == NO_CURSOR_SHAPE) ? cursor->shape : OPT(cursor_shape_unfocused);
@@ -559,8 +559,8 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     ensure_sprite_map(fonts_data);
     const Cursor *cursor = screen->paused_rendering.expires_at ? &screen->paused_rendering.cursor : screen->cursor;
 
-    bool cursor_pos_changed = cursor->x != screen->last_rendered.cursor_x
-                           || cursor->y != screen->last_rendered.cursor_y;
+    bool cursor_pos_changed = cursor->x != screen->last_rendered.cursor.x \
+                           || cursor->y != screen->last_rendered.cursor.y;
     bool disable_ligatures = screen->disable_ligatures == DISABLE_LIGATURES_CURSOR;
     bool screen_resized = screen->last_rendered.columns != screen->columns || screen->last_rendered.lines != screen->lines;
 
@@ -575,11 +575,6 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     if (screen->paused_rendering.expires_at) {
         if (!screen->paused_rendering.cell_data_updated) update_cell_data;
     } else if (screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || screen_resized || (disable_ligatures && cursor_pos_changed)) update_cell_data;
-
-    if (cursor_pos_changed) {
-        screen->last_rendered.cursor_x = cursor->x;
-        screen->last_rendered.cursor_y = cursor->y;
-    }
 
 #define update_selection_data { \
     sz = (size_t)screen->lines * screen->columns; \
@@ -607,6 +602,7 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
 #undef update_cell_data
     screen->last_rendered.columns = screen->columns;
     screen->last_rendered.lines = screen->lines;
+    screen->last_rendered.cursor = screen->cursor_render_info;
 
     return changed;
 }
