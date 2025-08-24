@@ -104,7 +104,7 @@ multiplexers that split a single screen know which split to send responses too.
 Clearing previously set multi-cursors
 ------------------------------------------
 
-The cursor at a cell is cleared by settings its shape to ``0``.
+The cursor at a cell is cleared by setting its shape to ``0``.
 The most common operation is to clear all previously set multi-cursors. This is
 easily done using the *rectangle* co-ordinate system above, like this::
 
