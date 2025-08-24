@@ -1325,7 +1325,7 @@ class TabManager:  # {{{
         location: str = 'last',
     ) -> Tab:
         idx = len(self.tabs)
-        tabs = self.tabs_to_be_shown_in_tab_bar_as_sequence
+        tabs = tuple(self.tabs_to_be_shown_in_tab_bar)
         orig_active_tab_idx = 0
         with suppress(ValueError):
             orig_active_tab_idx = tabs.index(self.active_tab)
@@ -1338,7 +1338,7 @@ class TabManager:  # {{{
             for w in t:
                 w.created_in_session_name = session_name
         self._add_tab(t)
-        tabs = tuple(tabs) + (t,)
+        tabs = tabs + (t,)
         if as_neighbor:
             location = 'after'
         if location == 'neighbor':
