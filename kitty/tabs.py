@@ -1166,17 +1166,8 @@ class TabManager:  # {{{
             return (t for t in self if t is at or t in m)
         return self.tabs
 
-    @property
-    def tabs_to_be_shown_in_tab_bar_as_sequence(self) -> Sequence[Tab]:
-        f = get_options().tab_bar_filter
-        if f:
-            at = self.active_tab
-            m = set(self.filtered_tabs(f))
-            return tuple(t for t in self if t is at or t in m)
-        return self.tabs
-
     def next_tab(self, delta: int = 1) -> None:
-        if (tabs := self.tabs_to_be_shown_in_tab_bar_as_sequence) is self.tabs:
+        if (len(tabs := tuple(self.tabs_to_be_shown_in_tab_bar))) == len(self.tabs):
             if (num := len(tabs)) > 1:
                 self.set_active_tab_idx((self.active_tab_idx + num + delta) % num)
         else:
@@ -1200,7 +1191,7 @@ class TabManager:  # {{{
                 break
 
     def tab_at_location(self, loc: str) -> Tab | None:
-        tabs = self.tabs_to_be_shown_in_tab_bar_as_sequence
+        tabs = tuple(self.tabs_to_be_shown_in_tab_bar)
         if loc == 'prev':
             if self.active_tab_history:
                 return self.tab_for_id(self.active_tab_history[-1])
@@ -1211,7 +1202,7 @@ class TabManager:  # {{{
         return None
 
     def goto_tab(self, tab_num: int) -> None:
-        tabs = self.tabs_to_be_shown_in_tab_bar_as_sequence
+        tabs = tuple(self.tabs_to_be_shown_in_tab_bar)
         if tab_num >= len(tabs):
             tab_num = max(0, len(tabs) - 1)
         if tab_num >= 0:
@@ -1304,7 +1295,7 @@ class TabManager:  # {{{
         return None
 
     def move_tab(self, delta: int = 1) -> None:
-        tabs = self.tabs_to_be_shown_in_tab_bar_as_sequence
+        tabs = tuple(self.tabs_to_be_shown_in_tab_bar)
         if len(tabs) > 1:
             idx = self.active_tab_idx
             new_active_tab = tabs[(idx + len(tabs) + delta) % len(tabs)]
@@ -1362,7 +1353,7 @@ class TabManager:  # {{{
 
     def remove(self, removed_tab: Tab) -> None:
         active_tab_before_removal = self.active_tab
-        tabs = self.tabs_to_be_shown_in_tab_bar_as_sequence
+        tabs = tuple(self.tabs_to_be_shown_in_tab_bar)
         self._remove_tab(removed_tab)
         while True:
             try:
@@ -1388,6 +1379,7 @@ class TabManager:  # {{{
                             tab_id = self.active_tab_history.pop()
                             next_active_tab = self.tab_for_id(tab_id)
                     case 'left':
+                        print(2222222222, tabs.index(active_tab_before_removal))
                         next_active_tab = tabs[(tabs.index(active_tab_before_removal) - 1 + len(tabs)) % len(tabs)]
                         remove_from_end_of_active_history(next_active_tab)
                     case 'right':
