@@ -709,6 +709,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
 #define TD os_window->tab_bar_render_data
     bool needs_render = os_window->needs_render;
     os_window->needs_render = false;
+    bool was_previously_rendered_with_layers = os_window->needs_layers;
     os_window->needs_layers = (
         !global_state.supports_framebuffer_srgb || effective_os_window_alpha(os_window) < 1.f ||
         os_window->live_resize.in_progress || (os_window->bgimage && os_window->bgimage->texture_id > 0)
@@ -790,7 +791,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
         }
     }
-    return needs_render;
+    return needs_render || was_previously_rendered_with_layers != os_window->needs_layers;
 }
 
 static void
