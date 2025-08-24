@@ -1338,6 +1338,7 @@ class TabManager:  # {{{
             for w in t:
                 w.created_in_session_name = session_name
         self._add_tab(t)
+        tabs = tuple(tabs) + (t,)
         if as_neighbor:
             location = 'after'
         if location == 'neighbor':
