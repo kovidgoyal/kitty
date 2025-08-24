@@ -174,6 +174,7 @@ static Line* range_line_(Screen *self, int y);
 void
 screen_reset(Screen *self) {
     screen_pause_rendering(self, false, 0);
+    self->extra_cursors.count = 0;
     self->main_pointer_shape_stack.count = 0; self->alternate_pointer_shape_stack.count = 0;
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
     if (screen_is_overlay_active(self)) {

@@ -147,4 +147,24 @@ Interaction with other terminal controls and state
     only by this protocol.
 
 **Clearing the screen**
+    The escape codes used to clear the screen (`ED <https://vt100.net/docs/vt510-rm/ED.html>`__)
+    with parameters 2, 3 and 22 must remove all extra cursors,
+    this is so that the clear command can be used by users to clear the screen of extra cursors.
 
+**Reset***
+    This must remove all extra cursors.
+
+**Alternate screen***
+    Switching between the main and alternate screens must remove all extra
+    cursors.
+
+**Scrolling**
+    The index (IND) and reverse index (RI) escape codes that cause screen
+    contents to scroll into scrollback or off screen must not affect
+    the extra cursors in any way. They remain at exactly the same position.
+    It is upto applications to manage extra cursor positions when using these
+    escape codes if needed. There are not a lot of use cases for scrolling
+    extra cursors with screne content, since extra cursors are meant to be
+    ephemeral and on screen only, not in scrollback. This allows terminals
+    to avoid the extra overhead of adjusting positions of the extra cursors
+    on every scroll.
