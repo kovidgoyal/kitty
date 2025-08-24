@@ -1626,6 +1626,13 @@ class TestScreen(BaseTest):
         self.ae(a(2, (1, 2), (1, 3)), {-1: {(2, 3), (2, 2)}, 2: {(1, 2), (1, 3)}})
         self.ae(a(0, (1, 2), (2, 3)), {-1: {(2, 2)}, 2: {(1, 3)}})
         self.ae(a(0, region=True), {})
+        s.cursor.x, s.cursor.y = 1, 2
+        parse_bytes(s, b'\x1b[>3;0 q')  # ]
+        self.ae(current(), {3: {(1, 2)}})
+        parse_bytes(s, b'\x1b[>3;2:3 q')  # ]
+        self.ae(current(), {3: {(1, 2)}})
+        parse_bytes(s, b'\x1b[>0;4:3:1:4 q')  # ]
+        self.ae(current(), {})
 
 
 def detect_url(self, scale=1):
