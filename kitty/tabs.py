@@ -64,7 +64,7 @@ class TabMouseEvent(NamedTuple):
     modifiers: int
     action: int
     at: float
-    tab_idx: int | None
+    tab_id: int = 0
 
 
 class TabDict(TypedDict):
@@ -926,7 +926,10 @@ class Tab:  # {{{
     def list_groups(self) -> list[dict[str, Any]]:
         return [g.as_simple_dict() for g in self.windows.groups]
 
-    def matches_query(self, field: str, query: str, active_tab_manager: Optional['TabManager'] = None) -> bool:
+    def matches_query(
+        self, field: str, query: str, active_tab_manager: Optional['TabManager'] = None,
+        active_session: str = '', most_recent_session: str = ''
+    ) -> bool:
         if field == 'title':
             return re.search(query, self.effective_title) is not None
         if field == 'id':
@@ -962,8 +965,11 @@ class Tab:  # {{{
                 return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager and self.os_window_id == last_focused_os_window_id()
             return False
         if field == 'session':
-            if query == '.':
-                return self.created_in_session_name == get_boss().active_session
+            match query:
+                case '.':
+                    return self.created_in_session_name == active_session
+                case '~':
+                    return self.created_in_session_name == active_session or self.created_in_session_name == most_recent_session
             return re.search(query, self.created_in_session_name) is not None
         return False
 
@@ -1148,9 +1154,38 @@ class TabManager:  # {{{
             h.pop()
         return True
 
+    def filtered_tabs(self, filter_expression: str) -> Iterator[Tab]:
+        yield from get_boss().match_tabs(filter_expression, all_tabs=self)
+
+    @property
+    def tabs_to_be_shown_in_tab_bar(self) -> Iterable[Tab]:
+        f = get_options().tab_bar_filter
+        if f:
+            at = self.active_tab
+            m = set(self.filtered_tabs(f))
+            return (t for t in self if t is at or t in m)
+        return self.tabs
+
+    @property
+    def tabs_to_be_shown_in_tab_bar_as_sequence(self) -> Sequence[Tab]:
+        f = get_options().tab_bar_filter
+        if f:
+            at = self.active_tab
+            m = set(self.filtered_tabs(f))
+            return tuple(t for t in self if t is at or t in m)
+        return self.tabs
+
     def next_tab(self, delta: int = 1) -> None:
-        if len(self.tabs) > 1:
-            self.set_active_tab_idx((self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs))
+        if (tabs := self.tabs_to_be_shown_in_tab_bar_as_sequence) is self.tabs:
+            if (num := len(tabs)) > 1:
+                self.set_active_tab_idx((self.active_tab_idx + num + delta) % num)
+        else:
+            num = len(tabs)
+            at = self.active_tab
+            if at is not None:
+                active_idx = tabs.index(at)
+                new_active_tab = (active_idx + num + delta) % num
+                self.set_active_tab(tabs[new_active_tab])
 
     def toggle_tab(self, match_expression: str) -> None:
         tabs = set(get_boss().match_tabs(match_expression, all_tabs=self))
@@ -1165,32 +1200,29 @@ class TabManager:  # {{{
                 break
 
     def tab_at_location(self, loc: str) -> Tab | None:
+        tabs = self.tabs_to_be_shown_in_tab_bar_as_sequence
         if loc == 'prev':
             if self.active_tab_history:
-                old_active_tab_id = self.active_tab_history[-1]
-                for idx, tab in enumerate(self.tabs):
-                    if tab.id == old_active_tab_id:
-                        return tab
+                return self.tab_for_id(self.active_tab_history[-1])
         elif loc in ('left', 'right'):
             delta = -1 if loc == 'left' else 1
-            idx = (len(self.tabs) + self.active_tab_idx + delta) % len(self.tabs)
-            return self.tabs[idx]
+            idx = (len(tabs) + self.active_tab_idx + delta) % len(tabs)
+            return tabs[idx]
         return None
 
     def goto_tab(self, tab_num: int) -> None:
-        if tab_num >= len(self.tabs):
-            tab_num = max(0, len(self.tabs) - 1)
+        tabs = self.tabs_to_be_shown_in_tab_bar_as_sequence
+        if tab_num >= len(tabs):
+            tab_num = max(0, len(tabs) - 1)
         if tab_num >= 0:
-            self.set_active_tab_idx(tab_num)
+            self.set_active_tab(tabs[tab_num])
         elif self.active_tab_history:
             try:
                 old_active_tab_id = self.active_tab_history[tab_num]
             except IndexError:
                 old_active_tab_id = self.active_tab_history[0]
-            for idx, tab in enumerate(self.tabs):
-                if tab.id == old_active_tab_id:
-                    self.set_active_tab_idx(idx)
-                    break
+            if tab := self.tab_for_id(old_active_tab_id):
+                self.set_active_tab(tab)
 
     def nth_active_tab(self, n: int = 0) -> Tab | None:
         if n <= 0:
@@ -1259,24 +1291,11 @@ class TabManager:  # {{{
 
     @property
     def active_tab(self) -> Tab | None:
-        try:
-            return self.tabs[self.active_tab_idx] if self.tabs else None
-        except Exception:
-            return None
+        return self.tabs[self.active_tab_idx] if 0 <= self.active_tab_idx < len(self.tabs) else None
 
     @property
     def active_window(self) -> Window | None:
-        t = self.active_tab
-        if t is not None:
-            return t.active_window
-        return None
-
-    @property
-    def number_of_windows(self) -> int:
-        count = 0
-        for tab in self:
-            count += len(tab)
-        return count
+        return t.active_window if (t := self.active_tab) else None
 
     def tab_for_id(self, tab_id: int) -> Tab | None:
         for t in self.tabs:
@@ -1285,9 +1304,11 @@ class TabManager:  # {{{
         return None
 
     def move_tab(self, delta: int = 1) -> None:
-        if len(self.tabs) > 1:
+        tabs = self.tabs_to_be_shown_in_tab_bar_as_sequence
+        if len(tabs) > 1:
             idx = self.active_tab_idx
-            nidx = (idx + len(self.tabs) + delta) % len(self.tabs)
+            new_active_tab = tabs[(idx + len(tabs) + delta) % len(tabs)]
+            nidx = self.tabs.index(new_active_tab)
             step = 1 if idx < nidx else -1
             for i in range(idx, nidx, step):
                 self.tabs[i], self.tabs[i + step] = self.tabs[i + step], self.tabs[i]
@@ -1304,7 +1325,10 @@ class TabManager:  # {{{
         location: str = 'last',
     ) -> Tab:
         idx = len(self.tabs)
-        orig_active_tab_idx = self.active_tab_idx
+        tabs = self.tabs_to_be_shown_in_tab_bar_as_sequence
+        orig_active_tab_idx = 0
+        with suppress(ValueError):
+            orig_active_tab_idx = tabs.index(self.active_tab)
         session_name = ''
         if cwd_from is not None and (sw := cwd_from.window):
             session_name = sw.created_in_session_name
@@ -1320,11 +1344,12 @@ class TabManager:  # {{{
             location = 'after'
         if location == 'default':
             location = 'last'
-        if len(self.tabs) > 1 and location != 'last':
+        if len(tabs) > 1 and location != 'last':
             if location == 'first':
                 desired_idx = 0
             else:
                 desired_idx = orig_active_tab_idx + (0 if location == 'before' else 1)
+            desired_idx = self.tabs.index(tabs[desired_idx])
             if idx != desired_idx:
                 for i in range(idx, desired_idx, -1):
                     self.tabs[i], self.tabs[i-1] = self.tabs[i-1], self.tabs[i]
@@ -1332,64 +1357,63 @@ class TabManager:  # {{{
                 idx = desired_idx
         self._set_active_tab(idx)
         self.mark_tab_bar_dirty()
-        return self.tabs[idx]
+        return t
 
-    def remove(self, tab: Tab) -> None:
+    def remove(self, removed_tab: Tab) -> None:
         active_tab_before_removal = self.active_tab
-        active_tab_needs_to_change = active_tab_before_removal is tab
-        self._remove_tab(tab)
+        tabs = self.tabs_to_be_shown_in_tab_bar_as_sequence
+        self._remove_tab(removed_tab)
         while True:
             try:
-                self.active_tab_history.remove(tab.id)
+                self.active_tab_history.remove(removed_tab.id)
             except ValueError:
                 break
 
-        def idx_for_id(tab_id: int) -> int:
-            for idx, qtab in enumerate(self.tabs):
-                if qtab.id == tab_id:
-                    return idx
-            return -1
-
-        def remove_from_end_of_active_history(idx: int) -> None:
-            while self.active_tab_history and idx_for_id(self.active_tab_history[-1]) == idx:
+        def remove_from_end_of_active_history(tab: Tab) -> None:
+            while self.active_tab_history and self.active_tab_history[-1] == tab.id:
                 self.active_tab_history.pop()
 
-        if active_tab_needs_to_change:
-            next_active_tab = -1
-            tss = get_options().tab_switch_strategy
-            if tss == 'previous':
-                while self.active_tab_history and next_active_tab < 0:
-                    tab_id = self.active_tab_history.pop()
-                    next_active_tab = idx_for_id(tab_id)
-            elif tss == 'left':
-                next_active_tab = max(0, self.active_tab_idx - 1)
-                remove_from_end_of_active_history(next_active_tab)
-            elif tss == 'right':
-                next_active_tab = min(self.active_tab_idx, len(self.tabs) - 1)
-                remove_from_end_of_active_history(next_active_tab)
-            elif tss == 'last':
-                next_active_tab = len(self.tabs) - 1
-                remove_from_end_of_active_history(next_active_tab)
-
-            if next_active_tab < 0:
-                next_active_tab = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
-
-            self._set_active_tab(next_active_tab, store_in_history=False)
-        elif active_tab_before_removal is not None:
-            try:
-                idx = self.tabs.index(active_tab_before_removal)
-            except Exception:
-                pass
+        if active_tab_before_removal is removed_tab:
+            if len(self.tabs) == 0:
+                self._active_tab_idx = 0
+            elif len(self.tabs) == 1:
+                remove_from_end_of_active_history(self.tabs[0])
+                self._set_active_tab(0, store_in_history=False)
             else:
-                self._active_tab_idx = idx
+                next_active_tab: Tab | None = None
+                match get_options().tab_switch_strategy:
+                    case 'previous':
+                        while self.active_tab_history and next_active_tab is None:
+                            tab_id = self.active_tab_history.pop()
+                            next_active_tab = self.tab_for_id(tab_id)
+                    case 'left':
+                        next_active_tab = tabs[(tabs.index(active_tab_before_removal) - 1 + len(tabs)) % len(tabs)]
+                        remove_from_end_of_active_history(next_active_tab)
+                    case 'right':
+                        next_active_tab = tabs[(tabs.index(active_tab_before_removal) + 1) % len(tabs)]
+                        remove_from_end_of_active_history(next_active_tab)
+                    case 'last':
+                        next_active_tab = tabs[-1]
+                        remove_from_end_of_active_history(next_active_tab)
+                if next_active_tab not in self.tabs:
+                    next_active_tab = self.tabs[max(0, min(self.active_tab_idx, len(self.tabs) - 1))]
+                self._set_active_tab(self.tabs.index(next_active_tab), store_in_history=False)
+        else:
+            if len(self.tabs):
+                if active_tab_before_removal is None:
+                    self._set_active_tab(0, store_in_history=False)
+                else:
+                    self._set_active_tab(self.tabs.index(active_tab_before_removal), store_in_history=False)
+            else:
+                self._active_tab_idx = 0
         self.mark_tab_bar_dirty()
-        tab.destroy()
+        removed_tab.destroy()
 
     @property
     def tab_bar_data(self) -> list[TabBarData]:
         at = self.active_tab
         ans = []
-        for t in self.tabs:
+        for t in self.tabs_to_be_shown_in_tab_bar:
             title = t.name or t.title or appname
             needs_attention = False
             has_activity_since_last_focus = False
@@ -1409,16 +1433,16 @@ class TabManager:  # {{{
         return ans
 
     def handle_click_on_tab(self, x: int, button: int, modifiers: int, action: int) -> None:
-        i = self.tab_bar.tab_at(x)
+        tab = self.tab_for_id(self.tab_bar.tab_id_at(x))
         now = monotonic()
-        if i is None:
+        if tab is None:
             if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and len(self.recent_mouse_events) > 2:
                 ci = get_click_interval()
                 prev, prev2 = self.recent_mouse_events[-1], self.recent_mouse_events[-2]
                 if (
                     prev.button == button and prev2.button == button and
                     prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
-                    prev.tab_idx is None and prev2.tab_idx is None and
+                    prev.tab_id == 0 and prev2.tab_id == 0 and
                     now - prev.at <= ci and now - prev2.at <= 2 * ci
                 ):  # double click
                     self.new_tab()
@@ -1426,13 +1450,12 @@ class TabManager:  # {{{
                     return
         else:
             if action == GLFW_PRESS and button == GLFW_MOUSE_BUTTON_LEFT:
-                self.set_active_tab_idx(i)
+                self.set_active_tab(tab)
             elif button == GLFW_MOUSE_BUTTON_MIDDLE and action == GLFW_RELEASE and self.recent_mouse_events:
                 p = self.recent_mouse_events[-1]
-                if p.button == button and p.action == GLFW_PRESS and p.tab_idx == i:
-                    tab = self.tabs[i]
+                if p.button == button and p.action == GLFW_PRESS and p.tab_id == tab.id:
                     get_boss().close_tab(tab)
-        self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, i))
+        self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, tab.id if tab else 0))
         if len(self.recent_mouse_events) > 5:
             self.recent_mouse_events.popleft()
 

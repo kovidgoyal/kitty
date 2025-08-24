@@ -1270,6 +1270,9 @@ class Parser:
     def tab_bar_edge(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_edge'] = tab_bar_edge(val)
 
+    def tab_bar_filter(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['tab_bar_filter'] = str(val)
+
     def tab_bar_margin_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_margin_color'] = to_color_or_none(val)
 

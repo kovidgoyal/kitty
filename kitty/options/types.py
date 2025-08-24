@@ -432,6 +432,7 @@ option_names = (
     'tab_bar_align',
     'tab_bar_background',
     'tab_bar_edge',
+    'tab_bar_filter',
     'tab_bar_margin_color',
     'tab_bar_margin_height',
     'tab_bar_margin_width',
@@ -604,6 +605,7 @@ class Options:
     tab_bar_align: choices_for_tab_bar_align = 'left'
     tab_bar_background: kitty.fast_data_types.Color | None = None
     tab_bar_edge: int = 8
+    tab_bar_filter: str = ''
     tab_bar_margin_color: kitty.fast_data_types.Color | None = None
     tab_bar_margin_height: TabBarMarginHeight = TabBarMarginHeight(outer=0, inner=0)
     tab_bar_margin_width: float = 0

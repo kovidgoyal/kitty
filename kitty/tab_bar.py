@@ -512,6 +512,19 @@ def load_custom_draw_tab() -> DrawTabFunc:
     return draw_tab
 
 
+class CellRange(NamedTuple):
+    start: int
+    end: int
+
+
+class TabExtent(NamedTuple):
+    tab_id: int
+    cell_range: CellRange
+
+    def shifted(self, shift: int) -> 'TabExtent':
+        return TabExtent(self.tab_id, CellRange(self.cell_range.start + shift, self.cell_range.end + shift))
+
+
 class TabBar:
 
     def __init__(self, os_window_id: int):
@@ -519,7 +532,7 @@ class TabBar:
         self.num_tabs = 1
         self.data_buffer_size = 0
         self.blank_rects: tuple[Border, ...] = ()
-        self.cell_ranges: list[tuple[int, int]] = []
+        self.tab_extents: Sequence[TabExtent] = ()
         self.laid_out_once = False
         self.apply_options()
 
@@ -673,7 +686,7 @@ class TabBar:
         last_tab = data[-1] if data else None
         ed = ExtraData()
 
-        def draw_tab(i: int, tab: TabBarData, cell_ranges: list[tuple[int, int]], max_tab_length: int) -> None:
+        def draw_tab(i: int, tab: TabBarData, cell_ranges: list[TabExtent], max_tab_length: int) -> None:
             ed.prev_tab = data[i - 1] if i > 0 else None
             ed.next_tab = data[i + 1] if i + 1 < len(data) else None
             s.cursor.bg = as_rgb(self.draw_data.tab_bg(t))
@@ -682,7 +695,7 @@ class TabBar:
             before = s.cursor.x
             end = self.draw_func(self.draw_data, s, t, before, max_tab_length, i + 1, t is last_tab, ed)
             s.cursor.bg = s.cursor.fg = 0
-            cell_ranges.append((before, end))
+            cell_ranges.append(TabExtent(tab_id=tab.tab_id, cell_range=CellRange(before, end)))
             if not ed.for_layout and t is not last_tab and s.cursor.x > s.columns - max_tab_lengths[i+1]:
                 # Stop if there is no space for next tab
                 s.cursor.x = s.columns - 2
@@ -722,36 +735,36 @@ class TabBar:
 
         s.cursor.x = 0
         s.erase_in_line(2, False)
-        cr: list[tuple[int, int]] = []
+        cr: list[TabExtent] = []
         ed.for_layout = False
         for i, t in enumerate(data):
             try:
                 draw_tab(i, t, cr, max_tab_lengths[i])
             except StopIteration:
                 break
-        self.cell_ranges = cr
+        self.tab_extents = cr
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         self.align()
         update_tab_bar_edge_colors(self.os_window_id)
 
     def align_with_factor(self, factor: int = 1) -> None:
-        if not self.cell_ranges:
+        if not self.tab_extents:
             return
-        end = self.cell_ranges[-1][1]
+        end = self.tab_extents[-1].cell_range[1]
         if end < self.screen.columns - 1:
             shift = (self.screen.columns - end) // factor
             self.screen.cursor.x = 0
             self.screen.insert_characters(shift)
-            self.cell_ranges = [(s + shift, e + shift) for (s, e) in self.cell_ranges]
+            self.tab_extents = tuple(te.shifted(shift) for te in self.tab_extents)
 
     def destroy(self) -> None:
         self.screen.reset_callbacks()
         del self.screen
 
-    def tab_at(self, x: int) -> int | None:
+    def tab_id_at(self, x: int) -> int:
         if self.laid_out_once:
             x = (x - self.window_geometry.left) // self.cell_width
-            for i, (a, b) in enumerate(self.cell_ranges):
-                if a <= x <= b:
-                    return i
-        return None
+            for te in self.tab_extents:
+                if te.cell_range.start <= x <= te.cell_range.end:
+                    return te.tab_id
+        return 0

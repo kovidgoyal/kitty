@@ -1386,6 +1386,18 @@ The tab bar style, can be one of:
 '''
     )
 
+opt('tab_bar_filter', '', long_text='''
+A :ref:`search expression <search_syntax>`. Only tabs that match this expression
+will be shown in the tab bar. The currently active tab is :italic:`always` shown,
+regardless of whether it matches or not. When using this option, the tab bar may
+be displayed with less tabs than specified in :opt:`tab_bar_min_tabs`, as evaluating
+the filter is expensive and is done only at display time. This is most useful when
+using :ref:`sessions <sessions>`. An expression of :code:`session:~ or session:^$`
+will show only tabs that belong to the current session or no session. The various
+tab navigation actions such as :ac:`goto_tab`, :ac:`next_tab`, :ac:`previous_tab`, etc.
+are automatically restricted to work only on matching tabs.
+''')
+
 opt('tab_bar_align', 'left',
     choices=('left', 'center', 'right'),
     long_text='''

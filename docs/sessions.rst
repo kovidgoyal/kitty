@@ -229,6 +229,20 @@ When you run the session file in another kitty instance you will see both
 windows re-created, as expected with the correct working directories and
 running programs.
 
+Managing multi tab sessions in a single OS Window
+----------------------------------------------------
+
+The natural way to organise sessions in kitty is one per :term:`os_window`.
+However, if you prefer to manage multiple sessions in a single OS Window, you
+can configure the kitty tab bar to only show tabs that belong to the currently
+active session. To do so, use :opt:`tab_bar_filter` in :file:`kitty.conf` set::
+
+    tab_bar_filter session:~ or session:^$
+
+This will restrict the tab bar to only showing tabs from the currently active
+session as well tabs that do not belong to any session. Furthermore, when you
+are in a window or tab that does not belong to any session, the tab bar will
+show the tabs from the most recent active session, to maintain context.
 
 Keyword reference
 ---------------------

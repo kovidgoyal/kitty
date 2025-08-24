@@ -396,6 +396,10 @@ def append_to_session_history(name: str) -> None:
     goto_session_history.append(name)
 
 
+def most_recent_session() -> str:
+    return goto_session_history[-1] if goto_session_history else ''
+
+
 def switch_to_session(boss: BossType, session_name: str) -> bool:
     w = window_for_session_name(boss, session_name)
     if w is not None:

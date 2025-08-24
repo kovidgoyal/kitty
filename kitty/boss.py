@@ -129,6 +129,7 @@ from .session import (
     default_save_as_session_opts,
     get_os_window_sizing_data,
     goto_session,
+    most_recent_session,
     save_as_session,
 )
 from .shaders import load_shader_programs
@@ -546,6 +547,7 @@ class Boss:
         wids = {w.id for w in all_windows}
         window_id_limit = max(wids, default=-1) + 1
         active_session = self.active_session
+        prev_active_session = most_recent_session()
 
         def get_matches(location: str, query: str, candidates: set[int]) -> set[int]:
             if location == 'id' and query.startswith('-'):
@@ -555,7 +557,7 @@ class Boss:
                     return set()
                 if q < 0:
                     query = str(window_id_limit + q)
-            return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab, self_window, active_session)}
+            return {wid for wid in candidates if self.window_id_map[wid].matches_query(location, query, tab, self_window, active_session, prev_active_session)}
 
         for wid in search(match, (
             'id', 'title', 'pid', 'cwd', 'cmdline', 'num', 'env', 'var', 'recent', 'state', 'neighbor', 'session',
@@ -574,6 +576,8 @@ class Boss:
         tim = {t.id: t for t in all_tabs}
         tab_id_limit = max(tim, default=-1) + 1
         window_id_limit = max(self.window_id_map, default=-1) + 1
+        active_session = self.active_session
+        prev_active_session = most_recent_session()
 
         def get_matches(location: str, query: str, candidates: set[int]) -> set[int]:
             if location in ('id', 'window_id') and query.startswith('-'):
@@ -584,7 +588,7 @@ class Boss:
                 if q < 0:
                     limit = tab_id_limit if location == 'id' else window_id_limit
                     query = str(limit + q)
-            return {wid for wid in candidates if tim[wid].matches_query(location, query, tm)}
+            return {wid for wid in candidates if tim[wid].matches_query(location, query, tm, active_session, prev_active_session)}
 
         found = False
         for tid in search(match, (
