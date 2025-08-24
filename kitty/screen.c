@@ -1900,11 +1900,6 @@ screen_is_cursor_visible(const Screen *self) {
     return self->paused_rendering.expires_at ? self->paused_rendering.cursor_visible : self->modes.mDECTCEM;
 }
 
-unsigned
-screen_multi_cursor_count(const Screen *self) {
-    return self->paused_rendering.expires_at ? self->paused_rendering.extra_cursors.count : self->extra_cursors.count;
-}
-
 void
 screen_backspace(Screen *self) {
     screen_cursor_move(self, 1, -1, true);
@@ -2862,6 +2857,11 @@ screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
 #define VAL_TY uint8_t
 #include "kitty-verstable.h"
 
+unsigned
+screen_multi_cursor_count(const Screen *self) {
+    return self->paused_rendering.expires_at ? self->paused_rendering.extra_cursors.count : self->extra_cursors.count;
+}
+
 void
 screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_params) {
     // printf("%d;", queried_shape); for (unsigned i = 0; i < num_params; i++) {printf("%d:", params[i]);} printf("\n");
@@ -2893,7 +2893,13 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
     }
     self->extra_cursors.dirty = true;
     int type = params[0]; params++; num_params--;
+    int extra[2];
     switch (type) {
+    case 0:
+        extra[0] = MIN(self->cursor->y, self->lines-1) + 1;
+        extra[1] = MIN(self->cursor->x, self->columns-1) + 1;
+        params = extra; num_params = 2;
+        /* fallthrough */
     case 2: {
         multi_cursor_map s; vt_init(&s);
         for (unsigned i = 0; i < self->extra_cursors.count; i++) {
@@ -2914,7 +2920,7 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
         vt_cleanup(&s);
     } break;
     case 4: {
-        if (!num_params) {  // full screen
+        if (num_params < 4) {  // full screen
             switch(shape) {
                 default: self->extra_cursors.count = 0; break;
                 case 1: case 2: case 3: case 4:
@@ -2942,6 +2948,7 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
         if (shape) {
             for (unsigned i = 0; i + 3 < num_params; i += 4) {
                 index_type top = params[i]-1, left = params[i+1]-1, bottom = params[i+2]-1, right = params[i+3]-1;
+                bottom = MIN(bottom, self->lines-1); right = MIN(right, self->columns -1);
                 index_type xnum = right + 1 - left, ynum = bottom + 1 - top;
                 ensure_space_for(&self->extra_cursors, locations, ExtraCursor,
                         self->extra_cursors.count + xnum * ynum, capacity, 20 * 80, false);
