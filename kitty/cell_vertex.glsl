@@ -9,7 +9,7 @@ layout(std140) uniform CellRenderData {
 
     uint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
-    uint columns, lines, sprites_xnum, sprites_ynum, cursor_fg_sprite_idx, cell_width, cell_height;
+    uint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
     uint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
     float cursor_opacity, inactive_text_alpha, dim_opacity;
 
@@ -26,15 +26,22 @@ uniform usampler2D sprite_decorations_map;
 layout(location=0) in uvec3 colors;
 layout(location=1) in uvec2 sprite_idx;
 layout(location=2) in uint is_selected;
+// }}}
 
 const int fg_index_map[] = int[3](0, 1, 0);
 const uvec2 cell_pos_map[] = uvec2[4](
-    uvec2(1, 0),  // right, top
-    uvec2(1, 1),  // right, bottom
-    uvec2(0, 1),  // left, bottom
-    uvec2(0, 0)   // left, top
+    uvec2(1u, 0u),  // right, top
+    uvec2(1u, 1u),  // right, bottom
+    uvec2(0u, 1u),  // left, bottom
+    uvec2(0u, 0u)   // left, top
 );
-// }}}
+const uint cursor_shape_map[] = uint[5](  // maps cursor shape to foreground sprite index
+   0u,  // NO_CURSOR
+   0u,  // BLOCK  (this is rendered as background)
+   2u,  // BEAM
+   3u,  // UNDERLINE
+   4u   // UNFOCUSED
+);
 
 
 out vec3 background;
@@ -71,13 +78,7 @@ vec3 color_to_vec(uint c) {
     return vec3(gamma_lut[r], gamma_lut[g], gamma_lut[b]);
 }
 
-float one_if_equal_zero_otherwise(int a, int b) {
-    return 1.0f - clamp(abs(float(a) - float(b)), 0.0f, 1.0f);
-}
-
-float one_if_equal_zero_otherwise(uint a, uint b) {
-    return 1.0f - clamp(abs(float(a) - float(b)), 0.0f, 1.0f);
-}
+#define one_if_equal_zero_otherwise(a, b) (1.0f - zero_or_one(abs(float(a) - float(b))))
 
 
 uint resolve_color(uint c, uint defval) {
@@ -147,6 +148,7 @@ float is_cursor(uint x, uint y) {
 struct CellData {
     float has_cursor, has_block_cursor;
     uvec2 pos;
+    uint cursor_fg_sprite_idx;
 } cell_data;
 
 CellData set_vertex_position() {
@@ -166,9 +168,9 @@ CellData set_vertex_position() {
     sprite_pos = to_sprite_pos(pos, sprite_idx[0] & SPRITE_INDEX_MASK);
     colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
 #endif
-    float is_block_cursor = step(float(cursor_fg_sprite_idx), 0.5);
+    float is_block_cursor = one_if_equal_zero_otherwise(cursor_shape, 1u);
     float has_cursor = is_cursor(column, row);
-    return CellData(has_cursor, has_cursor * is_block_cursor, pos);
+    return CellData(has_cursor, has_cursor * is_block_cursor, pos, cursor_shape_map[cursor_shape]);
 }
 
 float background_opacity_for(uint bg, uint colorval, float opacity_if_matched) {  // opacity_if_matched if bg == colorval else 1
@@ -277,7 +279,7 @@ void main() {
     vec3 final_cursor_text_color = mix(foreground, color_to_vec(cursor_fg), cursor_opacity);
     foreground = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, foreground);
     decoration_fg = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, decoration_fg);
-    cursor_pos = to_sprite_pos(cell_data.pos, cursor_fg_sprite_idx * uint(cell_data.has_cursor));
+    cursor_pos = to_sprite_pos(cell_data.pos, cell_data.cursor_fg_sprite_idx * uint(cell_data.has_cursor));
 #endif
     // }}}
 
