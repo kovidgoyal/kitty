@@ -363,14 +363,16 @@ it will go from opaque to transparent and then back again over the next half. Yo
 different easing functions for the two halves, for example: :code:`-1 linear ease-out`. kitty
 supports all the :link:`CSS easing functions <https://developer.mozilla.org/en-US/docs/Web/CSS/easing-function>`.
 Note that turning on animations uses extra power as it means the screen is redrawn multiple times
-per blink interval. See also, :opt:`cursor_stop_blinking_after`.
+per blink interval. See also, :opt:`cursor_stop_blinking_after`. This setting also controls blinking
+text, which blinks in exact rhythm with the cursor.
 ''')
 
 opt('cursor_stop_blinking_after', '15.0',
     option_type='positive_float', ctype='time',
     long_text='''
 Stop blinking cursor after the specified number of seconds of keyboard
-inactivity. Set to zero to never stop blinking.
+inactivity. Set to zero to never stop blinking. This setting also controls
+blinking text, which blinks in exact rhythm with the cursor.
 ''')
 
 opt('cursor_trail', '0',

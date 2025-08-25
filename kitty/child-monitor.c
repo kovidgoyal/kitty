@@ -668,26 +668,32 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
         cursor = rd->screen->paused_rendering.expires_at ? &rd->screen->paused_rendering.cursor : rd->screen->cursor;
         ans->x = cursor->x; ans->y = cursor->y;
     }
-    ans->is_visible = false; ans->multicursor_count = 0; ans->opacity = 1;
-    if (rd->screen->scrolled_by) return cursor_needs_render(w);
-    ans->multicursor_count = screen_multi_cursor_count(rd->screen);
-    ans->is_visible = screen_is_cursor_visible(rd->screen);
-    if (!ans->is_visible && ans->multicursor_count == 0) return cursor_needs_render(w);
+    ans->is_visible = false; ans->multicursor_count = 0; ans->cursor_opacity = 1; ans->text_blink_opacity = 1;
+    if (!rd->screen->scrolled_by) {
+        ans->multicursor_count = screen_multi_cursor_count(rd->screen);
+        ans->is_visible = screen_is_cursor_visible(rd->screen);
+    }
+    if (!ans->is_visible && ans->multicursor_count == 0 && !rd->screen->sgr_blink_was_used) return cursor_needs_render(w);
     monotonic_t time_since_start_blink = now - os_window->cursor_blink_zero_time;
-    bool cursor_blinking = OPT(cursor_blink_interval) > 0 && !cursor->non_blinking && os_window->is_focused && (OPT(cursor_stop_blinking_after) == 0 || time_since_start_blink <= OPT(cursor_stop_blinking_after));
-    if (cursor_blinking) {
+    const bool allow_blinking = OPT(cursor_blink_interval) > 0;
+    const bool blink_has_ceased = OPT(cursor_stop_blinking_after) != 0 && time_since_start_blink > OPT(cursor_stop_blinking_after);
+    const bool cursor_blinking = !cursor->non_blinking && os_window->is_focused;
+    float blink_opacity = 1.f;
+    if (allow_blinking && !blink_has_ceased && (cursor_blinking || rd->screen->sgr_blink_was_used)) {
         if (animation_is_valid(OPT(animation.cursor))) {
             monotonic_t duration = OPT(cursor_blink_interval) * 2;
             monotonic_t time_into_cycle = time_since_start_blink % duration;
             double frac_into_cycle = (double)time_into_cycle / (double)duration;
-            ans->opacity = (float)apply_easing_curve(OPT(animation.cursor), frac_into_cycle, duration);
+            blink_opacity = (float)apply_easing_curve(OPT(animation.cursor), frac_into_cycle, duration);
             set_maximum_wait(ANIMATION_SAMPLE_WAIT);
         } else {
             monotonic_t n = time_since_start_blink / OPT(cursor_blink_interval);
-            ans->opacity = 1 - n % 2;
+            blink_opacity = 1 - n % 2;
             set_maximum_wait((n + 1) * OPT(cursor_blink_interval) - time_since_start_blink);
         }
     }
+    ans->text_blink_opacity = blink_opacity;
+    ans->cursor_opacity = cursor_blinking ? blink_opacity: 1.0f;
     ans->shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
     ans->is_focused = os_window->is_focused;
     return cursor_needs_render(w);
@@ -776,7 +782,13 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                     if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
                     WD.screen->cursor_render_info.is_focused = false;
                 } else {
-                    WD.screen->cursor_render_info.opacity = 0;
+                    if (WD.screen->sgr_blink_was_used) {
+                        if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
+                        WD.screen->cursor_render_info.is_focused = false;
+                    } else {
+                        WD.screen->cursor_render_info.text_blink_opacity = 1;
+                    }
+                    WD.screen->cursor_render_info.cursor_opacity = 0;
                 }
             }
             if (scan_for_animated_images) {

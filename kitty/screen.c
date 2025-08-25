@@ -1399,6 +1399,7 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, bool is_
         }
     } else {
         cursor_from_sgr(self->cursor, params, count, is_group);
+        self->sgr_blink_was_used |= self->cursor->sgr.blink;
     }
 }
 

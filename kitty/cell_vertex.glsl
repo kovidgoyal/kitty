@@ -11,7 +11,7 @@ layout(std140) uniform CellRenderData {
 
     uint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
     uint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
-    float cursor_opacity, inactive_text_alpha, dim_opacity;
+    float cursor_opacity, inactive_text_alpha, dim_opacity, blink_opacity;
 
     // must have unique entries with 0 being default_bg and unset being UINT32_MAX
     uint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
@@ -262,8 +262,9 @@ void main() {
 #ifndef ONLY_BACKGROUND // background does not depend on foreground
     fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + mark] + (ONE - has_mark) * fg_as_uint;
     foreground = color_to_vec(fg_as_uint);
-    float has_dim = float((text_attrs >> DIM_SHIFT) & ONE);
-    effective_text_alpha = inactive_text_alpha * mix(1.0, dim_opacity, has_dim);
+    float has_dim = float((text_attrs >> DIM_SHIFT) & ONE), has_blink = float((text_attrs >> BLINK_SHIFT) & ONE);
+    effective_text_alpha = inactive_text_alpha * if_one_then(has_dim, dim_opacity, 1.0) * if_one_then(
+            has_blink, blink_opacity, 1.0);
     float in_url = float((is_selected >> 1) & ONE);
     decoration_fg = if_one_then(in_url, color_to_vec(url_color), to_color(colors[2], fg_as_uint));
     // Selection
