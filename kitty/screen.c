@@ -174,7 +174,7 @@ static Line* range_line_(Screen *self, int y);
 void
 screen_reset(Screen *self) {
     screen_pause_rendering(self, false, 0);
-    self->extra_cursors.count = 0;
+    self->extra_cursors.count = 0; zero_at_ptr(&self->extra_cursors.color); self->extra_cursors.dirty = true;
     self->main_pointer_shape_stack.count = 0; self->alternate_pointer_shape_stack.count = 0;
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
     if (screen_is_overlay_active(self)) {
@@ -191,10 +191,6 @@ screen_reset(Screen *self) {
     self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
     self->alt_savepoint.is_valid = false;
-    if (self->extra_cursors.count) {
-        self->extra_cursors.count = 0;
-        self->extra_cursors.dirty = true;
-    }
     linebuf_clear(self->linebuf, BLANK_CHAR);
     historybuf_clear(self->historybuf);
     clear_hyperlink_pool(self->hyperlink_pool);
@@ -2870,8 +2866,9 @@ void
 screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_params) {
     // printf("%d;", queried_shape); for (unsigned i = 0; i < num_params; i++) {printf("%d:", params[i]);} printf("\n");
     if (!num_params) {
+#define pr(...) { int n = snprintf(p, sz - (p - buf), __VA_ARGS__); if (n >= 0 && (unsigned)n <= (sz - (p - buf))) p += n; }
         if (params == NULL) {
-            write_escape_code_to_child(self, ESC_CSI, ">-2;-1;1;2;3 q");
+            write_escape_code_to_child(self, ESC_CSI, ">-5;-4;-3;-2;-1;1;2;3 q");
         } else if (queried_shape == -2) {
             size_t sz = self->extra_cursors.count * 32 + 64;
             RAII_ALLOC(char, buf, malloc(sz)); sz -= 4;
@@ -2880,14 +2877,48 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
                 for (unsigned i = 0; i < self->extra_cursors.count; i++) {
                     index_type cell = self->extra_cursors.locations[i].cell, shape = self->extra_cursors.locations[i].shape;
                     index_type y = cell / self->columns, x = cell - (y * self->columns);
-                    int n = snprintf(p, sz - (p - buf), "%d:2:%u:%u;", shape > 3 ? -1 : (int)shape, y+1, x+1);
-                    if (n < 0 || (unsigned)n > (sz - (p - buf))) break;
-                    p += n;
+                    pr("%d:2:%u:%u;", shape > 3 ? -1 : (int)shape, y+1, x+1);
                 }
                 if (*(p-1) == ';') p--;
                 *(p++) = ' '; *(p++) = 'q'; *(p++) = 0;
                 write_escape_code_to_child(self, ESC_CSI, buf);
             }
+        } else if (queried_shape == -5) {
+            char buf[64], *p = buf; size_t sz = sizeof(buf);
+            pr(">-5;-3:"); ExtraCursorColor ecc = self->extra_cursors.color.cursor;
+#define o() { \
+            if (ecc.is_set) {  \
+                if (ecc.is_none) { pr("1"); } \
+                else { \
+                    if (ecc.is_lookup) { pr("5:%u", ecc.color & 0xff); } \
+                    else { pr("2:%u:%u:%u", (ecc.color >> 16) & 0xff, (ecc.color >> 8) & 0xff, ecc.color & 0xff); } \
+                } \
+            } else pr("0"); }
+
+            o(); pr(";-4:"); ecc = self->extra_cursors.color.text; o();
+#undef o
+            pr(" q");
+            write_escape_code_to_child(self, ESC_CSI, buf);
+        }
+        return;
+#undef pr
+    }
+    if (queried_shape == -3 || queried_shape == -4) {
+        ExtraCursorColor *ecc = queried_shape == -3 ? &self->extra_cursors.color.cursor : &self->extra_cursors.color.text;
+        self->extra_cursors.dirty = true;
+        switch (params[0]) {
+            case 0: zero_at_ptr(ecc); break;
+            case 1: zero_at_ptr(ecc); ecc->is_set = true; ecc->is_none = true; break;
+            case 2: if (num_params > 3) {
+                zero_at_ptr(ecc);
+                ecc->is_set = true;
+                ecc->color = ((params[1] & 0xff) << 16) | ((params[2] & 0xff) << 8) | (params[3] & 0xff);
+            } break;
+            case 5: if (num_params > 1) {
+                zero_at_ptr(ecc);
+                ecc->is_set = true; ecc->is_lookup = true;
+                ecc->color = params[1] & 0xff;
+            } break;
         }
         return;
     }
