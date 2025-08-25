@@ -2871,16 +2871,18 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
             write_escape_code_to_child(self, ESC_CSI, ">-1;1;2;3 q");
         } else if (queried_shape == -2) {
             size_t sz = self->extra_cursors.count * 32 + 64;
-            RAII_ALLOC(char, buf, malloc(sz));
+            RAII_ALLOC(char, buf, malloc(sz)); sz -= 4;
             if (buf) {
                 char *p = buf + snprintf(buf, sz, ">-2;");
                 for (unsigned i = 0; i < self->extra_cursors.count; i++) {
                     index_type cell = self->extra_cursors.locations[i].cell, shape = self->extra_cursors.locations[i].shape;
                     index_type y = cell / self->columns, x = cell - (y * self->columns);
-                    p += snprintf(p, sz - (p - buf), "%d:2:%u:%u;", shape > 3 ? -1 : (int)shape, y+1, x+1);
+                    int n = snprintf(p, sz - (p - buf), "%d:2:%u:%u;", shape > 3 ? -1 : (int)shape, y+1, x+1);
+                    if (n < 0 || (unsigned)n > (sz - (p - buf))) break;
+                    p += n;
                 }
                 if (*(p-1) == ';') p--;
-                p += snprintf(p, sz - (p - buf), " q"); *p = 0;
+                *(p++) = ' '; *(p++) = 'q'; *(p++) = 0;
                 write_escape_code_to_child(self, ESC_CSI, buf);
             }
         }
@@ -2950,7 +2952,7 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
             for (unsigned i = 0; i + 3 < num_params; i += 4) {
                 index_type top = params[i]-1, left = params[i+1]-1, bottom = params[i+2]-1, right = params[i+3]-1;
                 bottom = MIN(bottom, self->lines-1); right = MIN(right, self->columns -1);
-                index_type xnum = right + 1 - left, ynum = bottom + 1 - top;
+                size_t xnum = right + 1 - left, ynum = bottom + 1 - top;
                 ensure_space_for(&self->extra_cursors, locations, ExtraCursor,
                         self->extra_cursors.count + xnum * ynum, capacity, 20 * 80, false);
                 for (index_type y = top; y <= bottom; y++) {
