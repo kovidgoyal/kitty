@@ -92,13 +92,14 @@ protocol by sending the escape code::
 
 In this case a supporting terminal must reply with::
 
-    CSI > -1;1;2;3 TRAILER
+    CSI > -2;-1;1;2;3 TRAILER
 
-Here, the list of numbers indicates the cursor shapes the terminal supports and
-can be any subset of the above. No numbers indicates the protocol is not
-supported. To avoid having to wait with a timeout for a response from the
-terminal, the client should send this query code immediately followed by
-a request for the `primary device attributes <https://vt100.net/docs/vt510-rm/DA1.html>`_.
+Here, the list of numbers indicates the cursor shapes and other operations
+the terminal supports and can be any subset of the above. No numbers
+indicates the protocol is not supported. To avoid having to wait with a
+timeout for a response from the terminal, the client should send this
+query code immediately followed by a request for the
+`primary device attributes <https://vt100.net/docs/vt510-rm/DA1.html>`_.
 If the terminal responds with an answer for the device attributes without
 an answer for the *query* the terminal emulator does not support this protocol at all.
 

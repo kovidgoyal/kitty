@@ -1595,7 +1595,7 @@ class TestScreen(BaseTest):
         c = s.callbacks
         # Test detection
         parse_bytes(s, b'\x1b[> q')  # ]
-        self.ae(c.wtcbuf, b'\x1b[>-1;1;2;3 q')  # ]
+        self.ae(c.wtcbuf, b'\x1b[>-2;-1;1;2;3 q')  # ]
 
         def current() -> dict[int, tuple[int, int]]:
             ans = {}

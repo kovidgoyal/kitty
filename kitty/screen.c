@@ -2871,7 +2871,7 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
     // printf("%d;", queried_shape); for (unsigned i = 0; i < num_params; i++) {printf("%d:", params[i]);} printf("\n");
     if (!num_params) {
         if (params == NULL) {
-            write_escape_code_to_child(self, ESC_CSI, ">-1;1;2;3 q");
+            write_escape_code_to_child(self, ESC_CSI, ">-2;-1;1;2;3 q");
         } else if (queried_shape == -2) {
             size_t sz = self->extra_cursors.count * 32 + 64;
             RAII_ALLOC(char, buf, malloc(sz)); sz -= 4;
