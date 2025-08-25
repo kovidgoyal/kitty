@@ -34,9 +34,9 @@ static const char* cursor_names[NUM_OF_CURSOR_SHAPES] = { "NO_SHAPE", "BLOCK", "
 static PyObject *
 repr(Cursor *self) {
     return PyUnicode_FromFormat(
-        "Cursor(x=%u, y=%u, shape=%s, blink=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, dim=%R, decoration=%d, decoration_fg=#%08x)",
+        "Cursor(x=%u, y=%u, shape=%s, blink=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, dim=%R, decoration=%d, decoration_fg=#%08x, text_blink=%R)",
         self->x, self->y, (self->shape < NUM_OF_CURSOR_SHAPES ? cursor_names[self->shape] : "INVALID"),
-        BOOL(!self->non_blinking), self->sgr.fg, self->sgr.bg, BOOL(self->sgr.bold), BOOL(self->sgr.italic), BOOL(self->sgr.reverse), BOOL(self->sgr.strikethrough), BOOL(self->sgr.dim), self->sgr.decoration, self->sgr.decoration_fg
+        BOOL(!self->non_blinking), self->sgr.fg, self->sgr.bg, BOOL(self->sgr.bold), BOOL(self->sgr.italic), BOOL(self->sgr.reverse), BOOL(self->sgr.strikethrough), BOOL(self->sgr.dim), self->sgr.decoration, self->sgr.decoration_fg, BOOL(self->sgr.blink)
     );
 }
 
@@ -93,6 +93,8 @@ START_ALLOW_CASE_RANGE
                 if (is_group && i < count) { self->sgr.decoration = MIN(5, params[i]); i++; }
                 else self->sgr.decoration = 1;
                 break;
+            case 5:
+                self->sgr.blink = true; break;
             case 7:
                 self->sgr.reverse = true;  break;
             case 9:
@@ -109,6 +111,8 @@ START_ALLOW_CASE_RANGE
                 self->sgr.italic = false;  break;
             case 24:
                 self->sgr.decoration = 0;  break;
+            case 25:
+                self->sgr.blink = false; break;
             case 27:
                 self->sgr.reverse = false;  break;
             case 29:
@@ -169,6 +173,8 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, un
                 if (is_group && i < count) { val = MIN(5, params[i]); i++; }
                 S(decoration, val);
             }
+            case 5:
+                S(blink, true);
             case 7:
                 S(reverse, true);
             case 9:
@@ -185,6 +191,8 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, un
                 S(italic, false);
             case 24:
                 S(decoration, 0);
+            case 25:
+                S(blink, false);
             case 27:
                 S(reverse, false);
             case 29:
@@ -272,6 +280,11 @@ static PyObject* blink_get(Cursor *self, void UNUSED *closure) { PyObject *ans =
 
 static int blink_set(Cursor *self, PyObject *value, void UNUSED *closure) { if (value == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } self->non_blinking = PyObject_IsTrue(value) ? false : true; return 0; }
 
+static PyObject* text_blink_get(Cursor *self, void UNUSED *closure) { return Py_NewRef(self->sgr.blink ? Py_True : Py_False); }
+
+static int text_blink_set(Cursor *self, PyObject *value, void UNUSED *closure) { if (value == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } self->sgr.blink = PyObject_IsTrue(value) ? false : true; return 0; }
+
+
 #define SGR_UINT_GETSET(x) \
     static PyObject* x##_get(Cursor *self, void UNUSED *closure) { return PyLong_FromUnsignedLong((unsigned long)self->sgr.x); } \
     static int x##_set(Cursor *self, PyObject *value, void UNUSED *closure) { if (value == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } if (!PyLong_Check(value)) { PyErr_SetString(PyExc_TypeError, "value must be an int"); return -1; } self->sgr.x = PyLong_AsUnsignedLong(value); return 0; }
@@ -295,6 +308,7 @@ static PyGetSetDef getseters[] = {
     GETSET(strikethrough)
     GETSET(dim)
     GETSET(blink)
+    GETSET(text_blink)
     GETSET(decoration)
     GETSET(fg)
     GETSET(bg)

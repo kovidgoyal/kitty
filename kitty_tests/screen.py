@@ -112,7 +112,6 @@ class TestScreen(BaseTest):
         ln = s.line(0)
         self.ae(txt, ln.as_ansi())
 
-
     def test_rep(self):
         s = self.create_screen()
         s.draw('a')
@@ -618,11 +617,13 @@ class TestScreen(BaseTest):
 
     def test_sgr(self):
         s = self.create_screen()
-        s.select_graphic_rendition(0, 1, 37, 42)
+        s.select_graphic_rendition(0, 1, 5, 37, 42)
         s.draw('a')
         c = s.line(0).cursor_from(0)
         self.assertTrue(c.bold)
+        self.assertTrue(c.blink)
         self.ae(c.bg, (2 << 8) | 1)
+        self.ae('\x1b[22;1;5;37;42ma', s.line(0).as_ansi())
         s.cursor_position(2, 1)
         s.select_graphic_rendition(0, 35)
         s.draw('b')
