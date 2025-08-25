@@ -211,13 +211,16 @@ typedef struct {
 
 typedef struct {
     PyObject_HEAD
-
-    bool bold, italic, reverse, strikethrough, dim, non_blinking;
     monotonic_t position_changed_by_client_at;
     unsigned int x, y;
-    uint8_t decoration;
+    bool non_blinking;
     CursorShape shape;
-    color_type fg, bg, decoration_fg;
+
+    struct {
+        bool bold, italic, reverse, strikethrough, dim;
+        uint8_t decoration;
+        color_type fg, bg, decoration_fg;
+    } sgr;
 } Cursor;
 
 typedef struct {

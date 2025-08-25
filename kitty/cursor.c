@@ -24,8 +24,9 @@ dealloc(Cursor* self) {
 
 #define EQ(x) (a->x == b->x)
 static int __eq__(Cursor *a, Cursor *b) {
-    return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(dim) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(non_blinking);
+    return memcmp(&a->sgr, &b->sgr, sizeof(a->sgr)) == 0 && EQ(x) && EQ(y) && EQ(shape) && EQ(non_blinking);
 }
+#undef EQ
 
 static const char* cursor_names[NUM_OF_CURSOR_SHAPES] = { "NO_SHAPE", "BLOCK", "BEAM", "UNDERLINE", "HOLLOW" };
 
@@ -35,14 +36,13 @@ repr(Cursor *self) {
     return PyUnicode_FromFormat(
         "Cursor(x=%u, y=%u, shape=%s, blink=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, dim=%R, decoration=%d, decoration_fg=#%08x)",
         self->x, self->y, (self->shape < NUM_OF_CURSOR_SHAPES ? cursor_names[self->shape] : "INVALID"),
-        BOOL(!self->non_blinking), self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), BOOL(self->dim), self->decoration, self->decoration_fg
+        BOOL(!self->non_blinking), self->sgr.fg, self->sgr.bg, BOOL(self->sgr.bold), BOOL(self->sgr.italic), BOOL(self->sgr.reverse), BOOL(self->sgr.strikethrough), BOOL(self->sgr.dim), self->sgr.decoration, self->sgr.decoration_fg
     );
 }
 
 void
 cursor_reset_display_attrs(Cursor *self) {
-    self->bg = 0; self->fg = 0; self->decoration_fg = 0;
-    self->decoration = 0; self->bold = false; self->italic = false; self->reverse = false; self->strikethrough = false; self->dim = false;
+    zero_at_ptr(&self->sgr);
 }
 
 
@@ -84,55 +84,55 @@ START_ALLOW_CASE_RANGE
             case 0:
                 cursor_reset_display_attrs(self);  break;
             case 1:
-                self->bold = true;  break;
+                self->sgr.bold = true;  break;
             case 2:
-                self->dim = true; break;
+                self->sgr.dim = true; break;
             case 3:
-                self->italic = true;  break;
+                self->sgr.italic = true;  break;
             case 4:
-                if (is_group && i < count) { self->decoration = MIN(5, params[i]); i++; }
-                else self->decoration = 1;
+                if (is_group && i < count) { self->sgr.decoration = MIN(5, params[i]); i++; }
+                else self->sgr.decoration = 1;
                 break;
             case 7:
-                self->reverse = true;  break;
+                self->sgr.reverse = true;  break;
             case 9:
-                self->strikethrough = true;  break;
+                self->sgr.strikethrough = true;  break;
             case 21:
-                self->decoration = 2; break;
+                self->sgr.decoration = 2; break;
             case 221:
-                self->bold = false; break;
+                self->sgr.bold = false; break;
             case 222:
-                self->dim = false; break;
+                self->sgr.dim = false; break;
             case 22:
-                self->bold = false;  self->dim = false; break;
+                self->sgr.bold = false;  self->sgr.dim = false; break;
             case 23:
-                self->italic = false;  break;
+                self->sgr.italic = false;  break;
             case 24:
-                self->decoration = 0;  break;
+                self->sgr.decoration = 0;  break;
             case 27:
-                self->reverse = false;  break;
+                self->sgr.reverse = false;  break;
             case 29:
-                self->strikethrough = false;  break;
+                self->sgr.strikethrough = false;  break;
             case 30 ... 37:
-                self->fg = ((attr - 30) << 8) | 1;  break;
+                self->sgr.fg = ((attr - 30) << 8) | 1;  break;
             case 38:
-                SET_COLOR(fg);
+                SET_COLOR(sgr.fg);
             case 39:
-                self->fg = 0;  break;
+                self->sgr.fg = 0;  break;
             case 40 ... 47:
-                self->bg = ((attr - 40) << 8) | 1;  break;
+                self->sgr.bg = ((attr - 40) << 8) | 1;  break;
             case 48:
-                SET_COLOR(bg);
+                SET_COLOR(sgr.bg);
             case 49:
-                self->bg = 0;  break;
+                self->sgr.bg = 0;  break;
             case 90 ... 97:
-                self->fg = ((attr - 90 + 8) << 8) | 1;  break;
+                self->sgr.fg = ((attr - 90 + 8) << 8) | 1;  break;
             case 100 ... 107:
-                self->bg = ((attr - 100 + 8) << 8) | 1;  break;
+                self->sgr.bg = ((attr - 100 + 8) << 8) | 1;  break;
             case DECORATION_FG_CODE:
-                SET_COLOR(decoration_fg);
+                SET_COLOR(sgr.decoration_fg);
             case DECORATION_FG_CODE + 1:
-                self->decoration_fg = 0; break;
+                self->sgr.decoration_fg = 0; break;
         }
         if (is_group) break;
     }
@@ -224,9 +224,9 @@ const char*
 cursor_as_sgr(const Cursor *self) {
     GPUCell blank_cell = { 0 }, cursor_cell = {
         .attrs = cursor_to_attrs(self),
-        .fg = self->fg & COL_MASK,
-        .bg = self->bg & COL_MASK,
-        .decoration_fg = self->decoration_fg & COL_MASK,
+        .fg = self->sgr.fg & COL_MASK,
+        .bg = self->sgr.bg & COL_MASK,
+        .decoration_fg = self->sgr.decoration_fg & COL_MASK,
     };
     return cell_as_sgr(&cursor_cell, &blank_cell);
 }
@@ -247,7 +247,8 @@ void cursor_reset(Cursor *self) {
 void cursor_copy_to(Cursor *src, Cursor *dest) {
 #define CCY(x) dest->x = src->x;
     CCY(x); CCY(y); CCY(shape); CCY(non_blinking);
-    CCY(bold); CCY(italic); CCY(strikethrough); CCY(dim); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg);
+#undef CCY
+    memcpy(&dest->sgr, &src->sgr, sizeof(dest->sgr));
 }
 
 static PyObject*
@@ -256,25 +257,34 @@ copy(Cursor *self, PyObject*);
 
 // Boilerplate {{{
 
-BOOL_GETSET(Cursor, bold)
-BOOL_GETSET(Cursor, italic)
-BOOL_GETSET(Cursor, reverse)
-BOOL_GETSET(Cursor, strikethrough)
-BOOL_GETSET(Cursor, dim)
+#define SGR_BOOL_GETSET(x) \
+    static PyObject* x##_get(Cursor *self, void UNUSED *closure) { PyObject *ans = self->sgr.x ? Py_True : Py_False; Py_INCREF(ans); return ans; } \
+    static int x##_set(Cursor *self, PyObject *value, void UNUSED *closure) { if (value == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } self->sgr.x = PyObject_IsTrue(value) ? true : false; return 0; }
+
+SGR_BOOL_GETSET(bold)
+SGR_BOOL_GETSET(italic)
+SGR_BOOL_GETSET(reverse)
+SGR_BOOL_GETSET(strikethrough)
+SGR_BOOL_GETSET(dim)
+#undef SGR_BOOL_GETSET
 
 static PyObject* blink_get(Cursor *self, void UNUSED *closure) { PyObject *ans = !self->non_blinking ? Py_True : Py_False; Py_INCREF(ans); return ans; }
 
 static int blink_set(Cursor *self, PyObject *value, void UNUSED *closure) { if (value == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } self->non_blinking = PyObject_IsTrue(value) ? false : true; return 0; }
 
+#define SGR_UINT_GETSET(x) \
+    static PyObject* x##_get(Cursor *self, void UNUSED *closure) { return PyLong_FromUnsignedLong((unsigned long)self->sgr.x); } \
+    static int x##_set(Cursor *self, PyObject *value, void UNUSED *closure) { if (value == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } if (!PyLong_Check(value)) { PyErr_SetString(PyExc_TypeError, "value must be an int"); return -1; } self->sgr.x = PyLong_AsUnsignedLong(value); return 0; }
+
+SGR_UINT_GETSET(decoration)
+SGR_UINT_GETSET(fg)
+SGR_UINT_GETSET(bg)
+SGR_UINT_GETSET(decoration_fg)
 
 static PyMemberDef members[] = {
     {"x", T_UINT, offsetof(Cursor, x), 0, "x"},
     {"y", T_UINT, offsetof(Cursor, y), 0, "y"},
     {"shape", T_INT, offsetof(Cursor, shape), 0, "shape"},
-    {"decoration", T_UBYTE, offsetof(Cursor, decoration), 0, "decoration"},
-    {"fg", T_UINT, offsetof(Cursor, fg), 0, "fg"},
-    {"bg", T_UINT, offsetof(Cursor, bg), 0, "bg"},
-    {"decoration_fg", T_UINT, offsetof(Cursor, decoration_fg), 0, "decoration_fg"},
     {NULL}  /* Sentinel */
 };
 
@@ -285,6 +295,10 @@ static PyGetSetDef getseters[] = {
     GETSET(strikethrough)
     GETSET(dim)
     GETSET(blink)
+    GETSET(decoration)
+    GETSET(fg)
+    GETSET(bg)
+    GETSET(decoration_fg)
     {NULL}  /* Sentinel */
 };
 

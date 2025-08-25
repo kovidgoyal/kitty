@@ -1208,8 +1208,8 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
         .cc=(CPUCell){.hyperlink_id=self->active_hyperlink_id}, \
         .g=(GPUCell){ \
             .attrs=attrs, \
-            .fg=self->cursor->fg & COL_MASK, .bg=self->cursor->bg & COL_MASK, \
-            .decoration_fg=force_underline ? ((OPT(url_color) & COL_MASK) << 8) | 2 : self->cursor->decoration_fg & COL_MASK, \
+            .fg=self->cursor->sgr.fg & COL_MASK, .bg=self->cursor->sgr.bg & COL_MASK, \
+            .decoration_fg=force_underline ? ((OPT(url_color) & COL_MASK) << 8) | 2 : self->cursor->sgr.decoration_fg & COL_MASK, \
         } \
     };
 
@@ -1397,7 +1397,9 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, bool is_
                 }
             }
         }
-    } else cursor_from_sgr(self->cursor, params, count, is_group);
+    } else {
+        cursor_from_sgr(self->cursor, params, count, is_group);
+    }
 }
 
 static void
@@ -4109,7 +4111,7 @@ screen_draw_overlay_line(Screen *self) {
     self->modes.mIRM = false;
     Cursor *orig_cursor = self->cursor;
     self->cursor = &(self->overlay_line.original_line.cursor);
-    self->cursor->reverse ^= true;
+    self->cursor->sgr.reverse ^= true;
     self->cursor->x = xstart;
     self->cursor->y = self->overlay_line.ynum;
     self->overlay_line.xnum = 0;
@@ -4157,7 +4159,7 @@ screen_draw_overlay_line(Screen *self) {
         self->overlay_line.xnum += len;
     }
     self->overlay_line.cursor_x = self->cursor->x;
-    self->cursor->reverse ^= true;
+    self->cursor->sgr.reverse ^= true;
     self->cursor = orig_cursor;
     self->modes.mDECAWM = orig_line_wrap_mode;
     self->modes.mDECTCEM = orig_cursor_enable_mode;

@@ -702,8 +702,8 @@ set_text(Line* self, PyObject *args) {
         return NULL;
     }
     CellAttrs attrs = cursor_to_attrs(cursor);
-    color_type fg = (cursor->fg & COL_MASK), bg = cursor->bg & COL_MASK;
-    color_type dfg = cursor->decoration_fg & COL_MASK;
+    color_type fg = (cursor->sgr.fg & COL_MASK), bg = cursor->sgr.bg & COL_MASK;
+    color_type dfg = cursor->sgr.decoration_fg & COL_MASK;
 
     for (index_type i = cursor->x; offset < limit && i < self->xnum; i++, offset++) {
         self->cpu_cells[i] = (CPUCell){0};
@@ -731,8 +731,8 @@ cursor_from(Line* self, PyObject *args) {
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     ans->x = x; ans->y = y;
     attrs_to_cursor(self->gpu_cells[x].attrs, ans);
-    ans->fg = self->gpu_cells[x].fg; ans->bg = self->gpu_cells[x].bg;
-    ans->decoration_fg = self->gpu_cells[x].decoration_fg & COL_MASK;
+    ans->sgr.fg = self->gpu_cells[x].fg; ans->sgr.bg = self->gpu_cells[x].bg;
+    ans->sgr.decoration_fg = self->gpu_cells[x].decoration_fg & COL_MASK;
 
     return (PyObject*)ans;
 }
@@ -827,9 +827,9 @@ line_set_char(Line *self, unsigned int at, uint32_t ch, Cursor *cursor, hyperlin
     GPUCell *g = self->gpu_cells + at;
     if (cursor != NULL) {
         g->attrs = cursor_to_attrs(cursor);
-        g->fg = cursor->fg & COL_MASK;
-        g->bg = cursor->bg & COL_MASK;
-        g->decoration_fg = cursor->decoration_fg & COL_MASK;
+        g->fg = cursor->sgr.fg & COL_MASK;
+        g->bg = cursor->sgr.bg & COL_MASK;
+        g->decoration_fg = cursor->sgr.decoration_fg & COL_MASK;
     }
     CPUCell *c = self->cpu_cells + at;
     *c = (CPUCell){0};
