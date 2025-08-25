@@ -2952,6 +2952,7 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
             for (unsigned i = 0; i + 3 < num_params; i += 4) {
                 index_type top = params[i]-1, left = params[i+1]-1, bottom = params[i+2]-1, right = params[i+3]-1;
                 bottom = MIN(bottom, self->lines-1); right = MIN(right, self->columns -1);
+                if (right < left || bottom < top) continue;
                 size_t xnum = right + 1 - left, ynum = bottom + 1 - top;
                 ensure_space_for(&self->extra_cursors, locations, ExtraCursor,
                         self->extra_cursors.count + xnum * ynum, capacity, 20 * 80, false);
