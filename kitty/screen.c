@@ -2868,24 +2868,24 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
     if (!num_params) {
 #define pr(...) { int n = snprintf(p, sz - (p - buf), __VA_ARGS__); if (n >= 0 && (unsigned)n <= (sz - (p - buf))) p += n; }
         if (params == NULL) {
-            write_escape_code_to_child(self, ESC_CSI, ">-5;-4;-3;-2;-1;1;2;3 q");
-        } else if (queried_shape == -2) {
+            write_escape_code_to_child(self, ESC_CSI, ">1;2;3;29;30;40;100;101 q");
+        } else if (queried_shape == 100) {
             size_t sz = self->extra_cursors.count * 32 + 64;
             RAII_ALLOC(char, buf, malloc(sz)); sz -= 4;
             if (buf) {
-                char *p = buf + snprintf(buf, sz, ">-2;");
+                char *p = buf + snprintf(buf, sz, ">100;");
                 for (unsigned i = 0; i < self->extra_cursors.count; i++) {
                     index_type cell = self->extra_cursors.locations[i].cell, shape = self->extra_cursors.locations[i].shape;
                     index_type y = cell / self->columns, x = cell - (y * self->columns);
-                    pr("%d:2:%u:%u;", shape > 3 ? -1 : (int)shape, y+1, x+1);
+                    pr("%d:2:%u:%u;", shape > 3 ? 29 : (int)shape, y+1, x+1);
                 }
                 if (*(p-1) == ';') p--;
                 *(p++) = ' '; *(p++) = 'q'; *(p++) = 0;
                 write_escape_code_to_child(self, ESC_CSI, buf);
             }
-        } else if (queried_shape == -5) {
+        } else if (queried_shape == 101) {
             char buf[64], *p = buf; size_t sz = sizeof(buf);
-            pr(">-5;-3:"); DynamicColor ecc = self->extra_cursors.color.cursor;
+            pr(">101;30:"); DynamicColor ecc = self->extra_cursors.color.text;
 #define o() switch(ecc.type) { \
                 case COLOR_NOT_SET: pr("0"); break; \
                 case COLOR_IS_SPECIAL: pr("1"); break; \
@@ -2893,7 +2893,7 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
                 case COLOR_IS_RGB:  pr("2:%u:%u:%u", (ecc.rgb >> 16) & 0xff, (ecc.rgb >> 8) & 0xff, ecc.rgb & 0xff); break; \
             } \
 
-            o(); pr(";-4:"); ecc = self->extra_cursors.color.text; o();
+            o(); pr(";40:"); ecc = self->extra_cursors.color.cursor; o();
 #undef o
             pr(" q");
             write_escape_code_to_child(self, ESC_CSI, buf);
@@ -2901,8 +2901,8 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
         return;
 #undef pr
     }
-    if (queried_shape == -3 || queried_shape == -4) {
-        DynamicColor *ecc = queried_shape == -3 ? &self->extra_cursors.color.cursor : &self->extra_cursors.color.text;
+    if (queried_shape == 30 || queried_shape == 40) {
+        DynamicColor *ecc = queried_shape == 40 ? &self->extra_cursors.color.cursor : &self->extra_cursors.color.text;
         self->extra_cursors.dirty = true;
         switch (params[0]) {
             case 0: ecc->type = COLOR_NOT_SET; break;
@@ -2919,10 +2919,10 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
         return;
     }
     uint8_t shape = 0;
-    if (queried_shape < 0) {
-        shape = 4;
-    } else {
-        shape = MIN(queried_shape, 3);
+    switch(queried_shape) {
+        case 29: shape = 4; break;
+        case 0: case 1: case 2: case 3: shape = queried_shape; break;
+        default: return;
     }
     self->extra_cursors.dirty = true;
     int type = params[0]; params++; num_params--;

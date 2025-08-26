@@ -25,7 +25,7 @@ An example, showing how to use the protocol:
 .. code-block:: sh
 
     # Show cursors of the same shape as the main cursor at y=4, x=5
-    printf "\e[>-1;2:4:5 q"
+    printf "\e[>29;2:4:5 q"
     # Show more cursors on the seventh line, of various shapes, the underline shape is shown twice
     printf "\e[>1;2:7:1 q\e[>2;2:7:3 q\e[>3;2:7:5;2:7:7 q"
 
@@ -38,12 +38,14 @@ they are present for readability only)::
 Here ``CSI`` is the two bytes ESC (``0x1b``) and [ (``0x5b``). ``SHAPE`` can be
 one of:
 
-* ``-2``: Used for querying currently set cursors
-* ``-1``: Follow the shape of the main cursor
 * ``0``: No cursor
 * ``1``: Block cursor
 * ``2``: Beam cursor
 * ``3``: Underline cursor
+* ``29``: Follow the shape of the main cursor
+* ``30``: Change the color of text under extra cursors
+* ``40``: Change the color of extra cursors
+* ``100``: Used for querying currently set cursors
 
 ``CO-ORD TYPE`` can be one of:
 
@@ -92,7 +94,7 @@ protocol by sending the escape code::
 
 In this case a supporting terminal must reply with::
 
-    CSI > -2;-1;1;2;3 TRAILER
+    CSI > 1;2;3;29;30;40;100;101 TRAILER
 
 Here, the list of numbers indicates the cursor shapes and other operations
 the terminal supports and can be any subset of the above. No numbers
@@ -125,18 +127,18 @@ Querying for already set cursors
 Programs can ask the terminal what extra cursors are currently set, by sending
 the escape code::
 
-    CSI > -2 TRAILER
+    CSI > 100 TRAILER
 
 The terminal must respond with **one** escape code::
 
-    CSI > -2; SHAPE:CO-ORDINATE TYPE:CO-ORDINATES ; ... TRAILER
+    CSI > 100; SHAPE:CO-ORDINATE TYPE:CO-ORDINATES ; ... TRAILER
 
 Here, the ``SHAPE:CO-ORDINATE TYPE:CO-ORDINATES`` block can be repeated any
 number of times, separated by ``;``. This response gives the set of shapes and
 positions currently active. If no cursors are currently active, there will be
 no blocks, just an empty response of the form::
 
-    CSI > -2 TRAILER
+    CSI > 100 TRAILER
 
 Again, terminals **must** respond in FIFO order so that multiplexers know where
 to direct the responses.

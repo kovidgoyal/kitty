@@ -1597,12 +1597,12 @@ class TestScreen(BaseTest):
         def ec(payload=''):
             return f'\x1b[>{payload} q'.encode()  # ]
         parse_bytes(s, ec())
-        self.ae(c.wtcbuf, ec('-5;-4;-3;-2;-1;1;2;3'))
+        self.ae(c.wtcbuf, ec('1;2;3;29;30;40;100;101'))
 
         def current() -> dict[int, tuple[int, int]]:
             ans = {}
             c.clear()
-            parse_bytes(s, ec('-2'))
+            parse_bytes(s, ec('100'))
             for entry in c.wtcbuf[6:-2].decode().split(';'):
                 if entry:
                     which, _, y, x = map(int, entry.split(':'))
@@ -1625,9 +1625,9 @@ class TestScreen(BaseTest):
 
         self.ae(a(1, region=True), {1:{(x, y) for x in range(s.columns) for y in range(s.lines)}})
         self.ae(a(0, region=True), {})
-        self.ae(a(-1, region=(1, 2, 2, 3)), {-1: {(1, 2), (2, 2), (1, 3), (2, 3)}})
-        self.ae(a(2, (1, 2), (1, 3)), {-1: {(2, 3), (2, 2)}, 2: {(1, 2), (1, 3)}})
-        self.ae(a(0, (1, 2), (2, 3)), {-1: {(2, 2)}, 2: {(1, 3)}})
+        self.ae(a(29, region=(1, 2, 2, 3)), {29: {(1, 2), (2, 2), (1, 3), (2, 3)}})
+        self.ae(a(2, (1, 2), (1, 3)), {29: {(2, 3), (2, 2)}, 2: {(1, 2), (1, 3)}})
+        self.ae(a(0, (1, 2), (2, 3)), {29: {(2, 2)}, 2: {(1, 3)}})
         self.ae(a(0, region=True), {})
         s.cursor.x, s.cursor.y = 1, 2
         parse_bytes(s, ec('3;0'))
@@ -1637,10 +1637,10 @@ class TestScreen(BaseTest):
         parse_bytes(s, ec('0;4:3:1:4'))
         self.ae(current(), {})
 
-        def sc(op, r=0, g=0, b=0, slot=-3):
+        def sc(op, r=0, g=0, b=0, slot=40):
             parse_bytes(s, ec(f'{slot};{op}:{r}:{g}:{b}'))
             c.clear()
-            parse_bytes(s, ec('-5'))
+            parse_bytes(s, ec('101'))
             for x in c.wtcbuf[3:-2].decode().split(';')[1:]:
                 parts = x.split(':')
                 if int(parts[0]) == slot:
@@ -1651,7 +1651,7 @@ class TestScreen(BaseTest):
                     else:
                         self.ae((op, r), tuple(map(int, parts[1:])))
                     break
-        for slot in (-3, -4):
+        for slot in (40, 30):
             sc(0, slot=slot)
             sc(1, slot=slot)
             sc(2, 1, 2, 3, slot=slot)
