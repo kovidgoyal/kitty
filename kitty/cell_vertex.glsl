@@ -7,7 +7,7 @@
 layout(std140) uniform CellRenderData {
     float use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
 
-    uint default_fg, highlight_fg, highlight_bg, main_cursor_fg, main_cursor_bg, url_color, url_style, inverted;
+    uint default_fg, highlight_fg, highlight_bg, main_cursor_fg, main_cursor_bg, url_color, url_style, inverted, extra_cursor_fg, extra_cursor_bg;
 
     uint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
     uint cursor_x1, cursor_x2, cursor_y1, cursor_y2;

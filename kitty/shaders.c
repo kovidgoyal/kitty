@@ -438,7 +438,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, C
     struct GPUCellRenderData {
         GLfloat use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
-        GLuint default_fg, highlight_fg, highlight_bg, main_cursor_fg, main_cursor_bg, url_color, url_style, inverted;
+        GLuint default_fg, highlight_fg, highlight_bg, main_cursor_fg, main_cursor_bg, url_color, url_style, inverted, extra_cursor_fg, extra_cursor_bg;
 
         GLuint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
         GLuint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
@@ -456,6 +456,8 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, C
 #define COLOR(name) colorprofile_to_color(cp, cp->overridden.name, cp->configured.name).rgb
     rd->default_fg = COLOR(default_fg);
     rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
+    rd->extra_cursor_fg = screen->extra_cursors.color.text.val;
+    rd->extra_cursor_bg = screen->extra_cursors.color.cursor.val;
     rd->bg_colors0 = COLOR(default_bg);
     rd->bg_opacities0 = bg_alpha;
 #define SETBG(which) { \
