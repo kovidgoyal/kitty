@@ -7,7 +7,7 @@
 layout(std140) uniform CellRenderData {
     float use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
 
-    uint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
+    uint default_fg, highlight_fg, highlight_bg, main_cursor_fg, main_cursor_bg, url_color, url_style, inverted;
 
     uint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
     uint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
@@ -147,6 +147,7 @@ struct CellData {
     float has_cursor, has_block_cursor;
     uvec2 pos;
     uint cursor_fg_sprite_idx;
+    vec3 cursor_fg, cursor_bg;
 } cell_data;
 
 CellData set_vertex_position() {
@@ -173,7 +174,9 @@ CellData set_vertex_position() {
     float final_cursor_shape = if_one_then(has_main_cursor, cursor_shape, multicursor_shape);
     float has_cursor = zero_or_one(final_cursor_shape);
     float is_block_cursor = has_cursor * one_if_equal_zero_otherwise(final_cursor_shape, 1.0);
-    return CellData(has_cursor, is_block_cursor, pos, cursor_shape_map[int(final_cursor_shape)]);
+    vec3 cursor_fg = color_to_vec(main_cursor_fg);
+    vec3 cursor_bg = color_to_vec(main_cursor_bg);
+    return CellData(has_cursor, is_block_cursor, pos, cursor_shape_map[int(final_cursor_shape)], cursor_fg, cursor_bg);
 }
 
 float background_opacity_for(uint bg, uint colorval, float opacity_if_matched) {  // opacity_if_matched if bg == colorval else 1
@@ -280,8 +283,8 @@ void main() {
     underline_exclusion_pos = to_underline_exclusion_pos();
 
     // Cursor
-    cursor_color_premult = vec4(color_to_vec(cursor_bg) * cursor_opacity, cursor_opacity);
-    vec3 final_cursor_text_color = mix(foreground, color_to_vec(cursor_fg), cursor_opacity);
+    cursor_color_premult = vec4(cell_data.cursor_bg * cursor_opacity, cursor_opacity);
+    vec3 final_cursor_text_color = mix(foreground, cell_data.cursor_fg, cursor_opacity);
     foreground = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, foreground);
     decoration_fg = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, decoration_fg);
     cursor_pos = to_sprite_pos(cell_data.pos, cell_data.cursor_fg_sprite_idx * uint(cell_data.has_cursor));
@@ -303,7 +306,7 @@ void main() {
     // Selection and cursor
     bg_alpha = if_one_then(cell_data.has_block_cursor, effective_cursor_opacity, bg_alpha);
     bg = if_one_then(float(is_selected & BIT_MASK), if_one_then(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
-    vec3 background_rgb = if_one_then(cell_data.has_block_cursor, mix(bg, color_to_vec(cursor_bg), cursor_opacity), bg);
+    vec3 background_rgb = if_one_then(cell_data.has_block_cursor, mix(bg, cell_data.cursor_bg, cursor_opacity), bg);
     background = background_rgb;
     // }}}
 

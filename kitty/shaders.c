@@ -438,7 +438,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, C
     struct GPUCellRenderData {
         GLfloat use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
-        GLuint default_fg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
+        GLuint default_fg, highlight_fg, highlight_bg, main_cursor_fg, main_cursor_bg, url_color, url_style, inverted;
 
         GLuint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
         GLuint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
@@ -514,18 +514,18 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, C
             }
         }
         if (IS_SPECIAL_COLOR(cursor_color)) {
-            if (line_for_cursor) pick_cursor_color(line_for_cursor, cp, cell_fg, cell_bg, cell_color_x, &rd->cursor_fg, &rd->cursor_bg, rd->default_fg, rd->bg_colors0);
-            else { rd->cursor_fg = rd->bg_colors0; rd->cursor_bg = rd->default_fg; }
+            if (line_for_cursor) pick_cursor_color(line_for_cursor, cp, cell_fg, cell_bg, cell_color_x, &rd->main_cursor_fg, &rd->main_cursor_bg, rd->default_fg, rd->bg_colors0);
+            else { rd->main_cursor_fg = rd->bg_colors0; rd->main_cursor_bg = rd->default_fg; }
             if (cell_bg == cell_fg) {
-                rd->cursor_fg = rd->bg_colors0; rd->cursor_bg = rd->default_fg;
-            } else { rd->cursor_fg = cell_bg; rd->cursor_bg = cell_fg; }
+                rd->main_cursor_fg = rd->bg_colors0; rd->main_cursor_bg = rd->default_fg;
+            } else { rd->main_cursor_fg = cell_bg; rd->main_cursor_bg = cell_fg; }
         } else {
-            rd->cursor_bg = COLOR(cursor_color);
-            if (IS_SPECIAL_COLOR(cursor_text_color)) rd->cursor_fg = cell_bg;
-            else rd->cursor_fg = COLOR(cursor_text_color);
+            rd->main_cursor_bg = COLOR(cursor_color);
+            if (IS_SPECIAL_COLOR(cursor_text_color)) rd->main_cursor_fg = cell_bg;
+            else rd->main_cursor_fg = COLOR(cursor_text_color);
         }
         // store last rendered cursor color for trail rendering
-        screen->last_rendered.cursor_bg = rd->cursor_bg;
+        screen->last_rendered.cursor_bg = rd->main_cursor_bg;
     } else {
         rd->cursor_shape = 0;
         rd->cursor_x1 = screen->columns + 1; rd->cursor_x2 = screen->columns;
