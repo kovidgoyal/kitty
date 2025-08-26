@@ -2885,15 +2885,13 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
             }
         } else if (queried_shape == -5) {
             char buf[64], *p = buf; size_t sz = sizeof(buf);
-            pr(">-5;-3:"); ExtraCursorColor ecc = self->extra_cursors.color.cursor;
-#define o() { \
-            if (ecc.is_set) {  \
-                if (ecc.is_none) { pr("1"); } \
-                else { \
-                    if (ecc.is_lookup) { pr("5:%u", ecc.color & 0xff); } \
-                    else { pr("2:%u:%u:%u", (ecc.color >> 16) & 0xff, (ecc.color >> 8) & 0xff, ecc.color & 0xff); } \
-                } \
-            } else pr("0"); }
+            pr(">-5;-3:"); DynamicColor ecc = self->extra_cursors.color.cursor;
+#define o() switch(ecc.type) { \
+                case COLOR_NOT_SET: pr("0"); break; \
+                case COLOR_IS_SPECIAL: pr("1"); break; \
+                case COLOR_IS_INDEX: pr("5:%u", ecc.rgb & 0xff); break;  \
+                case COLOR_IS_RGB:  pr("2:%u:%u:%u", (ecc.rgb >> 16) & 0xff, (ecc.rgb >> 8) & 0xff, ecc.rgb & 0xff); break; \
+            } \
 
             o(); pr(";-4:"); ecc = self->extra_cursors.color.text; o();
 #undef o
@@ -2904,20 +2902,18 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
 #undef pr
     }
     if (queried_shape == -3 || queried_shape == -4) {
-        ExtraCursorColor *ecc = queried_shape == -3 ? &self->extra_cursors.color.cursor : &self->extra_cursors.color.text;
+        DynamicColor *ecc = queried_shape == -3 ? &self->extra_cursors.color.cursor : &self->extra_cursors.color.text;
         self->extra_cursors.dirty = true;
         switch (params[0]) {
-            case 0: zero_at_ptr(ecc); break;
-            case 1: zero_at_ptr(ecc); ecc->is_set = true; ecc->is_none = true; break;
+            case 0: ecc->type = COLOR_NOT_SET; break;
+            case 1: ecc->type = COLOR_IS_SPECIAL; break;
             case 2: if (num_params > 3) {
-                zero_at_ptr(ecc);
-                ecc->is_set = true;
-                ecc->color = ((params[1] & 0xff) << 16) | ((params[2] & 0xff) << 8) | (params[3] & 0xff);
+                ecc->type = COLOR_IS_RGB;
+                ecc->rgb = ((params[1] & 0xff) << 16) | ((params[2] & 0xff) << 8) | (params[3] & 0xff);
             } break;
             case 5: if (num_params > 1) {
-                zero_at_ptr(ecc);
-                ecc->is_set = true; ecc->is_lookup = true;
-                ecc->color = params[1] & 0xff;
+                ecc->type = COLOR_IS_INDEX;
+                ecc->rgb = params[1] & 0xff;
             } break;
         }
         return;

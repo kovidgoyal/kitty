@@ -92,15 +92,10 @@ typedef struct ExtraCursor {
     index_type cell;
 } ExtraCursor;
 
-typedef struct ExtraCursorColor {
-    color_type color;
-    bool is_set, is_none, is_lookup;
-} ExtraCursorColor;
-
 typedef struct ExtraCursors {
     ExtraCursor *locations;
     unsigned count, capacity;
-    struct { ExtraCursorColor cursor, text; } color;
+    struct { DynamicColor cursor, text; } color;
     bool dirty;
 } ExtraCursors;
 
