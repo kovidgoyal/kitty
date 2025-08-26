@@ -15,6 +15,10 @@ from .fast_data_types import (
     CELL_BG_PROGRAM,
     CELL_FG_PROGRAM,
     CELL_PROGRAM,
+    COLOR_IS_INDEX,
+    COLOR_IS_RGB,
+    COLOR_IS_SPECIAL,
+    COLOR_NOT_SET,
     DECORATION,
     DECORATION_MASK,
     DIM,
@@ -178,6 +182,10 @@ class LoadShaderPrograms:
                 MARK_SHIFT=MARK,
                 MARK_MASK=MARK_MASK,
                 DECORATION_MASK=DECORATION_MASK,
+                COLOR_NOT_SET=COLOR_NOT_SET,
+                COLOR_IS_SPECIAL=COLOR_IS_SPECIAL,
+                COLOR_IS_INDEX=COLOR_IS_INDEX,
+                COLOR_IS_RGB=COLOR_IS_RGB,
             )
 
         def resolve_cell_defines(only_fg: int, only_bg: int, src: str) -> str:

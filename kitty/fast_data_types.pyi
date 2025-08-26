@@ -16,6 +16,10 @@ from kitty.typing_compat import EdgeLiteral, NotRequired, ReadableBuffer, Writea
 SCALE_BITS: int
 WIDTH_BITS: int
 SUBSCALE_BITS: int
+COLOR_IS_SPECIAL: int
+COLOR_NOT_SET: int
+COLOR_IS_RGB: int
+COLOR_IS_INDEX: int
 GLFW_LAYER_SHELL_NONE: int
 GLFW_LAYER_SHELL_PANEL: int
 GLFW_LAYER_SHELL_TOP: int
