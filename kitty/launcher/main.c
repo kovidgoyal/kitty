@@ -401,7 +401,7 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
                 perror("failed to create a pipe"); exit(1);
             }
 
-#define reopen_or_fail(path, mode, which) { errno = 0; if (freopen(path, mode, which) == NULL) { int s = errno; fprintf(stderr, "Failed to redirect %s to %s with error: ", #which, path); errno = s; perror(NULL); exit(1); } }
+#define reopen_or_fail(path, mode, which) { errno = 0; if (freopen(path, mode, which) == NULL) { int s = errno; fprintf(stderr, "Failed to redirect %s to %s with error: ", #which, path); errno = s; perror(NULL); exit(1); } setlinebuf(which); }
             if (!(opts.session && ((opts.session[0] == '-' && opts.session[1] == 0) || strcmp(opts.session, "/dev/stdin") == 0)))
                 reopen_or_fail("/dev/null", "rb", stdin);
             if (!detached_log || !detached_log[0]) detached_log = "/dev/null";
