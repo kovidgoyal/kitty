@@ -92,6 +92,19 @@ vec3 to_color(uint c, uint defval) {
     return color_to_vec(resolve_color(c, defval));
 }
 
+vec3 resolve_dynamic_color(uint c, vec3 special_val, vec3 defval) {
+    float type = float(c & BYTE_MASK);
+    c >>= 8;
+#define q(which, val) one_if_equal_zero_otherwise(type, which) * val
+    return (
+        q(COLOR_IS_RGB, color_to_vec(c)) + q(COLOR_IS_INDEX, color_to_vec(color_table[c & BYTE_MASK])) +
+        q(COLOR_IS_SPECIAL, special_val) + q(COLOR_NOT_SET, defval)
+    );
+#undef q
+}
+
+void resolve_extra_cursor_colors(out vec3 cursor_fg, out vec3 cursor_bg) {
+}
 
 uvec3 to_sprite_coords(uint idx) {
     uint sprites_per_page = sprites_xnum * sprites_ynum;
@@ -150,7 +163,7 @@ struct CellData {
     vec3 cursor_fg, cursor_bg;
 } cell_data;
 
-CellData set_vertex_position() {
+CellData set_vertex_position(vec3 cell_fg, vec3 cell_bg) {
     uint instance_id = uint(gl_InstanceID);
     float dx = 2.0 / float(columns);
     float dy = 2.0 / float(lines);
@@ -243,7 +256,6 @@ vec3 override_foreground_color(vec3 over, vec3 under) {
 
 void main() {
 
-    CellData cell_data = set_vertex_position();
 
     // set cell color indices {{{
     uvec2 default_colors = uvec2(default_fg, bg_colors0);
@@ -256,16 +268,16 @@ void main() {
     uint has_mark = uint(step(1, float(mark)));
     uint bg_as_uint = resolve_color(colors[bg_index], default_colors[bg_index]);
     bg_as_uint = has_mark * color_table[NUM_COLORS + mark - 1] + (BIT_MASK - has_mark) * bg_as_uint;
+    float cell_has_default_bg = 1.f - step(1.f, abs(float(bg_as_uint - bg_colors0))); // 1 if has default bg else 0
     vec3 bg = color_to_vec(bg_as_uint);
     uint fg_as_uint = resolve_color(colors[fg_index], default_colors[fg_index]);
-    float cell_has_default_bg = 1.f - step(1.f, abs(float(bg_as_uint - bg_colors0))); // 1 if has default bg else 0
+    fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + mark] + (1u - has_mark) * fg_as_uint;
+    vec3 foreground = color_to_vec(fg_as_uint);
+    CellData cell_data = set_vertex_position(foreground, bg);
     // }}}
 
     // Foreground {{{
 #ifndef ONLY_BACKGROUND // background does not depend on foreground
-    fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + mark] +
-        (BIT_MASK - has_mark) * fg_as_uint;
-    vec3 foreground = color_to_vec(fg_as_uint);
     float has_dim = float((text_attrs >> DIM_SHIFT) & BIT_MASK), has_blink = float((text_attrs >> BLINK_SHIFT) & BIT_MASK);
     effective_text_alpha = inactive_text_alpha * if_one_then(has_dim, dim_opacity, 1.0) * if_one_then(
             has_blink, blink_opacity, 1.0);
