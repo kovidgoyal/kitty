@@ -16,7 +16,7 @@ in vec3 underline_pos;
 in vec3 cursor_pos;
 in vec3 strike_pos;
 flat in uint underline_exclusion_pos;
-in vec3 foreground;
+in vec3 cell_foreground;
 in vec4 cursor_color_premult;
 in vec3 decoration_fg;
 in float colored_sprite;
@@ -62,7 +62,7 @@ vec4 load_text_foreground_color() {
     // For colored sprites use the color from the sprite rather than the text foreground
     // Return non-premultiplied foreground color
     vec4 text_fg = texture(sprites, sprite_pos);
-    return vec4(mix(foreground, text_fg.rgb, colored_sprite), text_fg.a);
+    return vec4(mix(cell_foreground, text_fg.rgb, colored_sprite), text_fg.a);
 }
 
 vec4 calculate_premul_foreground_from_sprites(vec4 text_fg) {

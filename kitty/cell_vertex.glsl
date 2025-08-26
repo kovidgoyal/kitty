@@ -47,16 +47,16 @@ const uint cursor_shape_map[] = uint[5](  // maps cursor shape to foreground spr
 out vec3 background;
 out vec4 effective_background_premul;
 #ifndef ONLY_BACKGROUND
+out float effective_text_alpha;
 out vec3 sprite_pos;
 out vec3 underline_pos;
 out vec3 cursor_pos;
-out vec4 cursor_color_premult;
 out vec3 strike_pos;
 flat out uint underline_exclusion_pos;
-out vec3 foreground;
+out vec3 cell_foreground;
+out vec4 cursor_color_premult;
 out vec3 decoration_fg;
 out float colored_sprite;
-out float effective_text_alpha;
 #endif
 
 
@@ -261,7 +261,7 @@ void main() {
     // Foreground {{{
 #ifndef ONLY_BACKGROUND // background does not depend on foreground
     fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + mark] + (ONE - has_mark) * fg_as_uint;
-    foreground = color_to_vec(fg_as_uint);
+    vec3 foreground = color_to_vec(fg_as_uint);
     float has_dim = float((text_attrs >> DIM_SHIFT) & ONE), has_blink = float((text_attrs >> BLINK_SHIFT) & ONE);
     effective_text_alpha = inactive_text_alpha * if_one_then(has_dim, dim_opacity, 1.0) * if_one_then(
             has_blink, blink_opacity, 1.0);
@@ -319,5 +319,9 @@ void main() {
     float draw_bg = step(0.5, float(draw_bg_bitfield & draw_bg_mask));
     bgpremul *= draw_bg;
     effective_background_premul = bgpremul;
+#endif
+
+#ifndef ONLY_BACKGROUND
+    cell_foreground = foreground;
 #endif
 }
