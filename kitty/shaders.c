@@ -414,9 +414,8 @@ create_graphics_vao(void) {
 #define IS_SPECIAL_COLOR(name) (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL || (screen->color_profile->overridden.name.type == COLOR_NOT_SET && screen->color_profile->configured.name.type == COLOR_IS_SPECIAL))
 
 static void
-pick_cursor_color(Line *line, const ColorProfile *color_profile, color_type cell_fg, color_type cell_bg, index_type cell_color_x, color_type *cursor_fg, color_type *cursor_bg, color_type default_fg, color_type default_bg) {
+pick_cursor_color(color_type cell_fg, color_type cell_bg, color_type *cursor_fg, color_type *cursor_bg, color_type default_fg, color_type default_bg) {
     ARGB32 fg, bg, dfg, dbg;
-    (void) line; (void) color_profile; (void) cell_color_x;
     fg.rgb = cell_fg; bg.rgb = cell_bg;
     *cursor_fg = cell_bg; *cursor_bg = cell_fg;
     double cell_contrast = rgb_contrast(fg, bg);
@@ -515,8 +514,9 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, C
                 };
             }
         }
+        // If you change the following algorithm remember to change it in the cell shader for extra cursors too
         if (IS_SPECIAL_COLOR(cursor_color)) {
-            if (line_for_cursor) pick_cursor_color(line_for_cursor, cp, cell_fg, cell_bg, cell_color_x, &rd->main_cursor_fg, &rd->main_cursor_bg, rd->default_fg, rd->bg_colors0);
+            if (line_for_cursor) pick_cursor_color(cell_fg, cell_bg, &rd->main_cursor_fg, &rd->main_cursor_bg, rd->default_fg, rd->bg_colors0);
             else { rd->main_cursor_fg = rd->bg_colors0; rd->main_cursor_bg = rd->default_fg; }
             if (cell_bg == cell_fg) {
                 rd->main_cursor_fg = rd->bg_colors0; rd->main_cursor_bg = rd->default_fg;

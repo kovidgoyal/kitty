@@ -93,8 +93,7 @@ vec3 to_color(uint c, uint defval) {
 }
 
 vec3 resolve_dynamic_color(uint c, vec3 special_val, vec3 defval) {
-    float type = float(c & BYTE_MASK);
-    c >>= 8;
+    float type = float((c >> 24) & BYTE_MASK);
 #define q(which, val) one_if_equal_zero_otherwise(type, which) * val
     return (
         q(COLOR_IS_RGB, color_to_vec(c)) + q(COLOR_IS_INDEX, color_to_vec(color_table[c & BYTE_MASK])) +
@@ -103,7 +102,44 @@ vec3 resolve_dynamic_color(uint c, vec3 special_val, vec3 defval) {
 #undef q
 }
 
-void resolve_extra_cursor_colors(out vec3 cursor_fg, out vec3 cursor_bg) {
+float contrast_ratio(float under_luminance, float over_luminance) {
+    return clamp((max(under_luminance, over_luminance) + 0.05f) / (min(under_luminance, over_luminance) + 0.05f), 1.f, 21.f);
+}
+
+float contrast_ratio(vec3 a, vec3 b) {
+    return contrast_ratio(dot(a, Y), dot(b, Y));
+}
+
+struct ColorPair {
+    vec3 bg, fg;
+};
+
+float contrast_ratio(ColorPair a) { return contrast_ratio(a.bg, a.fg); }
+
+ColorPair if_less_than_pair(float a, float b, ColorPair thenval, ColorPair elseval) {
+    return ColorPair(if_less_than(a, b, thenval.bg, elseval.bg),
+            if_less_than(a, b, thenval.fg, elseval.fg));
+}
+
+ColorPair if_one_then_pair(float condition, ColorPair thenval, ColorPair elseval) {
+    return ColorPair(if_one_then(condition, thenval.bg, elseval.bg),
+            if_one_then(condition, thenval.fg, elseval.fg));
+}
+
+ColorPair resolve_extra_cursor_colors_for_special_cursor(vec3 cell_bg, vec3 cell_fg) {
+    ColorPair cell = ColorPair(cell_fg, cell_bg), base = ColorPair(color_to_vec(default_fg), color_to_vec(bg_colors0));
+    float cr = contrast_ratio(cell), br = contrast_ratio(base);
+    ColorPair higher_contrast_pair = if_less_than_pair(cr, br, base, cell);
+    return if_less_than_pair(cr, 2.5, higher_contrast_pair, cell);
+}
+
+ColorPair resolve_extra_cursor_colors(vec3 cell_bg, vec3 cell_fg, ColorPair main_cursor) {
+    ColorPair ans = ColorPair(
+        resolve_dynamic_color(extra_cursor_bg, main_cursor.bg, main_cursor.bg),
+        resolve_dynamic_color(extra_cursor_fg, cell_bg, main_cursor.fg)
+    );
+    ColorPair special = resolve_extra_cursor_colors_for_special_cursor(cell_bg, cell_fg);
+    return if_one_then_pair(zero_or_one(abs(float(extra_cursor_bg & BYTE_MASK) - COLOR_IS_SPECIAL)), ans, special);
 }
 
 uvec3 to_sprite_coords(uint idx) {
@@ -160,7 +196,7 @@ struct CellData {
     float has_cursor, has_block_cursor;
     uvec2 pos;
     uint cursor_fg_sprite_idx;
-    vec3 cursor_fg, cursor_bg;
+    ColorPair cursor;
 } cell_data;
 
 CellData set_vertex_position(vec3 cell_fg, vec3 cell_bg) {
@@ -180,6 +216,7 @@ CellData set_vertex_position(vec3 cell_fg, vec3 cell_bg) {
     sprite_pos = to_sprite_pos(pos, sprite_idx[0] & SPRITE_INDEX_MASK);
     colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
 #endif
+    // Cursor shape and colors
     float has_main_cursor = is_cursor(column, row);
     float multicursor_shape = float((is_selected >> 2) & 3u);
     float multicursor_uses_main_cursor_shape = float((is_selected >> 4) & BIT_MASK);
@@ -187,9 +224,10 @@ CellData set_vertex_position(vec3 cell_fg, vec3 cell_bg) {
     float final_cursor_shape = if_one_then(has_main_cursor, cursor_shape, multicursor_shape);
     float has_cursor = zero_or_one(final_cursor_shape);
     float is_block_cursor = has_cursor * one_if_equal_zero_otherwise(final_cursor_shape, 1.0);
-    vec3 cursor_fg = color_to_vec(main_cursor_fg);
-    vec3 cursor_bg = color_to_vec(main_cursor_bg);
-    return CellData(has_cursor, is_block_cursor, pos, cursor_shape_map[int(final_cursor_shape)], cursor_fg, cursor_bg);
+    ColorPair main_cursor = ColorPair(color_to_vec(main_cursor_bg), color_to_vec(main_cursor_fg));
+    ColorPair extra_cursor = resolve_extra_cursor_colors(cell_bg, cell_fg, main_cursor);
+    ColorPair cursor = if_one_then_pair(has_main_cursor, main_cursor, extra_cursor);
+    return CellData(has_cursor, is_block_cursor, pos, cursor_shape_map[int(final_cursor_shape)], cursor);
 }
 
 float background_opacity_for(uint bg, uint colorval, float opacity_if_matched) {  // opacity_if_matched if bg == colorval else 1
@@ -226,8 +264,6 @@ vec3 fg_override(float under_luminance, float over_lumininace, vec3 under, vec3 
 
 #else
 
-float contrast_ratio(float under_luminance, float over_luminance) {
-    return clamp((max(under_luminance, over_luminance) + 0.05f) / (min(under_luminance, over_luminance) + 0.05f), 1.f, 21.f);
 }
 
 vec3 fg_override(float under_luminance, float over_luminance, vec3 under, vec3 over) {
@@ -295,8 +331,8 @@ void main() {
     underline_exclusion_pos = to_underline_exclusion_pos();
 
     // Cursor
-    cursor_color_premult = vec4(cell_data.cursor_bg * cursor_opacity, cursor_opacity);
-    vec3 final_cursor_text_color = mix(foreground, cell_data.cursor_fg, cursor_opacity);
+    cursor_color_premult = vec4(cell_data.cursor.bg * cursor_opacity, cursor_opacity);
+    vec3 final_cursor_text_color = mix(foreground, cell_data.cursor.fg, cursor_opacity);
     foreground = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, foreground);
     decoration_fg = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, decoration_fg);
     cursor_pos = to_sprite_pos(cell_data.pos, cell_data.cursor_fg_sprite_idx * uint(cell_data.has_cursor));
@@ -318,7 +354,7 @@ void main() {
     // Selection and cursor
     bg_alpha = if_one_then(cell_data.has_block_cursor, effective_cursor_opacity, bg_alpha);
     bg = if_one_then(float(is_selected & BIT_MASK), if_one_then(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
-    vec3 background_rgb = if_one_then(cell_data.has_block_cursor, mix(bg, cell_data.cursor_bg, cursor_opacity), bg);
+    vec3 background_rgb = if_one_then(cell_data.has_block_cursor, mix(bg, cell_data.cursor.bg, cursor_opacity), bg);
     background = background_rgb;
     // }}}
 
