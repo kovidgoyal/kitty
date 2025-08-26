@@ -121,6 +121,51 @@ For more precise control different co-ordinate types can be used. This is
 particularly important for multiplexers that split up the screen and therefore
 need to re-write these escape codes.
 
+.. _extra_cursor_color:
+
+Changing the color of extra cursors
+---------------------------------------
+
+In order to visually distinguish extra cursors from the main cursor, it is
+possible to specify a color pair for extra cursors. Note that for performance
+reasons, there is only a single color pair that all extra cursors share.
+The color pair consists of the cursor color and the color for text in the cell
+the cursor is on.
+
+To change this color pair use an escape code of the form::
+
+    CSI > WHICH ; COLOR_SPACE : COLOR_PARAMETER1 : COLOR_PARAMETER2 : ... TRAILER
+
+Here, ``WHICH`` is ``30`` to set the color of text under the cursor and ``40``
+to set the color of the cursor itself (these numbers mimic the SGR codes for
+foreground and background respectively).
+
+The ``COLOR_SPACE`` parameter sets the type of color, it can take values:
+
+``0`` - unset color is same as for main cursor. No color parameters.
+``1`` - *special* which typically means some kind of reverse video effect, see below
+``2`` - sRGB color, with three color parameters, red, green and blue as numbers
+from 0 to 255
+``5`` - Indexed color with one color parameter which is an index into the color
+table from 0 to 255
+
+When the cursor color is set to *special* via ``40`` it means the block cursor
+must be rendered with a reverse video effect where the cursor color becomes the
+foreground color of the cell under the cursor and the foreground color of the
+cell becomes its background color. Implementations are free to adjust these
+colors to ensure suitable contrast levels. In this case the text color set by
+``30`` must be ignored.
+
+When the cursor color is not set to *special* but the text color via ``30`` is
+set to special, then that means the foreground color of the cell with the
+cursor must be changed to its background color for a partial reverse video
+effect.
+
+When unset, aka, set to ``0`` the cursors must be the same color as the main
+cursor. In particular if the main color is using a reverse video effect, the
+extra cursors must use the exact same colors as the main cursor, not the colors
+of the cells they are on.
+
 Querying for already set cursors
 --------------------------------------
 
@@ -142,6 +187,22 @@ no blocks, just an empty response of the form::
 
 Again, terminals **must** respond in FIFO order so that multiplexers know where
 to direct the responses.
+
+Querying for extra cursor colors
+-------------------------------------
+
+Programs can ask the terminal what cursor colors are currently set, by sending
+escape code::
+
+    CSI > 101 TRAILER
+
+The terminal must respond with **one** escape code::
+
+    CSI > 101 ; 30 : COLOR_SPACE : COLOR_PARAMETERS ; 40 : COLOR_SPACE : COLOR_PARAMETERS TRAILER
+
+The number and type of ``COLOR_PARAMETERS`` depends on the preceding
+``COLOR_SPACE`` and can be omitted for some ``COLOR_SPACE`` values. See the
+section :ref:`extra_cursor_color` for details.
 
 
 Interaction with other terminal controls and state
