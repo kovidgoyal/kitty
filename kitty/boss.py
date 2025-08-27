@@ -665,7 +665,10 @@ class Boss:
             return t.active_window_for_cwd
         return None
 
-    @ac('win', 'New OS Window with the same working directory as the currently active window')
+    @ac('win', '''
+        New OS Window with the same working directory as the currently active window.
+        The new OS Window is added to the currently active :ref:`session <sessions>`, if any.
+    ''')
     def new_os_window_with_cwd(self, *args: str) -> None:
         w = self.window_for_dispatch or self.active_window_for_cwd
         self._new_os_window(args, CwdRequest(w))
@@ -2737,7 +2740,10 @@ class Boss:
     def new_tab(self, *args: str) -> None:
         self._create_tab(list(args))
 
-    @ac('tab', 'Create a new tab with working directory for the window in it set to the same as the active window')
+    @ac('tab', '''
+        Create a new tab with working directory for the window in it set to the same as the active window.
+        The tab is added to the currently active :ref:`session <sessions>`, if any.
+    ''')
     def new_tab_with_cwd(self, *args: str) -> None:
         self._create_tab(list(args), cwd_from=CwdRequest(self.window_for_dispatch or self.active_window_for_cwd))
 
@@ -2779,7 +2785,9 @@ class Boss:
     def new_window(self, *args: str) -> None:
         self._new_window(list(args))
 
-    @ac('win', 'Create a new window with working directory same as that of the active window')
+    @ac('win', '''
+        Create a new window with working directory same as that of the active window.
+        The new window will belong to the active :ref:`session <sessions>` if any.''')
     def new_window_with_cwd(self, *args: str) -> None:
         w = self.window_for_dispatch or self.active_window_for_cwd
         if w is None:
