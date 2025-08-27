@@ -18,7 +18,7 @@ usage = ''
 
 
 def main(args: list[str]) -> None:
-    raise SystemExit('This should be reun as kitten show_key')
+    raise SystemExit('This should be run as kitten show_key')
 
 
 if __name__ == '__main__':
