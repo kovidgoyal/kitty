@@ -131,10 +131,12 @@ to each named group of the form :code:`key=value`.
 --linenum-action
 default=self
 type=choice
-choices=self,window,tab,os_window,background
+choices=self,window,tab,os_window,background,remote-control
 Where to perform the action on matched errors. :code:`self` means the current
 window, :code:`window` a new kitty window, :code:`tab` a new tab,
 :code:`os_window` a new OS window and :code:`background` run in the background.
+:code:`remote-control` is like background but the program can use kitty remote control
+without needing to turn on remote control globally.
 The actual action is whatever arguments are provided to the kitten, for
 example:
 :code:`kitten hints --type=linenum --linenum-action=tab vim +{line} {path}`
@@ -307,8 +309,9 @@ def linenum_handle_result(args: list[str], data: dict[str, Any], target_window_i
                 text = shlex.join(cmd)
                 w.paste_bytes(f'{text}\r')
     elif action == 'background':
-        import subprocess
-        subprocess.Popen(cmd, cwd=data['cwd'])
+        boss.run_background_process(cmd, cwd=data['cwd'], allow_remote_control=False)
+    elif action == 'remote-control':
+        boss.run_background_process(cmd, cwd=data['cwd'], allow_remote_control=True)
     else:
         getattr(boss, {
             'window': 'new_window_with_cwd', 'tab': 'new_tab_with_cwd', 'os_window': 'new_os_window_with_cwd'
