@@ -1511,6 +1511,14 @@ use :code:`{sup.index}`. All data available is:
 :code:`tab.progress_percent`
     If a command running in a window reports the progress for a task, show this progress as a percentage
     from all windows in the tab, averaged. Empty string is no progress is reported.
+:code:`custom`
+    This will call a function named :code:`draw_title(data)` from the file :file:`tab_bar.py` placed in
+    the kitty config directory. The function will be passed a dictionary of data, the same data that
+    can be used in this template. It can then perform arbitrarily complex processing and return a string.
+    For example: :code:`tab_title_template "{custom}"` will use the output of the function as the tab title.
+    Any print statements in the :code:`draw_title()` will print to the STDOUT of the kitty process, useful
+    for debugging.
+
 
 Note that formatting is done by Python's string formatting machinery, so you can
 use, for instance, :code:`{layout_name[:2].upper()}` to show only the first two

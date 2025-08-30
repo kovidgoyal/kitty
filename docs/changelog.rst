@@ -140,6 +140,9 @@ Detailed list of changes
   controlled by :opt:`cursor_blink_interval` and
   :opt:`cursor_stop_blinking_after`. (:pull:`8551`)
 
+- Allow using a custom python function to draw tab titles in the tab bar, see
+  :opt:`tab_title_template`
+
 - Wayland: Fix incorrect window size calculation when transitioning from
   full screen to non-full screen with client side decorations (:iss:`8826`)
 

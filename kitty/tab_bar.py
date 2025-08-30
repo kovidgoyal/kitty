@@ -303,6 +303,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int,
         prefix += '{activity_symbol}'
     if prefix:
         template = '{fmt.fg.red}' + prefix + '{fmt.fg.tab}' + template
+    eval_locals['custom'] = load_custom_draw_title(eval_locals)
     try:
         title = eval(compile_template(template), {'__builtins__': safe_builtins}, eval_locals)
     except Exception as e:
@@ -486,15 +487,24 @@ def draw_tab_with_powerline(
 
 
 @run_once
-def load_custom_draw_tab() -> DrawTabFunc:
+def load_custom_draw_tab_module() -> dict[str, Any]:
     import runpy
     import traceback
     try:
-        m = runpy.run_path(os.path.join(config_dir, 'tab_bar.py'))
-        func: DrawTabFunc = m['draw_tab']
+        return runpy.run_path(os.path.join(config_dir, 'tab_bar.py'))
+    except FileNotFoundError:
+        return {}
     except Exception as e:
         traceback.print_exc()
-        log_error(f'Failed to load custom draw_tab function with error: {e}')
+        log_error(f'Failed to load custom tab_bar.py module with error: {e}')
+        return {}
+
+
+@run_once
+def load_custom_draw_tab() -> DrawTabFunc:
+    m = load_custom_draw_tab_module()
+    func: DrawTabFunc | None = m.get('draw_tab')
+    if func is None:
         return draw_tab_with_fade
 
     @wraps(func)
@@ -510,6 +520,24 @@ def load_custom_draw_tab() -> DrawTabFunc:
             return draw_tab_with_fade(draw_data, screen, tab, before, max_tab_length, index, is_last, extra_data)
 
     return draw_tab
+
+
+class CustomDrawTitleFunc:
+
+    def __init__(self, data: dict[str, Any], implementation: Callable[[dict[str, Any]], str] | None = None):
+        self._implementation = implementation
+        self._data = data.copy()
+
+    def __str__(self) -> str:
+        if self._implementation is None:
+            return ''
+        return str(self._implementation(self._data))
+    __repr__ = __str__
+
+
+def load_custom_draw_title(data: dict[str, Any]) -> CustomDrawTitleFunc:
+    m = load_custom_draw_tab_module()
+    return CustomDrawTitleFunc(data, m.get('draw_title'))
 
 
 class CellRange(NamedTuple):
