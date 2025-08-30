@@ -526,7 +526,7 @@ class CustomDrawTitleFunc:
 
     def __init__(self, data: dict[str, Any], implementation: Callable[[dict[str, Any]], str] | None = None):
         self._implementation = implementation
-        self._data = data.copy()
+        self._data = {} if implementation is None else data.copy()
 
     def __str__(self) -> str:
         if self._implementation is None:
