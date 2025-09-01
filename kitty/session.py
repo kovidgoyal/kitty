@@ -92,6 +92,7 @@ class Session:
         self.os_window_class: str | None = None
         self.os_window_name: str | None = None
         self.os_window_state: str | None = None
+        self.os_window_title: str | None = None
         self.focus_os_window: bool = False
 
     @property
@@ -263,6 +264,8 @@ def parse_session(
                 ans.os_window_class = rest
             elif cmd == 'os_window_name':
                 ans.os_window_name = rest
+            elif cmd == 'os_window_title':
+                ans.os_window_title = rest
             elif cmd == 'os_window_state':
                 ans.os_window_state = rest
             elif cmd == 'resize_window':
@@ -339,6 +342,7 @@ def create_sessions(
     if args is not None:
         ans.os_window_class = args.cls
         ans.os_window_name = args.name
+        ans.os_window_title = args.title
     if special_window is None:
         cmd = args.args if args and args.args else resolved_shell(opts)
         from kitty.tabs import SpecialWindow

@@ -135,6 +135,8 @@ all the major keywords you can use in kitty session files:
     new_os_window
     # Set new window size to 80x24 cells
     os_window_size 80c 24c
+    # Set the --title for the new OS window
+    os_window_title my fancy os window
     # Set the --class for the new OS window
     os_window_class mywindow
     # Set the --name for the new OS window
@@ -290,6 +292,11 @@ documentation for them.
 ``new_tab [tab title]``
     Create a new tab with the specified title. If no title is specified, the
     title behaves just as for a regular tab in kitty.
+
+``os_window_title``
+    Set the title for the current OS Window. The OS Window will then always
+    have this title, it will not change based on the title of the currently active
+    window inside the OS Window.
 
 ``os_window_class``
     Set the class part of WM_CLASS or Wayland Application Id for the current OS Window
