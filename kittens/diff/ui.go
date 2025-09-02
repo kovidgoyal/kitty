@@ -287,7 +287,7 @@ func (self *Handler) resize_all_images_if_needed() {
 }
 
 func (self *Handler) rerender_diff() error {
-	if self.diff_map != nil && self.collection != nil {
+	if self.diff_map != nil && self.collection != nil && self.terminal_capabilities_received {
 		err := self.render_diff()
 		if err != nil {
 			return err
@@ -305,6 +305,13 @@ func (self *Handler) handle_async_result(r AsyncResult) error {
 		self.highlight_all()
 		self.load_all_images()
 	case DIFF:
+		if !self.terminal_capabilities_received {
+			go func() {
+				self.async_results <- r
+				self.lp.WakeupMainThread()
+			}()
+			return nil
+		}
 		self.diff_map = r.diff_map
 		self.calculate_statistics()
 		self.clear_mouse_selection()
@@ -333,7 +340,7 @@ func (self *Handler) handle_async_result(r AsyncResult) error {
 func (self *Handler) on_resize(old_size, new_size loop.ScreenSize) error {
 	self.clear_mouse_selection()
 	self.update_screen_size(new_size)
-	if self.diff_map != nil && self.collection != nil {
+	if self.diff_map != nil && self.collection != nil && self.terminal_capabilities_received {
 		err := self.render_diff()
 		if err != nil {
 			return err
