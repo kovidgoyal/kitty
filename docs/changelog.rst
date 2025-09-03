@@ -165,6 +165,9 @@ Detailed list of changes
 - Wayland: Update bundled copy of libwayland to 1.24 from 1.23.1 because the
   just released mesa 25.2.0 breaks with libwayland < 1.24 (:iss:`8884`)
 
+- macOS: Pass the :kbd:`Cmd+C` shortcut to the application running in the
+  terminal when no text is selected (:pull:`8946`)
+
 0.42.2 [2025-07-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

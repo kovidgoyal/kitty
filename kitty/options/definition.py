@@ -3726,7 +3726,7 @@ to :kbd:`Ctrl+C`. It will copy only if there is a selection and send an
 interrupt otherwise. Similarly, :ac:`copy_and_clear_or_interrupt` will copy
 and clear the selection or send an interrupt if there is no selection.
 The :ac:`copy_or_noop` action will copy if there is a selection and pass
-the key through to the application if there is no selection.
+the key through to the application running in the terminal if there is no selection.
 '''
     )
 map('Copy to clipboard or pass through',

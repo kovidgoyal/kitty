@@ -2142,14 +2142,14 @@ class Window:
             self.scroll_end()
             self.write_to_child(self.encoded_key(KeyEvent(key=ord('c'), mods=GLFW_MOD_CONTROL)))
 
-    @ac('cp', 'Copy the selected text from the active window to the clipboard, if no selection, pass the key through to the application')
+    @ac('cp', 'Copy the selected text from the active window to the clipboard, if no selection,'
+        ' pass the key through to the application running in the terminal.')
     def copy_or_noop(self) -> bool:
         text = self.text_for_selection()
         if text:
             set_clipboard_string(text)
             return False
-        else:
-            return True
+        return True
 
     @ac('cp', 'Copy the selected text from the active window to the clipboard and clear selection, if no selection, send SIGINT (aka :kbd:`ctrl+c`)')
     def copy_and_clear_or_interrupt(self) -> None:
