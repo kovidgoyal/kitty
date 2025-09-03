@@ -3725,10 +3725,12 @@ There is also a :ac:`copy_or_interrupt` action that can be optionally mapped
 to :kbd:`Ctrl+C`. It will copy only if there is a selection and send an
 interrupt otherwise. Similarly, :ac:`copy_and_clear_or_interrupt` will copy
 and clear the selection or send an interrupt if there is no selection.
+The :ac:`copy_or_noop` action will copy if there is a selection and pass
+the key through to the application if there is no selection.
 '''
     )
-map('Copy to clipboard',
-    'copy_to_clipboard cmd+c copy_to_clipboard',
+map('Copy to clipboard or pass through',
+    'copy_or_noop cmd+c copy_or_noop',
     only='macos',
     )
 
