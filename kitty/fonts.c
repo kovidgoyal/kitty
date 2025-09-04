@@ -744,7 +744,10 @@ START_ALLOW_CASE_RANGE
             if (allow_use_of_box_fonts) return BOX_FONT;
             /* fallthrough */
         default:
-            if (lc->count == 1 && (lc->chars[0] == ' ' || lc->chars[0] == 0x2002 /* en-space */)) return BLANK_FONT;
+            // Optimisation to avoid rendering spaces, except in the case of
+            // scaled multicells as the decorations there have to rendered
+            // scaled as well.
+            if (lc->count == 1 && (lc->chars[0] == ' ' || lc->chars[0] == 0x2002 /* en-space */) && (!cpu_cell->is_multicell || cpu_cell->scale == 1)) return BLANK_FONT;
             *is_emoji_presentation = has_emoji_presentation(cpu_cell, lc);
             ans = in_symbol_maps(fg, lc->chars[0]);
             if (ans > -1) return ans;
@@ -1781,7 +1784,9 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
             render_groups(fg, rf, center_glyph, tc);
             break;
         case BLANK_FONT:
-            while(num_cells--) { first_gpu_cell->sprite_idx = 0; first_cpu_cell++; first_gpu_cell++; }
+            while (num_cells--) {
+                first_gpu_cell->sprite_idx = 0; first_cpu_cell++; first_gpu_cell++;
+            }
             break;
         case BOX_FONT:
             while(num_cells) {
