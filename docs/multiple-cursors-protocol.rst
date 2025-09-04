@@ -12,8 +12,8 @@ the same changes at multiple locations in a file and the editor shows you
 cursors at each of the locations. In a terminal context editors typically
 implement this by showing some Unicode glyph at each location instead of the
 actual cursor. This is sub-optimal since actual cursors implemented by the
-terminal have many niceties like smooth animation, auto adjust colors, etc. To
-address this and other use cases, this protocol allows terminal programs to
+terminal have many niceties like smooth animation [anim]_, auto adjust colors [rv]_,
+etc. To address this and other use cases, this protocol allows terminal programs to
 request that the terminal display multiple cursors at specific locations on the
 screen.
 
@@ -236,3 +236,16 @@ Interaction with other terminal controls and state
     ephemeral and on screen only, not in scrollback. This allows terminals
     to avoid the extra overhead of adjusting positions of the extra cursors
     on every scroll.
+
+
+Footnotes
+-------------
+
+.. [anim] kitty allows the cursor blink to be :opt:`animated
+   <cursor_blink_interval>` using any CSS easing function. This cannot be
+   implemented using fake cursors.
+
+.. [rv] kitty has a special "reverse video" color mode for cursors where the
+   color of the cursor and the text under the cursor is adjusted based on the
+   color of the cell under the cursor. This also cannot be implemented using
+   fake cursors.
