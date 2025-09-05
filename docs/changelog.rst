@@ -171,6 +171,9 @@ Detailed list of changes
 - macOS: Pass the :kbd:`Cmd+C` shortcut to the application running in the
   terminal when no text is selected (:pull:`8946`)
 
+- macOS: Workaround for bug in macOS Tahoe that caused closed OS Windows to
+  remain as invisible rectangles that intercept mouse events (:iss:`8952`)
+
 0.42.2 [2025-07-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
