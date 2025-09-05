@@ -146,6 +146,26 @@ encode_mouse_scroll(Window *w, int button, int mods) {
 
 // }}}
 
+// Scrollbar types and function declarations {{{
+typedef enum {
+    SCROLLBAR_HIT_NONE,
+    SCROLLBAR_HIT_TRACK,
+    SCROLLBAR_HIT_THUMB
+} ScrollbarHitType;
+
+typedef struct {
+    double left, right, top, bottom;
+    double width, gap, hitbox_expansion;
+} ScrollbarGeometry;
+
+static ScrollbarGeometry calculate_scrollbar_geometry(Window *w);
+static ScrollbarHitType get_scrollbar_hit_type(Window *w, double mouse_x, double mouse_y);
+static bool handle_scrollbar_mouse(Window *w, int button, MouseAction action, int modifiers);
+static void handle_scrollbar_drag(Window *w, double mouse_y);
+static void end_drag(Window *w);
+static void update_scrollbar_hover_state(Window *w, bool hovering);
+// }}}
+
 static Window*
 window_for_id(id_type window_id) {
     if (global_state.callback_os_window && global_state.callback_os_window->num_tabs) {
@@ -164,6 +184,9 @@ send_mouse_leave_event_if_needed(id_type currently_over_window, int modifiers) {
         Window *left_window = window_for_id(global_state.mouse_hover_in_window);
         global_state.mouse_hover_in_window = currently_over_window;
         if (left_window) {
+            if (left_window->scrollbar.is_hovering) {
+                update_scrollbar_hover_state(left_window, false);
+            }
             int sz = encode_mouse_event(left_window, 0, LEAVE, modifiers);
             if (sz > 0) {
                 mouse_event_buf[sz] = 0;
@@ -405,6 +428,11 @@ set_mouse_position(Window *w, bool *mouse_cell_changed, bool *cell_half_changed)
 
 HANDLER(handle_move_event) {
     modifiers &= ~GLFW_LOCK_MASK;
+
+    if (handle_scrollbar_mouse(w, -1, MOVE, modifiers)) {
+        return;
+    }
+
     if (OPT(focus_follows_mouse)) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         if (window_idx != t->active_window) {
@@ -413,7 +441,12 @@ HANDLER(handle_move_event) {
     }
     bool mouse_cell_changed = false;
     bool cell_half_changed = false;
-    if (!set_mouse_position(w, &mouse_cell_changed, &cell_half_changed)) return;
+    if (!set_mouse_position(w, &mouse_cell_changed, &cell_half_changed)) {
+        if (w->scrollbar.is_hovering) {
+            update_scrollbar_hover_state(w, false);
+        }
+        return;
+    }
     Screen *screen = w->render_data.screen;
     if (OPT(detect_urls)) detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
     if (should_handle_in_kitty(w, screen, button)) {
@@ -588,8 +621,15 @@ dispatch_possible_click(Window *w, int button, int modifiers) {
 
 HANDLER(handle_button_event) {
     modifiers &= ~GLFW_LOCK_MASK;
+    if (!global_state.callback_os_window) return;
+
     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
     bool is_release = !global_state.callback_os_window->mouse_button_pressed[button];
+
+    if (handle_scrollbar_mouse(w, button, is_release ? RELEASE : PRESS, modifiers)) {
+        return;
+    }
+
     if (window_idx != t->active_window && !is_release) {
         call_boss(switch_focus_to, "K", t->windows[window_idx].id);
     }
@@ -712,10 +752,17 @@ update_mouse_pointer_shape(void) {
     bool in_tab_bar;
     unsigned int window_idx = 0;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
-    if (in_tab_bar) { mouse_cursor_shape = POINTER_POINTER; }
-    else if (w && w->render_data.screen) {
-        screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
-        set_mouse_cursor_for_screen(w->render_data.screen);
+    if (in_tab_bar) {
+        mouse_cursor_shape = POINTER_POINTER;
+    } else if (w) {
+        if (handle_scrollbar_mouse(w, -1, MOVE, 0)) {
+            return;
+        }
+
+        if (w->render_data.screen) {
+            screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
+            set_mouse_cursor_for_screen(w->render_data.screen);
+        }
     }
     set_mouse_cursor(mouse_cursor_shape);
 }
@@ -748,6 +795,11 @@ enter_event(int modifiers) {
     send_mouse_leave_event_if_needed(w ? w->id : 0, modifiers);
     if (!w || in_tab_bar) return;
     global_state.mouse_hover_in_window = w->id;
+
+    if (handle_scrollbar_mouse(w, -1, MOVE, modifiers)) {
+        return;
+    }
+
     bool mouse_cell_changed = false, cell_half_changed = false;
     if (!set_mouse_position(w, &mouse_cell_changed, &cell_half_changed)) return;
     Screen *screen = w->render_data.screen;
@@ -757,12 +809,194 @@ enter_event(int modifiers) {
     if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf); }
 }
 
+static bool
+validate_scrollbar_state(Window *w) {
+    return w && w->render_data.screen &&
+           w->render_data.screen->historybuf &&
+           w->render_data.screen->historybuf->count > 0;
+}
+
+static ScrollbarGeometry
+calculate_scrollbar_geometry(Window *w) {
+    ScrollbarGeometry geom = {0};
+    if (!w) return geom;
+
+    WindowGeometry *g = &w->render_data.geometry;
+    geom.width = OPT(scrollbar_width);
+    geom.gap = OPT(scrollbar_gap);
+    geom.hitbox_expansion = OPT(scrollbar_hitbox_expansion);
+
+    double right_edge = g->right + g->spaces.right;
+    geom.left = right_edge - geom.gap - geom.width - geom.hitbox_expansion;
+    geom.right = right_edge + geom.gap;
+    geom.top = g->top - g->spaces.top;
+    geom.bottom = g->bottom + g->spaces.bottom;
+
+    return geom;
+}
+
+static void
+update_scrollbar_hover_state(Window *w, bool hovering) {
+    if (!w) return;
+    bool changed = w->scrollbar.is_hovering != hovering;
+    w->scrollbar.is_hovering = hovering;
+
+    if (changed && OPT(scrollbar_autohide) && global_state.callback_os_window) {
+        global_state.callback_os_window->needs_render = true;
+        request_tick_callback();
+    }
+}
+
+static ScrollbarHitType
+get_scrollbar_hit_type(Window *w, double mouse_x, double mouse_y) {
+    if (!w || !validate_scrollbar_state(w)) return SCROLLBAR_HIT_NONE;
+
+    ScrollbarGeometry geom = calculate_scrollbar_geometry(w);
+
+    if (mouse_x < geom.left || mouse_x > geom.right ||
+        mouse_y < geom.top || mouse_y > geom.bottom) {
+        return SCROLLBAR_HIT_NONE;
+    }
+
+    OSWindow *os_window = global_state.callback_os_window;
+    if (!os_window) return SCROLLBAR_HIT_TRACK;
+    double mouse_window_fraction = mouse_y / os_window->viewport_height;
+    double hitbox_expansion_fraction = (double)OPT(scrollbar_hitbox_expansion) / os_window->viewport_height;
+
+    if (mouse_window_fraction >= (w->scrollbar.thumb_top - hitbox_expansion_fraction) &&
+        mouse_window_fraction <= (w->scrollbar.thumb_bottom + hitbox_expansion_fraction)) {
+        return SCROLLBAR_HIT_THUMB;
+    }
+
+    return SCROLLBAR_HIT_TRACK;
+}
+
+static void
+handle_scrollbar_track_click(Window *w, double mouse_y) {
+    if (!w) return;
+    Screen *screen = w->render_data.screen;
+    if (!validate_scrollbar_state(w)) return;
+
+    if (OPT(scrollbar_track_behavior) == SCROLLBAR_TRACK_JUMP) {
+        ScrollbarGeometry geom = calculate_scrollbar_geometry(w);
+        double scrollbar_height = geom.bottom - geom.top;
+        double mouse_pane_fraction = (mouse_y - geom.top) / scrollbar_height;
+        unsigned int target_scrolled_by = (unsigned int)(screen->historybuf->count * (1.0 - mouse_pane_fraction));
+        screen_history_scroll_to_absolute(screen, target_scrolled_by);
+    } else {
+        OSWindow *os_window = global_state.callback_os_window;
+        if (!os_window) return;
+        double mouse_window_fraction = mouse_y / os_window->viewport_height;
+        bool click_above_thumb = mouse_window_fraction < w->scrollbar.thumb_top;
+        screen_history_scroll(screen, SCROLL_PAGE, click_above_thumb);
+    }
+}
+
+static void
+start_scrollbar_drag(Window *w, double mouse_y) {
+    if (!w) return;
+    Screen *screen = w->render_data.screen;
+    if (!validate_scrollbar_state(w)) return;
+
+    ScrollbarGeometry geom = calculate_scrollbar_geometry(w);
+    double scrollbar_height = geom.bottom - geom.top;
+    double mouse_pane_fraction = (mouse_y - geom.top) / scrollbar_height;
+    w->scrollbar.is_dragging = true;
+    w->scrollbar.drag_start_y = mouse_pane_fraction;
+    w->scrollbar.drag_start_scrolled_by = screen->scrolled_by;
+}
+
+static bool
+handle_scrollbar_mouse(Window *w, int button, MouseAction action, int modifiers UNUSED) {
+    if (!w || !OPT(scrollbar_interactive) || !global_state.callback_os_window) return false;
+
+    double mouse_x = global_state.callback_os_window->mouse_x;
+    double mouse_y = global_state.callback_os_window->mouse_y;
+
+    if (action == MOVE && w->scrollbar.is_dragging) {
+        handle_scrollbar_drag(w, mouse_y);
+        mouse_cursor_shape = DEFAULT_POINTER;
+        set_mouse_cursor(mouse_cursor_shape);
+        return true;
+    }
+
+    ScrollbarHitType hit_type = get_scrollbar_hit_type(w, mouse_x, mouse_y);
+    bool hovering = (hit_type != SCROLLBAR_HIT_NONE);
+    update_scrollbar_hover_state(w, hovering);
+
+    if (!hovering) return false;
+
+    mouse_cursor_shape = DEFAULT_POINTER;
+    set_mouse_cursor(mouse_cursor_shape);
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action != MOVE) {
+        bool is_release = (action == RELEASE);
+
+        if (is_release) {
+            if (w->scrollbar.is_dragging) {
+                end_drag(w);
+            } else if (hit_type == SCROLLBAR_HIT_TRACK) {
+                handle_scrollbar_track_click(w, mouse_y);
+            }
+        } else {
+            if (hit_type == SCROLLBAR_HIT_THUMB) {
+                start_scrollbar_drag(w, mouse_y);
+                global_state.active_drag_in_window = w->id;
+                global_state.active_drag_button = button;
+            }
+        }
+    }
+
+    return true;
+}
+
+static void
+handle_scrollbar_drag(Window *w, double mouse_y) {
+    if (!w || !w->scrollbar.is_dragging) return;
+
+    Screen *screen = w->render_data.screen;
+    if (!validate_scrollbar_state(w)) return;
+
+    ScrollbarGeometry geom = calculate_scrollbar_geometry(w);
+    double scrollbar_height = geom.bottom - geom.top;
+    double mouse_pane_fraction = (mouse_y - geom.top) / scrollbar_height;
+    double delta_y = mouse_pane_fraction - w->scrollbar.drag_start_y;
+    double visible_fraction = (double)screen->lines / (screen->lines + screen->historybuf->count);
+    double min_thumb_height_fraction = (double)OPT(scrollbar_min_thumb_height) / scrollbar_height;
+    double thumb_height = MAX(min_thumb_height_fraction, visible_fraction);
+    double available_space = 1.0 - thumb_height;
+
+    if (available_space > 0) {
+        double scroll_fraction = delta_y / available_space;
+        double target = w->scrollbar.drag_start_scrolled_by - scroll_fraction * screen->historybuf->count;
+        unsigned int new_scrolled_by;
+        if (target < 0) new_scrolled_by = 0;
+        else if (target > screen->historybuf->count) new_scrolled_by = screen->historybuf->count;
+        else new_scrolled_by = (unsigned int)target;
+
+        if (new_scrolled_by != screen->scrolled_by) {
+            screen_history_scroll_to_absolute(screen, new_scrolled_by);
+        }
+    }
+}
+
 static void
 end_drag(Window *w) {
     Screen *screen = w->render_data.screen;
     global_state.active_drag_in_window = 0;
     global_state.active_drag_button = -1;
     w->last_drag_scroll_at = 0;
+    w->scrollbar.is_dragging = false;
+
+    if (global_state.callback_os_window &&
+        get_scrollbar_hit_type(w,
+            global_state.callback_os_window->mouse_x,
+            global_state.callback_os_window->mouse_y
+        ) == SCROLLBAR_HIT_NONE) {
+        mouse_cursor_shape = TEXT_POINTER;
+        set_mouse_cursor(mouse_cursor_shape);
+    }
+
     if (screen->selections.in_progress) {
         screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, (SelectionUpdate){.ended=true});
     }
@@ -905,6 +1139,9 @@ mouse_event(const int button, int modifiers, int action) {
     if (global_state.mouse_hover_in_window) {
         Window *old_window = window_for_id(global_state.mouse_hover_in_window);
         if (old_window && old_window != w) {
+            if (old_window->scrollbar.is_hovering) {
+                update_scrollbar_hover_state(old_window, false);
+            }
             global_state.mouse_hover_in_window = 0;
             screen_mark_url(old_window->render_data.screen, 0, 0, 0, 0);
         }

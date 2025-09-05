@@ -20,6 +20,7 @@ definition.add_deprecation('deprecated_hide_window_decorations_aliases', 'x11_hi
 definition.add_deprecation('deprecated_macos_show_window_title_in_menubar_alias', 'macos_show_window_title_in_menubar')
 definition.add_deprecation('deprecated_send_text', 'send_text')
 definition.add_deprecation('deprecated_adjust_line_height', 'adjust_line_height', 'adjust_column_width', 'adjust_baseline')
+definition.add_deprecation('deprecated_scrollback_indicator_opacity', 'scrollback_indicator_opacity')
 
 agr = definition.add_group
 egr = definition.end_group
@@ -441,12 +442,70 @@ is changed it will only affect newly created windows, not existing ones.
 '''
     )
 
-opt('scrollback_indicator_opacity', '1.0',
+opt('scrollbar_opacity', '0.5',
     option_type='unit_float', ctype='float', long_text='''
-The opacity of the scrollback indicator which is a small colored rectangle that moves
-along the right hand side of the window as you scroll, indicating what fraction you
-have scrolled. The default is one which means fully opaque, aka visible.
-Set to a value between zero and one to make the indicator less visible.''')
+The opacity of the scrollbar handle. The default is 0.5 which means 50% opaque.
+Set to a value between zero and one.''')
+
+opt('scrollbar_track_opacity', '0',
+    option_type='unit_float', ctype='float', long_text='''
+The opacity of the scrollbar track (the background behind the scrollbar handle).
+The default is 0 which means completely transparent. Set to a value between zero and one.''')
+
+opt('scrollbar_color', 'foreground',
+    option_type='scrollbar_color', long_text='''
+The color of the scrollbar. The default value :code:`foreground` uses the
+current text color. You can specify any color as a hexadecimal RGB triplet (e.g.
+:code:`#ff0000` for red), or use one of the standard color names (e.g. :code:`red`),
+or use a color from the 256 color table (e.g. :code:`color120`).
+Additionally, special values like :code:`background`, :code:`foreground`, or any other
+configured color variable are supported. The scrollbar appearance is also affected by
+:opt:`scrollbar_opacity` and :opt:`scrollbar_track_opacity` which control transparency.''')
+
+opt('scrollbar_interactive', 'yes',
+    option_type='to_bool', ctype='bool', long_text='''
+Enable or disable interactive scrollbar functionality. When enabled, you can click
+and drag the scrollbar to scroll. When disabled, the scrollbar is only a visual
+indicator of the scroll position. Set to :code:`yes` to enable or :code:`no` to disable.''')
+
+opt('scrollbar_width', '10',
+    option_type='positive_int', ctype='uint', long_text='''
+The width of the scrollbar in pixels. The default is 10 pixels.''')
+
+opt('scrollbar_gap', '5',
+    option_type='positive_int', ctype='uint', long_text='''
+The gap between the scrollbar and the window edge in pixels. The default is 5 pixels.''')
+opt('scrollbar_min_thumb_height', '50',
+    option_type='positive_int', ctype='uint', long_text='''
+The minimum height of the scrollbar thumb in pixels. This prevents the thumb from
+becoming too small when there is a lot of content to scroll. The default is 50 pixels.''')
+opt('scrollbar_hitbox_expansion', '5',
+    option_type='positive_int', ctype='uint', long_text='''
+Extra pixels added to the scrollbar thumb hitbox for easier interaction.
+This makes it easier to grab the scrollbar even if the visual representation
+is thin. The default is 5 pixels on each side.''')
+
+opt('scrollbar_radius', '5',
+    option_type='positive_int', ctype='uint', long_text='''
+The radius of the scrollbar thumb corners in pixels. This controls how rounded
+the scrollbar thumb appears. Set to 0 for square corners, or a positive value
+for rounded corners. The default is 5 pixels.''')
+
+opt('scrollbar_autohide', 'yes',
+    option_type='to_bool', ctype='bool', long_text='''
+Hide the scrollbar by default and only show it when scrolling or hovering.
+When enabled, the scrollbar will only be visible when you are scrolling
+(not at the bottom) or when the mouse is hovering over the scrollbar area.
+Set to :code:`yes` to enable or :code:`no` to disable.''')
+
+opt('scrollbar_track_behavior', 'jump',
+    option_type='choices', ctype='scrollbar_track_behavior',
+    choices=('jump', 'page'),
+    long_text='''
+Control the behavior when clicking on the scrollbar track (the area outside
+the thumb). With :code:`jump`, clicking on the track will jump directly to
+that position. With :code:`page`, clicking on the track will scroll up or
+down by one page, similar to traditional scrollbar behavior.''')
 
 
 opt('scrollback_pager', 'less --chop-long-lines --RAW-CONTROL-CHARS +INPUT_LINE_NUMBER',
