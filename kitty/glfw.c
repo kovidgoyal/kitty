@@ -1092,7 +1092,6 @@ change_state_for_os_window(OSWindow *w, int state) {
 }
 
 #ifdef __APPLE__
-static GLFWwindow *apple_preserve_common_context = NULL;
 
 static int
 filter_option(int key UNUSED, int mods, unsigned int native_key UNUSED, unsigned long flags) {
@@ -1410,13 +1409,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     // used, so start with window visible unless hidden window requested.
     GLFWwindow *common_context = global_state.num_os_windows ? global_state.os_windows[0].handle : NULL;
     GLFWwindow *temp_window = NULL;
-#ifdef __APPLE__
-    if (!apple_preserve_common_context) {
-        glfwWindowHint(GLFW_VISIBLE, false);
-        apple_preserve_common_context = glfwCreateWindow(1, 1, "kitty", NULL, common_context, NULL);
-    }
-    if (!common_context) common_context = apple_preserve_common_context;
-#endif
     glfwWindowHint(GLFW_VISIBLE, window_state != WINDOW_HIDDEN && global_state.is_wayland);
     float xscale, yscale;
     double xdpi, ydpi;
@@ -2461,10 +2453,6 @@ run_main_loop(tick_callback_fun cb, void* cb_data) {
 
 void
 stop_main_loop(void) {
-#ifdef __APPLE__
-    if (apple_preserve_common_context) glfwDestroyWindow(apple_preserve_common_context);
-    apple_preserve_common_context = NULL;
-#endif
     glfwStopMainLoop();
 }
 
