@@ -71,6 +71,17 @@ typedef struct Options {
     WindowTitleIn macos_show_window_title_in;
     char *bell_path, *bell_theme;
     float background_opacity, dim_opacity, scrollback_indicator_opacity;
+    bool scrollbar_interactive;
+    float scrollbar_opacity;
+    float scrollbar_track_opacity;
+    color_type scrollbar_color;
+    unsigned int scrollbar_width;
+    unsigned int scrollbar_gap;
+    unsigned int scrollbar_min_thumb_height;
+    unsigned int scrollbar_hitbox_expansion;
+    unsigned int scrollbar_radius;
+    bool scrollbar_autohide;
+    ScrollbarTrackBehavior scrollbar_track_behavior;
     float text_contrast, text_gamma_adjustment;
     bool text_old_gamma;
 
@@ -144,6 +155,9 @@ typedef struct WindowLogoRenderData {
 
 typedef struct {
     unsigned int left, top, right, bottom;
+    struct {
+        unsigned int left, top, right, bottom;
+    } spaces;
 } WindowGeometry;
 
 typedef struct WindowRenderData {
@@ -214,6 +228,13 @@ typedef struct Window {
         PendingClick *clicks;
         size_t num, capacity;
     } pending_clicks;
+    struct {
+        double thumb_top, thumb_bottom;
+        bool is_dragging;
+        double drag_start_y;
+        double drag_start_scrolled_by;
+        bool is_hovering;
+    } scrollbar;
 } Window;
 
 typedef struct BorderRect {
