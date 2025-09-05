@@ -12,13 +12,14 @@ from kitty.options.utils import (
     clear_all_mouse_actions, clear_all_shortcuts, clipboard_control, clone_source_strategies,
     config_or_absolute_path, confirm_close, copy_on_select, cursor_blink_interval, cursor_text_color,
     cursor_trail_decay, deprecated_adjust_line_height, deprecated_hide_window_decorations_aliases,
-    deprecated_macos_show_window_title_in_menubar_alias, deprecated_send_text, disable_ligatures,
-    edge_width, env, filter_notification, font_features, hide_window_decorations, macos_option_as_alt,
-    macos_titlebar_color, menu_map, modify_font, mouse_hide_wait, narrow_symbols, notify_on_cmd_finish,
-    optional_edge_width, parse_font_spec, parse_map, parse_mouse_map, paste_actions,
-    pointer_shape_when_dragging, remote_control_password, resize_debounce_time, scrollback_lines,
-    scrollback_pager_history_size, shell_integration, store_multiple, symbol_map, tab_activity_symbol,
-    tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
+    deprecated_macos_show_window_title_in_menubar_alias, deprecated_scrollback_indicator_opacity,
+    deprecated_send_text, disable_ligatures, edge_width, env, filter_notification, font_features,
+    hide_window_decorations, macos_option_as_alt, macos_titlebar_color, menu_map, modify_font,
+    mouse_hide_wait, narrow_symbols, notify_on_cmd_finish, optional_edge_width, parse_font_spec,
+    parse_map, parse_mouse_map, paste_actions, pointer_shape_when_dragging, remote_control_password,
+    resize_debounce_time, scrollback_lines, scrollback_pager_history_size, scrollbar_color,
+    shell_integration, store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge,
+    tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
     tab_title_template, text_fg_override_threshold, titlebar_color, to_cursor_shape,
     to_cursor_unfocused_shape, to_font_size, to_layout_names, to_modifiers,
     transparent_background_colors, underline_exclusion, url_prefixes, url_style, visual_bell_duration,
@@ -1196,9 +1197,6 @@ class Parser:
     def scrollback_fill_enlarged_window(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['scrollback_fill_enlarged_window'] = to_bool(val)
 
-    def scrollback_indicator_opacity(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['scrollback_indicator_opacity'] = unit_float(val)
-
     def scrollback_lines(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['scrollback_lines'] = scrollback_lines(val)
 
@@ -1207,6 +1205,44 @@ class Parser:
 
     def scrollback_pager_history_size(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['scrollback_pager_history_size'] = scrollback_pager_history_size(val)
+
+    def scrollbar_autohide(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['scrollbar_autohide'] = to_bool(val)
+
+    def scrollbar_color(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['scrollbar_color'] = scrollbar_color(val)
+
+    def scrollbar_gap(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['scrollbar_gap'] = positive_int(val)
+
+    def scrollbar_hitbox_expansion(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['scrollbar_hitbox_expansion'] = positive_int(val)
+
+    def scrollbar_interactive(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['scrollbar_interactive'] = to_bool(val)
+
+    def scrollbar_min_thumb_height(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['scrollbar_min_thumb_height'] = positive_int(val)
+
+    def scrollbar_opacity(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['scrollbar_opacity'] = unit_float(val)
+
+    def scrollbar_radius(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['scrollbar_radius'] = positive_int(val)
+
+    def scrollbar_track_behavior(self, val: str, ans: dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_scrollbar_track_behavior:
+            raise ValueError(f"The value {val} is not a valid choice for scrollbar_track_behavior")
+        ans["scrollbar_track_behavior"] = val
+
+    choices_for_scrollbar_track_behavior = frozenset(('jump', 'page'))
+
+    def scrollbar_track_opacity(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['scrollbar_track_opacity'] = unit_float(val)
+
+    def scrollbar_width(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['scrollbar_width'] = positive_int(val)
 
     def select_by_word_characters(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['select_by_word_characters'] = str(val)
@@ -1458,6 +1494,9 @@ class Parser:
 
     def adjust_baseline(self, val: str, ans: dict[str, typing.Any]) -> None:
         deprecated_adjust_line_height('adjust_baseline', val, ans)
+
+    def scrollback_indicator_opacity(self, val: str, ans: dict[str, typing.Any]) -> None:
+        deprecated_scrollback_indicator_opacity('scrollback_indicator_opacity', val, ans)
 
     def map(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k in parse_map(val):
