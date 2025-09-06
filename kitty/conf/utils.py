@@ -127,6 +127,7 @@ def to_cmdline(x: str, expand: bool = True) -> list[str]:
 
 def python_string(text: str) -> str:
     from ast import literal_eval
+    text = (text[:-1] + "\\'") if text.endswith("'") else text
     ans: str = literal_eval("'''" + text.replace("'''", "'\\''") + "'''")
     return ans
 
