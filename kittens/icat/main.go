@@ -162,7 +162,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	} else {
 		parts := strings.SplitN(opts.UseWindowSize, ",", 4)
 		if len(parts) != 4 {
-			return 1, fmt.Errorf("Invalid size specification: " + opts.UseWindowSize)
+			return 1, fmt.Errorf("Invalid size specification: %s", opts.UseWindowSize)
 		}
 		screen_size = &unix.Winsize{}
 		var t uint64
