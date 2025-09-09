@@ -1,6 +1,8 @@
 [
     {
         "name": "zlib",
+        "spdx": "Zlib",
+        "license_type": "permissive",
         "unix": {
             "filename": "zlib-1.3.1.tar.xz",
             "hash": "sha256:38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32",
@@ -10,6 +12,8 @@
 
     {
         "name": "bzip2",
+        "spdx": "bzip2-1.0.8",
+        "license_type": "permissive",
         "os": "linux",
         "unix": {
             "filename": "bzip2-1.0.8.tar.gz",
@@ -20,6 +24,8 @@
 
     {
         "name": "pkg-config",
+        "spdx": "GPL-2.0-or-later",
+        "type": "build",
         "os": "macos",
         "unix": {
             "filename": "pkg-config-0.29.2.tar.gz",
@@ -30,6 +36,7 @@
 
     {
         "name": "openssl",
+        "spdx": "Apache-2.0",
         "unix": {
             "filename": "openssl-3.3.0.tar.gz",
             "hash": "sha256:53e66b043322a606abf0087e7699a0e033a37fa13feb9742df35c3a33b18fb02",
@@ -39,6 +46,8 @@
 
     {
         "name": "cmake",
+        "spdx": "BSD-3-Clause",
+        "type": "build",
         "os": "macos",
         "unix": {
             "filename": "cmake-3.29.3.tar.gz",
@@ -49,6 +58,7 @@
 
     {
         "name": "expat",
+        "spdx": "MIT",
         "unix": {
             "filename": "expat-2.6.2.tar.xz",
             "hash": "sha256:ee14b4c5d8908b1bec37ad937607eab183d4d9806a08adee472c3c3121d27364",
@@ -58,6 +68,7 @@
 
     {
         "name": "libxml2",
+        "spdx": "MIT",
         "unix": {
             "filename": "libxml2-2.12.7.tar.xz",
             "hash": "sha256:24ae78ff1363a973e6d8beba941a7945da2ac056e19b53956aeb6927fd6cfb56",
@@ -67,6 +78,7 @@
 
     {
         "name": "xkbcommon",
+        "spdx": "X11",
         "os": "linux",
         "unix": {
             "filename": "libxkbcommon-1.7.0.tar.xz",
@@ -77,6 +89,8 @@
 
     {
         "name": "sqlite",
+        "spdx": "blessing",
+        "license_type": "permissive",
         "unix": {
             "filename": "sqlite-autoconf-3450300.tar.gz",
             "hash": "sha256:b2809ca53124c19c60f42bf627736eae011afdcc205bb48270a5ee9a38191531",
@@ -86,6 +100,7 @@
 
     {
         "name": "libffi",
+        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "filename": "libffi-3.4.6.tar.gz",
@@ -96,6 +111,7 @@
 
     {
         "name": "ncurses",
+        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "filename": "ncurses-6.5.tar.gz",
@@ -106,6 +122,7 @@
 
     {
         "name": "readline",
+        "spdx": "GPL-3.0-only",
         "os": "linux",
         "unix": {
             "filename": "readline-8.2.tar.gz",
@@ -116,6 +133,7 @@
 
     {
         "name": "xz",
+        "spdx": "0BSD",
         "unix": {
             "filename": "xz-5.2.5.tar.gz",
             "hash": "sha256:f6f4910fd033078738bd82bfba4f49219d03b17eb0794eb91efbae419f4aba10",
@@ -125,6 +143,7 @@
 
     {
         "name": "libxxhash",
+        "spdx": "BSD-2-Clause",
         "unix": {
             "filename": "xxHash-0.8.2.tar.gz",
             "hash": "sha256:baee0c6afd4f03165de7a4e67988d16f0f2b257b51d0e3cb91909302a26a79c4",
@@ -134,6 +153,7 @@
 
     {
         "name": "xcrypt",
+        "spdx": "LGPL-2.1-only",
         "os": "linux",
         "unix": {
             "filename": "xcrypt-4.4.36.tar.gz",
@@ -144,6 +164,7 @@
 
     {
         "name": "python",
+        "spdx": "PSF-2.0",
         "unix": {
             "filename": "Python-3.12.3.tar.xz",
             "hash": "sha256:56bfef1fdfc1221ce6720e43a661e3eb41785dd914ce99698d8c7896af4bdaa1",
@@ -153,6 +174,7 @@
 
     {
         "name": "libpng",
+        "spdx": "libpng-2.0",
         "unix": {
             "filename": "libpng-1.6.43.tar.xz",
             "hash": "sha256:6a5ca0652392a2d7c9db2ae5b40210843c0bbc081cbd410825ab00cc59f14a6c",
@@ -162,6 +184,7 @@
 
     {
         "name": "lcms2",
+        "spdx": "MIT",
         "unix": {
             "filename": "lcms2-2.16.tar.gz",
             "hash": "sha256:d873d34ad8b9b4cea010631f1a6228d2087475e4dc5e763eb81acc23d9d45a51",
@@ -171,6 +194,7 @@
 
     {
         "name": "graphite",
+        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "filename": "graphite2-1.3.14.tgz",
@@ -181,6 +205,7 @@
 
     {
         "name": "pcre",
+        "spdx": "BSD-3-Clause WITH PCRE2-exception",
         "os": "linux",
         "unix": {
             "filename": "pcre2-10.43.tar.bz2",
@@ -191,6 +216,7 @@
 
     {
         "name": "iconv",
+        "spdx": "LGPL-2.0-only",
         "os": "linux",
         "unix": {
             "filename": "libiconv-1.17.tar.gz",
@@ -201,6 +227,8 @@
 
     {
         "name": "installer",
+        "spdx": "MIT",
+        "type": "build",
         "comment": "Needed infrastructure for installing pure python packages (wheels)",
         "unix": {
             "filename": "installer-0.7.0-py3-none-any.whl",
@@ -211,6 +239,8 @@
 
     {
         "name": "packaging",
+        "spdx": "BSD-2-Clause",
+        "type": "build",
 		"comment": "Needed for glib for some absurd reason",
         "unix": {
             "filename": "packaging-23.1-py3-none-any.whl",
@@ -221,6 +251,7 @@
 
     {
         "name": "glib",
+        "spdx": "LGPL-2.1-only",
         "os": "linux",
         "unix": {
             "filename": "glib-2.80.2.tar.xz",
@@ -231,6 +262,7 @@
 
     {
         "name": "brotli",
+        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "filename": "brotli-1.1.0.tar.gz",
@@ -241,6 +273,7 @@
 
     {
         "name": "pixman",
+        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "filename": "pixman-0.44.2.tar.xz",
@@ -251,6 +284,7 @@
 
     {
         "name": "freetype",
+        "spdx": "FTL",
         "os": "linux",
         "unix": {
             "filename": "freetype-2.13.2.tar.xz",
@@ -261,6 +295,7 @@
 
     {
         "name": "fontconfig",
+        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "filename": "fontconfig-2.13.1.tar.bz2",
@@ -271,6 +306,7 @@
 
     {
         "name": "cairo",
+        "spdx": "LGPL-2.1-only",
         "os": "linux",
         "unix": {
             "filename": "cairo-1.18.2.tar.xz",
@@ -281,6 +317,7 @@
 
     {
         "name": "harfbuzz",
+        "spdx": "MIT",
         "unix": {
             "filename": "harfbuzz-8.5.0.tar.xz",
             "hash": "sha256:77e4f7f98f3d86bf8788b53e6832fb96279956e1c3961988ea3d4b7ca41ddc27",
@@ -290,6 +327,7 @@
 
     {
         "name": "simde",
+        "spdx": "MIT",
         "comment": "Cannot update till gcc in the build VM is updated as simde 0.8 requires newer gcc",
         "unix": {
             "filename": "simde-amalgamated-0.7.6.tar.xz",
@@ -300,6 +338,7 @@
 
     {
         "name": "wayland",
+        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "filename": "wayland-1.24.0.tar.xz",
@@ -310,6 +349,7 @@
 
     {
         "name": "wayland-protocols",
+        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "filename": "wayland-protocols-1.45.tar.xz",
@@ -317,5 +357,4 @@
             "urls": ["https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.45/downloads/{filename}"]
         }
     }
-
 ]
