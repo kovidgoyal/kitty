@@ -668,7 +668,7 @@ Detailed list of changes
 
 - Wayland labwc: Fix kitty timing out waiting for compositor to quit fucking around with scales on labwc (:iss:`7540`)
 
-- Fix :opt:`scrollback_indicator_opacity` not actually controlling the opacity (:iss:`7557`)
+- Fix ``scrollback_indicator_opacity`` not actually controlling the opacity (:iss:`7557`)
 
 - URL detection: Fix IPv6 hostnames breaking URL detection (:iss:`7565`)
 
@@ -752,7 +752,7 @@ Detailed list of changes
   using the panel kitten for all compositors that support the `requisite Wayland
   protocol <https://wayland.app/protocols/wlr-layer-shell-unstable-v1>`__ which is practically speaking all of them but GNOME (:pull:`2590`)
 
-- Show a small :opt:`scrollback indicator <scrollback_indicator_opacity>` along the right window edge when viewing
+- Show a small scrollback indicator along the right window edge when viewing
   the scrollback to keep track of scroll position (:iss:`2502`)
 
 - Wayland: Support fractional scales so that there is no wasted drawing at larger scale followed by resizing in the compositor

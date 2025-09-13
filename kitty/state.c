@@ -293,6 +293,7 @@ initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
     w->visible = true;
     w->title = title;
     Py_XINCREF(title);
+    w->scrollbar.is_hovering = false;
     if (!set_window_logo(w, OPT(default_window_logo), OPT(window_logo_position), OPT(window_logo_alpha), true, NULL, 0)) {
         log_error("Failed to load default window logo: %s", OPT(default_window_logo));
         if (PyErr_Occurred()) PyErr_Print();
@@ -987,16 +988,20 @@ PYWRAP1(set_window_padding) {
 
 PYWRAP1(set_window_render_data) {
 #define B(name) &(g.name)
+#define S(name) &(g.spaces.name)
     id_type os_window_id, tab_id, window_id;
     WindowGeometry g = {0};
     Screen *screen;
-    PA("KKKOIIII", &os_window_id, &tab_id, &window_id, &screen, B(left), B(top), B(right), B(bottom));
+    PA("KKKOIIIIIIII", &os_window_id, &tab_id, &window_id, &screen,
+       B(left), B(top), B(right), B(bottom),
+       S(left), S(top), S(right), S(bottom));
 
     WITH_WINDOW(os_window_id, tab_id, window_id);
         init_window_render_data(&window->render_data, g, screen);
     END_WITH_WINDOW;
     Py_RETURN_NONE;
 #undef B
+#undef S
 }
 
 PYWRAP1(update_window_visibility) {

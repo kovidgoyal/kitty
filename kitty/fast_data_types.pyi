@@ -1387,7 +1387,8 @@ def set_tab_bar_render_data(
 
 def set_window_render_data(
     os_window_id: int, tab_id: int, window_id: int, screen: Screen,
-    left: int, top: int, right: int, bottom: int
+    left: int, top: int, right: int, bottom: int,
+    spaces_left: int, spaces_top: int, spaces_right: int, spaces_bottom: int
 ) -> None:
     pass
 

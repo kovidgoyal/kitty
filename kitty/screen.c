@@ -4921,6 +4921,16 @@ screen_selection_range_for_word(Screen *self, const index_type x, const index_ty
 #undef is_ok
 }
 
+void
+screen_history_scroll_to_absolute(Screen *self, unsigned int target_scrolled_by) {
+    if (self->linebuf != self->main_linebuf) return;
+    if (target_scrolled_by > self->historybuf->count) target_scrolled_by = self->historybuf->count;
+    if (target_scrolled_by != self->scrolled_by) {
+        self->scrolled_by = target_scrolled_by;
+        dirty_scroll(self);
+    }
+}
+
 bool
 screen_history_scroll(Screen *self, int amt, bool upwards) {
     switch(amt) {

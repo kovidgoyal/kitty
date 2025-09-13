@@ -113,6 +113,7 @@ typedef enum MouseShapes {
 /* end mouse shapes */
 } MouseShape;
 typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
+typedef enum { SCROLLBAR_TRACK_JUMP=1, SCROLLBAR_TRACK_PAGE=2 } ScrollbarTrackBehavior;
 typedef enum { TILING, SCALED, MIRRORED, CLAMPED, CENTER_CLAMPED, CENTER_SCALED } BackgroundImageLayout;
 typedef struct ImageAnchorPosition {
     float canvas_x, canvas_y, image_x, image_y;
