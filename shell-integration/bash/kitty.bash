@@ -318,7 +318,7 @@ _ksi_main() {
         builtin local venv="${VIRTUAL_ENV}/bin/activate"
         builtin local sourced=""
         _ksi_s_is_ok() {
-            [[ -z "$sourced" && "$KITTY_CLONE_SOURCE_STRATEGIES" == *",$1,"* ]] && builtin return 0
+            [[ -z "${sourced:-}" && "$KITTY_CLONE_SOURCE_STRATEGIES" == *",$1,"* ]] && builtin return 0
             builtin return 1
         }
 
