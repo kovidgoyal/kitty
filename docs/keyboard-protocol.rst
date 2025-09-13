@@ -559,8 +559,8 @@ Any other combination of modifiers with these keys is output as the appropriate
 .. csv-table:: Example encodings
    :header: "Key", "Plain", "shift", "alt", "ctrl", "shift+alt", "alt+ctrl", "ctrl+shift"
 
-    "i", "i (105)", "I (73)", "ESC i", ") (41)", "ESC I", "ESC )", "CSI 105; 6 u"
-    "3", "3 (51)", "# (35)", "ESC 3", "3 (51)", "ESC #", "ESC 3", "CSI 51; 6 u"
+    "i", "i (105)", "I (73)", "ESC i", "\t (9)", "ESC I", "ESC \t", "CSI 105; 6 u"
+    "3", "3 (51)", "# (35)", "ESC 3", "ESC (27)", "ESC #", "ESC ESC", "CSI 51; 6 u"
     ";", "; (59)", ": (58)", "ESC ;", "; (59)", "ESC :", "ESC ;", "CSI 59; 6 u"
 
 .. note::
