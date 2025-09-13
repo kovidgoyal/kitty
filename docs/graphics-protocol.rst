@@ -28,6 +28,7 @@ alpha-blending and text over graphics.
 Some applications that use the kitty graphics protocol:
 
 * `awrit <https://github.com/chase/awrit>`_ - Chromium-based web browser rendered in Kitty with mouse and keyboard support
+* `blackcat <https://github.com/j-c-m/blackcat>`_ - a modern compatible cat with image support
 * `broot <https://dystroy.org/broot/>`_ - a terminal file explorer and manager, with preview of images, SVG, PDF, etc.
 * `chafa <https://github.com/hpjansson/chafa>`_  - a terminal image viewer
 * :doc:`kitty-diff <kittens/diff>` - a side-by-side terminal diff program with support for images
