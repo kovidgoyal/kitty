@@ -1712,7 +1712,7 @@ class ScrollbarSettings(NamedTuple):
     track_color: int = 0
     interactive: bool = True
     width: float = 0.5
-    radius: float = 0.25
+    radius: float = 0.3
     gap: float = 0.25
     min_handle_height: float = 1.0
     hitbox_expansion: float = 0.25
