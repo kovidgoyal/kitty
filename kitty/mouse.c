@@ -439,9 +439,7 @@ set_mouse_position(Window *w, bool *mouse_cell_changed, bool *cell_half_changed)
 HANDLER(handle_move_event) {
     modifiers &= ~GLFW_LOCK_MASK;
 
-    if (handle_scrollbar_mouse(w, -1, MOVE, modifiers)) {
-        return;
-    }
+    if (handle_scrollbar_mouse(w, -1, MOVE, modifiers)) return;
 
     if (OPT(focus_follows_mouse)) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
@@ -636,9 +634,7 @@ HANDLER(handle_button_event) {
     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
     bool is_release = !global_state.callback_os_window->mouse_button_pressed[button];
 
-    if (handle_scrollbar_mouse(w, button, is_release ? RELEASE : PRESS, modifiers)) {
-        return;
-    }
+    if (handle_scrollbar_mouse(w, button, is_release ? RELEASE : PRESS, modifiers)) return;
 
     if (window_idx != t->active_window && !is_release) {
         call_boss(switch_focus_to, "K", t->windows[window_idx].id);
@@ -765,9 +761,7 @@ update_mouse_pointer_shape(void) {
     if (in_tab_bar) {
         mouse_cursor_shape = POINTER_POINTER;
     } else if (w) {
-        if (handle_scrollbar_mouse(w, -1, MOVE, 0)) {
-            return;
-        }
+        if (handle_scrollbar_mouse(w, -1, MOVE, 0)) return;
 
         if (w->render_data.screen) {
             screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
@@ -806,9 +800,7 @@ enter_event(int modifiers) {
     if (!w || in_tab_bar) return;
     global_state.mouse_hover_in_window = w->id;
 
-    if (handle_scrollbar_mouse(w, -1, MOVE, modifiers)) {
-        return;
-    }
+    if (handle_scrollbar_mouse(w, -1, MOVE, modifiers)) return;
 
     bool mouse_cell_changed = false, cell_half_changed = false;
     if (!set_mouse_position(w, &mouse_cell_changed, &cell_half_changed)) return;
@@ -908,7 +900,7 @@ start_scrollbar_drag(Window *w, double mouse_y) {
 
 static bool
 handle_scrollbar_mouse(Window *w, int button, MouseAction action, int modifiers UNUSED) {
-    if (!w || !OPT(scrollbar.interactive) || !global_state.callback_os_window) return false;
+    if (!w || !OPT(scrollbar.interactive) || !global_state.callback_os_window || global_state.active_drag_in_window == w->id || global_state.tracked_drag_in_window == w->id) return false;
 
     double mouse_x = global_state.callback_os_window->mouse_x;
     double mouse_y = global_state.callback_os_window->mouse_y;
