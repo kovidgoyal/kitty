@@ -570,20 +570,22 @@ handle_scrollbar_drag(Window *w, double mouse_y) {
     }
 }
 
+static const MouseShape scrollbar_drag_mouse_cursor = NS_RESIZE_POINTER;
 
 static bool
 handle_scrollbar_mouse(Window *w, int button, MouseAction action, int modifiers UNUSED) {
-    if (!w || !OPT(scrollbar_interactive) || !global_state.callback_os_window || global_state.active_drag_in_window == w->id || global_state.tracked_drag_in_window == w->id) return false;
+    if (!w || !OPT(scrollbar_interactive) || !global_state.callback_os_window) return false;
 
     double mouse_x = global_state.callback_os_window->mouse_x;
     double mouse_y = global_state.callback_os_window->mouse_y;
 
     if (action == MOVE && w->scrollbar.is_dragging) {
         handle_scrollbar_drag(w, mouse_y);
-        mouse_cursor_shape = DEFAULT_POINTER;
+        mouse_cursor_shape = scrollbar_drag_mouse_cursor;
         set_mouse_cursor(mouse_cursor_shape);
         return true;
     }
+    if (global_state.active_drag_in_window == w->id || global_state.tracked_drag_in_window == w->id) return false;
 
     ScrollbarHitType hit_type = get_scrollbar_hit_type(w, mouse_x, mouse_y);
     bool hovering = (hit_type != SCROLLBAR_HIT_NONE);
@@ -942,9 +944,9 @@ update_mouse_pointer_shape(void) {
     if (in_tab_bar) {
         mouse_cursor_shape = POINTER_POINTER;
     } else if (w) {
-        if (handle_scrollbar_mouse(w, -1, MOVE, 0)) return;
-
-        if (w->render_data.screen) {
+        if (handle_scrollbar_mouse(w, -1, MOVE, 0)) {
+            mouse_cursor_shape = scrollbar_drag_mouse_cursor;
+        } else if (w->render_data.screen) {
             screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
             set_mouse_cursor_for_screen(w->render_data.screen);
         }
