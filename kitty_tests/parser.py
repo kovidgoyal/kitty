@@ -188,17 +188,37 @@ class TestParser(BaseTest):
     def test_utf8_parsing(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
+
+        # Kitty's UTF-8 decoding uses `U+FFFD substitution of maximal subparts
+        # <https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G66453>`_,
+        # same as in the WHATWG Encoding Standard.
+        # This means that ill-formed sequences may be replaced by multiple
+        # U+FFFD REPLACEMENT CHARACTERs.
+
+        # Lone continuation bytes with no leading starts
         pb(b'"\xbf"', '"\ufffd"')
         pb(b'"\x80"', '"\ufffd"')
+
+        # Multiple lone continuation bytes
         pb(b'"\x80\xbf"', '"\ufffd\ufffd"')
         pb(b'"\x80\xbf\x80"', '"\ufffd\ufffd\ufffd"')
+
+        # Lone starter byte of 2-byte sequence
         pb(b'"\xc0 "', '"\ufffd "')
+
+        # Single never-valid bytes
         pb(b'"\xfe"', '"\ufffd"')
         pb(b'"\xff"', '"\ufffd"')
+
+        # Multiple never-valid bytes
         pb(b'"\xff\xfe"', '"\ufffd\ufffd"')
         pb(b'"\xfe\xfe\xff\xff"', '"\ufffd\ufffd\ufffd\ufffd"')
+
+        # Truncated 3-byte sequences (only 2 bytes)
         pb(b'"\xef\xbf"', '"\ufffd"')
         pb(b'"\xe0\xa0"', '"\ufffd"')
+
+        # Truncated 4-byte sequence (only 3 bytes)
         pb(b'"\xf0\x9f\x98"', '"\ufffd"')
 
     def test_utf8_simd_decode(self):
