@@ -471,6 +471,10 @@ opt('scrollbar_width', '0.5', option_type='positive_float', ctype='float', long_
 The width of the scroll bar in units of cell width.
 ''')
 
+opt('scrollbar_hover_width', '1', option_type='positive_float', ctype='float', long_text='''
+The width of the scroll bar when the mouse is hovering over it, in units of cell width.
+''')
+
 opt('scrollbar_handle_opacity', '0.5', option_type='positive_float', ctype='float', long_text='''
 The opacity of the scrollbar handle, 0 being fully transparent and 1 being full opaque.
 ''')

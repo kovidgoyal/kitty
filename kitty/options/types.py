@@ -420,6 +420,7 @@ option_names = (
     'scrollbar_handle_color',
     'scrollbar_handle_opacity',
     'scrollbar_hitbox_expansion',
+    'scrollbar_hover_width',
     'scrollbar_interactive',
     'scrollbar_jump_on_click',
     'scrollbar_min_handle_height',
@@ -606,6 +607,7 @@ class Options:
     scrollbar_handle_color: int = 0
     scrollbar_handle_opacity: float = 0.5
     scrollbar_hitbox_expansion: float = 0.25
+    scrollbar_hover_width: float = 1.0
     scrollbar_interactive: bool = True
     scrollbar_jump_on_click: bool = True
     scrollbar_min_handle_height: float = 1.0

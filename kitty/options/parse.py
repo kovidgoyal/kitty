@@ -1226,6 +1226,9 @@ class Parser:
     def scrollbar_hitbox_expansion(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['scrollbar_hitbox_expansion'] = positive_float(val)
 
+    def scrollbar_hover_width(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['scrollbar_hover_width'] = positive_float(val)
+
     def scrollbar_interactive(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['scrollbar_interactive'] = to_bool(val)
 

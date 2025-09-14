@@ -75,7 +75,7 @@ typedef struct Options {
     ScrollbarVisibilityPolicy scrollbar;
     bool scrollbar_interactive, scrollbar_jump_on_click;
     float scrollbar_width, scrollbar_radius, scrollbar_gap, scrollbar_min_handle_height, scrollbar_hitbox_expansion;
-    float scrollbar_handle_opacity, scrollbar_track_opacity, scrollbar_track_hover_opacity;
+    float scrollbar_hover_width, scrollbar_handle_opacity, scrollbar_track_opacity, scrollbar_track_hover_opacity;
     color_type scrollbar_handle_color, scrollbar_track_color;
 
     float text_contrast, text_gamma_adjustment;

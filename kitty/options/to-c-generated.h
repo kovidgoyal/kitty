@@ -305,6 +305,19 @@ convert_from_opts_scrollbar_width(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_scrollbar_hover_width(PyObject *val, Options *opts) {
+    opts->scrollbar_hover_width = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_scrollbar_hover_width(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_hover_width");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_hover_width(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_scrollbar_handle_opacity(PyObject *val, Options *opts) {
     opts->scrollbar_handle_opacity = PyFloat_AsFloat(val);
 }
@@ -1391,6 +1404,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_scrollbar_jump_on_click(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_scrollbar_width(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_hover_width(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_scrollbar_handle_opacity(py_opts, opts);
     if (PyErr_Occurred()) return false;

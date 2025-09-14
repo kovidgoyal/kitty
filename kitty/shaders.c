@@ -906,6 +906,7 @@ draw_scrollbar(const UIRenderData *ui) {
     float opacity = OPT(scrollbar_handle_opacity);
     float track_opacity = window->scrollbar.is_hovering ? OPT(scrollbar_track_hover_opacity) : OPT(scrollbar_track_opacity);
     GLsizei scrollbar_width_px = (GLsizei)(OPT(scrollbar_width) * ui->cell_width);
+    if (window->scrollbar.is_hovering) scrollbar_width_px = (GLsizei)(OPT(scrollbar_hover_width) * ui->cell_width);
     GLsizei scrollbar_gap_px = (GLsizei)(OPT(scrollbar_gap) * ui->cell_width);
     unsigned scrollbar_radius = (unsigned)(OPT(scrollbar_radius) * ui->cell_width);
 
