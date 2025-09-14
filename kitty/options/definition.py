@@ -442,10 +442,9 @@ is changed it will only affect newly created windows, not existing ones.
 '''
     )
 
-opt(
-    'scrollbar', '',
-    option_type='scrollbar', ctype='!scrollbar',
+opt('scrollbar', '', option_type='scrollbar', ctype='!scrollbar',
     long_text='''
+TODO: this writeup
 ''')
 
 opt('scrollback_pager', 'less --chop-long-lines --RAW-CONTROL-CHARS +INPUT_LINE_NUMBER',

@@ -1719,6 +1719,11 @@ class ScrollbarSettings(NamedTuple):
     jump_on_track_click: bool = True
     visible_when: int = 1
 
+    def differences(self, other: 'ScrollbarSettings') -> Iterator[str]:
+        for key in self._fields:
+            if getattr(self, key) != (o := getattr(other, key)):
+                yield f'{key}: {o}'
+
 
 default_scrollbar = ScrollbarSettings()
 

@@ -198,7 +198,7 @@ The scrollback buffer
 
 |kitty| supports scrolling back to view history, just like most terminals. You
 can use either keyboard shortcuts or the mouse scroll wheel to do so. |kitty|
-displays an interactive :opt:`scrollbar <scrollbar_opacity>` along the right edge
+displays an interactive :opt:`scrollbar` along the right edge
 of the window that shows your current position in the scrollback. You can click
 and drag the scrollbar to quickly navigate through the history.
 

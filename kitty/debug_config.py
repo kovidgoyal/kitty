@@ -22,7 +22,7 @@ from .constants import extensions_dir, is_macos, is_wayland, kitty_base_dir, kit
 from .fast_data_types import Color, SingleKey, current_fonts, glfw_get_system_color_theme, gpu_driver_version_string, num_users, wayland_compositor_data
 from .options.types import Options as KittyOpts
 from .options.types import defaults, secret_options
-from .options.utils import KeyboardMode, KeyDefinition
+from .options.utils import KeyboardMode, KeyDefinition, ScrollbarSettings
 from .rgb import color_as_sharp, color_from_int
 from .types import MouseEvent, Shortcut, mod_to_names
 from .utils import shlex_split
@@ -91,7 +91,7 @@ def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None,
             continue
         val = getattr(opts, f)
         if isinstance(val, dict):
-            print(title(f'{f}:'))
+            print(f'{f}:')
             if f == 'symbol_map':
                 for k in sorted(val):
                     print(f'\tU+{k[0]:04x} - U+{k[1]:04x} → {val[k]}')
@@ -100,6 +100,10 @@ def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None,
                     print('   ', val[k])
             else:
                 print(pformat(val))
+        elif isinstance(val, ScrollbarSettings):
+            print(f'{f}:')
+            for ssd in ScrollbarSettings().differences(val):
+                print(f'\t{ssd}')
         else:
             val = getattr(opts, f)
             if isinstance(val, Color):
