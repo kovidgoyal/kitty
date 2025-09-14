@@ -11,6 +11,7 @@
 #include "colors.h"
 #include <stddef.h>
 #include <string.h>
+#include "text-cache.h"
 #include "window_logo.h"
 #include "srgb_gamma.h"
 #include "uniforms_generated.h"
@@ -740,10 +741,17 @@ draw_visual_bell(const UIRenderData *ui) {
 }
 
 static bool
-has_scrollbar(Screen *screen) {
-    return OPT(scrollbar_opacity) > 0 && screen->linebuf == screen->main_linebuf && screen->historybuf->count > 0;
+has_scrollbar(Window *w, Screen *screen) {
+    if (screen->linebuf != screen->main_linebuf || !screen->historybuf->count) return false;
+    switch (OPT(scrollbar.visible_when)) {
+        case SCROLLBAR_NEVER: return false;
+        case SCROLLBAR_ALWAYS: return true;
+        case SCROLLBAR_ON_SCROLLED: return screen->scrolled_by > 0;
+        case SCROLLBAR_ON_HOVERED: return w->scrollbar.is_hovering;
+        case SCROLLBAR_ON_SCROLL_AND_HOVER: return screen->scrolled_by > 0 && w->scrollbar.is_hovering;
+    }
+    return false;
 }
-
 
 static unsigned
 render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool along_bottom) {
@@ -876,32 +884,28 @@ set_color_uniform_with_opacity(color_type color, float opacity) {
     glUniform4f(tint_program_layout.uniforms.tint_color, r, g, b, opacity);
 }
 
+static color_type
+scrollbar_color(Screen *screen, unsigned val) {
+    switch (val & 0xff) {
+        case 0: return colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg).rgb;
+        case 1: return colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_fg).rgb;
+        default: return val >> 8;
+    }
+}
+
 static void
 draw_scrollbar(const UIRenderData *ui) {
-    if (!has_scrollbar(ui->screen)) return;
     Screen *screen = ui->screen;
     Window *window = ui->window;
-    if (!window) return;
+    if (!window || !screen || !has_scrollbar(window, screen)) return;
 
-    color_type bar_color;
-    unsigned int val = OPT(scrollbar_color);
-    switch (val & 0xff) {
-        case 0: bar_color = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg).rgb; break;
-        case 1: bar_color = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_fg, screen->color_profile->configured.highlight_fg).rgb; break;
-        default: bar_color = val >> 8; break;
-    }
-
-    // Division by zero is safe here because has_scrollbar() ensures historybuf->count > 0
-    float bar_frac = (float)screen->scrolled_by / (float)screen->historybuf->count;
-
-    if (OPT(scrollbar_autohide) && !window->scrollbar.is_hovering && screen->scrolled_by == 0) return;
-
-    float opacity = OPT(scrollbar_opacity);
-    float track_opacity = OPT(scrollbar_track_opacity);
-
-    GLsizei scrollbar_width_px = OPT(scrollbar_width);
-    GLsizei scrollbar_gap_px = OPT(scrollbar_gap);
-    unsigned int scrollbar_radius = OPT(scrollbar_radius);
+    color_type bar_color = scrollbar_color(screen, OPT(scrollbar.color)), track_color = scrollbar_color(screen, OPT(scrollbar.track_color));
+    float bar_frac = (float)screen->scrolled_by / MAX(1u, (float)screen->historybuf->count);
+    float opacity = OPT(scrollbar.opacity);
+    float track_opacity = window->scrollbar.is_hovering ? OPT(scrollbar.track_hover_opacity) : OPT(scrollbar.track_opacity);
+    GLsizei scrollbar_width_px = (GLsizei)(OPT(scrollbar.width) * ui->cell_width);
+    GLsizei scrollbar_gap_px = (GLsizei)(OPT(scrollbar.gap) * ui->cell_width);
+    unsigned scrollbar_radius = (unsigned)(OPT(scrollbar.radius) * ui->cell_width);
 
     // Calculate window boundaries including padding
     GLsizei window_right_edge = ui->screen_left + ui->screen_width + window->render_data.geometry.spaces.right;
@@ -915,7 +919,7 @@ draw_scrollbar(const UIRenderData *ui) {
 
     // Calculate thumb size and position
     float visible_fraction = (float)screen->lines / (float)(screen->lines + screen->historybuf->count);
-    float min_thumb_height_fraction = (float)OPT(scrollbar_min_thumb_height) / (float)window_height;
+    float min_thumb_height_fraction = (OPT(scrollbar.min_handle_height) * ui->cell_height) / (float)window_height;
     float thumb_height_fraction = MAX(min_thumb_height_fraction, visible_fraction);
 
     // Convert to OpenGL coordinates (range -1.0 to 1.0, total span = 2.0)
@@ -940,10 +944,12 @@ draw_scrollbar(const UIRenderData *ui) {
     );
 
     // Draw scrollbar track (background)
-    bind_program(TINT_PROGRAM);
-    set_color_uniform_with_opacity(bar_color, track_opacity);
-    glUniform4f(tint_program_layout.uniforms.edges, -1.f, 1.f, 1.f, -1.f);
-    draw_quad(true, 0);
+    if (track_opacity > 0) {
+        bind_program(TINT_PROGRAM);
+        set_color_uniform_with_opacity(track_color, track_opacity);
+        glUniform4f(tint_program_layout.uniforms.edges, -1.f, 1.f, 1.f, -1.f);
+        draw_quad(true, 0);
+    }
 
     // Draw scrollbar thumb (handle)
     if (scrollbar_radius > 0) {
@@ -1023,7 +1029,7 @@ draw_window_logo(const UIRenderData *ui) {
 
 bool
 screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen) {
-    const bool has_ui = has_visual_bell(screen) || has_scrollbar(screen) || has_hyperlink_target(os_window, w, screen) || has_window_number(w, screen);
+    const bool has_ui = has_visual_bell(screen) || has_scrollbar(w, screen) || has_hyperlink_target(os_window, w, screen) || has_window_number(w, screen);
     GraphicsManager *grman = screen->paused_rendering.expires_at && screen->paused_rendering.grman ? screen->paused_rendering.grman : screen->grman;
     return has_ui || (w && w->window_logo.id) || grman_has_images(grman);
 }

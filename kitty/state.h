@@ -80,18 +80,6 @@ typedef struct Options {
         ScrollbarVisibilityPolicy visible_when;
     } scrollbar;
 
-    bool scrollbar_interactive;
-    float scrollbar_opacity;
-    float scrollbar_track_opacity;
-    color_type scrollbar_color;
-    unsigned int scrollbar_width;
-    unsigned int scrollbar_gap;
-    unsigned int scrollbar_min_thumb_height;
-    unsigned int scrollbar_hitbox_expansion;
-    unsigned int scrollbar_radius;
-    bool scrollbar_autohide;
-    ScrollbarTrackBehavior scrollbar_track_behavior;
-
     float text_contrast, text_gamma_adjustment;
     bool text_old_gamma;
 
