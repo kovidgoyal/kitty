@@ -970,7 +970,9 @@ class Window:
             mark_os_window_dirty(self.os_window_id)
 
         self.geometry = g = new_geometry
-        set_window_render_data(self.os_window_id, self.tab_id, self.id, self.screen, *g[:4])
+        set_window_render_data(self.os_window_id, self.tab_id, self.id, self.screen,
+                             g.left, g.top, g.right, g.bottom,
+                             g.spaces.left, g.spaces.top, g.spaces.right, g.spaces.bottom)
         self.update_effective_padding()
         if update_ime_position:
             update_ime_position_for_window(self.id, True)

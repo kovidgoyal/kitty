@@ -58,6 +58,17 @@ window_title_in(PyObject *title_in) {
     return ALL;
 }
 
+static inline ScrollbarTrackBehavior
+scrollbar_track_behavior(PyObject *val) {
+    const char *v = PyUnicode_AsUTF8(val);
+    switch(v[0]) {
+        case 'j': return SCROLLBAR_TRACK_JUMP;
+        case 'p': return SCROLLBAR_TRACK_PAGE;
+        default: break;
+    }
+    return SCROLLBAR_TRACK_JUMP;
+}
+
 static inline unsigned
 undercurl_style(PyObject *x) {
     RAII_PyObject(thick, PyUnicode_FromString("thick"));
