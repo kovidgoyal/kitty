@@ -7,7 +7,7 @@ import string
 
 from kitty.conf.types import Action, Definition
 from kitty.constants import website_url
-from kitty.options.utils import pointer_shape_names
+from kitty.options.utils import default_scrollbar, pointer_shape_names
 
 definition = Definition(
     'kitty',
@@ -443,8 +443,60 @@ is changed it will only affect newly created windows, not existing ones.
     )
 
 opt('scrollbar', '', option_type='scrollbar', ctype='!scrollbar',
-    long_text='''
-TODO: this writeup
+    long_text=f'''
+Control the appearance and behavior of the scrollbar that is displayed when
+scrolling through the scrollback. Accepts a number of space separated settings in key=value
+format, documented below. To have the scrollbar always visible, use:
+:code:`visible_when=always`. To disable it completely use: :code:`visible_when=never`.
+To have it be visible but not react to the mouse, use :code:`interactive=no`. For example:
+:code:`visible_when=always interactive=no`.
+
+The various settings, with their default values:
+
+**color** :code:`={default_scrollbar.color_as_string(default_scrollbar.color)}`
+    the color of the scrollbar handle. Use the special keywords: :code:`foreground` or :code:`selection_background` to use those colors.
+
+**track_color** :code:`={default_scrollbar.color_as_string(default_scrollbar.color)}`
+    the color of the scrollbar track. Use the special keywords: :code:`foreground` or :code:`selection_background` to use those colors.
+
+**opacity** :code:`={default_scrollbar.opacity}`
+    the opacity of the scrollbar handle (0 invisible to 1 fully opaque)
+
+**track_opacity** :code:`={default_scrollbar.track_opacity}`
+    the opacity of the scrollbar track
+
+**track_hover_opacity** :code:`={default_scrollbar.track_opacity}`
+    the opacity of the scrollbar track when the mouse is over it.
+
+**visible_when** :code:`=scrolled`
+    when the scrollbar is displayed.
+    :code:`scrolled` means when the scrolling backwards has started.
+    :code:`hovered` means when the mouse is hovering on the right edge of the window.
+    :code:`scrolled-and-hovered` means when the mouse is over the scrollbar region *and* scrolling backwards has started.
+    :code:`always` means whenever any scrollback is present
+    :code:`never` means disable the scrollbar.
+
+**interactive** :code:`={'yes' if default_scrollbar.interactive else 'no'}`
+    whether the scrollbar can be controlled by the mouse.
+
+**track_click** :code:`={'jump' if default_scrollbar.jump_on_track_click else 'page'}`
+    the behavior of clicking on the scrollbar track. :code:`jump` means scroll to the position of
+    the click and :code:`page` means scroll by a single screen towards the position of the click.
+
+**width** :code:`={default_scrollbar.width}`
+    the width of the scrollbar in units of cells
+
+**radius** :code:`={default_scrollbar.radius}`
+    the radius (curvature) of the scrollbar handle in units of cells
+
+**gap** :code:`={default_scrollbar.gap}`
+    the gap between the scrollbar and the window edge in units of cells
+
+**min_handle_height** :code:`={default_scrollbar.min_handle_height}`
+    the minimum height of the scrollbar handle in units of cells
+
+**hitbox_expansion** :code:`={default_scrollbar.hitbox_expansion}`
+    the extra area around the handle to allow easier grabbing of the scollbar in units of cells
 ''')
 
 opt('scrollback_pager', 'less --chop-long-lines --RAW-CONTROL-CHARS +INPUT_LINE_NUMBER',

@@ -588,7 +588,7 @@ class Options:
     scrollback_lines: int = 2000
     scrollback_pager: list[str] = ['less', '--chop-long-lines', '--RAW-CONTROL-CHARS', '+INPUT_LINE_NUMBER']
     scrollback_pager_history_size: int = 0
-    scrollbar: ScrollbarSettings = ScrollbarSettings(opacity=0.5, track_opacity=0, track_hover_opacity=0.1, color=0, track_color=0, interactive=True, width=0.5, radius=0.3, gap=0.25, min_handle_height=1.0, hitbox_expansion=0.25, jump_on_track_click=True, visible_when=1)
+    scrollbar: ScrollbarSettings = ScrollbarSettings(opacity=0.5, track_opacity=0, track_hover_opacity=0.1, color=0, track_color=0, interactive=True, width=0.5, radius=0.3, gap=0.1, min_handle_height=1.0, hitbox_expansion=0.25, jump_on_track_click=True, visible_when=1)
     select_by_word_characters: str = '@-./_~?&=%+#'
     select_by_word_characters_forward: str = ''
     selection_background: kitty.fast_data_types.Color | None = Color(255, 250, 205)

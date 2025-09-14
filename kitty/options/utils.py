@@ -41,7 +41,7 @@ from kitty.constants import is_macos
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_HOLLOW, CURSOR_UNDERLINE, NO_CURSOR_SHAPE, Color, Shlex, SingleKey
 from kitty.fonts import FontModification, FontSpec, ModificationType, ModificationUnit, ModificationValue
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases, get_key_name_lookup
-from kitty.rgb import color_as_int
+from kitty.rgb import color_as_int, color_from_int
 from kitty.types import FloatEdges, MouseEvent
 from kitty.utils import expandvars, log_error, resolve_abs_or_config_path, shlex_split
 
@@ -1713,11 +1713,20 @@ class ScrollbarSettings(NamedTuple):
     interactive: bool = True
     width: float = 0.5
     radius: float = 0.3
-    gap: float = 0.25
+    gap: float = 0.1
     min_handle_height: float = 1.0
     hitbox_expansion: float = 0.25
     jump_on_track_click: bool = True
     visible_when: int = 1
+
+    @classmethod
+    def color_as_string(cls, color_val: int) -> str:
+        match color_val:
+            case 0:
+                return 'foreground'
+            case 1:
+                return 'selection_background'
+        return color_from_int(color_val >> 8).as_sharp
 
     def differences(self, other: 'ScrollbarSettings') -> Iterator[str]:
         for key in self._fields:
