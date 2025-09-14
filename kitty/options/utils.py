@@ -1734,6 +1734,15 @@ class ScrollbarSettings(NamedTuple):
                 yield f'{key}: {o}'
 
 
+    def __repr__(self) -> str:
+        defaults = self._field_defaults
+        parts = []
+        for field_name in self._fields:
+            if (value := getattr(self, field_name)) != defaults[field_name]:
+                parts.append(f'{field_name}={value!r}')
+        return f'{self.__class__.__name__}({", ".join(parts)})'
+
+
 default_scrollbar = ScrollbarSettings()
 
 
