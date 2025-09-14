@@ -10,7 +10,7 @@ and released just like all other bugs.
 Preferably send an email to kovid at kovidgoyal.net or open a private security
 advisory using the GitHub security advisory facility.
 
-Note that I will respond to security communication within 72 hours. Once
+Note that I will generally respond to security communication within 72 hours. Once
 the bug is confirmed, it will be fixed or at least mitigated within another 72
 hours, at which time the fix will typically be committed to master and hence be
 public. That timeline might be extended based on the severity of the issue and the
