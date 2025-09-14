@@ -214,12 +214,34 @@ class TestParser(BaseTest):
         pb(b'"\xff\xfe"', '"\ufffd\ufffd"')
         pb(b'"\xfe\xfe\xff\xff"', '"\ufffd\ufffd\ufffd\ufffd"')
 
+        # Truncated 2-byte sequence (only 1 byte)
+        pb(b'"\xc2"', '"\ufffd"')
+
         # Truncated 3-byte sequences (only 2 bytes)
         pb(b'"\xef\xbf"', '"\ufffd"')
         pb(b'"\xe0\xa0"', '"\ufffd"')
 
-        # Truncated 4-byte sequence (only 3 bytes)
+        # Truncated 4-byte sequence (only 2 or 3 bytes)
+        pb(b'"\xf0\x9f"', '"\ufffd"')
         pb(b'"\xf0\x9f\x98"', '"\ufffd"')
+
+        # Overlong 2-byte sequence for U+0000 (should be `0x00`)
+        pb(b'"\xc0\x80"', '"\ufffd\ufffd"')
+
+        # Overlong 3-byte sequence for U+0000 (violates boundary)
+        pb(b'"\xe0\x80\x80"', '"\ufffd\ufffd\ufffd"')
+
+        # Overlong 4-byte sequence for U+0000 (violates boundary)
+        pb(b'"\xf0\x80\x80\x80"', '"\ufffd\ufffd\ufffd\ufffd"')
+
+        # Bad contiunuation byte (restored as ASCII)
+        pb(b'"\xe1\x28\xa1"', '"\ufffd(\ufffd"')
+
+        # High surrogate code point
+        pb(b'"\xed\xa0\x80"', '"\ufffd\ufffd\ufffd"')
+
+        # Low surrogate code point
+        pb(b'"\xed\xb0\x80"', '"\ufffd\ufffd\ufffd"')
 
     def test_utf8_simd_decode(self):
         def unsupported(which):
