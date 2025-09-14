@@ -376,13 +376,13 @@ into Unicode scalar values (i.e., code points except surrogates) using UTF-8.
 When it encounters any UTF-8 ill-formed subsequences,
 it must be replace each
 `maximal subpart of the ill-formed subsequence <https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G66453>`__
-with a U+FFFD REPLACEMENT CHARACTER (�).
+with a :code:`U+FFFD REPLACEMENT CHARACTER` (�).
 
 For each decoded code point:
 
 #. First check if the code point is an ASCII control code, and handle it
-   appropriately. ASCII control codes are the code points less than U+0032 and the
-   code point U+0127 (DEL). The NUL code point (0) must be discarded.
+   appropriately. ASCII control codes are the code points less than :code:`U+0032` and the
+   code point :code:`U+0127 DEL`. The code point :code:`U+0000 NUL` must be discarded.
 
 #. Next, check if the code point is *invalid*, and if it is, discard it
    and finish processing. Invalid code points are code points with Unicode category :code:`Cc or Cs`
