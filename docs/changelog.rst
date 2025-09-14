@@ -122,6 +122,8 @@ Detailed list of changes
 - New support for creating and switching to :doc:`sessions` easily, allowing
   users to define and use sessions/projects efficiently
 
+- Add a configurable :opt:`scrollbar` for the kitty scrollback (:pull:`8945`)
+
 - macOS: Allow the window title bar to be semi-transparent when
   :opt:`background_opacity` is less than one and :opt:`macos_titlebar_color` is
   set to ``background`` (:pull:`8906`)
