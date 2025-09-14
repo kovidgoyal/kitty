@@ -743,7 +743,7 @@ draw_visual_bell(const UIRenderData *ui) {
 static bool
 has_scrollbar(Window *w, Screen *screen) {
     if (screen->linebuf != screen->main_linebuf || !screen->historybuf->count) return false;
-    switch (OPT(scrollbar.visible_when)) {
+    switch (OPT(scrollbar)) {
         case SCROLLBAR_NEVER: return false;
         case SCROLLBAR_ALWAYS: return true;
         case SCROLLBAR_ON_SCROLLED: return screen->scrolled_by > 0;
@@ -887,8 +887,10 @@ set_color_uniform_with_opacity(color_type color, float opacity) {
 static color_type
 scrollbar_color(Screen *screen, unsigned val) {
     switch (val & 0xff) {
-        case 0: return colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg).rgb;
-        case 1: return colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_fg).rgb;
+#define C(which) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.which, screen->color_profile->configured.which).rgb
+        case 0: return C(default_fg);
+        case 1: return C(highlight_bg);
+#undef C
         default: return val >> 8;
     }
 }
@@ -899,13 +901,13 @@ draw_scrollbar(const UIRenderData *ui) {
     Window *window = ui->window;
     if (!window || !screen || !has_scrollbar(window, screen)) return;
 
-    color_type bar_color = scrollbar_color(screen, OPT(scrollbar.color)), track_color = scrollbar_color(screen, OPT(scrollbar.track_color));
+    color_type bar_color = scrollbar_color(screen, OPT(scrollbar_handle_color)), track_color = scrollbar_color(screen, OPT(scrollbar_track_color));
     float bar_frac = (float)screen->scrolled_by / MAX(1u, (float)screen->historybuf->count);
-    float opacity = OPT(scrollbar.opacity);
-    float track_opacity = window->scrollbar.is_hovering ? OPT(scrollbar.track_hover_opacity) : OPT(scrollbar.track_opacity);
-    GLsizei scrollbar_width_px = (GLsizei)(OPT(scrollbar.width) * ui->cell_width);
-    GLsizei scrollbar_gap_px = (GLsizei)(OPT(scrollbar.gap) * ui->cell_width);
-    unsigned scrollbar_radius = (unsigned)(OPT(scrollbar.radius) * ui->cell_width);
+    float opacity = OPT(scrollbar_handle_opacity);
+    float track_opacity = window->scrollbar.is_hovering ? OPT(scrollbar_track_hover_opacity) : OPT(scrollbar_track_opacity);
+    GLsizei scrollbar_width_px = (GLsizei)(OPT(scrollbar_width) * ui->cell_width);
+    GLsizei scrollbar_gap_px = (GLsizei)(OPT(scrollbar_gap) * ui->cell_width);
+    unsigned scrollbar_radius = (unsigned)(OPT(scrollbar_radius) * ui->cell_width);
 
     // Calculate window boundaries including padding
     GLsizei window_right_edge = ui->screen_left + ui->screen_width + window->render_data.geometry.spaces.right;
@@ -919,7 +921,7 @@ draw_scrollbar(const UIRenderData *ui) {
 
     // Calculate thumb size and position
     float visible_fraction = (float)screen->lines / (float)(screen->lines + screen->historybuf->count);
-    float min_thumb_height_fraction = (OPT(scrollbar.min_handle_height) * ui->cell_height) / (float)window_height;
+    float min_thumb_height_fraction = (OPT(scrollbar_min_handle_height) * ui->cell_height) / (float)window_height;
     float thumb_height_fraction = MAX(min_thumb_height_fraction, visible_fraction);
 
     // Convert to OpenGL coordinates (range -1.0 to 1.0, total span = 2.0)

@@ -48,7 +48,7 @@ def main(args: list[str]=sys.argv) -> None:
             if opt.parser_func.__name__ in ('to_color_or_none', 'cursor_text_color'):
                 nullable_colors.append(opt.name)
                 all_colors.append(opt.name)
-            elif opt.parser_func.__name__ in ('to_color', 'titlebar_color', 'macos_titlebar_color'):
+            elif opt.parser_func.__name__ in ('to_color', 'titlebar_color', 'macos_titlebar_color', 'scrollbar_color'):
                 all_colors.append(opt.name)
     patch_color_list('tools/cmd/at/set_colors.go', nullable_colors, 'NULLABLE')
     patch_color_list('tools/themes/collection.go', all_colors, 'ALL')

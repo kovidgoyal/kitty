@@ -446,9 +446,9 @@ calculate_scrollbar_geometry(Window *w) {
 
     WindowGeometry *g = &w->render_data.geometry;
     unsigned cell_width = w->render_data.screen->cell_size.width;
-    geom.width = OPT(scrollbar.width) * cell_width;
-    geom.gap = OPT(scrollbar.gap) * cell_width;
-    geom.hitbox_expansion = OPT(scrollbar.hitbox_expansion) * cell_width;
+    geom.width = OPT(scrollbar_width) * cell_width;
+    geom.gap = OPT(scrollbar_gap) * cell_width;
+    geom.hitbox_expansion = OPT(scrollbar_hitbox_expansion) * cell_width;
 
     double right_edge = g->right + g->spaces.right;
     geom.left = right_edge - geom.gap - geom.width - geom.hitbox_expansion;
@@ -474,7 +474,7 @@ get_scrollbar_hit_type(Window *w, double mouse_x, double mouse_y) {
     if (!os_window) return SCROLLBAR_HIT_TRACK;
     double mouse_window_fraction = mouse_y / os_window->viewport_height;
     unsigned cell_width = w->render_data.screen->cell_size.width;
-    double hitbox_expansion_fraction = (double)(OPT(scrollbar.hitbox_expansion) * cell_width) / os_window->viewport_height;
+    double hitbox_expansion_fraction = (double)(OPT(scrollbar_hitbox_expansion) * cell_width) / os_window->viewport_height;
 
     if (mouse_window_fraction >= (w->scrollbar.thumb_top - hitbox_expansion_fraction) &&
         mouse_window_fraction <= (w->scrollbar.thumb_bottom + hitbox_expansion_fraction)) {
@@ -490,7 +490,7 @@ handle_scrollbar_track_click(Window *w, double mouse_y) {
     Screen *screen = w->render_data.screen;
     if (!validate_scrollbar_state(w)) return;
 
-    if (OPT(scrollbar.track_behavior) == SCROLLBAR_TRACK_JUMP) {
+    if (OPT(scrollbar_jump_on_click)) {
         ScrollbarGeometry geom = calculate_scrollbar_geometry(w);
         double scrollbar_height = geom.bottom - geom.top;
         double mouse_pane_fraction = (mouse_y - geom.top) / scrollbar_height;
@@ -552,7 +552,7 @@ handle_scrollbar_drag(Window *w, double mouse_y) {
     double delta_y = mouse_pane_fraction - w->scrollbar.drag_start_y;
     double visible_fraction = (double)screen->lines / (screen->lines + screen->historybuf->count);
     unsigned cell_height = screen->cell_size.height;
-    double min_thumb_height_fraction = ((double)OPT(scrollbar.min_handle_height) * cell_height) / scrollbar_height;
+    double min_thumb_height_fraction = ((double)OPT(scrollbar_min_handle_height) * cell_height) / scrollbar_height;
     double thumb_height = MAX(min_thumb_height_fraction, visible_fraction);
     double available_space = 1.0 - thumb_height;
 
@@ -573,7 +573,7 @@ handle_scrollbar_drag(Window *w, double mouse_y) {
 
 static bool
 handle_scrollbar_mouse(Window *w, int button, MouseAction action, int modifiers UNUSED) {
-    if (!w || !OPT(scrollbar.interactive) || !global_state.callback_os_window || global_state.active_drag_in_window == w->id || global_state.tracked_drag_in_window == w->id) return false;
+    if (!w || !OPT(scrollbar_interactive) || !global_state.callback_os_window || global_state.active_drag_in_window == w->id || global_state.tracked_drag_in_window == w->id) return false;
 
     double mouse_x = global_state.callback_os_window->mouse_x;
     double mouse_y = global_state.callback_os_window->mouse_y;

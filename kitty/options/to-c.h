@@ -58,35 +58,17 @@ window_title_in(PyObject *title_in) {
     return ALL;
 }
 
-static inline void
-scrollbar(PyObject *src, Options *opts) {
-#define G(conv, attr) { RAII_PyObject(x, PyObject_GetAttrString(src, #attr)); if (x) opts->scrollbar.attr = conv(x); }
-    G(PyFloat_AsFloat, opacity);
-    G(PyFloat_AsFloat, track_opacity);
-    G(PyFloat_AsFloat, track_hover_opacity);
-    G(PyFloat_AsFloat, width);
-    G(PyFloat_AsFloat, radius);
-    G(PyFloat_AsFloat, gap);
-    G(PyFloat_AsFloat, min_handle_height);
-    G(PyFloat_AsFloat, hitbox_expansion);
-    G(PyLong_AsUnsignedLong, color);
-    G(PyLong_AsUnsignedLong, track_color);
-    G(PyLong_AsLong, visible_when);
-    G(PyObject_IsTrue, interactive);
-#undef G
-    RAII_PyObject(x, PyObject_GetAttrString(src, "jump_on_track_click"));
-    opts->scrollbar.track_behavior = (x && PyObject_IsTrue(x)) ? SCROLLBAR_TRACK_JUMP : SCROLLBAR_TRACK_PAGE;
-}
-
-static inline ScrollbarTrackBehavior
-scrollbar_track_behavior(PyObject *val) {
-    const char *v = PyUnicode_AsUTF8(val);
-    switch(v[0]) {
-        case 'j': return SCROLLBAR_TRACK_JUMP;
-        case 'p': return SCROLLBAR_TRACK_PAGE;
-        default: break;
+static inline ScrollbarVisibilityPolicy
+scrollbar(PyObject *src) {
+    const char *q = PyUnicode_AsUTF8(src);
+    switch (q[0]) {
+        case 'a': return SCROLLBAR_ALWAYS;
+        case 'n': return SCROLLBAR_NEVER;
+        case 'h': return SCROLLBAR_ON_HOVERED;
+        case 's':
+            return strcmp(q, "scrolled") == 0 ? SCROLLBAR_ON_SCROLLED : SCROLLBAR_ON_SCROLL_AND_HOVER;
     }
-    return SCROLLBAR_TRACK_JUMP;
+    return SCROLLBAR_ON_SCROLLED;
 }
 
 static inline unsigned

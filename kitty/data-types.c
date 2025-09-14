@@ -864,11 +864,6 @@ PyInit_fast_data_types(void) {
     PyModule_AddIntMacro(m, COLOR_IS_SPECIAL);
     PyModule_AddIntMacro(m, COLOR_IS_INDEX);
     PyModule_AddIntMacro(m, COLOR_IS_RGB);
-    PyModule_AddIntMacro(m, SCROLLBAR_ALWAYS);
-    PyModule_AddIntMacro(m, SCROLLBAR_NEVER);
-    PyModule_AddIntMacro(m, SCROLLBAR_ON_HOVERED);
-    PyModule_AddIntMacro(m, SCROLLBAR_ON_SCROLLED);
-    PyModule_AddIntMacro(m, SCROLLBAR_ON_SCROLL_AND_HOVER);
 #ifdef __APPLE__
     // Apple says its SHM_NAME_MAX but SHM_NAME_MAX is not actually declared in typical CrApple style.
     // This value is based on experimentation and from qsharedmemory.cpp in Qt

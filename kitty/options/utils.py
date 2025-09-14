@@ -41,7 +41,7 @@ from kitty.constants import is_macos
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_HOLLOW, CURSOR_UNDERLINE, NO_CURSOR_SHAPE, Color, Shlex, SingleKey
 from kitty.fonts import FontModification, FontSpec, ModificationType, ModificationUnit, ModificationValue
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases, get_key_name_lookup
-from kitty.rgb import color_as_int, color_from_int
+from kitty.rgb import color_as_int
 from kitty.types import FloatEdges, MouseEvent
 from kitty.utils import expandvars, log_error, resolve_abs_or_config_path, shlex_split
 
@@ -859,11 +859,11 @@ def allow_hyperlinks(x: str) -> int:
 
 def color_with_special_values(x: str, special_values: dict[str, int], error_msg: str) -> int:
     x = x.strip('"')
-    if x in special_values:
-        return special_values[x]
+    if (ans := special_values.get(x)) is not None:
+        return ans & 0xff
     try:
-        return (color_as_int(to_color(x)) << 8) | 2
-    except ValueError:
+        return (color_as_int(to_color(x)) << 8) | len(special_values)
+    except Exception:
         log_error(error_msg.format(x=x))
     return 0
 
@@ -873,6 +873,14 @@ def titlebar_color(x: str) -> int:
         x,
         {'system': 0, 'background': 1},
         'Ignoring invalid title bar color: {x}'
+    )
+
+
+def scrollbar_color(x: str) -> int:
+    return color_with_special_values(
+        x,
+        {'foreground': 0, 'selection_background': 1},
+        'Ignoring invalid scroll bar color: {x}'
     )
 
 
@@ -1704,107 +1712,6 @@ def transparent_background_colors(spec: str) -> tuple[tuple[Color, float], ...]:
     return tuple(ans[:7])
 
 
-class ScrollbarSettings(NamedTuple):
-    opacity: float = 0.5
-    track_opacity: float = 0
-    track_hover_opacity: float = 0.1
-    color: int = 0
-    track_color: int = 0
-    interactive: bool = True
-    width: float = 0.5
-    radius: float = 0.3
-    gap: float = 0.1
-    min_handle_height: float = 1.0
-    hitbox_expansion: float = 0.25
-    jump_on_track_click: bool = True
-    visible_when: int = 1
-
-    @classmethod
-    def color_as_string(cls, color_val: int) -> str:
-        match color_val:
-            case 0:
-                return 'foreground'
-            case 1:
-                return 'selection_background'
-        return color_from_int(color_val >> 8).as_sharp
-
-    def differences(self, other: 'ScrollbarSettings') -> Iterator[str]:
-        for key in self._fields:
-            if getattr(self, key) != (o := getattr(other, key)):
-                yield f'{key}: {o}'
-
-
-    def __repr__(self) -> str:
-        defaults = self._field_defaults
-        parts = []
-        for field_name in self._fields:
-            if (value := getattr(self, field_name)) != defaults[field_name]:
-                parts.append(f'{field_name}={value!r}')
-        return f'{self.__class__.__name__}({", ".join(parts)})'
-
-
-default_scrollbar = ScrollbarSettings()
-
-
-def scrollbar(spec: str) -> ScrollbarSettings:
-    if not spec:
-        return default_scrollbar
-    ans = ScrollbarSettings()
-    def scrollbar_color(x: str) -> int:
-        return color_with_special_values(
-                x, {'foreground': 0, 'selection_background': 1}, 'Ignoring invalid scrollbar color: {x}')
-    for x in shlex_split(spec):
-        k, sep, v = x.partition('=')
-        if sep != '=':
-            log_error(f'Ignoring invalid scrollbar option: {x}')
-            continue
-        match k:
-            case 'opacity':
-                ans = ans._replace(opacity=unit_float(v))
-            case 'track_opacity':
-                ans = ans._replace(track_opacity=unit_float(v))
-            case 'track_hover_opacity':
-                ans = ans._replace(track_hover_opacity=unit_float(v))
-            case 'color':
-                ans = ans._replace(color=scrollbar_color(v))
-            case 'track_color':
-                ans = ans._replace(track_color=scrollbar_color(v))
-            case 'interactive':
-                ans = ans._replace(interactive=to_bool(v))
-            case 'width':
-                ans = ans._replace(width=positive_float(v))
-            case 'radius':
-                ans = ans._replace(radius=positive_float(v))
-            case 'gap':
-                ans = ans._replace(gap=positive_float(v))
-            case 'min_handle_height':
-                ans = ans._replace(min_handle_height=positive_float(v))
-            case 'hitbox_expansion':
-                ans = ans._replace(hitbox_expansion=positive_float(v))
-            case 'track_click':
-                ans = ans._replace(jump_on_track_click=v == 'jump')
-            case 'visible_when':
-                val = -1
-                match v:
-                    case 'never':
-                        val = defines.SCROLLBAR_NEVER
-                    case 'scrolled':
-                        val = defines.SCROLLBAR_ON_SCROLLED
-                    case 'hovered':
-                        val = defines.SCROLLBAR_ON_HOVERED
-                    case 'scrolled-and-hovered':
-                        val = defines.SCROLLBAR_ON_SCROLL_AND_HOVER
-                    case 'always':
-                        val = defines.SCROLLBAR_ALWAYS
-                    case _:
-                        log_error(f'Ignoring unknown scrollbar visibility policy: {v}')
-                if val > -1:
-                    ans = ans._replace(visible_when=val)
-            case _:
-                log_error(f'Ignoring unknown scrollbar option: {k}')
-    return ans
-
-
 def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: dict[str, Any]) -> None:
     if not hasattr(deprecated_hide_window_decorations_aliases, key):
         setattr(deprecated_hide_window_decorations_aliases, key, True)
@@ -1864,4 +1771,8 @@ def deprecated_scrollback_indicator_opacity(key: str, val: str, ans: dict[str, A
     if not hasattr(deprecated_scrollback_indicator_opacity, key):
         setattr(deprecated_scrollback_indicator_opacity, key, True)
         log_error(f'The option {key} is deprecated. Use scrollbar instead.')
-    ans['scrollbar'] = ScrollbarSettings(opacity=unit_float(val))
+    op = unit_float(val)
+    if op <= 0.001:
+        ans['scrollbar'] = 'never'
+    else:
+        ans['scrollbar_handle_opacity'] = op

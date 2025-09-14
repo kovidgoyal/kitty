@@ -7,7 +7,7 @@ import string
 
 from kitty.conf.types import Action, Definition
 from kitty.constants import website_url
-from kitty.options.utils import default_scrollbar, pointer_shape_names
+from kitty.options.utils import pointer_shape_names
 
 definition = Definition(
     'kitty',
@@ -442,61 +442,76 @@ is changed it will only affect newly created windows, not existing ones.
 '''
     )
 
-opt('scrollbar', '', option_type='scrollbar', ctype='!scrollbar',
-    long_text=f'''
-Control the appearance and behavior of the scrollbar that is displayed when
-scrolling through the scrollback. Accepts a number of space separated settings in key=value
-format, documented below. To have the scrollbar always visible, use:
-:code:`visible_when=always`. To disable it completely use: :code:`visible_when=never`.
-To have it be visible but not react to the mouse, use :code:`interactive=no`. For example:
-:code:`visible_when=always interactive=no`.
+opt('scrollbar', 'scrolled', ctype='scrollbar', choices=(
+    'scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered'), long_text='''\
+Control when the scrollbar is displayed.
 
-The various settings, with their default values:
+:code:`scrolled`
+    means when the scrolling backwards has started.
+:code:`hovered`
+    means when the mouse is hovering on the right edge of the window.
+:code:`scrolled-and-hovered`
+    means when the mouse is over the scrollbar region *and* scrolling backwards has started.
+:code:`always`
+    means whenever any scrollback is present
+:code:`never`
+    means disable the scrollbar.
+''')
 
-**color** :code:`={default_scrollbar.color_as_string(default_scrollbar.color)}`
-    the color of the scrollbar handle. Use the special keywords: :code:`foreground` or :code:`selection_background` to use those colors.
+opt('scrollbar_interactive', 'yes', option_type='to_bool', ctype='bool', long_text='''
+If disabled, the scrollbar will not be controllable via th emouse and all mouse events
+will pass through the scrollbar.''')
 
-**track_color** :code:`={default_scrollbar.color_as_string(default_scrollbar.color)}`
-    the color of the scrollbar track. Use the special keywords: :code:`foreground` or :code:`selection_background` to use those colors.
+opt('scrollbar_jump_on_click', 'yes', option_type='to_bool', ctype='bool', long_text='''
+When enabled clicking in the scrollbar track will cause the scroll position to
+jump to the clicked location, otherwise the scroll position will only move
+towards the position by a single screenful, which is how traditional scrollbars behave.''')
 
-**opacity** :code:`={default_scrollbar.opacity}`
-    the opacity of the scrollbar handle (0 invisible to 1 fully opaque)
+opt('scrollbar_width', '0.5', option_type='positive_float', ctype='float', long_text='''
+The width of the scroll bar in units of cell width.
+''')
 
-**track_opacity** :code:`={default_scrollbar.track_opacity}`
-    the opacity of the scrollbar track
+opt('scrollbar_handle_opacity', '0.5', option_type='positive_float', ctype='float', long_text='''
+The opacity of the scrollbar handle, 0 being fully transparent and 1 being full opaque.
+''')
 
-**track_hover_opacity** :code:`={default_scrollbar.track_opacity}`
-    the opacity of the scrollbar track when the mouse is over it.
+opt('scrollbar_radius', '0.3', option_type='positive_float', ctype='float', long_text='''
+The radius (curvature) of the scrollbar handle in units of cell width. Should be less than
+:opt:`scrollbar_width`.
+''')
 
-**visible_when** :code:`=scrolled`
-    when the scrollbar is displayed.
-    :code:`scrolled` means when the scrolling backwards has started.
-    :code:`hovered` means when the mouse is hovering on the right edge of the window.
-    :code:`scrolled-and-hovered` means when the mouse is over the scrollbar region *and* scrolling backwards has started.
-    :code:`always` means whenever any scrollback is present
-    :code:`never` means disable the scrollbar.
+opt('scrollbar_gap', '0.1', option_type='positive_float', ctype='float', long_text='''
+The gap between the scrollbar and the window edge in units of cell width.
+''')
 
-**interactive** :code:`={'yes' if default_scrollbar.interactive else 'no'}`
-    whether the scrollbar can be controlled by the mouse.
+opt('scrollbar_min_handle_height', '1', option_type='positive_float', ctype='float', long_text='''
+The minimum height of the scrollbar handle in units of cell height. Prevents the handle
+from becoming too small when there is a lot of scrollback.''')
 
-**track_click** :code:`={'jump' if default_scrollbar.jump_on_track_click else 'page'}`
-    the behavior of clicking on the scrollbar track. :code:`jump` means scroll to the position of
-    the click and :code:`page` means scroll by a single screen towards the position of the click.
+opt('scrollbar_hitbox_expansion', '0.25', option_type='positive_float', ctype='float', long_text='''
+The extra area around the handle to allow easier grabbing of the scollbar in units of cell width.''')
 
-**width** :code:`={default_scrollbar.width}`
-    the width of the scrollbar in units of cells
+opt('scrollbar_track_opacity', '0', option_type='positive_float', ctype='float', long_text='''
+The opacity of the scrollbar track, 0 being fully transparent and 1 being full opaque.
+''')
 
-**radius** :code:`={default_scrollbar.radius}`
-    the radius (curvature) of the scrollbar handle in units of cells
+opt('scrollbar_track_hover_opacity', '0.1', option_type='positive_float', ctype='float', long_text='''
+The opacity of the scrollbar track when the mouse is over the scrollbar,
+0 being fully transparent and 1 being full opaque.
+''')
 
-**gap** :code:`={default_scrollbar.gap}`
-    the gap between the scrollbar and the window edge in units of cells
+opt('scrollbar_handle_color', 'foreground', option_type='scrollbar_color', ctype='uint', long_text='''
+The color of the scrollbar handle. A value of :code:`foreground` means to use
+the current foreground text color, a value of :code:`selection_background` means to
+use the current selection background color. Also, you can use an
+arbitrary color, such as :code:`#12af59` or :code:`red`.
+''')
 
-**min_handle_height** :code:`={default_scrollbar.min_handle_height}`
-    the minimum height of the scrollbar handle in units of cells
-
-**hitbox_expansion** :code:`={default_scrollbar.hitbox_expansion}`
-    the extra area around the handle to allow easier grabbing of the scollbar in units of cells
+opt('scrollbar_track_color', 'foreground', option_type='scrollbar_color', ctype='uint', long_text='''
+The color of the scrollbar track. A value of :code:`foreground` means to use
+the current foreground text color, a value of :code:`selection_background` means to
+use the current selection background color. Also, you can use an
+arbitrary color, such as :code:`#12af59` or :code:`red`.
 ''')
 
 opt('scrollback_pager', 'less --chop-long-lines --RAW-CONTROL-CHARS +INPUT_LINE_NUMBER',

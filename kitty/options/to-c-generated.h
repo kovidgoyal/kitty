@@ -254,7 +254,7 @@ convert_from_opts_cursor_trail_color(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_scrollbar(PyObject *val, Options *opts) {
-    scrollbar(val, opts);
+    opts->scrollbar = scrollbar(val);
 }
 
 static void
@@ -262,6 +262,162 @@ convert_from_opts_scrollbar(PyObject *py_opts, Options *opts) {
     PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar");
     if (ret == NULL) return;
     convert_from_python_scrollbar(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_interactive(PyObject *val, Options *opts) {
+    opts->scrollbar_interactive = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_scrollbar_interactive(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_interactive");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_interactive(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_jump_on_click(PyObject *val, Options *opts) {
+    opts->scrollbar_jump_on_click = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_scrollbar_jump_on_click(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_jump_on_click");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_jump_on_click(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_width(PyObject *val, Options *opts) {
+    opts->scrollbar_width = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_scrollbar_width(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_width");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_width(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_handle_opacity(PyObject *val, Options *opts) {
+    opts->scrollbar_handle_opacity = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_scrollbar_handle_opacity(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_handle_opacity");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_handle_opacity(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_radius(PyObject *val, Options *opts) {
+    opts->scrollbar_radius = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_scrollbar_radius(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_radius");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_radius(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_gap(PyObject *val, Options *opts) {
+    opts->scrollbar_gap = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_scrollbar_gap(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_gap");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_gap(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_min_handle_height(PyObject *val, Options *opts) {
+    opts->scrollbar_min_handle_height = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_scrollbar_min_handle_height(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_min_handle_height");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_min_handle_height(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_hitbox_expansion(PyObject *val, Options *opts) {
+    opts->scrollbar_hitbox_expansion = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_scrollbar_hitbox_expansion(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_hitbox_expansion");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_hitbox_expansion(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_track_opacity(PyObject *val, Options *opts) {
+    opts->scrollbar_track_opacity = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_scrollbar_track_opacity(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_track_opacity");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_track_opacity(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_track_hover_opacity(PyObject *val, Options *opts) {
+    opts->scrollbar_track_hover_opacity = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_scrollbar_track_hover_opacity(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_track_hover_opacity");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_track_hover_opacity(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_handle_color(PyObject *val, Options *opts) {
+    opts->scrollbar_handle_color = PyLong_AsUnsignedLong(val);
+}
+
+static void
+convert_from_opts_scrollbar_handle_color(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_handle_color");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_handle_color(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_scrollbar_track_color(PyObject *val, Options *opts) {
+    opts->scrollbar_track_color = PyLong_AsUnsignedLong(val);
+}
+
+static void
+convert_from_opts_scrollbar_track_color(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "scrollbar_track_color");
+    if (ret == NULL) return;
+    convert_from_python_scrollbar_track_color(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1229,6 +1385,30 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_cursor_trail_color(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_scrollbar(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_interactive(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_jump_on_click(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_width(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_handle_opacity(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_radius(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_gap(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_min_handle_height(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_hitbox_expansion(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_track_opacity(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_track_hover_opacity(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_handle_color(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_scrollbar_track_color(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_scrollback_pager_history_size(py_opts, opts);
     if (PyErr_Occurred()) return false;
