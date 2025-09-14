@@ -1704,6 +1704,84 @@ def transparent_background_colors(spec: str) -> tuple[tuple[Color, float], ...]:
     return tuple(ans[:7])
 
 
+class ScrollbarSettings(NamedTuple):
+    opacity: float = 0.5
+    track_opacity: float = 0
+    track_hover_opacity: float = 0.1
+    color: int = 0
+    track_color: int = 0
+    interactive: bool = True
+    width: float = 0.5
+    radius: float = 0.25
+    gap: float = 0.25
+    min_handle_height: float = 1.0
+    hitbox_expansion: float = 0.25
+    jump_on_track_click: bool = True
+    visible_when: int = 1
+
+
+default_scrollbar = ScrollbarSettings()
+
+
+def scrollbar(spec: str) -> ScrollbarSettings:
+    if not spec:
+        return default_scrollbar
+    ans = ScrollbarSettings()
+    def scrollbar_color(x: str) -> int:
+        return color_with_special_values(
+                x, {'foreground': 0, 'selection_background': 1}, 'Ignoring invalid scrollbar color: {x}')
+    for x in shlex_split(spec):
+        k, sep, v = x.partition('=')
+        if sep != '=':
+            log_error(f'Ignoring invalid scrollbar option: {x}')
+            continue
+        match k:
+            case 'opacity':
+                ans = ans._replace(opacity=unit_float(v))
+            case 'track_opacity':
+                ans = ans._replace(track_opacity=unit_float(v))
+            case 'track_hover_opacity':
+                ans = ans._replace(track_hover_opacity=unit_float(v))
+            case 'color':
+                ans = ans._replace(color=scrollbar_color(v))
+            case 'track_color':
+                ans = ans._replace(track_color=scrollbar_color(v))
+            case 'interactive':
+                ans = ans._replace(interactive=to_bool(v))
+            case 'width':
+                ans = ans._replace(width=positive_float(v))
+            case 'radius':
+                ans = ans._replace(radius=positive_float(v))
+            case 'gap':
+                ans = ans._replace(gap=positive_float(v))
+            case 'min_handle_height':
+                ans = ans._replace(min_handle_height=positive_float(v))
+            case 'hitbox_expansion':
+                ans = ans._replace(hitbox_expansion=positive_float(v))
+            case 'track_click':
+                ans = ans._replace(jump_on_track_click=v == 'jump')
+            case 'visible_when':
+                val = -1
+                match v:
+                    case 'never':
+                        val = defines.SCROLLBAR_NEVER
+                    case 'scrolled':
+                        val = defines.SCROLLBAR_ON_SCROLLED
+                    case 'hovered':
+                        val = defines.SCROLLBAR_ON_HOVERED
+                    case 'scrolled-and-hovered':
+                        val = defines.SCROLLBAR_ON_SCROLL_AND_HOVER
+                    case 'always':
+                        val = defines.SCROLLBAR_ALWAYS
+                    case _:
+                        log_error(f'Ignoring unknown scrollbar visibility policy: {v}')
+                if val > -1:
+                    ans = ans._replace(visible_when=val)
+            case _:
+                log_error(f'Ignoring unknown scrollbar option: {k}')
+    return ans
+
+
 def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: dict[str, Any]) -> None:
     if not hasattr(deprecated_hide_window_decorations_aliases, key):
         setattr(deprecated_hide_window_decorations_aliases, key, True)
@@ -1762,14 +1840,5 @@ def deprecated_adjust_line_height(key: str, x: str, opts_dict: dict[str, Any]) -
 def deprecated_scrollback_indicator_opacity(key: str, val: str, ans: dict[str, Any]) -> None:
     if not hasattr(deprecated_scrollback_indicator_opacity, key):
         setattr(deprecated_scrollback_indicator_opacity, key, True)
-        log_error(f'The option {key} is deprecated. Use scrollbar_opacity instead.')
-    from kitty.conf.utils import unit_float
-    ans['scrollbar_opacity'] = unit_float(val)
-
-
-def scrollbar_color(x: str) -> int:
-    return color_with_special_values(
-        x,
-        {'foreground': 0, 'selection_foreground': 1},
-        'Ignoring invalid scrollbar color: {x}'
-    )
+        log_error(f'The option {key} is deprecated. Use scrollbar instead.')
+    ans['scrollbar'] = ScrollbarSettings(opacity=unit_float(val))

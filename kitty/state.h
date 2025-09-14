@@ -70,7 +70,16 @@ typedef struct Options {
     float macos_thicken_font;
     WindowTitleIn macos_show_window_title_in;
     char *bell_path, *bell_theme;
-    float background_opacity, dim_opacity, scrollback_indicator_opacity;
+    float background_opacity, dim_opacity;
+    struct {
+        float opacity, track_opacity, track_hover_opacity;
+        color_type color, track_color;
+        bool interactive;
+        float width, radius, gap, min_handle_height, hitbox_expansion;
+        ScrollbarTrackBehavior track_behavior;
+        ScrollbarVisibilityPolicy visible_when;
+    } scrollbar;
+
     bool scrollbar_interactive;
     float scrollbar_opacity;
     float scrollbar_track_opacity;
@@ -82,6 +91,7 @@ typedef struct Options {
     unsigned int scrollbar_radius;
     bool scrollbar_autohide;
     ScrollbarTrackBehavior scrollbar_track_behavior;
+
     float text_contrast, text_gamma_adjustment;
     bool text_old_gamma;
 

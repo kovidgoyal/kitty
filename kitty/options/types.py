@@ -12,7 +12,7 @@ from kitty.fonts import FontSpec
 import kitty.fonts
 from kitty.options.utils import (
     AliasMap, KeyDefinition, KeyboardModeMap, MouseHideWait, MouseMap, MouseMapping, NotifyOnCmdFinish,
-    TabBarMarginHeight
+    ScrollbarSettings, TabBarMarginHeight
 )
 import kitty.options.utils
 from kitty.types import FloatEdges
@@ -27,7 +27,6 @@ choices_for_macos_colorspace = typing.Literal['srgb', 'default', 'displayp3']
 choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']
 choices_for_placement_strategy = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
-choices_for_scrollbar_track_behavior = typing.Literal['jump', 'page']
 choices_for_strip_trailing_spaces = typing.Literal['always', 'never', 'smart']
 choices_for_tab_bar_align = typing.Literal['left', 'center', 'right']
 choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant', 'custom']
@@ -415,17 +414,7 @@ option_names = (
     'scrollback_lines',
     'scrollback_pager',
     'scrollback_pager_history_size',
-    'scrollbar_autohide',
-    'scrollbar_color',
-    'scrollbar_gap',
-    'scrollbar_hitbox_expansion',
-    'scrollbar_interactive',
-    'scrollbar_min_thumb_height',
-    'scrollbar_opacity',
-    'scrollbar_radius',
-    'scrollbar_track_behavior',
-    'scrollbar_track_opacity',
-    'scrollbar_width',
+    'scrollbar',
     'select_by_word_characters',
     'select_by_word_characters_forward',
     'selection_background',
@@ -599,17 +588,7 @@ class Options:
     scrollback_lines: int = 2000
     scrollback_pager: list[str] = ['less', '--chop-long-lines', '--RAW-CONTROL-CHARS', '+INPUT_LINE_NUMBER']
     scrollback_pager_history_size: int = 0
-    scrollbar_autohide: bool = True
-    scrollbar_color: int = 0
-    scrollbar_gap: int = 5
-    scrollbar_hitbox_expansion: int = 5
-    scrollbar_interactive: bool = True
-    scrollbar_min_thumb_height: int = 50
-    scrollbar_opacity: float = 0.5
-    scrollbar_radius: int = 5
-    scrollbar_track_behavior: choices_for_scrollbar_track_behavior = 'jump'
-    scrollbar_track_opacity: float = 0
-    scrollbar_width: int = 10
+    scrollbar: ScrollbarSettings = ScrollbarSettings(opacity=0.5, track_opacity=0, track_hover_opacity=0.1, color=0, track_color=0, interactive=True, width=0.5, radius=0.25, gap=0.25, min_handle_height=1.0, hitbox_expansion=0.25, jump_on_track_click=True, visible_when=1)
     select_by_word_characters: str = '@-./_~?&=%+#'
     select_by_word_characters_forward: str = ''
     selection_background: kitty.fast_data_types.Color | None = Color(255, 250, 205)
