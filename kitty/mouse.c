@@ -446,10 +446,10 @@ calculate_scrollbar_geometry(Window *w) {
 
     WindowGeometry *g = &w->render_data.geometry;
     unsigned cell_width = w->render_data.screen->cell_size.width;
-    geom.width = OPT(scrollbar_width) * cell_width;
-    if (w->scrollbar.is_hovering) geom.width = OPT(scrollbar_hover_width) * cell_width;
-    geom.gap = OPT(scrollbar_gap) * cell_width;
-    geom.hitbox_expansion = OPT(scrollbar_hitbox_expansion) * cell_width;
+    geom.width = (double)OPT(scrollbar_width) * cell_width;
+    if (w->scrollbar.is_hovering) geom.width = (double)OPT(scrollbar_hover_width) * cell_width;
+    geom.gap = (double)OPT(scrollbar_gap) * cell_width;
+    geom.hitbox_expansion = (double)OPT(scrollbar_hitbox_expansion) * cell_width;
 
     double right_edge = g->right + g->spaces.right;
     geom.left = right_edge - geom.gap - geom.width - geom.hitbox_expansion;
