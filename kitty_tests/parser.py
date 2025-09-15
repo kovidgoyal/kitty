@@ -185,69 +185,6 @@ class TestParser(BaseTest):
         pb('😀'.encode()[:-1])
         pb('\x1b\x1b%a', '\ufffd', ('Unknown char after ESC: 0x1b',), ('draw', '%a'))
 
-    def test_utf8_parsing(self):
-        s = self.create_screen()
-        pb = partial(self.parse_bytes_dump, s)
-
-        # Kitty's UTF-8 decoding uses `U+FFFD substitution of maximal subparts
-        # <https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G66453>`_,
-        # same as in the WHATWG Encoding Standard.
-        # This means that ill-formed sequences may be replaced by multiple
-        # U+FFFD REPLACEMENT CHARACTERs.
-
-        # Lone continuation bytes with no leading starts
-        pb(b'"\xbf"', '"\ufffd"')
-        pb(b'"\x80"', '"\ufffd"')
-
-        # Multiple lone continuation bytes
-        pb(b'"\x80\xbf"', '"\ufffd\ufffd"')
-        pb(b'"\x80\xbf\x80"', '"\ufffd\ufffd\ufffd"')
-
-        # Lone starter byte of 2-byte sequence
-        pb(b'"\xc0 "', '"\ufffd "')
-
-        # Single never-valid bytes
-        pb(b'"\xfe"', '"\ufffd"')
-        pb(b'"\xff"', '"\ufffd"')
-
-        # Multiple never-valid bytes
-        pb(b'"\xff\xfe"', '"\ufffd\ufffd"')
-        pb(b'"\xfe\xfe\xff\xff"', '"\ufffd\ufffd\ufffd\ufffd"')
-
-        # Truncated 2-byte sequence (only 1 byte)
-        pb(b'"\xc2"', '"\ufffd"')
-
-        # Truncated 3-byte sequences (only 2 bytes)
-        pb(b'"\xef\xbf"', '"\ufffd"')
-        pb(b'"\xe0\xa0"', '"\ufffd"')
-
-        # Truncated 4-byte sequence (only 2 or 3 bytes)
-        pb(b'"\xf0\x9f"', '"\ufffd"')
-        pb(b'"\xf0\x9f\x98"', '"\ufffd"')
-
-        # Bad continuation byte (restored as ASCII)
-        pb(b'"\xe1\x28\xa1"', '"\ufffd(\ufffd"')  # )
-
-        # The following all fail and need to be fixed in the SIMD parser
-
-        # Overlong 2-byte sequence for U+0000 (should be `0x00`)
-        # pb(b'"\xc0\x80"', '"\ufffd\ufffd"')
-
-        # Overlong 3-byte sequence for U+0000 (violates boundary)
-        # pb(b'"\xe0\x80\x80"', '"\ufffd\ufffd\ufffd"')
-
-        # Overlong 4-byte sequence for U+0000 (violates boundary)
-        # pb(b'"\xf0\x80\x80\x80"', '"\ufffd\ufffd\ufffd\ufffd"')
-
-        # High surrogate code point
-        # pb(b'"\xed\xa0\x80"', '"\ufffd\ufffd\ufffd"')
-
-        # Low surrogate code point
-        # pb(b'"\xed\xb0\x80"', '"\ufffd\ufffd\ufffd"')
-
-        # Too large first codepoint
-        # pb(b'"\xff\x80\x80\x80"', '"\ufffd\ufffd\ufffd\ufffd"')
-
     def test_utf8_simd_decode(self):
         def unsupported(which):
             return (which == 2 and not has_sse4_2) or (which == 3 and not has_avx2)
@@ -331,7 +268,11 @@ class TestParser(BaseTest):
             pb('\uffff', '\uffff')
             pb('\0', '\0')
             pb(chr(0x10ffff), chr(0x10ffff))
-            # various invalid input
+            # Kitty's UTF-8 decoding uses `U+FFFD substitution of maximal subparts
+            # <https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G66453>`_,
+            # same as in the WHATWG Encoding Standard.
+            # This means that ill-formed sequences may be replaced by multiple
+            # U+FFFD REPLACEMENT CHARACTERs.
             pb(b'abcd\xf51234', 'abcd\ufffd1234')  # bytes > 0xf4
             pb(b'abcd\xff1234', 'abcd\ufffd1234')  # bytes > 0xf4
             pb(b'"\xbf"', '"\ufffd"')
@@ -347,6 +288,59 @@ class TestParser(BaseTest):
             pb(b'"\xe0\xa0"', '"\ufffd"')
             pb(b'"\xf0\x9f\x98"', '"\ufffd"')
             pb(b'"\xef\x93\x94\x95"', '"\uf4d4\ufffd"')
+            # Lone continuation bytes with no leading starts
+            pb(b'"\xbf"', '"\ufffd"')
+            pb(b'"\x80"', '"\ufffd"')
+
+            # Multiple lone continuation bytes
+            pb(b'"\x80\xbf"', '"\ufffd\ufffd"')
+            pb(b'"\x80\xbf\x80"', '"\ufffd\ufffd\ufffd"')
+
+            # Lone starter byte of 2-byte sequence
+            pb(b'"\xc0 "', '"\ufffd "')
+
+            # Single never-valid bytes
+            pb(b'"\xfe"', '"\ufffd"')
+            pb(b'"\xff"', '"\ufffd"')
+
+            # Multiple never-valid bytes
+            pb(b'"\xff\xfe"', '"\ufffd\ufffd"')
+            pb(b'"\xfe\xfe\xff\xff"', '"\ufffd\ufffd\ufffd\ufffd"')
+
+            # Truncated 2-byte sequence (only 1 byte)
+            pb(b'"\xc2"', '"\ufffd"')
+
+            # Truncated 3-byte sequences (only 2 bytes)
+            pb(b'"\xef\xbf"', '"\ufffd"')
+            pb(b'"\xe0\xa0"', '"\ufffd"')
+
+            # Truncated 4-byte sequence (only 2 or 3 bytes)
+            pb(b'"\xf0\x9f"', '"\ufffd"')
+            pb(b'"\xf0\x9f\x98"', '"\ufffd"')
+
+            # Bad continuation byte (restored as ASCII)
+            pb(b'"\xe1\x28\xa1"', '"\ufffd(\ufffd"')  # )
+
+            # The following all fail and need to be fixed in the SIMD parser
+
+            # Overlong 2-byte sequence for U+0000 (should be `0x00`)
+            # pb(b'"\xc0\x80"', '"\ufffd\ufffd"')
+
+            # Overlong 3-byte sequence for U+0000 (violates boundary)
+            # pb(b'"\xe0\x80\x80"', '"\ufffd\ufffd\ufffd"')
+
+            # Overlong 4-byte sequence for U+0000 (violates boundary)
+            # pb(b'"\xf0\x80\x80\x80"', '"\ufffd\ufffd\ufffd\ufffd"')
+
+            # High surrogate code point
+            # pb(b'"\xed\xa0\x80"', '"\ufffd\ufffd\ufffd"')
+
+            # Low surrogate code point
+            # pb(b'"\xed\xb0\x80"', '"\ufffd\ufffd\ufffd"')
+
+            # Too large first codepoint
+            # pb(b'"\xff\x80\x80\x80"', '"\ufffd\ufffd\ufffd\ufffd"')
+
 
     def test_find_either_of_two_bytes(self):
         sizes = []
