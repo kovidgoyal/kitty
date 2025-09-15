@@ -126,7 +126,7 @@ and trailers)::
 
 Note, in particular, how the last character, the cat emoji, ``🐈`` has ``w=2``.
 In practice client applications can assume that terminal emulators get the
-width of all ASCII characters correct and use the ``w=0`` form for efficient
+width of all ASCII code points correct and use the ``w=0`` form for efficient
 transmission, so that the above becomes::
 
    cool- w=2:🐈
@@ -369,16 +369,24 @@ a width one unit in the character grid the terminal displays.
 The basis for the algorithm is the
 `Grapheme segmentation algorithm <https://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries>`__
 from the Unicode standard. However, that algorithm alone is insufficient to
-fully specify text handling for terminals. The full algorithm is specified
-below. When a terminal receives a Unicode character:
+fully specify text handling for terminals. The full algorithm is specified below.
 
-#. First check if the character is an ASCII control code, and handle it
-   appropriately. ASCII control codes are the characters less than 32 and the
-   character 127 (DEL). The NUL character (0) must be discarded.
+A terminal using this algorithm must decode the bytes they receive
+into Unicode scalar values (i.e., code points except surrogates) using UTF-8.
+When it encounters any UTF-8 ill-formed subsequences,
+it must be replace each
+`maximal subpart of the ill-formed subsequence <https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G66453>`__
+with a :code:`U+FFFD REPLACEMENT CHARACTER` (�).
 
-#. Next, check if the character is *invalid*, and if it is, discard it
-   and finish processing. Invalid characters are characters with Unicode category :code:`Cc or Cs`
-   and 66 additional characters: :code:`[0xfdd0, 0xfdef]`, :code:`[0xfffe, 0x10ffff-1, 0x10000]`
+For each decoded code point:
+
+#. First check if the code point is an ASCII control code, and handle it
+   appropriately. ASCII control codes are the code points less than :code:`U+0032` and the
+   code point :code:`U+0127 DEL`. The code point :code:`U+0000 NUL` must be discarded.
+
+#. Next, check if the code point is *invalid*, and if it is, discard it
+   and finish processing. Invalid code points are code points with Unicode category :code:`Cc or Cs`
+   and 66 additional code points: :code:`[0xfdd0, 0xfdef]`, :code:`[0xfffe, 0x10ffff-1, 0x10000]`
    and :code:`[0xffff, 0x10ffff, 0x10000]`.
 
 #. Next, check if there is a previous cell before the
@@ -387,30 +395,31 @@ below. When a terminal receives a Unicode character:
    the last cell of the previous line, provided there is no line break
    between the previous and current lines.
 
-#. Next, calculate the width in cells of the received
-   character, which can be 0, 1, or 2 depending on the character properties in
+#. Next, calculate the width in cells of the received code point,
+   which can be 0, 1, or 2 depending on the code point properties in
    the Unicode standard.
 
-#. If there is no previous cell and the character width is zero, the character
-   is discarded and processing of the character is finished.
+#. If there is no previous cell and the code point's width is zero,
+   the code point is discarded and its processing is finished.
 
 #. If there is a previous cell, the
    `Grapheme segmentation algorithm UAX29-C1-1 <https://www.unicode.org/reports/tr29/#C1-1>`__
-   is used to determine if there is a grapheme boundary between the previous cell and the current character.
+   is used to determine if there is a grapheme boundary between the previous cell
+   and the current code point.
 
-#. If there is no boundary the current character is added to the previous
-   cell and processing of the character is finished. See the :ref:`var_select`
+#. If there is no boundary, the current code point is added to the previous
+   cell and processing of the code point is finished. See the :ref:`var_select`
    section below for handling of Unicode Variation selectors.
 
-#. If there is a boundary, but the width of the current character is zero
+#. If there is a boundary, but the width of the current code point is zero,
    it is added to the previous cell and processing is finished.
 
-#. The character is added to the current cell and the cursor is moved forward
-   (right) by either 1 or 2 cells depending on the width of the character.
+#. The code point is added to the current cell and the cursor is moved forward
+   (right) by either 1 or 2 cells depending on the width of the code point.
 
 
-It remains to specify how to calculate the width in cells of a Unicode
-character. To do this, characters are divided into various classes, as
+It remains to specify how to calculate the width in cells of a code point.
+To do this, code points are divided into various classes, as
 described by the rules below, in order of decreasing priority:
 
 .. note::
@@ -418,13 +427,13 @@ described by the rules below, in order of decreasing priority:
    to :code:`stop` in increments of :code:`step`. When the step is not
    specified, it defaults to one.
 
-#. *Regional indicators*: 26 characters starting at :code:`0x1F1E6`. These all
+#. *Regional indicators*: 26 code points starting at :code:`0x1F1E6`. These all
    have width 2
 
 #. *Doublewidth*: Parse `EastAsianWidth.txt
    <https://www.unicode.org/Public/UCD/latest/ucd/EastAsianWidth.txt>`__ from
-   the Unicode standard. All characters marked :code:`W` or :code:`F` have
-   width two. All characters in the following ranges have width two *unless*
+   the Unicode standard. All code points marked :code:`W` or :code:`F` have
+   width two. All code points in the following ranges have width two *unless*
    they are marked as :code:`A` in :code:`EastAsianWidth.txt`: :code:`[0x3400,
    0x4DBF], [0x4E00, 0x9FFF], [0xF900, 0xFAFF], [0x20000, 0x2FFFD], [0x30000, 0x3FFFD]`
 
@@ -433,34 +442,34 @@ described by the rules below, in order of decreasing priority:
    the Unicode standard. All :code:`Basic_Emoji` have width two unless they are
    followed by :code:`FE0F` in the file. The leading copdepoints in all
    :code:`RGI_Emoji_Modifier_Sequence` and :code:`RGI_Emoji_Tag_Sequence` have width two.
-   All codepoints in :code:`RGI_Emoji_Flag_Sequence` have width two.
+   All code points in :code:`RGI_Emoji_Flag_Sequence` have width two.
 
-#. *Marks*: These are all zero width characters. They are characters with Unicode
+#. *Marks*: These are all zero width code points. They are code points with Unicode
    categories whose first letter is :code:`M` or :code:`S`. Additionally,
-   characters with Unicode category: :code:`Cf`. Finally, they include
-   all modifier codepoints from :code:`RGI_Emoji_Modifier_Sequence` in the
+   code points with Unicode category: :code:`Cf`. Finally, they include
+   all modifier code points from :code:`RGI_Emoji_Modifier_Sequence` in the
    *Wide emoji* rule above.
 
-#. All remaining codepoints have a width of one cell.
+#. All remaining code points have a width of one cell.
 
 .. _var_select:
 
 Unicode variation selectors
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-There are two codepoints (:code:`U+FE0E` and :code:`U+FE0F`) that can actually
-alter the width of the previous codepoint. When adding a codepoint to the
+There are two code points (:code:`U+FE0E` and :code:`U+FE0F`) that can actually
+alter the width of the previous code point. When adding a code point to the
 previous cell these have to be handled specially.
 
 ``U+FE0E`` - Variation Selector 15
-  When the previous cell has width two and the last character in the previous
-  cell is one of the ``Basic_Emoji`` codepoints from the *Wide emoji* rule above
+  When the previous cell has width two and the last code point in the previous
+  cell is one of the ``Basic_Emoji`` code points from the *Wide emoji* rule above
   that is *not* followed by ``FEOF`` then the width of the previous cell is
   decreased to one.
 
 ``U+FE0F`` - Variation Selector 16
-  When the previous cell has width one and the last character in the previous
-  cell is one of the ``Basic_Emoji`` codepoints from the *Wide emoji* rule above
+  When the previous cell has width one and the last code point in the previous
+  cell is one of the ``Basic_Emoji`` code points from the *Wide emoji* rule above
   that is followed by ``FEOF`` then the width of the
   previous cell is increased to two.
 
