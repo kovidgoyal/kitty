@@ -1,6 +1,14 @@
 [project]
 requires-python = ">=3.10"
 
+[build-system]
+requires = [
+    # Needed for installing pure python packages at build time
+    "installer == 0.7.0",
+    # Needed for some weird reason for glib
+    "packaging == 23.1",
+]
+
 [tool.mypy]
 files = 'kitty,kittens,glfw,*.py,docs/conf.py,gen'
 no_implicit_optional = true

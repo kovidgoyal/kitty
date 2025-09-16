@@ -1,360 +1,333 @@
 [
     {
-        "name": "zlib",
+        "name": "zlib 1.3.1",
         "spdx": "Zlib",
-        "license_type": "permissive",
         "unix": {
-            "filename": "zlib-1.3.1.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32",
             "urls": ["https://zlib.net/{filename}"]
         }
     },
 
     {
-        "name": "bzip2",
-        "spdx": "bzip2-1.0.8",
-        "license_type": "permissive",
+        "name": "bzip2 1.0.8",
+        "spdx": "bzip2-1.0.6",
         "os": "linux",
         "unix": {
-            "filename": "bzip2-1.0.8.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
-            "urls": ["https://www.sourceware.org/pub/bzip2/bzip2-latest.tar.gz"]
+            "urls": ["https://www.sourceware.org/pub/{name}/{filename}"]
         }
     },
 
     {
-        "name": "pkg-config",
+        "name": "pkg-config 0.29.2",
         "spdx": "GPL-2.0-or-later",
         "type": "build",
         "os": "macos",
         "unix": {
-            "filename": "pkg-config-0.29.2.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:6fc69c01688c9458a57eb9a1664c9aba372ccda420a02bf4429fe610e7e7d591",
             "urls": ["https://pkg-config.freedesktop.org/releases/{filename}"]
         }
     },
 
     {
-        "name": "openssl",
+        "name": "openssl 3.3.0",
         "spdx": "Apache-2.0",
         "unix": {
-            "filename": "openssl-3.3.0.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:53e66b043322a606abf0087e7699a0e033a37fa13feb9742df35c3a33b18fb02",
             "urls": ["https://www.openssl.org/source/{filename}"]
         }
     },
 
     {
-        "name": "cmake",
+        "name": "cmake 3.29.3",
         "spdx": "BSD-3-Clause",
         "type": "build",
         "os": "macos",
         "unix": {
-            "filename": "cmake-3.29.3.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:252aee1448d49caa04954fd5e27d189dd51570557313e7b281636716a238bccb",
-            "urls": ["https://cmake.org/files/v3.19/{filename}"]
+            "urls": ["https://cmake.org/files/v{version_except_last}/{filename}"]
         }
     },
 
     {
-        "name": "expat",
+        "name": "expat 2.6.2",
         "spdx": "MIT",
         "unix": {
-            "filename": "expat-2.6.2.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:ee14b4c5d8908b1bec37ad937607eab183d4d9806a08adee472c3c3121d27364",
-            "urls": ["https://github.com/libexpat/libexpat/releases/download/R_2_6_2/{filename}"]
+            "urls": ["https://github.com/libexpat/libexpat/releases/download/R_{version_with_underscores}/{filename}"]
         }
     },
 
     {
-        "name": "libxml2",
+        "name": "libxml2 2.12.7",
         "spdx": "MIT",
         "unix": {
-            "filename": "libxml2-2.12.7.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:24ae78ff1363a973e6d8beba941a7945da2ac056e19b53956aeb6927fd6cfb56",
-            "urls": ["https://download.gnome.org/sources/libxml2/2.12/{filename}"]
+            "urls": ["https://download.gnome.org/sources/libxml2/{version_except_last}/{filename}"]
         }
     },
 
     {
-        "name": "xkbcommon",
+        "name": "xkbcommon 1.7.0",
         "spdx": "X11",
         "os": "linux",
         "unix": {
-            "filename": "libxkbcommon-1.7.0.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:65782f0a10a4b455af9c6baab7040e2f537520caa2ec2092805cdfd36863b247",
-            "urls": ["https://xkbcommon.org/download/{filename}"]
+            "urls": ["https://xkbcommon.org/download/lib{filename}"]
         }
     },
 
     {
-        "name": "sqlite",
+        "name": "sqlite 3450300",
         "spdx": "blessing",
-        "license_type": "permissive",
         "unix": {
-            "filename": "sqlite-autoconf-3450300.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:b2809ca53124c19c60f42bf627736eae011afdcc205bb48270a5ee9a38191531",
-            "urls": ["https://www.sqlite.org/2024/{filename}"]
+            "urls": ["https://www.sqlite.org/2024/{name}-autoconf-{version}.{file_extension}"]
         }
     },
 
     {
-        "name": "libffi",
+        "name": "libffi 3.4.6",
         "spdx": "MIT",
         "os": "linux",
         "unix": {
-            "filename": "libffi-3.4.6.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:b0dea9df23c863a7a50e825440f3ebffabd65df1497108e5d437747843895a4e",
-            "urls": ["https://github.com/libffi/libffi/releases/download/v3.4.6/{filename}"]
+            "urls": ["https://github.com/libffi/libffi/releases/download/v{version}/{filename}"]
         }
     },
 
     {
-        "name": "ncurses",
+        "name": "ncurses 6.5",
         "spdx": "MIT",
         "os": "linux",
         "unix": {
-            "filename": "ncurses-6.5.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:136d91bc269a9a5785e5f9e980bc76ab57428f604ce3e5a5a90cebc767971cc6",
             "urls": ["https://ftp.gnu.org/gnu/ncurses/{filename}"]
         }
     },
 
     {
-        "name": "readline",
+        "name": "readline 8.2",
         "spdx": "GPL-3.0-only",
         "os": "linux",
         "unix": {
-            "filename": "readline-8.2.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:3feb7171f16a84ee82ca18a36d7b9be109a52c04f492a053331d7d1095007c35",
             "urls": ["https://ftp.gnu.org/gnu/readline/{filename}"]
         }
     },
 
     {
-        "name": "xz",
+        "name": "xz 5.2.5",
         "spdx": "0BSD",
         "unix": {
-            "filename": "xz-5.2.5.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:f6f4910fd033078738bd82bfba4f49219d03b17eb0794eb91efbae419f4aba10",
             "urls": ["https://tukaani.org/xz/{filename}"]
         }
     },
 
     {
-        "name": "libxxhash",
+        "name": "libxxhash 0.8.2",
         "spdx": "BSD-2-Clause",
         "unix": {
-            "filename": "xxHash-0.8.2.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:baee0c6afd4f03165de7a4e67988d16f0f2b257b51d0e3cb91909302a26a79c4",
-            "urls": ["https://github.com/Cyan4973/xxHash/archive/refs/tags/v0.8.2.tar.gz"]
+            "urls": ["https://github.com/Cyan4973/xxHash/archive/refs/tags/v{version}.{file_extension}"]
         }
     },
 
     {
-        "name": "xcrypt",
+        "name": "xcrypt 4.4.36",
         "spdx": "LGPL-2.1-only",
         "os": "linux",
         "unix": {
-            "filename": "xcrypt-4.4.36.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:b979838d5f1f238869d467484793b72b8bca64c4eae696fdbba0a9e0b6c28453",
-            "urls": ["https://github.com/besser82/libxcrypt/archive/v4.4.36.tar.gz"]
+            "urls": ["https://github.com/besser82/libxcrypt/archive/v{version}.{file_extension}"]
         }
     },
 
     {
-        "name": "python",
+        "name": "python 3.12.3",
         "spdx": "PSF-2.0",
         "unix": {
-            "filename": "Python-3.12.3.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:56bfef1fdfc1221ce6720e43a661e3eb41785dd914ce99698d8c7896af4bdaa1",
-            "urls": ["https://www.python.org/ftp/python/3.12.3/{filename}"]
+            "urls": ["https://www.python.org/ftp/python/{version}/Python-{version}.{file_extension}"]
         }
     },
 
     {
-        "name": "libpng",
+        "name": "libpng 1.6.43",
         "spdx": "libpng-2.0",
         "unix": {
-            "filename": "libpng-1.6.43.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:6a5ca0652392a2d7c9db2ae5b40210843c0bbc081cbd410825ab00cc59f14a6c",
             "urls": ["https://downloads.sourceforge.net/sourceforge/libpng/{filename}"]
         }
     },
 
     {
-        "name": "lcms2",
+        "name": "lcms2 2.16",
         "spdx": "MIT",
         "unix": {
-            "filename": "lcms2-2.16.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:d873d34ad8b9b4cea010631f1a6228d2087475e4dc5e763eb81acc23d9d45a51",
-            "urls": ["https://github.com/mm2/Little-CMS/archive/2.16/{filename}"]
+            "urls": ["https://github.com/mm2/Little-CMS/archive/{version}/{filename}"]
         }
     },
 
     {
-        "name": "graphite",
+        "name": "graphite 1.3.14",
         "spdx": "MIT",
         "os": "linux",
         "unix": {
-            "filename": "graphite2-1.3.14.tgz",
+            "file_extension": "tgz",
             "hash": "sha256:f99d1c13aa5fa296898a181dff9b82fb25f6cc0933dbaa7a475d8109bd54209d",
-            "urls": ["https://downloads.sourceforge.net/silgraphite/{filename}"]
+            "urls": ["https://downloads.sourceforge.net/silgraphite/graphite2-{version}.{file_extension}"]
         }
     },
 
     {
-        "name": "pcre",
+        "name": "pcre 10.43",
         "spdx": "BSD-3-Clause WITH PCRE2-exception",
         "os": "linux",
         "unix": {
-            "filename": "pcre2-10.43.tar.bz2",
+            "file_extension": "tar.bz2",
             "hash": "sha256:e2a53984ff0b07dfdb5ae4486bbb9b21cca8e7df2434096cc9bf1b728c350bcb",
-            "urls": ["https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.43/{filename}"]
+            "urls": ["https://github.com/PCRE2Project/pcre2/releases/download/pcre2-10.43/pcre2-{version}.{file_extension}"]
         }
     },
 
     {
-        "name": "iconv",
+        "name": "iconv 1.17",
         "spdx": "LGPL-2.0-only",
         "os": "linux",
         "unix": {
-            "filename": "libiconv-1.17.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:8f74213b56238c85a50a5329f77e06198771e70dd9a739779f4c02f65d971313",
-            "urls": ["https://ftp.gnu.org/pub/gnu/libiconv/{filename}"]
+            "urls": ["https://ftp.gnu.org/pub/gnu/libiconv/libiconv-{version}.{file_extension}"]
         }
     },
 
     {
-        "name": "installer",
-        "spdx": "MIT",
-        "type": "build",
-        "comment": "Needed infrastructure for installing pure python packages (wheels)",
-        "unix": {
-            "filename": "installer-0.7.0-py3-none-any.whl",
-            "hash": "sha256:05d1933f0a5ba7d8d6296bb6d5018e7c94fa473ceb10cf198a92ccea19c27b53",
-            "urls": ["pypi"]
-        }
-    },
-
-    {
-        "name": "packaging",
-        "spdx": "BSD-2-Clause",
-        "type": "build",
-		"comment": "Needed for glib for some absurd reason",
-        "unix": {
-            "filename": "packaging-23.1-py3-none-any.whl",
-            "hash": "sha256:994793af429502c4ea2ebf6bf664629d07c1a9fe974af92966e4b8d2df7edc61",
-            "urls": ["pypi"]
-        }
-    },
-
-    {
-        "name": "glib",
+        "name": "glib 2.80.2",
         "spdx": "LGPL-2.1-only",
         "os": "linux",
         "unix": {
-            "filename": "glib-2.80.2.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:b9cfb6f7a5bd5b31238fd5d56df226b2dda5ea37611475bf89f6a0f9400fe8bd",
-            "urls": ["https://download.gnome.org/sources/glib/2.80/{filename}"]
+            "urls": ["https://download.gnome.org/sources/glib/{version_except_last}/{filename}"]
         }
     },
 
     {
-        "name": "brotli",
+        "name": "brotli 1.1.0",
         "spdx": "MIT",
         "os": "linux",
         "unix": {
-            "filename": "brotli-1.1.0.tar.gz",
+            "file_extension": "tar.gz",
             "hash": "sha256:e720a6ca29428b803f4ad165371771f5398faba397edf6778837a18599ea13ff",
-            "urls": ["https://github.com/google/brotli/archive/v1.1.0/{filename}"]
+            "urls": ["https://github.com/google/brotli/archive/v{version}/{filename}"]
         }
     },
 
     {
-        "name": "pixman",
+        "name": "pixman 0.44.2",
         "spdx": "MIT",
         "os": "linux",
         "unix": {
-            "filename": "pixman-0.44.2.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:50baf820dde0c5ff9714d03d2df4970f606a3d3b1024f5404c0398a9821cc4b0",
-            "urls": ["https://www.cairographics.org/releases/pixman-0.44.2.tar.xz"]
+            "urls": ["https://www.cairographics.org/releases/{filename}"]
         }
     },
 
     {
-        "name": "freetype",
+        "name": "freetype 2.13.2",
         "spdx": "FTL",
         "os": "linux",
         "unix": {
-            "filename": "freetype-2.13.2.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:12991c4e55c506dd7f9b765933e62fd2be2e06d421505d7950a132e4f1bb484d",
             "urls": ["https://download.savannah.gnu.org/releases/freetype/{filename}"]
         }
     },
 
     {
-        "name": "fontconfig",
+        "name": "fontconfig 2.13.1",
         "spdx": "MIT",
         "os": "linux",
         "unix": {
-            "filename": "fontconfig-2.13.1.tar.bz2",
+            "file_extension": "tar.bz2",
             "hash": "sha256:f655dd2a986d7aa97e052261b36aa67b0a64989496361eca8d604e6414006741",
             "urls": ["https://www.fontconfig.org/release/{filename}"]
         }
     },
 
     {
-        "name": "cairo",
+        "name": "cairo 1.18.2",
         "spdx": "LGPL-2.1-only",
         "os": "linux",
         "unix": {
-            "filename": "cairo-1.18.2.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:a62b9bb42425e844cc3d6ddde043ff39dbabedd1542eba57a2eb79f85889d45a",
-            "urls": ["https://www.cairographics.org/releases/cairo-1.18.2.tar.xz"]
+            "urls": ["https://www.cairographics.org/releases/{filename}"]
         }
     },
 
     {
-        "name": "harfbuzz",
+        "name": "harfbuzz 8.5.0",
         "spdx": "MIT",
         "unix": {
-            "filename": "harfbuzz-8.5.0.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:77e4f7f98f3d86bf8788b53e6832fb96279956e1c3961988ea3d4b7ca41ddc27",
-            "urls": ["https://github.com/harfbuzz/harfbuzz/releases/download/8.5.0/{filename}"]
+            "urls": ["https://github.com/harfbuzz/harfbuzz/releases/download/{version}/{filename}"]
         }
     },
 
     {
-        "name": "simde",
+        "name": "simde 0.7.6",
         "spdx": "MIT",
         "comment": "Cannot update till gcc in the build VM is updated as simde 0.8 requires newer gcc",
         "unix": {
-            "filename": "simde-amalgamated-0.7.6.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:703eac1f2af7de1f7e4aea2286130b98e1addcc0559426e78304c92e2b4eb5e1",
-            "urls": ["https://github.com/simd-everywhere/simde/releases/download/v0.7.6/{filename}"]
+            "urls": ["https://github.com/simd-everywhere/simde/releases/download/v{version}/simde-amalgamated-{version}.{file_extension}"]
         }
     },
 
     {
-        "name": "wayland",
+        "name": "wayland 1.24.0",
         "spdx": "MIT",
         "os": "linux",
         "unix": {
-            "filename": "wayland-1.24.0.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:82892487a01ad67b334eca83b54317a7c86a03a89cfadacfef5211f11a5d0536",
-            "urls": ["https://gitlab.freedesktop.org/wayland/wayland/-/releases/1.24.0/downloads/{filename}"]
+            "urls": ["https://gitlab.freedesktop.org/wayland/wayland/-/releases/{version}/downloads/{filename}"]
         }
     },
 
     {
-        "name": "wayland-protocols",
+        "name": "wayland-protocols 1.45",
         "spdx": "MIT",
         "os": "linux",
         "unix": {
-            "filename": "wayland-protocols-1.45.tar.xz",
+            "file_extension": "tar.xz",
             "hash": "sha256:4d2b2a9e3e099d017dc8107bf1c334d27bb87d9e4aff19a0c8d856d17cd41ef0",
-            "urls": ["https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/1.45/downloads/{filename}"]
+            "urls": ["https://gitlab.freedesktop.org/wayland/wayland-protocols/-/releases/{version}/downloads/{filename}"]
         }
     }
 ]
