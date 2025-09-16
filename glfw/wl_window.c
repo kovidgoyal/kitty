@@ -869,7 +869,7 @@ create_single_color_buffer(int width, int height, pixel color) {
     float alpha = color.alpha / 255.f;
     color.red = (uint8_t)(alpha * color.red); color.green = (uint8_t)(alpha * color.green); color.blue = (uint8_t)(alpha * color.blue);
     int shm_format = color.alpha == 0xff ? WL_SHM_FORMAT_XRGB8888 : WL_SHM_FORMAT_ARGB8888;
-    const size_t size = 4 * width * height;
+    const size_t size = (size_t)4 * width * height;
     int fd = createAnonymousFile(size);
     if (fd < 0) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: failed to create anonymous file");
@@ -1569,7 +1569,7 @@ _glfwPlatformSetWindowIcon(_GLFWwindow* window, int count, const GLFWimage* imag
     struct wl_buffer* *buffers = malloc(sizeof(struct wl_buffer*) * count);
     if (!buffers) return;
     size_t total_data_size = 0;
-    for (int i = 0; i < count; i++) total_data_size += images[i].width * images[i].height * 4;
+    for (int i = 0; i < count; i++) total_data_size += (size_t)images[i].width * images[i].height * 4;
     int fd = createAnonymousFile(total_data_size);
     if (fd < 0) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Creating a buffer file for %ld B failed: %s", (long)total_data_size, strerror(errno));
@@ -1587,7 +1587,7 @@ _glfwPlatformSetWindowIcon(_GLFWwindow* window, int count, const GLFWimage* imag
     struct xdg_toplevel_icon_v1 *icon = xdg_toplevel_icon_manager_v1_create_icon(_glfw.wl.xdg_toplevel_icon_manager_v1);
     size_t pos = 0;
     for (int i = 0; i < count; i++) {
-        const size_t sz = images[i].width * images[i].height * 4;
+        const size_t sz = (size_t)images[i].width * images[i].height * 4;
         convert_glfw_image_to_wayland_image(images + i, data + pos);
         buffers[i] = wl_shm_pool_create_buffer(
                 pool, pos, images[i].width, images[i].height, images[i].width * 4, WL_SHM_FORMAT_ARGB8888);
