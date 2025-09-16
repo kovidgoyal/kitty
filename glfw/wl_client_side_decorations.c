@@ -97,7 +97,7 @@ create_shadow_tile(_GLFWwindow *window) {
     st.corner_size = margin * (st.segments - 1) / 2;
     kernel_type* mask = create_shadow_mask(st.stride, st.stride, margin, 2 * margin + 1, (kernel_type)0.7, 32 * margin);
     free(st.data);
-    st.data = malloc(sizeof(uint32_t) * st.stride * st.stride);
+    st.data = malloc(sizeof(st.data[0]) * st.stride * st.stride);
     if (st.data) for (size_t i = 0; i < st.stride * st.stride; i++) st.data[i] = ((uint8_t)(mask[i] * 255)) << 24;
     free(mask);
     return margin;
