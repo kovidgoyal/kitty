@@ -17,6 +17,7 @@ BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
 FONTS_URL = 'https://download.calibre-ebook.com/ci/fonts.tar.xz'
 NERD_URL = 'https://github.com/ryanoasis/nerd-fonts/releases/latest/download/NerdFontsSymbolsOnly.tar.xz'
 is_bundle = os.environ.get('KITTY_BUNDLE') == '1'
+is_codeql = os.environ.get('KITTY_CODEQL') == '1'
 is_macos = 'darwin' in sys.platform.lower()
 SW = ''
 
@@ -84,13 +85,14 @@ def install_deps() -> None:
     print('Installing kitty dependencies...')
     sys.stdout.flush()
     if is_macos:
-        items = [x.split()[1].strip('"') for x in open('Brewfile').readlines() if x.strip().startswith('brew ')]
-        openssl = 'openssl'
-        items.remove('go')  # already installed by ci.yml
-        import ssl
-        if ssl.OPENSSL_VERSION_INFO[0] == 1:
-            openssl += '@1.1'
-        run('brew', 'install', 'fish', openssl, *items)
+        if not is_codeql:  # for some reason brew fails on CodeQL we dont need it anyway
+            items = [x.split()[1].strip('"') for x in open('Brewfile').readlines() if x.strip().startswith('brew ')]
+            openssl = 'openssl'
+            items.remove('go')  # already installed by ci.yml
+            import ssl
+            if ssl.OPENSSL_VERSION_INFO[0] == 1:
+                openssl += '@1.1'
+            run('brew', 'install', 'fish', openssl, *items)
     else:
         run('sudo apt-get update')
         run('sudo apt-get install -y libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev ca-certificates'

@@ -33,6 +33,9 @@ jobs:
                  os: ubuntu-latest
 
         runs-on: ${{ matrix.os }}
+        env:
+            KITTY_BUNDLE: 1
+            KITTY_CODEQL: 1
 
         steps:
 
