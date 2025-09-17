@@ -205,8 +205,8 @@ def install_grype() -> str:
 
 IGNORED_DEPENDENCY_CVES = [
     # Python stdlib
-    'CVE-2025-8194', 'BIT-python-2025-8194',  # DoS in tarfile
-    'CVE-2025-6069', 'BIT-python-2025-6069', # DoS in HTMLParser
+    'CVE-2025-8194', # DoS in tarfile
+    'CVE-2025-6069', # DoS in HTMLParser
 ]
 
 
@@ -222,7 +222,8 @@ def check_dependencies() -> None:
     dest = os.path.join(SW, 'macos')
     os.makedirs(dest, exist_ok=True)
     install_bundle(dest, os.path.basename(dest))
-    if (cp := subprocess.run([grype, '--config', gc, '--only-fixed', '--fail-on', 'medium', SW])).returncode != 0:
+    cmdline = [grype, '--by-cve', '--config', gc, '--fail-on', 'medium', '--only-fixed']
+    if (cp := subprocess.run(cmdline + [SW])).returncode != 0:
         raise SystemExit(cp.returncode)
     # Now test against the SBOM
     import runpy
@@ -233,7 +234,7 @@ def check_dependencies() -> None:
     runpy.run_path('bypy-src')
     sys.argv, sys.stdout = orig
     print(buf.getvalue())
-    if (cp := subprocess.run([grype, '--config', gc, '--only-fixed', '--fail-on', 'medium'], input=buf.getvalue().encode())).returncode != 0:
+    if (cp := subprocess.run(cmdline, input=buf.getvalue().encode())).returncode != 0:
         raise SystemExit(cp.returncode)
 
 
