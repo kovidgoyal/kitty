@@ -223,7 +223,7 @@ def check_dependencies() -> None:
     os.makedirs(dest, exist_ok=True)
     install_bundle(dest, os.path.basename(dest))
     cmdline = [grype, '--by-cve', '--config', gc, '--fail-on', 'medium', '--only-fixed']
-    if (cp := subprocess.run(cmdline + [SW])).returncode != 0:
+    if (cp := subprocess.run(cmdline + ['dir:' + SW])).returncode != 0:
         raise SystemExit(cp.returncode)
     # Now test against the SBOM
     import runpy
