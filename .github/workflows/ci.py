@@ -4,6 +4,7 @@
 
 import glob
 import io
+import json
 import os
 import shlex
 import shutil
@@ -11,7 +12,7 @@ import subprocess
 import sys
 import tarfile
 import time
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 
 BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
 FONTS_URL = 'https://download.calibre-ebook.com/ci/fonts.tar.xz'
@@ -183,14 +184,22 @@ def install_bundle(dest: str = '', which: str = '') -> None:
 
 def install_grype() -> str:
     dest = os.path.join(SW, 'bin')
+    rq = Request('https://api.github.com/repos/anchore/grype/releases/latest', headers={
+        'Accept': 'application/vnd.github.v3+json',
+    })
+    with urlopen(rq) as f:
+        m = json.loads(f.read())
+    for asset in m['assets']:
+        if asset['name'].endswith('_linux_amd64.tar.gz'):
+            url = asset['browser_download_url']
+            break
+    else:
+        raise ValueError('Could not find linux binary for grype')
     os.makedirs(dest, exist_ok=True)
-    with urlopen('https://get.anchore.io/grype') as f:
+    with urlopen(url) as f:
         data = f.read()
-    installer = os.path.join(dest, 'grype-installer')
-    with open(installer, 'wb') as f:
-        f.write(data)
-    os.chmod(installer, 0o766)
-    subprocess.check_call([installer, '-b', dest])
+    with tarfile.open(fileobj=io.BytesIO(data), mode='r') as tf:
+        tf.extract('grype', path=dest, filter='fully_trusted')
     return os.path.join(dest, 'grype')
 
 
