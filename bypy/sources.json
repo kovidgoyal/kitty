@@ -33,11 +33,11 @@
     },
 
     {
-        "name": "openssl 3.3.0",
+        "name": "openssl 3.5.2",
         "spdx": "Apache-2.0",
         "unix": {
             "file_extension": "tar.gz",
-            "hash": "sha256:53e66b043322a606abf0087e7699a0e033a37fa13feb9742df35c3a33b18fb02",
+            "hash": "sha256:c53a47e5e441c930c3928cf7bf6fb00e5d129b630e0aa873b08258656e7345ec",
             "urls": ["https://www.openssl.org/source/{filename}"]
         }
     },
@@ -86,12 +86,12 @@
     },
 
     {
-        "name": "sqlite 3450300",
+        "name": "sqlite 3500400",
         "spdx": "blessing",
         "unix": {
             "file_extension": "tar.gz",
-            "hash": "sha256:b2809ca53124c19c60f42bf627736eae011afdcc205bb48270a5ee9a38191531",
-            "urls": ["https://www.sqlite.org/2024/{name}-autoconf-{version}.{file_extension}"]
+            "hash": "sha256:a3db587a1b92ee5ddac2f66b3edb41b26f9c867275782d46c3a088977d6a5b18",
+            "urls": ["https://www.sqlite.org/2025/{name}-autoconf-{version}.{file_extension}"]
         }
     },
 
@@ -129,11 +129,11 @@
     },
 
     {
-        "name": "xz 5.2.5",
+        "name": "xz 5.8.1",
         "spdx": "0BSD",
         "unix": {
             "file_extension": "tar.gz",
-            "hash": "sha256:f6f4910fd033078738bd82bfba4f49219d03b17eb0794eb91efbae419f4aba10",
+            "hash": "sha256:507825b599356c10dca1cd720c9d0d0c9d5400b9de300af00e4d1ea150795543",
             "urls": ["https://tukaani.org/xz/{filename}"]
         }
     },
@@ -160,11 +160,11 @@
     },
 
     {
-        "name": "python 3.12.3",
+        "name": "python 3.12.11",
         "spdx": "PSF-2.0",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:56bfef1fdfc1221ce6720e43a661e3eb41785dd914ce99698d8c7896af4bdaa1",
+            "hash": "md5:9613d56b90d0d0cfd19980c7e2956a06",
             "urls": ["https://www.python.org/ftp/python/{version}/Python-{version}.{file_extension}"]
         }
     },
