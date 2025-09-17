@@ -31,6 +31,8 @@ jobs:
                  os: macos-latest
                - language: go
                  os: ubuntu-latest
+               - language: actions
+                 os: ubuntu-latest
 
         runs-on: ${{ matrix.os }}
         env:
@@ -47,6 +49,7 @@ jobs:
               fetch-depth: 2
 
         - name: Install Go
+          if: matrix.language == 'c' || matrix.language == 'go'
           uses: actions/setup-go@v6
           with:
               go-version-file: go.mod
@@ -58,6 +61,7 @@ jobs:
               languages: ${{ matrix.language }}
 
         - name: Build kitty
+          if: matrix.language == 'c' || matrix.language == 'go'
           run: python3 .github/workflows/ci.py build
 
         - name: Perform CodeQL Analysis
