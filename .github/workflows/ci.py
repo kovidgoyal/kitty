@@ -224,6 +224,17 @@ def check_dependencies() -> None:
     install_bundle(dest, os.path.basename(dest))
     if (cp := subprocess.run([grype, '--config', gc, '--fail-on', 'medium', SW])).returncode != 0:
         raise SystemExit(cp.returncode)
+    # Now test against the SBOM
+    import runpy
+    orig = sys.argv, sys.stdout
+    sys.argv = ['bypy', 'sbom', 'myproject', '1.0.0']
+    buf = io.StringIO()
+    sys.stdout = buf
+    runpy.run_path('bypy-src')
+    sys.argv, sys.stdout = orig
+    print(buf.getvalue())
+    if (cp := subprocess.run([grype, '--config', gc, '--fail-on', 'medium'], input=buf.getvalue().encode())).returncode != 0:
+        raise SystemExit(cp.returncode)
 
 
 def main() -> None:
