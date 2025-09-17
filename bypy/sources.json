@@ -86,12 +86,12 @@
     },
 
     {
-        "name": "sqlite 3500400",
+        "name": "sqlite 3.50.4",
         "spdx": "blessing",
         "unix": {
             "file_extension": "tar.gz",
             "hash": "sha256:a3db587a1b92ee5ddac2f66b3edb41b26f9c867275782d46c3a088977d6a5b18",
-            "urls": ["https://www.sqlite.org/2025/{name}-autoconf-{version}.{file_extension}"]
+            "urls": ["https://www.sqlite.org/2025/{name}-autoconf-3500400.{file_extension}"]
         }
     },
 
