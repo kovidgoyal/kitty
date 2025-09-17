@@ -36,8 +36,8 @@ ap = re.search(r"^appname: str\s+=\s+'([^']+)'", raw, flags=re.MULTILINE)
 if ap is not None:
     appname = ap.group(1)
 
-ALL_ACTIONS = 'local_build man html build tag sdist upload website'.split()
-NIGHTLY_ACTIONS = 'local_build man html build sdist upload_nightly'.split()
+ALL_ACTIONS = 'local_build man html build tag sdist sbom upload website'.split()
+NIGHTLY_ACTIONS = 'local_build man html build sdist sbom upload_nightly'.split()
 
 
 def echo_cmd(cmd: Iterable[str]) -> None:
@@ -205,6 +205,10 @@ def run_sdist(args: Any) -> None:
             os.remove(f'{dest}.xz')
         subprocess.check_call(['xz', '-9', dest])
         sign_file(f'{dest}.xz')
+
+
+def run_sbom(args: Any) -> None:
+    call(f'python ../bypy sbom --output build/kitty-{version}.tar.xz.spdx.json --url https://sw.kovidgoyal.net/kitty/binary kitty {version}')
 
 
 class ReadFileWithProgressReporting(io.FileIO):  # {{{
@@ -471,6 +475,7 @@ def files_for_upload() -> Dict[str, str]:
 
     files[f'build/kitty-{version}.tar.xz'] = 'Source code'
     files[f'build/kitty-{version}.tar.xz.sig'] = 'Source code GPG signature'
+    files[f'build/kitty-{version}.tar.xz.spdx.json'] = 'SBOM for kitty (all builds)'
     for path, desc in signatures.items():
         sign_file(path)
         files[f'{path}.sig'] = desc
