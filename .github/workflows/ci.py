@@ -156,11 +156,13 @@ def setup_bundle_env() -> None:
     os.environ['PATH'] = '{}:{}'.format(os.path.join(SW, 'bin'), os.environ['PATH'])
 
 
-def install_bundle() -> None:
+def install_bundle(dest: str = '', which: str = '') -> None:
+    dest = dest or SW
     cwd = os.getcwd()
-    os.makedirs(SW)
-    os.chdir(SW)
-    with urlopen(BUNDLE_URL.format('macos' if is_macos else 'linux')) as f:
+    os.makedirs(dest, exist_ok=True)
+    os.chdir(dest)
+    which = which or ('macos' if is_macos else 'linux')
+    with urlopen(BUNDLE_URL.format(which)) as f:
         data = f.read()
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
         try:
@@ -172,11 +174,47 @@ def install_bundle() -> None:
         for dirpath, dirnames, filenames in os.walk('.'):
             for f in filenames:
                 if f.endswith('.pc') or (f.endswith('.py') and f.startswith('_sysconfig')):
-                    replace_in_file(os.path.join(dirpath, f), '/sw/sw', SW)
+                    replace_in_file(os.path.join(dirpath, f), '/sw/sw', dest)
                     replaced += 1
         if replaced < 2:
             raise SystemExit('Failed to replace path to SW in bundle')
     os.chdir(cwd)
+
+
+def install_grype() -> str:
+    dest = os.path.join(SW, 'bin')
+    os.makedirs(dest, exist_ok=True)
+    with urlopen('https://get.anchore.io/grype') as f:
+        data = f.read()
+    installer = os.path.join(dest, 'grype-installer')
+    with open(installer, 'wb') as f:
+        f.write(data)
+    os.chmod(installer, 0o766)
+    subprocess.check_call([installer, '-b', dest])
+    return os.path.join(dest, 'grype')
+
+
+IGNORED_DEPENDENCY_CVES = [
+    # Python stdlib
+    'CVE-2025-8194',  # DoS in tarfile
+    'CVE-2025-6069',  # DoS in HTMLParser
+]
+
+
+def check_dependencies() -> None:
+    grype = install_grype()
+    with open((gc := os.path.expanduser('~/.grype.yml')), 'w') as f:
+        print('ignore:', file=f)
+        for x in IGNORED_DEPENDENCY_CVES:
+            print('  - vulnerability:', x, file=f)
+    dest = os.path.join(SW, 'linux')
+    os.makedirs(dest, exist_ok=True)
+    install_bundle(dest, os.path.basename(dest))
+    dest = os.path.join(SW, 'macos')
+    os.makedirs(dest, exist_ok=True)
+    install_bundle(dest, os.path.basename(dest))
+    if (cp := subprocess.run([grype, '--config', gc, '--fail-on', 'medium', SW])).returncode != 0:
+        raise SystemExit(cp.returncode)
 
 
 def main() -> None:
@@ -200,6 +238,8 @@ def main() -> None:
             q = '\n'.join(filter(lambda x: not x.rstrip().endswith('_generated.go'), q.strip().splitlines())).strip()
             if q:
                 raise SystemExit(q)
+    elif action == 'check-dependencies':
+        check_dependencies()
     else:
         raise SystemExit(f'Unknown action: {action}')
 
