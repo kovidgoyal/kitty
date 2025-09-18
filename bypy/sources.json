@@ -1,7 +1,6 @@
 [
     {
         "name": "zlib 1.3.1",
-        "spdx": "Zlib",
         "unix": {
             "file_extension": "tar.xz",
             "hash": "sha256:38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32",
@@ -11,7 +10,6 @@
 
     {
         "name": "bzip2 1.0.8",
-        "spdx": "bzip2-1.0.6",
         "os": "linux",
         "unix": {
             "file_extension": "tar.gz",
@@ -22,7 +20,6 @@
 
     {
         "name": "pkg-config 0.29.2",
-        "spdx": "GPL-2.0-or-later",
         "type": "build",
         "os": "macos",
         "unix": {
@@ -34,7 +31,6 @@
 
     {
         "name": "openssl 3.5.2",
-        "spdx": "Apache-2.0",
         "unix": {
             "file_extension": "tar.gz",
             "hash": "sha256:c53a47e5e441c930c3928cf7bf6fb00e5d129b630e0aa873b08258656e7345ec",
@@ -44,7 +40,6 @@
 
     {
         "name": "cmake 3.29.3",
-        "spdx": "BSD-3-Clause",
         "type": "build",
         "os": "macos",
         "unix": {
@@ -56,7 +51,6 @@
 
     {
         "name": "expat 2.6.2",
-        "spdx": "MIT",
         "unix": {
             "file_extension": "tar.xz",
             "hash": "sha256:ee14b4c5d8908b1bec37ad937607eab183d4d9806a08adee472c3c3121d27364",
@@ -66,7 +60,6 @@
 
     {
         "name": "libxml2 2.12.10",
-        "spdx": "MIT",
         "unix": {
             "file_extension": "tar.xz",
             "hash": "sha256:c3d8c0c34aa39098f66576fe51969db12a5100b956233dc56506f7a8679be995",
@@ -76,7 +69,6 @@
 
     {
         "name": "xkbcommon 1.7.0",
-        "spdx": "X11",
         "os": "linux",
         "unix": {
             "file_extension": "tar.xz",
@@ -87,7 +79,6 @@
 
     {
         "name": "sqlite 3.50.4",
-        "spdx": "blessing",
         "unix": {
             "file_extension": "tar.gz",
             "hash": "sha256:a3db587a1b92ee5ddac2f66b3edb41b26f9c867275782d46c3a088977d6a5b18",
@@ -97,7 +88,6 @@
 
     {
         "name": "libffi 3.4.6",
-        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "file_extension": "tar.gz",
@@ -108,7 +98,6 @@
 
     {
         "name": "ncurses 6.5",
-        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "file_extension": "tar.gz",
@@ -119,7 +108,6 @@
 
     {
         "name": "readline 8.2",
-        "spdx": "GPL-3.0-only",
         "os": "linux",
         "unix": {
             "file_extension": "tar.gz",
@@ -130,7 +118,6 @@
 
     {
         "name": "xz 5.8.1",
-        "spdx": "0BSD",
         "unix": {
             "file_extension": "tar.gz",
             "hash": "sha256:507825b599356c10dca1cd720c9d0d0c9d5400b9de300af00e4d1ea150795543",
@@ -140,7 +127,6 @@
 
     {
         "name": "libxxhash 0.8.2",
-        "spdx": "BSD-2-Clause",
         "unix": {
             "file_extension": "tar.gz",
             "hash": "sha256:baee0c6afd4f03165de7a4e67988d16f0f2b257b51d0e3cb91909302a26a79c4",
@@ -150,7 +136,6 @@
 
     {
         "name": "xcrypt 4.4.36",
-        "spdx": "LGPL-2.1-only",
         "os": "linux",
         "unix": {
             "file_extension": "tar.gz",
@@ -161,7 +146,6 @@
 
     {
         "name": "python 3.12.11",
-        "spdx": "PSF-2.0",
         "unix": {
             "file_extension": "tar.xz",
             "hash": "md5:9613d56b90d0d0cfd19980c7e2956a06",
@@ -171,7 +155,6 @@
 
     {
         "name": "libpng 1.6.43",
-        "spdx": "libpng-2.0",
         "unix": {
             "file_extension": "tar.xz",
             "hash": "sha256:6a5ca0652392a2d7c9db2ae5b40210843c0bbc081cbd410825ab00cc59f14a6c",
@@ -181,7 +164,6 @@
 
     {
         "name": "lcms2 2.16",
-        "spdx": "MIT",
         "unix": {
             "file_extension": "tar.gz",
             "hash": "sha256:d873d34ad8b9b4cea010631f1a6228d2087475e4dc5e763eb81acc23d9d45a51",
@@ -191,7 +173,6 @@
 
     {
         "name": "graphite 1.3.14",
-        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "file_extension": "tgz",
@@ -202,7 +183,6 @@
 
     {
         "name": "pcre 10.43",
-        "spdx": "BSD-3-Clause WITH PCRE2-exception",
         "os": "linux",
         "unix": {
             "file_extension": "tar.bz2",
@@ -213,7 +193,6 @@
 
     {
         "name": "iconv 1.17",
-        "spdx": "LGPL-2.0-only",
         "os": "linux",
         "unix": {
             "file_extension": "tar.gz",
@@ -224,7 +203,6 @@
 
     {
         "name": "glib 2.80.2",
-        "spdx": "LGPL-2.1-only",
         "os": "linux",
         "unix": {
             "file_extension": "tar.xz",
@@ -235,7 +213,6 @@
 
     {
         "name": "brotli 1.1.0",
-        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "file_extension": "tar.gz",
@@ -246,7 +223,6 @@
 
     {
         "name": "pixman 0.44.2",
-        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "file_extension": "tar.xz",
@@ -257,7 +233,6 @@
 
     {
         "name": "freetype 2.13.2",
-        "spdx": "FTL",
         "os": "linux",
         "unix": {
             "file_extension": "tar.xz",
@@ -268,7 +243,6 @@
 
     {
         "name": "fontconfig 2.13.1",
-        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "file_extension": "tar.bz2",
@@ -279,7 +253,6 @@
 
     {
         "name": "cairo 1.18.2",
-        "spdx": "LGPL-2.1-only",
         "os": "linux",
         "unix": {
             "file_extension": "tar.xz",
@@ -290,7 +263,6 @@
 
     {
         "name": "harfbuzz 8.5.0",
-        "spdx": "MIT",
         "unix": {
             "file_extension": "tar.xz",
             "hash": "sha256:77e4f7f98f3d86bf8788b53e6832fb96279956e1c3961988ea3d4b7ca41ddc27",
@@ -300,7 +272,6 @@
 
     {
         "name": "simde 0.7.6",
-        "spdx": "MIT",
         "comment": "Cannot update till gcc in the build VM is updated as simde 0.8 requires newer gcc",
         "unix": {
             "file_extension": "tar.xz",
@@ -311,7 +282,6 @@
 
     {
         "name": "wayland 1.24.0",
-        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "file_extension": "tar.xz",
@@ -322,7 +292,6 @@
 
     {
         "name": "wayland-protocols 1.45",
-        "spdx": "MIT",
         "os": "linux",
         "unix": {
             "file_extension": "tar.xz",
