@@ -208,7 +208,7 @@ def run_sdist(args: Any) -> None:
 
 
 def run_sbom(args: Any) -> None:
-    call(f'python ../bypy sbom --output build/kitty-{version}.tar.xz.spdx.json --url https://sw.kovidgoyal.net/kitty/binary kitty {version}')
+    call(f'python ../bypy sbom --output build/kitty-{version}.tar.xz.spdx.json --url https://sw.kovidgoyal.net/kitty/binary kovidgoyal/{appname} {version}')
 
 
 class ReadFileWithProgressReporting(io.FileIO):  # {{{
