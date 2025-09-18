@@ -89,26 +89,55 @@ type Result struct {
 	Cwd                  string           `json:"cwd"`
 }
 
-func encode_hint(num int, alphabet string) (res string) {
-	runes := []rune(alphabet)
-	d := len(runes)
-	for res == "" || num > 0 {
-		res = string(runes[num%d]) + res
-		num /= d
+// generate_labels builds n labels over `alphabet` such that no label is a prefix of another.
+// It starts with 1-char labels; when more are needed, it replaces the leftmost label by
+// its |alphabet| children (prefix + ch), repeating until there are at least n leaves.
+//
+// For example, if we add the two-character labels "ja" and "jb" and "jc" we make sure to
+// remove the single-character label "j" because if we don't remove "j" then the user will
+// never be able to actually select the object with label "j" because the hint engine will
+// still be trying to match against "ja" or "jb" etc.
+func generate_labels(alphabet string, marks []Mark) (map[int]string, map[string]int) {
+	alpha := []rune(alphabet)
+	n := len(marks)
+	if n <= 0 || len(alpha) <= 1 {
+		// no marks found, or alphabet is too short
+		return nil, nil
 	}
-	return
-}
 
-func decode_hint(x string, alphabet string) (ans int) {
-	base := len(alphabet)
-	index_map := make(map[rune]int, len(alphabet))
-	for i, c := range alphabet {
-		index_map[c] = i
+	// worst-case number of leaves is twice the number of marks
+	max_leaves := n * 2
+	if max_leaves < len(alpha) {
+		max_leaves = len(alpha)
 	}
-	for _, char := range x {
-		ans = ans*base + index_map[char]
+
+	// start with the leaves just being the same as the alphabet
+	leaves := make([]string, 0, max_leaves)
+	for _, s := range alpha {
+		leaves = append(leaves, string(s))
 	}
-	return
+
+	// Expand leftmost leaves until we have at least n leaves.
+	front := 0
+	for (len(leaves) - front) < n {
+		prefix := leaves[front]
+		front++
+		for _, s := range alpha {
+			leaves = append(leaves, prefix+string(s))
+		}
+	}
+
+	// return the labels as a map indexed by mark.Index that will be used
+	// to display the labels, and a reverse-map of label text to mark.Index
+	// that is used once a mark is selected by the user
+	label_map := make(map[int]string, n)
+	index_map := make(map[string]int, n)
+	for i, s := range leaves[front : front+n] {
+		mark := &marks[n-i-1] // reverse order so that simpler labels are lower on screen
+		label_map[mark.Index] = s
+		index_map[s] = mark.Index
+	}
+	return label_map, index_map
 }
 
 func as_rgb(c uint32) [3]float32 {
@@ -191,8 +220,10 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	hint_style := fctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s bold", o.HintsForegroundColor, o.HintsBackgroundColor))
 	text_style := fctx.SprintFunc(fmt.Sprintf("fg=%s bold", o.HintsTextColor))
 
+	labels, label_indices := generate_labels(alphabet, all_marks[:])
+
 	highlight_mark := func(m *Mark, mark_text string) string {
-		hint := encode_hint(m.Index, alphabet)
+		hint := labels[m.Index]
 		if current_input != "" && !strings.HasPrefix(hint, current_input) {
 			return faint(mark_text)
 		}
@@ -309,7 +340,7 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		if changed {
 			matches := []*Mark{}
 			for idx, m := range index_map {
-				if eh := encode_hint(idx, alphabet); strings.HasPrefix(eh, current_input) {
+				if eh := labels[idx]; strings.HasPrefix(eh, current_input) {
 					matches = append(matches, m)
 				}
 			}
@@ -342,7 +373,7 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		} else if ev.MatchesPressOrRepeat("enter") || ev.MatchesPressOrRepeat("space") {
 			ev.Handled = true
 			if current_input != "" {
-				idx := decode_hint(current_input, alphabet)
+				idx := label_indices[current_input]
 				if m := index_map[idx]; m != nil {
 					chosen = append(chosen, m)
 					ignore_mark_indices.Add(idx)
