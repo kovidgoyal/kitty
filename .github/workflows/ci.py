@@ -222,7 +222,7 @@ def check_dependencies() -> None:
     dest = os.path.join(SW, 'macos')
     os.makedirs(dest, exist_ok=True)
     install_bundle(dest, os.path.basename(dest))
-    cmdline = [grype, '--by-cve', '--config', gc, '--fail-on', 'medium', '--only-fixed']
+    cmdline = [grype, '--by-cve', '--config', gc, '--fail-on', 'medium', '--only-fixed', '--add-cpes-if-none']
     if (cp := subprocess.run(cmdline + ['dir:' + SW])).returncode != 0:
         raise SystemExit(cp.returncode)
     # Now test against the SBOM

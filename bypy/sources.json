@@ -65,11 +65,11 @@
     },
 
     {
-        "name": "libxml2 2.12.7",
+        "name": "libxml2 2.12.10",
         "spdx": "MIT",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:24ae78ff1363a973e6d8beba941a7945da2ac056e19b53956aeb6927fd6cfb56",
+            "hash": "sha256:c3d8c0c34aa39098f66576fe51969db12a5100b956233dc56506f7a8679be995",
             "urls": ["https://download.gnome.org/sources/libxml2/{version_except_last}/{filename}"]
         }
     },
