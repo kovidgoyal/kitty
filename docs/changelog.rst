@@ -179,6 +179,10 @@ Detailed list of changes
 - macOS: Workaround for bug in macOS Tahoe that caused closed OS Windows to
   remain as invisible rectangles that intercept mouse events (:iss:`8952`)
 
+- macOS: Workaround for bug in macOS Tahoe that caused OS Windows that are
+  fullscreen on a monitor that is disconnected while macOS is asleep to crash kitty (:iss:`8983`)
+
+
 0.42.2 [2025-07-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
