@@ -128,6 +128,7 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
             toggle_os_window_visibility(os_window_id)
             if layer_shell_config_changed:
                 set_layer_shell_config(os_window_id, lsc)
+                run_app.layer_shell_config = lsc
         return
     items = items or [kitten_exe(), 'run-shell']
     os_window_id = boss.add_os_panel(lsc, args.cls, args.name)
