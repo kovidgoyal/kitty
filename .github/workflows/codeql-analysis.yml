@@ -59,6 +59,7 @@ jobs:
           uses: github/codeql-action/init@v3
           with:
               languages: ${{ matrix.language }}
+              trap-caching: false
 
         - name: Build kitty
           if: matrix.language == 'c' || matrix.language == 'go'
