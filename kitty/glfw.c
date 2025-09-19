@@ -2566,18 +2566,12 @@ toggle_os_window_visibility(PyObject *self UNUSED, PyObject *args) {
 static PyObject*
 layer_shell_config_for_os_window(PyObject *self UNUSED, PyObject *wid) {
     if (!PyLong_Check(wid)) { PyErr_SetString(PyExc_TypeError, "os_window_id must be a int"); return NULL; }
-#ifdef __APPLE__
-    (void)layer_shell_config_to_python;
-    Py_RETURN_NONE;
-#else
-    if (!global_state.is_wayland) Py_RETURN_NONE;
     id_type id = PyLong_AsUnsignedLongLong(wid);
     OSWindow *w = os_window_for_id(id);
     if (!w || !w->handle) Py_RETURN_NONE;
     const GLFWLayerShellConfig *c = glfwGetLayerShellConfig(w->handle);
     if (!c) Py_RETURN_NONE;
     return layer_shell_config_to_python(c);
-#endif
 }
 
 static PyObject*

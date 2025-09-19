@@ -25,6 +25,7 @@ from kitty.fast_data_types import (
     GLFW_LAYER_SHELL_OVERLAY,
     GLFW_LAYER_SHELL_PANEL,
     GLFW_LAYER_SHELL_TOP,
+    layer_shell_config_for_os_window,
     set_layer_shell_config,
     toggle_os_window_visibility,
 )
@@ -110,7 +111,6 @@ def have_config_files_been_updated(config_files: Iterable[str]) -> bool:
 def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], environ: Mapping[str, str], notify_on_os_window_death: str | None = '') -> None:
     global args
     from kitty.cli import parse_override
-    from kitty.main import run_app
     from kitty.tabs import SpecialWindow
     try:
         new_args, items = parse_panel_args(list(sys_args[1:]))
@@ -118,17 +118,17 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
         log_error(f'Invalid arguments received over single instance socket: {sys_args} with error: {e}')
         return
     lsc = layer_shell_config(new_args)
-    layer_shell_config_changed = lsc != run_app.layer_shell_config
     config_changed = have_config_files_been_updated(new_args.config) or args.config != new_args.config or args.override != new_args.override
     args = new_args
     if config_changed:
         boss.load_config_file(*args.config, overrides=tuple(map(parse_override, new_args.override)))
     if args.toggle_visibility and boss.os_window_map:
         for os_window_id in boss.os_window_map:
+            existing = layer_shell_config_for_os_window(os_window_id)
+            layer_shell_config_changed = not existing or any(f for f in lsc._fields if getattr(lsc, f) != existing.get(f))
             toggle_os_window_visibility(os_window_id)
             if layer_shell_config_changed:
                 set_layer_shell_config(os_window_id, lsc)
-                run_app.layer_shell_config = lsc
         return
     items = items or [kitten_exe(), 'run-shell']
     os_window_id = boss.add_os_panel(lsc, args.cls, args.name)

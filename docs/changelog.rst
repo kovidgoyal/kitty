@@ -170,6 +170,9 @@ Detailed list of changes
 - Fix rendering of underlines when using larger text sizes with the space and
   en-space characters (:iss:`8950`)
 
+- Fix updating panel configuration on visibility toggle and via remote control
+  not working (:iss:`8984`)
+
 - Wayland: Update bundled copy of libwayland to 1.24 from 1.23.1 because the
   just released mesa 25.2.0 breaks with libwayland < 1.24 (:iss:`8884`)
 
