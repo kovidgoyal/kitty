@@ -9,10 +9,10 @@ require (
 	github.com/alecthomas/chroma/v2 v2.20.0
 	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/dlclark/regexp2 v1.11.5
-	github.com/edwvee/exiffix v0.0.0-20240229113213-0dbb146775be
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1
+	github.com/kovidgoyal/exiffix v0.0.0-20250919160812-dbef770c2032
 	github.com/kovidgoyal/imaging v1.6.4
 	github.com/seancfoley/ipaddress-go v1.7.1
 	github.com/shirou/gopsutil/v3 v3.24.5
@@ -28,7 +28,6 @@ require (
 // replace github.com/kovidgoyal/dbus => ../dbus
 
 require (
-	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect

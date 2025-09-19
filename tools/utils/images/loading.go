@@ -22,7 +22,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/shm"
 
-	"github.com/edwvee/exiffix"
+	"github.com/kovidgoyal/exiffix"
 	"github.com/kovidgoyal/imaging"
 )
 

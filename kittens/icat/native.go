@@ -12,7 +12,7 @@ import (
 	"image"
 	"image/gif"
 
-	"github.com/edwvee/exiffix"
+	"github.com/kovidgoyal/exiffix"
 	"github.com/kovidgoyal/imaging"
 )
 
