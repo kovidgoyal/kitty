@@ -705,52 +705,39 @@ static bool cmpr_point(Point, Point);
 static uint64_t hash_point(Point p) { return vt_hash_integer(p.val); }
 static bool cmpr_point(Point a, Point b) { return a.val == b.val; }
 
-#define draw_parametrized_thin_curve(self, line_width, xfunc, yfunc, x_offset, y_offset) { \
-    uint th = (uint)ceil(line_width); \
-    div_t d = div(th, 2u); \
-    int delta = d.quot, extra = d.rem; \
-    uint num_samples = self->height * 8; \
-    position_set seen; vt_init(&seen); \
-    for (uint i = 0; i < num_samples + 1; i++) { \
-        double t = i / (double)num_samples; \
-        Point p = {.x=(int32_t)xfunc, .y=(int32_t)yfunc};  \
-        position_set_itr q = vt_get(&seen, p); \
-        if (!vt_is_end(q)) continue; \
-        if (vt_is_end(vt_insert(&seen, p))) fatal("Out of memory"); \
-        p.x += x_offset; \
-        for (int y = MAX(0, p.y - delta); y < MIN(p.y + delta + extra, (int)self->height); y++) { \
-            uint offset = y * self->width, start = MAX(0, p.x - delta); \
-            memset(self->mask + offset + start, 255, minus((uint)MIN(p.x + delta + extra, (int)self->width), start)); \
-        } \
-    } \
-    vt_cleanup(&seen); \
-}
-
 static void
 draw_parametrized_curve_with_derivative(
     Canvas *self, void *curve_data, double line_width, curve_func xfunc, curve_func yfunc, curve_func x_prime, curve_func y_prime,
-    int x_offset, int yoffset, double thickness_fudge
+    double x_offset, double yoffset, double thickness_fudge
 ) {
-    if (line_width <= 2 * self->supersample_factor) {
-        // The old algorithm looks better for very thin lines
-        draw_parametrized_thin_curve(self, line_width, xfunc(curve_data, t), yfunc(curve_data, t), x_offset, y_offset);
-        return;
-    }
     double larger_dim = fmax(self->height, self->width);
     double step = 1.0 / larger_dim;
     const double min_step = step / 100., max_step = step;
-    line_width = fmax(1., line_width);
-    const double half_thickness = line_width / 2.0;
-    const double distance_limit = half_thickness + thickness_fudge;
+
+    // thickness of line (It might be better to pull it from the config)
+    const double scale = 1.0;
+
+    double effective_line_width = fmax(1., line_width * scale);
+    double effective_thickness_fudge = thickness_fudge * scale;
+    const double half_thickness = effective_line_width / 2.0;
+    const double distance_limit = half_thickness + effective_thickness_fudge;
     double t = 0;
     while(true) {
         double x = xfunc(curve_data, t), y = yfunc(curve_data, t);
-        for (double dy = -line_width; dy <= line_width; dy++) {
-            for (double dx = -line_width; dx <= line_width; dx++) {
-                double px = x + dx, py = y + dy;
+        double y_min = y - effective_line_width;
+        double y_max = y + effective_line_width;
+        double x_min = x - effective_line_width;
+        double x_max = x + effective_line_width;
+        y_min = fmax(y_min, -yoffset);
+        y_max = fmin(y_max, self->height - 1 - yoffset);
+        x_min = fmax(x_min, -x_offset);
+        x_max = fmin(x_max, self->width - 1 - x_offset);
+        for (double py = y_min; py <= y_max; py += 1.0) {
+            for (double px = x_min; px <= x_max; px += 1.0) {
                 double dist = distance(x, y, px, py);
-                int row = (int)py + yoffset, col = (int)px + x_offset;
-                if (dist > distance_limit || row >= (int)self->height || row < 0 || col >= (int)self->width || col < 0) continue;
+                int row = (int)floor(py + yoffset + 0.5);
+                int col = (int)floor(px + x_offset + 0.5);
+                if (dist > distance_limit || row < 0 || row >= (int)self->height || col < 0 || col >= (int)self->width) continue;
                 const int offset = row * self->width + col;
                 double alpha = 1.0 - (dist / half_thickness);
                 uint8_t old_alpha = self->mask[offset];
@@ -772,7 +759,7 @@ rounded_separator(Canvas *self, uint level, bool left) {
     uint gap = thickness(self, level, true);
     int c1x = find_bezier_for_D(minus(self->width, gap), self->height);
     CubicBezier cb = {.end={.y=self->height - 1}, .c1={.x=c1x}, .c2={.x=c1x, .y=self->height - 1}};
-    double line_width = thickness_as_float(self, level, true);
+    double line_width = (double)thickness(self, level, true);
 #define d draw_parametrized_curve_with_derivative(self, &cb, line_width, bezier_x, bezier_y, bezier_prime_x, bezier_prime_y, 0, 0, 0)
     if (left) { d; } else { mirror_horizontally(d); }
 #undef d
@@ -813,7 +800,7 @@ static double circle_prime_y(const void *v, double t) { const Circle *c=v; retur
 static void
 spinner(Canvas *self, uint level, double start_degrees, double end_degrees) {
     double x = self->width / 2.0, y = self->height / 2.0;
-    double line_width = thickness_as_float(self, level, true);
+    double line_width = (double)thickness(self, level, true);
     double radius = fmax(0, fmin(x, y) - line_width / 2.0);
     Circle c = circle(x, y, radius, start_degrees, end_degrees);
     draw_parametrized_curve_with_derivative(self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y, 0, 0, 0);
@@ -1333,11 +1320,30 @@ rectcircle(Canvas *self, Corner which) {
 static void
 rounded_corner(Canvas *self, uint level, Corner which) {
     Rectircle r = rectcircle(self, which);
+    // adjust for odd cell dimensions to line up with box drawing lines
     uint cell_width_is_odd = (self->width / self->supersample_factor) & 1;
     uint cell_height_is_odd = (self->height / self->supersample_factor) & 1;
-    // adjust for odd cell dimensions to line up with box drawing lines
-    int x_offset = -(cell_width_is_odd & 1), y_offset = -(cell_height_is_odd & 1);
-    double line_width = thickness_as_float(self, level, true);
+
+    // ajust offset by scale (better logic?)
+    const double super_hidpi_threshold = 200.0;
+    const double hidpi_threshold = 170.0;
+    const double lowdpi_threshold = 140.0;
+    const double max_dpi = self->dpi.x > self->dpi.y ? self->dpi.x : self->dpi.y;
+    const bool is_super_hidpi = max_dpi >= super_hidpi_threshold;
+    const bool is_hidpi = max_dpi >= hidpi_threshold;
+    const bool is_lowdpi = max_dpi <= lowdpi_threshold;
+
+    double x_offset = cell_width_is_odd ? -0.0 : -0.0;
+    if (is_lowdpi) x_offset = cell_width_is_odd ? -1.7 : -1.5;
+    if (is_hidpi) x_offset = cell_width_is_odd ? 1.5 : 1.5;
+    if (is_super_hidpi) x_offset = cell_width_is_odd ? -2.0 : -1.5;
+
+    double y_offset = cell_height_is_odd ? -1.5 : -1.0;
+    if (is_lowdpi) y_offset = cell_width_is_odd ? -0.5 : -0.0;
+    if (is_hidpi) y_offset = cell_height_is_odd ? 1.5 : 1.0;
+    if (is_super_hidpi) y_offset = cell_height_is_odd ? -1.8 : -1.5;
+
+    double line_width = (double)thickness(self, level, true);
     draw_parametrized_curve_with_derivative(self, &r, line_width, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, y_offset, 0.1);
 }
 
