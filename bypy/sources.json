@@ -59,10 +59,10 @@
     },
 
     {
-        "name": "libxml2 2.12.10",
+        "name": "libxml2 2.14.6",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:c3d8c0c34aa39098f66576fe51969db12a5100b956233dc56506f7a8679be995",
+            "hash": "sha256:7ce458a0affeb83f0b55f1f4f9e0e55735dbfc1a9de124ee86fb4a66b597203a",
             "urls": ["https://download.gnome.org/sources/libxml2/{version_except_last}/{filename}"]
         }
     },
@@ -202,11 +202,11 @@
     },
 
     {
-        "name": "glib 2.80.2",
+        "name": "glib 2.82.5",
         "os": "linux",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:b9cfb6f7a5bd5b31238fd5d56df226b2dda5ea37611475bf89f6a0f9400fe8bd",
+            "hash": "sha256:05c2031f9bdf6b5aba7a06ca84f0b4aced28b19bf1b50c6ab25cc675277cbc3f",
             "urls": ["https://download.gnome.org/sources/glib/{version_except_last}/{filename}"]
         }
     },
