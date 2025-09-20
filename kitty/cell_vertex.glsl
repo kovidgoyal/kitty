@@ -264,8 +264,6 @@ vec3 fg_override(float under_luminance, float over_lumininace, vec3 under, vec3 
 
 #else
 
-}
-
 vec3 fg_override(float under_luminance, float over_luminance, vec3 under, vec3 over) {
     float ratio = contrast_ratio(under_luminance, over_luminance);
     vec3 diff = abs(under - over);
