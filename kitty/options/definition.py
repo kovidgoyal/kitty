@@ -3482,6 +3482,10 @@ Second, the action to perform. The default is :code:`notify`. The possible value
 :code:`bell`
     Ring the terminal bell.
 
+:code:`notify-bell`
+    Send a desktop notification and ring the terminal bell.
+    The arguments are the same as for `notify`.
+
 :code:`command`
     Run a custom command. All subsequent arguments are the cmdline to run.
 

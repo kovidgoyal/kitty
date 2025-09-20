@@ -803,10 +803,10 @@ def notify_on_cmd_finish(x: str) -> NotifyOnCmdFinish:
     cmdline: tuple[str, ...] = ()
     clear_on = default_clear_on
     if len(parts) > 2:
-        if parts[2] not in ('notify', 'bell', 'command'):
+        if parts[2] not in ('notify', 'bell', 'notify-bell', 'command'):
             raise ValueError(f'Unknown notify_on_cmd_finish action: {parts[2]}')
         action = parts[2]
-        if action == 'notify':
+        if action.startswith('notify'):
             if len(parts) > 3:
                 con: list[ClearOn] = []
                 for x in parts[3].split():
