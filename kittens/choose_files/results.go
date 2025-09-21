@@ -82,20 +82,24 @@ func (h *Handler) render_match_with_positions(text string, add_ellipsis bool, po
 		}
 		h.lp.QueueWriteString(text)
 	}
-	at := 0
-	runes := []rune(text)
-	limit := len(runes)
-	for _, p := range positions {
-		if p >= limit || at >= limit || p <= at {
-			break
+	if len(positions) == 0 {
+		write_chunk(text, false)
+	} else {
+		at := 0
+		runes := []rune(text)
+		limit := len(runes)
+		for _, p := range positions {
+			if p >= limit || at >= limit || p <= at {
+				break
+			}
+			before := runes[at:p]
+			write_chunk(string(before), false)
+			write_chunk(string(runes[p]), true)
+			at = p + 1
 		}
-		before := runes[at:p]
-		write_chunk(string(before), false)
-		write_chunk(string(runes[p]), true)
-		at = p + 1
-	}
-	if at < len(runes) {
-		write_chunk(string(runes[at:]), false)
+		if at < len(runes) {
+			write_chunk(string(runes[at:]), false)
+		}
 	}
 	if add_ellipsis {
 		write_chunk("…", false)
