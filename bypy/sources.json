@@ -163,11 +163,11 @@
     },
 
     {
-        "name": "lcms2 2.16",
+        "name": "lcms2 2.17",
         "unix": {
             "file_extension": "tar.gz",
-            "hash": "sha256:d873d34ad8b9b4cea010631f1a6228d2087475e4dc5e763eb81acc23d9d45a51",
-            "urls": ["https://github.com/mm2/Little-CMS/archive/{version}/{filename}"]
+            "hash": "sha256:d11af569e42a1baa1650d20ad61d12e41af4fead4aa7964a01f93b08b53ab074",
+            "urls": ["https://github.com/mm2/Little-CMS/releases/download/lcms{version}/lcms2-{version}.{file_extension}"]
         }
     },
 
