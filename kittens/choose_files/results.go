@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/kovidgoyal/kitty/tools/icons"
 	"github.com/kovidgoyal/kitty/tools/tui"
@@ -84,20 +83,19 @@ func (h *Handler) render_match_with_positions(text string, add_ellipsis bool, po
 		h.lp.QueueWriteString(text)
 	}
 	at := 0
-	limit := len(text)
+	runes := []rune(text)
+	limit := len(runes)
 	for _, p := range positions {
-		if p > limit || at > limit {
+		if p >= limit || at >= limit || p <= at {
 			break
 		}
-		write_chunk(text[at:p], false)
-		at = p
-		if r, sz := utf8.DecodeRuneInString(text[p:]); r != utf8.RuneError {
-			write_chunk(string(r), true)
-			at += sz
-		}
+		before := runes[at:p]
+		write_chunk(string(before), false)
+		write_chunk(string(runes[p]), true)
+		at = p + 1
 	}
-	if at < len(text) {
-		write_chunk(text[at:], false)
+	if at < len(runes) {
+		write_chunk(string(runes[at:]), false)
 	}
 	if add_ellipsis {
 		write_chunk("…", false)
