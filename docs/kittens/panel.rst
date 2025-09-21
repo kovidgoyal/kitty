@@ -150,6 +150,9 @@ Compatibility with various platforms
         🟢 **labwc**
            Fully working, no known issues
 
+        🟢 **niri**
+           Fully working, no known issues
+
         🟠 **KDE** (kwin)
            Mostly working, except that clicks outside background panels cause kwin to :iss:`erroneously hide the panel <8715>`. KDE uses an `undocumented mapping <https://invent.kde.org/plasma/kwin/-/blob/3dc5cee6b34792486b343098e55e7f2b90dfcd00/src/layershellv1window.cpp#L24>`__ under Wayland to set the window type from the :code:`kitten panel --app-id` flag. You might want to use :code:`--app-id=dock` so that KDE treats the window as a dock panel, and disables window appearing/disappearing animations for it.
 
@@ -160,10 +163,6 @@ Compatibility with various platforms
         🟠 **river**
            Not all functionality has been tested, but the quick access terminal
            appears as it should and the keyboard focus is properly restored too.
-
-        🟠 **niri**
-           Hiding a dock panel (unmapping the window) does not release the space used
-           by the dock.
 
         🔴 **GNOME** (mutter)
            Does not implement the wlr protocol at all, nothing works.
