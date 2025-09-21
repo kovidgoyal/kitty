@@ -313,29 +313,6 @@ add_vholes(Canvas *self, uint level, uint num) {
     }
 }
 
-
-static void
-draw_hline(Canvas *self, uint x1, uint x2, uint y, uint level) {
-    // Draw a horizontal line between [x1, x2) centered at y with the thickness given by level and self->supersample_factor
-    uint sz = thickness(self, level, false);
-    uint start = minus(y, sz / 2);
-    for (uint y = start; y < min(start + sz, self->height); y++) {
-        uint8_t *py = self->mask + y * self->width;
-        memset(py + x1, 255, minus(min(x2, self->width), x1));
-    }
-}
-
-static void
-draw_vline(Canvas *self, uint y1, uint y2, uint x, uint level) {
-    // Draw a vertical line between [y1, y2) centered at x with the thickness given by level and self->supersample_factor
-    uint sz = thickness(self, level, true);
-    uint start = minus(x, sz / 2), end = min(start + sz, self->width), xsz = minus(end, start);
-    for (uint y = y1; y < min(y2, self->height); y++) {
-        uint8_t *py = self->mask + y * self->width;
-        memset(py + start, 255, xsz);
-    }
-}
-
 static uint
 half_width(Canvas *self) {  // align with non-supersampled co-ords
     return self->supersample_factor * (self->width / 2 / self->supersample_factor);
@@ -344,6 +321,83 @@ half_width(Canvas *self) {  // align with non-supersampled co-ords
 static uint
 half_height(Canvas *self) { // align with non-supersampled co-ords
     return self->supersample_factor * (self->height / 2 / self->supersample_factor);
+}
+
+static double
+clamp_double(double value, double lower, double upper) {
+    if (value < lower) return lower;
+    if (value > upper) return upper;
+    return value;
+}
+
+static void
+draw_hline(Canvas *self, uint x1, uint x2, uint y_center, uint level) {
+    if (x1 >= x2 || y_center >= self->height) return;
+
+    const double stroke = thickness_as_float(self, level, false);
+    const double half_stroke = 0.5 * stroke;
+
+    // clip
+    if (x1 > self->width) x1 = self->width;
+    if (x2 > self->width) x2 = self->width;
+
+    for (uint y = 0; y < self->height; y++) {
+        const double pos_y = (double)y - (double)y_center;
+        const double d     = fabs(pos_y);
+
+        // dist ∈ [-half_stroke, +half_stroke]
+        const double outer =  half_stroke - d;
+        const double inner = -half_stroke - d;
+        const double alpha = outer < 0.0 ? 0.0 : 1.0 - inner < 0.0 ? 0.0 : 1.0;
+        if (alpha <= 0.0) continue;
+
+        const uint8_t val = (uint8_t)lrint(clamp_double(alpha, 0.0, 1.0) * 255.0);
+        uint8_t *row = self->mask + (size_t)y * self->width;
+        for (uint x = x1; x < x2; x++) {
+            if (val > row[x]) row[x] = val;
+        }
+    }
+}
+
+static void
+draw_vline(Canvas *self, uint y1, uint y2, uint x_center, uint level) {
+    if (y1 >= y2 || x_center >= self->width) return;
+
+    const double stroke = thickness_as_float(self, level, true);
+    const double half_stroke = 0.5 * stroke;
+
+    // clip
+    if (y1 > self->height) y1 = self->height;
+    if (y2 > self->height) y2 = self->height;
+
+    for (uint x = 0; x < self->width; x++) {
+        const double pos_x = (double)x - (double)x_center;
+        const double d     = fabs(pos_x);
+
+        // dist ∈ [-half_stroke, +half_stroke]
+        const double outer =  half_stroke - d;
+        const double inner = -half_stroke - d;
+        const double alpha = outer < 0.0 ? 0.0 : 1.0 - inner < 0.0 ? 0.0 : 1.0;
+        if (alpha <= 0.0) continue;
+
+        const uint8_t val = (uint8_t)lrint(clamp_double(alpha, 0.0, 1.0) * 255.0);
+        for (uint y = y1; y < y2; y++) {
+            uint8_t *p = &self->mask[(size_t)y * self->width + x];
+            if (val > *p) *p = val;
+        }
+    }
+}
+
+static void
+hline(Canvas *self, uint level) {
+    const uint y_center = half_height(self);
+    draw_hline(self, 0, self->width, y_center, level);
+}
+
+static void
+vline(Canvas *self, uint level) {
+    const uint x_center = half_width(self);
+    draw_vline(self, 0, self->height, x_center, level);
 }
 
 
@@ -410,18 +464,6 @@ half_vline(Canvas *self, uint level, bool bottom_half, uint extend_by) {
         y1 = 0; y2 = half_height(self) + extend_by;
     }
     draw_vline(self, y1, y2, half_width(self), level);
-}
-
-static void
-hline(Canvas *self, uint level) {
-    half_hline(self, level, false, 0);
-    half_hline(self, level, true, 0);
-}
-
-static void
-vline(Canvas *self, uint level) {
-    half_vline(self, level, false, 0);
-    half_vline(self, level, true, 0);
 }
 
 static void
@@ -1260,85 +1302,78 @@ fading_vline(Canvas *self, uint level, uint num, Edge fade) {
     }
 }
 
-typedef struct Rectircle Rectircle;
-
-typedef struct Rectircle {
-    double a, b, yexp, xexp, x_sign, y_sign, x_start, y_start;
-    double x_prime_coeff, x_prime_exp, y_prime_coeff, y_prime_exp;
-} Rectircle;
-
 static double
-rectircle_x(const void *v, double t) {
-    const Rectircle *r = v;
-    return r->x_start + r->x_sign * r->a * pow(cos(t * (M_PI / 2.0)), r->xexp);
-}
-
-static double
-rectircle_x_prime(const void *v, double t) {
-    const Rectircle *r = v;
-    t *= (M_PI / 2.0);
-    return r->x_prime_coeff * pow(cos(t), r->x_prime_exp) * sin(t);
-}
-
-static double
-rectircle_y_prime(const void *v, double t) {
-    const Rectircle *r = v;
-    t *= (M_PI / 2.0);
-    return r->y_prime_coeff * pow(sin(t), r->y_prime_exp) * cos(t);
-}
-
-static double
-rectircle_y(const void *v, double t) {
-    const Rectircle *r = v;
-    return r->y_start + r->y_sign * r->b * pow(sin(t * (M_PI / 2.0)), r->yexp);
-}
-
-static Rectircle
-rectcircle(Canvas *self, Corner which) {
-    /*
-    Return two functions, x(t) and y(t) that map the parameter t which must be
-    in the range [0, 1] to x and y coordinates in the cell. The rectircle equation
-    we use is:
-    (|x| / a) ^ (2a / r) + (|y| / b) ^ (2b / r) = 1
-    where 2a = width, 2b = height and r is radius
-    See https://math.stackexchange.com/questions/1649714
-
-    This is a super-ellipse, its parametrized form is:
-    x = ± a * (cos(theta) ^ (r / a)); y = ± b * (sin(theta) ^ (r / b)); theta is in [0, pi/2]
-    https://en.wikipedia.org/wiki/Superellipse
-    The plus minus signs are chosen to give the four quadrants.
-
-    The entire rectircle fits in four cells, each cell being one quadrant
-    of the full rectircle and the origin being the center of the rectircle.
-    The functions we return do the mapping for the specified cell.
-    ╭╮  ╭─╮
-    ╰╯  │ │
-        ╰─╯
-    */
-    double radius = self->width / 2., a = self->width / 2., b = self->height / 2.;
-    Rectircle ans = {
-        .a = a, .b = b,
-        .xexp = radius / a, .yexp = radius / b,
-        .x_prime_coeff = radius, .x_prime_exp = radius / a - 1.,
-        .y_prime_coeff = radius, .y_prime_exp = radius / b - 1.,
-        .x_sign = which & RIGHT_EDGE ? 1. : -1,
-        .x_start = which & RIGHT_EDGE ? 0. : 2 * a,
-        .y_start = which & BOTTOM_EDGE ? 0. : 2 * b,
-        .y_sign = which & BOTTOM_EDGE ? 1. : -1,
-    };
-
-    return ans;
+rounded_rectangle_sdf_distance(double px, double py, double bx, double by, double radius) {
+    double qx = fabs(px) - bx;
+    double qy = fabs(py) - by;
+    double dx = fmax(qx, 0.0);
+    double dy = fmax(qy, 0.0);
+    double outside = hypot(dx, dy);
+    double inside = fmin(fmax(qx, qy), 0.0);
+    return outside + inside - radius;
 }
 
 static void
 rounded_corner(Canvas *self, uint level, Corner which) {
-    Rectircle r = rectcircle(self, which);
-    uint cell_width_is_odd = (self->width / self->supersample_factor) & 1;
-    uint cell_height_is_odd = (self->height / self->supersample_factor) & 1;
-    // adjust for odd cell dimensions to line up with box drawing lines
-    int x_offset = -(cell_width_is_odd & 1), y_offset = -(cell_height_is_odd & 1);
-    double line_width = thickness_as_float(self, level, true);
-    draw_parametrized_curve_with_derivative(self, &r, line_width, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, y_offset, 0.1);
+    const double stroke_x = thickness_as_float(self, level, true);
+    const double stroke_y = thickness_as_float(self, level, false);
+    double stroke   = fmax(stroke_x, stroke_y);
+
+    const double lowdpi_threshold = 140.0;
+    const double hidpi_threshold = 170.0;
+    const double max_dpi = self->dpi.x > self->dpi.y ? self->dpi.x : self->dpi.y;
+    const bool is_lowdpi = max_dpi <= lowdpi_threshold;
+    const bool is_hidpi = max_dpi >= hidpi_threshold;
+
+    // Some adjustments are needed in low-DPI environments
+    if (is_lowdpi) {
+        stroke *= 0.2;
+    } else if (!is_hidpi) {
+        stroke *= 1.2;
+    } else {
+        stroke *= 1.1;
+    }
+
+    if (stroke <= 0.0) return;
+
+    const double Hx = (double)half_width(self);
+    const double Hy = (double)half_height(self);
+
+    const double corner_radius = fmin(Hx, Hy);
+
+    const double bx = Hx - corner_radius;
+    const double by = Hy - corner_radius;
+
+    const uint is_odd = ((self->width / self->supersample_factor) & 1) || ((self->height / self->supersample_factor) & 1);
+
+    // dist ∈ [-stroke/2, +stroke/2]
+    const double half_stroke = is_odd ? 0.5 * stroke : 0.5 * stroke;
+
+    const double x_shift = (which & RIGHT_EDGE) ? Hx - 0.5 : -Hx;
+    const double y_shift = (which & TOP_EDGE) ? -Hy : Hy - 0.5;
+
+    for (uint y = 0; y < self->height; y++) {
+        const double sample_y = (double)y + y_shift - 0.5;
+        const double pos_y    = sample_y - Hy;
+        const uint row_off    = y * self->width;
+
+        for (uint x = 0; x < self->width; x++) {
+            const double sample_x = (double)x + x_shift - 0.5;
+            const double pos_x    = sample_x - Hx;
+
+            const double dist = rounded_rectangle_sdf_distance(pos_x, pos_y, bx, by, corner_radius);
+
+            // dist ∈ [-stroke/2, +stroke/2]
+            const double outer =  half_stroke - dist;
+            const double inner = -half_stroke - dist;
+            const double alpha = outer < 0.0 ? 0.0 : 1.0 - inner < 0.0 ? 0.0 : 1.0;
+
+            if (alpha <= 0.0) continue;
+            const uint8_t value = (uint8_t)lrint(clamp_double(alpha, 0.0, 1.0) * 255.0);
+            uint8_t *p = &self->mask[row_off + x];
+            if (value > *p) *p = value;
+        }
+    }
 }
 
 static void
