@@ -331,6 +331,7 @@ func (self *Loop) Run() (err error) {
 				os.Stderr.WriteString("\x1b]\x1b\\\x1bc\x1b[H\x1b[2J") // reset terminal
 			}
 			os.Stderr.WriteString(text)
+			os.Stderr.WriteString("\n")
 			if is_terminal {
 				if term, err := tty.OpenControllingTerm(tty.SetRaw); err == nil {
 					defer term.RestoreAndClose()
