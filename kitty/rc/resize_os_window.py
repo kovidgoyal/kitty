@@ -119,22 +119,22 @@ using this option means that you will not be notified of failures.
                     if not panels:
                         raise RemoteControlErrorWithoutTraceback('Must specify at least one panel setting')
                     from kitty.launch import layer_shell_config_from_panel_opts
+                    seen_options: set[str] = set()
                     try:
-                        lsc = layer_shell_config_from_panel_opts(panels)
+                        lsc = layer_shell_config_from_panel_opts(panels, track_seen_options=seen_options)
                     except Exception as e:
                         raise RemoteControlErrorWithoutTraceback(
                             f'Invalid panel options specified: {e}')
                     if payload_get('incremental'):
-                        defaults = layer_shell_config_from_panel_opts(())
-                        changed_fields = {f for f in lsc._fields if getattr(lsc, f) != getattr(defaults, f)}
                         existing = layer_shell_config_for_os_window(os_window_id)
                         if existing is None:
                             raise RemoteControlErrorWithoutTraceback(
                                 f'The OS Window {os_window_id} has no panel configuration')
+                        defaults = layer_shell_config_from_panel_opts(())
                         replacements = {}
                         for x in lsc._fields:
-                            if x not in changed_fields:
-                                replacements[x] = existing[x]
+                            if x not in seen_options:
+                                replacements[x] = getattr(defaults, x)
                         lsc = lsc._replace(**replacements)
                     if not set_layer_shell_config(os_window_id, lsc):
                         raise RemoteControlErrorWithoutTraceback(f'Failed to change panel configuration for OS Window {os_window_id}')

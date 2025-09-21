@@ -45,8 +45,11 @@ def panel_kitten_options_spec() -> str:
     ans: str = getattr(panel_kitten_options_spec, 'ans')
     return ans
 
-def parse_panel_args(args: list[str]) -> tuple[PanelCLIOptions, list[str]]:
-    return parse_args(args, panel_kitten_options_spec, usage, help_text, 'kitty +kitten panel', result_class=PanelCLIOptions)
+
+def parse_panel_args(args: list[str], track_seen_options: set[str] | None = None) -> tuple[PanelCLIOptions, list[str]]:
+    return parse_args(
+        args, panel_kitten_options_spec, usage, help_text, 'kitty +kitten panel',
+        result_class=PanelCLIOptions, track_seen_options=track_seen_options)
 
 
 def dual_distance(spec: str, min_cell_value_if_no_pixels: int = 0) -> tuple[int, int]:

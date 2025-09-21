@@ -591,28 +591,37 @@ class Options:
 PreparsedCLIFlags = tuple[dict[str, tuple[Any, bool]], list[str]]
 
 
-def apply_preparsed_cli_flags(preparsed_from_c: PreparsedCLIFlags, ans: Any, create_oc: Callable[[], Options]) -> list[str]:
+def apply_preparsed_cli_flags(
+    preparsed_from_c: PreparsedCLIFlags, ans: Any, create_oc: Callable[[], Options],
+    track_seen_options: set[str] | None = None
+) -> list[str]:
     for key, (val, is_seen) in preparsed_from_c[0].items():
         if key == 'help' and is_seen and val:
             create_oc().handle_help()
         elif key == 'version' and is_seen and val:
             create_oc().handle_version()
+        if is_seen and track_seen_options is not None:
+            track_seen_options.add(key)
         setattr(ans, key, val)
     return preparsed_from_c[1]
 
 
 def parse_cmdline_inner(
-    args: list[str], oc: Options, disabled: OptionSpecSeq, names_map: dict[str, OptionDict], values_map: dict[str, OptionDict], ans: Any
+        args: list[str], oc: Options, disabled: OptionSpecSeq, names_map: dict[str, OptionDict],
+        values_map: dict[str, OptionDict], ans: Any, track_seen_options: set[str] | None = None
 ) -> list[str]:
     preparsed = parse_cli_from_spec(args, names_map, values_map)
-    leftover_args = apply_preparsed_cli_flags(preparsed, ans, lambda: oc)
+    leftover_args = apply_preparsed_cli_flags(preparsed, ans, lambda: oc, track_seen_options)
     for opt in disabled:
         if not isinstance(opt, str):
             setattr(ans, opt['dest'], defval_for_opt(opt))
     return leftover_args
 
 
-def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str] | None = None) -> list[str]:
+def parse_cmdline(
+    oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str] | None = None,
+    track_seen_options: set[str] | None = None
+) -> list[str]:
     names_map = oc.names_map.copy()
     values_map = oc.values_map.copy()
     if 'help' not in names_map:
@@ -622,7 +631,7 @@ def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str
         names_map['version'] = {'type': 'bool-set', 'aliases': ('--version', '-v')}  # type: ignore
         values_map['version'] = False
     try:
-        return parse_cmdline_inner(sys.argv[1:] if args is None else args, oc, disabled, names_map, values_map, ans)
+        return parse_cmdline_inner(sys.argv[1:] if args is None else args, oc, disabled, names_map, values_map, ans, track_seen_options)
     except Exception as e:
         raise SystemExit(str(e))
 
@@ -668,6 +677,7 @@ def parse_args(
     appname: str | None = None,
     result_class: type[T] | None = None,
     preparsed_from_c: PreparsedCLIFlags | None = None,
+    track_seen_options: set[str] | None = None,
 ) -> tuple[T, list[str]]:
     if result_class is not None:
         ans = result_class()
@@ -685,7 +695,7 @@ def parse_args(
     options = parse_option_spec(ospec())
     seq, disabled = options
     oc = Options(seq, usage, message, appname)
-    return ans, parse_cmdline(oc, disabled, ans, args=args)
+    return ans, parse_cmdline(oc, disabled, ans, args=args, track_seen_options=track_seen_options)
 
 
 SYSTEM_CONF = f'/etc/xdg/{appname}/{appname}.conf'
