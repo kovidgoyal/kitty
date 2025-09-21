@@ -1534,6 +1534,34 @@ class Boss:
             fin_opacity = float(opacity)
         self._set_os_window_background_opacity(os_window_id, fin_opacity)
 
+    @ac('win', '''
+        Toggles between the default and specified active OS window background opacities
+
+        Sets the active OS Window between the current value or restores it to
+        the default if it already has the specified background opacity. For example::
+
+            map f1 toggle_background_opacity 0.85
+        ''')
+    def toggle_background_opacity(self, opacity: str) -> None:
+        window = self.window_for_dispatch or self.active_window
+        if window is None or not opacity:
+            return
+        if not get_options().dynamic_background_opacity:
+            self.show_error(
+                    _('Cannot change background opacity'),
+                    _('You must set the dynamic_background_opacity option in kitty.conf to be able to change background opacity'))
+            return
+        os_window_id = window.os_window_id
+        current_opacity = background_opacity_of(os_window_id)
+        target_opacity = float(opacity)
+        # GLFW represents opacity as a float internally, so opacity values
+        # don't precisely roundtrip when set
+        if abs(current_opacity - target_opacity) <= 0.001:
+            fin_opacity = get_options().background_opacity
+        else:
+            fin_opacity = target_opacity
+        self._set_os_window_background_opacity(os_window_id, fin_opacity)
+
     @property
     def active_tab_manager(self) -> TabManager | None:
         os_window_id = current_focused_os_window_id()
