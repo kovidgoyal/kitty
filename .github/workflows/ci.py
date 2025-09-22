@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tarfile
 import time
+from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
@@ -187,8 +188,13 @@ def install_grype() -> str:
     rq = Request('https://api.github.com/repos/anchore/grype/releases/latest', headers={
         'Accept': 'application/vnd.github.v3+json',
     })
-    with urlopen(rq) as f:
-        m = json.loads(f.read())
+    try:
+        with urlopen(rq) as f:
+            m = json.loads(f.read())
+    except URLError:
+        time.sleep(1)
+        with urlopen(rq) as f:
+            m = json.loads(f.read())
     for asset in m['assets']:
         if asset['name'].endswith('_linux_amd64.tar.gz'):
             url = asset['browser_download_url']
