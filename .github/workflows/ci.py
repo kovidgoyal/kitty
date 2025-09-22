@@ -68,7 +68,8 @@ def download_with_retry(url: str | Request, count: int = 5) -> bytes:
     for i in range(count):
         try:
             print('Downloading', url, flush=True)
-            ans: bytes = urlopen(url).read()
+            with urlopen(url) as f:
+                ans: bytes = f.read()
             return ans
         except Exception as err:
             if i >= count - 1:
