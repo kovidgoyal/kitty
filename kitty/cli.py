@@ -593,7 +593,7 @@ PreparsedCLIFlags = tuple[dict[str, tuple[Any, bool]], list[str]]
 
 def apply_preparsed_cli_flags(
     preparsed_from_c: PreparsedCLIFlags, ans: Any, create_oc: Callable[[], Options],
-    track_seen_options: set[str] | None = None
+    track_seen_options: dict[str, Any] | None = None
 ) -> list[str]:
     for key, (val, is_seen) in preparsed_from_c[0].items():
         if key == 'help' and is_seen and val:
@@ -601,14 +601,14 @@ def apply_preparsed_cli_flags(
         elif key == 'version' and is_seen and val:
             create_oc().handle_version()
         if is_seen and track_seen_options is not None:
-            track_seen_options.add(key)
+            track_seen_options[key] = val
         setattr(ans, key, val)
     return preparsed_from_c[1]
 
 
 def parse_cmdline_inner(
         args: list[str], oc: Options, disabled: OptionSpecSeq, names_map: dict[str, OptionDict],
-        values_map: dict[str, OptionDict], ans: Any, track_seen_options: set[str] | None = None
+        values_map: dict[str, OptionDict], ans: Any, track_seen_options: dict[str, Any] | None = None
 ) -> list[str]:
     preparsed = parse_cli_from_spec(args, names_map, values_map)
     leftover_args = apply_preparsed_cli_flags(preparsed, ans, lambda: oc, track_seen_options)
@@ -620,7 +620,7 @@ def parse_cmdline_inner(
 
 def parse_cmdline(
     oc: Options, disabled: OptionSpecSeq, ans: Any, args: list[str] | None = None,
-    track_seen_options: set[str] | None = None
+    track_seen_options: dict[str, Any] | None = None
 ) -> list[str]:
     names_map = oc.names_map.copy()
     values_map = oc.values_map.copy()
@@ -677,7 +677,7 @@ def parse_args(
     appname: str | None = None,
     result_class: type[T] | None = None,
     preparsed_from_c: PreparsedCLIFlags | None = None,
-    track_seen_options: set[str] | None = None,
+    track_seen_options: dict[str, Any] | None = None,
 ) -> tuple[T, list[str]]:
     if result_class is not None:
         ans = result_class()

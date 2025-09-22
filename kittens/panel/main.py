@@ -5,7 +5,7 @@ import os
 import sys
 from contextlib import suppress
 from functools import partial
-from typing import Iterable, Mapping, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
@@ -46,7 +46,7 @@ def panel_kitten_options_spec() -> str:
     return ans
 
 
-def parse_panel_args(args: list[str], track_seen_options: set[str] | None = None) -> tuple[PanelCLIOptions, list[str]]:
+def parse_panel_args(args: list[str], track_seen_options: dict[str, Any] | None = None) -> tuple[PanelCLIOptions, list[str]]:
     return parse_args(
         args, panel_kitten_options_spec, usage, help_text, 'kitty +kitten panel',
         result_class=PanelCLIOptions, track_seen_options=track_seen_options)
