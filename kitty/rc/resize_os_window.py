@@ -151,10 +151,10 @@ using this option means that you will not be notified of failures.
                         if existing is None:
                             raise RemoteControlErrorWithoutTraceback(
                                 f'The OS Window {os_window_id} has no panel configuration')
-                        for option in seen_options.keys():
+                        for option in seen_options:
                             for config in cli_option_to_lsc_configs_map[option]:
                                 existing[config] = getattr(lsc, config)
-                        if seen_options.get('edge', None) == 'background':
+                        if seen_options.get('edge') == 'background':
                             existing['type'] = GLFW_LAYER_SHELL_BACKGROUND
                         if existing['hide_on_focus_loss']:
                             existing['focus_policy'] = GLFW_FOCUS_ON_DEMAND
