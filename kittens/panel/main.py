@@ -116,9 +116,10 @@ def cli_option_to_lsc_configs_map() -> dict[str, tuple[str, ...]]:
 
 def incrementally_update_layer_shell_config(existing: dict[str, Any], cli_options: Iterable[str]) -> LayerShellConfig:
     seen_options: dict[str, Any] = {}
+    cli_options = [('' if x.startswith('--') else '--') + x for x in cli_options]
     try:
         try:
-            opts, _ = parse_panel_args(list(cli_options), track_seen_options=seen_options)
+            opts, _ = parse_panel_args(cli_options, track_seen_options=seen_options)
         except SystemExit as e:
             raise ValueError(str(e))
         lsc = layer_shell_config(opts)
