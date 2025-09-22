@@ -3,9 +3,10 @@
 
 import os
 import sys
+from collections import defaultdict
 from contextlib import suppress
 from functools import partial
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, DefaultDict, Iterable, Mapping, Sequence
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
@@ -96,22 +97,22 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
 
 
 @run_once
-def cli_option_to_lsc_configs_map() -> dict[str, tuple[str, ...]]:
-    return {
-        'lines': ('y_size_in_cells', 'y_size_in_pixels'),
-        'columns': ('x_size_in_cells', 'x_size_in_pixels'),
-        'margin_top': ('requested_top_margin',),
-        'margin_left': ('requested_left_margin',),
-        'margin_bottom': ('requested_bottom_margin',),
-        'margin_right': ('requested_right_margin',),
-        'edge': ('edge',),
-        'layer': ('type',),
-        'output_name': ('output_name',),
-        'focus_policy': ('focus_policy',),
-        'exclusive_zone': ('requested_exclusive_zone',),
-        'override_exclusive_zone': ('override_exclusive_zone',),
-        'hide_on_focus_loss': ('hide_on_focus_loss',)
-    }
+def cli_option_to_lsc_configs_map() -> DefaultDict[str, tuple[str, ...]]:
+    return defaultdict(tuple,
+        lines=('y_size_in_cells', 'y_size_in_pixels'),
+        columns=('x_size_in_cells', 'x_size_in_pixels'),
+        margin_top=('requested_top_margin',),
+        margin_left=('requested_left_margin',),
+        margin_bottom=('requested_bottom_margin',),
+        margin_right=('requested_right_margin',),
+        edge=('edge',),
+        layer=('type',),
+        output_name=('output_name',),
+        focus_policy=('focus_policy',),
+        exclusive_zone=('requested_exclusive_zone',),
+        override_exclusive_zone=('override_exclusive_zone',),
+        hide_on_focus_loss=('hide_on_focus_loss',)
+    )
 
 
 def incrementally_update_layer_shell_config(existing: dict[str, Any], cli_options: Iterable[str]) -> LayerShellConfig:
