@@ -64,9 +64,20 @@ def run(*a: str, print_crash_reports: bool = False) -> None:
         raise SystemExit(f'The following process failed with exit code: {ret}:\n{cmd}')
 
 
+def download_with_retry(url_or_rq: str | Request) -> bytes:
+    ans: bytes = b''
+    try:
+        with urlopen(url_or_rq) as f:
+            ans = f.read()
+    except URLError:
+        time.sleep(1)
+        with urlopen(url_or_rq) as f:
+            ans = f.read()
+    return ans
+
+
 def install_fonts() -> None:
-    with urlopen(FONTS_URL) as f:
-        data = f.read()
+    data = download_with_retry(FONTS_URL)
     fonts_dir = os.path.expanduser('~/Library/Fonts' if is_macos else '~/.local/share/fonts')
     os.makedirs(fonts_dir, exist_ok=True)
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
@@ -74,8 +85,7 @@ def install_fonts() -> None:
             tf.extractall(fonts_dir, filter='fully_trusted')
         except TypeError:
             tf.extractall(fonts_dir)
-    with urlopen(NERD_URL) as f:
-        data = f.read()
+    data = download_with_retry(NERD_URL)
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
         try:
             tf.extractall(fonts_dir, filter='fully_trusted')
@@ -164,8 +174,7 @@ def install_bundle(dest: str = '', which: str = '') -> None:
     os.makedirs(dest, exist_ok=True)
     os.chdir(dest)
     which = which or ('macos' if is_macos else 'linux')
-    with urlopen(BUNDLE_URL.format(which)) as f:
-        data = f.read()
+    data = download_with_retry(BUNDLE_URL.format(which))
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
         try:
             tf.extractall(filter='fully_trusted')
@@ -188,13 +197,7 @@ def install_grype() -> str:
     rq = Request('https://api.github.com/repos/anchore/grype/releases/latest', headers={
         'Accept': 'application/vnd.github.v3+json',
     })
-    try:
-        with urlopen(rq) as f:
-            m = json.loads(f.read())
-    except URLError:
-        time.sleep(1)
-        with urlopen(rq) as f:
-            m = json.loads(f.read())
+    m = json.loads(download_with_retry(rq))
     for asset in m['assets']:
         if asset['name'].endswith('_linux_amd64.tar.gz'):
             url = asset['browser_download_url']
@@ -202,8 +205,7 @@ def install_grype() -> str:
     else:
         raise ValueError('Could not find linux binary for grype')
     os.makedirs(dest, exist_ok=True)
-    with urlopen(url) as f:
-        data = f.read()
+    data = download_with_retry(url)
     with tarfile.open(fileobj=io.BytesIO(data), mode='r') as tf:
         tf.extract('grype', path=dest, filter='fully_trusted')
     return os.path.join(dest, 'grype')
