@@ -799,12 +799,11 @@ draw_parametrized_curve_with_derivative_and_antialiasing(
 
 static void
 draw_parametrized_curve_with_derivative(
-    Canvas *self, void *curve_data, double line_width, curve_func xfunc, curve_func yfunc, curve_func x_prime, curve_func y_prime,
-    int x_offset, int yoffset, double thickness_fudge
+    Canvas *self, void *curve_data, double line_width, curve_func xfunc, curve_func yfunc, curve_func x_prime, curve_func y_prime
 ) {
     if (line_width <= 2 * self->supersample_factor) {
         // The old algorithm looks better for very thin lines
-        draw_parametrized_thin_curve(self, line_width, xfunc(curve_data, t), yfunc(curve_data, t), x_offset, y_offset);
+        draw_parametrized_thin_curve(self, line_width, xfunc(curve_data, t), yfunc(curve_data, t), 0, 0);
         return;
     }
     double larger_dim = fmax(self->height, self->width);
@@ -812,7 +811,7 @@ draw_parametrized_curve_with_derivative(
     const double min_step = step / 100., max_step = step;
     line_width = fmax(1., line_width);
     const double half_thickness = line_width / 2.0;
-    const double distance_limit = half_thickness + thickness_fudge;
+    const double distance_limit = half_thickness;
     double t = 0;
     while(true) {
         double x = xfunc(curve_data, t), y = yfunc(curve_data, t);
@@ -820,7 +819,7 @@ draw_parametrized_curve_with_derivative(
             for (double dx = -line_width; dx <= line_width; dx++) {
                 double px = x + dx, py = y + dy;
                 double dist = distance(x, y, px, py);
-                int row = (int)py + yoffset, col = (int)px + x_offset;
+                int row = (int)py, col = (int)px;
                 if (dist > distance_limit || row >= (int)self->height || row < 0 || col >= (int)self->width || col < 0) continue;
                 const int offset = row * self->width + col;
                 double alpha = 1.0 - (dist / half_thickness);
@@ -844,7 +843,7 @@ rounded_separator(Canvas *self, uint level, bool left) {
     int c1x = find_bezier_for_D(minus(self->width, gap), self->height);
     CubicBezier cb = {.end={.y=self->height - 1}, .c1={.x=c1x}, .c2={.x=c1x, .y=self->height - 1}};
     double line_width = thickness_as_float(self, level, true);
-#define d draw_parametrized_curve_with_derivative(self, &cb, line_width, bezier_x, bezier_y, bezier_prime_x, bezier_prime_y, 0, 0, 0)
+#define d draw_parametrized_curve_with_derivative(self, &cb, line_width, bezier_x, bezier_y, bezier_prime_x, bezier_prime_y)
     if (left) { d; } else { mirror_horizontally(d); }
 #undef d
 }
@@ -887,7 +886,7 @@ spinner(Canvas *self, uint level, double start_degrees, double end_degrees) {
     double line_width = thickness_as_float(self, level, true);
     double radius = fmax(0, fmin(x, y) - line_width / 2.0);
     Circle c = circle(x, y, radius, start_degrees, end_degrees);
-    draw_parametrized_curve_with_derivative(self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y, 0, 0, 0);
+    draw_parametrized_curve_with_derivative(self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y);
 }
 
 static void
@@ -918,7 +917,7 @@ draw_fish_eye(Canvas *self, uint level UNUSED) {
     double line_width = fmax(1. * self->supersample_factor, (radius - central_radius) / 2.5);
     radius = fmax(0, fmin(x, y) - line_width / 2.);
     Circle c = circle(x, y, radius, 0, 360);
-    draw_parametrized_curve_with_derivative(self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y, 0, 0, 0);
+    draw_parametrized_curve_with_derivative(self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y);
 }
 
 static void
