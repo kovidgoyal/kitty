@@ -1971,6 +1971,40 @@ screen_for_window_center(_GLFWwindow *window) {
     return NSScreen.mainScreen;
 }
 
+static NSScreen*
+active_screen(void) {
+    NSPoint mouseLocation = [NSEvent mouseLocation];
+    NSArray<NSScreen *> *screens = [NSScreen screens];
+    for (NSScreen *screen in screens) {
+        if (NSPointInRect(mouseLocation, [screen frame])) {
+            return screen;
+        }
+    }
+    // As a fallback, return the main screen
+    return [NSScreen mainScreen];
+}
+
+static bool
+is_same_screen(NSScreen *screenA, NSScreen * screenB) {
+    if (screenA == screenB) return true;
+    NSDictionary<NSDeviceDescriptionKey, id> *deviceDescriptionA = [screenA deviceDescription];
+    NSDictionary<NSDeviceDescriptionKey, id> *deviceDescriptionB = [screenB deviceDescription];
+    NSNumber *screenNumberA = deviceDescriptionA[@"NSScreenNumber"];
+    NSNumber *screenNumberB = deviceDescriptionB[@"NSScreenNumber"];
+    return [screenNumberA isEqualToNumber:screenNumberB];
+}
+
+static void
+move_window_to_screen(_GLFWwindow *window, NSScreen *target) {
+    NSRect screenFrame = [target visibleFrame];
+    NSRect windowFrame = [window->ns.object frame];
+    CGFloat newX = NSMidX(screenFrame) - (windowFrame.size.width / 2.0);
+    CGFloat newY = NSMidY(screenFrame) - (windowFrame.size.height / 2.0);
+    NSRect newWindowFrame = NSMakeRect(newX, newY, windowFrame.size.width, windowFrame.size.height);
+    [window->ns.object setFrame:newWindowFrame display:NO animate:NO];
+    if (window->ns.layer_shell.is_active) _glfwPlatformSetLayerShellConfig(window, NULL);
+}
+
 const GLFWLayerShellConfig*
 _glfwPlatformGetLayerShellConfig(_GLFWwindow *window) {
     return &window->ns.layer_shell.config;
@@ -2257,10 +2291,18 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
     }
 }
 
-void _glfwPlatformShowWindow(_GLFWwindow* window)
+void _glfwPlatformShowWindow(_GLFWwindow* window, bool move_to_active_screen)
 {
     const bool is_background = window->ns.layer_shell.is_active && window->ns.layer_shell.config.type == GLFW_LAYER_SHELL_BACKGROUND;
     NSWindow *nw = window->ns.object;
+    if (move_to_active_screen) {
+        NSScreen *current_screen = screen_for_window_center(window);
+        NSScreen *target_screen = active_screen();
+        if (!is_same_screen(current_screen, target_screen)) {
+            debug_rendering("Moving OS window %llu to active screen\n", window->id);
+            move_window_to_screen(window, target_screen);
+        }
+    }
     if (is_background) {
         [nw orderBack:nil];
     } else {

@@ -1756,7 +1756,7 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
     }
 }
 
-void _glfwPlatformShowWindow(_GLFWwindow* window)
+void _glfwPlatformShowWindow(_GLFWwindow* window, bool move_to_active_screen UNUSED)
 {
     if (!window->wl.visible) {
         if (!window->wl.created) {

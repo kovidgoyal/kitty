@@ -1974,7 +1974,7 @@ typedef void (*glfwMaximizeWindow_func)(GLFWwindow*);
 GFW_EXTERN glfwMaximizeWindow_func glfwMaximizeWindow_impl;
 #define glfwMaximizeWindow glfwMaximizeWindow_impl
 
-typedef void (*glfwShowWindow_func)(GLFWwindow*);
+typedef void (*glfwShowWindow_func)(GLFWwindow*, bool);
 GFW_EXTERN glfwShowWindow_func glfwShowWindow_impl;
 #define glfwShowWindow glfwShowWindow_impl
 

@@ -2061,7 +2061,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window, const _GLFWwndconfig* wndconf
 
     if (window->monitor)
     {
-        _glfwPlatformShowWindow(window);
+        _glfwPlatformShowWindow(window, false);
         updateWindowMode(window);
         acquireMonitor(window);
     }
@@ -2458,7 +2458,7 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
     XFlush(_glfw.x11.display);
 }
 
-void _glfwPlatformShowWindow(_GLFWwindow* window)
+void _glfwPlatformShowWindow(_GLFWwindow* window, bool move_to_active_screen UNUSED)
 {
     if (_glfwPlatformWindowVisible(window))
         return;

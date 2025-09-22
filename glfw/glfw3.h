@@ -3579,7 +3579,7 @@ GLFWAPI void glfwMaximizeWindow(GLFWwindow* window);
  *
  *  @ingroup window
  */
-GLFWAPI void glfwShowWindow(GLFWwindow* window);
+GLFWAPI void glfwShowWindow(GLFWwindow* window, bool move_to_active_screen);
 
 /*! @brief Hides the specified window.
  *

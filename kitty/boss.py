@@ -957,7 +957,7 @@ class Boss:
 
     def quick_access_terminal_invoked(self) -> None:
         for os_window_id in self.os_window_map:
-            toggle_os_window_visibility(os_window_id)
+            toggle_os_window_visibility(os_window_id, move_to_active_screen=True)
 
     def handle_remote_cmd(self, cmd: memoryview, window: Window | None = None) -> None:
         response = self._handle_remote_command(cmd, window)

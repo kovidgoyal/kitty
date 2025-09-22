@@ -155,6 +155,9 @@ Detailed list of changes
   it was last active on, after full screening some application causes the quick
   access terminal to appear on the old space (:iss:`8740`)
 
+- macOS: When toggling open the quick access terminal move it to the currently
+  active monitor (the monitor with the mouse pointer on it) (:iss:`9003`)
+
 - macOS: Fix closing an OS Window when another OS Window is minimized causing
   the minimized window to be un-minimized (:iss:`8913`)
 

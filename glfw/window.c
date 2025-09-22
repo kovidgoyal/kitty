@@ -279,7 +279,7 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height, const char* title, G
     {
         if (wndconfig.visible)
         {
-            _glfwPlatformShowWindow(window);
+            _glfwPlatformShowWindow(window, false);
 #ifndef _GLFW_WAYLAND
             if (wndconfig.focused)
                 _glfwPlatformFocusWindow(window);
@@ -855,7 +855,7 @@ GLFWAPI void glfwMaximizeWindow(GLFWwindow* handle)
     _glfwPlatformMaximizeWindow(window);
 }
 
-GLFWAPI void glfwShowWindow(GLFWwindow* handle)
+GLFWAPI void glfwShowWindow(GLFWwindow* handle, bool move_to_active_screen)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     assert(window != NULL);
@@ -865,7 +865,7 @@ GLFWAPI void glfwShowWindow(GLFWwindow* handle)
     if (window->monitor)
         return;
 
-    _glfwPlatformShowWindow(window);
+    _glfwPlatformShowWindow(window, move_to_active_screen);
 
 #ifndef _GLFW_WAYLAND
     if (window->focusOnShow)

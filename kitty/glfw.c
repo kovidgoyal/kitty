@@ -586,9 +586,9 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset, int flags, int mo
 static id_type focus_counter = 0;
 
 static void
-set_os_window_visibility(OSWindow *w, int set_visible) {
+set_os_window_visibility(OSWindow *w, int set_visible, bool move_to_active_screen) {
     if (set_visible) {
-        glfwShowWindow(w->handle);
+        glfwShowWindow(w->handle, move_to_active_screen);
         w->needs_render = true;
         w->keep_rendering_till_swap = 256;  // try this many times
         request_tick_callback();
@@ -598,7 +598,7 @@ set_os_window_visibility(OSWindow *w, int set_visible) {
 static void
 update_os_window_visibility_based_on_focus(id_type timer_id UNUSED, void*d) {
     OSWindow * osw = os_window_for_id((uintptr_t)d);
-    if (osw && osw->hide_on_focus_loss && !osw->is_focused) set_os_window_visibility(osw, 0);
+    if (osw && osw->hide_on_focus_loss && !osw->is_focused) set_os_window_visibility(osw, 0, false);
 }
 
 static void
@@ -1458,7 +1458,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (pret == NULL) return NULL;
     Py_DECREF(pret);
     if (x != INT_MIN && y != INT_MIN) glfwSetWindowPos(glfw_window, x, y);
-    if (!global_state.is_apple && !global_state.is_wayland && window_state != WINDOW_HIDDEN) glfwShowWindow(glfw_window);
+    if (!global_state.is_apple && !global_state.is_wayland && window_state != WINDOW_HIDDEN) glfwShowWindow(glfw_window, false);
     if (global_state.is_wayland || global_state.is_apple) {
         float n_xscale, n_yscale;
         double n_xdpi, n_ydpi;
@@ -1551,7 +1551,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (window_state != WINDOW_NORMAL) change_state_for_os_window(w, window_state);
 #ifdef __APPLE__
     // macOS: Show the window after it is ready
-    if (window_state != WINDOW_HIDDEN) glfwShowWindow(glfw_window);
+    if (window_state != WINDOW_HIDDEN) glfwShowWindow(glfw_window, false);
 #endif
     w->redraw_count = 1;
     debug("OS Window created\n");
@@ -2550,16 +2550,18 @@ is_layer_shell_supported(PyObject *self UNUSED, PyObject *args UNUSED) {
 }
 
 static PyObject*
-toggle_os_window_visibility(PyObject *self UNUSED, PyObject *args) {
+toggle_os_window_visibility(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     unsigned long long wid;
-    int set_visible = -1;
-    if (!PyArg_ParseTuple(args, "K|p", &wid, &set_visible)) return NULL;
+    int set_visible = -1, move_to_active_screen = 0;
+    static const char* kwlist[] = {"os_window_id", "visible", "move_to_active_screen", NULL};
+    if (!PyArg_ParseTupleAndKeywords(
+        args, kw, "K|pp", (char**)kwlist, &wid, &set_visible, &move_to_active_screen)) return NULL;
     OSWindow *w = os_window_for_id(wid);
     if (!w || !w->handle) Py_RETURN_FALSE;
     bool is_visible = glfwGetWindowAttrib(w->handle, GLFW_VISIBLE) != 0;
     if (set_visible == -1) set_visible = !is_visible;
     else if (set_visible == is_visible) Py_RETURN_FALSE;
-    set_os_window_visibility(w, set_visible);
+    set_os_window_visibility(w, set_visible, move_to_active_screen);
     Py_RETURN_TRUE;
 }
 
@@ -2595,7 +2597,7 @@ grab_keyboard(PyObject *self UNUSED, PyObject *action) {
 static PyMethodDef module_methods[] = {
     METHODB(set_custom_cursor, METH_VARARGS),
     METHODB(is_css_pointer_name_valid, METH_O),
-    METHODB(toggle_os_window_visibility, METH_VARARGS),
+    {"toggle_os_window_visibility", (PyCFunction)(void (*) (void))(toggle_os_window_visibility), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(layer_shell_config_for_os_window, METH_O),
     METHODB(set_layer_shell_config, METH_VARARGS),
     METHODB(grab_keyboard, METH_O),

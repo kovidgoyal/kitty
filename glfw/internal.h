@@ -740,7 +740,7 @@ monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window);
 void _glfwPlatformIconifyWindow(_GLFWwindow* window);
 void _glfwPlatformRestoreWindow(_GLFWwindow* window);
 void _glfwPlatformMaximizeWindow(_GLFWwindow* window);
-void _glfwPlatformShowWindow(_GLFWwindow* window);
+void _glfwPlatformShowWindow(_GLFWwindow* window, bool move_to_active_screen);
 void _glfwPlatformHideWindow(_GLFWwindow* window);
 void _glfwPlatformRequestWindowAttention(_GLFWwindow* window);
 int _glfwPlatformWindowBell(_GLFWwindow* window);
