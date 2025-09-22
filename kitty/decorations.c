@@ -413,6 +413,12 @@ half_vline(Canvas *self, uint level, bool bottom_half, uint extend_by) {
 }
 
 static void
+fractional_vline(Canvas *self, uint level, uint y1, uint y2) {
+    draw_vline(self, y1, y2, half_width(self), level);
+}
+
+
+static void
 hline(Canvas *self, uint level) {
     half_hline(self, level, false, 0);
     half_hline(self, level, true, 0);
@@ -724,6 +730,71 @@ static bool cmpr_point(Point a, Point b) { return a.val == b.val; }
         } \
     } \
     vt_cleanup(&seen); \
+}
+
+static void
+draw_parametrized_curve_with_derivative_and_antialiasing(
+    Canvas *self, void *curve_data, double line_width, curve_func xfunc, curve_func yfunc,
+    curve_func x_prime, curve_func y_prime, double x_offset, double y_offset
+) {
+    line_width = fmax(1., line_width);
+    double half_thickness = line_width / 2.0;
+    uint i=0, larger_dim = MAX(self->height, self->width);
+    double t = 0;
+    double step = 1.0 / larger_dim;
+    uint cap = 2 * larger_dim;
+    const double min_step = step / 1000., max_step = step;
+    RAII_ALLOC(double, x_samples, malloc(sizeof(double) * cap));
+    RAII_ALLOC(double, y_samples, malloc(sizeof(double) * cap));
+    while (true) {
+        x_samples[i] = xfunc(curve_data, t) + x_offset;
+        y_samples[i] = yfunc(curve_data, t) + y_offset;
+        if (t >= 1.0) break;
+        // Dynamically adjust step size based on curve's derivative
+        double dx = x_prime(curve_data, t), dy = y_prime(curve_data, t);
+        double d = sqrt(dx * dx + dy * dy);
+        step = 1.0 / fmax(1e-6, d);
+        step = fmax(min_step, fmin(step, max_step));
+        t = fmin(t + step, 1.0);
+        i++;
+        if (i >= cap) {
+            cap *= 2;
+            x_samples = realloc(x_samples, sizeof(x_samples[0]) * cap);
+            y_samples = realloc(y_samples, sizeof(x_samples[0]) * cap);
+        }
+    }
+    const uint num_samples = i;
+    for (uint py = 0; py < self->height; py++) {
+        uint ypos = self->width * py;
+        for (uint px = 0; px < self->width; px++) {
+            // Center of the current pixel
+            double pixel_center_x = (double)px + 0.5;
+            double pixel_center_y = (double)py + 0.5;
+
+            double min_dist_sq = -1.0;
+
+            // Find the closest point on the curve to the pixel center by sampling the curve.
+            for (uint i = 0; i < num_samples; ++i) {
+                double dx = x_samples[i] - pixel_center_x;
+                double dy = y_samples[i] - pixel_center_y;
+                double dist_sq = dx * dx + dy * dy;
+                if (min_dist_sq < 0 || dist_sq < min_dist_sq) min_dist_sq = dist_sq;
+            }
+
+            double distance = sqrt(min_dist_sq);
+
+            // Calculate alpha based on the distance from the curve.
+            // This creates the anti-aliased edge. The distance from the center
+            // of the pixel to the edge of the stroke is used.
+            // We assume a pixel has a width of 1.0 for this calculation.
+            double alpha_unclamped = half_thickness - distance + 0.5;
+
+            uint offset = ypos + px;
+            uint8_t old_alpha = self->mask[offset];
+            double alpha = MAX(0.0, MIN(alpha_unclamped, 1.0));
+            self->mask[offset] = (uint8_t)(alpha * 255 + (1 - alpha) * old_alpha);  // alpha blend
+        }
+    }
 }
 
 static void
@@ -1333,12 +1404,16 @@ rectcircle(Canvas *self, Corner which) {
 static void
 rounded_corner(Canvas *self, uint level, Corner which) {
     Rectircle r = rectcircle(self, which);
+    double line_width = thickness_as_float(self, level, true);
     uint cell_width_is_odd = (self->width / self->supersample_factor) & 1;
     uint cell_height_is_odd = (self->height / self->supersample_factor) & 1;
     // adjust for odd cell dimensions to line up with box drawing lines
-    int x_offset = -(cell_width_is_odd & 1), y_offset = -(cell_height_is_odd & 1);
-    double line_width = thickness_as_float(self, level, true);
-    draw_parametrized_curve_with_derivative(self, &r, line_width, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, y_offset, 0.1);
+    double x_offset = cell_width_is_odd ? 0 : 0.5, y_offset = cell_height_is_odd ? 0 : 0.5;
+    draw_parametrized_curve_with_derivative_and_antialiasing(
+        self, &r, line_width, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, y_offset);
+    // make the vertical stems be same brightness as straightline segments
+    if (which & TOP_EDGE) fractional_vline(self, level, self->height - self->width / 2, self->height);
+    else fractional_vline(self, level, 0, self->width / 2);
 }
 
 static void
@@ -1509,7 +1584,8 @@ sextant(Canvas *self, uint which) {
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y, double scale) {
     Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u, .scale=scale}, ss = canvas;
-    ss.mask = buf + width*height; ss.supersample_factor = SUPERSAMPLE_FACTOR; ss.width *= SUPERSAMPLE_FACTOR; ss.height *= SUPERSAMPLE_FACTOR;
+    ss.mask = buf + width*height; ss.supersample_factor = SUPERSAMPLE_FACTOR;
+    ss.width *= SUPERSAMPLE_FACTOR; ss.height *= SUPERSAMPLE_FACTOR;
     fill_canvas(&canvas, 0);
     Canvas *c = &canvas;
 
@@ -1790,31 +1866,31 @@ START_ALLOW_CASE_RANGE
         C(L'', fading_vline, 1, 5, BOTTOM_EDGE);
         C(L'', fading_vline, 1, 5, TOP_EDGE);
 
-        S(L'', rounded_corner, 1, TOP_LEFT);
-        S(L'', rounded_corner, 1, TOP_RIGHT);
-        S(L'', rounded_corner, 1, BOTTOM_LEFT);
-        S(L'', rounded_corner, 1, BOTTOM_RIGHT);
+        C(L'', rounded_corner, 1, TOP_LEFT);
+        C(L'', rounded_corner, 1, TOP_RIGHT);
+        C(L'', rounded_corner, 1, BOTTOM_LEFT);
+        C(L'', rounded_corner, 1, BOTTOM_RIGHT);
 
-        SS(L'', vline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT));
-        SS(L'', vline(c, 1); rounded_corner(c, 1, TOP_LEFT));
-        SS(L'', rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, TOP_LEFT));
-        SS(L'', vline(c, 1); rounded_corner(c, 1, BOTTOM_RIGHT));
-        SS(L'', vline(c, 1); rounded_corner(c, 1, TOP_RIGHT));
-        SS(L'', rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_RIGHT));
-        SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_RIGHT));
-        SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_LEFT));
-        SS(L'', rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, TOP_RIGHT));
-        SS(L'', hline(c, 1); rounded_corner(c, 1, BOTTOM_RIGHT));
-        SS(L'', hline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT));
-        SS(L'', rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
-        SS(L'', vline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
-        SS(L'', vline(c, 1); rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, TOP_RIGHT));
-        SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_RIGHT));
-        SS(L'', hline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, TOP_LEFT));
-        SS(L'', vline(c, 1); rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
-        SS(L'', vline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_LEFT));
-        SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
-        SS(L'', hline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_LEFT));
+        CC(L'', vline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT));
+        CC(L'', vline(c, 1); rounded_corner(c, 1, TOP_LEFT));
+        CC(L'', rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, TOP_LEFT));
+        CC(L'', vline(c, 1); rounded_corner(c, 1, BOTTOM_RIGHT));
+        CC(L'', vline(c, 1); rounded_corner(c, 1, TOP_RIGHT));
+        CC(L'', rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        CC(L'', hline(c, 1); rounded_corner(c, 1, TOP_RIGHT));
+        CC(L'', hline(c, 1); rounded_corner(c, 1, TOP_LEFT));
+        CC(L'', rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, TOP_RIGHT));
+        CC(L'', hline(c, 1); rounded_corner(c, 1, BOTTOM_RIGHT));
+        CC(L'', hline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT));
+        CC(L'', rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        CC(L'', vline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        CC(L'', vline(c, 1); rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, TOP_RIGHT));
+        CC(L'', hline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        CC(L'', hline(c, 1); rounded_corner(c, 1, BOTTOM_LEFT), rounded_corner(c, 1, TOP_LEFT));
+        CC(L'', vline(c, 1); rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        CC(L'', vline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_LEFT));
+        CC(L'', hline(c, 1); rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
+        CC(L'', hline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_LEFT));
 
 #define P(ch, lines) S(ch, commit, lines, true); S(ch+1, commit, lines, false);
         P(L'', 0);
@@ -1837,10 +1913,10 @@ START_ALLOW_CASE_RANGE
 #define Q(ch, which) C(ch, corner, t, t, which); C(ch + 1, corner, f, t, which); C(ch + 2, corner, t, f, which); C(ch + 3, corner, f, f, which);
         Q(L'┌', BOTTOM_RIGHT); Q(L'┐', BOTTOM_LEFT); Q(L'└', TOP_RIGHT); Q(L'┘', TOP_LEFT);
 #undef Q
-        S(L'╭', rounded_corner, 1, TOP_LEFT);
-        S(L'╮', rounded_corner, 1, TOP_RIGHT);
-        S(L'╰', rounded_corner, 1, BOTTOM_LEFT);
-        S(L'╯', rounded_corner, 1, BOTTOM_RIGHT);
+        C(L'╭', rounded_corner, 1, TOP_LEFT);
+        C(L'╮', rounded_corner, 1, TOP_RIGHT);
+        C(L'╰', rounded_corner, 1, BOTTOM_LEFT);
+        C(L'╯', rounded_corner, 1, BOTTOM_RIGHT);
 
         case L'┼' ... L'┼' + 15: cross(c, ch - L'┼'); break;
 #define T(q, func) case q ... q + 7: func(c, q, ch - q); break;
