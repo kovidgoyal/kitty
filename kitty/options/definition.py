@@ -529,6 +529,14 @@ representing which line should be at the top of the screen. Similarly
 CURSOR_LINE and CURSOR_COLUMN will be replaced by the current cursor position or
 set to 0 if there is no cursor, for example, when showing the last command
 output.
+
+If you would rather use neovim to view the scrollback, use something like this::
+
+    scrollback_pager nvim --cmd 'set eventignore=FileType' +'nnoremap q ZQ' +'call nvim_open_term(0, {})' +'set nomodified nolist' +'$' -
+
+The above works for neovim 0.12 and newer. There is also a dedicated plugin
+:link:`kitty-scrollback.nvim <https://github.com/mikesmithgh/kitty-scrollback.nvim>`
+you can use with more features that works with older neovim as well.
 '''
     )
 

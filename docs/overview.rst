@@ -219,7 +219,7 @@ arbitrary, command running in a new :term:`window`, :term:`tab` or
 Would open the scrollback buffer in a new :term:`window` when you press the
 :kbd:`F1` key. See :sc:`show_scrollback <show_scrollback>` for details.
 
-If you want to use it with an editor such as :program:`vim` to get more powerful
+If you want to use it with an editor such as :program:`nvim` to get more powerful
 features, see for example, `kitty-scrollback.nvim
 <https://github.com/mikesmithgh/kitty-scrollback.nvim>`__ or `kitty-grab <https://github.com/yurikhan/kitty_grab>`__
 or see more tips for using various editor programs, in :iss:`this thread <719>`.
