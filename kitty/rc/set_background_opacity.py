@@ -70,7 +70,10 @@ equal to the specified value, otherwise it will be set to the specified value.
             val: float = payload_get('opacity') or 0.
             if payload_get('toggle'):
                 current = background_opacity_of(os_window_id)
-                if current == val:
+                # GLFW represents opacity as a float internally, but python's
+                # "float" type has double precision, so we can't rely on precise
+                # equality here
+                if abs(current - val) <= 0.0001:
                     val = opts.background_opacity
             boss._set_os_window_background_opacity(os_window_id, val)
         return None
