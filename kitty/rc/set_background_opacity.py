@@ -73,7 +73,7 @@ equal to the specified value, otherwise it will be set to the specified value.
                 # GLFW represents opacity as a float internally, but python's
                 # "float" type has double precision, so we can't rely on precise
                 # equality here
-                if abs(current - val) <= 0.0001:
+                if current is not None and abs(current - val) <= 0.0001:
                     val = opts.background_opacity
             boss._set_os_window_background_opacity(os_window_id, val)
         return None
