@@ -232,6 +232,7 @@ typedef struct Range {
 } Range;
 
 typedef struct Limit { double upper, lower; } Limit;
+typedef struct FloatPoint { double x, y; } FloatPoint;
 
 typedef struct Canvas {
     uint8_t *mask;
@@ -744,11 +745,10 @@ draw_parametrized_curve_with_derivative_and_antialiasing(
     double step = 1.0 / larger_dim;
     uint cap = 2 * larger_dim;
     const double min_step = step / 1000., max_step = step;
-    RAII_ALLOC(double, x_samples, malloc(sizeof(double) * cap));
-    RAII_ALLOC(double, y_samples, malloc(sizeof(double) * cap));
+    RAII_ALLOC(FloatPoint, samples, malloc(sizeof(FloatPoint) * cap));
+    if (!samples) fatal("Out of memory");
     while (true) {
-        x_samples[i] = xfunc(curve_data, t) + x_offset;
-        y_samples[i] = yfunc(curve_data, t) + y_offset;
+        samples[i] = (FloatPoint){xfunc(curve_data, t) + x_offset, yfunc(curve_data, t) + y_offset};
         if (t >= 1.0) break;
         // Dynamically adjust step size based on curve's derivative
         double dx = x_prime(curve_data, t), dy = y_prime(curve_data, t);
@@ -759,8 +759,8 @@ draw_parametrized_curve_with_derivative_and_antialiasing(
         i++;
         if (i >= cap) {
             cap *= 2;
-            x_samples = realloc(x_samples, sizeof(x_samples[0]) * cap);
-            y_samples = realloc(y_samples, sizeof(x_samples[0]) * cap);
+            samples = realloc(samples, sizeof(samples[0]) * cap);
+            if (!samples) fatal("Out of memory");
         }
     }
     const uint num_samples = i;
@@ -775,8 +775,8 @@ draw_parametrized_curve_with_derivative_and_antialiasing(
 
             // Find the closest point on the curve to the pixel center by sampling the curve.
             for (uint i = 0; i < num_samples; ++i) {
-                double dx = x_samples[i] - pixel_center_x;
-                double dy = y_samples[i] - pixel_center_y;
+                double dx = samples[i].x - pixel_center_x;
+                double dy = samples[i].y - pixel_center_y;
                 double dist_sq = dx * dx + dy * dy;
                 if (min_dist_sq < 0 || dist_sq < min_dist_sq) min_dist_sq = dist_sq;
             }
