@@ -12,8 +12,7 @@ import subprocess
 import sys
 import tarfile
 import time
-from urllib.error import URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request
 
 BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
 FONTS_URL = 'https://download.calibre-ebook.com/ci/fonts.tar.xz'
@@ -64,16 +63,19 @@ def run(*a: str, print_crash_reports: bool = False) -> None:
         raise SystemExit(f'The following process failed with exit code: {ret}:\n{cmd}')
 
 
-def download_with_retry(url_or_rq: str | Request) -> bytes:
-    ans: bytes = b''
-    try:
-        with urlopen(url_or_rq) as f:
-            ans = f.read()
-    except URLError:
-        time.sleep(1)
-        with urlopen(url_or_rq) as f:
-            ans = f.read()
-    return ans
+def download_with_retry(url: str | Request, count: int = 5) -> bytes:
+    from urllib.request import urlopen
+    for i in range(count):
+        try:
+            print('Downloading', url, flush=True)
+            ans: bytes = urlopen(url).read()
+            return ans
+        except Exception as err:
+            if i >= count - 1:
+                raise
+            print(f'Download failed with error {err} retrying...', file=sys.stderr)
+            time.sleep(1)
+    return b''
 
 
 def install_fonts() -> None:
