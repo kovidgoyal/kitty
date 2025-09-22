@@ -314,26 +314,41 @@ add_vholes(Canvas *self, uint level, uint num) {
     }
 }
 
+static Range
+hline_limits(Canvas *self, uint y, uint level) {
+    uint sz = thickness(self, level, false);
+    Range r = {.start=minus(y, sz / 2)};
+    r.end = min(r.start + sz, self->height);
+    return r;
+}
 
 static void
 draw_hline(Canvas *self, uint x1, uint x2, uint y, uint level) {
     // Draw a horizontal line between [x1, x2) centered at y with the thickness given by level and self->supersample_factor
-    uint sz = thickness(self, level, false);
-    uint start = minus(y, sz / 2);
-    for (uint y = start; y < min(start + sz, self->height); y++) {
+    Range r = hline_limits(self, y, level);
+    for (uint y = r.start; y < r.end; y++) {
         uint8_t *py = self->mask + y * self->width;
         memset(py + x1, 255, minus(min(x2, self->width), x1));
     }
 }
 
+static Range
+vline_limits(Canvas *self, uint x, uint level) {
+    uint sz = thickness(self, level, true);
+    Range r = {.start = minus(x, sz / 2)};
+    r.end = min(r.start + sz, self->width);
+    return r;
+}
+
+
 static void
 draw_vline(Canvas *self, uint y1, uint y2, uint x, uint level) {
     // Draw a vertical line between [y1, y2) centered at x with the thickness given by level and self->supersample_factor
-    uint sz = thickness(self, level, true);
-    uint start = minus(x, sz / 2), end = min(start + sz, self->width), xsz = minus(end, start);
+    Range r = vline_limits(self, x, level);
+    uint xsz = minus(r.end, r.start);
     for (uint y = y1; y < min(y2, self->height); y++) {
         uint8_t *py = self->mask + y * self->width;
-        memset(py + start, 255, xsz);
+        memset(py + r.start, 255, xsz);
     }
 }
 
@@ -733,10 +748,12 @@ static bool cmpr_point(Point a, Point b) { return a.val == b.val; }
     vt_cleanup(&seen); \
 }
 
+typedef struct ClipRect { uint left, top, width, height; } ClipRect;
+
 static void
 draw_parametrized_curve_with_derivative_and_antialiasing(
     Canvas *self, void *curve_data, double line_width, curve_func xfunc, curve_func yfunc,
-    curve_func x_prime, curve_func y_prime, double x_offset, double y_offset
+    curve_func x_prime, curve_func y_prime, double x_offset, double y_offset, const ClipRect *clip_to
 ) {
     line_width = fmax(1., line_width);
     double half_thickness = line_width / 2.0;
@@ -747,6 +764,7 @@ draw_parametrized_curve_with_derivative_and_antialiasing(
     const double min_step = step / 1000., max_step = step;
     RAII_ALLOC(FloatPoint, samples, malloc(sizeof(FloatPoint) * cap));
     if (!samples) fatal("Out of memory");
+    ClipRect cr = clip_to ? *clip_to : (ClipRect){.width=self->width, .height=self->height};
     while (true) {
         samples[i] = (FloatPoint){xfunc(curve_data, t) + x_offset, yfunc(curve_data, t) + y_offset};
         if (t >= 1.0) break;
@@ -764,9 +782,9 @@ draw_parametrized_curve_with_derivative_and_antialiasing(
         }
     }
     const uint num_samples = i;
-    for (uint py = 0; py < self->height; py++) {
+    for (uint py = cr.top; py < cr.height; py++) {
         uint ypos = self->width * py;
-        for (uint px = 0; px < self->width; px++) {
+        for (uint px = cr.left; px < cr.width; px++) {
             // Center of the current pixel
             double pixel_center_x = (double)px + 0.5;
             double pixel_center_y = (double)py + 0.5;
@@ -1408,8 +1426,13 @@ rounded_corner(Canvas *self, uint level, Corner which) {
     uint cell_height_is_odd = (self->height / self->supersample_factor) & 1;
     // adjust for odd cell dimensions to line up with box drawing lines
     double x_offset = cell_width_is_odd ? 0 : 0.5, y_offset = cell_height_is_odd ? 0 : 0.5;
+    ClipRect cr = {.width=self->width, .height=self->height};
+    if (which & TOP_EDGE) cr.top = hline_limits(self, half_height(self), level).start;
+    else cr.height = hline_limits(self, half_height(self), level).end;
+    if (which & LEFT_EDGE) cr.left = vline_limits(self, half_width(self), level).start;
+    else cr.width = vline_limits(self, half_width(self), level).end;
     draw_parametrized_curve_with_derivative_and_antialiasing(
-        self, &r, line_width, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, y_offset);
+        self, &r, line_width, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, y_offset, &cr);
     // make the vertical stems be same brightness as straightline segments
     if (which & TOP_EDGE) fractional_vline(self, level, self->height - self->width / 2, self->height);
     else fractional_vline(self, level, 0, self->width / 2);
