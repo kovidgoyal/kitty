@@ -1,7 +1,13 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from kitty.fast_data_types import (
+    GLFW_FOCUS_ON_DEMAND,
+    GLFW_LAYER_SHELL_BACKGROUND,
+)
+from kitty.types import LayerShellConfig
 
 from .base import (
     MATCH_WINDOW_OPTION,
@@ -73,7 +79,7 @@ type=bool-set
 Treat the specified sizes as increments on the existing window size
 instead of absolute sizes. When using :option:`--action`=:code:`os-panel`,
 only the specified settings are changed, otherwise non-specified settings
-are reset to default.
+keep their current value.
 
 
 --self
@@ -119,23 +125,40 @@ using this option means that you will not be notified of failures.
                     if not panels:
                         raise RemoteControlErrorWithoutTraceback('Must specify at least one panel setting')
                     from kitty.launch import layer_shell_config_from_panel_opts
-                    seen_options: set[str] = set()
+                    seen_options: dict[str, Any] = {}
                     try:
                         lsc = layer_shell_config_from_panel_opts(panels, track_seen_options=seen_options)
                     except Exception as e:
                         raise RemoteControlErrorWithoutTraceback(
                             f'Invalid panel options specified: {e}')
                     if payload_get('incremental'):
+                        cli_option_to_lsc_configs_map = {
+                            'lines': ('y_size_in_cells', 'y_size_in_pixels'),
+                            'columns': ('x_size_in_cells', 'x_size_in_pixels'),
+                            'margin_top': ('requested_top_margin',),
+                            'margin_left': ('requested_left_margin',),
+                            'margin_bottom': ('requested_bottom_margin',),
+                            'margin_right': ('requested_right_margin',),
+                            'edge': ('edge',),
+                            'layer': ('type',),
+                            'output_name': ('output_name',),
+                            'focus_policy': ('focus_policy',),
+                            'exclusive_zone': ('requested_exclusive_zone',),
+                            'override_exclusive_zone': ('override_exclusive_zone',),
+                            'hide_on_focus_loss': ('hide_on_focus_loss',)
+                        }
                         existing = layer_shell_config_for_os_window(os_window_id)
                         if existing is None:
                             raise RemoteControlErrorWithoutTraceback(
                                 f'The OS Window {os_window_id} has no panel configuration')
-                        defaults = layer_shell_config_from_panel_opts(())
-                        replacements = {}
-                        for x in lsc._fields:
-                            if x not in seen_options:
-                                replacements[x] = getattr(defaults, x)
-                        lsc = lsc._replace(**replacements)
+                        for option in seen_options.keys():
+                            for config in cli_option_to_lsc_configs_map[option]:
+                                existing[config] = getattr(lsc, config)
+                        if seen_options.get('edge', None) == 'background':
+                            existing['type'] = GLFW_LAYER_SHELL_BACKGROUND
+                        if existing['hide_on_focus_loss']:
+                            existing['focus_policy'] = GLFW_FOCUS_ON_DEMAND
+                        lsc = LayerShellConfig(**existing)
                     if not set_layer_shell_config(os_window_id, lsc):
                         raise RemoteControlErrorWithoutTraceback(f'Failed to change panel configuration for OS Window {os_window_id}')
                 elif ac == 'toggle-visibility':
