@@ -30,7 +30,7 @@ from kitty.fast_data_types import (
     toggle_os_window_visibility,
 )
 from kitty.simple_cli_definitions import panel_options_spec
-from kitty.types import LayerShellConfig
+from kitty.types import LayerShellConfig, run_once
 from kitty.typing_compat import BossType
 from kitty.utils import log_error
 
@@ -93,6 +93,46 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
                             override_exclusive_zone=opts.override_exclusive_zone,
                             hide_on_focus_loss=opts.hide_on_focus_loss,
                             output_name=opts.output_name or '')
+
+
+@run_once
+def cli_option_to_lsc_configs_map() -> dict[str, tuple[str, ...]]:
+    return {
+        'lines': ('y_size_in_cells', 'y_size_in_pixels'),
+        'columns': ('x_size_in_cells', 'x_size_in_pixels'),
+        'margin_top': ('requested_top_margin',),
+        'margin_left': ('requested_left_margin',),
+        'margin_bottom': ('requested_bottom_margin',),
+        'margin_right': ('requested_right_margin',),
+        'edge': ('edge',),
+        'layer': ('type',),
+        'output_name': ('output_name',),
+        'focus_policy': ('focus_policy',),
+        'exclusive_zone': ('requested_exclusive_zone',),
+        'override_exclusive_zone': ('override_exclusive_zone',),
+        'hide_on_focus_loss': ('hide_on_focus_loss',)
+    }
+
+
+def incrementally_update_layer_shell_config(existing: dict[str, Any], cli_options: Iterable[str]) -> LayerShellConfig:
+    seen_options: dict[str, Any] = {}
+    try:
+        try:
+            opts, _ = parse_panel_args(list(cli_options), track_seen_options=seen_options)
+        except SystemExit as e:
+            raise ValueError(str(e))
+        lsc = layer_shell_config(opts)
+    except Exception as e:
+        raise ValueError(f'Invalid panel options specified: {e}')
+    lsc_cli_map = cli_option_to_lsc_configs_map()
+    for option in seen_options:
+        for config in lsc_cli_map[option]:
+            existing[config] = getattr(lsc, config)
+    if seen_options.get('edge') == 'background':
+        existing['type'] = GLFW_LAYER_SHELL_BACKGROUND
+    if existing['hide_on_focus_loss']:
+        existing['focus_policy'] = GLFW_FOCUS_ON_DEMAND
+    return LayerShellConfig(**existing)
 
 
 mtime_map: dict[str, float] = {}
