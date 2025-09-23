@@ -1,0 +1,39 @@
+name: Depscan
+on:
+    push:
+        branches: [master]
+    schedule:
+        - cron: '0 12 * * 5'
+
+env:
+    CI: 'true'
+    ASAN_OPTIONS: detect_leaks=0
+    LC_ALL: en_US.UTF-8
+    LANG: en_US.UTF-8
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
+jobs:
+    dependecy-scanner:
+        name: Scan dependencies for vulnerabilities
+        runs-on: ubuntu-latest
+        env:
+            KITTY_BUNDLE: 1
+        steps:
+          - name: Checkout source code
+            uses: actions/checkout@v5
+            with:
+              fetch-depth: 10
+              persist-credentials: false
+
+          - name: Checkout bypy
+            uses: actions/checkout@v5
+            with:
+              fetch-depth: 1
+              persist-credentials: false
+              repository: kovidgoyal/bypy
+              path: bypy-src
+
+          - name: Check dependencies
+            run: python3 .github/workflows/ci.py check-dependencies

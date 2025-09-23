@@ -199,29 +199,6 @@ jobs:
           - name: Run benchmarks
             run: ./benchmark.py
 
-    dependecy-scanner:
-        name: Scan dependencies for vulnerabilities
-        runs-on: ubuntu-latest
-        env:
-            KITTY_BUNDLE: 1
-        steps:
-          - name: Checkout source code
-            uses: actions/checkout@v5
-            with:
-              fetch-depth: 10
-              persist-credentials: false
-
-          - name: Checkout bypy
-            uses: actions/checkout@v5
-            with:
-              fetch-depth: 1
-              persist-credentials: false
-              repository: kovidgoyal/bypy
-              path: bypy-src
-
-          - name: Check dependencies
-            run: python3 .github/workflows/ci.py check-dependencies
-
     linux-dev:
         name: Test ./dev.sh and benchmark
         runs-on: ubuntu-latest
