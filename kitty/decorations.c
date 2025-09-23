@@ -933,12 +933,15 @@ static void
 draw_fish_eye(Canvas *self, uint level UNUSED) {
     double x = self->width / 2., y = self->height / 2.;
     double radius = fmin(x, y);
+    uint leftover = minus(self->height, 2*(uint)ceil(radius)) / 2;
     double central_radius = (2./3.) * radius;
     fill_circle_of_radius(self, x, y, central_radius, 255);
     double line_width = fmax(1. * self->supersample_factor, (radius - central_radius) / 2.5);
     radius = fmax(0, fmin(x, y) - line_width / 2.);
     Circle c = circle(x, y, radius, 0, 360);
-    draw_parametrized_curve_with_derivative(self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y);
+    ClipRect cr = {.top=leftover, .y_end=self->height - leftover, .x_end=self->width};
+    draw_parametrized_curve_with_derivative_and_antialiasing(
+            self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y, 0, 0, &cr);
 }
 
 static void
