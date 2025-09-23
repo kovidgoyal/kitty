@@ -37,7 +37,7 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if err != nil {
 		return 1, err
 	}
-	argv := []string{kitty_exe, "+kitten", "panel", "--toggle-visibility", "--exclusive-zone=0", "--override-exclusive-zone", "--layer=overlay", "--single-instance"}
+	argv := []string{kitty_exe, "+kitten", "panel", "--toggle-visibility", "--exclusive-zone=0", "--override-exclusive-zone", "--layer=overlay", "--single-instance", "--move-to-active-monitor"}
 	argv = append(argv, fmt.Sprintf("--lines=%s", conf.Lines))
 	argv = append(argv, fmt.Sprintf("--columns=%s", conf.Columns))
 	argv = append(argv, fmt.Sprintf("--edge=%s", conf.Edge))

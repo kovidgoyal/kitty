@@ -747,6 +747,14 @@ When set and using :option:`--single-instance` will toggle the visibility of the
 existing panel rather than creating a new one.
 
 
+--move-to-active-monitor
+type=bool-set
+default=false
+When set and using :option:`--toggle-visibility` to show an existing panel, the panel
+is moved to the active monitor (typically the monitor with the mouse on it).
+This works only if the underlying OS supports it. It is currently supported on macOS only.
+
+
 --start-as-hidden
 type=bool-set
 default={start_as_hidden}

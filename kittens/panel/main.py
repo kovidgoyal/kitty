@@ -171,7 +171,7 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
         for os_window_id in boss.os_window_map:
             existing = layer_shell_config_for_os_window(os_window_id)
             layer_shell_config_changed = not existing or any(f for f in lsc._fields if getattr(lsc, f) != existing.get(f))
-            toggle_os_window_visibility(os_window_id)
+            toggle_os_window_visibility(os_window_id, move_to_active_screen=args.move_to_active_monitor)
             if layer_shell_config_changed:
                 set_layer_shell_config(os_window_id, lsc)
         return
@@ -184,7 +184,7 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
 
 
 def main(sys_args: list[str]) -> None:
-    # run_kitten run using runpy.run_module which does not import into
+    # run_kitten runs using runpy.run_module which does not import into
     # sys.modules, which means the module will be re-imported later, causing
     # global variables to be duplicated, so do it now.
     from kittens.panel.main import actual_main
