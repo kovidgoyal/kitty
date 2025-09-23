@@ -1950,12 +1950,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     window->ns.view = nil;
 
     [window->ns.object removeGLFWWindow];
-    // Workaround for macOS Tahoe where if the frame is not set to zero size
-    // even after NSWindow::close the window remains on screen as an invisible
-    // rectangle that intercepts mouse events and takes up space in mission
-    // control. Sigh.
-    [window->ns.object setFrame:NSMakeRect(0, 0, 0, 0) display:NO];
-    [window->ns.object close]; // sends a release to the NSWindow so we dont release it here
+    [window->ns.object close];
     window->ns.object = nil;
 }
 
