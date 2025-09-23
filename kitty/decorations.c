@@ -708,13 +708,6 @@ filled_D(Canvas *self, bool left) {
     else mirror_horizontally(fill_region(self, false));
 }
 
-static double
-distance(double x1, double y1, double x2, double y2) {
-    const double dx = x1 - x2;
-    const double dy = y1 - y2;
-    return sqrt(dx * dx + dy * dy);
-}
-
 typedef double(*curve_func)(const void *, double t);
 
 #define NAME position_set
@@ -726,27 +719,6 @@ static bool cmpr_point(Point, Point);
 #include "kitty-verstable.h"
 static uint64_t hash_point(Point p) { return vt_hash_integer(p.val); }
 static bool cmpr_point(Point a, Point b) { return a.val == b.val; }
-
-#define draw_parametrized_thin_curve(self, line_width, xfunc, yfunc, x_offset, y_offset) { \
-    uint th = (uint)ceil(line_width); \
-    div_t d = div(th, 2u); \
-    int delta = d.quot, extra = d.rem; \
-    uint num_samples = self->height * 8; \
-    position_set seen; vt_init(&seen); \
-    for (uint i = 0; i < num_samples + 1; i++) { \
-        double t = i / (double)num_samples; \
-        Point p = {.x=(int32_t)xfunc, .y=(int32_t)yfunc};  \
-        position_set_itr q = vt_get(&seen, p); \
-        if (!vt_is_end(q)) continue; \
-        if (vt_is_end(vt_insert(&seen, p))) fatal("Out of memory"); \
-        p.x += x_offset; \
-        for (int y = MAX(0, p.y - delta); y < MIN(p.y + delta + extra, (int)self->height); y++) { \
-            uint offset = y * self->width, start = MAX(0, p.x - delta); \
-            memset(self->mask + offset + start, 255, minus((uint)MIN(p.x + delta + extra, (int)self->width), start)); \
-        } \
-    } \
-    vt_cleanup(&seen); \
-}
 
 typedef struct ClipRect { uint left, top, x_end, y_end; } ClipRect;
 
@@ -816,46 +788,6 @@ draw_parametrized_curve_with_derivative_and_antialiasing(
 }
 
 static void
-draw_parametrized_curve_with_derivative(
-    Canvas *self, void *curve_data, double line_width, curve_func xfunc, curve_func yfunc, curve_func x_prime, curve_func y_prime
-) {
-    if (line_width <= 2 * self->supersample_factor) {
-        // The old algorithm looks better for very thin lines
-        draw_parametrized_thin_curve(self, line_width, xfunc(curve_data, t), yfunc(curve_data, t), 0, 0);
-        return;
-    }
-    double larger_dim = fmax(self->height, self->width);
-    double step = 1.0 / larger_dim;
-    const double min_step = step / 100., max_step = step;
-    line_width = fmax(1., line_width);
-    const double half_thickness = line_width / 2.0;
-    const double distance_limit = half_thickness;
-    double t = 0;
-    while(true) {
-        double x = xfunc(curve_data, t), y = yfunc(curve_data, t);
-        for (double dy = -line_width; dy <= line_width; dy++) {
-            for (double dx = -line_width; dx <= line_width; dx++) {
-                double px = x + dx, py = y + dy;
-                double dist = distance(x, y, px, py);
-                int row = (int)py, col = (int)px;
-                if (dist > distance_limit || row >= (int)self->height || row < 0 || col >= (int)self->width || col < 0) continue;
-                const int offset = row * self->width + col;
-                double alpha = 1.0 - (dist / half_thickness);
-                uint8_t old_alpha = self->mask[offset];
-                self->mask[offset] = (uint8_t)(alpha * 255 + (1 - alpha) * old_alpha);
-            }
-        }
-        if (t >= 1.0) break;
-        // Dynamically adjust step size based on curve's derivative
-        double dx = x_prime(curve_data, t), dy = y_prime(curve_data, t);
-        double d = sqrt(dx * dx + dy * dy);
-        step = 1.0 / fmax(1e-6, d);
-        step = fmax(min_step, fmin(step, max_step));
-        t = fmin(t + step, 1.0);
-    }
-}
-
-static void
 rounded_separator(Canvas *self, uint level, bool left) {
     uint gap = thickness(self, level, true);
     int c1x = find_bezier_for_D(minus(self->width, gap), minus(self->height, gap));
@@ -905,9 +837,12 @@ static void
 spinner(Canvas *self, uint level, double start_degrees, double end_degrees) {
     double x = self->width / 2.0, y = self->height / 2.0;
     double line_width = thickness_as_float(self, level, true);
-    double radius = fmax(0, fmin(x, y) - line_width / 2.0);
+    double radius = fmax(0, fmin(x, y) - 1 - line_width / 2.0);
     Circle c = circle(x, y, radius, start_degrees, end_degrees);
-    draw_parametrized_curve_with_derivative(self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y);
+    uint leftover = minus(self->height, 2*(uint)ceil(radius) + 1) / 2;
+    ClipRect cr = {.top=leftover, .y_end=self->height - leftover, .x_end=self->width};
+    draw_parametrized_curve_with_derivative_and_antialiasing(
+        self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y, 0, 0, &cr);
 }
 
 static void
@@ -933,7 +868,7 @@ static void
 draw_fish_eye(Canvas *self, uint level UNUSED) {
     double x = self->width / 2., y = self->height / 2.;
     double radius = fmin(x, y);
-    uint leftover = minus(self->height, 2*(uint)ceil(radius)) / 2;
+    uint leftover = minus(self->height, 2*(uint)ceil(radius) + 1) / 2;
     double central_radius = (2./3.) * radius;
     fill_circle_of_radius(self, x, y, central_radius, 255);
     double line_width = fmax(1. * self->supersample_factor, (radius - central_radius) / 2.5);
@@ -1698,19 +1633,19 @@ START_ALLOW_CASE_RANGE
         C(L'', progress_bar, MIDDLE, true);
         C(L'', progress_bar, RIGHT, true);
 
-        S(L'', spinner, 1, 235, 305);
-        S(L'', spinner, 1, 270, 390);
-        S(L'', spinner, 1, 315, 470);
-        S(L'', spinner, 1, 360, 540);
-        S(L'', spinner, 1, 80, 220);
-        S(L'', spinner, 1, 170, 270);
-        S(L'○', spinner, 0, 0, 360);
-        S(L'◜', spinner, 1, 180, 270);
-        S(L'◝', spinner, 1, 270, 360);
-        S(L'◞', spinner, 1, 360, 450);
-        S(L'◟', spinner, 1, 450, 540);
-        S(L'◠', spinner, 1, 180, 360);
-        S(L'◡', spinner, 1, 0, 180);
+        C(L'', spinner, 1, 235, 305);
+        C(L'', spinner, 1, 270, 390);
+        C(L'', spinner, 1, 315, 470);
+        C(L'', spinner, 1, 360, 540);
+        C(L'', spinner, 1, 80, 220);
+        C(L'', spinner, 1, 170, 270);
+        C(L'○', spinner, 0, 0, 360);
+        C(L'◜', spinner, 1, 180, 270);
+        C(L'◝', spinner, 1, 270, 360);
+        C(L'◞', spinner, 1, 360, 450);
+        C(L'◟', spinner, 1, 450, 540);
+        C(L'◠', spinner, 1, 180, 360);
+        C(L'◡', spinner, 1, 0, 180);
         S(L'●', fill_circle, 1.0, 0, false);
         S(L'◉', draw_fish_eye, 0);
 
