@@ -858,10 +858,13 @@ draw_parametrized_curve_with_derivative(
 static void
 rounded_separator(Canvas *self, uint level, bool left) {
     uint gap = thickness(self, level, true);
-    int c1x = find_bezier_for_D(minus(self->width, gap), self->height);
-    CubicBezier cb = {.end={.y=self->height - 1}, .c1={.x=c1x}, .c2={.x=c1x, .y=self->height - 1}};
+    int c1x = find_bezier_for_D(minus(self->width, gap), minus(self->height, gap));
+    uint half_gap = gap / 2;
+    CubicBezier cb = {.end={.y=minus(self->height,  1 + half_gap)}, .c1={.x=c1x},
+        .c2={.x=c1x, .y=minus(self->height, 1 + half_gap)}};
     double line_width = thickness_as_float(self, level, true);
-#define d draw_parametrized_curve_with_derivative(self, &cb, line_width, bezier_x, bezier_y, bezier_prime_x, bezier_prime_y)
+#define d draw_parametrized_curve_with_derivative_and_antialiasing(\
+        self, &cb, line_width, bezier_x, bezier_y, bezier_prime_x, bezier_prime_y, 0, half_gap, NULL)
     if (left) { d; } else { mirror_horizontally(d); }
 #undef d
 }
@@ -1665,8 +1668,8 @@ START_ALLOW_CASE_RANGE
         S(L'◗', filled_D, true);
         S(L'', filled_D, false);
         S(L'◖', filled_D, false);
-        S(L'', rounded_separator, 1, true);
-        S(L'', rounded_separator, 1, false);
+        C(L'', rounded_separator, 1, true);
+        C(L'', rounded_separator, 1, false);
 
         S(L'', cross_line, 1, true);
         S(L'', cross_line, 1, true);
