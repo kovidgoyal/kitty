@@ -212,7 +212,7 @@
     },
 
     {
-        "name": "brotli 1.1.0",
+        "name": "libbrotli 1.1.0",
         "os": "linux",
         "unix": {
             "file_extension": "tar.gz",
