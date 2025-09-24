@@ -134,8 +134,9 @@ Detailed list of changes
 - macOS: Add the default :kbd:`Cmd+L` mapping from Terminal.app to erase the
   last command and its output (:disc:`6040`)
 
-- Fix :opt:`background_opacity` being non-linear with light color themes
-  (:iss:`8869`)
+- Fix :opt:`background_opacity` being non-linear especially with light color themes.
+  Note that this might require you to adjust the value of this setting to get
+  back your current look. (:iss:`8869`)
 
 - Add support for blinking text. Text marked as blinking now blinks in exact
   rhythm with the cursor. The blinking animation and max duration are
