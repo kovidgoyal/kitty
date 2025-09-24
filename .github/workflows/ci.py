@@ -272,6 +272,8 @@ def main() -> None:
         subprocess.check_call(['go', 'install', 'golang.org/x/vuln/cmd/govulncheck@latest'])
         with open('govulncheck.sarif', 'wb') as f:
             subprocess.check_call(['govulncheck', '-format', 'sarif', './...'], stdout=f)
+        with open('govulncheck.sarif') as f:
+            print(f.read())
     elif action == 'gofmt':
         q = subprocess.check_output('gofmt -s -l tools kittens'.split()).decode()
         if q.strip():
