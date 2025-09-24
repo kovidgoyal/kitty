@@ -68,10 +68,3 @@ jobs:
         - name: Run govulncheck
           if: matrix.language == 'go'
           run: python3 .github/workflows/ci.py govulncheck
-
-        - name: Upload govulncheck results
-          if: matrix.language == 'go'
-          uses: github/codeql-action/upload-sarif@v3
-          with:
-              sarif_file: govulncheck.sarif
-              category: govulncheck
