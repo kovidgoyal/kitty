@@ -266,6 +266,12 @@ def main() -> None:
         package_kitty()
     elif action == 'test':
         test_kitty()
+    elif action == 'test':
+        test_kitty()
+    elif action == 'govulncheck':
+        subprocess.check_call(['go', 'install', 'golang.org/x/vuln/cmd/govulncheck@latest'])
+        with open('govulncheck.sarif', 'wb') as f:
+            subprocess.check_call(['govulncheck', '-format', 'sarif', './...'], stdout=f)
     elif action == 'gofmt':
         q = subprocess.check_output('gofmt -s -l tools kittens'.split()).decode()
         if q.strip():

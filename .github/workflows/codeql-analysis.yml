@@ -9,9 +9,6 @@ on:
     schedule:
         - cron: '0 22 * * 5'
 
-permissions:
-    contents: read # to fetch code (actions/checkout)
-
 jobs:
     CodeQL-Build:
 
@@ -67,3 +64,14 @@ jobs:
 
         - name: Perform CodeQL Analysis
           uses: github/codeql-action/analyze@v3
+
+        - name: Run govulncheck
+          if: matrix.language == 'go'
+          run: python3 .github/workflows/ci.py govulncheck
+
+        - name: Upload govulncheck results
+          if: matrix.language == 'go'
+          uses: github/codeql-action/upload-sarif@v3
+          with:
+              sarif_file: govulncheck.sarif
+              category: govulncheck
