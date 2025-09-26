@@ -2635,7 +2635,7 @@ Detailed list of changes
   do not display a box around active windows
 
 - Add a new extensible escape code to allow terminal programs to trigger
-  desktop notifications. See :ref:`desktop_notifications` (:iss:`1474`)
+  desktop notifications. See :ref:`notifications_on_the_desktop` (:iss:`1474`)
 
 - Implement special rendering for various characters from the set of "Symbols
   for Legacy Computing" from the Unicode 13 standard
