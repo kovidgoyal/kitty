@@ -374,12 +374,18 @@ func config_for_hostname(hostname_to_match, username_to_match string, cs *Config
 }
 
 func (self *ConfigSet) line_handler(key, val string) error {
-	c := self.all_configs[len(self.all_configs)-1]
-	if key == "hostname" {
-		c = NewConfig()
-		self.all_configs = append(self.all_configs, c)
-	}
-	return c.Parse(key, val)
+    c := self.all_configs[len(self.all_configs)-1]
+    if key == "hostname" {
+        c = NewConfig()
+        self.all_configs = append(self.all_configs, c)
+    }
+    // Gracefully ignore ssh.conf extensions intended for askpass automation
+    // so they are not reported as bad lines by the main config loader.
+    switch key {
+    case "password", "totp_secret", "totp_period", "totp_digits":
+        return nil
+    }
+    return c.Parse(key, val)
 }
 
 func load_config(hostname_to_match string, username_to_match string, overrides []string, paths ...string) (*Config, []config.ConfigLine, error) {
