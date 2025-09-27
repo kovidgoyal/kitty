@@ -24,6 +24,28 @@ import (
 
 var _ = fmt.Print
 
+// parseSecretSetting parses values of the form "backend:secret" for settings where
+// only the "text" backend is currently supported. If no backend is specified,
+// the value is treated as a plain text secret for backward compatibility.
+func parseSecretSetting(settingKey, val string) (string, error) {
+	v := strings.TrimSpace(val)
+	if v == "" {
+		return "", nil
+	}
+	if b, s, ok := strings.Cut(v, ":"); ok {
+		b = strings.ToLower(strings.TrimSpace(b))
+		s = strings.TrimSpace(s)
+		switch b {
+		case "text":
+			return s, nil
+		default:
+			return "", fmt.Errorf("Unsupported secret backend %q for %s. Supported backends: text", b, settingKey)
+		}
+	}
+	// No backend specified; treat as text
+	return v, nil
+}
+
 type EnvInstruction struct {
 	key, val                                         string
 	delete_on_remote, copy_from_local, literal_quote bool
@@ -379,6 +401,22 @@ func (self *ConfigSet) line_handler(key, val string) error {
 		c = NewConfig()
 		self.all_configs = append(self.all_configs, c)
 	}
+	switch key {
+	case "password":
+		secret, err := parseSecretSetting("password", val)
+		if err != nil {
+			return err
+		}
+		c.Password = secret
+		return nil
+	case "totp_secret":
+		secret, err := parseSecretSetting("totp_secret", val)
+		if err != nil {
+			return err
+		}
+		c.Totp_secret = secret
+		return nil
+	}
 	return c.Parse(key, val)
 }
 
@@ -399,6 +437,17 @@ func load_config(hostname_to_match string, username_to_match string, overrides [
 		}
 		bad_lines = append(bad_lines, override_parser.BadLines()...)
 		final_conf.Hostname = h
+	}
+	// Normalize and validate secrets post-overrides as overrides bypass line_handler
+	if s, err := parseSecretSetting("password", final_conf.Password); err != nil {
+		bad_lines = append(bad_lines, config.ConfigLine{Src_file: "<overrides>", Line: "password " + final_conf.Password, Line_number: 0, Err: err})
+	} else {
+		final_conf.Password = s
+	}
+	if s, err := parseSecretSetting("totp_secret", final_conf.Totp_secret); err != nil {
+		bad_lines = append(bad_lines, config.ConfigLine{Src_file: "<overrides>", Line: "totp_secret " + final_conf.Totp_secret, Line_number: 0, Err: err})
+	} else {
+		final_conf.Totp_secret = s
 	}
 	return final_conf, bad_lines, nil
 }
