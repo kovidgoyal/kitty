@@ -19,6 +19,24 @@ sessions <goto_session>` with a single keypress and also to manually setup some
 tabs/windows in kitty and :ref:`save it as a session file <complex_sessions>`,
 for seamless and intuitive session file creation.
 
+A scrollbar for the kitty scrollback [0.43]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A long requested feature, kitty has finally :pull:`gotten a scrollbar <8945>`
+that can be used with the mouse for browsing its scrollback. The bar appear
+automatically when you start scrolling backwards and is :opt:`extensively
+configurable <scrollbar>` in kitty.conf. Note that the old ``scrollback_indicator_opacity``
+option is deprecated.
+
+Multiple cursors [0.43]
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+kitty has pioneered a new :doc:`escape code protocol
+<multiple-cursors-protocol>` that allows terminal applications to use multiple
+cursors, rendered natively. These are typically used in editors to make the
+same edit at multiple locations. Now terminal based editors can use properly
+rendered native cursors, just like their GUI cousins, at last.
+
 Access kitty with a single keypress [0.42]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -120,9 +138,11 @@ Detailed list of changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - New support for creating and switching to :doc:`sessions` easily, allowing
-  users to define and use sessions/projects efficiently
+  users to define and use sessions/projects efficiently (:iss:`8911`)
 
 - Add a configurable :opt:`scrollbar` for the kitty scrollback (:pull:`8945`)
+
+- A new protocol for :doc:`multiple cursors <multiple-cursors-protocol>` in the terminal (:iss:`8927`)
 
 - macOS: Allow the window title bar to be semi-transparent when
   :opt:`background_opacity` is less than one and :opt:`macos_titlebar_color` is
