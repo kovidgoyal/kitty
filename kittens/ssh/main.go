@@ -646,11 +646,14 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 		}
 		cmd = slices.Insert(cmd, insertion_point, control_master_args...)
 	}
-	use_kitty_askpass := host_opts.Askpass == Askpass_native || (host_opts.Askpass == Askpass_unless_set && os.Getenv("SSH_ASKPASS") == "")
-	need_to_request_data := true
-	if use_kitty_askpass {
-		need_to_request_data = set_askpass()
-	}
+    use_kitty_askpass := host_opts.Askpass == Askpass_native || (host_opts.Askpass == Askpass_unless_set && os.Getenv("SSH_ASKPASS") == "")
+    need_to_request_data := true
+    if use_kitty_askpass {
+        need_to_request_data = set_askpass()
+        // Provide host/user to askpass so it can lookup auth settings in ssh.conf
+        os.Setenv("KITTY_SSH_ASKPASS_HOST", hostname_for_match)
+        os.Setenv("KITTY_SSH_ASKPASS_USER", uname)
+    }
 	master_is_functional := func() bool {
 		if master_checked {
 			return master_is_alive
