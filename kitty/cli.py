@@ -472,6 +472,15 @@ class PrintHelpForSeq:
 print_help_for_seq = PrintHelpForSeq()
 
 
+def escape_rst(text: str) -> str:
+    text = text.replace('\\', '\\\\')
+    text = text.replace('*', '\\*')
+    text = text.replace('`', '\\`')
+    text = text.replace('_', '\\_')
+    text = text.replace('|', '\\|')
+    return text
+
+
 def seq_as_rst(
     seq: OptionSpecSeq,
     usage: str | None,
@@ -512,12 +521,12 @@ def seq_as_rst(
         a(defn + ', '.join(o + val_name for o in sorted(opt['aliases'])))
         if opt.get('help'):
             defval = opt.get('default')
-            t = help_text.replace('%default', str(defval)).strip()
+            t = help_text.replace('%default', ':code:`' + escape_rst(str(defval)) + '`').strip()
             t = t.replace('#placeholder_for_formatting#', '')
             a('')
             a(textwrap.indent(prettify_rst(t), ' ' * 4))
             if defval is not None:
-                a(textwrap.indent(f'Default: :code:`{defval}`', ' ' * 4))
+                a(textwrap.indent(f'Default: :code:`{escape_rst(str(defval))}`', ' ' * 4))
             if opt.get('choices'):
                 a(textwrap.indent('Choices: {}'.format(', '.join(f':code:`{c}`' for c in sorted(opt['choices']))), ' ' * 4))
             a('')
