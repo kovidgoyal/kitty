@@ -3280,9 +3280,9 @@ title_bar_and_tool_bar_height(NSWindow *window) {
 static
 void clear_title_bar_background_views(NSWindow *window) {
 #define tag @"kitty-for-transparent-titlebar"
-    NSView *contentView = window.contentView, *titlebarContainer = contentView ? contentView.superview : nil;
-    if (titlebarContainer) {
-        for (NSView *subview in [titlebarContainer viewsWithIdentifier:tag]) [subview removeFromSuperview];
+    NSView *contentView = window.contentView;
+    if (contentView) {
+        for (NSView *subview in [contentView viewsWithIdentifier:tag]) [subview removeFromSuperview];
     }
 }
 
@@ -3290,7 +3290,7 @@ static void
 set_title_bar_background(NSWindow *window, NSColor *backgroundColor) {
     NSView *contentView = window.contentView, *titlebarContainer = contentView ? contentView.superview : nil;
     if (!titlebarContainer) return;
-    for (NSView *subview in [titlebarContainer viewsWithIdentifier:tag]) [subview removeFromSuperview];
+    for (NSView *subview in [contentView viewsWithIdentifier:tag]) [subview removeFromSuperview];
     if (!backgroundColor) return;
 
     const CGFloat height = title_bar_and_tool_bar_height(window);
