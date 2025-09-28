@@ -3295,8 +3295,7 @@ set_title_bar_background(NSWindow *window, NSColor *backgroundColor) {
 
     const CGFloat height = title_bar_and_tool_bar_height(window);
     debug_rendering("titlebar_height used for translucent titlebar view: %f\n", height);
-    NSView *bgView = [[NSView alloc] initWithFrame:NSMakeRect(
-        0, titlebarContainer.bounds.size.height - height, titlebarContainer.bounds.size.width, height)];
+    NSView *bgView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, titlebarContainer.bounds.size.width, height)];
     bgView.translatesAutoresizingMaskIntoConstraints = NO;
     bgView.wantsLayer = YES;
     bgView.layer.backgroundColor = backgroundColor.CGColor;
