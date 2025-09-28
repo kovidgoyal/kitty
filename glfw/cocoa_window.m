@@ -3297,11 +3297,21 @@ set_title_bar_background(NSWindow *window, NSColor *backgroundColor) {
     debug_rendering("titlebar_height used for translucent titlebar view: %f\n", height);
     NSView *bgView = [[NSView alloc] initWithFrame:NSMakeRect(
         0, titlebarContainer.bounds.size.height - height, titlebarContainer.bounds.size.width, height)];
-    bgView.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
+    bgView.translatesAutoresizingMaskIntoConstraints = NO;
     bgView.wantsLayer = YES;
     bgView.layer.backgroundColor = backgroundColor.CGColor;
     bgView.identifier = tag;
     [contentView addSubview:bgView];
+    [NSLayoutConstraint activateConstraints:@[
+        // Pin to the top of the content view.
+        [bgView.topAnchor constraintEqualToAnchor:titlebarContainer.topAnchor],
+        // Pin to the leading edge of the content view.
+        [bgView.leadingAnchor constraintEqualToAnchor:titlebarContainer.leadingAnchor],
+        // Pin to the trailing edge of the content view.
+        [bgView.trailingAnchor constraintEqualToAnchor:titlebarContainer.trailingAnchor],
+        // Give it a fixed height
+        [bgView.heightAnchor constraintEqualToConstant:height]
+    ]];
     [bgView release];
 #undef tag
 }
