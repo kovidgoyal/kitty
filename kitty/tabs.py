@@ -1379,7 +1379,6 @@ class TabManager:  # {{{
                             tab_id = self.active_tab_history.pop()
                             next_active_tab = self.tab_for_id(tab_id)
                     case 'left':
-                        print(2222222222, tabs.index(active_tab_before_removal))
                         next_active_tab = tabs[(tabs.index(active_tab_before_removal) - 1 + len(tabs)) % len(tabs)]
                         remove_from_end_of_active_history(next_active_tab)
                     case 'right':
