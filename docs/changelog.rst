@@ -137,7 +137,7 @@ Detailed list of changes
 0.43.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- macOS: Fix a big where the color of a transparent titlebar was off when
+- macOS: Fix a bug where the color of a transparent titlebar was off when
   running in the release build versus the build from source. Also fix using a
   transparent titlebar causing the background opacity to be darkened.
 
