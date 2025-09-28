@@ -1031,12 +1031,15 @@ class TabManager:  # {{{
             self.add_tabs_from_session(startup_session)
 
     def add_tabs_from_session(self, session: SessionType, session_name: str = '') -> None:
-        before = len(self.tabs)
-        for t in session.tabs:
+        active_tab = self.active_tab
+        for i, t in enumerate(session.tabs):
             tab = Tab(self, session_tab=t, session_name=session_name or self.created_in_session_name)
             self._add_tab(tab)
-        num_added = len(self.tabs) - before
-        self._set_active_tab(max(0, min(num_added + session.active_tab_idx, len(self.tabs) - 1)))
+            if i == session.active_tab_idx:
+                active_tab = tab
+        if active_tab is not None:
+            idx = self.tabs.index(active_tab)
+            self._set_active_tab(idx)
 
     @property
     def active_tab_idx(self) -> int:
