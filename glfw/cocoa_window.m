@@ -3274,9 +3274,7 @@ GLFWAPI GLFWcocoarenderframefun glfwCocoaSetWindowResizeCallback(GLFWwindow *w, 
 
 static CGFloat
 title_bar_and_tool_bar_height(NSWindow *window) {
-    NSRect frame = window.frame;
-    NSRect content = [window contentRectForFrameRect:frame];
-    return NSHeight(frame) - NSHeight(content);
+    return window.frame.size.height - [window contentRectForFrameRect:window.frame].size.height;
 }
 
 static
@@ -3303,12 +3301,12 @@ set_title_bar_background(NSWindow *window, NSColor *backgroundColor) {
     bgView.layer.backgroundColor = backgroundColor.CGColor;
     bgView.identifier = tag;
 
-    NSView *containerView = [[NSView alloc] initWithFrame:window.contentView.bounds];
+    NSView *containerView = [[NSView alloc] initWithFrame:contentView.bounds];
     containerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     containerView.identifier = tag;
     [containerView addSubview:bgView];
     [bgView release];
-    [window.contentView addSubview:containerView];
+    [contentView addSubview:containerView];
     [containerView release];
 #undef tag
 }
@@ -3405,9 +3403,6 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     [[window->ns.object standardWindowButton: NSWindowCloseButton] setHidden:hide_titlebar_buttons];
     [[window->ns.object standardWindowButton: NSWindowMiniaturizeButton] setHidden:hide_titlebar_buttons];
     [[window->ns.object standardWindowButton: NSWindowZoomButton] setHidden:hide_titlebar_buttons];
-    if (background_opacity < 1.0 && !window->ns.titlebar_hidden && window->decorated) {
-        set_title_bar_background(window->ns.object, [background colorUsingColorSpace:(cs ? cs : [NSColorSpace deviceRGBColorSpace])]);
-    } else clear_title_bar_background_views(window->ns.object);
     // Apple throws a hissy fit if one attempts to clear the value of NSWindowStyleMaskFullScreen outside of a full screen transition
     // event. See https://github.com/kovidgoyal/kitty/issues/7106
     NSWindowStyleMask fsmask = current_style_mask & NSWindowStyleMaskFullScreen;
@@ -3417,6 +3412,9 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     } else {
         [window->ns.object setStyleMask:window->ns.pre_full_screen_style_mask | fsmask];
     }
+    if (background_opacity < 1.0 && !window->ns.titlebar_hidden && window->decorated) {
+        set_title_bar_background(window->ns.object, [background colorUsingColorSpace:(cs ? cs : [NSColorSpace deviceRGBColorSpace])]);
+    } else clear_title_bar_background_views(window->ns.object);
     // HACK: Changing the style mask can cause the first responder to be cleared
     [window->ns.object makeFirstResponder:window->ns.view];
 }}
