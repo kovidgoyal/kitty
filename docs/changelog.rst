@@ -134,7 +134,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.43.0 [future]
+0.43.0 [2025-09-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - New support for creating and switching to :doc:`sessions` easily, allowing
