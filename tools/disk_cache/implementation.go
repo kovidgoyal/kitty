@@ -138,7 +138,7 @@ func (dc *DiskCache) get(key string, items []string) map[string]string {
 	}
 	for _, x := range items {
 		p := filepath.Join(base, x)
-		if s, err := os.Stat(p); err != nil || !s.IsDir() {
+		if s, err := os.Stat(p); err != nil || s.IsDir() {
 			continue
 		}
 		ans[x] = p
@@ -193,6 +193,11 @@ func (dc *DiskCache) update_timestamp(key string) {
 func (dc *DiskCache) update_accounting(key string, changed int64) (err error) {
 	if err = dc.ensure_entries(); err == nil {
 		t := dc.entry_map[key]
+		if t == nil {
+			t = &Entry{Key: key}
+			dc.entry_map[key] = t
+			dc.entries.SortedEntries = append(dc.entries.SortedEntries, t)
+		}
 		old_size := t.Size
 		t.Size += changed
 		t.Size = max(0, t.Size)
