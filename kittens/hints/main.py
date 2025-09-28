@@ -15,7 +15,7 @@ from kitty.utils import get_editor, resolve_custom_file
 
 from ..tui.handler import result_handler
 
-DEFAULT_REGEX = r'(?m)^\s*(.+)\s*$'
+DEFAULT_REGEX = r'(?m)^\s*(.+?)\s*$'
 
 def load_custom_processor(customize_processing: str) -> Any:
     if customize_processing.startswith('::import::'):
