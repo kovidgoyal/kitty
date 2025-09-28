@@ -3294,20 +3294,15 @@ set_title_bar_background(NSWindow *window, NSColor *backgroundColor) {
     if (!backgroundColor) return;
 
     const CGFloat height = title_bar_and_tool_bar_height(window);
+    debug_rendering("titlebar_height used for translucent titlebar view: %f", height);
     NSView *bgView = [[NSView alloc] initWithFrame:NSMakeRect(
         0, titlebarContainer.bounds.size.height - height, titlebarContainer.bounds.size.width, height)];
     bgView.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin;
     bgView.wantsLayer = YES;
     bgView.layer.backgroundColor = backgroundColor.CGColor;
     bgView.identifier = tag;
-
-    NSView *containerView = [[NSView alloc] initWithFrame:contentView.bounds];
-    containerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-    containerView.identifier = tag;
-    [containerView addSubview:bgView];
+    [contentView addSubview:bgView];
     [bgView release];
-    [contentView addSubview:containerView];
-    [containerView release];
 #undef tag
 }
 
@@ -3391,7 +3386,7 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     debug(
         "Window Chrome state:\n\tbackground: %s\n\tappearance: %s color_space: %s\n\t"
         "blur: %d has_shadow: %d resizable: %d decorations: %s (%d)\n\t"
-        "titlebar: transparent: %d title_visibility: %d hidden: %d buttons_hidden: %d"
+        "titlebar_transparent: %d title_visibility: %d hidden: %d buttons_hidden: %d"
         "\n",
         background ? [background.description UTF8String] : "<nil>",
         appearance ? [appearance.name UTF8String] : "<nil>",
