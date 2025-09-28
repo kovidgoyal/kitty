@@ -67,7 +67,7 @@ opt('+kitty_conf', '',
 )
 
 opt('+kitty_override', '', long_text='Override individual kitty configuration options, can be specified multiple times.'
-    ' Syntax: :italic:`name=value`. For example: :code:`font_size=20`.'
+    ' Syntax: :italic:`kitty_override name=value`. For example: :code:`kitty_override font_size=20`.'
 )
 
 opt('app_id', f'{appname}-quick-access',
