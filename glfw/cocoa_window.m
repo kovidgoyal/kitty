@@ -3318,6 +3318,7 @@ set_title_bar_background(NSWindow *window, NSColor *backgroundColor) {
 GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool use_system_color, unsigned int system_color, int background_blur, unsigned int hide_window_decorations, bool show_text_in_titlebar, int color_space, float background_opacity, bool resizable) { @autoreleasepool {
     _GLFWwindow* window = (_GLFWwindow*)w;
     if (window->ns.layer_shell.is_active) return;
+    GLFWWindow *nsw = window->ns.object;
     const bool is_transparent = _glfwPlatformFramebufferTransparent(window);
     if (!is_transparent) { background_opacity = 1.0; background_blur = 0; }
     NSColor *window_background = [NSColor windowBackgroundColor];
@@ -3329,7 +3330,7 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     NSAppearance *appearance = nil;
     bool titlebar_transparent = false;
     NSColor *titlebar_color = nil;
-    const NSWindowStyleMask current_style_mask = [window->ns.object styleMask];
+    const NSWindowStyleMask current_style_mask = [nsw styleMask];
     const bool in_fullscreen = ((current_style_mask & NSWindowStyleMaskFullScreen) != 0) || window->ns.in_traditional_fullscreen;
     NSAppearance *light_appearance = is_transparent ? [NSAppearance appearanceNamed:NSAppearanceNameVibrantLight] : [NSAppearance appearanceNamed:NSAppearanceNameAqua];
     NSAppearance *dark_appearance = is_transparent ? [NSAppearance appearanceNamed:NSAppearanceNameVibrantDark] : [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
@@ -3349,8 +3350,8 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
         titlebar_color = [NSColor colorWithSRGBRed:red green:green blue:blue alpha:background_opacity];
         titlebar_transparent = true;
     }
-    [window->ns.object setBackgroundColor:window_background];
-    [window->ns.object setAppearance:appearance];
+    [nsw setBackgroundColor:window_background];
+    [nsw setAppearance:appearance];
     _glfwPlatformSetWindowBlur(window, background_blur);
     bool has_shadow = false;
     const char *decorations_desc = "full";
@@ -3382,9 +3383,9 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     // https://github.com/kovidgoyal/kitty/issues/6439
     if (is_transparent) has_shadow = false;
     bool hide_titlebar_buttons = !in_fullscreen && window->ns.titlebar_hidden;
-    [window->ns.object setTitlebarAppearsTransparent:titlebar_transparent];
-    [window->ns.object setHasShadow:has_shadow];
-    [window->ns.object setTitleVisibility:(show_text_in_titlebar) ? NSWindowTitleVisible : NSWindowTitleHidden];
+    [nsw setTitlebarAppearsTransparent:titlebar_transparent];
+    [nsw setHasShadow:has_shadow];
+    [nsw setTitleVisibility:(show_text_in_titlebar) ? NSWindowTitleVisible : NSWindowTitleHidden];
     NSColorSpace *cs = nil;
     switch (color_space) {
         case SRGB_COLORSPACE: cs = [NSColorSpace sRGBColorSpace]; break;
@@ -3404,24 +3405,24 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
         titlebar_color ? [titlebar_color.description UTF8String] : "<nil>",
         show_text_in_titlebar, window->ns.titlebar_hidden, hide_titlebar_buttons
     );
-    [window->ns.object setColorSpace:cs];
-    [[window->ns.object standardWindowButton: NSWindowCloseButton] setHidden:hide_titlebar_buttons];
-    [[window->ns.object standardWindowButton: NSWindowMiniaturizeButton] setHidden:hide_titlebar_buttons];
-    [[window->ns.object standardWindowButton: NSWindowZoomButton] setHidden:hide_titlebar_buttons];
+    [nsw setColorSpace:cs];
+    [[nsw standardWindowButton: NSWindowCloseButton] setHidden:hide_titlebar_buttons];
+    [[nsw standardWindowButton: NSWindowMiniaturizeButton] setHidden:hide_titlebar_buttons];
+    [[nsw standardWindowButton: NSWindowZoomButton] setHidden:hide_titlebar_buttons];
     // Apple throws a hissy fit if one attempts to clear the value of NSWindowStyleMaskFullScreen outside of a full screen transition
     // event. See https://github.com/kovidgoyal/kitty/issues/7106
     NSWindowStyleMask fsmask = current_style_mask & NSWindowStyleMaskFullScreen;
     window->ns.pre_full_screen_style_mask = getStyleMask(window);
     if (in_fullscreen && window->ns.in_traditional_fullscreen) {
-        [window->ns.object setStyleMask:NSWindowStyleMaskBorderless];
+        [nsw setStyleMask:NSWindowStyleMaskBorderless];
     } else {
-        [window->ns.object setStyleMask:window->ns.pre_full_screen_style_mask | fsmask];
+        [nsw setStyleMask:window->ns.pre_full_screen_style_mask | fsmask];
     }
     if (background_opacity < 1.0 && !window->ns.titlebar_hidden && window->decorated && titlebar_color != nil) {
-        set_title_bar_background(window->ns.object, titlebar_color);
-    } else clear_title_bar_background_views(window->ns.object);
+        set_title_bar_background(nsw, titlebar_color);
+    } else clear_title_bar_background_views(nsw);
     // HACK: Changing the style mask can cause the first responder to be cleared
-    [window->ns.object makeFirstResponder:window->ns.view];
+    [nsw makeFirstResponder:window->ns.view];
 }}
 
 GLFWAPI uint32_t
