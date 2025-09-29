@@ -1929,10 +1929,11 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window, const _GLFWwndconfig* wndconf
 
 void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 {
+    NSWindow *w = window->ns.object;
     if (_glfw.ns.disabledCursorWindow == window)
         _glfw.ns.disabledCursorWindow = NULL;
 
-    [window->ns.object orderOut:nil];
+    [w orderOut:nil];
 
     if (window->monitor)
         releaseMonitor(window);
@@ -1940,7 +1941,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (window->context.destroy)
         window->context.destroy(window);
 
-    [window->ns.object setDelegate:nil];
+    [w setDelegate:nil];
     [window->ns.delegate cleanup];
     [window->ns.delegate release];
     window->ns.delegate = nil;
@@ -1950,7 +1951,13 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     window->ns.view = nil;
 
     [window->ns.object removeGLFWWindow];
-    [window->ns.object close];
+    // Workaround for macOS Tahoe where if the frame is not set to zero size
+    // even after NSWindow::close the window remains on screen as an invisible
+    // rectangle that intercepts mouse events and takes up space in mission
+    // control. Sigh.
+    NSRect frame = w.frame; frame.size.width = 0; frame.size.height = 0;
+    [w setFrame:frame display:NO];
+    [w close];  // sends a release to NSWindow so we dont release it
     window->ns.object = nil;
 }
 

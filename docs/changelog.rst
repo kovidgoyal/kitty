@@ -144,6 +144,10 @@ Detailed list of changes
 - Fix a regression in the previous release that caused the incorrect tab to be
   active when loading a session (:iss:`9025`)
 
+- macOS: Workaround for bug in macOS Tahoe that caused closed OS Windows to
+  remain as invisible rectangles that intercept mouse events (:iss:`8952`)
+
+
 0.43.0 [2025-09-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -214,9 +218,6 @@ Detailed list of changes
 
 - macOS: Pass the :kbd:`Cmd+C` shortcut to the application running in the
   terminal when no text is selected (:pull:`8946`)
-
-- macOS: Workaround for bug in macOS Tahoe that caused closed OS Windows to
-  remain as invisible rectangles that intercept mouse events (:iss:`8952`)
 
 - macOS: Workaround for bug in macOS Tahoe that caused OS Windows that are
   fullscreen on a monitor that is disconnected while macOS is asleep to crash kitty (:iss:`8983`)
