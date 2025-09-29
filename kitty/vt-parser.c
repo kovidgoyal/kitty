@@ -1379,7 +1379,7 @@ dispatch_csi(PS *self) {
                 break;
             }
             if (start_modifier == '>' && !end_modifier) {
-                CALL_CSI_HANDLER1(screen_modify_other_keys, 0);
+                CALL_CSI_HANDLER2(screen_modify_other_keys, 0, INT_MAX);
                 break;
             }
             /* fallthrough */
