@@ -14,8 +14,14 @@ import (
 // AuthEntry holds per-host auth automation data parsed from ssh.conf
 type AuthEntry struct {
     Hostname    string // space-separated patterns, may include user@host
-    Password    string
-    TOTPSecret  string
+    // The secret backends currently supported are:
+    //   - text: store the secret directly in the config as plain text
+    // The config format is "backend:secret". For backward compatibility,
+    // a value without a backend is treated as "text:<value>".
+    Password           string
+    PasswordBackend    string
+    TOTPSecret         string
+    TOTPSecretBackend  string
     TOTPDigits  int // default 6
     TOTPPeriod  int // default 30
 }
@@ -36,10 +42,20 @@ func (a *authConfigSet) lineHandler(key, val string) error {
     cur := a.entries[len(a.entries)-1]
     switch key {
     case "password":
-        cur.Password = strings.TrimSpace(val)
+        b, s, err := parseBackendSecret("password", val)
+        if err != nil {
+            return err
+        }
+        cur.PasswordBackend = b
+        cur.Password = s
         return nil
     case "totp_secret":
-        cur.TOTPSecret = strings.TrimSpace(val)
+        b, s, err := parseBackendSecret("totp_secret", val)
+        if err != nil {
+            return err
+        }
+        cur.TOTPSecretBackend = b
+        cur.TOTPSecret = s
         return nil
     case "totp_digits":
         vv := strings.TrimSpace(val)
@@ -110,6 +126,16 @@ func LoadAuthForHost(hostnameToMatch, usernameToMatch string, paths ...string) (
     if err := p.LoadConfig("ssh.conf", paths, nil); err != nil {
         return nil, err
     }
+    // Surface errors related only to our auth lines so users get feedback
+    // for invalid backend specifications while ignoring unrelated ssh.conf issues.
+    for _, bl := range p.BadLines() {
+        line := strings.TrimSpace(bl.Line)
+        if strings.HasPrefix(line, "password ") || strings.HasPrefix(line, "totp_secret ") {
+            if bl.Err != nil {
+                return nil, bl.Err
+            }
+        }
+    }
     // Defaults
     for _, e := range acs.entries {
         if e.TOTPDigits == 0 {
@@ -118,7 +144,35 @@ func LoadAuthForHost(hostnameToMatch, usernameToMatch string, paths ...string) (
         if e.TOTPPeriod == 0 {
             e.TOTPPeriod = 30
         }
+        // Normalize empty backends to text for backward compatibility
+        if e.Password != "" && e.PasswordBackend == "" {
+            e.PasswordBackend = "text"
+        }
+        if e.TOTPSecret != "" && e.TOTPSecretBackend == "" {
+            e.TOTPSecretBackend = "text"
+        }
     }
     return matchAuthEntry(hostnameToMatch, usernameToMatch, acs.entries), nil
 }
 
+// parseBackendSecret parses a value of the form "backend:secret".
+// Currently only the "text" backend is supported. A value without a colon
+// is treated as a plain text secret for backward compatibility.
+func parseBackendSecret(settingKey, raw string) (backend, secret string, err error) {
+    v := strings.TrimSpace(raw)
+    if v == "" {
+        return "", "", nil
+    }
+    if b, s, ok := strings.Cut(v, ":"); ok {
+        b = strings.ToLower(strings.TrimSpace(b))
+        s = strings.TrimSpace(s)
+        switch b {
+        case "text":
+            return b, s, nil
+        default:
+            return "", "", fmt.Errorf("Unsupported secret backend %q for %s. Supported backends: text", b, settingKey)
+        }
+    }
+    // No backend specified; treat as text backend for backward compatibility
+    return "text", v, nil
+}
