@@ -981,16 +981,6 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     updateCursorImage(window);
 }
 
-- (void)viewDidChangeEffectiveAppearance
-{
-    static GLFWColorScheme appearance = GLFW_COLOR_SCHEME_NO_PREFERENCE;
-    GLFWColorScheme new_appearance = glfwGetCurrentSystemColorTheme(true);
-    if (new_appearance != appearance) {
-        appearance = new_appearance;
-        _glfwInputColorScheme(appearance, false);
-    }
-}
-
 - (void)viewDidChangeBackingProperties
 {
     if (!window) return;
@@ -3433,20 +3423,6 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     // HACK: Changing the style mask can cause the first responder to be cleared
     [window->ns.object makeFirstResponder:window->ns.view];
 }}
-
-GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialized) {
-    (void)query_if_unintialized;
-    int theme_type = 0;
-    NSAppearance *changedAppearance = NSApp.effectiveAppearance;
-    NSAppearanceName newAppearance = [changedAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
-    if([newAppearance isEqualToString:NSAppearanceNameDarkAqua]){
-        theme_type = 1;
-    } else {
-        theme_type = 2;
-    }
-    return theme_type;
-}
-
 
 GLFWAPI uint32_t
 glfwGetCocoaKeyEquivalent(uint32_t glfw_key, int glfw_mods, int *cocoa_mods) {

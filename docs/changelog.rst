@@ -147,6 +147,10 @@ Detailed list of changes
 - macOS: Workaround for bug in macOS Tahoe that caused closed OS Windows to
   remain as invisible rectangles that intercept mouse events (:iss:`8952`)
 
+- macOS: Fix a regression in the previous release that broke automatic
+  switching of dark/light mode when setting :opt:`macos_titlebar_color` to a
+  arbitrary color (:iss:`9034`)
+
 - goto_session: Add ``--sort-by=alphabetical`` to have the interactive session
   picker list the sessions in a fixed order rather than by most recent
   (:disc:`9033`)
