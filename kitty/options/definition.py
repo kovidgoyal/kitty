@@ -3586,12 +3586,7 @@ The color of the kitty window's titlebar on macOS. A value of
 :code:`dark` can also be used to set it explicitly. A value of
 :code:`background` means to use the background color of the currently active
 window and finally you can use an arbitrary color, such as :code:`#12af59` or
-:code:`red`. WARNING: This option works by using a hack when arbitrary color (or
-:code:`background`) is configured, as there is no proper Cocoa API for it. It
-sets the background color of the entire window and makes the titlebar
-transparent. As such it is incompatible with :opt:`background_opacity`. If you
-want to use both, you are probably better off just hiding the titlebar with
-:opt:`hide_window_decorations`.
+:code:`red`.
 '''
     )
 
