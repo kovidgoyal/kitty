@@ -1165,6 +1165,8 @@ def build_action_aliases(raw: dict[str, str], first_arg_replacement: str = '') -
 def resolve_aliases_and_parse_actions(
     defn: str, aliases: dict[str, list[ActionAlias]], map_type: MapType
 ) -> Iterator[KeyAction]:
+    if not defn:
+        return
     parts = defn.split(maxsplit=1)
     if len(parts) == 1:
         possible_alias = defn
