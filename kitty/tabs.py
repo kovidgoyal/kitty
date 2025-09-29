@@ -266,7 +266,12 @@ class Tab:  # {{{
             if window.resize_spec is not None:
                 self.resize_window(*window.resize_spec)
             if window.focus_matching_window_spec:
-                for w in boss.match_windows(window.focus_matching_window_spec, launched_window or boss.active_window):
+                # include windows from this tab when matching windows
+                all_windows = list(boss.all_windows)
+                all_windows.extend(w for w in self if w not in all_windows)
+                for w in boss.match_windows(
+                        window.focus_matching_window_spec, launched_window or boss.active_window, all_windows
+                ):
                     tab = w.tabref()
                     if tab:
                         target_tab = tab or self

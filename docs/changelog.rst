@@ -155,6 +155,9 @@ Detailed list of changes
   picker list the sessions in a fixed order rather than by most recent
   (:disc:`9033`)
 
+- Session files: Fix a regression in the previous release that broke matching on
+  windows in the current tab (:iss:`9037`)
+
 
 0.43.0 [2025-09-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
