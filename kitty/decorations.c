@@ -837,9 +837,10 @@ static void
 spinner(Canvas *self, uint level, double start_degrees, double end_degrees) {
     double x = self->width / 2.0, y = self->height / 2.0;
     double line_width = thickness_as_float(self, level, true);
-    double radius = fmax(0, fmin(x, y) - 1 - line_width / 2.0);
+    double half_real_line_width = fmax(0.5, line_width / 2.0);
+    double radius = fmax(0, fmin(x, y) - half_real_line_width);
     Circle c = circle(x, y, radius, start_degrees, end_degrees);
-    uint leftover = minus(self->height, 2*(uint)ceil(radius) + 1) / 2;
+    uint leftover = minus(self->height, 2*(uint)(ceil(radius) + half_real_line_width) + 1) / 2;
     ClipRect cr = {.top=leftover, .y_end=self->height - leftover, .x_end=self->width};
     draw_parametrized_curve_with_derivative_and_antialiasing(
         self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y, 0, 0, &cr);
