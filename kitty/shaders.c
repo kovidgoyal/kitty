@@ -1231,7 +1231,7 @@ draw_cursor_trail(CursorTrail *trail, Window *active_window) {
     }
     color_vec3(trail_program_layout.uniforms.trail_color, trail_color);
 
-    glUniform1fv(trail_program_layout.uniforms.trail_opacity, 1, &trail->opacity);
+    glUniform1f(trail_program_layout.uniforms.trail_opacity, trail->opacity);
 
     draw_quad(true, 0);
     unbind_program();
