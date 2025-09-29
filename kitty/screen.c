@@ -1675,7 +1675,10 @@ screen_modify_other_keys(Screen *self, unsigned val, unsigned val2) {
     // Only report an error about modifyOtherKeys if the kitty keyboard
     // protocol is not in effect and the application is trying to turn it on.
     // There are some applications that try to enable both.
-    if (!screen_current_key_encoding_flags(self) && val == 4 && val2 != INT_MAX && val2 != 0) {
+    if (
+        self->test_child == Py_None && !screen_current_key_encoding_flags(self) &&
+        val == 4 && val2 != INT_MAX && val2 != 0
+    ) {
         log_error("The application is trying to use xterm's modifyOtherKeys. This is superseded by the kitty keyboard protocol https://sw.kovidgoyal.net/kitty/keyboard-protocol. The application should be updated to use that.");
     }
 }
