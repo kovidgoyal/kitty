@@ -559,14 +559,16 @@ parse_cli_from_python_spec(PyObject *self, PyObject *args) {
         memcpy(argv[i + 1], src, sz);
     }
     argv[++argc] = 0;
-    PyObject *key = NULL, *opt = NULL;
+    PyObject *key = NULL, *optdef = NULL;
     Py_ssize_t pos = 0;
-    while (PyDict_Next(names_map, &pos, &key, &opt)) {
+    while (PyDict_Next(names_map, &pos, &key, &optdef)) {
         FlagSpec flag = {.dest=PyUnicode_AsUTF8(key)};
-        PyObject *pytype = PyDict_GetItemString(opt, "type");
-        const char *type = pytype ? PyUnicode_AsUTF8(pytype) : "";
+        RAII_PyObject(pytype, PyObject_GetAttrString(optdef, "type"));
+        if (!pytype) return NULL;
+        const char *type = PyUnicode_AsUTF8(pytype);
         PyObject *defval = PyDict_GetItemWithError(defval_map, key); if (!defval && PyErr_Occurred()) return NULL;
-        PyObject *pyaliases = PyDict_GetItemString(opt, "aliases");
+        RAII_PyObject(pyaliases, PyObject_GetAttrString(optdef, "aliases"));
+        if (!pyaliases) return NULL;
         for (int a = 0; a < PyTuple_GET_SIZE(pyaliases); a++) {
             const char *alias = PyUnicode_AsUTF8(PyTuple_GET_ITEM(pyaliases, a));
             if (vt_is_end(vt_insert(&spec.alias_map, alias, flag.dest))) return PyErr_NoMemory();
@@ -588,7 +590,8 @@ parse_cli_from_python_spec(PyObject *self, PyObject *args) {
         } else if (strcmp(type, "choices") == 0) {
             flag.defval.type = CLI_VALUE_CHOICE;
             flag.defval.strval = PyUnicode_AsUTF8(defval);
-            PyObject *pyc = PyDict_GetItemString(opt, "choices");
+            RAII_PyObject(pyc, PyObject_GetAttrString(optdef, "choices"));
+            if (!pyc) return NULL;
             flag.defval.listval.items = alloc_for_cli(&spec, PyTuple_GET_SIZE(pyc) * sizeof(char*));
             if (!flag.defval.listval.items) return PyErr_NoMemory();
             flag.defval.listval.count = PyTuple_GET_SIZE(pyc);

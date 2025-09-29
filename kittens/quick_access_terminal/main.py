@@ -29,16 +29,16 @@ def migrate_help(x: str) -> str:
 
 
 def help_of(x: str) -> str:
-    return migrate_help(panel_opts[x]['help'])
+    return migrate_help(panel_opts[x].help)
 
 
 agr('qat', 'Window appearance')
 
-opt('lines', '25', long_text=panel_opts['lines']['help'])
+opt('lines', '25', long_text=panel_opts['lines'].help)
 
-opt('columns', '80', long_text=panel_opts['columns']['help'])
+opt('columns', '80', long_text=panel_opts['columns'].help)
 
-opt('edge', 'top', choices=panel_opts['edge']['choices'], long_text=help_of('edge'))
+opt('edge', 'top', choices=panel_opts['edge'].choices, long_text=help_of('edge'))
 
 opt('background_opacity', '0.85', option_type='unit_float', long_text='''
 The background opacity of the window. This works the same as the kitty
@@ -80,7 +80,7 @@ opt('output_name', '', long_text=help_of('output_name'))
 opt('start_as_hidden', 'no', option_type='to_bool',
     long_text='Whether to start the quick access terminal hidden. Useful if you are starting it as part of system startup.')
 
-opt('focus_policy', 'exclusive', choices=panel_opts['focus_policy']['choices'], long_text=help_of('focus_policy'))
+opt('focus_policy', 'exclusive', choices=panel_opts['focus_policy'].choices, long_text=help_of('focus_policy'))
 
 
 

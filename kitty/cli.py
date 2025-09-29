@@ -15,7 +15,7 @@ from .fast_data_types import parse_cli_from_spec, wcswidth
 from .options.types import Options as KittyOpts
 from .simple_cli_definitions import (
     CompletionType,
-    OptionDict,
+    OptionDefinition,
     OptionSpecSeq,
     defval_for_opt,
     get_option_maps,
@@ -34,34 +34,34 @@ go_type_map = {
 
 class GoOption:
 
-    def __init__(self, x: OptionDict) -> None:
-        flags = sorted(x['aliases'], key=len)
+    def __init__(self, x: OptionDefinition) -> None:
+        flags = sorted(x.aliases, key=len)
         short = ''
         self.aliases = []
         if len(flags) > 1 and not flags[0].startswith("--"):
             short = flags[0][1:]
-        self.short, self.long = short, x['name'].replace('_', '-')
+        self.short, self.long = short, x.name.replace('_', '-')
         for f in flags:
             q = f[2:] if f.startswith('--') else f[1:]
             self.aliases.append(q)
-        self.type = x['type']
-        if x['choices']:
+        self.type = x.type
+        if x.choices:
             self.type = 'choices'
-        self.default = x['default']
-        self.obj_dict = x
+        self.default = x.default
+        self.obj_defn = x
         self.go_type = go_type_map[self.type]
-        if x['dest']:
-            self.go_var_name = ''.join(x.capitalize() for x in x['dest'].replace('-', '_').split('_'))
+        if x.dest:
+            self.go_var_name = ''.join(x.capitalize() for x in x.dest.replace('-', '_').split('_'))
         else:
             self.go_var_name = ''.join(x.capitalize() for x in self.long.replace('-', '_').split('_'))
-        self.help_text = serialize_as_go_string(self.obj_dict['help'].strip())
+        self.help_text = serialize_as_go_string(self.obj_defn.help.strip())
 
     def struct_declaration(self) -> str:
         return f'{self.go_var_name} {self.go_type}'
 
     @property
     def flags(self) -> list[str]:
-        return sorted(self.obj_dict['aliases'])
+        return sorted(self.obj_defn.aliases)
 
     def as_option(self, cmd_name: str = 'cmd', depth: int = 0, group: str = '') -> str:
         add = f'AddToGroup("{serialize_as_go_string(group)}", ' if group else 'Add('
@@ -77,8 +77,8 @@ class GoOption:
             cx = ', '.join(f'"{serialize_as_go_string(x)}"' for x in self.sorted_choices)
             ans += f'\nChoices: "{serialize_as_go_string(c)}",\n'
             ans += f'\nCompleter: cli.NamesCompleter("Choices for {self.long}", {cx}),'
-        elif self.obj_dict['completion'].type is not CompletionType.none:
-            ans += ''.join(self.obj_dict['completion'].as_go_code('Completer', ': ')) + ','
+        elif self.obj_defn.completion.type is not CompletionType.none:
+            ans += ''.join(self.obj_defn.completion.as_go_code('Completer', ': ')) + ','
         if depth > 0:
             ans += f'\n\tDepth: {depth},\n'
         if self.default:
@@ -111,7 +111,7 @@ class GoOption:
 
     @property
     def sorted_choices(self) -> list[str]:
-        choices = sorted(self.obj_dict['choices'])
+        choices = sorted(self.obj_defn.choices)
         choices.remove(self.default or '')
         choices.insert(0, self.default or '')
         return choices
@@ -374,7 +374,7 @@ def get_defaults_from_seq(seq: OptionSpecSeq) -> dict[str, Any]:
     ans: dict[str, Any] = {}
     for opt in seq:
         if not isinstance(opt, str):
-            ans[opt['dest']] = defval_for_opt(opt)
+            ans[opt.dest] = defval_for_opt(opt)
     return ans
 
 
@@ -432,24 +432,24 @@ class PrintHelpForSeq:
             if isinstance(opt, str):
                 a(f'{title(opt)}:')
                 continue
-            help_text = opt['help']
+            help_text = opt.help
             if help_text == '!':
                 continue  # hidden option
-            a('  ' + ', '.join(map(green, sorted(opt['aliases'], reverse=True))))
-            defval = opt.get('default')
-            if (otype := opt.get('type', '')).startswith('bool-'):
+            a('  ' + ', '.join(map(green, sorted(opt.aliases, reverse=True))))
+            defval = opt.default
+            if (otype := opt.type).startswith('bool-'):
                 blocks[-1] += italic(f'[={help_defval_for_bool(otype)}]')
             else:
                 dt = f'''=[{italic(defval or '""')}]'''
                 blocks[-1] += dt
-            if opt.get('help'):
+            if opt.help:
                 t = help_text.replace('%default', str(defval)).strip()
                 # replace rst literal code block syntax
                 t = t.replace('::\n\n', ':\n\n')
                 t = t.replace('#placeholder_for_formatting#', '')
                 wa(prettify(t), indent=4)
-                if opt.get('choices'):
-                    wa('Choices: {}'.format(', '.join(opt['choices'])), indent=4)
+                if opt.choices:
+                    wa('Choices: {}'.format(', '.join(opt.choices)), indent=4)
                 a('')
 
         text = '\n'.join(blocks) + '\n\n' + version()
@@ -510,25 +510,25 @@ def seq_as_rst(
             a(opt)
             a('~' * (len(opt) + 10))
             continue
-        help_text = opt['help']
+        help_text = opt.help
         if help_text == '!':
             continue  # hidden option
         defn = '.. option:: '
-        if (otype := opt.get('type', '')).startswith('bool-'):
+        if (otype := opt.type).startswith('bool-'):
             val_name = f' [={help_defval_for_bool(otype)}]'
         else:
-            val_name = ' <{}>'.format(opt['dest'].upper())
-        a(defn + ', '.join(o + val_name for o in sorted(opt['aliases'])))
-        if opt.get('help'):
-            defval = opt.get('default')
+            val_name = ' <{}>'.format(opt.dest.upper())
+        a(defn + ', '.join(o + val_name for o in sorted(opt.aliases)))
+        if opt.help:
+            defval = opt.default
             t = help_text.replace('%default', ':code:`' + escape_rst(str(defval)) + '`').strip()
             t = t.replace('#placeholder_for_formatting#', '')
             a('')
             a(textwrap.indent(prettify_rst(t), ' ' * 4))
             if defval is not None:
                 a(textwrap.indent(f'Default: :code:`{escape_rst(str(defval))}`', ' ' * 4))
-            if opt.get('choices'):
-                a(textwrap.indent('Choices: {}'.format(', '.join(f':code:`{escape_rst(c)}`' for c in sorted(opt['choices']))), ' ' * 4))
+            if opt.choices:
+                a(textwrap.indent('Choices: {}'.format(', '.join(f':code:`{escape_rst(c)}`' for c in sorted(opt.choices))), ' ' * 4))
             a('')
 
     text = '\n'.join(blocks)
@@ -541,8 +541,8 @@ def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str, e
     for opt in chain(seq, disabled):
         if isinstance(opt, str):
             continue
-        name = opt['dest']
-        otype = opt['type'] or 'str'
+        name = opt.dest
+        otype = opt.type or 'str'
         if otype in ('str', 'int', 'float'):
             t = otype
             if t == 'str' and defval_for_opt(opt) is None:
@@ -550,8 +550,8 @@ def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str, e
         elif otype == 'list':
             t = 'typing.Sequence[str]'
         elif otype in ('choice', 'choices'):
-            if opt['choices']:
-                t = 'typing.Literal[{}]'.format(','.join(f'{x!r}' for x in opt['choices']))
+            if opt.choices:
+                t = 'typing.Literal[{}]'.format(','.join(f'{x!r}' for x in opt.choices))
             else:
                 t = 'str'
         elif otype.startswith('bool-'):
@@ -616,14 +616,14 @@ def apply_preparsed_cli_flags(
 
 
 def parse_cmdline_inner(
-        args: list[str], oc: Options, disabled: OptionSpecSeq, names_map: dict[str, OptionDict],
-        values_map: dict[str, OptionDict], ans: Any, track_seen_options: dict[str, Any] | None = None
+        args: list[str], oc: Options, disabled: OptionSpecSeq, names_map: dict[str, OptionDefinition],
+        values_map: dict[str, OptionDefinition], ans: Any, track_seen_options: dict[str, Any] | None = None
 ) -> list[str]:
     preparsed = parse_cli_from_spec(args, names_map, values_map)
     leftover_args = apply_preparsed_cli_flags(preparsed, ans, lambda: oc, track_seen_options)
     for opt in disabled:
         if not isinstance(opt, str):
-            setattr(ans, opt['dest'], defval_for_opt(opt))
+            setattr(ans, opt.dest, defval_for_opt(opt))
     return leftover_args
 
 
@@ -634,10 +634,10 @@ def parse_cmdline(
     names_map = oc.names_map.copy()
     values_map = oc.values_map.copy()
     if 'help' not in names_map:
-        names_map['help'] = {'type': 'bool-set', 'aliases': ('--help', '-h')}  # type: ignore
+        names_map['help'] = OptionDefinition(type='bool-set', aliases=('--help', '-h'))
         values_map['help'] = False
     if 'version' not in names_map:
-        names_map['version'] = {'type': 'bool-set', 'aliases': ('--version', '-v')}  # type: ignore
+        names_map['version'] = OptionDefinition(type='bool-set', aliases=('--version', '-v'))
         values_map['version'] = False
     try:
         return parse_cmdline_inner(sys.argv[1:] if args is None else args, oc, disabled, names_map, values_map, ans, track_seen_options)
