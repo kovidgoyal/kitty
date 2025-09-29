@@ -779,6 +779,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         markedRect = NSMakeRect(0.0, 0.0, 0.0, 0.0);
         input_source_at_last_key_event = nil;
         in_key_handler = 0;
+        self.identifier = @"kitty-content-view";
 
         [self updateTrackingAreas];
         [self registerForDraggedTypes:@[NSPasteboardTypeFileURL, NSPasteboardTypeString]];
@@ -3298,7 +3299,6 @@ set_title_bar_background(NSWindow *window, NSColor *backgroundColor) {
     // add an extra view that just renders the background color under the transparent titlebar
     NSView *contentView = window.contentView, *titlebarContainer = contentView ? contentView.superview : nil;
     if (!titlebarContainer) return;
-    contentView.identifier = @"kitty-content-view";
     for (NSView *subview in [titlebarContainer viewsWithIdentifier:tag]) [subview removeFromSuperview];
     if (!backgroundColor) return;
     const CGFloat height = title_bar_and_tool_bar_height(window);
