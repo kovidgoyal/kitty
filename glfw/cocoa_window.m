@@ -3270,11 +3270,6 @@ GLFWAPI GLFWcocoarenderframefun glfwCocoaSetWindowResizeCallback(GLFWwindow *w, 
 
 @end
 
-static CGFloat
-title_bar_and_tool_bar_height(NSWindow *window) {
-    return window.frame.size.height - [window contentRectForFrameRect:window.frame].size.height;
-}
-
 static
 void clear_title_bar_background_views(NSWindow *window) {
 #define tag @"kitty-for-transparent-titlebar"
@@ -3291,9 +3286,30 @@ set_title_bar_background(NSWindow *window, NSColor *backgroundColor) {
     if (!titlebarContainer) return;
     for (NSView *subview in [titlebarContainer viewsWithIdentifier:tag]) [subview removeFromSuperview];
     if (!backgroundColor) return;
-    const CGFloat height = title_bar_and_tool_bar_height(window);
-    debug_rendering("titlebar_height used for translucent titlebar view: %f\n", height);
-    NSView *bgView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, titlebarContainer.bounds.size.width, height)];
+
+    NSButton *b = [window standardWindowButton:NSWindowCloseButton];
+    if (b) {
+        NSView *titlebarView = b.superview;
+        NSView *bgView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, titlebarView.bounds.size.width, titlebarView.bounds.size.height)];
+        bgView.translatesAutoresizingMaskIntoConstraints = NO;
+        bgView.wantsLayer = YES;
+        bgView.layer.backgroundColor = backgroundColor.CGColor;
+        bgView.identifier = tag;
+        [titlebarView addSubview:bgView positioned:NSWindowBelow relativeTo:titlebarView.subviews[0]];
+        [NSLayoutConstraint activateConstraints:@[
+            // Pin to the top of the content view.
+            [bgView.topAnchor constraintEqualToAnchor:titlebarView.topAnchor],
+            // Pin to the leading edge of the content view.
+            [bgView.leadingAnchor constraintEqualToAnchor:titlebarView.leadingAnchor],
+            // Pin to the trailing edge of the content view.
+            [bgView.trailingAnchor constraintEqualToAnchor:titlebarView.trailingAnchor],
+            // Give it a fixed height
+            [bgView.bottomAnchor constraintEqualToAnchor:titlebarView.bottomAnchor]
+        ]];
+        [bgView release];
+        return;
+    }
+    NSView *bgView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, titlebarContainer.bounds.size.width, 32)];
     bgView.translatesAutoresizingMaskIntoConstraints = NO;
     bgView.wantsLayer = YES;
     bgView.layer.backgroundColor = backgroundColor.CGColor;
@@ -3309,7 +3325,7 @@ set_title_bar_background(NSWindow *window, NSColor *backgroundColor) {
         // Pin to the trailing edge of the content view.
         [bgView.trailingAnchor constraintEqualToAnchor:titlebarContainer.trailingAnchor],
         // Give it a fixed height
-        [bgView.heightAnchor constraintEqualToConstant:height]
+        [bgView.bottomAnchor constraintEqualToAnchor:contentView.topAnchor]
     ]];
     [bgView release];
 #undef tag
