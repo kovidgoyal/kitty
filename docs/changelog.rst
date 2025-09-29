@@ -139,7 +139,7 @@ Detailed list of changes
 
 - macOS: Fix a bug where the color of a transparent titlebar was off when
   running in the release build versus the build from source. Also fix using a
-  transparent titlebar causing the background opacity to be darkened.
+  transparent titlebar causing the background opacity to be doubled.
 
 - Fix a regression in the previous release that caused the incorrect tab to be
   active when loading a session (:iss:`9025`)
