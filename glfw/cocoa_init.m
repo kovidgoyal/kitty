@@ -297,6 +297,7 @@ static NSDictionary<NSString*,NSNumber*> *global_shortcuts = nil;
 // Delegate for application related notifications {{{
 
 @interface GLFWApplicationDelegate : NSObject <NSApplicationDelegate>
+    - (void)handleAppearanceChange;
 @end
 
 @implementation GLFWApplicationDelegate
@@ -415,20 +416,73 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
     }
 }
 
+static void *AppearanceObservationContext = &AppearanceObservationContext;
+
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
-    if (finish_launching_callback) finish_launching_callback(true);
     (void)notification;
+    [[NSApplication sharedApplication] addObserver:self
+        forKeyPath:@"effectiveAppearance" options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionInitial
+        context:AppearanceObservationContext];
+
+    if (finish_launching_callback) finish_launching_callback(true);
     [NSApp stop:nil];
 
     CGDisplayRegisterReconfigurationCallback(display_reconfigured, NULL);
     _glfwCocoaPostEmptyEvent();
 }
 
+GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialized) {
+    (void)query_if_unintialized;
+    int theme_type = GLFW_COLOR_SCHEME_NO_PREFERENCE;
+    NSAppearance *changedAppearance = NSApp.effectiveAppearance;
+    NSAppearanceName newAppearance = [changedAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]];
+    if([newAppearance isEqualToString:NSAppearanceNameDarkAqua]){
+        theme_type = GLFW_COLOR_SCHEME_DARK;
+    } else {
+        theme_type = GLFW_COLOR_SCHEME_LIGHT;
+    }
+    return theme_type;
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(id)object
+                        change:(NSDictionary<NSKeyValueChangeKey, id> *)change
+                       context:(void *)context {
+                           if (context == AppearanceObservationContext) {
+        if ([keyPath isEqualToString:@"effectiveAppearance"]) {
+            // The initial call (from NSKeyValueObservingOptionInitial) might happen on a background thread.
+            // Dispatch to the main thread to be safe, especially if updating UI.
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self handleAppearanceChange];
+            });
+        }
+    } else {
+        // If the context doesn't match, pass the notification to the superclass.
+        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+    }
+}
+
+- (void)handleAppearanceChange {
+    static GLFWColorScheme previously_reported_appearance = GLFW_COLOR_SCHEME_NO_PREFERENCE;
+    GLFWColorScheme new_appearance = glfwGetCurrentSystemColorTheme(true);
+    if (new_appearance != previously_reported_appearance) {
+        previously_reported_appearance = new_appearance;
+        _glfwInputColorScheme(new_appearance, false);
+    }
+}
+
 - (void)applicationWillTerminate:(NSNotification *)aNotification
 {
     (void)aNotification;
     CGDisplayRemoveReconfigurationCallback(display_reconfigured, NULL);
+    @try {
+        [[NSApplication sharedApplication] removeObserver:self
+                                               forKeyPath:@"effectiveAppearance"
+                                                  context:AppearanceObservationContext];
+    } @catch (NSException * __unused exception) {
+        // Ignore exceptions, which can happen if the observer was never added.
+    }
 }
 
 - (void)applicationDidHide:(NSNotification *)notification

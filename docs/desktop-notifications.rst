@@ -1,4 +1,4 @@
-.. _desktop_notifications:
+.. _notifications_on_the_desktop:
 
 
 Desktop notifications

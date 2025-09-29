@@ -82,8 +82,8 @@ CmdGenerator = Iterator[CmdReturnType]
 PayloadType = Optional[Union[CmdReturnType, CmdGenerator]]
 PayloadGetType = PayloadGetter
 ArgsType = list[str]
-ImageCompletion = CompletionSpec.from_string('type:file group:"Images"')
-ImageCompletion.extensions = 'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'tiff'
+ImageCompletion = CompletionSpec.from_string('type:file group:"Images"')._replace(
+    extensions=('png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'tiff'))
 SUPPORTED_IMAGE_FORMATS = tuple(x.upper() for x in ImageCompletion.extensions if x != 'jpg')
 
 

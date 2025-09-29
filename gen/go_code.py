@@ -247,7 +247,7 @@ def clone_safe_launch_opts() -> Sequence[GoOption]:
     ans = []
     allowed = clone_safe_opts()
     for o in go_options_for_seq(parse_option_spec(options_spec())[0]):
-        if o.obj_dict['name'] in allowed:
+        if o.obj_defn.name in allowed:
             ans.append(o)
     return tuple(ans)
 

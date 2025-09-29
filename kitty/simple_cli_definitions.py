@@ -6,9 +6,9 @@
 
 import re
 import sys
-from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, Iterator, Sequence, TypedDict
+from functools import lru_cache
+from typing import Any, Iterator, NamedTuple, Sequence
 
 try:
     from kitty.constants import appname, is_macos
@@ -42,8 +42,7 @@ class CompletionRelativeTo(Enum):
     config_dir = auto()
 
 
-@dataclass
-class CompletionSpec:
+class CompletionSpec(NamedTuple):
 
     type: CompletionType = CompletionType.none
     kwds: tuple[str,...] = ()
@@ -54,27 +53,33 @@ class CompletionSpec:
 
     @staticmethod
     def from_string(raw: str) -> 'CompletionSpec':
-        self = CompletionSpec()
+        typ = CompletionType.none
+        kwds: tuple[str, ...] = ()
+        extensions: tuple[str, ...] = ()
+        mime_patterns: tuple[str, ...] = ()
+        group = ''
+        relative_to = CompletionRelativeTo.cwd
         for x in shlex_split(raw):
             ck, vv = x.split(':', 1)
             if ck == 'type':
-                self.type = getattr(CompletionType, vv)
+                typ = getattr(CompletionType, vv)
             elif ck == 'kwds':
-                self.kwds += tuple(vv.split(','))
+                kwds += tuple(vv.split(','))
             elif ck == 'ext':
-                self.extensions += tuple(vv.split(','))
+                extensions += tuple(vv.split(','))
             elif ck == 'group':
-                self.group = vv
+                group = vv
             elif ck == 'mime':
-                self.mime_patterns += tuple(vv.split(','))
+                mime_patterns += tuple(vv.split(','))
             elif ck == 'relative':
                 if vv == 'conf':
-                    self.relative_to = CompletionRelativeTo.config_dir
+                    relative_to = CompletionRelativeTo.config_dir
                 else:
                     raise ValueError(f'Unknown completion relative to value: {vv}')
             else:
                 raise KeyError(f'Unknown completion property: {ck}')
-        return self
+        return CompletionSpec(
+            type=typ, kwds=kwds, extensions=extensions, mime_patterns=mime_patterns, group=group, relative_to=relative_to)
 
     def as_go_code(self, go_name: str, sep: str = ': ') -> Iterator[str]:
         completers = []
@@ -106,21 +111,23 @@ class CompletionSpec:
             yield f'{go_name}{sep}{completers[0]}'
 
 
-class OptionDict(TypedDict):
-    dest: str
-    name: str
-    aliases: tuple[str, ...]
-    help: str
-    choices: tuple[str, ...]
-    type: str
-    default: str | None
-    condition: bool
-    completion: CompletionSpec
+class OptionDefinition(NamedTuple):
+    dest: str = ''
+    name: str = ''
+    aliases: tuple[str, ...] = ()
+    help: str = ''
+    choices: tuple[str, ...] = ()
+    type: str = ''
+    default: str | None = None
+    condition: bool = False
+    completion: CompletionSpec = CompletionSpec()
 
 
-OptionSpecSeq = Sequence[str | OptionDict]
+
+OptionSpecSeq = Sequence[str | OptionDefinition]
 
 
+@lru_cache(64)
 def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpecSeq]:
     if spec is None:
         spec = kitty_options_spec()
@@ -129,14 +136,10 @@ def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpe
     lines = spec.splitlines()
     prev_line = ''
     prev_indent = 0
-    seq: list[str | OptionDict] = []
-    disabled: list[str | OptionDict] = []
+    seq: list[str | OptionDefinition] = []
+    disabled: list[str | OptionDefinition] = []
     mpat = re.compile('([a-z]+)=(.+)')
-    current_cmd: OptionDict = {
-        'dest': '', 'aliases': (), 'help': '', 'choices': (),
-        'type': '', 'condition': False, 'default': None, 'completion': CompletionSpec(), 'name': ''
-    }
-    empty_cmd = current_cmd
+    current_cmd = empty_cmd = OptionDefinition()
 
     def indent_of_line(x: str) -> int:
         return len(x) - len(x.lstrip())
@@ -152,11 +155,7 @@ def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpe
             if line.startswith('--'):
                 parts = line.split(' ')
                 defdest = parts[0][2:].replace('-', '_')
-                current_cmd = {
-                    'dest': defdest, 'aliases': tuple(parts), 'help': '',
-                    'choices': tuple(), 'type': '', 'name': defdest,
-                    'default': None, 'condition': True, 'completion': CompletionSpec(),
-                }
+                current_cmd = OptionDefinition(dest=defdest, aliases=tuple(parts), name=defdest, condition=True)
                 state = METADATA
                 continue
             raise ValueError(f'Invalid option spec, unexpected line: {line}')
@@ -164,60 +163,61 @@ def parse_option_spec(spec: str | None = None) -> tuple[OptionSpecSeq, OptionSpe
             m = mpat.match(line)
             if m is None:
                 state = HELP
-                current_cmd['help'] += line
+                current_cmd = current_cmd._replace(help=current_cmd.help + line)
             else:
                 k, v = m.group(1), m.group(2)
                 if k == 'choices':
                     vals = tuple(x.strip() for x in v.split(','))
-                    if not current_cmd['type']:
-                        current_cmd['type'] = 'choices'
-                    if current_cmd['type'] != 'choices':
-                        raise ValueError(f'Cannot specify choices for an option of type: {current_cmd["type"]}')
-                    current_cmd['choices'] = tuple(vals)
-                    if current_cmd['default'] is None:
-                        current_cmd['default'] = vals[0]
+                    if not current_cmd.type:
+                        current_cmd = current_cmd._replace(type='choices')
+                    if current_cmd.type != 'choices':
+                        raise ValueError(f'Cannot specify choices for an option of type: {current_cmd.type}')
+                    current_cmd = current_cmd._replace(choices=tuple(vals))
+                    if current_cmd.default is None:
+                        current_cmd = current_cmd._replace(default=vals[0])
                 else:
                     if k == 'default':
-                        current_cmd['default'] = v
+                        current_cmd = current_cmd._replace(default=v)
                     elif k == 'type':
                         if v == 'choice':
                             v = 'choices'
-                        current_cmd['type'] = v
+                        current_cmd = current_cmd._replace(type=v)
                     elif k == 'dest':
-                        current_cmd['dest'] = v
+                        current_cmd = current_cmd._replace(dest=v)
                     elif k == 'condition':
-                        current_cmd['condition'] = bool(eval(v))
+                        current_cmd = current_cmd._replace(condition=bool(eval(v)))
                     elif k == 'completion':
-                        current_cmd['completion'] = CompletionSpec.from_string(v)
+                        current_cmd = current_cmd._replace(completion=CompletionSpec.from_string(v))
         elif state is HELP:
             if line:
                 current_indent = indent_of_line(line)
                 if current_indent > 1:
                     if prev_indent == 0:
-                        current_cmd['help'] += '\n'
+                        current_cmd = current_cmd._replace(help=current_cmd.help + '\n')
                     else:
                         line = line.strip()
                 prev_indent = current_indent
-                spc = '' if current_cmd['help'].endswith('\n') else ' '
-                current_cmd['help'] += spc + line
+                spc = '' if current_cmd.help.endswith('\n') else ' '
+                current_cmd = current_cmd._replace(help=current_cmd.help + spc + line)
             else:
                 prev_indent = 0
                 if prev_line:
-                    current_cmd['help'] += '\n' if current_cmd['help'].endswith('::') else '\n\n'
+                    h = '\n' if current_cmd.help.endswith('::') else '\n\n'
+                    current_cmd = current_cmd._replace(help=current_cmd.help + h)
                 else:
                     state = NORMAL
-                    (seq if current_cmd.get('condition', True) else disabled).append(current_cmd)
+                    (seq if current_cmd.condition else disabled).append(current_cmd)
                     current_cmd = empty_cmd
         prev_line = line
     if current_cmd is not empty_cmd:
-        (seq if current_cmd.get('condition', True) else disabled).append(current_cmd)
+        (seq if current_cmd.condition else disabled).append(current_cmd)
 
     return seq, disabled
 
 
-def defval_for_opt(opt: OptionDict) -> Any:
-    dv: Any = opt.get('default')
-    typ = opt.get('type', '')
+def defval_for_opt(opt: OptionDefinition) -> Any:
+    dv: Any = opt.default
+    typ = opt.type
     if typ.startswith('bool-'):
         if dv is None:
             dv = False if typ == 'bool-set' else True
@@ -230,16 +230,16 @@ def defval_for_opt(opt: OptionDict) -> Any:
     return dv
 
 
-def get_option_maps(seq: OptionSpecSeq) -> tuple[dict[str, OptionDict], dict[str, OptionDict], dict[str, Any]]:
-    names_map: dict[str, OptionDict] = {}
-    alias_map: dict[str, OptionDict] = {}
+def get_option_maps(seq: OptionSpecSeq) -> tuple[dict[str, OptionDefinition], dict[str, OptionDefinition], dict[str, Any]]:
+    names_map: dict[str, OptionDefinition] = {}
+    alias_map: dict[str, OptionDefinition] = {}
     values_map: dict[str, Any] = {}
     for opt in seq:
         if isinstance(opt, str):
             continue
-        for alias in opt['aliases']:
+        for alias in opt.aliases:
             alias_map[alias] = opt
-        name = opt['dest']
+        name = opt.dest
         names_map[name] = opt
         values_map[name] = defval_for_opt(opt)
     return names_map, alias_map, values_map
@@ -259,9 +259,9 @@ def add_list_values(*values: str) -> Iterator[str]:
         yield f'\tflag.defval.listval.items[{n}] = {c_str(value)};'
 
 
-def generate_c_for_opt(name: str, defval: Any, opt: OptionDict) -> Iterator[str]:
+def generate_c_for_opt(name: str, defval: Any, opt: OptionDefinition) -> Iterator[str]:
     yield f'\tflag = (FlagSpec){{.dest={c_str(name)},}};'
-    match opt['type']:
+    match opt.type:
         case 'bool-set' | 'bool-reset':
             yield '\tflag.defval.type = CLI_VALUE_BOOL;'
             yield f'\tflag.defval.boolval = {"true" if defval else "false"};'
@@ -278,7 +278,7 @@ def generate_c_for_opt(name: str, defval: Any, opt: OptionDict) -> Iterator[str]
         case 'choices':
             yield '\tflag.defval.type = CLI_VALUE_CHOICE;'
             yield f'\tflag.defval.strval = {c_str(defval)};'
-            yield from add_list_values(*opt['choices'])
+            yield from add_list_values(*opt.choices)
         case _:
             yield '\tflag.defval.type = CLI_VALUE_STRING;'
             if defval is not None:
@@ -289,22 +289,22 @@ def generate_c_parser_for(funcname: str, spec: str) -> Iterator[str]:
     seq, disabled = parse_option_spec(spec)
     names_map, _, defaults_map = get_option_maps(seq)
     if 'help' not in names_map:
-        names_map['help'] = {'type': 'bool-set', 'aliases': ('--help', '-h')}  # type: ignore
+        names_map['help'] = OptionDefinition(type='bool-set', aliases=('--help', '-h'))
         defaults_map['help'] = False
     if 'version' not in names_map:
-        names_map['version'] = {'type': 'bool-set', 'aliases': ('--version', '-v')}  # type: ignore
+        names_map['version'] = OptionDefinition(type='bool-set', aliases=('--version', '-v'))
         defaults_map['version'] = False
 
     yield f'static void\nparse_cli_for_{funcname}(CLISpec *spec, int argc, char **argv) {{'  # }}
     yield '\tFlagSpec flag;'
     for name, opt in names_map.items():
-        for alias in opt['aliases']:
+        for alias in opt.aliases:
             yield f'\tif (vt_is_end(vt_insert(&spec->alias_map, {c_str(alias)}, {c_str(name)}))) OOM;'
         yield from generate_c_for_opt(name, defaults_map[name], opt)
         yield '\tif (vt_is_end(vt_insert(&spec->flag_map, flag.dest, flag))) OOM;'
     for d in disabled:
         if not isinstance(d, str):
-            yield from generate_c_for_opt(d['dest'], defval_for_opt(d), d)
+            yield from generate_c_for_opt(d.dest, defval_for_opt(d), d)
             yield '\tif (vt_is_end(vt_insert(&spec->disabled_map, flag.dest, flag))) OOM;'
 
     yield '\tparse_cli_loop(spec, true, argc, argv);'

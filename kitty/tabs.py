@@ -266,7 +266,12 @@ class Tab:  # {{{
             if window.resize_spec is not None:
                 self.resize_window(*window.resize_spec)
             if window.focus_matching_window_spec:
-                for w in boss.match_windows(window.focus_matching_window_spec, launched_window or boss.active_window):
+                # include windows from this tab when matching windows
+                all_windows = list(boss.all_windows)
+                all_windows.extend(w for w in self if w not in all_windows)
+                for w in boss.match_windows(
+                        window.focus_matching_window_spec, launched_window or boss.active_window, all_windows
+                ):
                     tab = w.tabref()
                     if tab:
                         target_tab = tab or self
@@ -1031,12 +1036,15 @@ class TabManager:  # {{{
             self.add_tabs_from_session(startup_session)
 
     def add_tabs_from_session(self, session: SessionType, session_name: str = '') -> None:
-        before = len(self.tabs)
-        for t in session.tabs:
+        active_tab = self.active_tab
+        for i, t in enumerate(session.tabs):
             tab = Tab(self, session_tab=t, session_name=session_name or self.created_in_session_name)
             self._add_tab(tab)
-        num_added = len(self.tabs) - before
-        self._set_active_tab(max(0, min(num_added + session.active_tab_idx, len(self.tabs) - 1)))
+            if i == session.active_tab_idx:
+                active_tab = tab
+        if active_tab is not None:
+            idx = self.tabs.index(active_tab)
+            self._set_active_tab(idx)
 
     @property
     def active_tab_idx(self) -> int:
@@ -1379,7 +1387,6 @@ class TabManager:  # {{{
                             tab_id = self.active_tab_history.pop()
                             next_active_tab = self.tab_for_id(tab_id)
                     case 'left':
-                        print(2222222222, tabs.index(active_tab_before_removal))
                         next_active_tab = tabs[(tabs.index(active_tab_before_removal) - 1 + len(tabs)) % len(tabs)]
                         remove_from_end_of_active_history(next_active_tab)
                     case 'right':

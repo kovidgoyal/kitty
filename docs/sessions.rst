@@ -55,6 +55,8 @@ easily swap between them, kitty has you covered. You can use the
    map f7>h goto_session ~/path/to/hot/hot.kitty-session
    # Browse and select from the list of known projects defined via goto_session commands
    map f7>/ goto_session
+   # Same as above, but the sessions are listed alphabetically instead of by most recent
+   map f7>/ goto_session --sort-by=alphabetical
    # Go to the previously active session (larger negative numbers jump further back in history)
    map f7>- goto_session -1
 

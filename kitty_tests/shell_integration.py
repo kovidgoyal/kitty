@@ -88,6 +88,7 @@ class ShellIntegration(BaseTest):
     @contextmanager
     def run_shell(self, shell='zsh', rc='', cmd='', setup_env=None, extra_env=None):
         home_dir = self.home_dir = os.path.realpath(tempfile.mkdtemp())
+        needs_da1 = os.path.basename(shell) == 'fish'
         cmd = cmd or shell
         cmd = shlex.split(cmd.format(**locals()))
         env = (setup_env or safe_env_for_running_shell)(cmd, home_dir, rc=rc, shell=shell, with_kitten=self.with_kitten)
@@ -97,7 +98,7 @@ class ShellIntegration(BaseTest):
         try:
             if self.with_kitten:
                 cmd = [kitten_exe(), 'run-shell', '--shell', shlex.join(cmd)]
-            pty = self.create_pty(cmd, cwd=home_dir, env=env, cols=180)
+            pty = self.create_pty(cmd, cwd=home_dir, env=env, cols=180, needs_da1=needs_da1)
             i = 10
             while i > 0 and not pty.screen_contents().strip():
                 pty.process_input_from_child()
