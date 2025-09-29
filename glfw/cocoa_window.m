@@ -3418,7 +3418,7 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     } else {
         [nsw setStyleMask:window->ns.pre_full_screen_style_mask | fsmask];
     }
-    if (background_opacity < 1.0 && !window->ns.titlebar_hidden && window->decorated && titlebar_color != nil) {
+    if (background_opacity < 1.0 && !window->ns.titlebar_hidden && window->decorated && titlebar_color != nil && titlebar_transparent) {
         set_title_bar_background(nsw, titlebar_color);
     } else clear_title_bar_background_views(nsw);
     // HACK: Changing the style mask can cause the first responder to be cleared
