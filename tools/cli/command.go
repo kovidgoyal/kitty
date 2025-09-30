@@ -565,13 +565,6 @@ func (self *Command) ExecArgs(args []string) (exit_code int) {
 	return
 }
 
-func (self *Command) Exec(args ...string) {
-	if len(args) == 0 {
-		args = os.Args
-	}
-	os.Exit(self.ExecArgs(args))
-}
-
 func (self *Command) GetCompletions(argv []string, init_completions func(*Completions)) *Completions {
 	ans := NewCompletions()
 	if init_completions != nil {

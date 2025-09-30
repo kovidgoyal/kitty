@@ -16,13 +16,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func KittenMain(args ...string) {
+func KittenMain(args ...string) int {
 	krm := os.Getenv("KITTY_KITTEN_RUN_MODULE")
 	os.Unsetenv("KITTY_KITTEN_RUN_MODULE")
 	switch krm {
 	case "ssh_askpass":
-		ssh.RunSSHAskpass()
-		return
+		return ssh.RunSSHAskpass()
 	}
 	root := cli.NewRootCommand()
 	root.ShortDescription = "Fast, statically compiled implementations of various kittens (command line tools for use with kitty)"
@@ -49,9 +48,9 @@ func KittenMain(args ...string) {
 	completion.EntryPoint(root)
 
 	root.SubCommandIsOptional = true
-	root.Exec(args...)
+	return root.ExecArgs(args)
 }
 
 func main() {
-	KittenMain()
+	os.Exit(KittenMain())
 }
