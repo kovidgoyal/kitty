@@ -2585,7 +2585,7 @@ screen_delete_lines(Screen *self, unsigned int count) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
-        screen_delete_lines_impl(self, self->cursor->y, count, self->margin_bottom, self->margin_bottom);
+        screen_delete_lines_impl(self, self->cursor->y, count, top, bottom);
         screen_carriage_return(self);
     }
 }
