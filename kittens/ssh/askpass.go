@@ -95,9 +95,10 @@ func RunSSHAskpass() {
 		}
 		if is_fingerprint_check {
 			response = strings.ToLower(response)
-			if response == "y" {
+			switch response {
+			case "y":
 				response = "yes"
-			} else if response == "n" {
+			case "n":
 				response = "no"
 			}
 		}
