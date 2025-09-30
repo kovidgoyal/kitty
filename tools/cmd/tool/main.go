@@ -107,8 +107,7 @@ func KittyToolEntryPoints(root *cli.Command) {
 		Hidden:          true,
 		OnlyArgsAllowed: true,
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
-			tui.ExecAndHoldTillEnter(args)
-			return
+			return tui.ExecAndHoldTillEnter(args)
 		},
 	})
 	// __shebang__
