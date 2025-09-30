@@ -151,7 +151,7 @@ Detailed list of changes
   switching of dark/light mode when setting :opt:`macos_titlebar_color` to a
   arbitrary color (:iss:`9034`)
 
-- goto_session: Add ``--sort-by=alphabetical`` to have the interactive session
+- :ac:`goto_session`: Add ``--sort-by=alphabetical`` to have the interactive session
   picker list the sessions in a fixed order rather than by most recent
   (:disc:`9033`)
 
