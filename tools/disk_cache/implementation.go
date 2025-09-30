@@ -1,7 +1,8 @@
 package disk_cache
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,6 +14,43 @@ import (
 )
 
 var _ = fmt.Print
+
+func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
+	if path, err = filepath.Abs(path); err != nil {
+		return
+	}
+	if err = os.MkdirAll(path, 0o700); err != nil {
+		return
+	}
+	dc = &DiskCache{Path: path, MaxSize: max_size}
+	dc.lock()
+	defer dc.unlock()
+	if err = dc.prune(); err != nil {
+		return
+	}
+	if dc.get_dir, err = os.MkdirTemp(dc.Path, "getdir-*"); err != nil {
+		return
+	}
+	err = utils.AtExitRmtree(dc.get_dir)
+	return
+}
+
+func key_for_path(path string) (key string, err error) {
+	if path, err = filepath.EvalSymlinks(path); err != nil {
+		return
+	}
+	if path, err = filepath.Abs(path); err != nil {
+		return
+	}
+
+	s, err := os.Stat(path)
+	if err != nil {
+		return
+	}
+	data := fmt.Sprintf("%s\x00%d\x00%d", path, s.Size(), s.ModTime().UnixNano())
+	sum := sha256.Sum256(utils.UnsafeStringToBytes(data))
+	return hex.EncodeToString(sum[:]), nil
+}
 
 func (dc *DiskCache) lock() (err error) {
 	dc.lock_mutex.Lock()
@@ -141,7 +179,16 @@ func (dc *DiskCache) get(key string, items []string) map[string]string {
 		if s, err := os.Stat(p); err != nil || s.IsDir() {
 			continue
 		}
-		ans[x] = p
+		dest := filepath.Join(dc.get_dir, key+"-"+x)
+		if err := os.Link(p, dest); err != nil {
+			os.Remove(dest)
+			if err := os.Link(p, dest); err != nil {
+				dest = ""
+			}
+		}
+		if dest != "" {
+			ans[x] = dest
+		}
 	}
 	dc.update_last_used(key)
 	return ans
@@ -240,7 +287,7 @@ func (dc *DiskCache) add(key string, items map[string][]byte) (err error) {
 			}
 			changed -= before
 		} else {
-			if err = utils.AtomicWriteFile(p, bytes.NewReader(data), 0o700); err != nil {
+			if err = os.WriteFile(p, data, 0o700); err != nil {
 				return
 			}
 			changed += int64(len(data)) - before
