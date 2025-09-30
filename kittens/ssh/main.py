@@ -223,7 +223,7 @@ egr()  # }}}
 agr('askpass', 'Askpass automation')  # {{{
 
 opt('password', '', long_text='''
-Specify a secret to use when SSH prompts for a password. The value format is
+Specify a password to use when SSH prompts for a password. The value format is
 "backend:secret". Currently, only the "text" backend is supported, which stores
 the secret in plain text in the config file. For example:
 

@@ -137,6 +137,10 @@ Detailed list of changes
 0.43.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- ssh kitten: Allow specifying a password and/or TOTP authentication secret to
+  automate interactive logins in scenarios where public key authentication is
+  not supported (:pull:`9020`)
+
 - macOS: Fix a bug where the color of a transparent titlebar was off when
   running in the release build versus the build from source. Also fix using a
   transparent titlebar causing the background opacity to be doubled.

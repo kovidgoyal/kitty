@@ -145,7 +145,7 @@ func connection_sharing_args(kitty_pid int) ([]string, error) {
 	}, nil
 }
 
-func set_askpass() (need_to_request_data bool) {
+func set_askpass(hostname_for_match, uname string, overrides []string) (need_to_request_data bool) {
 	need_to_request_data = true
 	sentinel := filepath.Join(utils.CacheDir(), "openssh-is-new-enough-for-askpass")
 	_, err := os.Stat(sentinel)
@@ -160,6 +160,11 @@ func set_askpass() (need_to_request_data bool) {
 	if err == nil {
 		os.Setenv("SSH_ASKPASS", exe)
 		os.Setenv("KITTY_KITTEN_RUN_MODULE", "ssh_askpass")
+		// Provide data to askpass so it can lookup auth settings in ssh.conf
+		os.Setenv("KITTY_SSH_ASKPASS_HOST", hostname_for_match)
+		os.Setenv("KITTY_SSH_ASKPASS_USER", uname)
+		ov, _ := json.Marshal(overrides)
+		os.Setenv("KITTY_SSH_ASKPASS_OVERRIDES", string(ov))
 		if !need_to_request_data {
 			os.Setenv("SSH_ASKPASS_REQUIRE", "force")
 		}
@@ -621,6 +626,11 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	if err != nil {
 		return 1, err
 	}
+	// check the secrets syntax here as askpass has no good way to report errors to
+	// the user
+	if err = resolve_secrets(host_opts, true); err != nil {
+		return 1, err
+	}
 	if len(bad_lines) > 0 {
 		for _, x := range bad_lines {
 			fmt.Fprintf(os.Stderr, "Ignoring bad config line: %s:%d with error: %s", filepath.Base(x.Src_file), x.Line_number, x.Err)
@@ -646,14 +656,11 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 		}
 		cmd = slices.Insert(cmd, insertion_point, control_master_args...)
 	}
-    use_kitty_askpass := host_opts.Askpass == Askpass_native || (host_opts.Askpass == Askpass_unless_set && os.Getenv("SSH_ASKPASS") == "")
-    need_to_request_data := true
-    if use_kitty_askpass {
-        need_to_request_data = set_askpass()
-        // Provide host/user to askpass so it can lookup auth settings in ssh.conf
-        os.Setenv("KITTY_SSH_ASKPASS_HOST", hostname_for_match)
-        os.Setenv("KITTY_SSH_ASKPASS_USER", uname)
-    }
+	use_kitty_askpass := host_opts.Askpass == Askpass_native || (host_opts.Askpass == Askpass_unless_set && os.Getenv("SSH_ASKPASS") == "")
+	need_to_request_data := true
+	if use_kitty_askpass {
+		need_to_request_data = set_askpass(hostname_for_match, uname, overrides)
+	}
 	master_is_functional := func() bool {
 		if master_checked {
 			return master_is_alive

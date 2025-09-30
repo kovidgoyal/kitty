@@ -73,7 +73,7 @@ func generateTOTP(secret string, digits, period int64, t time.Time) (string, err
 	off := sum[len(sum)-1] & 0x0f
 	code := (uint32(sum[off])&0x7f)<<24 | (uint32(sum[off+1])&0xff)<<16 | (uint32(sum[off+2])&0xff)<<8 | (uint32(sum[off+3]) & 0xff)
 	mod := uint32(1)
-	for i := int64(0); i < digits; i++ {
+	for range digits {
 		mod *= 10
 	}
 	val := code % mod
@@ -96,15 +96,11 @@ func RunSSHAskpass() int {
 		host := os.Getenv("KITTY_SSH_ASKPASS_HOST")
 		user := os.Getenv("KITTY_SSH_ASKPASS_USER")
 		if host != "" {
-			if cfg, bad_lines, err := load_config(host, user, nil); err == nil && cfg != nil {
-				for _, bl := range bad_lines {
-					if bl.Err != nil {
-						// Only fail for our secret backend errors to avoid
-						// unrelated ssh.conf issues breaking askpass.
-						if strings.Contains(bl.Err.Error(), "Unsupported secret backend") {
-							fatal(bl.Err)
-						}
-					}
+			var overrides []string
+			_ = json.Unmarshal([]byte(os.Getenv("KITTY_SSH_ASKPASS_OVERRIDES")), &overrides)
+			if cfg, _, err := load_config(host, user, overrides); err == nil && cfg != nil {
+				if err = resolve_secrets(cfg, false); err != nil {
+					return fatal(err)
 				}
 				// Password autofill
 				if isPasswordPrompt(msg) && cfg.Password != "" {
