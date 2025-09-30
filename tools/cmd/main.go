@@ -17,6 +17,7 @@ import (
 )
 
 func KittenMain(args ...string) int {
+	defer utils.WaitForAtexitWorkerToFinish()
 	krm := os.Getenv("KITTY_KITTEN_RUN_MODULE")
 	os.Unsetenv("KITTY_KITTEN_RUN_MODULE")
 	switch krm {
