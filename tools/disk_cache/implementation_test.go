@@ -69,4 +69,10 @@ func TestDiskCache(t *testing.T) {
 	ak("k1", "k2")
 	dc.Add("k3", map[string][]byte{"1": []byte(strings.Repeat("a", int(dc.MaxSize)-10))})
 	ak("k3", "k2")
+	// check that creating a new disk cache prunes
+	_, err = NewDiskCache(tdir, dc.MaxSize-8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ak("k3")
 }

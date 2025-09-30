@@ -22,17 +22,26 @@ func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
 	if err = os.MkdirAll(path, 0o700); err != nil {
 		return
 	}
-	dc = &DiskCache{Path: path, MaxSize: max_size}
-	dc.lock()
-	defer dc.unlock()
-	if err = dc.prune(); err != nil {
+	ans := &DiskCache{Path: path, MaxSize: max_size}
+	ans.lock()
+	defer ans.unlock()
+	if err = ans.ensure_entries(); err != nil {
 		return
 	}
-	if dc.get_dir, err = os.MkdirTemp(dc.Path, "getdir-*"); err != nil {
+	if pruned, err := ans.prune(); err != nil {
+		return nil, err
+	} else if pruned {
+		if err = ans.write_entries(); err != nil {
+			return nil, err
+		}
+	}
+	if ans.get_dir, err = os.MkdirTemp(ans.Path, "getdir-*"); err != nil {
 		return
 	}
-	err = utils.AtExitRmtree(dc.get_dir)
-	return
+	if err = utils.AtExitRmtree(ans.get_dir); err != nil {
+		return
+	}
+	return ans, nil
 }
 
 func key_for_path(path string) (key string, err error) {
@@ -211,9 +220,9 @@ func (dc *DiskCache) remove(key string) (err error) {
 	return
 }
 
-func (dc *DiskCache) prune() error {
+func (dc *DiskCache) prune() (bool, error) {
 	if dc.MaxSize < 1 || dc.entries.TotalSize <= dc.MaxSize {
-		return nil
+		return false, nil
 	}
 	for dc.entries.TotalSize > dc.MaxSize && len(dc.entries.SortedEntries) > 0 {
 		base := dc.folder_for_key(dc.entries.SortedEntries[0].Key)
@@ -223,10 +232,10 @@ func (dc *DiskCache) prune() error {
 			dc.entries.TotalSize = max(0, dc.entries.TotalSize-t.Size)
 			dc.entries.SortedEntries = dc.entries.SortedEntries[1:]
 		} else {
-			return err
+			return false, err
 		}
 	}
-	return nil
+	return true, nil
 }
 
 func (dc *DiskCache) update_timestamp(key string) {
