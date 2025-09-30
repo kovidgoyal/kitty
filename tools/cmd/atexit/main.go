@@ -2,9 +2,7 @@ package atexit
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/signal"
 	"strings"
@@ -31,29 +29,23 @@ func main() (rc int, err error) {
 		done_channel <- true
 	}()
 
-	keep_going := true
-	for keep_going {
-		select {
-		case <-done_channel:
-			keep_going = false
-		}
-	}
+	<-done_channel
 	rc = 0
 	for _, line := range lines {
 		if action, rest, found := strings.Cut(line, " "); found {
 			switch action {
 			case "unlink":
-				if err := os.Remove(rest); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				if err := os.Remove(rest); err != nil && !os.IsNotExist(err) {
 					fmt.Fprintln(os.Stderr, "Failed to unlink:", rest, "with error:", err)
 					rc = 1
 				}
 			case "shm_unlink":
-				if err := shm.ShmUnlink(rest); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				if err := shm.ShmUnlink(rest); err != nil && !os.IsNotExist(err) {
 					fmt.Fprintln(os.Stderr, "Failed to shm_unlink:", rest, "with error:", err)
 					rc = 1
 				}
 			case "rmtree":
-				if err := os.RemoveAll(rest); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				if err := os.RemoveAll(rest); err != nil && !os.IsNotExist(err) {
 					fmt.Fprintln(os.Stderr, "Failed to rmtree:", rest, "with error:", err)
 					rc = 1
 				}
