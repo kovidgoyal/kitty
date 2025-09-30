@@ -1,10 +1,12 @@
 package utils
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 )
@@ -18,10 +20,20 @@ type worker struct {
 
 var worker_started atomic.Bool
 
+// IsTesting returns true if the code is being run by "go test".
+func IsTesting() bool {
+	return flag.Lookup("test.v") != nil
+}
+
 var get_worker = sync.OnceValues(func() (*worker, error) {
 	exe, err := os.Executable()
 	if err != nil {
 		return nil, err
+	}
+	if IsTesting() {
+		if exe, err = filepath.Abs("../../kitty/launcher/kitten"); err != nil {
+			return nil, err
+		}
 	}
 	cmd := exec.Command(exe, "__atexit__")
 	cmd.Stdout = nil
@@ -32,23 +44,36 @@ var get_worker = sync.OnceValues(func() (*worker, error) {
 		return nil, err
 	}
 	ans.stdin_pipe = si
-	if err = cmd.Run(); err != nil {
+	if err = cmd.Start(); err != nil {
 		return nil, err
 	}
 	worker_started.Store(true)
 	return &ans, nil
 })
 
-func WaitForAtexitWorkerToFinish() {
+func WaitForAtexitWorkerToFinish() error {
 	if worker_started.Load() {
 		if w, err := get_worker(); err == nil {
 			w.stdin_pipe.Close()
-			_ = w.cmd.Wait()
+			return w.cmd.Wait()
+		} else {
+			return err
 		}
 	}
+	return nil
 }
 
 func register(prefix, path string) error {
+	// no atexit cleanup is done as we dont have a good place to run
+	// WaitForAtexitWorkerToFinish() and anyway we may want to run tests in
+	// parallel, etc.
+	if IsTesting() {
+		return nil
+	}
+	path, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
 	if w, err := get_worker(); err == nil {
 		_, err = fmt.Fprintln(w.stdin_pipe, prefix+" "+path)
 		return err

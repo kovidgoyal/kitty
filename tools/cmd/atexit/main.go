@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/shm"
 )
 
@@ -33,6 +34,9 @@ func main() (rc int, err error) {
 	rc = 0
 	for _, line := range lines {
 		if action, rest, found := strings.Cut(line, " "); found {
+			if !found {
+				continue
+			}
 			switch action {
 			case "unlink":
 				if err := os.Remove(rest); err != nil && !os.IsNotExist(err) {
@@ -55,6 +59,25 @@ func main() (rc int, err error) {
 	return
 }
 
+func do_test() (err error) {
+	if err = os.WriteFile("file", []byte("moose"), 0o600); err != nil {
+		return
+	}
+	if err = utils.AtExitUnlink("file"); err != nil {
+		return
+	}
+	if err = os.Mkdir("dir", 0o700); err != nil {
+		return
+	}
+	if err = utils.AtExitRmtree("dir"); err != nil {
+		return
+	}
+	if err = os.WriteFile("dir/sf", []byte("cat"), 0o600); err != nil {
+		return
+	}
+	return
+}
+
 func EntryPoint(root *cli.Command) {
 	root.AddSubCommand(&cli.Command{
 		Name:            "__atexit__",
@@ -62,6 +85,13 @@ func EntryPoint(root *cli.Command) {
 		OnlyArgsAllowed: true,
 		Run: func(cmd *cli.Command, args []string) (rc int, err error) {
 			if len(args) != 0 {
+				if args[0] == "test" {
+					rc = 0
+					if err = do_test(); err != nil {
+						rc = 1
+					}
+					return
+				}
 				return 1, fmt.Errorf("Usage: __atexit__")
 			}
 			return main()

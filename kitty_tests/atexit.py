@@ -23,6 +23,11 @@ class Atexit(BaseTest):
     def tearDown(self):
         shutil.rmtree(self.tdir)
 
+    def test_go_atexit(self):
+        cp = subprocess.run([kitten_exe(), '__atexit__', 'test'], cwd=self.tdir)
+        self.ae(cp.returncode, 0)
+        self.assertFalse(os.listdir(self.tdir))
+
     def test_atexit(self):
 
         def r(action='close'):
