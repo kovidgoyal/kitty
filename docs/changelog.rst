@@ -161,6 +161,9 @@ Detailed list of changes
 - Session files: Fix a regression in the previous release that broke matching on
   windows in the current tab (:iss:`9037`)
 
+- Fix a regression in the previous release that broke clearing screen lines
+  when in margin mode (:iss:`9049`)
+
 
 0.43.0 [2025-09-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
