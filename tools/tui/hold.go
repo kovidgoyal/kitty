@@ -41,10 +41,10 @@ func HoldTillEnter(start_with_newline bool) {
 	lp.Run()
 }
 
-func ExecAndHoldTillEnter(cmdline []string) {
+func ExecAndHoldTillEnter(cmdline []string) (int, error) {
 	if len(cmdline) == 0 {
 		HoldTillEnter(false)
-		os.Exit(0)
+		return 0, nil
 	}
 	var cmd *exec.Cmd
 	if len(cmdline) == 1 {
@@ -59,14 +59,14 @@ func ExecAndHoldTillEnter(cmdline []string) {
 	err := cmd.Run()
 	is_exit_error := err != nil && errors.As(err, &ee)
 	if err != nil && !is_exit_error {
-		fmt.Fprintln(os.Stderr, err)
+		return 1, err
 	}
 	HoldTillEnter(true)
 	if err == nil {
-		os.Exit(0)
+		return 0, nil
 	}
 	if is_exit_error {
-		os.Exit(ee.ExitCode())
+		return ee.ExitCode(), nil
 	}
-	os.Exit(1)
+	return 1, err
 }

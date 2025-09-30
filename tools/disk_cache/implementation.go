@@ -1,7 +1,8 @@
 package disk_cache
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,6 +14,52 @@ import (
 )
 
 var _ = fmt.Print
+
+func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
+	if path, err = filepath.Abs(path); err != nil {
+		return
+	}
+	if err = os.MkdirAll(path, 0o700); err != nil {
+		return
+	}
+	ans := &DiskCache{Path: path, MaxSize: max_size}
+	ans.lock()
+	defer ans.unlock()
+	if err = ans.ensure_entries(); err != nil {
+		return
+	}
+	if pruned, err := ans.prune(); err != nil {
+		return nil, err
+	} else if pruned {
+		if err = ans.write_entries(); err != nil {
+			return nil, err
+		}
+	}
+	if ans.get_dir, err = os.MkdirTemp(ans.Path, "getdir-*"); err != nil {
+		return
+	}
+	if err = utils.AtExitRmtree(ans.get_dir); err != nil {
+		return
+	}
+	return ans, nil
+}
+
+func key_for_path(path string) (key string, err error) {
+	if path, err = filepath.EvalSymlinks(path); err != nil {
+		return
+	}
+	if path, err = filepath.Abs(path); err != nil {
+		return
+	}
+
+	s, err := os.Stat(path)
+	if err != nil {
+		return
+	}
+	data := fmt.Sprintf("%s\x00%d\x00%d", path, s.Size(), s.ModTime().UnixNano())
+	sum := sha256.Sum256(utils.UnsafeStringToBytes(data))
+	return hex.EncodeToString(sum[:]), nil
+}
 
 func (dc *DiskCache) lock() (err error) {
 	dc.lock_mutex.Lock()
@@ -141,7 +188,16 @@ func (dc *DiskCache) get(key string, items []string) map[string]string {
 		if s, err := os.Stat(p); err != nil || s.IsDir() {
 			continue
 		}
-		ans[x] = p
+		dest := filepath.Join(dc.get_dir, key+"-"+x)
+		if err := os.Link(p, dest); err != nil {
+			os.Remove(dest)
+			if err := os.Link(p, dest); err != nil {
+				dest = ""
+			}
+		}
+		if dest != "" {
+			ans[x] = dest
+		}
 	}
 	dc.update_last_used(key)
 	return ans
@@ -164,9 +220,9 @@ func (dc *DiskCache) remove(key string) (err error) {
 	return
 }
 
-func (dc *DiskCache) prune() error {
-	if dc.entries.TotalSize <= dc.MaxSize {
-		return nil
+func (dc *DiskCache) prune() (bool, error) {
+	if dc.MaxSize < 1 || dc.entries.TotalSize <= dc.MaxSize {
+		return false, nil
 	}
 	for dc.entries.TotalSize > dc.MaxSize && len(dc.entries.SortedEntries) > 0 {
 		base := dc.folder_for_key(dc.entries.SortedEntries[0].Key)
@@ -176,10 +232,10 @@ func (dc *DiskCache) prune() error {
 			dc.entries.TotalSize = max(0, dc.entries.TotalSize-t.Size)
 			dc.entries.SortedEntries = dc.entries.SortedEntries[1:]
 		} else {
-			return err
+			return false, err
 		}
 	}
-	return nil
+	return true, nil
 }
 
 func (dc *DiskCache) update_timestamp(key string) {
@@ -191,22 +247,26 @@ func (dc *DiskCache) update_timestamp(key string) {
 }
 
 func (dc *DiskCache) update_accounting(key string, changed int64) (err error) {
-	if err = dc.ensure_entries(); err == nil {
-		t := dc.entry_map[key]
-		if t == nil {
-			t = &Entry{Key: key}
-			dc.entry_map[key] = t
-			dc.entries.SortedEntries = append(dc.entries.SortedEntries, t)
-		}
-		old_size := t.Size
-		t.Size += changed
-		t.Size = max(0, t.Size)
-		dc.entries.TotalSize += t.Size - old_size
-		dc.update_timestamp(key)
-		dc.prune()
-		return dc.write_entries()
+	t := dc.entry_map[key]
+	if t == nil {
+		t = &Entry{Key: key}
+		dc.entry_map[key] = t
+		dc.entries.SortedEntries = append(dc.entries.SortedEntries, t)
 	}
-	return
+	old_size := t.Size
+	t.Size += changed
+	t.Size = max(0, t.Size)
+	dc.entries.TotalSize += t.Size - old_size
+	dc.update_timestamp(key)
+	dc.prune()
+	return dc.write_entries()
+}
+
+func (dc *DiskCache) keys() (ans []string, err error) {
+	if err = dc.ensure_entries(); err != nil {
+		return
+	}
+	return utils.Keys(dc.entry_map), nil
 }
 
 func (dc *DiskCache) add(key string, items map[string][]byte) (err error) {
@@ -236,7 +296,7 @@ func (dc *DiskCache) add(key string, items map[string][]byte) (err error) {
 			}
 			changed -= before
 		} else {
-			if err = utils.AtomicWriteFile(p, bytes.NewReader(data), 0o700); err != nil {
+			if err = os.WriteFile(p, data, 0o700); err != nil {
 				return
 			}
 			changed += int64(len(data)) - before

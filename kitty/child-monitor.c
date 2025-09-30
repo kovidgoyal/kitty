@@ -737,6 +737,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
     *all_windows_have_same_bg = true;
     *num_visible_windows = 0;
     color_type first_window_bg = 0;
+    os_window->needs_layers = os_window->needs_layers || (OPT(cursor_trail) && tab->cursor_trail.needs_render);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
 #define WD w->render_data

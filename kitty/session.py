@@ -195,7 +195,7 @@ def session_arg_to_name(session_arg: str) -> str:
     if session_arg in ('-', '/dev/stdin', 'none'):
         session_arg = ''
     session_name = os.path.basename(session_arg)
-    if session_name.rpartition('.')[2] in ('session', 'kitty-session'):
+    if session_name.rpartition('.')[2] in ('session', 'kitty-session', 'kitty_session'):
         session_name = session_name.rpartition('.')[0]
     return session_name
 

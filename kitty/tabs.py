@@ -268,9 +268,10 @@ class Tab:  # {{{
             if window.focus_matching_window_spec:
                 # include windows from this tab when matching windows
                 all_windows = list(boss.all_windows)
-                all_windows.extend(w for w in self if w not in all_windows)
+                awq = {w.id for w in all_windows}
+                all_windows.extend(w for w in self if w.id not in awq)
                 for w in boss.match_windows(
-                        window.focus_matching_window_spec, launched_window or boss.active_window, all_windows
+                    window.focus_matching_window_spec, launched_window or boss.active_window, all_windows
                 ):
                     tab = w.tabref()
                     if tab:
