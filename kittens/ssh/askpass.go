@@ -81,7 +81,7 @@ func generateTOTP(secret string, digits, period int64, t time.Time) (string, err
 	return fmt.Sprintf(fmtstr, val), nil
 }
 
-func RunSSHAskpass() {
+func RunSSHAskpass() int {
 	msg := os.Args[len(os.Args)-1]
 	prompt := os.Getenv("SSH_ASKPASS_PROMPT")
 	is_confirm := prompt == "confirm"
