@@ -165,7 +165,7 @@ func (dc *DiskCache) remove(key string) (err error) {
 }
 
 func (dc *DiskCache) prune() error {
-	if dc.entries.TotalSize <= dc.MaxSize {
+	if dc.MaxSize < 1 || dc.entries.TotalSize <= dc.MaxSize {
 		return nil
 	}
 	for dc.entries.TotalSize > dc.MaxSize && len(dc.entries.SortedEntries) > 0 {
@@ -191,22 +191,26 @@ func (dc *DiskCache) update_timestamp(key string) {
 }
 
 func (dc *DiskCache) update_accounting(key string, changed int64) (err error) {
-	if err = dc.ensure_entries(); err == nil {
-		t := dc.entry_map[key]
-		if t == nil {
-			t = &Entry{Key: key}
-			dc.entry_map[key] = t
-			dc.entries.SortedEntries = append(dc.entries.SortedEntries, t)
-		}
-		old_size := t.Size
-		t.Size += changed
-		t.Size = max(0, t.Size)
-		dc.entries.TotalSize += t.Size - old_size
-		dc.update_timestamp(key)
-		dc.prune()
-		return dc.write_entries()
+	t := dc.entry_map[key]
+	if t == nil {
+		t = &Entry{Key: key}
+		dc.entry_map[key] = t
+		dc.entries.SortedEntries = append(dc.entries.SortedEntries, t)
 	}
-	return
+	old_size := t.Size
+	t.Size += changed
+	t.Size = max(0, t.Size)
+	dc.entries.TotalSize += t.Size - old_size
+	dc.update_timestamp(key)
+	dc.prune()
+	return dc.write_entries()
+}
+
+func (dc *DiskCache) keys() (ans []string, err error) {
+	if err = dc.ensure_entries(); err != nil {
+		return
+	}
+	return utils.Keys(dc.entry_map), nil
 }
 
 func (dc *DiskCache) add(key string, items map[string][]byte) (err error) {

@@ -43,7 +43,9 @@ func NewDiskCache(path string, max_size int64) (dc *DiskCache, err error) {
 	if err = os.MkdirAll(path, 0o700); err != nil {
 		return
 	}
-	return &DiskCache{Path: path, MaxSize: max_size}, nil
+	dc = &DiskCache{Path: path, MaxSize: max_size}
+	err = dc.prune()
+	return
 }
 
 func KeyForPath(path string) (key string, err error) {
