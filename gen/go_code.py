@@ -661,7 +661,7 @@ var QueryNames = []string{{ {query_names} }}
 var CommentedOutDefaultConfig = "{serialize_as_go_string(commented_out_default_config())}"
 var KittyConfigDefaults = struct {{
 Term, Shell_integration, Select_by_word_characters, Url_excluded_characters, Shell string
-Wheel_scroll_multiplier int
+Wheel_scroll_multiplier float64
 Url_prefixes []string
 }}{{
 Term: "{Options.term}", Shell_integration: "{' '.join(Options.shell_integration)}", Url_prefixes: []string{{ {url_prefixes} }},
