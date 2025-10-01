@@ -134,7 +134,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.43.1 [future]
+0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - ssh kitten: Allow specifying a password and/or TOTP authentication secret to
@@ -152,7 +152,7 @@ Detailed list of changes
   remain as invisible rectangles that intercept mouse events (:iss:`8952`)
 
 - macOS: Fix a regression in the previous release that broke automatic
-  switching of dark/light mode when setting :opt:`macos_titlebar_color` to a
+  switching of dark/light mode when setting :opt:`macos_titlebar_color` to an
   arbitrary color (:iss:`9034`)
 
 - :ac:`goto_session`: Add ``--sort-by=alphabetical`` to have the interactive session
