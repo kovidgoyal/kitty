@@ -718,12 +718,12 @@ class Window:
         self.title_stack: Deque[str] = deque(maxlen=10)
         self.user_vars: dict[str, str] = {}
         self.id: int = add_window(tab.os_window_id, tab.id, self.title)
+        if not self.id:
+            raise Exception(f'No tab with id: {tab.id} in OS Window: {tab.os_window_id} was found, or the window counter wrapped')
         self.clipboard_request_manager = ClipboardRequestManager(self.id)
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()
         self.kitten_result: dict[str, Any] | None = None
-        if not self.id:
-            raise Exception(f'No tab with id: {tab.id} in OS Window: {tab.os_window_id} was found, or the window counter wrapped')
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
         self.tabref: Callable[[], TabType | None] = weakref.ref(tab)
