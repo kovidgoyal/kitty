@@ -137,6 +137,9 @@ Detailed list of changes
 0.43.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Fix a regression in 0.43.0 that caused a black flicker when closing a tab in
+  the presence of a background image (:iss:`9060`)
+
 - Splits layout: Fix a bug that could cause a corrupted layout in some
   circumstances (:iss:`9059`)
 

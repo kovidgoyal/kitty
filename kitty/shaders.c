@@ -1241,14 +1241,13 @@ draw_cursor_trail(CursorTrail *trail, Window *active_window) {
 
 // OSWindow {{{
 static void
-draw_bg_image(OSWindow *os_window) {
+draw_bg_image(OSWindow *os_window, Tab *tab) {
     if (!has_bgimage(os_window)) return;
     BackgroundImageRenderSettings s = {
         .os_window.width = os_window->viewport_width, .os_window.height = os_window->viewport_height,
         .instance_id = os_window->bgimage->id, .layout=OPT(background_image_layout),
         .linear=OPT(background_image_linear), .bgcolor=OPT(background), .opacity=effective_os_window_alpha(os_window),
     };
-    bind_program(BGIMAGE_PROGRAM);
     GLfloat iwidth = os_window->bgimage->width, iheight = os_window->bgimage->height;
     GLfloat vwidth = s.os_window.width, vheight = s.os_window.height;
     if (CENTER_SCALED == OPT(background_image_layout)) {
@@ -1278,6 +1277,9 @@ draw_bg_image(OSWindow *os_window) {
             bottom += hfrac;
         } break;
     }
+    bind_program(BGIMAGE_PROGRAM);
+    // altough we dont use this VO we need to ensure *some* VAO is bound at this point.
+    bind_vertex_array(tab->border_rects.vao_idx);
     glUniform4f(bgimage_program_layout.uniforms.sizes, vwidth, vheight, iwidth, iheight);
     glUniform1f(bgimage_program_layout.uniforms.tiled, tiled);
     glUniform4f(bgimage_program_layout.uniforms.positions, left, top, right, bottom);
@@ -1339,7 +1341,7 @@ blank_os_window(OSWindow *osw) {
 }
 
 static void
-start_os_window_rendering(OSWindow *os_window) {
+start_os_window_rendering(OSWindow *os_window, Tab *tab) {
     if (os_window->live_resize.in_progress) {
         blank_os_window(os_window);
         save_viewport_using_bottom_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height);
@@ -1357,7 +1359,7 @@ start_os_window_rendering(OSWindow *os_window) {
         set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
         bind_framebuffer_for_output(0);
         clear_current_framebuffer();
-        draw_bg_image(os_window);
+        draw_bg_image(os_window, tab);
     }
 }
 
@@ -1382,7 +1384,7 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window) {
 
 void
 setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_window, bool start) {
-    if (start) start_os_window_rendering(os_window);
+    if (start) start_os_window_rendering(os_window, tab);
     else stop_os_window_rendering(os_window, tab, active_window);
 }
 // }}}
