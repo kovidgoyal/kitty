@@ -64,7 +64,7 @@ class Tab:
         self.pending_resize_spec: ResizeSpec | None = None
         self.pending_focus_matching_window: str = ''
         self.name = name.strip()
-        self.active_window_idx = 0
+        self.active_window_idx = -1
         self.enabled_layouts = opts.enabled_layouts
         self.layout = (self.enabled_layouts or ['tall'])[0]
         self.layout_state: dict[str, Any] | None = None

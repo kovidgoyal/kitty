@@ -251,10 +251,14 @@ class Tab:  # {{{
     def _startup(self, session_tab: SessionTab) -> None:
         target_tab = self
         boss = get_boss()
-        for window in session_tab.windows:
+        active_window_id = 0
+        did_focus_matching_spec = False
+        first_window_id = 0
+        for i, window in enumerate(session_tab.windows):
             spec = window.launch_spec
+            launched_window: Window | None = None
             if isinstance(spec, SpecialWindowInstance):
-                self.new_special_window(spec)
+                launched_window = self.new_special_window(spec)
             else:
                 from .launch import launch
                 spec.opts.add_to_session = self.created_in_session_name
@@ -263,6 +267,12 @@ class Tab:  # {{{
                     startup_command_via_shell_integration=window.run_command_at_shell_startup)
                 if launched_window is not None:
                     launched_window.serialized_id = window.serialized_id
+            if launched_window is not None:
+                if not first_window_id:
+                    first_window_id = launched_window.id
+                if session_tab.active_window_idx == i:
+                    active_window_id = launched_window.id
+                    did_focus_matching_spec = False
             if window.resize_spec is not None:
                 self.resize_window(*window.resize_spec)
             if window.focus_matching_window_spec:
@@ -275,6 +285,8 @@ class Tab:  # {{{
                 ):
                     tab = w.tabref()
                     if tab:
+                        did_focus_matching_spec = True
+                        active_window_id = 0
                         target_tab = tab or self
                         tm = tab.tab_manager_ref()
                         if tm and boss.active_tab is not target_tab:
@@ -283,8 +295,10 @@ class Tab:  # {{{
                             target_tab.set_active_window(w)
                         boss.focus_os_window(w.os_window_id)
 
-        with suppress(IndexError):
-            self.windows.set_active_window_group_for(self.windows.all_windows[session_tab.active_window_idx])
+        if not did_focus_matching_spec and not active_window_id:
+            active_window_id = first_window_id
+        if active_window_id and not did_focus_matching_spec:
+            self.windows.set_active_window_group_for(active_window_id)
         if session_tab.layout_state:
             self.current_layout.unserialize(session_tab.layout_state, self.windows)
 
