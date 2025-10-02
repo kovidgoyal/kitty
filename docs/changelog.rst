@@ -143,6 +143,8 @@ Detailed list of changes
 - Splits layout: Fix a bug that could cause a corrupted layout in some
   circumstances (:iss:`9059`)
 
+- Fix a regression in the previous release that broke ``goto_session -1``
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

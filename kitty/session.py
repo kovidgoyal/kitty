@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 import shlex
 import sys
 from collections.abc import Callable, Generator, Iterator, Mapping
@@ -518,7 +519,6 @@ def parse_goto_session_cmdline(args: list[str]) -> tuple[GotoSessionOptions, lis
     return ans, leftover_args
 
 
-
 def goto_session_options() -> str:
     return '''
 --sort-by
@@ -528,7 +528,23 @@ When interactively choosing sessions from a list, how to sort the list.
 '''
 
 
+def goto_previous_session(boss: BossType, idx: int) -> None:
+    if boss.active_session:
+        nidx = max(0, len(goto_session_history) - 1 + idx)
+        if nidx < len(goto_session_history):
+            switch_to_session(boss, goto_session_history[nidx])
+            return
+    else:
+        if goto_session_history:
+            switch_to_session(boss, goto_session_history[-1])
+            return
+    boss.ring_bell_if_allowed()
+
+
 def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
+    if len(cmdline) == 1 and re.match(r'-\d+', cmdline[0]) is not None:
+        # special case for backwards compat goto_session -1
+        return goto_previous_session(boss, int(cmdline[0]))
     try:
         opts, cmdline = parse_goto_session_cmdline(list(cmdline))
     except Exception as e:
@@ -539,28 +555,13 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
         choose_session(boss, opts)
         return
     path = cmdline[0]
-    if len(cmdline) == 1:
+    if len(cmdline) == 1:  # goto_session -- -1
         try:
             idx = int(path)
         except Exception:
             idx = 0
         if idx < 0:
-            if boss.active_session:
-                nidx = max(0, len(goto_session_history) - 1 + idx)
-                if nidx < len(goto_session_history):
-                    switch_to_session(boss, goto_session_history[nidx])
-                    return
-            else:
-                if goto_session_history:
-                    switch_to_session(boss, goto_session_history[-1])
-                    return
-            boss.ring_bell_if_allowed()
-            return
-    else:
-        for x in cmdline:
-            if not x.startswith('-'):
-                path = x
-                break
+            return goto_previous_session(boss, idx)
     path, session_name = resolve_session_path_and_name(path)
     if not session_name:
         boss.show_error(_('Invalid session'), _('{} is not a valid path for a session').format(path))
