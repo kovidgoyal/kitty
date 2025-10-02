@@ -511,24 +511,21 @@ class Splits(Layout):
 
     def do_layout(self, all_windows: WindowList) -> None:
         groups = tuple(all_windows.iter_all_layoutable_groups())
-        window_count = len(groups)
         root = self.pairs_root
-        all_present_window_ids = frozenset(w.id for w in groups)
-        already_placed_window_ids = frozenset(root.all_window_ids())
-        windows_to_remove = already_placed_window_ids - all_present_window_ids
-        if windows_to_remove:
-            self.remove_windows(*windows_to_remove)
-        id_window_map = {w.id: w for w in groups}
-        id_idx_map = {w.id: i for i, w in enumerate(groups)}
-        windows_to_add = all_present_window_ids - already_placed_window_ids
-        if windows_to_add:
-            for wid in sorted(windows_to_add, key=id_idx_map.__getitem__):
-                root.balanced_add(wid)
+        all_present_group_ids = {g.id for g in groups}
+        already_placed_group_ids = frozenset(root.all_window_ids())
+        if groups_to_remove := already_placed_group_ids - all_present_group_ids:
+            self.remove_windows(*groups_to_remove)
+        if groups_to_add := all_present_group_ids - already_placed_group_ids:
+            id_idx_map = {g.id: i for i, g in enumerate(groups)}
+            for gid in sorted(groups_to_add, key=id_idx_map.__getitem__):
+                root.balanced_add(gid)
 
-        if window_count == 1:
+        if len(groups) == 1:
             self.layout_single_window_group(groups[0])
         else:
-            root.layout_pair(lgd.central.left, lgd.central.top, lgd.central.width, lgd.central.height, id_window_map, self)
+            id_group_map = {g.id: g for g in groups}
+            root.layout_pair(lgd.central.left, lgd.central.top, lgd.central.width, lgd.central.height, id_group_map, self)
 
     def add_non_overlay_window(
         self,
@@ -563,7 +560,9 @@ class Splits(Layout):
                     parent_pair.bias = bias if parent_pair.one == target_group.id else (1 - bias)
                 return
         all_windows.add_window(window)
-        p = self.pairs_root.balanced_add(window.id)
+        g = all_windows.group_for_window(window)
+        assert g is not None
+        p = self.pairs_root.balanced_add(g.id)
         if bias is not None:
             p.bias = bias
 

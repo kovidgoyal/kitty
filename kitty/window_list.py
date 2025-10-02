@@ -33,6 +33,9 @@ class WindowGroup:
         self.windows: list[WindowType] = []
         self.id = next(group_id_counter)
 
+    def __repr__(self) -> str:
+        return f'WindowGroup(id={self.id}, windows={", ".join(str(w.id) for w in self.windows)})'
+
     def __len__(self) -> int:
         return len(self.windows)
 
