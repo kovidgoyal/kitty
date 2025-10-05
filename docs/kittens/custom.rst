@@ -394,7 +394,8 @@ You can parse and read the options in your kitten using the following code:
         opts.config_overrides = overrides
         return opts
 
-See `the code <https://github.com/kovidgoyal/kitty/tree/master/kittens/diff>`__
+See `the code
+<https://github.com/kovidgoyal/kitty/tree/master/kittens/diff/main.py>`__
 for the builtin :doc:`diff kitten </kittens/diff>` for examples of creating more
 options and keyboard shortcuts.
 
