@@ -77,13 +77,16 @@ vec3 color_to_vec(uint c) {
 }
 
 #define one_if_equal_zero_otherwise(a, b) (1.0f - zero_or_one(abs(float(a) - float(b))))
+// Wee need an integer variant to accommodate GPU driver bugs, see
+// https://github.com/kovidgoyal/kitty/issues/9072
+#define one_if_equal_zero_otherwise_integer(a, b) (1u - uint(zero_or_one(abs(float(a) - float(b)))))
 
 
 uint resolve_color(uint c, uint defval) {
     // Convert a cell color to an actual color based on the color table
     int t = int(c & BYTE_MASK);
-    uint is_one = uint(one_if_equal_zero_otherwise(t, 1));
-    uint is_two = uint(one_if_equal_zero_otherwise(t, 2));
+    uint is_one = one_if_equal_zero_otherwise_integer(t, 1);
+    uint is_two = one_if_equal_zero_otherwise_integer(t, 2);
     uint is_neither_one_nor_two = 1u - is_one - is_two;
     return is_one * color_table[(c >> 8) & BYTE_MASK] + is_two * (c >> 8) + is_neither_one_nor_two * defval;
 }
@@ -185,10 +188,10 @@ uvec2 get_decorations_indices(uint in_url /* [0, 1] */, uint text_attrs) {
     return uvec2(strike_idx, has_underline * (decorations_idx + underline_style));
 }
 
-float is_cursor(uint x, uint y) {
+uint is_cursor(uint x, uint y) {
     uint clamped_x = clamp(x, cursor_x1, cursor_x2);
     uint clamped_y = clamp(y, cursor_y1, cursor_y2);
-    return one_if_equal_zero_otherwise(x, clamped_x) * one_if_equal_zero_otherwise(y, clamped_y);
+    return one_if_equal_zero_otherwise_integer(x, clamped_x) * one_if_equal_zero_otherwise_integer(y, clamped_y);
 }
 // }}}
 
@@ -217,7 +220,7 @@ CellData set_vertex_position(vec3 cell_fg, vec3 cell_bg) {
     colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
 #endif
     // Cursor shape and colors
-    float has_main_cursor = is_cursor(column, row);
+    float has_main_cursor = float(is_cursor(column, row));
     float multicursor_shape = float((is_selected >> 2) & 3u);
     float multicursor_uses_main_cursor_shape = float((is_selected >> 4) & BIT_MASK);
     multicursor_shape = if_one_then(multicursor_uses_main_cursor_shape, cursor_shape, multicursor_shape);
