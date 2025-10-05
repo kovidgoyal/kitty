@@ -98,7 +98,7 @@ vec3 to_color(uint c, uint defval) {
 
 vec3 resolve_dynamic_color(uint c, vec3 special_val, vec3 defval) {
     float type = float((c >> 24) & BYTE_MASK);
-#define q(which, val) one_if_equal_zero_otherwise(type, which) * val
+#define q(which, val) one_if_equal_zero_otherwise(type, float(which)) * val
     return (
         q(COLOR_IS_RGB, color_to_vec(c)) + q(COLOR_IS_INDEX, color_to_vec(color_table[c & BYTE_MASK])) +
         q(COLOR_IS_SPECIAL, special_val) + q(COLOR_NOT_SET, defval)
