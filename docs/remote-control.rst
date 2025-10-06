@@ -262,6 +262,12 @@ as shown below:
         return True
 
 
+.. note::
+
+    The payloads for the different remote control commands are documented in the
+    :doc:`remote control protocol specification <rc_protocol>`.
+
+
 .. _rc_mapping:
 
 Mapping key presses to remote control commands
