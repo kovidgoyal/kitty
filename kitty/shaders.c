@@ -656,9 +656,28 @@ setup_texture_as_render_target(unsigned width, unsigned height, GLuint *texture_
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     // We use GL_RGBA16 to avoid incorrect colors due to quantization loss when
     // blending, see https://github.com/kovidgoyal/kitty/issues/8953
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    static struct { bool ok; int fmt; } status = { false, GL_RGBA16};
+    glTexImage2D(GL_TEXTURE_2D, 0, status.fmt, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     bind_framebuffer_for_output(*framebuffer_id);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, *texture_id, 0);
+    if (!status.ok) {
+        if (check_framebuffer_status() == NULL) {
+            status.ok = true;
+        } else {
+            if (status.fmt == GL_RGBA16) {
+                // Driver does not support 16 bit FBO so let it choose the
+                // format. It will probably end up choosing 8 bit but
+                // inaccurate colors are better than completely broken rendering.
+                // See https://github.com/kovidgoyal/kitty/issues/9068
+                status.fmt = GL_RGBA;
+                free_framebuffer(framebuffer_id);
+                free_texture(texture_id);
+                setup_texture_as_render_target(width, height, texture_id, framebuffer_id);
+            } else {
+                fatal("Your GPU driver does not support indirect rendering to a GL_RGBA texture via a framebuffer");
+            }
+        }
+    }
 }
 
 static void

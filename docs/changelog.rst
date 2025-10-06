@@ -145,6 +145,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that broke ``goto_session -1``
 
+- Fix rendering broken on ancient GPU drivers that dont support rendering to 16 bit textures (:iss:`9068`)
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

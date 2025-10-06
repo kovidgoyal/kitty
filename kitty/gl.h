@@ -63,7 +63,7 @@ void unbind_program(void);
 GLuint compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * string);
 void save_viewport_using_top_left_origin(GLsizei x, GLsizei y, GLsizei width, GLsizei height, GLsizei full_framebuffer_height);
 void save_viewport_using_bottom_left_origin(GLsizei x, GLsizei y, GLsizei width, GLsizei height);
-void check_framebuffer_status_or_die(void);
+const char* check_framebuffer_status(void);
 void restore_viewport(void);
 void bind_framebuffer_for_output(unsigned fbid);
 void set_framebuffer_to_use_for_output(unsigned fbid);

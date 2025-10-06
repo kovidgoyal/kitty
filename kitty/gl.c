@@ -84,7 +84,7 @@ gl_init(void) {
     }
 }
 
-static const char*
+const char*
 check_framebuffer_status(void) {
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     switch (status) {
@@ -98,12 +98,6 @@ check_framebuffer_status(void) {
         case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE");
         default: return("Unknown error");
     }
-}
-
-void
-check_framebuffer_status_or_die(void) {
-    const char *err = check_framebuffer_status();
-    if (err != NULL) fatal("Framebuffer not complete with error: %s", err);
 }
 
 void
