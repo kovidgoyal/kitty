@@ -522,7 +522,6 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 {
     _GLFWwindow* window;
     NSArray<NSDictionary *> *_lastScreenStates;
-    monotonic_t last_resize_event_at;
 }
 
 - (instancetype)initWithGlfwWindow:(_GLFWwindow *)initWindow;
@@ -538,7 +537,6 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     if (self != nil) {
         window = initWindow;
         _lastScreenStates = [self captureScreenStates];
-        last_resize_event_at = 0;
     }
     return self;
 }
@@ -568,8 +566,8 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     (void)notification;
     NSArray<NSDictionary *> *currentScreenStates = [self captureScreenStates];
     const bool is_screen_change = ![_lastScreenStates isEqualToArray:currentScreenStates];
-    monotonic_t now = monotonic();
-    debug_rendering("windowDidResize() called, is_screen_change: %d\n", is_screen_change);
+    const bool is_main_thread = [NSThread isMainThread];
+    debug_rendering("windowDidResize() called, is_screen_change: %d is_main_thread: %d\n", is_screen_change, is_main_thread);
     if (is_screen_change) {
         // This resize likely happened because a screen was added, removed, or changed resolution.
         [_lastScreenStates release];
@@ -608,14 +606,10 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         window->ns.height = (int)contentRect.size.height;
         _glfwInputWindowSize(window, (int)contentRect.size.width, (int)contentRect.size.height);
     }
-    monotonic_t time_since_last_resize_event = now - last_resize_event_at;
-    last_resize_event_at = now;
     // Because of a bug in macOS Tahoe we cannot redraw the window in response
     // to a resize event that was caused by a screen change as the OpenGL
     // context is not ready yet. See: https://github.com/kovidgoyal/kitty/issues/8983
-    // Similarly, on some systems there is resize on lid open, so only do live
-    // resizing for events arriving in quick sequence.
-    if (window->ns.resizeCallback && !is_screen_change && time_since_last_resize_event <= ms_to_monotonic_t(1000)) window->ns.resizeCallback((GLFWwindow*)window);
+    if (window->ns.resizeCallback && !is_screen_change && is_main_thread) window->ns.resizeCallback((GLFWwindow*)window);
 }
 
 - (void)windowDidMove:(NSNotification *)notification
