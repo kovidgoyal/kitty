@@ -230,6 +230,15 @@ copying to clipboard. In the editor, you can map it to copy to the clipboard,
 thereby allowing use of a common shortcut both inside and outside the editor
 for copying to clipboard.
 
+.. note::
+
+   When using multi-key mappings, of the form :kbd:`k1>k2` or similar, the
+   condition applies to the first key and you can have only one condition per
+   key, the last in kitty.conf wins. In particular, this means you cant have
+   multiple conditions applying to multi-key mappings with the same first key
+   and you can have mappings with and without conditions applying to multi-keys
+   with the same first key.
+
 Sending arbitrary text or keys to the program running in kitty
 --------------------------------------------------------------------------------
 
