@@ -122,9 +122,9 @@ the table below:
 .. table:: Types of input to kittens
     :align: left
 
-    =========================== =======================================================================================================
+    =========================== ========================================================================================
     Keyword                     Type of :file:`STDIN` input
-    =========================== =======================================================================================================
+    =========================== ========================================================================================
     ``text``                    Plain text of active window
     ``ansi``                    Formatted text of active window
     ``screen``                  Plain text of active window with line wrap markers
@@ -141,7 +141,7 @@ the table below:
     ``output-screen-ansi``      Formatted text of the output from the last run command with wrap markers
 
     ``selection``               The text currently selected with the mouse
-    =========================== =======================================================================================================
+    =========================== ========================================================================================
 
 In addition to ``output``, that gets the output of the last run command,
 ``last_visited_output`` gives the output of the command last jumped to
