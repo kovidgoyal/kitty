@@ -673,6 +673,7 @@ setup_texture_as_render_target(unsigned width, unsigned height, GLuint *texture_
                 free_framebuffer(framebuffer_id);
                 free_texture(texture_id);
                 setup_texture_as_render_target(width, height, texture_id, framebuffer_id);
+                log_error("WARNING: Your GPU driver does not support 16bit textures as framebuffer targets, some colors may be slightly inaccurate.");
             } else {
                 fatal("Your GPU driver does not support indirect rendering to a GL_RGBA texture via a framebuffer");
             }
