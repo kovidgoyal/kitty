@@ -480,7 +480,7 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
     if cli_opts.listen_on:
         cli_opts.listen_on = expand_listen_on(cli_opts.listen_on, from_config_file)
     path_from_shell = ''
-    if vars := opts.env.pop('read_from_login_shell', ''):
+    if vars := opts.env.pop('read_from_shell', ''):
         import fnmatch
         import re
         senv = read_shell_environment(opts)

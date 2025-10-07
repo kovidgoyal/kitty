@@ -484,7 +484,7 @@ The simplest way to fix this is to have kitty load the environment variables
 from your shell configuration at startup using the :opt:`env` directive,
 adding the following to :file:`kitty.conf`::
 
-    env read_from_login_shell=PATH LANG LC_* XDG_* EDITOR VISUAL
+    env read_from_shell=PATH LANG LC_* XDG_* EDITOR VISUAL
 
 This works for POSIX compliant shells and the fish shell. Note that it
 does add significantly to kitty startup time, so use only if really necessary.
