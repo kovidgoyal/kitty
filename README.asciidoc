@@ -1,5 +1,7 @@
 = kitty - the fast, feature-rich, cross-platform, GPU based terminal
 
+If you live in the terminal, *kitty* is made for **you**!
+
 See https://sw.kovidgoyal.net/kitty/[the kitty website].
 
 image:https://github.com/kovidgoyal/kitty/workflows/CI/badge.svg["Build status", link="https://github.com/kovidgoyal/kitty/actions?query=workflow%3ACI"]
