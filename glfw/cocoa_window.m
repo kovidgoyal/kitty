@@ -537,6 +537,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     if (self != nil) {
         window = initWindow;
         _lastScreenStates = [self captureScreenStates];
+        window->ns.live_resize_in_progress = false;
     }
     return self;
 }
@@ -566,13 +567,12 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     (void)notification;
     NSArray<NSDictionary *> *currentScreenStates = [self captureScreenStates];
     const bool is_screen_change = ![_lastScreenStates isEqualToArray:currentScreenStates];
-    const bool is_main_thread = [NSThread isMainThread];
     NSWindowStyleMask sm = [window->ns.object styleMask];
     const bool is_fullscreen = (sm & NSWindowStyleMaskFullScreen) != 0;
     NSRect frame = [window->ns.object frame];
     debug_rendering(
-            "windowDidResize() called, is_screen_change: %d is_main_thread: %d is_fullscreen: %d frame: %.1fx%.1f@(%.1f, %.1f)\n",
-            is_screen_change, is_main_thread, is_fullscreen, frame.size.width, frame.size.height, frame.origin.x, frame.origin.y);
+            "windowDidResize() called, is_screen_change: %d is_fullscreen: %d live_resize_in_progress: %d frame: %.1fx%.1f@(%.1f, %.1f)\n",
+            is_screen_change, is_fullscreen, window->ns.live_resize_in_progress, frame.size.width, frame.size.height, frame.origin.x, frame.origin.y);
     if (is_screen_change) {
         // This resize likely happened because a screen was added, removed, or changed resolution.
         [_lastScreenStates release];
@@ -614,7 +614,8 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     // Because of a bug in macOS Tahoe we cannot redraw the window in response
     // to a resize event that was caused by a screen change as the OpenGL
     // context is not ready yet. See: https://github.com/kovidgoyal/kitty/issues/8983
-    if (window->ns.resizeCallback && !is_screen_change && !is_fullscreen && is_main_thread) window->ns.resizeCallback((GLFWwindow*)window);
+    if (window->ns.resizeCallback && !is_screen_change && !is_fullscreen && window->ns.live_resize_in_progress)
+        window->ns.resizeCallback((GLFWwindow*)window);
 }
 
 - (void)windowDidMove:(NSNotification *)notification
@@ -830,12 +831,14 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void) viewWillStartLiveResize
 {
     if (!window) return;
+    window->ns.live_resize_in_progress = true;
     _glfwInputLiveResize(window, true);
 }
 
 - (void)viewDidEndLiveResize
 {
     if (!window) return;
+    window->ns.live_resize_in_progress = false;
     _glfwInputLiveResize(window, false);
 }
 
