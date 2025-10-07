@@ -137,6 +137,10 @@ Detailed list of changes
 0.43.2 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Allow kitty to read a specified set of environment variables from your
+  login shell at startup using the :opt:`env` directive in kitty.conf
+  (:iss:`9042`)
+
 - Fix a regression in 0.43.0 that caused a black flicker when closing a tab in
   the presence of a background image (:iss:`9060`)
 

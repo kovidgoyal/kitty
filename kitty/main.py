@@ -67,6 +67,7 @@ from .utils import (
     get_custom_window_icon,
     log_error,
     parse_os_window_state,
+    read_shell_environment,
     safe_mtime,
     startup_notification_handler,
 )
@@ -478,6 +479,17 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         from_config_file = True
     if cli_opts.listen_on:
         cli_opts.listen_on = expand_listen_on(cli_opts.listen_on, from_config_file)
+    if vars := opts.env.pop('read_from_login_shell', ''):
+        import fnmatch
+        import re
+        senv = read_shell_environment(opts)
+        patterns = tuple(re.compile(fnmatch.translate(x.strip())) for x in vars.split() if x.strip())
+        if patterns:
+            for k, v in senv.items():
+                for pat in patterns:
+                    if pat.match(k) is not None:
+                        opts.env[k] = v
+                        break
     env = opts.env.copy()
     ensure_kitty_in_path()
     ensure_kitten_in_path()

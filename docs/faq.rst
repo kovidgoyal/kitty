@@ -480,6 +480,16 @@ related to localization, such as :envvar:`LANG`, ``LC_*`` and loading of
 configuration files such as ``XDG_*``, :envvar:`KITTY_CONFIG_DIRECTORY` and,
 most importantly, ``PATH`` to locate binaries.
 
+The simplest way to fix this is to have kitty load the environment variables
+from your shell configuration at startup using the :opt:`env` directive,
+adding the following to :file:`kitty.conf`::
+
+    env read_from_login_shell=PATH LANG LC_* XDG_* EDITOR VISUAL
+
+This works for POSIX compliant shells and the fish shell. Note that it
+does add significantly to kitty startup time, so use only if really necessary.
+This feature was added in version ``0.43.2``.
+
 To see the environment variables that kitty sees, you can add the following
 mapping to :file:`kitty.conf`::
 

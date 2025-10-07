@@ -748,12 +748,13 @@ def which(name: str, only_system: bool = False) -> str | None:
 def read_resolved_shell_environment(shell: tuple[str, ...]) -> MappingProxyType[str, str]:
     import subprocess
     cmdline = list(shell)
-    if '-l' not in cmdline and '--login' not in shell:
+    if '-l' not in cmdline and '--login' not in cmdline:
         cmdline += ['-l']
-    if '-i' not in shell and '--interactive' not in shell:
+    if '-i' not in cmdline and '--interactive' not in cmdline:
         cmdline += ['-i']
-    is_fish = 'fish' in os.path.basename(cmdline[0]).lower()
-    cmd = 'command env -0' if is_fish else 'builtin command env -0'
+    q = os.path.basename(cmdline[0]).lower()
+    has_builtin = q in ('bash', 'zsh')
+    cmd = 'builtin command env -0' if has_builtin else 'command env -0'
     ans: MappingProxyType[str, str] = MappingProxyType({})
 
     from .child import openpty
@@ -764,7 +765,7 @@ def read_resolved_shell_environment(shell: tuple[str, ...]) -> MappingProxyType[
             cmdline + ['-c', cmd], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True,
             preexec_fn=clear_handled_signals)
     except FileNotFoundError:
-        log_error('Could not find shell to read environment')
+        log_error(f'Could not find shell {cmdline[0]} to read environment')
         return ans
     with os.fdopen(master, 'rb') as stdout, os.fdopen(slave, 'wb'):
         raw = b''
@@ -781,7 +782,7 @@ def read_resolved_shell_environment(shell: tuple[str, ...]) -> MappingProxyType[
             if ret is not None:
                 break
         if ret is None:
-            log_error('Timed out waiting for shell to quit while reading shell environment')
+            log_error(f'Timed out waiting for shell {cmdline} to quit while reading shell environment')
             p.kill()
         elif ret == 0:
             while True:
@@ -800,7 +801,7 @@ def read_resolved_shell_environment(shell: tuple[str, ...]) -> MappingProxyType[
                     env[k] = v
             ans = MappingProxyType(env)
         else:
-            log_error('Failed to run shell to read its environment')
+            log_error(f'Failed to run shell {cmdline} to read its environment')
     return ans
 
 

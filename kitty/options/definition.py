@@ -3254,7 +3254,9 @@ Changing this option by reloading the config is not supported.
 '''
     )
 
-opt('+env', '',
+opt(
+    '+env',
+    '',
     option_type='env',
     add_to_default=False,
     long_text='''
@@ -3268,8 +3270,17 @@ recursively, for example::
     env VAR2=${HOME}/${VAR1}/b
 
 The value of :code:`VAR2` will be :code:`<path to home directory>/a/b`.
-'''
-    )
+
+Use the special
+value :code:`read_from_login_shell` to have kitty read the specified variables from
+your :opt:`login shell <shell>` configuration.
+Useful if your shell startup files setup a bunch of environment variables that you want available to kitty and
+in kitty session files. Each variable name is treated as a glob pattern to match. For example:
+:code:`env read_from_login_shell=PATH LANG LC_* XDG_* EDITOR VISUAL`. Note that these variables are only
+read after the configuration is fully processed, thus they are not available for recursive expansion and
+they will override any variables set by other :opt:`env` directives.
+''',
+)
 
 opt('+filter_notification', '', option_type='filter_notification', add_to_default=False, long_text='''
 Specify rules to filter out notifications sent by applications running in kitty.
