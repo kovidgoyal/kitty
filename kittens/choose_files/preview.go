@@ -298,11 +298,12 @@ func (pm *PreviewManager) preview_for(abspath string, ftype fs.FileMode) (ans Pr
 		return NewTextFilePreview(abspath, s, ch, pm.highlighter.Sanitize)
 	}
 	if strings.HasPrefix(mt, "image/") {
-		ans, err := NewImagePreview(abspath, s, pm.settings)
-		if err != nil {
+		var r ImagePreviewRenderer
+		if ans, err := NewImagePreview(abspath, s, pm.settings, pm.WakeupMainThread, r); err == nil {
+			return ans
+		} else {
 			return NewErrorPreview(err)
 		}
-		return ans
 	}
 	return NewFileMetadataPreview(abspath, s)
 }
