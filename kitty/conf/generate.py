@@ -491,7 +491,7 @@ def go_type_data(parser_func: ParserFuncType, ctype: str, is_multiple: bool = Fa
     if p == 'positive_int':
         return 'uint64', 'strconv.ParseUint(val, 10, 64)'
     if p == 'positive_float':
-        return 'float64', 'config.PositiveFloat(val, 10, 64)'
+        return 'float64', 'config.PositiveFloat(val)'
     if p == 'unit_float':
         return 'float64', 'config.UnitFloat(val)'
     if p == 'python_string':

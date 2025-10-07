@@ -61,6 +61,11 @@ builtin styles <https://pygments.org/styles/>` for a list of schemes.
 This sets the colors used for dark color schemes, use :opt:`pygments_style` to change the
 colors for light color schemes.''')
 
+opt('cache_size', '0.5', option_type='positive_float', long_text='''
+The maximum size of the disk cache, in gigabytes, used for previews. Zero or negative values
+mean no limit.
+''')
+
 opt('syntax_aliases', 'pyj:py pyi:py recipe:py', ctype='strdict_ _:', option_type='syntax_aliases',
     long_text='''
 File extension aliases for syntax highlight. For example, to syntax highlight

@@ -634,6 +634,7 @@ type Settings interface {
 	GlobalIgnores() ignorefiles.IgnoreFile
 	HighlightStyles() (string, string)
 	SyntaxAliases() map[string]string
+	DiskCacheSize() int64
 }
 
 type ResultManager struct {

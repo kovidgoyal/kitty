@@ -123,6 +123,7 @@ type State struct {
 	display_title                       bool
 	pygments_style, dark_pygments_style string
 	syntax_aliases                      map[string]string
+	max_disk_cache_size                 int64
 
 	selections    []string
 	current_idx   CollectionIndex
@@ -131,6 +132,7 @@ type State struct {
 	redraw_needed bool
 }
 
+func (s State) DiskCacheSize() int64                  { return s.max_disk_cache_size }
 func (s State) HighlightStyles() (string, string)     { return s.pygments_style, s.dark_pygments_style }
 func (s State) SyntaxAliases() map[string]string      { return s.syntax_aliases }
 func (s State) DisplayTitle() bool                    { return s.display_title }
@@ -718,6 +720,7 @@ func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error)
 	h.state.pygments_style = conf.Pygments_style
 	h.state.dark_pygments_style = conf.Dark_pygments_style
 	h.state.syntax_aliases = conf.Syntax_aliases
+	h.state.max_disk_cache_size = int64(conf.Cache_size * (1024 * 1024 * 1024))
 	return
 }
 
