@@ -567,7 +567,12 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     NSArray<NSDictionary *> *currentScreenStates = [self captureScreenStates];
     const bool is_screen_change = ![_lastScreenStates isEqualToArray:currentScreenStates];
     const bool is_main_thread = [NSThread isMainThread];
-    debug_rendering("windowDidResize() called, is_screen_change: %d is_main_thread: %d\n", is_screen_change, is_main_thread);
+    NSWindowStyleMask sm = [window->ns.object styleMask];
+    const bool is_fullscreen = (sm & NSWindowStyleMaskFullScreen) != 0;
+    NSRect frame = [window->ns.object frame];
+    debug_rendering(
+            "windowDidResize() called, is_screen_change: %d is_main_thread: %d is_fullscreen: %d frame: %.1fx%.1f@(%.1f, %.1f)\n",
+            is_screen_change, is_main_thread, is_fullscreen, frame.size.width, frame.size.height, frame.origin.x, frame.origin.y);
     if (is_screen_change) {
         // This resize likely happened because a screen was added, removed, or changed resolution.
         [_lastScreenStates release];
@@ -609,7 +614,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     // Because of a bug in macOS Tahoe we cannot redraw the window in response
     // to a resize event that was caused by a screen change as the OpenGL
     // context is not ready yet. See: https://github.com/kovidgoyal/kitty/issues/8983
-    if (window->ns.resizeCallback && !is_screen_change && is_main_thread) window->ns.resizeCallback((GLFWwindow*)window);
+    if (window->ns.resizeCallback && !is_screen_change && !is_fullscreen && is_main_thread) window->ns.resizeCallback((GLFWwindow*)window);
 }
 
 - (void)windowDidMove:(NSNotification *)notification
