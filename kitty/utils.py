@@ -541,7 +541,8 @@ def get_editor_from_env(env: Mapping[str, str]) -> str | None:
 
 
 def get_editor_from_env_vars(opts: Options | None = None) -> list[str]:
-    editor = get_editor_from_env(os.environ)
+    from .child import default_env
+    editor = get_editor_from_env(default_env())
     if not editor:
         shell_env = read_shell_environment(opts)
         editor = get_editor_from_env(shell_env)
