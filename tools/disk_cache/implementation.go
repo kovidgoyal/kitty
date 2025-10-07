@@ -292,7 +292,10 @@ func (dc *DiskCache) add(key string, items map[string][]byte) (err error) {
 		}
 		if len(data) == 0 {
 			if err = os.Remove(p); err != nil {
-				return
+				if !os.IsNotExist(err) {
+					return
+				}
+				err = nil
 			}
 			changed -= before
 		} else {
