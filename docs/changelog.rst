@@ -150,6 +150,9 @@ Detailed list of changes
 - Fix tab bar sometimes showing incorrect tabs when it is filtered to show only
   tabs from the current session (:iss:`9079`)
 
+- macOS: Workaround for bug in macOS Tahoe that caused OS Windows that are
+  fullscreen to crash kitty when returning from sleep on some machines (:iss:`8983`)
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
