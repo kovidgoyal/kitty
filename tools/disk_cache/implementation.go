@@ -296,6 +296,9 @@ func (dc *DiskCache) add(key string, items map[string][]byte) (err error) {
 			}
 			changed -= before
 		} else {
+			// unlink the file so that writing to it does not change a
+			// previously linked copy created by get()
+			_ = os.Remove(p)
 			if err = os.WriteFile(p, data, 0o700); err != nil {
 				return
 			}
