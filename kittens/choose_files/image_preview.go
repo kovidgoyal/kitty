@@ -23,7 +23,7 @@ var preview_cache = sync.OnceValues(func() (*disk_cache.DiskCache, error) {
 
 type PreviewRenderer interface {
 	Render(string) (map[string][]byte, error)
-	Show(h *Handler, abspath string, metadata fs.FileInfo, x, y, width, height int, cached_data map[string]string)
+	ShowMetadata(h *Handler, abspath string, metadata fs.FileInfo, x, y, width, height int, cached_data map[string]string) int
 }
 
 type render_data struct {
@@ -48,7 +48,7 @@ func (p ImagePreview) IsValidForColorScheme(bool) bool { return true }
 func (p ImagePreview) Render(h *Handler, x, y, width, height int) {
 	if p.render_channel == nil {
 		if p.render_err == nil {
-			p.renderer.Show(h, p.abspath, p.metadata, x, y, width, height, p.cached_data)
+			y += p.renderer.ShowMetadata(h, p.abspath, p.metadata, x, y, width, height, p.cached_data)
 		} else {
 			p.render_err.Render(h, x, y, width, height)
 		}
@@ -93,7 +93,8 @@ func (p ImagePreviewRenderer) Render(abspath string) (ans map[string][]byte, err
 	return
 }
 
-func (p ImagePreviewRenderer) Show(h *Handler, abspath string, metadata fs.FileInfo, x, y, width, height int, cached_data map[string]string) {
+func (p ImagePreviewRenderer) ShowMetadata(h *Handler, abspath string, metadata fs.FileInfo, x, y, width, height int, cached_data map[string]string) int {
+	return 0
 }
 
 func NewImagePreview(
