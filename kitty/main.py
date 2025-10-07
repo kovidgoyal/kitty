@@ -479,6 +479,7 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
         from_config_file = True
     if cli_opts.listen_on:
         cli_opts.listen_on = expand_listen_on(cli_opts.listen_on, from_config_file)
+    path_from_shell = ''
     if vars := opts.env.pop('read_from_login_shell', ''):
         import fnmatch
         import re
@@ -488,8 +489,12 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
             for k, v in senv.items():
                 for pat in patterns:
                     if pat.match(k) is not None:
+                        if k == 'PATH':
+                            path_from_shell = v
                         opts.env[k] = v
                         break
+    if path_from_shell:
+        os.environ['PATH'] = path_from_shell
     env = opts.env.copy()
     ensure_kitty_in_path()
     ensure_kitten_in_path()
