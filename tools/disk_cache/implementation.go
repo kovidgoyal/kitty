@@ -287,21 +287,27 @@ func (dc *DiskCache) add(key string, items map[string][]byte) (err error) {
 	for x, data := range items {
 		p := filepath.Join(base, x)
 		var before int64
+		exists := false
 		if s, err := os.Stat(p); err == nil {
 			before = s.Size()
+			exists = true
 		}
 		if len(data) == 0 {
-			if err = os.Remove(p); err != nil {
-				if !os.IsNotExist(err) {
-					return
+			if exists {
+				if err = os.Remove(p); err != nil {
+					if !os.IsNotExist(err) {
+						return
+					}
+					err = nil
 				}
-				err = nil
+				changed -= before
 			}
-			changed -= before
 		} else {
 			// unlink the file so that writing to it does not change a
 			// previously linked copy created by get()
-			_ = os.Remove(p)
+			if exists {
+				_ = os.Remove(p)
+			}
 			if err = os.WriteFile(p, data, 0o700); err != nil {
 				return
 			}
