@@ -11,6 +11,7 @@ from collections.abc import Callable, Generator, Iterable, Iterator, Mapping, Se
 from contextlib import contextmanager, suppress
 from functools import lru_cache
 from re import Match, Pattern
+from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -743,60 +744,69 @@ def which(name: str, only_system: bool = False) -> str | None:
     return None
 
 
-def read_shell_environment(opts: Options | None = None) -> dict[str, str]:
-    ans: dict[str, str] | None = getattr(read_shell_environment, 'ans', None)
-    if ans is None:
-        from .child import openpty
-        ans = {}
-        setattr(read_shell_environment, 'ans', ans)
-        import subprocess
-        shell = resolved_shell(opts)
-        master, slave = openpty()
-        os.set_blocking(master, False)
-        if '-l' not in shell and '--login' not in shell:
-            shell += ['-l']
-        if '-i' not in shell and '--interactive' not in shell:
-            shell += ['-i']
-        try:
-            p = subprocess.Popen(
-                shell + ['-c', 'env'], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True,
-                preexec_fn=clear_handled_signals)
-        except FileNotFoundError:
-            log_error('Could not find shell to read environment')
-            return ans
-        with os.fdopen(master, 'rb') as stdout, os.fdopen(slave, 'wb'):
-            raw = b''
-            from time import monotonic
-            start_time = monotonic()
-            while monotonic() - start_time < 1.5:
+@lru_cache(4)
+def read_resolved_shell_environment(shell: tuple[str, ...]) -> MappingProxyType[str, str]:
+    import subprocess
+    cmdline = list(shell)
+    if '-l' not in cmdline and '--login' not in shell:
+        cmdline += ['-l']
+    if '-i' not in shell and '--interactive' not in shell:
+        cmdline += ['-i']
+    is_fish = 'fish' in os.path.basename(cmdline[0]).lower()
+    cmd = 'command env -0' if is_fish else 'builtin command env -0'
+    ans: MappingProxyType[str, str] = MappingProxyType({})
+
+    from .child import openpty
+    master, slave = openpty()
+    os.set_blocking(master, False)
+    try:
+        p = subprocess.Popen(
+            cmdline + ['-c', cmd], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True,
+            preexec_fn=clear_handled_signals)
+    except FileNotFoundError:
+        log_error('Could not find shell to read environment')
+        return ans
+    with os.fdopen(master, 'rb') as stdout, os.fdopen(slave, 'wb'):
+        raw = b''
+        from time import monotonic
+        start_time = monotonic()
+        ret: int | None = None
+        while monotonic() - start_time < 1.5:
+            try:
+                ret = p.wait(0.01)
+            except subprocess.TimeoutExpired:
+                ret = None
+            with suppress(Exception):
+                raw += stdout.read()
+            if ret is not None:
+                break
+        if ret is None:
+            log_error('Timed out waiting for shell to quit while reading shell environment')
+            p.kill()
+        elif ret == 0:
+            while True:
                 try:
-                    ret: int | None = p.wait(0.01)
-                except subprocess.TimeoutExpired:
-                    ret = None
-                with suppress(Exception):
-                    raw += stdout.read()
-                if ret is not None:
+                    x = stdout.read()
+                except Exception:
                     break
-            if cast(Optional[int], p.returncode) is None:
-                log_error('Timed out waiting for shell to quit while reading shell environment')
-                p.kill()
-            elif p.returncode == 0:
-                while True:
-                    try:
-                        x = stdout.read()
-                    except Exception:
-                        break
-                    if not x:
-                        break
-                    raw += x
-                draw = raw.decode('utf-8', 'replace')
-                for line in draw.splitlines():
-                    k, v = line.partition('=')[::2]
-                    if k and v:
-                        ans[k] = v
-            else:
-                log_error('Failed to run shell to read its environment')
+                if not x:
+                    break
+                raw += x
+            draw = raw.decode('utf-8', 'replace')
+            env = {}
+            for line in draw.split('\0'):
+                k, sep, v = line.partition('=')
+                if k and v and sep:
+                    env[k] = v
+            ans = MappingProxyType(env)
+        else:
+            log_error('Failed to run shell to read its environment')
     return ans
+
+
+def read_shell_environment(opts: Options | None = None) -> MappingProxyType[str, str]:
+    shell = resolved_shell(opts)
+    return read_resolved_shell_environment(tuple(shell))
 
 
 def parse_uri_list(text: str) -> Generator[str, None, None]:
