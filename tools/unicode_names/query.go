@@ -99,6 +99,9 @@ func find_matching_codepoints(prefix string) (ans mark_set) {
 			ans.AddItems(marks...)
 		}
 	}
+	if ans == nil {
+		ans = utils.NewSet[uint16](0)
+	}
 	return ans
 }
 
