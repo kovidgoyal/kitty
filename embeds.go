@@ -8,6 +8,9 @@ import (
 
 var _ = fmt.Print
 
+//go:embed logo/kitty.png
+var KittyLogoAsPNGData []byte
+
 //go:embed kitty_tests/GraphemeBreakTest.json
 var grapheme_break_test_data []byte
 
