@@ -145,7 +145,10 @@ Detailed list of changes
 
 - Fix a regression in the previous release that broke ``goto_session -1``
 
-- Fix rendering broken on ancient GPU drivers that dont support rendering to 16 bit textures (:iss:`9068`)
+- Fix rendering broken on ancient GPU drivers that do not support rendering to 16 bit textures (:iss:`9068`)
+
+- Fix tab bar sometimes showing incorrect tabs when it is filtered to show only
+  tabs from the current session (:iss:`9079`)
 
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

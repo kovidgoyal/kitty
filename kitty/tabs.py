@@ -1388,12 +1388,21 @@ class TabManager:  # {{{
             while self.active_tab_history and self.active_tab_history[-1] == tab.id:
                 self.active_tab_history.pop()
 
+        def previous_active_tab() -> Tab | None:
+            while self.active_tab_history:
+                tab_id = self.active_tab_history.pop()
+                if tab_id != removed_tab.id:
+                    if (ans := self.tab_for_id(tab_id)) is not None:
+                        return ans
+            return self.tabs[0] if self.tabs else None
+
         if active_tab_before_removal is removed_tab:
-            if len(self.tabs) == 0:
-                self._active_tab_idx = 0
-            elif len(self.tabs) == 1:
-                remove_from_end_of_active_history(self.tabs[0])
-                self._set_active_tab(0, store_in_history=False)
+            if len(tabs) == 0 or (len(tabs) == 1 and removed_tab is tabs[0]):
+                tab = previous_active_tab()
+                if tab is None:
+                    self._active_tab_idx = 0
+                else:
+                    self._set_active_tab(self.tabs.index(tab), store_in_history=False)
             else:
                 next_active_tab: Tab | None = None
                 match get_options().tab_switch_strategy:
@@ -1401,6 +1410,8 @@ class TabManager:  # {{{
                         while self.active_tab_history and next_active_tab is None:
                             tab_id = self.active_tab_history.pop()
                             next_active_tab = self.tab_for_id(tab_id)
+                            if next_active_tab not in tabs:
+                                next_active_tab = None
                     case 'left':
                         next_active_tab = tabs[(tabs.index(active_tab_before_removal) - 1 + len(tabs)) % len(tabs)]
                         remove_from_end_of_active_history(next_active_tab)
