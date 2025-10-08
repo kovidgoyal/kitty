@@ -36,9 +36,6 @@
 #include <float.h>
 #include <string.h>
 #include <assert.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <errno.h>
 
 #define debug debug_rendering
 
@@ -1366,63 +1363,8 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 
     NSPasteboard* pasteboard = [sender draggingPasteboard];
 
-#if defined(GLFW_HAS_PROMISE_CALLBACKS)
-    if (@available(macOS 10.12, *)) {
-        // Check if this looks like a Screenshot thumbnail
-        NSArray<NSString *> *types = [pasteboard types];
-        BOOL hasImageData = [types containsObject:NSPasteboardTypePNG] ||
-                           [types containsObject:NSPasteboardTypeTIFF];
-        BOOL hasPromise = NO;
-        for (NSString *type in types) {
-            if ([type hasPrefix:@"com.apple.NSFilePromise"]) {
-                hasPromise = YES;
-                break;
-            }
-        }
-
-        // Screenshot thumbnails have both image data AND promise - use image data directly
-        if (hasImageData && hasPromise) {
-            // Get image data
-            NSData *imageData = [pasteboard dataForType:NSPasteboardTypePNG];
-            if (!imageData) {
-                imageData = [pasteboard dataForType:NSPasteboardTypeTIFF];
-            }
-
-            if (imageData) {
-                // Create temp directory
-                NSURL *tempDir = [self createTempDirectoryForPromises];
-                if (tempDir) {
-                    // Generate filename with timestamp
-                    NSDateFormatter *formatter = [[[NSDateFormatter alloc] init] autorelease];
-                    [formatter setDateFormat:@"yyyy-MM-dd 'at' HH.mm.ss"];
-                    NSString *timestamp = [formatter stringFromDate:[NSDate date]];
-                    NSString *extension = [pasteboard dataForType:NSPasteboardTypePNG] ? @"png" : @"tiff";
-                    NSString *filename = [NSString stringWithFormat:@"Screenshot %@.%@", timestamp, extension];
-                    NSURL *fileURL = [tempDir URLByAppendingPathComponent:filename];
-
-                    // Write image data to file
-                    NSError *error = nil;
-                    if ([imageData writeToURL:fileURL options:NSDataWritingAtomic error:&error]) {
-                        // Deliver the file path
-                        NSString *urlString = [fileURL absoluteString];
-                        const char *utf8String = [urlString UTF8String];
-                        _glfwInputDrop(window, "text/uri-list", utf8String, strlen(utf8String));
-                        return YES;
-                    }
-                }
-            }
-        }
-
-        // Try standard file promise handling for non-Screenshot cases (Mail.app, etc)
-        if (hasPromise && !hasImageData) {
-            if ([self handleFilePromises:sender window:window]) {
-                return YES;
-            }
-        }
-    }
-#endif
-
-    // Fall back to regular file/text drop handling
+    // Use simple approach: let AppKit materialize file promises automatically
+    // This handles Finder files, Screenshot thumbnails, Mail.app attachments, etc.
     NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
     NSArray* objs = [pasteboard readObjectsForClasses:@[[NSURL class], [NSString class]]
                                               options:options];
@@ -1707,132 +1649,6 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 #if defined(GLFW_HAS_PROMISE_CALLBACKS)
 
 // File promise helper methods
-- (NSURL *)createTempDirectoryForPromises
-{
-    // Create a unique temporary directory for this promise operation
-    NSString *tempDirTemplate = [NSTemporaryDirectory()
-                                stringByAppendingPathComponent:@"kitty-drop-XXXXXX"];
-    const char *tempDirPath = [tempDirTemplate fileSystemRepresentation];
-
-    // Use mkdtemp for atomic, secure directory creation
-    char *template = strdup(tempDirPath);
-    if (!template) {
-        return nil;
-    }
-
-    char *result = mkdtemp(template);
-    if (!result) {
-        free(template);
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                       "Cocoa: Failed to create temporary directory: %s",
-                       strerror(errno));
-        return nil;
-    }
-
-    // Set restrictive permissions (owner-only)
-    chmod(template, 0700);
-
-    NSURL *url = [NSURL fileURLWithFileSystemRepresentation:template
-                                                isDirectory:YES
-                                              relativeToURL:nil];
-    free(template);
-    return url;
-}
-
-- (BOOL)handleFilePromises:(id <NSDraggingInfo>)sender window:(_GLFWwindow*)glfwWindow
-    API_AVAILABLE(macos(10.12))
-{
-    NSPasteboard* pasteboard = [sender draggingPasteboard];
-
-    // Check if we have file promises
-    if (![pasteboard canReadObjectForClasses:@[[NSFilePromiseReceiver class]] options:nil]) {
-        return NO;  // No promises, caller should try normal file drop
-    }
-
-    // Read promise receivers
-    NSArray<NSFilePromiseReceiver *> *promises =
-        [pasteboard readObjectsForClasses:@[[NSFilePromiseReceiver class]] options:nil];
-
-    if (!promises || promises.count == 0) {
-        return NO;
-    }
-
-    // Create temp directory for materialization
-    NSURL *tempDir = [self createTempDirectoryForPromises];
-    if (!tempDir) {
-        return NO;
-    }
-
-    // Generate unique promise ID (unused in Phase 1 sync implementation)
-    // int promise_id = ++glfwWindow->ns.nextPromiseId;
-    (void)glfwWindow->ns.nextPromiseId;  // Silence unused field warning
-
-    // Synchronous blocking approach (Phase 1)
-    // Use semaphore to wait for all promises to complete
-    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
-    NSMutableArray<NSURL *> *materializedURLs = [NSMutableArray arrayWithCapacity:promises.count];
-    NSOperationQueue *queue = [[[NSOperationQueue alloc] init] autorelease];
-    queue.qualityOfService = NSQualityOfServiceUserInitiated;
-
-    __block NSUInteger completedCount = 0;
-    NSUInteger totalCount = promises.count;
-
-    // Start materializing each promise
-    for (NSFilePromiseReceiver *promise in promises) {
-        [promise receivePromisedFilesAtDestination:tempDir
-                                           options:@{}
-                                    operationQueue:queue
-                                            reader:^(NSURL *fileURL, NSError *error) {
-            @synchronized(materializedURLs) {
-                if (error) {
-                    _glfwInputError(GLFW_PLATFORM_ERROR,
-                                   "Cocoa: File promise failed: %s",
-                                   [[error localizedDescription] UTF8String]);
-                } else if (fileURL) {
-                    [materializedURLs addObject:fileURL];
-                }
-
-                completedCount++;
-
-                // Signal when all promises are complete
-                if (completedCount == totalCount) {
-                    dispatch_semaphore_signal(semaphore);
-                }
-            }
-        }];
-    }
-
-    // Wait for completion with 30s timeout for file promises (Mail.app, iCloud, etc.)
-    dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, 30 * NSEC_PER_SEC);
-    long result = dispatch_semaphore_wait(semaphore, timeout);
-
-    if (result != 0) {
-        // Timeout occurred
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                       "Cocoa: File promise materialization timeout");
-        return NO;
-    }
-
-    // Build text/uri-list from materialized files
-    if ([materializedURLs count] > 0) {
-        NSMutableString *uriList = [NSMutableString stringWithCapacity:4096];
-        for (NSURL *url in materializedURLs) {
-            if ([uriList length] > 0) {
-                [uriList appendString:@"\n"];
-            }
-            [uriList appendString:[url absoluteString]];
-        }
-
-        // Deliver via existing drop callback
-        const char *uriListStr = [uriList UTF8String];
-        _glfwInputDrop(glfwWindow, "text/uri-list", uriListStr, strlen(uriListStr));
-
-        return YES;
-    }
-
-    return NO;
-}
-
 #endif // GLFW_HAS_PROMISE_CALLBACKS
 
 @end

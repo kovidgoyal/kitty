@@ -421,8 +421,6 @@ class Boss:
         self.mappings: Mappings = Mappings(global_shortcuts, self.refresh_active_tab_bar)
         self.notification_manager: NotificationManager = NotificationManager(debug=self.args.debug_keyboard or self.args.debug_rendering)
         self.atexit.unlink(store_effective_config())
-        # Track temporary directories created by file promise materialization (macOS)
-        self.promise_temp_dirs: set[str] = set()
 
     def startup_first_child(self, os_window_id: int | None, startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
@@ -1874,50 +1872,12 @@ class Boss:
                 text = data.decode('utf-8', 'replace')
                 if mime == 'text/uri-list':
                     urls = list(parse_uri_list(text))
-                    # Detect file promise temp directories (macOS) for cleanup
-                    import tempfile
-                    from pathlib import Path
-                    temp_prefix = str(Path(tempfile.gettempdir()) / 'kitty-drop-')
-                    for url in urls:
-                        if url.startswith(temp_prefix):
-                            # Track this temp directory for cleanup
-                            temp_dir = str(Path(url).parent)
-                            if temp_dir not in self.promise_temp_dirs:
-                                self.promise_temp_dirs.add(temp_dir)
-                                # Schedule cleanup after 5 seconds
-                                self._schedule_promise_cleanup()
-                            break
                     if w.at_prompt:
                         import shlex
                         text = ' '.join(map(shlex.quote, urls))
                     else:
                         text = '\n'.join(urls)
                 w.paste_text(text)
-
-    def _schedule_promise_cleanup(self) -> None:
-        """Schedule cleanup of file promise temporary directories after 5 seconds."""
-        from kitty.fast_data_types import add_timer
-
-        def cleanup_promise_temps(_timer_id: int | None) -> None:
-            if not self.promise_temp_dirs:
-                return
-
-            import shutil
-            from pathlib import Path
-
-            dirs_to_remove = list(self.promise_temp_dirs)
-            self.promise_temp_dirs.clear()
-
-            for temp_dir_str in dirs_to_remove:
-                try:
-                    temp_dir = Path(temp_dir_str)
-                    if temp_dir.exists() and temp_dir.is_dir():
-                        shutil.rmtree(temp_dir)
-                except Exception:
-                    pass  # Silently ignore cleanup errors
-
-        # Schedule single-shot timer for 5 seconds
-        add_timer(cleanup_promise_temps, 5.0, False)
 
     @ac('win', '''
         Focus the nth OS window if positive or the previously active OS windows if negative. When the number is larger
