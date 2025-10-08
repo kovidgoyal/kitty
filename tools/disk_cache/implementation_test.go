@@ -24,10 +24,29 @@ func TestDiskCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	arc := func(dc *DiskCache, expected int) {
-		if expected != dc.read_count {
-			t.Fatalf("disk cache has unexpected read count: %d != %d\n%s", expected, dc.read_count, debug.Stack())
+	ensure_entries := func() {
+		for _, x := range []*DiskCache{dc, dc2} {
+			if err = x.ensure_entries(); err != nil {
+				t.Fatal(err)
+			}
 		}
+
+	}
+	arc := func(counts ...int) {
+		ensure_entries()
+		if diff := cmp.Diff(counts, []int{dc.read_count, dc2.read_count}); diff != "" {
+			t.Fatalf("disk cache has unexpected read count\n%s\n%s", diff, debug.Stack())
+		}
+	}
+	add := func(dc *DiskCache, key string, data map[string]string) {
+		d := make(map[string][]byte, len(data))
+		for k, v := range data {
+			d[k] = []byte(v)
+		}
+		if _, err := dc.Add(key, d); err != nil {
+			t.Fatal(err)
+		}
+		ensure_entries()
 	}
 
 	m, err := dc.Get("missing", "one", "two")
@@ -37,8 +56,6 @@ func TestDiskCache(t *testing.T) {
 	if len(m) > 0 {
 		t.Fatalf("Unexpected return from missing: %s", m)
 	}
-	dc.Add("k1", map[string][]byte{"1": []byte("abcd"), "2": []byte("efgh")})
-	arc(dc, 0)
 
 	ad := func(key string, expected map[string]string) {
 		for _, x := range []*DiskCache{dc, dc2} {
@@ -57,6 +74,7 @@ func TestDiskCache(t *testing.T) {
 			if diff := cmp.Diff(expected, actual); diff != "" {
 				t.Fatalf("Data for %s not equal: %s", key, diff)
 			}
+			ensure_entries()
 		}
 	}
 	ak := func(keys ...string) {
@@ -69,32 +87,31 @@ func TestDiskCache(t *testing.T) {
 				t.Fatalf("wrong keys in %d: %s", i+1, diff)
 			}
 		}
+		ensure_entries()
 	}
+	add(dc, "k1", map[string]string{"1": "abcd", "2": "efgh"})
+	arc(0, 1)
 	ad("k1", map[string]string{"1": "abcd", "2": "efgh"})
-	arc(dc, 0)
-	arc(dc2, 1)
-	dc.Add("k1", map[string][]byte{"3": []byte("ijk"), "4": []byte("lmo")})
-	arc(dc, 1) // because dc2.Get() will have updated the file
-	arc(dc2, 1)
+	arc(1, 2) // the two gets cause two updates
+	add(dc, "k1", map[string]string{"3": "ijk", "4": "lmo"})
+	arc(1, 3) // dc.Add() causes re-read in dc2
 	ak("k1")
-	arc(dc2, 2) // because dc.Add() will have updated the file
-	dc2.Add("k2", map[string][]byte{"1": []byte("123456789")})
-	arc(dc, 1)
-	arc(dc2, 2)
+	arc(1, 3)
+	add(dc2, "k2", map[string]string{"1": "123456789"})
+	arc(2, 3) // dc2.Add() causes re-read in dc
 	ak("k1", "k2")
+	arc(2, 3)
 	ad("k1", map[string]string{"1": "abcd", "2": "efgh", "3": "ijk"})
 	if dc.entries.TotalSize != 14+9 {
 		t.Fatalf("TotalSize: %d != %d", dc.entries.TotalSize, 14+9)
 	}
-	arc(dc, 2)  // dc2.Add()
-	arc(dc2, 3) // dc.Get()
+	arc(3, 4) // the two gets cause two updates
 	ak("k2", "k1")
 	dc.Get("k2")
-	arc(dc, 3) // dc2.Get()
-	arc(dc2, 3)
+	arc(3, 5) // dc.Get() causes dc2 to read
 	ak("k1", "k2")
-	dc.Add("k3", map[string][]byte{"1": []byte(strings.Repeat("a", int(dc.MaxSize)-10))})
-	arc(dc, 3)
+	add(dc, "k3", map[string]string{"1": strings.Repeat("a", int(dc.MaxSize)-10)})
+	arc(3, 6) // dc.Add() causes dc2 to read
 	ak("k2", "k3")
 	// check that creating a new disk cache prunes
 	_, err = NewDiskCache(tdir, dc.MaxSize-8)
@@ -102,7 +119,7 @@ func TestDiskCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	ak("k3")
-	arc(dc, 4) // NewDiskCache()
+	arc(4, 7) // NewDiskCache()
 
 	// test the path api
 	path := filepath.Join(tdir, "source")
@@ -130,5 +147,5 @@ func TestDiskCache(t *testing.T) {
 	if len(entries_before) != len(entries_after) {
 		t.Fatalf("unexpected entries: %s", entries_after)
 	}
-	arc(dc, 4)
+	arc(4, 8) // dc.AddPath() causes dc2 to read
 }

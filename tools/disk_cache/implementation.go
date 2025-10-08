@@ -1,7 +1,6 @@
 package disk_cache
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -11,9 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"syscall"
 	"time"
-
-	"golang.org/x/sys/unix"
 
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
@@ -26,6 +24,10 @@ type file_state struct {
 	Inode   uint64
 }
 
+func (s file_state) String() string {
+	return fmt.Sprintf("fs{Size: %d, Inode: %d, ModTime: %s}", s.Size, s.Inode, s.ModTime)
+}
+
 func (s *file_state) equal(o *file_state) bool {
 	return o != nil && s.Size == o.Size && s.ModTime.Equal(o.ModTime) && s.Inode == o.Inode
 }
@@ -33,7 +35,7 @@ func (s *file_state) equal(o *file_state) bool {
 func get_file_state(fi fs.FileInfo) *file_state {
 	// The Sys() method returns the underlying data source (can be nil).
 	// For Unix-like systems, it's a *syscall.Stat_t.
-	stat, ok := fi.Sys().(*unix.Stat_t)
+	stat, ok := fi.Sys().(*syscall.Stat_t)
 	if !ok {
 		// For non-Unix systems, you might not have an inode.
 		// In that case, you can fall back to using only size and mod time.
@@ -145,8 +147,23 @@ func (dc *DiskCache) write_entries_if_dirty() (err error) {
 	if d, err := json.Marshal(dc.entries); err != nil {
 		return err
 	} else {
-		// use an atomic write so that the inode number changes
-		return utils.AtomicWriteFile(path, bytes.NewReader(d), 0o600)
+		// use a rename so that the inode number changes
+		// dont bother with full utils.AtomicWriteFile() as it is slower
+		temp := path + ".temp"
+		removed := false
+		defer func() {
+			if !removed {
+				_ = os.Remove(temp)
+				removed = true
+			}
+		}()
+		if err := os.WriteFile(temp, d, 0o600); err != nil {
+			return err
+		}
+		if err = os.Rename(temp, path); err == nil {
+			removed = true
+		}
+		return err
 	}
 }
 
