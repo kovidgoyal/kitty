@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -28,12 +30,13 @@ func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
 	if err = ans.ensure_entries(); err != nil {
 		return
 	}
-	if pruned, err := ans.prune(); err != nil {
-		return nil, err
-	} else if pruned {
-		if err = ans.write_entries(); err != nil {
-			return nil, err
+	defer func() {
+		if we := ans.write_entries_if_dirty(); we != nil && err == nil {
+			err = we
 		}
+	}()
+	if _, err := ans.prune(); err != nil {
+		return nil, err
 	}
 	if ans.get_dir, err = os.MkdirTemp(ans.Path, "getdir-*"); err != nil {
 		return
@@ -85,7 +88,16 @@ func (dc *DiskCache) unlock() {
 
 func (dc *DiskCache) entries_path() string { return filepath.Join(dc.Path, "entries.json") }
 
-func (dc *DiskCache) write_entries() (err error) {
+func (dc *DiskCache) write_entries_if_dirty() (err error) {
+	if !dc.entries_dirty {
+		return
+	}
+	defer func() {
+		if err == nil {
+			dc.entries_dirty = false
+			dc.entries_mod_time = time.Now()
+		}
+	}()
 	if d, err := json.Marshal(dc.entries); err != nil {
 		return err
 	} else {
@@ -93,11 +105,15 @@ func (dc *DiskCache) write_entries() (err error) {
 	}
 }
 
-func (dc *DiskCache) rebuild_entries() error {
+func (e Entry) String() string {
+	return fmt.Sprintf("Entry{Key: %s, Size: %d, LastUsed: %s}", e.Key, e.Size, e.LastUsed)
+}
+
+func (dc *DiskCache) entries_from_folders() (total_size int64, ans map[string]*Entry, sorted []*Entry, err error) {
 	if entries, err := os.ReadDir(dc.Path); err != nil {
-		return err
+		return 0, nil, nil, err
 	} else {
-		ans := make(map[string]*Entry)
+		ans = make(map[string]*Entry)
 		var total int64
 		for _, x := range entries {
 			if x.IsDir() {
@@ -105,7 +121,7 @@ func (dc *DiskCache) rebuild_entries() error {
 					key := sub_entries[0].Name()
 					path := dc.folder_for_key(key)
 					if file_entries, err := os.ReadDir(path); err == nil {
-						e := Entry{}
+						e := Entry{Key: key}
 						for _, f := range file_entries {
 							if fi, err := f.Info(); err == nil {
 								e.Size += fi.Size()
@@ -120,37 +136,56 @@ func (dc *DiskCache) rebuild_entries() error {
 				}
 			}
 		}
-		sorted := utils.Values(ans)
+		sorted = utils.Values(ans)
 		slices.SortFunc(sorted, func(a, b *Entry) int {
 			return a.LastUsed.Compare(b.LastUsed)
 		})
-		dc.entries = Metadata{TotalSize: total, SortedEntries: sorted}
-		dc.entry_map = ans
+		return total, ans, sorted, nil
 	}
-	return nil
+}
+
+func (dc *DiskCache) rebuild_entries() error {
+	total, ans, sorted, err := dc.entries_from_folders()
+	if err != nil {
+		return err
+	}
+	dc.entries = Metadata{TotalSize: total, SortedEntries: sorted, PathMap: make(map[string]string)}
+	dc.entry_map = ans
+	dc.entries_dirty = true
+	return dc.write_entries_if_dirty()
 }
 
 func (dc *DiskCache) ensure_entries() error {
 	needed := dc.entry_map == nil
 	path := dc.entries_path()
+	var stat_result fs.FileInfo
 	if !needed {
 		if s, err := os.Stat(path); err == nil && s.ModTime().After(dc.entries_mod_time) {
 			needed = true
+			stat_result = s
+			dc.entries_mod_time = s.ModTime()
 		}
 	}
 	if needed {
 		if data, err := os.ReadFile(path); err != nil {
 			if os.IsNotExist(err) {
 				dc.entry_map = make(map[string]*Entry)
-				dc.entries = Metadata{SortedEntries: make([]*Entry, 0)}
+				dc.entries = Metadata{SortedEntries: make([]*Entry, 0), PathMap: make(map[string]string)}
 			} else {
 				return err
 			}
 		} else {
-			dc.entries = Metadata{SortedEntries: make([]*Entry, 0)}
+			dc.read_count += 1
+			dc.entries = Metadata{SortedEntries: make([]*Entry, 0), PathMap: make(map[string]string)}
 			if err := json.Unmarshal(data, &dc.entries); err != nil {
 				// corrupted data
 				dc.rebuild_entries()
+			} else {
+				if stat_result == nil {
+					if s, err := os.Stat(path); err == nil {
+						dc.entries_mod_time = s.ModTime()
+					}
+				}
 			}
 			dc.entry_map = make(map[string]*Entry)
 			for _, e := range dc.entries.SortedEntries {
@@ -170,13 +205,6 @@ func (dc *DiskCache) folder_for_key(key string) (ans string) {
 	return filepath.Join(dc.Path, ans)
 }
 
-func (dc *DiskCache) update_last_used(key string) {
-	if dc.ensure_entries() == nil {
-		dc.update_timestamp(key)
-	}
-
-}
-
 func (dc *DiskCache) export_to_get_dir(key, path string) (string, error) {
 	dest := filepath.Join(dc.get_dir, key+"-"+filepath.Base(path))
 	if err := os.Link(path, dest); err != nil {
@@ -189,11 +217,17 @@ func (dc *DiskCache) export_to_get_dir(key, path string) (string, error) {
 
 }
 
-func (dc *DiskCache) get(key string, items []string) map[string]string {
+func (dc *DiskCache) get(key string, items []string) (map[string]string, error) {
+	if err := dc.ensure_entries(); err != nil {
+		return nil, err
+	}
 	base := dc.folder_for_key(key)
 	if len(items) == 0 {
 		if entries, err := os.ReadDir(base); err != nil {
-			return make(map[string]string)
+			if os.IsNotExist(err) {
+				err = nil
+			}
+			return nil, err
 		} else {
 			for _, e := range entries {
 				items = append(items, e.Name())
@@ -201,7 +235,10 @@ func (dc *DiskCache) get(key string, items []string) map[string]string {
 		}
 	} else {
 		if s, err := os.Stat(base); err != nil || !s.IsDir() {
-			return make(map[string]string)
+			if os.IsNotExist(err) {
+				err = nil
+			}
+			return nil, err
 		}
 	}
 	ans := make(map[string]string, len(items))
@@ -215,14 +252,21 @@ func (dc *DiskCache) get(key string, items []string) map[string]string {
 			ans[x] = dest
 		}
 	}
-	dc.update_last_used(key)
-	return ans
+	if len(items) > 0 {
+		dc.update_timestamp(key)
+	}
+	return ans, dc.write_entries_if_dirty()
 }
 
 func (dc *DiskCache) remove(key string) (err error) {
 	if err = dc.ensure_entries(); err != nil {
 		return
 	}
+	defer func() {
+		if we := dc.write_entries_if_dirty(); we != nil && err == nil {
+			err = we
+		}
+	}()
 	base := dc.folder_for_key(key)
 	if err = os.RemoveAll(base); err == nil {
 		t := dc.entry_map[key]
@@ -230,7 +274,7 @@ func (dc *DiskCache) remove(key string) (err error) {
 			delete(dc.entry_map, key)
 			dc.entries.TotalSize = max(0, dc.entries.TotalSize-t.Size)
 			dc.entries.SortedEntries = utils.Filter(dc.entries.SortedEntries, func(x *Entry) bool { return x.Key != key })
-			return dc.write_entries()
+			dc.entries_dirty = true
 		}
 	}
 	return
@@ -245,8 +289,10 @@ func (dc *DiskCache) prune() (bool, error) {
 		if err := os.RemoveAll(base); err == nil {
 			t := dc.entries.SortedEntries[0]
 			delete(dc.entry_map, t.Key)
+			maps.DeleteFunc(dc.entries.PathMap, func(path, key string) bool { return key == t.Key })
 			dc.entries.TotalSize = max(0, dc.entries.TotalSize-t.Size)
 			dc.entries.SortedEntries = dc.entries.SortedEntries[1:]
+			dc.entries_dirty = true
 		} else {
 			return false, err
 		}
@@ -260,6 +306,7 @@ func (dc *DiskCache) update_timestamp(key string) {
 	idx := slices.Index(dc.entries.SortedEntries, t)
 	copy(dc.entries.SortedEntries[idx:], dc.entries.SortedEntries[idx+1:])
 	dc.entries.SortedEntries[len(dc.entries.SortedEntries)-1] = t
+	dc.entries_dirty = true
 }
 
 func (dc *DiskCache) update_accounting(key string, changed int64) (err error) {
@@ -273,16 +320,43 @@ func (dc *DiskCache) update_accounting(key string, changed int64) (err error) {
 	t.Size += changed
 	t.Size = max(0, t.Size)
 	dc.entries.TotalSize += t.Size - old_size
+	dc.entries_dirty = true
 	dc.update_timestamp(key)
 	dc.prune()
-	return dc.write_entries()
+	return dc.write_entries_if_dirty()
 }
 
 func (dc *DiskCache) keys() (ans []string, err error) {
 	if err = dc.ensure_entries(); err != nil {
 		return
 	}
-	return utils.Keys(dc.entry_map), nil
+	ans = make([]string, len(dc.entries.SortedEntries))
+	for i, e := range dc.entries.SortedEntries {
+		ans[i] = e.Key
+	}
+	return
+}
+
+func (dc *DiskCache) add_path(path, key string, items map[string][]byte) (ans map[string]string, err error) {
+	if err = dc.ensure_entries(); err != nil {
+		return
+	}
+	defer func() {
+		if we := dc.write_entries_if_dirty(); we != nil && err == nil {
+			err = we
+		}
+	}()
+
+	if existing := dc.entries.PathMap[path]; existing != "" && existing != key {
+		delete(dc.entries.PathMap, path)
+		dc.entries_dirty = true
+		if err = dc.remove(existing); err != nil {
+			return
+		}
+	}
+	dc.entries.PathMap[path] = key
+	dc.entries_dirty = true
+	return dc.add(key, items)
 }
 
 func (dc *DiskCache) add(key string, items map[string][]byte) (ans map[string]string, err error) {

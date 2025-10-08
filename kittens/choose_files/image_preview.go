@@ -32,7 +32,7 @@ type render_data struct {
 }
 
 type ImagePreview struct {
-	abspath, cache_key    string
+	abspath               string
 	metadata              fs.FileInfo
 	disk_cache            *disk_cache.DiskCache
 	cached_data           map[string]string
@@ -73,7 +73,10 @@ func (p *ImagePreview) start_rendering() {
 	defer func() {
 		p.WakeupMainThread()
 	}()
-	ans := p.disk_cache.Get(p.cache_key)
+	key, ans, err := p.disk_cache.GetPath(p.abspath)
+	if err != nil {
+		p.render_channel <- render_data{nil, err}
+	}
 	if len(ans) > 0 {
 		p.render_channel <- render_data{ans, nil}
 		return
@@ -82,7 +85,7 @@ func (p *ImagePreview) start_rendering() {
 	if err != nil {
 		p.render_channel <- render_data{nil, err}
 	} else {
-		ans, err = p.disk_cache.Add(p.cache_key, rdata)
+		ans, err = p.disk_cache.AddPath(p.abspath, key, rdata)
 		p.render_channel <- render_data{utils.IfElse(err == nil, ans, nil), err}
 	}
 }
@@ -109,11 +112,6 @@ func NewImagePreview(
 		return nil, err
 	} else {
 		ans.disk_cache = dc
-	}
-	if key, err := disk_cache.KeyForPath(abspath); err != nil {
-		return nil, err
-	} else {
-		ans.cache_key = key
 	}
 	go ans.start_rendering()
 	return ans, nil
