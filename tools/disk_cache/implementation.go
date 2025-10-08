@@ -1,6 +1,7 @@
 package disk_cache
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -12,10 +13,50 @@ import (
 	"slices"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print
+
+type file_state struct {
+	Size    int64
+	ModTime time.Time
+	Inode   uint64
+}
+
+func (s *file_state) equal(o *file_state) bool {
+	return o != nil && s.Size == o.Size && s.ModTime.Equal(o.ModTime) && s.Inode == o.Inode
+}
+
+func get_file_state(fi fs.FileInfo) *file_state {
+	// The Sys() method returns the underlying data source (can be nil).
+	// For Unix-like systems, it's a *syscall.Stat_t.
+	stat, ok := fi.Sys().(*unix.Stat_t)
+	if !ok {
+		// For non-Unix systems, you might not have an inode.
+		// In that case, you can fall back to using only size and mod time.
+		return &file_state{
+			Size:    fi.Size(),
+			ModTime: fi.ModTime(),
+			Inode:   0, // Inode not available
+		}
+	}
+	return &file_state{
+		Size:    fi.Size(),
+		ModTime: fi.ModTime(),
+		Inode:   stat.Ino,
+	}
+}
+
+func get_file_state_from_path(path string) (*file_state, error) {
+	if s, err := os.Stat(path); err != nil {
+		return nil, err
+	} else {
+		return get_file_state(s), nil
+	}
+}
 
 func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
 	if path, err = filepath.Abs(path); err != nil {
@@ -92,16 +133,20 @@ func (dc *DiskCache) write_entries_if_dirty() (err error) {
 	if !dc.entries_dirty {
 		return
 	}
+	path := dc.entries_path()
 	defer func() {
 		if err == nil {
 			dc.entries_dirty = false
-			dc.entries_mod_time = time.Now()
+			if s, serr := get_file_state_from_path(path); serr == nil {
+				dc.entries_last_read_state = s
+			}
 		}
 	}()
 	if d, err := json.Marshal(dc.entries); err != nil {
 		return err
 	} else {
-		return os.WriteFile(dc.entries_path(), d, 0o600)
+		// use an atomic write so that the inode number changes
+		return utils.AtomicWriteFile(path, bytes.NewReader(d), 0o600)
 	}
 }
 
@@ -156,14 +201,15 @@ func (dc *DiskCache) rebuild_entries() error {
 }
 
 func (dc *DiskCache) ensure_entries() error {
-	needed := dc.entry_map == nil
+	needed := dc.entry_map == nil || dc.entries_last_read_state == nil
 	path := dc.entries_path()
-	var stat_result fs.FileInfo
+	var fstate *file_state
 	if !needed {
-		if s, err := os.Stat(path); err == nil && s.ModTime().After(dc.entries_mod_time) {
-			needed = true
-			stat_result = s
-			dc.entries_mod_time = s.ModTime()
+		if s, err := get_file_state_from_path(path); err == nil {
+			fstate = s
+			if !s.equal(dc.entries_last_read_state) {
+				needed = true
+			}
 		}
 	}
 	if needed {
@@ -181,11 +227,12 @@ func (dc *DiskCache) ensure_entries() error {
 				// corrupted data
 				dc.rebuild_entries()
 			} else {
-				if stat_result == nil {
-					if s, err := os.Stat(path); err == nil {
-						dc.entries_mod_time = s.ModTime()
+				if fstate == nil {
+					if s, err := get_file_state_from_path(path); err == nil {
+						fstate = s
 					}
 				}
+				dc.entries_last_read_state = fstate
 			}
 			dc.entry_map = make(map[string]*Entry)
 			for _, e := range dc.entries.SortedEntries {

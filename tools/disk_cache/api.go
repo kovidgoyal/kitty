@@ -25,14 +25,14 @@ type DiskCache struct {
 	Path    string
 	MaxSize int64
 
-	lock_file        *os.File
-	lock_mutex       sync.Mutex
-	entries          Metadata
-	entry_map        map[string]*Entry
-	entries_mod_time time.Time
-	entries_dirty    bool
-	get_dir          string
-	read_count       int
+	lock_file               *os.File
+	lock_mutex              sync.Mutex
+	entries                 Metadata
+	entry_map               map[string]*Entry
+	entries_last_read_state *file_state
+	entries_dirty           bool
+	get_dir                 string
+	read_count              int
 }
 
 func NewDiskCache(path string, max_size int64) (dc *DiskCache, err error) {

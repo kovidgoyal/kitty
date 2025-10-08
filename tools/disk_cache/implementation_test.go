@@ -77,6 +77,7 @@ func TestDiskCache(t *testing.T) {
 	arc(dc, 1) // because dc2.Get() will have updated the file
 	arc(dc2, 1)
 	ak("k1")
+	arc(dc2, 2) // because dc.Add() will have updated the file
 	dc2.Add("k2", map[string][]byte{"1": []byte("123456789")})
 	arc(dc, 1)
 	arc(dc2, 2)
