@@ -162,6 +162,11 @@ typedef struct _GLFWwindowNS
     GLFWcocoarenderframefun renderFrameCallback;
     // update cursor after switching desktops with Mission Control
     bool delayed_cursor_update_requested;
+
+#if defined(GLFW_HAS_PROMISE_CALLBACKS)
+    // File promise support (macOS 10.12+)
+    int nextPromiseId;          // Monotonic ID counter for promise operations
+#endif
     GLFWcocoarenderframefun resizeCallback;
 } _GLFWwindowNS;
 

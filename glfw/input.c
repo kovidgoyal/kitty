@@ -410,6 +410,26 @@ int _glfwInputDrop(_GLFWwindow* window, const char *mime, const char *text, size
     return 0;
 }
 
+#if defined(GLFW_HAS_PROMISE_CALLBACKS)
+// Notifies shared code of file promises detected
+//
+void _glfwInputPromise(_GLFWwindow* window, int promise_id, int count,
+                       const GLFWpromiseinfo* promises)
+{
+    if (window->callbacks.promise)
+        window->callbacks.promise((GLFWwindow*) window, promise_id, count, promises);
+}
+
+// Notifies shared code of file promise completion
+//
+void _glfwInputPromiseComplete(_GLFWwindow* window, int promise_id,
+                               const char* mime, const char* data, size_t sz)
+{
+    if (window->callbacks.promiseComplete)
+        window->callbacks.promiseComplete((GLFWwindow*) window, promise_id, mime, data, sz);
+}
+#endif // GLFW_HAS_PROMISE_CALLBACKS
+
 // Notifies shared code of a joystick connection or disconnection
 //
 void _glfwInputJoystick(_GLFWjoystick* js, int event)
@@ -1110,6 +1130,63 @@ GLFWAPI GLFWdropfun glfwSetDropCallback(GLFWwindow* handle, GLFWdropfun cbfun)
     _GLFW_SWAP_POINTERS(window->callbacks.drop, cbfun);
     return cbfun;
 }
+
+#if defined(GLFW_HAS_PROMISE_CALLBACKS)
+
+GLFWAPI GLFWpromisefun glfwSetPromiseCallback(GLFWwindow* handle,
+                                               GLFWpromisefun cbfun)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(window->callbacks.promise, cbfun);
+    return cbfun;
+}
+
+GLFWAPI GLFWpromisecompletefun glfwSetPromiseCompleteCallback(GLFWwindow* handle,
+                                                               GLFWpromisecompletefun cbfun)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(window->callbacks.promiseComplete, cbfun);
+    return cbfun;
+}
+
+GLFWAPI int glfwSupportsPromises(GLFWwindow* handle)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(false);
+
+#if defined(_GLFW_COCOA)
+    // File promises are supported on macOS 10.12 and later
+    // Runtime detection is handled in the Cocoa backend
+    (void)handle;
+    return true;
+#else
+    // Not supported on other platforms
+    (void)handle;
+    return false;
+#endif
+}
+
+GLFWAPI void glfwCancelPromises(GLFWwindow* handle, int promise_id)
+{
+    _GLFW_REQUIRE_INIT();
+
+#if defined(_GLFW_COCOA)
+    // Cancellation is not yet implemented in Phase 1
+    // This is a placeholder for future implementation
+    (void)handle;
+    (void)promise_id;
+#else
+    (void)handle;
+    (void)promise_id;
+#endif
+}
+
+#endif // GLFW_HAS_PROMISE_CALLBACKS
 
 GLFWAPI int glfwJoystickPresent(int jid)
 {

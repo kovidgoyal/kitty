@@ -1761,6 +1761,97 @@ typedef int (* GLFWdropfun)(GLFWwindow*, const char *, const char*, size_t);
 
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 
+/*************************************************************************
+ * File Promise Support (macOS 10.12+)
+ *************************************************************************/
+
+/*! @brief File promise feature detection macro.
+ *
+ *  This macro is defined when file promise callbacks are available.
+ *  Applications can use this for compile-time detection of promise support.
+ *
+ *  @since Added in version 3.5.
+ *
+ *  @ingroup input
+ */
+#define GLFW_HAS_PROMISE_CALLBACKS 1
+
+/*! @brief File promise information structure.
+ *
+ *  This structure describes a single file promise in a drag-and-drop operation.
+ *
+ *  @since Added in version 3.5.
+ *
+ *  @ingroup input
+ */
+typedef struct GLFWpromiseinfo {
+    /*! The promised filename, or NULL if not available. */
+    const char* filename;
+    /*! The MIME type derived from the platform-specific type. */
+    const char* mime_type;
+    /*! The platform-specific Uniform Type Identifier (macOS only). */
+    const char* uti;
+} GLFWpromiseinfo;
+
+/*! @brief The function pointer type for file promise callbacks.
+ *
+ *  This is the function pointer type for file promise callbacks.
+ *  A file promise callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, int promise_id, int count, const GLFWpromiseinfo* promises)
+ *  @endcode
+ *
+ *  This callback is invoked when file promises are detected in a drag-and-drop
+ *  operation. The promises have not yet been materialized to disk at this point.
+ *  The application can use this callback to show UI progress indicators or
+ *  prepare for incoming files.
+ *
+ *  @param[in] window The window that received the event.
+ *  @param[in] promise_id A unique identifier for this promise operation.
+ *  @param[in] count The number of promised files.
+ *  @param[in] promises An array of promise information structures.
+ *
+ *  @pointer_lifetime The promise info array and strings are valid until the
+ *  callback function returns.
+ *
+ *  @sa @ref path_drop
+ *  @sa @ref glfwSetPromiseCallback
+ *
+ *  @since Added in version 3.5.
+ *
+ *  @ingroup input
+ */
+typedef void (* GLFWpromisefun)(GLFWwindow*, int, int, const GLFWpromiseinfo*);
+
+/*! @brief The function pointer type for file promise completion callbacks.
+ *
+ *  This is the function pointer type for file promise completion callbacks.
+ *  A completion callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, int promise_id, const char* mime,
+ *                     const char* data, size_t sz)
+ *  @endcode
+ *
+ *  This callback is invoked when file promises have been successfully materialized
+ *  to disk. The data parameter contains a text/uri-list of the materialized files.
+ *
+ *  @param[in] window The window that received the event.
+ *  @param[in] promise_id The unique identifier that matches the promise callback.
+ *  @param[in] mime The MIME type (typically "text/uri-list").
+ *  @param[in] data The file URLs or paths.
+ *  @param[in] sz The size of the data in bytes.
+ *
+ *  @pointer_lifetime The data is valid until the callback function returns.
+ *
+ *  @sa @ref path_drop
+ *  @sa @ref glfwSetPromiseCompleteCallback
+ *
+ *  @since Added in version 3.5.
+ *
+ *  @ingroup input
+ */
+typedef void (* GLFWpromisecompletefun)(GLFWwindow*, int, const char*, const char*, size_t);
+
 /*! @brief The function pointer type for monitor configuration callbacks.
  *
  *  This is the function pointer type for monitor configuration callbacks.
@@ -4888,6 +4979,127 @@ GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* window, GLFWscrollfun ca
  */
 GLFWAPI GLFWdropfun glfwSetDropCallback(GLFWwindow* window, GLFWdropfun callback);
 GLFWAPI GLFWliveresizefun glfwSetLiveResizeCallback(GLFWwindow* window, GLFWliveresizefun callback);
+
+/*! @brief Sets the file promise callback.
+ *
+ *  This function sets the file promise callback of the specified window, which
+ *  is called when file promises are detected in a drag-and-drop operation. File
+ *  promises are files that haven't been materialized to disk yet, such as email
+ *  attachments or web downloads.
+ *
+ *  File promises are currently only supported on macOS 10.12 and later. On other
+ *  platforms, this function has no effect and will return NULL.
+ *
+ *  When file promises are detected, this callback is invoked first with metadata
+ *  about the promises. The files are then materialized asynchronously, and the
+ *  completion callback (set via @ref glfwSetPromiseCompleteCallback) is invoked
+ *  when materialization completes.
+ *
+ *  Note: In Phase 1, promise materialization blocks the main thread. Applications
+ *  should avoid dragging very large files until async support is added.
+ *
+ *  @param[in] window The window whose callback to set.
+ *  @param[in] callback The new callback, or `NULL` to remove the currently set
+ *  callback.
+ *  @return The previously set callback, or `NULL` if no callback was set or the
+ *  library had not been initialized.
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref path_drop
+ *  @sa @ref glfwSetPromiseCompleteCallback
+ *  @sa @ref glfwSupportsPromises
+ *
+ *  @since Added in version 3.5.
+ *
+ *  @ingroup input
+ */
+GLFWAPI GLFWpromisefun glfwSetPromiseCallback(GLFWwindow* window, GLFWpromisefun callback);
+
+/*! @brief Sets the file promise completion callback.
+ *
+ *  This function sets the file promise completion callback of the specified
+ *  window, which is called when file promises have been successfully materialized
+ *  to disk.
+ *
+ *  File promises are currently only supported on macOS 10.12 and later. On other
+ *  platforms, this function has no effect and will return NULL.
+ *
+ *  The completion callback receives a text/uri-list containing the paths to the
+ *  materialized files. The promise_id parameter matches the ID from the initial
+ *  promise callback, allowing the application to correlate the two events.
+ *
+ *  @param[in] window The window whose callback to set.
+ *  @param[in] callback The new callback, or `NULL` to remove the currently set
+ *  callback.
+ *  @return The previously set callback, or `NULL` if no callback was set or the
+ *  library had not been initialized.
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref path_drop
+ *  @sa @ref glfwSetPromiseCallback
+ *
+ *  @since Added in version 3.5.
+ *
+ *  @ingroup input
+ */
+GLFWAPI GLFWpromisecompletefun glfwSetPromiseCompleteCallback(GLFWwindow* window,
+                                                               GLFWpromisecompletefun callback);
+
+/*! @brief Checks if file promises are supported.
+ *
+ *  This function returns whether the current platform supports file promise
+ *  drag-and-drop operations. File promises are currently only supported on
+ *  macOS 10.12 and later.
+ *
+ *  @param[in] window The window to query (currently unused, may be NULL).
+ *  @return `GLFW_TRUE` if file promises are supported, or `GLFW_FALSE` otherwise.
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
+ *  GLFW_PLATFORM_ERROR.
+ *
+ *  @thread_safety This function may be called from any thread.
+ *
+ *  @sa @ref path_drop
+ *  @sa @ref glfwSetPromiseCallback
+ *
+ *  @since Added in version 3.5.
+ *
+ *  @ingroup input
+ */
+GLFWAPI int glfwSupportsPromises(GLFWwindow* window);
+
+/*! @brief Cancels pending file promise operations.
+ *
+ *  This function cancels any pending file promise materializations for the
+ *  specified promise ID. If the materialization has already completed, this
+ *  function has no effect.
+ *
+ *  Note: Cancellation support is currently limited. This function is provided
+ *  for API completeness but may not reliably cancel all in-flight operations.
+ *
+ *  @param[in] window The window whose promises to cancel.
+ *  @param[in] promise_id The ID of the promise operation to cancel, or 0 to
+ *  cancel all pending promises.
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
+ *  GLFW_PLATFORM_ERROR.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref path_drop
+ *  @sa @ref glfwSetPromiseCallback
+ *
+ *  @since Added in version 3.5.
+ *
+ *  @ingroup input
+ */
+GLFWAPI void glfwCancelPromises(GLFWwindow* window, int promise_id);
 
 /*! @brief Returns whether the specified joystick is present.
  *

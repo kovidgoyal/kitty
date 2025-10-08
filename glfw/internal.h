@@ -480,6 +480,10 @@ struct _GLFWwindow
         GLFWkeyboardfun         keyboard;
         GLFWdropfun             drop;
         GLFWliveresizefun       liveResize;
+#if defined(GLFW_HAS_PROMISE_CALLBACKS)
+        GLFWpromisefun          promise;
+        GLFWpromisecompletefun  promiseComplete;
+#endif
     } callbacks;
 
     // This is defined in the window API's platform.h
@@ -819,6 +823,12 @@ void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods)
 void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos);
 void _glfwInputCursorEnter(_GLFWwindow* window, bool entered);
 int _glfwInputDrop(_GLFWwindow* window, const char *mime, const char *text, size_t sz);
+#if defined(GLFW_HAS_PROMISE_CALLBACKS)
+void _glfwInputPromise(_GLFWwindow* window, int promise_id, int count,
+                       const GLFWpromiseinfo* promises);
+void _glfwInputPromiseComplete(_GLFWwindow* window, int promise_id,
+                               const char* mime, const char* data, size_t sz);
+#endif
 void _glfwInputColorScheme(GLFWColorScheme, bool);
 void _glfwPlatformInputColorScheme(GLFWColorScheme);
 void _glfwInputJoystick(_GLFWjoystick* js, int event);
