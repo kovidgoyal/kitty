@@ -16,6 +16,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/ignorefiles"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui"
+	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/tui/readline"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -206,16 +207,29 @@ type ScreenSize struct {
 }
 
 type Handler struct {
-	state            State
-	screen_size      ScreenSize
-	result_manager   *ResultManager
-	lp               *loop.Loop
-	rl               *readline.Readline
-	err_chan         chan error
-	shortcut_tracker config.ShortcutTracker
-	msg_printer      *message.Printer
-	spinner          *tui.Spinner
-	preview_manager  *PreviewManager
+	state                 State
+	screen_size           ScreenSize
+	result_manager        *ResultManager
+	lp                    *loop.Loop
+	rl                    *readline.Readline
+	err_chan              chan error
+	shortcut_tracker      config.ShortcutTracker
+	msg_printer           *message.Printer
+	spinner               *tui.Spinner
+	preview_manager       *PreviewManager
+	last_rendered_preview Preview
+	graphics_handler      GraphicsHandler
+}
+
+func (self *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) error {
+	switch etype {
+	case loop.APC:
+		gc := graphics.GraphicsCommandFromAPC(payload)
+		if gc != nil {
+			return self.graphics_handler.HandleGraphicsCommand(gc)
+		}
+	}
+	return nil
 }
 
 func (h *Handler) draw_screen() (err error) {
@@ -226,7 +240,8 @@ func (h *Handler) draw_screen() (err error) {
 		h.state.mouse_state.ApplyHoverStyles(h.lp)
 		h.lp.EndAtomicUpdate()
 	}()
-	h.lp.ClearScreen()
+	h.lp.ClearScreenButNotGraphics()
+	h.graphics_handler.ClearPlacements(h.lp)
 	h.state.mouse_state.ClearCellRegions()
 	switch h.state.screen {
 	case NORMAL:
@@ -294,6 +309,7 @@ func (h *Handler) OnInitialize() (ans string, err error) {
 			}
 		}
 	}
+	err = h.graphics_handler.Initialize(h.lp)
 	h.result_manager.set_root_dir()
 	h.draw_screen()
 	return
@@ -778,6 +794,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
 	lp.ColorSchemeChangeNotifications()
 	handler := Handler{lp: lp, err_chan: make(chan error, 8), msg_printer: message.NewPrinter(utils.LanguageTag()), spinner: tui.NewSpinner("dots")}
+	defer handler.graphics_handler.Cleanup()
 	handler.rl = readline.New(lp, readline.RlInit{
 		Prompt: "> ", ContinuationPrompt: ". ", Completer: FilePromptCompleter(handler.state.CurrentDir),
 	})
@@ -813,6 +830,10 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		lp.RequestCurrentColorScheme()
 		return handler.OnInitialize()
 	}
+	lp.OnFinalize = func() string {
+		handler.graphics_handler.Finalize(lp)
+		return ""
+	}
 	lp.OnResize = func(old, new_size loop.ScreenSize) (err error) {
 		handler.init_sizes(new_size)
 		return handler.draw_screen()
@@ -829,6 +850,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	lp.OnKeyEvent = handler.OnKeyEvent
 	lp.OnText = handler.OnText
 	lp.OnMouseEvent = handler.OnMouseEvent
+	lp.OnEscapeCode = handler.on_escape_code
 	lp.OnWakeup = func() (err error) {
 		select {
 		case err = <-handler.err_chan:

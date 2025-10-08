@@ -39,6 +39,10 @@ func NewDiskCache(path string, max_size int64) (dc *DiskCache, err error) {
 	return new_disk_cache(path, max_size)
 }
 
+func (dc *DiskCache) ResultsDir() string {
+	return dc.get_dir
+}
+
 func (dc *DiskCache) Get(key string, items ...string) (map[string]string, error) {
 	dc.lock()
 	defer dc.unlock()

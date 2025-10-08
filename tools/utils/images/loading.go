@@ -175,13 +175,20 @@ type SerializableImageMetadata struct {
 
 const SERIALIZE_VERSION = 1
 
+func (self *ImageData) SerializeOnlyMetadata() SerializableImageMetadata {
+	f := make([]SerializableImageFrame, len(self.Frames))
+	for i, s := range self.Frames {
+		f[i] = s.Serialize()
+	}
+	return SerializableImageMetadata{Version: SERIALIZE_VERSION, Width: self.Width, Height: self.Height, Format_uppercase: self.Format_uppercase, Frames: f}
+}
+
 func (self *ImageData) Serialize() (SerializableImageMetadata, [][]byte) {
-	m := SerializableImageMetadata{Version: SERIALIZE_VERSION, Width: self.Width, Height: self.Height, Format_uppercase: self.Format_uppercase}
+	m := self.SerializeOnlyMetadata()
 	data := make([][]byte, len(self.Frames))
 	for i, f := range self.Frames {
-		m.Frames = append(m.Frames, f.Serialize())
 		data[i] = f.Data()
-		m.Frames[len(m.Frames)-1].Size = len(data[i])
+		m.Frames[i].Size = len(data[i])
 	}
 	return m, data
 }
@@ -272,29 +279,7 @@ func MakeTempDir(template string) (ans string, err error) {
 	return os.MkdirTemp("", template)
 }
 
-func check_resize(frame *ImageFrame, filename string) error {
-	// ImageMagick sometimes generates RGBA images smaller than the specified
-	// size. See https://github.com/kovidgoyal/kitty/issues/276 for examples
-	s, err := os.Stat(filename)
-	if err != nil {
-		return err
-	}
-	sz := int(s.Size())
-	bytes_per_pixel := 4
-	if frame.Is_opaque {
-		bytes_per_pixel = 3
-	}
-	expected_size := bytes_per_pixel * frame.Width * frame.Height
-	if sz < expected_size {
-		missing := expected_size - sz
-		if missing%(bytes_per_pixel*frame.Width) != 0 {
-			return fmt.Errorf("ImageMagick failed to resize correctly. It generated %d < %d of data (w=%d h=%d bpp=%d)", sz, expected_size, frame.Width, frame.Height, bytes_per_pixel)
-		}
-		frame.Height -= missing / (bytes_per_pixel * frame.Width)
-	}
-	return nil
-}
-
+// Native {{{
 func (frame *ImageFrame) set_delay(min_gap, delay int) {
 	frame.Delay_ms = int32(max(min_gap, delay) * 10)
 	if frame.Delay_ms == 0 {
@@ -344,10 +329,35 @@ func OpenNativeImageFromReader(f io.ReadSeeker) (ans *ImageData, err error) {
 	return
 }
 
+// }}}
+
 // ImageMagick {{{
 var MagickExe = sync.OnceValue(func() string {
 	return utils.FindExe("magick")
 })
+
+func check_resize(frame *ImageFrame, filename string) error {
+	// ImageMagick sometimes generates RGBA images smaller than the specified
+	// size. See https://github.com/kovidgoyal/kitty/issues/276 for examples
+	s, err := os.Stat(filename)
+	if err != nil {
+		return err
+	}
+	sz := int(s.Size())
+	bytes_per_pixel := 4
+	if frame.Is_opaque {
+		bytes_per_pixel = 3
+	}
+	expected_size := bytes_per_pixel * frame.Width * frame.Height
+	if sz < expected_size {
+		missing := expected_size - sz
+		if missing%(bytes_per_pixel*frame.Width) != 0 {
+			return fmt.Errorf("ImageMagick failed to resize correctly. It generated %d < %d of data (w=%d h=%d bpp=%d)", sz, expected_size, frame.Width, frame.Height, bytes_per_pixel)
+		}
+		frame.Height -= missing / (bytes_per_pixel * frame.Width)
+	}
+	return nil
+}
 
 func RunMagick(path string, cmd []string) ([]byte, error) {
 	if MagickExe() != "magick" {

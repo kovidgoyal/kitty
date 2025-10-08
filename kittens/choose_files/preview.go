@@ -25,6 +25,7 @@ var _ = fmt.Print
 type Preview interface {
 	Render(h *Handler, x, y, width, height int)
 	IsValidForColorScheme(light bool) bool
+	Unload()
 }
 
 type PreviewManager struct {
@@ -80,6 +81,7 @@ type MessagePreview struct {
 
 func (p MessagePreview) IsValidForColorScheme(bool) bool { return true }
 
+func (p MessagePreview) Unload() {}
 func (p MessagePreview) Render(h *Handler, x, y, width, height int) {
 	offset := 0
 	if p.title != "" {
@@ -188,6 +190,8 @@ type TextFilePreview struct {
 }
 
 func (p TextFilePreview) IsValidForColorScheme(light bool) bool { return p.light == light }
+
+func (p *TextFilePreview) Unload() {}
 
 func (p *TextFilePreview) Render(h *Handler, x, y, width, height int) {
 	if p.highlighted_chan != nil {
@@ -316,9 +320,14 @@ func (h *Handler) draw_preview_content(x, y, width, height int) {
 		return
 	}
 	abspath := filepath.Join(h.state.CurrentDir(), r.text)
+	if h.last_rendered_preview != nil {
+		h.last_rendered_preview.Unload()
+		h.last_rendered_preview = nil
+	}
 	if p := h.preview_manager.preview_for(abspath, r.ftype); p == nil {
 		h.render_wrapped_text_in_region("No preview available", x, y, width, height, false)
 	} else {
+		h.last_rendered_preview = p
 		p.Render(h, x, y, width, height)
 	}
 }

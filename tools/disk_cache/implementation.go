@@ -157,11 +157,10 @@ func (dc *DiskCache) write_entries_if_dirty() (err error) {
 				removed = true
 			}
 		}()
-		if err := os.WriteFile(temp, d, 0o600); err != nil {
-			return err
-		}
-		if err = os.Rename(temp, path); err == nil {
-			removed = true
+		if err = os.WriteFile(temp, d, 0o600); err == nil {
+			if err = os.Rename(temp, path); err == nil {
+				removed = true
+			}
 		}
 		return err
 	}
