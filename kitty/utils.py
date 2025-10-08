@@ -17,6 +17,7 @@ from typing import (
     Any,
     BinaryIO,
     NamedTuple,
+    NoReturn,
     Optional,
     cast,
 )
@@ -578,6 +579,15 @@ def get_editor(opts: Options | None = None, path_to_edit: str = '', line_number:
                 ans.append(f'+{line_number}')
         ans.append(path_to_edit)
     return ans
+
+
+def edit_file(path: str = '') -> NoReturn:
+    ' This exists for: map whatever launch kitty +runpy "from kitty.utils import *; edit_file()" to edit kitty config '
+    from .config import prepare_config_file_for_editing
+    editor = get_editor()
+    path = path or prepare_config_file_for_editing()
+    editor.append(path)
+    os.execlp(editor[0], *editor)
 
 
 def is_path_in_temp_dir(path: str) -> bool:
