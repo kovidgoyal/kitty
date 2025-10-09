@@ -1025,18 +1025,16 @@ toggle_fullscreen_for_os_window(OSWindow *w) {
             glfwSetLayerShellConfig(w->handle, &lsc);
             return true;
         }
-        if (prev->edge == GLFW_EDGE_TOP || prev->edge == GLFW_EDGE_BOTTOM || prev->edge == GLFW_EDGE_LEFT || prev->edge == GLFW_EDGE_RIGHT) {
-            lsc.edge = GLFW_EDGE_CENTER;
-            lsc.previous.edge = prev->edge;
-            lsc.previous.requested_right_margin = prev->requested_right_margin;
-            lsc.previous.requested_left_margin = prev->requested_left_margin;
-            lsc.previous.requested_top_margin = prev->requested_top_margin;
-            lsc.previous.requested_bottom_margin = prev->requested_bottom_margin;
-            lsc.requested_bottom_margin = 0; lsc.requested_top_margin = 0; lsc.requested_left_margin = 0; lsc.requested_right_margin = 0;
-            lsc.was_toggled_to_fullscreen = true;
-            glfwSetLayerShellConfig(w->handle, &lsc);
-            return true;
-        }
+        lsc.edge = GLFW_EDGE_CENTER;
+        lsc.previous.edge = prev->edge;
+        lsc.previous.requested_right_margin = prev->requested_right_margin;
+        lsc.previous.requested_left_margin = prev->requested_left_margin;
+        lsc.previous.requested_top_margin = prev->requested_top_margin;
+        lsc.previous.requested_bottom_margin = prev->requested_bottom_margin;
+        lsc.requested_bottom_margin = 0; lsc.requested_top_margin = 0; lsc.requested_left_margin = 0; lsc.requested_right_margin = 0;
+        lsc.was_toggled_to_fullscreen = true;
+        glfwSetLayerShellConfig(w->handle, &lsc);
+        return true;
     }
     return false;
 }
