@@ -28,5 +28,9 @@ static inline void* disk_cache_malloc_allocator(void *x, size_t sz) {
 static inline bool
 read_from_disk_cache_simple(PyObject *self_, const void *key, size_t key_sz, void **data, size_t *data_sz, bool store_in_ram) {
     *data = read_from_disk_cache(self_, key, key_sz, disk_cache_malloc_allocator, data_sz, store_in_ram);
-    return PyErr_Occurred() == NULL;
+    if (PyErr_Occurred()) {
+        PyErr_Clear();
+        return false;
+    }
+    return *data != NULL;
 }
