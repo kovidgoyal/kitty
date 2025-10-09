@@ -192,6 +192,7 @@ func (self *GraphicsHandler) transmit(lp *loop.Loop, img *images.ImageData, m *i
 		m = &s
 	}
 	self.image_transmitted = self.image_id_counter
+	self.last_transmitted_placement.gc = nil
 	self.last_rendered_image.image_width = m.Width
 	self.last_rendered_image.image_height = m.Height
 	is_animated := len(m.Frames) > 0
