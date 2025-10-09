@@ -10,6 +10,7 @@ import (
 	"image"
 	"image/color"
 	"image/gif"
+	"image/png"
 	"io"
 	"os"
 	"os/exec"
@@ -175,6 +176,11 @@ type SerializableImageMetadata struct {
 }
 
 const SERIALIZE_VERSION = 1
+
+func (self *ImageFrame) SaveAsUncompressedPNG(output io.Writer) error {
+	encoder := png.Encoder{CompressionLevel: png.NoCompression}
+	return encoder.Encode(output, self.Img)
+}
 
 func (self *ImageData) SerializeOnlyMetadata() SerializableImageMetadata {
 	f := make([]SerializableImageFrame, len(self.Frames))
