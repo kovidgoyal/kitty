@@ -228,7 +228,8 @@ func (self *GraphicsHandler) place_image(lp *loop.Loop, x, y, px_width int, sz S
 	self.has_placements = true
 	gc := self.new_graphics_command()
 	gc.SetAction(graphics.GRT_action_display).SetImageId(self.image_transmitted).SetPlacementId(1).SetCursorMovement(graphics.GRT_cursor_static)
-	if extra := px_width - self.last_rendered_image.image_width; extra > 0 {
+	if extra := px_width - self.last_rendered_image.image_width; extra > 1 {
+		extra /= 2
 		x += extra / sz.cell_width
 		gc.SetXOffset(uint64(extra % sz.cell_width))
 	}
