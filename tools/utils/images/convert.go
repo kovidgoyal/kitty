@@ -17,9 +17,9 @@ var _ = fmt.Print
 
 func encode_rgba(output io.Writer, img image.Image) (err error) {
 	var final_img *image.NRGBA
-	switch img.(type) {
+	switch ti := img.(type) {
 	case *image.NRGBA:
-		final_img = img.(*image.NRGBA)
+		final_img = ti
 	default:
 		b := img.Bounds()
 		final_img = image.NewNRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
