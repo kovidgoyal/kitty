@@ -299,8 +299,12 @@ func process_arg(arg input_arg) {
 		}
 		err = render_image_with_go(&imgd, &f)
 		if err != nil {
-			report_error(arg.value, "Could not render image to RGB", err)
-			return
+			merr := render_image_with_magick(&imgd, &f)
+			if merr != nil {
+				report_error(arg.value, "Could not render image to RGB", err)
+				return
+			}
+			err = nil
 		}
 	} else {
 		err = render_image_with_magick(&imgd, &f)

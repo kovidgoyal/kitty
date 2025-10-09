@@ -712,7 +712,7 @@ func OpenImageFromPath(path string) (ans *ImageData, err error) {
 		defer f.Close()
 		ans, err = OpenNativeImageFromReader(f)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to load image at %#v with error: %w", path, err)
+			return OpenImageFromPathWithMagick(path)
 		}
 	} else {
 		return OpenImageFromPathWithMagick(path)
