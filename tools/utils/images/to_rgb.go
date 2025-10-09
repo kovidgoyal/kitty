@@ -73,7 +73,7 @@ func (p *NRGB) NRGBAt(x, y int) NRGBColor {
 		return NRGBColor{}
 	}
 	i := p.PixOffset(x, y)
-	s := p.Pix[i : i+4 : i+4] // Small cap improves performance, see https://golang.org/issue/27857
+	s := p.Pix[i : i+3 : i+3] // Small cap improves performance, see https://golang.org/issue/27857
 	return NRGBColor{s[0], s[1], s[2]}
 }
 
