@@ -5,8 +5,10 @@ import (
 	"encoding/binary"
 	"fmt"
 	"image"
+	"image/color"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
@@ -68,6 +70,48 @@ func convert_image(input io.ReadSeeker, output io.Writer, format string) (err er
 	return Encode(output, img, mt)
 }
 
+func PalettedToNRGBA(paletted *image.Paletted) *image.NRGBA {
+	bounds := paletted.Bounds()
+	nrgba := image.NewNRGBA(bounds)
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			c := color.NRGBAModel.Convert(paletted.At(x, y))
+			nrgba.Set(x, y, c)
+		}
+	}
+	return nrgba
+}
+
+func develop_serialize(input_data []byte) (err error) {
+	img, err := OpenNativeImageFromReader(bytes.NewReader(input_data))
+	if err != nil {
+		return err
+	}
+	m, b := img.Serialize()
+	rimg, err := ImageFromSerialized(m, b)
+	if err != nil {
+		return err
+	}
+	for i := range img.Frames {
+		a, b := img.Frames[i], rimg.Frames[i]
+		if a.Img.Bounds() != b.Img.Bounds() {
+			return fmt.Errorf("bounds of frame %d not equal: %v != %v", i, a.Img.Bounds(), b.Img.Bounds())
+		}
+		for y := a.Img.Bounds().Min.Y; y < a.Img.Bounds().Max.Y; y++ {
+			for x := a.Img.Bounds().Min.X; x < a.Img.Bounds().Max.X; x++ {
+				or, og, ob, oa := a.Img.At(x, y).RGBA()
+				nr, ng, nb, na := b.Img.At(x, y).RGBA()
+				a, b := []uint32{or, og, ob, oa}, []uint32{nr, ng, nb, na}
+				if !slices.Equal(a, b) {
+					return fmt.Errorf("pixel at %dx%d differs: %v != %v", x, y, a, b)
+				}
+			}
+		}
+
+	}
+	return
+}
+
 func ConvertEntryPoint(root *cli.Command) {
 	root.AddSubCommand(&cli.Command{
 		Name:            "__convert_image__",
@@ -81,6 +125,11 @@ func ConvertEntryPoint(root *cli.Command) {
 			buf := bytes.NewBuffer(make([]byte, 0, 1024*1024))
 			if _, err = io.Copy(buf, os.Stdin); err != nil {
 				return 1, err
+			}
+			if format == "develop-serialize" {
+				err = develop_serialize(buf.Bytes())
+				rc = utils.IfElse(err == nil, 0, 1)
+				return
 			}
 			if err = convert_image(bytes.NewReader(buf.Bytes()), os.Stdout, format); err != nil {
 				rc = 1
