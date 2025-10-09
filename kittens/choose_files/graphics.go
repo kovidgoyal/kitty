@@ -242,7 +242,7 @@ func (self *GraphicsHandler) transmit(lp *loop.Loop, img *images.ImageData, m *i
 
 }
 
-func (self *GraphicsHandler) place_image(x, y, px_width int, sz ScreenSize) {
+func (self *GraphicsHandler) place_image(x, y, px_width, y_offset int, sz ScreenSize) {
 	gc := self.new_graphics_command()
 	gc.SetAction(graphics.GRT_action_display).SetImageId(self.image_transmitted).SetPlacementId(1).SetCursorMovement(graphics.GRT_cursor_static)
 	if extra := px_width - self.last_rendered_image.image_width; extra > 1 {
@@ -251,6 +251,7 @@ func (self *GraphicsHandler) place_image(x, y, px_width int, sz ScreenSize) {
 		self.current_placement.x_offset = extra % sz.cell_width
 		gc.SetXOffset(uint64(self.current_placement.x_offset))
 	}
+	gc.SetYOffset(uint64(y_offset))
 	self.current_placement.x, self.current_placement.y = x, y
 	self.current_placement.gc = gc
 }
@@ -258,6 +259,8 @@ func (self *GraphicsHandler) place_image(x, y, px_width int, sz ScreenSize) {
 func (self *GraphicsHandler) RenderImagePreview(h *Handler, p *ImagePreview, x, y, width, height int) {
 	sz := h.screen_size
 	px_width, px_height := width*sz.cell_width, height*sz.cell_height
+	y_offset := sz.cell_height / 2
+	px_height -= y_offset
 	var err error
 	defer func() {
 		self.last_rendered_image.p = p
@@ -265,7 +268,7 @@ func (self *GraphicsHandler) RenderImagePreview(h *Handler, p *ImagePreview, x, 
 		if err != nil {
 			NewErrorPreview(fmt.Errorf("Failed to render image: %w", err)).Render(h, x, y, width, height)
 		} else if self.image_transmitted > 0 {
-			self.place_image(x, y, px_width, sz)
+			self.place_image(x, y, px_width, y_offset, sz)
 		}
 	}()
 	if self.last_rendered_image.p == p && self.last_rendered_image.width == width && self.last_rendered_image.height == height {
