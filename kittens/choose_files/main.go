@@ -238,6 +238,16 @@ func (h *Handler) draw_screen() (err error) {
 	defer func() {
 		h.state.mouse_state.UpdateHoveredIds()
 		h.state.mouse_state.ApplyHoverStyles(h.lp)
+		h.graphics_handler.ApplyPlacements(h.lp)
+		if h.state.screen == NORMAL { // so that the cursor ends up in the right place
+			h.lp.MoveCursorTo(1, 1)
+			if h.state.DisplayTitle() {
+				h.lp.Println(h.state.WindowTitle())
+				h.draw_search_bar(1)
+			} else {
+				h.draw_search_bar(0)
+			}
+		}
 		h.lp.EndAtomicUpdate()
 	}()
 	h.lp.ClearScreenButNotGraphics()
@@ -247,15 +257,6 @@ func (h *Handler) draw_screen() (err error) {
 	case NORMAL:
 		matches, is_complete := h.get_results()
 		h.lp.SetWindowTitle(h.state.WindowTitle())
-		defer func() { // so that the cursor ends up in the right place
-			h.lp.MoveCursorTo(1, 1)
-			if h.state.DisplayTitle() {
-				h.lp.Println(h.state.WindowTitle())
-				h.draw_search_bar(1)
-			} else {
-				h.draw_search_bar(0)
-			}
-		}()
 		y := SEARCH_BAR_HEIGHT + utils.IfElse(h.state.DisplayTitle(), 1, 0)
 		footer_height, err := h.draw_footer()
 		if err != nil {

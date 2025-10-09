@@ -18,6 +18,15 @@ import (
 
 var _ = fmt.Print
 
+type placement struct {
+	gc             *graphics.GraphicsCommand
+	x, y, x_offset int
+}
+
+func (p placement) equal(o placement) bool {
+	return p.x == o.x && p.x_offset == o.x_offset && p.y == o.y
+}
+
 type GraphicsHandler struct {
 	running_in_tmux                     bool
 	image_id_counter, detection_file_id uint32
@@ -28,8 +37,8 @@ type GraphicsHandler struct {
 		width, height             int
 		image_width, image_height int
 	}
-	image_transmitted uint32
-	has_placements    bool
+	image_transmitted                             uint32
+	current_placement, last_transmitted_placement placement
 }
 
 func (self *GraphicsHandler) Cleanup() {
@@ -86,11 +95,21 @@ func (self *GraphicsHandler) Finalize(lp *loop.Loop) {
 }
 
 func (self *GraphicsHandler) ClearPlacements(lp *loop.Loop) {
-	if self.image_transmitted > 0 && self.has_placements {
+	self.current_placement.gc = nil
+}
+
+func (self *GraphicsHandler) ApplyPlacements(lp *loop.Loop) {
+	if self.current_placement.gc == nil {
 		g := self.new_graphics_command()
 		g.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_delete_by_id).SetImageId(self.image_transmitted)
 		_ = g.WriteWithPayloadToLoop(lp, nil)
-		self.has_placements = false
+		self.last_transmitted_placement.gc = nil
+	} else {
+		if self.last_transmitted_placement.gc == nil || !self.current_placement.equal(self.last_transmitted_placement) {
+			lp.MoveCursorTo(self.current_placement.x, self.current_placement.y)
+			_ = self.current_placement.gc.WriteWithPayloadToLoop(lp, nil)
+			self.last_transmitted_placement = self.current_placement
+		}
 	}
 }
 
@@ -222,17 +241,17 @@ func (self *GraphicsHandler) transmit(lp *loop.Loop, img *images.ImageData, m *i
 
 }
 
-func (self *GraphicsHandler) place_image(lp *loop.Loop, x, y, px_width int, sz ScreenSize) {
-	self.has_placements = true
+func (self *GraphicsHandler) place_image(x, y, px_width int, sz ScreenSize) {
 	gc := self.new_graphics_command()
 	gc.SetAction(graphics.GRT_action_display).SetImageId(self.image_transmitted).SetPlacementId(1).SetCursorMovement(graphics.GRT_cursor_static)
 	if extra := px_width - self.last_rendered_image.image_width; extra > 1 {
 		extra /= 2
 		x += extra / sz.cell_width
-		gc.SetXOffset(uint64(extra % sz.cell_width))
+		self.current_placement.x_offset = extra % sz.cell_width
+		gc.SetXOffset(uint64(self.current_placement.x_offset))
 	}
-	lp.MoveCursorTo(x, y)
-	_ = gc.WriteWithPayloadToLoop(lp, nil)
+	self.current_placement.x, self.current_placement.y = x, y
+	self.current_placement.gc = gc
 }
 
 func (self *GraphicsHandler) RenderImagePreview(h *Handler, p *ImagePreview, x, y, width, height int) {
@@ -245,7 +264,7 @@ func (self *GraphicsHandler) RenderImagePreview(h *Handler, p *ImagePreview, x, 
 		if err != nil {
 			NewErrorPreview(fmt.Errorf("Failed to render image: %w", err)).Render(h, x, y, width, height)
 		} else if self.image_transmitted > 0 {
-			self.place_image(h.lp, x, y, px_width, sz)
+			self.place_image(x, y, px_width, sz)
 		}
 	}()
 	if self.last_rendered_image.p == p && self.last_rendered_image.width == width && self.last_rendered_image.height == height {
