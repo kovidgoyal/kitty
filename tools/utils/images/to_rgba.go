@@ -414,6 +414,6 @@ func NewNRGBAWithContiguousRGBAPixels(p []byte, left, top, width, height int) (*
 	return &image.NRGBA{
 		Pix:    p,
 		Stride: bpp * width,
-		Rect:   image.Rectangle{image.Point{left, top}, image.Point{left + width, left + height}},
+		Rect:   image.Rectangle{image.Point{left, top}, image.Point{left + width, top + height}},
 	}, nil
 }

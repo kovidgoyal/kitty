@@ -136,6 +136,9 @@ func develop_resize(spec string, input_data io.ReadSeeker) (err error) {
 	if err != nil {
 		return err
 	}
+	if err = images_equal(img, rimg); err != nil {
+		return fmt.Errorf("roundtripped images not equal: %w", err)
+	}
 	bimg := rimg.Resize(float64(w)/float64(rimg.Width), float64(h)/float64(rimg.Height))
 	return images_equal(aimg, bimg)
 }
