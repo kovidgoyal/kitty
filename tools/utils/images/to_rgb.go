@@ -31,8 +31,8 @@ func (c NRGBColor) RGBA() (r, g, b, a uint32) {
 
 // NRGB is an in-memory image whose At method returns NRGBColor values.
 type NRGB struct {
-	// Pix holds the image's pixels, in R, G, B, A order. The pixel at
-	// (x, y) starts at Pix[(y-Rect.Min.Y)*Stride + (x-Rect.Min.X)*4].
+	// Pix holds the image's pixels, in R, G, B order. The pixel at
+	// (x, y) starts at Pix[(y-Rect.Min.Y)*Stride + (x-Rect.Min.X)*3].
 	Pix []uint8
 	// Stride is the Pix stride (in bytes) between vertically adjacent pixels.
 	Stride int
@@ -80,7 +80,7 @@ func (p *NRGB) NRGBAt(x, y int) NRGBColor {
 // PixOffset returns the index of the first element of Pix that corresponds to
 // the pixel at (x, y).
 func (p *NRGB) PixOffset(x, y int) int {
-	return (y-p.Rect.Min.Y)*p.Stride + (x-p.Rect.Min.X)*4
+	return (y-p.Rect.Min.Y)*p.Stride + (x-p.Rect.Min.X)*3
 }
 
 func (p *NRGB) Set(x, y int, c color.Color) {
