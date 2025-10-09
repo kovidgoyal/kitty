@@ -235,8 +235,8 @@ func (h *Handler) draw_list_of_results(matches *SortedResults, y, height int) (n
 		}
 		if num_matches > height {
 			col_width = BASE_COL_WIDTH
-			num_cols = available_width / col_width
-			for num_cols > 0 && height*(num_cols-1) >= num_matches {
+			num_cols = max(1, available_width/col_width)
+			for num_cols > 1 && height*(num_cols-1) >= num_matches {
 				num_cols--
 			}
 			col_width = available_width / num_cols
