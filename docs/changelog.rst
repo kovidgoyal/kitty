@@ -157,6 +157,8 @@ Detailed list of changes
 - macOS: Workaround for bug in macOS Tahoe that caused OS Windows that are
   fullscreen to crash kitty when returning from sleep on some machines (:iss:`8983`)
 
+- Graphics: Fix animated images sometimes not auto playing or auto playing at the wrong start frame if the same image id is used for a subsequent image
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

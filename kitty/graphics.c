@@ -726,6 +726,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             img->is_drawn = false;
             img->current_frame_shown_at = 0;
             img->extra_framecnt = 0;
+            img->current_frame_index = 0;
             *is_dirty = true;
             set_layers_dirty(self);
         } else {
