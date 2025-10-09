@@ -101,6 +101,7 @@ func DownloadFileWithProgress(destpath, url string, kill_if_signaled bool) (err 
 	}
 
 	do_download := func() {
+		lp.RecoverFromPanicInGoRoutine()
 		dl_data.mutex.Lock()
 		dl_data.download_started = true
 		dl_data.mutex.Unlock()

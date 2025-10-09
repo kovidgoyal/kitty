@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
+
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 var _ = fmt.Print
@@ -31,8 +33,10 @@ func (self *Context) EffectiveNumberOfThreads() int {
 	return ans
 }
 
-// parallel processes the data in separate goroutines.
-func (self *Context) Parallel(start, stop int, fn func(<-chan int)) {
+// parallel processes the data in separate goroutines. If any of them panics,
+// returns an error. Note that if multiple goroutines panic, only one error is
+// returned.
+func (self *Context) SafeParallel(start, stop int, fn func(<-chan int)) (err error) {
 	count := stop - start
 	if count < 1 {
 		return
@@ -49,9 +53,16 @@ func (self *Context) Parallel(start, stop int, fn func(<-chan int)) {
 	for range procs {
 		wg.Add(1)
 		go func() {
-			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					text, _ := utils.Format_stacktrace_on_panic(r)
+					err = fmt.Errorf("%s", text)
+				}
+				wg.Done()
+			}()
 			fn(c)
 		}()
 	}
 	wg.Wait()
+	return
 }

@@ -44,6 +44,12 @@ func read_ignoring_temporary_errors(f *tty.Term, buf []byte) (int, error) {
 }
 
 func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byte, err_channel chan<- error, quit_channel <-chan byte, leftover_channel chan<- []byte) {
+	defer func() {
+		if r := recover(); r != nil {
+			text, _ := utils.Format_stacktrace_on_panic(r)
+			err_channel <- fmt.Errorf("%s", text)
+		}
+	}()
 	keep_going := true
 	pipe_fd := int(pipe_r.Fd())
 	tty_fd := term.Fd()
@@ -115,6 +121,12 @@ func read_until_primary_device_attributes_response(term *tty.Term, initial_bytes
 	}
 	received := make(chan error)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				text, _ := utils.Format_stacktrace_on_panic(r)
+				received <- fmt.Errorf("%s", text)
+			}
+		}()
 		buf := make([]byte, 1024)
 		n, err := read_ignoring_temporary_errors(term, buf)
 		if n > 0 {

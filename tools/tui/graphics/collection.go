@@ -136,14 +136,16 @@ func (self *ImageCollection) ResizeForPageSize(width, height int) {
 
 	ctx := images.Context{}
 	keys := utils.Keys(self.images)
-	ctx.Parallel(0, len(keys), func(nums <-chan int) {
+	if err := ctx.SafeParallel(0, len(keys), func(nums <-chan int) {
 		for i := range nums {
 			img := self.images[keys[i]]
 			if img.src.loaded && img.err == nil {
 				img.ResizeForPageSize(width, height)
 			}
 		}
-	})
+	}); err != nil {
+		panic(err)
+	}
 }
 
 func (self *ImageCollection) DeleteAllVisiblePlacements(lp *loop.Loop) {
@@ -294,7 +296,7 @@ func (self *ImageCollection) LoadAll() {
 	defer self.mutex.Unlock()
 	ctx := images.Context{}
 	all := utils.Values(self.images)
-	ctx.Parallel(0, len(self.images), func(nums <-chan int) {
+	if err := ctx.SafeParallel(0, len(self.images), func(nums <-chan int) {
 		for i := range nums {
 			img := all[i]
 			if !img.src.loaded {
@@ -305,7 +307,9 @@ func (self *ImageCollection) LoadAll() {
 				img.src.loaded = true
 			}
 		}
-	})
+	}); err != nil {
+		panic(err)
+	}
 }
 
 func NewImageCollection(paths ...string) *ImageCollection {

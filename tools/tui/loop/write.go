@@ -168,6 +168,12 @@ func write_to_tty(
 	pipe_r *os.File, term *tty.Term,
 	job_channel <-chan write_msg, err_channel chan<- error, write_done_channel chan<- IdType,
 ) {
+	defer func() {
+		if r := recover(); r != nil {
+			text, _ := utils.Format_stacktrace_on_panic(r)
+			err_channel <- fmt.Errorf("%s", text)
+		}
+	}()
 	keep_going := true
 	defer func() {
 		pipe_r.Close()

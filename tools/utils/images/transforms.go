@@ -27,18 +27,20 @@ func reverse_row(bytes_per_pixel int, pix []uint8) {
 
 func (self *Context) FlipPixelsH(bytes_per_pixel, width, height int, pix []uint8) {
 	stride := bytes_per_pixel * width
-	self.Parallel(0, height, func(ys <-chan int) {
+	if err := self.SafeParallel(0, height, func(ys <-chan int) {
 		for y := range ys {
 			i := y * stride
 			reverse_row(bytes_per_pixel, pix[i:i+stride])
 		}
-	})
+	}); err != nil {
+		panic(err)
+	}
 }
 
 func (self *Context) FlipPixelsV(bytes_per_pixel, width, height int, pix []uint8) {
 	stride := bytes_per_pixel * width
 	num := height / 2
-	self.Parallel(0, num, func(ys <-chan int) {
+	if err := self.SafeParallel(0, num, func(ys <-chan int) {
 		for y := range ys {
 			upper := y
 			lower := height - 1 - y
@@ -50,6 +52,7 @@ func (self *Context) FlipPixelsV(bytes_per_pixel, width, height int, pix []uint8
 				as[i], bs[i] = bs[i], as[i]
 			}
 		}
-	})
-
+	}); err != nil {
+		panic(err)
+	}
 }

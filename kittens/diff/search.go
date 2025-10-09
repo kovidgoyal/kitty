@@ -106,7 +106,7 @@ func (self *Search) search(logical_lines *LogicalLines) {
 	self.matches = make(map[ScrollPos][]Span)
 	ctx := images.Context{}
 	mutex := sync.Mutex{}
-	ctx.Parallel(0, logical_lines.Len(), func(nums <-chan int) {
+	if err := ctx.SafeParallel(0, logical_lines.Len(), func(nums <-chan int) {
 		for i := range nums {
 			line := logical_lines.At(i)
 			if line.line_type == EMPTY_LINE || line.line_type == IMAGE_LINE {
@@ -121,7 +121,9 @@ func (self *Search) search(logical_lines *LogicalLines) {
 				}
 			})
 		}
-	})
+	}); err != nil {
+		panic(err)
+	}
 	for _, spans := range self.matches {
 		slices.SortFunc(spans, func(a, b Span) int { return a.start - b.start })
 	}

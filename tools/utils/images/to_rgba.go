@@ -321,7 +321,7 @@ func (self *Context) run_paste(src Scanner, background image.Image, pos image.Po
 	default:
 		panic(fmt.Sprintf("Unsupported image type: %v", v))
 	}
-	self.Parallel(interRect.Min.Y, interRect.Max.Y, func(ys <-chan int) {
+	if err := self.SafeParallel(interRect.Min.Y, interRect.Max.Y, func(ys <-chan int) {
 		for y := range ys {
 			x1 := interRect.Min.X - pasteRect.Min.X
 			x2 := interRect.Max.X - pasteRect.Min.X
@@ -333,7 +333,9 @@ func (self *Context) run_paste(src Scanner, background image.Image, pos image.Po
 			src.scan(x1, y1, x2, y2, dst)
 			postprocess(dst)
 		}
-	})
+	}); err != nil {
+		panic(err)
+	}
 
 }
 

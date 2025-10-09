@@ -32,7 +32,7 @@ var highlighter = sync.OnceValue(func() highlight.Highlighter {
 func highlight_all(paths []string, light bool) {
 	ctx := images.Context{}
 	srd := prefer_light_colors(light)
-	ctx.Parallel(0, len(paths), func(nums <-chan int) {
+	if err := ctx.SafeParallel(0, len(paths), func(nums <-chan int) {
 		for i := range nums {
 			path := paths[i]
 			raw, err := highlighter().HighlightFile(path, &srd)
@@ -45,5 +45,7 @@ func highlight_all(paths []string, light bool) {
 				dark_highlighted_lines_cache.Set(path, text_to_lines(raw))
 			}
 		}
-	})
+	}); err != nil {
+		panic(err)
+	}
 }

@@ -358,14 +358,16 @@ func diff(jobs []diff_job, context_count int) (ans map[string]*Patch, err error)
 		patch        *Patch
 	}
 	results := make(chan result, len(jobs))
-	ctx.Parallel(0, len(jobs), func(nums <-chan int) {
+	if err := ctx.SafeParallel(0, len(jobs), func(nums <-chan int) {
 		for i := range nums {
 			job := jobs[i]
 			r := result{file1: job.file1, file2: job.file2}
 			r.patch, r.err = do_diff(job.file1, job.file2, context_count)
 			results <- r
 		}
-	})
+	}); err != nil {
+		panic(err)
+	}
 	close(results)
 	for r := range results {
 		if r.err != nil {

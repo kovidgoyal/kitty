@@ -110,11 +110,13 @@ func marks_for_query(query string) (ans mark_set) {
 	prefixes := strings.Split(strings.ToLower(query), " ")
 	results := make(chan mark_set, len(prefixes))
 	ctx := images.Context{}
-	ctx.Parallel(0, len(prefixes), func(nums <-chan int) {
+	if err := ctx.SafeParallel(0, len(prefixes), func(nums <-chan int) {
 		for i := range nums {
 			results <- find_matching_codepoints(prefixes[i])
 		}
-	})
+	}); err != nil {
+		panic(err)
+	}
 	close(results)
 	for x := range results {
 		if ans == nil {
