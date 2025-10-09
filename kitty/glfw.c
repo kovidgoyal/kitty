@@ -1019,8 +1019,8 @@ toggle_fullscreen_for_os_window(OSWindow *w) {
             lsc.edge = prev->previous.edge;
             lsc.requested_bottom_margin = prev->previous.requested_bottom_margin;
             lsc.requested_top_margin = prev->previous.requested_top_margin;
-            lsc.requested_left_margin = prev->requested_left_margin;
-            lsc.requested_right_margin = prev->requested_right_margin;
+            lsc.requested_left_margin = prev->previous.requested_left_margin;
+            lsc.requested_right_margin = prev->previous.requested_right_margin;
             lsc.was_toggled_to_fullscreen = false;
             glfwSetLayerShellConfig(w->handle, &lsc);
             return true;
