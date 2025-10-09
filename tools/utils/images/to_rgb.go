@@ -45,17 +45,18 @@ func nrgbModel(c color.Color) color.Color {
 		return c
 	}
 	r, g, b, a := c.RGBA()
-	if a == 0xffff {
+	switch a {
+	case 0xffff:
+		return NRGBColor{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8)}
+	case 0:
+		return NRGBColor{0, 0, 0}
+	default:
+		// Since Color.RGBA returns an alpha-premultiplied color, we should have r <= a && g <= a && b <= a.
+		r = (r * 0xffff) / a
+		g = (g * 0xffff) / a
+		b = (b * 0xffff) / a
 		return NRGBColor{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8)}
 	}
-	if a == 0 {
-		return NRGBColor{0, 0, 0}
-	}
-	// Since Color.RGBA returns an alpha-premultiplied color, we should have r <= a && g <= a && b <= a.
-	r = (r * 0xffff) / a
-	g = (g * 0xffff) / a
-	b = (b * 0xffff) / a
-	return NRGBColor{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8)}
 }
 
 var NRGBModel color.Model = color.ModelFunc(nrgbModel)
@@ -429,7 +430,7 @@ func NewNRGB(r image.Rectangle) *NRGB {
 	}
 }
 
-func NewNRGBWithContiguousRGBPixels(p []byte, width, height int) (*NRGB, error) {
+func NewNRGBWithContiguousRGBPixels(p []byte, left, top, width, height int) (*NRGB, error) {
 	const bpp = 3
 	if expected := bpp * width * height; expected != len(p) {
 		return nil, fmt.Errorf("the image width and height dont match the size of the specified pixel data: width=%d height=%d sz=%d != %d", width, height, len(p), expected)
@@ -437,6 +438,6 @@ func NewNRGBWithContiguousRGBPixels(p []byte, width, height int) (*NRGB, error) 
 	return &NRGB{
 		Pix:    p,
 		Stride: bpp * width,
-		Rect:   image.Rectangle{image.Point{}, image.Point{width, height}},
+		Rect:   image.Rectangle{image.Point{left, top}, image.Point{left + width, top + height}},
 	}, nil
 }

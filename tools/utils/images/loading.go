@@ -155,9 +155,9 @@ func ImageFrameFromSerialized(s SerializableImageFrame, data []byte) (aa *ImageF
 		return nil, fmt.Errorf("serialized image data has size: %d != %d", len(data), expected)
 	}
 	if s.Is_opaque {
-		ans.Img, err = NewNRGBWithContiguousRGBPixels(data, s.Width, s.Height)
+		ans.Img, err = NewNRGBWithContiguousRGBPixels(data, s.Left, s.Top, s.Width, s.Height)
 	} else {
-		ans.Img, err = NewNRGBAWithContiguousRGBAPixels(data, s.Width, s.Height)
+		ans.Img, err = NewNRGBAWithContiguousRGBAPixels(data, s.Left, s.Top, s.Width, s.Height)
 	}
 	return &ans, err
 }
