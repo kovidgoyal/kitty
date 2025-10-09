@@ -62,6 +62,10 @@ type SerializableImageFrame struct {
 	Size                     int
 }
 
+func (s SerializableImageFrame) NeededSize() int {
+	return utils.IfElse(s.Is_opaque, 3, 4) * s.Width * s.Height
+}
+
 func (s *ImageFrame) Serialize() SerializableImageFrame {
 	return SerializableImageFrame{
 		Width: s.Width, Height: s.Height, Left: s.Left, Top: s.Top,

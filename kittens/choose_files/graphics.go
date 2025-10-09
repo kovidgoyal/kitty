@@ -179,9 +179,7 @@ func (self *GraphicsHandler) transmit(lp *loop.Loop, img *images.ImageData, m *i
 		gc := self.new_graphics_command()
 		gc.SetImageId(self.image_transmitted)
 		gc.SetDataWidth(uint64(frame.Width)).SetDataHeight(uint64(frame.Height))
-		if frame.Is_opaque {
-			gc.SetFormat(graphics.GRT_format_rgb)
-		}
+		gc.SetFormat(utils.IfElse(frame.Is_opaque, graphics.GRT_format_rgb, graphics.GRT_format_rgba))
 		switch frame_num {
 		case 0:
 			gc.SetAction(graphics.GRT_action_transmit)
@@ -285,7 +283,7 @@ func (self *GraphicsHandler) RenderImagePreview(h *Handler, p *ImagePreview, x, 
 		}
 	}
 	if files_supported {
-		self.transmit(h.lp, img, img_metadata, p.cached_data)
+		self.transmit(h.lp, img, img_metadata, cached_data)
 	} else {
 		if img == nil {
 			if img, err = load_image(cached_data); err != nil {
