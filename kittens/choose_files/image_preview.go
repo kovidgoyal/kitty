@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 
 	"github.com/kovidgoyal/kitty/tools/disk_cache"
+	"github.com/kovidgoyal/kitty/tools/icons"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/humanize"
 	"github.com/kovidgoyal/kitty/tools/utils/images"
@@ -217,10 +218,15 @@ func (p ImagePreviewRenderer) Render(abspath string) (ans map[string][]byte, img
 
 func (p ImagePreviewRenderer) ShowMetadata(h *Handler, s ShowData) int {
 	text := ""
+	offset := 0
 	if s.img_metadata != nil {
 		text = fmt.Sprintf("%s: %dx%d %s", s.img_metadata.Format_uppercase, s.img_metadata.Width, s.img_metadata.Height, humanize.Bytes(uint64(s.metadata.Size())))
+		icon := icons.IconForPath("/a.gif")
+		text = icon + "  " + text
+		offset += h.render_wrapped_text_in_region(text, s.x, s.y, s.width, s.height, true)
 	}
-	return h.render_wrapped_text_in_region(text, s.x, s.y, s.width, s.height, false)
+	offset += h.render_wrapped_text_in_region(humanize.Time(s.metadata.ModTime()), s.x, s.y+offset, s.width, s.height-offset, true)
+	return offset
 }
 
 func NewImagePreview(
