@@ -85,13 +85,15 @@ func (self *GraphicsHandler) Initialize(lp *loop.Loop) error {
 	return nil
 }
 
-func (self *GraphicsHandler) Finalize(lp *loop.Loop) {
+func (self *GraphicsHandler) free_image_from_terminal(lp *loop.Loop) {
 	if self.image_transmitted > 0 {
-		g := self.new_graphics_command()
-		g.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_by_id).SetImageId(self.image_transmitted)
-		_ = g.WriteWithPayloadToLoop(lp, nil)
+		self.new_graphics_command().SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_by_id).SetImageId(self.image_transmitted).WriteWithPayloadToLoop(lp, nil)
 		self.image_transmitted = 0
 	}
+}
+
+func (self *GraphicsHandler) Finalize(lp *loop.Loop) {
+	self.free_image_from_terminal(lp)
 }
 
 func (self *GraphicsHandler) ClearPlacements(lp *loop.Loop) {
@@ -189,10 +191,10 @@ func (self *GraphicsHandler) transmit(lp *loop.Loop, img *images.ImageData, m *i
 		s := img.SerializeOnlyMetadata()
 		m = &s
 	}
+	self.image_transmitted = self.image_id_counter
 	self.last_rendered_image.image_width = m.Width
 	self.last_rendered_image.image_height = m.Height
 	is_animated := len(m.Frames) > 0
-	self.image_transmitted = self.image_id_counter
 	frame_control_cmd := self.new_graphics_command()
 	frame_control_cmd.SetAction(graphics.GRT_action_animate).SetImageId(self.image_transmitted)
 	for frame_num, frame := range m.Frames {
