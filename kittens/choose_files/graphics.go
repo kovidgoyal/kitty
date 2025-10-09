@@ -135,6 +135,7 @@ func (self *GraphicsHandler) cache_resized_image(cdir, cache_key string, img *im
 		return nil, nil, fmt.Errorf("failed to write resized frame metadata to cache: %w", err)
 	}
 	cached_data = make(map[string]string, len(frames)+1)
+	cached_data[IMAGE_METADATA_KEY] = path
 	for i, f := range frames {
 		path := filepath.Join(cdir, fmt.Sprintf("rsz-%s-%d", cache_key, i))
 		key := IMAGE_DATA_PREFIX + strconv.Itoa(i)
