@@ -73,8 +73,16 @@ func Format_stacktrace_on_panic(r any) (text string, err error) {
 	n := runtime.Callers(3, pcs)
 	lines := []string{}
 	frames := runtime.CallersFrames(pcs[:n])
-	err = fmt.Errorf("Panicked: %s", r)
-	lines = append(lines, fmt.Sprintf("\r\nPanicked with error: %s\r\nStacktrace (most recent call first):\r\n", r))
+	rt := fmt.Sprint(r)
+	if strings.HasPrefix(rt, "Panicked with error:") {
+		err = fmt.Errorf("%s", rt)
+		lines = append(lines, "Panic caused by previous panic (probably in a gouroutine). Previous panic:\r\n")
+		lines = append(lines, rt)
+		lines = append(lines, "\r\n\r\nStacktrace of current panic (most recent call first):\r\n")
+	} else {
+		err = fmt.Errorf("Panicked: %s", r)
+		lines = append(lines, fmt.Sprintf("\r\nPanicked with error: %s\r\nStacktrace (most recent call first):\r\n", r))
+	}
 	found_first_frame := false
 	for frame, more := frames.Next(); more; frame, more = frames.Next() {
 		if !found_first_frame {
