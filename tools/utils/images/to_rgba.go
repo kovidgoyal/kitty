@@ -405,3 +405,15 @@ func FitImage(width, height, pwidth, pheight int) (final_width int, final_height
 
 	return width, height
 }
+
+func NewNRGBAWithContiguousRGBAPixels(p []byte, width, height int) (*image.NRGBA, error) {
+	const bpp = 4
+	if expected := bpp * width * height; expected != len(p) {
+		return nil, fmt.Errorf("the image width and height dont match the size of the specified pixel data: width=%d height=%d sz=%d != %d", width, height, len(p), expected)
+	}
+	return &image.NRGBA{
+		Pix:    p,
+		Stride: bpp * width,
+		Rect:   image.Rectangle{image.Point{}, image.Point{width, height}},
+	}, nil
+}
