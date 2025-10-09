@@ -269,6 +269,9 @@ func (self *GraphicsHandler) RenderImagePreview(h *Handler, p *ImagePreview, x, 
 	img_metadata, cached_data := self.cached_resized_image(p.disk_cache.ResultsDir(), cache_key)
 	var img *images.ImageData
 	if len(cached_data) == 0 {
+		if err = p.ensure_source_image(); err != nil {
+			return
+		}
 		img = p.source_img
 		final_width, final_height := images.FitImage(img.Width, img.Height, px_width, px_height)
 		if final_width != img.Width || final_height != img.Height {

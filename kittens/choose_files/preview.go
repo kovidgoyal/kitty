@@ -259,13 +259,19 @@ func (pm *PreviewManager) highlight_file_async(path string, output chan highligh
 	s := style_resolver{light: use_light_colors, syntax_aliases: pm.settings.SyntaxAliases()}
 	s.light_style, s.dark_style = pm.settings.HighlightStyles()
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				text, _ := utils.Format_stacktrace_on_panic(r)
+				debugprintln(fmt.Sprintf("Failed to highlight: %s with panic: %s", path, text))
+			}
+			close(output)
+			pm.WakeupMainThread()
+		}()
 		highlighted, err := pm.highlighter.HighlightFile(path, &s)
 		if err != nil {
 			debugprintln(fmt.Sprintf("Failed to highlight: %s with error: %s", path, err))
 		}
 		output <- highlighed_data{text: highlighted, err: err, light: s.light}
-		close(output)
-		pm.WakeupMainThread()
 	}()
 }
 

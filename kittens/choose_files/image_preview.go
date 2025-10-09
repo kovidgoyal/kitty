@@ -110,17 +110,26 @@ func (p *ImagePreview) ensure_source_image() (err error) {
 	return
 }
 
+func (p *ImagePreview) render_image(h *Handler, x, y, width, height int) {
+	defer func() {
+		if r := recover(); r != nil {
+			text, _ := utils.Format_stacktrace_on_panic(r)
+			h.err_chan <- fmt.Errorf("%s", text)
+			p.WakeupMainThread()
+		}
+	}()
+
+	offset := p.renderer.ShowMetadata(h, ShowData{
+		abspath: p.abspath, metadata: p.metadata, x: x, y: y, width: width, height: height, cached_data: p.cached_data,
+		img_metadata: p.img_metadata,
+	})
+	h.graphics_handler.RenderImagePreview(h, p, x, y+offset, width, height-offset)
+}
+
 func (p *ImagePreview) Render(h *Handler, x, y, width, height int) {
 	if p.render_channel == nil {
 		if p.render_err == nil {
-			offset := p.renderer.ShowMetadata(h, ShowData{
-				abspath: p.abspath, metadata: p.metadata, x: x, y: y, width: width, height: height, cached_data: p.cached_data,
-				img_metadata: p.img_metadata,
-			})
-			y += offset
-			height -= offset
-			h.graphics_handler.RenderImagePreview(h, p, x, y, width, height)
-
+			p.render_image(h, x, y, width, height)
 		} else {
 			p.render_err.Render(h, x, y, width, height)
 		}
@@ -132,19 +141,28 @@ func (p *ImagePreview) Render(h *Handler, x, y, width, height int) {
 		p.cached_data = hd.cached_data
 		p.source_img = hd.img
 		p.img_metadata = hd.img_metadata
-		p.render_err = NewErrorPreview(fmt.Errorf("Failed to render the preview with error: %w", hd.err))
+		if hd.err != nil {
+			p.render_err = NewErrorPreview(fmt.Errorf("Failed to render the preview with error: %w", hd.err))
+		}
 		p.Render(h, x, y, width, height)
 		return
 	default:
 	}
 	if p.file_metadata_preview == nil {
 		p.file_metadata_preview = NewFileMetadataPreview(p.abspath, p.metadata)
+		m := p.file_metadata_preview.(*MessagePreview)
+		m.trailers = append(m.trailers, "", "Rendering image preview, please wait…")
 	}
 	p.file_metadata_preview.Render(h, x, y, width, height)
 }
 
 func (p *ImagePreview) start_rendering() {
 	defer func() {
+		if r := recover(); r != nil {
+			text, _ := utils.Format_stacktrace_on_panic(r)
+			p.render_channel <- render_data{err: fmt.Errorf("%s", text)}
+		}
+		close(p.render_channel)
 		p.WakeupMainThread()
 	}()
 	key, ans, err := p.disk_cache.GetPath(p.abspath)
@@ -202,8 +220,7 @@ func (p ImagePreviewRenderer) ShowMetadata(h *Handler, s ShowData) int {
 	if s.img_metadata != nil {
 		text = fmt.Sprintf("%s: %dx%d %s", s.img_metadata.Format_uppercase, s.img_metadata.Width, s.img_metadata.Height, humanize.Bytes(uint64(s.metadata.Size())))
 	}
-	h.render_wrapped_text_in_region(text, s.x, s.y, s.width, s.height, false)
-	return 0
+	return h.render_wrapped_text_in_region(text, s.x, s.y, s.width, s.height, false)
 }
 
 func NewImagePreview(
@@ -211,7 +228,7 @@ func NewImagePreview(
 ) (Preview, error) {
 	dc_size.Store(opts.DiskCacheSize())
 	ans := &ImagePreview{
-		abspath: abspath, metadata: metadata, render_channel: make(chan render_data),
+		abspath: abspath, metadata: metadata, render_channel: make(chan render_data, 1),
 		WakeupMainThread: WakeupMainThread, renderer: r,
 	}
 	if dc, err := preview_cache(); err != nil {
