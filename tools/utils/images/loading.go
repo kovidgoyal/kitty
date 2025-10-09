@@ -139,25 +139,22 @@ func (self *ImageFrame) Data() (ans []byte) {
 	return
 }
 
-func ImageFrameFromSerialized(s SerializableImageFrame, data []byte) (*ImageFrame, error) {
+func ImageFrameFromSerialized(s SerializableImageFrame, data []byte) (aa *ImageFrame, err error) {
 	ans := ImageFrame{
 		Width: s.Width, Height: s.Height, Left: s.Left, Top: s.Top,
 		Number: s.Number, Compose_onto: s.Compose_onto, Delay_ms: int32(s.Delay_ms),
 		Is_opaque: s.Is_opaque,
 	}
-	r := image.Rect(0, 0, s.Width, s.Height)
-	if s.Is_opaque {
-		if len(data) != 3*r.Dx()*r.Dy() {
-			return nil, fmt.Errorf("serialized image data has size: %d != %d", len(data), 3*r.Dy()*r.Dx())
-		}
-		ans.Img = &NRGB{Pix: data, Stride: 3 * r.Dx(), Rect: r}
-	} else {
-		if len(data) != 4*r.Dx()*r.Dy() {
-			return nil, fmt.Errorf("serialized image data has size: %d != %d", len(data), 4*r.Dy()*r.Dx())
-		}
-		ans.Img = &image.NRGBA{Pix: data, Stride: 4 * r.Dx(), Rect: r}
+	bytes_per_pixel := utils.IfElse(s.Is_opaque, 3, 4)
+	if expected := bytes_per_pixel * s.Width * s.Height; len(data) != expected {
+		return nil, fmt.Errorf("serialized image data has size: %d != %d", len(data), expected)
 	}
-	return &ans, nil
+	if s.Is_opaque {
+		ans.Img, err = NewNRGBWithContiguousRGBPixels(data, s.Width, s.Height)
+	} else {
+		ans.Img, err = NewNRGBAWithContiguousRGBAPixels(data, s.Width, s.Height)
+	}
+	return &ans, err
 }
 
 type ImageData struct {

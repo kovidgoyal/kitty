@@ -170,14 +170,15 @@ func newScannerRGB(img image.Image, opaque_base NRGBColor) *scanner_rgb {
 	}
 	if img, ok := img.(*image.Paletted); ok {
 		s.palette = make([]NRGBColor, max(256, len(img.Palette)))
-		d := make([]uint8, 3)
+		d := [3]uint8{0, 0, 0}
+		ds := d[:]
 		for i := 0; i < len(img.Palette); i++ {
 			r, g, b, a := img.Palette[i].RGBA()
 			switch a {
 			case 0:
 				s.palette[i] = opaque_base
 			default:
-				blend(d, s.opaque_base, uint8((r*0xffff/a)>>8), uint8((g*0xffff/a)>>8), uint8((b*0xffff/a)>>8), uint8(a>>8))
+				blend(ds, s.opaque_base, uint8((r*0xffff/a)>>8), uint8((g*0xffff/a)>>8), uint8((b*0xffff/a)>>8), uint8(a>>8))
 				s.palette[i] = NRGBColor{d[0], d[1], d[2]}
 			}
 		}
@@ -424,4 +425,28 @@ func NewNRGB(r image.Rectangle) *NRGB {
 		Stride: 3 * r.Dx(),
 		Rect:   r,
 	}
+}
+
+func NewNRGBWithContiguousRGBPixels(p []byte, width, height int) (*NRGB, error) {
+	const bpp = 3
+	if expected := bpp * width * height; expected != len(p) {
+		return nil, fmt.Errorf("the image width and height dont match the size of the specified pixel data: width=%d height=%d sz=%d != %d", width, height, len(p), expected)
+	}
+	return &NRGB{
+		Pix:    p,
+		Stride: bpp * width,
+		Rect:   image.Rectangle{image.Point{}, image.Point{width, height}},
+	}, nil
+}
+
+func NewNRGBAWithContiguousRGBAPixels(p []byte, width, height int) (*image.NRGBA, error) {
+	const bpp = 4
+	if expected := bpp * width * height; expected != len(p) {
+		return nil, fmt.Errorf("the image width and height dont match the size of the specified pixel data: width=%d height=%d sz=%d != %d", width, height, len(p), expected)
+	}
+	return &image.NRGBA{
+		Pix:    p,
+		Stride: bpp * width,
+		Rect:   image.Rectangle{image.Point{}, image.Point{width, height}},
+	}, nil
 }
