@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
@@ -82,16 +83,7 @@ func PalettedToNRGBA(paletted *image.Paletted) *image.NRGBA {
 	return nrgba
 }
 
-func develop_serialize(input_data []byte) (err error) {
-	img, err := OpenNativeImageFromReader(bytes.NewReader(input_data))
-	if err != nil {
-		return err
-	}
-	m, b := img.Serialize()
-	rimg, err := ImageFromSerialized(m, b)
-	if err != nil {
-		return err
-	}
+func images_equal(img, rimg *ImageData) (err error) {
 	for i := range img.Frames {
 		a, b := img.Frames[i], rimg.Frames[i]
 		if a.Img.Bounds() != b.Img.Bounds() {
@@ -112,6 +104,42 @@ func develop_serialize(input_data []byte) (err error) {
 	return
 }
 
+func develop_serialize(input_data io.ReadSeeker) (err error) {
+	img, err := OpenNativeImageFromReader(input_data)
+	if err != nil {
+		return err
+	}
+	m, b := img.Serialize()
+	rimg, err := ImageFromSerialized(m, b)
+	if err != nil {
+		return err
+	}
+	return images_equal(img, rimg)
+}
+
+func develop_resize(spec string, input_data io.ReadSeeker) (err error) {
+	ws, hs, _ := strings.Cut(spec, "x")
+	var w, h int
+	if w, err = strconv.Atoi(ws); err != nil {
+		return
+	}
+	if h, err = strconv.Atoi(hs); err != nil {
+		return
+	}
+	img, err := OpenNativeImageFromReader(input_data)
+	if err != nil {
+		return err
+	}
+	aimg := img.Resize(float64(w)/float64(img.Width), float64(h)/float64(img.Height))
+	m, b := img.Serialize()
+	rimg, err := ImageFromSerialized(m, b)
+	if err != nil {
+		return err
+	}
+	bimg := rimg.Resize(float64(w)/float64(rimg.Width), float64(h)/float64(rimg.Height))
+	return images_equal(aimg, bimg)
+}
+
 func ConvertEntryPoint(root *cli.Command) {
 	root.AddSubCommand(&cli.Command{
 		Name:            "__convert_image__",
@@ -126,14 +154,16 @@ func ConvertEntryPoint(root *cli.Command) {
 			if _, err = io.Copy(buf, os.Stdin); err != nil {
 				return 1, err
 			}
-			if format == "develop-serialize" {
-				err = develop_serialize(buf.Bytes())
-				rc = utils.IfElse(err == nil, 0, 1)
-				return
+			input_data := bytes.NewReader(buf.Bytes())
+			switch {
+			case format == "develop-serialize":
+				err = develop_serialize(input_data)
+			case strings.HasPrefix(format, "develop-resize-"):
+				err = develop_resize(format[len("develop-resize-"):], input_data)
+			default:
+				err = convert_image(input_data, os.Stdout, format)
 			}
-			if err = convert_image(bytes.NewReader(buf.Bytes()), os.Stdout, format); err != nil {
-				rc = 1
-			}
+			rc = utils.IfElse(err == nil, 0, 1)
 			return
 		},
 	})
