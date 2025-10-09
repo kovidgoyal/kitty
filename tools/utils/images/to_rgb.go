@@ -25,7 +25,7 @@ func (c NRGBColor) RGBA() (r, g, b, a uint32) {
 	g |= g << 8
 	b = uint32(c.B)
 	b |= b << 8
-	a = 65280 // ( 255 << 8 )
+	a = 65535 // (255 << 8 | 255)
 	return
 }
 
