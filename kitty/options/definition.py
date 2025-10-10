@@ -220,7 +220,7 @@ straight edges.
 '''
     )
 
-opt('box_drawing_corner_aa_strength', '0.8',
+opt('box_drawing_corner_aa_strength', '0.5',
     option_type='positive_float', ctype='float',
     long_text='''
 Controls the amount of anti-aliasing applied to rounded box drawing corners.
