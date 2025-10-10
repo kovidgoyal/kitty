@@ -7,6 +7,7 @@
 
 #include "decorations.h"
 #include "state.h"
+#include <math.h>
 
 typedef uint32_t uint;
 
@@ -314,6 +315,9 @@ add_vholes(Canvas *self, uint level, uint num) {
     }
 }
 
+static double clamp_double(double value, double lower, double upper);
+static double smoothstep(double edge0, double edge1, double x);
+
 static Range
 hline_limits(Canvas *self, uint y, uint level) {
     uint sz = thickness(self, level, false);
@@ -324,6 +328,8 @@ hline_limits(Canvas *self, uint y, uint level) {
 
 static void
 draw_hline(Canvas *self, uint x1, uint x2, uint y, uint level) {
+    if (x1 >= x2 || y >= self->height) return;
+
     // Draw a horizontal line between [x1, x2) centered at y with the thickness given by level and self->supersample_factor
     Range r = hline_limits(self, y, level);
     for (uint y = r.start; y < r.end; y++) {
@@ -339,7 +345,6 @@ vline_limits(Canvas *self, uint x, uint level) {
     r.end = min(r.start + sz, self->width);
     return r;
 }
-
 
 static void
 draw_vline(Canvas *self, uint y1, uint y2, uint x, uint level) {
@@ -362,6 +367,19 @@ half_height(Canvas *self) { // align with non-supersampled co-ords
     return self->supersample_factor * (self->height / 2 / self->supersample_factor);
 }
 
+static double
+clamp_double(double value, double lower, double upper) {
+    if (value < lower) return lower;
+    if (value > upper) return upper;
+    return value;
+}
+
+static double
+smoothstep(double edge0, double edge1, double x) {
+    if (edge0 == edge1) return x < edge0 ? 0.0 : 1.0;
+    double t = clamp_double((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+    return t * t * (3.0 - 2.0 * t);
+}
 
 static void
 half_hline(Canvas *self, uint level, bool right_half, uint extend_by) {
@@ -427,12 +445,6 @@ half_vline(Canvas *self, uint level, bool bottom_half, uint extend_by) {
     }
     draw_vline(self, y1, y2, half_width(self), level);
 }
-
-static void
-fractional_vline(Canvas *self, uint level, uint y1, uint y2) {
-    draw_vline(self, y1, y2, half_width(self), level);
-}
-
 
 static void
 hline(Canvas *self, uint level) {
@@ -1290,94 +1302,57 @@ fading_vline(Canvas *self, uint level, uint num, Edge fade) {
     }
 }
 
-typedef struct Rectircle Rectircle;
-
-typedef struct Rectircle {
-    double a, b, yexp, xexp, x_sign, y_sign, x_start, y_start;
-    double x_prime_coeff, x_prime_exp, y_prime_coeff, y_prime_exp;
-} Rectircle;
-
-static double
-rectircle_x(const void *v, double t) {
-    const Rectircle *r = v;
-    return r->x_start + r->x_sign * r->a * pow(cos(t * (M_PI / 2.0)), r->xexp);
-}
-
-static double
-rectircle_x_prime(const void *v, double t) {
-    const Rectircle *r = v;
-    t *= (M_PI / 2.0);
-    return r->x_prime_coeff * pow(cos(t), r->x_prime_exp) * sin(t);
-}
-
-static double
-rectircle_y_prime(const void *v, double t) {
-    const Rectircle *r = v;
-    t *= (M_PI / 2.0);
-    return r->y_prime_coeff * pow(sin(t), r->y_prime_exp) * cos(t);
-}
-
-static double
-rectircle_y(const void *v, double t) {
-    const Rectircle *r = v;
-    return r->y_start + r->y_sign * r->b * pow(sin(t * (M_PI / 2.0)), r->yexp);
-}
-
-static Rectircle
-rectcircle(Canvas *self, Corner which) {
-    /*
-    Return two functions, x(t) and y(t) that map the parameter t which must be
-    in the range [0, 1] to x and y coordinates in the cell. The rectircle equation
-    we use is:
-    (|x| / a) ^ (2a / r) + (|y| / b) ^ (2b / r) = 1
-    where 2a = width, 2b = height and r is radius
-    See https://math.stackexchange.com/questions/1649714
-
-    This is a super-ellipse, its parametrized form is:
-    x = ± a * (cos(theta) ^ (r / a)); y = ± b * (sin(theta) ^ (r / b)); theta is in [0, pi/2]
-    https://en.wikipedia.org/wiki/Superellipse
-    The plus minus signs are chosen to give the four quadrants.
-
-    The entire rectircle fits in four cells, each cell being one quadrant
-    of the full rectircle and the origin being the center of the rectircle.
-    The functions we return do the mapping for the specified cell.
-    ╭╮  ╭─╮
-    ╰╯  │ │
-        ╰─╯
-    */
-    double radius = self->width / 2., a = self->width / 2., b = self->height / 2.;
-    Rectircle ans = {
-        .a = a, .b = b,
-        .xexp = radius / a, .yexp = radius / b,
-        .x_prime_coeff = radius, .x_prime_exp = radius / a - 1.,
-        .y_prime_coeff = radius, .y_prime_exp = radius / b - 1.,
-        .x_sign = which & RIGHT_EDGE ? 1. : -1,
-        .x_start = which & RIGHT_EDGE ? 0. : 2 * a,
-        .y_start = which & BOTTOM_EDGE ? 0. : 2 * b,
-        .y_sign = which & BOTTOM_EDGE ? 1. : -1,
-    };
-
-    return ans;
-}
-
 static void
 rounded_corner(Canvas *self, uint level, Corner which) {
-    Rectircle r = rectcircle(self, which);
-    double line_width = thickness_as_float(self, level, true);
-    uint cell_width_is_odd = (self->width / self->supersample_factor) & 1;
-    uint cell_height_is_odd = (self->height / self->supersample_factor) & 1;
-    // adjust for odd cell dimensions to line up with box drawing lines
-    double x_offset = cell_width_is_odd ? 0 : 0.5, y_offset = cell_height_is_odd ? 0 : 0.5;
-    ClipRect cr = {.x_end=self->width, .y_end=self->height};
-    if (which & TOP_EDGE) cr.top = hline_limits(self, half_height(self), level).start;
-    else cr.y_end = hline_limits(self, half_height(self), level).end;
-    if (which & LEFT_EDGE) cr.left = vline_limits(self, half_width(self), level).start;
-    else cr.x_end = vline_limits(self, half_width(self), level).end;
-    draw_parametrized_curve_with_derivative_and_antialiasing(
-        self, &r, line_width, rectircle_x, rectircle_y, rectircle_x_prime, rectircle_y_prime, x_offset, y_offset, &cr);
-    // make the vertical stems be same brightness as straightline segments
-    if (which & TOP_EDGE) fractional_vline(self, level, self->height - self->width / 2, self->height);
-    else fractional_vline(self, level, 0, self->width / 2);
+    // Render a rounded box corner.
+    const uint Hx = half_width(self);
+    const uint Hy = half_height(self);
+    const Range hori_line_range = hline_limits(self, Hy, level);
+    const Range vert_line_range = vline_limits(self, Hx, level);
+    const uint hori_line_height = hori_line_range.end - hori_line_range.start;
+    const uint vert_line_width = vert_line_range.end - vert_line_range.start;
+    double adjusted_Hx = (double)Hx;
+    double adjusted_Hy = (double)Hy;
+    if (hori_line_height % 2 != 0) adjusted_Hy += 0.5;
+    if (vert_line_width % 2 != 0) adjusted_Hx += 0.5;
+    const double stroke = (double)max(hori_line_height, vert_line_width);
+    const double corner_radius = fmin(adjusted_Hx, adjusted_Hy);
+    const double bx = adjusted_Hx - corner_radius;
+    const double by = adjusted_Hy - corner_radius;
+
+    // Anti-aliasing on corner
+    const double aa_corner = (double)self->supersample_factor * 0.5;
+    const double half_stroke = 0.5 * stroke;
+
+    const double x_shift = (which & RIGHT_EDGE) ? adjusted_Hx : -adjusted_Hx;
+    const double y_shift = (which & TOP_EDGE) ? -adjusted_Hy : adjusted_Hy;
+
+    for (uint y = 0; y < self->height; y++) {
+        const double sample_y = (double)y + y_shift + 0.5;
+        const double pos_y = sample_y - adjusted_Hy;
+        const uint row_off = y * self->width;
+
+        for (uint x = 0; x < self->width; x++) {
+            const double sample_x = (double)x + x_shift + 0.5;
+            const double pos_x = sample_x - adjusted_Hx;
+
+            const double qx = fabs(pos_x) - bx;
+            const double qy = fabs(pos_y) - by;
+            const double dx = qx > 0.0 ? qx : 0.0;
+            const double dy = qy > 0.0 ? qy : 0.0;
+            const double dist = hypot(dx, dy) + fmin(fmax(qx, qy), 0.0) - corner_radius;
+
+            const double aa = (qx > 1e-7 && qy > 1e-7) ? aa_corner : 0.0;
+            const double outer = half_stroke - dist;
+            const double inner = -half_stroke - dist;
+            const double alpha = smoothstep(-aa, aa, outer) - smoothstep(-aa, aa, inner);
+
+            if (alpha <= 0.0) continue;
+            const uint8_t value = (uint8_t)lrint(clamp_double(alpha, 0.0, 1.0) * 255.0);
+            uint8_t *p = &self->mask[row_off + x];
+            if (value > *p) *p = value;
+        }
+    }
 }
 
 static void
