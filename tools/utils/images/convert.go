@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"image"
-	"image/color"
 	"io"
 	"os"
 	"slices"
@@ -69,18 +68,6 @@ func convert_image(input io.ReadSeeker, output io.Writer, format string) (err er
 		return fmt.Errorf("Unknown image output format: %s", format)
 	}
 	return Encode(output, img, mt)
-}
-
-func PalettedToNRGBA(paletted *image.Paletted) *image.NRGBA {
-	bounds := paletted.Bounds()
-	nrgba := image.NewNRGBA(bounds)
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			c := color.NRGBAModel.Convert(paletted.At(x, y))
-			nrgba.Set(x, y, c)
-		}
-	}
-	return nrgba
 }
 
 func images_equal(img, rimg *ImageData) (err error) {

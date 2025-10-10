@@ -17,7 +17,7 @@ func reverse_row(bytes_per_pixel int, pix []uint8) {
 	for i < j {
 		pi := pix[i : i+bytes_per_pixel : i+bytes_per_pixel]
 		pj := pix[j : j+bytes_per_pixel : j+bytes_per_pixel]
-		for x := 0; x < bytes_per_pixel; x++ {
+		for x := range bytes_per_pixel {
 			pi[x], pj[x] = pj[x], pi[x]
 		}
 		i += bytes_per_pixel
