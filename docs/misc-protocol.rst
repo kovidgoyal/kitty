@@ -43,6 +43,14 @@ When bit 8 is set it means the event is a mouse has left the window event,
 and all other bits should be ignored. The pixel position values must also
 be ignored as they may not be accurate.
 
+An escape code to move the contents of the screen into the scrollback
+-------------------------------------------------------------------------------------
+
+The escape code is ``\x1b [ 22 J`` (ignoring spaces present for clarity). It
+moves all screen contents (text and images) into the scrollback leaving the
+screen in the same state as it would be if the standard screen clear escape
+code had been used ``\x1b [ 2 J``.
+
 
 kitty specific private escape codes
 ---------------------------------------
