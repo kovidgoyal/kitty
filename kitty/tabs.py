@@ -324,9 +324,11 @@ class Tab:  # {{{
             if session_base_dir and ser_opts.relocatable:
                 cwd = os.path.relpath(cwd, session_base_dir)
             return cwd
+        most_common_cwd = ''
         cwds = {w.id: make_relative(w.cwd_for_serialization) for g in groups for w in g}
-        from collections import Counter
-        most_common_cwd, _ = Counter(cwds.values()).most_common(1)[0]
+        if cwds:
+            from collections import Counter
+            most_common_cwd, _ = Counter(cwds.values()).most_common(1)[0]
         for i, g in enumerate(groups):
             gw: list[str] = []
             for window in g:
