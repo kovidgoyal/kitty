@@ -145,10 +145,10 @@
     },
 
     {
-        "name": "python 3.12.11",
+        "name": "python 3.12.12",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "md5:9613d56b90d0d0cfd19980c7e2956a06",
+            "hash": "sha256:fb85a13414b028c49ba18bbd523c2d055a30b56b18b92ce454ea2c51edc656c4",
             "urls": ["https://www.python.org/ftp/python/{version}/Python-{version}.{file_extension}"]
         }
     },
