@@ -1334,8 +1334,7 @@ rounded_corner(Canvas *self, uint level, Corner which) {
 
     // Anti-aliasing on corners only
     const double aa_corner = (double)self->supersample_factor * 0.8;
-    const uint is_odd = ((self->width / self->supersample_factor) & 1) || ((self->height / self->supersample_factor) & 1);
-    const double half_stroke = is_odd ? 0.5 * stroke : 0.5 * stroke - 0.5;
+    const double half_stroke = 0.5 * stroke;
 
     const double x_shift = (which & RIGHT_EDGE) ? Hx : -Hx;
     const double y_shift = (which & TOP_EDGE) ? -Hy : Hy;
