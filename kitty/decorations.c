@@ -7,6 +7,7 @@
 
 #include "decorations.h"
 #include "state.h"
+#include <math.h>
 
 typedef uint32_t uint;
 
@@ -321,7 +322,13 @@ static void
 draw_hline(Canvas *self, uint x1, uint x2, uint y, uint level) {
     if (x1 >= x2 || y >= self->height) return;
 
-    const double stroke = fmax(1.0, thickness_as_float(self, level, false));
+    double stroke = fmax(1.0, thickness_as_float(self, level, false));
+    stroke = ceil(stroke);
+
+    if ((uint)stroke % 2 != 0) {
+        stroke += 1.0;
+    }
+
     const double half_stroke = 0.5 * stroke;
     const double aa = (double)self->supersample_factor * OPT(box_drawing_line_aa_strength);
 
@@ -348,7 +355,13 @@ static void
 draw_vline(Canvas *self, uint y1, uint y2, uint x, uint level) {
     if (y1 >= y2 || x >= self->width) return;
 
-    const double stroke = fmax(1.0, thickness_as_float(self, level, true));
+    double stroke = fmax(1.0, thickness_as_float(self, level, true));
+    stroke = ceil(stroke);
+
+    if ((uint)stroke % 2 != 0) {
+        stroke += 1.0;
+    }
+
     const double half_stroke = 0.5 * stroke;
     const double aa = (double)self->supersample_factor * OPT(box_drawing_line_aa_strength);
 
@@ -1321,8 +1334,14 @@ rounded_corner(Canvas *self, uint level, Corner which) {
     // Render a rounded box corner; AA is forced to 0.0 for straight segments and to the user-configured strength for curved pixels.
     const double stroke_x = thickness_as_float(self, level, true);
     const double stroke_y = thickness_as_float(self, level, false);
-    const double stroke = fmax(stroke_x, stroke_y);
+    double stroke = fmax(stroke_x, stroke_y);
     if (stroke <= 0.0) return;
+
+    stroke = ceil(stroke);
+
+    if ((uint)stroke % 2 != 0) {
+        stroke += 1.0;
+    }
 
     const double Hx = (double)half_width(self);
     const double Hy = (double)half_height(self);
