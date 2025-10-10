@@ -323,8 +323,7 @@ draw_hline(Canvas *self, uint x1, uint x2, uint y, uint level) {
 
     const double stroke = fmax(1.0, thickness_as_float(self, level, false));
     const double half_stroke = 0.5 * stroke;
-    // No anti-aliasing on straight lines
-    const double aa = 0.0;
+    const double aa = (double)self->supersample_factor * OPT(box_drawing_line_aa_strength);
 
     if (x1 > self->width) x1 = self->width;
     if (x2 > self->width) x2 = self->width;
@@ -351,8 +350,7 @@ draw_vline(Canvas *self, uint y1, uint y2, uint x, uint level) {
 
     const double stroke = fmax(1.0, thickness_as_float(self, level, true));
     const double half_stroke = 0.5 * stroke;
-    // No anti-aliasing on straight lines
-    const double aa = 0.0;
+    const double aa = (double)self->supersample_factor * OPT(box_drawing_line_aa_strength);
 
     if (y1 > self->height) y1 = self->height;
     if (y2 > self->height) y2 = self->height;
@@ -1320,7 +1318,7 @@ fading_vline(Canvas *self, uint level, uint num, Edge fade) {
 
 static void
 rounded_corner(Canvas *self, uint level, Corner which) {
-    // Render a rounded box corner; AA is forced to 0.0 for the straight segments and to 1.0 for curved pixels.
+    // Render a rounded box corner; AA is forced to 0.0 for straight segments and to the user-configured strength for curved pixels.
     const double stroke_x = thickness_as_float(self, level, true);
     const double stroke_y = thickness_as_float(self, level, false);
     const double stroke = fmax(stroke_x, stroke_y);
@@ -1332,8 +1330,9 @@ rounded_corner(Canvas *self, uint level, Corner which) {
     const double bx = Hx - corner_radius;
     const double by = Hy - corner_radius;
 
-    // Anti-aliasing on corners only
-    const double aa_corner = (double)self->supersample_factor * 0.8;
+    // Anti-aliasing on corners controlled by configuration
+    const double aa_corner = (double)self->supersample_factor * OPT(box_drawing_corner_aa_strength);
+    const double aa_line = (double)self->supersample_factor * OPT(box_drawing_line_aa_strength);
     const double half_stroke = 0.5 * stroke;
 
     const double x_shift = (which & RIGHT_EDGE) ? Hx : -Hx;
@@ -1354,7 +1353,7 @@ rounded_corner(Canvas *self, uint level, Corner which) {
             const double dy = qy > 0.0 ? qy : 0.0;
             const double dist = hypot(dx, dy) + fmin(fmax(qx, qy), 0.0) - corner_radius;
 
-            const double aa = (qx > 1e-7 && qy > 1e-7) ? aa_corner : 0.0;
+            const double aa = (qx > 1e-7 && qy > 1e-7) ? aa_corner : aa_line;
             const double outer = half_stroke - dist;
             const double inner = -half_stroke - dist;
             const double alpha = smoothstep(-aa, aa, outer) - smoothstep(-aa, aa, inner);

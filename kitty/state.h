@@ -139,6 +139,8 @@ typedef struct Options {
     unsigned undercurl_style;
     struct { float thickness; int unit; } underline_exclusion;
     float box_drawing_scale[4];
+    float box_drawing_line_aa_strength;
+    float box_drawing_corner_aa_strength;
 } Options;
 
 typedef struct WindowLogoRenderData {
