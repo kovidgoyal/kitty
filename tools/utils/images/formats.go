@@ -19,6 +19,11 @@ var _ = fmt.Print
 
 var DecodableImageTypes = map[string]bool{
 	"image/jpeg": true, "image/png": true, "image/bmp": true, "image/tiff": true, "image/webp": true, "image/gif": true,
+	"image/x-portable-anymap":       true,
+	"image/x-portable-bitmap":       true,
+	"image/x-portable-graymap":      true,
+	"image/x-portable-pixmap":       true,
+	"image/x-portable-arbitrarymap": true,
 }
 
 var EncodableImageTypes = map[string]bool{
