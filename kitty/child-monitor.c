@@ -725,6 +725,9 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
             call_boss(update_tab_bar_data, "K", os_window->id);
             os_window->tab_bar_data_updated = true;
         }
+        // we never render a cursor in the tab bar
+        CursorRenderInfo *cri = &TD.screen->cursor_render_info;
+        zero_at_ptr(cri); cri->x = TD.screen->cursor->x; cri->y = TD.screen->cursor->y;
         if (send_cell_data_to_gpu(TD.vao_idx, TD.screen, os_window)) needs_render = true;
         os_window->needs_layers = os_window->needs_layers || screen_needs_rendering_in_layers(os_window, NULL, TD.screen);
     }
@@ -888,7 +891,7 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
 
 static void
 render(monotonic_t now, bool input_read) {
-    EVDBG("input_read: %d, check_for_active_animated_images: %d", input_read, global_state.check_for_active_animated_images);
+    EVDBG("input_read: %d, check_for_active_animated_images: %d\n", input_read, global_state.check_for_active_animated_images);
     static monotonic_t last_render_at = MONOTONIC_T_MIN;
     monotonic_t time_since_last_render = last_render_at == MONOTONIC_T_MIN ? OPT(repaint_delay) : now - last_render_at;
     if (!input_read && time_since_last_render < OPT(repaint_delay)) {

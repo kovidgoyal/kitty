@@ -162,6 +162,8 @@ Detailed list of changes
 
 - Graphics: Fix animated images sometimes not auto playing or auto playing at the wrong start frame if the same image id is used for a subsequent image
 
+- Fix a regression in 0.43.0 that caused high CPU usage when :opt:`disable_ligatures` was set to ``cursor`` and the tab bar was visible (:iss:`9071`)
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
