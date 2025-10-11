@@ -220,6 +220,8 @@ IGNORED_DEPENDENCY_CVES = [
     'CVE-2025-6069', # DoS in HTMLParser
     # glib
     'CVE-2025-4056', # Only affects Windows, on which we dont run
+    # github.com/nwaples/rardecode/v2
+    'CVE-2025-11579', # rardecode not present in kitty go.sum
 ]
 
 
