@@ -144,6 +144,9 @@ Detailed list of changes
 - Fix a regression in 0.43.0 that caused a black flicker when closing a tab in
   the presence of a background image (:iss:`9060`)
 
+- Further improvements to rounded corner rendering, especially at low DPI
+  (:pull:`9091`)
+
 - Splits layout: Fix a bug that could cause a corrupted layout in some
   circumstances (:iss:`9059`)
 

@@ -7,7 +7,6 @@
 
 #include "decorations.h"
 #include "state.h"
-#include <math.h>
 
 typedef uint32_t uint;
 
@@ -315,9 +314,6 @@ add_vholes(Canvas *self, uint level, uint num) {
     }
 }
 
-static double clamp_double(double value, double lower, double upper);
-static double smoothstep(double edge0, double edge1, double x);
-
 static Range
 hline_limits(Canvas *self, uint y, uint level) {
     uint sz = thickness(self, level, false);
@@ -328,8 +324,6 @@ hline_limits(Canvas *self, uint y, uint level) {
 
 static void
 draw_hline(Canvas *self, uint x1, uint x2, uint y, uint level) {
-    if (x1 >= x2 || y >= self->height) return;
-
     // Draw a horizontal line between [x1, x2) centered at y with the thickness given by level and self->supersample_factor
     Range r = hline_limits(self, y, level);
     for (uint y = r.start; y < r.end; y++) {
