@@ -7,6 +7,8 @@ import (
 	"image"
 	"image/color"
 	"math"
+
+	"github.com/kovidgoyal/imaging"
 )
 
 var _ = fmt.Print
@@ -314,8 +316,8 @@ func (self *Context) run_paste(src Scanner, background image.Image, pos image.Po
 		i := background.(*image.NRGBA)
 		stride = i.Stride
 		pix = i.Pix
-	case *NRGB:
-		i := background.(*NRGB)
+	case *imaging.NRGB:
+		i := background.(*imaging.NRGB)
 		stride = i.Stride
 		pix = i.Pix
 	default:
@@ -339,7 +341,7 @@ func (self *Context) run_paste(src Scanner, background image.Image, pos image.Po
 
 }
 
-func (self *Context) paste_nrgba_onto_opaque(background *image.NRGBA, img image.Image, pos image.Point, bgcol *NRGBColor) {
+func (self *Context) paste_nrgba_onto_opaque(background *image.NRGBA, img image.Image, pos image.Point, bgcol *imaging.NRGBColor) {
 	src := newScanner(img)
 	if bgcol == nil {
 		self.run_paste(src, background, pos, func([]byte) {})
@@ -361,11 +363,11 @@ func (self *Context) paste_nrgba_onto_opaque(background *image.NRGBA, img image.
 }
 
 // Paste pastes the img image to the background image at the specified position. Optionally composing onto the specified opaque color.
-func (self *Context) Paste(background image.Image, img image.Image, pos image.Point, opaque_bg *NRGBColor) {
+func (self *Context) Paste(background image.Image, img image.Image, pos image.Point, opaque_bg *imaging.NRGBColor) {
 	switch b := background.(type) {
 	case *image.NRGBA:
 		self.paste_nrgba_onto_opaque(b, img, pos, opaque_bg)
-	case *NRGB:
+	case *imaging.NRGB:
 		self.paste_nrgb_onto_opaque(b, img, pos, opaque_bg)
 	default:
 		panic("Unsupported background image type")
@@ -373,7 +375,7 @@ func (self *Context) Paste(background image.Image, img image.Image, pos image.Po
 }
 
 // PasteCenter pastes the img image to the center of the background image. Optionally composing onto the specified opaque color.
-func (self *Context) PasteCenter(background image.Image, img image.Image, opaque_bg *NRGBColor) {
+func (self *Context) PasteCenter(background image.Image, img image.Image, opaque_bg *imaging.NRGBColor) {
 	bgBounds := background.Bounds()
 	bgW := bgBounds.Dx()
 	bgH := bgBounds.Dy()

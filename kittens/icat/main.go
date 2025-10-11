@@ -11,12 +11,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/kovidgoyal/imaging"
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/images"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
 
 	"golang.org/x/sys/unix"
@@ -31,7 +31,7 @@ type Place struct {
 var opts *Options
 var place *Place
 var z_index int32
-var remove_alpha *images.NRGBColor
+var remove_alpha *imaging.NRGBColor
 var flip, flop bool
 
 type transfer_mode int
@@ -68,7 +68,7 @@ func parse_background() (err error) {
 	if err != nil {
 		return fmt.Errorf("Invalid value for --background: %w", err)
 	}
-	remove_alpha = &images.NRGBColor{R: col.Red, G: col.Green, B: col.Blue}
+	remove_alpha = &imaging.NRGBColor{R: col.Red, G: col.Green, B: col.Blue}
 	return
 }
 

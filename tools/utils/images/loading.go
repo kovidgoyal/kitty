@@ -85,7 +85,7 @@ func (self *ImageFrame) DataAsSHM(pattern string) (ans shm.MMap, err error) {
 		return nil, err
 	}
 	switch img := self.Img.(type) {
-	case *NRGB:
+	case *imaging.NRGB:
 		if bytes_per_pixel == 3 {
 			copy(ans.Slice(), img.Pix)
 			return
@@ -100,7 +100,7 @@ func (self *ImageFrame) DataAsSHM(pattern string) (ans shm.MMap, err error) {
 	var final_img image.Image
 	switch bytes_per_pixel {
 	case 3:
-		rgb := &NRGB{Pix: ans.Slice(), Stride: bytes_per_pixel * self.Width, Rect: dest_rect}
+		rgb := &imaging.NRGB{Pix: ans.Slice(), Stride: bytes_per_pixel * self.Width, Rect: dest_rect}
 		final_img = rgb
 	case 4:
 		rgba := &image.NRGBA{Pix: ans.Slice(), Stride: bytes_per_pixel * self.Width, Rect: dest_rect}
@@ -118,7 +118,7 @@ func (self *ImageFrame) Data() (ans []byte) {
 		bytes_per_pixel = 3
 	}
 	switch img := self.Img.(type) {
-	case *NRGB:
+	case *imaging.NRGB:
 		if bytes_per_pixel == 3 {
 			return img.Pix
 		}
@@ -131,7 +131,7 @@ func (self *ImageFrame) Data() (ans []byte) {
 	var final_img image.Image
 	switch bytes_per_pixel {
 	case 3:
-		rgb := NewNRGB(dest_rect)
+		rgb := imaging.NewNRGB(dest_rect)
 		final_img = rgb
 		ans = rgb.Pix
 	case 4:
@@ -155,7 +155,7 @@ func ImageFrameFromSerialized(s SerializableImageFrame, data []byte) (aa *ImageF
 		return nil, fmt.Errorf("serialized image data has size: %d != %d", len(data), expected)
 	}
 	if s.Is_opaque {
-		ans.Img, err = NewNRGBWithContiguousRGBPixels(data, s.Left, s.Top, s.Width, s.Height)
+		ans.Img, err = imaging.NewNRGBWithContiguousRGBPixels(data, s.Left, s.Top, s.Width, s.Height)
 	} else {
 		ans.Img, err = NewNRGBAWithContiguousRGBAPixels(data, s.Left, s.Top, s.Width, s.Height)
 	}
@@ -524,7 +524,7 @@ func IdentifyWithMagick(path string) (ans []IdentifyRecord, err error) {
 }
 
 type RenderOptions struct {
-	RemoveAlpha          *NRGBColor
+	RemoveAlpha          *imaging.NRGBColor
 	Flip, Flop           bool
 	ResizeTo             image.Point
 	OnlyFirstFrame       bool
@@ -695,7 +695,7 @@ func OpenImageFromPathWithMagick(path string) (ans *ImageData, err error) {
 		}
 		dest_rect := image.Rect(0, 0, frame.Width, frame.Height)
 		if frame.Is_opaque {
-			frame.Img = &NRGB{Pix: data, Stride: frame.Width * 3, Rect: dest_rect}
+			frame.Img = &imaging.NRGB{Pix: data, Stride: frame.Width * 3, Rect: dest_rect}
 		} else {
 			frame.Img = &image.NRGBA{Pix: data, Stride: frame.Width * 4, Rect: dest_rect}
 		}

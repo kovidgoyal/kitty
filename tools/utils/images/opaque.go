@@ -5,6 +5,8 @@ package images
 import (
 	"fmt"
 	"image"
+
+	"github.com/kovidgoyal/imaging"
 )
 
 var _ = fmt.Print
@@ -64,7 +66,7 @@ func IsOpaque(img image.Image) bool {
 		return i.Opaque()
 	case *image.YCbCr:
 		return i.Opaque()
-	case *NRGB:
+	case *imaging.NRGB:
 		return i.Opaque()
 	}
 	return false

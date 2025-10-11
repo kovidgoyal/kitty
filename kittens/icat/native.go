@@ -49,13 +49,13 @@ func add_frame(ctx *images.Context, imgd *image_data, img image.Image) *image_fr
 	bytes_per_pixel := 4
 
 	if is_opaque || remove_alpha != nil {
-		var rgb *images.NRGB
+		var rgb *imaging.NRGB
 		bytes_per_pixel = 3
 		m, err := shm.CreateTemp(shm_template, uint64(f.width*f.height*bytes_per_pixel))
 		if err != nil {
-			rgb = images.NewNRGB(dest_rect)
+			rgb = imaging.NewNRGB(dest_rect)
 		} else {
-			rgb = &images.NRGB{Pix: m.Slice(), Stride: bytes_per_pixel * f.width, Rect: dest_rect}
+			rgb = &imaging.NRGB{Pix: m.Slice(), Stride: bytes_per_pixel * f.width, Rect: dest_rect}
 			f.shm = m
 		}
 		f.transmission_format = graphics.GRT_format_rgb
