@@ -84,32 +84,6 @@ convert_from_opts_box_drawing_scale(PyObject *py_opts, Options *opts) {
 }
 
 static void
-convert_from_python_box_drawing_line_aa_strength(PyObject *val, Options *opts) {
-    opts->box_drawing_line_aa_strength = PyFloat_AsFloat(val);
-}
-
-static void
-convert_from_opts_box_drawing_line_aa_strength(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "box_drawing_line_aa_strength");
-    if (ret == NULL) return;
-    convert_from_python_box_drawing_line_aa_strength(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
-convert_from_python_box_drawing_corner_aa_strength(PyObject *val, Options *opts) {
-    opts->box_drawing_corner_aa_strength = PyFloat_AsFloat(val);
-}
-
-static void
-convert_from_opts_box_drawing_corner_aa_strength(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "box_drawing_corner_aa_strength");
-    if (ret == NULL) return;
-    convert_from_python_box_drawing_corner_aa_strength(ret, opts);
-    Py_DECREF(ret);
-}
-
-static void
 convert_from_python_undercurl_style(PyObject *val, Options *opts) {
     opts->undercurl_style = undercurl_style(val);
 }
@@ -1396,10 +1370,6 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_modify_font(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_box_drawing_scale(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_box_drawing_line_aa_strength(py_opts, opts);
-    if (PyErr_Occurred()) return false;
-    convert_from_opts_box_drawing_corner_aa_strength(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_undercurl_style(py_opts, opts);
     if (PyErr_Occurred()) return false;

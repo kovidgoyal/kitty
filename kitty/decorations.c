@@ -318,69 +318,42 @@ add_vholes(Canvas *self, uint level, uint num) {
 static double clamp_double(double value, double lower, double upper);
 static double smoothstep(double edge0, double edge1, double x);
 
+static Range
+hline_limits(Canvas *self, uint y, uint level) {
+    uint sz = thickness(self, level, false);
+    Range r = {.start=minus(y, sz / 2)};
+    r.end = min(r.start + sz, self->height);
+    return r;
+}
+
 static void
 draw_hline(Canvas *self, uint x1, uint x2, uint y, uint level) {
     if (x1 >= x2 || y >= self->height) return;
 
-    double stroke = fmax(1.0, thickness_as_float(self, level, false));
-    stroke = ceil(stroke);
-
-    if ((uint)stroke % 2 != 0) {
-        stroke += 1.0;
+    // Draw a horizontal line between [x1, x2) centered at y with the thickness given by level and self->supersample_factor
+    Range r = hline_limits(self, y, level);
+    for (uint y = r.start; y < r.end; y++) {
+        uint8_t *py = self->mask + y * self->width;
+        memset(py + x1, 255, minus(min(x2, self->width), x1));
     }
+}
 
-    const double half_stroke = 0.5 * stroke;
-    const double aa = (double)self->supersample_factor * OPT(box_drawing_line_aa_strength);
-
-    if (x1 > self->width) x1 = self->width;
-    if (x2 > self->width) x2 = self->width;
-
-    for (uint py = 0; py < self->height; py++) {
-        const double pos_y = (double)py - (double)y + 0.5;
-        const double dist = fabs(pos_y);
-        const double outer = half_stroke - dist;
-        const double inner = -half_stroke - dist;
-        const double alpha = smoothstep(-aa, aa, outer) - smoothstep(-aa, aa, inner);
-        if (alpha <= 0.0) continue;
-
-        const uint8_t val = (uint8_t)lrint(clamp_double(alpha, 0.0, 1.0) * 255.0);
-        uint8_t *row = self->mask + (size_t)py * self->width;
-        for (uint px = x1; px < x2; px++) {
-            if (val > row[px]) row[px] = val;
-        }
-    }
+static Range
+vline_limits(Canvas *self, uint x, uint level) {
+    uint sz = thickness(self, level, true);
+    Range r = {.start = minus(x, sz / 2)};
+    r.end = min(r.start + sz, self->width);
+    return r;
 }
 
 static void
 draw_vline(Canvas *self, uint y1, uint y2, uint x, uint level) {
-    if (y1 >= y2 || x >= self->width) return;
-
-    double stroke = fmax(1.0, thickness_as_float(self, level, true));
-    stroke = ceil(stroke);
-
-    if ((uint)stroke % 2 != 0) {
-        stroke += 1.0;
-    }
-
-    const double half_stroke = 0.5 * stroke;
-    const double aa = (double)self->supersample_factor * OPT(box_drawing_line_aa_strength);
-
-    if (y1 > self->height) y1 = self->height;
-    if (y2 > self->height) y2 = self->height;
-
-    for (uint px = 0; px < self->width; px++) {
-        const double pos_x = (double)px - (double)x + 0.5;
-        const double dist = fabs(pos_x);
-        const double outer = half_stroke - dist;
-        const double inner = -half_stroke - dist;
-        const double alpha = smoothstep(-aa, aa, outer) - smoothstep(-aa, aa, inner);
-        if (alpha <= 0.0) continue;
-
-        const uint8_t val = (uint8_t)lrint(clamp_double(alpha, 0.0, 1.0) * 255.0);
-        for (uint py = y1; py < y2; py++) {
-            uint8_t *p = &self->mask[(size_t)py * self->width + px];
-            if (val > *p) *p = val;
-        }
+    // Draw a vertical line between [y1, y2) centered at x with the thickness given by level and self->supersample_factor
+    Range r = vline_limits(self, x, level);
+    uint xsz = minus(r.end, r.start);
+    for (uint y = y1; y < min(y2, self->height); y++) {
+        uint8_t *py = self->mask + y * self->width;
+        memset(py + r.start, 255, xsz);
     }
 }
 
@@ -1331,40 +1304,37 @@ fading_vline(Canvas *self, uint level, uint num, Edge fade) {
 
 static void
 rounded_corner(Canvas *self, uint level, Corner which) {
-    // Render a rounded box corner; AA is forced to 0.0 for straight segments and to the user-configured strength for curved pixels.
-    const double stroke_x = thickness_as_float(self, level, true);
-    const double stroke_y = thickness_as_float(self, level, false);
-    double stroke = fmax(stroke_x, stroke_y);
-    if (stroke <= 0.0) return;
+    // Render a rounded box corner.
+    const uint Hx = half_width(self);
+    const uint Hy = half_height(self);
+    const Range hori_line_range = hline_limits(self, Hy, level);
+    const Range vert_line_range = vline_limits(self, Hx, level);
+    const uint hori_line_height = hori_line_range.end - hori_line_range.start;
+    const uint vert_line_width = vert_line_range.end - vert_line_range.start;
+    double adjusted_Hx = (double)Hx;
+    double adjusted_Hy = (double)Hy;
+    if (hori_line_height % 2 != 0) adjusted_Hy += 0.5;
+    if (vert_line_width % 2 != 0) adjusted_Hx += 0.5;
+    const double stroke = (double)max(hori_line_height, vert_line_width);
+    const double corner_radius = fmin(adjusted_Hx, adjusted_Hy);
+    const double bx = adjusted_Hx - corner_radius;
+    const double by = adjusted_Hy - corner_radius;
 
-    stroke = ceil(stroke);
-
-    if ((uint)stroke % 2 != 0) {
-        stroke += 1.0;
-    }
-
-    const double Hx = (double)half_width(self);
-    const double Hy = (double)half_height(self);
-    const double corner_radius = fmin(Hx, Hy);
-    const double bx = Hx - corner_radius;
-    const double by = Hy - corner_radius;
-
-    // Anti-aliasing on corners controlled by configuration
-    const double aa_corner = (double)self->supersample_factor * OPT(box_drawing_corner_aa_strength);
-    const double aa_line = (double)self->supersample_factor * OPT(box_drawing_line_aa_strength);
+    // Anti-aliasing on corner
+    const double aa_corner = (double)self->supersample_factor * 0.5;
     const double half_stroke = 0.5 * stroke;
 
-    const double x_shift = (which & RIGHT_EDGE) ? Hx : -Hx;
-    const double y_shift = (which & TOP_EDGE) ? -Hy : Hy;
+    const double x_shift = (which & RIGHT_EDGE) ? adjusted_Hx : -adjusted_Hx;
+    const double y_shift = (which & TOP_EDGE) ? -adjusted_Hy : adjusted_Hy;
 
     for (uint y = 0; y < self->height; y++) {
         const double sample_y = (double)y + y_shift + 0.5;
-        const double pos_y = sample_y - Hy;
+        const double pos_y = sample_y - adjusted_Hy;
         const uint row_off = y * self->width;
 
         for (uint x = 0; x < self->width; x++) {
             const double sample_x = (double)x + x_shift + 0.5;
-            const double pos_x = sample_x - Hx;
+            const double pos_x = sample_x - adjusted_Hx;
 
             const double qx = fabs(pos_x) - bx;
             const double qy = fabs(pos_y) - by;
@@ -1372,7 +1342,7 @@ rounded_corner(Canvas *self, uint level, Corner which) {
             const double dy = qy > 0.0 ? qy : 0.0;
             const double dist = hypot(dx, dy) + fmin(fmax(qx, qy), 0.0) - corner_radius;
 
-            const double aa = (qx > 1e-7 && qy > 1e-7) ? aa_corner : aa_line;
+            const double aa = (qx > 1e-7 && qy > 1e-7) ? aa_corner : 0.0;
             const double outer = half_stroke - dist;
             const double inner = -half_stroke - dist;
             const double alpha = smoothstep(-aa, aa, outer) - smoothstep(-aa, aa, inner);

@@ -61,8 +61,6 @@ option_names = (
     'bell_path',
     'bold_font',
     'bold_italic_font',
-    'box_drawing_corner_aa_strength',
-    'box_drawing_line_aa_strength',
     'box_drawing_scale',
     'clear_all_mouse_actions',
     'clear_all_shortcuts',
@@ -517,8 +515,6 @@ class Options:
     bell_path: str | None = None
     bold_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
     bold_italic_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
-    box_drawing_corner_aa_strength: float = 0.8
-    box_drawing_line_aa_strength: float = 0
     box_drawing_scale: tuple[float, float, float, float] = (0.001, 1.0, 1.5, 2.0)
     clear_all_mouse_actions: bool = False
     clear_all_shortcuts: bool = False
