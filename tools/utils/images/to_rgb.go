@@ -45,10 +45,10 @@ func newScannerRGB(img image.Image, opaque_base imaging.NRGBColor) *scanner_rgb 
 			case 0:
 				s.palette[i] = opaque_base
 			case 0xffff:
-				s.palette[i] = imaging.NRGBColor{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8)}
+				s.palette[i] = imaging.NRGBColor{R: uint8(r >> 8), G: uint8(g >> 8), B: uint8(b >> 8)}
 			default:
 				blend(ds, s.opaque_base, uint8((r*0xffff/a)>>8), uint8((g*0xffff/a)>>8), uint8((b*0xffff/a)>>8), uint8(a>>8))
-				s.palette[i] = imaging.NRGBColor{d[0], d[1], d[2]}
+				s.palette[i] = imaging.NRGBColor{R: d[0], G: d[1], B: d[2]}
 			}
 		}
 	}
