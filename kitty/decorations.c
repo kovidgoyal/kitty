@@ -362,16 +362,14 @@ half_height(Canvas *self) { // align with non-supersampled co-ords
 }
 
 static double
-clamp_double(double value, double lower, double upper) {
-    if (value < lower) return lower;
-    if (value > upper) return upper;
-    return value;
+unit_double(double x) {
+    return x < 0.0 ? 0.0 : (x > 1.0 ? 1.0 : x);
 }
 
 static double
 smoothstep(double edge0, double edge1, double x) {
     if (edge0 == edge1) return x < edge0 ? 0.0 : 1.0;
-    double t = clamp_double((x - edge0) / (edge1 - edge0), 0.0, 1.0);
+    double t = unit_double((x - edge0) / (edge1 - edge0));
     return t * t * (3.0 - 2.0 * t);
 }
 
@@ -1342,7 +1340,7 @@ rounded_corner(Canvas *self, uint level, Corner which) {
             const double alpha = smoothstep(-aa, aa, outer) - smoothstep(-aa, aa, inner);
 
             if (alpha <= 0.0) continue;
-            const uint8_t value = (uint8_t)lrint(clamp_double(alpha, 0.0, 1.0) * 255.0);
+            const uint8_t value = (uint8_t)lrint(unit_double(alpha) * 255.0);
             uint8_t *p = &self->mask[row_off + x];
             if (value > *p) *p = value;
         }
