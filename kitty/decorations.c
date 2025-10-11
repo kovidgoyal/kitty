@@ -1297,16 +1297,12 @@ fading_vline(Canvas *self, uint level, uint num, Edge fade) {
 static void
 rounded_corner(Canvas *self, uint level, Corner which) {
     // Render a rounded box corner.
-    const uint Hx = half_width(self);
-    const uint Hy = half_height(self);
-    const Range hori_line_range = hline_limits(self, Hy, level);
-    const Range vert_line_range = vline_limits(self, Hx, level);
+    const Range hori_line_range = hline_limits(self, half_height(self), level);
+    const Range vert_line_range = vline_limits(self, half_width(self), level);
     const uint hori_line_height = hori_line_range.end - hori_line_range.start;
     const uint vert_line_width = vert_line_range.end - vert_line_range.start;
-    double adjusted_Hx = (double)Hx;
-    double adjusted_Hy = (double)Hy;
-    if (hori_line_height % 2 != 0) adjusted_Hy += 0.5;
-    if (vert_line_width % 2 != 0) adjusted_Hx += 0.5;
+    const double adjusted_Hx = (double)vert_line_range.start + (double)vert_line_width / 2.0;
+    const double adjusted_Hy = (double)hori_line_range.start + (double)hori_line_height / 2.0;
     const double stroke = (double)max(hori_line_height, vert_line_width);
     const double corner_radius = fmin(adjusted_Hx, adjusted_Hy);
     const double bx = adjusted_Hx - corner_radius;
