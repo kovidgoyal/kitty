@@ -164,6 +164,8 @@ Detailed list of changes
 
 - Fix a regression in 0.43.0 that caused high CPU usage when :opt:`disable_ligatures` was set to ``cursor`` and the tab bar was visible (:iss:`9071`)
 
+- macOS: Handle dropping of file promises into kitty in addition to file paths (:pull:`9084`)
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

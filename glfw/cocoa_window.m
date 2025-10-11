@@ -789,7 +789,18 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         self.identifier = @"kitty-content-view";
 
         [self updateTrackingAreas];
-        [self registerForDraggedTypes:@[NSPasteboardTypeFileURL, NSPasteboardTypeString]];
+        // Register for file promises in addition to regular files (macOS 10.12+)
+        if (@available(macOS 10.12, *)) {
+            NSMutableArray *types = [NSMutableArray arrayWithObjects:
+                NSPasteboardTypeFileURL,
+                NSPasteboardTypeString,
+                nil];
+            // Add file promise types
+            [types addObjectsFromArray:[NSFilePromiseReceiver readableDraggedTypes]];
+            [self registerForDraggedTypes:types];
+        } else {
+            [self registerForDraggedTypes:@[NSPasteboardTypeFileURL, NSPasteboardTypeString]];
+        }
     }
 
     return self;
