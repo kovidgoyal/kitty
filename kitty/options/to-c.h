@@ -435,7 +435,7 @@ box_drawing_scale(PyObject *val, Options *opts) {
 
 static inline void
 text_composition_strategy(PyObject *val, Options *opts) {
-    if (!PyUnicode_Check(val)) { PyErr_SetString(PyExc_TypeError, "text_rendering_strategy must be a string"); return; }
+    if (!PyUnicode_Check(val)) { PyErr_SetString(PyExc_TypeError, "text_composition_strategy must be a string"); return; }
     opts->text_old_gamma = false;
     opts->text_gamma_adjustment = 1.0f; opts->text_contrast = 0.f;
     if (PyUnicode_CompareWithASCIIString(val, "platform") == 0) {
@@ -448,7 +448,7 @@ text_composition_strategy(PyObject *val, Options *opts) {
     } else {
         RAII_PyObject(parts, PyUnicode_Split(val, NULL, 2));
         int size = PyList_GET_SIZE(parts);
-        if (size < 1 || 2 < size) { PyErr_SetString(PyExc_ValueError, "text_rendering_strategy must be of the form number:[number]"); return; }
+        if (size < 1 || 2 < size) { PyErr_SetString(PyExc_ValueError, "text_composition_strategy must be of the form 'number [number]'"); return; }
 
         if (size > 0) {
             RAII_PyObject(ga, PyFloat_FromString(PyList_GET_ITEM(parts, 0)));
