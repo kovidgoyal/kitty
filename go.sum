@@ -28,8 +28,8 @@ github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1 h1:rMY/hWfcVzBm6BL
 github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1/go.mod h1:RbNG3Q1g6GUy1/WzWVx+S24m7VKyvl57vV+cr2hpt50=
 github.com/kovidgoyal/exiffix v0.0.0-20250919160812-dbef770c2032 h1:TEV9lpo2a6fP1byiDsoJe2fXpvrj2itae41xMM+bEAg=
 github.com/kovidgoyal/exiffix v0.0.0-20250919160812-dbef770c2032/go.mod h1:VU38Nlbvb0lbyS5YkopCZMS5HuJ5QLVJBxRWyzq79q4=
-github.com/kovidgoyal/imaging v1.7.0 h1:SFWQPJdEuaRY7WhL+MJyoN5IvslgqU+z0iPaoGl3yuM=
-github.com/kovidgoyal/imaging v1.7.0/go.mod h1:mBprO214rATK/6OaPAUXmHbSMelPSFEmoBAt/IJdmno=
+github.com/kovidgoyal/imaging v1.7.1 h1:wQJf0LdE06kIlSFIFFBKJp9N4D0CJmNMfWuog+YQka4=
+github.com/kovidgoyal/imaging v1.7.1/go.mod h1:i0dBmu7j5/g4QhvS79Cx9IoiK7P02z1SwBJFDazrGLE=
 github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a h1:N9zuLhTvBSRt0gWSiJswwQ2HqDmtX/ZCDJURnKUt1Ik=
 github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a/go.mod h1:JKx41uQRwqlTZabZc+kILPrO/3jlKnQ2Z8b7YiVw5cE=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
