@@ -270,18 +270,20 @@ class DumpCommands:  # {{{
 
     def __init__(self, args: CLIOptions):
         self.draw_dump_buf: list[str] = []
+        self.dump_commands = args.dump_commands
         if args.dump_bytes:
             self.dump_bytes_to = open(args.dump_bytes, 'wb')
 
     def __call__(self, window_id: int, what: str, *a: Any) -> None:
         if what == 'draw':
-            self.draw_dump_buf.append(a[0])
+            if self.dump_commands:
+                self.draw_dump_buf.append(a[0])
         elif what == 'bytes':
             self.dump_bytes_to.write(a[0])
             self.dump_bytes_to.flush()
         elif what == 'error':
             log_error(*a)
-        else:
+        elif self.dump_commands:
             if self.draw_dump_buf:
                 safe_print('draw', ''.join(self.draw_dump_buf))
                 self.draw_dump_buf = []
