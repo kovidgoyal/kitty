@@ -245,7 +245,7 @@ parse_font_mod_size(PyObject *val, float *sz, AdjustmentUnit *unit) {
 
 static inline void
 modify_font(PyObject *mf, Options *opts) {
-#define S(which) { PyObject *v = PyDict_GetItemString(mf, #which); if (v) parse_font_mod_size(v, &opts->which.val, &opts->which.unit); }
+#define S(which) { PyObject *v = PyDict_GetItemString(mf, #which); if (v) parse_font_mod_size(v, &opts->which.val, &opts->which.unit); else memset(&opts->which, 0, sizeof(opts->which)); }
     S(underline_position); S(underline_thickness); S(strikethrough_thickness); S(strikethrough_position);
     S(cell_height); S(cell_width); S(baseline);
 #undef S
