@@ -10,6 +10,7 @@ import (
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/alecthomas/chroma/v2/styles"
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
@@ -185,8 +186,7 @@ func (h *highlighter) Sanitize(x string) string { return h.sanitize(x) }
 func (h *highlighter) HighlightFile(path string, srd StyleResolveData) (highlighted_string string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			text, _ := utils.Format_stacktrace_on_panic(r)
-			err = fmt.Errorf("%s", text)
+			err = parallel.Format_stacktrace_on_panic(r, 1)
 		}
 	}()
 	filename_for_detection := filepath.Base(path)

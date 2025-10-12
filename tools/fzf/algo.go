@@ -8,7 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/go-parallel"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -362,12 +362,11 @@ func (m *FuzzyMatcher) score(items []string, pattern string, scoring_func func(s
 	pat := []rune(pattern)
 	pattern_is_ascii := !slices.ContainsFunc(pat, func(r rune) bool { return r >= utf8.RuneSelf })
 	ans = make([]Result, len(items))
-	err = utils.Run_in_parallel_over_range(0, func(start, end int) error {
+	err = parallel.Run_in_parallel_over_range(0, func(start, end int) {
 		s := slab{}
 		for i := start; i < end; i++ {
 			ans[i] = scoring_func(items[i], pat, pattern_is_ascii, &s, as_chars)
 		}
-		return nil
 	}, 0, len(items))
 	return
 

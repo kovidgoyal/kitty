@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
@@ -170,8 +171,7 @@ func write_to_tty(
 ) {
 	defer func() {
 		if r := recover(); r != nil {
-			text, _ := utils.Format_stacktrace_on_panic(r)
-			err_channel <- fmt.Errorf("%s", text)
+			err_channel <- parallel.Format_stacktrace_on_panic(r, 1)
 		}
 	}()
 	keep_going := true

@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/disk_cache"
 	"github.com/kovidgoyal/kitty/tools/icons"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -114,8 +115,7 @@ func (p *ImagePreview) ensure_source_image() (err error) {
 func (p *ImagePreview) render_image(h *Handler, x, y, width, height int) {
 	defer func() {
 		if r := recover(); r != nil {
-			text, _ := utils.Format_stacktrace_on_panic(r)
-			h.err_chan <- fmt.Errorf("%s", text)
+			h.err_chan <- parallel.Format_stacktrace_on_panic(r, 1)
 			p.WakeupMainThread()
 		}
 	}()
@@ -160,8 +160,7 @@ func (p *ImagePreview) Render(h *Handler, x, y, width, height int) {
 func (p *ImagePreview) start_rendering() {
 	defer func() {
 		if r := recover(); r != nil {
-			text, _ := utils.Format_stacktrace_on_panic(r)
-			p.render_channel <- render_data{err: fmt.Errorf("%s", text)}
+			p.render_channel <- render_data{err: parallel.Format_stacktrace_on_panic(r, 1)}
 		}
 		close(p.render_channel)
 		p.WakeupMainThread()

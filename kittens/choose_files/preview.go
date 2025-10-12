@@ -11,6 +11,7 @@ import (
 	"sync"
 	"unicode/utf8"
 
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/highlight"
 	"github.com/kovidgoyal/kitty/tools/icons"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
@@ -261,8 +262,8 @@ func (pm *PreviewManager) highlight_file_async(path string, output chan highligh
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				text, _ := utils.Format_stacktrace_on_panic(r)
-				debugprintln(fmt.Sprintf("Failed to highlight: %s with panic: %s", path, text))
+				err := parallel.Format_stacktrace_on_panic(r, 1)
+				debugprintln(fmt.Sprintf("Failed to highlight: %s with panic: %s", path, err))
 			}
 			close(output)
 			pm.WakeupMainThread()

@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
@@ -46,8 +47,8 @@ func read_ignoring_temporary_errors(f *tty.Term, buf []byte) (int, error) {
 func read_from_tty(pipe_r *os.File, term *tty.Term, results_channel chan<- []byte, err_channel chan<- error, quit_channel <-chan byte, leftover_channel chan<- []byte) {
 	defer func() {
 		if r := recover(); r != nil {
-			text, _ := utils.Format_stacktrace_on_panic(r)
-			err_channel <- fmt.Errorf("%s", text)
+			err := parallel.Format_stacktrace_on_panic(r, 1)
+			err_channel <- err
 		}
 	}()
 	keep_going := true
@@ -123,7 +124,7 @@ func read_until_primary_device_attributes_response(term *tty.Term, initial_bytes
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				text, _ := utils.Format_stacktrace_on_panic(r)
+				text := parallel.Format_stacktrace_on_panic(r, 1).Error()
 				received <- fmt.Errorf("%s", text)
 			}
 		}()

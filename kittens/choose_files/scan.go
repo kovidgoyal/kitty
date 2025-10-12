@@ -18,6 +18,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/fzf"
 	"github.com/kovidgoyal/kitty/tools/ignorefiles"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -219,8 +220,8 @@ func (fss *FileSystemScanner) worker() {
 		defer fss.unlock()
 		fss.in_progress.Store(false)
 		if r := recover(); r != nil {
-			st, qerr := utils.Format_stacktrace_on_panic(r)
-			fss.err = fmt.Errorf("%w\n%s", qerr, st)
+			qerr := parallel.Format_stacktrace_on_panic(r, 1)
+			fss.err = qerr
 		}
 		for _, l := range fss.listeners {
 			close(l)
@@ -532,8 +533,8 @@ func (fss *FileSystemScorer) worker(on_results chan bool, worker_wait *sync.Wait
 		defer worker_wait.Done()
 		if r := recover(); r != nil {
 			if fss.keep_going.Load() {
-				st, qerr := utils.Format_stacktrace_on_panic(r)
-				fss.on_results(fmt.Errorf("%w\n%s", qerr, st), true)
+				qerr := parallel.Format_stacktrace_on_panic(r, 1)
+				fss.on_results(qerr, true)
 			}
 		} else {
 			if fss.keep_going.Load() {

@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
@@ -324,18 +325,17 @@ func (self *Loop) DebugPrintln(args ...any) {
 func (self *Loop) Run() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			var text string
-			text, err = utils.Format_stacktrace_on_panic(r)
+			err = parallel.Format_stacktrace_on_panic(r, 1)
 			is_terminal := tty.IsTerminal(os.Stderr.Fd())
 			if is_terminal {
 				os.Stderr.WriteString("\x1b]\x1b\\\x1bc\x1b[H\x1b[2J") // reset terminal
 			}
-			os.Stderr.WriteString(text)
+			os.Stderr.WriteString(err.Error())
 			os.Stderr.WriteString("\n")
 			if is_terminal {
 				if term, err := tty.OpenControllingTerm(tty.SetRaw); err == nil {
 					defer term.RestoreAndClose()
-					term.DebugPrintln(text)
+					term.DebugPrintln(err.Error())
 					fmt.Println("Press any key to exit.\r")
 					buf := make([]byte, 16)
 					_, _ = term.Read(buf)
@@ -592,8 +592,7 @@ type SizedText struct {
 
 func (self *Loop) RecoverFromPanicInGoRoutine() {
 	if r := recover(); r != nil {
-		text, err := utils.Format_stacktrace_on_panic(r)
-		err = fmt.Errorf("Panicked in non-main go routine\n%s\n%w", text, err)
+		err := parallel.Format_stacktrace_on_panic(r, 1)
 		// print to kitty stdout as multiple go routines might panic but only
 		// one panic is reported by the main loop panic_channel
 		if f := tty.KittyStdout(); f != nil {

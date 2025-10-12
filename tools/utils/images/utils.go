@@ -8,7 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/go-parallel"
 )
 
 var _ = fmt.Print
@@ -55,8 +55,7 @@ func (self *Context) SafeParallel(start, stop int, fn func(<-chan int)) (err err
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
-					text, _ := utils.Format_stacktrace_on_panic(r)
-					err = fmt.Errorf("%s", text)
+					err = parallel.Format_stacktrace_on_panic(r, 1)
 				}
 				wg.Done()
 			}()

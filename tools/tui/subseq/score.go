@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
@@ -215,12 +216,11 @@ func ScoreItems(query string, items []string, opts Options) []*Match {
 	ropts := resolved_options_type{
 		level1: []rune(opts.Level1), level2: []rune(opts.Level2), level3: []rune(opts.Level3),
 	}
-	utils.Run_in_parallel_over_range(opts.NumberOfThreads, func(start, limit int) error {
+	parallel.Run_in_parallel_over_range(opts.NumberOfThreads, func(start, limit int) {
 		w := workspace_type{}
 		for i := start; i < limit; i++ {
 			ans[i] = score_item(items[i], i, nr, &ropts, &w)
 		}
-		return nil
 	}, 0, len(items))
 	return ans
 }
