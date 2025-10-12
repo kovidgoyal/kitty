@@ -1062,6 +1062,45 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     [super updateTrackingAreas];
 }
 
+- (BOOL)mouseDownCanMoveWindow
+{
+    if (!window) return NO;
+
+    // Only enable dragging if window is borderless (decorated=false) or titlebar is hidden
+    if (window->decorated && !window->ns.titlebar_hidden) return NO;
+
+    // Only enable if tab bar region is valid
+    if (!window->ns.tab_bar_region.valid) return NO;
+
+    // Get mouse location in window coordinates
+    NSPoint location = [NSEvent mouseLocation];
+    NSPoint windowLocation = [self.window convertPointFromScreen:location];
+
+    // Convert to view coordinates (flip Y axis)
+    NSRect contentRect = [self frame];
+    int mouse_x = (int)windowLocation.x;
+    int mouse_y = (int)(contentRect.size.height - windowLocation.y);
+
+    // Debug logging
+    NSLog(@"mouseDownCanMoveWindow: decorated=%d titlebar_hidden=%d valid=%d mouse=(%d,%d) tabbar=(%d,%d,%d,%d)",
+          window->decorated, window->ns.titlebar_hidden, window->ns.tab_bar_region.valid,
+          mouse_x, mouse_y,
+          window->ns.tab_bar_region.left, window->ns.tab_bar_region.top,
+          window->ns.tab_bar_region.right, window->ns.tab_bar_region.bottom);
+
+    // Check if mouse is in tab bar region
+    if (mouse_x >= window->ns.tab_bar_region.left &&
+        mouse_x <= window->ns.tab_bar_region.right &&
+        mouse_y >= window->ns.tab_bar_region.top &&
+        mouse_y <= window->ns.tab_bar_region.bottom)
+    {
+        NSLog(@"mouseDownCanMoveWindow: returning YES - mouse is in tab bar region");
+        return YES;
+    }
+
+    return NO;
+}
+
 - (NSTextInputContext *)inputContext
 {
     return input_context;
@@ -1644,6 +1683,17 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 @end
 // }}}
+
+// Helper function to set tab bar region for draggable area
+static void
+_glfwSetTabBarRegion(_GLFWwindow* window, int left, int top, int right, int bottom)
+{
+    window->ns.tab_bar_region.left = left;
+    window->ns.tab_bar_region.top = top;
+    window->ns.tab_bar_region.right = right;
+    window->ns.tab_bar_region.bottom = bottom;
+    window->ns.tab_bar_region.valid = (right > left && bottom > top);
+}
 
 // GLFW window class {{{
 
@@ -3460,6 +3510,13 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     // HACK: Changing the style mask can cause the first responder to be cleared
     [nsw makeFirstResponder:window->ns.view];
 }}
+
+GLFWAPI void glfwSetTabBarRegion(GLFWwindow* handle, int left, int top, int right, int bottom)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+    _glfwSetTabBarRegion(window, left, top, right, bottom);
+}
 
 GLFWAPI uint32_t
 glfwGetCocoaKeyEquivalent(uint32_t glfw_key, int glfw_mods, int *cocoa_mods) {

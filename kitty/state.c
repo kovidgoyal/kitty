@@ -814,6 +814,29 @@ PYWRAP1(set_tab_bar_render_data) {
     PA("KOIIII", &os_window_id, &screen, &g.left, &g.top, &g.right, &g.bottom);
     WITH_OS_WINDOW(os_window_id)
         init_window_render_data(&os_window->tab_bar_render_data, g, screen);
+        // Update GLFW window's tab bar region for draggable area
+        if (os_window->handle && OPT(hide_window_decorations)) {
+            // Check if tab bar geometry is minimal (height <= 41 pixels) which indicates
+            // the tab bar is not really visible (single tab or not properly initialized)
+            unsigned tab_bar_height = (g.bottom > g.top) ? (unsigned)(g.bottom - g.top) : 0;
+            bool tab_bar_minimal = tab_bar_height <= 41;
+
+            // When tab bar is minimal or hidden, provide a larger draggable region
+            if (tab_bar_minimal || os_window->num_tabs < OPT(tab_bar_min_tabs)) {
+                // Tab bar is not visible or minimal, create a generous draggable region at the top
+                // Use 100 pixels or 1/4 of window height, whichever is smaller
+                unsigned draggable_height = 100;
+                unsigned quarter_height = (unsigned)(os_window->viewport_height / 4);
+                if (quarter_height < draggable_height) {
+                    draggable_height = quarter_height;
+                }
+                glfwSetTabBarRegion(os_window->handle, 0, 0,
+                                  os_window->viewport_width, draggable_height);
+            } else {
+                // Tab bar is visible and substantial, use the actual tab bar region
+                glfwSetTabBarRegion(os_window->handle, g.left, g.top, g.right, g.bottom);
+            }
+        }
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
 }

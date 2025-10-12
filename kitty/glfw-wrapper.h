@@ -2334,6 +2334,10 @@ typedef void (*glfwCocoaSetWindowChrome_func)(GLFWwindow*, unsigned int, bool, u
 GFW_EXTERN glfwCocoaSetWindowChrome_func glfwCocoaSetWindowChrome_impl;
 #define glfwCocoaSetWindowChrome glfwCocoaSetWindowChrome_impl
 
+typedef void (*glfwSetTabBarRegion_func)(GLFWwindow*, int, int, int, int);
+GFW_EXTERN glfwSetTabBarRegion_func glfwSetTabBarRegion_impl;
+#define glfwSetTabBarRegion glfwSetTabBarRegion_impl
+
 typedef const char* (*glfwGetPrimarySelectionString_func)(GLFWwindow*);
 GFW_EXTERN glfwGetPrimarySelectionString_func glfwGetPrimarySelectionString_impl;
 #define glfwGetPrimarySelectionString glfwGetPrimarySelectionString_impl

@@ -133,6 +133,15 @@ typedef struct _GLFWwindowNS
     bool            titlebar_hidden;
     unsigned long   pre_full_screen_style_mask;
 
+    // Tab bar region for draggable area when titlebar is hidden
+    struct {
+        int left;
+        int top;
+        int right;
+        int bottom;
+        bool valid;
+    } tab_bar_region;
+
     // Cached window properties to filter out duplicate events
     int             width, height;
     int             fbWidth, fbHeight;
