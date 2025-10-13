@@ -227,7 +227,10 @@ class Loop:
             self.asyncio_loop: asyncio.AbstractEventLoop = asyncio.SelectorEventLoop(selectors.SelectSelector())
             asyncio.set_event_loop(self.asyncio_loop)
         else:
-            self.asyncio_loop = asyncio.get_event_loop()
+            try:
+                self.asyncio_loop = asyncio.get_event_loop()
+            except RuntimeError:
+                self.asyncio_loop = asyncio.new_event_loop()
         self.return_code = 0
         self.overlay_ready_reported = False
         self.optional_actions = optional_actions
