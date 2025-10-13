@@ -53,7 +53,7 @@ jobs:
 
         # Initializes the CodeQL tools for scanning.
         - name: Initialize CodeQL
-          uses: github/codeql-action/init@v3
+          uses: github/codeql-action/init@v4
           with:
               languages: ${{ matrix.language }}
               trap-caching: false
@@ -63,7 +63,7 @@ jobs:
           run: python3 .github/workflows/ci.py build
 
         - name: Perform CodeQL Analysis
-          uses: github/codeql-action/analyze@v3
+          uses: github/codeql-action/analyze@v4
 
         - name: Run govulncheck
           if: matrix.language == 'go'
