@@ -1361,7 +1361,16 @@ commit(Canvas *self, Edge lines, bool solid) {
 
 static void
 corner(Canvas *self, uint hlevel, uint vlevel, Corner which) {
-    half_hline(self, hlevel, which & RIGHT_EDGE, thickness(self, vlevel, true) / 2);
+    const uint v_thickness = thickness(self, vlevel, true);
+
+    uint v_half_tickness;
+    if (which & LEFT_EDGE && v_thickness % 2 != 0) {
+        v_half_tickness = v_thickness / 2 + 1;
+    } else {
+        v_half_tickness = v_thickness / 2;
+    }
+
+    half_hline(self, hlevel, which & RIGHT_EDGE, v_half_tickness);
     half_vline(self, vlevel, which & BOTTOM_EDGE, 0);
 }
 
