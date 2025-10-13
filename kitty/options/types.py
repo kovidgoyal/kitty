@@ -345,6 +345,7 @@ option_names = (
     'detect_urls',
     'dim_opacity',
     'disable_ligatures',
+    'draw_borders_when_focused',
     'draw_minimal_borders',
     'dynamic_background_opacity',
     'editor',
@@ -543,6 +544,7 @@ class Options:
     detect_urls: bool = True
     dim_opacity: float = 0.4
     disable_ligatures: int = 0
+    draw_borders_when_focused: bool = False
     draw_minimal_borders: bool = True
     dynamic_background_opacity: bool = False
     editor: str = '.'

@@ -6,7 +6,7 @@ from enum import IntFlag
 from functools import partial
 from typing import NamedTuple
 
-from .fast_data_types import BORDERS_PROGRAM, get_options, init_borders_program, set_borders_rects
+from .fast_data_types import BORDERS_PROGRAM, current_focused_os_window_id, get_options, init_borders_program, set_borders_rects
 from .shaders import program_for
 from .typing_compat import LayoutType
 from .utils import color_as_int
@@ -95,13 +95,16 @@ class Borders:
             bw = groups[0].effective_border()
         draw_borders = bw > 0 and draw_window_borders
         active_group = all_windows.active_group
+        # Check if this OS window is focused (only if draw_borders_when_focused is enabled)
+        os_window_focused = current_focused_os_window_id() == self.os_window_id if opts.draw_borders_when_focused else True
 
         for i, wg in enumerate(groups):
             window_bg = color_as_int(wg.default_bg)
             window_bg = (window_bg << 8) | BorderColor.window_bg
             if draw_borders and not draw_minimal_borders:
                 # Draw the border rectangles
-                if wg is active_group and draw_active_borders:
+                # Only check OS window focus if draw_borders_when_focused is enabled
+                if wg is active_group and draw_active_borders and os_window_focused:
                     color = BorderColor.active
                 else:
                     color = BorderColor.bell if wg.needs_attention else BorderColor.inactive

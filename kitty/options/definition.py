@@ -1224,6 +1224,17 @@ drawn.
 '''
     )
 
+opt('draw_borders_when_focused', 'no',
+    option_type='to_bool',
+    long_text='''
+Draw borders around windows when the OS window is focused, regardless of the
+layout or number of windows. This allows you to see which terminal window has
+focus even in layouts like stack that normally don't show borders, or when
+there is only a single window. The border color will change to the active color
+when focused and inactive color when unfocused.
+'''
+    )
+
 opt('window_margin_width', '0',
     option_type='edge_width',
     long_text='''
