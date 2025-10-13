@@ -19,9 +19,9 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
-	golang.org/x/image v0.31.0
-	golang.org/x/sys v0.36.0
-	golang.org/x/text v0.29.0
+	golang.org/x/image v0.32.0
+	golang.org/x/sys v0.37.0
+	golang.org/x/text v0.30.0
 	howett.net/plist v1.0.1
 )
 
