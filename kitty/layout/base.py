@@ -7,7 +7,7 @@ from itertools import repeat
 from typing import Any, Callable, NamedTuple
 
 from kitty.borders import BorderColor
-from kitty.fast_data_types import Region, set_active_window, viewport_for_window
+from kitty.fast_data_types import Region, get_options, set_active_window, viewport_for_window
 from kitty.options.types import Options
 from kitty.types import Edges, WindowGeometry, WindowMapper
 from kitty.typing_compat import TypedDict, WindowType
@@ -248,7 +248,7 @@ class Layout:
         self.set_active_window_in_os_window = partial(set_active_window, os_window_id, tab_id)
 
     def bias_increment_for_cell(self, all_windows: WindowList, is_horizontal: bool) -> float:
-        self._set_dimensions()
+        self._set_dimensions(all_windows)
         return self.calculate_bias_increment_for_a_single_cell(all_windows, is_horizontal)
 
     def calculate_bias_increment_for_a_single_cell(self, all_windows: WindowList, is_horizontal: bool) -> float:
@@ -335,7 +335,7 @@ class Layout:
         if bias is not None:
             idx = all_windows.group_idx_for_window(window)
             if idx is not None:
-                self._set_dimensions()
+                self._set_dimensions(all_windows)
                 self._bias_slot(all_windows, idx, bias)
 
     def _bias_slot(self, all_windows: WindowList, idx: int, bias: float) -> bool:
@@ -354,11 +354,23 @@ class Layout:
             is_visible = window is active_window or (is_group_leader and not self.only_active_window_visible)
             window.set_visible_in_layout(is_visible)
 
-    def _set_dimensions(self) -> None:
+    def _set_dimensions(self, all_windows: WindowList | None = None) -> None:
         lgd.central, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
+        # Update lgd.draw_minimal_borders based on the current number of visible windows
+        # and the draw_window_borders_for_single_window option
+        opts = get_options()
+        base_draw_minimal = opts.draw_minimal_borders and sum(opts.window_margin_width) == 0
+        if all_windows is not None and opts.draw_window_borders_for_single_window:
+            num_visible = all_windows.num_groups
+            if num_visible == 1:
+                lgd.draw_minimal_borders = False
+            else:
+                lgd.draw_minimal_borders = base_draw_minimal
+        else:
+            lgd.draw_minimal_borders = base_draw_minimal
 
     def __call__(self, all_windows: WindowList) -> None:
-        self._set_dimensions()
+        self._set_dimensions(all_windows)
         self.update_visibility(all_windows)
         self.blank_rects = []
         self.do_layout(all_windows)
@@ -432,7 +444,7 @@ class Layout:
         return all_windows.compute_needs_borders_map(lgd.draw_active_borders)
 
     def get_minimal_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
-        self._set_dimensions()
+        self._set_dimensions(windows)
         yield from self.minimal_borders(windows)
 
     def minimal_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
