@@ -88,6 +88,10 @@ def utils(self, q, windows):
 
 class TestLayout(BaseTest):
 
+    def setUp(self):
+        super().setUp()
+        self.set_options()
+
     def do_ops_test(self, q):
         windows = create_windows(q)
         ids, visible_ids, expect_ids, check_visible = utils(self, q, windows)
