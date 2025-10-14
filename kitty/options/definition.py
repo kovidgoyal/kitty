@@ -1224,14 +1224,16 @@ drawn.
 '''
     )
 
-opt('draw_borders_when_focused', 'no',
+opt('draw_window_borders_for_single_window', 'no',
     option_type='to_bool',
     long_text='''
-Draw borders around windows when the OS window is focused, regardless of the
-layout or number of windows. This allows you to see which terminal window has
-focus even in layouts like stack that normally don't show borders, or when
-there is only a single window. The border color will change to the active color
-when focused and inactive color when unfocused.
+Draw borders around a window even when there is only a single window visible. When
+enabled and there is only a single window, full borders are drawn around it (as if
+:opt:`draw_minimal_borders` is false). The border will show in the active color when
+the window is focused and the OS window has focus, and in the inactive color when the
+OS window loses focus. This provides a clear visual indicator of whether the kitty
+window is focused. When there are multiple windows visible, this option has no effect
+and normal border drawing rules apply.
 '''
     )
 

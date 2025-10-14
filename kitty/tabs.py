@@ -419,11 +419,11 @@ class Tab:  # {{{
         if tm is not None:
             ly = self.current_layout
             opts = get_options()
-            # Draw borders if: normal conditions OR new option enabled (regardless of focus)
-            # When unfocused, borders will automatically use inactive_border_color
+            # Draw borders if: normal conditions OR new option enabled
+            # The new option makes kitty behave like draw_minimal_borders is true
             draw_borders = (
                 (ly.needs_window_borders and self.windows.num_visble_groups > 1) or ly.must_draw_borders
-                or opts.draw_borders_when_focused
+                or opts.draw_window_borders_for_single_window
             )
             self.borders(
                 all_windows=self.windows,

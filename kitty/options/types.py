@@ -345,8 +345,8 @@ option_names = (
     'detect_urls',
     'dim_opacity',
     'disable_ligatures',
-    'draw_borders_when_focused',
     'draw_minimal_borders',
+    'draw_window_borders_for_single_window',
     'dynamic_background_opacity',
     'editor',
     'enable_audio_bell',
@@ -544,8 +544,8 @@ class Options:
     detect_urls: bool = True
     dim_opacity: float = 0.4
     disable_ligatures: int = 0
-    draw_borders_when_focused: bool = False
     draw_minimal_borders: bool = True
+    draw_window_borders_for_single_window: bool = False
     dynamic_background_opacity: bool = False
     editor: str = '.'
     enable_audio_bell: bool = True
