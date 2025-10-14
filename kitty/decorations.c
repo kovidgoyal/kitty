@@ -1361,7 +1361,16 @@ commit(Canvas *self, Edge lines, bool solid) {
 
 static void
 corner(Canvas *self, uint hlevel, uint vlevel, Corner which) {
-    half_hline(self, hlevel, which & RIGHT_EDGE, thickness(self, vlevel, true) / 2);
+    const uint v_thickness = thickness(self, vlevel, true);
+
+    uint v_half_tickness;
+    if (which & LEFT_EDGE && v_thickness % 2 != 0) {
+        v_half_tickness = v_thickness / 2 + 1;
+    } else {
+        v_half_tickness = v_thickness / 2;
+    }
+
+    half_hline(self, hlevel, which & RIGHT_EDGE, v_half_tickness);
     half_vline(self, vlevel, which & BOTTOM_EDGE, 0);
 }
 
@@ -1401,16 +1410,28 @@ horz_t(Canvas *self, uint base_char, uint variation) {
 
 static void
 dvcorner(Canvas *self, uint level, Corner which) {
-    half_dhline(self, level, which & LEFT_EDGE, TOP_EDGE | BOTTOM_EDGE);
-    uint gap = thickness(self, level + 1, false);
-    half_vline(self, level, which & TOP_EDGE, gap / 2 + thickness(self, level, false));
+    Point dline_position = half_dhline(self, level, which & LEFT_EDGE, TOP_EDGE | BOTTOM_EDGE);
+
+    if (which & BOTTOM_EDGE) {
+        Range bottom_limit = hline_limits(self, dline_position.y, level);
+        draw_vline(self, 0, bottom_limit.end, half_width(self), level);
+    } else {
+        Range top_limit = hline_limits(self, dline_position.x, level);
+        draw_vline(self, top_limit.start, self->height, half_width(self), level);
+    }
 }
 
 static void
 dhcorner(Canvas *self, uint level, Corner which) {
-    half_dvline(self, level, which & TOP_EDGE, LEFT_EDGE | RIGHT_EDGE);
-    uint gap = thickness(self, level + 1, true);
-    half_hline(self, level, which & LEFT_EDGE, gap / 2 + thickness(self, level, true));
+    Point dline_position = half_dvline(self, level, which & TOP_EDGE, LEFT_EDGE | RIGHT_EDGE);
+
+    if (which & RIGHT_EDGE) {
+        Range right_limit = vline_limits(self, dline_position.y, level);
+        draw_hline(self, 0, right_limit.end, half_height(self), level);
+    } else {
+        Range left_limit = vline_limits(self, dline_position.x, level);
+        draw_hline(self, left_limit.start, self->width, half_height(self), level);
+    }
 }
 
 static void
@@ -1425,15 +1446,18 @@ dcorner(Canvas *self, uint level, Corner which) {
     draw_hline(self, x1, x2, ypos + ydelta, level);
     if (which & RIGHT_EDGE) x2 = minus(x2, 2 * vgap); else x1 += 2 * vgap;
     draw_hline(self, x1, x2, ypos - ydelta, level);
-    uint y1 = self->height / 2, y2 = self->height / 2;
-    if (which & BOTTOM_EDGE) y1 = 0; else y2 = self->height;
+
     uint xpos = self->width / 2;
     int xdelta = (which & LEFT_EDGE) ? vgap : -vgap;
-    uint yd = thickness(self, level, true) / 2;
-    if (which & BOTTOM_EDGE) y2 += hgap + yd; else y1 -= hgap + yd;
-    draw_vline(self, y1, y2, xpos - xdelta, level);
-    if (which & BOTTOM_EDGE) y2 -= 2 * hgap; else y1 += 2 * hgap;
-    draw_vline(self, y1, y2, xpos + xdelta, level);
+    Range top_hline_limit = hline_limits(self, ypos + ydelta, level);
+    Range bottom_hline_limit = hline_limits(self, ypos - ydelta, level);
+    if (which & TOP_EDGE) {
+        draw_vline(self, top_hline_limit.start, self->height, xpos - xdelta, level);
+        draw_vline(self, bottom_hline_limit.start, self->height, xpos + xdelta, level);
+    } else {
+        draw_vline(self, 0, bottom_hline_limit.end, xpos + xdelta, level);
+        draw_vline(self, 0, top_hline_limit.end, xpos - xdelta, level);
+    }
 }
 
 
