@@ -1315,8 +1315,10 @@ cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
         [dock_pbar setFraction:percent/100.];
         [dock_pbar setIndeterminate:NO];
     } else if (percent > 100) {
-        [dock_pbar setIndeterminate:YES];
-        tick_dock_pbar();
+        if (![dock_pbar isIndeterminate]) {
+            [dock_pbar setIndeterminate:YES];
+            tick_dock_pbar();
+        }
     }
     [dock_pbar setFrameSize:NSMakeSize(dockTile.size.width - 20, 20)];
     [dock_pbar setFrameOrigin:NSMakePoint(10, -2)];

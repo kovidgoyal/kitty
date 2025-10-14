@@ -166,6 +166,8 @@ Detailed list of changes
 
 - macOS: Handle dropping of file promises into kitty in addition to file paths (:pull:`9084`)
 
+- macOS: Fix indeterminate progress bar displayed on dock icon increasing speed when indeterminate progress is set without being cleared first (:iss:`9114`)
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

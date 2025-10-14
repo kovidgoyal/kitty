@@ -691,10 +691,10 @@ class Window:
         self.last_focused_at = 0.
         self.is_focused: bool = False
         self.progress = Progress()
+        self.clear_progress_timer: int = 0
         self.last_resized_at = 0.
         self.started_at = monotonic()
         self.created_at = time_ns()
-        self.clear_progress_timer: int = 0
         self.current_remote_data: list[str] = []
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: bool | None = None
