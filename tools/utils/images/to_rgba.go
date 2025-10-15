@@ -8,9 +8,12 @@ import (
 	"math"
 
 	"github.com/kovidgoyal/imaging"
+	"github.com/kovidgoyal/kitty/tools/tty"
 )
 
 var _ = fmt.Print
+var debugprintln = tty.DebugPrintln
+var _ = debugprintln
 
 func (self *Context) run_paste(src imaging.Scanner, background image.Image, pos image.Point, postprocess func([]byte)) {
 	pos = pos.Sub(background.Bounds().Min)
@@ -32,8 +35,8 @@ func (self *Context) run_paste(src imaging.Scanner, background image.Image, pos 
 	default:
 		panic(fmt.Sprintf("Unsupported image type: %v", v))
 	}
-	if len(pix) != background.Bounds().Dy()*stride {
-		panic(fmt.Sprintf("background image has insufficient pixel data. Bounds: %v Stride: %d", background.Bounds(), stride))
+	if len(pix) < background.Bounds().Dy()*stride {
+		panic(fmt.Sprintf("background image has insufficient pixel data. Bounds: %v Stride: %d Data len: %d", background.Bounds(), stride, len(pix)))
 	}
 	if err := self.SafeParallel(interRect.Min.Y, interRect.Max.Y, func(ys <-chan int) {
 		for y := range ys {

@@ -14,7 +14,7 @@ require (
 	github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1
 	github.com/kovidgoyal/exiffix v0.0.0-20250919160812-dbef770c2032
 	github.com/kovidgoyal/go-parallel v1.0.1
-	github.com/kovidgoyal/imaging v1.7.1
+	github.com/kovidgoyal/imaging v1.7.2
 	github.com/seancfoley/ipaddress-go v1.7.1
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/zeebo/xxh3 v1.0.2
