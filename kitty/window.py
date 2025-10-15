@@ -1333,6 +1333,9 @@ class Window:
         b |= b << 8
         self.screen.send_escape_code_to_child(ESC_OSC, f'{code};rgb:{r:04x}/{g:04x}/{b:04x}')
 
+    def on_reset(self) -> None:
+        self.child.reset_termios_state()
+
     def notify_child_of_resize(self) -> None:
         pty_size = self.last_reported_pty_size
         if pty_size[0] > -1 and self.screen.in_band_resize_notification:

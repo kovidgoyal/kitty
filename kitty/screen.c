@@ -213,6 +213,7 @@ screen_reset(Screen *self) {
     set_dynamic_color(self, 110, NULL);
     set_dynamic_color(self, 111, NULL);
     set_color_table_color(self, 104, NULL);
+    CALLBACK("on_reset", NULL)
 }
 
 void

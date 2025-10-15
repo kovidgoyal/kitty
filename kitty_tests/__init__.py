@@ -60,6 +60,10 @@ class Callbacks:
     def notify_child_of_resize(self):
         self.num_of_resize_events += 1
 
+    def on_reset(self) -> None:
+        if self.pty is not None:
+            self.pty.reset_termios_state()
+
     def color_control(self, code, data) -> None:
         from kitty.window import color_control
         response = color_control(self.color_profile, code, data)
@@ -331,6 +335,7 @@ class PTY:
             from kitty.child import openpty
             self.master_fd, self.slave_fd = openpty()
             self.child_pid = 0
+            self.initial_termios_state = termios.tcgetattr(self.master_fd)
         else:
             self.child_pid, self.master_fd = fork()
             self.is_child = self.child_pid == CHILD
@@ -363,6 +368,10 @@ class PTY:
         self.callbacks = Callbacks(self)
         self.screen = Screen(self.callbacks, rows, columns, scrollback, cell_width, cell_height, 0, self.callbacks)
         self.received_bytes = b''
+
+    def reset_termios_state(self):
+        if s := getattr(self, 'initial_termios_state', None):
+            termios.tcsetattr(self.master_fd, s)
 
     def turn_off_echo(self):
         s = termios.tcgetattr(self.master_fd)

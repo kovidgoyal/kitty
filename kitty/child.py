@@ -3,6 +3,7 @@
 
 import os
 import sys
+import termios
 from collections import defaultdict
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
@@ -326,6 +327,7 @@ class Child:
         else:
             stdin_read_fd = stdin_write_fd = -1
         self.final_env, must_run_startup_command_via_kitten = self.get_final_env()
+        self.initial_termios_state = termios.tcgetattr(master)
         argv = list(self.argv)
         cwd = self.cwd
         pass_fds = self.pass_fds
@@ -543,7 +545,6 @@ class Child:
 
     def send_signal_for_key(self, key_num: bytes) -> bool:
         import signal
-        import termios
         if self.child_fd is None:
             return False
         t = termios.tcgetattr(self.child_fd)
@@ -561,3 +562,10 @@ class Child:
         pgrp = os.tcgetpgrp(self.child_fd)
         os.killpg(pgrp, s)
         return True
+
+    def reset_termios_state(self) -> None:
+        if s := getattr(self, 'initial_termios_state', None):
+            try:
+                termios.tcsetattr(s, termios.TCSANOW)
+            except OSError:
+                pass
