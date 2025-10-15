@@ -69,8 +69,15 @@ def idx_for_id(win_id: int, windows: Iterable[WindowType]) -> int | None:
     return None
 
 
+def effective_draw_minimal_borders(opts: Options, has_more_than_one_visible_group: bool = True) -> bool:
+    ans = opts.draw_minimal_borders and sum(opts.window_margin_width) == 0
+    if not has_more_than_one_visible_group and opts.draw_window_borders_for_single_window:
+        ans = False
+    return ans
+
+
 def set_layout_options(opts: Options) -> None:
-    lgd.draw_minimal_borders = opts.draw_minimal_borders and sum(opts.window_margin_width) == 0
+    lgd.draw_minimal_borders = effective_draw_minimal_borders(opts)
     lgd.draw_active_borders = opts.active_border_color is not None
     lgd.alignment_x = -1 if opts.placement_strategy.endswith('left') else 1 if opts.placement_strategy.endswith('right') else 0
     lgd.alignment_y = -1 if opts.placement_strategy.startswith('top') else 1 if opts.placement_strategy.startswith('bottom') else 0
@@ -354,20 +361,12 @@ class Layout:
             is_visible = window is active_window or (is_group_leader and not self.only_active_window_visible)
             window.set_visible_in_layout(is_visible)
 
-    def _set_dimensions(self, all_windows: WindowList | None = None) -> None:
+    def _set_dimensions(self, all_windows: WindowList) -> None:
         lgd.central, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
         # Update lgd.draw_minimal_borders based on the current number of visible windows
         # and the draw_window_borders_for_single_window option
         opts = get_options()
-        base_draw_minimal = opts.draw_minimal_borders and sum(opts.window_margin_width) == 0
-        if all_windows is not None and opts.draw_window_borders_for_single_window:
-            num_visible = all_windows.num_groups
-            if num_visible == 1:
-                lgd.draw_minimal_borders = False
-            else:
-                lgd.draw_minimal_borders = base_draw_minimal
-        else:
-            lgd.draw_minimal_borders = base_draw_minimal
+        lgd.draw_minimal_borders = effective_draw_minimal_borders(opts, all_windows.has_more_than_one_visible_group)
 
     def __call__(self, all_windows: WindowList) -> None:
         self._set_dimensions(all_windows)

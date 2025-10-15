@@ -141,6 +141,10 @@ Detailed list of changes
   login shell at startup using the :opt:`env` directive in kitty.conf
   (:iss:`9042`)
 
+- A new option :opt:`draw_window_borders_for_single_window` to force kitty to
+  always draw a window border even when only a single window is present
+  (:pull:`9112`)
+
 - Fix a regression in 0.43.0 that caused a black flicker when closing a tab in
   the presence of a background image (:iss:`9060`)
 

@@ -420,8 +420,8 @@ class Tab:  # {{{
             ly = self.current_layout
             opts = get_options()
             draw_borders = (
-                (ly.needs_window_borders and self.windows.num_visble_groups > 1) or ly.must_draw_borders
-                or opts.draw_window_borders_for_single_window
+                ly.must_draw_borders or opts.draw_window_borders_for_single_window or
+                (ly.needs_window_borders and self.windows.has_more_than_one_visible_group)
             )
             self.borders(
                 all_windows=self.windows,
