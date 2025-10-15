@@ -24,15 +24,16 @@ func (self *Context) run_paste(src imaging.Scanner, background image.Image, pos 
 	var pix []uint8
 	switch v := background.(type) {
 	case *image.NRGBA:
-		i := background.(*image.NRGBA)
-		stride = i.Stride
-		pix = i.Pix
+		stride = v.Stride
+		pix = v.Pix
 	case *imaging.NRGB:
-		i := background.(*imaging.NRGB)
-		stride = i.Stride
-		pix = i.Pix
+		stride = v.Stride
+		pix = v.Pix
 	default:
 		panic(fmt.Sprintf("Unsupported image type: %v", v))
+	}
+	if len(pix) != background.Bounds().Dy()*stride {
+		panic(fmt.Sprintf("background image has insufficient pixel data. Bounds: %v Stride: %d", background.Bounds(), stride))
 	}
 	if err := self.SafeParallel(interRect.Min.Y, interRect.Max.Y, func(ys <-chan int) {
 		for y := range ys {

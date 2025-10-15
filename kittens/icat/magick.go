@@ -5,6 +5,7 @@ package icat
 import (
 	"fmt"
 
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/utils/images"
 )
@@ -31,6 +32,11 @@ func Render(path string, ro *images.RenderOptions, frames []images.IdentifyRecor
 }
 
 func render_image_with_magick(imgd *image_data, src *opened_input) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = parallel.Format_stacktrace_on_panic(r, 1)
+		}
+	}()
 	err = src.PutOnFilesystem()
 	if err != nil {
 		return err

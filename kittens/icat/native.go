@@ -4,13 +4,15 @@ package icat
 
 import (
 	"fmt"
+	"image"
+	"image/gif"
+
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/images"
 	"github.com/kovidgoyal/kitty/tools/utils/shm"
-	"image"
-	"image/gif"
 
 	"github.com/kovidgoyal/exiffix"
 	"github.com/kovidgoyal/imaging"
@@ -151,6 +153,11 @@ func add_gif_frames(ctx *images.Context, imgd *image_data, gf *gif.GIF) error {
 }
 
 func render_image_with_go(imgd *image_data, src *opened_input) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = parallel.Format_stacktrace_on_panic(r, 1)
+		}
+	}()
 	ctx := images.Context{}
 	switch {
 	case imgd.format_uppercase == "GIF" && opts.Loop != 0:

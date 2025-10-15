@@ -279,7 +279,7 @@ func process_arg(arg input_arg) {
 	var format string
 	var err error
 	imgd := image_data{source_name: arg.value}
-	if opts.Engine == "auto" || opts.Engine == "native" {
+	if opts.Engine == "auto" || opts.Engine == "builtin" {
 		c, format, err = image.DecodeConfig(f.file)
 		f.Rewind()
 		can_use_go = err == nil
@@ -299,12 +299,16 @@ func process_arg(arg input_arg) {
 		}
 		err = render_image_with_go(&imgd, &f)
 		if err != nil {
-			merr := render_image_with_magick(&imgd, &f)
-			if merr != nil {
-				report_error(arg.value, "Could not render image to RGB", err)
-				return
+			if opts.Engine != "builtin" {
+				merr := render_image_with_magick(&imgd, &f)
+				if merr != nil {
+					report_error(arg.value, "Could not render image to RGB", err)
+					return
+				}
+				err = nil
 			}
-			err = nil
+			report_error(arg.value, "could not render", err)
+			return
 		}
 	} else {
 		err = render_image_with_magick(&imgd, &f)
