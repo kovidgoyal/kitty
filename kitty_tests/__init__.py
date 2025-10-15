@@ -371,7 +371,7 @@ class PTY:
 
     def reset_termios_state(self):
         if s := getattr(self, 'initial_termios_state', None):
-            termios.tcsetattr(self.master_fd, s)
+            termios.tcsetattr(self.master_fd, termios.TCSANOW, s)
 
     def turn_off_echo(self):
         s = termios.tcgetattr(self.master_fd)

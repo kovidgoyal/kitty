@@ -564,8 +564,8 @@ class Child:
         return True
 
     def reset_termios_state(self) -> None:
-        if s := getattr(self, 'initial_termios_state', None):
+        if (s := getattr(self, 'initial_termios_state', None)) and self.child_fd is not None:
             try:
-                termios.tcsetattr(s, termios.TCSANOW)
+                termios.tcsetattr(self.child_fd, termios.TCSANOW, s)
             except OSError:
                 pass
