@@ -418,10 +418,15 @@ class Tab:  # {{{
         tm = self.tab_manager_ref()
         if tm is not None:
             ly = self.current_layout
+            opts = get_options()
+            draw_borders = (
+                (ly.needs_window_borders and self.windows.num_visble_groups > 1) or ly.must_draw_borders
+                or opts.draw_window_borders_for_single_window
+            )
             self.borders(
                 all_windows=self.windows,
                 current_layout=ly, tab_bar_rects=tm.tab_bar_rects,
-                draw_window_borders=(ly.needs_window_borders and self.windows.num_visble_groups > 1) or ly.must_draw_borders
+                draw_window_borders=draw_borders
             )
 
     def create_layout_object(self, name: str) -> Layout:

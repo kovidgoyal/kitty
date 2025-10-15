@@ -971,6 +971,9 @@ class Parser:
     def draw_minimal_borders(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['draw_minimal_borders'] = to_bool(val)
 
+    def draw_window_borders_for_single_window(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['draw_window_borders_for_single_window'] = to_bool(val)
+
     def dynamic_background_opacity(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['dynamic_background_opacity'] = to_bool(val)
 

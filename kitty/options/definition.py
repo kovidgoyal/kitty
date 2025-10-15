@@ -1224,6 +1224,19 @@ drawn.
 '''
     )
 
+opt('draw_window_borders_for_single_window', 'no',
+    option_type='to_bool',
+    long_text='''
+Draw borders around a window even when there is only a single window visible. When
+enabled and there is only a single window, full borders are drawn around it (as if
+:opt:`draw_minimal_borders` is false). The border will show in the active color when
+the window is focused and the OS window has focus, and in the inactive color when the
+OS window loses focus. This provides a clear visual indicator of whether the kitty
+window is focused. When there are multiple windows visible, this option has no effect
+and normal border drawing rules apply.
+'''
+    )
+
 opt('window_margin_width', '0',
     option_type='edge_width',
     long_text='''

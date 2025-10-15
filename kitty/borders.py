@@ -6,7 +6,7 @@ from enum import IntFlag
 from functools import partial
 from typing import NamedTuple
 
-from .fast_data_types import BORDERS_PROGRAM, get_options, init_borders_program, set_borders_rects
+from .fast_data_types import BORDERS_PROGRAM, current_focused_os_window_id, get_options, init_borders_program, set_borders_rects
 from .shaders import program_for
 from .typing_compat import LayoutType
 from .utils import color_as_int
@@ -84,7 +84,6 @@ class Borders:
     ) -> None:
         opts = get_options()
         draw_active_borders = opts.active_border_color is not None
-        draw_minimal_borders = opts.draw_minimal_borders and max(opts.window_margin_width) < 1
         rects: list[Border] = []
         for br in current_layout.blank_rects:
             rects.append(Border(*br, BorderColor.default_bg))
@@ -96,12 +95,28 @@ class Borders:
         draw_borders = bw > 0 and draw_window_borders
         active_group = all_windows.active_group
 
+        # Count visible windows
+        num_visible_groups = len(groups)
+
+        # When draw_window_borders_for_single_window is set and there's only 1 window,
+        # behave like draw_minimal_borders is False (draw full borders around the window)
+        if opts.draw_window_borders_for_single_window and num_visible_groups == 1:
+            draw_minimal_borders = False
+        else:
+            draw_minimal_borders = opts.draw_minimal_borders and max(opts.window_margin_width) < 1
+
+        # For single window with the option enabled, check OS window focus state
+        # When unfocused, the border should appear inactive
+        os_window_focused = True
+        if opts.draw_window_borders_for_single_window and num_visible_groups == 1:
+            os_window_focused = current_focused_os_window_id() == self.os_window_id
+
         for i, wg in enumerate(groups):
             window_bg = color_as_int(wg.default_bg)
             window_bg = (window_bg << 8) | BorderColor.window_bg
             if draw_borders and not draw_minimal_borders:
                 # Draw the border rectangles
-                if wg is active_group and draw_active_borders:
+                if wg is active_group and draw_active_borders and os_window_focused:
                     color = BorderColor.active
                 else:
                     color = BorderColor.bell if wg.needs_attention else BorderColor.inactive

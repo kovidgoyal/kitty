@@ -346,6 +346,7 @@ option_names = (
     'dim_opacity',
     'disable_ligatures',
     'draw_minimal_borders',
+    'draw_window_borders_for_single_window',
     'dynamic_background_opacity',
     'editor',
     'enable_audio_bell',
@@ -544,6 +545,7 @@ class Options:
     dim_opacity: float = 0.4
     disable_ligatures: int = 0
     draw_minimal_borders: bool = True
+    draw_window_borders_for_single_window: bool = False
     dynamic_background_opacity: bool = False
     editor: str = '.'
     enable_audio_bell: bool = True
