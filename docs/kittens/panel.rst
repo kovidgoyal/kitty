@@ -164,8 +164,11 @@ Compatibility with various platforms
            under it. This is because it uses the wlr protocol for backgrounds itself.
 
         🟠 **river**
-           Not all functionality has been tested, but the quick access terminal
-           appears as it should and the keyboard focus is properly restored too.
+           Breaks when hiding (unmapping) layer shell windows. This means the quick
+           access terminal is non-functional, but background and dock panels work.
+           More technically, when unmapping the surface (attaching a NULL buffer to
+           it) river continues to send configure events to the unmapped surface,
+           leading to Wayland protocol errors.
 
         🔴 **GNOME** (mutter)
            Does not implement the wlr protocol at all, nothing works.
