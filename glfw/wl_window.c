@@ -1054,6 +1054,7 @@ layer_set_properties(const _GLFWwindow *window, bool during_creation, uint32_t w
                 case GLFW_EDGE_CENTER:
                     break;
                 case GLFW_EDGE_CENTER_SIZED:
+                    which_anchor = 0;
                     panel_width = width; panel_height = height;
                     break;
                 case GLFW_EDGE_NONE:
