@@ -468,7 +468,10 @@ These keys are encoded using three schemes::
 
 In the above, if there are no modifiers, the modifier parameter is omitted.
 The modifier value is encoded as described in the :ref:`modifiers` section,
-above. When the second form is used, the number is always ``1`` and must be
+above, except that lock keys (such as :kbd:`Num lock` and :kbd:`Caps lock`)
+are not encoded as the legacy mode has no encoding for them.
+
+When the second form is used, the number is always ``1`` and must be
 omitted if the modifiers field is also absent. The third form becomes the
 second form when modifiers are present (``SS3 is the bytes 0x1b 0x4f``).
 
