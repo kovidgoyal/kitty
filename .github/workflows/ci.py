@@ -211,7 +211,9 @@ def install_grype() -> str:
     data = download_with_retry(url)
     with tarfile.open(fileobj=io.BytesIO(data), mode='r') as tf:
         tf.extract('grype', path=dest, filter='fully_trusted')
-    return os.path.join(dest, 'grype')
+    exe = os.path.join(dest, 'grype')
+    subprocess.check_call([exe, 'db', 'update'])
+    return exe
 
 
 IGNORED_DEPENDENCY_CVES = [
