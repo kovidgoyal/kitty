@@ -197,34 +197,63 @@ pointer_handle_axis(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32
     pointer_handle_axis_common(AXIS_EVENT_CONTINUOUS, axis, value);
 }
 
+struct pointer_state {
+    struct {
+        float x, y;
+    } accumulated_discrete_scroll;
+};
+
 static void
-pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
+pointer_handle_frame(void *data, struct wl_pointer *pointer UNUSED) {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;
+
+    struct pointer_state* ps = data;
+    const float scale = (float)_glfwWaylandWindowScale(window);
+
     float x = 0, y = 0;
     int highres = 0;
 
-    if (info.discrete.y_axis_type != AXIS_EVENT_UNKNOWN) {
-        y = info.discrete.y;
-        if (info.discrete.y_axis_type == AXIS_EVENT_VALUE120) y /= 120.f;
+    if (info.discrete.y_axis_type == AXIS_EVENT_VALUE120) {
+        // VALUE120 events are "discrete" in that they scroll lines, not pixels.
+        // But each VALUE120 event of value `v` represents a fraction of a
+        // line, specifically `v` 120ths of a line.
+
+        // GLFWscrollfun does not handle non-highres scroll events with
+        // non-integer value. We could use `highres` for VALUE120 events, but
+        // that would be wrong since the units should be interpreted as
+        // fractional lines, not pixels.
+
+        // So instead, we accumulate discrete events until we have at least one
+        // full line to scroll, and then call the GLFWscrollfun to scroll entire
+        // lines.
+        ps->accumulated_discrete_scroll.y += scale * info.discrete.y / 120.f;
+        const int lines = (int)(ps->accumulated_discrete_scroll.y);
+        y = (float)lines;
+        ps->accumulated_discrete_scroll.y -= y;
+    } else if (info.discrete.y_axis_type != AXIS_EVENT_UNKNOWN) {
+        y = scale * info.discrete.y;
     } else if (info.continuous.y_axis_type != AXIS_EVENT_UNKNOWN) {
         highres = 1;
-        y = info.continuous.y;
+        y = scale * info.continuous.y;
     }
 
-    if (info.discrete.x_axis_type != AXIS_EVENT_UNKNOWN) {
-        x = info.discrete.x;
-        if (info.discrete.x_axis_type == AXIS_EVENT_VALUE120) x /= 120.f;
+    if (info.discrete.x_axis_type == AXIS_EVENT_VALUE120) {
+        ps->accumulated_discrete_scroll.x += scale * info.discrete.x / 120.f;
+        const int lines = (int)(ps->accumulated_discrete_scroll.x);
+        x = (float)lines;
+        ps->accumulated_discrete_scroll.x -= x;
+    } else if (info.discrete.x_axis_type != AXIS_EVENT_UNKNOWN) {
+        x = scale * info.discrete.x;
     } else if (info.continuous.x_axis_type != AXIS_EVENT_UNKNOWN) {
         highres = 1;
-        x = info.continuous.x;
+        x = scale * info.continuous.x;
     }
+
     /* clear pointer_curr_axis_info for next frame */
     memset(&info, 0, sizeof(info));
 
     if (x != 0.0f || y != 0.0f) {
-        float scale = (float)_glfwWaylandWindowScale(window);
-        y *= scale; x *= scale;
         _glfwInputScroll(window, -x, y, highres, _glfw.wl.xkb.states.modifiers);
     }
 }
@@ -413,7 +442,9 @@ static void seatHandleCapabilities(void* data UNUSED,
     if ((caps & WL_SEAT_CAPABILITY_POINTER) && !_glfw.wl.pointer)
     {
         _glfw.wl.pointer = wl_seat_get_pointer(seat);
-        wl_pointer_add_listener(_glfw.wl.pointer, &pointerListener, NULL);
+        struct pointer_state* ps = calloc(1, sizeof(*ps));
+        wl_proxy_set_user_data((struct wl_proxy*)_glfw.wl.pointer, ps);
+        wl_pointer_add_listener(_glfw.wl.pointer, &pointerListener, ps);
         if (_glfw.wl.wp_cursor_shape_manager_v1) {
             if (_glfw.wl.wp_cursor_shape_device_v1) wp_cursor_shape_device_v1_destroy(_glfw.wl.wp_cursor_shape_device_v1);
             _glfw.wl.wp_cursor_shape_device_v1 = NULL;
@@ -424,6 +455,11 @@ static void seatHandleCapabilities(void* data UNUSED,
     {
         if (_glfw.wl.wp_cursor_shape_device_v1) wp_cursor_shape_device_v1_destroy(_glfw.wl.wp_cursor_shape_device_v1);
         _glfw.wl.wp_cursor_shape_device_v1 = NULL;
+        struct pointer_state* ps = wl_proxy_get_user_data((struct wl_proxy*)_glfw.wl.pointer);
+        if (ps) {
+            free(ps);
+            wl_proxy_set_user_data((struct wl_proxy*)_glfw.wl.pointer, NULL);
+        }
         wl_pointer_destroy(_glfw.wl.pointer);
         _glfw.wl.pointer = NULL;
         if (_glfw.wl.cursorAnimationTimer) toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
@@ -953,8 +989,14 @@ void _glfwPlatformTerminate(void)
         zxdg_decoration_manager_v1_destroy(_glfw.wl.decorationManager);
     if (_glfw.wl.wmBase)
         xdg_wm_base_destroy(_glfw.wl.wmBase);
-    if (_glfw.wl.pointer)
+    if (_glfw.wl.pointer) {
+        struct pointer_state* ps = wl_proxy_get_user_data((struct wl_proxy*)_glfw.wl.pointer);
+        if (ps) {
+            free(ps);
+            wl_proxy_set_user_data((struct wl_proxy*)_glfw.wl.pointer, NULL);
+        }
         wl_pointer_destroy(_glfw.wl.pointer);
+    }
     if (_glfw.wl.keyboard)
         wl_keyboard_destroy(_glfw.wl.keyboard);
     if (_glfw.wl.seat)
