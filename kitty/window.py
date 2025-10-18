@@ -1334,7 +1334,7 @@ class Window:
         self.screen.send_escape_code_to_child(ESC_OSC, f'{code};rgb:{r:04x}/{g:04x}/{b:04x}')
 
     def on_reset(self) -> None:
-        self.child.reset_termios_state()
+        pass
 
     def notify_child_of_resize(self) -> None:
         pty_size = self.last_reported_pty_size
@@ -1918,6 +1918,7 @@ class Window:
         self.screen.cursor.x = self.screen.cursor.y = 0
         if reset:
             self.screen.reset()
+            self.child.reset_termios_state()
         else:
             self.screen.erase_in_display(3 if scrollback else 2, False)
 

@@ -563,9 +563,9 @@ class Child:
         os.killpg(pgrp, s)
         return True
 
-    def reset_termios_state(self) -> None:
+    def reset_termios_state(self, when: int = termios.TCSANOW) -> None:
         if (s := getattr(self, 'initial_termios_state', None)) and self.child_fd is not None:
             try:
-                termios.tcsetattr(self.child_fd, termios.TCSANOW, s)
+                termios.tcsetattr(self.child_fd, when, s)
             except OSError:
                 pass
