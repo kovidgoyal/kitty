@@ -322,10 +322,6 @@ class TestParser(BaseTest):
             # Bad continuation byte (restored as ASCII)
             pb(b'"\xe1\x28\xa1"', '"\ufffd(\ufffd"')  # )
 
-            # The following all fail when using SIMD and need to be fixed in the SIMD parser
-            if which != 1:
-                continue
-
             # Overlong 2-byte sequence for U+0000 (should be `0x00`)
             pb(b'"\xc0\x80"', '"\ufffd\ufffd"')
 
