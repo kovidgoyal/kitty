@@ -1,4 +1,4 @@
-50490 23220
+50949 23472
 0 null
 1 start of heading
 2 start of text
@@ -2118,6 +2118,7 @@
 2188 arabic letter tah with three dots below
 2189 arabic letter keheh with two dots vertically below
 2190 arabic vertical tail
+2191 arabic letter noon with ring above
 2192 arabic pound mark above
 2193 arabic piastre mark above
 2199 arabic pepet
@@ -2859,6 +2860,7 @@
 3160 telugu letter tsa
 3161 telugu letter dza
 3162 telugu letter rrra
+3164 telugu archaic shrii
 3165 telugu letter nakaara pollu
 3168 telugu letter vocalic rr
 3169 telugu letter vocalic ll
@@ -2955,6 +2957,7 @@
 3277 kannada sign virama
 3285 kannada length mark
 3286 kannada ai length mark
+3292 kannada archaic shrii
 3293 kannada letter nakaara pollu
 3294 kannada letter fa
 3296 kannada letter vocalic rr
@@ -6134,6 +6137,33 @@
 6860 combining latin small letter insular g
 6861 combining latin small letter insular r
 6862 combining latin small letter insular t
+6863 combining double caron
+6864 combining vertical-line-acute
+6865 combining grave-vertical-line
+6866 combining vertical-line-grave
+6867 combining acute-vertical-line
+6868 combining vertical-line-macron
+6869 combining macron-vertical-line
+6870 combining vertical-line-acute-grave
+6871 combining vertical-line-grave-acute
+6872 combining macron-acute-grave
+6873 combining sharp sign
+6874 combining flat sign
+6875 combining down tack above
+6876 combining diaeresis with raised left dot
+6877 combining dot-and-ring below
+6880 combining left tack above
+6881 combining right tack above
+6882 combining minus sign above
+6883 combining inverted bridge above
+6884 combining square above
+6885 combining seagull above
+6886 combining double arch below
+6887 combining double arch above
+6888 combining equals sign above
+6889 combining left angle centred above
+6890 combining upwards arrow above
+6891 combining double rightwards arrow above
 6912 balinese sign ulu ricem
 6913 balinese sign ulu candra
 6914 balinese sign cecek
@@ -7542,6 +7572,7 @@
 8382 lari sign
 8383 bitcoin sign
 8384 som sign
+8385 saudi riyal sign
 8400 combining left harpoon above
 8401 combining right harpoon above
 8402 combining long vertical line overlay
@@ -10236,6 +10267,7 @@
 11155 newline right
 11156 four corner arrows circling anticlockwise
 11157 rightwards black arrow
+11158 equals sign with infinity above
 11159 symbol for type a electronics
 11160 three-d top-lighted leftwards equilateral arrowhead
 11161 three-d right-lighted upwards equilateral arrowhead
@@ -14271,9 +14303,13 @@
 42955 latin capital letter rams horn
 42956 latin capital letter s with diagonal stroke
 42957 latin small letter s with diagonal stroke
+42958 latin capital letter pharyngeal voiced fricative
+42959 latin small letter pharyngeal voiced fricative
 42960 latin capital letter closed insular g
 42961 latin small letter closed insular g
+42962 latin capital letter double thorn
 42963 latin small letter double thorn
+42964 latin capital letter double wynn
 42965 latin small letter double wynn
 42966 latin capital letter middle scots s
 42967 latin small letter middle scots s
@@ -14282,6 +14318,7 @@
 42970 latin capital letter lambda	lamda
 42971 latin small letter lambda	lamda
 42972 latin capital letter lambda with stroke	lamda
+42993 modifier letter capital s
 42994 modifier letter capital c
 42995 modifier letter capital f
 42996 modifier letter capital q
@@ -19420,6 +19457,22 @@
 64448 arabic symbol small tah above
 64449 arabic symbol small tah below
 64450 arabic symbol wasla above
+64451 arabic ligature jalla wa-alaa
+64452 arabic ligature daamat barakaatuhum
+64453 arabic ligature rahmatu allaahi taaalaa alayh
+64454 arabic ligature rahmatu allaahi alayhim
+64455 arabic ligature rahmatu allaahi alayhimaa
+64456 arabic ligature rahimahum allaahu taaalaa
+64457 arabic ligature rahimahumaa allaah
+64458 arabic ligature rahimahumaa allaahu taaalaa
+64459 arabic ligature radi allaahu taaalaa anhum
+64460 arabic ligature hafizahu allaah
+64461 arabic ligature hafizahu allaahu taaalaa
+64462 arabic ligature hafizahum allaahu taaalaa
+64463 arabic ligature hafizahumaa allaahu taaalaa
+64464 arabic ligature sallallaahu taaalaa alayhi wa-sallam
+64465 arabic ligature ajjal allaahu farajahu ash-shareef
+64466 arabic ligature alayhi ar-rahmah
 64467 arabic letter ng isolated form
 64468 arabic letter ng final form
 64469 arabic letter ng initial form
@@ -19865,6 +19918,8 @@
 64909 arabic ligature meem with jeem with meem initial form
 64910 arabic ligature meem with khah with jeem initial form
 64911 arabic ligature meem with khah with meem initial form
+64912 arabic ligature rahmatu allaahi alayh
+64913 arabic ligature rahmatu allaahi alayhaa
 64914 arabic ligature meem with jeem with khah initial form
 64915 arabic ligature heh with meem with jeem initial form
 64916 arabic ligature heh with meem with meem initial form
@@ -19919,6 +19974,13 @@
 64965 arabic ligature sad with meem with meem initial form
 64966 arabic ligature seen with khah with yeh final form
 64967 arabic ligature noon with jeem with yeh final form
+64968 arabic ligature rahimahu allaah taaalaa
+64969 arabic ligature radi allaahu taaalaa anh
+64970 arabic ligature radi allaahu taaalaa anhaa
+64971 arabic ligature radi allaahu taaalaa anhumaa
+64972 arabic ligature sallallahu alayhi wa-alaa aalihee wa-sallam
+64973 arabic ligature ajjal allaahu taaalaa farajahu ash-shareef
+64974 arabic ligature karrama allaahu wajhah
 64975 arabic ligature salaamuhu alaynaa
 65008 arabic ligature salla used as koranic stop sign isolated form
 65009 arabic ligature qala used as koranic stop sign isolated form
@@ -22203,6 +22265,32 @@
 67896 lydian letter nn
 67897 lydian letter c
 67903 lydian triangular mark
+67904 sidetic letter n01
+67905 sidetic letter n02
+67906 sidetic letter n03
+67907 sidetic letter n04
+67908 sidetic letter n05
+67909 sidetic letter n06
+67910 sidetic letter n07
+67911 sidetic letter n08
+67912 sidetic letter n09
+67913 sidetic letter n10
+67914 sidetic letter n11
+67915 sidetic letter n12
+67916 sidetic letter n13
+67917 sidetic letter n14
+67918 sidetic letter n15
+67919 sidetic letter n16
+67920 sidetic letter n17
+67921 sidetic letter n18
+67922 sidetic letter n19
+67923 sidetic letter n20
+67924 sidetic letter n21
+67925 sidetic letter n22
+67926 sidetic letter n23
+67927 sidetic letter n24
+67928 sidetic letter n25
+67929 sidetic letter n26
 67968 meroitic hieroglyphic letter a
 67969 meroitic hieroglyphic letter e
 67970 meroitic hieroglyphic letter i
@@ -23036,6 +23124,20 @@
 69314 arabic letter dal with two dots vertically below
 69315 arabic letter tah with two dots vertically below
 69316 arabic letter kaf with two dots vertically below
+69317 arabic small yeh barree with two dots below
+69318 arabic letter thin noon
+69319 arabic letter yeh with four dots below
+69328 arabic biblical end of verse
+69329 arabic ligature alayhaa as-salaatu was-salaam
+69330 arabic ligature alayhim as-salaatu was-salaam
+69331 arabic ligature alayhimaa as-salaatu was-salaam
+69332 arabic ligature qaddasa allaahu sirrah
+69333 arabic ligature quddisa sirruhum
+69334 arabic ligature quddisa sirruhumaa
+69335 arabic ligature quddisat asraaruhum
+69336 arabic ligature nawwara allaahu marqadah
+69370 arabic double vertical bar below
+69371 arabic small low noon
 69372 arabic combining alef overlay
 69373 arabic small low word sakta
 69374 arabic small low word qasr
@@ -25016,6 +25118,14 @@
 72455 devanagari sign western nine-like bhale
 72456 devanagari sign reversed nine-like bhale
 72457 devanagari sign mindu
+72544 sharada vowel sign oe
+72545 sharada vowel sign ooe
+72546 sharada vowel sign ue
+72547 sharada vowel sign uue
+72548 sharada vowel sign short e
+72549 sharada vowel sign short o
+72550 sharada vowel sign candra e
+72551 sharada vowel sign candra o
 72640 sunuwar letter devi
 72641 sunuwar letter tasla
 72642 sunuwar letter eko
@@ -25363,6 +25473,60 @@
 73127 gunjala gondi digit seven
 73128 gunjala gondi digit eight
 73129 gunjala gondi digit nine
+73136 tolong siki letter i
+73137 tolong siki letter e
+73138 tolong siki letter u
+73139 tolong siki letter o
+73140 tolong siki letter a
+73141 tolong siki letter aa
+73142 tolong siki letter p
+73143 tolong siki letter ph
+73144 tolong siki letter b
+73145 tolong siki letter bh
+73146 tolong siki letter m
+73147 tolong siki letter t
+73148 tolong siki letter th
+73149 tolong siki letter d
+73150 tolong siki letter dh
+73151 tolong siki letter n
+73152 tolong siki letter tt
+73153 tolong siki letter tth
+73154 tolong siki letter dd
+73155 tolong siki letter ddh
+73156 tolong siki letter nn
+73157 tolong siki letter c
+73158 tolong siki letter ch
+73159 tolong siki letter j
+73160 tolong siki letter jh
+73161 tolong siki letter ny
+73162 tolong siki letter k
+73163 tolong siki letter kh
+73164 tolong siki letter g
+73165 tolong siki letter gh
+73166 tolong siki letter ng
+73167 tolong siki letter y
+73168 tolong siki letter r
+73169 tolong siki letter l
+73170 tolong siki letter v
+73171 tolong siki letter nny
+73172 tolong siki letter s
+73173 tolong siki letter h
+73174 tolong siki letter x
+73175 tolong siki letter rr
+73176 tolong siki letter rrh
+73177 tolong siki sign sela
+73178 tolong siki sign hecaka
+73179 tolong siki ungga
+73184 tolong siki digit zero
+73185 tolong siki digit one
+73186 tolong siki digit two
+73187 tolong siki digit three
+73188 tolong siki digit four
+73189 tolong siki digit five
+73190 tolong siki digit six
+73191 tolong siki digit seven
+73192 tolong siki digit eight
+73193 tolong siki digit nine
 73440 makasar letter ka
 73441 makasar letter ga
 73442 makasar letter nga
@@ -33619,6 +33783,56 @@
 93848 medefaidrin full stop
 93849 medefaidrin symbol aiva
 93850 medefaidrin exclamation oh
+93856 beria erfe capital letter arkab
+93857 beria erfe capital letter basigna
+93858 beria erfe capital letter darbai
+93859 beria erfe capital letter eh
+93860 beria erfe capital letter fitko
+93861 beria erfe capital letter goway
+93862 beria erfe capital letter hirdeabo
+93863 beria erfe capital letter i
+93864 beria erfe capital letter djai
+93865 beria erfe capital letter kobo
+93866 beria erfe capital letter lakko
+93867 beria erfe capital letter meri
+93868 beria erfe capital letter nini
+93869 beria erfe capital letter gna
+93870 beria erfe capital letter ngay
+93871 beria erfe capital letter oi
+93872 beria erfe capital letter pi
+93873 beria erfe capital letter erigo
+93874 beria erfe capital letter erigo tamura
+93875 beria erfe capital letter seri
+93876 beria erfe capital letter shep
+93877 beria erfe capital letter tatasoue
+93878 beria erfe capital letter ui
+93879 beria erfe capital letter wasse
+93880 beria erfe capital letter ay
+93883 beria erfe small letter arkab
+93884 beria erfe small letter basigna
+93885 beria erfe small letter darbai
+93886 beria erfe small letter eh
+93887 beria erfe small letter fitko
+93888 beria erfe small letter goway
+93889 beria erfe small letter hirdeabo
+93890 beria erfe small letter i
+93891 beria erfe small letter djai
+93892 beria erfe small letter kobo
+93893 beria erfe small letter lakko
+93894 beria erfe small letter meri
+93895 beria erfe small letter nini
+93896 beria erfe small letter gna
+93897 beria erfe small letter ngay
+93898 beria erfe small letter oi
+93899 beria erfe small letter pi
+93900 beria erfe small letter erigo
+93901 beria erfe small letter erigo tamura
+93902 beria erfe small letter seri
+93903 beria erfe small letter shep
+93904 beria erfe small letter tatasoue
+93905 beria erfe small letter ui
+93906 beria erfe small letter wasse
+93907 beria erfe small letter ay
 93952 miao letter pa
 93953 miao letter ba
 93954 miao letter yi pa
@@ -33775,8 +33989,13 @@
 94180 khitan small script filler
 94192 vietnamese alternate reading mark ca
 94193 vietnamese alternate reading mark nhay
+94194 chinese small simplified er
+94195 chinese small traditional er
+94196 yangqin sign slow one beat
+94197 yangqin sign slow three half beats
+94198 yangqin sign slow two beats
 94208 <tangut ideograph, first>
-100343 <tangut ideograph, last>
+100351 <tangut ideograph, last>
 100352 tangut component-001
 100353 tangut component-002
 100354 tangut component-003
@@ -35017,7 +35236,122 @@
 101589 khitan small script character-18cd5
 101631 khitan small script character-18cff
 101632 <tangut ideograph supplement, first>
-101640 <tangut ideograph supplement, last>
+101662 <tangut ideograph supplement, last>
+101760 tangut component-769
+101761 tangut component-770
+101762 tangut component-771
+101763 tangut component-772
+101764 tangut component-773
+101765 tangut component-774
+101766 tangut component-775
+101767 tangut component-776
+101768 tangut component-777
+101769 tangut component-778
+101770 tangut component-779
+101771 tangut component-780
+101772 tangut component-781
+101773 tangut component-782
+101774 tangut component-783
+101775 tangut component-784
+101776 tangut component-785
+101777 tangut component-786
+101778 tangut component-787
+101779 tangut component-788
+101780 tangut component-789
+101781 tangut component-790
+101782 tangut component-791
+101783 tangut component-792
+101784 tangut component-793
+101785 tangut component-794
+101786 tangut component-795
+101787 tangut component-796
+101788 tangut component-797
+101789 tangut component-798
+101790 tangut component-799
+101791 tangut component-800
+101792 tangut component-801
+101793 tangut component-802
+101794 tangut component-803
+101795 tangut component-804
+101796 tangut component-805
+101797 tangut component-806
+101798 tangut component-807
+101799 tangut component-808
+101800 tangut component-809
+101801 tangut component-810
+101802 tangut component-811
+101803 tangut component-812
+101804 tangut component-813
+101805 tangut component-814
+101806 tangut component-815
+101807 tangut component-816
+101808 tangut component-817
+101809 tangut component-818
+101810 tangut component-819
+101811 tangut component-820
+101812 tangut component-821
+101813 tangut component-822
+101814 tangut component-823
+101815 tangut component-824
+101816 tangut component-825
+101817 tangut component-826
+101818 tangut component-827
+101819 tangut component-828
+101820 tangut component-829
+101821 tangut component-830
+101822 tangut component-831
+101823 tangut component-832
+101824 tangut component-833
+101825 tangut component-834
+101826 tangut component-835
+101827 tangut component-836
+101828 tangut component-837
+101829 tangut component-838
+101830 tangut component-839
+101831 tangut component-840
+101832 tangut component-841
+101833 tangut component-842
+101834 tangut component-843
+101835 tangut component-844
+101836 tangut component-845
+101837 tangut component-846
+101838 tangut component-847
+101839 tangut component-848
+101840 tangut component-849
+101841 tangut component-850
+101842 tangut component-851
+101843 tangut component-852
+101844 tangut component-853
+101845 tangut component-854
+101846 tangut component-855
+101847 tangut component-856
+101848 tangut component-857
+101849 tangut component-858
+101850 tangut component-859
+101851 tangut component-860
+101852 tangut component-861
+101853 tangut component-862
+101854 tangut component-863
+101855 tangut component-864
+101856 tangut component-865
+101857 tangut component-866
+101858 tangut component-867
+101859 tangut component-868
+101860 tangut component-869
+101861 tangut component-870
+101862 tangut component-871
+101863 tangut component-872
+101864 tangut component-873
+101865 tangut component-874
+101866 tangut component-875
+101867 tangut component-876
+101868 tangut component-877
+101869 tangut component-878
+101870 tangut component-879
+101871 tangut component-880
+101872 tangut component-881
+101873 tangut component-882
+101874 tangut component-883
 110576 katakana letter minnan tone-2
 110577 katakana letter minnan tone-3
 110578 katakana letter minnan tone-4
@@ -36124,6 +36458,9 @@
 118007 outlined digit seven
 118008 outlined digit eight
 118009 outlined digit nine
+118010 snake symbol
+118011 flying saucer symbol
+118012 nose symbol
 118016 block octant-3
 118017 block octant-23
 118018 block octant-123
@@ -36560,6 +36897,46 @@
 118449 keyhole
 118450 old personal computer with monitor in portrait orientation
 118451 black right triangle caret
+118458 fragile symbol
+118459 office building symbol
+118460 tree symbol
+118461 apple symbol
+118462 cherry symbol
+118463 strawberry symbol
+118464 hebe
+118465 iris
+118466 flora
+118467 metis
+118468 parthenope
+118469 victoria
+118470 egeria
+118471 irene
+118472 eunomia
+118473 psyche
+118474 thetis
+118475 melpomene
+118476 fortuna
+118477 astronomical symbol for asteroid proserpina
+118478 bellona
+118479 amphitrite
+118480 leukothea
+118496 geomantic figure populus
+118497 geomantic figure tristitia
+118498 geomantic figure albus
+118499 geomantic figure fortuna major
+118500 geomantic figure rubeus
+118501 geomantic figure acquisitio
+118502 geomantic figure conjunctio
+118503 geomantic figure caput draconis
+118504 geomantic figure laetitia
+118505 geomantic figure carcer
+118506 geomantic figure amissio
+118507 geomantic figure puella
+118508 geomantic figure fortuna minor
+118509 geomantic figure puer
+118510 geomantic figure cauda draconis
+118511 geomantic figure via
+118512 medium small white circle with horizontal bar
 118528 znamenny combining mark gorazdo nizko s kryzhem on left
 118529 znamenny combining mark nizko s kryzhem on left
 118530 znamenny combining mark tsata on left
@@ -39499,6 +39876,61 @@
 124409 ol onal digit eight
 124410 ol onal digit nine
 124415 ol onal abbreviation sign
+124608 tai yo letter low ko
+124609 tai yo letter high ko
+124610 tai yo letter low kho
+124611 tai yo letter high kho
+124612 tai yo letter go
+124613 tai yo letter ngo
+124614 tai yo letter co
+124615 tai yo letter low xo
+124616 tai yo letter high xo
+124617 tai yo letter low nyo
+124618 tai yo letter high nyo
+124619 tai yo letter do
+124620 tai yo letter low to
+124621 tai yo letter high to
+124622 tai yo letter tho
+124623 tai yo letter no
+124624 tai yo letter bo
+124625 tai yo letter low po
+124626 tai yo letter high po
+124627 tai yo letter pho
+124628 tai yo letter low fo
+124629 tai yo letter high fo
+124630 tai yo letter mo
+124631 tai yo letter yo
+124632 tai yo letter lo
+124633 tai yo letter vo
+124634 tai yo letter low ho
+124635 tai yo letter high ho
+124636 tai yo letter qo
+124637 tai yo letter low kvo
+124638 tai yo letter high kvo
+124640 tai yo letter aa
+124641 tai yo letter i
+124642 tai yo letter ue
+124643 tai yo sign ue
+124644 tai yo letter u
+124645 tai yo letter ae
+124646 tai yo sign au
+124647 tai yo letter o
+124648 tai yo letter e
+124649 tai yo letter ia
+124650 tai yo letter uea
+124651 tai yo letter ua
+124652 tai yo letter oo
+124653 tai yo letter aue
+124654 tai yo sign ay
+124655 tai yo sign ang
+124656 tai yo letter an
+124657 tai yo letter am
+124658 tai yo letter ak
+124659 tai yo letter at
+124660 tai yo letter ap
+124661 tai yo sign om
+124670 tai yo symbol mueang
+124671 tai yo xam lai
 124896 ethiopic syllable hhya
 124897 ethiopic syllable hhyu
 124898 ethiopic syllable hhyi
@@ -41574,6 +42006,7 @@
 128725 hindu temple
 128726 hut
 128727 elevator
+128728 landslide
 128732 wireless
 128733 playground slide
 128734 wheel
@@ -41723,6 +42156,10 @@
 128884 lot of fortune
 128885 occultation
 128886 lunar eclipse
+128887 vesta form two
+128888 astraea form two
+128889 hygiea form two
+128890 parthenope form two
 128891 haumea
 128892 makemake
 128893 gonggong
@@ -41993,6 +42430,15 @@
 129211 south west arrow from bar
 129216 leftwards arrow from downwards arrow
 129217 rightwards arrow from downwards arrow
+129232 long rightwards arrow over long leftwards arrow
+129233 long rightwards harpoon over long leftwards harpoon
+129234 long rightwards harpoon above short leftwards harpoon
+129235 short rightwards harpoon above long leftwards harpoon
+129236 long leftwards harpoon above short rightwards harpoon
+129237 short leftwards harpoon above long rightwards harpoon
+129238 long rightwards arrow through x
+129239 long rightwards arrow with double slash
+129240 long left right arrow with dependent lobe
 129280 circled cross formee with four dots
 129281 circled cross formee with two dots
 129282 circled cross formee
@@ -42333,6 +42779,10 @@
 129617 black chess knight-queen
 129618 black chess knight-rook
 129619 black chess knight-bishop
+129620 white chess ferz
+129621 white chess alfil
+129622 black chess ferz
+129623 black chess alfil
 129632 xiangqi red general
 129633 xiangqi red mandarin
 129634 xiangqi red elephant
@@ -42370,6 +42820,8 @@
 129671 maracas
 129672 flute
 129673 harp
+129674 trombone
+129678 treasure chest
 129679 shovel
 129680 ringed planet
 129681 chair
@@ -42426,6 +42878,8 @@
 129732 pregnant person
 129733 person with crown
 129734 fingerprint
+129736 hairy creature
+129741 orca
 129742 moose
 129743 donkey
 129744 blueberries
@@ -42452,6 +42906,8 @@
 129767 bubbles
 129768 shaking face
 129769 face with bags under eyes
+129770 distorted face
+129775 fight cloud
 129776 hand with index finger and thumb crossed
 129777 rightwards hand
 129778 leftwards hand
@@ -42710,14 +43166,15 @@
 130039 segmented digit seven
 130040 segmented digit eight
 130041 segmented digit nine
+130042 alarm bell symbol
 131072 <cjk ideograph extension b, first>
 173791 <cjk ideograph extension b, last>
 173824 <cjk ideograph extension c, first>
-177977 <cjk ideograph extension c, last>
+177983 <cjk ideograph extension c, last>
 177984 <cjk ideograph extension d, first>
 178205 <cjk ideograph extension d, last>
 178208 <cjk ideograph extension e, first>
-183969 <cjk ideograph extension e, last>
+183981 <cjk ideograph extension e, last>
 183984 <cjk ideograph extension f, first>
 191456 <cjk ideograph extension f, last>
 191472 <cjk ideograph extension i, first>
@@ -43268,6 +43725,8 @@
 201546 <cjk ideograph extension g, last>
 201552 <cjk ideograph extension h, first>
 205743 <cjk ideograph extension h, last>
+205744 <cjk ideograph extension j, first>
+210041 <cjk ideograph extension j, last>
 917505 language tag
 917536 tag space
 917537 tag exclamation mark
