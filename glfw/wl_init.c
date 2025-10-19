@@ -202,21 +202,23 @@ pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;
     float x = 0, y = 0;
-    int highres = 0;
+    const int HIGHRES = 1;
+    const int VALUE120 = 1 << 4;
+    int flags = 0;
 
     if (info.discrete.y_axis_type != AXIS_EVENT_UNKNOWN) {
         y = info.discrete.y;
-        if (info.discrete.y_axis_type == AXIS_EVENT_VALUE120) y /= 120.f;
+        if (info.discrete.y_axis_type == AXIS_EVENT_VALUE120) flags |= VALUE120;
     } else if (info.continuous.y_axis_type != AXIS_EVENT_UNKNOWN) {
-        highres = 1;
+        flags |= HIGHRES;
         y = info.continuous.y;
     }
 
     if (info.discrete.x_axis_type != AXIS_EVENT_UNKNOWN) {
         x = info.discrete.x;
-        if (info.discrete.x_axis_type == AXIS_EVENT_VALUE120) x /= 120.f;
+        if (info.discrete.x_axis_type == AXIS_EVENT_VALUE120) flags |= VALUE120;
     } else if (info.continuous.x_axis_type != AXIS_EVENT_UNKNOWN) {
-        highres = 1;
+        flags |= HIGHRES;
         x = info.continuous.x;
     }
     /* clear pointer_curr_axis_info for next frame */
@@ -225,7 +227,7 @@ pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
     if (x != 0.0f || y != 0.0f) {
         float scale = (float)_glfwWaylandWindowScale(window);
         y *= scale; x *= scale;
-        _glfwInputScroll(window, -x, y, highres, _glfw.wl.xkb.states.modifiers);
+        _glfwInputScroll(window, -x, y, flags, _glfw.wl.xkb.states.modifiers);
     }
 }
 
