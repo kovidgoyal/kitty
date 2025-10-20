@@ -1,6 +1,7 @@
-.. only:: not man
 
-    .. sidebar::
+.. sidebar::
+
+    .. only:: not man
 
         **Screenshots**
 
