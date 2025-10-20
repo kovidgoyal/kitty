@@ -214,9 +214,9 @@ class TestParser(BaseTest):
                 return esc_found, ''.join(parts), total_consumed
 
             reset_state()
-            actual = parse_parts(1)
+            expected = parse_parts(1)
             reset_state()
-            expected = parse_parts(which)
+            actual = parse_parts(which)
             self.ae(expected, actual, msg=f'Failed for {a} with {which=}\n{expected!r} !=\n{actual!r}')
             return actual
 
