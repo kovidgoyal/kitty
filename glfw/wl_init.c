@@ -202,8 +202,8 @@ pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;
     float x = 0, y = 0;
-    const int HIGHRES = 1;
-    const int VALUE120 = 1 << 4;
+    static const int HIGHRES = 1;
+    static const int VALUE120 = 1 << 4;
     int flags = 0;
 
     if (info.discrete.y_axis_type != AXIS_EVENT_UNKNOWN) {

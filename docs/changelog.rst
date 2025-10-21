@@ -174,6 +174,9 @@ Detailed list of changes
 
 - Wayland: Fix ``center-sized`` panels not working on smithay based compositors (:pull:`9117`)
 
+- Wayland: Fix scrolling using some mouse wheels that produce "VALUE120" based
+  scroll events too fast on some compositors (:pull:`9128`)
+
 - Add support for Unicode 17
 
 0.43.1 [2025-10-01]
