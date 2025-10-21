@@ -1162,13 +1162,23 @@ mouse_event(const int button, int modifiers, int action) {
 }
 
 static int
-scale_scroll(MouseTrackingMode mouse_tracking_mode, double offset, bool is_high_resolution, double *pending_scroll_pixels, int cell_size) {
+scale_scroll(MouseTrackingMode mouse_tracking_mode, double offset, bool is_high_resolution, bool is_value120, double *pending_scroll_pixels, int cell_size) {
 // scale the scroll by the multiplier unless the mouse is grabbed. If the mouse is grabbed only change direction.
 #define SCALE_SCROLL(which) { double scale = OPT(which); if (mouse_tracking_mode) scale /= fabs(scale); offset *= scale; }
     int s = 0;
     if (is_high_resolution) {
         SCALE_SCROLL(touch_scroll_multiplier);
         double pixels = *pending_scroll_pixels + offset;
+        if (fabs(pixels) < cell_size) {
+            *pending_scroll_pixels = pixels;
+            return 0;
+        }
+        s = (int)round(pixels) / cell_size;
+        *pending_scroll_pixels = pixels - s * cell_size;
+    } else if (is_value120) {
+        SCALE_SCROLL(wheel_scroll_multiplier);
+        const double offset_lines = offset / 120.;
+        const double pixels = *pending_scroll_pixels + offset_lines * cell_size;
         if (fabs(pixels) < cell_size) {
             *pending_scroll_pixels = pixels;
             return 0;
@@ -1253,10 +1263,11 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
             break;
     }
     int s;
-    bool is_high_resolution = flags & 1;
+    const bool is_high_resolution = flags & 1;
+    const bool is_value120 = flags & (1 << 4);
 
     if (yoffset != 0.0) {
-        s = scale_scroll(screen->modes.mouse_tracking_mode, yoffset, is_high_resolution, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->fcm.cell_height);
+        s = scale_scroll(screen->modes.mouse_tracking_mode, yoffset, is_high_resolution, is_value120, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->fcm.cell_height);
         if (s) {
             bool upwards = s > 0;
             if (screen->modes.mouse_tracking_mode) {
@@ -1277,7 +1288,7 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
         }
     }
     if (xoffset != 0.0) {
-        s = scale_scroll(screen->modes.mouse_tracking_mode, xoffset, is_high_resolution, &screen->pending_scroll_pixels_x, global_state.callback_os_window->fonts_data->fcm.cell_width);
+        s = scale_scroll(screen->modes.mouse_tracking_mode, xoffset, is_high_resolution, is_value120, &screen->pending_scroll_pixels_x, global_state.callback_os_window->fonts_data->fcm.cell_width);
         if (s) {
             if (screen->modes.mouse_tracking_mode) {
                 int sz = encode_mouse_scroll(w, s > 0 ? 6 : 7, modifiers);
