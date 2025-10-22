@@ -13,6 +13,7 @@
 #include <os/lock.h>
 
 #define DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL s_to_monotonic_t(30ll)
+#define MAX_NUM_OF_DISPLAYS 256
 
 typedef struct _GLFWDisplayLinkNS
 {
@@ -23,11 +24,11 @@ typedef struct _GLFWDisplayLinkNS
 } _GLFWDisplayLinkNS;
 
 static struct {
-    _GLFWDisplayLinkNS entries[256];
+    _GLFWDisplayLinkNS entries[MAX_NUM_OF_DISPLAYS];
+    os_unfair_lock locks[MAX_NUM_OF_DISPLAYS];
+    bool locks_initialized[MAX_NUM_OF_DISPLAYS];
     size_t count;
 } displayLinks = {0};
-
-static os_unfair_lock displayLinkLocks[256];
 
 static inline size_t
 index_for_entry(_GLFWDisplayLinkNS *entry) {
@@ -36,7 +37,7 @@ index_for_entry(_GLFWDisplayLinkNS *entry) {
 
 static inline os_unfair_lock*
 lock_for_entry(_GLFWDisplayLinkNS *entry) {
-    return &displayLinkLocks[index_for_entry(entry)];
+    return &displayLinks.locks[index_for_entry(entry)];
 }
 
 static CGDirectDisplayID
@@ -52,7 +53,7 @@ void
 _glfwClearDisplayLinks(void) {
     for (size_t i = 0; i < displayLinks.count; i++) {
         _GLFWDisplayLinkNS *entry = &displayLinks.entries[i];
-        os_unfair_lock *lock = &displayLinkLocks[i];
+        os_unfair_lock *lock = &displayLinks.locks[i];
         os_unfair_lock_lock(lock);
         CVDisplayLinkRef link = entry->displayLink;
         entry->displayLink = NULL;
@@ -75,18 +76,20 @@ displayLinkCallback(
         const CVTimeStamp* now UNUSED, const CVTimeStamp* outputTime UNUSED,
         CVOptionFlags flagsIn UNUSED, CVOptionFlags* flagsOut UNUSED, void* userInfo) {
     _GLFWDisplayLinkNS *entry = (_GLFWDisplayLinkNS *)userInfo;
-    if (!entry) return kCVReturnSuccess;
-    os_unfair_lock *lock = lock_for_entry(entry);
-    os_unfair_lock_lock(lock);
-    bool should_dispatch = entry->first_unserviced_render_frame_request_at &&
-        !entry->pending_dispatch;
-    CGDirectDisplayID displayID = entry->displayID;
-    if (should_dispatch) entry->pending_dispatch = true;
-    os_unfair_lock_unlock(lock);
-    if (!should_dispatch) return kCVReturnSuccess;
-    NSNumber *arg = [NSNumber numberWithUnsignedInt:displayID];
-    [NSApp performSelectorOnMainThread:@selector(render_frame_received:) withObject:arg waitUntilDone:NO];
-    [arg release];
+    if (entry) {
+        os_unfair_lock *lock = lock_for_entry(entry);
+        os_unfair_lock_lock(lock);
+        const bool should_dispatch = entry->first_unserviced_render_frame_request_at &&
+            !entry->pending_dispatch;
+        CGDirectDisplayID displayID = entry->displayID;
+        if (should_dispatch) entry->pending_dispatch = true;
+        os_unfair_lock_unlock(lock);
+        if (should_dispatch) {
+            NSNumber *arg = [NSNumber numberWithUnsignedInt:displayID];
+            [NSApp performSelectorOnMainThread:@selector(render_frame_received:) withObject:arg waitUntilDone:NO];
+            [arg release];
+        }
+    }
     return kCVReturnSuccess;
 }
 
@@ -98,26 +101,27 @@ _glfw_create_cv_display_link(_GLFWDisplayLinkNS *entry) {
 
 unsigned
 _glfwCreateDisplayLink(CGDirectDisplayID displayID) {
-    if (displayLinks.count >= arraysz(displayLinks.entries) - 1) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Too many monitors cannot create display link");
-        return displayLinks.count;
-    }
     for (unsigned i = 0; i < displayLinks.count; i++) {
-        os_unfair_lock *existing_lock = &displayLinkLocks[i];
+        os_unfair_lock *existing_lock = &displayLinks.locks[i];
         os_unfair_lock_lock(existing_lock);
-        bool already_created = displayLinks.entries[i].displayID == displayID;
+        const bool already_created = displayLinks.entries[i].displayID == displayID;
         os_unfair_lock_unlock(existing_lock);
         if (already_created) return i;
     }
+    if (displayLinks.count >= MAX_NUM_OF_DISPLAYS) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Too many monitors cannot create display link");
+        return displayLinks.count;
+    }
     unsigned idx = displayLinks.count;
     _GLFWDisplayLinkNS *entry = &displayLinks.entries[idx];
-    os_unfair_lock *lock = &displayLinkLocks[idx];
+    if (!displayLinks.locks_initialized[idx]) {
+        displayLinks.locks[idx] = OS_UNFAIR_LOCK_INIT;
+        displayLinks.locks_initialized[idx] = true;
+    }
+    os_unfair_lock *lock = &displayLinks.locks[idx];
     os_unfair_lock_lock(lock);
-    entry->displayLink = NULL;
+    memset(entry, 0, sizeof(entry[0]));
     entry->displayID = displayID;
-    entry->lastRenderFrameRequestedAt = 0;
-    entry->first_unserviced_render_frame_request_at = 0;
-    entry->pending_dispatch = false;
     displayLinks.count++;
     _glfw_create_cv_display_link(entry);
     os_unfair_lock_unlock(lock);
@@ -131,7 +135,7 @@ _glfwShutdownCVDisplayLink(unsigned long long timer_id UNUSED, void *user_data U
     display_link_shutdown_timer = 0;
     for (size_t i = 0; i < displayLinks.count; i++) {
         _GLFWDisplayLinkNS *dl = &displayLinks.entries[i];
-        os_unfair_lock *lock = &displayLinkLocks[i];
+        os_unfair_lock *lock = &displayLinks.locks[i];
         os_unfair_lock_lock(lock);
         CVDisplayLinkRef link = dl->displayLink;
         if (link) CVDisplayLinkRetain(link);
@@ -164,7 +168,7 @@ _glfwRequestRenderFrame(_GLFWwindow *w) {
         CVDisplayLinkRef link = NULL;
         CVDisplayLinkRef new_link = NULL;
         bool new_link_retained = false;
-        os_unfair_lock *lock = &displayLinkLocks[i];
+        os_unfair_lock *lock = &displayLinks.locks[i];
         os_unfair_lock_lock(lock);
         link = dl->displayLink;
         if (dl->displayID == displayID) {
@@ -223,7 +227,7 @@ _glfwRequestRenderFrame(_GLFWwindow *w) {
         unsigned idx = _glfwCreateDisplayLink(displayID);
         if (idx < displayLinks.count) {
             dl = &displayLinks.entries[idx];
-            os_unfair_lock *lock = &displayLinkLocks[idx];
+            os_unfair_lock *lock = &displayLinks.locks[idx];
             os_unfair_lock_lock(lock);
             dl->lastRenderFrameRequestedAt = now;
             dl->first_unserviced_render_frame_request_at = now;
@@ -253,7 +257,7 @@ _glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
         _GLFWDisplayLinkNS *dl = &displayLinks.entries[i];
         bool need_stop = false;
         CVDisplayLinkRef link = NULL;
-        os_unfair_lock *lock = &displayLinkLocks[i];
+        os_unfair_lock *lock = &displayLinks.locks[i];
         os_unfair_lock_lock(lock);
         if (dl->displayID == displayID) {
             dl->first_unserviced_render_frame_request_at = 0;
