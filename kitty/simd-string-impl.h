@@ -646,10 +646,6 @@ start_classification:
         // Only ASCII chars should have corresponding byte of counts == 0
         if (ascii_mask != movemask_epi8(cmpgt_epi8(counts, zero))) { abort_with_invalid_utf8(); }
 
-        // The difference between a byte in counts and the next one should be negative,
-        // zero, or one. Any other value means there is not enough continuation bytes.
-        chunk_is_invalid = cmpgt_epi8(subtract_epi8(shift_right_by_one_byte(counts), counts), one);
-
         // Validate 2-byte sequence starter bytes: 0xC0..0xC1 are invalid (overlong encodings for U+0000..U+007F).
         // Without this, "\xc0\x80" would incorrectly be decoded as a "\x00".
         chunk_is_invalid = or_si(chunk_is_invalid, and_si(bytes_indicating_start_of_two_byte_sequence, cmplt_epi8(vec, set1_epi8(0xc2))));
@@ -657,6 +653,11 @@ start_classification:
         // Validate 4-byte sequence starter bytes: 0xF5..0xFF are invalid (out of Unicode codespace).
         // Without this, "\xff\x80\x80\x80" would incorrectly be decoded as an ill-formed "\U003C0000".
         chunk_is_invalid = or_si(chunk_is_invalid, and_si(bytes_indicating_start_of_four_byte_sequence, cmpgt_epi8(vec, set1_epi8(0xf4))));
+
+        // Validate that all continuation bytes' positions do not have non-ASCII starter bytes (>=0xC0).
+        // If counts[i] > count[i], the chunk byte at i is in the middle of a previous sequence but also classified as a starter byte.
+        // Without this, "\xf0\x90\xc2\x80" would have overlapping sequences, and it would be incorrectly decoded elsewhere as an empty string.
+        chunk_is_invalid = or_si(chunk_is_invalid, andnot_si(cmplt_epi8(vec, set1_epi8(0xc0)), cmpgt_epi8(counts, count)));
 
         // Validate second bytes of E0-starting 3-byte sequences.
         // 0xE0 must be followed by 0xA0..0xBF (not 0x80..0x9F) to avoid overlong encodings.
