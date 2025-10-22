@@ -1338,7 +1338,7 @@ draw_resizing_text(OSWindow *w) {
         snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->fcm.cell_width, height / w->fonts_data->fcm.cell_height);
         StringCanvas rendered = render_simple_text(w->fonts_data, text);
         if (rendered.canvas) {
-            draw_centered_alpha_mask(width, height, rendered.width, rendered.height, rendered.canvas, OPT(background_opacity));
+            draw_centered_alpha_mask(width, height, rendered.width, rendered.height, rendered.canvas, 0.8f);
             free(rendered.canvas);
         }
     }
@@ -1362,10 +1362,8 @@ blank_os_window(OSWindow *osw) {
 
 static void
 start_os_window_rendering(OSWindow *os_window, Tab *tab) {
-    if (os_window->live_resize.in_progress) {
-        blank_os_window(os_window);
-        save_viewport_using_bottom_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height);
-    }
+    // note that during live resize rendering is done in layers
+    if (os_window->live_resize.in_progress) blank_os_window(os_window);
     if (os_window->needs_layers) {
         if (os_window->indirect_output.width != os_window->viewport_width || os_window->indirect_output.height != os_window->viewport_height) {
             if (os_window->indirect_output.texture_id) free_texture(&os_window->indirect_output.texture_id);
@@ -1378,6 +1376,7 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
         }
         set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
         bind_framebuffer_for_output(0);
+        save_viewport_using_bottom_left_origin(0, 0, os_window->indirect_output.width, os_window->indirect_output.height);
         clear_current_framebuffer();
         draw_bg_image(os_window, tab);
     }
@@ -1394,11 +1393,14 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window) {
         glBindTexture(GL_TEXTURE_2D, os_window->indirect_output.texture_id);
         glUniform4f(blit_program_layout.uniforms.src_rect, 0, 1, 1, 0);
         glUniform4f(blit_program_layout.uniforms.dest_rect, -1, 1, 1, -1);
-        draw_quad(false, 0);
-    }
-    if (os_window->live_resize.in_progress) {
         restore_viewport();
-        draw_resizing_text(os_window);
+        if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
+                0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
+        draw_quad(false, 0);
+        if (os_window->live_resize.in_progress) {
+            restore_viewport();
+            draw_resizing_text(os_window);
+        }
     }
 }
 
