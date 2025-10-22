@@ -643,8 +643,20 @@ start_classification:
         // because the or_si SIMD operation is empirically faster than movemask_epi8 with |= or ||=.
         integer_t chunk_is_invalid;
 
-        // Only ASCII chars should have corresponding byte of counts == 0
-        if (ascii_mask != movemask_epi8(cmpgt_epi8(counts, zero))) { abort_with_invalid_utf8(); }
+        // Only bytes within the ASCII range should have counts[i] == 0, and vice versa.
+        // Detect any mismatch between the two conditions for each chunk byte.
+        // If there is any mismatch, then the chunk has invalid UTF-8, so set all bytes in chunk_is_invalid to 0xFF;
+        // otherwise the chunk might be valid, so set all bytes in chunk_is_invalid to 0x00.
+        // Without this, "\x80" would incorrectly be decoded as a "\x00".
+        // This also validates that continuation bytes' positions do not have ASCII bytes (< 0x80).
+        // Without this, "\xe0\xa0\x7f\x01" would incorrectly be decoded as "\x00\x01".
+        // In that example, 0x7F has an ascii_mask bit of 0 (i.e., it is within 0x00..0x7F),
+        // but it has a counts value of 1, not 0 (i.e., it is the last remaining byte of a multi-byte sequence).
+        // Therefore there is a count mismatch, indicating that the chunk is ill-formed UTF-8.
+        // (If the following "\x01" were absent, and the "\x7f" were the last byte of the chunk,
+        // then the `check_for_trailing_bytes` validation above detects the error as a trailing incomplete sequence.)
+        const int ascii_sequence_count_mismatches = ascii_mask ^ movemask_epi8(cmpgt_epi8(counts, zero));
+        chunk_is_invalid = set1_epi8(ascii_sequence_count_mismatches ? 0xff : 0x00);
 
         // Validate 2-byte sequence starter bytes: 0xC0..0xC1 are invalid (overlong encodings for U+0000..U+007F).
         // Without this, "\xc0\x80" would incorrectly be decoded as a "\x00".
