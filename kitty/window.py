@@ -2102,7 +2102,7 @@ class Window:
 
     @ac('cp', 'Show scrollback in a pager like less')
     def show_scrollback(self) -> Optional['Window']:
-        text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
+        text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=False)
         data = self.pipe_data(text, has_wrap_markers=True)
         cursor_on_screen = self.screen.scrolled_by < self.screen.lines - self.screen.cursor.y
         return get_boss().display_scrollback(self, data['text'], data['input_line_number'], report_cursor=cursor_on_screen)
@@ -2125,7 +2125,7 @@ class Window:
                 w.screen.paste_bytes(sanitized)
                 w.send_key('enter')
 
-    def show_cmd_output(self, which: CommandOutput, title: str = 'Command output', as_ansi: bool = True, add_wrap_markers: bool = True) -> None:
+    def show_cmd_output(self, which: CommandOutput, title: str = 'Command output', as_ansi: bool = True, add_wrap_markers: bool = False) -> None:
         text = self.cmd_output(which, as_ansi=as_ansi, add_wrap_markers=add_wrap_markers)
         text = text.replace('\r\n', '\n').replace('\r', '\n')
         get_boss().display_scrollback(self, text, title=title, report_cursor=False)
