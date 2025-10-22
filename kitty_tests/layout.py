@@ -2,6 +2,8 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 from kitty.config import defaults
+from kitty.fast_data_types import Region
+from kitty.layout.base import lgd
 from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
 from kitty.types import WindowGeometry
 from kitty.window import EdgeWidths
@@ -47,6 +49,12 @@ def create_layout(cls, opts=None, border_width=2):
     ans = cls(1, 1)
     ans.set_active_window_in_os_window = lambda idx: None
     ans.swap_windows_in_os_window = lambda a, b: None
+    orig = ans._set_dimensions
+    def set_dimensions(all_windows):
+        orig(all_windows)
+        # we need a non-zero width and height for central
+        lgd.central = Region((0, 0, 0, 0, 1, 1))
+    ans._set_dimensions = set_dimensions
     return ans
 
 
