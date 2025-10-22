@@ -500,19 +500,12 @@ GLFWAPI GLFWColorScheme glfwGetCurrentSystemColorTheme(bool query_if_unintialize
 
 @interface GLFWApplication : NSApplication
 - (void)tick_callback;
-- (void)render_frame_received:(id)displayIDAsID;
 @end
 
 @implementation GLFWApplication
 - (void)tick_callback
 {
     _glfwDispatchTickCallback();
-}
-
-- (void)render_frame_received:(id)displayIDAsID
-{
-    CGDirectDisplayID displayID = [(NSNumber*)displayIDAsID unsignedIntValue];
-    _glfwDispatchRenderFrame(displayID);
 }
 
 @end

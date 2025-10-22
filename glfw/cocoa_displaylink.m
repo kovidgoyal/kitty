@@ -84,11 +84,9 @@ displayLinkCallback(
         CGDirectDisplayID displayID = entry->displayID;
         if (should_dispatch) entry->pending_dispatch = true;
         os_unfair_lock_unlock(lock);
-        if (should_dispatch) {
-            NSNumber *arg = [NSNumber numberWithUnsignedInt:displayID];
-            [NSApp performSelectorOnMainThread:@selector(render_frame_received:) withObject:arg waitUntilDone:NO];
-            [arg release];
-        }
+        if (should_dispatch) dispatch_async(dispatch_get_main_queue(), ^{
+                _glfwDispatchRenderFrame(displayID);
+        });
     }
     return kCVReturnSuccess;
 }
