@@ -2849,9 +2849,7 @@ screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
                 blink = mode % 2;
                 shape = (mode < 3) ? CURSOR_BLOCK : (mode < 5) ? CURSOR_UNDERLINE : (mode < 7) ? CURSOR_BEAM : NO_CURSOR_SHAPE;
             }
-            if (shape != self->cursor->shape || blink != !self->cursor->non_blinking) {
-                self->cursor->shape = shape; self->cursor->non_blinking = !blink;
-            }
+            self->cursor->shape = shape; self->cursor->non_blinking = !blink;
             break;
     }
 }
