@@ -70,6 +70,8 @@ _glfwClearDisplayLinks(void) {
     displayLinks.count = 0;
 }
 
+static void _glfwDispatchRenderFrame(void *);
+
 static CVReturn
 displayLinkCallback(
         CVDisplayLinkRef displayLink UNUSED,
@@ -84,9 +86,7 @@ displayLinkCallback(
         CGDirectDisplayID displayID = entry->displayID;
         if (should_dispatch) entry->pending_dispatch = true;
         os_unfair_lock_unlock(lock);
-        if (should_dispatch) dispatch_async(dispatch_get_main_queue(), ^{
-                _glfwDispatchRenderFrame(displayID);
-        });
+        if (should_dispatch) dispatch_async_f(dispatch_get_main_queue(), (void*)(uintptr_t)displayID, _glfwDispatchRenderFrame);
     }
     return kCVReturnSuccess;
 }
@@ -241,8 +241,9 @@ _glfwRequestRenderFrame(_GLFWwindow *w) {
     }
 }
 
-void
-_glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
+static void
+_glfwDispatchRenderFrame(void *passed_in_data) {
+    CGDirectDisplayID displayID = (uintptr_t)passed_in_data;
     _GLFWwindow *w = _glfw.windowListHead;
     while (w) {
         if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {

@@ -245,7 +245,6 @@ void* _glfwLoadLocalVulkanLoaderNS(void);
 void _glfwClearDisplayLinks(void);
 void _glfwRestartDisplayLinks(void);
 unsigned _glfwCreateDisplayLink(CGDirectDisplayID);
-void _glfwDispatchRenderFrame(CGDirectDisplayID);
 void _glfwRequestRenderFrame(_GLFWwindow *w);
 
 // event loop
