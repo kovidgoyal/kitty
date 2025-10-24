@@ -541,7 +541,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
         src_data += d->num_consumed; src_len -= d->num_consumed;
     }
     const integer_t esc_vec = set1_epi8(0x1b);
-    const integer_t zero = create_zero_integer(), one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3), numbered = numbered_bytes();
+    const integer_t zero = create_zero_integer(), one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3), four = set1_epi8(4), numbered = numbered_bytes();
     const uint8_t *limit = src_data + src_len, *p = src_data, *start_of_current_chunk = src_data;
     bool sentinel_found = false;
     unsigned chunk_src_sz = 0;
@@ -593,10 +593,14 @@ start_classification:
             handle_trailing_bytes();
             continue;
         }
-        // Classify the bytes
+        // Classify the bytes by whether they may be the start of a 2-byte, 3-byte, or 4-byte sequence.
+        // This is only an initial, potential classification.
+        // 0xC0 and 0xC1 are initially classified as potential starter bytes of 2-byte sequences.
+        // And 0xF5..0xFF are initially classified as potential starter bytes of 4-byte sequences.
+        // They will be marked as actually invalid later in the chunk_is_invalid checks.
         integer_t state = set1_epi8(0x80);
         const integer_t vec_signed = add_epi8(vec, state); // needed because cmplt_epi8 works only on signed chars
-
+        // state now has 0x80 on all bytes
         const integer_t bytes_indicating_start_of_two_byte_sequence = cmplt_epi8(set1_epi8(0xc0 - 1 - 0x80), vec_signed);
         state = blendv_epi8(state, set1_epi8(0xc2), bytes_indicating_start_of_two_byte_sequence);
         // state now has 0xc2 on all bytes that start a 2 or more byte sequence and 0x80 on the rest
@@ -631,11 +635,74 @@ start_classification:
             vec = zero_last_n_bytes(vec, sizeof(integer_t) - chunk_src_sz);
             goto start_classification;
         }
-        // Only ASCII chars should have corresponding byte of counts == 0
-        if (ascii_mask != movemask_epi8(cmpgt_epi8(counts, zero))) { abort_with_invalid_utf8(); }
-        // The difference between a byte in counts and the next one should be negative,
-        // zero, or one. Any other value means there is not enough continuation bytes.
-        if (!is_zero(cmpgt_epi8(subtract_epi8(shift_right_by_one_byte(counts), counts), one))) { abort_with_invalid_utf8(); }
+
+        // The next section performs detailed validation of the chunk's byte sequences.
+        // It accumulates validation errors into a chunk_is_invalid vector.
+        // When chunk_is_invalid has any non-zero byte, then the chunk contains invalid UTF-8.
+        // chunk_is_invalid is a vector, and not a bitmask or boolean,
+        // because the or_si SIMD operation is empirically faster than movemask_epi8 with |= or ||=.
+        integer_t chunk_is_invalid;
+
+        // Only bytes within the ASCII range should have counts[i] == 0, and vice versa.
+        // Detect any mismatch between the two conditions for each chunk byte.
+        // If there is any mismatch, then the chunk has invalid UTF-8, so set all bytes in chunk_is_invalid to 0xFF;
+        // otherwise the chunk might be valid, so set all bytes in chunk_is_invalid to 0x00.
+        // Without this, "\x80" would incorrectly be decoded as a "\x00".
+        // This also validates that continuation bytes' positions do not have ASCII bytes (< 0x80).
+        // Without this, "\xe0\xa0\x7f\x01" would incorrectly be decoded as "\x00\x01".
+        // In that example, 0x7F has an ascii_mask bit of 0 (i.e., it is within 0x00..0x7F),
+        // but it has a counts value of 1, not 0 (i.e., it is the last remaining byte of a multi-byte sequence).
+        // Therefore there is a count mismatch, indicating that the chunk is ill-formed UTF-8.
+        // (If the following "\x01" were absent, and the "\x7f" were the last byte of the chunk,
+        // then the `check_for_trailing_bytes` validation above detects the error as a trailing incomplete sequence.)
+        const int ascii_sequence_count_mismatches = ascii_mask ^ movemask_epi8(cmpgt_epi8(counts, zero));
+        chunk_is_invalid = set1_epi8(ascii_sequence_count_mismatches ? 0xff : 0x00);
+
+        // Validate 2-byte sequence starter bytes: 0xC0..0xC1 are invalid (overlong encodings for U+0000..U+007F).
+        // Without this, "\xc0\x80" would incorrectly be decoded as a "\x00".
+        chunk_is_invalid = or_si(chunk_is_invalid, and_si(bytes_indicating_start_of_two_byte_sequence, cmplt_epi8(vec, set1_epi8(0xc2))));
+
+        // Validate 4-byte sequence starter bytes: 0xF5..0xFF are invalid (out of Unicode codespace).
+        // Without this, "\xff\x80\x80\x80" would incorrectly be decoded as an ill-formed "\U003C0000".
+        chunk_is_invalid = or_si(chunk_is_invalid, and_si(bytes_indicating_start_of_four_byte_sequence, cmpgt_epi8(vec, set1_epi8(0xf4))));
+
+        // Validate that all continuation bytes' positions do not have non-ASCII starter bytes (>=0xC0).
+        // If counts[i] > count[i], the chunk byte at i is in the middle of a previous sequence but also classified as a starter byte.
+        // Without this, "\xf0\x90\xc2\x80" would have overlapping sequences, and it would be incorrectly decoded elsewhere as an empty string.
+        chunk_is_invalid = or_si(chunk_is_invalid, andnot_si(cmplt_epi8(vec, set1_epi8(0xc0)), cmpgt_epi8(counts, count)));
+
+        // Validate second bytes of E0-starting 3-byte sequences.
+        // 0xE0 must be followed by 0xA0..0xBF (not 0x80..0x9F) to avoid overlong encodings.
+        // Without this, "\xe0\x80\x80" would incorrectly be decoded as a "\x00".
+        const integer_t e0_starter_bytes = cmpeq_epi8(vec, set1_epi8(0xe0));
+        const integer_t e0_first_follower_bytes = shift_right_by_one_byte(e0_starter_bytes);
+        chunk_is_invalid = or_si(chunk_is_invalid, and_si(e0_first_follower_bytes, cmplt_epi8(and_si(e0_first_follower_bytes, vec), set1_epi8(0xa0))));
+
+        // Validate second bytes of ED-starting 3-byte sequences.
+        // 0xED must be followed by 0x80..0x9F (not 0xA0..0xBF) to avoid UTF-16 surrogates.
+        // Without this, "\xed\xa0\x80" would incorrectly be decoded as an isolated surrogate "\uD800".
+        const integer_t ed_starter_bytes = cmpeq_epi8(vec, set1_epi8(0xed));
+        const integer_t ed_first_follower_bytes = shift_right_by_one_byte(ed_starter_bytes);
+        chunk_is_invalid = or_si(chunk_is_invalid, and_si(ed_first_follower_bytes, cmpgt_epi8(and_si(ed_first_follower_bytes, vec), set1_epi8(0x9f))));
+
+        // Validate second bytes of F0-starting 4-byte sequences.
+        // F0 must be followed by 0x90..0xBF (not 0x80..0x8F) to avoid overlong encodings.
+        // Without this, "\xf0\x80\x80\x80" would incorrectly be decoded as a "\x0000".
+        const integer_t f0_starter_bytes = cmpeq_epi8(vec, set1_epi8(0xf0));
+        const integer_t f0_first_follower_bytes = shift_right_by_one_byte(f0_starter_bytes);
+        chunk_is_invalid = or_si(chunk_is_invalid, and_si(f0_first_follower_bytes, cmplt_epi8(and_si(f0_first_follower_bytes, vec), set1_epi8(0x90))));
+
+        // Validate second bytes of F4-starting 4-byte sequences.
+        // F4 must be followed by 0x80..0x8F (not 0x90..0xBF) to stay within the Unicode codespace.
+        // Without this, "\xf4\x90\x80\x80" would incorrectly be decoded as an ill-formed "\U00110000".
+        const integer_t f4_starter_bytes = cmpeq_epi8(vec, set1_epi8(0xf4));
+        const integer_t f4_first_follower_bytes = shift_right_by_one_byte(f4_starter_bytes);
+        chunk_is_invalid = or_si(chunk_is_invalid, and_si(f4_first_follower_bytes, cmpgt_epi8(and_si(f4_first_follower_bytes, vec), set1_epi8(0x8f))));
+
+        // Check for any accumulated validation errors and, if found,
+        // fall back to slow scalar decoding of this chunk,
+        // which handles replacement of invalid sequences with U+FFFD
+        if (!is_zero(chunk_is_invalid)) { abort_with_invalid_utf8(); }
 
         // Process the bytes storing the three resulting bytes that make up the unicode codepoint
         // mask all control bits so that we have only useful bits left
@@ -673,7 +740,7 @@ start_classification:
 
         // The last byte is made up of bits 5 and 6 from count == 3 and 3 bits from count == 4
         integer_t output3 = and_si(three, shift_right_by_bits32(vec, 4));  // bits 5 and 6 from count == 3
-        const integer_t count4_locations = cmpeq_epi8(counts, set1_epi8(4));
+        const integer_t count4_locations = cmpeq_epi8(counts, four);
         // 3 bits from count == 4 locations, placed at count == 3 locations shifted left by 2 bits
         output3 = or_si(output3,
             and_si(set1_epi8(0xfc),
