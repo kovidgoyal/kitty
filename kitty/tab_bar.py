@@ -72,6 +72,7 @@ class DrawData(NamedTuple):
     powerline_style: PowerlineStyle
     tab_bar_edge: EdgeLiteral
     max_tab_title_length: int
+    os_window_id: int
 
     def tab_fg(self, tab: TabBarData) -> int:
         if tab.is_active:
@@ -598,7 +599,7 @@ class TabBar:
             opts.tab_activity_symbol,
             opts.tab_powerline_style,
             'bottom' if opts.tab_bar_edge == BOTTOM_EDGE else 'top',
-            opts.tab_title_max_length,
+            opts.tab_title_max_length, self.os_window_id,
         )
         ts = opts.tab_bar_style
         if ts == 'separator':
