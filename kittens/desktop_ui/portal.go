@@ -359,7 +359,7 @@ func patch_portals_conf(text []byte) []byte {
 			in_preferred = sl == "[preferred]"
 			lines = append(lines, line)
 			for _, iface := range AllPortalInterfaces() {
-				lines = append(lines, iface+"=kitty")
+				lines = append(lines, iface+"=kitty;*")
 			}
 			patched = true
 		} else if in_preferred {
@@ -380,7 +380,7 @@ func patch_portals_conf(text []byte) []byte {
 		// the file was empty or did not contain a section
 		lines = append(lines, "[preferred]")
 		for _, iface := range AllPortalInterfaces() {
-			lines = append(lines, iface+"=kitty")
+			lines = append(lines, iface+"=kitty;*")
 		}
 	}
 
