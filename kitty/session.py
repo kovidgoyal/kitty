@@ -177,6 +177,9 @@ class Session:
         self.active_tab_idx = max(0, len(self.tabs) - 1)
         self.tabs[-1].active_window_idx = max(0, len(self.tabs[-1].windows) - 1)
 
+    def focus_tab(self, idx: int) -> None:
+        self.active_tab_idx = max(0, min(idx, len(self.tabs) - 1))
+
     def set_enabled_layouts(self, raw: str) -> None:
         self.tabs[-1].enabled_layouts = to_layout_names(raw)
         if self.tabs[-1].layout not in self.tabs[-1].enabled_layouts:
@@ -250,6 +253,11 @@ def parse_session(
                 ans.add_window(rest, expand)
             elif cmd == 'focus':
                 ans.focus()
+            elif cmd == 'focus_tab':
+                try:
+                    ans.focus_tab(int(rest))
+                except ValueError:
+                    raise ValueError(f'focus_tab requires an integer tab index, got: {rest}')
             elif cmd == 'focus_os_window':
                 ans.focus_os_window = True
             elif cmd == 'enabled_layouts':
@@ -372,8 +380,9 @@ def window_for_session_name(boss: BossType, session_name: str) -> WindowType | N
 seen_session_paths: dict[str, str] = {}
 
 
-def create_session(boss: BossType, path: str) -> str:
+def create_session(boss: BossType, path: str) -> tuple[str, bool]:
     session_name = ''
+    created_new_os_window = False
     for i, s in enumerate(create_sessions(get_options(), default_session=path)):
         if i == 0:
             session_name = s.session_name
@@ -382,14 +391,16 @@ def create_session(boss: BossType, path: str) -> str:
             tm = boss.active_tab_manager
             if tm is None:
                 os_window_id = boss.add_os_window(s)
+                created_new_os_window = True
             else:
                 os_window_id = tm.os_window_id
                 tm.add_tabs_from_session(s, session_name)
         else:
             os_window_id = boss.add_os_window(s)
+            created_new_os_window = True
         if s.focus_os_window:
             boss.focus_os_window(os_window_id)
-    return session_name
+    return session_name, created_new_os_window
 
 
 goto_session_history: list[str] = []
@@ -569,14 +580,15 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
     if switch_to_session(boss, session_name):
         return
     try:
-        session_name = create_session(boss, path)
+        session_name, created_new_os_window = create_session(boss, path)
     except Exception:
         import traceback
         tb = traceback.format_exc()
         boss.show_error(_('Failed to create session'), _('Could not create session from {0} with error:\n{1}').format(path, tb))
     else:
         # Ensure newly created session is focused needed when it doesn't create its own OS Windows.
-        switch_to_session(boss, session_name)
+        if not created_new_os_window:
+            switch_to_session(boss, session_name)
 
 
 save_as_session_message = '''\
