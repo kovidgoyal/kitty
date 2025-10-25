@@ -184,6 +184,11 @@ Detailed list of changes
 - Fix a regression in 0.43.0 that caused :opt:`tab_bar_margin_width` to be
   doubled on the right edge of the tab bar (:iss:`9154`)
 
+- Session files: Add a new ``focus_tab`` command to specify which tab should be
+  active when a session is loaded. Accepts either a plain number (0-based index)
+  or a match expression for flexible tab selection, allowing sessions to preserve
+  the active tab state (:doc:`sessions`)
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
