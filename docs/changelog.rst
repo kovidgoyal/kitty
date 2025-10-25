@@ -181,6 +181,10 @@ Detailed list of changes
 
 - Add support for Unicode 17
 
+- Session files: Add a new ``focus_tab`` command to specify which tab should be
+  active when a session is loaded, allowing sessions to preserve the active tab
+  state (:doc:`sessions`)
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
