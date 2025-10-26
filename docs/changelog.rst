@@ -189,6 +189,10 @@ Detailed list of changes
   or a match expression for flexible tab selection, allowing sessions to preserve
   the active tab state (:doc:`sessions`)
 
+- :ac:`save_as_session`: Add ``--base-dir`` option to specify a base directory
+  for saving session files with relative paths, useful when the current working
+  directory is not the desired location (:doc:`sessions`)
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

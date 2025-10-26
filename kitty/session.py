@@ -631,12 +631,10 @@ use :code:`--match=session:.`.
 
 --base-dir
 When specified, relative session filenames will be saved to this directory instead of the current
-working directory. Absolute paths are not affected by this option.
-
-
---focus-tab
-type=bool-set
-When enabled, add a focus_tab command to the saved session file to preserve the currently active tab.
+working directory. This is useful when kitty is launched from locations where the working directory
+is not your home directory, such as from system-wide shortcuts. Note that :code:`--relocatable` is
+typically not used with :code:`--base-dir`, since relocatable is meant for session files that are
+co-located with their project directories.
 '''
 
 
@@ -649,7 +647,10 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str)
         base_dir = os.path.abspath(os.path.expanduser(opts.base_dir))
         path = os.path.join(base_dir, path)
     path = os.path.abspath(os.path.expanduser(path))
-    session = '\n'.join(boss.serialize_state_as_session(path, opts))
+    # When --base-dir is specified, use it as the session_path for relocatable calculation
+    # This makes relative paths relative to base_dir instead of the session file location
+    session_path_for_serialize = os.path.join(opts.base_dir, 'dummy') if opts.base_dir else path
+    session = '\n'.join(boss.serialize_state_as_session(session_path_for_serialize, opts))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     atomic_save(session.encode(), path)
     if not opts.save_only:
