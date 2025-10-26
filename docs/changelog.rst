@@ -181,6 +181,9 @@ Detailed list of changes
 
 - Add support for Unicode 17
 
+- Fix a regression in 0.43.0 that caused :opt:`tab_bar_margin_width` to be
+  doubled on the right edge of the tab bar (:iss:`9154`)
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
