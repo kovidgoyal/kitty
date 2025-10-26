@@ -1064,6 +1064,24 @@ class TabManager:  # {{{
             self._add_tab(tab)
             if i == session.active_tab_idx:
                 active_tab = tab
+
+        # Handle focus_tab_spec if specified
+        if session.focus_tab_spec is not None:
+            spec = session.focus_tab_spec.strip()
+            # Try to parse as a plain number (index)
+            try:
+                idx = int(spec)
+                # Clamp to valid range
+                idx = max(0, min(idx, len(self.tabs) - 1))
+                active_tab = self.tabs[idx]
+            except ValueError:
+                # Not a plain number, treat as match expression
+                from .fast_data_types import get_boss
+                boss = get_boss()
+                matched_tabs = list(boss.match_tabs(spec, self.tabs))
+                if matched_tabs:
+                    active_tab = matched_tabs[0]
+
         if active_tab is not None:
             idx = self.tabs.index(active_tab)
             self._set_active_tab(idx)

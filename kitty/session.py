@@ -88,6 +88,7 @@ class Session:
     def __init__(self, default_title: str | None = None):
         self.tabs: list[Tab] = []
         self.active_tab_idx = 0
+        self.focus_tab_spec: str | None = None
         self.default_title = default_title
         self.os_window_size: WindowSizes | None = None
         self.os_window_class: str | None = None
@@ -177,8 +178,8 @@ class Session:
         self.active_tab_idx = max(0, len(self.tabs) - 1)
         self.tabs[-1].active_window_idx = max(0, len(self.tabs[-1].windows) - 1)
 
-    def focus_tab(self, idx: int) -> None:
-        self.active_tab_idx = max(0, min(idx, len(self.tabs) - 1))
+    def focus_tab(self, spec: str) -> None:
+        self.focus_tab_spec = spec
 
     def set_enabled_layouts(self, raw: str) -> None:
         self.tabs[-1].enabled_layouts = to_layout_names(raw)
@@ -254,10 +255,7 @@ def parse_session(
             elif cmd == 'focus':
                 ans.focus()
             elif cmd == 'focus_tab':
-                try:
-                    ans.focus_tab(int(rest))
-                except ValueError:
-                    raise ValueError(f'focus_tab requires an integer tab index, got: {rest}')
+                ans.focus_tab(rest)
             elif cmd == 'focus_os_window':
                 ans.focus_os_window = True
             elif cmd == 'enabled_layouts':
