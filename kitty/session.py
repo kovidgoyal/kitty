@@ -627,6 +627,16 @@ If specified, only save all windows (and their parent tabs/OS Windows) that matc
 search expression. See :ref:`search_syntax` for details on the search language. In particular if
 you want to only save windows that are present in the currently active session,
 use :code:`--match=session:.`.
+
+
+--base-dir
+When specified, relative session filenames will be saved to this directory instead of the current
+working directory. Absolute paths are not affected by this option.
+
+
+--focus-tab
+type=bool-set
+When enabled, add a focus_tab command to the saved session file to preserve the currently active tab.
 '''
 
 
@@ -634,6 +644,10 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str)
     if not path:
         return
     from .config import atomic_save
+    # Handle --base-dir option
+    if opts.base_dir and not os.path.isabs(path):
+        base_dir = os.path.abspath(os.path.expanduser(opts.base_dir))
+        path = os.path.join(base_dir, path)
     path = os.path.abspath(os.path.expanduser(path))
     session = '\n'.join(boss.serialize_state_as_session(path, opts))
     os.makedirs(os.path.dirname(path), exist_ok=True)
