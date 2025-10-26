@@ -642,15 +642,11 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str)
     if not path:
         return
     from .config import atomic_save
-    # Handle --base-dir option
     if opts.base_dir and not os.path.isabs(path):
         base_dir = os.path.abspath(os.path.expanduser(opts.base_dir))
         path = os.path.join(base_dir, path)
     path = os.path.abspath(os.path.expanduser(path))
-    # When --base-dir is specified, use it as the session_path for relocatable calculation
-    # This makes relative paths relative to base_dir instead of the session file location
-    session_path_for_serialize = os.path.join(opts.base_dir, 'dummy') if opts.base_dir else path
-    session = '\n'.join(boss.serialize_state_as_session(session_path_for_serialize, opts))
+    session = '\n'.join(boss.serialize_state_as_session(path, opts))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     atomic_save(session.encode(), path)
     if not opts.save_only:
