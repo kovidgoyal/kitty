@@ -154,6 +154,14 @@ all the major keywords you can use in kitty session files:
     focus_os_window
     launch emacs
 
+    # Create another tab
+    new_tab logs
+    launch tail -f /var/log/syslog
+
+    # Focus the first tab (index 0) when the session loads
+    # You can also use a match expression like: focus_tab title:logs
+    focus_tab 0
+
     # Create a complex layout using multiple splits. Creates two columns of
     # windows with two windows in each column. The windows in the first column are
     # split 50:50. In the second column the windows are not evenly split.
@@ -271,6 +279,15 @@ documentation for them.
     only is some other OS Window in the current kitty process has focus,
     otherwise the window manager might block changing focus to prevent *focus
     stealing*.
+
+``focus_tab [tab specifier]``
+    Set which tab should be active (focused) in the current OS Window. The tab
+    specifier can be either a plain number (treated as a 0-based index) or a
+    match expression. For example, ``focus_tab 0`` will focus the first tab,
+    ``focus_tab 1`` the second tab, and ``focus_tab title:logs`` will focus the
+    tab whose title matches "logs". See :ref:`search_syntax` for the full syntax
+    of match expressions. This is useful for session files that create multiple
+    tabs and want to ensure a specific tab is active when the session is loaded.
 
 ``enabled_layouts comma separated list of layout names``
     Set the layouts allowed in the current tab. Same syntax as
