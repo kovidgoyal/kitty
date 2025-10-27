@@ -990,6 +990,8 @@ class Tab:  # {{{
                 return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager
             if query == 'parent_focused':
                 return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager and self.os_window_id == last_focused_os_window_id()
+            if query == 'focused_os_window':
+                return self.os_window_id == last_focused_os_window_id()
             return False
         if field == 'session':
             match query:

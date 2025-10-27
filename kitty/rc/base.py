@@ -170,9 +170,11 @@ or a name and value, for example, :code:`env:MY_ENV_VAR=2`. Tabs containing any 
 variables are matched. Similarly, :code:`var` matches tabs containing any window with the specified user variable.
 
 The field :code:`state` matches on the state of the tab. Supported states are:
-:code:`active`, :code:`focused`, :code:`needs_attention`, :code:`parent_active` and :code:`parent_focused`.
+:code:`active`, :code:`focused`, :code:`needs_attention`, :code:`parent_active`, :code:`parent_focused`
+and :code:`focused_os_window`.
 Active tabs are the tabs that are active in their parent OS window. There is only one focused tab
 and it is the tab to which keyboard events are delivered. If no tab is focused, the last focused tab is matched.
+The value :code:`focused_os_window` matches all tabs in the currently focused OS window.
 
 Note that you can use the :ref:`kitten @ ls <at-ls>` command to get a list of tabs.
 '''
