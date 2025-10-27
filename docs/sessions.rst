@@ -304,7 +304,7 @@ documentation for them.
     Set the layouts allowed in the current tab. Same syntax as
     :opt:`enabled_layouts`.
 
-``launch```
+``launch``
     Create a new window running the specified command or the default shell if
     no command is specified. See :doc:`launch` for details. Note that creating
     tabs and OS Windows using launch is not supported in session files, use the
