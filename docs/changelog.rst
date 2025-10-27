@@ -193,6 +193,9 @@ Detailed list of changes
   for saving session files with relative paths, useful when the current working
   directory is not the desired location (:doc:`sessions`)
 
+- Add ``state:focused_os_window`` match query to select all windows in the
+  currently focused OS window (:ref:`search_syntax`)
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

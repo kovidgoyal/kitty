@@ -124,14 +124,15 @@ as with the :code:`env` field.
 
 The field :code:`state` matches on the state of the window. Supported states
 are: :code:`active`, :code:`focused`, :code:`needs_attention`,
-:code:`parent_active`, :code:`parent_focused`, :code:`self`,
-:code:`overlay_parent`.  Active windows are the windows that are active in
-their parent tab. There is only one focused window and it is the window to
-which keyboard events are delivered. If no window is focused, the last focused
-window is matched. The value :code:`self` matches the window in which the
-remote control command is run. The value :code:`overlay_parent` matches the
-window that is under the :code:`self` window, when the self window is an
-overlay.
+:code:`parent_active`, :code:`parent_focused`, :code:`focused_os_window`,
+:code:`self`, :code:`overlay_parent`.  Active windows are the windows that are
+active in their parent tab. There is only one focused window and it is the
+window to which keyboard events are delivered. If no window is focused, the
+last focused window is matched. The value :code:`focused_os_window` matches
+all windows in the currently focused OS window. The value :code:`self` matches
+the window in which the remote control command is run. The value
+:code:`overlay_parent` matches the window that is under the :code:`self`
+window, when the self window is an overlay.
 
 Note that you can use the :ref:`kitten @ ls <at-ls>` command to get a list of windows.
 '''

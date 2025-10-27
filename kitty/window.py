@@ -903,6 +903,8 @@ class Window:
                 return False
             if query == 'parent_focused':
                 return active_tab is not None and self.tabref() is active_tab and last_focused_os_window_id() == self.os_window_id
+            if query == 'focused_os_window':
+                return last_focused_os_window_id() == self.os_window_id
             if query == 'self':
                 return self is self_window
             if query == 'overlay_parent':
