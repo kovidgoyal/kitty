@@ -1312,13 +1312,8 @@ class TabManager:  # {{{
         is_first: bool = False
     ) -> list[str]:
         ans = []
-        hmap = {tab_id: i for i, tab_id in enumerate(self.active_tab_history)}
-        if (at := self.active_tab) is not None:
-            hmap[at.id] = len(self.active_tab_history) + 1
-        def skey(tab: Tab) -> int:
-            return hmap.get(tab.id, -1)
         active_tab_index = -1
-        for i, tab in enumerate(sorted(self, key=skey)):
+        for i, tab in enumerate(self.tabs):
             if tab is self.active_tab:
                 active_tab_index = i
             ans.extend(tab.serialize_state_as_session(session_path, matched_windows, ser_opts))
