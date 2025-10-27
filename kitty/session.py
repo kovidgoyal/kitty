@@ -627,6 +627,14 @@ If specified, only save all windows (and their parent tabs/OS Windows) that matc
 search expression. See :ref:`search_syntax` for details on the search language. In particular if
 you want to only save windows that are present in the currently active session,
 use :code:`--match=session:.`.
+
+
+--base-dir
+When specified, relative session filenames will be saved to this directory instead of the current
+working directory. This is useful when kitty is launched from locations where the working directory
+is not your home directory, such as from system-wide shortcuts. Note that :code:`--relocatable` is
+typically not used with :code:`--base-dir`, since relocatable is meant for session files that are
+co-located with their project directories.
 '''
 
 
@@ -634,6 +642,9 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str)
     if not path:
         return
     from .config import atomic_save
+    if opts.base_dir and not os.path.isabs(path):
+        base_dir = os.path.abspath(os.path.expanduser(opts.base_dir))
+        path = os.path.join(base_dir, path)
     path = os.path.abspath(os.path.expanduser(path))
     session = '\n'.join(boss.serialize_state_as_session(path, opts))
     os.makedirs(os.path.dirname(path), exist_ok=True)

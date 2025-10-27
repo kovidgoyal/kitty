@@ -102,6 +102,17 @@ for a path at which to save the session file. Specify the path and the session
 will be saved there with the exact setup you created. The saved file will even
 be opened in your editor for you to review, automatically.
 
+.. tip::
+   If you want session files to be saved to a specific directory regardless of
+   your current working directory, use the ``--base-dir`` option. For example::
+
+       map f7>s save_as_session --use-foreground-process --base-dir ~/.local/share/kitty/sessions
+
+   This is particularly useful when kitty is launched from system-wide shortcuts
+   where the working directory might not be your home directory. Note that
+   ``--relocatable`` is typically not used with ``--base-dir``, since relocatable
+   is meant for session files that are co-located with their project directories.
+
 If instead, you want to create these by hand, see the example below which shows
 all the major keywords you can use in kitty session files:
 
