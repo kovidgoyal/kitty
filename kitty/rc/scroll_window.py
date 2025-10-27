@@ -29,7 +29,7 @@ class ScrollWindow(RemoteCommand):
         ' For example, :code:`30` will scroll down 30 lines, :code:`2p-`'
         ' will scroll up 2 pages and :code:`0.5p` will scroll down half page.'
         ' :code:`3u` will *unscroll* by 3 lines, which means that 3 lines will move from the'
-        ' scrollback buffer onto the top of the screen. :code:`1r-` will scroll to the previous prompt and 1r to the next prompt.'
+        ' scrollback buffer onto the top of the screen. :code:`1r-` will scroll to the previous prompt and :code:`1r` to the next prompt.'
         ' See :ac:`scroll_to_prompt` for details on how scrolling to prompt works.'
     )
     options_spec = MATCH_WINDOW_OPTION + '''\n

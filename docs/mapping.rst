@@ -201,7 +201,7 @@ In order to make this work, you need to configure your editor as shown below:
    In :file:`~/.vimrc` add:
     .. code-block:: vim
 
-        let &t_ti = &t_ti . "\033]1337;SetUserVar=in_editor=MQo\007"
+        let &t_ti = &t_ti . "\033]1337;SetUserVar=in_editor=MQ==\007"
         let &t_te = &t_te . "\033]1337;SetUserVar=in_editor\007"
 
 .. tab:: neovim
@@ -214,9 +214,9 @@ In order to make this work, you need to configure your editor as shown below:
             group = vim.api.nvim_create_augroup("KittySetVarVimEnter", { clear = true }),
             callback = function()
                 if vim.api.nvim_ui_send then
-                    vim.api.nvim_ui_send("\x1b]1337;SetUserVar=in_editor=MQo\007")
+                    vim.api.nvim_ui_send("\x1b]1337;SetUserVar=in_editor=MQ==\007")
                 else
-                    io.stdout:write("\x1b]1337;SetUserVar=in_editor=MQo\007")
+                    io.stdout:write("\x1b]1337;SetUserVar=in_editor=MQ==\007")
                 end
             end,
         })
@@ -225,7 +225,7 @@ In order to make this work, you need to configure your editor as shown below:
             group = vim.api.nvim_create_augroup("KittyUnsetVarVimLeave", { clear = true }),
             callback = function()
                 if vim.api.nvim_ui_send then
-                    vim.api.nvim_ui_send("\x1b]1337;SetUserVar=in_editor=MQo\007")
+                    vim.api.nvim_ui_send("\x1b]1337;SetUserVar=in_editor\007")
                 else
                     io.stdout:write("\x1b]1337;SetUserVar=in_editor\007")
                 end
