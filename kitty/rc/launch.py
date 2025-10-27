@@ -72,7 +72,7 @@ class Launch(RemoteCommand):
 --wait-for-child-to-exit
 type=bool-set
 Wait until the launched program exits and print out its exit code. The exit code is
-printed out instead of the window id. If the program exited nromally its exit code is printed, which
+printed out instead of the window id. If the program exited normally its exit code is printed, which
 is always greater than or equal to zero. If the program was killed by a signal, the symbolic name
 of the SIGNAL is printed, if available, otherwise the signal number with a leading minus sign is printed.
 
