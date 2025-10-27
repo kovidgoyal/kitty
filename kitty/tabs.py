@@ -1317,7 +1317,10 @@ class TabManager:  # {{{
             hmap[at.id] = len(self.active_tab_history) + 1
         def skey(tab: Tab) -> int:
             return hmap.get(tab.id, -1)
-        for tab in sorted(self, key=skey):
+        active_tab_index = -1
+        for i, tab in enumerate(sorted(self, key=skey)):
+            if tab is self.active_tab:
+                active_tab_index = i
             ans.extend(tab.serialize_state_as_session(session_path, matched_windows, ser_opts))
         if ans:
             prefix = [] if is_first else ['', '', 'new_os_window']
@@ -1326,6 +1329,10 @@ class TabManager:  # {{{
             if self.wm_name and self.wm_name != appname:
                 prefix.append(f'os_window_name {self.wm_name}')
             ans = prefix + ans
+            # Add focus_tab command to preserve the active tab
+            if active_tab_index >= 0:
+                ans.append('')
+                ans.append(f'focus_tab {active_tab_index}')
         return ans
 
     @property
