@@ -1921,6 +1921,15 @@ toggle_secure_input(PYNOARG) {
 }
 
 static PyObject*
+macos_cycle_through_os_windows(PYNOARG) {
+#ifdef __APPLE__
+    cocoa_cycle_through_os_windows();
+#endif
+    Py_RETURN_NONE;
+}
+
+
+static PyObject*
 cocoa_hide_app(PYNOARG) {
 #ifdef __APPLE__
     cocoa_hide();
@@ -2606,6 +2615,7 @@ static PyMethodDef module_methods[] = {
     METHODB(set_clipboard_data_types, METH_VARARGS),
     METHODB(get_clipboard_mime, METH_VARARGS),
     METHODB(toggle_secure_input, METH_NOARGS),
+    METHODB(macos_cycle_through_os_windows, METH_NOARGS),
     METHODB(get_content_scale_for_window, METH_NOARGS),
     METHODB(ring_bell, METH_VARARGS),
     METHODB(toggle_fullscreen, METH_VARARGS),

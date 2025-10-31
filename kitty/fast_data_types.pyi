@@ -948,6 +948,10 @@ def toggle_secure_input() -> None:
     pass
 
 
+def macos_cycle_through_os_windows() -> None:
+    pass
+
+
 def start_profiler(path: str) -> None:
     pass
 

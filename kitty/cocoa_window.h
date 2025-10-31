@@ -30,6 +30,7 @@ typedef enum {
     CLEAR_LAST_COMMAND,
     RELOAD_CONFIG,
     TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY,
+    MACOS_CYCLE_THROUGH_OS_WINDOWS,
     TOGGLE_FULLSCREEN,
     OPEN_KITTY_WEBSITE,
     HIDE,
@@ -50,6 +51,7 @@ void cocoa_system_beep(const char*);
 void cocoa_set_activation_policy(bool);
 bool cocoa_alt_option_key_pressed(unsigned long);
 void cocoa_toggle_secure_keyboard_entry(void);
+void cocoa_cycle_through_os_windows(void);
 void cocoa_hide(void);
 void cocoa_clear_global_shortcuts(void);
 void cocoa_hide_others(void);

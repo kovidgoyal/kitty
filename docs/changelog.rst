@@ -174,6 +174,8 @@ Detailed list of changes
 
 - macOS: Performance and power usage improvements of about 5-10% (:pull:`9131`)
 
+- macOS: Add an item to the global menu to Cycle through OS windows
+
 - Wayland: Fix ``center-sized`` panels not working on smithay based compositors (:pull:`9117`)
 
 - Wayland: Fix scrolling using some mouse wheels that produce "VALUE120" based

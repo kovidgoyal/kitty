@@ -91,6 +91,7 @@ from .fast_data_types import (
     grab_keyboard,
     is_layer_shell_supported,
     last_focused_os_window_id,
+    macos_cycle_through_os_windows,
     mark_os_window_for_close,
     monitor_pid,
     monotonic,
@@ -1314,6 +1315,10 @@ class Boss:
     @ac('misc', 'Toggle macOS secure keyboard entry')
     def toggle_macos_secure_keyboard_entry(self) -> None:
         toggle_secure_input()
+
+    @ac('misc', 'Cycle through OS windows on macOS')
+    def macos_cycle_through_os_windows(self) -> None:
+        macos_cycle_through_os_windows()
 
     @ac('misc', 'Hide macOS kitty application')
     def hide_macos_app(self) -> None:
@@ -3370,3 +3375,5 @@ class Boss:
     @ac('misc', 'Ungrab the keyboard if it was previously grabbed')
     def ungrab_keyboard(self) -> None:
         grab_keyboard(False)
+
+
