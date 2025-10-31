@@ -20,7 +20,7 @@ import (
 	"syscall"
 	"unicode/utf8"
 
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/process"
 	"golang.org/x/sys/unix"
 )
 

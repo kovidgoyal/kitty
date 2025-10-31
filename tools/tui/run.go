@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/process"
 	"golang.org/x/sys/unix"
 
 	"github.com/kovidgoyal/kitty/tools/config"
