@@ -196,7 +196,7 @@ def install_bundle(dest: str = '', which: str = '') -> None:
 
 
 def install_grype() -> str:
-    dest = os.path.join(SW, 'bin')
+    dest = '/tmp'
     rq = Request('https://api.github.com/repos/anchore/grype/releases/latest', headers={
         'Accept': 'application/vnd.github.v3+json',
     })
@@ -240,8 +240,8 @@ def check_dependencies() -> None:
     os.makedirs(dest, exist_ok=True)
     install_bundle(dest, os.path.basename(dest))
     cmdline = [grype, '--by-cve', '--config', gc, '--fail-on', 'medium', '--only-fixed', '--add-cpes-if-none']
-    if (cp := subprocess.run(cmdline + ['dir:' + SW])).returncode != 0:
-        raise SystemExit(cp.returncode)
+    if (subprocess.run(cmdline + ['dir:' + SW])).returncode != 0:
+        raise SystemExit('grype found problems during filesystem scan')
     # Now test against the SBOM
     import runpy
     orig = sys.argv, sys.stdout
@@ -251,8 +251,8 @@ def check_dependencies() -> None:
     runpy.run_path('bypy-src')
     sys.argv, sys.stdout = orig
     print(buf.getvalue())
-    if (cp := subprocess.run(cmdline, input=buf.getvalue().encode())).returncode != 0:
-        raise SystemExit(cp.returncode)
+    if (subprocess.run(cmdline, input=buf.getvalue().encode())).returncode != 0:
+        raise SystemExit('grype found problems during SBOM scan')
 
 
 def main() -> None:
