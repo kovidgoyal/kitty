@@ -258,9 +258,10 @@ def patch_colors(
         t = tm.active_tab
         if t is not None:
             t.relayout_borders()
-        set_os_window_chrome(tm.os_window_id)
         os_window_ids.add(tm.os_window_id)
-    patch_global_colors(spec, configured)
+    patch_global_colors(spec, configured)  # changes macos_titlebar_color
+    for oswid in os_window_ids:
+        set_os_window_chrome(oswid)
     default_bg_changed = 'background' in spec
     notify_bg = notify_on_bg_change and default_bg_changed
     boss = get_boss()

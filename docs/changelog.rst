@@ -183,6 +183,8 @@ Detailed list of changes
 - Wayland: Fix scrolling using some mouse wheels that produce "VALUE120" based
   scroll events too fast on some compositors (:pull:`9128`)
 
+- Automatic color scheme switching: Fix title bar color not being updated (:iss:`9167`)
+
 - Add support for Unicode 17
 
 - Fix a regression in 0.43.0 that caused :opt:`tab_bar_margin_width` to be
