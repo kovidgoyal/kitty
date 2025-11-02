@@ -890,7 +890,9 @@ inner_corner(Canvas *self, uint level, Corner corner) {
     uint vthick = thickness(self, level, true) / 2;
     uint x1 = 0, x2 = self->width, y1 = 0, y2 = self->height; int xd = 1, yd = 1;
     if (corner & LEFT_EDGE) {
-        x2 = minus(self->width / 2 + vthick + 1, hgap); xd = -1;
+        xd = -1;
+        Range vlinelimit = vline_limits(self, self->width / 2 + (xd * hgap), level);
+        x2 = vlinelimit.end;
     } else x1 = minus(self->width / 2 + hgap, vthick);
     if (corner & TOP_EDGE) {
         y2 = minus(self->height / 2, vgap); yd = -1;
