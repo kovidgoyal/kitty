@@ -58,6 +58,7 @@ Programs implementing this protocol:
 * The `kakoune text editor <https://github.com/mawww/kakoune/issues/4103>`__
 * The `dte text editor <https://gitlab.com/craigbarnes/dte/-/issues/138>`__
 * The `Helix text editor <https://github.com/helix-editor/helix/pull/4939>`__
+* The `Flow control editor <https://github.com/neurocyte/flow?tab=readme-ov-file#requirements>`__
 * The `far2l file manager <https://github.com/elfmz/far2l/commit/e1f2ee0ef2b8332e5fa3ad7f2e4afefe7c96fc3b>`__
 * The `Yazi file manager <https://github.com/sxyazi/yazi>`__
 * The `awrit web browser <https://github.com/chase/awrit>`__
