@@ -202,6 +202,9 @@ Detailed list of changes
 - Add ``state:focused_os_window`` match query to select all windows in the
   currently focused OS window (:ref:`search_syntax`)
 
+- Session saving now automatically preserves which tab is active in each OS
+  window by adding a ``focus_tab`` command to saved session files
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
