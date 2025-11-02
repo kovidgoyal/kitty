@@ -346,7 +346,8 @@ static void
 cocoa_out_of_sequence_render(OSWindow *window) {
     make_os_window_context_current(window);
     window->needs_render = true;
-    bool rendered = render_os_window(window, monotonic(), true);
+    bool rendered = false;
+    if (window->fonts_data->sprite_map) rendered = render_os_window(window, monotonic(), true);
     if (!rendered) {
         blank_os_window(window);
         swap_window_buffers(window);

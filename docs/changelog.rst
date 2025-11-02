@@ -176,6 +176,8 @@ Detailed list of changes
 
 - macOS: Add an item to the global menu to Cycle through OS windows
 
+- macOS: Quick access terminal: Fix a crash when changing font size (:iss:`9178`)
+
 - Wayland: Fix ``center-sized`` panels not working on smithay based compositors (:pull:`9117`)
 
 - Wayland: Fix scrolling using some mouse wheels that produce "VALUE120" based
