@@ -16,7 +16,7 @@ require (
 	github.com/kovidgoyal/go-parallel v1.0.1
 	github.com/kovidgoyal/imaging v1.7.2
 	github.com/seancfoley/ipaddress-go v1.7.1
-	github.com/shirou/gopsutil/v4 v4.25.9
+	github.com/shirou/gopsutil/v4 v4.25.10
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	golang.org/x/image v0.32.0
