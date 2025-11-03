@@ -134,7 +134,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.43.2 [future]
+0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Allow kitty to read a specified set of environment variables from your
