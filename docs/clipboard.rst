@@ -163,6 +163,39 @@ Specifying a password without a human friendly name is equivalent to not
 specifying a password and the terminal must treat the request as though
 it had no password.
 
+Allowing terminal applications to respond to paste events
+--------------------------------------------------------------
+
+If a TUI application wants to handle paste events (like the user pressing the
+paste key shortcut used by the terminal or selecting paste from a terminal UI menu)
+it can enable the *paste events* private mode (5522), as described in this `ancillary
+specification <https://rockorager.dev/misc/bracketed-paste-mime/>`__. When that
+mode is set, the terminal will send the application a list of MIME types on the
+clipboard every time the user triggers a paste action. The application is then
+free to request whatever MIME data it wants from the list of types.
+
+The mode can be enabled using the standard DECSET or DECRST control sequences.
+``CSI ? 5522 h`` to enable the mode. ``CSI ? 5522 l`` to disable the mode.
+
+Detecting support for this protocol
+-----------------------------------------
+
+Applications can detect if a terminal supports this protocol with a standard
+DECRQM query:
+
+.. code::
+
+    CSI ? 5522 $ p
+
+To which the terminal will respond with a DECRPM response:
+
+.. code::
+
+    CSI ? 5522 ; Ps $ y
+
+A Ps value of 0 or 4 means the mode is not supported.
+
+
 Support for terminal multiplexers
 ------------------------------------
 
