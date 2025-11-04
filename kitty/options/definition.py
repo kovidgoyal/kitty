@@ -4349,6 +4349,11 @@ URL is specified in :opt:`open_url_with`.
 '''
     )
 
+map('Copy last non-empty output from a shell command',
+    'copy_last_command_output f1 copy_last_command_output',
+    long_text='Requires :ref:`shell integration <shell_integration>` to work.'
+    )
+
 map('Insert selected path',
     'insert_selected_path kitty_mod+p>f kitten hints --type path --program -',
     long_text='''
