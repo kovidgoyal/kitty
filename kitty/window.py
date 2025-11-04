@@ -2131,6 +2131,16 @@ class Window:
     def show_last_non_empty_command_output(self) -> None:
         self.show_cmd_output(CommandOutput.last_non_empty, 'Last non-empty command output')
 
+    @ac('cp', '''
+        Copy the last non-empty output from a shell command to the clipboard
+
+        Requires :ref:`shell_integration` to work
+        ''')
+    def copy_last_command_output(self) -> None:
+        text = self.cmd_output(CommandOutput.last_non_empty, as_ansi=False, add_wrap_markers=False)
+        if text:
+            set_clipboard_string(text)
+
     @ac('cp', 'Paste the specified text into the current window. ANSI C escapes are decoded.')
     def paste(self, text: str) -> None:
         self.paste_with_actions(text)
