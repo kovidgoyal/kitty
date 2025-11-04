@@ -1442,11 +1442,15 @@ class TabManager:  # {{{
                             if next_active_tab not in tabs:
                                 next_active_tab = None
                     case 'left':
-                        next_active_tab = tabs[(tabs.index(active_tab_before_removal) - 1 + len(tabs)) % len(tabs)]
-                        remove_from_end_of_active_history(next_active_tab)
+                        tab_id = tabs.index(active_tab_before_removal)
+                        if tab_id > 0:
+                            next_active_tab = tabs[tab_id - 1]
+                            remove_from_end_of_active_history(next_active_tab)
                     case 'right':
-                        next_active_tab = tabs[(tabs.index(active_tab_before_removal) + 1) % len(tabs)]
-                        remove_from_end_of_active_history(next_active_tab)
+                        tab_id = tabs.index(active_tab_before_removal)
+                        if tab_id < len(tabs) - 1:
+                            next_active_tab = tabs[tab_id + 1]
+                            remove_from_end_of_active_history(next_active_tab)
                     case 'last':
                         next_active_tab = tabs[-1]
                         remove_from_end_of_active_history(next_active_tab)
