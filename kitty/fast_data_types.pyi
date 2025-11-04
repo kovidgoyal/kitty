@@ -1218,6 +1218,7 @@ class Screen:
     linebuf: LineBuf
     in_bracketed_paste_mode: bool
     in_band_resize_notification: bool
+    paste_events: bool
     color_preference_notification: bool
     cursor_visible: bool
     scrolled_by: int

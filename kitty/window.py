@@ -1834,6 +1834,12 @@ class Window:
         path = resolve_custom_file(path) if path else ''
         set_window_logo(self.os_window_id, self.tab_id, self.id, path, position or '', alpha, png_data)
 
+    def send_paste_event(self, is_primary_selection: bool = False) -> bool:
+        if not self.screen.paste_events:
+            return False
+        self.clipboard_request_manager.send_paste_event(is_primary_selection)
+        return True
+
     def paste_with_actions(self, text: str) -> None:
         if self.destroyed or not text:
             return

@@ -2400,10 +2400,12 @@ class Boss:
 
     @ac('cp', 'Paste from the clipboard to the active window')
     def paste_from_clipboard(self) -> None:
-        text = get_clipboard_string()
-        if text:
-            w = self.window_for_dispatch or self.active_window
-            if w is not None:
+        w = self.window_for_dispatch or self.active_window
+        if w is not None:
+            if w.send_paste_event():
+                return
+            text = get_clipboard_string()
+            if text:
                 w.paste_with_actions(text)
 
     def current_primary_selection(self) -> str:
@@ -2414,10 +2416,12 @@ class Boss:
 
     @ac('cp', 'Paste from the primary selection, if present, otherwise the clipboard to the active window')
     def paste_from_selection(self) -> None:
-        text = self.current_primary_selection_or_clipboard()
-        if text:
-            w = self.window_for_dispatch or self.active_window
-            if w is not None:
+        w = self.window_for_dispatch or self.active_window
+        if w is not None:
+            if w.send_paste_event(is_primary_selection=True):
+                return
+            text = self.current_primary_selection_or_clipboard()
+            if text:
                 w.paste_with_actions(text)
 
     def set_primary_selection(self) -> None:

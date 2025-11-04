@@ -542,6 +542,10 @@ class ClipboardRequestManager:
         else:
             self.fulfill_read_request(rr, allowed=allowed)
 
+    def send_paste_event(self, is_primary_selection: bool) -> None:
+        rr = ReadRequest(is_primary_selection=is_primary_selection, mime_types=(TARGETS_MIME,), protocol_type=ProtocolType.osc_5522)
+        self.fulfill_read_request(rr)
+
     def fulfill_read_request(self, rr: ReadRequest, allowed: bool = True) -> None:
         if rr.protocol_type is ProtocolType.osc_52:
             return self.fulfill_legacy_read_request(rr, allowed)

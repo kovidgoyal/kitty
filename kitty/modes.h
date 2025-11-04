@@ -91,5 +91,8 @@
 // In-band resize notification mode
 #define INBAND_RESIZE_NOTIFICATION (2048 << 5)
 
+// Paste events mode https://rockorager.dev/misc/bracketed-paste-mime/
+#define PASTE_EVENTS (5522 << 5)
+
 // Handle Ctrl-C/Ctrl-Z mode
 #define HANDLE_TERMIOS_SIGNALS (19997 << 5)
