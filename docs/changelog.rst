@@ -139,6 +139,9 @@ Detailed list of changes
 
 - Add support for the `paste events protocol <https://rockorager.dev/misc/bracketed-paste-mime/>`__ (:iss:`9183`)
 
+- Add a mappable action :ac:`copy_last_command_output` to copy the output of the last
+  command to the clipboard (:pull:`9185`)
+
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
