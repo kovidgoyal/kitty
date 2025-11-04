@@ -5870,6 +5870,7 @@ static PyGetSetDef getsetters[] = {
     GETSET(auto_repeat_enabled)
     GETSET(focus_tracking_enabled)
     GETSET(in_band_resize_notification)
+    GETSET(paste_events)
     GETSET(cursor_visible)
     GETSET(cursor_key_mode)
     GETSET(disable_ligatures)
