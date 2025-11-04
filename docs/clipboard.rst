@@ -166,6 +166,9 @@ it had no password.
 Allowing terminal applications to respond to paste events
 --------------------------------------------------------------
 
+.. versionadded:: 0.44.1
+     paste events via the 5522 mode
+
 If a TUI application wants to handle paste events (like the user pressing the
 paste key shortcut used by the terminal or selecting paste from a terminal UI menu)
 it can enable the *paste events* private mode (5522), as described in this `ancillary
@@ -217,3 +220,7 @@ simultaneously. It is up to well designed multiplexers to ensure that only a
 single request is in flight at a time. The multiplexer can abort requests by
 sending back the ``EBUSY`` error code indicating some other window is trying
 to access the clipboard.
+
+When the terminal sends an unsolicited paste event beause the user triggerred
+a paste and the 5522 mode is enabled, there will be no associated id. In this
+case, the multiplexer must forward the event to the currently active window.
