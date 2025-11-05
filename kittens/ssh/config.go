@@ -52,7 +52,7 @@ func resolve_secrets(c *Config, only_syntax bool) error {
 	if r, err := resolve_secret("totp_secret", c.Totp_secret); err != nil {
 		return err
 	} else {
-		c.Password = r
+		c.Totp_secret = r
 	}
 	return nil
 }

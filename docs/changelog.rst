@@ -142,6 +142,8 @@ Detailed list of changes
 - Add a mappable action :ac:`copy_last_command_output` to copy the output of the last
   command to the clipboard (:pull:`9185`)
 
+- ssh kitten: Fix a bug where automatic login was not working (:iss:`9187`)
+
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
