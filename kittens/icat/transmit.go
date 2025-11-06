@@ -74,11 +74,9 @@ func gc_for_image(imgd *image_data, frame_num int, frame *image_frame) *graphics
 	} else {
 		gc.SetAction(graphics.GRT_action_frame)
 		gc.SetGap(int32(frame.delay_ms))
+		gc.SetCompositionMode(utils.IfElse(frame.replace, graphics.Overwrite, graphics.AlphaBlend))
 		if frame.compose_onto > 0 {
 			gc.SetOverlaidFrame(uint64(frame.compose_onto))
-		} else {
-			bg := (uint32(frame.disposal_background.R) << 24) | (uint32(frame.disposal_background.G) << 16) | (uint32(frame.disposal_background.B) << 8) | uint32(frame.disposal_background.A)
-			gc.SetBackgroundColor(bg)
 		}
 		gc.SetLeftEdge(uint64(frame.left)).SetTopEdge(uint64(frame.top))
 	}

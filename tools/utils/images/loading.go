@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"image"
-	"image/color"
 	"image/gif"
 	"image/png"
 	"io"
@@ -20,10 +19,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/kovidgoyal/imaging/nrgb"
+	"github.com/kovidgoyal/imaging/prism/meta/gifmeta"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/shm"
 
-	"github.com/kovidgoyal/exiffix"
 	"github.com/kovidgoyal/imaging"
 )
 
@@ -50,15 +50,17 @@ type ImageFrame struct {
 	Number                   int   // 1-based number
 	Compose_onto             int   // number of frame to compose onto
 	Delay_ms                 int32 // negative for gapless frame, zero ignored, positive is number of ms
+	Replace                  bool  // do a replace rather than an alpha blend
 	Is_opaque                bool
 	Img                      image.Image
 }
 
 type SerializableImageFrame struct {
 	Width, Height, Left, Top int
-	Number                   int // 1-based number
-	Compose_onto             int // number of frame to compose onto
-	Delay_ms                 int // negative for gapless frame, zero ignored, positive is number of ms
+	Number                   int  // 1-based number
+	Compose_onto             int  // number of frame to compose onto
+	Delay_ms                 int  // negative for gapless frame, zero ignored, positive is number of ms
+	Replace                  bool // do a replace rather than an alpha blend
 	Is_opaque                bool
 	Size                     int
 }
@@ -71,7 +73,7 @@ func (s *ImageFrame) Serialize() SerializableImageFrame {
 	return SerializableImageFrame{
 		Width: s.Width, Height: s.Height, Left: s.Left, Top: s.Top,
 		Number: s.Number, Compose_onto: s.Compose_onto, Delay_ms: int(s.Delay_ms),
-		Is_opaque: s.Is_opaque,
+		Is_opaque: s.Is_opaque, Replace: s.Replace,
 	}
 }
 
@@ -131,7 +133,7 @@ func (self *ImageFrame) Data() (ans []byte) {
 	var final_img image.Image
 	switch bytes_per_pixel {
 	case 3:
-		rgb := imaging.NewNRGB(dest_rect)
+		rgb := nrgb.NewNRGB(dest_rect)
 		final_img = rgb
 		ans = rgb.Pix
 	case 4:
@@ -148,14 +150,14 @@ func ImageFrameFromSerialized(s SerializableImageFrame, data []byte) (aa *ImageF
 	ans := ImageFrame{
 		Width: s.Width, Height: s.Height, Left: s.Left, Top: s.Top,
 		Number: s.Number, Compose_onto: s.Compose_onto, Delay_ms: int32(s.Delay_ms),
-		Is_opaque: s.Is_opaque,
+		Is_opaque: s.Is_opaque, Replace: s.Replace,
 	}
 	bytes_per_pixel := utils.IfElse(s.Is_opaque, 3, 4)
 	if expected := bytes_per_pixel * s.Width * s.Height; len(data) != expected {
 		return nil, fmt.Errorf("serialized image data has size: %d != %d", len(data), expected)
 	}
 	if s.Is_opaque {
-		ans.Img, err = imaging.NewNRGBWithContiguousRGBPixels(data, s.Left, s.Top, s.Width, s.Height)
+		ans.Img, err = nrgb.NewNRGBWithContiguousRGBPixels(data, s.Left, s.Top, s.Width, s.Height)
 	} else {
 		ans.Img, err = NewNRGBAWithContiguousRGBAPixels(data, s.Left, s.Top, s.Width, s.Height)
 	}
@@ -242,37 +244,6 @@ func (self *ImageData) Resize(x_frac, y_frac float64) *ImageData {
 	return &ans
 }
 
-func CalcMinimumGIFGap(gaps []int) int {
-	// Some broken GIF images have all zero gaps, browsers with their usual
-	// idiot ideas render these with a default 100ms gap https://bugzilla.mozilla.org/show_bug.cgi?id=125137
-	// Browsers actually force a 100ms gap at any zero gap frame, but that
-	// just means it is impossible to deliberately use zero gap frames for
-	// sophisticated blending, so we dont do that.
-	max_gap := utils.Max(0, gaps...)
-	min_gap := 0
-	if max_gap <= 0 {
-		min_gap = 10
-	}
-	return min_gap
-}
-
-func SetGIFFrameDisposal(number, anchor_frame int, disposal byte) (int, int) {
-	compose_onto := 0
-	if number > 1 {
-		switch disposal {
-		case gif.DisposalNone:
-			compose_onto = number - 1
-			anchor_frame = number
-		case gif.DisposalBackground:
-			// see https://github.com/golang/go/issues/20694
-			anchor_frame = number
-		case gif.DisposalPrevious:
-			compose_onto = anchor_frame
-		}
-	}
-	return anchor_frame, compose_onto
-}
-
 func MakeTempDir(template string) (ans string, err error) {
 	if template == "" {
 		template = "kitty-img-*"
@@ -287,51 +258,25 @@ func MakeTempDir(template string) (ans string, err error) {
 }
 
 // Native {{{
-func (frame *ImageFrame) set_delay(min_gap, delay int) {
-	frame.Delay_ms = int32(max(min_gap, delay) * 10)
-	if frame.Delay_ms == 0 {
-		frame.Delay_ms = -1 // gapless frame in the graphics protocol
-	}
-}
-
-func open_native_gif(f io.Reader, ans *ImageData) error {
-	gif_frames, err := gif.DecodeAll(f)
-	if err != nil {
-		return err
-	}
-	min_gap := CalcMinimumGIFGap(gif_frames.Delay)
-	anchor_frame := 1
-	for i, paletted_img := range gif_frames.Image {
-		b := paletted_img.Bounds()
-		frame := ImageFrame{Img: paletted_img, Left: b.Min.X, Top: b.Min.Y, Width: b.Dx(), Height: b.Dy(), Number: len(ans.Frames) + 1, Is_opaque: paletted_img.Opaque()}
-		frame.set_delay(min_gap, gif_frames.Delay[i])
-		anchor_frame, frame.Compose_onto = SetGIFFrameDisposal(frame.Number, anchor_frame, gif_frames.Disposal[i])
-		ans.Frames = append(ans.Frames, &frame)
-	}
-	return nil
-}
-
 func OpenNativeImageFromReader(f io.ReadSeeker) (ans *ImageData, err error) {
-	c, fmt, err := image.DecodeConfig(f)
+	ic, _, err := imaging.DecodeAll(f)
 	if err != nil {
 		return nil, err
 	}
 	_, _ = f.Seek(0, io.SeekStart)
-	ans = &ImageData{Width: c.Width, Height: c.Height, Format_uppercase: strings.ToUpper(fmt)}
 
-	if ans.Format_uppercase == "GIF" {
-		err = open_native_gif(f, ans)
-		if err != nil {
-			return nil, err
+	ans = &ImageData{Width: int(ic.Metadata.PixelWidth), Height: int(ic.Metadata.PixelHeight), Format_uppercase: strings.ToUpper(ic.Metadata.Format.String())}
+
+	for _, f := range ic.Frames {
+		fr := ImageFrame{
+			Img: f.Image, Left: f.X, Top: f.Y, Width: f.Image.Bounds().Dx(), Height: f.Image.Bounds().Dy(),
+			Compose_onto: int(f.ComposeOnto), Number: int(f.Number), Delay_ms: int32(f.Delay.Milliseconds()),
+			Replace: f.Replace, Is_opaque: imaging.IsOpaque(f.Image),
 		}
-	} else {
-		img, _, err := exiffix.Decode(f)
-		if err != nil {
-			return nil, err
+		if fr.Delay_ms <= 0 {
+			fr.Delay_ms = -1 // -1 is gapless in graphics protocol
 		}
-		b := img.Bounds()
-		ans.Frames = []*ImageFrame{{Img: img, Left: b.Min.X, Top: b.Min.Y, Width: b.Dx(), Height: b.Dy()}}
-		ans.Frames[0].Is_opaque = c.ColorModel == color.YCbCrModel || c.ColorModel == color.GrayModel || c.ColorModel == color.Gray16Model || c.ColorModel == color.CMYKModel || ans.Format_uppercase == "JPEG" || ans.Format_uppercase == "JPG" || IsOpaque(img)
+		ans.Frames = append(ans.Frames, &fr)
 	}
 	return
 }
@@ -601,7 +546,9 @@ func RenderWithMagick(path string, ro *RenderOptions, frames []IdentifyRecord) (
 	for i, frame := range frames {
 		gaps[i] = frame.Gap
 	}
-	min_gap := CalcMinimumGIFGap(gaps)
+	// although ImageMagick *might* be already taking care of this adjustment,
+	// I dont know for sure, so do it anyway.
+	min_gap := gifmeta.CalcMinimumGap(gaps)
 	for _, entry := range entries {
 		fname := entry.Name()
 		p, _, _ := strings.Cut(fname, ".")
@@ -653,7 +600,7 @@ func RenderWithMagick(path string, ro *RenderOptions, frames []IdentifyRecord) (
 		frame := ImageFrame{
 			Number: index + 1, Width: width, Height: height, Left: x, Top: y, Is_opaque: identify_data.Is_opaque,
 		}
-		frame.set_delay(min_gap, identify_data.Gap)
+		frame.Delay_ms = int32(max(min_gap, identify_data.Gap) * 10)
 		err = check_resize(&frame, df.Name())
 		if err != nil {
 			return
@@ -665,9 +612,10 @@ func RenderWithMagick(path string, ro *RenderOptions, frames []IdentifyRecord) (
 		return
 	}
 	slices.SortFunc(ans, func(a, b *ImageFrame) int { return a.Number - b.Number })
-	anchor_frame := 1
+	anchor_frame := uint(1)
 	for i, frame := range ans {
-		anchor_frame, frame.Compose_onto = SetGIFFrameDisposal(frame.Number, anchor_frame, byte(frames[i].Disposal))
+		af, co := gifmeta.SetGIFFrameDisposal(uint(frame.Number), anchor_frame, byte(frames[i].Disposal))
+		anchor_frame, frame.Compose_onto = af, int(co)
 	}
 	return
 }

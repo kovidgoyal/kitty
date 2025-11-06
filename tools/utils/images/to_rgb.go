@@ -7,6 +7,7 @@ import (
 	"image"
 
 	"github.com/kovidgoyal/imaging"
+	"github.com/kovidgoyal/imaging/nrgb"
 )
 
 var _ = fmt.Print
@@ -17,6 +18,6 @@ func (self *Context) paste_nrgb_onto_opaque(background *imaging.NRGB, img image.
 		bg = *bgcol
 
 	}
-	src := imaging.NewNRGBScanner(img, bg)
+	src := nrgb.NewNRGBScanner(img, bg)
 	self.run_paste(src, background, pos, func(dst []byte) {})
 }

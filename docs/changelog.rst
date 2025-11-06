@@ -144,6 +144,8 @@ Detailed list of changes
 
 - ssh kitten: Fix a bug where automatic login was not working (:iss:`9187`)
 
+- icat kitten: Add support for APNG, netPBM, ICC color profiles and CCIP metadata to the builtin engine
+
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

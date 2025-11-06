@@ -210,6 +210,9 @@ func (self *GraphicsHandler) transmit(lp *loop.Loop, img *images.ImageData, m *i
 		default:
 			gc.SetAction(graphics.GRT_action_frame)
 			gc.SetGap(int32(frame.Delay_ms))
+			if frame.Replace {
+				gc.SetCompositionMode(graphics.Overwrite)
+			}
 			if frame.Compose_onto > 0 {
 				gc.SetOverlaidFrame(uint64(frame.Compose_onto))
 			}

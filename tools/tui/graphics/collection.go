@@ -403,6 +403,9 @@ func (self *ImageCollection) transmit_rendering(lp *loop.Loop, r *rendering) {
 			if frame.Compose_onto > 0 {
 				gc.SetOverlaidFrame(uint64(frame.Compose_onto))
 			}
+			if frame.Replace {
+				gc.SetCompositionMode(Overwrite)
+			}
 			gc.SetLeftEdge(uint64(frame.Left)).SetTopEdge(uint64(frame.Top))
 		}
 		transmit(lp, r.image_id, self.temp_file_map, frame, gc)

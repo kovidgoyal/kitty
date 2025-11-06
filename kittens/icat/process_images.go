@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	"image/color"
 	"io"
 	"io/fs"
 	"net/http"
@@ -171,8 +170,8 @@ type image_frame struct {
 	width, height, left, top int
 	transmission_format      graphics.GRT_f
 	compose_onto             int
+	replace                  bool
 	number                   int
-	disposal_background      color.NRGBA
 	delay_ms                 int
 }
 

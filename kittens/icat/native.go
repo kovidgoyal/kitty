@@ -5,16 +5,14 @@ package icat
 import (
 	"fmt"
 	"image"
-	"image/gif"
 
 	"github.com/kovidgoyal/go-parallel"
+	"github.com/kovidgoyal/imaging/nrgb"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/graphics"
-	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/images"
 	"github.com/kovidgoyal/kitty/tools/utils/shm"
 
-	"github.com/kovidgoyal/exiffix"
 	"github.com/kovidgoyal/imaging"
 )
 
@@ -33,19 +31,19 @@ func resize_frame(imgd *image_data, img image.Image) (image.Image, image.Rectang
 
 const shm_template = "kitty-icat-*"
 
-func add_frame(ctx *images.Context, imgd *image_data, img image.Image) *image_frame {
+func add_frame(ctx *images.Context, imgd *image_data, img image.Image, left, top int) *image_frame {
 	is_opaque := false
 	if imgd.format_uppercase == "JPEG" {
 		// special cased because EXIF orientation could have already changed this image to an NRGBA making IsOpaque() very slow
 		is_opaque = true
 	} else {
-		is_opaque = images.IsOpaque(img)
+		is_opaque = imaging.IsOpaque(img)
 	}
 	b := img.Bounds()
 	if imgd.scaled_frac.x != 0 {
 		img, b = resize_frame(imgd, img)
 	}
-	f := image_frame{width: b.Dx(), height: b.Dy(), number: len(imgd.frames) + 1, left: b.Min.X, top: b.Min.Y}
+	f := image_frame{width: b.Dx(), height: b.Dy(), number: len(imgd.frames) + 1, left: left, top: top}
 	dest_rect := image.Rect(0, 0, f.width, f.height)
 	var final_img image.Image
 	bytes_per_pixel := 4
@@ -55,7 +53,7 @@ func add_frame(ctx *images.Context, imgd *image_data, img image.Image) *image_fr
 		bytes_per_pixel = 3
 		m, err := shm.CreateTemp(shm_template, uint64(f.width*f.height*bytes_per_pixel))
 		if err != nil {
-			rgb = imaging.NewNRGB(dest_rect)
+			rgb = nrgb.NewNRGB(dest_rect)
 		} else {
 			rgb = &imaging.NRGB{Pix: m.Slice(), Stride: bytes_per_pixel * f.width, Rect: dest_rect}
 			f.shm = m
@@ -111,45 +109,19 @@ func scale_image(imgd *image_data) bool {
 	return false
 }
 
-func load_one_frame_image(imgd *image_data, src *opened_input) (img image.Image, err error) {
-	img, _, err = exiffix.Decode(src.file)
-	src.Rewind()
-	if err != nil {
-		return
-	}
-	// reset the sizes as we read EXIF tags here which could have rotated the image
-	imgd.canvas_width = img.Bounds().Dx()
-	imgd.canvas_height = img.Bounds().Dy()
-	set_basic_metadata(imgd)
-	scale_image(imgd)
-	return
-}
-
 var debugprintln = tty.DebugPrintln
 var _ = debugprintln
 
-func (frame *image_frame) set_disposal(anchor_frame int, disposal byte) int {
-	anchor_frame, frame.compose_onto = images.SetGIFFrameDisposal(frame.number, anchor_frame, disposal)
-	return anchor_frame
-}
-
-func (frame *image_frame) set_delay(gap, min_gap int) {
-	frame.delay_ms = utils.Max(min_gap, gap) * 10
-	if frame.delay_ms == 0 {
-		frame.delay_ms = -1
+func add_frames(ctx *images.Context, imgd *image_data, gf *imaging.Image) {
+	for _, f := range gf.Frames {
+		frame := add_frame(ctx, imgd, f.Image, f.X, f.Y)
+		frame.number, frame.compose_onto = int(f.Number), int(f.ComposeOnto)
+		frame.replace = f.Replace
+		frame.delay_ms = int(f.Delay.Milliseconds())
+		if frame.delay_ms <= 0 {
+			frame.delay_ms = -1 // -1 is gapless in graphics protocol
+		}
 	}
-}
-
-func add_gif_frames(ctx *images.Context, imgd *image_data, gf *gif.GIF) error {
-	min_gap := images.CalcMinimumGIFGap(gf.Delay)
-	scale_image(imgd)
-	anchor_frame := 1
-	for i, paletted_img := range gf.Image {
-		frame := add_frame(ctx, imgd, paletted_img)
-		frame.set_delay(gf.Delay[i], min_gap)
-		anchor_frame = frame.set_disposal(anchor_frame, gf.Disposal[i])
-	}
-	return nil
 }
 
 func render_image_with_go(imgd *image_data, src *opened_input) (err error) {
@@ -159,23 +131,19 @@ func render_image_with_go(imgd *image_data, src *opened_input) (err error) {
 		}
 	}()
 	ctx := images.Context{}
-	switch {
-	case imgd.format_uppercase == "GIF" && opts.Loop != 0:
-		gif_frames, err := gif.DecodeAll(src.file)
-		src.Rewind()
-		if err != nil {
-			return fmt.Errorf("Failed to decode GIF file with error: %w", err)
-		}
-		err = add_gif_frames(&ctx, imgd, gif_frames)
-		if err != nil {
-			return err
-		}
-	default:
-		img, err := load_one_frame_image(imgd, src)
-		if err != nil {
-			return err
-		}
-		add_frame(&ctx, imgd, img)
+	imgs, _, err := imaging.DecodeAll(src.file)
+	if err != nil {
+		return err
 	}
+	if imgs == nil {
+		return fmt.Errorf("unknown image format")
+	}
+	// Loading could auto orient and therefore change width/height, so
+	// re-calculate
+	imgd.canvas_width = int(imgs.Metadata.PixelWidth)
+	imgd.canvas_height = int(imgs.Metadata.PixelHeight)
+	set_basic_metadata(imgd)
+	scale_image(imgd)
+	add_frames(&ctx, imgd, imgs)
 	return nil
 }
