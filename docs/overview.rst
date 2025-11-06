@@ -96,11 +96,15 @@ used to create programs that leverage kitty's powerful features, for example,
 You can :doc:`create your own kittens to scratch your own itches
 <kittens/custom>`.
 
-For a list of all the builtin kittens, :ref:`see here <kittens>`.
+For a list of all the builtin kittens, run ``kitten`` in kitty, or to browse
+some of the more prominent ones, see :ref:`see here <kittens>`.
 
 Additionally, you can use the :ref:`watchers <Watchers>` framework
 to create Python scripts that run in response to various events such as windows
 being resized, closing, having their titles changed, etc.
+
+Finally, there is remote control which allows you to control kitty from
+anywhere, even across a network! See below for more about remote control.
 
 .. toctree::
    :hidden:
