@@ -86,6 +86,13 @@ graphics protocol.
 Show markdown based slides with images in your terminal, powered by the
 kitty graphics protocol.
 
+.. _tool_mdfried:
+
+`mdfried <https://github.com/benjajaja/mdfried>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Markdown viewer that can render big headers with the text-sizing-protocol, and
+also render images with the kitty graphics protocol.
+
 .. _tool_term_image:
 
 `term-image <https://github.com/AnonymouX47/term-image>`__
