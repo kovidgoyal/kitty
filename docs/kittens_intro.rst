@@ -91,11 +91,6 @@ Some prominent kittens:
     configuration to the remote host.
 
 
-:doc:`Panel <kittens/panel>`
-    Draw a GPU accelerated dock panel on your desktop showing the output from an
-    arbitrary terminal program.
-
-
 :doc:`Clipboard <kittens/clipboard>`
     Copy/paste to the clipboard from shell scripts, even over SSH.
 
