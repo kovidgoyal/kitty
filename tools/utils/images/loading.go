@@ -420,9 +420,7 @@ func parse_identify_record(ans *IdentifyRecord, raw *IdentifyOutput) (err error)
 	}
 	ans.Needs_blend = q == "blend"
 	switch strings.ToLower(raw.Dispose) {
-	case "undefined":
-		ans.Disposal = 0
-	case "none":
+	case "none", "undefined":
 		ans.Disposal = gif.DisposalNone
 	case "background":
 		ans.Disposal = gif.DisposalBackground
@@ -626,10 +624,16 @@ func RenderWithMagick(path, original_file_path string, ro *RenderOptions, frames
 		return
 	}
 	slices.SortFunc(ans, func(a, b *ImageFrame) int { return a.Number - b.Number })
-	anchor_frame := uint(1)
+	prev_disposal := gif.DisposalBackground
+	prev_compose_onto := 0
 	for i, frame := range ans {
-		af, co := gifmeta.SetGIFFrameDisposal(uint(frame.Number), anchor_frame, byte(frames[i].Disposal))
-		anchor_frame, frame.Compose_onto = af, int(co)
+		switch prev_disposal {
+		case gif.DisposalNone:
+			frame.Compose_onto = frame.Number - 1
+		case gif.DisposalPrevious:
+			frame.Compose_onto = prev_compose_onto
+		}
+		prev_disposal, prev_compose_onto = frames[i].Disposal, frame.Compose_onto
 	}
 	return
 }
