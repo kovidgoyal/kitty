@@ -13,7 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1
 	github.com/kovidgoyal/go-parallel v1.1.1
-	github.com/kovidgoyal/imaging v1.8.2
+	github.com/kovidgoyal/imaging v1.8.3
 	github.com/seancfoley/ipaddress-go v1.7.1
 	github.com/shirou/gopsutil/v4 v4.25.10
 	github.com/zeebo/xxh3 v1.0.2
