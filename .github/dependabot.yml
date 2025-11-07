@@ -13,6 +13,8 @@ updates:
       all-go-deps:
         patterns:
           - "*"  # group all non-security update PRs
+    cooldown:
+      default-days: 7
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -21,3 +23,5 @@ updates:
       actions:
         patterns:
           - "*"
+    cooldown:
+      default-days: 7
