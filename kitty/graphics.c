@@ -1590,7 +1590,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         .x = g->x_offset, .y = g->y_offset,
         .is_4byte_aligned = load_data->is_4byte_aligned,
         .is_opaque = load_data->is_opaque,
-        .alpha_blend = g->blend_mode != 1 && !load_data->is_opaque,
+        .alpha_blend = g->compose_mode != 1 && !load_data->is_opaque,
         .gap = g->gap > 0 ? g->gap : (g->gap < 0) ? 0 : DEFAULT_GAP,
         .bgcolor = g->bgcolor,
     };

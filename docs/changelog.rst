@@ -146,6 +146,8 @@ Detailed list of changes
 
 - icat kitten: Add support for APNG, netPBM, ICC color profiles and CCIP metadata to the builtin engine
 
+- Graphics: Fix overwrite composition mode for animation frames not being honored
+
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

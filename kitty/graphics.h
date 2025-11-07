@@ -13,7 +13,7 @@ typedef struct {
     uint32_t format, more, id, image_number, data_sz, data_offset, placement_id, quiet, parent_id, parent_placement_id;
     uint32_t width, height, x_offset, y_offset;
     union { uint32_t cursor_movement, compose_mode; };
-    union { uint32_t cell_x_offset, blend_mode; };
+    union { uint32_t cell_x_offset; };
     union { uint32_t cell_y_offset, bgcolor; };
     union { uint32_t data_width, animation_state; };
     union { uint32_t data_height, loop_count; };
