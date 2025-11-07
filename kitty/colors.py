@@ -10,7 +10,7 @@ from typing import Literal, Optional, TypedDict
 from .config import parse_config
 from .constants import config_dir
 from .fast_data_types import Color, get_boss, get_options, glfw_get_system_color_theme, patch_color_profiles, patch_global_colors, set_os_window_chrome
-from .options.types import Options, nullable_colors
+from .options.types import Options, nullable_colors, special_colors
 from .rgb import color_from_int
 from .typing_compat import WindowType
 
@@ -52,6 +52,8 @@ class ThemeColors:
                 defval = getattr(defaults, name)
                 if isinstance(defval, Color):
                     ans[name] = int(defval)
+            for name in special_colors:
+                ans[name] = getattr(defaults, name)
             self.default_colors = ans
             self.default_background_image_options: BackgroundImageOptions = {
                     k: getattr(defaults, k) for k in BackgroundImageOptions.__optional_keys__}  # type: ignore
@@ -190,8 +192,9 @@ theme_colors = ThemeColors()
 
 
 def parse_colors(args: Iterable[str | Iterable[str]], background_image_options: BackgroundImageOptions | None = None) -> Colors:
-    colors: dict[str, Color | None] = {}
+    colors: dict[str, Color | None | int] = {}
     nullable_color_map: dict[str, int | None] = {}
+    special_color_map: dict[str, int] = {}
     transparent_background_colors = ()
     for spec in args:
         if isinstance(spec, str):
@@ -213,8 +216,13 @@ def parse_colors(args: Iterable[str | Iterable[str]], background_image_options: 
         if q is not False:
             val = int(q) if isinstance(q, Color) else None
             nullable_color_map[k] = val
+    for k in special_colors:
+        sq = colors.pop(k, None)
+        if isinstance(sq, int):
+            special_color_map[k] = sq
     ans: dict[str, int | None] = {k: int(v) for k, v in colors.items() if isinstance(v, Color)}
     ans.update(nullable_color_map)
+    ans.update(special_color_map)
     return ans, transparent_background_colors
 
 
@@ -228,7 +236,10 @@ def patch_options_with_color_spec(
                 if k in nullable_colors:
                     setattr(opts, k, None)
             else:
-                setattr(opts, k, color_from_int(v))
+                if k in special_colors:
+                    setattr(opts, k, v)
+                else:
+                    setattr(opts, k, color_from_int(v))
     opts.transparent_background_colors = transparent_background_colors
     if background_image_options is not None:
         for k, bv in background_image_options.items():
