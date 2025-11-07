@@ -1095,5 +1095,12 @@ nullable_colors = frozenset({
     'selection_background'
 })
 
+special_colors = frozenset({
+    'scrollbar_handle_color',
+    'scrollbar_track_color',
+    'wayland_titlebar_color',
+    'macos_titlebar_color'
+})
+
 
 secret_options = ('remote_control_password', 'file_transfer_confirmation_bypass')

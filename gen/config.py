@@ -43,6 +43,7 @@ def main(args: list[str]=sys.argv) -> None:
     from kitty.options.definition import definition
     nullable_colors = []
     all_colors = []
+    special_colors = []
     for opt in definition.iter_all_options():
         if callable(opt.parser_func):
             match opt.parser_func.__name__:
@@ -50,14 +51,19 @@ def main(args: list[str]=sys.argv) -> None:
                     all_colors.append(opt.name)
                 case 'macos_titlebar_color' | 'titlebar_color' | 'scrollbar_color':
                     all_colors.append(opt.name)
+                    special_colors.append(opt.name)
                 case 'to_color_or_none' | 'cursor_text_color':
-                    nullable_colors.append(opt.name)
                     all_colors.append(opt.name)
+                    nullable_colors.append(opt.name)
 
     patch_color_list('tools/cmd/at/set_colors.go', nullable_colors, 'NULLABLE')
     patch_color_list('tools/themes/collection.go', all_colors, 'ALL')
     nc = ',\n    '.join(f'{x!r}' for x in nullable_colors)
-    write_output('kitty', definition, f'\nnullable_colors = frozenset({{\n    {nc}\n}})\n')
+    sc = ',\n    '.join(f'{x!r}' for x in special_colors)
+    write_output('kitty', definition,
+                 f'\nnullable_colors = frozenset({{\n    {nc}\n}})\n'
+                 f'\nspecial_colors = frozenset({{\n    {sc}\n}})\n'
+    )
 
 
 if __name__ == '__main__':
