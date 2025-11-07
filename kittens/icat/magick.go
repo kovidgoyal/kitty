@@ -12,9 +12,9 @@ import (
 
 var _ = fmt.Print
 
-func Render(path string, ro *images.RenderOptions, frames []images.IdentifyRecord) (ans []*image_frame, err error) {
+func Render(path, original_file_path string, ro *images.RenderOptions, frames []images.IdentifyRecord) (ans []*image_frame, err error) {
 	ro.TempfilenameTemplate = shm_template
-	image_frames, filenames, err := images.RenderWithMagick(path, ro, frames)
+	image_frames, filenames, err := images.RenderWithMagick(path, original_file_path, ro, frames)
 	if err == nil {
 		ans = make([]*image_frame, len(image_frames))
 		for i, x := range image_frames {
@@ -41,7 +41,7 @@ func render_image_with_magick(imgd *image_data, src *opened_input) (err error) {
 	if err != nil {
 		return err
 	}
-	frames, err := images.IdentifyWithMagick(src.FileSystemName())
+	frames, err := images.IdentifyWithMagick(src.FileSystemName(), imgd.source_name)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func render_image_with_magick(imgd *image_data, src *opened_input) (err error) {
 	if scale_image(imgd) {
 		ro.ResizeTo.X, ro.ResizeTo.Y = imgd.canvas_width, imgd.canvas_height
 	}
-	imgd.frames, err = Render(src.FileSystemName(), &ro, frames)
+	imgd.frames, err = Render(src.FileSystemName(), imgd.source_name, &ro, frames)
 	if err != nil {
 		return err
 	}
