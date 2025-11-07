@@ -134,7 +134,7 @@ opened window.
 --cwd
 completion=type:directory kwds:current,oldest,last_reported,root
 The working directory for the newly launched child. Use the special value
-:code:`current` to use the working directory of the :option:`source window <launch --source-window>`
+:code:`current` to use the working directory of the :option:`source window <launch --source-window>`.
 The special value :code:`last_reported` uses the last working directory reported
 by the shell (needs :ref:`shell_integration` to work). The special value
 :code:`oldest` works like :code:`current` but uses the working directory of the
