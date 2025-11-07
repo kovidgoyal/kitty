@@ -144,7 +144,7 @@ Detailed list of changes
 
 - ssh kitten: Fix a bug where automatic login was not working (:iss:`9187`)
 
-- icat kitten: Add support for APNG, netPBM, ICC color profiles and CCIP metadata to the builtin engine
+- icat kitten: Add support for animated PNG and animated WebP, netPBM images, ICC color profiles and CCIP metadata to the builtin engine
 
 - Graphics: Fix overwrite composition mode for animation frames not being honored
 
