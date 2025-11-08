@@ -32,13 +32,7 @@ func resize_frame(imgd *image_data, img image.Image) (image.Image, image.Rectang
 const shm_template = "kitty-icat-*"
 
 func add_frame(ctx *images.Context, imgd *image_data, img image.Image, left, top int) *image_frame {
-	is_opaque := false
-	if imgd.format_uppercase == "JPEG" {
-		// special cased because EXIF orientation could have already changed this image to an NRGBA making IsOpaque() very slow
-		is_opaque = true
-	} else {
-		is_opaque = imaging.IsOpaque(img)
-	}
+	is_opaque := imaging.IsOpaque(img)
 	b := img.Bounds()
 	if imgd.scaled_frac.x != 0 {
 		img, b = resize_frame(imgd, img)
@@ -163,10 +157,11 @@ func render_image_with_go(imgd *image_data, src *opened_input) (err error) {
 	if imgs == nil {
 		return fmt.Errorf("unknown image format")
 	}
+	imgd.format_uppercase = imgs.Metadata.Format.String()
 	// Loading could auto orient and therefore change width/height, so
 	// re-calculate
-	imgd.canvas_width = int(imgs.Metadata.PixelWidth)
-	imgd.canvas_height = int(imgs.Metadata.PixelHeight)
+	b := imgs.Bounds()
+	imgd.canvas_width, imgd.canvas_height = b.Dx(), b.Dy()
 	set_basic_metadata(imgd)
 	scale_image(imgd)
 	add_frames(&ctx, imgd, imgs)
