@@ -22,9 +22,16 @@ be positioned at the top left corner of the image, instead of on the line after 
 
 --scale-up
 type=bool-set
-When used in combination with :option:`--place` it will cause images that are
-smaller than the specified area to be scaled up to use as much of the specified
-area as possible.
+Cause images that are smaller than the specified area to be scaled up to use as much
+of the specified area as possible. The specified area depends on either the :option:`--place`
+or the :option:`--fit` options.
+
+
+--fit
+choices=width,height,both,none
+default=width
+When not using :option:`--place`, control how the image is scaled relative to the screen.
+You can have it fit in the screen width or height or both or neither.
 
 
 --background

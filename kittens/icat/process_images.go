@@ -8,6 +8,7 @@ import (
 	"image"
 	"io"
 	"io/fs"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -196,15 +197,29 @@ type image_data struct {
 	source_name string
 }
 
+const inf = math.MaxInt
+
 func set_basic_metadata(imgd *image_data) {
 	if imgd.frames == nil {
 		imgd.frames = make([]*image_frame, 0, 32)
 	}
-	imgd.available_width = int(screen_size.Xpixel)
-	imgd.available_height = 10 * imgd.canvas_height
 	if place != nil {
 		imgd.available_width = place.width * int(screen_size.Xpixel) / int(screen_size.Col)
 		imgd.available_height = place.height * int(screen_size.Ypixel) / int(screen_size.Row)
+	} else {
+		switch fit_mode {
+		case fit_none:
+			imgd.available_width, imgd.available_height = inf, inf
+		case fit_both:
+			imgd.available_width = int(screen_size.Xpixel)
+			imgd.available_height = int(screen_size.Ypixel)
+		case fit_width:
+			imgd.available_width = int(screen_size.Xpixel)
+			imgd.available_height = inf
+		case fit_height:
+			imgd.available_width = inf
+			imgd.available_height = int(screen_size.Ypixel)
+		}
 	}
 	imgd.needs_scaling = imgd.canvas_width > imgd.available_width || imgd.canvas_height > imgd.available_height || opts.ScaleUp
 	imgd.needs_conversion = imgd.needs_scaling || remove_alpha != nil || flip || flop || imgd.format_uppercase != "PNG"

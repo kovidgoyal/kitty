@@ -139,12 +139,16 @@ Detailed list of changes
 
 - Add support for the `paste events protocol <https://rockorager.dev/misc/bracketed-paste-mime/>`__ (:iss:`9183`)
 
+- icat kitten: Add support for animated PNG and animated WebP, netPBM images, ICC color profiles and CCIP metadata to the builtin engine
+
+- icat kitten: Add a new flag :option:`kitty +kitten icat --fit` to control how images are scaled to fit the screen (:iss:`9201`)
+
+- icat kitten: The :option:`kitty +kitten icat --scale-up` flag now takes effect when not using :option:`kitty +kitten icat --place` as well
+
 - Add a mappable action :ac:`copy_last_command_output` to copy the output of the last
   command to the clipboard (:pull:`9185`)
 
 - ssh kitten: Fix a bug where automatic login was not working (:iss:`9187`)
-
-- icat kitten: Add support for animated PNG and animated WebP, netPBM images, ICC color profiles and CCIP metadata to the builtin engine
 
 - Graphics: Fix overwrite composition mode for animation frames not being honored
 

@@ -91,12 +91,37 @@ func add_frame(ctx *images.Context, imgd *image_data, img image.Image, left, top
 	return &f
 }
 
+func scale_up(width, height, maxWidth, maxHeight int) (newWidth, newHeight int) {
+	if width == 0 || height == 0 {
+		return 0, 0
+	}
+
+	// Calculate the ratio to scale the width and the ratio to scale the height.
+	// We use floating-point division for precision.
+	widthRatio := float64(maxWidth) / float64(width)
+	heightRatio := float64(maxHeight) / float64(height)
+
+	// To preserve the aspect ratio and fit within the limits, we must use the
+	// smaller of the two scaling ratios.
+	var ratio float64
+	if widthRatio < heightRatio {
+		ratio = widthRatio
+	} else {
+		ratio = heightRatio
+	}
+
+	// Calculate the new dimensions and convert them back to uints.
+	newWidth = int(float64(width) * ratio)
+	newHeight = int(float64(height) * ratio)
+
+	return newWidth, newHeight
+}
+
 func scale_image(imgd *image_data) bool {
 	if imgd.needs_scaling {
 		width, height := imgd.canvas_width, imgd.canvas_height
-		if imgd.canvas_width < imgd.available_width && opts.ScaleUp && place != nil {
-			r := float64(imgd.available_width) / float64(imgd.canvas_width)
-			imgd.canvas_width, imgd.canvas_height = imgd.available_width, int(r*float64(imgd.canvas_height))
+		if opts.ScaleUp && (imgd.canvas_width < imgd.available_width || imgd.canvas_height < imgd.available_height) && (imgd.available_height != inf || imgd.available_width != inf) {
+			imgd.canvas_width, imgd.canvas_height = scale_up(imgd.canvas_width, imgd.canvas_height, imgd.available_width, imgd.available_height)
 		}
 		neww, newh := images.FitImage(imgd.canvas_width, imgd.canvas_height, imgd.available_width, imgd.available_height)
 		imgd.needs_scaling = false
