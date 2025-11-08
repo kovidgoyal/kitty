@@ -214,8 +214,12 @@ class ReadRequest(NamedTuple):
     protocol_type: ProtocolType = ProtocolType.osc_52
     human_name: str = ''
     password: str = ''
+    otp_for_response: str = ''
 
     def encode_response(self, status: str = 'DATA', mime: str = '', payload: bytes | memoryview = b'') -> bytes:
+        from base64 import standard_b64encode
+        def encode_b64(s: str) -> str:
+            return standard_b64encode(s.encode()).decode()
         ans = f'{self.protocol_type.value};type=read:status={status}'
         if status == 'OK' and self.is_primary_selection:
             ans += ':loc=primary'
@@ -223,10 +227,11 @@ class ReadRequest(NamedTuple):
             ans += f':id={self.id}'
         if mime:
             ans += f':mime={encode_mime(mime)}'
+        if self.otp_for_response:
+            ans += f':pw={encode_b64(self.otp_for_response)}'
         a = ans.encode('ascii')
         if payload:
-            import base64
-            a += b';' + base64.standard_b64encode(payload)
+            a += b';' + standard_b64encode(payload)
         return a
 
 
@@ -329,9 +334,13 @@ class WriteRequest:
 
 class GrantedPermission:
 
-    def __init__(self, read: bool = False, write: bool = False):
+    one_time: bool = False
+    write_ban: bool = False
+    read_ban: bool = False
+
+    def __init__(self, read: bool = False, write: bool = False, one_time: bool = False):
         self.read, self.write = read, write
-        self.write_ban = self.read_ban = False
+        self.one_time = one_time
 
 
 class ClipboardRequestManager:
@@ -521,7 +530,12 @@ class ClipboardRequestManager:
                           default='d', window=window, title=_('A program wants to access the clipboard'))
 
     def password_is_allowed_already(self, password: str, for_write: bool = False) -> bool:
-        return (q := self.granted_passwords.get(password)) is not None and (q.write if for_write else q.read)
+        q = self.granted_passwords.get(password)
+        if q is not None:
+            if q.one_time:
+                self.granted_passwords.pop(password, None)
+            return q.write if for_write else q.read
+        return False
 
     def fulfill_legacy_write_request(self, wr: WriteRequest, allowed: bool = True) -> None:
         cp = get_boss().primary_selection if wr.is_primary_selection else get_boss().clipboard
@@ -543,7 +557,11 @@ class ClipboardRequestManager:
             self.fulfill_read_request(rr, allowed=allowed)
 
     def send_paste_event(self, is_primary_selection: bool) -> None:
+        from kitty.short_uuid import uuid4
+        pw = uuid4()
+        self.granted_passwords[pw] = GrantedPermission(read=True, one_time=True)
         rr = ReadRequest(is_primary_selection=is_primary_selection, mime_types=(TARGETS_MIME,), protocol_type=ProtocolType.osc_5522)
+        rr = rr._replace(otp_for_response=pw)
         self.fulfill_read_request(rr)
 
     def fulfill_read_request(self, rr: ReadRequest, allowed: bool = True) -> None:

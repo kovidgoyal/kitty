@@ -180,6 +180,12 @@ free to request whatever MIME data it wants from the list of types.
 The mode can be enabled using the standard DECSET or DECRST control sequences.
 ``CSI ? 5522 h`` to enable the mode. ``CSI ? 5522 l`` to disable the mode.
 
+The terminal *should* send a one time password with the list of mime
+types, as the ``pw`` key (base64 encoded). The application can then use this
+password to request data from the clipboard without needing a permission
+prompt. The human name *should* be set to ``Paste event`` (base64 encoded) when
+the application uses this one time password.
+
 Detecting support for this protocol
 -----------------------------------------
 
