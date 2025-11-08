@@ -114,7 +114,7 @@ var _ = debugprintln
 
 func add_frames(ctx *images.Context, imgd *image_data, gf *imaging.Image) {
 	for _, f := range gf.Frames {
-		frame := add_frame(ctx, imgd, f.Image, f.X, f.Y)
+		frame := add_frame(ctx, imgd, f.Image, f.TopLeft.X, f.TopLeft.Y)
 		frame.number, frame.compose_onto = int(f.Number), int(f.ComposeOnto)
 		frame.replace = f.Replace
 		frame.delay_ms = int(f.Delay.Milliseconds())

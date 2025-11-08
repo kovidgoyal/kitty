@@ -269,7 +269,7 @@ func OpenNativeImageFromReader(f io.ReadSeeker) (ans *ImageData, err error) {
 
 	for _, f := range ic.Frames {
 		fr := ImageFrame{
-			Img: f.Image, Left: f.X, Top: f.Y, Width: f.Image.Bounds().Dx(), Height: f.Image.Bounds().Dy(),
+			Img: f.Image, Left: f.TopLeft.X, Top: f.TopLeft.Y, Width: f.Image.Bounds().Dx(), Height: f.Image.Bounds().Dy(),
 			Compose_onto: int(f.ComposeOnto), Number: int(f.Number), Delay_ms: int32(f.Delay.Milliseconds()),
 			Replace: f.Replace, Is_opaque: imaging.IsOpaque(f.Image),
 		}
