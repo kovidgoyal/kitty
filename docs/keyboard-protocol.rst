@@ -244,17 +244,19 @@ The terminal can optionally send the text associated with key events as a
 sequence of Unicode code points. This behavior is opt-in by the :ref:`progressive
 enhancement <progressive_enhancement>` mechanism described below. Some examples::
 
-    shift+a -> CSI 97 ; 2 ; 65 u  # The text 'A' is reported as 65
-    option+a -> CSI 97 ; ; 229 u  # The text 'å' is reported as 229
+    shift+a -> CSI 97 ; 2 ; 65 u   # The text 'A' is reported as 65
+    alt+a   -> CSI  0 ;   ; 229 u  # The text 'å' is reported as 229
 
 If multiple code points are present, they must be separated by colons.  If no
 known key is associated with the text the key number ``0`` must be used. The
 associated text must not contain control codes (control codes are code points
 below U+0020 and codepoints in the C0 and C1 blocks). In the above example, the
-:kbd:`option` modifier is consumed by macOS itself to produce the text å
-and therefore not reported in the keyboard protocol. On some platforms
-composition keys might produce no key information at all, in which case the key
-number ``0`` must be used.
+:kbd:`alt` modifier is consumed by the OS itself to produce the text å and not
+sent to the terminal emulator, which gets only a "text input" event and no
+information about modifiers, thus the event gets encoded with no modifiers.
+The exact behavior in these situations depends on the OS, keyboard layout, IME
+system in use and so on. In general, if the terminal emulator receives no key
+information, the key number 0 must be used to indicate a pure "text event".
 
 
 Non-Unicode keys
