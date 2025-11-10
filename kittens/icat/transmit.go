@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"github.com/kovidgoyal/kitty"
 	"io"
@@ -92,43 +91,32 @@ func transmit_shm(imgd *image_data, frame_num int, frame *image_frame) (err erro
 			return fmt.Errorf("Failed to open image data output file: %s with error: %w", frame.filename, err)
 		}
 		defer f.Close()
-		data_size, _ = f.Seek(0, io.SeekEnd)
-		_, _ = f.Seek(0, io.SeekStart)
-		mmap, err = shm.CreateTemp("icat-*", uint64(data_size))
-		if err != nil {
+		if data_size, err = f.Seek(0, io.SeekEnd); err != nil {
+			return fmt.Errorf("Failed to seek in image data output file: %s with error: %w", frame.filename, err)
+		}
+		if _, err = f.Seek(0, io.SeekStart); err != nil {
+			return fmt.Errorf("Failed to seek in image data output file: %s with error: %w", frame.filename, err)
+		}
+		if mmap, err = shm.CreateTemp("icat-*", uint64(data_size)); err != nil {
 			return fmt.Errorf("Failed to create a SHM file for transmission: %w", err)
 		}
-		dest := mmap.Slice()
-		for len(dest) > 0 {
-			n, err := f.Read(dest)
-			dest = dest[n:]
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				_ = mmap.Unlink()
-				return fmt.Errorf("Failed to read data from image output data file: %w", err)
-			}
+		if _, err = io.ReadFull(f, mmap.Slice()); err != nil {
+			mmap.Close()
+			mmap.Unlink()
+			return fmt.Errorf("Failed to read data from image output data file: %w", err)
 		}
 	} else {
-		if frame.shm == nil {
-			data_size = int64(len(frame.in_memory_bytes))
-			mmap, err = shm.CreateTemp("icat-*", uint64(data_size))
-			if err != nil {
-				return fmt.Errorf("Failed to create a SHM file for transmission: %w", err)
-			}
-			copy(mmap.Slice(), frame.in_memory_bytes)
-		} else {
-			mmap = frame.shm
-			frame.shm = nil
+		data_size = int64(len(frame.in_memory_bytes))
+		if mmap, err = shm.CreateTemp("icat-*", uint64(data_size)); err != nil {
+			return fmt.Errorf("Failed to create a SHM file for transmission: %w", err)
 		}
+		copy(mmap.Slice(), frame.in_memory_bytes)
 	}
+	defer mmap.Close() // terminal is responsible for unlink
 	gc := gc_for_image(imgd, frame_num, frame)
 	gc.SetTransmission(graphics.GRT_transmission_sharedmem)
 	gc.SetDataSize(uint64(data_size))
 	err = gc.WriteWithPayloadTo(os.Stdout, utils.UnsafeStringToBytes(mmap.Name()))
-	mmap.Close()
-
 	return
 }
 
@@ -137,7 +125,6 @@ func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err err
 	fname := ""
 	var data_size int
 	if frame.in_memory_bytes == nil {
-		is_temp = frame.filename_is_temporary
 		fname, err = filepath.Abs(frame.filename)
 		if err != nil {
 			return fmt.Errorf("Failed to convert image data output file: %s to absolute path with error: %w", frame.filename, err)
@@ -145,30 +132,21 @@ func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err err
 		frame.filename = "" // so it isn't deleted in cleanup
 	} else {
 		is_temp = true
-		if frame.shm != nil && frame.shm.FileSystemName() != "" {
-			fname = frame.shm.FileSystemName()
-			frame.shm.Close()
-			frame.shm = nil
-		} else {
-			f, err := images.CreateTempInRAM()
-			if err != nil {
-				return fmt.Errorf("Failed to create a temp file for image data transmission: %w", err)
-			}
-			data_size = len(frame.in_memory_bytes)
-			_, err = bytes.NewBuffer(frame.in_memory_bytes).WriteTo(f)
-			f.Close()
-			if err != nil {
-				return fmt.Errorf("Failed to write image data to temp file for transmission: %w", err)
-			}
-			fname = f.Name()
+		f, err := images.CreateTempInRAM()
+		if err != nil {
+			return fmt.Errorf("Failed to create a temp file for image data transmission: %w", err)
 		}
+		data_size = len(frame.in_memory_bytes)
+		_, err = bytes.NewBuffer(frame.in_memory_bytes).WriteTo(f)
+		f.Close()
+		if err != nil {
+			os.Remove(f.Name())
+			return fmt.Errorf("Failed to write image data to temp file for transmission: %w", err)
+		}
+		fname = f.Name()
 	}
 	gc := gc_for_image(imgd, frame_num, frame)
-	if is_temp {
-		gc.SetTransmission(graphics.GRT_transmission_tempfile)
-	} else {
-		gc.SetTransmission(graphics.GRT_transmission_file)
-	}
+	gc.SetTransmission(utils.IfElse(is_temp, graphics.GRT_transmission_tempfile, graphics.GRT_transmission_file))
 	if data_size > 0 {
 		gc.SetDataSize(uint64(data_size))
 	}
@@ -178,14 +156,9 @@ func transmit_file(imgd *image_data, frame_num int, frame *image_frame) (err err
 func transmit_stream(imgd *image_data, frame_num int, frame *image_frame) (err error) {
 	data := frame.in_memory_bytes
 	if data == nil {
-		f, err := os.Open(frame.filename)
+		data, err = os.ReadFile(frame.filename)
 		if err != nil {
-			return fmt.Errorf("Failed to open image data output file: %s with error: %w", frame.filename, err)
-		}
-		data, err = io.ReadAll(f)
-		f.Close()
-		if err != nil {
-			return fmt.Errorf("Failed to read data from image output data file: %w", err)
+			return fmt.Errorf("Failed to read image data output file: %s with error: %w", frame.filename, err)
 		}
 	}
 	gc := gc_for_image(imgd, frame_num, frame)
@@ -282,20 +255,6 @@ func transmit_image(imgd *image_data, no_trailing_newline bool) {
 	if seen_image_ids == nil {
 		seen_image_ids = utils.NewSet[uint32](32)
 	}
-	defer func() {
-		for _, frame := range imgd.frames {
-			if frame.filename_is_temporary && frame.filename != "" {
-				os.Remove(frame.filename)
-				frame.filename = ""
-			}
-			if frame.shm != nil {
-				_ = frame.shm.Unlink()
-				frame.shm.Close()
-				frame.shm = nil
-			}
-			frame.in_memory_bytes = nil
-		}
-	}()
 	var f func(*image_data, int, *image_frame) error
 	if opts.TransferMode != "detect" {
 		switch opts.TransferMode {

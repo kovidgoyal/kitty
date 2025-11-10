@@ -12,7 +12,7 @@ import (
 var _ = fmt.Print
 
 func TestImageSerialize(t *testing.T) {
-	img, err := OpenNativeImageFromReader(bytes.NewReader(kitty.KittyLogoAsPNGData))
+	img, _, err := OpenImageFromReader(bytes.NewReader(kitty.KittyLogoAsPNGData))
 	if err != nil {
 		t.Fatal(err)
 	}

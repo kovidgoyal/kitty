@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kovidgoyal/imaging"
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
@@ -51,14 +52,10 @@ func encode_rgba(output io.Writer, img image.Image) (err error) {
 }
 
 func convert_image(input io.ReadSeeker, output io.Writer, format string) (err error) {
-	image_data, err := OpenNativeImageFromReader(input)
+	img, err := imaging.Decode(input)
 	if err != nil {
 		return err
 	}
-	if len(image_data.Frames) == 0 {
-		return fmt.Errorf("Image has no frames")
-	}
-	img := image_data.Frames[0].Img
 	q := strings.ToLower(format)
 	if q == "rgba" {
 		return encode_rgba(output, img)
@@ -92,7 +89,7 @@ func images_equal(img, rimg *ImageData) (err error) {
 }
 
 func develop_serialize(input_data io.ReadSeeker) (err error) {
-	img, err := OpenNativeImageFromReader(input_data)
+	img, _, err := OpenImageFromReader(input_data)
 	if err != nil {
 		return err
 	}
@@ -113,7 +110,7 @@ func develop_resize(spec string, input_data io.ReadSeeker) (err error) {
 	if h, err = strconv.Atoi(hs); err != nil {
 		return
 	}
-	img, err := OpenNativeImageFromReader(input_data)
+	img, _, err := OpenImageFromReader(input_data)
 	if err != nil {
 		return err
 	}

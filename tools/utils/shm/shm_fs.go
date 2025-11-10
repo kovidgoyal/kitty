@@ -33,9 +33,7 @@ func ShmUnlink(name string) error {
 	if runtime.GOOS == "openbsd" {
 		return os.Remove(openbsd_shm_path(name))
 	}
-	if strings.HasPrefix(name, "/") {
-		name = name[1:]
-	}
+	name = strings.TrimPrefix(name, "/")
 	return os.Remove(filepath.Join(SHM_DIR, name))
 }
 

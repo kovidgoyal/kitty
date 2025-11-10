@@ -13,13 +13,13 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1
 	github.com/kovidgoyal/go-parallel v1.1.1
-	github.com/kovidgoyal/imaging v1.8.5
+	github.com/kovidgoyal/imaging v1.8.8
 	github.com/seancfoley/ipaddress-go v1.7.1
 	github.com/shirou/gopsutil/v4 v4.25.10
 	github.com/zeebo/xxh3 v1.0.2
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	golang.org/x/image v0.32.0
-	golang.org/x/sys v0.37.0
+	golang.org/x/sys v0.38.0
 	golang.org/x/text v0.30.0
 	howett.net/plist v1.0.1
 )

@@ -15,51 +15,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kovidgoyal/imaging"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/graphics"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/images"
-	"github.com/kovidgoyal/kitty/tools/utils/shm"
 )
 
 var _ = fmt.Print
-
-type BytesBuf struct {
-	data []byte
-	pos  int64
-}
-
-func (self *BytesBuf) Seek(offset int64, whence int) (int64, error) {
-	switch whence {
-	case io.SeekStart:
-		self.pos = offset
-	case io.SeekCurrent:
-		self.pos += offset
-	case io.SeekEnd:
-		self.pos = int64(len(self.data)) + offset
-	default:
-		return self.pos, fmt.Errorf("Unknown value for whence: %#v", whence)
-	}
-	self.pos = utils.Max(0, utils.Min(self.pos, int64(len(self.data))))
-	return self.pos, nil
-}
-
-func (self *BytesBuf) Read(p []byte) (n int, err error) {
-	nb := utils.Min(int64(len(p)), int64(len(self.data))-self.pos)
-	if nb == 0 {
-		err = io.EOF
-	} else {
-		n = copy(p, self.data[self.pos:self.pos+nb])
-		self.pos += nb
-	}
-	return
-}
-
-func (self *BytesBuf) Close() error {
-	self.data = nil
-	self.pos = 0
-	return nil
-}
 
 type input_arg struct {
 	arg         string
@@ -120,54 +83,14 @@ func process_dirs(args ...string) (results []input_arg, err error) {
 }
 
 type opened_input struct {
-	file           io.ReadSeekCloser
-	name_to_unlink string
+	file  io.Reader
+	bytes []byte
+	path  string
 }
-
-func (self *opened_input) Rewind() {
-	if self.file != nil {
-		_, _ = self.file.Seek(0, io.SeekStart)
-	}
-}
-
-func (self *opened_input) Release() {
-	if self.file != nil {
-		self.file.Close()
-		self.file = nil
-	}
-	if self.name_to_unlink != "" {
-		os.Remove(self.name_to_unlink)
-		self.name_to_unlink = ""
-	}
-}
-
-func (self *opened_input) PutOnFilesystem() (err error) {
-	if self.name_to_unlink != "" {
-		return
-	}
-	f, err := images.CreateTempInRAM()
-	if err != nil {
-		return fmt.Errorf("Failed to create a temporary file to store input data with error: %w", err)
-	}
-	self.Rewind()
-	_, err = io.Copy(f, self.file)
-	if err != nil {
-		f.Close()
-		return fmt.Errorf("Failed to copy input data to temporary file with error: %w", err)
-	}
-	self.Release()
-	self.file = f
-	self.name_to_unlink = f.Name()
-	return
-}
-
-func (self *opened_input) FileSystemName() string { return self.name_to_unlink }
 
 type image_frame struct {
 	filename                 string
-	shm                      shm.MMap
 	in_memory_bytes          []byte
-	filename_is_temporary    bool
 	width, height, left, top int
 	transmission_format      graphics.GRT_f
 	compose_onto             int
@@ -180,8 +103,7 @@ type image_data struct {
 	canvas_width, canvas_height       int
 	format_uppercase                  string
 	available_width, available_height int
-	needs_scaling, needs_conversion   bool
-	scaled_frac                       struct{ x, y float64 }
+	needs_scaling                     bool
 	frames                            []*image_frame
 	image_number                      uint32
 	image_id                          uint32
@@ -222,7 +144,6 @@ func set_basic_metadata(imgd *image_data) {
 		}
 	}
 	imgd.needs_scaling = imgd.canvas_width > imgd.available_width || imgd.canvas_height > imgd.available_height || opts.ScaleUp
-	imgd.needs_conversion = imgd.needs_scaling || remove_alpha != nil || flip || flop || imgd.format_uppercase != "PNG"
 }
 
 func report_error(source_name, msg string, err error) {
@@ -231,7 +152,6 @@ func report_error(source_name, msg string, err error) {
 }
 
 func make_output_from_input(imgd *image_data, f *opened_input) {
-	bb, ok := f.file.(*BytesBuf)
 	frame := image_frame{}
 	imgd.frames = append(imgd.frames, &frame)
 	frame.width = imgd.canvas_width
@@ -240,15 +160,69 @@ func make_output_from_input(imgd *image_data, f *opened_input) {
 		panic(fmt.Sprintf("Unknown transmission format: %s", imgd.format_uppercase))
 	}
 	frame.transmission_format = graphics.GRT_format_png
-	if ok {
-		frame.in_memory_bytes = bb.data
+	if f.bytes != nil {
+		frame.in_memory_bytes = f.bytes
+	} else if f.path != "" {
+		frame.filename = f.path
 	} else {
-		frame.filename = f.file.(*os.File).Name()
-		if f.name_to_unlink != "" {
-			frame.filename_is_temporary = true
-			f.name_to_unlink = ""
+		var err error
+		if frame.in_memory_bytes, err = io.ReadAll(f.file); err != nil {
+			panic(err)
 		}
 	}
+}
+
+func scale_up(width, height, maxWidth, maxHeight int) (newWidth, newHeight int) {
+	if width == 0 || height == 0 {
+		return 0, 0
+	}
+	// Calculate the ratio to scale the width and the ratio to scale the height.
+	// We use floating-point division for precision.
+	widthRatio := float64(maxWidth) / float64(width)
+	heightRatio := float64(maxHeight) / float64(height)
+
+	// To preserve the aspect ratio and fit within the limits, we must use the
+	// smaller of the two scaling ratios.
+	var ratio float64
+	if widthRatio < heightRatio {
+		ratio = widthRatio
+	} else {
+		ratio = heightRatio
+	}
+
+	// Calculate the new dimensions and convert them back to uints.
+	newWidth = int(float64(width) * ratio)
+	newHeight = int(float64(height) * ratio)
+
+	return newWidth, newHeight
+}
+
+func scale_image(imgd *image_data) bool {
+	if imgd.needs_scaling {
+		width, height := imgd.canvas_width, imgd.canvas_height
+		if opts.ScaleUp && (imgd.canvas_width < imgd.available_width || imgd.canvas_height < imgd.available_height) && (imgd.available_height != inf || imgd.available_width != inf) {
+			imgd.canvas_width, imgd.canvas_height = scale_up(imgd.canvas_width, imgd.canvas_height, imgd.available_width, imgd.available_height)
+		}
+		neww, newh := images.FitImage(imgd.canvas_width, imgd.canvas_height, imgd.available_width, imgd.available_height)
+		imgd.needs_scaling = false
+		x := float64(neww) / float64(width)
+		y := float64(newh) / float64(height)
+		imgd.canvas_width = int(x * float64(width))
+		imgd.canvas_height = int(y * float64(height))
+		return true
+	}
+	return false
+}
+
+func add_frame(imgd *image_data, img image.Image, left, top int) *image_frame {
+	const shm_template = "kitty-icat-*"
+	num_channels, pix := imaging.AsRGBData8(img)
+	b := img.Bounds()
+	f := image_frame{width: b.Dx(), height: b.Dy(), number: len(imgd.frames) + 1, left: left, top: top}
+	f.transmission_format = utils.IfElse(num_channels == 3, graphics.GRT_format_rgb, graphics.GRT_format_rgba)
+	f.in_memory_bytes = pix
+	imgd.frames = append(imgd.frames, &f)
+	return &f
 }
 
 func process_arg(arg input_arg) {
@@ -271,14 +245,16 @@ func process_arg(arg input_arg) {
 			report_error(arg.value, "Could not download", err)
 			return
 		}
-		f.file = &BytesBuf{data: dest.Bytes()}
+		f.bytes = dest.Bytes()
+		f.file = bytes.NewReader(f.bytes)
 	} else if arg.value == "" {
 		stdin, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			report_error("<stdin>", "Could not read from", err)
 			return
 		}
-		f.file = &BytesBuf{data: stdin}
+		f.bytes = stdin
+		f.file = bytes.NewReader(f.bytes)
 	} else {
 		q, err := os.Open(arg.value)
 		if err != nil {
@@ -286,56 +262,70 @@ func process_arg(arg input_arg) {
 			return
 		}
 		f.file = q
+		f.path = q.Name()
+		defer q.Close()
 	}
-	defer f.Release()
-	can_use_go := false
-	var c image.Config
-	var format string
-	var err error
+
+	var img *images.ImageData
+	var dopts []imaging.DecodeOption
+	needs_conversion := false
+	if flip {
+		dopts = append(dopts, imaging.Transform(imaging.FlipVTransform))
+		needs_conversion = true
+	}
+	if flop {
+		dopts = append(dopts, imaging.Transform(imaging.FlipHTransform))
+		needs_conversion = true
+	}
+	if remove_alpha != nil {
+		dopts = append(dopts, imaging.Background(*remove_alpha))
+		needs_conversion = true
+	}
+	switch opts.Engine {
+	case "native", "builtin":
+		dopts = append(dopts, imaging.Backends(imaging.GO_IMAGE))
+	case "magick":
+		dopts = append(dopts, imaging.Backends(imaging.MAGICK_IMAGE))
+	}
 	imgd := image_data{source_name: arg.value}
-	if opts.Engine == "auto" || opts.Engine == "builtin" {
-		c, format, err = image.DecodeConfig(f.file)
-		f.Rewind()
-		can_use_go = err == nil
+	dopts = append(dopts, imaging.ResizeCallback(func(w, h int) (int, int) {
+		imgd.canvas_width, imgd.canvas_height = w, h
+		set_basic_metadata(&imgd)
+		if scale_image(&imgd) {
+			needs_conversion = true
+			w, h = imgd.canvas_width, imgd.canvas_height
+		}
+		return w, h
+	}))
+	var err error
+	if f.path != "" {
+		img, err = images.OpenImageFromPath(f.path, dopts...)
+	} else {
+		img, f.file, err = images.OpenImageFromReader(f.file, dopts...)
+	}
+	if err != nil {
+		report_error(arg.value, "Could not render image to RGB", err)
+		return
 	}
 	if !keep_going.Load() {
 		return
 	}
-	if can_use_go {
-		imgd.canvas_width = c.Width
-		imgd.canvas_height = c.Height
-		imgd.format_uppercase = strings.ToUpper(format)
-		set_basic_metadata(&imgd)
-		if !imgd.needs_conversion {
-			make_output_from_input(&imgd, &f)
-			send_output(&imgd)
-			return
-		}
-		err = render_image_with_go(&imgd, &f)
-		if err != nil {
-			if opts.Engine != "builtin" {
-				merr := render_image_with_magick(&imgd, &f)
-				if merr != nil {
-					report_error(arg.value, "Could not render image to RGB", err)
-					return
-				}
-				err = nil
-			}
-			report_error(arg.value, "could not render", err)
-			return
-		}
+	imgd.format_uppercase = img.Format_uppercase
+	imgd.canvas_width, imgd.canvas_height = img.Width, img.Height
+	if !needs_conversion && imgd.format_uppercase == "PNG" && len(img.Frames) == 1 {
+		make_output_from_input(&imgd, &f)
 	} else {
-		err = render_image_with_magick(&imgd, &f)
-		if err != nil {
-			report_error(arg.value, "ImageMagick failed", err)
-			return
+		for _, f := range img.Frames {
+			frame := add_frame(&imgd, f.Img, f.Left, f.Top)
+			frame.number, frame.compose_onto = int(f.Number), int(f.Compose_onto)
+			frame.replace = f.Replace
+			frame.delay_ms = int(f.Delay_ms)
 		}
 	}
 	if !keep_going.Load() {
 		return
 	}
 	send_output(&imgd)
-
 }
 
 func run_worker() {
