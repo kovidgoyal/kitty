@@ -10,9 +10,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/kovidgoyal/go-shm"
 	"github.com/kovidgoyal/imaging/nrgb"
 	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/shm"
 
 	"github.com/kovidgoyal/imaging"
 )

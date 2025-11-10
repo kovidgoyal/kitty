@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/kovidgoyal/go-shm"
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/shm"
 )
 
 var _ = fmt.Print

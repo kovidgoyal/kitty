@@ -32,6 +32,8 @@ github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1 h1:rMY/hWfcVzBm6BL
 github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1/go.mod h1:RbNG3Q1g6GUy1/WzWVx+S24m7VKyvl57vV+cr2hpt50=
 github.com/kovidgoyal/go-parallel v1.1.1 h1:1OzpNjtrUkBPq3UaqrnvOoB2F9RttSt811uiUXyI7ok=
 github.com/kovidgoyal/go-parallel v1.1.1/go.mod h1:BJNIbe6+hxyFWv7n6oEDPj3PA5qSw5OCtf0hcVxWJiw=
+github.com/kovidgoyal/go-shm v1.0.0 h1:HJEel9D1F9YhULvClEHJLawoRSj/1u/EDV7MJbBPgQo=
+github.com/kovidgoyal/go-shm v1.0.0/go.mod h1:Yzb80Xf9L3kaoB2RGok9hHwMIt7Oif61kT6t3+VnZds=
 github.com/kovidgoyal/imaging v1.8.8 h1:PohlAOYuokFtmt6sjhgA90YAUKhuuL3i0dhd5gepp4g=
 github.com/kovidgoyal/imaging v1.8.8/go.mod h1:GAbZkbyB86PSfosof5EnS2o6N15yUk9Vy2r61EWy1Wg=
 github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a h1:N9zuLhTvBSRt0gWSiJswwQ2HqDmtX/ZCDJURnKUt1Ik=

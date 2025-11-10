@@ -28,6 +28,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kovidgoyal/go-shm"
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/themes"
 	"github.com/kovidgoyal/kitty/tools/tty"
@@ -37,7 +38,6 @@ import (
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/secrets"
 	"github.com/kovidgoyal/kitty/tools/utils/shlex"
-	"github.com/kovidgoyal/kitty/tools/utils/shm"
 
 	"golang.org/x/sys/unix"
 )
