@@ -21,18 +21,18 @@ agr('scanning', 'Filesystem scanning')  # {{{
 
 opt('show_hidden', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
 Whether to show hidden files. The default value of :code:`last` means remember the last
-used value. This setting can be toggled withing the program.''')
+used value. This setting can be toggled within the program.''')
 
 opt('sort_by_last_modified', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
 Whether to sort the list of entries by last modified, instead of name. Note that sorting only applies
 before any query is entered. Once a query is entered entries are sorted by their matching score.
 The default value of :code:`last` means remember the last
-used value. This setting can be toggled withing the program.''')
+used value. This setting can be toggled within the program.''')
 
 opt('respect_ignores', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
 Whether to respect .gitignore and .ignore files and the :opt:`ignore` setting.
 The default value of :code:`last` means remember the last used value.
-This setting can be toggled withing the program.''')
+This setting can be toggled within the program.''')
 
 opt('+ignore', '', add_to_default=False, long_text='''
 An ignore pattern to ignore matched files. Uses the same sytax as :code:`.gitignore` files (see :code:`man gitignore`).
@@ -46,7 +46,7 @@ agr('appearance', 'Appearance')  # {{{
 
 opt('show_preview', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
 Whether to show a preview of the current file/directory. The default value of :code:`last` means remember the last
-used value. This setting can be toggled withing the program.''')
+used value. This setting can be toggled within the program.''')
 
 opt('pygments_style', 'default', long_text='''
 The pygments color scheme to use for syntax highlighting of file previews. See :link:`pygments
