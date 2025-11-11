@@ -8,6 +8,7 @@ import (
 	"math"
 
 	"github.com/kovidgoyal/imaging"
+	"github.com/kovidgoyal/imaging/nrgba"
 	"github.com/kovidgoyal/kitty/tools/tty"
 )
 
@@ -57,7 +58,7 @@ func (self *Context) run_paste(src imaging.Scanner, background image.Image, pos 
 }
 
 func (self *Context) paste_nrgba_onto_opaque(background *image.NRGBA, img image.Image, pos image.Point, bgcol *imaging.NRGBColor) {
-	src := imaging.NewNRGBAScanner(img)
+	src := nrgba.NewNRGBAScanner(img)
 	if bgcol == nil {
 		self.run_paste(src, background, pos, func([]byte) {})
 		return
