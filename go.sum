@@ -34,8 +34,8 @@ github.com/kovidgoyal/go-parallel v1.1.1 h1:1OzpNjtrUkBPq3UaqrnvOoB2F9RttSt811ui
 github.com/kovidgoyal/go-parallel v1.1.1/go.mod h1:BJNIbe6+hxyFWv7n6oEDPj3PA5qSw5OCtf0hcVxWJiw=
 github.com/kovidgoyal/go-shm v1.0.0 h1:HJEel9D1F9YhULvClEHJLawoRSj/1u/EDV7MJbBPgQo=
 github.com/kovidgoyal/go-shm v1.0.0/go.mod h1:Yzb80Xf9L3kaoB2RGok9hHwMIt7Oif61kT6t3+VnZds=
-github.com/kovidgoyal/imaging v1.8.8 h1:PohlAOYuokFtmt6sjhgA90YAUKhuuL3i0dhd5gepp4g=
-github.com/kovidgoyal/imaging v1.8.8/go.mod h1:GAbZkbyB86PSfosof5EnS2o6N15yUk9Vy2r61EWy1Wg=
+github.com/kovidgoyal/imaging v1.8.9 h1:6YS8DCZfq/HHiOUMw2rM2GWkOe1Dc2wK5FlN7/ki4yg=
+github.com/kovidgoyal/imaging v1.8.9/go.mod h1:ZcaLxFLdn9I+a9hyI847Q8CYtC5J0bAYbG3+WG8DM9Y=
 github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a h1:N9zuLhTvBSRt0gWSiJswwQ2HqDmtX/ZCDJURnKUt1Ik=
 github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a/go.mod h1:JKx41uQRwqlTZabZc+kILPrO/3jlKnQ2Z8b7YiVw5cE=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
