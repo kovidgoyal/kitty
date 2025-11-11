@@ -3010,6 +3010,11 @@ set_title(Screen *self, PyObject *title) {
 }
 
 void
+osc_context(Screen *self, PyObject *ctx) {
+    CALLBACK("osc_context", "O", ctx);
+}
+
+void
 desktop_notify(Screen *self, unsigned int osc_code, PyObject *data) {
     CALLBACK("desktop_notify", "IO", osc_code, data);
 }
