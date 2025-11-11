@@ -18,7 +18,7 @@ type LineBuf struct {
 func NewLineBuf(xnum, ynum uint) *LineBuf {
 	lm := make([]uint, ynum, ynum+extra_capacity)
 	var i uint
-	for i = 0; i < ynum; i++ {
+	for i = range ynum {
 		lm[i] = i
 	}
 	return &LineBuf{

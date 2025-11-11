@@ -33,7 +33,7 @@ func BenchmarkIndexByte(b *testing.B) {
 			f = bytes.IndexByte
 		}
 		b.Run(fmt.Sprintf("%s_sz=%d", which, pos), func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				f(data, 'q')
 			}
 		})
@@ -54,7 +54,7 @@ func BenchmarkIndexByte2(b *testing.B) {
 			f = index_byte2_scalar
 		}
 		b.Run(fmt.Sprintf("%s_sz=%d", which, pos), func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				f(data, 'q', 'x')
 			}
 		})

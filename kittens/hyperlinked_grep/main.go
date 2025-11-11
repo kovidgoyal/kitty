@@ -47,7 +47,7 @@ func get_options_for_rg() (expecting_args map[string]bool, alias_map map[string]
 				expecting_arg := strings.Contains(s, "=")
 				single_letter_aliases := make([]string, 0, 1)
 				long_option_names := make([]string, 0, 1)
-				for _, x := range strings.Split(s, ",") {
+				for x := range strings.SplitSeq(s, ",") {
 					x = strings.TrimSpace(x)
 					if strings.HasPrefix(x, "--") {
 						lon, _, _ := strings.Cut(x[2:], "=")
@@ -136,7 +136,7 @@ func parse_args(args ...string) (delegate_to_rg bool, sanitized_args []string, k
 			if !found || k != "hyperlink" {
 				return fmt.Errorf("Unknown --kitten option: %s", val)
 			}
-			for _, x := range strings.Split(v, ",") {
+			for x := range strings.SplitSeq(v, ",") {
 				switch x {
 				case "none":
 					kitten_opts.context_lines = false

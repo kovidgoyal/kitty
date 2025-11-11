@@ -79,7 +79,7 @@ func process_escape_codes(text string) (ans string, hyperlinks []Mark) {
 			active_hyperlink_url = url
 			active_hyperlink_start_offset = start
 			if metadata != "" {
-				for _, entry := range strings.Split(metadata, ":") {
+				for entry := range strings.SplitSeq(metadata, ":") {
 					if strings.HasPrefix(entry, "id=") && len(entry) > 3 {
 						active_hyperlink_id = entry[3:]
 					}

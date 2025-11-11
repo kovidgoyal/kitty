@@ -45,7 +45,7 @@ var decoder_array = sync.OnceValue(func() *[256]byte {
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	}
-	for i := 0; i < len(encode); i++ {
+	for i := range len(encode) {
 		decode[encode[i]] = byte(i)
 	}
 	return &decode
@@ -101,7 +101,7 @@ func decodeChunk(decode *[256]byte, dst, src []byte) (int, int) {
 	var val uint32
 	m := DecodedLen(len(src))
 	buf := [5]byte{84, 84, 84, 84, 84}
-	for i := 0; i < len(src); i++ {
+	for i := range src {
 		e := decode[src[i]]
 		if e == 0xFF {
 			return 0, i + 1
@@ -109,7 +109,7 @@ func decodeChunk(decode *[256]byte, dst, src []byte) (int, int) {
 		buf[i] = e
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		r := buf[i]
 		val += uint32(r) * decode_base[i]
 	}

@@ -21,10 +21,7 @@ func num_to_string(number *big.Int, alphabet []rune, alphabet_len *big.Int, pad_
 	if number.Sign() < 0 {
 		*number = zero
 	}
-	capacity := 64
-	if pad_to_length > capacity {
-		capacity = pad_to_length
-	}
+	capacity := max(pad_to_length, 64)
 	ans := make([]rune, 0, capacity)
 	for number.Cmp(&zero) == 1 {
 		number.DivMod(number, alphabet_len, &digit)

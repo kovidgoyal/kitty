@@ -688,7 +688,7 @@ func ColorSettingsAsEscapeCodes(settings map[string]string) string {
 	set_default_color("selection_foreground", style.DefaultColors.SelectionFg, loop.SELECTION_FG)
 
 	w.WriteString("\033]4")
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		key := "color" + strconv.Itoa(i)
 		val := settings[key]
 		if val != "" {

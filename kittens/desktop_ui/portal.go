@@ -452,7 +452,7 @@ Exec=%s desktop-ui run-server
 	patched_file := ""
 	desktops := utils.Filter(strings.Split(d, ":"), func(x string) bool { return x != "" })
 	desktops = append(desktops, "")
-	for _, x := range strings.Split(d, ":") {
+	for x := range strings.SplitSeq(d, ":") {
 		q := filepath.Join(cf, utils.IfElse(x == "", "portals.conf", fmt.Sprintf("%s-portals.conf", strings.ToLower(x))))
 		if text, err := os.ReadFile(q); err == nil {
 			text := patch_portals_conf(text)

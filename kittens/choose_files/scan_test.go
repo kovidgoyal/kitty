@@ -94,7 +94,7 @@ func (n node) ReadFile(name string) ([]byte, error) {
 		return nil, fs.ErrNotExist
 	}
 	p := &n
-	for _, x := range strings.Split(strings.Trim(name, string(os.PathSeparator)), string(os.PathSeparator)) {
+	for x := range strings.SplitSeq(strings.Trim(name, string(os.PathSeparator)), string(os.PathSeparator)) {
 		c, found := p.children[x]
 		if !found {
 			return nil, fs.ErrNotExist
@@ -109,7 +109,7 @@ func (n node) ReadDir(name string) ([]fs.DirEntry, error) {
 		return n.dir_entries(), nil
 	}
 	p := &n
-	for _, x := range strings.Split(strings.Trim(name, string(os.PathSeparator)), string(os.PathSeparator)) {
+	for x := range strings.SplitSeq(strings.Trim(name, string(os.PathSeparator)), string(os.PathSeparator)) {
 		c, found := p.children[x]
 		if !found {
 			return nil, fs.ErrNotExist
@@ -334,11 +334,11 @@ func TestSortedResults(t *testing.T) {
 }
 
 func run_scoring(b *testing.B, depth, breadth int, query string) {
-	b.StopTimer()
+
 	root := node{name: string(os.PathSeparator)}
 	root.generate_random_tree(depth, breadth)
-	b.StartTimer()
-	for range b.N {
+
+	for b.Loop() {
 		b.StopTimer()
 		wg := sync.WaitGroup{}
 		wg.Add(1)

@@ -7,6 +7,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -185,13 +186,7 @@ func complete_by_fnmatch(prefix, cwd string, patterns []string) []string {
 }
 
 func complete_by_mimepat(prefix, cwd string, patterns []string) []string {
-	all_allowed := false
-	for _, p := range patterns {
-		if p == "*" {
-			all_allowed = true
-			break
-		}
-	}
+	all_allowed := slices.Contains(patterns, "*")
 	return fname_based_completer(prefix, cwd, func(name string) bool {
 		if all_allowed {
 			return true

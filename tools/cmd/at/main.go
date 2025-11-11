@@ -184,7 +184,7 @@ func (self *ResponseData) UnmarshalJSON(data []byte) error {
 
 type Response struct {
 	Ok        bool         `json:"ok"`
-	Data      ResponseData `json:"data,omitempty"`
+	Data      ResponseData `json:"data"`
 	Error     string       `json:"error,omitempty"`
 	Traceback string       `json:"tb,omitempty"`
 }

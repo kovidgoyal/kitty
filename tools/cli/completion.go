@@ -105,7 +105,7 @@ type Delegate struct {
 
 type Completions struct {
 	Groups   []*MatchGroup `json:"groups,omitempty"`
-	Delegate Delegate      `json:"delegate,omitempty"`
+	Delegate Delegate      `json:"delegate"`
 
 	CurrentCmd             *Command `json:"-"`
 	AllWords               []string `json:"-"` // all words passed to parse_args()

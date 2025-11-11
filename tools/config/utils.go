@@ -18,7 +18,7 @@ var _ = fmt.Print
 
 func ParseStrDict(val, record_sep, field_sep string) (map[string]string, error) {
 	ans := make(map[string]string)
-	for _, record := range strings.Split(val, record_sep) {
+	for record := range strings.SplitSeq(val, record_sep) {
 		key, val, found := strings.Cut(record, field_sep)
 		if found {
 			ans[key] = val

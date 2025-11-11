@@ -258,7 +258,7 @@ func parse_escape_code(etype loop.EscapeCodeType, data []byte) (metadata map[str
 		}
 	}
 	if len(parts) > 1 {
-		for _, record := range bytes.Split(parts[1], utils.UnsafeStringToBytes(":")) {
+		for record := range bytes.SplitSeq(parts[1], utils.UnsafeStringToBytes(":")) {
 			rp := bytes.SplitN(record, utils.UnsafeStringToBytes("="), 2)
 			v := ""
 			if len(rp) == 2 {

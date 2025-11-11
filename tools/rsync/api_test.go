@@ -135,7 +135,7 @@ func generate_data(block_size, num_of_blocks int, extra ...string) []byte {
 	e := strings.Join(extra, "")
 	ans := make([]byte, num_of_blocks*block_size+len(e))
 	utils.Memset(ans, '_')
-	for i := 0; i < num_of_blocks; i++ {
+	for i := range num_of_blocks {
 		offset := i * block_size
 		copy(ans[offset:], strconv.Itoa(i))
 	}

@@ -137,7 +137,7 @@ func get_shell_name(argv0 string) (ans string) {
 func rc_modification_allowed(ksi string) (allowed bool, set_ksi_env_var bool) {
 	allowed = ksi != ""
 	set_ksi_env_var = true
-	for _, x := range strings.Split(ksi, " ") {
+	for x := range strings.SplitSeq(ksi, " ") {
 		switch x {
 		case "disabled":
 			allowed = false

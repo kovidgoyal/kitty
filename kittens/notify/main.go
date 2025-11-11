@@ -137,7 +137,7 @@ func (p *parsed_data) run_loop() (err error) {
 			raw := utils.UnsafeBytesToString(data[len(ESC_CODE_PREFIX[2:]):])
 			metadata, payload, _ := strings.Cut(raw, ";")
 			sent_identifier, payload_type := "", ""
-			for _, x := range strings.Split(metadata, ":") {
+			for x := range strings.SplitSeq(metadata, ":") {
 				key, val, _ := strings.Cut(x, "=")
 				switch key {
 				case "i":

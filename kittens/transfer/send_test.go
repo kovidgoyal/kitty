@@ -45,7 +45,7 @@ func TestPathMappingSend(t *testing.T) {
 			actual[f.expanded_local_path] = f.remote_path
 		}
 		e := make(map[string]string, len(actual))
-		for _, rec := range strings.Split(expected, " ") {
+		for rec := range strings.SplitSeq(expected, " ") {
 			k, v, _ := strings.Cut(rec, ":")
 			e[mp(k, false)] = mp(v, true)
 		}

@@ -101,7 +101,7 @@ func (self *face_panel) draw_axis(sz loop.ScreenSize, y int, ax VariableAxis, ax
 	}
 	frac := (min(axis_value, ax.Maximum) - ax.Minimum) / (ax.Maximum - ax.Minimum)
 	current_cell := int(math.Floor(frac * float64(num_of_cells-1)))
-	for i := 0; i < num_of_cells; i++ {
+	for i := range num_of_cells {
 		buf.WriteString(utils.IfElse(i == current_cell, lp.SprintStyled(current_val_style, `⬤`),
 			tui.InternalHyperlink("•", fmt.Sprintf("axis:%d/%d:%s", i, num_of_cells-1, ax.Tag))))
 	}

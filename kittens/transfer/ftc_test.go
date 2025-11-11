@@ -18,11 +18,11 @@ func TestFTCSerialization(t *testing.T) {
 	q := func(expected string) {
 		actual := ftc.Serialize()
 		ad := make(map[string]bool)
-		for _, x := range strings.Split(actual, ";") {
+		for x := range strings.SplitSeq(actual, ";") {
 			ad[x] = true
 		}
 		ed := make(map[string]bool)
-		for _, x := range strings.Split(expected, ";") {
+		for x := range strings.SplitSeq(expected, ";") {
 			ed[x] = true
 		}
 		if diff := cmp.Diff(ed, ad); diff != "" {
