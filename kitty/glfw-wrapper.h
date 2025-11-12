@@ -2330,6 +2330,10 @@ typedef void (*glfwSetPrimarySelectionString_func)(GLFWwindow*, const char*);
 GFW_EXTERN glfwSetPrimarySelectionString_func glfwSetPrimarySelectionString_impl;
 #define glfwSetPrimarySelectionString glfwSetPrimarySelectionString_impl
 
+typedef void (*glfwCocoaCycleThroughOSWindows_func)(bool);
+GFW_EXTERN glfwCocoaCycleThroughOSWindows_func glfwCocoaCycleThroughOSWindows_impl;
+#define glfwCocoaCycleThroughOSWindows glfwCocoaCycleThroughOSWindows_impl
+
 typedef void (*glfwCocoaSetWindowChrome_func)(GLFWwindow*, unsigned int, bool, unsigned int, int, unsigned int, bool, int, float, bool);
 GFW_EXTERN glfwCocoaSetWindowChrome_func glfwCocoaSetWindowChrome_impl;
 #define glfwCocoaSetWindowChrome glfwCocoaSetWindowChrome_impl

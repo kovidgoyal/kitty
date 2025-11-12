@@ -473,6 +473,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetPrimarySelectionString_impl) = dlsym(handle, "glfwSetPrimarySelectionString");
     if (glfwSetPrimarySelectionString_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwCocoaCycleThroughOSWindows_impl) = dlsym(handle, "glfwCocoaCycleThroughOSWindows");
+    if (glfwCocoaCycleThroughOSWindows_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwCocoaSetWindowChrome_impl) = dlsym(handle, "glfwCocoaSetWindowChrome");
     if (glfwCocoaSetWindowChrome_impl == NULL) dlerror(); // clear error indicator
 

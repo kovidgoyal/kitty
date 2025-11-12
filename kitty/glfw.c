@@ -1924,7 +1924,7 @@ toggle_secure_input(PYNOARG) {
 static PyObject*
 macos_cycle_through_os_windows(PyObject *self UNUSED, PyObject *backwards) {
 #ifdef __APPLE__
-    cocoa_cycle_through_os_windows(PyObject_IsTrue(backwards));
+    glfwCocoaCycleThroughOSWindows(PyObject_IsTrue(backwards));
 #else
     (void)backwards;
 #endif
