@@ -57,11 +57,18 @@ easily swap between them, kitty has you covered. You can use the
    map f7>/ goto_session
    # Same as above, but the sessions are listed alphabetically instead of by most recent
    map f7>/ goto_session --sort-by=alphabetical
+   # Browse session files inside a directory and pick one
+   map f7>p goto_session ~/.local/share/kitty/sessions
    # Go to the previously active session (larger negative numbers jump further back in history)
    map f7>- goto_session -1
 
 In this manner you can define as many projects/sessions as you like and easily
 switch between them with a keypress.
+
+When a directory path is supplied to :ac:`goto_session`, kitty scans it for
+files ending in ``.kitty-session``, ``.kitty_session`` or ``.session`` and
+presents an interactive list. The ``--sort-by`` option controls the ordering of that list just like it does
+for globally known sessions.
 
 You can also close sessions using the :ac:`close_session` action, which closes
 all windows in the session with a single keypress.
