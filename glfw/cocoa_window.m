@@ -1969,6 +1969,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     // control. Sigh.
     NSRect frame = w.frame; frame.size.width = 0; frame.size.height = 0;
     [w setFrame:frame display:NO];
+    [w setHasShadow:NO];
     [w close];  // sends a release to NSWindow so we dont release it
     window->ns.object = nil;
 }
