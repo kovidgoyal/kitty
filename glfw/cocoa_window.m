@@ -558,6 +558,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (BOOL)windowShouldClose:(id)sender
 {
     (void)sender;
+    if (window == nil) return YES;
     _glfwInputWindowCloseRequest(window);
     return NO;
 }
