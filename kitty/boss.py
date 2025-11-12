@@ -1318,7 +1318,11 @@ class Boss:
 
     @ac('misc', 'Cycle through OS windows on macOS')
     def macos_cycle_through_os_windows(self) -> None:
-        macos_cycle_through_os_windows()
+        macos_cycle_through_os_windows(False)
+
+    @ac('misc', 'Cycle through OS windows backwards on macOS')
+    def macos_cycle_through_os_windows_backwards(self) -> None:
+        macos_cycle_through_os_windows(True)
 
     @ac('misc', 'Hide macOS kitty application')
     def hide_macos_app(self) -> None:

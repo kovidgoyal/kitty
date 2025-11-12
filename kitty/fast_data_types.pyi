@@ -948,7 +948,7 @@ def toggle_secure_input() -> None:
     pass
 
 
-def macos_cycle_through_os_windows() -> None:
+def macos_cycle_through_os_windows(backwards: bool) -> None:
     pass
 
 

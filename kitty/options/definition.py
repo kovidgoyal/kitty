@@ -4429,6 +4429,7 @@ map('Toggle macOS secure keyboard entry',
     )
 
 map('macOS Cycle through OS Windows', 'macos_cycle_through_os_windows cmd+` macos_cycle_through_os_windows', only='macos')
+map('macOS Cycle through OS Windows backwards', 'macos_cycle_through_os_windows_backwards cmd+shift+` macos_cycle_through_os_windows_backwards', only='macos')
 
 map('Unicode input',
     'input_unicode_character kitty_mod+u kitten unicode_input',

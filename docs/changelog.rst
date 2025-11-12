@@ -154,6 +154,10 @@ Detailed list of changes
 
 - Automatic color scheme switching: Fix title bar and scroll bar colors not being updated (:iss:`9167`)
 
+- macOS: Fix cycle through OS windows only swapping between the two most recent
+  OS Windows. Also add a cycle through OS Windows backwards action.
+  (:iss:`9215`)
+
 
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1006,6 +1006,7 @@ if is_macos:
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=102), definition='toggle_fullscreen'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=115), definition='toggle_macos_secure_keyboard_entry'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=96), definition='macos_cycle_through_os_windows'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=96), definition='macos_cycle_through_os_windows_backwards'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=32), definition='kitten unicode_input'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=44), definition='edit_config_file'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=114), definition='clear_terminal reset active'))

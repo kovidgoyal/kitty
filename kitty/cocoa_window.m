@@ -259,6 +259,7 @@ PENDING(clear_last_command, CLEAR_LAST_COMMAND)
 PENDING(reload_config, RELOAD_CONFIG)
 PENDING(toggle_macos_secure_keyboard_entry, TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY)
 PENDING(macos_cycle_through_os_windows, MACOS_CYCLE_THROUGH_OS_WINDOWS)
+PENDING(macos_cycle_through_os_windows_backwards, MACOS_CYCLE_THROUGH_OS_WINDOWS_BACKWARDS)
 PENDING(toggle_fullscreen, TOGGLE_FULLSCREEN)
 PENDING(open_kitty_website, OPEN_KITTY_WEBSITE)
 PENDING(hide_macos_app, HIDE)
@@ -320,7 +321,7 @@ typedef struct {
     GlobalShortcut clear_terminal_and_scrollback, clear_screen, clear_scrollback, clear_last_command;
     GlobalShortcut toggle_macos_secure_keyboard_entry, toggle_fullscreen, open_kitty_website;
     GlobalShortcut hide_macos_app, hide_macos_other_apps, minimize_macos_window, quit;
-    GlobalShortcut macos_cycle_through_os_windows;
+    GlobalShortcut macos_cycle_through_os_windows, macos_cycle_through_os_windows_backwards;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
 
@@ -338,7 +339,8 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
     else Q(clear_terminal_and_scrollback); else Q(clear_scrollback); else Q(clear_screen); else Q(clear_last_command);
     else Q(reload_config); else Q(toggle_macos_secure_keyboard_entry); else Q(toggle_fullscreen);
     else Q(open_kitty_website); else Q(hide_macos_app); else Q(hide_macos_other_apps);
-    else Q(minimize_macos_window); else Q(quit); else Q(macos_cycle_through_os_windows);
+    else Q(minimize_macos_window); else Q(quit);
+    else Q(macos_cycle_through_os_windows); else Q(macos_cycle_through_os_windows_backwards);
 #undef Q
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
     int cocoa_mods;
@@ -808,6 +810,7 @@ cocoa_create_global_menu(void) {
                    keyEquivalent:@""];
     [windowMenu addItem:[NSMenuItem separatorItem]];
     MENU_ITEM(windowMenu, @"Cycle Through OS Windows", macos_cycle_through_os_windows);
+    MENU_ITEM(windowMenu, @"Cycle Through OS Windows backwards", macos_cycle_through_os_windows_backwards);
     [windowMenu addItem:[NSMenuItem separatorItem]];
     [windowMenu addItemWithTitle:@"Bring All to Front"
                           action:@selector(arrangeInFront:)
@@ -925,20 +928,24 @@ cocoa_toggle_secure_keyboard_entry(void) {
 }
 
 void
-cocoa_cycle_through_os_windows(void) {
-    NSArray *allWindows = [NSApp orderedWindows];
+cocoa_cycle_through_os_windows(bool backwards) {
+    NSArray *allWindows = [NSApp windows];
     if (allWindows.count < 2) return;
     NSMutableArray<NSWindow *> *filteredWindows = [NSMutableArray array];
-        for (NSWindow *window in allWindows) {
+    for (NSWindow *window in allWindows) {
         NSRect windowFrame = [window frame];
         // Exclude zero size windows which are likely zombie windows from the Tahoe bug
-        if (windowFrame.size.width > 0 && windowFrame.size.height > 0) [filteredWindows addObject:window];
+        if (windowFrame.size.width > 0 && windowFrame.size.height > 0 && !window.isMiniaturized && window.isVisible) [filteredWindows addObject:window];
     }
     if (filteredWindows.count < 2) return;
     NSWindow *keyWindow = [NSApp keyWindow];
     NSUInteger index = [filteredWindows indexOfObject:keyWindow];
-    if (index < 0) return;
-    NSUInteger nextIndex = (index + 1) % filteredWindows.count;
+    NSUInteger nextIndex = 0;
+    if (index != NSNotFound) {
+        if (backwards) {
+            nextIndex = (index == 0) ? [filteredWindows count] - 1 : index - 1;
+        } else nextIndex = (index + 1) % filteredWindows.count;
+    }
     NSWindow *nextWindow = filteredWindows[nextIndex];
     [nextWindow makeKeyAndOrderFront:nil];
 }
