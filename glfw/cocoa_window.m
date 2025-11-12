@@ -2330,8 +2330,9 @@ void _glfwPlatformShowWindow(_GLFWwindow* window, bool move_to_active_screen)
         NSWindowCollectionBehavior old = nw.collectionBehavior;
         nw.collectionBehavior = (old & !NSWindowCollectionBehaviorCanJoinAllSpaces) | NSWindowCollectionBehaviorMoveToActiveSpace;
         [nw orderFront:nil];
+        __block __typeof__(nw) weakSelf = nw;
         dispatch_async(dispatch_get_main_queue(), ^{
-			nw.collectionBehavior = old;
+			weakSelf.collectionBehavior = old;
 		});
     }
 }
