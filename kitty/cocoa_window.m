@@ -926,14 +926,20 @@ cocoa_toggle_secure_keyboard_entry(void) {
 
 void
 cocoa_cycle_through_os_windows(void) {
-    NSArray *windows = [NSApp orderedWindows];
-    if (windows.count < 2) return;
-
+    NSArray *allWindows = [NSApp orderedWindows];
+    if (allWindows.count < 2) return;
+    NSMutableArray<NSWindow *> *filteredWindows = [NSMutableArray array];
+        for (NSWindow *window in allWindows) {
+        NSRect windowFrame = [window frame];
+        // Exclude zero size windows which are likely zombie windows from the Tahoe bug
+        if (windowFrame.size.width > 0 && windowFrame.size.height > 0) [filteredWindows addObject:window];
+    }
+    if (filteredWindows.count < 2) return;
     NSWindow *keyWindow = [NSApp keyWindow];
-    NSUInteger index = [windows indexOfObject:keyWindow];
-    NSUInteger nextIndex = (index + 1) % windows.count;
-
-    NSWindow *nextWindow = windows[nextIndex];
+    NSUInteger index = [filteredWindows indexOfObject:keyWindow];
+    if (index < 0) return;
+    NSUInteger nextIndex = (index + 1) % filteredWindows.count;
+    NSWindow *nextWindow = filteredWindows[nextIndex];
     [nextWindow makeKeyAndOrderFront:nil];
 }
 
