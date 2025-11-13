@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -143,19 +144,21 @@ bar `: {
 			}
 		}
 	}
-	os.WriteFile(utils.Expanduser("~/.gitconfig"), []byte(`
-	[core]
-	something
-	[else]
-	...
-	[core]
-	...
-	[core]
-	excludesfile = one
-	[core]
-	excludesfile = ~/global-gitignore
+	tdir := t.TempDir()
+	gc := filepath.Join(tdir, ".gitconfig")
+	os.WriteFile(gc, []byte(`
+[core]
+something
+[else]
+...
+[core]
+...
+[core]
+excludesfile = one
+[core]
+excludesfile = ~/global-gitignore
 `), 0600)
-	if ef := get_global_gitconfig_excludesfile(); ef != utils.Expanduser("~/global-gitignore") {
+	if ef := _get_global_gitconfig_excludesfile(gc); ef != utils.Expanduser("~/global-gitignore") {
 		t.Fatalf("global gitconfig excludes file incorrect: %s != %s", utils.Expanduser("~/global-gitignore"), ef)
 	}
 }
