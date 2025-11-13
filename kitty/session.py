@@ -196,13 +196,28 @@ class Session:
             self.tabs[-1].cwd = session_base_dir
 
 
+SESSION_FILE_EXTENSIONS = {'session', 'kitty-session', 'kitty_session'}
+
+
+def has_session_extension(path: str) -> bool:
+    name = os.path.basename(path)
+    return name.rpartition('.')[2] in SESSION_FILE_EXTENSIONS
+
+
 def session_arg_to_name(session_arg: str) -> str:
     if session_arg in ('-', '/dev/stdin', 'none'):
         session_arg = ''
     session_name = os.path.basename(session_arg)
-    if session_name.rpartition('.')[2] in ('session', 'kitty-session', 'kitty_session'):
+    if has_session_extension(session_name):
         session_name = session_name.rpartition('.')[0]
     return session_name
+
+
+def resolve_session_arg_path(path: str) -> str:
+    path = os.path.expanduser(path)
+    if not os.path.isabs(path):
+        path = os.path.join(config_dir, path)
+    return os.path.abspath(path)
 
 
 def parse_session(
@@ -424,10 +439,7 @@ def switch_to_session(boss: BossType, session_name: str) -> bool:
 
 
 def resolve_session_path_and_name(path: str) -> tuple[str, str]:
-    path = os.path.expanduser(path)
-    if not os.path.isabs(path):
-        path = os.path.join(config_dir, path)
-    path = os.path.abspath(path)
+    path = resolve_session_arg_path(path)
     return path, session_arg_to_name(path)
 
 
@@ -503,8 +515,11 @@ def close_session_with_confirm(boss: BossType, cmdline: Sequence[str]) -> None:
         do_close(True)
 
 
-def choose_session(boss: BossType, opts: GotoSessionOptions) -> None:
-    all_known_sessions = get_all_known_sessions()
+def choose_session_from_map(
+    boss: BossType, opts: GotoSessionOptions, session_map: Mapping[str, str], title: str
+) -> bool:
+    if not session_map:
+        return False
     hmap = {n: len(goto_session_history)-i for i, n in enumerate(goto_session_history)}
     if opts.sort_by == 'alphabetical':
         def skey(name: str) -> tuple[int, str]:
@@ -512,13 +527,39 @@ def choose_session(boss: BossType, opts: GotoSessionOptions) -> None:
     else:
         def skey(name: str) -> tuple[int, str]:
             return hmap.get(name, len(goto_session_history)), name.lower()
-    names = sorted(all_known_sessions, key=skey)
+    names = sorted(session_map, key=skey)
 
     def chosen(name: str | None) -> None:
         if name:
-            goto_session(boss, (all_known_sessions[name],))
-    boss.choose_entry(
-        _('Select a session to activate'), ((name, name) for name in names), chosen)
+            goto_session(boss, (session_map[name],))
+    boss.choose_entry(title, ((name, name) for name in names), chosen)
+    return True
+
+
+def choose_session(boss: BossType, opts: GotoSessionOptions) -> None:
+    all_known_sessions = get_all_known_sessions()
+    choose_session_from_map(boss, opts, all_known_sessions, _('Select a session to activate'))
+
+
+def choose_session_in_directory(boss: BossType, opts: GotoSessionOptions, directory_path: str) -> None:
+    try:
+        with os.scandir(directory_path) as entries:
+            session_map = {
+                session_arg_to_name(entry.path): entry.path
+                for entry in entries
+                if entry.is_file() and has_session_extension(entry.name)
+            }
+    except OSError as e:
+        boss.show_error(
+            _('Failed to list sessions'),
+            _('Could not list session files in {0} with error: {1}').format(directory_path, e))
+        return
+    session_map = {name: path for name, path in session_map.items() if name}
+    if not choose_session_from_map(
+        boss, opts, session_map, _('Select a session to activate from {0}').format(directory_path)
+    ):
+        boss.show_error(
+            _('No session files found'), _('No session files were found inside {0}').format(directory_path))
 
 
 def parse_goto_session_cmdline(args: list[str]) -> tuple[GotoSessionOptions, list[str]]:
@@ -571,7 +612,11 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
             idx = 0
         if idx < 0:
             return goto_previous_session(boss, idx)
-    path, session_name = resolve_session_path_and_name(path)
+    resolved_path = resolve_session_arg_path(path)
+    if os.path.isdir(resolved_path):
+        choose_session_in_directory(boss, opts, resolved_path)
+        return
+    path, session_name = resolve_session_path_and_name(resolved_path)
     if not session_name:
         boss.show_error(_('Invalid session'), _('{} is not a valid path for a session').format(path))
         return
