@@ -2938,6 +2938,8 @@ class Boss:
         from .guess_mime_type import clear_mime_cache
         clear_mime_cache()
         store_effective_config()
+        from .tab_bar import clear_caches
+        clear_caches()
 
     def safe_delete_temp_file(self, path: str) -> None:
         if is_path_in_temp_dir(path):

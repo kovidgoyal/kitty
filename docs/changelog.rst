@@ -161,6 +161,8 @@ Detailed list of changes
 - :ac:`goto_session`: allow specifying a directory to select a session file
   from the directory (:pull:`9219`)
 
+- Have reloading config also reload the custom tab bar python modules (:disc:`9221`)
+
 
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -523,6 +523,11 @@ def load_custom_draw_tab() -> DrawTabFunc:
     return draw_tab
 
 
+def clear_caches() -> None:
+    load_custom_draw_tab.clear_cached()
+    load_custom_draw_tab_module.clear_cached()
+
+
 class CustomDrawTitleFunc:
 
     def __init__(self, data: dict[str, Any], implementation: Callable[[dict[str, Any]], str] | None = None):
