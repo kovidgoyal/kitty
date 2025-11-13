@@ -158,6 +158,9 @@ Detailed list of changes
   OS Windows. Also add a cycle through OS Windows backwards action.
   (:iss:`9215`)
 
+- :ac:`goto_session`: allow specifying a directory to select a session file
+  from the directory (:pull:`9219`)
+
 
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
