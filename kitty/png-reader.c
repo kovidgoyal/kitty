@@ -47,7 +47,7 @@ read_png_warn_handler(png_structp UNUSED png_ptr, png_const_charp msg) {
 #define ABRT(code, msg) { if(d->err_handler) d->err_handler(d, #code, msg); goto err; }
 
 void
-inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz) {
+inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz, int max_image_dimension) {
     struct fake_file f = {.buf = buf, .sz = bufsz};
     png_structp png = NULL;
     png_infop info = NULL;
@@ -64,6 +64,10 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz) {
     png_byte color_type, bit_depth;
     d->width      = png_get_image_width(png, info);
     d->height     = png_get_image_height(png, info);
+    // libpng uses too much memory for overly large images
+    if (d->width > max_image_dimension || d->height > max_image_dimension) {
+        ABRT(ENOMEM, "PNG image is too large");
+    }
     color_type = png_get_color_type(png, info);
     bit_depth  = png_get_bit_depth(png, info);
     double image_gamma;
@@ -208,7 +212,7 @@ load_png_data(PyObject *self UNUSED, PyObject *args) {
     const char *data;
     if (!PyArg_ParseTuple(args, "s#", &data, &sz)) return NULL;
     png_read_data d = {.err_handler=png_error_handler};
-    inflate_png_inner(&d, (const uint8_t*)data, sz);
+    inflate_png_inner(&d, (const uint8_t*)data, sz, 10000);
     PyObject *ans = NULL;
     if (d.ok && !PyErr_Occurred()) {
         ans = Py_BuildValue("y#ii", d.decompressed, (int)d.sz, d.width, d.height);

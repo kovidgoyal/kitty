@@ -23,6 +23,7 @@
 #include "png-reader.h"
 PyTypeObject GraphicsManager_Type;
 
+#define MAX_IMAGE_DIMENSION 10000u
 #define DEFAULT_STORAGE_LIMIT 320u * (1024u * 1024u)
 #define REPORT_ERROR(...) { log_error(__VA_ARGS__); }
 #define RAII_CoalescedFrameData(name, initializer) __attribute__((cleanup(cfd_free))) CoalescedFrameData name = initializer
@@ -380,7 +381,7 @@ png_error_handler(png_read_data *d UNUSED, const char *code, const char *msg) {
 static bool
 inflate_png(LoadData *load_data, uint8_t *buf, size_t bufsz) {
     png_read_data d = {.err_handler=png_error_handler};
-    inflate_png_inner(&d, buf, bufsz);
+    inflate_png_inner(&d, buf, bufsz, MAX_IMAGE_DIMENSION);
     if (d.ok) {
         free_load_data(load_data);
         load_data->buf = d.decompressed;
@@ -415,7 +416,7 @@ print_png_read_error(png_read_data *d, const char *code, const char* msg) {
 bool
 png_from_data(void *png_data, size_t png_data_sz, const char *path_for_error_messages, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz) {
     png_read_data d = {.err_handler=print_png_read_error};
-    inflate_png_inner(&d, png_data, png_data_sz);
+    inflate_png_inner(&d, png_data, png_data_sz, MAX_IMAGE_DIMENSION);
     if (!d.ok) {
         log_error("Failed to decode PNG image at: %s with error: %s", path_for_error_messages, d.error.used > 0 ? d.error.buf : "");
         free(d.decompressed); free(d.row_pointers); free(d.error.buf);
@@ -693,7 +694,6 @@ initialize_load_data(GraphicsManager *self, const GraphicsCommand *g, Image *img
     tt = g->transmission_type ? g->transmission_type : 'd'; \
     fmt = g->format ? g->format : RGBA; \
 }
-#define MAX_IMAGE_DIMENSION 10000u
 
 static void
 upload_to_gpu(GraphicsManager *self, Image *img, const bool is_opaque, const bool is_4byte_aligned, const uint8_t *data) {
