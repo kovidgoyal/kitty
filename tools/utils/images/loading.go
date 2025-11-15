@@ -179,7 +179,7 @@ func (self *ImageFrame) Resize(x_frac, y_frac float64) *ImageFrame {
 	ans := *self
 	ans.Width = int(x_frac * float64(width))
 	ans.Height = int(y_frac * float64(height))
-	ans.Img = imaging.Resize(self.Img, ans.Width, ans.Height, imaging.Lanczos)
+	ans.Img = imaging.ResizeWithOpacity(self.Img, ans.Width, ans.Height, imaging.Lanczos, self.Is_opaque)
 	ans.Left = int(x_frac * float64(left))
 	ans.Top = int(y_frac * float64(top))
 	return &ans
