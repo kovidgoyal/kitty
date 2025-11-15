@@ -336,7 +336,8 @@ func transmit_by_escape_code(lp *loop.Loop, image_id uint32, temp_file_map map[u
 	atomic := lp.IsAtomicUpdateActive()
 	lp.EndAtomicUpdate()
 	gc.SetTransmission(GRT_transmission_direct)
-	_ = gc.WriteWithPayloadToLoop(lp, frame.Data())
+	_, _, _, data := frame.Data()
+	_ = gc.WriteWithPayloadToLoop(lp, data)
 	if atomic {
 		lp.StartAtomicUpdate()
 	}
@@ -362,7 +363,8 @@ func transmit_by_file(lp *loop.Loop, image_id uint32, temp_file_map map[uint32]*
 	}
 	defer f.Close()
 	temp_file_map[image_id] = &temp_resource{path: f.Name()}
-	_, err = f.Write(frame.Data())
+	_, _, _, data := frame.Data()
+	_, err = f.Write(data)
 	if err != nil {
 		transmit_by_escape_code(lp, image_id, temp_file_map, frame, gc)
 		return

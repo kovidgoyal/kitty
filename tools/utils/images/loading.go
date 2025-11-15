@@ -52,11 +52,11 @@ type SerializableImageFrame struct {
 	Delay_ms                 int  // negative for gapless frame, zero ignored, positive is number of ms
 	Replace                  bool // do a replace rather than an alpha blend
 	Is_opaque                bool
-	Size                     int
-}
 
-func (s SerializableImageFrame) NeededSize() int {
-	return utils.IfElse(s.Is_opaque, 3, 4) * s.Width * s.Height
+	Size               int // size in bytes of the serialized data
+	Number_of_channels int
+	Bits_per_channel   int
+	Has_alpha_channel  bool
 }
 
 func (s *ImageFrame) Serialize() SerializableImageFrame {
@@ -68,7 +68,7 @@ func (s *ImageFrame) Serialize() SerializableImageFrame {
 }
 
 func (self *ImageFrame) DataAsSHM(pattern string) (ans shm.MMap, err error) {
-	d := self.Data()
+	_, _, _, d := self.Data()
 	if ans, err = shm.CreateTemp(pattern, uint64(len(d))); err != nil {
 		return nil, err
 	}
@@ -76,8 +76,10 @@ func (self *ImageFrame) DataAsSHM(pattern string) (ans shm.MMap, err error) {
 	return
 }
 
-func (self *ImageFrame) Data() (ans []byte) {
-	_, ans = imaging.AsRGBData8(self.Img)
+func (self *ImageFrame) Data() (num_channels, bits_per_channel int, has_alpha_channel bool, ans []byte) {
+	num_channels, ans = imaging.AsRGBData8(self.Img)
+	bits_per_channel = 8
+	has_alpha_channel = num_channels == 3
 	return
 }
 
@@ -85,16 +87,26 @@ func ImageFrameFromSerialized(s SerializableImageFrame, data []byte) (aa *ImageF
 	ans := ImageFrame{
 		Width: s.Width, Height: s.Height, Left: s.Left, Top: s.Top,
 		Number: s.Number, Compose_onto: s.Compose_onto, Delay_ms: int32(s.Delay_ms),
-		Is_opaque: s.Is_opaque, Replace: s.Replace,
+		Is_opaque: s.Is_opaque || !s.Has_alpha_channel, Replace: s.Replace,
 	}
-	bytes_per_pixel := utils.IfElse(s.Is_opaque, 3, 4)
+	bpc := s.Bits_per_channel
+	if bpc == 0 {
+		bpc = 8
+	}
+	if bpc != 8 {
+		return nil, fmt.Errorf("serialized image data has unsupported number of bits per channel: %d", bpc)
+	}
+	bytes_per_pixel := bpc * s.Number_of_channels / 8
 	if expected := bytes_per_pixel * s.Width * s.Height; len(data) != expected {
 		return nil, fmt.Errorf("serialized image data has size: %d != %d", len(data), expected)
 	}
-	if s.Is_opaque {
+	switch s.Number_of_channels {
+	case 3, 0:
 		ans.Img, err = nrgb.NewNRGBWithContiguousRGBPixels(data, s.Left, s.Top, s.Width, s.Height)
-	} else {
+	case 4:
 		ans.Img, err = NewNRGBAWithContiguousRGBAPixels(data, s.Left, s.Top, s.Width, s.Height)
+	default:
+		return nil, fmt.Errorf("serialized image data has unsupported number of channels: %d", s.Number_of_channels)
 	}
 	return &ans, err
 }
@@ -131,8 +143,12 @@ func (self *ImageData) Serialize() (SerializableImageMetadata, [][]byte) {
 	m := self.SerializeOnlyMetadata()
 	data := make([][]byte, len(self.Frames))
 	for i, f := range self.Frames {
-		data[i] = f.Data()
-		m.Frames[i].Size = len(data[i])
+		df := &m.Frames[i]
+		df.Number_of_channels, df.Bits_per_channel, df.Has_alpha_channel, data[i] = f.Data()
+		df.Size = len(data[i])
+		if !df.Has_alpha_channel {
+			df.Is_opaque = true
+		}
 	}
 	return m, data
 }

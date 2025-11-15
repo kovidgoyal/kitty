@@ -219,7 +219,8 @@ func (self *GraphicsHandler) transmit(lp *loop.Loop, img *images.ImageData, m *i
 			gc.SetLeftEdge(uint64(frame.Left)).SetTopEdge(uint64(frame.Top))
 		}
 		if cached_data == nil {
-			transmit_by_escape_code(lp, img.Frames[frame_num].Data(), gc)
+			_, _, _, data := img.Frames[frame_num].Data()
+			transmit_by_escape_code(lp, data, gc)
 		} else {
 			path := cached_data[IMAGE_DATA_PREFIX+strconv.Itoa(frame_num)]
 			transmit_by_file(lp, utils.UnsafeStringToBytes(path), gc)
