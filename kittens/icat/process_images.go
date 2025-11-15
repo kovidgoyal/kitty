@@ -216,7 +216,13 @@ func scale_image(imgd *image_data) bool {
 
 func add_frame(imgd *image_data, img image.Image, left, top int) *image_frame {
 	const shm_template = "kitty-icat-*"
-	num_channels, pix := imaging.AsRGBData8(img)
+	num_channels := 4
+	var pix []byte
+	if imaging.IsOpaque(img) {
+		num_channels, pix = 3, imaging.AsRGBData8(img)
+	} else {
+		pix = imaging.AsRGBAData8(img)
+	}
 	b := img.Bounds()
 	f := image_frame{width: b.Dx(), height: b.Dy(), number: len(imgd.frames) + 1, left: left, top: top}
 	f.transmission_format = utils.IfElse(num_channels == 3, graphics.GRT_format_rgb, graphics.GRT_format_rgba)

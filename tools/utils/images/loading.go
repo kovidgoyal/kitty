@@ -77,10 +77,10 @@ func (self *ImageFrame) DataAsSHM(pattern string) (ans shm.MMap, err error) {
 }
 
 func (self *ImageFrame) Data() (num_channels, bits_per_channel int, has_alpha_channel bool, ans []byte) {
-	num_channels, ans = imaging.AsRGBData8(self.Img)
-	bits_per_channel = 8
-	has_alpha_channel = num_channels == 3
-	return
+	if self.Is_opaque {
+		return 3, 8, false, imaging.AsRGBData8(self.Img)
+	}
+	return 4, 8, true, imaging.AsRGBAData8(self.Img)
 }
 
 func ImageFrameFromSerialized(s SerializableImageFrame, data []byte) (aa *ImageFrame, err error) {
