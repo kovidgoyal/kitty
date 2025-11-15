@@ -10,9 +10,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/go-shm"
 	"github.com/kovidgoyal/imaging/nrgb"
-	"github.com/kovidgoyal/kitty/tools/utils"
 
 	"github.com/kovidgoyal/imaging"
 )
@@ -188,7 +188,14 @@ func (self *ImageFrame) Resize(x_frac, y_frac float64) *ImageFrame {
 
 func (self *ImageData) Resize(x_frac, y_frac float64) *ImageData {
 	ans := *self
-	ans.Frames = utils.Map(func(f *ImageFrame) *ImageFrame { return f.Resize(x_frac, y_frac) }, self.Frames)
+	ans.Frames = make([]*ImageFrame, len(self.Frames))
+	if err := parallel.Run_in_parallel_over_range(0, func(start, limit int) {
+		for i := start; i < limit; i++ {
+			ans.Frames[i] = self.Frames[i].Resize(x_frac, y_frac)
+		}
+	}, 0, len(ans.Frames)); err != nil {
+		panic(err)
+	}
 	if len(ans.Frames) > 0 {
 		ans.Width, ans.Height = ans.Frames[0].Width, ans.Frames[0].Height
 	}
