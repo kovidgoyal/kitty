@@ -1574,7 +1574,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
 
     const unsigned long bytes_per_pixel = load_data->is_opaque ? 3 : 4;
     if (load_data->data_sz < bytes_per_pixel * load_data->width * load_data->height)
-        ABRT("ENODATA", "Insufficient image data %zu < %zu", load_data->data_sz, bytes_per_pixel * g->data_width, g->data_height);
+        ABRT("ENODATA", "Insufficient image data %zu < %zu", load_data->data_sz, bytes_per_pixel * g->data_width * g->data_height);
     if (load_data->width > img->width)
         ABRT("EINVAL", "Frame width %u larger than image width: %u", load_data->width, img->width);
     if (load_data->height > img->height)
