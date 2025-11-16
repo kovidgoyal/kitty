@@ -5,11 +5,11 @@ from collections.abc import Generator, Iterable
 from typing import Any
 
 from kitty.borders import BorderColor
-from kitty.types import Edges, WindowMapper
-from kitty.typing_compat import WindowType
+from kitty.types import Edges, NeighborsMap, WindowMapper
+from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import BorderLine, Layout, LayoutData, LayoutDimension, NeighborsMap, lgd
+from .base import BorderLine, Layout, LayoutData, LayoutDimension, lgd
 
 
 def borders(
@@ -133,9 +133,16 @@ class Vertical(Layout):
             after = [groups[(idx + 1) % lg].id]
         else:
             before, after = [], []
+        ans: NeighborsMap = {}
+        akey: EdgeLiteral = 'top'
+        bkey: EdgeLiteral = 'bottom'
         if self.main_is_horizontal:
-            return {'left': before, 'right': after, 'top': [], 'bottom': []}
-        return {'top': before, 'bottom': after, 'left': [], 'right': []}
+            akey, bkey = 'left', 'right'
+        if before:
+            ans[bkey] = before
+        if after:
+            ans[akey] = after
+        return ans
 
     def layout_state(self) -> dict[str, Any]:
         return {'biased_map': self.biased_map}

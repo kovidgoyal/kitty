@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
+from kitty.types import NeighborsMap
 from kitty.typing_compat import WindowType
 from kitty.window_list import WindowList
 
-from .base import Layout, NeighborsMap
+from .base import Layout
 
 
 class Stack(Layout):

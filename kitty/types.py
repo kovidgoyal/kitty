@@ -234,3 +234,10 @@ def ac(group: ActionGroup, doc: str) -> Callable[[_T], _T]:
 
 WindowMapper = Callable[[int], int | None]
 DecoratedFunc = TypeVar('DecoratedFunc', bound=Callable[..., Any])
+
+
+class NeighborsMap(TypedDict, total=False):
+    left: list[int]
+    top: list[int]
+    right: list[int]
+    bottom: list[int]

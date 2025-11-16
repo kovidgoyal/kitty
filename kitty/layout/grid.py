@@ -8,11 +8,11 @@ from math import ceil, floor
 from typing import Any
 
 from kitty.borders import BorderColor
-from kitty.types import Edges, WindowMapper
+from kitty.types import Edges, NeighborsMap, WindowMapper
 from kitty.typing_compat import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import BorderLine, Layout, LayoutData, LayoutDimension, ListOfWindows, NeighborsMap, layout_dimension, lgd
+from .base import BorderLine, Layout, LayoutData, LayoutDimension, ListOfWindows, layout_dimension, lgd
 from .tall import neighbors_for_tall_window
 
 
@@ -302,12 +302,16 @@ class Grid(Layout):
                 xs.extend(neighbors(neighbor_row, neighbor_col))
             return xs
 
-        return {
-            'top': neighbors(row-1, col) if row else [],
-            'bottom': neighbors(row + 1, col),
-            'left': side(row, col, -1) if col else [],
-            'right': side(row, col, 1) if col < ncols - 1 else [],
-        }
+        ans: NeighborsMap = {}
+        if row:
+            ans['top'] = neighbors(row-1, col)
+        if bottom := neighbors(row + 1, col):
+            ans['bottom'] = bottom
+        if col and (left := side(row, col, -1)):
+            ans['left'] = left
+        if col < ncols - 1:
+            ans['right'] = side(row, col, 1)
+        return ans
 
     def layout_state(self) -> dict[str, Any]:
         return {

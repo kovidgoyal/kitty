@@ -9,8 +9,8 @@ from typing import Any, Callable, NamedTuple
 from kitty.borders import BorderColor
 from kitty.fast_data_types import Region, get_options, set_active_window, viewport_for_window
 from kitty.options.types import Options
-from kitty.types import Edges, WindowGeometry, WindowMapper
-from kitty.typing_compat import TypedDict, WindowType
+from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper
+from kitty.typing_compat import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 
@@ -39,13 +39,6 @@ class LayoutData(NamedTuple):
 DecorationPairs = Sequence[tuple[int, int]]
 LayoutDimension = Generator[LayoutData, None, None]
 ListOfWindows = list[WindowType]
-
-
-class NeighborsMap(TypedDict):
-    left: list[int]
-    top: list[int]
-    right: list[int]
-    bottom: list[int]
 
 
 class LayoutGlobalData:
@@ -437,7 +430,7 @@ class Layout:
         raise NotImplementedError()
 
     def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
-        return {'left': [], 'right': [], 'top': [], 'bottom': []}
+        return {}
 
     def compute_needs_borders_map(self, all_windows: WindowList) -> dict[int, bool]:
         return all_windows.compute_needs_borders_map(lgd.draw_active_borders)

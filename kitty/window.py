@@ -96,7 +96,7 @@ from .options.types import Options
 from .progress import Progress
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import MouseEvent, OverlayType, WindowGeometry, ac, run_once
+from .types import MouseEvent, NeighborsMap, OverlayType, WindowGeometry, ac, run_once
 from .typing_compat import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int,
@@ -250,6 +250,7 @@ class WindowDict(TypedDict):
     at_prompt: bool
     created_at: int
     in_alternate_screen: bool
+    neighbors: NeighborsMap
 
 
 class PipeData(TypedDict):
@@ -1938,7 +1939,12 @@ class Window:
         return get_mouse_data_for_window(self.os_window_id, self.tab_id, self.id)
 
     # Serialization {{{
-    def as_dict(self, is_focused: bool = False, is_self: bool = False, is_active: bool = False) -> WindowDict:
+    def as_dict(
+        self, is_focused: bool = False, is_self: bool = False, is_active: bool = False,
+        neighbors_map: NeighborsMap | None = None,
+    ) -> WindowDict:
+        if neighbors_map is None:
+            neighbors_map = {}
         return {
             'id': self.id,
             'is_focused': is_focused,
@@ -1958,6 +1964,7 @@ class Window:
             'user_vars': self.user_vars,
             'created_at': self.created_at,
             'in_alternate_screen': self.screen.is_using_alternate_linebuf(),
+            'neighbors': neighbors_map,
         }
 
     def serialize_state(self) -> dict[str, Any]:

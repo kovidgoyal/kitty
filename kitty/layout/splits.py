@@ -5,11 +5,11 @@ from collections.abc import Collection, Generator, Sequence
 from typing import Any, NamedTuple, Optional, TypedDict, Union
 
 from kitty.borders import BorderColor
-from kitty.types import Edges, WindowGeometry, WindowMapper
+from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import BorderLine, Layout, LayoutOpts, NeighborsMap, blank_rects_for_window, lgd, window_geometry_from_layouts
+from .base import BorderLine, Layout, LayoutOpts, blank_rects_for_window, lgd, window_geometry_from_layouts
 
 
 class Extent(NamedTuple):
@@ -405,14 +405,14 @@ class Pair:
         geometries = {group.id: group.geometry for group in all_windows.groups if group.geometry}
 
         def extend(other: Union[int, 'Pair', None], edge: EdgeLiteral, which: EdgeLiteral) -> None:
-            if not ans[which] and other:
+            if not ans.get(which) and other:
                 if isinstance(other, Pair):
                     neighbors = (
                         w for w in other.edge_windows(edge)
                         if is_neighbouring_geometry(geometries[w], geometries[window_id], which))
-                    ans[which].extend(neighbors)
+                    ans.setdefault(which, []).extend(neighbors)
                 else:
-                    ans[which].append(other)
+                    ans.setdefault(which, []).append(other)
 
         def is_neighbouring_geometry(a: WindowGeometry, b: WindowGeometry, direction: str) -> bool:
             def edges(g: WindowGeometry) -> tuple[int, int]:
@@ -610,7 +610,7 @@ class Splits(Layout):
         wg = all_windows.group_for_window(window)
         assert wg is not None
         pair = self.pairs_root.pair_for_window(wg.id)
-        ans: NeighborsMap = {'left': [], 'right': [], 'top': [], 'bottom': []}
+        ans: NeighborsMap = {}
         if pair is not None:
             pair.neighbors_for_window(wg.id, ans, self, all_windows)
         return ans

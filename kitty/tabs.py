@@ -943,12 +943,15 @@ class Tab:  # {{{
 
     def list_windows(self, self_window: Window | None = None, window_filter: Callable[[Window], bool] | None = None) -> Generator[WindowDict, None, None]:
         active_window = self.active_window
+        cl = self.current_layout
         for w in self:
             if window_filter is None or window_filter(w):
                 yield w.as_dict(
                     is_active=w is active_window,
                     is_focused=w.os_window_id == current_focused_os_window_id() and w is active_window,
-                    is_self=w is self_window)
+                    is_self=w is self_window,
+                    neighbors_map=cl.neighbors_for_window(w, self.windows)
+                )
 
     def list_groups(self) -> list[dict[str, Any]]:
         return [g.as_simple_dict() for g in self.windows.groups]

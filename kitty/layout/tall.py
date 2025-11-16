@@ -7,7 +7,7 @@ from typing import Any
 
 from kitty.borders import BorderColor
 from kitty.conf.utils import to_bool
-from kitty.types import Edges, WindowMapper
+from kitty.types import Edges, NeighborsMap, WindowMapper
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
@@ -17,7 +17,6 @@ from .base import (
     LayoutData,
     LayoutDimension,
     LayoutOpts,
-    NeighborsMap,
     lgd,
     normalize_biases,
     safe_increment_bias,
@@ -38,7 +37,7 @@ def neighbors_for_tall_window(
     idx = groups.index(wg)
     prev = None if idx == 0 else groups[idx-1]
     nxt = None if idx == len(groups) - 1 else groups[idx+1]
-    ans: NeighborsMap = {'left': [], 'right': [], 'top': [], 'bottom': []}
+    ans: NeighborsMap = {}
     main_before: EdgeLiteral = 'left' if main_is_horizontal else 'top'
     main_after: EdgeLiteral = 'right' if main_is_horizontal else 'bottom'
     cross_before: EdgeLiteral = 'top' if main_is_horizontal else 'left'

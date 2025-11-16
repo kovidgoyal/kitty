@@ -163,6 +163,8 @@ Detailed list of changes
 
 - Have reloading config also reload the custom tab bar python modules (:disc:`9221`)
 
+- kitten @ ls: Also output the neighbors for every window (:disc:`9225`)
+
 
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
