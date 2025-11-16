@@ -163,8 +163,8 @@ png_write_to_memory(png_structp png_ptr, png_bytep data, png_size_t length) {
 }
 static void png_flush_memory(png_structp png_ptr) { (void)png_ptr; }
 
-const char*
-png_from_32bit_rgba(uint32_t *data, size_t width, size_t height, size_t *out_size, bool flip_vertically) {
+static const char*
+create_png_from_data(char *data, size_t width, size_t height, size_t stride, size_t *out_size, bool flip_vertically, int color_type) {
     *out_size = 0;
     png_memory_write_state state = {.capacity=width*height * sizeof(uint32_t)};
     state.buffer = malloc(state.capacity);
@@ -181,7 +181,7 @@ png_from_32bit_rgba(uint32_t *data, size_t width, size_t height, size_t *out_siz
         return("Error during PNG creation\n");
     }
     png_set_write_fn(png_ptr, &state, png_write_to_memory, png_flush_memory);
-    png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGBA,
+    png_set_IHDR(png_ptr, info_ptr, width, height, 8, color_type,
                  PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     // Allocate memory for row pointers
     png_bytep *row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
@@ -190,8 +190,8 @@ png_from_32bit_rgba(uint32_t *data, size_t width, size_t height, size_t *out_siz
         free(state.buffer);
         return ("Failed to allocate memory for row pointers");
     }
-    if (flip_vertically) for (size_t y = 0; y < height; y++) row_pointers[height - 1 - y] = (png_byte*)&data[y * width];
-    else for (size_t y = 0; y < height; y++) row_pointers[y] = (png_byte*)&data[y * width];
+    if (flip_vertically) for (size_t y = 0; y < height; y++) row_pointers[height - 1 - y] = (png_byte*)&data[y * stride];
+    else for (size_t y = 0; y < height; y++) row_pointers[y] = (png_byte*)&data[y * stride];
     png_write_info(png_ptr, info_ptr);
     png_write_image(png_ptr, row_pointers);
     png_write_end(png_ptr, NULL);
@@ -200,6 +200,17 @@ png_from_32bit_rgba(uint32_t *data, size_t width, size_t height, size_t *out_siz
     *out_size = state.size;
     return (char*)state.buffer;
 }
+
+const char*
+png_from_32bit_rgba(char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically) {
+    return create_png_from_data(data, width, height, 4 * width, out_size, flip_vertically, PNG_COLOR_TYPE_RGBA);
+}
+
+const char*
+png_from_24bit_rgb(char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically) {
+    return create_png_from_data(data, width, height, 3 * width, out_size, flip_vertically, PNG_COLOR_TYPE_RGB);
+}
+
 
 static void
 png_error_handler(png_read_data *d UNUSED, const char *code, const char *msg) {

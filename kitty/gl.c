@@ -215,7 +215,7 @@ save_texture_as_png(uint32_t texture_id, const char *filename) {
         data[i] = (r <<  0) | (g << 8) | (b << 16) | (a << 24);
     }
 
-    const char *png = png_from_32bit_rgba(data, width, height, &sz, true);
+    const char *png = png_from_32bit_rgba((char*)data, width, height, &sz, true);
     if (!sz) fatal("Failed to save PNG to %s with error: %s", filename, png);
     free(data);
     FILE* file = fopen(filename, "wb");
