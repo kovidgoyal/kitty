@@ -14,7 +14,7 @@ require (
 	github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1
 	github.com/kovidgoyal/go-parallel v1.1.1
 	github.com/kovidgoyal/go-shm v1.0.0
-	github.com/kovidgoyal/imaging v1.8.13
+	github.com/kovidgoyal/imaging v1.8.15
 	github.com/seancfoley/ipaddress-go v1.7.1
 	github.com/shirou/gopsutil/v4 v4.25.10
 	github.com/zeebo/xxh3 v1.0.2
@@ -34,7 +34,6 @@ require (
 require (
 	github.com/ebitengine/purego v0.9.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/kettek/apng v0.0.0-20250827064933-2bb5f5fcf253 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
