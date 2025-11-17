@@ -387,7 +387,7 @@ system-wide defaults for all users. You can use either :code:`-` or
 
 def kitty_options_spec() -> str:
     if not hasattr(kitty_options_spec, 'ans'):
-        OPTIONS = '''
+        OPTIONS = """
 --class --app-id
 dest=cls
 default={appname}
@@ -484,7 +484,10 @@ without an actual window, use :option:`{appname} --start-as`=hidden.
 type=choices
 default=normal
 choices=normal,fullscreen,maximized,minimized,hidden
-Control how the initial kitty window is created.
+Control how the initial kitty OS window is created. Note that
+this is applies to all OS Windows if you use the :option:`{appname} --session`
+option to create multiple OS Windows. Any OS Windows state in
+specified in the session file gets overriden.
 
 
 --position
@@ -552,7 +555,7 @@ This option is deprecated in favor of the :opt:`watcher` option in
 --execute -e
 type=bool-set
 !
-'''
+"""
         setattr(kitty_options_spec, 'ans', OPTIONS.format(
             appname=appname, conf_name=appname, listen_on_defn=listen_on_defn,
             grab_keyboard_docs=grab_keyboard_docs, wait_for_single_instance_defn=wait_for_single_instance_defn,

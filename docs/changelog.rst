@@ -165,6 +165,9 @@ Detailed list of changes
 
 - kitten @ ls: Also output the neighbors for every window (:disc:`9225`)
 
+- Have the :option:`kitty --start-as` flag be respected when used with
+  :option:`kitty --single-instance` (:iss:`9228`)
+
 
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
