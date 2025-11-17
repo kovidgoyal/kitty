@@ -28,7 +28,7 @@ typedef struct CacheKey {
 typedef struct {
     uint8_t *data;
     size_t data_sz;
-    bool written_to_disk;
+    bool written_to_disk, uses_encryption;
     off_t pos_in_cache_file;
     uint8_t encryption_key[64];
 } CacheValue;
@@ -88,6 +88,7 @@ typedef struct {
     Holes holes;
     unsigned long long total_size;
     off_t end_of_data_offset;
+    bool needs_encryption;
 } DiskCache;
 
 #define mutex(op) pthread_mutex_##op(&self->lock)
@@ -100,6 +101,7 @@ new_diskcache_object(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED 
         self->cache_file_fd = -1;
         self->small_hole_threshold = 512;
         self->defrag_factor = 2;
+        self->needs_encryption = true;
     }
     return (PyObject*) self;
 }
@@ -121,14 +123,16 @@ open_cache_file_without_tmpfile(const char *cache_path) {
 }
 
 static int
-open_cache_file(const char *cache_path) {
+open_cache_file(const char *cache_path, bool *opened_securely) {
     int fd = -1;
+    *opened_securely = false;
 #ifdef O_TMPFILE
     while (fd < 0) {
         fd = safe_open(cache_path, O_TMPFILE | O_CLOEXEC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
         if (fd > -1 || errno != EINTR) break;
     }
     if (fd == -1) fd = open_cache_file_without_tmpfile(cache_path);
+    else *opened_securely = true;
 #else
     fd = open_cache_file_without_tmpfile(cache_path);
 #endif
@@ -169,7 +173,8 @@ defrag(DiskCache *self) {
     if (size_on_disk <= 0) goto cleanup;
     size_t num_entries = vt_size(&self->map);
     if (!num_entries) goto cleanup;
-    new_cache_file = open_cache_file(self->cache_dir);
+    bool opened_securely;
+    new_cache_file = open_cache_file(self->cache_dir, &opened_securely);
     if (new_cache_file < 0) {
         perror("Failed to open second file for defrag of disk cache");
         goto cleanup;
@@ -221,6 +226,7 @@ cleanup:
             free(e->key.hash_key);
         }
         self->end_of_data_offset = lseek(self->cache_file_fd, 0, SEEK_CUR);
+        self->needs_encryption = !opened_securely;
     }
     if (new_cache_file > -1) safe_close(new_cache_file, __FILE__, __LINE__);
 }
@@ -360,7 +366,11 @@ find_cache_entry_to_write(DiskCache *self) {
                 s->data = NULL;
                 self->currently_writing.val.data_sz = s->data_sz;
                 self->currently_writing.val.pos_in_cache_file = -1;
-                xor_data64(s->encryption_key, self->currently_writing.val.data, s->data_sz);
+                s->uses_encryption = false;
+                if (self->needs_encryption && secure_random_bytes(s->encryption_key, sizeof(s->encryption_key))) {
+                    xor_data64(s->encryption_key, self->currently_writing.val.data, s->data_sz);
+                    s->uses_encryption = true;
+                }
                 self->currently_writing.key.hash_keylen = MIN(i.data->key.hash_keylen, MAX_KEY_SIZE);
                 memcpy(self->currently_writing.key.hash_key, i.data->key.hash_key, self->currently_writing.key.hash_keylen);
                 find_hole_to_use(self, self->currently_writing.val.data_sz);
@@ -512,11 +522,13 @@ ensure_state(DiskCache *self) {
     }
 
     if (self->cache_file_fd < 0) {
-        self->cache_file_fd = open_cache_file(self->cache_dir);
+        bool opened_securely;
+        self->cache_file_fd = open_cache_file(self->cache_dir, &opened_securely);
         if (self->cache_file_fd < 0) {
             PyErr_SetFromErrnoWithFilename(PyExc_OSError, self->cache_dir);
             return false;
         }
+        self->needs_encryption = !opened_securely;
     }
     vt_init(&self->map); vt_init(&self->holes.pos_map); vt_init(&self->holes.size_map); vt_init(&self->holes.end_pos_map);
     self->fully_initialized = true;
@@ -561,7 +573,6 @@ static CacheValue*
 create_cache_entry(void) {
     CacheValue *s = calloc(1, sizeof(CacheValue));
     if (!s) return (CacheValue*)PyErr_NoMemory();
-    if (!secure_random_bytes(s->encryption_key, sizeof(s->encryption_key))) { free(s); PyErr_SetFromErrno(PyExc_OSError); return NULL; }
     s->pos_in_cache_file = -2;
     return s;
 }
@@ -689,11 +700,11 @@ read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void*(allo
     if (s->data) { memcpy(data, s->data, s->data_sz); }
     else if (self->currently_writing.val.data && self->currently_writing.key.hash_key && keys_are_equal(self->currently_writing.key, k)) {
         memcpy(data, self->currently_writing.val.data, s->data_sz);
-        xor_data64(s->encryption_key, data, s->data_sz);
+        if (s->uses_encryption) xor_data64(s->encryption_key, data, s->data_sz);
     }
     else {
         read_from_cache_entry(self, s, data);
-        xor_data64(s->encryption_key, data, s->data_sz);
+        if (s->uses_encryption) xor_data64(s->encryption_key, data, s->data_sz);
     }
     if (store_in_ram && !s->data && s->data_sz) {
         void *copy = malloc(s->data_sz);
