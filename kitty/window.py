@@ -1288,7 +1288,7 @@ class Window:
             self.title_updated()
 
     def osc_context(self, ctx_data: memoryview) -> None:
-        pass  # this is systemd's useless OSC 3008 context protocol
+        pass  # this is systemd's useless OSC 3008 context protocol https://systemd.io/OSC_CONTEXT/
 
     def icon_changed(self, new_icon: memoryview) -> None:
         pass  # TODO: Implement this
