@@ -16,7 +16,6 @@ PyObject* read_from_disk_cache_python(PyObject *self_, const void *key, size_t k
 bool disk_cache_wait_for_write(PyObject *self, monotonic_t timeout);
 size_t disk_cache_total_size(PyObject *self);
 size_t disk_cache_size_on_disk(PyObject *self);
-void clear_disk_cache(PyObject *self);
 size_t disk_cache_clear_from_ram(PyObject *self_, bool(matches)(void* data, void *key, unsigned keysz), void*);
 size_t disk_cache_num_cached_in_ram(PyObject *self_);
 

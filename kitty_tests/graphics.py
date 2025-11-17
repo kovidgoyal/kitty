@@ -253,7 +253,7 @@ class TestGraphics(BaseTest):
         self.assertEqual(dc.total_size, sum(map(len, data.values())))
         self.assertTrue(dc.wait_for_write())
         check_data()
-        sz = dc.size_on_disk()
+        sz = dc.end_of_data_offset()
         self.assertEqual(sz, sum(map(len, data.values())))
         self.assertFalse(dc.holes())
         holes = set()
@@ -262,9 +262,9 @@ class TestGraphics(BaseTest):
             holes.add(x)
             check_data()
             self.assertRaises(KeyError, dc.get, key_as_bytes(x))
-            self.assertEqual(sz, dc.size_on_disk())
+            self.assertEqual(sz, dc.end_of_data_offset())
             self.assertEqual(holes, {x[1] for x in dc.holes()})
-        self.assertEqual(sz, dc.size_on_disk())
+        self.assertEqual(sz, dc.end_of_data_offset())
         # fill holes largest first to ensure small one doesn't go into large accidentally causing fragmentation
         for i, x in enumerate(sorted(holes, reverse=True)):
             x = 'ABCDEFGH'[i] * x
@@ -273,13 +273,10 @@ class TestGraphics(BaseTest):
             check_data()
             holes.discard(len(x))
             self.assertEqual(holes, {x[1] for x in dc.holes()})
-            self.assertEqual(sz, dc.size_on_disk(), f'Disk cache has unexpectedly grown from {sz} to {dc.size_on_disk} with data: {x!r}')
+            self.assertEqual(sz, dc.end_of_data_offset(), f'Disk cache has unexpectedly grown from {sz} to {dc.end_of_data_offset()} with data: {x!r}')
         check_data()
         dc.clear()
-        st = time.monotonic()
-        while dc.size_on_disk() and time.monotonic() - st < 2:
-            time.sleep(0.001)
-        self.assertEqual(dc.size_on_disk(), 0)
+        self.assertEqual(dc.end_of_data_offset(), 0)
 
         data.clear()
         for i in range(25):
@@ -287,25 +284,25 @@ class TestGraphics(BaseTest):
         dc.wait_for_write()
         check_data()
 
-        before = dc.size_on_disk()
+        before = dc.end_of_data_offset()
         while dc.total_size > before // 3:
             key = random.choice(tuple(data))
             self.assertTrue(remove(key))
         check_data()
         add('trigger defrag', 'XXX')
         dc.wait_for_write()
-        self.assertLess(dc.size_on_disk(), before)
+        self.assertLess(dc.end_of_data_offset(), before)
         check_data()
         dc.clear()
 
         st = time.monotonic()
-        while dc.size_on_disk() and time.monotonic() - st < 20:
+        while dc.end_of_data_offset() and time.monotonic() - st < 20:
             time.sleep(0.01)
-        self.assertEqual(dc.size_on_disk(), 0)
+        self.assertEqual(dc.end_of_data_offset(), 0)
         for frame in range(32):
             add(f'1:{frame}', f'{frame:02d}' * 8)
         dc.wait_for_write()
-        self.assertEqual(dc.size_on_disk(), 32 * 16)
+        self.assertEqual(dc.end_of_data_offset(), 32 * 16)
         self.assertEqual(dc.num_cached_in_ram(), 0)
         num_in_ram = 0
         for frame in range(32):
@@ -326,18 +323,18 @@ class TestGraphics(BaseTest):
         self.assertIsNone(add(1, '1' * 1024))
         self.assertIsNone(add(2, '2' * 1024))
         dc.wait_for_write()
-        sz = dc.size_on_disk()
+        sz = dc.end_of_data_offset()
         remove(1)
-        self.ae(sz, dc.size_on_disk())
+        self.ae(sz, dc.end_of_data_offset())
         self.ae({x[1] for x in dc.holes()}, {1024})
         self.assertIsNone(add(3, '3' * 800))
         dc.wait_for_write()
         self.assertFalse(dc.holes())
-        self.ae(sz, dc.size_on_disk())
+        self.ae(sz, dc.end_of_data_offset())
         self.assertIsNone(add(4, '4' * 100))
         sz += 100
         dc.wait_for_write()
-        self.ae(sz, dc.size_on_disk())
+        self.ae(sz, dc.end_of_data_offset())
         check_data()
         self.assertFalse(dc.holes())
         remove(4)
@@ -345,7 +342,7 @@ class TestGraphics(BaseTest):
         self.assertIsNone(add(5, '5' * 10))
         sz += 10
         dc.wait_for_write()
-        self.ae(sz, dc.size_on_disk())
+        self.ae(sz, dc.end_of_data_offset())
 
         # test hole coalescing
         reset(defrag_factor=20)
