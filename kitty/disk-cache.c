@@ -775,25 +775,13 @@ disk_cache_num_cached_in_ram(PyObject *self_) {
 }
 
 
+// The Python interface used only for testing {{{
 #define PYWRAP(name) static PyObject* py##name(DiskCache *self, PyObject *args)
 #define PA(fmt, ...) if (!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 PYWRAP(ensure_state) {
     (void)args;
     ensure_state(self);
     Py_RETURN_NONE;
-}
-
-PYWRAP(read_from_cache_file) {
-    Py_ssize_t pos = 0, sz = -1;
-    PA("|nn", &pos, &sz);
-    mutex(lock);
-    if (sz < 0) sz = self->end_of_data_offset;
-    mutex(unlock);
-    PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
-    if (ans) {
-        read_from_cache_file(self, pos, sz, PyBytes_AS_STRING(ans));
-    }
-    return ans;
 }
 
 static PyObject*
@@ -913,7 +901,6 @@ num_cached_in_ram(PyObject *self, PyObject *args UNUSED) {
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef methods[] = {
     MW(ensure_state, METH_NOARGS),
-    MW(read_from_cache_file, METH_VARARGS),
     {"add", add, METH_VARARGS, NULL},
     {"remove", pyremove, METH_VARARGS, NULL},
     {"remove_from_ram", remove_from_ram, METH_O, NULL},
@@ -949,3 +936,4 @@ PyTypeObject DiskCache_Type = {
 
 INIT_TYPE(DiskCache)
 PyObject* create_disk_cache(void) { return new_diskcache_object(&DiskCache_Type, NULL, NULL); }
+// }}}
