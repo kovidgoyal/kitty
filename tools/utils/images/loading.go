@@ -173,23 +173,19 @@ func ImageFromSerialized(m SerializableImageMetadata, data [][]byte) (*ImageData
 	return &ans, nil
 }
 
-func (self *ImageFrame) Resize(x_frac, y_frac float64) *ImageFrame {
-	b := self.Img.Bounds()
-	left, top, width, height := b.Min.X, b.Min.Y, b.Dx(), b.Dy()
-	ans := *self
-	ans.Width = int(x_frac * float64(width))
-	ans.Height = int(y_frac * float64(height))
-	ans.Img = imaging.ResizeWithOpacity(self.Img, ans.Width, ans.Height, imaging.Lanczos, self.Is_opaque)
-	ans.Left = int(x_frac * float64(left))
-	ans.Top = int(y_frac * float64(top))
+func (ans ImageFrame) Resize(x_frac, y_frac float64) *ImageFrame {
+	ans.Width = int(x_frac * float64(ans.Width))
+	ans.Height = int(y_frac * float64(ans.Height))
+	ans.Img = imaging.ResizeWithOpacity(ans.Img, ans.Width, ans.Height, imaging.Lanczos, ans.Is_opaque)
+	ans.Left = int(x_frac * float64(ans.Left))
+	ans.Top = int(y_frac * float64(ans.Top))
 	return &ans
-
 }
 
 func (self *ImageData) Resize(x_frac, y_frac float64) *ImageData {
 	ans := *self
 	ans.Frames = make([]*ImageFrame, len(self.Frames))
-	if err := parallel.Run_in_parallel_over_range(0, func(start, limit int) {
+	if err := parallel.Run_in_parallel_over_range(1, func(start, limit int) {
 		for i := start; i < limit; i++ {
 			ans.Frames[i] = self.Frames[i].Resize(x_frac, y_frac)
 		}
