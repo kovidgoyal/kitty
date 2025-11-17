@@ -604,7 +604,7 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
         case 701: REPORT_ERROR("Ignoring OSC 701, used by mintty for locale"); break;
         case 3008:
             START_DISPATCH
-            DISPATCH_OSC(set_title);
+            DISPATCH_OSC(osc_context);
             END_DISPATCH
         case 7704: REPORT_ERROR("Ignoring OSC 7704, used by mintty for ANSI colors"); break;
         case 7750: REPORT_ERROR("Ignoring OSC 7750, used by mintty for Emoji style"); break;

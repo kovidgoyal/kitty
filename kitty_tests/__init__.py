@@ -81,6 +81,9 @@ class Callbacks:
     def title_changed(self, data, is_base64=False) -> None:
         self.titlebuf.append(process_title_from_child(data, is_base64, ''))
 
+    def osc_context(self, data):
+        pass
+
     def icon_changed(self, data) -> None:
         self.iconbuf += str(data, 'utf-8')
 
