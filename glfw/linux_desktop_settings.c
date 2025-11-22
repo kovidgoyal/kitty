@@ -259,7 +259,7 @@ glfw_initialize_desktop_settings(void) {
     get_cursor_theme_from_env();
     DBusConnection *session_bus = glfw_dbus_session_bus();
     if (session_bus) {
-        if (!read_desktop_settings(session_bus)) _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to read desktop settings, make sure you have the desktop portal running.");
+        if (!read_desktop_settings(session_bus)) _glfwInputError(GLFW_PLATFORM_ERROR, "WARNING: Failed to read desktop settings, using defaults, make sure you have the desktop portal running.");
         dbus_bus_add_match(session_bus, "type='signal',interface='" DESKTOP_INTERFACE "',member='SettingChanged'", NULL);
         dbus_connection_add_filter(session_bus, setting_changed, NULL, NULL);
     }
