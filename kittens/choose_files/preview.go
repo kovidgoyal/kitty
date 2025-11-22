@@ -326,8 +326,12 @@ func (h *Handler) draw_preview_content(x, y, width, height int) {
 		h.render_wrapped_text_in_region("No preview available", x, y, width, height, false)
 		return
 	}
-	abspath := filepath.Join(h.state.CurrentDir(), r.text)
+	abspath := h.current_abspath()
 	if h.last_rendered_preview != nil {
+		if abspath == h.last_rendered_preview_abspath {
+			h.last_rendered_preview.Render(h, x, y, width, height)
+			return
+		}
 		h.last_rendered_preview.Unload()
 		h.last_rendered_preview = nil
 	}
@@ -335,6 +339,7 @@ func (h *Handler) draw_preview_content(x, y, width, height int) {
 		h.render_wrapped_text_in_region("No preview available", x, y, width, height, false)
 	} else {
 		h.last_rendered_preview = p
+		h.last_rendered_preview_abspath = abspath
 		p.Render(h, x, y, width, height)
 	}
 }

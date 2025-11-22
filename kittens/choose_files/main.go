@@ -207,18 +207,19 @@ type ScreenSize struct {
 }
 
 type Handler struct {
-	state                 State
-	screen_size           ScreenSize
-	result_manager        *ResultManager
-	lp                    *loop.Loop
-	rl                    *readline.Readline
-	err_chan              chan error
-	shortcut_tracker      config.ShortcutTracker
-	msg_printer           *message.Printer
-	spinner               *tui.Spinner
-	preview_manager       *PreviewManager
-	last_rendered_preview Preview
-	graphics_handler      GraphicsHandler
+	state                         State
+	screen_size                   ScreenSize
+	result_manager                *ResultManager
+	lp                            *loop.Loop
+	rl                            *readline.Readline
+	err_chan                      chan error
+	shortcut_tracker              config.ShortcutTracker
+	msg_printer                   *message.Printer
+	spinner                       *tui.Spinner
+	preview_manager               *PreviewManager
+	last_rendered_preview         Preview
+	last_rendered_preview_abspath string
+	graphics_handler              GraphicsHandler
 }
 
 func (self *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) error {
