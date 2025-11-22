@@ -283,14 +283,14 @@ func (self *GraphicsHandler) RenderImagePreview(h *Handler, p *ImagePreview, x, 
 	}
 	files_supported := self.files_supported.Load()
 
-	if p.img_metadata.Width <= px_width && p.img_metadata.Height <= px_height {
+	if p.custom_metadata.image.Width <= px_width && p.custom_metadata.image.Height <= px_height {
 		if files_supported {
-			self.transmit(h.lp, nil, p.img_metadata, p.cached_data)
+			self.transmit(h.lp, nil, p.custom_metadata.image, p.cached_data)
 		} else {
 			if err = p.ensure_source_image(); err != nil {
 				return
 			}
-			self.transmit(h.lp, p.source_img, p.img_metadata, nil)
+			self.transmit(h.lp, p.source_img, p.custom_metadata.image, nil)
 		}
 		return
 	}
