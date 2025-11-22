@@ -207,19 +207,20 @@ type ScreenSize struct {
 }
 
 type Handler struct {
-	state                         State
-	screen_size                   ScreenSize
-	result_manager                *ResultManager
-	lp                            *loop.Loop
-	rl                            *readline.Readline
-	err_chan                      chan error
-	shortcut_tracker              config.ShortcutTracker
-	msg_printer                   *message.Printer
-	spinner                       *tui.Spinner
-	preview_manager               *PreviewManager
-	last_rendered_preview         Preview
-	last_rendered_preview_abspath string
-	graphics_handler              GraphicsHandler
+	state                              State
+	screen_size                        ScreenSize
+	result_manager                     *ResultManager
+	lp                                 *loop.Loop
+	rl                                 *readline.Readline
+	err_chan                           chan error
+	shortcut_tracker                   config.ShortcutTracker
+	msg_printer                        *message.Printer
+	spinner                            *tui.Spinner
+	preview_manager                    *PreviewManager
+	last_rendered_preview              Preview
+	last_rendered_preview_abspath      string
+	prev_preview_for_smooth_transition Preview
+	graphics_handler                   GraphicsHandler
 }
 
 func (self *Handler) on_escape_code(etype loop.EscapeCodeType, payload []byte) error {
@@ -838,6 +839,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 	lp.OnResize = func(old, new_size loop.ScreenSize) (err error) {
 		handler.init_sizes(new_size)
+		handler.clear_cached_previews()
 		return handler.draw_screen()
 	}
 	lp.OnColorSchemeChange = func(p loop.ColorPreference) (err error) {

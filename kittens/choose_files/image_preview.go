@@ -57,6 +57,7 @@ type ImagePreview struct {
 	cached_data           map[string]string
 	render_err            Preview
 	render_channel        chan render_data
+	ready                 atomic.Bool
 	source_img            *images.ImageData
 	img_metadata          *images.SerializableImageMetadata
 	renderer              PreviewRenderer
@@ -65,6 +66,7 @@ type ImagePreview struct {
 }
 
 func (p *ImagePreview) IsValidForColorScheme(bool) bool { return true }
+func (p *ImagePreview) IsReady() bool                   { return p.ready.Load() || p.render_channel == nil }
 
 func (p *ImagePreview) Unload() {
 	p.source_img = nil
@@ -163,6 +165,7 @@ func (p *ImagePreview) start_rendering() {
 			p.render_channel <- render_data{err: parallel.Format_stacktrace_on_panic(r, 1)}
 		}
 		close(p.render_channel)
+		p.ready.Store(true)
 		p.WakeupMainThread()
 	}()
 	key, ans, err := p.disk_cache.GetPath(p.abspath)
