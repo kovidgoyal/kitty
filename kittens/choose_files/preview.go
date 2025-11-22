@@ -123,6 +123,7 @@ func write_file_metadata(abspath string, metadata fs.FileInfo, entries []fs.DirE
 	add := func(key, val string) { fmt.Fprintf(&buf, "%s: %s\n", key, val) }
 	ftype := metadata.Mode().Type()
 	const file_icon = " "
+	fmt.Fprintln(&buf, filepath.Base(abspath))
 	switch ftype {
 	case 0:
 		add("Size", humanize.Bytes(uint64(metadata.Size())))
@@ -175,7 +176,11 @@ func NewDirectoryPreview(abspath string, metadata fs.FileInfo) Preview {
 }
 
 func NewFileMetadataPreview(abspath string, metadata fs.FileInfo) Preview {
-	title := icons.IconForFileWithMode(filepath.Base(abspath), metadata.Mode().Type(), false) + "  File"
+	ext := filepath.Ext(abspath)
+	if ext == "" {
+		ext = "File"
+	}
+	title := icons.IconForFileWithMode(filepath.Base(abspath), metadata.Mode().Type(), false) + "  " + ext
 	h, t := write_file_metadata(abspath, metadata, nil)
 	return &MessagePreview{title: title, msg: h, trailers: t}
 }
