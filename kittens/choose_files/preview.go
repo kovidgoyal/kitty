@@ -222,7 +222,7 @@ func (p *TextFilePreview) Render(h *Handler, x, y, width, height int) {
 	s := utils.NewLineScanner(text)
 	buf := strings.Builder{}
 	buf.Grow(1024 * height)
-	for num := 0; s.Scan() && num < height; num++ {
+	for num := 1 + h.render_wrapped_text_in_region(filepath.Base(p.path), x, y, width, height, true); s.Scan() && num < height; num++ {
 		line := s.Text()
 		truncated := wcswidth.TruncateToVisualLength(line, width)
 		buf.WriteString(fmt.Sprintf(loop.MoveCursorToTemplate, y+num, x))
