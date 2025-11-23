@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"syscall"
 	"time"
 
@@ -60,6 +61,8 @@ func get_file_state_from_path(path string) (*file_state, error) {
 	}
 }
 
+const GET_DIR_PREFIX = "getdir-"
+
 func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
 	if path, err = filepath.Abs(path); err != nil {
 		return
@@ -81,7 +84,7 @@ func new_disk_cache(path string, max_size int64) (dc *DiskCache, err error) {
 	if _, err := ans.prune(); err != nil {
 		return nil, err
 	}
-	if ans.get_dir, err = os.MkdirTemp(ans.Path, "getdir-*"); err != nil {
+	if ans.get_dir, err = os.MkdirTemp(ans.Path, GET_DIR_PREFIX+"*"); err != nil {
 		return
 	}
 	if err = utils.AtExitRmtree(ans.get_dir); err != nil {
@@ -129,7 +132,9 @@ func (dc *DiskCache) unlock() {
 	}
 }
 
-func (dc *DiskCache) entries_path() string { return filepath.Join(dc.Path, "entries.json") }
+const ENTRIES_NAME = "entries.json"
+
+func (dc *DiskCache) entries_path() string { return filepath.Join(dc.Path, ENTRIES_NAME) }
 
 func (dc *DiskCache) write_entries_if_dirty() (err error) {
 	if !dc.entries_dirty {
@@ -319,6 +324,28 @@ func (dc *DiskCache) get(key string, items []string) (map[string]string, error) 
 		dc.update_timestamp(key)
 	}
 	return ans, dc.write_entries_if_dirty()
+}
+
+func (dc *DiskCache) clear() (err error) {
+	if entries, err := os.ReadDir(dc.Path); err != nil {
+		return err
+	} else {
+		defer func() {
+			if we := dc.write_entries_if_dirty(); we != nil && err == nil {
+				err = we
+			}
+		}()
+		for _, x := range entries {
+			if x.IsDir() && !strings.HasPrefix(x.Name(), GET_DIR_PREFIX) {
+				_ = os.RemoveAll(filepath.Join(dc.Path, x.Name()))
+			}
+		}
+		dc.entries_dirty = true
+		dc.entry_map = make(map[string]*Entry)
+		dc.entries.SortedEntries = make([]*Entry, 0)
+		dc.entries.TotalSize = 0
+	}
+	return
 }
 
 func (dc *DiskCache) remove(key string) (err error) {

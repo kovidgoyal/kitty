@@ -66,6 +66,12 @@ func (dc *DiskCache) Remove(key string) (err error) {
 	return dc.remove(key)
 }
 
+func (dc *DiskCache) Clear() (err error) {
+	dc.lock()
+	defer dc.unlock()
+	return dc.clear()
+}
+
 func (dc *DiskCache) AddPath(path, key string, items map[string][]byte) (ans map[string]string, err error) {
 	dc.lock()
 	defer dc.unlock()

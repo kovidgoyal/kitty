@@ -748,6 +748,15 @@ var default_cwd string
 var use_light_colors bool
 
 func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
+	if opts.ClearCache {
+		c, err := preview_cache()
+		if err != nil {
+			return 1, err
+		}
+		if err = c.Clear(); err != nil {
+			return 1, err
+		}
+	}
 	write_output := func(selections []string, interrupted bool, current_filter string) {
 		payload := make(map[string]any)
 		if err != nil {

@@ -217,6 +217,11 @@ The format in which to write the output.
 
 --write-pid-to
 Path to a file to which to write the process ID (PID) of this process to.
+
+
+--clear-cache
+type=bool-set
+Clear the caches used by this kitten.
 '''.format(config_help=CONFIG_HELP.format(conf_name='choose-files', appname=appname)).format
 
 
