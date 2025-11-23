@@ -342,15 +342,19 @@ func (pm *PreviewManager) preview_for(abspath string, ftype fs.FileMode) (ans Pr
 		}
 		return ans
 	}
-	if strings.HasPrefix(mt, "image/") {
+	switch {
+	case strings.HasPrefix(mt, "image/"):
 		var r ImagePreviewRenderer
 		if ans, err := NewImagePreview(abspath, s, pm.settings, pm.WakeupMainThread, r); err == nil {
 			return ans
 		} else {
 			return NewErrorPreview(err)
 		}
-	}
-	if IsSupportedByCalibre(abspath) {
+
+	case strings.HasPrefix(mt, "video/"):
+		return NewFFMpegPreview(abspath, s, pm.settings, pm.WakeupMainThread)
+
+	case IsSupportedByCalibre(abspath):
 		return NewCalibrePreview(abspath, s, pm.settings, pm.WakeupMainThread)
 	}
 	return NewFileMetadataPreview(abspath, s)
