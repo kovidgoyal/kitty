@@ -132,7 +132,9 @@ func (p *ImagePreview) render_image(h *Handler, x, y, width, height int) {
 		abspath: p.abspath, metadata: p.metadata, x: x, y: y, width: width, height: height, cached_data: p.cached_data,
 		custom_metadata: p.custom_metadata,
 	})
-	h.graphics_handler.RenderImagePreview(h, p, x, y+offset, width, height-offset)
+	if p.custom_metadata.image != nil {
+		h.graphics_handler.RenderImagePreview(h, p, x, y+offset, width, height-offset)
+	}
 }
 
 func (p *ImagePreview) Render(h *Handler, x, y, width, height int) {
@@ -229,10 +231,9 @@ func (p ImagePreviewRenderer) Render(abspath string) (ans map[string][]byte, m m
 func (p ImagePreviewRenderer) Unmarshall(map[string]string) (any, error) { return nil, nil }
 
 func (p ImagePreviewRenderer) ShowMetadata(h *Handler, s ShowData) int {
-	text := ""
 	offset := 0
 	if m := s.custom_metadata.image; m != nil {
-		text = fmt.Sprintf("%s: %dx%d %s", m.Format_uppercase, m.Width, m.Height, humanize.Bytes(uint64(s.metadata.Size())))
+		text := fmt.Sprintf("%s: %dx%d %s", m.Format_uppercase, m.Width, m.Height, humanize.Bytes(uint64(s.metadata.Size())))
 		icon := icons.IconForPath("/a.gif")
 		text = icon + "  " + text
 		offset += h.render_wrapped_text_in_region(text, s.x, s.y, s.width, s.height, true)

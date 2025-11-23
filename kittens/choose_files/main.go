@@ -798,6 +798,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	lp.ColorSchemeChangeNotifications()
 	handler := Handler{lp: lp, err_chan: make(chan error, 8), msg_printer: message.NewPrinter(utils.LanguageTag()), spinner: tui.NewSpinner("dots")}
 	defer handler.graphics_handler.Cleanup()
+	defer calibre_cleanup()
 	handler.rl = readline.New(lp, readline.RlInit{
 		Prompt: "> ", ContinuationPrompt: ". ", Completer: FilePromptCompleter(handler.state.CurrentDir),
 	})

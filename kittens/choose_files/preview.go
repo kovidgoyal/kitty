@@ -175,7 +175,7 @@ func NewDirectoryPreview(abspath string, metadata fs.FileInfo) Preview {
 	return &MessagePreview{title: title, msg: header, trailers: extra}
 }
 
-func NewFileMetadataPreview(abspath string, metadata fs.FileInfo) Preview {
+func NewFileMetadataPreview(abspath string, metadata fs.FileInfo) *MessagePreview {
 	ext := filepath.Ext(abspath)
 	if ext == "" {
 		ext = "File"
@@ -183,6 +183,19 @@ func NewFileMetadataPreview(abspath string, metadata fs.FileInfo) Preview {
 	title := icons.IconForFileWithMode(filepath.Base(abspath), metadata.Mode().Type(), false) + "  " + ext
 	h, t := write_file_metadata(abspath, metadata, nil)
 	return &MessagePreview{title: title, msg: h, trailers: t}
+}
+
+func NewFileMetadataPreviewWithError(abspath string, metadata fs.FileInfo, err error) *MessagePreview {
+	ext := filepath.Ext(abspath)
+	if ext == "" {
+		ext = "File"
+	}
+	title := icons.IconForFileWithMode(filepath.Base(abspath), metadata.Mode().Type(), false) + "  " + ext
+	h, t := write_file_metadata(abspath, metadata, nil)
+	ans := &MessagePreview{title: title, msg: h, trailers: t}
+	lines := style.WrapTextAsLines(err.Error(), 30, style.WrapOptions{})
+	ans.trailers = append(ans.trailers, lines...)
+	return ans
 }
 
 type highlighed_data struct {
@@ -326,6 +339,9 @@ func (pm *PreviewManager) preview_for(abspath string, ftype fs.FileMode) (ans Pr
 		} else {
 			return NewErrorPreview(err)
 		}
+	}
+	if IsSupportedByCalibre(abspath) {
+		return NewCalibrePreview(abspath, s, pm.settings, pm.WakeupMainThread)
 	}
 	return NewFileMetadataPreview(abspath, s)
 }
