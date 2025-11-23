@@ -81,8 +81,8 @@ opt('video_preview', 'width=480 fps=10 duration=5', long_text='''
 Control how videos are sampled for previwing. The width controls
 the size of the generated thumbnail from the video. Duration controls
 how long the generated thumbnail plays for, in seconds. Note that when
-changing these you should also use :option:`--clear-cache` otherwise it will
-not affect already cached previews.
+changing these you should also use the :code:`--clear-cache` flag
+otherwise it will not affect already cached previews.
 ''')
 
 
