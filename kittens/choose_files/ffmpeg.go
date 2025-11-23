@@ -151,7 +151,7 @@ func (c ffmpeg_renderer) ShowMetadata(h *Handler, s ShowData) (offset int) {
 	r := s.custom_metadata.custom.(*FFMpegMetadata)
 	if d, perr := strconv.ParseFloat(r.Format.Duration, 64); perr == nil {
 		duration := time.Duration(d * float64(time.Second))
-		w("Duration: "+durafmt.Parse(duration).String(), false)
+		w("Duration: "+durafmt.Parse(duration).LimitFirstN(1).String(), false)
 	}
 	var width, height int
 	for _, s := range r.Streams {
