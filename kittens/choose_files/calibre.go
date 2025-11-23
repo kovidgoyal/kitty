@@ -138,7 +138,7 @@ func IsSupportedByCalibre(path string) bool {
 	return false
 }
 
-const CALIBRE_METADATA_KEY = "calibre-metadata"
+const CALIBRE_METADATA_KEY = "calibre-metadata.json"
 
 func (c *calibre_server_process) Unmarshall(m map[string]string) (any, error) {
 	data, err := os.ReadFile(m[CALIBRE_METADATA_KEY])
