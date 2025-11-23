@@ -182,16 +182,20 @@ func (p *ImagePreview) start_rendering() {
 		return
 	}
 	if len(ans) > 0 {
-		if d := ans[IMAGE_METADATA_KEY]; d != "" {
-			if b, err := os.ReadFile(d); err == nil {
-				var m images.SerializableImageMetadata
-				if err = json.Unmarshal(b, &m); err == nil {
-					if cm, err := p.renderer.Unmarshall(ans); err == nil {
-						p.render_channel <- render_data{cached_data: ans, metadata: metadata{image: &m, custom: cm}}
-						return
+		mi := metadata{}
+		if mi.custom, err = p.renderer.Unmarshall(ans); err == nil {
+			if d := ans[IMAGE_METADATA_KEY]; d != "" {
+				if b, err := os.ReadFile(d); err == nil {
+					var m images.SerializableImageMetadata
+					if err = json.Unmarshal(b, &m); err == nil {
+						mi.image = &m
 					}
 				}
 			}
+		}
+		if mi.custom != nil || mi.image != nil {
+			p.render_channel <- render_data{cached_data: ans, metadata: mi}
+			return
 		}
 	}
 	rdata, metadata, img, err := p.renderer.Render(p.abspath)
