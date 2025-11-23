@@ -210,6 +210,7 @@ type TextFilePreview struct {
 	ready                        atomic.Bool
 	light                        bool
 	path                         string
+	metadata                     fs.FileInfo
 }
 
 func (p *TextFilePreview) IsValidForColorScheme(light bool) bool { return p.light == light }
@@ -235,7 +236,8 @@ func (p *TextFilePreview) Render(h *Handler, x, y, width, height int) {
 	s := utils.NewLineScanner(text)
 	buf := strings.Builder{}
 	buf.Grow(1024 * height)
-	for num := 1 + h.render_wrapped_text_in_region(filepath.Base(p.path), x, y, width, height, true); s.Scan() && num < height; num++ {
+	title := icons.IconForPath(p.path) + "  " + filepath.Base(p.path) + fmt.Sprintf(" %s", humanize.Bytes(uint64(p.metadata.Size())))
+	for num := 1 + h.render_wrapped_text_in_region(title, x, y, width, height, true); s.Scan() && num < height; num++ {
 		line := s.Text()
 		truncated := wcswidth.TruncateToVisualLength(line, width)
 		buf.WriteString(fmt.Sprintf(loop.MoveCursorToTemplate, y+num, x))
@@ -257,7 +259,8 @@ func NewTextFilePreview(abspath string, metadata fs.FileInfo, highlighted_chan c
 	if !utf8.ValidString(text) {
 		text = "Error: not valid utf-8 text"
 	}
-	return &TextFilePreview{path: abspath, plain_text: sanitize(text), highlighted_chan: highlighted_chan, light: use_light_colors}
+	return &TextFilePreview{
+		path: abspath, plain_text: sanitize(text), highlighted_chan: highlighted_chan, light: use_light_colors, metadata: metadata}
 }
 
 type style_resolver struct {
