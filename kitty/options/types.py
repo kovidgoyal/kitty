@@ -929,6 +929,10 @@ defaults.map = [
     KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=102),), definition='kitten hints --type path --program -'),
     # open_selected_path
     KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(mods=1, key=102),), definition='kitten hints --type path'),
+    # insert_chosen_file
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=99),), definition='kitten choose-files'),
+    # insert_chosen_directory
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=100),), definition='kitten choose-files --mode=dir'),
     # insert_selected_line
     KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=108),), definition='kitten hints --type line --program -'),
     # insert_selected_word

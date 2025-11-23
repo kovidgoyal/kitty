@@ -4363,6 +4363,23 @@ map('Open selected path',
     long_text='Select a path/filename and open it with the default open program.'
     )
 
+map('Insert chosen file',
+    'insert_chosen_file kitty_mod+p>c kitten choose-files',
+    long_text='''
+Select a file using the :doc:`choose-files </kittens/choose-files>` kitten and insert
+it into the terminal.
+'''
+    )
+
+map('Insert chosen directory',
+    'insert_chosen_directory kitty_mod+p>d kitten choose-files --mode=dir',
+    long_text='''
+Select a directory using the :doc:`choose-files </kittens/choose-files>` kitten and insert
+it into the terminal.
+'''
+    )
+
+
 map('Insert selected line',
     'insert_selected_line kitty_mod+p>l kitten hints --type line --program -',
     long_text='''

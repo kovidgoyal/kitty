@@ -772,18 +772,22 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 			}
 			return
 		}
-		m := strings.Join(selections, "\n")
-		if opts.OutputFormat == "json" {
-			payload["paths"] = selections
-			if current_filter != "" {
-				payload["current_filter"] = current_filter
-			}
-			b, _ := json.MarshalIndent(payload, "", "  ")
-			m = string(b)
+		payload["paths"] = selections
+		if current_filter != "" {
+			payload["current_filter"] = current_filter
 		}
-		fmt.Print(m)
-		if opts.WriteOutputTo != "" {
-			os.WriteFile(opts.WriteOutputTo, []byte(m), 0600)
+		if tui.RunningAsUI() {
+			fmt.Println(tui.KittenOutputSerializer()(payload))
+		} else {
+			m := strings.Join(selections, "\n")
+			if opts.OutputFormat == "json" {
+				b, _ := json.MarshalIndent(payload, "", "  ")
+				m = string(b)
+			}
+			fmt.Print(m)
+			if opts.WriteOutputTo != "" {
+				os.WriteFile(opts.WriteOutputTo, []byte(m), 0600)
+			}
 		}
 	}
 

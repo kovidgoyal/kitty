@@ -407,9 +407,7 @@ def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, 
 
 if __name__ == '__main__':
     # Run with kitty +kitten hints
-    ans = main(sys.argv)
-    if ans:
-        print(ans)
+    main(sys.argv)
 elif __name__ == '__doc__':
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
