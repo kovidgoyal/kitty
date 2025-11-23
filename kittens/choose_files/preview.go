@@ -196,6 +196,7 @@ func NewFileMetadataPreviewWithError(abspath string, metadata fs.FileInfo, err e
 	h, t := write_file_metadata(abspath, metadata, nil)
 	ans := &MessagePreview{title: title, msg: h, trailers: t}
 	lines := style.WrapTextAsLines(err.Error(), 30, style.WrapOptions{})
+	ans.trailers = append(ans.trailers, "")
 	ans.trailers = append(ans.trailers, lines...)
 	return ans
 }

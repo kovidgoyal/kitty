@@ -157,7 +157,7 @@ func (p *ImagePreview) Render(h *Handler, x, y, width, height int) {
 		p.source_img = hd.img
 		p.custom_metadata = hd.metadata
 		if hd.err != nil {
-			p.render_err = NewErrorPreview(fmt.Errorf("Failed to render the preview with error: %w", hd.err))
+			p.render_err = NewFileMetadataPreviewWithError(p.abspath, p.metadata, fmt.Errorf("Failed to render the preview with error: %w", hd.err))
 		}
 		p.Render(h, x, y, width, height)
 		return
