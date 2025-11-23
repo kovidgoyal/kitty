@@ -30,7 +30,7 @@ const FFMPEG_METADATA_KEY = "ffmpeg-metadata.json"
 type ffmpeg_renderer int
 
 var (
-	video_width            = 320
+	video_width            = 480
 	video_fps              = 10
 	video_duration         = 5
 	video_encoding_quality = 75
