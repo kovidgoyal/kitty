@@ -136,27 +136,28 @@ func calibre_cleanup() {
 }
 
 func IsSupportedByCalibre(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-	if len(ext) < 2 {
-		return false
-	}
-	if calibre_server_load_finished.Load() {
-		if calibre, err := calibre_server(); err == nil {
-			return calibre.file_extensions.Has(ext)
+	ext := strings.ToLower(filepath.Ext(filepath.Base(path)))
+	if len(ext) > 1 {
+		if calibre_server_load_finished.Load() {
+			if calibre, err := calibre_server(); err == nil {
+				return calibre.file_extensions.Has(ext)
+			}
+		} else {
+			// we dont want to delay the render loop waiting for data from
+			// calibre-server as it causes flicker because the atomic update
+			// timeout expires, so use a default set of extensions.
+			go func() { _, _ = calibre_server() }()
+			return slices.Contains([]string{"cb7", "azw3", "kepub", "zip", "htmlz", "rar", "lrf", "cbr", "tpz", "azw1", "mobi", "lit", "pdf", "updb", "pml", "pobi", "fbz", "azw", "fb2", "cbc", "rtf", "snb", "opf", "txt", "epub", "oebzip", "txtz", "imp", "docx", "odt", "pdb", "rb", "prc", "html", "chm", "pmlz", "cbz", "lrx", "azw4"}, ext[1:])
 		}
-	} else {
-		// we dont want to delay the render loop waiting for data from
-		// calibre-server as it causes flicker because the atomic update
-		// timeout expires, so use a default set of extensions.
-		go func() { _, _ = calibre_server() }()
-		return slices.Contains([]string{"cb7", "azw3", "kepub", "zip", "htmlz", "rar", "lrf", "cbr", "tpz", "azw1", "mobi", "lit", "pdf", "updb", "pml", "pobi", "fbz", "azw", "fb2", "cbc", "rtf", "snb", "opf", "txt", "epub", "oebzip", "txtz", "imp", "docx", "odt", "pdb", "rb", "prc", "html", "chm", "pmlz", "cbz", "lrx", "azw4"}, ext[1:])
 	}
 	return false
 }
 
 const CALIBRE_METADATA_KEY = "calibre-metadata.json"
 
-func (c *calibre_server_process) Unmarshall(m map[string]string) (any, error) {
+type calibre_renderer int
+
+func (c calibre_renderer) Unmarshall(m map[string]string) (any, error) {
 	data, err := os.ReadFile(m[CALIBRE_METADATA_KEY])
 	if err != nil {
 		return nil, err
@@ -168,7 +169,7 @@ func (c *calibre_server_process) Unmarshall(m map[string]string) (any, error) {
 	return &ans, nil
 }
 
-func (c *calibre_server_process) Render(path string) (m map[string][]byte, mi metadata, img *images.ImageData, err error) {
+func (c calibre_renderer) Render(path string) (m map[string][]byte, mi metadata, img *images.ImageData, err error) {
 	cpath, err := os.CreateTemp("", "")
 	if err != nil {
 		return
@@ -176,9 +177,11 @@ func (c *calibre_server_process) Render(path string) (m map[string][]byte, mi me
 	defer func() {
 		cpath.Close()
 		os.Remove(cpath.Name())
-
 	}()
-	calibre, _ := calibre_server()
+	calibre, err := calibre_server()
+	if err != nil {
+		return
+	}
 	payload, err := json.Marshal(map[string]string{"path": path, "cover": cpath.Name()})
 	if err != nil {
 		return
@@ -206,7 +209,7 @@ func (c *calibre_server_process) Render(path string) (m map[string][]byte, mi me
 	return
 }
 
-func (c *calibre_server_process) ShowMetadata(h *Handler, s ShowData) (offset int) {
+func (c calibre_renderer) ShowMetadata(h *Handler, s ShowData) (offset int) {
 	w := func(text string, center bool) {
 		if s.height > offset {
 			offset += h.render_wrapped_text_in_region(text, s.x, s.y+offset, s.width, s.height-offset, center)
@@ -228,18 +231,15 @@ func (c *calibre_server_process) ShowMetadata(h *Handler, s ShowData) (offset in
 	return
 }
 
-func (c *calibre_server_process) String() string {
+func (c calibre_renderer) String() string {
 	return "Calibre"
 }
 
 func NewCalibrePreview(
 	abspath string, metadata fs.FileInfo, opts Settings, WakeupMainThread func() bool,
 ) Preview {
-	calibre, err := calibre_server()
-	if err != nil {
-		return NewFileMetadataPreviewWithError(abspath, metadata, err)
-	}
-	if ans, err := NewImagePreview(abspath, metadata, opts, WakeupMainThread, calibre); err == nil {
+	c := calibre_renderer(0)
+	if ans, err := NewImagePreview(abspath, metadata, opts, WakeupMainThread, c); err == nil {
 		return ans
 	} else {
 		return NewErrorPreview(err)
