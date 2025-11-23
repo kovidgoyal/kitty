@@ -54,6 +54,12 @@ this cannot work with terminal multiplexers such as tmux since
 only the multiplexer can know the position of the screen.
 
 
+--clear-all
+type=bool-set
+Remove all images from screen and scrollback. Note that with terminal
+multiplexers like tmux, this will move images from all panes.
+
+
 --transfer-mode
 type=choices
 choices=detect,file,stream,memory

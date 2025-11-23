@@ -4,6 +4,7 @@ package icat
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"strconv"
@@ -223,6 +224,20 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		return 0, nil
 	}
 	if opts.Clear {
+		cc := &graphics.GraphicsCommand{}
+		cc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_visible)
+		if err = cc.WriteWithPayloadTo(os.Stdout, nil); err != nil {
+			return 1, err
+		}
+	}
+	switch {
+	case opts.ClearAll:
+		cc := &graphics.GraphicsCommand{}
+		cc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_by_range).SetLeftEdge(0).SetTopEdge(math.MaxUint32)
+		if err = cc.WriteWithPayloadTo(os.Stdout, nil); err != nil {
+			return 1, err
+		}
+	case opts.Clear:
 		cc := &graphics.GraphicsCommand{}
 		cc.SetAction(graphics.GRT_action_delete).SetDelete(graphics.GRT_free_visible)
 		if err = cc.WriteWithPayloadTo(os.Stdout, nil); err != nil {
