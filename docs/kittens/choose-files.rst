@@ -6,7 +6,7 @@ Selecting files, fast
     Overview
     --------------
 
-.. versionadded:: 0.43.0
+.. versionadded:: 0.45.0
 
 The choose-files kitten is designed to allow you to select files, very fast,
 with just a few key strokes. It operates like `fzf
