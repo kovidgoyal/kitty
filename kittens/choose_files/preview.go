@@ -29,6 +29,7 @@ type Preview interface {
 	IsValidForColorScheme(light bool) bool
 	Unload()
 	IsReady() bool
+	String() string
 }
 
 type PreviewManager struct {
@@ -82,6 +83,7 @@ type MessagePreview struct {
 	trailers []string
 }
 
+func (p MessagePreview) String() string                  { return fmt.Sprintf("MessagePreview{%#v}", p.title) }
 func (p MessagePreview) IsValidForColorScheme(bool) bool { return true }
 func (p MessagePreview) IsReady() bool                   { return true }
 
@@ -211,6 +213,10 @@ type TextFilePreview struct {
 	light                        bool
 	path                         string
 	metadata                     fs.FileInfo
+}
+
+func (p *TextFilePreview) String() string {
+	return fmt.Sprint("TextFilePreview{%#v, ready: %v}", p.path, p.ready.Load())
 }
 
 func (p *TextFilePreview) IsValidForColorScheme(light bool) bool { return p.light == light }

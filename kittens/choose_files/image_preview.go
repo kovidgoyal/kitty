@@ -42,6 +42,7 @@ type PreviewRenderer interface {
 	Unmarshall(map[string]string) (any, error)
 	Render(string) (map[string][]byte, metadata, *images.ImageData, error)
 	ShowMetadata(h *Handler, s ShowData) int
+	String() string
 }
 
 type render_data struct {
@@ -71,6 +72,9 @@ type ImagePreview struct {
 	WakeupMainThread      func() bool
 }
 
+func (p *ImagePreview) String() string {
+	return fmt.Sprintf("ImagePreview{%#v, ready: %v, renderer: %s}", p.abspath, p.ready.Load(), p.renderer.String())
+}
 func (p *ImagePreview) IsValidForColorScheme(bool) bool { return true }
 func (p *ImagePreview) IsReady() bool                   { return p.ready.Load() || p.render_channel == nil }
 
@@ -212,6 +216,8 @@ func (p *ImagePreview) start_rendering() {
 }
 
 type ImagePreviewRenderer uint
+
+func (p ImagePreviewRenderer) String() string { return "ImagePreviewRenderer" }
 
 func (p ImagePreviewRenderer) Render(abspath string) (ans map[string][]byte, m metadata, img *images.ImageData, err error) {
 	if img, err = images.OpenImageFromPath(abspath); err != nil {

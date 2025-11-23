@@ -212,6 +212,10 @@ func (c *calibre_server_process) ShowMetadata(h *Handler, s ShowData) (offset in
 	return
 }
 
+func (c *calibre_server_process) String() string {
+	return "Calibre"
+}
+
 func NewCalibrePreview(
 	abspath string, metadata fs.FileInfo, opts Settings, WakeupMainThread func() bool,
 ) Preview {
