@@ -136,15 +136,19 @@ code to demonstrate its use
 
     .. code-block:: sh
 
-        #!/bin/bash
+        #!/usr/bin/env bash
 
         # This uses the kitten standalone binary from kitty to get the pixel sizes
         # since we can't do IOCTLs directly. Fortunately, kitten is a static exe
         # pre-built for every Unix like OS under the sun.
 
-        builtin read -r rows cols < <(command stty size)
-        IFS=x builtin read -r width height < <(command kitten icat --print-window-size); builtin unset IFS
-        builtin echo "number of rows: $rows number of columns: $cols screen width: $width screen height: $height"
+        shopt -s checkwinsize
+        (:)  # set $COLUMNS and $LINES
+
+        IFS=x read -r width height < <(kitten icat --print-window-size)
+
+        echo "number of rows: $LINES number of columns: $COLUMNS"
+        echo "screen width: $width screen height: $height"
 
 
 Note that some terminals return ``0`` for the width and height values. Such
@@ -169,21 +173,25 @@ features of the graphics protocol:
 
     .. code-block:: sh
 
-        #!/bin/bash
+        #!/usr/bin/env bash
+
+        transmit_chunk() {
+            printf "\e_Gm=1;%s\e\\" "$1"
+        }
+
         transmit_png() {
-            data=$(base64 "$1")
-            data="${data//[[:space:]]}"
-            builtin local pos=0
-            builtin local chunk_size=4096
-            while [ $pos -lt ${#data} ]; do
-                builtin printf "\e_G"
-                [ $pos = "0" ] && printf "a=T,f=100,"
-                builtin local chunk="${data:$pos:$chunk_size}"
-                pos=$(($pos+$chunk_size))
-                [ $pos -lt ${#data} ] && builtin printf "m=1"
-                [ ${#chunk} -gt 0 ] && builtin printf ";%s" "${chunk}"
-                builtin printf "\e\\"
-            done
+            printf "\e_Ga=T,f=100,m=1;\e\\"
+
+            local chunk
+            while read -r -N 4096 chunk; do
+                transmit_chunk "$chunk"
+            done < <(base64 -w 0 "$1")
+
+            if [[ -n "$chunk" ]]; then
+                transmit_chunk "$chunk"
+            fi
+
+            printf "\e_Gm=0\e\\"
         }
 
         transmit_png "$1"
