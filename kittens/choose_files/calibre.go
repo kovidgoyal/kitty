@@ -137,18 +137,19 @@ func calibre_cleanup() {
 
 func IsSupportedByCalibre(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
+	if len(ext) < 2 {
+		return false
+	}
 	if calibre_server_load_finished.Load() {
 		if calibre, err := calibre_server(); err == nil {
-			return ext != "" && calibre.file_extensions.Has(ext)
+			return calibre.file_extensions.Has(ext)
 		}
 	} else {
 		// we dont want to delay the render loop waiting for data from
 		// calibre-server as it causes flicker because the atomic update
 		// timeout expires, so use a default set of extensions.
 		go func() { _, _ = calibre_server() }()
-		if len(ext) > 2 {
-			return slices.Contains([]string{"cb7", "azw3", "kepub", "zip", "htmlz", "rar", "lrf", "cbr", "tpz", "azw1", "mobi", "lit", "pdf", "updb", "pml", "pobi", "fbz", "azw", "fb2", "cbc", "rtf", "snb", "opf", "txt", "epub", "oebzip", "txtz", "imp", "docx", "odt", "pdb", "rb", "prc", "html", "chm", "pmlz", "cbz", "lrx", "azw4"}, ext[1:])
-		}
+		return slices.Contains([]string{"cb7", "azw3", "kepub", "zip", "htmlz", "rar", "lrf", "cbr", "tpz", "azw1", "mobi", "lit", "pdf", "updb", "pml", "pobi", "fbz", "azw", "fb2", "cbc", "rtf", "snb", "opf", "txt", "epub", "oebzip", "txtz", "imp", "docx", "odt", "pdb", "rb", "prc", "html", "chm", "pmlz", "cbz", "lrx", "azw4"}, ext[1:])
 	}
 	return false
 }
