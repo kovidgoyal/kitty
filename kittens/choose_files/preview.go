@@ -216,7 +216,7 @@ type TextFilePreview struct {
 }
 
 func (p *TextFilePreview) String() string {
-	return fmt.Sprint("TextFilePreview{%#v, ready: %v}", p.path, p.ready.Load())
+	return fmt.Sprintf("TextFilePreview{%#v, ready: %v}", p.path, p.ready.Load())
 }
 
 func (p *TextFilePreview) IsValidForColorScheme(light bool) bool { return p.light == light }
