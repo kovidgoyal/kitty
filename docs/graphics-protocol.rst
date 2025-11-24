@@ -135,6 +135,7 @@ code to demonstrate its use
 .. tab:: POSIX sh
 
     .. code-block:: sh
+
         #!/bin/sh
         # This uses the kitten standalone binary from kitty to get the pixel sizes
         # since we can't do IOCTLs directly. Fortunately, kitten is a static exe
