@@ -188,12 +188,12 @@ features of the graphics protocol:
             fi
             first="y"
             base64 "$base64_flag" 4096 "$1" | while IFS= read -r chunk; do
-                printf "\e_G"
+                printf "\033_G"
                 [ $first = "y" ] && printf "a=T,f=100,"
                 first="n"
-                printf "m=1;%s\a" "${chunk}"
+                printf "m=1;%s\033\\" "${chunk}"
             done
-            printf "\e_Gm=0;\a"
+            printf "\033_Gm=0;\033\\"
         }
 
         transmit_png "$1"
