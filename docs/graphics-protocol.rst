@@ -183,9 +183,9 @@ features of the graphics protocol:
         #!/bin/sh
 
         transmit_png() {
-            if command base64 --help 2>&1 | grep -q -- '--wrap='; then # Linux (GNU coreutils)
+            if command base64 --help 2>&1 | grep -q -- '-w,'; then # Linux (GNU coreutils)
                 base64_flag="-w"
-            elif command base64 --help 2>&1 | grep -q -- '--break '; then # macOS/BSD
+            elif command base64 --help 2>&1 | grep -q -- '-b,'; then # macOS/BSD
                 base64_flag="-b"
             else
                 echo "Unknown base64 command: cannot set line width" >&2
