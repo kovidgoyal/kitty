@@ -189,7 +189,7 @@ features of the graphics protocol:
                 base64_flag="-b"
             else
                 echo "Unknown base64 command: cannot set line width" >&2
-                exit 1
+                return 1
             fi
             first="y"
             command base64 "$base64_flag" 4096 "$1" | while IFS= read -r chunk; do
