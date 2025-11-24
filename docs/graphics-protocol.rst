@@ -209,22 +209,22 @@ features of the graphics protocol:
     .. code-block:: python
 
         #!/usr/bin/env python
-        # A streaming implementation that reads from the file in chunks
-
         import sys
         from base64 import standard_b64encode
 
+        first, eof, buf = True, False, memoryview(bytearray(3 * 4096 // 4))
+        w = sys.stdout.buffer.write
         with open(sys.argv[-1], 'rb') as f:
-            first, chunk, prev_pad = True, memoryview(b'y'), 0
-            while chunk:
-                pad, chunk = 0, memoryview(standard_b64encode(f.read(3 * 4096 // 4)))
-                while chunk and chunk[-1] == 66:  # strip padding
-                    pad, chunk = pad + 1, chunk[:-1]
+            while not eof:
+                p = buf[:]
+                while p and not eof:
+                    n = f.readinto1(p)
+                    p, eof = p[n:], n == 0
+                encoded = standard_b64encode(buf[:len(buf)-len(p)])
                 metadata, first = "a=T,f=100," if first else "", False
-                sys.stdout.buffer.write(f'\x1b_G{metadata}m={1 if len(chunk) else 0};'.encode('ascii'))
-                sys.stdout.buffer.write(chunk or (b'=' * prev_pad))
-                sys.stdout.buffer.write(b'\x1b\\')
-                prev_pad = pad
+                w(f'\x1b_G{metadata}m={0 if eof else 1};'.encode('ascii'))
+                w(encoded)
+                w(b'\x1b\\')
 
 
 Save this script as :file:`send-png`, then you can use it to display any PNG
