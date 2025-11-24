@@ -178,18 +178,18 @@ features of the graphics protocol:
         #!/bin/sh
 
         transmit_png() {
-            if base64 --help 2>&1 | grep -q -- '--wrap='; then # Linux (GNU coreutils)
+            if command base64 --help 2>&1 | grep -q -- '--wrap='; then # Linux (GNU coreutils)
                 base64_flag="-w"
-            elif base64 --help 2>&1 | grep -q -- '--break '; then # macOS/BSD
+            elif command base64 --help 2>&1 | grep -q -- '--break '; then # macOS/BSD
                 base64_flag="-b"
             else
                 echo "Unknown base64 command: cannot set line width" >&2
                 exit 1
             fi
             first="y"
-            base64 "$base64_flag" 4096 "$1" | while IFS= read -r chunk; do
+            command base64 "$base64_flag" 4096 "$1" | while IFS= read -r chunk; do
                 printf "\033_G"
-                [ $first != "n" ] && printf "a=T,f=100,"
+                [ "$first" != "n" ] && printf "a=T,f=100,"
                 first="n"
                 printf "m=1;%s\033\\" "${chunk}"
             done
