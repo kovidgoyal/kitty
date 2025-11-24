@@ -171,28 +171,33 @@ A minimal example
 Some minimal code to display PNG images in kitty, using the most basic
 features of the graphics protocol:
 
-.. tab:: Bash
+.. tab:: POSIX sh
 
     .. code-block:: sh
 
-        #!/bin/bash
+        #!/bin/sh
+
         transmit_png() {
-            data=$(base64 "$1")
-            data="${data//[[:space:]]}"
-            builtin local pos=0
-            builtin local chunk_size=4096
-            while [ $pos -lt ${#data} ]; do
-                builtin printf "\e_G"
-                [ $pos = "0" ] && printf "a=T,f=100,"
-                builtin local chunk="${data:$pos:$chunk_size}"
-                pos=$(($pos+$chunk_size))
-                [ $pos -lt ${#data} ] && builtin printf "m=1"
-                [ ${#chunk} -gt 0 ] && builtin printf ";%s" "${chunk}"
-                builtin printf "\e\\"
+            if base64 --help 2>&1 | grep -q -- '--wrap='; then # Linux (GNU coreutils)
+                base64_flag="-w"
+            elif base64 --help 2>&1 | grep -q -- '--break '; then # macOS/BSD
+                base64_flag="-b"
+            else
+                echo "Unknown base64 command: cannot set line width" >&2
+                exit 1
+            fi
+            first="y"
+            base64 "$base64_flag" 4096 "$1" | while IFS= read -r chunk; do
+                printf "\e_G"
+                [ $first = "y" ] && printf "a=T,f=100,"
+                first="n"
+                printf "m=1;%s\a" "${chunk}"
             done
+            printf "\e_Gm=0;\a"
         }
 
         transmit_png "$1"
+
 
 .. tab:: Python
 
