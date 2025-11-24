@@ -1286,7 +1286,7 @@ dispatch_csi(PS *self) {
                 case 14:
                 case 16:
                 case 18:
-                    CALL_CSI_HANDLER1(screen_report_size, 0);
+                    CALL_CSI_HANDLER2(screen_report_size, 0, 0);
                     break;
                 case 22:
                 case 23:

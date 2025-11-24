@@ -2714,15 +2714,21 @@ screen_xtversion(Screen *self, unsigned int mode) {
 }
 
 void
-screen_report_size(Screen *self, unsigned int which) {
+screen_report_size(Screen *self, unsigned which, unsigned modifier) {
     char buf[32] = {0};
-    unsigned int code = 0;
-    unsigned int width = 0, height = 0;
+    unsigned code = 0, width = 0, height = 0;
     switch(which) {
         case 14:
             code = 4;
             width = self->cell_size.width * self->columns;
             height = self->cell_size.height * self->lines;
+            if (modifier == 2 && self->window_id) {
+                OSWindow *osw = os_window_for_kitty_window(self->window_id);
+                if (osw) {
+                    int w, h, fw, fh; get_os_window_size(osw, &w, &h, &fw, &fh);
+                    width = fw; height = fh;
+                }
+            }
             break;
         case 16:
             code = 6;
