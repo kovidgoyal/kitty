@@ -9,7 +9,9 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
+	"github.com/hako/durafmt"
 	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/disk_cache"
 	"github.com/kovidgoyal/kitty/tools/icons"
@@ -248,7 +250,19 @@ func (p ImagePreviewRenderer) ShowMetadata(h *Handler, s ShowData) int {
 		text = icon + "  " + text
 		offset += h.render_wrapped_text_in_region(text, s.x, s.y, s.width, s.height, true)
 	}
-	offset += h.render_wrapped_text_in_region(humanize.Time(s.metadata.ModTime()), s.x, s.y+offset, s.width, s.height-offset, true)
+	st := humanize.Time(s.metadata.ModTime())
+	if s.custom_metadata.image != nil && len(s.custom_metadata.image.Frames) > 0 {
+		var d time.Duration
+		for _, f := range s.custom_metadata.image.Frames {
+			if f.Delay_ms > 0 {
+				d += time.Duration(time.Duration(f.Delay_ms) * time.Millisecond)
+			}
+		}
+		if d > 0 {
+			st += fmt.Sprintf(", %s", durafmt.Parse(d).LimitFirstN(1).String())
+		}
+	}
+	offset += h.render_wrapped_text_in_region(st, s.x, s.y+offset, s.width, s.height-offset, true)
 	return offset
 }
 

@@ -22,9 +22,6 @@ import (
 
 var _ = fmt.Print
 
-// ffmpeg -y -i bath.mp4 -t 5 -vf "fps=10,scale=320:-1:flags=lanczos" -c:v
-// libwebp -lossless 0 -compression_level 0 -q:v 75 -loop 0 output_quality.webp
-
 const FFMPEG_METADATA_KEY = "ffmpeg-metadata.json"
 
 type ffmpeg_renderer int
@@ -146,13 +143,8 @@ func (c ffmpeg_renderer) ShowMetadata(h *Handler, s ShowData) (offset int) {
 	}
 	ext := filepath.Ext(s.abspath)
 	text := fmt.Sprintf("%s: %s", ext, humanize.Bytes(uint64(s.metadata.Size())))
-	icon := icons.IconForPath(s.abspath)
-	w(icon+"  "+text, true)
 	r := s.custom_metadata.custom.(*FFMpegMetadata)
-	if d, perr := strconv.ParseFloat(r.Format.Duration, 64); perr == nil {
-		duration := time.Duration(d * float64(time.Second))
-		w("Duration: "+durafmt.Parse(duration).LimitFirstN(1).String(), false)
-	}
+	icon := icons.IconForPath(s.abspath)
 	var width, height int
 	for _, s := range r.Streams {
 		if s.Width > 0 && s.Height > 0 {
@@ -160,9 +152,14 @@ func (c ffmpeg_renderer) ShowMetadata(h *Handler, s ShowData) (offset int) {
 			break
 		}
 	}
-	if width*height > 0 {
-		w(fmt.Sprintf("Resolution: %dx%d", width, height), false)
+	text += fmt.Sprintf(" %dx%d", width, height)
+	w(icon+"  "+text, true)
+	st := humanize.Time(s.metadata.ModTime())
+	if d, perr := strconv.ParseFloat(r.Format.Duration, 64); perr == nil {
+		duration := time.Duration(d * float64(time.Second))
+		st += fmt.Sprintf(", %s", durafmt.Parse(duration).LimitFirstN(1).String())
 	}
+	w(st, true)
 	return
 }
 
