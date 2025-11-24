@@ -189,7 +189,7 @@ features of the graphics protocol:
             first="y"
             base64 "$base64_flag" 4096 "$1" | while IFS= read -r chunk; do
                 printf "\033_G"
-                [ $first = "y" ] && printf "a=T,f=100,"
+                [ $first != "n" ] && printf "a=T,f=100,"
                 first="n"
                 printf "m=1;%s\033\\" "${chunk}"
             done
