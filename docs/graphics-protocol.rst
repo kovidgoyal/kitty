@@ -182,23 +182,28 @@ features of the graphics protocol:
 
         #!/bin/sh
 
-        transmit_png() {
-            if command base64 --help 2>&1 | grep -q -- '-w,'; then # Linux (GNU coreutils)
-                base64_flag="-w"
-            elif command base64 --help 2>&1 | grep -q -- '-b,'; then # macOS/BSD
-                base64_flag="-b"
-            else
-                echo "Unknown base64 command: cannot set line width" >&2
-                return 1
-            fi
+        send_chunked() {
             first="y"
-            command base64 "$base64_flag" 4096 "$1" | while IFS= read -r chunk; do
+            while IFS= read -r chunk; do
                 printf "\033_G"
                 [ "$first" != "n" ] && printf "a=T,f=100,"
                 first="n"
                 printf "m=1;%s\033\\" "${chunk}"
             done
-            printf "\033_Gm=0;\033\\"
+            if [ "$first" = "n" ]; then
+                printf "\033_Gm=0;\033\\"
+                return 0
+            fi
+            return 1
+        }
+
+        transmit_png() {
+            # Different systems have different or missing base64 executables.
+            # The sed command below adds a trailing newline which openssl
+            # base64 does not produce and is needed for reading via read -r
+            { command base64 -w 4096 "$1" 2>/dev/null | send_chunked; } || \
+            { command base64 -b 4096 "$1" 2>/dev/null | send_chunked; } || \
+            { command openssl base64 -e -A -in "$1" | command sed '$a\' | command fold -b -w 4096 | send_chunked; }
         }
 
         transmit_png "$1"
