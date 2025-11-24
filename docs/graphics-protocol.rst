@@ -185,15 +185,10 @@ features of the graphics protocol:
         send_chunked() {
             first="y"
             while IFS= read -r chunk; do
-                printf "\033_G"
-                [ "$first" != "n" ] && printf "a=T,f=100,"
-                first="n"
-                printf "m=1;%s\033\\" "${chunk}"
+                metadata=""; [ "$first" = "y" ] && { metadata="a=T,f=100,"; first="n"; }
+                printf "\033_G%sm=1;%s\033\\" "${metadata}" "${chunk}"
             done
-            if [ "$first" = "n" ]; then
-                printf "\033_Gm=0;\033\\"
-                return 0
-            fi
+            [ "$first" = "n" ] && { printf "\033_Gm=0;\033\\"; return 0; }
             return 1
         }
 
