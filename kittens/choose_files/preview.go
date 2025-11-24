@@ -354,6 +354,9 @@ func (pm *PreviewManager) preview_for(abspath string, ftype fs.FileMode) (ans Pr
 	case strings.HasPrefix(mt, "video/"):
 		return NewFFMpegPreview(abspath, s, pm.settings, pm.WakeupMainThread)
 
+	case IsSupportedArchiveFile(abspath):
+		return NewArchivePeview(abspath, s, pm.settings, pm.WakeupMainThread)
+
 	case IsSupportedByCalibre(abspath):
 		return NewCalibrePreview(abspath, s, pm.settings, pm.WakeupMainThread)
 	}
