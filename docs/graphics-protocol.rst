@@ -137,20 +137,25 @@ code to demonstrate its use
     .. code-block:: sh
 
         #!/bin/sh
-        # This uses the kitten standalone binary from kitty to get the pixel sizes
-        # since we can't do IOCTLs directly. Fortunately, kitten is a static exe
-        # pre-built for every Unix like OS under the sun.
 
         read rows cols <<EOF
         $(command stty size)
         EOF
 
-        IFS='x' read width height <<EOF
-        $(command kitten icat --print-window-size)
-        EOF
-
+        oldstty=$(command stty -g)
+        command stty raw -echo
+        printf "\033[14t"
+        response=""
+        while : ; do
+            char=$(command dd bs=1 count=1 2>/dev/null)
+            [ "$char" = "t" ] && break
+            response="${response}${char}"
+        done
+        command stty "$oldstty"
+        h=$(echo "$response" | cut -d';' -f2)
+        w=$(echo "$response" | cut -d';' -f3)
         printf "number of rows: %d number of columns: %d" "$rows" "$cols"
-        printf " screen width: %d screen height: %d\n" "$width" "$height"
+        printf " screen width: %d screen height: %d\n" "$w" "$h"
 
 
 Note that some terminals return ``0`` for the width and height values. Such
