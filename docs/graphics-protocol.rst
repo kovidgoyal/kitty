@@ -208,34 +208,23 @@ features of the graphics protocol:
 
     .. code-block:: python
 
-        #!/usr/bin/python
+        #!/usr/bin/env python
+        # A streaming implementation that reads from the file in chunks
+
         import sys
         from base64 import standard_b64encode
 
-        def serialize_gr_command(**cmd):
-            payload = cmd.pop('payload', None)
-            cmd = ','.join(f'{k}={v}' for k, v in cmd.items())
-            ans = []
-            w = ans.append
-            w(b'\033_G'), w(cmd.encode('ascii'))
-            if payload:
-                w(b';')
-                w(payload)
-            w(b'\033\\')
-            return b''.join(ans)
-
-        def write_chunked(**cmd):
-            data = standard_b64encode(cmd.pop('data'))
-            while data:
-                chunk, data = data[:4096], data[4096:]
-                m = 1 if data else 0
-                sys.stdout.buffer.write(serialize_gr_command(payload=chunk, m=m,
-                                                            **cmd))
-                sys.stdout.flush()
-                cmd.clear()
-
         with open(sys.argv[-1], 'rb') as f:
-            write_chunked(a='T', f=100, data=f.read())
+            first, chunk, prev_pad = True, memoryview(b'y'), 0
+            while chunk:
+                pad, chunk = 0, memoryview(standard_b64encode(f.read(3 * 4096 // 4)))
+                while chunk and chunk[-1] == 66:  # strip padding
+                    pad, chunk = pad + 1, chunk[:-1]
+                metadata, first = "a=T,f=100," if first else "", False
+                sys.stdout.buffer.write(f'\x1b_G{metadata}m={1 if len(chunk) else 0};'.encode('ascii'))
+                sys.stdout.buffer.write(chunk or (b'=' * prev_pad))
+                sys.stdout.buffer.write(b'\x1b\\')
+                prev_pad = pad
 
 
 Save this script as :file:`send-png`, then you can use it to display any PNG
