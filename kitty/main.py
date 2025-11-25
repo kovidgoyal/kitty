@@ -395,10 +395,10 @@ def setup_profiling() -> Generator[None, None, None]:
             print('To view the graphical call data, use: kcachegrind', cg)
 
 
-def expand_listen_on(listen_on: str, from_config_file: bool) -> str:
+def expand_listen_on(listen_on: str, from_config_file: bool, env: dict[str, str]) -> str:
     if from_config_file and listen_on == 'none':
         return ''
-    listen_on = expandvars(listen_on)
+    listen_on = expandvars(listen_on, env)
     if '{kitty_pid}' not in listen_on and from_config_file and listen_on.startswith('unix:'):
         listen_on += '-{kitty_pid}'
     listen_on = listen_on.replace('{kitty_pid}', str(os.getpid()))
@@ -478,8 +478,6 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
     if not cli_opts.listen_on:
         cli_opts.listen_on = opts.listen_on
         from_config_file = True
-    if cli_opts.listen_on:
-        cli_opts.listen_on = expand_listen_on(cli_opts.listen_on, from_config_file)
     if vars := opts.env.pop('read_from_shell', ''):
         import fnmatch
         import re
@@ -491,6 +489,8 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
                     if pat.match(k) is not None:
                         opts.env[k] = v
                         break
+    if cli_opts.listen_on:
+        cli_opts.listen_on = expand_listen_on(cli_opts.listen_on, from_config_file, opts.env)
     env = opts.env.copy()
     ensure_kitty_in_path()
     ensure_kitten_in_path()

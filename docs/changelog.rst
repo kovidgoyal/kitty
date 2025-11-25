@@ -168,6 +168,9 @@ Detailed list of changes
 - Have the :option:`kitty --start-as` flag be respected when used with
   :option:`kitty --single-instance` (:iss:`9228`)
 
+- When expanding environment variables in :opt:`listen_on` allow the :opt:`env`
+  directive to take effect
+
 
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
