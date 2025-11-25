@@ -1587,16 +1587,14 @@ cocoa_focus_last_window(id_type source_window_id, size_t *source_workspaces, siz
         OSWindow *w = global_state.os_windows + i;
         if (
                 w->id != source_window_id && w->handle && w->shown_once &&
-                w->last_focused_counter >= highest_focus_number &&
+                w->last_focused_counter >= highest_focus_number && !glfwGetWindowAttrib(w->handle, GLFW_ICONIFIED) &&
                 (!source_workspace_count || window_in_same_cocoa_workspace(glfwGetCocoaWindow(w->handle), source_workspaces, source_workspace_count))
         ) {
             highest_focus_number = w->last_focused_counter;
             window_to_focus = w;
         }
     }
-    if (window_to_focus) {
-        glfwFocusWindow(window_to_focus->handle);
-    }
+    if (window_to_focus) glfwFocusWindow(window_to_focus->handle);
 }
 #endif
 

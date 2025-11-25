@@ -171,6 +171,8 @@ Detailed list of changes
 - When expanding environment variables in :opt:`listen_on` allow the :opt:`env`
   directive to take effect
 
+- macOS: Fix closing an OS Window when another OS Window is minimized causing
+  the minimized window to be un-minimized (:iss:`8913`)
 
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
