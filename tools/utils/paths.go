@@ -330,3 +330,60 @@ func Commonpath(paths ...string) (longest_prefix string) {
 	}
 	return
 }
+
+// RelativeIfUnder returns the path to 'target' relative to 'base' if and only if
+// target is inside base. It returns the relative path, a boolean indicating
+// whether target is inside base, and an error.
+//
+// If resolveSymlinks is true, both base and target are run through filepath.EvalSymlinks
+// before containment checks. If base == target the function returns "." and true.
+//
+// Notes:
+//   - This uses filepath.Rel and then checks for leading ".." components to determine
+//     whether the returned relative path escapes the base directory.
+//   - On Windows behaviour is consistent with filepath semantics.
+func RelativeIfUnder(base, target string, resolveSymlinks bool) (rel string, inside bool, err error) {
+	// Optionally resolve symlinks first
+	if resolveSymlinks {
+		if base, err = filepath.EvalSymlinks(base); err != nil {
+			return "", false, fmt.Errorf("resolving base symlinks: %w", err)
+		}
+		if target, err = filepath.EvalSymlinks(target); err != nil {
+			return "", false, fmt.Errorf("resolving target symlinks: %w", err)
+		}
+	}
+
+	// Make absolute and clean
+	if base, err = filepath.Abs(base); err != nil {
+		return "", false, fmt.Errorf("abs base: %w", err)
+	}
+	if target, err = filepath.Abs(target); err != nil {
+		return "", false, fmt.Errorf("abs target: %w", err)
+	}
+
+	// On Windows the volume (drive letter) must match. If they don't, the path is not inside.
+	if runtime.GOOS == "windows" {
+		if !strings.EqualFold(filepath.VolumeName(base), filepath.VolumeName(target)) {
+			return "", false, nil
+		}
+	}
+
+	// Get the relative path from base to target
+	rel, err = filepath.Rel(base, target)
+	if err != nil {
+		return "", false, fmt.Errorf("computing relative path: %w", err)
+	}
+
+	// If rel begins with ".." (or is ".."), then target is outside base.
+	// Use os.PathSeparator to be portable.
+	up := ".." + string(os.PathSeparator)
+	if rel == ".." || strings.HasPrefix(rel, up) {
+		return "", false, nil
+	}
+
+	// If the returned rel is empty (shouldn't normally happen), normalize to "."
+	if rel == "" {
+		rel = "."
+	}
+	return rel, true, nil
+}
