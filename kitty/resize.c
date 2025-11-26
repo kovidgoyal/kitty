@@ -311,3 +311,83 @@ resize_screen_buffers(LineBuf *lb, HistoryBuf *hb, index_type lines, index_type 
     ans.ok = true;
     return ans;
 }
+
+static void
+nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit) {
+    for (index_type x = start; x < x_limit; x++) {
+        cell_set_char(cp + x, 0); cp[x].is_multicell = false;
+        clear_sprite_position(gp[x]);
+    }
+}
+
+static void
+nuke_multicell_char_at(LineBuf *lb, index_type x_, index_type y_) {
+    CPUCell *cp; GPUCell *gp;
+    linebuf_init_cells(lb, y_, &cp, &gp);
+    index_type num_lines_above = cp[x_].y;
+    index_type y_max_limit = MIN(lb->ynum, y_ + cp[x_].scale - num_lines_above);
+    while (cp[x_].x && x_ > 0) x_--;
+    index_type x_limit = MIN(lb->xnum, x_ + mcd_x_limit(&cp[x_]));
+    for (index_type y = y_; y < y_max_limit; y++) {
+        linebuf_init_cells(lb, y, &cp, &gp);
+        nuke_in_line(cp, gp, x_, x_limit);
+    }
+    for (int y = (int)y_ - 1; y > -1 && num_lines_above; y--, num_lines_above--) {
+        linebuf_init_cells(lb, y, &cp, &gp);
+        nuke_in_line(cp, gp, x_, x_limit);
+    }
+}
+
+
+ResizeResult
+resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type columns, TrackCursor *cursors) {
+    ResizeResult ans = {0};
+    ans.lb = alloc_linebuf(lines, columns, lb->text_cache);
+    if (!ans.lb) return ans;
+    Rewrap r = { .src = {.lb=lb},};
+    exclude_empty_lines_at_bottom(&r);
+    ans.num_content_lines_before = r.num_content_lines_before;
+    ans.num_content_lines_after = MIN(lines, r.num_content_lines_before);
+
+    index_type xcommon = MIN(lb->xnum, ans.lb->xnum);
+    for (index_type y = 0; y < ans.num_content_lines_after; y++) {
+        linebuf_init_line(lb, y); linebuf_init_line(ans.lb, y);
+        ans.lb->line_attrs[y] = lb->line_attrs[y]; ans.lb->line_attrs[y].has_dirty_text = true;
+        memcpy(ans.lb->line->cpu_cells, lb->line->cpu_cells, xcommon * sizeof(lb->line->cpu_cells[0]));
+        memcpy(ans.lb->line->gpu_cells, lb->line->gpu_cells, xcommon * sizeof(lb->line->gpu_cells[0]));
+        if (xcommon > lb->line->xnum) {
+            // extend the colors/styles of the last cell to edge
+            GPUCell e = lb->line->gpu_cells[xcommon-1]; clear_sprite_position(e);
+            for (index_type x = xcommon; x < ans.lb->line->xnum; x++) ans.lb->line->gpu_cells[x] = e;
+        } else if (xcommon < lb->line->xnum) {
+            // remove multicell chars that were split at the right edge
+            index_type last_x = xcommon - 1;
+            CPUCell *c = ans.lb->line->cpu_cells + last_x;
+            if (c->is_multicell && c->x + 1u < mcd_x_limit(c)) {
+                while (ans.lb->line->cpu_cells[last_x].x && last_x > 0) last_x--;
+                nuke_in_line(ans.lb->line->cpu_cells, ans.lb->line->gpu_cells, last_x, ans.lb->line->xnum);
+            }
+        }
+    }
+    // Set bg color for extra lines at bottom
+    if (ans.num_content_lines_before < lines) {
+        linebuf_init_line(lb, lb->ynum-1); GPUCell *g = lb->line->gpu_cells;
+        for (index_type y = ans.num_content_lines_after; y < ans.lb->ynum; y++) {
+            linebuf_init_line(ans.lb, y);
+            for (index_type x = 0; x < ans.lb->xnum; x++) ans.lb->line->gpu_cells[x].bg = g->bg;
+        }
+    } else if (ans.num_content_lines_after < ans.num_content_lines_before) {
+        // delete multicell chars split at the bottom
+        linebuf_init_line(ans.lb, ans.num_content_lines_after-1);
+        for (index_type x = 0; x < ans.lb->xnum; x++) {
+            CPUCell *c = ans.lb->line->cpu_cells + x;
+            if (c->is_multicell && c->y < c->scale-1) nuke_multicell_char_at(ans.lb, x, ans.num_content_lines_after-1);
+        }
+    }
+    for (TrackCursor *tc = cursors; !tc->is_sentinel; tc++) {
+        tc->dest_x = MIN(tc->x, ans.lb->xnum-1);
+        tc->dest_y = MIN(tc->y, ans.lb->ynum-1);
+    }
+    ans.ok = true;
+    return ans;
+}

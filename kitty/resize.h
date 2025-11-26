@@ -23,3 +23,5 @@ typedef struct ResizeResult {
 
 ResizeResult
 resize_screen_buffers(LineBuf *lb, HistoryBuf *hb, index_type lines, index_type columns, ANSIBuf *as_ansi_buf, TrackCursor *cursors);
+ResizeResult
+resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type columns, TrackCursor *cursors);

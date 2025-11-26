@@ -249,10 +249,9 @@ rewrap(Screen *screen, unsigned int lines, unsigned int columns, index_type *ncl
     cursors[0] = (TrackCursor){.x=alt_saved_cursor->before.x, .y=alt_saved_cursor->before.y};
     if (!main_is_active) cursors[1] = (TrackCursor){.x=cursor->before.x, .y=cursor->before.y};
     else cursors[1].is_sentinel = true;
-    ResizeResult ar = resize_screen_buffers(screen->alt_linebuf, NULL, lines, columns, &screen->as_ansi_buf, cursors);
+    ResizeResult ar = resize_screen_buffer_without_rewrap(screen->alt_linebuf, lines, columns, cursors);
     if (!ar.ok) {
-        Py_DecRef((PyObject*)mr.lb); Py_DecRef((PyObject*)mr.hb);
-        PyErr_NoMemory(); return false;
+        Py_DecRef((PyObject*)ar.lb); PyErr_NoMemory(); return false;
     }
     alt_saved_cursor->temp.x = cursors[0].dest_x; alt_saved_cursor->temp.y = cursors[0].dest_y;
     if (!main_is_active) { cursor->temp.x = cursors[1].dest_x; cursor->temp.y = cursors[1].dest_y; }

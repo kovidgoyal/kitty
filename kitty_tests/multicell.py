@@ -643,6 +643,28 @@ def test_multicell(self: TestMulticell) -> None:
         ac(x, -1, is_multicell=True, x=x-2, y=0, text='' if x > 2 else 'B')
         ac(x, 0, is_multicell=True, x=x-2, y=1, text='')
 
+    # resize without rewrap (alt screen)
+    s = self.create_screen(lines=6, cols=6)
+    s.toggle_alt_screen()
+
+    def reset_alt():
+        s.reset()
+        s.resize(6, 6)
+        s.toggle_alt_screen()
+    multicell(s, 'XY', scale=3)
+    s.resize(6, 5)
+    for y in range(3):
+        for x in range(3):
+            ac(x, y, is_multicell=True, text='X' if x == 0 and y == 0 else '')
+        for x in range(3, 5):
+            ac(x, y, is_multicell=False, text='')
+    reset_alt()
+    multicell(s, 'XY', scale=3)
+    s.resize(2, 6)
+    for y in range(s.lines):
+        for x in range(s.columns):
+            ac(x, y, is_multicell=False, text='')
+
     # selections
     s = self.create_screen(lines=5, cols=8)
 

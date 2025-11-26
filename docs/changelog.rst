@@ -174,6 +174,9 @@ Detailed list of changes
 - macOS: Fix closing an OS Window when another OS Window is minimized causing
   the minimized window to be un-minimized (:iss:`8913`)
 
+- Do not rewrap the text in the alternate screen buffer. Avoids flicker during
+  live resize with no :opt:`resize_debounce_time` (:disc:`9142`)
+
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
