@@ -157,15 +157,18 @@ def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, 
     if not paths:
         boss.ring_bell_if_allowed()
         return
-    path = paths[0]
     w = boss.window_id_map.get(target_window_id)
     if w is not None:
         cwd = w.cwd_of_child
-        if cwd:
-            path = relative_path_if_possible(path, cwd)
-        if w.at_prompt and len(tuple(shlex_split(path))) > 1:
-            path = shlex.quote(path)
-        w.paste_text(path)
+        items = []
+        for path in paths:
+            if cwd:
+                path = relative_path_if_possible(path, cwd)
+            if w.at_prompt and len(tuple(shlex_split(path))) > 1:
+                path = shlex.quote(path)
+            items.append(path)
+        text = (' ' if w.at_prompt else '\n').join(items)
+        w.paste_text(text)
 
 
 usage = '[directory to start choosing files in]'
