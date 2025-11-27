@@ -14,6 +14,7 @@ import (
 	"github.com/klauspost/compress/gzip"
 	"github.com/klauspost/compress/zip"
 	"github.com/klauspost/compress/zstd"
+	"github.com/nwaples/rardecode/v2"
 	"github.com/ulikunitz/xz"
 
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -25,7 +26,7 @@ func IsSupportedArchiveFile(abspath string) bool {
 	name := strings.ToLower(filepath.Base(abspath))
 	ext := filepath.Ext(name)
 	switch ext {
-	case ".zip", ".tgz", ".tbz2", ".tzst", ".txz":
+	case ".zip", ".tgz", ".tbz2", ".tzst", ".txz", ".rar":
 		return true
 	case ".gz", ".bz2", ".zst", ".xz":
 		name = name[:len(name)-len(ext)]
@@ -86,6 +87,18 @@ func (p *archive_preview) render() {
 					names = append(names, f.Name)
 				}
 
+			}
+		}
+	case ".rar":
+		r, err := rardecode.OpenReader(p.path, rardecode.SkipCheck)
+		if err == nil {
+			defer r.Close()
+			for len(names) < 500 {
+				hdr, err := r.Next()
+				if err != nil {
+					break
+				}
+				names = append(names, displayFilename(hdr.Name))
 			}
 		}
 	case ".gz", ".tgz":

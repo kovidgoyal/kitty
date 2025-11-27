@@ -223,7 +223,7 @@ IGNORED_DEPENDENCY_CVES = [
     # glib
     'CVE-2025-4056', # Only affects Windows, on which we dont run
     # github.com/nwaples/rardecode/v2
-    'CVE-2025-11579', # rardecode not present in kitty go.sum
+    'CVE-2025-11579', # rardecode is version 2.2.1, not vulnerable
 ]
 
 
