@@ -375,7 +375,7 @@ func functions_for(opts *Options) (pattern string, post_processors []PostProcess
 		// IPv4 with no validation
 		`((?:\d{1,3}\.){3}\d{1,3}` + "|" +
 			// IPv6 with no validation
-			`(?:[a-fA-F0-9]{0,4}:){2,7}[a-fA-F0-9]{1,4})`)
+			`(?:[a-fA-F0-9]{0,4}:){2,7}[a-fA-F0-9]{0,4})`)
 		post_processors = append(post_processors, PostProcessorMap()["ip"])
 	default:
 		pattern = opts.Regex
