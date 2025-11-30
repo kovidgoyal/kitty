@@ -3265,6 +3265,12 @@ class Boss:
                 self.on_system_color_scheme_change('dark', False)
             case 'no_preference':
                 self.on_system_color_scheme_change('no_preference', False)
+            case 'toggle':
+                match theme_colors.applied_theme:
+                    case 'light':
+                        self.on_system_color_scheme_change('dark', False)
+                    case _:
+                        self.on_system_color_scheme_change('light', False)
             case _:
                 self.show_error(_('Unknown color scheme type'), _('{} is not a valid color scheme type').format(which))
 
