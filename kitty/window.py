@@ -1393,11 +1393,15 @@ class Window:
         return self.screen.color_profile.default_bg.is_dark
 
     def on_color_scheme_preference_change(self, via_escape_code: bool = False) -> None:
-        if self.screen.color_preference_notification and not via_escape_code:
-            self.report_color_scheme_preference()
+        if not via_escape_code:
+            self.report_color_scheme_preference_if_wanted()
         self.call_watchers(self.watchers.on_color_scheme_preference_change, {
             'is_dark': self.is_dark, 'via_escape_code': via_escape_code
         })
+
+    def report_color_scheme_preference_if_wanted(self) -> None:
+        if self.screen.color_preference_notification:
+            self.report_color_scheme_preference()
 
     def report_color_scheme_preference(self) -> None:
         n = 1 if self.is_dark else 2

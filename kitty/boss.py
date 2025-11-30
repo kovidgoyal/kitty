@@ -2871,7 +2871,9 @@ class Boss:
             window.refresh()
 
     def apply_new_options(self, opts: Options) -> None:
+        bg_before = get_options().background
         bg_colors_before = {w.id: w.screen.color_profile.default_bg for w in self.all_windows}
+        configured_bg_changed = bg_before != opts.background
         # Update options storage
         set_options(opts, is_wayland(), self.args.debug_rendering, self.args.debug_font_fallback)
         apply_options_update()
@@ -2908,6 +2910,12 @@ class Boss:
         for w in self.all_windows:
             if w.screen.color_profile.default_bg != bg_colors_before.get(w.id):
                 self.default_bg_changed_for(w.id)
+            elif configured_bg_changed:
+                # the application running in the window could have set the
+                # background color, so it wont change because of a config
+                # reload, but the application might still want to be notified
+                # that the user's color scheme preference has changed.
+                w.report_color_scheme_preference_if_wanted()
             w.refresh(reload_all_gpu_data=True)
         load_shader_programs.recompile_if_needed()
 
