@@ -45,7 +45,7 @@ jobs:
 
         steps:
           - name: Checkout source code
-            uses: actions/checkout@v5
+            uses: actions/checkout@v6
             with:
               fetch-depth: 10
               persist-credentials: false
@@ -73,7 +73,7 @@ jobs:
             CFLAGS: -funsigned-char
         steps:
           - name: Checkout source code
-            uses: actions/checkout@v5
+            uses: actions/checkout@v6
             with:
               fetch-depth: 0  # needed for :commit: docs role
               persist-credentials: false
@@ -145,7 +145,7 @@ jobs:
             KITTY_BUNDLE: 1
         steps:
           - name: Checkout source code
-            uses: actions/checkout@v5
+            uses: actions/checkout@v6
             with:
               fetch-depth: 10
               persist-credentials: false
@@ -166,7 +166,7 @@ jobs:
         runs-on: macos-latest
         steps:
           - name: Checkout source code
-            uses: actions/checkout@v5
+            uses: actions/checkout@v6
             with:
               fetch-depth: 0  # needed for :commit: docs role
               persist-credentials: false
@@ -204,7 +204,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
           - name: Checkout source code
-            uses: actions/checkout@v5
+            uses: actions/checkout@v6
             with:
               fetch-depth: 10
               persist-credentials: false
