@@ -849,6 +849,8 @@ defaults.map = [
     KeyDefinition(trigger=SingleKey(mods=256, key=104), definition='show_scrollback'),
     # show_last_command_output
     KeyDefinition(trigger=SingleKey(mods=256, key=103), definition='show_last_command_output'),
+    # search_scrollback
+    KeyDefinition(trigger=SingleKey(mods=256, key=47), definition='search_scrollback'),
     # new_window
     KeyDefinition(trigger=SingleKey(mods=256, key=57345), definition='new_window'),
     # new_os_window
@@ -982,6 +984,7 @@ if is_macos:
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57355), definition='scroll_page_down'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57356), definition='scroll_home'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57357), definition='scroll_end'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=102), definition='search_scrollback'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57345), definition='new_window'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=110), definition='new_os_window'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=100), definition='close_window'))

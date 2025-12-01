@@ -260,6 +260,7 @@ PENDING(reload_config, RELOAD_CONFIG)
 PENDING(toggle_macos_secure_keyboard_entry, TOGGLE_MACOS_SECURE_KEYBOARD_ENTRY)
 PENDING(macos_cycle_through_os_windows, MACOS_CYCLE_THROUGH_OS_WINDOWS)
 PENDING(macos_cycle_through_os_windows_backwards, MACOS_CYCLE_THROUGH_OS_WINDOWS_BACKWARDS)
+PENDING(search_scrollback, SEARCH_SCROLLBACK)
 PENDING(toggle_fullscreen, TOGGLE_FULLSCREEN)
 PENDING(open_kitty_website, OPEN_KITTY_WEBSITE)
 PENDING(hide_macos_app, HIDE)
@@ -320,7 +321,7 @@ typedef struct {
     GlobalShortcut previous_tab, next_tab, new_tab, new_window, close_window, reset_terminal;
     GlobalShortcut clear_terminal_and_scrollback, clear_screen, clear_scrollback, clear_last_command;
     GlobalShortcut toggle_macos_secure_keyboard_entry, toggle_fullscreen, open_kitty_website;
-    GlobalShortcut hide_macos_app, hide_macos_other_apps, minimize_macos_window, quit;
+    GlobalShortcut hide_macos_app, hide_macos_other_apps, minimize_macos_window, quit, search_scrollback;
     GlobalShortcut macos_cycle_through_os_windows, macos_cycle_through_os_windows_backwards;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
@@ -339,7 +340,7 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
     else Q(clear_terminal_and_scrollback); else Q(clear_scrollback); else Q(clear_screen); else Q(clear_last_command);
     else Q(reload_config); else Q(toggle_macos_secure_keyboard_entry); else Q(toggle_fullscreen);
     else Q(open_kitty_website); else Q(hide_macos_app); else Q(hide_macos_other_apps);
-    else Q(minimize_macos_window); else Q(quit);
+    else Q(minimize_macos_window); else Q(quit); else Q(search_scrollback);
     else Q(macos_cycle_through_os_windows); else Q(macos_cycle_through_os_windows_backwards);
 #undef Q
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
@@ -795,6 +796,7 @@ cocoa_create_global_menu(void) {
     MENU_ITEM(editMenu, @"Clear Scrollback", clear_scrollback);
     MENU_ITEM(editMenu, @"Clear Screen", clear_screen);
     MENU_ITEM(editMenu, @"Clear Last Command", clear_last_command);
+    MENU_ITEM(editMenu, @"Find", search_scrollback);
     [editMenu release];
 
     NSMenuItem* windowMenuItem =

@@ -3984,6 +3984,22 @@ To get the output of the last jumped to command, use :code:`@last_visited_cmd_ou
 Requires :ref:`shell integration <shell_integration>` to work.
 '''
     )
+
+map('Search the scrollback within a pager',
+    'search_scrollback kitty_mod+/ search_scrollback',
+    long_text='''
+Search for currently selected text in the scrollback using the configured :opt:`scrollback_pager`.
+Assumes that pressing the :kbd:`/` key triggers search mode in the pager. If you want to create
+a manual mapping with a special pager for this, you can use something like:
+
+    map f1 combine : launch --stdin-source=@screen_scrollback --stdin-add-formatting --type=overlay mypager : send_key /
+
+For more sophisticated control, such as using the current selection, use :ac:`remote_control_script`.
+''')
+
+map('Search the scrollback within a pager', 'search_scrollback cmd+f search_scrollback', only='macos')
+
+
 egr()  # }}}
 
 

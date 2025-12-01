@@ -194,7 +194,7 @@ def set_cocoa_global_shortcuts(opts: Options) -> dict[str, SingleKey]:
         for ac in ('new_os_window', 'close_os_window', 'close_tab', 'edit_config_file', 'previous_tab',
                    'next_tab', 'new_tab', 'new_window', 'close_window', 'toggle_macos_secure_keyboard_entry',
                    'toggle_fullscreen', 'macos_cycle_through_os_windows', 'macos_cycle_through_os_windows_backwards',
-                   'hide_macos_app', 'hide_macos_other_apps', 'minimize_macos_window', 'quit'):
+                   'hide_macos_app', 'hide_macos_other_apps', 'minimize_macos_window', 'quit', 'search_scrollback'):
             val = get_macos_shortcut_for(func_map, ac)
             if val is not None:
                 global_shortcuts[ac] = val

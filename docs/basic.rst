@@ -25,6 +25,7 @@ Previous shell prompt       :sc:`scroll_to_previous_prompt` (see :ref:`shell_int
 Next shell prompt           :sc:`scroll_to_next_prompt` (see :ref:`shell_integration`)
 Browse scrollback in less   :sc:`show_scrollback`
 Browse last cmd output      :sc:`show_last_command_output` (see :ref:`shell_integration`)
+Search scrollback in less   :sc:`search_scrollback` (also :kbd:`⌘+F` on macOS)
 =========================   =======================
 
 The scroll actions only take effect when the terminal is in the main screen.

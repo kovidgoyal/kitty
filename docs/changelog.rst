@@ -177,6 +177,10 @@ Detailed list of changes
 - Do not rewrap the text in the alternate screen buffer. Avoids flicker during
   live resize with no :opt:`resize_debounce_time` (:disc:`9142`)
 
+- Add a default mapping :ac:`search_scrollback` to open the scrollback in a
+  pager in search mode. If any text is currently selected it is automatically
+  searched for.
+
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
