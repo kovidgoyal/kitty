@@ -318,7 +318,7 @@ func (self *KeyEvent) MatchesCaseInsensitiveTextOrKey(spec string) bool {
 	if self.MatchesParsedShortcut(ParseShortcut(spec), PRESS|REPEAT) {
 		return true
 	}
-	return strings.ToLower(self.Text) == strings.ToLower(spec)
+	return strings.EqualFold(self.Text, spec)
 }
 
 func (self *KeyEvent) MatchesRelease(spec string) bool {
