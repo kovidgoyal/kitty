@@ -35,7 +35,7 @@ var (
 
 func ffmpeg_thumbnail_cmd(path, outpath string) *exec.Cmd {
 	return exec.Command(
-		"ffmpeg", "-loglevel", "fatal", "-y", "-i", path, "-t", fmt.Sprintf("%f", video_duration),
+		"ffmpeg", "-loglevel", "fatal", "-y", "-an", "-sn", "-dn", "-i", path, "-t", fmt.Sprintf("%f", video_duration),
 		"-vf", fmt.Sprintf("fps=%d,scale=%d:-1:flags=lanczos", video_fps, video_width),
 		"-c:v", "libwebp", "-lossless", "0", "-compression_level", "0", "-q:v",
 		fmt.Sprintf("%d", video_encoding_quality), "-loop", "0", "-f", "webp", outpath,
