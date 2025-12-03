@@ -314,7 +314,7 @@ static void keyboardHandleEnter(void* data UNUSED,
     if (keys && _glfw.wl.keyRepeatInfo.key) {
         wl_array_for_each(key, keys) {
             if (*key == _glfw.wl.keyRepeatInfo.key) {
-                toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
+                if (_glfw.wl.keyboardRepeatRate > 0) toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
                 break;
             }
         }
@@ -343,8 +343,10 @@ dispatchPendingKeyRepeats(id_type timer_id UNUSED, void *data UNUSED) {
     _GLFWwindow* window = _glfwWindowForId(_glfw.wl.keyboardFocusId);
     if (!window) return;
     glfw_xkb_handle_key_event(window, &_glfw.wl.xkb, _glfw.wl.keyRepeatInfo.key, GLFW_REPEAT);
-    changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, (s_to_monotonic_t(1ll) / (monotonic_t)_glfw.wl.keyboardRepeatRate));
-    toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
+    if (_glfw.wl.keyboardRepeatRate > 0) {
+        changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, (s_to_monotonic_t(1ll) / (monotonic_t)_glfw.wl.keyboardRepeatRate));
+        toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
+    }
 }
 
 
@@ -358,11 +360,17 @@ static void keyboardHandleKey(void* data UNUSED,
     _GLFWwindow* window = _glfwWindowForId(_glfw.wl.keyboardFocusId);
     if (!window)
         return;
-    int action = state == WL_KEYBOARD_KEY_STATE_PRESSED ? GLFW_PRESS : GLFW_RELEASE;
+    int action = GLFW_PRESS;
+    switch (state) {
+        case WL_KEYBOARD_KEY_STATE_PRESSED: action = GLFW_PRESS; break;
+        case WL_KEYBOARD_KEY_STATE_RELEASED: action = GLFW_RELEASE; break;
+#ifdef WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION
+        case WL_KEYBOARD_KEY_STATE_REPEATED: action = GLFW_REPEAT; break;
+#endif
+    }
 
     _glfw.wl.serial = serial; _glfw.wl.input_serial = serial;
     glfw_xkb_handle_key_event(window, &_glfw.wl.xkb, key, action);
-
     if (action == GLFW_PRESS && _glfw.wl.keyboardRepeatRate > 0 && glfw_xkb_should_repeat(&_glfw.wl.xkb, key))
     {
         _glfw.wl.keyRepeatInfo.key = key;
@@ -392,9 +400,7 @@ static void keyboardHandleRepeatInfo(void* data UNUSED,
                                      int32_t rate,
                                      int32_t delay)
 {
-    if (keyboard != _glfw.wl.keyboard)
-        return;
-
+    if (keyboard != _glfw.wl.keyboard) return;
     _glfw.wl.keyboardRepeatRate = rate;
     _glfw.wl.keyboardRepeatDelay = ms_to_monotonic_t(delay);
 }
@@ -547,8 +553,10 @@ static void registryHandleGlobal(void* data UNUSED,
     {
         if (!_glfw.wl.seat)
         {
-#ifdef WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION
-            _glfw.wl.seatVersion = MIN(WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION, (int)version);
+#if defined(WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION)
+            _glfw.wl.seatVersion = MIN(WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION, (int)version);
+#elif defined(WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION)
+            _glfw.wl.seatVersion = MIN(WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION, (int)version);
 #elif defined(WL_POINTER_AXIS_VALUE120_SINCE_VERSION)
             _glfw.wl.seatVersion = MIN(WL_POINTER_AXIS_VALUE120_SINCE_VERSION, (int)version);
 #else
