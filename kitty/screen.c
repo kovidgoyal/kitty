@@ -4011,7 +4011,7 @@ extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type s
     unsigned int count = 0;
     bool has_newline = false;
     index_type orig_y = *y;
-    while (count++ < 10) {
+    while (count++ < 20) {
         bool in_hostname = last_hostname_char_pos >= line->xnum;
         has_newline = !line->cpu_cells[line->xnum-1].next_char_was_wrapped;
         if (next_char_pos(line, *x, 1) < line->xnum || (!newlines_allowed && has_newline)) break;
