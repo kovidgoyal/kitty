@@ -261,9 +261,10 @@ initPollData(EventLoopData *eld, int display_fd) {
     if (pipe2(eld->key_repeat_fds, O_CLOEXEC | O_NONBLOCK) != 0) return false;
     const int key_repeat_fd = eld->key_repeat_fds[0];
 #endif
-    (void)key_repeat_fd; (void)mark_key_repeat_fd_ready;
 #ifdef _GLFW_WAYLAND
     if (!addWatch(eld, "key_repeat", key_repeat_fd, POLLIN, 1, mark_key_repeat_fd_ready, eld)) return false;
+#else
+    (void)key_repeat_fd; (void)mark_key_repeat_fd_ready;
 #endif
     return true;
 }
