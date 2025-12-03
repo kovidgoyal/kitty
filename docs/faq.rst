@@ -206,29 +206,25 @@ remote control command, for details, see :ref:`at-set-colors`.
 To change colors when SSHing into a remote host, use the :opt:`color_scheme
 <kitten-ssh.color_scheme>` setting for the :doc:`ssh kitten <kittens/ssh>`.
 
-Additionally, You can use the
-`OSC terminal escape codes <https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands>`__
-to set colors. Examples of using OSC escape codes to set colors::
+Additionally, you can use the escape code described in :doc:`color-stack`
+to set colors in a single window.
+Examples of using OSC escape codes to set colors::
 
     Change the default foreground color:
-    printf '\x1b]10;#ff0000\x1b\\'
+    printf '\x1b]21;foreground=#ff0000\x1b\\'
     Change the default background color:
-    printf '\x1b]11;blue\x1b\\'
+    printf '\x1b]21;background=blue\x1b\\'
     Change the cursor color:
-    printf '\x1b]12;blue\x1b\\'
+    printf '\x1b]21;cursor=blue\x1b\\'
     Change the selection background color:
-    printf '\x1b]17;blue\x1b\\'
+    printf '\x1b]21;selection_background=blue\x1b\\'
     Change the selection foreground color:
-    printf '\x1b]19;blue\x1b\\'
+    printf '\x1b]21;selection_foreground=blue\x1b\\'
     Change the nth color (0 - 255):
-    printf '\x1b]4;n;green\x1b\\'
+    printf '\x1b]21;n=green\x1b\\'
 
-You can use various syntaxes/names for color specifications in the above
-examples. See `XParseColor <https://linux.die.net/man/3/xparsecolor>`__
-for full details.
-
-If a ``?`` is given rather than a color specification, kitty will respond
-with the current value for the specified color.
+See :doc:`color-stack` for details on the syntax for specifying colors and
+how to query current colors.
 
 
 How do I specify command line options for kitty on macOS?
