@@ -41,6 +41,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <assert.h>
+#include <unistd.h>
 
 #define debug debug_rendering
 
@@ -1306,6 +1307,25 @@ wayland_read_events(int poll_result, int events, void *data UNUSED) {
     else wl_display_cancel_read(_glfw.wl.display);
 }
 
+static void
+handle_key_repeat_events(void) {
+    uint64_t num_events = 0;
+#ifdef HAS_TIMER_FD
+    if (read(_glfw.wl.eventLoopData.key_repeat_fd, &num_events, sizeof(num_events)) < (ssize_t)sizeof(num_events)) return;
+#else
+    char buf[16];
+    while(1) {
+        ssize_t num = read(_glfw.wl.eventLoopData.key_repeat_fds[0], buf, sizeof(buf));
+        if (num > 0) num_events += num;
+        else if (num == 0 || errno != EINTR) break;
+    }
+#endif
+    if (_glfw.wl.keyRepeatInfo.keyboardFocusId != _glfw.wl.keyboardFocusId || _glfw.wl.keyboardRepeatRate == 0) return;
+    _GLFWwindow* window = _glfwWindowForId(_glfw.wl.keyboardFocusId);
+    if (!window || !_glfw.wl.keyRepeatInfo.key) return;
+    while (num_events--) glfw_xkb_handle_key_event(window, &_glfw.wl.xkb, _glfw.wl.keyRepeatInfo.key, GLFW_REPEAT);
+}
+
 static void handleEvents(monotonic_t timeout)
 {
     struct wl_display* display = _glfw.wl.display;
@@ -1345,6 +1365,7 @@ static void handleEvents(monotonic_t timeout)
     glfw_dbus_session_bus_dispatch();
     EVDBG("other dispatch done");
     if (_glfw.wl.eventLoopData.wakeup_fd_ready) check_for_wakeup_events(&_glfw.wl.eventLoopData);
+    if (_glfw.wl.eventLoopData.key_repeat_fd_ready) handle_key_repeat_events();
 }
 
 static struct wl_cursor*

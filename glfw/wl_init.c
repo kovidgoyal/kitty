@@ -298,6 +298,41 @@ static void keyboardHandleKeymap(void* data UNUSED,
 
 }
 
+static void
+start_key_repeat_timer(bool initial) {
+    if (_glfw.wl.keyboardRepeatRate <= 0) return;
+#ifdef HAS_TIMER_FD
+    (void)initial;
+    struct itimerspec new_value = {.it_value={.tv_nsec = _glfw.wl.keyboardRepeatDelay}, .it_interval={.tv_nsec = (s_to_monotonic_t(1ll) / (monotonic_t)_glfw.wl.keyboardRepeatRate)}};
+    if (_glfw.wl.eventLoopData.key_repeat_fd > -1) timerfd_settime(
+            _glfw.wl.eventLoopData.key_repeat_fd, 0, &new_value, NULL);
+#else
+    monotonic_t interval = _glfw.wl.keyboardRepeatDelay;
+    if (!initial) interval = (s_to_monotonic_t(1ll) / (monotonic_t)_glfw.wl.keyboardRepeatRate);
+    changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, interval);
+    toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
+#endif
+}
+
+static void
+stop_key_repeat_timer(void) {
+#ifdef HAS_TIMER_FD
+    struct itimerspec new_value = {0};
+    if (_glfw.wl.eventLoopData.key_repeat_fd > -1) timerfd_settime(_glfw.wl.eventLoopData.key_repeat_fd, 0, &new_value, NULL);
+#else
+    toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 0);
+#endif
+}
+
+#ifndef HAS_TIMER_FD
+static void
+send_key_repeat_timer_event(id_type timer_id UNUSED, void *data UNUSED) {
+    char b = 1;
+    b += write(_glfw.wl.eventLoopData.key_repeat_fds[1], &b, 1);
+    if (_glfw.wl.keyboardRepeatRate > 0) start_key_repeat_timer(false);
+}
+#endif
+
 static void keyboardHandleEnter(void* data UNUSED,
                                 struct wl_keyboard* keyboard UNUSED,
                                 uint32_t serial,
@@ -314,7 +349,7 @@ static void keyboardHandleEnter(void* data UNUSED,
     if (keys && _glfw.wl.keyRepeatInfo.key) {
         wl_array_for_each(key, keys) {
             if (*key == _glfw.wl.keyRepeatInfo.key) {
-                if (_glfw.wl.keyboardRepeatRate > 0) toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
+                if (_glfw.wl.keyboardRepeatRate > 0) start_key_repeat_timer(true);
                 break;
             }
         }
@@ -334,21 +369,8 @@ static void keyboardHandleLeave(void* data UNUSED,
     _glfw.wl.serial = serial;
     _glfw.wl.keyboardFocusId = 0;
     _glfwInputWindowFocus(window, false);
-    toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 0);
+    stop_key_repeat_timer();
 }
-
-static void
-dispatchPendingKeyRepeats(id_type timer_id UNUSED, void *data UNUSED) {
-    if (_glfw.wl.keyRepeatInfo.keyboardFocusId != _glfw.wl.keyboardFocusId || _glfw.wl.keyboardRepeatRate == 0) return;
-    _GLFWwindow* window = _glfwWindowForId(_glfw.wl.keyboardFocusId);
-    if (!window) return;
-    glfw_xkb_handle_key_event(window, &_glfw.wl.xkb, _glfw.wl.keyRepeatInfo.key, GLFW_REPEAT);
-    if (_glfw.wl.keyboardRepeatRate > 0) {
-        changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, (s_to_monotonic_t(1ll) / (monotonic_t)_glfw.wl.keyboardRepeatRate));
-        toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
-    }
-}
-
 
 static void keyboardHandleKey(void* data UNUSED,
                               struct wl_keyboard* keyboard UNUSED,
@@ -375,11 +397,10 @@ static void keyboardHandleKey(void* data UNUSED,
     {
         _glfw.wl.keyRepeatInfo.key = key;
         _glfw.wl.keyRepeatInfo.keyboardFocusId = window->id;
-        changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, _glfw.wl.keyboardRepeatDelay);
-        toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
+        start_key_repeat_timer(true);
     } else if (action == GLFW_RELEASE && key == _glfw.wl.keyRepeatInfo.key) {
         _glfw.wl.keyRepeatInfo.key = 0;
-        toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 0);
+        stop_key_repeat_timer();
     }
 }
 
@@ -447,7 +468,7 @@ static void seatHandleCapabilities(void* data UNUSED,
         wl_keyboard_destroy(_glfw.wl.keyboard);
         _glfw.wl.keyboard = NULL;
         _glfw.wl.keyboardFocusId = 0;
-        if (_glfw.wl.keyRepeatInfo.keyRepeatTimer) toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 0);
+        stop_key_repeat_timer();
     }
 }
 
@@ -854,7 +875,9 @@ int _glfwPlatformInit(bool *supports_window_occlusion)
     }
     glfw_dbus_init(&_glfw.wl.dbus, &_glfw.wl.eventLoopData);
     glfw_initialize_desktop_settings();
-    _glfw.wl.keyRepeatInfo.keyRepeatTimer = addTimer(&_glfw.wl.eventLoopData, "wayland-key-repeat", ms_to_monotonic_t(500ll), 0, true, dispatchPendingKeyRepeats, NULL, NULL);
+#ifndef HAS_TIMER_FD
+    _glfw.wl.keyRepeatInfo.keyRepeatTimer = addTimer(&_glfw.wl.eventLoopData, "wayland-key-repeat", ms_to_monotonic_t(500ll), 0, true, send_key_repeat_timer_event, NULL, NULL);
+#endif
     _glfw.wl.cursorAnimationTimer = addTimer(&_glfw.wl.eventLoopData, "wayland-cursor-animation", ms_to_monotonic_t(500ll), 0, true, animateCursorImage, NULL, NULL);
 
     _glfw.wl.registry = wl_display_get_registry(_glfw.wl.display);

@@ -234,6 +234,12 @@ mark_wakep_fd_ready(int fd UNUSED, int events UNUSED, void *data) {
     ((EventLoopData*)(data))->wakeup_fd_ready = true;
 }
 
+static void
+mark_key_repeat_fd_ready(int fd UNUSED, int events UNUSED, void *data) {
+    ((EventLoopData*)(data))->key_repeat_fd_ready = true;
+}
+
+
 bool
 initPollData(EventLoopData *eld, int display_fd) {
     if (!addWatch(eld, "display", display_fd, POLLIN, 1, NULL, NULL)) return false;
@@ -246,6 +252,19 @@ initPollData(EventLoopData *eld, int display_fd) {
     const int wakeup_fd = eld->wakeupFds[0];
 #endif
     if (!addWatch(eld, "wakeup", wakeup_fd, POLLIN, 1, mark_wakep_fd_ready, eld)) return false;
+
+#ifdef HAS_TIMER_FD
+    eld->key_repeat_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+    if (eld->key_repeat_fd < 0) return false;
+    const int key_repeat_fd = eld->key_repeat_fd;
+#else
+    if (pipe2(eld->key_repeat_fds, O_CLOEXEC | O_NONBLOCK) != 0) return false;
+    const int key_repeat_fd = eld->key_repeat_fds[0];
+#endif
+    (void)key_repeat_fd; (void)mark_key_repeat_fd_ready;
+#ifdef _GLFW_WAYLAND
+    if (!addWatch(eld, "key_repeat", key_repeat_fd, POLLIN, 1, mark_key_repeat_fd_ready, eld)) return false;
+#endif
     return true;
 }
 
@@ -269,7 +288,6 @@ wakeupEventLoop(EventLoopData *eld) {
 #endif
 }
 
-#ifndef HAS_EVENT_FD
 static void
 closeFds(int *fds, size_t count) {
     while(count--) {
@@ -280,14 +298,19 @@ closeFds(int *fds, size_t count) {
         fds++;
     }
 }
-#endif
 
 void
 finalizePollData(EventLoopData *eld) {
+    (void)closeFds;
 #ifdef HAS_EVENT_FD
     close(eld->wakeupFd); eld->wakeupFd = -1;
 #else
     closeFds(eld->wakeupFds, arraysz(eld->wakeupFds));
+#endif
+#ifdef HAS_TIMER_FD
+    close(eld->key_repeat_fd); eld->key_repeat_fd = -1;
+#else
+    closeFds(eld->key_repeat_fds, arraysz(eld->key_repeat_fds));
 #endif
 }
 
@@ -298,7 +321,7 @@ pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func displ
     EVDBG("pollForEvents final timeout: %.3f", monotonic_t_to_s_double(timeout));
     int result;
     monotonic_t end_time = monotonic() + timeout;
-    eld->wakeup_fd_ready = false;
+    eld->wakeup_fd_ready = false; eld->key_repeat_fd_ready = false;
 
     while(1) {
         if (timeout >= 0) {

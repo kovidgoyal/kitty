@@ -181,6 +181,9 @@ Detailed list of changes
   pager in search mode. If any text is currently selected it is automatically
   searched for.
 
+- Wayland: Fix spurious key repeat events when some user defined callback takes
+  a long time to execute (:iss:`9224`)
+
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
