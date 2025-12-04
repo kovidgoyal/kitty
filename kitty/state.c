@@ -369,10 +369,11 @@ remove_window_inner(Tab *tab, id_type id) {
     if (active_window_id) {
         for (unsigned int w = 0; w < tab->num_windows; w++) {
             if (tab->windows[w].id == active_window_id) {
-                tab->active_window = w; break;
+                tab->active_window = w; return;
             }
         }
     }
+    if (tab->active_window >= tab->num_windows) tab->active_window = 0;
 }
 
 static void
