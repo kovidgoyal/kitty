@@ -3079,8 +3079,11 @@ class Boss:
                     else:
                         return
 
+            overlay_for = 0
             for detached_window in src_tab.detach_window(window):
-                target_tab.attach_window(detached_window)
+                target_tab.attach_window(detached_window, overlay_for=overlay_for)
+                if overlay_for == 0:
+                    overlay_for = detached_window.id
             self._cleanup_tab_after_window_removal(src_tab)
             target_tab.make_active()
 

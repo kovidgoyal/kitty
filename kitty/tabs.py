@@ -752,10 +752,10 @@ class Tab:  # {{{
             self.remove_window(w, destroy=False)
         return tuple(windows)
 
-    def attach_window(self, window: Window) -> None:
+    def attach_window(self, window: Window, overlay_for: int = 0) -> None:
         window.change_tab(self)
         attach_window(self.os_window_id, self.id, window.id)
-        self._add_window(window)
+        self._add_window(window, overlay_for=overlay_for)
 
     def set_active_window(self, x: Window | int, for_keep_focus: Window | None = None) -> None:
         self.windows.set_active_window_group_for(x, for_keep_focus=for_keep_focus)

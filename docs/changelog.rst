@@ -184,6 +184,9 @@ Detailed list of changes
 - Wayland: Fix spurious key repeat events when some user defined callback takes
   a long time to execute (:iss:`9224`)
 
+- When moving windows to a new tab/OS Window fix overlay windows not being
+  grouped with their parent windows (:iss:`9266`)
+
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
