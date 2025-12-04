@@ -10,7 +10,6 @@ from collections import deque
 from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
 from contextlib import suppress
 from gettext import gettext as _
-from operator import attrgetter
 from typing import (
     Any,
     Deque,
@@ -733,12 +732,16 @@ class Tab:  # {{{
             prev = x
         return prev
 
-    def remove_window(self, window: Window, destroy: bool = True) -> None:
+    def remove_window(self, window: Window, destroy: bool = True, do_post_removal_update: bool = True) -> None:
         self.windows.remove_window(window)
         if destroy:
             remove_window(self.os_window_id, self.id, window.id)
         else:
             detach_window(self.os_window_id, self.id, window.id)
+        if do_post_removal_update:
+            self.post_window_removal_update()
+
+    def post_window_removal_update(self) -> None:
         self.mark_tab_bar_dirty()
         self.relayout()
         active_window = self.active_window
@@ -747,15 +750,21 @@ class Tab:  # {{{
 
     def detach_window(self, window: Window) -> tuple[Window, ...]:
         windows = list(self.windows.windows_in_group_of(window))
-        windows.sort(key=attrgetter('id'))  # since ids increase in order of creation
         for w in reversed(windows):
-            self.remove_window(w, destroy=False)
+            self.remove_window(w, destroy=False, do_post_removal_update=False)
+        self.post_window_removal_update()
         return tuple(windows)
 
-    def attach_window(self, window: Window, overlay_for: int = 0) -> None:
+    def attach_window(self, window: Window, overlay_for: int | None = None) -> None:
         window.change_tab(self)
         attach_window(self.os_window_id, self.id, window.id)
         self._add_window(window, overlay_for=overlay_for)
+
+    def attach_windows(self, windows: Iterable[Window]) -> None:
+        overlay_for: int | None = None
+        for window in windows:
+            self.attach_window(window, overlay_for)
+            overlay_for = window.id
 
     def set_active_window(self, x: Window | int, for_keep_focus: Window | None = None) -> None:
         self.windows.set_active_window_group_for(x, for_keep_focus=for_keep_focus)
