@@ -328,7 +328,7 @@ void
 set_os_window_title_from_window(Window *w, OSWindow *os_window) {
     if (os_window->disallow_title_changes || os_window->title_is_overriden) return;
     if (w->title && w->title != os_window->window_title) {
-        Py_XDECREF(os_window->window_title);
+        Py_CLEAR(os_window->window_title);
         os_window->window_title = Py_NewRef(w->title);
         set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
     }
