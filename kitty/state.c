@@ -320,8 +320,7 @@ static void
 update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyObject *title) {
     WITH_WINDOW(os_window_id, tab_id, window_id)
         Py_CLEAR(window->title);
-        window->title = title;
-        Py_XINCREF(window->title);
+        if (title) window->title = Py_NewRef(title);
     END_WITH_WINDOW;
 }
 
@@ -330,8 +329,7 @@ set_os_window_title_from_window(Window *w, OSWindow *os_window) {
     if (os_window->disallow_title_changes || os_window->title_is_overriden) return;
     if (w->title && w->title != os_window->window_title) {
         Py_XDECREF(os_window->window_title);
-        os_window->window_title = w->title;
-        Py_INCREF(os_window->window_title);
+        os_window->window_title = Py_NewRef(w->title);
         set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
     }
 }
