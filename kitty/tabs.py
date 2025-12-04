@@ -747,6 +747,7 @@ class Tab:  # {{{
         active_window = self.active_window
         if active_window:
             self.title_changed(active_window)
+        set_active_window(self.os_window_id, self.id, active_window.id if active_window else 0)
 
     def detach_window(self, window: Window) -> tuple[Window, ...]:
         windows = list(self.windows.windows_in_group_of(window))

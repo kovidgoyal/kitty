@@ -407,6 +407,7 @@ detach_window(id_type os_window_id, id_type tab_id, id_type id) {
                 add_detached_window(tab->windows + i);
                 zero_at_i(tab->windows, i);
                 remove_i_from_array(tab->windows, i, tab->num_windows);
+                if (tab->active_window >= tab->num_windows) tab->active_window = tab->num_windows ? tab->num_windows - 1 : 0;
                 break;
             }
         }
@@ -526,12 +527,16 @@ set_active_tab(id_type os_window_id, unsigned int idx) {
 
 static void
 set_active_window(id_type os_window_id, id_type tab_id, id_type window_id) {
-    WITH_WINDOW(os_window_id, tab_id, window_id)
-        (void)window;
-        tab->active_window = w;
+    WITH_TAB(os_window_id, tab_id)
+        tab->active_window = 0;
+        for (unsigned w = 0; w < tab->num_windows; w++) {
+            if (tab->windows[w].id == window_id) {
+                tab->active_window = w; break;
+            }
+        }
         osw->needs_render = true;
         set_os_window_chrome(osw);
-    END_WITH_WINDOW;
+    END_WITH_TAB;
 }
 
 static bool
