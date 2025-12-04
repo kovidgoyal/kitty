@@ -1128,6 +1128,7 @@ def build_ref_map(skip_generation: bool = False) -> str:
 def build_cli_parser_specs(skip_generation: bool = False) -> str:
     dest = 'kitty/launcher/cli-parser-data_generated.h'
     if not skip_generation:
+        setattr(sys, 'running_from_setup', True)
         m = runpy.run_path('kitty/simple_cli_definitions.py', {'appname': appname})
         h = '\n'.join(m['generate_c_parsers']())
         update_if_changed(dest, h)
@@ -1196,6 +1197,7 @@ def wrapped_kittens() -> str:
 def build(args: Options, native_optimizations: bool = True, call_init: bool = True) -> None:
     if call_init:
         init_env_from_args(args, native_optimizations)
+
     sources, headers = find_c_files()
     headers.append(build_ref_map(args.skip_code_generation))
     headers.append(build_cli_parser_specs(args.skip_code_generation))
