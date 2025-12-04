@@ -26,6 +26,7 @@ from glfw import glfw
 from glfw.glfw import ISA, BinaryArch, Command, CompileKey, CompilerType
 
 src_base = os.path.dirname(os.path.abspath(__file__))
+setattr(sys, 'running_from_setup', True)
 
 def check_version_info() -> None:
     with open(os.path.join(src_base, 'pyproject.toml')) as f:
@@ -1128,7 +1129,6 @@ def build_ref_map(skip_generation: bool = False) -> str:
 def build_cli_parser_specs(skip_generation: bool = False) -> str:
     dest = 'kitty/launcher/cli-parser-data_generated.h'
     if not skip_generation:
-        setattr(sys, 'running_from_setup', True)
         m = runpy.run_path('kitty/simple_cli_definitions.py', {'appname': appname})
         h = '\n'.join(m['generate_c_parsers']())
         update_if_changed(dest, h)
