@@ -577,7 +577,7 @@ static void registryHandleGlobal(void* data UNUSED,
 #if defined(WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION)
             _glfw.wl.seatVersion = MIN(WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION, (int)version);
 #elif defined(WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION)
-            _glfw.wl.seatVersion = MIN(WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION, (int)version);
+            _glfw.wl.seatVersion = MIN(WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION, (int)version);
 #elif defined(WL_POINTER_AXIS_VALUE120_SINCE_VERSION)
             _glfw.wl.seatVersion = MIN(WL_POINTER_AXIS_VALUE120_SINCE_VERSION, (int)version);
 #else
