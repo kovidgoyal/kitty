@@ -100,10 +100,12 @@ Can be specified multiple times to setup different previewers for different type
 Note that previewers specified using this option take precedence over the builtin
 previewers.
 
-The command must output preview data to STDOUT, in JSON format, of the form::
+The command must output preview data to STDOUT, as a JSON object:
+
+.. code-block:: json
 
     {
-        "lines": ["line1", "line2", ...],
+        "lines": ["line1", "line2", "..."],
         "image": "absolute path to generated image preview",
         "title_extra": "some text to show on the first line",
     }
