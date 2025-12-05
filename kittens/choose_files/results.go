@@ -62,6 +62,45 @@ const matching_position_style = "fg=green"
 const selected_style = "fg=magenta"
 const current_style = "fg=intense-white bold"
 
+type text_chunk struct {
+	text      string
+	emphasize bool
+}
+
+func split_up_text(text string, add_ellipsis bool, positions []int) func(func(x text_chunk) bool) {
+	return func(yield func(x text_chunk) bool) {
+		if len(positions) == 0 {
+			if !yield(text_chunk{text, false}) {
+				return
+			}
+		} else {
+			at := 0
+			runes := []rune(text)
+			limit := len(runes)
+			for _, p := range positions {
+				if max(p, at) >= limit || p < at {
+					break
+				}
+				if at < p && !yield(text_chunk{string(runes[at:p]), false}) {
+					return
+				}
+				if !yield(text_chunk{string(runes[p]), true}) {
+					return
+				}
+				at = p + 1
+			}
+			if at < len(runes) {
+				if !yield(text_chunk{string(runes[at:]), false}) {
+					return
+				}
+			}
+		}
+		if add_ellipsis {
+			yield(text_chunk{"…", false})
+		}
+	}
+}
+
 func (h *Handler) render_match_with_positions(text string, add_ellipsis bool, positions []int, is_current bool) {
 	prefix, suffix, _ := strings.Cut(h.lp.SprintStyled(matching_position_style, " "), " ")
 	if is_current {
@@ -70,39 +109,16 @@ func (h *Handler) render_match_with_positions(text string, add_ellipsis bool, po
 		defer h.lp.QueueWriteString(s)
 		suffix += p
 	}
-	write_chunk := func(text string, emphasize bool) {
-		if text == "" {
-			return
-		}
-		if emphasize {
-			h.lp.QueueWriteString(prefix)
-			defer func() {
-				h.lp.QueueWriteString(suffix)
-			}()
-		}
-		h.lp.QueueWriteString(text)
-	}
-	if len(positions) == 0 {
-		write_chunk(text, false)
-	} else {
-		at := 0
-		runes := []rune(text)
-		limit := len(runes)
-		for _, p := range positions {
-			if p >= limit || at >= limit || p <= at {
-				break
+	for chunk := range split_up_text(text, add_ellipsis, positions) {
+		if chunk.text != "" {
+			if chunk.emphasize {
+				h.lp.QueueWriteString(prefix)
+				defer func() {
+					h.lp.QueueWriteString(suffix)
+				}()
 			}
-			before := runes[at:p]
-			write_chunk(string(before), false)
-			write_chunk(string(runes[p]), true)
-			at = p + 1
+			h.lp.QueueWriteString(chunk.text)
 		}
-		if at < len(runes) {
-			write_chunk(string(runes[at:]), false)
-		}
-	}
-	if add_ellipsis {
-		write_chunk("…", false)
 	}
 }
 
