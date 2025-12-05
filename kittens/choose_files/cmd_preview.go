@@ -85,6 +85,7 @@ func (c cmd_renderer) ShowMetadata(h *Handler, s ShowData) (offset int) {
 	for _, line := range r.Lines {
 		w(line, false)
 	}
+	h.lp.QueueWriteString("\x1b[m") // reset SGR attributes
 	return
 }
 
