@@ -272,6 +272,38 @@ func (h *Handler) draw_screen() (err error) {
 	return
 }
 
+type previewer struct {
+	cmdline      []string
+	pattern      string
+	use_mimetype bool
+}
+
+func (p previewer) matches(fname, mt string) bool {
+	q := utils.IfElse(p.use_mimetype, mt, fname)
+	matched, err := filepath.Match(p.pattern, q)
+	return matched && err == nil
+}
+
+var previewers []previewer
+
+func load_previewers(cfg *Config) (err error) {
+	for _, spec := range cfg.Previewer {
+		parts, err := shlex.Split(spec)
+		if err != nil {
+			return fmt.Errorf("invalid previewer specification: %#v with error: %w", spec, err)
+		}
+		if len(parts) < 2 {
+			return fmt.Errorf("invalid previewer specification: %#v with error: no command specified", spec)
+		}
+		prefix, pattern, found := strings.Cut(parts[0], ":")
+		if !found {
+			return fmt.Errorf("invalid previewer specification: %#v with error: no prefix in pattern specification", spec)
+		}
+		previewers = append(previewers, previewer{parts[1:], pattern, prefix == "mime"})
+	}
+	return
+}
+
 func load_config(opts *Options) (ans *Config, err error) {
 	ans = NewConfig()
 	p := config.ConfigParser{LineHandler: ans.Parse}
@@ -853,6 +885,9 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 
 	conf, err := load_config(opts)
 	if err != nil {
+		return 1, err
+	}
+	if err = load_previewers(conf); err != nil {
 		return 1, err
 	}
 	lp, err := loop.New()

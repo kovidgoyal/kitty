@@ -85,7 +85,33 @@ changing these you should also use the :code:`--clear-cache` flag
 otherwise it will not affect already cached previews.
 ''')
 
+opt('+previewer', '', long_text='''
+Specify an arbitrary program based preview generator. The syntax is::
 
+    pattern program arguments...
+
+Here, pattern can be used to match file names or mimetypes. For example:
+:code:`name:*.doc` matches files with the extension :code:`.doc`. Similarly,
+:code:`mime:image/*` matches all image files. :code:`program` can be any
+executable program in PATH. It will be run with the supplied arguments. The last argument
+will be the path to the file for which a preview must be generated.
+
+Can be specified multiple times to setup different previewers for different types of files.
+Note that previewers specified using this option take precedence over the builtin
+previewers.
+
+The command must output preview data to STDOUT, in JSON format, of the form::
+
+    {
+        "lines": ["line1", "line2", ...],
+        "image": "absolute path to generated image preview",
+        "title_extra": "some text to show on the first line",
+    }
+
+The lines can contain SGR formatting escape codes and will be displayed as is at the
+top of the preview panel. The image is optional and must be in one of the JPEG, PNG, GIF, WEBP, APNG
+formats.
+''')
 egr()  # }}}
 
 agr('shortcuts', 'Keyboard shortcuts')  # {{{

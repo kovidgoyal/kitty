@@ -332,7 +332,13 @@ func (pm *PreviewManager) preview_for(abspath string, ftype fs.FileMode) (ans Pr
 		}
 		return NewDirectoryPreview(abspath, s)
 	}
-	mt := utils.GuessMimeType(filepath.Base(abspath))
+	fname := filepath.Base(abspath)
+	mt := utils.GuessMimeType(fname)
+	for _, q := range previewers {
+		if q.matches(fname, mt) {
+			return NewCmdPreview(abspath, s, pm.settings, pm.WakeupMainThread, q)
+		}
+	}
 	const MAX_TEXT_FILE_SIZE = 16 * 1024 * 1024
 	if s.Size() <= MAX_TEXT_FILE_SIZE && (utils.KnownTextualMimes[mt] || strings.HasPrefix(mt, "text/")) {
 		ch := make(chan highlighed_data, 2)
