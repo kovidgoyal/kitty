@@ -1956,6 +1956,18 @@ class Boss:
         if not needs_confirmation:
             self.mark_os_window_for_close(os_window_id)
             return
+        current_confirmation_window: Window | None = None
+        if tm.confirm_close_window_id:
+            for tab in tm:
+                for w in tab:
+                    if w.id == tm.confirm_close_window_id:
+                        current_confirmation_window = w
+                        break
+                if current_confirmation_window is not None:
+                    break
+        if current_confirmation_window:
+            self.switch_focus_to(current_confirmation_window.id)
+            return
         msg = msg or _('It has {} windows?').format(num)
         msg = _('Are you sure you want to close this OS Window?') + ' ' + msg
         w = self.confirm(msg, self.handle_close_os_window_confirmation, os_window_id, window=tm.active_window, title=_('Close OS window'))
