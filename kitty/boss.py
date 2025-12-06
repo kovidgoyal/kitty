@@ -1966,7 +1966,7 @@ class Boss:
                 if current_confirmation_window is not None:
                     break
         if current_confirmation_window:
-            self.switch_focus_to(current_confirmation_window.id)
+            self.set_active_window(current_confirmation_window, switch_os_window_if_needed=True)
             return
         msg = msg or _('It has {} windows?').format(num)
         msg = _('Are you sure you want to close this OS Window?') + ' ' + msg
