@@ -628,7 +628,7 @@ HANDLER(handle_move_event) {
     if (OPT(focus_follows_mouse)) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         if (window_idx != t->active_window) {
-            call_boss(switch_focus_to, "K", t->windows[window_idx].id);
+            call_boss(switch_focus_to_in_active_tab, "K", t->windows[window_idx].id);
         }
     }
     bool mouse_cell_changed = false;
@@ -821,7 +821,7 @@ HANDLER(handle_button_event) {
     if (handle_scrollbar_mouse(w, button, is_release ? RELEASE : PRESS, modifiers)) return;
 
     if (window_idx != t->active_window && !is_release) {
-        call_boss(switch_focus_to, "K", t->windows[window_idx].id);
+        call_boss(switch_focus_to_in_active_tab, "K", t->windows[window_idx].id);
     }
     Screen *screen = w->render_data.screen;
     if (!screen) return;

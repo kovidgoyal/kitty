@@ -2345,7 +2345,7 @@ class Boss:
         window.set_logo(f'{path}-128{ext}', position='bottom-right', alpha=0.25)
         window.allow_remote_control = True
 
-    def switch_focus_to(self, window_id: int) -> None:
+    def switch_focus_to_in_active_tab(self, window_id: int) -> None:
         tab = self.active_tab
         if tab:
             tab.set_active_window(window_id)
