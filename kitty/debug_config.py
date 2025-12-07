@@ -98,6 +98,9 @@ def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None,
             elif f == 'modify_font':
                 for k in sorted(val):
                     print('   ', val[k])
+            elif f == 'exe_search_path':
+                for k in val:
+                    print('   ', k)
             else:
                 print(pformat(val))
         else:
