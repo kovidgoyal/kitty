@@ -154,10 +154,10 @@
     },
 
     {
-        "name": "libpng 1.6.51",
+        "name": "libpng 1.6.52",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:a050a892d3b4a7bb010c3a95c7301e49656d72a64f1fc709a90b8aded192bed2",
+            "hash": "sha256:36bd726228ec93a3b6c22fdb49e94a67b16f2fe9b39b78b7cb65772966661ccc",
             "urls": ["https://downloads.sourceforge.net/sourceforge/libpng/{filename}"]
         }
     },
