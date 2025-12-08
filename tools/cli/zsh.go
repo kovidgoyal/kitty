@@ -66,7 +66,7 @@ func zsh_input_parser(data []byte, shell_state map[string]string) ([][]string, e
 		// For some reason that I dont have the
 		// time/interest to figure out, returning completion candidates for
 		// these matcher types break completion, so just abort in this case.
-		return nil, fmt.Errorf("ZSH anchor based matching active, cannot complete")
+		return nil, fmt.Errorf("ZSH anchor based matching active, cannot complete. Turn it off by setting zstyle :completion: to something that does not use anchors in your ~/.zshrc")
 	}
 	return shell_input_parser(data, shell_state)
 }
