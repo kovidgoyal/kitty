@@ -492,6 +492,20 @@ colorprofile_push_colors(ColorProfile *self, unsigned int idx) {
     return false;
 }
 
+void
+colorprofile_reset(ColorProfile *self) {
+    memcpy(self->color_table, self->orig_color_table, sizeof(FG_BG_256));
+    self->dirty = true;
+    self->color_stack_idx = 0;
+    zero_at_ptr(&self->overridden);
+    for (unsigned i = 0; i < arraysz(self->overriden_transparent_colors); i++) {
+        zero_at_ptr(self->overriden_transparent_colors + i);
+    }
+    for (unsigned i = 0; i < self->color_stack_sz; i++) {
+        zero_at_ptr(self->color_stack + i);
+    }
+}
+
 bool
 colorprofile_pop_colors(ColorProfile *self, unsigned int idx) {
     if (idx == 0) {

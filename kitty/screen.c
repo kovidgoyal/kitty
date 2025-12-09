@@ -210,9 +210,8 @@ screen_reset(Screen *self) {
     self->is_dirty = true;
     clear_all_selections(self);
     screen_cursor_position(self, 1, 1);
-    set_dynamic_color(self, 110, NULL);
-    set_dynamic_color(self, 111, NULL);
-    set_color_table_color(self, 104, NULL);
+    set_dynamic_color(self, 111, NULL);  // does default_bg_changed processing
+    colorprofile_reset(self->color_profile);
     CALLBACK("on_reset", NULL)
 }
 

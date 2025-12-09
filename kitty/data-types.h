@@ -314,6 +314,7 @@ bool schedule_write_to_child_python(unsigned long id, const char *prefix, PyObje
 bool set_iutf8(int, bool);
 
 DynamicColor colorprofile_to_color(const ColorProfile *self, DynamicColor entry, DynamicColor defval);
+void colorprofile_reset(ColorProfile *self);
 bool colorprofile_to_transparent_color(const ColorProfile *self, unsigned index, color_type *color, float *opacity);
 color_type
 colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, DynamicColor defval, DynamicColor fallback, DynamicColor falback_defval);
