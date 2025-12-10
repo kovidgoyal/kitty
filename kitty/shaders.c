@@ -574,7 +574,7 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
 
 #define update_cell_data { \
         sz = sizeof(GPUCell) * screen->lines * screen->columns; \
-        address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY); \
+        address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, true); \
         screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed); \
         unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL; \
         changed = true; \
@@ -586,7 +586,7 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
 
 #define update_selection_data { \
     sz = (size_t)screen->lines * screen->columns; \
-    address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY); \
+    address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, true); \
     screen_apply_selection(screen, address, sz); \
     unmap_vao_buffer(vao_idx, selection_buffer); address = NULL; \
     changed = true; \
@@ -1216,7 +1216,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
     if (has_background_image) background_opacity = OPT(background_tint) * OPT(background_tint_gaps);
     if (rect_data_is_dirty) {
         const size_t sz = sizeof(BorderRect) * num_border_rects;
-        void *borders_buf_address = alloc_and_map_vao_buffer(vao_idx, sz, 0, GL_STATIC_DRAW, GL_WRITE_ONLY);
+        void *borders_buf_address = alloc_and_map_vao_buffer(vao_idx, sz, 0, false);
         if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
         unmap_vao_buffer(vao_idx, 0);
     }
