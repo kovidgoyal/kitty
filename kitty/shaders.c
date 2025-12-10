@@ -450,9 +450,11 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
         GLfloat bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
     };
     // Send the uniform data
-    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer(vao_idx, uniform_buffer, GL_WRITE_ONLY);
     ColorProfile *cp = screen->paused_rendering.expires_at ? &screen->paused_rendering.color_profile : screen->color_profile;
-    if (UNLIKELY(cp->dirty || screen->reload_all_gpu_data)) {
+    const bool color_table_needs_upload = cp->dirty || screen->reload_all_gpu_data;
+    const unsigned sz = color_table_needs_upload ? cell_program_layouts[CELL_PROGRAM].render_data.size : cell_program_layouts[CELL_PROGRAM].color_table.offset;
+    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, sz);
+    if (color_table_needs_upload) {
         copy_color_table_to_buffer(cp, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
     }
 #define COLOR(name) colorprofile_to_color(cp, cp->overridden.name, cp->configured.name).rgb

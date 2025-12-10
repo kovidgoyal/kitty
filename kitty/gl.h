@@ -55,6 +55,7 @@ ssize_t alloc_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum, GLenum
 void* alloc_and_map_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum, GLenum usage, GLenum access);
 void unmap_vao_buffer(ssize_t vao_idx, size_t bufnum);
 void* map_vao_buffer(ssize_t vao_idx, size_t bufnum, GLenum access);
+void* map_vao_buffer_for_write_only(ssize_t vao_idx, size_t bufnum, int offset, unsigned size);
 void bind_program(int program);
 void bind_vertex_array(ssize_t vao_idx);
 void bind_vao_uniform_buffer(ssize_t vao_idx, size_t bufnum, GLuint block_index);
