@@ -44,42 +44,11 @@ A terminal PDF viewer with GUI-like usage and Vim-like keybindings written in Ru
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Display various types of files nicely formatted with images in the terminal
 
-.. _tool_ranger:
-
-`ranger <https://github.com/ranger/ranger>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A terminal file manager, with previews of file contents powered by kitty's
-graphics protocol.
-
-.. _tool_nnn:
-
-`nnn <https://github.com/jarun/nnn/>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Another terminal file manager, with previews of file contents powered by kitty's
-graphics protocol.
-
-.. _tool_yazi:
-
-`Yazi <https://github.com/sxyazi/yazi>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Blazing fast terminal file manager, with built-in kitty graphics protocol support
-(implemented both Classic protocol and Unicode placeholders).
-
-.. _tool_clifm:
-
-`clifm <https://github.com/leo-arch/clifm>`__
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-The shell-like, command line terminal file manager, uses the kitty graphics and
-keyboard protocols.
-
-.. _tool_hunter:
-
-`hunter <https://github.com/rabite0/hunter>`_
+`dawn <https://github.com/andrewmd5/dawn>`__
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Another terminal file manager, with previews of file contents powered by kitty's
-graphics protocol.
 
-.. _tool_presentterm:
+A markdown editor that uses the text-sizing protocol for large headings and
+the graphics protocol for images.
 
 `presenterm <https://github.com/mfontanini/presenterm>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -157,6 +126,46 @@ A video player that can play videos in the terminal.
 A terminal image and video viewer, that displays static and animated images or
 plays videos. Fast multi-threaded loading, JPEG exif rotation, grid view and
 connecting to the webcam make it a versatile terminal utility.
+
+
+File managers
+-------------------
+.. _tool_ranger:
+
+`ranger <https://github.com/ranger/ranger>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A terminal file manager, with previews of file contents powered by kitty's
+graphics protocol.
+
+.. _tool_nnn:
+
+`nnn <https://github.com/jarun/nnn/>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Another terminal file manager, with previews of file contents powered by kitty's
+graphics protocol.
+
+.. _tool_yazi:
+
+`Yazi <https://github.com/sxyazi/yazi>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Blazing fast terminal file manager, with built-in kitty graphics protocol support
+(implemented both Classic protocol and Unicode placeholders).
+
+.. _tool_clifm:
+
+`clifm <https://github.com/leo-arch/clifm>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The shell-like, command line terminal file manager, uses the kitty graphics and
+keyboard protocols.
+
+.. _tool_hunter:
+
+`hunter <https://github.com/rabite0/hunter>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Another terminal file manager, with previews of file contents powered by kitty's
+graphics protocol.
+
+.. _tool_presentterm:
 
 
 System and data visualisation tools
