@@ -720,7 +720,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
         !global_state.supports_framebuffer_srgb || effective_os_window_alpha(os_window) < 1.f ||
         os_window->live_resize.in_progress || (os_window->bgimage && os_window->bgimage->texture_id > 0)
     );
-    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
+    if (TD.screen && os_window->num_tabs && !os_window->has_too_few_tabs) {
         if (!os_window->tab_bar_data_updated) {
             call_boss(update_tab_bar_data, "K", os_window->id);
             os_window->tab_bar_data_updated = true;
@@ -817,7 +817,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
     BorderRects *br = &tab->border_rects;
     draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
     br->is_dirty = false;
-    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(&TD, os_window, true, true, false, NULL);
+    if (TD.screen && os_window->num_tabs && !os_window->has_too_few_tabs) draw_cells(&TD, os_window, true, true, false, NULL);
     unsigned int num_of_visible_windows = 0;
     Window *active_window = NULL;
     for (unsigned int i = 0; i < tab->num_windows; i++) { if (tab->windows[i].visible) num_of_visible_windows++; }

@@ -1065,7 +1065,7 @@ def next_window_id() -> int:
     pass
 
 
-def mark_tab_bar_dirty(os_window_id: int) -> None:
+def mark_tab_bar_dirty(os_window_id: int, should_be_shown: bool) -> None:
     pass
 
 

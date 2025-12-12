@@ -190,6 +190,8 @@ Detailed list of changes
 - Linux: Fix a bug causing colors to occasionally all go black when using mesa
   >= 25.3.0 with nouveau GPU driver (:iss:`9235`)
 
+- Fix :opt:`tab_bar_min_tabs` not respecting :opt:`tab_bar_filter` (:iss:`9278`)
+
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -1138,7 +1138,14 @@ class TabManager:  # {{{
 
     @property
     def tab_bar_should_be_visible(self) -> bool:
-        return len(self.tabs) >= get_options().tab_bar_min_tabs
+        count = get_options().tab_bar_min_tabs
+        if count < 1:
+            return True
+        for t in self.tabs_to_be_shown_in_tab_bar:
+            count -= 1
+            if count < 1:
+                return True
+        return count < 1
 
     def _add_tab(self, tab: Tab) -> None:
         visible_before = self.tab_bar_should_be_visible
@@ -1160,9 +1167,14 @@ class TabManager:  # {{{
             self._active_tab_idx = idx
         set_active_tab(self.os_window_id, idx)
 
+    def layout_tab_bar(self) -> None:
+        # set tab_bar_should_be_visible so that tab_bar.layout() gets correct dimensions
+        self.mark_tab_bar_dirty()
+        self.tab_bar.layout()
+
     def tabbar_visibility_changed(self) -> None:
         if not self.tab_bar_hidden:
-            self.tab_bar.layout()
+            self.layout_tab_bar()
             self.resize(only_tabs=True)
 
     @property
@@ -1173,8 +1185,8 @@ class TabManager:  # {{{
         return None
 
     def mark_tab_bar_dirty(self) -> None:
-        if self.tab_bar_should_be_visible and not self.tab_bar_hidden:
-            mark_tab_bar_dirty(self.os_window_id)
+        should_be_shown = self.tab_bar_should_be_visible and not self.tab_bar_hidden
+        mark_tab_bar_dirty(self.os_window_id, should_be_shown)
         w = self.active_window or self.any_window
         if w is not None:
             data = {'tab_manager': self}
@@ -1193,8 +1205,7 @@ class TabManager:  # {{{
     def resize(self, only_tabs: bool = False) -> None:
         if not only_tabs:
             if not self.tab_bar_hidden:
-                self.tab_bar.layout()
-                self.mark_tab_bar_dirty()
+                self.layout_tab_bar()
         for tab in self.tabs:
             tab.relayout()
 
@@ -1217,15 +1228,12 @@ class TabManager:  # {{{
             h.pop()
         return True
 
-    def filtered_tabs(self, filter_expression: str) -> Iterator[Tab]:
-        yield from get_boss().match_tabs(filter_expression, all_tabs=self)
-
     @property
     def tabs_to_be_shown_in_tab_bar(self) -> Iterable[Tab]:
         f = get_options().tab_bar_filter
         if f:
             at = self.active_tab
-            m = set(self.filtered_tabs(f))
+            m = set(get_boss().match_tabs(f, all_tabs=self))
             return (t for t in self if t is at or t in m)
         return self.tabs
 
@@ -1561,6 +1569,5 @@ class TabManager:  # {{{
         self.tab_bar_hidden = get_options().tab_bar_style == 'hidden'
         self.tab_bar.apply_options()
         self.update_tab_bar_data()
-        self.mark_tab_bar_dirty()
-        self.tab_bar.layout()
+        self.layout_tab_bar()
 # }}}

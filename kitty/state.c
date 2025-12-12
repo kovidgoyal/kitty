@@ -597,7 +597,7 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
 
 void
 os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
-    if (!OPT(tab_bar_hidden) && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
+    if (!OPT(tab_bar_hidden) && os_window->num_tabs && !os_window->has_too_few_tabs) {
         long margin_outer = pt_to_px_for_os_window(OPT(tab_bar_margin_height.outer), os_window);
         long margin_inner = pt_to_px_for_os_window(OPT(tab_bar_margin_height.inner), os_window);
         central->left = 0; central->right = os_window->viewport_width;
@@ -950,9 +950,10 @@ PYWRAP1(set_os_window_chrome) {
 }
 
 PYWRAP1(mark_tab_bar_dirty) {
-    id_type os_window_id = PyLong_AsUnsignedLongLong(args);
-    if (PyErr_Occurred()) return NULL;
+    id_type os_window_id; int should_be_shown;
+    PA("Kp", &os_window_id, &should_be_shown);
     WITH_OS_WINDOW(os_window_id)
+        os_window->has_too_few_tabs = !should_be_shown;
         os_window->tab_bar_data_updated = false;
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
@@ -1519,7 +1520,7 @@ static PyMethodDef module_methods[] = {
     MW(current_application_quit_request, METH_NOARGS),
     MW(set_os_window_chrome, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
-    MW(mark_tab_bar_dirty, METH_O),
+    MW(mark_tab_bar_dirty, METH_VARARGS),
     MW(run_with_activation_token, METH_O),
     MW(change_background_opacity, METH_VARARGS),
     MW(background_opacity_of, METH_O),

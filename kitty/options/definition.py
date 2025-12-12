@@ -1498,10 +1498,9 @@ The horizontal alignment of the tab bar, can be one of: :code:`left`,
 '''
     )
 
-opt('tab_bar_min_tabs', '2',
-    option_type='tab_bar_min_tabs', ctype='uint',
+opt('tab_bar_min_tabs', '2', option_type='tab_bar_min_tabs',
     long_text='The minimum number of tabs that must exist before the tab bar is shown.'
-    )
+)
 
 opt('tab_switch_strategy', 'previous',
     choices=('last', 'left', 'previous', 'right'),

@@ -91,7 +91,6 @@ typedef struct Options {
     bool dynamic_background_opacity;
     float inactive_text_alpha;
     Edge tab_bar_edge;
-    unsigned long tab_bar_min_tabs;
     DisableLigature disable_ligatures;
     bool force_ltr;
     bool resize_in_steps;
@@ -323,6 +322,7 @@ typedef struct OSWindow {
     bool has_received_cursor_pos_event;
     double mouse_x, mouse_y;
     bool mouse_button_pressed[32];
+    bool has_too_few_tabs;
     PyObject *window_title;
     bool disallow_title_changes, title_is_overriden;
     bool viewport_size_dirty, viewport_updated_at_least_once;
