@@ -130,7 +130,7 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
 
     def on_load(boss: Boss, data: dict[str, Any]) -> None:
         # This is a special function that is called just once when this watcher
-        # module is first loaded, can be used to perform any initializztion/one
+        # module is first loaded, can be used to perform any initialization/one
         # time setup. Any exceptions in this function are printed to kitty's
         # STDERR but otherwise ignored.
         ...

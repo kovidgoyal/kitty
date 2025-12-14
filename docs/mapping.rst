@@ -194,7 +194,7 @@ running an editor::
 
     map --when-focus-on var:in_editor kitty_mod+c
 
-In order to make this work, you need to configure your editor as show below:
+In order to make this work, you need to configure your editor as shown below:
 
 .. tab:: vim
 

@@ -25,7 +25,7 @@ the set :code:`a-zA-Z0-9-_/\+.,(){}[]*&^%$#@!`~`. The payload must be
 interpreted based on the metadata section. The two semi-colons *must* always be
 present even when no metadata is present.
 
-Before going into details, lets see how one can display a simple, single line
+Before going into details, let's see how one can display a simple, single line
 notification from a shell script::
 
     printf '\x1b]99;;Hello world\x1b\\'

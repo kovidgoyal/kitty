@@ -153,7 +153,7 @@ and human friendly name with ``type=write`` and ``type=read`` requests. The
 terminal can then ask the user to allow all future requests using that
 password. If the user agrees, future requests on the same tty will be
 automatically allowed by the terminal. The editor or other program using
-this facility should ideally use a password randomnly generated at startup,
+this facility should ideally use a password randomly generated at startup,
 such as a UUID4. However, terminals may implement permanent/stored passwords.
 Users can then configure terminal programs they trust to use these password.
 
@@ -218,15 +218,15 @@ other characters must be stripped out from the id by the terminal emulator
 before retransmitting it.
 
 Note that when using a terminal multiplexer it is possible for two different
-programs to overwrite each others clipboard requests. This is fundamentally
+programs to overwrite each other's clipboard requests. This is fundamentally
 unavoidable since the system clipboard is a single global shared resource.
-However, there is an additional complication where responses form this protocol
+However, there is an additional complication where responses from this protocol
 could get lost if, for instance, multiple write requests are received
 simultaneously. It is up to well designed multiplexers to ensure that only a
 single request is in flight at a time. The multiplexer can abort requests by
 sending back the ``EBUSY`` error code indicating some other window is trying
 to access the clipboard.
 
-When the terminal sends an unsolicited paste event beause the user triggerred
+When the terminal sends an unsolicited paste event because the user triggered
 a paste and the 5522 mode is enabled, there will be no associated id. In this
 case, the multiplexer must forward the event to the currently active window.
