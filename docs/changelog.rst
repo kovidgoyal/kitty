@@ -192,6 +192,9 @@ Detailed list of changes
 
 - Fix :opt:`tab_bar_min_tabs` not respecting :opt:`tab_bar_filter` (:iss:`9278`)
 
+- macOS: Workaround for regression in Tahoe 26.2 that breaks :option:`--detach`
+  (:iss:`9288`)
+
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -388,7 +388,16 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
         exit(0);
     }
     opts.session = get_string_cli_val(cli_spec, "session");
-    if (get_bool_cli_val(cli_spec, "detach")) {
+#ifdef __APPLE__
+    char pid_str[32];
+    snprintf(pid_str, sizeof(pid_str), "%d", getpid());
+    const char *ekfd = getenv("KITTY_EXEC_FOR_DETACH");
+    bool is_exec_for_detach = ekfd && strcmp(getenv("KITTY_EXEC_FOR_DETACH"), pid_str) == 0;
+    if (is_exec_for_detach) unsetenv("KITTY_EXEC_FOR_DETACH");
+#else
+    bool is_exec_for_detach = false;
+#endif
+    if (get_bool_cli_val(cli_spec, "detach") && !is_exec_for_detach) {
         const char *detached_log = get_string_cli_val(cli_spec, "detached_log");
         if (being_tested) {
             printf("detach: true\n");
@@ -419,6 +428,18 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
             errno = 0; while (close(fds[0]) != 0 && errno == EINTR);
             setsid();
             errno = 0; while (close(fds[1]) != 0 && errno == EINTR);
+#ifdef __APPLE__
+            // fork() without exec() is unsafe on macOS. It used to work since
+            // in this case we havent yet loaded any major Cocoa libraries but
+            // in Tahoe 26.2 Apple broke that as well. So now just exec() on --detach
+            snprintf(pid_str, sizeof(pid_str), "%d", getpid());
+            setenv("KITTY_EXEC_FOR_DETACH", pid_str, 1);
+            char exe_path[PATH_MAX] = {0};
+            read_exe_path(exe_path, PATH_MAX);
+            execv(exe_path, cli_spec->original_argv);
+            fprintf(stderr, "Failed to execv() for --detach with exe_path: %s\n", exe_path);
+            exit(1);
+#endif
         }
     }
     unsetenv("KITTY_SI_DATA");
