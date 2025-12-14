@@ -127,7 +127,7 @@ receiving::
 
 The client must then wait for responses from the terminal emulator. It
 is an error to send anymore commands to the terminal until an ``OK``
-response is received from the terminal. The terminal wait for the user to accept
+response is received from the terminal. The terminal waits for the user to accept
 the request. If accepted, it sends::
 
     ← action=status id=someid status=OK

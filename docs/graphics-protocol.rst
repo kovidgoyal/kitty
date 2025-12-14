@@ -364,7 +364,7 @@ Here we tell the terminal emulator to read compressed image data from
 the specified shared memory object.
 
 The client can also specify a size and offset to tell the terminal emulator
-to only read a part of the specified file. The is done using the ``S`` and ``O``
+to only read a part of the specified file. This is done using the ``S`` and ``O``
 keys respectively. For example::
 
     <ESC>_Gs=10,v=2,t=s,S=80,O=10;<encoded /some-shared-memory-name><ESC>\

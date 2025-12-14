@@ -319,7 +319,7 @@ documentation for them.
 
 ``layout name``
     Set the layout for the current tab to the specified layout, including any
-    specified options, see :doc:`layouts` for the available alyouts and
+    specified options, see :doc:`layouts` for the available layouts and
     options.
 
 ``new_os_window``

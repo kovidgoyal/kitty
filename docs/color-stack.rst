@@ -103,7 +103,7 @@ This indicates that the foreground color is red and the cursor color is
 undefined (typically the cursor takes the color of the text under it and the
 text takes the color of the background).
 
-If the terminal does not know a field that a client send to it for a query it
+If the terminal does not know a field that a client sends to it for a query it
 must respond back with the ``field=?``, that is, it must send back a question
 mark as the value.
 

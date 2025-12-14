@@ -440,7 +440,7 @@ described by the rules below, in order of decreasing priority:
 #. *Wide emoji*: Parse `emoji-sequences.txt
    <https://www.unicode.org/Public/emoji/latest/emoji-sequences.txt>`__ from
    the Unicode standard. All :code:`Basic_Emoji` have width two unless they are
-   followed by :code:`FE0F` in the file. The leading copdepoints in all
+   followed by :code:`FE0F` in the file. The leading codepoints in all
    :code:`RGI_Emoji_Modifier_Sequence` and :code:`RGI_Emoji_Tag_Sequence` have width two.
    All code points in :code:`RGI_Emoji_Flag_Sequence` have width two.
 
