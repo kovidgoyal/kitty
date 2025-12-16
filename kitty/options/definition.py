@@ -1693,7 +1693,7 @@ opt(
     option_type='unit_float',
     ctype='float',
     long_text="""
-The opacity of the background. A number between zero and one, where one is
+The opacity of the terminal background color. A number between zero and one, where one is
 opaque and zero is fully transparent. This will only work if supported by the
 OS (for instance, when using a compositor under X11). Note that it only sets
 the background color's opacity in cells that have the same background color as
@@ -1707,7 +1707,10 @@ launch your editor. See also :opt:`transparent_background_colors`.
 Be aware that using a value less than 1.0 is a (possibly
 significant) performance hit. When using a low value for this setting, it is
 desirable that you set the :opt:`background` color to a color the matches the
-general color of the desktop background, for best text rendering.
+general color of the desktop background, for best text rendering. Note also,
+that this setting does not apply to the :opt:`background_image`, if any. The
+background image can itself have transparency via its alpha channel if desired,
+and that will be respected.
 
 If you want to dynamically change transparency of windows, set
 :opt:`dynamic_background_opacity` to :code:`yes` (this is off by default as it
