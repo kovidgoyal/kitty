@@ -385,6 +385,10 @@ many alternate icons available, click on an icon to visit its homepage:
    :target: https://github.com/igrmk/twiskers
    :width: 256
 
+.. image:: https://github.com/mtklr/kitty-nyan-icon/raw/main/kitty-nyan.svg
+   :target: https://github.com/mtklr/kitty-nyan-icon
+   :width: 256
+
 You can put :file:`kitty.app.icns` (macOS only) or :file:`kitty.app.png` in the
 :ref:`kitty configuration directory <confloc>`, and this icon will be applied
 automatically at startup. On X11 and Wayland, this will set the icon for kitty windows.
