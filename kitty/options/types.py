@@ -11,8 +11,8 @@ import kitty.fast_data_types
 from kitty.fonts import FontSpec
 import kitty.fonts
 from kitty.options.utils import (
-    AliasMap, KeyDefinition, KeyboardModeMap, MouseHideWait, MouseMap, MouseMapping, NotifyOnCmdFinish,
-    TabBarMarginHeight
+    AliasMap, EnableTabDrag, KeyDefinition, KeyboardModeMap, MouseHideWait, MouseMap, MouseMapping,
+    NotifyOnCmdFinish, TabBarMarginHeight
 )
 import kitty.options.utils
 from kitty.types import FloatEdges
@@ -350,6 +350,7 @@ option_names = (
     'dynamic_background_opacity',
     'editor',
     'enable_audio_bell',
+    'enable_tab_drag',
     'enabled_layouts',
     'env',
     'exe_search_path',
@@ -551,6 +552,7 @@ class Options:
     dynamic_background_opacity: bool = False
     editor: str = '.'
     enable_audio_bell: bool = True
+    enable_tab_drag: EnableTabDrag = EnableTabDrag(drag_threshold=5, detach_threshold=20)
     enabled_layouts: list[str] = ['fat', 'grid', 'horizontal', 'splits', 'stack', 'tall', 'vertical']
     file_transfer_confirmation_bypass: str = ''
     focus_follows_mouse: bool = False

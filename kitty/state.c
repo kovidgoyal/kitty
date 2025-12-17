@@ -736,6 +736,33 @@ update_ime_position_for_window(id_type window_id, bool force, int update_focus) 
     PyObject *key, *value; Py_ssize_t pos = 0; \
     while (PyDict_Next(d, &pos, &key, &value))
 
+BOOL_SET(tab_bar_drag_in_progress)
+
+PYWRAP1(request_drag_thumbnail_capture) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    global_state.drag_thumbnail_target_os_window = os_window_id;
+    Py_RETURN_NONE;
+}
+
+PYWRAP1(move_drag_thumbnail) {
+    double screen_x, screen_y;
+    PA("dd", &screen_x, &screen_y);
+#ifdef __APPLE__
+    cocoa_move_drag_thumbnail(screen_x, screen_y);
+#endif
+    Py_RETURN_NONE;
+}
+
+PYWRAP0(hide_drag_thumbnail) {
+#ifdef __APPLE__
+    cocoa_hide_drag_thumbnail();
+#endif
+    global_state.drag_thumbnail_visible = false;
+    global_state.drag_thumbnail_target_os_window = 0;
+    Py_RETURN_NONE;
+}
+
 PYWRAP1(update_ime_position_for_window) {
     id_type window_id;
     int force = 0;
@@ -1534,6 +1561,10 @@ static PyMethodDef module_methods[] = {
     MW(focus_os_window, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_VARARGS),
     MW(is_tab_bar_visible, METH_VARARGS),
+    MW(set_tab_bar_drag_in_progress, METH_O),
+    MW(request_drag_thumbnail_capture, METH_VARARGS),
+    MW(move_drag_thumbnail, METH_VARARGS),
+    MW(hide_drag_thumbnail, METH_NOARGS),
     MW(run_with_activation_token, METH_O),
     MW(change_background_opacity, METH_VARARGS),
     MW(background_opacity_of, METH_O),

@@ -12,6 +12,7 @@
 #include <Availability.h>
 #include <Carbon/Carbon.h>
 #include <Cocoa/Cocoa.h>
+#include <QuartzCore/QuartzCore.h>
 #include <UserNotifications/UserNotifications.h>
 #import <AudioToolbox/AudioServices.h>
 
@@ -1104,6 +1105,7 @@ cocoa_set_dock_icon(PyObject UNUSED *self, PyObject *args) {
 }
 
 static NSSound *beep_sound = nil;
+static NSPanel *drag_thumbnail_panel = nil;  // defined here so cleanup() can reference it
 
 static void
 cleanup(void) {
@@ -1113,6 +1115,8 @@ cleanup(void) {
     dockMenu = nil;
     if (beep_sound) [beep_sound release];
     beep_sound = nil;
+    if (drag_thumbnail_panel) [drag_thumbnail_panel release];
+    drag_thumbnail_panel = nil;
 
     drain_pending_notifications(NO);
     free(notification_queue.notifications);
@@ -1334,6 +1338,95 @@ cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
     [dockTile setContentView:percent < 0 ? nil : dock_content_view];
     [dockTile display];
     Py_RETURN_NONE;
+}
+// }}}
+
+// Drag thumbnail panel {{{
+
+static void
+position_drag_thumbnail_at(double screen_x, double screen_y) {
+    // screen_x, screen_y are cursor position in CG coordinates (top-left origin, y down)
+    // Convert to NS coordinates (bottom-left origin, y up) for setFrameOrigin
+    // TODO: Use CGGetDisplaysWithPoint to handle multi-display setups correctly
+    CGFloat display_height = CGDisplayBounds(CGMainDisplayID()).size.height;
+    NSSize panel_size = [drag_thumbnail_panel frame].size;
+    // Position panel with cursor at top-center, 10px below cursor
+    NSPoint origin = NSMakePoint(
+        screen_x - panel_size.width / 2.0,
+        display_height - screen_y - panel_size.height - 10);
+    [drag_thumbnail_panel setFrameOrigin:origin];
+}
+
+void
+cocoa_show_drag_thumbnail(const uint8_t *rgba_data, int width, int height, int thumb_width, int thumb_height, double screen_x, double screen_y) {
+    @autoreleasepool {
+
+    if (!rgba_data || width <= 0 || height <= 0 || thumb_width <= 0 || thumb_height <= 0) return;
+
+    // Create or resize the panel
+    if (!drag_thumbnail_panel) {
+        NSRect frame = NSMakeRect(0, 0, thumb_width, thumb_height);
+        drag_thumbnail_panel = [[NSPanel alloc] initWithContentRect:frame
+            styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel
+            backing:NSBackingStoreBuffered
+            defer:NO];
+        [drag_thumbnail_panel setOpaque:NO];
+        [drag_thumbnail_panel setBackgroundColor:[NSColor clearColor]];
+        [drag_thumbnail_panel setLevel:NSFloatingWindowLevel];
+        [drag_thumbnail_panel setIgnoresMouseEvents:YES];
+        [drag_thumbnail_panel setHasShadow:YES];
+        [drag_thumbnail_panel setAlphaValue:0.8];
+        [drag_thumbnail_panel setCollectionBehavior:
+            NSWindowCollectionBehaviorCanJoinAllSpaces |
+            NSWindowCollectionBehaviorFullScreenAuxiliary |
+            NSWindowCollectionBehaviorIgnoresCycle |
+            NSWindowCollectionBehaviorStationary];
+        NSView *cv = [drag_thumbnail_panel contentView];
+        [cv setWantsLayer:YES];
+        cv.layer.cornerRadius = 8.0;
+        cv.layer.masksToBounds = YES;
+    } else {
+        [drag_thumbnail_panel setContentSize:NSMakeSize(thumb_width, thumb_height)];
+    }
+
+    // Create CGImage from RGBA data (data is copied via CFDataCreate)
+    RAII_CoreFoundation(CGColorSpaceRef, colorSpace, CGColorSpaceCreateDeviceRGB());
+    if (!colorSpace) return;
+    RAII_CoreFoundation(CFDataRef, cfdata, CFDataCreate(NULL, rgba_data, (CFIndex)((size_t)width * (size_t)height * 4)));
+    if (!cfdata) return;
+    RAII_CoreFoundation(CGDataProviderRef, provider, CGDataProviderCreateWithCFData(cfdata));
+    if (!provider) return;
+    RAII_CoreFoundation(CGImageRef, image, CGImageCreate(
+        width, height, 8, 32, width * 4,
+        colorSpace,
+        kCGBitmapByteOrderDefault | kCGImageAlphaNoneSkipLast,
+        provider, NULL, true, kCGRenderingIntentDefault));
+    if (!image) return;
+
+    // Set image on the content view's backing layer
+    CALayer *layer = [[drag_thumbnail_panel contentView] layer];
+    layer.contents = (__bridge id)image;
+    layer.contentsGravity = kCAGravityResize;
+    layer.contentsScale = [[NSScreen mainScreen] backingScaleFactor];
+
+    // Position and show
+    position_drag_thumbnail_at(screen_x, screen_y);
+    [drag_thumbnail_panel orderFrontRegardless];
+
+    } // autoreleasepool
+}
+
+void
+cocoa_move_drag_thumbnail(double screen_x, double screen_y) {
+    if (!drag_thumbnail_panel || ![drag_thumbnail_panel isVisible]) return;
+    position_drag_thumbnail_at(screen_x, screen_y);
+}
+
+void
+cocoa_hide_drag_thumbnail(void) {
+    if (drag_thumbnail_panel) {
+        [drag_thumbnail_panel orderOut:nil];
+    }
 }
 // }}}
 

@@ -1367,10 +1367,10 @@ class Boss:
             run_update_check(get_options().update_check_interval * 60 * 60)
             self.update_check_started = True
 
-    def handle_click_on_tab(self, os_window_id: int, x: int, button: int, modifiers: int, action: int) -> None:
+    def handle_click_on_tab(self, os_window_id: int, x: int, y: int, button: int, modifiers: int, action: int) -> None:
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
-            tm.handle_click_on_tab(x, button, modifiers, action)
+            tm.handle_click_on_tab(x, y, button, modifiers, action)
 
     def on_window_resize(self, os_window_id: int, w: int, h: int, dpi_changed: bool) -> None:
         if dpi_changed:

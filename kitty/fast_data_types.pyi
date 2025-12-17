@@ -1075,6 +1075,22 @@ def mark_tab_bar_dirty(os_window_id: int, should_be_shown: bool) -> None:
 def is_tab_bar_visible(os_window_id: int) -> bool: ...
 
 
+def set_tab_bar_drag_in_progress(in_progress: bool) -> None:
+    pass
+
+
+def request_drag_thumbnail_capture(os_window_id: int) -> None:
+    pass
+
+
+def move_drag_thumbnail(screen_x: float, screen_y: float) -> None:
+    pass
+
+
+def hide_drag_thumbnail() -> None:
+    pass
+
+
 def detach_window(os_window_id: int, tab_id: int, window_id: int) -> None:
     pass
 

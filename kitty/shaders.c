@@ -1434,6 +1434,75 @@ setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_wind
 }
 // }}}
 
+// Drag thumbnail capture {{{
+#ifdef __APPLE__
+void
+capture_framebuffer_for_drag(OSWindow *os_window) {
+    int vw = os_window->viewport_width;
+    int vh = os_window->viewport_height;
+    if (vw <= 0 || vh <= 0) return;
+
+    // Read the current framebuffer (before swap)
+    size_t src_stride = (size_t)vw * 4;
+    uint8_t *src_buf = malloc(src_stride * (size_t)vh);
+    if (!src_buf) return;
+
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, vw, vh, GL_RGBA, GL_UNSIGNED_BYTE, src_buf);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+
+    // Calculate thumbnail size (~35% scale, max width 640px)
+    float scale = 0.35f;
+    int thumb_w = (int)((float)vw * scale + 0.5f);
+    int thumb_h = (int)((float)vh * scale + 0.5f);
+    if (thumb_w > 640) {
+        scale = 640.0f / (float)vw;
+        thumb_w = 640;
+        thumb_h = (int)((float)vh * scale + 0.5f);
+    }
+    if (thumb_w < 1) thumb_w = 1;
+    if (thumb_h < 1) thumb_h = 1;
+
+    // Downsample with vertical flip (OpenGL origin is bottom-left)
+    size_t dst_stride = (size_t)thumb_w * 4;
+    uint8_t *dst_buf = malloc(dst_stride * (size_t)thumb_h);
+    if (!dst_buf) { free(src_buf); return; }
+
+    float x_ratio = (float)vw / (float)thumb_w;
+    float y_ratio = (float)vh / (float)thumb_h;
+
+    for (int dy = 0; dy < thumb_h; dy++) {
+        // Vertical flip: dst row 0 = top of image = src row (vh-1)
+        int src_y = (int)((float)(thumb_h - 1 - dy) * y_ratio);
+        if (src_y >= vh) src_y = vh - 1;
+        const uint8_t *src_row = src_buf + (size_t)src_y * src_stride;
+        uint8_t *dst_row = dst_buf + (size_t)dy * dst_stride;
+        for (int dx = 0; dx < thumb_w; dx++) {
+            int src_x = (int)((float)dx * x_ratio);
+            if (src_x >= vw) src_x = vw - 1;
+            memcpy(dst_row + dx * 4, src_row + src_x * 4, 4);
+        }
+    }
+    free(src_buf);
+
+    // Calculate cursor screen position (CG coordinates: top-left origin)
+    int win_x, win_y;
+    get_os_window_pos(os_window, &win_x, &win_y);
+    int win_w, win_h, fb_w, fb_h;
+    get_os_window_size(os_window, &win_w, &win_h, &fb_w, &fb_h);
+
+    double sx = (fb_w > 0) ? (double)win_w / (double)fb_w : 1.0;
+    double sy = (fb_h > 0) ? (double)win_h / (double)fb_h : 1.0;
+    double screen_x = (double)win_x + os_window->mouse_x * sx;
+    double screen_y = (double)win_y + os_window->mouse_y * sy;
+
+    cocoa_show_drag_thumbnail(dst_buf, thumb_w, thumb_h, thumb_w, thumb_h, screen_x, screen_y);
+    global_state.drag_thumbnail_visible = true;
+    free(dst_buf);
+}
+#endif
+// }}}
+
 // Python API {{{
 
 static PyObject*

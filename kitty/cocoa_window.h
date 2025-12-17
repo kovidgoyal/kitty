@@ -66,3 +66,6 @@ extern uint8_t* render_single_ascii_char_as_mask(const char ch, size_t *result_w
 void get_cocoa_key_equivalent(uint32_t, int, char *key, size_t key_sz, int*);
 void set_cocoa_pending_action(CocoaPendingAction action, const char*);
 void cocoa_report_live_notifications(const char* ident);
+void cocoa_show_drag_thumbnail(const uint8_t *rgba_data, int width, int height, int thumb_width, int thumb_height, double screen_x, double screen_y);
+void cocoa_move_drag_thumbnail(double screen_x, double screen_y);
+void cocoa_hide_drag_thumbnail(void);
