@@ -114,6 +114,9 @@ typedef struct Options {
     struct {
         double outer, inner;
     } tab_bar_margin_height;
+    bool enable_tab_drag;
+    int tab_drag_threshold;
+    bool enable_tab_drag_detach;
     long macos_menubar_title_max_length;
     int macos_colorspace;
     struct {
@@ -365,6 +368,7 @@ typedef struct GlobalState {
     struct { double x, y; } default_dpi;
     id_type active_drag_in_window, tracked_drag_in_window, mouse_hover_in_window;
     int active_drag_button, tracked_drag_button;
+    bool tab_bar_drag_in_progress;
     CloseRequest quit_request;
     bool redirect_mouse_handling;
     WindowLogoTable *all_window_logos;

@@ -736,6 +736,8 @@ update_ime_position_for_window(id_type window_id, bool force, int update_focus) 
     PyObject *key, *value; Py_ssize_t pos = 0; \
     while (PyDict_Next(d, &pos, &key, &value))
 
+BOOL_SET(tab_bar_drag_in_progress)
+
 PYWRAP1(update_ime_position_for_window) {
     id_type window_id;
     int force = 0;
@@ -1521,6 +1523,7 @@ static PyMethodDef module_methods[] = {
     MW(set_os_window_chrome, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_VARARGS),
+    MW(set_tab_bar_drag_in_progress, METH_O),
     MW(run_with_activation_token, METH_O),
     MW(change_background_opacity, METH_VARARGS),
     MW(background_opacity_of, METH_O),

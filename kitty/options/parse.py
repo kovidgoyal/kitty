@@ -983,6 +983,12 @@ class Parser:
     def enable_audio_bell(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['enable_audio_bell'] = to_bool(val)
 
+    def enable_tab_drag(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['enable_tab_drag'] = to_bool(val)
+
+    def enable_tab_drag_detach(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['enable_tab_drag_detach'] = to_bool(val)
+
     def enabled_layouts(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['enabled_layouts'] = to_layout_names(val)
 
@@ -1340,6 +1346,9 @@ class Parser:
         ans["tab_bar_style"] = val
 
     choices_for_tab_bar_style = frozenset(('fade', 'hidden', 'powerline', 'separator', 'slant', 'custom'))
+
+    def tab_drag_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['tab_drag_threshold'] = positive_int(val)
 
     def tab_fade(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_fade'] = tab_fade(val)

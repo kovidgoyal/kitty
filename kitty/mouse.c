@@ -867,8 +867,11 @@ HANDLER(handle_event) {
 static void
 handle_tab_bar_mouse(int button, int modifiers, int action) {
     send_mouse_leave_event_if_needed(0, modifiers);
-    if (button > -1) {  // dont report motion events, as they are expensive and useless
-        call_boss(handle_click_on_tab, "Kdiii", global_state.callback_os_window->id, global_state.callback_os_window->mouse_x, button, modifiers, action);
+    // Report motion events when tab bar drag is in progress
+    if (button > -1 || global_state.tab_bar_drag_in_progress) {
+        call_boss(handle_click_on_tab, "Kddiii", global_state.callback_os_window->id,
+                  global_state.callback_os_window->mouse_x, global_state.callback_os_window->mouse_y,
+                  button, modifiers, action);
     }
 }
 
@@ -1141,7 +1144,7 @@ mouse_event(const int button, int modifiers, int action) {
         }
     }
 
-    if (in_tab_bar) {
+    if (in_tab_bar || global_state.tab_bar_drag_in_progress) {
         mouse_cursor_shape = POINTER_POINTER;
         handle_tab_bar_mouse(button, modifiers, action);
         debug("handled by tab bar\n");

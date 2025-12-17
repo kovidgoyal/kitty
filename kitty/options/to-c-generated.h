@@ -1007,6 +1007,45 @@ convert_from_opts_tab_bar_margin_color(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_enable_tab_drag(PyObject *val, Options *opts) {
+    opts->enable_tab_drag = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_enable_tab_drag(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "enable_tab_drag");
+    if (ret == NULL) return;
+    convert_from_python_enable_tab_drag(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_tab_drag_threshold(PyObject *val, Options *opts) {
+    opts->tab_drag_threshold = PyLong_AsLong(val);
+}
+
+static void
+convert_from_opts_tab_drag_threshold(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "tab_drag_threshold");
+    if (ret == NULL) return;
+    convert_from_python_tab_drag_threshold(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_enable_tab_drag_detach(PyObject *val, Options *opts) {
+    opts->enable_tab_drag_detach = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_enable_tab_drag_detach(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "enable_tab_drag_detach");
+    if (ret == NULL) return;
+    convert_from_python_enable_tab_drag_detach(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_foreground(PyObject *val, Options *opts) {
     opts->foreground = color_as_int(val);
 }
@@ -1499,6 +1538,12 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_tab_bar_background(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_tab_bar_margin_color(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_enable_tab_drag(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_tab_drag_threshold(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_enable_tab_drag_detach(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_foreground(py_opts, opts);
     if (PyErr_Occurred()) return false;
