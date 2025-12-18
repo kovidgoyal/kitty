@@ -971,13 +971,16 @@ int _glfwPlatformInit(bool *supports_window_occlusion)
     if (_glfw.hints.init.ns.chdir)
         changeToResourcesDirectory();
 
-    NSDictionary* defaults = @{
+    [[NSUserDefaults standardUserDefaults] registerDefaults:@{
         // Press and Hold prevents some keys from emitting repeated characters
         @"ApplePressAndHoldEnabled": @NO,
         // Dont generate openFile events from command line arguments
         @"NSTreatUnknownArgumentsAsOpen": @"NO",
-    };
-    [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
+        // This Tahoe nonsense causes slowdowns in some situations, see for example:
+        // https://issues.chromium.org/issues/452372350 it doesnt affect
+        // autofill via Edit->Autofill
+        @"NSAutoFillHeuristicControllerEnabled" : @NO,
+    }];
 
     NSUserDefaults *apple_settings = [[NSUserDefaults alloc] initWithSuiteName:@"com.apple.symbolichotkeys"];
     [apple_settings addObserver:_glfw.ns.helper
