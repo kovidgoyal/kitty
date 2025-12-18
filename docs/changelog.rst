@@ -195,6 +195,9 @@ Detailed list of changes
 - macOS: Workaround for regression in Tahoe 26.2 that breaks :option:`kitty --detach`
   (:iss:`9288`)
 
+- macOS: Workaround for yet another Tahoe regression causing macOS to start an
+  AutoFill helper process and not shut it down on application exit (:iss:`9299`)
+
 0.44.0 [2025-11-03]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
