@@ -66,6 +66,7 @@ option_names = (
     'bell_path',
     'bold_font',
     'bold_italic_font',
+    'border_ring_behavior',
     'box_drawing_scale',
     'clear_all_mouse_actions',
     'clear_all_shortcuts',
@@ -481,6 +482,9 @@ option_names = (
     'undercurl_style',
     'underline_exclusion',
     'underline_hyperlinks',
+    'unfocused_active_border_color',
+    'unfocused_border_brighten_factor',
+    'unfocused_inactive_border_color',
     'update_check_interval',
     'url_color',
     'url_excluded_characters',
@@ -539,6 +543,7 @@ class Options:
     bell_path: str | None = None
     bold_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
     bold_italic_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
+    border_ring_behavior: bool = False
     box_drawing_scale: tuple[float, float, float, float] = (0.001, 1.0, 1.5, 2.0)
     clear_all_mouse_actions: bool = False
     clear_all_shortcuts: bool = False
@@ -686,6 +691,9 @@ class Options:
     undercurl_style: choices_for_undercurl_style = 'thin-sparse'
     underline_exclusion: tuple[float, typing.Literal['', 'px', 'pt']] = (1.0, '')
     underline_hyperlinks: choices_for_underline_hyperlinks = 'hover'
+    unfocused_active_border_color: kitty.fast_data_types.Color | None = None
+    unfocused_border_brighten_factor: float = 0.15
+    unfocused_inactive_border_color: kitty.fast_data_types.Color | None = None
     update_check_interval: float = 24.0
     url_color: Color = Color(0, 135, 189)
     url_excluded_characters: str = ''

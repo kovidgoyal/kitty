@@ -1911,10 +1911,15 @@ class Boss:
                 if is_macos and focused:
                     cocoa_set_menubar_title(w.title or '')
             tm.mark_tab_bar_dirty()
-            # Redraw borders when focus changes if draw_window_borders_for_single_window is enabled
-            # and there's only a single window (to show inactive border when OS window loses focus)
-            opts = get_options()
-            if opts.draw_window_borders_for_single_window and (tab := tm.active_tab) is not None and not tab.windows.has_more_than_one_visible_group:
+
+        # Ring border: redraw borders on ALL OS windows when focus changes
+        opts = get_options()
+        if opts.border_ring_behavior:
+            for other_tm in self.os_window_map.values():
+                if (tab := other_tm.active_tab) is not None:
+                    tab.relayout_borders()
+        elif opts.draw_window_borders_for_single_window and tm is not None:
+            if (tab := tm.active_tab) is not None and not tab.windows.has_more_than_one_visible_group:
                 tab.relayout_borders()
 
     def on_activity_since_last_focus(self, window: Window) -> None:

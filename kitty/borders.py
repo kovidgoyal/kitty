@@ -6,7 +6,7 @@ from enum import IntFlag
 from functools import partial
 from typing import NamedTuple
 
-from .fast_data_types import BORDERS_PROGRAM, current_focused_os_window_id, get_options, init_borders_program, set_borders_rects
+from .fast_data_types import BORDERS_PROGRAM, current_focused_os_window_id, get_options, init_borders_program, last_focused_os_window_id, num_os_windows, set_borders_rects
 from .shaders import program_for
 from .typing_compat import LayoutType
 from .utils import color_as_int
@@ -15,7 +15,7 @@ from .window_list import WindowGroup, WindowList
 
 class BorderColor(IntFlag):
     # These are indices into the array of colors in the border vertex shader
-    default_bg, active, inactive, window_bg, bell, tab_bar_bg, tab_bar_margin_color, tab_bar_left_edge_color, tab_bar_right_edge_color = range(9)
+    default_bg, active, inactive, window_bg, bell, tab_bar_bg, tab_bar_margin_color, tab_bar_left_edge_color, tab_bar_right_edge_color, unfocused_active, unfocused_inactive = range(11)
 
 
 class Border(NamedTuple):
@@ -108,21 +108,38 @@ class Borders:
         else:
             draw_minimal_borders = opts.draw_minimal_borders and max(opts.window_margin_width) < 1
 
-        # For single window with the option enabled, check OS window focus state
-        # When unfocused, the border should appear inactive
-        os_window_focused = True
-        if opts.draw_window_borders_for_single_window and num_visible_groups == 1:
-            os_window_focused = current_focused_os_window_id() == self.os_window_id
+        # Determine OS window focus state for ring behavior
+        current_focused = current_focused_os_window_id()
+        os_window_focused = (current_focused == self.os_window_id)
+        is_ring_holder = False
+
+        if opts.border_ring_behavior:
+            if current_focused == 0 and num_os_windows() > 1:
+                # No kitty focused, multiple windows - check if we're the ring holder
+                is_ring_holder = (last_focused_os_window_id() == self.os_window_id)
+        elif opts.draw_window_borders_for_single_window and num_visible_groups == 1:
+            # Legacy single-window behavior
+            pass  # os_window_focused already set correctly
 
         if draw_borders and not draw_minimal_borders:
             for i, wg in enumerate(groups):
                 window_bg = color_as_int(wg.default_bg)
                 window_bg = (window_bg << 8) | BorderColor.window_bg
                 # Draw the border rectangles
-                if wg is active_group and draw_active_borders and os_window_focused:
-                    color = BorderColor.active
+                if wg is active_group and draw_active_borders:
+                    if os_window_focused:
+                        color = BorderColor.active
+                    elif is_ring_holder:
+                        color = BorderColor.unfocused_active
+                    else:
+                        color = BorderColor.unfocused_inactive
                 else:
-                    color = BorderColor.bell if wg.needs_attention else BorderColor.inactive
+                    if wg.needs_attention:
+                        color = BorderColor.bell
+                    elif os_window_focused:
+                        color = BorderColor.inactive
+                    else:
+                        color = BorderColor.unfocused_inactive
                 add_borders(rects, color, wg)
 
         if draw_minimal_borders:

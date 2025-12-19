@@ -73,6 +73,9 @@ typedef struct Options {
     char_type *select_by_word_characters_forward;
     color_type url_color, background, foreground, active_border_color, inactive_border_color, bell_border_color, tab_bar_background, tab_bar_margin_color,
         window_title_bar_active_foreground, window_title_bar_active_background, window_title_bar_inactive_foreground, window_title_bar_inactive_background;
+    bool border_ring_behavior;
+    color_type unfocused_active_border_color, unfocused_inactive_border_color;
+    float unfocused_border_brighten_factor;
     monotonic_t repaint_delay, input_delay;
     bool focus_follows_mouse;
     unsigned int hide_window_decorations;

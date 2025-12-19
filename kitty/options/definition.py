@@ -1387,6 +1387,42 @@ opt('bell_border_color', '#ff5a00',
     long_text='The color for the border of inactive windows in which a bell has occurred.'
     )
 
+opt('border_ring_behavior', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+When enabled, the last-focused kitty OS window retains an active border on its
+active pane even when focus moves to a non-kitty application, but only when
+multiple kitty OS windows exist. With a single OS window, borders go inactive
+when losing focus.
+'''
+)
+
+opt('unfocused_active_border_color', 'none',
+    option_type='to_color_or_none', ctype='color_or_none_as_int',
+    long_text='''
+Border color for the active pane when the OS window does NOT have desktop focus.
+Used with border_ring_behavior. If set to "none", falls back to brightening the
+background color by unfocused_border_brighten_factor.
+'''
+)
+
+opt('unfocused_inactive_border_color', 'none',
+    option_type='to_color_or_none', ctype='color_or_none_as_int',
+    long_text='''
+Border color for inactive panes when the OS window does NOT have desktop focus.
+Used with border_ring_behavior. If set to "none", falls back to brightening the
+background color by unfocused_border_brighten_factor.
+'''
+)
+
+opt('unfocused_border_brighten_factor', '0.15',
+    option_type='unit_float', ctype='float',
+    long_text='''
+When unfocused border colors are "none", compute the color by brightening the
+background color by this factor (0.0-1.0). 0.0 = same as background, 1.0 = white.
+'''
+)
+
 opt('inactive_text_alpha', '1.0',
     option_type='unit_float', ctype='float',
     long_text='''

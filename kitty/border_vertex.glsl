@@ -9,7 +9,9 @@
 #define TAB_BAR_MARGIN_COLOR 6
 #define TAB_BAR_EDGE_LEFT_COLOR 7
 #define TAB_BAR_EDGE_RIGHT_COLOR 8
-uniform uint colors[9];
+#define UNFOCUSED_ACTIVE_BORDER_COLOR 9
+#define UNFOCUSED_INACTIVE_BORDER_COLOR 10
+uniform uint colors[11];
 uniform float background_opacity;
 uniform float gamma_lut[256];
 

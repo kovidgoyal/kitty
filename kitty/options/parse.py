@@ -114,6 +114,9 @@ class Parser:
     def bold_italic_font(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['bold_italic_font'] = parse_font_spec(val)
 
+    def border_ring_behavior(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['border_ring_behavior'] = to_bool(val)
+
     def box_drawing_scale(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['box_drawing_scale'] = box_drawing_scale(val)
 
@@ -1447,6 +1450,15 @@ class Parser:
         ans["underline_hyperlinks"] = val
 
     choices_for_underline_hyperlinks = frozenset(('hover', 'always', 'never'))
+
+    def unfocused_active_border_color(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['unfocused_active_border_color'] = to_color_or_none(val)
+
+    def unfocused_border_brighten_factor(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['unfocused_border_brighten_factor'] = unit_float(val)
+
+    def unfocused_inactive_border_color(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['unfocused_inactive_border_color'] = to_color_or_none(val)
 
     def update_check_interval(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['update_check_interval'] = float(val)

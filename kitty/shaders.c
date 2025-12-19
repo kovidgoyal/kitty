@@ -1467,6 +1467,17 @@ create_border_vao(void) {
     return vao_idx;
 }
 
+static color_type
+brighten_color(color_type color, float factor) {
+    uint8_t r = (color >> 16) & 0xFF;
+    uint8_t g = (color >> 8) & 0xFF;
+    uint8_t b = color & 0xFF;
+    r = (uint8_t)(r + (255 - r) * factor);
+    g = (uint8_t)(g + (255 - g) * factor);
+    b = (uint8_t)(b + (255 - b) * factor);
+    return (r << 16) | (g << 8) | b;
+}
+
 void
 draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
     float background_opacity = effective_os_window_alpha(w);
@@ -1481,10 +1492,22 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         unmap_vao_buffer(vao_idx, 0);
     }
     color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
-    GLuint colors[9] = {
+
+    // Compute unfocused colors with brighten fallback
+    color_type unfocused_active = OPT(unfocused_active_border_color);
+    if (unfocused_active == 0) {
+        unfocused_active = brighten_color(default_bg, OPT(unfocused_border_brighten_factor));
+    }
+    color_type unfocused_inactive = OPT(unfocused_inactive_border_color);
+    if (unfocused_inactive == 0) {
+        unfocused_inactive = brighten_color(default_bg, OPT(unfocused_border_brighten_factor));
+    }
+
+    GLuint colors[11] = {
         default_bg, OPT(active_border_color), OPT(inactive_border_color), 0,
         OPT(bell_border_color), OPT(tab_bar_background), OPT(tab_bar_margin_color),
-        w->tab_bar_edge_color.left, w->tab_bar_edge_color.right
+        w->tab_bar_edge_color.left, w->tab_bar_edge_color.right,
+        unfocused_active, unfocused_inactive
     };
     glUniform1uiv(border_program_layout.uniforms.colors, arraysz(colors), colors);
     glUniform1f(border_program_layout.uniforms.background_opacity, background_opacity);

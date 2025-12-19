@@ -890,6 +890,58 @@ convert_from_opts_bell_border_color(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_border_ring_behavior(PyObject *val, Options *opts) {
+    opts->border_ring_behavior = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_border_ring_behavior(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "border_ring_behavior");
+    if (ret == NULL) return;
+    convert_from_python_border_ring_behavior(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_unfocused_active_border_color(PyObject *val, Options *opts) {
+    opts->unfocused_active_border_color = color_or_none_as_int(val);
+}
+
+static void
+convert_from_opts_unfocused_active_border_color(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "unfocused_active_border_color");
+    if (ret == NULL) return;
+    convert_from_python_unfocused_active_border_color(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_unfocused_inactive_border_color(PyObject *val, Options *opts) {
+    opts->unfocused_inactive_border_color = color_or_none_as_int(val);
+}
+
+static void
+convert_from_opts_unfocused_inactive_border_color(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "unfocused_inactive_border_color");
+    if (ret == NULL) return;
+    convert_from_python_unfocused_inactive_border_color(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_unfocused_border_brighten_factor(PyObject *val, Options *opts) {
+    opts->unfocused_border_brighten_factor = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_unfocused_border_brighten_factor(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "unfocused_border_brighten_factor");
+    if (ret == NULL) return;
+    convert_from_python_unfocused_border_brighten_factor(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_inactive_text_alpha(PyObject *val, Options *opts) {
     opts->inactive_text_alpha = PyFloat_AsFloat(val);
 }
@@ -1598,6 +1650,14 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_inactive_border_color(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_bell_border_color(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_border_ring_behavior(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_unfocused_active_border_color(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_unfocused_inactive_border_color(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_unfocused_border_brighten_factor(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_inactive_text_alpha(py_opts, opts);
     if (PyErr_Occurred()) return false;

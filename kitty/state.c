@@ -801,6 +801,10 @@ PYWRAP0(current_focused_os_window_id) {
     return PyLong_FromUnsignedLongLong(current_focused_os_window_id());
 }
 
+PYWRAP0(num_os_windows) {
+    return PyLong_FromUnsignedLongLong(global_state.num_os_windows);
+}
+
 
 PYWRAP1(handle_for_window_id) {
     id_type os_window_id;
@@ -1622,6 +1626,7 @@ static PyMethodDef module_methods[] = {
     MW(next_window_id, METH_NOARGS),
     MW(last_focused_os_window_id, METH_NOARGS),
     MW(current_focused_os_window_id, METH_NOARGS),
+    MW(num_os_windows, METH_NOARGS),
     MW(set_options, METH_VARARGS),
     MW(get_options, METH_NOARGS),
     MW(click_mouse_url, METH_VARARGS),
