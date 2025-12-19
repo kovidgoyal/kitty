@@ -513,6 +513,18 @@ class Boss:
                         'background_opacity': bo,
                     }
 
+    def get_mru_tabs_all_os_windows(self) -> list[dict[str, Any]]:
+        """Get MRU tabs across all OS windows, sorted by most recent."""
+        all_tabs: list[dict[str, Any]] = []
+        for os_window_id, tm in self.os_window_map.items():
+            for tab_data in tm.get_mru_tabs():
+                # Add os_window_id for context
+                tab_data['os_window_id'] = os_window_id
+                all_tabs.append(tab_data)
+        # Sort all tabs across all OS windows by most recent
+        all_tabs.sort(key=lambda x: x['last_visited_at'], reverse=True)
+        return all_tabs
+
     def serialize_state_as_session(self, session_path: str = '', ser_opts: SaveAsSessionOptions | None = None) -> Iterator[str]:
         if ser_opts is None:
             ser_opts = default_save_as_session_opts()

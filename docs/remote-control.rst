@@ -89,6 +89,20 @@ process id (PID) and command-line of the process running in the window. You can
 use this information with :option:`kitten @ focus-window --match` to control
 individual windows.
 
+If you want a more lightweight way to get just a list of tabs sorted by when
+they were last visited (most recently used first), you can use::
+
+   kitten @ mru
+
+This returns a simple JSON array with just the tab ID, last visited timestamp,
+and OS window ID for each tab. By default it only returns tabs from the active
+OS window, but you can get tabs from all windows with::
+
+   kitten @ mru --all-os-windows
+
+This is useful for scripts that need to quickly determine tab usage patterns or
+implement features like "switch to most recently used tab".
+
 As you can see, it is very easy to control |kitty| using the ``kitten @``
 messaging system. This tutorial touches only the surface of what is possible.
 See ``kitten @ --help`` for more details.

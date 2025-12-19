@@ -137,6 +137,9 @@ Detailed list of changes
 0.45.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Add a new remote control command :ref:`at-mru` to list tabs in most recently used (MRU) order.
+  This provides external tools with an efficient way to query tab access history.
+
 - Add support for the `paste events protocol <https://rockorager.dev/misc/bracketed-paste-mime/>`__ (:iss:`9183`)
 
 - icat kitten: Add support for animated PNG and animated WebP, netPBM images, ICC color profiles and CCIP color space metadata to the builtin engine

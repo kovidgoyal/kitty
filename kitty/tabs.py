@@ -128,6 +128,7 @@ class Tab:  # {{{
     has_indeterminate_progress: bool = False
     last_focused_window_with_progress_id: int = 0
     allow_relayouts: bool = True
+    last_visited_at: float = 0.0
 
     def __init__(
         self,
@@ -144,6 +145,7 @@ class Tab:  # {{{
         self.id: int = add_tab(self.os_window_id)
         if not self.id:
             raise Exception(f'No OS window with id {self.os_window_id} found, or tab counter has wrapped')
+        self.last_visited_at = monotonic()
         self.args = tab_manager.args
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or get_options().enabled_layouts]
@@ -1122,6 +1124,8 @@ class TabManager:  # {{{
             new_active_tab: Tab | None = self.tabs[self._active_tab_idx]
         except Exception:
             new_active_tab = None
+        if new_active_tab is not None:
+            new_active_tab.last_visited_at = monotonic()
         if old_active_tab is not new_active_tab:
             if old_active_tab is not None:
                 w = old_active_tab.active_window
@@ -1321,6 +1325,16 @@ class TabManager:  # {{{
                         'groups': tab.list_groups(),
                         'active_window_history': list(tab.windows.active_window_history),
                     }
+
+    def get_mru_tabs(self) -> list[dict[str, Any]]:
+        """Return tabs sorted by most recently used (MRU) order."""
+        tabs_with_timestamps = [
+            {'id': tab.id, 'last_visited_at': tab.last_visited_at}
+            for tab in self.tabs
+        ]
+        # Sort by last_visited_at in descending order (most recent first)
+        tabs_with_timestamps.sort(key=lambda x: x['last_visited_at'], reverse=True)
+        return tabs_with_timestamps
 
     def serialize_state(self) -> dict[str, Any]:
         return {
