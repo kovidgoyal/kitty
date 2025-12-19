@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from kitty.cli_stub import SetBackgroundImageRCOptions as CLIOptions
 
 
-layout_choices = 'tiled,scaled,mirror-tiled,clamped,configured'
+layout_choices = 'tiled,scaled,mirror-tiled,clamped,centered,cscaled,configured'
 
 
 class SetBackgroundImage(RemoteCommand):
