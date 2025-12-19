@@ -178,6 +178,7 @@ class OSWindowDict(TypedDict):
     is_active: bool
     last_focused: bool
     tabs: list[TabDict]
+    active_tab_history: tuple[int, ...]
     wm_class: str
     wm_name: str
     background_opacity: float
