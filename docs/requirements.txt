@@ -1,4 +1,5 @@
-sphinx
+# sphinx-inline-tabs breaks with sphinx >= 9
+sphinx <= 8.2.3
 furo
 sphinx-copybutton
 sphinxext-opengraph
