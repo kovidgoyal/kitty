@@ -1666,7 +1666,7 @@ dbus_set_notification_callback(PyObject *self UNUSED, PyObject *callback) {
 #define send_dbus_notification_event_to_python(event_type, a, b) { \
     if (dbus_notification_callback) { \
         const char call_args_fmt[] = {'s', \
-            _Generic((a), unsigned long : 'k', unsigned long long : 'K'), _Generic((b), unsigned long : 'k', const char* : 's') }; \
+            _Generic((a), unsigned long : 'k', unsigned long long : 'K'), _Generic((b), unsigned long : 'k', const char* : 's'), '\0' }; \
         RAII_PyObject(ret, PyObject_CallFunction(dbus_notification_callback, call_args_fmt, event_type, a, b)); \
         if (!ret) PyErr_Print(); \
     } \
