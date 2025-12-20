@@ -268,6 +268,8 @@ Detailed list of changes
   activation history as this is generally more important. In the future may
   have it save tab history as well (:pull:`9163`)
 
+- The :sc:`reset_terminal` shortcut to reset the terminal now also resets termios state
+
 0.43.1 [2025-10-01]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -326,6 +328,9 @@ Detailed list of changes
 - Fix :opt:`background_opacity` being non-linear especially with light color themes.
   Note that this might require you to adjust the value of this setting to get
   back your current look. (:iss:`8869`)
+
+- **backward incompatibility**: :opt:`background_opacity` no longer applies to
+  :opt:`background_image` instead add an alpha channel to the image itself
 
 - Add support for blinking text. Text marked as blinking now blinks in exact
   rhythm with the cursor. The blinking animation and max duration are
