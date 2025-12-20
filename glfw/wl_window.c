@@ -1016,6 +1016,8 @@ get_layer_shell_layer(const _GLFWwindow *window) {
 static void
 layer_set_properties(const _GLFWwindow *window, bool during_creation, uint32_t width, uint32_t height) {
 #define config window->wl.layer_shell.config
+#define surface window->wl.layer_shell.zwlr_layer_surface_v1
+    if (!surface) return;  // cannot set properties till a surface is created
     enum zwlr_layer_surface_v1_anchor which_anchor = ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM | ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT | ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT;
     int exclusive_zone = config.requested_exclusive_zone;
     enum zwlr_layer_surface_v1_keyboard_interactivity focus_policy = ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE;
@@ -1064,7 +1066,6 @@ layer_set_properties(const _GLFWwindow *window, bool during_creation, uint32_t w
                     break;
             }
     }
-#define surface window->wl.layer_shell.zwlr_layer_surface_v1
     zwlr_layer_surface_v1_set_size(surface, panel_width, panel_height);
     debug("Compositor will be informed that layer size: %dx%d viewport: %dx%d at next surface commit\n", panel_width, panel_height, width, height);
     zwlr_layer_surface_v1_set_anchor(surface, which_anchor);
