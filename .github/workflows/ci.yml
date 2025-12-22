@@ -96,7 +96,7 @@ jobs:
               cache: false
 
           - name: Cache Go build artifacts separately
-            uses: actions/cache@v4
+            uses: actions/cache@v5
             with:
               path: |
                 ~/.cache/go-build
