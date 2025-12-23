@@ -137,6 +137,8 @@ Detailed list of changes
 0.45.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new :doc:`kitten to select files at the speed of light </kittens/choos-files>` with a keyboard firs tinterface and support for content previews of text file with syntax highlighting, images, videos, e-books and more (:iss:`9263`)
+
 - Add support for the `paste events protocol <https://rockorager.dev/misc/bracketed-paste-mime/>`__ (:iss:`9183`)
 
 - icat kitten: Add support for animated PNG and animated WebP, netPBM images, ICC color profiles and CCIP color space metadata to the builtin engine
