@@ -149,7 +149,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.45.0 [future]
+0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new :doc:`kitten to select files at the speed of thought </kittens/choose-files>` with a keyboard first interface and support for content previews of text file with syntax highlighting, images, videos, e-books and more (:iss:`9263`)
