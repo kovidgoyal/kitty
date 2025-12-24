@@ -8,6 +8,14 @@ Selecting files, fast
 
 .. versionadded:: 0.45.0
 
+.. only:: not man
+
+    .. figure:: /screenshots/choose-files.webp
+        :alt: The choose files kitten, showing metadata and title from an e-book file
+        :align: center
+        :width: 100%
+
+
 The choose-files kitten is designed to allow you to select files, very fast,
 with just a few key strokes. It operates like `fzf
 <https://github.com/junegunn/fzf/>`__ and similar fuzzy finders, except that

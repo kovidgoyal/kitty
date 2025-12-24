@@ -14,6 +14,7 @@ Extend with kittens
    kittens/choose-fonts
    kittens/hints
    kittens/quick-access-terminal
+   kittens/choose-files
    kittens/panel
    kittens/remote_file
    kittens/hyperlinked_grep
@@ -61,6 +62,10 @@ Some prominent kittens:
 :doc:`Panel <kittens/panel>`
     Draw the desktop wallpaper or docks and panels using arbitrary
     terminal programs.
+
+
+:doc:`Choose files <kittens/choose-files>`
+    Preview and select files at the speed of thought
 
 
 :doc:`Remote file <kittens/remote_file>`
