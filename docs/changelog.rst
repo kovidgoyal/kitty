@@ -20,8 +20,8 @@ terminal workflows with just a few keystrokes, similar to how fuzzy finders
 like `fzf <https://github.com/junegunn/fzf/>`__ operate, but with designed for
 files in particular.
 
-On Linux it can even be used as a :doc:`drop in replacement </kittens/desktop-ui>`
-for the File Open/Save dialog boxes in GUI replacements.
+On Linux, it can even be used as a :doc:`drop in replacement </kittens/desktop-ui>`
+for the File Open/Save dialog boxes in GUI programs.
 
 
 Sessions [0.43]
