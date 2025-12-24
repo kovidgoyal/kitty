@@ -16,7 +16,7 @@ require (
 	github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1
 	github.com/kovidgoyal/go-parallel v1.1.1
 	github.com/kovidgoyal/go-shm v1.0.0
-	github.com/kovidgoyal/imaging v1.8.17
+	github.com/kovidgoyal/imaging v1.8.18
 	github.com/nwaples/rardecode/v2 v2.2.2
 	github.com/seancfoley/ipaddress-go v1.7.1
 	github.com/shirou/gopsutil/v4 v4.25.11
