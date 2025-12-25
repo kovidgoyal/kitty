@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import re
 from binascii import hexlify, unhexlify
 from collections.abc import Generator
@@ -548,6 +549,9 @@ def get_capabilities(query_string: str, opts: 'Options', window_id: int = 0, os_
                 yield result(encoded_query_name)
             else:
                 yield result(encoded_query_name, rval)
+        elif name in ('query-os-name', 'query-os_name'):
+            # https://github.com/kovidgoyal/kitty/issues/9217
+            yield result(encoded_query_name, os.uname().sysname)
         else:
             if name in bool_capabilities:
                 yield result(encoded_query_name, True)
