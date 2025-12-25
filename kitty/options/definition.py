@@ -3140,6 +3140,18 @@ opt('color255', '#eeeeee',
     documented=False,
     )
 egr()  # }}}
+
+# colors.wide_gamut {{{
+agr('colors.wide_gamut', 'Wide gamut color formats', '''
+kitty supports modern wide gamut color formats including OKLCH and CIE LAB for precise
+color specification. These formats can be used anywhere a color value is accepted
+(foreground, background, color0-color255, etc.).
+
+For detailed documentation on wide gamut color formats, syntax, and examples,
+see :doc:`/wide-gamut-colors`.
+''')
+
+egr()  # }}}
 egr()  # }}}
 
 

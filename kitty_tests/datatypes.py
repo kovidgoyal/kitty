@@ -77,6 +77,14 @@ class TestDataTypes(BaseTest):
         c('rgb:23/45/67', 0x23, 0x45, 0x67)
         c('rgb:abc/abc/def', 0xab, 0xab, 0xde)
         c('red', 0xff)
+
+        # Wide gamut color formats
+        c('oklch(0.7 0.15 140)', 0x67, 0xb4, 0x56)  # OKLCH green
+        c('oklch(0.9 0.05 265)', 0xcd, 0xde, 0xfe)  # OKLCH light blue
+        c('p3(1.0 0.0 0.0)', 0xfe, 0x00, 0x00)  # Display P3 red
+        c('color(display-p3 0.0 1.0 0.0)', 0x00, 0xfe, 0x00)  # CSS P3 green
+        c('lab(70 50 -30)', 0xea, 0x88, 0xe2)  # CIE LAB purple-ish
+
         self.ae(int(Color(1, 2, 3)), 0x10203)
         base = Color(12, 12, 12)
         a = Color(23, 23, 23)
@@ -86,6 +94,183 @@ class TestDataTypes(BaseTest):
         self.ae(Color(1, 2, 3).as_sharp, '#010203')
         self.ae(Color(1, 2, 3, 4).as_sharp, '#04010203')
         self.ae(Color(1, 2, 3, 4).rgb, 0x10203)
+
+    def test_oklch_gamut_mapping(self):
+        """Test OKLCH color format with CSS Color 4 gamut mapping"""
+        def c(spec, r=0, g=0, b=0):
+            color = to_color(spec)
+            self.assertIsNotNone(color, f'Failed to parse: {spec}')
+            self.ae(color.red, r)
+            self.ae(color.green, g)
+            self.ae(color.blue, b)
+
+        def in_range(spec):
+            """Verify color values are in valid 0-255 range"""
+            color = to_color(spec)
+            self.assertIsNotNone(color, f'Failed to parse: {spec}')
+            self.assertTrue(0 <= color.red <= 255, f'Red out of range: {color.red}')
+            self.assertTrue(0 <= color.green <= 255, f'Green out of range: {color.green}')
+            self.assertTrue(0 <= color.blue <= 255, f'Blue out of range: {color.blue}')
+            return color
+
+        # In-gamut colors should parse unchanged
+        c('oklch(0.5 0.1 180)', 0x00, 0x75, 0x65)  # Mid-tone cyan with moderate chroma
+
+        # Out-of-gamut colors should be mapped to sRGB gamut
+        # High chroma red - should be mapped but remain reddish
+        color = in_range('oklch(0.7 0.35 25)')
+        self.assertGreater(color.red, 200, 'High chroma red should have high red component')
+        self.assertLess(color.green, 100, 'High chroma red should have low green component')
+
+        # Edge cases
+        c('oklch(0 0 0)', 0x00, 0x00, 0x00)  # Pure black
+        c('oklch(1 0 0)', 0xff, 0xff, 0xff)  # Pure white
+
+        # Achromatic colors (zero chroma)
+        c('oklch(0.5 0 180)', 0xbb, 0xbb, 0xbb)  # Mid gray, hue irrelevant
+        c('oklch(0.25 0 90)', 0x88, 0x88, 0x88)  # Dark gray
+
+        # Test various hues with moderate chroma
+        in_range('oklch(0.6 0.15 0)')    # Red hue
+        in_range('oklch(0.6 0.15 60)')   # Yellow hue
+        in_range('oklch(0.6 0.15 120)')  # Green hue
+        in_range('oklch(0.6 0.15 180)')  # Cyan hue
+        in_range('oklch(0.6 0.15 240)')  # Blue hue
+        in_range('oklch(0.6 0.15 300)')  # Magenta hue
+
+        # Test with different comma/space separators
+        c('oklch(0.5, 0.1, 180)', 0x00, 0x75, 0x65)
+        c('oklch(0.5,0.1,180)', 0x00, 0x75, 0x65)
+
+        # Test percentage lightness
+        color = to_color('oklch(50% 0.1 180)')
+        self.assertIsNotNone(color)
+
+        # Very high chroma should trigger gamut mapping
+        # These should all succeed and return valid RGB values
+        in_range('oklch(0.5 0.5 0)')
+        in_range('oklch(0.5 0.5 180)')
+        in_range('oklch(0.9 0.3 120)')
+
+    def test_inline_comments(self):
+        """Test inline comments in color values"""
+        def c(spec, r=0, g=0, b=0):
+            color = to_color(spec)
+            self.assertIsNotNone(color, f'Failed to parse: {spec}')
+            self.ae(color.red, r)
+            self.ae(color.green, g)
+            self.ae(color.blue, b)
+
+        # OKLCH with inline comment
+        c('oklch(0.5 0.1 180) # Cyan color', 0x00, 0x75, 0x65)
+        c('oklch(0.7 0.15 140) # Green', 0x67, 0xb4, 0x56)
+
+        # Hex colors with inline comments
+        c('#ff0000 # Red', 0xff, 0x00, 0x00)
+        c('#00ff00 # Green', 0x00, 0xff, 0x00)
+        c('#0000ff # Blue', 0x00, 0x00, 0xff)
+
+        # P3 colors with inline comments
+        c('p3(1 0 0) # P3 Red', 0xfe, 0x00, 0x00)
+        c('color(display-p3 0 1 0) # P3 Green', 0x00, 0xfe, 0x00)
+
+        # LAB colors with inline comments
+        c('lab(70 50 -30) # Purple-ish', 0xea, 0x88, 0xe2)
+
+        # RGB with inline comments
+        c('rgb:ff/00/00 # RGB Red', 0xff, 0x00, 0x00)
+
+        # Named color should not be affected by text after it
+        # (not a comment, just ignored)
+        c('red', 0xff, 0x00, 0x00)
+
+    def test_p3_and_lab_parsing(self):
+        """Test Display P3 and CIE LAB color format parsing"""
+        def c(spec, r=0, g=0, b=0):
+            color = to_color(spec)
+            self.assertIsNotNone(color, f'Failed to parse: {spec}')
+            self.ae(color.red, r)
+            self.ae(color.green, g)
+            self.ae(color.blue, b)
+
+        # P3 basic colors
+        c('p3(1 0 0)', 0xfe, 0x00, 0x00)     # P3 red (wider than sRGB)
+        c('p3(0 1 0)', 0x00, 0xfe, 0x00)     # P3 green (wider than sRGB)
+        c('p3(0 0 1)', 0x00, 0x00, 0xfe)     # P3 blue (wider than sRGB)
+        c('p3(1 1 1)', 0xfe, 0xfe, 0xfe)     # P3 white (slightly clipped in conversion)
+        c('p3(0 0 0)', 0x00, 0x00, 0x00)     # P3 black
+        c('p3(0.5 0.5 0.5)', 0x7f, 0x7f, 0x7f)  # P3 mid-gray
+
+        # P3 with different separators
+        c('p3(1, 0, 0)', 0xfe, 0x00, 0x00)
+        c('p3(1,0,0)', 0xfe, 0x00, 0x00)
+
+        # CSS color() function with display-p3
+        c('color(display-p3 1 0 0)', 0xfe, 0x00, 0x00)
+        c('color(display-p3 0 1 0)', 0x00, 0xfe, 0x00)
+        c('color(display-p3 0 0 1)', 0x00, 0x00, 0xfe)
+
+        # LAB basic colors
+        c('lab(0 0 0)', 0x00, 0x00, 0x00)      # LAB black
+        c('lab(100 0 0)', 0xfe, 0xfe, 0xfe)    # LAB white (slightly clipped in conversion)
+        c('lab(50 0 0)', 0xc6, 0xc6, 0xc6)     # LAB mid-gray
+
+        # LAB with color components
+        c('lab(70 50 -30)', 0xea, 0x88, 0xe2)  # Purple-ish
+        color = to_color('lab(50 50 50)')      # Orange/red-ish (positive a and b)
+        self.assertIsNotNone(color)
+        self.assertGreater(color.red, 0xc0)    # Should have high red
+        self.assertLess(color.blue, 0x50)      # Should have low blue
+
+        # LAB with different separators
+        color = to_color('lab(70, 50, -30)')
+        self.assertIsNotNone(color)
+        color = to_color('lab(70,50,-30)')
+        self.assertIsNotNone(color)
+
+        # LAB with negative values (valid for a and b channels)
+        color = to_color('lab(50 -50 -50)')
+        self.assertIsNotNone(color)
+        color = to_color('lab(50 -50 50)')
+        self.assertIsNotNone(color)
+
+    def test_color_format_errors(self):
+        """Test error handling for invalid color formats"""
+        # Invalid OKLCH
+        self.assertIsNone(to_color('oklch()'))
+        self.assertIsNone(to_color('oklch(0.5)'))
+        self.assertIsNone(to_color('oklch(0.5 0.1)'))
+        self.assertIsNone(to_color('oklch(a b c)'))
+
+        # Invalid P3
+        self.assertIsNone(to_color('p3()'))
+        self.assertIsNone(to_color('p3(1)'))
+        self.assertIsNone(to_color('p3(1 0)'))
+        self.assertIsNone(to_color('p3(a b c)'))
+
+        # Invalid LAB
+        self.assertIsNone(to_color('lab()'))
+        self.assertIsNone(to_color('lab(50)'))
+        self.assertIsNone(to_color('lab(50 0)'))
+        self.assertIsNone(to_color('lab(a b c)'))
+
+        # Invalid color() function
+        self.assertIsNone(to_color('color()'))
+        self.assertIsNone(to_color('color(display-p3)'))
+        self.assertIsNone(to_color('color(unknown 1 0 0)'))
+
+        # Empty and whitespace
+        self.assertIsNone(to_color(''))
+        self.assertIsNone(to_color('   '))
+
+        # Malformed hex
+        self.assertIsNone(to_color('#'))
+        self.assertIsNone(to_color('#12'))
+        self.assertIsNone(to_color('#1234'))
+
+        # Malformed rgb
+        self.assertIsNone(to_color('rgb:'))
+        self.assertIsNone(to_color('rgb:a/b'))
 
     def test_linebuf(self):
         old = filled_line_buf(2, 3, filled_cursor())

@@ -148,12 +148,34 @@ func parse_rgb(color string) (ans RGBA, err error) {
 }
 
 func ParseColor(color string) (RGBA, error) {
+	// Strip inline comments (e.g., "oklch(...) # comment")
+	// For hex colors like "#ff0000", preserve the first #, but strip comments after spaces
+	color = strings.TrimSpace(color)
+	if strings.HasPrefix(color, "#") {
+		// For hex colors, only strip comments after whitespace
+		parts := strings.Fields(color)
+		if len(parts) > 0 {
+			color = parts[0] // Keep only the hex color part
+		}
+	} else {
+		// For non-hex colors, strip everything after #
+		if idx := strings.Index(color, "#"); idx >= 0 {
+			color = strings.TrimSpace(color[:idx])
+		}
+	}
+
 	raw := strings.TrimSpace(strings.ToLower(color))
 	if val, ok := ColorNames[raw]; ok {
 		return val, nil
 	}
 	if strings.HasPrefix(raw, "#") {
 		return parse_sharp(raw[1:])
+	}
+	if strings.HasPrefix(raw, "oklch(") {
+		return parseOklch(raw[6:])
+	}
+	if strings.HasPrefix(raw, "lab(") {
+		return parseLab(raw[4:])
 	}
 	if strings.HasPrefix(raw, "rgb:") {
 		return parse_rgb(raw[4:])
