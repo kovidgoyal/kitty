@@ -44,8 +44,10 @@ from .fast_data_types import (
     set_active_tab,
     set_active_window,
     set_redirect_keys_to_overlay,
+    set_tab_bar_drag_in_progress,
     swap_tabs,
     sync_os_window_title,
+    viewport_for_window,
 )
 from .layout.base import Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
@@ -64,6 +66,17 @@ class TabMouseEvent(NamedTuple):
     action: int
     at: float
     tab_id: int = 0
+
+
+class TabDragState(NamedTuple):
+    tab_id: int
+    start_x: int
+    start_y: int
+    original_index: int
+    current_drop_index: int | None = None
+    drag_started: bool = False  # True if drag threshold exceeded
+    outside_tab_bar: bool = False  # True if currently outside tab bar
+    last_motion_time: float = 0.0  # Last motion event timestamp for throttling
 
 
 class TabDict(TypedDict):
@@ -1055,12 +1068,14 @@ class TabManager:  # {{{
     num_of_windows_with_progress: int = 0
     total_progress: int = 0
     has_indeterminate_progress: bool = False
+    tab_drag_state: TabDragState | None = None
 
     def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: SessionType | None = None):
         self.os_window_id = os_window_id
         self.wm_class = wm_class
         self.created_in_session_name = startup_session.session_name if startup_session else ''
         self.recent_mouse_events: Deque[TabMouseEvent] = deque()
+        self.tab_drag_state = None
         self.wm_name = wm_name
         self.args = args
         self.tab_bar_hidden = get_options().tab_bar_style == 'hidden'
@@ -1512,9 +1527,43 @@ class TabManager:  # {{{
             ))
         return ans
 
-    def handle_click_on_tab(self, x: int, button: int, modifiers: int, action: int) -> None:
+    def handle_click_on_tab(self, x: int, y: int, button: int, modifiers: int, action: int) -> None:
+        opts = get_options()
+
+        # Handle motion events during drag (button == -1)
+        if button == -1 and self.tab_drag_state is not None:
+            self._handle_tab_drag_motion(x, y)
+            return
+
         tab = self.tab_for_id(self.tab_bar.tab_id_at(x))
         now = monotonic()
+
+        # Handle drag start (only if tab drag is enabled)
+        if action == GLFW_PRESS and button == GLFW_MOUSE_BUTTON_LEFT and tab is not None:
+            if opts.enable_tab_drag:
+                idx = self.tabs.index(tab) if tab in self.tabs else -1
+                if idx >= 0:
+                    self.tab_drag_state = TabDragState(
+                        tab_id=tab.id,
+                        start_x=int(x),
+                        start_y=int(y),
+                        original_index=idx,
+                    )
+                    set_tab_bar_drag_in_progress(True)
+            self.set_active_tab(tab)
+            self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, tab.id))
+            if len(self.recent_mouse_events) > 5:
+                self.recent_mouse_events.popleft()
+            return
+
+        # Handle drag end
+        if action == GLFW_RELEASE and button == GLFW_MOUSE_BUTTON_LEFT:
+            if self.tab_drag_state is not None:
+                self._finalize_tab_drag(x, y)
+                self.tab_drag_state = None
+                set_tab_bar_drag_in_progress(False)
+                return
+
         if tab is None:
             if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and len(self.recent_mouse_events) > 2:
                 ci = get_click_interval()
@@ -1529,15 +1578,142 @@ class TabManager:  # {{{
                     self.recent_mouse_events.clear()
                     return
         else:
-            if action == GLFW_PRESS and button == GLFW_MOUSE_BUTTON_LEFT:
-                self.set_active_tab(tab)
-            elif button == GLFW_MOUSE_BUTTON_MIDDLE and action == GLFW_RELEASE and self.recent_mouse_events:
+            if button == GLFW_MOUSE_BUTTON_MIDDLE and action == GLFW_RELEASE and self.recent_mouse_events:
                 p = self.recent_mouse_events[-1]
                 if p.button == button and p.action == GLFW_PRESS and p.tab_id == tab.id:
                     get_boss().close_tab(tab)
         self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, tab.id if tab else 0))
         if len(self.recent_mouse_events) > 5:
             self.recent_mouse_events.popleft()
+
+    def _handle_tab_drag_motion(self, x: int, y: int) -> None:
+        """Handle mouse motion during tab drag."""
+        if self.tab_drag_state is None:
+            return
+
+        opts = get_options()
+        state = self.tab_drag_state
+        now = monotonic()
+
+        # Throttle motion events to 16ms intervals (60fps) for performance
+        MOTION_THROTTLE_INTERVAL = 0.016  # 16ms
+        if state.drag_started and (now - state.last_motion_time) < MOTION_THROTTLE_INTERVAL:
+            return
+
+        # Check if drag threshold has been exceeded
+        if not state.drag_started:
+            threshold = opts.tab_drag_threshold
+            dx = abs(x - state.start_x)
+            dy = abs(y - state.start_y)
+            if dx < threshold and dy < threshold:
+                return
+            # Drag has started
+            self.tab_drag_state = state._replace(drag_started=True, last_motion_time=now)
+            state = self.tab_drag_state
+            # Set the dragging tab for visual feedback
+            self.tab_bar.dragging_tab_id = state.tab_id
+        else:
+            # Update last motion time
+            self.tab_drag_state = state._replace(last_motion_time=now)
+            state = self.tab_drag_state
+
+        # Check if mouse is outside tab bar (but don't detach yet - wait for release)
+        outside = opts.enable_tab_drag_detach and self._is_outside_tab_bar(y) and len(self.tabs) > 1
+        if outside != state.outside_tab_bar:
+            self.tab_drag_state = state._replace(outside_tab_bar=outside)
+            state = self.tab_drag_state
+            # Update visual feedback - hide drop indicator when outside
+            if outside:
+                self.tab_bar.update_drag_indicator(None, state.tab_id)
+            self.mark_tab_bar_dirty()
+
+        # Calculate drop index based on x position (only when inside tab bar)
+        if not outside:
+            drop_index = self._calculate_drop_index(x)
+            if drop_index != state.current_drop_index:
+                self.tab_drag_state = state._replace(current_drop_index=drop_index)
+                self.tab_bar.update_drag_indicator(drop_index, state.tab_id)
+                self.mark_tab_bar_dirty()
+
+    def _is_outside_tab_bar(self, y: int) -> bool:
+        """Check if the y coordinate is outside the tab bar region."""
+        try:
+            central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
+            # Add some margin for easier detachment
+            margin = 20  # pixels
+            return y < tab_bar.top - margin or y > tab_bar.bottom + margin
+        except Exception:
+            return False
+
+    def _calculate_drop_index(self, x: int) -> int:
+        """Calculate the drop index based on the x coordinate."""
+        extents = self.tab_bar.tab_extents
+        if not extents or not self.tab_bar.laid_out_once:
+            return 0
+
+        # Convert pixel x to cell position
+        cell_width = self.tab_bar.cell_width
+        geometry = self.tab_bar.window_geometry
+        cell_x = (x - geometry.left) // cell_width
+
+        for i, te in enumerate(extents):
+            mid = (te.cell_range.start + te.cell_range.end) // 2
+            if cell_x < mid:
+                return i
+        return len(extents)
+
+    def _finalize_tab_drag(self, x: int, y: int) -> None:
+        """Finalize the tab drag operation."""
+        if self.tab_drag_state is None:
+            return
+
+        opts = get_options()
+        state = self.tab_drag_state
+        boss = get_boss()
+
+        # Clear drag visual feedback
+        self.tab_bar.update_drag_indicator(None, 0)
+        self.tab_bar.dragging_tab_id = 0
+
+        # If drag didn't really start (threshold not exceeded), do nothing
+        if not state.drag_started:
+            self.mark_tab_bar_dirty()
+            return
+
+        # Check if released outside tab bar - detach to new window
+        if self._is_outside_tab_bar(y) and len(self.tabs) > 1:
+            tab = self.tab_for_id(state.tab_id)
+            if tab is not None and opts.enable_tab_drag_detach:
+                boss._move_tab_to(tab, target_os_window_id=None)
+            self.mark_tab_bar_dirty()
+            return
+
+        # Move the tab to the new position
+        drop_index = state.current_drop_index
+        if drop_index is not None and drop_index != state.original_index:
+            # Adjust drop index if moving to a later position
+            if drop_index > state.original_index:
+                drop_index -= 1
+            if drop_index != state.original_index and 0 <= drop_index < len(self.tabs):
+                self._move_tab_to_index(state.original_index, drop_index)
+
+        self.mark_tab_bar_dirty()
+
+    def _move_tab_to_index(self, from_index: int, to_index: int) -> None:
+        """Move a tab from one index to another."""
+        if from_index == to_index or not (0 <= from_index < len(self.tabs)) or not (0 <= to_index < len(self.tabs)):
+            return
+
+        tab = self.tabs.pop(from_index)
+        self.tabs.insert(to_index, tab)
+        # Update the C-level tab order using swap_tabs
+        # We need to perform sequential swaps to move the tab
+        if from_index < to_index:
+            for i in range(from_index, to_index):
+                swap_tabs(self.os_window_id, i, i + 1)
+        else:
+            for i in range(from_index, to_index, -1):
+                swap_tabs(self.os_window_id, i, i - 1)
 
     def update_progress(self) -> None:
         self.num_of_windows_with_progress = 0

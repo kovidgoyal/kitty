@@ -1069,6 +1069,10 @@ def mark_tab_bar_dirty(os_window_id: int, should_be_shown: bool) -> None:
     pass
 
 
+def set_tab_bar_drag_in_progress(in_progress: bool) -> None:
+    pass
+
+
 def detach_window(os_window_id: int, tab_id: int, window_id: int) -> None:
     pass
 

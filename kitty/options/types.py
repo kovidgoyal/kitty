@@ -350,6 +350,8 @@ option_names = (
     'dynamic_background_opacity',
     'editor',
     'enable_audio_bell',
+    'enable_tab_drag',
+    'enable_tab_drag_detach',
     'enabled_layouts',
     'env',
     'exe_search_path',
@@ -453,6 +455,7 @@ option_names = (
     'tab_bar_margin_width',
     'tab_bar_min_tabs',
     'tab_bar_style',
+    'tab_drag_threshold',
     'tab_fade',
     'tab_powerline_style',
     'tab_separator',
@@ -549,6 +552,8 @@ class Options:
     dynamic_background_opacity: bool = False
     editor: str = '.'
     enable_audio_bell: bool = True
+    enable_tab_drag: bool = True
+    enable_tab_drag_detach: bool = True
     enabled_layouts: list[str] = ['fat', 'grid', 'horizontal', 'splits', 'stack', 'tall', 'vertical']
     file_transfer_confirmation_bypass: str = ''
     focus_follows_mouse: bool = False
@@ -640,6 +645,7 @@ class Options:
     tab_bar_margin_width: float = 0
     tab_bar_min_tabs: int = 2
     tab_bar_style: choices_for_tab_bar_style = 'fade'
+    tab_drag_threshold: int = 5
     tab_fade: tuple[float, ...] = (0.25, 0.5, 0.75, 1.0)
     tab_powerline_style: choices_for_tab_powerline_style = 'angled'
     tab_separator: str = ' ┇'
