@@ -1606,6 +1606,9 @@ class Boss:
         self.mappings.push_keyboard_mode(new_mode)
 
     def dispatch_possible_special_key(self, ev: KeyEvent) -> bool:
+        w = self.active_window
+        if w is not None and w.overlay_parent is not None:
+            return False
         return self.mappings.dispatch_possible_special_key(ev)
 
     def cancel_current_visual_select(self) -> None:
