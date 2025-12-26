@@ -120,6 +120,9 @@ class Parser:
     def clear_all_shortcuts(self, val: str, ans: dict[str, typing.Any]) -> None:
         clear_all_shortcuts(val, ans)
 
+    def multi_key_hint_delay(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['multi_key_hint_delay'] = int(val)
+
     def clear_selection_on_clipboard_loss(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['clear_selection_on_clipboard_loss'] = to_bool(val)
 

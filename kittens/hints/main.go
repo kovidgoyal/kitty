@@ -257,6 +257,43 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		current_input = ""
 		current_text = ""
 	}
+	select_keys := make(map[int]string, len(index_map))
+	if o.CustomizeProcessing == "::import::kitty.choose_entry" {
+		for _, m := range index_map {
+			text := strings.TrimPrefix(m.Text, ": ")
+			if text == m.Text {
+				continue
+			}
+			key, _, ok := strings.Cut(text, " - ")
+			if !ok || key == "" {
+				continue
+			}
+			select_keys[m.Index] = key
+		}
+	}
+	handle_select_key := func(ev *loop.KeyEvent) bool {
+		if len(select_keys) == 0 {
+			return false
+		}
+		for idx, spec := range select_keys {
+			if spec == "" {
+				continue
+			}
+			if ev.MatchesPressOrRepeat(spec) {
+				if m := index_map[idx]; m != nil {
+					chosen = append(chosen, m)
+					if o.Multiple {
+						ignore_mark_indices.Add(m.Index)
+						reset()
+					} else {
+						lp.Quit(0)
+					}
+				}
+				return true
+			}
+		}
+		return false
+	}
 
 	lp.OnInitialize = func() (string, error) {
 		lp.SetCursorVisible(false)
@@ -330,6 +367,10 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	}
 
 	lp.OnKeyEvent = func(ev *loop.KeyEvent) error {
+		if len(select_keys) > 0 && handle_select_key(ev) {
+			ev.Handled = true
+			return nil
+		}
 		if ev.MatchesPressOrRepeat("backspace") {
 			ev.Handled = true
 			r := []rune(current_input)
