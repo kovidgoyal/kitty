@@ -212,7 +212,9 @@ your :file:`kitty.conf`::
 
    pixel_scroll yes
 
-You can further tune the sensitivity with :opt:`touch_scroll_multiplier`.
+You can further tune the sensitivity with :opt:`touch_scroll_multiplier`. Note
+that this only affects scrolling kitty's own scrollback, not applications
+running inside the terminal that handle their own scrolling.
 
 However, |kitty| has an extra, neat feature. Sometimes you need to explore the scrollback
 buffer in more detail, maybe search for some text or refer to it side-by-side
