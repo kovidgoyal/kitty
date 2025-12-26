@@ -6,6 +6,7 @@
  */
 
 #include "state.h"
+#include "screen.h"
 #include "charsets.h"
 #include <limits.h>
 #include <math.h>
@@ -1203,6 +1204,11 @@ scale_scroll(MouseTrackingMode mouse_tracking_mode, double offset, bool is_high_
 #undef SCALE_SCROLL
 }
 
+static inline bool
+pixel_scroll_enabled_for_screen(const Screen *screen) {
+    return OPT(pixel_scroll) && screen->linebuf == screen->main_linebuf;
+}
+
 void
 scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
     debug("\x1b[36mScroll\x1b[m xoffset: %f yoffset: %f flags: %x modifiers: %s\n", xoffset, yoffset, flags, format_mods(modifiers));
@@ -1267,23 +1273,35 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
     const bool is_value120 = flags & (1 << 4);
 
     if (yoffset != 0.0) {
-        s = scale_scroll(screen->modes.mouse_tracking_mode, yoffset, is_high_resolution, is_value120, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->fcm.cell_height);
-        if (s) {
-            bool upwards = s > 0;
-            if (screen->modes.mouse_tracking_mode) {
-                int sz = encode_mouse_scroll(w, upwards ? 4 : 5, modifiers);
-                if (sz > 0) {
-                    mouse_event_buf[sz] = 0;
-                    for (s = abs(s); s > 0; s--) {
-                        write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
-                    }
-                }
+        if (!screen->modes.mouse_tracking_mode && pixel_scroll_enabled_for_screen(screen) && (is_high_resolution || is_value120)) {
+            double delta_pixels = 0.0;
+            if (is_high_resolution) {
+                delta_pixels = -yoffset * OPT(touch_scroll_multiplier);
             } else {
-                if (screen->linebuf == screen->main_linebuf) {
-                    screen_history_scroll(screen, abs(s), upwards);
-                    if (screen->selections.in_progress) update_drag(w);
+                const double offset_lines = (-yoffset / 120.) * OPT(wheel_scroll_multiplier);
+                delta_pixels = offset_lines * global_state.callback_os_window->fonts_data->fcm.cell_height;
+            }
+            screen->pending_scroll_pixels_y = 0.0;
+            if (screen_apply_pixel_scroll(screen, delta_pixels) && screen->selections.in_progress) update_drag(w);
+        } else {
+            s = scale_scroll(screen->modes.mouse_tracking_mode, yoffset, is_high_resolution, is_value120, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->fcm.cell_height);
+            if (s) {
+                bool upwards = s > 0;
+                if (screen->modes.mouse_tracking_mode) {
+                    int sz = encode_mouse_scroll(w, upwards ? 4 : 5, modifiers);
+                    if (sz > 0) {
+                        mouse_event_buf[sz] = 0;
+                        for (s = abs(s); s > 0; s--) {
+                            write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
+                        }
+                    }
+                } else {
+                    if (screen->linebuf == screen->main_linebuf) {
+                        screen_history_scroll(screen, abs(s), upwards);
+                        if (screen->selections.in_progress) update_drag(w);
+                    }
+                    else fake_scroll(w, abs(s), upwards);
                 }
-                else fake_scroll(w, abs(s), upwards);
             }
         }
     }

@@ -1389,6 +1389,9 @@ class Parser:
     def touch_scroll_multiplier(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['touch_scroll_multiplier'] = float(val)
 
+    def pixel_scroll(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['pixel_scroll'] = to_bool(val)
+
     def transparent_background_colors(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['transparent_background_colors'] = transparent_background_colors(val)
 

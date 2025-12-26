@@ -106,8 +106,12 @@ typedef struct {
 
     unsigned int columns, lines, margin_top, margin_bottom, scrolled_by;
     double pending_scroll_pixels_x, pending_scroll_pixels_y;
+    double pixel_scroll_offset_y;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
+    Line blank_line;
+    CPUCell *blank_line_cpu;
+    GPUCell *blank_line_gpu;
     id_type window_id;
     Selections selections, url_ranges;
     struct {
@@ -279,6 +283,7 @@ typedef struct SelectionUpdate {
 void screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half, SelectionUpdate upd);
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
 void screen_history_scroll_to_absolute(Screen *self, unsigned int target_scrolled_by);
+bool screen_apply_pixel_scroll(Screen *self, double delta_pixels);
 PyObject* as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output);
 Line* screen_visual_line(Screen *self, index_type y);
 void screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y);

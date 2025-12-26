@@ -21,6 +21,7 @@ layout(std140) uniform CellRenderData {
 uniform float gamma_lut[256];
 uniform uint draw_bg_bitfield;
 uniform usampler2D sprite_decorations_map;
+uniform float row_offset;
 
 // Have to use fixed locations here as all variants of the cell program share the same VAOs
 layout(location=0) in uvec3 colors;
@@ -212,7 +213,7 @@ CellData set_vertex_position(vec3 cell_fg, vec3 cell_bg) {
     uint column = instance_id - row * columns;
     /* The position of this vertex, at a corner of the cell  */
     float left = -1.0 + column * dx;
-    float top = 1.0 - row * dy;
+    float top = 1.0 - (float(row) + row_offset) * dy;
     uvec2 pos = cell_pos_map[gl_VertexID];
     gl_Position = vec4(vec2(left, left + dx)[pos.x], vec2(top, top - dy)[pos.y], 0, 1);
     // The character sprite being rendered
