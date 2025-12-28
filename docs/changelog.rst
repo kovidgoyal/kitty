@@ -150,6 +150,13 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.45.1 [future]
+
+- choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
+
+- Fix tab bar rendering glitches when using :opt:`tab_bar_filter` in some
+  circumstances (:iss:`9328`)
+
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

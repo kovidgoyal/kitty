@@ -1069,6 +1069,8 @@ def mark_tab_bar_dirty(os_window_id: int, should_be_shown: bool) -> None:
     pass
 
 
+def is_tab_bar_visible(os_window_id: int) -> bool: ...
+
 def detach_window(os_window_id: int, tab_id: int, window_id: int) -> None:
     pass
 

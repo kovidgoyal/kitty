@@ -959,6 +959,18 @@ PYWRAP1(mark_tab_bar_dirty) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(is_tab_bar_visible) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    if (!OPT(tab_bar_hidden)) {
+        WITH_OS_WINDOW(os_window_id)
+            return os_window->has_too_few_tabs ? Py_NewRef(Py_False) : Py_NewRef(Py_True);
+        END_WITH_OS_WINDOW
+    }
+    Py_RETURN_FALSE;
+}
+
+
 PYWRAP1(change_background_opacity) {
     id_type os_window_id;
     float opacity;
@@ -1521,6 +1533,7 @@ static PyMethodDef module_methods[] = {
     MW(set_os_window_chrome, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_VARARGS),
+    MW(is_tab_bar_visible, METH_VARARGS),
     MW(run_with_activation_token, METH_O),
     MW(change_background_opacity, METH_VARARGS),
     MW(background_opacity_of, METH_O),
