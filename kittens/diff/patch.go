@@ -4,6 +4,8 @@ package diff
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -182,9 +184,17 @@ func (self *Hunk) finalize(left_lines, right_lines []string) error {
 type Patch struct {
 	all_hunks                                       []*Hunk
 	largest_line_number, added_count, removed_count int
+	moved_lines                                     map[int]bool // left line numbers that are moved
+	mapped_lines                                    map[int]int  // map from left line number to right line number
 }
 
 func (self *Patch) Len() int { return len(self.all_hunks) }
+func (self *Patch) IsMovedLeftLine(lineNum int) bool {
+	return self.moved_lines[lineNum]
+}
+func (self *Patch) GetMappedRightLine(leftLineNum int) int {
+	return self.mapped_lines[leftLineNum]
+}
 
 func splitlines_like_git(raw string, strip_trailing_lines bool, process_line func(string)) {
 	sz := len(raw)
@@ -344,10 +354,75 @@ func do_diff(file1, file2 string, context_count int) (ans *Patch, err error) {
 		return
 	}
 	ans, err = parse_patch(raw, left_lines, right_lines)
+	if err != nil {
+		return
+	}
+	// Detect moved lines after parsing the patch
+	detectMovedLines(ans, left_lines, right_lines)
 	return
 }
 
 type diff_job struct{ file1, file2 string }
+
+// hashLine computes a SHA256 hash of a line for comparison
+func hashLine(line string) string {
+	h := sha256.New()
+	h.Write([]byte(line))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// detectMovedLines identifies lines that have been moved (same content, different position)
+func detectMovedLines(patch *Patch, left_lines, right_lines []string) {
+	patch.moved_lines = make(map[int]bool)
+	patch.mapped_lines = make(map[int]int)
+
+	// Collect removed lines and their hashes
+	removedLines := make(map[string][]int) // hash -> list of line numbers
+	addedLines := make(map[string][]int)   // hash -> list of line numbers
+
+	for _, hunk := range patch.all_hunks {
+		for _, chunk := range hunk.chunks {
+			if chunk.is_context {
+				continue
+			}
+			// Collect removed lines
+			for i := 0; i < chunk.left_count; i++ {
+				lineNum := chunk.left_start + i
+				if lineNum < len(left_lines) {
+					line := left_lines[lineNum]
+					hash := hashLine(line)
+					removedLines[hash] = append(removedLines[hash], lineNum)
+				}
+			}
+			// Collect added lines
+			for i := 0; i < chunk.right_count; i++ {
+				lineNum := chunk.right_start + i
+				if lineNum < len(right_lines) {
+					line := right_lines[lineNum]
+					hash := hashLine(line)
+					addedLines[hash] = append(addedLines[hash], lineNum)
+				}
+			}
+		}
+	}
+
+	// Match removed lines with added lines
+	for hash, removedList := range removedLines {
+		if addedList, exists := addedLines[hash]; exists {
+			// Match lines with same hash
+			minLen := utils.Min(len(removedList), len(addedList))
+			for i := 0; i < minLen; i++ {
+				leftLineNum := removedList[i]
+				rightLineNum := addedList[i]
+				// Only mark as moved if the line numbers are different
+				if leftLineNum != rightLineNum {
+					patch.moved_lines[leftLineNum] = true
+					patch.mapped_lines[leftLineNum] = rightLineNum
+				}
+			}
+		}
+	}
+}
 
 func diff(jobs []diff_job, context_count int) (ans map[string]*Patch, err error) {
 	ans = make(map[string]*Patch)

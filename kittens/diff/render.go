@@ -156,7 +156,7 @@ func place_in(text string, sz int) string {
 }
 
 var format_as_sgr struct {
-	title, margin, added, removed, added_margin, removed_margin, filler, margin_filler, hunk_margin, hunk, selection, search string
+	title, margin, added, removed, added_margin, removed_margin, filler, margin_filler, hunk_margin, hunk, selection, search, moved, moved_margin string
 }
 
 var statusline_format, added_count_format, removed_count_format, message_format func(...any) string
@@ -169,12 +169,15 @@ type ResolvedColors struct {
 	Filler_bg            style.RGBA
 	Foreground           style.RGBA
 	Highlight_added_bg   style.RGBA
+	Highlight_moved_bg   style.RGBA
 	Highlight_removed_bg style.RGBA
 	Hunk_bg              style.RGBA
 	Hunk_margin_bg       style.RGBA
 	Margin_bg            style.RGBA
 	Margin_fg            style.RGBA
 	Margin_filler_bg     style.NullableColor
+	Moved_bg             style.RGBA
+	Moved_margin_bg      style.RGBA
 	Removed_bg           style.RGBA
 	Removed_margin_bg    style.RGBA
 	Search_bg            style.RGBA
@@ -196,12 +199,15 @@ func create_formatters() {
 		rc.Filler_bg = conf.Dark_filler_bg
 		rc.Foreground = conf.Dark_foreground
 		rc.Highlight_added_bg = conf.Dark_highlight_added_bg
+		rc.Highlight_moved_bg = conf.Dark_highlight_moved_bg
 		rc.Highlight_removed_bg = conf.Dark_highlight_removed_bg
 		rc.Hunk_bg = conf.Dark_hunk_bg
 		rc.Hunk_margin_bg = conf.Dark_hunk_margin_bg
 		rc.Margin_bg = conf.Dark_margin_bg
 		rc.Margin_fg = conf.Dark_margin_fg
 		rc.Margin_filler_bg = conf.Dark_margin_filler_bg
+		rc.Moved_bg = conf.Dark_moved_bg
+		rc.Moved_margin_bg = conf.Dark_moved_margin_bg
 		rc.Removed_bg = conf.Dark_removed_bg
 		rc.Removed_margin_bg = conf.Dark_removed_margin_bg
 		rc.Search_bg = conf.Dark_search_bg
@@ -217,12 +223,15 @@ func create_formatters() {
 		rc.Filler_bg = conf.Filler_bg
 		rc.Foreground = conf.Foreground
 		rc.Highlight_added_bg = conf.Highlight_added_bg
+		rc.Highlight_moved_bg = conf.Highlight_moved_bg
 		rc.Highlight_removed_bg = conf.Highlight_removed_bg
 		rc.Hunk_bg = conf.Hunk_bg
 		rc.Hunk_margin_bg = conf.Hunk_margin_bg
 		rc.Margin_bg = conf.Margin_bg
 		rc.Margin_fg = conf.Margin_fg
 		rc.Margin_filler_bg = conf.Margin_filler_bg
+		rc.Moved_bg = conf.Moved_bg
+		rc.Moved_margin_bg = conf.Moved_margin_bg
 		rc.Removed_bg = conf.Removed_bg
 		rc.Removed_margin_bg = conf.Removed_margin_bg
 		rc.Search_bg = conf.Search_bg
@@ -253,6 +262,8 @@ func create_formatters() {
 	format_as_sgr.hunk = only_open(fmt.Sprintf("fg=%s bg=%s", rc.Margin_fg.AsRGBSharp(), rc.Hunk_bg.AsRGBSharp()))
 	format_as_sgr.hunk_margin = only_open(fmt.Sprintf("fg=%s bg=%s", rc.Margin_fg.AsRGBSharp(), rc.Hunk_margin_bg.AsRGBSharp()))
 	format_as_sgr.search = only_open(fmt.Sprintf("fg=%s bg=%s", rc.Search_fg.AsRGBSharp(), rc.Search_bg.AsRGBSharp()))
+	format_as_sgr.moved = only_open("bg=" + rc.Moved_bg.AsRGBSharp())
+	format_as_sgr.moved_margin = only_open(fmt.Sprintf("fg=%s bg=%s", rc.Margin_fg.AsRGBSharp(), rc.Moved_margin_bg.AsRGBSharp()))
 	statusline_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", rc.Margin_fg.AsRGBSharp()))
 	added_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", rc.Highlight_added_bg.AsRGBSharp()))
 	removed_count_format = ctx.SprintFunc(fmt.Sprintf("fg=%s", rc.Highlight_removed_bg.AsRGBSharp()))
@@ -271,6 +282,8 @@ func center_span(ltype string, offset, size int) *sgr.Span {
 		ans.SetBackground(resolved_colors.Highlight_added_bg).SetClosingBackground(resolved_colors.Added_bg)
 	case "remove":
 		ans.SetBackground(resolved_colors.Highlight_removed_bg).SetClosingBackground(resolved_colors.Removed_bg)
+	case "moved":
+		ans.SetBackground(resolved_colors.Highlight_moved_bg).SetClosingBackground(resolved_colors.Moved_bg)
 	}
 	return ans
 }
@@ -531,6 +544,7 @@ func binary_lines(left_path, right_path string, columns, margin_size int, ans []
 type DiffData struct {
 	left_path, right_path       string
 	available_cols, margin_size int
+	patch                       *Patch
 
 	left_lines, right_lines []string
 }
@@ -567,13 +581,28 @@ func splitlines(text string, width int) []string {
 	return style.WrapTextAsLines(text, width, style.WrapOptions{})
 }
 
-func render_half_line(line_number int, line, ltype string, available_cols int, center Center, ans []HalfScreenLine) []HalfScreenLine {
+func render_half_line(line_number int, line, ltype string, available_cols int, center Center, patch *Patch, ans []HalfScreenLine) []HalfScreenLine {
+	actualLtype := ltype
+	// Check if this is a moved line
+	if patch != nil && (ltype == "remove" || ltype == "add") {
+		if ltype == "remove" && patch.IsMovedLeftLine(line_number) {
+			actualLtype = "moved"
+		} else if ltype == "add" {
+			// Check if this added line corresponds to a moved line
+			for leftLineNum, rightLineNum := range patch.mapped_lines {
+				if rightLineNum == line_number {
+					actualLtype = "moved"
+					break
+				}
+			}
+		}
+	}
 	size := center.left_size
-	if ltype != "remove" {
+	if actualLtype != "remove" {
 		size = center.right_size
 	}
 	if size > 0 {
-		span := center_span(ltype, center.offset, size)
+		span := center_span(actualLtype, center.offset, size)
 		line = sgr.InsertFormatting(line, span)
 	}
 	lnum := strconv.Itoa(line_number + 1)
@@ -596,13 +625,13 @@ func lines_for_diff_chunk(data *DiffData, _ int, chunk *Chunk, _ int, ans []*Log
 		}
 		if i < chunk.left_count {
 			left_lnum = chunk.left_start + i
-			ll = render_half_line(left_lnum, data.left_lines[left_lnum], "remove", data.available_cols, center, ll)
+			ll = render_half_line(left_lnum, data.left_lines[left_lnum], "remove", data.available_cols, center, data.patch, ll)
 			left_lnum++
 		}
 
 		if i < chunk.right_count {
 			right_lnum = chunk.right_start + i
-			rl = render_half_line(right_lnum, data.right_lines[right_lnum], "add", data.available_cols, center, rl)
+			rl = render_half_line(right_lnum, data.right_lines[right_lnum], "add", data.available_cols, center, data.patch, rl)
 			right_lnum++
 		}
 
@@ -658,7 +687,7 @@ func lines_for_diff(left_path string, right_path string, patch *Patch, columns, 
 		return append(ans, &ht), nil
 	}
 	available_cols := columns/2 - margin_size
-	data := DiffData{left_path: left_path, right_path: right_path, available_cols: available_cols, margin_size: margin_size}
+	data := DiffData{left_path: left_path, right_path: right_path, available_cols: available_cols, margin_size: margin_size, patch: patch}
 	if left_path != "" {
 		data.left_lines, err = highlighted_lines_for_path(left_path)
 		if err != nil {

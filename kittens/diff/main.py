@@ -65,6 +65,15 @@ Can be specified multiple times to use multiple patterns. For example::
 ''',
     )
 
+opt('color_moved', 'no', choices=('no', 'default', 'plain', 'blocks', 'zebra', 'dimmed-zebra'),
+    long_text='''
+How to color lines that moved without changes. :code:`no` disables coloring of moved lines.
+:code:`default` uses the default coloring mode. :code:`plain` colors moved lines with a different
+background. :code:`blocks` colors moved blocks of lines. :code:`zebra` colors moved lines in a
+zebra pattern. :code:`dimmed-zebra` colors moved lines in a dimmed zebra pattern.
+'''
+    )
+
 egr()  # }}}
 
 # colors {{{
@@ -156,6 +165,15 @@ opt('dark_select_bg', '#2c599c', option_type='to_color')
 
 opt('select_fg', 'black', option_type='to_color_or_none')
 opt('dark_select_fg', 'white', option_type='to_color_or_none')
+
+opt('moved_bg', '#fff5b1', option_type='to_color', long_text='Moved text backgrounds')
+opt('dark_moved_bg', '#483d0a', option_type='to_color')
+
+opt('highlight_moved_bg', '#ffe082', option_type='to_color')
+opt('dark_highlight_moved_bg', '#665c00', option_type='to_color')
+
+opt('moved_margin_bg', '#ffe082', option_type='to_color')
+opt('dark_moved_margin_bg', '#665c00', option_type='to_color')
 egr()  # }}}
 
 # shortcuts {{{
