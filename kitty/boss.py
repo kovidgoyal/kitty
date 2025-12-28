@@ -1472,7 +1472,7 @@ class Boss:
                             pass  # no-op
                 else:
                     new_size = amt
-                new_size = max(MINIMUM_FONT_SIZE, min(new_size, get_options().font_size * 5))
+                new_size = max(MINIMUM_FONT_SIZE, min(new_size, get_options().font_size * 10))
             return new_size
 
         if all_windows:
