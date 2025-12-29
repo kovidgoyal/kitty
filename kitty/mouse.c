@@ -1276,9 +1276,9 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
         if (!screen->modes.mouse_tracking_mode && pixel_scroll_enabled_for_screen(screen) && (is_high_resolution || is_value120)) {
             double delta_pixels = 0.0;
             if (is_high_resolution) {
-                delta_pixels = -yoffset * OPT(touch_scroll_multiplier);
+                delta_pixels = yoffset * OPT(touch_scroll_multiplier);
             } else {
-                const double offset_lines = (-yoffset / 120.) * OPT(wheel_scroll_multiplier);
+                const double offset_lines = (yoffset / 120.) * OPT(wheel_scroll_multiplier);
                 delta_pixels = offset_lines * global_state.callback_os_window->fonts_data->fcm.cell_height;
             }
             screen->pending_scroll_pixels_y = 0.0;
