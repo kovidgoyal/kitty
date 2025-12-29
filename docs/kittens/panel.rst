@@ -139,7 +139,7 @@ Compatibility with various platforms
     .. tab:: Wayland
 
         Below is a list of the status of various Wayland compositors. The panel kitten
-        relies of the `wlr layer shell protocol
+        relies on the `wlr layer shell protocol
         <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__,
         which is technically supported by almost all Wayland compositors, but the
         implementation in some of them is quite buggy.
