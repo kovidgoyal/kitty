@@ -78,14 +78,14 @@ def srgb_to_linear(c: float) -> float:
     """Convert sRGB component (0-1) to linear light"""
     if c <= 0.04045:
         return c / 12.92
-    return ((c + 0.055) / 1.055) ** 2.4
+    return math.pow((c + 0.055) / 1.055, 2.4)
 
 
 def linear_to_srgb(c: float) -> float:
     """Convert linear light component (0-1) to sRGB"""
     if c <= 0.0031308:
         return c * 12.92
-    return 1.055 * (c ** (1 / 2.4)) - 0.055
+    return 1.055 * math.pow(c, (1 / 2.4)) - 0.055
 
 
 def oklch_to_srgb(l: float, c: float, h: float) -> tuple[float, float, float]:
