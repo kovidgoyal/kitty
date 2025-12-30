@@ -8,6 +8,9 @@
 #include "state.h"
 #include <structmember.h>
 #include "colors.h"
+#include <locale.h>
+float strtof_l(const char *restrict nptr, char **restrict endptr, locale_t locale);
+locale_t c_locale;
 
 
 static uint32_t FG_BG_256[256] = {
@@ -776,8 +779,311 @@ contrast(Color* self, PyObject *o) {
     return PyFloat_FromDouble(rgb_contrast(self->color, other->color));
 }
 
+static char
+hexchar_to_int(char c) {
+    if ('0' <= c && c <= '9') return c - '0';
+    if ('a' <= c && c <= 'f') return c - 'a' + 10;
+    if ('A' <= c && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+static bool
+parse_base16_uchar(const char *hex, unsigned char *out) {
+    const char hi = hexchar_to_int(hex[0]);
+    const char lo = hexchar_to_int(hex[1]);
+    if (hi < 0 || lo < 0) return false;
+    *out = (unsigned char)((hi << 4) | lo);
+    return true;
+}
+
+static bool
+parse_double(const char *src, double *out) {
+    char *endptr;
+    errno = 0;
+    *out = strtod_l(src, &endptr, c_locale);
+    return endptr != src && *endptr == 0 && errno == 0;
+}
+
+static bool
+parse_single_color(const char *c, size_t len, unsigned char *out) {
+    char buf[2];
+    if (len == 1) { buf[0] = c[0]; buf[1] = c[0]; c = buf; }
+    return parse_base16_uchar(c, out);
+}
+
+static PyObject*
+parse_sharp(const char *spec, size_t len) {
+    unsigned char r, g, b;
+    switch(len) {
+        case 3:
+            if (!parse_single_color(spec, 1, &r) || !parse_single_color(spec + 1, 1, &g) || !parse_single_color(spec + 2, 1, &b)) Py_RETURN_NONE;
+            break;
+        case 6: case 9: case 12:
+            if (!parse_single_color(spec, 2, &r) || !parse_single_color(spec + len/3, 2, &g) || !parse_single_color(spec + 2 * len / 3, 2, &b)) Py_RETURN_NONE;
+            break;
+        default:
+            Py_RETURN_NONE;
+    }
+    return (PyObject*)alloc_color(r, g, b, 0);
+}
+
+static PyObject*
+parse_rgb(const char *spec, size_t len) {
+    char buf[32];
+    if (len >= sizeof(buf)) Py_RETURN_NONE;
+    memcpy(buf, spec, len); buf[len] = 0;
+    unsigned char r, g, b; char *tok;
+#define p(buf, out) if (!(tok = strtok(buf, "/")) || !parse_single_color(tok, strlen(tok), &out)) Py_RETURN_NONE;
+    p(buf, r); p(NULL, g); p(NULL, b);
+#undef p
+    return (PyObject*)alloc_color(r, g, b, 0);
+}
+
+static unsigned char as8bit(double f) { return (unsigned char)((MAX(0., MIN(f, 1.))) * 255.); }
+
+static bool
+parse_single_intensity(const char *s, unsigned char *out) {
+    double f; if (!parse_double(s, &f)) return false;
+    *out = as8bit(f);
+    return true;
+}
+
+static PyObject*
+parse_rgbi(const char *spec, size_t len) {
+    char buf[256];
+    if (len >= sizeof(buf)) Py_RETURN_NONE;
+    memcpy(buf, spec, len); buf[len] = 0;
+    unsigned char r, g, b; char *tok;
+#define p(buf, out) if (!(tok = strtok(buf, "/")) || !parse_single_intensity(tok, &out)) Py_RETURN_NONE;
+    p(buf, r); p(NULL, g); p(NULL, b);
+#undef p
+    return (PyObject*)alloc_color(r, g, b, 0);
+}
+
+static bool
+parse_double_intensity(char *s, double *out, double percentage_divider) {
+    size_t l = strlen(s);
+    if (l == 0) return false;
+    double divisor = 1;
+    if (s[l-1] == '%') { s[l-1] = 0; divisor = percentage_divider; }
+    if (!parse_double(s, out)) return false;
+    *out /= divisor;
+    return true;
+}
+
+static double clamp(const double f) { return MAX(0, MIN(f, 1)); }
+
+static double
+linear_to_srgb(double c) { return c <= 0.0031308 ? c * 12.92 : (1.055 * pow(c, (1 / 2.4)) - 0.055); }
+
+static double degrees_to_radians(double degrees) { return degrees * (M_PI / 180); }
+static double radians_to_degrees(double radians) { return 180 * radians / M_PI; }
+
+static void
+oklch_to_srgb(double l, double c, double h, double *r, double *g, double *b) {
+    // Convert OKLCH to OKLab
+    const double h_rad = degrees_to_radians(h);
+    const double a = c * cos(h_rad);
+    const double lb = c * sin(h_rad);
+    // Convert OKLab to Linear sRGB
+    // Using the OKLab to Linear sRGB transformation
+    const double l_ = l + 0.3963377774 * a + 0.2158037573 * lb;
+    const double m_ = l - 0.1055613458 * a - 0.0638541728 * lb;
+    const double s_ = l - 0.0894841775 * a - 1.2914855480 * lb;
+
+    const double l_lin = l_ * l_ * l_;
+    const double m_lin = m_ * m_ * m_;
+    const double s_lin = s_ * s_ * s_;
+
+    const double r_lin = +4.0767416621 * l_lin - 3.3077115913 * m_lin + 0.2309699292 * s_lin;
+    const double g_lin = -1.2684380046 * l_lin + 2.6097574011 * m_lin - 0.3413193965 * s_lin;
+    const double b_lin = -0.0041960863 * l_lin - 0.7034186147 * m_lin + 1.7076147010 * s_lin;
+
+    *r = linear_to_srgb(clamp(r_lin)); *g = linear_to_srgb(clamp(g_lin)); *b = linear_to_srgb(clamp(b_lin));
+}
+
+static double srgb_to_linear(double c) { return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4); }
+
+
+static void
+srgb_to_oklab(double r, double g, double b, double *l, double *a, double *lb) {
+    // Convert sRGB to linear sRGB
+    const double r_lin = srgb_to_linear(r);
+    const double g_lin = srgb_to_linear(g);
+    const double b_lin = srgb_to_linear(b);
+
+    // Convert Linear sRGB to OKLab (inverse of oklch_to_srgb)
+    const double l_lin = 0.4122214708 * r_lin + 0.5363325363 * g_lin + 0.0514459929 * b_lin;
+    const double m_lin = 0.2119034982 * r_lin + 0.6806995451 * g_lin + 0.1073969566 * b_lin;
+    const double s_lin = 0.0883024619 * r_lin + 0.2817188376 * g_lin + 0.6299787005 * b_lin;
+
+    const double l_ = l_lin != 0 ? copysign(pow(fabs(l_lin), 1./3.), l_lin) : 0;
+    const double m_ = m_lin != 0 ? copysign(pow(fabs(m_lin), 1./3.), m_lin) : 0;
+    const double s_ = s_lin != 0 ? copysign(pow(fabs(s_lin), 1./3.), s_lin) : 0;
+
+    // OKLab coordinates
+    *l = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_;
+    *a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
+    *lb = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+}
+
+static double
+distance(double x_l, double x_a, double x_b, double y_l, double y_a, double y_b) {
+    return sqrt((x_l - y_l)*(x_l - y_l) + (x_a - y_a)*(x_a - y_a) + (x_b - y_b)*(x_b - y_b));
+}
+
+static void
+oklch_to_srgb_gamut_map(double l, double c, double h, double *r, double *g, double *b) {
+    // Edge cases: pure black or white don't need gamut mapping
+    if (!isfinite(l) || !isfinite(c) || !isfinite(h) || l <= 0) { *r = 0; *g = 0; *b = 0; return; }
+    if (l >= 1) { *r = 1; *g = 1; *b = 1; return; }
+    // Constants from CSS Color Module Level 4
+    static const double JND = 0.02;  // Just Noticeable Difference threshold (2% in deltaEOK)
+    static const double MIN_CONVERGENCE = 0.0001;  // Binary search precision (0.01% chroma)
+    static const double EPSILON = 0.00001;  // Small value for doubleing point comparisons
+
+    // If chroma is very small, color is essentially achromatic
+    if (c < EPSILON) { *r = linear_to_srgb(l); *g = *r; *b = *r; return; }
+    // Try the original color first
+    oklch_to_srgb(l, c, h, r, g, b);
+#define in_gamut(r,g,b) (0. <= r && r <= 1. && 0. <= g && g <= 1. && 0. <= b && b <= 1.)
+    if (in_gamut(*r,*g,*b)) return;
+    // Binary search for maximum in-gamut chroma
+    double low_chroma = 0, high_chroma = c, r_test, g_test, b_test, r_clipped, g_clipped, b_clipped;
+
+    // Convert original color to OKLab for deltaE calculations
+    while ((high_chroma - low_chroma) > MIN_CONVERGENCE) {
+        double mid_chroma = (high_chroma + low_chroma) * 0.5;
+        // Try this chroma value
+        oklch_to_srgb(l, mid_chroma, h, &r_test, &g_test, &b_test);
+        // Check if in gamut (before clipping)
+        if (in_gamut(r_test, g_test, b_test)) {
+            // In gamut - try higher chroma
+            low_chroma = mid_chroma;
+        } else {
+            // Out of gamut - clip and check deltaE
+            r_clipped = clamp(r_test); g_clipped = clamp(g_test); b_clipped = clamp(b_test);
+
+            // Convert both to OKLab for comparison
+            double l_test, a_test, lb_test, l_clipped, a_clipped, lb_clipped;
+            srgb_to_oklab(r_test, g_test, b_test, &l_test, &a_test, &lb_test);
+            srgb_to_oklab(r_clipped, g_clipped, b_clipped, &l_clipped, &a_clipped, &lb_clipped);
+
+            // Calculate perceptual difference
+            double de = distance(l_test, a_test, lb_test, l_clipped, a_clipped, lb_clipped);
+
+            if (de < JND) {
+                // Difference is imperceptible - accept this chroma
+                low_chroma = mid_chroma;
+            } else {
+                // Difference is noticeable - reduce chroma more
+                high_chroma = mid_chroma;
+            }
+        }
+    }
+    // Use the final chroma value and clip to ensure in-gamut
+    oklch_to_srgb(l, low_chroma, h, r, g, b);
+    *r = clamp(*r); *g = clamp(*g); *b = clamp(*b);
+#undef in_gamut
+}
+
+static double
+f_inv(double t) {
+    static const double delta = 6. / 29.;
+    return t > delta ? t*t*t : 3 * delta * delta * (t - 4. / 29.);
+}
+
+
+static void
+lab_to_oklch(double l, double a, double b, double *okl, double *c, double *h) {
+    const double y = (l + 16.) / 116.;
+    const double x = a / 500. + y;
+    const double z = y - b / 200.;
+    const double x_val = 0.95047 * f_inv(x);
+    const double y_val = f_inv(y);
+    const double z_val = 1.08883 * f_inv(z);
+
+    // XYZ to Linear sRGB (don't clip here to preserve out-of-gamut info)
+    const double r_lin = +3.2404542 * x_val - 1.5371385 * y_val - 0.4985314 * z_val;
+    const double g_lin = -0.9692660 * x_val + 1.8760108 * y_val + 0.0415560 * z_val;
+    const double b_lin = +0.0556434 * x_val - 0.2040259 * y_val + 1.0572252 * z_val;
+
+    // Convert linear sRGB to sRGB gamma
+    const double r_srgb = r_lin >= 0 ? linear_to_srgb(r_lin) : 0;
+    const double g_srgb = g_lin >= 0 ? linear_to_srgb(g_lin) : 0;
+    const double b_srgb = b_lin >= 0 ? linear_to_srgb(b_lin) : 0;
+
+    // Convert to OKLab
+    double a_ok, b_ok;
+    srgb_to_oklab(r_srgb, g_srgb, b_srgb, okl, &a_ok, &b_ok);
+    // Convert OKLab to OKLCH
+    *c = sqrt(a_ok * a_ok + b_ok * b_ok);
+    *h = fmod(radians_to_degrees(atan2(b_ok, a_ok)), 360.f);
+}
+
+static PyObject*
+parse_oklch(const char *spec, size_t len) {
+    if (len < 10 || spec[--len] != ')') Py_RETURN_NONE;
+    if (spec[0] != 'k' || spec[1] != 'l' || spec[2] != 'c' || spec[3] != 'h' || spec[4] != '(') Py_RETURN_NONE;
+    spec += 5; len -= 5;
+    char buf[256]; if (len >= sizeof(buf)) Py_RETURN_NONE;
+    memcpy(buf, spec, len); buf[len] = 0;
+    double l, c, h; char *tok;
+#define p(buf, out) if (!(tok = strtok(buf, " ,")) || !parse_double_intensity(tok, &out, 100)) Py_RETURN_NONE;
+    p(buf, l); p(NULL, c); p(NULL, h);
+#undef p
+    // Clamp to reasonable ranges
+    l = clamp(l);
+    c = MAX(0.f, c);  // Chroma is unbounded but we don't clamp high end
+    h = fmod(h, 360);  // Wrap hue to 0-360
+    double r, g, b;
+    oklch_to_srgb_gamut_map(l, c, h, &r, &g, &b);
+    return (PyObject*)alloc_color(as8bit(r), as8bit(g), as8bit(b), 0);
+}
+
+static PyObject*
+parse_lab(const char *spec, size_t len) {
+    if (len < 8 || spec[--len] != ')') Py_RETURN_NONE;
+    if (spec[0] != 'a' || spec[1] != 'b' || spec[2] != '(') Py_RETURN_NONE;
+    spec += 3; len -= 3;
+    char buf[256]; if (len >= sizeof(buf)) Py_RETURN_NONE;
+    memcpy(buf, spec, len); buf[len] = 0;
+    double l, a, b; char *tok;
+#define p(buf, out) if (!(tok = strtok(buf, " ,")) || !parse_double_intensity(tok, &out, 1)) Py_RETURN_NONE;
+    p(buf, l); p(NULL, a); p(NULL, b);
+#undef p
+    // Clamp to reasonable ranges
+    double okl, c, h, r, g, bb;
+    lab_to_oklch(MAX(0., MIN(l, 100.)), a, b, &okl, &c, &h);
+    oklch_to_srgb_gamut_map(okl, c, h, &r, &g, &bb);
+    return (PyObject*)alloc_color(as8bit(r), as8bit(g), as8bit(bb), 0);
+}
+
+static PyObject*
+parse_color(PyTypeObject *type UNUSED, PyObject *pspec) {
+    if (!PyUnicode_Check(pspec)) { PyErr_SetString(PyExc_TypeError, "spec must be a string"); return NULL; }
+    Py_ssize_t len;
+    const char *spec = PyUnicode_AsUTF8AndSize(pspec, &len);
+    if (len < 4) Py_RETURN_NONE;
+    switch (spec[0]) {
+        case '#': return parse_sharp(spec + 1, len - 1);
+        case 'r':
+            if (spec[1] != 'g' || spec[2] != 'b' || len < 6) Py_RETURN_NONE;
+            switch(spec[3]) {
+                case ':': return parse_rgb(spec + 4, len - 4);
+                case 'i':
+                    if (spec[4] == 'i' && spec[5] == ':') return parse_rgbi(spec + 5, len - 5);
+            }
+            Py_RETURN_NONE;
+        case 'o': return parse_oklch(spec + 1, len - 1);
+        case 'l': return parse_lab(spec + 1, len - 1);
+    }
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef color_methods[] = {
     METHODB(contrast, METH_O),
+    METHODB(parse_color, METH_O | METH_CLASS),
     {NULL}  /* Sentinel */
 };
 
@@ -816,6 +1122,7 @@ static PyMethodDef module_methods[] = {
 };
 
 int init_ColorProfile(PyObject *module) {\
+    c_locale = newlocale(LC_NUMERIC_MASK, "C", (locale_t)0);
     if (PyType_Ready(&ColorProfile_Type) < 0) return 0;
     if (PyModule_AddObject(module, "ColorProfile", (PyObject *)&ColorProfile_Type) != 0) return 0;
     Py_INCREF(&ColorProfile_Type);

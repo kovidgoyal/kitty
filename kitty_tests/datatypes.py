@@ -65,10 +65,10 @@ class TestDataTypes(BaseTest):
 
         def c(spec, r=0, g=0, b=0, a=0):
             c = to_color(spec)
-            self.ae(c.red, r)
-            self.ae(c.green, g)
-            self.ae(c.blue, b)
-            self.ae(c.alpha, a)
+            self.ae(c.red, r, spec)
+            self.ae(c.green, g, spec)
+            self.ae(c.blue, b, spec)
+            self.ae(c.alpha, a, spec)
 
         c('#eee', 0xee, 0xee, 0xee)
         c('#234567', 0x23, 0x45, 0x67)

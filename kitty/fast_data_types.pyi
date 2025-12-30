@@ -740,6 +740,9 @@ def patch_global_colors(spec: Dict[str, Optional[int]], configured: bool) -> Non
 
 
 class Color:
+    @classmethod
+    def parse_color(cls, spec: str) -> Color | None: ...
+
     @property
     def rgb(self) -> int:
         pass
@@ -1070,6 +1073,7 @@ def mark_tab_bar_dirty(os_window_id: int, should_be_shown: bool) -> None:
 
 
 def is_tab_bar_visible(os_window_id: int) -> bool: ...
+
 
 def detach_window(os_window_id: int, tab_id: int, window_id: int) -> None:
     pass
