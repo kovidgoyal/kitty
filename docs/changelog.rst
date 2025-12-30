@@ -157,6 +157,9 @@ Detailed list of changes
 - Fix tab bar rendering glitches when using :opt:`tab_bar_filter` in some
   circumstances (:iss:`9328`)
 
+- Add support for specifying colors in :file:`kitty.conf` in OKLCH and LAB
+  color spaces (:pull:`9325`)
+
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
