@@ -101,3 +101,4 @@ See the :doc:`list of all the things you can make |kitty| can do </actions>`.
    :hidden:
 
    actions
+   wide-gamut-colors
