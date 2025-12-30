@@ -88,7 +88,7 @@ def linear_to_srgb(c: float) -> float:
     return 1.055 * math.pow(c, (1 / 2.4)) - 0.055
 
 
-def oklch_to_srgb(l: float, c: float, h: float) -> tuple[float, float, float]:
+def oklch_to_srgb(l: float, c: float, h: float) -> tuple[float, float, float]:  # noqa: E741
     """Convert OKLCH to sRGB RGB (0-1)
 
     OKLCH is a perceptual color space based on OKLab.
@@ -149,7 +149,7 @@ def srgb_to_oklab(r: float, g: float, b: float) -> tuple[float, float, float]:
     s_ = math.copysign(abs(s_lin) ** (1/3), s_lin) if s_lin != 0 else 0
 
     # OKLab coordinates
-    l = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_
+    l = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_  # noqa: E741
     a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_
     b = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_
 
@@ -176,7 +176,7 @@ def deltaE_ok(lab1: tuple[float, float, float], lab2: tuple[float, float, float]
     )
 
 
-def oklch_to_srgb_gamut_map(l: float, c: float, h: float) -> tuple[float, float, float]:
+def oklch_to_srgb_gamut_map(l: float, c: float, h: float) -> tuple[float, float, float]:  # noqa: E741
     """Convert OKLCH to sRGB with CSS Color Module Level 4 gamut mapping
 
     For colors outside the sRGB gamut, this uses binary search chroma reduction
@@ -225,10 +225,6 @@ def oklch_to_srgb_gamut_map(l: float, c: float, h: float) -> tuple[float, float,
     high_chroma = c
 
     # Convert original color to OKLab for deltaE calculations
-    h_rad = math.radians(h)
-    original_a = c * math.cos(h_rad)
-    original_b = c * math.sin(h_rad)
-    original_lab = (l, original_a, original_b)
 
     while (high_chroma - low_chroma) > MIN_CONVERGENCE:
         mid_chroma = (high_chroma + low_chroma) * 0.5
@@ -273,7 +269,7 @@ def oklch_to_srgb_gamut_map(l: float, c: float, h: float) -> tuple[float, float,
     )
 
 
-def lab_to_srgb(l: float, a: float, b: float) -> tuple[float, float, float]:
+def lab_to_srgb(l: float, a: float, b: float) -> tuple[float, float, float]:  # noqa: E741
     """Convert CIE LAB to sRGB RGB (0-1)
 
     LAB is a device-independent color space.
@@ -375,7 +371,7 @@ def parse_oklch(spec: str) -> Color | None:
         return None
 
     try:
-        l = float(parts[0])
+        l = float(parts[0])  # noqa: E741
         c = float(parts[1])
         h = float(parts[2])
 
@@ -385,10 +381,10 @@ def parse_oklch(spec: str) -> Color | None:
 
         # Handle percentages for L
         if '%' in parts[0]:
-            l = l / 100.0
+            l = l / 100.0  # noqa: E741
 
         # Clamp to reasonable ranges
-        l = max(0.0, min(1.0, l))
+        l = max(0.0, min(1.0, l))  # noqa: E741
         c = max(0.0, c)  # Chroma is unbounded but we don't clamp high end
         h = h % 360  # Wrap hue to 0-360
 
@@ -423,7 +419,7 @@ def parse_lab(spec: str) -> Color | None:
         return None
 
     try:
-        l = float(parts[0])
+        l = float(parts[0])  # noqa: E741
         a = float(parts[1])
         b = float(parts[2])
 
@@ -431,12 +427,8 @@ def parse_lab(spec: str) -> Color | None:
         if not (math.isfinite(l) and math.isfinite(a) and math.isfinite(b)):
             return None
 
-        # Handle percentage for L
-        if '%' in parts[0]:
-            l = l  # L is already 0-100, so percentage would be the same
-
         # Clamp L to 0-100
-        l = max(0.0, min(100.0, l))
+        l = max(0.0, min(100.0, l))  # noqa: E741
 
         # Convert LAB to OKLCH, then use gamut mapping to sRGB
         # This is better than simple LAB -> sRGB clipping as it preserves
