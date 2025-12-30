@@ -779,7 +779,7 @@ contrast(Color* self, PyObject *o) {
     return PyFloat_FromDouble(rgb_contrast(self->color, other->color));
 }
 
-static char
+static int
 hexchar_to_int(char c) {
     if ('0' <= c && c <= '9') return c - '0';
     if ('a' <= c && c <= 'f') return c - 'a' + 10;
@@ -789,8 +789,8 @@ hexchar_to_int(char c) {
 
 static bool
 parse_base16_uchar(const char *hex, unsigned char *out) {
-    const char hi = hexchar_to_int(hex[0]);
-    const char lo = hexchar_to_int(hex[1]);
+    const int hi = hexchar_to_int(hex[0]);
+    const int lo = hexchar_to_int(hex[1]);
     if (hi < 0 || lo < 0) return false;
     *out = (unsigned char)((hi << 4) | lo);
     return true;
