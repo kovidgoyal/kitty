@@ -9,7 +9,9 @@
 #include <structmember.h>
 #include "colors.h"
 #include <locale.h>
-float strtof_l(const char *restrict nptr, char **restrict endptr, locale_t locale);
+#ifdef __APPLE__
+#include <xlocale.h>
+#endif
 locale_t c_locale;
 
 
