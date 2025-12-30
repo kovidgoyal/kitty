@@ -617,6 +617,9 @@ py_timed_debug_print(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static locale_t c_locale = 0;
+locale_t get_c_locale(void) { return c_locale; }
+
 static PyObject*
 py_run_atexit_cleanup_functions(PyObject *self UNUSED, PyObject *args UNUSED) {
     run_at_exit_cleanup_functions();
@@ -726,6 +729,7 @@ static PyMethodDef module_methods[] = {
 
 static void
 free_fast_data_types_module(void *m UNUSED) {
+    freelocale(c_locale);
     run_at_exit_cleanup_functions();
 }
 
@@ -877,6 +881,8 @@ PyInit_fast_data_types(void) {
     if (PyModule_AddObject(m, "StreamingBase64Decoder", (PyObject *) &StreamingBase64Decoder_Type) < 0) return NULL;
     if (PyType_Ready(&StreamingBase64Encoder_Type) < 0) return NULL;
     if (PyModule_AddObject(m, "StreamingBase64Encoder", (PyObject *) &StreamingBase64Encoder_Type) < 0) return NULL;
+    c_locale = newlocale(LC_NUMERIC_MASK, "C", (locale_t)0);
+    if (!c_locale) { PyErr_NoMemory(); return NULL; }
 
     return m;
 }

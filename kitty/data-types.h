@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include <poll.h>
 #include <pthread.h>
+#include <locale.h>
 #include "glfw-wrapper.h"
 #include "banned.h"
 // Required minimum OpenGL version
@@ -331,6 +332,7 @@ void focus_in_event(void);
 void scroll_event(double, double, int, int);
 void on_key_input(const GLFWkeyevent *ev);
 void request_window_attention(id_type, bool);
+locale_t get_c_locale(void);
 #ifndef __APPLE__
 void play_canberra_sound(const char *which_sound, const char *event_id, bool is_path, const char *role, const char *theme_name);
 #endif

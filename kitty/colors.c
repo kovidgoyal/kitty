@@ -8,11 +8,10 @@
 #include "state.h"
 #include <structmember.h>
 #include "colors.h"
-#include <locale.h>
 #ifdef __APPLE__
+// Needed for strod_l
 #include <xlocale.h>
 #endif
-locale_t c_locale;
 
 
 static uint32_t FG_BG_256[256] = {
@@ -806,7 +805,7 @@ static bool
 parse_double(const char *src, double *out) {
     char *endptr;
     errno = 0;
-    *out = strtod_l(src, &endptr, c_locale);
+    *out = strtod_l(src, &endptr, get_c_locale());
     return endptr != src && *endptr == 0 && errno == 0;
 }
 
@@ -1128,7 +1127,6 @@ static PyMethodDef module_methods[] = {
 };
 
 int init_ColorProfile(PyObject *module) {\
-    c_locale = newlocale(LC_NUMERIC_MASK, "C", (locale_t)0);
     if (PyType_Ready(&ColorProfile_Type) < 0) return 0;
     if (PyModule_AddObject(module, "ColorProfile", (PyObject *)&ColorProfile_Type) != 0) return 0;
     Py_INCREF(&ColorProfile_Type);
