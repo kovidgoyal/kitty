@@ -781,9 +781,13 @@ contrast(Color* self, PyObject *o) {
 
 static int
 hexchar_to_int(char c) {
-    if ('0' <= c && c <= '9') return c - '0';
-    if ('a' <= c && c <= 'f') return c - 'a' + 10;
-    if ('A' <= c && c <= 'F') return c - 'A' + 10;
+    switch (c) {
+        START_ALLOW_CASE_RANGE
+        case '0' ... '9': return c - '0';
+        case 'a' ... 'f': return c - 'a' + 10;
+        case 'A' ... 'F': return c - 'A' + 10;
+        END_ALLOW_CASE_RANGE
+    }
     return -1;
 }
 
