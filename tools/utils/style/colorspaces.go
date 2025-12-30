@@ -105,9 +105,9 @@ func oklchToSrgbGamutMap(l, c, h float64) (float64, float64, float64) {
 	}
 
 	// Constants from CSS Color Module Level 4
-	const jnd = 0.02          // Just Noticeable Difference threshold
+	const jnd = 0.02              // Just Noticeable Difference threshold
 	const minConvergence = 0.0001 // Binary search precision
-	const epsilon = 0.00001   // Small value for floating point comparisons
+	const epsilon = 0.00001       // Small value for floating point comparisons
 
 	// Edge cases: pure black or white
 	if l <= 0.0 {
@@ -271,7 +271,7 @@ func parseOklch(spec string) (RGBA, error) {
 	// Clamp to reasonable ranges
 	l = math.Max(0.0, math.Min(1.0, l))
 	c = math.Max(0.0, c) // Chroma is unbounded
-	h = math.Mod(h, 360)  // Wrap hue to 0-360
+	h = math.Mod(h, 360) // Wrap hue to 0-360
 	if h < 0 {
 		h += 360
 	}

@@ -455,30 +455,28 @@ def to_color(raw: str, validate: bool = False) -> Color | None:
     if raw.startswith('#'):
         # For hex colors, only strip comments after whitespace
         # e.g., "#ff0000 # comment" -> "#ff0000"
-        parts = raw.split()
-        if len(parts) > 1:
-            raw = parts[0]  # Keep only the hex color part
+        raw = raw.partition(' ')[0]
     else:
         # For non-hex colors, strip everything after #
-        raw = raw.split('#')[0].strip()
+        raw = raw.partition('#')[0]
     x = raw.strip().lower()
-    ans = color_names.get(x)
-    if ans is not None:
+    if ans := color_names.get(x):
         return ans
     val: Color | None = None
     with suppress(Exception):
-        if raw.startswith('#'):
-            val = parse_sharp(raw[1:])
-        elif x.startswith('oklch('):
-            val = parse_oklch(x[6:])
-        elif x.startswith('lab('):
-            val = parse_lab(x[4:])
-        else:
-            k, sep, v = raw.partition(':')
-            if k == 'rgb':
-                val = parse_rgb(v)
-            elif k == 'rgbi':
-                val = parse_rgbi(v)
+        match raw[0]:
+            case '#':
+                val = parse_sharp(raw[1:])
+            case 'o':
+                val = parse_oklch(x[6:])
+            case 'l':
+                val = parse_lab(x[4:])
+            case 'r':
+                k, _, v = raw.partition(':')
+                if k == 'rgb':
+                    val = parse_rgb(v)
+                elif k == 'rgbi':
+                    val = parse_rgbi(v)
     if val is None and validate:
         raise ValueError(f'Invalid color name: {raw!r}')
     return val
