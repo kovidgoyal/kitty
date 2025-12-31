@@ -40,6 +40,28 @@ typedef struct UIRenderData {
     color_type background_color; // RGB only
 } UIRenderData;
 
+static inline bool
+pixel_scroll_enabled_for_render(const Screen *screen) {
+    return OPT(pixel_scroll) && !screen->paused_rendering.expires_at && screen->linebuf == screen->main_linebuf;
+}
+
+static inline unsigned int
+render_lines_for_screen(const Screen *screen) {
+    return screen->lines + (pixel_scroll_enabled_for_render(screen) ? 2u : 0u);
+}
+
+static inline float
+row_offset_for_screen(const Screen *screen) {
+    if (!pixel_scroll_enabled_for_render(screen) || !screen->cell_size.height) return 0.f;
+    return -1.f + (float)(screen->pixel_scroll_offset_y / (double)screen->cell_size.height);
+}
+
+static inline float
+scroll_offset_lines_for_screen(const Screen *screen) {
+    if (!pixel_scroll_enabled_for_render(screen) || !screen->cell_size.height) return 0.f;
+    return (float)(screen->pixel_scroll_offset_y / (double)screen->cell_size.height);
+}
+
 // Sprites {{{
 typedef struct {
     int xnum, ynum, x, y, z, last_num_of_layers, last_ynum;
@@ -486,6 +508,10 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     if (rd->cursor_opacity != 0 && cursor->is_visible) {
         rd->cursor_x1 = cursor->x, rd->cursor_y1 = cursor->y;
         rd->cursor_x2 = cursor->x, rd->cursor_y2 = cursor->y;
+        if (pixel_scroll_enabled_for_render(screen)) {
+            rd->cursor_y1 += 1;
+            rd->cursor_y2 += 1;
+        }
         CursorShape cs = (cursor->is_focused || OPT(cursor_shape_unfocused) == NO_CURSOR_SHAPE) ? cursor->shape : OPT(cursor_shape_unfocused);
         rd->cursor_shape = cs;
         color_type cell_fg = rd->default_fg, cell_bg = rd->bg_colors0;
@@ -573,7 +599,8 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     bool screen_resized = screen->last_rendered.columns != screen->columns || screen->last_rendered.lines != screen->lines;
 
 #define update_cell_data { \
-        sz = sizeof(GPUCell) * screen->lines * screen->columns; \
+        const unsigned int render_lines = render_lines_for_screen(screen); \
+        sz = sizeof(GPUCell) * render_lines * screen->columns; \
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, true); \
         screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed); \
         unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL; \
@@ -585,7 +612,8 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     } else if (screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || screen_resized || (disable_ligatures && cursor_pos_changed)) update_cell_data;
 
 #define update_selection_data { \
-    sz = (size_t)screen->lines * screen->columns; \
+    const unsigned int render_lines = render_lines_for_screen(screen); \
+    sz = (size_t)render_lines * screen->columns; \
     address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, true); \
     screen_apply_selection(screen, address, sz); \
     unmap_vao_buffer(vao_idx, selection_buffer); address = NULL; \
@@ -593,7 +621,7 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
 }
 
 #define update_graphics_data(grman) \
-    grman_update_layers(grman, screen->scrolled_by, -1.f, 1.f, 2.f/screen->columns, 2.f/screen->lines, screen->columns, screen->lines, screen->cell_size)
+    grman_update_layers(grman, screen->scrolled_by, scroll_offset_lines_for_screen(screen), -1.f, 1.f, 2.f/screen->columns, 2.f/screen->lines, screen->columns, screen->lines, screen->cell_size)
 
     if (screen->paused_rendering.expires_at) {
         if (!screen->paused_rendering.cell_data_updated) {
@@ -1069,8 +1097,9 @@ call_cell_program(int program, const UIRenderData *ui, ssize_t vao_idx, bool for
     CELL_BUFFERS;
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[program].render_data.index);
     glUniform1ui(cell_program_layouts[program].uniforms.draw_bg_bitfield, draw_bg_bitfield);
+    glUniform1f(cell_program_layouts[program].uniforms.row_offset, row_offset_for_screen(ui->screen));
     if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
-    draw_quad(!for_final_output, ui->screen->lines * ui->screen->columns);
+    draw_quad(!for_final_output, render_lines_for_screen(ui->screen) * ui->screen->columns);
     if (for_final_output) glDisable(GL_FRAMEBUFFER_SRGB);
 }
 

@@ -249,6 +249,7 @@ grman_pause_rendering(GraphicsManager *self, GraphicsManager *dest) {
     dest->window_id = self->window_id;
     dest->layers_dirty = true;
     dest->last_scrolled_by = 0;
+    dest->last_scroll_offset_lines = 0.0f;
 
     iter_images(self) {
         Image *clone = calloc(1, sizeof(Image)), *img = i.data->val;
@@ -1202,9 +1203,10 @@ resolve_parent_offset(const GraphicsManager *self, const ImageRef *ref, int32_t 
 
 
 bool
-grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize cell) {
-    if (self->last_scrolled_by != scrolled_by) set_layers_dirty(self);
+grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scroll_offset_lines, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize cell) {
+    if (self->last_scrolled_by != scrolled_by || self->last_scroll_offset_lines != scroll_offset_lines) set_layers_dirty(self);
     self->last_scrolled_by = scrolled_by;
+    self->last_scroll_offset_lines = scroll_offset_lines;
     if (!self->layers_dirty) return false;
     self->layers_dirty = false;
     size_t i;
@@ -1216,7 +1218,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     float screen_bottom = screen_top - screen_height;
     float screen_width_px = num_cols * cell.width;
     float screen_height_px = num_rows * cell.height;
-    float y0 = screen_top - dy * scrolled_by;
+    float y0 = screen_top - dy * ((float)scrolled_by + scroll_offset_lines);
 
     // Iterate over all visible refs and create render data
     self->render_data.count = 0;
@@ -2367,10 +2369,10 @@ W(shm_unlink) {
 }
 
 W(update_layers) {
-    unsigned int scrolled_by, sx, sy; float xstart, ystart, dx, dy;
+    unsigned int scrolled_by, sx, sy; float xstart, ystart, dx, dy, scroll_offset_lines = 0.0f;
     CellPixelSize cell;
-    PA("IffffIIII", &scrolled_by, &xstart, &ystart, &dx, &dy, &sx, &sy, &cell.width, &cell.height);
-    grman_update_layers(self, scrolled_by, xstart, ystart, dx, dy, sx, sy, cell);
+    PA("IffffIIII|f", &scrolled_by, &xstart, &ystart, &dx, &dy, &sx, &sy, &cell.width, &cell.height, &scroll_offset_lines);
+    grman_update_layers(self, scrolled_by, scroll_offset_lines, xstart, ystart, dx, dy, sx, sy, cell);
     PyObject *ans = PyTuple_New(self->render_data.count);
     for (size_t i = 0; i < self->render_data.count; i++) {
         ImageRenderData *r = self->render_data.item + i;
