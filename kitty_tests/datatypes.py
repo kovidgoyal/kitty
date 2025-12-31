@@ -70,18 +70,23 @@ class TestDataTypes(BaseTest):
             self.ae(c.blue, b, spec)
             self.ae(c.alpha, a, spec)
 
-        c('#eee', 0xee, 0xee, 0xee)
+        c('#eee # comment', 0xee, 0xee, 0xee)
         c('#234567', 0x23, 0x45, 0x67)
         c('#abcabcdef', 0xab, 0xab, 0xde)
-        c('rgb:e/e/e', 0xee, 0xee, 0xee)
+        c('rgb:e/e/e # comment', 0xee, 0xee, 0xee)
         c('rgb:23/45/67', 0x23, 0x45, 0x67)
         c('rgb:abc/abc/def', 0xab, 0xab, 0xde)
-        c('red', 0xff)
-
-        # Wide gamut color formats
-        c('oklch(0.7 0.15 140)', 0x67, 0xb4, 0x56)  # OKLCH green
-        c('oklch(0.9 0.05 265)', 0xcd, 0xde, 0xfe)  # OKLCH light blue
-        c('lab(70 50 -30)', 0xea, 0x88, 0xe2)  # CIE LAB purple-ish
+        c('red', 0xff, 0, 0)
+        c('alice blue # comment', 240, 248, 255)
+        c('oklch(1,0,0)', 255, 255, 255)
+        c('oklch(0,0,0)', 0, 0, 0)
+        c('oklch(0.5,0.1,180)', 0, 117, 101)
+        c('oklch(0.7 0.15 140) # comment', 0x68, 0xb4, 0x57)
+        c('oklch(0.9 0.05 265)', 0xce, 0xde, 0xff)
+        c('lab(70 50 -30)', 0xea, 0x88, 0xe2)
+        c('lab(50,0,0)', 199, 199, 199)
+        c('lab(100,0,0)', 255, 255, 255)
+        c('lab(0,0,0)', 0, 0, 0)
 
         self.ae(int(Color(1, 2, 3)), 0x10203)
         base = Color(12, 12, 12)
@@ -98,9 +103,7 @@ class TestDataTypes(BaseTest):
         def c(spec, r=0, g=0, b=0):
             color = to_color(spec)
             self.assertIsNotNone(color, f'Failed to parse: {spec}')
-            self.ae(color.red, r)
-            self.ae(color.green, g)
-            self.ae(color.blue, b)
+            self.ae(Color(r, g, b), color, spec)
 
         def in_range(spec):
             """Verify color values are in valid 0-255 range"""
@@ -125,8 +128,8 @@ class TestDataTypes(BaseTest):
         c('oklch(1 0 0)', 0xff, 0xff, 0xff)  # Pure white
 
         # Achromatic colors (zero chroma)
-        c('oklch(0.5 0 180)', 0xbb, 0xbb, 0xbb)  # Mid gray, hue irrelevant
-        c('oklch(0.25 0 90)', 0x88, 0x88, 0x88)  # Dark gray
+        c('oklch(0.5 0 180)', 0xbc, 0xbc, 0xbc)  # Mid gray, hue irrelevant
+        c('oklch(0.25 0 90)', 0x89, 0x89, 0x89)  # Dark gray
 
         # Test various hues with moderate chroma
         in_range('oklch(0.6 0.15 0)')    # Red hue
@@ -155,13 +158,11 @@ class TestDataTypes(BaseTest):
         def c(spec, r=0, g=0, b=0):
             color = to_color(spec)
             self.assertIsNotNone(color, f'Failed to parse: {spec}')
-            self.ae(color.red, r)
-            self.ae(color.green, g)
-            self.ae(color.blue, b)
+            self.ae(Color(r, g, b), color, spec)
 
         # OKLCH with inline comment
         c('oklch(0.5 0.1 180) # Cyan color', 0x00, 0x75, 0x65)
-        c('oklch(0.7 0.15 140) # Green', 0x67, 0xb4, 0x56)
+        c('oklch(0.7 0.15 140) # Green', 0x68, 0xb4, 0x57)
 
         # Hex colors with inline comments
         c('#ff0000 # Red', 0xff, 0x00, 0x00)
@@ -186,11 +187,12 @@ class TestDataTypes(BaseTest):
             self.ae(color.red, r)
             self.ae(color.green, g)
             self.ae(color.blue, b)
+            self.ae(Color(r, g, b), color, spec)
 
         # LAB basic colors
         c('lab(0 0 0)', 0x00, 0x00, 0x00)      # LAB black
-        c('lab(100 0 0)', 0xfe, 0xfe, 0xfe)    # LAB white (slightly clipped in conversion)
-        c('lab(50 0 0)', 0xc6, 0xc6, 0xc6)     # LAB mid-gray
+        c('lab(100 0 0)', 0xff, 0xff, 0xff)    # LAB white
+        c('lab(50 0 0)', 0xc7, 0xc7, 0xc7)     # LAB mid-gray
 
         # LAB with color components
         c('lab(70 50 -30)', 0xea, 0x88, 0xe2)  # Purple-ish

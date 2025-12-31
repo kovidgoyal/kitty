@@ -65,16 +65,42 @@ func (self RGBA) AsRGBSharp() string {
 func (self *RGBA) parse_rgb_strings(r string, g string, b string) bool {
 	var rv, gv, bv uint64
 	var err error
-	if rv, err = strconv.ParseUint(r, 16, 8); err != nil {
+	if len(r) == 1 {
+		r += r
+		g += g
+		b += b
+	}
+	if rv, err = strconv.ParseUint(r[:min(len(r), 2)], 16, 8); err != nil {
 		return false
 	}
-	if gv, err = strconv.ParseUint(g, 16, 8); err != nil {
+	if gv, err = strconv.ParseUint(g[:min(len(r), 2)], 16, 8); err != nil {
 		return false
 	}
-	if bv, err = strconv.ParseUint(b, 16, 8); err != nil {
+	if bv, err = strconv.ParseUint(b[:min(len(r), 2)], 16, 8); err != nil {
 		return false
 	}
 	self.Red, self.Green, self.Blue = uint8(rv), uint8(gv), uint8(bv)
+	return true
+}
+
+func fas_uint8(x float64) uint8 {
+	x = max(0, min(x, 1))
+	return uint8(x * 255)
+}
+
+func (self *RGBA) parse_rgb_intensities(r string, g string, b string) bool {
+	var rv, gv, bv float64
+	var err error
+	if rv, err = strconv.ParseFloat(r, 64); err != nil {
+		return false
+	}
+	if gv, err = strconv.ParseFloat(g, 64); err != nil {
+		return false
+	}
+	if bv, err = strconv.ParseFloat(b, 64); err != nil {
+		return false
+	}
+	self.Red, self.Green, self.Blue = fas_uint8(rv), fas_uint8(gv), fas_uint8(bv)
 	return true
 }
 
@@ -123,31 +149,41 @@ type color_value struct {
 
 func parse_sharp(color string) (ans RGBA, err error) {
 	if len(color)%3 != 0 {
-		return RGBA{}, fmt.Errorf("Not a valid color: #%s", color)
+		return RGBA{}, fmt.Errorf("length not a multiple of 3")
 	}
 	part_size := len(color) / 3
-	r, g, b := color[:part_size], color[part_size:2*part_size], color[part_size*2:]
-	if part_size == 1 {
-		r += r
-		g += g
-		b += b
-	}
+	r, g, b := color[:part_size], color[part_size:2*part_size], color[part_size*2:part_size*3]
 	if !ans.parse_rgb_strings(r, g, b) {
-		err = fmt.Errorf("Not a valid color: #%s", color)
+		err = fmt.Errorf("invalid rgb numbers")
 	}
 	return
 }
 
 func parse_rgb(color string) (ans RGBA, err error) {
 	colors := strings.Split(color, "/")
-	if len(colors) == 3 && ans.parse_rgb_strings(colors[0], colors[1], colors[2]) {
+	if len(colors) != 3 {
+		return RGBA{}, fmt.Errorf("length not a multiple of 3")
+	}
+	if ans.parse_rgb_strings(colors[0], colors[1], colors[2]) {
 		return
 	}
-	err = fmt.Errorf("Not a valid RGB color: %#v", color)
+	err = fmt.Errorf("invalid rgb numbers")
 	return
 }
 
-func ParseColor(color string) (RGBA, error) {
+func parse_rgbi(color string) (ans RGBA, err error) {
+	colors := strings.Split(color, "/")
+	if len(colors) != 3 {
+		return RGBA{}, fmt.Errorf("length not a multiple of 3")
+	}
+	if ans.parse_rgb_intensities(colors[0], colors[1], colors[2]) {
+		return
+	}
+	err = fmt.Errorf("invalid rgb numbers")
+	return
+}
+
+func ParseColor(color string) (ans RGBA, err error) {
 	// Strip inline comments (e.g., "oklch(...) # comment")
 	// For hex colors like "#ff0000", preserve the first #, but strip comments after spaces
 	color = strings.TrimSpace(color)
@@ -168,19 +204,43 @@ func ParseColor(color string) (RGBA, error) {
 	if val, ok := ColorNames[raw]; ok {
 		return val, nil
 	}
-	if strings.HasPrefix(raw, "#") {
-		return parse_sharp(raw[1:])
+	if len(raw) < 4 {
+		return RGBA{}, fmt.Errorf("not a valid color name: %#v", color)
 	}
-	if strings.HasPrefix(raw, "oklch(") {
-		return parseOklch(raw[6:])
+	var parser func(string) (RGBA, error)
+	switch raw[0] {
+	case '#':
+		parser = parse_sharp
+		raw = raw[1:]
+	case 'o':
+		if strings.HasPrefix(raw, "oklch(") {
+			parser, raw = parseOklch, raw[6:]
+		}
+	case 'l':
+		if strings.HasPrefix(raw, "lab(") {
+			parser, raw = parseLab, raw[4:]
+		}
+	case 'r':
+		if len(raw) > 4 && strings.HasPrefix(raw, "rgb") {
+			raw = raw[3:]
+			switch raw[0] {
+			case ':':
+				parser, raw = parse_rgb, raw[1:]
+			case 'i':
+				if strings.HasPrefix(raw, "i:") {
+					parser, raw = parse_rgbi, raw[2:]
+				}
+			}
+		}
 	}
-	if strings.HasPrefix(raw, "lab(") {
-		return parseLab(raw[4:])
+	if parser == nil {
+		err = fmt.Errorf("not a valid color name: %#v", color)
+	} else {
+		if ans, err = parser(raw); err != nil {
+			err = fmt.Errorf("not a valid color name: %#v %w", color, err)
+		}
 	}
-	if strings.HasPrefix(raw, "rgb:") {
-		return parse_rgb(raw[4:])
-	}
-	return RGBA{}, fmt.Errorf("Not a valid color name: %#v", color)
+	return
 }
 
 type NullableColor struct {

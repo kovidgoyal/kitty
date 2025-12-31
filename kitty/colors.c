@@ -844,7 +844,7 @@ parse_rgb(const char *spec, size_t len) {
     return (PyObject*)alloc_color(r, g, b, 0);
 }
 
-static unsigned char as8bit(double f) { return (unsigned char)((MAX(0., MIN(f, 1.))) * 255.); }
+static unsigned char as8bit(double f) { return (unsigned char)(round(f * 255.)); }
 
 static bool
 parse_single_intensity(const char *s, unsigned char *out) {

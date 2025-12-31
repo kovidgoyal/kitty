@@ -3,12 +3,15 @@
 package style
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"regexp"
 	"strconv"
 	"strings"
 )
+
+var _ = fmt.Println
 
 // Color space conversion functions for wide gamut color support
 // Implements OKLCH, Display P3, and CIE LAB color formats with
@@ -96,14 +99,6 @@ func deltaEOk(lab1, lab2 [3]float64) float64 {
 
 // oklchToSrgbGamutMap converts OKLCH to sRGB with CSS Color Module Level 4 gamut mapping
 func oklchToSrgbGamutMap(l, c, h float64) (float64, float64, float64) {
-	// Validate for NaN and infinity
-	if !math.IsInf(l, 0) && !math.IsInf(c, 0) && !math.IsInf(h, 0) &&
-		!math.IsNaN(l) && !math.IsNaN(c) && !math.IsNaN(h) {
-		// Valid input
-	} else {
-		return 0.0, 0.0, 0.0 // Fallback to black
-	}
-
 	// Constants from CSS Color Module Level 4
 	const jnd = 0.02              // Just Noticeable Difference threshold
 	const minConvergence = 0.0001 // Binary search precision
@@ -236,11 +231,11 @@ func labToOklch(l, a, b float64) (float64, float64, float64) {
 
 // parseOklch parses OKLCH color: oklch(l c h) or oklch(l, c, h)
 func parseOklch(spec string) (RGBA, error) {
-	spec = strings.Trim(spec, "()")
+	spec = strings.TrimRight(spec, ")")
 	parts := splitColorComponents(spec)
 
 	if len(parts) != 3 {
-		return RGBA{}, errInvalidColor
+		return RGBA{}, errors.New("not enough parts")
 	}
 
 	l, err := parseFloatValue(parts[0])
@@ -260,17 +255,17 @@ func parseOklch(spec string) (RGBA, error) {
 	if math.IsNaN(l) || math.IsInf(l, 0) ||
 		math.IsNaN(c) || math.IsInf(c, 0) ||
 		math.IsNaN(h) || math.IsInf(h, 0) {
-		return RGBA{}, errInvalidColor
+		return RGBA{}, errors.New("invalid float value")
 	}
 
 	// Handle percentages for L
 	if strings.Contains(parts[0], "%") {
-		l = l / 100.0
+		l /= 100.0
 	}
 
 	// Clamp to reasonable ranges
-	l = math.Max(0.0, math.Min(1.0, l))
-	c = math.Max(0.0, c) // Chroma is unbounded
+	l = max(0.0, min(l, 1.0))
+	c = max(0.0, c)      // Chroma is unbounded
 	h = math.Mod(h, 360) // Wrap hue to 0-360
 	if h < 0 {
 		h += 360
@@ -278,21 +273,18 @@ func parseOklch(spec string) (RGBA, error) {
 
 	// Convert OKLCH to sRGB with gamut mapping
 	r, g, b := oklchToSrgbGamutMap(l, c, h)
-
-	return RGBA{
-		Red:   uint8(r * 255),
-		Green: uint8(g * 255),
-		Blue:  uint8(b * 255),
-	}, nil
+	return RGBA{as8bit(r), as8bit(g), as8bit(b), 0}, nil
 }
+
+func as8bit(x float64) uint8 { return uint8(math.Round(x * 255)) }
 
 // parseLab parses LAB color: lab(l a b) or lab(l, a, b)
 func parseLab(spec string) (RGBA, error) {
-	spec = strings.Trim(spec, "()")
+	spec = strings.TrimRight(spec, ")")
 	parts := splitColorComponents(spec)
 
 	if len(parts) != 3 {
-		return RGBA{}, errInvalidColor
+		return RGBA{}, errors.New("not enough parts")
 	}
 
 	l, err := parseFloatValue(parts[0])
@@ -312,23 +304,18 @@ func parseLab(spec string) (RGBA, error) {
 	if math.IsNaN(l) || math.IsInf(l, 0) ||
 		math.IsNaN(a) || math.IsInf(a, 0) ||
 		math.IsNaN(b) || math.IsInf(b, 0) {
-		return RGBA{}, errInvalidColor
+		return RGBA{}, errors.New("invalid float value")
 	}
 
 	// Clamp L to 0-100
-	l = math.Max(0.0, math.Min(100.0, l))
+	l = max(0.0, min(l, 100.0))
 
 	// Convert LAB to OKLCH, then use gamut mapping to sRGB
 	lOk, c, h := labToOklch(l, a, b)
 
 	// Apply gamut mapping in OKLCH space
 	r, g, bVal := oklchToSrgbGamutMap(lOk, c, h)
-
-	return RGBA{
-		Red:   uint8(r * 255),
-		Green: uint8(g * 255),
-		Blue:  uint8(bVal * 255),
-	}, nil
+	return RGBA{as8bit(r), as8bit(g), as8bit(bVal), 0}, nil
 }
 
 // splitColorComponents splits color components by comma or whitespace
@@ -353,5 +340,3 @@ func parseFloatValue(s string) (float64, error) {
 	s = strings.TrimRight(s, "%,")
 	return strconv.ParseFloat(s, 64)
 }
-
-var errInvalidColor = fmt.Errorf("invalid color format")
