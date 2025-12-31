@@ -11,6 +11,7 @@ kitty/rgb.py linguist-generated=true
 kitty/srgb_gamma.* linguist-generated=true
 kitty/gl-wrapper.* linguist-generated=true
 kitty/glfw-wrapper.* linguist-generated=true
+kitty/color-names.h linguist-generated=true
 kitty/parse-graphics-command.h linguist-generated=true
 kitty/parse-multicell-command.h linguist-generated=true
 kitty/options/types.py linguist-generated=true

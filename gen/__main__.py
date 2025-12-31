@@ -34,6 +34,9 @@ def main(args: list[str]=sys.argv) -> None:
     elif which == 'cursors':
         from gen.cursors import main
         main(args)
+    elif which == 'color-names':
+        from gen.color_names import main
+        main(args)
     else:
         raise SystemExit(f'Unknown which: {which}')
 

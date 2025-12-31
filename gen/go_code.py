@@ -35,13 +35,13 @@ from kitty.cli import (
 from kitty.conf.generate import gen_go_code
 from kitty.conf.types import Definition
 from kitty.config import commented_out_default_config
+from kitty.fast_data_types import all_color_names
 from kitty.guess_mime_type import known_extensions, text_mimes
 from kitty.key_encoding import config_mod_map
 from kitty.key_names import character_key_name_aliases, functional_key_name_aliases
 from kitty.options.types import Options
 from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
 from kitty.remote_control import global_options_spec
-from kitty.rgb import color_names
 from kitty.simple_cli_definitions import CompletionSpec, parse_option_spec, serialize_as_go_string
 
 if __name__ == '__main__' and not __package__:
@@ -585,7 +585,7 @@ def generate_color_names() -> str:
     cursor = "" if Options.cursor is None else Options.cursor.as_sharp
     return 'package style\n\nvar ColorNames = map[string]RGBA{' + '\n'.join(
         f'\t"{name}": RGBA{{ Red:{val.red}, Green:{val.green}, Blue:{val.blue} }},'
-        for name, val in color_names.items()
+        for name, val in all_color_names()
     ) + '\n}' + '\n\nvar ColorTable = [256]uint32{' + ', '.join(
         f'{x}' for x in Options.color_table) + '}\n' + f'''
 var DefaultColors = struct {{

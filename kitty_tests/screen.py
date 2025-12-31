@@ -4,7 +4,6 @@
 from kitty.config import defaults
 from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor
 from kitty.marks import marker_from_function, marker_from_regex
-from kitty.rgb import color_names
 from kitty.window import pagerhist
 
 from . import BaseTest, draw_multicell, parse_bytes
@@ -1578,7 +1577,8 @@ class TestScreen(BaseTest):
         q({k: '?' for k in 'background foreground 213 unknown'.split()}, {
             'background': defaults.background, 'foreground': defaults.foreground, '213': defaults.color213, 'unknown': '?'})
         q({'background':'aquamarine'})
-        q({'background':'?', 'selection_background': '?'}, {'background': color_names['aquamarine'], 'selection_background': s.color_profile.highlight_bg})
+        q({'background':'?', 'selection_background': '?'}, {
+            'background': Color.parse_color('Aquamarine'), 'selection_background': s.color_profile.highlight_bg})
         q({'selection_background': ''})
         self.assertIsNone(s.color_profile.highlight_bg)
         q({'selection_background': '?'}, {'selection_background': ''})

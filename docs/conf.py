@@ -300,7 +300,7 @@ if you specify a program-to-run you can use the special placeholder
 
 
 def write_color_names_table() -> None: # {{{
-    from kitty.rgb import color_names
+    from kitty.fast_data_types import all_color_names
     def s(c: Any) -> str:
         return f'{c.red:02x}/{c.green:02x}/{c.blue:02x}'
     with open('generated/color-names.rst', 'w') as f:
@@ -308,7 +308,7 @@ def write_color_names_table() -> None: # {{{
         p('=' * 50, '=' * 20)
         p('Name'.ljust(50), 'RGB value')
         p('=' * 50, '=' * 20)
-        for name, col in color_names.items():
+        for name, col in all_color_names():
             p(name.ljust(50), s(col))
         p('=' * 50, '=' * 20)
 # }}}

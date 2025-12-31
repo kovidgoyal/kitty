@@ -8,6 +8,7 @@
 #include "state.h"
 #include <structmember.h>
 #include "colors.h"
+#include "color-names.h"
 #ifdef __APPLE__
 // Needed for strod_l
 #include <xlocale.h>
@@ -1064,11 +1065,42 @@ parse_lab(const char *spec, size_t len) {
     return (PyObject*)alloc_color(as8bit(r), as8bit(g), as8bit(bb), 0);
 }
 
+static const char*
+trim_view(const char *str, Py_ssize_t *len) {
+    if (str == NULL || *len == 0) return str;
+    const char *start = str;
+    const char *end = str + *len - 1;
+    while (start <= end && isspace((unsigned char)*start)) start++;
+    while (end > start && isspace((unsigned char)*end)) end--;
+    if (start > end) { *len = 0; } else { *len = (size_t)(end - start + 1); }
+    return start;
+}
+
 static PyObject*
 parse_color(PyTypeObject *type UNUSED, PyObject *pspec) {
     if (!PyUnicode_Check(pspec)) { PyErr_SetString(PyExc_TypeError, "spec must be a string"); return NULL; }
+    RAII_PyObject(lower_cased, PyObject_CallMethod(pspec, "lower", NULL));
+    if (!lower_cased) return NULL;
     Py_ssize_t len;
-    const char *spec = PyUnicode_AsUTF8AndSize(pspec, &len);
+    const char *spec = PyUnicode_AsUTF8AndSize(lower_cased, &len);
+    spec = trim_view(spec, &len);
+    if (len < 2) Py_RETURN_NONE;
+    // Remove trailing comments
+    switch (spec[0]) {
+        case '#': {
+            const char *s = strchr(spec, ' ');
+            if (s) len = s - spec;
+        } break;
+        default: {
+            const char *s = strchr(spec, '#');
+            if (s) {
+                len = s - spec;
+                spec = trim_view(spec, &len);
+            }
+        } break;
+    }
+    const struct Keyword *k = in_color_name_set(spec, len);
+    if (k) return (PyObject*)alloc_color((k->value >> 16) & 0xff, (k->value >> 8) & 0xff, k->value & 0xff, 0);
     if (len < 4) Py_RETURN_NONE;
     switch (spec[0]) {
         case '#': return parse_sharp(spec + 1, len - 1);
@@ -1120,9 +1152,27 @@ PyTypeObject Color_Type = {
 };
 
 
+static PyObject*
+all_color_names(PyObject *self UNUSED, PyObject *args UNUSED) {
+    RAII_PyObject(ans, PyTuple_New(TOTAL_KEYWORDS));
+    if (!ans) return NULL;
+    const struct Keyword *k;
+    Py_ssize_t n = 0;
+    for (unsigned i = 0; i <= MAX_HASH_VALUE; i++) {
+        if ((k = &color_names[i])->name > -1) {
+            const char *name = color_names[i].name + stringpool;
+            PyObject *t = Py_BuildValue("sN", name, alloc_color((k->value >> 16) & 0xff, (k->value >> 8) & 0xff, k->value & 0xff, 0));
+            if (!t) return NULL;
+            PyTuple_SET_ITEM(ans, n, t); n++;
+        }
+    }
+    return Py_NewRef(ans);
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(default_color_table, METH_NOARGS),
     METHODB(patch_color_profiles, METH_VARARGS),
+    METHODB(all_color_names, METH_NOARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
