@@ -201,33 +201,31 @@ static void
 pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;
-    float x = 0, y = 0;
-    static const int HIGHRES = 1;
-    static const int VALUE120 = 1 << 4;
-    int flags = 0;
+    GLFWScrollEvent ev = {.keyboard_modifiers=_glfw.wl.xkb.states.modifiers};
 
     if (info.discrete.y_axis_type != AXIS_EVENT_UNKNOWN) {
-        y = info.discrete.y;
-        if (info.discrete.y_axis_type == AXIS_EVENT_VALUE120) flags |= VALUE120;
+        ev.y_offset = info.discrete.y;
+        if (info.discrete.y_axis_type == AXIS_EVENT_VALUE120) ev.offset_type = GLFW_SCROLL_OFFEST_V120;
     } else if (info.continuous.y_axis_type != AXIS_EVENT_UNKNOWN) {
-        flags |= HIGHRES;
-        y = info.continuous.y;
+        ev.offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
+        ev.y_offset = info.continuous.y;
     }
 
     if (info.discrete.x_axis_type != AXIS_EVENT_UNKNOWN) {
-        x = info.discrete.x;
-        if (info.discrete.x_axis_type == AXIS_EVENT_VALUE120) flags |= VALUE120;
+        ev.x_offset = info.discrete.x;
+        if (info.discrete.x_axis_type == AXIS_EVENT_VALUE120) ev.offset_type = GLFW_SCROLL_OFFEST_V120;
     } else if (info.continuous.x_axis_type != AXIS_EVENT_UNKNOWN) {
-        flags |= HIGHRES;
-        x = info.continuous.x;
+        ev.offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
+        ev.x_offset = info.continuous.x;
     }
     /* clear pointer_curr_axis_info for next frame */
     memset(&info, 0, sizeof(info));
 
-    if (x != 0.0f || y != 0.0f) {
+    if (ev.y_offset != 0.0f || ev.x_offset != 0.0f) {
         float scale = (float)_glfwWaylandWindowScale(window);
-        y *= scale; x *= scale;
-        _glfwInputScroll(window, -x, y, flags, _glfw.wl.xkb.states.modifiers);
+        ev.x_offset *= scale; ev.y_offset *= scale;
+        ev.x_offset *= -1;
+        _glfwInputScroll(window, &ev);
     }
 }
 

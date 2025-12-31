@@ -1314,36 +1314,28 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 
 - (void)scrollWheel:(NSEvent *)event
 {
-    double deltaX = [event scrollingDeltaX];
-    double deltaY = [event scrollingDeltaY];
-
-    int flags = [event hasPreciseScrollingDeltas] ? 1 : 0;
-    if (flags) {
+    GLFWScrollEvent ev = {.keyboard_modifiers=translateFlags([event modifierFlags])};
+    ev.x_offset = [event scrollingDeltaX];
+    ev.y_offset = [event scrollingDeltaY];
+    if ([event hasPreciseScrollingDeltas]) {
+        ev.offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
         float xscale = 1, yscale = 1;
         _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
-        if (xscale > 0) deltaX *= xscale;
-        if (yscale > 0) deltaY *= yscale;
+        if (xscale > 0) ev.x_offset *= xscale;
+        if (yscale > 0) ev.y_offset *= yscale;
     }
 
     switch([event momentumPhase]) {
-        case NSEventPhaseBegan:
-            flags |= (1 << 1); break;
-        case NSEventPhaseStationary:
-            flags |= (2 << 1); break;
-        case NSEventPhaseChanged:
-            flags |= (3 << 1); break;
-        case NSEventPhaseEnded:
-            flags |= (4 << 1); break;
-        case NSEventPhaseCancelled:
-            flags |= (5 << 1); break;
-        case NSEventPhaseMayBegin:
-            flags |= (6 << 1); break;
-        case NSEventPhaseNone:
-        default:
-            break;
+        case NSEventPhaseBegan: ev.momentum_type = GLFW_MOMENTUM_PHASE_BEGAN; break;
+        case NSEventPhaseStationary: ev.momentum_type = GLFW_MOMENTUM_PHASE_STATIONARY; break;
+        case NSEventPhaseChanged: ev.momentum_type = GLFW_MOMENTUM_PHASE_ACTIVE; break;
+        case NSEventPhaseEnded: ev.momentum_type = GLFW_MOMENTUM_PHASE_ENDED; break;
+        case NSEventPhaseCancelled: ev.momentum_type = GLFW_MOMENTUM_PHASE_CANCELED; break;
+        case NSEventPhaseMayBegin: ev.momentum_type = GLFW_MOMENTUM_PHASE_MAY_BEGIN; break;
+        case NSEventPhaseNone: break;
     }
 
-    _glfwInputScroll(window, deltaX, deltaY, flags, translateFlags([event modifierFlags]));
+    _glfwInputScroll(window, &ev);
 }
 
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender

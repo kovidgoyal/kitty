@@ -572,14 +572,14 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
 }
 
 static void
-scroll_callback(GLFWwindow *w, double xoffset, double yoffset, int flags, int mods) {
+scroll_callback(GLFWwindow *w, const GLFWScrollEvent *ev) {
     if (!set_callback_window(w)) return;
     monotonic_t now = monotonic();
     if (OPT(mouse_hide.scroll_unhide)) {
         cursor_active_callback(w, now);
     }
     global_state.callback_os_window->last_mouse_activity_at = now;
-    if (is_window_ready_for_callbacks()) scroll_event(xoffset, yoffset, flags, mods);
+    if (is_window_ready_for_callbacks()) scroll_event(ev);
     request_tick_callback();
     global_state.callback_os_window = NULL;
 }

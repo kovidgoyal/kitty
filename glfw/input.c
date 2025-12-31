@@ -353,10 +353,10 @@ void _glfwInputKeyboard(_GLFWwindow* window, GLFWkeyevent* ev)
 
 // Notifies shared code of a scroll event
 //
-void _glfwInputScroll(_GLFWwindow* window, double xoffset, double yoffset, int flags, int mods)
+void _glfwInputScroll(_GLFWwindow* window, const GLFWScrollEvent *ev)
 {
     if (window->callbacks.scroll)
-        window->callbacks.scroll((GLFWwindow*) window, xoffset, yoffset, flags, mods);
+        window->callbacks.scroll((GLFWwindow*) window, ev);
 }
 
 // Notifies shared code of a mouse button click event

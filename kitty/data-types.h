@@ -329,7 +329,7 @@ void enter_event(int modifiers);
 void leave_event(int modifiers);
 void mouse_event(const int, int, int);
 void focus_in_event(void);
-void scroll_event(double, double, int, int);
+void scroll_event(const GLFWScrollEvent *ev);
 void on_key_input(const GLFWkeyevent *ev);
 void request_window_attention(id_type, bool);
 locale_t get_c_locale(void);

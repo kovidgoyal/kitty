@@ -1162,50 +1162,79 @@ mouse_event(const int button, int modifiers, int action) {
 }
 
 static int
-scale_scroll(MouseTrackingMode mouse_tracking_mode, double offset, bool is_high_resolution, bool is_value120, double *pending_scroll_pixels, int cell_size) {
+scale_scroll(MouseTrackingMode mouse_tracking_mode, double offset, GLFWOffsetType offset_type, double *pending_scroll_pixels, int cell_size) {
 // scale the scroll by the multiplier unless the mouse is grabbed. If the mouse is grabbed only change direction.
 #define SCALE_SCROLL(which) { double scale = OPT(which); if (mouse_tracking_mode) scale /= fabs(scale); offset *= scale; }
     int s = 0;
-    if (is_high_resolution) {
-        SCALE_SCROLL(touch_scroll_multiplier);
-        double pixels = *pending_scroll_pixels + offset;
-        if (fabs(pixels) < cell_size) {
-            *pending_scroll_pixels = pixels;
-            return 0;
-        }
-        s = (int)round(pixels) / cell_size;
-        *pending_scroll_pixels = pixels - s * cell_size;
-    } else if (is_value120) {
-        SCALE_SCROLL(wheel_scroll_multiplier);
-        const double offset_lines = offset / 120.;
-        const double pixels = *pending_scroll_pixels + offset_lines * cell_size;
-        if (fabs(pixels) < cell_size) {
-            *pending_scroll_pixels = pixels;
-            return 0;
-        }
-        s = (int)round(pixels) / cell_size;
-        *pending_scroll_pixels = pixels - s * cell_size;
-    } else {
-        SCALE_SCROLL(wheel_scroll_multiplier);
-        s = (int) round(offset);
-        if (offset != 0) {
-            const int min_lines = mouse_tracking_mode ? 1 : OPT(wheel_scroll_min_lines);
-            if (min_lines > 0 && abs(s) < min_lines) s = offset > 0 ? min_lines : -min_lines;
-            // Always add the minimum number of lines when it is negative
-            else if (min_lines < 0) s = offset > 0 ? s - min_lines : s + min_lines;
-            // apparently on cocoa some mice generate really small yoffset values
-            // when scrolling slowly https://github.com/kovidgoyal/kitty/issues/1238
-            if (s == 0) s = offset > 0 ? 1 : -1;
-        }
-        *pending_scroll_pixels = 0;
+    switch (offset_type) {
+        case GLFW_SCROLL_OFFEST_HIGHRES: {
+            SCALE_SCROLL(touch_scroll_multiplier);
+            double pixels = *pending_scroll_pixels + offset;
+            if (fabs(pixels) < cell_size) {
+                *pending_scroll_pixels = pixels;
+                return 0;
+            }
+            s = (int)round(pixels) / cell_size;
+            *pending_scroll_pixels = pixels - s * cell_size;
+        } break;
+        case GLFW_SCROLL_OFFEST_V120: {
+            SCALE_SCROLL(wheel_scroll_multiplier);
+            const double offset_lines = offset / 120.;
+            const double pixels = *pending_scroll_pixels + offset_lines * cell_size;
+            if (fabs(pixels) < cell_size) {
+                *pending_scroll_pixels = pixels;
+                return 0;
+            }
+            s = (int)round(pixels) / cell_size;
+            *pending_scroll_pixels = pixels - s * cell_size;
+        } break;
+        case GLFW_SCROLL_OFFSET_LINES: {
+            SCALE_SCROLL(wheel_scroll_multiplier);
+            s = (int) round(offset);
+            if (offset != 0) {
+                const int min_lines = mouse_tracking_mode ? 1 : OPT(wheel_scroll_min_lines);
+                if (min_lines > 0 && abs(s) < min_lines) s = offset > 0 ? min_lines : -min_lines;
+                // Always add the minimum number of lines when it is negative
+                else if (min_lines < 0) s = offset > 0 ? s - min_lines : s + min_lines;
+                // apparently on cocoa some mice generate really small yoffset values
+                // when scrolling slowly https://github.com/kovidgoyal/kitty/issues/1238
+                if (s == 0) s = offset > 0 ? 1 : -1;
+            }
+            *pending_scroll_pixels = 0;
+        } break;
     }
     return s;
 #undef SCALE_SCROLL
 }
 
+static const char*
+scroll_offset_type(GLFWOffsetType t) {
+    switch(t) {
+        case GLFW_SCROLL_OFFSET_LINES: return "lines";
+        case GLFW_SCROLL_OFFEST_V120: return "v120";
+        case GLFW_SCROLL_OFFEST_HIGHRES: return "highres";
+    }
+    return "";
+}
+
+static const char*
+scroll_phase(GLFWMomentumType t) {
+    switch(t) {
+        case GLFW_NO_MOMENTUM_DATA: return "none";
+        case GLFW_MOMENTUM_PHASE_MAY_BEGIN: return "may_begin";
+        case GLFW_MOMENTUM_PHASE_BEGAN: return "began";
+        case GLFW_MOMENTUM_PHASE_ACTIVE: return "active";
+        case GLFW_MOMENTUM_PHASE_STATIONARY: return "stationary";
+        case GLFW_MOMENTUM_PHASE_CANCELED: return "cancelled";
+        case GLFW_MOMENTUM_PHASE_ENDED: return "ended";
+    }
+    return "";
+}
+
+
 void
-scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
-    debug("\x1b[36mScroll\x1b[m xoffset: %f yoffset: %f flags: %x modifiers: %s\n", xoffset, yoffset, flags, format_mods(modifiers));
+scroll_event(const GLFWScrollEvent *ev) {
+    debug("\x1b[36mScroll\x1b[m %s x: %f y: %f momentum: %s modifiers: %s\n", scroll_offset_type(ev->offset_type), ev->x_offset, ev->y_offset, scroll_phase(ev->momentum_type), format_mods(ev->keyboard_modifiers));
     bool in_tab_bar;
     static id_type window_for_momentum_scroll = 0;
     static bool main_screen_for_momentum_scroll = false;
@@ -1240,38 +1269,29 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
     }
     Screen *screen = w->render_data.screen;
 
-    enum MomentumData { NoMomentumData, MomentumPhaseBegan, MomentumPhaseStationary, MomentumPhaseActive, MomentumPhaseEnded, MomentumPhaseCancelled, MomentumPhaseMayBegin };
-    enum MomentumData momentum_data = (flags >> 1) & 7;
-
-    switch(momentum_data) {
-        case NoMomentumData:
+    switch(ev->momentum_type) {
+        case GLFW_NO_MOMENTUM_DATA:
             break;
-        case MomentumPhaseBegan:
+        case GLFW_MOMENTUM_PHASE_BEGAN:
             window_for_momentum_scroll = w->id;
             main_screen_for_momentum_scroll = screen->linebuf == screen->main_linebuf;
             break;
-        case MomentumPhaseStationary:
-        case MomentumPhaseActive:
+        case GLFW_MOMENTUM_PHASE_STATIONARY: case GLFW_MOMENTUM_PHASE_ACTIVE:
             if (window_for_momentum_scroll != w->id || main_screen_for_momentum_scroll != (screen->linebuf == screen->main_linebuf)) return;
             break;
-        case MomentumPhaseEnded:
-        case MomentumPhaseCancelled:
+        case GLFW_MOMENTUM_PHASE_ENDED: case GLFW_MOMENTUM_PHASE_CANCELED:
             window_for_momentum_scroll = 0;
             break;
-        case MomentumPhaseMayBegin:
-        default:
+        case GLFW_MOMENTUM_PHASE_MAY_BEGIN:
             break;
     }
     int s;
-    const bool is_high_resolution = flags & 1;
-    const bool is_value120 = flags & (1 << 4);
-
-    if (yoffset != 0.0) {
-        s = scale_scroll(screen->modes.mouse_tracking_mode, yoffset, is_high_resolution, is_value120, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->fcm.cell_height);
+    if (ev->y_offset != 0.0) {
+        s = scale_scroll(screen->modes.mouse_tracking_mode, ev->y_offset, ev->offset_type, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->fcm.cell_height);
         if (s) {
             bool upwards = s > 0;
             if (screen->modes.mouse_tracking_mode) {
-                int sz = encode_mouse_scroll(w, upwards ? 4 : 5, modifiers);
+                int sz = encode_mouse_scroll(w, upwards ? 4 : 5, ev->keyboard_modifiers);
                 if (sz > 0) {
                     mouse_event_buf[sz] = 0;
                     for (s = abs(s); s > 0; s--) {
@@ -1287,11 +1307,11 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
             }
         }
     }
-    if (xoffset != 0.0) {
-        s = scale_scroll(screen->modes.mouse_tracking_mode, xoffset, is_high_resolution, is_value120, &screen->pending_scroll_pixels_x, global_state.callback_os_window->fonts_data->fcm.cell_width);
+    if (ev->x_offset != 0.0) {
+        s = scale_scroll(screen->modes.mouse_tracking_mode, ev->x_offset, ev->offset_type, &screen->pending_scroll_pixels_x, global_state.callback_os_window->fonts_data->fcm.cell_width);
         if (s) {
             if (screen->modes.mouse_tracking_mode) {
-                int sz = encode_mouse_scroll(w, s > 0 ? 6 : 7, modifiers);
+                int sz = encode_mouse_scroll(w, s > 0 ? 6 : 7, ev->keyboard_modifiers);
                 if (sz > 0) {
                     mouse_event_buf[sz] = 0;
                     for (s = abs(s); s > 0; s--) {
@@ -1301,7 +1321,6 @@ scroll_event(double xoffset, double yoffset, int flags, int modifiers) {
             }
         }
     }
-
 }
 
 static PyObject*

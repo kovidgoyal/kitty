@@ -284,6 +284,29 @@ typedef enum GLFWColorScheme {
     GLFW_COLOR_SCHEME_LIGHT = 2
 } GLFWColorScheme;
 
+typedef enum GLFWMomentumType {
+    GLFW_NO_MOMENTUM_DATA = 0,
+    GLFW_MOMENTUM_PHASE_BEGAN = 1,
+    GLFW_MOMENTUM_PHASE_STATIONARY = 2,
+    GLFW_MOMENTUM_PHASE_ACTIVE = 3,
+    GLFW_MOMENTUM_PHASE_ENDED = 4,
+    GLFW_MOMENTUM_PHASE_CANCELED = 5,
+    GLFW_MOMENTUM_PHASE_MAY_BEGIN = 6,
+} GLFWMomentumType;
+
+typedef enum GLFWOffsetType {
+    GLFW_SCROLL_OFFSET_LINES = 0,
+    GLFW_SCROLL_OFFEST_V120 = 1,
+    GLFW_SCROLL_OFFEST_HIGHRES = 2,
+} GLFWOffsetType;
+
+typedef struct GLFWScrollEvent {
+    double x_offset, y_offset;  // offsets are scaled by the window scale
+    GLFWMomentumType momentum_type;
+    GLFWOffsetType offset_type;
+    int keyboard_modifiers;
+} GLFWScrollEvent;
+
 /*! @defgroup joysticks Joysticks
  *  @brief Joystick IDs.
  *
@@ -1436,7 +1459,7 @@ typedef void (* GLFWcursorenterfun)(GLFWwindow*,int);
  *
  *  @ingroup input
  */
-typedef void (* GLFWscrollfun)(GLFWwindow*,double,double,int,int);
+typedef void (* GLFWscrollfun)(GLFWwindow*,const GLFWScrollEvent*);
 
 /*! @brief The function pointer type for key callbacks.
  *
