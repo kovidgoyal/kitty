@@ -165,7 +165,7 @@ func edit_loop(data_to_send string, kill_if_signaled bool, on_data OnDataCallbac
 	return
 }
 
-func edit_in_kitty(path string, opts *Options) (err error) {
+func edit_in_kitty(path string, opts *Options, line_number int) (err error) {
 	read_file, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("Failed to open %s for reading with error: %w", path, err)
@@ -206,6 +206,8 @@ func edit_in_kitty(path string, opts *Options) (err error) {
 		return fmt.Errorf("Failed to get the current working directory with error: %w", err)
 	}
 	add_encoded("cwd", cwd)
+	add_encoded("file_spec", path)
+	add_encoded("line_number", strconv.Itoa(line_number))
 	for _, arg := range os.Args[2:] {
 		add_encoded("a", arg)
 	}
@@ -245,16 +247,28 @@ func EntryPoint(parent *cli.Command) *cli.Command {
 				fmt.Fprintln(os.Stderr, "Usage:", cmd.Usage)
 				return 1, fmt.Errorf("No file to edit specified.")
 			}
-			if len(args) != 1 {
+			lineNumber := 0
+			fileArgs := []string{}
+			for _, arg := range args {
+				if strings.HasPrefix(arg, "+") {
+					ln, err := strconv.Atoi(arg[1:])
+					if err == nil {
+						lineNumber = ln
+						continue
+					}
+				}
+				fileArgs = append(fileArgs, arg)
+			}
+			if len(fileArgs) != 1 {
 				fmt.Fprintln(os.Stderr, "Usage:", cmd.Usage)
-				return 1, fmt.Errorf("Only one file to edit must be specified")
+				return 1, fmt.Errorf("Only one file to edit must be specified, optionally with a line number")
 			}
 			var opts Options
 			err = cmd.GetOptionValues(&opts)
 			if err != nil {
 				return 1, err
 			}
-			err = edit_in_kitty(args[0], &opts)
+			err = edit_in_kitty(fileArgs[0], &opts, lineNumber)
 			return 0, err
 		},
 	})
