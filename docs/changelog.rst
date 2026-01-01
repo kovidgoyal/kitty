@@ -160,6 +160,9 @@ Detailed list of changes
 - Add support for specifying colors in :file:`kitty.conf` in OKLCH and LAB
   color spaces (:pull:`9325`)
 
+- Fix a regression that broke using line numbers with the edit-in-kitty command
+  (:pull:`9346`)
+
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
