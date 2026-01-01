@@ -193,7 +193,10 @@ static void
 pointer_handle_axis(void *data UNUSED, struct wl_pointer *pointer UNUSED, uint32_t time, uint32_t axis, wl_fixed_t value) {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;
-    if (!info.timestamp_ns) info.timestamp_ns = ms_to_monotonic_t(time);
+switch (axis) {
+        case WL_POINTER_AXIS_VERTICAL_SCROLL: if (!info.y_start_time) info.y_start_time = ms_to_monotonic_t(time); break;
+        case WL_POINTER_AXIS_HORIZONTAL_SCROLL: if (!info.x_start_time) info.x_start_time = ms_to_monotonic_t(time); break;
+    }
     pointer_handle_axis_common(AXIS_EVENT_CONTINUOUS, axis, value);
 }
 
@@ -230,10 +233,27 @@ pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
 }
 
 static void
-pointer_handle_axis_source(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t source UNUSED) { }
+pointer_handle_axis_source(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t source) {
+    _GLFWwindow* window = _glfw.wl.pointerFocus;
+    if (!window) return;
+    info.source_type = source;
+}
 
 static void
-pointer_handle_axis_stop(void *data UNUSED, struct wl_pointer *wl_pointer UNUSED, uint32_t time UNUSED, uint32_t axis UNUSED) { }
+pointer_handle_axis_stop(void *data UNUSED, struct wl_pointer *wl_pointer UNUSED, uint32_t time UNUSED, uint32_t axis) {
+    _GLFWwindow* window = _glfw.wl.pointerFocus;
+    if (!window) return;
+    switch (axis) {
+        case WL_POINTER_AXIS_VERTICAL_SCROLL:
+            info.y_stop_received = true;
+            info.y_stop_time = ms_to_monotonic_t(time);
+            break;
+        case WL_POINTER_AXIS_HORIZONTAL_SCROLL:
+            info.x_stop_received = true;
+            info.x_stop_time = ms_to_monotonic_t(time);
+            break;
+    }
+}
 
 
 static void

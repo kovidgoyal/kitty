@@ -207,7 +207,9 @@ typedef struct _GLFWwindowWayland
         } discrete, continuous;
 
         /* Event timestamp in nanoseconds */
-        monotonic_t timestamp_ns;
+        bool x_stop_received, y_stop_received;
+        uint32_t source_type;
+        monotonic_t x_start_time, x_stop_time, y_stop_time, y_start_time;
     } pointer_curr_axis_info;
 
     _GLFWcursor*                currentCursor;
