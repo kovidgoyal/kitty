@@ -560,7 +560,7 @@ func (self *handler) draw_accepting_screen() {
 	kc := self.lp.SprintStyled("italic", self.opts.ConfigFileName)
 
 	ac := func(x string) string {
-		return self.lp.SprintStyled("fg=red", x)
+		return self.lp.SprintStyled("fg=red underline=true", x)
 	}
 	self.lp.AllowLineWrapping(true)
 	defer self.lp.AllowLineWrapping(false)
