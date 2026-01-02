@@ -112,6 +112,7 @@ string_capabilities = {
     'bel': r'^G',
     # Escape code for bold
     'bold': r'\E[1m',
+    'blink': r'\E[5m',
     # Back tab
     'cbt': r'\E[Z',
     'kcbt': r'\E[Z',
@@ -367,6 +368,7 @@ termcap_aliases.update({
     'ac': 'acsc',
     'bl': 'bel',
     'md': 'bold',
+    'mb': 'blink',
     'bt': 'cbt',
     'kB': 'kcbt',
     'cl': 'clear',
