@@ -163,6 +163,9 @@ Detailed list of changes
 - Fix a regression that broke using line numbers with the edit-in-kitty command
   (:pull:`9346`)
 
+- macOS: Fix changes to :opt:`macos_titlebar_color` while in full screen not being applied after exiting fullscreen (:iss:`9350`)
+
+
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

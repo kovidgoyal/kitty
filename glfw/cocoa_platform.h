@@ -139,6 +139,9 @@ typedef struct _GLFWwindowNS
     float           xscale, yscale;
     int             blur_radius;
     bool live_resize_in_progress;
+    struct {
+        struct { CGFloat red, green, blue, alpha; bool was_set; } color; bool transparent;
+    } last_applied_titlebar_settings;
 
     // The total sum of the distances the cursor has been warped
     // since the last cursor motion event was processed
