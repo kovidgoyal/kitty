@@ -12,7 +12,7 @@ import subprocess
 import sys
 import tarfile
 import time
-from urllib.request import Request
+from urllib.request import Request, urlopen
 
 BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
 FONTS_URL = 'https://download.calibre-ebook.com/ci/fonts.tar.xz'
@@ -64,14 +64,15 @@ def run(*a: str, print_crash_reports: bool = False) -> None:
 
 
 def download_with_retry(url: str | Request, count: int = 5) -> bytes:
-    from urllib.request import urlopen
     for i in range(count):
         try:
-            print('Downloading', url, flush=True)
+            print('Downloading', getattr(url, 'full_url', url), flush=True)
             with urlopen(url) as f:
                 ans: bytes = f.read()
             return ans
         except Exception as err:
+            if getattr(err, 'code', -1) == 403:
+                raise
             if i >= count - 1:
                 raise
             print(f'Download failed with error {err} retrying...', file=sys.stderr)
