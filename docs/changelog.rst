@@ -151,6 +151,7 @@ Detailed list of changes
 -------------------------------------
 
 0.45.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
 
