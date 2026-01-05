@@ -225,8 +225,7 @@ pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
     ev.x_offset *= scale; ev.y_offset *= scale;
     ev.x_offset *= -1;
     glfw_handle_scroll_event_for_momentum(
-        window, &ev, MAX(info.y_start_time, info.x_start_time), info.y_stop_received || info.x_stop_received,
-        info.source_type == WL_POINTER_AXIS_SOURCE_FINGER);
+        window, &ev, info.y_stop_received || info.x_stop_received, info.source_type == WL_POINTER_AXIS_SOURCE_FINGER);
     /* clear pointer_curr_axis_info for next frame */
     memset(&info, 0, sizeof(info));
 }

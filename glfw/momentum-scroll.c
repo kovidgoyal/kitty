@@ -10,7 +10,7 @@
 
 typedef struct ScrollSample {
     double dx, dy;
-    monotonic_t timestamp, local_timestamp;
+    monotonic_t timestamp;
 } ScrollSample;
 
 #define DEQUE_DATA_TYPE ScrollSample
@@ -59,8 +59,8 @@ cancel_existing_scroll(void) {
 }
 
 static void
-add_sample(double dx, double dy, monotonic_t timestamp) {
-    deque_push_back(&s.samples, (ScrollSample){dx, dy, timestamp, monotonic()}, NULL);
+add_sample(double dx, double dy) {
+    deque_push_back(&s.samples, (ScrollSample){dx, dy, monotonic()}, NULL);
 }
 
 static void
@@ -73,7 +73,7 @@ last_sample_delta(double *dx, double *dy) {
 static void
 trim_old_samples(monotonic_t now) {
     const ScrollSample *ss;
-    while ((ss = deque_peek_front(&s.samples)) && (now - ss->local_timestamp) > ms_to_monotonic_t(150))
+    while ((ss = deque_peek_front(&s.samples)) && (now - ss->timestamp) > ms_to_monotonic_t(150))
         deque_pop_front(&s.samples, NULL);
 }
 
@@ -102,12 +102,12 @@ set_velocity_from_samples(void) {
 
     // Use weighted average - more recent samples have higher weight
     double total_dx = 0.0, total_dy = 0.0, total_weight = 0.0;
-    monotonic_t first_time = deque_peek_front(&s.samples)->local_timestamp;
-    monotonic_t last_time = deque_peek_back(&s.samples)->local_timestamp;
+    monotonic_t first_time = deque_peek_front(&s.samples)->timestamp;
+    monotonic_t last_time = deque_peek_back(&s.samples)->timestamp;
     double time_span = MAX(1, last_time - first_time);
     for (size_t i = 0; i < deque_size(&s.samples); i++) {
         const ScrollSample *ss = deque_at(&s.samples, i);
-        double weight = 1.0 + (ss->local_timestamp - first_time) / time_span;
+        double weight = 1.0 + (ss->timestamp - first_time) / time_span;
         total_dx += ss->dx * weight; total_dy += ss->dy * weight;
         total_weight += weight;
     }
@@ -154,7 +154,7 @@ start_momentum_scroll(void) {
 
 void
 glfw_handle_scroll_event_for_momentum(
-    _GLFWwindow *w, const GLFWScrollEvent *ev, monotonic_t timestamp, bool stopped, bool is_finger_based
+    _GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, bool is_finger_based
 ) {
     if (!w || (w->id != s.window_id && s.window_id) || s.state != PHYSICAL_EVENT_IN_PROGRESS) cancel_existing_scroll();
     if (!w) return;
@@ -167,7 +167,7 @@ glfw_handle_scroll_event_for_momentum(
     s.window_id = w->id;
     s.keyboard_modifiers = ev->keyboard_modifiers;
     if (is_finger_based) {
-        add_sample(ev->x_offset, ev->y_offset, timestamp);
+        add_sample(ev->x_offset, ev->y_offset);
         s.state = stopped ? MOMENTUM_IN_PROGRESS : PHYSICAL_EVENT_IN_PROGRESS;
     } else {
         s.state = stopped ? NONE : PHYSICAL_EVENT_IN_PROGRESS;
