@@ -23,7 +23,6 @@ typedef struct MomentumScroller {
     double friction,  // Deceleration factor (0-1, lower = longer coast)
            min_velocity, // Minimum velocity before stopping
            max_velocity, // Maximum velocity to prevent runaway scrolling
-           boost_factor, // How much to speed up scrolling
            velocity_scale; // Scale factor for initial velocity
     unsigned timer_interval_ms;
 
@@ -38,7 +37,6 @@ static MomentumScroller s = {
     .friction = 0.04,
     .min_velocity = 0.5,
     .max_velocity = 100,
-    .boost_factor = 1.2,
     .velocity_scale = 0.9,
     .timer_interval_ms = 10,
 };
