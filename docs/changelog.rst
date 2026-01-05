@@ -153,6 +153,8 @@ Detailed list of changes
 0.45.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Wayland: Add momentum scrolling for touchpads
+
 - choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
 
 - Fix tab bar rendering glitches when using :opt:`tab_bar_filter` in some
