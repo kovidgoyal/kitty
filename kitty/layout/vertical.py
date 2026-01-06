@@ -129,8 +129,8 @@ class Vertical(Layout):
         idx = groups.index(wg)
         lg = len(groups)
         if lg > 1:
-            before = [groups[(idx - 1 + lg) % lg].id]
-            after = [groups[(idx + 1) % lg].id]
+            after = [groups[(idx - 1 + lg) % lg].id]
+            before = [groups[(idx + 1) % lg].id]
         else:
             before, after = [], []
         ans: NeighborsMap = {}

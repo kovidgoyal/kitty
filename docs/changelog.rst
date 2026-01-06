@@ -171,6 +171,9 @@ Detailed list of changes
 - ncurses: Fix ncurses not using dim because it is missing from the sgr property
   in terminfo even though it is present in the dim property.
 
+- Fix a regression in the previous release that caused moving between neighbors
+  in the vertical and horizontal layouts to go in the opposite direction (:iss:`9355`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
