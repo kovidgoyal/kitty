@@ -82,6 +82,7 @@ without too many changes, do the following:
 #. Emit the escape code ``CSI > 1 u`` at application startup if using the main
    screen or when entering alternate screen mode, if using the alternate
    screen.
+    #. In C for example: ``printf("\x1B[<1u")``
 #. All key events will now be sent in only a few forms to your application,
    that are easy to parse unambiguously.
 #. Emit the escape sequence ``CSI < u`` at application exit if using the main
@@ -285,6 +286,9 @@ via the mechanism described here. Each enhancement is described in detail
 below. The escape code for requesting enhancements is::
 
     CSI = flags ; mode u
+
+    For example in C ``printf("\e[=\b10;1u");`` will set the ":ref:`report_events`"
+    flag.
 
 Here ``flags`` is a decimal encoded integer to specify a set of bit-flags. The
 meanings of the flags are given below. The second, ``mode`` parameter is
