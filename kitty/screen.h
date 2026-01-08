@@ -109,7 +109,6 @@ typedef struct {
     double pixel_scroll_offset_y;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
-    Line blank_line; void *blank_line_buffer;
     id_type window_id;
     Selections selections, url_ranges;
     struct {

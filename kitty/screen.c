@@ -89,18 +89,6 @@ init_overlay_line(Screen *self, index_type columns, bool keep_active) {
     return true;
 }
 
-static bool
-init_blank_line(Screen *self) {
-    const size_t sz = (sizeof(CPUCell) + sizeof(GPUCell)) * self->columns;
-    self->blank_line_buffer = PyMem_Realloc(self->blank_line_buffer, sz);
-    if (!self->blank_line_buffer) return false;
-    memset(self->blank_line_buffer, 0, sz);
-    self->blank_line = (Line){.cpu_cells=self->blank_line_buffer,
-        .gpu_cells=(GPUCell*)((CPUCell*)self->blank_line_buffer + self->columns),
-        .xnum=self->columns, .text_cache=self->text_cache};
-    return true;
-}
-
 static void deactivate_overlay_line(Screen *self);
 static void update_overlay_position(Screen *self);
 static void render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data);
@@ -174,7 +162,6 @@ new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         init_tabstops(self->alt_tabstops, self->columns);
         self->key_encoding_flags = self->main_key_encoding_flags;
         if (!init_overlay_line(self, self->columns, false)) { Py_CLEAR(self); return NULL; }
-        if (!init_blank_line(self)) { Py_CLEAR(self); return NULL; }
         self->hyperlink_pool = alloc_hyperlink_pool();
         if (!self->hyperlink_pool) { Py_CLEAR(self); return PyErr_NoMemory(); }
         self->as_ansi_buf.hyperlink_pool = self->hyperlink_pool;
@@ -562,7 +549,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     which.num_content_lines = num_content_lines_after; \
 }
     // Resize overlay and blank lines
-    if (!init_overlay_line(self, columns, true) || !init_blank_line(self)) return false;
+    if (!init_overlay_line(self, columns, true)) return false;
 
     // Resize main linebuf
     RAII_PyObject(prompt_copy, NULL);
@@ -676,7 +663,6 @@ dealloc(Screen* self) {
     PyMem_Free(self->overlay_line.gpu_cells);
     PyMem_Free(self->overlay_line.original_line.cpu_cells);
     PyMem_Free(self->overlay_line.original_line.gpu_cells);
-    PyMem_Free(self->blank_line_buffer);
     Py_CLEAR(self->overlay_line.overlay_text);
     PyMem_Free(self->main_tabstops);
     Py_CLEAR(self->paused_rendering.linebuf);
@@ -3393,6 +3379,13 @@ update_line_data(Line *line, unsigned int dest_y, uint8_t *data) {
     memcpy(data + base, line->gpu_cells, line->xnum * sizeof(GPUCell));
 }
 
+static void
+update_line_data_blank(unsigned xnum, unsigned int dest_y, uint8_t *data) {
+    const size_t sz = xnum * sizeof(GPUCell);
+    memset(data + sz * dest_y, 0, sz);
+}
+
+
 static Line*
 render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, bool *is_history) {
     if (self->scrolled_by) {
@@ -3406,7 +3399,7 @@ render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, boo
                 if (is_history) *is_history = true;
                 return line;
             }
-            return &self->blank_line;
+            return NULL;
         }
         y -= self->scrolled_by;
     }
@@ -3416,7 +3409,7 @@ render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, boo
         if (is_history) *is_history = false;
         return line;
     }
-    return &self->blank_line;
+    return NULL;
 }
 
 
@@ -3549,7 +3542,7 @@ screen_update_only_line_graphics_data(Screen *self) {
         const int virtual_y = (int)render_row - render_row_offset;
         bool is_history = false;
         Line *linep = render_line_for_virtual_y(self, virtual_y, &line, &lnum, &is_history);
-        if (linep == &self->blank_line) continue;
+        if (linep == NULL) continue;
         screen_render_line_graphics(self, linep, virtual_y - (int)self->scrolled_by);
         if (linep->attrs.has_dirty_text) {
             if (is_history) historybuf_mark_line_clean(self->historybuf, lnum);
@@ -3592,8 +3585,8 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         const int virtual_y = (int)render_row - render_row_offset;
         bool is_history = false;
         Line *linep = render_line_for_virtual_y(self, virtual_y, &line, &lnum, &is_history);
-        if (linep == &self->blank_line) {
-            update_line_data(linep, render_row, address);
+        if (linep == NULL) {
+            update_line_data_blank(self->columns, render_row, address);
             continue;
         }
         if (is_history) {
