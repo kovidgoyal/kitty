@@ -1292,8 +1292,8 @@ scroll_event(const GLFWScrollEvent *ev) {
             break;
     }
     if (ev->y_offset != 0.0) {
-        if (!screen->modes.mouse_tracking_mode && pixel_scroll_enabled_for_screen(screen) && (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES || ev->offset_type == GLFW_SCROLL_OFFEST_V120)) {
-            double delta_pixels = 0.0;
+        if (screen->modes.mouse_tracking_mode == NO_TRACKING && pixel_scroll_enabled_for_screen(screen) && (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES || ev->offset_type == GLFW_SCROLL_OFFEST_V120)) {
+            double delta_pixels;
             if (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES) {
                 delta_pixels = ev->y_offset * OPT(touch_scroll_multiplier);
             } else {

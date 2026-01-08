@@ -153,7 +153,9 @@ Detailed list of changes
 0.45.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Wayland: Add momentum scrolling for touchpads
+- Pixel scrolling for the kitty scrollback buffer controlled via :opt:`pixel_scroll` (:pull:`9330`)
+
+- Wayland: Add momentum scrolling in the kitty scrollback buffer for touchpads and touchscreens
 
 - choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
 

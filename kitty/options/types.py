@@ -403,6 +403,7 @@ option_names = (
     'notify_on_cmd_finish',
     'open_url_with',
     'paste_actions',
+    'pixel_scroll',
     'placement_strategy',
     'pointer_shape_when_dragging',
     'pointer_shape_when_grabbed',
@@ -464,7 +465,6 @@ option_names = (
     'text_composition_strategy',
     'text_fg_override_threshold',
     'touch_scroll_multiplier',
-    'pixel_scroll',
     'transparent_background_colors',
     'undercurl_style',
     'underline_exclusion',
@@ -593,6 +593,7 @@ class Options:
     notify_on_cmd_finish: NotifyOnCmdFinish = NotifyOnCmdFinish(when='never', duration=5.0, action='notify', cmdline=(), clear_on=('focus', 'next'))
     open_url_with: list[str] = ['default']
     paste_actions: frozenset[str] = frozenset({'confirm', 'quote-urls-at-prompt'})
+    pixel_scroll: bool = True
     placement_strategy: choices_for_placement_strategy = 'center'
     pointer_shape_when_dragging: tuple[str, str] = ('beam', 'crosshair')
     pointer_shape_when_grabbed: choices_for_pointer_shape_when_grabbed = 'arrow'
@@ -652,7 +653,6 @@ class Options:
     text_composition_strategy: str = 'platform'
     text_fg_override_threshold: tuple[float, typing.Literal['%', 'ratio']] = (0.0, '%')
     touch_scroll_multiplier: float = 1.0
-    pixel_scroll: bool = False
     transparent_background_colors: tuple[tuple[kitty.fast_data_types.Color, float], ...] = ()
     undercurl_style: choices_for_undercurl_style = 'thin-sparse'
     underline_exclusion: tuple[float, typing.Literal['', 'px', 'pt']] = (1.0, '')

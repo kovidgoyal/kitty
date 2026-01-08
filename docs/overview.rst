@@ -206,16 +206,6 @@ displays an interactive :opt:`scrollbar` along the right edge
 of the window that shows your current position in the scrollback. You can click
 and drag the scrollbar to quickly navigate through the history.
 
-If you use a high‑precision input device such as a touchpad, you can enable
-smooth, per‑pixel scrollback with :opt:`pixel_scroll`. For example, add this to
-your :file:`kitty.conf`::
-
-   pixel_scroll yes
-
-You can further tune the sensitivity with :opt:`touch_scroll_multiplier`. Note
-that this only affects scrolling kitty's own scrollback, not applications
-running inside the terminal that handle their own scrolling.
-
 However, |kitty| has an extra, neat feature. Sometimes you need to explore the scrollback
 buffer in more detail, maybe search for some text or refer to it side-by-side
 while typing in a follow-up command. |kitty| allows you to do this by pressing
