@@ -2425,11 +2425,6 @@ dirty_scroll(Screen *self) {
     screen_pause_rendering(self, false, 0);
 }
 
-static inline int
-render_row_offset_for_screen(const Screen *self) {
-    return pixel_scroll_enabled(self) ? 1 : 0;
-}
-
 static void
 screen_clear_scrollback(Screen *self) {
     historybuf_clear(self->historybuf);
@@ -3518,7 +3513,7 @@ screen_update_only_line_graphics_data(Screen *self) {
     screen_reset_dirty(self);
     self->scroll_changed = false;
     const unsigned int render_lines = render_lines_for_screen(self);
-    const int render_row_offset = render_row_offset_for_screen(self);
+    const int render_row_offset = pixel_scroll_enabled(self);
     Line line = {.text_cache = self->text_cache};
     for (unsigned int render_row = 0; render_row < render_lines; render_row++) {
         const int virtual_y = (int)render_row - render_row_offset;
@@ -3561,7 +3556,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
     self->scroll_changed = false;
     const unsigned int render_lines = render_lines_for_screen(self);
-    const int render_row_offset = render_row_offset_for_screen(self);
+    const int render_row_offset = pixel_scroll_enabled(self);
     Line line = {.text_cache = self->text_cache};
     for (unsigned int render_row = 0; render_row < render_lines; render_row++) {
         const int virtual_y = (int)render_row - render_row_offset;
@@ -3795,7 +3790,7 @@ void
 screen_apply_selection(Screen *self, void *address_, size_t size) {
     uint8_t *address = address_;
     memset(address, 0, size);
-    const int offset = render_row_offset_for_screen(self);
+    const int offset = pixel_scroll_enabled(self);
     Selections *sel = self->paused_rendering.expires_at ? &self->paused_rendering.selections : &self->selections;
     for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, sel->items + i, 1, offset);
     sel->last_rendered_count = sel->count;
@@ -4312,7 +4307,7 @@ render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data) {
 
 static void
 update_overlay_line_data(Screen *self, uint8_t *data) {
-    const int render_row_offset = render_row_offset_for_screen(self);
+    const int render_row_offset = pixel_scroll_enabled(self);
     const size_t base = sizeof(GPUCell) * (self->overlay_line.ynum + self->scrolled_by + render_row_offset) * self->columns;
     memcpy(data + base, self->overlay_line.gpu_cells, self->columns * sizeof(GPUCell));
 }

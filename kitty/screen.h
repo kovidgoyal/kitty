@@ -195,7 +195,7 @@ typedef struct {
 } Screen;
 
 #define pixel_scroll_enabled(screen) (global_state.opts.pixel_scroll && !screen->paused_rendering.expires_at && screen->linebuf == screen->main_linebuf)
-#define render_lines_for_screen(screen) (screen->lines + (pixel_scroll_enabled(screen) ? 1u : 0u))
+#define render_lines_for_screen(screen) (screen->lines + pixel_scroll_enabled(screen))
 
 void screen_align(Screen*);
 void screen_restore_cursor(Screen *);
