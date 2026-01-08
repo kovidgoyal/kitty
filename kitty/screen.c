@@ -3767,23 +3767,29 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 }
 
 static void
-apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int render_row_offset) {
-    iteration_data(s, &s->last_rendered, self->columns, -self->historybuf->count, self->scrolled_by);
+apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int offset) {
+    iteration_data(s, &s->last_rendered, self->columns, -self->historybuf->count, 0);
     Line *line;
-    const int y_min = MAX(0, s->last_rendered.y), y_limit = MIN(s->last_rendered.y_limit, (int)self->lines);
+    const int y_min = MAX(-offset - (int)self->scrolled_by, s->last_rendered.y),
+          y_limit = MIN(s->last_rendered.y_limit, (int)self->lines + offset);
     for (int y = y_min; y < y_limit; y++) {
         if (self->paused_rendering.expires_at) {
             linebuf_init_line(self->paused_rendering.linebuf, y);
             line = self->paused_rendering.linebuf->line;
-        } else line = visual_line_(self, y);
-        uint8_t *line_start = data + self->columns * (y + render_row_offset);
+        } else {
+            line = checked_range_line(self, y);
+            if (!line) continue;
+        }
+        const int y_in_data = (y + offset + self->scrolled_by);
+        uint8_t *line_start = data + self->columns * y_in_data;
         XRange xr = xrange_for_iteration_with_multicells(&s->last_rendered, y, line);
         for (index_type x = xr.x; x < xr.x_limit; x++) {
             line_start[x] |= set_mask;
             CPUCell *c = &line->cpu_cells[x];
             if (c->is_multicell && c->scale > 1) {
-                for (int ym = MAX(0, y - c->y); ym < y; ym++) data[self->columns * (ym + render_row_offset) + x] |= set_mask;
-                for (int ym = y + 1; ym < MIN((int)self->lines, y + c->scale - c->y); ym++) data[self->columns * (ym + render_row_offset) + x] |= set_mask;
+                for (int ym = MAX(0, y_in_data - c->y); ym < y_in_data; ym++) data[self->columns * ym + x] |= set_mask;
+                for (int ym = y_in_data + 1; ym < MIN((int)self->lines + offset, y_in_data + c->scale - c->y); ym++)
+                    data[self->columns * ym + x] |= set_mask;
             }
         }
     }
@@ -3804,26 +3810,24 @@ screen_has_selection(Screen *self) {
 }
 
 void
-screen_apply_selection(Screen *self, void *address, size_t size) {
+screen_apply_selection(Screen *self, void *address_, size_t size) {
+    uint8_t *address = address_;
     memset(address, 0, size);
-    const int render_row_offset = render_row_offset_for_screen(self);
+    const int offset = render_row_offset_for_screen(self);
     Selections *sel = self->paused_rendering.expires_at ? &self->paused_rendering.selections : &self->selections;
-    for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, sel->items + i, 1, render_row_offset);
+    for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, sel->items + i, 1, offset);
     sel->last_rendered_count = sel->count;
     sel = self->paused_rendering.expires_at ? &self->paused_rendering.url_ranges : &self->url_ranges;
     for (size_t i = 0; i < sel->count; i++) {
         Selection *s = sel->items + i;
         if (OPT(underline_hyperlinks) == UNDERLINE_NEVER && s->is_hyperlink) continue;
-        apply_selection(self, address, s, 2, render_row_offset);
+        apply_selection(self, address, s, 2, offset);
     }
-    uint8_t *a = address;
     sel->last_rendered_count = sel->count;
+    address += offset * self->columns; size -= offset * self->columns;
     ExtraCursors *ec = self->paused_rendering.expires_at ? &self->paused_rendering.extra_cursors : &self->extra_cursors;
-    const size_t render_offset_cells = (size_t)render_row_offset * self->columns;
     for (unsigned i = 0; i < ec->count; i++) {
-        if (ec->locations[i].cell + render_offset_cells < size) {
-            a[ec->locations[i].cell + render_offset_cells] |= (ec->locations[i].shape & 7) << 2;
-        }
+        if (ec->locations[i].cell < size) address[ec->locations[i].cell] |= (ec->locations[i].shape & 7) << 2;
     }
     ec->dirty = false;
 }
