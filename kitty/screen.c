@@ -5780,7 +5780,7 @@ line_edge_colors(Screen *self, PyObject *a UNUSED) {
 
 static PyObject*
 current_selections(Screen *self, PyObject *a UNUSED) {
-    PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)self->lines * self->columns);
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)render_lines_for_screen(self) * self->columns);
     if (!ans) return NULL;
     screen_apply_selection(self, PyBytes_AS_STRING(ans), PyBytes_GET_SIZE(ans));
     return ans;

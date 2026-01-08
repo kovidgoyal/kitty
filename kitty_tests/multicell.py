@@ -688,7 +688,7 @@ def test_multicell(self: TestMulticell) -> None:
             pos = y * s.columns
             for x in range(x1, x2 + 1):
                 expected[pos + x] = bp
-        for i, (e, a) in enumerate(zip(as_lists(bytes(expected)), as_lists(actual))):
+        for i, (e, a) in enumerate(zip(as_lists(bytes(expected)), as_lists(actual)[1:])):
             self.ae(e, a, f'Row: {i}')
 
     def ast(*expected, strip_trailing_whitespace=False, as_ansi=False):
