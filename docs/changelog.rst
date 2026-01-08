@@ -176,6 +176,9 @@ Detailed list of changes
 - Fix a regression in the previous release that caused moving between neighbors
   in the vertical and horizontal layouts to go in the opposite direction (:iss:`9355`)
 
+- Fix :ac:`goto_session` not respecting the focus_tab session directive when
+  creating a session in an existing OS window (:iss:`9366`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

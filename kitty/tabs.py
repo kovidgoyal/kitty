@@ -1075,9 +1075,11 @@ class TabManager:  # {{{
 
     def add_tabs_from_session(self, session: SessionType, session_name: str = '') -> None:
         active_tab = self.active_tab
+        added_tabs = []
         for i, t in enumerate(session.tabs):
             tab = Tab(self, session_tab=t, session_name=session_name or self.created_in_session_name)
             self._add_tab(tab)
+            added_tabs.append(tab)
             if i == session.active_tab_idx:
                 active_tab = tab
 
@@ -1088,8 +1090,8 @@ class TabManager:  # {{{
             try:
                 idx = int(spec)
                 # Clamp to valid range
-                idx = max(0, min(idx, len(self.tabs) - 1))
-                active_tab = self.tabs[idx]
+                idx = max(0, min(idx, len(added_tabs) - 1))
+                active_tab = added_tabs[idx]
             except ValueError:
                 # Not a plain number, treat as match expression
                 from .fast_data_types import get_boss
@@ -1101,6 +1103,11 @@ class TabManager:  # {{{
         if active_tab is not None:
             idx = self.tabs.index(active_tab)
             self._set_active_tab(idx)
+            # We need to update last_focused_at so that switch_to_session is
+            # called after the session is created respects the result of
+            # focus_tab.
+            if (at := self.active_tab) and (w := at.active_window):
+                w.last_focused_at = monotonic()
 
     @property
     def active_tab_idx(self) -> int:
