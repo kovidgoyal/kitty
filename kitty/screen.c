@@ -3395,8 +3395,8 @@ render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, boo
                 historybuf_init_line(self->historybuf, idx, line);
                 line->xnum = self->columns;
                 line->ynum = (index_type)MIN(MAX(y, 0), (int)self->lines - 1);
-                if (lnum) *lnum = (index_type)idx;
-                if (is_history) *is_history = true;
+                *lnum = (index_type)idx;
+                *is_history = true;
                 return line;
             }
             return NULL;
@@ -3405,8 +3405,8 @@ render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, boo
     }
     if (y >= 0 && y < (int)self->lines) {
         linebuf_init_line_at(self->linebuf, (index_type)y, line);
-        if (lnum) *lnum = (index_type)y;
-        if (is_history) *is_history = false;
+        *lnum = (index_type)y;
+        *is_history = false;
         return line;
     }
     return NULL;
@@ -3542,11 +3542,12 @@ screen_update_only_line_graphics_data(Screen *self) {
         const int virtual_y = (int)render_row - render_row_offset;
         bool is_history = false;
         Line *linep = render_line_for_virtual_y(self, virtual_y, &line, &lnum, &is_history);
-        if (linep == NULL) continue;
-        screen_render_line_graphics(self, linep, virtual_y - (int)self->scrolled_by);
-        if (linep->attrs.has_dirty_text) {
-            if (is_history) historybuf_mark_line_clean(self->historybuf, lnum);
-            else linebuf_mark_line_clean(self->linebuf, lnum);
+        if (linep) {
+            screen_render_line_graphics(self, linep, virtual_y - (int)self->scrolled_by);
+            if (linep->attrs.has_dirty_text) {
+                if (is_history) historybuf_mark_line_clean(self->historybuf, lnum);
+                else linebuf_mark_line_clean(self->linebuf, lnum);
+            }
         }
     }
 }
@@ -3572,7 +3573,6 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     }
     const bool is_overlay_active = screen_is_overlay_active(self);
     unsigned int history_line_added_count = self->history_line_added_count;
-    index_type lnum;
     screen_reset_dirty(self);
     update_overlay_position(self);
     const bool force_history_render = pixel_scroll_enabled(self) && self->scroll_changed;
@@ -3584,6 +3584,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     for (unsigned int render_row = 0; render_row < render_lines; render_row++) {
         const int virtual_y = (int)render_row - render_row_offset;
         bool is_history = false;
+        index_type lnum = 0;
         Line *linep = render_line_for_virtual_y(self, virtual_y, &line, &lnum, &is_history);
         if (linep == NULL) {
             update_line_data_blank(self->columns, render_row, address);
