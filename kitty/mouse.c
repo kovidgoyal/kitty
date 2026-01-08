@@ -6,6 +6,7 @@
  */
 
 #include "state.h"
+#include "screen.h"
 #include "charsets.h"
 #include <limits.h>
 #include <math.h>
@@ -1232,6 +1233,11 @@ scroll_phase(GLFWMomentumType t) {
 }
 
 
+static inline bool
+pixel_scroll_enabled_for_screen(const Screen *screen) {
+    return OPT(pixel_scroll) && screen->linebuf == screen->main_linebuf;
+}
+
 void
 scroll_event(const GLFWScrollEvent *ev) {
     debug("\x1b[36mScroll\x1b[m %s x: %f y: %f momentum: %s modifiers: %s\n", scroll_offset_type(ev->offset_type), ev->x_offset, ev->y_offset, scroll_phase(ev->momentum_type), format_mods(ev->keyboard_modifiers));
@@ -1285,30 +1291,41 @@ scroll_event(const GLFWScrollEvent *ev) {
         case GLFW_MOMENTUM_PHASE_MAY_BEGIN:
             break;
     }
-    int s;
     if (ev->y_offset != 0.0) {
-        s = scale_scroll(screen->modes.mouse_tracking_mode, ev->y_offset, ev->offset_type, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->fcm.cell_height);
-        if (s) {
-            bool upwards = s > 0;
-            if (screen->modes.mouse_tracking_mode) {
-                int sz = encode_mouse_scroll(w, upwards ? 4 : 5, ev->keyboard_modifiers);
-                if (sz > 0) {
-                    mouse_event_buf[sz] = 0;
-                    for (s = abs(s); s > 0; s--) {
-                        write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
-                    }
-                }
+        if (!screen->modes.mouse_tracking_mode && pixel_scroll_enabled_for_screen(screen) && (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES || ev->offset_type == GLFW_SCROLL_OFFEST_V120)) {
+            double delta_pixels = 0.0;
+            if (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES) {
+                delta_pixels = ev->y_offset * OPT(touch_scroll_multiplier);
             } else {
-                if (screen->linebuf == screen->main_linebuf) {
-                    screen_history_scroll(screen, abs(s), upwards);
-                    if (screen->selections.in_progress) update_drag(w);
+                const double offset_lines = (ev->y_offset / 120.) * OPT(wheel_scroll_multiplier);
+                delta_pixels = offset_lines * global_state.callback_os_window->fonts_data->fcm.cell_height;
+            }
+            screen->pending_scroll_pixels_y = 0.0;
+            if (screen_apply_pixel_scroll(screen, delta_pixels) && screen->selections.in_progress) update_drag(w);
+        } else {
+            int s = scale_scroll(screen->modes.mouse_tracking_mode, ev->y_offset, ev->offset_type, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->fcm.cell_height);
+            if (s) {
+                bool upwards = s > 0;
+                if (screen->modes.mouse_tracking_mode) {
+                    int sz = encode_mouse_scroll(w, upwards ? 4 : 5, ev->keyboard_modifiers);
+                    if (sz > 0) {
+                        mouse_event_buf[sz] = 0;
+                        for (s = abs(s); s > 0; s--) {
+                            write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
+                        }
+                    }
+            } else {
+                    if (screen->linebuf == screen->main_linebuf) {
+                        screen_history_scroll(screen, abs(s), upwards);
+                        if (screen->selections.in_progress) update_drag(w);
+                    }
+                    else fake_scroll(w, abs(s), upwards);
                 }
-                else fake_scroll(w, abs(s), upwards);
             }
         }
     }
     if (ev->x_offset != 0.0) {
-        s = scale_scroll(screen->modes.mouse_tracking_mode, ev->x_offset, ev->offset_type, &screen->pending_scroll_pixels_x, global_state.callback_os_window->fonts_data->fcm.cell_width);
+        int s = scale_scroll(screen->modes.mouse_tracking_mode, ev->x_offset, ev->offset_type, &screen->pending_scroll_pixels_x, global_state.callback_os_window->fonts_data->fcm.cell_width);
         if (s) {
             if (screen->modes.mouse_tracking_mode) {
                 int sz = encode_mouse_scroll(w, s > 0 ? 6 : 7, ev->keyboard_modifiers);

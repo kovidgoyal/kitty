@@ -588,6 +588,16 @@ only used for high precision scrolling devices on platforms such as macOS and
 Wayland. Use negative numbers to change scroll direction.
 '''
     )
+
+opt('pixel_scroll', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+Enable per-pixel scrolling for high precision input devices (for example
+touchpads). When enabled, kitty's own scrollback can move by sub-line increments
+instead of only whole lines. This does not affect applications running inside
+the terminal (for example full-screen TUIs) that handle scrolling themselves.
+'''
+    )
 egr()  # }}}
 
 

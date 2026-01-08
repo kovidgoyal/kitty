@@ -162,6 +162,15 @@ new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         init_tabstops(self->alt_tabstops, self->columns);
         self->key_encoding_flags = self->main_key_encoding_flags;
         if (!init_overlay_line(self, self->columns, false)) { Py_CLEAR(self); return NULL; }
+        self->blank_line_cpu = PyMem_Calloc(self->columns, sizeof(CPUCell));
+        self->blank_line_gpu = PyMem_Calloc(self->columns, sizeof(GPUCell));
+        if (!self->blank_line_cpu || !self->blank_line_gpu) { Py_CLEAR(self); return NULL; }
+        self->blank_line.cpu_cells = self->blank_line_cpu;
+        self->blank_line.gpu_cells = self->blank_line_gpu;
+        self->blank_line.xnum = self->columns;
+        self->blank_line.ynum = 0;
+        self->blank_line.attrs.val = 0;
+        self->blank_line.text_cache = self->text_cache;
         self->hyperlink_pool = alloc_hyperlink_pool();
         if (!self->hyperlink_pool) { Py_CLEAR(self); return PyErr_NoMemory(); }
         self->as_ansi_buf.hyperlink_pool = self->hyperlink_pool;
@@ -550,6 +559,17 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
 }
     // Resize overlay line
     if (!init_overlay_line(self, columns, true)) return false;
+    PyMem_Free(self->blank_line_cpu);
+    PyMem_Free(self->blank_line_gpu);
+    self->blank_line_cpu = PyMem_Calloc(columns, sizeof(CPUCell));
+    self->blank_line_gpu = PyMem_Calloc(columns, sizeof(GPUCell));
+    if (!self->blank_line_cpu || !self->blank_line_gpu) return false;
+    self->blank_line.cpu_cells = self->blank_line_cpu;
+    self->blank_line.gpu_cells = self->blank_line_gpu;
+    self->blank_line.xnum = columns;
+    self->blank_line.ynum = 0;
+    self->blank_line.attrs.val = 0;
+    self->blank_line.text_cache = self->text_cache;
 
     // Resize main linebuf
     RAII_PyObject(prompt_copy, NULL);
@@ -1482,6 +1502,8 @@ cursor_within_margins(Screen *self) {
     return self->margin_top <= self->cursor->y && self->cursor->y <= self->margin_bottom;
 }
 
+static void reset_pixel_scroll(Screen *self);
+
 // Remove all cell images from a portion of the screen and mark lines that
 // contain image placeholders as dirty to make sure they are redrawn. This is
 // needed when we perform commands that may move some lines without marking them
@@ -1528,6 +1550,7 @@ void
 screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_screen) {
     bool to_alt = self->linebuf == self->main_linebuf;
     self->active_hyperlink_id = 0;
+    reset_pixel_scroll(self);
     if (to_alt) {
         if (clear_alt_screen) {
             linebuf_clear(self->alt_linebuf, BLANK_CHAR);
@@ -2420,9 +2443,35 @@ dirty_scroll(Screen *self) {
     screen_pause_rendering(self, false, 0);
 }
 
+static inline bool
+pixel_scroll_enabled(const Screen *self) {
+    return OPT(pixel_scroll) && self->linebuf == self->main_linebuf && !self->paused_rendering.expires_at;
+}
+
+static inline bool
+pixel_scroll_enabled_for_render(const Screen *self) {
+    return OPT(pixel_scroll) && !self->paused_rendering.expires_at && self->linebuf == self->main_linebuf;
+}
+
+static inline unsigned int
+render_lines_for_screen(const Screen *self) {
+    return self->lines + (pixel_scroll_enabled_for_render(self) ? 2u : 0u);
+}
+
+static inline int
+render_row_offset_for_screen(const Screen *self) {
+    return pixel_scroll_enabled_for_render(self) ? 1 : 0;
+}
+
+static inline void
+reset_pixel_scroll(Screen *self) {
+    self->pixel_scroll_offset_y = 0.0;
+}
+
 static void
 screen_clear_scrollback(Screen *self) {
     historybuf_clear(self->historybuf);
+    reset_pixel_scroll(self);
     if (self->scrolled_by != 0) {
         self->scrolled_by = 0;
         dirty_scroll(self);
@@ -3120,7 +3169,10 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump, int sc
         self->scrolled_by = y >= 0 ? 0 : -y;
         screen_set_last_visited_prompt(self, 0);
     }
-    if (old != self->scrolled_by) dirty_scroll(self);
+    if (old != self->scrolled_by) {
+        reset_pixel_scroll(self);
+        dirty_scroll(self);
+    }
     return old != self->scrolled_by;
 }
 
@@ -3347,6 +3399,32 @@ update_line_data(Line *line, unsigned int dest_y, uint8_t *data) {
     memcpy(data + base, line->gpu_cells, line->xnum * sizeof(GPUCell));
 }
 
+static Line*
+render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, bool *is_history) {
+    if (self->scrolled_by) {
+        if (y < (int)self->scrolled_by) {
+            int idx = (int)self->scrolled_by - 1 - y;
+            if (idx >= 0 && (unsigned)idx < self->historybuf->count) {
+                historybuf_init_line(self->historybuf, idx, line);
+                line->xnum = self->columns;
+                line->ynum = (index_type)MIN(MAX(y, 0), (int)self->lines - 1);
+                if (lnum) *lnum = (index_type)idx;
+                if (is_history) *is_history = true;
+                return line;
+            }
+            return &self->blank_line;
+        }
+        y -= self->scrolled_by;
+    }
+    if (y >= 0 && y < (int)self->lines) {
+        linebuf_init_line_at(self->linebuf, (index_type)y, line);
+        if (lnum) *lnum = (index_type)y;
+        if (is_history) *is_history = false;
+        return line;
+    }
+    return &self->blank_line;
+}
+
 
 static void
 screen_reset_dirty(Screen *self) {
@@ -3466,24 +3544,22 @@ screen_render_line_graphics(Screen *self, Line *line, int32_t row) {
 static void
 screen_update_only_line_graphics_data(Screen *self) {
     unsigned int history_line_added_count = self->history_line_added_count;
-    index_type lnum;
+    index_type lnum = 0;
     if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
     screen_reset_dirty(self);
     self->scroll_changed = false;
-    for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
-        lnum = self->scrolled_by - 1 - y;
-        historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
-        screen_render_line_graphics(self, self->historybuf->line, y - self->scrolled_by);
-        if (self->historybuf->line->attrs.has_dirty_text) {
-            historybuf_mark_line_clean(self->historybuf, lnum);
-        }
-    }
-    for (index_type y = self->scrolled_by; y < self->lines; y++) {
-        lnum = y - self->scrolled_by;
-        linebuf_init_line(self->linebuf, lnum);
-        if (self->linebuf->line->attrs.has_dirty_text) {
-            screen_render_line_graphics(self, self->linebuf->line, y - self->scrolled_by);
-            linebuf_mark_line_clean(self->linebuf, lnum);
+    const unsigned int render_lines = render_lines_for_screen(self);
+    const int render_row_offset = render_row_offset_for_screen(self);
+    Line line = {.text_cache = self->text_cache};
+    for (unsigned int render_row = 0; render_row < render_lines; render_row++) {
+        const int virtual_y = (int)render_row - render_row_offset;
+        bool is_history = false;
+        Line *linep = render_line_for_virtual_y(self, virtual_y, &line, &lnum, &is_history);
+        if (linep == &self->blank_line) continue;
+        screen_render_line_graphics(self, linep, virtual_y - (int)self->scrolled_by);
+        if (linep->attrs.has_dirty_text) {
+            if (is_history) historybuf_mark_line_clean(self->historybuf, lnum);
+            else linebuf_mark_line_clean(self->linebuf, lnum);
         }
     }
 }
@@ -3512,34 +3588,41 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     index_type lnum;
     screen_reset_dirty(self);
     update_overlay_position(self);
+    const bool force_history_render = pixel_scroll_enabled(self) && self->scroll_changed;
     if (self->scrolled_by) self->scrolled_by = MIN(self->scrolled_by + history_line_added_count, self->historybuf->count);
     self->scroll_changed = false;
-    for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
-        lnum = self->scrolled_by - 1 - y;
-        historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
-        // we render line graphics even if the line is not dirty as graphics commands received after
-        // the unicode placeholder was first scanned can alter it.
-        screen_render_line_graphics(self, self->historybuf->line, y - self->scrolled_by);
-        if (self->historybuf->line->attrs.has_dirty_text) {
-            render_line(fonts_data, self->historybuf->line, lnum, self->cursor, self->disable_ligatures, self->lc);
-            if (screen_has_marker(self)) mark_text_in_line(self->marker, self->historybuf->line, &self->as_ansi_buf);
-            historybuf_mark_line_clean(self->historybuf, lnum);
+    const unsigned int render_lines = render_lines_for_screen(self);
+    const int render_row_offset = render_row_offset_for_screen(self);
+    Line line = {.text_cache = self->text_cache};
+    for (unsigned int render_row = 0; render_row < render_lines; render_row++) {
+        const int virtual_y = (int)render_row - render_row_offset;
+        bool is_history = false;
+        Line *linep = render_line_for_virtual_y(self, virtual_y, &line, &lnum, &is_history);
+        if (linep == &self->blank_line) {
+            update_line_data(linep, render_row, address);
+            continue;
         }
-        update_line_data(self->historybuf->line, y, address);
-    }
-    for (index_type y = self->scrolled_by; y < self->lines; y++) {
-        lnum = y - self->scrolled_by;
-        linebuf_init_line(self->linebuf, lnum);
-        if (self->linebuf->line->attrs.has_dirty_text ||
-            (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered.cursor.y == lnum))) {
-            render_line(fonts_data, self->linebuf->line, lnum, self->cursor, self->disable_ligatures, self->lc);
-            screen_render_line_graphics(self, self->linebuf->line, y - self->scrolled_by);
-            if (self->linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(
-                    self->marker, self->linebuf->line, &self->as_ansi_buf);
-            if (is_overlay_active && lnum == self->overlay_line.ynum) render_overlay_line(self, self->linebuf->line, fonts_data);
-            linebuf_mark_line_clean(self->linebuf, lnum);
+        if (is_history) {
+            // we render line graphics even if the line is not dirty as graphics commands received after
+            // the unicode placeholder was first scanned can alter it.
+            screen_render_line_graphics(self, linep, virtual_y - (int)self->scrolled_by);
+            if (force_history_render || linep->attrs.has_dirty_text) {
+                render_line(fonts_data, linep, lnum, self->cursor, self->disable_ligatures, self->lc);
+                if (screen_has_marker(self)) mark_text_in_line(self->marker, linep, &self->as_ansi_buf);
+                historybuf_mark_line_clean(self->historybuf, lnum);
+            }
+        } else {
+            if (linep->attrs.has_dirty_text ||
+                (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered.cursor.y == lnum))) {
+                render_line(fonts_data, linep, lnum, self->cursor, self->disable_ligatures, self->lc);
+                screen_render_line_graphics(self, linep, virtual_y - (int)self->scrolled_by);
+                if (linep->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(
+                        self->marker, linep, &self->as_ansi_buf);
+                if (is_overlay_active && lnum == self->overlay_line.ynum) render_overlay_line(self, linep, fonts_data);
+                linebuf_mark_line_clean(self->linebuf, lnum);
+            }
         }
-        update_line_data(self->linebuf->line, y, address);
+        update_line_data(linep, render_row, address);
     }
     if (is_overlay_active && self->overlay_line.ynum + self->scrolled_by < self->lines) {
         if (self->overlay_line.is_dirty) {
@@ -3696,7 +3779,7 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 }
 
 static void
-apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask) {
+apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int render_row_offset) {
     iteration_data(s, &s->last_rendered, self->columns, -self->historybuf->count, self->scrolled_by);
     Line *line;
     const int y_min = MAX(0, s->last_rendered.y), y_limit = MIN(s->last_rendered.y_limit, (int)self->lines);
@@ -3705,14 +3788,14 @@ apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask) {
             linebuf_init_line(self->paused_rendering.linebuf, y);
             line = self->paused_rendering.linebuf->line;
         } else line = visual_line_(self, y);
-        uint8_t *line_start = data + self->columns * y;
+        uint8_t *line_start = data + self->columns * (y + render_row_offset);
         XRange xr = xrange_for_iteration_with_multicells(&s->last_rendered, y, line);
         for (index_type x = xr.x; x < xr.x_limit; x++) {
             line_start[x] |= set_mask;
             CPUCell *c = &line->cpu_cells[x];
             if (c->is_multicell && c->scale > 1) {
-                for (int ym = MAX(0, y - c->y); ym < y; ym++) data[self->columns * ym + x] |= set_mask;
-                for (int ym = y + 1; ym < MIN((int)self->lines, y + c->scale - c->y); ym++) data[self->columns * ym + x] |= set_mask;
+                for (int ym = MAX(0, y - c->y); ym < y; ym++) data[self->columns * (ym + render_row_offset) + x] |= set_mask;
+                for (int ym = y + 1; ym < MIN((int)self->lines, y + c->scale - c->y); ym++) data[self->columns * (ym + render_row_offset) + x] |= set_mask;
             }
         }
     }
@@ -3735,20 +3818,24 @@ screen_has_selection(Screen *self) {
 void
 screen_apply_selection(Screen *self, void *address, size_t size) {
     memset(address, 0, size);
+    const int render_row_offset = render_row_offset_for_screen(self);
     Selections *sel = self->paused_rendering.expires_at ? &self->paused_rendering.selections : &self->selections;
-    for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, sel->items + i, 1);
+    for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, sel->items + i, 1, render_row_offset);
     sel->last_rendered_count = sel->count;
     sel = self->paused_rendering.expires_at ? &self->paused_rendering.url_ranges : &self->url_ranges;
     for (size_t i = 0; i < sel->count; i++) {
         Selection *s = sel->items + i;
         if (OPT(underline_hyperlinks) == UNDERLINE_NEVER && s->is_hyperlink) continue;
-        apply_selection(self, address, s, 2);
+        apply_selection(self, address, s, 2, render_row_offset);
     }
     uint8_t *a = address;
     sel->last_rendered_count = sel->count;
     ExtraCursors *ec = self->paused_rendering.expires_at ? &self->paused_rendering.extra_cursors : &self->extra_cursors;
+    const size_t render_offset_cells = (size_t)render_row_offset * self->columns;
     for (unsigned i = 0; i < ec->count; i++) {
-        if (ec->locations[i].cell < size) a[ec->locations[i].cell] |= (ec->locations[i].shape & 7) << 2;
+        if (ec->locations[i].cell + render_offset_cells < size) {
+            a[ec->locations[i].cell + render_offset_cells] |= (ec->locations[i].shape & 7) << 2;
+        }
     }
     ec->dirty = false;
 }
@@ -4135,6 +4222,7 @@ screen_update_overlay_text(Screen *self, const char *utf8_text) {
     // Since we are typing, scroll to the bottom
     if (self->scrolled_by != 0) {
         self->scrolled_by = 0;
+        reset_pixel_scroll(self);
         dirty_scroll(self);
     }
 }
@@ -4250,7 +4338,8 @@ render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data) {
 
 static void
 update_overlay_line_data(Screen *self, uint8_t *data) {
-    const size_t base = sizeof(GPUCell) * (self->overlay_line.ynum + self->scrolled_by) * self->columns;
+    const int render_row_offset = render_row_offset_for_screen(self);
+    const size_t base = sizeof(GPUCell) * (self->overlay_line.ynum + self->scrolled_by + render_row_offset) * self->columns;
     memcpy(data + base, self->overlay_line.gpu_cells, self->columns * sizeof(GPUCell));
 }
 
@@ -4943,8 +5032,36 @@ screen_history_scroll_to_absolute(Screen *self, unsigned int target_scrolled_by)
     if (target_scrolled_by > self->historybuf->count) target_scrolled_by = self->historybuf->count;
     if (target_scrolled_by != self->scrolled_by) {
         self->scrolled_by = target_scrolled_by;
+        reset_pixel_scroll(self);
         dirty_scroll(self);
     }
+}
+
+bool
+screen_apply_pixel_scroll(Screen *self, double delta_pixels) {
+    if (!pixel_scroll_enabled(self)) return false;
+    if (!self->historybuf->count) return false;
+    const double cell_height = (double)self->cell_size.height;
+    if (cell_height <= 0.0 || delta_pixels == 0.0) return false;
+
+    double total = self->pixel_scroll_offset_y + (double)self->scrolled_by * cell_height + delta_pixels;
+    const double max_total = (double)self->historybuf->count * cell_height;
+    if (total < 0.0) total = 0.0;
+    if (total > max_total) total = max_total;
+    const unsigned int new_scrolled_by = (unsigned int)floor(total / cell_height);
+    const double offset = total - (double)new_scrolled_by * cell_height;
+    bool changed = false;
+    if (new_scrolled_by != self->scrolled_by) {
+        self->scrolled_by = new_scrolled_by;
+        changed = true;
+    }
+
+    if (offset != self->pixel_scroll_offset_y) {
+        self->pixel_scroll_offset_y = offset;
+        changed = true;
+    }
+    if (changed) dirty_scroll(self);
+    return changed;
 }
 
 bool
@@ -4971,6 +5088,7 @@ screen_history_scroll(Screen *self, int amt, bool upwards) {
     unsigned int new_scroll = MIN(self->scrolled_by + amt, self->historybuf->count);
     if (new_scroll != self->scrolled_by) {
         self->scrolled_by = new_scroll;
+        reset_pixel_scroll(self);
         dirty_scroll(self);
         return true;
     }
@@ -5613,6 +5731,7 @@ scroll_prompt_to_bottom(Screen *self, PyObject *args UNUSED) {
     // always scroll to the bottom
     if (self->scrolled_by != 0) {
         self->scrolled_by = 0;
+        reset_pixel_scroll(self);
         dirty_scroll(self);
     }
     Py_RETURN_NONE;

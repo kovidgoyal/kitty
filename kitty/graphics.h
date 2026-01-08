@@ -145,6 +145,7 @@ typedef struct {
     // The number of images below MIN_ZINDEX / 2, then the number of refs between MIN_ZINDEX / 2 and -1 inclusive, then the number of refs above 0 inclusive.
     size_t num_of_below_refs, num_of_negative_refs, num_of_positive_refs;
     unsigned int last_scrolled_by;
+    float last_scroll_offset_lines;
     size_t used_storage;
     PyObject *disk_cache;
     bool has_images_needing_animation, context_made_current_for_this_command;
@@ -202,7 +203,7 @@ GraphicsManager* grman_alloc(bool for_paused_rendering);
 void grman_clear(GraphicsManager*, bool, CellPixelSize fg);
 const char* grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty, CellPixelSize fg);
 void grman_put_cell_image(GraphicsManager *self, uint32_t row, uint32_t col, uint32_t image_id, uint32_t placement_id, uint32_t x, uint32_t y, uint32_t w, uint32_t h, CellPixelSize cell);
-bool grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize);
+bool grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scroll_offset_lines, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize);
 void grman_scroll_images(GraphicsManager *self, const ScrollData*, CellPixelSize fg);
 void grman_resize(GraphicsManager*, index_type, index_type, index_type, index_type, index_type, index_type);
 void grman_rescale(GraphicsManager *self, CellPixelSize fg);

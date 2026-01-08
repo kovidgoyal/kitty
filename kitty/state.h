@@ -47,6 +47,7 @@ typedef struct Options {
     } mouse_hide;
     double wheel_scroll_multiplier, touch_scroll_multiplier;
     int wheel_scroll_min_lines;
+    bool pixel_scroll;
     bool enable_audio_bell;
     CursorShape cursor_shape, cursor_shape_unfocused;
     float cursor_beam_thickness;
