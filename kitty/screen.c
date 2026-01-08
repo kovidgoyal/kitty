@@ -3365,21 +3365,19 @@ update_line_data_blank(unsigned xnum, unsigned int dest_y, uint8_t *data) {
 
 static Line*
 render_line_for_virtual_y(Screen *self, int y, Line *line, index_type *lnum, bool *is_history) {
-    if (self->scrolled_by) {
-        if (y < (int)self->scrolled_by) {
-            int idx = (int)self->scrolled_by - 1 - y;
-            if (idx >= 0 && (unsigned)idx < self->historybuf->count) {
-                historybuf_init_line(self->historybuf, idx, line);
-                line->xnum = self->columns;
-                line->ynum = (index_type)MIN(MAX(y, 0), (int)self->lines - 1);
-                *lnum = (index_type)idx;
-                *is_history = true;
-                return line;
-            }
-            return NULL;
+    if (y < (int)self->scrolled_by) {
+        int idx = (int)self->scrolled_by - 1 - y;
+        if (idx >= 0 && (unsigned)idx < self->historybuf->count) {
+            historybuf_init_line(self->historybuf, idx, line);
+            line->xnum = self->columns;
+            line->ynum = (index_type)MIN(MAX(y, 0), (int)self->lines - 1);
+            *lnum = (index_type)idx;
+            *is_history = true;
+            return line;
         }
-        y -= self->scrolled_by;
+        return NULL;
     }
+    y -= self->scrolled_by;
     if (y >= 0 && y < (int)self->lines) {
         linebuf_init_line_at(self->linebuf, (index_type)y, line);
         *lnum = (index_type)y;

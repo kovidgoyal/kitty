@@ -194,7 +194,7 @@ typedef struct {
     ExtraCursors extra_cursors;
 } Screen;
 
-#define pixel_scroll_enabled(screen) (global_state.opts.pixel_scroll && !screen->paused_rendering.expires_at && screen->linebuf == screen->main_linebuf)
+#define pixel_scroll_enabled(screen) (OPT(pixel_scroll) && !screen->paused_rendering.expires_at && screen->linebuf == screen->main_linebuf)
 #define render_lines_for_screen(screen) (screen->lines + pixel_scroll_enabled(screen))
 
 void screen_align(Screen*);
