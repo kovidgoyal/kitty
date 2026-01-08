@@ -279,7 +279,7 @@ typedef struct SelectionUpdate {
 } SelectionUpdate;
 void screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half, SelectionUpdate upd);
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
-void screen_history_scroll_to_absolute(Screen *self, unsigned int target_scrolled_by);
+void screen_history_scroll_to_absolute(Screen *self, double target_scrolled_by);
 bool screen_apply_pixel_scroll(Screen *self, double delta_pixels);
 PyObject* as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output);
 Line* screen_visual_line(Screen *self, index_type y);

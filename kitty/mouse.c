@@ -434,18 +434,18 @@ typedef struct {
 
 
 static bool
-validate_scrollbar_state(Window *w) {
+validate_scrollbar_state(const Window *w) {
     return w && w->render_data.screen &&
            w->render_data.screen->historybuf &&
            w->render_data.screen->historybuf->count > 0;
 }
 
 static ScrollbarGeometry
-calculate_scrollbar_geometry(Window *w) {
+calculate_scrollbar_geometry(const Window *w) {
     ScrollbarGeometry geom = {0};
     if (!w || !w->render_data.screen) return geom;
 
-    WindowGeometry *g = &w->render_data.geometry;
+    const WindowGeometry *g = &w->render_data.geometry;
     unsigned cell_width = w->render_data.screen->cell_size.width;
     geom.width = (double)OPT(scrollbar_width) * cell_width;
     if (w->scrollbar.is_hovering) geom.width = (double)OPT(scrollbar_hover_width) * cell_width;
@@ -462,7 +462,7 @@ calculate_scrollbar_geometry(Window *w) {
 }
 
 static ScrollbarHitType
-get_scrollbar_hit_type(Window *w, double mouse_x, double mouse_y) {
+get_scrollbar_hit_type(const Window *w, double mouse_x, double mouse_y) {
     if (!w || !validate_scrollbar_state(w)) return SCROLLBAR_HIT_NONE;
 
     ScrollbarGeometry geom = calculate_scrollbar_geometry(w);
@@ -496,7 +496,7 @@ handle_scrollbar_track_click(Window *w, double mouse_y) {
         ScrollbarGeometry geom = calculate_scrollbar_geometry(w);
         double scrollbar_height = geom.bottom - geom.top;
         double mouse_pane_fraction = (mouse_y - geom.top) / scrollbar_height;
-        unsigned int target_scrolled_by = (unsigned int)(screen->historybuf->count * (1.0 - mouse_pane_fraction));
+        double target_scrolled_by = screen->historybuf->count * (1.0 - mouse_pane_fraction);
         screen_history_scroll_to_absolute(screen, target_scrolled_by);
     } else {
         OSWindow *os_window = global_state.callback_os_window;
@@ -561,14 +561,11 @@ handle_scrollbar_drag(Window *w, double mouse_y) {
     if (available_space > 0) {
         double scroll_fraction = delta_y / available_space;
         double target = w->scrollbar.drag_start_scrolled_by - scroll_fraction * screen->historybuf->count;
-        unsigned int new_scrolled_by;
+        double new_scrolled_by;
         if (target < 0) new_scrolled_by = 0;
         else if (target > screen->historybuf->count) new_scrolled_by = screen->historybuf->count;
-        else new_scrolled_by = (unsigned int)target;
-
-        if (new_scrolled_by != screen->scrolled_by) {
-            screen_history_scroll_to_absolute(screen, new_scrolled_by);
-        }
+        else new_scrolled_by = target;
+        screen_history_scroll_to_absolute(screen, new_scrolled_by);
     }
 }
 

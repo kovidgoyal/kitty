@@ -952,7 +952,9 @@ draw_scrollbar(const UIRenderData *ui) {
     if (!window || !screen || !has_scrollbar(window, screen)) return;
 
     color_type bar_color = scrollbar_color(screen, OPT(scrollbar_handle_color)), track_color = scrollbar_color(screen, OPT(scrollbar_track_color));
-    float bar_frac = (float)screen->scrolled_by / MAX(1u, (float)screen->historybuf->count);
+    double cell_frac = screen->pixel_scroll_offset_y / screen->cell_size.height;
+    if (!OPT(pixel_scroll)) cell_frac = 0;
+    float bar_frac = (float)(screen->scrolled_by + cell_frac) / MAX(1u, (float)screen->historybuf->count);
     float opacity = OPT(scrollbar_handle_opacity);
     float track_opacity = window->scrollbar.is_hovering ? OPT(scrollbar_track_hover_opacity) : OPT(scrollbar_track_opacity);
     GLsizei scrollbar_width_px = (GLsizei)(OPT(scrollbar_width) * ui->cell_width);
