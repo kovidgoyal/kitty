@@ -3767,11 +3767,11 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 }
 
 static void
-apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int offset) {
+apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int extra_leading_rows) {
     iteration_data(s, &s->last_rendered, self->columns, -self->historybuf->count, 0);
     Line *line;
-    const int y_min = MAX(-offset - (int)self->scrolled_by, s->last_rendered.y),
-          y_limit = MIN(s->last_rendered.y_limit, (int)self->lines + offset);
+    const int y_min = MAX(-extra_leading_rows - (int)self->scrolled_by, s->last_rendered.y),
+          y_limit = MIN(s->last_rendered.y_limit, (int)self->lines + extra_leading_rows);
     for (int y = y_min; y < y_limit; y++) {
         if (self->paused_rendering.expires_at) {
             linebuf_init_line(self->paused_rendering.linebuf, y);
@@ -3780,7 +3780,7 @@ apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int
             line = checked_range_line(self, y);
             if (!line) continue;
         }
-        const int y_in_data = (y + offset + self->scrolled_by);
+        const int y_in_data = (y + extra_leading_rows + self->scrolled_by);
         uint8_t *line_start = data + self->columns * y_in_data;
         XRange xr = xrange_for_iteration_with_multicells(&s->last_rendered, y, line);
         for (index_type x = xr.x; x < xr.x_limit; x++) {
@@ -3788,7 +3788,7 @@ apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int
             CPUCell *c = &line->cpu_cells[x];
             if (c->is_multicell && c->scale > 1) {
                 for (int ym = MAX(0, y_in_data - c->y); ym < y_in_data; ym++) data[self->columns * ym + x] |= set_mask;
-                for (int ym = y_in_data + 1; ym < MIN((int)self->lines + offset, y_in_data + c->scale - c->y); ym++)
+                for (int ym = y_in_data + 1; ym < MIN((int)self->lines + extra_leading_rows, y_in_data + c->scale - c->y); ym++)
                     data[self->columns * ym + x] |= set_mask;
             }
         }
