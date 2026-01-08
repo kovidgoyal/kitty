@@ -2425,16 +2425,6 @@ dirty_scroll(Screen *self) {
     screen_pause_rendering(self, false, 0);
 }
 
-static inline bool
-pixel_scroll_enabled(const Screen *self) {
-    return OPT(pixel_scroll) && self->linebuf == self->main_linebuf && !self->paused_rendering.expires_at;
-}
-
-static inline unsigned int
-render_lines_for_screen(const Screen *self) {
-    return self->lines + (pixel_scroll_enabled(self) ? 2u : 0u);
-}
-
 static inline int
 render_row_offset_for_screen(const Screen *self) {
     return pixel_scroll_enabled(self) ? 1 : 0;
