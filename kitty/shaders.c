@@ -47,7 +47,7 @@ pixel_scroll_enabled_for_render(const Screen *screen) {
 
 static inline unsigned int
 render_lines_for_screen(const Screen *screen) {
-    return screen->lines + (pixel_scroll_enabled_for_render(screen) ? 2u : 0u);
+    return screen->lines + (pixel_scroll_enabled_for_render(screen) ? 1u : 0u);
 }
 
 static inline float
