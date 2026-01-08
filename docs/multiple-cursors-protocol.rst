@@ -3,10 +3,6 @@ The multiple cursors protocol
 
 .. versionadded:: 0.43.0
 
-.. warning::
-   This protocol is under public discussion in :iss:`8927`. It is subject to
-   change until that discussion is completed.
-
 Many editors support something called *multiple cursors* in which you can make
 the same changes at multiple locations in a file and the editor shows you
 cursors at each of the locations. In a terminal context editors typically
