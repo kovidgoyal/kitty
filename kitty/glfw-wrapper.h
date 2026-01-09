@@ -2406,6 +2406,10 @@ typedef pid_t (*glfwWaylandCompositorPID_func)(void);
 GFW_EXTERN glfwWaylandCompositorPID_func glfwWaylandCompositorPID_impl;
 #define glfwWaylandCompositorPID glfwWaylandCompositorPID_impl
 
+typedef void (*glfwConfigureMomentumScroller_func)(double, double, double, unsigned);
+GFW_EXTERN glfwConfigureMomentumScroller_func glfwConfigureMomentumScroller_impl;
+#define glfwConfigureMomentumScroller glfwConfigureMomentumScroller_impl
+
 typedef unsigned long long (*glfwDBusUserNotify_func)(const GLFWDBUSNotificationData*, GLFWDBusnotificationcreatedfun, void*);
 GFW_EXTERN glfwDBusUserNotify_func glfwDBusUserNotify_impl;
 #define glfwDBusUserNotify glfwDBusUserNotify_impl

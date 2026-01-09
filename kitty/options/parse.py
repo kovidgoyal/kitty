@@ -1143,6 +1143,9 @@ class Parser:
         for k, v in modify_font(val):
             ans["modify_font"][k] = v
 
+    def momentum_scroll(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['momentum_scroll'] = unit_float(val)
+
     def mouse_hide_wait(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mouse_hide_wait'] = mouse_hide_wait(val)
 

@@ -139,6 +139,7 @@ typedef struct Options {
     unsigned undercurl_style;
     struct { float thickness; int unit; } underline_exclusion;
     float box_drawing_scale[4];
+    double momentum_scroll;
 } Options;
 
 typedef struct WindowLogoRenderData {

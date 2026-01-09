@@ -42,16 +42,15 @@ static const MomentumScroller defaults = {
     .friction = 0.04,
     .min_velocity = 0.5,
     .max_velocity = 100,
-    .velocity_scale = 0.9,
     .timer_interval = 10,
 };
 static MomentumScroller s = defaults;
 
 GLFWAPI void
-glfwConfigureMomentumScroller(double friction, double min_velocity, double max_velocity, double velocity_scale, unsigned timer_interval_ms) {
-    s.timer_interval = ms_to_monotonic_t(timer_interval_ms);
+glfwConfigureMomentumScroller(double friction, double min_velocity, double max_velocity, unsigned timer_interval_ms) {
+    s.timer_interval = timer_interval_ms ? ms_to_monotonic_t(timer_interval_ms) : defaults.timer_interval;
 #define S(w) s.w = w >= 0 ? w : defaults.w
-    S(friction); S(min_velocity); S(max_velocity); S(velocity_scale);
+    S(friction); S(min_velocity); S(max_velocity);
 #undef S
 }
 
@@ -94,7 +93,6 @@ trim_old_samples(monotonic_t now) {
 
 static void
 add_velocity(double x, double y) {
-    x *= s.velocity_scale; y *= s.velocity_scale;
     if (x == 0 || x * s.velocity.x >= 0) s.velocity.x += x;
     else s.velocity.x = x;
     if (y == 0 || y * s.velocity.y >= 0) s.velocity.y += y;
@@ -185,7 +183,7 @@ glfw_handle_scroll_event_for_momentum(
     _GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, bool is_finger_based
 ) {
     if (!w) { cancel_existing_scroll(true); return; }
-    if (!is_finger_based || ev->offset_type != GLFW_SCROLL_OFFEST_HIGHRES || s.friction <= 0) {
+    if (!is_finger_based || ev->offset_type != GLFW_SCROLL_OFFEST_HIGHRES || s.friction < 0 || s.friction >= 1) {
         _glfwInputScroll(w, ev);
         return;
     }
@@ -210,7 +208,7 @@ glfw_handle_scroll_event_for_momentum(
     if (ldx * ev->x_offset < 0 || ldy * ev->y_offset < 0) cancel_existing_scroll(true);
     s.window_id = w->id;
     s.keyboard_modifiers = ev->keyboard_modifiers;
-    if (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES && s.friction > 0) {
+    if (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES) {
         add_sample(ev->unscaled.x, ev->unscaled.y, now);
         if (stopped) s.state = is_suitable_for_momentum() ? MOMENTUM_IN_PROGRESS : NONE;
         else s.state = PHYSICAL_EVENT_IN_PROGRESS;

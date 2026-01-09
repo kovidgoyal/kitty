@@ -397,6 +397,7 @@ option_names = (
     'mark3_foreground',
     'menu_map',
     'modify_font',
+    'momentum_scroll',
     'mouse_hide_wait',
     'mouse_map',
     'narrow_symbols',
@@ -589,6 +590,7 @@ class Options:
     mark2_foreground: Color = Color(0, 0, 0)
     mark3_background: Color = Color(242, 116, 188)
     mark3_foreground: Color = Color(0, 0, 0)
+    momentum_scroll: float = 0.04
     mouse_hide_wait: MouseHideWait = MouseHideWait(hide_wait=0.0, show_wait=0.0, show_threshold=40, scroll_show=True) if is_macos else MouseHideWait(hide_wait=3.0, show_wait=0.0, show_threshold=40, scroll_show=True)
     notify_on_cmd_finish: NotifyOnCmdFinish = NotifyOnCmdFinish(when='never', duration=5.0, action='notify', cmdline=(), clear_on=('focus', 'next'))
     open_url_with: list[str] = ['default']
