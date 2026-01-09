@@ -94,6 +94,7 @@ trim_old_samples(monotonic_t now) {
 
 static void
 add_velocity(double x, double y) {
+    x *= s.velocity_scale; y *= s.velocity_scale;
     if (x == 0 || x * s.velocity.x >= 0) s.velocity.x += x;
     else s.velocity.x = x;
     if (y == 0 || y * s.velocity.y >= 0) s.velocity.y += y;
@@ -112,7 +113,7 @@ set_velocity_from_samples(monotonic_t now) {
             return;
         case 1:
             deque_pop_front(&s.samples, &ss);
-            add_velocity(s.velocity_scale * ss.dx, s.velocity_scale * ss.dy);
+            add_velocity(ss.dx, ss.dy);
             return;
     }
 
@@ -130,21 +131,22 @@ set_velocity_from_samples(monotonic_t now) {
     deque_clear(&s.samples);
     if (total_weight <= 0) return;
     double dy = total_dy / total_weight, dx = total_dx / total_weight;
-    add_velocity(dx * s.velocity_scale, dy * s.velocity_scale);
+    add_velocity(dx, dy);
     if (false) timed_debug_print("momentum scroll: event velocity: %.1f final velocity: %.1f\n", dy, s.velocity.y);
 }
 
 static void
 send_momentum_event(bool is_start) {
-    double friction = 1.0 - MAX(0, MIN(s.friction, 1.));
-    s.velocity.x *= friction; s.velocity.y *= friction;
-    if (fabs(s.velocity.x) < s.min_velocity) s.velocity.x = 0;
-    if (fabs(s.velocity.y) < s.min_velocity) s.velocity.y = 0;
     _GLFWwindow *w = _glfwWindowForId(s.window_id);
     if (!w || w != _glfwFocusedWindow()) {
         cancel_existing_scroll(true);
         return;
     }
+    double friction = 1.0 - MAX(0, MIN(s.friction, 1.));
+    s.velocity.x *= friction; s.velocity.y *= friction;
+    if (fabs(s.velocity.x) < s.min_velocity) s.velocity.x = 0;
+    if (fabs(s.velocity.y) < s.min_velocity) s.velocity.y = 0;
+
     GLFWMomentumType m = is_start ? GLFW_MOMENTUM_PHASE_BEGAN : GLFW_MOMENTUM_PHASE_ACTIVE;
     if (s.velocity.x == 0 && s.velocity.y == 0 && !is_start) {
         m = GLFW_MOMENTUM_PHASE_ENDED;
