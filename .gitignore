@@ -29,3 +29,5 @@ __pycache__/
 .cache
 bypy/b
 bypy/virtual-machines.conf
+_codeql_detected_source_root
+

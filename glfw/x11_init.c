@@ -175,6 +175,8 @@ static bool initExtensions(void)
     {
         glfw_dlsym(_glfw.x11.xi.QueryVersion, _glfw.x11.xi.handle, "XIQueryVersion");
         glfw_dlsym(_glfw.x11.xi.SelectEvents, _glfw.x11.xi.handle, "XISelectEvents");
+        glfw_dlsym(_glfw.x11.xi.QueryDevice, _glfw.x11.xi.handle, "XIQueryDevice");
+        glfw_dlsym(_glfw.x11.xi.FreeDeviceInfo, _glfw.x11.xi.handle, "XIFreeDeviceInfo");
 
         if (XQueryExtension(_glfw.x11.display,
                             "XInputExtension",
@@ -183,13 +185,69 @@ static bool initExtensions(void)
                             &_glfw.x11.xi.errorBase))
         {
             _glfw.x11.xi.major = 2;
-            _glfw.x11.xi.minor = 0;
+            _glfw.x11.xi.minor = 1;
 
             if (XIQueryVersion(_glfw.x11.display,
                                &_glfw.x11.xi.major,
                                &_glfw.x11.xi.minor) == Success)
             {
                 _glfw.x11.xi.available = true;
+                
+                // Detect smooth scrolling support once globally
+                _glfw.x11.xi.smoothScroll.available = false;
+                _glfw.x11.xi.smoothScroll.verticalAxis = -1;
+                _glfw.x11.xi.smoothScroll.horizontalAxis = -1;
+                _glfw.x11.xi.smoothScroll.verticalIncrement = 0.0;
+                _glfw.x11.xi.smoothScroll.horizontalIncrement = 0.0;
+                
+                // Require XI2.1 or later for smooth scrolling
+                if (_glfw.x11.xi.major >= 2 && (_glfw.x11.xi.major > 2 || _glfw.x11.xi.minor >= 1))
+                {
+                    if (XIQueryDevice && XIFreeDeviceInfo)
+                    {
+                        int deviceCount;
+                        XIDeviceInfo* devices = XIQueryDevice(_glfw.x11.display, XIAllMasterDevices, &deviceCount);
+                        if (devices)
+                        {
+                            for (int i = 0; i < deviceCount; i++)
+                            {
+                                XIDeviceInfo* device = &devices[i];
+                                
+                                // Only process master pointer devices
+                                if (device->use != XIMasterPointer)
+                                    continue;
+
+                                for (int j = 0; j < device->num_classes; j++)
+                                {
+                                    if (device->classes[j]->type != XIScrollClass)
+                                        continue;
+
+                                    XIScrollClassInfo* scroll = (XIScrollClassInfo*)device->classes[j];
+                                    
+                                    if (scroll->scroll_type == XIScrollTypeVertical)
+                                    {
+                                        _glfw.x11.xi.smoothScroll.verticalAxis = scroll->number;
+                                        _glfw.x11.xi.smoothScroll.verticalIncrement = scroll->increment;
+                                    }
+                                    else if (scroll->scroll_type == XIScrollTypeHorizontal)
+                                    {
+                                        _glfw.x11.xi.smoothScroll.horizontalAxis = scroll->number;
+                                        _glfw.x11.xi.smoothScroll.horizontalIncrement = scroll->increment;
+                                    }
+                                }
+                            }
+                            
+                            XIFreeDeviceInfo(devices);
+                            
+                            // Enable smooth scrolling if we found at least one scroll axis
+                            if (_glfw.x11.xi.smoothScroll.verticalAxis >= 0 || 
+                                _glfw.x11.xi.smoothScroll.horizontalAxis >= 0)
+                            {
+                                _glfw.x11.xi.smoothScroll.available = true;
+                            }
+                        }
+                    }
+                }
             }
         }
     }

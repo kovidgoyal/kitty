@@ -118,8 +118,12 @@ typedef Bool (* PFN_XF86VidModeGetGammaRampSize)(Display*,int,int*);
 
 typedef Status (* PFN_XIQueryVersion)(Display*,int*,int*);
 typedef int (* PFN_XISelectEvents)(Display*,Window,XIEventMask*,int);
+typedef XIDeviceInfo* (* PFN_XIQueryDevice)(Display*,int,int*);
+typedef void (* PFN_XIFreeDeviceInfo)(XIDeviceInfo*);
 #define XIQueryVersion _glfw.x11.xi.QueryVersion
 #define XISelectEvents _glfw.x11.xi.SelectEvents
+#define XIQueryDevice _glfw.x11.xi.QueryDevice
+#define XIFreeDeviceInfo _glfw.x11.xi.FreeDeviceInfo
 
 typedef Bool (* PFN_XRenderQueryExtension)(Display*,int*,int*);
 typedef Status (* PFN_XRenderQueryVersion)(Display*dpy,int*,int*);
@@ -204,6 +208,12 @@ typedef struct _GLFWwindowX11
     int             lastCursorPosX, lastCursorPosY;
     // The last position the cursor was warped to by GLFW
     int             warpCursorPosX, warpCursorPosY;
+
+    // XI2 smooth scrolling - track valuator values per window
+    struct {
+        double      verticalValue;
+        double      horizontalValue;
+    } smoothScroll;
 
     struct {
         bool is_active;
@@ -395,6 +405,16 @@ typedef struct _GLFWlibraryX11
         int         minor;
         PFN_XIQueryVersion QueryVersion;
         PFN_XISelectEvents SelectEvents;
+        PFN_XIQueryDevice QueryDevice;
+        PFN_XIFreeDeviceInfo FreeDeviceInfo;
+        // Smooth scrolling support
+        struct {
+            bool        available;
+            int         verticalAxis;
+            int         horizontalAxis;
+            double      verticalIncrement;
+            double      horizontalIncrement;
+        } smoothScroll;
     } xi;
 
     struct {
