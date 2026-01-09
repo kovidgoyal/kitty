@@ -135,6 +135,7 @@ static void pointerHandleButton(void* data UNUSED,
                                 uint32_t button,
                                 uint32_t state)
 {
+    glfw_cancel_momentum_scroll();
     _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.pointer_serial = serial;
 
     _GLFWwindow* window = _glfw.wl.pointerFocus;
@@ -395,6 +396,7 @@ static void keyboardHandleKey(void* data UNUSED,
                               uint32_t key,
                               uint32_t state)
 {
+    glfw_cancel_momentum_scroll();
     _GLFWwindow* window = _glfwWindowForId(_glfw.wl.keyboardFocusId);
     if (!window)
         return;

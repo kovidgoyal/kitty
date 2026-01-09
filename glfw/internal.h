@@ -886,6 +886,7 @@ int _glfwPlatformSetWindowBlur(_GLFWwindow* handle, int value);
 MonitorGeometry _glfwPlatformGetMonitorGeometry(_GLFWmonitor* monitor);
 bool _glfwPlatformGrabKeyboard(bool grab);
 void glfw_handle_scroll_event_for_momentum(_GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, bool is_finger_based);
+#define glfw_cancel_momentum_scroll() glfw_handle_scroll_event_for_momentum(NULL, NULL, false, false)
 
 char* _glfw_strdup(const char* source);
 
