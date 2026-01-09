@@ -1392,10 +1392,7 @@ static void processEvent(XEvent *event)
             else if (event->xcookie.extension == _glfw.x11.xi.majorOpcode)
             {
                 if (!XGetEventData(_glfw.x11.display, &event->xcookie))
-                {
-                    XFreeEventData(_glfw.x11.display, &event->xcookie);
                     return;
-                }
 
                 if (event->xcookie.evtype == XI_Motion)
                 {
@@ -1404,72 +1401,66 @@ static void processEvent(XEvent *event)
                     // Find the window for this event
                     window = NULL;
                     if (XFindContext(_glfw.x11.display, de->event, _glfw.x11.context,
-                                     (XPointer*)&window) != 0)
+                                     (XPointer*)&window) == 0 &&
+                        window->x11.smoothScroll.available)
                     {
-                        XFreeEventData(_glfw.x11.display, &event->xcookie);
-                        return;
-                    }
+                        double xOffset = 0.0;
+                        double yOffset = 0.0;
+                        bool hasScroll = false;
 
-                    if (!window->x11.smoothScroll.available)
-                    {
-                        XFreeEventData(_glfw.x11.display, &event->xcookie);
-                        return;
-                    }
-
-                    double xOffset = 0.0;
-                    double yOffset = 0.0;
-                    bool hasScroll = false;
-
-                    // Process valuators to detect scroll events
-                    if (de->valuators.mask_len)
-                    {
-                        const double* values = de->valuators.values;
-                        
-                        for (int i = 0; i < de->valuators.mask_len * 8; i++)
+                        // Process valuators to detect scroll events
+                        if (de->valuators.mask_len)
                         {
-                            if (!XIMaskIsSet(de->valuators.mask, i))
-                                continue;
-
-                            if (i == window->x11.smoothScroll.verticalAxis)
+                            const double* values = de->valuators.values;
+                            
+                            for (int i = 0; i < de->valuators.mask_len * 8; i++)
                             {
-                                double delta = *values - window->x11.smoothScroll.verticalValue;
-                                window->x11.smoothScroll.verticalValue = *values;
-                                
-                                if (window->x11.smoothScroll.verticalIncrement != 0.0)
-                                {
-                                    yOffset = -delta / window->x11.smoothScroll.verticalIncrement;
-                                    hasScroll = true;
-                                }
-                            }
-                            else if (i == window->x11.smoothScroll.horizontalAxis)
-                            {
-                                double delta = *values - window->x11.smoothScroll.horizontalValue;
-                                window->x11.smoothScroll.horizontalValue = *values;
-                                
-                                if (window->x11.smoothScroll.horizontalIncrement != 0.0)
-                                {
-                                    xOffset = delta / window->x11.smoothScroll.horizontalIncrement;
-                                    hasScroll = true;
-                                }
-                            }
+                                if (!XIMaskIsSet(de->valuators.mask, i))
+                                    continue;
 
-                            values++;
+                                if (i == window->x11.smoothScroll.verticalAxis)
+                                {
+                                    double delta = *values - window->x11.smoothScroll.verticalValue;
+                                    window->x11.smoothScroll.verticalValue = *values;
+                                    
+                                    if (window->x11.smoothScroll.verticalIncrement != 0.0)
+                                    {
+                                        yOffset = -delta / window->x11.smoothScroll.verticalIncrement;
+                                        hasScroll = true;
+                                    }
+                                }
+                                else if (i == window->x11.smoothScroll.horizontalAxis)
+                                {
+                                    double delta = *values - window->x11.smoothScroll.horizontalValue;
+                                    window->x11.smoothScroll.horizontalValue = *values;
+                                    
+                                    if (window->x11.smoothScroll.horizontalIncrement != 0.0)
+                                    {
+                                        xOffset = delta / window->x11.smoothScroll.horizontalIncrement;
+                                        hasScroll = true;
+                                    }
+                                }
+
+                                values++;
+                            }
+                        }
+
+                        if (hasScroll)
+                        {
+                            // Get keyboard modifiers
+                            int mods = translateState(de->mods.effective);
+                            
+                            _glfwInputScroll(window, &(GLFWScrollEvent){
+                                .keyboard_modifiers = mods,
+                                .x_offset = xOffset,
+                                .y_offset = yOffset,
+                                .unscaled = {.x = xOffset, .y = yOffset}
+                            });
                         }
                     }
-
-                    if (hasScroll)
-                    {
-                        // Get keyboard modifiers
-                        int mods = translateState(de->mods.effective);
-                        
-                        _glfwInputScroll(window, &(GLFWScrollEvent){
-                            .keyboard_modifiers = mods,
-                            .x_offset = xOffset,
-                            .y_offset = yOffset,
-                            .unscaled = {.x = xOffset, .y = yOffset}
-                        });
-                    }
                 }
+
+                XFreeEventData(_glfw.x11.display, &event->xcookie);
             }
 
             XFreeEventData(_glfw.x11.display, &event->xcookie);
