@@ -509,7 +509,7 @@ static void enableSmoothScrolling(_GLFWwindow* window)
     // Select XI_Motion events on the window
     XIEventMask em;
     unsigned char mask[XIMaskLen(XI_Motion)] = { 0 };
-    
+
     em.deviceid = XIAllMasterDevices;
     em.mask_len = sizeof(mask);
     em.mask = mask;
@@ -1343,7 +1343,7 @@ static void processEvent(XEvent *event)
                 else if (event->xcookie.evtype == XI_Motion)
                 {
                     XIDeviceEvent* de = (XIDeviceEvent*)event->xcookie.data;
-                    
+
                     // Find the window for this event
                     _GLFWwindow* window = NULL;
                     if (XFindContext(_glfw.x11.display, de->event, _glfw.x11.context,
@@ -1358,7 +1358,7 @@ static void processEvent(XEvent *event)
                         if (de->valuators.mask_len)
                         {
                             const double* values = de->valuators.values;
-                            
+
                             for (int i = 0; i < de->valuators.mask_len * 8; i++)
                             {
                                 if (!XIMaskIsSet(de->valuators.mask, i))
@@ -1368,7 +1368,7 @@ static void processEvent(XEvent *event)
                                 {
                                     double delta = *values - window->x11.smoothScroll.verticalValue;
                                     window->x11.smoothScroll.verticalValue = *values;
-                                    
+
                                     if (_glfw.x11.xi.smoothScroll.verticalIncrement != 0.0)
                                     {
                                         yOffset = -delta / _glfw.x11.xi.smoothScroll.verticalIncrement;
@@ -1379,7 +1379,7 @@ static void processEvent(XEvent *event)
                                 {
                                     double delta = *values - window->x11.smoothScroll.horizontalValue;
                                     window->x11.smoothScroll.horizontalValue = *values;
-                                    
+
                                     if (_glfw.x11.xi.smoothScroll.horizontalIncrement != 0.0)
                                     {
                                         xOffset = delta / _glfw.x11.xi.smoothScroll.horizontalIncrement;
@@ -1395,7 +1395,7 @@ static void processEvent(XEvent *event)
                         {
                             // Get keyboard modifiers
                             int mods = translateState(de->mods.effective);
-                            
+
                             // Scale offsets by content scale
                             _glfwInputScroll(window, &(GLFWScrollEvent){
                                 .keyboard_modifiers = mods,

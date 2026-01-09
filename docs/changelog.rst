@@ -157,6 +157,8 @@ Detailed list of changes
 
 - Wayland: momentum scrolling in the kitty scrollback buffer for touchpads and touchscreens, see :opt:`momentum_scroll`
 
+- X11: support high resolution scroll events from touchpads, etc
+
 - choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
 
 - Fix tab bar rendering glitches when using :opt:`tab_bar_filter` in some
