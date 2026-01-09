@@ -1454,7 +1454,8 @@ static void processEvent(XEvent *event)
                                 .keyboard_modifiers = mods,
                                 .x_offset = xOffset,
                                 .y_offset = yOffset,
-                                .unscaled = {.x = xOffset, .y = yOffset}
+                                .unscaled = {.x = xOffset, .y = yOffset},
+                                .offset_type = GLFW_SCROLL_OFFEST_HIGHRES
                             });
                         }
                     }
@@ -1462,8 +1463,11 @@ static void processEvent(XEvent *event)
 
                 XFreeEventData(_glfw.x11.display, &event->xcookie);
             }
-
-            XFreeEventData(_glfw.x11.display, &event->xcookie);
+            else
+            {
+                // For other XI events (if any), free the event data if it was retrieved
+                XFreeEventData(_glfw.x11.display, &event->xcookie);
+            }
         }
 
         return;
