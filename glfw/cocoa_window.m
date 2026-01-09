@@ -1314,9 +1314,10 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 
 - (void)scrollWheel:(NSEvent *)event
 {
-    GLFWScrollEvent ev = {.keyboard_modifiers=translateFlags([event modifierFlags])};
-    ev.x_offset = [event scrollingDeltaX];
-    ev.y_offset = [event scrollingDeltaY];
+    GLFWScrollEvent ev = {
+        .keyboard_modifiers=translateFlags([event modifierFlags]), .unscaled.x = [event scrollingDeltaX], .unscaled.y = [event scrollingDeltaY]};
+    ev.x_offset = ev.unscaled.x;
+    ev.y_offset = ev.unscaled.y;
     if ([event hasPreciseScrollingDeltas]) {
         ev.offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
         float xscale = 1, yscale = 1;

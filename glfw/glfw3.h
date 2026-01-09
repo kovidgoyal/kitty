@@ -563,7 +563,8 @@ typedef enum GLFWOffsetType {
 } GLFWOffsetType;
 
 typedef struct GLFWScrollEvent {
-    double x_offset, y_offset;  // offsets are scaled by the window scale
+    double x_offset, y_offset;  // offsets are scaled by the window scale for HIGHRES
+    struct { double x, y; } unscaled;  // unscaled offsets, aka logical pixels
     GLFWMomentumType momentum_type;
     GLFWOffsetType offset_type;
     int keyboard_modifiers;
