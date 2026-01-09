@@ -597,13 +597,13 @@ running inside the terminal (for example full-screen TUIs) that handle scrolling
 themselves.
 ''')
 
-opt('momentum_scroll', '0.04', option_type='unit_float', ctype='float', long_text='''
+opt('momentum_scroll', '0.96', option_type='unit_float', ctype='float', long_text='''
 The amount of friction to apply to slow down momentum (inertial) scrolling. A number
-from 0 to 1, with 1 meaning no momentum scrolling. Note that this setting only
-applies on platforms such as Wayland, that do not provide native momentum scrolling.
-On macOS, the native OS based momentum scrolling is used. Also, momentum scrolling
-only applies to "finger" based devices such as touchpads and touchscreens. Changes
-to this setting only take effect after a kitty restart.
+from 0 to 1, with 0 meaning no momentum scrolling and 1 meaning infinite scrolling.
+Note that this setting only applies on platforms such as Wayland, that do not provide
+native momentum scrolling. On macOS, the native OS based momentum scrolling is used.
+Also, momentum scrolling only applies to "finger" based devices such as touchpads
+and touchscreens. Changes to this setting only take effect after a kitty restart.
 ''')
 egr()  # }}}
 
