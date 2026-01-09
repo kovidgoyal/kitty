@@ -20,7 +20,7 @@ typedef struct ScrollSample {
 typedef enum ScrollerState { NONE, PHYSICAL_EVENT_IN_PROGRESS, MOMENTUM_IN_PROGRESS } ScrollerState;
 
 typedef struct MomentumScroller {
-    double friction,  // Deceleration factor (0-1, lower = longer coast)
+    double friction,  // Deceleration inverse factor (0-1, higher = longer coast)
            min_velocity, // Minimum velocity before stopping
            max_velocity, // Maximum velocity to prevent runaway scrolling
            velocity_scale; // Scale factor for initial velocity
@@ -39,7 +39,7 @@ typedef struct MomentumScroller {
 } MomentumScroller;
 
 static const MomentumScroller defaults = {
-    .friction = 0.04,
+    .friction = 0.96,
     .min_velocity = 0.5,
     .max_velocity = 100,
     .timer_interval = 10,
@@ -49,8 +49,9 @@ static MomentumScroller s = defaults;
 GLFWAPI void
 glfwConfigureMomentumScroller(double friction, double min_velocity, double max_velocity, unsigned timer_interval_ms) {
     s.timer_interval = timer_interval_ms ? ms_to_monotonic_t(timer_interval_ms) : defaults.timer_interval;
+    s.friction = friction < 0 ? defaults.friction : MAX(0, MIN(friction, 1));
 #define S(w) s.w = w >= 0 ? w : defaults.w
-    S(friction); S(min_velocity); S(max_velocity);
+    S(min_velocity); S(max_velocity);
 #undef S
 }
 
@@ -140,8 +141,7 @@ send_momentum_event(bool is_start) {
         cancel_existing_scroll(true);
         return;
     }
-    double friction = 1.0 - MAX(0, MIN(s.friction, 1.));
-    s.velocity.x *= friction; s.velocity.y *= friction;
+    s.velocity.x *= s.friction; s.velocity.y *= s.friction;
     if (fabs(s.velocity.x) < s.min_velocity) s.velocity.x = 0;
     if (fabs(s.velocity.y) < s.min_velocity) s.velocity.y = 0;
 
