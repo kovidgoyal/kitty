@@ -24,22 +24,29 @@ typedef struct MomentumScroller {
            min_velocity, // Minimum velocity before stopping
            max_velocity, // Maximum velocity to prevent runaway scrolling
            velocity_scale; // Scale factor for initial velocity
-    unsigned timer_interval_ms;
 
     GLFWid timer_id, window_id;
     ScrollSamples samples;
     ScrollerState state;
     struct { double x, y; } velocity;
     int keyboard_modifiers;
+    monotonic_t timer_interval;
 } MomentumScroller;
 
-static MomentumScroller s = {
-    .friction = 0.04,
+static const MomentumScroller defaults = {
+    .friction = 0.035,
     .min_velocity = 0.5,
     .max_velocity = 100,
     .velocity_scale = 0.9,
-    .timer_interval_ms = 10,
 };
+static MomentumScroller s = defaults;
+
+GLFWAPI void
+glfwConfigureMomentumScroller(double friction, double min_velocity, double max_velocity, double velocity_scale) {
+#define S(w) s.w = w >= 0 ? w : defaults.w
+    S(friction); S(min_velocity); S(max_velocity); S(velocity_scale);
+#undef S
+}
 
 static void
 cancel_existing_scroll(void) {
@@ -89,6 +96,7 @@ add_velocity(double x, double y) {
 
 static void
 set_velocity_from_samples(void) {
+    s.timer_interval = ms_to_monotonic_t(8);
     trim_old_samples(monotonic());
     ScrollSample ss;
     switch (deque_size(&s.samples)) {
@@ -105,15 +113,29 @@ set_velocity_from_samples(void) {
     monotonic_t first_time = deque_peek_front(&s.samples)->timestamp;
     monotonic_t last_time = deque_peek_back(&s.samples)->timestamp;
     double time_span = MAX(1, last_time - first_time);
+    double total_time_between_events = 0;
+    monotonic_t prev_timestamp = 0;
+    double ts_weight = 0;
     for (size_t i = 0; i < deque_size(&s.samples); i++) {
         const ScrollSample *ss = deque_at(&s.samples, i);
         double weight = 1.0 + (ss->timestamp - first_time) / time_span;
         total_dx += ss->dx * weight; total_dy += ss->dy * weight;
         total_weight += weight;
+        if (prev_timestamp) {
+            monotonic_t t = ss->timestamp - prev_timestamp;
+            total_time_between_events += t * weight;
+            ts_weight += weight;
+        }
+        prev_timestamp = ss->timestamp;
     }
     deque_clear(&s.samples);
-    if (total_weight <= 0) return;
-    add_velocity((total_dx / total_weight) * s.velocity_scale, (total_dy / total_weight) * s.velocity_scale);
+    if (ts_weight <= 0) return;
+    s.timer_interval = (monotonic_t)(total_time_between_events / ts_weight);
+    double dy = total_dy / total_weight, dx = total_dx / total_weight;
+    add_velocity(dx * s.velocity_scale, dy * s.velocity_scale);
+    if (false) timed_debug_print(
+        "momentum scroll: event velocity: %.1f final velocity: %.1f interval: %d ms\n",
+        dy, s.velocity.y, monotonic_t_to_ms(s.timer_interval));
 }
 
 static void
@@ -149,7 +171,7 @@ static void
 start_momentum_scroll(void) {
     set_velocity_from_samples();
     send_momentum_event(true);
-    s.timer_id = glfwAddTimer(ms_to_monotonic_t(s.timer_interval_ms), true, momentum_timer_fired, NULL, NULL);
+    s.timer_id = glfwAddTimer(s.timer_interval, true, momentum_timer_fired, NULL, NULL);
 }
 
 void
@@ -166,7 +188,7 @@ glfw_handle_scroll_event_for_momentum(
     }
     s.window_id = w->id;
     s.keyboard_modifiers = ev->keyboard_modifiers;
-    if (is_finger_based) {
+    if (is_finger_based && s.friction > 0) {
         add_sample(ev->x_offset, ev->y_offset);
         s.state = stopped ? MOMENTUM_IN_PROGRESS : PHYSICAL_EVENT_IN_PROGRESS;
     } else {
