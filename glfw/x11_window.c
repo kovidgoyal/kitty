@@ -506,6 +506,10 @@ static void enableSmoothScrolling(_GLFWwindow* window)
     if (_glfw.x11.xi.major < 2 || (_glfw.x11.xi.major == 2 && _glfw.x11.xi.minor < 1))
         return;
 
+    // Check if required function pointers are available
+    if (!XIQueryDevice || !XIFreeDeviceInfo)
+        return;
+
     // Initialize scroll state
     window->x11.smoothScroll.available = false;
     window->x11.smoothScroll.verticalAxis = -1;
