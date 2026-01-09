@@ -31,10 +31,14 @@ typedef struct MomentumScroller {
     struct { double x, y; } velocity;
     int keyboard_modifiers;
     monotonic_t timer_interval;
+    struct {
+        monotonic_t start, duration;
+        struct { double x, y; } displacement;
+    } physical_event;
 } MomentumScroller;
 
 static const MomentumScroller defaults = {
-    .friction = 0.035,
+    .friction = 0.04,
     .min_velocity = 0.5,
     .max_velocity = 100,
     .velocity_scale = 0.9,
@@ -49,7 +53,7 @@ glfwConfigureMomentumScroller(double friction, double min_velocity, double max_v
 }
 
 static void
-cancel_existing_scroll(void) {
+cancel_existing_scroll(bool reset_velocity) {
     if (s.timer_id) {
         glfwRemoveTimer(s.timer_id);
         s.timer_id = 0;
@@ -63,11 +67,12 @@ cancel_existing_scroll(void) {
     s.keyboard_modifiers = 0;
     deque_clear(&s.samples);
     s.state = NONE;
+    if (reset_velocity) { s.velocity.x = 0; s.velocity.y = 0; }
 }
 
 static void
-add_sample(double dx, double dy) {
-    deque_push_back(&s.samples, (ScrollSample){dx, dy, monotonic()}, NULL);
+add_sample(double dx, double dy, monotonic_t now) {
+    deque_push_back(&s.samples, (ScrollSample){dx, dy, now}, NULL);
 }
 
 static void
@@ -95,9 +100,9 @@ add_velocity(double x, double y) {
 }
 
 static void
-set_velocity_from_samples(void) {
+set_velocity_from_samples(monotonic_t now) {
     s.timer_interval = ms_to_monotonic_t(8);
-    trim_old_samples(monotonic());
+    trim_old_samples(now);
     ScrollSample ss;
     switch (deque_size(&s.samples)) {
         case 0:
@@ -146,7 +151,7 @@ send_momentum_event(bool is_start) {
     if (fabs(s.velocity.y) < s.min_velocity) s.velocity.y = 0;
     _GLFWwindow *w = _glfwWindowForId(s.window_id);
     if (!w || w != _glfwFocusedWindow()) {
-        cancel_existing_scroll();
+        cancel_existing_scroll(true);
         return;
     }
     GLFWMomentumType m = is_start ? GLFW_MOMENTUM_PHASE_BEGAN : GLFW_MOMENTUM_PHASE_ACTIVE;
@@ -168,32 +173,56 @@ momentum_timer_fired(unsigned long long timer_id UNUSED, void *data UNUSED) {
 }
 
 static void
-start_momentum_scroll(void) {
-    set_velocity_from_samples();
+start_momentum_scroll(monotonic_t now) {
+    set_velocity_from_samples(now);
     send_momentum_event(true);
     s.timer_id = glfwAddTimer(s.timer_interval, true, momentum_timer_fired, NULL, NULL);
+}
+
+static bool
+is_suitable_for_momentum(void) {
+    return (
+        MAX(fabs(s.physical_event.displacement.x), fabs(s.physical_event.displacement.y)) > 10 &&
+        s.physical_event.duration > ms_to_monotonic_t(2)
+    );
 }
 
 void
 glfw_handle_scroll_event_for_momentum(
     _GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, bool is_finger_based
 ) {
-    if (!w || (w->id != s.window_id && s.window_id) || s.state != PHYSICAL_EVENT_IN_PROGRESS) cancel_existing_scroll();
-    if (!w) return;
+    if (!w) { cancel_existing_scroll(true); return; }
+    if (!is_finger_based || ev->offset_type != GLFW_SCROLL_OFFEST_HIGHRES || s.friction <= 0) {
+        _glfwInputScroll(w, ev);
+        return;
+    }
+    monotonic_t now = monotonic();
+    if (s.state == PHYSICAL_EVENT_IN_PROGRESS) {
+        s.physical_event.displacement.x += ev->unscaled.x;
+        s.physical_event.displacement.y += ev->unscaled.y;
+        if (stopped) {
+            s.physical_event.duration = now - s.physical_event.start;
+            s.physical_event.start = 0;
+        }
+    } else {
+        s.physical_event.start = now;
+        s.physical_event.displacement.x = 0;
+        s.physical_event.displacement.y = 0;
+    }
+    if (s.window_id && s.window_id != w->id) cancel_existing_scroll(true);
+    if (s.state != PHYSICAL_EVENT_IN_PROGRESS) cancel_existing_scroll(false);
     // Check for change in direction
     double ldx, ldy; last_sample_delta(&ldx, &ldy);
-    if (ldx * ev->x_offset < 0 || ldy * ev->y_offset < 0) {
-        s.velocity.x = 0; s.velocity.y = 0;
-        cancel_existing_scroll();
-    }
+    if (ldx * ev->x_offset < 0 || ldy * ev->y_offset < 0) cancel_existing_scroll(true);
     s.window_id = w->id;
     s.keyboard_modifiers = ev->keyboard_modifiers;
-    if (is_finger_based && s.friction > 0) {
-        add_sample(ev->x_offset, ev->y_offset);
-        s.state = stopped ? MOMENTUM_IN_PROGRESS : PHYSICAL_EVENT_IN_PROGRESS;
+    if (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES && s.friction > 0) {
+        add_sample(ev->x_offset, ev->y_offset, now);
+        if (stopped) s.state = is_suitable_for_momentum() ? MOMENTUM_IN_PROGRESS : NONE;
+        else s.state = PHYSICAL_EVENT_IN_PROGRESS;
     } else {
         s.state = stopped ? NONE : PHYSICAL_EVENT_IN_PROGRESS;
     }
-    if (s.state == MOMENTUM_IN_PROGRESS) start_momentum_scroll();
+    if (s.state == MOMENTUM_IN_PROGRESS) start_momentum_scroll(now);
     else _glfwInputScroll(w, ev);
 }
