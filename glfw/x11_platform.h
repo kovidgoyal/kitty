@@ -209,15 +209,10 @@ typedef struct _GLFWwindowX11
     // The last position the cursor was warped to by GLFW
     int             warpCursorPosX, warpCursorPosY;
 
-    // XI2 smooth scrolling support
+    // XI2 smooth scrolling - track valuator values per window
     struct {
-        int         verticalAxis;   // Valuator number for vertical scroll
-        int         horizontalAxis; // Valuator number for horizontal scroll
-        double      verticalIncrement;
-        double      horizontalIncrement;
         double      verticalValue;
         double      horizontalValue;
-        bool        available;
     } smoothScroll;
 
     struct {
@@ -412,6 +407,14 @@ typedef struct _GLFWlibraryX11
         PFN_XISelectEvents SelectEvents;
         PFN_XIQueryDevice QueryDevice;
         PFN_XIFreeDeviceInfo FreeDeviceInfo;
+        // Smooth scrolling support
+        struct {
+            bool        available;
+            int         verticalAxis;
+            int         horizontalAxis;
+            double      verticalIncrement;
+            double      horizontalIncrement;
+        } smoothScroll;
     } xi;
 
     struct {

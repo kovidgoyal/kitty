@@ -495,82 +495,27 @@ static void disableRawMouseMotion(_GLFWwindow* window UNUSED)
     XISelectEvents(_glfw.x11.display, _glfw.x11.root, &em, 1);
 }
 
-// Enable XI2 smooth scrolling events
+// Enable XI2 smooth scrolling events on a window
 //
 static void enableSmoothScrolling(_GLFWwindow* window)
 {
-    if (!_glfw.x11.xi.available)
+    if (!_glfw.x11.xi.smoothScroll.available)
         return;
 
-    // Require XI2.1 or later for smooth scrolling
-    if (_glfw.x11.xi.major < 2 || (_glfw.x11.xi.major == 2 && _glfw.x11.xi.minor < 1))
-        return;
-
-    // Check if required function pointers are available
-    if (!XIQueryDevice || !XIFreeDeviceInfo)
-        return;
-
-    // Initialize scroll state
-    window->x11.smoothScroll.available = false;
-    window->x11.smoothScroll.verticalAxis = -1;
-    window->x11.smoothScroll.horizontalAxis = -1;
-    window->x11.smoothScroll.verticalIncrement = 0.0;
-    window->x11.smoothScroll.horizontalIncrement = 0.0;
+    // Initialize scroll valuator tracking for this window
     window->x11.smoothScroll.verticalValue = 0.0;
     window->x11.smoothScroll.horizontalValue = 0.0;
 
-    // Query all devices to find scroll valuators
-    int deviceCount;
-    XIDeviceInfo* devices = XIQueryDevice(_glfw.x11.display, XIAllMasterDevices, &deviceCount);
-    if (!devices)
-        return;
+    // Select XI_Motion events on the window
+    XIEventMask em;
+    unsigned char mask[XIMaskLen(XI_Motion)] = { 0 };
+    
+    em.deviceid = XIAllMasterDevices;
+    em.mask_len = sizeof(mask);
+    em.mask = mask;
+    XISetMask(mask, XI_Motion);
 
-    for (int i = 0; i < deviceCount; i++)
-    {
-        XIDeviceInfo* device = &devices[i];
-        
-        // Only process master pointer devices
-        if (device->use != XIMasterPointer)
-            continue;
-
-        for (int j = 0; j < device->num_classes; j++)
-        {
-            if (device->classes[j]->type != XIScrollClass)
-                continue;
-
-            XIScrollClassInfo* scroll = (XIScrollClassInfo*)device->classes[j];
-            
-            if (scroll->scroll_type == XIScrollTypeVertical)
-            {
-                window->x11.smoothScroll.verticalAxis = scroll->number;
-                window->x11.smoothScroll.verticalIncrement = scroll->increment;
-            }
-            else if (scroll->scroll_type == XIScrollTypeHorizontal)
-            {
-                window->x11.smoothScroll.horizontalAxis = scroll->number;
-                window->x11.smoothScroll.horizontalIncrement = scroll->increment;
-            }
-        }
-    }
-
-    XIFreeDeviceInfo(devices);
-
-    // Enable smooth scrolling if we found at least one scroll axis
-    if (window->x11.smoothScroll.verticalAxis >= 0 || window->x11.smoothScroll.horizontalAxis >= 0)
-    {
-        window->x11.smoothScroll.available = true;
-
-        // Select XI_Motion events on the window
-        XIEventMask em;
-        unsigned char mask[XIMaskLen(XI_Motion)] = { 0 };
-        
-        em.deviceid = XIAllMasterDevices;
-        em.mask_len = sizeof(mask);
-        em.mask = mask;
-        XISetMask(mask, XI_Motion);
-
-        XISelectEvents(_glfw.x11.display, window->x11.handle, &em, 1);
-    }
+    XISelectEvents(_glfw.x11.display, window->x11.handle, &em, 1);
 }
 
 // Apply disabled cursor mode to a focused window
@@ -1403,7 +1348,7 @@ static void processEvent(XEvent *event)
                     _GLFWwindow* window = NULL;
                     if (XFindContext(_glfw.x11.display, de->event, _glfw.x11.context,
                                      (XPointer*)&window) == 0 &&
-                        window->x11.smoothScroll.available)
+                        _glfw.x11.xi.smoothScroll.available)
                     {
                         double xOffset = 0.0;
                         double yOffset = 0.0;
@@ -1419,25 +1364,25 @@ static void processEvent(XEvent *event)
                                 if (!XIMaskIsSet(de->valuators.mask, i))
                                     continue;
 
-                                if (i == window->x11.smoothScroll.verticalAxis)
+                                if (i == _glfw.x11.xi.smoothScroll.verticalAxis)
                                 {
                                     double delta = *values - window->x11.smoothScroll.verticalValue;
                                     window->x11.smoothScroll.verticalValue = *values;
                                     
-                                    if (window->x11.smoothScroll.verticalIncrement != 0.0)
+                                    if (_glfw.x11.xi.smoothScroll.verticalIncrement != 0.0)
                                     {
-                                        yOffset = -delta / window->x11.smoothScroll.verticalIncrement;
+                                        yOffset = -delta / _glfw.x11.xi.smoothScroll.verticalIncrement;
                                         hasScroll = true;
                                     }
                                 }
-                                else if (i == window->x11.smoothScroll.horizontalAxis)
+                                else if (i == _glfw.x11.xi.smoothScroll.horizontalAxis)
                                 {
                                     double delta = *values - window->x11.smoothScroll.horizontalValue;
                                     window->x11.smoothScroll.horizontalValue = *values;
                                     
-                                    if (window->x11.smoothScroll.horizontalIncrement != 0.0)
+                                    if (_glfw.x11.xi.smoothScroll.horizontalIncrement != 0.0)
                                     {
-                                        xOffset = delta / window->x11.smoothScroll.horizontalIncrement;
+                                        xOffset = delta / _glfw.x11.xi.smoothScroll.horizontalIncrement;
                                         hasScroll = true;
                                     }
                                 }
@@ -1451,10 +1396,11 @@ static void processEvent(XEvent *event)
                             // Get keyboard modifiers
                             int mods = translateState(de->mods.effective);
                             
+                            // Scale offsets by content scale
                             _glfwInputScroll(window, &(GLFWScrollEvent){
                                 .keyboard_modifiers = mods,
-                                .x_offset = xOffset,
-                                .y_offset = yOffset,
+                                .x_offset = xOffset * _glfw.x11.contentScaleX,
+                                .y_offset = yOffset * _glfw.x11.contentScaleY,
                                 .unscaled = {.x = xOffset, .y = yOffset},
                                 .offset_type = GLFW_SCROLL_OFFEST_HIGHRES
                             });
@@ -1595,14 +1541,27 @@ static void processEvent(XEvent *event)
                 _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS, mods);
 
             // Modern X provides scroll events as mouse button presses
+            // Only use these if smooth scrolling is not available
             else if (event->xbutton.button == Button4)
-                _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .y_offset=1, .unscaled.y=1});
+            {
+                if (!_glfw.x11.xi.smoothScroll.available)
+                    _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .y_offset=1, .unscaled.y=1});
+            }
             else if (event->xbutton.button == Button5)
-                _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .y_offset=-1, .unscaled.y=-1});
+            {
+                if (!_glfw.x11.xi.smoothScroll.available)
+                    _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .y_offset=-1, .unscaled.y=-1});
+            }
             else if (event->xbutton.button == Button6)
-                _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .x_offset=1, .unscaled.x=1});
+            {
+                if (!_glfw.x11.xi.smoothScroll.available)
+                    _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .x_offset=1, .unscaled.x=1});
+            }
             else if (event->xbutton.button == Button7)
-                _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .x_offset=-1, .unscaled.x=-1});
+            {
+                if (!_glfw.x11.xi.smoothScroll.available)
+                    _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .x_offset=-1, .unscaled.x=-1});
+            }
 
             else
             {
