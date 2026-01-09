@@ -29,6 +29,7 @@ typedef struct MomentumScroller {
     GLFWid timer_id, window_id;
     ScrollSamples samples;
     ScrollerState state;
+    double scale;
     struct { double x, y; } velocity;
     int keyboard_modifiers;
     struct {
@@ -151,8 +152,8 @@ send_momentum_event(bool is_start) {
         s.timer_id = 0;
     }
     GLFWScrollEvent e = {
-        .offset_type=GLFW_SCROLL_OFFEST_HIGHRES, .momentum_type=m, .x_offset=s.velocity.x, .y_offset=s.velocity.y,
-        .keyboard_modifiers=s.keyboard_modifiers
+        .offset_type=GLFW_SCROLL_OFFEST_HIGHRES, .momentum_type=m, .unscaled.x=s.velocity.x, .unscaled.y=s.velocity.y,
+        .x_offset=s.scale * s.velocity.x, .y_offset=s.scale * s.velocity.y, .keyboard_modifiers=s.keyboard_modifiers
     };
     _glfwInputScroll(w, &e);
 }
@@ -198,6 +199,8 @@ glfw_handle_scroll_event_for_momentum(
         memset(&s.physical_event, 0, sizeof(s.physical_event));
         s.physical_event.start = now;
     }
+    if (ev->unscaled.y > 0) s.scale = ev->y_offset / ev->unscaled.y;
+    else if (ev->unscaled.x > 0) s.scale = ev->x_offset / ev->unscaled.x;
     if (s.window_id && s.window_id != w->id) cancel_existing_scroll(true);
     if (s.state != PHYSICAL_EVENT_IN_PROGRESS) cancel_existing_scroll(false);
     // Check for change in direction
@@ -206,7 +209,7 @@ glfw_handle_scroll_event_for_momentum(
     s.window_id = w->id;
     s.keyboard_modifiers = ev->keyboard_modifiers;
     if (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES && s.friction > 0) {
-        add_sample(ev->x_offset, ev->y_offset, now);
+        add_sample(ev->unscaled.x, ev->unscaled.y, now);
         if (stopped) s.state = is_suitable_for_momentum() ? MOMENTUM_IN_PROGRESS : NONE;
         else s.state = PHYSICAL_EVENT_IN_PROGRESS;
     } else {
