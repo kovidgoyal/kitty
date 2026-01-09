@@ -1359,47 +1359,44 @@ static void processEvent(XEvent *event)
 
     if (event->type == GenericEvent)
     {
-        if (_glfw.x11.xi.available)
+        if (_glfw.x11.xi.available &&
+            event->xcookie.extension == _glfw.x11.xi.majorOpcode)
         {
-            _GLFWwindow* window = _glfw.x11.disabledCursorWindow;
-
-            if (window &&
-                window->rawMouseMotion &&
-                event->xcookie.extension == _glfw.x11.xi.majorOpcode &&
-                XGetEventData(_glfw.x11.display, &event->xcookie) &&
-                event->xcookie.evtype == XI_RawMotion)
+            if (XGetEventData(_glfw.x11.display, &event->xcookie))
             {
-                XIRawEvent* re = event->xcookie.data;
-                if (re->valuators.mask_len)
+                // Handle XI_RawMotion for disabled cursor
+                if (event->xcookie.evtype == XI_RawMotion)
                 {
-                    const double* values = re->raw_values;
-                    double xpos = window->virtualCursorPosX;
-                    double ypos = window->virtualCursorPosY;
-
-                    if (XIMaskIsSet(re->valuators.mask, 0))
+                    _GLFWwindow* window = _glfw.x11.disabledCursorWindow;
+                    if (window && window->rawMouseMotion)
                     {
-                        xpos += *values;
-                        values++;
+                        XIRawEvent* re = event->xcookie.data;
+                        if (re->valuators.mask_len)
+                        {
+                            const double* values = re->raw_values;
+                            double xpos = window->virtualCursorPosX;
+                            double ypos = window->virtualCursorPosY;
+
+                            if (XIMaskIsSet(re->valuators.mask, 0))
+                            {
+                                xpos += *values;
+                                values++;
+                            }
+
+                            if (XIMaskIsSet(re->valuators.mask, 1))
+                                ypos += *values;
+
+                            _glfwInputCursorPos(window, xpos, ypos);
+                        }
                     }
-
-                    if (XIMaskIsSet(re->valuators.mask, 1))
-                        ypos += *values;
-
-                    _glfwInputCursorPos(window, xpos, ypos);
                 }
-            }
-            // Handle XI_Motion events for smooth scrolling
-            else if (event->xcookie.extension == _glfw.x11.xi.majorOpcode)
-            {
-                if (!XGetEventData(_glfw.x11.display, &event->xcookie))
-                    return;
-
-                if (event->xcookie.evtype == XI_Motion)
+                // Handle XI_Motion for smooth scrolling
+                else if (event->xcookie.evtype == XI_Motion)
                 {
                     XIDeviceEvent* de = (XIDeviceEvent*)event->xcookie.data;
                     
                     // Find the window for this event
-                    window = NULL;
+                    _GLFWwindow* window = NULL;
                     if (XFindContext(_glfw.x11.display, de->event, _glfw.x11.context,
                                      (XPointer*)&window) == 0 &&
                         window->x11.smoothScroll.available)
@@ -1461,11 +1458,6 @@ static void processEvent(XEvent *event)
                     }
                 }
 
-                XFreeEventData(_glfw.x11.display, &event->xcookie);
-            }
-            else
-            {
-                // For other XI events (if any), free the event data if it was retrieved
                 XFreeEventData(_glfw.x11.display, &event->xcookie);
             }
         }
