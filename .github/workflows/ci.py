@@ -4,7 +4,7 @@
 
 import glob
 import io
-import json
+import lzma
 import os
 import shlex
 import shutil
@@ -196,23 +196,12 @@ def install_bundle(dest: str = '', which: str = '') -> None:
     os.chdir(cwd)
 
 
-def install_grype() -> str:
-    dest = '/tmp'
-    rq = Request('https://api.github.com/repos/anchore/grype/releases/latest', headers={
-        'Accept': 'application/vnd.github.v3+json',
-    })
-    m = json.loads(download_with_retry(rq))
-    for asset in m['assets']:
-        if asset['name'].endswith('_linux_amd64.tar.gz'):
-            url = asset['browser_download_url']
-            break
-    else:
-        raise ValueError('Could not find linux binary for grype')
-    os.makedirs(dest, exist_ok=True)
-    data = download_with_retry(url)
-    with tarfile.open(fileobj=io.BytesIO(data), mode='r') as tf:
-        tf.extract('grype', path=dest, filter='fully_trusted')
-    exe = os.path.join(dest, 'grype')
+def install_grype(exe: str = '/tmp/grype') -> str:
+    raw = download_with_retry('https://download.calibre-ebook.com/ci/grype.xz')
+    raw = lzma.decompress(raw)
+    with open(exe, 'wb') as f:
+        f.write(raw)
+        os.fchmod(f.fileno(), 0o755)
     subprocess.check_call([exe, 'db', 'update'])
     return exe
 
