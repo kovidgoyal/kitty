@@ -499,18 +499,12 @@ static void disableRawMouseMotion(_GLFWwindow* window UNUSED)
 //
 static void enableSmoothScrolling(_GLFWwindow* window)
 {
-    if (!_glfw.x11.xi.smoothScroll.available)
-        return;
-
-    // Initialize scroll valuator tracking for this window
-    window->x11.smoothScroll.verticalValue = 0.0;
-    window->x11.smoothScroll.horizontalValue = 0.0;
-
+    if (!_glfw.x11.xi.num_scroll_devices) return;
     // Select XI_Motion events on the window
     XIEventMask em;
     unsigned char mask[XIMaskLen(XI_Motion)] = { 0 };
 
-    em.deviceid = XIAllMasterDevices;
+    em.deviceid = XIAllDevices;
     em.mask_len = sizeof(mask);
     em.mask = mask;
     XISetMask(mask, XI_Motion);
@@ -1343,71 +1337,57 @@ static void processEvent(XEvent *event)
                 else if (event->xcookie.evtype == XI_Motion)
                 {
                     XIDeviceEvent* de = (XIDeviceEvent*)event->xcookie.data;
-
+                    XIScrollDevice *d = NULL;
+                    for (unsigned i = 0; i < _glfw.x11.xi.num_scroll_devices; i++) {
+                        XIScrollDevice *t = &_glfw.x11.xi.scroll_devices[i];
+                        if (t->deviceid == de->deviceid && t->sourceid == de->sourceid) {
+                            d = t; break;
+                        }
+                    }
                     // Find the window for this event
                     _GLFWwindow* window = NULL;
-                    if (XFindContext(_glfw.x11.display, de->event, _glfw.x11.context,
-                                     (XPointer*)&window) == 0 &&
-                        _glfw.x11.xi.smoothScroll.available)
-                    {
-                        double xOffset = 0.0;
-                        double yOffset = 0.0;
-                        bool hasScroll = false;
-
+                    if (d && de->valuators.mask_len && XFindContext(
+                                _glfw.x11.display, de->event, _glfw.x11.context, (XPointer*)&window) == 0) {
+                        double xOffset = 0, yOffset = 0;
                         // Process valuators to detect scroll events
-                        if (de->valuators.mask_len)
-                        {
-                            const double* values = de->valuators.values;
-
-                            for (int i = 0; i < de->valuators.mask_len * 8; i++)
-                            {
-                                if (!XIMaskIsSet(de->valuators.mask, i))
-                                    continue;
-
-                                if (i == _glfw.x11.xi.smoothScroll.verticalAxis)
-                                {
-                                    double delta = *values - window->x11.smoothScroll.verticalValue;
-                                    window->x11.smoothScroll.verticalValue = *values;
-
-                                    if (_glfw.x11.xi.smoothScroll.verticalIncrement != 0.0)
-                                    {
-                                        yOffset = -delta / _glfw.x11.xi.smoothScroll.verticalIncrement;
-                                        hasScroll = true;
-                                    }
+                        GLFWOffsetType type = GLFW_SCROLL_OFFEST_HIGHRES;
+                        unsigned vidx = 0;
+                        for (int i = 0; i < de->valuators.mask_len * 8; i++) {
+                            if (!XIMaskIsSet(de->valuators.mask, i)) continue;
+                            const double value = de->valuators.values[vidx++];
+                            XIScrollValuator *v = NULL;
+                            for (unsigned k = 0; k < d->num_valuators; k++) {
+                                XIScrollValuator *t = d->valuators + k;
+                                if (t->number == i) { v = t; break; }
+                            }
+                            if (!v) continue;
+                            double delta = value - v->value;
+                            v->value = value;
+                            if (v->is_vertical) delta *= -1;
+                            double *off = v->is_vertical ? &yOffset : &xOffset;
+                            *off = delta;
+                            if (!d->is_highres) {
+                                if (v->increment == 120.) type = GLFW_SCROLL_OFFEST_V120;
+                                else {
+                                    type = GLFW_SCROLL_OFFSET_LINES;
+                                    if (v->increment != 0) *off /= v->increment;
                                 }
-                                else if (i == _glfw.x11.xi.smoothScroll.horizontalAxis)
-                                {
-                                    double delta = *values - window->x11.smoothScroll.horizontalValue;
-                                    window->x11.smoothScroll.horizontalValue = *values;
-
-                                    if (_glfw.x11.xi.smoothScroll.horizontalIncrement != 0.0)
-                                    {
-                                        xOffset = delta / _glfw.x11.xi.smoothScroll.horizontalIncrement;
-                                        hasScroll = true;
-                                    }
-                                }
-
-                                values++;
                             }
                         }
-
-                        if (hasScroll)
-                        {
+                        if (xOffset != 0 || yOffset != 0) {
                             // Get keyboard modifiers
                             int mods = translateState(de->mods.effective);
-
                             // Scale offsets by content scale
                             _glfwInputScroll(window, &(GLFWScrollEvent){
                                 .keyboard_modifiers = mods,
-                                .x_offset = xOffset * _glfw.x11.contentScaleX,
-                                .y_offset = yOffset * _glfw.x11.contentScaleY,
+                                .x_offset = xOffset * (type == GLFW_SCROLL_OFFEST_HIGHRES ? _glfw.x11.contentScaleX : 1),
+                                .y_offset = yOffset * (type == GLFW_SCROLL_OFFEST_HIGHRES ? _glfw.x11.contentScaleY : 1),
                                 .unscaled = {.x = xOffset, .y = yOffset},
-                                .offset_type = GLFW_SCROLL_OFFEST_HIGHRES
+                                .offset_type = type,
                             });
                         }
                     }
                 }
-
                 XFreeEventData(_glfw.x11.display, &event->xcookie);
             }
         }
@@ -1544,22 +1524,22 @@ static void processEvent(XEvent *event)
             // Only use these if smooth scrolling is not available
             else if (event->xbutton.button == Button4)
             {
-                if (!_glfw.x11.xi.smoothScroll.available)
+                if (!_glfw.x11.xi.num_scroll_devices)
                     _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .y_offset=1, .unscaled.y=1});
             }
             else if (event->xbutton.button == Button5)
             {
-                if (!_glfw.x11.xi.smoothScroll.available)
+                if (!_glfw.x11.xi.num_scroll_devices)
                     _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .y_offset=-1, .unscaled.y=-1});
             }
             else if (event->xbutton.button == Button6)
             {
-                if (!_glfw.x11.xi.smoothScroll.available)
+                if (!_glfw.x11.xi.num_scroll_devices)
                     _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .x_offset=1, .unscaled.x=1});
             }
             else if (event->xbutton.button == Button7)
             {
-                if (!_glfw.x11.xi.smoothScroll.available)
+                if (!_glfw.x11.xi.num_scroll_devices)
                     _glfwInputScroll(window, &(GLFWScrollEvent){.keyboard_modifiers=mods, .x_offset=-1, .unscaled.x=-1});
             }
 

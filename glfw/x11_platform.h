@@ -234,6 +234,18 @@ typedef struct AtomArray {
     size_t sz, capacity;
 } AtomArray;
 
+typedef struct XIScrollValuator {
+    double increment, value, min, max; int number, resolution, mode; bool is_vertical;
+} XIScrollValuator;
+
+typedef struct XIScrollDevice {
+    bool is_highres;
+    int deviceid, sourceid;
+    XIScrollValuator valuators[8];
+    unsigned num_valuators;
+    char name[32];
+} XIScrollDevice;
+
 // X11-specific global data
 //
 typedef struct _GLFWlibraryX11
@@ -411,14 +423,9 @@ typedef struct _GLFWlibraryX11
         PFN_XIQueryDevice QueryDevice;
         PFN_XIFreeDeviceInfo FreeDeviceInfo;
         PFN_XIGetProperty GetProperty;
-        // Smooth scrolling support
-        struct {
-            bool        available;
-            int         verticalAxis;
-            int         horizontalAxis;
-            double      verticalIncrement;
-            double      horizontalIncrement;
-        } smoothScroll;
+        XIScrollDevice scroll_devices[16];
+        unsigned num_scroll_devices;
+        Atom LIBINPUT_SCROLL_METHOD_ENABLED;
     } xi;
 
     struct {

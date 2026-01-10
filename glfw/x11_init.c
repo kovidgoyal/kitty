@@ -148,6 +148,75 @@ static void detectEWMH(void)
     XFree(supportedAtoms);
 }
 
+static void
+read_xi_scroll_devices(void) {
+#define xi _glfw.x11.xi
+    xi.num_scroll_devices = 0;
+    // Require XI2.1 or later for smooth scrolling
+    if (!xi.available || xi.major < 2 || (xi.major == 2 && xi.minor < 1) || !xi.LIBINPUT_SCROLL_METHOD_ENABLED) return;
+#undef xi
+    int deviceCount;
+    XIDeviceInfo* devices = XIQueryDevice(_glfw.x11.display, XIAllDevices, &deviceCount);
+    if (!devices) return;
+    for (int i = 0; i < deviceCount; i++) {
+        XIDeviceInfo* device = &devices[i];
+        if (device->use != XISlavePointer || !device->enabled) continue;
+        Atom actual_type;
+        int actual_format;
+        unsigned long nitems, bytes_after;
+        unsigned char *data = NULL;
+        bool is_highres = false;
+
+        XIGetProperty(_glfw.x11.display, device->deviceid, _glfw.x11.xi.LIBINPUT_SCROLL_METHOD_ENABLED, 0, 2, False, XA_INTEGER, &actual_type, &actual_format, &nitems, &bytes_after, &data);
+        if (data) {
+            if (nitems > 1) is_highres = data[0] || data[1];
+            XFree(data);
+        }
+        for (int j = 0; j < device->num_classes; j++) {
+            if (device->classes[j]->type != XIScrollClass) continue;
+            XIScrollClassInfo* scroll = (XIScrollClassInfo*)device->classes[j];
+            XIScrollDevice *d = NULL;
+            for (unsigned k = 0; k < _glfw.x11.xi.num_scroll_devices; k++) {
+                XIScrollDevice *t = _glfw.x11.xi.scroll_devices + k;
+                if (t->deviceid == device->deviceid && t->sourceid == scroll->sourceid) { d = t; break; }
+            }
+            if (!d) {
+                if (_glfw.x11.xi.num_scroll_devices >= arraysz(_glfw.x11.xi.scroll_devices)) continue;
+                d = &_glfw.x11.xi.scroll_devices[_glfw.x11.xi.num_scroll_devices++];
+                *d = (XIScrollDevice){
+                    .is_highres=is_highres, .deviceid=device->deviceid, .sourceid=scroll->sourceid,
+                };
+                memcpy(d->name, device->name, MIN(sizeof(d->name)-1, strlen(device->name)));
+            }
+            if (d->num_valuators >= arraysz(d->valuators)) continue;
+            XIScrollValuator *v = d->valuators + d->num_valuators++;
+            *v = (XIScrollValuator){
+                .number=scroll->number, .is_vertical=scroll->scroll_type == XIScrollTypeVertical,
+                .increment=scroll->increment,
+            };
+        }
+        for (int j = 0; j < device->num_classes; j++) {
+            if (device->classes[j]->type != XIValuatorClass) continue;
+            XIValuatorClassInfo* vi = (XIValuatorClassInfo*)device->classes[j];
+            XIScrollDevice *d = NULL;
+            for (unsigned k = 0; k < _glfw.x11.xi.num_scroll_devices; k++) {
+                XIScrollDevice *t = _glfw.x11.xi.scroll_devices + k;
+                if (t->deviceid == device->deviceid && t->sourceid == vi->sourceid) { d = t; break; }
+            }
+            if (!d) continue;
+            XIScrollValuator *v = NULL;
+            for (unsigned k = 0; k < d->num_valuators; k++) {
+                XIScrollValuator *t = d->valuators + k;
+                if (t->number == vi->number) { v = t; break; }
+            }
+            if (!v) continue;
+            v->value = vi->value; v->mode = vi->mode; v->resolution = vi->resolution;
+            v->min = vi->min; v->max = vi->max;
+        }
+    }
+    XIFreeDeviceInfo(devices);
+}
+
 // Look for and initialize supported X11 extensions
 //
 static bool initExtensions(void)
@@ -193,62 +262,6 @@ static bool initExtensions(void)
                                &_glfw.x11.xi.minor) == Success)
             {
                 _glfw.x11.xi.available = true;
-
-                // Detect smooth scrolling support once globally
-                _glfw.x11.xi.smoothScroll.available = false;
-                _glfw.x11.xi.smoothScroll.verticalAxis = -1;
-                _glfw.x11.xi.smoothScroll.horizontalAxis = -1;
-                _glfw.x11.xi.smoothScroll.verticalIncrement = 0.0;
-                _glfw.x11.xi.smoothScroll.horizontalIncrement = 0.0;
-
-                // Require XI2.1 or later for smooth scrolling
-                if (_glfw.x11.xi.major >= 2 && (_glfw.x11.xi.major > 2 || _glfw.x11.xi.minor >= 1))
-                {
-                    if (XIQueryDevice && XIFreeDeviceInfo)
-                    {
-                        int deviceCount;
-                        XIDeviceInfo* devices = XIQueryDevice(_glfw.x11.display, XIAllMasterDevices, &deviceCount);
-                        if (devices)
-                        {
-                            for (int i = 0; i < deviceCount; i++)
-                            {
-                                XIDeviceInfo* device = &devices[i];
-
-                                // Only process master pointer devices
-                                if (device->use != XIMasterPointer)
-                                    continue;
-
-                                for (int j = 0; j < device->num_classes; j++)
-                                {
-                                    if (device->classes[j]->type != XIScrollClass)
-                                        continue;
-
-                                    XIScrollClassInfo* scroll = (XIScrollClassInfo*)device->classes[j];
-
-                                    if (scroll->scroll_type == XIScrollTypeVertical)
-                                    {
-                                        _glfw.x11.xi.smoothScroll.verticalAxis = scroll->number;
-                                        _glfw.x11.xi.smoothScroll.verticalIncrement = scroll->increment;
-                                    }
-                                    else if (scroll->scroll_type == XIScrollTypeHorizontal)
-                                    {
-                                        _glfw.x11.xi.smoothScroll.horizontalAxis = scroll->number;
-                                        _glfw.x11.xi.smoothScroll.horizontalIncrement = scroll->increment;
-                                    }
-                                }
-                            }
-
-                            XIFreeDeviceInfo(devices);
-
-                            // Enable smooth scrolling if we found at least one scroll axis
-                            if (_glfw.x11.xi.smoothScroll.verticalAxis >= 0 ||
-                                _glfw.x11.xi.smoothScroll.horizontalAxis >= 0)
-                            {
-                                _glfw.x11.xi.smoothScroll.available = true;
-                            }
-                        }
-                    }
-                }
             }
         }
     }
@@ -495,6 +508,9 @@ static bool initExtensions(void)
         XInternAtom(_glfw.x11.display, "_NET_WM_WINDOW_OPACITY", False);
     _glfw.x11.MOTIF_WM_HINTS =
         XInternAtom(_glfw.x11.display, "_MOTIF_WM_HINTS", False);
+
+    _glfw.x11.xi.LIBINPUT_SCROLL_METHOD_ENABLED = XInternAtom(_glfw.x11.display, "libinput Scroll Method Enabled", False);
+    read_xi_scroll_devices();
 
     // The compositing manager selection name contains the screen number
     {
