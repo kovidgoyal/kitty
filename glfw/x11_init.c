@@ -192,14 +192,14 @@ static bool initExtensions(void)
                                &_glfw.x11.xi.minor) == Success)
             {
                 _glfw.x11.xi.available = true;
-                
+
                 // Detect smooth scrolling support once globally
                 _glfw.x11.xi.smoothScroll.available = false;
                 _glfw.x11.xi.smoothScroll.verticalAxis = -1;
                 _glfw.x11.xi.smoothScroll.horizontalAxis = -1;
                 _glfw.x11.xi.smoothScroll.verticalIncrement = 0.0;
                 _glfw.x11.xi.smoothScroll.horizontalIncrement = 0.0;
-                
+
                 // Require XI2.1 or later for smooth scrolling
                 if (_glfw.x11.xi.major >= 2 && (_glfw.x11.xi.major > 2 || _glfw.x11.xi.minor >= 1))
                 {
@@ -212,7 +212,7 @@ static bool initExtensions(void)
                             for (int i = 0; i < deviceCount; i++)
                             {
                                 XIDeviceInfo* device = &devices[i];
-                                
+
                                 // Only process master pointer devices
                                 if (device->use != XIMasterPointer)
                                     continue;
@@ -223,7 +223,7 @@ static bool initExtensions(void)
                                         continue;
 
                                     XIScrollClassInfo* scroll = (XIScrollClassInfo*)device->classes[j];
-                                    
+
                                     if (scroll->scroll_type == XIScrollTypeVertical)
                                     {
                                         _glfw.x11.xi.smoothScroll.verticalAxis = scroll->number;
@@ -236,11 +236,11 @@ static bool initExtensions(void)
                                     }
                                 }
                             }
-                            
+
                             XIFreeDeviceInfo(devices);
-                            
+
                             // Enable smooth scrolling if we found at least one scroll axis
-                            if (_glfw.x11.xi.smoothScroll.verticalAxis >= 0 || 
+                            if (_glfw.x11.xi.smoothScroll.verticalAxis >= 0 ||
                                 _glfw.x11.xi.smoothScroll.horizontalAxis >= 0)
                             {
                                 _glfw.x11.xi.smoothScroll.available = true;
