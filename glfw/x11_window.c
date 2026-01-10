@@ -58,7 +58,6 @@
 
 #define _GLFW_XDND_VERSION 5
 
-
 // Wait for data to arrive using poll
 // This avoids blocking other threads via the per-display Xlib lock that also
 // covers GLX functions
@@ -1385,6 +1384,20 @@ static void processEvent(XEvent *event)
                                 .unscaled = {.x = xOffset, .y = yOffset},
                                 .offset_type = type,
                             });
+                        }
+                    }
+                }
+                // Handle XI_HierarchyChanged for device hotplug
+                else if (event->xcookie.evtype == XI_HierarchyChanged)
+                {
+                    XIHierarchyEvent* he = (XIHierarchyEvent*)event->xcookie.data;
+                    // Check if any devices were added or removed
+                    for (int i = 0; i < he->num_info; i++) {
+                        if (he->info[i].flags & (XISlaveAdded | XISlaveRemoved |
+                                                  XIMasterAdded | XIMasterRemoved)) {
+                            // Re-read scroll devices when devices are added or removed
+                            read_xi_scroll_devices();
+                            break;
                         }
                     }
                 }

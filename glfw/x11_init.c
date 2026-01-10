@@ -148,7 +148,7 @@ static void detectEWMH(void)
     XFree(supportedAtoms);
 }
 
-static void
+void
 read_xi_scroll_devices(void) {
 #define xi _glfw.x11.xi
     xi.num_scroll_devices = 0;
@@ -511,6 +511,19 @@ static bool initExtensions(void)
 
     _glfw.x11.xi.LIBINPUT_SCROLL_METHOD_ENABLED = XInternAtom(_glfw.x11.display, "libinput Scroll Method Enabled", False);
     read_xi_scroll_devices();
+
+    // Select XI_HierarchyChanged events to detect device add/remove
+    if (_glfw.x11.xi.available) {
+        XIEventMask em;
+        unsigned char mask[XIMaskLen(XI_HierarchyChanged)] = { 0 };
+
+        em.deviceid = XIAllDevices;
+        em.mask_len = sizeof(mask);
+        em.mask = mask;
+        XISetMask(mask, XI_HierarchyChanged);
+
+        XISelectEvents(_glfw.x11.display, _glfw.x11.root, &em, 1);
+    }
 
     // The compositing manager selection name contains the screen number
     {
