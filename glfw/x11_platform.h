@@ -120,10 +120,13 @@ typedef Status (* PFN_XIQueryVersion)(Display*,int*,int*);
 typedef int (* PFN_XISelectEvents)(Display*,Window,XIEventMask*,int);
 typedef XIDeviceInfo* (* PFN_XIQueryDevice)(Display*,int,int*);
 typedef void (* PFN_XIFreeDeviceInfo)(XIDeviceInfo*);
+typedef Status (* PFN_XIGetProperty)(Display *dpy, int deviceid, Atom property, long offset, long length, Bool delete_property, Atom type, Atom *type_return, int *format_return, unsigned long *num_items_return, unsigned long *bytes_after_return, unsigned char **data);
+
 #define XIQueryVersion _glfw.x11.xi.QueryVersion
 #define XISelectEvents _glfw.x11.xi.SelectEvents
 #define XIQueryDevice _glfw.x11.xi.QueryDevice
 #define XIFreeDeviceInfo _glfw.x11.xi.FreeDeviceInfo
+#define XIGetProperty _glfw.x11.xi.GetProperty
 
 typedef Bool (* PFN_XRenderQueryExtension)(Display*,int*,int*);
 typedef Status (* PFN_XRenderQueryVersion)(Display*dpy,int*,int*);
@@ -407,6 +410,7 @@ typedef struct _GLFWlibraryX11
         PFN_XISelectEvents SelectEvents;
         PFN_XIQueryDevice QueryDevice;
         PFN_XIFreeDeviceInfo FreeDeviceInfo;
+        PFN_XIGetProperty GetProperty;
         // Smooth scrolling support
         struct {
             bool        available;

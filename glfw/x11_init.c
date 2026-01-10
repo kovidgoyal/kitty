@@ -177,6 +177,7 @@ static bool initExtensions(void)
         glfw_dlsym(_glfw.x11.xi.SelectEvents, _glfw.x11.xi.handle, "XISelectEvents");
         glfw_dlsym(_glfw.x11.xi.QueryDevice, _glfw.x11.xi.handle, "XIQueryDevice");
         glfw_dlsym(_glfw.x11.xi.FreeDeviceInfo, _glfw.x11.xi.handle, "XIFreeDeviceInfo");
+        glfw_dlsym(_glfw.x11.xi.GetProperty, _glfw.x11.xi.handle, "XIGetProperty");
 
         if (XQueryExtension(_glfw.x11.display,
                             "XInputExtension",
