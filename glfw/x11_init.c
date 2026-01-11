@@ -160,6 +160,7 @@ read_xi_scroll_devices(void) {
     if (!devices) return;
     for (int i = 0; i < deviceCount; i++) {
         XIDeviceInfo* device = &devices[i];
+        if (device->use == XIMasterPointer) _glfw.x11.xi.master_pointer_id = device->deviceid;
         if (device->use != XISlavePointer || !device->enabled) continue;
         Atom actual_type;
         int actual_format;

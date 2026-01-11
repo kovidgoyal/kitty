@@ -425,6 +425,7 @@ typedef struct _GLFWlibraryX11
         PFN_XIGetProperty GetProperty;
         XIScrollDevice scroll_devices[16];
         unsigned num_scroll_devices;
+        int master_pointer_id;
         Atom LIBINPUT_SCROLL_METHOD_ENABLED;
     } xi;
 

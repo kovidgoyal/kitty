@@ -1407,10 +1407,12 @@ static void processEvent(XEvent *event)
                 else if (event->xcookie.evtype == XI_Motion)
                 {
                     XIDeviceEvent* de = (XIDeviceEvent*)event->xcookie.data;
-                    // Find the window for this event
-                    _GLFWwindow* window = NULL;
-                    if (XFindContext(_glfw.x11.display, de->event, _glfw.x11.context, (XPointer*)&window) == 0)
-                        handle_xi_motion_event(window, de);
+                    if (de->deviceid != _glfw.x11.xi.master_pointer_id) {
+                        // Find the window for this event
+                        _GLFWwindow* window = NULL;
+                        if (XFindContext(_glfw.x11.display, de->event, _glfw.x11.context, (XPointer*)&window) == 0)
+                            handle_xi_motion_event(window, de);
+                    }
                 }
                 // Handle XI_HierarchyChanged for device hotplug
                 else if (event->xcookie.evtype == XI_HierarchyChanged)
