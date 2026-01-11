@@ -1274,6 +1274,77 @@ static void onConfigChange(void)
     }
 }
 
+static void
+handle_mouse_move_event(_GLFWwindow *window, const int x, const int y) {
+    if (x != window->x11.warpCursorPosX || y != window->x11.warpCursorPosY) {
+        // The cursor was moved by something other than GLFW
+        if (window->cursorMode == GLFW_CURSOR_DISABLED) {
+            if (_glfw.x11.disabledCursorWindow != window) return;
+            if (window->rawMouseMotion) return;
+            const int dx = x - window->x11.lastCursorPosX;
+            const int dy = y - window->x11.lastCursorPosY;
+            _glfwInputCursorPos(window, window->virtualCursorPosX + dx, window->virtualCursorPosY + dy);
+        } else _glfwInputCursorPos(window, x, y);
+    }
+    window->x11.lastCursorPosX = x;
+    window->x11.lastCursorPosY = y;
+}
+
+static void
+handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
+    XIScrollDevice *d = NULL;
+    bool scroll_valuator_found = false;
+    for (unsigned i = 0; i < _glfw.x11.xi.num_scroll_devices; i++) {
+        XIScrollDevice *t = &_glfw.x11.xi.scroll_devices[i];
+        if (t->deviceid == de->deviceid && t->sourceid == de->sourceid) {
+            d = t; break;
+        }
+    }
+    if (d && de->valuators.mask_len){
+        double xOffset = 0, yOffset = 0;
+        // Process valuators to detect scroll events
+        GLFWOffsetType type = GLFW_SCROLL_OFFEST_HIGHRES;
+        unsigned vidx = 0;
+        for (int i = 0; i < de->valuators.mask_len * 8; i++) {
+            if (!XIMaskIsSet(de->valuators.mask, i)) continue;
+            const double value = de->valuators.values[vidx++];
+            XIScrollValuator *v = NULL;
+            for (unsigned k = 0; k < d->num_valuators; k++) {
+                XIScrollValuator *t = d->valuators + k;
+                if (t->number == i) { v = t; break; }
+            }
+            if (!v) continue;
+            scroll_valuator_found = true;
+            double delta = value - v->value;
+            v->value = value;
+            if (v->is_vertical) delta *= -1;
+            double *off = v->is_vertical ? &yOffset : &xOffset;
+            *off = delta;
+            if (!d->is_highres) {
+                if (v->increment == 120.) type = GLFW_SCROLL_OFFEST_V120;
+                else {
+                    type = GLFW_SCROLL_OFFSET_LINES;
+                    if (v->increment != 0) *off /= v->increment;
+                }
+            }
+        }
+        if (xOffset != 0 || yOffset != 0) {
+            // Get keyboard modifiers
+            int mods = translateState(de->mods.effective);
+            // Scale offsets by content scale
+            _glfwInputScroll(window, &(GLFWScrollEvent){
+                .keyboard_modifiers = mods,
+                .x_offset = xOffset * (type == GLFW_SCROLL_OFFEST_HIGHRES ? _glfw.x11.contentScaleX : 1),
+                .y_offset = yOffset * (type == GLFW_SCROLL_OFFEST_HIGHRES ? _glfw.x11.contentScaleY : 1),
+                .unscaled = {.x = xOffset, .y = yOffset},
+                .offset_type = type,
+            });
+        }
+    }
+    if (!scroll_valuator_found) handle_mouse_move_event(window, (int)de->event_x, (int)de->event_y);
+}
+
+
 // Process the specified X event
 //
 static void processEvent(XEvent *event)
@@ -1336,56 +1407,10 @@ static void processEvent(XEvent *event)
                 else if (event->xcookie.evtype == XI_Motion)
                 {
                     XIDeviceEvent* de = (XIDeviceEvent*)event->xcookie.data;
-                    XIScrollDevice *d = NULL;
-                    for (unsigned i = 0; i < _glfw.x11.xi.num_scroll_devices; i++) {
-                        XIScrollDevice *t = &_glfw.x11.xi.scroll_devices[i];
-                        if (t->deviceid == de->deviceid && t->sourceid == de->sourceid) {
-                            d = t; break;
-                        }
-                    }
                     // Find the window for this event
                     _GLFWwindow* window = NULL;
-                    if (d && de->valuators.mask_len && XFindContext(
-                                _glfw.x11.display, de->event, _glfw.x11.context, (XPointer*)&window) == 0) {
-                        double xOffset = 0, yOffset = 0;
-                        // Process valuators to detect scroll events
-                        GLFWOffsetType type = GLFW_SCROLL_OFFEST_HIGHRES;
-                        unsigned vidx = 0;
-                        for (int i = 0; i < de->valuators.mask_len * 8; i++) {
-                            if (!XIMaskIsSet(de->valuators.mask, i)) continue;
-                            const double value = de->valuators.values[vidx++];
-                            XIScrollValuator *v = NULL;
-                            for (unsigned k = 0; k < d->num_valuators; k++) {
-                                XIScrollValuator *t = d->valuators + k;
-                                if (t->number == i) { v = t; break; }
-                            }
-                            if (!v) continue;
-                            double delta = value - v->value;
-                            v->value = value;
-                            if (v->is_vertical) delta *= -1;
-                            double *off = v->is_vertical ? &yOffset : &xOffset;
-                            *off = delta;
-                            if (!d->is_highres) {
-                                if (v->increment == 120.) type = GLFW_SCROLL_OFFEST_V120;
-                                else {
-                                    type = GLFW_SCROLL_OFFSET_LINES;
-                                    if (v->increment != 0) *off /= v->increment;
-                                }
-                            }
-                        }
-                        if (xOffset != 0 || yOffset != 0) {
-                            // Get keyboard modifiers
-                            int mods = translateState(de->mods.effective);
-                            // Scale offsets by content scale
-                            _glfwInputScroll(window, &(GLFWScrollEvent){
-                                .keyboard_modifiers = mods,
-                                .x_offset = xOffset * (type == GLFW_SCROLL_OFFEST_HIGHRES ? _glfw.x11.contentScaleX : 1),
-                                .y_offset = yOffset * (type == GLFW_SCROLL_OFFEST_HIGHRES ? _glfw.x11.contentScaleY : 1),
-                                .unscaled = {.x = xOffset, .y = yOffset},
-                                .offset_type = type,
-                            });
-                        }
-                    }
+                    if (XFindContext(_glfw.x11.display, de->event, _glfw.x11.context, (XPointer*)&window) == 0)
+                        handle_xi_motion_event(window, de);
                 }
                 // Handle XI_HierarchyChanged for device hotplug
                 else if (event->xcookie.evtype == XI_HierarchyChanged)
@@ -1634,34 +1659,7 @@ static void processEvent(XEvent *event)
 
         case MotionNotify:
         {
-            const int x = event->xmotion.x;
-            const int y = event->xmotion.y;
-
-            if (x != window->x11.warpCursorPosX ||
-                y != window->x11.warpCursorPosY)
-            {
-                // The cursor was moved by something other than GLFW
-
-                if (window->cursorMode == GLFW_CURSOR_DISABLED)
-                {
-                    if (_glfw.x11.disabledCursorWindow != window)
-                        return;
-                    if (window->rawMouseMotion)
-                        return;
-
-                    const int dx = x - window->x11.lastCursorPosX;
-                    const int dy = y - window->x11.lastCursorPosY;
-
-                    _glfwInputCursorPos(window,
-                                        window->virtualCursorPosX + dx,
-                                        window->virtualCursorPosY + dy);
-                }
-                else
-                    _glfwInputCursorPos(window, x, y);
-            }
-
-            window->x11.lastCursorPosX = x;
-            window->x11.lastCursorPosY = y;
+            handle_mouse_move_event(window, event->xmotion.x, event->xmotion.y);
             return;
         }
 
