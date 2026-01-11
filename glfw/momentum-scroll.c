@@ -38,13 +38,10 @@ typedef struct MomentumScroller {
     } physical_event;
 } MomentumScroller;
 
-static const MomentumScroller defaults = {
-    .friction = 0.96,
-    .min_velocity = 0.5,
-    .max_velocity = 100,
-    .timer_interval = 10,
-};
-static MomentumScroller s = defaults;
+#define DEFAULTS { .friction = 0.96, .min_velocity = 0.5, .max_velocity = 100, .timer_interval = 10, }
+static const MomentumScroller defaults = DEFAULTS;
+static MomentumScroller s = DEFAULTS;
+#undef DEFAULTS
 
 GLFWAPI void
 glfwConfigureMomentumScroller(double friction, double min_velocity, double max_velocity, unsigned timer_interval_ms) {
