@@ -256,7 +256,7 @@ typedef struct TransparentDynamicColor {
 } TransparentDynamicColor;
 
 
-#define MARK_MASK (3u)
+#define MARK_MASK (15u)
 
 typedef struct {
     PyObject_HEAD

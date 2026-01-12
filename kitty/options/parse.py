@@ -1159,6 +1159,78 @@ class Parser:
     def mark3_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mark3_foreground'] = to_color(val)
 
+    def mark4_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark4_background'] = to_color(val)
+
+    def mark4_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark4_foreground'] = to_color(val)
+
+    def mark5_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark5_background'] = to_color(val)
+
+    def mark5_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark5_foreground'] = to_color(val)
+
+    def mark6_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark6_background'] = to_color(val)
+
+    def mark6_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark6_foreground'] = to_color(val)
+
+    def mark7_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark7_background'] = to_color(val)
+
+    def mark7_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark7_foreground'] = to_color(val)
+
+    def mark8_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark8_background'] = to_color(val)
+
+    def mark8_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark8_foreground'] = to_color(val)
+
+    def mark9_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark9_background'] = to_color(val)
+
+    def mark9_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark9_foreground'] = to_color(val)
+
+    def mark10_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark10_background'] = to_color(val)
+
+    def mark10_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark10_foreground'] = to_color(val)
+
+    def mark11_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark11_background'] = to_color(val)
+
+    def mark11_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark11_foreground'] = to_color(val)
+
+    def mark12_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark12_background'] = to_color(val)
+
+    def mark12_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark12_foreground'] = to_color(val)
+
+    def mark13_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark13_background'] = to_color(val)
+
+    def mark13_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark13_foreground'] = to_color(val)
+
+    def mark14_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark14_background'] = to_color(val)
+
+    def mark14_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark14_foreground'] = to_color(val)
+
+    def mark15_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark15_background'] = to_color(val)
+
+    def mark15_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['mark15_foreground'] = to_color(val)
+
     def menu_map(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in menu_map(val, ans["menu_map"]):
             ans["menu_map"][k] = v

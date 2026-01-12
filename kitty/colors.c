@@ -108,18 +108,19 @@ set_configured_colors(ColorProfile *self, PyObject *opts) {
 
 static bool
 set_mark_colors(ColorProfile *self, PyObject *opts) {
-    char fgattr[] = "mark?_foreground", bgattr[] = "mark?_background";
-#define n(i, attr, which) { \
-    attr[4] = '1' + i; \
-    RAII_PyObject(t, PyObject_GetAttrString(opts, attr)); \
-    if (t == NULL) return false; \
-    if (!PyObject_TypeCheck(t, &Color_Type)) { PyErr_SetString(PyExc_TypeError, "mark color is not Color object"); return false; } \
-    Color *c = (Color*)t; self->which[i] = c->color.rgb; \
-}
-#define m(i) n(i, fgattr, mark_foregrounds); n(i, bgattr, mark_backgrounds);
-    m(0); m(1); m(2);
-#undef m
-#undef n
+    char attr[32];
+    for (unsigned i = 0; i < MARK_MASK; i++) {
+        snprintf(attr, sizeof(attr), "mark%u_foreground", i + 1);
+        RAII_PyObject(t, PyObject_GetAttrString(opts, attr));
+        if (t == NULL) return false;
+        if (!PyObject_TypeCheck(t, &Color_Type)) { PyErr_SetString(PyExc_TypeError, "mark color is not a Color object"); return false; }
+        Color *c = (Color*)t; self->mark_foregrounds[i] = c->color.rgb;
+        snprintf(attr, sizeof(attr), "mark%u_background", i + 1);
+        RAII_PyObject(t2, PyObject_GetAttrString(opts, attr));
+        if (t2 == NULL) return false;
+        if (!PyObject_TypeCheck(t2, &Color_Type)) { PyErr_SetString(PyExc_TypeError, "mark color is not a Color object"); return false; }
+        c = (Color*)t2; self->mark_backgrounds[i] = c->color.rgb;
+    }
     return true;
 }
 
@@ -395,7 +396,7 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
         patch_color_table(key, profiles, spec, i, change_configured, &has_null_values);
     }
     for (size_t i = 1; i <= MARK_MASK; i++) {
-#define S(which, i) snprintf(key, sizeof(key) - 1, "mark%zu_" #which, i); patch_mark_color(key, profiles, spec, mark_##which##s, i)
+#define S(which, i) snprintf(key, sizeof(key) - 1, "mark%zu_" #which, i); patch_mark_color(key, profiles, spec, mark_##which##s, i - 1)
     S(background, i); S(foreground, i);
 #undef S
     }

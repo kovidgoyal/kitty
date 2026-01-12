@@ -396,7 +396,7 @@ def parse_marker_spec(ftype: str, parts: Sequence[str]) -> tuple[str, str | tupl
         ans = []
         for i in range(0, len(parts), 2):
             try:
-                color = max(1, min(int(parts[i]), 3))
+                color = max(1, min(int(parts[i]), defines.MARK_MASK))
             except Exception:
                 raise ValueError(f'Mark group in marker specification is not an integer: {parts[i]}')
             sspec = parts[i + 1]
@@ -432,10 +432,10 @@ def scroll_to_mark(func: str, rest: str) -> FuncArgsType:
         if q in ('prev', 'previous', 'next'):
             return func, [q != 'next', 0]
         try:
-            return func, [True, max(0, min(int(q), 3))]
+            return func, [True, max(0, min(int(q), defines.MARK_MASK))]
         except Exception:
             raise ValueError(f'{rest} is not a valid scroll_to_mark destination')
-    return func, [parts[0] != 'next', max(0, min(int(parts[1]), 3))]
+    return func, [parts[0] != 'next', max(0, min(int(parts[1]), defines.MARK_MASK))]
 
 
 @func_with_args('mouse_selection')

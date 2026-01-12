@@ -406,6 +406,30 @@ option_names = (
     'mark2_foreground',
     'mark3_background',
     'mark3_foreground',
+    'mark4_background',
+    'mark4_foreground',
+    'mark5_background',
+    'mark5_foreground',
+    'mark6_background',
+    'mark6_foreground',
+    'mark7_background',
+    'mark7_foreground',
+    'mark8_background',
+    'mark8_foreground',
+    'mark9_background',
+    'mark9_foreground',
+    'mark10_background',
+    'mark10_foreground',
+    'mark11_background',
+    'mark11_foreground',
+    'mark12_background',
+    'mark12_foreground',
+    'mark13_background',
+    'mark13_foreground',
+    'mark14_background',
+    'mark14_foreground',
+    'mark15_background',
+    'mark15_foreground',
     'menu_map',
     'modify_font',
     'momentum_scroll',
@@ -619,6 +643,30 @@ class Options:
     mark2_foreground: Color = Color(0, 0, 0)
     mark3_background: Color = Color(242, 116, 188)
     mark3_foreground: Color = Color(0, 0, 0)
+    mark4_background: Color = Color(152, 211, 203)
+    mark4_foreground: Color = Color(0, 0, 0)
+    mark5_background: Color = Color(242, 220, 211)
+    mark5_foreground: Color = Color(0, 0, 0)
+    mark6_background: Color = Color(242, 116, 188)
+    mark6_foreground: Color = Color(0, 0, 0)
+    mark7_background: Color = Color(152, 211, 203)
+    mark7_foreground: Color = Color(0, 0, 0)
+    mark8_background: Color = Color(242, 220, 211)
+    mark8_foreground: Color = Color(0, 0, 0)
+    mark9_background: Color = Color(242, 116, 188)
+    mark9_foreground: Color = Color(0, 0, 0)
+    mark10_background: Color = Color(152, 211, 203)
+    mark10_foreground: Color = Color(0, 0, 0)
+    mark11_background: Color = Color(242, 220, 211)
+    mark11_foreground: Color = Color(0, 0, 0)
+    mark12_background: Color = Color(242, 116, 188)
+    mark12_foreground: Color = Color(0, 0, 0)
+    mark13_background: Color = Color(152, 211, 203)
+    mark13_foreground: Color = Color(0, 0, 0)
+    mark14_background: Color = Color(242, 220, 211)
+    mark14_foreground: Color = Color(0, 0, 0)
+    mark15_background: Color = Color(242, 116, 188)
+    mark15_foreground: Color = Color(0, 0, 0)
     momentum_scroll: float = 0.96
     mouse_hide_wait: MouseHideWait = MouseHideWait(hide_wait=0.0, show_wait=0.0, show_threshold=40, scroll_show=True) if is_macos else MouseHideWait(hide_wait=3.0, show_wait=0.0, show_threshold=40, scroll_show=True)
     notify_on_cmd_finish: NotifyOnCmdFinish = NotifyOnCmdFinish(when='never', duration=5.0, action='notify', cmdline=(), clear_on=('focus', 'next'))

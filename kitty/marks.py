@@ -7,6 +7,7 @@ from ctypes import POINTER, c_uint, c_void_p, cast
 from re import Pattern
 from typing import Union
 
+from .fast_data_types import MARK_MASK
 from .utils import resolve_custom_file
 
 pointer_to_uint = POINTER(c_uint)
@@ -24,7 +25,7 @@ def get_output_variables(left_address: int, right_address: int, color_address: i
 
 
 def marker_from_regex(expression: Union[str, 'Pattern[str]'], color: int, flags: int = re.UNICODE) -> MarkerFunc:
-    color = max(1, min(color, 3))
+    color = max(1, min(color, MARK_MASK))
     if isinstance(expression, str):
         pat = re.compile(expression, flags=flags)
     else:
@@ -47,7 +48,7 @@ def marker_from_multiple_regex(regexes: Iterable[tuple[int, str]], flags: int = 
     for i, (color, spec) in enumerate(regexes):
         grp = f'mcg{i}'
         expr += f'|(?P<{grp}>{spec})'
-        color_map[grp] = color
+        color_map[grp] = max(1, min(color, MARK_MASK))
     expr = expr[1:]
     pat = re.compile(expr, flags=flags)
 

@@ -18,8 +18,8 @@ typedef union CellAttrs {
         uint16_t strike : 1;
         uint16_t dim : 1;
         uint16_t blink: 1;
-        uint16_t mark : 2;
-        uint32_t : 21;
+        uint16_t mark : 4;
+        uint32_t : 19;
     };
     uint32_t val;
 } CellAttrs;

@@ -2151,6 +2151,126 @@ opt('mark3_background', '#f274bc',
     long_text='Color for marks of type 3 (violet)'
     )
 
+opt('mark4_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 4'
+    )
+
+opt('mark4_background', '#98d3cb',
+    option_type='to_color',
+    long_text='Color for marks of type 4 (light steel blue)'
+    )
+
+opt('mark5_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 5'
+    )
+
+opt('mark5_background', '#f2dcd3',
+    option_type='to_color',
+    long_text='Color for marks of type 5 (beige)'
+    )
+
+opt('mark6_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 6'
+    )
+
+opt('mark6_background', '#f274bc',
+    option_type='to_color',
+    long_text='Color for marks of type 6 (violet)'
+    )
+
+opt('mark7_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 7'
+    )
+
+opt('mark7_background', '#98d3cb',
+    option_type='to_color',
+    long_text='Color for marks of type 7 (light steel blue)'
+    )
+
+opt('mark8_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 8'
+    )
+
+opt('mark8_background', '#f2dcd3',
+    option_type='to_color',
+    long_text='Color for marks of type 8 (beige)'
+    )
+
+opt('mark9_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 9'
+    )
+
+opt('mark9_background', '#f274bc',
+    option_type='to_color',
+    long_text='Color for marks of type 9 (violet)'
+    )
+
+opt('mark10_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 10'
+    )
+
+opt('mark10_background', '#98d3cb',
+    option_type='to_color',
+    long_text='Color for marks of type 10 (light steel blue)'
+    )
+
+opt('mark11_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 11'
+    )
+
+opt('mark11_background', '#f2dcd3',
+    option_type='to_color',
+    long_text='Color for marks of type 11 (beige)'
+    )
+
+opt('mark12_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 12'
+    )
+
+opt('mark12_background', '#f274bc',
+    option_type='to_color',
+    long_text='Color for marks of type 12 (violet)'
+    )
+
+opt('mark13_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 13'
+    )
+
+opt('mark13_background', '#98d3cb',
+    option_type='to_color',
+    long_text='Color for marks of type 13 (light steel blue)'
+    )
+
+opt('mark14_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 14'
+    )
+
+opt('mark14_background', '#f2dcd3',
+    option_type='to_color',
+    long_text='Color for marks of type 14 (beige)'
+    )
+
+opt('mark15_foreground', 'black',
+    option_type='to_color',
+    long_text='Color for marks of type 15'
+    )
+
+opt('mark15_background', '#f274bc',
+    option_type='to_color',
+    long_text='Color for marks of type 15 (violet)'
+    )
+
 for i in range(16, 256):
     opt(f'color{i}', 'none', option_type='to_color_or_none', documented=False)
 egr()  # }}}
