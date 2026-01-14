@@ -9,13 +9,9 @@ import weakref
 from collections import deque
 from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
 from contextlib import suppress
+from functools import wraps
 from gettext import gettext as _
-from typing import (
-    Any,
-    Deque,
-    NamedTuple,
-    Optional,
-)
+from typing import Any, Concatenate, Deque, NamedTuple, Optional, ParamSpec, TypeVar
 
 from .borders import Border, Borders
 from .child import Child
@@ -57,6 +53,23 @@ from .typing_compat import EdgeLiteral, SessionTab, SessionType, TypedDict
 from .utils import cmdline_for_hold, log_error, platform_window_id, resolved_shell, shlex_split, which
 from .window import CwdRequest, Watchers, Window, WindowCreationSpec, WindowDict, global_watchers
 from .window_list import WindowList
+
+P = ParamSpec('P')
+T = TypeVar('T')
+
+
+def update_tab_bar_visibility(func: Callable[Concatenate['TabManager', P], T]) -> Callable[Concatenate['TabManager', P], T]:
+    @wraps(func)
+    def wrapper(self: 'TabManager', *args: P.args, **kwargs: P.kwargs) -> T:
+        visible_before = is_tab_bar_visible(self.os_window_id)
+        try:
+            return func(self, *args, **kwargs)
+        finally:
+            if visible_before != self.tab_bar_should_be_visible:
+                if not self.tab_bar_hidden:
+                    self.layout_tab_bar()
+                    self.resize(only_tabs=True)
+    return wrapper
 
 
 class TabMouseEvent(NamedTuple):
@@ -1073,10 +1086,10 @@ class TabManager:  # {{{
         if startup_session is not None:
             self.add_tabs_from_session(startup_session)
 
+    @update_tab_bar_visibility
     def add_tabs_from_session(self, session: SessionType, session_name: str = '') -> None:
         active_tab = self.active_tab
         added_tabs = []
-        visible_before = is_tab_bar_visible(self.os_window_id)
         for i, t in enumerate(session.tabs):
             tab = Tab(self, session_tab=t, session_name=session_name or self.created_in_session_name)
             self.tabs.append(tab)
@@ -1109,8 +1122,6 @@ class TabManager:  # {{{
             # focus_tab.
             if (at := self.active_tab) and (w := at.active_window):
                 w.last_focused_at = monotonic()
-        if visible_before != self.tab_bar_should_be_visible:
-            self.tabbar_visibility_changed()
 
     @property
     def active_tab_idx(self) -> int:
@@ -1170,11 +1181,6 @@ class TabManager:  # {{{
         self.mark_tab_bar_dirty()
         self.tab_bar.layout()
 
-    def tabbar_visibility_changed(self) -> None:
-        if not self.tab_bar_hidden:
-            self.layout_tab_bar()
-            self.resize(only_tabs=True)
-
     @property
     def any_window(self) -> Window | None:
         for t in self:
@@ -1214,19 +1220,17 @@ class TabManager:  # {{{
             tab.relayout_borders()
         self.mark_tab_bar_dirty()
 
+    @update_tab_bar_visibility
     def set_active_tab(self, tab: Tab, for_keep_focus: Tab | None = None) -> bool:
         try:
             idx = self.tabs.index(tab)
         except Exception:
             return False
-        visible_before = is_tab_bar_visible(self.os_window_id)
         self.set_active_tab_idx(idx)
         h = self.active_tab_history
         if for_keep_focus and len(h) > 2 and h[-2] == for_keep_focus.id and h[-1] != for_keep_focus.id:
             h.pop()
             h.pop()
-        if visible_before != self.tab_bar_should_be_visible:
-            self.tabbar_visibility_changed()
         return True
 
     @property
@@ -1381,6 +1385,7 @@ class TabManager:  # {{{
             self._set_active_tab(nidx)
             self.mark_tab_bar_dirty()
 
+    @update_tab_bar_visibility
     def new_tab(
         self,
         special_window: SpecialWindowInstance | None = None,
@@ -1402,7 +1407,6 @@ class TabManager:  # {{{
         if not empty_tab and session_name:
             for w in t:
                 w.created_in_session_name = session_name
-        visible_before = is_tab_bar_visible(self.os_window_id)
         self.tabs.append(t)
         tabs = tabs + (t,)
         if as_neighbor:
@@ -1423,13 +1427,11 @@ class TabManager:  # {{{
                     swap_tabs(self.os_window_id, i, i-1)
                 idx = desired_idx
         self._set_active_tab(idx)
-        if self.tab_bar_should_be_visible != visible_before:
-            self.tabbar_visibility_changed()
         self.mark_tab_bar_dirty()
         return t
 
+    @update_tab_bar_visibility
     def remove(self, removed_tab: Tab) -> None:
-        visible_before = is_tab_bar_visible(self.os_window_id)
         active_tab_before_removal = self.active_tab
         tabs = tuple(self.tabs_to_be_shown_in_tab_bar)
         remove_tab(self.os_window_id, removed_tab.id)
@@ -1494,8 +1496,6 @@ class TabManager:  # {{{
                 self._active_tab_idx = 0
         self.mark_tab_bar_dirty()
         removed_tab.destroy()
-        if self.tab_bar_should_be_visible != visible_before:
-            self.tabbar_visibility_changed()
 
     @property
     def tab_bar_data(self) -> list[TabBarData]:
