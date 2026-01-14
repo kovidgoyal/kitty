@@ -106,7 +106,7 @@ jobs:
                 ${{ runner.os }}-golang-static-
 
           - name: Install build-only deps
-            run: python -m pip install -r docs/requirements.txt ruff mypy types-requests types-docutils
+            run: python -m pip install -r docs/requirements.txt ruff mypy types-requests types-docutils types-Pygments
 
           - name: Run ruff
             run: ruff check .
