@@ -6,6 +6,7 @@
 
 
 import os
+import sys
 from collections.abc import Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import context, get_all_start_methods, get_context, spawn, util
@@ -17,11 +18,14 @@ orig_spawn_passfds = util.spawnv_passfds
 orig_executable = spawn.get_executable()
 
 if TYPE_CHECKING:
+    from collections.abc import Buffer
     from typing import SupportsIndex, SupportsInt
 
-    from _typeshed import ReadableBuffer, SupportsTrunc
-
-    ArgsType = Sequence[Union[str, ReadableBuffer, SupportsInt, SupportsIndex, SupportsTrunc]]
+    if sys.version_info[:2] >= (3, 14):
+        ArgsType = Sequence[Union[str, Buffer, SupportsInt, SupportsIndex]]
+    else:
+        from _typeshed import ReadableBuffer, SupportsTrunc
+        ArgsType = Sequence[Union[str, ReadableBuffer, SupportsInt, SupportsIndex, SupportsTrunc]]
 else:
     ArgsType = Sequence[str]
 
