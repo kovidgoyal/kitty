@@ -181,6 +181,9 @@ Detailed list of changes
 - Fix :ac:`goto_session` not respecting the focus_tab session directive when
   creating a session in an existing OS window (:iss:`9366`)
 
+- Fix another rendering glitch caused by :opt:`tab_bar_filter` when adding tabs
+  from a session (:iss:`9382`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

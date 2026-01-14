@@ -1076,9 +1076,10 @@ class TabManager:  # {{{
     def add_tabs_from_session(self, session: SessionType, session_name: str = '') -> None:
         active_tab = self.active_tab
         added_tabs = []
+        visible_before = is_tab_bar_visible(self.os_window_id)
         for i, t in enumerate(session.tabs):
             tab = Tab(self, session_tab=t, session_name=session_name or self.created_in_session_name)
-            self._add_tab(tab)
+            self.tabs.append(tab)
             added_tabs.append(tab)
             if i == session.active_tab_idx:
                 active_tab = tab
@@ -1108,6 +1109,8 @@ class TabManager:  # {{{
             # focus_tab.
             if (at := self.active_tab) and (w := at.active_window):
                 w.last_focused_at = monotonic()
+        if visible_before != self.tab_bar_should_be_visible:
+            self.tabbar_visibility_changed()
 
     @property
     def active_tab_idx(self) -> int:
@@ -1154,12 +1157,6 @@ class TabManager:  # {{{
             if count < 1:
                 return True
         return count < 1
-
-    def _add_tab(self, tab: Tab) -> None:
-        visible_before = is_tab_bar_visible(self.os_window_id)
-        self.tabs.append(tab)
-        if visible_before != self.tab_bar_should_be_visible:
-            self.tabbar_visibility_changed()
 
     def _set_active_tab(self, idx: int, store_in_history: bool = True) -> None:
         if store_in_history:
@@ -1405,7 +1402,8 @@ class TabManager:  # {{{
         if not empty_tab and session_name:
             for w in t:
                 w.created_in_session_name = session_name
-        self._add_tab(t)
+        visible_before = is_tab_bar_visible(self.os_window_id)
+        self.tabs.append(t)
         tabs = tabs + (t,)
         if as_neighbor:
             location = 'after'
@@ -1425,6 +1423,8 @@ class TabManager:  # {{{
                     swap_tabs(self.os_window_id, i, i-1)
                 idx = desired_idx
         self._set_active_tab(idx)
+        if self.tab_bar_should_be_visible != visible_before:
+            self.tabbar_visibility_changed()
         self.mark_tab_bar_dirty()
         return t
 
