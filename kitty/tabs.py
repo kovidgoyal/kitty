@@ -11,7 +11,7 @@ from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import wraps
 from gettext import gettext as _
-from typing import Any, Concatenate, Deque, NamedTuple, Optional, ParamSpec, TypeVar
+from typing import Any, Concatenate, Deque, NamedTuple, Optional, ParamSpec, TypeVar, cast
 
 from .borders import Border, Borders
 from .child import Child
@@ -69,7 +69,7 @@ def update_tab_bar_visibility(func: Callable[Concatenate['TabManager', P], T]) -
                 if not self.tab_bar_hidden:
                     self.layout_tab_bar()
                     self.resize(only_tabs=True)
-    return wrapper
+    return cast(Callable[Concatenate['TabManager', P], T], wrapper)
 
 
 class TabMouseEvent(NamedTuple):
