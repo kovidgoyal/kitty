@@ -262,10 +262,10 @@
     },
 
     {
-        "name": "harfbuzz 8.5.0",
+        "name": "harfbuzz 12.3.0",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:77e4f7f98f3d86bf8788b53e6832fb96279956e1c3961988ea3d4b7ca41ddc27",
+            "hash": "sha256:8660ebd3c27d9407fc8433b5d172bafba5f0317cb0bb4339f28e5370c93d42b7",
             "urls": ["https://github.com/harfbuzz/harfbuzz/releases/download/{version}/{filename}"]
         }
     },
