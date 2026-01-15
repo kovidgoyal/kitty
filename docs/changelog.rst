@@ -188,6 +188,10 @@ Detailed list of changes
   repeats on compositors that implement compositor side key repeat events
   (:iss:`9374`)
 
+- icat: Fix a regression in the previous release when rendering GIF animations
+  with frames that dispose onto background with non-zero delay using the native
+  engine (:iss:`9376`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
