@@ -240,6 +240,7 @@ typedef struct XIScrollValuator {
 
 typedef struct XIScrollDevice {
     bool is_highres;
+    bool is_finger_based;
     int deviceid, sourceid;
     XIScrollValuator valuators[8];
     unsigned num_valuators;

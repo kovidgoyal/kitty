@@ -173,6 +173,38 @@ read_xi_scroll_devices(void) {
             if (nitems > 1) is_highres = data[0] || data[1];
             XFree(data);
         }
+
+        // Detect if this is a finger-based device (touchpad/touchscreen)
+        bool is_finger_based = false;
+
+        // Method 1: Check for libinput tapping support (touchpads only)
+        Atom tapping_atom = XInternAtom(_glfw.x11.display, "libinput Tapping Enabled", False);
+        if (tapping_atom != None) {
+            Atom tapping_type;
+            int tapping_format;
+            unsigned long tapping_nitems, tapping_bytes;
+            unsigned char *tapping_data = NULL;
+            
+            if (XIGetProperty(_glfw.x11.display, device->deviceid, 
+                              tapping_atom, 0, 1, False, AnyPropertyType,
+                              &tapping_type, &tapping_format, &tapping_nitems,
+                              &tapping_bytes, &tapping_data) == Success) {
+                if (tapping_data) {
+                    is_finger_based = true;
+                    XFree(tapping_data);
+                }
+            }
+        }
+
+        // Method 2: Check for touch class (touchscreens/touchpads)
+        if (!is_finger_based) {
+            for (int j = 0; j < device->num_classes; j++) {
+                if (device->classes[j]->type == XITouchClass) {
+                    is_finger_based = true;
+                    break;
+                }
+            }
+        }
         for (int j = 0; j < device->num_classes; j++) {
             if (device->classes[j]->type != XIScrollClass) continue;
             XIScrollClassInfo* scroll = (XIScrollClassInfo*)device->classes[j];
@@ -185,7 +217,7 @@ read_xi_scroll_devices(void) {
                 if (_glfw.x11.xi.num_scroll_devices >= arraysz(_glfw.x11.xi.scroll_devices)) continue;
                 d = &_glfw.x11.xi.scroll_devices[_glfw.x11.xi.num_scroll_devices++];
                 *d = (XIScrollDevice){
-                    .is_highres=is_highres, .deviceid=device->deviceid, .sourceid=scroll->sourceid,
+                    .is_highres=is_highres, .is_finger_based=is_finger_based, .deviceid=device->deviceid, .sourceid=scroll->sourceid,
                 };
                 memcpy(d->name, device->name, MIN(sizeof(d->name)-1, strlen(device->name)));
             }
