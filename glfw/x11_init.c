@@ -189,7 +189,7 @@ read_xi_scroll_devices(void) {
                               tapping_atom, 0, 1, False, AnyPropertyType,
                               &tapping_type, &tapping_format, &tapping_nitems,
                               &tapping_bytes, &tapping_data) == Success) {
-                if (tapping_data) {
+                if (tapping_data && tapping_nitems > 0) {
                     is_finger_based = true;
                     XFree(tapping_data);
                 }
