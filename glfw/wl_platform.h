@@ -361,6 +361,7 @@ typedef struct _GLFWlibraryWayland
 
     int                         compositorVersion;
     int                         seatVersion;
+    bool has_key_repeat_events;
 
     struct wl_surface*          cursorSurface;
     GLFWCursorShape             cursorPreviousShape;

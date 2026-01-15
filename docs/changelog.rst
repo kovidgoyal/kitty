@@ -184,6 +184,10 @@ Detailed list of changes
 - Fix another rendering glitch caused by :opt:`tab_bar_filter` when adding tabs
   from a session (:iss:`9382`)
 
+- Wayland: Fix a regression in the previous release that caused doubled key
+  repeats on compositors that implement compositor side key repeat events
+  (:iss:`9374`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

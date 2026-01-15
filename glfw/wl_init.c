@@ -315,9 +315,11 @@ static void keyboardHandleKeymap(void* data UNUSED,
 
 }
 
+static bool
+needs_synthetic_key_repeat(void) { return _glfw.wl.keyboardRepeatRate > 0 && !_glfw.wl.has_key_repeat_events; }
+
 static void
 start_key_repeat_timer(bool initial) {
-    if (_glfw.wl.keyboardRepeatRate <= 0) return;
 #ifdef HAS_TIMER_FD
     (void)initial;
     struct itimerspec new_value = {.it_value={.tv_nsec = _glfw.wl.keyboardRepeatDelay}, .it_interval={.tv_nsec = (s_to_monotonic_t(1ll) / (monotonic_t)_glfw.wl.keyboardRepeatRate)}};
@@ -346,7 +348,7 @@ static void
 send_key_repeat_timer_event(id_type timer_id UNUSED, void *data UNUSED) {
     char b = 1;
     b += write(_glfw.wl.eventLoopData.key_repeat_fds[1], &b, 1);
-    if (_glfw.wl.keyboardRepeatRate > 0) start_key_repeat_timer(false);
+    if (needs_synthetic_key_repeat()) start_key_repeat_timer(false);
 }
 #endif
 
@@ -366,7 +368,7 @@ static void keyboardHandleEnter(void* data UNUSED,
     if (keys && _glfw.wl.keyRepeatInfo.key) {
         wl_array_for_each(key, keys) {
             if (*key == _glfw.wl.keyRepeatInfo.key) {
-                if (_glfw.wl.keyboardRepeatRate > 0) start_key_repeat_timer(true);
+                if (needs_synthetic_key_repeat()) start_key_repeat_timer(true);
                 break;
             }
         }
@@ -411,7 +413,7 @@ static void keyboardHandleKey(void* data UNUSED,
 
     _glfw.wl.serial = serial; _glfw.wl.input_serial = serial;
     glfw_xkb_handle_key_event(window, &_glfw.wl.xkb, key, action);
-    if (action == GLFW_PRESS && _glfw.wl.keyboardRepeatRate > 0 && glfw_xkb_should_repeat(&_glfw.wl.xkb, key))
+    if (action == GLFW_PRESS && needs_synthetic_key_repeat() && glfw_xkb_should_repeat(&_glfw.wl.xkb, key))
     {
         _glfw.wl.keyRepeatInfo.key = key;
         _glfw.wl.keyRepeatInfo.keyboardFocusId = window->id;
@@ -592,8 +594,10 @@ static void registryHandleGlobal(void* data UNUSED,
     {
         if (!_glfw.wl.seat)
         {
+            _glfw.wl.has_key_repeat_events = false;
 #if defined(WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION)
             _glfw.wl.seatVersion = MIN(WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION, (int)version);
+            _glfw.wl.has_key_repeat_events = _glfw.wl.seatVersion >= WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION;
 #elif defined(WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION)
             _glfw.wl.seatVersion = MIN(WL_POINTER_AXIS_RELATIVE_DIRECTION_SINCE_VERSION, (int)version);
 #elif defined(WL_POINTER_AXIS_VALUE120_SINCE_VERSION)
@@ -819,6 +823,7 @@ get_compositor_missing_capabilities(void) {
     C(single_pixel_buffer, wp_single_pixel_buffer_manager_v1); C(preferred_scale, has_preferred_buffer_scale);
     C(idle_inhibit, idle_inhibit_manager); C(icon, xdg_toplevel_icon_manager_v1); C(bell, xdg_system_bell_v1);
     C(window-tag, xdg_toplevel_tag_manager_v1); C(keyboard_shortcuts_inhibit, keyboard_shortcuts_inhibit_manager);
+    C(key-repeat, has_key_repeat_events);
 #define P(x) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", x);
     if (_glfw.wl.xdg_wm_base_version < 6) P("window-state-suspended");
     if (_glfw.wl.xdg_wm_base_version < 5) P("window-capabilities");
