@@ -178,21 +178,18 @@ read_xi_scroll_devices(void) {
         bool is_finger_based = false;
 
         // Method 1: Check for libinput tapping support (touchpads only)
-        Atom tapping_atom = XInternAtom(_glfw.x11.display, "libinput Tapping Enabled", False);
-        if (tapping_atom != None) {
+        if (_glfw.x11.xi.LIBINPUT_TAPPING != None) {
             Atom tapping_type;
             int tapping_format;
             unsigned long tapping_nitems, tapping_bytes;
             unsigned char *tapping_data = NULL;
-            
-            if (XIGetProperty(_glfw.x11.display, device->deviceid, 
-                              tapping_atom, 0, 1, False, AnyPropertyType,
+
+            if (XIGetProperty(_glfw.x11.display, device->deviceid,
+                              _glfw.x11.xi.LIBINPUT_TAPPING, 0, 1, False, AnyPropertyType,
                               &tapping_type, &tapping_format, &tapping_nitems,
                               &tapping_bytes, &tapping_data) == Success) {
                 if (tapping_data) {
-                    if (tapping_nitems > 0) {
-                        is_finger_based = true;
-                    }
+                    if (tapping_nitems > 0) is_finger_based = true;
                     XFree(tapping_data);
                 }
             }
@@ -545,6 +542,7 @@ static bool initExtensions(void)
         XInternAtom(_glfw.x11.display, "_MOTIF_WM_HINTS", False);
 
     _glfw.x11.xi.LIBINPUT_SCROLL_METHOD_ENABLED = XInternAtom(_glfw.x11.display, "libinput Scroll Method Enabled", False);
+    _glfw.x11.xi.LIBINPUT_TAPPING = XInternAtom(_glfw.x11.display, "libinput Tapping Enabled", False);
     read_xi_scroll_devices();
 
     // Select XI_HierarchyChanged events to detect device add/remove
