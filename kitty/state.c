@@ -964,7 +964,7 @@ PYWRAP1(is_tab_bar_visible) {
     PA("K", &os_window_id);
     if (!OPT(tab_bar_hidden)) {
         WITH_OS_WINDOW(os_window_id)
-            return os_window->has_too_few_tabs ? Py_NewRef(Py_False) : Py_NewRef(Py_True);
+            return (os_window->num_tabs == 0 || os_window->has_too_few_tabs) ? Py_NewRef(Py_False) : Py_NewRef(Py_True);
         END_WITH_OS_WINDOW
     }
     Py_RETURN_FALSE;
