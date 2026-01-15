@@ -192,6 +192,9 @@ Detailed list of changes
   with frames that dispose onto background with non-zero delay using the native
   engine (:iss:`9376`)
 
+- Wayland: Remove usage of the wayland color management protocol to inform
+  compositors of the color space used by kitty
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

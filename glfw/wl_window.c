@@ -573,29 +573,12 @@ static const struct wp_fractional_scale_v1_listener fractional_scale_listener = 
     .preferred_scale = &fractional_scale_preferred_scale,
 };
 
-static void
-ensure_color_manager_ready(void) {
-    if (_glfw.wl.wp_color_manager_v1 && !_glfw.wl.color_manager.image_description_done) {
-        while (!_glfw.wl.color_manager.image_description_done) wl_display_roundtrip(_glfw.wl.display);
-    }
-}
-
 static bool
 create_surface(_GLFWwindow* window, const _GLFWwndconfig* wndconfig) {
     window->wl.surface = wl_compositor_create_surface(_glfw.wl.compositor);
     if (!window->wl.surface) return false;
     wl_surface_add_listener(window->wl.surface, &surfaceListener, window);
     wl_surface_set_user_data(window->wl.surface, window);
-
-    if (_glfw.wl.color_manager.has_needed_capabilities) {
-        ensure_color_manager_ready();
-        if (_glfw.wl.color_manager.image_description && !window->wl.color_management) {
-            window->wl.color_management = wp_color_manager_v1_get_surface(
-                    _glfw.wl.wp_color_manager_v1, window->wl.surface);
-            wp_color_management_surface_v1_set_image_description(
-                window->wl.color_management, _glfw.wl.color_manager.image_description, WP_COLOR_MANAGER_V1_RENDER_INTENT_PERCEPTUAL);
-        }
-    }
 
     // If we already have been notified of the primary monitor scale, assume
     // the window will be created on it and so avoid a rescale roundtrip in the common
@@ -1547,9 +1530,6 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 
     if (window->wl.layer_shell.zwlr_layer_surface_v1)
         zwlr_layer_surface_v1_destroy(window->wl.layer_shell.zwlr_layer_surface_v1);
-
-    if (window->wl.color_management)
-        wp_color_management_surface_v1_destroy(window->wl.color_management);
 
     if (window->wl.surface)
         wl_surface_destroy(window->wl.surface);
