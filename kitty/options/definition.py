@@ -459,7 +459,7 @@ Control when the scrollbar is displayed.
 ''')
 
 opt('scrollbar_interactive', 'yes', option_type='to_bool', ctype='bool', long_text='''
-If disabled, the scrollbar will not be controllable via th emouse and all mouse events
+If disabled, the scrollbar will not be controllable via the mouse and all mouse events
 will pass through the scrollbar.''')
 
 opt('scrollbar_jump_on_click', 'yes', option_type='to_bool', ctype='bool', long_text='''
