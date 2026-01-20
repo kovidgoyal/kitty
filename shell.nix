@@ -14,7 +14,7 @@ in
           lcms2
           xxHash
           simde
-          go_1_23
+          go_1_24
           matplotlib
         ]
         ++ optionals stdenv.isDarwin [
@@ -84,6 +84,7 @@ in
           # Add fonts by hand
 
           if [ ! -e ./fonts/SymbolsNerdFontMono-Regular.ttf ]; then
+            mkdir -p ./fonts/
             cp "${nerd-fonts.symbols-only}/share/fonts/truetype/NerdFonts/Symbols/SymbolsNerdFontMono-Regular.ttf" ./fonts/
           fi
         ''
@@ -95,6 +96,7 @@ in
 
           # Add fonts by hand
           if [ ! -e ./fonts/SymbolsNerdFontMono-Regular.ttf ]; then
+            mkdir -p ./fonts/
             cp "${nerd-fonts.symbols-only}/share/fonts/truetype/NerdFonts/Symbols/SymbolsNerdFontMono-Regular.ttf" ./fonts/
           fi
         '';
