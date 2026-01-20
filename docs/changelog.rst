@@ -159,6 +159,8 @@ Detailed list of changes
 
 - X11: support high resolution scroll events from touchpads, etc
 
+- macOS: Implement support for Apple dictation to input text in kitty (:iss:`3732`)
+
 - choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
 
 - Fix tab bar rendering glitches when using :opt:`tab_bar_filter` in some
