@@ -858,6 +858,8 @@ render_glyph_with_cairo(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned
     g.y = fm.ascent;
     memset(self->cairo.buf, 0, self->cairo.stride * self->cairo.height);
     cairo_set_source_rgba(self->cairo.cr, fg.r / 255., fg.g / 255., fg.b / 255., fg.a / 255.);
+    cairo_text_extents_t extents;
+    cairo_glyph_extents(self->cairo.cr, &g, 1, &extents);
     cairo_show_glyphs(self->cairo.cr, &g, 1);
     cairo_surface_flush(self->cairo.surface);
 #if 0
@@ -874,6 +876,7 @@ render_glyph_with_cairo(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned
     ans->rows = height;
     ans->bitmap_left = (int)bb.x_bearing;
     ans->bitmap_top = -(int)bb.y_bearing;
+    ans->right_edge = (int)ceil(extents.x_advance);
     return true;
 }
 

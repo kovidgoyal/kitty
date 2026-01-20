@@ -197,6 +197,9 @@ Detailed list of changes
 - Wayland: Remove usage of the wayland color management protocol to inform
   compositors of the color space used by kitty
 
+- Linux: Fix a regression in 0.40 that caused horizontal alignment for emoji to
+  be incorrect in some cases (:iss:`9395`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
