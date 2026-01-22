@@ -150,7 +150,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.45.1 [future]
+0.46.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Pixel scrolling for the kitty scrollback buffer controlled via :opt:`pixel_scroll` (:pull:`9330`)
