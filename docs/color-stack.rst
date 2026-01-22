@@ -52,8 +52,8 @@ than numbers. The syntax of the escape code is::
     <OSC> 21 ; key=value ; key=value ; ... <ST>
 
 The spaces in the above definition are for reading clarity and should be ignored.
-Here, ``<OSC>`` is the two bytes ``0x1b (ESC)`` and ``0x5d (])``. ``ST`` is
-either ``0x7 (BEL)`` or the two bytes ``0x1b (ESC)`` and ``0x5c (\\)``.
+Here, ``<OSC>`` is the two bytes ``0x1b (ESC)`` and ``0x5d (])``. ``<ST>`` is
+either ``0x07 (BEL)`` or the two bytes ``0x1b (ESC)`` and ``0x5c (\\)``.
 
 ``key`` is a number from 0-255 to query or set the color values from the
 terminals ANSI color table, or one of the strings in the table below for
