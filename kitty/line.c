@@ -1042,6 +1042,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
     PyObject *t = NULL;
     RAII_PyObject(nl, PyUnicode_FromString("\n"));
     RAII_PyObject(cr, PyUnicode_FromString("\r"));
+    RAII_PyObject(hl, PyUnicode_FromString("\x1b]8;;\x1b\\"));
     RAII_PyObject(sgr_reset, PyUnicode_FromString("\x1b[m"));
     if (nl == NULL || cr == NULL || sgr_reset == NULL) return NULL;
     ANSILineState s = {.output_buf=ansibuf};
@@ -1066,15 +1067,14 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
             t = line_as_unicode(line, false, ansibuf);
         }
         APPEND_AND_DECREF(t);
+        if (ansibuf->active_hyperlink_id) {
+            ansibuf->active_hyperlink_id = 0;
+            APPEND(hl);
+        }
         if (insert_wrap_markers) APPEND(cr);
         need_newline = !line->cpu_cells[line->xnum-1].next_char_was_wrapped;
     }
     if (need_newline && add_trailing_newline) APPEND(nl);
-    if (ansibuf->active_hyperlink_id) {
-        ansibuf->active_hyperlink_id = 0;
-        t = PyUnicode_FromString("\x1b]8;;\x1b\\");
-        APPEND_AND_DECREF(t);
-    }
     Py_RETURN_NONE;
 #undef APPEND
 #undef APPEND_AND_DECREF
