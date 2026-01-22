@@ -2234,6 +2234,13 @@ class Window:
     def clear_selection(self) -> None:
         self.screen.clear_selection()
 
+    def scroll_fractional_lines(self, amt: float) -> bool | None:
+        ' Scroll fractionally, negative values are up and positive values are down '
+        if self.screen.is_main_linebuf():
+            self.screen.fractional_scroll(amt)
+            return None
+        return True
+
     @ac('sc', 'Scroll up by one line when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
     def scroll_line_up(self) -> bool | None:
         if self.screen.is_main_linebuf():

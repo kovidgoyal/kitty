@@ -5066,6 +5066,45 @@ screen_history_scroll(Screen *self, int amt, bool upwards) {
     return false;
 }
 
+static bool
+screen_fractional_scroll(Screen *self, double amt) {
+    if (amt == 0) return false;
+    index_type before_scrolled_by = self->scrolled_by;
+    double before_pixels = self->pixel_scroll_offset_y;
+    double integral_part, fractional_part = modf(amt, &integral_part);
+    int lines = (int)integral_part;
+    double pixels = fractional_part * self->cell_size.height;
+    if (amt > 0) {  // downwards
+        pixels = pixels > self->pixel_scroll_offset_y ? pixels - self->pixel_scroll_offset_y : 0;
+        self->pixel_scroll_offset_y = 0;
+        self->scrolled_by = self->scrolled_by > (unsigned)lines ? self->scrolled_by - lines : 0;
+        if (pixels > 0 && self->scrolled_by > 0) {
+            self->scrolled_by--; self->pixel_scroll_offset_y = self->cell_size.height - pixels;
+        }
+    } else {
+        self->pixel_scroll_offset_y -= pixels;  // pixels is negative
+        if (self->pixel_scroll_offset_y >= self->cell_size.height) {
+            self->pixel_scroll_offset_y = 0; self->scrolled_by++;
+        }
+        self->scrolled_by = MIN(self->scrolled_by - lines, self->historybuf->count);
+        if (self->scrolled_by >= self->historybuf->count) self->pixel_scroll_offset_y = 0;
+    }
+    if (self->scrolled_by != before_scrolled_by || self->pixel_scroll_offset_y != before_pixels) {
+        dirty_scroll(self);
+        return true;
+    }
+    return false;
+}
+
+static PyObject*
+fractional_scroll(Screen *self, PyObject *amt) {
+    double y;
+    if (PyFloat_Check(amt)) y = PyFloat_AS_DOUBLE(amt);
+    else if (PyLong_Check(amt)) y = PyLong_AsDouble(amt);
+    else { PyErr_SetString(PyExc_TypeError, "amt must be a float"); return NULL; }
+    return Py_NewRef(screen_fractional_scroll(self, y) ? Py_True : Py_False);
+}
+
 static PyObject*
 scroll(Screen *self, PyObject *args) {
     int amt, upwards;
@@ -5939,6 +5978,7 @@ static PyMethodDef methods[] = {
     MND(text_for_marked_url, METH_VARARGS)
     MND(is_rectangle_select, METH_NOARGS)
     MND(scroll, METH_VARARGS)
+    MND(fractional_scroll, METH_O)
     MND(scroll_to_prompt, METH_VARARGS)
     MND(set_last_visited_prompt, METH_VARARGS)
     MND(send_escape_code_to_child, METH_VARARGS)

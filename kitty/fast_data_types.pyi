@@ -1317,6 +1317,9 @@ class Screen:
     def scroll(self, amt: int, upwards: bool) -> bool:
         pass
 
+    def fractional_scroll(self, amt: float) -> bool:
+        pass
+
     def scroll_to_next_mark(self, mark: int = 0, backwards: bool = True) -> bool:
         pass
 
