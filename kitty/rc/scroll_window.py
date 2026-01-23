@@ -78,7 +78,8 @@ using this option means that you will not be notified of failures.
                             if not isinstance(amt, int) and not amt.is_integer():
                                 amt = round(window.screen.lines * amt)
                                 unit = 'line'
-                            func = window.scroll_page_up if amt < 0 else window.scroll_page_down
+                            direction = 'up' if amt < 0 else 'down'
+                            func = getattr(window, f'scroll_{unit}_{direction}')
                             for i in range(int(abs(amt))):
                                 func()
         return None
