@@ -213,6 +213,15 @@ IGNORED_DEPENDENCY_CVES = [
     'CVE-2025-13836', # DoS in http client reading from malicious server
     'CVE-2025-12084', # DoS in xml.dom.minidom unused in kitty
     'CVE-2025-13837', # DoS in plistlib reading plist. We only use plistlib for writing
+    # python stdlib all these are erroneously marked as fixed in python 3.15
+    # when it hasnt even been released. Sigh.
+    'CVE-2026-0865',
+    'CVE-2025-15282',
+    'CVE-2026-0672',
+    'CVE-2025-15366',
+    'CVE-2025-15367',
+    'CVE-2025-12781',
+    'CVE-2025-11468',
     # glib
     'CVE-2025-4056', # Only affects Windows, on which we dont run
     # github.com/nwaples/rardecode/v2
