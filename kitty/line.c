@@ -574,7 +574,7 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
         }
     }
     if (s->limit <= start_at) {
-        if (s->output_buf->active_hyperlink_id && !self->cpu_cells[0].hyperlink_id) write_hyperlink_to_ansi_buf(s, 0);
+        if (s->output_buf->active_hyperlink_id && start_at == 0 && !self->cpu_cells[0].hyperlink_id) write_hyperlink_to_ansi_buf(s, 0);
         return s->escape_code_written;
     }
 
