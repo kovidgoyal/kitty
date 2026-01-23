@@ -573,7 +573,10 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
             case OUTPUT_START: write_mark_to_ansi_buf(s, "C"); break;
         }
     }
-    if (s->limit <= start_at) return s->escape_code_written;
+    if (s->limit <= start_at) {
+        if (s->output_buf->active_hyperlink_id && !self->cpu_cells[0].hyperlink_id) write_hyperlink_to_ansi_buf(s, 0);
+        return s->escape_code_written;
+    }
 
     static const GPUCell blank_cell = { 0 };
     GPUCell *cell;
@@ -603,6 +606,8 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
         }
     }
     close_multicell(s);
+    if (s->output_buf->active_hyperlink_id && s->limit < self->xnum && !self->cpu_cells[s->limit].hyperlink_id)
+        write_hyperlink_to_ansi_buf(s, 0);
     return s->escape_code_written;
 #undef CMP_ATTRS
 #undef CMP
