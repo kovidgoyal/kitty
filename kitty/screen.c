@@ -4403,7 +4403,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
             found_prompt = true;
             // change direction to downwards to find command output
             direction = 1;
-        } else if (line && line->attrs.prompt_kind == OUTPUT_START && !range_line_is_continued(self, y1)) {
+        } else if (line && line->attrs.prompt_kind == OUTPUT_START) {
             found_output = true; start = y1;
             found_prompt = true;
             direction = 1;
@@ -4417,13 +4417,13 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
         // find upwards: find prompt after the output, and the first output
         while (y1 >= upward_limit) {
             line = checked_range_line(self, y1);
-            if (line && line->attrs.prompt_kind == PROMPT_START && !range_line_is_continued(self, y1)) {
+            if (line && line->attrs.prompt_kind == PROMPT_START) {
                 if (direction == 0) {
                     found_prompt = true;
                     break;
                 }
                 found_next_prompt = true; end = y1;
-            } else if (line && line->attrs.prompt_kind == OUTPUT_START && !range_line_is_continued(self, y1)) {
+            } else if (line && line->attrs.prompt_kind == OUTPUT_START) {
                 found_output = true; start = y1;
                 found_prompt = true;
                 break;
@@ -4449,12 +4449,12 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
                         break;
                     }
                     found_prompt = true;
-                } else if (found_prompt && !found_output) {
+                } else if (!found_output) {
                     // skip fetching wrapped prompt lines
                     while (range_line_is_continued(self, y2)) {
                         y2++;
                     }
-                } else if (found_output && !found_next_prompt) {
+                } else if (!found_next_prompt) {
                     found_next_prompt = true; end = y2;
                     break;
                 }
@@ -4532,7 +4532,7 @@ cmd_output(Screen *self, PyObject *args) {
             bool reached_upper_limit = false;
             while (!found && !reached_upper_limit) {
                 line = checked_range_line(self, y);
-                if (!line || (line->attrs.prompt_kind == OUTPUT_START && !range_line_is_continued(self, y))) {
+                if (!line || (line->attrs.prompt_kind == OUTPUT_START)) {
                     int start = line ? y : y + 1; reached_upper_limit = !line;
                     int y2 = start; unsigned int num_lines = 0;
                     bool found_content = false;
