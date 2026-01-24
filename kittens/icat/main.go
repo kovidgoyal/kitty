@@ -326,6 +326,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	pending := make([]*image_data, 0, num_of_items)
 
 	do_one := func(imgd *image_data) {
+		expecting_input_sequence_number++
 		if base_id != 0 {
 			imgd.image_id = base_id
 			base_id++
@@ -350,9 +351,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		num_of_items--
 		if imgd.input_sequence_number == expecting_input_sequence_number {
 			do_one(imgd)
-			expecting_input_sequence_number++
 		} else {
-			pending = append(pending, imgd)
 			index, _ := slices.BinarySearchFunc(pending, imgd.input_sequence_number, func(x *image_data, n int) int {
 				return x.input_sequence_number - n
 			})
@@ -360,7 +359,6 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		}
 		for len(pending) > 0 && pending[0].input_sequence_number == expecting_input_sequence_number {
 			do_one(pending[0])
-			expecting_input_sequence_number++
 			pending = pending[1:]
 		}
 	}
