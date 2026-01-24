@@ -363,7 +363,8 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 			pending = pending[1:]
 		}
 	}
-	if len(pending) > 0 {
+	for _, x := range pending {
+		do_one(x)
 	}
 	keep_going.Store(false)
 	if opts.Hold {
