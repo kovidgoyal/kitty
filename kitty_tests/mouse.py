@@ -261,6 +261,13 @@ class TestMouse(BaseTest):
         scroll(x=2.6, up=False)
         self.ae(sel(), '3')
         release()
+        # fractional scrolling
+        init()
+        s.fractional_scroll(-0.5)
+        press()
+        move(x=3.6, q='1234')
+        release(x=3.6)
+        self.ae(sel(), '1234')
 
         # extending selections
         init()

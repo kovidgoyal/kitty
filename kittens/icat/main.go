@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -256,7 +257,8 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		return 1, fmt.Errorf("The --place option can only be used with a single image, not %d", len(items))
 	}
 	files_channel = make(chan input_arg, len(items))
-	for _, ia := range items {
+	for i, ia := range items {
+		ia.index = i
 		files_channel <- ia
 	}
 	num_of_items = len(items)
@@ -320,8 +322,10 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		use_unicode_placeholder = true
 	}
 	base_id := uint32(opts.ImageId)
-	for num_of_items > 0 {
-		imgd := <-output_channel
+	expecting_input_sequence_number := 0
+	pending := make([]*image_data, 0, num_of_items)
+
+	do_one := func(imgd *image_data) {
 		if base_id != 0 {
 			imgd.image_id = base_id
 			base_id++
@@ -340,6 +344,26 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 				print_error("Failed to transmit \x1b[31m%s\x1b[39m: %s\r\n", imgd.source_name, imgd.err)
 			}
 		}
+	}
+
+	for num_of_items > 0 {
+		imgd := <-output_channel
+		if imgd.input_sequence_number == expecting_input_sequence_number {
+			do_one(imgd)
+			expecting_input_sequence_number++
+		} else {
+			pending = append(pending, imgd)
+			index, _ := slices.BinarySearchFunc(pending, imgd.input_sequence_number, func(x *image_data, n int) int {
+				return x.input_sequence_number - n
+			})
+			pending = slices.Insert(pending, index, imgd)
+		}
+		for len(pending) > 0 && pending[0].input_sequence_number == expecting_input_sequence_number {
+			do_one(pending[0])
+			pending = pending[1:]
+		}
+	}
+	if len(pending) > 0 {
 	}
 	keep_going.Store(false)
 	if opts.Hold {
