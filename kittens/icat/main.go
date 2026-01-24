@@ -360,6 +360,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		}
 		for len(pending) > 0 && pending[0].input_sequence_number == expecting_input_sequence_number {
 			do_one(pending[0])
+			expecting_input_sequence_number++
 			pending = pending[1:]
 		}
 	}
