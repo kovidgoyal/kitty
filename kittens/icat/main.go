@@ -335,7 +335,6 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 		}
 		imgd.use_unicode_placeholder = use_unicode_placeholder
 		imgd.passthrough_mode = passthrough_mode
-		num_of_items--
 		if imgd.err != nil {
 			print_error("Failed to process \x1b[31m%s\x1b[39m: %s\r\n", imgd.source_name, imgd.err)
 		} else {
@@ -348,6 +347,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 
 	for num_of_items > 0 {
 		imgd := <-output_channel
+		num_of_items--
 		if imgd.input_sequence_number == expecting_input_sequence_number {
 			do_one(imgd)
 			expecting_input_sequence_number++
