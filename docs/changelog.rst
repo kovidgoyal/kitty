@@ -202,6 +202,9 @@ Detailed list of changes
 
 - icat kitten: When catting multiple images display the images in input order (:iss:`9413`)
 
+- kitten @: Fix relative paths for --password-file being resolved relative to
+  CWD instead of the kitty config directory
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
