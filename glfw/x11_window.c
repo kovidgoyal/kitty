@@ -63,6 +63,9 @@ x11_scroll_stop_timer_callback(unsigned long long timer_id UNUSED, void *data UN
     if (w) {
         glfw_handle_scroll_event_for_momentum(
             w, &x11_momentum_scroll_state.last_event, true, x11_momentum_scroll_state.is_finger_based);
+    } else {
+        // Window no longer exists, cancel any ongoing momentum
+        glfw_cancel_momentum_scroll();
     }
     x11_momentum_scroll_state.window_id = 0;
 }
