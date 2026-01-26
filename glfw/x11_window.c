@@ -52,7 +52,6 @@
 static struct {
     unsigned long long timer_id;
     GLFWid window_id;
-    bool is_finger_based;
     GLFWScrollEvent last_event;
 } x11_momentum_scroll_state = {0};
 
@@ -61,13 +60,13 @@ x11_scroll_stop_timer_callback(unsigned long long timer_id UNUSED, void *data UN
     x11_momentum_scroll_state.timer_id = 0;
     _GLFWwindow *w = _glfwWindowForId(x11_momentum_scroll_state.window_id);
     if (w) {
-        glfw_handle_scroll_event_for_momentum(
-            w, &x11_momentum_scroll_state.last_event, true, x11_momentum_scroll_state.is_finger_based);
+        x11_momentum_scroll_state.last_event.y_offset = 0; x11_momentum_scroll_state.last_event.x_offset = 0;
+        x11_momentum_scroll_state.last_event.unscaled.x = 0; x11_momentum_scroll_state.last_event.unscaled.y = 0;
+        glfw_handle_scroll_event_for_momentum(w, &x11_momentum_scroll_state.last_event, true, true);
     } else {
         // Window no longer exists, cancel any ongoing momentum
         glfw_cancel_momentum_scroll();
     }
-    x11_momentum_scroll_state.window_id = 0;
 }
 
 static void
@@ -1375,16 +1374,16 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             if (d->is_highres && d->is_finger_based && type == GLFW_SCROLL_OFFEST_HIGHRES) {
                 // Reset the timer on each scroll event
                 x11_cancel_momentum_scroll_timer();
-                
+
                 // Store the event for later use when timer fires
                 x11_momentum_scroll_state.window_id = window->id;
-                x11_momentum_scroll_state.is_finger_based = true;
                 x11_momentum_scroll_state.last_event = ev;
-                
-                // Start timer (100ms after last scroll event)
+
+                // Start timer
                 x11_momentum_scroll_state.timer_id = glfwAddTimer(
-                    ms_to_monotonic_t(100), false, x11_scroll_stop_timer_callback, NULL, NULL);
-                
+                    ms_to_monotonic_t(momentum_scroll_gesture_detection_timeout_ms), false,
+                    x11_scroll_stop_timer_callback, NULL, NULL);
+
                 // Send the scroll event through momentum handler
                 glfw_handle_scroll_event_for_momentum(window, &ev, false, true);
             } else {
@@ -1613,16 +1612,18 @@ static void processEvent(XEvent *event)
         {
             const int mods = translateState(event->xbutton.state);
 
-            // Cancel momentum scrolling on any button press
-            x11_cancel_momentum_scroll_timer();
-            glfw_cancel_momentum_scroll();
+#define cancel_momentum() x11_cancel_momentum_scroll_timer(); glfw_cancel_momentum_scroll()
 
-            if (event->xbutton.button == Button1)
+            if (event->xbutton.button == Button1) {
+                cancel_momentum();
                 _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, mods);
-            else if (event->xbutton.button == Button2)
+            } else if (event->xbutton.button == Button2) {
+                cancel_momentum();
                 _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, mods);
-            else if (event->xbutton.button == Button3)
+            } else if (event->xbutton.button == Button3) {
+                cancel_momentum();
                 _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_RIGHT, GLFW_PRESS, mods);
+            }
 
             // Modern X provides scroll events as mouse button presses
             // Only use these if smooth scrolling is not available
@@ -1649,6 +1650,7 @@ static void processEvent(XEvent *event)
 
             else
             {
+                cancel_momentum();
                 // Additional buttons after 7 are treated as regular buttons
                 // We subtract 4 to fill the gap left by scroll input above
                 _glfwInputMouseClick(window,
@@ -1664,12 +1666,10 @@ static void processEvent(XEvent *event)
         {
             const int mods = translateState(event->xbutton.state);
 
-            // Cancel momentum scrolling on any button release
-            x11_cancel_momentum_scroll_timer();
-            glfw_cancel_momentum_scroll();
 
             if (event->xbutton.button == Button1)
             {
+                cancel_momentum();
                 _glfwInputMouseClick(window,
                                      GLFW_MOUSE_BUTTON_LEFT,
                                      GLFW_RELEASE,
@@ -1677,6 +1677,7 @@ static void processEvent(XEvent *event)
             }
             else if (event->xbutton.button == Button2)
             {
+                cancel_momentum();
                 _glfwInputMouseClick(window,
                                      GLFW_MOUSE_BUTTON_MIDDLE,
                                      GLFW_RELEASE,
@@ -1684,6 +1685,7 @@ static void processEvent(XEvent *event)
             }
             else if (event->xbutton.button == Button3)
             {
+                cancel_momentum();
                 _glfwInputMouseClick(window,
                                      GLFW_MOUSE_BUTTON_RIGHT,
                                      GLFW_RELEASE,
@@ -1691,6 +1693,7 @@ static void processEvent(XEvent *event)
             }
             else if (event->xbutton.button > Button7)
             {
+                cancel_momentum();
                 // Additional buttons after 7 are treated as regular buttons
                 // We subtract 4 to fill the gap left by scroll input above
                 _glfwInputMouseClick(window,
@@ -1700,6 +1703,7 @@ static void processEvent(XEvent *event)
             }
 
             return;
+#undef cancel_momentum
         }
 
         case EnterNotify:
