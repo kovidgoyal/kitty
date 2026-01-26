@@ -165,7 +165,7 @@ func edit_loop(data_to_send string, kill_if_signaled bool, on_data OnDataCallbac
 	return
 }
 
-func edit_in_kitty(path string, opts *Options, line_number int) (err error) {
+func edit_in_kitty(path string, opts *Options) (err error) {
 	read_file, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("Failed to open %s for reading with error: %w", path, err)
@@ -206,8 +206,6 @@ func edit_in_kitty(path string, opts *Options, line_number int) (err error) {
 		return fmt.Errorf("Failed to get the current working directory with error: %w", err)
 	}
 	add_encoded("cwd", cwd)
-	add_encoded("file_spec", path)
-	add_encoded("line_number", strconv.Itoa(line_number))
 	for _, arg := range os.Args[2:] {
 		add_encoded("a", arg)
 	}
@@ -238,7 +236,7 @@ type Options struct {
 func EntryPoint(parent *cli.Command) *cli.Command {
 	sc := parent.AddSubCommand(&cli.Command{
 		Name:             "edit-in-kitty",
-		Usage:            "[options] file-to-edit",
+		Usage:            "[options] [+lnum] file-to-edit",
 		ShortDescription: "Edit a file in a kitty overlay window",
 		HelpText: "Edit the specified file in a kitty overlay window. Works over SSH as well.\n\n" +
 			"For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#edit-file",
@@ -247,28 +245,27 @@ func EntryPoint(parent *cli.Command) *cli.Command {
 				fmt.Fprintln(os.Stderr, "Usage:", cmd.Usage)
 				return 1, fmt.Errorf("No file to edit specified.")
 			}
-			lineNumber := 0
-			fileArgs := []string{}
-			for _, arg := range args {
-				if strings.HasPrefix(arg, "+") {
-					ln, err := strconv.Atoi(arg[1:])
-					if err == nil {
-						lineNumber = ln
-						continue
-					}
+
+			var file_path string
+			if len(args) == 1 {
+				file_path = args[0]
+			} else if len(args) == 2 && strings.HasPrefix(args[0], "+") {
+				var lnum string
+				lnum, file_path = args[0][1:], args[1]
+				if _, err := strconv.Atoi(lnum); err != nil {
+					return 1, fmt.Errorf("Invalid line number %s", lnum)
 				}
-				fileArgs = append(fileArgs, arg)
-			}
-			if len(fileArgs) != 1 {
+			} else {
 				fmt.Fprintln(os.Stderr, "Usage:", cmd.Usage)
-				return 1, fmt.Errorf("Only one file to edit must be specified, optionally with a line number")
+				return 1, fmt.Errorf("Only one file to edit and optionally a line number must be specified")
 			}
+
 			var opts Options
 			err = cmd.GetOptionValues(&opts)
 			if err != nil {
 				return 1, err
 			}
-			err = edit_in_kitty(fileArgs[0], &opts, lineNumber)
+			err = edit_in_kitty(file_path, &opts)
 			return 0, err
 		},
 	})
