@@ -272,12 +272,12 @@ string_capabilities = {
     'smacs': r'\E(0',
     'rmacs': r'\E(B',
     # Special keys
-    'khlp': r'',
-    'kund': r'',
-    'ka1': r'',
-    'ka3': r'',
-    'kc1': r'',
-    'kc3': r'',
+    # 'khlp': r'',
+    # 'kund': r'',
+    # 'ka1': r'',
+    # 'ka3': r'',
+    # 'kc1': r'',
+    # 'kc3': r'',
     # Set RGB foreground color (non-standard used by neovim)
     'setrgbf': r'\E[38:2:%p1%d:%p2%d:%p3%dm',
     # Set RGB background color (non-standard used by neovim)
