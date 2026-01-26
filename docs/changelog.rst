@@ -205,6 +205,12 @@ Detailed list of changes
 - kitten @: Fix relative paths for --password-file being resolved relative to
   CWD instead of the kitty config directory
 
+- kitten choose-files: Add a new binding of :kbd:`Alt+Enter` to modify the name
+  of an existing file when choosing a save file name (:iss:`9387`)
+
+- kitten choose-files: Fix TAB completion in the choose save file name prompt
+  not working with respect to the current working directory (:iss:`9387`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
