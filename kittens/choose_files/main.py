@@ -133,6 +133,13 @@ When choosing existing directories, will accept the directory whoose
 contents are being currently displayed as the choice.
 Does not work when selecting files to open rather than to save.
 ''')
+map('Modify file name', 'modifyname alt+enter modifyname', long_text='''
+Modify the name of an existing file and select it for saving.
+Useful when specifying a file or directory name for saving that does not yet exist,
+but is based on an existing file name.
+Does not work when selecting files to open rather than to save.
+''')
+
 
 map('Next result', 'next_result down next 1')
 map('Previous result', 'prev_result up next -1')

@@ -479,6 +479,26 @@ func (h *Handler) switch_to_save_file_name_mode() error {
 	if h.state.SearchText() != "" {
 		name = h.state.SearchText()
 	}
+	if name == "" {
+		name = h.current_abspath()
+		if name != "" {
+			if r, err := filepath.Rel(h.state.CurrentDir(), name); err == nil {
+				name = r
+			}
+		}
+	}
+	h.initialize_save_file_name(name)
+	return h.draw_screen()
+}
+
+func (h *Handler) switch_to_save_file_name_mode_based_on_existing() error {
+	name := h.current_abspath()
+	if name == "" {
+		return h.switch_to_save_file_name_mode()
+	}
+	if r, err := filepath.Rel(h.state.CurrentDir(), name); err == nil {
+		name = r
+	}
 	h.initialize_save_file_name(name)
 	return h.draw_screen()
 }
@@ -572,6 +592,12 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 			h.lp.Beep()
 		} else {
 			return h.switch_to_save_file_name_mode()
+		}
+	case "modifyname":
+		if h.state.mode.CanSelectNonExistent() {
+			return h.switch_to_save_file_name_mode_based_on_existing()
+		} else {
+			h.lp.Beep()
 		}
 	case "toggle":
 		switch args {
