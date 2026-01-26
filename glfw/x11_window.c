@@ -73,6 +73,7 @@ x11_cancel_momentum_scroll_timer(void) {
         glfwRemoveTimer(x11_momentum_scroll_state.timer_id);
         x11_momentum_scroll_state.timer_id = 0;
     }
+    x11_momentum_scroll_state.window_id = 0;
 }
 
 // Additional mouse button names for XButtonEvent
