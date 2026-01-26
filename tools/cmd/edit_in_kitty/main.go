@@ -236,7 +236,7 @@ type Options struct {
 func EntryPoint(parent *cli.Command) *cli.Command {
 	sc := parent.AddSubCommand(&cli.Command{
 		Name:             "edit-in-kitty",
-		Usage:            "[options] file-to-edit",
+		Usage:            "[options] [+lnum] file-to-edit",
 		ShortDescription: "Edit a file in a kitty overlay window",
 		HelpText: "Edit the specified file in a kitty overlay window. Works over SSH as well.\n\n" +
 			"For usage instructions see: https://sw.kovidgoyal.net/kitty/shell-integration/#edit-file",
@@ -245,16 +245,27 @@ func EntryPoint(parent *cli.Command) *cli.Command {
 				fmt.Fprintln(os.Stderr, "Usage:", cmd.Usage)
 				return 1, fmt.Errorf("No file to edit specified.")
 			}
-			if len(args) != 1 {
+
+			var file_path string
+			if len(args) == 1 {
+				file_path = args[0]
+			} else if len(args) == 2 && strings.HasPrefix(args[0], "+") {
+				var lnum string
+				lnum, file_path = args[0][1:], args[1]
+				if _, err := strconv.Atoi(lnum); err != nil {
+					return 1, fmt.Errorf("Invalid line number %s", lnum)
+				}
+			} else {
 				fmt.Fprintln(os.Stderr, "Usage:", cmd.Usage)
-				return 1, fmt.Errorf("Only one file to edit must be specified")
+				return 1, fmt.Errorf("Only one file to edit and optionally a line number must be specified")
 			}
+
 			var opts Options
 			err = cmd.GetOptionValues(&opts)
 			if err != nil {
 				return 1, err
 			}
-			err = edit_in_kitty(args[0], &opts)
+			err = edit_in_kitty(file_path, &opts)
 			return 0, err
 		},
 	})
