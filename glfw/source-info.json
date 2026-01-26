@@ -169,6 +169,7 @@
       "linux_joystick.c",
       "null_joystick.c",
       "linux_desktop_settings.c",
+      "momentum-scroll.c",
       "linux_notify.c"
     ]
   }

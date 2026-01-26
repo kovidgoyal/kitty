@@ -48,6 +48,37 @@
 #define _NET_WM_STATE_ADD           1
 #define _NET_WM_STATE_TOGGLE        2
 
+// X11 momentum scrolling timer state
+static struct {
+    unsigned long long timer_id;
+    GLFWid window_id;
+    bool is_finger_based;
+    GLFWScrollEvent last_event;
+} x11_momentum_scroll_state = {0};
+
+static void
+x11_scroll_stop_timer_callback(unsigned long long timer_id UNUSED, void *data UNUSED) {
+    x11_momentum_scroll_state.timer_id = 0;
+    _GLFWwindow *w = _glfwWindowForId(x11_momentum_scroll_state.window_id);
+    if (w) {
+        glfw_handle_scroll_event_for_momentum(
+            w, &x11_momentum_scroll_state.last_event, true, x11_momentum_scroll_state.is_finger_based);
+    } else {
+        // Window no longer exists, cancel any ongoing momentum
+        glfw_cancel_momentum_scroll();
+    }
+    x11_momentum_scroll_state.window_id = 0;
+}
+
+static void
+x11_cancel_momentum_scroll_timer(void) {
+    if (x11_momentum_scroll_state.timer_id) {
+        glfwRemoveTimer(x11_momentum_scroll_state.timer_id);
+        x11_momentum_scroll_state.timer_id = 0;
+    }
+    x11_momentum_scroll_state.window_id = 0;
+}
+
 // Additional mouse button names for XButtonEvent
 #define Button6            6
 #define Button7            7
@@ -1332,16 +1363,41 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             // Get keyboard modifiers
             int mods = translateState(de->mods.effective);
             // Scale offsets by content scale
-            _glfwInputScroll(window, &(GLFWScrollEvent){
+            GLFWScrollEvent ev = {
                 .keyboard_modifiers = mods,
                 .x_offset = xOffset * (type == GLFW_SCROLL_OFFEST_HIGHRES ? _glfw.x11.contentScaleX : 1),
                 .y_offset = yOffset * (type == GLFW_SCROLL_OFFEST_HIGHRES ? _glfw.x11.contentScaleY : 1),
                 .unscaled = {.x = xOffset, .y = yOffset},
                 .offset_type = type,
-            });
+            };
+
+            // For high-resolution, finger-based scrolling, use timer-based momentum scrolling
+            if (d->is_highres && d->is_finger_based && type == GLFW_SCROLL_OFFEST_HIGHRES) {
+                // Reset the timer on each scroll event
+                x11_cancel_momentum_scroll_timer();
+                
+                // Store the event for later use when timer fires
+                x11_momentum_scroll_state.window_id = window->id;
+                x11_momentum_scroll_state.is_finger_based = true;
+                x11_momentum_scroll_state.last_event = ev;
+                
+                // Start timer (100ms after last scroll event)
+                x11_momentum_scroll_state.timer_id = glfwAddTimer(
+                    ms_to_monotonic_t(100), false, x11_scroll_stop_timer_callback, NULL, NULL);
+                
+                // Send the scroll event through momentum handler
+                glfw_handle_scroll_event_for_momentum(window, &ev, false, true);
+            } else {
+                // Regular mouse wheel scrolling - no momentum
+                _glfwInputScroll(window, &ev);
+            }
         }
     }
-    if (!scroll_valuator_found) handle_mouse_move_event(window, (int)de->event_x, (int)de->event_y);
+    if (!scroll_valuator_found) {
+        x11_cancel_momentum_scroll_timer();
+        glfw_cancel_momentum_scroll();
+        handle_mouse_move_event(window, (int)de->event_x, (int)de->event_y);
+    }
 }
 
 
@@ -1506,6 +1562,8 @@ static void processEvent(XEvent *event)
         case KeyPress:
         {
             UPDATE_KEYMAP_IF_NEEDED;
+            x11_cancel_momentum_scroll_timer();
+            glfw_cancel_momentum_scroll();
             glfw_xkb_handle_key_event(window, &_glfw.x11.xkb, event->xkey.keycode, GLFW_PRESS);
             return;
         }
@@ -1513,6 +1571,8 @@ static void processEvent(XEvent *event)
         case KeyRelease:
         {
             UPDATE_KEYMAP_IF_NEEDED;
+            x11_cancel_momentum_scroll_timer();
+            glfw_cancel_momentum_scroll();
             if (!_glfw.x11.xkb.detectable)
             {
                 // HACK: Key repeat events will arrive as KeyRelease/KeyPress
@@ -1552,6 +1612,10 @@ static void processEvent(XEvent *event)
         case ButtonPress:
         {
             const int mods = translateState(event->xbutton.state);
+
+            // Cancel momentum scrolling on any button press
+            x11_cancel_momentum_scroll_timer();
+            glfw_cancel_momentum_scroll();
 
             if (event->xbutton.button == Button1)
                 _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, mods);
@@ -1599,6 +1663,10 @@ static void processEvent(XEvent *event)
         case ButtonRelease:
         {
             const int mods = translateState(event->xbutton.state);
+
+            // Cancel momentum scrolling on any button release
+            x11_cancel_momentum_scroll_timer();
+            glfw_cancel_momentum_scroll();
 
             if (event->xbutton.button == Button1)
             {
@@ -1661,6 +1729,8 @@ static void processEvent(XEvent *event)
 
         case MotionNotify:
         {
+            x11_cancel_momentum_scroll_timer();
+            glfw_cancel_momentum_scroll();
             handle_mouse_move_event(window, event->xmotion.x, event->xmotion.y);
             return;
         }
