@@ -899,8 +899,19 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	handler := Handler{lp: lp, err_chan: make(chan error, 8), msg_printer: message.NewPrinter(utils.LanguageTag()), spinner: tui.NewSpinner("dots")}
 	defer handler.graphics_handler.Cleanup()
 	defer calibre_cleanup()
+	getcwd := func() string {
+		ans := handler.state.CurrentDir()
+		if ans == "" {
+			var err error
+			ans, err = os.Getwd()
+			if err != nil {
+				ans = "."
+			}
+		}
+		return ans
+	}
 	handler.rl = readline.New(lp, readline.RlInit{
-		Prompt: "> ", ContinuationPrompt: ". ", Completer: FilePromptCompleter(handler.state.CurrentDir),
+		Prompt: "> ", ContinuationPrompt: ". ", Completer: FilePromptCompleter(getcwd),
 	})
 	if err = handler.set_state_from_config(conf, opts); err != nil {
 		return 1, err
