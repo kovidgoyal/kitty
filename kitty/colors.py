@@ -376,7 +376,7 @@ def generate_256_palette(base8: list[Rgb]) -> list[Rgb]:
     ) -> float:
         t = shade / (num_shades - 1)
         contrast = contrast_ratio(lerp_color(t, base8[0], color), base8[0])
-        return (contrast / target_contrast) ** adjustment_intensity
+        return float((contrast / target_contrast) ** adjustment_intensity)
 
     NUM_GREY_SHADES = 26 # (BG, 24 shade greyscale ramp, FG)
     NUM_RGB_SHADES = 6
