@@ -1848,6 +1848,14 @@ opt('selection_background', '#fffacd',
     option_type='to_color_or_none',
     )
 
+opt('generate_256_palette', True,
+    option_type='to_bool',
+    long_text='''
+Whether to automatically generate colors 16-255 from your base16 palette
+(colors 0-15). This option is :code:`yes` until it is either disabled or until
+any color in the 16-255 range is defined.
+'''
+    )
 
 # colors.table {{{
 agr('colors.table', 'The color table', '''

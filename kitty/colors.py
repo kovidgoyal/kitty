@@ -253,12 +253,18 @@ def patch_colors(
     background_image_options: BackgroundImageOptions | None = None
 ) -> None:
     boss = get_boss()
+    opts = get_options()
+    has_256_color = any(key.startswith('color') and key[5:].isdigit()
+        and int(key[5:]) >= 16 for key in spec)
+    if configured and opts.generate_256_palette:
+        opts.generate_256_palette = not has_256_color
+    if opts.generate_256_palette and not has_256_color:
+        generate_256_palette_for_spec(spec, opts)
     if windows is None:
         windows = tuple(boss.all_windows)
     bg_colors_before = {w.id: w.screen.color_profile.default_bg for w in windows}
     profiles = tuple(w.screen.color_profile for w in windows if w)
     patch_color_profiles(spec, transparent_background_colors, profiles, configured)
-    opts = get_options()
     if configured:
         patch_options_with_color_spec(opts, spec, transparent_background_colors, background_image_options)
     os_window_ids = set()
@@ -287,3 +293,118 @@ def patch_colors(
             if notify_bg and w.screen.color_profile.default_bg != bg_colors_before.get(w.id):
                 boss.default_bg_changed_for(w.id)
             w.refresh()
+
+Rgb = tuple[int, int, int]
+RgbFloat = tuple[float, float, float]
+
+def color_to_rgb(color: Color) -> Rgb:
+    return (color.r, color.g, color.b)
+
+def int_to_rgb(x: int) -> Rgb:
+    return (x >> 16) & 255, (x >> 8) & 255, x & 255
+
+def rgb_to_int(rgb: Rgb) -> int:
+    return (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
+
+def rgb_float_to_rgb(rgb: RgbFloat) -> Rgb:
+    return (
+        int(round(rgb[0])),
+        int(round(rgb[1])),
+        int(round(rgb[2]))
+    )
+
+def generate_256_palette_for_spec(spec: ColorsSpec, opts: Options) -> None:
+    bg = spec.get('background')
+    fg = spec.get('foreground')
+    color1 = spec.get('color1', None)
+    color2 = spec.get('color2', None)
+    color3 = spec.get('color3', None)
+    color4 = spec.get('color4', None)
+    color5 = spec.get('color5', None)
+    color6 = spec.get('color6', None)
+    color_table = opts.color_table
+    for i, rgb in enumerate(generate_256_palette([
+        int_to_rgb(bg) if bg is not None else color_to_rgb(opts.background),
+        int_to_rgb(color1 if color1 is not None else color_table[1]),
+        int_to_rgb(color2 if color2 is not None else color_table[2]),
+        int_to_rgb(color3 if color3 is not None else color_table[3]),
+        int_to_rgb(color4 if color4 is not None else color_table[4]),
+        int_to_rgb(color5 if color5 is not None else color_table[5]),
+        int_to_rgb(color6 if color6 is not None else color_table[6]),
+        int_to_rgb(fg) if fg is not None else color_to_rgb(opts.foreground),
+    ]), 16):
+        spec[f'color{i}'] = rgb_to_int(rgb)
+
+def generate_256_palette_opts(opts: Options) -> None:
+    color_table = opts.color_table
+    for i, rgb in enumerate(generate_256_palette([
+        color_to_rgb(opts.background),
+        int_to_rgb(color_table[1]),
+        int_to_rgb(color_table[2]),
+        int_to_rgb(color_table[3]),
+        int_to_rgb(color_table[4]),
+        int_to_rgb(color_table[5]),
+        int_to_rgb(color_table[6]),
+        color_to_rgb(opts.foreground)
+    ]), 16):
+        color_table[i] = rgb_to_int(rgb)
+
+def generate_256_palette(base8: list[Rgb]) -> list[Rgb]:
+    def luminance(rgb: Rgb | RgbFloat) -> float:
+        r, g, b = (
+            c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+            for c in (c / 255 for c in rgb)
+        )
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+    def contrast_ratio(rgb1: Rgb | RgbFloat, rgb2: Rgb | RgbFloat) -> float:
+        lum1 = luminance(rgb1)
+        lum2 = luminance(rgb2)
+        return (max(lum1, lum2) + 0.05) / (min(lum1, lum2) + 0.05)
+
+    def lerp_color(t, c1: Rgb | RgbFloat, c2: Rgb | RgbFloat) -> RgbFloat:
+        return (
+            (1 - t) * c1[0] + t * c2[0],
+            (1 - t) * c1[1] + t * c2[1],
+            (1 - t) * c1[2] + t * c2[2],
+        )
+
+    def calc_contrast_adjust(color: Rgb, shade: int, num_shades: int,
+                             target_contrast=1.05, adjustment_intensity=1.5):
+        t = shade / (num_shades - 1)
+        contrast = contrast_ratio(lerp_color(t, base8[0], color), base8[0])
+        return (contrast / target_contrast) ** adjustment_intensity
+
+    NUM_GREY_SHADES = 26 # (BG, 24 shade greyscale ramp, FG)
+    NUM_RGB_SHADES = 6
+
+    r_contrast_adjust = calc_contrast_adjust(base8[1], 1, NUM_RGB_SHADES)
+    g_contrast_adjust = calc_contrast_adjust(base8[2], 1, NUM_RGB_SHADES)
+    b_contrast_adjust = calc_contrast_adjust(base8[4], 1, NUM_RGB_SHADES)
+    grey_contrast_adjust = calc_contrast_adjust(base8[7], 2, NUM_GREY_SHADES)
+
+    r_norms = [(r / 5) ** r_contrast_adjust for r in range(6)]
+    g_norms = [(g / 5) ** g_contrast_adjust for g in range(6)]
+    b_norms = [(b / 5) ** b_contrast_adjust for b in range(6)]
+
+    palette: list[Rgb] = []
+
+    for r_norm in r_norms:
+        c0 = lerp_color(r_norm, base8[0], base8[1])
+        c1 = lerp_color(r_norm, base8[2], base8[3])
+        c2 = lerp_color(r_norm, base8[4], base8[5])
+        c3 = lerp_color(r_norm, base8[6], base8[7])
+        for g_norm in g_norms:
+            c4 = lerp_color(g_norm, c0, c1)
+            c5 = lerp_color(g_norm, c2, c3)
+            for b_norm in b_norms:
+                c6 = lerp_color(b_norm, c4, c5)
+                palette.append(rgb_float_to_rgb(c6))
+
+
+    for i in range(24):
+        t = ((i + 1) / 25) ** grey_contrast_adjust
+        rgb = lerp_color(t, base8[0], base8[7])
+        palette.append(rgb_float_to_rgb(rgb))
+
+    return palette
