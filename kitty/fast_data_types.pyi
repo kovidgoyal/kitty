@@ -14,6 +14,7 @@ from kitty.typing_compat import EdgeLiteral, NotRequired, ReadableBuffer, Writea
 
 # Constants {{{
 SCALE_BITS: int
+NULL_COLOR_VALUE: int
 WIDTH_BITS: int
 SUBSCALE_BITS: int
 COLOR_IS_SPECIAL: int

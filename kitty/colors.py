@@ -253,12 +253,12 @@ def patch_colors(
     background_image_options: BackgroundImageOptions | None = None
 ) -> None:
     boss = get_boss()
+    opts = get_options()
     if windows is None:
         windows = tuple(boss.all_windows)
     bg_colors_before = {w.id: w.screen.color_profile.default_bg for w in windows}
     profiles = tuple(w.screen.color_profile for w in windows if w)
     patch_color_profiles(spec, transparent_background_colors, profiles, configured)
-    opts = get_options()
     if configured:
         patch_options_with_color_spec(opts, spec, transparent_background_colors, background_image_options)
     os_window_ids = set()

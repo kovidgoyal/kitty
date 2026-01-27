@@ -260,7 +260,7 @@ typedef struct {
     PyObject_HEAD
 
     bool dirty;
-    uint32_t color_table[256], orig_color_table[256];
+    color_type color_table[256], orig_color_table[256];
     TransparentDynamicColor configured_transparent_colors[8], overriden_transparent_colors[8];
     struct { DynamicColors dynamic_colors; uint32_t color_table[256]; TransparentDynamicColor transparent_colors[8]; } *color_stack;
     unsigned int color_stack_idx, color_stack_sz;

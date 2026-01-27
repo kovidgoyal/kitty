@@ -151,6 +151,7 @@ typedef struct Options {
     float box_drawing_scale[4];
     double momentum_scroll;
     double window_drag_tolerance;
+    bool generate_256_palette;
 } Options;
 
 typedef struct WindowLogoRenderData {

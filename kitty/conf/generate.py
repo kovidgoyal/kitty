@@ -10,6 +10,7 @@ from collections.abc import Callable, Iterator
 from typing import Any, get_type_hints
 
 from kitty.conf.types import Definition, MultiOption, Option, ParserFuncType, unset
+from kitty.fast_data_types import NULL_COLOR_VALUE
 from kitty.options.utils import parse_options_for_map
 from kitty.simple_cli_definitions import serialize_as_go_string
 from kitty.types import _T
@@ -116,7 +117,10 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
             t(f'        ans[{option.name!r}] = {func.__name__}(val)')
             tc_imports.add((func.__module__, func.__name__))
             cnum = int(option.name[5:])
-            color_table[cnum] = f'0x{func(option.defval_as_string).__int__():06x}'
+            if option.defval_as_string == 'none':
+                color_table[cnum] = f'0x{NULL_COLOR_VALUE:x}'
+            else:
+                color_table[cnum] = f'0x{func(option.defval_as_string).__int__():06x}'
             continue
         else:
             func, typ = option_type_data(option)
@@ -267,6 +271,8 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
         a('                k = int(q)')
         a('                if 0 <= k <= 255:')
         a('                    x = self.color_table[k]')
+        a(f'                    if x == 0x{NULL_COLOR_VALUE:x}:')
+        a('                        return None')
         a('                    return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)')
         a('        raise AttributeError(key)')
         a('')
@@ -276,7 +282,10 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
         a('            if q.isdigit():')
         a('                k = int(q)')
         a('                if 0 <= k <= 255:')
-        a('                    self.color_table[k] = int(val)')
+        a('                    if val is None:')
+        a(f'                        self.color_table[k] = 0x{NULL_COLOR_VALUE:x}')
+        a('                    else:')
+        a('                        self.color_table[k] = int(val)')
         a('                    return')
         a('        object.__setattr__(self, key, val)')
 

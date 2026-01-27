@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-from kitty.config import defaults
 from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor
 from kitty.marks import marker_from_function, marker_from_regex, marker_from_text
 from kitty.window import pagerhist
@@ -1594,26 +1593,30 @@ class TestScreen(BaseTest):
         t('=fleur', 'move')
 
     def test_color_profile(self):
-        c = ColorProfile(defaults)
+        opts = self.set_options({'palette_generate': 'fixed'})
+        c = ColorProfile(opts)
         for i in range(8):
-            col = getattr(defaults, f'color{i}')
+            col = getattr(opts, f'color{i}')
             self.ae(c.as_color(i << 8 | 1), col)
+        for i in range(16, 256):
+            self.assertIsNone(getattr(opts, f'color{i}'))
         self.ae(c.as_color(255 << 8 | 1), Color(0xee, 0xee, 0xee))
         s = self.create_screen()
-        s.color_profile.reload_from_opts(defaults)
+        s.color_profile.reload_from_opts(opts)
         def q(send, expected=None):
             s.callbacks.clear()
             parse_bytes(s, b'\x1b]21;' + ';'.join(f'{k}={v}' for k, v in send.items()).encode() + b'\a')
             self.ae(s.callbacks.color_control_responses, [expected] if expected else [])
         q({k: '?' for k in 'background foreground 213 unknown'.split()}, {
-            'background': defaults.background, 'foreground': defaults.foreground, '213': defaults.color213, 'unknown': '?'})
+            'background': opts.background, 'foreground': opts.foreground,
+            '213': Color(255, 135, 255), 'unknown': '?'})
         q({'background':'aquamarine'})
         q({'background':'?', 'selection_background': '?'}, {
             'background': Color.parse_color('Aquamarine'), 'selection_background': s.color_profile.highlight_bg})
         q({'selection_background': ''})
         self.assertIsNone(s.color_profile.highlight_bg)
         q({'selection_background': '?'}, {'selection_background': ''})
-        s.color_profile.reload_from_opts(defaults)
+        s.color_profile.reload_from_opts(opts)
         q({'transparent_background_color9': '?'}, {'transparent_background_color9': '?'})
         q({'transparent_background_color2': '?'}, {'transparent_background_color2': ''})
         q({'transparent_background_color2': 'red@0.5'})
