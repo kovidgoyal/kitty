@@ -175,8 +175,8 @@ def load_config(*paths: str, overrides: Iterable[str] | None = None, accumulate_
     opts = Options(opts_dict)
 
     if opts.generate_256_palette:
-        from .colors import generate_256_palette_opts
-        generate_256_palette_opts(opts)
+        from .colors import generate_256_palette_for_opts
+        generate_256_palette_for_opts(opts)
 
     opts.alias_map = build_action_aliases(opts.kitten_alias, 'kitten')
     opts.alias_map.update(build_action_aliases(opts.action_alias))

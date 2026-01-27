@@ -335,7 +335,7 @@ def generate_256_palette_for_spec(spec: ColorsSpec, opts: Options) -> None:
     ]), 16):
         spec[f'color{i}'] = rgb_to_int(rgb)
 
-def generate_256_palette_opts(opts: Options) -> None:
+def generate_256_palette_for_opts(opts: Options) -> None:
     color_table = opts.color_table
     for i, rgb in enumerate(generate_256_palette([
         color_to_rgb(opts.background),
