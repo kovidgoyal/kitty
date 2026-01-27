@@ -371,7 +371,7 @@ def generate_256_palette(base8: list[Rgb]) -> list[Rgb]:
 
     def calc_contrast_adjust(
         color: Rgb, shade: int, num_shades: int,
-        Target_contrast: float = 1.05,
+        target_contrast: float = 1.05,
         adjustment_intensity: float = 1.5
     ) -> float:
         t = shade / (num_shades - 1)
