@@ -362,15 +362,18 @@ def generate_256_palette(base8: list[Rgb]) -> list[Rgb]:
         lum2 = luminance(rgb2)
         return (max(lum1, lum2) + 0.05) / (min(lum1, lum2) + 0.05)
 
-    def lerp_color(t, c1: Rgb | RgbFloat, c2: Rgb | RgbFloat) -> RgbFloat:
+    def lerp_color(t: float, c1: Rgb | RgbFloat, c2: Rgb | RgbFloat) -> RgbFloat:
         return (
             (1 - t) * c1[0] + t * c2[0],
             (1 - t) * c1[1] + t * c2[1],
             (1 - t) * c1[2] + t * c2[2],
         )
 
-    def calc_contrast_adjust(color: Rgb, shade: int, num_shades: int,
-                             target_contrast=1.05, adjustment_intensity=1.5):
+    def calc_contrast_adjust(
+        color: Rgb, shade: int, num_shades: int,
+        Target_contrast: float = 1.05,
+        adjustment_intensity: float = 1.5
+    ) -> float:
         t = shade / (num_shades - 1)
         contrast = contrast_ratio(lerp_color(t, base8[0], color), base8[0])
         return (contrast / target_contrast) ** adjustment_intensity
