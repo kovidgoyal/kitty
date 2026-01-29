@@ -116,6 +116,8 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
             tc_imports.add((func.__module__, func.__name__))
             cnum = int(option.name[5:])
             color_table[cnum] = f'0x{func(option.defval_as_string).__int__():06x}'
+            if cnum >= 16:
+                t('        ans[\'generate_256_palette\'] = False')
             continue
         else:
             func, typ = option_type_data(option)
