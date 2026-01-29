@@ -591,6 +591,7 @@ set_os_window_visibility(OSWindow *w, int set_visible, bool move_to_active_scree
     if (set_visible) {
         glfwShowWindow(w->handle, move_to_active_screen);
         w->needs_render = true;
+        w->render_state = RENDER_FRAME_NOT_REQUESTED;
         w->keep_rendering_till_swap = 256;  // try this many times
         request_tick_callback();
     } else glfwHideWindow(w->handle);
