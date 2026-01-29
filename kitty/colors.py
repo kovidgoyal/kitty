@@ -371,7 +371,7 @@ def generate_256_palette(base8: list[Rgb]) -> list[Rgb]:
 
     def calc_contrast_adjust(
         color: Rgb, shade: int, num_shades: int,
-        target_contrast: float = 1.05,
+        target_contrast: float,
         adjustment_intensity: float = 1.5
     ) -> float:
         t = shade / (num_shades - 1)
@@ -381,10 +381,10 @@ def generate_256_palette(base8: list[Rgb]) -> list[Rgb]:
     NUM_GREY_SHADES = 26 # (BG, 24 shade greyscale ramp, FG)
     NUM_RGB_SHADES = 6
 
-    r_contrast_adjust = calc_contrast_adjust(base8[1], 1, NUM_RGB_SHADES)
-    g_contrast_adjust = calc_contrast_adjust(base8[2], 1, NUM_RGB_SHADES)
-    b_contrast_adjust = calc_contrast_adjust(base8[4], 1, NUM_RGB_SHADES)
-    grey_contrast_adjust = calc_contrast_adjust(base8[7], 2, NUM_GREY_SHADES)
+    r_contrast_adjust = calc_contrast_adjust(base8[1], 1, NUM_RGB_SHADES, 1.25)
+    g_contrast_adjust = calc_contrast_adjust(base8[2], 1, NUM_RGB_SHADES, 1.25)
+    b_contrast_adjust = calc_contrast_adjust(base8[4], 1, NUM_RGB_SHADES, 1.25)
+    grey_contrast_adjust = calc_contrast_adjust(base8[7], 2, NUM_GREY_SHADES, 1.10)
 
     r_norms = [(r / 5) ** r_contrast_adjust for r in range(6)]
     g_norms = [(g / 5) ** g_contrast_adjust for g in range(6)]
