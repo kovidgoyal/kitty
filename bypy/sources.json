@@ -30,10 +30,10 @@
     },
 
     {
-        "name": "openssl 3.5.4",
+        "name": "openssl 3.5.5",
         "unix": {
             "file_extension": "tar.gz",
-            "hash": "sha256:967311f84955316969bdb1d8d4b983718ef42338639c621ec4c34fddef355e99",
+            "hash": "sha256:b28c91532a8b65a1f983b4c28b7488174e4a01008e29ce8e69bd789f28bc2a89",
             "urls": ["https://www.openssl.org/source/{filename}"]
         }
     },
