@@ -928,6 +928,12 @@ def add_builtin_fonts(args: Options) -> None:
                 if os.path.exists(q):
                     font_file = q
                     break
+                for root, _, files in os.walk(candidate, onerror=lambda _: None):
+                    if filename in files:
+                        font_file = os.path.join(root, filename)
+                        break
+                if font_file:
+                    break
         elif is_windows:
             for candidate in (
                     os.path.expandvars(r'%userprofile%\AppData\Local\Microsoft\Windows\Fonts'),
