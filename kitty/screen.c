@@ -4922,14 +4922,18 @@ cell_is_blank(const CPUCell *c) {
     return !cell_has_text(c) || cell_is_char(c, ' ');
 }
 
-bool
-screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end) {
-    if (y >= self->lines) { return false; }
-    Line *line = visual_line_(self, y);
+static void
+screen_selection_range_for_line_(Line *line, index_type *start, index_type *end) {
     index_type xlimit = line->xnum, xstart = 0;
     while (xlimit > 0 && cell_is_blank(line->cpu_cells + xlimit - 1)) xlimit--;
     while (xstart < xlimit && cell_is_blank(line->cpu_cells + xstart)) xstart++;
     *start = xstart; *end = xlimit > 0 ? xlimit - 1 : 0;
+}
+
+bool
+screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end) {
+    if (y >= self->lines) { return false; }
+    screen_selection_range_for_line_(visual_line_(self, y), start, end);
     return true;
 }
 
@@ -5261,6 +5265,18 @@ continue_line_upwards(Screen *self, index_type top_line, SelectionBoundary *star
 }
 
 static index_type
+continue_line_upwards_scrollback(Screen *self, int top_line, SelectionBoundary *start, SelectionBoundary *end) {
+    index_type num_in_scrollback = 0;
+    Line *line = NULL;
+    while (range_line_is_continued(self, top_line) && (line = range_line_(self, top_line-1))) {
+        screen_selection_range_for_line_(line, &start->x, &end->x) ;
+        top_line--; num_in_scrollback++;
+    }
+    return num_in_scrollback;
+}
+
+
+static index_type
 continue_line_downwards(Screen *self, index_type bottom_line, SelectionBoundary *start, SelectionBoundary *end) {
     while (bottom_line + 1 < self->lines && visual_line_is_continued(self, bottom_line + 1)) {
         if (!screen_selection_range_for_line(self, bottom_line + 1, &start->x, &end->x)) break;
@@ -5400,6 +5416,15 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                     } else {
                         top_line = continue_line_upwards(self, top_line, &up_start, &up_end);
                         S;
+                        // extend into scrollback if needed
+                        if (top_line == 0 && self->linebuf == self->main_linebuf) {
+                            index_type num_in_scrollback = continue_line_upwards_scrollback(
+                                    self, top_line, &up_start, &up_end);
+                            if (num_in_scrollback) {
+                                s->start_scrolled_by += num_in_scrollback;
+                                s->start.x = up_start.x;
+                            }
+                        }
                     }
                 }
 #undef S
@@ -5413,6 +5438,15 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                     if (!s->adjusting_start) { a = &s->end; b = &s->start; }
                     if (adjusted_boundary_is_before) {
                         a->in_left_half_of_cell = true; a->x = up_start.x; a->y = top_line;
+                        // extend into scrollback if needed
+                        if (top_line == 0 && self->linebuf == self->main_linebuf) {
+                            index_type num_in_scrollback = continue_line_upwards_scrollback(
+                                    self, top_line, &up_start, &up_end);
+                            if (num_in_scrollback) {
+                                s->start_scrolled_by += num_in_scrollback;
+                                s->start.x = up_start.x;
+                            }
+                        }
                     } else {
                         a->in_left_half_of_cell = false; a->x = down_end.x; a->y = bottom_line;
                     }

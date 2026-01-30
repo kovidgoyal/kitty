@@ -235,6 +235,25 @@ class TestMouse(BaseTest):
         self.ae(sel(), ' 123\n 456')
         release(button=GLFW_MOUSE_BUTTON_RIGHT)
 
+        # line select for wrapped lines in scrollback
+        s.reset()
+        s.draw('ABCDE12345')
+        s.linefeed(), s.carriage_return()
+        s.draw(('X' * s.columns) * (s.lines-1))
+        multi_click(x=1, count=3)
+        self.ae(sel(), 'ABCDE12345')
+        s.reset()
+        s.draw('ABCDE12345')
+        s.linefeed(), s.carriage_return()
+        s.draw('678')
+        s.linefeed(), s.carriage_return()
+        s.draw(('X' * s.columns) * (s.lines-2))
+        multi_click(x=1, y=1, count=3)
+        self.ae(sel(), '678')
+        press(x=2, button=GLFW_MOUSE_BUTTON_RIGHT)
+        release(x=2, button=GLFW_MOUSE_BUTTON_RIGHT)
+        self.ae(sel(), 'ABCDE12345\n678')
+
         # Rectangle select
         init()
         press(x=1, y=1, modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL)

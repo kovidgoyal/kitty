@@ -208,6 +208,8 @@ Detailed list of changes
 - kitten choose-files: Fix TAB completion in the choose save file name prompt
   not working with respect to the current working directory (:iss:`9387`)
 
+- Fix line-at-once selection not extending wrapped lines into scrollback (:iss:`9437`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
