@@ -713,6 +713,7 @@ glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t keycode) {
 #ifdef _GLFW_WAYLAND
     keycode += 8;
 #endif
+    if (!xkb->keymap) return false;
     return xkb_keymap_key_repeats(xkb->keymap, keycode);
 }
 
@@ -797,6 +798,7 @@ format_xkb_mods(_GLFWXKBData *xkb, const char* name, xkb_mod_mask_t mods) {
 
 void
 glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, const GLFWIMEUpdateEvent *ev) {
+    if (!xkb->keymap) return;
     int x = 0, y = 0;
     switch(ev->type) {
         case GLFW_IME_UPDATE_FOCUS:
@@ -862,6 +864,7 @@ is_switch_layout_key(xkb_keysym_t xkb_sym) {
 
 void
 glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t xkb_keycode, int action) {
+    if (!xkb->keymap) return;
     static char key_text[64] = {0};
     const xkb_keysym_t *syms, *clean_syms, *default_syms;
     xkb_keysym_t xkb_sym, shifted_xkb_sym = XKB_KEY_NoSymbol, alternate_xkb_sym = XKB_KEY_NoSymbol;
