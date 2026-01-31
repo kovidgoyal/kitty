@@ -30,10 +30,10 @@ if is_macos:
     def cwd_of_process(pid: int) -> str:
         # The underlying code on macos returns a path with symlinks resolved
         # anyway but we use realpath for extra safety.
-        return os.path.realpath(_cwd(pid))
+        return os.path.realpath(_cwd(pid), strict=True)
 
     def abspath_of_exe(pid: int) -> str:
-        return os.path.realpath(_abspath_of_process(pid))
+        return os.path.realpath(_abspath_of_process(pid), strict=True)
 
     def process_group_map() -> DefaultDict[int, list[int]]:
         ans: DefaultDict[int, list[int]] = defaultdict(list)
@@ -56,13 +56,13 @@ else:
             if cp.returncode != 0:
                 raise ValueError(f'Failed to find cwd of process with pid: {pid}')
             ans = cp.stdout.decode('utf-8', 'replace').split()[1]
-            return os.path.realpath(ans)
+            return os.path.realpath(ans, strict=True)
     else:
         def cwd_of_process(pid: int) -> str:
             # We use realpath instead of readlink to match macOS behavior where
             # the underlying OS API returns real paths.
             ans = f'/proc/{pid}/cwd'
-            return os.path.realpath(ans)
+            return os.path.realpath(ans, strict=True)
 
     def _environ_of_process(pid: int) -> str:
         with open(f'/proc/{pid}/environ', 'rb') as f:
@@ -88,7 +88,7 @@ else:
         return ans
 
     def abspath_of_exe(pid: int) -> str:
-        return os.path.realpath(f'/proc/{pid}/exe')
+        return os.path.realpath(f'/proc/{pid}/exe', strict=True)
 
 
 @run_once
