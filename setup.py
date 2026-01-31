@@ -932,7 +932,7 @@ def add_builtin_fonts(args: Options) -> None:
                     break
             else:
                 for candidate in candidates:
-                    for root, _, files in os.walk(candidate, onerror=lambda _: None):
+                    for root, _, files in os.walk(candidate):
                         if filename in files:
                             font_file = os.path.join(root, filename)
                             break
