@@ -3746,7 +3746,7 @@ apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int
     iteration_data(s, &s->last_rendered, self->columns, -self->historybuf->count, 0);
     Line *line;
     const int y_min = MAX(-extra_leading_rows - (int)self->scrolled_by, s->last_rendered.y),
-          y_limit = MIN(s->last_rendered.y_limit, (int)self->lines + extra_leading_rows);
+          y_limit = MIN(s->last_rendered.y_limit, (int)self->lines - (int)self->scrolled_by);
     for (int y = y_min; y < y_limit; y++) {
         if (self->paused_rendering.expires_at) {
             linebuf_init_line(self->paused_rendering.linebuf, y);
