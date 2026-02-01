@@ -118,7 +118,7 @@ free_sprite_data(FONTS_DATA_HANDLE fg) {
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     if (sprite_map) {
         if (sprite_map->texture_id) free_texture(&sprite_map->texture_id);
-        if (sprite_map->decorations_map.texture_id) free_texture(&sprite_map->texture_id);
+        if (sprite_map->decorations_map.texture_id) free_texture(&sprite_map->decorations_map.texture_id);
         free(sprite_map);
         fg->sprite_map = NULL;
     }
