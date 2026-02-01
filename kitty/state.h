@@ -206,6 +206,7 @@ typedef struct Window {
     bool visible;
     PyObject *title;
     WindowRenderData render_data;
+    WindowRenderData pane_title_render_data;
     WindowLogoRenderData window_logo;
     MousePosition mouse_pos;
     struct {
