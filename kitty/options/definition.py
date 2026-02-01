@@ -1441,6 +1441,60 @@ by adding :code:`count-background` to the setting, for example: :code:`-1 count-
 Note that if you want confirmation when closing individual windows,
 you can map the :ac:`close_window_with_confirmation` action.
 ''')
+
+opt('pane_title_bar', 'none',
+    choices=('none', 'top', 'bottom'),
+    long_text='''
+Show a title bar for each window/pane when there are multiple windows in a tab.
+The title bar displays the window title and is hidden when only a single window
+is visible. The value controls the position of the title bar relative to the
+window content. Set to :code:`none` to disable.
+'''
+    )
+
+opt('pane_title_template', '"{title}"',
+    option_type='tab_title_template',
+    long_text='''
+A template to render the pane title bar text. Uses the same template syntax as
+:opt:`tab_title_template`. Available variables include: :code:`{title}`,
+:code:`{index}`, :code:`{layout_name}`, :code:`{num_windows}`,
+:code:`{num_window_groups}`, :code:`{tab.active_wd}`, etc.
+'''
+    )
+
+opt('active_pane_title_template', 'none',
+    option_type='tab_title_template',
+    long_text='''
+Template to use for the active pane title bar. If not set (the value
+:code:`none`), the :opt:`pane_title_template` is used.
+'''
+    )
+
+opt('pane_title_bar_active_fg', '#000000',
+    option_type='to_color',
+    long_text='Foreground color for the active pane title bar.'
+    )
+
+opt('pane_title_bar_active_bg', '#00ff00',
+    option_type='to_color',
+    long_text='Background color for the active pane title bar.'
+    )
+
+opt('pane_title_bar_inactive_fg', '#cccccc',
+    option_type='to_color',
+    long_text='Foreground color for inactive pane title bars.'
+    )
+
+opt('pane_title_bar_inactive_bg', '#333333',
+    option_type='to_color',
+    long_text='Background color for inactive pane title bars.'
+    )
+
+opt('pane_title_bar_align', 'center',
+    choices=('left', 'center', 'right'),
+    long_text='Horizontal alignment of the text in pane title bars.'
+    )
+
 egr()  # }}}
 
 

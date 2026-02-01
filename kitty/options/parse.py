@@ -36,6 +36,9 @@ class Parser:
     def active_border_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['active_border_color'] = to_color_or_none(val)
 
+    def active_pane_title_template(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['active_pane_title_template'] = tab_title_template(val)
+
     def active_tab_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['active_tab_background'] = to_color(val)
 
@@ -1159,6 +1162,37 @@ class Parser:
     def open_url_with(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['open_url_with'] = to_cmdline(val)
 
+    def pane_title_bar(self, val: str, ans: dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_pane_title_bar:
+            raise ValueError(f"The value {val} is not a valid choice for pane_title_bar")
+        ans["pane_title_bar"] = val
+
+    choices_for_pane_title_bar = frozenset(('none', 'top', 'bottom'))
+
+    def pane_title_bar_active_bg(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['pane_title_bar_active_bg'] = to_color(val)
+
+    def pane_title_bar_active_fg(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['pane_title_bar_active_fg'] = to_color(val)
+
+    def pane_title_bar_align(self, val: str, ans: dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_pane_title_bar_align:
+            raise ValueError(f"The value {val} is not a valid choice for pane_title_bar_align")
+        ans["pane_title_bar_align"] = val
+
+    choices_for_pane_title_bar_align = frozenset(('left', 'center', 'right'))
+
+    def pane_title_bar_inactive_bg(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['pane_title_bar_inactive_bg'] = to_color(val)
+
+    def pane_title_bar_inactive_fg(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['pane_title_bar_inactive_fg'] = to_color(val)
+
+    def pane_title_template(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['pane_title_template'] = tab_title_template(val)
+
     def paste_actions(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['paste_actions'] = paste_actions(val)
 
@@ -1316,7 +1350,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for tab_bar_align")
         ans["tab_bar_align"] = val
 
-    choices_for_tab_bar_align = frozenset(('left', 'center', 'right'))
+    choices_for_tab_bar_align = choices_for_pane_title_bar_align
 
     def tab_bar_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_background'] = to_color_or_none(val)
