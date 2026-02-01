@@ -255,16 +255,16 @@ add_tab(id_type os_window_id) {
 static void
 create_gpu_resources_for_window(Window *w) {
     w->render_data.vao_idx = create_cell_vao();
-    w->pane_title_render_data.vao_idx = create_cell_vao();
+    w->window_title_render_data.vao_idx = create_cell_vao();
 }
 
 static void
 release_gpu_resources_for_window(Window *w) {
     if (w->render_data.vao_idx > -1) remove_vao(w->render_data.vao_idx);
     w->render_data.vao_idx = -1;
-    if (w->pane_title_render_data.vao_idx > -1) remove_vao(w->pane_title_render_data.vao_idx);
-    w->pane_title_render_data.vao_idx = -1;
-    Py_CLEAR(w->pane_title_render_data.screen);
+    if (w->window_title_render_data.vao_idx > -1) remove_vao(w->window_title_render_data.vao_idx);
+    w->window_title_render_data.vao_idx = -1;
+    Py_CLEAR(w->window_title_render_data.screen);
 }
 
 static bool
@@ -826,13 +826,13 @@ PYWRAP1(set_tab_bar_render_data) {
     Py_RETURN_NONE;
 }
 
-PYWRAP1(set_pane_title_bar_render_data) {
+PYWRAP1(set_window_title_bar_render_data) {
     WindowGeometry g;
     id_type os_window_id, tab_id, window_id;
     Screen *screen;
     PA("KKKOIIII", &os_window_id, &tab_id, &window_id, &screen, &g.left, &g.top, &g.right, &g.bottom);
     WITH_WINDOW(os_window_id, tab_id, window_id)
-        init_window_render_data(&window->pane_title_render_data, g, screen);
+        init_window_render_data(&window->window_title_render_data, g, screen);
     END_WITH_WINDOW
     Py_RETURN_NONE;
 }
@@ -1537,7 +1537,7 @@ static PyMethodDef module_methods[] = {
     MW(swap_tabs, METH_VARARGS),
     MW(set_borders_rects, METH_VARARGS),
     MW(set_tab_bar_render_data, METH_VARARGS),
-    MW(set_pane_title_bar_render_data, METH_VARARGS),
+    MW(set_window_title_bar_render_data, METH_VARARGS),
     MW(set_window_render_data, METH_VARARGS),
     MW(set_window_padding, METH_VARARGS),
     MW(viewport_for_window, METH_VARARGS),

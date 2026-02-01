@@ -366,11 +366,11 @@ class Layout:
         self.update_visibility(all_windows)
         self.blank_rects = []
         self.do_layout(all_windows)
-        self._apply_pane_title_bars(all_windows)
+        self._apply_window_title_bars(all_windows)
 
-    def _apply_pane_title_bars(self, all_windows: WindowList) -> None:
+    def _apply_window_title_bars(self, all_windows: WindowList) -> None:
         opts = get_options()
-        position = opts.pane_title_bar
+        position = opts.window_title_bar
         if position == 'none':
             return
         visible_groups = list(all_windows.iter_all_layoutable_groups(only_visible=True))

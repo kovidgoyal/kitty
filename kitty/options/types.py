@@ -25,13 +25,11 @@ choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'text', 'poi
 choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
 choices_for_macos_colorspace = typing.Literal['srgb', 'default', 'displayp3']
 choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']
-choices_for_pane_title_bar = typing.Literal['none', 'top', 'bottom']
-choices_for_pane_title_bar_align = typing.Literal['left', 'center', 'right']
 choices_for_placement_strategy = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
 choices_for_scrollbar = typing.Literal['scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered']
 choices_for_strip_trailing_spaces = typing.Literal['always', 'never', 'smart']
-choices_for_tab_bar_align = choices_for_pane_title_bar_align
+choices_for_tab_bar_align = typing.Literal['left', 'center', 'right']
 choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant', 'custom']
 choices_for_tab_powerline_style = typing.Literal['angled', 'round', 'slanted']
 choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
@@ -39,15 +37,17 @@ choices_for_terminfo_type = typing.Literal['path', 'direct', 'none']
 choices_for_undercurl_style = typing.Literal['thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense']
 choices_for_underline_hyperlinks = typing.Literal['hover', 'always', 'never']
 choices_for_window_logo_position = choices_for_placement_strategy
+choices_for_window_title_bar = typing.Literal['none', 'top', 'bottom']
+choices_for_window_title_bar_align = choices_for_tab_bar_align
 
 option_names = (
     'action_alias',
     'active_border_color',
-    'active_pane_title_template',
     'active_tab_background',
     'active_tab_font_style',
     'active_tab_foreground',
     'active_tab_title_template',
+    'active_window_title_template',
     'allow_cloning',
     'allow_hyperlinks',
     'allow_remote_control',
@@ -406,13 +406,6 @@ option_names = (
     'narrow_symbols',
     'notify_on_cmd_finish',
     'open_url_with',
-    'pane_title_bar',
-    'pane_title_bar_active_bg',
-    'pane_title_bar_active_fg',
-    'pane_title_bar_align',
-    'pane_title_bar_inactive_bg',
-    'pane_title_bar_inactive_fg',
-    'pane_title_template',
     'paste_actions',
     'pixel_scroll',
     'placement_strategy',
@@ -503,16 +496,23 @@ option_names = (
     'window_padding_width',
     'window_resize_step_cells',
     'window_resize_step_lines',
+    'window_title_bar',
+    'window_title_bar_active_background',
+    'window_title_bar_active_foreground',
+    'window_title_bar_align',
+    'window_title_bar_inactive_background',
+    'window_title_bar_inactive_foreground',
+    'window_title_template',
 )
 
 
 class Options:
     active_border_color: kitty.fast_data_types.Color | None = Color(0, 255, 0)
-    active_pane_title_template: str = 'none'
     active_tab_background: Color = Color(238, 238, 238)
     active_tab_font_style: tuple[bool, bool] = (True, True)
     active_tab_foreground: Color = Color(0, 0, 0)
     active_tab_title_template: str | None = None
+    active_window_title_template: str = 'none'
     allow_cloning: choices_for_allow_cloning = 'ask'
     allow_hyperlinks: int = 1
     allow_remote_control: choices_for_allow_remote_control = 'no'
@@ -605,13 +605,6 @@ class Options:
     mouse_hide_wait: MouseHideWait = MouseHideWait(hide_wait=0.0, show_wait=0.0, show_threshold=40, scroll_show=True) if is_macos else MouseHideWait(hide_wait=3.0, show_wait=0.0, show_threshold=40, scroll_show=True)
     notify_on_cmd_finish: NotifyOnCmdFinish = NotifyOnCmdFinish(when='never', duration=5.0, action='notify', cmdline=(), clear_on=('focus', 'next'))
     open_url_with: list[str] = ['default']
-    pane_title_bar: choices_for_pane_title_bar = 'none'
-    pane_title_bar_active_bg: Color = Color(0, 255, 0)
-    pane_title_bar_active_fg: Color = Color(0, 0, 0)
-    pane_title_bar_align: choices_for_pane_title_bar_align = 'center'
-    pane_title_bar_inactive_bg: Color = Color(51, 51, 51)
-    pane_title_bar_inactive_fg: Color = Color(204, 204, 204)
-    pane_title_template: str = '{title}'
     paste_actions: frozenset[str] = frozenset({'confirm', 'quote-urls-at-prompt'})
     pixel_scroll: bool = True
     placement_strategy: choices_for_placement_strategy = 'center'
@@ -699,6 +692,13 @@ class Options:
     window_padding_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_resize_step_cells: int = 2
     window_resize_step_lines: int = 2
+    window_title_bar: choices_for_window_title_bar = 'none'
+    window_title_bar_active_background: kitty.fast_data_types.Color | None = None
+    window_title_bar_active_foreground: kitty.fast_data_types.Color | None = None
+    window_title_bar_align: choices_for_window_title_bar_align = 'center'
+    window_title_bar_inactive_background: kitty.fast_data_types.Color | None = None
+    window_title_bar_inactive_foreground: kitty.fast_data_types.Color | None = None
+    window_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.window}{progress_percent}{title}'
     action_alias: dict[str, str] = {}
     env: dict[str, str] = {}
     exe_search_path: dict[str, str] = {}
@@ -1119,6 +1119,10 @@ nullable_colors = frozenset({
     'cursor_trail_color',
     'visual_bell_color',
     'active_border_color',
+    'window_title_bar_active_foreground',
+    'window_title_bar_active_background',
+    'window_title_bar_inactive_foreground',
+    'window_title_bar_inactive_background',
     'tab_bar_background',
     'tab_bar_margin_color',
     'selection_foreground',

@@ -806,11 +806,11 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
             if (send_cell_data_to_gpu(WD.vao_idx, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
         }
-        // Prepare pane title bar screen data for GPU
-        if (w->visible && w->pane_title_render_data.screen) {
-            CursorRenderInfo *cri = &w->pane_title_render_data.screen->cursor_render_info;
+        // Prepare window title bar screen data for GPU
+        if (w->visible && w->window_title_render_data.screen) {
+            CursorRenderInfo *cri = &w->window_title_render_data.screen->cursor_render_info;
             zero_at_ptr(cri);
-            if (send_cell_data_to_gpu(w->pane_title_render_data.vao_idx, w->pane_title_render_data.screen, os_window)) needs_render = true;
+            if (send_cell_data_to_gpu(w->window_title_render_data.vao_idx, w->window_title_render_data.screen, os_window)) needs_render = true;
         }
     }
     return needs_render || was_previously_rendered_with_layers != os_window->needs_layers;
@@ -836,13 +836,13 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
             if (WD.screen->start_visual_bell_at != 0) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
         }
     }
-    // Draw pane title bars
+    // Draw window title bars
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
-        if (w->visible && w->pane_title_render_data.screen &&
-            w->pane_title_render_data.geometry.right > w->pane_title_render_data.geometry.left &&
-            w->pane_title_render_data.geometry.bottom > w->pane_title_render_data.geometry.top) {
-            draw_cells(&w->pane_title_render_data, os_window, i == tab->active_window, true, false, NULL);
+        if (w->visible && w->window_title_render_data.screen &&
+            w->window_title_render_data.geometry.right > w->window_title_render_data.geometry.left &&
+            w->window_title_render_data.geometry.bottom > w->window_title_render_data.geometry.top) {
+            draw_cells(&w->window_title_render_data, os_window, i == tab->active_window, true, false, NULL);
         }
     }
     setup_os_window_for_rendering(os_window, tab, active_window, false);

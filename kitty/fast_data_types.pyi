@@ -1399,7 +1399,7 @@ def set_tab_bar_render_data(
     pass
 
 
-def set_pane_title_bar_render_data(
+def set_window_title_bar_render_data(
     os_window_id: int, tab_id: int, window_id: int, screen: Screen,
     left: int, top: int, right: int, bottom: int
 ) -> None:
