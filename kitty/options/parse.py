@@ -188,723 +188,963 @@ class Parser:
 
     def color16(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color16'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color17(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color17'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color18(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color18'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color19(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color19'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color20(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color20'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color21(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color21'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color22(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color22'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color23(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color23'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color24(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color24'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color25(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color25'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color26(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color26'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color27(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color27'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color28(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color28'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color29(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color29'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color30(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color30'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color31(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color31'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color32(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color32'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color33(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color33'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color34(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color34'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color35(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color35'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color36(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color36'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color37(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color37'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color38(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color38'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color39(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color39'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color40(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color40'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color41(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color41'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color42(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color42'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color43(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color43'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color44(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color44'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color45(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color45'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color46(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color46'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color47(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color47'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color48(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color48'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color49(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color49'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color50(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color50'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color51(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color51'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color52(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color52'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color53(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color53'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color54(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color54'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color55(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color55'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color56(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color56'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color57(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color57'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color58(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color58'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color59(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color59'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color60(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color60'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color61(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color61'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color62(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color62'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color63(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color63'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color64(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color64'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color65(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color65'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color66(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color66'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color67(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color67'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color68(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color68'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color69(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color69'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color70(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color70'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color71(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color71'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color72(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color72'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color73(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color73'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color74(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color74'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color75(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color75'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color76(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color76'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color77(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color77'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color78(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color78'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color79(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color79'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color80(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color80'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color81(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color81'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color82(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color82'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color83(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color83'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color84(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color84'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color85(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color85'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color86(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color86'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color87(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color87'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color88(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color88'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color89(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color89'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color90(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color90'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color91(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color91'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color92(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color92'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color93(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color93'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color94(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color94'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color95(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color95'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color96(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color96'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color97(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color97'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color98(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color98'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color99(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color99'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color100(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color100'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color101(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color101'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color102(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color102'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color103(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color103'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color104(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color104'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color105(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color105'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color106(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color106'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color107(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color107'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color108(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color108'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color109(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color109'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color110(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color110'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color111(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color111'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color112(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color112'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color113(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color113'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color114(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color114'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color115(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color115'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color116(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color116'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color117(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color117'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color118(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color118'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color119(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color119'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color120(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color120'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color121(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color121'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color122(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color122'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color123(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color123'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color124(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color124'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color125(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color125'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color126(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color126'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color127(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color127'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color128(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color128'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color129(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color129'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color130(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color130'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color131(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color131'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color132(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color132'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color133(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color133'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color134(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color134'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color135(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color135'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color136(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color136'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color137(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color137'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color138(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color138'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color139(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color139'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color140(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color140'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color141(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color141'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color142(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color142'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color143(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color143'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color144(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color144'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color145(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color145'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color146(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color146'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color147(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color147'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color148(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color148'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color149(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color149'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color150(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color150'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color151(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color151'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color152(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color152'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color153(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color153'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color154(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color154'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color155(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color155'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color156(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color156'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color157(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color157'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color158(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color158'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color159(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color159'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color160(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color160'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color161(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color161'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color162(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color162'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color163(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color163'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color164(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color164'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color165(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color165'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color166(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color166'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color167(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color167'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color168(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color168'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color169(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color169'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color170(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color170'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color171(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color171'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color172(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color172'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color173(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color173'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color174(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color174'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color175(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color175'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color176(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color176'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color177(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color177'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color178(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color178'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color179(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color179'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color180(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color180'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color181(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color181'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color182(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color182'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color183(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color183'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color184(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color184'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color185(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color185'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color186(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color186'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color187(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color187'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color188(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color188'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color189(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color189'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color190(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color190'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color191(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color191'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color192(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color192'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color193(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color193'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color194(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color194'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color195(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color195'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color196(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color196'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color197(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color197'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color198(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color198'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color199(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color199'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color200(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color200'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color201(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color201'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color202(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color202'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color203(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color203'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color204(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color204'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color205(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color205'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color206(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color206'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color207(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color207'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color208(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color208'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color209(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color209'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color210(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color210'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color211(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color211'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color212(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color212'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color213(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color213'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color214(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color214'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color215(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color215'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color216(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color216'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color217(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color217'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color218(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color218'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color219(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color219'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color220(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color220'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color221(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color221'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color222(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color222'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color223(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color223'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color224(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color224'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color225(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color225'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color226(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color226'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color227(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color227'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color228(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color228'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color229(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color229'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color230(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color230'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color231(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color231'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color232(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color232'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color233(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color233'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color234(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color234'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color235(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color235'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color236(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color236'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color237(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color237'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color238(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color238'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color239(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color239'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color240(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color240'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color241(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color241'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color242(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color242'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color243(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color243'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color244(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color244'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color245(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color245'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color246(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color246'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color247(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color247'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color248(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color248'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color249(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color249'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color250(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color250'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color251(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color251'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color252(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color252'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color253(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color253'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color254(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color254'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def color255(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['color255'] = to_color(val)
+        ans['generate_256_palette'] = False
 
     def command_on_bell(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['command_on_bell'] = to_cmdline(val)
@@ -1022,6 +1262,9 @@ class Parser:
 
     def forward_stdio(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['forward_stdio'] = to_bool(val)
+
+    def generate_256_palette(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['generate_256_palette'] = to_bool(val)
 
     def hide_window_decorations(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['hide_window_decorations'] = hide_window_decorations(val)
