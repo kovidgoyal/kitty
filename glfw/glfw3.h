@@ -1783,6 +1783,66 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  */
 typedef int (* GLFWdropfun)(GLFWwindow*, const char *, const char*, size_t);
 
+/*! @brief Drag event types.
+ *
+ *  These constants are used to identify the type of drag event.
+ *
+ *  @ingroup input
+ */
+typedef enum {
+    /*! The drag operation entered the window. */
+    GLFW_DRAG_ENTER = 1,
+    /*! The drag operation moved within the window. */
+    GLFW_DRAG_MOVE = 2,
+    /*! The drag operation left the window. */
+    GLFW_DRAG_LEAVE = 3
+} GLFWDragEventType;
+
+/*! @brief Drag data item.
+ *
+ *  This structure describes a single item of drag data with its MIME type.
+ *
+ *  @sa @ref drag_start
+ *  @sa @ref glfwStartDrag
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+typedef struct GLFWdragitem {
+    /*! The MIME type of this data item (e.g., "text/plain", "image/png"). */
+    const char* mime_type;
+    /*! Pointer to the binary data. */
+    const unsigned char* data;
+    /*! Size of the data in bytes. */
+    size_t data_size;
+} GLFWdragitem;
+
+/*! @brief The function pointer type for drag event callbacks.
+ *
+ *  This is the function pointer type for drag event callbacks. A drag event
+ *  callback function has the following signature:
+ *  @code
+ *  int function_name(GLFWwindow* window, int event, double xpos, double ypos)
+ *  @endcode
+ *
+ *  @param[in] window The window that received the drag event.
+ *  @param[in] event The drag event type: @ref GLFW_DRAG_ENTER, @ref GLFW_DRAG_MOVE,
+ *  or @ref GLFW_DRAG_LEAVE.
+ *  @param[in] xpos The x-coordinate of the drag position in window coordinates.
+ *  @param[in] ypos The y-coordinate of the drag position in window coordinates.
+ *  @return For @ref GLFW_DRAG_ENTER events, return non-zero to accept the drag
+ *  or zero to reject it. Return value is ignored for other event types.
+ *
+ *  @sa @ref drag_events
+ *  @sa @ref glfwSetDragCallback
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+typedef int (* GLFWdragfun)(GLFWwindow*, int event, double xpos, double ypos);
+
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 
 /*! @brief The function pointer type for monitor configuration callbacks.
@@ -4912,6 +4972,72 @@ GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* window, GLFWscrollfun ca
  */
 GLFWAPI GLFWdropfun glfwSetDropCallback(GLFWwindow* window, GLFWdropfun callback);
 GLFWAPI GLFWliveresizefun glfwSetLiveResizeCallback(GLFWwindow* window, GLFWliveresizefun callback);
+
+/*! @brief Sets the drag event callback.
+ *
+ *  This function sets the callback for drag events. The callback is invoked
+ *  when a drag operation enters, moves within, or leaves the window. Use this
+ *  callback to accept or reject incoming drag operations and track drag
+ *  position.
+ *
+ *  @param[in] window The window whose callback to set.
+ *  @param[in] callback The new callback, or `NULL` to remove the currently set
+ *  callback.
+ *  @return The previously set callback, or `NULL` if no callback was set or the
+ *  library had not been [initialized](@ref intro_init).
+ *
+ *  @callback_signature
+ *  @code
+ *  int function_name(GLFWwindow* window, int event, double xpos, double ypos)
+ *  @endcode
+ *  For more information about the callback parameters, see the
+ *  [function pointer type](@ref GLFWdragfun).
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref drag_events
+ *  @sa @ref glfwStartDrag
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* window, GLFWdragfun callback);
+
+/*! @brief Starts a drag operation.
+ *
+ *  This function starts a drag operation from the specified window with the
+ *  given data items and optional thumbnail image. The drag operation will
+ *  continue until the user releases the mouse button.
+ *
+ *  The data items array contains one or more MIME types with their associated
+ *  binary data. The data is copied internally, so the caller can free it after
+ *  this function returns.
+ *
+ *  @param[in] window The window initiating the drag.
+ *  @param[in] items Array of drag data items.
+ *  @param[in] item_count Number of items in the array.
+ *  @param[in] thumbnail Optional thumbnail/icon image to display during the
+ *  drag operation, or `NULL` for no thumbnail. The image data is copied.
+ *
+ *  @return `true` if the drag operation was started successfully, `false`
+ *  otherwise.
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
+ *  GLFW_PLATFORM_ERROR.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref drag_start
+ *  @sa @ref glfwSetDragCallback
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail);
 
 /*! @brief Returns whether the specified joystick is present.
  *

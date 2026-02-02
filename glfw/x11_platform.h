@@ -315,6 +315,7 @@ typedef struct _GLFWlibraryX11
     Atom            XdndFinished;
     Atom            XdndSelection;
     Atom            XdndTypeList;
+    Atom            XdndLeave;
 
     // Selection (clipboard) atoms
     Atom            TARGETS;
@@ -381,7 +382,19 @@ typedef struct _GLFWlibraryX11
         Window      source;
         char        format[128];
         int         format_priority;
+        Window      target_window;  // For drag events: the window being dragged over
     } xdnd;
+
+    // Drag source state
+    struct {
+        Window           source_window;
+        unsigned char**  items_data;
+        size_t*          items_sizes;
+        char**           items_mimes;
+        int              item_count;
+        Atom*            type_atoms;
+        bool             active;
+    } drag;
 
     struct {
         void*       handle;
