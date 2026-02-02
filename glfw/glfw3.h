@@ -1848,7 +1848,8 @@ typedef struct GLFWdragitem {
  *  @param[in] ypos The y-coordinate of the drag position in window coordinates.
  *  @param[in] mime_types Array of MIME type strings available from the drag source.
  *  For @ref GLFW_DRAG_ENTER events this contains all available MIME types.
- *  For other events this may be `NULL`.
+ *  For other events this may be `NULL`. The strings are only valid for the
+ *  duration of the callback; if you need to store them, make copies.
  *  @param[in] mime_count Number of MIME types in the array. Zero if no MIME types
  *  are available or for non-enter events.
  *  @return For @ref GLFW_DRAG_ENTER events, return non-zero to accept the drag
