@@ -39,6 +39,10 @@
 
 #define debug debug_rendering
 
+// Macro and forward declaration needed before draggingEntered: (uti_to_mime is defined in Clipboard section)
+#define UTI_ROUNDTRIP_PREFIX @"uti-is-typical-apple-nih."
+static const char* uti_to_mime(NSString *uti);
+
 static const char*
 polymorphic_string_as_utf8(id string) {
     if (string == nil) return "(nil)";
@@ -1348,15 +1352,29 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 
     // Get MIME types from the dragging pasteboard
     NSPasteboard* pasteboard = [sender draggingPasteboard];
-    NSMutableArray<NSString*>* mimeTypes = [NSMutableArray array];
+
+    // Count total types across all pasteboard items plus 2 for uri-list and text/plain
+    size_t max_types = 2;
+    for (NSPasteboardItem* item in pasteboard.pasteboardItems) {
+        max_types += [item.types count];
+    }
+
+    // Pre-allocate C array for MIME types
+    const char** mime_array = (const char**)calloc(max_types, sizeof(const char*));
+    if (!mime_array) {
+        int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, NULL, 0);
+        return accepted ? NSDragOperationGeneric : NSDragOperationNone;
+    }
+
+    int mime_count = 0;
 
     // Check for common types first
     NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
     if ([pasteboard canReadObjectForClasses:@[[NSURL class]] options:options]) {
-        [mimeTypes addObject:@"text/uri-list"];
+        mime_array[mime_count++] = "text/uri-list";
     }
     if ([pasteboard canReadObjectForClasses:@[[NSString class]] options:nil]) {
-        [mimeTypes addObject:@"text/plain"];
+        mime_array[mime_count++] = "text/plain";
     }
 
     // Get additional types from pasteboard items
@@ -1364,22 +1382,18 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
         for (NSPasteboardType type in item.types) {
             const char* mime = uti_to_mime(type);
             if (mime && mime[0]) {
-                NSString* mimeString = @(mime);
-                // Avoid duplicates
-                if (![mimeTypes containsObject:mimeString]) {
-                    [mimeTypes addObject:mimeString];
+                // Check for duplicates
+                bool duplicate = false;
+                for (int i = 0; i < mime_count; i++) {
+                    if (strcmp(mime_array[i], mime) == 0) {
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (!duplicate) {
+                    mime_array[mime_count++] = mime;
                 }
             }
-        }
-    }
-
-    // Convert to C string array
-    int mime_count = (int)[mimeTypes count];
-    const char** mime_array = NULL;
-    if (mime_count > 0) {
-        mime_array = (const char**)calloc(mime_count, sizeof(const char*));
-        for (int i = 0; i < mime_count; i++) {
-            mime_array[i] = [mimeTypes[i] UTF8String];
         }
     }
 
@@ -3064,8 +3078,6 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
 }
 
 // Clipboard {{{
-
-#define UTI_ROUNDTRIP_PREFIX @"uti-is-typical-apple-nih."
 
 static NSString*
 mime_to_uti(const char *mime) {
