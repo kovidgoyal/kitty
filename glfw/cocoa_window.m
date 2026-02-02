@@ -3652,15 +3652,9 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
 
         for (int i = 0; i < item_count; i++) {
             NSPasteboardItem* item = [[NSPasteboardItem alloc] init];
-            NSString* mimeType = [NSString stringWithUTF8String:items[i].mime_type];
 
-            // Convert MIME type to UTI
-            CFStringRef uti = UTTypeCreatePreferredIdentifierForTag(
-                kUTTagClassMIMEType,
-                (__bridge CFStringRef)mimeType,
-                NULL);
-
-            NSString* utiString = uti ? (__bridge_transfer NSString*)uti : mimeType;
+            // Convert MIME type to UTI using the existing helper function
+            NSString* utiString = mime_to_uti(items[i].mime_type);
             NSData* data = [NSData dataWithBytes:items[i].data length:items[i].data_size];
 
             [item setData:data forType:utiString];
