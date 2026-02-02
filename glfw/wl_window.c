@@ -3103,11 +3103,19 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_
     // Copy the data and offer MIME types
     for (int i = 0; i < item_count; i++) {
         _glfw.wl.drag.items_data[i] = malloc(items[i].data_size);
-        if (_glfw.wl.drag.items_data[i]) {
-            memcpy(_glfw.wl.drag.items_data[i], items[i].data, items[i].data_size);
-            _glfw.wl.drag.items_sizes[i] = items[i].data_size;
+        if (!_glfw.wl.drag.items_data[i]) {
+            drag_source_cancelled(NULL, _glfw.wl.drag.source);
+            _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to allocate drag item data");
+            return false;
         }
+        memcpy(_glfw.wl.drag.items_data[i], items[i].data, items[i].data_size);
+        _glfw.wl.drag.items_sizes[i] = items[i].data_size;
         _glfw.wl.drag.items_mimes[i] = _glfw_strdup(items[i].mime_type);
+        if (!_glfw.wl.drag.items_mimes[i]) {
+            drag_source_cancelled(NULL, _glfw.wl.drag.source);
+            _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to allocate drag item MIME type");
+            return false;
+        }
         wl_data_source_offer(_glfw.wl.drag.source, items[i].mime_type);
     }
 

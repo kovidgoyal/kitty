@@ -3681,11 +3681,19 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
     // Copy the data and create atoms for MIME types
     for (int i = 0; i < item_count; i++) {
         _glfw.x11.drag.items_data[i] = malloc(items[i].data_size);
-        if (_glfw.x11.drag.items_data[i]) {
-            memcpy(_glfw.x11.drag.items_data[i], items[i].data, items[i].data_size);
-            _glfw.x11.drag.items_sizes[i] = items[i].data_size;
+        if (!_glfw.x11.drag.items_data[i]) {
+            cleanupDragSource();
+            _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to allocate drag item data");
+            return false;
         }
+        memcpy(_glfw.x11.drag.items_data[i], items[i].data, items[i].data_size);
+        _glfw.x11.drag.items_sizes[i] = items[i].data_size;
         _glfw.x11.drag.items_mimes[i] = _glfw_strdup(items[i].mime_type);
+        if (!_glfw.x11.drag.items_mimes[i]) {
+            cleanupDragSource();
+            _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to allocate drag item MIME type");
+            return false;
+        }
         _glfw.x11.drag.type_atoms[i] = XInternAtom(_glfw.x11.display, items[i].mime_type, False);
     }
 
