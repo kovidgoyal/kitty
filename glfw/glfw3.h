@@ -1870,6 +1870,26 @@ typedef struct GLFWDragItem {
     size_t data_sz;
 } GLFWDragItem;
 
+/*! @brief The function pointer type for drag move callbacks.
+ *
+ *  This is the function pointer type for drag move callbacks. A drag move
+ *  callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, double x, double y)
+ *  @endcode
+ *
+ *  @param[in] window The window that received the event.
+ *  @param[in] x The x-coordinate of the cursor position relative to the window.
+ *  @param[in] y The y-coordinate of the cursor position relative to the window.
+ *
+ *  @sa @ref glfwSetDragMoveCallback
+ *
+ *  @since Added in version 3.4.
+ *
+ *  @ingroup input
+ */
+typedef void (* GLFWdragmovefun)(GLFWwindow*, double, double);
+
 /*! @brief Video mode type.
  *
  *  This describes a single video mode.
@@ -5408,6 +5428,37 @@ GLFWAPI void glfwGetClipboard(GLFWClipboardType clipboard_type, const char* mime
  *  @ingroup input
  */
 GLFWAPI void glfwStartDrag(GLFWwindow* window, const GLFWDragItem* items, size_t num_items, const GLFWimage* icon);
+
+/*! @brief Sets the drag move callback.
+ *
+ *  This function sets the drag move callback of the specified window, which is
+ *  called when a drag operation initiated by this window is in progress and
+ *  the cursor moves.
+ *
+ *  @param[in] window The window whose callback to set.
+ *  @param[in] callback The new callback, or `NULL` to remove the currently set
+ *  callback.
+ *  @return The previously set callback, or `NULL` if no callback was set or the
+ *  library had not been [initialized](@ref intro_init).
+ *
+ *  @callback_signature
+ *  @code
+ *  void function_name(GLFWwindow* window, double x, double y)
+ *  @endcode
+ *  For more information about the callback parameters, see the
+ *  [function pointer type](@ref GLFWdragmovefun).
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref glfwStartDrag
+ *
+ *  @since Added in version 3.4.
+ *
+ *  @ingroup input
+ */
+GLFWAPI GLFWdragmovefun glfwSetDragMoveCallback(GLFWwindow* window, GLFWdragmovefun callback);
 
 /*! @brief Returns the GLFW time.
  *

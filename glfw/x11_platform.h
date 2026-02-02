@@ -386,6 +386,7 @@ typedef struct _GLFWlibraryX11
     // Drag source state
     struct {
         _GLFWDragData   data;
+        _GLFWwindow*    window;
         Window          source_window;
         Window          target_window;
         bool            in_progress;

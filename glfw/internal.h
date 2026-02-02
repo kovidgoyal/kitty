@@ -480,6 +480,7 @@ struct _GLFWwindow
         GLFWkeyboardfun         keyboard;
         GLFWdropfun             drop;
         GLFWliveresizefun       liveResize;
+        GLFWdragmovefun         dragMove;
     } callbacks;
 
     // This is defined in the window API's platform.h
@@ -830,6 +831,7 @@ void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods)
 void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos);
 void _glfwInputCursorEnter(_GLFWwindow* window, bool entered);
 int _glfwInputDrop(_GLFWwindow* window, const char *mime, const char *text, size_t sz);
+void _glfwInputDragMove(_GLFWwindow* window, double x, double y);
 void _glfwInputColorScheme(GLFWColorScheme, bool);
 void _glfwPlatformInputColorScheme(GLFWColorScheme);
 void _glfwInputJoystick(_GLFWjoystick* js, int event);

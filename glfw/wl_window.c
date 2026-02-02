@@ -2760,6 +2760,7 @@ static void _glfwSendDragData(void *data UNUSED, struct wl_data_source *data_sou
 static void drag_source_canceled(void *data UNUSED, struct wl_data_source *wl_data_source) {
     if (_glfw.wl.dataSourceForDrag == wl_data_source) {
         _glfw.wl.dataSourceForDrag = NULL;
+        _glfw.wl.dragSourceWindow = NULL;
         _glfw_free_drag_data(&_glfw.wl.dragData);
         if (_glfw.wl.dragIconBuffer) {
             wl_buffer_destroy(_glfw.wl.dragIconBuffer);
@@ -2785,6 +2786,7 @@ static void drag_source_dnd_drop_performed(void* data UNUSED, struct wl_data_sou
 static void drag_source_dnd_finished(void* data UNUSED, struct wl_data_source* wl_data_source) {
     if (_glfw.wl.dataSourceForDrag == wl_data_source) {
         _glfw.wl.dataSourceForDrag = NULL;
+        _glfw.wl.dragSourceWindow = NULL;
         _glfw_free_drag_data(&_glfw.wl.dragData);
         if (_glfw.wl.dragIconBuffer) {
             wl_buffer_destroy(_glfw.wl.dragIconBuffer);
@@ -2833,10 +2835,14 @@ _glfwPlatformStartDrag(_GLFWwindow* window, _GLFWDragData *drag_data) {
     _glfw.wl.dragData = *drag_data;
     memset(drag_data, 0, sizeof(*drag_data));
 
+    // Track the source window for drag move callbacks
+    _glfw.wl.dragSourceWindow = window;
+
     _glfw.wl.dataSourceForDrag = wl_data_device_manager_create_data_source(_glfw.wl.dataDeviceManager);
     if (!_glfw.wl.dataSourceForDrag) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to create data source for drag");
         _glfw_free_drag_data(&_glfw.wl.dragData);
+        _glfw.wl.dragSourceWindow = NULL;
         return;
     }
 

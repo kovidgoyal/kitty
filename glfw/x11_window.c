@@ -1318,6 +1318,10 @@ handle_mouse_move_event(_GLFWwindow *window, const int x, const int y) {
     }
     window->x11.lastCursorPosX = x;
     window->x11.lastCursorPosY = y;
+    // Report drag move events if a drag is in progress
+    if (_glfw.x11.drag_source.in_progress && _glfw.x11.drag_source.window) {
+        _glfwInputDragMove(_glfw.x11.drag_source.window, x, y);
+    }
 }
 
 static void
@@ -3358,6 +3362,7 @@ cleanup_drag_source(void) {
     _glfw.x11.drag_source.in_progress = false;
     _glfw.x11.drag_source.source_window = None;
     _glfw.x11.drag_source.target_window = None;
+    _glfw.x11.drag_source.window = NULL;
 }
 
 void
@@ -3369,6 +3374,7 @@ _glfwPlatformStartDrag(_GLFWwindow* window, _GLFWDragData *drag_data) {
     _glfw.x11.drag_source.data = *drag_data;
     memset(drag_data, 0, sizeof(*drag_data));
 
+    _glfw.x11.drag_source.window = window;
     _glfw.x11.drag_source.source_window = window->x11.handle;
     _glfw.x11.drag_source.in_progress = true;
 

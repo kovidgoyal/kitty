@@ -361,6 +361,7 @@ typedef struct _GLFWlibraryWayland
     _GLFWDragData                dragData;
     struct wl_surface*           dragIconSurface;
     struct wl_buffer*            dragIconBuffer;
+    _GLFWwindow*                 dragSourceWindow;
 
     int                         compositorVersion;
     int                         seatVersion;

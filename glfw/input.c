@@ -410,6 +410,14 @@ int _glfwInputDrop(_GLFWwindow* window, const char *mime, const char *text, size
     return 0;
 }
 
+// Notifies shared code of drag cursor movement
+//
+void _glfwInputDragMove(_GLFWwindow* window, double x, double y)
+{
+    if (window->callbacks.dragMove)
+        window->callbacks.dragMove((GLFWwindow*) window, x, y);
+}
+
 // Notifies shared code of a joystick connection or disconnection
 //
 void _glfwInputJoystick(_GLFWjoystick* js, int event)
@@ -1656,6 +1664,16 @@ GLFWAPI void glfwStartDrag(GLFWwindow* handle, const GLFWDragItem* items, size_t
 
     _glfwPlatformStartDrag(window, &drag_data);
     // Note: drag_data is freed by the platform implementation when done
+}
+
+GLFWAPI GLFWdragmovefun glfwSetDragMoveCallback(GLFWwindow* handle, GLFWdragmovefun cbfun)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(window->callbacks.dragMove, cbfun);
+    return cbfun;
 }
 
 GLFWAPI monotonic_t glfwGetTime(void)

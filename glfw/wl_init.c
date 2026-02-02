@@ -126,6 +126,10 @@ pointerHandleMotion(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32
         _glfwInputCursorPos(window, x, y);
         _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
     }
+    // Report drag move events if a drag is in progress
+    if (_glfw.wl.dragSourceWindow) {
+        _glfwInputDragMove(_glfw.wl.dragSourceWindow, wl_fixed_to_double(sx), wl_fixed_to_double(sy));
+    }
 }
 
 static void pointerHandleButton(void* data UNUSED,
