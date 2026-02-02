@@ -6,8 +6,8 @@ toolchain go1.24.12
 
 require (
 	github.com/ALTree/bigfloat v0.2.0
-	github.com/alecthomas/chroma/v2 v2.23.0
-	github.com/bmatcuk/doublestar/v4 v4.9.2
+	github.com/alecthomas/chroma/v2 v2.23.1
+	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/dlclark/regexp2 v1.11.5
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
@@ -21,7 +21,7 @@ require (
 	github.com/seancfoley/ipaddress-go v1.7.1
 	github.com/shirou/gopsutil/v4 v4.25.12
 	github.com/ulikunitz/xz v0.5.15
-	github.com/zeebo/xxh3 v1.0.2
+	github.com/zeebo/xxh3 v1.1.0
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	golang.org/x/image v0.35.0
 	golang.org/x/sys v0.40.0
@@ -38,7 +38,7 @@ require (
 require (
 	github.com/ebitengine/purego v0.9.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd // indirect
