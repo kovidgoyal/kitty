@@ -1848,6 +1848,28 @@ typedef bool (* GLFWclipboardwritedatafun)(void *object, const char *data, size_
 typedef bool (* GLFWimecursorpositionfun)(GLFWwindow *window, GLFWIMEUpdateEvent *ev);
 typedef void (* GLFWclipboardlostfun )(GLFWClipboardType);
 
+/*! @brief Represents a single drag data item with a MIME type and binary data.
+ *
+ *  This structure holds a single piece of data for a drag-and-drop operation.
+ *  The data is copied by GLFW when starting the drag, so the caller can free
+ *  the original data after the call to glfwStartDrag returns.
+ *
+ *  @since Added in version 3.4.
+ *
+ *  @ingroup input
+ */
+typedef struct GLFWDragItem {
+    /*! The MIME type of this data (e.g., "text/plain", "text/uri-list").
+     */
+    const char *mime_type;
+    /*! Pointer to the binary data.
+     */
+    const void *data;
+    /*! Size of the data in bytes.
+     */
+    size_t data_sz;
+} GLFWDragItem;
+
 /*! @brief Video mode type.
  *
  *  This describes a single video mode.
@@ -5358,6 +5380,34 @@ GLFWAPI int glfwGetGamepadState(int jid, GLFWgamepadstate* state);
 
 GLFWAPI void glfwSetClipboardDataTypes(GLFWClipboardType clipboard_type, const char* const *mime_types, size_t num_mime_types, GLFWclipboarditerfun get_iter);
 GLFWAPI void glfwGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object);
+
+/*! @brief Starts a drag-and-drop operation as the drag source.
+ *
+ *  This function initiates a drag-and-drop operation with the specified data
+ *  and optional thumbnail icon. The data items are copied internally, so the
+ *  caller can free the original data after this function returns.
+ *
+ *  The drag operation is started with the specified window as the source.
+ *  The function should be called in response to a mouse button press event.
+ *
+ *  @param[in] window The window that will be the source of the drag.
+ *  @param[in] items Array of drag data items, each with a MIME type and data.
+ *  @param[in] num_items Number of items in the array.
+ *  @param[in] icon Optional thumbnail/icon to display during dragging.
+ *             Pass NULL for no icon. The image data is copied.
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED,
+ *  @ref GLFW_PLATFORM_ERROR, and @ref GLFW_FEATURE_UNAVAILABLE.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref glfwSetDropCallback
+ *
+ *  @since Added in version 3.4.
+ *
+ *  @ingroup input
+ */
+GLFWAPI void glfwStartDrag(GLFWwindow* window, const GLFWDragItem* items, size_t num_items, const GLFWimage* icon);
 
 /*! @brief Returns the GLFW time.
  *

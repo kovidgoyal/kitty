@@ -3345,6 +3345,87 @@ _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_typ
     getSelectionString(which, atoms, count, write_data, object, true);
 }
 
+// Drag source implementation for X11
+
+static void
+cleanup_drag_source(void) {
+    _glfw_free_drag_data(&_glfw.x11.drag_source.data);
+    if (_glfw.x11.drag_source.type_atoms) {
+        free(_glfw.x11.drag_source.type_atoms);
+        _glfw.x11.drag_source.type_atoms = NULL;
+    }
+    _glfw.x11.drag_source.num_types = 0;
+    _glfw.x11.drag_source.in_progress = false;
+    _glfw.x11.drag_source.source_window = None;
+    _glfw.x11.drag_source.target_window = None;
+}
+
+void
+_glfwPlatformStartDrag(_GLFWwindow* window, _GLFWDragData *drag_data) {
+    // Clean up any previous drag state
+    cleanup_drag_source();
+
+    // Take ownership of drag_data
+    _glfw.x11.drag_source.data = *drag_data;
+    memset(drag_data, 0, sizeof(*drag_data));
+
+    _glfw.x11.drag_source.source_window = window->x11.handle;
+    _glfw.x11.drag_source.in_progress = true;
+
+    // Create atoms for all mime types
+    size_t num_types = _glfw.x11.drag_source.data.num_items;
+    _glfw.x11.drag_source.type_atoms = calloc(num_types, sizeof(Atom));
+    if (!_glfw.x11.drag_source.type_atoms) {
+        _glfwInputError(GLFW_OUT_OF_MEMORY, "X11: Failed to allocate atoms for drag types");
+        cleanup_drag_source();
+        return;
+    }
+    _glfw.x11.drag_source.num_types = (int)num_types;
+
+    for (size_t i = 0; i < num_types; i++) {
+        _glfw.x11.drag_source.type_atoms[i] = XInternAtom(_glfw.x11.display,
+            _glfw.x11.drag_source.data.mime_types[i], False);
+    }
+
+    // Set up XdndTypeList property on source window for more than 3 types
+    if (num_types > 3) {
+        XChangeProperty(_glfw.x11.display, window->x11.handle,
+                        _glfw.x11.XdndTypeList, XA_ATOM, 32,
+                        PropModeReplace,
+                        (unsigned char*)_glfw.x11.drag_source.type_atoms,
+                        (int)num_types);
+    }
+
+    // Own the XdndSelection
+    XSetSelectionOwner(_glfw.x11.display, _glfw.x11.XdndSelection,
+                       window->x11.handle, CurrentTime);
+
+    if (XGetSelectionOwner(_glfw.x11.display, _glfw.x11.XdndSelection) != window->x11.handle) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to become owner of XdndSelection");
+        cleanup_drag_source();
+        return;
+    }
+
+    // Grab the pointer to receive all mouse events during drag
+    int result = XGrabPointer(_glfw.x11.display, window->x11.handle, False,
+                              ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
+                              GrabModeAsync, GrabModeAsync,
+                              None, None, CurrentTime);
+    if (result != GrabSuccess) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to grab pointer for drag operation");
+        cleanup_drag_source();
+        return;
+    }
+
+    // Note: The actual drag-and-drop protocol messages (XdndEnter, XdndPosition, XdndLeave, XdndDrop)
+    // need to be sent while tracking mouse movement. This requires integration with the event loop.
+    // For now, we set up the state; full protocol implementation requires event loop changes.
+    // The caller should handle mouse events and call appropriate XDND protocol functions.
+
+    // Flush to ensure all X requests are sent
+    XFlush(_glfw.x11.display);
+}
+
 EGLenum _glfwPlatformGetEGLPlatform(EGLint** attribs)
 {
     if (_glfw.egl.ANGLE_platform_angle)

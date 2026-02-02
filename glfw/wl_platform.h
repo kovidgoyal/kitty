@@ -339,6 +339,7 @@ typedef struct _GLFWlibraryWayland
     struct zwp_relative_pointer_manager_v1* relativePointerManager;
     struct zwp_pointer_constraints_v1*      pointerConstraints;
     struct wl_data_source*                  dataSourceForClipboard;
+    struct wl_data_source*                  dataSourceForDrag;
     struct zwp_primary_selection_device_manager_v1* primarySelectionDeviceManager;
     struct zwp_primary_selection_device_v1*    primarySelectionDevice;
     struct zwp_primary_selection_source_v1*    dataSourceForPrimarySelection;
@@ -355,6 +356,11 @@ typedef struct _GLFWlibraryWayland
     struct wp_single_pixel_buffer_manager_v1 *wp_single_pixel_buffer_manager_v1;
     struct zwp_idle_inhibit_manager_v1* idle_inhibit_manager;
     struct zwp_keyboard_shortcuts_inhibit_manager_v1 *keyboard_shortcuts_inhibit_manager;
+
+    // Drag-and-drop source state
+    _GLFWDragData                dragData;
+    struct wl_surface*           dragIconSurface;
+    struct wl_buffer*            dragIconBuffer;
 
     int                         compositorVersion;
     int                         seatVersion;

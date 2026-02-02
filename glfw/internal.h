@@ -583,6 +583,16 @@ typedef struct _GLFWClipboardData {
     GLFWClipboardType ctype;
 } _GLFWClipboardData;
 
+// Internal representation of drag data with copied binary data
+typedef struct _GLFWDragData {
+    char **mime_types;
+    void **data;
+    size_t *data_sz;
+    size_t num_items;
+    GLFWimage icon;      // Copied icon data
+    bool has_icon;
+} _GLFWDragData;
+
 // Library global data
 //
 struct _GLFWlibrary
@@ -707,6 +717,7 @@ void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
 
 void _glfwPlatformSetClipboard(GLFWClipboardType t);
 void _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object);
+void _glfwPlatformStartDrag(_GLFWwindow* window, _GLFWDragData *drag_data);
 
 bool _glfwPlatformInitJoysticks(void);
 void _glfwPlatformTerminateJoysticks(void);
@@ -896,6 +907,7 @@ void glfw_handle_scroll_event_for_momentum(_GLFWwindow *w, const GLFWScrollEvent
 char* _glfw_strdup(const char* source);
 
 void _glfw_free_clipboard_data(_GLFWClipboardData *cd);
+void _glfw_free_drag_data(_GLFWDragData *dd);
 
 #define debug_rendering(...) if (_glfw.hints.init.debugRendering) { timed_debug_print(__VA_ARGS__); }
 #define debug_input(...) if (_glfw.hints.init.debugKeyboard) { timed_debug_print(__VA_ARGS__); }

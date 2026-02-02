@@ -542,6 +542,13 @@ const char* _glfwPlatformGetClipboardString(void)
     return _glfw.null.clipboardString;
 }
 
+void
+_glfwPlatformStartDrag(_GLFWwindow* window UNUSED, _GLFWDragData *drag_data) {
+    // Null platform doesn't support drag-and-drop
+    _glfwInputError(GLFW_FEATURE_UNAVAILABLE, "Null: Drag-and-drop is not available");
+    _glfw_free_drag_data(drag_data);
+}
+
 const char* _glfwPlatformGetNativeKeyName(int native_key)
 {
     switch (scancode)

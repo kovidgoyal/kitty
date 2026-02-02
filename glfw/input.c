@@ -1575,6 +1575,89 @@ GLFWAPI void glfwSetClipboardDataTypes(GLFWClipboardType clipboard_type, const c
     _glfwPlatformSetClipboard(clipboard_type);
 }
 
+void _glfw_free_drag_data(_GLFWDragData *dd) {
+    if (dd->mime_types) {
+        for (size_t i = 0; i < dd->num_items; i++) {
+            free(dd->mime_types[i]);
+        }
+        free(dd->mime_types);
+    }
+    if (dd->data) {
+        for (size_t i = 0; i < dd->num_items; i++) {
+            free(dd->data[i]);
+        }
+        free(dd->data);
+    }
+    if (dd->data_sz) {
+        free(dd->data_sz);
+    }
+    if (dd->has_icon && dd->icon.pixels) {
+        free(dd->icon.pixels);
+    }
+    memset(dd, 0, sizeof(*dd));
+}
+
+GLFWAPI void glfwStartDrag(GLFWwindow* handle, const GLFWDragItem* items, size_t num_items, const GLFWimage* icon) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+    assert(items != NULL || num_items == 0);
+    _GLFW_REQUIRE_INIT();
+
+    if (num_items == 0) {
+        return;
+    }
+
+    _GLFWDragData drag_data = {0};
+    drag_data.mime_types = calloc(num_items, sizeof(char*));
+    drag_data.data = calloc(num_items, sizeof(void*));
+    drag_data.data_sz = calloc(num_items, sizeof(size_t));
+    drag_data.num_items = num_items;
+
+    if (!drag_data.mime_types || !drag_data.data || !drag_data.data_sz) {
+        _glfwInputError(GLFW_OUT_OF_MEMORY, "Failed to allocate drag data");
+        _glfw_free_drag_data(&drag_data);
+        return;
+    }
+
+    // Copy all items - binary data and mime types
+    for (size_t i = 0; i < num_items; i++) {
+        drag_data.mime_types[i] = _glfw_strdup(items[i].mime_type);
+        if (!drag_data.mime_types[i]) {
+            _glfwInputError(GLFW_OUT_OF_MEMORY, "Failed to copy mime type");
+            _glfw_free_drag_data(&drag_data);
+            return;
+        }
+        drag_data.data_sz[i] = items[i].data_sz;
+        if (items[i].data_sz > 0 && items[i].data) {
+            drag_data.data[i] = malloc(items[i].data_sz);
+            if (!drag_data.data[i]) {
+                _glfwInputError(GLFW_OUT_OF_MEMORY, "Failed to copy drag data");
+                _glfw_free_drag_data(&drag_data);
+                return;
+            }
+            memcpy(drag_data.data[i], items[i].data, items[i].data_sz);
+        }
+    }
+
+    // Copy icon if provided
+    if (icon && icon->pixels && icon->width > 0 && icon->height > 0) {
+        drag_data.has_icon = true;
+        drag_data.icon.width = icon->width;
+        drag_data.icon.height = icon->height;
+        size_t icon_size = (size_t)icon->width * (size_t)icon->height * 4;  // RGBA
+        drag_data.icon.pixels = malloc(icon_size);
+        if (!drag_data.icon.pixels) {
+            _glfwInputError(GLFW_OUT_OF_MEMORY, "Failed to copy drag icon");
+            _glfw_free_drag_data(&drag_data);
+            return;
+        }
+        memcpy(drag_data.icon.pixels, icon->pixels, icon_size);
+    }
+
+    _glfwPlatformStartDrag(window, &drag_data);
+    // Note: drag_data is freed by the platform implementation when done
+}
+
 GLFWAPI monotonic_t glfwGetTime(void)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(0);

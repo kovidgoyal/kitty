@@ -2738,6 +2738,156 @@ _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_typ
     }
 }
 
+// Drag source implementation
+
+static void
+send_drag_data(const _GLFWDragData *dd, const char *mime, int fd) {
+    for (size_t i = 0; i < dd->num_items; i++) {
+        if (strcmp(dd->mime_types[i], mime) == 0) {
+            if (dd->data[i] && dd->data_sz[i] > 0) {
+                write_all(fd, dd->data[i], dd->data_sz[i]);
+            }
+            break;
+        }
+    }
+}
+
+static void _glfwSendDragData(void *data UNUSED, struct wl_data_source *data_source UNUSED, const char *mime_type, int fd) {
+    send_drag_data(&_glfw.wl.dragData, mime_type, fd);
+    close(fd);
+}
+
+static void drag_source_canceled(void *data UNUSED, struct wl_data_source *wl_data_source) {
+    if (_glfw.wl.dataSourceForDrag == wl_data_source) {
+        _glfw.wl.dataSourceForDrag = NULL;
+        _glfw_free_drag_data(&_glfw.wl.dragData);
+        if (_glfw.wl.dragIconBuffer) {
+            wl_buffer_destroy(_glfw.wl.dragIconBuffer);
+            _glfw.wl.dragIconBuffer = NULL;
+        }
+        if (_glfw.wl.dragIconSurface) {
+            wl_surface_destroy(_glfw.wl.dragIconSurface);
+            _glfw.wl.dragIconSurface = NULL;
+        }
+    }
+    wl_data_source_destroy(wl_data_source);
+}
+
+static void drag_source_target(void* data UNUSED, struct wl_data_source* wl_data_source UNUSED, const char* mime_type UNUSED) {
+}
+
+static void drag_source_action(void* data UNUSED, struct wl_data_source* wl_data_source UNUSED, uint dnd_action UNUSED) {
+}
+
+static void drag_source_dnd_drop_performed(void* data UNUSED, struct wl_data_source* wl_data_source UNUSED) {
+}
+
+static void drag_source_dnd_finished(void* data UNUSED, struct wl_data_source* wl_data_source) {
+    if (_glfw.wl.dataSourceForDrag == wl_data_source) {
+        _glfw.wl.dataSourceForDrag = NULL;
+        _glfw_free_drag_data(&_glfw.wl.dragData);
+        if (_glfw.wl.dragIconBuffer) {
+            wl_buffer_destroy(_glfw.wl.dragIconBuffer);
+            _glfw.wl.dragIconBuffer = NULL;
+        }
+        if (_glfw.wl.dragIconSurface) {
+            wl_surface_destroy(_glfw.wl.dragIconSurface);
+            _glfw.wl.dragIconSurface = NULL;
+        }
+    }
+    wl_data_source_destroy(wl_data_source);
+}
+
+static const struct wl_data_source_listener drag_source_listener = {
+    .send = _glfwSendDragData,
+    .cancelled = drag_source_canceled,
+    .target = drag_source_target,
+    .action = drag_source_action,
+    .dnd_drop_performed = drag_source_dnd_drop_performed,
+    .dnd_finished = drag_source_dnd_finished,
+};
+
+void
+_glfwPlatformStartDrag(_GLFWwindow* window, _GLFWDragData *drag_data) {
+    if (!_glfwEnsureDataDevice()) {
+        _glfw_free_drag_data(drag_data);
+        return;
+    }
+
+    // Clean up any previous drag
+    if (_glfw.wl.dataSourceForDrag) {
+        wl_data_source_destroy(_glfw.wl.dataSourceForDrag);
+        _glfw.wl.dataSourceForDrag = NULL;
+    }
+    _glfw_free_drag_data(&_glfw.wl.dragData);
+    if (_glfw.wl.dragIconBuffer) {
+        wl_buffer_destroy(_glfw.wl.dragIconBuffer);
+        _glfw.wl.dragIconBuffer = NULL;
+    }
+    if (_glfw.wl.dragIconSurface) {
+        wl_surface_destroy(_glfw.wl.dragIconSurface);
+        _glfw.wl.dragIconSurface = NULL;
+    }
+
+    // Take ownership of drag_data
+    _glfw.wl.dragData = *drag_data;
+    memset(drag_data, 0, sizeof(*drag_data));
+
+    _glfw.wl.dataSourceForDrag = wl_data_device_manager_create_data_source(_glfw.wl.dataDeviceManager);
+    if (!_glfw.wl.dataSourceForDrag) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to create data source for drag");
+        _glfw_free_drag_data(&_glfw.wl.dragData);
+        return;
+    }
+
+    wl_data_source_add_listener(_glfw.wl.dataSourceForDrag, &drag_source_listener, NULL);
+
+    // Offer all mime types
+    for (size_t i = 0; i < _glfw.wl.dragData.num_items; i++) {
+        wl_data_source_offer(_glfw.wl.dataSourceForDrag, _glfw.wl.dragData.mime_types[i]);
+        // Also offer text/* variants for text/plain
+        if (strcmp(_glfw.wl.dragData.mime_types[i], "text/plain") == 0) {
+            wl_data_source_offer(_glfw.wl.dataSourceForDrag, "TEXT");
+            wl_data_source_offer(_glfw.wl.dataSourceForDrag, "STRING");
+            wl_data_source_offer(_glfw.wl.dataSourceForDrag, "UTF8_STRING");
+            wl_data_source_offer(_glfw.wl.dataSourceForDrag, "text/plain;charset=utf-8");
+        }
+    }
+
+    // Set up the drag icon surface if provided
+    struct wl_surface *icon_surface = NULL;
+    int icon_hotspot_x = 0, icon_hotspot_y = 0;
+    if (_glfw.wl.dragData.has_icon && _glfw.wl.dragData.icon.pixels) {
+        _glfw.wl.dragIconSurface = wl_compositor_create_surface(_glfw.wl.compositor);
+        if (_glfw.wl.dragIconSurface) {
+            _glfw.wl.dragIconBuffer = createShmBuffer(&_glfw.wl.dragData.icon, false, true);
+            if (_glfw.wl.dragIconBuffer) {
+                wl_surface_attach(_glfw.wl.dragIconSurface, _glfw.wl.dragIconBuffer, 0, 0);
+                wl_surface_damage(_glfw.wl.dragIconSurface, 0, 0, _glfw.wl.dragData.icon.width, _glfw.wl.dragData.icon.height);
+                wl_surface_commit(_glfw.wl.dragIconSurface);
+                icon_surface = _glfw.wl.dragIconSurface;
+                // Use center of image as hotspot
+                icon_hotspot_x = _glfw.wl.dragData.icon.width / 2;
+                icon_hotspot_y = _glfw.wl.dragData.icon.height / 2;
+            }
+        }
+    }
+
+    // Set the action to copy
+    wl_data_source_set_actions(_glfw.wl.dataSourceForDrag, WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY);
+
+    // Start the drag operation
+    wl_data_device_start_drag(
+        _glfw.wl.dataDevice,
+        _glfw.wl.dataSourceForDrag,
+        window->wl.surface,
+        icon_surface,
+        _glfw.wl.pointer_serial
+    );
+
+    wl_display_flush(_glfw.wl.display);
+}
+
 EGLenum _glfwPlatformGetEGLPlatform(EGLint** attribs UNUSED)
 {
     if (_glfw.egl.EXT_platform_base && _glfw.egl.EXT_platform_wayland)

@@ -756,7 +756,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 // Content view class for the GLFW window {{{
 
-@interface GLFWContentView : NSView <NSTextInputClient>
+@interface GLFWContentView : NSView <NSTextInputClient, NSDraggingSource>
 {
     _GLFWwindow* window;
     NSTrackingArea* trackingArea;
@@ -1383,6 +1383,28 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     if ([uri_list length] > 0) _glfwInputDrop(window, "text/uri-list", uri_list.UTF8String, strlen(uri_list.UTF8String));
 
     return YES;
+}
+
+// NSDraggingSource protocol methods
+
+- (NSDragOperation)draggingSession:(NSDraggingSession *)session sourceOperationMaskForDraggingContext:(NSDraggingContext)context
+{
+    (void)session;
+    switch (context) {
+        case NSDraggingContextOutsideApplication:
+            return NSDragOperationCopy;
+        case NSDraggingContextWithinApplication:
+        default:
+            return NSDragOperationCopy;
+    }
+}
+
+- (void)draggingSession:(NSDraggingSession *)session endedAtPoint:(NSPoint)screenPoint operation:(NSDragOperation)operation
+{
+    (void)session;
+    (void)screenPoint;
+    (void)operation;
+    // Drag ended, nothing special to do
 }
 
 - (BOOL)hasMarkedText
@@ -3113,6 +3135,110 @@ _glfwPlatformSetClipboard(GLFWClipboardType t) {
         if (data != nil) [pasteboard setData:data forType:ptypes[i]];
     }
 }
+// }}}
+
+// Drag source implementation {{{
+
+void
+_glfwPlatformStartDrag(_GLFWwindow* window, _GLFWDragData *drag_data) {
+    @autoreleasepool {
+        if (!window || !drag_data || drag_data->num_items == 0) {
+            _glfw_free_drag_data(drag_data);
+            return;
+        }
+
+        NSWindow *nswindow = window->ns.object;
+        NSView *contentView = [nswindow contentView];
+        if (!contentView) {
+            _glfw_free_drag_data(drag_data);
+            return;
+        }
+
+        // Create the dragging items
+        NSMutableArray<NSDraggingItem*> *dragItems = [NSMutableArray arrayWithCapacity:drag_data->num_items];
+
+        for (size_t i = 0; i < drag_data->num_items; i++) {
+            NSString *mime = @(drag_data->mime_types[i]);
+            NSPasteboardType ptype = mime_to_uti(drag_data->mime_types[i]);
+
+            NSData *itemData = [NSData dataWithBytes:drag_data->data[i] length:drag_data->data_sz[i]];
+            NSPasteboardItem *pasteboardItem = [[NSPasteboardItem alloc] init];
+            [pasteboardItem setData:itemData forType:ptype];
+
+            NSDraggingItem *dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter:pasteboardItem];
+
+            // Set the dragging frame - we need some visible representation
+            NSRect frame;
+            if (drag_data->has_icon && drag_data->icon.pixels && drag_data->icon.width > 0 && drag_data->icon.height > 0) {
+                frame = NSMakeRect(0, 0, drag_data->icon.width, drag_data->icon.height);
+            } else {
+                frame = NSMakeRect(0, 0, 32, 32);  // Default size
+            }
+
+            // Create image from icon if provided
+            NSImage *dragImage = nil;
+            if (drag_data->has_icon && drag_data->icon.pixels && drag_data->icon.width > 0 && drag_data->icon.height > 0) {
+                NSBitmapImageRep *rep = [[NSBitmapImageRep alloc]
+                    initWithBitmapDataPlanes:NULL
+                    pixelsWide:drag_data->icon.width
+                    pixelsHigh:drag_data->icon.height
+                    bitsPerSample:8
+                    samplesPerPixel:4
+                    hasAlpha:YES
+                    isPlanar:NO
+                    colorSpaceName:NSDeviceRGBColorSpace
+                    bytesPerRow:drag_data->icon.width * 4
+                    bitsPerPixel:32];
+                if (rep) {
+                    memcpy([rep bitmapData], drag_data->icon.pixels,
+                           (size_t)drag_data->icon.width * (size_t)drag_data->icon.height * 4);
+                    dragImage = [[NSImage alloc] initWithSize:NSMakeSize(drag_data->icon.width, drag_data->icon.height)];
+                    [dragImage addRepresentation:rep];
+                }
+            }
+
+            if (!dragImage) {
+                // Create a simple default drag image
+                dragImage = [[NSImage alloc] initWithSize:NSMakeSize(32, 32)];
+                [dragImage lockFocus];
+                [[NSColor grayColor] set];
+                NSRectFill(NSMakeRect(0, 0, 32, 32));
+                [dragImage unlockFocus];
+            }
+
+            [dragItem setDraggingFrame:frame contents:dragImage];
+            [dragItems addObject:dragItem];
+        }
+
+        // Free the drag data now that we've copied it to NSData objects
+        _glfw_free_drag_data(drag_data);
+
+        if (dragItems.count > 0) {
+            // Get current mouse location relative to the view
+            NSPoint mouseLocation = [nswindow mouseLocationOutsideOfEventStream];
+
+            // Create a drag event
+            NSEvent *currentEvent = [NSApp currentEvent];
+            if (!currentEvent) {
+                currentEvent = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDragged
+                                                  location:mouseLocation
+                                             modifierFlags:0
+                                                 timestamp:0
+                                              windowNumber:[nswindow windowNumber]
+                                                   context:nil
+                                               eventNumber:0
+                                                clickCount:1
+                                                  pressure:1.0];
+            }
+
+            // Begin the drag session
+            [contentView beginDraggingSessionWithItems:dragItems
+                                                 event:currentEvent
+                                                source:contentView];
+        }
+    }
+}
+
 // }}}
 
 EGLenum _glfwPlatformGetEGLPlatform(EGLint** attribs)

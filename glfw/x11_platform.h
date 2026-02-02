@@ -383,6 +383,16 @@ typedef struct _GLFWlibraryX11
         int         format_priority;
     } xdnd;
 
+    // Drag source state
+    struct {
+        _GLFWDragData   data;
+        Window          source_window;
+        Window          target_window;
+        bool            in_progress;
+        Atom*           type_atoms;
+        int             num_types;
+    } drag_source;
+
     struct {
         void*       handle;
         PFN_XcursorImageCreate ImageCreate;
