@@ -642,8 +642,8 @@ window_focus_callback(GLFWwindow *w, int focused) {
 }
 
 static int
-drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos) {
-    (void)event; (void)xpos; (void)ypos;
+drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int mime_count) {
+    (void)event; (void)xpos; (void)ypos; (void)mime_types; (void)mime_count;
     if (!set_callback_window(w)) return 0;
     if (event == GLFW_DRAG_ENTER) {
         return 1;

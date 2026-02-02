@@ -1840,10 +1840,7 @@ static void processEvent(XEvent *event)
                 if (_glfw.x11.xdnd.version > _GLFW_XDND_VERSION)
                     return;
 
-                // Call the drag enter callback first
-                // Position is not known yet at enter time, will be updated with XdndPosition
-                int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, 0, 0);
-
+                // Get the MIME types before calling the callback
                 if (list)
                 {
                     count = _glfwGetWindowPropertyX11(_glfw.x11.xdnd.source,
@@ -1856,10 +1853,22 @@ static void processEvent(XEvent *event)
                     count = 3;
                     formats = (Atom*) event->xclient.data.l + 2;
                 }
-                char **atom_names = calloc(count, sizeof(char*));
-                if (atom_names && accepted) {
-                    get_atom_names(formats, count, atom_names);
 
+                char **atom_names = calloc(count, sizeof(char*));
+                int valid_mime_count = 0;
+                if (atom_names) {
+                    get_atom_names(formats, count, atom_names);
+                    // Count valid MIME types
+                    for (i = 0; i < count; i++) {
+                        if (atom_names[i]) valid_mime_count++;
+                    }
+                }
+
+                // Call the drag enter callback with the MIME types
+                // Position is not known yet at enter time, will be updated with XdndPosition
+                int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, 0, 0, (const char**)atom_names, valid_mime_count);
+
+                if (atom_names && accepted) {
                     for (i = 0;  i < count;  i++)
                     {
                         if (atom_names[i]) {
@@ -1920,7 +1929,7 @@ static void processEvent(XEvent *event)
             else if (event->xclient.message_type == _glfw.x11.XdndLeave)
             {
                 // The drag operation has left the window
-                _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0);
+                _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, 0);
                 _glfw.x11.xdnd.source = None;
                 _glfw.x11.xdnd.target_window = None;
             }
@@ -1949,7 +1958,7 @@ static void processEvent(XEvent *event)
                 _glfwInputCursorPos(window, xpos, ypos);
 
                 // Call the drag move callback
-                _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos);
+                _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
 
                 XEvent reply = { ClientMessage };
                 reply.xclient.window = _glfw.x11.xdnd.source;

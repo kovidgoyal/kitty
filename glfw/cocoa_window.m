@@ -1346,8 +1346,48 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
 
-    // Call drag enter callback and check if accepted
-    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos);
+    // Get MIME types from the dragging pasteboard
+    NSPasteboard* pasteboard = [sender draggingPasteboard];
+    NSMutableArray<NSString*>* mimeTypes = [NSMutableArray array];
+
+    // Check for common types first
+    NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
+    if ([pasteboard canReadObjectForClasses:@[[NSURL class]] options:options]) {
+        [mimeTypes addObject:@"text/uri-list"];
+    }
+    if ([pasteboard canReadObjectForClasses:@[[NSString class]] options:nil]) {
+        [mimeTypes addObject:@"text/plain"];
+    }
+
+    // Get additional types from pasteboard items
+    for (NSPasteboardItem* item in pasteboard.pasteboardItems) {
+        for (NSPasteboardType type in item.types) {
+            const char* mime = uti_to_mime(type);
+            if (mime && mime[0]) {
+                NSString* mimeString = @(mime);
+                // Avoid duplicates
+                if (![mimeTypes containsObject:mimeString]) {
+                    [mimeTypes addObject:mimeString];
+                }
+            }
+        }
+    }
+
+    // Convert to C string array
+    int mime_count = (int)[mimeTypes count];
+    const char** mime_array = NULL;
+    if (mime_count > 0) {
+        mime_array = (const char**)calloc(mime_count, sizeof(const char*));
+        for (int i = 0; i < mime_count; i++) {
+            mime_array[i] = [mimeTypes[i] UTF8String];
+        }
+    }
+
+    // Call drag enter callback with MIME types
+    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, mime_array, mime_count);
+
+    free(mime_array);
+
     if (accepted)
         return NSDragOperationGeneric;
     return NSDragOperationNone;
@@ -1361,7 +1401,7 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     double ypos = contentRect.size.height - pos.y;
 
     // Call drag move callback
-    _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos);
+    _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
     return NSDragOperationGeneric;
 }
 
@@ -1369,7 +1409,7 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 {
     (void)sender;
     // Call drag leave callback
-    _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0);
+    _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, 0);
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
