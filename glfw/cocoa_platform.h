@@ -169,7 +169,7 @@ typedef struct _GLFWwindowNS
     GLFWcocoarenderframefun resizeCallback;
 
     // Current drag operation type for NSDraggingSource
-    int dragOperationType;
+    GLFWDragOperationType dragOperationType;
 } _GLFWwindowNS;
 
 // Cocoa-specific global data

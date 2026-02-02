@@ -5055,7 +5055,7 @@ GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* window, GLFWdragfun callback
  *
  *  @ingroup input
  */
-GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, int operation);
+GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation);
 
 /*! @brief Returns whether the specified joystick is present.
  *

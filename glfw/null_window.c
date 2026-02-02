@@ -534,7 +534,7 @@ int _glfwPlatformStartDrag(_GLFWwindow* window UNUSED,
                            const GLFWdragitem* items UNUSED,
                            int item_count UNUSED,
                            const GLFWimage* thumbnail UNUSED,
-                           int operation UNUSED)
+                           GLFWDragOperationType operation UNUSED)
 {
     return false;
 }

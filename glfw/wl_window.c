@@ -3061,7 +3061,7 @@ static const struct wl_data_source_listener drag_source_listener = {
 };
 
 int
-_glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, int operation) {
+_glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation) {
     if (!_glfw.wl.dataDeviceManager) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Data device manager not available");
         return false;

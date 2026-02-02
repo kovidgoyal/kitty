@@ -1130,7 +1130,7 @@ GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* handle, GLFWdragfun cbfun)
     return cbfun;
 }
 
-GLFWAPI int glfwStartDrag(GLFWwindow* handle, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, int operation)
+GLFWAPI int glfwStartDrag(GLFWwindow* handle, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     assert(window != NULL);

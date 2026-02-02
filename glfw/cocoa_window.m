@@ -3655,7 +3655,7 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
                            const GLFWdragitem* items,
                            int item_count,
                            const GLFWimage* thumbnail,
-                           int operation) {
+                           GLFWDragOperationType operation) {
     // Store the operation type for the dragging source callback
     window->ns.dragOperationType = operation;
 
