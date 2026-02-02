@@ -406,6 +406,15 @@ typedef struct _GLFWlibraryWayland
     _GLFWWaylandDataOffer dataOffers[8];
     bool has_preferred_buffer_scale;
     char *compositor_name;
+
+    // Drag operation state
+    struct {
+        struct wl_data_source* source;
+        unsigned char** items_data;
+        size_t* items_sizes;
+        char** items_mimes;
+        int item_count;
+    } drag;
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data

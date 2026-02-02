@@ -642,6 +642,16 @@ window_focus_callback(GLFWwindow *w, int focused) {
 }
 
 static int
+drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos) {
+    (void)event; (void)xpos; (void)ypos;
+    if (!set_callback_window(w)) return 0;
+    if (event == GLFW_DRAG_ENTER) {
+        return 1;
+    }
+    return 0;
+}
+
+static int
 drop_callback(GLFWwindow *w, const char *mime, const char *data, size_t sz) {
     if (!set_callback_window(w)) return 0;
 #define RETURN(x) { global_state.callback_os_window = NULL; return x; }
@@ -1529,6 +1539,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwSetScrollCallback(glfw_window, scroll_callback);
     glfwSetKeyboardCallback(glfw_window, key_callback);
     glfwSetDropCallback(glfw_window, drop_callback);
+    glfwSetDragCallback(glfw_window, drag_callback);
     monotonic_t now = monotonic();
     w->is_focused = true;
     w->cursor_blink_zero_time = now;

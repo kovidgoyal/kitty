@@ -756,7 +756,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 // Content view class for the GLFW window {{{
 
-@interface GLFWContentView : NSView <NSTextInputClient>
+@interface GLFWContentView : NSView <NSTextInputClient, NSDraggingSource>
 {
     _GLFWwindow* window;
     NSTrackingArea* trackingArea;
@@ -1341,10 +1341,35 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
 {
-    (void)sender;
-    // HACK: We don't know what to say here because we don't know what the
-    //       application wants to do with the paths
+    const NSRect contentRect = [window->ns.view frame];
+    const NSPoint pos = [sender draggingLocation];
+    double xpos = pos.x;
+    double ypos = contentRect.size.height - pos.y;
+
+    // Call drag enter callback and check if accepted
+    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos);
+    if (accepted)
+        return NSDragOperationGeneric;
+    return NSDragOperationNone;
+}
+
+- (NSDragOperation)draggingUpdated:(id <NSDraggingInfo>)sender
+{
+    const NSRect contentRect = [window->ns.view frame];
+    const NSPoint pos = [sender draggingLocation];
+    double xpos = pos.x;
+    double ypos = contentRect.size.height - pos.y;
+
+    // Call drag move callback
+    _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos);
     return NSDragOperationGeneric;
+}
+
+- (void)draggingExited:(id <NSDraggingInfo>)sender
+{
+    (void)sender;
+    // Call drag leave callback
+    _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0);
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
@@ -1383,6 +1408,33 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     if ([uri_list length] > 0) _glfwInputDrop(window, "text/uri-list", uri_list.UTF8String, strlen(uri_list.UTF8String));
 
     return YES;
+}
+
+// NSDraggingSource protocol methods
+- (NSDragOperation)draggingSession:(NSDraggingSession *)session
+    sourceOperationMaskForDraggingContext:(NSDraggingContext)context
+{
+    (void)session;
+    (void)context;
+    // Return the operation based on the stored drag operation type
+    switch (window->ns.dragOperationType) {
+        case GLFW_DRAG_OPERATION_COPY:
+            return NSDragOperationCopy;
+        case GLFW_DRAG_OPERATION_MOVE:
+            return NSDragOperationMove;
+        case GLFW_DRAG_OPERATION_GENERIC:
+            return NSDragOperationGeneric;
+    }
+}
+
+- (void)draggingSession:(NSDraggingSession *)session
+           endedAtPoint:(NSPoint)screenPoint
+              operation:(NSDragOperation)operation
+{
+    (void)session;
+    (void)screenPoint;
+    (void)operation;
+    // Drag session ended
 }
 
 - (BOOL)hasMarkedText
@@ -3597,3 +3649,99 @@ void _glfwCocoaPostEmptyEvent(void) {
                                            data2:0];
     [NSApp postEvent:event atStart:YES];
 }
+
+int _glfwPlatformStartDrag(_GLFWwindow* window,
+                           const GLFWdragitem* items,
+                           int item_count,
+                           const GLFWimage* thumbnail,
+                           GLFWDragOperationType operation) {
+    // Store the operation type for the dragging source callback
+    window->ns.dragOperationType = operation;
+
+    @autoreleasepool {
+        // Create pasteboard items for each drag item
+        NSMutableArray<NSPasteboardItem*>* pasteboardItems = [[NSMutableArray alloc] init];
+
+        for (int i = 0; i < item_count; i++) {
+            NSPasteboardItem* item = [[NSPasteboardItem alloc] init];
+
+            // Convert MIME type to UTI using the existing helper function
+            NSString* utiString = mime_to_uti(items[i].mime_type);
+            NSData* data = [NSData dataWithBytes:items[i].data length:items[i].data_size];
+
+            [item setData:data forType:utiString];
+            [pasteboardItems addObject:item];
+        }
+
+        // Create the dragging item
+        NSDraggingItem* dragItem = nil;
+
+        if (thumbnail && thumbnail->pixels) {
+            // Create NSImage from thumbnail
+            NSBitmapImageRep* imageRep = [[NSBitmapImageRep alloc]
+                initWithBitmapDataPlanes:NULL
+                              pixelsWide:thumbnail->width
+                              pixelsHigh:thumbnail->height
+                           bitsPerSample:8
+                         samplesPerPixel:4
+                                hasAlpha:YES
+                                isPlanar:NO
+                          colorSpaceName:NSDeviceRGBColorSpace
+                             bytesPerRow:thumbnail->width * 4
+                            bitsPerPixel:32];
+
+            if (imageRep) {
+                memcpy([imageRep bitmapData], thumbnail->pixels,
+                       thumbnail->width * thumbnail->height * 4);
+
+                NSImage* image = [[NSImage alloc] initWithSize:
+                    NSMakeSize(thumbnail->width, thumbnail->height)];
+                [image addRepresentation:imageRep];
+
+                dragItem = [[NSDraggingItem alloc]
+                    initWithPasteboardWriter:pasteboardItems.firstObject];
+                [dragItem setDraggingFrame:NSMakeRect(0, 0, thumbnail->width, thumbnail->height)
+                                  contents:image];
+            }
+        }
+
+        if (!dragItem && pasteboardItems.count > 0) {
+            dragItem = [[NSDraggingItem alloc]
+                initWithPasteboardWriter:pasteboardItems.firstObject];
+            [dragItem setDraggingFrame:NSMakeRect(0, 0, 32, 32) contents:nil];
+        }
+
+        if (dragItem) {
+            // Start the drag session - try current event first, then create a synthetic one
+            NSEvent* event = [NSApp currentEvent];
+            if (!event || ([event type] != NSEventTypeLeftMouseDown &&
+                           [event type] != NSEventTypeLeftMouseDragged)) {
+                // Create a synthetic left mouse down event using stored cursor position
+                // Convert window coordinates to screen coordinates
+                NSRect contentRect = [window->ns.view frame];
+                NSPoint windowPos = NSMakePoint(window->virtualCursorPosX,
+                                                contentRect.size.height - window->virtualCursorPosY);
+
+                event = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
+                                           location:windowPos
+                                      modifierFlags:0
+                                          timestamp:[[NSProcessInfo processInfo] systemUptime]
+                                       windowNumber:[window->ns.object windowNumber]
+                                            context:nil
+                                        eventNumber:0
+                                         clickCount:1
+                                           pressure:1.0];
+            }
+
+            if (event) {
+                [window->ns.view beginDraggingSessionWithItems:@[dragItem]
+                                                        event:event
+                                                       source:window->ns.view];
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+

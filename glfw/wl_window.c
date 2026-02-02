@@ -2486,7 +2486,7 @@ static void handle_primary_selection_offer(void *data UNUSED, struct zwp_primary
     zwp_primary_selection_offer_v1_add_listener(id, &primary_selection_offer_listener, NULL);
 }
 
-static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x UNUSED, wl_fixed_t y UNUSED, struct wl_data_offer *id) {
+static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
         if (d->id == id) {
@@ -2497,9 +2497,20 @@ static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device 
             while (window)
             {
                 if (window->wl.surface == surface) {
-                    for (size_t j = 0; j < d->mimes_count; j++) {
-                        int prio = _glfwInputDrop(window, d->mimes[j], NULL, 0);
-                        if (prio > format_priority) d->mime_for_drop = d->mimes[j];
+                    // Call drag enter callback
+                    double xpos = wl_fixed_to_double(x);
+                    double ypos = wl_fixed_to_double(y);
+                    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos);
+
+                    // If accepted, check MIME type priorities
+                    if (accepted) {
+                        for (size_t j = 0; j < d->mimes_count; j++) {
+                            int prio = _glfwInputDrop(window, d->mimes[j], NULL, 0);
+                            if (prio > format_priority) {
+                                format_priority = prio;
+                                d->mime_for_drop = d->mimes[j];
+                            }
+                        }
                     }
                     break;
                 }
@@ -2516,6 +2527,15 @@ static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device 
 static void drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
+            // Find the window for this offer and call the leave callback
+            _GLFWwindow* window = _glfw.windowListHead;
+            while (window) {
+                if (window->wl.surface == _glfw.wl.dataOffers[i].surface) {
+                    _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0);
+                    break;
+                }
+                window = window->next;
+            }
             destroy_data_offer(&_glfw.wl.dataOffers[i]);
         }
     }
@@ -2549,7 +2569,23 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
     }
 }
 
-static void motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t time UNUSED, wl_fixed_t x UNUSED, wl_fixed_t y UNUSED) {
+static void motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t time UNUSED, wl_fixed_t x, wl_fixed_t y) {
+    // Find the current drag offer and send motion events
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
+            _GLFWwindow* window = _glfw.windowListHead;
+            while (window) {
+                if (window->wl.surface == _glfw.wl.dataOffers[i].surface) {
+                    double xpos = wl_fixed_to_double(x);
+                    double ypos = wl_fixed_to_double(y);
+                    _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos);
+                    break;
+                }
+                window = window->next;
+            }
+            break;
+        }
+    }
 }
 
 static const struct wl_data_device_listener data_device_listener = {
@@ -2961,6 +2997,163 @@ GLFWAPI bool glfwWaylandBeep(GLFWwindow *handle) {
     if (!_glfw.wl.xdg_system_bell_v1) return false;
     _GLFWwindow *window = (_GLFWwindow*)handle;
     xdg_system_bell_v1_ring(_glfw.wl.xdg_system_bell_v1, window ? window->wl.surface : NULL);
+    return true;
+}
+
+// Drag operation implementation
+
+static void
+drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const char *mime_type, int fd) {
+    // Find the matching MIME type and send its data
+    for (int i = 0; i < _glfw.wl.drag.item_count; i++) {
+        if (strcmp(_glfw.wl.drag.items_mimes[i], mime_type) == 0) {
+            write_all(fd, (const char*)_glfw.wl.drag.items_data[i], _glfw.wl.drag.items_sizes[i]);
+            break;
+        }
+    }
+    close(fd);
+}
+
+static void
+drag_source_cancelled(void *data UNUSED, struct wl_data_source *source) {
+    // Clean up drag data
+    if (_glfw.wl.drag.source == source) {
+        for (int i = 0; i < _glfw.wl.drag.item_count; i++) {
+            free(_glfw.wl.drag.items_data[i]);
+            free(_glfw.wl.drag.items_mimes[i]);
+        }
+        free(_glfw.wl.drag.items_data);
+        free(_glfw.wl.drag.items_sizes);
+        free(_glfw.wl.drag.items_mimes);
+        _glfw.wl.drag.items_data = NULL;
+        _glfw.wl.drag.items_sizes = NULL;
+        _glfw.wl.drag.items_mimes = NULL;
+        _glfw.wl.drag.item_count = 0;
+        _glfw.wl.drag.source = NULL;
+    }
+    wl_data_source_destroy(source);
+    _glfw.wl.drag.source = NULL;
+}
+
+static void
+drag_source_target(void *data UNUSED, struct wl_data_source *source UNUSED, const char *mime_type UNUSED) {
+}
+
+static void
+drag_source_action(void *data UNUSED, struct wl_data_source *source UNUSED, uint32_t dnd_action UNUSED) {
+}
+
+static void
+drag_source_dnd_drop_performed(void *data UNUSED, struct wl_data_source *source UNUSED) {
+}
+
+static void
+drag_source_dnd_finished(void *data UNUSED, struct wl_data_source *source) {
+    drag_source_cancelled(data, source);
+}
+
+static const struct wl_data_source_listener drag_source_listener = {
+    .send = drag_source_send,
+    .cancelled = drag_source_cancelled,
+    .target = drag_source_target,
+    .action = drag_source_action,
+    .dnd_drop_performed = drag_source_dnd_drop_performed,
+    .dnd_finished = drag_source_dnd_finished,
+};
+
+int
+_glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation) {
+    if (!_glfw.wl.dataDeviceManager) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Data device manager not available");
+        return false;
+    }
+
+    if (!_glfw.wl.dataDevice) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Data device not available");
+        return false;
+    }
+
+    // Clean up any existing drag operation
+    if (_glfw.wl.drag.source) drag_source_cancelled(NULL, _glfw.wl.drag.source);
+
+    // Create the data source
+    _glfw.wl.drag.source = wl_data_device_manager_create_data_source(_glfw.wl.dataDeviceManager);
+    if (!_glfw.wl.drag.source) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to create data source for drag");
+        return false;
+    }
+
+    // Set the DND action based on operation type
+    uint32_t wl_actions = 0;
+    switch (operation) {
+        case GLFW_DRAG_OPERATION_COPY: wl_actions = WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY; break;
+        case GLFW_DRAG_OPERATION_MOVE: wl_actions = WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE; break;
+        case GLFW_DRAG_OPERATION_GENERIC:
+            wl_actions = WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY | WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE; break;
+    }
+    wl_data_source_set_actions(_glfw.wl.drag.source, wl_actions);
+
+    // Allocate storage for drag data (copy the data)
+    _glfw.wl.drag.items_data = calloc(item_count, sizeof(unsigned char*));
+    _glfw.wl.drag.items_sizes = calloc(item_count, sizeof(size_t));
+    _glfw.wl.drag.items_mimes = calloc(item_count, sizeof(char*));
+    _glfw.wl.drag.item_count = item_count;
+
+    if (!_glfw.wl.drag.items_data || !_glfw.wl.drag.items_sizes || !_glfw.wl.drag.items_mimes) {
+        drag_source_cancelled(NULL, _glfw.wl.drag.source);
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to allocate drag data");
+        return false;
+    }
+
+    // Copy the data and offer MIME types
+    for (int i = 0; i < item_count; i++) {
+        _glfw.wl.drag.items_data[i] = malloc(items[i].data_size);
+        if (!_glfw.wl.drag.items_data[i]) {
+            drag_source_cancelled(NULL, _glfw.wl.drag.source);
+            _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to allocate drag item data");
+            return false;
+        }
+        memcpy(_glfw.wl.drag.items_data[i], items[i].data, items[i].data_size);
+        _glfw.wl.drag.items_sizes[i] = items[i].data_size;
+        _glfw.wl.drag.items_mimes[i] = _glfw_strdup(items[i].mime_type);
+        if (!_glfw.wl.drag.items_mimes[i]) {
+            drag_source_cancelled(NULL, _glfw.wl.drag.source);
+            _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to allocate drag item MIME type");
+            return false;
+        }
+        wl_data_source_offer(_glfw.wl.drag.source, items[i].mime_type);
+    }
+
+    wl_data_source_add_listener(_glfw.wl.drag.source, &drag_source_listener, NULL);
+
+    // Set up the drag icon surface if thumbnail is provided
+    struct wl_surface* icon_surface = NULL;
+    struct wl_buffer* icon_buffer = NULL;
+
+    if (thumbnail && thumbnail->pixels) {
+        icon_surface = wl_compositor_create_surface(_glfw.wl.compositor);
+        if (icon_surface) {
+            icon_buffer = createShmBuffer(thumbnail, false, true);
+            if (icon_buffer) {
+                wl_surface_attach(icon_surface, icon_buffer, 0, 0);
+                wl_surface_commit(icon_surface);
+            }
+        }
+    }
+
+    // Start the drag operation
+    wl_data_device_start_drag(_glfw.wl.dataDevice, _glfw.wl.drag.source,
+                              window->wl.surface, icon_surface,
+                              _glfw.wl.pointer_serial);
+
+    // Clean up icon resources (the compositor takes ownership)
+    if (icon_buffer) {
+        wl_buffer_destroy(icon_buffer);
+    }
+    if (icon_surface) {
+        wl_surface_destroy(icon_surface);
+    }
+
     return true;
 }
 

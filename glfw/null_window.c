@@ -530,6 +530,15 @@ void _glfwPlatformSetCursor(_GLFWwindow* window UNUSED, _GLFWcursor* cursor UNUS
 {
 }
 
+int _glfwPlatformStartDrag(_GLFWwindow* window UNUSED,
+                           const GLFWdragitem* items UNUSED,
+                           int item_count UNUSED,
+                           const GLFWimage* thumbnail UNUSED,
+                           GLFWDragOperationType operation UNUSED)
+{
+    return false;
+}
+
 void _glfwPlatformSetClipboardString(const char* string)
 {
     char* copy = _glfw_strdup(string);

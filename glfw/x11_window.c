@@ -1833,11 +1833,16 @@ static void processEvent(XEvent *event)
 
                 _glfw.x11.xdnd.source  = event->xclient.data.l[0];
                 _glfw.x11.xdnd.version = event->xclient.data.l[1] >> 24;
+                _glfw.x11.xdnd.target_window = window->x11.handle;
                 memset(_glfw.x11.xdnd.format, 0, sizeof(_glfw.x11.xdnd.format));
                 _glfw.x11.xdnd.format_priority  = 0;
 
                 if (_glfw.x11.xdnd.version > _GLFW_XDND_VERSION)
                     return;
+
+                // Call the drag enter callback first
+                // Position is not known yet at enter time, will be updated with XdndPosition
+                int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, 0, 0);
 
                 if (list)
                 {
@@ -1852,7 +1857,7 @@ static void processEvent(XEvent *event)
                     formats = (Atom*) event->xclient.data.l + 2;
                 }
                 char **atom_names = calloc(count, sizeof(char*));
-                if (atom_names) {
+                if (atom_names && accepted) {
                     get_atom_names(formats, count, atom_names);
 
                     for (i = 0;  i < count;  i++)
@@ -1866,6 +1871,10 @@ static void processEvent(XEvent *event)
                             XFree(atom_names[i]);
                         }
                     }
+                    free(atom_names);
+                } else if (atom_names) {
+                    for (i = 0;  i < count;  i++)
+                        if (atom_names[i]) XFree(atom_names[i]);
                     free(atom_names);
                 }
 
@@ -1908,6 +1917,13 @@ static void processEvent(XEvent *event)
                     XFlush(_glfw.x11.display);
                 }
             }
+            else if (event->xclient.message_type == _glfw.x11.XdndLeave)
+            {
+                // The drag operation has left the window
+                _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0);
+                _glfw.x11.xdnd.source = None;
+                _glfw.x11.xdnd.target_window = None;
+            }
             else if (event->xclient.message_type == _glfw.x11.XdndPosition)
             {
                 // The drag operation has moved over the window
@@ -1931,6 +1947,9 @@ static void processEvent(XEvent *event)
                     _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to get DND event position");
 
                 _glfwInputCursorPos(window, xpos, ypos);
+
+                // Call the drag move callback
+                _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos);
 
                 XEvent reply = { ClientMessage };
                 reply.xclient.window = _glfw.x11.xdnd.source;
@@ -3616,4 +3635,117 @@ GLFWAPI int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
     return XSetCommand(_glfw.x11.display, window->x11.handle, argv, argc);
 }
 
+// Helper function to clean up drag source data
+static void cleanupDragSource(void) {
+    if (_glfw.x11.drag.items_data) {
+        for (int i = 0; i < _glfw.x11.drag.item_count; i++) {
+            free(_glfw.x11.drag.items_data[i]);
+            free(_glfw.x11.drag.items_mimes[i]);
+        }
+        free(_glfw.x11.drag.items_data);
+        free(_glfw.x11.drag.items_sizes);
+        free(_glfw.x11.drag.items_mimes);
+        free(_glfw.x11.drag.type_atoms);
+        _glfw.x11.drag.items_data = NULL;
+        _glfw.x11.drag.items_sizes = NULL;
+        _glfw.x11.drag.items_mimes = NULL;
+        _glfw.x11.drag.type_atoms = NULL;
+        _glfw.x11.drag.item_count = 0;
+        _glfw.x11.drag.source_window = None;
+        _glfw.x11.drag.active = false;
+    }
+}
+
+int _glfwPlatformStartDrag(_GLFWwindow* window,
+                           const GLFWdragitem* items,
+                           int item_count,
+                           const GLFWimage* thumbnail UNUSED,
+                           GLFWDragOperationType operation) {
+    // Clean up any existing drag operation
+    cleanupDragSource();
+
+    // Set the drag action based on operation type
+    switch (operation) {
+        case GLFW_DRAG_OPERATION_COPY:
+            _glfw.x11.drag.action_atom = _glfw.x11.XdndActionCopy;
+            break;
+        case GLFW_DRAG_OPERATION_MOVE:
+            _glfw.x11.drag.action_atom = _glfw.x11.XdndActionMove;
+            break;
+        case GLFW_DRAG_OPERATION_GENERIC:
+            _glfw.x11.drag.action_atom = _glfw.x11.XdndActionCopy;
+            break;
+    }
+
+    // Allocate storage for drag data (copy the data)
+    _glfw.x11.drag.items_data = calloc(item_count, sizeof(unsigned char*));
+    _glfw.x11.drag.items_sizes = calloc(item_count, sizeof(size_t));
+    _glfw.x11.drag.items_mimes = calloc(item_count, sizeof(char*));
+    _glfw.x11.drag.type_atoms = calloc(item_count, sizeof(Atom));
+    _glfw.x11.drag.item_count = item_count;
+    _glfw.x11.drag.source_window = window->x11.handle;
+
+    if (!_glfw.x11.drag.items_data || !_glfw.x11.drag.items_sizes ||
+        !_glfw.x11.drag.items_mimes || !_glfw.x11.drag.type_atoms) {
+        cleanupDragSource();
+        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to allocate drag data");
+        return false;
+    }
+
+    // Copy the data and create atoms for MIME types
+    for (int i = 0; i < item_count; i++) {
+        _glfw.x11.drag.items_data[i] = malloc(items[i].data_size);
+        if (!_glfw.x11.drag.items_data[i]) {
+            cleanupDragSource();
+            _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to allocate drag item data");
+            return false;
+        }
+        memcpy(_glfw.x11.drag.items_data[i], items[i].data, items[i].data_size);
+        _glfw.x11.drag.items_sizes[i] = items[i].data_size;
+        _glfw.x11.drag.items_mimes[i] = _glfw_strdup(items[i].mime_type);
+        if (!_glfw.x11.drag.items_mimes[i]) {
+            cleanupDragSource();
+            _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to allocate drag item MIME type");
+            return false;
+        }
+        _glfw.x11.drag.type_atoms[i] = XInternAtom(_glfw.x11.display, items[i].mime_type, False);
+    }
+
+    // Set up XdndTypeList property if we have more than 3 types
+    if (item_count > 3) {
+        XChangeProperty(_glfw.x11.display, window->x11.handle,
+                        _glfw.x11.XdndTypeList, XA_ATOM, 32, PropModeReplace,
+                        (unsigned char*)_glfw.x11.drag.type_atoms, item_count);
+    }
+
+    // Take ownership of XdndSelection
+    XSetSelectionOwner(_glfw.x11.display, _glfw.x11.XdndSelection,
+                       window->x11.handle, CurrentTime);
+
+    if (XGetSelectionOwner(_glfw.x11.display, _glfw.x11.XdndSelection) != window->x11.handle) {
+        cleanupDragSource();
+        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to acquire XdndSelection ownership");
+        return false;
+    }
+
+    _glfw.x11.drag.active = true;
+
+    // Note: The actual drag operation in X11 requires grabbing the pointer and tracking
+    // mouse movement to send XdndEnter/Position/Leave/Drop messages to target windows.
+    // This is a complex state machine that requires:
+    // 1. Grabbing the pointer with XGrabPointer
+    // 2. Tracking mouse movement
+    // 3. Finding window under cursor with XTranslateCoordinates
+    // 4. Sending XdndEnter when entering a new window
+    // 5. Sending XdndPosition as the cursor moves
+    // 6. Sending XdndLeave when leaving a window
+    // 7. Sending XdndDrop on button release
+    // 8. Responding to SelectionRequest events with the drag data
+    //
+    // For a complete implementation, this would need to be integrated with the
+    // event loop. For now, we set up the data source so the application can
+    // handle its own drag tracking if needed.
+
+    return true;
+}
 

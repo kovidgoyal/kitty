@@ -1521,6 +1521,81 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  */
 typedef int (* GLFWdropfun)(GLFWwindow*, const char *, const char*, size_t);
 
+/*! @brief Drag event types.
+ *
+ *  These constants are used to identify the type of drag event.
+ *
+ *  @ingroup input
+ */
+typedef enum {
+    /*! The drag operation entered the window. */
+    GLFW_DRAG_ENTER = 1,
+    /*! The drag operation moved within the window. */
+    GLFW_DRAG_MOVE = 2,
+    /*! The drag operation left the window. */
+    GLFW_DRAG_LEAVE = 3
+} GLFWDragEventType;
+
+/*! @brief Drag operation types.
+ *
+ *  These constants specify the type of drag operation (copy, move, or generic).
+ *
+ *  @ingroup input
+ */
+typedef enum {
+    /*! Move the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_MOVE = 1,
+    /*! Copy the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_COPY = 2,
+    /*! Generic drag operation (platform decides semantics). */
+    GLFW_DRAG_OPERATION_GENERIC = 3
+} GLFWDragOperationType;
+
+/*! @brief Drag data item.
+ *
+ *  This structure describes a single item of drag data with its MIME type.
+ *
+ *  @sa @ref drag_start
+ *  @sa @ref glfwStartDrag
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+typedef struct GLFWdragitem {
+    /*! The MIME type of this data item (e.g., "text/plain", "image/png"). */
+    const char* mime_type;
+    /*! Pointer to the binary data. */
+    const unsigned char* data;
+    /*! Size of the data in bytes. */
+    size_t data_size;
+} GLFWdragitem;
+
+/*! @brief The function pointer type for drag event callbacks.
+ *
+ *  This is the function pointer type for drag event callbacks. A drag event
+ *  callback function has the following signature:
+ *  @code
+ *  int function_name(GLFWwindow* window, int event, double xpos, double ypos)
+ *  @endcode
+ *
+ *  @param[in] window The window that received the drag event.
+ *  @param[in] event The drag event type: @ref GLFW_DRAG_ENTER, @ref GLFW_DRAG_MOVE,
+ *  or @ref GLFW_DRAG_LEAVE.
+ *  @param[in] xpos The x-coordinate of the drag position in window coordinates.
+ *  @param[in] ypos The y-coordinate of the drag position in window coordinates.
+ *  @return For @ref GLFW_DRAG_ENTER events, return non-zero to accept the drag
+ *  or zero to reject it. Return value is ignored for other event types.
+ *
+ *  @sa @ref drag_events
+ *  @sa @ref glfwSetDragCallback
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+typedef int (* GLFWdragfun)(GLFWwindow*, GLFWDragEventType event, double xpos, double ypos);
+
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 
 /*! @brief The function pointer type for monitor configuration callbacks.
@@ -2201,6 +2276,14 @@ GFW_EXTERN glfwSetDropCallback_func glfwSetDropCallback_impl;
 typedef GLFWliveresizefun (*glfwSetLiveResizeCallback_func)(GLFWwindow*, GLFWliveresizefun);
 GFW_EXTERN glfwSetLiveResizeCallback_func glfwSetLiveResizeCallback_impl;
 #define glfwSetLiveResizeCallback glfwSetLiveResizeCallback_impl
+
+typedef GLFWdragfun (*glfwSetDragCallback_func)(GLFWwindow*, GLFWdragfun);
+GFW_EXTERN glfwSetDragCallback_func glfwSetDragCallback_impl;
+#define glfwSetDragCallback glfwSetDragCallback_impl
+
+typedef int (*glfwStartDrag_func)(GLFWwindow*, const GLFWdragitem*, int, const GLFWimage*, GLFWDragOperationType);
+GFW_EXTERN glfwStartDrag_func glfwStartDrag_impl;
+#define glfwStartDrag glfwStartDrag_impl
 
 typedef int (*glfwJoystickPresent_func)(int);
 GFW_EXTERN glfwJoystickPresent_func glfwJoystickPresent_impl;
