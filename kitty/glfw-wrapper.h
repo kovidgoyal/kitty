@@ -1576,7 +1576,7 @@ typedef struct GLFWdragitem {
  *  This is the function pointer type for drag event callbacks. A drag event
  *  callback function has the following signature:
  *  @code
- *  int function_name(GLFWwindow* window, int event, double xpos, double ypos)
+ *  int function_name(GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int mime_count)
  *  @endcode
  *
  *  @param[in] window The window that received the drag event.
@@ -1584,6 +1584,12 @@ typedef struct GLFWdragitem {
  *  or @ref GLFW_DRAG_LEAVE.
  *  @param[in] xpos The x-coordinate of the drag position in window coordinates.
  *  @param[in] ypos The y-coordinate of the drag position in window coordinates.
+ *  @param[in] mime_types Array of MIME type strings available from the drag source.
+ *  For @ref GLFW_DRAG_ENTER events this contains all available MIME types.
+ *  For other events this may be `NULL`. The strings are only valid for the
+ *  duration of the callback; if you need to store them, make copies.
+ *  @param[in] mime_count Number of MIME types in the array. Zero if no MIME types
+ *  are available or for non-enter events.
  *  @return For @ref GLFW_DRAG_ENTER events, return non-zero to accept the drag
  *  or zero to reject it. Return value is ignored for other event types.
  *
@@ -1594,7 +1600,7 @@ typedef struct GLFWdragitem {
  *
  *  @ingroup input
  */
-typedef int (* GLFWdragfun)(GLFWwindow*, GLFWDragEventType event, double xpos, double ypos);
+typedef int (* GLFWdragfun)(GLFWwindow*, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int mime_count);
 
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 

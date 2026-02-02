@@ -412,10 +412,10 @@ int _glfwInputDrop(_GLFWwindow* window, const char *mime, const char *text, size
 
 // Notifies shared code of a drag event
 //
-int _glfwInputDragEvent(_GLFWwindow* window, int event, double xpos, double ypos)
+int _glfwInputDragEvent(_GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int mime_count)
 {
     if (window->callbacks.drag)
-        return window->callbacks.drag((GLFWwindow*) window, event, xpos, ypos);
+        return window->callbacks.drag((GLFWwindow*) window, event, xpos, ypos, mime_types, mime_count);
     return 0;
 }
 

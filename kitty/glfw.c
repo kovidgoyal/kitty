@@ -642,11 +642,21 @@ window_focus_callback(GLFWwindow *w, int focused) {
 }
 
 static int
-drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos) {
-    (void)event; (void)xpos; (void)ypos;
+is_droppable_mime(const char *mime) {
+    if (strcmp(mime, "text/uri-list") == 0) return 3;
+    if (strcmp(mime, "text/plain;charset=utf-8") == 0) return 2;
+    if (strcmp(mime, "text/plain") == 0) return 1;
+    return 0;
+}
+
+static int
+drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int mime_count) {
+    (void)xpos; (void)ypos;
     if (!set_callback_window(w)) return 0;
     if (event == GLFW_DRAG_ENTER) {
-        return 1;
+        for (int i = 0; i < mime_count; i++) {
+            if (is_droppable_mime(mime_types[i])) return 1;
+        }
     }
     return 0;
 }
@@ -655,12 +665,7 @@ static int
 drop_callback(GLFWwindow *w, const char *mime, const char *data, size_t sz) {
     if (!set_callback_window(w)) return 0;
 #define RETURN(x) { global_state.callback_os_window = NULL; return x; }
-    if (!data) {
-        if (strcmp(mime, "text/uri-list") == 0) RETURN(3);
-        if (strcmp(mime, "text/plain;charset=utf-8") == 0) RETURN(2);
-        if (strcmp(mime, "text/plain") == 0) RETURN(1);
-        RETURN(0);
-    }
+    if (!data) return is_droppable_mime(mime);
     WINDOW_CALLBACK(on_drop, "sy#", mime, data, (Py_ssize_t)sz);
     request_tick_callback();
     RETURN(0);

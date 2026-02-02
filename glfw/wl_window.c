@@ -2497,10 +2497,10 @@ static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device 
             while (window)
             {
                 if (window->wl.surface == surface) {
-                    // Call drag enter callback
+                    // Call drag enter callback with MIME types
                     double xpos = wl_fixed_to_double(x);
                     double ypos = wl_fixed_to_double(y);
-                    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos);
+                    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, d->mimes, (int)d->mimes_count);
 
                     // If accepted, check MIME type priorities
                     if (accepted) {
@@ -2531,7 +2531,7 @@ static void drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device 
             _GLFWwindow* window = _glfw.windowListHead;
             while (window) {
                 if (window->wl.surface == _glfw.wl.dataOffers[i].surface) {
-                    _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0);
+                    _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, 0);
                     break;
                 }
                 window = window->next;
@@ -2578,7 +2578,7 @@ static void motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUS
                 if (window->wl.surface == _glfw.wl.dataOffers[i].surface) {
                     double xpos = wl_fixed_to_double(x);
                     double ypos = wl_fixed_to_double(y);
-                    _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos);
+                    _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
                     break;
                 }
                 window = window->next;
