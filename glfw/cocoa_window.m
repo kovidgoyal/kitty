@@ -3713,11 +3713,31 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
         }
 
         if (dragItem) {
-            // Start the drag session
-            NSEvent* currentEvent = [NSApp currentEvent];
-            if (currentEvent) {
+            // Start the drag session - try current event first, then create a synthetic one
+            NSEvent* event = [NSApp currentEvent];
+            if (!event || ([event type] != NSEventTypeLeftMouseDown && 
+                           [event type] != NSEventTypeLeftMouseDragged)) {
+                // Create a synthetic left mouse down event using stored cursor position
+                // Convert window coordinates to screen coordinates
+                NSRect contentRect = [window->ns.view frame];
+                NSPoint windowPos = NSMakePoint(window->virtualCursorPosX, 
+                                                contentRect.size.height - window->virtualCursorPosY);
+                NSPoint screenPos = [window->ns.object convertPointToScreen:windowPos];
+                
+                event = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
+                                           location:windowPos
+                                      modifierFlags:0
+                                          timestamp:[[NSProcessInfo processInfo] systemUptime]
+                                       windowNumber:[window->ns.object windowNumber]
+                                            context:nil
+                                        eventNumber:0
+                                         clickCount:1
+                                           pressure:1.0];
+            }
+            
+            if (event) {
                 [window->ns.view beginDraggingSessionWithItems:@[dragItem]
-                                                        event:currentEvent
+                                                        event:event
                                                        source:window->ns.view];
                 return true;
             }
