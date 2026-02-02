@@ -1411,11 +1411,13 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 {
     (void)session;
     if (window) {
-        // Convert screen coordinates to window coordinates
-        NSRect windowFrame = [window->ns.object frame];
-        double x = screenPoint.x - windowFrame.origin.x;
-        double y = windowFrame.size.height - (screenPoint.y - windowFrame.origin.y);
-        _glfwInputDragMove(window, x, y);
+        // Convert screen coordinates to window content view coordinates
+        NSPoint windowPoint = [window->ns.object convertPointFromScreen:screenPoint];
+        NSView *contentView = [window->ns.object contentView];
+        NSPoint viewPoint = [contentView convertPoint:windowPoint fromView:nil];
+        // Flip y-coordinate (view coordinates have origin at bottom-left)
+        double y = contentView.bounds.size.height - viewPoint.y;
+        _glfwInputDragMove(window, viewPoint.x, y);
     }
 }
 
