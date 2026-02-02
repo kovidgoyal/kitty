@@ -3061,7 +3061,7 @@ static const struct wl_data_source_listener drag_source_listener = {
 };
 
 int
-_glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail) {
+_glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, int operation) {
     if (!_glfw.wl.dataDeviceManager) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Data device manager not available");
         return false;
@@ -3083,6 +3083,23 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_
         _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to create data source for drag");
         return false;
     }
+
+    // Set the DND action based on operation type
+    // Wayland DND action enum values: none=0, copy=1, move=2, ask=4
+    uint32_t wl_actions = 0;
+    switch (operation) {
+        case GLFW_DRAG_OPERATION_COPY:
+            wl_actions = 1; // WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY
+            break;
+        case GLFW_DRAG_OPERATION_MOVE:
+            wl_actions = 2; // WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE
+            break;
+        case GLFW_DRAG_OPERATION_GENERIC:
+        default:
+            wl_actions = 1 | 2; // Both copy and move
+            break;
+    }
+    wl_data_source_set_actions(_glfw.wl.drag.source, wl_actions);
 
     // Allocate storage for drag data (copy the data)
     _glfw.wl.drag.items_data = calloc(item_count, sizeof(unsigned char*));

@@ -1416,7 +1416,16 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 {
     (void)session;
     (void)context;
-    return NSDragOperationCopy;
+    // Return the operation based on the stored drag operation type
+    switch (window->ns.dragOperationType) {
+        case GLFW_DRAG_OPERATION_COPY:
+            return NSDragOperationCopy;
+        case GLFW_DRAG_OPERATION_MOVE:
+            return NSDragOperationMove;
+        case GLFW_DRAG_OPERATION_GENERIC:
+        default:
+            return NSDragOperationGeneric;
+    }
 }
 
 - (void)draggingSession:(NSDraggingSession *)session
@@ -3645,7 +3654,11 @@ void _glfwCocoaPostEmptyEvent(void) {
 int _glfwPlatformStartDrag(_GLFWwindow* window,
                            const GLFWdragitem* items,
                            int item_count,
-                           const GLFWimage* thumbnail) {
+                           const GLFWimage* thumbnail,
+                           int operation) {
+    // Store the operation type for the dragging source callback
+    window->ns.dragOperationType = operation;
+
     @autoreleasepool {
         // Create pasteboard items for each drag item
         NSMutableArray<NSPasteboardItem*>* pasteboardItems = [[NSMutableArray alloc] init];

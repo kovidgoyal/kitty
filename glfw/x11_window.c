@@ -3659,9 +3659,24 @@ static void cleanupDragSource(void) {
 int _glfwPlatformStartDrag(_GLFWwindow* window,
                            const GLFWdragitem* items,
                            int item_count,
-                           const GLFWimage* thumbnail UNUSED) {
+                           const GLFWimage* thumbnail UNUSED,
+                           int operation) {
     // Clean up any existing drag operation
     cleanupDragSource();
+
+    // Set the drag action based on operation type
+    switch (operation) {
+        case GLFW_DRAG_OPERATION_COPY:
+            _glfw.x11.drag.action_atom = _glfw.x11.XdndActionCopy;
+            break;
+        case GLFW_DRAG_OPERATION_MOVE:
+            _glfw.x11.drag.action_atom = _glfw.x11.XdndActionMove;
+            break;
+        case GLFW_DRAG_OPERATION_GENERIC:
+        default:
+            _glfw.x11.drag.action_atom = _glfw.x11.XdndActionCopy;
+            break;
+    }
 
     // Allocate storage for drag data (copy the data)
     _glfw.x11.drag.items_data = calloc(item_count, sizeof(unsigned char*));

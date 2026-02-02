@@ -1130,7 +1130,7 @@ GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* handle, GLFWdragfun cbfun)
     return cbfun;
 }
 
-GLFWAPI int glfwStartDrag(GLFWwindow* handle, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail)
+GLFWAPI int glfwStartDrag(GLFWwindow* handle, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, int operation)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     assert(window != NULL);
@@ -1138,7 +1138,7 @@ GLFWAPI int glfwStartDrag(GLFWwindow* handle, const GLFWdragitem* items, int ite
     assert(item_count > 0);
 
     _GLFW_REQUIRE_INIT_OR_RETURN(false);
-    return _glfwPlatformStartDrag(window, items, item_count, thumbnail);
+    return _glfwPlatformStartDrag(window, items, item_count, thumbnail, operation);
 }
 
 GLFWAPI int glfwJoystickPresent(int jid)

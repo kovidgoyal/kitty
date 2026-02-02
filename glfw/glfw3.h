@@ -1798,6 +1798,21 @@ typedef enum {
     GLFW_DRAG_LEAVE = 3
 } GLFWDragEventType;
 
+/*! @brief Drag operation types.
+ *
+ *  These constants specify the type of drag operation (copy, move, or generic).
+ *
+ *  @ingroup input
+ */
+typedef enum {
+    /*! Move the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_MOVE = 1,
+    /*! Copy the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_COPY = 2,
+    /*! Generic drag operation (platform decides semantics). */
+    GLFW_DRAG_OPERATION_GENERIC = 3
+} GLFWDragOperationType;
+
 /*! @brief Drag data item.
  *
  *  This structure describes a single item of drag data with its MIME type.
@@ -5021,6 +5036,9 @@ GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* window, GLFWdragfun callback
  *  @param[in] item_count Number of items in the array.
  *  @param[in] thumbnail Optional thumbnail/icon image to display during the
  *  drag operation, or `NULL` for no thumbnail. The image data is copied.
+ *  @param[in] operation The type of drag operation: @ref GLFW_DRAG_OPERATION_MOVE,
+ *  @ref GLFW_DRAG_OPERATION_COPY, or @ref GLFW_DRAG_OPERATION_GENERIC. The default
+ *  should be @ref GLFW_DRAG_OPERATION_MOVE.
  *
  *  @return `true` if the drag operation was started successfully, `false`
  *  otherwise.
@@ -5037,7 +5055,7 @@ GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* window, GLFWdragfun callback
  *
  *  @ingroup input
  */
-GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail);
+GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, int operation);
 
 /*! @brief Returns whether the specified joystick is present.
  *

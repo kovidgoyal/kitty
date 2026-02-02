@@ -311,6 +311,8 @@ typedef struct _GLFWlibraryX11
     Atom            XdndPosition;
     Atom            XdndStatus;
     Atom            XdndActionCopy;
+    Atom            XdndActionMove;
+    Atom            XdndActionLink;
     Atom            XdndDrop;
     Atom            XdndFinished;
     Atom            XdndSelection;
@@ -393,6 +395,7 @@ typedef struct _GLFWlibraryX11
         char**           items_mimes;
         int              item_count;
         Atom*            type_atoms;
+        Atom             action_atom;  // XdndActionCopy, XdndActionMove, or XdndActionLink
         bool             active;
     } drag;
 
