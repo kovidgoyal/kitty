@@ -1353,12 +1353,27 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 // Helper function to free dragged MIME types array
 static void freeDragMimes(_GLFWwindow* window) {
     if (window->ns.dragMimes) {
-        for (int i = 0; i < window->ns.dragMimeCount; i++) {
-            free((char*)window->ns.dragMimes[i]);
+        // Free based on array size, not count (callback may have reduced count)
+        for (int i = 0; i < window->ns.dragMimeArraySize; i++) {
+            if (window->ns.dragMimes[i])
+                free((char*)window->ns.dragMimes[i]);
         }
         free(window->ns.dragMimes);
         window->ns.dragMimes = NULL;
         window->ns.dragMimeCount = 0;
+        window->ns.dragMimeArraySize = 0;
+    }
+}
+
+// Helper to free entries that were filtered out by callback
+static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_count) {
+    if (window->ns.dragMimes && new_count < old_count) {
+        for (int i = new_count; i < old_count; i++) {
+            if (window->ns.dragMimes[i]) {
+                free((char*)window->ns.dragMimes[i]);
+                window->ns.dragMimes[i] = NULL;
+            }
+        }
     }
 }
 
@@ -1423,9 +1438,14 @@ static void freeDragMimes(_GLFWwindow* window) {
     // Store MIME types for later use in move events
     window->ns.dragMimes = mime_array;
     window->ns.dragMimeCount = mime_count;
+    window->ns.dragMimeArraySize = mime_count;
 
     // Call drag enter callback with writable MIME types array
+    int old_count = mime_count;
     int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, mime_array, &mime_count);
+
+    // Free any entries that were filtered out by the callback
+    freeFilteredDragMimes(window, old_count, mime_count);
 
     // Update cached mime count with callback result
     window->ns.dragMimeCount = mime_count;
@@ -1443,8 +1463,12 @@ static void freeDragMimes(_GLFWwindow* window) {
     double ypos = contentRect.size.height - pos.y;
 
     // Call drag move callback with cached MIME types
-    int mime_count = window->ns.dragMimeCount;
+    int old_count = window->ns.dragMimeCount;
+    int mime_count = old_count;
     int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, window->ns.dragMimes, &mime_count);
+
+    // Free any entries that were filtered out by the callback
+    freeFilteredDragMimes(window, old_count, mime_count);
 
     // Update cached mime count with callback result
     window->ns.dragMimeCount = mime_count;
@@ -3839,8 +3863,11 @@ void _glfwPlatformUpdateDragState(_GLFWwindow* window) {
     // Call the drag callback with STATUS_UPDATE to get updated acceptance and MIME list
     // Position values are not valid for this event type
     if (window->ns.dragMimes) {
-        int mime_count = window->ns.dragMimeCount;
+        int old_count = window->ns.dragMimeCount;
+        int mime_count = old_count;
         _glfwInputDragEvent(window, GLFW_DRAG_STATUS_UPDATE, 0, 0, window->ns.dragMimes, &mime_count);
+        // Free any entries that were filtered out by the callback
+        freeFilteredDragMimes(window, old_count, mime_count);
         window->ns.dragMimeCount = mime_count;
     }
 }
