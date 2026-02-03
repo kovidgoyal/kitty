@@ -1350,6 +1350,33 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     return YES;
 }
 
+// Helper function to free dragged MIME types array
+static void freeDragMimes(_GLFWwindow* window) {
+    if (window->ns.dragMimes) {
+        // Free based on array size, not count (callback may have reduced count)
+        for (int i = 0; i < window->ns.dragMimeArraySize; i++) {
+            if (window->ns.dragMimes[i])
+                free((char*)window->ns.dragMimes[i]);
+        }
+        free(window->ns.dragMimes);
+        window->ns.dragMimes = NULL;
+        window->ns.dragMimeCount = 0;
+        window->ns.dragMimeArraySize = 0;
+    }
+}
+
+// Helper to free entries that were filtered out by callback
+static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_count) {
+    if (window->ns.dragMimes && new_count < old_count) {
+        for (int i = new_count; i < old_count; i++) {
+            if (window->ns.dragMimes[i]) {
+                free((char*)window->ns.dragMimes[i]);
+                window->ns.dragMimes[i] = NULL;
+            }
+        }
+    }
+}
+
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
 {
     const NSRect contentRect = [window->ns.view frame];
@@ -1366,22 +1393,25 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
         max_types += [item.types count];
     }
 
+    // Free any previously cached MIME types
+    freeDragMimes(window);
+
     // Pre-allocate C array for MIME types
     const char** mime_array = (const char**)calloc(max_types, sizeof(const char*));
     if (!mime_array) {
-        int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, NULL, 0);
+        int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, NULL, NULL);
         return accepted ? NSDragOperationGeneric : NSDragOperationNone;
     }
 
     int mime_count = 0;
 
-    // Check for common types first
+    // Check for common types first (use _glfw_strdup since we need to own the strings)
     NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
     if ([pasteboard canReadObjectForClasses:@[[NSURL class]] options:options]) {
-        mime_array[mime_count++] = "text/uri-list";
+        mime_array[mime_count++] = _glfw_strdup("text/uri-list");
     }
     if ([pasteboard canReadObjectForClasses:@[[NSString class]] options:nil]) {
-        mime_array[mime_count++] = "text/plain";
+        mime_array[mime_count++] = _glfw_strdup("text/plain");
     }
 
     // Get additional types from pasteboard items
@@ -1398,16 +1428,27 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
                     }
                 }
                 if (!duplicate) {
-                    mime_array[mime_count++] = mime;
+                    // Use _glfw_strdup since uti_to_mime returns strings from autoreleased objects
+                    mime_array[mime_count++] = _glfw_strdup(mime);
                 }
             }
         }
     }
 
-    // Call drag enter callback with MIME types
-    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, mime_array, mime_count);
+    // Store MIME types for later use in move events
+    window->ns.dragMimes = mime_array;
+    window->ns.dragMimeCount = mime_count;
+    window->ns.dragMimeArraySize = mime_count;
 
-    free(mime_array);
+    // Call drag enter callback with writable MIME types array
+    int old_count = mime_count;
+    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, mime_array, &mime_count);
+
+    // Free any entries that were filtered out by the callback
+    freeFilteredDragMimes(window, old_count, mime_count);
+
+    // Update cached mime count with callback result
+    window->ns.dragMimeCount = mime_count;
 
     if (accepted)
         return NSDragOperationGeneric;
@@ -1421,8 +1462,16 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
 
-    // Call drag move callback and return acceptance status
-    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
+    // Call drag move callback with cached MIME types
+    int old_count = window->ns.dragMimeCount;
+    int mime_count = old_count;
+    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, window->ns.dragMimes, &mime_count);
+
+    // Free any entries that were filtered out by the callback
+    freeFilteredDragMimes(window, old_count, mime_count);
+
+    // Update cached mime count with callback result
+    window->ns.dragMimeCount = mime_count;
 
     if (accepted)
         return NSDragOperationGeneric;
@@ -1433,7 +1482,10 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 {
     (void)sender;
     // Call drag leave callback
-    _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, 0);
+    _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, NULL);
+
+    // Free cached MIME types
+    freeDragMimes(window);
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
@@ -3807,9 +3859,16 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
     }
 }
 
-void _glfwPlatformSetDragAcceptance(_GLFWwindow* window UNUSED, bool accepted UNUSED) {
-    // No-op on macOS: The system uses periodic dragging updates via
-    // wantsPeriodicDraggingUpdates returning YES. The application should
-    // return the updated acceptance status from the drag callback instead.
+void _glfwPlatformUpdateDragState(_GLFWwindow* window) {
+    // Call the drag callback with STATUS_UPDATE to get updated acceptance and MIME list
+    // Position values are not valid for this event type
+    if (window->ns.dragMimes) {
+        int old_count = window->ns.dragMimeCount;
+        int mime_count = old_count;
+        _glfwInputDragEvent(window, GLFW_DRAG_STATUS_UPDATE, 0, 0, window->ns.dragMimes, &mime_count);
+        // Free any entries that were filtered out by the callback
+        freeFilteredDragMimes(window, old_count, mime_count);
+        window->ns.dragMimeCount = mime_count;
+    }
 }
 

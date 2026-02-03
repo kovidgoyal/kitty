@@ -170,6 +170,11 @@ typedef struct _GLFWwindowNS
 
     // Current drag operation type for NSDraggingSource
     GLFWDragOperationType dragOperationType;
+
+    // Cached MIME types from drag enter (for move events)
+    const char** dragMimes;
+    int dragMimeCount;      // Current count of MIME types (may be reduced by callback)
+    int dragMimeArraySize;  // Original array size for proper cleanup
 } _GLFWwindowNS;
 
 // Cocoa-specific global data

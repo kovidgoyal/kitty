@@ -1499,17 +1499,15 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *  This is the function pointer type for drop callbacks. A drop
  *  callback function has the following signature:
  *  @code
- *  int function_name(GLFWwindow* window, const char* mime, const char* text)
+ *  void function_name(GLFWwindow* window, const char* mime, const char* data, size_t sz)
  *  @endcode
  *
  *  @param[in] window The window that received the event.
  *  @param[in] mime The UTF-8 encoded drop mime-type
- *  @param[in] data The dropped data or NULL for drag enter events
+ *  @param[in] data The dropped data.
  *  @param[in] sz The size of the dropped data
- *  @return For drag events should return the priority for the specified mime type. A priority of zero
- *  or lower means the mime type is not accepted. Highest priority will be the finally accepted mime-type.
  *
- *  @pointer_lifetime The text is valid until the
+ *  @pointer_lifetime The data is valid until the
  *  callback function returns.
  *
  *  @sa @ref path_drop
@@ -1519,7 +1517,7 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *
  *  @ingroup input
  */
-typedef int (* GLFWdropfun)(GLFWwindow*, const char *, const char*, size_t);
+typedef void (* GLFWdropfun)(GLFWwindow*, const char *, const char*, size_t);
 
 /*! @brief Drag event types.
  *
@@ -1533,7 +1531,9 @@ typedef enum {
     /*! The drag operation moved within the window. */
     GLFW_DRAG_MOVE = 2,
     /*! The drag operation left the window. */
-    GLFW_DRAG_LEAVE = 3
+    GLFW_DRAG_LEAVE = 3,
+    /*! Async status update request (xpos/ypos are invalid). */
+    GLFW_DRAG_STATUS_UPDATE = 4
 } GLFWDragEventType;
 
 /*! @brief Drag operation types.
@@ -1576,7 +1576,7 @@ typedef struct GLFWdragitem {
  *  This is the function pointer type for drag event callbacks. A drag event
  *  callback function has the following signature:
  *  @code
- *  int function_name(GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int mime_count)
+ *  int function_name(GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int* mime_count)
  *  @endcode
  *
  *  @param[in] window The window that received the drag event.
@@ -1584,23 +1584,30 @@ typedef struct GLFWdragitem {
  *  or @ref GLFW_DRAG_LEAVE.
  *  @param[in] xpos The x-coordinate of the drag position in window coordinates.
  *  @param[in] ypos The y-coordinate of the drag position in window coordinates.
- *  @param[in] mime_types Array of MIME type strings available from the drag source.
- *  For @ref GLFW_DRAG_ENTER events this contains all available MIME types.
- *  For other events this may be `NULL`. The strings are only valid for the
- *  duration of the callback; if you need to store them, make copies.
- *  @param[in] mime_count Number of MIME types in the array. Zero if no MIME types
- *  are available or for non-enter events.
- *  @return For @ref GLFW_DRAG_ENTER events, return non-zero to accept the drag
- *  or zero to reject it. Return value is ignored for other event types.
+ *  @param[in,out] mime_types A writable array of MIME type strings available from the drag source.
+ *  For @ref GLFW_DRAG_ENTER and @ref GLFW_DRAG_MOVE events this is non-NULL and contains all
+ *  available MIME types. The callback is responsible for sorting this list by priority and
+ *  keeping only the MIME types it wants to accept. The first MIME type in the sorted list
+ *  will be used for the drop operation. The strings are only valid for the duration of the
+ *  callback; if you need to store them, make copies. For @ref GLFW_DRAG_LEAVE events this
+ *  is `NULL`.
+ *  @param[in,out] mime_count Pointer to the number of MIME types in the array. The callback
+ *  should update this to reflect the new count after sorting and filtering. For
+ *  @ref GLFW_DRAG_LEAVE events this is `NULL`.
+ *  @return For @ref GLFW_DRAG_ENTER and @ref GLFW_DRAG_MOVE events, return non-zero
+ *  to accept the drag or zero to reject it. This allows the application to
+ *  dynamically accept or reject the drag based on the current position.
+ *  Return value is ignored for @ref GLFW_DRAG_LEAVE events.
  *
  *  @sa @ref drag_events
  *  @sa @ref glfwSetDragCallback
+ *  @sa @ref glfwUpdateDragState
  *
  *  @since Added in version 4.0.
  *
  *  @ingroup input
  */
-typedef int (* GLFWdragfun)(GLFWwindow*, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int mime_count);
+typedef int (* GLFWdragfun)(GLFWwindow*, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int* mime_count);
 
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 
@@ -2290,6 +2297,10 @@ GFW_EXTERN glfwSetDragCallback_func glfwSetDragCallback_impl;
 typedef int (*glfwStartDrag_func)(GLFWwindow*, const GLFWdragitem*, int, const GLFWimage*, GLFWDragOperationType);
 GFW_EXTERN glfwStartDrag_func glfwStartDrag_impl;
 #define glfwStartDrag glfwStartDrag_impl
+
+typedef void (*glfwUpdateDragState_func)(GLFWwindow*);
+GFW_EXTERN glfwUpdateDragState_func glfwUpdateDragState_impl;
+#define glfwUpdateDragState glfwUpdateDragState_impl
 
 typedef int (*glfwJoystickPresent_func)(int);
 GFW_EXTERN glfwJoystickPresent_func glfwJoystickPresent_impl;

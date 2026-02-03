@@ -386,6 +386,9 @@ typedef struct _GLFWlibraryX11
         int         format_priority;
         Window      target_window;  // For drag events: the window being dragged over
         bool        drag_accepted;  // Whether the current drag is accepted
+        char**      mimes;          // Cached MIME types from drag enter
+        int         mimes_count;    // Current count of MIME types (may be reduced by callback)
+        int         mimes_array_size;  // Original array size for proper cleanup
     } xdnd;
 
     // Drag source state

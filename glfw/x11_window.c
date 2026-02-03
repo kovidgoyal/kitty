@@ -1399,6 +1399,18 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
     }
 }
 
+// Helper to free entries that were filtered out by drag callback
+static void freeFilteredXdndMimes(int old_count, int new_count) {
+    if (_glfw.x11.xdnd.mimes && new_count < old_count) {
+        for (int i = new_count; i < old_count; i++) {
+            if (_glfw.x11.xdnd.mimes[i]) {
+                XFree(_glfw.x11.xdnd.mimes[i]);
+                _glfw.x11.xdnd.mimes[i] = NULL;
+            }
+        }
+    }
+}
+
 
 // Process the specified X event
 //
@@ -1831,6 +1843,17 @@ static void processEvent(XEvent *event)
                 Atom* formats = NULL;
                 const bool list = event->xclient.data.l[1] & 1;
 
+                // Free any previously cached MIME types
+                if (_glfw.x11.xdnd.mimes) {
+                    for (int j = 0; j < _glfw.x11.xdnd.mimes_array_size; j++) {
+                        if (_glfw.x11.xdnd.mimes[j]) XFree(_glfw.x11.xdnd.mimes[j]);
+                    }
+                    free(_glfw.x11.xdnd.mimes);
+                    _glfw.x11.xdnd.mimes = NULL;
+                    _glfw.x11.xdnd.mimes_count = 0;
+                    _glfw.x11.xdnd.mimes_array_size = 0;
+                }
+
                 _glfw.x11.xdnd.source  = event->xclient.data.l[0];
                 _glfw.x11.xdnd.version = event->xclient.data.l[1] >> 24;
                 _glfw.x11.xdnd.target_window = window->x11.handle;
@@ -1855,38 +1878,43 @@ static void processEvent(XEvent *event)
                     formats = (Atom*) event->xclient.data.l + 2;
                 }
 
+                // Get atom names and store them in the xdnd structure
                 char **atom_names = calloc(count, sizeof(char*));
                 int valid_mime_count = 0;
                 if (atom_names) {
                     get_atom_names(formats, count, atom_names);
-                    // Count valid MIME types
+                    // Compact the array to only valid MIME types
                     for (i = 0; i < count; i++) {
-                        if (atom_names[i]) valid_mime_count++;
-                    }
-                }
-
-                // Call the drag enter callback with the MIME types
-                // Position is not known yet at enter time, will be updated with XdndPosition
-                int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, 0, 0, (const char**)atom_names, valid_mime_count);
-
-                if (atom_names && accepted) {
-                    _glfw.x11.xdnd.drag_accepted = true;
-                    for (i = 0;  i < count;  i++)
-                    {
                         if (atom_names[i]) {
-                            int prio = _glfwInputDrop(window, atom_names[i], NULL, 0);
-                            if (prio > _glfw.x11.xdnd.format_priority) {
-                                _glfw.x11.xdnd.format_priority = prio;
-                                strncpy(_glfw.x11.xdnd.format, atom_names[i], arraysz(_glfw.x11.xdnd.format) - 1);
+                            if (valid_mime_count != (int)i) {
+                                atom_names[valid_mime_count] = atom_names[i];
+                                atom_names[i] = NULL;
                             }
-                            XFree(atom_names[i]);
+                            valid_mime_count++;
                         }
                     }
-                    free(atom_names);
-                } else if (atom_names) {
-                    for (i = 0;  i < count;  i++)
-                        if (atom_names[i]) XFree(atom_names[i]);
-                    free(atom_names);
+                    // Store the MIME types for later use
+                    _glfw.x11.xdnd.mimes = atom_names;
+                    _glfw.x11.xdnd.mimes_count = valid_mime_count;
+                    _glfw.x11.xdnd.mimes_array_size = valid_mime_count;
+                }
+
+                // Call the drag enter callback with writable MIME types array
+                // Position is not known yet at enter time, will be updated with XdndPosition
+                int mime_count = valid_mime_count;
+                int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, 0, 0, (const char**)_glfw.x11.xdnd.mimes, &mime_count);
+
+                // Free any entries that were filtered out by the callback
+                freeFilteredXdndMimes(valid_mime_count, mime_count);
+
+                // Update state based on callback results
+                _glfw.x11.xdnd.drag_accepted = accepted;
+                // Update cached mime count with callback result
+                _glfw.x11.xdnd.mimes_count = mime_count;
+                if (accepted && mime_count > 0) {
+                    // The first MIME type in the reordered list is the preferred one
+                    strncpy(_glfw.x11.xdnd.format, _glfw.x11.xdnd.mimes[0], arraysz(_glfw.x11.xdnd.format) - 1);
+                    _glfw.x11.xdnd.format_priority = 1;
                 }
 
                 if (list && formats)
@@ -1931,7 +1959,19 @@ static void processEvent(XEvent *event)
             else if (event->xclient.message_type == _glfw.x11.XdndLeave)
             {
                 // The drag operation has left the window
-                _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, 0);
+                _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, NULL);
+
+                // Free cached MIME types (use array size, not count)
+                if (_glfw.x11.xdnd.mimes) {
+                    for (int j = 0; j < _glfw.x11.xdnd.mimes_array_size; j++) {
+                        if (_glfw.x11.xdnd.mimes[j]) XFree(_glfw.x11.xdnd.mimes[j]);
+                    }
+                    free(_glfw.x11.xdnd.mimes);
+                    _glfw.x11.xdnd.mimes = NULL;
+                    _glfw.x11.xdnd.mimes_count = 0;
+                    _glfw.x11.xdnd.mimes_array_size = 0;
+                }
+
                 _glfw.x11.xdnd.source = None;
                 _glfw.x11.xdnd.target_window = None;
             }
@@ -1959,9 +1999,26 @@ static void processEvent(XEvent *event)
 
                 _glfwInputCursorPos(window, xpos, ypos);
 
-                // Call the drag move callback and update acceptance status
-                int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
+                // Call the drag move callback with MIME types and update acceptance status
+                int old_count = _glfw.x11.xdnd.mimes_count;
+                int mime_count = old_count;
+                int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, (const char**)_glfw.x11.xdnd.mimes, &mime_count);
                 _glfw.x11.xdnd.drag_accepted = accepted;
+
+                // Free any entries that were filtered out by the callback
+                freeFilteredXdndMimes(old_count, mime_count);
+
+                // Update cached mime count with callback result
+                _glfw.x11.xdnd.mimes_count = mime_count;
+
+                // Update the preferred format based on reordered list
+                if (accepted && mime_count > 0) {
+                    strncpy(_glfw.x11.xdnd.format, _glfw.x11.xdnd.mimes[0], arraysz(_glfw.x11.xdnd.format) - 1);
+                    _glfw.x11.xdnd.format_priority = 1;
+                } else {
+                    memset(_glfw.x11.xdnd.format, 0, sizeof(_glfw.x11.xdnd.format));
+                    _glfw.x11.xdnd.format_priority = 0;
+                }
 
                 XEvent reply = { ClientMessage };
                 reply.xclient.window = _glfw.x11.xdnd.source;
@@ -3761,15 +3818,34 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
     return true;
 }
 
-void _glfwPlatformSetDragAcceptance(_GLFWwindow* window, bool accepted) {
+void _glfwPlatformUpdateDragState(_GLFWwindow* window) {
     // Check if there's an active drag over this window
     if (_glfw.x11.xdnd.source == None ||
         _glfw.x11.xdnd.target_window != window->x11.handle) {
         return;
     }
 
-    // Update acceptance status
+    // Call the drag callback with STATUS_UPDATE event to get updated state
+    // Position values are not valid for this event type
+    int old_count = _glfw.x11.xdnd.mimes_count;
+    int mime_count = old_count;
+    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_STATUS_UPDATE, 0, 0, (const char**)_glfw.x11.xdnd.mimes, &mime_count);
     _glfw.x11.xdnd.drag_accepted = accepted;
+
+    // Free any entries that were filtered out by the callback
+    freeFilteredXdndMimes(old_count, mime_count);
+
+    // Update cached mime count with callback result
+    _glfw.x11.xdnd.mimes_count = mime_count;
+
+    // Update the preferred format based on reordered list
+    if (accepted && mime_count > 0) {
+        strncpy(_glfw.x11.xdnd.format, _glfw.x11.xdnd.mimes[0], arraysz(_glfw.x11.xdnd.format) - 1);
+        _glfw.x11.xdnd.format_priority = 1;
+    } else {
+        memset(_glfw.x11.xdnd.format, 0, sizeof(_glfw.x11.xdnd.format));
+        _glfw.x11.xdnd.format_priority = 0;
+    }
 
     // Send an XdndStatus message to update the drag source
     XEvent reply = { ClientMessage };
