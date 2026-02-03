@@ -1350,6 +1350,18 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     return YES;
 }
 
+// Helper function to free dragged MIME types array
+static void freeDragMimes(_GLFWwindow* window) {
+    if (window->ns.dragMimes) {
+        for (int i = 0; i < window->ns.dragMimeCount; i++) {
+            free((char*)window->ns.dragMimes[i]);
+        }
+        free(window->ns.dragMimes);
+        window->ns.dragMimes = NULL;
+        window->ns.dragMimeCount = 0;
+    }
+}
+
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
 {
     const NSRect contentRect = [window->ns.view frame];
@@ -1367,11 +1379,7 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     }
 
     // Free any previously cached MIME types
-    if (window->ns.dragMimes) {
-        free(window->ns.dragMimes);
-        window->ns.dragMimes = NULL;
-        window->ns.dragMimeCount = 0;
-    }
+    freeDragMimes(window);
 
     // Pre-allocate C array for MIME types
     const char** mime_array = (const char**)calloc(max_types, sizeof(const char*));
@@ -1382,13 +1390,13 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 
     int mime_count = 0;
 
-    // Check for common types first
+    // Check for common types first (use _glfw_strdup since we need to own the strings)
     NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
     if ([pasteboard canReadObjectForClasses:@[[NSURL class]] options:options]) {
-        mime_array[mime_count++] = "text/uri-list";
+        mime_array[mime_count++] = _glfw_strdup("text/uri-list");
     }
     if ([pasteboard canReadObjectForClasses:@[[NSString class]] options:nil]) {
-        mime_array[mime_count++] = "text/plain";
+        mime_array[mime_count++] = _glfw_strdup("text/plain");
     }
 
     // Get additional types from pasteboard items
@@ -1405,7 +1413,8 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
                     }
                 }
                 if (!duplicate) {
-                    mime_array[mime_count++] = mime;
+                    // Use _glfw_strdup since uti_to_mime returns strings from autoreleased objects
+                    mime_array[mime_count++] = _glfw_strdup(mime);
                 }
             }
         }
@@ -1417,6 +1426,9 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 
     // Call drag enter callback with writable MIME types array
     int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, mime_array, &mime_count);
+
+    // Update cached mime count with callback result
+    window->ns.dragMimeCount = mime_count;
 
     if (accepted)
         return NSDragOperationGeneric;
@@ -1434,6 +1446,9 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     int mime_count = window->ns.dragMimeCount;
     int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, window->ns.dragMimes, &mime_count);
 
+    // Update cached mime count with callback result
+    window->ns.dragMimeCount = mime_count;
+
     if (accepted)
         return NSDragOperationGeneric;
     return NSDragOperationNone;
@@ -1446,11 +1461,7 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, NULL);
 
     // Free cached MIME types
-    if (window->ns.dragMimes) {
-        free(window->ns.dragMimes);
-        window->ns.dragMimes = NULL;
-        window->ns.dragMimeCount = 0;
-    }
+    freeDragMimes(window);
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
@@ -3824,9 +3835,13 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
     }
 }
 
-void _glfwPlatformUpdateDragState(_GLFWwindow* window UNUSED) {
-    // No-op on macOS: The system uses periodic dragging updates via
-    // wantsPeriodicDraggingUpdates returning YES. The drag callback is
-    // called periodically anyway.
+void _glfwPlatformUpdateDragState(_GLFWwindow* window) {
+    // Call the drag callback with STATUS_UPDATE to get updated acceptance and MIME list
+    // Position values are not valid for this event type
+    if (window->ns.dragMimes) {
+        int mime_count = window->ns.dragMimeCount;
+        _glfwInputDragEvent(window, GLFW_DRAG_STATUS_UPDATE, 0, 0, window->ns.dragMimes, &mime_count);
+        window->ns.dragMimeCount = mime_count;
+    }
 }
 

@@ -3187,9 +3187,10 @@ _glfwPlatformUpdateDragState(_GLFWwindow* window) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         _GLFWWaylandDataOffer *d = &_glfw.wl.dataOffers[i];
         if (d->offer_type == DRAG_AND_DROP && window->wl.surface == d->surface) {
-            // Call the drag callback with MOVE event to get updated state
+            // Call the drag callback with STATUS_UPDATE event to get updated state
+            // Position values are not valid for this event type
             int mime_count = (int)d->mimes_count;
-            int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, 0, 0, d->mimes, &mime_count);
+            int accepted = _glfwInputDragEvent(window, GLFW_DRAG_STATUS_UPDATE, 0, 0, d->mimes, &mime_count);
 
             // Update drag state based on callback results
             update_drag_state(d, window, accepted, mime_count);

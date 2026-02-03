@@ -1892,6 +1892,8 @@ static void processEvent(XEvent *event)
 
                 // Update state based on callback results
                 _glfw.x11.xdnd.drag_accepted = accepted;
+                // Update cached mime count with callback result
+                _glfw.x11.xdnd.mimes_count = mime_count;
                 if (accepted && mime_count > 0) {
                     // The first MIME type in the reordered list is the preferred one
                     strncpy(_glfw.x11.xdnd.format, _glfw.x11.xdnd.mimes[0], arraysz(_glfw.x11.xdnd.format) - 1);
@@ -1983,6 +1985,9 @@ static void processEvent(XEvent *event)
                 int mime_count = _glfw.x11.xdnd.mimes_count;
                 int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, (const char**)_glfw.x11.xdnd.mimes, &mime_count);
                 _glfw.x11.xdnd.drag_accepted = accepted;
+
+                // Update cached mime count with callback result
+                _glfw.x11.xdnd.mimes_count = mime_count;
 
                 // Update the preferred format based on reordered list
                 if (accepted && mime_count > 0) {
@@ -3798,10 +3803,14 @@ void _glfwPlatformUpdateDragState(_GLFWwindow* window) {
         return;
     }
 
-    // Call the drag callback with MOVE event to get updated state
+    // Call the drag callback with STATUS_UPDATE event to get updated state
+    // Position values are not valid for this event type
     int mime_count = _glfw.x11.xdnd.mimes_count;
-    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, 0, 0, (const char**)_glfw.x11.xdnd.mimes, &mime_count);
+    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_STATUS_UPDATE, 0, 0, (const char**)_glfw.x11.xdnd.mimes, &mime_count);
     _glfw.x11.xdnd.drag_accepted = accepted;
+
+    // Update cached mime count with callback result
+    _glfw.x11.xdnd.mimes_count = mime_count;
 
     // Update the preferred format based on reordered list
     if (accepted && mime_count > 0) {

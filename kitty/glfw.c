@@ -657,6 +657,7 @@ drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, 
     switch (event) {
         case GLFW_DRAG_ENTER:
         case GLFW_DRAG_MOVE:
+        case GLFW_DRAG_STATUS_UPDATE:
             if (mime_types && mime_count && *mime_count > 0) {
                 // Sort MIME types by priority (descending) and keep only accepted ones
                 // Use simple bubble sort since lists are typically small

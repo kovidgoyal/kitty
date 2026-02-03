@@ -1793,7 +1793,9 @@ typedef enum {
     /*! The drag operation moved within the window. */
     GLFW_DRAG_MOVE = 2,
     /*! The drag operation left the window. */
-    GLFW_DRAG_LEAVE = 3
+    GLFW_DRAG_LEAVE = 3,
+    /*! Async status update request (xpos/ypos are invalid). */
+    GLFW_DRAG_STATUS_UPDATE = 4
 } GLFWDragEventType;
 
 /*! @brief Drag operation types.
