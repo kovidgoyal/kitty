@@ -1442,6 +1442,10 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     const NSPoint pos = [sender draggingLocation];
     _glfwInputCursorPos(window, pos.x, contentRect.size.height - pos.y);
 
+    // Reset drag state after drop
+    window->ns.dragActive = false;
+    window->ns.dragAccepted = false;
+
     NSPasteboard* pasteboard = [sender draggingPasteboard];
     NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
     NSArray* objs = [pasteboard readObjectsForClasses:@[[NSURL class], [NSString class]]
@@ -3807,6 +3811,11 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
 }
 
 void _glfwPlatformSetDragAcceptance(_GLFWwindow* window, int accepted) {
+    // Check if there's an active drag over this window
+    if (!window->ns.dragActive) {
+        return;
+    }
+
     // Update the acceptance status for the current drag operation
     // Note: On macOS, we cannot retroactively change the drag operation status
     // after returning from draggingEntered/draggingUpdated. However, we store

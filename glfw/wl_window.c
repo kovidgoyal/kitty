@@ -2572,6 +2572,29 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
     }
 }
 
+// Helper function to update drag acceptance status and notify compositor
+static void update_drag_acceptance(_GLFWWaylandDataOffer *d, _GLFWwindow* window, bool accepted) {
+    if ((bool)accepted != d->drag_accepted) {
+        d->drag_accepted = accepted;
+        // If acceptance changed, update MIME selection and notify compositor
+        if (accepted) {
+            // Re-select best MIME type if now accepting
+            int format_priority = 0;
+            d->mime_for_drop = NULL;
+            for (size_t j = 0; j < d->mimes_count; j++) {
+                int prio = _glfwInputDrop(window, d->mimes[j], NULL, 0);
+                if (prio > format_priority) {
+                    format_priority = prio;
+                    d->mime_for_drop = d->mimes[j];
+                }
+            }
+        } else {
+            d->mime_for_drop = NULL;
+        }
+        wl_data_offer_accept(d->id, d->serial, d->mime_for_drop);
+    }
+}
+
 static void motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t time UNUSED, wl_fixed_t x, wl_fixed_t y) {
     // Find the current drag offer and send motion events
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
@@ -2585,25 +2608,7 @@ static void motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUS
                     int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
 
                     // Update acceptance status based on callback return value
-                    if (accepted != d->drag_accepted) {
-                        d->drag_accepted = accepted;
-                        // If acceptance changed, update MIME selection and notify compositor
-                        if (accepted) {
-                            // Re-select best MIME type if now accepting
-                            int format_priority = 0;
-                            d->mime_for_drop = NULL;
-                            for (size_t j = 0; j < d->mimes_count; j++) {
-                                int prio = _glfwInputDrop(window, d->mimes[j], NULL, 0);
-                                if (prio > format_priority) {
-                                    format_priority = prio;
-                                    d->mime_for_drop = d->mimes[j];
-                                }
-                            }
-                        } else {
-                            d->mime_for_drop = NULL;
-                        }
-                        wl_data_offer_accept(d->id, d->serial, d->mime_for_drop);
-                    }
+                    update_drag_acceptance(d, window, accepted);
                     break;
                 }
                 window = window->next;
@@ -3188,25 +3193,7 @@ _glfwPlatformSetDragAcceptance(_GLFWwindow* window, int accepted) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         _GLFWWaylandDataOffer *d = &_glfw.wl.dataOffers[i];
         if (d->offer_type == DRAG_AND_DROP && window->wl.surface == d->surface) {
-            if ((bool)accepted != d->drag_accepted) {
-                d->drag_accepted = accepted;
-                // Update MIME selection and notify compositor
-                if (accepted) {
-                    // Re-select best MIME type if now accepting
-                    int format_priority = 0;
-                    d->mime_for_drop = NULL;
-                    for (size_t j = 0; j < d->mimes_count; j++) {
-                        int prio = _glfwInputDrop(window, d->mimes[j], NULL, 0);
-                        if (prio > format_priority) {
-                            format_priority = prio;
-                            d->mime_for_drop = d->mimes[j];
-                        }
-                    }
-                } else {
-                    d->mime_for_drop = NULL;
-                }
-                wl_data_offer_accept(d->id, d->serial, d->mime_for_drop);
-            }
+            update_drag_acceptance(d, window, accepted);
             return;
         }
     }
