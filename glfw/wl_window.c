@@ -2486,38 +2486,28 @@ static void handle_primary_selection_offer(void *data UNUSED, struct zwp_primary
     zwp_primary_selection_offer_v1_add_listener(id, &primary_selection_offer_listener, NULL);
 }
 
-// Helper function to check if mime list changed and get the preferred mime
-static const char* check_and_get_preferred_mime(_GLFWWaylandDataOffer *d, const char** new_mimes, int new_count) {
-    // Check if the count changed
-    bool changed = (new_count != (int)d->mimes_count);
-
-    if (!changed) {
-        // Check if the order/content changed
-        for (int i = 0; i < new_count; i++) {
-            if (d->mimes[i] != new_mimes[i]) {
-                changed = true;
-                break;
-            }
-        }
-    }
-
-    // If mime list changed, the first item in the filtered list is the preferred one
-    const char* preferred_mime = (new_count > 0) ? new_mimes[0] : NULL;
-
-    return preferred_mime;
-}
-
 // Helper function to update drag state from callback results
-static void update_drag_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window, bool accepted, const char** mimes, int mime_count) {
+static void update_drag_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUSED, bool accepted, int mime_count) {
     bool acceptance_changed = (accepted != d->drag_accepted);
-    const char* new_preferred_mime = accepted ? check_and_get_preferred_mime(d, mimes, mime_count) : NULL;
-    bool mime_changed = (new_preferred_mime != d->mime_for_drop);
+    // The first MIME in the sorted list is the preferred one for drop
+    const char* new_preferred_mime = (accepted && mime_count > 0) ? d->mimes[0] : NULL;
+    bool mime_changed = false;
+
+    // Check if the preferred MIME changed
+    if (d->mime_for_drop == NULL && new_preferred_mime != NULL) {
+        mime_changed = true;
+    } else if (d->mime_for_drop != NULL && new_preferred_mime == NULL) {
+        mime_changed = true;
+    } else if (d->mime_for_drop != NULL && new_preferred_mime != NULL) {
+        mime_changed = (strcmp(d->mime_for_drop, new_preferred_mime) != 0);
+    }
 
     if (acceptance_changed || mime_changed) {
         d->drag_accepted = accepted;
         d->mime_for_drop = new_preferred_mime;
         wl_data_offer_accept(d->id, d->serial, d->mime_for_drop);
     }
+}
 }
 
 static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
@@ -2540,7 +2530,7 @@ static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device 
                     int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, d->mimes, &mime_count);
 
                     // Update drag state based on callback results
-                    update_drag_state(d, window, accepted, d->mimes, mime_count);
+                    update_drag_state(d, window, accepted, mime_count);
                     break;
                 }
                 window = window->next;
@@ -2612,7 +2602,7 @@ static void motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUS
                     int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, d->mimes, &mime_count);
 
                     // Update drag state based on callback results
-                    update_drag_state(d, window, accepted, d->mimes, mime_count);
+                    update_drag_state(d, window, accepted, mime_count);
                     break;
                 }
                 window = window->next;
@@ -3202,7 +3192,7 @@ _glfwPlatformUpdateDragState(_GLFWwindow* window) {
             int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, 0, 0, d->mimes, &mime_count);
 
             // Update drag state based on callback results
-            update_drag_state(d, window, accepted, d->mimes, mime_count);
+            update_drag_state(d, window, accepted, mime_count);
             return;
         }
     }

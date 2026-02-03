@@ -663,7 +663,15 @@ drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, 
                 int count = *mime_count;
                 int new_count = 0;
 
-                // First, filter and collect droppable MIME types with their priorities
+                // Use stack-allocated array for priorities (count is typically small)
+                int priorities[64];
+                int* prio_arr = (count <= 64) ? priorities : (int*)malloc(count * sizeof(int));
+                if (!prio_arr) {
+                    global_state.callback_os_window = NULL;
+                    return 0;
+                }
+
+                // First pass: filter droppable MIME types and cache priorities
                 for (int i = 0; i < count; i++) {
                     int prio = is_droppable_mime(mime_types[i]);
                     if (prio > 0) {
@@ -673,22 +681,26 @@ drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, 
                             mime_types[new_count] = mime_types[i];
                             mime_types[i] = temp;
                         }
+                        prio_arr[new_count] = prio;
                         new_count++;
                     }
                 }
 
-                // Now sort the accepted MIME types by priority (descending)
+                // Second pass: sort by cached priorities (descending)
                 for (int i = 0; i < new_count - 1; i++) {
                     for (int j = i + 1; j < new_count; j++) {
-                        int prio_i = is_droppable_mime(mime_types[i]);
-                        int prio_j = is_droppable_mime(mime_types[j]);
-                        if (prio_j > prio_i) {
+                        if (prio_arr[j] > prio_arr[i]) {
                             const char* temp = mime_types[i];
                             mime_types[i] = mime_types[j];
                             mime_types[j] = temp;
+                            int temp_prio = prio_arr[i];
+                            prio_arr[i] = prio_arr[j];
+                            prio_arr[j] = temp_prio;
                         }
                     }
                 }
+
+                if (prio_arr != priorities) free(prio_arr);
 
                 *mime_count = new_count;
                 ret = (new_count > 0) ? 1 : 0;
