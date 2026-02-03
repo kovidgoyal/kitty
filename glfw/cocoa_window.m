@@ -1343,6 +1343,13 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     _glfwInputScroll(window, &ev);
 }
 
+// Return YES to receive periodic dragging updates even when the mouse hasn't moved.
+// This allows the application to update acceptance status asynchronously.
+- (BOOL)wantsPeriodicDraggingUpdates
+{
+    return YES;
+}
+
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
 {
     const NSRect contentRect = [window->ns.view frame];
@@ -1414,9 +1421,12 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
 
-    // Call drag move callback
-    _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
-    return NSDragOperationGeneric;
+    // Call drag move callback and return acceptance status
+    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
+
+    if (accepted)
+        return NSDragOperationGeneric;
+    return NSDragOperationNone;
 }
 
 - (void)draggingExited:(id <NSDraggingInfo>)sender
@@ -3795,5 +3805,11 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
 
         return false;
     }
+}
+
+void _glfwPlatformSetDragAcceptance(_GLFWwindow* window UNUSED, bool accepted UNUSED) {
+    // No-op on macOS: The system uses periodic dragging updates via
+    // wantsPeriodicDraggingUpdates returning YES. The application should
+    // return the updated acceptance status from the drag callback instead.
 }
 

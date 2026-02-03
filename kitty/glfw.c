@@ -653,12 +653,18 @@ static int
 drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int mime_count) {
     (void)xpos; (void)ypos;
     if (!set_callback_window(w)) return 0;
-    if (event == GLFW_DRAG_ENTER) {
-        for (int i = 0; i < mime_count; i++) {
-            if (is_droppable_mime(mime_types[i])) return 1;
-        }
+    int ret = 0;
+    switch (event) {
+        case GLFW_DRAG_ENTER:
+            for (int i = 0; i < mime_count; i++) {
+                if (is_droppable_mime(mime_types[i])) { ret = 1; break; }
+            }
+            break;
+        case GLFW_DRAG_MOVE: ret = 1;
+        case GLFW_DRAG_LEAVE: break;
     }
-    return 0;
+    global_state.callback_os_window = NULL;
+    return ret;
 }
 
 static int

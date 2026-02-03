@@ -539,6 +539,11 @@ int _glfwPlatformStartDrag(_GLFWwindow* window UNUSED,
     return false;
 }
 
+void _glfwPlatformSetDragAcceptance(_GLFWwindow* window UNUSED, bool accepted UNUSED)
+{
+    // No-op for null platform
+}
+
 void _glfwPlatformSetClipboardString(const char* string)
 {
     char* copy = _glfw_strdup(string);

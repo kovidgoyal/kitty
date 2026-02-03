@@ -1141,6 +1141,15 @@ GLFWAPI int glfwStartDrag(GLFWwindow* handle, const GLFWdragitem* items, int ite
     return _glfwPlatformStartDrag(window, items, item_count, thumbnail, operation);
 }
 
+GLFWAPI void glfwSetDragAcceptance(GLFWwindow* handle, bool accepted)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT();
+    _glfwPlatformSetDragAcceptance(window, accepted);
+}
+
 GLFWAPI int glfwJoystickPresent(int jid)
 {
     _GLFWjoystick* js;

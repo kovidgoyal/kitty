@@ -1852,11 +1852,14 @@ typedef struct GLFWdragitem {
  *  duration of the callback; if you need to store them, make copies.
  *  @param[in] mime_count Number of MIME types in the array. Zero if no MIME types
  *  are available or for non-enter events.
- *  @return For @ref GLFW_DRAG_ENTER events, return non-zero to accept the drag
- *  or zero to reject it. Return value is ignored for other event types.
+ *  @return For @ref GLFW_DRAG_ENTER and @ref GLFW_DRAG_MOVE events, return non-zero
+ *  to accept the drag or zero to reject it. This allows the application to
+ *  dynamically accept or reject the drag based on the current position.
+ *  Return value is ignored for @ref GLFW_DRAG_LEAVE events.
  *
  *  @sa @ref drag_events
  *  @sa @ref glfwSetDragCallback
+ *  @sa @ref glfwSetDragAcceptance
  *
  *  @since Added in version 4.0.
  *
@@ -5066,6 +5069,40 @@ GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* window, GLFWdragfun callback
  *  @ingroup input
  */
 GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation);
+
+/*! @brief Sets the acceptance status of the current drag operation.
+ *
+ *  This function allows the application to asynchronously change whether
+ *  the current drag operation is accepted or rejected. This is useful when
+ *  the acceptance decision cannot be made synchronously in the drag callback,
+ *  for example when waiting for user input or network responses.
+ *
+ *  The acceptance status affects the visual feedback shown to the user
+ *  (e.g., cursor changes) and whether a drop will be accepted if the user
+ *  releases the mouse button.
+ *
+ *  @param[in] window The window receiving the drag operation.
+ *  @param[in] accepted `true` to accept the drag, `false` to reject it.
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
+ *
+ *  @remark This function has no effect if there is no active drag operation
+ *  over the specified window.
+ *
+ *  @remark On macOS, this function is a no-op as the system uses periodic
+ *  dragging updates. The application should return the updated acceptance
+ *  status from the drag callback instead.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref drag_events
+ *  @sa @ref glfwSetDragCallback
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+GLFWAPI void glfwSetDragAcceptance(GLFWwindow* window, bool accepted);
 
 /*! @brief Returns whether the specified joystick is present.
  *
