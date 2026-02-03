@@ -115,9 +115,10 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
             t(f'        ans[{option.name!r}] = {func.__name__}(val)')
             tc_imports.add((func.__module__, func.__name__))
             cnum = int(option.name[5:])
-            color_table[cnum] = f'0x{func(option.defval_as_string).__int__():06x}'
             if cnum >= 16:
-                t('        ans[\'generate_256_palette\'] = False')
+                color_table[cnum] = '0xffffffff'
+            else:
+                color_table[cnum] = f'0x{func(option.defval_as_string).__int__():06x}'
             continue
         else:
             func, typ = option_type_data(option)
@@ -266,6 +267,8 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
         a('                k = int(q)')
         a('                if 0 <= k <= 255:')
         a('                    x = self.color_table[k]')
+        a('                    if x == 0xffffffff:')
+        a('                        return None')
         a('                    return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)')
         a('        raise AttributeError(key)')
         a('')
@@ -275,7 +278,10 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
         a('            if q.isdigit():')
         a('                k = int(q)')
         a('                if 0 <= k <= 255:')
-        a('                    self.color_table[k] = int(val)')
+        a('                    if val is None:')
+        a('                        self.color_table[k] = 0xffffffff')
+        a('                    else:')
+        a('                        self.color_table[k] = int(val)')
         a('                    return')
         a('        object.__setattr__(self, key, val)')
 
