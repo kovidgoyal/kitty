@@ -2492,6 +2492,8 @@ static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device 
         if (d->id == id) {
             d->offer_type = DRAG_AND_DROP;
             d->surface = surface;
+            d->serial = serial;
+            d->drag_accepted = false;
             _GLFWwindow* window = _glfw.windowListHead;
             int format_priority = 0;
             while (window)
@@ -2504,6 +2506,7 @@ static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device 
 
                     // If accepted, check MIME type priorities
                     if (accepted) {
+                        d->drag_accepted = true;
                         for (size_t j = 0; j < d->mimes_count; j++) {
                             int prio = _glfwInputDrop(window, d->mimes[j], NULL, 0);
                             if (prio > format_priority) {
@@ -2572,13 +2575,35 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
 static void motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t time UNUSED, wl_fixed_t x, wl_fixed_t y) {
     // Find the current drag offer and send motion events
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
+        _GLFWWaylandDataOffer *d = &_glfw.wl.dataOffers[i];
+        if (d->offer_type == DRAG_AND_DROP) {
             _GLFWwindow* window = _glfw.windowListHead;
             while (window) {
-                if (window->wl.surface == _glfw.wl.dataOffers[i].surface) {
+                if (window->wl.surface == d->surface) {
                     double xpos = wl_fixed_to_double(x);
                     double ypos = wl_fixed_to_double(y);
-                    _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
+                    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
+
+                    // Update acceptance status based on callback return value
+                    if (accepted != d->drag_accepted) {
+                        d->drag_accepted = accepted;
+                        // If acceptance changed, update MIME selection and notify compositor
+                        if (accepted) {
+                            // Re-select best MIME type if now accepting
+                            int format_priority = 0;
+                            d->mime_for_drop = NULL;
+                            for (size_t j = 0; j < d->mimes_count; j++) {
+                                int prio = _glfwInputDrop(window, d->mimes[j], NULL, 0);
+                                if (prio > format_priority) {
+                                    format_priority = prio;
+                                    d->mime_for_drop = d->mimes[j];
+                                }
+                            }
+                        } else {
+                            d->mime_for_drop = NULL;
+                        }
+                        wl_data_offer_accept(d->id, d->serial, d->mime_for_drop);
+                    }
                     break;
                 }
                 window = window->next;
@@ -3155,5 +3180,35 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_
     }
 
     return true;
+}
+
+void
+_glfwPlatformSetDragAcceptance(_GLFWwindow* window, int accepted) {
+    // Find the active drag offer for this window and update its acceptance status
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        _GLFWWaylandDataOffer *d = &_glfw.wl.dataOffers[i];
+        if (d->offer_type == DRAG_AND_DROP && window->wl.surface == d->surface) {
+            if ((bool)accepted != d->drag_accepted) {
+                d->drag_accepted = accepted;
+                // Update MIME selection and notify compositor
+                if (accepted) {
+                    // Re-select best MIME type if now accepting
+                    int format_priority = 0;
+                    d->mime_for_drop = NULL;
+                    for (size_t j = 0; j < d->mimes_count; j++) {
+                        int prio = _glfwInputDrop(window, d->mimes[j], NULL, 0);
+                        if (prio > format_priority) {
+                            format_priority = prio;
+                            d->mime_for_drop = d->mimes[j];
+                        }
+                    }
+                } else {
+                    d->mime_for_drop = NULL;
+                }
+                wl_data_offer_accept(d->id, d->serial, d->mime_for_drop);
+            }
+            return;
+        }
+    }
 }
 

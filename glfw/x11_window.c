@@ -1836,6 +1836,7 @@ static void processEvent(XEvent *event)
                 _glfw.x11.xdnd.target_window = window->x11.handle;
                 memset(_glfw.x11.xdnd.format, 0, sizeof(_glfw.x11.xdnd.format));
                 _glfw.x11.xdnd.format_priority  = 0;
+                _glfw.x11.xdnd.drag_accepted = false;
 
                 if (_glfw.x11.xdnd.version > _GLFW_XDND_VERSION)
                     return;
@@ -1869,6 +1870,7 @@ static void processEvent(XEvent *event)
                 int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, 0, 0, (const char**)atom_names, valid_mime_count);
 
                 if (atom_names && accepted) {
+                    _glfw.x11.xdnd.drag_accepted = true;
                     for (i = 0;  i < count;  i++)
                     {
                         if (atom_names[i]) {
@@ -1957,8 +1959,9 @@ static void processEvent(XEvent *event)
 
                 _glfwInputCursorPos(window, xpos, ypos);
 
-                // Call the drag move callback
-                _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
+                // Call the drag move callback and update acceptance status
+                int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
+                _glfw.x11.xdnd.drag_accepted = accepted;
 
                 XEvent reply = { ClientMessage };
                 reply.xclient.window = _glfw.x11.xdnd.source;
@@ -1968,7 +1971,7 @@ static void processEvent(XEvent *event)
                 reply.xclient.data.l[2] = 0; // Specify an empty rectangle
                 reply.xclient.data.l[3] = 0;
 
-                if (_glfw.x11.xdnd.format_priority > 0)
+                if (_glfw.x11.xdnd.format_priority > 0 && _glfw.x11.xdnd.drag_accepted)
                 {
                     // Reply that we are ready to copy the dragged data
                     reply.xclient.data.l[1] = 1; // Accept with no rectangle
@@ -3756,5 +3759,36 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
     // handle its own drag tracking if needed.
 
     return true;
+}
+
+void _glfwPlatformSetDragAcceptance(_GLFWwindow* window, int accepted) {
+    // Check if there's an active drag over this window
+    if (_glfw.x11.xdnd.source == None ||
+        _glfw.x11.xdnd.target_window != window->x11.handle) {
+        return;
+    }
+
+    // Update acceptance status
+    _glfw.x11.xdnd.drag_accepted = accepted;
+
+    // Send an XdndStatus message to update the drag source
+    XEvent reply = { ClientMessage };
+    reply.xclient.window = _glfw.x11.xdnd.source;
+    reply.xclient.message_type = _glfw.x11.XdndStatus;
+    reply.xclient.format = 32;
+    reply.xclient.data.l[0] = window->x11.handle;
+    reply.xclient.data.l[2] = 0; // Specify an empty rectangle
+    reply.xclient.data.l[3] = 0;
+
+    if (_glfw.x11.xdnd.format_priority > 0 && accepted) {
+        // Reply that we are ready to copy the dragged data
+        reply.xclient.data.l[1] = 1; // Accept with no rectangle
+        if (_glfw.x11.xdnd.version >= 2)
+            reply.xclient.data.l[4] = _glfw.x11.XdndActionCopy;
+    }
+
+    XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source,
+               False, NoEventMask, &reply);
+    XFlush(_glfw.x11.display);
 }
 

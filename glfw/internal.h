@@ -768,6 +768,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev);
 void _glfwPlatformChangeCursorTheme(void);
 
 int _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation);
+void _glfwPlatformSetDragAcceptance(_GLFWwindow* window, int accepted);
 
 void _glfwPlatformPollEvents(void);
 void _glfwPlatformWaitEvents(void);

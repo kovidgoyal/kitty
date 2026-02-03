@@ -170,6 +170,10 @@ typedef struct _GLFWwindowNS
 
     // Current drag operation type for NSDraggingSource
     GLFWDragOperationType dragOperationType;
+
+    // Drag acceptance status for asynchronous acceptance changes
+    bool dragAccepted;
+    bool dragActive;
 } _GLFWwindowNS;
 
 // Cocoa-specific global data

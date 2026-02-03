@@ -317,6 +317,8 @@ typedef struct _GLFWWaylandDataOffer
     struct wl_surface *surface;
     const char **mimes;
     size_t mimes_capacity, mimes_count;
+    bool drag_accepted;
+    uint32_t serial;
 } _GLFWWaylandDataOffer;
 
 // Wayland-specific global data

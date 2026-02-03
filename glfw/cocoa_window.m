@@ -1402,6 +1402,9 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 
     free(mime_array);
 
+    window->ns.dragActive = true;
+    window->ns.dragAccepted = accepted;
+
     if (accepted)
         return NSDragOperationGeneric;
     return NSDragOperationNone;
@@ -1414,9 +1417,13 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
 
-    // Call drag move callback
-    _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
-    return NSDragOperationGeneric;
+    // Call drag move callback and update acceptance status
+    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
+    window->ns.dragAccepted = accepted;
+
+    if (accepted)
+        return NSDragOperationGeneric;
+    return NSDragOperationNone;
 }
 
 - (void)draggingExited:(id <NSDraggingInfo>)sender
@@ -1424,6 +1431,8 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     (void)sender;
     // Call drag leave callback
     _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, 0);
+    window->ns.dragActive = false;
+    window->ns.dragAccepted = false;
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
@@ -3795,5 +3804,16 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
 
         return false;
     }
+}
+
+void _glfwPlatformSetDragAcceptance(_GLFWwindow* window, int accepted) {
+    // Update the acceptance status for the current drag operation
+    // Note: On macOS, we cannot retroactively change the drag operation status
+    // after returning from draggingEntered/draggingUpdated. However, we store
+    // the state so that:
+    // 1. The next draggingUpdated call can use the new status
+    // 2. The application can query the status if needed
+    // The drag operation will be updated on the next mouse move during drag.
+    window->ns.dragAccepted = accepted;
 }
 
