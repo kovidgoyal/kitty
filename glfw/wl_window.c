@@ -2574,7 +2574,7 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
 
 // Helper function to update drag acceptance status and notify compositor
 static void update_drag_acceptance(_GLFWWaylandDataOffer *d, _GLFWwindow* window, bool accepted) {
-    if ((bool)accepted != d->drag_accepted) {
+    if (accepted != d->drag_accepted) {
         d->drag_accepted = accepted;
         // If acceptance changed, update MIME selection and notify compositor
         if (accepted) {
