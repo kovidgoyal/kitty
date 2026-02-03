@@ -1366,10 +1366,17 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
         max_types += [item.types count];
     }
 
+    // Free any previously cached MIME types
+    if (window->ns.dragMimes) {
+        free(window->ns.dragMimes);
+        window->ns.dragMimes = NULL;
+        window->ns.dragMimeCount = 0;
+    }
+
     // Pre-allocate C array for MIME types
     const char** mime_array = (const char**)calloc(max_types, sizeof(const char*));
     if (!mime_array) {
-        int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, NULL, 0);
+        int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, NULL, NULL);
         return accepted ? NSDragOperationGeneric : NSDragOperationNone;
     }
 
@@ -1404,10 +1411,12 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
         }
     }
 
-    // Call drag enter callback with MIME types
-    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, mime_array, mime_count);
+    // Store MIME types for later use in move events
+    window->ns.dragMimes = mime_array;
+    window->ns.dragMimeCount = mime_count;
 
-    free(mime_array);
+    // Call drag enter callback with writable MIME types array
+    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, mime_array, &mime_count);
 
     if (accepted)
         return NSDragOperationGeneric;
@@ -1421,8 +1430,9 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
 
-    // Call drag move callback and return acceptance status
-    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
+    // Call drag move callback with cached MIME types
+    int mime_count = window->ns.dragMimeCount;
+    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, window->ns.dragMimes, &mime_count);
 
     if (accepted)
         return NSDragOperationGeneric;
@@ -1433,7 +1443,14 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 {
     (void)sender;
     // Call drag leave callback
-    _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, 0);
+    _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, NULL);
+
+    // Free cached MIME types
+    if (window->ns.dragMimes) {
+        free(window->ns.dragMimes);
+        window->ns.dragMimes = NULL;
+        window->ns.dragMimeCount = 0;
+    }
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
@@ -3807,9 +3824,9 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
     }
 }
 
-void _glfwPlatformSetDragAcceptance(_GLFWwindow* window UNUSED, bool accepted UNUSED) {
+void _glfwPlatformUpdateDragState(_GLFWwindow* window UNUSED) {
     // No-op on macOS: The system uses periodic dragging updates via
-    // wantsPeriodicDraggingUpdates returning YES. The application should
-    // return the updated acceptance status from the drag callback instead.
+    // wantsPeriodicDraggingUpdates returning YES. The drag callback is
+    // called periodically anyway.
 }
 

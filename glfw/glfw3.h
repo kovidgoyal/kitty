@@ -1761,17 +1761,15 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *  This is the function pointer type for drop callbacks. A drop
  *  callback function has the following signature:
  *  @code
- *  int function_name(GLFWwindow* window, const char* mime, const char* text)
+ *  void function_name(GLFWwindow* window, const char* mime, const char* data, size_t sz)
  *  @endcode
  *
  *  @param[in] window The window that received the event.
  *  @param[in] mime The UTF-8 encoded drop mime-type
- *  @param[in] data The dropped data or NULL for drag enter events
+ *  @param[in] data The dropped data.
  *  @param[in] sz The size of the dropped data
- *  @return For drag events should return the priority for the specified mime type. A priority of zero
- *  or lower means the mime type is not accepted. Highest priority will be the finally accepted mime-type.
  *
- *  @pointer_lifetime The text is valid until the
+ *  @pointer_lifetime The data is valid until the
  *  callback function returns.
  *
  *  @sa @ref path_drop
@@ -1781,7 +1779,7 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *
  *  @ingroup input
  */
-typedef int (* GLFWdropfun)(GLFWwindow*, const char *, const char*, size_t);
+typedef void (* GLFWdropfun)(GLFWwindow*, const char *, const char*, size_t);
 
 /*! @brief Drag event types.
  *
@@ -1838,7 +1836,7 @@ typedef struct GLFWdragitem {
  *  This is the function pointer type for drag event callbacks. A drag event
  *  callback function has the following signature:
  *  @code
- *  int function_name(GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int mime_count)
+ *  int function_name(GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int* mime_count)
  *  @endcode
  *
  *  @param[in] window The window that received the drag event.
@@ -1846,12 +1844,16 @@ typedef struct GLFWdragitem {
  *  or @ref GLFW_DRAG_LEAVE.
  *  @param[in] xpos The x-coordinate of the drag position in window coordinates.
  *  @param[in] ypos The y-coordinate of the drag position in window coordinates.
- *  @param[in] mime_types Array of MIME type strings available from the drag source.
- *  For @ref GLFW_DRAG_ENTER events this contains all available MIME types.
- *  For other events this may be `NULL`. The strings are only valid for the
- *  duration of the callback; if you need to store them, make copies.
- *  @param[in] mime_count Number of MIME types in the array. Zero if no MIME types
- *  are available or for non-enter events.
+ *  @param[in,out] mime_types A writable array of MIME type strings available from the drag source.
+ *  For @ref GLFW_DRAG_ENTER and @ref GLFW_DRAG_MOVE events this is non-NULL and contains all
+ *  available MIME types. The callback is responsible for sorting this list by priority and
+ *  keeping only the MIME types it wants to accept. The first MIME type in the sorted list
+ *  will be used for the drop operation. The strings are only valid for the duration of the
+ *  callback; if you need to store them, make copies. For @ref GLFW_DRAG_LEAVE events this
+ *  is `NULL`.
+ *  @param[in,out] mime_count Pointer to the number of MIME types in the array. The callback
+ *  should update this to reflect the new count after sorting and filtering. For
+ *  @ref GLFW_DRAG_LEAVE events this is `NULL`.
  *  @return For @ref GLFW_DRAG_ENTER and @ref GLFW_DRAG_MOVE events, return non-zero
  *  to accept the drag or zero to reject it. This allows the application to
  *  dynamically accept or reject the drag based on the current position.
@@ -1859,13 +1861,13 @@ typedef struct GLFWdragitem {
  *
  *  @sa @ref drag_events
  *  @sa @ref glfwSetDragCallback
- *  @sa @ref glfwSetDragAcceptance
+ *  @sa @ref glfwUpdateDragState
  *
  *  @since Added in version 4.0.
  *
  *  @ingroup input
  */
-typedef int (* GLFWdragfun)(GLFWwindow*, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int mime_count);
+typedef int (* GLFWdragfun)(GLFWwindow*, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int* mime_count);
 
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 
@@ -5070,19 +5072,17 @@ GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* window, GLFWdragfun callback
  */
 GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation);
 
-/*! @brief Sets the acceptance status of the current drag operation.
+/*! @brief Schedules a call to the drag callback to update drag state.
  *
- *  This function allows the application to asynchronously change whether
- *  the current drag operation is accepted or rejected. This is useful when
- *  the acceptance decision cannot be made synchronously in the drag callback,
- *  for example when waiting for user input or network responses.
+ *  This function schedules a call to the drag callback to get updated
+ *  acceptance status and MIME type list. Use this when the application
+ *  needs to update its drag state asynchronously.
  *
- *  The acceptance status affects the visual feedback shown to the user
- *  (e.g., cursor changes) and whether a drop will be accepted if the user
- *  releases the mouse button.
+ *  On Wayland and X11, this will immediately call the drag callback with
+ *  the current drag state. On macOS this is a no-op since the drag callback
+ *  is called periodically anyway.
  *
  *  @param[in] window The window receiving the drag operation.
- *  @param[in] accepted `true` to accept the drag, `false` to reject it.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
  *
@@ -5090,8 +5090,7 @@ GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int ite
  *  over the specified window.
  *
  *  @remark On macOS, this function is a no-op as the system uses periodic
- *  dragging updates. The application should return the updated acceptance
- *  status from the drag callback instead.
+ *  dragging updates via the drag callback.
  *
  *  @thread_safety This function must only be called from the main thread.
  *
@@ -5102,7 +5101,7 @@ GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int ite
  *
  *  @ingroup input
  */
-GLFWAPI void glfwSetDragAcceptance(GLFWwindow* window, bool accepted);
+GLFWAPI void glfwUpdateDragState(GLFWwindow* window);
 
 /*! @brief Returns whether the specified joystick is present.
  *

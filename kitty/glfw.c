@@ -650,32 +650,63 @@ is_droppable_mime(const char *mime) {
 }
 
 static int
-drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int mime_count) {
+drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int* mime_count) {
     (void)xpos; (void)ypos;
     if (!set_callback_window(w)) return 0;
     int ret = 0;
     switch (event) {
         case GLFW_DRAG_ENTER:
-            for (int i = 0; i < mime_count; i++) {
-                if (is_droppable_mime(mime_types[i])) { ret = 1; break; }
+        case GLFW_DRAG_MOVE:
+            if (mime_types && mime_count && *mime_count > 0) {
+                // Sort MIME types by priority (descending) and keep only accepted ones
+                // Use simple bubble sort since lists are typically small
+                int count = *mime_count;
+                int new_count = 0;
+
+                // First, filter and collect droppable MIME types with their priorities
+                for (int i = 0; i < count; i++) {
+                    int prio = is_droppable_mime(mime_types[i]);
+                    if (prio > 0) {
+                        // Move this mime to the new_count position
+                        if (new_count != i) {
+                            const char* temp = mime_types[new_count];
+                            mime_types[new_count] = mime_types[i];
+                            mime_types[i] = temp;
+                        }
+                        new_count++;
+                    }
+                }
+
+                // Now sort the accepted MIME types by priority (descending)
+                for (int i = 0; i < new_count - 1; i++) {
+                    for (int j = i + 1; j < new_count; j++) {
+                        int prio_i = is_droppable_mime(mime_types[i]);
+                        int prio_j = is_droppable_mime(mime_types[j]);
+                        if (prio_j > prio_i) {
+                            const char* temp = mime_types[i];
+                            mime_types[i] = mime_types[j];
+                            mime_types[j] = temp;
+                        }
+                    }
+                }
+
+                *mime_count = new_count;
+                ret = (new_count > 0) ? 1 : 0;
             }
             break;
-        case GLFW_DRAG_MOVE: ret = 1;
-        case GLFW_DRAG_LEAVE: break;
+        case GLFW_DRAG_LEAVE:
+            break;
     }
     global_state.callback_os_window = NULL;
     return ret;
 }
 
-static int
+static void
 drop_callback(GLFWwindow *w, const char *mime, const char *data, size_t sz) {
-    if (!set_callback_window(w)) return 0;
-#define RETURN(x) { global_state.callback_os_window = NULL; return x; }
-    if (!data) return is_droppable_mime(mime);
+    if (!set_callback_window(w)) return;
     WINDOW_CALLBACK(on_drop, "sy#", mime, data, (Py_ssize_t)sz);
     request_tick_callback();
-    RETURN(0);
-#undef RETURN
+    global_state.callback_os_window = NULL;
 }
 
 static void
