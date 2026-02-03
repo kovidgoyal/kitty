@@ -3761,7 +3761,7 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
     return true;
 }
 
-void _glfwPlatformSetDragAcceptance(_GLFWwindow* window, int accepted) {
+void _glfwPlatformSetDragAcceptance(_GLFWwindow* window, bool accepted) {
     // Check if there's an active drag over this window
     if (_glfw.x11.xdnd.source == None ||
         _glfw.x11.xdnd.target_window != window->x11.handle) {

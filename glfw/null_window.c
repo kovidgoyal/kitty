@@ -539,7 +539,7 @@ int _glfwPlatformStartDrag(_GLFWwindow* window UNUSED,
     return false;
 }
 
-void _glfwPlatformSetDragAcceptance(_GLFWwindow* window UNUSED, int accepted UNUSED)
+void _glfwPlatformSetDragAcceptance(_GLFWwindow* window UNUSED, bool accepted UNUSED)
 {
     // No-op for null platform
 }

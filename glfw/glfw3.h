@@ -5082,12 +5082,16 @@ GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int ite
  *  releases the mouse button.
  *
  *  @param[in] window The window receiving the drag operation.
- *  @param[in] accepted Non-zero to accept the drag, zero to reject it.
+ *  @param[in] accepted `true` to accept the drag, `false` to reject it.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
  *
  *  @remark This function has no effect if there is no active drag operation
  *  over the specified window.
+ *
+ *  @remark On macOS, this function is a no-op as the system uses periodic
+ *  dragging updates. The application should return the updated acceptance
+ *  status from the drag callback instead.
  *
  *  @thread_safety This function must only be called from the main thread.
  *
@@ -5098,7 +5102,7 @@ GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int ite
  *
  *  @ingroup input
  */
-GLFWAPI void glfwSetDragAcceptance(GLFWwindow* window, int accepted);
+GLFWAPI void glfwSetDragAcceptance(GLFWwindow* window, bool accepted);
 
 /*! @brief Returns whether the specified joystick is present.
  *

@@ -1343,6 +1343,13 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     _glfwInputScroll(window, &ev);
 }
 
+// Return YES to receive periodic dragging updates even when the mouse hasn't moved.
+// This allows the application to update acceptance status asynchronously.
+- (BOOL)wantsPeriodicDraggingUpdates
+{
+    return YES;
+}
+
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
 {
     const NSRect contentRect = [window->ns.view frame];
@@ -1402,9 +1409,6 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 
     free(mime_array);
 
-    window->ns.dragActive = true;
-    window->ns.dragAccepted = accepted;
-
     if (accepted)
         return NSDragOperationGeneric;
     return NSDragOperationNone;
@@ -1417,9 +1421,8 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
 
-    // Call drag move callback and update acceptance status
+    // Call drag move callback and return acceptance status
     int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, NULL, 0);
-    window->ns.dragAccepted = accepted;
 
     if (accepted)
         return NSDragOperationGeneric;
@@ -1431,8 +1434,6 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     (void)sender;
     // Call drag leave callback
     _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, 0);
-    window->ns.dragActive = false;
-    window->ns.dragAccepted = false;
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
@@ -1441,10 +1442,6 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     // NOTE: The returned location uses base 0,1 not 0,0
     const NSPoint pos = [sender draggingLocation];
     _glfwInputCursorPos(window, pos.x, contentRect.size.height - pos.y);
-
-    // Reset drag state after drop
-    window->ns.dragActive = false;
-    window->ns.dragAccepted = false;
 
     NSPasteboard* pasteboard = [sender draggingPasteboard];
     NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
@@ -3810,19 +3807,9 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
     }
 }
 
-void _glfwPlatformSetDragAcceptance(_GLFWwindow* window, int accepted) {
-    // Check if there's an active drag over this window
-    if (!window->ns.dragActive) {
-        return;
-    }
-
-    // Update the acceptance status for the current drag operation
-    // Note: On macOS, we cannot retroactively change the drag operation status
-    // after returning from draggingEntered/draggingUpdated. However, we store
-    // the state so that:
-    // 1. The next draggingUpdated call can use the new status
-    // 2. The application can query the status if needed
-    // The drag operation will be updated on the next mouse move during drag.
-    window->ns.dragAccepted = accepted;
+void _glfwPlatformSetDragAcceptance(_GLFWwindow* window UNUSED, bool accepted UNUSED) {
+    // No-op on macOS: The system uses periodic dragging updates via
+    // wantsPeriodicDraggingUpdates returning YES. The application should
+    // return the updated acceptance status from the drag callback instead.
 }
 

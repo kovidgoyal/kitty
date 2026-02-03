@@ -3188,7 +3188,7 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_
 }
 
 void
-_glfwPlatformSetDragAcceptance(_GLFWwindow* window, int accepted) {
+_glfwPlatformSetDragAcceptance(_GLFWwindow* window, bool accepted) {
     // Find the active drag offer for this window and update its acceptance status
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         _GLFWWaylandDataOffer *d = &_glfw.wl.dataOffers[i];
