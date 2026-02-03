@@ -665,44 +665,29 @@ drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, 
                 int new_count = 0;
 
                 // Use stack-allocated array for priorities (count is typically small)
-                int priorities[64];
-                int* prio_arr = (count <= 64) ? priorities : (int*)malloc(count * sizeof(int));
-                if (!prio_arr) {
-                    global_state.callback_os_window = NULL;
-                    return 0;
-                }
-
+                int priorities[32];
+                int* prio_arr = (count <= (int)arraysz(priorities)) ? priorities : (int*)malloc(count * sizeof(int));
+                if (!prio_arr) goto end;
                 // First pass: filter droppable MIME types and cache priorities
                 for (int i = 0; i < count; i++) {
                     int prio = is_droppable_mime(mime_types[i]);
                     if (prio > 0) {
                         // Move this mime to the new_count position
-                        if (new_count != i) {
-                            const char* temp = mime_types[new_count];
-                            mime_types[new_count] = mime_types[i];
-                            mime_types[i] = temp;
-                        }
+                        if (new_count != i) { SWAP(mime_types[i], mime_types[new_count]); }
                         prio_arr[new_count] = prio;
                         new_count++;
                     }
                 }
-
                 // Second pass: sort by cached priorities (descending)
                 for (int i = 0; i < new_count - 1; i++) {
                     for (int j = i + 1; j < new_count; j++) {
                         if (prio_arr[j] > prio_arr[i]) {
-                            const char* temp = mime_types[i];
-                            mime_types[i] = mime_types[j];
-                            mime_types[j] = temp;
-                            int temp_prio = prio_arr[i];
-                            prio_arr[i] = prio_arr[j];
-                            prio_arr[j] = temp_prio;
+                            SWAP(mime_types[i], mime_types[j]);
+                            SWAP(prio_arr[i], prio_arr[j]);
                         }
                     }
                 }
-
                 if (prio_arr != priorities) free(prio_arr);
-
                 *mime_count = new_count;
                 ret = (new_count > 0) ? 1 : 0;
             }
@@ -710,6 +695,7 @@ drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, 
         case GLFW_DRAG_LEAVE:
             break;
     }
+end:
     global_state.callback_os_window = NULL;
     return ret;
 }
