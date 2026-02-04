@@ -1505,12 +1505,19 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
         _glfwInputError(GLFW_OUT_OF_MEMORY, "Cocoa: Failed to allocate drop data");
         return NO;
     }
+    // Transfer ownership of mimes array from window to drop object
     drop_data->mime_types = window->ns.dragMimes;
     drop_data->mime_count = window->ns.dragMimeCount;
+    drop_data->mime_array_size = window->ns.dragMimeArraySize;
+    // Clear window's references since drop object now owns the mimes
+    window->ns.dragMimes = NULL;
+    window->ns.dragMimeCount = 0;
+    window->ns.dragMimeArraySize = 0;
+
     drop_data->current_mime = NULL;
     drop_data->read_fd = -1;
     drop_data->bytes_read = 0;
-    drop_data->platform_data = (void*)CFBridgingRetain(pasteboard);  // Retain the pasteboard
+    drop_data->platform_data = [pasteboard retain];  // Retain the pasteboard
     drop_data->eof_reached = false;
     drop_data->current_data = NULL;
     drop_data->data_offset = 0;
@@ -3895,7 +3902,7 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
     // If switching MIME types, release previous data
     if (drop->current_mime && strcmp(drop->current_mime, mime) != 0) {
         if (drop->current_data) {
-            CFRelease(drop->current_data);
+            [(NSData*)drop->current_data release];
             drop->current_data = NULL;
         }
         drop->data_offset = 0;
@@ -3939,13 +3946,13 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
 
         if (!data) return -ENOENT;
 
-        drop->current_data = (void*)CFBridgingRetain(data);
+        drop->current_data = [data retain];
         drop->current_mime = mime;
         drop->data_offset = 0;
     }
 
     // Read data from buffer
-    NSData* data = (__bridge NSData*)drop->current_data;
+    NSData* data = (NSData*)drop->current_data;
     NSUInteger dataLength = [data length];
 
     if (drop->data_offset >= dataLength) {
@@ -3967,7 +3974,7 @@ _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUS
 
     // Release the retained current data
     if (drop->current_data) {
-        CFRelease(drop->current_data);
+        [(NSData*)drop->current_data release];
         drop->current_data = NULL;
     }
 
@@ -3975,8 +3982,18 @@ _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUS
     // Note: Cocoa drag operations don't have a way to report back to the source
     // like X11's XdndFinished, so we just clean up our resources
     if (drop->platform_data) {
-        CFRelease(drop->platform_data);
+        [(NSPasteboard*)drop->platform_data release];
         drop->platform_data = NULL;
+    }
+
+    // Free the mime types array (owned by drop object)
+    if (drop->mime_types) {
+        for (int i = 0; i < drop->mime_array_size; i++) {
+            if (drop->mime_types[i])
+                free((char*)drop->mime_types[i]);
+        }
+        free(drop->mime_types);
+        drop->mime_types = NULL;
     }
 
     // Free the heap-allocated drop data structure

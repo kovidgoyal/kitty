@@ -1950,8 +1950,15 @@ static void processEvent(XEvent *event)
                         }
                         return;
                     }
+                    // Transfer ownership of mimes array from global to drop object
                     drop_data->mime_types = (const char**)_glfw.x11.xdnd.mimes;
                     drop_data->mime_count = _glfw.x11.xdnd.mimes_count;
+                    drop_data->mime_array_size = _glfw.x11.xdnd.mimes_array_size;
+                    // Clear global references since drop object now owns the mimes
+                    _glfw.x11.xdnd.mimes = NULL;
+                    _glfw.x11.xdnd.mimes_count = 0;
+                    _glfw.x11.xdnd.mimes_array_size = 0;
+
                     drop_data->current_mime = NULL;
                     drop_data->read_fd = -1;
                     drop_data->bytes_read = 0;
@@ -4029,6 +4036,16 @@ _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation, boo
         XSendEvent(_glfw.x11.display, (Window)drop->x11_source,
                    False, NoEventMask, &reply);
         XFlush(_glfw.x11.display);
+    }
+
+    // Free the mime types array (owned by drop object, allocated by X11 XGetAtomNames)
+    if (drop->mime_types) {
+        for (int i = 0; i < drop->mime_array_size; i++) {
+            if (drop->mime_types[i])
+                XFree((char*)drop->mime_types[i]);
+        }
+        free(drop->mime_types);
+        drop->mime_types = NULL;
     }
 
     // Free the heap-allocated drop data structure

@@ -2532,15 +2532,21 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
             {
                 if (window->wl.surface == offer->surface) {
                     // Heap-allocate drop data structure for chunked reading
-                    // The application is responsible for freeing this via glfwCancelDrop
+                    // The application is responsible for freeing this via glfwFinishDrop
                     GLFWDropData* drop_data = calloc(1, sizeof(GLFWDropData));
                     if (!drop_data) {
                         _glfwInputError(GLFW_OUT_OF_MEMORY, "Wayland: Failed to allocate drop data");
                         destroy_data_offer(offer);  // Clean up the offer on allocation failure
                         break;
                     }
+                    // Transfer ownership of mimes array from offer to drop object
                     drop_data->mime_types = offer->mimes;
                     drop_data->mime_count = (int)offer->mimes_count;
+                    drop_data->mime_array_size = (int)offer->mimes_count;
+                    // Clear offer's references since drop object now owns the mimes
+                    offer->mimes = NULL;
+                    offer->mimes_count = 0;
+
                     drop_data->current_mime = NULL;
                     drop_data->read_fd = -1;
                     drop_data->bytes_read = 0;
@@ -2549,14 +2555,14 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
 
                     _glfwInputDrop(window, drop_data);
 
-                    // Note: drop_data is NOT freed here - application must call glfwCancelDrop
+                    // Note: drop_data is NOT freed here - application must call glfwFinishDrop
                     break;
                 }
                 window = window->next;
             }
 
             // Note: We no longer destroy the offer here as the drop_data holds a reference
-            // The offer will be destroyed when glfwCancelDrop is called
+            // The offer will be destroyed when glfwFinishDrop is called
             break;
         }
     }
@@ -3292,6 +3298,16 @@ _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUS
     _GLFWWaylandDataOffer* offer = (_GLFWWaylandDataOffer*)drop->platform_data;
     if (offer) {
         destroy_data_offer(offer);
+    }
+
+    // Free the mime types array (owned by drop object)
+    if (drop->mime_types) {
+        for (int i = 0; i < drop->mime_array_size; i++) {
+            if (drop->mime_types[i])
+                free((char*)drop->mime_types[i]);
+        }
+        free(drop->mime_types);
+        drop->mime_types = NULL;
     }
 
     // Free the heap-allocated drop data structure
