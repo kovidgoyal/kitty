@@ -2522,14 +2522,14 @@ static void drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device 
     }
 }
 
-static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
+static void
+drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
             _GLFWWaylandDataOffer *offer = &_glfw.wl.dataOffers[i];
 
             _GLFWwindow* window = _glfw.windowListHead;
-            while (window)
-            {
+            while (window) {
                 if (window->wl.surface == offer->surface) {
                     // Heap-allocate drop data structure for chunked reading
                     // The application is responsible for freeing this via glfwFinishDrop
@@ -2543,26 +2543,20 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
                     drop_data->mime_types = offer->mimes;
                     drop_data->mime_count = (int)offer->mimes_count;
                     drop_data->mime_array_size = (int)offer->mimes_count;
-                    // Clear offer's references since drop object now owns the mimes
-                    offer->mimes = NULL;
-                    offer->mimes_count = 0;
-
                     drop_data->current_mime = NULL;
                     drop_data->read_fd = -1;
                     drop_data->bytes_read = 0;
-                    drop_data->platform_data = offer;  // Store the offer for later use
+                    drop_data->platform_data = offer->id;  // Store the offer for later use
+                    offer->mimes = NULL; offer->id = NULL;
+                    destroy_data_offer(offer);
                     drop_data->eof_reached = false;
-
+                    memset(offer, 0, sizeof(offer[0]));
                     _glfwInputDrop(window, drop_data);
-
                     // Note: drop_data is NOT freed here - application must call glfwFinishDrop
                     break;
                 }
                 window = window->next;
             }
-
-            // Note: We no longer destroy the offer here as the drop_data holds a reference
-            // The offer will be destroyed when glfwFinishDrop is called
             break;
         }
     }
@@ -3189,10 +3183,7 @@ _glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count) {
 
 ssize_t
 _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout) {
-    if (!drop || !mime || !buffer || capacity == 0) return -EINVAL;
-
-    _GLFWWaylandDataOffer *offer = (_GLFWWaylandDataOffer*)drop->platform_data;
-    if (!offer || !offer->id) return -EINVAL;
+    if (!drop->platform_data) return -EINVAL;
 
     // Check if the MIME type is available
     bool mime_found = false;
@@ -3212,27 +3203,23 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
         }
         drop->bytes_read = 0;
         drop->eof_reached = false;
+        free(drop->current_mime); drop->current_mime = NULL;
     }
 
     // If we've reached EOF for this MIME type, return 0
-    if (drop->eof_reached && drop->current_mime && strcmp(drop->current_mime, mime) == 0) {
-        return 0;
-    }
+    if (drop->eof_reached && drop->current_mime && strcmp(drop->current_mime, mime) == 0) return 0;
 
     // Open a new pipe if we don't have one for this MIME type
-    if (drop->read_fd < 0 || drop->current_mime == NULL || strcmp(drop->current_mime, mime) != 0) {
+    if (drop->read_fd < 0 || drop->current_mime == NULL) {
         int pipefd[2];
         if (pipe2(pipefd, O_CLOEXEC | O_NONBLOCK) != 0) return -EIO;
-
-        wl_data_offer_receive(offer->id, mime, pipefd[1]);
+        wl_data_offer_receive(drop->platform_data, mime, pipefd[1]);
         close(pipefd[1]);
-
-        // Round trip to ensure the compositor processes the receive request
-        wl_display_roundtrip(_glfw.wl.display);
-
+        // Flush to ensure the compositor processes the receive request
+        wl_display_flush(_glfw.wl.display);
         drop->read_fd = pipefd[0];
         // mime points to drop->mime_types entry, valid for duration of drop callback
-        drop->current_mime = mime;
+        drop->current_mime = _glfw_strdup(mime);
         drop->bytes_read = 0;
         drop->eof_reached = false;
     }
@@ -3264,20 +3251,20 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
     }
 
     // Read data from the pipe
-    ssize_t bytes_read = read(drop->read_fd, buffer, capacity);
+    ssize_t bytes_read = -1;
+    errno = EINTR;
+    while (errno == EINTR) { errno = 0; bytes_read = read(drop->read_fd, buffer, capacity); }
     if (bytes_read < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return -ETIME;  // No data available yet
         }
         return -EIO;
     }
-
     if (bytes_read == 0) {
         // EOF reached
         drop->eof_reached = true;
         return 0;
     }
-
     drop->bytes_read += bytes_read;
     return bytes_read;
 }
@@ -3285,6 +3272,7 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
 void
 _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUSED, bool success UNUSED) {
     if (!drop) return;
+    free(drop->current_mime); drop->current_mime = NULL;
 
     // Close any open file descriptor
     if (drop->read_fd >= 0) {
@@ -3293,19 +3281,15 @@ _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUS
     }
 
     // Destroy the associated data offer
+
     // Note: Wayland doesn't have a way to report the operation type or success back to the source
     // in the same way as X11, as the source is notified through other means
-    _GLFWWaylandDataOffer* offer = (_GLFWWaylandDataOffer*)drop->platform_data;
-    if (offer) {
-        destroy_data_offer(offer);
-    }
+    if (drop->platform_data) wl_data_offer_destroy(drop->platform_data);
+    drop->platform_data = NULL;
 
     // Free the mime types array (owned by drop object)
     if (drop->mime_types) {
-        for (int i = 0; i < drop->mime_array_size; i++) {
-            if (drop->mime_types[i])
-                free((char*)drop->mime_types[i]);
-        }
+        for (int i = 0; i < drop->mime_array_size; i++) free((char*)drop->mime_types[i]);
         free(drop->mime_types);
         drop->mime_types = NULL;
     }

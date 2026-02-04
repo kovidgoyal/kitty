@@ -90,7 +90,7 @@ struct GLFWDropData {
     const char** mime_types;    // Array of available MIME types (owned by drop object)
     int mime_count;             // Number of MIME types
     int mime_array_size;        // Original array size for proper cleanup
-    const char* current_mime;   // Currently being read MIME type
+    char* current_mime;         // Currently being read MIME type
     int read_fd;                // File descriptor for reading data (Wayland/X11)
     size_t bytes_read;          // Total bytes read so far for current mime
     void* platform_data;        // Platform-specific data (offer for Wayland, pasteboard for Cocoa)

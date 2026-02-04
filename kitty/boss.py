@@ -1883,20 +1883,28 @@ class Boss:
         if tm is not None:
             tm.update_tab_bar_data()
 
-    def on_drop(self, os_window_id: int, mime: str, data: bytes) -> None:
+    def on_drop(self, os_window_id: int, drop: dict[str, bytes] | Exception) -> None:
+        if isinstance(drop, Exception):
+            self.show_error(_('Drop failed'), str(drop))
+            return
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
             w = tm.active_window
             if w is not None:
-                text = data.decode('utf-8', 'replace')
-                if mime == 'text/uri-list':
-                    urls = parse_uri_list(text)
+                text = ''
+                if uri_list := drop.pop('text/uri-list', b''):
+                    urls = parse_uri_list(uri_list.decode('utf-8', 'replace'))
                     if w.at_prompt:
                         import shlex
                         text = ' '.join(map(shlex.quote, urls))
                     else:
                         text = '\n'.join(urls)
-                w.paste_text(text)
+                elif tp := drop.pop('text/plain', b''):
+                    text = tp.decode('utf-8', 'replace')
+                elif tp := drop.pop('text/plain;charset=utf-8', b''):
+                    text = tp.decode('utf-8', 'replace')
+                if text:
+                    w.paste_text(text)
 
     @ac('win', '''
         Focus the nth OS window if positive or the previously active OS windows if negative. When the number is larger

@@ -700,10 +700,53 @@ end:
     return ret;
 }
 
+static PyObject*
+read_drop_data(GLFWDropData *drop, const char *mime) {
+    RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, 8192));
+    if (!ans) return NULL;
+    size_t pos = 0;
+    monotonic_t timeout = s_double_to_monotonic_t(2);
+    while (true) {
+        int ret = glfwReadDropData(drop, mime, PyBytes_AS_STRING(ans) + pos, PyBytes_GET_SIZE(ans) - pos, timeout);
+        if (ret > 0) {
+            pos += ret;
+            if (pos >= (size_t)PyBytes_GET_SIZE(ans)) {
+                if (_PyBytes_Resize(&ans, pos * 2) != 0) return NULL;
+            }
+        } else if (ret == 0) {
+            if (_PyBytes_Resize(&ans, pos) != 0) return NULL;
+            return Py_NewRef(ans);
+        }
+        else {
+            errno = -ret;
+            PyErr_SetFromErrno(PyExc_OSError);
+            return NULL;
+        }
+    }
+}
+
 static void
-drop_callback(GLFWwindow *w, const char *mime, const char *data, size_t sz) {
+get_mime_data(GLFWDropData *drop, const char **mimes, int mime_count, PyObject *ans) {
+    for (int i = 0; i < mime_count; i++) {
+        if (is_droppable_mime(mimes[i])) {
+            RAII_PyObject(data, read_drop_data(drop, mimes[i]));
+            if (data == NULL) return ;
+            if (PyDict_SetItemString(ans, mimes[i], data) != 0) return ;
+        }
+    }
+}
+
+static void
+drop_callback(GLFWwindow *w, GLFWDropData *drop) {
+    int num_mimes;
+    const char** mimes = glfwGetDropMimeTypes(drop, &num_mimes);
+    RAII_PyObject(ans, PyDict_New());
+    get_mime_data(drop, mimes, num_mimes, ans);
+    RAII_PyObject(exc, PyErr_GetRaisedException());
+    glfwFinishDrop(drop, GLFW_DRAG_OPERATION_COPY, true);
     if (!set_callback_window(w)) return;
-    WINDOW_CALLBACK(on_drop, "sy#", mime, data, (Py_ssize_t)sz);
+    if (exc != NULL) { WINDOW_CALLBACK(on_drop, "O", exc); }
+    else if (PyDict_Size(ans)) WINDOW_CALLBACK(on_drop, "O", ans);
     request_tick_callback();
     global_state.callback_os_window = NULL;
 }

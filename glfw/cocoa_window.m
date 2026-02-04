@@ -1521,11 +1521,8 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     drop_data->eof_reached = false;
     drop_data->current_data = NULL;
     drop_data->data_offset = 0;
-
     _glfwInputDrop(window, drop_data);
-
     // Note: drop_data is NOT freed here - application must call glfwFinishDrop
-
     return YES;
 }
 
@@ -3884,9 +3881,7 @@ _glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count) {
 
 ssize_t
 _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout UNUSED) {
-    if (!drop || !mime || !buffer || capacity == 0) return -EINVAL;
-
-    NSPasteboard* pasteboard = (__bridge NSPasteboard*)drop->platform_data;
+    NSPasteboard* pasteboard = (NSPasteboard*)drop->platform_data;
     if (!pasteboard) return -EINVAL;
 
     // Check if the MIME type is available
@@ -3906,14 +3901,12 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
             drop->current_data = NULL;
         }
         drop->data_offset = 0;
+        free(drop->current_mime); drop->current_mime = NULL;
     }
 
     // If we need to fetch data for this MIME type
-    if (drop->current_data == NULL || drop->current_mime == NULL ||
-        strcmp(drop->current_mime, mime) != 0) {
-
+    if (drop->current_data == NULL || drop->current_mime == NULL) {
         NSData* data = nil;
-
         // Handle special MIME types
         if (strcmp(mime, "text/uri-list") == 0) {
             NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
@@ -3943,11 +3936,9 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
                 }
             }
         }
-
         if (!data) return -ENOENT;
-
         drop->current_data = [data retain];
-        drop->current_mime = mime;
+        drop->current_mime = _glfw_strdup(mime);
         drop->data_offset = 0;
     }
 
@@ -3955,23 +3946,19 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
     NSData* data = (NSData*)drop->current_data;
     NSUInteger dataLength = [data length];
 
-    if (drop->data_offset >= dataLength) {
-        return 0;  // EOF
-    }
-
+    if (drop->data_offset >= dataLength) return 0;  // EOF
     NSUInteger remaining = dataLength - drop->data_offset;
     NSUInteger to_read = (remaining < capacity) ? remaining : capacity;
 
     [data getBytes:buffer range:NSMakeRange(drop->data_offset, to_read)];
     drop->data_offset += to_read;
-
     return (ssize_t)to_read;
 }
 
 void
 _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUSED, bool success UNUSED) {
     if (!drop) return;
-
+    free(drop->current_mime); drop->current_mime = NULL;
     // Release the retained current data
     if (drop->current_data) {
         [(NSData*)drop->current_data release];

@@ -1161,11 +1161,7 @@ GLFWAPI const char** glfwGetDropMimeTypes(GLFWDropData* drop, int* count)
 
 GLFWAPI ssize_t glfwReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout)
 {
-    assert(drop != NULL);
-    assert(mime != NULL);
-    assert(buffer != NULL);
-    assert(capacity > 0);
-
+    if (drop == NULL || mime == NULL || buffer == NULL || capacity < 1) return -EINVAL;
     _GLFW_REQUIRE_INIT_OR_RETURN(-1);
     return _glfwPlatformReadDropData(drop, mime, buffer, capacity, timeout);
 }

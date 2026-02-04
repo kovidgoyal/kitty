@@ -3883,8 +3883,6 @@ _glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count) {
 
 ssize_t
 _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout) {
-    if (!drop || !mime || !buffer || capacity == 0) return -EINVAL;
-
     // Check if the MIME type is available
     bool mime_found = false;
     for (int i = 0; i < drop->mime_count; i++) {
@@ -3903,15 +3901,12 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
         }
         drop->x11_data_size = 0;
         drop->data_offset = 0;
-        drop->current_mime = NULL;
+        free(drop->current_mime); drop->current_mime = NULL;
     }
 
     // If we need to fetch data for this MIME type
-    if (drop->current_data == NULL || drop->current_mime == NULL ||
-        strcmp(drop->current_mime, mime) != 0) {
-
+    if (drop->current_data == NULL || drop->current_mime == NULL) {
         Atom target_atom = XInternAtom(_glfw.x11.display, mime, False);
-
         // Request the data via XConvertSelection
         XConvertSelection(_glfw.x11.display,
                          _glfw.x11.XdndSelection,
@@ -3963,7 +3958,7 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
                         drop->x11_data_size = size;
                         drop->data_offset = 0;
                         // mime points to drop->mime_types entry, valid for duration of drop callback
-                        drop->current_mime = mime;
+                        drop->current_mime = _glfw_strdup(mime);
                         got_data = true;
                     } else {
                         if (data) XFree(data);
@@ -3983,22 +3978,18 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
     }
 
     // Read data from buffer
-    if (drop->data_offset >= drop->x11_data_size) {
-        return 0;  // EOF
-    }
-
+    if (drop->data_offset >= drop->x11_data_size) return 0;  // EOF
     size_t remaining = drop->x11_data_size - drop->data_offset;
     size_t to_read = (remaining < capacity) ? remaining : capacity;
-
     memcpy(buffer, (unsigned char*)drop->current_data + drop->data_offset, to_read);
     drop->data_offset += to_read;
-
     return (ssize_t)to_read;
 }
 
 void
 _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation, bool success) {
     if (!drop) return;
+    free(drop->current_mime); drop->current_mime = NULL;
 
     // Free current data if any
     if (drop->current_data) {
