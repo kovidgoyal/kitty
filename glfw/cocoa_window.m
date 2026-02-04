@@ -1504,24 +1504,25 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     window->ns.dropCurrentData = nil;
     window->ns.dropDataOffset = 0;
 
-    // Create drop data structure for chunked reading
-    GLFWDropData drop_data = {0};
-    drop_data.window = window;
-    drop_data.mime_types = window->ns.dragMimes;
-    drop_data.mime_count = window->ns.dragMimeCount;
-    drop_data.current_mime = NULL;
-    drop_data.read_fd = -1;
-    drop_data.bytes_read = 0;
-    drop_data.platform_data = (__bridge void*)pasteboard;
-    drop_data.eof_reached = false;
+    // Heap-allocate drop data structure for chunked reading
+    // The application is responsible for freeing this via glfwCancelDrop
+    GLFWDropData* drop_data = calloc(1, sizeof(GLFWDropData));
+    if (!drop_data) {
+        _glfwInputError(GLFW_OUT_OF_MEMORY, "Cocoa: Failed to allocate drop data");
+        return NO;
+    }
+    drop_data->window = window;
+    drop_data->mime_types = window->ns.dragMimes;
+    drop_data->mime_count = window->ns.dragMimeCount;
+    drop_data->current_mime = NULL;
+    drop_data->read_fd = -1;
+    drop_data->bytes_read = 0;
+    drop_data->platform_data = (__bridge void*)pasteboard;
+    drop_data->eof_reached = false;
 
-    _glfwInputDrop(window, &drop_data);
+    _glfwInputDrop(window, drop_data);
 
-    // Clean up drop state
-    window->ns.dropPasteboard = nil;
-    window->ns.dropCurrentData = nil;
-    window->ns.dropCurrentMime = NULL;
-    window->ns.dropDataOffset = 0;
+    // Note: drop_data is NOT freed here - application must call glfwCancelDrop
 
     return YES;
 }
@@ -3969,12 +3970,15 @@ _glfwPlatformCancelDrop(GLFWDropData* drop) {
     if (!drop) return;
 
     _GLFWwindow* window = drop->window;
-    if (!window) return;
+    if (window) {
+        // Release drop data
+        window->ns.dropCurrentData = nil;
+        window->ns.dropCurrentMime = NULL;
+        window->ns.dropDataOffset = 0;
+        window->ns.dropPasteboard = nil;
+    }
 
-    // Release drop data
-    window->ns.dropCurrentData = nil;
-    window->ns.dropCurrentMime = NULL;
-    window->ns.dropDataOffset = 0;
-    window->ns.dropPasteboard = nil;
+    // Free the heap-allocated drop data structure
+    free(drop);
 }
 

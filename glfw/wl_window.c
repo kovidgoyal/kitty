@@ -2306,14 +2306,6 @@ read_primary_selection_offer(struct zwp_primary_selection_offer_v1 *primary_sele
     read_offer(pipefd[0], write_data, object);
 }
 
-static char* read_data_offer(struct wl_data_offer *data_offer, const char *mime, size_t *sz) {
-    int pipefd[2];
-    if (pipe2(pipefd, O_CLOEXEC) != 0) return NULL;
-    wl_data_offer_receive(data_offer, mime, pipefd[1]);
-    close(pipefd[1]);
-    return read_offer_string(pipefd[0], sz);
-}
-
 static void data_source_canceled(void *data UNUSED, struct wl_data_source *wl_data_source) {
     if (_glfw.wl.dataSourceForClipboard == wl_data_source) {
         _glfw.wl.dataSourceForClipboard = NULL;
@@ -2568,31 +2560,33 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
             while (window)
             {
                 if (window->wl.surface == offer->surface) {
-                    // Create drop data structure for chunked reading
-                    GLFWDropData drop_data = {0};
-                    drop_data.window = window;
-                    drop_data.mime_types = offer->mimes;
-                    drop_data.mime_count = (int)offer->mimes_count;
-                    drop_data.current_mime = NULL;
-                    drop_data.read_fd = -1;
-                    drop_data.bytes_read = 0;
-                    drop_data.platform_data = offer;  // Store the offer for later use
-                    drop_data.eof_reached = false;
-
-                    _glfwInputDrop(window, &drop_data);
-
-                    // Clean up any open file descriptor from reading
-                    if (drop_data.read_fd >= 0) {
-                        close(drop_data.read_fd);
+                    // Heap-allocate drop data structure for chunked reading
+                    // The application is responsible for freeing this via glfwCancelDrop
+                    GLFWDropData* drop_data = calloc(1, sizeof(GLFWDropData));
+                    if (!drop_data) {
+                        _glfwInputError(GLFW_OUT_OF_MEMORY, "Wayland: Failed to allocate drop data");
+                        destroy_data_offer(offer);  // Clean up the offer on allocation failure
+                        break;
                     }
+                    drop_data->window = window;
+                    drop_data->mime_types = offer->mimes;
+                    drop_data->mime_count = (int)offer->mimes_count;
+                    drop_data->current_mime = NULL;
+                    drop_data->read_fd = -1;
+                    drop_data->bytes_read = 0;
+                    drop_data->platform_data = offer;  // Store the offer for later use
+                    drop_data->eof_reached = false;
+
+                    _glfwInputDrop(window, drop_data);
+
+                    // Note: drop_data is NOT freed here - application must call glfwCancelDrop
                     break;
                 }
                 window = window->next;
             }
 
-            // We don't destroy the offer here as it will be cleaned up later
-            // when the next drag operation starts or when the window is destroyed
-            destroy_data_offer(offer);
+            // Note: We no longer destroy the offer here as the drop_data holds a reference
+            // The offer will be destroyed when glfwCancelDrop is called
             break;
         }
     }
@@ -3322,9 +3316,13 @@ _glfwPlatformCancelDrop(GLFWDropData* drop) {
         drop->read_fd = -1;
     }
 
-    // Mark as cancelled
-    drop->eof_reached = true;
-    drop->current_mime = NULL;
-    drop->bytes_read = 0;
+    // Destroy the associated data offer
+    _GLFWWaylandDataOffer* offer = (_GLFWWaylandDataOffer*)drop->platform_data;
+    if (offer) {
+        destroy_data_offer(offer);
+    }
+
+    // Free the heap-allocated drop data structure
+    free(drop);
 }
 

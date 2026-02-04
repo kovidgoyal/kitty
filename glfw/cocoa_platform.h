@@ -179,7 +179,7 @@ typedef struct _GLFWwindowNS
     // Drop data for chunked reading (stores NSPasteboard reference)
     id dropPasteboard;          // NSPasteboard* from drop operation
     const char* dropCurrentMime;// Currently reading MIME type
-    NSData* dropCurrentData;    // Data for current MIME type
+    id dropCurrentData;         // NSData* - Data for current MIME type
     size_t dropDataOffset;      // Read offset in current data
 } _GLFWwindowNS;
 

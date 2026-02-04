@@ -558,9 +558,11 @@ ssize_t _glfwPlatformReadDropData(GLFWDropData* drop UNUSED, const char* mime UN
     return -ENOENT;
 }
 
-void _glfwPlatformCancelDrop(GLFWDropData* drop UNUSED)
+void _glfwPlatformCancelDrop(GLFWDropData* drop)
 {
-    // No-op for null platform
+    if (!drop) return;
+    // Free the heap-allocated drop data structure
+    free(drop);
 }
 
 void _glfwPlatformSetClipboardString(const char* string)

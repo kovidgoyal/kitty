@@ -1938,44 +1938,41 @@ static void processEvent(XEvent *event)
                     _glfw.x11.xdnd.current_data_size = 0;
                     _glfw.x11.xdnd.current_data_offset = 0;
 
-                    // Create drop data structure for chunked reading
-                    GLFWDropData drop_data = {0};
-                    drop_data.window = window;
-                    drop_data.mime_types = (const char**)_glfw.x11.xdnd.mimes;
-                    drop_data.mime_count = _glfw.x11.xdnd.mimes_count;
-                    drop_data.current_mime = NULL;
-                    drop_data.read_fd = -1;
-                    drop_data.bytes_read = 0;
-                    drop_data.platform_data = NULL;
-                    drop_data.eof_reached = false;
+                    // Heap-allocate drop data structure for chunked reading
+                    // The application is responsible for freeing this via glfwCancelDrop
+                    GLFWDropData* drop_data = calloc(1, sizeof(GLFWDropData));
+                    if (!drop_data) {
+                        _glfwInputError(GLFW_OUT_OF_MEMORY, "X11: Failed to allocate drop data");
+                        // Send XdndFinished to avoid leaving drag source hanging
+                        if (_glfw.x11.xdnd.version >= 2)
+                        {
+                            XEvent reply = { ClientMessage };
+                            reply.xclient.window = _glfw.x11.xdnd.source;
+                            reply.xclient.message_type = _glfw.x11.XdndFinished;
+                            reply.xclient.format = 32;
+                            reply.xclient.data.l[0] = window->x11.handle;
+                            reply.xclient.data.l[1] = 0; // Failure
+                            reply.xclient.data.l[2] = None;
 
-                    _glfwInputDrop(window, &drop_data);
-
-                    // Clean up current data if any
-                    if (_glfw.x11.xdnd.current_data) {
-                        XFree(_glfw.x11.xdnd.current_data);
-                        _glfw.x11.xdnd.current_data = NULL;
+                            XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source,
+                                       False, NoEventMask, &reply);
+                            XFlush(_glfw.x11.display);
+                        }
+                        _glfw.x11.xdnd.drop_pending = false;
+                        return;
                     }
-                    _glfw.x11.xdnd.current_data_size = 0;
-                    _glfw.x11.xdnd.current_data_offset = 0;
+                    drop_data->window = window;
+                    drop_data->mime_types = (const char**)_glfw.x11.xdnd.mimes;
+                    drop_data->mime_count = _glfw.x11.xdnd.mimes_count;
+                    drop_data->current_mime = NULL;
+                    drop_data->read_fd = -1;
+                    drop_data->bytes_read = 0;
+                    drop_data->platform_data = NULL;
+                    drop_data->eof_reached = false;
 
-                    // Send XdndFinished
-                    if (_glfw.x11.xdnd.version >= 2)
-                    {
-                        XEvent reply = { ClientMessage };
-                        reply.xclient.window = _glfw.x11.xdnd.source;
-                        reply.xclient.message_type = _glfw.x11.XdndFinished;
-                        reply.xclient.format = 32;
-                        reply.xclient.data.l[0] = window->x11.handle;
-                        reply.xclient.data.l[1] = 1; // Success
-                        reply.xclient.data.l[2] = _glfw.x11.XdndActionCopy;
+                    _glfwInputDrop(window, drop_data);
 
-                        XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source,
-                                   False, NoEventMask, &reply);
-                        XFlush(_glfw.x11.display);
-                    }
-
-                    _glfw.x11.xdnd.drop_pending = false;
+                    // Note: drop_data is NOT freed here - application must call glfwCancelDrop
                 }
                 else if (_glfw.x11.xdnd.version >= 2)
                 {
@@ -4000,6 +3997,8 @@ void
 _glfwPlatformCancelDrop(GLFWDropData* drop) {
     if (!drop) return;
 
+    _GLFWwindow* window = drop->window;
+
     // Free current data if any
     if (_glfw.x11.xdnd.current_data) {
         XFree(_glfw.x11.xdnd.current_data);
@@ -4010,6 +4009,26 @@ _glfwPlatformCancelDrop(GLFWDropData* drop) {
     _glfw.x11.xdnd.current_data_size = 0;
     _glfw.x11.xdnd.current_data_offset = 0;
     _glfw.x11.xdnd.current_mime = NULL;
+
+    // Send XdndFinished
+    if (_glfw.x11.xdnd.drop_pending && _glfw.x11.xdnd.version >= 2)
+    {
+        XEvent reply = { ClientMessage };
+        reply.xclient.window = _glfw.x11.xdnd.source;
+        reply.xclient.message_type = _glfw.x11.XdndFinished;
+        reply.xclient.format = 32;
+        reply.xclient.data.l[0] = window ? window->x11.handle : None;
+        reply.xclient.data.l[1] = 1; // Success
+        reply.xclient.data.l[2] = _glfw.x11.XdndActionCopy;
+
+        XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source,
+                   False, NoEventMask, &reply);
+        XFlush(_glfw.x11.display);
+    }
+
     _glfw.x11.xdnd.drop_pending = false;
+
+    // Free the heap-allocated drop data structure
+    free(drop);
 }
 

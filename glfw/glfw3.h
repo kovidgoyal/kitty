@@ -1791,17 +1791,20 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *  @endcode
  *
  *  @param[in] window The window that received the event.
- *  @param[in] drop An opaque pointer representing the dropped data. Use
+ *  @param[in] drop A heap-allocated opaque pointer representing the dropped data. Use
  *  @ref glfwGetDropMimeTypes to get available MIME types and
  *  @ref glfwReadDropData to read the data in chunks.
  *
- *  @note The drop object is only valid during the callback. Do not store
- *  or use it after the callback returns.
+ *  @note The drop object is heap-allocated and remains valid until the
+ *  application calls @ref glfwCancelDrop to free it. The application is
+ *  responsible for calling glfwCancelDrop when it has finished reading
+ *  the dropped data, even if reading fails or is not needed.
  *
  *  @sa @ref path_drop
  *  @sa @ref glfwSetDropCallback
  *  @sa @ref glfwGetDropMimeTypes
  *  @sa @ref glfwReadDropData
+ *  @sa @ref glfwCancelDrop
  *
  *  @since Changed in version 4.0 to receive opaque drop data pointer.
  *
@@ -5194,17 +5197,17 @@ GLFWAPI const char** glfwGetDropMimeTypes(GLFWDropData* drop, int* count);
  */
 GLFWAPI ssize_t glfwReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout);
 
-/*! @brief Cancels a drop operation and frees associated resources.
+/*! @brief Frees a drop data object and its associated resources.
  *
- *  This function cancels an ongoing drop operation and frees any resources
- *  associated with the drop data object. After calling this function, the
- *  drop data object should not be used anymore.
+ *  This function frees the heap-allocated drop data object and releases any
+ *  resources associated with it. After calling this function, the drop data
+ *  object must not be used anymore.
  *
- *  This function is optional - resources are automatically freed when the
- *  drop callback returns. However, calling this function allows the application
- *  to release resources early if it has finished reading the data it needs.
+ *  The application MUST call this function when it has finished reading the
+ *  dropped data. Failure to do so will result in a memory leak and may cause
+ *  the drag source to hang waiting for the drop operation to complete.
  *
- *  @param[in] drop The drop data object to cancel and free.
+ *  @param[in] drop The drop data object to free.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
  *
