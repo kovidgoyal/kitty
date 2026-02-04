@@ -1887,18 +1887,17 @@ class Boss:
         if isinstance(drop, Exception):
             self.show_error(_('Drop failed'), str(drop))
             return
+        if (tm := self.os_window_map.get(os_window_id)) is None:
+            return
         central, tab_bar = viewport_for_window(os_window_id)[:2]
         if central.left <= x < central.right and central.top <= y < central.bottom:
-            if (tm := self.os_window_map.get(os_window_id)) is None or (tab := tm.active_tab) is None:
-                return
-            for window in tab:
-                g = window.geometry
-                if g.left <= x - central.left < g.right and g.top <= y - central.top < g.bottom:
-                    window.on_drop(drop)
-                    break
+            if tab := tm.active_tab:
+                for window in tab:
+                    g = window.geometry
+                    if g.left <= x - central.left < g.right and g.top <= y - central.top < g.bottom:
+                        window.on_drop(drop)
+                        break
         elif tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < central.bottom:
-            if (tm := self.os_window_map.get(os_window_id)) is None:
-                return
             if (tab_id := tm.tab_bar.tab_id_at(x)) and (tab := self.tab_for_id(tab_id)) and (w := tab.active_window):
                 w.on_drop(drop)
 
