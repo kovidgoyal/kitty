@@ -3261,6 +3261,7 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
         wl_display_roundtrip(_glfw.wl.display);
 
         drop->read_fd = pipefd[0];
+        // mime points to drop->mime_types entry, valid for duration of drop callback
         drop->current_mime = mime;
         drop->bytes_read = 0;
         drop->eof_reached = false;

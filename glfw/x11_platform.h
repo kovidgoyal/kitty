@@ -392,7 +392,7 @@ typedef struct _GLFWlibraryX11
         // Drop data for chunked reading
         Window      drop_target;        // Window where the drop occurred
         Time        drop_time;          // Time from the drop event
-        char*       current_mime;       // Currently being read MIME type
+        const char* current_mime;       // Currently being read MIME type (pointer to mime_types entry)
         unsigned char* current_data;    // Data for current MIME type
         size_t      current_data_size;  // Size of current data
         size_t      current_data_offset;// Read offset in current data

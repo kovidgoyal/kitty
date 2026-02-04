@@ -3962,7 +3962,8 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
                         _glfw.x11.xdnd.current_data = data;
                         _glfw.x11.xdnd.current_data_size = size;
                         _glfw.x11.xdnd.current_data_offset = 0;
-                        _glfw.x11.xdnd.current_mime = (char*)mime;  // Safe: mime lives as long as drop
+                        // mime points to drop->mime_types entry, valid for duration of drop callback
+                        _glfw.x11.xdnd.current_mime = mime;
                         got_data = true;
                     } else {
                         if (data) XFree(data);
