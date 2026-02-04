@@ -1498,12 +1498,6 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
 
     NSPasteboard* pasteboard = [sender draggingPasteboard];
 
-    // Store pasteboard reference for chunked reading
-    window->ns.dropPasteboard = pasteboard;
-    window->ns.dropCurrentMime = NULL;
-    window->ns.dropCurrentData = nil;
-    window->ns.dropDataOffset = 0;
-
     // Heap-allocate drop data structure for chunked reading
     // The application is responsible for freeing this via glfwCancelDrop
     GLFWDropData* drop_data = calloc(1, sizeof(GLFWDropData));
@@ -1511,14 +1505,15 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
         _glfwInputError(GLFW_OUT_OF_MEMORY, "Cocoa: Failed to allocate drop data");
         return NO;
     }
-    drop_data->window = window;
     drop_data->mime_types = window->ns.dragMimes;
     drop_data->mime_count = window->ns.dragMimeCount;
     drop_data->current_mime = NULL;
     drop_data->read_fd = -1;
     drop_data->bytes_read = 0;
-    drop_data->platform_data = (__bridge void*)pasteboard;
+    drop_data->platform_data = (__bridge_retained void*)pasteboard;  // Retain the pasteboard
     drop_data->eof_reached = false;
+    drop_data->current_data = NULL;
+    drop_data->data_offset = 0;
 
     _glfwInputDrop(window, drop_data);
 
@@ -3882,12 +3877,10 @@ _glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count) {
 
 ssize_t
 _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout UNUSED) {
-    if (!drop || !mime || !buffer || capacity == 0) return -EIO;
+    if (!drop || !mime || !buffer || capacity == 0) return -EINVAL;
 
-    _GLFWwindow* window = drop->window;
-    if (!window || !window->ns.dropPasteboard) return -EIO;
-
-    NSPasteboard* pasteboard = window->ns.dropPasteboard;
+    NSPasteboard* pasteboard = (__bridge NSPasteboard*)drop->platform_data;
+    if (!pasteboard) return -EINVAL;
 
     // Check if the MIME type is available
     bool mime_found = false;
@@ -3900,14 +3893,17 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
     if (!mime_found) return -ENOENT;
 
     // If switching MIME types, release previous data
-    if (window->ns.dropCurrentMime && strcmp(window->ns.dropCurrentMime, mime) != 0) {
-        window->ns.dropCurrentData = nil;
-        window->ns.dropDataOffset = 0;
+    if (drop->current_mime && strcmp(drop->current_mime, mime) != 0) {
+        if (drop->current_data) {
+            CFRelease(drop->current_data);
+            drop->current_data = NULL;
+        }
+        drop->data_offset = 0;
     }
 
     // If we need to fetch data for this MIME type
-    if (window->ns.dropCurrentData == nil || window->ns.dropCurrentMime == NULL ||
-        strcmp(window->ns.dropCurrentMime, mime) != 0) {
+    if (drop->current_data == NULL || drop->current_mime == NULL ||
+        strcmp(drop->current_mime, mime) != 0) {
 
         NSData* data = nil;
 
@@ -3943,24 +3939,24 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
 
         if (!data) return -ENOENT;
 
-        window->ns.dropCurrentData = data;
-        window->ns.dropCurrentMime = mime;
-        window->ns.dropDataOffset = 0;
+        drop->current_data = (void*)CFBridgingRetain(data);
+        drop->current_mime = mime;
+        drop->data_offset = 0;
     }
 
     // Read data from buffer
-    NSData* data = window->ns.dropCurrentData;
+    NSData* data = (__bridge NSData*)drop->current_data;
     NSUInteger dataLength = [data length];
 
-    if (window->ns.dropDataOffset >= dataLength) {
+    if (drop->data_offset >= dataLength) {
         return 0;  // EOF
     }
 
-    NSUInteger remaining = dataLength - window->ns.dropDataOffset;
+    NSUInteger remaining = dataLength - drop->data_offset;
     NSUInteger to_read = (remaining < capacity) ? remaining : capacity;
 
-    [data getBytes:buffer range:NSMakeRange(window->ns.dropDataOffset, to_read)];
-    window->ns.dropDataOffset += to_read;
+    [data getBytes:buffer range:NSMakeRange(drop->data_offset, to_read)];
+    drop->data_offset += to_read;
 
     return (ssize_t)to_read;
 }
@@ -3969,13 +3965,16 @@ void
 _glfwPlatformCancelDrop(GLFWDropData* drop) {
     if (!drop) return;
 
-    _GLFWwindow* window = drop->window;
-    if (window) {
-        // Release drop data
-        window->ns.dropCurrentData = nil;
-        window->ns.dropCurrentMime = NULL;
-        window->ns.dropDataOffset = 0;
-        window->ns.dropPasteboard = nil;
+    // Release the retained current data
+    if (drop->current_data) {
+        CFRelease(drop->current_data);
+        drop->current_data = NULL;
+    }
+
+    // Release the retained pasteboard
+    if (drop->platform_data) {
+        CFRelease(drop->platform_data);
+        drop->platform_data = NULL;
     }
 
     // Free the heap-allocated drop data structure

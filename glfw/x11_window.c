@@ -1961,7 +1961,6 @@ static void processEvent(XEvent *event)
                         _glfw.x11.xdnd.drop_pending = false;
                         return;
                     }
-                    drop_data->window = window;
                     drop_data->mime_types = (const char**)_glfw.x11.xdnd.mimes;
                     drop_data->mime_count = _glfw.x11.xdnd.mimes_count;
                     drop_data->current_mime = NULL;
@@ -3879,8 +3878,8 @@ _glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count) {
 
 ssize_t
 _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout) {
-    if (!drop || !mime || !buffer || capacity == 0) return -EIO;
-    if (!_glfw.x11.xdnd.drop_pending) return -EIO;
+    if (!drop || !mime || !buffer || capacity == 0) return -EINVAL;
+    if (!_glfw.x11.xdnd.drop_pending) return -EINVAL;
 
     // Check if the MIME type is available
     bool mime_found = false;
@@ -3997,8 +3996,6 @@ void
 _glfwPlatformCancelDrop(GLFWDropData* drop) {
     if (!drop) return;
 
-    _GLFWwindow* window = drop->window;
-
     // Free current data if any
     if (_glfw.x11.xdnd.current_data) {
         XFree(_glfw.x11.xdnd.current_data);
@@ -4017,7 +4014,7 @@ _glfwPlatformCancelDrop(GLFWDropData* drop) {
         reply.xclient.window = _glfw.x11.xdnd.source;
         reply.xclient.message_type = _glfw.x11.XdndFinished;
         reply.xclient.format = 32;
-        reply.xclient.data.l[0] = window ? window->x11.handle : None;
+        reply.xclient.data.l[0] = _glfw.x11.xdnd.drop_target;
         reply.xclient.data.l[1] = 1; // Success
         reply.xclient.data.l[2] = _glfw.x11.XdndActionCopy;
 

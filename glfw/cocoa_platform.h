@@ -175,12 +175,6 @@ typedef struct _GLFWwindowNS
     const char** dragMimes;
     int dragMimeCount;      // Current count of MIME types (may be reduced by callback)
     int dragMimeArraySize;  // Original array size for proper cleanup
-
-    // Drop data for chunked reading (stores NSPasteboard reference)
-    id dropPasteboard;          // NSPasteboard* from drop operation
-    const char* dropCurrentMime;// Currently reading MIME type
-    id dropCurrentData;         // NSData* - Data for current MIME type
-    size_t dropDataOffset;      // Read offset in current data
 } _GLFWwindowNS;
 
 // Cocoa-specific global data

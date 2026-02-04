@@ -87,14 +87,16 @@ typedef struct _GLFWmutex       _GLFWmutex;
 
 // Drop data structure for chunked reading of drag and drop data
 struct GLFWDropData {
-    _GLFWwindow* window;
     const char** mime_types;    // Array of available MIME types
     int mime_count;             // Number of MIME types
     const char* current_mime;   // Currently being read MIME type
     int read_fd;                // File descriptor for reading data (Wayland/X11)
     size_t bytes_read;          // Total bytes read so far for current mime
-    void* platform_data;        // Platform-specific data (e.g., NSData for Cocoa)
+    void* platform_data;        // Platform-specific data (offer for Wayland, pasteboard for Cocoa)
     bool eof_reached;           // Whether EOF has been reached for current mime
+    // Cocoa-specific fields
+    void* current_data;         // NSData* - Current data being read (Cocoa)
+    size_t data_offset;         // Read offset in current data (Cocoa)
 };
 
 typedef void (* _GLFWmakecontextcurrentfun)(_GLFWwindow*);

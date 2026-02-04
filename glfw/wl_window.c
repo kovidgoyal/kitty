@@ -2276,18 +2276,6 @@ write_chunk(void *object, const char *data, size_t sz) {
 }
 
 
-static char*
-read_offer_string(int data_pipe, size_t *sz) {
-    chunked_writer cw = {0};
-    read_offer(data_pipe, write_chunk, &cw);
-    if (cw.buf) {
-        *sz = cw.sz;
-        return cw.buf;
-    }
-    *sz = 0;
-    return NULL;
-}
-
 static void
 read_clipboard_data_offer(struct wl_data_offer *data_offer, const char *mime, GLFWclipboardwritedatafun write_data, void *object) {
     int pipefd[2];
@@ -2568,7 +2556,6 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
                         destroy_data_offer(offer);  // Clean up the offer on allocation failure
                         break;
                     }
-                    drop_data->window = window;
                     drop_data->mime_types = offer->mimes;
                     drop_data->mime_count = (int)offer->mimes_count;
                     drop_data->current_mime = NULL;
@@ -3213,10 +3200,10 @@ _glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count) {
 
 ssize_t
 _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout) {
-    if (!drop || !mime || !buffer || capacity == 0) return -EIO;
+    if (!drop || !mime || !buffer || capacity == 0) return -EINVAL;
 
     _GLFWWaylandDataOffer *offer = (_GLFWWaylandDataOffer*)drop->platform_data;
-    if (!offer || !offer->id) return -EIO;
+    if (!offer || !offer->id) return -EINVAL;
 
     // Check if the MIME type is available
     bool mime_found = false;
