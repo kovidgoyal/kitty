@@ -18,7 +18,7 @@ import (
 var _ = fmt.Print
 
 var DecodableImageTypes = map[string]bool{
-	"image/jpeg": true, "image/png": true, "image/bmp": true, "image/tiff": true, "image/webp": true, "image/gif": true,
+	"image/jpeg": true, "image/png": true, "image/bmp": true, "image/tiff": true, "image/webp": true, "image/gif": true, "image/jxl": true,
 	"image/x-portable-anymap":       true,
 	"image/x-portable-bitmap":       true,
 	"image/x-portable-graymap":      true,

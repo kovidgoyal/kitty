@@ -21,6 +21,7 @@
 #include <zlib.h>
 #include <structmember.h>
 #include "png-reader.h"
+#include "jxl-reader.h"
 PyTypeObject GraphicsManager_Type;
 
 #define MAX_IMAGE_DIMENSION 10000u
@@ -395,6 +396,27 @@ inflate_png(LoadData *load_data, uint8_t *buf, size_t bufsz) {
     free(d.row_pointers);
     return d.ok;
 }
+
+static void
+jxl_error_handler_for_graphics(jxl_read_data *d UNUSED, const char *code, const char *msg) {
+    set_command_failed_response(code, "%s", msg);
+}
+
+static bool
+inflate_jxl(LoadData *load_data, uint8_t *buf, size_t bufsz) {
+    jxl_read_data d = {.err_handler=jxl_error_handler_for_graphics};
+    inflate_jxl_inner(&d, buf, bufsz, MAX_IMAGE_DIMENSION);
+    if (d.ok) {
+        free_load_data(load_data);
+        load_data->buf = d.decompressed;
+        load_data->buf_capacity = d.sz;
+        load_data->buf_used = d.sz;
+        load_data->data_sz = d.sz;
+        load_data->width = d.width; load_data->height = d.height;
+    }
+    else free(d.decompressed);
+    return d.ok;
+}
 #undef ABRT
 // }}}
 
@@ -543,7 +565,7 @@ get_free_client_id(const GraphicsManager *self) {
 #define ABRT(code, ...) { set_command_failed_response(code, __VA_ARGS__); self->currently_loading.loading_completed_successfully = false; free_load_data(&self->currently_loading); return NULL; }
 
 #define MAX_DATA_SZ (4u * 100000000u)
-enum FORMATS { RGB=24, RGBA=32, PNG=100 };
+enum FORMATS { RGB=24, RGBA=32, PNG=100, JXL=101 };
 
 static Image*
 load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, const unsigned char transmission_type, const uint32_t data_fmt, const uint8_t *payload) {
@@ -554,7 +576,7 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
     switch(transmission_type) {
         case 'd':  // direct
             if (load_data->buf_capacity - load_data->buf_used < g->payload_sz) {
-                if (load_data->buf_used + g->payload_sz > MAX_DATA_SZ || data_fmt != PNG) ABRT("EFBIG", "Too much data");
+                if (load_data->buf_used + g->payload_sz > MAX_DATA_SZ || (data_fmt != PNG && data_fmt != JXL)) ABRT("EFBIG", "Too much data");
                 load_data->buf_capacity = MIN(2 * load_data->buf_capacity, MAX_DATA_SZ);
                 load_data->buf = realloc(load_data->buf, load_data->buf_capacity);
                 if (load_data->buf == NULL) {
@@ -602,7 +624,7 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
 
 static Image*
 process_image_data(GraphicsManager *self, Image* img, const GraphicsCommand *g, const unsigned char transmission_type, const uint32_t data_fmt) {
-    bool needs_processing = g->compressed || data_fmt == PNG;
+    bool needs_processing = g->compressed || data_fmt == PNG || data_fmt == JXL;
     if (needs_processing) {
         uint8_t *buf; size_t bufsz;
 #define IB { if (self->currently_loading.buf) { buf = self->currently_loading.buf; bufsz = self->currently_loading.buf_used; } else { buf = self->currently_loading.mapped_file; bufsz = self->currently_loading.mapped_file_sz; } }
@@ -622,6 +644,12 @@ process_image_data(GraphicsManager *self, Image* img, const GraphicsCommand *g, 
             case PNG:
                 IB;
                 if (!inflate_png(&self->currently_loading, buf, bufsz)) {
+                    self->currently_loading.loading_completed_successfully = false; return NULL;
+                }
+                break;
+            case JXL:
+                IB;
+                if (!inflate_jxl(&self->currently_loading, buf, bufsz)) {
                     self->currently_loading.loading_completed_successfully = false; return NULL;
                 }
                 break;
@@ -660,6 +688,12 @@ initialize_load_data(GraphicsManager *self, const GraphicsCommand *g, Image *img
     switch(data_fmt) {
         case PNG:
             if (g->data_sz > MAX_DATA_SZ) ABRT("EINVAL", "PNG data size too large");
+            self->currently_loading.is_4byte_aligned = true;
+            self->currently_loading.is_opaque = false;
+            self->currently_loading.data_sz = g->data_sz ? g->data_sz : 1024 * 100;
+            break;
+        case JXL:
+            if (g->data_sz > MAX_DATA_SZ) ABRT("EINVAL", "JXL data size too large");
             self->currently_loading.is_4byte_aligned = true;
             self->currently_loading.is_opaque = false;
             self->currently_loading.data_sz = g->data_sz ? g->data_sz : 1024 * 100;

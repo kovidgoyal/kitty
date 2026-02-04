@@ -645,6 +645,8 @@ def kitty_env(args: Options) -> Env:
     at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
     cflags.extend(pkg_config('lcms2', '--cflags-only-I'))
+    cflags.extend(pkg_config('libjxl', '--cflags-only-I'))
+    cflags.extend(pkg_config('libjxl_threads', '--cflags-only-I'))
     cflags.extend(xxhash[0])
     # simde doesnt come with pkg-config files but some Linux distros add
     # them and on macOS when building with homebrew it is required
@@ -678,7 +680,9 @@ def kitty_env(args: Options) -> Env:
     gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
     lcms2 = pkg_config('lcms2', '--libs')
-    ans.ldpaths += pylib + platform_libs + gl_libs + libpng + lcms2 + libcrypto_ldflags + xxhash[1]
+    libjxl = pkg_config('libjxl', '--libs')
+    libjxl_threads = pkg_config('libjxl_threads', '--libs')
+    ans.ldpaths += pylib + platform_libs + gl_libs + libpng + lcms2 + libjxl + libjxl_threads + libcrypto_ldflags + xxhash[1]
     if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
     elif not is_openbsd:

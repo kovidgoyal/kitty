@@ -679,6 +679,10 @@ def load_png_data(data: bytes) -> Tuple[bytes, int, int]:
     pass
 
 
+def load_jxl_data(data: bytes) -> Tuple[bytes, int, int]:
+    pass
+
+
 def glfw_terminate() -> None:
     pass
 

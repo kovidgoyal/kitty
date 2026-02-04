@@ -19,6 +19,7 @@ known_extensions = {
     'js': 'text/javascript',
     'json': 'text/json',
     'nix': 'text/nix',
+    'jxl': 'image/jxl',
 }
 
 
