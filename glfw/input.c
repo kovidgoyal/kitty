@@ -1170,12 +1170,12 @@ GLFWAPI ssize_t glfwReadDropData(GLFWDropData* drop, const char* mime, void* buf
     return _glfwPlatformReadDropData(drop, mime, buffer, capacity, timeout);
 }
 
-GLFWAPI void glfwCancelDrop(GLFWDropData* drop)
+GLFWAPI void glfwFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation, bool success)
 {
     assert(drop != NULL);
 
     _GLFW_REQUIRE_INIT();
-    _glfwPlatformCancelDrop(drop);
+    _glfwPlatformFinishDrop(drop, operation, success);
 }
 
 GLFWAPI int glfwJoystickPresent(int jid)

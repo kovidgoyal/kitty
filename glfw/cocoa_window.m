@@ -1499,7 +1499,7 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     NSPasteboard* pasteboard = [sender draggingPasteboard];
 
     // Heap-allocate drop data structure for chunked reading
-    // The application is responsible for freeing this via glfwCancelDrop
+    // The application is responsible for freeing this via glfwFinishDrop
     GLFWDropData* drop_data = calloc(1, sizeof(GLFWDropData));
     if (!drop_data) {
         _glfwInputError(GLFW_OUT_OF_MEMORY, "Cocoa: Failed to allocate drop data");
@@ -1510,14 +1510,14 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     drop_data->current_mime = NULL;
     drop_data->read_fd = -1;
     drop_data->bytes_read = 0;
-    drop_data->platform_data = (__bridge_retained void*)pasteboard;  // Retain the pasteboard
+    drop_data->platform_data = (void*)CFBridgingRetain(pasteboard);  // Retain the pasteboard
     drop_data->eof_reached = false;
     drop_data->current_data = NULL;
     drop_data->data_offset = 0;
 
     _glfwInputDrop(window, drop_data);
 
-    // Note: drop_data is NOT freed here - application must call glfwCancelDrop
+    // Note: drop_data is NOT freed here - application must call glfwFinishDrop
 
     return YES;
 }
@@ -3962,7 +3962,7 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
 }
 
 void
-_glfwPlatformCancelDrop(GLFWDropData* drop) {
+_glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUSED, bool success UNUSED) {
     if (!drop) return;
 
     // Release the retained current data
@@ -3972,6 +3972,8 @@ _glfwPlatformCancelDrop(GLFWDropData* drop) {
     }
 
     // Release the retained pasteboard
+    // Note: Cocoa drag operations don't have a way to report back to the source
+    // like X11's XdndFinished, so we just clean up our resources
     if (drop->platform_data) {
         CFRelease(drop->platform_data);
         drop->platform_data = NULL;

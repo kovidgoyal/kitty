@@ -1796,15 +1796,15 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *  @ref glfwReadDropData to read the data in chunks.
  *
  *  @note The drop object is heap-allocated and remains valid until the
- *  application calls @ref glfwCancelDrop to free it. The application is
- *  responsible for calling glfwCancelDrop when it has finished reading
+ *  application calls @ref glfwFinishDrop to free it. The application is
+ *  responsible for calling glfwFinishDrop when it has finished reading
  *  the dropped data, even if reading fails or is not needed.
  *
  *  @sa @ref path_drop
  *  @sa @ref glfwSetDropCallback
  *  @sa @ref glfwGetDropMimeTypes
  *  @sa @ref glfwReadDropData
- *  @sa @ref glfwCancelDrop
+ *  @sa @ref glfwFinishDrop
  *
  *  @since Changed in version 4.0 to receive opaque drop data pointer.
  *
@@ -5197,17 +5197,19 @@ GLFWAPI const char** glfwGetDropMimeTypes(GLFWDropData* drop, int* count);
  */
 GLFWAPI ssize_t glfwReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout);
 
-/*! @brief Frees a drop data object and its associated resources.
+/*! @brief Finishes a drop operation and frees associated resources.
  *
- *  This function frees the heap-allocated drop data object and releases any
- *  resources associated with it. After calling this function, the drop data
- *  object must not be used anymore.
+ *  This function finishes the drop operation, informs the drag source of the
+ *  result, and frees the heap-allocated drop data object. After calling this
+ *  function, the drop data object must not be used anymore.
  *
  *  The application MUST call this function when it has finished reading the
  *  dropped data. Failure to do so will result in a memory leak and may cause
  *  the drag source to hang waiting for the drop operation to complete.
  *
- *  @param[in] drop The drop data object to free.
+ *  @param[in] drop The drop data object to finish and free.
+ *  @param[in] operation The type of operation that was performed (copy, move, etc).
+ *  @param[in] success Whether the drop operation was successful.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
  *
@@ -5221,7 +5223,7 @@ GLFWAPI ssize_t glfwReadDropData(GLFWDropData* drop, const char* mime, void* buf
  *
  *  @ingroup input
  */
-GLFWAPI void glfwCancelDrop(GLFWDropData* drop);
+GLFWAPI void glfwFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation, bool success);
 
 /*! @brief Returns whether the specified joystick is present.
  *

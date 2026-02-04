@@ -558,7 +558,7 @@ ssize_t _glfwPlatformReadDropData(GLFWDropData* drop UNUSED, const char* mime UN
     return -ENOENT;
 }
 
-void _glfwPlatformCancelDrop(GLFWDropData* drop)
+void _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUSED, bool success UNUSED)
 {
     if (!drop) return;
     // Free the heap-allocated drop data structure

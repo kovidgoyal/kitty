@@ -94,9 +94,15 @@ struct GLFWDropData {
     size_t bytes_read;          // Total bytes read so far for current mime
     void* platform_data;        // Platform-specific data (offer for Wayland, pasteboard for Cocoa)
     bool eof_reached;           // Whether EOF has been reached for current mime
-    // Cocoa-specific fields
-    void* current_data;         // NSData* - Current data being read (Cocoa)
-    size_t data_offset;         // Read offset in current data (Cocoa)
+    // Platform-specific data fields
+    void* current_data;         // NSData* (Cocoa) or unsigned char* from XGetWindowProperty (X11)
+    size_t data_offset;         // Read offset in current data (Cocoa/X11)
+    // X11-specific fields
+    size_t x11_data_size;       // Size of current X11 data
+    unsigned long x11_drop_target; // Window handle where the drop occurred (X11)
+    unsigned long x11_drop_time;   // Time from the drop event (X11)
+    unsigned long x11_source;      // Source window for XdndFinished (X11)
+    int x11_version;               // Xdnd protocol version (X11)
 };
 
 typedef void (* _GLFWmakecontextcurrentfun)(_GLFWwindow*);
@@ -842,7 +848,7 @@ int _glfwInputDragEvent(_GLFWwindow* window, int event, double xpos, double ypos
 // Platform functions for drop data reading
 const char** _glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count);
 ssize_t _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout);
-void _glfwPlatformCancelDrop(GLFWDropData* drop);
+void _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation, bool success);
 void _glfwInputColorScheme(GLFWColorScheme, bool);
 void _glfwPlatformInputColorScheme(GLFWColorScheme);
 void _glfwInputJoystick(_GLFWjoystick* js, int event);

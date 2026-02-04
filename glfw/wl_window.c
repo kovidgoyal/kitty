@@ -2259,23 +2259,6 @@ read_offer(int data_pipe, GLFWclipboardwritedatafun write_data, void *object) {
 }
 
 
-typedef struct chunked_writer {
-    char *buf; size_t sz, cap;
-} chunked_writer;
-
-static bool
-write_chunk(void *object, const char *data, size_t sz) {
-    chunked_writer *cw = object;
-    if (cw->cap < cw->sz + sz) {
-        cw->cap = MAX(cw->cap * 2, cw->sz + 8*sz);
-        cw->buf = realloc(cw->buf, cw->cap * sizeof(cw->buf[0]));
-    }
-    memcpy(cw->buf + cw->sz, data, sz);
-    cw->sz += sz;
-    return true;
-}
-
-
 static void
 read_clipboard_data_offer(struct wl_data_offer *data_offer, const char *mime, GLFWclipboardwritedatafun write_data, void *object) {
     int pipefd[2];
@@ -3294,7 +3277,7 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
 }
 
 void
-_glfwPlatformCancelDrop(GLFWDropData* drop) {
+_glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUSED, bool success UNUSED) {
     if (!drop) return;
 
     // Close any open file descriptor
@@ -3304,6 +3287,8 @@ _glfwPlatformCancelDrop(GLFWDropData* drop) {
     }
 
     // Destroy the associated data offer
+    // Note: Wayland doesn't have a way to report the operation type or success back to the source
+    // in the same way as X11, as the source is notified through other means
     _GLFWWaylandDataOffer* offer = (_GLFWWaylandDataOffer*)drop->platform_data;
     if (offer) {
         destroy_data_offer(offer);
