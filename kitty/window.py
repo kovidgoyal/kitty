@@ -106,6 +106,7 @@ from .utils import (
     log_error,
     open_cmd,
     open_url,
+    parse_uri_list,
     path_from_osc7_url,
     resolve_custom_file,
     resolved_shell,
@@ -980,10 +981,6 @@ class Window:
         self.update_effective_padding()
         if update_ime_position:
             update_ime_position_for_window(self.id, True)
-
-    def contains(self, x: int, y: int) -> bool:
-        g = self.geometry
-        return g.left <= x <= g.right and g.top <= y <= g.bottom
 
     def close(self) -> None:
         get_boss().mark_window_for_close(self)
@@ -1941,6 +1938,23 @@ class Window:
     def current_mouse_position(self) -> Optional['MousePosition']:
         ' Return the last position at which a mouse event was received by this window '
         return get_mouse_data_for_window(self.os_window_id, self.tab_id, self.id)
+
+    def on_drop(self, drop: dict[str, bytes]) -> None:
+        text = ''
+        if uri_list := drop.pop('text/uri-list', b''):
+            urls = parse_uri_list(uri_list.decode('utf-8', 'replace'))
+            if self.at_prompt:
+                import shlex
+                text = ' '.join(map(shlex.quote, urls))
+            else:
+                text = '\n'.join(urls)
+        elif tp := drop.pop('text/plain', b''):
+            text = tp.decode('utf-8', 'replace')
+        elif tp := drop.pop('text/plain;charset=utf-8', b''):
+            text = tp.decode('utf-8', 'replace')
+        if text:
+            self.paste_text(text)
+
 
     # Serialization {{{
     def as_dict(

@@ -1384,6 +1384,10 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     const NSPoint pos = [sender draggingLocation];
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
+    float xscale = 1, yscale = 1;
+    _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
+    xpos *= xscale; ypos *= yscale;
+
 
     // Get MIME types from the dragging pasteboard
     NSPasteboard* pasteboard = [sender draggingPasteboard];
@@ -1462,6 +1466,9 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     const NSPoint pos = [sender draggingLocation];
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
+    float xscale = 1, yscale = 1;
+    _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
+    xpos *= xscale; ypos *= yscale;
 
     // Call drag move callback with cached MIME types
     int old_count = window->ns.dragMimeCount;

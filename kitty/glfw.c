@@ -657,6 +657,9 @@ drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, 
     switch (event) {
         case GLFW_DRAG_ENTER:
         case GLFW_DRAG_MOVE:
+            global_state.callback_os_window->last_drag_event.x = (int)xpos;
+            global_state.callback_os_window->last_drag_event.y = (int)ypos;
+            /* fallthrough */
         case GLFW_DRAG_STATUS_UPDATE:
             if (mime_types && mime_count && *mime_count > 0) {
                 // Sort MIME types by priority (descending) and keep only accepted ones
@@ -693,6 +696,8 @@ drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, 
             }
             break;
         case GLFW_DRAG_LEAVE:
+            global_state.callback_os_window->last_drag_event.x = (int)xpos;
+            global_state.callback_os_window->last_drag_event.y = (int)ypos;
             break;
     }
 end:
@@ -745,8 +750,8 @@ drop_callback(GLFWwindow *w, GLFWDropData *drop) {
     RAII_PyObject(exc, PyErr_GetRaisedException());
     glfwFinishDrop(drop, GLFW_DRAG_OPERATION_COPY, true);
     if (!set_callback_window(w)) return;
-    if (exc != NULL) { WINDOW_CALLBACK(on_drop, "O", exc); }
-    else if (PyDict_Size(ans)) WINDOW_CALLBACK(on_drop, "O", ans);
+    if (exc != NULL) { WINDOW_CALLBACK(on_drop, "Oii", exc, global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y); }
+    else if (PyDict_Size(ans)) WINDOW_CALLBACK(on_drop, "Oii", ans, global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
     request_tick_callback();
     global_state.callback_os_window = NULL;
 }

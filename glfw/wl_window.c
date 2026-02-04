@@ -2473,7 +2473,8 @@ static void update_drag_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUS
     }
 }
 
-static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
+static void
+drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
         if (d->id == id) {
@@ -2489,8 +2490,9 @@ static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device 
                     // Call drag enter callback with writable MIME types array
                     double xpos = wl_fixed_to_double(x);
                     double ypos = wl_fixed_to_double(y);
+                    double scale = _glfwWaylandWindowScale(window);
                     int mime_count = (int)d->mimes_count;
-                    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, d->mimes, &mime_count);
+                    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, scale * xpos, scale * ypos, d->mimes, &mime_count);
 
                     // Update drag state based on callback results
                     update_drag_state(d, window, accepted, mime_count);
@@ -2505,7 +2507,8 @@ static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device 
     prune_unclaimed_data_offers();
 }
 
-static void drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
+static void
+drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
             // Find the window for this offer and call the leave callback
@@ -2562,7 +2565,8 @@ drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     }
 }
 
-static void motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t time UNUSED, wl_fixed_t x, wl_fixed_t y) {
+static void
+motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t time UNUSED, wl_fixed_t x, wl_fixed_t y) {
     // Find the current drag offer and send motion events
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         _GLFWWaylandDataOffer *d = &_glfw.wl.dataOffers[i];
@@ -2572,9 +2576,10 @@ static void motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUS
                 if (window->wl.surface == d->surface) {
                     double xpos = wl_fixed_to_double(x);
                     double ypos = wl_fixed_to_double(y);
+                    double scale = _glfwWaylandWindowScale(window);
                     // Pass the MIME types array for move events
                     int mime_count = (int)d->mimes_count;
-                    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, d->mimes, &mime_count);
+                    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, scale * xpos, scale * ypos, d->mimes, &mime_count);
 
                     // Update drag state based on callback results
                     update_drag_state(d, window, accepted, mime_count);

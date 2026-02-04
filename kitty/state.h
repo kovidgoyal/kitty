@@ -342,6 +342,7 @@ typedef struct OSWindow {
     id_type last_focused_counter;
     CloseRequest close_request;
     bool is_layer_shell, hide_on_focus_loss;
+    struct { int x, y; } last_drag_event;
 } OSWindow;
 
 static inline float
