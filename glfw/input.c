@@ -31,6 +31,7 @@
 #include "../kitty/monotonic.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <float.h>
 #include <math.h>
 #include <stdlib.h>
@@ -403,10 +404,10 @@ void _glfwInputCursorEnter(_GLFWwindow* window, bool entered)
 
 // Notifies shared code of files or directories dropped on a window
 //
-void _glfwInputDrop(_GLFWwindow* window, const char *mime, const char *text, size_t sz)
+void _glfwInputDrop(_GLFWwindow* window, GLFWDropData* drop)
 {
     if (window->callbacks.drop)
-        window->callbacks.drop((GLFWwindow*) window, mime, text, sz);
+        window->callbacks.drop((GLFWwindow*) window, drop);
 }
 
 // Notifies shared code of a drag event
@@ -1147,6 +1148,34 @@ GLFWAPI void glfwUpdateDragState(GLFWwindow* handle)
 
     _GLFW_REQUIRE_INIT();
     _glfwPlatformUpdateDragState(window);
+}
+
+GLFWAPI const char** glfwGetDropMimeTypes(GLFWDropData* drop, int* count)
+{
+    assert(drop != NULL);
+    assert(count != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    return _glfwPlatformGetDropMimeTypes(drop, count);
+}
+
+GLFWAPI ssize_t glfwReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout)
+{
+    assert(drop != NULL);
+    assert(mime != NULL);
+    assert(buffer != NULL);
+    assert(capacity > 0);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(-1);
+    return _glfwPlatformReadDropData(drop, mime, buffer, capacity, timeout);
+}
+
+GLFWAPI void glfwFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation, bool success)
+{
+    assert(drop != NULL);
+
+    _GLFW_REQUIRE_INIT();
+    _glfwPlatformFinishDrop(drop, operation, success);
 }
 
 GLFWAPI int glfwJoystickPresent(int jid)

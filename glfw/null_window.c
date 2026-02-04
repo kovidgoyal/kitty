@@ -30,6 +30,7 @@
 #include "internal.h"
 #include "../kitty/monotonic.h"
 
+#include <errno.h>
 #include <stdlib.h>
 
 static void applySizeLimits(_GLFWwindow* window, int* width, int* height)
@@ -542,6 +543,26 @@ int _glfwPlatformStartDrag(_GLFWwindow* window UNUSED,
 void _glfwPlatformUpdateDragState(_GLFWwindow* window UNUSED)
 {
     // No-op for null platform
+}
+
+const char** _glfwPlatformGetDropMimeTypes(GLFWDropData* drop UNUSED, int* count)
+{
+    if (count) *count = 0;
+    return NULL;
+}
+
+ssize_t _glfwPlatformReadDropData(GLFWDropData* drop UNUSED, const char* mime UNUSED,
+                                   void* buffer UNUSED, size_t capacity UNUSED,
+                                   monotonic_t timeout UNUSED)
+{
+    return -ENOENT;
+}
+
+void _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUSED, bool success UNUSED)
+{
+    if (!drop) return;
+    // Free the heap-allocated drop data structure
+    free(drop);
 }
 
 void _glfwPlatformSetClipboardString(const char* string)
