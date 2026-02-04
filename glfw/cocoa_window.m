@@ -44,6 +44,9 @@
 #define UTI_ROUNDTRIP_PREFIX @"uti-is-typical-apple-nih."
 static const char* uti_to_mime(NSString *uti);
 
+// Custom pasteboard type for GLFW drag data (MIME type embedded in data)
+static NSString* const GLFWDragDataPasteboardType = @"net.kovidgoyal.kitty.glfw-drag-data";
+
 static const char*
 polymorphic_string_as_utf8(id string) {
     if (string == nil) return "(nil)";
@@ -761,7 +764,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 // Content view class for the GLFW window {{{
 
-@interface GLFWContentView : NSView <NSTextInputClient, NSDraggingSource>
+@interface GLFWContentView : NSView <NSTextInputClient, NSDraggingSource, NSPasteboardItemDataProvider>
 {
     _GLFWwindow* window;
     NSTrackingArea* trackingArea;
@@ -771,10 +774,14 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     bool marked_text_cleared_by_insert;
     int in_key_handler;
     NSString *input_source_at_last_key_event;
+
+    // Storage for pending drag operation data
+    NSMutableDictionary<NSString*, NSData*>* pendingDragData;
 }
 
 - (void) removeGLFWWindow;
 - (instancetype)initWithGlfwWindow:(_GLFWwindow *)initWindow;
+- (void) setDragData:(NSData*)data forType:(NSPasteboardType)type;
 
 @end
 
@@ -792,6 +799,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         markedRect = NSMakeRect(0.0, 0.0, 0.0, 0.0);
         input_source_at_last_key_event = nil;
         in_key_handler = 0;
+        pendingDragData = [[NSMutableDictionary alloc] init];
         self.identifier = @"kitty-content-view";
 
         [self updateTrackingAreas];
@@ -800,12 +808,13 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
             NSMutableArray *types = [NSMutableArray arrayWithObjects:
                 NSPasteboardTypeFileURL,
                 NSPasteboardTypeString,
+                GLFWDragDataPasteboardType,  // Custom GLFW drag data type
                 nil];
             // Add file promise types
             [types addObjectsFromArray:[NSFilePromiseReceiver readableDraggedTypes]];
             [self registerForDraggedTypes:types];
         } else {
-            [self registerForDraggedTypes:@[NSPasteboardTypeFileURL, NSPasteboardTypeString]];
+            [self registerForDraggedTypes:@[NSPasteboardTypeFileURL, NSPasteboardTypeString, GLFWDragDataPasteboardType]];
         }
     }
 
@@ -818,12 +827,18 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     [markedText release];
     if (input_source_at_last_key_event) [input_source_at_last_key_event release];
     [input_context release];
+    [pendingDragData release];
     [super dealloc];
 }
 
 - (void) removeGLFWWindow
 {
     window = NULL;
+}
+
+- (void) setDragData:(NSData*)data forType:(NSPasteboardType)type
+{
+    pendingDragData[type] = data;
 }
 
 - (_GLFWwindow*)glfwWindow {
@@ -895,6 +910,13 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)mouseDown:(NSEvent *)event
 {
     if (!window) return;
+
+    // Store the mouse down event for potential drag operations
+    if (window->ns.lastMouseDownEvent)
+        [(NSEvent*)window->ns.lastMouseDownEvent release];
+    window->ns.lastMouseDownEvent = [event retain];
+    window->ns.mouse_button_pressed = true;
+
     _glfwInputMouseClick(window,
                          GLFW_MOUSE_BUTTON_LEFT,
                          GLFW_PRESS,
@@ -904,11 +926,64 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)mouseDragged:(NSEvent *)event
 {
     [self mouseMoved:event];
+
+    // Check for pending drag operation after processing mouse move
+    // This allows glfwStartDrag (called from Python callback) to set up the drag
+    if (window && window->ns.pendingDrag.requested && window->ns.pendingDrag.dragItem) {
+        window->ns.pendingDrag.requested = false;
+        NSDraggingItem* dragItem = (NSDraggingItem*)window->ns.pendingDrag.dragItem;
+        NSPasteboardItem* pbItem = (NSPasteboardItem*)window->ns.pendingDrag.pasteboardItem;
+        window->ns.pendingDrag.dragItem = nil;
+        window->ns.pendingDrag.pasteboardItem = nil;
+
+        // Get mouse location in view coordinates and update drag frame
+        NSPoint mouseLocation = [self convertPoint:[event locationInWindow] fromView:nil];
+        NSRect currentFrame = [dragItem draggingFrame];
+        CGFloat width = currentFrame.size.width;
+        CGFloat height = currentFrame.size.height;
+        // Position drag image based on placement setting
+        // This prevents the drag image from obscuring the drop indicator in tab bar
+        CGFloat offsetY;
+        if (window->ns.dragImagePlacement == GLFW_DRAG_IMAGE_BELOW_CURSOR) {
+            // Place top edge below cursor (for tab bar at top)
+            offsetY = -(height / 2.0 + 15.0);
+        } else {
+            // Place bottom edge above cursor (for tab bar at bottom, default)
+            offsetY = height / 2.0 + 15.0;
+        }
+        CGFloat offsetX = 10.0;  // Slight offset to the right
+        NSRect newFrame = NSMakeRect(mouseLocation.x - width/2 + offsetX,
+                                     mouseLocation.y - height/2 + offsetY,
+                                     width, height);
+        [dragItem setDraggingFrame:newFrame contents:[dragItem imageComponents].firstObject.contents];
+
+        // Start drag session with current mouseDragged event
+        @try {
+            NSDraggingSession* session = [self beginDraggingSessionWithItems:@[dragItem]
+                                                                       event:event
+                                                                      source:self];
+            // Disable the "snap back" animation when drag ends outside valid targets
+            // This is important for tab detachment where the tab becomes a new window
+            session.animatesToStartingPositionsOnCancelOrFail = NO;
+        } @catch (NSException *exception) {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                            "Cocoa: Failed to start drag session: %s",
+                            [[exception reason] UTF8String]);
+            // Release pasteboard item on failure
+            if (pbItem) [pbItem release];
+        }
+        [dragItem release];
+        // Note: pbItem is kept alive by the drag session and released when session ends
+    }
 }
 
 - (void)mouseUp:(NSEvent *)event
 {
     if (!window) return;
+
+    window->ns.mouse_button_pressed = false;
+    // Note: lastMouseDownEvent is retained until drag ends or window closes
+
     _glfwInputMouseClick(window,
                          GLFW_MOUSE_BUTTON_LEFT,
                          GLFW_RELEASE,
@@ -1378,6 +1453,25 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     }
 }
 
+// Helper function to extract MIME type from GLFW drag data
+// Returns a malloc'd string that must be freed by caller, or NULL on error
+static char* extractMimeTypeFromGLFWDragData(NSData* data) {
+    if (!data || data.length < 4) return NULL;
+
+    const uint8_t* bytes = (const uint8_t*)data.bytes;
+    uint32_t mimeLen = 0;
+    memcpy(&mimeLen, bytes, 4);
+
+    if (mimeLen == 0 || 4 + mimeLen > data.length) return NULL;
+
+    char* mimeType = (char*)malloc(mimeLen + 1);
+    if (!mimeType) return NULL;
+
+    memcpy(mimeType, bytes + 4, mimeLen);
+    mimeType[mimeLen] = '\0';
+    return mimeType;
+}
+
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
 {
     const NSRect contentRect = [window->ns.view frame];
@@ -1393,16 +1487,16 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     NSPasteboard* pasteboard = [sender draggingPasteboard];
 
     // Count total types across all pasteboard items plus 2 for uri-list and text/plain
-    size_t max_types = 2;
+    size_t max_types = 3;  // +1 for potential GLFW drag data
     for (NSPasteboardItem* item in pasteboard.pasteboardItems) {
         max_types += [item.types count];
     }
 
-    // Free any previously cached MIME types
     freeDragMimes(window);
 
     // Pre-allocate C array for MIME types
     const char** mime_array = (const char**)calloc(max_types, sizeof(const char*));
+    char* glfw_mime = NULL;  // Track allocated MIME string for cleanup
     if (!mime_array) {
         int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, NULL, NULL);
         return accepted ? NSDragOperationGeneric : NSDragOperationNone;
@@ -1410,7 +1504,16 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
 
     int mime_count = 0;
 
-    // Check for common types first (use _glfw_strdup since we need to own the strings)
+    // Check for GLFW drag data first (custom data with embedded MIME type)
+    NSData* glfwData = [pasteboard dataForType:GLFWDragDataPasteboardType];
+    if (glfwData) {
+        glfw_mime = extractMimeTypeFromGLFWDragData(glfwData);
+        if (glfw_mime) {
+            mime_array[mime_count++] = glfw_mime;
+        }
+    }
+
+    // Check for common types (use _glfw_strdup since we need to own the strings)
     NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
     if ([pasteboard canReadObjectForClasses:@[[NSURL class]] options:options]) {
         mime_array[mime_count++] = _glfw_strdup("text/uri-list");
@@ -1422,6 +1525,9 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     // Get additional types from pasteboard items
     for (NSPasteboardItem* item in pasteboard.pasteboardItems) {
         for (NSPasteboardType type in item.types) {
+            // Skip our custom type (already handled above)
+            if ([type isEqualToString:GLFWDragDataPasteboardType]) continue;
+
             const char* mime = uti_to_mime(type);
             if (mime && mime[0]) {
                 // Check for duplicates
@@ -1445,7 +1551,6 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     window->ns.dragMimeCount = mime_count;
     window->ns.dragMimeArraySize = mime_count;
 
-    // Call drag enter callback with writable MIME types array
     int old_count = mime_count;
     int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, xpos, ypos, mime_array, &mime_count);
 
@@ -1470,7 +1575,6 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
     xpos *= xscale; ypos *= yscale;
 
-    // Call drag move callback with cached MIME types
     int old_count = window->ns.dragMimeCount;
     int mime_count = old_count;
     int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, xpos, ypos, window->ns.dragMimes, &mime_count);
@@ -1489,10 +1593,7 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
 - (void)draggingExited:(id <NSDraggingInfo>)sender
 {
     (void)sender;
-    // Call drag leave callback
     _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, NULL);
-
-    // Free cached MIME types
     freeDragMimes(window);
 }
 
@@ -1538,8 +1639,14 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     sourceOperationMaskForDraggingContext:(NSDraggingContext)context
 {
     (void)session;
-    (void)context;
-    // Return the operation based on the stored drag operation type
+
+    // Only allow drops within the same application
+    // Outside application returns empty operation (NSDragOperationNone)
+    if (context == NSDraggingContextOutsideApplication) {
+        return NSDragOperationNone;
+    }
+
+    // Within application - return the operation based on the stored drag operation type
     switch (window->ns.dragOperationType) {
         case GLFW_DRAG_OPERATION_COPY:
             return NSDragOperationCopy;
@@ -1547,7 +1654,18 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
             return NSDragOperationMove;
         case GLFW_DRAG_OPERATION_GENERIC:
             return NSDragOperationGeneric;
+        default:
+            return NSDragOperationNone;
     }
+}
+
+- (void)draggingSession:(NSDraggingSession *)session
+            movedToPoint:(NSPoint)screenPoint
+{
+    (void)session;
+    (void)screenPoint;
+    // Set closed hand cursor during drag for standard macOS drag feedback
+    [[NSCursor closedHandCursor] set];
 }
 
 - (void)draggingSession:(NSDraggingSession *)session
@@ -1555,9 +1673,43 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
               operation:(NSDragOperation)operation
 {
     (void)session;
-    (void)screenPoint;
-    (void)operation;
-    // Drag session ended
+    if (!window) return;
+
+    // Clean up stored mouse event
+    if (window->ns.lastMouseDownEvent) {
+        [(NSEvent*)window->ns.lastMouseDownEvent release];
+        window->ns.lastMouseDownEvent = nil;
+    }
+
+    [pendingDragData removeAllObjects];
+
+    // operation == NSDragOperationNone means drop was rejected (outside window)
+    bool accepted = (operation != NSDragOperationNone);
+
+    // Convert from Cocoa screen coordinates (origin at bottom-left)
+    // to GLFW screen coordinates (origin at top-left)
+    double glfw_x = screenPoint.x;
+    double glfw_y = _glfwTransformYNS(screenPoint.y);
+
+    _glfwInputDragEnd(window, accepted, glfw_x, glfw_y);
+}
+
+// NSPasteboardItemDataProvider protocol
+- (void)pasteboard:(NSPasteboard *)pasteboard
+              item:(NSPasteboardItem *)item
+provideDataForType:(NSPasteboardType)type
+{
+    (void)pasteboard;
+    NSData* data = pendingDragData[type];
+    if (data) {
+        [item setData:data forType:type];
+    }
+}
+
+- (void)pasteboardFinishedWithDataProvider:(NSPasteboard *)pasteboard
+{
+    (void)pasteboard;
+    [pendingDragData removeAllObjects];
 }
 
 - (BOOL)hasMarkedText
@@ -2163,6 +2315,30 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window, const _GLFWwndconfig* wndconf
 void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 {
     GLFWWindow *w = window->ns.object;
+
+    // Clean up stored mouse event for drag operations
+    if (window->ns.lastMouseDownEvent) {
+        [(NSEvent*)window->ns.lastMouseDownEvent release];
+        window->ns.lastMouseDownEvent = nil;
+    }
+
+    if (window->ns.pendingDrag.dragItem) {
+        [(NSDraggingItem*)window->ns.pendingDrag.dragItem release];
+        window->ns.pendingDrag.dragItem = nil;
+    }
+    if (window->ns.pendingDrag.pasteboardItem) {
+        [(NSPasteboardItem*)window->ns.pendingDrag.pasteboardItem release];
+        window->ns.pendingDrag.pasteboardItem = nil;
+    }
+    window->ns.pendingDrag.requested = false;
+
+    if (window->ns.dragTitle) {
+        free(window->ns.dragTitle);
+        window->ns.dragTitle = NULL;
+    }
+
+    freeDragMimes(window);
+
     if (_glfw.ns.disabledCursorWindow == window)
         _glfw.ns.disabledCursorWindow = NULL;
 
@@ -3779,26 +3955,37 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
     // Store the operation type for the dragging source callback
     window->ns.dragOperationType = operation;
 
+    if (item_count <= 0 || !window->ns.view) {
+        return false;
+    }
+
     @autoreleasepool {
-        // Create pasteboard items for each drag item
-        NSMutableArray<NSPasteboardItem*>* pasteboardItems = [[NSMutableArray alloc] init];
+        GLFWContentView* view = (GLFWContentView*)window->ns.view;
 
-        for (int i = 0; i < item_count; i++) {
-            NSPasteboardItem* item = [[NSPasteboardItem alloc] init];
+        // Create data with embedded MIME type
+        // Format: [4-byte mime_type_length][mime_type][actual_data]
+        const char* mimeType = items[0].mime_type;
+        size_t mimeLen = strlen(mimeType);
+        uint32_t mimeLen32 = (uint32_t)mimeLen;
 
-            // Convert MIME type to UTI using the existing helper function
-            NSString* utiString = mime_to_uti(items[i].mime_type);
-            NSData* data = [NSData dataWithBytes:items[i].data length:items[i].data_size];
+        NSMutableData* packedData = [NSMutableData dataWithCapacity:4 + mimeLen + items[0].data_size];
+        [packedData appendBytes:&mimeLen32 length:4];
+        [packedData appendBytes:mimeType length:mimeLen];
+        [packedData appendBytes:items[0].data length:items[0].data_size];
 
-            [item setData:data forType:utiString];
-            [pasteboardItems addObject:item];
-        }
+        // Store drag data in the view for later retrieval by data provider
+        [view setDragData:packedData forType:GLFWDragDataPasteboardType];
+
+        // Create NSPasteboardItem with data provider
+        NSPasteboardItem* pasteboardItem = [[NSPasteboardItem alloc] init];
+        [pasteboardItem setDataProvider:view forTypes:@[GLFWDragDataPasteboardType]];
 
         // Create the dragging item
         NSDraggingItem* dragItem = nil;
+        NSImage* dragImage = nil;
 
         if (thumbnail && thumbnail->pixels) {
-            // Create NSImage from thumbnail
+            // Create NSImage from thumbnail with title bar
             NSBitmapImageRep* imageRep = [[NSBitmapImageRep alloc]
                 initWithBitmapDataPlanes:NULL
                               pixelsWide:thumbnail->width
@@ -3815,54 +4002,156 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
                 memcpy([imageRep bitmapData], thumbnail->pixels,
                        thumbnail->width * thumbnail->height * 4);
 
-                NSImage* image = [[NSImage alloc] initWithSize:
+                NSImage* thumbnailImage = [[NSImage alloc] initWithSize:
                     NSMakeSize(thumbnail->width, thumbnail->height)];
-                [image addRepresentation:imageRep];
+                [thumbnailImage addRepresentation:imageRep];
+                [imageRep release];
 
-                dragItem = [[NSDraggingItem alloc]
-                    initWithPasteboardWriter:pasteboardItems.firstObject];
-                [dragItem setDraggingFrame:NSMakeRect(0, 0, thumbnail->width, thumbnail->height)
-                                  contents:image];
+                // Get title string
+                NSString* titleString = nil;
+                if (window->ns.dragTitle) {
+                    titleString = [NSString stringWithUTF8String:window->ns.dragTitle];
+                }
+                if (!titleString || [titleString length] == 0) {
+                    titleString = @"Tab";
+                }
+
+                // Create title bar with large font - must remain readable when macOS shrinks the image
+                NSFont* font = [NSFont systemFontOfSize:24 weight:NSFontWeightBold];
+                NSDictionary* textAttributes = @{
+                    NSFontAttributeName: font,
+                    NSForegroundColorAttributeName: [NSColor whiteColor]
+                };
+                NSSize textSize = [titleString sizeWithAttributes:textAttributes];
+
+                CGFloat titleBarHeight = textSize.height + 20;  // generous padding
+                CGFloat totalWidth = thumbnail->width;
+                CGFloat totalHeight = thumbnail->height + titleBarHeight;
+
+                // Create combined image (title bar + thumbnail)
+                dragImage = [[NSImage alloc] initWithSize:NSMakeSize(totalWidth, totalHeight)];
+                [dragImage lockFocus];
+
+                // Draw title bar background (dark rounded top)
+                NSBezierPath* titleBarPath = [NSBezierPath bezierPath];
+                CGFloat cornerRadius = 6;
+                [titleBarPath moveToPoint:NSMakePoint(0, thumbnail->height)];
+                [titleBarPath lineToPoint:NSMakePoint(0, totalHeight - cornerRadius)];
+                [titleBarPath appendBezierPathWithArcWithCenter:NSMakePoint(cornerRadius, totalHeight - cornerRadius)
+                                                         radius:cornerRadius
+                                                     startAngle:180 endAngle:90 clockwise:YES];
+                [titleBarPath lineToPoint:NSMakePoint(totalWidth - cornerRadius, totalHeight)];
+                [titleBarPath appendBezierPathWithArcWithCenter:NSMakePoint(totalWidth - cornerRadius, totalHeight - cornerRadius)
+                                                         radius:cornerRadius
+                                                     startAngle:90 endAngle:0 clockwise:YES];
+                [titleBarPath lineToPoint:NSMakePoint(totalWidth, thumbnail->height)];
+                [titleBarPath closePath];
+                [[NSColor colorWithWhite:0.2 alpha:0.95] setFill];
+                [titleBarPath fill];
+
+                // Draw title text centered in title bar
+                NSRect textRect = NSMakeRect(
+                    (totalWidth - textSize.width) / 2,
+                    thumbnail->height + (titleBarHeight - textSize.height) / 2,
+                    textSize.width,
+                    textSize.height
+                );
+                [titleString drawInRect:textRect withAttributes:textAttributes];
+
+                // Draw thumbnail below title bar
+                [thumbnailImage drawInRect:NSMakeRect(0, 0, thumbnail->width, thumbnail->height)
+                                  fromRect:NSZeroRect
+                                 operation:NSCompositingOperationSourceOver
+                                  fraction:1.0];
+
+                [dragImage unlockFocus];
+                [thumbnailImage release];
             }
         }
 
-        if (!dragItem && pasteboardItems.count > 0) {
-            dragItem = [[NSDraggingItem alloc]
-                initWithPasteboardWriter:pasteboardItems.firstObject];
-            [dragItem setDraggingFrame:NSMakeRect(0, 0, 32, 32) contents:nil];
-        }
+        dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter:pasteboardItem];
 
-        if (dragItem) {
-            // Start the drag session - try current event first, then create a synthetic one
-            NSEvent* event = [NSApp currentEvent];
-            if (!event || ([event type] != NSEventTypeLeftMouseDown &&
-                           [event type] != NSEventTypeLeftMouseDragged)) {
-                // Create a synthetic left mouse down event using stored cursor position
-                // Convert window coordinates to screen coordinates
-                NSRect contentRect = [window->ns.view frame];
-                NSPoint windowPos = NSMakePoint(window->virtualCursorPosX,
-                                                contentRect.size.height - window->virtualCursorPosY);
-
-                event = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
-                                           location:windowPos
-                                      modifierFlags:0
-                                          timestamp:[[NSProcessInfo processInfo] systemUptime]
-                                       windowNumber:[window->ns.object windowNumber]
-                                            context:nil
-                                        eventNumber:0
-                                         clickCount:1
-                                           pressure:1.0];
+        if (dragImage) {
+            CGFloat imageWidth = [dragImage size].width;
+            CGFloat imageHeight = [dragImage size].height;
+            [dragItem setDraggingFrame:NSMakeRect(0, 0, imageWidth, imageHeight)
+                              contents:dragImage];
+            [dragImage release];
+        } else {
+            // Create a placeholder drag image with title text
+            NSString* titleString = nil;
+            if (window->ns.dragTitle) {
+                titleString = [NSString stringWithUTF8String:window->ns.dragTitle];
+            }
+            if (!titleString || [titleString length] == 0) {
+                titleString = @"Tab";
             }
 
-            if (event) {
-                [window->ns.view beginDraggingSessionWithItems:@[dragItem]
-                                                        event:event
-                                                       source:window->ns.view];
-                return true;
-            }
+            // Calculate size based on title text
+            NSFont* font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
+            NSDictionary* textAttributes = @{
+                NSFontAttributeName: font,
+                NSForegroundColorAttributeName: [NSColor whiteColor]
+            };
+            NSSize textSize = [titleString sizeWithAttributes:textAttributes];
+
+            CGFloat horizontalPadding = 16;
+            CGFloat verticalPadding = 8;
+            CGFloat imageWidth = ceil(textSize.width + horizontalPadding * 2);
+            CGFloat imageHeight = ceil(textSize.height + verticalPadding * 2);
+
+            // Clamp size to reasonable bounds
+            if (imageWidth < 60) imageWidth = 60;
+            if (imageWidth > 300) imageWidth = 300;
+            if (imageHeight < 28) imageHeight = 28;
+
+            NSImage* placeholderImage = [[NSImage alloc] initWithSize:NSMakeSize(imageWidth, imageHeight)];
+            [placeholderImage lockFocus];
+
+            // Draw rounded rectangle background
+            NSBezierPath* backgroundPath = [NSBezierPath bezierPathWithRoundedRect:
+                NSMakeRect(0, 0, imageWidth, imageHeight)
+                xRadius:6 yRadius:6];
+            [[NSColor colorWithWhite:0.25 alpha:0.9] setFill];
+            [backgroundPath fill];
+
+            // Draw border
+            [[NSColor colorWithWhite:0.5 alpha:0.8] setStroke];
+            [backgroundPath setLineWidth:1.0];
+            [backgroundPath stroke];
+
+            // Draw title text centered
+            NSRect textRect = NSMakeRect(
+                (imageWidth - textSize.width) / 2,
+                (imageHeight - textSize.height) / 2,
+                textSize.width,
+                textSize.height
+            );
+            [titleString drawInRect:textRect withAttributes:textAttributes];
+
+            [placeholderImage unlockFocus];
+            [dragItem setDraggingFrame:NSMakeRect(0, 0, imageWidth, imageHeight)
+                              contents:placeholderImage];
+            [placeholderImage release];
         }
 
-        return false;
+        // Store pending drag - will be executed in next mouseDragged: handler
+        // macOS requires beginDraggingSession to be called within the event handler
+        if (window->ns.pendingDrag.dragItem) {
+            [(NSDraggingItem*)window->ns.pendingDrag.dragItem release];
+        }
+        if (window->ns.pendingDrag.pasteboardItem) {
+            [(NSPasteboardItem*)window->ns.pendingDrag.pasteboardItem release];
+        }
+        window->ns.pendingDrag.dragItem = [dragItem retain];
+        window->ns.pendingDrag.pasteboardItem = [pasteboardItem retain];
+        window->ns.pendingDrag.requested = true;
+
+        // Release local references (pendingDrag now holds retained references)
+        [dragItem release];
+        [pasteboardItem release];
+
+        return true;
     }
 }
 
@@ -3934,12 +4223,33 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
                 data = [str dataUsingEncoding:NSUTF8StringEncoding];
             }
         } else {
-            // Try to read data for other MIME types using UTI
-            NSString* uti = mime_to_uti(mime);
-            if (uti) {
-                NSPasteboardType pbType = [pasteboard availableTypeFromArray:@[uti]];
-                if (pbType) {
-                    data = [pasteboard dataForType:pbType];
+            // Check for GLFW internal drag data (e.g., tab drag between kitty windows)
+            NSData* glfwData = [pasteboard dataForType:GLFWDragDataPasteboardType];
+            if (glfwData && glfwData.length > 4) {
+                const uint8_t* bytes = (const uint8_t*)glfwData.bytes;
+                uint32_t mimeLen = 0;
+                memcpy(&mimeLen, bytes, 4);
+                if (mimeLen > 0 && mimeLen <= glfwData.length - 4) {
+                    char* embeddedMime = (char*)malloc(mimeLen + 1);
+                    if (embeddedMime) {
+                        memcpy(embeddedMime, bytes + 4, mimeLen);
+                        embeddedMime[mimeLen] = '\0';
+                        if (strcmp(embeddedMime, mime) == 0) {
+                            size_t dataLen = glfwData.length - 4 - mimeLen;
+                            data = [NSData dataWithBytes:(bytes + 4 + mimeLen) length:dataLen];
+                        }
+                        free(embeddedMime);
+                    }
+                }
+            }
+            if (!data) {
+                // Try to read data for other MIME types using UTI
+                NSString* uti = mime_to_uti(mime);
+                if (uti) {
+                    NSPasteboardType pbType = [pasteboard availableTypeFromArray:@[uti]];
+                    if (pbType) {
+                        data = [pasteboard dataForType:pbType];
+                    }
                 }
             }
         }
@@ -3992,5 +4302,19 @@ _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUS
 
     // Free the heap-allocated drop data structure
     free(drop);
+}
+
+void _glfwPlatformSetDragTitle(_GLFWwindow* window, const char* title) {
+    if (window->ns.dragTitle) {
+        free(window->ns.dragTitle);
+        window->ns.dragTitle = NULL;
+    }
+    if (title) {
+        window->ns.dragTitle = _glfw_strdup(title);
+    }
+}
+
+void _glfwPlatformSetDragImagePlacement(_GLFWwindow* window, GLFWDragImagePlacement placement) {
+    window->ns.dragImagePlacement = placement;
 }
 

@@ -702,6 +702,10 @@ def toggle_fullscreen(os_window_id: int = 0) -> bool:
     pass
 
 
+def start_tab_drag(os_window_id: int, json_payload: str, tab_title: str | None = None, thumbnail_pixels: bytes | None = None, thumb_width: int = 0, thumb_height: int = 0, tab_bar_at_top: bool = True) -> bool:
+    pass
+
+
 def thread_write(fd: int, data: bytes) -> None:
     pass
 
@@ -1088,6 +1092,14 @@ def move_drag_thumbnail(screen_x: float, screen_y: float) -> None:
 
 
 def hide_drag_thumbnail() -> None:
+    pass
+
+
+def get_cached_drag_thumbnail() -> tuple[bytes, int, int] | None:
+    pass
+
+
+def clear_cached_drag_thumbnail() -> None:
     pass
 
 

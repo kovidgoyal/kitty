@@ -107,6 +107,7 @@ from .fast_data_types import (
     set_boss,
     set_options,
     set_os_window_chrome,
+    set_os_window_pos,
     set_os_window_size,
     set_os_window_title,
     thread_write,
@@ -425,6 +426,8 @@ class Boss:
         self.mappings: Mappings = Mappings(global_shortcuts, self.refresh_active_tab_bar)
         self.notification_manager: NotificationManager = NotificationManager(debug=self.args.debug_keyboard or self.args.debug_rendering)
         self.atexit.unlink(store_effective_config())
+        # Track the currently dragging tab for external drop handling
+        self._dragging_tab_info: dict[str, Any] | None = None
 
     def startup_first_child(self, os_window_id: int | None, startup_sessions: Iterable[Session] = ()) -> None:
         si = startup_sessions or create_sessions(get_options(), self.args, default_session=get_options().startup_session)
@@ -1903,6 +1906,146 @@ class Boss:
             if (tab_id := tm.tab_bar.tab_id_at(x)) and (tab := self.tab_for_id(tab_id)) and (w := tab.active_window):
                 w.on_drop(drop)
 
+    def on_tab_drop(self, os_window_id: int, json_data: bytes) -> None:
+        target_tm = self.os_window_map.get(os_window_id)
+
+        def clear_drag_state() -> None:
+            if target_tm is not None and target_tm.tab_bar:
+                target_tm.tab_bar.clear_drag_state()
+                target_tm.mark_tab_bar_dirty()
+
+        try:
+            data = json.loads(json_data)
+        except Exception:
+            clear_drag_state()
+            return
+
+        source_os_window_id = data.get('source_os_window_id')
+        tab_id = data.get('tab_id')
+        was_active = data.get('is_active_tab', False)
+        original_index = data.get('original_index', 0)
+
+        if source_os_window_id is None or tab_id is None:
+            clear_drag_state()
+            return
+
+        # Get source tab manager
+        source_tm = self.os_window_map.get(source_os_window_id)
+        if source_tm is None:
+            clear_drag_state()
+            return
+
+        # Find the tab
+        tab = source_tm.tab_for_id(tab_id)
+        if tab is None:
+            clear_drag_state()
+            return
+
+        if target_tm is None:
+            return
+
+        if os_window_id == source_os_window_id:
+            # Same window - reorder tabs
+            drop_index = target_tm.tab_bar.get_drop_index() if target_tm.tab_bar else None
+            if drop_index is not None and drop_index != original_index:
+                if drop_index > original_index:
+                    drop_index -= 1
+                source_tm._move_tab_to_index(original_index, drop_index)
+            # Keep tab active if it was active before (same window reorder only)
+            # For cross-window moves, _move_tab_to() already calls make_active()
+            if was_active:
+                moved_tab = source_tm.tab_for_id(tab_id)
+                if moved_tab is not None:
+                    source_tm.set_active_tab(moved_tab)
+        else:
+            # Different window - move tab (new tab is already made active by _move_tab_to)
+            self._move_tab_to(tab, target_os_window_id=os_window_id)
+            # Focus the target window
+            self.focus_os_window(os_window_id, False)
+
+        # Clear drag state
+        clear_drag_state()
+        self.clear_dragging_tab()
+
+    def on_tab_drag_enter(self, os_window_id: int, x: float, y: float) -> None:
+        tm = self.os_window_map.get(os_window_id)
+        if tm is not None and tm.tab_bar:
+            tm.tab_bar.on_drag_enter(x, y)
+            tm.mark_tab_bar_dirty()
+
+    def on_tab_drag_move(self, os_window_id: int, x: float, y: float) -> None:
+        tm = self.os_window_map.get(os_window_id)
+        if tm is not None and tm.tab_bar:
+            tm.tab_bar.on_drag_move(x, y)
+            tm.mark_tab_bar_dirty()
+
+    def on_tab_drag_leave(self, os_window_id: int) -> None:
+        tm = self.os_window_map.get(os_window_id)
+        if tm is not None and tm.tab_bar:
+            tm.tab_bar.clear_drag_state()
+            tm.mark_tab_bar_dirty()
+
+    def set_dragging_tab(self, os_window_id: int, tab_id: int, original_index: int) -> None:
+        self._dragging_tab_info = {
+            'os_window_id': os_window_id,
+            'tab_id': tab_id,
+            'original_index': original_index,
+        }
+
+    def clear_dragging_tab(self) -> None:
+        self._dragging_tab_info = None
+
+    def on_tab_drag_end_outside(self, os_window_id: int, screen_x: float, screen_y: float) -> None:
+        if self._dragging_tab_info is None:
+            return
+
+        # Verify the drag originated from this OS window
+        if self._dragging_tab_info['os_window_id'] != os_window_id:
+            self._dragging_tab_info = None
+            return
+
+        tab_id = self._dragging_tab_info['tab_id']
+        self._dragging_tab_info = None
+
+        # Find the tab
+        tab = self.tab_for_id(tab_id)
+        if tab is None:
+            return
+
+        # Create new OS window, move tab to it, and focus the new window
+        new_os_window_id = self.add_os_window()
+        tm = self.os_window_map[new_os_window_id]
+        target_tab = tm.new_tab(empty_tab=True)
+        target_tab.take_over_from(tab)
+        self._cleanup_tab_after_window_removal(tab)
+        target_tab.make_active()
+
+        # Position the new window at the drop location
+        # Offset slightly so the window appears centered under the cursor
+        window_size = get_os_window_size(new_os_window_id)
+        if window_size is not None:
+            # Center the window horizontally under the drop point
+            # and position it slightly below the cursor vertically
+            win_width = window_size['width']
+            win_height = window_size['height']
+            new_x = int(screen_x - win_width // 2)
+            new_y = int(screen_y - 20)  # Slight offset below cursor
+
+            # Clamp window position to stay within monitor boundaries
+            # Find the monitor containing the drop point
+            monitors = glfw_get_monitor_workarea()
+            for mon_x, mon_y, mon_w, mon_h in monitors:
+                if mon_x <= screen_x < mon_x + mon_w and mon_y <= screen_y < mon_y + mon_h:
+                    # Clamp to this monitor's boundaries
+                    new_x = max(mon_x, min(new_x, mon_x + mon_w - win_width))
+                    new_y = max(mon_y, min(new_y, mon_y + mon_h - win_height))
+                    break
+
+            set_os_window_pos(new_os_window_id, new_x, new_y)
+
+        # Focus the new window to prevent other apps from being activated
+        self.focus_os_window(new_os_window_id, True)
+
     @ac('win', '''
         Focus the nth OS window if positive or the previously active OS windows if negative. When the number is larger
         than the number of OS windows focus the last OS window. A value of zero will refocus the currently focused OS window,
@@ -1990,6 +2133,10 @@ class Boss:
             self.mark_os_window_for_close(os_window_id, NO_CLOSE_REQUESTED)
 
     def on_os_window_closed(self, os_window_id: int, x: int, y: int, viewport_width: int, viewport_height: int, is_layer_shell: bool) -> None:
+        # Clear dragging tab info if the source window is being closed
+        if self._dragging_tab_info and self._dragging_tab_info.get('os_window_id') == os_window_id:
+            self._dragging_tab_info = None
+
         tm = self.os_window_map.pop(os_window_id, None)
         opts = get_options()
         if not is_layer_shell:

@@ -115,9 +115,7 @@ typedef struct Options {
     struct {
         double outer, inner;
     } tab_bar_margin_height;
-    struct {
-        int drag_threshold, detach_threshold;
-    } enable_tab_drag;
+    int enable_tab_drag;
     long macos_menubar_title_max_length;
     int macos_colorspace;
     struct {
@@ -374,6 +372,9 @@ typedef struct GlobalState {
     bool tab_bar_drag_in_progress;
     id_type drag_thumbnail_target_os_window;  // non-zero = capture requested for this os_window
     bool drag_thumbnail_visible;
+    // Cached thumbnail data for GLFW Drag API
+    uint8_t *drag_thumbnail_pixels;
+    int drag_thumbnail_width, drag_thumbnail_height;
     CloseRequest quit_request;
     bool redirect_mouse_handling;
     WindowLogoTable *all_window_logos;

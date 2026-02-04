@@ -18,6 +18,7 @@ from .child import Child
 from .cli_stub import CLIOptions, SaveAsSessionOptions
 from .constants import appname
 from .fast_data_types import (
+    BOTTOM_EDGE,
     GLFW_MOUSE_BUTTON_LEFT,
     GLFW_MOUSE_BUTTON_MIDDLE,
     GLFW_PRESS,
@@ -25,9 +26,11 @@ from .fast_data_types import (
     add_tab,
     attach_window,
     buffer_keys_in_window,
+    clear_cached_drag_thumbnail,
     current_focused_os_window_id,
     detach_window,
     get_boss,
+    get_cached_drag_thumbnail,
     get_click_interval,
     get_options,
     get_os_window_pos,
@@ -47,6 +50,7 @@ from .fast_data_types import (
     set_active_window,
     set_redirect_keys_to_overlay,
     set_tab_bar_drag_in_progress,
+    start_tab_drag,
     swap_tabs,
     sync_os_window_title,
     viewport_for_window,
@@ -1563,6 +1567,8 @@ class TabManager:  # {{{
                         original_index=idx,
                     )
                     set_tab_bar_drag_in_progress(True)
+                    # Request thumbnail capture for potential drag operation
+                    request_drag_thumbnail_capture(self.os_window_id)
             self.set_active_tab(tab)
             self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, tab.id))
             if len(self.recent_mouse_events) > 5:
@@ -1600,7 +1606,6 @@ class TabManager:  # {{{
             self.recent_mouse_events.popleft()
 
     def _handle_tab_drag_motion(self, x: int, y: int) -> None:
-        """Handle mouse motion during tab drag."""
         if self.tab_drag_state is None:
             return
 
@@ -1620,7 +1625,34 @@ class TabManager:  # {{{
             dy = abs(y - state.start_y)
             if dx < threshold and dy < threshold:
                 return
-            # Drag has started
+            # Drag has started - initiate GLFW drag operation
+            tab = self.tab_for_id(state.tab_id)
+            if tab is None:
+                self._cancel_tab_drag()
+                return
+            tab_title = tab.title or 'Tab'
+            payload = json.dumps({
+                'source_os_window_id': self.os_window_id,
+                'tab_id': state.tab_id,
+                'tab_title': tab_title,
+                'is_active_tab': tab is self.active_tab,
+                'original_index': state.original_index,
+            })
+            # Get cached thumbnail if available
+            thumbnail_data = get_cached_drag_thumbnail()
+            tab_bar_at_top = opts.tab_bar_edge != BOTTOM_EDGE
+            if thumbnail_data is not None:
+                pixels, thumb_w, thumb_h = thumbnail_data
+                result = start_tab_drag(self.os_window_id, payload, tab_title, pixels, thumb_w, thumb_h, tab_bar_at_top)
+                clear_cached_drag_thumbnail()
+            else:
+                result = start_tab_drag(self.os_window_id, payload, tab_title, None, 0, 0, tab_bar_at_top)
+            if result:
+                # GLFW takes over drag handling - notify boss and clear local state
+                get_boss().set_dragging_tab(self.os_window_id, state.tab_id, state.original_index)
+                self._cancel_tab_drag()
+                return
+            # start_tab_drag failed - fall back to local drag handling
             self.tab_drag_state = state._replace(drag_started=True, last_motion_time=now)
             state = self.tab_drag_state
             # Set the dragging tab for visual feedback
@@ -1631,7 +1663,8 @@ class TabManager:  # {{{
             state = self.tab_drag_state
 
         # Check if mouse is outside tab bar (but don't detach yet - wait for release)
-        outside = opts.enable_tab_drag.is_detach_enabled and self._is_outside_tab_bar(y, opts.enable_tab_drag.detach_threshold) and len(self.tabs) > 1
+        # Note: detach threshold is hardcoded; this local drag code serves as fallback when GLFW Drag API is unavailable
+        outside = opts.enable_tab_drag.is_enabled and self._is_outside_tab_bar(y, 20) and len(self.tabs) > 1
         if outside != state.outside_tab_bar:
             self.tab_drag_state = state._replace(outside_tab_bar=outside)
             state = self.tab_drag_state
@@ -1657,8 +1690,15 @@ class TabManager:  # {{{
                 self.tab_bar.update_drag_indicator(drop_index, state.tab_id)
                 self.mark_tab_bar_dirty()
 
+    def _cancel_tab_drag(self) -> None:
+        if self.tab_drag_state is not None:
+            self.tab_drag_state = None
+            self.tab_bar.dragging_tab_id = 0
+            self.tab_bar.update_drag_indicator(None, 0)
+            set_tab_bar_drag_in_progress(False)
+            self.mark_tab_bar_dirty()
+
     def _move_drag_thumbnail(self, x: int, y: int) -> None:
-        """Update the drag thumbnail position to follow the cursor."""
         src_size = get_os_window_size(self.os_window_id)
         if src_size is None or src_size['framebuffer_width'] == 0 or src_size['framebuffer_height'] == 0:
             return
@@ -1670,7 +1710,6 @@ class TabManager:  # {{{
         move_drag_thumbnail(screen_x, screen_y)
 
     def _is_outside_tab_bar(self, y: int, margin: int = 20) -> bool:
-        """Check if the y coordinate is outside the tab bar region."""
         try:
             central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
             return y < tab_bar.top - margin or y > tab_bar.bottom + margin
@@ -1678,7 +1717,6 @@ class TabManager:  # {{{
             return False
 
     def _calculate_drop_index(self, x: int) -> int:
-        """Calculate the drop index based on the x coordinate."""
         extents = self.tab_bar.tab_extents
         if not extents or not self.tab_bar.laid_out_once:
             return 0
@@ -1695,12 +1733,6 @@ class TabManager:  # {{{
         return len(extents)
 
     def _find_target_os_window(self, x: int, y: int) -> int | None:
-        """Find the OS window under the given framebuffer coordinates.
-
-        Converts framebuffer-relative mouse coordinates to screen coordinates
-        and checks if they fall within another OS window's content area.
-        Returns the target OS window ID or None.
-        """
         src_size = get_os_window_size(self.os_window_id)
         if src_size is None or src_size['framebuffer_width'] == 0 or src_size['framebuffer_height'] == 0:
             return None
@@ -1727,7 +1759,6 @@ class TabManager:  # {{{
         return None
 
     def _finalize_tab_drag(self, x: int, y: int) -> None:
-        """Finalize the tab drag operation."""
         if self.tab_drag_state is None:
             return
 
@@ -1746,9 +1777,9 @@ class TabManager:  # {{{
             return
 
         # Check if released outside tab bar - detach or move to another window
-        if self._is_outside_tab_bar(y, opts.enable_tab_drag.detach_threshold) and len(self.tabs) > 1:
+        if self._is_outside_tab_bar(y, 20) and len(self.tabs) > 1:
             tab = self.tab_for_id(state.tab_id)
-            if tab is not None and opts.enable_tab_drag.is_detach_enabled:
+            if tab is not None and opts.enable_tab_drag.is_enabled:
                 # Try to find a target OS window under the cursor
                 target_os_window_id = self._find_target_os_window(x, y)
                 boss._move_tab_to(tab, target_os_window_id=target_os_window_id)
@@ -1767,7 +1798,6 @@ class TabManager:  # {{{
         self.mark_tab_bar_dirty()
 
     def _move_tab_to_index(self, from_index: int, to_index: int) -> None:
-        """Move a tab from one index to another."""
         if from_index == to_index or not (0 <= from_index < len(self.tabs)) or not (0 <= to_index < len(self.tabs)):
             return
 

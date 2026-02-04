@@ -362,6 +362,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetDragCallback_impl) = dlsym(handle, "glfwSetDragCallback");
     if (glfwSetDragCallback_impl == NULL) fail("Failed to load glfw function glfwSetDragCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetDragEndCallback_impl) = dlsym(handle, "glfwSetDragEndCallback");
+    if (glfwSetDragEndCallback_impl == NULL) fail("Failed to load glfw function glfwSetDragEndCallback with error: %s", dlerror());
+
     *(void **) (&glfwStartDrag_impl) = dlsym(handle, "glfwStartDrag");
     if (glfwStartDrag_impl == NULL) fail("Failed to load glfw function glfwStartDrag with error: %s", dlerror());
 
@@ -376,6 +379,12 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwFinishDrop_impl) = dlsym(handle, "glfwFinishDrop");
     if (glfwFinishDrop_impl == NULL) fail("Failed to load glfw function glfwFinishDrop with error: %s", dlerror());
+
+    *(void **) (&glfwSetDragTitle_impl) = dlsym(handle, "glfwSetDragTitle");
+    if (glfwSetDragTitle_impl == NULL) fail("Failed to load glfw function glfwSetDragTitle with error: %s", dlerror());
+
+    *(void **) (&glfwSetDragImagePlacement_impl) = dlsym(handle, "glfwSetDragImagePlacement");
+    if (glfwSetDragImagePlacement_impl == NULL) fail("Failed to load glfw function glfwSetDragImagePlacement with error: %s", dlerror());
 
     *(void **) (&glfwJoystickPresent_impl) = dlsym(handle, "glfwJoystickPresent");
     if (glfwJoystickPresent_impl == NULL) fail("Failed to load glfw function glfwJoystickPresent with error: %s", dlerror());

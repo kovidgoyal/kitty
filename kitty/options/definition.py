@@ -1691,15 +1691,14 @@ color is chosen to match the background color of the neighboring tab.
 '''
     )
 
-opt('enable_tab_drag', '5 20',
+opt('enable_tab_drag', '5',
     option_type='enable_tab_drag', ctype='!enable_tab_drag',
     long_text='''
-Allow dragging tabs with the mouse to reorder them within the tab bar. The first
-number is the drag threshold in pixels, the distance the mouse must move before
-a drag begins. A negative value disables tab dragging entirely. The second
-number (optional, defaults to 20) is the detach threshold in pixels, how far
-outside the tab bar the tab must be dragged to detach it into a new OS window.
-A negative value disables detachment while still allowing reordering.
+Allow dragging tabs with the mouse to reorder them within the tab bar.
+The value is the drag threshold in pixels, the distance the mouse must move
+before a drag begins. A negative value disables tab dragging entirely.
+Dragging a tab to another kitty window moves it there, while dragging
+outside any kitty window detaches it into a new OS window.
 '''
     )
 egr()  # }}}

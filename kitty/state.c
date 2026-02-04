@@ -763,6 +763,27 @@ PYWRAP0(hide_drag_thumbnail) {
     Py_RETURN_NONE;
 }
 
+PYWRAP0(get_cached_drag_thumbnail) {
+    if (global_state.drag_thumbnail_pixels && global_state.drag_thumbnail_width > 0 && global_state.drag_thumbnail_height > 0) {
+        size_t size = (size_t)global_state.drag_thumbnail_width * (size_t)global_state.drag_thumbnail_height * 4;
+        PyObject *result = Py_BuildValue("y#ii",
+            global_state.drag_thumbnail_pixels, (Py_ssize_t)size,
+            global_state.drag_thumbnail_width, global_state.drag_thumbnail_height);
+        return result;
+    }
+    Py_RETURN_NONE;
+}
+
+PYWRAP0(clear_cached_drag_thumbnail) {
+    if (global_state.drag_thumbnail_pixels) {
+        free(global_state.drag_thumbnail_pixels);
+        global_state.drag_thumbnail_pixels = NULL;
+    }
+    global_state.drag_thumbnail_width = 0;
+    global_state.drag_thumbnail_height = 0;
+    Py_RETURN_NONE;
+}
+
 PYWRAP1(update_ime_position_for_window) {
     id_type window_id;
     int force = 0;
@@ -1565,6 +1586,8 @@ static PyMethodDef module_methods[] = {
     MW(request_drag_thumbnail_capture, METH_VARARGS),
     MW(move_drag_thumbnail, METH_VARARGS),
     MW(hide_drag_thumbnail, METH_NOARGS),
+    MW(get_cached_drag_thumbnail, METH_NOARGS),
+    MW(clear_cached_drag_thumbnail, METH_NOARGS),
     MW(run_with_activation_token, METH_O),
     MW(change_background_opacity, METH_VARARGS),
     MW(background_opacity_of, METH_O),

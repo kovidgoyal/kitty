@@ -574,10 +574,38 @@ class TabBar:
         self.apply_options()
 
     def update_drag_indicator(self, index: int | None, tab_id: int) -> None:
-        """Update the drag indicator position and dragging tab."""
         self.drop_indicator_index = index
         self.dragging_tab_id = tab_id
         self.dirty = True
+
+    def on_drag_enter(self, x: float, y: float) -> None:
+        self._update_drop_index_from_position(x)
+        self.dirty = True
+
+    def on_drag_move(self, x: float, y: float) -> None:
+        self._update_drop_index_from_position(x)
+        self.dirty = True
+
+    def _update_drop_index_from_position(self, x: float) -> None:
+        if not self.tab_extents:
+            self.drop_indicator_index = 0
+            return
+        # Convert x from pixels to cells
+        x_cell = int(x / self.cell_width) if self.cell_width > 0 else 0
+        for i, extent in enumerate(self.tab_extents):
+            mid = (extent.cell_range.start + extent.cell_range.end) // 2
+            if x_cell < mid:
+                self.drop_indicator_index = i
+                return
+        self.drop_indicator_index = len(self.tab_extents)
+
+    def clear_drag_state(self) -> None:
+        self.dragging_tab_id = 0
+        self.drop_indicator_index = None
+        self.dirty = True
+
+    def get_drop_index(self) -> int | None:
+        return self.drop_indicator_index
 
     def apply_options(self) -> None:
         opts = get_options()
@@ -733,7 +761,6 @@ class TabBar:
         ed = ExtraData()
 
         def dim_color(color: int, factor: float = 0.5) -> int:
-            """Dim a color by mixing it with gray."""
             r = (color >> 16) & 0xff
             g = (color >> 8) & 0xff
             b = color & 0xff
@@ -815,7 +842,6 @@ class TabBar:
         update_tab_bar_edge_colors(self.os_window_id)
 
     def _draw_drop_indicator(self, s: Screen) -> None:
-        """Draw a visual indicator showing where the dragged tab will be dropped."""
         if self.drop_indicator_index is None or not self.tab_extents:
             return
 
@@ -829,19 +855,26 @@ class TabBar:
             pos = self.tab_extents[-1].cell_range.end + 1
 
         # Ensure position is within screen bounds
-        if pos < 0 or pos >= s.columns:
+        placeholder_width = 3  # "[+]"
+        if pos < 0 or pos + placeholder_width > s.columns:
             return
 
-        # Draw a vertical bar indicator
         saved_x = s.cursor.x
         s.cursor.x = pos
-        # Use bright color for the indicator
-        s.cursor.fg = as_rgb(0x00FF00)  # Green color for indicator
-        s.cursor.bg = 0
+
+        # Use active tab colors to match user's theme
+        s.cursor.bg = as_rgb(color_as_int(self.draw_data.active_bg))
+        s.cursor.fg = as_rgb(color_as_int(self.draw_data.active_fg))
         s.cursor.bold = True
-        s.draw('│')
-        s.cursor.bold = False
+        s.cursor.italic = False
+
+        # Draw compact placeholder: "[+]"
+        s.draw('[+]')
+
+        # Reset cursor state
+        s.cursor.bg = 0
         s.cursor.fg = 0
+        s.cursor.bold = False
         s.cursor.x = saved_x
 
     def align_with_factor(self, factor: int = 1) -> None:

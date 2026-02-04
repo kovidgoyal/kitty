@@ -1451,13 +1451,14 @@ capture_framebuffer_for_drag(OSWindow *os_window) {
     glReadPixels(0, 0, vw, vh, GL_RGBA, GL_UNSIGNED_BYTE, src_buf);
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
 
-    // Calculate thumbnail size (~35% scale, max width 640px)
-    float scale = 0.35f;
+    // Calculate thumbnail size (~20% scale, max width 300px for drag image)
+    // Size chosen to balance visibility with the title bar
+    float scale = 0.20f;
     int thumb_w = (int)((float)vw * scale + 0.5f);
     int thumb_h = (int)((float)vh * scale + 0.5f);
-    if (thumb_w > 640) {
-        scale = 640.0f / (float)vw;
-        thumb_w = 640;
+    if (thumb_w > 300) {
+        scale = 300.0f / (float)vw;
+        thumb_w = 300;
         thumb_h = (int)((float)vh * scale + 0.5f);
     }
     if (thumb_w < 1) thumb_w = 1;
@@ -1485,20 +1486,13 @@ capture_framebuffer_for_drag(OSWindow *os_window) {
     }
     free(src_buf);
 
-    // Calculate cursor screen position (CG coordinates: top-left origin)
-    int win_x, win_y;
-    get_os_window_pos(os_window, &win_x, &win_y);
-    int win_w, win_h, fb_w, fb_h;
-    get_os_window_size(os_window, &win_w, &win_h, &fb_w, &fb_h);
-
-    double sx = (fb_w > 0) ? (double)win_w / (double)fb_w : 1.0;
-    double sy = (fb_h > 0) ? (double)win_h / (double)fb_h : 1.0;
-    double screen_x = (double)win_x + os_window->mouse_x * sx;
-    double screen_y = (double)win_y + os_window->mouse_y * sy;
-
-    cocoa_show_drag_thumbnail(dst_buf, thumb_w, thumb_h, thumb_w, thumb_h, screen_x, screen_y);
-    global_state.drag_thumbnail_visible = true;
-    free(dst_buf);
+    // Store thumbnail in global state for GLFW Drag API
+    if (global_state.drag_thumbnail_pixels) {
+        free(global_state.drag_thumbnail_pixels);
+    }
+    global_state.drag_thumbnail_pixels = dst_buf;
+    global_state.drag_thumbnail_width = thumb_w;
+    global_state.drag_thumbnail_height = thumb_h;
 }
 #endif
 // }}}

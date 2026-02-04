@@ -4043,3 +4043,13 @@ _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation, boo
     free(drop);
 }
 
+void _glfwPlatformSetDragImagePlacement(_GLFWwindow* window UNUSED, GLFWDragImagePlacement placement UNUSED)
+{
+    // No-op: drag image placement not supported on X11
+}
+
+void _glfwPlatformSetDragTitle(_GLFWwindow* window UNUSED, const char* title UNUSED)
+{
+    // No-op: drag title not supported on X11
+}
+

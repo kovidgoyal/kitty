@@ -419,6 +419,12 @@ int _glfwInputDragEvent(_GLFWwindow* window, int event, double xpos, double ypos
     return 0;
 }
 
+void _glfwInputDragEnd(_GLFWwindow* window, bool accepted, double screen_x, double screen_y)
+{
+    if (window->callbacks.dragEnd)
+        window->callbacks.dragEnd((GLFWwindow*) window, accepted, screen_x, screen_y);
+}
+
 // Notifies shared code of a joystick connection or disconnection
 //
 void _glfwInputJoystick(_GLFWjoystick* js, int event)
@@ -1130,6 +1136,16 @@ GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* handle, GLFWdragfun cbfun)
     return cbfun;
 }
 
+GLFWAPI GLFWdragendfun glfwSetDragEndCallback(GLFWwindow* handle, GLFWdragendfun cbfun)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(window->callbacks.dragEnd, cbfun);
+    return cbfun;
+}
+
 GLFWAPI int glfwStartDrag(GLFWwindow* handle, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
@@ -1172,6 +1188,24 @@ GLFWAPI void glfwFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation,
 
     _GLFW_REQUIRE_INIT();
     _glfwPlatformFinishDrop(drop, operation, success);
+}
+
+GLFWAPI void glfwSetDragTitle(GLFWwindow* handle, const char* title)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT();
+    _glfwPlatformSetDragTitle(window, title);
+}
+
+GLFWAPI void glfwSetDragImagePlacement(GLFWwindow* handle, GLFWDragImagePlacement placement)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT();
+    _glfwPlatformSetDragImagePlacement(window, placement);
 }
 
 GLFWAPI int glfwJoystickPresent(int jid)

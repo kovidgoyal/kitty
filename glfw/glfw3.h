@@ -1844,6 +1844,24 @@ typedef enum {
     GLFW_DRAG_OPERATION_GENERIC = 4
 } GLFWDragOperationType;
 
+/*! @brief Drag image placement options.
+ *
+ *  These values specify where the drag image should be positioned relative
+ *  to the mouse cursor during drag operations.
+ *
+ *  @sa @ref glfwSetDragImagePlacement
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+typedef enum {
+    /*! Position drag image above the cursor (default). */
+    GLFW_DRAG_IMAGE_ABOVE_CURSOR = 0,
+    /*! Position drag image below the cursor. */
+    GLFW_DRAG_IMAGE_BELOW_CURSOR = 1
+} GLFWDragImagePlacement;
+
 /*! @brief Drag data item.
  *
  *  This structure describes a single item of drag data with its MIME type.
@@ -1869,12 +1887,12 @@ typedef struct GLFWdragitem {
  *  This is the function pointer type for drag event callbacks. A drag event
  *  callback function has the following signature:
  *  @code
- *  int function_name(GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int* mime_count)
+ *  int function_name(GLFWwindow* window, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int* mime_count)
  *  @endcode
  *
  *  @param[in] window The window that received the drag event.
  *  @param[in] event The drag event type: @ref GLFW_DRAG_ENTER, @ref GLFW_DRAG_MOVE,
- *  or @ref GLFW_DRAG_LEAVE.
+ *  @ref GLFW_DRAG_LEAVE, or @ref GLFW_DRAG_STATUS_UPDATE.
  *  @param[in] xpos The x-coordinate of the drag position in window coordinates.
  *  @param[in] ypos The y-coordinate of the drag position in window coordinates.
  *  @param[in,out] mime_types A writable array of MIME type strings available from the drag source.
@@ -1887,9 +1905,10 @@ typedef struct GLFWdragitem {
  *  @param[in,out] mime_count Pointer to the number of MIME types in the array. The callback
  *  should update this to reflect the new count after sorting and filtering. For
  *  @ref GLFW_DRAG_LEAVE events this is `NULL`.
- *  @return For @ref GLFW_DRAG_ENTER and @ref GLFW_DRAG_MOVE events, return non-zero
- *  to accept the drag or zero to reject it. This allows the application to
- *  dynamically accept or reject the drag based on the current position.
+ *  @return For @ref GLFW_DRAG_ENTER, @ref GLFW_DRAG_MOVE, and
+ *  @ref GLFW_DRAG_STATUS_UPDATE events, return non-zero to accept the drag
+ *  or zero to reject it. This allows the application to dynamically accept
+ *  or reject the drag based on the current position or state.
  *  Return value is ignored for @ref GLFW_DRAG_LEAVE events.
  *
  *  @sa @ref drag_events
@@ -1901,6 +1920,27 @@ typedef struct GLFWdragitem {
  *  @ingroup input
  */
 typedef int (* GLFWdragfun)(GLFWwindow*, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int* mime_count);
+
+/*! @brief The function pointer type for drag end callbacks.
+ *
+ *  This is the function pointer type for drag end callbacks. A drag end
+ *  callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, int accepted, double screen_x, double screen_y)
+ *  @endcode
+ *
+ *  @param[in] window The window that initiated the drag.
+ *  @param[in] accepted `GLFW_TRUE` if the drop was accepted, `GLFW_FALSE` otherwise.
+ *  @param[in] screen_x The x-coordinate of the drop in screen coordinates.
+ *  @param[in] screen_y The y-coordinate of the drop in screen coordinates.
+ *
+ *  @sa @ref glfwSetDragEndCallback
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+typedef void (* GLFWdragendfun)(GLFWwindow*, int accepted, double screen_x, double screen_y);
 
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 
@@ -5051,7 +5091,7 @@ GLFWAPI GLFWliveresizefun glfwSetLiveResizeCallback(GLFWwindow* window, GLFWlive
  *
  *  @callback_signature
  *  @code
- *  int function_name(GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int mime_count)
+ *  int function_name(GLFWwindow* window, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int* mime_count)
  *  @endcode
  *  For more information about the callback parameters, see the
  *  [function pointer type](@ref GLFWdragfun).
@@ -5068,6 +5108,27 @@ GLFWAPI GLFWliveresizefun glfwSetLiveResizeCallback(GLFWwindow* window, GLFWlive
  *  @ingroup input
  */
 GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* window, GLFWdragfun callback);
+
+/*! @brief Sets the drag end callback.
+ *
+ *  This function sets the callback that will be invoked when a drag operation
+ *  initiated by glfwStartDrag ends, either by dropping on a valid target or
+ *  by being cancelled.
+ *
+ *  @param[in] window The window that initiated the drag.
+ *  @param[in] callback The new callback, or `NULL` to remove the currently set
+ *  callback.
+ *  @return The previously set callback, or `NULL` if no callback was set.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref glfwStartDrag
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+GLFWAPI GLFWdragendfun glfwSetDragEndCallback(GLFWwindow* window, GLFWdragendfun callback);
 
 /*! @brief Starts a drag operation.
  *
@@ -5105,6 +5166,53 @@ GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* window, GLFWdragfun callback
  */
 GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation);
 
+/*! @brief Sets the title text to display on the drag image.
+ *
+ *  This function sets a title string that will be displayed on the drag image
+ *  when initiating a drag operation. When a thumbnail is provided, the title
+ *  appears as a title bar above the thumbnail. When no thumbnail is provided,
+ *  the title is shown as the entire drag image. This is useful for tab
+ *  dragging where displaying the tab title provides better visual feedback.
+ *
+ *  @param[in] window The window that will initiate the drag.
+ *  @param[in] title The title string to display, or `NULL` to clear.
+ *
+ *  @remark This function should be called before glfwStartDrag.
+ *
+ *  @remark On platforms that don't support custom drag images, this function
+ *  has no effect.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+GLFWAPI void glfwSetDragTitle(GLFWwindow* window, const char* title);
+
+/*! @brief Sets the placement of the drag image relative to the cursor.
+ *
+ *  This function sets where the drag image should be positioned relative to
+ *  the mouse cursor. Use @ref GLFW_DRAG_IMAGE_ABOVE_CURSOR when the tab bar
+ *  is at the bottom of the window, or @ref GLFW_DRAG_IMAGE_BELOW_CURSOR when
+ *  the tab bar is at the top.
+ *
+ *  @param[in] window The window that will initiate the drag.
+ *  @param[in] placement The placement option: @ref GLFW_DRAG_IMAGE_ABOVE_CURSOR
+ *  or @ref GLFW_DRAG_IMAGE_BELOW_CURSOR.
+ *
+ *  @remark This function should be called before glfwStartDrag.
+ *
+ *  @remark The default placement is @ref GLFW_DRAG_IMAGE_ABOVE_CURSOR.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+GLFWAPI void glfwSetDragImagePlacement(GLFWwindow* window, GLFWDragImagePlacement placement);
+
 /*! @brief Schedules a call to the drag callback to update drag state.
  *
  *  This function schedules a call to the drag callback to get updated
@@ -5112,8 +5220,9 @@ GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int ite
  *  needs to update its drag state asynchronously.
  *
  *  On Wayland and X11, this will immediately call the drag callback with
- *  the current drag state. On macOS this is a no-op since the drag callback
- *  is called periodically anyway.
+ *  the current drag state. On macOS, this function calls the drag callback
+ *  with a @ref GLFW_DRAG_STATUS_UPDATE event to allow the application to
+ *  update drag state.
  *
  *  @param[in] window The window receiving the drag operation.
  *
@@ -5121,9 +5230,6 @@ GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWdragitem* items, int ite
  *
  *  @remark This function has no effect if there is no active drag operation
  *  over the specified window.
- *
- *  @remark On macOS, this function is a no-op as the system uses periodic
- *  dragging updates via the drag callback.
  *
  *  @thread_safety This function must only be called from the main thread.
  *

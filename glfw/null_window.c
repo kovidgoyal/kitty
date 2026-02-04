@@ -565,6 +565,16 @@ void _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation
     free(drop);
 }
 
+void _glfwPlatformSetDragImagePlacement(_GLFWwindow* window UNUSED, GLFWDragImagePlacement placement UNUSED)
+{
+    // No-op for null platform
+}
+
+void _glfwPlatformSetDragTitle(_GLFWwindow* window UNUSED, const char* title UNUSED)
+{
+    // No-op for null platform
+}
+
 void _glfwPlatformSetClipboardString(const char* string)
 {
     char* copy = _glfw_strdup(string);

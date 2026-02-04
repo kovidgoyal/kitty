@@ -512,12 +512,11 @@ tab_bar_margin_height(PyObject *val, Options *opts) {
 
 static inline void
 enable_tab_drag(PyObject *val, Options *opts) {
-    if (!PyTuple_Check(val) || PyTuple_GET_SIZE(val) != 2) {
-        PyErr_SetString(PyExc_TypeError, "enable_tab_drag is not a 2-item tuple");
+    if (!PyTuple_Check(val) || PyTuple_GET_SIZE(val) != 1) {
+        PyErr_SetString(PyExc_TypeError, "enable_tab_drag is not a 1-item tuple");
         return;
     }
-    opts->enable_tab_drag.drag_threshold = PyLong_AsLong(PyTuple_GET_ITEM(val, 0));
-    opts->enable_tab_drag.detach_threshold = PyLong_AsLong(PyTuple_GET_ITEM(val, 1));
+    opts->enable_tab_drag = PyLong_AsLong(PyTuple_GET_ITEM(val, 0));
 }
 
 static inline void

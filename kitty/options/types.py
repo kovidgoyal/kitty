@@ -552,7 +552,7 @@ class Options:
     dynamic_background_opacity: bool = False
     editor: str = '.'
     enable_audio_bell: bool = True
-    enable_tab_drag: EnableTabDrag = EnableTabDrag(drag_threshold=5, detach_threshold=20)
+    enable_tab_drag: EnableTabDrag = EnableTabDrag(drag_threshold=5)
     enabled_layouts: list[str] = ['fat', 'grid', 'horizontal', 'splits', 'stack', 'tall', 'vertical']
     file_transfer_confirmation_bypass: str = ''
     focus_follows_mouse: bool = False
