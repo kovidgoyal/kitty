@@ -1923,23 +1923,59 @@ static void processEvent(XEvent *event)
             else if (event->xclient.message_type == _glfw.x11.XdndDrop)
             {
                 // The drag operation has finished by dropping on the window
-                Time time = CurrentTime;
-
                 if (_glfw.x11.xdnd.version > _GLFW_XDND_VERSION)
                     return;
 
-                if (_glfw.x11.xdnd.format_priority > 0)
+                if (_glfw.x11.xdnd.drag_accepted && _glfw.x11.xdnd.mimes_count > 0)
                 {
-                    if (_glfw.x11.xdnd.version >= 1)
-                        time = event->xclient.data.l[2];
+                    // Store drop state for chunked reading
+                    _glfw.x11.xdnd.drop_target = window->x11.handle;
+                    _glfw.x11.xdnd.drop_time = (_glfw.x11.xdnd.version >= 1) ?
+                        (Time)event->xclient.data.l[2] : CurrentTime;
+                    _glfw.x11.xdnd.drop_pending = true;
+                    _glfw.x11.xdnd.current_mime = NULL;
+                    _glfw.x11.xdnd.current_data = NULL;
+                    _glfw.x11.xdnd.current_data_size = 0;
+                    _glfw.x11.xdnd.current_data_offset = 0;
 
-                    // Request the chosen format from the source window
-                    XConvertSelection(_glfw.x11.display,
-                                      _glfw.x11.XdndSelection,
-                                      XInternAtom(_glfw.x11.display, _glfw.x11.xdnd.format, 0),
-                                      _glfw.x11.XdndSelection,
-                                      window->x11.handle,
-                                      time);
+                    // Create drop data structure for chunked reading
+                    GLFWDropData drop_data = {0};
+                    drop_data.window = window;
+                    drop_data.mime_types = (const char**)_glfw.x11.xdnd.mimes;
+                    drop_data.mime_count = _glfw.x11.xdnd.mimes_count;
+                    drop_data.current_mime = NULL;
+                    drop_data.read_fd = -1;
+                    drop_data.bytes_read = 0;
+                    drop_data.platform_data = NULL;
+                    drop_data.eof_reached = false;
+
+                    _glfwInputDrop(window, &drop_data);
+
+                    // Clean up current data if any
+                    if (_glfw.x11.xdnd.current_data) {
+                        XFree(_glfw.x11.xdnd.current_data);
+                        _glfw.x11.xdnd.current_data = NULL;
+                    }
+                    _glfw.x11.xdnd.current_data_size = 0;
+                    _glfw.x11.xdnd.current_data_offset = 0;
+
+                    // Send XdndFinished
+                    if (_glfw.x11.xdnd.version >= 2)
+                    {
+                        XEvent reply = { ClientMessage };
+                        reply.xclient.window = _glfw.x11.xdnd.source;
+                        reply.xclient.message_type = _glfw.x11.XdndFinished;
+                        reply.xclient.format = 32;
+                        reply.xclient.data.l[0] = window->x11.handle;
+                        reply.xclient.data.l[1] = 1; // Success
+                        reply.xclient.data.l[2] = _glfw.x11.XdndActionCopy;
+
+                        XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source,
+                                   False, NoEventMask, &reply);
+                        XFlush(_glfw.x11.display);
+                    }
+
+                    _glfw.x11.xdnd.drop_pending = false;
                 }
                 else if (_glfw.x11.xdnd.version >= 2)
                 {
@@ -2046,40 +2082,9 @@ static void processEvent(XEvent *event)
 
         case SelectionNotify:
         {
-            if (event->xselection.property == _glfw.x11.XdndSelection)
-            {
-                // The converted data from the drag operation has arrived
-                char* data;
-                const unsigned long result =
-                    _glfwGetWindowPropertyX11(event->xselection.requestor,
-                                              event->xselection.property,
-                                              event->xselection.target,
-                                              (unsigned char**) &data);
-
-                if (result)
-                {
-                    _glfwInputDrop(window, _glfw.x11.xdnd.format, data, result);
-                }
-
-                if (data)
-                    XFree(data);
-
-                if (_glfw.x11.xdnd.version >= 2)
-                {
-                    XEvent reply = { ClientMessage };
-                    reply.xclient.window = _glfw.x11.xdnd.source;
-                    reply.xclient.message_type = _glfw.x11.XdndFinished;
-                    reply.xclient.format = 32;
-                    reply.xclient.data.l[0] = window->x11.handle;
-                    reply.xclient.data.l[1] = result;
-                    reply.xclient.data.l[2] = _glfw.x11.XdndActionCopy;
-
-                    XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source,
-                               False, NoEventMask, &reply);
-                    XFlush(_glfw.x11.display);
-                }
-            }
-
+            // SelectionNotify for XdndSelection is now handled synchronously
+            // in _glfwPlatformReadDropData for chunked reading
+            // This case is left here for clipboard operations
             return;
         }
 
@@ -3866,5 +3871,144 @@ void _glfwPlatformUpdateDragState(_GLFWwindow* window) {
     XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source,
                False, NoEventMask, &reply);
     XFlush(_glfw.x11.display);
+}
+
+const char**
+_glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count) {
+    if (!drop || !count) return NULL;
+    *count = drop->mime_count;
+    return drop->mime_types;
+}
+
+ssize_t
+_glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout) {
+    if (!drop || !mime || !buffer || capacity == 0) return -EIO;
+    if (!_glfw.x11.xdnd.drop_pending) return -EIO;
+
+    // Check if the MIME type is available
+    bool mime_found = false;
+    for (int i = 0; i < drop->mime_count; i++) {
+        if (drop->mime_types[i] && strcmp(drop->mime_types[i], mime) == 0) {
+            mime_found = true;
+            break;
+        }
+    }
+    if (!mime_found) return -ENOENT;
+
+    // If switching MIME types, free the previous data
+    if (_glfw.x11.xdnd.current_mime && strcmp(_glfw.x11.xdnd.current_mime, mime) != 0) {
+        if (_glfw.x11.xdnd.current_data) {
+            XFree(_glfw.x11.xdnd.current_data);
+            _glfw.x11.xdnd.current_data = NULL;
+        }
+        _glfw.x11.xdnd.current_data_size = 0;
+        _glfw.x11.xdnd.current_data_offset = 0;
+        _glfw.x11.xdnd.current_mime = NULL;
+    }
+
+    // If we need to fetch data for this MIME type
+    if (_glfw.x11.xdnd.current_data == NULL || _glfw.x11.xdnd.current_mime == NULL ||
+        strcmp(_glfw.x11.xdnd.current_mime, mime) != 0) {
+
+        Atom target_atom = XInternAtom(_glfw.x11.display, mime, False);
+
+        // Request the data via XConvertSelection
+        XConvertSelection(_glfw.x11.display,
+                         _glfw.x11.XdndSelection,
+                         target_atom,
+                         _glfw.x11.XdndSelection,
+                         _glfw.x11.xdnd.drop_target,
+                         _glfw.x11.xdnd.drop_time);
+        XFlush(_glfw.x11.display);
+
+        // Wait for SelectionNotify event with timeout
+        monotonic_t start = monotonic();
+        XEvent event;
+        bool got_data = false;
+
+        while (true) {
+            monotonic_t elapsed = monotonic() - start;
+            if (timeout > 0 && elapsed >= timeout) return -ETIME;
+
+            int timeout_ms = (timeout > 0) ? monotonic_t_to_ms(timeout - elapsed) : 100;
+            if (timeout_ms < 1) timeout_ms = 1;
+
+            // Use poll to wait for X11 events
+            struct pollfd pfd = { .fd = ConnectionNumber(_glfw.x11.display), .events = POLLIN };
+            int ret = poll(&pfd, 1, timeout_ms);
+
+            if (ret < 0) {
+                if (errno == EINTR) continue;
+                return -EIO;
+            }
+
+            // Process pending events
+            while (XPending(_glfw.x11.display)) {
+                XNextEvent(_glfw.x11.display, &event);
+
+                if (event.type == SelectionNotify &&
+                    event.xselection.selection == _glfw.x11.XdndSelection &&
+                    event.xselection.property == _glfw.x11.XdndSelection) {
+
+                    // Get the data
+                    unsigned char* data = NULL;
+                    unsigned long size = _glfwGetWindowPropertyX11(
+                        event.xselection.requestor,
+                        event.xselection.property,
+                        event.xselection.target,
+                        &data);
+
+                    if (size > 0 && data) {
+                        _glfw.x11.xdnd.current_data = data;
+                        _glfw.x11.xdnd.current_data_size = size;
+                        _glfw.x11.xdnd.current_data_offset = 0;
+                        _glfw.x11.xdnd.current_mime = (char*)mime;  // Safe: mime lives as long as drop
+                        got_data = true;
+                    } else {
+                        if (data) XFree(data);
+                        return -EIO;
+                    }
+                    break;
+                }
+            }
+
+            if (got_data) break;
+
+            if (timeout == 0) {
+                // Non-blocking mode - no data yet
+                return -ETIME;
+            }
+        }
+    }
+
+    // Read data from buffer
+    if (_glfw.x11.xdnd.current_data_offset >= _glfw.x11.xdnd.current_data_size) {
+        return 0;  // EOF
+    }
+
+    size_t remaining = _glfw.x11.xdnd.current_data_size - _glfw.x11.xdnd.current_data_offset;
+    size_t to_read = (remaining < capacity) ? remaining : capacity;
+
+    memcpy(buffer, _glfw.x11.xdnd.current_data + _glfw.x11.xdnd.current_data_offset, to_read);
+    _glfw.x11.xdnd.current_data_offset += to_read;
+
+    return (ssize_t)to_read;
+}
+
+void
+_glfwPlatformCancelDrop(GLFWDropData* drop) {
+    if (!drop) return;
+
+    // Free current data if any
+    if (_glfw.x11.xdnd.current_data) {
+        XFree(_glfw.x11.xdnd.current_data);
+        _glfw.x11.xdnd.current_data = NULL;
+    }
+
+    // Reset state
+    _glfw.x11.xdnd.current_data_size = 0;
+    _glfw.x11.xdnd.current_data_offset = 0;
+    _glfw.x11.xdnd.current_mime = NULL;
+    _glfw.x11.xdnd.drop_pending = false;
 }
 

@@ -389,6 +389,14 @@ typedef struct _GLFWlibraryX11
         char**      mimes;          // Cached MIME types from drag enter
         int         mimes_count;    // Current count of MIME types (may be reduced by callback)
         int         mimes_array_size;  // Original array size for proper cleanup
+        // Drop data for chunked reading
+        Window      drop_target;        // Window where the drop occurred
+        Time        drop_time;          // Time from the drop event
+        char*       current_mime;       // Currently being read MIME type
+        unsigned char* current_data;    // Data for current MIME type
+        size_t      current_data_size;  // Size of current data
+        size_t      current_data_offset;// Read offset in current data
+        bool        drop_pending;       // Whether a drop operation is pending
     } xdnd;
 
     // Drag source state

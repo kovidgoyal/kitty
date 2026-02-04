@@ -33,6 +33,7 @@
 #include <Availability.h>
 #import <CoreServices/CoreServices.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#include <errno.h>
 #include <float.h>
 #include <string.h>
 #include <assert.h>
@@ -1496,32 +1497,31 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     _glfwInputCursorPos(window, pos.x, contentRect.size.height - pos.y);
 
     NSPasteboard* pasteboard = [sender draggingPasteboard];
-    NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
-    NSArray* objs = [pasteboard readObjectsForClasses:@[[NSURL class], [NSString class]]
-                                              options:options];
-    if (!objs) return NO;
-    const NSUInteger count = [objs count];
-    NSMutableString *uri_list = [NSMutableString stringWithCapacity:4096];  // auto-released
-    if (count)
-    {
-        for (NSUInteger i = 0;  i < count;  i++)
-        {
-            id obj = objs[i];
-            if ([obj isKindOfClass:[NSURL class]]) {
-                NSURL *url = (NSURL*)obj;
-                if ([uri_list length] > 0) [uri_list appendString:@("\n")];
-                if (url.fileURL) [uri_list appendString:url.filePathURL.absoluteString];
-                else [uri_list appendString:url.absoluteString];
-            } else if ([obj isKindOfClass:[NSString class]]) {
-                const char *text = [obj UTF8String];
-                _glfwInputDrop(window, "text/plain;charset=utf-8", text, strlen(text));
-            } else {
-                _glfwInputError(GLFW_PLATFORM_ERROR,
-                                "Cocoa: Object is neither a URL nor a string");
-            }
-        }
-    }
-    if ([uri_list length] > 0) _glfwInputDrop(window, "text/uri-list", uri_list.UTF8String, strlen(uri_list.UTF8String));
+
+    // Store pasteboard reference for chunked reading
+    window->ns.dropPasteboard = pasteboard;
+    window->ns.dropCurrentMime = NULL;
+    window->ns.dropCurrentData = nil;
+    window->ns.dropDataOffset = 0;
+
+    // Create drop data structure for chunked reading
+    GLFWDropData drop_data = {0};
+    drop_data.window = window;
+    drop_data.mime_types = window->ns.dragMimes;
+    drop_data.mime_count = window->ns.dragMimeCount;
+    drop_data.current_mime = NULL;
+    drop_data.read_fd = -1;
+    drop_data.bytes_read = 0;
+    drop_data.platform_data = (__bridge void*)pasteboard;
+    drop_data.eof_reached = false;
+
+    _glfwInputDrop(window, &drop_data);
+
+    // Clean up drop state
+    window->ns.dropPasteboard = nil;
+    window->ns.dropCurrentData = nil;
+    window->ns.dropCurrentMime = NULL;
+    window->ns.dropDataOffset = 0;
 
     return YES;
 }
@@ -3870,5 +3870,111 @@ void _glfwPlatformUpdateDragState(_GLFWwindow* window) {
         freeFilteredDragMimes(window, old_count, mime_count);
         window->ns.dragMimeCount = mime_count;
     }
+}
+
+const char**
+_glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count) {
+    if (!drop || !count) return NULL;
+    *count = drop->mime_count;
+    return drop->mime_types;
+}
+
+ssize_t
+_glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout UNUSED) {
+    if (!drop || !mime || !buffer || capacity == 0) return -EIO;
+
+    _GLFWwindow* window = drop->window;
+    if (!window || !window->ns.dropPasteboard) return -EIO;
+
+    NSPasteboard* pasteboard = window->ns.dropPasteboard;
+
+    // Check if the MIME type is available
+    bool mime_found = false;
+    for (int i = 0; i < drop->mime_count; i++) {
+        if (drop->mime_types[i] && strcmp(drop->mime_types[i], mime) == 0) {
+            mime_found = true;
+            break;
+        }
+    }
+    if (!mime_found) return -ENOENT;
+
+    // If switching MIME types, release previous data
+    if (window->ns.dropCurrentMime && strcmp(window->ns.dropCurrentMime, mime) != 0) {
+        window->ns.dropCurrentData = nil;
+        window->ns.dropDataOffset = 0;
+    }
+
+    // If we need to fetch data for this MIME type
+    if (window->ns.dropCurrentData == nil || window->ns.dropCurrentMime == NULL ||
+        strcmp(window->ns.dropCurrentMime, mime) != 0) {
+
+        NSData* data = nil;
+
+        // Handle special MIME types
+        if (strcmp(mime, "text/uri-list") == 0) {
+            NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
+            NSArray* urls = [pasteboard readObjectsForClasses:@[[NSURL class]] options:options];
+            if (urls && [urls count] > 0) {
+                NSMutableString *uri_list = [NSMutableString stringWithCapacity:4096];
+                for (NSURL* url in urls) {
+                    if ([uri_list length] > 0) [uri_list appendString:@"\n"];
+                    if (url.fileURL) [uri_list appendString:url.filePathURL.absoluteString];
+                    else [uri_list appendString:url.absoluteString];
+                }
+                data = [uri_list dataUsingEncoding:NSUTF8StringEncoding];
+            }
+        } else if (strcmp(mime, "text/plain") == 0 || strcmp(mime, "text/plain;charset=utf-8") == 0) {
+            NSArray* strings = [pasteboard readObjectsForClasses:@[[NSString class]] options:nil];
+            if (strings && [strings count] > 0) {
+                NSString* str = strings[0];
+                data = [str dataUsingEncoding:NSUTF8StringEncoding];
+            }
+        } else {
+            // Try to read data for other MIME types using UTI
+            NSString* uti = mime_to_uti(mime);
+            if (uti) {
+                NSPasteboardType pbType = [pasteboard availableTypeFromArray:@[uti]];
+                if (pbType) {
+                    data = [pasteboard dataForType:pbType];
+                }
+            }
+        }
+
+        if (!data) return -ENOENT;
+
+        window->ns.dropCurrentData = data;
+        window->ns.dropCurrentMime = mime;
+        window->ns.dropDataOffset = 0;
+    }
+
+    // Read data from buffer
+    NSData* data = window->ns.dropCurrentData;
+    NSUInteger dataLength = [data length];
+
+    if (window->ns.dropDataOffset >= dataLength) {
+        return 0;  // EOF
+    }
+
+    NSUInteger remaining = dataLength - window->ns.dropDataOffset;
+    NSUInteger to_read = (remaining < capacity) ? remaining : capacity;
+
+    [data getBytes:buffer range:NSMakeRange(window->ns.dropDataOffset, to_read)];
+    window->ns.dropDataOffset += to_read;
+
+    return (ssize_t)to_read;
+}
+
+void
+_glfwPlatformCancelDrop(GLFWDropData* drop) {
+    if (!drop) return;
+
+    _GLFWwindow* window = drop->window;
+    if (!window) return;
+
+    // Release drop data
+    window->ns.dropCurrentData = nil;
+    window->ns.dropCurrentMime = NULL;
+    window->ns.dropDataOffset = 0;
+    window->ns.dropPasteboard = nil;
 }
 

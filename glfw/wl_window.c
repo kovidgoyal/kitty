@@ -39,6 +39,7 @@
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/mman.h>
 #include <assert.h>
 #include <unistd.h>
@@ -2560,27 +2561,38 @@ static void drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device 
 
 static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP && _glfw.wl.dataOffers[i].mime_for_drop) {
-            size_t sz = 0;
-            char *d = read_data_offer(_glfw.wl.dataOffers[i].id, _glfw.wl.dataOffers[i].mime_for_drop, &sz);
-            if (d) {
-                // We dont do finish as this requires version 3 for wl_data_device_manager
-                // which then requires more work with calling set_actions for drag and drop to function
-                // wl_data_offer_finish(_glfw.wl.dataOffers[i].id);
+        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
+            _GLFWWaylandDataOffer *offer = &_glfw.wl.dataOffers[i];
 
-                _GLFWwindow* window = _glfw.windowListHead;
-                while (window)
-                {
-                    if (window->wl.surface == _glfw.wl.dataOffers[i].surface) {
-                        _glfwInputDrop(window, _glfw.wl.dataOffers[i].mime_for_drop, d, sz);
-                        break;
+            _GLFWwindow* window = _glfw.windowListHead;
+            while (window)
+            {
+                if (window->wl.surface == offer->surface) {
+                    // Create drop data structure for chunked reading
+                    GLFWDropData drop_data = {0};
+                    drop_data.window = window;
+                    drop_data.mime_types = offer->mimes;
+                    drop_data.mime_count = (int)offer->mimes_count;
+                    drop_data.current_mime = NULL;
+                    drop_data.read_fd = -1;
+                    drop_data.bytes_read = 0;
+                    drop_data.platform_data = offer;  // Store the offer for later use
+                    drop_data.eof_reached = false;
+
+                    _glfwInputDrop(window, &drop_data);
+
+                    // Clean up any open file descriptor from reading
+                    if (drop_data.read_fd >= 0) {
+                        close(drop_data.read_fd);
                     }
-                    window = window->next;
+                    break;
                 }
-
-                free(d);
+                window = window->next;
             }
-            destroy_data_offer(&_glfw.wl.dataOffers[i]);
+
+            // We don't destroy the offer here as it will be cleaned up later
+            // when the next drag operation starts or when the window is destroyed
+            destroy_data_offer(offer);
             break;
         }
     }
@@ -3196,5 +3208,122 @@ _glfwPlatformUpdateDragState(_GLFWwindow* window) {
             return;
         }
     }
+}
+
+const char**
+_glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count) {
+    if (!drop || !count) return NULL;
+    *count = drop->mime_count;
+    return drop->mime_types;
+}
+
+ssize_t
+_glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout) {
+    if (!drop || !mime || !buffer || capacity == 0) return -EIO;
+
+    _GLFWWaylandDataOffer *offer = (_GLFWWaylandDataOffer*)drop->platform_data;
+    if (!offer || !offer->id) return -EIO;
+
+    // Check if the MIME type is available
+    bool mime_found = false;
+    for (int i = 0; i < drop->mime_count; i++) {
+        if (drop->mime_types[i] && strcmp(drop->mime_types[i], mime) == 0) {
+            mime_found = true;
+            break;
+        }
+    }
+    if (!mime_found) return -ENOENT;
+
+    // If switching MIME types, close the previous file descriptor
+    if (drop->current_mime && strcmp(drop->current_mime, mime) != 0) {
+        if (drop->read_fd >= 0) {
+            close(drop->read_fd);
+            drop->read_fd = -1;
+        }
+        drop->bytes_read = 0;
+        drop->eof_reached = false;
+    }
+
+    // If we've reached EOF for this MIME type, return 0
+    if (drop->eof_reached && drop->current_mime && strcmp(drop->current_mime, mime) == 0) {
+        return 0;
+    }
+
+    // Open a new pipe if we don't have one for this MIME type
+    if (drop->read_fd < 0 || drop->current_mime == NULL || strcmp(drop->current_mime, mime) != 0) {
+        int pipefd[2];
+        if (pipe2(pipefd, O_CLOEXEC | O_NONBLOCK) != 0) return -EIO;
+
+        wl_data_offer_receive(offer->id, mime, pipefd[1]);
+        close(pipefd[1]);
+
+        // Round trip to ensure the compositor processes the receive request
+        wl_display_roundtrip(_glfw.wl.display);
+
+        drop->read_fd = pipefd[0];
+        drop->current_mime = mime;
+        drop->bytes_read = 0;
+        drop->eof_reached = false;
+    }
+
+    // Wait for data with timeout using poll
+    monotonic_t start = monotonic();
+    while (true) {
+        struct pollfd pfd = { .fd = drop->read_fd, .events = POLLIN };
+
+        monotonic_t remaining = timeout - (monotonic() - start);
+        if (timeout > 0 && remaining <= 0) return -ETIME;
+
+        int poll_timeout_ms = (timeout <= 0) ? 0 : monotonic_t_to_ms(remaining);
+        if (poll_timeout_ms < 1 && timeout > 0) poll_timeout_ms = 1;
+
+        int ret = poll(&pfd, 1, poll_timeout_ms);
+        if (ret < 0) {
+            if (errno == EINTR) continue;
+            return -EIO;
+        }
+        if (ret == 0) {
+            if (timeout <= 0) {
+                // Non-blocking mode: no data available yet, try reading anyway
+                break;
+            }
+            return -ETIME;
+        }
+        break;  // Data available
+    }
+
+    // Read data from the pipe
+    ssize_t bytes_read = read(drop->read_fd, buffer, capacity);
+    if (bytes_read < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return -ETIME;  // No data available yet
+        }
+        return -EIO;
+    }
+
+    if (bytes_read == 0) {
+        // EOF reached
+        drop->eof_reached = true;
+        return 0;
+    }
+
+    drop->bytes_read += bytes_read;
+    return bytes_read;
+}
+
+void
+_glfwPlatformCancelDrop(GLFWDropData* drop) {
+    if (!drop) return;
+
+    // Close any open file descriptor
+    if (drop->read_fd >= 0) {
+        close(drop->read_fd);
+        drop->read_fd = -1;
+    }
+
+    // Mark as cancelled
+    drop->eof_reached = true;
+    drop->current_mime = NULL;
+    drop->bytes_read = 0;
 }
 
