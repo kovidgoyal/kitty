@@ -1891,10 +1891,12 @@ class Boss:
             return
         central, tab_bar = viewport_for_window(os_window_id)[:2]
         if central.left <= x < central.right and central.top <= y < central.bottom:
+            x -= central.left
+            y -= central.top
             if tab := tm.active_tab:
                 for window in tab:
                     g = window.geometry
-                    if g.left <= x - central.left < g.right and g.top <= y - central.top < g.bottom:
+                    if g.left <= x < g.right and g.top <= y < g.bottom:
                         window.on_drop(drop)
                         break
         elif tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < central.bottom:
