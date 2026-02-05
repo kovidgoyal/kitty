@@ -761,7 +761,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 // Content view class for the GLFW window {{{
 
-@interface GLFWContentView : NSView <NSTextInputClient, NSDraggingSource>
+@interface GLFWContentView : NSView <NSTextInputClient, NSDraggingSource, NSPasteboardItemDataProvider>
 {
     _GLFWwindow* window;
     NSTrackingArea* trackingArea;
@@ -1539,15 +1539,15 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
 {
     (void)session;
     (void)context;
-    // Return the operation based on the stored drag operation type
-    switch (window->ns.dragOperationType) {
-        case GLFW_DRAG_OPERATION_COPY:
-            return NSDragOperationCopy;
-        case GLFW_DRAG_OPERATION_MOVE:
-            return NSDragOperationMove;
-        case GLFW_DRAG_OPERATION_GENERIC:
-            return NSDragOperationGeneric;
-    }
+    // Return the operation based on the stored drag operations bitfield
+    NSDragOperation ops = 0;
+    if (window->ns.dragOperations & GLFW_DRAG_OPERATION_COPY)
+        ops |= NSDragOperationCopy;
+    if (window->ns.dragOperations & GLFW_DRAG_OPERATION_MOVE)
+        ops |= NSDragOperationMove;
+    if (window->ns.dragOperations & GLFW_DRAG_OPERATION_GENERIC)
+        ops |= NSDragOperationGeneric;
+    return ops ? ops : NSDragOperationCopy;
 }
 
 - (void)draggingSession:(NSDraggingSession *)session
@@ -1557,7 +1557,62 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     (void)session;
     (void)screenPoint;
     (void)operation;
-    // Drag session ended
+    // Notify the application that the drag source is closed
+    _glfwInputDragSourceRequest(window, NULL, NULL);
+    // Clean up source MIME types
+    for (int i = 0; i < window->ns.sourceMimeCount; i++) {
+        free(window->ns.sourceMimes[i]);
+    }
+    free(window->ns.sourceMimes);
+    window->ns.sourceMimes = NULL;
+    window->ns.sourceMimeCount = 0;
+}
+
+// NSPasteboardItemDataProvider protocol method - called when pasteboard needs data
+- (void)pasteboard:(NSPasteboard *)pasteboard item:(NSPasteboardItem *)item provideDataForType:(NSPasteboardType)type
+{
+    (void)pasteboard;
+    (void)item;
+
+    // Convert UTI to MIME type
+    NSString* mimeType = uti_to_mime(type);
+    if (!mimeType) return;
+
+    const char* mime_cstr = [mimeType UTF8String];
+
+    // Create a drag source data structure for this request
+    GLFWDragSourceData* source_data = calloc(1, sizeof(GLFWDragSourceData));
+    if (!source_data) return;
+
+    source_data->window = window;
+    source_data->mime_type = _glfw_strdup(mime_cstr);
+    source_data->write_fd = -1;  // Not used for Cocoa
+    source_data->finished = false;
+    source_data->error_code = 0;
+    source_data->platform_data = (__bridge_retained void*)[[NSMutableData alloc] init];
+
+    if (!source_data->mime_type) {
+        free(source_data);
+        return;
+    }
+
+    // Notify the application via callback
+    _glfwInputDragSourceRequest(window, mime_cstr, source_data);
+
+    // After the callback returns, the application should have called glfwSendDragData
+    // to provide the data. Get the accumulated data and set it on the pasteboard item.
+    if (source_data->finished && source_data->error_code == 0 && source_data->platform_data) {
+        NSData* data = (__bridge_transfer NSData*)source_data->platform_data;
+        source_data->platform_data = NULL;
+        [item setData:data forType:type];
+    }
+
+    // Clean up
+    free(source_data->mime_type);
+    if (source_data->platform_data) {
+        CFRelease(source_data->platform_data);
+    }
+    free(source_data);
 }
 
 - (BOOL)hasMarkedText
@@ -3771,27 +3826,52 @@ void _glfwCocoaPostEmptyEvent(void) {
     [NSApp postEvent:event atStart:YES];
 }
 
+void _glfwPlatformCancelDrag(_GLFWwindow* window) {
+    // Clean up source MIME types
+    for (int i = 0; i < window->ns.sourceMimeCount; i++) {
+        free(window->ns.sourceMimes[i]);
+    }
+    free(window->ns.sourceMimes);
+    window->ns.sourceMimes = NULL;
+    window->ns.sourceMimeCount = 0;
+    // Notify the application that the drag source is closed
+    _glfwInputDragSourceRequest(window, NULL, NULL);
+}
+
 int _glfwPlatformStartDrag(_GLFWwindow* window,
-                           const GLFWdragitem* items,
-                           int item_count,
+                           const char* const* mime_types,
+                           int mime_count,
                            const GLFWimage* thumbnail,
-                           GLFWDragOperationType operation) {
-    // Store the operation type for the dragging source callback
-    window->ns.dragOperationType = operation;
+                           int operations) {
+    // Cancel any existing drag operation
+    _glfwPlatformCancelDrag(window);
+
+    // Store the operations for the dragging source callback
+    window->ns.dragOperations = operations;
 
     @autoreleasepool {
-        // Create pasteboard items for each drag item
-        NSMutableArray<NSPasteboardItem*>* pasteboardItems = [[NSMutableArray alloc] init];
+        // Store MIME types for later lookup
+        window->ns.sourceMimes = calloc(mime_count, sizeof(char*));
+        window->ns.sourceMimeCount = mime_count;
+        if (!window->ns.sourceMimes) {
+            return ENOMEM;
+        }
+        for (int i = 0; i < mime_count; i++) {
+            window->ns.sourceMimes[i] = _glfw_strdup(mime_types[i]);
+            if (!window->ns.sourceMimes[i]) {
+                _glfwPlatformCancelDrag(window);
+                return ENOMEM;
+            }
+        }
 
-        for (int i = 0; i < item_count; i++) {
-            NSPasteboardItem* item = [[NSPasteboardItem alloc] init];
+        // Create pasteboard item with data provider (lazy loading)
+        NSPasteboardItem* item = [[NSPasteboardItem alloc] init];
 
-            // Convert MIME type to UTI using the existing helper function
-            NSString* utiString = mime_to_uti(items[i].mime_type);
-            NSData* data = [NSData dataWithBytes:items[i].data length:items[i].data_size];
-
-            [item setData:data forType:utiString];
-            [pasteboardItems addObject:item];
+        // Register all MIME types as promised types
+        for (int i = 0; i < mime_count; i++) {
+            NSString* utiString = mime_to_uti(mime_types[i]);
+            // Set data provider (self is the content view) for lazy loading
+            [item setDataProvider:window->ns.view forTypes:@[utiString]];
         }
 
         // Create the dragging item
@@ -3820,50 +3900,73 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
                 [image addRepresentation:imageRep];
 
                 dragItem = [[NSDraggingItem alloc]
-                    initWithPasteboardWriter:pasteboardItems.firstObject];
+                    initWithPasteboardWriter:item];
                 [dragItem setDraggingFrame:NSMakeRect(0, 0, thumbnail->width, thumbnail->height)
                                   contents:image];
             }
         }
 
-        if (!dragItem && pasteboardItems.count > 0) {
+        if (!dragItem) {
             dragItem = [[NSDraggingItem alloc]
-                initWithPasteboardWriter:pasteboardItems.firstObject];
+                initWithPasteboardWriter:item];
             [dragItem setDraggingFrame:NSMakeRect(0, 0, 32, 32) contents:nil];
         }
 
-        if (dragItem) {
-            // Start the drag session - try current event first, then create a synthetic one
-            NSEvent* event = [NSApp currentEvent];
-            if (!event || ([event type] != NSEventTypeLeftMouseDown &&
-                           [event type] != NSEventTypeLeftMouseDragged)) {
-                // Create a synthetic left mouse down event using stored cursor position
-                // Convert window coordinates to screen coordinates
-                NSRect contentRect = [window->ns.view frame];
-                NSPoint windowPos = NSMakePoint(window->virtualCursorPosX,
-                                                contentRect.size.height - window->virtualCursorPosY);
+        // Start the drag session - try current event first, then create a synthetic one
+        NSEvent* event = [NSApp currentEvent];
+        if (!event || ([event type] != NSEventTypeLeftMouseDown &&
+                       [event type] != NSEventTypeLeftMouseDragged)) {
+            // Create a synthetic left mouse down event using stored cursor position
+            // Convert window coordinates to screen coordinates
+            NSRect contentRect = [window->ns.view frame];
+            NSPoint windowPos = NSMakePoint(window->virtualCursorPosX,
+                                            contentRect.size.height - window->virtualCursorPosY);
 
-                event = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
-                                           location:windowPos
-                                      modifierFlags:0
-                                          timestamp:[[NSProcessInfo processInfo] systemUptime]
-                                       windowNumber:[window->ns.object windowNumber]
-                                            context:nil
-                                        eventNumber:0
-                                         clickCount:1
-                                           pressure:1.0];
-            }
-
-            if (event) {
-                [window->ns.view beginDraggingSessionWithItems:@[dragItem]
-                                                        event:event
-                                                       source:window->ns.view];
-                return true;
-            }
+            event = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
+                                       location:windowPos
+                                  modifierFlags:0
+                                      timestamp:[[NSProcessInfo processInfo] systemUptime]
+                                   windowNumber:[window->ns.object windowNumber]
+                                        context:nil
+                                    eventNumber:0
+                                     clickCount:1
+                                       pressure:1.0];
         }
 
-        return false;
+        if (event) {
+            [window->ns.view beginDraggingSessionWithItems:@[dragItem]
+                                                    event:event
+                                                   source:window->ns.view];
+            return 0;
+        }
+
+        return EIO;
     }
+}
+
+int _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size) {
+    if (!source_data || source_data->finished) return EINVAL;
+
+    // End of data: NULL data pointer and size zero
+    if (!data && size == 0) {
+        source_data->finished = true;
+        return 0;
+    }
+
+    // Error from application: NULL data pointer and size is error code
+    if (!data && size > 0) {
+        source_data->finished = true;
+        source_data->error_code = (int)size;
+        return 0;
+    }
+
+    // Append data to the NSMutableData
+    if (source_data->platform_data) {
+        NSMutableData* mutableData = (__bridge NSMutableData*)source_data->platform_data;
+        [mutableData appendBytes:data length:size];
+    }
+
+    return 0;
 }
 
 void _glfwPlatformUpdateDragState(_GLFWwindow* window) {
