@@ -213,6 +213,7 @@ IGNORED_DEPENDENCY_CVES = [
     'CVE-2025-13836', # DoS in http client reading from malicious server
     'CVE-2025-12084', # DoS in xml.dom.minidom unused in kitty
     'CVE-2025-13837', # DoS in plistlib reading plist. We only use plistlib for writing
+    'CVE-2025-6075',  # Quadratic complexity in os.path.expandvars()
     # python stdlib all these are erroneously marked as fixed in python 3.15
     # when it hasnt even been released. Sigh.
     'CVE-2026-1299',
