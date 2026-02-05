@@ -3229,12 +3229,12 @@ _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, siz
     }
 
     // Write data chunk
-    if (write_all(source_data->write_fd, (const char*)data, size) != (ssize_t)size) {
+    if (!write_all(source_data->write_fd, (const char*)data, size)) {
         source_data->finished = true;
-        source_data->error_code = errno;
+        source_data->error_code = EIO;
         close(source_data->write_fd);
         source_data->write_fd = -1;
-        return errno;
+        return EIO;
     }
 
     return 0;

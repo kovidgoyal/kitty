@@ -3862,13 +3862,18 @@ int _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data,
     // Store the data in platform_data for the SelectionRequest handler
     // This is a simplified implementation - a full implementation would buffer chunks
     if (source_data->write_fd >= 0) {
-        ssize_t written = write(source_data->write_fd, data, size);
-        if (written < 0 || (size_t)written != size) {
-            source_data->finished = true;
-            source_data->error_code = errno;
-            close(source_data->write_fd);
-            source_data->write_fd = -1;
-            return errno;
+        size_t pos = 0;
+        while (pos < size) {
+            ssize_t written = write(source_data->write_fd, (const char*)data + pos, size - pos);
+            if (written < 0) {
+                if (errno == EINTR || errno == EAGAIN) continue;
+                source_data->finished = true;
+                source_data->error_code = errno;
+                close(source_data->write_fd);
+                source_data->write_fd = -1;
+                return errno;
+            }
+            pos += (size_t)written;
         }
     }
 
