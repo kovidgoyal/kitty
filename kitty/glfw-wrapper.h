@@ -1572,25 +1572,40 @@ typedef enum {
     GLFW_DRAG_OPERATION_GENERIC = 4
 } GLFWDragOperationType;
 
-/*! @brief Drag data item.
+/*! @brief Opaque drag source data handle.
  *
- *  This structure describes a single item of drag data with its MIME type.
- *
- *  @sa @ref drag_start
- *  @sa @ref glfwStartDrag
+ *  This is an opaque handle to a heap-allocated object that represents
+ *  data being requested from a drag source. The lifetime is managed by
+ *  the GLFW backend - it is freed on end of data, error, drag source
+ *  cancellation, or at exit.
  *
  *  @since Added in version 4.0.
  *
  *  @ingroup input
  */
-typedef struct GLFWdragitem {
-    /*! The MIME type of this data item (e.g., "text/plain", "image/png"). */
-    const char* mime_type;
-    /*! Pointer to the binary data. */
-    const unsigned char* data;
-    /*! Size of the data in bytes. */
-    size_t data_size;
-} GLFWdragitem;
+typedef struct GLFWDragSourceData GLFWDragSourceData;
+
+/*! @brief The function pointer type for drag source data request callbacks.
+ *
+ *  This is the function pointer type for callbacks invoked when the OS
+ *  requests data for a specific MIME type from the active drag source.
+ *  The callback is called on the GUI thread.
+ *
+ *  @param[in] window The window that initiated the drag.
+ *  @param[in] mime_type The MIME type being requested, or NULL if the OS
+ *  has closed the drag source.
+ *  @param[in] source_data Opaque pointer to a heap-allocated object. Use this
+ *  pointer when calling @ref glfwSendDragData to send data chunks.
+ *
+ *  @sa @ref glfwStartDrag
+ *  @sa @ref glfwSendDragData
+ *  @sa @ref glfwSetDragSourceCallback
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
+typedef void (* GLFWdragsourcefun)(GLFWwindow* window, const char* mime_type, GLFWDragSourceData* source_data);
 
 /*! @brief The function pointer type for drag event callbacks.
  *
@@ -2315,9 +2330,17 @@ typedef GLFWdragfun (*glfwSetDragCallback_func)(GLFWwindow*, GLFWdragfun);
 GFW_EXTERN glfwSetDragCallback_func glfwSetDragCallback_impl;
 #define glfwSetDragCallback glfwSetDragCallback_impl
 
-typedef int (*glfwStartDrag_func)(GLFWwindow*, const GLFWdragitem*, int, const GLFWimage*, GLFWDragOperationType);
+typedef GLFWdragsourcefun (*glfwSetDragSourceCallback_func)(GLFWwindow*, GLFWdragsourcefun);
+GFW_EXTERN glfwSetDragSourceCallback_func glfwSetDragSourceCallback_impl;
+#define glfwSetDragSourceCallback glfwSetDragSourceCallback_impl
+
+typedef int (*glfwStartDrag_func)(GLFWwindow*, const char* const*, int, const GLFWimage*, int);
 GFW_EXTERN glfwStartDrag_func glfwStartDrag_impl;
 #define glfwStartDrag glfwStartDrag_impl
+
+typedef ssize_t (*glfwSendDragData_func)(GLFWDragSourceData*, const void*, size_t);
+GFW_EXTERN glfwSendDragData_func glfwSendDragData_impl;
+#define glfwSendDragData glfwSendDragData_impl
 
 typedef void (*glfwUpdateDragState_func)(GLFWwindow*);
 GFW_EXTERN glfwUpdateDragState_func glfwUpdateDragState_impl;

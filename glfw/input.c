@@ -419,6 +419,14 @@ int _glfwInputDragEvent(_GLFWwindow* window, int event, double xpos, double ypos
     return 0;
 }
 
+// Notifies shared code that the OS wants data for a MIME type from the drag source
+//
+void _glfwInputDragSourceRequest(_GLFWwindow* window, const char* mime_type, GLFWDragSourceData* source_data)
+{
+    if (window->callbacks.dragSource)
+        window->callbacks.dragSource((GLFWwindow*) window, mime_type, source_data);
+}
+
 // Notifies shared code of a joystick connection or disconnection
 //
 void _glfwInputJoystick(_GLFWjoystick* js, int event)
@@ -1130,15 +1138,37 @@ GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* handle, GLFWdragfun cbfun)
     return cbfun;
 }
 
-GLFWAPI int glfwStartDrag(GLFWwindow* handle, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation)
+GLFWAPI GLFWdragsourcefun glfwSetDragSourceCallback(GLFWwindow* handle, GLFWdragsourcefun cbfun)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     assert(window != NULL);
-    assert(items != NULL);
-    assert(item_count > 0);
 
-    _GLFW_REQUIRE_INIT_OR_RETURN(false);
-    return _glfwPlatformStartDrag(window, items, item_count, thumbnail, operation);
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(window->callbacks.dragSource, cbfun);
+    return cbfun;
+}
+
+GLFWAPI int glfwStartDrag(GLFWwindow* handle, const char* const* mime_types, int mime_count, const GLFWimage* thumbnail, int operations)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(EINVAL);
+
+    // If no mime types, cancel any existing drag
+    if (!mime_types || mime_count <= 0) {
+        _glfwPlatformCancelDrag(window);
+        return 0;
+    }
+
+    return _glfwPlatformStartDrag(window, mime_types, mime_count, thumbnail, operations);
+}
+
+GLFWAPI ssize_t glfwSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size)
+{
+    if (!source_data) return -EINVAL;
+    _GLFW_REQUIRE_INIT_OR_RETURN(-EINVAL);
+    return _glfwPlatformSendDragData(source_data, data, size);
 }
 
 GLFWAPI void glfwUpdateDragState(GLFWwindow* handle)

@@ -362,8 +362,14 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetDragCallback_impl) = dlsym(handle, "glfwSetDragCallback");
     if (glfwSetDragCallback_impl == NULL) fail("Failed to load glfw function glfwSetDragCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetDragSourceCallback_impl) = dlsym(handle, "glfwSetDragSourceCallback");
+    if (glfwSetDragSourceCallback_impl == NULL) fail("Failed to load glfw function glfwSetDragSourceCallback with error: %s", dlerror());
+
     *(void **) (&glfwStartDrag_impl) = dlsym(handle, "glfwStartDrag");
     if (glfwStartDrag_impl == NULL) fail("Failed to load glfw function glfwStartDrag with error: %s", dlerror());
+
+    *(void **) (&glfwSendDragData_impl) = dlsym(handle, "glfwSendDragData");
+    if (glfwSendDragData_impl == NULL) fail("Failed to load glfw function glfwSendDragData with error: %s", dlerror());
 
     *(void **) (&glfwUpdateDragState_impl) = dlsym(handle, "glfwUpdateDragState");
     if (glfwUpdateDragState_impl == NULL) fail("Failed to load glfw function glfwUpdateDragState with error: %s", dlerror());

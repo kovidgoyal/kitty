@@ -106,6 +106,17 @@ struct GLFWDropData {
     int x11_version;               // Xdnd protocol version (X11)
 };
 
+// Drag source data structure for chunked writing of drag data
+// Lifetime is managed by the backend - freed on end of data, error, drag cancellation, or exit
+struct GLFWDragSourceData {
+    GLFWid window_id;           // ID of window that initiated the drag (use _glfwWindowForId to get pointer)
+    char* mime_type;            // MIME type being sent (owned, copied from request)
+    int write_fd;               // File descriptor for writing data (Wayland/X11), -1 if not used
+    bool finished;              // Whether data sending is complete (EOF or error)
+    int error_code;             // POSIX error code if an error occurred, 0 otherwise
+    void* platform_data;        // Platform-specific data
+};
+
 typedef void (* _GLFWmakecontextcurrentfun)(_GLFWwindow*);
 typedef void (* _GLFWswapbuffersfun)(_GLFWwindow*);
 typedef void (* _GLFWswapintervalfun)(int);
@@ -502,6 +513,7 @@ struct _GLFWwindow
         GLFWdropfun             drop;
         GLFWliveresizefun       liveResize;
         GLFWdragfun             drag;
+        GLFWdragsourcefun       dragSource;
     } callbacks;
 
     // This is defined in the window API's platform.h
@@ -788,7 +800,9 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity);
 void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev);
 void _glfwPlatformChangeCursorTheme(void);
 
-int _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation);
+int _glfwPlatformStartDrag(_GLFWwindow* window, const char* const* mime_types, int mime_count, const GLFWimage* thumbnail, int operations);
+ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size);
+void _glfwPlatformCancelDrag(_GLFWwindow* window);
 void _glfwPlatformUpdateDragState(_GLFWwindow* window);
 
 void _glfwPlatformPollEvents(void);
@@ -845,6 +859,7 @@ void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos);
 void _glfwInputCursorEnter(_GLFWwindow* window, bool entered);
 void _glfwInputDrop(_GLFWwindow* window, GLFWDropData* drop);
 int _glfwInputDragEvent(_GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int* mime_count);
+void _glfwInputDragSourceRequest(_GLFWwindow* window, const char* mime_type, GLFWDragSourceData* source_data);
 
 // Platform functions for drop data reading
 const char** _glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count);

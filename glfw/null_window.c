@@ -531,13 +531,25 @@ void _glfwPlatformSetCursor(_GLFWwindow* window UNUSED, _GLFWcursor* cursor UNUS
 {
 }
 
-int _glfwPlatformStartDrag(_GLFWwindow* window UNUSED,
-                           const GLFWdragitem* items UNUSED,
-                           int item_count UNUSED,
-                           const GLFWimage* thumbnail UNUSED,
-                           GLFWDragOperationType operation UNUSED)
+void _glfwPlatformCancelDrag(_GLFWwindow* window UNUSED)
 {
-    return false;
+    // No-op for null platform
+}
+
+int _glfwPlatformStartDrag(_GLFWwindow* window UNUSED,
+                           const char* const* mime_types UNUSED,
+                           int mime_count UNUSED,
+                           const GLFWimage* thumbnail UNUSED,
+                           int operations UNUSED)
+{
+    return ENOTSUP;
+}
+
+ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data UNUSED,
+                              const void* data UNUSED,
+                              size_t size UNUSED)
+{
+    return -ENOTSUP;
 }
 
 void _glfwPlatformUpdateDragState(_GLFWwindow* window UNUSED)

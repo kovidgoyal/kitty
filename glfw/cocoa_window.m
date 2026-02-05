@@ -759,6 +759,134 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 }
 @end // }}}
 
+// File Promise Provider Delegate for async drag data {{{
+
+// Structure to hold async drag state
+typedef struct {
+    NSURL* destinationURL;              // URL to write to
+    void (^completionHandler)(NSError*); // Completion block to call
+    NSFileHandle* fileHandle;           // File handle for writing
+    bool finished;                       // Whether writing is complete
+    int errorCode;                       // Error code if any
+} GLFWFilePromiseState;
+
+@interface GLFWFilePromiseProviderDelegate : NSObject <NSFilePromiseProviderDelegate>
+{
+    GLFWid windowId;
+    char* mimeType;  // MIME type for this provider
+}
+- (instancetype)initWithWindow:(_GLFWwindow*)initWindow mimeType:(const char*)mime;
+@end
+
+@implementation GLFWFilePromiseProviderDelegate
+
+- (instancetype)initWithWindow:(_GLFWwindow*)initWindow mimeType:(const char*)mime {
+    self = [super init];
+    if (self) {
+        windowId = initWindow ? initWindow->id : 0;
+        mimeType = _glfw_strdup(mime);
+    }
+    return self;
+}
+
+- (void)dealloc {
+    free(mimeType);
+    [super dealloc];
+}
+
+- (NSString*)filePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider fileNameForType:(NSString*)fileType {
+    (void)filePromiseProvider;
+    (void)fileType;
+    // Generate a unique filename based on the MIME type
+    NSString* extension = @"data";
+    if (mimeType) {
+        NSString* mt = @(mimeType);
+        if ([mt hasPrefix:@"text/"]) extension = @"txt";
+        else if ([mt isEqualToString:@"image/png"]) extension = @"png";
+        else if ([mt isEqualToString:@"image/jpeg"]) extension = @"jpg";
+        else if ([mt isEqualToString:@"application/json"]) extension = @"json";
+    }
+    return [NSString stringWithFormat:@"glfw-drag-%@.%@", [[NSUUID UUID] UUIDString], extension];
+}
+
+- (void)filePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider
+          writePromiseToURL:(NSURL*)url
+          completionHandler:(void (^)(NSError*))completionHandler {
+    (void)filePromiseProvider;
+
+    // Get the window from the ID
+    _GLFWwindow* window = _glfwWindowForId(windowId);
+    if (!window) {
+        completionHandler([NSError errorWithDomain:NSPOSIXErrorDomain code:EINVAL userInfo:nil]);
+        return;
+    }
+
+    // Create the file
+    NSError* error = nil;
+    if (![[NSFileManager defaultManager] createFileAtPath:url.path contents:nil attributes:nil]) {
+        error = [NSError errorWithDomain:NSPOSIXErrorDomain code:EIO userInfo:nil];
+        completionHandler(error);
+        return;
+    }
+
+    NSFileHandle* fileHandle = [NSFileHandle fileHandleForWritingToURL:url error:&error];
+    if (!fileHandle) {
+        completionHandler(error);
+        return;
+    }
+
+    // Create the drag source data with file promise state
+    GLFWDragSourceData* source_data = calloc(1, sizeof(GLFWDragSourceData));
+    if (!source_data) {
+        [fileHandle closeFile];
+        completionHandler([NSError errorWithDomain:NSPOSIXErrorDomain code:ENOMEM userInfo:nil]);
+        return;
+    }
+
+    // Create the file promise state
+    GLFWFilePromiseState* state = calloc(1, sizeof(GLFWFilePromiseState));
+    if (!state) {
+        free(source_data);
+        [fileHandle closeFile];
+        completionHandler([NSError errorWithDomain:NSPOSIXErrorDomain code:ENOMEM userInfo:nil]);
+        return;
+    }
+
+    state->destinationURL = [url retain];
+    state->completionHandler = [completionHandler copy];
+    state->fileHandle = [fileHandle retain];
+    state->finished = false;
+    state->errorCode = 0;
+
+    source_data->window_id = windowId;
+    source_data->mime_type = _glfw_strdup(mimeType);
+    source_data->write_fd = -1;
+    source_data->finished = false;
+    source_data->error_code = 0;
+    source_data->platform_data = state;
+
+    if (!source_data->mime_type) {
+        [state->fileHandle closeFile];
+        [state->fileHandle release];
+        [state->destinationURL release];
+        Block_release(state->completionHandler);
+        free(state);
+        free(source_data);
+        completionHandler([NSError errorWithDomain:NSPOSIXErrorDomain code:ENOMEM userInfo:nil]);
+        return;
+    }
+
+    // Notify the application via callback - this will trigger glfwSendDragData calls
+    _glfwInputDragSourceRequest(window, mimeType, source_data);
+
+    // Note: The completion handler will be called from glfwSendDragData when finished
+    // If the application didn't finish (sync callback didn't complete), we need to handle it
+    // The platform_data still holds the state for async completion
+}
+
+@end
+// }}}
+
 // Content view class for the GLFW window {{{
 
 @interface GLFWContentView : NSView <NSTextInputClient, NSDraggingSource>
@@ -1539,15 +1667,15 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
 {
     (void)session;
     (void)context;
-    // Return the operation based on the stored drag operation type
-    switch (window->ns.dragOperationType) {
-        case GLFW_DRAG_OPERATION_COPY:
-            return NSDragOperationCopy;
-        case GLFW_DRAG_OPERATION_MOVE:
-            return NSDragOperationMove;
-        case GLFW_DRAG_OPERATION_GENERIC:
-            return NSDragOperationGeneric;
-    }
+    // Return the operation based on the stored drag operations bitfield
+    NSDragOperation ops = 0;
+    if (window->ns.dragOperations & GLFW_DRAG_OPERATION_COPY)
+        ops |= NSDragOperationCopy;
+    if (window->ns.dragOperations & GLFW_DRAG_OPERATION_MOVE)
+        ops |= NSDragOperationMove;
+    if (window->ns.dragOperations & GLFW_DRAG_OPERATION_GENERIC)
+        ops |= NSDragOperationGeneric;
+    return ops ? ops : NSDragOperationCopy;
 }
 
 - (void)draggingSession:(NSDraggingSession *)session
@@ -1557,7 +1685,15 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     (void)session;
     (void)screenPoint;
     (void)operation;
-    // Drag session ended
+    // Notify the application that the drag source is closed
+    _glfwInputDragSourceRequest(window, NULL, NULL);
+    // Clean up source MIME types
+    for (int i = 0; i < window->ns.sourceMimeCount; i++) {
+        free(window->ns.sourceMimes[i]);
+    }
+    free(window->ns.sourceMimes);
+    window->ns.sourceMimes = NULL;
+    window->ns.sourceMimeCount = 0;
 }
 
 - (BOOL)hasMarkedText
@@ -3771,99 +3907,229 @@ void _glfwCocoaPostEmptyEvent(void) {
     [NSApp postEvent:event atStart:YES];
 }
 
+void _glfwPlatformCancelDrag(_GLFWwindow* window) {
+    // Clean up source MIME types
+    for (int i = 0; i < window->ns.sourceMimeCount; i++) {
+        free(window->ns.sourceMimes[i]);
+    }
+    free(window->ns.sourceMimes);
+    window->ns.sourceMimes = NULL;
+    window->ns.sourceMimeCount = 0;
+    // Notify the application that the drag source is closed
+    _glfwInputDragSourceRequest(window, NULL, NULL);
+}
+
 int _glfwPlatformStartDrag(_GLFWwindow* window,
-                           const GLFWdragitem* items,
-                           int item_count,
+                           const char* const* mime_types,
+                           int mime_count,
                            const GLFWimage* thumbnail,
-                           GLFWDragOperationType operation) {
-    // Store the operation type for the dragging source callback
-    window->ns.dragOperationType = operation;
+                           int operations) {
+    // Cancel any existing drag operation
+    _glfwPlatformCancelDrag(window);
+
+    // Store the operations for the dragging source callback
+    window->ns.dragOperations = operations;
 
     @autoreleasepool {
-        // Create pasteboard items for each drag item
-        NSMutableArray<NSPasteboardItem*>* pasteboardItems = [[NSMutableArray alloc] init];
-
-        for (int i = 0; i < item_count; i++) {
-            NSPasteboardItem* item = [[NSPasteboardItem alloc] init];
-
-            // Convert MIME type to UTI using the existing helper function
-            NSString* utiString = mime_to_uti(items[i].mime_type);
-            NSData* data = [NSData dataWithBytes:items[i].data length:items[i].data_size];
-
-            [item setData:data forType:utiString];
-            [pasteboardItems addObject:item];
+        // Store MIME types for later lookup
+        window->ns.sourceMimes = calloc(mime_count, sizeof(char*));
+        window->ns.sourceMimeCount = mime_count;
+        if (!window->ns.sourceMimes) {
+            return ENOMEM;
         }
-
-        // Create the dragging item
-        NSDraggingItem* dragItem = nil;
-
-        if (thumbnail && thumbnail->pixels) {
-            // Create NSImage from thumbnail
-            NSBitmapImageRep* imageRep = [[NSBitmapImageRep alloc]
-                initWithBitmapDataPlanes:NULL
-                              pixelsWide:thumbnail->width
-                              pixelsHigh:thumbnail->height
-                           bitsPerSample:8
-                         samplesPerPixel:4
-                                hasAlpha:YES
-                                isPlanar:NO
-                          colorSpaceName:NSDeviceRGBColorSpace
-                             bytesPerRow:thumbnail->width * 4
-                            bitsPerPixel:32];
-
-            if (imageRep) {
-                memcpy([imageRep bitmapData], thumbnail->pixels,
-                       thumbnail->width * thumbnail->height * 4);
-
-                NSImage* image = [[NSImage alloc] initWithSize:
-                    NSMakeSize(thumbnail->width, thumbnail->height)];
-                [image addRepresentation:imageRep];
-
-                dragItem = [[NSDraggingItem alloc]
-                    initWithPasteboardWriter:pasteboardItems.firstObject];
-                [dragItem setDraggingFrame:NSMakeRect(0, 0, thumbnail->width, thumbnail->height)
-                                  contents:image];
+        for (int i = 0; i < mime_count; i++) {
+            window->ns.sourceMimes[i] = _glfw_strdup(mime_types[i]);
+            if (!window->ns.sourceMimes[i]) {
+                _glfwPlatformCancelDrag(window);
+                return ENOMEM;
             }
         }
 
-        if (!dragItem && pasteboardItems.count > 0) {
-            dragItem = [[NSDraggingItem alloc]
-                initWithPasteboardWriter:pasteboardItems.firstObject];
-            [dragItem setDraggingFrame:NSMakeRect(0, 0, 32, 32) contents:nil];
-        }
+        // Create dragging items array - one NSFilePromiseProvider per MIME type
+        NSMutableArray<NSDraggingItem*>* dragItems = [[NSMutableArray alloc] init];
 
-        if (dragItem) {
-            // Start the drag session - try current event first, then create a synthetic one
-            NSEvent* event = [NSApp currentEvent];
-            if (!event || ([event type] != NSEventTypeLeftMouseDown &&
-                           [event type] != NSEventTypeLeftMouseDragged)) {
-                // Create a synthetic left mouse down event using stored cursor position
-                // Convert window coordinates to screen coordinates
-                NSRect contentRect = [window->ns.view frame];
-                NSPoint windowPos = NSMakePoint(window->virtualCursorPosX,
-                                                contentRect.size.height - window->virtualCursorPosY);
+        for (int i = 0; i < mime_count; i++) {
+            NSString* utiString = mime_to_uti(mime_types[i]);
 
-                event = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
-                                           location:windowPos
-                                      modifierFlags:0
-                                          timestamp:[[NSProcessInfo processInfo] systemUptime]
-                                       windowNumber:[window->ns.object windowNumber]
-                                            context:nil
-                                        eventNumber:0
-                                         clickCount:1
-                                           pressure:1.0];
+            // Create file promise provider with our delegate
+            GLFWFilePromiseProviderDelegate* delegate = [[GLFWFilePromiseProviderDelegate alloc]
+                initWithWindow:window mimeType:mime_types[i]];
+            NSFilePromiseProvider* provider = [[NSFilePromiseProvider alloc]
+                initWithFileType:utiString delegate:delegate];
+
+            // Store the delegate in the provider's user info so it's retained
+            provider.userInfo = delegate;
+
+            // Create the dragging item
+            NSDraggingItem* dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter:provider];
+
+            if (i == 0 && thumbnail && thumbnail->pixels) {
+                // Create NSImage from thumbnail for the first item
+                NSBitmapImageRep* imageRep = [[NSBitmapImageRep alloc]
+                    initWithBitmapDataPlanes:NULL
+                                  pixelsWide:thumbnail->width
+                                  pixelsHigh:thumbnail->height
+                               bitsPerSample:8
+                             samplesPerPixel:4
+                                    hasAlpha:YES
+                                    isPlanar:NO
+                              colorSpaceName:NSDeviceRGBColorSpace
+                                 bytesPerRow:thumbnail->width * 4
+                                bitsPerPixel:32];
+
+                if (imageRep) {
+                    memcpy([imageRep bitmapData], thumbnail->pixels,
+                           thumbnail->width * thumbnail->height * 4);
+
+                    NSImage* image = [[NSImage alloc] initWithSize:
+                        NSMakeSize(thumbnail->width, thumbnail->height)];
+                    [image addRepresentation:imageRep];
+
+                    [dragItem setDraggingFrame:NSMakeRect(0, 0, thumbnail->width, thumbnail->height)
+                                      contents:image];
+                }
+            } else {
+                [dragItem setDraggingFrame:NSMakeRect(0, 0, 32, 32) contents:nil];
             }
 
-            if (event) {
-                [window->ns.view beginDraggingSessionWithItems:@[dragItem]
-                                                        event:event
-                                                       source:window->ns.view];
-                return true;
-            }
+            [dragItems addObject:dragItem];
         }
 
-        return false;
+        if (dragItems.count == 0) {
+            _glfwPlatformCancelDrag(window);
+            return EINVAL;
+        }
+
+        // Start the drag session - try current event first, then create a synthetic one
+        NSEvent* event = [NSApp currentEvent];
+        if (!event || ([event type] != NSEventTypeLeftMouseDown &&
+                       [event type] != NSEventTypeLeftMouseDragged)) {
+            // Create a synthetic left mouse down event using stored cursor position
+            // Convert window coordinates to screen coordinates
+            NSRect contentRect = [window->ns.view frame];
+            NSPoint windowPos = NSMakePoint(window->virtualCursorPosX,
+                                            contentRect.size.height - window->virtualCursorPosY);
+
+            event = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
+                                       location:windowPos
+                                  modifierFlags:0
+                                      timestamp:[[NSProcessInfo processInfo] systemUptime]
+                                   windowNumber:[window->ns.object windowNumber]
+                                        context:nil
+                                    eventNumber:0
+                                     clickCount:1
+                                       pressure:1.0];
+        }
+
+        if (event) {
+            [window->ns.view beginDraggingSessionWithItems:dragItems
+                                                    event:event
+                                                   source:window->ns.view];
+            return 0;
+        }
+
+        return EIO;
     }
+}
+
+ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size) {
+    if (!source_data || source_data->finished) return -EINVAL;
+    if (!source_data->platform_data) return -EINVAL;
+
+    GLFWFilePromiseState* state = (GLFWFilePromiseState*)source_data->platform_data;
+
+    // End of data: NULL data pointer and size zero
+    if (!data && size == 0) {
+        source_data->finished = true;
+
+        // Close the file handle
+        @try {
+            [state->fileHandle closeFile];
+        } @catch (NSException* e) {
+            (void)e;
+        }
+
+        // Call the completion handler with success
+        if (state->completionHandler) {
+            state->completionHandler(nil);
+            Block_release(state->completionHandler);
+            state->completionHandler = nil;
+        }
+
+        // Clean up
+        [state->fileHandle release];
+        state->fileHandle = nil;
+        [state->destinationURL release];
+        state->destinationURL = nil;
+
+        return 0;
+    }
+
+    // Error from application: NULL data pointer and size is error code
+    if (!data && size > 0) {
+        source_data->finished = true;
+        source_data->error_code = (int)size;
+        state->errorCode = (int)size;
+
+        // Close the file handle
+        @try {
+            [state->fileHandle closeFile];
+        } @catch (NSException* e) {
+            (void)e;
+        }
+
+        // Call the completion handler with error
+        if (state->completionHandler) {
+            NSError* error = [NSError errorWithDomain:NSPOSIXErrorDomain code:size userInfo:nil];
+            state->completionHandler(error);
+            Block_release(state->completionHandler);
+            state->completionHandler = nil;
+        }
+
+        // Clean up
+        [state->fileHandle release];
+        state->fileHandle = nil;
+        [state->destinationURL release];
+        state->destinationURL = nil;
+
+        return 0;
+    }
+
+    // Write data to the file - Cocoa file operations are typically synchronous
+    // but we return the number of bytes written to match the non-blocking interface
+    if (state->fileHandle) {
+        @try {
+            NSData* nsData = [NSData dataWithBytes:data length:size];
+            if (@available(macOS 10.15, *)) {
+                NSError* error = nil;
+                if (![state->fileHandle writeData:nsData error:&error]) {
+                    int errCode = error ? (int)error.code : EIO;
+                    if (errCode == 0) errCode = EIO;  // Ensure we have a valid error code
+                    source_data->error_code = errCode;
+                    _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Cocoa: Failed to write drag data: %s",
+                        error ? [[error localizedDescription] UTF8String] : "unknown error");
+                    return -errCode;
+                }
+            } else {
+                // Pre-10.15 writeData: writes all bytes synchronously or throws an exception.
+                // NSFileHandle.writeData: is documented to write all data atomically,
+                // so returning size is correct. Any failure throws NSFileHandleOperationException.
+                [state->fileHandle writeData:nsData];
+            }
+            // NSFileHandle.writeData writes all data atomically, so size == bytes written
+            return (ssize_t)size;
+        } @catch (NSException* e) {
+            source_data->error_code = EIO;
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                "Cocoa: Exception writing drag data: %s",
+                e ? [[e reason] UTF8String] : "unknown exception");
+            return -EIO;
+        }
+    }
+
+    // No file handle, consider all data accepted
+    return (ssize_t)size;
 }
 
 void _glfwPlatformUpdateDragState(_GLFWwindow* window) {
