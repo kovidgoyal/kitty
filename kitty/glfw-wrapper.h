@@ -1569,7 +1569,7 @@ typedef enum {
     /*! Copy the dragged data to the destination. */
     GLFW_DRAG_OPERATION_COPY = 2,
     /*! Generic drag operation (platform decides semantics). */
-    GLFW_DRAG_OPERATION_GENERIC = 3
+    GLFW_DRAG_OPERATION_GENERIC = 4
 } GLFWDragOperationType;
 
 /*! @brief Drag data item.
