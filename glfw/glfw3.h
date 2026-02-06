@@ -5153,7 +5153,8 @@ GLFWAPI int glfwStartDrag(GLFWwindow* window, const char* const* mime_types, int
  *
  *  This function is called by the application on the GUI thread to send chunks
  *  of data for a drag operation. Call this in response to the drag source
- *  callback.
+ *  callback. This function is non-blocking and may return before all data
+ *  is written to the destination.
  *
  *  End of data is indicated by calling with NULL data pointer and size zero.
  *  If an error occurs while reading data, call with NULL data pointer and
@@ -5164,7 +5165,10 @@ GLFWAPI int glfwStartDrag(GLFWwindow* window, const char* const* mime_types, int
  *  @param[in] size Size of the data chunk in bytes, or 0 for end of data,
  *  or a POSIX error code when data is NULL.
  *
- *  @return Zero on success, or a POSIX error code on failure.
+ *  @return The number of bytes sent (which may be less than size if the
+ *  operation would block), or a negative POSIX error code on failure.
+ *  For end-of-data or error signaling (NULL data), returns 0 on success
+ *  or a negative error code.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_PLATFORM_ERROR.
@@ -5178,7 +5182,7 @@ GLFWAPI int glfwStartDrag(GLFWwindow* window, const char* const* mime_types, int
  *
  *  @ingroup input
  */
-GLFWAPI int glfwSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size);
+GLFWAPI ssize_t glfwSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size);
 
 /*! @brief Schedules a call to the drag callback to update drag state.
  *

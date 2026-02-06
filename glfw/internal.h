@@ -109,7 +109,7 @@ struct GLFWDropData {
 // Drag source data structure for chunked writing of drag data
 // Lifetime is managed by the backend - freed on end of data, error, drag cancellation, or exit
 struct GLFWDragSourceData {
-    _GLFWwindow* window;        // Window that initiated the drag
+    GLFWid window_id;           // ID of window that initiated the drag (use _glfwWindowForId to get pointer)
     char* mime_type;            // MIME type being sent (owned, copied from request)
     int write_fd;               // File descriptor for writing data (Wayland/X11), -1 if not used
     bool finished;              // Whether data sending is complete (EOF or error)
@@ -801,7 +801,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev);
 void _glfwPlatformChangeCursorTheme(void);
 
 int _glfwPlatformStartDrag(_GLFWwindow* window, const char* const* mime_types, int mime_count, const GLFWimage* thumbnail, int operations);
-int _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size);
+ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size);
 void _glfwPlatformCancelDrag(_GLFWwindow* window);
 void _glfwPlatformUpdateDragState(_GLFWwindow* window);
 

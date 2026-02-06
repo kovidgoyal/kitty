@@ -851,7 +851,7 @@ typedef struct {
     state->finished = false;
     state->errorCode = 0;
 
-    source_data->window = window;
+    source_data->window_id = window ? window->id : 0;
     source_data->mime_type = _glfw_strdup(mimeType);
     source_data->write_fd = -1;
     source_data->finished = false;
@@ -4025,9 +4025,9 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
     }
 }
 
-int _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size) {
-    if (!source_data || source_data->finished) return EINVAL;
-    if (!source_data->platform_data) return EINVAL;
+ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size) {
+    if (!source_data || source_data->finished) return -EINVAL;
+    if (!source_data->platform_data) return -EINVAL;
 
     GLFWFilePromiseState* state = (GLFWFilePromiseState*)source_data->platform_data;
 
@@ -4088,7 +4088,8 @@ int _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data,
         return 0;
     }
 
-    // Write data to the file asynchronously
+    // Write data to the file - Cocoa file operations are typically synchronous
+    // but we return the number of bytes written to match the non-blocking interface
     if (state->fileHandle) {
         @try {
             NSData* nsData = [NSData dataWithBytes:data length:size];
@@ -4101,22 +4102,25 @@ int _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data,
                     _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Cocoa: Failed to write drag data: %s",
                         error ? [[error localizedDescription] UTF8String] : "unknown error");
-                    return errCode;
+                    return -errCode;
                 }
             } else {
                 // Pre-10.15 writeData: throws an exception on failure which is caught below
                 [state->fileHandle writeData:nsData];
             }
+            // All data written successfully
+            return (ssize_t)size;
         } @catch (NSException* e) {
             source_data->error_code = EIO;
             _glfwInputError(GLFW_PLATFORM_ERROR,
                 "Cocoa: Exception writing drag data: %s",
                 e ? [[e reason] UTF8String] : "unknown exception");
-            return EIO;
+            return -EIO;
         }
     }
 
-    return 0;
+    // No file handle, consider all data accepted
+    return (ssize_t)size;
 }
 
 void _glfwPlatformUpdateDragState(_GLFWwindow* window) {

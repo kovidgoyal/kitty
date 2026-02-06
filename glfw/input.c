@@ -1164,10 +1164,10 @@ GLFWAPI int glfwStartDrag(GLFWwindow* handle, const char* const* mime_types, int
     return _glfwPlatformStartDrag(window, mime_types, mime_count, thumbnail, operations);
 }
 
-GLFWAPI int glfwSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size)
+GLFWAPI ssize_t glfwSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size)
 {
-    if (!source_data) return EINVAL;
-    _GLFW_REQUIRE_INIT_OR_RETURN(EINVAL);
+    if (!source_data) return -EINVAL;
+    _GLFW_REQUIRE_INIT_OR_RETURN(-EINVAL);
     return _glfwPlatformSendDragData(source_data, data, size);
 }
 

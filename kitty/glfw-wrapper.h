@@ -2338,7 +2338,7 @@ typedef int (*glfwStartDrag_func)(GLFWwindow*, const char* const*, int, const GL
 GFW_EXTERN glfwStartDrag_func glfwStartDrag_impl;
 #define glfwStartDrag glfwStartDrag_impl
 
-typedef int (*glfwSendDragData_func)(GLFWDragSourceData*, const void*, size_t);
+typedef ssize_t (*glfwSendDragData_func)(GLFWDragSourceData*, const void*, size_t);
 GFW_EXTERN glfwSendDragData_func glfwSendDragData_impl;
 #define glfwSendDragData glfwSendDragData_impl
 

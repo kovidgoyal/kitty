@@ -545,11 +545,11 @@ int _glfwPlatformStartDrag(_GLFWwindow* window UNUSED,
     return ENOTSUP;
 }
 
-int _glfwPlatformSendDragData(GLFWDragSourceData* source_data UNUSED,
+ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data UNUSED,
                               const void* data UNUSED,
                               size_t size UNUSED)
 {
-    return ENOTSUP;
+    return -ENOTSUP;
 }
 
 void _glfwPlatformUpdateDragState(_GLFWwindow* window UNUSED)

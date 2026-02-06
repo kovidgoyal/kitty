@@ -3052,7 +3052,7 @@ drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const 
         return;
     }
 
-    request->window = _glfw.wl.drag.window;
+    request->window_id = _glfw.wl.drag.window ? _glfw.wl.drag.window->id : 0;
     request->mime_type = _glfw_strdup(mime_type);
     request->write_fd = fd;
     request->finished = false;
@@ -3206,10 +3206,10 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const char* const* mime_types, int m
     return 0;
 }
 
-int
+ssize_t
 _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size) {
-    if (!source_data || source_data->finished) return EINVAL;
-    if (source_data->write_fd < 0) return EIO;
+    if (!source_data || source_data->finished) return -EINVAL;
+    if (source_data->write_fd < 0) return -EIO;
 
     // End of data: NULL data pointer and size zero
     if (!data && size == 0) {
@@ -3228,16 +3228,22 @@ _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, siz
         return 0;
     }
 
-    // Write data chunk
-    if (!write_all(source_data->write_fd, (const char*)data, size)) {
+    // Non-blocking write - try to write as much as possible
+    ssize_t written = write(source_data->write_fd, data, size);
+    if (written < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            // Would block, return 0 bytes written
+            return 0;
+        }
+        // Actual error
         source_data->finished = true;
-        source_data->error_code = EIO;
+        source_data->error_code = errno;
         close(source_data->write_fd);
         source_data->write_fd = -1;
-        return EIO;
+        return -errno;
     }
 
-    return 0;
+    return written;
 }
 
 void
