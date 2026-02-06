@@ -175,6 +175,22 @@ typedef struct _GLFWwindowNS
     const char** dragMimes;
     int dragMimeCount;      // Current count of MIME types (may be reduced by callback)
     int dragMimeArraySize;  // Original array size for proper cleanup
+
+    // Mouse event storage for drag operations
+    id              lastMouseDownEvent;  // NSEvent* retained
+    bool            mouse_button_pressed;
+
+    // Pending drag operation - must be executed within mouseDragged: handler
+    struct {
+        bool        requested;
+        id          dragItem;       // NSDraggingItem* retained
+        id          pasteboardItem; // NSPasteboardItem* retained
+    } pendingDrag;
+
+    // Title text for drag image (when no thumbnail provided)
+    char*           dragTitle;
+    // Placement of drag image relative to cursor
+    GLFWDragImagePlacement dragImagePlacement;
 } _GLFWwindowNS;
 
 // Cocoa-specific global data

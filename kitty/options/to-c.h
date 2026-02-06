@@ -511,6 +511,15 @@ tab_bar_margin_height(PyObject *val, Options *opts) {
 }
 
 static inline void
+enable_tab_drag(PyObject *val, Options *opts) {
+    if (!PyTuple_Check(val) || PyTuple_GET_SIZE(val) != 1) {
+        PyErr_SetString(PyExc_TypeError, "enable_tab_drag is not a 1-item tuple");
+        return;
+    }
+    opts->enable_tab_drag = PyLong_AsLong(PyTuple_GET_ITEM(val, 0));
+}
+
+static inline void
 window_logo_scale(PyObject *src, Options *opts) {
     opts->window_logo_scale.width = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 0));
     opts->window_logo_scale.height = PyFloat_AsFloat(PyTuple_GET_ITEM(src, 1));

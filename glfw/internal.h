@@ -502,6 +502,7 @@ struct _GLFWwindow
         GLFWdropfun             drop;
         GLFWliveresizefun       liveResize;
         GLFWdragfun             drag;
+        GLFWdragendfun          dragEnd;
     } callbacks;
 
     // This is defined in the window API's platform.h
@@ -790,6 +791,8 @@ void _glfwPlatformChangeCursorTheme(void);
 
 int _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWdragitem* items, int item_count, const GLFWimage* thumbnail, GLFWDragOperationType operation);
 void _glfwPlatformUpdateDragState(_GLFWwindow* window);
+void _glfwPlatformSetDragTitle(_GLFWwindow* window, const char* title);
+void _glfwPlatformSetDragImagePlacement(_GLFWwindow* window, GLFWDragImagePlacement placement);
 
 void _glfwPlatformPollEvents(void);
 void _glfwPlatformWaitEvents(void);
@@ -845,6 +848,7 @@ void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos);
 void _glfwInputCursorEnter(_GLFWwindow* window, bool entered);
 void _glfwInputDrop(_GLFWwindow* window, GLFWDropData* drop);
 int _glfwInputDragEvent(_GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int* mime_count);
+void _glfwInputDragEnd(_GLFWwindow* window, bool accepted, double screen_x, double screen_y);
 
 // Platform functions for drop data reading
 const char** _glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count);

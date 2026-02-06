@@ -923,6 +923,26 @@ def tab_bar_margin_height(x: str) -> TabBarMarginHeight:
     return TabBarMarginHeight(next(ans), next(ans))
 
 
+class EnableTabDrag(NamedTuple):
+    drag_threshold: int = 5
+
+    @property
+    def is_enabled(self) -> bool:
+        return self.drag_threshold >= 0
+
+
+def enable_tab_drag(x: str) -> EnableTabDrag:
+    x = x.strip()
+    if not x:
+        return EnableTabDrag()
+    try:
+        drag_threshold = int(x.split()[0])
+    except ValueError:
+        log_error(f'Invalid enable_tab_drag: {x}, using default')
+        drag_threshold = 5
+    return EnableTabDrag(drag_threshold)
+
+
 def clone_source_strategies(x: str) -> frozenset[str]:
     return frozenset({'venv', 'conda', 'path', 'env_var'} & set(x.lower().split(',')))
 

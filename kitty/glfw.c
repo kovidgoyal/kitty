@@ -649,39 +649,94 @@ is_droppable_mime(const char *mime) {
     return 0;
 }
 
+// Tab drag MIME type: application/net.kovidgoyal.kitty-tab-{PID}
+// Only accepts tabs from the same kitty instance (same PID)
+static const char*
+get_kitty_tab_mime(void) {
+    static char mime[128] = {0};
+    if (!mime[0]) {
+        snprintf(mime, sizeof(mime), "application/net.kovidgoyal.kitty-tab-%d", getpid());
+    }
+    return mime;
+}
+
+static bool
+is_kitty_tab_mime(const char *mime) {
+    return strcmp(mime, get_kitty_tab_mime()) == 0;
+}
+
+// Track if current drag is a tab drag (set on ENTER, cleared on LEAVE)
+static bool current_drag_is_tab = false;
+
 static int
 drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int* mime_count) {
-    (void)xpos; (void)ypos;
     if (!set_callback_window(w)) return 0;
     int ret = 0;
+
     switch (event) {
         case GLFW_DRAG_ENTER:
-        case GLFW_DRAG_MOVE:
+            current_drag_is_tab = false;
             global_state.callback_os_window->last_drag_event.x = (int)xpos;
             global_state.callback_os_window->last_drag_event.y = (int)ypos;
-            /* fallthrough */
-        case GLFW_DRAG_STATUS_UPDATE:
             if (mime_types && mime_count && *mime_count > 0) {
+                // Check for kitty tab MIME first
+                for (int i = 0; i < *mime_count; i++) {
+                    if (is_kitty_tab_mime(mime_types[i])) {
+                        ret = 1;
+                        current_drag_is_tab = true;
+                        WINDOW_CALLBACK(on_tab_drag_enter, "dd", xpos, ypos);
+                        goto end;
+                    }
+                }
                 // Sort MIME types by priority (descending) and keep only accepted ones
-                // Use simple bubble sort since lists are typically small
                 int count = *mime_count;
                 int new_count = 0;
-
-                // Use stack-allocated array for priorities (count is typically small)
                 int priorities[32];
                 int* prio_arr = (count <= (int)arraysz(priorities)) ? priorities : (int*)malloc(count * sizeof(int));
                 if (!prio_arr) goto end;
-                // First pass: filter droppable MIME types and cache priorities
                 for (int i = 0; i < count; i++) {
                     int prio = is_droppable_mime(mime_types[i]);
                     if (prio > 0) {
-                        // Move this mime to the new_count position
                         if (new_count != i) { SWAP(mime_types[i], mime_types[new_count]); }
                         prio_arr[new_count] = prio;
                         new_count++;
                     }
                 }
-                // Second pass: sort by cached priorities (descending)
+                for (int i = 0; i < new_count - 1; i++) {
+                    for (int j = i + 1; j < new_count; j++) {
+                        if (prio_arr[j] > prio_arr[i]) {
+                            SWAP(mime_types[i], mime_types[j]);
+                            SWAP(prio_arr[i], prio_arr[j]);
+                        }
+                    }
+                }
+                if (prio_arr != priorities) free(prio_arr);
+                *mime_count = new_count;
+                ret = (new_count > 0) ? 1 : 0;
+            }
+            break;
+        case GLFW_DRAG_MOVE:
+            global_state.callback_os_window->last_drag_event.x = (int)xpos;
+            global_state.callback_os_window->last_drag_event.y = (int)ypos;
+            /* fallthrough */
+        case GLFW_DRAG_STATUS_UPDATE:
+            if (current_drag_is_tab) {
+                ret = 1;
+                WINDOW_CALLBACK(on_tab_drag_move, "dd", xpos, ypos);
+            } else if (mime_types && mime_count && *mime_count > 0) {
+                int count = *mime_count;
+                int new_count = 0;
+                int priorities[32];
+                int* prio_arr = (count <= (int)arraysz(priorities)) ? priorities : (int*)malloc(count * sizeof(int));
+                if (!prio_arr) goto end;
+                for (int i = 0; i < count; i++) {
+                    int prio = is_droppable_mime(mime_types[i]);
+                    if (prio > 0) {
+                        if (new_count != i) { SWAP(mime_types[i], mime_types[new_count]); }
+                        prio_arr[new_count] = prio;
+                        new_count++;
+                    }
+                }
                 for (int i = 0; i < new_count - 1; i++) {
                     for (int j = i + 1; j < new_count; j++) {
                         if (prio_arr[j] > prio_arr[i]) {
@@ -698,6 +753,10 @@ drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, 
         case GLFW_DRAG_LEAVE:
             global_state.callback_os_window->last_drag_event.x = (int)xpos;
             global_state.callback_os_window->last_drag_event.y = (int)ypos;
+            if (current_drag_is_tab) {
+                call_boss(on_tab_drag_leave, "K", global_state.callback_os_window->id);
+            }
+            current_drag_is_tab = false;
             break;
     }
 end:
@@ -745,6 +804,23 @@ static void
 drop_callback(GLFWwindow *w, GLFWDropData *drop) {
     int num_mimes;
     const char** mimes = glfwGetDropMimeTypes(drop, &num_mimes);
+
+    // Check for kitty tab drop first
+    for (int i = 0; i < num_mimes; i++) {
+        if (is_kitty_tab_mime(mimes[i])) {
+            RAII_PyObject(data, read_drop_data(drop, mimes[i]));
+            glfwFinishDrop(drop, GLFW_DRAG_OPERATION_MOVE, data != NULL);
+            if (!set_callback_window(w)) return;
+            if (data) {
+                WINDOW_CALLBACK(on_tab_drop, "O", data);
+            }
+            request_tick_callback();
+            global_state.callback_os_window = NULL;
+            return;
+        }
+    }
+
+    // Handle other drops (files, text, etc.)
     RAII_PyObject(ans, PyDict_New());
     get_mime_data(drop, mimes, num_mimes, ans);
     RAII_PyObject(exc, PyErr_GetRaisedException());
@@ -753,6 +829,16 @@ drop_callback(GLFWwindow *w, GLFWDropData *drop) {
     if (exc != NULL) { WINDOW_CALLBACK(on_drop, "Oii", exc, global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y); }
     else if (PyDict_Size(ans)) WINDOW_CALLBACK(on_drop, "Oii", ans, global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
     request_tick_callback();
+    global_state.callback_os_window = NULL;
+}
+
+static void
+drag_end_callback(GLFWwindow *w, int accepted, double screen_x, double screen_y) {
+    if (!set_callback_window(w)) return;
+    if (!accepted) {
+        // Drop was rejected (outside any kitty window) - detach tab
+        WINDOW_CALLBACK(on_tab_drag_end_outside, "dd", screen_x, screen_y);
+    }
     global_state.callback_os_window = NULL;
 }
 
@@ -1629,6 +1715,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwSetKeyboardCallback(glfw_window, key_callback);
     glfwSetDropCallback(glfw_window, drop_callback);
     glfwSetDragCallback(glfw_window, drag_callback);
+    glfwSetDragEndCallback(glfw_window, drag_end_callback);
     monotonic_t now = monotonic();
     w->is_focused = true;
     w->cursor_blink_zero_time = now;
@@ -2657,6 +2744,52 @@ get_clipboard_mime(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyObject*
+start_tab_drag(PyObject *self UNUSED, PyObject *args) {
+    id_type os_window_id;
+    const char *json_payload;
+    const char *tab_title = NULL;
+    unsigned char *thumbnail_pixels = NULL;
+    int thumb_width = 0, thumb_height = 0;
+    Py_ssize_t thumb_size = 0;
+    int tab_bar_at_top = 1;  // Default: tab bar at top
+
+    if (!PyArg_ParseTuple(args, "Ks|zy#iip", &os_window_id, &json_payload, &tab_title,
+                          &thumbnail_pixels, &thumb_size, &thumb_width, &thumb_height,
+                          &tab_bar_at_top)) {
+        return NULL;
+    }
+
+    OSWindow *osw = os_window_for_id(os_window_id);
+    if (!osw || !osw->handle) Py_RETURN_FALSE;
+
+    GLFWdragitem item = {
+        .mime_type = get_kitty_tab_mime(),
+        .data = (const unsigned char*)json_payload,
+        .data_size = strlen(json_payload)
+    };
+
+    GLFWimage thumb = {0};
+    if (thumbnail_pixels && thumb_width > 0 && thumb_height > 0 && thumb_size > 0) {
+        thumb.width = thumb_width;
+        thumb.height = thumb_height;
+        thumb.pixels = thumbnail_pixels;
+    }
+
+    // Store tab title for drag image generation (macOS specific)
+    glfwSetDragTitle(osw->handle, tab_title);
+
+    // Set drag image placement based on tab bar position
+    // If tab bar is at top, place drag image below cursor; otherwise above
+    // Values: 0 = GLFW_DRAG_IMAGE_ABOVE_CURSOR, 1 = GLFW_DRAG_IMAGE_BELOW_CURSOR
+    glfwSetDragImagePlacement(osw->handle, tab_bar_at_top ? 1 : 0);
+
+    int result = glfwStartDrag(osw->handle, &item, 1,
+                               (thumb.pixels ? &thumb : NULL),
+                               GLFW_DRAG_OPERATION_MOVE);
+    return Py_NewRef(result ? Py_True : Py_False);
+}
+
+static PyObject*
 is_layer_shell_supported(PyObject *self UNUSED, PyObject *args UNUSED) {
     return Py_NewRef(glfwIsLayerShellSupported() ? Py_True : Py_False);
 }
@@ -2707,6 +2840,7 @@ grab_keyboard(PyObject *self UNUSED, PyObject *action) {
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
+    METHODB(start_tab_drag, METH_VARARGS),
     METHODB(set_custom_cursor, METH_VARARGS),
     METHODB(is_css_pointer_name_valid, METH_O),
     {"toggle_os_window_visibility", (PyCFunction)(void (*) (void))(toggle_os_window_visibility), METH_VARARGS | METH_KEYWORDS, NULL},

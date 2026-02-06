@@ -655,7 +655,7 @@ def kitty_env(args: Options) -> Env:
     if is_macos:
         platform_libs = [
             '-framework', 'Carbon', '-framework', 'CoreText', '-framework', 'CoreGraphics',
-            '-framework', 'AudioToolbox',
+            '-framework', 'QuartzCore', '-framework', 'AudioToolbox',
         ]
         test_program_src = '''#include <UserNotifications/UserNotifications.h>
         int main(void) { return 0; }\n'''

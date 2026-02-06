@@ -831,6 +831,12 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
         }
     }
     setup_os_window_for_rendering(os_window, tab, active_window, false);
+#ifdef __APPLE__
+    if (global_state.drag_thumbnail_target_os_window == os_window->id) {
+        capture_framebuffer_for_drag(os_window);
+        global_state.drag_thumbnail_target_os_window = 0;
+    }
+#endif
     swap_window_buffers(os_window);
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;

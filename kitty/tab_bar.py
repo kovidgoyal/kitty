@@ -568,7 +568,44 @@ class TabBar:
         self.blank_rects: tuple[Border, ...] = ()
         self.tab_extents: Sequence[TabExtent] = ()
         self.laid_out_once = False
+        # Drag state
+        self.dragging_tab_id: int = 0
+        self.drop_indicator_index: int | None = None
         self.apply_options()
+
+    def update_drag_indicator(self, index: int | None, tab_id: int) -> None:
+        self.drop_indicator_index = index
+        self.dragging_tab_id = tab_id
+        self.dirty = True
+
+    def on_drag_enter(self, x: float, y: float) -> None:
+        self._update_drop_index_from_position(x)
+        self.dirty = True
+
+    def on_drag_move(self, x: float, y: float) -> None:
+        self._update_drop_index_from_position(x)
+        self.dirty = True
+
+    def _update_drop_index_from_position(self, x: float) -> None:
+        if not self.tab_extents:
+            self.drop_indicator_index = 0
+            return
+        # Convert x from pixels to cells
+        x_cell = int(x / self.cell_width) if self.cell_width > 0 else 0
+        for i, extent in enumerate(self.tab_extents):
+            mid = (extent.cell_range.start + extent.cell_range.end) // 2
+            if x_cell < mid:
+                self.drop_indicator_index = i
+                return
+        self.drop_indicator_index = len(self.tab_extents)
+
+    def clear_drag_state(self) -> None:
+        self.dragging_tab_id = 0
+        self.drop_indicator_index = None
+        self.dirty = True
+
+    def get_drop_index(self) -> int | None:
+        return self.drop_indicator_index
 
     def apply_options(self) -> None:
         opts = get_options()
@@ -723,11 +760,27 @@ class TabBar:
         last_tab = data[-1] if data else None
         ed = ExtraData()
 
+        def dim_color(color: int, factor: float = 0.5) -> int:
+            r = (color >> 16) & 0xff
+            g = (color >> 8) & 0xff
+            b = color & 0xff
+            r = int(r * factor + 128 * (1 - factor))
+            g = int(g * factor + 128 * (1 - factor))
+            b = int(b * factor + 128 * (1 - factor))
+            return (r << 16) | (g << 8) | b
+
         def draw_tab(i: int, tab: TabBarData, cell_ranges: list[TabExtent], max_tab_length: int) -> None:
             ed.prev_tab = data[i - 1] if i > 0 else None
             ed.next_tab = data[i + 1] if i + 1 < len(data) else None
-            s.cursor.bg = as_rgb(self.draw_data.tab_bg(t))
-            s.cursor.fg = as_rgb(self.draw_data.tab_fg(t))
+            bg_color = self.draw_data.tab_bg(t)
+            fg_color = self.draw_data.tab_fg(t)
+            # Apply dim effect if this tab is being dragged
+            is_dragging = self.dragging_tab_id != 0 and tab.tab_id == self.dragging_tab_id
+            if is_dragging:
+                bg_color = dim_color(bg_color)
+                fg_color = dim_color(fg_color)
+            s.cursor.bg = as_rgb(bg_color)
+            s.cursor.fg = as_rgb(fg_color)
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
             end = self.draw_func(self.draw_data, s, t, before, max_tab_length, i + 1, t is last_tab, ed)
@@ -782,7 +835,47 @@ class TabBar:
         self.tab_extents = cr
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         self.align()
+
+        # Draw drop indicator if dragging
+        self._draw_drop_indicator(s)
+
         update_tab_bar_edge_colors(self.os_window_id)
+
+    def _draw_drop_indicator(self, s: Screen) -> None:
+        if self.drop_indicator_index is None or not self.tab_extents:
+            return
+
+        # Calculate the position for the drop indicator
+        idx = self.drop_indicator_index
+        if idx < len(self.tab_extents):
+            # Insert before the tab at idx
+            pos = self.tab_extents[idx].cell_range.start
+        else:
+            # Insert at the end
+            pos = self.tab_extents[-1].cell_range.end + 1
+
+        # Ensure position is within screen bounds
+        placeholder_width = 3  # "[+]"
+        if pos < 0 or pos + placeholder_width > s.columns:
+            return
+
+        saved_x = s.cursor.x
+        s.cursor.x = pos
+
+        # Use active tab colors to match user's theme
+        s.cursor.bg = as_rgb(color_as_int(self.draw_data.active_bg))
+        s.cursor.fg = as_rgb(color_as_int(self.draw_data.active_fg))
+        s.cursor.bold = True
+        s.cursor.italic = False
+
+        # Draw compact placeholder: "[+]"
+        s.draw('[+]')
+
+        # Reset cursor state
+        s.cursor.bg = 0
+        s.cursor.fg = 0
+        s.cursor.bold = False
+        s.cursor.x = saved_x
 
     def align_with_factor(self, factor: int = 1) -> None:
         if not self.tab_extents:

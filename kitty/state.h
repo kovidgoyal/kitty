@@ -115,6 +115,7 @@ typedef struct Options {
     struct {
         double outer, inner;
     } tab_bar_margin_height;
+    int enable_tab_drag;
     long macos_menubar_title_max_length;
     int macos_colorspace;
     struct {
@@ -368,6 +369,12 @@ typedef struct GlobalState {
     struct { double x, y; } default_dpi;
     id_type active_drag_in_window, tracked_drag_in_window, mouse_hover_in_window;
     int active_drag_button, tracked_drag_button;
+    bool tab_bar_drag_in_progress;
+    id_type drag_thumbnail_target_os_window;  // non-zero = capture requested for this os_window
+    bool drag_thumbnail_visible;
+    // Cached thumbnail data for GLFW Drag API
+    uint8_t *drag_thumbnail_pixels;
+    int drag_thumbnail_width, drag_thumbnail_height;
     CloseRequest quit_request;
     bool redirect_mouse_handling;
     WindowLogoTable *all_window_logos;
@@ -477,3 +484,6 @@ void dispatch_buffered_keys(Window *w);
 bool screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen);
 void setup_os_window_for_rendering(OSWindow*, Tab*, Window*, bool);
 void swap_window_buffers(OSWindow *w);
+#ifdef __APPLE__
+void capture_framebuffer_for_drag(OSWindow *os_window);
+#endif

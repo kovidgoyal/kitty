@@ -1572,6 +1572,11 @@ typedef enum {
     GLFW_DRAG_OPERATION_GENERIC = 4
 } GLFWDragOperationType;
 
+typedef enum {
+    GLFW_DRAG_IMAGE_ABOVE_CURSOR = 0,
+    GLFW_DRAG_IMAGE_BELOW_CURSOR = 1
+} GLFWDragImagePlacement;
+
 /*! @brief Drag data item.
  *
  *  This structure describes a single item of drag data with its MIME type.
@@ -1629,6 +1634,8 @@ typedef struct GLFWdragitem {
  *  @ingroup input
  */
 typedef int (* GLFWdragfun)(GLFWwindow*, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int* mime_count);
+
+typedef void (* GLFWdragendfun)(GLFWwindow*, int accepted, double screen_x, double screen_y);
 
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 
@@ -2315,6 +2322,10 @@ typedef GLFWdragfun (*glfwSetDragCallback_func)(GLFWwindow*, GLFWdragfun);
 GFW_EXTERN glfwSetDragCallback_func glfwSetDragCallback_impl;
 #define glfwSetDragCallback glfwSetDragCallback_impl
 
+typedef GLFWdragendfun (*glfwSetDragEndCallback_func)(GLFWwindow*, GLFWdragendfun);
+GFW_EXTERN glfwSetDragEndCallback_func glfwSetDragEndCallback_impl;
+#define glfwSetDragEndCallback glfwSetDragEndCallback_impl
+
 typedef int (*glfwStartDrag_func)(GLFWwindow*, const GLFWdragitem*, int, const GLFWimage*, GLFWDragOperationType);
 GFW_EXTERN glfwStartDrag_func glfwStartDrag_impl;
 #define glfwStartDrag glfwStartDrag_impl
@@ -2334,6 +2345,14 @@ GFW_EXTERN glfwReadDropData_func glfwReadDropData_impl;
 typedef void (*glfwFinishDrop_func)(GLFWDropData*, GLFWDragOperationType, bool);
 GFW_EXTERN glfwFinishDrop_func glfwFinishDrop_impl;
 #define glfwFinishDrop glfwFinishDrop_impl
+
+typedef void (*glfwSetDragTitle_func)(GLFWwindow*, const char*);
+GFW_EXTERN glfwSetDragTitle_func glfwSetDragTitle_impl;
+#define glfwSetDragTitle glfwSetDragTitle_impl
+
+typedef void (*glfwSetDragImagePlacement_func)(GLFWwindow*, GLFWDragImagePlacement);
+GFW_EXTERN glfwSetDragImagePlacement_func glfwSetDragImagePlacement_impl;
+#define glfwSetDragImagePlacement glfwSetDragImagePlacement_impl
 
 typedef int (*glfwJoystickPresent_func)(int);
 GFW_EXTERN glfwJoystickPresent_func glfwJoystickPresent_impl;

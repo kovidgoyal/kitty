@@ -3303,3 +3303,13 @@ _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUS
     free(drop);
 }
 
+void _glfwPlatformSetDragImagePlacement(_GLFWwindow* window UNUSED, GLFWDragImagePlacement placement UNUSED)
+{
+    // No-op: drag image placement not supported on Wayland
+}
+
+void _glfwPlatformSetDragTitle(_GLFWwindow* window UNUSED, const char* title UNUSED)
+{
+    // No-op: drag title not supported on Wayland
+}
+

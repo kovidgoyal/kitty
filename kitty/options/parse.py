@@ -13,12 +13,12 @@ from kitty.options.utils import (
     config_or_absolute_path, confirm_close, copy_on_select, cursor_blink_interval, cursor_text_color,
     cursor_trail_decay, deprecated_adjust_line_height, deprecated_hide_window_decorations_aliases,
     deprecated_macos_show_window_title_in_menubar_alias, deprecated_scrollback_indicator_opacity,
-    deprecated_send_text, disable_ligatures, edge_width, env, filter_notification, font_features,
-    hide_window_decorations, macos_option_as_alt, macos_titlebar_color, menu_map, modify_font,
-    mouse_hide_wait, narrow_symbols, notify_on_cmd_finish, optional_edge_width, parse_font_spec,
-    parse_map, parse_mouse_map, paste_actions, pointer_shape_when_dragging, remote_control_password,
-    resize_debounce_time, scrollback_lines, scrollback_pager_history_size, scrollbar_color,
-    shell_integration, store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge,
+    deprecated_send_text, disable_ligatures, edge_width, enable_tab_drag, env, filter_notification,
+    font_features, hide_window_decorations, macos_option_as_alt, macos_titlebar_color, menu_map,
+    modify_font, mouse_hide_wait, narrow_symbols, notify_on_cmd_finish, optional_edge_width,
+    parse_font_spec, parse_map, parse_mouse_map, paste_actions, pointer_shape_when_dragging,
+    remote_control_password, resize_debounce_time, scrollback_lines, scrollback_pager_history_size,
+    scrollbar_color, shell_integration, store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge,
     tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
     tab_title_template, text_fg_override_threshold, titlebar_color, to_cursor_shape,
     to_cursor_unfocused_shape, to_font_size, to_layout_names, to_modifiers,
@@ -982,6 +982,9 @@ class Parser:
 
     def enable_audio_bell(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['enable_audio_bell'] = to_bool(val)
+
+    def enable_tab_drag(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['enable_tab_drag'] = enable_tab_drag(val)
 
     def enabled_layouts(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['enabled_layouts'] = to_layout_names(val)

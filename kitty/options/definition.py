@@ -1690,6 +1690,17 @@ color for margins above and below the tab bar. For side margins the default
 color is chosen to match the background color of the neighboring tab.
 '''
     )
+
+opt('enable_tab_drag', '5',
+    option_type='enable_tab_drag', ctype='!enable_tab_drag',
+    long_text='''
+Allow dragging tabs with the mouse to reorder them within the tab bar.
+The value is the drag threshold in pixels, the distance the mouse must move
+before a drag begins. A negative value disables tab dragging entirely.
+Dragging a tab to another kitty window moves it there, while dragging
+outside any kitty window detaches it into a new OS window.
+'''
+    )
 egr()  # }}}
 
 
