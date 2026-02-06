@@ -772,7 +772,7 @@ typedef struct {
 
 @interface GLFWFilePromiseProviderDelegate : NSObject <NSFilePromiseProviderDelegate>
 {
-    _GLFWwindow* window;
+    GLFWid windowId;
     char* mimeType;  // MIME type for this provider
 }
 - (instancetype)initWithWindow:(_GLFWwindow*)initWindow mimeType:(const char*)mime;
@@ -783,7 +783,7 @@ typedef struct {
 - (instancetype)initWithWindow:(_GLFWwindow*)initWindow mimeType:(const char*)mime {
     self = [super init];
     if (self) {
-        window = initWindow;
+        windowId = initWindow ? initWindow->id : 0;
         mimeType = _glfw_strdup(mime);
     }
     return self;
@@ -813,6 +813,13 @@ typedef struct {
           writePromiseToURL:(NSURL*)url
           completionHandler:(void (^)(NSError*))completionHandler {
     (void)filePromiseProvider;
+
+    // Get the window from the ID
+    _GLFWwindow* window = _glfwWindowForId(windowId);
+    if (!window) {
+        completionHandler([NSError errorWithDomain:NSPOSIXErrorDomain code:EINVAL userInfo:nil]);
+        return;
+    }
 
     // Create the file
     NSError* error = nil;
@@ -851,7 +858,7 @@ typedef struct {
     state->finished = false;
     state->errorCode = 0;
 
-    source_data->window_id = window ? window->id : 0;
+    source_data->window_id = windowId;
     source_data->mime_type = _glfw_strdup(mimeType);
     source_data->write_fd = -1;
     source_data->finished = false;

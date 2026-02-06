@@ -3860,16 +3860,16 @@ ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* d
 
     // For X11, data is typically set via XChangeProperty in response to SelectionRequest
     // Store the data in platform_data for the SelectionRequest handler
-    // Non-blocking write - return number of bytes written
+    // Non-blocking write - retry on EINTR, return 0 on would-block
     if (source_data->write_fd >= 0) {
-        ssize_t written = write(source_data->write_fd, data, size);
+        ssize_t written;
+        do {
+            written = write(source_data->write_fd, data, size);
+        } while (written < 0 && errno == EINTR);
+
         if (written < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 // Would block, return 0 bytes written
-                return 0;
-            }
-            if (errno == EINTR) {
-                // Interrupted, try again later
                 return 0;
             }
             source_data->finished = true;
