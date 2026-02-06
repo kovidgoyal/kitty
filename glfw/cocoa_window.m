@@ -4105,10 +4105,12 @@ ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* d
                     return -errCode;
                 }
             } else {
-                // Pre-10.15 writeData: throws an exception on failure which is caught below
+                // Pre-10.15 writeData: writes all bytes synchronously or throws an exception.
+                // NSFileHandle.writeData: is documented to write all data atomically,
+                // so returning size is correct. Any failure throws NSFileHandleOperationException.
                 [state->fileHandle writeData:nsData];
             }
-            // All data written successfully
+            // NSFileHandle.writeData writes all data atomically, so size == bytes written
             return (ssize_t)size;
         } @catch (NSException* e) {
             source_data->error_code = EIO;

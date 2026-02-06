@@ -3231,8 +3231,8 @@ _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, siz
     // Non-blocking write - try to write as much as possible
     ssize_t written = write(source_data->write_fd, data, size);
     if (written < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            // Would block, return 0 bytes written
+        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
+            // Would block or interrupted, return 0 bytes written
             return 0;
         }
         // Actual error
