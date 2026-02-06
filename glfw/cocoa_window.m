@@ -806,7 +806,7 @@ typedef struct {
         else if ([mt isEqualToString:@"image/jpeg"]) extension = @"jpg";
         else if ([mt isEqualToString:@"application/json"]) extension = @"json";
     }
-    return [NSString stringWithFormat:@"drag-%@.%@", [[NSUUID UUID] UUIDString], extension];
+    return [NSString stringWithFormat:@"glfw-drag-%@.%@", [[NSUUID UUID] UUIDString], extension];
 }
 
 - (void)filePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider
@@ -4095,14 +4095,23 @@ int _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data,
             if (@available(macOS 10.15, *)) {
                 NSError* error = nil;
                 if (![state->fileHandle writeData:nsData error:&error]) {
-                    source_data->error_code = (int)error.code;
-                    return (int)error.code;
+                    int errCode = error ? (int)error.code : EIO;
+                    if (errCode == 0) errCode = EIO;  // Ensure we have a valid error code
+                    source_data->error_code = errCode;
+                    _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Cocoa: Failed to write drag data: %s",
+                        error ? [[error localizedDescription] UTF8String] : "unknown error");
+                    return errCode;
                 }
             } else {
+                // Pre-10.15 writeData: throws an exception on failure which is caught below
                 [state->fileHandle writeData:nsData];
             }
         } @catch (NSException* e) {
             source_data->error_code = EIO;
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                "Cocoa: Exception writing drag data: %s",
+                e ? [[e reason] UTF8String] : "unknown exception");
             return EIO;
         }
     }
