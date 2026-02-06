@@ -42,6 +42,7 @@ In addition to kitty, this protocol is also implemented in:
 * The `WezTerm terminal <https://wezfurlong.org/wezterm/config/lua/config/enable_kitty_keyboard.html>`__
 * The `xterm.js terminal <https://github.com/xtermjs/xterm.js/pull/5600>`__
 * The `TuiOS terminal (multiplexer) <https://github.com/Gaurav-Gosain/tuios/issues/26>`__
+* The `Warp terminal <https://github.com/warpdotdev/Warp/issues/8462#issuecomment-3857779488>`__
 
 Libraries implementing this protocol:
 
