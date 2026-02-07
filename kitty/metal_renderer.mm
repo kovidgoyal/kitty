@@ -7,6 +7,9 @@
 #include "data-types.h"
 #include "monotonic.h"
 #include "glfw-wrapper.h"
+#include "screen.h"
+#include "fonts.h"
+#include "line.h"
 #include <vector>
 #include <unordered_map>
 #include <atomic>
@@ -48,6 +51,7 @@ typedef struct {
     simd_float4 deco_rgba;      // decoration color (premul)
     float       text_alpha;
     float       colored_sprite;
+    float       cursor_alpha;
 } MetalCellVertex;
 
 static id<MTLRenderPipelineState>
@@ -182,10 +186,22 @@ metal_render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_imag
     id<CAMetalDrawable> drawable = [layer nextDrawable];
     if (!drawable) return false;
 
-    // TODO: build per-frame buffers; for now clear via clear pipeline
+    // Build cell vertices
+    Screen *screen = NULL;
+    if (w->num_tabs && w->tabs && w->active_tab < w->num_tabs) {
+        Tab *tab = w->tabs + w->active_tab;
+        if (tab->num_windows && tab->windows && tab->active_window < tab->num_windows) {
+            Window *win = tab->windows + tab->active_window;
+            screen = win->render_data.screen;
+        }
+    }
+    FONTS_DATA_HANDLE fonts_data = w->fonts_data;
+    NSUInteger vcount = 0;
+    if (screen && fonts_data) vcount = build_cell_vertices(w, screen, fonts_data, mw);
+
     MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
     rp.colorAttachments[0].texture = drawable.texture;
-    rp.colorAttachments[0].loadAction = MTLLoadActionClear;
+    rp.colorAttachments[0].loadAction = vcount ? MTLLoadActionClear : MTLLoadActionClear;
     rp.colorAttachments[0].storeAction = MTLStoreActionStore;
     float alpha = w->background_opacity.supports_transparency ? OPT(background_opacity) : 1.0f;
     float r = ((OPT(background) >> 16) & 0xff) / 255.0f;
@@ -195,8 +211,16 @@ metal_render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_imag
 
     id<MTLCommandBuffer> cb = [mw->queue commandBuffer];
     id<MTLRenderCommandEncoder> enc = [cb renderCommandEncoderWithDescriptor:rp];
-    if (g_clear_pipeline) {
-        [enc setRenderPipelineState:g_clear_pipeline];
+    if (vcount && mw->cellPipeline && mw->spriteTexture) {
+        [enc setRenderPipelineState:mw->cellPipeline];
+        [enc setVertexBuffer:mw->cellVertexBuffer offset:0 atIndex:0];
+        [enc setFragmentTexture:mw->spriteTexture atIndex:0];
+        [enc setFragmentTexture:mw->decorTexture atIndex:1];
+        [enc setFragmentSamplerState:mw->sampler_nearest atIndex:0];
+        [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:vcount];
+    } else if (mw->clearPipeline) {
+        [enc setRenderPipelineState:mw->clearPipeline];
+        [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
     }
     [enc endEncoding];
     [cb presentDrawable:drawable];
@@ -232,6 +256,95 @@ ensure_cell_vertex_buffer(MetalWindow *mw, NSUInteger required_vertices) {
                                                    options:MTLResourceStorageModeManaged];
     mw->cellVertexCount = required_vertices;
     return mw->cellVertexBuffer != nil;
+}
+
+static inline float
+srgb_channel(uint32_t c, int shift) {
+    return ((c >> shift) & 0xFF) / 255.0f;
+}
+
+static inline simd_float4
+srgb_color_premul(color_type c, float alpha) {
+    float r = srgb_channel(c, 16);
+    float g = srgb_channel(c, 8);
+    float b = srgb_channel(c, 0);
+    return {r * alpha, g * alpha, b * alpha, alpha};
+}
+
+static NSUInteger
+build_cell_vertices(OSWindow *w, Screen *screen, FONTS_DATA_HANDLE fonts_data, MetalWindow *mw) {
+    if (!screen || !fonts_data) return 0;
+    const unsigned cols = screen->columns;
+    const unsigned lines = screen->lines;
+    const unsigned render_lines = render_lines_for_screen(screen);
+    const unsigned total_cells = render_lines * cols;
+    if (!ensure_cell_vertex_buffer(mw, (NSUInteger)total_cells * 6u)) return 0; // 2 triangles per cell
+
+    // Fill GPUCell data
+    std::vector<GPUCell> gpu_cells(total_cells);
+    bool cursor_moved = false;
+    screen_update_cell_data(screen, gpu_cells.data(), fonts_data, cursor_moved);
+
+    // Sprite atlas info
+    unsigned xnum, ynum, zmax;
+    sprite_tracker_current_layout(fonts_data, &xnum, &ynum, &zmax);
+    SpriteMap *sm = (SpriteMap*)fonts_data->sprite_map;
+    const float atlas_w = (float)(xnum * fonts_data->fcm.cell_width);
+    const float atlas_h = (float)(ynum * (fonts_data->fcm.cell_height + 1));
+
+    MetalCellVertex *vout = (MetalCellVertex*)mw->cellVertexBuffer.contents;
+    NSUInteger vcount = 0;
+    const float cw = (float)fonts_data->fcm.cell_width;
+    const float ch = (float)fonts_data->fcm.cell_height;
+    const float viewport_w = (float)w->viewport_width;
+    const float viewport_h = (float)w->viewport_height;
+
+    auto to_clip = [&](float px, float py) -> simd_float2 {
+        float x = (px / viewport_w) * 2.0f - 1.0f;
+        float y = 1.0f - (py / viewport_h) * 2.0f;
+        return {x, y};
+    };
+
+    for (unsigned row = 0; row < render_lines; row++) {
+        for (unsigned col = 0; col < cols; col++) {
+            const GPUCell &gc = gpu_cells[row * cols + col];
+            if (gc.sprite_idx == 0) continue;
+            unsigned sx, sy, sz;
+            sprite_index_to_pos(gc.sprite_idx & 0x7fffffff, xnum, ynum, &sx, &sy, &sz);
+            float u0 = (sx * cw) / atlas_w;
+            float v0 = (sy * (ch + 1)) / atlas_h;
+            float u1 = ((sx + 1) * cw) / atlas_w;
+            float v1 = ((sy + 1) * (ch + 1)) / atlas_h;
+
+            float px = col * cw;
+            float py = row * ch;
+            simd_float2 p00 = to_clip(px, py + ch);
+            simd_float2 p10 = to_clip(px + cw, py + ch);
+            simd_float2 p01 = to_clip(px, py);
+            simd_float2 p11 = to_clip(px + cw, py);
+
+            simd_float4 fg = srgb_color_premul(gc.fg, 1.0f);
+            simd_float4 deco = srgb_color_premul(gc.decoration_fg, 1.0f);
+            float text_alpha = 1.0f;
+            float colored_sprite = (gc.sprite_idx & 0x80000000) ? 1.0f : 0.0f;
+            float cursor_alpha = (gc.attrs.mark & 0x1) ? 1.0f : 0.0f; // rough cursor marker
+
+            // triangle 1
+            vout[vcount++] = {p00, {u0,v1}, {u0,v1}, {u0,v1}, {u0,v1}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
+            vout[vcount++] = {p10, {u1,v1}, {u1,v1}, {u1,v1}, {u1,v1}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
+            vout[vcount++] = {p01, {u0,v0}, {u0,v0}, {u0,v0}, {u0,v0}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
+            // triangle 2
+            vout[vcount++] = {p10, {u1,v1}, {u1,v1}, {u1,v1}, {u1,v1}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
+            vout[vcount++] = {p11, {u1,v0}, {u1,v0}, {u1,v0}, {u1,v0}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
+            vout[vcount++] = {p01, {u0,v0}, {u0,v0}, {u0,v0}, {u0,v0}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
+            if (vcount >= kMaxVerticesPerFrame) { goto done; }
+        }
+    }
+done:
+    mw->cellVertexCount = vcount;
+    // managed buffer needs didModifyRange
+    [mw->cellVertexBuffer didModifyRange:NSMakeRange(0, vcount * sizeof(MetalCellVertex))];
+    return vcount;
 }
 
 bool
