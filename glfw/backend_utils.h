@@ -69,9 +69,10 @@ typedef struct {
     bool repeats;
 } Timer;
 
+#define MAX_NUM_OF_WATCHED_FDS 64
 
 typedef struct {
-    struct pollfd fds[32];
+    struct pollfd fds[MAX_NUM_OF_WATCHED_FDS];
 #ifdef HAS_EVENT_FD
     int wakeupFd;
 #else
@@ -84,7 +85,7 @@ typedef struct {
 #endif
     bool wakeup_data_read, wakeup_fd_ready, key_repeat_fd_ready;
     nfds_t watches_count, timers_count;
-    Watch watches[32];
+    Watch watches[MAX_NUM_OF_WATCHED_FDS];
     Timer timers[128];
 } EventLoopData;
 
