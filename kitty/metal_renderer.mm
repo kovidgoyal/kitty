@@ -186,6 +186,9 @@ metal_render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_imag
     id<CAMetalDrawable> drawable = [layer nextDrawable];
     if (!drawable) return false;
 
+    // set viewport/scissor to full drawable
+    MTLViewport vp = {0, 0, (double)drawable.texture.width, (double)drawable.texture.height, 0.0, 1.0};
+
     // Build cell vertices
     Screen *screen = NULL;
     if (w->num_tabs && w->tabs && w->active_tab < w->num_tabs) {
@@ -211,6 +214,7 @@ metal_render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_imag
 
     id<MTLCommandBuffer> cb = [mw->queue commandBuffer];
     id<MTLRenderCommandEncoder> enc = [cb renderCommandEncoderWithDescriptor:rp];
+    [enc setViewport:vp];
     if (vcount && mw->cellPipeline && mw->spriteTexture) {
         [enc setRenderPipelineState:mw->cellPipeline];
         [enc setVertexBuffer:mw->cellVertexBuffer offset:0 atIndex:0];
@@ -242,6 +246,13 @@ metal_window_destroy(OSWindow *w) {
 
 static MTLPixelFormat glyph_format(void) { return MTLPixelFormatBGRA8Unorm_sRGB; }
 static MTLPixelFormat decor_format(void) { return MTLPixelFormatR32Uint; }
+
+typedef struct {
+    float2 underline_uv;
+    float2 strike_uv;
+    float2 cursor_uv;
+    float cursor_alpha;
+} DecorationUV;
 
 static bool
 ensure_cell_vertex_buffer(MetalWindow *mw, NSUInteger required_vertices) {
@@ -305,6 +316,22 @@ build_cell_vertices(OSWindow *w, Screen *screen, FONTS_DATA_HANDLE fonts_data, M
         return {x, y};
     };
 
+    auto decoration_uvs = [&](const GPUCell &gc) -> DecorationUV {
+        DecorationUV d;
+        // crude mapping: reuse glyph uv; real data requires decoration sprite positions
+        unsigned sx, sy, sz;
+        sprite_index_to_pos(gc.sprite_idx & 0x7fffffff, xnum, ynum, &sx, &sy, &sz);
+        float u0 = (sx * cw) / atlas_w;
+        float v0 = (sy * (ch + 1)) / atlas_h;
+        float u1 = ((sx + 1) * cw) / atlas_w;
+        float v1 = ((sy + 1) * (ch + 1)) / atlas_h;
+        d.underline_uv = {u0, v1};
+        d.strike_uv    = {u0, v1};
+        d.cursor_uv    = {u0, v1};
+        d.cursor_alpha = (gc.attrs.mark & 0x1) ? 1.0f : 0.0f;
+        return d;
+    };
+
     for (unsigned row = 0; row < render_lines; row++) {
         for (unsigned col = 0; col < cols; col++) {
             const GPUCell &gc = gpu_cells[row * cols + col];
@@ -315,6 +342,7 @@ build_cell_vertices(OSWindow *w, Screen *screen, FONTS_DATA_HANDLE fonts_data, M
             float v0 = (sy * (ch + 1)) / atlas_h;
             float u1 = ((sx + 1) * cw) / atlas_w;
             float v1 = ((sy + 1) * (ch + 1)) / atlas_h;
+            DecorationUV duv = decoration_uvs(gc);
 
             float px = col * cw;
             float py = row * ch;
@@ -330,13 +358,13 @@ build_cell_vertices(OSWindow *w, Screen *screen, FONTS_DATA_HANDLE fonts_data, M
             float cursor_alpha = (gc.attrs.mark & 0x1) ? 1.0f : 0.0f; // rough cursor marker
 
             // triangle 1
-            vout[vcount++] = {p00, {u0,v1}, {u0,v1}, {u0,v1}, {u0,v1}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
-            vout[vcount++] = {p10, {u1,v1}, {u1,v1}, {u1,v1}, {u1,v1}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
-            vout[vcount++] = {p01, {u0,v0}, {u0,v0}, {u0,v0}, {u0,v0}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
+            vout[vcount++] = {p00, {u0,v1}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
+            vout[vcount++] = {p10, {u1,v1}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
+            vout[vcount++] = {p01, {u0,v0}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
             // triangle 2
-            vout[vcount++] = {p10, {u1,v1}, {u1,v1}, {u1,v1}, {u1,v1}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
-            vout[vcount++] = {p11, {u1,v0}, {u1,v0}, {u1,v0}, {u1,v0}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
-            vout[vcount++] = {p01, {u0,v0}, {u0,v0}, {u0,v0}, {u0,v0}, sz, fg, deco, text_alpha, colored_sprite, cursor_alpha};
+            vout[vcount++] = {p10, {u1,v1}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
+            vout[vcount++] = {p11, {u1,v0}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
+            vout[vcount++] = {p01, {u0,v0}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
             if (vcount >= kMaxVerticesPerFrame) { goto done; }
         }
     }
@@ -375,6 +403,21 @@ metal_realloc_decor_texture(struct SpriteMap *sm, unsigned width, unsigned heigh
     id<MTLTexture> tex = [g_device newTextureWithDescriptor:desc];
     sm->metal_decorations_texture = (__bridge_retained void*)tex;
     return tex != nil;
+}
+
+void
+metal_reload_textures(struct SpriteMap *sm) {
+    if (!sm) return;
+    if (sm->texture_id == 0 && sm->metal_texture == NULL) return;
+    // Recreate Metal textures to match current GL ones
+    unsigned xnum = sm->last_num_of_layers ? sm->last_num_of_layers : 1;
+    unsigned ynum = sm->last_ynum ? sm->last_ynum : 1;
+    unsigned width = xnum * sm->max_texture_size; // conservative; actual width set during realloc_sprite_texture
+    unsigned height = ynum * sm->max_texture_size;
+    metal_realloc_sprite_texture(sm, width, height, sm->last_num_of_layers ? sm->last_num_of_layers : 1);
+    if (sm->decorations_map.width && sm->decorations_map.height) {
+        metal_realloc_decor_texture(sm, sm->decorations_map.width, sm->decorations_map.height);
+    }
 }
 
 bool

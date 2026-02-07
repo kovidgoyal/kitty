@@ -45,6 +45,7 @@ void metal_image_free(uint32_t tex_id);
 
 // Build Metal pipelines and static resources.
 bool metal_build_pipelines(void);
+void metal_reload_textures(struct SpriteMap *sm);
 
 #ifdef __cplusplus
 }
