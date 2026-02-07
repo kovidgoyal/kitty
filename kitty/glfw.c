@@ -746,16 +746,9 @@ drop_callback(GLFWwindow *w, GLFWDropData *drop, bool from_self) {
     int num_mimes;
     const char** mimes = glfwGetDropMimeTypes(drop, &num_mimes);
     RAII_PyObject(ans, PyDict_New());
-    if (from_self && global_state.drag_source.drag_data) {
-        // For self-drops, copy data directly from drag_source.drag_data
-        PyObject *key, *value;
-        Py_ssize_t pos = 0;
-        while (PyDict_Next(global_state.drag_source.drag_data, &pos, &key, &value)) {
-            if (PyDict_SetItem(ans, key, value) != 0) break;
-        }
-    } else {
-        get_mime_data(drop, mimes, num_mimes, ans);
-    }
+    if (from_self) {
+        if (global_state.drag_source.drag_data) PyDict_Update(ans, global_state.drag_source.drag_data);
+    } else get_mime_data(drop, mimes, num_mimes, ans);
     RAII_PyObject(exc, PyErr_GetRaisedException());
     glfwFinishDrop(drop, GLFW_DRAG_OPERATION_COPY, true);
     if (!set_callback_window(w)) return;
