@@ -43,6 +43,9 @@ uint32_t metal_image_alloc(void);
 void metal_image_upload(uint32_t tex_id, const void *data, int width, int height, bool srgb, bool is_opaque, bool linear_filter, int repeat_mode);
 void metal_image_free(uint32_t tex_id);
 
+// Build Metal pipelines and static resources.
+bool metal_build_pipelines(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -67,6 +67,7 @@ gpu_init(void) {
     } else {
 #ifdef __APPLE__
         metal_backend_init();
+        metal_build_pipelines();
 #endif
     }
 }

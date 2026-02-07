@@ -15,6 +15,7 @@ struct MetalWindow {
     CAMetalLayer *layer;
     id<MTLDevice> device;
     id<MTLCommandQueue> queue;
+    id<MTLSamplerState> sampler_nearest;
     id<MTLRenderPipelineState> cellPipeline;
     id<MTLRenderPipelineState> clearPipeline;
     id<MTLTexture> spriteTexture;
@@ -28,6 +29,29 @@ static id<MTLCommandQueue> g_queue = nil;
 static id<MTLLibrary> g_library = nil;
 static std::unordered_map<uint32_t, id<MTLTexture>> g_image_textures;
 static std::atomic<uint32_t> g_image_ids{1000}; // arbitrary non-zero start
+static id<MTLSamplerState> g_sampler_nearest = nil;
+static id<MTLSamplerState> g_sampler_linear = nil;
+static id<MTLRenderPipelineState> g_cell_pipeline = nil;
+static id<MTLRenderPipelineState> g_clear_pipeline = nil;
+
+static id<MTLRenderPipelineState>
+make_pipeline(NSString *vname, NSString *fname, MTLPixelFormat pf) {
+    MTLRenderPipelineDescriptor *d = [[MTLRenderPipelineDescriptor alloc] init];
+    d.colorAttachments[0].pixelFormat = pf;
+    d.vertexFunction = [g_library newFunctionWithName:vname];
+    d.fragmentFunction = [g_library newFunctionWithName:fname];
+    NSError *err = nil;
+    id<MTLRenderPipelineState> p = [g_device newRenderPipelineStateWithDescriptor:d error:&err];
+    return p;
+}
+
+bool
+metal_build_pipelines(void) {
+    if (!g_device || !g_library) return false;
+    g_cell_pipeline = make_pipeline(@\"cell_vs\", @\"cell_fs\", MTLPixelFormatBGRA8Unorm_sRGB);
+    g_clear_pipeline = make_pipeline(@\"quad_vs\", @\"quad_fs\", MTLPixelFormatBGRA8Unorm_sRGB);
+    return g_cell_pipeline != nil && g_clear_pipeline != nil;
+}
 
 bool
 metal_backend_init(void) {
@@ -35,19 +59,21 @@ metal_backend_init(void) {
     g_device = MTLCreateSystemDefaultDevice();
     if (!g_device) return false;
     g_queue = [g_device newCommandQueue];
-    // Minimal inline library for future pipelines; safe to create even if unused for clear-only path.
-    NSString *source = @"using namespace metal;\\n"
-                       "struct VSOut { float4 pos [[position]]; };\\n"
-                       "vertex VSOut vtx(uint vid [[vertex_id]]) {\\n"
-                       "  float2 pts[3] = { {-1.0, -1.0}, {3.0, -1.0}, {-1.0, 3.0} };\\n"
-                       "  VSOut o; o.pos = float4(pts[vid], 0, 1); return o; }\\n"
-                       "fragment float4 frag() { return float4(0,0,0,1); }\\n";
+    NSString *source = [NSString stringWithContentsOfFile:@"/Users/nripeshn/Documents/PythonPrograms/kitty/kitty/metal_shaders.metal" encoding:NSUTF8StringEncoding error:nil];
+    if (!source) return false;
     NSError *err = nil;
     g_library = [g_device newLibraryWithSource:source options:nil error:&err];
-    if (!g_library) {
-        g_library = nil; // but still allow clear-only path
-    }
-    return g_queue != nil;
+    if (!g_library) return false;
+    MTLSamplerDescriptor *sd = [[MTLSamplerDescriptor alloc] init];
+    sd.minFilter = MTLSamplerMinMagFilterNearest;
+    sd.magFilter = MTLSamplerMinMagFilterNearest;
+    sd.sAddressMode = MTLSamplerAddressModeClampToEdge;
+    sd.tAddressMode = MTLSamplerAddressModeClampToEdge;
+    g_sampler_nearest = [g_device newSamplerStateWithDescriptor:sd];
+    sd.minFilter = MTLSamplerMinMagFilterLinear;
+    sd.magFilter = MTLSamplerMinMagFilterLinear;
+    g_sampler_linear = [g_device newSamplerStateWithDescriptor:sd];
+    return g_queue != nil && g_sampler_nearest != nil && g_sampler_linear != nil;
 }
 
 static void
@@ -74,6 +100,7 @@ metal_window_attach(OSWindow *w) {
     if (!mw) return false;
     mw->device = g_device;
     mw->queue = g_queue;
+    mw->sampler_nearest = g_sampler_nearest;
 
     CAMetalLayer *layer = [CAMetalLayer layer];
     layer.device = g_device;
