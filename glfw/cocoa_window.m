@@ -783,6 +783,7 @@ typedef struct {
 - (instancetype)initWithWindow:(_GLFWwindow*)initWindow mimeType:(const char*)mime {
     self = [super init];
     if (self) {
+        // Window IDs start from 1 (++counter), so 0 is an invalid sentinel
         windowId = initWindow ? initWindow->id : 0;
         mimeType = _glfw_strdup(mime);
         collectedData = [[NSMutableData alloc] init];
@@ -797,14 +798,20 @@ typedef struct {
 }
 
 - (void)collectDataSynchronously {
+    // Window ID 0 is invalid (IDs start from 1)
+    if (windowId == 0 || !mimeType) return;
+
     // Get the window from the ID
     _GLFWwindow* window = _glfwWindowForId(windowId);
-    if (!window || !mimeType) return;
+    if (!window) return;
 
     // Create a temporary drag source data for collecting data
+    // Note: temp_data.mime_type borrows from our mimeType instance variable,
+    // which is safe because temp_data only exists within this function scope
+    // and mimeType lives as long as this object.
     GLFWDragSourceData temp_data = {0};
     temp_data.window_id = windowId;
-    temp_data.mime_type = mimeType;  // Borrowed, not owned
+    temp_data.mime_type = mimeType;  // Borrowed from instance variable - valid for this scope
     temp_data.write_fd = -1;
     temp_data.finished = false;
     temp_data.error_code = 0;
@@ -820,10 +827,11 @@ typedef struct {
     (void)item;
     (void)type;
 
-    // If we haven't collected data yet, do it now (shouldn't happen but be safe)
-    if (collectedData.length == 0) {
-        [self collectDataSynchronously];
-    }
+    // Data should have been collected in collectDataSynchronously before the drag started.
+    // If we reach here with no data, it means either:
+    // 1. The application callback didn't provide data
+    // 2. There was an error during collection
+    // We don't retry collection here to avoid potential issues with recursive callbacks.
 
     // Set the data on the pasteboard item
     if (collectedData.length > 0) {
