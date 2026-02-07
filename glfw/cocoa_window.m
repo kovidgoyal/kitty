@@ -980,6 +980,13 @@ cleanup_all_ns_pending_drag_source_data(_GLFWwindow* window) {
     // The platform_data still holds the state for async completion
 }
 
+- (NSOperationQueue*)operationQueueForFilePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider {
+    (void)filePromiseProvider;
+    // Return the main queue so file promise operations happen on the main thread
+    // This is required for the NSFilePromiseProviderDelegate protocol
+    return [NSOperationQueue mainQueue];
+}
+
 @end
 // }}}
 

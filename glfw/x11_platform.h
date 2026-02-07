@@ -403,6 +403,11 @@ typedef struct _GLFWlibraryX11
         GLFWDragSourceData** pending_requests; // Array of pending data requests
         int              pending_request_count;  // Number of pending requests
         int              pending_request_capacity; // Capacity of the pending requests array
+        // Tracking state for active drag operations
+        Window           current_target; // Current XdndAware target window
+        int              target_version; // XdndAware version of current target
+        bool             status_received; // Whether we've received XdndStatus from current target
+        bool             target_accepts;  // Whether the current target accepts the drop
     } drag;
 
     struct {

@@ -1766,6 +1766,13 @@ static void processEvent(XEvent *event)
         {
             const int mods = translateState(event->xbutton.state);
 
+            // Handle drag operation completion when left button is released
+            if (_glfw.x11.drag.active && event->xbutton.button == Button1)
+            {
+                handleDragButtonRelease(event->xbutton.time);
+                // Don't process as normal click during drag
+                return;
+            }
 
             if (event->xbutton.button == Button1)
             {
@@ -1835,6 +1842,13 @@ static void processEvent(XEvent *event)
         {
             x11_cancel_momentum_scroll_timer();
             glfw_cancel_momentum_scroll();
+
+            // Handle drag motion if a drag operation is active
+            if (_glfw.x11.drag.active) {
+                handleDragMotion(event->xmotion.x_root, event->xmotion.y_root, event->xmotion.time);
+                // Still process normal motion for cursor position tracking
+            }
+
             handle_mouse_move_event(window, event->xmotion.x, event->xmotion.y);
             return;
         }
@@ -2167,6 +2181,29 @@ static void processEvent(XEvent *event)
                 XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source,
                            False, NoEventMask, &reply);
                 XFlush(_glfw.x11.display);
+            }
+            else if (event->xclient.message_type == _glfw.x11.XdndStatus)
+            {
+                // XdndStatus is sent by the target to the source
+                // This is only relevant when we are the drag source
+                if (_glfw.x11.drag.active &&
+                    (Window)event->xclient.data.l[0] == _glfw.x11.drag.current_target)
+                {
+                    _glfw.x11.drag.status_received = true;
+                    // Bit 0 of data.l[1] indicates whether the target accepts the drop
+                    _glfw.x11.drag.target_accepts = (event->xclient.data.l[1] & 1) != 0;
+                }
+            }
+            else if (event->xclient.message_type == _glfw.x11.XdndFinished)
+            {
+                // XdndFinished is sent by the target after it has processed the drop
+                // This is only relevant when we are the drag source
+                if (_glfw.x11.drag.active &&
+                    (Window)event->xclient.data.l[0] == _glfw.x11.drag.current_target)
+                {
+                    // Drop completed, clean up the drag source
+                    cleanupDragSource();
+                }
             }
 
             return;
@@ -3873,7 +3910,169 @@ add_x11_pending_request(GLFWDragSourceData* request) {
     return true;
 }
 
+// Find the XdndAware window under the given root coordinates
+// Returns the window handle and sets *version to the XdndAware version, or None if not found
+static Window findXdndAwareWindow(int root_x, int root_y, int* version) {
+    Window root_return, child = _glfw.x11.root;
+    int win_x, win_y;
+    unsigned int mask;
+
+    // Start from root and traverse down to find the window under cursor
+    while (child != None) {
+        Window target = child;
+        if (!XQueryPointer(_glfw.x11.display, target, &root_return, &child,
+                          &root_x, &root_y, &win_x, &win_y, &mask)) {
+            break;
+        }
+
+        // Check if this window is XdndAware
+        Atom actual_type;
+        int actual_format;
+        unsigned long nitems, bytes_after;
+        unsigned char* data = NULL;
+
+        if (XGetWindowProperty(_glfw.x11.display, target, _glfw.x11.XdndAware,
+                               0, 1, False, XA_ATOM, &actual_type, &actual_format,
+                               &nitems, &bytes_after, &data) == Success) {
+            if (data && nitems > 0 && actual_format == 32) {
+                *version = (int)*(Atom*)data;
+                if (*version > _GLFW_XDND_VERSION)
+                    *version = _GLFW_XDND_VERSION;
+                XFree(data);
+                return target;
+            }
+            if (data) XFree(data);
+        }
+
+        if (child == None) {
+            // No child, check current target
+            break;
+        }
+    }
+
+    *version = 0;
+    return None;
+}
+
+// Send XdndEnter message to target window
+static void sendXdndEnter(Window target, int version) {
+    XEvent event = { ClientMessage };
+    event.xclient.window = target;
+    event.xclient.message_type = _glfw.x11.XdndEnter;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+    // Version in high 24 bits, flags in low 8 bits (bit 0 = more than 3 types)
+    event.xclient.data.l[1] = ((long)_GLFW_XDND_VERSION << 24) | (_glfw.x11.drag.mime_count > 3 ? 1 : 0);
+    // First 3 type atoms (or 0 if using XdndTypeList)
+    event.xclient.data.l[2] = _glfw.x11.drag.mime_count > 0 ? (long)_glfw.x11.drag.type_atoms[0] : 0;
+    event.xclient.data.l[3] = _glfw.x11.drag.mime_count > 1 ? (long)_glfw.x11.drag.type_atoms[1] : 0;
+    event.xclient.data.l[4] = _glfw.x11.drag.mime_count > 2 ? (long)_glfw.x11.drag.type_atoms[2] : 0;
+
+    XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+}
+
+// Send XdndPosition message to target window
+static void sendXdndPosition(Window target, int root_x, int root_y, Time time) {
+    XEvent event = { ClientMessage };
+    event.xclient.window = target;
+    event.xclient.message_type = _glfw.x11.XdndPosition;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+    event.xclient.data.l[1] = 0; // Reserved
+    event.xclient.data.l[2] = ((long)root_x << 16) | (root_y & 0xFFFF);
+    event.xclient.data.l[3] = (long)time;
+    event.xclient.data.l[4] = _glfw.x11.drag.action_atom;
+
+    XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+}
+
+// Send XdndLeave message to target window
+static void sendXdndLeave(Window target) {
+    XEvent event = { ClientMessage };
+    event.xclient.window = target;
+    event.xclient.message_type = _glfw.x11.XdndLeave;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+    event.xclient.data.l[1] = 0;
+    event.xclient.data.l[2] = 0;
+    event.xclient.data.l[3] = 0;
+    event.xclient.data.l[4] = 0;
+
+    XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+}
+
+// Send XdndDrop message to target window
+static void sendXdndDrop(Window target, Time time) {
+    XEvent event = { ClientMessage };
+    event.xclient.window = target;
+    event.xclient.message_type = _glfw.x11.XdndDrop;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+    event.xclient.data.l[1] = 0;
+    event.xclient.data.l[2] = (long)time;
+    event.xclient.data.l[3] = 0;
+    event.xclient.data.l[4] = 0;
+
+    XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+}
+
+// Handle mouse motion during drag - track target windows and send XDND messages
+static void handleDragMotion(int root_x, int root_y, Time time) {
+    if (!_glfw.x11.drag.active) return;
+
+    int version = 0;
+    Window target = findXdndAwareWindow(root_x, root_y, &version);
+
+    if (target != _glfw.x11.drag.current_target) {
+        // Left old target window
+        if (_glfw.x11.drag.current_target != None) {
+            sendXdndLeave(_glfw.x11.drag.current_target);
+        }
+
+        _glfw.x11.drag.current_target = target;
+        _glfw.x11.drag.target_version = version;
+        _glfw.x11.drag.status_received = false;
+        _glfw.x11.drag.target_accepts = false;
+
+        // Entered new target window
+        if (target != None) {
+            sendXdndEnter(target, version);
+            sendXdndPosition(target, root_x, root_y, time);
+        }
+    } else if (target != None) {
+        // Still over the same target, send position update
+        // Only send if we've received status or this is the first position
+        sendXdndPosition(target, root_x, root_y, time);
+    }
+
+    XFlush(_glfw.x11.display);
+}
+
+// Handle button release during drag - complete or cancel the drag operation
+static void handleDragButtonRelease(Time time) {
+    if (!_glfw.x11.drag.active) return;
+
+    if (_glfw.x11.drag.current_target != None && _glfw.x11.drag.target_accepts) {
+        // Send drop to target
+        sendXdndDrop(_glfw.x11.drag.current_target, time);
+        XFlush(_glfw.x11.display);
+        // Don't cleanup yet - wait for XdndFinished
+    } else {
+        // No valid target or target doesn't accept - cancel drag
+        if (_glfw.x11.drag.current_target != None) {
+            sendXdndLeave(_glfw.x11.drag.current_target);
+            XFlush(_glfw.x11.display);
+        }
+        cleanupDragSource();
+    }
+}
+
 static void cleanupDragSource(void) {
+    // Ungrab the pointer if we grabbed it
+    if (_glfw.x11.drag.active) {
+        XUngrabPointer(_glfw.x11.display, CurrentTime);
+    }
+
     // Notify the application that the drag source is closed
     if (_glfw.x11.drag.window && _glfw.x11.drag.window->callbacks.dragSource) {
         _glfwInputDragSourceRequest(_glfw.x11.drag.window, NULL, NULL);
@@ -3894,6 +4093,10 @@ static void cleanupDragSource(void) {
     _glfw.x11.drag.source_window = None;
     _glfw.x11.drag.active = false;
     _glfw.x11.drag.window = NULL;
+    _glfw.x11.drag.current_target = None;
+    _glfw.x11.drag.target_version = 0;
+    _glfw.x11.drag.status_received = false;
+    _glfw.x11.drag.target_accepts = false;
 }
 
 void _glfwPlatformCancelDrag(_GLFWwindow* window UNUSED) {
@@ -3959,23 +4162,27 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
         return EIO;
     }
 
-    _glfw.x11.drag.active = true;
+    // Initialize drag tracking state
+    _glfw.x11.drag.current_target = None;
+    _glfw.x11.drag.target_version = 0;
+    _glfw.x11.drag.status_received = false;
+    _glfw.x11.drag.target_accepts = false;
 
-    // Note: The actual drag operation in X11 requires grabbing the pointer and tracking
-    // mouse movement to send XdndEnter/Position/Leave/Drop messages to target windows.
-    // This is a complex state machine that requires:
-    // 1. Grabbing the pointer with XGrabPointer
-    // 2. Tracking mouse movement
-    // 3. Finding window under cursor with XTranslateCoordinates
-    // 4. Sending XdndEnter when entering a new window
-    // 5. Sending XdndPosition as the cursor moves
-    // 6. Sending XdndLeave when leaving a window
-    // 7. Sending XdndDrop on button release
-    // 8. Responding to SelectionRequest events with the drag data
-    //
-    // For a complete implementation, this would need to be integrated with the
-    // event loop. For now, we set up the data source so the application can
-    // handle its own drag tracking if needed.
+    // Grab the pointer to track mouse movement during drag
+    int result = XGrabPointer(_glfw.x11.display, window->x11.handle, True,
+                 ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
+                 GrabModeAsync, GrabModeAsync,
+                 None,  // Don't confine to window
+                 None,  // Use default cursor
+                 CurrentTime);
+
+    if (result != GrabSuccess) {
+        cleanupDragSource();
+        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to grab pointer for drag operation");
+        return EIO;
+    }
+
+    _glfw.x11.drag.active = true;
 
     return 0;
 }
