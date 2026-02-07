@@ -1535,10 +1535,11 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *  @sa @ref glfwFinishDrop
  *
  *  @since Changed in version 4.0 to receive opaque drop data pointer.
+ *  @since Changed in version 4.0 to receive from_self parameter.
  *
  *  @ingroup input
  */
-typedef void (* GLFWdropfun)(GLFWwindow*, GLFWDropData*);
+typedef void (* GLFWdropfun)(GLFWwindow*, GLFWDropData*, bool from_self);
 
 /*! @brief Drag event types.
  *

@@ -179,6 +179,11 @@ typedef struct _GLFWwindowNS
     // Drag source state
     char** sourceMimes;     // Array of MIME type strings for drag source
     int sourceMimeCount;    // Number of source MIME types
+
+    // Pending drag source data requests (for cleanup on cancellation)
+    GLFWDragSourceData** pendingDragSourceData;
+    int pendingDragSourceDataCount;
+    int pendingDragSourceDataCapacity;
 } _GLFWwindowNS;
 
 // Cocoa-specific global data

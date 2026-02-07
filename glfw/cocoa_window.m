@@ -770,6 +770,92 @@ typedef struct {
     int errorCode;                       // Error code if any
 } GLFWFilePromiseState;
 
+// Helper function to clean up a single drag source data
+static void
+cleanup_ns_drag_source_data(GLFWDragSourceData* data) {
+    if (!data) return;
+    if (data->platform_data) {
+        GLFWFilePromiseState* state = (GLFWFilePromiseState*)data->platform_data;
+        // If the data wasn't finished, call completion with error
+        if (!data->finished && state->completionHandler) {
+            NSError* error = [NSError errorWithDomain:NSPOSIXErrorDomain code:ECANCELED userInfo:nil];
+            state->completionHandler(error);
+            Block_release(state->completionHandler);
+            state->completionHandler = nil;
+        }
+        if (state->fileHandle) {
+            @try {
+                [state->fileHandle closeFile];
+            } @catch (NSException* e) {
+                (void)e;
+            }
+            [state->fileHandle release];
+            state->fileHandle = nil;
+        }
+        if (state->destinationURL) {
+            [state->destinationURL release];
+            state->destinationURL = nil;
+        }
+        free(state);
+    }
+    free(data->mime_type);
+    free(data);
+}
+
+// Add a drag source data to the pending array for tracking
+static bool
+add_ns_pending_drag_source_data(_GLFWwindow* window, GLFWDragSourceData* data) {
+    if (!window || !data) return false;
+
+    // Grow array if needed
+    if (window->ns.pendingDragSourceDataCount >= window->ns.pendingDragSourceDataCapacity) {
+        // Cap maximum capacity to prevent excessive memory use
+        if (window->ns.pendingDragSourceDataCapacity >= 512) {
+            return false;
+        }
+        int new_capacity = window->ns.pendingDragSourceDataCapacity ? window->ns.pendingDragSourceDataCapacity * 2 : 4;
+        GLFWDragSourceData** new_array = realloc(window->ns.pendingDragSourceData,
+                                                  new_capacity * sizeof(GLFWDragSourceData*));
+        if (!new_array) return false;
+        window->ns.pendingDragSourceData = new_array;
+        window->ns.pendingDragSourceDataCapacity = new_capacity;
+    }
+
+    window->ns.pendingDragSourceData[window->ns.pendingDragSourceDataCount++] = data;
+    return true;
+}
+
+// Remove a specific drag source data from the pending array
+static void
+remove_ns_pending_drag_source_data(_GLFWwindow* window, GLFWDragSourceData* data) {
+    if (!window || !data) return;
+
+    for (int i = 0; i < window->ns.pendingDragSourceDataCount; i++) {
+        if (window->ns.pendingDragSourceData[i] == data) {
+            // Shift remaining elements
+            for (int j = i; j < window->ns.pendingDragSourceDataCount - 1; j++) {
+                window->ns.pendingDragSourceData[j] = window->ns.pendingDragSourceData[j + 1];
+            }
+            window->ns.pendingDragSourceDataCount--;
+            return;
+        }
+    }
+}
+
+// Clean up all pending drag source data for a window
+static void
+cleanup_all_ns_pending_drag_source_data(_GLFWwindow* window) {
+    if (!window) return;
+
+    for (int i = 0; i < window->ns.pendingDragSourceDataCount; i++) {
+        cleanup_ns_drag_source_data(window->ns.pendingDragSourceData[i]);
+    }
+    free(window->ns.pendingDragSourceData);
+    window->ns.pendingDragSourceData = NULL;
+    window->ns.pendingDragSourceDataCount = 0;
+    window->ns.pendingDragSourceDataCapacity = 0;
+}
+
 @interface GLFWFilePromiseProviderDelegate : NSObject <NSFilePromiseProviderDelegate>
 {
     GLFWid windowId;
@@ -873,6 +959,16 @@ typedef struct {
         free(state);
         free(source_data);
         completionHandler([NSError errorWithDomain:NSPOSIXErrorDomain code:ENOMEM userInfo:nil]);
+        return;
+    }
+
+    // Track this source data for cleanup on cancellation
+    if (!add_ns_pending_drag_source_data(window, source_data)) {
+        // Call completion handler with memory error before cleanup
+        completionHandler([NSError errorWithDomain:NSPOSIXErrorDomain code:ENOMEM userInfo:nil]);
+        // Mark as finished to prevent cleanup_ns_drag_source_data from calling completionHandler again
+        source_data->finished = true;
+        cleanup_ns_drag_source_data(source_data);
         return;
     }
 
@@ -1656,7 +1752,10 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     drop_data->eof_reached = false;
     drop_data->current_data = NULL;
     drop_data->data_offset = 0;
-    _glfwInputDrop(window, drop_data);
+    // Check if the drop is from this application
+    // draggingSource returns the source object if the drag started in this application
+    bool from_self = ([sender draggingSource] != nil);
+    _glfwInputDrop(window, drop_data, from_self);
     // Note: drop_data is NOT freed here - application must call glfwFinishDrop
     return YES;
 }
@@ -1685,6 +1784,8 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     (void)session;
     (void)screenPoint;
     (void)operation;
+    // Clean up all pending drag source data
+    cleanup_all_ns_pending_drag_source_data(window);
     // Notify the application that the drag source is closed
     _glfwInputDragSourceRequest(window, NULL, NULL);
     // Clean up source MIME types
@@ -3908,6 +4009,8 @@ void _glfwCocoaPostEmptyEvent(void) {
 }
 
 void _glfwPlatformCancelDrag(_GLFWwindow* window) {
+    // Clean up all pending drag source data
+    cleanup_all_ns_pending_drag_source_data(window);
     // Clean up source MIME types
     for (int i = 0; i < window->ns.sourceMimeCount; i++) {
         free(window->ns.sourceMimes[i]);
@@ -4056,11 +4159,13 @@ ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* d
             state->completionHandler = nil;
         }
 
-        // Clean up
-        [state->fileHandle release];
-        state->fileHandle = nil;
-        [state->destinationURL release];
-        state->destinationURL = nil;
+        // Remove from pending list and clean up
+        _GLFWwindow* window = _glfwWindowForId(source_data->window_id);
+        if (window) {
+            remove_ns_pending_drag_source_data(window, source_data);
+        }
+        // source_data->finished is true, so cleanup_ns_drag_source_data won't call completionHandler again
+        cleanup_ns_drag_source_data(source_data);
 
         return 0;
     }
@@ -4086,11 +4191,13 @@ ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* d
             state->completionHandler = nil;
         }
 
-        // Clean up
-        [state->fileHandle release];
-        state->fileHandle = nil;
-        [state->destinationURL release];
-        state->destinationURL = nil;
+        // Remove from pending list and clean up
+        _GLFWwindow* window = _glfwWindowForId(source_data->window_id);
+        if (window) {
+            remove_ns_pending_drag_source_data(window, source_data);
+        }
+        // source_data->finished is true, so cleanup_ns_drag_source_data won't call completionHandler again
+        cleanup_ns_drag_source_data(source_data);
 
         return 0;
     }
