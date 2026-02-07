@@ -3009,7 +3009,7 @@ GLFWAPI bool glfwWaylandBeep(GLFWwindow *handle) {
 // Drag operation implementation
 
 static void
-cleanup_drag_source_data(GLFWDragSourceData* data) {
+cleanup_wl_drag_source_data(GLFWDragSourceData* data) {
     if (!data) return;
     if (data->write_fd >= 0) {
         close(data->write_fd);
@@ -3021,10 +3021,10 @@ cleanup_drag_source_data(GLFWDragSourceData* data) {
 
 // Remove a finished request from the pending requests array
 static void
-remove_pending_request(int index) {
+remove_wl_pending_request(int index) {
     if (index < 0 || index >= _glfw.wl.drag.pending_request_count) return;
 
-    cleanup_drag_source_data(_glfw.wl.drag.pending_requests[index]);
+    cleanup_wl_drag_source_data(_glfw.wl.drag.pending_requests[index]);
 
     // Shift remaining elements
     for (int i = index; i < _glfw.wl.drag.pending_request_count - 1; i++) {
@@ -3035,19 +3035,19 @@ remove_pending_request(int index) {
 
 // Clean up all finished requests from the pending requests array
 static void
-cleanup_finished_requests(void) {
+cleanup_wl_finished_requests(void) {
     for (int i = _glfw.wl.drag.pending_request_count - 1; i >= 0; i--) {
         if (_glfw.wl.drag.pending_requests[i]->finished) {
-            remove_pending_request(i);
+            remove_wl_pending_request(i);
         }
     }
 }
 
 // Clean up all pending requests
 static void
-cleanup_all_pending_requests(void) {
+cleanup_all_wl_pending_requests(void) {
     for (int i = 0; i < _glfw.wl.drag.pending_request_count; i++) {
-        cleanup_drag_source_data(_glfw.wl.drag.pending_requests[i]);
+        cleanup_wl_drag_source_data(_glfw.wl.drag.pending_requests[i]);
     }
     free(_glfw.wl.drag.pending_requests);
     _glfw.wl.drag.pending_requests = NULL;
@@ -3057,9 +3057,9 @@ cleanup_all_pending_requests(void) {
 
 // Add a request to the pending requests array
 static bool
-add_pending_request(GLFWDragSourceData* request) {
+add_wl_pending_request(GLFWDragSourceData* request) {
     // First, clean up any finished requests to make room
-    cleanup_finished_requests();
+    cleanup_wl_finished_requests();
 
     // Grow the array if necessary
     if (_glfw.wl.drag.pending_request_count >= _glfw.wl.drag.pending_request_capacity) {
@@ -3082,7 +3082,7 @@ cleanup_drag(struct wl_data_source *source) {
     if (window && window->callbacks.dragSource) _glfwInputDragSourceRequest(window, NULL, NULL);
 
     // Clean up all pending data requests
-    cleanup_all_pending_requests();
+    cleanup_all_wl_pending_requests();
 
     // Clean up MIME type strings
     for (int i = 0; i < _glfw.wl.drag.mime_count; i++) free(_glfw.wl.drag.mimes[i]);
@@ -3120,13 +3120,13 @@ drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const 
     request->error_code = 0;
 
     if (!request->mime_type) {
-        cleanup_drag_source_data(request);
+        cleanup_wl_drag_source_data(request);
         return;
     }
 
     // Add to pending requests array
-    if (!add_pending_request(request)) {
-        cleanup_drag_source_data(request);
+    if (!add_wl_pending_request(request)) {
+        cleanup_wl_drag_source_data(request);
         return;
     }
 
@@ -3268,7 +3268,7 @@ _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, siz
         close(source_data->write_fd);
         source_data->write_fd = -1;
         // Clean up this and any other finished requests
-        cleanup_finished_requests();
+        cleanup_wl_finished_requests();
         return 0;
     }
 
@@ -3279,7 +3279,7 @@ _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, siz
         close(source_data->write_fd);
         source_data->write_fd = -1;
         // Clean up this and any other finished requests
-        cleanup_finished_requests();
+        cleanup_wl_finished_requests();
         return 0;
     }
 
@@ -3300,7 +3300,7 @@ _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, siz
         close(source_data->write_fd);
         source_data->write_fd = -1;
         // Clean up this and any other finished requests
-        cleanup_finished_requests();
+        cleanup_wl_finished_requests();
         return -errno;
     }
 

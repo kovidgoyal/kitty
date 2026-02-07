@@ -772,7 +772,7 @@ typedef struct {
 
 // Helper function to clean up a single drag source data
 static void
-cleanup_cocoa_drag_source_data(GLFWDragSourceData* data) {
+cleanup_ns_drag_source_data(GLFWDragSourceData* data) {
     if (!data) return;
     if (data->platform_data) {
         GLFWFilePromiseState* state = (GLFWFilePromiseState*)data->platform_data;
@@ -804,7 +804,7 @@ cleanup_cocoa_drag_source_data(GLFWDragSourceData* data) {
 
 // Add a drag source data to the pending array for tracking
 static bool
-add_pending_drag_source_data(_GLFWwindow* window, GLFWDragSourceData* data) {
+add_ns_pending_drag_source_data(_GLFWwindow* window, GLFWDragSourceData* data) {
     if (!window || !data) return false;
 
     // Grow array if needed
@@ -823,7 +823,7 @@ add_pending_drag_source_data(_GLFWwindow* window, GLFWDragSourceData* data) {
 
 // Remove a specific drag source data from the pending array
 static void
-remove_pending_drag_source_data(_GLFWwindow* window, GLFWDragSourceData* data) {
+remove_ns_pending_drag_source_data(_GLFWwindow* window, GLFWDragSourceData* data) {
     if (!window || !data) return;
 
     for (int i = 0; i < window->ns.pendingDragSourceDataCount; i++) {
@@ -840,11 +840,11 @@ remove_pending_drag_source_data(_GLFWwindow* window, GLFWDragSourceData* data) {
 
 // Clean up all pending drag source data for a window
 static void
-cleanup_all_pending_drag_source_data(_GLFWwindow* window) {
+cleanup_all_ns_pending_drag_source_data(_GLFWwindow* window) {
     if (!window) return;
 
     for (int i = 0; i < window->ns.pendingDragSourceDataCount; i++) {
-        cleanup_cocoa_drag_source_data(window->ns.pendingDragSourceData[i]);
+        cleanup_ns_drag_source_data(window->ns.pendingDragSourceData[i]);
     }
     free(window->ns.pendingDragSourceData);
     window->ns.pendingDragSourceData = NULL;
@@ -959,8 +959,8 @@ cleanup_all_pending_drag_source_data(_GLFWwindow* window) {
     }
 
     // Track this source data for cleanup on cancellation
-    if (!add_pending_drag_source_data(window, source_data)) {
-        cleanup_cocoa_drag_source_data(source_data);
+    if (!add_ns_pending_drag_source_data(window, source_data)) {
+        cleanup_ns_drag_source_data(source_data);
         return;
     }
 
@@ -1777,7 +1777,7 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     (void)screenPoint;
     (void)operation;
     // Clean up all pending drag source data
-    cleanup_all_pending_drag_source_data(window);
+    cleanup_all_ns_pending_drag_source_data(window);
     // Notify the application that the drag source is closed
     _glfwInputDragSourceRequest(window, NULL, NULL);
     // Clean up source MIME types
@@ -4002,7 +4002,7 @@ void _glfwCocoaPostEmptyEvent(void) {
 
 void _glfwPlatformCancelDrag(_GLFWwindow* window) {
     // Clean up all pending drag source data
-    cleanup_all_pending_drag_source_data(window);
+    cleanup_all_ns_pending_drag_source_data(window);
     // Clean up source MIME types
     for (int i = 0; i < window->ns.sourceMimeCount; i++) {
         free(window->ns.sourceMimes[i]);
@@ -4160,7 +4160,7 @@ ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* d
         // Remove from pending list (don't free - just remove tracking)
         _GLFWwindow* window = _glfwWindowForId(source_data->window_id);
         if (window) {
-            remove_pending_drag_source_data(window, source_data);
+            remove_ns_pending_drag_source_data(window, source_data);
         }
         // Clean up the source_data itself
         free(state);
@@ -4202,7 +4202,7 @@ ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* d
         // Remove from pending list (don't free - just remove tracking)
         _GLFWwindow* window = _glfwWindowForId(source_data->window_id);
         if (window) {
-            remove_pending_drag_source_data(window, source_data);
+            remove_ns_pending_drag_source_data(window, source_data);
         }
         // Clean up the source_data itself
         free(state);
