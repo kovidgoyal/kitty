@@ -162,11 +162,20 @@ static NSString *const kShaderSource =
 "fragment float4 cell_fg_fragment(CellOut in [[stage_in]],\n"
 "                                  texture2d_array<float> sprites [[texture(0)]],\n"
 "                                  sampler samp [[sampler(0)]]) {\n"
-"    float4 tex = sprites.sample(samp, in.uv, uint(in.sprite_z));\n"
-"    if (in.colored > 0.5) {\n"
-"        return tex;\n"
+"    if (in.uv.x == 0.0 && in.uv.y == 0.0 && in.sprite_z == 0.0) {\n"
+"        discard_fragment();\n"
 "    }\n"
-"    return float4(in.fg.rgb, in.fg.a * tex.a);\n"
+"    float4 tex = sprites.sample(samp, in.uv, uint(in.sprite_z));\n"
+"    // Data: 0xRRGGBBAA -> memory 00,ff,ff,ff for 0xffffff00\n"
+"    // Metal RGBA8 reads: R=00,G=ff,B=ff,A=ff -> tex.r=0, tex.a=1\n"
+"    // So alpha (the AA byte) is in tex.r\n"
+"    float alpha = tex.r;\n"
+"    if (in.colored > 0.5) {\n"
+"        return float4(tex.a, tex.b, tex.g, alpha);\n"
+"    }\n"
+"    // Debug: show red where alpha > 0\n"
+"    return float4(alpha, 0.0, 0.0, 1.0);\n"
+"    // return float4(in.fg.rgb, in.fg.a * alpha);\n"
 "}\n"
 "\n"
 "// Rectangle shader for cursors, selections, borders\n"
@@ -472,9 +481,12 @@ void metal_window_destroy(OSWindow *w) {
 bool metal_realloc_sprite_texture(SpriteMap *sm, unsigned w, unsigned h, unsigned layers) {
     if (!g_device) return false;
     
+    fprintf(stderr, "Metal: Creating sprite texture %ux%u with %u layers\n", w, h, layers);
+    
     MTLTextureDescriptor *desc = [MTLTextureDescriptor new];
     desc.textureType = MTLTextureType2DArray;
-    desc.pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
+    // Use RGBA format to match GL_RGBA + GL_UNSIGNED_INT_8_8_8_8 from OpenGL path
+    desc.pixelFormat = MTLPixelFormatRGBA8Unorm_sRGB;
     desc.width = w;
     desc.height = h;
     desc.arrayLength = layers;
@@ -510,6 +522,19 @@ void metal_reload_textures(SpriteMap *sm UNUSED) {}
 bool metal_upload_sprite(SpriteMap *sm, unsigned x, unsigned y, unsigned z, unsigned w, unsigned h, const void *data) {
     id<MTLTexture> tex = (__bridge id<MTLTexture>)sm->metal_texture;
     if (!tex) return false;
+    
+    static int upload_debug = 0;
+    if (upload_debug++ < 15) {
+        const uint32_t *pixels = (const uint32_t *)data;
+        fprintf(stderr, "Metal: Sprite %d at (%u,%u) layer %u, size %ux%u\n", upload_debug-1, x, y, z, w, h);
+        // Print first row of the sprite
+        fprintf(stderr, "  Row 0: ");
+        for (unsigned col = 0; col < w && col < 4; col++) {
+            uint32_t px = pixels[col];
+            fprintf(stderr, "0x%08x ", px);
+        }
+        fprintf(stderr, "\n");
+    }
     
     MTLRegion region = MTLRegionMake3D(x, y, 0, w, h, 1);
     [tex replaceRegion:region mipmapLevel:0 slice:z withBytes:data bytesPerRow:w*4 bytesPerImage:w*h*4];
@@ -567,8 +592,15 @@ static NSUInteger render_window_cells(CellVertex *verts, NSUInteger vcount,
     
     const float cw = (float)fd->fcm.cell_width;
     const float ch = (float)fd->fcm.cell_height;
-    const float atlas_w = xnum * cw;
-    const float atlas_h = ynum * (ch + 1);
+    
+    // UV calculation: sprites are arranged in a grid of xnum x ynum
+    // Each sprite cell is 1/xnum wide and 1/ynum tall in UV space
+    // But the texture has (cell_height + 1) pixels per row to skip decoration row
+    const float sprite_u_size = 1.0f / (float)xnum;
+    const float sprite_v_size = 1.0f / (float)ynum;
+    // The actual texture height includes the +1 padding per row
+    const float texture_height_px = (float)((ch + 1) * ynum);
+    const float row_height_uv = 1.0f / texture_height_px;
     
     LineBuf *lb = screen->linebuf;
     unsigned cols = screen->columns;
@@ -582,18 +614,6 @@ static NSUInteger render_window_cells(CellVertex *verts, NSUInteger vcount,
         
         for (unsigned col = 0; col < cols; col++) {
             GPUCell *gc = line->gpu_cells + col;
-            if (!gc->sprite_idx) continue;
-            
-            // Sprite UV
-            sprite_index sidx = gc->sprite_idx & 0x7FFFFFFF;  // Remove colored flag
-            unsigned sx = (sidx - 1) % xnum;
-            unsigned sy = ((sidx - 1) / xnum) % ynum;
-            unsigned sz = (sidx - 1) / (xnum * ynum);
-            
-            float u0 = (sx * cw) / atlas_w;
-            float v0 = (sy * (ch + 1)) / atlas_h;
-            float u1 = ((sx + 1) * cw) / atlas_w;
-            float v1 = ((sy + 1) * (ch + 1) - 1) / atlas_h;
             
             // Position in clip space
             float px = offset_x + col * cw;
@@ -602,26 +622,55 @@ static NSUInteger render_window_cells(CellVertex *verts, NSUInteger vcount,
             pixel_to_clip(px, py, vw, vh, &x0, &y0);
             pixel_to_clip(px + cw, py + ch, vw, vh, &x1, &y1);
             
-            // Colors
+            // Colors - always render background
             color_type fg = gc->fg ? gc->fg : default_fg;
             color_type bg = gc->bg ? gc->bg : default_bg;
             simd_float4 fgv = color_to_vec4(fg, inactive_alpha);
             simd_float4 bgv = color_to_vec4(bg, bg_alpha);
-            float colored = (gc->sprite_idx & 0x80000000) ? 1.0f : 0.0f;
+            
+            // Sprite UV - only if we have a sprite
+            float u0 = 0, v0 = 0, u1 = 0, v1 = 0;
+            float sz = 0;
+            float colored = 0;
+            
+            if (gc->sprite_idx) {
+                sprite_index sidx = gc->sprite_idx & 0x7FFFFFFF;  // Remove colored flag
+                // Match sprite_index_to_pos: div(idx, ynum * xnum), then div(rem, xnum)
+                unsigned sprites_per_page = xnum * ynum;
+                unsigned page_idx = sidx / sprites_per_page;
+                unsigned idx_on_page = sidx - sprites_per_page * page_idx;
+                unsigned sy = idx_on_page / xnum;
+                unsigned sx = idx_on_page - xnum * sy;
+                sz = (float)page_idx;
+                
+                // UV coordinates matching OpenGL shader logic
+                u0 = (float)sx * sprite_u_size;
+                u1 = (float)(sx + 1) * sprite_u_size;
+                v0 = (float)sy * sprite_v_size;
+                v1 = (float)(sy + 1) * sprite_v_size - row_height_uv;  // Skip decoration row
+                colored = (gc->sprite_idx & 0x80000000) ? 1.0f : 0.0f;
+                
+                static int uv_debug = 0;
+                if (uv_debug++ < 5) {
+                    fprintf(stderr, "Cell[%u,%u] sprite_idx=%u sx=%u sy=%u UV=(%.4f,%.4f)-(%.4f,%.4f) layer=%.0f\n",
+                            row, col, sidx, sx, sy, u0, v0, u1, v1, sz);
+                }
+            }
             
             // Two triangles per cell
             CellVertex v[6] = {
-                {{x0, y1}, {u0, v1}, fgv, bgv, (float)sz, colored},
-                {{x1, y1}, {u1, v1}, fgv, bgv, (float)sz, colored},
-                {{x0, y0}, {u0, v0}, fgv, bgv, (float)sz, colored},
-                {{x0, y0}, {u0, v0}, fgv, bgv, (float)sz, colored},
-                {{x1, y1}, {u1, v1}, fgv, bgv, (float)sz, colored},
-                {{x1, y0}, {u1, v0}, fgv, bgv, (float)sz, colored},
+                {{x0, y1}, {u0, v1}, fgv, bgv, sz, colored},
+                {{x1, y1}, {u1, v1}, fgv, bgv, sz, colored},
+                {{x0, y0}, {u0, v0}, fgv, bgv, sz, colored},
+                {{x0, y0}, {u0, v0}, fgv, bgv, sz, colored},
+                {{x1, y1}, {u1, v1}, fgv, bgv, sz, colored},
+                {{x1, y0}, {u1, v0}, fgv, bgv, sz, colored},
             };
             memcpy(verts + vcount, v, sizeof(v));
             vcount += 6;
         }
     }
+    
     return vcount;
 }
 
@@ -748,6 +797,168 @@ static NSUInteger render_selection(RectVertex *rects, NSUInteger rcount,
     return rcount;
 }
 
+// Render URL underlines
+static NSUInteger render_url_underlines(RectVertex *rects, NSUInteger rcount,
+                                        Screen *screen, FONTS_DATA_HANDLE fd,
+                                        float offset_x, float offset_y,
+                                        float vw, float vh,
+                                        color_type url_color) {
+    if (!screen->url_ranges.count) return rcount;
+    
+    const float cw = (float)fd->fcm.cell_width;
+    const float ch = (float)fd->fcm.cell_height;
+    const float underline_height = MAX(1.0f, ch / 16.0f);
+    
+    simd_float4 color = color_to_vec4(url_color, 1.0f);
+    
+    for (size_t i = 0; i < screen->url_ranges.count; i++) {
+        Selection *sel = screen->url_ranges.items + i;
+        
+        // Draw underline for each line in the URL range
+        index_type start_y = sel->start.y < sel->end.y ? sel->start.y : sel->end.y;
+        index_type end_y = sel->start.y > sel->end.y ? sel->start.y : sel->end.y;
+        
+        for (index_type row = start_y; row <= end_y && row < screen->lines; row++) {
+            index_type start_x = 0, end_x = screen->columns;
+            
+            if (row == sel->start.y && row == sel->end.y) {
+                start_x = sel->start.x < sel->end.x ? sel->start.x : sel->end.x;
+                end_x = sel->start.x > sel->end.x ? sel->start.x : sel->end.x;
+            } else if (row == start_y) {
+                start_x = (sel->start.y < sel->end.y) ? sel->start.x : sel->end.x;
+            } else if (row == end_y) {
+                end_x = (sel->start.y < sel->end.y) ? sel->end.x : sel->start.x;
+            }
+            
+            // Draw underline at bottom of cell
+            float px0 = offset_x + start_x * cw;
+            float py0 = offset_y + (row + 1) * ch - underline_height;
+            float px1 = offset_x + (end_x + 1) * cw;
+            float py1 = offset_y + (row + 1) * ch;
+            
+            float x0, y0, x1, y1;
+            pixel_to_clip(px0, py0, vw, vh, &x0, &y0);
+            pixel_to_clip(px1, py1, vw, vh, &x1, &y1);
+            add_rect(rects, &rcount, x0, y0, x1, y1, color);
+        }
+    }
+    
+    return rcount;
+}
+
+// Check if window should show scrollbar
+static bool has_scrollbar(Window *window, Screen *screen) {
+    if (!screen || !screen->historybuf || screen->historybuf->count == 0) return false;
+    
+    switch (OPT(scrollbar)) {
+        case SCROLLBAR_NEVER: return false;
+        case SCROLLBAR_ALWAYS: return true;
+        case SCROLLBAR_ON_SCROLLED: return screen->scrolled_by > 0;
+        case SCROLLBAR_ON_HOVERED: return window->scrollbar.is_hovering;
+        case SCROLLBAR_ON_SCROLL_AND_HOVER: 
+            return screen->scrolled_by > 0 || window->scrollbar.is_hovering;
+        default: return false;
+    }
+}
+
+// Render scrollbar for a window
+static NSUInteger render_scrollbar(RectVertex *rects, NSUInteger rcount,
+                                   Window *window, Screen *screen,
+                                   FONTS_DATA_HANDLE fd,
+                                   float offset_x, float offset_y,
+                                   float win_width, float win_height,
+                                   float vw, float vh) {
+    if (!has_scrollbar(window, screen)) return rcount;
+    
+    const float cw = (float)fd->fcm.cell_width;
+    const float ch = (float)fd->fcm.cell_height;
+    
+    // Scrollbar dimensions
+    float scrollbar_width = OPT(scrollbar_width) * cw;
+    if (window->scrollbar.is_hovering) {
+        scrollbar_width = OPT(scrollbar_hover_width) * cw;
+    }
+    float scrollbar_gap = OPT(scrollbar_gap) * cw;
+    
+    // Calculate scrollbar position
+    float scrollbar_left = offset_x + win_width - scrollbar_width - scrollbar_gap;
+    float scrollbar_top = offset_y + scrollbar_gap;
+    float scrollbar_height = win_height - 2 * scrollbar_gap;
+    
+    // Calculate thumb size and position
+    float visible_fraction = (float)screen->lines / (float)(screen->lines + screen->historybuf->count);
+    float min_thumb_height = OPT(scrollbar_min_handle_height) * ch;
+    float thumb_height = MAX(min_thumb_height, visible_fraction * scrollbar_height);
+    
+    float bar_frac = (float)screen->scrolled_by / MAX(1u, (float)screen->historybuf->count);
+    float available_space = scrollbar_height - thumb_height;
+    float thumb_top = scrollbar_top + available_space * bar_frac;
+    
+    // Store thumb position for mouse interaction
+    window->scrollbar.thumb_top = thumb_top / vh;
+    window->scrollbar.thumb_bottom = (thumb_top + thumb_height) / vh;
+    
+    // Draw track (background)
+    float track_opacity = window->scrollbar.is_hovering ? 
+                          OPT(scrollbar_track_hover_opacity) : OPT(scrollbar_track_opacity);
+    if (track_opacity > 0) {
+        color_type track_color = OPT(scrollbar_track_color) >> 8;
+        simd_float4 track_col = color_to_vec4(track_color, track_opacity);
+        
+        float x0, y0, x1, y1;
+        pixel_to_clip(scrollbar_left, scrollbar_top, vw, vh, &x0, &y0);
+        pixel_to_clip(scrollbar_left + scrollbar_width, scrollbar_top + scrollbar_height, vw, vh, &x1, &y1);
+        add_rect(rects, &rcount, x0, y0, x1, y1, track_col);
+    }
+    
+    // Draw thumb (handle)
+    float handle_opacity = OPT(scrollbar_handle_opacity);
+    color_type handle_color = OPT(scrollbar_handle_color) >> 8;
+    simd_float4 handle_col = color_to_vec4(handle_color, handle_opacity);
+    
+    float x0, y0, x1, y1;
+    pixel_to_clip(scrollbar_left, thumb_top, vw, vh, &x0, &y0);
+    pixel_to_clip(scrollbar_left + scrollbar_width, thumb_top + thumb_height, vw, vh, &x1, &y1);
+    add_rect(rects, &rcount, x0, y0, x1, y1, handle_col);
+    
+    return rcount;
+}
+
+// Render cursor trail effect
+static NSUInteger render_cursor_trail(RectVertex *rects, NSUInteger rcount,
+                                      Tab *tab, Screen *screen,
+                                      float vw UNUSED, float vh UNUSED) {
+    CursorTrail *ct = &tab->cursor_trail;
+    
+    if (!ct->needs_render || ct->opacity <= 0.0f) return rcount;
+    if (!OPT(cursor_trail)) return rcount;
+    
+    // Get cursor trail color
+    color_type trail_color = OPT(cursor_trail_color);
+    if (!trail_color) {
+        // Use last rendered cursor color
+        trail_color = screen->last_rendered.cursor_bg;
+    }
+    
+    simd_float4 color = color_to_vec4(trail_color, ct->opacity);
+    
+    // The cursor trail is a quad defined by corner_x[4] and corner_y[4]
+    // These are already in NDC coordinates (-1 to 1)
+    // Draw as two triangles
+    RectVertex v[6] = {
+        {{ct->corner_x[0], ct->corner_y[0]}, color},
+        {{ct->corner_x[1], ct->corner_y[1]}, color},
+        {{ct->corner_x[2], ct->corner_y[2]}, color},
+        {{ct->corner_x[2], ct->corner_y[2]}, color},
+        {{ct->corner_x[3], ct->corner_y[3]}, color},
+        {{ct->corner_x[0], ct->corner_y[0]}, color},
+    };
+    memcpy(rects + rcount, v, sizeof(v));
+    rcount += 6;
+    
+    return rcount;
+}
+
 void metal_present_blank(OSWindow *w, float alpha, color_type bg) {
     if (!w || !w->metal) return;
     MetalWindow *mw = w->metal;
@@ -852,6 +1063,12 @@ bool metal_render_os_window(OSWindow *w, monotonic_t now UNUSED, bool scan UNUSE
         Screen *screen = win->render_data.screen;
         if (!screen) continue;
         
+        // Trigger font rendering for dirty lines (sets sprite_idx in GPUCells)
+        // Pass NULL address to skip the memcpy to GPU buffer (Metal reads directly from linebuf)
+        if (screen->is_dirty || screen->reload_all_gpu_data) {
+            screen_update_cell_data(screen, NULL, fd, false);
+        }
+        
         WindowGeometry *geom = &win->render_data.geometry;
         float offset_x = (float)geom->left;
         float offset_y = (float)geom->top;
@@ -875,6 +1092,11 @@ bool metal_render_os_window(OSWindow *w, monotonic_t now UNUSED, bool scan UNUSE
                                     offset_x, offset_y, vw, vh,
                                     win_highlight, bg_alpha);
         
+        // Render URL underlines
+        rectCount = render_url_underlines(rectVerts, rectCount, screen, fd,
+                                         offset_x, offset_y, vw, vh,
+                                         OPT(url_color));
+        
         // Render cursor
         if (is_active || screen->cursor_render_info.render_even_when_unfocused) {
             CursorShape shape = screen->cursor_render_info.shape;
@@ -886,6 +1108,18 @@ bool metal_render_os_window(OSWindow *w, monotonic_t now UNUSED, bool scan UNUSE
                                      offset_x, offset_y, vw, vh,
                                      win_cursor, cursor_opacity, shape,
                                      screen->cursor_render_info.is_focused);
+        }
+        
+        // Render scrollbar
+        float win_width = (float)(geom->right - geom->left);
+        float win_height = (float)(geom->bottom - geom->top);
+        rectCount = render_scrollbar(rectVerts, rectCount, win, screen, fd,
+                                    offset_x, offset_y, win_width, win_height,
+                                    vw, vh);
+        
+        // Render cursor trail (only for active window)
+        if (is_active) {
+            rectCount = render_cursor_trail(rectVerts, rectCount, tab, screen, vw, vh);
         }
     }
     
@@ -983,10 +1217,79 @@ bool metal_render_os_window(OSWindow *w, monotonic_t now UNUSED, bool scan UNUSE
     return true;
 }
 
-// Stub implementations for unused functions
-uint32_t metal_image_alloc(void) { return 0; }
-void metal_image_upload(uint32_t t UNUSED, const void *d UNUSED, int w UNUSED, int h UNUSED, 
-                        bool s UNUSED, bool o UNUSED, bool l UNUSED, int r UNUSED) {}
-void metal_image_free(uint32_t t UNUSED) {}
+#pragma mark - Image/Graphics Protocol Support
+
+// Simple texture storage for graphics protocol
+#define MAX_GRAPHICS_TEXTURES 1024
+
+typedef struct {
+    id<MTLTexture> texture;
+    uint32_t width, height;
+    bool in_use;
+} GraphicsTexture;
+
+static GraphicsTexture g_graphics_textures[MAX_GRAPHICS_TEXTURES];
+static uint32_t g_next_texture_slot = 1;  // 0 is reserved for "no texture"
+
+uint32_t metal_image_alloc(void) {
+    if (!g_device) return 0;
+    
+    // Find a free slot
+    for (uint32_t i = 1; i < MAX_GRAPHICS_TEXTURES; i++) {
+        uint32_t slot = (g_next_texture_slot + i - 1) % MAX_GRAPHICS_TEXTURES;
+        if (slot == 0) slot = 1;  // Skip slot 0
+        if (!g_graphics_textures[slot].in_use) {
+            g_graphics_textures[slot].in_use = true;
+            g_graphics_textures[slot].texture = nil;
+            g_next_texture_slot = slot + 1;
+            return slot;
+        }
+    }
+    return 0;  // No free slots
+}
+
+void metal_image_upload(uint32_t texture_id, const void *data, int width, int height,
+                        bool is_opaque UNUSED, bool is_4byte_aligned UNUSED, 
+                        bool linear UNUSED, int repeat_strategy UNUSED) {
+    if (!g_device || texture_id == 0 || texture_id >= MAX_GRAPHICS_TEXTURES) return;
+    if (!g_graphics_textures[texture_id].in_use) return;
+    
+    GraphicsTexture *gt = &g_graphics_textures[texture_id];
+    
+    // Create or recreate texture if size changed
+    if (!gt->texture || gt->width != (uint32_t)width || gt->height != (uint32_t)height) {
+        MTLTextureDescriptor *desc = [MTLTextureDescriptor 
+            texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+            width:width height:height mipmapped:NO];
+        desc.usage = MTLTextureUsageShaderRead;
+        desc.storageMode = MTLStorageModeShared;
+        
+        gt->texture = [g_device newTextureWithDescriptor:desc];
+        gt->width = width;
+        gt->height = height;
+    }
+    
+    if (gt->texture && data) {
+        MTLRegion region = MTLRegionMake2D(0, 0, width, height);
+        [gt->texture replaceRegion:region mipmapLevel:0 withBytes:data bytesPerRow:width * 4];
+    }
+}
+
+void metal_image_free(uint32_t texture_id) {
+    if (texture_id == 0 || texture_id >= MAX_GRAPHICS_TEXTURES) return;
+    
+    GraphicsTexture *gt = &g_graphics_textures[texture_id];
+    gt->texture = nil;
+    gt->width = 0;
+    gt->height = 0;
+    gt->in_use = false;
+}
+
+// Get Metal texture for a graphics texture ID
+id<MTLTexture> metal_get_graphics_texture(uint32_t texture_id) {
+    if (texture_id == 0 || texture_id >= MAX_GRAPHICS_TEXTURES) return nil;
+    if (!g_graphics_textures[texture_id].in_use) return nil;
+    return g_graphics_textures[texture_id].texture;
+}
 
 #endif // __APPLE__
