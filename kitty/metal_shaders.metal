@@ -13,6 +13,7 @@ struct CellVertex {
     float4 deco_rgba;      // decoration color (premul)
     float  text_alpha;     // per-vertex text alpha
     float  colored_sprite; // mix factor
+    float  cursor_alpha;   // explicit cursor mask
 };
 
 struct CellVSOut {
@@ -26,6 +27,7 @@ struct CellVSOut {
     float4 deco_rgba;
     float  text_alpha;
     float  colored_sprite;
+    float  cursor_alpha;
 };
 
 struct Uniforms {
@@ -47,24 +49,23 @@ vertex CellVSOut cell_vs(const device CellVertex* vbuf [[buffer(0)]],
     o.deco_rgba = v.deco_rgba;
     o.text_alpha = v.text_alpha;
     o.colored_sprite = v.colored_sprite;
+    o.cursor_alpha = v.cursor_alpha;
     return o;
 }
 
-struct CellTextures {
-    texture2d_array<float> sprites [[id(0)]];
-    texture2d<uint> decor [[id(1)]];
-    sampler samp [[id(2)]];
-};
-
-fragment float4 cell_fs(CellVSOut in [[stage_in]], constant CellTextures &t [[buffer(1)]]) {
-    float4 glyph = t.sprites.sample(t.samp, float3(in.uv, float(in.layer)));
+fragment float4 cell_fs(CellVSOut in [[stage_in]],
+                        texture2d_array<float> sprites [[texture(0)]],
+                        texture2d<uint> decor [[texture(1)]],
+                        sampler samp [[sampler(0)]]) {
+    float4 glyph = sprites.sample(samp, float3(in.uv, float(in.layer)));
     float text_alpha = glyph.a * in.text_alpha;
     float3 fg = mix(in.fg_rgba.rgb, glyph.rgb, in.colored_sprite);
     float4 premul_fg = float4(fg * text_alpha, text_alpha);
 
-    float underline = t.sprites.sample(t.samp, float3(in.underline_uv, float(in.layer))).a;
-    float strike = t.sprites.sample(t.samp, float3(in.strike_uv, float(in.layer))).a;
-    float cursor = t.sprites.sample(t.samp, float3(in.cursor_uv, float(in.layer))).a;
+    float underline = sprites.sample(samp, float3(in.underline_uv, float(in.layer))).a;
+    float strike = sprites.sample(samp, float3(in.strike_uv, float(in.layer))).a;
+    float cursor_tex = sprites.sample(samp, float3(in.cursor_uv, float(in.layer))).a;
+    float cursor = clamp(cursor_tex * in.cursor_alpha, 0.0, 1.0);
 
     float4 outp = premul_fg;
     // underline blends decoration color
