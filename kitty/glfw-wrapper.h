@@ -1796,7 +1796,7 @@ typedef struct GLFWimage
     int height;
     /*! The pixel data of this image, arranged left-to-right, top-to-bottom.
      */
-    unsigned char* pixels;
+    const unsigned char* pixels;
 } GLFWimage;
 
 /*! @brief Gamepad input state

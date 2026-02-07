@@ -3006,7 +3006,8 @@ GLFWAPI bool glfwWaylandBeep(GLFWwindow *handle) {
 
 // Drag operation implementation
 
-static void cleanup_drag_source_data(GLFWDragSourceData* data) {
+static void
+cleanup_drag_source_data(GLFWDragSourceData* data) {
     if (!data) return;
     if (data->write_fd >= 0) {
         close(data->write_fd);
@@ -3016,11 +3017,11 @@ static void cleanup_drag_source_data(GLFWDragSourceData* data) {
     free(data);
 }
 
-static void cleanup_drag(void) {
+static void
+cleanup_drag(struct wl_data_source *source) {
     // Notify the application that the drag source is closed
-    if (_glfw.wl.drag.window && _glfw.wl.drag.window->callbacks.dragSource) {
-        _glfwInputDragSourceRequest(_glfw.wl.drag.window, NULL, NULL);
-    }
+    _GLFWwindow *window = _glfwWindowForId(_glfw.wl.drag.window_id);
+    if (window && window->callbacks.dragSource) _glfwInputDragSourceRequest(window, NULL, NULL);
 
     // Clean up any pending data request
     if (_glfw.wl.drag.current_request) {
@@ -3029,18 +3030,23 @@ static void cleanup_drag(void) {
     }
 
     // Clean up MIME type strings
-    for (int i = 0; i < _glfw.wl.drag.mime_count; i++) {
-        free(_glfw.wl.drag.mimes[i]);
-    }
+    for (int i = 0; i < _glfw.wl.drag.mime_count; i++) free(_glfw.wl.drag.mimes[i]);
     free(_glfw.wl.drag.mimes);
     _glfw.wl.drag.mimes = NULL;
     _glfw.wl.drag.mime_count = 0;
-    _glfw.wl.drag.window = NULL;
+    _glfw.wl.drag.window_id = 0;
+    if (_glfw.wl.drag.drag_viewport) wp_viewport_destroy(_glfw.wl.drag.drag_viewport);
+    if (_glfw.wl.drag.drag_icon) wl_surface_destroy(_glfw.wl.drag.drag_icon);
+    _glfw.wl.drag.drag_icon = NULL; _glfw.wl.drag.drag_viewport = NULL;
+    if (_glfw.wl.drag.source && _glfw.wl.drag.source != source) wl_data_source_destroy(_glfw.wl.drag.source);
+    _glfw.wl.drag.source = NULL;
+    if (source) wl_data_source_destroy(source);
 }
 
 static void
 drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const char *mime_type, int fd) {
-    if (!_glfw.wl.drag.window) {
+    _GLFWwindow *window = _glfwWindowForId(_glfw.wl.drag.window_id);
+    if (!window) {
         close(fd);
         return;
     }
@@ -3052,7 +3058,7 @@ drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const 
         return;
     }
 
-    request->window_id = _glfw.wl.drag.window ? _glfw.wl.drag.window->id : 0;
+    request->window_id = _glfw.wl.drag.window_id;
     request->mime_type = _glfw_strdup(mime_type);
     request->write_fd = fd;
     request->finished = false;
@@ -3064,25 +3070,16 @@ drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const 
     }
 
     // Store as current request
-    if (_glfw.wl.drag.current_request) {
-        cleanup_drag_source_data(_glfw.wl.drag.current_request);
-    }
+    if (_glfw.wl.drag.current_request) cleanup_drag_source_data(_glfw.wl.drag.current_request);
     _glfw.wl.drag.current_request = request;
 
     // Notify the application via callback
-    _glfwInputDragSourceRequest(_glfw.wl.drag.window, mime_type, request);
+    _glfwInputDragSourceRequest(window, mime_type, request);
 }
 
 static void
 drag_source_cancelled(void *data UNUSED, struct wl_data_source *source) {
-    // Clean up drag data
-    if (_glfw.wl.drag.source == source) {
-        cleanup_drag();
-        _glfw.wl.drag.source = NULL;
-    }
-    if (source) {
-        wl_data_source_destroy(source);
-    }
+    cleanup_drag(source);
 }
 
 static void
@@ -3113,10 +3110,7 @@ static const struct wl_data_source_listener drag_source_listener = {
 
 void
 _glfwPlatformCancelDrag(_GLFWwindow* window UNUSED) {
-    if (_glfw.wl.drag.source) {
-        drag_source_cancelled(NULL, _glfw.wl.drag.source);
-        _glfw.wl.drag.source = NULL;
-    }
+    cleanup_drag(_glfw.wl.drag.source);
 }
 
 int
@@ -3154,7 +3148,7 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const char* const* mime_types, int m
     // Allocate storage for MIME types
     _glfw.wl.drag.mimes = calloc(mime_count, sizeof(char*));
     _glfw.wl.drag.mime_count = mime_count;
-    _glfw.wl.drag.window = window;
+    _glfw.wl.drag.window_id = window->id;
 
     if (!_glfw.wl.drag.mimes) {
         _glfwPlatformCancelDrag(window);
@@ -3176,32 +3170,32 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const char* const* mime_types, int m
     wl_data_source_add_listener(_glfw.wl.drag.source, &drag_source_listener, NULL);
 
     // Set up the drag icon surface if thumbnail is provided
-    struct wl_surface* icon_surface = NULL;
-    struct wl_buffer* icon_buffer = NULL;
-
     if (thumbnail && thumbnail->pixels) {
-        icon_surface = wl_compositor_create_surface(_glfw.wl.compositor);
-        if (icon_surface) {
+        struct wl_buffer* icon_buffer = NULL;
+        _glfw.wl.drag.drag_icon = wl_compositor_create_surface(_glfw.wl.compositor);
+        if (_glfw.wl.drag.drag_icon) {
             icon_buffer = createShmBuffer(thumbnail, false, true);
             if (icon_buffer) {
-                wl_surface_attach(icon_surface, icon_buffer, 0, 0);
-                wl_surface_commit(icon_surface);
+                if (_glfw.wl.wp_viewporter) {
+                    double f_scale = _glfwWaylandWindowScale(window);
+                    int logical_width = (int)(thumbnail->width / f_scale);
+                    int logical_height = (int)(thumbnail->height / f_scale);
+                    _glfw.wl.drag.drag_viewport = wp_viewporter_get_viewport(
+                            _glfw.wl.wp_viewporter, _glfw.wl.drag.drag_icon);
+                    wp_viewport_set_destination(_glfw.wl.drag.drag_viewport, logical_width, logical_height);
+                } else {
+                    int scale = _glfwWaylandIntegerWindowScale(window);
+                    wl_surface_set_buffer_scale(_glfw.wl.drag.drag_icon, scale);
+                }
+                wl_surface_attach(_glfw.wl.drag.drag_icon, icon_buffer, 0, 0);
+                wl_surface_commit(_glfw.wl.drag.drag_icon);
+                wl_buffer_destroy(icon_buffer);
             }
         }
     }
-
     // Start the drag operation
-    wl_data_device_start_drag(_glfw.wl.dataDevice, _glfw.wl.drag.source,
-                              window->wl.surface, icon_surface,
+    wl_data_device_start_drag(_glfw.wl.dataDevice, _glfw.wl.drag.source, window->wl.surface, _glfw.wl.drag.drag_icon,
                               _glfw.wl.pointer_serial);
-
-    // Clean up icon resources (the compositor takes ownership)
-    if (icon_buffer) {
-        wl_buffer_destroy(icon_buffer);
-    }
-    if (icon_surface) {
-        wl_surface_destroy(icon_surface);
-    }
 
     return 0;
 }

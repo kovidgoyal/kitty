@@ -414,8 +414,10 @@ typedef struct _GLFWlibraryWayland
         struct wl_data_source* source;
         char** mimes;           // Array of MIME type strings
         int mime_count;         // Number of MIME types
-        _GLFWwindow* window;    // Window that initiated the drag
+        GLFWid window_id;    // Window that initiated the drag
         GLFWDragSourceData* current_request; // Current data request being processed
+        struct wl_surface *drag_icon;
+        struct wp_viewport *drag_viewport;
     } drag;
 } _GLFWlibraryWayland;
 

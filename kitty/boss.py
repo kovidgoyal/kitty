@@ -91,6 +91,7 @@ from .fast_data_types import (
     grab_keyboard,
     is_layer_shell_supported,
     last_focused_os_window_id,
+    load_png_data,
     macos_cycle_through_os_windows,
     mark_os_window_for_close,
     monitor_pid,
@@ -109,6 +110,7 @@ from .fast_data_types import (
     set_os_window_chrome,
     set_os_window_size,
     set_os_window_title,
+    start_drag_with_data,
     thread_write,
     toggle_fullscreen,
     toggle_maximized,
@@ -3300,6 +3302,14 @@ class Boss:
                         self.on_system_color_scheme_change('light', False)
             case _:
                 self.show_error(_('Unknown color scheme type'), _('{} is not a valid color scheme type').format(which))
+
+    @ac('debug', ''' Start a test drag operation, for use with mouse_map ''')
+    def test_dragging(self) -> None:
+        if wid := current_os_window():
+            with open(logo_png_file, 'rb') as f:
+                rgba, width, height = load_png_data(f.read())
+            drag_data = {'text/plain': b'This is a test drag of some basic text with the kitty logo as the drag icon.'}
+            start_drag_with_data(wid, drag_data, rgba, width, height)
 
     def launch_urls(self, *urls: str, no_replace_window: bool = False) -> None:
         from .launch import force_window_launch

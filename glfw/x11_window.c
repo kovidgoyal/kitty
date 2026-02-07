@@ -2438,7 +2438,7 @@ void _glfwPlatformSetWindowIcon(_GLFWwindow* window,
 
             for (j = 0;  j < images[i].width * images[i].height;  j++)
             {
-                unsigned char *p = images->pixels + j * 4;
+                const unsigned char *p = images->pixels + j * 4;
                 const unsigned char r = *p++, g = *p++, b = *p++, a = *p++;
                 *target++ = a << 24 | (r << 16) | (g << 8) | b;
             }

@@ -608,9 +608,7 @@ static void registryHandleGlobal(void* data UNUSED,
     else if (is(wl_data_device_manager))
     {
         _glfw.wl.dataDeviceManager =
-            wl_registry_bind(registry, name,
-                             &wl_data_device_manager_interface,
-                             1);
+            wl_registry_bind(registry, name, &wl_data_device_manager_interface, 3);
         if (_glfw.wl.seat && _glfw.wl.dataDeviceManager && !_glfw.wl.dataDevice) {
             _glfwSetupWaylandDataDevice();
         }

@@ -374,6 +374,17 @@ typedef struct GlobalState {
     int gl_version;
     bool supports_framebuffer_srgb;
     PyObject *options_object;
+
+    struct {
+        bool is_active;
+        PyObject *drag_data;
+        struct {
+            void *platform_data;
+            size_t offset;
+            PyObject *weakref_to_data_object;
+        } *ongoing_transfers;
+        size_t num_ongoing_transfers, ongoing_transfers_capacity;
+    } drag_source;
 } GlobalState;
 
 extern GlobalState global_state;
