@@ -763,7 +763,6 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 // Structure to hold async drag state
 typedef struct {
-    NSURL* destinationURL;              // URL to write to
     void (^completionHandler)(NSError*); // Completion block to call
     NSFileHandle* fileHandle;           // File handle for writing
     bool finished;                       // Whether writing is complete
@@ -791,10 +790,6 @@ cleanup_ns_drag_source_data(GLFWDragSourceData* data) {
             }
             [state->fileHandle release];
             state->fileHandle = nil;
-        }
-        if (state->destinationURL) {
-            [state->destinationURL release];
-            state->destinationURL = nil;
         }
         free(state);
     }
@@ -930,37 +925,26 @@ cleanup_all_ns_pending_drag_source_data(_GLFWwindow* window) {
     }
 
     // Create the file promise state
+    char *mt = _glfw_strdup(mimeType);
     GLFWFilePromiseState* state = calloc(1, sizeof(GLFWFilePromiseState));
-    if (!state) {
-        free(source_data);
+    if (!state || !mt) {
+        free(source_data); free(mt); free(state);
         [fileHandle closeFile];
         completionHandler([NSError errorWithDomain:NSPOSIXErrorDomain code:ENOMEM userInfo:nil]);
         return;
     }
 
-    state->destinationURL = [url retain];
     state->completionHandler = [completionHandler copy];
     state->fileHandle = [fileHandle retain];
     state->finished = false;
     state->errorCode = 0;
 
     source_data->window_id = windowId;
-    source_data->mime_type = _glfw_strdup(mimeType);
+    source_data->mime_type = mt;
     source_data->write_fd = -1;
     source_data->finished = false;
     source_data->error_code = 0;
     source_data->platform_data = state;
-
-    if (!source_data->mime_type) {
-        [state->fileHandle closeFile];
-        [state->fileHandle release];
-        [state->destinationURL release];
-        Block_release(state->completionHandler);
-        free(state);
-        free(source_data);
-        completionHandler([NSError errorWithDomain:NSPOSIXErrorDomain code:ENOMEM userInfo:nil]);
-        return;
-    }
 
     // Track this source data for cleanup on cancellation
     if (!add_ns_pending_drag_source_data(window, source_data)) {
@@ -1619,7 +1603,7 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     // Count total types across all pasteboard items plus 2 for uri-list and text/plain
     size_t max_types = 2;
     for (NSPasteboardItem* item in pasteboard.pasteboardItems) max_types += [item.types count];
-    NSArray *classes = [NSArray arrayWithObject:[NSFilePromiseReceiver class]];
+    NSArray *classes = @[[NSFilePromiseReceiver class]];
     NSArray *receivers = [pasteboard readObjectsForClasses:classes options:@{}];
     for (NSFilePromiseReceiver *receiver in receivers) max_types += [receiver.fileTypes count];
 
@@ -1758,6 +1742,7 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     drop_data->eof_reached = false;
     drop_data->current_data = NULL;
     drop_data->data_offset = 0;
+    drop_data->data_is_file_promise = false;
     // Check if the drop is from this application
     // draggingSource returns the source object if the drag started in this application
     bool from_self = ([sender draggingSource] != nil);
@@ -1789,11 +1774,12 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
 {
     (void)session;
     (void)screenPoint;
-    (void)operation;
-    // Clean up all pending drag source data
-    cleanup_all_ns_pending_drag_source_data(window);
-    // Notify the application that the drag source is closed
-    _glfwInputDragSourceRequest(window, NULL, NULL);
+    if (operation == NSDragOperationNone) {  // drag was canceled
+        // Clean up all pending drag source data
+        cleanup_all_ns_pending_drag_source_data(window);
+        // Notify the application that the drag source is closed
+        _glfwInputDragSourceRequest(window, NULL, NULL);
+    }
 }
 
 - (BOOL)hasMarkedText
@@ -4113,7 +4099,8 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
     }
 }
 
-ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size) {
+ssize_t
+_glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size) {
     if (!source_data || source_data->finished) return -EINVAL;
     if (!source_data->platform_data) return -EINVAL;
 
@@ -4255,16 +4242,18 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
     // If switching MIME types, release previous data
     if (drop->current_mime && strcmp(drop->current_mime, mime) != 0) {
         if (drop->current_data) {
-            [(NSData*)drop->current_data release];
+            [(NSObject*)drop->current_data release];
             drop->current_data = NULL;
         }
         drop->data_offset = 0;
+        drop->data_is_file_promise = false;
         free(drop->current_mime); drop->current_mime = NULL;
     }
 
     // If we need to fetch data for this MIME type
     if (drop->current_data == NULL || drop->current_mime == NULL) {
-        NSData* data = nil;
+        NSData* data = nil; NSFilePromiseReceiver *file_promise = nil;
+        drop->data_is_file_promise = false;
         // Handle special MIME types
         if (strcmp(mime, "text/uri-list") == 0) {
             NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
@@ -4284,39 +4273,87 @@ _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, si
                 NSString* str = strings[0];
                 data = [str dataUsingEncoding:NSUTF8StringEncoding];
             }
-        } else {
+        }
+        if (data == nil) {
             // Try to read data for other MIME types using UTI
             NSString* uti = mime_to_uti(mime);
             if (uti) {
                 NSPasteboardType pbType = [pasteboard availableTypeFromArray:@[uti]];
-                if (pbType) {
-                    data = [pasteboard dataForType:pbType];
+                if (pbType) data = [pasteboard dataForType:pbType];
+            }
+            if (data == nil) {
+                // look in the file promise providers
+                NSArray *receivers = [pasteboard readObjectsForClasses:@[[NSFilePromiseReceiver class]] options:@{}];
+                for (NSFilePromiseReceiver *receiver in receivers) {
+                    for (NSString *uti in receiver.fileTypes) {
+                        const char *q = uti_to_mime(uti);
+                        if (q && strcmp(q, mime) == 0) {
+                            file_promise = receiver;
+                            break;
+                        }
+                    }
+                    if (file_promise) break;
                 }
             }
         }
-        if (!data) return -ENOENT;
-        drop->current_data = [data retain];
+        if (!data && !file_promise) return -ENOENT;
         drop->current_mime = _glfw_strdup(mime);
         drop->data_offset = 0;
+        if (file_promise != nil) {
+            drop->data_is_file_promise = true;
+            [file_promise receivePromisedFilesAtDestination:[NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES]
+                options:@{} operationQueue:[NSOperationQueue mainQueue] reader:^(NSURL *fileURL, NSError *errorOrNil) {
+                if (errorOrNil) {
+                    NSLog(@"Error receiving file: %@: %@", fileURL, errorOrNil);
+                    drop->file_io_error = [errorOrNil retain];
+                } else {
+                    NSError *err = nil;
+                    drop->file_handle = [NSFileHandle fileHandleForReadingFromURL:fileURL error:&err];
+                    if (err) drop->file_io_error = [err retain];
+                }
+            }];
+        } else {
+            drop->current_data = [data retain];
+            drop->data_is_file_promise = false;
+        }
     }
 
     // Read data from buffer
-    NSData* data = (NSData*)drop->current_data;
-    NSUInteger dataLength = [data length];
-
-    if (drop->data_offset >= dataLength) return 0;  // EOF
-    NSUInteger remaining = dataLength - drop->data_offset;
-    NSUInteger to_read = (remaining < capacity) ? remaining : capacity;
-
-    [data getBytes:buffer range:NSMakeRange(drop->data_offset, to_read)];
-    drop->data_offset += to_read;
-    return (ssize_t)to_read;
+    if (drop->data_is_file_promise) {
+        if (drop->file_io_error == nil && drop->file_handle == nil) return -EAGAIN;
+        if (drop->file_io_error) {
+            NSError *err = drop->file_io_error;
+            if ([err.domain isEqualToString:NSPOSIXErrorDomain]) return -err.code;
+            NSError *underlyingError = err.userInfo[NSUnderlyingErrorKey];
+            if (underlyingError && [underlyingError.domain isEqualToString:NSPOSIXErrorDomain]) return -underlyingError.code;
+            return -EIO;
+        }
+        int fd = ((NSFileHandle*)drop->file_handle).fileDescriptor;
+        ssize_t bytesRead; do {
+            bytesRead = read(fd, buffer, capacity);
+        } while (bytesRead == -1 && errno == EINTR);
+        if (bytesRead < 0) return -errno;
+        return bytesRead;
+    } else {
+        NSData* data = (NSData*)drop->current_data;
+        NSUInteger dataLength = [data length];
+        if (drop->data_offset >= dataLength) return 0;  // EOF
+        NSUInteger remaining = dataLength - drop->data_offset;
+        NSUInteger to_read = (remaining < capacity) ? remaining : capacity;
+        [data getBytes:buffer range:NSMakeRange(drop->data_offset, to_read)];
+        drop->data_offset += to_read;
+        return (ssize_t)to_read;
+    }
 }
 
 void
 _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUSED, bool success UNUSED) {
     if (!drop) return;
     free(drop->current_mime); drop->current_mime = NULL;
+    if (drop->file_io_error) [(NSError*)drop->file_io_error release];
+    drop->file_io_error = NULL;
+    if (drop->file_handle) [(NSFileHandle*)drop->file_handle closeFile];
+    drop->file_handle = NULL;
     // Release the retained current data
     if (drop->current_data) {
         [(NSData*)drop->current_data release];

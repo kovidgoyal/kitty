@@ -721,8 +721,7 @@ read_drop_data(GLFWDropData *drop, const char *mime) {
         } else if (ret == 0) {
             if (_PyBytes_Resize(&ans, pos) != 0) return NULL;
             return Py_NewRef(ans);
-        }
-        else {
+        } else {
             errno = -ret;
             PyErr_SetFromErrno(PyExc_OSError);
             return NULL;
@@ -801,7 +800,7 @@ try_sending_drag_source_data(id_type timer_id UNUSED, void *callback_data UNUSED
 
 static void
 drag_source_callback(GLFWwindow *window UNUSED, const char* mime_type, GLFWDragSourceData* source_data) {
-    PyObject *data;
+    PyObject *data = NULL;
     if (mime_type == NULL) {
         ds.is_active = false;
         Py_CLEAR(ds.drag_data);

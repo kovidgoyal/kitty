@@ -98,12 +98,19 @@ struct GLFWDropData {
     // Platform-specific data fields
     void* current_data;         // NSData* (Cocoa) or unsigned char* from XGetWindowProperty (X11)
     size_t data_offset;         // Read offset in current data (Cocoa/X11)
+#ifdef __APPLE__
+    // Cocoa specific fields
+    bool data_is_file_promise;  // true if current_data is a file promise provider rather than NSData
+    void *file_handle, *file_io_error;
+#endif
+#ifdef _GLFW_X11
     // X11-specific fields
     size_t x11_data_size;       // Size of current X11 data
     unsigned long x11_drop_target; // Window handle where the drop occurred (X11)
     unsigned long x11_drop_time;   // Time from the drop event (X11)
     unsigned long x11_source;      // Source window for XdndFinished (X11)
     int x11_version;               // Xdnd protocol version (X11)
+#endif
 };
 
 // Drag source data structure for chunked writing of drag data
