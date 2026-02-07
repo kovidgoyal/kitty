@@ -960,6 +960,10 @@ cleanup_all_ns_pending_drag_source_data(_GLFWwindow* window) {
 
     // Track this source data for cleanup on cancellation
     if (!add_ns_pending_drag_source_data(window, source_data)) {
+        // Call completion handler with memory error before cleanup
+        completionHandler([NSError errorWithDomain:NSPOSIXErrorDomain code:ENOMEM userInfo:nil]);
+        // Mark as finished to prevent cleanup_ns_drag_source_data from calling completionHandler again
+        source_data->finished = true;
         cleanup_ns_drag_source_data(source_data);
         return;
     }
@@ -4151,23 +4155,13 @@ ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* d
             state->completionHandler = nil;
         }
 
-        // Clean up
-        [state->fileHandle release];
-        state->fileHandle = nil;
-        [state->destinationURL release];
-        state->destinationURL = nil;
-
-        // Remove from pending list (don't free - just remove tracking)
+        // Remove from pending list and clean up
         _GLFWwindow* window = _glfwWindowForId(source_data->window_id);
         if (window) {
             remove_ns_pending_drag_source_data(window, source_data);
         }
-        // Clean up the source_data itself
-        free(state);
-        source_data->platform_data = NULL;
-        free(source_data->mime_type);
-        source_data->mime_type = NULL;
-        free(source_data);
+        // source_data->finished is true, so cleanup_ns_drag_source_data won't call completionHandler again
+        cleanup_ns_drag_source_data(source_data);
 
         return 0;
     }
@@ -4193,23 +4187,13 @@ ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* d
             state->completionHandler = nil;
         }
 
-        // Clean up
-        [state->fileHandle release];
-        state->fileHandle = nil;
-        [state->destinationURL release];
-        state->destinationURL = nil;
-
-        // Remove from pending list (don't free - just remove tracking)
+        // Remove from pending list and clean up
         _GLFWwindow* window = _glfwWindowForId(source_data->window_id);
         if (window) {
             remove_ns_pending_drag_source_data(window, source_data);
         }
-        // Clean up the source_data itself
-        free(state);
-        source_data->platform_data = NULL;
-        free(source_data->mime_type);
-        source_data->mime_type = NULL;
-        free(source_data);
+        // source_data->finished is true, so cleanup_ns_drag_source_data won't call completionHandler again
+        cleanup_ns_drag_source_data(source_data);
 
         return 0;
     }
