@@ -91,6 +91,9 @@ x11_cancel_momentum_scroll_timer(void) {
 // Forward declarations for drag source data handling
 static void cleanup_x11_drag_source_data(GLFWDragSourceData* data);
 static bool add_x11_pending_request(GLFWDragSourceData* request);
+static void cleanupDragSource(void);
+static void handleDragMotion(int root_x, int root_y, Time time);
+static void handleDragButtonRelease(Time time);
 
 // Wait for data to arrive using poll
 // This avoids blocking other threads via the per-display Xlib lock that also
