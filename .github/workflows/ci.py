@@ -224,8 +224,6 @@ IGNORED_DEPENDENCY_CVES = [
     'CVE-2025-15367',
     'CVE-2025-12781',
     'CVE-2025-11468',
-    # glib
-    'CVE-2025-4056', # Only affects Windows, on which we dont run
     # github.com/nwaples/rardecode/v2
     'CVE-2025-11579', # rardecode is version 2.2.1, not vulnerable
 ]
