@@ -759,6 +759,81 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 }
 @end // }}}
 
+// Pasteboard Item Data Provider for synchronous drag data {{{
+
+// Structure to hold collected drag data for a MIME type
+typedef struct {
+    char* mimeType;
+    NSMutableData* data;
+    bool finished;
+} GLFWDragItemData;
+
+@interface GLFWPasteboardDataProvider : NSObject <NSPasteboardItemDataProvider>
+{
+    GLFWid windowId;
+    char* mimeType;
+    NSMutableData* collectedData;
+}
+- (instancetype)initWithWindow:(_GLFWwindow*)initWindow mimeType:(const char*)mime;
+- (void)collectDataSynchronously;
+@end
+
+@implementation GLFWPasteboardDataProvider
+
+- (instancetype)initWithWindow:(_GLFWwindow*)initWindow mimeType:(const char*)mime {
+    self = [super init];
+    if (self) {
+        windowId = initWindow ? initWindow->id : 0;
+        mimeType = _glfw_strdup(mime);
+        collectedData = [[NSMutableData alloc] init];
+    }
+    return self;
+}
+
+- (void)dealloc {
+    free(mimeType);
+    [collectedData release];
+    [super dealloc];
+}
+
+- (void)collectDataSynchronously {
+    // Get the window from the ID
+    _GLFWwindow* window = _glfwWindowForId(windowId);
+    if (!window || !mimeType) return;
+
+    // Create a temporary drag source data for collecting data
+    GLFWDragSourceData temp_data = {0};
+    temp_data.window_id = windowId;
+    temp_data.mime_type = mimeType;  // Borrowed, not owned
+    temp_data.write_fd = -1;
+    temp_data.finished = false;
+    temp_data.error_code = 0;
+    temp_data.platform_data = (__bridge void*)collectedData;
+
+    // Call the application callback to get data
+    // The callback should call glfwSendDragData synchronously
+    _glfwInputDragSourceRequest(window, mimeType, &temp_data);
+}
+
+- (void)pasteboard:(NSPasteboard*)pasteboard item:(NSPasteboardItem*)item provideDataForType:(NSPasteboardType)type {
+    (void)pasteboard;
+    (void)item;
+    (void)type;
+
+    // If we haven't collected data yet, do it now (shouldn't happen but be safe)
+    if (collectedData.length == 0) {
+        [self collectDataSynchronously];
+    }
+
+    // Set the data on the pasteboard item
+    if (collectedData.length > 0) {
+        [item setData:collectedData forType:type];
+    }
+}
+
+@end
+// }}}
+
 // File Promise Provider Delegate for async drag data {{{
 
 // Structure to hold async drag state
@@ -4055,23 +4130,29 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
             }
         }
 
-        // Create dragging items array - one NSFilePromiseProvider per MIME type
+        // Create dragging items array - one NSPasteboardItem per MIME type
+        // We use NSPasteboardItem with our custom data provider instead of NSFilePromiseProvider
+        // because NSFilePromiseProvider is designed for writing files to disk, while we want
+        // to provide inline pasteboard data for drag and drop operations.
         NSMutableArray<NSDraggingItem*>* dragItems = [[NSMutableArray alloc] init];
 
         for (int i = 0; i < mime_count; i++) {
             NSString* utiString = mime_to_uti(mime_types[i]);
 
-            // Create file promise provider with our delegate
-            GLFWFilePromiseProviderDelegate* delegate = [[GLFWFilePromiseProviderDelegate alloc]
+            // Create our data provider that will collect data synchronously
+            GLFWPasteboardDataProvider* provider = [[GLFWPasteboardDataProvider alloc]
                 initWithWindow:window mimeType:mime_types[i]];
-            NSFilePromiseProvider* provider = [[NSFilePromiseProvider alloc]
-                initWithFileType:utiString delegate:delegate];
 
-            // Store the delegate in the provider's user info so it's retained
-            provider.userInfo = delegate;
+            // Collect data synchronously before starting the drag
+            // This calls the application's drag source callback to get the data
+            [provider collectDataSynchronously];
+
+            // Create pasteboard item and set the data provider
+            NSPasteboardItem* pasteboardItem = [[NSPasteboardItem alloc] init];
+            [pasteboardItem setDataProvider:provider forTypes:@[utiString]];
 
             // Create the dragging item
-            NSDraggingItem* dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter:provider];
+            NSDraggingItem* dragItem = [[NSDraggingItem alloc] initWithPasteboardWriter:pasteboardItem];
 
             if (i == 0 && thumbnail && thumbnail->pixels) {
                 // Create NSImage from thumbnail for the first item
@@ -4146,6 +4227,31 @@ ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* d
     if (!source_data || source_data->finished) return -EINVAL;
     if (!source_data->platform_data) return -EINVAL;
 
+    // Check if this is a synchronous pasteboard data collection (NSMutableData)
+    // This is used by GLFWPasteboardDataProvider for immediate data collection
+    id platformObj = (__bridge id)source_data->platform_data;
+    if ([platformObj isKindOfClass:[NSMutableData class]]) {
+        NSMutableData* mutableData = (NSMutableData*)platformObj;
+
+        // End of data: NULL data pointer and size zero
+        if (!data && size == 0) {
+            source_data->finished = true;
+            return 0;
+        }
+
+        // Error from application: NULL data pointer and size is error code
+        if (!data && size > 0) {
+            source_data->finished = true;
+            source_data->error_code = (int)size;
+            return 0;
+        }
+
+        // Append data to the mutable data object
+        [mutableData appendBytes:data length:size];
+        return (ssize_t)size;
+    }
+
+    // Otherwise, this is the file promise flow with GLFWFilePromiseState
     GLFWFilePromiseState* state = (GLFWFilePromiseState*)source_data->platform_data;
 
     // End of data: NULL data pointer and size zero
