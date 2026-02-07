@@ -407,7 +407,7 @@ void _glfwInputCursorEnter(_GLFWwindow* window, bool entered)
 void _glfwInputDrop(_GLFWwindow* window, GLFWDropData* drop, bool from_self)
 {
     if (window->callbacks.drop)
-        window->callbacks.drop((GLFWwindow*) window, drop, from_self ? GLFW_TRUE : GLFW_FALSE);
+        window->callbacks.drop((GLFWwindow*) window, drop, from_self);
 }
 
 // Notifies shared code of a drag event

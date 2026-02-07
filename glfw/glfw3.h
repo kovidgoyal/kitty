@@ -1802,8 +1802,8 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *
  *  @param[in] window The window that received the drop.
  *  @param[in] drop Opaque drop data pointer (heap-allocated).
- *  @param[in] from_self GLFW_TRUE if the drop originated from this application
- *  (i.e., the application is both the drag source and drop target), GLFW_FALSE
+ *  @param[in] from_self true if the drop originated from this application
+ *  (i.e., the application is both the drag source and drop target), false
  *  if the drop came from an external application.
  *
  *  @sa @ref path_drop
@@ -1817,7 +1817,7 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *
  *  @ingroup input
  */
-typedef void (* GLFWdropfun)(GLFWwindow*, GLFWDropData*, int from_self);
+typedef void (* GLFWdropfun)(GLFWwindow*, GLFWDropData*, bool from_self);
 
 /*! @brief Drag event types.
  *
