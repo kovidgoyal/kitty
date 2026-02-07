@@ -30,7 +30,7 @@ func load_server_config(opts *ServerOptions) (ans *Config, err error) {
 func run_server(opts *ServerOptions) (err error) {
 	config, err := load_server_config(opts)
 	if err == nil {
-		portal, err := NewPortal(config)
+		portal, err := NewPortal(config, opts)
 		if err == nil {
 			err = portal.Start()
 			if err == nil {

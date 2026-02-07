@@ -184,6 +184,7 @@ For example::
 
     modify_font underline_position -2
     modify_font underline_thickness 150%
+    modify_font strikethrough_thickness 200%
     modify_font strikethrough_position 2px
 
 Additionally, you can modify the size of the cell in which each font glyph is

@@ -213,8 +213,17 @@ IGNORED_DEPENDENCY_CVES = [
     'CVE-2025-13836', # DoS in http client reading from malicious server
     'CVE-2025-12084', # DoS in xml.dom.minidom unused in kitty
     'CVE-2025-13837', # DoS in plistlib reading plist. We only use plistlib for writing
-    # glib
-    'CVE-2025-4056', # Only affects Windows, on which we dont run
+    'CVE-2025-6075',  # Quadratic complexity in os.path.expandvars()
+    # python stdlib all these are erroneously marked as fixed in python 3.15
+    # when it hasnt even been released. Sigh.
+    'CVE-2026-1299',
+    'CVE-2026-0865',
+    'CVE-2025-15282',
+    'CVE-2026-0672',
+    'CVE-2025-15366',
+    'CVE-2025-15367',
+    'CVE-2025-12781',
+    'CVE-2025-11468',
     # github.com/nwaples/rardecode/v2
     'CVE-2025-11579', # rardecode is version 2.2.1, not vulnerable
 ]
@@ -238,7 +247,7 @@ def check_dependencies() -> None:
     # Now test against the SBOM
     import runpy
     orig = sys.argv, sys.stdout
-    sys.argv = ['bypy', 'sbom', 'myproject', '1.0.0']
+    sys.argv = ['bypy', 'sbom', 'kovidgoyal/kitty', '1.0.0']
     buf = io.StringIO()
     sys.stdout = buf
     runpy.run_path('bypy-src')

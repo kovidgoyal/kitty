@@ -912,8 +912,6 @@ class EditCmd:
         self.file_data = b''
         self.file_inode = -1, -1
         self.file_size = -1
-        self.file_spec = ''
-        self.line_number = 0
         self.version = 0
         self.source_window_id = self.editor_window_id = -1
         self.abort_signaled = ''
@@ -936,7 +934,15 @@ class EditCmd:
             return
         if self.version > 0:
             raise ValueError(f'Unsupported version received in edit protocol: {self.version}')
-        self.opts, _ = parse_opts_for_clone(['--type=overlay'] + self.args)
+        self.opts, extra_args = parse_opts_for_clone(['--type=overlay'] + self.args)
+        self.file_spec = extra_args.pop()
+        self.line_number = 0
+        import re
+        pat = re.compile(r'\+(-?\d+)')
+        for x in extra_args:
+            m = pat.match(x)
+            if m is not None:
+                self.line_number = int(m.group(1))
         self.file_name = os.path.basename(self.file_spec)
         self.file_localpath = os.path.normpath(os.path.join(self.cwd, self.file_spec))
         self.is_local_file = False

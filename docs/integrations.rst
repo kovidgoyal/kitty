@@ -50,6 +50,8 @@ Display various types of files nicely formatted with images in the terminal
 A markdown editor that uses the text-sizing protocol for large headings and
 the graphics protocol for images.
 
+.. _tool_presentterm:
+
 `presenterm <https://github.com/mfontanini/presenterm>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Show markdown based slides with images in your terminal, powered by the
@@ -165,7 +167,12 @@ keyboard protocols.
 Another terminal file manager, with previews of file contents powered by kitty's
 graphics protocol.
 
-.. _tool_presentterm:
+.. _tool_far2l:
+
+`far2l <https://github.com/elfmz/far2l>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Text-mode dual panel (orthodox) file manager and also terminal emulator, uses
+the kitty graphics and keyboard protocols (both as client and as terminal)
 
 
 System and data visualisation tools

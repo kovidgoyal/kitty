@@ -124,3 +124,13 @@ as::
 Note that not all applications use portals, so if some particular application
 is failing to use the portal but others work, report the issue to that
 applications' developers.
+
+Configuration
+------------------------
+
+You can configure various aspects of the kitten's operation by creating a
+:file:`desktop-ui-portal.conf` in your :ref:`kitty config folder <confloc>`.
+See below for the supported configuration directives.
+
+
+.. include:: /generated/conf-kitten-desktop_ui.rst

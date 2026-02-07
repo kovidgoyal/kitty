@@ -506,10 +506,13 @@ static bool initExtensions(void)
     _glfw.x11.XdndPosition = XInternAtom(_glfw.x11.display, "XdndPosition", False);
     _glfw.x11.XdndStatus = XInternAtom(_glfw.x11.display, "XdndStatus", False);
     _glfw.x11.XdndActionCopy = XInternAtom(_glfw.x11.display, "XdndActionCopy", False);
+    _glfw.x11.XdndActionMove = XInternAtom(_glfw.x11.display, "XdndActionMove", False);
+    _glfw.x11.XdndActionLink = XInternAtom(_glfw.x11.display, "XdndActionLink", False);
     _glfw.x11.XdndDrop = XInternAtom(_glfw.x11.display, "XdndDrop", False);
     _glfw.x11.XdndFinished = XInternAtom(_glfw.x11.display, "XdndFinished", False);
     _glfw.x11.XdndSelection = XInternAtom(_glfw.x11.display, "XdndSelection", False);
     _glfw.x11.XdndTypeList = XInternAtom(_glfw.x11.display, "XdndTypeList", False);
+    _glfw.x11.XdndLeave = XInternAtom(_glfw.x11.display, "XdndLeave", False);
 
     // ICCCM, EWMH and Motif window property atoms
     // These can be set safely even without WM support
@@ -815,6 +818,17 @@ void _glfwPlatformTerminate(void)
     }
     if (_glfw.x11.clipboard_atoms.array) { free(_glfw.x11.clipboard_atoms.array); }
     if (_glfw.x11.primary_atoms.array) { free(_glfw.x11.primary_atoms.array); }
+
+    // Free cached drag MIME types (use array size, not count)
+    if (_glfw.x11.xdnd.mimes) {
+        for (int i = 0; i < _glfw.x11.xdnd.mimes_array_size; i++) {
+            if (_glfw.x11.xdnd.mimes[i]) XFree(_glfw.x11.xdnd.mimes[i]);
+        }
+        free(_glfw.x11.xdnd.mimes);
+        _glfw.x11.xdnd.mimes = NULL;
+        _glfw.x11.xdnd.mimes_count = 0;
+        _glfw.x11.xdnd.mimes_array_size = 0;
+    }
 
     if (_glfw.x11.display)
     {

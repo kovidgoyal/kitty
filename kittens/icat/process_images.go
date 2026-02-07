@@ -28,6 +28,7 @@ type input_arg struct {
 	arg         string
 	value       string
 	is_http_url bool
+	index       int
 }
 
 func is_http_url(arg string) bool {
@@ -113,6 +114,7 @@ type image_data struct {
 	width_cells, height_cells         int
 	use_unicode_placeholder           bool
 	passthrough_mode                  passthrough_type
+	input_sequence_number             int
 
 	// for error reporting
 	err         error
@@ -293,7 +295,7 @@ func process_arg(arg input_arg) {
 	case "magick":
 		dopts = append(dopts, imaging.Backends(imaging.MAGICK_IMAGE))
 	}
-	imgd := image_data{source_name: arg.value}
+	imgd := image_data{source_name: arg.value, input_sequence_number: arg.index}
 	dopts = append(dopts, imaging.ResizeCallback(func(w, h int) (int, int) {
 		imgd.canvas_width, imgd.canvas_height = w, h
 		set_basic_metadata(&imgd)

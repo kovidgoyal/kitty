@@ -24,6 +24,7 @@ func FilePromptCompleter(getcwd func() string) func(string, string) *cli.Complet
 			return ans
 		}
 	}
+	debugprintln(1111111, getcwd())
 	return func(before_cursor, after_cursor string) (ans *cli.Completions) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -39,6 +40,7 @@ func FilePromptCompleter(getcwd func() string) func(string, string) *cli.Complet
 			prefix = d + utils.IfElse(strings.HasSuffix(d, string(os.PathSeparator)), "", string(os.PathSeparator))
 		}
 		dir := ""
+		debugprintln(2222222, getcwd())
 		if path == "" {
 			path = getcwd()
 			dir = path

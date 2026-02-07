@@ -147,6 +147,7 @@ send_momentum_event(bool is_start) {
         m = GLFW_MOMENTUM_PHASE_ENDED;
         if (s.timer_id) glfwRemoveTimer(s.timer_id);
         s.timer_id = 0;
+        s.state = NONE;
     }
     GLFWScrollEvent e = {
         .offset_type=GLFW_SCROLL_OFFEST_HIGHRES, .momentum_type=m, .unscaled.x=s.velocity.x, .unscaled.y=s.velocity.y,
@@ -179,12 +180,14 @@ void
 glfw_handle_scroll_event_for_momentum(
     _GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, bool is_finger_based
 ) {
+    const bool is_synthetic_momentum_start_event = stopped && momentum_scroll_gesture_detection_timeout_ms;
     if (!w) { cancel_existing_scroll(true); return; }
     if (!is_finger_based || ev->offset_type != GLFW_SCROLL_OFFEST_HIGHRES || s.friction < 0 || s.friction >= 1) {
         _glfwInputScroll(w, ev);
         return;
     }
     monotonic_t now = monotonic();
+    if (is_synthetic_momentum_start_event) now -= ms_to_monotonic_t(momentum_scroll_gesture_detection_timeout_ms);
     if (s.state == PHYSICAL_EVENT_IN_PROGRESS) {
         s.physical_event.displacement.x += ev->unscaled.x;
         s.physical_event.displacement.y += ev->unscaled.y;
@@ -200,13 +203,15 @@ glfw_handle_scroll_event_for_momentum(
     else if (ev->unscaled.x > 0) s.scale = ev->x_offset / ev->unscaled.x;
     if (s.window_id && s.window_id != w->id) cancel_existing_scroll(true);
     if (s.state != PHYSICAL_EVENT_IN_PROGRESS) cancel_existing_scroll(false);
-    // Check for change in direction
-    double ldx, ldy; last_sample_delta(&ldx, &ldy);
-    if (ldx * ev->x_offset < 0 || ldy * ev->y_offset < 0) cancel_existing_scroll(true);
+    if (!is_synthetic_momentum_start_event) {
+        // Check for change in direction
+        double ldx, ldy; last_sample_delta(&ldx, &ldy);
+        if (ldx * ev->x_offset < 0 || ldy * ev->y_offset < 0) cancel_existing_scroll(true);
+    }
     s.window_id = w->id;
     s.keyboard_modifiers = ev->keyboard_modifiers;
     if (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES) {
-        add_sample(ev->unscaled.x, ev->unscaled.y, now);
+        if (!is_synthetic_momentum_start_event) add_sample(ev->unscaled.x, ev->unscaled.y, now);
         if (stopped) s.state = is_suitable_for_momentum() ? MOMENTUM_IN_PROGRESS : NONE;
         else s.state = PHYSICAL_EVENT_IN_PROGRESS;
     } else {

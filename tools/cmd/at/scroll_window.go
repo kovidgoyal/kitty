@@ -25,7 +25,7 @@ func parse_scroll_amount(amt string) ([]any, error) {
 		if err != nil {
 			return ans, err
 		}
-		if !pages && q != float64(int(q)) {
+		if (unscroll || prompt) && q != float64(int(q)) {
 			return ans, fmt.Errorf("The number must be an integer")
 		}
 		ans[0] = q * mult

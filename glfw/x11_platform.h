@@ -311,10 +311,13 @@ typedef struct _GLFWlibraryX11
     Atom            XdndPosition;
     Atom            XdndStatus;
     Atom            XdndActionCopy;
+    Atom            XdndActionMove;
+    Atom            XdndActionLink;
     Atom            XdndDrop;
     Atom            XdndFinished;
     Atom            XdndSelection;
     Atom            XdndTypeList;
+    Atom            XdndLeave;
 
     // Selection (clipboard) atoms
     Atom            TARGETS;
@@ -381,7 +384,26 @@ typedef struct _GLFWlibraryX11
         Window      source;
         char        format[128];
         int         format_priority;
+        Window      target_window;  // For drag events: the window being dragged over
+        bool        drag_accepted;  // Whether the current drag is accepted
+        char**      mimes;          // Cached MIME types from drag enter
+        int         mimes_count;    // Current count of MIME types (may be reduced by callback)
+        int         mimes_array_size;  // Original array size for proper cleanup
     } xdnd;
+
+    // Drag source state
+    struct {
+        Window           source_window;
+        char**           mimes;         // Array of MIME type strings
+        int              mime_count;    // Number of MIME types
+        Atom*            type_atoms;    // Atoms for each MIME type
+        Atom             action_atom;   // XdndActionCopy, XdndActionMove, or XdndActionLink
+        bool             active;
+        _GLFWwindow*     window;        // Window that initiated the drag
+        GLFWDragSourceData** pending_requests; // Array of pending data requests
+        int              pending_request_count;  // Number of pending requests
+        int              pending_request_capacity; // Capacity of the pending requests array
+    } drag;
 
     struct {
         void*       handle;

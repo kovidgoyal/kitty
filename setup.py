@@ -926,11 +926,21 @@ def add_builtin_fonts(args: Options) -> None:
             continue
         font_file = ''
         if is_macos:
-            for candidate in (os.path.expanduser('~/Library/Fonts'), '/Library/Fonts', '/System/Library/Fonts', '/Network/Library/Fonts'):
+            candidates = (
+                os.path.expanduser('~/Library/Fonts'), '/Library/Fonts', '/System/Library/Fonts', '/Network/Library/Fonts')
+            for candidate in candidates:
                 q = os.path.join(candidate, filename)
                 if os.path.exists(q):
                     font_file = q
                     break
+            else:
+                for candidate in candidates:
+                    for root, _, files in os.walk(candidate):
+                        if filename in files:
+                            font_file = os.path.join(root, filename)
+                            break
+                    if font_file:
+                        break
         elif is_windows:
             for candidate in (
                     os.path.expandvars(r'%userprofile%\AppData\Local\Microsoft\Windows\Fonts'),

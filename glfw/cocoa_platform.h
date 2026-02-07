@@ -167,6 +167,19 @@ typedef struct _GLFWwindowNS
     // update cursor after switching desktops with Mission Control
     bool delayed_cursor_update_requested;
     GLFWcocoarenderframefun resizeCallback;
+
+    // Current drag operation type for NSDraggingSource
+    int dragOperations;  // Bitfield of GLFWDragOperationType
+
+    // Cached MIME types from drag enter (for move events)
+    const char** dragMimes;
+    int dragMimeCount;      // Current count of MIME types (may be reduced by callback)
+    int dragMimeArraySize;  // Original array size for proper cleanup
+
+    // Pending drag source data requests (for cleanup on cancellation)
+    GLFWDragSourceData** pendingDragSourceData;
+    int pendingDragSourceDataCount;
+    int pendingDragSourceDataCapacity;
 } _GLFWwindowNS;
 
 // Cocoa-specific global data

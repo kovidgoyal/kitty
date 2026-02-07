@@ -91,6 +91,7 @@ from .fast_data_types import (
     grab_keyboard,
     is_layer_shell_supported,
     last_focused_os_window_id,
+    load_png_data,
     macos_cycle_through_os_windows,
     mark_os_window_for_close,
     monitor_pid,
@@ -109,11 +110,13 @@ from .fast_data_types import (
     set_os_window_chrome,
     set_os_window_size,
     set_os_window_title,
+    start_drag_with_data,
     thread_write,
     toggle_fullscreen,
     toggle_maximized,
     toggle_os_window_visibility,
     toggle_secure_input,
+    viewport_for_window,
     wrapped_kitten_names,
 )
 from .key_encoding import get_name_to_functional_number_map
@@ -151,7 +154,6 @@ from .utils import (
     open_url,
     parse_address_spec,
     parse_os_window_state,
-    parse_uri_list,
     platform_window_id,
     safe_print,
     sanitize_url_for_display_to_user,
@@ -1883,20 +1885,25 @@ class Boss:
         if tm is not None:
             tm.update_tab_bar_data()
 
-    def on_drop(self, os_window_id: int, mime: str, data: bytes) -> None:
-        tm = self.os_window_map.get(os_window_id)
-        if tm is not None:
-            w = tm.active_window
-            if w is not None:
-                text = data.decode('utf-8', 'replace')
-                if mime == 'text/uri-list':
-                    urls = parse_uri_list(text)
-                    if w.at_prompt:
-                        import shlex
-                        text = ' '.join(map(shlex.quote, urls))
-                    else:
-                        text = '\n'.join(urls)
-                w.paste_text(text)
+    def on_drop(self, os_window_id: int, drop: dict[str, bytes] | Exception, x: int, y: int) -> None:
+        if isinstance(drop, Exception):
+            self.show_error(_('Drop failed'), str(drop))
+            return
+        if (tm := self.os_window_map.get(os_window_id)) is None:
+            return
+        central, tab_bar = viewport_for_window(os_window_id)[:2]
+        if central.left <= x < central.right and central.top <= y < central.bottom:
+            x -= central.left
+            y -= central.top
+            if tab := tm.active_tab:
+                for window in tab:
+                    g = window.geometry
+                    if g.left <= x < g.right and g.top <= y < g.bottom:
+                        window.on_drop(drop)
+                        break
+        elif tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < central.bottom:
+            if (tab_id := tm.tab_bar.tab_id_at(x)) and (tab := self.tab_for_id(tab_id)) and (w := tab.active_window):
+                w.on_drop(drop)
 
     @ac('win', '''
         Focus the nth OS window if positive or the previously active OS windows if negative. When the number is larger
@@ -3295,6 +3302,14 @@ class Boss:
                         self.on_system_color_scheme_change('light', False)
             case _:
                 self.show_error(_('Unknown color scheme type'), _('{} is not a valid color scheme type').format(which))
+
+    @ac('debug', ''' Start a test drag operation, for use with mouse_map ''')
+    def test_dragging(self) -> None:
+        if wid := current_os_window():
+            with open(logo_png_file, 'rb') as f:
+                rgba, width, height = load_png_data(f.read())
+            drag_data = {'text/plain': b'This is a test drag of some basic text with the kitty logo as the drag icon.'}
+            start_drag_with_data(wid, drag_data, rgba, width, height)
 
     def launch_urls(self, *urls: str, no_replace_window: bool = False) -> None:
         from .launch import force_window_launch

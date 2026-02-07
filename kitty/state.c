@@ -1581,6 +1581,9 @@ finalize(void) {
     free_bgimage(&global_state.bgimage, false);
     free_window_logo_table(&global_state.all_window_logos);
     global_state.bgimage = NULL;
+    free(global_state.drag_source.ongoing_transfers);
+    Py_CLEAR(global_state.drag_source.drag_data);
+    zero_at_ptr(&global_state.drag_source);
 
     free_allocs_in_options(&global_state.opts);
 }

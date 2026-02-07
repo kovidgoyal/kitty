@@ -317,6 +317,8 @@ typedef struct _GLFWWaylandDataOffer
     struct wl_surface *surface;
     const char **mimes;
     size_t mimes_capacity, mimes_count;
+    bool drag_accepted;
+    uint32_t serial;
 } _GLFWWaylandDataOffer;
 
 // Wayland-specific global data
@@ -406,6 +408,19 @@ typedef struct _GLFWlibraryWayland
     _GLFWWaylandDataOffer dataOffers[8];
     bool has_preferred_buffer_scale;
     char *compositor_name;
+
+    // Drag operation state
+    struct {
+        struct wl_data_source* source;
+        char** mimes;           // Array of MIME type strings
+        int mime_count;         // Number of MIME types
+        GLFWid window_id;    // Window that initiated the drag
+        GLFWDragSourceData** pending_requests; // Array of pending data requests
+        int pending_request_count;  // Number of pending requests
+        int pending_request_capacity; // Capacity of the pending requests array
+        struct wl_surface *drag_icon;
+        struct wp_viewport *drag_viewport;
+    } drag;
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data

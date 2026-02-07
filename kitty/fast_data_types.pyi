@@ -20,6 +20,9 @@ COLOR_IS_SPECIAL: int
 COLOR_NOT_SET: int
 COLOR_IS_RGB: int
 COLOR_IS_INDEX: int
+GLFW_DRAG_OPERATION_MOVE: int
+GLFW_DRAG_OPERATION_COPY: int
+GLFW_DRAG_OPERATION_GENERIC: int
 GLFW_LAYER_SHELL_NONE: int
 GLFW_LAYER_SHELL_PANEL: int
 GLFW_LAYER_SHELL_TOP: int
@@ -1317,6 +1320,9 @@ class Screen:
     def scroll(self, amt: int, upwards: bool) -> bool:
         pass
 
+    def fractional_scroll(self, amt: float) -> bool:
+        pass
+
     def scroll_to_next_mark(self, mark: int = 0, backwards: bool = True) -> bool:
         pass
 
@@ -1805,3 +1811,9 @@ class StreamingBase64Encodeer:
     def reset(self) -> bytes: ...
     # encode the specified data, return number of bytes written dest should be at least 4/3 *src + 2 bytes in size
     def encode_into(self, dest: WriteableBuffer, src: ReadableBuffer) -> int: ...
+
+
+def start_drag_with_data(
+    os_window_id: int, data_map: dict[str, bytes], thumbnail: bytes = b'', width: int = 0, height: int = 0,
+    operations: int = GLFW_DRAG_OPERATION_MOVE
+) -> None: ...

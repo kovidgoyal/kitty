@@ -85,6 +85,38 @@ typedef struct _GLFWjoystick    _GLFWjoystick;
 typedef struct _GLFWtls         _GLFWtls;
 typedef struct _GLFWmutex       _GLFWmutex;
 
+// Drop data structure for chunked reading of drag and drop data
+struct GLFWDropData {
+    const char** mime_types;    // Array of available MIME types (owned by drop object)
+    int mime_count;             // Number of MIME types
+    int mime_array_size;        // Original array size for proper cleanup
+    char* current_mime;         // Currently being read MIME type
+    int read_fd;                // File descriptor for reading data (Wayland/X11)
+    size_t bytes_read;          // Total bytes read so far for current mime
+    void* platform_data;        // Platform-specific data (offer for Wayland, pasteboard for Cocoa)
+    bool eof_reached;           // Whether EOF has been reached for current mime
+    // Platform-specific data fields
+    void* current_data;         // NSData* (Cocoa) or unsigned char* from XGetWindowProperty (X11)
+    size_t data_offset;         // Read offset in current data (Cocoa/X11)
+    // X11-specific fields
+    size_t x11_data_size;       // Size of current X11 data
+    unsigned long x11_drop_target; // Window handle where the drop occurred (X11)
+    unsigned long x11_drop_time;   // Time from the drop event (X11)
+    unsigned long x11_source;      // Source window for XdndFinished (X11)
+    int x11_version;               // Xdnd protocol version (X11)
+};
+
+// Drag source data structure for chunked writing of drag data
+// Lifetime is managed by the backend - freed on end of data, error, drag cancellation, or exit
+struct GLFWDragSourceData {
+    GLFWid window_id;           // ID of window that initiated the drag (use _glfwWindowForId to get pointer)
+    char* mime_type;            // MIME type being sent (owned, copied from request)
+    int write_fd;               // File descriptor for writing data (Wayland/X11), -1 if not used
+    bool finished;              // Whether data sending is complete (EOF or error)
+    int error_code;             // POSIX error code if an error occurred, 0 otherwise
+    void* platform_data;        // Platform-specific data
+};
+
 typedef void (* _GLFWmakecontextcurrentfun)(_GLFWwindow*);
 typedef void (* _GLFWswapbuffersfun)(_GLFWwindow*);
 typedef void (* _GLFWswapintervalfun)(int);
@@ -480,6 +512,8 @@ struct _GLFWwindow
         GLFWkeyboardfun         keyboard;
         GLFWdropfun             drop;
         GLFWliveresizefun       liveResize;
+        GLFWdragfun             drag;
+        GLFWdragsourcefun       dragSource;
     } callbacks;
 
     // This is defined in the window API's platform.h
@@ -766,6 +800,11 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity);
 void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev);
 void _glfwPlatformChangeCursorTheme(void);
 
+int _glfwPlatformStartDrag(_GLFWwindow* window, const char* const* mime_types, int mime_count, const GLFWimage* thumbnail, int operations);
+ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size);
+void _glfwPlatformCancelDrag(_GLFWwindow* window);
+void _glfwPlatformUpdateDragState(_GLFWwindow* window);
+
 void _glfwPlatformPollEvents(void);
 void _glfwPlatformWaitEvents(void);
 void _glfwPlatformWaitEventsTimeout(monotonic_t timeout);
@@ -818,7 +857,14 @@ void _glfwInputScroll(_GLFWwindow* window, const GLFWScrollEvent *ev);
 void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods);
 void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos);
 void _glfwInputCursorEnter(_GLFWwindow* window, bool entered);
-int _glfwInputDrop(_GLFWwindow* window, const char *mime, const char *text, size_t sz);
+void _glfwInputDrop(_GLFWwindow* window, GLFWDropData* drop, bool from_self);
+int _glfwInputDragEvent(_GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int* mime_count);
+void _glfwInputDragSourceRequest(_GLFWwindow* window, const char* mime_type, GLFWDragSourceData* source_data);
+
+// Platform functions for drop data reading
+const char** _glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count);
+ssize_t _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout);
+void _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation, bool success);
 void _glfwInputColorScheme(GLFWColorScheme, bool);
 void _glfwPlatformInputColorScheme(GLFWColorScheme);
 void _glfwInputJoystick(_GLFWjoystick* js, int event);
@@ -887,6 +933,11 @@ MonitorGeometry _glfwPlatformGetMonitorGeometry(_GLFWmonitor* monitor);
 bool _glfwPlatformGrabKeyboard(bool grab);
 void glfw_handle_scroll_event_for_momentum(_GLFWwindow *w, const GLFWScrollEvent *ev, bool stopped, bool is_finger_based);
 #define glfw_cancel_momentum_scroll() glfw_handle_scroll_event_for_momentum(NULL, NULL, false, false)
+#ifdef _GLFW_X11
+#define momentum_scroll_gesture_detection_timeout_ms 50
+#else
+#define momentum_scroll_gesture_detection_timeout_ms 0
+#endif
 
 char* _glfw_strdup(const char* source);
 

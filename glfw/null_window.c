@@ -30,6 +30,7 @@
 #include "internal.h"
 #include "../kitty/monotonic.h"
 
+#include <errno.h>
 #include <stdlib.h>
 
 static void applySizeLimits(_GLFWwindow* window, int* width, int* height)
@@ -528,6 +529,52 @@ void _glfwPlatformDestroyCursor(_GLFWcursor* cursor UNUSED)
 
 void _glfwPlatformSetCursor(_GLFWwindow* window UNUSED, _GLFWcursor* cursor UNUSED)
 {
+}
+
+void _glfwPlatformCancelDrag(_GLFWwindow* window UNUSED)
+{
+    // No-op for null platform
+}
+
+int _glfwPlatformStartDrag(_GLFWwindow* window UNUSED,
+                           const char* const* mime_types UNUSED,
+                           int mime_count UNUSED,
+                           const GLFWimage* thumbnail UNUSED,
+                           int operations UNUSED)
+{
+    return ENOTSUP;
+}
+
+ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data UNUSED,
+                              const void* data UNUSED,
+                              size_t size UNUSED)
+{
+    return -ENOTSUP;
+}
+
+void _glfwPlatformUpdateDragState(_GLFWwindow* window UNUSED)
+{
+    // No-op for null platform
+}
+
+const char** _glfwPlatformGetDropMimeTypes(GLFWDropData* drop UNUSED, int* count)
+{
+    if (count) *count = 0;
+    return NULL;
+}
+
+ssize_t _glfwPlatformReadDropData(GLFWDropData* drop UNUSED, const char* mime UNUSED,
+                                   void* buffer UNUSED, size_t capacity UNUSED,
+                                   monotonic_t timeout UNUSED)
+{
+    return -ENOENT;
+}
+
+void _glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUSED, bool success UNUSED)
+{
+    if (!drop) return;
+    // Free the heap-allocated drop data structure
+    free(drop);
 }
 
 void _glfwPlatformSetClipboardString(const char* string)

@@ -82,7 +82,7 @@ These dependencies are needed when building against system libraries only.
 
 Run-time dependencies:
 
-* ``python`` >= 3.8
+* ``python``
 * ``harfbuzz`` >= 2.2.0
 * ``zlib``
 * ``libpng``

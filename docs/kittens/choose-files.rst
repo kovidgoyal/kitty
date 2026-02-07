@@ -99,7 +99,9 @@ This kitten can also be used to select non-existent files, that is a new file
 for a :guilabel:`Save file` type of dialog using :option:`--mode <kitty +kitten
 choose_files --mode>`:code:`=save-file`. Once you have changed to the directory
 you want the file to be in (using the :kbd:`Tab` key),
-press :kbd:`Ctrl+Enter` and you will be able to type in the file name.
+press :kbd:`Ctrl+Enter` and you will be able to type in the file name. If you
+wish to modify an existing file name use :kbd:`Alt+Enter` to modify the
+filename of the current top match instead.
 
 
 Selecting directories
