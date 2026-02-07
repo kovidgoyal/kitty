@@ -35,6 +35,20 @@ static id<MTLSamplerState> g_sampler_nearest = nil;
 static id<MTLSamplerState> g_sampler_linear = nil;
 static id<MTLRenderPipelineState> g_cell_pipeline = nil;
 static id<MTLRenderPipelineState> g_clear_pipeline = nil;
+static const NSUInteger kMaxVerticesPerFrame = 1024 * 1024; // cap to prevent runaway
+
+typedef struct {
+    simd_float2 pos;            // clip-space
+    simd_float2 uv;
+    simd_float2 underline_uv;
+    simd_float2 strike_uv;
+    simd_float2 cursor_uv;
+    uint32_t   layer;
+    simd_float4 fg_rgba;        // premul fg
+    simd_float4 deco_rgba;      // decoration color (premul)
+    float       text_alpha;
+    float       colored_sprite;
+} MetalCellVertex;
 
 static id<MTLRenderPipelineState>
 make_pipeline(NSString *vname, NSString *fname, MTLPixelFormat pf) {
@@ -103,6 +117,9 @@ metal_window_attach(OSWindow *w) {
     mw->device = g_device;
     mw->queue = g_queue;
     mw->sampler_nearest = g_sampler_nearest;
+    mw->sampler_linear = g_sampler_linear;
+    mw->cellPipeline = g_cell_pipeline;
+    mw->clearPipeline = g_clear_pipeline;
 
     CAMetalLayer *layer = [CAMetalLayer layer];
     layer.device = g_device;
@@ -201,6 +218,21 @@ metal_window_destroy(OSWindow *w) {
 
 static MTLPixelFormat glyph_format(void) { return MTLPixelFormatBGRA8Unorm_sRGB; }
 static MTLPixelFormat decor_format(void) { return MTLPixelFormatR32Uint; }
+
+static bool
+ensure_cell_vertex_buffer(MetalWindow *mw, NSUInteger required_vertices) {
+    if (!required_vertices) return false;
+    if (required_vertices > kMaxVerticesPerFrame) required_vertices = kMaxVerticesPerFrame;
+    if (mw->cellVertexBuffer && mw->cellVertexBuffer.length >= required_vertices * sizeof(MetalCellVertex)) {
+        mw->cellVertexCount = required_vertices;
+        return true;
+    }
+    if (mw->cellVertexBuffer) mw->cellVertexBuffer = nil;
+    mw->cellVertexBuffer = [mw->device newBufferWithLength:required_vertices * sizeof(MetalCellVertex)
+                                                   options:MTLResourceStorageModeManaged];
+    mw->cellVertexCount = required_vertices;
+    return mw->cellVertexBuffer != nil;
+}
 
 bool
 metal_realloc_sprite_texture(struct SpriteMap *sm, unsigned width, unsigned height, unsigned layers) {
