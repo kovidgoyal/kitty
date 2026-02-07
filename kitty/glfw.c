@@ -1445,7 +1445,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (glfw_window == NULL) glfw_failure;
 #undef glfw_failure
     glfwMakeContextCurrent(glfw_window);
-    if (is_first_window) gl_init();
+    if (is_first_window) gpu_init();
     bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);
     // blank the window once so that there is no initial flash of color
     // changing, in case the background color is not black
