@@ -22,6 +22,8 @@ struct MetalWindow {
     id<MTLTexture> decorTexture;
     uint32_t cellWidth, cellHeight;
     uint32_t spriteXnum, spriteYnum, spriteLayers;
+    id<MTLBuffer> cellVertexBuffer;
+    NSUInteger cellVertexCount;
 };
 
 static id<MTLDevice> g_device = nil;
@@ -156,10 +158,32 @@ metal_present_blank(OSWindow *w, float alpha, color_type background) {
 
 bool
 metal_render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
-    // Placeholder: currently just clears to background color.
-    (void)now; (void)scan_for_animated_images;
+    if (!w || !w->metal) return false;
+    MetalWindow *mw = w->metal;
+    CAMetalLayer *layer = mw->layer;
+    if (!layer) return false;
+    id<CAMetalDrawable> drawable = [layer nextDrawable];
+    if (!drawable) return false;
+
+    // TODO: build per-frame buffers; for now clear via clear pipeline
+    MTLRenderPassDescriptor *rp = [MTLRenderPassDescriptor renderPassDescriptor];
+    rp.colorAttachments[0].texture = drawable.texture;
+    rp.colorAttachments[0].loadAction = MTLLoadActionClear;
+    rp.colorAttachments[0].storeAction = MTLStoreActionStore;
     float alpha = w->background_opacity.supports_transparency ? OPT(background_opacity) : 1.0f;
-    metal_present_blank(w, alpha, OPT(background));
+    float r = ((OPT(background) >> 16) & 0xff) / 255.0f;
+    float g = ((OPT(background) >> 8) & 0xff) / 255.0f;
+    float b = (OPT(background) & 0xff) / 255.0f;
+    rp.colorAttachments[0].clearColor = MTLClearColorMake(r, g, b, alpha);
+
+    id<MTLCommandBuffer> cb = [mw->queue commandBuffer];
+    id<MTLRenderCommandEncoder> enc = [cb renderCommandEncoderWithDescriptor:rp];
+    if (g_clear_pipeline) {
+        [enc setRenderPipelineState:g_clear_pipeline];
+    }
+    [enc endEncoding];
+    [cb presentDrawable:drawable];
+    [cb commit];
     return true;
 }
 
