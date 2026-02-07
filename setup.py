@@ -798,7 +798,14 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
 def get_source_specific_cflags(env: Env, src: str) -> List[str]:
     ans = list(env.cflags)
     if is_macos and src.endswith(('.m', '.mm')):
-        ans.append('-fobjc-arc')
+        # The kitty codebase uses manual memory management, don't enable ARC
+        # metal_renderer.m uses CFBridgingRetain/Release for manual bridging
+        pass
+        # For Objective-C++ files, replace -std=c11 with -std=c++17
+        if src.endswith('.mm'):
+            ans = [f for f in ans if not f.startswith('-std=c')]
+            ans = [f for f in ans if f != '-Wstrict-prototypes']  # Not valid for C++
+            ans.append('-std=c++17')
     # SIMD specific flags
     if src in ('kitty/simd-string-128.c', 'kitty/simd-string-256.c'):
         # simde recommends these are used for best performance

@@ -215,7 +215,10 @@ add_os_window(void) {
     OSWindow *ans = global_state.os_windows + global_state.num_os_windows++;
     zero_at_ptr(ans);
     ans->id = ++global_state.os_window_id_counter;
-    ans->tab_bar_render_data.vao_idx = create_cell_vao();
+    // Only create OpenGL VAO when not using Metal
+    if (global_state.gpu_backend != GPU_BACKEND_METAL) {
+        ans->tab_bar_render_data.vao_idx = create_cell_vao();
+    }
     ans->background_opacity.alpha = OPT(background_opacity);
     ans->created_at = monotonic();
 
@@ -246,7 +249,10 @@ add_tab(id_type os_window_id) {
         ensure_space_for(os_window, tabs, Tab, os_window->num_tabs + 1, capacity, 1, true);
         zero_at_i(os_window->tabs, os_window->num_tabs);
         os_window->tabs[os_window->num_tabs].id = ++global_state.tab_id_counter;
-        os_window->tabs[os_window->num_tabs].border_rects.vao_idx = create_border_vao();
+        // Only create OpenGL VAO when not using Metal
+        if (global_state.gpu_backend != GPU_BACKEND_METAL) {
+            os_window->tabs[os_window->num_tabs].border_rects.vao_idx = create_border_vao();
+        }
         return os_window->tabs[os_window->num_tabs++].id;
     END_WITH_OS_WINDOW
     return 0;
@@ -254,13 +260,18 @@ add_tab(id_type os_window_id) {
 
 static void
 create_gpu_resources_for_window(Window *w) {
-    w->render_data.vao_idx = create_cell_vao();
+    // Only create OpenGL VAO when not using Metal
+    if (global_state.gpu_backend != GPU_BACKEND_METAL) {
+        w->render_data.vao_idx = create_cell_vao();
+    }
 }
 
 static void
 release_gpu_resources_for_window(Window *w) {
-    if (w->render_data.vao_idx > -1) remove_vao(w->render_data.vao_idx);
-    w->render_data.vao_idx = -1;
+    if (global_state.gpu_backend != GPU_BACKEND_METAL) {
+        if (w->render_data.vao_idx > -1) remove_vao(w->render_data.vao_idx);
+        w->render_data.vao_idx = -1;
+    }
 }
 
 static bool
@@ -453,7 +464,9 @@ attach_window(id_type os_window_id, id_type tab_id, id_type id) {
 static void
 destroy_tab(Tab *tab) {
     for (size_t i = tab->num_windows; i > 0; i--) remove_window_inner(tab, tab->windows[i - 1].id);
-    remove_vao(tab->border_rects.vao_idx);
+    if (global_state.gpu_backend != GPU_BACKEND_METAL) {
+        remove_vao(tab->border_rects.vao_idx);
+    }
     free(tab->border_rects.rect_buf); tab->border_rects.rect_buf = NULL;
     free(tab->windows); tab->windows = NULL;
 }
@@ -487,12 +500,16 @@ destroy_os_window_item(OSWindow *w) {
         remove_tab_inner(w, tab->id);
     }
     Py_CLEAR(w->window_title); Py_CLEAR(w->tab_bar_render_data.screen);
-    remove_vao(w->tab_bar_render_data.vao_idx);
+    if (global_state.gpu_backend != GPU_BACKEND_METAL) {
+        remove_vao(w->tab_bar_render_data.vao_idx);
+    }
     free(w->tabs); w->tabs = NULL;
     free_bgimage(&w->bgimage, true);
     zero_at_ptr(&w->bgimage);
-    if (w->indirect_output.texture_id) free_texture(&w->indirect_output.texture_id);
-    if (w->indirect_output.framebuffer_id) free_framebuffer(&w->indirect_output.framebuffer_id);
+    if (global_state.gpu_backend != GPU_BACKEND_METAL) {
+        if (w->indirect_output.texture_id) free_texture(&w->indirect_output.texture_id);
+        if (w->indirect_output.framebuffer_id) free_framebuffer(&w->indirect_output.framebuffer_id);
+    }
 }
 
 bool

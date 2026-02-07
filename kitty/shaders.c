@@ -56,6 +56,7 @@ scroll_offset_lines_for_screen(const Screen *screen) {
 }
 
 // Sprites {{{
+#ifndef SPRITEMAP_DEFINED
 typedef struct {
     int xnum, ynum, x, y, z, last_num_of_layers, last_ynum;
     GLuint texture_id;
@@ -70,6 +71,8 @@ typedef struct {
     void *metal_decorations_texture;
 #endif
 } SpriteMap;
+#define SPRITEMAP_DEFINED
+#endif
 
 static const SpriteMap NEW_SPRITE_MAP = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1 };
 static GLint max_texture_size = 0, max_array_texture_layers = 0;
@@ -102,13 +105,24 @@ clear_current_framebuffer(void) { glClearColor(0, 0, 0, 0); glClear(GL_COLOR_BUF
 SPRITE_MAP_HANDLE
 alloc_sprite_map(void) {
     if (!max_texture_size) {
-        glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(max_texture_size));
-        glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(max_array_texture_layers));
+#ifdef __APPLE__
+        if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+            // Metal has generous texture limits on Apple Silicon
+            max_texture_size = 16384;
+            max_array_texture_layers = 2048;
+        } else
+#endif
+        {
+            glGetIntegerv(GL_MAX_TEXTURE_SIZE, &(max_texture_size));
+            glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(max_array_texture_layers));
+        }
 #ifdef __APPLE__
         // Since on Apple we could have multiple GPUs, with different capabilities,
         // upper bound the values according to the data from https://developer.apple.com/graphicsimaging/opengl/capabilities/
-        max_texture_size = MIN(8192, max_texture_size);
-        max_array_texture_layers = MIN(512, max_array_texture_layers);
+        if (global_state.gpu_backend != GPU_BACKEND_METAL) {
+            max_texture_size = MIN(8192, max_texture_size);
+            max_array_texture_layers = MIN(512, max_array_texture_layers);
+        }
 #endif
         sprite_tracker_set_limits(max_texture_size, max_array_texture_layers);
     }
@@ -194,7 +208,7 @@ realloc_sprite_decorations_texture_if_needed(FONTS_DATA_HANDLE fg) {
 #define dm (sm->decorations_map)
     SpriteMap *sm = (SpriteMap*)fg->sprite_map;
     size_t current_capacity = (size_t)dm.width * dm.height;
-    if (dm.count < current_capacity && dm.texture_id) return;
+    if (dm.count < current_capacity && (dm.texture_id || sm->metal_decorations_texture)) return;
     GLint new_capacity = dm.count + 256;
     GLint width = new_capacity, height = 1;
     if (new_capacity > sm->max_texture_size) {
@@ -202,6 +216,15 @@ realloc_sprite_decorations_texture_if_needed(FONTS_DATA_HANDLE fg) {
         height = 1 + new_capacity / width;
     }
     if (height > sm->max_texture_size) fatal("Max texture size too small for sprite decorations map, maybe switch to using a GL_TEXTURE_2D_ARRAY");
+    
+#ifdef __APPLE__
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        dm.width = width; dm.height = height;
+        metal_realloc_decor_texture(sm, width, height);
+        return;
+    }
+#endif
+    
     const GLenum texture_type = GL_TEXTURE_2D;
     GLuint tex = setup_new_sprites_texture(texture_type);
     glTexImage2D(texture_type, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, NULL);
@@ -211,11 +234,6 @@ realloc_sprite_decorations_texture_if_needed(FONTS_DATA_HANDLE fg) {
     }
     glBindTexture(texture_type, 0);
     dm.texture_id = tex; dm.width = width; dm.height = height;
-#ifdef __APPLE__
-    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
-        metal_realloc_decor_texture(sm, width, height);
-    }
-#endif
 #undef dm
 }
 
@@ -226,6 +244,16 @@ realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
     znum = z + 1;
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     width = xnum * fg->fcm.cell_width; height = ynum * (fg->fcm.cell_height + 1);
+    
+#ifdef __APPLE__
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        sprite_map->last_num_of_layers = znum;
+        sprite_map->last_ynum = ynum;
+        metal_realloc_sprite_texture(sprite_map, width, height, znum);
+        return;
+    }
+#endif
+    
     const GLenum texture_type = GL_TEXTURE_2D_ARRAY;
     GLuint tex = setup_new_sprites_texture(texture_type);
     glTexStorage3D(texture_type, 1, GL_SRGB8_ALPHA8, width, height, znum);
@@ -237,16 +265,20 @@ realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
     sprite_map->last_num_of_layers = znum;
     sprite_map->last_ynum = ynum;
     sprite_map->texture_id = tex;
-#ifdef __APPLE__
-    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
-        metal_realloc_sprite_texture(sprite_map, width, height, znum);
-    }
-#endif
 }
 
 static void
 ensure_sprite_map(FONTS_DATA_HANDLE fg) {
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
+    
+#ifdef __APPLE__
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        if (!sprite_map->metal_texture) realloc_sprite_texture(fg);
+        if (!sprite_map->metal_decorations_texture) realloc_sprite_decorations_texture_if_needed(fg);
+        return;
+    }
+#endif
+    
     if (!sprite_map->texture_id) realloc_sprite_texture(fg);
     if (!sprite_map->decorations_map.texture_id) realloc_sprite_decorations_texture_if_needed(fg);
     // We have to rebind since we don't know if the texture was ever bound
@@ -263,6 +295,28 @@ send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index idx, pixel *buf, sprite_in
     unsigned int xnum, ynum, znum, x, y, z;
 #define dm (sprite_map->decorations_map)
     if (idx >= dm.count) dm.count = idx + 1;
+    
+#ifdef __APPLE__
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        // Metal path - upload to Metal textures only
+        realloc_sprite_decorations_texture_if_needed(fg);
+        div_t d = div(idx, dm.width);
+        x = d.rem; y = d.quot;
+        metal_upload_decor(sprite_map, x, y, decoration_idx);
+        
+        sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
+        if ((int)znum >= sprite_map->last_num_of_layers || (znum == 0 && (int)ynum > sprite_map->last_ynum)) {
+            realloc_sprite_texture(fg);
+            sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
+        }
+        sprite_index_to_pos(idx, xnum, ynum, &x, &y, &z);
+        x *= fg->fcm.cell_width; y *= (fg->fcm.cell_height + 1);
+        metal_upload_sprite(sprite_map, x, y, z, fg->fcm.cell_width, fg->fcm.cell_height + 1, buf);
+        return;
+    }
+#endif
+    
+    // OpenGL path
     realloc_sprite_decorations_texture_if_needed(fg);
     div_t d = div(idx, dm.width);
     x = d.rem; y = d.quot;
@@ -270,11 +324,6 @@ send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index idx, pixel *buf, sprite_in
     glBindTexture(GL_TEXTURE_2D, dm.texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &decoration_idx);
-#ifdef __APPLE__
-    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
-        metal_upload_decor(sprite_map, x, y, decoration_idx);
-    }
-#endif
 #undef dm
     sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
     if ((int)znum >= sprite_map->last_num_of_layers || (znum == 0 && (int)ynum > sprite_map->last_ynum)) {
@@ -287,11 +336,6 @@ send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index idx, pixel *buf, sprite_in
     sprite_index_to_pos(idx, xnum, ynum, &x, &y, &z);
     x *= fg->fcm.cell_width; y *= (fg->fcm.cell_height + 1);
     glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, fg->fcm.cell_width, fg->fcm.cell_height + 1, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buf);
-#ifdef __APPLE__
-    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
-        metal_upload_sprite(sprite_map, x, y, z, fg->fcm.cell_width, fg->fcm.cell_height + 1, buf);
-    }
-#endif
 }
 
 void

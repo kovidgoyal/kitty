@@ -1576,8 +1576,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwWindowHint(GLFW_VISIBLE, window_state != WINDOW_HIDDEN && global_state.is_wayland);
     float xscale, yscale;
     double xdpi, ydpi;
-    if (global_state.is_wayland) {
+    // On Wayland and when using Metal backend, we can't use a temp window
+    // Metal windows have no OpenGL context, so temp window creation would fail
+    if (global_state.is_wayland || global_state.gpu_backend == GPU_BACKEND_METAL) {
         // Cannot use temp window on Wayland as scale is only sent by compositor after window is displayed
+        // Cannot use temp window with Metal as there's no OpenGL context
         get_window_content_scale(NULL, &xscale, &yscale, &xdpi, &ydpi);
         for (unsigned i = 0; i < global_state.num_os_windows; i++) {
             OSWindow *osw = global_state.os_windows + i;
@@ -1638,11 +1641,14 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         }
     }
     if (is_first_window) {
-        PyObject *ret = PyObject_CallNoArgs(load_programs);
-        if (ret == NULL) return NULL;
-        Py_DECREF(ret);
+        // Only load OpenGL shader programs when not using Metal
+        if (global_state.gpu_backend != GPU_BACKEND_METAL) {
+            PyObject *ret = PyObject_CallNoArgs(load_programs);
+            if (ret == NULL) return NULL;
+            Py_DECREF(ret);
+        }
         get_platform_dependent_config_values(glfw_window);
-        if (!global_state.supports_framebuffer_srgb) {
+        if (!global_state.supports_framebuffer_srgb && global_state.gpu_backend != GPU_BACKEND_METAL) {
             log_error("The OpenGL drivers dont support GL_FRAMEBUFFER_SRGB this will cause a small rendering performance penalty");
         }
         is_first_window = false;
