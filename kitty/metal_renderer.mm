@@ -5,6 +5,7 @@
 #include "metal_renderer.h"
 #include "state.h"
 #include "data-types.h"
+#include "colors.h"
 #include "monotonic.h"
 #include "glfw-wrapper.h"
 #include "screen.h"
@@ -21,12 +22,15 @@ struct MetalWindow {
     id<MTLSamplerState> sampler_nearest;
     id<MTLRenderPipelineState> cellPipeline;
     id<MTLRenderPipelineState> clearPipeline;
+    id<MTLRenderPipelineState> bgPipeline;
     id<MTLTexture> spriteTexture;
     id<MTLTexture> decorTexture;
     uint32_t cellWidth, cellHeight;
     uint32_t spriteXnum, spriteYnum, spriteLayers;
     id<MTLBuffer> cellVertexBuffer;
     NSUInteger cellVertexCount;
+    id<MTLBuffer> bgVertexBuffer;
+    NSUInteger bgVertexCount;
 };
 
 static id<MTLDevice> g_device = nil;
@@ -38,7 +42,39 @@ static id<MTLSamplerState> g_sampler_nearest = nil;
 static id<MTLSamplerState> g_sampler_linear = nil;
 static id<MTLRenderPipelineState> g_cell_pipeline = nil;
 static id<MTLRenderPipelineState> g_clear_pipeline = nil;
+static id<MTLRenderPipelineState> g_bg_pipeline = nil;
 static const NSUInteger kMaxVerticesPerFrame = 1024 * 1024; // cap to prevent runaway
+
+static NSString*
+find_metal_shader_source_path(void) {
+    NSFileManager *fm = [NSFileManager defaultManager];
+
+    // 1) explicit override
+    const char *env = getenv("KITTY_METAL_SHADER_PATH");
+    if (env && env[0]) {
+        NSString *p = [NSString stringWithUTF8String:env];
+        if ([fm fileExistsAtPath:p]) return p;
+    }
+
+    // 2) bundled resource (packaged build)
+    NSString *bundlePath = [[NSBundle mainBundle] pathForResource:@"metal_shaders" ofType:@"metal"];
+    if (bundlePath && [fm fileExistsAtPath:bundlePath]) return bundlePath;
+
+    // 3) alongside executable
+    NSString *exeDir = [[[NSBundle mainBundle] executablePath] stringByDeletingLastPathComponent];
+    if (exeDir) {
+        NSString *candidate = [exeDir stringByAppendingPathComponent:@"metal_shaders.metal"];
+        if ([fm fileExistsAtPath:candidate]) return candidate;
+    }
+
+    // 4) alongside this source file (developer builds)
+    NSString *sourceDir = [@(__FILE__) stringByDeletingLastPathComponent];
+    if (sourceDir) {
+        NSString *candidate = [sourceDir stringByAppendingPathComponent:@"metal_shaders.metal"];
+        if ([fm fileExistsAtPath:candidate]) return candidate;
+    }
+    return nil;
+}
 
 typedef struct {
     simd_float2 pos;            // clip-space
@@ -48,6 +84,7 @@ typedef struct {
     simd_float2 cursor_uv;
     uint32_t   layer;
     simd_float4 fg_rgba;        // premul fg
+    simd_float4 bg_rgba;        // premul bg
     simd_float4 deco_rgba;      // decoration color (premul)
     float       text_alpha;
     float       colored_sprite;
@@ -70,7 +107,8 @@ metal_build_pipelines(void) {
     if (!g_device || !g_library) return false;
     g_cell_pipeline = make_pipeline(@\"cell_vs\", @\"cell_fs\", MTLPixelFormatBGRA8Unorm_sRGB);
     g_clear_pipeline = make_pipeline(@\"quad_vs\", @\"quad_fs\", MTLPixelFormatBGRA8Unorm_sRGB);
-    return g_cell_pipeline != nil && g_clear_pipeline != nil;
+    g_bg_pipeline = make_pipeline(@\"bg_vs\", @\"bg_fs\", MTLPixelFormatBGRA8Unorm_sRGB);
+    return g_cell_pipeline != nil && g_clear_pipeline != nil && g_bg_pipeline != nil;
 }
 
 bool
@@ -79,7 +117,9 @@ metal_backend_init(void) {
     g_device = MTLCreateSystemDefaultDevice();
     if (!g_device) return false;
     g_queue = [g_device newCommandQueue];
-    NSString *source = [NSString stringWithContentsOfFile:@"/Users/nripeshn/Documents/PythonPrograms/kitty/kitty/metal_shaders.metal" encoding:NSUTF8StringEncoding error:nil];
+    NSString *shader_path = find_metal_shader_source_path();
+    if (!shader_path) return false;
+    NSString *source = [NSString stringWithContentsOfFile:shader_path encoding:NSUTF8StringEncoding error:nil];
     if (!source) return false;
     NSError *err = nil;
     g_library = [g_device newLibraryWithSource:source options:nil error:&err];
@@ -352,19 +392,20 @@ build_cell_vertices(OSWindow *w, Screen *screen, FONTS_DATA_HANDLE fonts_data, M
             simd_float2 p11 = to_clip(px + cw, py);
 
             simd_float4 fg = srgb_color_premul(gc.fg, 1.0f);
+            simd_float4 bg = srgb_color_premul(gc.bg, 1.0f);
             simd_float4 deco = srgb_color_premul(gc.decoration_fg, 1.0f);
             float text_alpha = 1.0f;
             float colored_sprite = (gc.sprite_idx & 0x80000000) ? 1.0f : 0.0f;
             float cursor_alpha = (gc.attrs.mark & 0x1) ? 1.0f : 0.0f; // rough cursor marker
 
             // triangle 1
-            vout[vcount++] = {p00, {u0,v1}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
-            vout[vcount++] = {p10, {u1,v1}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
-            vout[vcount++] = {p01, {u0,v0}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
+            vout[vcount++] = {p00, {u0,v1}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, bg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
+            vout[vcount++] = {p10, {u1,v1}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, bg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
+            vout[vcount++] = {p01, {u0,v0}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, bg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
             // triangle 2
-            vout[vcount++] = {p10, {u1,v1}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
-            vout[vcount++] = {p11, {u1,v0}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
-            vout[vcount++] = {p01, {u0,v0}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
+            vout[vcount++] = {p10, {u1,v1}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, bg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
+            vout[vcount++] = {p11, {u1,v0}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, bg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
+            vout[vcount++] = {p01, {u0,v0}, duv.underline_uv, duv.strike_uv, duv.cursor_uv, sz, fg, bg, deco, text_alpha, colored_sprite, duv.cursor_alpha};
             if (vcount >= kMaxVerticesPerFrame) { goto done; }
         }
     }

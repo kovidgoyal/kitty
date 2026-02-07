@@ -10,6 +10,7 @@ struct CellVertex {
     float2 cursor_uv;
     uint   layer;          // sprite layer
     float4 fg_rgba;        // premul fg
+    float4 bg_rgba;        // premul bg
     float4 deco_rgba;      // decoration color (premul)
     float  text_alpha;     // per-vertex text alpha
     float  colored_sprite; // mix factor
@@ -24,6 +25,7 @@ struct CellVSOut {
     float2 cursor_uv;
     uint   layer;
     float4 fg_rgba;
+    float4 bg_rgba;
     float4 deco_rgba;
     float  text_alpha;
     float  colored_sprite;
@@ -46,6 +48,7 @@ vertex CellVSOut cell_vs(const device CellVertex* vbuf [[buffer(0)]],
     o.cursor_uv = v.cursor_uv;
     o.layer = v.layer;
     o.fg_rgba = v.fg_rgba;
+    o.bg_rgba = v.bg_rgba;
     o.deco_rgba = v.deco_rgba;
     o.text_alpha = v.text_alpha;
     o.colored_sprite = v.colored_sprite;
@@ -74,7 +77,9 @@ fragment float4 cell_fs(CellVSOut in [[stage_in]],
     outp = float4(outp.rgb + outp.a * strike, clamp(outp.a + strike, 0.0, 1.0));
     // cursor overrides with deco color
     outp = mix(outp, in.deco_rgba, cursor);
-    return outp;
+    // composite over cell background (premultiplied)
+    float one_minus_a = 1.0 - outp.a;
+    return float4(outp.rgb + in.bg_rgba.rgb * one_minus_a, outp.a + in.bg_rgba.a * one_minus_a);
 }
 
 // Simple solid quad used for clears/blits
