@@ -857,7 +857,7 @@ void _glfwInputScroll(_GLFWwindow* window, const GLFWScrollEvent *ev);
 void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods);
 void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos);
 void _glfwInputCursorEnter(_GLFWwindow* window, bool entered);
-void _glfwInputDrop(_GLFWwindow* window, GLFWDropData* drop);
+void _glfwInputDrop(_GLFWwindow* window, GLFWDropData* drop, bool from_self);
 int _glfwInputDragEvent(_GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int* mime_count);
 void _glfwInputDragSourceRequest(_GLFWwindow* window, const char* mime_type, GLFWDragSourceData* source_data);
 

@@ -2554,7 +2554,9 @@ drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
                     destroy_data_offer(offer);
                     drop_data->eof_reached = false;
                     memset(offer, 0, sizeof(offer[0]));
-                    _glfwInputDrop(window, drop_data);
+                    // Check if the drop is from this application
+                    bool from_self = (_glfw.wl.drag.window_id != 0);
+                    _glfwInputDrop(window, drop_data, from_self);
                     // Note: drop_data is NOT freed here - application must call glfwFinishDrop
                     break;
                 }
@@ -3017,17 +3019,70 @@ cleanup_drag_source_data(GLFWDragSourceData* data) {
     free(data);
 }
 
+// Remove a finished request from the pending requests array
+static void
+remove_pending_request(int index) {
+    if (index < 0 || index >= _glfw.wl.drag.pending_request_count) return;
+
+    cleanup_drag_source_data(_glfw.wl.drag.pending_requests[index]);
+
+    // Shift remaining elements
+    for (int i = index; i < _glfw.wl.drag.pending_request_count - 1; i++) {
+        _glfw.wl.drag.pending_requests[i] = _glfw.wl.drag.pending_requests[i + 1];
+    }
+    _glfw.wl.drag.pending_request_count--;
+}
+
+// Clean up all finished requests from the pending requests array
+static void
+cleanup_finished_requests(void) {
+    for (int i = _glfw.wl.drag.pending_request_count - 1; i >= 0; i--) {
+        if (_glfw.wl.drag.pending_requests[i]->finished) {
+            remove_pending_request(i);
+        }
+    }
+}
+
+// Clean up all pending requests
+static void
+cleanup_all_pending_requests(void) {
+    for (int i = 0; i < _glfw.wl.drag.pending_request_count; i++) {
+        cleanup_drag_source_data(_glfw.wl.drag.pending_requests[i]);
+    }
+    free(_glfw.wl.drag.pending_requests);
+    _glfw.wl.drag.pending_requests = NULL;
+    _glfw.wl.drag.pending_request_count = 0;
+    _glfw.wl.drag.pending_request_capacity = 0;
+}
+
+// Add a request to the pending requests array
+static bool
+add_pending_request(GLFWDragSourceData* request) {
+    // First, clean up any finished requests to make room
+    cleanup_finished_requests();
+
+    // Grow the array if necessary
+    if (_glfw.wl.drag.pending_request_count >= _glfw.wl.drag.pending_request_capacity) {
+        int new_capacity = _glfw.wl.drag.pending_request_capacity ? _glfw.wl.drag.pending_request_capacity * 2 : 4;
+        GLFWDragSourceData** new_array = realloc(_glfw.wl.drag.pending_requests,
+                                                  new_capacity * sizeof(GLFWDragSourceData*));
+        if (!new_array) return false;
+        _glfw.wl.drag.pending_requests = new_array;
+        _glfw.wl.drag.pending_request_capacity = new_capacity;
+    }
+
+    _glfw.wl.drag.pending_requests[_glfw.wl.drag.pending_request_count++] = request;
+    return true;
+}
+
 static void
 cleanup_drag(struct wl_data_source *source) {
     // Notify the application that the drag source is closed
     _GLFWwindow *window = _glfwWindowForId(_glfw.wl.drag.window_id);
     if (window && window->callbacks.dragSource) _glfwInputDragSourceRequest(window, NULL, NULL);
 
-    // Clean up any pending data request
-    if (_glfw.wl.drag.current_request) {
-        cleanup_drag_source_data(_glfw.wl.drag.current_request);
-        _glfw.wl.drag.current_request = NULL;
-    }
+    // Clean up all pending data requests
+    cleanup_all_pending_requests();
 
     // Clean up MIME type strings
     for (int i = 0; i < _glfw.wl.drag.mime_count; i++) free(_glfw.wl.drag.mimes[i]);
@@ -3069,9 +3124,11 @@ drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const 
         return;
     }
 
-    // Store as current request
-    if (_glfw.wl.drag.current_request) cleanup_drag_source_data(_glfw.wl.drag.current_request);
-    _glfw.wl.drag.current_request = request;
+    // Add to pending requests array
+    if (!add_pending_request(request)) {
+        cleanup_drag_source_data(request);
+        return;
+    }
 
     // Notify the application via callback
     _glfwInputDragSourceRequest(window, mime_type, request);
@@ -3210,6 +3267,8 @@ _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, siz
         source_data->finished = true;
         close(source_data->write_fd);
         source_data->write_fd = -1;
+        // Clean up this and any other finished requests
+        cleanup_finished_requests();
         return 0;
     }
 
@@ -3219,6 +3278,8 @@ _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, siz
         source_data->error_code = (int)size;
         close(source_data->write_fd);
         source_data->write_fd = -1;
+        // Clean up this and any other finished requests
+        cleanup_finished_requests();
         return 0;
     }
 
@@ -3238,6 +3299,8 @@ _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, siz
         source_data->error_code = errno;
         close(source_data->write_fd);
         source_data->write_fd = -1;
+        // Clean up this and any other finished requests
+        cleanup_finished_requests();
         return -errno;
     }
 

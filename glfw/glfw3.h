@@ -1800,6 +1800,12 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *  responsible for calling glfwFinishDrop when it has finished reading
  *  the dropped data, even if reading fails or is not needed.
  *
+ *  @param[in] window The window that received the drop.
+ *  @param[in] drop Opaque drop data pointer (heap-allocated).
+ *  @param[in] from_self GLFW_TRUE if the drop originated from this application
+ *  (i.e., the application is both the drag source and drop target), GLFW_FALSE
+ *  if the drop came from an external application.
+ *
  *  @sa @ref path_drop
  *  @sa @ref glfwSetDropCallback
  *  @sa @ref glfwGetDropMimeTypes
@@ -1807,10 +1813,11 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *  @sa @ref glfwFinishDrop
  *
  *  @since Changed in version 4.0 to receive opaque drop data pointer.
+ *  @since Changed in version 4.0 to receive from_self parameter.
  *
  *  @ingroup input
  */
-typedef void (* GLFWdropfun)(GLFWwindow*, GLFWDropData*);
+typedef void (* GLFWdropfun)(GLFWwindow*, GLFWDropData*, int from_self);
 
 /*! @brief Drag event types.
  *

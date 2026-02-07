@@ -400,7 +400,9 @@ typedef struct _GLFWlibraryX11
         Atom             action_atom;   // XdndActionCopy, XdndActionMove, or XdndActionLink
         bool             active;
         _GLFWwindow*     window;        // Window that initiated the drag
-        GLFWDragSourceData* current_request; // Current data request being processed
+        GLFWDragSourceData** pending_requests; // Array of pending data requests
+        int              pending_request_count;  // Number of pending requests
+        int              pending_request_capacity; // Capacity of the pending requests array
     } drag;
 
     struct {

@@ -404,10 +404,10 @@ void _glfwInputCursorEnter(_GLFWwindow* window, bool entered)
 
 // Notifies shared code of files or directories dropped on a window
 //
-void _glfwInputDrop(_GLFWwindow* window, GLFWDropData* drop)
+void _glfwInputDrop(_GLFWwindow* window, GLFWDropData* drop, bool from_self)
 {
     if (window->callbacks.drop)
-        window->callbacks.drop((GLFWwindow*) window, drop);
+        window->callbacks.drop((GLFWwindow*) window, drop, from_self ? GLFW_TRUE : GLFW_FALSE);
 }
 
 // Notifies shared code of a drag event
