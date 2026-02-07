@@ -211,6 +211,11 @@ realloc_sprite_decorations_texture_if_needed(FONTS_DATA_HANDLE fg) {
     }
     glBindTexture(texture_type, 0);
     dm.texture_id = tex; dm.width = width; dm.height = height;
+#ifdef __APPLE__
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        metal_realloc_decor_texture(sm, width, height);
+    }
+#endif
 #undef dm
 }
 
@@ -232,6 +237,11 @@ realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
     sprite_map->last_num_of_layers = znum;
     sprite_map->last_ynum = ynum;
     sprite_map->texture_id = tex;
+#ifdef __APPLE__
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        metal_realloc_sprite_texture(sprite_map, width, height, znum);
+    }
+#endif
 }
 
 static void
@@ -260,6 +270,11 @@ send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index idx, pixel *buf, sprite_in
     glBindTexture(GL_TEXTURE_2D, dm.texture_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &decoration_idx);
+#ifdef __APPLE__
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        metal_upload_decor(sprite_map, x, y, decoration_idx);
+    }
+#endif
 #undef dm
     sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
     if ((int)znum >= sprite_map->last_num_of_layers || (znum == 0 && (int)ynum > sprite_map->last_ynum)) {
@@ -272,10 +287,22 @@ send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index idx, pixel *buf, sprite_in
     sprite_index_to_pos(idx, xnum, ynum, &x, &y, &z);
     x *= fg->fcm.cell_width; y *= (fg->fcm.cell_height + 1);
     glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, x, y, z, fg->fcm.cell_width, fg->fcm.cell_height + 1, 1, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buf);
+#ifdef __APPLE__
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        metal_upload_sprite(sprite_map, x, y, z, fg->fcm.cell_width, fg->fcm.cell_height + 1, buf);
+    }
+#endif
 }
 
 void
 send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei height, bool is_opaque, bool is_4byte_aligned, bool linear, RepeatStrategy repeat) {
+#ifdef __APPLE__
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        if (!(*tex_id)) *tex_id = metal_image_alloc();
+        metal_image_upload(*tex_id, data, width, height, true, is_opaque, linear, repeat);
+        return;
+    }
+#endif
     if (!(*tex_id)) { glGenTextures(1, tex_id);  }
     glBindTexture(GL_TEXTURE_2D, *tex_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, is_4byte_aligned ? 4 : 1);

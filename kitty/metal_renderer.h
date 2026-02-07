@@ -38,6 +38,11 @@ bool metal_realloc_decor_texture(struct SpriteMap *sm, unsigned width, unsigned 
 bool metal_upload_sprite(struct SpriteMap *sm, unsigned x, unsigned y, unsigned layer, unsigned w, unsigned h, const void *rgba);
 bool metal_upload_decor(struct SpriteMap *sm, unsigned x, unsigned y, uint32_t decoration_idx);
 
+// Generic 2D textures (graphics, bg images)
+uint32_t metal_image_alloc(void);
+void metal_image_upload(uint32_t tex_id, const void *data, int width, int height, bool srgb, bool is_opaque, bool linear_filter, int repeat_mode);
+void metal_image_free(uint32_t tex_id);
+
 #ifdef __cplusplus
 }
 #endif

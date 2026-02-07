@@ -8,6 +8,8 @@
 #include "monotonic.h"
 #include "glfw-wrapper.h"
 #include <vector>
+#include <unordered_map>
+#include <atomic>
 
 struct MetalWindow {
     CAMetalLayer *layer;
@@ -24,6 +26,8 @@ struct MetalWindow {
 static id<MTLDevice> g_device = nil;
 static id<MTLCommandQueue> g_queue = nil;
 static id<MTLLibrary> g_library = nil;
+static std::unordered_map<uint32_t, id<MTLTexture>> g_image_textures;
+static std::atomic<uint32_t> g_image_ids{1000}; // arbitrary non-zero start
 
 bool
 metal_backend_init(void) {
@@ -195,6 +199,49 @@ metal_upload_decor(struct SpriteMap *sm, unsigned x, unsigned y, uint32_t decora
     uint32_t val = decoration_idx;
     [tex replaceRegion:region mipmapLevel:0 withBytes:&val bytesPerRow:sizeof(uint32_t)];
     return true;
+}
+
+// Generic 2D textures ----------------------------------------------------
+
+uint32_t
+metal_image_alloc(void) {
+    return g_image_ids.fetch_add(1, std::memory_order_relaxed);
+}
+
+void
+metal_image_upload(uint32_t tex_id, const void *data, int width, int height, bool srgb, bool is_opaque, bool linear_filter, int repeat_mode) {
+    if (!g_device) return;
+    MTLPixelFormat pf = srgb ? MTLPixelFormatBGRA8Unorm_sRGB : MTLPixelFormatBGRA8Unorm;
+    id<MTLTexture> tex = nil;
+    auto it = g_image_textures.find(tex_id);
+    if (it == g_image_textures.end()) {
+        MTLTextureDescriptor *desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:pf width:width height:height mipmapped:NO];
+        desc.usage = MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget;
+        tex = [g_device newTextureWithDescriptor:desc];
+        g_image_textures[tex_id] = tex;
+    } else {
+        tex = it->second;
+        if ((int)tex.width != width || (int)tex.height != height || tex.pixelFormat != pf) {
+            [tex release];
+            MTLTextureDescriptor *desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:pf width:width height:height mipmapped:NO];
+            desc.usage = MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget;
+            tex = [g_device newTextureWithDescriptor:desc];
+            it->second = tex;
+        }
+    }
+    MTLRegion region = { {0,0,0}, { (NSUInteger)width, (NSUInteger)height, 1 } };
+    NSUInteger bpr = (NSUInteger)width * 4;
+    [tex replaceRegion:region mipmapLevel:0 withBytes:data bytesPerRow:bpr];
+    (void)is_opaque; (void)linear_filter; (void)repeat_mode; // TODO: sampler configuration
+}
+
+void
+metal_image_free(uint32_t tex_id) {
+    auto it = g_image_textures.find(tex_id);
+    if (it != g_image_textures.end()) {
+        [it->second release];
+        g_image_textures.erase(it);
+    }
 }
 
 #endif // __APPLE__
