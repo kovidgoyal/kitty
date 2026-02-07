@@ -88,6 +88,10 @@ x11_cancel_momentum_scroll_timer(void) {
 
 #define _GLFW_XDND_VERSION 5
 
+// Forward declarations for drag source data handling
+static void cleanup_x11_drag_source_data(GLFWDragSourceData* data);
+static bool add_x11_pending_request(GLFWDragSourceData* request);
+
 // Wait for data to arrive using poll
 // This avoids blocking other threads via the per-display Xlib lock that also
 // covers GLX functions
@@ -1101,12 +1105,96 @@ static void handleSelectionRequest(XEvent* event)
     const XSelectionRequestEvent* request = &event->xselectionrequest;
 
     XEvent reply = { SelectionNotify };
-    reply.xselection.property = writeTargetToProperty(request);
     reply.xselection.display = request->display;
     reply.xselection.requestor = request->requestor;
     reply.xselection.selection = request->selection;
     reply.xselection.target = request->target;
     reply.xselection.time = request->time;
+
+    // Handle XdndSelection (drag and drop) specially
+    if (request->selection == _glfw.x11.XdndSelection && _glfw.x11.drag.active && _glfw.x11.drag.window) {
+        // Handle TARGETS request for XdndSelection
+        if (request->target == _glfw.x11.TARGETS) {
+            // Return the list of supported MIME type atoms
+            Atom *targets = calloc(_glfw.x11.drag.mime_count + 2, sizeof(Atom));
+            if (targets) {
+                targets[0] = _glfw.x11.TARGETS;
+                targets[1] = _glfw.x11.MULTIPLE;
+                for (int i = 0; i < _glfw.x11.drag.mime_count; i++) {
+                    targets[i + 2] = _glfw.x11.drag.type_atoms[i];
+                }
+                XChangeProperty(_glfw.x11.display,
+                                request->requestor,
+                                request->property,
+                                XA_ATOM,
+                                32,
+                                PropModeReplace,
+                                (unsigned char*)targets,
+                                _glfw.x11.drag.mime_count + 2);
+                free(targets);
+                reply.xselection.property = request->property;
+            } else {
+                reply.xselection.property = None;
+            }
+        } else {
+            // Find the matching MIME type for the requested target
+            const char* mime_type = NULL;
+            for (int i = 0; i < _glfw.x11.drag.mime_count; i++) {
+                if (_glfw.x11.drag.type_atoms[i] == request->target) {
+                    mime_type = _glfw.x11.drag.mimes[i];
+                    break;
+                }
+            }
+
+            if (mime_type) {
+                // Create a drag source data request
+                GLFWDragSourceData* source_data = calloc(1, sizeof(GLFWDragSourceData));
+                if (source_data) {
+                    source_data->window_id = _glfw.x11.drag.window->id;
+                    source_data->mime_type = _glfw_strdup(mime_type);
+                    source_data->write_fd = -1;
+                    source_data->finished = false;
+                    source_data->error_code = 0;
+                    // Store request info in platform_data for later use
+                    // We'll use a simple struct to hold the X11-specific data
+                    struct {
+                        Window requestor;
+                        Atom property;
+                        Atom target;
+                    } *x11_data = malloc(sizeof(*x11_data));
+                    if (x11_data && source_data->mime_type) {
+                        x11_data->requestor = request->requestor;
+                        x11_data->property = request->property;
+                        x11_data->target = request->target;
+                        source_data->platform_data = x11_data;
+
+                        if (add_x11_pending_request(source_data)) {
+                            // Notify the application via callback
+                            _glfwInputDragSourceRequest(_glfw.x11.drag.window, mime_type, source_data);
+                            reply.xselection.property = request->property;
+                        } else {
+                            free(x11_data);
+                            free(source_data->mime_type);
+                            free(source_data);
+                            reply.xselection.property = None;
+                        }
+                    } else {
+                        free(x11_data);
+                        free(source_data->mime_type);
+                        free(source_data);
+                        reply.xselection.property = None;
+                    }
+                } else {
+                    reply.xselection.property = None;
+                }
+            } else {
+                reply.xselection.property = None;
+            }
+        }
+    } else {
+        // Handle regular clipboard/primary selection
+        reply.xselection.property = writeTargetToProperty(request);
+    }
 
     XSendEvent(_glfw.x11.display, request->requestor, False, 0, &reply);
 }
@@ -3720,6 +3808,7 @@ static void cleanup_x11_drag_source_data(GLFWDragSourceData* data) {
         close(data->write_fd);
         data->write_fd = -1;
     }
+    free(data->platform_data);
     free(data->mime_type);
     free(data);
 }
@@ -3894,8 +3983,7 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
 ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size) {
     if (!source_data || source_data->finished) return -EINVAL;
 
-    // For X11, we typically set properties for SelectionRequest events
-    // The write_fd is used if we set up a pipe-based transfer
+    // For X11, we set properties via XChangeProperty in response to SelectionRequest
 
     // End of data: NULL data pointer and size zero
     if (!data && size == 0) {
@@ -3922,9 +4010,31 @@ ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* d
         return 0;
     }
 
-    // For X11, data is typically set via XChangeProperty in response to SelectionRequest
-    // Store the data in platform_data for the SelectionRequest handler
-    // Non-blocking write - retry on EINTR, return 0 on would-block
+    // For X11, use XChangeProperty to set the data on the requestor window
+    if (source_data->platform_data) {
+        struct {
+            Window requestor;
+            Atom property;
+            Atom target;
+        } *x11_data = source_data->platform_data;
+
+        XChangeProperty(_glfw.x11.display,
+                        x11_data->requestor,
+                        x11_data->property,
+                        x11_data->target,
+                        8,
+                        PropModeReplace,
+                        (unsigned char*)data,
+                        size);
+        XFlush(_glfw.x11.display);
+
+        // Mark as finished after sending data
+        source_data->finished = true;
+        cleanup_x11_finished_requests();
+        return (ssize_t)size;
+    }
+
+    // Fallback: Non-blocking write if we have an fd
     if (source_data->write_fd >= 0) {
         ssize_t written;
         do {
@@ -3947,8 +4057,8 @@ ssize_t _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* d
         return written;
     }
 
-    // No fd available, all data is accepted (buffered by platform_data)
-    return (ssize_t)size;
+    // No valid mechanism to send data
+    return -EINVAL;
 }
 
 void _glfwPlatformUpdateDragState(_GLFWwindow* window) {
