@@ -8,6 +8,9 @@
 #include "loop-utils.h"
 #include "safe-wrappers.h"
 #include "state.h"
+#ifdef __APPLE__
+#include "metal_renderer.h"
+#endif
 #include "threading.h"
 #include "screen.h"
 #include "monotonic.h"
@@ -855,6 +858,9 @@ no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_
 
 bool
 render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        return metal_render_os_window(w, now, scan_for_animated_images);
+    }
     if (!w->num_tabs) return false;
     if (!should_os_window_be_rendered(w)) {
         update_os_window_title(w);
@@ -873,7 +879,15 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
     make_os_window_context_current(w);
     bool needs_render = w->redraw_count > 0 || w->live_resize.in_progress;
     if (w->viewport_size_dirty) {
-        set_gpu_viewport(w->viewport_width, w->viewport_height);
+        if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+#ifdef __APPLE__
+            float xscale = 1.0f, yscale = 1.0f; double xdpi, ydpi;
+            get_os_window_content_scale(w, &xdpi, &ydpi, &xscale, &yscale);
+            metal_window_resize(w, w->viewport_width, w->viewport_height, xscale, yscale);
+#endif
+        } else {
+            set_gpu_viewport(w->viewport_width, w->viewport_height);
+        }
         w->viewport_size_dirty = false;
         needs_render = true;
     }

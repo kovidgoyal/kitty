@@ -16,6 +16,9 @@
 #include "srgb_gamma.h"
 #include "uniforms_generated.h"
 #include "state.h"
+#ifdef __APPLE__
+#include "metal_renderer.h"
+#endif
 
 enum {
     CELL_PROGRAM, CELL_FG_PROGRAM, CELL_BG_PROGRAM, CELL_PROGRAM_SENTINEL,
@@ -62,6 +65,10 @@ typedef struct {
         unsigned width, height;
         size_t count;
     } decorations_map;
+#ifdef __APPLE__
+    void *metal_texture;
+    void *metal_decorations_texture;
+#endif
 } SpriteMap;
 
 static const SpriteMap NEW_SPRITE_MAP = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1 };
@@ -1380,7 +1387,13 @@ blank_os_window(OSWindow *osw) {
             }
         }
     }
-    blank_canvas(effective_os_window_alpha(osw), color, true);
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+#ifdef __APPLE__
+        metal_present_blank(osw, effective_os_window_alpha(osw), color);
+#endif
+    } else {
+        blank_canvas(effective_os_window_alpha(osw), color, true);
+    }
 }
 
 static void

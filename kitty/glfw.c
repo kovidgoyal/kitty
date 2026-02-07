@@ -13,6 +13,7 @@
 #include "glfw-wrapper.h"
 #ifdef __APPLE__
 #include "cocoa_window.h"
+#include "metal_renderer.h"
 #else
 #include "freetype_render_ui_text.h"
 #endif
@@ -408,8 +409,14 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
         window->live_resize.last_resize_event_at = monotonic();
         window->live_resize.width = MAX(0, width); window->live_resize.height = MAX(0, height);
         window->live_resize.num_of_resize_events++;
-        make_os_window_context_current(window);
-        set_gpu_viewport(width, height);
+        if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+            float xscale, yscale; double xdpi, ydpi;
+            get_os_window_content_scale(window, &xdpi, &ydpi, &xscale, &yscale);
+            metal_window_resize(window, width, height, xscale, yscale);
+        } else {
+            make_os_window_context_current(window);
+            set_gpu_viewport(width, height);
+        }
         request_tick_callback();
     } else log_error("Ignoring resize request for tiny size: %dx%d", width, height);
     global_state.callback_os_window = NULL;
@@ -916,6 +923,7 @@ set_os_window_icon(PyObject UNUSED *self, PyObject *args) {
 
 void*
 make_os_window_context_current(OSWindow *w) {
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) return NULL;
     GLFWwindow *current_context = glfwGetCurrentContext();
     if (w->handle != current_context) {
         glfwMakeContextCurrent(w->handle);
@@ -1354,13 +1362,18 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 
     static bool is_first_window = true;
     if (is_first_window) {
+        gpu_pick_backend();
         if (global_state.is_wayland) glfwConfigureMomentumScroller(OPT(momentum_scroll), -1, -1, 0);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MAJOR);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_REQUIRED_VERSION_MINOR);
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
-        // We don't use depth and stencil buffers
-        glfwWindowHint(GLFW_DEPTH_BITS, 0);
-        glfwWindowHint(GLFW_STENCIL_BITS, 0);
+        if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        } else {
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MAJOR);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, OPENGL_REQUIRED_VERSION_MINOR);
+            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
+            // We don't use depth and stencil buffers
+            glfwWindowHint(GLFW_DEPTH_BITS, 0);
+            glfwWindowHint(GLFW_STENCIL_BITS, 0);
+        }
         glfwSetApplicationCloseCallback(application_close_requested_callback);
         glfwSetCurrentSelectionCallback(get_current_selection);
         glfwSetHasCurrentSelectionCallback(has_current_selection);
@@ -1444,15 +1457,17 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
     if (glfw_window == NULL) glfw_failure;
 #undef glfw_failure
-    glfwMakeContextCurrent(glfw_window);
+    if (global_state.gpu_backend != GPU_BACKEND_METAL) glfwMakeContextCurrent(glfw_window);
     if (is_first_window) gpu_init();
     bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);
     // blank the window once so that there is no initial flash of color
     // changing, in case the background color is not black
-    blank_canvas(is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background), true);
-    apply_swap_interval(-1);
-    // On Wayland the initial swap is allowed only after the first XDG configure event
-    if (glfwAreSwapsAllowed(glfw_window)) glfwSwapBuffers(glfw_window);
+    if (global_state.gpu_backend != GPU_BACKEND_METAL) {
+        blank_canvas(is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background), true);
+        apply_swap_interval(-1);
+        // On Wayland the initial swap is allowed only after the first XDG configure event
+        if (glfwAreSwapsAllowed(glfw_window)) glfwSwapBuffers(glfw_window);
+    }
     glfwSetInputMode(glfw_window, GLFW_LOCK_KEY_MODS, true);
     PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
     if (pret == NULL) return NULL;
@@ -1541,6 +1556,12 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         }
     }
     init_window_chrome_state(&w->last_window_chrome, OPT(background), effective_os_window_alpha(w));
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        if (!metal_window_attach(w)) {
+            fatal("Metal backend selected but attaching CAMetalLayer failed");
+        }
+        metal_present_blank(w, is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background));
+    }
     if (w->is_layer_shell) {
         if (global_state.is_apple) set_layer_shell_config_for(w, lsc);
     } else apply_window_chrome_state(
@@ -1616,6 +1637,7 @@ destroy_os_window(OSWindow *w) {
     }
     w->handle = NULL;
 #ifdef __APPLE__
+    metal_window_destroy(w);
     // On macOS when closing a window, any other existing windows belonging to the same application do not
     // automatically get focus, so we do it manually.
     cocoa_focus_last_window(w->id, source_workspaces, source_workspace_count);
@@ -2090,7 +2112,12 @@ is_mouse_hidden(OSWindow *w) {
 
 void
 swap_window_buffers(OSWindow *os_window) {
-    if (glfwAreSwapsAllowed(os_window->handle)) {
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+#ifdef __APPLE__
+        metal_present_blank(os_window, os_window->background_opacity.supports_transparency ? OPT(background_opacity) : 1.0f, OPT(background));
+        os_window->keep_rendering_till_swap = 0;
+#endif
+    } else if (glfwAreSwapsAllowed(os_window->handle)) {
         glfwSwapBuffers(os_window->handle);
         os_window->keep_rendering_till_swap = 0;
     }

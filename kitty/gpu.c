@@ -1,8 +1,14 @@
 #include "state.h"
 #include "gl.h"
+#ifdef __APPLE__
+#include "metal_renderer.h"
+#endif
 #include <string.h>
 #include <strings.h>
 #include <stdlib.h>
+#ifdef _WIN32
+#define strcasecmp _stricmp
+#endif
 
 // Placeholder backend selector. The intention is to allow a Metal renderer
 // implementation to slot in for macOS while keeping the existing OpenGL path
@@ -20,12 +26,24 @@ desired_backend_from_env(void) {
 static bool
 try_init_metal_backend(void) {
 #ifdef __APPLE__
-    // TODO: Replace with real Metal renderer initialization once implemented.
-    // Returning false keeps the current OpenGL path as the operational default.
-    return false;
+    return metal_backend_init();
 #else
     return false;
 #endif
+}
+
+static bool backend_chosen = false;
+
+void
+gpu_pick_backend(void) {
+    if (backend_chosen) return;
+    GPUBackend desired = desired_backend_from_env();
+    if (desired == GPU_BACKEND_METAL && try_init_metal_backend()) {
+        global_state.gpu_backend = GPU_BACKEND_METAL;
+    } else {
+        global_state.gpu_backend = GPU_BACKEND_OPENGL;
+    }
+    backend_chosen = true;
 }
 
 GPUBackend
@@ -43,11 +61,12 @@ GPUBackend_name(GPUBackend b) {
 
 void
 gpu_init(void) {
-    GPUBackend desired = desired_backend_from_env();
-    if (desired == GPU_BACKEND_METAL && try_init_metal_backend()) {
-        global_state.gpu_backend = GPU_BACKEND_METAL;
-        return;
+    if (!backend_chosen) gpu_pick_backend();
+    if (global_state.gpu_backend == GPU_BACKEND_OPENGL) {
+        gl_init();
+    } else {
+#ifdef __APPLE__
+        metal_backend_init();
+#endif
     }
-    gl_init();
-    global_state.gpu_backend = GPU_BACKEND_OPENGL;
 }

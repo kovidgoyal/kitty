@@ -8,3 +8,4 @@ typedef enum GPUBackend {
 GPUBackend gpu_backend(void);
 const char* GPUBackend_name(GPUBackend backend);
 void gpu_init(void);
+void gpu_pick_backend(void);
