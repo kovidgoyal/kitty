@@ -3063,12 +3063,11 @@ add_wl_pending_request(GLFWDragSourceData* request) {
 
     // Grow the array if necessary
     if (_glfw.wl.drag.pending_request_count >= _glfw.wl.drag.pending_request_capacity) {
-        // Cap maximum capacity to prevent integer overflow
-        int new_capacity = _glfw.wl.drag.pending_request_capacity ? _glfw.wl.drag.pending_request_capacity * 2 : 4;
-        if (new_capacity < _glfw.wl.drag.pending_request_capacity || new_capacity > 1024) {
-            // Overflow occurred or capacity too large
+        // Cap maximum capacity to prevent excessive memory use
+        if (_glfw.wl.drag.pending_request_capacity >= 512) {
             return false;
         }
+        int new_capacity = _glfw.wl.drag.pending_request_capacity ? _glfw.wl.drag.pending_request_capacity * 2 : 4;
         GLFWDragSourceData** new_array = realloc(_glfw.wl.drag.pending_requests,
                                                   new_capacity * sizeof(GLFWDragSourceData*));
         if (!new_array) return false;
