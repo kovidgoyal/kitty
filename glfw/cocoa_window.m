@@ -1618,9 +1618,10 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
 
     // Count total types across all pasteboard items plus 2 for uri-list and text/plain
     size_t max_types = 2;
-    for (NSPasteboardItem* item in pasteboard.pasteboardItems) {
-        max_types += [item.types count];
-    }
+    for (NSPasteboardItem* item in pasteboard.pasteboardItems) max_types += [item.types count];
+    NSArray *classes = [NSArray arrayWithObject:[NSFilePromiseReceiver class]];
+    NSArray *receivers = [pasteboard readObjectsForClasses:classes options:@{}];
+    for (NSFilePromiseReceiver *receiver in receivers) max_types += [receiver.fileTypes count];
 
     // Free any previously cached MIME types
     freeDragMimes(window);
@@ -1642,25 +1643,30 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     if ([pasteboard canReadObjectForClasses:@[[NSString class]] options:nil]) {
         mime_array[mime_count++] = _glfw_strdup("text/plain");
     }
+#define add_mime(uti) { \
+            const char* mime = uti_to_mime(uti); \
+            if (mime && mime[0]) { \
+                bool duplicate = false; \
+                for (int i = 0; i < mime_count; i++) { \
+                    if (strcmp(mime_array[i], mime) == 0) { \
+                        duplicate = true; \
+                        break; \
+                    } \
+                } \
+                if (!duplicate) mime_array[mime_count++] = _glfw_strdup(mime); \
+            } \
+}
+    // Get file promise based types
+    for (NSFilePromiseReceiver *receiver in receivers) {
+        for (NSString *uti in receiver.fileTypes) {
+            add_mime(uti);
+        }
+    }
 
     // Get additional types from pasteboard items
     for (NSPasteboardItem* item in pasteboard.pasteboardItems) {
-        for (NSPasteboardType type in item.types) {
-            const char* mime = uti_to_mime(type);
-            if (mime && mime[0]) {
-                // Check for duplicates
-                bool duplicate = false;
-                for (int i = 0; i < mime_count; i++) {
-                    if (strcmp(mime_array[i], mime) == 0) {
-                        duplicate = true;
-                        break;
-                    }
-                }
-                if (!duplicate) {
-                    // Use _glfw_strdup since uti_to_mime returns strings from autoreleased objects
-                    mime_array[mime_count++] = _glfw_strdup(mime);
-                }
-            }
+        for (NSPasteboardType uti in item.types) {
+            add_mime(uti);
         }
     }
 
@@ -1788,13 +1794,6 @@ static void freeFilteredDragMimes(_GLFWwindow* window, int old_count, int new_co
     cleanup_all_ns_pending_drag_source_data(window);
     // Notify the application that the drag source is closed
     _glfwInputDragSourceRequest(window, NULL, NULL);
-    // Clean up source MIME types
-    for (int i = 0; i < window->ns.sourceMimeCount; i++) {
-        free(window->ns.sourceMimes[i]);
-    }
-    free(window->ns.sourceMimes);
-    window->ns.sourceMimes = NULL;
-    window->ns.sourceMimeCount = 0;
 }
 
 - (BOOL)hasMarkedText
@@ -4011,13 +4010,6 @@ void _glfwCocoaPostEmptyEvent(void) {
 void _glfwPlatformCancelDrag(_GLFWwindow* window) {
     // Clean up all pending drag source data
     cleanup_all_ns_pending_drag_source_data(window);
-    // Clean up source MIME types
-    for (int i = 0; i < window->ns.sourceMimeCount; i++) {
-        free(window->ns.sourceMimes[i]);
-    }
-    free(window->ns.sourceMimes);
-    window->ns.sourceMimes = NULL;
-    window->ns.sourceMimeCount = 0;
     // Notify the application that the drag source is closed
     _glfwInputDragSourceRequest(window, NULL, NULL);
 }
@@ -4027,27 +4019,13 @@ int _glfwPlatformStartDrag(_GLFWwindow* window,
                            int mime_count,
                            const GLFWimage* thumbnail,
                            int operations) {
-    // Cancel any existing drag operation
-    _glfwPlatformCancelDrag(window);
+    // cleanup stored data from previous drag
+    cleanup_all_ns_pending_drag_source_data(window);
 
     // Store the operations for the dragging source callback
     window->ns.dragOperations = operations;
 
     @autoreleasepool {
-        // Store MIME types for later lookup
-        window->ns.sourceMimes = calloc(mime_count, sizeof(char*));
-        window->ns.sourceMimeCount = mime_count;
-        if (!window->ns.sourceMimes) {
-            return ENOMEM;
-        }
-        for (int i = 0; i < mime_count; i++) {
-            window->ns.sourceMimes[i] = _glfw_strdup(mime_types[i]);
-            if (!window->ns.sourceMimes[i]) {
-                _glfwPlatformCancelDrag(window);
-                return ENOMEM;
-            }
-        }
-
         // Create dragging items array - one NSFilePromiseProvider per MIME type
         NSMutableArray<NSDraggingItem*>* dragItems = [[NSMutableArray alloc] init];
 

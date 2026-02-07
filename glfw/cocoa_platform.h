@@ -176,10 +176,6 @@ typedef struct _GLFWwindowNS
     int dragMimeCount;      // Current count of MIME types (may be reduced by callback)
     int dragMimeArraySize;  // Original array size for proper cleanup
 
-    // Drag source state
-    char** sourceMimes;     // Array of MIME type strings for drag source
-    int sourceMimeCount;    // Number of source MIME types
-
     // Pending drag source data requests (for cleanup on cancellation)
     GLFWDragSourceData** pendingDragSourceData;
     int pendingDragSourceDataCount;

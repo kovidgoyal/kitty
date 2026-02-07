@@ -735,8 +735,8 @@ get_mime_data(GLFWDropData *drop, const char **mimes, int mime_count, PyObject *
     for (int i = 0; i < mime_count; i++) {
         if (is_droppable_mime(mimes[i])) {
             RAII_PyObject(data, read_drop_data(drop, mimes[i]));
-            if (data == NULL) return ;
-            if (PyDict_SetItemString(ans, mimes[i], data) != 0) return ;
+            if (data == NULL) return;
+            if (PyDict_SetItemString(ans, mimes[i], data) != 0) return;
         }
     }
 }
@@ -748,6 +748,7 @@ drop_callback(GLFWwindow *w, GLFWDropData *drop, bool from_self) {
     RAII_PyObject(ans, PyDict_New());
     if (from_self) {
         if (global_state.drag_source.drag_data) PyDict_Update(ans, global_state.drag_source.drag_data);
+        else log_error("Got a drop from self but drag_source.drag_data is NULL");
     } else get_mime_data(drop, mimes, num_mimes, ans);
     RAII_PyObject(exc, PyErr_GetRaisedException());
     glfwFinishDrop(drop, GLFW_DRAG_OPERATION_COPY, true);
