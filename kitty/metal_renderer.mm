@@ -409,10 +409,10 @@ void
 metal_reload_textures(struct SpriteMap *sm) {
     if (!sm) return;
     if (sm->texture_id == 0 && sm->metal_texture == NULL) return;
-    // Recreate Metal textures to match current GL ones
-    unsigned xnum = sm->last_num_of_layers ? sm->last_num_of_layers : 1;
-    unsigned ynum = sm->last_ynum ? sm->last_ynum : 1;
-    unsigned width = xnum * sm->max_texture_size; // conservative; actual width set during realloc_sprite_texture
+    // Recreate Metal textures to match current layout
+    unsigned xnum, ynum, z;
+    sprite_tracker_current_layout((FONTS_DATA_HANDLE)NULL, &xnum, &ynum, &z); // layout info lives in SpriteMap already
+    unsigned width = xnum * sm->max_texture_size;
     unsigned height = ynum * sm->max_texture_size;
     metal_realloc_sprite_texture(sm, width, height, sm->last_num_of_layers ? sm->last_num_of_layers : 1);
     if (sm->decorations_map.width && sm->decorations_map.height) {
