@@ -809,7 +809,12 @@ add_ns_pending_drag_source_data(_GLFWwindow* window, GLFWDragSourceData* data) {
 
     // Grow array if needed
     if (window->ns.pendingDragSourceDataCount >= window->ns.pendingDragSourceDataCapacity) {
+        // Cap maximum capacity to prevent integer overflow
         int new_capacity = window->ns.pendingDragSourceDataCapacity ? window->ns.pendingDragSourceDataCapacity * 2 : 4;
+        if (new_capacity < window->ns.pendingDragSourceDataCapacity || new_capacity > 1024) {
+            // Overflow occurred or capacity too large
+            return false;
+        }
         GLFWDragSourceData** new_array = realloc(window->ns.pendingDragSourceData,
                                                   new_capacity * sizeof(GLFWDragSourceData*));
         if (!new_array) return false;
