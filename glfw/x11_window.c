@@ -3935,9 +3935,10 @@ static Window findXdndAwareWindow(int root_x, int root_y, int* version) {
                                0, 1, False, XA_ATOM, &actual_type, &actual_format,
                                &nitems, &bytes_after, &data) == Success) {
             if (data && nitems > 0 && actual_format == 32) {
-                *version = (int)*(Atom*)data;
-                if (*version > _GLFW_XDND_VERSION)
-                    *version = _GLFW_XDND_VERSION;
+                // XdndAware property contains a single Atom value as a 32-bit long
+                // The version is stored in the Atom value itself (typically 3, 4, or 5)
+                long ver = *(long*)data;
+                *version = (ver > _GLFW_XDND_VERSION) ? _GLFW_XDND_VERSION : (int)ver;
                 XFree(data);
                 return target;
             }
@@ -3956,11 +3957,12 @@ static Window findXdndAwareWindow(int root_x, int root_y, int* version) {
 
 // Send XdndEnter message to target window
 static void sendXdndEnter(Window target, int version) {
+    (void)version;  // version parameter reserved for future use
     XEvent event = { ClientMessage };
     event.xclient.window = target;
     event.xclient.message_type = _glfw.x11.XdndEnter;
     event.xclient.format = 32;
-    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+    event.xclient.data.l[0] = (long)_glfw.x11.drag.source_window;
     // Version in high 24 bits, flags in low 8 bits (bit 0 = more than 3 types)
     event.xclient.data.l[1] = ((long)_GLFW_XDND_VERSION << 24) | (_glfw.x11.drag.mime_count > 3 ? 1 : 0);
     // First 3 type atoms (or 0 if using XdndTypeList)
@@ -3977,7 +3979,7 @@ static void sendXdndPosition(Window target, int root_x, int root_y, Time time) {
     event.xclient.window = target;
     event.xclient.message_type = _glfw.x11.XdndPosition;
     event.xclient.format = 32;
-    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+    event.xclient.data.l[0] = (long)_glfw.x11.drag.source_window;
     event.xclient.data.l[1] = 0; // Reserved
     event.xclient.data.l[2] = ((long)root_x << 16) | (root_y & 0xFFFF);
     event.xclient.data.l[3] = (long)time;
@@ -3992,7 +3994,7 @@ static void sendXdndLeave(Window target) {
     event.xclient.window = target;
     event.xclient.message_type = _glfw.x11.XdndLeave;
     event.xclient.format = 32;
-    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+    event.xclient.data.l[0] = (long)_glfw.x11.drag.source_window;
     event.xclient.data.l[1] = 0;
     event.xclient.data.l[2] = 0;
     event.xclient.data.l[3] = 0;
@@ -4007,7 +4009,7 @@ static void sendXdndDrop(Window target, Time time) {
     event.xclient.window = target;
     event.xclient.message_type = _glfw.x11.XdndDrop;
     event.xclient.format = 32;
-    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+    event.xclient.data.l[0] = (long)_glfw.x11.drag.source_window;
     event.xclient.data.l[1] = 0;
     event.xclient.data.l[2] = (long)time;
     event.xclient.data.l[3] = 0;
