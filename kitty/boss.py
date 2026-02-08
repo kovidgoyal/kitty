@@ -1885,7 +1885,7 @@ class Boss:
         if tm is not None:
             tm.update_tab_bar_data()
 
-    def on_drop(self, os_window_id: int, drop: dict[str, bytes] | Exception, x: int, y: int) -> None:
+    def on_drop(self, os_window_id: int, drop: dict[str, bytes] | Exception, from_self: bool, x: int, y: int) -> None:
         if isinstance(drop, Exception):
             self.show_error(_('Drop failed'), str(drop))
             return

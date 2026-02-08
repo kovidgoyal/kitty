@@ -2063,9 +2063,9 @@ static void processEvent(XEvent *event)
                     drop_data->x11_version = _glfw.x11.xdnd.version;
 
                     // Check if the drop is from this application
-                    bool from_self = (_glfw.x11.drag.source_window != None &&
-                                      _glfw.x11.xdnd.source == _glfw.x11.drag.source_window);
-                    _glfwInputDrop(window, drop_data, from_self);
+                    // bool from_self = (_glfw.x11.drag.source_window != None &&
+                                      // _glfw.x11.xdnd.source == _glfw.x11.drag.source_window);
+                    // _glfwInputDrop(window, drop_data, from_self);
 
                     // Note: drop_data is NOT freed here - application must call glfwFinishDrop
                 }
@@ -2276,6 +2276,16 @@ static void processEvent(XEvent *event)
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
+ssize_t _glfwPlatformReadAvailableDropData(GLFWwindow *w, GLFWDropEvent *ev, char *buffer, size_t sz) {
+    (void) w; (void) ev; (void) buffer; (void)sz; return -EINVAL;
+}
+void _glfwPlatformEndDrop(GLFWwindow *w, GLFWDragOperationType op) {
+    (void)w; (void)op;
+}
+int _glfwPlatformRequestDropData(_GLFWwindow *window, const char *mime) {
+    (void)window; (void)mime; return EINVAL;
+}
+void _glfwPlatformRequestDropUpdate(_GLFWwindow* window) { (void)window; }
 // Retrieve a single window property of the specified type
 // Inspired by fghGetWindowProperty from freeglut
 //

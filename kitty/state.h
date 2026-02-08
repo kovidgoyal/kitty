@@ -376,6 +376,13 @@ typedef struct GlobalState {
     PyObject *options_object;
 
     struct {
+        PyObject *data;
+        id_type os_window_id;
+        double x, y;
+        size_t num_left;
+    } drop_dest;
+
+    struct {
         bool is_active;
         PyObject *drag_data;
         struct {

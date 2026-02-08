@@ -935,11 +935,14 @@ void _glfwPlatformTerminate(void)
         wl_data_source_destroy(_glfw.wl.dataSourceForClipboard);
     if (_glfw.wl.dataSourceForPrimarySelection)
         zwp_primary_selection_source_v1_destroy(_glfw.wl.dataSourceForPrimarySelection);
-    for (size_t doi=0; doi < arraysz(_glfw.wl.dataOffers); doi++) {
-        if (_glfw.wl.dataOffers[doi].id) {
-            destroy_data_offer(&_glfw.wl.dataOffers[doi]);
+    for (size_t doi=0; doi < arraysz(_glfw.wl.untyped_data_offers); doi++) {
+        if (_glfw.wl.untyped_data_offers[doi].id) {
+            destroy_data_offer(&_glfw.wl.untyped_data_offers[doi]);
         }
     }
+    if (_glfw.wl.primary_data_offer.id) destroy_data_offer(&_glfw.wl.primary_data_offer);
+    if (_glfw.wl.clipboard_data_offer.id) destroy_data_offer(&_glfw.wl.clipboard_data_offer);
+    if (_glfw.wl.drop_data_offer.id) destroy_data_offer(&_glfw.wl.drop_data_offer);
     if (_glfw.wl.dataDevice)
         wl_data_device_destroy(_glfw.wl.dataDevice);
     if (_glfw.wl.dataDeviceManager)

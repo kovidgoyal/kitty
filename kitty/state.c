@@ -1584,6 +1584,8 @@ finalize(void) {
     free(global_state.drag_source.ongoing_transfers);
     Py_CLEAR(global_state.drag_source.drag_data);
     zero_at_ptr(&global_state.drag_source);
+    Py_CLEAR(global_state.drop_dest.data);
+    zero_at_ptr(&global_state.drop_dest);
 
     free_allocs_in_options(&global_state.opts);
 }
