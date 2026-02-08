@@ -2452,6 +2452,10 @@ static void handle_primary_selection_offer(void *data UNUSED, struct zwp_primary
 // Helper function to update drop state from callback results
 static void
 update_drop_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUSED, size_t mime_count) {
+    for (size_t i = mime_count; i < d->mimes_count; i++) {
+        if (d->mimes[i]) { free((void*)d->mimes[i]); d->mimes[i] = NULL; }
+    }
+    d->mimes_count = mime_count;
     bool accepted = mime_count > 0;
     bool acceptance_changed = (accepted != d->drag_accepted);
     // The first MIME in the sorted list is the preferred one for drop
