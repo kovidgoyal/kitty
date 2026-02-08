@@ -2616,6 +2616,7 @@ drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     while (window) {
         if (window->wl.surface == offer->surface) {
             size_t num_mimes = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, offer->mimes, offer->mimes_count, offer->is_self_offer);
+            if (!offer->mimes) { destroy_data_offer(offer); return; }
             for (size_t i = 0; i < num_mimes; i++) request_drop_data(offer, offer->mimes[i]);
             break;
         }

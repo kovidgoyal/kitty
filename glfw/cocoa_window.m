@@ -1721,10 +1721,12 @@ update_drop_state(_GLFWwindow *window, size_t mime_count) {
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
     size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_DROP, xpos, ypos, d->mimes, d->mimes_count, from_self);
-    update_drop_state(window, mime_count);
-    window->ns.drop_data.pasteboard = [[sender draggingPasteboard] retain];
-    for (size_t i = 0; i < window->ns.drop_data.mimes_count; i++)
-        _glfwPlatformRequestDropData(window, window->ns.drop_data.mimes[i]);
+    if (d->mimes) {
+        update_drop_state(window, mime_count);
+        window->ns.drop_data.pasteboard = [[sender draggingPasteboard] retain];
+        for (size_t i = 0; i < d->mimes_count; i++)
+            _glfwPlatformRequestDropData(window, d->mimes[i]);
+    }
     return YES;
 }
 
@@ -2523,6 +2525,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     GLFWWindow *w = window->ns.object;
     if (_glfw.ns.disabledCursorWindow == window)
         _glfw.ns.disabledCursorWindow = NULL;
+    free_drop_data(window);
 
     [w orderOut:nil];
 
