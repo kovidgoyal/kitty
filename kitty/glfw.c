@@ -1669,8 +1669,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwSetScrollCallback(glfw_window, scroll_callback);
     glfwSetKeyboardCallback(glfw_window, key_callback);
 
-    if (0) glfwSetDragSourceCallback(glfw_window, drag_source_callback);
-
+    glfwSetDragSourceCallback(glfw_window, drag_source_callback);
     glfwSetDropEventCallback(glfw_window, on_drop);
     monotonic_t now = monotonic();
     w->is_focused = true;

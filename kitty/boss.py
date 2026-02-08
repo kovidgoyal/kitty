@@ -1885,9 +1885,14 @@ class Boss:
         if tm is not None:
             tm.update_tab_bar_data()
 
-    def on_drop(self, os_window_id: int, drop: dict[str, bytes] | Exception, from_self: bool, x: int, y: int) -> None:
-        if isinstance(drop, Exception):
-            self.show_error(_('Drop failed'), str(drop))
+    def on_drop(self, os_window_id: int, drop: dict[str, bytes] | int, from_self: bool, x: int, y: int) -> None:
+        if isinstance(drop, int):
+            import errno
+            code = errno.errorcode.get(drop, str(drop))
+            msg = 'Unknown error'
+            with suppress(ValueError):
+                msg = os.strerror(drop)
+            self.show_error(_('Drop failed'), f'[{code}] {msg}')
             return
         if (tm := self.os_window_map.get(os_window_id)) is None:
             return
