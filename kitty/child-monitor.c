@@ -508,7 +508,7 @@ parse_input(ChildMonitor *self) {
             }
             if (resp) {
                 if (PyBytes_Check(resp)) send_response_to_peer(msg->peer_id, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp));
-                else if (resp == Py_None) send_response_to_peer(msg->peer_id, NULL, 0);
+                else if (resp == Py_None || resp == Py_True) send_response_to_peer(msg->peer_id, NULL, 0);
                 Py_CLEAR(resp);
             } else send_response_to_peer(msg->peer_id, NULL, 0);
         }
