@@ -2641,6 +2641,15 @@ motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t
     }
 }
 
+void
+_glfwPlatformRequestDropUpdate(_GLFWwindow* window) {
+    _GLFWWaylandDataOffer *d = &_glfw.wl.drop_data_offer;
+    if (d->id) {
+        size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_STATUS_UPDATE, 0, 0, d->mimes, d->mimes_count, d->is_self_offer);
+        update_drop_state(d, window, mime_count);
+    }
+}
+
 static const struct wl_data_device_listener data_device_listener = {
     .data_offer = handle_data_offer,
     .selection = mark_selection_offer,
@@ -3351,43 +3360,5 @@ _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, siz
     }
 
     return written;
-}
-
-void
-_glfwPlatformRequestDropUpdate(_GLFWwindow* window) {
-    _GLFWWaylandDataOffer *d = &_glfw.wl.drop_data_offer;
-    if (d->id) {
-        size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_STATUS_UPDATE, 0, 0, d->mimes, d->mimes_count, d->is_self_offer);
-        update_drop_state(d, window, mime_count);
-    }
-}
-
-void
-_glfwPlatformFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation UNUSED, bool success UNUSED) {
-    if (!drop) return;
-    free(drop->current_mime); drop->current_mime = NULL;
-
-    // Close any open file descriptor
-    if (drop->read_fd >= 0) {
-        close(drop->read_fd);
-        drop->read_fd = -1;
-    }
-
-    // Destroy the associated data offer
-
-    // Note: Wayland doesn't have a way to report the operation type or success back to the source
-    // in the same way as X11, as the source is notified through other means
-    if (drop->platform_data) wl_data_offer_destroy(drop->platform_data);
-    drop->platform_data = NULL;
-
-    // Free the mime types array (owned by drop object)
-    if (drop->mime_types) {
-        for (int i = 0; i < drop->mime_array_size; i++) free((char*)drop->mime_types[i]);
-        free(drop->mime_types);
-        drop->mime_types = NULL;
-    }
-
-    // Free the heap-allocated drop data structure
-    free(drop);
 }
 

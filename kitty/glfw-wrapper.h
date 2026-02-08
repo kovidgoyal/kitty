@@ -1019,8 +1019,6 @@ typedef struct GLFWcursor GLFWcursor;
  *
  *  @ingroup input
  */
-typedef struct GLFWDropData GLFWDropData;
-
 typedef enum {
     GLFW_RELEASE = 0,
     GLFW_PRESS = 1,
@@ -1134,7 +1132,7 @@ typedef struct GLFWDropEvent {
     GLFWDropEventType type;
     const char **mimes; size_t num_mimes;
     double xpos, ypos;  // Only valid for GLFW_DROP_ENTER and GLFW_DROP_MOVE
-    bool from_self;
+    bool from_self;  // Only valid upto GLFW_DROP_DROP
     ssize_t (*read_data)(GLFWwindow *w, struct GLFWDropEvent* ev, char *buffer, size_t sz);  // Only valid for GLFW_DROP_DATA_AVAILABLE
     void (*finish_drop)(GLFWwindow *w, GLFWDragOperationType op); // Only valid for GLFW_DROP_DROP and GLFW_DROP_DATA_AVAILABLE
 } GLFWDropEvent;
@@ -1538,43 +1536,6 @@ typedef void (* GLFWscrollfun)(GLFWwindow*,const GLFWScrollEvent*);
  *  @ingroup input
  */
 typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
-
-/*! @brief The function pointer type for drag and drop callbacks.
- *
- *  This is the function pointer type for drop callbacks. A drop
- *  callback function has the following signature:
- *  @code
- *  void function_name(GLFWwindow* window, GLFWDropData* drop)
- *  @endcode
- *
- *  @param[in] window The window that received the event.
- *  @param[in] drop A heap-allocated opaque pointer representing the dropped data. Use
- *  @ref glfwGetDropMimeTypes to get available MIME types and
- *  @ref glfwReadDropData to read the data in chunks.
- *
- *  @note The drop object is heap-allocated and remains valid until the
- *  application calls @ref glfwFinishDrop to free it. The application is
- *  responsible for calling glfwFinishDrop when it has finished reading
- *  the dropped data, even if reading fails or is not needed.
- *
- *  @param[in] window The window that received the drop.
- *  @param[in] drop Opaque drop data pointer (heap-allocated).
- *  @param[in] from_self true if the drop originated from this application
- *  (i.e., the application is both the drag source and drop target), false
- *  if the drop came from an external application.
- *
- *  @sa @ref path_drop
- *  @sa @ref glfwSetDropCallback
- *  @sa @ref glfwGetDropMimeTypes
- *  @sa @ref glfwReadDropData
- *  @sa @ref glfwFinishDrop
- *
- *  @since Changed in version 4.0 to receive opaque drop data pointer.
- *  @since Changed in version 4.0 to receive from_self parameter.
- *
- *  @ingroup input
- */
-typedef void (* GLFWdropfun)(GLFWwindow*, GLFWDropData*, bool from_self);
 
 /*! @brief Drag event types.
  *
@@ -2338,10 +2299,6 @@ GFW_EXTERN glfwSetCursorEnterCallback_func glfwSetCursorEnterCallback_impl;
 typedef GLFWscrollfun (*glfwSetScrollCallback_func)(GLFWwindow*, GLFWscrollfun);
 GFW_EXTERN glfwSetScrollCallback_func glfwSetScrollCallback_impl;
 #define glfwSetScrollCallback glfwSetScrollCallback_impl
-
-typedef GLFWdropfun (*glfwSetDropCallback_func)(GLFWwindow*, GLFWdropfun);
-GFW_EXTERN glfwSetDropCallback_func glfwSetDropCallback_impl;
-#define glfwSetDropCallback glfwSetDropCallback_impl
 
 typedef GLFWliveresizefun (*glfwSetLiveResizeCallback_func)(GLFWwindow*, GLFWliveresizefun);
 GFW_EXTERN glfwSetLiveResizeCallback_func glfwSetLiveResizeCallback_impl;
