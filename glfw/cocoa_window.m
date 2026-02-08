@@ -900,13 +900,10 @@ cleanup_all_ns_pending_drag_source_data(_GLFWwindow* window) {
     // Generate a unique filename based on the MIME type
     NSString* extension = @"data";
     if (mimeType) {
-        NSString* mt = @(mimeType);
-        if ([mt hasPrefix:@"text/"]) extension = @"txt";
-        else if ([mt isEqualToString:@"image/png"]) extension = @"png";
-        else if ([mt isEqualToString:@"image/jpeg"]) extension = @"jpg";
-        else if ([mt isEqualToString:@"application/json"]) extension = @"json";
+        UTType *type = [UTType typeWithMIMEType:@(mimeType)];
+        extension = type.preferredFilenameExtension;
     }
-    return [NSString stringWithFormat:@"glfw-drag-%@.%@", [[NSUUID UUID] UUIDString], extension];
+    return [NSString stringWithFormat:@"kitty-drag-%@.%@", [[NSUUID UUID] UUIDString], extension];
 }
 
 - (void)filePromiseProvider:(NSFilePromiseProvider*)filePromiseProvider
