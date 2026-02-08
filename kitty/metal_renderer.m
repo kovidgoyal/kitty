@@ -33,11 +33,19 @@
 typedef NS_ENUM(NSUInteger, MetalPipeline) {
     MetalPipelineCell = 0,
     MetalPipelineCellBG,
+    MetalPipelineCellCombined,
     MetalPipelineCursor,
     MetalPipelineSelection,
     MetalPipelineTint,
     MetalPipelineBorder,
     MetalPipelineGraphics,
+    MetalPipelineGraphicsPremult,
+    MetalPipelineGraphicsAlphaMask,
+    MetalPipelineBgImage,
+    MetalPipelineBlit,
+    MetalPipelineRoundedRect,
+    MetalPipelineRoundedRectFilled,
+    MetalPipelineTrail,
     MetalPipelineCount
 };
 
@@ -57,6 +65,12 @@ typedef struct {
     simd_float4 color;
 } RectVertex;
 
+// Image vertex for graphics/background images
+typedef struct {
+    simd_float2 pos;
+    simd_float2 uv;
+} ImageVertex;
+
 // Per-frame uniforms
 typedef struct {
     simd_float2 viewport_size;
@@ -65,6 +79,45 @@ typedef struct {
     float background_opacity;
     float cursor_opacity;
 } FrameUniforms;
+
+// Graphics params for image rendering
+typedef struct {
+    simd_float4 src_rect;
+    simd_float4 dest_rect;
+    float extra_alpha;
+} GraphicsParams;
+
+// Background image params
+typedef struct {
+    float tiled;
+    simd_float4 sizes;
+    simd_float4 positions;
+    simd_float4 background;
+} BgImageParams;
+
+// Rounded rect params
+typedef struct {
+    simd_float4 rect;
+    simd_float2 params;
+    simd_float4 color;
+    simd_float4 background_color;
+} RoundedRectParams;
+
+// Trail params
+typedef struct {
+    simd_float4 x_coords;
+    simd_float4 y_coords;
+    simd_float2 cursor_edge_x;
+    simd_float2 cursor_edge_y;
+    simd_float3 trail_color;
+    float trail_opacity;
+} TrailParams;
+
+// Alpha mask params
+typedef struct {
+    simd_float3 fg_color;
+    simd_float4 bg_premult;
+} AlphaMaskParams;
 
 // Image texture entry (for future graphics protocol support)
 typedef struct {
@@ -88,34 +141,82 @@ typedef struct MetalWindow {
     id<MTLRenderPipelineState> pipelines[MetalPipelineCount];
     id<MTLSamplerState> nearestSampler;
     id<MTLSamplerState> linearSampler;
+    id<MTLSamplerState> repeatSampler;  // For tiled background images
     
     // Triple-buffered vertex data
     id<MTLBuffer> cellBuffers[NUM_INFLIGHT_BUFFERS];
     id<MTLBuffer> rectBuffers[NUM_INFLIGHT_BUFFERS];  // For cursors, selections, borders
+    id<MTLBuffer> imageBuffers[NUM_INFLIGHT_BUFFERS]; // For graphics/images
     id<MTLBuffer> uniformBuffers[NUM_INFLIGHT_BUFFERS];
     NSUInteger currentBuffer;
     dispatch_semaphore_t frameSemaphore;
     
+    // Offscreen rendering (for layered compositing)
+    id<MTLTexture> offscreenTexture;
+    MTLRenderPassDescriptor *offscreenRPD;
+    
     // Textures
     id<MTLTexture> spriteTexture;
     id<MTLTexture> decorTexture;
+    id<MTLTexture> bgImageTexture;
     
     // State
     NSUInteger cellCount;
     NSUInteger rectCount;
+    NSUInteger imageCount;
     unsigned spriteXnum, spriteYnum;
     unsigned cellWidth, cellHeight;
+    
+    // Background image state
+    uint32_t bgImageId;
+    bool bgImageNeedsUpdate;
 } MetalWindow;
 
 // Global device (shared across windows)
 static id<MTLDevice> g_device = nil;
 static id<MTLLibrary> g_library = nil;
 
-// Shader source - using line continuation for Objective-C compatibility
-static NSString *const kShaderSource =
-@"#include <metal_stdlib>\n"
+// Forward declarations
+static id<MTLTexture> metal_get_graphics_texture(uint32_t texture_id);
+
+// Metal shader source built using NSMutableString to avoid C99 string length limits
+static NSString *kShaderSource = nil;
+
+static NSString* get_shader_source(void) {
+    if (kShaderSource) return kShaderSource;
+    NSMutableString *s = [NSMutableString stringWithCapacity:12000];
+    [s appendString:@"#include <metal_stdlib>\n"
 "using namespace metal;\n"
 "\n"
+"// Color space conversion\n"
+"inline float srgb2linear(float x) {\n"
+"    return mix(x / 12.92, pow((x + 0.055f) / 1.055f, 2.4f), step(0.04045f, x));\n"
+"}\n"
+"inline float linear2srgb(float x) {\n"
+"    return mix(12.92 * x, 1.055 * pow(x, 1.0f / 2.4f) - 0.055f, step(0.0031308f, x));\n"
+"}\n"
+"inline float3 linear2srgb(float3 x) {\n"
+"    float3 lower = 12.92 * x;\n"
+"    float3 upper = 1.055 * pow(x, float3(1.0f / 2.4f)) - 0.055f;\n"
+"    return mix(lower, upper, step(0.0031308f, x));\n"
+"}\n"
+"\n"
+"// Alpha blending\n"
+"inline float4 alpha_blend(float4 over, float4 under) {\n"
+"    float alpha = mix(under.a, 1.0f, over.a);\n"
+"    float3 combined = mix(under.rgb * under.a, over.rgb, over.a);\n"
+"    return float4(combined, alpha);\n"
+"}\n"
+"inline float4 alpha_blend_premul(float4 over, float4 under) {\n"
+"    float inv = 1.0f - over.a;\n"
+"    return float4(over.rgb + under.rgb * inv, over.a + under.a * inv);\n"
+"}\n"
+"inline float4 vec4_premul(float3 rgb, float a) { return float4(rgb * a, a); }\n"
+"inline float4 vec4_premul(float4 c) { return float4(c.rgb * c.a, c.a); }\n"
+"\n"
+"constant float3 Y = float3(0.2126, 0.7152, 0.0722);\n"
+"\n"
+"// Cell structures\n"
 "struct CellVertex {\n"
 "    float2 pos [[attribute(0)]];\n"
 "    float2 uv [[attribute(1)]];\n"
@@ -124,7 +225,6 @@ static NSString *const kShaderSource =
 "    float sprite_z [[attribute(4)]];\n"
 "    float colored [[attribute(5)]];\n"
 "};\n"
-"\n"
 "struct CellOut {\n"
 "    float4 pos [[position]];\n"
 "    float2 uv;\n"
@@ -134,16 +234,23 @@ static NSString *const kShaderSource =
 "    float colored;\n"
 "};\n"
 "\n"
+"// Rectangle structures\n"
 "struct RectVertex {\n"
 "    float2 pos [[attribute(0)]];\n"
 "    float4 color [[attribute(1)]];\n"
 "};\n"
-"\n"
 "struct RectOut {\n"
 "    float4 pos [[position]];\n"
 "    float4 color;\n"
 "};\n"
 "\n"
+"// Image structures\n"
+"struct ImageOut {\n"
+"    float4 pos [[position]];\n"
+"    float2 uv;\n"
+"};\n"
+"\n"
+"// Cell shaders\n"
 "vertex CellOut cell_vertex(CellVertex in [[stage_in]]) {\n"
 "    CellOut out;\n"
 "    out.pos = float4(in.pos, 0.0, 1.0);\n"
@@ -162,82 +269,166 @@ static NSString *const kShaderSource =
 "fragment float4 cell_fg_fragment(CellOut in [[stage_in]],\n"
 "                                  texture2d_array<float> sprites [[texture(0)]],\n"
 "                                  sampler samp [[sampler(0)]]) {\n"
-"    if (in.uv.x == 0.0 && in.uv.y == 0.0 && in.sprite_z == 0.0) {\n"
-"        discard_fragment();\n"
-"    }\n"
+"    if (in.uv.x == 0.0 && in.uv.y == 0.0 && in.sprite_z == 0.0) discard_fragment();\n"
 "    float4 tex = sprites.sample(samp, in.uv, uint(in.sprite_z));\n"
-"    // Data: 0xRRGGBBAA -> memory 00,ff,ff,ff for 0xffffff00\n"
-"    // Metal RGBA8 reads: R=00,G=ff,B=ff,A=ff -> tex.r=0, tex.a=1\n"
-"    // So alpha (the AA byte) is in tex.r\n"
 "    float alpha = tex.r;\n"
-"    if (in.colored > 0.5) {\n"
-"        return float4(tex.a, tex.b, tex.g, alpha);\n"
-"    }\n"
-"    // Debug: show red where alpha > 0\n"
-"    return float4(alpha, 0.0, 0.0, 1.0);\n"
-"    // return float4(in.fg.rgb, in.fg.a * alpha);\n"
+"    if (in.colored > 0.5) return float4(tex.a * alpha, tex.b * alpha, tex.g * alpha, alpha);\n"
+"    float final_alpha = in.fg.a * alpha;\n"
+"    return float4(in.fg.rgb * final_alpha, final_alpha);\n"
 "}\n"
 "\n"
-"// Rectangle shader for cursors, selections, borders\n"
+"fragment float4 cell_combined_fragment(CellOut in [[stage_in]],\n"
+"                                       texture2d_array<float> sprites [[texture(0)]],\n"
+"                                       sampler samp [[sampler(0)]],\n"
+"                                       constant float2 &contrast [[buffer(0)]]) {\n"
+"    float4 bg = in.bg;\n"
+"    if (in.uv.x == 0.0 && in.uv.y == 0.0 && in.sprite_z == 0.0) return bg;\n"
+"    float4 tex = sprites.sample(samp, in.uv, uint(in.sprite_z));\n"
+"    float alpha = tex.r;\n"
+"    float4 fg;\n"
+"    if (in.colored > 0.5) {\n"
+"        fg = float4(tex.a, tex.b, tex.g, alpha);\n"
+"    } else {\n"
+"        float under_lum = dot(bg.rgb / max(bg.a, 0.001), Y);\n"
+"        float over_lum = dot(in.fg.rgb, Y);\n"
+"        float adj = clamp(mix(alpha, pow(alpha, contrast.y), (1.0 - over_lum + under_lum) * 0.5) * contrast.x, 0.0, 1.0);\n"
+"        fg = float4(in.fg.rgb, adj * in.fg.a);\n"
+"    }\n"
+"    return alpha_blend_premul(vec4_premul(fg), bg);\n"
+"}\n"];
+    [s appendString:@"\n"
+"// Rectangle shaders\n"
 "vertex RectOut rect_vertex(RectVertex in [[stage_in]]) {\n"
 "    RectOut out;\n"
 "    out.pos = float4(in.pos, 0.0, 1.0);\n"
 "    out.color = in.color;\n"
 "    return out;\n"
 "}\n"
+"fragment float4 rect_fragment(RectOut in [[stage_in]]) { return in.color; }\n"
 "\n"
-"fragment float4 rect_fragment(RectOut in [[stage_in]]) {\n"
-"    return in.color;\n"
+"// Tint shaders\n"
+"vertex float4 tint_vertex(uint vid [[vertex_id]], constant float4 &edges [[buffer(0)]]) {\n"
+"    float2 pos[4] = {float2(edges[0],edges[1]), float2(edges[0],edges[3]),\n"
+"                     float2(edges[2],edges[3]), float2(edges[2],edges[1])};\n"
+"    return float4(pos[vid], 0.0, 1.0);\n"
 "}\n"
-"\n"
-"// Hollow cursor (outline only)\n"
-"fragment float4 hollow_cursor_fragment(RectOut in [[stage_in]],\n"
-"                                        constant float4 &params [[buffer(0)]]) {\n"
-"    // params.xy = cell size, params.z = line width\n"
-"    float2 cell_size = params.xy;\n"
-"    float line_width = params.z;\n"
-"    float2 pos = in.pos.xy;\n"
-"    // Check if we're on the border\n"
-"    if (pos.x < line_width || pos.x > cell_size.x - line_width ||\n"
-"        pos.y < line_width || pos.y > cell_size.y - line_width) {\n"
-"        return in.color;\n"
-"    }\n"
-"    discard_fragment();\n"
-"    return float4(0);\n"
+"vertex float4 fullscreen_tint_vertex(uint vid [[vertex_id]]) {\n"
+"    float2 pos[4] = {float2(-1,-1), float2(1,-1), float2(-1,1), float2(1,1)};\n"
+"    return float4(pos[vid], 0.0, 1.0);\n"
 "}\n"
+"fragment float4 tint_fragment(constant float4 &color [[buffer(0)]]) { return color; }\n"
 "\n"
-"vertex float4 tint_vertex(uint vid [[vertex_id]]) {\n"
-"    float2 positions[4] = {float2(-1,-1), float2(1,-1), float2(-1,1), float2(1,1)};\n"
-"    return float4(positions[vid], 0.0, 1.0);\n"
-"}\n"
-"\n"
-"fragment float4 tint_fragment(constant float4 &color [[buffer(0)]]) {\n"
-"    return color;\n"
-"}\n"
-"\n"
-"// Image/graphics shader\n"
-"struct ImageVertex {\n"
-"    float2 pos [[attribute(0)]];\n"
-"    float2 uv [[attribute(1)]];\n"
-"};\n"
-"\n"
-"struct ImageOut {\n"
-"    float4 pos [[position]];\n"
-"    float2 uv;\n"
-"};\n"
-"\n"
-"vertex ImageOut image_vertex(ImageVertex in [[stage_in]]) {\n"
-"    ImageOut out;\n"
-"    out.pos = float4(in.pos, 0.0, 1.0);\n"
-"    out.uv = in.uv;\n"
+"// Trail shaders\n"
+"struct TrailOut { float4 pos [[position]]; float2 frag_pos; };\n"
+"struct TrailParams { float4 x_coords; float4 y_coords; float2 cursor_x; float2 cursor_y; float3 color; float opacity; };\n"
+"vertex TrailOut trail_vertex(uint vid [[vertex_id]], constant TrailParams &p [[buffer(0)]]) {\n"
+"    TrailOut out;\n"
+"    float2 pos = float2(p.x_coords[vid], p.y_coords[vid]);\n"
+"    out.pos = float4(pos, 1.0, 1.0);\n"
+"    out.frag_pos = pos;\n"
 "    return out;\n"
 "}\n"
+"fragment float4 trail_fragment(TrailOut in [[stage_in]], constant TrailParams &p [[buffer(0)]]) {\n"
+"    float op = p.opacity;\n"
+"    float in_x = step(p.cursor_x[0], in.frag_pos.x) * step(in.frag_pos.x, p.cursor_x[1]);\n"
+"    float in_y = step(p.cursor_y[1], in.frag_pos.y) * step(in.frag_pos.y, p.cursor_y[0]);\n"
+"    op *= 1.0f - in_x * in_y;\n"
+"    return float4(p.color * op, op);\n"
+"}\n"
 "\n"
-"fragment float4 image_fragment(ImageOut in [[stage_in]],\n"
-"                                texture2d<float> tex [[texture(0)]],\n"
-"                                sampler samp [[sampler(0)]]) {\n"
-"    return tex.sample(samp, in.uv);\n"
-"}\n";
+"// Image/graphics shaders\n"
+"struct GraphicsParams { float4 src_rect; float4 dest_rect; float extra_alpha; };\n"
+"vertex ImageOut image_vertex(uint vid [[vertex_id]], constant GraphicsParams &p [[buffer(0)]]) {\n"
+"    int2 pm[4] = {int2(2,1), int2(2,3), int2(0,3), int2(0,1)};\n"
+"    int2 pos = pm[vid];\n"
+"    ImageOut out;\n"
+"    out.uv = float2(p.src_rect[pos.x], p.src_rect[pos.y]);\n"
+"    out.pos = float4(p.dest_rect[pos.x], p.dest_rect[pos.y], 0, 1);\n"
+"    return out;\n"
+"}\n"
+"fragment float4 image_fragment(ImageOut in [[stage_in]], texture2d<float> tex [[texture(0)]],\n"
+"                               sampler samp [[sampler(0)]], constant float &alpha [[buffer(0)]]) {\n"
+"    float4 c = tex.sample(samp, in.uv);\n"
+"    c.a *= alpha;\n"
+"    return vec4_premul(c);\n"
+"}\n"
+"fragment float4 image_premult_fragment(ImageOut in [[stage_in]], texture2d<float> tex [[texture(0)]],\n"
+"                                       sampler samp [[sampler(0)]], constant float &alpha [[buffer(0)]]) {\n"
+"    return tex.sample(samp, in.uv) * alpha;\n"
+"}\n"
+"struct AlphaMaskParams { float3 fg; float4 bg_premult; };\n"
+"fragment float4 image_alpha_mask_fragment(ImageOut in [[stage_in]], texture2d<float> tex [[texture(0)]],\n"
+"                                          sampler samp [[sampler(0)]], constant AlphaMaskParams &p [[buffer(0)]]) {\n"
+"    float4 c = tex.sample(samp, in.uv);\n"
+"    float4 fg = vec4_premul(float4(p.fg, c.r));\n"
+"    return alpha_blend_premul(fg, p.bg_premult);\n"
+"}\n"];
+    [s appendString:@"\n"
+"// Background image shaders\n"
+"struct BgImageParams { float tiled; float4 sizes; float4 positions; float4 background; };\n"
+"struct BgImageOut { float4 pos [[position]]; float2 uv; };\n"
+"vertex BgImageOut bgimage_vertex(uint vid [[vertex_id]], constant BgImageParams &p [[buffer(0)]]) {\n"
+"    float2 tm[4] = {float2(0,0), float2(0,1), float2(1,1), float2(1,0)};\n"
+"    float2 pm[4] = {float2(p.positions[0],p.positions[1]), float2(p.positions[0],p.positions[3]),\n"
+"                    float2(p.positions[2],p.positions[3]), float2(p.positions[2],p.positions[1])};\n"
+"    float sx = p.tiled * (p.sizes[0] / p.sizes[2]) + (1.0 - p.tiled);\n"
+"    float sy = p.tiled * (p.sizes[1] / p.sizes[3]) + (1.0 - p.tiled);\n"
+"    BgImageOut out;\n"
+"    out.uv = float2(tm[vid].x * sx, tm[vid].y * sy);\n"
+"    out.pos = float4(pm[vid], 0, 1);\n"
+"    return out;\n"
+"}\n"
+"fragment float4 bgimage_fragment(BgImageOut in [[stage_in]], texture2d<float> img [[texture(0)]],\n"
+"                                 sampler samp [[sampler(0)]], constant BgImageParams &p [[buffer(0)]]) {\n"
+"    return alpha_blend(img.sample(samp, in.uv), p.background);\n"
+"}\n"
+"\n"
+"// Blit shader (final compositing with sRGB conversion)\n"
+"vertex ImageOut blit_vertex(uint vid [[vertex_id]], constant float4 &src [[buffer(0)]], constant float4 &dst [[buffer(1)]]) {\n"
+"    int2 pm[4] = {int2(2,1), int2(2,3), int2(0,3), int2(0,1)};\n"
+"    int2 pos = pm[vid];\n"
+"    ImageOut out;\n"
+"    out.uv = float2(src[pos.x], src[pos.y]);\n"
+"    out.pos = float4(dst[pos.x], dst[pos.y], 0, 1);\n"
+"    return out;\n"
+"}\n"
+"fragment float4 blit_fragment(ImageOut in [[stage_in]], texture2d<float> img [[texture(0)]], sampler samp [[sampler(0)]]) {\n"
+"    float4 c = img.sample(samp, in.uv);\n"
+"    return vec4_premul(linear2srgb(c.rgb / max(c.a, 0.001)), c.a);\n"
+"}\n"
+"\n"
+"// Rounded rectangle shader\n"
+"struct RoundedRectParams { float4 rect; float2 params; float4 color; float4 bg_color; };\n"
+"vertex float4 rounded_rect_vertex(uint vid [[vertex_id]]) {\n"
+"    float2 pos[4] = {float2(1,1), float2(1,-1), float2(-1,-1), float2(-1,1)};\n"
+"    return float4(pos[vid], 0, 1);\n"
+"}\n"
+"float rounded_rect_sdf(float2 p, float2 b, float r) {\n"
+"    float2 q = abs(p) - b;\n"
+"    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;\n"
+"}\n"
+"fragment float4 rounded_rect_fragment(float4 pos [[position]], constant RoundedRectParams &p [[buffer(0)]]) {\n"
+"    float2 size = p.rect.ba, origin = p.rect.xy;\n"
+"    float thickness = p.params[0], radius = p.params[1];\n"
+"    float2 position = pos.xy - size / 2.0 - origin;\n"
+"    float dist = rounded_rect_sdf(position, size * 0.5 - radius, radius);\n"
+"    float outer = -dist, inner = outer - thickness;\n"
+"    float alpha = smoothstep(-1.0, 1.0, outer) - smoothstep(-1.0, 1.0, inner);\n"
+"    float4 ans = p.color; ans.a *= alpha;\n"
+"    return alpha_blend(ans, p.bg_color);\n"
+"}\n"
+"fragment float4 rounded_rect_filled_fragment(float4 pos [[position]], constant RoundedRectParams &p [[buffer(0)]]) {\n"
+"    float2 size = p.rect.ba, origin = p.rect.xy;\n"
+"    float radius = p.params[1];\n"
+"    float2 position = pos.xy - size / 2.0 - origin;\n"
+"    float dist = rounded_rect_sdf(position, size * 0.5 - radius, radius);\n"
+"    float alpha = 1.0 - smoothstep(0.0, 1.0, dist);\n"
+"    float4 ans = p.color; ans.a *= alpha;\n"
+"    return alpha_blend(ans, p.bg_color);\n"
+"}\n"];
+    kShaderSource = [s copy];
+    return kShaderSource;
+}
 
 #pragma mark - Initialization
 
@@ -252,7 +443,7 @@ static bool create_pipelines(MetalWindow *mw) {
 #pragma clang diagnostic pop
     opts.languageVersion = MTLLanguageVersion2_4;
     
-    mw->library = [mw->device newLibraryWithSource:kShaderSource options:opts error:&error];
+    mw->library = [mw->device newLibraryWithSource:get_shader_source() options:opts error:&error];
     if (!mw->library) {
         NSLog(@"Metal shader compile error: %@", error);
         return false;
@@ -357,6 +548,74 @@ static bool create_pipelines(MetalWindow *mw) {
     
     mw->pipelines[MetalPipelineTint] = [mw->device newRenderPipelineStateWithDescriptor:tintPd error:&error];
     
+    // Cell combined pipeline (BG + FG in one pass with contrast adjustment)
+    pd.fragmentFunction = [mw->library newFunctionWithName:@"cell_combined_fragment"];
+    mw->pipelines[MetalPipelineCellCombined] = [mw->device newRenderPipelineStateWithDescriptor:pd error:&error];
+    
+    // Graphics/Image pipeline
+    MTLRenderPipelineDescriptor *imgPd = [[MTLRenderPipelineDescriptor alloc] init];
+    imgPd.vertexFunction = [mw->library newFunctionWithName:@"image_vertex"];
+    imgPd.fragmentFunction = [mw->library newFunctionWithName:@"image_fragment"];
+    imgPd.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
+    imgPd.colorAttachments[0].blendingEnabled = YES;
+    imgPd.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+    imgPd.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    imgPd.colorAttachments[0].sourceAlphaBlendFactor = MTLBlendFactorOne;
+    imgPd.colorAttachments[0].destinationAlphaBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    mw->pipelines[MetalPipelineGraphics] = [mw->device newRenderPipelineStateWithDescriptor:imgPd error:&error];
+    
+    // Graphics premultiplied pipeline
+    imgPd.fragmentFunction = [mw->library newFunctionWithName:@"image_premult_fragment"];
+    mw->pipelines[MetalPipelineGraphicsPremult] = [mw->device newRenderPipelineStateWithDescriptor:imgPd error:&error];
+    
+    // Graphics alpha mask pipeline
+    imgPd.fragmentFunction = [mw->library newFunctionWithName:@"image_alpha_mask_fragment"];
+    mw->pipelines[MetalPipelineGraphicsAlphaMask] = [mw->device newRenderPipelineStateWithDescriptor:imgPd error:&error];
+    
+    // Background image pipeline
+    MTLRenderPipelineDescriptor *bgPd = [[MTLRenderPipelineDescriptor alloc] init];
+    bgPd.vertexFunction = [mw->library newFunctionWithName:@"bgimage_vertex"];
+    bgPd.fragmentFunction = [mw->library newFunctionWithName:@"bgimage_fragment"];
+    bgPd.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
+    bgPd.colorAttachments[0].blendingEnabled = YES;
+    bgPd.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+    bgPd.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    mw->pipelines[MetalPipelineBgImage] = [mw->device newRenderPipelineStateWithDescriptor:bgPd error:&error];
+    
+    // Blit pipeline (for final compositing)
+    MTLRenderPipelineDescriptor *blitPd = [[MTLRenderPipelineDescriptor alloc] init];
+    blitPd.vertexFunction = [mw->library newFunctionWithName:@"blit_vertex"];
+    blitPd.fragmentFunction = [mw->library newFunctionWithName:@"blit_fragment"];
+    blitPd.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
+    blitPd.colorAttachments[0].blendingEnabled = YES;
+    blitPd.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+    blitPd.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    mw->pipelines[MetalPipelineBlit] = [mw->device newRenderPipelineStateWithDescriptor:blitPd error:&error];
+    
+    // Rounded rectangle pipeline
+    MTLRenderPipelineDescriptor *rrPd = [[MTLRenderPipelineDescriptor alloc] init];
+    rrPd.vertexFunction = [mw->library newFunctionWithName:@"rounded_rect_vertex"];
+    rrPd.fragmentFunction = [mw->library newFunctionWithName:@"rounded_rect_fragment"];
+    rrPd.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
+    rrPd.colorAttachments[0].blendingEnabled = YES;
+    rrPd.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+    rrPd.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    mw->pipelines[MetalPipelineRoundedRect] = [mw->device newRenderPipelineStateWithDescriptor:rrPd error:&error];
+    
+    // Rounded rectangle filled pipeline
+    rrPd.fragmentFunction = [mw->library newFunctionWithName:@"rounded_rect_filled_fragment"];
+    mw->pipelines[MetalPipelineRoundedRectFilled] = [mw->device newRenderPipelineStateWithDescriptor:rrPd error:&error];
+    
+    // Trail pipeline
+    MTLRenderPipelineDescriptor *trailPd = [[MTLRenderPipelineDescriptor alloc] init];
+    trailPd.vertexFunction = [mw->library newFunctionWithName:@"trail_vertex"];
+    trailPd.fragmentFunction = [mw->library newFunctionWithName:@"trail_fragment"];
+    trailPd.colorAttachments[0].pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
+    trailPd.colorAttachments[0].blendingEnabled = YES;
+    trailPd.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorOne;
+    trailPd.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
+    mw->pipelines[MetalPipelineTrail] = [mw->device newRenderPipelineStateWithDescriptor:trailPd error:&error];
+    
     // Samplers
     MTLSamplerDescriptor *sd = [[MTLSamplerDescriptor alloc] init];
     sd.minFilter = MTLSamplerMinMagFilterNearest;
@@ -369,12 +628,18 @@ static bool create_pipelines(MetalWindow *mw) {
     sd.magFilter = MTLSamplerMinMagFilterLinear;
     mw->linearSampler = [mw->device newSamplerStateWithDescriptor:sd];
     
+    // Repeat sampler for tiled background images
+    sd.sAddressMode = MTLSamplerAddressModeRepeat;
+    sd.tAddressMode = MTLSamplerAddressModeRepeat;
+    mw->repeatSampler = [mw->device newSamplerStateWithDescriptor:sd];
+    
     return true;
 }
 
 static bool create_buffers(MetalWindow *mw) {
     NSUInteger cellBufSize = MAX_CELLS_PER_FRAME * 6 * sizeof(CellVertex);
     NSUInteger rectBufSize = (MAX_BORDER_RECTS + 10) * 6 * sizeof(RectVertex);  // borders + cursors + selections
+    NSUInteger imageBufSize = MAX_IMAGES * 6 * sizeof(ImageVertex);  // for graphics protocol images
     NSUInteger uniformSize = sizeof(FrameUniforms);
     
     for (int i = 0; i < NUM_INFLIGHT_BUFFERS; i++) {
@@ -382,9 +647,11 @@ static bool create_buffers(MetalWindow *mw) {
                                                     options:MTLResourceStorageModeShared];
         mw->rectBuffers[i] = [mw->device newBufferWithLength:rectBufSize
                                                     options:MTLResourceStorageModeShared];
+        mw->imageBuffers[i] = [mw->device newBufferWithLength:imageBufSize
+                                                     options:MTLResourceStorageModeShared];
         mw->uniformBuffers[i] = [mw->device newBufferWithLength:uniformSize
                                                        options:MTLResourceStorageModeShared];
-        if (!mw->cellBuffers[i] || !mw->rectBuffers[i] || !mw->uniformBuffers[i]) return false;
+        if (!mw->cellBuffers[i] || !mw->rectBuffers[i] || !mw->imageBuffers[i] || !mw->uniformBuffers[i]) return false;
     }
     
     mw->frameSemaphore = dispatch_semaphore_create(NUM_INFLIGHT_BUFFERS);
@@ -481,12 +748,10 @@ void metal_window_destroy(OSWindow *w) {
 bool metal_realloc_sprite_texture(SpriteMap *sm, unsigned w, unsigned h, unsigned layers) {
     if (!g_device) return false;
     
-    fprintf(stderr, "Metal: Creating sprite texture %ux%u with %u layers\n", w, h, layers);
-    
     MTLTextureDescriptor *desc = [MTLTextureDescriptor new];
     desc.textureType = MTLTextureType2DArray;
-    // Use RGBA format to match GL_RGBA + GL_UNSIGNED_INT_8_8_8_8 from OpenGL path
-    desc.pixelFormat = MTLPixelFormatRGBA8Unorm_sRGB;
+    // Use RGBA format without sRGB conversion to preserve alpha values
+    desc.pixelFormat = MTLPixelFormatRGBA8Unorm;
     desc.width = w;
     desc.height = h;
     desc.arrayLength = layers;
@@ -522,19 +787,6 @@ void metal_reload_textures(SpriteMap *sm UNUSED) {}
 bool metal_upload_sprite(SpriteMap *sm, unsigned x, unsigned y, unsigned z, unsigned w, unsigned h, const void *data) {
     id<MTLTexture> tex = (__bridge id<MTLTexture>)sm->metal_texture;
     if (!tex) return false;
-    
-    static int upload_debug = 0;
-    if (upload_debug++ < 15) {
-        const uint32_t *pixels = (const uint32_t *)data;
-        fprintf(stderr, "Metal: Sprite %d at (%u,%u) layer %u, size %ux%u\n", upload_debug-1, x, y, z, w, h);
-        // Print first row of the sprite
-        fprintf(stderr, "  Row 0: ");
-        for (unsigned col = 0; col < w && col < 4; col++) {
-            uint32_t px = pixels[col];
-            fprintf(stderr, "0x%08x ", px);
-        }
-        fprintf(stderr, "\n");
-    }
     
     MTLRegion region = MTLRegionMake3D(x, y, 0, w, h, 1);
     [tex replaceRegion:region mipmapLevel:0 slice:z withBytes:data bytesPerRow:w*4 bytesPerImage:w*h*4];
@@ -649,12 +901,6 @@ static NSUInteger render_window_cells(CellVertex *verts, NSUInteger vcount,
                 v0 = (float)sy * sprite_v_size;
                 v1 = (float)(sy + 1) * sprite_v_size - row_height_uv;  // Skip decoration row
                 colored = (gc->sprite_idx & 0x80000000) ? 1.0f : 0.0f;
-                
-                static int uv_debug = 0;
-                if (uv_debug++ < 5) {
-                    fprintf(stderr, "Cell[%u,%u] sprite_idx=%u sx=%u sy=%u UV=(%.4f,%.4f)-(%.4f,%.4f) layer=%.0f\n",
-                            row, col, sidx, sx, sy, u0, v0, u1, v1, sz);
-                }
             }
             
             // Two triangles per cell
@@ -1001,6 +1247,174 @@ static NSUInteger render_borders(RectVertex *rects, NSUInteger rcount,
     return rcount;
 }
 
+// Draw background image
+static void draw_background_image(id<MTLRenderCommandEncoder> enc, MetalWindow *mw,
+                                  OSWindow *w, float bg_alpha, color_type bg_color) {
+    if (!w->bgimage || !w->bgimage->texture_id) return;
+    
+    id<MTLTexture> bgTex = metal_get_graphics_texture(w->bgimage->texture_id);
+    if (!bgTex) return;
+    
+    BgImageParams params;
+    params.tiled = (OPT(background_image_layout) == 1) ? 1.0f : 0.0f;  // TILED layout
+    params.sizes = simd_make_float4(w->viewport_width, w->viewport_height, 
+                                    bgTex.width, bgTex.height);
+    params.positions = simd_make_float4(-1.0f, 1.0f, 1.0f, -1.0f);  // Full screen
+    params.background = simd_make_float4(
+        ((bg_color >> 16) & 0xFF) / 255.0f * bg_alpha,
+        ((bg_color >> 8) & 0xFF) / 255.0f * bg_alpha,
+        (bg_color & 0xFF) / 255.0f * bg_alpha,
+        bg_alpha);
+    
+    id<MTLBuffer> paramBuf = [mw->device newBufferWithBytes:&params 
+                                                    length:sizeof(params)
+                                                   options:MTLResourceStorageModeShared];
+    
+    [enc setRenderPipelineState:mw->pipelines[MetalPipelineBgImage]];
+    [enc setVertexBuffer:paramBuf offset:0 atIndex:0];
+    [enc setFragmentBuffer:paramBuf offset:0 atIndex:0];
+    [enc setFragmentTexture:bgTex atIndex:0];
+    [enc setFragmentSamplerState:params.tiled > 0.5f ? mw->repeatSampler : mw->linearSampler atIndex:0];
+    [enc drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+}
+
+// Draw graphics protocol images for a window
+static void draw_graphics_images(id<MTLRenderCommandEncoder> enc, MetalWindow *mw,
+                                 Window *win, float vw, float vh, float alpha) {
+    // This would iterate through the graphics render data and draw each image
+    // For now, this is a placeholder - full implementation requires access to
+    // the graphics render data structures
+    (void)enc; (void)mw; (void)win; (void)vw; (void)vh; (void)alpha;
+}
+
+// Draw a rounded rectangle border
+static void draw_rounded_rect(id<MTLRenderCommandEncoder> enc, MetalWindow *mw,
+                              float x, float y, float width, float height,
+                              float thickness, float radius,
+                              color_type color, float alpha,
+                              color_type bg_color, float bg_alpha) {
+    RoundedRectParams params;
+    params.rect = simd_make_float4(x, y, width, height);
+    params.params = simd_make_float2(thickness, radius);
+    params.color = simd_make_float4(
+        ((color >> 16) & 0xFF) / 255.0f,
+        ((color >> 8) & 0xFF) / 255.0f,
+        (color & 0xFF) / 255.0f,
+        alpha);
+    params.background_color = simd_make_float4(
+        ((bg_color >> 16) & 0xFF) / 255.0f * bg_alpha,
+        ((bg_color >> 8) & 0xFF) / 255.0f * bg_alpha,
+        (bg_color & 0xFF) / 255.0f * bg_alpha,
+        bg_alpha);
+    
+    id<MTLBuffer> paramBuf = [mw->device newBufferWithBytes:&params 
+                                                    length:sizeof(params)
+                                                   options:MTLResourceStorageModeShared];
+    
+    [enc setRenderPipelineState:mw->pipelines[MetalPipelineRoundedRect]];
+    [enc setFragmentBuffer:paramBuf offset:0 atIndex:0];
+    [enc drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+}
+
+// Draw visual bell flash
+static void draw_visual_bell(id<MTLRenderCommandEncoder> enc, MetalWindow *mw,
+                             Screen *screen, float intensity, color_type flash_color) {
+    if (intensity <= 0) return;
+    
+    // Calculate attenuated color
+    float attenuation = 0.4f;
+    float r = ((flash_color >> 16) & 0xFF) / 255.0f;
+    float g = ((flash_color >> 8) & 0xFF) / 255.0f;
+    float b = (flash_color & 0xFF) / 255.0f;
+    float max_channel = fmax(r, fmax(g, b));
+    if (max_channel > 0) {
+        float scale = attenuation / max_channel;
+        r *= scale; g *= scale; b *= scale;
+    }
+    
+    simd_float4 tint = simd_make_float4(r * intensity, g * intensity, b * intensity, intensity);
+    
+    id<MTLBuffer> colorBuf = [mw->device newBufferWithBytes:&tint 
+                                                    length:sizeof(tint)
+                                                   options:MTLResourceStorageModeShared];
+    simd_float4 edges = simd_make_float4(-1, 1, 1, -1);
+    id<MTLBuffer> edgesBuf = [mw->device newBufferWithBytes:&edges 
+                                                    length:sizeof(edges)
+                                                   options:MTLResourceStorageModeShared];
+    
+    [enc setRenderPipelineState:mw->pipelines[MetalPipelineTint]];
+    [enc setVertexBuffer:edgesBuf offset:0 atIndex:0];
+    [enc setFragmentBuffer:colorBuf offset:0 atIndex:0];
+    [enc drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+    
+    (void)screen;  // May be used for window-specific bell in future
+}
+
+// Draw tint overlay (for background tint)
+static void draw_tint_overlay(id<MTLRenderCommandEncoder> enc, MetalWindow *mw,
+                              float tint_amount, color_type tint_color) {
+    if (tint_amount <= 0) return;
+    
+    simd_float4 tint = simd_make_float4(
+        ((tint_color >> 16) & 0xFF) / 255.0f * tint_amount,
+        ((tint_color >> 8) & 0xFF) / 255.0f * tint_amount,
+        (tint_color & 0xFF) / 255.0f * tint_amount,
+        tint_amount);
+    
+    id<MTLBuffer> colorBuf = [mw->device newBufferWithBytes:&tint 
+                                                    length:sizeof(tint)
+                                                   options:MTLResourceStorageModeShared];
+    simd_float4 edges = simd_make_float4(-1, 1, 1, -1);
+    id<MTLBuffer> edgesBuf = [mw->device newBufferWithBytes:&edges 
+                                                    length:sizeof(edges)
+                                                   options:MTLResourceStorageModeShared];
+    
+    [enc setRenderPipelineState:mw->pipelines[MetalPipelineTint]];
+    [enc setVertexBuffer:edgesBuf offset:0 atIndex:0];
+    [enc setFragmentBuffer:colorBuf offset:0 atIndex:0];
+    [enc drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+}
+
+// Draw an alpha-masked image (for text overlays like resize text)
+static void draw_alpha_mask_image(id<MTLRenderCommandEncoder> enc, MetalWindow *mw,
+                                  id<MTLTexture> tex, float x, float y, float w, float h,
+                                  float vw, float vh,
+                                  color_type fg_color, color_type bg_color, float bg_alpha) {
+    GraphicsParams gparams;
+    gparams.src_rect = simd_make_float4(0, 0, 1, 1);
+    
+    float x0, y0, x1, y1;
+    pixel_to_clip(x, y, vw, vh, &x0, &y0);
+    pixel_to_clip(x + w, y + h, vw, vh, &x1, &y1);
+    gparams.dest_rect = simd_make_float4(x0, y0, x1, y1);
+    gparams.extra_alpha = 1.0f;
+    
+    AlphaMaskParams amparams;
+    amparams.fg_color = simd_make_float3(
+        ((fg_color >> 16) & 0xFF) / 255.0f,
+        ((fg_color >> 8) & 0xFF) / 255.0f,
+        (fg_color & 0xFF) / 255.0f);
+    amparams.bg_premult = simd_make_float4(
+        ((bg_color >> 16) & 0xFF) / 255.0f * bg_alpha,
+        ((bg_color >> 8) & 0xFF) / 255.0f * bg_alpha,
+        (bg_color & 0xFF) / 255.0f * bg_alpha,
+        bg_alpha);
+    
+    id<MTLBuffer> gparamBuf = [mw->device newBufferWithBytes:&gparams 
+                                                     length:sizeof(gparams)
+                                                    options:MTLResourceStorageModeShared];
+    id<MTLBuffer> amparamBuf = [mw->device newBufferWithBytes:&amparams 
+                                                      length:sizeof(amparams)
+                                                     options:MTLResourceStorageModeShared];
+    
+    [enc setRenderPipelineState:mw->pipelines[MetalPipelineGraphicsAlphaMask]];
+    [enc setVertexBuffer:gparamBuf offset:0 atIndex:0];
+    [enc setFragmentBuffer:amparamBuf offset:0 atIndex:0];
+    [enc setFragmentTexture:tex atIndex:0];
+    [enc setFragmentSamplerState:mw->linearSampler atIndex:0];
+    [enc drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+}
+
 bool metal_render_os_window(OSWindow *w, monotonic_t now UNUSED, bool scan UNUSED) {
     if (!w || !w->metal || !w->num_tabs) return false;
     MetalWindow *mw = w->metal;
@@ -1153,6 +1567,16 @@ bool metal_render_os_window(OSWindow *w, monotonic_t now UNUSED, bool scan UNUSE
     id<MTLCommandBuffer> cb = [mw->queue commandBuffer];
     id<MTLRenderCommandEncoder> enc = [cb renderCommandEncoderWithDescriptor:rpd];
     
+    // Draw background image if present
+    if (w->bgimage && w->bgimage->texture_id) {
+        draw_background_image(enc, mw, w, bg_alpha, default_bg);
+    }
+    
+    // Draw background tint if enabled
+    if (w->bgimage && OPT(background_tint) > 0) {
+        draw_tint_overlay(enc, mw, OPT(background_tint), default_bg);
+    }
+    
     // Draw cell backgrounds
     if (cellCount > 0) {
         [enc setRenderPipelineState:mw->pipelines[MetalPipelineCellBG]];
@@ -1167,20 +1591,24 @@ bool metal_render_os_window(OSWindow *w, monotonic_t now UNUSED, bool scan UNUSE
         [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:rectCount];
     }
     
-    // Draw cell foreground (text)
+    // Draw cell foreground (text) with contrast adjustment
     if (cellCount > 0 && mw->spriteTexture) {
         [enc setRenderPipelineState:mw->pipelines[MetalPipelineCell]];
         [enc setVertexBuffer:mw->cellBuffers[bufIdx] offset:0 atIndex:0];
         [enc setFragmentTexture:mw->spriteTexture atIndex:0];
         [enc setFragmentSamplerState:mw->nearestSampler atIndex:0];
+        
+        // Set text contrast parameters
+        simd_float2 contrast_params = simd_make_float2(OPT(text_contrast), OPT(text_gamma_adjustment));
+        id<MTLBuffer> contrastBuf = [mw->device newBufferWithBytes:&contrast_params 
+                                                           length:sizeof(contrast_params)
+                                                          options:MTLResourceStorageModeShared];
+        [enc setFragmentBuffer:contrastBuf offset:0 atIndex:0];
+        
         [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:cellCount];
     }
     
-    // Draw cursors (on top of text for block cursor)
-    // Note: For block cursor, we'd need to re-render the text with inverted colors
-    // For now, cursors are drawn on top
-    
-    // Visual bell
+    // Visual bell for each window
     for (unsigned i = 0; i < tab->num_windows; i++) {
         Window *win = tab->windows + i;
         if (!win->visible || !win->render_data.screen) continue;
@@ -1190,13 +1618,21 @@ bool metal_render_os_window(OSWindow *w, monotonic_t now UNUSED, bool scan UNUSE
             monotonic_t bell_time = monotonic() - screen->start_visual_bell_at;
             if (bell_time < OPT(visual_bell_duration)) {
                 float intensity = 1.0f - (float)bell_time / (float)OPT(visual_bell_duration);
-                simd_float4 tint = simd_make_float4(1.0f, 1.0f, 1.0f, intensity * 0.3f);
                 
-                id<MTLBuffer> tintBuf = [mw->device newBufferWithBytes:&tint length:sizeof(tint)
-                                                              options:MTLResourceStorageModeShared];
-                [enc setRenderPipelineState:mw->pipelines[MetalPipelineTint]];
-                [enc setFragmentBuffer:tintBuf offset:0 atIndex:0];
-                [enc drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+                // Get visual bell color
+                ColorProfile *cp = screen->color_profile;
+                color_type flash_color = colorprofile_to_color(cp, 
+                    cp->overridden.visual_bell_color, cp->configured.visual_bell_color).rgb;
+                if (!flash_color) {
+                    flash_color = colorprofile_to_color(cp, 
+                        cp->overridden.highlight_bg, cp->configured.highlight_bg).rgb;
+                }
+                if (!flash_color) {
+                    flash_color = colorprofile_to_color(cp, 
+                        cp->overridden.default_fg, cp->configured.default_fg).rgb;
+                }
+                
+                draw_visual_bell(enc, mw, screen, intensity, flash_color);
             } else {
                 screen->start_visual_bell_at = 0;
             }
