@@ -402,14 +402,6 @@ void _glfwInputCursorEnter(_GLFWwindow* window, bool entered)
         window->callbacks.cursorEnter((GLFWwindow*) window, entered);
 }
 
-// Notifies shared code of files or directories dropped on a window
-//
-void _glfwInputDrop(_GLFWwindow* window, GLFWDropData* drop, bool from_self)
-{
-    if (window->callbacks.drop)
-        window->callbacks.drop((GLFWwindow*) window, drop, from_self);
-}
-
 // Notifies shared code of a drag event
 //
 int _glfwInputDragEvent(_GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int* mime_count)
@@ -1142,16 +1134,6 @@ GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* handle,
     return cbfun;
 }
 
-GLFWAPI GLFWdropfun glfwSetDropCallback(GLFWwindow* handle, GLFWdropfun cbfun)
-{
-    _GLFWwindow* window = (_GLFWwindow*) handle;
-    assert(window != NULL);
-
-    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
-    _GLFW_SWAP_POINTERS(window->callbacks.drop, cbfun);
-    return cbfun;
-}
-
 GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* handle, GLFWdragfun cbfun)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
@@ -1204,14 +1186,6 @@ GLFWAPI ssize_t glfwSendDragData(GLFWDragSourceData* source_data, const void* da
     if (!source_data) return -EINVAL;
     _GLFW_REQUIRE_INIT_OR_RETURN(-EINVAL);
     return _glfwPlatformSendDragData(source_data, data, size);
-}
-
-GLFWAPI void glfwFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation, bool success)
-{
-    assert(drop != NULL);
-
-    _GLFW_REQUIRE_INIT();
-    _glfwPlatformFinishDrop(drop, operation, success);
 }
 
 GLFWAPI int glfwJoystickPresent(int jid)
