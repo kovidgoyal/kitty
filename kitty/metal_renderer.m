@@ -21,6 +21,7 @@
 #include "line-buf.h"
 #include "colors.h"
 #include "fonts.h"
+#include "graphics.h"
 #include "glfw-wrapper.h"
 
 // Triple buffering for optimal GPU pipelining
@@ -182,9 +183,24 @@ static id<MTLTexture> metal_get_graphics_texture(uint32_t texture_id);
 // Metal shader source built using NSMutableString to avoid C99 string length limits
 static NSString *kShaderSource = nil;
 
+// Try to load shader source from external file, fall back to embedded source
 static NSString* get_shader_source(void) {
     if (kShaderSource) return kShaderSource;
-    NSMutableString *s = [NSMutableString stringWithCapacity:12000];
+    
+    // Try to load from external .metal file first (for development)
+    NSBundle *bundle = [NSBundle mainBundle];
+    NSString *metalPath = [bundle pathForResource:@"metal_shaders" ofType:@"metal"];
+    if (metalPath) {
+        NSError *error = nil;
+        NSString *source = [NSString stringWithContentsOfFile:metalPath encoding:NSUTF8StringEncoding error:&error];
+        if (source && !error) {
+            kShaderSource = source;
+            return kShaderSource;
+        }
+    }
+    
+    // Fall back to embedded shader source
+    NSMutableString *s = [NSMutableString stringWithCapacity:20000];
     [s appendString:@"#include <metal_stdlib>\n"
 "using namespace metal;\n"
 "\n"
@@ -215,6 +231,15 @@ static NSString* get_shader_source(void) {
 "inline float4 vec4_premul(float4 c) { return float4(c.rgb * c.a, c.a); }\n"
 "\n"
 "constant float3 Y = float3(0.2126, 0.7152, 0.0722);\n"
+"\n"
+"// Foreground override for contrast (simplified version without full HSLUV)\n"
+"inline float3 override_fg_simple(float3 over, float3 under, float threshold) {\n"
+"    float under_lum = dot(under, Y);\n"
+"    float over_lum = dot(over, Y);\n"
+"    float diff = abs(under_lum - over_lum);\n"
+"    float override_level = step(diff, threshold);\n"
+"    return mix(over, float3(step(under_lum, 0.5)), override_level);\n"
+"}\n"
 "\n"
 "// Cell structures\n"
 "struct CellVertex {\n"
@@ -1281,13 +1306,88 @@ static void draw_background_image(id<MTLRenderCommandEncoder> enc, MetalWindow *
 // Draw graphics protocol images for a window
 static void draw_graphics_images(id<MTLRenderCommandEncoder> enc, MetalWindow *mw,
                                  Window *win, float vw, float vh, float alpha) {
-    // This would iterate through the graphics render data and draw each image
-    // For now, this is a placeholder - full implementation requires access to
-    // the graphics render data structures
-    (void)enc; (void)mw; (void)win; (void)vw; (void)vh; (void)alpha;
+    if (!win || !win->render_data.screen) return;
+    Screen *screen = win->render_data.screen;
+    if (!screen->grman) return;
+    
+    GraphicsRenderData grd = grman_render_data(screen->grman);
+    if (grd.count == 0) return;
+    
+    WindowGeometry *geom = &win->render_data.geometry;
+    float offset_x = (float)geom->left;
+    float offset_y = (float)geom->top;
+    
+    for (size_t i = 0; i < grd.count; i++) {
+        ImageRenderData *img = &grd.images[i];
+        
+        // Get the Metal texture for this image
+        id<MTLTexture> tex = metal_get_graphics_texture(img->texture_id);
+        if (!tex) continue;
+        
+        // Calculate source rect (texture coordinates)
+        GraphicsParams params;
+        params.src_rect = simd_make_float4(
+            img->src_rect.left,
+            img->src_rect.top,
+            img->src_rect.right,
+            img->src_rect.bottom
+        );
+        
+        // Calculate destination rect (clip space coordinates)
+        // The dest_rect from ImageRenderData is already in clip space (-1 to 1)
+        params.dest_rect = simd_make_float4(
+            img->dest_rect.left,
+            img->dest_rect.top,
+            img->dest_rect.right,
+            img->dest_rect.bottom
+        );
+        
+        params.extra_alpha = alpha;
+        
+        id<MTLBuffer> paramBuf = [mw->device newBufferWithBytes:&params 
+                                                        length:sizeof(params)
+                                                       options:MTLResourceStorageModeShared];
+        
+        // Choose pipeline based on whether image is premultiplied
+        // Most images from the graphics protocol are premultiplied
+        [enc setRenderPipelineState:mw->pipelines[MetalPipelineGraphicsPremult]];
+        [enc setVertexBuffer:paramBuf offset:0 atIndex:0];
+        [enc setFragmentBytes:&params.extra_alpha length:sizeof(float) atIndex:0];
+        [enc setFragmentTexture:tex atIndex:0];
+        [enc setFragmentSamplerState:mw->linearSampler atIndex:0];
+        [enc drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+    }
+    
+    (void)vw; (void)vh; (void)offset_x; (void)offset_y;
+}
+
+// Draw a single graphics image with specified parameters
+__attribute__((unused))
+static void draw_single_image(id<MTLRenderCommandEncoder> enc, MetalWindow *mw,
+                              id<MTLTexture> tex,
+                              float src_left, float src_top, float src_right, float src_bottom,
+                              float dst_left, float dst_top, float dst_right, float dst_bottom,
+                              float extra_alpha, bool is_premultiplied) {
+    GraphicsParams params;
+    params.src_rect = simd_make_float4(src_left, src_top, src_right, src_bottom);
+    params.dest_rect = simd_make_float4(dst_left, dst_top, dst_right, dst_bottom);
+    params.extra_alpha = extra_alpha;
+    
+    id<MTLBuffer> paramBuf = [mw->device newBufferWithBytes:&params 
+                                                    length:sizeof(params)
+                                                   options:MTLResourceStorageModeShared];
+    
+    MetalPipeline pipeline = is_premultiplied ? MetalPipelineGraphicsPremult : MetalPipelineGraphics;
+    [enc setRenderPipelineState:mw->pipelines[pipeline]];
+    [enc setVertexBuffer:paramBuf offset:0 atIndex:0];
+    [enc setFragmentBytes:&extra_alpha length:sizeof(float) atIndex:0];
+    [enc setFragmentTexture:tex atIndex:0];
+    [enc setFragmentSamplerState:mw->linearSampler atIndex:0];
+    [enc drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
 }
 
 // Draw a rounded rectangle border
+__attribute__((unused))
 static void draw_rounded_rect(id<MTLRenderCommandEncoder> enc, MetalWindow *mw,
                               float x, float y, float width, float height,
                               float thickness, float radius,
@@ -1376,6 +1476,7 @@ static void draw_tint_overlay(id<MTLRenderCommandEncoder> enc, MetalWindow *mw,
 }
 
 // Draw an alpha-masked image (for text overlays like resize text)
+__attribute__((unused))
 static void draw_alpha_mask_image(id<MTLRenderCommandEncoder> enc, MetalWindow *mw,
                                   id<MTLTexture> tex, float x, float y, float w, float h,
                                   float vw, float vh,
@@ -1582,6 +1683,13 @@ bool metal_render_os_window(OSWindow *w, monotonic_t now UNUSED, bool scan UNUSE
         [enc setRenderPipelineState:mw->pipelines[MetalPipelineCellBG]];
         [enc setVertexBuffer:mw->cellBuffers[bufIdx] offset:0 atIndex:0];
         [enc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:cellCount];
+    }
+    
+    // Draw graphics protocol images (below text, z_index < 0)
+    for (unsigned i = 0; i < tab->num_windows; i++) {
+        Window *win = tab->windows + i;
+        if (!win->visible) continue;
+        draw_graphics_images(enc, mw, win, vw, vh, 1.0f);
     }
     
     // Draw selections (behind text)
