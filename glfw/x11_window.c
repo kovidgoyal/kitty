@@ -4119,13 +4119,33 @@ void _glfwPlatformUpdateDragState(_GLFWwindow* window) {
     XFlush(_glfw.x11.display);
 }
 
-# if 0
-const char**
-_glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count) {
-    if (!drop || !count) return NULL;
-    *count = drop->mime_count;
-    return drop->mime_types;
+#if 0
+
+// Implement the following, see getting data from drop comment block in wl_window.c and below for
+// the X11 basic implementation. Also have to refactor dragging. start drag
+// should allow optionally specifying data for some mime types up front. This
+// is needed on macOS for the text/plain and text/uri-list mime types. Also
+// there should be a data write ready callback similar to the data read
+// available callback in the refactored drop API.
+
+void
+_glfwPlatformEndDrop(GLFWwindow *w, GLFWDragOperationType op) {
 }
+
+ssize_t
+_glfwPlatformReadAvailableDropData(GLFWwindow *w, GLFWDropEvent *ev, char *buffer, size_t sz) {
+}
+
+int
+_glfwPlatformRequestDropData(_GLFWwindow *window, const char *mime) {
+}
+
+void
+_glfwPlatformRequestDropUpdate(_GLFWwindow* window) {
+}
+
+
+// below is the old code
 
 ssize_t
 _glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout) {
