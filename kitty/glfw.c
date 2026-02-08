@@ -686,7 +686,7 @@ update_allowed_mimes_for_drop(GLFWDropEvent *ev) {
 static void
 read_drop_data(GLFWwindow *window, GLFWDropEvent *ev) {
     RAII_PyObject(chunk, PyBytes_FromStringAndSize(NULL, 8192));
-#define finish(ok) ev->finish_drop(window, ok ? GLFW_DRAG_OPERATION_COPY : GLFW_DRAG_OPERATION_GENERIC); Py_CLEAR(global_state.drop_dest.data)
+#define finish(ok) ev->finish_drop(window, ok ? GLFW_DRAG_OPERATION_COPY : GLFW_DRAG_OPERATION_GENERIC); Py_CLEAR(global_state.drop_dest.data); if (PyErr_Occurred()) PyErr_Print()
     if (!chunk) { finish(false); return; }
     ssize_t ret = ev->read_data(window, ev, PyBytes_AS_STRING(chunk), PyBytes_GET_SIZE(chunk));
     if (ret == 0) {
