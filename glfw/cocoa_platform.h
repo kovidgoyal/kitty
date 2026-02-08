@@ -116,6 +116,13 @@ typedef void* (*PFN_TISGetInputSourceProperty)(TISInputSourceRef,CFStringRef);
 typedef UInt8 (*PFN_LMGetKbdType)(void);
 #define LMGetKbdType _glfw.ns.tis.GetKbdType
 
+typedef struct _GLFWDropData {
+    const char **mimes;
+    size_t mimes_count;
+    id pasteboard;
+    id data_mapping;
+    id file_promise_mapping;
+} _GLFWDropData;
 
 // Cocoa-specific per-window data
 //
@@ -168,15 +175,12 @@ typedef struct _GLFWwindowNS
     bool delayed_cursor_update_requested;
     GLFWcocoarenderframefun resizeCallback;
 
-    // Current drag operation type for NSDraggingSource
-    int dragOperations;  // Bitfield of GLFWDragOperationType
-
     // Cached MIME types from drag enter (for move events)
-    const char** dragMimes;
-    int dragMimeCount;      // Current count of MIME types (may be reduced by callback)
-    int dragMimeArraySize;  // Original array size for proper cleanup
+    _GLFWDropData drop_data;
 
     // Pending drag source data requests (for cleanup on cancellation)
+    // Current drag operation type for NSDraggingSource
+    int dragOperations;  // Bitfield of GLFWDragOperationType
     GLFWDragSourceData** pendingDragSourceData;
     int pendingDragSourceDataCount;
     int pendingDragSourceDataCapacity;
