@@ -359,8 +359,14 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetLiveResizeCallback_impl) = dlsym(handle, "glfwSetLiveResizeCallback");
     if (glfwSetLiveResizeCallback_impl == NULL) fail("Failed to load glfw function glfwSetLiveResizeCallback with error: %s", dlerror());
 
-    *(void **) (&glfwSetDragCallback_impl) = dlsym(handle, "glfwSetDragCallback");
-    if (glfwSetDragCallback_impl == NULL) fail("Failed to load glfw function glfwSetDragCallback with error: %s", dlerror());
+    *(void **) (&glfwSetDropEventCallback_impl) = dlsym(handle, "glfwSetDropEventCallback");
+    if (glfwSetDropEventCallback_impl == NULL) fail("Failed to load glfw function glfwSetDropEventCallback with error: %s", dlerror());
+
+    *(void **) (&glfwRequestDropData_impl) = dlsym(handle, "glfwRequestDropData");
+    if (glfwRequestDropData_impl == NULL) fail("Failed to load glfw function glfwRequestDropData with error: %s", dlerror());
+
+    *(void **) (&glfwEndDrop_impl) = dlsym(handle, "glfwEndDrop");
+    if (glfwEndDrop_impl == NULL) fail("Failed to load glfw function glfwEndDrop with error: %s", dlerror());
 
     *(void **) (&glfwSetDragSourceCallback_impl) = dlsym(handle, "glfwSetDragSourceCallback");
     if (glfwSetDragSourceCallback_impl == NULL) fail("Failed to load glfw function glfwSetDragSourceCallback with error: %s", dlerror());
@@ -370,18 +376,6 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwSendDragData_impl) = dlsym(handle, "glfwSendDragData");
     if (glfwSendDragData_impl == NULL) fail("Failed to load glfw function glfwSendDragData with error: %s", dlerror());
-
-    *(void **) (&glfwUpdateDragState_impl) = dlsym(handle, "glfwUpdateDragState");
-    if (glfwUpdateDragState_impl == NULL) fail("Failed to load glfw function glfwUpdateDragState with error: %s", dlerror());
-
-    *(void **) (&glfwGetDropMimeTypes_impl) = dlsym(handle, "glfwGetDropMimeTypes");
-    if (glfwGetDropMimeTypes_impl == NULL) fail("Failed to load glfw function glfwGetDropMimeTypes with error: %s", dlerror());
-
-    *(void **) (&glfwReadDropData_impl) = dlsym(handle, "glfwReadDropData");
-    if (glfwReadDropData_impl == NULL) fail("Failed to load glfw function glfwReadDropData with error: %s", dlerror());
-
-    *(void **) (&glfwFinishDrop_impl) = dlsym(handle, "glfwFinishDrop");
-    if (glfwFinishDrop_impl == NULL) fail("Failed to load glfw function glfwFinishDrop with error: %s", dlerror());
 
     *(void **) (&glfwJoystickPresent_impl) = dlsym(handle, "glfwJoystickPresent");
     if (glfwJoystickPresent_impl == NULL) fail("Failed to load glfw function glfwJoystickPresent with error: %s", dlerror());

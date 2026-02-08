@@ -1384,6 +1384,35 @@ typedef struct GLFWDBUSNotificationData {
     int32_t timeout; uint8_t urgency; uint32_t replaces; int muted;
 } GLFWDBUSNotificationData;
 
+typedef enum { GLFW_DROP_ENTER, GLFW_DROP_MOVE, GLFW_DROP_LEAVE, GLFW_DROP_DROP, GLFW_DROP_STATUS_UPDATE, GLFW_DROP_DATA_AVAILABLE } GLFWDropEventType;
+
+/*! @brief Drag operation types.
+ *
+ *  These constants specify the type of drag operation (copy, move, or generic).
+ *
+ *  @ingroup input
+ */
+typedef enum {
+    /*! Move the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_MOVE = 1,
+    /*! Copy the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_COPY = 2,
+    /*! Generic drag operation (platform decides semantics). */
+    GLFW_DRAG_OPERATION_GENERIC = 4
+} GLFWDragOperationType;
+
+
+typedef struct GLFWDropEvent {
+    GLFWDropEventType type;
+    const char **mimes; size_t num_mimes;
+    double xpos, ypos;  // Only valid for GLFW_DROP_ENTER and GLFW_DROP_MOVE
+    bool from_self;
+    ssize_t (*read_data)(GLFWwindow *w, struct GLFWDropEvent* ev, char *buffer, size_t sz);  // Only valid for GLFW_DROP_DATA_AVAILABLE
+    void (*finish_drop)(GLFWwindow *w, GLFWDragOperationType op); // Only valid for GLFW_DROP_DROP and GLFW_DROP_DATA_AVAILABLE
+} GLFWDropEvent;
+typedef void (* GLFWdropeventfun)(GLFWwindow*, GLFWDropEvent *event);
+
+
 /*! @brief The function pointer type for error callbacks.
  *
  *  This is the function pointer type for error callbacks.  An error callback
@@ -1835,21 +1864,6 @@ typedef enum {
     /*! Async status update request (xpos/ypos are invalid). */
     GLFW_DRAG_STATUS_UPDATE = 4
 } GLFWDragEventType;
-
-/*! @brief Drag operation types.
- *
- *  These constants specify the type of drag operation (copy, move, or generic).
- *
- *  @ingroup input
- */
-typedef enum {
-    /*! Move the dragged data to the destination. */
-    GLFW_DRAG_OPERATION_MOVE = 1,
-    /*! Copy the dragged data to the destination. */
-    GLFW_DRAG_OPERATION_COPY = 2,
-    /*! Generic drag operation (platform decides semantics). */
-    GLFW_DRAG_OPERATION_GENERIC = 4
-} GLFWDragOperationType;
 
 /*! @brief Opaque drag source data handle.
  *
@@ -5054,42 +5068,10 @@ GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* window, GLFWscrollfun ca
 GLFWAPI GLFWdropfun glfwSetDropCallback(GLFWwindow* window, GLFWdropfun callback);
 GLFWAPI GLFWliveresizefun glfwSetLiveResizeCallback(GLFWwindow* window, GLFWliveresizefun callback);
 
-/*! @brief Sets the drag event callback.
- *
- *  This function sets the callback for drag events. The callback is invoked
- *  when a drag operation enters, moves within, or leaves the window. Use this
- *  callback to accept or reject incoming drag operations and track drag
- *  position.
- *
- *  For @ref GLFW_DRAG_ENTER events, the callback receives an array of MIME types
- *  available from the drag source. The application can use this information to
- *  decide whether to accept or reject the drag operation.
- *
- *  @param[in] window The window whose callback to set.
- *  @param[in] callback The new callback, or `NULL` to remove the currently set
- *  callback.
- *  @return The previously set callback, or `NULL` if no callback was set or the
- *  library had not been [initialized](@ref intro_init).
- *
- *  @callback_signature
- *  @code
- *  int function_name(GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int mime_count)
- *  @endcode
- *  For more information about the callback parameters, see the
- *  [function pointer type](@ref GLFWdragfun).
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
- *
- *  @thread_safety This function must only be called from the main thread.
- *
- *  @sa @ref drag_events
- *  @sa @ref glfwStartDrag
- *
- *  @since Added in version 4.0.
- *
- *  @ingroup input
- */
-GLFWAPI GLFWdragfun glfwSetDragCallback(GLFWwindow* window, GLFWdragfun callback);
+GLFWAPI GLFWdropeventfun glfwSetDropEventCallback(GLFWwindow *window, GLFWdropeventfun callback);
+GLFWAPI void glfwRequestDropUpdate(GLFWwindow *window);  // ask for update before GLFW_DROP_DROP happens
+GLFWAPI int glfwRequestDropData(GLFWwindow *window, const char *mime);
+GLFWAPI void glfwEndDrop(GLFWwindow *window, GLFWDragOperationType op);
 
 /*! @brief Sets the drag source data request callback.
  *
@@ -5190,126 +5172,6 @@ GLFWAPI int glfwStartDrag(GLFWwindow* window, const char* const* mime_types, int
  *  @ingroup input
  */
 GLFWAPI ssize_t glfwSendDragData(GLFWDragSourceData* source_data, const void* data, size_t size);
-
-/*! @brief Schedules a call to the drag callback to update drag state.
- *
- *  This function schedules a call to the drag callback to get updated
- *  acceptance status and MIME type list. Use this when the application
- *  needs to update its drag state asynchronously.
- *
- *  On Wayland and X11, this will immediately call the drag callback with
- *  the current drag state. On macOS this is a no-op since the drag callback
- *  is called periodically anyway.
- *
- *  @param[in] window The window receiving the drag operation.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
- *
- *  @remark This function has no effect if there is no active drag operation
- *  over the specified window.
- *
- *  @remark On macOS, this function is a no-op as the system uses periodic
- *  dragging updates via the drag callback.
- *
- *  @thread_safety This function must only be called from the main thread.
- *
- *  @sa @ref drag_events
- *  @sa @ref glfwSetDragCallback
- *
- *  @since Added in version 4.0.
- *
- *  @ingroup input
- */
-GLFWAPI void glfwUpdateDragState(GLFWwindow* window);
-
-/*! @brief Gets the list of available MIME types from drop data.
- *
- *  This function returns an array of MIME type strings available from
- *  the dropped data. The array and strings are owned by GLFW and should
- *  not be freed by the application. They are only valid until the drop
- *  callback returns.
- *
- *  @param[in] drop The drop data object from the drop callback.
- *  @param[out] count The number of MIME types in the returned array.
- *  @return An array of MIME type strings, or `NULL` if the drop data is invalid.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
- *
- *  @thread_safety This function must only be called from the main thread.
- *
- *  @sa @ref path_drop
- *  @sa @ref glfwSetDropCallback
- *  @sa @ref glfwReadDropData
- *
- *  @since Added in version 4.0.
- *
- *  @ingroup input
- */
-GLFWAPI const char** glfwGetDropMimeTypes(GLFWDropData* drop, int* count);
-
-/*! @brief Reads a chunk of dropped data for a specified MIME type.
- *
- *  This function reads a chunk of the dropped data of the specified MIME type
- *  into the provided buffer. Repeated calls read subsequent chunks of data.
- *
- *  If this function is called for a different MIME type than the previous call,
- *  resources associated with the previous MIME type are automatically freed.
- *
- *  @param[in] drop The drop data object from the drop callback.
- *  @param[in] mime The MIME type to read data for.
- *  @param[out] buffer The buffer to read data into.
- *  @param[in] capacity The size of the buffer in bytes.
- *  @param[in] timeout The maximum time to wait for data, as a monotonic time value.
- *  Use 0 for non-blocking, or a positive value for the timeout duration.
- *  @return The number of bytes written to the buffer on success. Returns 0 when
- *  all data has been read (end of data). Returns a negative value on error:
- *  `-ENOENT` if the MIME type is not available, `-EIO` for an I/O error,
- *  `-ETIME` if the timeout expires before data is available.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
- *
- *  @remark The returned byte count may be less than the buffer capacity even
- *  when more data is available.
- *
- *  @thread_safety This function must only be called from the main thread.
- *
- *  @sa @ref path_drop
- *  @sa @ref glfwSetDropCallback
- *  @sa @ref glfwGetDropMimeTypes
- *
- *  @since Added in version 4.0.
- *
- *  @ingroup input
- */
-GLFWAPI ssize_t glfwReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout);
-
-/*! @brief Finishes a drop operation and frees associated resources.
- *
- *  This function finishes the drop operation, informs the drag source of the
- *  result, and frees the heap-allocated drop data object. After calling this
- *  function, the drop data object must not be used anymore.
- *
- *  The application MUST call this function when it has finished reading the
- *  dropped data. Failure to do so will result in a memory leak and may cause
- *  the drag source to hang waiting for the drop operation to complete.
- *
- *  @param[in] drop The drop data object to finish and free.
- *  @param[in] operation The type of operation that was performed (copy, move, etc).
- *  @param[in] success Whether the drop operation was successful.
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
- *
- *  @thread_safety This function must only be called from the main thread.
- *
- *  @sa @ref path_drop
- *  @sa @ref glfwSetDropCallback
- *  @sa @ref glfwReadDropData
- *
- *  @since Added in version 4.0.
- *
- *  @ingroup input
- */
-GLFWAPI void glfwFinishDrop(GLFWDropData* drop, GLFWDragOperationType operation, bool success);
 
 /*! @brief Returns whether the specified joystick is present.
  *

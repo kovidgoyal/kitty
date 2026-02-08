@@ -649,113 +649,106 @@ is_droppable_mime(const char *mime) {
     return 0;
 }
 
-static int
-drag_callback(GLFWwindow *w, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int* mime_count) {
-    (void)xpos; (void)ypos;
-    if (!set_callback_window(w)) return 0;
-    int ret = 0;
-    switch (event) {
-        case GLFW_DRAG_ENTER:
-        case GLFW_DRAG_MOVE:
-            global_state.callback_os_window->last_drag_event.x = (int)xpos;
-            global_state.callback_os_window->last_drag_event.y = (int)ypos;
+static void
+update_allowed_mimes_for_drop(GLFWDropEvent *ev) {
+    if (ev->mimes && ev->num_mimes) {
+        // Sort MIME types by priority (descending) and keep only accepted ones
+        // Use simple bubble sort since lists are typically small
+        size_t new_count = 0;
+        // Use stack-allocated array for priorities (count is typically small)
+        int priorities[32];
+        int* prio_arr = (ev->num_mimes <= (int)arraysz(priorities)) ? priorities : (int*)malloc(ev->num_mimes * sizeof(int));
+        if (!prio_arr) return;
+        // First pass: filter droppable MIME types and cache priorities
+        for (size_t i = 0; i < ev->num_mimes; i++) {
+            int prio = is_droppable_mime(ev->mimes[i]);
+            if (prio > 0) {
+                // Move this mime to the new_count position
+                if (new_count != i) { SWAP(ev->mimes[i], ev->mimes[new_count]); }
+                prio_arr[new_count] = prio;
+                new_count++;
+            }
+        }
+        // Second pass: sort by cached priorities (descending)
+        for (size_t i = 0; i < new_count - 1; i++) {
+            for (size_t j = i + 1; j < new_count; j++) {
+                if (prio_arr[j] > prio_arr[i]) {
+                    SWAP(ev->mimes[i], ev->mimes[j]);
+                    SWAP(prio_arr[i], prio_arr[j]);
+                }
+            }
+        }
+        if (prio_arr != priorities) free(prio_arr);
+        ev->num_mimes = new_count;
+    }
+}
+
+static void
+read_drop_data(GLFWwindow *window, GLFWDropEvent *ev) {
+    RAII_PyObject(chunk, PyBytes_FromStringAndSize(NULL, 8192));
+#define finish(ok) ev->finish_drop(window, ok ? GLFW_DRAG_OPERATION_COPY : GLFW_DRAG_OPERATION_GENERIC); Py_CLEAR(global_state.drop_dest.data)
+    if (!chunk) { finish(false); return; }
+    ssize_t ret = ev->read_data(window, ev, PyBytes_AS_STRING(chunk), PyBytes_GET_SIZE(chunk));
+    if (ret == 0) {
+        global_state.drop_dest.num_left--;
+        if (!global_state.drop_dest.num_left) {
+            WINDOW_CALLBACK(on_drop, "OOii", global_state.drop_dest.data, Py_False,
+                    global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
+            finish(true);
+        }
+    } else if (ret > 0) {
+        _PyBytes_Resize(&chunk, ret);
+        PyObject *data = chunk;
+        RAII_PyObject(existing, PyDict_GetItemString(global_state.drop_dest.data, ev->mimes[0]));
+        if (existing) {
+            PyBytes_Concat(&existing, chunk);
+            data = existing;
+        }
+        if (!data || PyDict_SetItemString(global_state.drop_dest.data, ev->mimes[0], data) != 0) { finish(false); }
+    } else {
+        int posix_errno = -ret;
+        WINDOW_CALLBACK(on_drop, "iOii", posix_errno, Py_False,
+            global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
+        finish(false);
+    }
+#undef finish
+}
+
+static void
+on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
+    if (!set_callback_window(window)) return;
+    switch (ev->type) {
+        case GLFW_DROP_ENTER:
+        case GLFW_DROP_MOVE:
+            global_state.callback_os_window->last_drag_event.x = (int)ev->xpos;
+            global_state.callback_os_window->last_drag_event.y = (int)ev->ypos;
             /* fallthrough */
-        case GLFW_DRAG_STATUS_UPDATE:
-            if (mime_types && mime_count && *mime_count > 0) {
-                // Sort MIME types by priority (descending) and keep only accepted ones
-                // Use simple bubble sort since lists are typically small
-                int count = *mime_count;
-                int new_count = 0;
-
-                // Use stack-allocated array for priorities (count is typically small)
-                int priorities[32];
-                int* prio_arr = (count <= (int)arraysz(priorities)) ? priorities : (int*)malloc(count * sizeof(int));
-                if (!prio_arr) goto end;
-                // First pass: filter droppable MIME types and cache priorities
-                for (int i = 0; i < count; i++) {
-                    int prio = is_droppable_mime(mime_types[i]);
-                    if (prio > 0) {
-                        // Move this mime to the new_count position
-                        if (new_count != i) { SWAP(mime_types[i], mime_types[new_count]); }
-                        prio_arr[new_count] = prio;
-                        new_count++;
-                    }
-                }
-                // Second pass: sort by cached priorities (descending)
-                for (int i = 0; i < new_count - 1; i++) {
-                    for (int j = i + 1; j < new_count; j++) {
-                        if (prio_arr[j] > prio_arr[i]) {
-                            SWAP(mime_types[i], mime_types[j]);
-                            SWAP(prio_arr[i], prio_arr[j]);
-                        }
-                    }
-                }
-                if (prio_arr != priorities) free(prio_arr);
-                *mime_count = new_count;
-                ret = (new_count > 0) ? 1 : 0;
+        case GLFW_DROP_STATUS_UPDATE:
+            update_allowed_mimes_for_drop(ev);
+            break;
+        case GLFW_DROP_LEAVE:
+            break;
+        case GLFW_DROP_DROP:
+            Py_CLEAR(global_state.drop_dest.data);
+            if (ev->from_self) {
+                if (global_state.drag_source.drag_data) {
+                    WINDOW_CALLBACK(on_drop, "OOii", global_state.drag_source.drag_data, Py_True,
+                        global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
+                } else log_error("Got a drop from self but drag_source.drag_data is NULL");
+                ev->finish_drop(window, GLFW_DRAG_OPERATION_COPY);
+                break;
+            }
+            update_allowed_mimes_for_drop(ev);
+            global_state.drop_dest.num_left = ev->num_mimes;
+            if (!global_state.drop_dest.num_left || !(global_state.drop_dest.data = PyDict_New())) {
+                ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
             }
             break;
-        case GLFW_DRAG_LEAVE:
-            global_state.callback_os_window->last_drag_event.x = (int)xpos;
-            global_state.callback_os_window->last_drag_event.y = (int)ypos;
+        case GLFW_DROP_DATA_AVAILABLE:
+            if (!global_state.drop_dest.data) ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+            else read_drop_data(window, ev);
             break;
     }
-end:
-    global_state.callback_os_window = NULL;
-    return ret;
-}
-
-static PyObject*
-read_drop_data(GLFWDropData *drop, const char *mime) {
-    RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, 8192));
-    if (!ans) return NULL;
-    size_t pos = 0;
-    monotonic_t timeout = s_double_to_monotonic_t(2);
-    while (true) {
-        int ret = glfwReadDropData(drop, mime, PyBytes_AS_STRING(ans) + pos, PyBytes_GET_SIZE(ans) - pos, timeout);
-        if (ret > 0) {
-            pos += ret;
-            if (pos >= (size_t)PyBytes_GET_SIZE(ans)) {
-                if (_PyBytes_Resize(&ans, pos * 2) != 0) return NULL;
-            }
-        } else if (ret == 0) {
-            if (_PyBytes_Resize(&ans, pos) != 0) return NULL;
-            return Py_NewRef(ans);
-        } else {
-            errno = -ret;
-            PyErr_SetFromErrno(PyExc_OSError);
-            return NULL;
-        }
-    }
-}
-
-static void
-get_mime_data(GLFWDropData *drop, const char **mimes, int mime_count, PyObject *ans) {
-    for (int i = 0; i < mime_count; i++) {
-        if (is_droppable_mime(mimes[i])) {
-            RAII_PyObject(data, read_drop_data(drop, mimes[i]));
-            if (data == NULL) return;
-            if (PyDict_SetItemString(ans, mimes[i], data) != 0) return;
-        }
-    }
-}
-
-static void
-drop_callback(GLFWwindow *w, GLFWDropData *drop, bool from_self) {
-    int num_mimes;
-    const char** mimes = glfwGetDropMimeTypes(drop, &num_mimes);
-    RAII_PyObject(ans, PyDict_New());
-    if (from_self) {
-        if (global_state.drag_source.drag_data) PyDict_Update(ans, global_state.drag_source.drag_data);
-        else log_error("Got a drop from self but drag_source.drag_data is NULL");
-    } else get_mime_data(drop, mimes, num_mimes, ans);
-    RAII_PyObject(exc, PyErr_GetRaisedException());
-    glfwFinishDrop(drop, GLFW_DRAG_OPERATION_COPY, true);
-    if (!set_callback_window(w)) return;
-    if (exc != NULL) { WINDOW_CALLBACK(on_drop, "Oii", exc, global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y); }
-    else if (PyDict_Size(ans)) WINDOW_CALLBACK(on_drop, "Oii", ans, global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
-    request_tick_callback();
-    global_state.callback_os_window = NULL;
 }
 
 static void
@@ -1675,9 +1668,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwSetCursorEnterCallback(glfw_window, cursor_enter_callback);
     glfwSetScrollCallback(glfw_window, scroll_callback);
     glfwSetKeyboardCallback(glfw_window, key_callback);
-    glfwSetDropCallback(glfw_window, drop_callback);
-    glfwSetDragCallback(glfw_window, drag_callback);
-    glfwSetDragSourceCallback(glfw_window, drag_source_callback);
+
+    if (0) glfwSetDragSourceCallback(glfw_window, drag_source_callback);
+
+    glfwSetDropEventCallback(glfw_window, on_drop);
     monotonic_t now = monotonic();
     w->is_focused = true;
     w->cursor_blink_zero_time = now;

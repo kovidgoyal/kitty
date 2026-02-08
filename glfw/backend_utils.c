@@ -31,7 +31,6 @@ update_fds(EventLoopData *eld) {
     }
 }
 
-static id_type watch_counter = 0;
 
 id_type
 addWatch(EventLoopData *eld, const char* name, int fd, int events, int enabled, watch_callback_func cb, void *cb_data) {
@@ -39,6 +38,7 @@ addWatch(EventLoopData *eld, const char* name, int fd, int events, int enabled, 
         _glfwInputError(GLFW_PLATFORM_ERROR, "Too many watches added");
         return 0;
     }
+    static id_type watch_counter = 0;
     Watch *w = eld->watches + eld->watches_count++;
     w->name = name;
     w->fd = fd; w->events = events; w->enabled = enabled;

@@ -2314,6 +2314,17 @@ static const struct zwp_primary_selection_source_v1_listener primary_selection_s
     .cancelled = primary_selection_source_canceled,
 };
 
+// Getting data from clipboard and drops {{{
+static void
+destroy_drop_data(_GLFWWaylandDataOffer *offer) {
+    for (size_t i = 0; i < offer->dd_count; i++) {
+        if (offer->requested_drop_data[i].mime) free(offer->requested_drop_data[i].mime);
+        if (offer->requested_drop_data[i].fd > -1) { safe_close(offer->requested_drop_data[i].fd); }
+        if (offer->requested_drop_data[i].watch_id) removeWatch(&_glfw.wl.eventLoopData, offer->requested_drop_data[i].watch_id);
+    }
+    free(offer->requested_drop_data);
+}
+
 void
 destroy_data_offer(_GLFWWaylandDataOffer *offer) {
     if (offer->id) {
@@ -2324,47 +2335,41 @@ destroy_data_offer(_GLFWWaylandDataOffer *offer) {
         for (size_t i = 0; i < offer->mimes_count; i++) free((char*)offer->mimes[i]);
         free(offer->mimes);
     }
-    memset(offer, 0, sizeof(_GLFWWaylandDataOffer));
-}
-
-static void prune_unclaimed_data_offers(void) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id && !_glfw.wl.dataOffers[i].offer_type) {
-            destroy_data_offer(&_glfw.wl.dataOffers[i]);
-        }
-    }
-}
-
-static void mark_selection_offer(void *data UNUSED, struct wl_data_device *data_device UNUSED, struct wl_data_offer *data_offer)
-{
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == data_offer) {
-            _glfw.wl.dataOffers[i].offer_type = CLIPBOARD;
-        } else if (_glfw.wl.dataOffers[i].offer_type == CLIPBOARD) {
-            _glfw.wl.dataOffers[i].offer_type = EXPIRED;  // previous selection offer
-        }
-    }
-    prune_unclaimed_data_offers();
-}
-
-static void mark_primary_selection_offer(void *data UNUSED, struct zwp_primary_selection_device_v1* primary_selection_device UNUSED,
-        struct zwp_primary_selection_offer_v1 *primary_selection_offer) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == primary_selection_offer) {
-            _glfw.wl.dataOffers[i].offer_type = PRIMARY_SELECTION;
-        } else if (_glfw.wl.dataOffers[i].offer_type == PRIMARY_SELECTION) {
-            _glfw.wl.dataOffers[i].offer_type = EXPIRED;  // previous selection offer
-        }
-    }
-    prune_unclaimed_data_offers();
+    if (offer->requested_drop_data) destroy_drop_data(offer);
+    memset(offer, 0, sizeof(offer[0]));
 }
 
 static void
-set_offer_mimetype(_GLFWWaylandDataOffer* offer, const char* mime) {
+mark_data_offer(_GLFWWaylandDataOffer *ans, void *id) {
+    if (ans->id) destroy_data_offer(ans);
+    for (size_t i = 0; i < arraysz(_glfw.wl.untyped_data_offers); i++) {
+        _GLFWWaylandDataOffer *offer = _glfw.wl.untyped_data_offers + i;
+        if (offer->id == id) {
+            *ans = *offer;
+            memset(offer, 0, sizeof(offer[0]));
+            break;
+        }
+    }
+}
+
+static void
+mark_selection_offer(void *data UNUSED, struct wl_data_device *data_device UNUSED, struct wl_data_offer *data_offer) {
+    mark_data_offer(&_glfw.wl.clipboard_data_offer, data_offer);
+}
+
+static void
+mark_primary_selection_offer(void *data UNUSED, struct zwp_primary_selection_device_v1* primary_selection_device UNUSED,
+        struct zwp_primary_selection_offer_v1 *primary_selection_offer) {
+    mark_data_offer(&_glfw.wl.primary_data_offer, primary_selection_offer);
+}
+
+static void
+add_offer_mimetype(_GLFWWaylandDataOffer* offer, const char* mime, bool is_self_offer) {
+    if (is_self_offer) offer->is_self_offer = is_self_offer;
     if (strcmp(mime, clipboard_mime()) == 0) {
         offer->is_self_offer = true;
     }
-    if (!offer->mimes || offer->mimes_count >= offer->mimes_capacity - 1) {
+    if (!offer->mimes || offer->mimes_count + 1 >= offer->mimes_capacity) {
         offer->mimes = realloc(offer->mimes, sizeof(char*) * (offer->mimes_capacity + 64));
         if (offer->mimes) offer->mimes_capacity += 64;
         else return;
@@ -2372,42 +2377,41 @@ set_offer_mimetype(_GLFWWaylandDataOffer* offer, const char* mime) {
     offer->mimes[offer->mimes_count++] = _glfw_strdup(mime);
 }
 
-static void handle_offer_mimetype(void *data UNUSED, struct wl_data_offer* id, const char *mime) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == id) {
-            set_offer_mimetype(&_glfw.wl.dataOffers[i], mime);
-            break;
-        }
+static _GLFWWaylandDataOffer*
+data_offer_for_id(void *id) {
+    for (size_t i = 0; i < arraysz(_glfw.wl.untyped_data_offers); i++) {
+        _GLFWWaylandDataOffer *offer = _glfw.wl.untyped_data_offers + i;
+        if (offer->id == id) return offer;
     }
+    if (_glfw.wl.clipboard_data_offer.id == id) return &_glfw.wl.clipboard_data_offer;
+    if (_glfw.wl.primary_data_offer.id == id) return &_glfw.wl.primary_data_offer;
+    if (_glfw.wl.drop_data_offer.id == id) return &_glfw.wl.drop_data_offer;
+    return NULL;
+}
+
+static void
+add_generic_offer_mimetype(void *id, const char *mime, bool is_self_offer) {
+    _GLFWWaylandDataOffer *offer = data_offer_for_id(id);
+    if (offer) add_offer_mimetype(offer, mime, is_self_offer);
+}
+
+static void handle_offer_mimetype(void *data UNUSED, struct wl_data_offer* id, const char *mime) {
+    add_generic_offer_mimetype(id, mime, strcmp(mime, clipboard_mime()) == 0);
 }
 
 static void handle_primary_selection_offer_mimetype(void *data UNUSED, struct zwp_primary_selection_offer_v1* id, const char *mime) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == id) {
-            set_offer_mimetype((_GLFWWaylandDataOffer*)&_glfw.wl.dataOffers[i], mime);
-            break;
-        }
-    }
+    add_generic_offer_mimetype(id, mime, strcmp(mime, clipboard_mime()) == 0);
 }
 
 static void data_offer_source_actions(void *data UNUSED, struct wl_data_offer* id, uint32_t actions) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == id) {
-            _glfw.wl.dataOffers[i].source_actions = actions;
-            break;
-        }
-    }
+    _GLFWWaylandDataOffer *offer = data_offer_for_id(id);
+    if (offer) offer->source_actions = actions;
 }
 
 static void data_offer_action(void *data UNUSED, struct wl_data_offer* id, uint32_t action) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == id) {
-            _glfw.wl.dataOffers[i].dnd_action = action;
-            break;
-        }
-    }
+    _GLFWWaylandDataOffer *offer = data_offer_for_id(id);
+    if (offer) offer->dnd_action = action;
 }
-
 
 static const struct wl_data_offer_listener data_offer_listener = {
     .offer = handle_offer_mimetype,
@@ -2419,25 +2423,20 @@ static const struct zwp_primary_selection_offer_v1_listener primary_selection_of
     .offer = handle_primary_selection_offer_mimetype,
 };
 
-static size_t
+static void
 handle_data_offer_generic(void *id, bool is_primary) {
-    size_t smallest_idx = SIZE_MAX, pos = 0;
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].idx && _glfw.wl.dataOffers[i].idx < smallest_idx) {
-            smallest_idx = _glfw.wl.dataOffers[i].idx;
-            pos = i;
-        }
-        if (_glfw.wl.dataOffers[i].id == NULL) {
-            pos = i;
-            goto end;
+    for (size_t i = 0; i < arraysz(_glfw.wl.untyped_data_offers); i++) {
+        _GLFWWaylandDataOffer *offer = _glfw.wl.untyped_data_offers + i;
+        if (offer->id == NULL) {
+            offer->id = id;
+            offer->is_primary = is_primary;
+            return;
         }
     }
-    if (_glfw.wl.dataOffers[pos].id) destroy_data_offer(&_glfw.wl.dataOffers[pos]);
-end:
-    _glfw.wl.dataOffers[pos].id = id;
-    _glfw.wl.dataOffers[pos].is_primary = is_primary;
-    _glfw.wl.dataOffers[pos].idx = ++_glfw.wl.dataOffersCounter;
-    return pos;
+    if (is_primary) zwp_primary_selection_offer_v1_destroy(id);
+    else wl_data_offer_destroy(id);
+    _glfwInputError(GLFW_PLATFORM_ERROR,
+                    "Wayland: too many untyped data offers");
 }
 
 static void handle_data_offer(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, struct wl_data_offer *id) {
@@ -2450,8 +2449,10 @@ static void handle_primary_selection_offer(void *data UNUSED, struct zwp_primary
     zwp_primary_selection_offer_v1_add_listener(id, &primary_selection_offer_listener, NULL);
 }
 
-// Helper function to update drag state from callback results
-static void update_drag_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUSED, bool accepted, int mime_count) {
+// Helper function to update drop state from callback results
+static void
+update_drop_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUSED, size_t mime_count) {
+    bool accepted = mime_count > 0;
     bool acceptance_changed = (accepted != d->drag_accepted);
     // The first MIME in the sorted list is the preferred one for drop
     const char* new_preferred_mime = (accepted && mime_count > 0) ? d->mimes[0] : NULL;
@@ -2475,122 +2476,164 @@ static void update_drag_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUS
 
 static void
 drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
-        if (d->id == id) {
-            d->offer_type = DRAG_AND_DROP;
-            d->surface = surface;
-            d->serial = serial;
-            d->drag_accepted = false;
-            d->mime_for_drop = NULL;
-            _GLFWwindow* window = _glfw.windowListHead;
-            while (window)
-            {
-                if (window->wl.surface == surface) {
-                    // Call drag enter callback with writable MIME types array
-                    double xpos = wl_fixed_to_double(x);
-                    double ypos = wl_fixed_to_double(y);
-                    double scale = _glfwWaylandWindowScale(window);
-                    int mime_count = (int)d->mimes_count;
-                    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_ENTER, scale * xpos, scale * ypos, d->mimes, &mime_count);
-
-                    // Update drag state based on callback results
-                    update_drag_state(d, window, accepted, mime_count);
-                    break;
-                }
-                window = window->next;
-            }
-        } else if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
-            _glfw.wl.dataOffers[i].offer_type = EXPIRED;  // previous drag offer
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    mark_data_offer(offer, id);
+    if (!offer->id) return;
+    offer->is_self_offer = (_glfw.wl.drag.window_id != 0);
+    offer->surface = surface;
+    offer->serial = serial;
+    offer->drag_accepted = false;
+    offer->mime_for_drop = NULL;
+    _GLFWwindow* window = _glfw.windowListHead;
+    while (window) {
+        if (window->wl.surface == surface) {
+            double xpos = wl_fixed_to_double(x);
+            double ypos = wl_fixed_to_double(y);
+            double scale = _glfwWaylandWindowScale(window);
+            size_t mime_count = _glfwInputDropEvent(
+                    window, GLFW_DROP_ENTER, scale * xpos, scale * ypos,
+                    offer->mimes, offer->mimes_count, offer->is_self_offer);
+            update_drop_state(offer, window, mime_count);
+            break;
         }
+        window = window->next;
     }
-    prune_unclaimed_data_offers();
 }
 
 static void
 drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
-            // Find the window for this offer and call the leave callback
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (offer->id) {
+        _GLFWwindow* window = _glfw.windowListHead;
+        while (window) {
+            if (window->wl.surface == _glfw.wl.drop_data_offer.surface) {
+                _glfwInputDropEvent(window, GLFW_DROP_LEAVE, 0, 0, NULL, 0, offer->is_self_offer);
+                break;
+            }
+            window = window->next;
+        }
+        if (!offer->dropped) destroy_data_offer(offer);
+    }
+}
+
+void
+_glfwPlatformEndDrop(GLFWwindow *w UNUSED, GLFWDragOperationType op UNUSED) {
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (offer->id) destroy_data_offer(offer);
+}
+
+ssize_t
+_glfwPlatformReadAvailableDropData(GLFWwindow *w, GLFWDropEvent *ev, char *buffer, size_t sz) {
+    _GLFWwindow *window = (_GLFWwindow*)w;
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (!offer->id || offer->surface != window->wl.surface) return -ENOENT;
+    int fd = (int)ev->xpos;
+    for (size_t o = 0; o < offer->dd_count; o++) {
+        if (offer->requested_drop_data[o].fd == fd) {
+            ssize_t ret;
+            do { ret = read(fd, buffer, sz); } while (ret < 0 && errno == EINTR);
+            return ret < 0 ? -errno : ret;
+        }
+    }
+    return -ENOENT;
+}
+
+static void
+drop_data_available(int fd, int events UNUSED, void *data UNUSED) {
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (!offer->id) return;
+    for (size_t o = 0; o < offer->dd_count; o++) {
+        if (offer->requested_drop_data[o].fd == fd) {
             _GLFWwindow* window = _glfw.windowListHead;
             while (window) {
-                if (window->wl.surface == _glfw.wl.dataOffers[i].surface) {
-                    _glfwInputDragEvent(window, GLFW_DRAG_LEAVE, 0, 0, NULL, NULL);
-                    break;
+                if (window->wl.surface == offer->surface) {
+                    const char *mimes[1] = {offer->requested_drop_data[o].mime};
+                    _glfwInputDropEvent(window, GLFW_DROP_DATA_AVAILABLE, fd, 0, mimes, 1, offer->is_self_offer);
+                    return;
                 }
                 window = window->next;
             }
-            destroy_data_offer(&_glfw.wl.dataOffers[i]);
+            destroy_data_offer(offer);
         }
     }
 }
 
+static int
+request_drop_data(_GLFWWaylandDataOffer *offer, const char *mime) {
+    int pipefd[2];
+    if (pipe2(pipefd, O_CLOEXEC | O_NONBLOCK) != 0) return errno;
+    wl_data_offer_receive(offer->id, mime, pipefd[1]);
+    safe_close(pipefd[1]);
+    // Flush to ensure the compositor processes the receive request
+    wl_display_flush(_glfw.wl.display);
+    id_type watch_id = addWatch(&_glfw.wl.eventLoopData, "drop_data", pipefd[0], POLLIN | POLLERR | POLLHUP, true, drop_data_available, NULL);
+    if (!watch_id) {
+        safe_close(pipefd[0]);
+        return ERANGE;
+    }
+    char *mt = _glfw_strdup(mime);
+    if (!mt) {
+        safe_close(pipefd[0]);
+        removeWatch(&_glfw.wl.eventLoopData, watch_id);
+        return ENOMEM;
+    }
+    if (!offer->requested_drop_data || offer->dd_count + 1 >= offer->dd_capacity) {
+        void *p = realloc(offer->requested_drop_data, sizeof(offer->requested_drop_data[0]) * (offer->dd_capacity + 8));
+        if (!p) {
+            safe_close(pipefd[0]);
+            removeWatch(&_glfw.wl.eventLoopData, watch_id);
+            free(mt);
+            return ENOMEM;
+        }
+        offer->requested_drop_data = p;
+        offer->dd_capacity += 64;
+    }
+    offer->requested_drop_data[offer->dd_count].mime = mt;
+    offer->requested_drop_data[offer->dd_count].watch_id = watch_id;
+    offer->requested_drop_data[offer->dd_count].fd = pipefd[0];
+    offer->dd_count++;
+    return 0;
+}
+
+int
+_glfwPlatformRequestDropData(_GLFWwindow *window UNUSED, const char *mime) {
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (offer->id) return request_drop_data(offer, mime);
+    return EINVAL;
+}
+
 static void
 drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
-            _GLFWWaylandDataOffer *offer = &_glfw.wl.dataOffers[i];
-
-            _GLFWwindow* window = _glfw.windowListHead;
-            while (window) {
-                if (window->wl.surface == offer->surface) {
-                    // Heap-allocate drop data structure for chunked reading
-                    // The application is responsible for freeing this via glfwFinishDrop
-                    GLFWDropData* drop_data = calloc(1, sizeof(GLFWDropData));
-                    if (!drop_data) {
-                        _glfwInputError(GLFW_OUT_OF_MEMORY, "Wayland: Failed to allocate drop data");
-                        destroy_data_offer(offer);  // Clean up the offer on allocation failure
-                        break;
-                    }
-                    // Transfer ownership of mimes array from offer to drop object
-                    drop_data->mime_types = offer->mimes;
-                    drop_data->mime_count = (int)offer->mimes_count;
-                    drop_data->mime_array_size = (int)offer->mimes_count;
-                    drop_data->current_mime = NULL;
-                    drop_data->read_fd = -1;
-                    drop_data->bytes_read = 0;
-                    drop_data->platform_data = offer->id;  // Store the offer for later use
-                    offer->mimes = NULL; offer->id = NULL;
-                    destroy_data_offer(offer);
-                    drop_data->eof_reached = false;
-                    memset(offer, 0, sizeof(offer[0]));
-                    // Check if the drop is from this application
-                    bool from_self = (_glfw.wl.drag.window_id != 0);
-                    _glfwInputDrop(window, drop_data, from_self);
-                    // Note: drop_data is NOT freed here - application must call glfwFinishDrop
-                    break;
-                }
-                window = window->next;
-            }
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (!offer->id) return;
+    offer->dropped = true;
+    _GLFWwindow* window = _glfw.windowListHead;
+    while (window) {
+        if (window->wl.surface == offer->surface) {
+            size_t num_mimes = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, offer->mimes, offer->mimes_count, offer->is_self_offer);
+            for (size_t i = 0; i < num_mimes; i++) request_drop_data(offer, offer->mimes[i]);
             break;
         }
+        window = window->next;
     }
 }
 
 static void
 motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t time UNUSED, wl_fixed_t x, wl_fixed_t y) {
-    // Find the current drag offer and send motion events
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        _GLFWWaylandDataOffer *d = &_glfw.wl.dataOffers[i];
-        if (d->offer_type == DRAG_AND_DROP) {
-            _GLFWwindow* window = _glfw.windowListHead;
-            while (window) {
-                if (window->wl.surface == d->surface) {
-                    double xpos = wl_fixed_to_double(x);
-                    double ypos = wl_fixed_to_double(y);
-                    double scale = _glfwWaylandWindowScale(window);
-                    // Pass the MIME types array for move events
-                    int mime_count = (int)d->mimes_count;
-                    int accepted = _glfwInputDragEvent(window, GLFW_DRAG_MOVE, scale * xpos, scale * ypos, d->mimes, &mime_count);
-
-                    // Update drag state based on callback results
-                    update_drag_state(d, window, accepted, mime_count);
-                    break;
-                }
-                window = window->next;
-            }
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (!offer->id) return;
+    _GLFWwindow* window = _glfw.windowListHead;
+    while (window) {
+        if (window->wl.surface == offer->surface) {
+            double xpos = wl_fixed_to_double(x);
+            double ypos = wl_fixed_to_double(y);
+            double scale = _glfwWaylandWindowScale(window);
+            size_t mime_count = _glfwInputDropEvent(
+                window, GLFW_DROP_MOVE, scale * xpos, scale * ypos, offer->mimes, offer->mimes_count, offer->is_self_offer);
+            update_drop_state(offer, window, mime_count);
             break;
         }
+        window = window->next;
     }
 }
 
@@ -2607,7 +2650,7 @@ static const struct zwp_primary_selection_device_v1_listener primary_selection_d
     .data_offer = handle_primary_selection_offer,
     .selection = mark_primary_selection_offer,
 };
-
+// }}}
 
 void _glfwSetupWaylandDataDevice(void) {
     _glfw.wl.dataDevice = wl_data_device_manager_get_data_device(_glfw.wl.dataDeviceManager, _glfw.wl.seat);
@@ -2744,39 +2787,34 @@ plain_text_mime_for_offer(const _GLFWWaylandDataOffer *d) {
 
 void
 _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object) {
-    _GLFWWaylandOfferType offer_type = clipboard_type == GLFW_PRIMARY_SELECTION ? PRIMARY_SELECTION : CLIPBOARD;
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
-        if (d->id && d->offer_type == offer_type) {
-            if (d->is_self_offer) {
-                write_data(object, NULL, 1);
-                return;
-            }
-            if (mime_type == NULL) {
-                bool ok = true;
-                for (size_t o = 0; o < d->mimes_count; o++) {
-                    const char *q = d->mimes[o];
-                    if (strchr(d->mimes[0], '/')) {
-                        if (strcmp(q, clipboard_mime()) == 0) continue;
-                        if (strcmp(q, "text/plain;charset=utf-8") == 0) q = "text/plain";
-                    } else {
-                        if (strcmp(q, "UTF8_STRING") == 0 || strcmp(q, "STRING") == 0 || strcmp(q, "TEXT") == 0) q = "text/plain";
-                    }
-                    if (ok) ok = write_data(object, q, strlen(q));
-                }
-                return;
-            }
-            if (strcmp(mime_type, "text/plain") == 0) {
-                mime_type = plain_text_mime_for_offer(d);
-                if (!mime_type) return;
-            }
-            if (d->is_primary) {
-                read_primary_selection_offer(d->id, mime_type, write_data, object);
+    _GLFWWaylandDataOffer *d = clipboard_type == GLFW_PRIMARY_SELECTION ? &_glfw.wl.primary_data_offer : &_glfw.wl.clipboard_data_offer;
+    if (!d->id) return;
+    if (d->is_self_offer) {
+        write_data(object, NULL, 1);
+        return;
+    }
+    if (mime_type == NULL) {
+        bool ok = true;
+        for (size_t o = 0; o < d->mimes_count; o++) {
+            const char *q = d->mimes[o];
+            if (strchr(d->mimes[0], '/')) {
+                if (strcmp(q, clipboard_mime()) == 0) continue;
+                if (strcmp(q, "text/plain;charset=utf-8") == 0) q = "text/plain";
             } else {
-                read_clipboard_data_offer(d->id, mime_type, write_data, object);
+                if (strcmp(q, "UTF8_STRING") == 0 || strcmp(q, "STRING") == 0 || strcmp(q, "TEXT") == 0) q = "text/plain";
             }
-            break;
+            if (ok) ok = write_data(object, q, strlen(q));
         }
+        return;
+    }
+    if (strcmp(mime_type, "text/plain") == 0) {
+        mime_type = plain_text_mime_for_offer(d);
+        if (!mime_type) return;
+    }
+    if (d->is_primary) {
+        read_primary_selection_offer(d->id, mime_type, write_data, object);
+    } else {
+        read_clipboard_data_offer(d->id, mime_type, write_data, object);
     }
 }
 
@@ -3312,116 +3350,12 @@ _glfwPlatformSendDragData(GLFWDragSourceData* source_data, const void* data, siz
 }
 
 void
-_glfwPlatformUpdateDragState(_GLFWwindow* window) {
-    // Find the active drag offer for this window and call the drag callback immediately
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        _GLFWWaylandDataOffer *d = &_glfw.wl.dataOffers[i];
-        if (d->offer_type == DRAG_AND_DROP && window->wl.surface == d->surface) {
-            // Call the drag callback with STATUS_UPDATE event to get updated state
-            // Position values are not valid for this event type
-            int mime_count = (int)d->mimes_count;
-            int accepted = _glfwInputDragEvent(window, GLFW_DRAG_STATUS_UPDATE, 0, 0, d->mimes, &mime_count);
-
-            // Update drag state based on callback results
-            update_drag_state(d, window, accepted, mime_count);
-            return;
-        }
+_glfwPlatformRequestDropUpdate(_GLFWwindow* window) {
+    _GLFWWaylandDataOffer *d = &_glfw.wl.drop_data_offer;
+    if (d->id) {
+        size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_STATUS_UPDATE, 0, 0, d->mimes, d->mimes_count, d->is_self_offer);
+        update_drop_state(d, window, mime_count);
     }
-}
-
-const char**
-_glfwPlatformGetDropMimeTypes(GLFWDropData* drop, int* count) {
-    if (!drop || !count) return NULL;
-    *count = drop->mime_count;
-    return drop->mime_types;
-}
-
-ssize_t
-_glfwPlatformReadDropData(GLFWDropData* drop, const char* mime, void* buffer, size_t capacity, monotonic_t timeout) {
-    if (!drop->platform_data) return -EINVAL;
-
-    // Check if the MIME type is available
-    bool mime_found = false;
-    for (int i = 0; i < drop->mime_count; i++) {
-        if (drop->mime_types[i] && strcmp(drop->mime_types[i], mime) == 0) {
-            mime_found = true;
-            break;
-        }
-    }
-    if (!mime_found) return -ENOENT;
-
-    // If switching MIME types, close the previous file descriptor
-    if (drop->current_mime && strcmp(drop->current_mime, mime) != 0) {
-        if (drop->read_fd >= 0) {
-            close(drop->read_fd);
-            drop->read_fd = -1;
-        }
-        drop->bytes_read = 0;
-        drop->eof_reached = false;
-        free(drop->current_mime); drop->current_mime = NULL;
-    }
-
-    // If we've reached EOF for this MIME type, return 0
-    if (drop->eof_reached && drop->current_mime && strcmp(drop->current_mime, mime) == 0) return 0;
-
-    // Open a new pipe if we don't have one for this MIME type
-    if (drop->read_fd < 0 || drop->current_mime == NULL) {
-        int pipefd[2];
-        if (pipe2(pipefd, O_CLOEXEC | O_NONBLOCK) != 0) return -EIO;
-        wl_data_offer_receive(drop->platform_data, mime, pipefd[1]);
-        close(pipefd[1]);
-        // Flush to ensure the compositor processes the receive request
-        wl_display_flush(_glfw.wl.display);
-        drop->read_fd = pipefd[0];
-        // mime points to drop->mime_types entry, valid for duration of drop callback
-        drop->current_mime = _glfw_strdup(mime);
-        drop->bytes_read = 0;
-        drop->eof_reached = false;
-    }
-
-    // Wait for data with timeout using poll
-    monotonic_t start = monotonic();
-    while (true) {
-        struct pollfd pfd = { .fd = drop->read_fd, .events = POLLIN };
-
-        monotonic_t remaining = timeout - (monotonic() - start);
-        if (timeout > 0 && remaining <= 0) return -ETIME;
-
-        int poll_timeout_ms = (timeout <= 0) ? 0 : monotonic_t_to_ms(remaining);
-        if (poll_timeout_ms < 1 && timeout > 0) poll_timeout_ms = 1;
-
-        int ret = poll(&pfd, 1, poll_timeout_ms);
-        if (ret < 0) {
-            if (errno == EINTR) continue;
-            return -EIO;
-        }
-        if (ret == 0) {
-            if (timeout <= 0) {
-                // Non-blocking mode: no data available yet, try reading anyway
-                break;
-            }
-            return -ETIME;
-        }
-        break;  // Data available
-    }
-
-    // Read data from the pipe
-    ssize_t bytes_read = -1;
-    errno = EINTR;
-    while (errno == EINTR) { errno = 0; bytes_read = read(drop->read_fd, buffer, capacity); }
-    if (bytes_read < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-            return -ETIME;  // No data available yet
-        }
-        return -EIO;
-    }
-    if (bytes_read == 0) {
-        // EOF reached
-        drop->eof_reached = true;
-        return 0;
-    }
-    drop->bytes_read += bytes_read;
-    return bytes_read;
 }
 
 void

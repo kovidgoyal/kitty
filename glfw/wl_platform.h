@@ -296,19 +296,9 @@ typedef struct _GLFWwindowWayland
     struct zwp_keyboard_shortcuts_inhibitor_v1 *keyboard_shortcuts_inhibitor;
 } _GLFWwindowWayland;
 
-typedef enum _GLFWWaylandOfferType
-{
-    EXPIRED,
-    CLIPBOARD,
-    DRAG_AND_DROP,
-    PRIMARY_SELECTION
-}_GLFWWaylandOfferType ;
-
 typedef struct _GLFWWaylandDataOffer
 {
     void *id;
-    _GLFWWaylandOfferType offer_type;
-    size_t idx;
     bool is_self_offer;
     bool is_primary;
     const char *mime_for_drop;
@@ -317,8 +307,14 @@ typedef struct _GLFWWaylandDataOffer
     struct wl_surface *surface;
     const char **mimes;
     size_t mimes_capacity, mimes_count;
-    bool drag_accepted;
+    bool drag_accepted, dropped;
     uint32_t serial;
+    struct {
+        id_type watch_id;
+        int fd;
+        char *mime;
+    } *requested_drop_data;
+    size_t dd_capacity, dd_count;
 } _GLFWWaylandDataOffer;
 
 // Wayland-specific global data
@@ -404,8 +400,9 @@ typedef struct _GLFWlibraryWayland
     } activation_requests;
 
     EventLoopData eventLoopData;
-    size_t dataOffersCounter;
-    _GLFWWaylandDataOffer dataOffers[8];
+    _GLFWWaylandDataOffer untyped_data_offers[8];
+    _GLFWWaylandDataOffer clipboard_data_offer, primary_data_offer, drop_data_offer;
+
     bool has_preferred_buffer_scale;
     char *compositor_name;
 

@@ -1112,6 +1112,35 @@ typedef struct GLFWDBUSNotificationData {
     int32_t timeout; uint8_t urgency; uint32_t replaces; int muted;
 } GLFWDBUSNotificationData;
 
+typedef enum { GLFW_DROP_ENTER, GLFW_DROP_MOVE, GLFW_DROP_LEAVE, GLFW_DROP_DROP, GLFW_DROP_STATUS_UPDATE, GLFW_DROP_DATA_AVAILABLE } GLFWDropEventType;
+
+/*! @brief Drag operation types.
+ *
+ *  These constants specify the type of drag operation (copy, move, or generic).
+ *
+ *  @ingroup input
+ */
+typedef enum {
+    /*! Move the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_MOVE = 1,
+    /*! Copy the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_COPY = 2,
+    /*! Generic drag operation (platform decides semantics). */
+    GLFW_DRAG_OPERATION_GENERIC = 4
+} GLFWDragOperationType;
+
+
+typedef struct GLFWDropEvent {
+    GLFWDropEventType type;
+    const char **mimes; size_t num_mimes;
+    double xpos, ypos;  // Only valid for GLFW_DROP_ENTER and GLFW_DROP_MOVE
+    bool from_self;
+    ssize_t (*read_data)(GLFWwindow *w, struct GLFWDropEvent* ev, char *buffer, size_t sz);  // Only valid for GLFW_DROP_DATA_AVAILABLE
+    void (*finish_drop)(GLFWwindow *w, GLFWDragOperationType op); // Only valid for GLFW_DROP_DROP and GLFW_DROP_DATA_AVAILABLE
+} GLFWDropEvent;
+typedef void (* GLFWdropeventfun)(GLFWwindow*, GLFWDropEvent *event);
+
+
 /*! @brief The function pointer type for error callbacks.
  *
  *  This is the function pointer type for error callbacks.  An error callback
@@ -1528,6 +1557,12 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *  responsible for calling glfwFinishDrop when it has finished reading
  *  the dropped data, even if reading fails or is not needed.
  *
+ *  @param[in] window The window that received the drop.
+ *  @param[in] drop Opaque drop data pointer (heap-allocated).
+ *  @param[in] from_self true if the drop originated from this application
+ *  (i.e., the application is both the drag source and drop target), false
+ *  if the drop came from an external application.
+ *
  *  @sa @ref path_drop
  *  @sa @ref glfwSetDropCallback
  *  @sa @ref glfwGetDropMimeTypes
@@ -1557,21 +1592,6 @@ typedef enum {
     /*! Async status update request (xpos/ypos are invalid). */
     GLFW_DRAG_STATUS_UPDATE = 4
 } GLFWDragEventType;
-
-/*! @brief Drag operation types.
- *
- *  These constants specify the type of drag operation (copy, move, or generic).
- *
- *  @ingroup input
- */
-typedef enum {
-    /*! Move the dragged data to the destination. */
-    GLFW_DRAG_OPERATION_MOVE = 1,
-    /*! Copy the dragged data to the destination. */
-    GLFW_DRAG_OPERATION_COPY = 2,
-    /*! Generic drag operation (platform decides semantics). */
-    GLFW_DRAG_OPERATION_GENERIC = 4
-} GLFWDragOperationType;
 
 /*! @brief Opaque drag source data handle.
  *
@@ -2327,9 +2347,17 @@ typedef GLFWliveresizefun (*glfwSetLiveResizeCallback_func)(GLFWwindow*, GLFWliv
 GFW_EXTERN glfwSetLiveResizeCallback_func glfwSetLiveResizeCallback_impl;
 #define glfwSetLiveResizeCallback glfwSetLiveResizeCallback_impl
 
-typedef GLFWdragfun (*glfwSetDragCallback_func)(GLFWwindow*, GLFWdragfun);
-GFW_EXTERN glfwSetDragCallback_func glfwSetDragCallback_impl;
-#define glfwSetDragCallback glfwSetDragCallback_impl
+typedef GLFWdropeventfun (*glfwSetDropEventCallback_func)(GLFWwindow*, GLFWdropeventfun);
+GFW_EXTERN glfwSetDropEventCallback_func glfwSetDropEventCallback_impl;
+#define glfwSetDropEventCallback glfwSetDropEventCallback_impl
+
+typedef int (*glfwRequestDropData_func)(GLFWwindow*, const char*);
+GFW_EXTERN glfwRequestDropData_func glfwRequestDropData_impl;
+#define glfwRequestDropData glfwRequestDropData_impl
+
+typedef void (*glfwEndDrop_func)(GLFWwindow*, GLFWDragOperationType);
+GFW_EXTERN glfwEndDrop_func glfwEndDrop_impl;
+#define glfwEndDrop glfwEndDrop_impl
 
 typedef GLFWdragsourcefun (*glfwSetDragSourceCallback_func)(GLFWwindow*, GLFWdragsourcefun);
 GFW_EXTERN glfwSetDragSourceCallback_func glfwSetDragSourceCallback_impl;
@@ -2342,22 +2370,6 @@ GFW_EXTERN glfwStartDrag_func glfwStartDrag_impl;
 typedef ssize_t (*glfwSendDragData_func)(GLFWDragSourceData*, const void*, size_t);
 GFW_EXTERN glfwSendDragData_func glfwSendDragData_impl;
 #define glfwSendDragData glfwSendDragData_impl
-
-typedef void (*glfwUpdateDragState_func)(GLFWwindow*);
-GFW_EXTERN glfwUpdateDragState_func glfwUpdateDragState_impl;
-#define glfwUpdateDragState glfwUpdateDragState_impl
-
-typedef const char** (*glfwGetDropMimeTypes_func)(GLFWDropData*, int*);
-GFW_EXTERN glfwGetDropMimeTypes_func glfwGetDropMimeTypes_impl;
-#define glfwGetDropMimeTypes glfwGetDropMimeTypes_impl
-
-typedef ssize_t (*glfwReadDropData_func)(GLFWDropData*, const char*, void*, size_t, monotonic_t);
-GFW_EXTERN glfwReadDropData_func glfwReadDropData_impl;
-#define glfwReadDropData glfwReadDropData_impl
-
-typedef void (*glfwFinishDrop_func)(GLFWDropData*, GLFWDragOperationType, bool);
-GFW_EXTERN glfwFinishDrop_func glfwFinishDrop_impl;
-#define glfwFinishDrop glfwFinishDrop_impl
 
 typedef int (*glfwJoystickPresent_func)(int);
 GFW_EXTERN glfwJoystickPresent_func glfwJoystickPresent_impl;
