@@ -1528,6 +1528,12 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *  responsible for calling glfwFinishDrop when it has finished reading
  *  the dropped data, even if reading fails or is not needed.
  *
+ *  @param[in] window The window that received the drop.
+ *  @param[in] drop Opaque drop data pointer (heap-allocated).
+ *  @param[in] from_self true if the drop originated from this application
+ *  (i.e., the application is both the drag source and drop target), false
+ *  if the drop came from an external application.
+ *
  *  @sa @ref path_drop
  *  @sa @ref glfwSetDropCallback
  *  @sa @ref glfwGetDropMimeTypes
@@ -2546,6 +2552,10 @@ GFW_EXTERN glfwWaylandRunWithActivationToken_func glfwWaylandRunWithActivationTo
 typedef bool (*glfwWaylandSetTitlebarColor_func)(GLFWwindow*, uint32_t, bool);
 GFW_EXTERN glfwWaylandSetTitlebarColor_func glfwWaylandSetTitlebarColor_impl;
 #define glfwWaylandSetTitlebarColor glfwWaylandSetTitlebarColor_impl
+
+typedef void (*glfwWaylandSetTitlebarHidden_func)(GLFWwindow*, bool);
+GFW_EXTERN glfwWaylandSetTitlebarHidden_func glfwWaylandSetTitlebarHidden_impl;
+#define glfwWaylandSetTitlebarHidden glfwWaylandSetTitlebarHidden_impl
 
 typedef void (*glfwWaylandRedrawCSDWindowTitle_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandRedrawCSDWindowTitle_func glfwWaylandRedrawCSDWindowTitle_impl;

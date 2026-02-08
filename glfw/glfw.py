@@ -323,6 +323,7 @@ def generate_wrappers(glfw_header: str) -> None:
     const char* glfwWaylandMissingCapabilities(void)
     void glfwWaylandRunWithActivationToken(GLFWwindow *handle, GLFWactivationcallback cb, void *cb_data)
     bool glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, bool use_system_color)
+    void glfwWaylandSetTitlebarHidden(GLFWwindow *handle, bool hidden)
     void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle)
     bool glfwWaylandIsWindowFullyCreated(GLFWwindow *handle)
     bool glfwWaylandBeep(GLFWwindow *handle)
