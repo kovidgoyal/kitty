@@ -1176,6 +1176,19 @@ convert_from_opts_dim_opacity(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_generate_256_palette(PyObject *val, Options *opts) {
+    opts->generate_256_palette = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_generate_256_palette(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "generate_256_palette");
+    if (ret == NULL) return;
+    convert_from_python_generate_256_palette(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_close_on_child_death(PyObject *val, Options *opts) {
     opts->close_on_child_death = PyObject_IsTrue(val);
 }
@@ -1551,6 +1564,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_background_tint_gaps(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_dim_opacity(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_generate_256_palette(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_close_on_child_death(py_opts, opts);
     if (PyErr_Occurred()) return false;
