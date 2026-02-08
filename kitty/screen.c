@@ -3541,7 +3541,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
                             self->marker, linebuf->line, &self->as_ansi_buf);
                     linebuf_mark_line_clean(linebuf, y);
                 }
-                update_line_data(linebuf->line, y, address);
+                if (address) update_line_data(linebuf->line, y, address);
             }
         }
         return;
@@ -3562,7 +3562,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         index_type lnum = 0;
         Line *linep = render_line_for_virtual_y(self, virtual_y, &line, &lnum, &is_history);
         if (linep == NULL) {
-            update_line_data_blank(self->columns, render_row, address);
+            if (address) update_line_data_blank(self->columns, render_row, address);
             continue;
         }
         if (is_history) {
@@ -3585,14 +3585,14 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
                 linebuf_mark_line_clean(self->linebuf, lnum);
             }
         }
-        update_line_data(linep, render_row, address);
+        if (address) update_line_data(linep, render_row, address);
     }
     if (is_overlay_active && self->overlay_line.ynum + self->scrolled_by < self->lines) {
         if (self->overlay_line.is_dirty) {
             linebuf_init_line(self->linebuf, self->overlay_line.ynum);
             render_overlay_line(self, self->linebuf->line, fonts_data);
         }
-        update_overlay_line_data(self, address);
+        if (address) update_overlay_line_data(self, address);
     }
 }
 
