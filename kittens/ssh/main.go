@@ -736,12 +736,12 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 	cd.hostname_for_match, cd.username = hostname_for_match, uname
 	escape_codes_to_set_colors, err := change_colors(cd.host_opts.Color_scheme)
 	if err == nil {
-		err = term.WriteAllString(escape_codes_to_set_colors + loop.SAVE_PRIVATE_MODE_VALUES + loop.HANDLE_TERMIOS_SIGNALS.EscapeCodeToSet())
+		err = term.WriteAllString(escape_codes_to_set_colors + loop.SAVE_PRIVATE_MODE_VALUES + loop.PUSH_KEY_FLAGS + loop.HANDLE_TERMIOS_SIGNALS.EscapeCodeToSet())
 	}
 	if err != nil {
 		return 1, err
 	}
-	restore_escape_codes := loop.RESTORE_PRIVATE_MODE_VALUES + loop.HANDLE_TERMIOS_SIGNALS.EscapeCodeToReset()
+	restore_escape_codes := loop.RESTORE_PRIVATE_MODE_VALUES + loop.POP_KEY_FLAGS + loop.HANDLE_TERMIOS_SIGNALS.EscapeCodeToReset()
 	if escape_codes_to_set_colors != "" {
 		restore_escape_codes += "\x1b[#Q"
 	}
