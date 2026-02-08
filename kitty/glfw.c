@@ -693,7 +693,7 @@ read_drop_data(GLFWwindow *window, GLFWDropEvent *ev) {
         global_state.drop_dest.num_left--;
         if (!global_state.drop_dest.num_left) {
             WINDOW_CALLBACK(on_drop, "OOii", global_state.drop_dest.data, Py_False,
-                    global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
+                global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
             finish(true);
         }
     } else if (ret > 0) {
