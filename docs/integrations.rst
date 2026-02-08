@@ -14,6 +14,12 @@ Image and document viewers
 Powered by kitty's :doc:`graphics-protocol` there exist many tools for viewing
 images and other types of documents directly in your terminal, even over SSH.
 
+.. _tool_bookorat:
+
+`bookorat <https://github.com/bugzmanov/bookokrat>`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A terminal PDF/EPUB viewer
+
 .. _tool_termpdf:
 
 `termpdf.py <https://github.com/dsanson/termpdf.py>`_
