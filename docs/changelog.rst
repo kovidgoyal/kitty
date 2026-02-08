@@ -210,6 +210,10 @@ Detailed list of changes
 
 - Fix line-at-once selection not extending wrapped lines into scrollback (:iss:`9437`)
 
+- ssh kitten: Restore keyboard mode even if the ssh connection drops
+
+- edit-in-kitty: Handle connection drop more gracefully (:pull:`9480`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

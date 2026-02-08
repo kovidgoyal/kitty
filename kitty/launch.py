@@ -6,7 +6,7 @@ import os
 import shutil
 from collections.abc import Container, Iterable, Iterator, Sequence
 from contextlib import suppress
-from typing import Any, Callable, NamedTuple, TypedDict
+from typing import Any, Callable, Literal, NamedTuple, TypedDict
 
 from .boss import Boss
 from .child import Child
@@ -904,8 +904,10 @@ def parse_message(msg: str, simple: Container[str]) -> Iterator[tuple[str, str]]
 
 
 class EditCmd:
+    abort_signaled: Literal['closed', 'replaced', 'disconnected', ''] = ''
 
-    def __init__(self, msg: str) -> None:
+    def __init__(self, msg: str, child_is_remote: bool) -> None:
+        self.child_is_remote = child_is_remote
         self.tdir = ''
         self.args: list[str] = []
         self.cwd = self.file_name = self.file_localpath = ''
@@ -914,7 +916,6 @@ class EditCmd:
         self.file_size = -1
         self.version = 0
         self.source_window_id = self.editor_window_id = -1
-        self.abort_signaled = ''
         simple = 'file_inode', 'file_data', 'abort_signaled', 'version'
         for k, v in parse_message(msg, simple):
             if k == 'file_inode':
@@ -1003,7 +1004,7 @@ class EditCmd:
             self.schedule_check()
 
     def send_data(self, window: Window, data_type: str, data: bytes = b'') -> None:
-        if not self.is_local_file and not window.child_is_remote:
+        if not self.is_local_file and self.child_is_remote and not window.child_is_remote:
             self.abort_signaled = 'disconnected'
             get_boss().show_error(
                 'edit-in-kitty', f'Failed to sync file due to the SSH connection dropping. Your local changes can still be found at {self.file_localpath}'
@@ -1097,7 +1098,7 @@ edits_in_flight: dict[int, EditCmd] = {}
 
 
 def remote_edit(msg: str, window: Window) -> None:
-    c = EditCmd(msg)
+    c = EditCmd(msg, window.child_is_remote)
     if c.abort_signaled:
         q = edits_in_flight.pop(window.id, None)
         if q is not None:
