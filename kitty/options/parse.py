@@ -48,6 +48,9 @@ class Parser:
     def active_tab_title_template(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['active_tab_title_template'] = active_tab_title_template(val)
 
+    def active_window_title_template(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['active_window_title_template'] = tab_title_template(val)
+
     def allow_cloning(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_allow_cloning:
@@ -1491,6 +1494,37 @@ class Parser:
 
     def window_resize_step_lines(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_resize_step_lines'] = positive_int(val)
+
+    def window_title_bar(self, val: str, ans: dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_window_title_bar:
+            raise ValueError(f"The value {val} is not a valid choice for window_title_bar")
+        ans["window_title_bar"] = val
+
+    choices_for_window_title_bar = frozenset(('none', 'top', 'bottom'))
+
+    def window_title_bar_active_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['window_title_bar_active_background'] = to_color_or_none(val)
+
+    def window_title_bar_active_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['window_title_bar_active_foreground'] = to_color_or_none(val)
+
+    def window_title_bar_align(self, val: str, ans: dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_window_title_bar_align:
+            raise ValueError(f"The value {val} is not a valid choice for window_title_bar_align")
+        ans["window_title_bar_align"] = val
+
+    choices_for_window_title_bar_align = choices_for_tab_bar_align
+
+    def window_title_bar_inactive_background(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['window_title_bar_inactive_background'] = to_color_or_none(val)
+
+    def window_title_bar_inactive_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['window_title_bar_inactive_foreground'] = to_color_or_none(val)
+
+    def window_title_template(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['window_title_template'] = tab_title_template(val)
 
     def x11_hide_window_decorations(self, val: str, ans: dict[str, typing.Any]) -> None:
         deprecated_hide_window_decorations_aliases('x11_hide_window_decorations', val, ans)

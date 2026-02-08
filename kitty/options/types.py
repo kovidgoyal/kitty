@@ -37,6 +37,8 @@ choices_for_terminfo_type = typing.Literal['path', 'direct', 'none']
 choices_for_undercurl_style = typing.Literal['thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense']
 choices_for_underline_hyperlinks = typing.Literal['hover', 'always', 'never']
 choices_for_window_logo_position = choices_for_placement_strategy
+choices_for_window_title_bar = typing.Literal['none', 'top', 'bottom']
+choices_for_window_title_bar_align = choices_for_tab_bar_align
 
 option_names = (
     'action_alias',
@@ -45,6 +47,7 @@ option_names = (
     'active_tab_font_style',
     'active_tab_foreground',
     'active_tab_title_template',
+    'active_window_title_template',
     'allow_cloning',
     'allow_hyperlinks',
     'allow_remote_control',
@@ -493,6 +496,13 @@ option_names = (
     'window_padding_width',
     'window_resize_step_cells',
     'window_resize_step_lines',
+    'window_title_bar',
+    'window_title_bar_active_background',
+    'window_title_bar_active_foreground',
+    'window_title_bar_align',
+    'window_title_bar_inactive_background',
+    'window_title_bar_inactive_foreground',
+    'window_title_template',
 )
 
 
@@ -502,6 +512,7 @@ class Options:
     active_tab_font_style: tuple[bool, bool] = (True, True)
     active_tab_foreground: Color = Color(0, 0, 0)
     active_tab_title_template: str | None = None
+    active_window_title_template: str = 'none'
     allow_cloning: choices_for_allow_cloning = 'ask'
     allow_hyperlinks: int = 1
     allow_remote_control: choices_for_allow_remote_control = 'no'
@@ -681,6 +692,13 @@ class Options:
     window_padding_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_resize_step_cells: int = 2
     window_resize_step_lines: int = 2
+    window_title_bar: choices_for_window_title_bar = 'none'
+    window_title_bar_active_background: kitty.fast_data_types.Color | None = None
+    window_title_bar_active_foreground: kitty.fast_data_types.Color | None = None
+    window_title_bar_align: choices_for_window_title_bar_align = 'center'
+    window_title_bar_inactive_background: kitty.fast_data_types.Color | None = None
+    window_title_bar_inactive_foreground: kitty.fast_data_types.Color | None = None
+    window_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.window}{progress_percent}{title}'
     action_alias: dict[str, str] = {}
     env: dict[str, str] = {}
     exe_search_path: dict[str, str] = {}
@@ -1101,6 +1119,10 @@ nullable_colors = frozenset({
     'cursor_trail_color',
     'visual_bell_color',
     'active_border_color',
+    'window_title_bar_active_foreground',
+    'window_title_bar_active_background',
+    'window_title_bar_inactive_foreground',
+    'window_title_bar_inactive_background',
     'tab_bar_background',
     'tab_bar_margin_color',
     'selection_foreground',

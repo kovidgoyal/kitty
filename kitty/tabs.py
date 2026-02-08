@@ -14,6 +14,7 @@ from gettext import gettext as _
 from typing import Any, Concatenate, Deque, NamedTuple, Optional, ParamSpec, TypeVar, cast
 
 from .borders import Border, Borders
+from .window_title_bar import WindowTitleBarManager
 from .child import Child
 from .cli_stub import CLIOptions, SaveAsSessionOptions
 from .constants import appname
@@ -162,6 +163,7 @@ class Tab:  # {{{
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or get_options().enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id)
+        self.window_title_bar_manager = WindowTitleBarManager(self.os_window_id, self.id)
         self.windows: WindowList = WindowList(self)
         self._last_used_layout: str | None = None
         self._current_layout_name: str | None = None
@@ -413,6 +415,7 @@ class Tab:  # {{{
         self.mark_tab_bar_dirty()
 
     def title_changed(self, window: Window) -> None:
+        self.window_title_bar_manager.update(self.windows)
         if window is self.active_window:
             tm = self.tab_manager_ref()
             if tm is not None:
@@ -441,6 +444,7 @@ class Tab:  # {{{
                 current_layout=ly, tab_bar_rects=tm.tab_bar_rects,
                 draw_window_borders=draw_borders
             )
+            self.window_title_bar_manager.update(self.windows)
 
     def create_layout_object(self, name: str) -> Layout:
         return create_layout_object_for(name, self.os_window_id, self.id)
