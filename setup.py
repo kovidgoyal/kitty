@@ -800,7 +800,6 @@ def get_source_specific_cflags(env: Env, src: str) -> List[str]:
     if is_macos and src.endswith(('.m', '.mm')):
         # The kitty codebase uses manual memory management, don't enable ARC
         # metal_renderer.m uses CFBridgingRetain/Release for manual bridging
-        pass
         # For Objective-C++ files, replace -std=c11 with -std=c++17
         if src.endswith('.mm'):
             ans = [f for f in ans if not f.startswith('-std=c')]

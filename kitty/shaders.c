@@ -140,6 +140,17 @@ free_sprite_data(FONTS_DATA_HANDLE fg) {
     if (sprite_map) {
         if (sprite_map->texture_id) free_texture(&sprite_map->texture_id);
         if (sprite_map->decorations_map.texture_id) free_texture(&sprite_map->decorations_map.texture_id);
+#ifdef __APPLE__
+        // Release Metal textures if they were retained
+        if (sprite_map->metal_texture) {
+            CFRelease(sprite_map->metal_texture);
+            sprite_map->metal_texture = NULL;
+        }
+        if (sprite_map->metal_decorations_texture) {
+            CFRelease(sprite_map->metal_decorations_texture);
+            sprite_map->metal_decorations_texture = NULL;
+        }
+#endif
         free(sprite_map);
         fg->sprite_map = NULL;
     }
