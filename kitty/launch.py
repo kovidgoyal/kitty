@@ -962,8 +962,9 @@ class EditCmd:
 
     def __del__(self) -> None:
         if self.tdir:
-            with suppress(OSError):
-                shutil.rmtree(self.tdir)
+            if not self.abort_signaled == 'disconnected':
+                with suppress(OSError):
+                    shutil.rmtree(self.tdir)
             self.tdir = ''
 
     def read_data(self) -> bytes:
@@ -1002,6 +1003,12 @@ class EditCmd:
             self.schedule_check()
 
     def send_data(self, window: Window, data_type: str, data: bytes = b'') -> None:
+        if not self.is_local_file and not window.child_is_remote:
+            self.abort_signaled = 'disconnected'
+            get_boss().show_error(
+                'edit-in-kitty', f'Failed to sync file due to the SSH connection dropping. Your local changes can still be found at {self.file_localpath}'
+            )
+            return
         window.write_to_child(f'KITTY_DATA_START\n{data_type}\n')
         if data:
             import base64
