@@ -819,17 +819,7 @@ void _glfwPlatformTerminate(void)
     if (_glfw.x11.clipboard_atoms.array) { free(_glfw.x11.clipboard_atoms.array); }
     if (_glfw.x11.primary_atoms.array) { free(_glfw.x11.primary_atoms.array); }
 
-    // Free cached drag MIME types (use array size, not count)
-    if (_glfw.x11.xdnd.mimes) {
-        for (int i = 0; i < _glfw.x11.xdnd.mimes_array_size; i++) {
-            if (_glfw.x11.xdnd.mimes[i]) XFree(_glfw.x11.xdnd.mimes[i]);
-        }
-        free(_glfw.x11.xdnd.mimes);
-        _glfw.x11.xdnd.mimes = NULL;
-        _glfw.x11.xdnd.mimes_count = 0;
-        _glfw.x11.xdnd.mimes_array_size = 0;
-    }
-
+    free_dnd_data();
     if (_glfw.x11.display)
     {
         XCloseDisplay(_glfw.x11.display);
