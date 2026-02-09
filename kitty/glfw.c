@@ -1308,6 +1308,10 @@ apply_window_chrome_state(GLFWwindow *w, WindowChromeState new_state, int width,
     // Need to resize the window again after hiding decorations or title bar to take up screen space
     if (window_decorations_changed) glfwSetWindowSize(w, width, height);
 #else
+        if (global_state.is_wayland && glfwWaylandSetTitlebarHidden) {
+            bool titlebar_only = (new_state.hide_window_decorations & 2) != 0;
+            glfwWaylandSetTitlebarHidden(w, titlebar_only);
+        }
         if (window_decorations_changed) {
             bool hide_window_decorations = new_state.hide_window_decorations & 1;
             glfwSetWindowAttrib(w, GLFW_DECORATED, !hide_window_decorations);
@@ -1587,6 +1591,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
     if (glfw_window == NULL) glfw_failure;
 #undef glfw_failure
+    // Set titlebar-only mode before the window becomes visible
+    if (global_state.is_wayland && (OPT(hide_window_decorations) & 2) && glfwWaylandSetTitlebarHidden) {
+        glfwWaylandSetTitlebarHidden(glfw_window, true);
+    }
     glfwMakeContextCurrent(glfw_window);
     if (is_first_window) gl_init();
     bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);

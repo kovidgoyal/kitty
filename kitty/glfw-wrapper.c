@@ -515,6 +515,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwWaylandSetTitlebarColor_impl) = dlsym(handle, "glfwWaylandSetTitlebarColor");
     if (glfwWaylandSetTitlebarColor_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwWaylandSetTitlebarHidden_impl) = dlsym(handle, "glfwWaylandSetTitlebarHidden");
+    if (glfwWaylandSetTitlebarHidden_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwWaylandRedrawCSDWindowTitle_impl) = dlsym(handle, "glfwWaylandRedrawCSDWindowTitle");
     if (glfwWaylandRedrawCSDWindowTitle_impl == NULL) dlerror(); // clear error indicator
 

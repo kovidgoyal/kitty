@@ -469,12 +469,14 @@ render_shadows(_GLFWwindow *window) {
 static bool
 create_shm_buffers(_GLFWwindow* window) {
     decs.mapping.size = 0;
+    const bool has_titlebar = !decs.titlebar_hidden;
+    const int side_height = window->wl.height + (has_titlebar ? decs.metrics.visible_titlebar_height : 0);
 #define bp(which, width, height) decs.mapping.size += init_buffer_pair(&decs.which.buffer, width, height, decs.for_window_state.fscale);
-    bp(titlebar, window->wl.width, decs.metrics.visible_titlebar_height);
+    if (has_titlebar) bp(titlebar, window->wl.width, decs.metrics.visible_titlebar_height);
     bp(shadow_top, window->wl.width, decs.metrics.width);
     bp(shadow_bottom, window->wl.width, decs.metrics.width);
-    bp(shadow_left, decs.metrics.width, window->wl.height + decs.metrics.visible_titlebar_height);
-    bp(shadow_right, decs.metrics.width, window->wl.height + decs.metrics.visible_titlebar_height);
+    bp(shadow_left, decs.metrics.width, side_height);
+    bp(shadow_right, decs.metrics.width, side_height);
     bp(shadow_upper_left, decs.metrics.width, decs.metrics.width);
     bp(shadow_upper_right, decs.metrics.width, decs.metrics.width);
     bp(shadow_lower_left, decs.metrics.width, decs.metrics.width);
@@ -497,10 +499,11 @@ create_shm_buffers(_GLFWwindow* window) {
     close(fd);
     size_t offset = 0;
 #define Q(which) alloc_buffer_pair(window->id, &decs.which.buffer, pool, decs.mapping.data, &offset)
-    all_surfaces(Q);
+    if (has_titlebar) Q(titlebar);
+    all_shadow_surfaces(Q);
 #undef Q
     wl_shm_pool_destroy(pool);
-    render_title_bar(window, true);
+    if (has_titlebar) render_title_bar(window, true);
     render_shadows(window);
     debug("Created decoration buffers at scale: %f\n", decs.for_window_state.fscale);
     return true;
@@ -578,6 +581,7 @@ csd_should_window_be_decorated(_GLFWwindow *window) {
 static bool
 ensure_csd_resources(_GLFWwindow *window) {
     if (!window_is_csd_capable(window)) return false;
+    const bool has_titlebar = !decs.titlebar_hidden;
     const bool is_focused = window->id == _glfw.focusedWindowId;
     const bool focus_changed = is_focused != decs.for_window_state.focused;
     const double current_scale = _glfwWaylandWindowScale(window);
@@ -588,34 +592,47 @@ ensure_csd_resources(_GLFWwindow *window) {
         !decs.mapping.data
     );
     const bool state_changed = decs.for_window_state.toplevel_states != window->wl.current.toplevel_states;
-    const bool needs_update = focus_changed || size_changed || !decs.titlebar.surface || decs.buffer_destroyed || state_changed;
+    const bool titlebar_state_changed = (has_titlebar && !decs.titlebar.surface) || (!has_titlebar && decs.titlebar.surface);
+    const bool needs_update = focus_changed || size_changed || titlebar_state_changed || decs.buffer_destroyed || state_changed;
     debug("CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d state_changed: %d buffer_destroyed: %d\n",
             decs.for_window_state.width, decs.for_window_state.height, window->wl.width, window->wl.height, needs_update,
             size_changed, state_changed, decs.buffer_destroyed);
     if (!needs_update) return false;
     decs.for_window_state.fscale = current_scale;  // used in create_shm_buffers
-    if (size_changed || decs.buffer_destroyed) {
+    if (size_changed || decs.buffer_destroyed || titlebar_state_changed) {
         free_csd_buffers(window);
         if (!create_shm_buffers(window)) return false;
         decs.buffer_destroyed = false;
     }
 
+    const int top_y = has_titlebar ? -(int)decs.metrics.visible_titlebar_height : 0;
+
 #define setup_surface(which, x, y) \
     if (!decs.which.surface) create_csd_surfaces(window, &decs.which); \
         position_csd_surface(&decs.which, x, y);
 
-    setup_surface(titlebar, 0, -decs.metrics.visible_titlebar_height);
-    setup_surface(shadow_top, decs.titlebar.x, decs.titlebar.y - decs.metrics.width);
-    setup_surface(shadow_bottom, decs.titlebar.x, window->wl.height);
-    setup_surface(shadow_left, -decs.metrics.width, decs.titlebar.y);
+    if (has_titlebar) {
+        setup_surface(titlebar, 0, -decs.metrics.visible_titlebar_height);
+    } else {
+        free_csd_surface(&decs.titlebar);
+        if (decs.focus == CSD_titlebar) {
+            decs.focus = CENTRAL_WINDOW;
+            decs.dragging = false;
+        }
+    }
+    setup_surface(shadow_top, 0, top_y - decs.metrics.width);
+    setup_surface(shadow_bottom, 0, window->wl.height);
+    setup_surface(shadow_left, -decs.metrics.width, top_y);
     setup_surface(shadow_right, window->wl.width, decs.shadow_left.y);
     setup_surface(shadow_upper_left, decs.shadow_left.x, decs.shadow_top.y);
     setup_surface(shadow_upper_right, decs.shadow_right.x, decs.shadow_top.y);
     setup_surface(shadow_lower_left, decs.shadow_left.x, decs.shadow_bottom.y);
     setup_surface(shadow_lower_right, decs.shadow_right.x, decs.shadow_bottom.y);
 
-    if (focus_changed || state_changed) update_title_bar(window);
-    damage_csd(titlebar, decs.titlebar.buffer.front);
+    if (has_titlebar) {
+        if (focus_changed || state_changed) update_title_bar(window);
+        damage_csd(titlebar, decs.titlebar.buffer.front);
+    }
 #define d(which) damage_csd(which, is_focused ? decs.which.buffer.front : decs.which.buffer.back);
     d(shadow_left); d(shadow_right); d(shadow_top); d(shadow_bottom);
     d(shadow_upper_left); d(shadow_upper_right); d(shadow_lower_left); d(shadow_lower_right);
@@ -659,17 +676,18 @@ csd_change_title(_GLFWwindow *window) {
 void
 csd_set_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
     const bool include_space_for_csd = csd_should_window_be_decorated(window);
+    const bool has_titlebar = include_space_for_csd && !decs.titlebar_hidden;
     bool size_specified_by_compositor = *width > 0 && *height > 0;
     if (!size_specified_by_compositor) {
         *width = window->wl.user_requested_content_size.width;
         *height = window->wl.user_requested_content_size.height;
         if (window->wl.xdg.top_level_bounds.width > 0) *width = MIN(*width, window->wl.xdg.top_level_bounds.width);
         if (window->wl.xdg.top_level_bounds.height > 0) *height = MIN(*height, window->wl.xdg.top_level_bounds.height);
-        if (include_space_for_csd) *height += decs.metrics.visible_titlebar_height;
+        if (has_titlebar) *height += decs.metrics.visible_titlebar_height;
     }
     decs.geometry.x = 0; decs.geometry.y = 0;
     decs.geometry.width = *width; decs.geometry.height = *height;
-    if (include_space_for_csd) {
+    if (has_titlebar) {
         decs.geometry.y = -decs.metrics.visible_titlebar_height;
         *height -= decs.metrics.visible_titlebar_height;
     }

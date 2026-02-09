@@ -1341,9 +1341,13 @@ opt('hide_window_decorations', 'no',
     long_text='''
 Hide the window decorations (title-bar and window borders) with :code:`yes`. On
 macOS, :code:`titlebar-only` and :code:`titlebar-and-corners` can be used to only hide the titlebar and the rounded corners.
+On Wayland, :code:`titlebar-only` can be used to hide the titlebar while keeping
+the window shadow borders for resizing. On compositors that use server-side
+decorations (such as GNOME), both :code:`yes` and :code:`titlebar-only` force
+client-side decoration mode.
 Whether this works and exactly what effect it has depends on the window manager/operating
 system. Note that the effects of changing this option when reloading config
-are undefined. When using :code:`titlebar-only`, it is useful to also set
+are undefined. When using :code:`titlebar-only` on macOS, it is useful to also set
 :opt:`window_margin_width` and :opt:`placement_strategy` to prevent the rounded
 corners from clipping text. Or use :code:`titlebar-and-corners`.
 '''

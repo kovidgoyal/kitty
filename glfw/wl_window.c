@@ -813,6 +813,8 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
     if (window->wl.pending_state & PENDING_STATE_DECORATION) {
         uint32_t mode = window->wl.pending.decoration_mode;
         bool has_server_side_decorations = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+        // Force CSD when decorations are hidden or titlebar is hidden
+        if (!window->decorated || window->wl.decorations.titlebar_hidden) has_server_side_decorations = false;
         window->wl.decorations.serverSide = has_server_side_decorations;
         window->wl.current.decoration_mode = mode;
     }
@@ -960,8 +962,14 @@ static void
 setXdgDecorations(_GLFWwindow* window)
 {
     if (window->wl.xdg.decoration) {
-        window->wl.decorations.serverSide = true;
-        zxdg_toplevel_decoration_v1_set_mode(window->wl.xdg.decoration, window->decorated ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE: ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+        if (window->wl.decorations.titlebar_hidden) {
+            window->wl.decorations.serverSide = false;
+            zxdg_toplevel_decoration_v1_set_mode(window->wl.xdg.decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+            csd_set_visible(window, csd_should_window_be_decorated(window));
+        } else {
+            window->wl.decorations.serverSide = true;
+            zxdg_toplevel_decoration_v1_set_mode(window->wl.xdg.decoration, window->decorated ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE: ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+        }
     } else {
         window->wl.decorations.serverSide = false;
         csd_set_visible(window, csd_should_window_be_decorated(window));
@@ -1707,7 +1715,8 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
     if (window->decorated && !window->monitor && !window->wl.decorations.serverSide)
     {
         if (top)
-            *top = window->wl.decorations.metrics.top - window->wl.decorations.metrics.visible_titlebar_height;
+            *top = window->wl.decorations.titlebar_hidden ? 0 :
+                window->wl.decorations.metrics.top - window->wl.decorations.metrics.visible_titlebar_height;
         if (left)
             *left = window->wl.decorations.metrics.width;
         if (right)
@@ -3032,6 +3041,16 @@ GLFWAPI bool glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, boo
 GLFWAPI void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle) {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     if (csd_change_title(window)) commit_window_surface_if_safe(window);
+}
+
+GLFWAPI void glfwWaylandSetTitlebarHidden(GLFWwindow *handle, bool hidden) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    if (window->wl.decorations.titlebar_hidden != hidden) {
+        window->wl.decorations.titlebar_hidden = hidden;
+        setXdgDecorations(window);
+        inform_compositor_of_window_geometry(window, "SetTitlebarHidden");
+        commit_window_surface_if_safe(window);
+    }
 }
 
 const GLFWLayerShellConfig*

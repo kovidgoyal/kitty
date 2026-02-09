@@ -2516,6 +2516,10 @@ typedef bool (*glfwWaylandSetTitlebarColor_func)(GLFWwindow*, uint32_t, bool);
 GFW_EXTERN glfwWaylandSetTitlebarColor_func glfwWaylandSetTitlebarColor_impl;
 #define glfwWaylandSetTitlebarColor glfwWaylandSetTitlebarColor_impl
 
+typedef void (*glfwWaylandSetTitlebarHidden_func)(GLFWwindow*, bool);
+GFW_EXTERN glfwWaylandSetTitlebarHidden_func glfwWaylandSetTitlebarHidden_impl;
+#define glfwWaylandSetTitlebarHidden glfwWaylandSetTitlebarHidden_impl
+
 typedef void (*glfwWaylandRedrawCSDWindowTitle_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandRedrawCSDWindowTitle_func glfwWaylandRedrawCSDWindowTitle_impl;
 #define glfwWaylandRedrawCSDWindowTitle glfwWaylandRedrawCSDWindowTitle_impl

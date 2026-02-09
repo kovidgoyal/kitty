@@ -231,7 +231,7 @@ typedef struct _GLFWwindowWayland
     } pointerLock;
 
     struct {
-        bool serverSide, buffer_destroyed, titlebar_needs_update, dragging;
+        bool serverSide, buffer_destroyed, titlebar_needs_update, dragging, titlebar_hidden;
         _GLFWCSDSurface focus;
 
         _GLFWWaylandCSDSurface titlebar, shadow_left, shadow_right, shadow_top, shadow_bottom, shadow_upper_left, shadow_upper_right, shadow_lower_left, shadow_lower_right;
