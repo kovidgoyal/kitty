@@ -267,6 +267,7 @@ View and manage the system clipboard under Wayland in your kitty terminal
 TUI for QEMU used to manage virtual machines, can display the Virtual Machine
 in the terminal using the kitty graphics protocol.
 
+
 Editor integration
 -----------------------
 
