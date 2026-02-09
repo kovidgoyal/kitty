@@ -885,14 +885,16 @@ cocoa_update_menu_bar_title(PyObject *pytitle) {
         title = @(PyUnicode_AsUTF8(pytitle));
     }
     if (!title) return;
-    NSMenu *bar = [NSApp mainMenu];
+    NSString *menuTitle = [NSString stringWithFormat:@" :: %@", title];
     if (title_menu != NULL) {
-        [bar removeItem:title_menu];
+        [[title_menu submenu] setTitle:menuTitle];
+    } else {
+        NSMenu *bar = [NSApp mainMenu];
+        title_menu = [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
+        NSMenu *m = [[NSMenu alloc] initWithTitle:menuTitle];
+        [title_menu setSubmenu:m];
+        [m release];
     }
-    title_menu = [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
-    NSMenu *m = [[NSMenu alloc] initWithTitle:[NSString stringWithFormat:@" :: %@", title]];
-    [title_menu setSubmenu:m];
-    [m release];
 }
 
 void
