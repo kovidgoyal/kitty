@@ -799,7 +799,9 @@ class Boss:
         if peer_id > 0:
             if response is None:
                 send_data_to_peer(peer_id, b'')
-            elif not isinstance(response, AsyncResponse):
+            elif isinstance(response, AsyncResponse):
+                send_data_to_peer(peer_id, b'', True)
+            else:
                 send_data_to_peer(peer_id, encode_response_for_peer(response))
 
     def _execute_remote_command(

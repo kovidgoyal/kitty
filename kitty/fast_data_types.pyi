@@ -1610,7 +1610,7 @@ def get_click_interval() -> float:
     pass
 
 
-def send_data_to_peer(peer_id: int, data: Union[str, bytes]) -> None:
+def send_data_to_peer(peer_id: int, data: Union[str, bytes], is_async_response: bool = False) -> None:
     pass
 
 

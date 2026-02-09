@@ -229,7 +229,7 @@ wakeup_io_loop(ChildMonitor *self, bool in_signal_handler) {
 
 static void* io_loop(void *data);
 static void* talk_loop(void *data);
-static void send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz);
+static void send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz, bool is_async_response);
 static void wakeup_talk_loop(bool);
 static bool add_peer_to_injection_queue(int peer_fd, int pipe_fd);
 static bool talk_thread_started = false;
@@ -507,10 +507,11 @@ parse_input(ChildMonitor *self) {
                 if (!resp) PyErr_Print();
             }
             if (resp) {
-                if (PyBytes_Check(resp)) send_response_to_peer(msg->peer_id, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp));
-                else if (resp == Py_None || resp == Py_True) send_response_to_peer(msg->peer_id, NULL, 0);
+                if (PyBytes_Check(resp)) send_response_to_peer(msg->peer_id, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp), false);
+                else if (resp == Py_None) send_response_to_peer(msg->peer_id, NULL, 0, false);
+                else if (resp == Py_True) send_response_to_peer(msg->peer_id, NULL, 0, true);
                 Py_CLEAR(resp);
-            } else send_response_to_peer(msg->peer_id, NULL, 0);
+            } else send_response_to_peer(msg->peer_id, NULL, 0, false);
         }
         free(msgs); msgs = NULL;
     }
@@ -1648,7 +1649,7 @@ io_loop(void *data) {
 typedef struct {
     id_type id;
     size_t num_of_unresponded_messages_sent_to_main_thread, fd_array_idx;
-    bool finished_reading;
+    bool finished_reading, waiting_for_async_response;
     int fd;
     struct {
         char *data;
@@ -1855,7 +1856,7 @@ prune_peers(ChildMonitor *self) {
     bool pruned = false;
     for (size_t idx = talk_data.num_peers; idx-- > 0;) {
         Peer *p = talk_data.peers + idx;
-        if (p->read.finished && !p->num_of_unresponded_messages_sent_to_main_thread && !p->write.used) {
+        if (p->read.finished && !p->num_of_unresponded_messages_sent_to_main_thread && !p->write.used && !p->waiting_for_async_response) {
             notify_on_peer_removal(self, p);
             free_peer(p);
             remove_i_from_array(talk_data.peers, idx, talk_data.num_peers);
@@ -1977,12 +1978,13 @@ end:
 }
 
 static void
-send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz) {
+send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz, bool is_async_response) {
     bool wakeup = false;
     talk_mutex(lock);
     for (size_t i = 0; i < talk_data.num_peers; i++) {
         Peer *peer = talk_data.peers + i;
         if (peer->id == peer_id) {
+            peer->waiting_for_async_response = is_async_response;
             if (peer->num_of_unresponded_messages_sent_to_main_thread) peer->num_of_unresponded_messages_sent_to_main_thread--;
             if (!peer->write.failed) {
                 if (peer->write.capacity - peer->write.used < msg_sz) {
@@ -2060,8 +2062,9 @@ static PyObject*
 send_data_to_peer(PyObject *self UNUSED, PyObject *args) {
     char * msg; Py_ssize_t sz;
     unsigned long long peer_id;
-    if (!PyArg_ParseTuple(args, "Ks#", &peer_id, &msg, &sz)) return NULL;
-    send_response_to_peer(peer_id, msg, sz);
+    int is_async_response = 0;
+    if (!PyArg_ParseTuple(args, "Ks#|p", &peer_id, &msg, &sz, &is_async_response)) return NULL;
+    send_response_to_peer(peer_id, msg, sz, is_async_response);
     Py_RETURN_NONE;
 }
 
