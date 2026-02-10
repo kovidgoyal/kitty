@@ -214,6 +214,9 @@ Detailed list of changes
 
 - edit-in-kitty: Handle connection drop more gracefully (:pull:`9480`)
 
+- macOS: Fix changing window title with global menubar menu open causes menu to
+  get stuck (:pull:`9490`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
