@@ -217,6 +217,8 @@ Detailed list of changes
 - macOS: Fix changing window title with global menubar menu open causes menu to
   get stuck (:pull:`9490`)
 
+- Fix :opt:`focus_follows_mouse` not working during a drag and drop (:iss:`9497`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -276,9 +276,10 @@ show_mouse_cursor(GLFWwindow *w) {
 }
 
 void
-cursor_active_callback(GLFWwindow *w, monotonic_t now) {
+cursor_active_callback(monotonic_t now) {
+    if (!global_state.callback_os_window) return;
     if (OPT(mouse_hide.unhide_wait) == 0) {
-        show_mouse_cursor(w);
+        show_mouse_cursor(global_state.callback_os_window->handle);
     } else if (OPT(mouse_hide.unhide_wait) > 0) {
             if (global_state.callback_os_window->mouse_activate_deadline == -1) {
                 global_state.callback_os_window->mouse_activate_deadline = OPT(mouse_hide.unhide_wait) + now;
@@ -292,7 +293,7 @@ cursor_active_callback(GLFWwindow *w, monotonic_t now) {
                         now < global_state.callback_os_window->mouse_activate_deadline + s_double_to_monotonic_t(0.5) &&
                         global_state.callback_os_window->mouse_show_threshold == 0
                 ) {
-                    show_mouse_cursor(w);
+                    show_mouse_cursor(global_state.callback_os_window->handle);
                 }
                 global_state.callback_os_window->mouse_activate_deadline = -1;
             }
@@ -522,7 +523,7 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
     global_state.callback_os_window->mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
     if (entered) {
         debug_input("Mouse cursor entered window: %llu at %fx%f\n", global_state.callback_os_window->id, x, y);
-        cursor_active_callback(w, now);
+        cursor_active_callback(now);
         if (is_window_ready_for_callbacks()) enter_event(mods_at_last_key_or_button_event);
     } else {
         debug_input("Mouse cursor left window: %llu\n", global_state.callback_os_window->id);
@@ -536,7 +537,7 @@ static void
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!set_callback_window(w)) return;
     monotonic_t now = monotonic();
-    cursor_active_callback(w, now);
+    cursor_active_callback(now);
     mods_at_last_key_or_button_event = mods;
     OSWindow *window = global_state.callback_os_window;
     window->last_mouse_activity_at = now;
@@ -557,10 +558,9 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
 }
 
 static void
-cursor_pos_callback(GLFWwindow *w, double x, double y) {
-    if (!set_callback_window(w)) return;
+on_mouse_position_update(double x, double y) {
     monotonic_t now = monotonic();
-    cursor_active_callback(w, now);
+    cursor_active_callback(now);
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;
     global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
@@ -568,6 +568,12 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
     global_state.callback_os_window->has_received_cursor_pos_event = true;
     if (is_window_ready_for_callbacks()) mouse_event(-1, mods_at_last_key_or_button_event, -1);
     request_tick_callback();
+}
+
+static void
+cursor_pos_callback(GLFWwindow *w, double x, double y) {
+    if (!set_callback_window(w)) return;
+    on_mouse_position_update(x, y);
     global_state.callback_os_window = NULL;
 }
 
@@ -575,9 +581,7 @@ static void
 scroll_callback(GLFWwindow *w, const GLFWScrollEvent *ev) {
     if (!set_callback_window(w)) return;
     monotonic_t now = monotonic();
-    if (OPT(mouse_hide.scroll_unhide)) {
-        cursor_active_callback(w, now);
-    }
+    if (OPT(mouse_hide.scroll_unhide)) cursor_active_callback(now);
     global_state.callback_os_window->last_mouse_activity_at = now;
     if (is_window_ready_for_callbacks()) scroll_event(ev);
     request_tick_callback();
@@ -613,7 +617,7 @@ window_focus_callback(GLFWwindow *w, int focused) {
     monotonic_t now = monotonic();
     id_type wid = osw->id;
     if (focused) {
-        cursor_active_callback(w, now);
+        cursor_active_callback(now);
         focus_in_event();
         osw->last_focused_counter = ++focus_counter;
         global_state.check_for_active_animated_images = true;
@@ -722,6 +726,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
         case GLFW_DROP_MOVE:
             global_state.callback_os_window->last_drag_event.x = (int)(ev->xpos * global_state.callback_os_window->viewport_x_ratio);
             global_state.callback_os_window->last_drag_event.y = (int)(ev->ypos * global_state.callback_os_window->viewport_y_ratio);
+            on_mouse_position_update(ev->xpos, ev->ypos);
             /* fallthrough */
         case GLFW_DROP_STATUS_UPDATE:
             update_allowed_mimes_for_drop(ev);
