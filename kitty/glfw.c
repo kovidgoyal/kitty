@@ -720,8 +720,8 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
     switch (ev->type) {
         case GLFW_DROP_ENTER:
         case GLFW_DROP_MOVE:
-            global_state.callback_os_window->last_drag_event.x = (int)ev->xpos;
-            global_state.callback_os_window->last_drag_event.y = (int)ev->ypos;
+            global_state.callback_os_window->last_drag_event.x = (int)(ev->xpos * global_state.callback_os_window->viewport_x_ratio);
+            global_state.callback_os_window->last_drag_event.y = (int)(ev->ypos * global_state.callback_os_window->viewport_y_ratio);
             /* fallthrough */
         case GLFW_DROP_STATUS_UPDATE:
             update_allowed_mimes_for_drop(ev);

@@ -1611,9 +1611,6 @@ update_drop_state(_GLFWwindow *window, size_t mime_count) {
     const NSPoint pos = [sender draggingLocation];
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
-    float xscale = 1, yscale = 1;
-    _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
-    xpos *= xscale; ypos *= yscale;
     free_drop_data(window);
 
     // Get MIME types from the dragging pasteboard
@@ -1685,9 +1682,6 @@ update_drop_state(_GLFWwindow *window, size_t mime_count) {
     const NSPoint pos = [sender draggingLocation];
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
-    float xscale = 1, yscale = 1;
-    _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
-    xpos *= xscale; ypos *= yscale;
 
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
@@ -1712,9 +1706,6 @@ update_drop_state(_GLFWwindow *window, size_t mime_count) {
     const NSPoint pos = [sender draggingLocation];
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
-    float xscale = 1, yscale = 1;
-    _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
-    xpos *= xscale; ypos *= yscale;
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
     size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_DROP, xpos, ypos, d->mimes, d->mimes_count, from_self);

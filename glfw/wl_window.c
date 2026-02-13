@@ -2493,9 +2493,8 @@ drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint
         if (window->wl.surface == surface) {
             double xpos = wl_fixed_to_double(x);
             double ypos = wl_fixed_to_double(y);
-            double scale = _glfwWaylandWindowScale(window);
             size_t mime_count = _glfwInputDropEvent(
-                    window, GLFW_DROP_ENTER, scale * xpos, scale * ypos,
+                    window, GLFW_DROP_ENTER, xpos, ypos,
                     offer->mimes, offer->mimes_count, offer->is_self_offer);
             update_drop_state(offer, window, mime_count);
             break;
@@ -2633,9 +2632,8 @@ motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t
         if (window->wl.surface == offer->surface) {
             double xpos = wl_fixed_to_double(x);
             double ypos = wl_fixed_to_double(y);
-            double scale = _glfwWaylandWindowScale(window);
             size_t mime_count = _glfwInputDropEvent(
-                window, GLFW_DROP_MOVE, scale * xpos, scale * ypos, offer->mimes, offer->mimes_count, offer->is_self_offer);
+                window, GLFW_DROP_MOVE, xpos, ypos, offer->mimes, offer->mimes_count, offer->is_self_offer);
             update_drop_state(offer, window, mime_count);
             break;
         }

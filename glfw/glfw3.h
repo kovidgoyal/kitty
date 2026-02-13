@@ -1403,7 +1403,9 @@ typedef enum {
 typedef struct GLFWDropEvent {
     GLFWDropEventType type;
     const char **mimes; size_t num_mimes;
-    double xpos, ypos;  // Only valid for GLFW_DROP_ENTER and GLFW_DROP_MOVE
+    // Positions are only valid for GLFW_DROP_ENTER and GLFW_DROP_MOVE.
+    // They are in window co-ordinates same as for mouse events
+    double xpos, ypos;
     bool from_self;  // Only valid upto GLFW_DROP_DROP
     ssize_t (*read_data)(GLFWwindow *w, struct GLFWDropEvent* ev, char *buffer, size_t sz);  // Only valid for GLFW_DROP_DATA_AVAILABLE
     void (*finish_drop)(GLFWwindow *w, GLFWDragOperationType op); // Only valid for GLFW_DROP_DROP and GLFW_DROP_DATA_AVAILABLE
