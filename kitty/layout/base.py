@@ -366,6 +366,26 @@ class Layout:
         self.update_visibility(all_windows)
         self.blank_rects = []
         self.do_layout(all_windows)
+        self._apply_window_title_bars(all_windows)
+
+    def _apply_window_title_bars(self, all_windows: WindowList) -> None:
+        opts = get_options()
+        position = opts.window_title_bar
+        if position == 'none':
+            return
+        visible_groups = list(all_windows.iter_all_layoutable_groups(only_visible=True))
+        if len(visible_groups) < 2:
+            return
+        ch = lgd.cell_height
+        for wg in visible_groups:
+            geom = wg.geometry
+            if geom is None:
+                continue
+            if position == 'top':
+                new_geom = geom._replace(top=geom.top + ch, ynum=max(1, geom.ynum - 1))
+            else:
+                new_geom = geom._replace(bottom=geom.bottom - ch, ynum=max(1, geom.ynum - 1))
+            wg.set_geometry(new_geom)
 
     def layout_single_window_group(self, wg: WindowGroup, add_blank_rects: bool = True) -> None:
         bw = 1 if self.must_draw_borders else 0

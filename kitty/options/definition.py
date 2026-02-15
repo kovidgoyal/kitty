@@ -1441,6 +1441,74 @@ by adding :code:`count-background` to the setting, for example: :code:`-1 count-
 Note that if you want confirmation when closing individual windows,
 you can map the :ac:`close_window_with_confirmation` action.
 ''')
+
+opt('window_title_bar', 'none',
+    choices=('none', 'top', 'bottom'),
+    long_text='''
+Show a title bar for each window when there are multiple windows in a tab.
+The title bar displays the window title and is hidden when only a single window
+is visible. The value controls the position of the title bar relative to the
+window content. Set to :code:`none` to disable.
+'''
+    )
+
+opt('window_title_template', '"{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.window}{progress_percent}{title}"',
+    option_type='tab_title_template',
+    long_text='''
+A template to render the window title bar text. Uses the same template syntax as
+:opt:`tab_title_template`. Available variables include: :code:`{title}`,
+:code:`{bell_symbol}`, :code:`{activity_symbol}`, :code:`{progress_percent}`,
+:code:`{custom}`, :code:`{fmt}`, :code:`{is_active}`.
+You can also provide a custom :code:`draw_window_title(data)` function in
+:file:`window_title_bar.py` in the kitty config directory, exposed as :code:`{custom}`.
+'''
+    )
+
+opt('active_window_title_template', 'none',
+    option_type='tab_title_template',
+    long_text='''
+Template to use for the active window title bar. If not set (the value
+:code:`none`), the :opt:`window_title_template` is used.
+'''
+    )
+
+opt('window_title_bar_active_foreground', 'none',
+    option_type='to_color_or_none', ctype='color_or_none_as_int',
+    long_text='''
+Foreground color for the active window title bar. Defaults to
+:opt:`active_tab_foreground` when set to :code:`none`.
+'''
+    )
+
+opt('window_title_bar_active_background', 'none',
+    option_type='to_color_or_none', ctype='color_or_none_as_int',
+    long_text='''
+Background color for the active window title bar. Defaults to
+:opt:`active_tab_background` when set to :code:`none`.
+'''
+    )
+
+opt('window_title_bar_inactive_foreground', 'none',
+    option_type='to_color_or_none', ctype='color_or_none_as_int',
+    long_text='''
+Foreground color for inactive window title bars. Defaults to
+:opt:`inactive_tab_foreground` when set to :code:`none`.
+'''
+    )
+
+opt('window_title_bar_inactive_background', 'none',
+    option_type='to_color_or_none', ctype='color_or_none_as_int',
+    long_text='''
+Background color for inactive window title bars. Defaults to
+:opt:`inactive_tab_background` when set to :code:`none`.
+'''
+    )
+
+opt('window_title_bar_align', 'center',
+    choices=('left', 'center', 'right'),
+    long_text='Horizontal alignment of the text in window title bars.'
+    )
+
 egr()  # }}}
 
 

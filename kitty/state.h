@@ -62,7 +62,8 @@ typedef struct Options {
     bool scrollback_fill_enlarged_window;
     char_type *select_by_word_characters;
     char_type *select_by_word_characters_forward;
-    color_type url_color, background, foreground, active_border_color, inactive_border_color, bell_border_color, tab_bar_background, tab_bar_margin_color;
+    color_type url_color, background, foreground, active_border_color, inactive_border_color, bell_border_color, tab_bar_background, tab_bar_margin_color,
+        window_title_bar_active_foreground, window_title_bar_active_background, window_title_bar_inactive_foreground, window_title_bar_inactive_background;
     monotonic_t repaint_delay, input_delay;
     bool focus_follows_mouse;
     unsigned int hide_window_decorations;
@@ -206,6 +207,7 @@ typedef struct Window {
     bool visible;
     PyObject *title;
     WindowRenderData render_data;
+    WindowRenderData window_title_render_data;
     WindowLogoRenderData window_logo;
     MousePosition mouse_pos;
     struct {
