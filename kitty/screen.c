@@ -5066,9 +5066,8 @@ screen_history_scroll(Screen *self, int amt, bool upwards) {
         amt = MIN((unsigned int)amt, self->scrolled_by);
         amt *= -1;
     }
-    if (amt == 0) return false;
     unsigned int new_scroll = MIN(self->scrolled_by + amt, self->historybuf->count);
-    if (new_scroll != self->scrolled_by) {
+    if (new_scroll != self->scrolled_by || (new_scroll == 0 && self->pixel_scroll_offset_y != 0)) {
         self->scrolled_by = new_scroll;
         reset_pixel_scroll(self, 0);
         dirty_scroll(self);
