@@ -538,6 +538,9 @@ def choose_session_from_map(
 
 def choose_session(boss: BossType, opts: GotoSessionOptions) -> None:
     all_known_sessions = get_all_known_sessions()
+    if opts.active_only:
+        all_active_sessions = boss.all_loaded_session_names
+        all_known_sessions = {name: all_known_sessions[name] for name in all_active_sessions if name in all_known_sessions}
     choose_session_from_map(boss, opts, all_known_sessions, _('Select a session to activate'))
 
 
@@ -575,6 +578,11 @@ def goto_session_options() -> str:
 choices=recent,alphabetical
 default=recent
 When interactively choosing sessions from a list, how to sort the list.
+
+
+--active-only
+type=bool-set
+Only consider active sessions.
 '''
 
 
