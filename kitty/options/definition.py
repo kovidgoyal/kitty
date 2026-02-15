@@ -3815,6 +3815,15 @@ remove the default shortcuts.
 '''
     )
 
+opt('multi_key_hint_delay', '-1',
+    option_type='int', ctype='time-ms',
+    long_text='''
+Delay before showing the multi-key hint popup (in milliseconds). Set to a
+negative value to disable the popup entirely. A value of zero shows it
+immediately.
+'''
+    )
+
 opt('+action_alias', 'launch_tab launch --type=tab --cwd=current',
     option_type='action_alias',
     add_to_default=False,
