@@ -924,6 +924,35 @@ closest_window_for_event(unsigned int *window_idx) {
     return ans;
 }
 
+static void
+drag_resize_start(double mouse_x, double mouse_y, unsigned int cell_width, unsigned int cell_height) {
+    call_boss(drag_resize_start, "ddII", mouse_x, mouse_y, cell_width, cell_height);
+}
+
+static void
+drag_resize_update(double mouse_x, double mouse_y) {
+    call_boss(drag_resize_update, "dd", mouse_x, mouse_y);
+}
+
+static void
+drag_resize_end(void) {
+    call_boss(drag_resize_end, "");
+}
+
+static bool
+is_in_window(double mouse_x, double mouse_y) {
+    Tab *active_tab = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+
+    for (unsigned int i = 0; i < active_tab->num_windows; ++i) {
+        WindowGeometry *g = &active_tab->windows[i].render_data.geometry;
+        if (g->left <= mouse_x && mouse_x <= g->right && g->top <= mouse_y && mouse_y <= g->bottom) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void
 focus_in_event(void) {
     // Ensure that no URL is highlighted and the mouse cursor is in default shape
@@ -1062,6 +1091,31 @@ mouse_event(const int button, int modifiers, int action) {
     bool in_tab_bar;
     unsigned int window_idx = 0;
     Window *w = NULL;
+
+    OSWindow *osw = global_state.callback_os_window;
+
+    // Handle mouse drag window resizing
+    if (!global_state.active_drag_resize && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && modifiers & GLFW_MOD_CONTROL) {
+        if (is_in_window(osw->mouse_x, osw->mouse_y)) {
+            drag_resize_start(osw->mouse_x, osw->mouse_y, osw->fonts_data->fcm.cell_width, osw->fonts_data->fcm.cell_height);
+            global_state.active_drag_resize = true;
+            mouse_cursor_shape = MOVE_POINTER;
+            set_mouse_cursor(mouse_cursor_shape);
+            return;
+        }
+    } else if (global_state.active_drag_resize) {
+        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
+            drag_resize_end();
+            global_state.active_drag_resize = false;
+            mouse_cursor_shape = DEFAULT_POINTER;
+            set_mouse_cursor(mouse_cursor_shape);
+            return;
+        } else if (button < 0) {
+            drag_resize_update(osw->mouse_x, osw->mouse_y);
+            return;
+        }
+    }
+
     if (OPT(debug_keyboard)) {
         if (button < 0) { debug("%s x: %.1f y: %.1f ", "\x1b[36mMove\x1b[m", global_state.callback_os_window->mouse_x, global_state.callback_os_window->mouse_y); }
         else { debug("%s mouse_button: %d %s", action == GLFW_RELEASE ? "\x1b[32mRelease\x1b[m" : "\x1b[31mPress\x1b[m", button, format_mods(modifiers)); }

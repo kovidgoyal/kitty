@@ -366,7 +366,7 @@ typedef struct GlobalState {
     bool has_pending_resizes, has_pending_closes;
     bool check_for_active_animated_images;
     struct { double x, y; } default_dpi;
-    id_type active_drag_in_window, tracked_drag_in_window, mouse_hover_in_window;
+    id_type active_drag_in_window, tracked_drag_in_window, mouse_hover_in_window, active_drag_resize;
     int active_drag_button, tracked_drag_button;
     CloseRequest quit_request;
     bool redirect_mouse_handling;
