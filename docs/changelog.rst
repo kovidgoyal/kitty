@@ -219,6 +219,9 @@ Detailed list of changes
 
 - Fix :opt:`focus_follows_mouse` not working during a drag and drop (:iss:`9497`)
 
+- :ac:`goto_session`: Add a ``--active-only`` option to select from only active
+  sessions (:pull:`9503`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
