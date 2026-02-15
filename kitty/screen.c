@@ -1483,7 +1483,7 @@ cursor_within_margins(Screen *self) {
 }
 
 static inline void
-reset_pixel_scroll(Screen *self, double val) { self->pixel_scroll_offset_y = val; }
+reset_pixel_scroll(Screen *self, unsigned val) { self->pixel_scroll_offset_y = val; }
 
 
 // Remove all cell images from a portion of the screen and mark lines that
@@ -5008,7 +5008,7 @@ void
 screen_history_scroll_to_absolute(Screen *self, double target_scrolled_by) {
     if (self->linebuf != self->main_linebuf) return;
     index_type target_scrolled_by_line = (index_type)target_scrolled_by;
-    double pixel_scroll_offset_y = (target_scrolled_by - target_scrolled_by_line) * self->cell_size.height;
+    unsigned pixel_scroll_offset_y = (unsigned)((target_scrolled_by - target_scrolled_by_line) * self->cell_size.height);
     if (!OPT(pixel_scroll)) pixel_scroll_offset_y = 0;
     if (target_scrolled_by_line > self->historybuf->count) target_scrolled_by_line = self->historybuf->count;
     if (target_scrolled_by_line >= self->historybuf->count) pixel_scroll_offset_y = 0;
@@ -5031,7 +5031,7 @@ screen_apply_pixel_scroll(Screen *self, double delta_pixels) {
     if (total < 0.0) total = 0.0;
     if (total > max_total) total = max_total;
     const unsigned int new_scrolled_by = (unsigned int)floor(total / cell_height);
-    const double offset = total - (double)new_scrolled_by * cell_height;
+    const unsigned offset = (unsigned)(total - (double)new_scrolled_by * cell_height);
     bool changed = false;
     if (new_scrolled_by != self->scrolled_by) {
         self->scrolled_by = new_scrolled_by;
@@ -5083,14 +5083,14 @@ screen_fractional_scroll(Screen *self, double amt) {
     double before_pixels = self->pixel_scroll_offset_y;
     double integral_part, fractional_part = modf(amt, &integral_part);
     int lines = (int)integral_part;
-    double pixels = fractional_part * self->cell_size.height;
+    int pixels = (int)(fractional_part * self->cell_size.height);
     if (amt > 0) {  // downwards
         if (fractional_part != 0) pixels = MAX(1, pixels);
         if (lines > (int)self->scrolled_by) {
             self->scrolled_by = 0; self->pixel_scroll_offset_y = 0;
         } else {
             self->scrolled_by -= lines;
-            if (pixels <= self->pixel_scroll_offset_y) self->pixel_scroll_offset_y -= pixels;
+            if (pixels <= (int)self->pixel_scroll_offset_y) self->pixel_scroll_offset_y -= pixels;
             else {
                 self->pixel_scroll_offset_y = 0;
                 if (self->scrolled_by) {

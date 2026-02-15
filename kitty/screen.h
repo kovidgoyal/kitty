@@ -104,9 +104,8 @@ typedef struct ExtraCursors {
 typedef struct {
     PyObject_HEAD
 
-    unsigned int columns, lines, margin_top, margin_bottom, scrolled_by;
+    unsigned int columns, lines, margin_top, margin_bottom, scrolled_by, pixel_scroll_offset_y;
     double pending_scroll_pixels_x, pending_scroll_pixels_y;
-    double pixel_scroll_offset_y;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
     id_type window_id;
