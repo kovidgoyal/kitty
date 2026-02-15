@@ -5085,6 +5085,7 @@ screen_fractional_scroll(Screen *self, double amt) {
     int lines = (int)integral_part;
     double pixels = fractional_part * self->cell_size.height;
     if (amt > 0) {  // downwards
+        if (fractional_part != 0) pixels = MAX(1, pixels);
         pixels = pixels > self->pixel_scroll_offset_y ? pixels - self->pixel_scroll_offset_y : 0;
         self->pixel_scroll_offset_y = 0;
         self->scrolled_by = self->scrolled_by > (unsigned)lines ? self->scrolled_by - lines : 0;
@@ -5092,6 +5093,7 @@ screen_fractional_scroll(Screen *self, double amt) {
             self->scrolled_by--; self->pixel_scroll_offset_y = self->cell_size.height - pixels;
         }
     } else {
+        if (fractional_part != 0) pixels = MIN(-1, pixels);
         self->pixel_scroll_offset_y -= pixels;  // pixels is negative
         if (self->pixel_scroll_offset_y >= self->cell_size.height) {
             self->pixel_scroll_offset_y = 0; self->scrolled_by++;
