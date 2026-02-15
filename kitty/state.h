@@ -10,6 +10,7 @@
 #include "screen.h"
 #include "monotonic.h"
 #include "window_logo.h"
+#include "gpu.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 #include <hb.h>
@@ -342,6 +343,9 @@ typedef struct OSWindow {
     id_type last_focused_counter;
     CloseRequest close_request;
     bool is_layer_shell, hide_on_focus_loss;
+#ifdef __APPLE__
+    struct MetalWindow *metal;
+#endif
     struct { int x, y; } last_drag_event;
 } OSWindow;
 
@@ -373,6 +377,7 @@ typedef struct GlobalState {
     WindowLogoTable *all_window_logos;
     int gl_version;
     bool supports_framebuffer_srgb;
+    GPUBackend gpu_backend;
     PyObject *options_object;
 
     struct {
@@ -410,6 +415,7 @@ sprite_index_to_pos(unsigned idx, unsigned xnum, unsigned ynum, unsigned *x, uns
 
 
 void gl_init(void);
+void gpu_init(void);
 void remove_vao(ssize_t vao_idx);
 bool remove_os_window(id_type os_window_id);
 void* make_os_window_context_current(OSWindow *w);

@@ -11,6 +11,9 @@
 #include "glfw-wrapper.h"
 #include "state.h"
 #include "png-reader.h"
+#ifdef __APPLE__
+#include "metal_renderer.h"
+#endif
 
 // GL setup and error handling {{{
 static void
@@ -102,6 +105,14 @@ check_framebuffer_status(void) {
 
 void
 free_texture(GLuint *tex_id) {
+    if (!*tex_id) return;
+#ifdef __APPLE__
+    if (global_state.gpu_backend == GPU_BACKEND_METAL) {
+        metal_image_free(*tex_id);
+        *tex_id = 0;
+        return;
+    }
+#endif
     glDeleteTextures(1, tex_id);
     *tex_id = 0;
 }
