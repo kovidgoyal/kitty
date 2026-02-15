@@ -14,6 +14,7 @@
 #include <xlocale.h>
 #endif
 
+#define NULL_COLOR_TYPE 0xffffffff
 
 static uint32_t FG_BG_256[256] = {
     0x000000,  // 0
@@ -121,6 +122,130 @@ set_mark_colors(ColorProfile *self, PyObject *opts) {
     return true;
 }
 
+static void
+color_type_to_lab(color_type color, float *lab) {
+    float r = ((color >> 16) & 0xff) / 255.0f;
+    float g = ((color >> 8) & 0xff) / 255.0f;
+    float b = (color & 0xff) / 255.0f;
+
+    r = r > 0.04045f ? powf((r + 0.055f) / 1.055f, 2.4f) : r / 12.92f;
+    g = g > 0.04045f ? powf((g + 0.055f) / 1.055f, 2.4f) : g / 12.92f;
+    b = b > 0.04045f ? powf((b + 0.055f) / 1.055f, 2.4f) : b / 12.92f;
+
+    float x = (r * 0.4124564f + g * 0.3575761f + b * 0.1804375f) / 0.95047f;
+    float y = (r * 0.2126729f + g * 0.7151522f + b * 0.0721750f);
+    float z = (r * 0.0193339f + g * 0.1191920f + b * 0.9503041f) / 1.08883f;
+
+    x = x > 0.008856f ? cbrtf(x) : 7.787f * x + 16.0f / 116.0f;
+    y = y > 0.008856f ? cbrtf(y) : 7.787f * y + 16.0f / 116.0f;
+    z = z > 0.008856f ? cbrtf(z) : 7.787f * z + 16.0f / 116.0f;
+
+    lab[0] = 116.0f * y - 16.0f;
+    lab[1] = 500.0f * (x - y);
+    lab[2] = 200.0f * (y - z);
+}
+
+static color_type
+lab_to_color_type(float *lab) {
+    float y = (lab[0] + 16.0f) / 116.0f;
+    float x = lab[1] / 500.0f + y;
+    float z = y - lab[2] / 200.0f;
+
+    float x3 = x * x * x, y3 = y * y * y, z3 = z * z * z;
+    x = (x3 > 0.008856f ? x3 : (x - 16.0f / 116.0f) / 7.787f) * 0.95047f;
+    y = y3 > 0.008856f ? y3 : (y - 16.0f / 116.0f) / 7.787f;
+    z = (z3 > 0.008856f ? z3 : (z - 16.0f / 116.0f) / 7.787f) * 1.08883f;
+
+    float r = x * 3.2404542f - y * 1.5371385f - z * 0.4985314f;
+    float g = -x * 0.9692660f + y * 1.8760108f + z * 0.0415560f;
+    float b = x * 0.0556434f - y * 0.2040259f + z * 1.0572252f;
+
+    r = r > 0.0031308f ? 1.055f * powf(r, 1.0f / 2.4f) - 0.055f : 12.92f * r;
+    g = g > 0.0031308f ? 1.055f * powf(g, 1.0f / 2.4f) - 0.055f : 12.92f * g;
+    b = b > 0.0031308f ? 1.055f * powf(b, 1.0f / 2.4f) - 0.055f : 12.92f * b;
+
+    uint8_t rb = (uint8_t)(fminf(fmaxf(r, 0.0f), 1.0f) * 255.0f + 0.5f);
+    uint8_t gb = (uint8_t)(fminf(fmaxf(g, 0.0f), 1.0f) * 255.0f + 0.5f);
+    uint8_t bb = (uint8_t)(fminf(fmaxf(b, 0.0f), 1.0f) * 255.0f + 0.5f);
+
+    return (rb << 16) | (gb << 8) | bb;
+}
+
+static void
+lerp_lab(float t, float *a, float *b, float *out) {
+    out[0] = a[0] + t * (b[0] - a[0]);
+    out[1] = a[1] + t * (b[1] - a[1]);
+    out[2] = a[2] + t * (b[2] - a[2]);
+}
+
+static void
+generate_256_palette(color_type *color_table, color_type bg, color_type fg) {
+    float base8_lab[8][3], bg_lab[3], fg_lab[3];
+    for (int i = 0; i < 8; i++) color_type_to_lab(color_table[i], base8_lab[i]);
+    color_type_to_lab(bg ? bg : color_table[0], bg_lab);
+    color_type_to_lab(fg ? fg : color_table[7], fg_lab);
+
+    int idx = 16;
+    for (int r = 0; r < 6; r++) {
+        float c0[3], c1[3], c2[3], c3[3];
+        float tr = r / 5.0f;
+        lerp_lab(tr, bg_lab, base8_lab[1], c0);
+        lerp_lab(tr, base8_lab[2], base8_lab[3], c1);
+        lerp_lab(tr, base8_lab[4], base8_lab[5], c2);
+        lerp_lab(tr, base8_lab[6], fg_lab, c3);
+        for (int g = 0; g < 6; g++) {
+            float c4[3], c5[3];
+            float tg = g / 5.0f;
+            lerp_lab(tg, c0, c1, c4);
+            lerp_lab(tg, c2, c3, c5);
+            for (int b = 0; b < 6; b++) {
+                if (color_table[idx] == NULL_COLOR_TYPE) {
+                    float c6[3];
+                    lerp_lab(b / 5.0f, c4, c5, c6);
+                    color_table[idx] = lab_to_color_type(c6);
+                }
+                idx++;
+            }
+        }
+    }
+
+    for (int i = 0; i < 24; i++) {
+        float t = (i + 1) / 25.0f;
+        float lab[3];
+        lerp_lab(t, bg_lab, fg_lab, lab);
+        if (color_table[idx] == NULL_COLOR_TYPE) {
+            color_table[idx] = lab_to_color_type(lab);
+        }
+        idx++;
+    }
+}
+
+static void
+fill_256_palette(color_type *color_table) {
+    int idx = 16;
+    for (int r = 0; r < 6; r++) {
+        for (int g = 0; g < 6; g++) {
+            for (int b = 0; b < 6; b++) {
+                if (color_table[idx] == NULL_COLOR_TYPE) {
+                    int rv = r ? 55 + r * 40 : 0;
+                    int gv = g ? 55 + g * 40 : 0;
+                    int bv = b ? 55 + b * 40 : 0;
+                    color_table[idx] = (rv << 16) | (gv << 8) | bv;
+                }
+                idx++;
+            }
+        }
+    }
+
+    for (int i = 0; i < 24; i++) {
+        if (color_table[idx] == NULL_COLOR_TYPE) {
+            int v = 8 + i * 10;
+            color_table[idx] = (v << 16) | (v << 8) | v;
+        }
+        idx++;
+    }
+}
+
 static bool
 set_colortable(ColorProfile *self, PyObject *opts) {
     RAII_PyObject(ct, PyObject_GetAttrString(opts, "color_table"));
@@ -134,6 +259,10 @@ set_colortable(ColorProfile *self, PyObject *opts) {
     size_t itemsize = PyLong_AsSize_t(r2);
     if (itemsize != sizeof(unsigned long)) { PyErr_Format(PyExc_TypeError, "color_table has incorrect itemsize: %zu", itemsize); return false; }
     for (size_t i = 0; i < arraysz(FG_BG_256); i++) self->color_table[i] = color_table[i];
+    if (PyObject_IsTrue(PyObject_GetAttrString(opts, "generate_256_palette")))
+        generate_256_palette(self->color_table, self->configured.default_bg.rgb, self->configured.default_fg.rgb);
+    else
+        fill_256_palette(self->color_table);
     memcpy(self->orig_color_table, self->color_table, arraysz(self->color_table) * sizeof(self->color_table[0]));
     return true;
 }
@@ -155,7 +284,8 @@ new_cp(PyTypeObject *type, PyObject *args, PyObject *kwds) {
             if (!set_colortable(self, opts)) return NULL;
         } else {
             memcpy(self->color_table, FG_BG_256, sizeof(FG_BG_256));
-            memcpy(self->orig_color_table, FG_BG_256, sizeof(FG_BG_256));
+            fill_256_palette(self->color_table);
+            memcpy(self->orig_color_table, self->color_table, sizeof(FG_BG_256));
         }
         self->dirty = true;
         Py_INCREF(ans);

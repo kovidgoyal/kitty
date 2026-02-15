@@ -168,6 +168,7 @@ def load_config(*paths: str, overrides: Iterable[str] | None = None, accumulate_
             effective_config_lines.append(line)
 
     overrides = tuple(overrides) if overrides is not None else ()
+
     opts_dict, found_paths = _load_config(
         defaults, partial(parse_config, accumulate_bad_lines=accumulate_bad_lines, effective_config_lines=add_effective_config_line),
         merge_result_dicts, *paths, overrides=overrides)

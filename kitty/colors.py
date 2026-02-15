@@ -253,12 +253,12 @@ def patch_colors(
     background_image_options: BackgroundImageOptions | None = None
 ) -> None:
     boss = get_boss()
+    opts = get_options()
     if windows is None:
         windows = tuple(boss.all_windows)
     bg_colors_before = {w.id: w.screen.color_profile.default_bg for w in windows}
     profiles = tuple(w.screen.color_profile for w in windows if w)
     patch_color_profiles(spec, transparent_background_colors, profiles, configured)
-    opts = get_options()
     if configured:
         patch_options_with_color_spec(opts, spec, transparent_background_colors, background_image_options)
     os_window_ids = set()
@@ -287,3 +287,22 @@ def patch_colors(
             if notify_bg and w.screen.color_profile.default_bg != bg_colors_before.get(w.id):
                 boss.default_bg_changed_for(w.id)
             w.refresh()
+
+Rgb = tuple[int, int, int]
+RgbFloat = tuple[float, float, float]
+
+def color_to_rgb(color: Color) -> Rgb:
+    return (color.r, color.g, color.b)
+
+def int_to_rgb(x: int) -> Rgb:
+    return (x >> 16) & 255, (x >> 8) & 255, x & 255
+
+def rgb_to_int(rgb: Rgb) -> int:
+    return (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
+
+def rgb_float_to_rgb(rgb: RgbFloat) -> Rgb:
+    return (
+        int(round(rgb[0])),
+        int(round(rgb[1])),
+        int(round(rgb[2]))
+    )
