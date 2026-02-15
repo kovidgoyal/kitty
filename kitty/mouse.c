@@ -740,14 +740,16 @@ move_cursor_to_mouse_if_at_shell_prompt(Window *w) {
     int y = screen_cursor_at_a_shell_prompt(screen);
     if (y < 0 || (unsigned)y > w->mouse_pos.cell_y) return false;
 
-    if (screen_prompt_supports_click_events(screen)) {
-        int sz = encode_mouse_event_impl(&w->mouse_pos, SGR_PROTOCOL, 1, PRESS, 0);
+    bool is_relative;
+    if (screen_prompt_supports_click_events(screen, &is_relative)) {
+        MousePosition mpos = w->mouse_pos;
+        if (is_relative) mpos.cell_y -= y;
+        int sz = encode_mouse_event_impl(&mpos, SGR_PROTOCOL, 1, PRESS, 0);
         if (sz > 0) {
             mouse_event_buf[sz] = 0;
             write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
             return true;
         }
-
         return false;
     } else {
         return screen_fake_move_cursor_to_position(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);

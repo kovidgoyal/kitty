@@ -2318,7 +2318,8 @@ screen_cursor_at_a_shell_prompt(const Screen *self) {
 }
 
 bool
-screen_prompt_supports_click_events(const Screen *self) {
+screen_prompt_supports_click_events(const Screen *self, bool *is_relative) {
+    *is_relative = (bool) self->prompt_settings.relative_click_events;
     return (bool) self->prompt_settings.supports_click_events;
 }
 
@@ -3065,7 +3066,13 @@ parse_prompt_mark(Screen *self, char *buf, PromptKind *pk) {
         if (strcmp(token, "k=s") == 0) *pk = SECONDARY_PROMPT;
         else if (strcmp(token, "redraw=0") == 0) self->prompt_settings.redraws_prompts_at_all = 0;
         else if (strcmp(token, "special_key=1") == 0) self->prompt_settings.uses_special_keys_for_cursor_movement = 1;
-        else if (strcmp(token, "click_events=1") == 0) self->prompt_settings.supports_click_events = 1;
+        else if (strcmp(token, "click_events=1") == 0) {
+            self->prompt_settings.supports_click_events = 1;
+            self->prompt_settings.relative_click_events = 0;
+        } else if (strcmp(token, "click_events=2") == 0) {
+            self->prompt_settings.supports_click_events = 1;
+            self->prompt_settings.relative_click_events = 1;
+        }
     }
 }
 
