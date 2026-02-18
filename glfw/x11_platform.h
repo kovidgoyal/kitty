@@ -325,6 +325,7 @@ typedef struct _GLFWlibraryX11
     Atom            XdndSelection;
     Atom            XdndTypeList;
     Atom            XdndLeave;
+    Atom            XdndProxy;
 
     // Selection (clipboard) atoms
     Atom            TARGETS;
@@ -406,6 +407,22 @@ typedef struct _GLFWlibraryX11
         Atom*            type_atoms;    // Atoms for each MIME type
         size_t           type_count;
         Atom             action_atom;   // XdndActionCopy, XdndActionMove, or XdndActionLink
+        bool             active;        // Whether a drag is currently active
+        Window           current_target;// Current drop target window under cursor
+        Window           proxy_target;  // Proxy target if current_target has XdndProxy
+        int              xdnd_version;  // Xdnd version supported by current target
+        bool             waiting_for_status; // Waiting for XdndStatus from target
+        bool             accepted;      // Whether target accepted the drag
+        Atom             accepted_action; // Action accepted by target
+        struct {
+            const char *mime_type;
+            Window     requestor;
+            Atom       property;
+            Atom       target;
+            bool       inflight;
+        } *pending_requests;
+        size_t           pending_count;
+        size_t           pending_capacity;
     } drag;
 
     struct {
