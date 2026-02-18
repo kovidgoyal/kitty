@@ -94,6 +94,15 @@ x11_cancel_momentum_scroll_timer(void) {
 //
 static unsigned _glfwDispatchX11Events(void);
 
+// Forward declarations for drag source helper functions
+static void send_drag_data(const char *mime_type, const char *data, size_t data_sz, 
+                          Window requestor, Atom property, Atom target);
+static bool add_pending_request(const char *mime_type, Window requestor, Atom property, Atom target);
+static void handle_drag_motion(int root_x, int root_y, Time timestamp);
+static void handle_drag_button_release(Time timestamp);
+static void handle_xdnd_status(const XClientMessageEvent *event);
+static void handle_xdnd_finished(const XClientMessageEvent *event);
+
 static void
 handleEvents(monotonic_t timeout) {
     EVDBG("starting handleEvents(%.2f)", monotonic_t_to_s_double(timeout));
@@ -4169,6 +4178,7 @@ add_pending_request(const char *mime_type, Window requestor, Atom property, Atom
 static void
 send_drag_data(const char *mime_type, const char *data, size_t data_sz, 
                Window requestor, Atom property, Atom target) {
+    (void)mime_type;  // Parameter kept for consistency with other platforms
     if (data && data_sz > 0) {
         XChangeProperty(_glfw.x11.display, requestor, property,
                        target, 8, PropModeReplace,
