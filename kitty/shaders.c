@@ -1487,10 +1487,11 @@ take_screenshot_of_oswindow(OSWindow *os_window, unsigned char *dst_buf, unsigne
     bind_program(BLIT_PROGRAM);
     
     // Set source rectangle (normalized coordinates: 0 to 1)
-    // Note: OpenGL origin is bottom-left, so we need to flip Y coordinates
-    float src_bottom_norm = (float)src_top / (float)vh;
-    float src_top_norm = (float)(src_top + src_height) / (float)vh;
-    glUniform4f(blit_program_layout.uniforms.src_rect, 0.0f, src_bottom_norm, 1.0f, src_top_norm);
+    // Note: OpenGL texture origin is bottom-left, but Region uses top-left origin
+    // Convert from screen coordinates (top-left origin) to OpenGL texture coordinates (bottom-left origin)
+    float src_bottom_norm = (float)(vh - (src_top + src_height)) / (float)vh;
+    float src_top_norm = (float)(vh - src_top) / (float)vh;
+    glUniform4f(blit_program_layout.uniforms.src_rect, 0.0f, src_top_norm, 1.0f, src_bottom_norm);
     
     // Set destination rectangle (NDC coordinates: -1 to 1)
     glUniform4f(blit_program_layout.uniforms.dest_rect, -1.0f, -1.0f, 1.0f, 1.0f);
