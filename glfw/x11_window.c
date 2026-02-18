@@ -1177,8 +1177,11 @@ handleSelectionRequest(XEvent* event) {
                                              request->requestor, request->property, 
                                              request->target);
                                 reply.xselection.property = request->property;
+                            } else {
+                                // Data will be provided asynchronously via _glfwPlatformDragDataReady
+                                // Don't send SelectionNotify yet - it will be sent when data is ready
+                                return;
                             }
-                            // Otherwise wait for _glfwPlatformDragDataReady
                         }
                     }
                 }
@@ -3990,6 +3993,7 @@ send_xdnd_enter(Window target, int version) {
     }
     
     XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+    XFlush(_glfw.x11.display);
 }
 
 // Send XdndPosition message to target window
@@ -4009,6 +4013,7 @@ send_xdnd_position(Window target, int root_x, int root_y, Time timestamp) {
     event.xclient.data.l[4] = _glfw.x11.drag.action_atom;
     
     XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+    XFlush(_glfw.x11.display);
     _glfw.x11.drag.waiting_for_status = true;
 }
 
@@ -4025,6 +4030,7 @@ send_xdnd_leave(Window target) {
     event.xclient.data.l[0] = _glfw.x11.drag.source_window;
     
     XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+    XFlush(_glfw.x11.display);
 }
 
 // Send XdndDrop message to target window
@@ -4042,6 +4048,7 @@ send_xdnd_drop(Window target, Time timestamp) {
     event.xclient.data.l[2] = timestamp;
     
     XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+    XFlush(_glfw.x11.display);
 }
 
 // Handle motion during drag
