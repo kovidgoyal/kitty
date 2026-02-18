@@ -1438,37 +1438,83 @@ setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_wind
 // are swapped. If thumb_w or thumb_h are zero the are set to the corresponding
 // dimension of the OS Window.
 void
-take_screenshot_of_oswindow(OSWindow *os_window, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h) {
+take_screenshot_of_oswindow(OSWindow *os_window, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool include_tab_bar) {
     unsigned vw = os_window->viewport_width;
     unsigned vh = os_window->viewport_height;
-    if (!*thumb_w) *thumb_w = vw; if (!*thumb_h) *thumb_h = vh;
-    *thumb_w = MIN(vw, *thumb_w);
-    *thumb_h = MIN(vw, *thumb_h);
-
-    size_t src_stride = (size_t)vw * 4, dst_stride = *thumb_w * 4;
-    RAII_ALLOC(uint8_t, buf, malloc(src_stride * (size_t)vh));
-    if (!buf) return;
-
-    // Read the current framebuffer (before swap)
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, 0, vw, vh, GL_RGBA, GL_UNSIGNED_BYTE, buf);
-    glPixelStorei(GL_PACK_ALIGNMENT, 4);
-
-    // Downsample with vertical flip (OpenGL origin is bottom-left)
-    float x_ratio = (float)vw / (float)*thumb_w;
-    float y_ratio = (float)vh / (float)*thumb_h;
-    for (unsigned dy = 0; dy < *thumb_h; dy++) {
-        // Vertical flip: dst row 0 = top of image = src row (vh-1)
-        unsigned src_y = (unsigned)((float)(*thumb_h - 1 - dy) * y_ratio);
-        if (src_y >= vh) src_y = vh - 1;
-        const uint8_t *src_row = buf + (size_t)src_y * src_stride;
-        uint8_t *dst_row = dst_buf + (size_t)dy * dst_stride;
-        for (unsigned dx = 0; dx < *thumb_w; dx++) {
-            unsigned src_x = (unsigned)((float)dx * x_ratio);
-            if (src_x >= vw) src_x = vw - 1;
-            memcpy(dst_row + dx * 4, src_row + src_x * 4, 4);
+    
+    // Calculate the source region to capture (excluding tab bar if requested)
+    unsigned src_top = 0, src_height = vh;
+    if (!include_tab_bar) {
+        Region central = {0}, tab_bar = {0};
+        os_window_regions(os_window, &central, &tab_bar);
+        if (tab_bar.bottom > tab_bar.top) {
+            // Tab bar is present, exclude it from the screenshot
+            src_top = central.top;
+            src_height = central.bottom - central.top;
         }
     }
+    
+    if (!*thumb_w) *thumb_w = vw; 
+    if (!*thumb_h) *thumb_h = src_height;
+    *thumb_w = MIN(vw, *thumb_w);
+    *thumb_h = MIN(src_height, *thumb_h);
+
+    // Create a texture to hold the current framebuffer content
+    GLuint src_texture = 0;
+    glGenTextures(1, &src_texture);
+    glBindTexture(GL_TEXTURE_2D, src_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    // Copy the current framebuffer to the texture
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, vw, vh, 0);
+    
+    // Create a temporary framebuffer for GPU-based scaling
+    GLuint temp_texture = 0, temp_framebuffer = 0;
+    setup_texture_as_render_target(*thumb_w, *thumb_h, &temp_texture, &temp_framebuffer);
+    
+    // Save current state
+    GLint current_framebuffer;
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &current_framebuffer);
+    
+    // Bind our temporary framebuffer for rendering
+    bind_framebuffer_for_output(temp_framebuffer);
+    save_viewport_using_bottom_left_origin(0, 0, *thumb_w, *thumb_h);
+    
+    // Use the blit program to render the scaled framebuffer
+    bind_program(BLIT_PROGRAM);
+    
+    // Set source rectangle (normalized coordinates: 0 to 1)
+    // Note: OpenGL origin is bottom-left, so we need to flip Y coordinates
+    float src_bottom_norm = (float)src_top / (float)vh;
+    float src_top_norm = (float)(src_top + src_height) / (float)vh;
+    glUniform4f(blit_program_layout.uniforms.src_rect, 0.0f, src_bottom_norm, 1.0f, src_top_norm);
+    
+    // Set destination rectangle (NDC coordinates: -1 to 1)
+    glUniform4f(blit_program_layout.uniforms.dest_rect, -1.0f, -1.0f, 1.0f, 1.0f);
+    
+    // Bind the source texture
+    glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
+    glBindTexture(GL_TEXTURE_2D, src_texture);
+    
+    // Draw the scaled quad
+    draw_quad(false, 0);
+    
+    // Read the scaled result
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, *thumb_w, *thumb_h, GL_RGBA, GL_UNSIGNED_BYTE, dst_buf);
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    
+    // Restore previous state
+    bind_framebuffer_for_output(current_framebuffer);
+    restore_viewport();
+    
+    // Clean up temporary resources
+    free_texture(&src_texture);
+    free_texture(&temp_texture);
+    free_framebuffer(&temp_framebuffer);
 }
 
 // }}}
