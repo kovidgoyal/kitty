@@ -1437,30 +1437,23 @@ setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_wind
 // the OSWindow is rendered into the back buffer and before the buffers
 // are swapped. If thumb_w or thumb_h are zero the are set to the corresponding
 // dimension of the source region (viewport or central region without tab bar).
-// The include_tab_bar parameter controls whether the tab bar is included in the screenshot.
-// When false, only the central window area is captured (excluding the tab bar).
+// Takes a screenshot of a rectangular region of the OSWindow's framebuffer.
+// The region parameter specifies which part of the framebuffer to capture.
 // Scaling is performed on the GPU using the BLIT_PROGRAM shader for better performance.
 // Setting the thumbnail dimensions to zero disables scaling.
 void
-take_screenshot_of_oswindow(OSWindow *os_window, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool include_tab_bar) {
+take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h) {
     unsigned vw = os_window->viewport_width;
     unsigned vh = os_window->viewport_height;
 
-    // Calculate the source region to capture (excluding tab bar if requested)
-    unsigned src_top = 0, src_height = vh;
-    if (!include_tab_bar) {
-        Region central = {0}, tab_bar = {0};
-        os_window_regions(os_window, &central, &tab_bar);
-        if (tab_bar.bottom > tab_bar.top) {
-            // Tab bar is present, exclude it from the screenshot
-            src_top = central.top;
-            src_height = central.bottom - central.top;
-        }
-    }
+    // Calculate the source region dimensions
+    unsigned src_top = region.top;
+    unsigned src_height = region.bottom - region.top;
+    unsigned src_width = region.right - region.left;
 
-    if (!*thumb_w) *thumb_w = vw;
+    if (!*thumb_w) *thumb_w = src_width;
     if (!*thumb_h) *thumb_h = src_height;
-    *thumb_w = MIN(vw, *thumb_w);
+    *thumb_w = MIN(src_width, *thumb_w);
     *thumb_h = MIN(src_height, *thumb_h);
 
     // Create a texture to hold the current framebuffer content
@@ -1493,9 +1486,11 @@ take_screenshot_of_oswindow(OSWindow *os_window, unsigned char *dst_buf, unsigne
     // Set source rectangle (normalized coordinates: 0 to 1)
     // Note: OpenGL texture origin is bottom-left, but Region uses top-left origin
     // Convert from screen coordinates (top-left origin) to OpenGL texture coordinates (bottom-left origin)
-    float src_bottom_norm = (float)(vh - (src_top + src_height)) / (float)vh;
-    float src_top_norm = (float)(vh - src_top) / (float)vh;
-    glUniform4f(blit_program_layout.uniforms.src_rect, 0.0f, src_top_norm, 1.0f, src_bottom_norm);
+    float src_left_norm = (float)region.left / (float)vw;
+    float src_right_norm = (float)region.right / (float)vw;
+    float src_bottom_norm = (float)(vh - region.bottom) / (float)vh;
+    float src_top_norm = (float)(vh - region.top) / (float)vh;
+    glUniform4f(blit_program_layout.uniforms.src_rect, src_left_norm, src_top_norm, src_right_norm, src_bottom_norm);
 
     // Set destination rectangle (NDC coordinates: -1 to 1)
     glUniform4f(blit_program_layout.uniforms.dest_rect, -1.0f, -1.0f, 1.0f, 1.0f);
@@ -1520,6 +1515,61 @@ take_screenshot_of_oswindow(OSWindow *os_window, unsigned char *dst_buf, unsigne
     free_texture(&src_texture);
     free_texture(&temp_texture);
     free_framebuffer(&temp_framebuffer);
+}
+
+// The include_tab_bar parameter controls whether the tab bar is included in the screenshot.
+// When false, only the central window area is captured (excluding the tab bar).
+// Scaling is performed on the GPU using the BLIT_PROGRAM shader for better performance.
+// Setting the thumbnail dimensions to zero disables scaling.
+void
+take_screenshot_of_oswindow(OSWindow *os_window, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool include_tab_bar) {
+    Region region;
+
+    // Calculate the region to capture (excluding tab bar if requested)
+    if (!include_tab_bar) {
+        Region central = {0}, tab_bar = {0};
+        os_window_regions(os_window, &central, &tab_bar);
+        if (tab_bar.bottom > tab_bar.top) {
+            // Tab bar is present, exclude it from the screenshot
+            region = central;
+        } else {
+            // No tab bar, capture the entire viewport
+            region.left = 0;
+            region.right = os_window->viewport_width;
+            region.top = 0;
+            region.bottom = os_window->viewport_height;
+        }
+    } else {
+        // Capture the entire viewport including tab bar
+        region.left = 0;
+        region.right = os_window->viewport_width;
+        region.top = 0;
+        region.bottom = os_window->viewport_height;
+    }
+
+    take_screenshot_of_rectangular_region(os_window, region, dst_buf, thumb_w, thumb_h);
+}
+
+// Takes a screenshot of a specific window identified by window_id.
+// The screenshot captures only the rectangular region occupied by the window.
+// Scaling is performed on the GPU using the BLIT_PROGRAM shader for better performance.
+// Setting the thumbnail dimensions to zero disables scaling.
+void
+take_screenshot_of_window(id_type window_id, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h) {
+    Window *window = window_for_window_id(window_id);
+    if (!window) return;
+
+    OSWindow *os_window = os_window_for_kitty_window(window_id);
+    if (!os_window) return;
+
+    // Compute the region for this window
+    Region region;
+    region.left = window->render_data.geometry.left;
+    region.top = window->render_data.geometry.top;
+    region.right = window->render_data.geometry.right;
+    region.bottom = window->render_data.geometry.bottom;
+
+    take_screenshot_of_rectangular_region(os_window, region, dst_buf, thumb_w, thumb_h);
 }
 
 // }}}
