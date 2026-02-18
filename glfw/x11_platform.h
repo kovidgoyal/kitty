@@ -423,6 +423,10 @@ typedef struct _GLFWlibraryX11
         } *pending_requests;
         size_t           pending_count;
         size_t           pending_capacity;
+        // Thumbnail window for drag icon
+        Window           thumbnail_window;
+        Pixmap           thumbnail_pixmap;
+        GC               thumbnail_gc;
     } drag;
 
     struct {
