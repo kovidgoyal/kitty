@@ -1436,7 +1436,10 @@ setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_wind
 // Take a screenshot of the OS Window, must be called immediately after
 // the OSWindow is rendered into the back buffer and before the buffers
 // are swapped. If thumb_w or thumb_h are zero the are set to the corresponding
-// dimension of the OS Window.
+// dimension of the source region (viewport or central region without tab bar).
+// The include_tab_bar parameter controls whether the tab bar is included in the screenshot.
+// When false, only the central window area is captured (excluding the tab bar).
+// Scaling is performed on the GPU using the BLIT_PROGRAM shader for better performance.
 void
 take_screenshot_of_oswindow(OSWindow *os_window, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool include_tab_bar) {
     unsigned vw = os_window->viewport_width;
