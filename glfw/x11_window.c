@@ -102,6 +102,7 @@ static void handle_drag_motion(int root_x, int root_y, Time timestamp);
 static void handle_drag_button_release(Time timestamp);
 static void handle_xdnd_status(const XClientMessageEvent *event);
 static void handle_xdnd_finished(const XClientMessageEvent *event);
+static bool create_drag_thumbnail(const GLFWimage* thumbnail, int x, int y);
 
 static void
 handleEvents(monotonic_t timeout) {
