@@ -38,11 +38,12 @@ void main() {
     // Average the alpha values
     float avg_alpha = (s00.a + s10.a + s01.a + s11.a) * 0.25;
     
-    // Weight each sample by its alpha for proper alpha blending during downscale
+    // For proper downsampling with transparency, weight colors by their alpha
+    // This ensures partially transparent pixels contribute proportionally
     vec3 weighted_sum = linear00 * s00.a + linear10 * s10.a + linear01 * s01.a + linear11 * s11.a;
     float total_weight = s00.a + s10.a + s01.a + s11.a;
     
-    // Calculate the average color in linear space
+    // Calculate the weighted average color in linear space
     vec3 avg_linear = total_weight > 0.0 ? weighted_sum / total_weight : vec3(0.0);
     
     // Convert back to sRGB
