@@ -1449,7 +1449,7 @@ setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_wind
 // Scaling is performed on the GPU using the SCREENSHOT_PROGRAM shader for better performance.
 // The shader properly handles sRGB color space conversion and downscaling.
 // Setting the thumbnail dimensions to zero disables scaling.
-static void
+void
 take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h) {
     unsigned vw = os_window->viewport_width;
     unsigned vh = os_window->viewport_height;
@@ -1526,56 +1526,6 @@ take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsign
     free_texture(&temp_texture);
     free_framebuffer(&temp_framebuffer);
 }
-
-// The include_tab_bar parameter controls whether the tab bar is included in the screenshot.
-// When false, only the central window area is captured (excluding the tab bar).
-// Scaling is performed on the GPU using the BLIT_PROGRAM shader for better performance.
-// Setting the thumbnail dimensions to zero disables scaling.
-// Must be called only after rendering the OS Window but before the buffer is swapped.
-void
-take_screenshot_of_oswindow(OSWindow *os_window, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool include_tab_bar) {
-    Region region = {0};
-    // Calculate the region to capture (excluding tab bar if requested)
-    if (!include_tab_bar) {
-        Region central = {0}, tab_bar = {0};
-        os_window_regions(os_window, &central, &tab_bar);
-        if (tab_bar.bottom > tab_bar.top) {
-            // Tab bar is present, exclude it from the screenshot
-            region = central;
-        } else {
-            // No tab bar, capture the entire viewport
-            region.right = os_window->viewport_width;
-            region.bottom = os_window->viewport_height;
-        }
-    } else {
-        // Capture the entire viewport including tab bar
-        region.right = os_window->viewport_width;
-        region.bottom = os_window->viewport_height;
-    }
-    take_screenshot_of_rectangular_region(os_window, region, dst_buf, thumb_w, thumb_h);
-}
-
-// Takes a screenshot of a specific window identified by window_id.
-// The screenshot captures only the rectangular region occupied by the window.
-// Scaling is performed on the GPU using the BLIT_PROGRAM shader for better performance.
-// Setting the thumbnail dimensions to zero disables scaling.
-// Must be called only after rendering the parent OS Window but before the
-// buffer is swapped.
-bool
-take_screenshot_of_window(id_type window_id, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h) {
-    Window *window = window_for_window_id(window_id);
-    OSWindow *os_window = os_window_for_kitty_window(window_id);
-    if (!window || !os_window) return false;
-    // Compute the region for this window
-    Region region;
-    region.left = window->render_data.geometry.left;
-    region.top = window->render_data.geometry.top;
-    region.right = window->render_data.geometry.right;
-    region.bottom = window->render_data.geometry.bottom;
-    take_screenshot_of_rectangular_region(os_window, region, dst_buf, thumb_w, thumb_h);
-    return true;
-}
-
 // }}}
 
 // Python API {{{

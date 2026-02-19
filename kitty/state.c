@@ -1483,12 +1483,40 @@ get_mouse_data_for_window(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+set_tab_being_dragged(PyObject *self UNUSED, PyObject *args) {
+    if (!PyLong_Check(args)) { PyErr_SetString(PyExc_TypeError, "tab id must be integer"); return NULL; }
+    global_state.tab_being_dragged = PyLong_AsUnsignedLongLong(args);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+request_callback_with_thumbnail(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long os_window_id, window_id = 0;
+    const char *callback; int include_tab_bar = 0;
+    double scale = 0.25; unsigned max_width = 480;
+    if (!PyArg_ParseTuple(args, "sK|KpdI", &callback, &os_window_id, &window_id, &include_tab_bar, &scale, &max_width)) return NULL;
+    WITH_OS_WINDOW(os_window_id)
+        global_state.thumbnail_callback.os_window = os_window->id;
+        global_state.thumbnail_callback.window = window_id;
+        global_state.thumbnail_callback.include_tab_bar = include_tab_bar;
+        snprintf(global_state.thumbnail_callback.callback, arraysz(global_state.thumbnail_callback.callback), "%s", callback);
+        global_state.thumbnail_callback.max_width = max_width;
+        global_state.thumbnail_callback.scale = scale;
+        mark_os_window_dirty(os_window_id);
+    END_WITH_OS_WINDOW
+    Py_RETURN_NONE;
+}
+
+
 #define M(name, arg_type) {#name, (PyCFunction)name, arg_type, NULL}
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 
 static PyMethodDef module_methods[] = {
     M(os_window_focus_counters, METH_NOARGS),
     M(get_mouse_data_for_window, METH_VARARGS),
+    M(request_callback_with_thumbnail, METH_VARARGS),
+    M(set_tab_being_dragged, METH_O),
     MW(update_pointer_shape, METH_VARARGS),
     MW(current_os_window, METH_NOARGS),
     MW(next_window_id, METH_NOARGS),

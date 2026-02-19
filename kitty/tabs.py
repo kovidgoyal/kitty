@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
+import math
 import os
 import re
 import stat
@@ -37,10 +38,12 @@ from .fast_data_types import (
     next_window_id,
     remove_tab,
     remove_window,
+    request_callback_with_thumbnail,
     ring_bell,
     set_active_tab,
     set_active_window,
     set_redirect_keys_to_overlay,
+    set_tab_being_dragged,
     swap_tabs,
     sync_os_window_title,
 )
@@ -78,6 +81,14 @@ class TabMouseEvent(NamedTuple):
     action: int
     at: float
     tab_id: int = 0
+
+
+class TabDragState(NamedTuple):
+    tab_id: int
+    start_x: float
+    start_y: float
+    original_index: int
+    drag_started: bool = False  # True if drag threshold exceeded
 
 
 class TabDict(TypedDict):
@@ -1069,6 +1080,7 @@ class TabManager:  # {{{
     num_of_windows_with_progress: int = 0
     total_progress: int = 0
     has_indeterminate_progress: bool = False
+    tab_drag_state: TabDragState | None = None
 
     def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: SessionType | None = None):
         self.os_window_id = os_window_id
@@ -1520,8 +1532,23 @@ class TabManager:  # {{{
             ))
         return ans
 
-    def handle_click_on_tab(self, x: int, button: int, modifiers: int, action: int) -> None:
-        tab = self.tab_for_id(self.tab_bar.tab_id_at(x))
+    def start_tab_drag(self, pixels: bytes, width: int, height: int) -> None:
+        if (state := self.tab_drag_state) is None:
+            return
+        from .fast_data_types import png_from_32bit_rgba_data
+        with open('/t/screenshot.png', 'wb') as f:
+            f.write(png_from_32bit_rgba_data(pixels, width, height))
+        print(11111111, state, width, height)
+
+    def handle_tab_bar_mouse(self, x: float, y: float, button: int, modifiers: int, action: int) -> None:
+        if button == -1:  # motion
+            if (state := self.tab_drag_state) is not None and not state.drag_started:
+                if math.sqrt((x-state.start_x)**2 + (y-state.start_y)**2) > 5:
+                    self.tab_drag_state = state._replace(drag_started=True)
+                    request_callback_with_thumbnail("start_tab_drag", self.os_window_id)
+            return
+
+        tab = self.tab_for_id(self.tab_bar.tab_id_at(int(x)))
         now = monotonic()
         if tab is None:
             if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and len(self.recent_mouse_events) > 2:
@@ -1537,12 +1564,21 @@ class TabManager:  # {{{
                     self.recent_mouse_events.clear()
                     return
         else:
-            if action == GLFW_PRESS and button == GLFW_MOUSE_BUTTON_LEFT:
-                self.set_active_tab(tab)
-            elif button == GLFW_MOUSE_BUTTON_MIDDLE and action == GLFW_RELEASE and self.recent_mouse_events:
-                p = self.recent_mouse_events[-1]
-                if p.button == button and p.action == GLFW_PRESS and p.tab_id == tab.id:
-                    get_boss().close_tab(tab)
+            if button == GLFW_MOUSE_BUTTON_LEFT:
+                if action == GLFW_PRESS:
+                    if (idx := self.tabs.index(tab) if tab in self.tabs else -1) > -1:
+                        set_tab_being_dragged(tab.id)
+                        self.tab_drag_state = TabDragState(
+                            tab_id=tab.id, start_x=x, start_y=y, original_index=idx)
+                else:
+                    if self.tab_drag_state is None or not self.tab_drag_state.drag_started:
+                        self.set_active_tab(tab)
+                    set_tab_being_dragged(0)
+            elif button == GLFW_MOUSE_BUTTON_MIDDLE:
+                if action == GLFW_RELEASE and self.recent_mouse_events:
+                    p = self.recent_mouse_events[-1]
+                    if p.button == button and p.action == GLFW_PRESS and p.tab_id == tab.id:
+                        get_boss().close_tab(tab)
         self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, tab.id if tab else 0))
         if len(self.recent_mouse_events) > 5:
             self.recent_mouse_events.popleft()

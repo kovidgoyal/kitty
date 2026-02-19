@@ -866,8 +866,10 @@ HANDLER(handle_event) {
 static void
 handle_tab_bar_mouse(int button, int modifiers, int action) {
     set_currently_hovered_window(0, modifiers);
-    if (button > -1) {  // dont report motion events, as they are expensive and useless
-        call_boss(handle_click_on_tab, "Kdiii", global_state.callback_os_window->id, global_state.callback_os_window->mouse_x, button, modifiers, action);
+    OSWindow *w = global_state.callback_os_window;
+    // dont report motion events, as they are expensive and useless
+    if (w && (button > -1 || global_state.tab_being_dragged)) {
+        call_boss(handle_tab_bar_mouse, "Kddiii", w->id, w->mouse_x, w->mouse_y, button, modifiers, action);
     }
 }
 
@@ -1130,7 +1132,7 @@ mouse_event(const int button, int modifiers, int action) {
     w = window_for_event(&window_idx, &in_tab_bar);
     set_currently_hovered_window(w ? w->id : 0, modifiers);
 
-    if (in_tab_bar) {
+    if (in_tab_bar || global_state.tab_being_dragged) {
         mouse_cursor_shape = POINTER_POINTER;
         handle_tab_bar_mouse(button, modifiers, action);
         debug("handled by tab bar\n");

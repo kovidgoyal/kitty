@@ -1371,10 +1371,13 @@ class Boss:
             run_update_check(get_options().update_check_interval * 60 * 60)
             self.update_check_started = True
 
-    def handle_click_on_tab(self, os_window_id: int, x: int, button: int, modifiers: int, action: int) -> None:
-        tm = self.os_window_map.get(os_window_id)
-        if tm is not None:
-            tm.handle_click_on_tab(x, button, modifiers, action)
+    def handle_tab_bar_mouse(self, os_window_id: int, x: float, y: float, button: int, modifiers: int, action: int) -> None:
+        if tm := self.os_window_map.get(os_window_id):
+            tm.handle_tab_bar_mouse(x, y, button, modifiers, action)
+
+    def start_tab_drag(self, os_window_id: int, window_id: int, pixels: bytes, width: int, height: int) -> None:
+        if tm := self.os_window_map.get(os_window_id):
+            tm.start_tab_drag(pixels, width, height)
 
     def on_window_resize(self, os_window_id: int, w: int, h: int, dpi_changed: bool) -> None:
         if dpi_changed:

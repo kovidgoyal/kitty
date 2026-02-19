@@ -388,6 +388,13 @@ typedef struct GlobalState {
         int action;
         PyObject *drag_data;
     } drag_source;
+    id_type tab_being_dragged;
+    struct {
+        id_type os_window, window;
+        char callback[32];
+        bool include_tab_bar;
+        double scale; unsigned max_width;
+    } thumbnail_callback;
 } GlobalState;
 
 extern GlobalState global_state;
@@ -491,5 +498,4 @@ void dispatch_buffered_keys(Window *w);
 bool screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen);
 void setup_os_window_for_rendering(OSWindow*, Tab*, Window*, bool);
 void swap_window_buffers(OSWindow *w);
-void take_screenshot_of_oswindow(OSWindow *os_window, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool include_tab_bar);
-bool take_screenshot_of_window(id_type window_id, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h);
+void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h);
