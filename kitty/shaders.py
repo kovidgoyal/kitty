@@ -30,6 +30,7 @@ from .fast_data_types import (
     MARK_MASK,
     REVERSE,
     ROUNDED_RECT_PROGRAM,
+    SCREENSHOT_PROGRAM,
     STRIKETHROUGH,
     TINT_PROGRAM,
     TRAIL_PROGRAM,
@@ -221,6 +222,7 @@ class LoadShaderPrograms:
         program_for('tint').compile(TINT_PROGRAM, allow_recompile)
         program_for('trail').compile(TRAIL_PROGRAM, allow_recompile)
         program_for('blit').compile(BLIT_PROGRAM, allow_recompile)
+        program_for('screenshot').compile(SCREENSHOT_PROGRAM, allow_recompile)
         program_for('rounded_rect').compile(ROUNDED_RECT_PROGRAM, allow_recompile)
         init_cell_program()
 
