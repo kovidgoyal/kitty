@@ -1200,7 +1200,7 @@ render_group(
         ri.canvas_width = num_cells * unscaled_metrics.cell_width; ri.rendered_width = num_glyphs * scaled_metrics.cell_width;
         /*dump_sprite(fg->canvas.buf, scaled_metrics.cell_width * num_scaled_cells, scaled_metrics.cell_height);*/
     } else {
-        render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, scaled_metrics.cell_width, scaled_metrics.cell_height, num_scaled_cells, scaled_metrics.baseline, &was_colored, (FONTS_DATA_HANDLE)fg, &ri);
+        render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, scaled_metrics.cell_width, scaled_metrics.cell_height, num_scaled_cells, scaled_metrics.baseline, &was_colored, (FONTS_DATA_HANDLE)fg, &ri, unscaled_metrics.cell_width);
     }
     apply_horizontal_alignment(fg->canvas.buf, rf, center_glyph, ri, num_cells * unscaled_metrics.cell_width, scaled_metrics.cell_height, num_scaled_cells, num_glyphs, was_colored);
     if (PyErr_Occurred()) PyErr_Print();
