@@ -513,6 +513,17 @@ static const struct xdg_wm_base_listener wmBaseListener = {
     wmBaseHandlePing
 };
 
+static void extBackgroundEffectHandleCapabilities(void* data UNUSED,
+                                                  struct ext_background_effect_manager_v1* manager UNUSED,
+                                                  uint32_t flags)
+{
+    _glfw.wl.ext_background_effect_capabilities = flags;
+}
+
+static const struct ext_background_effect_manager_v1_listener extBackgroundEffectManagerListener = {
+    extBackgroundEffectHandleCapabilities
+};
+
 static void registryHandleGlobal(void* data UNUSED,
                                  struct wl_registry* registry,
                                  uint32_t name,
@@ -641,6 +652,10 @@ static void registryHandleGlobal(void* data UNUSED,
     else if (is(org_kde_kwin_blur_manager)) {
         _glfw.wl.org_kde_kwin_blur_manager = wl_registry_bind(registry, name, &org_kde_kwin_blur_manager_interface, 1);
     }
+    else if (is(ext_background_effect_manager_v1)) {
+        _glfw.wl.ext_background_effect_manager_v1 = wl_registry_bind(registry, name, &ext_background_effect_manager_v1_interface, 1);
+        ext_background_effect_manager_v1_add_listener(_glfw.wl.ext_background_effect_manager_v1, &extBackgroundEffectManagerListener, NULL);
+    }
     else if (is(zwlr_layer_shell_v1)) {
         if (version >= 4) {
             _glfw.wl.zwlr_layer_shell_v1_version = version;
@@ -766,7 +781,8 @@ get_compositor_missing_capabilities(void) {
     char *p = buf;
     *p = 0;
     C(viewporter, wp_viewporter); C(fractional_scale, wp_fractional_scale_manager_v1);
-    C(blur, org_kde_kwin_blur_manager); C(server_side_decorations, decorationManager);
+    if (!_glfw.wl.org_kde_kwin_blur_manager && !_glfw.wl.ext_background_effect_manager_v1) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", "blur");
+    C(server_side_decorations, decorationManager);
     C(cursor_shape, wp_cursor_shape_manager_v1); C(layer_shell, zwlr_layer_shell_v1);
     C(single_pixel_buffer, wp_single_pixel_buffer_manager_v1); C(preferred_scale, has_preferred_buffer_scale);
     C(idle_inhibit, idle_inhibit_manager); C(icon, xdg_toplevel_icon_manager_v1); C(bell, xdg_system_bell_v1);
@@ -969,6 +985,8 @@ void _glfwPlatformTerminate(void)
         wp_fractional_scale_manager_v1_destroy(_glfw.wl.wp_fractional_scale_manager_v1);
     if (_glfw.wl.org_kde_kwin_blur_manager)
         org_kde_kwin_blur_manager_destroy(_glfw.wl.org_kde_kwin_blur_manager);
+    if (_glfw.wl.ext_background_effect_manager_v1)
+        ext_background_effect_manager_v1_destroy(_glfw.wl.ext_background_effect_manager_v1);
     if (_glfw.wl.zwlr_layer_shell_v1)
         zwlr_layer_shell_v1_destroy(_glfw.wl.zwlr_layer_shell_v1);
     if (_glfw.wl.idle_inhibit_manager)

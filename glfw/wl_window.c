@@ -344,7 +344,25 @@ update_regions(_GLFWwindow* window) {
         wl_region_destroy(region);
     }
     // Set blur region
-    if (_glfw.wl.org_kde_kwin_blur_manager) {
+    if (_glfw.wl.ext_background_effect_manager_v1) {
+        if (window->wl.has_blur && (_glfw.wl.ext_background_effect_capabilities & EXT_BACKGROUND_EFFECT_MANAGER_V1_CAPABILITY_BLUR)) {
+            if (!window->wl.ext_background_effect_surface_v1)
+                window->wl.ext_background_effect_surface_v1 = ext_background_effect_manager_v1_get_background_effect(
+                    _glfw.wl.ext_background_effect_manager_v1, window->wl.surface);
+            if (window->wl.ext_background_effect_surface_v1) {
+                struct wl_region* region = wl_compositor_create_region(_glfw.wl.compositor);
+                if (region) {
+                    wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
+                    ext_background_effect_surface_v1_set_blur_region(window->wl.ext_background_effect_surface_v1, region);
+                    wl_region_destroy(region);
+                }
+            }
+        } else {
+            if (window->wl.ext_background_effect_surface_v1) {
+                ext_background_effect_surface_v1_set_blur_region(window->wl.ext_background_effect_surface_v1, NULL);
+            }
+        }
+    } else if (_glfw.wl.org_kde_kwin_blur_manager) {
         if (window->wl.has_blur) {
             if (!window->wl.org_kde_kwin_blur)
                 window->wl.org_kde_kwin_blur = org_kde_kwin_blur_manager_create(_glfw.wl.org_kde_kwin_blur_manager, window->wl.surface);
@@ -606,7 +624,7 @@ create_surface(_GLFWwindow* window, const _GLFWwndconfig* wndconfig) {
         }
     }
     window->wl.window_fully_created = !window->wl.expect_scale_from_compositor;
-    if (_glfw.wl.org_kde_kwin_blur_manager && wndconfig->blur_radius > 0) _glfwPlatformSetWindowBlur(window, wndconfig->blur_radius);
+    if ((_glfw.wl.ext_background_effect_manager_v1 || _glfw.wl.org_kde_kwin_blur_manager) && wndconfig->blur_radius > 0) _glfwPlatformSetWindowBlur(window, wndconfig->blur_radius);
 
     window->wl.integer_scale.deduced = scale;
     if (_glfw.wl.has_preferred_buffer_scale) { scale = 1; window->wl.integer_scale.preferred = 1; }
@@ -1512,6 +1530,8 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
         wp_viewport_destroy(window->wl.wp_viewport);
     if (window->wl.org_kde_kwin_blur)
         org_kde_kwin_blur_release(window->wl.org_kde_kwin_blur);
+    if (window->wl.ext_background_effect_surface_v1)
+        ext_background_effect_surface_v1_destroy(window->wl.ext_background_effect_surface_v1);
 
     if (window->context.destroy)
         window->context.destroy(window);

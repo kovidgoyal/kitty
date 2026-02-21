@@ -90,7 +90,8 @@
       "staging/xdg-toplevel-tag/xdg-toplevel-tag-v1.xml",
 
       "kwin-blur-v1.xml",
-      "wlr-layer-shell-unstable-v1.xml"
+      "wlr-layer-shell-unstable-v1.xml",
+      "ext-background-effect-v1.xml"
     ],
     "sources": [
       "wl_init.c",

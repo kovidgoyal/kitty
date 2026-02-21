@@ -63,6 +63,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-fractional-scale-v1-client-protocol.h"
 #include "wayland-viewporter-client-protocol.h"
 #include "wayland-kwin-blur-v1-client-protocol.h"
+#include "wayland-ext-background-effect-v1-client-protocol.h"
 #include "wayland-wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wayland-single-pixel-buffer-v1-client-protocol.h"
 #include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
@@ -184,6 +185,7 @@ typedef struct _GLFWwindowWayland
     struct wp_fractional_scale_v1 *wp_fractional_scale_v1;
     struct wp_viewport *wp_viewport;
     struct org_kde_kwin_blur *org_kde_kwin_blur;
+    struct ext_background_effect_surface_v1 *ext_background_effect_surface_v1;
     bool has_blur, expect_scale_from_compositor, window_fully_created;
     struct {
         bool surface_configured, preferred_scale_received, fractional_scale_received;
@@ -349,6 +351,8 @@ typedef struct _GLFWlibraryWayland
     struct wp_fractional_scale_manager_v1 *wp_fractional_scale_manager_v1;
     struct wp_viewporter *wp_viewporter;
     struct org_kde_kwin_blur_manager *org_kde_kwin_blur_manager;
+    struct ext_background_effect_manager_v1 *ext_background_effect_manager_v1;
+    uint32_t ext_background_effect_capabilities;
     struct zwlr_layer_shell_v1* zwlr_layer_shell_v1; uint32_t zwlr_layer_shell_v1_version;
     struct wp_single_pixel_buffer_manager_v1 *wp_single_pixel_buffer_manager_v1;
     struct zwp_idle_inhibit_manager_v1* idle_inhibit_manager;
