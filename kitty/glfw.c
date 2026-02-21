@@ -2760,6 +2760,28 @@ grab_keyboard(PyObject *self UNUSED, PyObject *action) {
 }
 
 static PyObject*
+draw_drag_icon_title(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long os_window_id;
+    const char *text;
+    unsigned int fg, bg;
+    int width;
+    if (!PyArg_ParseTuple(args, "KsIIi", &os_window_id, &text, &fg, &bg, &width)) return NULL;
+    OSWindow *w = os_window_for_id(os_window_id);
+    if (!w || !w->fonts_data) { PyErr_SetString(PyExc_KeyError, "OS Window with specified id does not exist or has no fonts data"); return NULL; }
+    double font_sz_pts = w->fonts_data->font_sz_in_pts;
+    double ydpi = w->fonts_data->logical_dpi_y;
+    size_t height = (size_t)w->fonts_data->fcm.cell_height + 2;  // extra 2px for visual padding
+    size_t buf_sz = (size_t)width * height * 4;
+    RAII_ALLOC(uint8_t, buf, calloc(buf_sz, 1));
+    if (!buf) return PyErr_NoMemory();
+    if (!draw_window_title(font_sz_pts, ydpi, text, fg, bg, buf, width, height)) {
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Failed to render drag icon title");
+        return NULL;
+    }
+    return PyBytes_FromStringAndSize((char*)buf, buf_sz);
+}
+
+static PyObject*
 start_drag_with_data(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     static const char* kwlist[] = {"os_window_id", "data_map", "thumbnail", "width", "height", "operations", NULL};
     unsigned long long os_window_id; PyObject *data_map;
@@ -2803,6 +2825,7 @@ static PyMethodDef module_methods[] = {
     METHODB(pointer_name_to_css_name, METH_O),
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     {"start_drag_with_data", (PyCFunction)(void (*) (void))(start_drag_with_data), METH_VARARGS | METH_KEYWORDS, NULL},
+    METHODB(draw_drag_icon_title, METH_VARARGS),
     METHODB(set_default_window_icon, METH_VARARGS),
     METHODB(set_os_window_icon, METH_VARARGS),
     METHODB(set_clipboard_data_types, METH_VARARGS),
