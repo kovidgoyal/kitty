@@ -570,6 +570,54 @@ swap_tabs(id_type os_window_id, unsigned int a, unsigned int b) {
 }
 
 static PyObject*
+pyreorder_tabs(PyObject *self UNUSED, PyObject *args) {
+    if (PyTuple_GET_SIZE(args) < 1) { PyErr_SetString(PyExc_TypeError, "reorder_tabs requires at least one argument"); return NULL; }
+    id_type os_window_id = PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(args, 0));
+    if (PyErr_Occurred()) return NULL;
+    WITH_OS_WINDOW(os_window_id)
+        Py_ssize_t num_tabs = PyTuple_GET_SIZE(args) - 1;
+        if ((size_t)num_tabs != os_window->num_tabs) {
+            PyErr_SetString(PyExc_ValueError, "The number of tab ids must equal the number of tabs in the OS window");
+            return NULL;
+        }
+        if (num_tabs == 0) Py_RETURN_NONE;
+        Tab *temp = (Tab*)malloc(sizeof(Tab) * num_tabs);
+        if (!temp) { PyErr_NoMemory(); return NULL; }
+        bool *used = (bool*)calloc(num_tabs, sizeof(bool));
+        if (!used) { free(temp); PyErr_NoMemory(); return NULL; }
+        for (Py_ssize_t i = 0; i < num_tabs; i++) {
+            id_type tab_id = PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(args, i + 1));
+            if (PyErr_Occurred()) { free(used); free(temp); return NULL; }
+            bool found = false;
+            for (size_t t = 0; t < os_window->num_tabs; t++) {
+                if (os_window->tabs[t].id == tab_id) {
+                    if (used[t]) {
+                        free(used); free(temp);
+                        PyErr_Format(PyExc_ValueError, "Duplicate tab id %llu in reorder list", (unsigned long long)tab_id);
+                        return NULL;
+                    }
+                    used[t] = true;
+                    temp[i] = os_window->tabs[t];
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                free(used); free(temp);
+                PyErr_Format(PyExc_ValueError, "Tab id %llu not found in OS window", (unsigned long long)tab_id);
+                return NULL;
+            }
+        }
+        free(used);
+        memcpy(os_window->tabs, temp, sizeof(Tab) * num_tabs);
+        free(temp);
+        Py_RETURN_NONE;
+    END_WITH_OS_WINDOW
+    PyErr_Format(PyExc_ValueError, "OS window with id %llu not found", (unsigned long long)os_window_id);
+    return NULL;
+}
+
+static PyObject*
 pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
     id_type os_window_id, tab_id;
     PyObject *rects;
@@ -1520,6 +1568,7 @@ static PyMethodDef module_methods[] = {
     MW(buffer_keys_in_window, METH_VARARGS),
     MW(set_active_window, METH_VARARGS),
     MW(swap_tabs, METH_VARARGS),
+    MW(reorder_tabs, METH_VARARGS),
     MW(set_borders_rects, METH_VARARGS),
     MW(set_tab_bar_render_data, METH_VARARGS),
     MW(set_window_render_data, METH_VARARGS),
