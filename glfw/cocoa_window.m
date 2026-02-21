@@ -3971,6 +3971,32 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {@autore
             [d end_transfer:EINVAL];
         }
     }
+    // Obtain the event and view early so we can position the drag image relative to the cursor
+    NSEvent* event = [NSApp currentEvent];
+    if (!event || ([event type] != NSEventTypeLeftMouseDown &&
+                    [event type] != NSEventTypeLeftMouseDragged)) {
+        // Create a synthetic left mouse down event using stored cursor position
+        // Convert window coordinates to screen coordinates
+        NSRect contentRect = [window->ns.view frame];
+        NSPoint windowPos = NSMakePoint(window->virtualCursorPosX,
+                                        contentRect.size.height - window->virtualCursorPosY);
+
+        event = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
+                                    location:windowPos
+                                modifierFlags:0
+                                    timestamp:[[NSProcessInfo processInfo] systemUptime]
+                                windowNumber:[window->ns.object windowNumber]
+                                    context:nil
+                                eventNumber:0
+                                    clickCount:1
+                                    pressure:1.0];
+    }
+
+    if (!event) return EIO;
+    GLFWContentView *v = window->ns.view;
+    // Convert mouse position to view coordinates for drag image placement
+    NSPoint mouseInView = [v convertPoint:[event locationInWindow] fromView:nil];
+
     NSMutableArray<NSDraggingItem*>* dragItems = [[[NSMutableArray alloc] init] autorelease];
     for (size_t i = 0; i < _glfw.drag.item_count; i++) {
         NSString* utiString = mime_to_uti(_glfw.drag.items[i].mime_type);
@@ -4016,7 +4042,10 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {@autore
                 NSImage* image = [[NSImage alloc] initWithSize: pointSize];
                 if (image) {
                     [image addRepresentation:imageRep];
-                    [dragItem setDraggingFrame:NSMakeRect(0, 0, image.size.width, image.size.height) contents:image];
+                    // Place drag image below cursor and horizontally centered
+                    CGFloat frameX = mouseInView.x - image.size.width / 2.0;
+                    CGFloat frameY = mouseInView.y - image.size.height;
+                    [dragItem setDraggingFrame:NSMakeRect(frameX, frameY, image.size.width, image.size.height) contents:image];
                     [image release];
                 }
                 [imageRep release];
@@ -4028,33 +4057,8 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {@autore
         [dragItems addObject:dragItem];
     }
 
-    // Start the drag session - try current event first, then create a synthetic one
-    NSEvent* event = [NSApp currentEvent];
-    if (!event || ([event type] != NSEventTypeLeftMouseDown &&
-                    [event type] != NSEventTypeLeftMouseDragged)) {
-        // Create a synthetic left mouse down event using stored cursor position
-        // Convert window coordinates to screen coordinates
-        NSRect contentRect = [window->ns.view frame];
-        NSPoint windowPos = NSMakePoint(window->virtualCursorPosX,
-                                        contentRect.size.height - window->virtualCursorPosY);
-
-        event = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
-                                    location:windowPos
-                                modifierFlags:0
-                                    timestamp:[[NSProcessInfo processInfo] systemUptime]
-                                windowNumber:[window->ns.object windowNumber]
-                                    context:nil
-                                eventNumber:0
-                                    clickCount:1
-                                    pressure:1.0];
-    }
-
-    if (event) {
-        GLFWContentView *v = window->ns.view;
-        [v beginDraggingSessionWithItems:dragItems event:event source:[v draggingSource]];
-        return 0;
-    }
-    return EIO;
+    [v beginDraggingSessionWithItems:dragItems event:event source:[v draggingSource]];
+    return 0;
 }}
 
 
