@@ -418,6 +418,10 @@ typedef struct _GLFWlibraryWayland
         struct wl_surface *drag_icon;
         struct wp_viewport *drag_viewport;
         struct xdg_toplevel_drag_v1 *toplevel_drag;
+        struct wl_surface *toplevel_surface;
+        struct xdg_surface *toplevel_xdg_surface;
+        struct xdg_toplevel *toplevel_xdg_toplevel;
+        struct wl_buffer *toplevel_buffer;
         struct {
             const char *mime_type;
             int fd;

@@ -3078,6 +3078,32 @@ GLFWAPI bool glfwWaylandBeep(GLFWwindow *handle) {
 }
 
 // Drag source {{{
+
+static void
+drag_toplevel_xdg_surface_configure(void *data UNUSED, struct xdg_surface *surface, uint32_t serial) {
+    xdg_surface_ack_configure(surface, serial);
+    if (_glfw.wl.drag.toplevel_buffer) {
+        wl_surface_attach(_glfw.wl.drag.toplevel_surface, _glfw.wl.drag.toplevel_buffer, 0, 0);
+        wl_surface_damage(_glfw.wl.drag.toplevel_surface, 0, 0, INT32_MAX, INT32_MAX);
+        wl_buffer_destroy(_glfw.wl.drag.toplevel_buffer);
+        _glfw.wl.drag.toplevel_buffer = NULL;
+    }
+    if (_glfw.wl.drag.toplevel_surface) wl_surface_commit(_glfw.wl.drag.toplevel_surface);
+}
+
+static const struct xdg_surface_listener drag_toplevel_xdg_surface_listener = {
+    .configure = drag_toplevel_xdg_surface_configure,
+};
+
+static void drag_toplevel_configure(void *data UNUSED, struct xdg_toplevel *toplevel UNUSED,
+                                    int32_t width UNUSED, int32_t height UNUSED,
+                                    struct wl_array *states UNUSED) {}
+static void drag_toplevel_close(void *data UNUSED, struct xdg_toplevel *toplevel UNUSED) {}
+static const struct xdg_toplevel_listener drag_toplevel_listener = {
+    .configure = drag_toplevel_configure,
+    .close = drag_toplevel_close,
+};
+
 static void
 cancel_drag(GLFWDragEventType type) {
     _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
@@ -3191,10 +3217,26 @@ add_drag_watch(int fd) {
 
 int
 _glfwPlatformChangeDragImage(const GLFWimage *thumbnail, int make_toplevel) {
-    if (make_toplevel && _glfw.wl.drag.toplevel_drag) {
-        _GLFWwindow *w = _glfwWindowForId(_glfw.drag.window_id);
-        if (w && w->wl.xdg.toplevel) {
-            xdg_toplevel_drag_v1_attach(_glfw.wl.drag.toplevel_drag, w->wl.xdg.toplevel, 0, 0);
+    if (make_toplevel && _glfw.wl.drag.toplevel_drag && !_glfw.wl.drag.toplevel_surface
+            && _glfw.wl.wmBase && thumbnail && thumbnail->pixels) {
+        _glfw.wl.drag.toplevel_surface = wl_compositor_create_surface(_glfw.wl.compositor);
+        if (_glfw.wl.drag.toplevel_surface) {
+            _glfw.wl.drag.toplevel_xdg_surface = xdg_wm_base_get_xdg_surface(
+                    _glfw.wl.wmBase, _glfw.wl.drag.toplevel_surface);
+            if (_glfw.wl.drag.toplevel_xdg_surface) {
+                xdg_surface_add_listener(_glfw.wl.drag.toplevel_xdg_surface,
+                                         &drag_toplevel_xdg_surface_listener, NULL);
+                _glfw.wl.drag.toplevel_xdg_toplevel = xdg_surface_get_toplevel(
+                        _glfw.wl.drag.toplevel_xdg_surface);
+                if (_glfw.wl.drag.toplevel_xdg_toplevel) {
+                    xdg_toplevel_add_listener(_glfw.wl.drag.toplevel_xdg_toplevel,
+                                              &drag_toplevel_listener, NULL);
+                    _glfw.wl.drag.toplevel_buffer = createShmBuffer(thumbnail, false, true);
+                    xdg_toplevel_drag_v1_attach(_glfw.wl.drag.toplevel_drag,
+                                                _glfw.wl.drag.toplevel_xdg_toplevel, 0, 0);
+                    wl_surface_commit(_glfw.wl.drag.toplevel_surface);
+                }
+            }
         }
     }
     if (!_glfw.wl.drag.drag_icon || !thumbnail || !thumbnail->pixels) return 0;
@@ -3314,6 +3356,10 @@ _glfwPlatformFreeDragSourceData(void) {
     if (_glfw.wl.drag.drag_viewport) wp_viewport_destroy(_glfw.wl.drag.drag_viewport);
     if (_glfw.wl.drag.drag_icon) wl_surface_destroy(_glfw.wl.drag.drag_icon);
     if (_glfw.wl.drag.toplevel_drag) xdg_toplevel_drag_v1_destroy(_glfw.wl.drag.toplevel_drag);
+    if (_glfw.wl.drag.toplevel_buffer) wl_buffer_destroy(_glfw.wl.drag.toplevel_buffer);
+    if (_glfw.wl.drag.toplevel_xdg_toplevel) xdg_toplevel_destroy(_glfw.wl.drag.toplevel_xdg_toplevel);
+    if (_glfw.wl.drag.toplevel_xdg_surface) xdg_surface_destroy(_glfw.wl.drag.toplevel_xdg_surface);
+    if (_glfw.wl.drag.toplevel_surface) wl_surface_destroy(_glfw.wl.drag.toplevel_surface);
     if (_glfw.wl.drag.source) wl_data_source_destroy(_glfw.wl.drag.source);
     if (_glfw.wl.drag.data_requests) {
         for (size_t i = 0; i < _glfw.wl.drag.count; i++) {
