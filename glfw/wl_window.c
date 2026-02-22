@@ -3099,9 +3099,19 @@ static void drag_toplevel_configure(void *data UNUSED, struct xdg_toplevel *topl
                                     int32_t width UNUSED, int32_t height UNUSED,
                                     struct wl_array *states UNUSED) {}
 static void drag_toplevel_close(void *data UNUSED, struct xdg_toplevel *toplevel UNUSED) {}
+#ifdef XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION
+static void drag_toplevel_configure_bounds(void *data UNUSED, struct xdg_toplevel *toplevel UNUSED,
+                                           int32_t width UNUSED, int32_t height UNUSED) {}
+static void drag_toplevel_wm_capabilities(void *data UNUSED, struct xdg_toplevel *toplevel UNUSED,
+                                          struct wl_array *caps UNUSED) {}
+#endif
 static const struct xdg_toplevel_listener drag_toplevel_listener = {
     .configure = drag_toplevel_configure,
     .close = drag_toplevel_close,
+#ifdef XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION
+    .configure_bounds = drag_toplevel_configure_bounds,
+    .wm_capabilities = drag_toplevel_wm_capabilities,
+#endif
 };
 
 static void
