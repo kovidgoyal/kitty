@@ -4069,7 +4069,9 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {@autore
         [dragItems addObject:dragItem];
     }
 
-    [v beginDraggingSessionWithItems:dragItems event:event source:[v draggingSource]];
+    [_glfw.ns.drag_session release];
+    _glfw.ns.drag_session = [[v beginDraggingSessionWithItems:dragItems event:event source:[v draggingSource]] retain];
+    _glfw.ns.drag_view = v;
     return 0;
 }}
 
@@ -4192,10 +4194,59 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {@autore
 @end
 
 void
-_glfwPlatformFreeDragSourceData(void) { }
+_glfwPlatformFreeDragSourceData(void) {
+    [_glfw.ns.drag_session release];
+    _glfw.ns.drag_session = nil;
+    _glfw.ns.drag_view = nil;
+}
 
 int
-_glfwPlatformChangeDragImage(const GLFWimage *thumbnail) { (void)thumbnail; return 0; /* TODO: Implement me */ }
+_glfwPlatformChangeDragImage(const GLFWimage *thumbnail) {@autoreleasepool{
+    if (!_glfw.ns.drag_session || !thumbnail || !thumbnail->pixels) return 0;
+    _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+    CGFloat scaleFactor = 1.0;
+    if (window) {
+        NSWindow *nsw = window->ns.object;
+        scaleFactor = [nsw backingScaleFactor];
+        if (scaleFactor == 0) scaleFactor = [NSScreen mainScreen].backingScaleFactor;
+    }
+    NSBitmapImageRep* imageRep = [[NSBitmapImageRep alloc]
+        initWithBitmapDataPlanes:NULL
+                        pixelsWide:thumbnail->width
+                        pixelsHigh:thumbnail->height
+                    bitsPerSample:8
+                    samplesPerPixel:4
+                        hasAlpha:YES
+                        isPlanar:NO
+                    colorSpaceName:NSDeviceRGBColorSpace
+                        bytesPerRow:thumbnail->width * 4
+                    bitsPerPixel:32];
+    if (!imageRep) return ENOMEM;
+    memcpy([imageRep bitmapData], thumbnail->pixels, thumbnail->width * thumbnail->height * 4);
+    NSSize pointSize = NSMakeSize(thumbnail->width / scaleFactor, thumbnail->height / scaleFactor);
+    [imageRep setSize:pointSize];
+    NSImage* image = [[[NSImage alloc] initWithSize:pointSize] autorelease];
+    if (!image) { [imageRep release]; return ENOMEM; }
+    [image addRepresentation:imageRep];
+    [imageRep release];
+
+    NSArray *classes = @[[NSPasteboardItem class], [NSFilePromiseProvider class]];
+    [((NSDraggingSession*)_glfw.ns.drag_session)
+        enumerateDraggingItemsWithOptions:0
+        forView:(NSView*)_glfw.ns.drag_view
+        classes:classes
+        searchOptions:@{}
+        usingBlock:^(NSDraggingItem *draggingItem, NSInteger idx, BOOL *stop) {
+            if (idx == 0) {
+                NSRect frame = [draggingItem draggingFrame];
+                [draggingItem setDraggingFrame:NSMakeRect(frame.origin.x, frame.origin.y,
+                                                          pointSize.width, pointSize.height)
+                                      contents:image];
+                *stop = YES;
+            }
+        }];
+    return 0;
+}}
 
 int
 _glfwPlatformDragDataReady(const char *mime_type) {

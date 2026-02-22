@@ -103,6 +103,7 @@ static void handle_drag_button_release(Time timestamp);
 static void handle_xdnd_status(const XClientMessageEvent *event);
 static void handle_xdnd_finished(const XClientMessageEvent *event);
 static bool create_drag_thumbnail(const GLFWimage* thumbnail, int x, int y);
+static bool render_drag_thumbnail_to_pixmap(const GLFWimage* thumbnail);
 
 static void
 handleEvents(monotonic_t timeout) {
@@ -4062,6 +4063,97 @@ send_xdnd_drop(Window target, Time timestamp) {
     XFlush(_glfw.x11.display);
 }
 
+// Render thumbnail pixels into _glfw.x11.drag.thumbnail_pixmap / thumbnail_gc.
+// thumbnail_window must already exist. On success returns true.
+static bool
+render_drag_thumbnail_to_pixmap(const GLFWimage* thumbnail) {
+    // Free any previous pixmap / GC
+    if (_glfw.x11.drag.thumbnail_gc != None) {
+        XFreeGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_gc);
+        _glfw.x11.drag.thumbnail_gc = None;
+    }
+    if (_glfw.x11.drag.thumbnail_pixmap != None) {
+        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
+        _glfw.x11.drag.thumbnail_pixmap = None;
+    }
+
+    _glfw.x11.drag.thumbnail_pixmap = XCreatePixmap(
+        _glfw.x11.display,
+        _glfw.x11.drag.thumbnail_window,
+        thumbnail->width,
+        thumbnail->height,
+        DefaultDepth(_glfw.x11.display, _glfw.x11.screen)
+    );
+    if (!_glfw.x11.drag.thumbnail_pixmap) return false;
+
+    _glfw.x11.drag.thumbnail_gc = XCreateGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap, 0, NULL);
+    if (!_glfw.x11.drag.thumbnail_gc) {
+        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
+        _glfw.x11.drag.thumbnail_pixmap = None;
+        return false;
+    }
+
+    Visual* visual = DefaultVisual(_glfw.x11.display, _glfw.x11.screen);
+    XImage* ximage = XCreateImage(
+        _glfw.x11.display,
+        visual,
+        DefaultDepth(_glfw.x11.display, _glfw.x11.screen),
+        ZPixmap,
+        0,
+        NULL,
+        thumbnail->width,
+        thumbnail->height,
+        32,
+        0
+    );
+    if (!ximage) {
+        XFreeGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_gc);
+        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
+        _glfw.x11.drag.thumbnail_gc = None;
+        _glfw.x11.drag.thumbnail_pixmap = None;
+        return false;
+    }
+
+    int pixels_size = thumbnail->width * thumbnail->height * 4;
+    unsigned char* ximage_data = malloc(pixels_size);
+    if (!ximage_data) {
+        XDestroyImage(ximage);
+        XFreeGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_gc);
+        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
+        _glfw.x11.drag.thumbnail_gc = None;
+        _glfw.x11.drag.thumbnail_pixmap = None;
+        return false;
+    }
+    ximage->data = (char*)ximage_data;
+
+    const unsigned char* src = thumbnail->pixels;
+    for (int i = 0; i < thumbnail->width * thumbnail->height; i++) {
+        unsigned char r = src[i * 4 + 0];
+        unsigned char g = src[i * 4 + 1];
+        unsigned char b = src[i * 4 + 2];
+        unsigned char a = src[i * 4 + 3];
+        if (a < 255) {
+            r = (r * a) / 255;
+            g = (g * a) / 255;
+            b = (b * a) / 255;
+        }
+        unsigned long pixel;
+        if (ximage->byte_order == LSBFirst)
+            pixel = ((unsigned long)a << 24) | ((unsigned long)r << 16) | ((unsigned long)g << 8) | b;
+        else
+            pixel = ((unsigned long)b << 24) | ((unsigned long)g << 16) | ((unsigned long)r << 8) | a;
+        XPutPixel(ximage, i % thumbnail->width, i / thumbnail->width, pixel);
+    }
+
+    XPutImage(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap, _glfw.x11.drag.thumbnail_gc,
+              ximage, 0, 0, 0, 0, thumbnail->width, thumbnail->height);
+    XDestroyImage(ximage);
+
+    XSetWindowBackgroundPixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_window,
+                               _glfw.x11.drag.thumbnail_pixmap);
+    return true;
+}
+
 // Create thumbnail window for drag operation
 static bool
 create_drag_thumbnail(const GLFWimage* thumbnail, int x, int y) {
@@ -4091,107 +4183,11 @@ create_drag_thumbnail(const GLFWimage* thumbnail, int x, int y) {
         return false;
     }
 
-    // Create pixmap for the thumbnail image
-    _glfw.x11.drag.thumbnail_pixmap = XCreatePixmap(
-        _glfw.x11.display,
-        _glfw.x11.drag.thumbnail_window,
-        thumbnail->width,
-        thumbnail->height,
-        DefaultDepth(_glfw.x11.display, _glfw.x11.screen)
-    );
-
-    if (!_glfw.x11.drag.thumbnail_pixmap) {
+    if (!render_drag_thumbnail_to_pixmap(thumbnail)) {
         XDestroyWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window);
         _glfw.x11.drag.thumbnail_window = None;
         return false;
     }
-
-    // Create GC for drawing
-    _glfw.x11.drag.thumbnail_gc = XCreateGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap, 0, NULL);
-    if (!_glfw.x11.drag.thumbnail_gc) {
-        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
-        XDestroyWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window);
-        _glfw.x11.drag.thumbnail_window = None;
-        _glfw.x11.drag.thumbnail_pixmap = None;
-        return false;
-    }
-
-    // Convert RGBA image data to XImage and draw to pixmap
-    Visual* visual = DefaultVisual(_glfw.x11.display, _glfw.x11.screen);
-    XImage* ximage = XCreateImage(
-        _glfw.x11.display,
-        visual,
-        DefaultDepth(_glfw.x11.display, _glfw.x11.screen),
-        ZPixmap,
-        0,  // offset
-        NULL,  // data (will be set below)
-        thumbnail->width,
-        thumbnail->height,
-        32,  // bitmap_pad
-        0    // bytes_per_line (auto-calculate)
-    );
-
-    if (!ximage) {
-        XFreeGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_gc);
-        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
-        XDestroyWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window);
-        _glfw.x11.drag.thumbnail_window = None;
-        _glfw.x11.drag.thumbnail_pixmap = None;
-        _glfw.x11.drag.thumbnail_gc = None;
-        return false;
-    }
-
-    // Allocate buffer for XImage
-    int pixels_size = thumbnail->width * thumbnail->height * 4;
-    unsigned char* ximage_data = malloc(pixels_size);
-    if (!ximage_data) {
-        XDestroyImage(ximage);
-        XFreeGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_gc);
-        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
-        XDestroyWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window);
-        _glfw.x11.drag.thumbnail_window = None;
-        _glfw.x11.drag.thumbnail_pixmap = None;
-        _glfw.x11.drag.thumbnail_gc = None;
-        return false;
-    }
-
-    ximage->data = (char*)ximage_data;
-
-    // Convert RGBA to the format expected by XImage
-    const unsigned char* src = thumbnail->pixels;
-    for (int i = 0; i < thumbnail->width * thumbnail->height; i++) {
-        unsigned long pixel;
-        unsigned char r = src[i * 4 + 0];
-        unsigned char g = src[i * 4 + 1];
-        unsigned char b = src[i * 4 + 2];
-        unsigned char a = src[i * 4 + 3];
-
-        // Premultiply alpha
-        if (a < 255) {
-            r = (r * a) / 255;
-            g = (g * a) / 255;
-            b = (b * a) / 255;
-        }
-
-        // Convert to X11 pixel format (typically BGRA on little-endian)
-        if (ximage->byte_order == LSBFirst) {
-            pixel = (a << 24) | (r << 16) | (g << 8) | b;
-        } else {
-            pixel = (b << 24) | (g << 16) | (r << 8) | a;
-        }
-
-        XPutPixel(ximage, i % thumbnail->width, i / thumbnail->width, pixel);
-    }
-
-    // Draw the image to the pixmap
-    XPutImage(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap, _glfw.x11.drag.thumbnail_gc,
-              ximage, 0, 0, 0, 0, thumbnail->width, thumbnail->height);
-
-    // Clean up XImage (including its data)
-    XDestroyImage(ximage);  // This also frees ximage_data
-
-    // Set the pixmap as the window's background
-    XSetWindowBackgroundPixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_window, _glfw.x11.drag.thumbnail_pixmap);
 
     // Map the window to make it visible
     XMapRaised(_glfw.x11.display, _glfw.x11.drag.thumbnail_window);
@@ -4475,7 +4471,32 @@ _glfwPlatformFreeDragSourceData(void) {
 }
 
 int
-_glfwPlatformChangeDragImage(const GLFWimage *thumbnail) { (void)thumbnail; return 0; /* TODO: Implement me */ }
+_glfwPlatformChangeDragImage(const GLFWimage *thumbnail) {
+    if (!_glfw.x11.drag.active) return 0;
+    if (!thumbnail || !thumbnail->pixels || thumbnail->width <= 0 || thumbnail->height <= 0) return 0;
+
+    if (_glfw.x11.drag.thumbnail_window == None) {
+        // No thumbnail window yet; query cursor position and create one
+        Window root_return, child_return;
+        int root_x, root_y, win_x, win_y;
+        unsigned int mask_return;
+        XQueryPointer(_glfw.x11.display, _glfw.x11.root,
+                      &root_return, &child_return,
+                      &root_x, &root_y, &win_x, &win_y, &mask_return);
+        if (!create_drag_thumbnail(thumbnail, root_x + 10, root_y + 10)) return EIO;
+        return 0;
+    }
+
+    // Resize the existing window to match the new thumbnail dimensions
+    XResizeWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window,
+                  thumbnail->width, thumbnail->height);
+
+    if (!render_drag_thumbnail_to_pixmap(thumbnail)) return EIO;
+
+    XClearWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window);
+    XFlush(_glfw.x11.display);
+    return 0;
+}
 
 int
 _glfwPlatformDragDataReady(const char *mime_type) {

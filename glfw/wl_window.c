@@ -3190,7 +3190,29 @@ add_drag_watch(int fd) {
 }
 
 int
-_glfwPlatformChangeDragImage(const GLFWimage *thumbnail) { (void)thumbnail; return 0; /* TODO: Implement me */ }
+_glfwPlatformChangeDragImage(const GLFWimage *thumbnail) {
+    if (!_glfw.wl.drag.drag_icon || !thumbnail || !thumbnail->pixels) return 0;
+    struct wl_buffer* icon_buffer = createShmBuffer(thumbnail, false, true);
+    if (!icon_buffer) return ENOMEM;
+    if (_glfw.wl.drag.drag_viewport) {
+        _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+        double f_scale = window ? _glfwWaylandWindowScale(window) : 1.0;
+        int logical_width = (int)(thumbnail->width / f_scale);
+        int logical_height = (int)(thumbnail->height / f_scale);
+        wp_viewport_set_destination(_glfw.wl.drag.drag_viewport, logical_width, logical_height);
+    } else {
+        _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+        if (window) {
+            int scale = _glfwWaylandIntegerWindowScale(window);
+            wl_surface_set_buffer_scale(_glfw.wl.drag.drag_icon, scale);
+        }
+    }
+    wl_surface_attach(_glfw.wl.drag.drag_icon, icon_buffer, 0, 0);
+    wl_surface_damage(_glfw.wl.drag.drag_icon, 0, 0, INT32_MAX, INT32_MAX);
+    wl_surface_commit(_glfw.wl.drag.drag_icon);
+    wl_buffer_destroy(icon_buffer);
+    return 0;
+}
 
 int
 _glfwPlatformDragDataReady(const char *mime_type) {
