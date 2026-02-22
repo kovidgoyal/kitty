@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="xdg_toplevel_drag_v1">
+  <copyright>
+    Copyright 2023 David Edmundson &lt;davidedmundson@kde.org&gt;
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice (including the next
+    paragraph) shall be included in all copies or substantial portions of the
+    Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+  </copyright>
+
+  <interface name="xdg_toplevel_drag_manager_v1" version="1">
+    <description summary="Move a window during a drag">
+      This protocol enhances normal drag and drop with the ability to move a
+      window at the same time. This allows having detachable panels similar to
+      what desktop environments done with subwindows.
+
+      A typical workflow would be:
+      - The user starts a drag from a special "tab" which may be dragged out
+        of its panel.
+      - Once the user released the button, if the user dragged outside of the
+        panel the "tab" becomes a toplevel window.
+      - If the user dropped onto another tab, the panel handles the drop as it
+        sees fit.
+
+      This protocol is not limited to this one use-case; a compositor could
+      advertise the protocol even if it does not support this particular
+      combination. However a compositor that does not support this would be
+      limited to handling it as a regular drop.
+    </description>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the xdg_toplevel_drag_manager_v1 object">
+        Destroys the xdg_toplevel_drag_manager_v1 object. This does not
+        affect any remaining objects created from this manager.
+      </description>
+    </request>
+
+    <request name="get_xdg_toplevel_drag">
+      <description summary="get an xdg_toplevel_drag for a wl_data_source">
+        Create an xdg_toplevel_drag for a drag and drop operation that is
+        starting. This request can only be made on sources used in drag-and-drop,
+        so it must be performed before wl_data_device.start_drag. Attempting
+        to use the source after it has been used for a clipboard selection is a
+        client error. The compositor may also require a minimum version of the
+        data device manager to use this. Compositors should not consider
+        xdg_toplevel_drag_manager_v1 to be supported if they do not support the
+        minimum version.
+      </description>
+      <arg name="data_source" type="object" interface="wl_data_source"
+        summary="The data source used for the drag-and-drop operation"/>
+      <arg name="xdg_toplevel_drag" type="new_id"
+        interface="xdg_toplevel_drag_v1"
+        summary="The xdg_toplevel_drag object"/>
+    </request>
+  </interface>
+
+  <interface name="xdg_toplevel_drag_v1" version="1">
+    <description summary="Object representing a toplevel move during a drag">
+      An object that allows a toplevel to be moved during a drag-and-drop
+      operation.
+    </description>
+
+    <enum name="error">
+      <entry name="invalid_source" value="0"
+        summary="data_source was already used for another toplevel drag"/>
+      <entry name="toplevel_destroyed" value="1"
+        summary="the toplevel was destroyed before the drag ended"/>
+    </enum>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy an xdg_toplevel_drag object">
+        Destroy this xdg_toplevel_drag object. This request must only be called
+        after the data source object that was given to get_xdg_toplevel_drag
+        has been destroyed or if the toplevel drag has already ended.
+        Destroying this object while a drag is active does not affect the drag.
+        Drag events should be sent to the wl_data_source object, and clients
+        should handle drops through the wl_data_source cancelled/action_failed
+        event.
+      </description>
+    </request>
+
+    <request name="attach">
+      <description summary="Attach a toplevel to this drag">
+        Request that the compositor detaches the current toplevel and starts a
+        drag-and-drop operation with the toplevel being dragged. The drag must
+        have been started on the toplevel being the drag origin in
+        wl_data_device.start_drag.
+
+        If the toplevel is destroyed before the drag ends, the compositor should
+        treat this as the toplevel becoming the drag icon for the remainder of
+        the drag. The offset describes where in the window the grab point is,
+        allowing the compositor to position the window correctly in relation to
+        the cursor. The offset is in local (surface) coordinate of the toplevel
+        surface.
+      </description>
+      <arg name="toplevel" type="object" interface="xdg_toplevel"
+        summary="The toplevel to drag"/>
+      <arg name="x_offset" type="int"
+        summary="Dragged surface x offset"/>
+      <arg name="y_offset" type="int"
+        summary="Dragged surface y offset"/>
+    </request>
+  </interface>
+</protocol>

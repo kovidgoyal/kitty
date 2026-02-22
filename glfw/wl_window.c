@@ -3191,7 +3191,12 @@ add_drag_watch(int fd) {
 
 int
 _glfwPlatformChangeDragImage(const GLFWimage *thumbnail, int make_toplevel) {
-    (void)make_toplevel;  // TODO: Implement me
+    if (make_toplevel && _glfw.wl.drag.toplevel_drag) {
+        _GLFWwindow *w = _glfwWindowForId(_glfw.drag.window_id);
+        if (w && w->wl.xdg.toplevel) {
+            xdg_toplevel_drag_v1_attach(_glfw.wl.drag.toplevel_drag, w->wl.xdg.toplevel, 0, 0);
+        }
+    }
     if (!_glfw.wl.drag.drag_icon || !thumbnail || !thumbnail->pixels) return 0;
     struct wl_buffer* icon_buffer = createShmBuffer(thumbnail, false, true);
     if (!icon_buffer) return ENOMEM;
@@ -3308,6 +3313,7 @@ void
 _glfwPlatformFreeDragSourceData(void) {
     if (_glfw.wl.drag.drag_viewport) wp_viewport_destroy(_glfw.wl.drag.drag_viewport);
     if (_glfw.wl.drag.drag_icon) wl_surface_destroy(_glfw.wl.drag.drag_icon);
+    if (_glfw.wl.drag.toplevel_drag) xdg_toplevel_drag_v1_destroy(_glfw.wl.drag.toplevel_drag);
     if (_glfw.wl.drag.source) wl_data_source_destroy(_glfw.wl.drag.source);
     if (_glfw.wl.drag.data_requests) {
         for (size_t i = 0; i < _glfw.wl.drag.count; i++) {
@@ -3376,6 +3382,11 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
                 wl_buffer_destroy(icon_buffer);
             }
         }
+    }
+    // Create xdg_toplevel_drag_v1 before starting the drag (must precede start_drag)
+    if (_glfw.wl.xdg_toplevel_drag_manager_v1) {
+        _glfw.wl.drag.toplevel_drag = xdg_toplevel_drag_manager_v1_get_xdg_toplevel_drag(
+            _glfw.wl.xdg_toplevel_drag_manager_v1, _glfw.wl.drag.source);
     }
     // Start the drag operation
     wl_data_device_start_drag(_glfw.wl.dataDevice, _glfw.wl.drag.source, window->wl.surface, _glfw.wl.drag.drag_icon,
