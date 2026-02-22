@@ -2294,6 +2294,12 @@ class Boss:
     def input_unicode_character(self) -> None:
         self.run_kitten_with_metadata('unicode_input', window=self.window_for_dispatch)
 
+    @ac('misc', 'Browse and trigger keyboard shortcuts and actions in a searchable overlay')
+    def command_palette(self) -> None:
+        from kittens.command_palette.main import collect_keys_data
+        data = collect_keys_data(get_options())
+        self.run_kitten_with_metadata('command-palette', input_data=json.dumps(data), window=self.window_for_dispatch)
+
     @ac(
         'tab', '''
         Change the title of the active tab interactively, by typing in the new title.
