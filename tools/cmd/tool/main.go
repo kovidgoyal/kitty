@@ -7,9 +7,9 @@ import (
 
 	"github.com/kovidgoyal/kitty/kittens/ask"
 	"github.com/kovidgoyal/kitty/kittens/choose_files"
-	"github.com/kovidgoyal/kitty/kittens/command_palette"
 	"github.com/kovidgoyal/kitty/kittens/choose_fonts"
 	"github.com/kovidgoyal/kitty/kittens/clipboard"
+	"github.com/kovidgoyal/kitty/kittens/command_palette"
 	"github.com/kovidgoyal/kitty/kittens/desktop_ui"
 	"github.com/kovidgoyal/kitty/kittens/diff"
 	"github.com/kovidgoyal/kitty/kittens/hints"
