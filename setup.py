@@ -676,9 +676,10 @@ def kitty_env(args: Options) -> Env:
     platform_libs.extend(pkg_config('harfbuzz', '--libs'))
     pylib = get_python_flags(args, cflags)
     gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
+    metal_libs = ['-framework', 'Metal', '-framework', 'QuartzCore', '-framework', 'MetalKit'] if is_macos else []
     libpng = pkg_config('libpng', '--libs')
     lcms2 = pkg_config('lcms2', '--libs')
-    ans.ldpaths += pylib + platform_libs + gl_libs + libpng + lcms2 + libcrypto_ldflags + xxhash[1]
+    ans.ldpaths += pylib + platform_libs + gl_libs + metal_libs + libpng + lcms2 + libcrypto_ldflags + xxhash[1]
     if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
     elif not is_openbsd:
@@ -796,6 +797,14 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
 
 def get_source_specific_cflags(env: Env, src: str) -> List[str]:
     ans = list(env.cflags)
+    if is_macos and src.endswith(('.m', '.mm')):
+        # The kitty codebase uses manual memory management, don't enable ARC
+        # metal_renderer.m uses CFBridgingRetain/Release for manual bridging
+        # For Objective-C++ files, replace -std=c11 with -std=c++17
+        if src.endswith('.mm'):
+            ans = [f for f in ans if not f.startswith('-std=c')]
+            ans = [f for f in ans if f != '-Wstrict-prototypes']  # Not valid for C++
+            ans.append('-std=c++17')
     # SIMD specific flags
     if src in ('kitty/simd-string-128.c', 'kitty/simd-string-256.c'):
         # simde recommends these are used for best performance
@@ -1022,7 +1031,7 @@ def find_c_files() -> Tuple[List[str], List[str]]:
     }
     for x in sorted(os.listdir(d)):
         ext = os.path.splitext(x)[1]
-        if ext in ('.c', '.m') and os.path.basename(x) not in exclude:
+        if ext in ('.c', '.m', '.mm') and os.path.basename(x) not in exclude:
             ans.append(os.path.join('kitty', x))
         elif ext == '.h':
             headers.append(os.path.join('kitty', x))
