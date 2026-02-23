@@ -4139,7 +4139,7 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
         }
         sentinel = get_url_sentinel(line, url_start);
         last_hostname_char_pos = get_last_hostname_char_pos(line, url_start);
-        url_end = line_url_end_at(line, x, true, sentinel, next_line_starts_with_url_chars, x <= last_hostname_char_pos, last_hostname_char_pos, screen->lc);
+        url_end = line_url_end_at(line, url_start, true, sentinel, next_line_starts_with_url_chars, url_start <= last_hostname_char_pos, last_hostname_char_pos, screen->lc);
     }
     has_url = url_end > url_start;
     if (has_url) {

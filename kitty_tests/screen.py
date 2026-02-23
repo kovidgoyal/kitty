@@ -1711,3 +1711,15 @@ def detect_url(self, scale=1):
     t('http://[::1]:8080/x', after='[')  # ]
     t('http://[::1]:8080/x]y34', expected='http://[::1]:8080/x')
     t('https://wraps-by-one-char.com[]/x', after='[')  # ]
+    # Test that * is a valid URL character and is not stripped from URL ends (issue #9543)
+    t('http://moo.com/*')
+    t('http://moo.com/#1_*_*_*_*')
+    t('http://moo.com', before='*', after='*')  # * as sentinel still works
+    # Hovering at different positions within a URL containing * should always detect the full URL
+    url = 'http://moo.com/#1_*_*_*_*'
+    s.reset()
+    s.draw(url)
+    ae(url, x=1)   # hover near scheme start
+    ae(url, x=16)  # hover at '1' before the first *
+    ae(url, x=18)  # hover at first *
+    ae(url, x=20)  # hover at second *
