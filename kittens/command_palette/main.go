@@ -12,18 +12,17 @@ import (
 
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/fzf"
+	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
-
-var _ = fmt.Print
 
 // JSON data structures matching Python collect_keys_data output
 type Binding struct {
 	Key           string `json:"key"`
 	Action        string `json:"action"`
 	ActionDisplay string `json:"action_display"`
+	Definition    string `json:"definition"`
 	Help          string `json:"help"`
 	LongHelp      string `json:"long_help"`
 	Category      string
@@ -62,6 +61,7 @@ type Handler struct {
 	selected_idx  int
 	scroll_offset int
 	input_data    InputData
+	result        string // action definition to execute after exit
 }
 
 func (h *Handler) initialize() (string, error) {
@@ -553,33 +553,12 @@ func (h *Handler) triggerSelected() {
 		h.lp.Beep()
 		return
 	}
-
-	// Send RC action command via DCS escape code.
-	// Do not set "self" or "match_window" — the action runs globally via
-	// the boss, same as if the user had pressed the keyboard shortcut.
-	payload := map[string]any{
-		"action": b.ActionDisplay,
-	}
-
-	rc := utils.RemoteControlCmd{
-		Cmd:        "action",
-		Version:    [3]int{0, 26, 0},
-		NoResponse: true,
-	}
-	rc.Payload = payload
-
-	data, err := json.Marshal(rc)
-	if err != nil {
-		h.lp.Beep()
-		return
-	}
-	h.lp.QueueWriteString("\x1bP@kitty-cmd")
-	h.lp.QueueWriteString(string(data))
-	h.lp.QueueWriteString("\x1b\\")
+	h.result = b.Definition
 	h.lp.Quit(0)
 }
 
 func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
+	output := tui.KittenOutputSerializer()
 	lp, err := loop.New()
 	if err != nil {
 		return 1, err
@@ -606,6 +585,12 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return
 	}
 	rc = lp.ExitCode()
+	if handler.result != "" {
+		s, serr := output(map[string]string{"action": handler.result})
+		if serr == nil {
+			fmt.Println(s)
+		}
+	}
 	return
 }
 

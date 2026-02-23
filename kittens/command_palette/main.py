@@ -57,6 +57,7 @@ def collect_keys_data(opts: Any) -> dict[str, Any]:
                     'key': key_repr,
                     'action': action_name,
                     'action_display': action_repr,
+                    'definition': d.definition or action_name,
                     'help': help_text,
                     'long_help': long_help,
                 })
@@ -98,13 +99,11 @@ def main(args: list[str]) -> None:
     raise SystemExit('This must be run as kitten command-palette')
 
 
-main.allow_remote_control = True  # type: ignore[attr-defined]
-main.remote_control_password = True  # type: ignore[attr-defined]
-
-
 @result_handler(has_ready_notification=True)
 def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, boss: BossType) -> None:
-    pass
+    if data and 'action' in data:
+        w = boss.window_id_map.get(target_window_id)
+        boss.combine(data['action'], w)
 
 
 help_text = 'Browse and trigger keyboard shortcuts and actions'

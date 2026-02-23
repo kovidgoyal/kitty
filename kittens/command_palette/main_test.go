@@ -13,27 +13,27 @@ func sampleInputJSON() string {
 		"modes": {
 			"": {
 				"Copy/paste": [
-					{"key": "ctrl+shift+c", "action": "copy_to_clipboard", "action_display": "copy_to_clipboard", "help": "Copy the selected text from the active window to the clipboard", "long_help": ""},
-					{"key": "ctrl+shift+v", "action": "paste_from_clipboard", "action_display": "paste_from_clipboard", "help": "Paste from the clipboard to the active window", "long_help": ""}
+					{"key": "ctrl+shift+c", "action": "copy_to_clipboard", "action_display": "copy_to_clipboard", "definition": "copy_to_clipboard", "help": "Copy the selected text from the active window to the clipboard", "long_help": ""},
+					{"key": "ctrl+shift+v", "action": "paste_from_clipboard", "action_display": "paste_from_clipboard", "definition": "paste_from_clipboard", "help": "Paste from the clipboard to the active window", "long_help": ""}
 				],
 				"Scrolling": [
-					{"key": "ctrl+shift+up", "action": "scroll_line_up", "action_display": "scroll_line_up", "help": "Scroll up one line", "long_help": ""},
-					{"key": "ctrl+shift+down", "action": "scroll_line_down", "action_display": "scroll_line_down", "help": "Scroll down one line", "long_help": ""}
+					{"key": "ctrl+shift+up", "action": "scroll_line_up", "action_display": "scroll_line_up", "definition": "scroll_line_up", "help": "Scroll up one line", "long_help": ""},
+					{"key": "ctrl+shift+down", "action": "scroll_line_down", "action_display": "scroll_line_down", "definition": "scroll_line_down", "help": "Scroll down one line", "long_help": ""}
 				],
 				"Window management": [
-					{"key": "ctrl+shift+enter", "action": "new_window", "action_display": "new_window", "help": "Open a new window", "long_help": ""}
+					{"key": "ctrl+shift+enter", "action": "new_window", "action_display": "new_window", "definition": "new_window", "help": "Open a new window", "long_help": ""}
 				]
 			},
 			"mw": {
 				"Miscellaneous": [
-					{"key": "left", "action": "neighboring_window", "action_display": "neighboring_window left", "help": "Focus neighbor window", "long_help": ""},
-					{"key": "esc", "action": "pop_keyboard_mode", "action_display": "pop_keyboard_mode", "help": "Pop keyboard mode", "long_help": ""}
+					{"key": "left", "action": "neighboring_window", "action_display": "neighboring_window left", "definition": "neighboring_window left", "help": "Focus neighbor window", "long_help": ""},
+					{"key": "esc", "action": "pop_keyboard_mode", "action_display": "pop_keyboard_mode", "definition": "pop_keyboard_mode", "help": "Pop keyboard mode", "long_help": ""}
 				]
 			}
 		},
 		"mouse": [
-			{"key": "left press ungrabbed", "action": "mouse_selection", "action_display": "mouse_selection normal", "help": "", "long_help": ""},
-			{"key": "ctrl+left press ungrabbed", "action": "mouse_selection", "action_display": "mouse_selection rectangle", "help": "", "long_help": ""}
+			{"key": "left press ungrabbed", "action": "mouse_selection", "action_display": "mouse_selection normal", "definition": "mouse_selection normal", "help": "", "long_help": ""},
+			{"key": "ctrl+left press ungrabbed", "action": "mouse_selection", "action_display": "mouse_selection rectangle", "definition": "mouse_selection rectangle", "help": "", "long_help": ""}
 		],
 		"mode_order": ["", "mw"],
 		"category_order": {

@@ -28,6 +28,7 @@ class TestCommandPalette(BaseTest):
                 self.assertIn('key', b)
                 self.assertIn('action', b)
                 self.assertIn('action_display', b)
+                self.assertIn('definition', b)
                 self.assertIn('help', b)
                 self.assertIn('long_help', b)
                 self.assertIsInstance(b['key'], str)
