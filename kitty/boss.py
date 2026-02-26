@@ -2419,16 +2419,54 @@ class Boss:
         if tab:
             tab.set_active_window(window_id)
 
-    def drag_resize_start(self, x: float, y: float, cell_width: int, cell_height: int) -> bool:
+    def drag_resize_check_hover(self, x: float, y: float) -> int:
+        '''Check if (x, y) is near a window border for drag resize.
+
+        Returns 0 if drag resizing is disabled or no border is near.
+        Returns 1 if near a vertical border only (EW resize cursor).
+        Returns 2 if near a horizontal border only (NS resize cursor).
+        Returns 3 if near both a vertical and horizontal border (NWSE resize cursor).
+        '''
         if tab := self.active_tab:
-            horizontal, vertical = tab.current_layout.drag_resize_target_windows(x, y, tab.windows)
-            if horizontal is None or vertical is None:
-                return False
+            tolerance = get_options().drag_resize_tolerance
+            if tolerance < 0:
+                return 0
+            horizontal, vertical = tab.current_layout.drag_resize_check_hover(x, y, tab.windows, tolerance)
+            if horizontal is not None and vertical is not None:
+                return 3
+            if horizontal is not None:
+                return 1
+            if vertical is not None:
+                return 2
+        return 0
+
+    def drag_resize_start(self, x: float, y: float, cell_width: int, cell_height: int) -> int:
+        '''Attempt to start a drag resize at (x, y).
+
+        Returns 0 if drag resizing is disabled or (x, y) is not near a border.
+        Returns 1 if an EW (horizontal) resize was started.
+        Returns 2 if a NS (vertical) resize was started.
+        Returns 3 if a corner (both EW and NS) resize was started.
+        '''
+        if tab := self.active_tab:
+            tolerance = get_options().drag_resize_tolerance
+            if tolerance < 0:
+                return 0
+            horizontal, vertical = tab.current_layout.drag_resize_check_hover(x, y, tab.windows, tolerance)
+            if horizontal is None and vertical is None:
+                return 0
+            # Window IDs start from 1, so 0 is a safe sentinel for "no target"
             self.drag_resize_of_window = WindowResizeDrag(
-                is_active=True, horizontal_target_window_id=horizontal.id, vertical_target_window_id=vertical.id,
+                is_active=True,
+                horizontal_target_window_id=horizontal.id if horizontal is not None else 0,
+                vertical_target_window_id=vertical.id if vertical is not None else 0,
                 cell_width=cell_width, cell_height=cell_height, initial_x=x, initial_y=y)
-            return True
-        return False
+            if horizontal is not None and vertical is not None:
+                return 3
+            if horizontal is not None:
+                return 1
+            return 2
+        return 0
 
     def drag_resize_update(self, x: float, y: float) -> None:
         if not (r := self.drag_resize_of_window):

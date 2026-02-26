@@ -489,6 +489,47 @@ class Layout:
 
         return horizontal_target, vertical_target
 
+    def drag_resize_check_hover(
+        self, x: float, y: float, all_windows: WindowList, tolerance: int
+    ) -> tuple[WindowType | None, WindowType | None]:
+        '''Check if (x, y) is within *tolerance* pixels of an internal window border.
+
+        Returns (horizontal_target, vertical_target) where:
+
+        - horizontal_target: window whose right border is near x (EW resize)
+        - vertical_target: window whose bottom border is near y (NS resize)
+
+        Returns (None, None) if not near any draggable border.
+        '''
+        horizontal_target: 'WindowType | None' = None
+        vertical_target: 'WindowType | None' = None
+
+        for w in all_windows.all_windows:
+            g = w.geometry
+            neighbors = self.neighbors_for_window(w, all_windows)
+
+            # Check vertical borders (left/right edges) — mouse y must overlap
+            # the window's vertical extent
+            if g.top <= y <= g.bottom:
+                # Near right border and has a right neighbor
+                if horizontal_target is None and abs(x - g.right) <= tolerance and neighbors.get('right', ()):
+                    horizontal_target = w
+                # Near left border and has a left neighbor (the left neighbor is the target)
+                if horizontal_target is None and abs(x - g.left) <= tolerance and neighbors.get('left', ()):
+                    horizontal_target = all_windows.id_map[neighbors['left'][0]]
+
+            # Check horizontal borders (top/bottom edges) — mouse x must overlap
+            # the window's horizontal extent
+            if g.left <= x <= g.right:
+                # Near bottom border and has a bottom neighbor
+                if vertical_target is None and abs(y - g.bottom) <= tolerance and neighbors.get('bottom', ()):
+                    vertical_target = w
+                # Near top border and has a top neighbor (the top neighbor is the target)
+                if vertical_target is None and abs(y - g.top) <= tolerance and neighbors.get('top', ()):
+                    vertical_target = all_windows.id_map[neighbors['top'][0]]
+
+        return horizontal_target, vertical_target
+
     def serialize(self, all_windows: WindowList) -> dict[str, Any]:
         ans = self.layout_state()
         ans['opts'] = self.layout_opts.serialized()

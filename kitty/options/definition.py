@@ -1230,6 +1230,17 @@ opt('window_resize_step_lines', '2',
     option_type='positive_int',
     )
 
+opt('drag_resize_tolerance', '4',
+    option_type='int',
+    long_text='''
+The size in pixels of the area around window borders where hovering changes the
+mouse cursor to a resize cursor and clicking and dragging resizes the neighboring
+windows. Negative values disable drag resizing. The cursor will be a horizontal
+resize cursor for vertical borders, a vertical resize cursor for horizontal
+borders, and a diagonal cursor when near a corner.
+'''
+    )
+
 opt('window_border_width', '0.5pt',
     option_type='window_border_width',
     long_text='''

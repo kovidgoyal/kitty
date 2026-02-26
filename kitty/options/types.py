@@ -345,6 +345,7 @@ option_names = (
     'detect_urls',
     'dim_opacity',
     'disable_ligatures',
+    'drag_resize_tolerance',
     'draw_minimal_borders',
     'draw_window_borders_for_single_window',
     'dynamic_background_opacity',
@@ -549,6 +550,7 @@ class Options:
     detect_urls: bool = True
     dim_opacity: float = 0.4
     disable_ligatures: int = 0
+    drag_resize_tolerance: int = 4
     draw_minimal_borders: bool = True
     draw_window_borders_for_single_window: bool = False
     dynamic_background_opacity: bool = False

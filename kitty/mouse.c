@@ -811,6 +811,16 @@ dispatch_possible_click(Window *w, int button, int modifiers) {
     }
 }
 
+/* Map drag/hover type returned from Python (0=none, 1=EW, 2=NS, 3=corner) to
+ * the appropriate resize mouse cursor shape. Returns DEFAULT_POINTER for 0. */
+static MouseShape
+drag_resize_cursor_for_type(int drag_type) {
+    if (drag_type == 2) return NS_RESIZE_POINTER;
+    if (drag_type >= 3) return NWSE_RESIZE_POINTER;
+    if (drag_type == 1) return EW_RESIZE_POINTER;
+    return DEFAULT_POINTER;
+}
+
 HANDLER(handle_button_event) {
     modifiers &= ~GLFW_LOCK_MASK;
     OSWindow *osw = global_state.callback_os_window;
@@ -827,13 +837,14 @@ HANDLER(handle_button_event) {
 
     Screen *screen = w->render_data.screen;
     if (!screen) return;
-    if (!global_state.active_drag_resize && button == GLFW_MOUSE_BUTTON_LEFT && !is_release && modifiers == GLFW_MOD_CONTROL) {
+    if (!global_state.active_drag_resize && button == GLFW_MOUSE_BUTTON_LEFT && !is_release) {
         RAII_PyObject(r, PyObject_CallMethod(
             global_state.boss, "drag_resize_start", "ddII", osw->mouse_x, osw->mouse_y, screen->cell_size.width, screen->cell_size.height));
         if (r == NULL) { PyErr_Print(); return; }
-        if (PyObject_IsTrue(r)) {
+        int drag_type = PyLong_Check(r) ? (int)PyLong_AsLong(r) : 0;
+        if (drag_type > 0) {
             global_state.active_drag_resize = w->id;
-            mouse_cursor_shape = NESW_RESIZE_POINTER;
+            mouse_cursor_shape = drag_resize_cursor_for_type(drag_type);
             set_mouse_cursor(mouse_cursor_shape);
             return;
         }
@@ -1177,6 +1188,16 @@ mouse_event(const int button, int modifiers, int action) {
             clamp_to_window = false;
         } else debug("no window for event\n");
     } else debug("\n");
+    // On mouse move events (button < 0) with no active drag, check if the
+    // pointer is near a window border and set the appropriate resize cursor.
+    if (button < 0 && !in_tab_bar && !global_state.tab_being_dragged.id && global_state.boss) {
+        RAII_PyObject(hover_r, PyObject_CallMethod(global_state.boss, "drag_resize_check_hover", "dd", osw->mouse_x, osw->mouse_y));
+        if (hover_r != NULL) {
+            int hover_type = PyLong_Check(hover_r) ? (int)PyLong_AsLong(hover_r) : 0;
+            MouseShape hover_shape = drag_resize_cursor_for_type(hover_type);
+            if (hover_shape != DEFAULT_POINTER) mouse_cursor_shape = hover_shape;
+        }
+    }
     if (mouse_cursor_shape != old_cursor) set_mouse_cursor(mouse_cursor_shape);
 }
 

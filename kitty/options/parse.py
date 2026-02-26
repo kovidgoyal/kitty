@@ -968,6 +968,9 @@ class Parser:
     def disable_ligatures(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['disable_ligatures'] = disable_ligatures(val)
 
+    def drag_resize_tolerance(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['drag_resize_tolerance'] = int(val)
+
     def draw_minimal_borders(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['draw_minimal_borders'] = to_bool(val)
 
