@@ -489,6 +489,58 @@ class Layout:
 
         return horizontal_target, vertical_target
 
+    def drag_resize_border_info(
+        self, x: float, y: float, tolerance: float, all_windows: WindowList
+    ) -> tuple[bool, bool, WindowType | None, WindowType | None]:
+        '''Return (near_vertical_border, near_horizontal_border, h_target, v_target).
+        near_vertical_border=True means the pointer is near a vertical divider (EW resize).
+        near_horizontal_border=True means near a horizontal divider (NS resize).
+        h_target/v_target are the windows to pass to resize_layout_window.'''
+        if tolerance < 0:
+            return False, False, None, None
+        near_vertical = False
+        near_horizontal = False
+        h_target: WindowType | None = None
+        v_target: WindowType | None = None
+
+        for w in all_windows.all_windows:
+            g = w.geometry
+            if g is None or g.right <= g.left or g.bottom <= g.top:
+                continue
+            neighbors = self.neighbors_for_window(w, all_windows)
+
+            # Vertical border: between w and each right neighbor
+            for right_id in neighbors.get('right', ()):
+                if right_id not in all_windows.id_map:
+                    continue
+                rg = all_windows.id_map[right_id].geometry
+                if rg is None or rg.right <= rg.left:
+                    continue
+                border_x = (g.right + rg.left) / 2.0
+                y_min = max(g.top, rg.top)
+                y_max = min(g.bottom, rg.bottom)
+                if abs(x - border_x) <= tolerance and y_min <= y <= y_max:
+                    near_vertical = True
+                    if h_target is None:
+                        h_target = w
+
+            # Horizontal border: between w and each bottom neighbor
+            for bottom_id in neighbors.get('bottom', ()):
+                if bottom_id not in all_windows.id_map:
+                    continue
+                bg = all_windows.id_map[bottom_id].geometry
+                if bg is None or bg.bottom <= bg.top:
+                    continue
+                border_y = (g.bottom + bg.top) / 2.0
+                x_min = max(g.left, bg.left)
+                x_max = min(g.right, bg.right)
+                if abs(y - border_y) <= tolerance and x_min <= x <= x_max:
+                    near_horizontal = True
+                    if v_target is None:
+                        v_target = w
+
+        return near_vertical, near_horizontal, h_target, v_target
+
     def serialize(self, all_windows: WindowList) -> dict[str, Any]:
         ans = self.layout_state()
         ans['opts'] = self.layout_opts.serialized()

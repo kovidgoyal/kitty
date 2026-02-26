@@ -124,6 +124,7 @@ typedef struct Options {
     bool show_hyperlink_targets;
     UnderlineHyperlinks underline_hyperlinks;
     int background_blur;
+    int drag_resize_border_tolerance;
     long macos_titlebar_color;
     unsigned long wayland_titlebar_color;
     struct { struct MenuItem *entries; size_t count; } global_menu;

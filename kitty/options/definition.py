@@ -1230,6 +1230,16 @@ opt('window_resize_step_lines', '2',
     option_type='positive_int',
     )
 
+opt('drag_resize_border_tolerance', '4',
+    option_type='int', ctype='int',
+    long_text='''
+The number of pixels around a window border where dragging with the left mouse
+button will resize the adjacent windows. When hovering within this distance of a
+border, the mouse cursor will change to a resize cursor. Set to a negative value
+to disable drag resizing entirely.
+'''
+    )
+
 opt('window_border_width', '0.5pt',
     option_type='window_border_width',
     long_text='''

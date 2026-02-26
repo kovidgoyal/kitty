@@ -1098,6 +1098,19 @@ convert_from_opts_background_blur(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_drag_resize_border_tolerance(PyObject *val, Options *opts) {
+    opts->drag_resize_border_tolerance = PyLong_AsLong(val);
+}
+
+static void
+convert_from_opts_drag_resize_border_tolerance(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "drag_resize_border_tolerance");
+    if (ret == NULL) return;
+    convert_from_python_drag_resize_border_tolerance(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_dynamic_background_opacity(PyObject *val, Options *opts) {
     opts->dynamic_background_opacity = PyObject_IsTrue(val);
 }
@@ -1552,6 +1565,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_background_opacity(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_background_blur(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_drag_resize_border_tolerance(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_dynamic_background_opacity(py_opts, opts);
     if (PyErr_Occurred()) return false;

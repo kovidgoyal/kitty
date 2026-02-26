@@ -827,17 +827,6 @@ HANDLER(handle_button_event) {
 
     Screen *screen = w->render_data.screen;
     if (!screen) return;
-    if (!global_state.active_drag_resize && button == GLFW_MOUSE_BUTTON_LEFT && !is_release && modifiers == GLFW_MOD_CONTROL) {
-        RAII_PyObject(r, PyObject_CallMethod(
-            global_state.boss, "drag_resize_start", "ddII", osw->mouse_x, osw->mouse_y, screen->cell_size.width, screen->cell_size.height));
-        if (r == NULL) { PyErr_Print(); return; }
-        if (PyObject_IsTrue(r)) {
-            global_state.active_drag_resize = w->id;
-            mouse_cursor_shape = NESW_RESIZE_POINTER;
-            set_mouse_cursor(mouse_cursor_shape);
-            return;
-        }
-    }
 
     bool a, b;
     if (!set_mouse_position(w, &a, &b)) return;
@@ -935,6 +924,30 @@ closest_window_for_event(unsigned int *window_idx) {
         }
     }
     return ans;
+}
+
+static MouseShape
+cursor_code_to_mouse_shape(int cursor_code) {
+    if (cursor_code == 1) return EW_RESIZE_POINTER;
+    if (cursor_code == 2) return NS_RESIZE_POINTER;
+    return NESW_RESIZE_POINTER;
+}
+
+static void
+get_cell_size(unsigned int *width, unsigned int *height) {
+    OSWindow *osw = global_state.callback_os_window;
+    if (osw && osw->num_tabs > 0) {
+        Tab *t = osw->tabs + osw->active_tab;
+        for (unsigned int i = 0; i < t->num_windows; i++) {
+            Window *w = t->windows + i;
+            if (w->visible && w->render_data.screen) {
+                *width = w->render_data.screen->cell_size.width;
+                *height = w->render_data.screen->cell_size.height;
+                return;
+            }
+        }
+    }
+    *width = 10; *height = 20;
 }
 
 void
@@ -1156,6 +1169,38 @@ mouse_event(const int button, int modifiers, int action) {
             set_mouse_cursor(mouse_cursor_shape);
         }
         return;
+    }
+    // Border-based drag resize: update cursor on hover, start resize on click
+    if (OPT(drag_resize_border_tolerance) >= 0) {
+        if (button < 0) {
+            // Motion: change cursor when hovering near a window border
+            RAII_PyObject(ci, PyObject_CallMethod(global_state.boss, "drag_resize_border_info", "dd", osw->mouse_x, osw->mouse_y));
+            if (ci && PyLong_Check(ci)) {
+                int cursor_code = (int)PyLong_AsLong(ci);
+                if (cursor_code > 0) {
+                    MouseShape new_cursor = cursor_code_to_mouse_shape(cursor_code);
+                    if (mouse_cursor_shape != new_cursor) {
+                        mouse_cursor_shape = new_cursor;
+                        set_mouse_cursor(mouse_cursor_shape);
+                    }
+                    return;
+                }
+            }
+        } else if (button == GLFW_MOUSE_BUTTON_LEFT && action != GLFW_RELEASE) {
+            // Press: start drag resize if near a border
+            unsigned int cell_w = 10, cell_h = 20;
+            get_cell_size(&cell_w, &cell_h);
+            RAII_PyObject(r, PyObject_CallMethod(global_state.boss, "drag_resize_start", "ddII", osw->mouse_x, osw->mouse_y, cell_w, cell_h));
+            if (r && PyLong_Check(r)) {
+                int cursor_code = (int)PyLong_AsLong(r);
+                if (cursor_code > 0) {
+                    global_state.active_drag_resize = 1;
+                    mouse_cursor_shape = cursor_code_to_mouse_shape(cursor_code);
+                    set_mouse_cursor(mouse_cursor_shape);
+                    return;
+                }
+            }
+        }
     }
     w = window_for_event(&window_idx, &in_tab_bar);
     set_currently_hovered_window(w ? w->id : 0, modifiers);

@@ -2419,16 +2419,43 @@ class Boss:
         if tab:
             tab.set_active_window(window_id)
 
-    def drag_resize_start(self, x: float, y: float, cell_width: int, cell_height: int) -> bool:
+    def drag_resize_border_info(self, x: float, y: float) -> int:
+        '''Return cursor code for border proximity:
+        0=not near border, 1=near vertical border (EW), 2=near horizontal border (NS), 3=both directions.'''
+        tolerance = get_options().drag_resize_border_tolerance
+        if tolerance < 0:
+            return 0
         if tab := self.active_tab:
-            horizontal, vertical = tab.current_layout.drag_resize_target_windows(x, y, tab.windows)
-            if horizontal is None or vertical is None:
-                return False
+            near_v, near_h, _, _ = tab.current_layout.drag_resize_border_info(x, y, float(tolerance), tab.windows)
+            if near_v and near_h:
+                return 3
+            if near_v:
+                return 1
+            if near_h:
+                return 2
+        return 0
+
+    def drag_resize_start(self, x: float, y: float, cell_width: int, cell_height: int) -> int:
+        '''Return cursor code if drag resize started, 0 otherwise.'''
+        tolerance = get_options().drag_resize_border_tolerance
+        if tolerance < 0:
+            return 0
+        if tab := self.active_tab:
+            near_v, near_h, horizontal, vertical = tab.current_layout.drag_resize_border_info(
+                x, y, float(tolerance), tab.windows)
+            if not near_v and not near_h:
+                return 0
+            h_id = horizontal.id if horizontal is not None else 0
+            v_id = vertical.id if vertical is not None else 0
             self.drag_resize_of_window = WindowResizeDrag(
-                is_active=True, horizontal_target_window_id=horizontal.id, vertical_target_window_id=vertical.id,
+                is_active=True, horizontal_target_window_id=h_id, vertical_target_window_id=v_id,
                 cell_width=cell_width, cell_height=cell_height, initial_x=x, initial_y=y)
-            return True
-        return False
+            if near_v and near_h:
+                return 3
+            if near_v:
+                return 1
+            return 2
+        return 0
 
     def drag_resize_update(self, x: float, y: float) -> None:
         if not (r := self.drag_resize_of_window):

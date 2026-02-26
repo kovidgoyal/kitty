@@ -273,6 +273,13 @@ window wider/narrower, but not taller/shorter. Note that what you are resizing
 is actually not a window, but a row/column in the layout, all windows in that
 row/column will be resized.
 
+You can also resize windows by dragging the border between them with the mouse.
+When hovering near a window border, the mouse cursor will change to a resize
+cursor indicating the resize direction. Pressing the left mouse button over a
+border and dragging will resize the adjacent windows. The sensitivity of the
+border detection can be configured with :opt:`drag_resize_border_tolerance`.
+Setting it to a negative value disables drag-to-resize entirely.
+
 You can also define shortcuts in :file:`kitty.conf` to make the active window
 wider, narrower, taller, or shorter by mapping to the :ac:`resize_window`
 action, for example::
