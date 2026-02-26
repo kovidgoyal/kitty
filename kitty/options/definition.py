@@ -1462,7 +1462,9 @@ opt('window_drag_tolerance', '2', option_type='float', ctype='double', long_text
 Control dragging window borders to resize kitty windows. This is the tolerance in pts
 for the region around window borders where pressing the left mouse button
 will start the dragging of window borders. Use a large negative value such as -200 to disable
-dragging of borders.
+dragging of borders. Note that because kitty uses layouts, dragging borders does not
+actually resize the window itself, but instead, the layout row/column/slot, which can result
+in multiple windows getting resized.
 ''')
 egr()  # }}}
 
