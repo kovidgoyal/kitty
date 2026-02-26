@@ -1457,6 +1457,13 @@ by adding :code:`count-background` to the setting, for example: :code:`-1 count-
 Note that if you want confirmation when closing individual windows,
 you can map the :ac:`close_window_with_confirmation` action.
 ''')
+
+opt('window_drag_tolerance', '2', option_type='float', ctype='double', long_text='''
+Control dragging window borders to resize kitty windows. This is the tolerance in pts
+for the region around window borders where pressing the left mouse button
+will start the dragging of window borders. Use a large negative value such as -200 to disable
+dragging of borders.
+''')
 egr()  # }}}
 
 
@@ -3847,9 +3854,7 @@ remove the default shortcuts.
 '''
     )
 
-opt('map_timeout', '0.0',
-    option_type='positive_float', ctype='time',
-    long_text='''
+opt('map_timeout', '0.0', option_type='positive_float', long_text='''
 The default timeout (in seconds) for multi-key mappings and modal keyboard modes.
 If you press the first key(s) of a multi-key mapping and don't press the next
 key within this timeout, the mapping is cancelled and the mode is exited. A value
@@ -3862,8 +3867,7 @@ For example::
 
     # This mode will have a 5 second timeout (overrides the global 2 second timeout)
     map --new-mode resize --timeout 5.0 kitty_mod+r
-'''
-    )
+''')
 
 opt('+action_alias', 'launch_tab launch --type=tab --cwd=current',
     option_type='action_alias',

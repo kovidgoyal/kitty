@@ -1060,9 +1060,6 @@ class Parser:
     def kitty_mod(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['kitty_mod'] = to_modifiers(val)
 
-    def map_timeout(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['map_timeout'] = positive_float(val)
-
     def linux_bell_theme(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['linux_bell_theme'] = str(val)
 
@@ -1122,6 +1119,9 @@ class Parser:
 
     def macos_window_resizable(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_window_resizable'] = to_bool(val)
+
+    def map_timeout(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['map_timeout'] = positive_float(val)
 
     def mark1_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mark1_background'] = to_color(val)
@@ -1471,6 +1471,9 @@ class Parser:
 
     def window_border_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_border_width'] = window_border_width(val)
+
+    def window_drag_tolerance(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['window_drag_tolerance'] = float(val)
 
     def window_logo_alpha(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_logo_alpha'] = unit_float(val)

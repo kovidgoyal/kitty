@@ -981,6 +981,19 @@ convert_from_opts_resize_in_steps(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_window_drag_tolerance(PyObject *val, Options *opts) {
+    opts->window_drag_tolerance = PyFloat_AsDouble(val);
+}
+
+static void
+convert_from_opts_window_drag_tolerance(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "window_drag_tolerance");
+    if (ret == NULL) return;
+    convert_from_python_window_drag_tolerance(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_tab_bar_edge(PyObject *val, Options *opts) {
     opts->tab_bar_edge = PyLong_AsLong(val);
 }
@@ -1534,6 +1547,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_resize_debounce_time(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_resize_in_steps(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_window_drag_tolerance(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_tab_bar_edge(py_opts, opts);
     if (PyErr_Occurred()) return false;

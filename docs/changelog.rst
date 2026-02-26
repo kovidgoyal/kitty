@@ -164,6 +164,9 @@ Detailed list of changes
 - Allow dragging tabs in the tab bar to re-order, move to another OS Window or
   detach (:pull:`9296`)
 
+- Allow dragging window borders to resize kitty windows in all the different
+  layouts, controlled by :opt:`window_drag_tolerance` (:pull:`9447`)
+
 - choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
 
 - Fix tab bar rendering glitches when using :opt:`tab_bar_filter` in some

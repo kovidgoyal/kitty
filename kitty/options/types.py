@@ -488,6 +488,7 @@ option_names = (
     'wheel_scroll_multiplier',
     'window_alert_on_bell',
     'window_border_width',
+    'window_drag_tolerance',
     'window_logo_alpha',
     'window_logo_path',
     'window_logo_position',
@@ -573,7 +574,6 @@ class Options:
     input_delay: int = 3
     italic_font: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='auto', axes=(), variable_name=None, features=(), created_from_string='auto')
     kitty_mod: int = 5
-    map_timeout: float = 0.0
     linux_bell_theme: str = '__custom'
     linux_display_server: choices_for_linux_display_server = 'auto'
     listen_on: str = 'none'
@@ -589,6 +589,7 @@ class Options:
     macos_titlebar_color: int = 0
     macos_traditional_fullscreen: bool = False
     macos_window_resizable: bool = True
+    map_timeout: float = 0
     mark1_background: Color = Color(152, 211, 203)
     mark1_foreground: Color = Color(0, 0, 0)
     mark2_background: Color = Color(242, 220, 211)
@@ -679,6 +680,7 @@ class Options:
     wheel_scroll_multiplier: float = 5.0
     window_alert_on_bell: bool = True
     window_border_width: tuple[float, str] = (0.5, 'pt')
+    window_drag_tolerance: float = 2.0
     window_logo_alpha: float = 0.5
     window_logo_path: str | None = None
     window_logo_position: choices_for_window_logo_position = 'bottom-right'
