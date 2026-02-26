@@ -257,7 +257,9 @@ static void
 border_contains_mouse(BorderRect *br, double tolerance, Edge *edges) {
     double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
     if ((int)br->px.left - tolerance <= x && x < (int)br->px.right + tolerance && (int)br->px.top - tolerance <= y && y < (int)br->px.bottom + tolerance) {
-        if (br->px.right - br->px.left > br->px.bottom - br->px.top) *edges |= br->border_type < 1 ? LEFT_EDGE : RIGHT_EDGE; else *edges |= br->border_type < 1 ? TOP_EDGE : BOTTOM_EDGE;
+        if (br->px.right - br->px.left < br->px.bottom - br->px.top)
+            *edges |= br->border_type < 1 ? LEFT_EDGE : RIGHT_EDGE;
+        else *edges |= br->border_type < 1 ? TOP_EDGE : BOTTOM_EDGE;
     }
 }
 
