@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
+import sys
 from collections.abc import Generator, Sequence
 from itertools import islice, repeat
 from typing import Any
 
 from kitty.borders import BorderColor
 from kitty.conf.utils import to_bool
+from kitty.fast_data_types import BOTTOM_EDGE, RIGHT_EDGE
 from kitty.types import Edges, NeighborsMap, WindowMapper
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
@@ -22,6 +24,36 @@ from .base import (
     safe_increment_bias,
 )
 from .vertical import borders
+
+
+def drag_resize_target_windows(
+        click_window: WindowType,
+        edges: int,
+        x: float, y: float,
+        num_full_size_windows: int,
+        all_windows: WindowList,
+        main_is_horizontal: bool = True
+) -> tuple[WindowType, bool, WindowType, bool]:
+    groups = tuple(all_windows.iter_all_layoutable_groups())
+    horizontal = vertical = click_window
+    min_dist = float(sys.maxsize)
+    height_increases_downwards = bool(edges * BOTTOM_EDGE)
+    width_increases_rightwards = bool(edges * RIGHT_EDGE)
+    for gr in groups[num_full_size_windows:]:
+        if gr.windows:
+            w = gr.windows[-1]
+            g = w.geometry
+            if main_is_horizontal:
+                if (dist := min(abs(g.top - y), abs(g.bottom - y))) < min_dist:
+                    min_dist = dist
+                    vertical = w
+                    height_increases_downwards = y > g.top + (g.bottom - g.top) / 2
+            else:
+                if (dist := min(abs(g.left - x), abs(g.right - x))) < min_dist:
+                    min_dist = dist
+                    horizontal = w
+                    width_increases_rightwards = x > g.left + (g.right - g.left) / 2
+    return horizontal, width_increases_rightwards, vertical, height_increases_downwards
 
 
 def neighbors_for_tall_window(
@@ -356,6 +388,11 @@ class Tall(Layout):
         self.biased_map = {int(k): v for k, v in layout_state['biased_map'].items()}
         self.layout_opts = TallLayoutOpts(layout_state['opts'])
         return True
+
+    def drag_resize_target_windows(
+        self, click_window: WindowType, x: float, y: float, edges: int, all_windows: WindowList,
+    ) -> tuple[WindowType, bool, WindowType, bool]:
+        return drag_resize_target_windows(click_window, edges, x, y, self.num_full_size_windows, all_windows, self.main_is_horizontal)
 
 
 class Fat(Tall):

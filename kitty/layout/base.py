@@ -7,7 +7,7 @@ from itertools import repeat
 from typing import Any, Callable, NamedTuple
 
 from kitty.borders import BorderColor
-from kitty.fast_data_types import Region, get_options, set_active_window, viewport_for_window
+from kitty.fast_data_types import BOTTOM_EDGE, RIGHT_EDGE, Region, get_options, set_active_window, viewport_for_window
 from kitty.options.types import Options
 from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper
 from kitty.typing_compat import WindowType
@@ -453,31 +453,9 @@ class Layout:
         return True
 
     def drag_resize_target_windows(
-            self, click_window: WindowType, x: float, y: float, all_windows: WindowList
-    ) -> tuple[WindowType, WindowType]:
-        g = click_window.geometry
-        left_half_clicked = x <= g.left + (g.right - g.left) / 2
-        top_half_clicked = y <= g.top + (g.bottom - g.top) / 2
-        neighbors = self.neighbors_for_window(click_window, all_windows)
-        left = neighbors.get("left", ())
-        right = neighbors.get("right", ())
-        top = neighbors.get("top", ())
-        bottom = neighbors.get("bottom", ())
-        horizontal_target = vertical_target = click_window
-
-        # Infer which window should be horizontally resized based on click
-        # position and layout state
-        if ((left_half_clicked and len(left) > 0) or
-            (not left_half_clicked and len(left) > 0 and len(right) == 0)):
-            horizontal_target = all_windows.id_map[left[0]]
-
-        # Infer which window should be vertically resized based on click
-        # position and layout state
-        if ((top_half_clicked and len(top) > 0) or
-            (not top_half_clicked and len(top) > 0 and len(bottom) == 0)):
-            vertical_target = all_windows.id_map[top[0]]
-
-        return horizontal_target, vertical_target
+        self, click_window: WindowType, x: float, y: float, edges: int, all_windows: WindowList,
+    ) -> tuple[WindowType, bool, WindowType, bool]:
+        return click_window, bool(edges & RIGHT_EDGE), click_window, bool(edges & BOTTOM_EDGE)
 
     def serialize(self, all_windows: WindowList) -> dict[str, Any]:
         ans = self.layout_state()

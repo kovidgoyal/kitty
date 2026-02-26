@@ -253,6 +253,8 @@ class WindowResizeDrag(NamedTuple):
     initial_y: float = 0
     last_step_x: float = 0
     last_step_y: float = 0
+    height_increases_downwards: bool = True
+    width_increases_rightwards: bool = True
 
     def __bool__(self) -> bool:
         return self.is_active
