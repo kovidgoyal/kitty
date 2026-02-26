@@ -328,6 +328,8 @@ WINDOW_HIDDEN: int
 TEXT_SIZE_CODE: int
 TOP_EDGE: int
 BOTTOM_EDGE: int
+LEFT_EDGE: int
+RIGHT_EDGE: int
 # }}}
 
 

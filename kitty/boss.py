@@ -57,6 +57,7 @@ from .constants import (
     website_url,
 )
 from .fast_data_types import (
+    BOTTOM_EDGE,
     CLOSE_BEING_CONFIRMED,
     GLFW_FKEY_ESCAPE,
     GLFW_MOD_ALT,
@@ -66,7 +67,10 @@ from .fast_data_types import (
     GLFW_MOUSE_BUTTON_LEFT,
     GLFW_PRESS,
     IMPERATIVE_CLOSE_REQUESTED,
+    LEFT_EDGE,
     NO_CLOSE_REQUESTED,
+    RIGHT_EDGE,
+    TOP_EDGE,
     ChildMonitor,
     Color,
     EllipticCurveKey,
@@ -2420,11 +2424,12 @@ class Boss:
             tab.set_active_window(window_id)
 
     def drag_resize_start(
-        self, horizontal_allowed: bool, vertical_allowed: float, x: float, y: float,
-        window_id: int, cell_width: int, cell_height: int,
+        self, edges: int, x: float, y: float, window_id: int, cell_width: int, cell_height: int,
     ) -> bool:
         if (w := self.window_id_map.get(window_id)) and (tab := w.tabref()):
             horizontal, vertical = tab.current_layout.drag_resize_target_windows(w, x, y, tab.windows)
+            horizontal_allowed = bool(edges & (LEFT_EDGE | RIGHT_EDGE))
+            vertical_allowed = bool(edges & (TOP_EDGE | BOTTOM_EDGE))
             self.drag_resize_of_window = WindowResizeDrag(
                 is_active=True, horizontal_target_window_id=horizontal.id if horizontal_allowed else 0,
                 vertical_target_window_id=vertical.id if vertical_allowed else 0,

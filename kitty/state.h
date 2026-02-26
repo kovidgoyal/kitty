@@ -240,7 +240,7 @@ typedef struct BorderRect {
     float left, top, right, bottom;
     struct { unsigned left, top, right, bottom; } px;
     uint32_t color;
-    bool is_actual_border;
+    int border_type;
 } BorderRect;
 
 typedef struct BorderRects {

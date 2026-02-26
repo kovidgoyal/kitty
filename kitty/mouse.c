@@ -254,10 +254,10 @@ contains_mouse(Window *w) {
 }
 
 static void
-border_contains_mouse(BorderRect *br, double tolerance, bool *horizontal, bool *vertical) {
+border_contains_mouse(BorderRect *br, double tolerance, Edge *edges) {
     double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
     if ((int)br->px.left - tolerance <= x && x < (int)br->px.right + tolerance && (int)br->px.top - tolerance <= y && y < (int)br->px.bottom + tolerance) {
-        if (br->px.right - br->px.left > br->px.bottom - br->px.top) *horizontal = true; else *vertical = true;
+        if (br->px.right - br->px.left > br->px.bottom - br->px.top) *edges |= br->border_type < 1 ? LEFT_EDGE : RIGHT_EDGE; else *edges |= br->border_type < 1 ? TOP_EDGE : BOTTOM_EDGE;
     }
 }
 
@@ -894,7 +894,7 @@ mouse_in_region(Region *r) {
 }
 
 static Window*
-window_for_event(unsigned int *window_idx, bool *in_tab_bar, int *window_border) {
+window_for_event(unsigned int *window_idx, bool *in_tab_bar, Edge *window_border) {
     Region central, tab_bar;
     os_window_regions(global_state.callback_os_window, &central, &tab_bar);
     const bool in_central = mouse_in_region(&central);
@@ -909,16 +909,14 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar, int *window_border)
     if (in_central && w->num_tabs > 0) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         if (window_border) {
-            bool horizontal = false, vertical = false;
+            Edge edges = 0;
             double dpi = (w->fonts_data->logical_dpi_x + w->fonts_data->logical_dpi_y) / 2.;
             double tolerance = ((long)round((OPT(window_drag_tolerance) * (dpi / 72.0))));
-            for (unsigned i = 0; i < t->border_rects.num_border_rects && !(horizontal && vertical); i++) {
+            for (unsigned i = 0; i < t->border_rects.num_border_rects; i++) {
                 BorderRect *br = t->border_rects.rect_buf + i;
-                if (br->is_actual_border) border_contains_mouse(br, tolerance, &horizontal, &vertical);
+                if (br->border_type) border_contains_mouse(br, tolerance, &edges);
             }
-            *window_border = 0;
-            if (horizontal) *window_border |= 1;
-            if (vertical) *window_border |= 2;
+            *window_border = edges;
         }
         for (unsigned int i = 0; i < t->num_windows; i++) {
             if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
@@ -1167,7 +1165,7 @@ mouse_event(const int button, int modifiers, int action) {
         }
         return;
     }
-    int window_border;
+    Edge window_border;
     w = window_for_event(&window_idx, &in_tab_bar, &window_border);
     set_currently_hovered_window(w ? w->id : 0, modifiers);
 
@@ -1179,12 +1177,18 @@ mouse_event(const int button, int modifiers, int action) {
         debug("window border: %d\n", window_border);
         w = window_for_event(&window_idx, &in_tab_bar, NULL);
         if (!w) w = closest_window_for_event(&window_idx);
-        if (window_border & 1) mouse_cursor_shape = window_border & 2 ? NESW_RESIZE_POINTER : NS_RESIZE_POINTER;
-        else if (window_border & 2) mouse_cursor_shape = EW_RESIZE_POINTER;
+        if (window_border & LEFT_EDGE) {
+            if (window_border & TOP_EDGE) mouse_cursor_shape = NWSE_RESIZE_POINTER;
+            else if (window_border & BOTTOM_EDGE) mouse_cursor_shape = NESW_RESIZE_POINTER;
+            else mouse_cursor_shape = EW_RESIZE_POINTER;
+        } else if (window_border & RIGHT_EDGE) {
+            if (window_border & TOP_EDGE) mouse_cursor_shape = NESW_RESIZE_POINTER;
+            else if (window_border & BOTTOM_EDGE) mouse_cursor_shape = NWSE_RESIZE_POINTER;
+            else mouse_cursor_shape = EW_RESIZE_POINTER;
+        } else if (window_border & (TOP_EDGE | BOTTOM_EDGE)) mouse_cursor_shape = NS_RESIZE_POINTER;
         if (w && button == GLFW_MOUSE_BUTTON_LEFT && w->render_data.screen) {
             RAII_PyObject(r, PyObject_CallMethod(
-                global_state.boss, "drag_resize_start", "OOddKII",
-                window_border & 2 ? Py_True : Py_False, window_border & 1 ? Py_True : Py_False,
+                global_state.boss, "drag_resize_start", "iddKII", window_border,
                 osw->mouse_x, osw->mouse_y, w->id,
                 w->render_data.screen->cell_size.width, w->render_data.screen->cell_size.height));
             if (r == NULL) { PyErr_Print(); return; }
