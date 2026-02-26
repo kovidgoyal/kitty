@@ -253,6 +253,15 @@ contains_mouse(Window *w) {
     return (w->visible && window_left(w) <= x && x < window_right(w) && window_top(w) <= y && y < window_bottom(w));
 }
 
+static void
+border_contains_mouse(BorderRect *br, int tolerance, bool *horizontal, bool *vertical) {
+    double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
+    if ((int)br->px.left - tolerance <= x && x < br->px.right + tolerance && (int)br->px.top - tolerance <= y && y < br->px.bottom + tolerance) {
+        if (br->px.right - br->px.left > br->px.bottom - br->px.top) *horizontal = true; else *vertical = true;
+    }
+}
+
+
 static double
 distance_to_window(Window *w) {
     double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
@@ -827,17 +836,6 @@ HANDLER(handle_button_event) {
 
     Screen *screen = w->render_data.screen;
     if (!screen) return;
-    if (!global_state.active_drag_resize && button == GLFW_MOUSE_BUTTON_LEFT && !is_release && modifiers == GLFW_MOD_CONTROL) {
-        RAII_PyObject(r, PyObject_CallMethod(
-            global_state.boss, "drag_resize_start", "ddII", osw->mouse_x, osw->mouse_y, screen->cell_size.width, screen->cell_size.height));
-        if (r == NULL) { PyErr_Print(); return; }
-        if (PyObject_IsTrue(r)) {
-            global_state.active_drag_resize = w->id;
-            mouse_cursor_shape = NESW_RESIZE_POINTER;
-            set_mouse_cursor(mouse_cursor_shape);
-            return;
-        }
-    }
 
     bool a, b;
     if (!set_mouse_position(w, &a, &b)) return;
@@ -896,7 +894,7 @@ mouse_in_region(Region *r) {
 }
 
 static Window*
-window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
+window_for_event(unsigned int *window_idx, bool *in_tab_bar, int *window_border) {
     Region central, tab_bar;
     os_window_regions(global_state.callback_os_window, &central, &tab_bar);
     const bool in_central = mouse_in_region(&central);
@@ -910,6 +908,16 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
     }
     if (in_central && global_state.callback_os_window->num_tabs > 0) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+        if (window_border) {
+            bool horizontal = false, vertical = false;
+            for (unsigned i = 0; i < t->border_rects.num_border_rects && !(horizontal && vertical); i++) {
+                BorderRect *br = t->border_rects.rect_buf + i;
+                if (br->is_actual_border) border_contains_mouse(br, 0, &horizontal, &vertical);
+            }
+            *window_border = 0;
+            if (horizontal) *window_border |= 1;
+            if (vertical) *window_border |= 2;
+        }
         for (unsigned int i = 0; i < t->num_windows; i++) {
             if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
                 *window_idx = i;
@@ -943,7 +951,7 @@ focus_in_event(void) {
     bool in_tab_bar;
     unsigned int window_idx = 0;
     mouse_cursor_shape = TEXT_POINTER;
-    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    Window *w = window_for_event(&window_idx, &in_tab_bar, NULL);
     if (w && w->render_data.screen) {
         screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
         set_mouse_cursor_for_screen(w->render_data.screen);
@@ -956,7 +964,7 @@ update_mouse_pointer_shape(void) {
     mouse_cursor_shape = TEXT_POINTER;
     bool in_tab_bar;
     unsigned int window_idx = 0;
-    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    Window *w = window_for_event(&window_idx, &in_tab_bar, NULL);
     if (in_tab_bar) {
         mouse_cursor_shape = POINTER_POINTER;
     } else if (w) {
@@ -994,7 +1002,7 @@ enter_event(int modifiers) {
     // since the last report.
     if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window) return;
     unsigned window_idx; bool in_tab_bar;
-    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    Window *w = window_for_event(&window_idx, &in_tab_bar, NULL);
     set_currently_hovered_window(w ? w->id : 0, modifiers);
     if (!w || in_tab_bar) return;
 
@@ -1082,7 +1090,7 @@ mouse_event(const int button, int modifiers, int action) {
         else { debug("%s mouse_button: %d %s", action == GLFW_RELEASE ? "\x1b[32mRelease\x1b[m" : "\x1b[31mPress\x1b[m", button, format_mods(modifiers)); }
     }
     if (global_state.redirect_mouse_handling) {
-        w = window_for_event(&window_idx, &in_tab_bar);
+        w = window_for_event(&window_idx, &in_tab_bar, NULL);
         call_boss(mouse_event, "OK iiii dd",
                 (in_tab_bar ? Py_True : Py_False), (w ? w->id : 0),
                 action, modifiers, button, currently_pressed_button(),
@@ -1157,7 +1165,8 @@ mouse_event(const int button, int modifiers, int action) {
         }
         return;
     }
-    w = window_for_event(&window_idx, &in_tab_bar);
+    int window_border;
+    w = window_for_event(&window_idx, &in_tab_bar, &window_border);
     set_currently_hovered_window(w ? w->id : 0, modifiers);
 
     if (in_tab_bar || global_state.tab_being_dragged.id) {
@@ -1167,6 +1176,21 @@ mouse_event(const int button, int modifiers, int action) {
     } else if (w) {
         debug("grabbed: %d\n", w->render_data.screen->modes.mouse_tracking_mode != 0);
         handle_event(w, button, modifiers, window_idx);
+    } else if (window_border) {
+        debug("window border: %d\n", window_border);
+        w = window_for_event(&window_idx, &in_tab_bar, NULL);
+        if (!w) w = closest_window_for_event(&window_idx);
+        if (window_border & 1) mouse_cursor_shape = window_border & 2 ? NESW_RESIZE_POINTER : NS_RESIZE_POINTER;
+        else if (window_border & 2) mouse_cursor_shape = EW_RESIZE_POINTER;
+        if (w && button == GLFW_MOUSE_BUTTON_LEFT && w->render_data.screen) {
+            RAII_PyObject(r, PyObject_CallMethod(
+                global_state.boss, "drag_resize_start", "OOddKII",
+                window_border & 2 ? Py_True : Py_False, window_border & 1 ? Py_True : Py_False,
+                osw->mouse_x, osw->mouse_y, w->id,
+                w->render_data.screen->cell_size.width, w->render_data.screen->cell_size.height));
+            if (r == NULL) { PyErr_Print(); return; }
+            if (PyObject_IsTrue(r)) global_state.active_drag_resize = w->id;
+        }
     } else if (button == GLFW_MOUSE_BUTTON_LEFT && global_state.callback_os_window->mouse_button_pressed[button]) {
         // initial click, clamp it to the closest window
         w = closest_window_for_event(&window_idx);
@@ -1273,7 +1297,7 @@ scroll_event(const GLFWScrollEvent *ev) {
         osw->mouse_x = mouse_x * osw->viewport_x_ratio;
         osw->mouse_y = mouse_y * osw->viewport_y_ratio;
     }
-    Window *w = window_for_event(&window_idx, &in_tab_bar);
+    Window *w = window_for_event(&window_idx, &in_tab_bar, NULL);
     if (!w && !in_tab_bar) {
         // fallback to last active window
         Tab *t = osw->tabs + osw->active_tab;

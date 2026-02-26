@@ -269,7 +269,7 @@ typedef struct {
 } ColorProfile;
 
 typedef struct {
-    unsigned int width, height;
+    unsigned width, height;
 } CellPixelSize;
 
 typedef struct {int x;} *SPRITE_MAP_HANDLE;

@@ -612,14 +612,16 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
         ensure_space_for(br, rect_buf, BorderRect, br->num_border_rects + 1, capacity, 32, false);
         for (unsigned i = 0; i < br->num_border_rects; i++) {
             PyObject *pr = PyList_GET_ITEM(rects, i);
-            unsigned long left, top, right, bottom, color;
-            if (!PyArg_ParseTuple(pr, "kkkkk", &left, &top, &right, &bottom, &color)) return NULL;
+            unsigned long color; int is_actual_border;
             BorderRect *r = br->rect_buf + i;
-            r->left = gl_pos_x(left, osw->viewport_width);
-            r->top = gl_pos_y(top, osw->viewport_height);
-            r->right = r->left + gl_size(right - left, osw->viewport_width);
-            r->bottom = r->top - gl_size(bottom - top, osw->viewport_height);
-            r->color = color;
+            if (!PyArg_ParseTuple(
+                pr, "IIIIkp", &r->px.left, &r->px.top, &r->px.right, &r->px.bottom, &color, &is_actual_border
+            )) return NULL;
+            r->left = gl_pos_x(r->px.left, osw->viewport_width);
+            r->top = gl_pos_y(r->px.top, osw->viewport_height);
+            r->right = r->left + gl_size(r->px.right - r->px.left, osw->viewport_width);
+            r->bottom = r->top - gl_size(r->px.bottom - r->px.top, osw->viewport_height);
+            r->color = color; r->is_actual_border = is_actual_border;
         }
     END_WITH_TAB
     Py_RETURN_NONE;

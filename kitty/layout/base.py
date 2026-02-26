@@ -453,36 +453,26 @@ class Layout:
         return True
 
     def drag_resize_target_windows(
-        self, x: float, y: float, all_windows: WindowList
-    ) -> tuple[WindowType | None, WindowType | None]:
-        # Identify the window where the click occurred and which horizontal and
-        # vertical half it was in
-        click_window, left_half_clicked, top_half_clicked = None, False, False
-        for w in all_windows.all_windows:
-            g = w.geometry
-            if x >= g.left and x <= g.right and y >= g.top and y <= g.bottom:
-                click_window = w
-                left_half_clicked = g.left <= x and x <= g.left + (float(g.right - g.left) / 2.0)
-                top_half_clicked = g.top <= y and y <= g.top + (float(g.bottom - g.top) / 2.0)
-                break
-        if click_window is None:
-            return None, None
+            self, click_window: WindowType, x: float, y: float, all_windows: WindowList
+    ) -> tuple[WindowType, WindowType]:
+        g = click_window.geometry
+        left_half_clicked = x <= g.left + (g.right - g.left) / 2
+        top_half_clicked = y <= g.top + (g.bottom - g.top) / 2
         neighbors = self.neighbors_for_window(click_window, all_windows)
         left = neighbors.get("left", ())
         right = neighbors.get("right", ())
         top = neighbors.get("top", ())
         bottom = neighbors.get("bottom", ())
+        horizontal_target = vertical_target = click_window
 
         # Infer which window should be horizontally resized based on click
         # position and layout state
-        horizontal_target = click_window
         if ((left_half_clicked and len(left) > 0) or
             (not left_half_clicked and len(left) > 0 and len(right) == 0)):
             horizontal_target = all_windows.id_map[left[0]]
 
         # Infer which window should be vertically resized based on click
         # position and layout state
-        vertical_target = click_window
         if ((top_half_clicked and len(top) > 0) or
             (not top_half_clicked and len(top) > 0 and len(bottom) == 0)):
             vertical_target = all_windows.id_map[top[0]]

@@ -24,16 +24,17 @@ class Border(NamedTuple):
     right: int
     bottom: int
     color: BorderColor
+    is_actual_border: bool = False
 
 
 def vertical_edge(rects: list[Border], color: BorderColor, width: int, top: int, bottom: int, left: int) -> None:
     if width > 0:
-        rects.append(Border(left, top, left + width, bottom, color))
+        rects.append(Border(left, top, left + width, bottom, color, True))
 
 
 def horizontal_edge(rects: list[Border], color: BorderColor, height: int, left: int, right: int, top: int) -> None:
     if height > 0:
-        rects.append(Border(left, top, right, top + height, color))
+        rects.append(Border(left, top, right, top + height, color, True))
 
 
 def add_borders(rects: list[Border], color: BorderColor, wg: WindowGroup) -> None:
@@ -111,10 +112,10 @@ class Borders:
         if opts.draw_window_borders_for_single_window and num_visible_groups == 1:
             os_window_focused = current_focused_os_window_id() == self.os_window_id
 
-        for i, wg in enumerate(groups):
-            window_bg = color_as_int(wg.default_bg)
-            window_bg = (window_bg << 8) | BorderColor.window_bg
-            if draw_borders and not draw_minimal_borders:
+        if draw_borders and not draw_minimal_borders:
+            for i, wg in enumerate(groups):
+                window_bg = color_as_int(wg.default_bg)
+                window_bg = (window_bg << 8) | BorderColor.window_bg
                 # Draw the border rectangles
                 if wg is active_group and draw_active_borders and os_window_focused:
                     color = BorderColor.active
@@ -124,5 +125,5 @@ class Borders:
 
         if draw_minimal_borders:
             for border_line in current_layout.get_minimal_borders(all_windows):
-                rects.append(Border(*border_line.edges, border_line.color))
+                rects.append(Border(*border_line.edges, border_line.color, is_actual_border=True))
         set_borders_rects(self.os_window_id, self.tab_id, rects)
