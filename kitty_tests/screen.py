@@ -1579,6 +1579,7 @@ class TestScreen(BaseTest):
         t('=fleur', 'move')
 
     def test_color_profile(self):
+        defaults.generate_256_palette = False
         c = ColorProfile(defaults)
         for i in range(8):
             col = getattr(defaults, f'color{i}')
@@ -1591,7 +1592,7 @@ class TestScreen(BaseTest):
             parse_bytes(s, b'\x1b]21;' + ';'.join(f'{k}={v}' for k, v in send.items()).encode() + b'\a')
             self.ae(s.callbacks.color_control_responses, [expected] if expected else [])
         q({k: '?' for k in 'background foreground 213 unknown'.split()}, {
-            'background': defaults.background, 'foreground': defaults.foreground, '213': defaults.color213, 'unknown': '?'})
+            'background': defaults.background, 'foreground': defaults.foreground, '213': Color(255, 135, 255), 'unknown': '?'})
         q({'background':'aquamarine'})
         q({'background':'?', 'selection_background': '?'}, {
             'background': Color.parse_color('Aquamarine'), 'selection_background': s.color_profile.highlight_bg})
