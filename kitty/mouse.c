@@ -911,14 +911,26 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar, Edge *window_border
     if (in_central && w->num_tabs > 0) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         if (window_border) {
-            Edge edges = 0;
+            *window_border = 0;
             double dpi = (w->fonts_data->logical_dpi_x + w->fonts_data->logical_dpi_y) / 2.;
             double tolerance = ((long)round((OPT(window_drag_tolerance) * (dpi / 72.0))));
+            BorderRect *closest_vert = NULL, *closest_horiz = NULL;
+            double closest_vert_dist = (double)UINT_MAX, closest_horiz_dist = (double)UINT_MAX;
             for (unsigned i = 0; i < t->border_rects.num_border_rects; i++) {
                 BorderRect *br = t->border_rects.rect_buf + i;
-                if (br->border_type) border_contains_mouse(br, tolerance, &edges);
+                if (!br->border_type) continue;
+                if (br->px.right - br->px.left < br->px.bottom - br->px.top) {
+                    double d = br->px.left + (br->px.right - br->px.left)/2.;
+                    d = (d - w->mouse_x) * (d - w->mouse_x);
+                    if (d < closest_vert_dist) { closest_vert_dist = d; closest_vert = br; }
+                } else {
+                    double d = br->px.top + (br->px.bottom - br->px.top)/2.;
+                    d = (d - w->mouse_y) * (d - w->mouse_y);
+                    if (d < closest_horiz_dist) { closest_horiz_dist = d; closest_horiz = br; }
+                }
             }
-            *window_border = edges;
+            if (closest_vert) border_contains_mouse(closest_vert, tolerance, window_border);
+            if (closest_horiz) border_contains_mouse(closest_horiz, tolerance, window_border);
         }
         for (unsigned int i = 0; i < t->num_windows; i++) {
             if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
