@@ -2433,11 +2433,13 @@ class Boss:
             vertical_allowed = bool(edges & (TOP_EDGE | BOTTOM_EDGE))
             self.drag_resize_of_window = WindowResizeDrag(
                 is_active=True, horizontal_target_window_id=horizontal.id if horizontal_allowed else 0,
-                vertical_target_window_id=vertical.id if vertical_allowed else 0,
+                vertical_target_window_id=vertical.id if vertical_allowed else 0, tab_id=tab.id,
                 cell_width=cell_width, cell_height=cell_height, initial_x=x, initial_y=y,
                 width_increases_rightwards=width_increases_rightwards,
                 height_increases_downwards=height_increases_downwards,
             )
+            for cw in tab:
+                cw.pause_resize_notifications_to_child()
             return True
         return False
 
@@ -2461,6 +2463,9 @@ class Boss:
                     self.drag_resize_of_window = r._replace(last_step_y=step_y)
 
     def drag_resize_end(self) -> None:
+        if tab := self.tab_for_id(self.drag_resize_of_window.tab_id):
+            for cw in tab:
+                cw.pause_resize_notifications_to_child(pause=False)
         self.drag_resize_of_window = WindowResizeDrag()
 
     def open_kitty_website(self) -> None:

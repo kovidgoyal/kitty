@@ -255,6 +255,7 @@ class WindowResizeDrag(NamedTuple):
     last_step_y: float = 0
     height_increases_downwards: bool = True
     width_increases_rightwards: bool = True
+    tab_id: int = 0
 
     def __bool__(self) -> bool:
         return self.is_active

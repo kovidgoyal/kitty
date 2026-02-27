@@ -712,6 +712,7 @@ class Window:
         self.kitten_result_processors: list[Callable[['Window', Any], None]] = []
         self.child_is_launched = False
         self.last_reported_pty_size = (-1, -1, -1, -1)
+        self._pause_resize_notifications_to_child: tuple[int, int, int, int] | None = None
         self.needs_attention = False
         self.ignore_focus_changes = self.initial_ignore_focus_changes
         self.override_title = override_title
@@ -945,6 +946,33 @@ class Window:
         wakeup_io_loop()
         wakeup_main_loop()
 
+    def pause_resize_notifications_to_child(self, pause: bool = True) -> None:
+        if pause:
+            self._pause_resize_notifications_to_child = -1, -1, -1, -1
+        else:
+            p, self._pause_resize_notifications_to_child = self._pause_resize_notifications_to_child, None
+            if p and p[0] > 0:
+                if self.resize_child(p):
+                    update_ime_position_for_window(self.id, True)
+
+    def resize_child(self, current_pty_size: tuple[int, int, int, int]) -> bool:
+        boss = get_boss()
+        boss.child_monitor.resize_pty(self.id, *current_pty_size)
+        self.last_resized_at = monotonic()
+        self.last_reported_pty_size = current_pty_size
+        self.notify_child_of_resize()
+        update_ime_position = False
+        if not self.child_is_launched:
+            self.child.mark_terminal_ready()
+            self.child_is_launched = True
+            update_ime_position = True
+            if boss.args.debug_rendering:
+                now = monotonic()
+                print(f'[{now:.3f}] Child launched', file=sys.stderr)
+        elif boss.args.debug_rendering:
+            print(f'[{monotonic():.3f}] SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
+        return update_ime_position
+
     def set_geometry(self, new_geometry: WindowGeometry) -> None:
         if self.destroyed:
             return
@@ -957,20 +985,10 @@ class Window:
             max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
         update_ime_position = False
         if current_pty_size != self.last_reported_pty_size:
-            boss = get_boss()
-            boss.child_monitor.resize_pty(self.id, *current_pty_size)
-            self.last_resized_at = monotonic()
-            self.last_reported_pty_size = current_pty_size
-            self.notify_child_of_resize()
-            if not self.child_is_launched:
-                self.child.mark_terminal_ready()
-                self.child_is_launched = True
-                update_ime_position = True
-                if boss.args.debug_rendering:
-                    now = monotonic()
-                    print(f'[{now:.3f}] Child launched', file=sys.stderr)
-            elif boss.args.debug_rendering:
-                print(f'[{monotonic():.3f}] SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
+            if self._pause_resize_notifications_to_child is None:
+                update_ime_position = self.resize_child(current_pty_size)
+            else:
+                self._pause_resize_notifications_to_child = current_pty_size
         else:
             mark_os_window_dirty(self.os_window_id)
 
