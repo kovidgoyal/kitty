@@ -265,6 +265,15 @@ border_contains_mouse(BorderRect *br, double tolerance, Edge *edges) {
 
 
 static double
+distance_sq_to_border_rect(const BorderRect *br) {
+    double x = global_state.callback_os_window->mouse_x;
+    double y = global_state.callback_os_window->mouse_y;
+    double dx = MAX((double)br->px.left - x, MAX(x - (double)br->px.right, 0.0));
+    double dy = MAX((double)br->px.top - y, MAX(y - (double)br->px.bottom, 0.0));
+    return dx * dx + dy * dy;
+}
+
+static double
 distance_to_window(Window *w) {
     double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
     double cx = (window_left(w) + window_right(w)) / 2.0;
@@ -914,10 +923,15 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar, Edge *window_border
             Edge edges = 0;
             double dpi = (w->fonts_data->logical_dpi_x + w->fonts_data->logical_dpi_y) / 2.;
             double tolerance = ((long)round((OPT(window_drag_tolerance) * (dpi / 72.0))));
+            BorderRect *closest_br = NULL;
+            double closest_dist_sq = (double)UINT_MAX;
             for (unsigned i = 0; i < t->border_rects.num_border_rects; i++) {
                 BorderRect *br = t->border_rects.rect_buf + i;
-                if (br->border_type) border_contains_mouse(br, tolerance, &edges);
+                if (!br->border_type) continue;
+                double d = distance_sq_to_border_rect(br);
+                if (d < closest_dist_sq) { closest_dist_sq = d; closest_br = br; }
             }
+            if (closest_br) border_contains_mouse(closest_br, tolerance, &edges);
             *window_border = edges;
         }
         for (unsigned int i = 0; i < t->num_windows; i++) {
