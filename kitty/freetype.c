@@ -474,7 +474,7 @@ cell_metrics(PyObject *s) {
 
 unsigned int
 glyph_id_for_codepoint(const PyObject *s, char_type cp) {
-    return FT_Get_Char_Index(((Face*)s)->face, cp);
+    return s ? FT_Get_Char_Index(((Face*)s)->face, cp) : 0;
 }
 
 typedef enum { NOT_COLORED, CBDT_COLORED, COLR_V0_COLORED, COLR_V1_COLORED } GlyphColorType;
