@@ -176,6 +176,61 @@ def get_primary_selection() -> str:
     return get_boss().primary_selection.get_text()
 
 
+IMAGE_MIME_TYPES = ('image/png', 'image/tiff', 'image/jpeg', 'image/bmp', 'image/gif')
+IMAGE_MIME_EXTENSIONS = {
+    'image/png': '.png', 'image/tiff': '.tiff', 'image/jpeg': '.jpg',
+    'image/bmp': '.bmp', 'image/gif': '.gif',
+}
+
+
+def get_clipboard_image_as_file() -> str:
+    import subprocess
+    import tempfile
+
+    from .constants import kitten_exe
+
+    clipboard = get_boss().clipboard
+    mime_types = clipboard.get_available_mime_types_for_paste()
+    chosen_mime = ''
+    for preferred in IMAGE_MIME_TYPES:
+        if preferred in mime_types:
+            chosen_mime = preferred
+            break
+    if not chosen_mime:
+        for mt in mime_types:
+            if mt.startswith('image/'):
+                chosen_mime = mt
+                break
+    if not chosen_mime:
+        return ''
+    data = clipboard.get_mime_data(chosen_mime)
+    if not data:
+        return ''
+    if chosen_mime != 'image/png':
+        # Convert non-PNG images (e.g. TIFF from macOS screenshots) to PNG
+        # using kitty's built-in cross-platform image converter
+        fd, path = tempfile.mkstemp(suffix='.png', prefix='kitty-clipboard-image-')
+        try:
+            cp = subprocess.run(
+                [kitten_exe(), '__convert_image__', 'png'],
+                input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+            if cp.returncode != 0 or not cp.stdout:
+                os.close(fd)
+                os.unlink(path)
+                return ''
+            os.write(fd, cp.stdout)
+        finally:
+            os.close(fd)
+        return path
+    fd, path = tempfile.mkstemp(suffix='.png', prefix='kitty-clipboard-image-')
+    try:
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+    return path
+
+
 def develop() -> tuple[Clipboard, Clipboard]:
     from .constants import detect_if_wayland_ok, is_macos
     from .fast_data_types import set_boss

@@ -153,6 +153,10 @@ Detailed list of changes
 0.46.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new action :ac:`paste_from_clipboard_as_file` to paste clipboard image data
+  as a temporary file path, with fallback to normal text paste. Useful for CLI
+  tools that accept image file paths, such as Claude Code.
+
 - Pixel scrolling for the kitty scrollback buffer controlled via :opt:`pixel_scroll` (:pull:`9330`)
 
 - Linux: momentum scrolling in the kitty scrollback buffer for touchpads and touchscreens, see :opt:`momentum_scroll`

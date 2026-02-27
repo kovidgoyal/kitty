@@ -2544,6 +2544,31 @@ class Boss:
             if text:
                 w.paste_with_actions(text)
 
+    @ac('cp', '''
+        Paste clipboard image as a temp file path, or fall back to text paste
+
+        If the system clipboard contains image data (e.g. a screenshot),
+        save it to a temporary file and paste the file path into the active
+        window. If no image data is found, fall back to normal text paste.
+        Useful for CLI tools that accept image file paths, such as
+        Claude Code which supports pasting images for multimodal input.
+        Temp files are cleaned up when kitty exits.
+        ''')
+    def paste_from_clipboard_as_file(self) -> None:
+        w = self.window_for_dispatch or self.active_window
+        if w is not None:
+            from .clipboard import get_clipboard_image_as_file
+            path = get_clipboard_image_as_file()
+            if path:
+                self.atexit.unlink(path)
+                w.paste_with_actions(path)
+            else:
+                if w.send_paste_event():
+                    return
+                text = get_clipboard_string()
+                if text:
+                    w.paste_with_actions(text)
+
     def current_primary_selection(self) -> str:
         return get_primary_selection() if supports_primary_selection else ''
 
