@@ -268,8 +268,8 @@ static double
 distance_sq_to_border_rect(const BorderRect *br) {
     double x = global_state.callback_os_window->mouse_x;
     double y = global_state.callback_os_window->mouse_y;
-    double dx = MAX((double)br->px.left - x, MAX(x - (double)br->px.right, 0.0));
-    double dy = MAX((double)br->px.top - y, MAX(y - (double)br->px.bottom, 0.0));
+    double dx = MAX(MAX((double)br->px.left - x, x - (double)br->px.right), 0.0);
+    double dy = MAX(MAX((double)br->px.top - y, y - (double)br->px.bottom), 0.0);
     return dx * dx + dy * dy;
 }
 
@@ -923,15 +923,20 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar, Edge *window_border
             Edge edges = 0;
             double dpi = (w->fonts_data->logical_dpi_x + w->fonts_data->logical_dpi_y) / 2.;
             double tolerance = ((long)round((OPT(window_drag_tolerance) * (dpi / 72.0))));
-            BorderRect *closest_br = NULL;
-            double closest_dist_sq = (double)UINT_MAX;
+            BorderRect *closest_vert = NULL, *closest_horiz = NULL;
+            double closest_vert_dist = (double)UINT_MAX, closest_horiz_dist = (double)UINT_MAX;
             for (unsigned i = 0; i < t->border_rects.num_border_rects; i++) {
                 BorderRect *br = t->border_rects.rect_buf + i;
                 if (!br->border_type) continue;
                 double d = distance_sq_to_border_rect(br);
-                if (d < closest_dist_sq) { closest_dist_sq = d; closest_br = br; }
+                if (br->px.right - br->px.left < br->px.bottom - br->px.top) {
+                    if (d < closest_vert_dist) { closest_vert_dist = d; closest_vert = br; }
+                } else {
+                    if (d < closest_horiz_dist) { closest_horiz_dist = d; closest_horiz = br; }
+                }
             }
-            if (closest_br) border_contains_mouse(closest_br, tolerance, &edges);
+            if (closest_vert) border_contains_mouse(closest_vert, tolerance, &edges);
+            if (closest_horiz) border_contains_mouse(closest_horiz, tolerance, &edges);
             *window_border = edges;
         }
         for (unsigned int i = 0; i < t->num_windows; i++) {
