@@ -804,26 +804,24 @@ static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWw
                 for (_GLFWwindow *ww = _glfw.windowListHead; ww; ww = ww->next) {
                     if (ww->id == wid) { w = ww; break; }
                 }
-                if (!w) return;
-                NSWindow *nswindow = w->ns.object;
-                @try {
+                if (w) {
+                    NSWindow *nswindow = w->ns.object;
                     [nswindow setStyleMask: savedMask];
                     [nswindow setFrame: savedFrame display:YES];
                     update_titlebar_button_visibility_after_fullscreen_transition(w, true, false);
                     [nswindow makeFirstResponder:w->ns.view];
                     NSNotification *resize = [NSNotification notificationWithName:NSWindowDidResizeNotification object:nswindow];
                     [w->ns.delegate performSelector:@selector(windowDidResize:) withObject:resize afterDelay:0];
-                } @finally {
-                    // Keep suppressing constraints to block deferred macOS tiling
-                    // repositioning, then lift the guard. The delay is empirical (#9572).
-                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(500 * NSEC_PER_MSEC)), dispatch_get_main_queue(), ^{
-                        _GLFWwindow *w2 = NULL;
-                        for (_GLFWwindow *ww = _glfw.windowListHead; ww; ww = ww->next) {
-                            if (ww->id == wid) { w2 = ww; break; }
-                        }
-                        if (w2) w2->ns.suppress_frame_constraints = false;
-                    });
                 }
+                // Lift the constraint guard after a delay, even if the window
+                // was not found (destroyed), to keep the flag consistent (#9572).
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(500 * NSEC_PER_MSEC)), dispatch_get_main_queue(), ^{
+                    _GLFWwindow *w2 = NULL;
+                    for (_GLFWwindow *ww = _glfw.windowListHead; ww; ww = ww->next) {
+                        if (ww->id == wid) { w2 = ww; break; }
+                    }
+                    if (w2) w2->ns.suppress_frame_constraints = false;
+                });
             });
         }
     }
