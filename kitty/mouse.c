@@ -253,14 +253,17 @@ contains_mouse(Window *w) {
     return (w->visible && window_left(w) <= x && x < window_right(w) && window_top(w) <= y && y < window_bottom(w));
 }
 
-static void
+static bool
 border_contains_mouse(BorderRect *br, double tolerance, Edge *edges) {
+    bool ans = false;
     double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
     if ((int)br->px.left - tolerance <= x && x < (int)br->px.right + tolerance && (int)br->px.top - tolerance <= y && y < (int)br->px.bottom + tolerance) {
+        ans = true;
         if (br->px.right - br->px.left < br->px.bottom - br->px.top)
             *edges |= br->border_type < 1 ? LEFT_EDGE : RIGHT_EDGE;
         else *edges |= br->border_type < 1 ? TOP_EDGE : BOTTOM_EDGE;
     }
+    return ans;
 }
 
 
@@ -919,14 +922,20 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar, Edge *window_border
             for (unsigned i = 0; i < t->border_rects.num_border_rects; i++) {
                 BorderRect *br = t->border_rects.rect_buf + i;
                 if (!br->border_type) continue;
-                if (br->px.right - br->px.left < br->px.bottom - br->px.top) {
-                    double d = br->px.left + (br->px.right - br->px.left)/2.;
-                    d = (d - w->mouse_x) * (d - w->mouse_x);
-                    if (d < closest_vert_dist) { closest_vert_dist = d; closest_vert = br; }
-                } else {
-                    double d = br->px.top + (br->px.bottom - br->px.top)/2.;
-                    d = (d - w->mouse_y) * (d - w->mouse_y);
-                    if (d < closest_horiz_dist) { closest_horiz_dist = d; closest_horiz = br; }
+                Edge edges = 0;
+                if (border_contains_mouse(br, 0, &edges)) {
+                    *window_border |= edges;
+                    if (edges & (LEFT_EDGE | RIGHT_EDGE)) { closest_vert_dist = -1; closest_vert = NULL; }
+                    else { closest_horiz_dist = -1; closest_horiz = NULL; }
+                } else if (border_contains_mouse(br, tolerance, &edges)) {
+                    unsigned width = br->px.right - br->px.left, height = br->px.bottom - br->px.top;
+                    if (width < height) {
+                        double d = br->px.left + width/2. - w->mouse_x; d = d*d;
+                        if (d < closest_vert_dist) { closest_vert_dist = d; closest_vert = br; }
+                    } else {
+                        double d = br->px.top + height/2. - w->mouse_y; d = d*d;
+                        if (d < closest_horiz_dist) { closest_horiz_dist = d; closest_horiz = br; }
+                    }
                 }
             }
             if (closest_vert) border_contains_mouse(closest_vert, tolerance, window_border);
