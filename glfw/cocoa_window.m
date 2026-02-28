@@ -3253,6 +3253,14 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
             // As of Big Turd NSWindowStyleMaskFullScreen is no longer usable
             // Also no longer compatible after a minor release of macOS 10.15.7
             if (!w->ns.in_traditional_fullscreen) {
+                // Apple throws NSGenericException if setStyleMask: clears
+                // NSWindowStyleMaskFullScreen outside a transition (see #9572).
+                // Split View sets this flag via the system, so fall back to
+                // Cocoa fullscreen toggle instead of the traditional path.
+                if (sm & NSWindowStyleMaskFullScreen) {
+                    [window toggleFullScreen:nil];
+                    return false;
+                }
                 w->ns.pre_full_screen_style_mask = sm;
                 [window setStyleMask: NSWindowStyleMaskBorderless];
                 [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
@@ -3260,7 +3268,9 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                 w->ns.in_traditional_fullscreen = true;
             } else {
                 made_fullscreen = false;
-                [window setStyleMask: w->ns.pre_full_screen_style_mask];
+                // Same NSWindowStyleMaskFullScreen guard as glfwCocoaSetWindowChrome
+                NSWindowStyleMask fsmask = sm & NSWindowStyleMaskFullScreen;
+                [window setStyleMask: w->ns.pre_full_screen_style_mask | fsmask];
                 [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
                 w->ns.in_traditional_fullscreen = false;
             }
