@@ -1529,7 +1529,7 @@ update_drop_state(_GLFWwindow* window, size_t mime_count) {
     // The first MIME in the sorted list is the preferred one for drop
     const char* new_preferred_mime = (accepted && mime_count > 0) ? dnd.mimes[0] : NULL;
     // Check if the preferred MIME changed
-    bool mime_changed = (new_preferred_mime == NULL && dnd.format[0] != 0) || strncmp(new_preferred_mime, dnd.format, arraysz(dnd.format)) != 0;
+    bool mime_changed = strncmp(new_preferred_mime ? new_preferred_mime : "", dnd.format, arraysz(dnd.format)) != 0;
     if (mime_changed) {
         if (new_preferred_mime) strncpy(dnd.format, new_preferred_mime, arraysz(dnd.format)-1);
         else dnd.format[0] = 0;
