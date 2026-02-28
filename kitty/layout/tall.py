@@ -9,7 +9,7 @@ from typing import Any
 from kitty.borders import BorderColor
 from kitty.conf.utils import to_bool
 from kitty.fast_data_types import BOTTOM_EDGE, RIGHT_EDGE
-from kitty.types import Edges, NeighborsMap, WindowMapper
+from kitty.types import Edges, NeighborsMap, WindowMapper, WindowResizeDragData
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
@@ -33,12 +33,12 @@ def drag_resize_target_windows(
         num_full_size_windows: int,
         all_windows: WindowList,
         main_is_horizontal: bool = True
-) -> tuple[WindowType, bool, WindowType, bool]:
+) -> WindowResizeDragData:
     groups = tuple(all_windows.iter_all_layoutable_groups())
     horizontal = vertical = click_window
     min_dist = float(sys.maxsize)
-    height_increases_downwards = bool(edges * BOTTOM_EDGE)
-    width_increases_rightwards = bool(edges * RIGHT_EDGE)
+    height_increases_downwards = bool(edges & BOTTOM_EDGE)
+    width_increases_rightwards = bool(edges & RIGHT_EDGE)
     for gr in groups[num_full_size_windows:]:
         if gr.windows:
             w = gr.windows[-1]
@@ -53,7 +53,7 @@ def drag_resize_target_windows(
                     min_dist = dist
                     horizontal = w
                     width_increases_rightwards = x > g.left + (g.right - g.left) / 2
-    return horizontal, width_increases_rightwards, vertical, height_increases_downwards
+    return WindowResizeDragData(horizontal.id, width_increases_rightwards, vertical.id, height_increases_downwards)
 
 
 def neighbors_for_tall_window(
@@ -391,7 +391,7 @@ class Tall(Layout):
 
     def drag_resize_target_windows(
         self, click_window: WindowType, x: float, y: float, edges: int, all_windows: WindowList,
-    ) -> tuple[WindowType, bool, WindowType, bool]:
+    ) -> WindowResizeDragData:
         return drag_resize_target_windows(click_window, edges, x, y, self.num_full_size_windows, all_windows, self.main_is_horizontal)
 
 

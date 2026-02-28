@@ -562,6 +562,12 @@ class Tab:  # {{{
             return None
         return 'Could not resize'
 
+    def drag_resize_window(self, object_id: int, increment: float, is_horizontal: bool) -> bool:
+        increment_as_percent = self.current_layout.bias_increment_for_cell(self.windows, is_horizontal) * increment
+        if resized := self.current_layout.drag_resize_window(self.windows, object_id, increment_as_percent, is_horizontal):
+            self.relayout()
+        return resized
+
     @ac('win', '''
         Resize the active window by the specified amount
 

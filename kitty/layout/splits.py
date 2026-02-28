@@ -5,8 +5,8 @@ from collections.abc import Collection, Generator, Sequence
 from typing import Any, NamedTuple, Optional, TypedDict, Union
 
 from kitty.borders import BorderColor
-from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE
-from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper
+from kitty.fast_data_types import BOTTOM_EDGE, RIGHT_EDGE
+from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper, WindowResizeDragData
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
@@ -460,6 +460,15 @@ class Pair:
                     else:
                         yield q
 
+    def window_on_second(self, wid: int) -> bool:
+        if self.one == wid:
+            return False
+        if self.two == wid:
+            return True
+        if not isinstance(self.two, Pair):
+            return False
+        return self.two.window_on_second(wid)
+
 
 class SplitsLayoutOpts(LayoutOpts):
 
@@ -706,70 +715,39 @@ class Splits(Layout):
 
         return None
 
+    def drag_resize_window(self, all_windows: WindowList, pair_id: int, increment: float, is_horizontal: bool = True) -> bool:
+        for pair in self.pairs_root.self_and_descendants():
+            if id(pair) == pair_id:
+                new_bias = max(0, min(pair.bias + increment, 1))
+                if new_bias != pair.bias:
+                    pair.bias = new_bias
+                    return True
+        return False
+
     def drag_resize_target_windows(
         self, click_window: WindowType, x: float, y: float, edges: int, all_windows: WindowList,
-    ) -> tuple[WindowType, bool, WindowType, bool]:
-        horizontal_target = click_window
-        vertical_target = click_window
-        width_increases_rightwards = bool(edges & RIGHT_EDGE)
-        height_increases_downwards = bool(edges & BOTTOM_EDGE)
-
-        id_group_map = {g.id: g for g in all_windows.iter_all_layoutable_groups()}
-
-        def window_for_id(wid: int) -> WindowType | None:
-            g = id_group_map.get(wid)
-            # Use the last (topmost) window in the group, matching the convention
-            # used elsewhere in the layout code (e.g. tall.py drag_resize_target_windows).
-            return g.windows[-1] if g and g.windows else None
-
-        def select_resize_target(pair: Pair) -> tuple[WindowType | None, bool]:
-            # Prefer a window stored directly in pair (not inside a sub-Pair) so that
-            # pair_for_window() returns this pair itself and modify_size_of_child()
-            # modifies the intended pair's bias without prematurely stopping at an inner
-            # pair of the same orientation.
-            # pair.one (left/top) with direction=True: moving right/down grows pair.one.
-            # pair.two (right/bottom) with direction=False: achieves the same net effect
-            # because modify_size_of_child negates the increment for which==2.
-            if isinstance(pair.one, int):
-                w = window_for_id(pair.one)
-                if w is not None:
-                    return w, True
-            if isinstance(pair.two, int):
-                w = window_for_id(pair.two)
-                if w is not None:
-                    return w, False
-            # Both sides are sub-Pairs: best-effort fallback using any window from pair.one
-            if isinstance(pair.one, Pair):
-                for wid in pair.one.all_window_ids():
-                    w = window_for_id(wid)
-                    if w is not None:
-                        return w, True
-            return None, True
-
-        for pair in self.pairs_root.self_and_descendants():
-            if not pair.between_borders:
-                continue
-            b0, b1 = pair.between_borders[0], pair.between_borders[1]
-            if pair.horizontal:
-                # Horizontal pairs have a vertical border (left/right edges).
-                # The border covers x in [b0.left, b1.right] and y in [b0.top, b0.bottom].
-                if edges & (LEFT_EDGE | RIGHT_EDGE):
-                    if b0.left <= x <= b1.right and b0.top <= y <= b0.bottom:
-                        target, direction = select_resize_target(pair)
-                        if target is not None:
-                            horizontal_target = target
-                            width_increases_rightwards = direction
-            else:
-                # Vertical pairs have a horizontal border (top/bottom edges).
-                # The border covers x in [b0.left, b0.right] and y in [b0.top, b1.bottom].
-                if edges & (TOP_EDGE | BOTTOM_EDGE):
-                    if b0.left <= x <= b0.right and b0.top <= y <= b1.bottom:
-                        target, direction = select_resize_target(pair)
-                        if target is not None:
-                            vertical_target = target
-                            height_increases_downwards = direction
-
-        return horizontal_target, width_increases_rightwards, vertical_target, height_increases_downwards
+    ) -> WindowResizeDragData:
+        is_right, is_bottom = bool(edges & RIGHT_EDGE), bool(edges & BOTTOM_EDGE)
+        ans = WindowResizeDragData(None, is_right, None, is_bottom)
+        if (wg := all_windows.group_for_window(click_window)) is None or (pair := self.pairs_root.pair_for_window(wg.id)) is None:
+            return ans
+        pair_parent_map = {}
+        for p in self.pairs_root.self_and_descendants():
+            if isinstance(p.one, Pair):
+                pair_parent_map[p.one] = p
+            if isinstance(p.two, Pair):
+                pair_parent_map[p.two] = p
+        p = pair
+        while ans.horizontal_id is None or ans.vertical_id is None:
+            if not p.is_redundant:
+                if ans.horizontal_id is None and p.horizontal and p.window_on_second(wg.id) != is_right:
+                    ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=not is_right)
+                if ans.vertical_id is None and not p.horizontal and p.window_on_second(wg.id) != is_bottom:
+                    ans = ans._replace(horizontal_id=id(p))
+            if (parent := pair_parent_map.get(p)) is None:
+                break
+            p = parent
+        return ans
 
     def layout_state(self) -> dict[str, Any]:
         return {'pairs': self.pairs_root.serialize()}

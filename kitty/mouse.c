@@ -898,6 +898,13 @@ mouse_in_region(Region *r) {
     return true;
 }
 
+static unsigned
+num_visible_windows(Tab *t) {
+    unsigned ans = t->num_windows;
+    for (unsigned i = 0; i < t->num_windows; i++) if (!t->windows[i].visible) ans--;
+    return ans;
+}
+
 static Window*
 window_for_event(unsigned int *window_idx, bool *in_tab_bar, Edge *window_border) {
     Region central, tab_bar;
@@ -913,7 +920,7 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar, Edge *window_border
     }
     if (in_central && w->num_tabs > 0) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
-        if (window_border) {
+        if (window_border && num_visible_windows(t) > 1) {
             *window_border = 0;
             double dpi = (w->fonts_data->logical_dpi_x + w->fonts_data->logical_dpi_y) / 2.;
             double tolerance = ((long)round((OPT(window_drag_tolerance) * (dpi / 72.0))));

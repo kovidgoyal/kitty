@@ -2427,16 +2427,14 @@ class Boss:
         self, edges: int, x: float, y: float, window_id: int, cell_width: int, cell_height: int,
     ) -> bool:
         if (w := self.window_id_map.get(window_id)) and (tab := w.tabref()):
-            horizontal, width_increases_rightwards, vertical, height_increases_downwards = \
-                    tab.current_layout.drag_resize_target_windows(w, x, y, edges, tab.windows)
-            horizontal_allowed = bool(edges & (LEFT_EDGE | RIGHT_EDGE))
-            vertical_allowed = bool(edges & (TOP_EDGE | BOTTOM_EDGE))
+            data = tab.current_layout.drag_resize_target_windows(w, x, y, edges, tab.windows)
+            if not edges & (LEFT_EDGE | RIGHT_EDGE):
+                data = data._replace(horizontal_id=None)
+            if not edges & (TOP_EDGE | BOTTOM_EDGE):
+                data = data._replace(vertical_id=None)
             self.drag_resize_of_window = WindowResizeDrag(
-                is_active=True, horizontal_target_window_id=horizontal.id if horizontal_allowed else 0,
-                vertical_target_window_id=vertical.id if vertical_allowed else 0, tab_id=tab.id,
+                is_active=True, tab_id=tab.id, data=data,
                 cell_width=cell_width, cell_height=cell_height, initial_x=x, initial_y=y,
-                width_increases_rightwards=width_increases_rightwards,
-                height_increases_downwards=height_increases_downwards,
             )
             for cw in tab:
                 cw.pause_resize_notifications_to_child()
@@ -2444,22 +2442,21 @@ class Boss:
         return False
 
     def drag_resize_update(self, x: float, y: float) -> None:
-        if not (r := self.drag_resize_of_window):
+        if not (r := self.drag_resize_of_window) or not (tab := self.tab_for_id(r.tab_id)):
             return
-        if h := self.window_id_map.get(r.horizontal_target_window_id):
-            mult = 1 if r.width_increases_rightwards else -1
+        if (h := r.data.horizontal_id) is not None:
+            mult = 1 if r.data.width_increases_rightwards else -1
             step_x = floor((x - r.initial_x) / r.cell_width) * mult
             dx = step_x - r.last_step_x
             if dx != 0:
-                if self.resize_layout_window(h, float(dx), is_horizontal=True) is None:
+                if tab.drag_resize_window(h, float(dx), True):
                     self.drag_resize_of_window = r._replace(last_step_x=step_x)
-
-        if v := self.window_id_map.get(r.vertical_target_window_id):
-            mult = 1 if r.height_increases_downwards else -1
+        if (v := r.data.vertical_id) is not None:
+            mult = 1 if r.data.height_increases_downwards else -1
             step_y = floor((y - r.initial_y) / r.cell_height) * mult
             dy = step_y - r.last_step_y
             if dy != 0:
-                if self.resize_layout_window(v, float(dy), is_horizontal=False) is None:
+                if tab.drag_resize_window(v, float(dy), False):
                     self.drag_resize_of_window = r._replace(last_step_y=step_y)
 
     def drag_resize_end(self) -> None:
