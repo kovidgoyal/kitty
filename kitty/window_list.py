@@ -340,6 +340,9 @@ class WindowList:
     def num_groups(self) -> int:
         return len(self.groups)
 
+    def window_for_id(self, x: int) -> WindowType | None:
+        return self.id_map.get(x)
+
     def group_for_window(self, x: WindowOrId) -> WindowGroup | None:
         q = self.id_map[x] if isinstance(x, int) else x
         for g in self.groups:

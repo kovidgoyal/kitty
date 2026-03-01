@@ -815,15 +815,9 @@ class Tab:  # {{{
             overlay_for = window.id
 
     def set_active_window(self, x: Window | int, for_keep_focus: Window | None = None) -> None:
-        if isinstance(x, int):
-            for q in self:
-                if q.id == x:
-                    x = q
-                    break
-            else:
-                return
-        self.windows.set_active_window_group_for(x, for_keep_focus=for_keep_focus)
-        self.windows.move_window_to_top_of_group(x)
+        if (w := self.windows.window_for_id(x) if isinstance(x, int) else x) is not None:
+            self.windows.set_active_window_group_for(w, for_keep_focus=for_keep_focus)
+            self.windows.move_window_to_top_of_group(w)
 
     def get_nth_window(self, n: int) -> Window | None:
         if self.windows:
