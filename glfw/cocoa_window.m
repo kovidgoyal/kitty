@@ -1884,6 +1884,17 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
         selector == @selector(accessibilityInsertionPointLineNumber) ||
         selector == @selector(accessibilityValue) ||
         selector == @selector(setAccessibilityValue:)) return YES;
+
+    // Allow accessibility selectors needed for external window management tools
+    // (e.g. Easy Move+Resize) to find and manipulate the window.
+    // See https://github.com/kovidgoyal/kitty/issues/5561
+    if (selector == @selector(accessibilityWindow) ||
+        selector == @selector(accessibilityParent) ||
+        selector == @selector(accessibilityPosition) ||
+        selector == @selector(setAccessibilityPosition:) ||
+        selector == @selector(accessibilitySize) ||
+        selector == @selector(setAccessibilitySize:)) return YES;
+
     return NO;
 }
 
