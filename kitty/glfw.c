@@ -2168,6 +2168,16 @@ ring_bell(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyObject*
+request_attention(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long os_window_id;
+    if (!PyArg_ParseTuple(args, "K", &os_window_id)) return NULL;
+    OSWindow *w = os_window_for_id(os_window_id);
+    if (w && w->handle) glfwRequestWindowAttention(w->handle);
+    Py_RETURN_NONE;
+}
+
+
+static PyObject*
 get_content_scale_for_window(PYNOARG) {
     OSWindow *w = global_state.callback_os_window ? global_state.callback_os_window : global_state.os_windows;
     float xscale, yscale;
@@ -2913,6 +2923,7 @@ static PyMethodDef module_methods[] = {
     METHODB(macos_cycle_through_os_windows, METH_O),
     METHODB(get_content_scale_for_window, METH_NOARGS),
     METHODB(ring_bell, METH_VARARGS),
+    METHODB(request_attention, METH_VARARGS),
     METHODB(toggle_fullscreen, METH_VARARGS),
     METHODB(toggle_maximized, METH_VARARGS),
     METHODB(change_os_window_state, METH_VARARGS),

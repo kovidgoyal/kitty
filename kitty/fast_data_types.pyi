@@ -1032,8 +1032,8 @@ def set_active_window(os_window_id: int, tab_id: int, window_id: int) -> None:
     pass
 
 
-def ring_bell(os_window_id: int = 0) -> None:
-    pass
+def ring_bell(os_window_id: int = 0) -> None: ...
+def request_attention(os_window_id: int) -> None: ...
 
 
 def concat_cells(cell_width: int, cell_height: int, is_32_bit: bool, cells: Tuple[bytes, ...], bgcolor: int = 0) -> bytes:
