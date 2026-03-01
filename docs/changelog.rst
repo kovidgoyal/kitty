@@ -251,6 +251,9 @@ Detailed list of changes
 - Text sizing protocol: Fix alignment/cropping issues when rendering text with
   a fractional scale (:iss:`9471`)
 
+- macOS: Fix a crash when using :opt:`macos_traditional_fullscreen` with split
+  view (:pull:`9573`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
