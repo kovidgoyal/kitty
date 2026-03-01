@@ -1291,6 +1291,14 @@ intercept_cocoa_fullscreen(GLFWwindow *w) {
                 global_state.callback_os_window);
         return false;
     }
+    // macOS Split View uses Cocoa fullscreen internally, so the window
+    // can end up with NSWindowStyleMaskFullScreen set even when
+    // macos_traditional_fullscreen is enabled. Redirecting to traditional
+    // fullscreen would crash in setStyleMask: (see #9572).
+    if (glfwIsFullscreen(w, 1)) {
+        global_state.callback_os_window->background_opacity.os_forces_opaque = false;
+        return false;
+    }
     toggle_fullscreen_for_os_window(global_state.callback_os_window);
     global_state.callback_os_window = NULL;
     return true;

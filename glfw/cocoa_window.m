@@ -578,6 +578,8 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 @end
 
+static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWwindow*, bool, bool);
+
 @implementation GLFWWindowDelegate
 
 - (instancetype)initWithGlfwWindow:(_GLFWwindow *)initWindow
@@ -782,7 +784,47 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)windowDidExitFullScreen:(NSNotification *)notification
 {
     (void)notification;
-    if (window) window->ns.in_fullscreen_transition = false;
+    if (window) {
+        window->ns.in_fullscreen_transition = false;
+        if (window->ns.in_traditional_fullscreen) {
+            // macOS finished its Cocoa exit (cleared NSWindowStyleMaskFullScreen).
+            // Defer restoration to the next run loop iteration because calling
+            // setStyleMask: inside a delegate callback can leave the window in
+            // an intermediate state. setStyleMask: also triggers macOS's
+            // constrainFrameRect:toScreen: and window tiling logic which can
+            // asynchronously reposition the window, so suppress frame
+            // constraints during the restoration (#9572).
+            unsigned long long wid = window->id;
+            NSWindowStyleMask savedMask = window->ns.pre_full_screen_style_mask;
+            CGRect savedFrame = window->ns.pre_traditional_fullscreen_frame;
+            window->ns.in_traditional_fullscreen = false;
+            window->ns.suppress_frame_constraints = true;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                _GLFWwindow *w = NULL;
+                for (_GLFWwindow *ww = _glfw.windowListHead; ww; ww = ww->next) {
+                    if (ww->id == wid) { w = ww; break; }
+                }
+                if (w) {
+                    NSWindow *nswindow = w->ns.object;
+                    [nswindow setStyleMask: savedMask];
+                    [nswindow setFrame: savedFrame display:YES];
+                    update_titlebar_button_visibility_after_fullscreen_transition(w, true, false);
+                    [nswindow makeFirstResponder:w->ns.view];
+                    NSNotification *resize = [NSNotification notificationWithName:NSWindowDidResizeNotification object:nswindow];
+                    [w->ns.delegate performSelector:@selector(windowDidResize:) withObject:resize afterDelay:0];
+                }
+                // Lift the constraint guard after a delay, even if the window
+                // was not found (destroyed), to keep the flag consistent (#9572).
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(500 * NSEC_PER_MSEC)), dispatch_get_main_queue(), ^{
+                    _GLFWwindow *w2 = NULL;
+                    for (_GLFWwindow *ww = _glfw.windowListHead; ww; ww = ww->next) {
+                        if (ww->id == wid) { w2 = ww; break; }
+                    }
+                    if (w2) w2->ns.suppress_frame_constraints = false;
+                });
+            });
+        }
+    }
     [self performSelector:@selector(request_delayed_cursor_update:) withObject:nil afterDelay:0.3];
 }
 
@@ -2079,6 +2121,12 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
     else [super performMiniaturize:sender];
 }
 
+- (NSRect)constrainFrameRect:(NSRect)frameRect toScreen:(nullable NSScreen *)screen
+{
+    if (glfw_window && glfw_window->ns.suppress_frame_constraints) return frameRect;
+    return [super constrainFrameRect:frameRect toScreen:screen];
+}
+
 - (BOOL)canBecomeKeyWindow
 {
     if (!glfw_window) return NO;
@@ -2125,6 +2173,12 @@ update_titlebar_button_visibility_after_fullscreen_transition(_GLFWwindow* w, bo
 {
     if (glfw_window) {
         if (glfw_window->ns.in_fullscreen_transition) return;
+        // Capture the windowed frame before any fullscreen transition begins.
+        // This is more reliable than saving it inside _glfwPlatformToggleFullscreen
+        // because setStyleMask: calls between cycles can reposition the window (#9572).
+        if (!glfw_window->ns.in_traditional_fullscreen && !([self styleMask] & NSWindowStyleMaskFullScreen)) {
+            glfw_window->ns.pre_traditional_fullscreen_frame = [self frame];
+        }
         if (glfw_window->ns.toggleFullscreenCallback && glfw_window->ns.toggleFullscreenCallback((GLFWwindow*)glfw_window) == 1) return;
         glfw_window->ns.in_fullscreen_transition = true;
     }
@@ -3264,16 +3318,38 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
             // As of Big Turd NSWindowStyleMaskFullScreen is no longer usable
             // Also no longer compatible after a minor release of macOS 10.15.7
             if (!w->ns.in_traditional_fullscreen) {
+                // Apple throws NSGenericException if setStyleMask: clears
+                // NSWindowStyleMaskFullScreen outside a transition (see #9572).
+                // Split View sets this flag via the system, so fall back to
+                // Cocoa fullscreen toggle instead of the traditional path.
+                if (sm & NSWindowStyleMaskFullScreen) {
+                    [window toggleFullScreen:nil];
+                    return false;
+                }
                 w->ns.pre_full_screen_style_mask = sm;
+                w->ns.pre_traditional_fullscreen_frame = [window frame];
                 [window setStyleMask: NSWindowStyleMaskBorderless];
                 [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
                 [window setFrame:[window.screen frame] display:YES];
                 w->ns.in_traditional_fullscreen = true;
             } else {
                 made_fullscreen = false;
-                [window setStyleMask: w->ns.pre_full_screen_style_mask];
-                [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
-                w->ns.in_traditional_fullscreen = false;
+                if (sm & NSWindowStyleMaskFullScreen) {
+                    // Split View added NSWindowStyleMaskFullScreen on top of our
+                    // traditional fullscreen. We can't clear that flag directly
+                    // (NSGenericException), so trigger a Cocoa exit and defer the
+                    // traditional fullscreen cleanup to windowDidExitFullScreen:
+                    // which fires after macOS finishes its async transition (#9572).
+                    // Return true to prevent the caller from setting the window
+                    // frame during the Cocoa exit animation.
+                    [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
+                    [window toggleFullScreen:nil];
+                    return true;
+                } else {
+                    [window setStyleMask: w->ns.pre_full_screen_style_mask];
+                    [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
+                    w->ns.in_traditional_fullscreen = false;
+                }
             }
         } else {
             bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
@@ -3828,10 +3904,16 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
     // event. See https://github.com/kovidgoyal/kitty/issues/7106
     NSWindowStyleMask fsmask = current_style_mask & NSWindowStyleMaskFullScreen;
     window->ns.pre_full_screen_style_mask = getStyleMask(window);
+    NSWindowStyleMask desired_mask;
     if (in_fullscreen && window->ns.in_traditional_fullscreen) {
-        [nsw setStyleMask:NSWindowStyleMaskBorderless];
+        desired_mask = NSWindowStyleMaskBorderless;
     } else {
-        [nsw setStyleMask:window->ns.pre_full_screen_style_mask | fsmask];
+        desired_mask = window->ns.pre_full_screen_style_mask | fsmask;
+    }
+    // Only call setStyleMask: when the mask actually changes. Redundant
+    // calls can trigger macOS to reposition the window (#9572).
+    if (desired_mask != current_style_mask) {
+        [nsw setStyleMask:desired_mask];
     }
 #undef tc
     apply_titlebar_color_settings(window);

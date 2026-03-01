@@ -137,8 +137,10 @@ typedef struct _GLFWwindowNS
     bool            retina;
     bool            in_traditional_fullscreen;
     bool            in_fullscreen_transition;
+    bool            suppress_frame_constraints;
     bool            titlebar_hidden;
     unsigned long   pre_full_screen_style_mask;
+    CGRect          pre_traditional_fullscreen_frame;
 
     // Cached window properties to filter out duplicate events
     int             width, height;
