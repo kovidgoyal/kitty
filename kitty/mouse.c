@@ -1195,7 +1195,7 @@ mouse_event(const int button, int modifiers, int action) {
         }
         return;
     }
-    Edge window_border;
+    Edge window_border = 0;
     w = window_for_event(&window_idx, &in_tab_bar, &window_border);
     set_currently_hovered_window(w ? w->id : 0, modifiers);
 
