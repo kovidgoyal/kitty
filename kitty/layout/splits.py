@@ -786,9 +786,19 @@ class Splits(Layout):
                 return True
             return not in_leading_half
 
+        def ancestor_with_neighboring_border_of_same_orientation(p: Pair) -> Pair | None:
+            horizontal = bool(edges & (LEFT_EDGE | RIGHT_EDGE))
+            while (q := pair_parent_map.get(p)):
+                if q.horizontal == horizontal:
+                    if q.between_borders:
+                        return q
+                    break
+                p = q
+            return None
+
         def pair_or_parent(p: Pair) -> tuple[Pair, bool]:
             in_leading_half = not p.is_group_on_second(wg.id)
-            if is_leading_edge == in_leading_half and p is pair and (parent := pair_parent_map[p]).horizontal == p.horizontal:
+            if is_leading_edge == in_leading_half and p is pair and (parent := ancestor_with_neighboring_border_of_same_orientation(p)):
                 # special case for leading edge of one or trailing edge of two with parent being same orientation
                 return parent, True
             return p, size_increases_forwards(p)
