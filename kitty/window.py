@@ -948,7 +948,8 @@ class Window:
 
     def pause_resize_notifications_to_child(self, pause: bool = True) -> None:
         if pause:
-            self._pause_resize_notifications_to_child = -1, -1, -1, -1
+            if self._pause_resize_notifications_to_child is None:
+                self._pause_resize_notifications_to_child = -1, -1, -1, -1
         else:
             p, self._pause_resize_notifications_to_child = self._pause_resize_notifications_to_child, None
             if p and p[0] > 0:

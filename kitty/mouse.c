@@ -260,8 +260,8 @@ border_contains_mouse(BorderRect *br, double tolerance, Edge *edges) {
     if ((int)br->px.left - tolerance <= x && x < (int)br->px.right + tolerance && (int)br->px.top - tolerance <= y && y < (int)br->px.bottom + tolerance) {
         ans = true;
         if (br->px.right - br->px.left < br->px.bottom - br->px.top)
-            *edges |= br->border_type < 1 ? LEFT_EDGE : RIGHT_EDGE;
-        else *edges |= br->border_type < 1 ? TOP_EDGE : BOTTOM_EDGE;
+            *edges |= br->border_type < 0 ? LEFT_EDGE : RIGHT_EDGE;
+        else *edges |= br->border_type < 0 ? TOP_EDGE : BOTTOM_EDGE;
     }
     return ans;
 }
@@ -922,6 +922,7 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar, Edge *window_border
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         if (window_border && num_visible_windows(t) > 1) {
             *window_border = 0;
+            id_type window_id = 0;
             double dpi = (w->fonts_data->logical_dpi_x + w->fonts_data->logical_dpi_y) / 2.;
             double tolerance = ((long)round((OPT(window_drag_tolerance) * (dpi / 72.0))));
             BorderRect *closest_vert = NULL, *closest_horiz = NULL;
@@ -934,6 +935,7 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar, Edge *window_border
                     *window_border |= edges;
                     if (edges & (LEFT_EDGE | RIGHT_EDGE)) { closest_vert_dist = -1; closest_vert = NULL; }
                     else { closest_horiz_dist = -1; closest_horiz = NULL; }
+                    window_id = br->border_type < 0 ? -br->border_type : br->border_type;
                 } else if (border_contains_mouse(br, tolerance, &edges)) {
                     unsigned width = br->px.right - br->px.left, height = br->px.bottom - br->px.top;
                     if (width < height) {
@@ -945,8 +947,16 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar, Edge *window_border
                     }
                 }
             }
-            if (closest_vert) border_contains_mouse(closest_vert, tolerance, window_border);
-            if (closest_horiz) border_contains_mouse(closest_horiz, tolerance, window_border);
+            if (closest_vert && border_contains_mouse(closest_vert, tolerance, window_border) && !window_id)
+                window_id = closest_vert->border_type < 0 ? -closest_vert->border_type : closest_vert->border_type;
+            if (closest_horiz && border_contains_mouse(closest_horiz, tolerance, window_border) && !window_id)
+                window_id = closest_horiz->border_type < 0 ? -closest_horiz->border_type : closest_horiz->border_type;
+            if (*window_border) {
+                if (!window_id) return NULL;
+                for (unsigned int i = 0; i < t->num_windows; i++)
+                    if (t->windows[i].id == window_id) return t->windows + i;
+                return NULL;
+            }
         }
         for (unsigned int i = 0; i < t->num_windows; i++) {
             if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
@@ -1204,9 +1214,7 @@ mouse_event(const int button, int modifiers, int action) {
         handle_tab_bar_mouse(button, modifiers, action);
         debug("handled by tab bar\n");
     } else if (window_border) {
-        debug("window border: %d\n", window_border);
-        w = window_for_event(&window_idx, &in_tab_bar, NULL);
-        if (!w) w = closest_window_for_event(&window_idx);
+        debug("window border: %d window id: %llu\n", window_border, w ? w->id : 0);
         if (window_border & LEFT_EDGE) {
             if (window_border & TOP_EDGE) mouse_cursor_shape = NWSE_RESIZE_POINTER;
             else if (window_border & BOTTOM_EDGE) mouse_cursor_shape = NESW_RESIZE_POINTER;

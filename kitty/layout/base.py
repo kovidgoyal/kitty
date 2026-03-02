@@ -17,6 +17,7 @@ from kitty.window_list import WindowGroup, WindowList
 class BorderLine(NamedTuple):
     edges: Edges = Edges()
     color: BorderColor = BorderColor.inactive
+    window_id: int = 0
 
 
 class LayoutOpts:
@@ -441,8 +442,7 @@ class Layout:
         yield from self.minimal_borders(windows)
 
     def minimal_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
-        return
-        yield BorderLine()  # type: ignore
+        yield from ()
 
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> bool | None:
         pass

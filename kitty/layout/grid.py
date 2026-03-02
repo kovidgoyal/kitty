@@ -251,13 +251,12 @@ class Grid(Layout):
                 yield Edges(right - bw, top, right, bottom)
 
         for wg in all_groups_in_order:
-            for edges in borders_for_window(wg.id):
-                yield BorderLine(edges)
-        for wg in all_groups_in_order:
+            color = BorderColor.inactive
             if needs_borders_map.get(wg.id):
                 color = BorderColor.active if wg is active_group else BorderColor.bell
-                for edges in borders_for_window(wg.id):
-                    yield BorderLine(edges, color)
+            wid = wg.active_window_id
+            for edges in borders_for_window(wg.id):
+                yield BorderLine(edges, color, wid)
 
     def neighbors_for_window(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
         n = all_windows.num_groups

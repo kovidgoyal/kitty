@@ -27,14 +27,14 @@ class Border(NamedTuple):
     border_type: int = 0
 
 
-def vertical_edge(rects: list[Border], color: BorderColor, width: int, top: int, bottom: int, left: int, is_left: bool) -> None:
+def vertical_edge(rects: list[Border], color: BorderColor, width: int, top: int, bottom: int, left: int, border_type: int) -> None:
     if width > 0:
-        rects.append(Border(left, top, left + width, bottom, color, -1 if is_left else 1))
+        rects.append(Border(left, top, left + width, bottom, color, border_type))
 
 
-def horizontal_edge(rects: list[Border], color: BorderColor, height: int, left: int, right: int, top: int, is_top: bool) -> None:
+def horizontal_edge(rects: list[Border], color: BorderColor, height: int, left: int, right: int, top: int, border_type: int) -> None:
     if height > 0:
-        rects.append(Border(left, top, right, top + height, color, -1 if is_top else 1))
+        rects.append(Border(left, top, right, top + height, color, border_type))
 
 
 def add_borders(rects: list[Border], color: BorderColor, wg: WindowGroup) -> None:
@@ -59,10 +59,11 @@ def add_borders(rects: list[Border], color: BorderColor, wg: WindowGroup) -> Non
     right += width
     bottom += width
     pl = pr = pb = pt = width
-    h(pt, left, right, top, True)
-    h(pb, left, right, bt, False)
-    v(pl, top, bottom, left, True)
-    v(pr, top, bottom, lr, False)
+    wid = wg.active_window_id
+    h(pt, left, right, top, -wid)
+    h(pb, left, right, bt, wid)
+    v(pl, top, bottom, left, -wid)
+    v(pr, top, bottom, lr, wid)
 
 
 def load_borders_program() -> None:
@@ -125,5 +126,5 @@ class Borders:
 
         if draw_minimal_borders:
             for border_line in current_layout.get_minimal_borders(all_windows):
-                rects.append(Border(*border_line.edges, border_line.color, True))
+                rects.append(Border(*border_line.edges, border_line.color, border_line.window_id))
         set_borders_rects(self.os_window_id, self.tab_id, rects)

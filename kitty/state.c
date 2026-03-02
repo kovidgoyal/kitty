@@ -612,10 +612,10 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
         ensure_space_for(br, rect_buf, BorderRect, br->num_border_rects + 1, capacity, 32, false);
         for (unsigned i = 0; i < br->num_border_rects; i++) {
             PyObject *pr = PyList_GET_ITEM(rects, i);
-            unsigned long color; int border_type;
+            unsigned long color; long long border_type;
             BorderRect *r = br->rect_buf + i;
             if (!PyArg_ParseTuple(
-                pr, "IIIIki", &r->px.left, &r->px.top, &r->px.right, &r->px.bottom, &color, &border_type
+                pr, "IIIIkL", &r->px.left, &r->px.top, &r->px.right, &r->px.bottom, &color, &border_type
             )) return NULL;
             r->left = gl_pos_x(r->px.left, osw->viewport_width);
             r->top = gl_pos_y(r->px.top, osw->viewport_height);
