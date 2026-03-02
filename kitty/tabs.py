@@ -886,11 +886,11 @@ class Tab:  # {{{
             self.current_layout.next_window(self.windows, delta)
             self.relayout_borders()
 
-    @ac('win', 'Focus the next window in the current tab')
+    @ac('win', 'Focus the next window in the current tab. Does not traverse overlay windows.')
     def next_window(self) -> None:
         self._next_window()
 
-    @ac('win', 'Focus the previous window in the current tab')
+    @ac('win', 'Focus the previous window in the current tab. Does not traverse overlay windows.')
     def previous_window(self) -> None:
         self._next_window(-1)
 
