@@ -776,13 +776,20 @@ class Splits(Layout):
             if isinstance(p.two, Pair):
                 pair_parent_map[p.two] = p
         p = pair
+        def size_increases_forwards(p: Pair) -> bool:
+            is_leading_edge = not (is_right or is_bottom)
+            in_leading_half = not p.is_group_on_second(wg.id)
+            if p is pair:
+                return is_leading_edge != in_leading_half
+            return not in_leading_half
+
         while ans.horizontal_id is None or ans.vertical_id is None:
             if p.is_redundant:
                 continue
             if ans.horizontal_id is None and p.horizontal:
-                ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=is_right != p.is_group_on_second(wg.id))
+                ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=size_increases_forwards(p))
             if ans.vertical_id is None and not p.horizontal:
-                ans = ans._replace(vertical_id=id(p), height_increases_downwards=is_bottom != p.is_group_on_second(wg.id))
+                ans = ans._replace(vertical_id=id(p), height_increases_downwards=size_increases_forwards(p))
             if (parent := pair_parent_map.get(p)) is None:
                 break
             p = parent
