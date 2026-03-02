@@ -1501,7 +1501,7 @@ opt('window_title_bar_active_foreground', 'none',
     option_type='to_color_or_none', ctype='color_or_none_as_int',
     long_text='''
 Foreground color for the active window title bar. Defaults to
-:opt:`active_tab_foreground` when set to :code:`none`.
+the corresponding tab bar color (:code:`active_tab_foreground`) when set to :code:`none`.
 '''
     )
 
@@ -1509,7 +1509,7 @@ opt('window_title_bar_active_background', 'none',
     option_type='to_color_or_none', ctype='color_or_none_as_int',
     long_text='''
 Background color for the active window title bar. Defaults to
-:opt:`active_tab_background` when set to :code:`none`.
+the corresponding tab bar color (:code:`active_tab_background`) when set to :code:`none`.
 '''
     )
 
@@ -1517,7 +1517,7 @@ opt('window_title_bar_inactive_foreground', 'none',
     option_type='to_color_or_none', ctype='color_or_none_as_int',
     long_text='''
 Foreground color for inactive window title bars. Defaults to
-:opt:`inactive_tab_foreground` when set to :code:`none`.
+the corresponding tab bar color (:code:`inactive_tab_foreground`) when set to :code:`none`.
 '''
     )
 
@@ -1525,7 +1525,7 @@ opt('window_title_bar_inactive_background', 'none',
     option_type='to_color_or_none', ctype='color_or_none_as_int',
     long_text='''
 Background color for inactive window title bars. Defaults to
-:opt:`inactive_tab_background` when set to :code:`none`.
+the corresponding tab bar color (:code:`inactive_tab_background`) when set to :code:`none`.
 '''
     )
 

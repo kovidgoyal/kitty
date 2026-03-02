@@ -15,7 +15,6 @@ from gettext import gettext as _
 from typing import Any, Concatenate, Deque, NamedTuple, Optional, ParamSpec, TypeVar, cast
 
 from .borders import Border, Borders
-from .window_title_bar import WindowTitleBarManager
 from .child import Child
 from .cli_stub import CLIOptions, SaveAsSessionOptions
 from .constants import appname
@@ -62,6 +61,7 @@ from .typing_compat import EdgeLiteral, SessionTab, SessionType, TypedDict
 from .utils import cmdline_for_hold, color_as_int, log_error, platform_window_id, resolved_shell, shlex_split, which
 from .window import CwdRequest, Watchers, Window, WindowCreationSpec, WindowDict, global_watchers
 from .window_list import WindowList
+from .window_title_bar import WindowTitleBarManager
 
 P = ParamSpec('P')
 T = TypeVar('T')
