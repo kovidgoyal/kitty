@@ -367,8 +367,9 @@ class Tall(Layout):
                         yl.content_pos + ((yl.content_size + yl.space_after) if mirrored else (bw - yl.space_before)),
                     )
                 wid = wg.active_window_id
-                perp_borders.append(BorderLine(e1, color, wid))
-                perp_borders.append(BorderLine(e2, color, wid))
+                mult = 1 if mirrored else -1
+                perp_borders.append(BorderLine(e1, color, -wid))
+                perp_borders.append(BorderLine(e2, color, mult*wid))
                 perp_borders.append(BorderLine(e3, color, wid))
 
         mirrored = self.layout_opts.mirrored
