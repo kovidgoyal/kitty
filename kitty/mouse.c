@@ -1212,11 +1212,13 @@ mouse_event(const int button, int modifiers, int action) {
     if (global_state.active_drag_resize) {
         if (button < 0) {
             call_boss(drag_resize_update, "dd", osw->mouse_x, osw->mouse_y);
+            debug("drag resize updated\n");
         } else if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE) {
             call_boss(drag_resize_end, "");
             global_state.active_drag_resize = 0;
             mouse_cursor_shape = DEFAULT_POINTER;
             set_mouse_cursor(mouse_cursor_shape);
+            debug("drag resize ended\n");
         }
         return;
     }
