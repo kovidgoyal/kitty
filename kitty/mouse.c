@@ -1115,6 +1115,21 @@ mouse_selection(Window *w, int code, int button) {
 #undef S
 }
 
+static const char*
+border_name(int edges) {
+    switch(edges) {
+        case 0: return "none";
+        case LEFT_EDGE: return "left";
+        case RIGHT_EDGE: return "right";
+        case TOP_EDGE: return "top";
+        case BOTTOM_EDGE: return "bottom";
+        case LEFT_EDGE | TOP_EDGE: return "top-left";
+        case LEFT_EDGE | BOTTOM_EDGE: return "bottom-left";
+        case RIGHT_EDGE | TOP_EDGE: return "top-right";
+        case RIGHT_EDGE | BOTTOM_EDGE: return "bottom-right";
+    }
+    return "unknown";
+}
 
 void
 mouse_event(const int button, int modifiers, int action) {
@@ -1214,7 +1229,7 @@ mouse_event(const int button, int modifiers, int action) {
         handle_tab_bar_mouse(button, modifiers, action);
         debug("handled by tab bar\n");
     } else if (window_border) {
-        debug("window border: %d window id: %llu\n", window_border, w ? w->id : 0);
+        debug("window border: %s window id: %llu\n", border_name(window_border), w ? w->id : 0);
         if (window_border & LEFT_EDGE) {
             if (window_border & TOP_EDGE) mouse_cursor_shape = NWSE_RESIZE_POINTER;
             else if (window_border & BOTTOM_EDGE) mouse_cursor_shape = NESW_RESIZE_POINTER;
