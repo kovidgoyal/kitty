@@ -1883,9 +1883,9 @@ dbus_user_notification_activated(uint32_t notification_id, int type, const char*
 static PyObject*
 glfw_init(PyObject UNUSED *self, PyObject *args) {
     const char* path;
-    int debug_keyboard = 0, debug_rendering = 0, wayland_enable_ime = 0;
+    int debug_keyboard = 0, debug_rendering = 0, wayland_enable_ime = 0, wayland_scale_override = 0;
     PyObject *edge_sf;
-    if (!PyArg_ParseTuple(args, "sO|ppp", &path, &edge_sf, &debug_keyboard, &debug_rendering, &wayland_enable_ime)) return NULL;
+    if (!PyArg_ParseTuple(args, "sO|pppi", &path, &edge_sf, &debug_keyboard, &debug_rendering, &wayland_enable_ime, &wayland_scale_override)) return NULL;
     if (!PyCallable_Check(edge_sf)) { PyErr_SetString(PyExc_TypeError, "edge_spacing_func must be a callable"); return NULL; }
     Py_CLEAR(edge_spacing_func);
 #ifdef __APPLE__
@@ -1898,6 +1898,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
     glfwInitHint(GLFW_DEBUG_RENDERING, debug_rendering);
     OPT(debug_keyboard) = debug_keyboard != 0;
     glfwInitHint(GLFW_WAYLAND_IME, wayland_enable_ime != 0);
+    glfwInitHint(GLFW_WAYLAND_SCALE_OVERRIDE, wayland_scale_override);
 #ifdef __APPLE__
     glfwInitHint(GLFW_COCOA_CHDIR_RESOURCES, 0);
     glfwInitHint(GLFW_COCOA_MENUBAR, 0);

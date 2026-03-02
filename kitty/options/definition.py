@@ -3803,6 +3803,15 @@ config is not supported.
 '''
     )
 
+opt('wayland_scale_override', '0', option_type='positive_int', ctype='int', long_text='''
+Override the compositor-provided scale factor on Wayland. Set to :code:`0`
+to use the compositor scale (default). Set to :code:`1` to force 1x scaling
+even when the compositor uses a higher scale, or any other positive integer
+to force that scale. This is useful when you want your terminal to render at
+a different scale than other applications. Changing this option by reloading
+the config is not supported.
+''')
+
 opt('wayland_enable_ime', 'yes', option_type='to_bool', ctype='bool', long_text='''
 Enable Input Method Extension on Wayland. This is typically used for
 inputting text in East Asian languages. However, its implementation in

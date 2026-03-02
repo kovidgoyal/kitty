@@ -1204,6 +1204,7 @@ typedef enum {
  */
 #define GLFW_COCOA_MENUBAR          0x00051002
 #define GLFW_WAYLAND_IME            0x00051003
+#define GLFW_WAYLAND_SCALE_OVERRIDE 0x00051004
 /*! @} */
 
 #define GLFW_DONT_CARE              -1

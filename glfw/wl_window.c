@@ -381,6 +381,7 @@ update_regions(_GLFWwindow* window) {
 
 int
 _glfwWaylandIntegerWindowScale(_GLFWwindow *window) {
+    if (_glfwInitHints.wl.scale_override > 0) return _glfwInitHints.wl.scale_override;
     int ans = (window->wl.integer_scale.preferred) ? window->wl.integer_scale.preferred : window->wl.integer_scale.deduced;
     if (ans < 1) ans = 1;
     return ans;
@@ -388,6 +389,7 @@ _glfwWaylandIntegerWindowScale(_GLFWwindow *window) {
 
 double
 _glfwWaylandWindowScale(_GLFWwindow *window) {
+    if (_glfwInitHints.wl.scale_override > 0) return (double)_glfwInitHints.wl.scale_override;
     double ans = _glfwWaylandIntegerWindowScale(window);
     if (window->wl.fractional_scale) ans = window->wl.fractional_scale / 120.;
     return ans;

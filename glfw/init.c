@@ -303,6 +303,9 @@ GLFWAPI void glfwInitHint(int hint, int value)
         case GLFW_WAYLAND_IME:
             _glfwInitHints.wl.ime = value;
             return;
+        case GLFW_WAYLAND_SCALE_OVERRIDE:
+            _glfwInitHints.wl.scale_override = value;
+            return;
     }
 
     _glfwInputError(GLFW_INVALID_ENUM,

@@ -295,6 +295,7 @@ struct _GLFWinitconfig
     } ns;
     struct {
         bool ime;
+        int scale_override;
     } wl;
 };
 
