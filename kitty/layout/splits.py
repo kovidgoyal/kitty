@@ -766,6 +766,7 @@ class Splits(Layout):
         self, click_window: WindowType, x: float, y: float, edges: int, all_windows: WindowList,
     ) -> WindowResizeDragData:
         is_right, is_bottom = bool(edges & RIGHT_EDGE), bool(edges & BOTTOM_EDGE)
+        is_leading_edge = not (is_right or is_bottom)
         ans = WindowResizeDragData(None, is_right, None, is_bottom)
         if (wg := all_windows.group_for_window(click_window)) is None or (pair := self.pairs_root.pair_for_window(wg.id)) is None:
             return ans
@@ -777,19 +778,30 @@ class Splits(Layout):
                 pair_parent_map[p.two] = p
         p = pair
         def size_increases_forwards(p: Pair) -> bool:
-            is_leading_edge = not (is_right or is_bottom)
             in_leading_half = not p.is_group_on_second(wg.id)
             if p is pair:
                 return is_leading_edge != in_leading_half
+            parent = pair_parent_map.get(p) or Pair()
+            if parent.horizontal != p.horizontal and is_leading_edge:
+                return True
             return not in_leading_half
+
+        def pair_or_parent(p: Pair) -> tuple[Pair, bool]:
+            in_leading_half = not p.is_group_on_second(wg.id)
+            if is_leading_edge == in_leading_half and p is pair and (parent := pair_parent_map[p]).horizontal == p.horizontal:
+                # special case for leading edge of one or trailing edge of two with parent being same orientation
+                return parent, True
+            return p, size_increases_forwards(p)
 
         while ans.horizontal_id is None or ans.vertical_id is None:
             if p.is_redundant:
                 continue
             if ans.horizontal_id is None and p.horizontal:
-                ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=size_increases_forwards(p))
+                p, fwd = pair_or_parent(p)
+                ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=fwd)
             if ans.vertical_id is None and not p.horizontal:
-                ans = ans._replace(vertical_id=id(p), height_increases_downwards=size_increases_forwards(p))
+                p, fwd = pair_or_parent(p)
+                ans = ans._replace(vertical_id=id(p), height_increases_downwards=fwd)
             if (parent := pair_parent_map.get(p)) is None:
                 break
             p = parent
