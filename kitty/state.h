@@ -241,6 +241,7 @@ typedef struct BorderRect {
     struct { unsigned left, top, right, bottom; } px;
     uint32_t color;
     long long border_type;
+    bool horizontal;
 } BorderRect;
 
 typedef struct BorderRects {

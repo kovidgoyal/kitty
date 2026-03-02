@@ -18,6 +18,7 @@ class BorderLine(NamedTuple):
     edges: Edges = Edges()
     color: BorderColor = BorderColor.inactive
     window_id: int = 0
+    horizontal: bool = False
 
 
 class LayoutOpts:
@@ -437,11 +438,11 @@ class Layout:
     def compute_needs_borders_map(self, all_windows: WindowList) -> dict[int, bool]:
         return all_windows.compute_needs_borders_map(lgd.draw_active_borders)
 
-    def get_minimal_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
+    def get_minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:
         self._set_dimensions(windows)
         yield from self.minimal_borders(windows)
 
-    def minimal_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
+    def minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:
         yield from ()
 
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> bool | None:

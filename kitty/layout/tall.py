@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Iterator, Sequence
 from itertools import islice, repeat
 from typing import Any
 
@@ -301,7 +301,7 @@ class Tall(Layout):
                 return False
         return None
 
-    def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
+    def minimal_borders(self, all_windows: WindowList) -> Iterator[BorderLine]:
         num = all_windows.num_groups
         if num < 2 or not lgd.draw_minimal_borders:
             return
@@ -321,6 +321,7 @@ class Tall(Layout):
         needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
         active_group = all_windows.active_group
         mirrored = self.layout_opts.mirrored
+        print(11111111, self.main_is_horizontal)
         for wg, xl, yl, is_full_size in layouts:
             if is_full_size:
                 main_layouts.append((wg, xl, yl))
@@ -328,49 +329,30 @@ class Tall(Layout):
                 color = BorderColor.inactive
                 if needs_borders_map.get(wg.id):
                     color = BorderColor.active if wg is active_group else BorderColor.bell
-                if self.main_is_horizontal:
-                    e1 = Edges(
-                        xl.content_pos - xl.space_before,
-                        yl.content_pos - yl.space_before,
-                        xl.content_pos + xl.content_size + xl.space_after,
-                        yl.content_pos - yl.space_before + bw
-                    )
-                    e3 = Edges(
-                        xl.content_pos - xl.space_before,
-                        yl.content_pos + yl.content_size + yl.space_after - bw,
-                        xl.content_pos + xl.content_size + xl.space_after,
-                        yl.content_pos + yl.content_size + yl.space_after,
-                    )
-                    e2 = Edges(
-                        xl.content_pos + ((xl.content_size + xl.space_after - bw) if mirrored else -xl.space_before),
-                        yl.content_pos - yl.space_before,
-                        xl.content_pos + ((xl.content_size + xl.space_after) if mirrored else (bw - xl.space_before)),
-                        yl.content_pos + yl.content_size + yl.space_after,
-                    )
-                else:
-                    e1 = Edges(
-                        xl.content_pos - xl.space_before,
-                        yl.content_pos - yl.space_before,
-                        xl.content_pos - xl.space_before + bw,
-                        yl.content_pos + yl.content_size + yl.space_after,
-                    )
-                    e3 = Edges(
-                        xl.content_pos + xl.content_size + xl.space_after - bw,
-                        yl.content_pos - yl.space_before,
-                        xl.content_pos + xl.content_size + xl.space_after,
-                        yl.content_pos + yl.content_size + yl.space_after,
-                    )
-                    e2 = Edges(
-                        xl.content_pos - xl.space_before,
-                        yl.content_pos + ((yl.content_size + yl.space_after - bw) if mirrored else -yl.space_before),
-                        xl.content_pos + xl.content_size + xl.space_after,
-                        yl.content_pos + ((yl.content_size + yl.space_after) if mirrored else (bw - yl.space_before)),
-                    )
                 wid = wg.active_window_id
                 mult = 1 if mirrored else -1
-                perp_borders.append(BorderLine(e1, color, -wid))
-                perp_borders.append(BorderLine(e2, color, mult*wid))
-                perp_borders.append(BorderLine(e3, color, wid))
+                def h(left: int, right: int, top: int, mult: int) -> None:
+                    e = Edges(left, top, right, top + bw)
+                    perp_borders.append(BorderLine(e, color, mult*wid, True))
+                def v(top: int, bottom: int, left: int, mult: int) -> None:
+                    print(f'{left=} {top=} {bottom=} {mult=}')
+                    e = Edges(left, top, left + bw, bottom)
+                    perp_borders.append(BorderLine(e, color, mult*wid, False))
+
+                if self.main_is_horizontal:
+                    h(xl.content_pos - xl.space_before, xl.content_pos + xl.content_size + xl.space_after,
+                      yl.content_pos - yl.space_before, -1)
+                    v(yl.content_pos - yl.space_before, yl.content_pos + yl.content_size + yl.space_after,
+                      xl.content_pos + ((xl.content_size + xl.space_after - bw) if mirrored else -xl.space_before), mult)
+                    h(xl.content_pos - xl.space_before, xl.content_pos + xl.content_size + xl.space_after,
+                      yl.content_pos + yl.content_size + yl.space_after - bw, 1)
+                else:
+                    v(yl.content_pos - yl.space_before, yl.content_pos + yl.content_size + yl.space_after,
+                      xl.content_pos - xl.space_before, -1)
+                    h(xl.content_pos - xl.space_before, xl.content_pos + xl.content_size + xl.space_after,
+                      yl.content_pos + ((yl.content_size + yl.space_after - bw) if mirrored else -yl.space_before), mult)
+                    v(yl.content_pos - yl.space_before, yl.content_pos + yl.content_size + yl.space_after,
+                      xl.content_pos + xl.content_size + xl.space_after - bw, 1)
 
         mirrored = self.layout_opts.mirrored
         yield from borders(

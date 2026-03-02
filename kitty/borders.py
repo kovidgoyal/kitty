@@ -25,16 +25,17 @@ class Border(NamedTuple):
     bottom: int
     color: BorderColor
     border_type: int = 0
+    horizontal: bool = False
 
 
 def vertical_edge(rects: list[Border], color: BorderColor, width: int, top: int, bottom: int, left: int, border_type: int) -> None:
     if width > 0:
-        rects.append(Border(left, top, left + width, bottom, color, border_type))
+        rects.append(Border(left, top, left + width, bottom, color, border_type, False))
 
 
 def horizontal_edge(rects: list[Border], color: BorderColor, height: int, left: int, right: int, top: int, border_type: int) -> None:
     if height > 0:
-        rects.append(Border(left, top, right, top + height, color, border_type))
+        rects.append(Border(left, top, right, top + height, color, border_type, True))
 
 
 def add_borders(rects: list[Border], color: BorderColor, wg: WindowGroup) -> None:
@@ -126,5 +127,5 @@ class Borders:
 
         if draw_minimal_borders:
             for border_line in current_layout.get_minimal_borders(all_windows):
-                rects.append(Border(*border_line.edges, border_line.color, border_line.window_id))
+                rects.append(Border(*border_line.edges, border_line.color, border_line.window_id, border_line.horizontal))
         set_borders_rects(self.os_window_id, self.tab_id, rects)

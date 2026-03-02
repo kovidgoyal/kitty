@@ -614,14 +614,15 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
             PyObject *pr = PyList_GET_ITEM(rects, i);
             unsigned long color; long long border_type;
             BorderRect *r = br->rect_buf + i;
+            int horizontal;
             if (!PyArg_ParseTuple(
-                pr, "IIIIkL", &r->px.left, &r->px.top, &r->px.right, &r->px.bottom, &color, &border_type
+                pr, "IIIIkLp", &r->px.left, &r->px.top, &r->px.right, &r->px.bottom, &color, &border_type, &horizontal
             )) return NULL;
             r->left = gl_pos_x(r->px.left, osw->viewport_width);
             r->top = gl_pos_y(r->px.top, osw->viewport_height);
             r->right = r->left + gl_size(r->px.right - r->px.left, osw->viewport_width);
             r->bottom = r->top - gl_size(r->px.bottom - r->px.top, osw->viewport_height);
-            r->color = color; r->border_type = border_type;
+            r->color = color; r->border_type = border_type; r->horizontal = horizontal;
         }
     END_WITH_TAB
     Py_RETURN_NONE;

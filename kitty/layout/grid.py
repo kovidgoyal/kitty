@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from collections.abc import Callable, Generator, Sequence
+from collections.abc import Callable, Generator, Iterator, Sequence
 from functools import lru_cache
 from itertools import repeat
 from math import ceil, floor
@@ -192,7 +192,7 @@ class Grid(Layout):
                 n, nrows, ncols, special_rows, special_col, on_col_done):
             position_window_in_grid_cell(window_idx, xl, yl)
 
-    def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
+    def minimal_borders(self, all_windows: WindowList) -> Iterator[BorderLine]:
         n = all_windows.num_groups
         if not lgd.draw_minimal_borders or n < 2:
             return
@@ -231,7 +231,7 @@ class Grid(Layout):
         def ends(yl: LayoutData) -> tuple[int, int]:
             return yl.content_pos - yl.space_before, yl.content_pos + yl.content_size + yl.space_after
 
-        def borders_for_window(gid: int, color: BorderColor, wid: int) -> Generator[BorderLine, None, None]:
+        def borders_for_window(gid: int, color: BorderColor, wid: int) -> Iterator[BorderLine]:
             xl, yl = layout_data_map[gid]
             left, right = ends(xl)
             top, bottom = ends(yl)
@@ -240,15 +240,15 @@ class Grid(Layout):
 
             # Horizontal
             if not first_row:
-                yield BorderLine(Edges(left, top, right, top + bw), color, -wid)
+                yield BorderLine(Edges(left, top, right, top + bw), color, -wid, True)
             if not last_row:
-                yield BorderLine(Edges(left, bottom - bw, right, bottom), color, wid)
+                yield BorderLine(Edges(left, bottom - bw, right, bottom), color, wid, True)
 
             # Vertical
             if not first_column:
-                yield BorderLine(Edges(left, top, left + bw, bottom), color, -wid)
+                yield BorderLine(Edges(left, top, left + bw, bottom), color, -wid, False)
             if not last_column:
-                yield BorderLine(Edges(right - bw, top, right, bottom), color, wid)
+                yield BorderLine(Edges(right - bw, top, right, bottom), color, wid, False)
 
         for wg in all_groups_in_order:
             color = BorderColor.inactive

@@ -273,7 +273,7 @@ class Pair:
                 self.one.layout_pair(left, top, w1, height, id_window_map, layout_object)
                 if bw:
                     for etop, ebottom, window_id in self.one.edge_border(RIGHT_EDGE, id_window_map):
-                        one.append(BorderLine(Edges(bleft, etop, bleft + bw, ebottom), window_id=window_id))
+                        one.append(BorderLine(Edges(bleft, etop, bleft + bw, ebottom), window_id=window_id, horizontal=False))
             else:
                 wg = id_window_map[self.one]
                 yl = next(layout_object.ylayout(iter((wg,)), start=top, size=height, border_mult=border_mult))
@@ -281,18 +281,18 @@ class Pair:
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.one, geom, id_window_map, layout_object)
                 if bw:
-                    one.append(BorderLine(Edges(bleft, top, bleft + bw, top + height), window_id=wg.active_window_id))
+                    one.append(BorderLine(Edges(bleft, top, bleft + bw, top + height), window_id=wg.active_window_id, horizontal=False))
             left += w1 + bw2
             self.second_extent = Edges(left, top, left + w2, top + height)
             if isinstance(self.two, Pair):
                 self.two.layout_pair(left, top, w2, height, id_window_map, layout_object)
                 if bw:
                     for etop, ebottom, window_id in self.two.edge_border(LEFT_EDGE, id_window_map):
-                        two.append(BorderLine(Edges(left - bw, etop, left, ebottom), window_id=window_id))
+                        two.append(BorderLine(Edges(left - bw, etop, left, ebottom), window_id=window_id, horizontal=False))
             else:
                 wg = id_window_map[self.two]
                 if bw:
-                    two.append(BorderLine(Edges(left - bw, top, left, top + height), window_id=-wg.active_window_id))
+                    two.append(BorderLine(Edges(left - bw, top, left, top + height), window_id=-wg.active_window_id, horizontal=False))
                 xl = next(layout_object.xlayout(iter((wg,)), start=left, size=w2, border_mult=border_mult))
                 yl = next(layout_object.ylayout(iter((wg,)), start=top, size=height, border_mult=border_mult))
                 geom = window_geometry_from_layouts(xl, yl)
@@ -311,7 +311,7 @@ class Pair:
                 self.one.layout_pair(left, top, width, h1, id_window_map, layout_object)
                 if bw:
                     for eleft, eright, window_id in self.one.edge_border(BOTTOM_EDGE, id_window_map):
-                        one.append(BorderLine(Edges(eleft, btop, eright, btop + bw), window_id=window_id))
+                        one.append(BorderLine(Edges(eleft, btop, eright, btop + bw), window_id=window_id, horizontal=True))
             else:
                 wg = id_window_map[self.one]
                 xl = next(layout_object.xlayout(iter((wg,)), start=left, size=width, border_mult=border_mult))
@@ -319,18 +319,18 @@ class Pair:
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.one, geom, id_window_map, layout_object)
                 if bw:
-                    one.append(BorderLine(Edges(left, btop, left + width, btop + bw), window_id=wg.active_window_id))
+                    one.append(BorderLine(Edges(left, btop, left + width, btop + bw), window_id=wg.active_window_id, horizontal=True))
             top += bw2 + h1
             self.second_extent = Edges(left, top, left + width, top + h2)
             if isinstance(self.two, Pair):
                 self.two.layout_pair(left, top, width, h2, id_window_map, layout_object)
                 if bw:
                     for eleft, eright, window_id in self.two.edge_border(TOP_EDGE, id_window_map):
-                        two.append(BorderLine(Edges(eleft, top - bw, eright, top), window_id=window_id))
+                        two.append(BorderLine(Edges(eleft, top - bw, eright, top), window_id=window_id, horizontal=True))
             else:
                 wg = id_window_map[self.two]
                 if bw:
-                    two.append(BorderLine(Edges(left, top - bw, left + width, top), window_id=-wg.active_window_id))
+                    two.append(BorderLine(Edges(left, top - bw, left + width, top), window_id=-wg.active_window_id, horizontal=True))
                 xl = next(layout_object.xlayout(iter((wg,)), start=left, size=width, border_mult=border_mult))
                 yl = next(layout_object.ylayout(iter((wg,)), start=top, size=h2, border_mult=border_mult))
                 geom = window_geometry_from_layouts(xl, yl)
@@ -630,7 +630,7 @@ class Splits(Layout):
             pair.bias = 0.5
         return True
 
-    def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
+    def minimal_borders(self, all_windows: WindowList) -> Iterator[BorderLine]:
         groups = tuple(all_windows.iter_all_layoutable_groups())
         window_count = len(groups)
         if not lgd.draw_minimal_borders or window_count < 2:
