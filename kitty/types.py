@@ -245,9 +245,9 @@ class NeighborsMap(TypedDict, total=False):
 
 class WindowResizeDragData(NamedTuple):
     horizontal_id: int | None = None
-    height_increases_downwards: bool = True
-    vertical_id: int | None = None
     width_increases_rightwards: bool = True
+    vertical_id: int | None = None
+    height_increases_downwards: bool = True
 
 
 class WindowResizeDrag(NamedTuple):
