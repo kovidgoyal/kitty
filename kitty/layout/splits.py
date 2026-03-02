@@ -493,14 +493,14 @@ class Pair:
                     else:
                         yield q
 
-    def window_on_second(self, wid: int) -> bool:
-        if self.one == wid:
+    def is_group_on_second(self, gid: int) -> bool:
+        if self.one == gid:
             return False
-        if self.two == wid:
+        if self.two == gid:
             return True
         if not isinstance(self.two, Pair):
             return False
-        return self.two.window_on_second(wid)
+        return self.two.is_group_on_second(gid)
 
 
 class SplitsLayoutOpts(LayoutOpts):
@@ -759,6 +759,7 @@ class Splits(Layout):
                 if new_bias != pair.bias:
                     pair.bias = new_bias
                     return True
+                break
         return False
 
     def drag_resize_target_windows(
@@ -776,11 +777,12 @@ class Splits(Layout):
                 pair_parent_map[p.two] = p
         p = pair
         while ans.horizontal_id is None or ans.vertical_id is None:
-            if not p.is_redundant:
-                if ans.horizontal_id is None and p.horizontal and p.window_on_second(wg.id) != is_right:
-                    ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=not is_right)
-                if ans.vertical_id is None and not p.horizontal and p.window_on_second(wg.id) != is_bottom:
-                    ans = ans._replace(horizontal_id=id(p))
+            if p.is_redundant:
+                continue
+            if ans.horizontal_id is None and p.horizontal:
+                ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=is_right != p.is_group_on_second(wg.id))
+            if ans.vertical_id is None and not p.horizontal:
+                ans = ans._replace(vertical_id=id(p), height_increases_downwards=is_bottom != p.is_group_on_second(wg.id))
             if (parent := pair_parent_map.get(p)) is None:
                 break
             p = parent
