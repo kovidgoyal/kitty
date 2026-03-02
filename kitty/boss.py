@@ -2961,13 +2961,13 @@ class Boss:
             opts.next_to = opts.next_to or f'id:{self.window_for_dispatch.id}'
         launch(self, opts, args_)
 
-    @ac('tab', 'Move the active tab forward')
+    @ac('tab', 'Move the active tab forward. You can also use drag and drop to re-arrange tabs.')
     def move_tab_forward(self) -> None:
         tm = self.active_tab_manager
         if tm is not None:
             tm.move_tab(1)
 
-    @ac('tab', 'Move the active tab backward')
+    @ac('tab', 'Move the active tab backward. You can also use drag and drop to re-arrange tabs.')
     def move_tab_backward(self) -> None:
         tm = self.active_tab_manager_with_dispatch
         if tm is not None:
@@ -3339,7 +3339,7 @@ class Boss:
         self.choose_entry('Choose a tab to move the window to', items, chosen)
 
     @ac('tab', '''
-        Detach a tab, moving it to another OS Window
+        Detach a tab, moving it to another OS Window. You can also use drag and drop to detach tabs.
 
         See :ref:`detaching windows <detach_window>` for details.
         ''')
