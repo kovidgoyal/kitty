@@ -231,7 +231,7 @@ class Grid(Layout):
         def ends(yl: LayoutData) -> tuple[int, int]:
             return yl.content_pos - yl.space_before, yl.content_pos + yl.content_size + yl.space_after
 
-        def borders_for_window(gid: int) -> Generator[Edges, None, None]:
+        def borders_for_window(gid: int, color: BorderColor, wid: int) -> Generator[BorderLine, None, None]:
             xl, yl = layout_data_map[gid]
             left, right = ends(xl)
             top, bottom = ends(yl)
@@ -240,23 +240,22 @@ class Grid(Layout):
 
             # Horizontal
             if not first_row:
-                yield Edges(left, top, right, top + bw)
+                yield BorderLine(Edges(left, top, right, top + bw), color, -wid)
             if not last_row:
-                yield Edges(left, bottom - bw, right, bottom)
+                yield BorderLine(Edges(left, bottom - bw, right, bottom), color, wid)
 
             # Vertical
             if not first_column:
-                yield Edges(left, top, left + bw, bottom)
+                yield BorderLine(Edges(left, top, left + bw, bottom), color, -wid)
             if not last_column:
-                yield Edges(right - bw, top, right, bottom)
+                yield BorderLine(Edges(right - bw, top, right, bottom), color, wid)
 
         for wg in all_groups_in_order:
             color = BorderColor.inactive
             if needs_borders_map.get(wg.id):
                 color = BorderColor.active if wg is active_group else BorderColor.bell
             wid = wg.active_window_id
-            for edges in borders_for_window(wg.id):
-                yield BorderLine(edges, color, wid)
+            yield from borders_for_window(wg.id, color, wid)
 
     def neighbors_for_window(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
         n = all_windows.num_groups
