@@ -357,33 +357,43 @@ class Pair:
                 yield from edges(x, self)
             return
 
+        def as_pair(e: Edges, gid: int) -> Pair:
+            g1 = Pair()
+            g1.one = g1.two = gid
+            g1.left, g1.top, g1.width, g1.height = e.left, e.top, e.right - e.left, e.bottom - e.top
+            return g1
+
         needs_vertical_edges = which in (LEFT_EDGE, RIGHT_EDGE)
         if self.horizontal == needs_vertical_edges:
             yield from edges(self.one if which in (LEFT_EDGE, TOP_EDGE) else self.two, self)
         else:
-            g1, g2 = self.pair_geometry(id_group_map)
-            if g1 is not None and g2 is not None:
-                yield from edges(self.one, g1)
-                first_id = second_id = 0
-                if isinstance(self.one, int):
-                    first_id = id_group_map[self.one].active_window_id
-                if isinstance(self.two, int):
-                    second_id = id_group_map[self.two].active_window_id
-                if self.horizontal:
-                    start = g1.left + g1.width
-                    if isinstance(self.one, Pair):
-                        first_id = id_group_map[self.one.corner_group_id(which | RIGHT_EDGE)].active_window_id
-                    if isinstance(self.two, Pair):
-                        second_id = id_group_map[self.two.corner_group_id(which | LEFT_EDGE)].active_window_id
-                else:
-                    start = g1.top + g1.height
-                    if isinstance(self.one, Pair):
-                        first_id = id_group_map[self.one.corner_group_id(which | BOTTOM_EDGE)].active_window_id
-                    if isinstance(self.two, Pair):
-                        second_id = id_group_map[self.two.corner_group_id(which | TOP_EDGE)].active_window_id
-                yield start, start + self.border_width, first_id * mult
-                yield start + self.border_width, start + 2*self.border_width, second_id * mult
-                yield from edges(self.two, g2)
+            g1 = as_pair(self.first_extent, self.one) if isinstance(self.one, int) else self.one
+            g2 = as_pair(self.second_extent, self.two) if isinstance(self.two, int) else self.two
+            yield from edges(self.one, g1)
+            first_id = second_id = 0
+            if isinstance(self.one, int):
+                first_id = self.one
+            if isinstance(self.two, int):
+                second_id = self.two
+            if self.horizontal:
+                start = g1.left + g1.width
+                if isinstance(self.one, Pair):
+                    first_id = self.one.corner_group_id(which | RIGHT_EDGE)
+                if isinstance(self.two, Pair):
+                    second_id = self.two.corner_group_id(which | LEFT_EDGE)
+            else:
+                start = g1.top + g1.height
+                if isinstance(self.one, Pair):
+                    first_id = self.one.corner_group_id(which | BOTTOM_EDGE)
+                if isinstance(self.two, Pair):
+                    second_id = self.two.corner_group_id(which | TOP_EDGE)
+            if g := id_group_map.get(first_id):
+                first_id = g.active_window_id
+            if g := id_group_map.get(second_id):
+                second_id = g.active_window_id
+            yield start, start + self.border_width, first_id * mult
+            yield start + self.border_width, start + 2*self.border_width, second_id * mult
+            yield from edges(self.two, g2)
 
     def corner_group_id(self, which: int) -> int:
         if self.is_redundant:
@@ -395,27 +405,6 @@ class Pair:
         if q is None:
             return 0
         return q if isinstance(q, int) else q.corner_group_id(which)
-
-    def pair_geometry(self, id_group_map: dict[int, WindowGroup]) -> 'tuple[Pair | None, Pair | None]':
-        g1: Pair | None = None
-        g2 = g1
-        if self.one is not None:
-            if isinstance(self.one, int):
-                g1 = Pair()
-                g1.one = self.one
-                e = self.first_extent
-                g1.left, g1.top, g1.width, g1.height = e.left, e.top, e.right - e.left, e.bottom - e.top
-            else:
-                g1 = self.one
-        if self.two is not None:
-            if isinstance(self.two, int):
-                g2 = Pair()
-                g2.one = self.two
-                g = self.second_extent
-                g2.left, g2.top, g2.width, g2.height = g.left, g.top, g.right - g.left, g.bottom - g.top
-            else:
-                g2 = self.two
-        return g1, g2
 
     def set_bias(self, window_id: int, bias: int) -> None:
         b = max(0, min(bias, 100)) / 100
