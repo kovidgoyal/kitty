@@ -265,7 +265,14 @@ All windows are shown one below the other. This layout has no options::
 Resizing windows
 ------------------
 
-You can resize windows inside layouts. Press :sc:`start_resizing_window` (also
+You can resize windows inside layouts. The easiest method is to simply drag the
+window borders using a mouse, controlled by the option :opt:`window_drag_tolerance`.
+Note that technically this resizes layout slots not actual windows, so it
+does not work exactly like resizing OS Windows on your desktop. Instead, the
+layout is changed and potentially multiple windows get resized when dragging a
+single border.
+
+For keyboard friendly resizing, press :sc:`start_resizing_window` (also
 :kbd:`⌘+r` on macOS) to enter resizing mode and follow the on-screen
 instructions. In a given window layout only some operations may be possible for
 a particular window. For example, in the *Tall* layout you can make the first
