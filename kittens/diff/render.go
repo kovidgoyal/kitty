@@ -568,13 +568,18 @@ func splitlines(text string, width int) []string {
 }
 
 func render_half_line(line_number int, line, ltype string, available_cols int, center Center, ans []HalfScreenLine) []HalfScreenLine {
-	size := center.left_size
-	if ltype != "remove" {
-		size = center.right_size
+	var regions []Region
+	if ltype == "remove" {
+		regions = center.left_regions
+	} else {
+		regions = center.right_regions
 	}
-	if size > 0 {
-		span := center_span(ltype, center.offset, size)
-		line = sgr.InsertFormatting(line, span)
+	if len(regions) > 0 {
+		spans := make([]*sgr.Span, len(regions))
+		for i, r := range regions {
+			spans[i] = center_span(ltype, r.offset, r.size)
+		}
+		line = sgr.InsertFormatting(line, spans...)
 	}
 	lnum := strconv.Itoa(line_number + 1)
 	for _, sc := range splitlines(line, available_cols) {
