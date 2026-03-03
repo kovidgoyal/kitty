@@ -2171,7 +2171,7 @@ class Window:
         text = text.replace('\r\n', '\n').replace('\r', '\n')
         get_boss().display_scrollback(self, text, title=title, report_cursor=False)
 
-    @ac('cp', '''
+    @ac('sc', '''
         Show output from the first shell command on screen in a pager like less
 
         Requires :ref:`shell_integration` to work
@@ -2187,7 +2187,7 @@ class Window:
     def show_last_command_output(self) -> None:
         self.show_cmd_output(CommandOutput.last_run, 'Last command output')
 
-    @ac('cp', '''
+    @ac('sc', '''
         Show the first command output below the last scrolled position via scroll_to_prompt
         or the last mouse clicked command output in a pager like less
 
@@ -2196,7 +2196,7 @@ class Window:
     def show_last_visited_command_output(self) -> None:
         self.show_cmd_output(CommandOutput.last_visited, 'Last visited command output')
 
-    @ac('cp', '''
+    @ac('sc', '''
         Show the last non-empty output from a shell command in a pager like less
 
         Requires :ref:`shell_integration` to work
