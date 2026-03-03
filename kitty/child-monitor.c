@@ -770,12 +770,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 *active_window_bg = window_bg;
                 if (OPT(cursor_trail)) {
                     if (os_window->last_active_tab != os_window->active_tab && os_window->last_active_tab < os_window->num_tabs) {
-                        CursorTrail *prev = &os_window->tabs[os_window->last_active_tab].cursor_trail;
-                        static const int ci_x[] = {1, 1, 0, 0}, ci_y[] = {0, 1, 1, 0};
-                        for (int ci = 0; ci < 4; ci++) {
-                            tab->cursor_trail.corner_x[ci] = prev->cursor_edge_x[ci_x[ci]];
-                            tab->cursor_trail.corner_y[ci] = prev->cursor_edge_y[ci_y[ci]];
-                        }
+                        tab->cursor_trail = os_window->tabs[os_window->last_active_tab].cursor_trail;
                         tab->cursor_trail.needs_render = true;
                         tab->cursor_trail.updated_at = now;
                         os_window->cursor_blink_zero_time = now;

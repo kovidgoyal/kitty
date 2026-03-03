@@ -256,6 +256,8 @@ Detailed list of changes
 
 - macOS: Fix flickering during OS Window resize (:disc:`9582`)
 
+- Cursor trail: Show a cursor trail when switching tabs (:pull:`9588`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
