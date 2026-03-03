@@ -124,6 +124,17 @@ def collect_keys_data(opts: Any) -> dict[str, Any]:
     for cat in default_mode_cats:
         default_mode_cats[cat].sort(key=lambda b: (b['key'] == '', b['key'] or b['action']))
 
+    # Re-order default_mode_cats by groups ordering (adding unmapped actions may
+    # have appended new categories at the end, breaking the established order).
+    reordered: dict[str, list[dict[str, str]]] = {}
+    for group_title in groups.values():
+        if group_title in default_mode_cats:
+            reordered[group_title] = default_mode_cats[group_title]
+    for cat_name, binds in default_mode_cats.items():
+        if cat_name not in reordered:
+            reordered[cat_name] = binds
+    modes[''] = reordered
+
     # Emit explicit mode and category ordering since JSON maps lose insertion order
     mode_order = list(modes.keys())
     category_order: dict[str, list[str]] = {}
