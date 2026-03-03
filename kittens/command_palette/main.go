@@ -15,6 +15,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
 
@@ -83,6 +84,11 @@ func truncateToWidth(s string, maxWidth int) string {
 	return string(runes) + "..."
 }
 
+// CachedSettings holds persistent UI settings stored in command-palette.json.
+type CachedSettings struct {
+	ShowUnmapped bool `json:"show_unmapped"`
+}
+
 type Handler struct {
 	lp              *loop.Loop
 	screen_size     loop.ScreenSize
@@ -98,6 +104,8 @@ type Handler struct {
 	display_lines   []displayLine
 	results_start_y int
 	results_height  int
+	show_unmapped   bool
+	cv              *utils.CachedValues[*CachedSettings]
 }
 
 func (h *Handler) initialize() (string, error) {
@@ -110,6 +118,12 @@ func (h *Handler) initialize() (string, error) {
 	h.lp.SetCursorShape(loop.BAR_CURSOR, true)
 	h.lp.AllowLineWrapping(false)
 	h.lp.SetWindowTitle("Command Palette")
+
+	// Initialize with ShowUnmapped: true as the default; Load() returns this
+	// default when no cache file exists yet.
+	h.cv = utils.NewCachedValues("command-palette", &CachedSettings{ShowUnmapped: true})
+	settings := h.cv.Load()
+	h.show_unmapped = settings.ShowUnmapped
 
 	if err := h.loadData(); err != nil {
 		return "", err
@@ -211,10 +225,13 @@ func (h *Handler) flattenBindings() {
 
 func (h *Handler) updateFilter() {
 	if h.query == "" {
-		// Show all items in original order
-		h.filtered_idx = make([]int, len(h.all_items))
-		for i := range h.all_items {
-			h.filtered_idx[i] = i
+		// Show all items in original order, respecting the show_unmapped toggle
+		h.filtered_idx = make([]int, 0, len(h.all_items))
+		for i, item := range h.all_items {
+			if !h.show_unmapped && item.binding.Key == "" {
+				continue
+			}
+			h.filtered_idx = append(h.filtered_idx, i)
 		}
 		h.match_infos = nil
 		h.selected_idx = 0
@@ -253,6 +270,9 @@ func (h *Handler) updateFilter() {
 	}
 	var matches []scored
 	for i := range h.all_items {
+		if !h.show_unmapped && h.all_items[i].binding.Key == "" {
+			continue
+		}
 		bestScore := uint(0)
 		bestCol := 0
 		var bestPositions []int
@@ -378,9 +398,14 @@ func (h *Handler) draw_screen() {
 
 	// Draw key hints footer
 	h.lp.MoveCursorTo(1, hintsY)
+	unmappedToggleLabel := "Show"
+	if h.show_unmapped {
+		unmappedToggleLabel = "Hide"
+	}
 	footer := h.lp.SprintStyled("fg=bright-yellow", "[Enter]") + " Run  " +
 		h.lp.SprintStyled("fg=bright-yellow", "[Esc]") + " Quit  " +
-		h.lp.SprintStyled("fg=bright-yellow", "\u2191\u2193") + " Navigate"
+		h.lp.SprintStyled("fg=bright-yellow", "\u2191\u2193") + " Navigate  " +
+		h.lp.SprintStyled("fg=bright-yellow", "[F12]") + " " + unmappedToggleLabel + " unmapped"
 	matchInfo := ""
 	if h.query != "" {
 		matchInfo = fmt.Sprintf("  %d/%d", len(h.filtered_idx), len(h.all_items))
@@ -714,6 +739,17 @@ func (h *Handler) onKeyEvent(ev *loop.KeyEvent) error {
 		} else {
 			h.lp.Beep()
 		}
+		return nil
+	}
+	if ev.MatchesPressOrRepeat("f12") {
+		ev.Handled = true
+		h.show_unmapped = !h.show_unmapped
+		if h.cv != nil {
+			h.cv.Opts.ShowUnmapped = h.show_unmapped
+			h.cv.Save()
+		}
+		h.updateFilter()
+		h.draw_screen()
 		return nil
 	}
 	return nil

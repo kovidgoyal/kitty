@@ -130,10 +130,11 @@ func TestMouseBindingsMarkedCorrectly(t *testing.T) {
 
 func TestFilterNoQueryReturnsAll(t *testing.T) {
 	h := newTestHandler()
+	h.show_unmapped = true // show all items including unmapped
 	h.query = ""
 	h.updateFilter()
 	if len(h.filtered_idx) != len(h.all_items) {
-		t.Fatalf("With no query, expected %d items, got %d", len(h.all_items), len(h.filtered_idx))
+		t.Fatalf("With no query and show_unmapped=true, expected %d items, got %d", len(h.all_items), len(h.filtered_idx))
 	}
 	for i, idx := range h.filtered_idx {
 		if idx != i {
@@ -670,10 +671,77 @@ func TestUnmappedActionDisplayed(t *testing.T) {
 	if unmapped.colTexts[0] != unmappedLabel {
 		t.Fatalf("Expected colTexts[0]=%q for unmapped item, got %q", unmappedLabel, unmapped.colTexts[0])
 	}
-	// Should be searchable by action name
+
+	// With show_unmapped=true, unmapped action should be searchable
+	h.show_unmapped = true
 	h.query = "scroll_home"
 	h.updateFilter()
 	if len(h.filtered_idx) == 0 {
-		t.Fatal("Expected unmapped action to be found by action name search")
+		t.Fatal("Expected unmapped action to be found by action name search when show_unmapped=true")
+	}
+
+	// With show_unmapped=false, unmapped action should be hidden
+	h.show_unmapped = false
+	h.query = ""
+	h.updateFilter()
+	for _, idx := range h.filtered_idx {
+		if h.all_items[idx].binding.Key == "" {
+			t.Fatal("Expected unmapped action to be hidden when show_unmapped=false")
+		}
+	}
+}
+
+func TestShowUnmappedToggle(t *testing.T) {
+	// TestShowUnmappedToggle creates a handler with both mapped and unmapped items
+	// and verifies that the show_unmapped flag correctly filters the display.
+	h := &Handler{}
+	mixedJSON := `{
+		"modes": {
+			"": {
+				"Copy/paste": [
+					{"key": "ctrl+c", "action": "copy", "action_display": "copy", "definition": "copy", "help": "Copy", "long_help": ""},
+					{"key": "", "action": "paste_from_buffer", "action_display": "paste_from_buffer", "definition": "paste_from_buffer", "help": "Paste from buffer", "long_help": ""}
+				]
+			}
+		},
+		"mouse": [],
+		"mode_order": [""],
+		"category_order": {"": ["Copy/paste"]}
+	}`
+	if err := json.Unmarshal([]byte(mixedJSON), &h.input_data); err != nil {
+		t.Fatal(err)
+	}
+	h.flattenBindings()
+	h.matcher = fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME)
+
+	if len(h.all_items) != 2 {
+		t.Fatalf("Expected 2 items in all_items, got %d", len(h.all_items))
+	}
+
+	// With show_unmapped=false, only mapped items should appear
+	h.show_unmapped = false
+	h.updateFilter()
+	if len(h.filtered_idx) != 1 {
+		t.Fatalf("With show_unmapped=false, expected 1 item, got %d", len(h.filtered_idx))
+	}
+	if h.all_items[h.filtered_idx[0]].binding.Key == "" {
+		t.Fatal("Filtered item should not be unmapped when show_unmapped=false")
+	}
+
+	// With show_unmapped=true, both items should appear
+	h.show_unmapped = true
+	h.updateFilter()
+	if len(h.filtered_idx) != 2 {
+		t.Fatalf("With show_unmapped=true, expected 2 items, got %d", len(h.filtered_idx))
+	}
+
+	// Toggle back to false with a query active; unmapped should still be hidden
+	h.show_unmapped = false
+	h.query = "paste"
+	h.updateFilter()
+	for _, idx := range h.filtered_idx {
+		if h.all_items[idx].binding.Key == "" {
+			t.Fatal("Unmapped item should not appear in search results when show_unmapped=false")
+		}
 	}
 }
