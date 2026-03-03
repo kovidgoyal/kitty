@@ -263,9 +263,9 @@ func (h *Handler) updateFilter() {
 	}
 
 	type scored struct {
-		idx      int
-		score    uint
-		colIdx   int
+		idx       int
+		score     uint
+		colIdx    int
 		positions []int
 	}
 	var matches []scored
