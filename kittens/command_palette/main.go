@@ -38,10 +38,16 @@ type InputData struct {
 	CategoryOrder map[string][]string             `json:"category_order"`
 }
 
-// DisplayItem wraps a binding with its search text for FZF scoring
+// DisplayItem wraps a binding with its per-column search texts for FZF scoring
 type DisplayItem struct {
-	binding    Binding
-	searchText string // key + action_display + category for FZF
+	binding  Binding
+	colTexts [3]string // [0]=key, [1]=action_display, [2]=category
+}
+
+// matchInfo stores which column matched and the matched character positions
+type matchInfo struct {
+	colIdx    int   // which column matched: 0=key, 1=action_display, 2=category
+	positions []int // rune positions in the matched column text
 }
 
 type displayLine struct {
@@ -52,6 +58,9 @@ type displayLine struct {
 }
 
 const maxKeyDisplayWidth = 30
+
+// unmappedLabel is shown in the key column for actions with no keyboard shortcut.
+const unmappedLabel = "(unmapped)"
 
 // truncateToWidth truncates s to fit within maxWidth cells, appending "..." if
 // truncated and maxWidth > 3. When maxWidth <= 3, the string is simply trimmed
@@ -78,9 +87,9 @@ type Handler struct {
 	lp              *loop.Loop
 	screen_size     loop.ScreenSize
 	all_items       []DisplayItem
-	search_texts    []string // parallel to all_items, for FZF scoring
 	matcher         *fzf.FuzzyMatcher
-	filtered_idx    []int // indices into all_items for current results
+	filtered_idx    []int       // indices into all_items for current results
+	match_infos     []matchInfo // parallel to filtered_idx, valid when query != ""
 	query           string
 	selected_idx    int
 	scroll_offset   int
@@ -176,13 +185,13 @@ func (h *Handler) flattenBindings() {
 				b.Category = catName
 				b.Mode = modeName
 				b.IsMouse = false
-				searchText := b.Key + " " + b.ActionDisplay + " " + catName
-				if modeName != "" {
-					searchText += " " + modeName
+				keyText := b.Key
+				if keyText == "" {
+					keyText = unmappedLabel
 				}
 				h.all_items = append(h.all_items, DisplayItem{
-					binding:    b,
-					searchText: searchText,
+					binding:  b,
+					colTexts: [3]string{keyText, b.ActionDisplay, catName},
 				})
 			}
 		}
@@ -193,17 +202,10 @@ func (h *Handler) flattenBindings() {
 		b.Category = "Mouse actions"
 		b.Mode = ""
 		b.IsMouse = true
-		searchText := b.Key + " " + b.ActionDisplay + " Mouse"
 		h.all_items = append(h.all_items, DisplayItem{
-			binding:    b,
-			searchText: searchText,
+			binding:  b,
+			colTexts: [3]string{b.Key, b.ActionDisplay, "Mouse actions"},
 		})
-	}
-
-	// Build parallel search texts array for FZF
-	h.search_texts = make([]string, len(h.all_items))
-	for i, item := range h.all_items {
-		h.search_texts[i] = item.searchText
 	}
 }
 
@@ -214,32 +216,97 @@ func (h *Handler) updateFilter() {
 		for i := range h.all_items {
 			h.filtered_idx[i] = i
 		}
-	} else {
-		results, err := h.matcher.Score(h.search_texts, h.query)
-		if err != nil {
-			h.filtered_idx = nil
-			return
+		h.match_infos = nil
+		h.selected_idx = 0
+		h.scroll_offset = 0
+		return
+	}
+
+	nItems := len(h.all_items)
+
+	// Build per-column text slices for batch FZF scoring
+	colSlices := [3][]string{
+		make([]string, nItems),
+		make([]string, nItems),
+		make([]string, nItems),
+	}
+	for i, item := range h.all_items {
+		colSlices[0][i] = item.colTexts[0]
+		colSlices[1][i] = item.colTexts[1]
+		colSlices[2][i] = item.colTexts[2]
+	}
+
+	// Score each column independently
+	colResults := [3][]fzf.Result{}
+	for c := 0; c < 3; c++ {
+		results, err := h.matcher.Score(colSlices[c], h.query)
+		if err == nil {
+			colResults[c] = results
 		}
-		type scored struct {
-			idx   int
-			score uint
-		}
-		var matches []scored
-		for i, r := range results {
-			if r.Score > 0 {
-				matches = append(matches, scored{idx: i, score: r.Score})
+	}
+
+	type scored struct {
+		idx      int
+		score    uint
+		colIdx   int
+		positions []int
+	}
+	var matches []scored
+	for i := range h.all_items {
+		bestScore := uint(0)
+		bestCol := 0
+		var bestPositions []int
+		for c := 0; c < 3; c++ {
+			if colResults[c] != nil && i < len(colResults[c]) && colResults[c][i].Score > bestScore {
+				bestScore = colResults[c][i].Score
+				bestCol = c
+				bestPositions = colResults[c][i].Positions
 			}
 		}
-		sort.Slice(matches, func(i, j int) bool {
-			return matches[i].score > matches[j].score
-		})
-		h.filtered_idx = make([]int, len(matches))
-		for i, m := range matches {
-			h.filtered_idx[i] = m.idx
+		if bestScore > 0 {
+			matches = append(matches, scored{idx: i, score: bestScore, colIdx: bestCol, positions: bestPositions})
 		}
+	}
+	sort.Slice(matches, func(i, j int) bool {
+		return matches[i].score > matches[j].score
+	})
+	h.filtered_idx = make([]int, len(matches))
+	h.match_infos = make([]matchInfo, len(matches))
+	for i, m := range matches {
+		h.filtered_idx[i] = m.idx
+		h.match_infos[i] = matchInfo{colIdx: m.colIdx, positions: m.positions}
 	}
 	h.selected_idx = 0
 	h.scroll_offset = 0
+}
+
+// highlightMatchedChars returns a string with characters at the given rune
+// positions rendered using matchStyle, and the rest rendered using baseStyle
+// (or unstyled if baseStyle is empty).
+func (h *Handler) highlightMatchedChars(text string, positions []int, baseStyle, matchStyle string) string {
+	if len(positions) == 0 {
+		if baseStyle != "" {
+			return h.lp.SprintStyled(baseStyle, text)
+		}
+		return text
+	}
+	posSet := make(map[int]bool, len(positions))
+	for _, p := range positions {
+		posSet[p] = true
+	}
+	runes := []rune(text)
+	var sb strings.Builder
+	for i, r := range runes {
+		ch := string(r)
+		if posSet[i] {
+			sb.WriteString(h.lp.SprintStyled(matchStyle, ch))
+		} else if baseStyle != "" {
+			sb.WriteString(h.lp.SprintStyled(baseStyle, ch))
+		} else {
+			sb.WriteString(ch)
+		}
+	}
+	return sb.String()
 }
 
 func (h *Handler) selectedBinding() *Binding {
@@ -368,8 +435,12 @@ func (h *Handler) drawGroupedResults(startY, maxRows, width int) {
 			})
 		}
 
-		// Binding line
-		keyDisplay := truncateToWidth(b.Key, maxKeyDisplayWidth)
+		// Binding line — key column shows "(unmapped)" for actions with no shortcut
+		keyDisplay := b.Key
+		if keyDisplay == "" {
+			keyDisplay = unmappedLabel
+		}
+		keyDisplay = truncateToWidth(keyDisplay, maxKeyDisplayWidth)
 		lines = append(lines, displayLine{
 			text:    fmt.Sprintf("    %-*s %s", maxKeyDisplayWidth, keyDisplay, b.ActionDisplay),
 			itemIdx: fi,
@@ -381,11 +452,22 @@ func (h *Handler) drawGroupedResults(startY, maxRows, width int) {
 }
 
 func (h *Handler) drawFlatResults(startY, maxRows, width int) {
+	if len(h.filtered_idx) == 0 {
+		h.lp.MoveCursorTo(1, startY)
+		h.lp.QueueWriteString(h.lp.SprintStyled("italic dim", "  No matches found"))
+		h.display_lines = []displayLine{}
+		return
+	}
+
 	var lines []displayLine
 	for fi, idx := range h.filtered_idx {
 		item := &h.all_items[idx]
 		b := &item.binding
-		keyDisplay := truncateToWidth(b.Key, maxKeyDisplayWidth)
+		keyDisplay := b.Key
+		if keyDisplay == "" {
+			keyDisplay = unmappedLabel
+		}
+		keyDisplay = truncateToWidth(keyDisplay, maxKeyDisplayWidth)
 		catSuffix := ""
 		if b.Mode != "" {
 			catSuffix = fmt.Sprintf(" [%s/%s]", b.Mode, b.Category)
@@ -473,15 +555,64 @@ func (h *Handler) drawBindingLine(text string, filteredIdx, width int) {
 	}
 	b := &h.all_items[idx].binding
 
-	// Style the key portion green, leave action unstyled
-	keyDisplay := truncateToWidth(b.Key, maxKeyDisplayWidth)
-	keyPrefix := fmt.Sprintf("    %-*s", maxKeyDisplayWidth, keyDisplay)
-	rest := ""
-	if len(text) > len(keyPrefix) {
-		rest = text[len(keyPrefix):]
+	// Build the key display (using unmappedLabel for items with no shortcut)
+	rawKey := b.Key
+	if rawKey == "" {
+		rawKey = unmappedLabel
 	}
-	h.lp.QueueWriteString(h.lp.SprintStyled("fg=green", keyPrefix))
-	h.lp.QueueWriteString(rest)
+	keyDisplay := truncateToWidth(rawKey, maxKeyDisplayWidth)
+
+	// Determine match info for highlighting (only set when a query is active)
+	var mi *matchInfo
+	if h.query != "" && filteredIdx < len(h.match_infos) {
+		mi = &h.match_infos[filteredIdx]
+	}
+
+	const matchStyle = "fg=bright-yellow"
+	const keyStyle = "fg=green"
+	const unmappedStyle = "dim fg=green"
+
+	// Render key column (4-space indent + key padded to maxKeyDisplayWidth + space)
+	paddingLen := max(0, maxKeyDisplayWidth-wcswidth.Stringwidth(keyDisplay))
+	if mi != nil && mi.colIdx == 0 {
+		ks := keyStyle
+		if b.Key == "" {
+			ks = unmappedStyle
+		}
+		h.lp.QueueWriteString("    ")
+		h.lp.QueueWriteString(h.highlightMatchedChars(keyDisplay, mi.positions, ks, matchStyle))
+		h.lp.QueueWriteString(strings.Repeat(" ", paddingLen) + " ")
+	} else if b.Key == "" {
+		h.lp.QueueWriteString(h.lp.SprintStyled(unmappedStyle, "    "+keyDisplay+strings.Repeat(" ", paddingLen)+" "))
+	} else {
+		h.lp.QueueWriteString(h.lp.SprintStyled(keyStyle, "    "+keyDisplay+strings.Repeat(" ", paddingLen)+" "))
+	}
+
+	// Render action display column
+	if mi != nil && mi.colIdx == 1 {
+		h.lp.QueueWriteString(h.highlightMatchedChars(b.ActionDisplay, mi.positions, "", matchStyle))
+	} else {
+		h.lp.QueueWriteString(b.ActionDisplay)
+	}
+
+	// Render category suffix (only present in flat / search-results mode)
+	if h.query != "" {
+		if mi != nil && mi.colIdx == 2 {
+			if b.Mode != "" {
+				h.lp.QueueWriteString(fmt.Sprintf(" [%s/", b.Mode))
+			} else {
+				h.lp.QueueWriteString(" [")
+			}
+			h.lp.QueueWriteString(h.highlightMatchedChars(b.Category, mi.positions, "", matchStyle))
+			h.lp.QueueWriteString("]")
+		} else {
+			if b.Mode != "" {
+				h.lp.QueueWriteString(fmt.Sprintf(" [%s/%s]", b.Mode, b.Category))
+			} else {
+				h.lp.QueueWriteString(fmt.Sprintf(" [%s]", b.Category))
+			}
+		}
+	}
 }
 
 // rowToFilteredIdx converts a 0-indexed cell Y coordinate to a filtered item

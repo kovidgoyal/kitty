@@ -10,7 +10,7 @@ from kitty.typing_compat import BossType
 from ..tui.handler import result_handler
 
 
-def collect_keys_data(opts: Any) -> dict[str, Any]:
+def collect_keys_data(opts: Any, show_unmapped: bool = False) -> dict[str, Any]:
     """Collect all keybinding data from options into a JSON-serializable dict."""
     from kitty.actions import get_all_actions, groups
     from kitty.options.utils import KeyDefinition
@@ -97,6 +97,34 @@ def collect_keys_data(opts: Any) -> dict[str, Any]:
                 new_default_cats[cat_name] = keep
         modes[''] = new_default_cats
 
+    # Optionally add unmapped actions (actions with no keyboard shortcut).
+    if show_unmapped:
+        # Collect all action names that already appear in a binding.
+        mapped_actions: set[str] = set()
+        for mode_cats in modes.values():
+            for bindings in mode_cats.values():
+                for b in bindings:
+                    mapped_actions.add(b['action'])
+
+        default_mode_cats = modes.setdefault('', {})
+        for group_key, actions in get_all_actions().items():
+            category = groups[group_key]
+            for action in actions:
+                if action.name not in mapped_actions:
+                    default_mode_cats.setdefault(category, []).append({
+                        'key': '',
+                        'action': action.name,
+                        'action_display': action.name,
+                        'definition': action.name,
+                        'help': action.short_help,
+                        'long_help': action.long_help,
+                    })
+
+        # Re-sort each category: mapped entries (non-empty key) by key first,
+        # then unmapped entries (empty key) sorted by action name.
+        for cat in default_mode_cats:
+            default_mode_cats[cat].sort(key=lambda b: (b['key'] == '', b['key'] or b['action']))
+
     # Emit explicit mode and category ordering since JSON maps lose insertion order
     mode_order = list(modes.keys())
     category_order: dict[str, list[str]] = {}
@@ -131,7 +159,11 @@ def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, 
 
 help_text = 'Browse and trigger keyboard shortcuts and actions'
 usage = ''
-OPTIONS = ''.format
+OPTIONS = r'''
+--show-unmapped
+type=bool-set
+Also show actions that have not been mapped to a keyboard shortcut.
+'''.format
 
 
 if __name__ == '__main__':

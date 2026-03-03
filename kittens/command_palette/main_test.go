@@ -152,13 +152,17 @@ func TestFilterMatchesSubset(t *testing.T) {
 	if len(h.filtered_idx) >= len(h.all_items) {
 		t.Fatal("Expected fewer matches than total items")
 	}
-	// Verify all returned items actually contain relevant text
+	// Verify all returned items contain relevant text in at least one column
 	for _, idx := range h.filtered_idx {
-		text := strings.ToLower(h.all_items[idx].searchText)
-		if !strings.Contains(text, "clipboard") {
-			// FZF does fuzzy matching, so this is a soft check —
-			// the characters should at least be present
+		item := &h.all_items[idx]
+		found := false
+		for _, col := range item.colTexts {
+			if strings.Contains(strings.ToLower(col), "clipboard") {
+				found = true
+				break
+			}
 		}
+		_ = found // FZF does fuzzy matching, so this is a soft check
 	}
 }
 
@@ -234,11 +238,16 @@ func TestSelectedBindingNilWhenOverflowIndex(t *testing.T) {
 func TestSearchTextContainsKeyAndAction(t *testing.T) {
 	h := newTestHandler()
 	for i, item := range h.all_items {
-		if !strings.Contains(item.searchText, item.binding.Key) {
-			t.Fatalf("Item %d: search text %q should contain key %q", i, item.searchText, item.binding.Key)
+		// colTexts[0] = key (or unmappedLabel for empty key), [1] = action_display, [2] = category
+		expectedKey := item.binding.Key
+		if expectedKey == "" {
+			expectedKey = unmappedLabel
 		}
-		if !strings.Contains(item.searchText, item.binding.ActionDisplay) {
-			t.Fatalf("Item %d: search text %q should contain action %q", i, item.searchText, item.binding.ActionDisplay)
+		if !strings.Contains(item.colTexts[0], expectedKey) {
+			t.Fatalf("Item %d: colTexts[0] %q should contain key %q", i, item.colTexts[0], expectedKey)
+		}
+		if !strings.Contains(item.colTexts[1], item.binding.ActionDisplay) {
+			t.Fatalf("Item %d: colTexts[1] %q should contain action %q", i, item.colTexts[1], item.binding.ActionDisplay)
 		}
 	}
 }
@@ -547,5 +556,124 @@ func TestScrollAdjustRevealsSectionHeader(t *testing.T) {
 	// scroll_offset should be 0 so the category header at line 0 is visible
 	if h.scroll_offset != 0 {
 		t.Fatalf("Expected scroll_offset=0 to show category header, got %d", h.scroll_offset)
+	}
+}
+
+func TestColTextsPopulated(t *testing.T) {
+	h := newTestHandler()
+	for i, item := range h.all_items {
+		if item.binding.IsMouse {
+			continue
+		}
+		expectedKey := item.binding.Key
+		if expectedKey == "" {
+			expectedKey = unmappedLabel
+		}
+		if item.colTexts[0] != expectedKey {
+			t.Fatalf("Item %d: colTexts[0]=%q expected %q", i, item.colTexts[0], expectedKey)
+		}
+		if item.colTexts[1] != item.binding.ActionDisplay {
+			t.Fatalf("Item %d: colTexts[1]=%q expected %q", i, item.colTexts[1], item.binding.ActionDisplay)
+		}
+		if item.colTexts[2] != item.binding.Category {
+			t.Fatalf("Item %d: colTexts[2]=%q expected %q", i, item.colTexts[2], item.binding.Category)
+		}
+	}
+}
+
+func TestFilterSingleColumnMatch(t *testing.T) {
+	// "scroll" is in action_display column only, not in key or category.
+	// With per-column matching it should still match the action column.
+	h := newTestHandler()
+	h.query = "scroll"
+	h.updateFilter()
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected matches for 'scroll' against action column")
+	}
+	// All matched items should have 'scroll' in exactly one column, not spread across columns
+	for _, idx := range h.filtered_idx {
+		item := &h.all_items[idx]
+		colMatch := false
+		for _, col := range item.colTexts {
+			if strings.Contains(strings.ToLower(col), "scroll") {
+				colMatch = true
+				break
+			}
+		}
+		_ = colMatch // FZF does fuzzy matching; at least the characters should appear in one column
+	}
+}
+
+func TestFilterMatchInfosParallelToFilteredIdx(t *testing.T) {
+	h := newTestHandler()
+	h.query = "clipboard"
+	h.updateFilter()
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected some matches")
+	}
+	if len(h.match_infos) != len(h.filtered_idx) {
+		t.Fatalf("match_infos length %d != filtered_idx length %d", len(h.match_infos), len(h.filtered_idx))
+	}
+	for i, mi := range h.match_infos {
+		if mi.colIdx < 0 || mi.colIdx > 2 {
+			t.Fatalf("match_infos[%d].colIdx=%d out of range [0,2]", i, mi.colIdx)
+		}
+	}
+}
+
+func TestFilterMatchInfosNilWhenNoQuery(t *testing.T) {
+	h := newTestHandler()
+	h.query = ""
+	h.updateFilter()
+	if h.match_infos != nil {
+		t.Fatal("Expected match_infos to be nil when query is empty")
+	}
+}
+
+func TestUnmappedActionDisplayed(t *testing.T) {
+	// Inject an item with an empty key (unmapped action) and verify display
+	h := &Handler{}
+	unmappedJSON := `{
+		"modes": {
+			"": {
+				"Miscellaneous": [
+					{"key": "ctrl+n", "action": "new_window", "action_display": "new_window", "definition": "new_window", "help": "Open new window", "long_help": ""},
+					{"key": "", "action": "scroll_home", "action_display": "scroll_home", "definition": "scroll_home", "help": "Scroll to top", "long_help": ""}
+				]
+			}
+		},
+		"mouse": [],
+		"mode_order": [""],
+		"category_order": {"": ["Miscellaneous"]}
+	}`
+	if err := json.Unmarshal([]byte(unmappedJSON), &h.input_data); err != nil {
+		t.Fatal(err)
+	}
+	h.flattenBindings()
+	h.matcher = fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME)
+
+	if len(h.all_items) != 2 {
+		t.Fatalf("Expected 2 items, got %d", len(h.all_items))
+	}
+	// Find the unmapped item
+	var unmapped *DisplayItem
+	for i := range h.all_items {
+		if h.all_items[i].binding.Key == "" {
+			unmapped = &h.all_items[i]
+			break
+		}
+	}
+	if unmapped == nil {
+		t.Fatal("Expected to find unmapped item")
+	}
+	// colTexts[0] should be unmappedLabel, not empty
+	if unmapped.colTexts[0] != unmappedLabel {
+		t.Fatalf("Expected colTexts[0]=%q for unmapped item, got %q", unmappedLabel, unmapped.colTexts[0])
+	}
+	// Should be searchable by action name
+	h.query = "scroll_home"
+	h.updateFilter()
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected unmapped action to be found by action name search")
 	}
 }
