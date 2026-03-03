@@ -254,6 +254,8 @@ Detailed list of changes
 - macOS: Fix a crash when using :opt:`macos_traditional_fullscreen` with split
   view (:pull:`9573`)
 
+- macOS: Fix flickering during OS Window resize (:disc:`9582`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
