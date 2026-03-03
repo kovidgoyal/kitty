@@ -567,14 +567,17 @@ func splitlines(text string, width int) []string {
 	return style.WrapTextAsLines(text, width, style.WrapOptions{})
 }
 
-func render_half_line(line_number int, line, ltype string, available_cols int, center Center, ans []HalfScreenLine) []HalfScreenLine {
-	size := center.left_size
-	if ltype != "remove" {
-		size = center.right_size
-	}
-	if size > 0 {
-		span := center_span(ltype, center.offset, size)
-		line = sgr.InsertFormatting(line, span)
+func render_half_line(line_number int, line, ltype string, available_cols int, regions []HighlightRegion, ans []HalfScreenLine) []HalfScreenLine {
+	if len(regions) > 0 {
+		spans := make([]*sgr.Span, 0, len(regions))
+		for _, r := range regions {
+			if r.size > 0 {
+				spans = append(spans, center_span(ltype, r.offset, r.size))
+			}
+		}
+		if len(spans) > 0 {
+			line = sgr.InsertFormatting(line, spans...)
+		}
 	}
 	lnum := strconv.Itoa(line_number + 1)
 	for _, sc := range splitlines(line, available_cols) {
@@ -589,20 +592,30 @@ func lines_for_diff_chunk(data *DiffData, _ int, chunk *Chunk, _ int, ans []*Log
 	ll, rl := make([]HalfScreenLine, 0, 32), make([]HalfScreenLine, 0, 32)
 	for i := 0; i < utils.Max(chunk.left_count, chunk.right_count); i++ {
 		ll, rl = ll[:0], rl[:0]
-		var center Center
+		var left_regions, right_regions []HighlightRegion
 		left_lnum, right_lnum := 0, 0
-		if i < len(chunk.centers) {
-			center = chunk.centers[i]
+		if i < len(chunk.word_diff) {
+			wd := chunk.word_diff[i]
+			left_regions = wd.left
+			right_regions = wd.right
+		} else if i < len(chunk.centers) {
+			c := chunk.centers[i]
+			if c.left_size > 0 {
+				left_regions = []HighlightRegion{{c.offset, c.left_size}}
+			}
+			if c.right_size > 0 {
+				right_regions = []HighlightRegion{{c.offset, c.right_size}}
+			}
 		}
 		if i < chunk.left_count {
 			left_lnum = chunk.left_start + i
-			ll = render_half_line(left_lnum, data.left_lines[left_lnum], "remove", data.available_cols, center, ll)
+			ll = render_half_line(left_lnum, data.left_lines[left_lnum], "remove", data.available_cols, left_regions, ll)
 			left_lnum++
 		}
 
 		if i < chunk.right_count {
 			right_lnum = chunk.right_start + i
-			rl = render_half_line(right_lnum, data.right_lines[right_lnum], "add", data.available_cols, center, rl)
+			rl = render_half_line(right_lnum, data.right_lines[right_lnum], "add", data.available_cols, right_regions, rl)
 			right_lnum++
 		}
 
@@ -715,7 +728,7 @@ func all_lines(path string, columns, margin_size int, is_add bool, ans []*Logica
 	}
 	for line_number, line := range lines {
 		hlines := make([]HalfScreenLine, 0, 8)
-		hlines = render_half_line(line_number, line, ltype, available_cols, Center{}, hlines)
+		hlines = render_half_line(line_number, line, ltype, available_cols, nil, hlines)
 		l := ll
 		if is_add {
 			l.right_reference.linenum = line_number + 1

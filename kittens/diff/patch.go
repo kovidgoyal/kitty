@@ -63,11 +63,21 @@ func set_diff_command(q string) error {
 
 type Center struct{ offset, left_size, right_size int }
 
+// HighlightRegion is a highlighted byte region [offset, offset+size) within a line.
+type HighlightRegion struct{ offset, size int }
+
+// WordDiffHighlights holds the highlighted regions for one matched pair of changed lines,
+// as derived from git --word-diff=porcelain output.
+type WordDiffHighlights struct {
+	left, right []HighlightRegion
+}
+
 type Chunk struct {
 	is_context              bool
 	left_start, right_start int
 	left_count, right_count int
 	centers                 []Center
+	word_diff               []WordDiffHighlights
 }
 
 func (self *Chunk) add_line() {
@@ -327,6 +337,166 @@ func run_diff(file1, file2 string, num_of_context_lines int) (ok, is_different b
 	}
 }
 
+// is_using_git_diff reports whether the current diff command is git.
+// It matches both short ("git") and absolute-path forms of the git executable.
+func is_using_git_diff() bool {
+	return len(diff_cmd) > 0 && GitExe() != "git" &&
+		(diff_cmd[0] == GitExe() || filepath.Base(diff_cmd[0]) == "git")
+}
+
+// parse_word_diff_section parses one ~-terminated section from git --word-diff=porcelain
+// output and returns the highlighted byte regions for the removed (left) and added (right)
+// sides of the corresponding line pair.
+//
+// Each entry in section is a raw word-diff line: the first byte is the marker (' ', '-', '+')
+// and the rest is the word content.  Concatenating the contents in order (using context words
+// for both sides, removed words only for the left side, added words only for the right side)
+// exactly reconstructs the original left/right lines, so byte offsets are computed by
+// summing content lengths in the appropriate order.
+func parse_word_diff_section(section []string) (left_regions, right_regions []HighlightRegion) {
+	left_offset, right_offset := 0, 0
+	for _, line := range section {
+		if len(line) == 0 {
+			continue
+		}
+		content := line[1:] // strip the leading marker byte
+		switch line[0] {
+		case ' ':
+			left_offset += len(content)
+			right_offset += len(content)
+		case '-':
+			if len(content) > 0 {
+				left_regions = append(left_regions, HighlightRegion{left_offset, len(content)})
+			}
+			left_offset += len(content)
+		case '+':
+			if len(content) > 0 {
+				right_regions = append(right_regions, HighlightRegion{right_offset, len(content)})
+			}
+			right_offset += len(content)
+		}
+	}
+	return
+}
+
+// parse_word_diff_output parses the output of git --word-diff=porcelain and populates
+// the word_diff field of each equal-count diff Chunk within patch.
+//
+// The git word-diff output retains the same @@-hunk headers as a regular unified diff.
+// Within each hunk every original line (context or changed) is represented as a
+// ~-terminated section.  Context sections contain only ' '-prefixed words; changed
+// sections also contain '-' and/or '+' words whose contents form the highlighted regions.
+func parse_word_diff_output(raw string, patch *Patch) {
+	if len(patch.all_hunks) == 0 {
+		return
+	}
+
+	hunk_idx := -1
+	var current_hunk *Hunk
+	left_line := 0
+
+	var current_section []string
+
+	// find_diff_chunk returns the diff Chunk that owns abs_left_line (absolute 0-based),
+	// plus the index of that line within the chunk.  Only equal-count chunks qualify.
+	find_diff_chunk := func(abs_left_line int) (*Chunk, int) {
+		if current_hunk == nil {
+			return nil, -1
+		}
+		for _, chunk := range current_hunk.chunks {
+			if !chunk.is_context &&
+				chunk.left_start <= abs_left_line &&
+				abs_left_line < chunk.left_start+chunk.left_count &&
+				chunk.left_count == chunk.right_count {
+				return chunk, abs_left_line - chunk.left_start
+			}
+		}
+		return nil, -1
+	}
+
+	process_section := func() {
+		defer func() { current_section = current_section[:0] }()
+		if current_hunk == nil || len(current_section) == 0 {
+			left_line++
+			return
+		}
+		// Determine whether this section represents a changed line pair.
+		has_diff := false
+		for _, l := range current_section {
+			if len(l) > 0 && (l[0] == '-' || l[0] == '+') {
+				has_diff = true
+				break
+			}
+		}
+		if has_diff {
+			if chunk, idx := find_diff_chunk(left_line); chunk != nil && idx >= 0 {
+				lr, rr := parse_word_diff_section(current_section)
+				if len(chunk.word_diff) <= idx {
+					chunk.word_diff = append(chunk.word_diff, make([]WordDiffHighlights, idx-len(chunk.word_diff)+1)...)
+				}
+				chunk.word_diff[idx] = WordDiffHighlights{left: lr, right: rr}
+			}
+		}
+		left_line++
+	}
+
+	splitlines_like_git(raw, true, func(line string) {
+		if strings.HasPrefix(line, "@@ ") {
+			process_section()
+			hunk_idx++
+			if hunk_idx < len(patch.all_hunks) {
+				current_hunk = patch.all_hunks[hunk_idx]
+				left_line = current_hunk.left_start
+			} else {
+				current_hunk = nil
+			}
+			return
+		}
+		if line == "~" {
+			process_section()
+			return
+		}
+		if len(line) > 0 && (line[0] == ' ' || line[0] == '-' || line[0] == '+') {
+			current_section = append(current_section, line)
+		}
+		// Skip diff/index/---/+++ header lines.
+	})
+	// Flush any trailing section (file without final newline).
+	process_section()
+}
+
+// apply_word_diff attempts to run git --word-diff=porcelain and populate the word_diff
+// field of each Chunk in patch.  All errors are silently ignored; callers should treat
+// word diff as a best-effort enhancement that falls back to the center-based approach.
+func apply_word_diff(file1, file2 string, context_count int, patch *Patch) {
+	if !is_using_git_diff() || patch == nil || len(patch.all_hunks) == 0 {
+		return
+	}
+	path1, err := filepath.EvalSymlinks(file1)
+	if err != nil {
+		return
+	}
+	path2, err := filepath.EvalSymlinks(file2)
+	if err != nil {
+		return
+	}
+	cmd := []string{
+		GitExe(), "diff", "--no-color", "--no-ext-diff", "--exit-code",
+		"-U" + strconv.Itoa(context_count), "--word-diff=porcelain", "--no-index", "--",
+		path1, path2,
+	}
+	c := exec.Command(cmd[0], cmd[1:]...)
+	var stdout, stderr bytes.Buffer
+	c.Stdout, c.Stderr = &stdout, &stderr
+	if err = c.Run(); err != nil {
+		var e *exec.ExitError
+		if !errors.As(err, &e) || e.ExitCode() != 1 {
+			return // unexpected failure; fall back to center-based highlighting
+		}
+	}
+	parse_word_diff_output(stdout.String(), patch)
+}
+
 func do_diff(file1, file2 string, context_count int) (ans *Patch, err error) {
 	ok, _, raw, err := run_diff(file1, file2, context_count)
 	if !ok {
@@ -344,6 +514,10 @@ func do_diff(file1, file2 string, context_count int) (ans *Patch, err error) {
 		return
 	}
 	ans, err = parse_patch(raw, left_lines, right_lines)
+	if err != nil {
+		return
+	}
+	apply_word_diff(file1, file2, context_count, ans) // best-effort; never returns an error
 	return
 }
 
