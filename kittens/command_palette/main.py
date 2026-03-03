@@ -119,7 +119,7 @@ def collect_keys_data(opts: Any) -> dict[str, Any]:
 
 
 def main(args: list[str]) -> None:
-    raise SystemExit('This must be run as kitten command-palette')
+    raise SystemExit('This kitten must be used only from a kitty.conf mapping')
 
 
 @result_handler(has_ready_notification=True)

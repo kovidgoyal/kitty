@@ -12,6 +12,7 @@ import (
 
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/fzf"
+	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
@@ -621,6 +622,9 @@ func (h *Handler) triggerSelected() {
 }
 
 func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
+	if tty.IsTerminal(os.Stdin.Fd()) {
+		return 1, fmt.Errorf("This kitten must only be run via a mapping in kitty.conf")
+	}
 	output := tui.KittenOutputSerializer()
 	lp, err := loop.New()
 	if err != nil {
