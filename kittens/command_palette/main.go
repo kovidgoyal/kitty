@@ -52,19 +52,21 @@ type displayLine struct {
 
 const maxKeyDisplayWidth = 30
 
-// truncateToWidth truncates s to fit within maxWidth cells, appending "..." if truncated.
+// truncateToWidth truncates s to fit within maxWidth cells, appending "..." if
+// truncated and maxWidth > 3. When maxWidth <= 3, the string is simply trimmed
+// to fit without appending ellipsis (no room for it).
 func truncateToWidth(s string, maxWidth int) string {
 	if wcswidth.Stringwidth(s) <= maxWidth {
 		return s
 	}
+	runes := []rune(s)
 	if maxWidth <= 3 {
-		runes := []rune(s)
+		// Not enough room for ellipsis; just trim to fit
 		for len(runes) > 0 && wcswidth.Stringwidth(string(runes)) > maxWidth {
 			runes = runes[:len(runes)-1]
 		}
 		return string(runes)
 	}
-	runes := []rune(s)
 	for len(runes) > 0 && wcswidth.Stringwidth(string(runes))+3 > maxWidth {
 		runes = runes[:len(runes)-1]
 	}
@@ -478,10 +480,12 @@ func (h *Handler) drawBindingLine(text string, filteredIdx, width int) {
 	h.lp.QueueWriteString(rest)
 }
 
-// rowToFilteredIdx converts a 0-indexed cell row to a filtered item index,
-// or -1 if the row is not over a clickable item.
+// rowToFilteredIdx converts a 0-indexed cell Y coordinate to a filtered item
+// index, or -1 if the cell is not over a clickable item. Internally converts
+// to 1-indexed screen rows (matching the MoveCursorTo convention) to compare
+// against results_start_y.
 func (h *Handler) rowToFilteredIdx(cellY int) int {
-	screenRow := cellY + 1 // convert to 1-indexed
+	screenRow := cellY + 1 // convert 0-indexed cell to 1-indexed screen row
 	if screenRow < h.results_start_y || screenRow >= h.results_start_y+h.results_height {
 		return -1
 	}
