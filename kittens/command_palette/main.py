@@ -3,8 +3,10 @@
 
 
 import sys
+from functools import partial
 from typing import Any
 
+from kitty.fast_data_types import add_timer, get_boss
 from kitty.typing_compat import BossType
 
 from ..tui.handler import result_handler
@@ -160,12 +162,17 @@ def main(args: list[str]) -> None:
     raise SystemExit('This kitten must be used only from a kitty.conf mapping')
 
 
+def callback(target_window_id: int, action: str, timer_id: int | None) -> None:
+    boss = get_boss()
+    w = boss.window_id_map.get(target_window_id)
+    boss.combine(action, w)
+
+
 @result_handler(has_ready_notification=True)
 def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, boss: BossType) -> None:
-    if data and 'action' in data:
-        w = boss.window_id_map.get(target_window_id)
-        boss.combine(data['action'], w)
-
+    if data and (action := data.get('action')):
+        # run action after event loop tick so command palette overlay is closed
+        add_timer(partial(callback, target_window_id, action), 0, False)
 
 help_text = 'Browse and trigger keyboard shortcuts and actions'
 usage = ''
