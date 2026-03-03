@@ -2141,14 +2141,14 @@ class Window:
 
     # actions {{{
 
-    @ac('cp', 'Show scrollback in a pager like less')
+    @ac('sc', 'Show scrollback in a pager like less')
     def show_scrollback(self) -> Optional['Window']:
         text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
         data = self.pipe_data(text, has_wrap_markers=True)
         cursor_on_screen = self.screen.scrolled_by < self.screen.lines - self.screen.cursor.y
         return get_boss().display_scrollback(self, data['text'], data['input_line_number'], report_cursor=cursor_on_screen)
 
-    @ac('cp', '''
+    @ac('sc', '''
         Search scrollback in a pager like less. If there is selected text, it is automatically searched for.
         Note that this assumes that pressing the / key triggers search mode in the page configured as the
         scrollback pager.
@@ -2179,7 +2179,7 @@ class Window:
     def show_first_command_output_on_screen(self) -> None:
         self.show_cmd_output(CommandOutput.first_on_screen, 'First command output on screen')
 
-    @ac('cp', '''
+    @ac('sc', '''
         Show output from the last shell command in a pager like less
 
         Requires :ref:`shell_integration` to work
