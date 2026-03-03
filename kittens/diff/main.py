@@ -65,6 +65,26 @@ Can be specified multiple times to use multiple patterns. For example::
 ''',
     )
 
+opt('word_diff_mode', 'words', choices=('words', 'central'),
+    long_text='''
+The algorithm to use for highlighting which parts of changed lines differ.
+When set to :code:`words`, changed words in each changed line are highlighted.
+When set to :code:`central`, the central changed region of each changed line is
+highlighted at the byte level. The :code:`words` mode is generally more useful
+as it shows exactly which words changed. Note that the :code:`words` mode
+only applies when a changed chunk has equal numbers of added and removed lines.
+'''
+    )
+
+opt('word_regex', r'\S+',
+    long_text='''
+The regular expression used to define a word when :opt:`word_diff_mode` is
+:code:`words`. The default value of :code:`\\S+` matches any run of
+non-whitespace characters. The expression must be a valid Go regular expression.
+If an invalid expression is provided, diff will fail with an error.
+'''
+    )
+
 egr()  # }}}
 
 # colors {{{

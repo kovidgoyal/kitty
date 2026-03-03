@@ -6,14 +6,17 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/images"
-	"github.com/kovidgoyal/kitty/tools/utils/shlex"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+
+	parallel "github.com/kovidgoyal/go-parallel"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/images"
+	"github.com/kovidgoyal/kitty/tools/utils/shlex"
 )
 
 var _ = fmt.Print
@@ -61,7 +64,14 @@ func set_diff_command(q string) error {
 	return nil
 }
 
-type Center struct{ offset, left_size, right_size int }
+// Region represents a highlighted byte range within a line.
+type Region struct{ offset, size int }
+
+// Center holds the highlighted regions for the left (removed) and right (added) sides of a changed line pair.
+type Center struct {
+	left_regions  []Region
+	right_regions []Region
+}
 
 type Chunk struct {
 	is_context              bool
@@ -83,27 +93,171 @@ func (self *Chunk) context_line() {
 	self.right_count++
 }
 
+// changed_center computes the central changed region of left/right at the byte level.
 func changed_center(left, right string) (ans Center) {
 	if len(left) > 0 && len(right) > 0 {
 		ll, rl := len(left), len(right)
 		ml := utils.Min(ll, rl)
-		for ; ans.offset < ml && left[ans.offset] == right[ans.offset]; ans.offset++ {
+		offset := 0
+		for ; offset < ml && left[offset] == right[offset]; offset++ {
 		}
 		suffix_count := 0
 		for ; suffix_count < ml && left[ll-1-suffix_count] == right[rl-1-suffix_count]; suffix_count++ {
 		}
-		ans.left_size = ll - suffix_count - ans.offset
-		ans.right_size = rl - suffix_count - ans.offset
+		left_size := ll - suffix_count - offset
+		right_size := rl - suffix_count - offset
+		if left_size > 0 {
+			ans.left_regions = []Region{{offset: offset, size: left_size}}
+		}
+		if right_size > 0 {
+			ans.right_regions = []Region{{offset: offset, size: right_size}}
+		}
 	}
 	return
 }
 
-func (self *Chunk) finalize(left_lines, right_lines []string) {
-	if !self.is_context && self.left_count == self.right_count {
-		for i := 0; i < self.left_count; i++ {
-			self.centers = append(self.centers, changed_center(left_lines[self.left_start+i], right_lines[self.right_start+i]))
+var word_regexp = sync.OnceValues(func() (*regexp.Regexp, error) {
+	pattern := `\S+`
+	if conf != nil && conf.Word_regex != "" {
+		pattern = conf.Word_regex
+	}
+	return regexp.Compile(pattern)
+})
+
+// word_diff_center computes highlighted regions for changed words between left and right.
+func word_diff_center(left, right string, re *regexp.Regexp) Center {
+	left_matches := re.FindAllStringIndex(left, -1)
+	right_matches := re.FindAllStringIndex(right, -1)
+
+	type word struct {
+		text   string
+		offset int
+		size   int
+	}
+	left_words := make([]word, len(left_matches))
+	right_words := make([]word, len(right_matches))
+	for i, m := range left_matches {
+		left_words[i] = word{text: left[m[0]:m[1]], offset: m[0], size: m[1] - m[0]}
+	}
+	for i, m := range right_matches {
+		right_words[i] = word{text: right[m[0]:m[1]], offset: m[0], size: m[1] - m[0]}
+	}
+
+	// Strip common prefix and suffix words so LCS only runs on the differing middle.
+	prefix := 0
+	for prefix < len(left_words) && prefix < len(right_words) && left_words[prefix].text == right_words[prefix].text {
+		prefix++
+	}
+	suffix := 0
+	for suffix < len(left_words)-prefix && suffix < len(right_words)-prefix &&
+		left_words[len(left_words)-1-suffix].text == right_words[len(right_words)-1-suffix].text {
+		suffix++
+	}
+	lw := left_words[prefix : len(left_words)-suffix]
+	rw := right_words[prefix : len(right_words)-suffix]
+
+	m, n := len(lw), len(rw)
+	// LCS dynamic programming table
+	dp := make([][]int, m+1)
+	for i := range dp {
+		dp[i] = make([]int, n+1)
+	}
+	for i := 1; i <= m; i++ {
+		for j := 1; j <= n; j++ {
+			if lw[i-1].text == rw[j-1].text {
+				dp[i][j] = dp[i-1][j-1] + 1
+			} else if dp[i-1][j] > dp[i][j-1] {
+				dp[i][j] = dp[i-1][j]
+			} else {
+				dp[i][j] = dp[i][j-1]
+			}
 		}
 	}
+
+	// Backtrack to find changed words within the middle slice.
+	left_changed := make([]bool, m)
+	right_changed := make([]bool, n)
+	i, j := m, n
+	for i > 0 && j > 0 {
+		if lw[i-1].text == rw[j-1].text {
+			i--
+			j--
+		} else if dp[i-1][j] > dp[i][j-1] {
+			left_changed[i-1] = true
+			i--
+		} else {
+			right_changed[j-1] = true
+			j--
+		}
+	}
+	for i > 0 {
+		left_changed[i-1] = true
+		i--
+	}
+	for j > 0 {
+		right_changed[j-1] = true
+		j--
+	}
+
+	// Remap changed flags to absolute indices within the full words arrays.
+	left_changed_abs := make([]bool, len(left_words))
+	right_changed_abs := make([]bool, len(right_words))
+	for k, c := range left_changed {
+		left_changed_abs[prefix+k] = c
+	}
+	for k, c := range right_changed {
+		right_changed_abs[prefix+k] = c
+	}
+
+	// Verify that every changed word at index i has a corresponding changed
+	// word at the same index i on the other side.  If any position is changed
+	// on exactly one side, the lines differ in word count and it makes more
+	// sense to highlight the single changed central region of the whole line.
+	max_idx := max(len(left_words), len(right_words))
+	for idx := 0; idx < max_idx; idx++ {
+		lc := idx < len(left_words) && left_changed_abs[idx]
+		rc := idx < len(right_words) && right_changed_abs[idx]
+		if lc != rc {
+			return changed_center(left, right)
+		}
+	}
+
+	// All changed words are positionally paired.  Apply character-level
+	// prefix/suffix trimming to each pair so only the differing central bytes
+	// are highlighted.
+	var ans Center
+	for idx := range left_words {
+		if !left_changed_abs[idx] {
+			continue
+		}
+		lword := left_words[idx]
+		rword := right_words[idx]
+		lt := left[lword.offset : lword.offset+lword.size]
+		rt := right[rword.offset : rword.offset+rword.size]
+		ll, rl := len(lt), len(rt)
+		ml := min(ll, rl)
+		cpfx := 0
+		for cpfx < ml && lt[cpfx] == rt[cpfx] {
+			cpfx++
+		}
+		csfx := 0
+		for csfx < ml-cpfx && lt[ll-1-csfx] == rt[rl-1-csfx] {
+			csfx++
+		}
+		lsize := ll - cpfx - csfx
+		rsize := rl - cpfx - csfx
+		if lsize > 0 {
+			ans.left_regions = append(ans.left_regions, Region{offset: lword.offset + cpfx, size: lsize})
+		}
+		if rsize > 0 {
+			ans.right_regions = append(ans.right_regions, Region{offset: rword.offset + cpfx, size: rsize})
+		}
+	}
+	return ans
+}
+
+func (self *Chunk) finalize(_ []string, _ []string) {
+	// Center computation is performed in parallel by Patch.compute_centers
 }
 
 type Hunk struct {
@@ -242,6 +396,61 @@ func parse_hunk_header(line string) *Hunk {
 	}
 }
 
+func (self *Patch) compute_centers(left_lines, right_lines []string) error {
+	word_mode := conf != nil && conf.Word_diff_mode == Word_diff_mode_words
+	var re *regexp.Regexp
+	if word_mode {
+		var err error
+		re, err = word_regexp()
+		if err != nil {
+			return fmt.Errorf("Failed to compile word_regex %q: %w", conf.Word_regex, err)
+		}
+	}
+
+	type pair struct {
+		chunk *Chunk
+		idx   int
+	}
+	var pairs []pair
+	for _, hunk := range self.all_hunks {
+		for _, chunk := range hunk.chunks {
+			if !chunk.is_context && chunk.left_count == chunk.right_count {
+				for i := 0; i < chunk.left_count; i++ {
+					pairs = append(pairs, pair{chunk, i})
+				}
+			}
+		}
+	}
+	if len(pairs) == 0 {
+		return nil
+	}
+	centers := make([]Center, len(pairs))
+	if err := parallel.Run_in_parallel_over_range(0, func(start, end int) {
+		for i := start; i < end; i++ {
+			p := pairs[i]
+			left := left_lines[p.chunk.left_start+p.idx]
+			right := right_lines[p.chunk.right_start+p.idx]
+			if word_mode {
+				centers[i] = word_diff_center(left, right, re)
+			} else {
+				centers[i] = changed_center(left, right)
+			}
+		}
+	}, 0, len(pairs)); err != nil {
+		return err
+	}
+	ci := 0
+	for _, hunk := range self.all_hunks {
+		for _, chunk := range hunk.chunks {
+			if !chunk.is_context && chunk.left_count == chunk.right_count {
+				chunk.centers = centers[ci : ci+chunk.left_count]
+				ci += chunk.left_count
+			}
+		}
+	}
+	return nil
+}
+
 func parse_patch(raw string, left_lines, right_lines []string) (ans *Patch, err error) {
 	ans = &Patch{all_hunks: make([]*Hunk, 0, 32)}
 	var current_hunk *Hunk
@@ -276,6 +485,7 @@ func parse_patch(raw string, left_lines, right_lines []string) (ans *Patch, err 
 	if len(ans.all_hunks) > 0 {
 		ans.largest_line_number = ans.all_hunks[len(ans.all_hunks)-1].largest_line_number
 	}
+	err = ans.compute_centers(left_lines, right_lines)
 	return
 }
 
