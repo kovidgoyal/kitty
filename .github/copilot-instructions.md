@@ -1,3 +1,11 @@
+Before implementing any code changes or responding to a request, run the
+following command:
+
+./dev.sh build
+
+This will create all generated files and build the project, make it ready for
+inspection.
+
 # Repository Build & Test Instructions
 
 ## Build Procedures
