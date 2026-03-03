@@ -50,18 +50,42 @@ type displayLine struct {
 	itemIdx   int // index into filtered_idx, -1 for headers
 }
 
+const maxKeyDisplayWidth = 30
+
+// truncateToWidth truncates s to fit within maxWidth cells, appending "..." if truncated.
+func truncateToWidth(s string, maxWidth int) string {
+	if wcswidth.Stringwidth(s) <= maxWidth {
+		return s
+	}
+	if maxWidth <= 3 {
+		runes := []rune(s)
+		for len(runes) > 0 && wcswidth.Stringwidth(string(runes)) > maxWidth {
+			runes = runes[:len(runes)-1]
+		}
+		return string(runes)
+	}
+	runes := []rune(s)
+	for len(runes) > 0 && wcswidth.Stringwidth(string(runes))+3 > maxWidth {
+		runes = runes[:len(runes)-1]
+	}
+	return string(runes) + "..."
+}
+
 type Handler struct {
-	lp            *loop.Loop
-	screen_size   loop.ScreenSize
-	all_items     []DisplayItem
-	search_texts  []string // parallel to all_items, for FZF scoring
-	matcher       *fzf.FuzzyMatcher
-	filtered_idx  []int // indices into all_items for current results
-	query         string
-	selected_idx  int
-	scroll_offset int
-	input_data    InputData
-	result        string // action definition to execute after exit
+	lp              *loop.Loop
+	screen_size     loop.ScreenSize
+	all_items       []DisplayItem
+	search_texts    []string // parallel to all_items, for FZF scoring
+	matcher         *fzf.FuzzyMatcher
+	filtered_idx    []int // indices into all_items for current results
+	query           string
+	selected_idx    int
+	scroll_offset   int
+	input_data      InputData
+	result          string // action definition to execute after exit
+	display_lines   []displayLine
+	results_start_y int
+	results_height  int
 }
 
 func (h *Handler) initialize() (string, error) {
@@ -74,6 +98,7 @@ func (h *Handler) initialize() (string, error) {
 	h.lp.SetCursorShape(loop.BAR_CURSOR, true)
 	h.lp.AllowLineWrapping(false)
 	h.lp.SetWindowTitle("Command Palette")
+	h.lp.MouseTrackingMode(loop.BUTTONS_AND_DRAG_MOUSE_TRACKING)
 
 	if err := h.loadData(); err != nil {
 		return "", err
@@ -248,6 +273,9 @@ func (h *Handler) draw_screen() {
 		resultsHeight = 1
 	}
 
+	h.results_start_y = resultsStartY
+	h.results_height = resultsHeight
+
 	// Draw search bar
 	h.lp.MoveCursorTo(1, searchBarY)
 	h.lp.QueueWriteString(h.lp.SprintStyled("fg=bright-yellow", "> "))
@@ -308,19 +336,19 @@ func (h *Handler) drawGroupedResults(startY, maxRows, width int) {
 			lastMode = b.Mode
 			lastCategory = ""
 			if b.Mode != "" {
+				// Non-default mode: show "Keyboard mode: name" header (purple), no category separators
 				if len(lines) > 0 {
 					lines = append(lines, displayLine{itemIdx: -1, isHeader: true})
 				}
 				lines = append(lines, displayLine{
-					text:      fmt.Sprintf("  Mode: %s", b.Mode),
+					text:      fmt.Sprintf("  Keyboard mode: %s", b.Mode),
 					isModeHdr: true, isHeader: true, itemIdx: -1,
 				})
-				lines = append(lines, displayLine{itemIdx: -1, isHeader: true})
 			}
 		}
 
-		// Category header when category changes
-		if b.Category != lastCategory {
+		// Category header when category changes - only for the default mode ("")
+		if b.Mode == "" && b.Category != lastCategory {
 			lastCategory = b.Category
 			if len(lines) > 0 && !lines[len(lines)-1].isHeader {
 				lines = append(lines, displayLine{itemIdx: -1, isHeader: true})
@@ -335,17 +363,14 @@ func (h *Handler) drawGroupedResults(startY, maxRows, width int) {
 		}
 
 		// Binding line
-		keyWidth := wcswidth.Stringwidth(b.Key)
-		keyPad := 30
-		if keyWidth > keyPad-4 {
-			keyPad = keyWidth + 6
-		}
+		keyDisplay := truncateToWidth(b.Key, maxKeyDisplayWidth)
 		lines = append(lines, displayLine{
-			text:    fmt.Sprintf("    %-*s %s", keyPad, b.Key, b.ActionDisplay),
+			text:    fmt.Sprintf("    %-*s %s", maxKeyDisplayWidth, keyDisplay, b.ActionDisplay),
 			itemIdx: fi,
 		})
 	}
 
+	h.display_lines = lines
 	h.drawLines(lines, startY, maxRows, width)
 }
 
@@ -354,11 +379,7 @@ func (h *Handler) drawFlatResults(startY, maxRows, width int) {
 	for fi, idx := range h.filtered_idx {
 		item := &h.all_items[idx]
 		b := &item.binding
-		keyWidth := wcswidth.Stringwidth(b.Key)
-		keyPad := 30
-		if keyWidth > keyPad-4 {
-			keyPad = keyWidth + 6
-		}
+		keyDisplay := truncateToWidth(b.Key, maxKeyDisplayWidth)
 		catSuffix := ""
 		if b.Mode != "" {
 			catSuffix = fmt.Sprintf(" [%s/%s]", b.Mode, b.Category)
@@ -366,11 +387,12 @@ func (h *Handler) drawFlatResults(startY, maxRows, width int) {
 			catSuffix = fmt.Sprintf(" [%s]", b.Category)
 		}
 		lines = append(lines, displayLine{
-			text:    fmt.Sprintf("    %-*s %-30s%s", keyPad, b.Key, b.ActionDisplay, catSuffix),
+			text:    fmt.Sprintf("    %-*s %-30s%s", maxKeyDisplayWidth, keyDisplay, b.ActionDisplay, catSuffix),
 			itemIdx: fi,
 		})
 	}
 
+	h.display_lines = lines
 	h.drawLines(lines, startY, maxRows, width)
 }
 
@@ -389,7 +411,11 @@ func (h *Handler) drawLines(lines []displayLine, startY, maxRows, width int) {
 	}
 	if selectedLineIdx >= 0 {
 		if selectedLineIdx < h.scroll_offset {
+			// Scroll up to show selected item; also reveal any header lines above it
 			h.scroll_offset = selectedLineIdx
+			for h.scroll_offset > 0 && lines[h.scroll_offset-1].isHeader {
+				h.scroll_offset--
+			}
 		}
 		if selectedLineIdx >= h.scroll_offset+maxRows {
 			h.scroll_offset = selectedLineIdx - maxRows + 1
@@ -442,18 +468,48 @@ func (h *Handler) drawBindingLine(text string, filteredIdx, width int) {
 	b := &h.all_items[idx].binding
 
 	// Style the key portion green, leave action unstyled
-	keyWidth := wcswidth.Stringwidth(b.Key)
-	keyPad := 30
-	if keyWidth > keyPad-4 {
-		keyPad = keyWidth + 6
-	}
-	keyPrefix := fmt.Sprintf("    %-*s", keyPad, b.Key)
+	keyDisplay := truncateToWidth(b.Key, maxKeyDisplayWidth)
+	keyPrefix := fmt.Sprintf("    %-*s", maxKeyDisplayWidth, keyDisplay)
 	rest := ""
 	if len(text) > len(keyPrefix) {
 		rest = text[len(keyPrefix):]
 	}
 	h.lp.QueueWriteString(h.lp.SprintStyled("fg=green", keyPrefix))
 	h.lp.QueueWriteString(rest)
+}
+
+// rowToFilteredIdx converts a 0-indexed cell row to a filtered item index,
+// or -1 if the row is not over a clickable item.
+func (h *Handler) rowToFilteredIdx(cellY int) int {
+	screenRow := cellY + 1 // convert to 1-indexed
+	if screenRow < h.results_start_y || screenRow >= h.results_start_y+h.results_height {
+		return -1
+	}
+	lineIdx := h.scroll_offset + (screenRow - h.results_start_y)
+	if lineIdx < 0 || lineIdx >= len(h.display_lines) {
+		return -1
+	}
+	return h.display_lines[lineIdx].itemIdx
+}
+
+func (h *Handler) onMouseEvent(ev *loop.MouseEvent) error {
+	switch ev.Event_type {
+	case loop.MOUSE_CLICK:
+		if ev.Buttons&loop.LEFT_MOUSE_BUTTON != 0 {
+			fi := h.rowToFilteredIdx(ev.Cell.Y)
+			if fi >= 0 {
+				h.selected_idx = fi
+				h.triggerSelected()
+			}
+		}
+	case loop.MOUSE_MOVE:
+		fi := h.rowToFilteredIdx(ev.Cell.Y)
+		h.lp.PopPointerShape()
+		if fi >= 0 {
+			h.lp.PushPointerShape(loop.POINTER_POINTER)
+		}
+	}
+	return nil
 }
 
 func (h *Handler) onKeyEvent(ev *loop.KeyEvent) error {
@@ -573,6 +629,7 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	lp.OnKeyEvent = handler.onKeyEvent
 	lp.OnText = handler.onText
 	lp.OnResize = handler.onResize
+	lp.OnMouseEvent = handler.onMouseEvent
 
 	err = lp.Run()
 	if err != nil {

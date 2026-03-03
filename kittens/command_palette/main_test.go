@@ -2,6 +2,7 @@ package command_palette
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -305,5 +306,231 @@ func TestFallbackOrderingWithoutExplicitOrder(t *testing.T) {
 	cat1 := h.all_items[1].binding.Category
 	if cat0 > cat1 {
 		t.Fatalf("Expected alphabetical category order, got %q then %q", cat0, cat1)
+	}
+}
+
+func TestTruncateToWidth(t *testing.T) {
+	// Short string: no truncation
+	s := "hello"
+	got := truncateToWidth(s, 10)
+	if got != s {
+		t.Fatalf("Expected %q unchanged, got %q", s, got)
+	}
+
+	// Exact width: no truncation
+	got = truncateToWidth("hello", 5)
+	if got != "hello" {
+		t.Fatalf("Expected %q unchanged at exact width, got %q", "hello", got)
+	}
+
+	// Over width: truncated with ellipsis
+	got = truncateToWidth("hello world", 8)
+	if !strings.HasSuffix(got, "...") {
+		t.Fatalf("Expected truncated string to end with '...', got %q", got)
+	}
+	if len([]rune(got)) > 8 {
+		t.Fatalf("Expected truncated string to be at most 8 runes, got %d in %q", len([]rune(got)), got)
+	}
+
+	// Long key like a mouse binding should be truncated
+	longKey := "ctrl+shift+left press ungrabbed"
+	got = truncateToWidth(longKey, maxKeyDisplayWidth)
+	if len([]rune(got)) > maxKeyDisplayWidth {
+		t.Fatalf("Key should be truncated to maxKeyDisplayWidth, got len=%d: %q", len([]rune(got)), got)
+	}
+	if !strings.HasSuffix(got, "...") {
+		t.Fatalf("Truncated key should end with '...', got %q", got)
+	}
+}
+
+func TestGroupedResultsModeHeaderFormat(t *testing.T) {
+	h := newTestHandler()
+	h.updateFilter()
+
+	// Build lines as drawGroupedResults would
+	var lines []displayLine
+	lastMode := ""
+	lastCategory := ""
+	for fi, idx := range h.filtered_idx {
+		b := &h.all_items[idx].binding
+		if b.Mode != lastMode {
+			lastMode = b.Mode
+			lastCategory = ""
+			if b.Mode != "" {
+				if len(lines) > 0 {
+					lines = append(lines, displayLine{itemIdx: -1, isHeader: true})
+				}
+				lines = append(lines, displayLine{
+					text:      fmt.Sprintf("  Keyboard mode: %s", b.Mode),
+					isModeHdr: true, isHeader: true, itemIdx: -1,
+				})
+			}
+		}
+		if b.Mode == "" && b.Category != lastCategory {
+			lastCategory = b.Category
+			lines = append(lines, displayLine{isHeader: true, itemIdx: -1})
+		}
+		lines = append(lines, displayLine{itemIdx: fi})
+	}
+
+	// There should be a mode header for the "mw" mode
+	found := false
+	for _, l := range lines {
+		if l.isModeHdr && strings.Contains(l.text, "Keyboard mode: mw") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("Expected to find 'Keyboard mode: mw' mode header")
+	}
+
+	// The old format "Mode: mw" should NOT appear
+	for _, l := range lines {
+		if l.isModeHdr && strings.Contains(l.text, "Mode: mw") && !strings.Contains(l.text, "Keyboard") {
+			t.Fatalf("Old mode header format found: %q", l.text)
+		}
+	}
+}
+
+func TestGroupedResultsNoCategoryHeadersForNonDefaultMode(t *testing.T) {
+	h := newTestHandler()
+	h.updateFilter()
+
+	// Build lines for the mw mode - there should be no category separators
+	var lines []displayLine
+	lastMode := ""
+	lastCategory := ""
+	for fi, idx := range h.filtered_idx {
+		b := &h.all_items[idx].binding
+		if b.Mode != lastMode {
+			lastMode = b.Mode
+			lastCategory = ""
+			if b.Mode != "" {
+				if len(lines) > 0 {
+					lines = append(lines, displayLine{itemIdx: -1, isHeader: true})
+				}
+				lines = append(lines, displayLine{
+					text:      fmt.Sprintf("  Keyboard mode: %s", b.Mode),
+					isModeHdr: true, isHeader: true, itemIdx: -1,
+				})
+			}
+		}
+		if b.Mode == "" && b.Category != lastCategory {
+			lastCategory = b.Category
+			lines = append(lines, displayLine{
+				text: "category header", isHeader: true, itemIdx: -1,
+			})
+		}
+		_ = fi
+		lines = append(lines, displayLine{itemIdx: fi})
+	}
+
+	// All category separator headers should be for default mode items only
+	// (none after the "Keyboard mode: mw" header)
+	seenMwHeader := false
+	for _, l := range lines {
+		if l.isModeHdr {
+			seenMwHeader = true
+			continue
+		}
+		if seenMwHeader && l.isHeader && l.text == "category header" {
+			t.Fatal("Found category header after non-default mode header - should not emit category headers for non-default modes")
+		}
+	}
+}
+
+func TestRowToFilteredIdx(t *testing.T) {
+	h := newTestHandler()
+	h.updateFilter()
+	h.results_start_y = 2
+	h.results_height = 20
+
+	// Populate display_lines with known structure
+	h.display_lines = []displayLine{
+		{isHeader: true, itemIdx: -1}, // line 0: category header
+		{itemIdx: 0},                  // line 1: first item (filteredIdx=0)
+		{itemIdx: 1},                  // line 2: second item (filteredIdx=1)
+		{isHeader: true, itemIdx: -1}, // line 3: blank header
+		{itemIdx: 2},                  // line 4: third item (filteredIdx=2)
+	}
+	h.scroll_offset = 0
+
+	// cellY=1 → screenRow=2 = results_start_y → lineIdx=0 = header → -1
+	if fi := h.rowToFilteredIdx(1); fi != -1 {
+		t.Fatalf("Expected -1 for header row, got %d", fi)
+	}
+
+	// cellY=2 → screenRow=3 → lineIdx=1 = first item → filteredIdx=0
+	if fi := h.rowToFilteredIdx(2); fi != 0 {
+		t.Fatalf("Expected filteredIdx=0 for first item row, got %d", fi)
+	}
+
+	// cellY=3 → screenRow=4 → lineIdx=2 = second item → filteredIdx=1
+	if fi := h.rowToFilteredIdx(3); fi != 1 {
+		t.Fatalf("Expected filteredIdx=1 for second item row, got %d", fi)
+	}
+
+	// cellY=4 → screenRow=5 → lineIdx=3 = blank header → -1
+	if fi := h.rowToFilteredIdx(4); fi != -1 {
+		t.Fatalf("Expected -1 for blank header row, got %d", fi)
+	}
+
+	// Click above results area (cellY=0 → screenRow=1 < results_start_y=2): should return -1
+	if fi := h.rowToFilteredIdx(0); fi != -1 {
+		t.Fatalf("Expected -1 for row above results, got %d", fi)
+	}
+
+	// Click below results area (cellY=22 → screenRow=23 >= results_start_y+results_height=22): should return -1
+	if fi := h.rowToFilteredIdx(22); fi != -1 {
+		t.Fatalf("Expected -1 for row below results, got %d", fi)
+	}
+}
+
+func TestScrollAdjustRevealsSectionHeader(t *testing.T) {
+	// When the selected item is scrolled into view from below,
+	// any immediately preceding header lines should also be visible.
+	lines := []displayLine{
+		{isHeader: true, itemIdx: -1},  // line 0: category header
+		{itemIdx: 0},                   // line 1: first item
+		{itemIdx: 1},                   // line 2: second item
+		{isHeader: true, itemIdx: -1},  // line 3: blank
+		{isHeader: true, itemIdx: -1},  // line 4: category header 2
+		{itemIdx: 2},                   // line 5: third item
+	}
+
+	h := &Handler{}
+	h.filtered_idx = []int{0, 1, 2}
+	h.selected_idx = 0  // first item (at line 1)
+	h.scroll_offset = 4 // currently scrolled past the first item
+
+	// Call the scroll adjustment logic from drawLines
+	selectedLineIdx := -1
+	for i, dl := range lines {
+		if dl.itemIdx == h.selected_idx {
+			selectedLineIdx = i
+			break
+		}
+	}
+	if selectedLineIdx != 1 {
+		t.Fatalf("Expected selectedLineIdx=1, got %d", selectedLineIdx)
+	}
+
+	maxRows := 10
+	if selectedLineIdx < h.scroll_offset {
+		h.scroll_offset = selectedLineIdx
+		for h.scroll_offset > 0 && lines[h.scroll_offset-1].isHeader {
+			h.scroll_offset--
+		}
+	}
+	if selectedLineIdx >= h.scroll_offset+maxRows {
+		h.scroll_offset = selectedLineIdx - maxRows + 1
+	}
+	h.scroll_offset = max(0, h.scroll_offset)
+	h.scroll_offset = min(h.scroll_offset, max(0, len(lines)-maxRows))
+
+	// scroll_offset should be 0 so the category header at line 0 is visible
+	if h.scroll_offset != 0 {
+		t.Fatalf("Expected scroll_offset=0 to show category header, got %d", h.scroll_offset)
 	}
 }

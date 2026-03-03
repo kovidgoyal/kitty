@@ -1465,7 +1465,7 @@ class Boss:
     def set_font_size(self, new_size: float) -> None:  # legacy
         self.change_font_size(True, None, new_size)
 
-    @ac('win', '''
+    @ac('fs', '''
         Change the font size for the current or all OS Windows
 
         See :ref:`conf-kitty-shortcuts.fonts` for details.
