@@ -28,4 +28,5 @@ code.
 - To run a specific test, run `./test.py test-name` t
   `test-name` is the name of the test without the
   leading `test_` for Python tests and without the leading `Test` for Go tests.
+- Do not use go test or ./setup.py test to run tests
 
