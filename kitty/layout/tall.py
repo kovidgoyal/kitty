@@ -321,7 +321,6 @@ class Tall(Layout):
         needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
         active_group = all_windows.active_group
         mirrored = self.layout_opts.mirrored
-        print(11111111, self.main_is_horizontal)
         for wg, xl, yl, is_full_size in layouts:
             if is_full_size:
                 main_layouts.append((wg, xl, yl))
@@ -335,7 +334,6 @@ class Tall(Layout):
                     e = Edges(left, top, right, top + bw)
                     perp_borders.append(BorderLine(e, color, mult*wid, True))
                 def v(top: int, bottom: int, left: int, mult: int) -> None:
-                    print(f'{left=} {top=} {bottom=} {mult=}')
                     e = Edges(left, top, left + bw, bottom)
                     perp_borders.append(BorderLine(e, color, mult*wid, False))
 
