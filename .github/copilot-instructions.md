@@ -2,7 +2,8 @@
 
 ## Build Procedures
 - **Required dependencies**: A C compiler (either clang or gcc) and a Go compiler. The Go compiler
-  should be at least the version mentioned in the go.mod file.
+  should be at least the version mentioned in the go.mod file. On Linux, the
+  X11 development libraries are also needed.
 - **Bootstrap:** Always run `./dev.sh deps` to download all needed dependencies
 - **Build command:** Run `./dev.sh build` to build the project
 
