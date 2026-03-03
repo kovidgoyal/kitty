@@ -2302,10 +2302,20 @@ class Boss:
     def input_unicode_character(self) -> None:
         self.run_kitten_with_metadata('unicode_input', window=self.window_for_dispatch)
 
-    @ac('misc', 'Browse and trigger keyboard shortcuts and actions in a searchable overlay')
-    def command_palette(self) -> None:
+    @ac('misc', '''
+        Browse and trigger keyboard shortcuts and actions in a searchable overlay.
+
+        Optionally pass :code:`show_unmapped` to also show actions that have no keyboard shortcut assigned::
+
+            # show only mapped actions (default)
+            map ctrl+shift+p command_palette
+            # also show unmapped actions
+            map ctrl+shift+alt+p command_palette show_unmapped
+        ''')
+    def command_palette(self, *args: str) -> None:
         from kittens.command_palette.main import collect_keys_data
-        data = collect_keys_data(get_options())
+        show_unmapped = 'show_unmapped' in args
+        data = collect_keys_data(get_options(), show_unmapped=show_unmapped)
         self.run_kitten_with_metadata('command-palette', input_data=json.dumps(data), window=self.window_for_dispatch)
 
     @ac(

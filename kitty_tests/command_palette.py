@@ -98,3 +98,62 @@ class TestCommandPalette(BaseTest):
                 set(data['modes'][mode_name].keys()),
                 f'category_order for mode {mode_name!r} should match modes keys',
             )
+
+    def test_show_unmapped_includes_extra_actions(self):
+        from kittens.command_palette.main import collect_keys_data
+        from kitty.actions import get_all_actions
+        opts = self.set_options()
+        data_default = collect_keys_data(opts, show_unmapped=False)
+        data_unmapped = collect_keys_data(opts, show_unmapped=True)
+        # With show_unmapped=True, we should have at least as many bindings
+        def count_bindings(data: dict) -> int:
+            total = 0
+            for cats in data['modes'].values():
+                for bindings in cats.values():
+                    total += len(bindings)
+            return total
+        count_default = count_bindings(data_default)
+        count_with_unmapped = count_bindings(data_unmapped)
+        self.assertTrue(
+            count_with_unmapped >= count_default,
+            'show_unmapped should not remove any existing bindings',
+        )
+        # There should be at least one unmapped action (empty key) in the result
+        found_unmapped = False
+        for cats in data_unmapped['modes'].values():
+            for bindings in cats.values():
+                for b in bindings:
+                    if b['key'] == '':
+                        found_unmapped = True
+                        # Unmapped actions must still have action and definition
+                        self.assertTrue(len(b['action']) > 0)
+                        self.assertTrue(len(b['definition']) > 0)
+                        break
+        self.assertTrue(found_unmapped, 'Expected at least one unmapped action')
+
+    def test_show_unmapped_false_has_no_empty_keys(self):
+        from kittens.command_palette.main import collect_keys_data
+        opts = self.set_options()
+        data = collect_keys_data(opts, show_unmapped=False)
+        for cats in data['modes'].values():
+            for bindings in cats.values():
+                for b in bindings:
+                    self.assertTrue(
+                        len(b['key']) > 0,
+                        f'Without show_unmapped, all bindings should have non-empty keys; got {b!r}',
+                    )
+
+    def test_show_unmapped_sorted_order(self):
+        from kittens.command_palette.main import collect_keys_data
+        opts = self.set_options()
+        data = collect_keys_data(opts, show_unmapped=True)
+        # In each category, mapped bindings (non-empty key) should come before unmapped ones
+        for cat_name, bindings in data['modes'].get('', {}).items():
+            seen_unmapped = False
+            for b in bindings:
+                if b['key'] == '':
+                    seen_unmapped = True
+                elif seen_unmapped:
+                    self.fail(
+                        f'In category {cat_name!r}, mapped binding {b!r} follows an unmapped one'
+                    )
