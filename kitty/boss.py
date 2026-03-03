@@ -2304,18 +2304,10 @@ class Boss:
 
     @ac('misc', '''
         Browse and trigger keyboard shortcuts and actions in a searchable overlay.
-
-        Optionally pass :code:`show_unmapped` to also show actions that have no keyboard shortcut assigned::
-
-            # show only mapped actions (default)
-            map ctrl+shift+p command_palette
-            # also show unmapped actions
-            map ctrl+shift+alt+p command_palette show_unmapped
         ''')
-    def command_palette(self, *args: str) -> None:
+    def command_palette(self) -> None:
         from kittens.command_palette.main import collect_keys_data
-        show_unmapped = 'show_unmapped' in args
-        data = collect_keys_data(get_options(), show_unmapped=show_unmapped)
+        data = collect_keys_data(get_options())
         self.run_kitten_with_metadata('command-palette', input_data=json.dumps(data), window=self.window_for_dispatch)
 
     @ac(
