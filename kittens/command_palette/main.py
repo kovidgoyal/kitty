@@ -74,6 +74,29 @@ def collect_keys_data(opts: Any) -> dict[str, Any]:
             ordered[cat_name] = binds
         modes[mode_name] = ordered
 
+    # Move push_keyboard_mode <name> bindings from the default mode into the
+    # respective keyboard mode's section so they appear alongside its shortcuts.
+    if '' in modes:
+        new_default_cats: dict[str, list[dict[str, str]]] = {}
+        for cat_name, bindings in modes[''].items():
+            keep: list[dict[str, str]] = []
+            for b in bindings:
+                if b['action'] == 'push_keyboard_mode':
+                    parts = b['definition'].split()
+                    target = parts[1] if len(parts) > 1 else ''
+                    if target and target in modes:
+                        if 'Enter mode' not in modes[target]:
+                            new_target: dict[str, list[dict[str, str]]] = {'Enter mode': [b]}
+                            new_target.update(modes[target])
+                            modes[target] = new_target
+                        else:
+                            modes[target]['Enter mode'].append(b)
+                        continue
+                keep.append(b)
+            if keep:
+                new_default_cats[cat_name] = keep
+        modes[''] = new_default_cats
+
     # Emit explicit mode and category ordering since JSON maps lose insertion order
     mode_order = list(modes.keys())
     category_order: dict[str, list[str]] = {}

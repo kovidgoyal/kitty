@@ -347,7 +347,9 @@ func TestGroupedResultsModeHeaderFormat(t *testing.T) {
 	h := newTestHandler()
 	h.updateFilter()
 
-	// Build lines as drawGroupedResults would
+	const testWidth = 80 // fixed width for testing
+
+	// Build lines as drawGroupedResults would with the new separator format
 	var lines []displayLine
 	lastMode := ""
 	lastCategory := ""
@@ -360,8 +362,12 @@ func TestGroupedResultsModeHeaderFormat(t *testing.T) {
 				if len(lines) > 0 {
 					lines = append(lines, displayLine{itemIdx: -1, isHeader: true})
 				}
+				label := "Keyboard mode: " + b.Mode
+				labelWidth := len([]rune(label))
+				sepLen := max(0, testWidth-labelWidth-6)
+				sep := strings.Repeat("\u2500", sepLen)
 				lines = append(lines, displayLine{
-					text:      fmt.Sprintf("  Keyboard mode: %s", b.Mode),
+					text:      fmt.Sprintf("  \u2500\u2500 %s %s", label, sep),
 					isModeHdr: true, isHeader: true, itemIdx: -1,
 				})
 			}
@@ -378,18 +384,15 @@ func TestGroupedResultsModeHeaderFormat(t *testing.T) {
 	for _, l := range lines {
 		if l.isModeHdr && strings.Contains(l.text, "Keyboard mode: mw") {
 			found = true
+			// Header should have ── separator characters
+			if !strings.Contains(l.text, "\u2500\u2500") {
+				t.Fatalf("Mode header should contain separator ── but got %q", l.text)
+			}
 			break
 		}
 	}
 	if !found {
 		t.Fatal("Expected to find 'Keyboard mode: mw' mode header")
-	}
-
-	// The old format "Mode: mw" should NOT appear
-	for _, l := range lines {
-		if l.isModeHdr && strings.Contains(l.text, "Mode: mw") && !strings.Contains(l.text, "Keyboard") {
-			t.Fatalf("Old mode header format found: %q", l.text)
-		}
 	}
 }
 
@@ -397,7 +400,12 @@ func TestGroupedResultsNoCategoryHeadersForNonDefaultMode(t *testing.T) {
 	h := newTestHandler()
 	h.updateFilter()
 
-	// Build lines for the mw mode - there should be no category separators
+	// Build lines as drawGroupedResults would, tracking whether we are currently
+	// inside a non-default keyboard-mode section.  Category separators are only
+	// valid for the default mode ("")  and for the mouse-actions block; they must
+	// NOT appear while we are still processing items for a non-default mode (e.g.
+	// "mw").  Once we transition back to Mode=="" (e.g. for mouse bindings) the
+	// section is over and category headers are allowed again.
 	var lines []displayLine
 	lastMode := ""
 	lastCategory := ""
@@ -416,26 +424,36 @@ func TestGroupedResultsNoCategoryHeadersForNonDefaultMode(t *testing.T) {
 				})
 			}
 		}
+		// Category headers are only emitted for the default-mode block.
 		if b.Mode == "" && b.Category != lastCategory {
 			lastCategory = b.Category
 			lines = append(lines, displayLine{
 				text: "category header", isHeader: true, itemIdx: -1,
 			})
 		}
-		_ = fi
+
 		lines = append(lines, displayLine{itemIdx: fi})
 	}
 
-	// All category separator headers should be for default mode items only
-	// (none after the "Keyboard mode: mw" header)
-	seenMwHeader := false
+	// Verify: no "category header" line appears while we are still inside the
+	// non-default keyboard-mode section.
+	nonDefaultActive := false
 	for _, l := range lines {
 		if l.isModeHdr {
-			seenMwHeader = true
+			nonDefaultActive = true
 			continue
 		}
-		if seenMwHeader && l.isHeader && l.text == "category header" {
-			t.Fatal("Found category header after non-default mode header - should not emit category headers for non-default modes")
+		// A non-header item from Mode=="" exits the non-default section.
+		if nonDefaultActive && !l.isHeader {
+			if l.itemIdx >= 0 && l.itemIdx < len(h.filtered_idx) {
+				idx := h.filtered_idx[l.itemIdx]
+				if h.all_items[idx].binding.Mode == "" {
+					nonDefaultActive = false
+				}
+			}
+		}
+		if nonDefaultActive && l.isHeader && l.text == "category header" {
+			t.Fatal("Found category header inside non-default keyboard-mode section")
 		}
 	}
 }

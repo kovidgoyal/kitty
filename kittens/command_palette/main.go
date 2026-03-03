@@ -100,7 +100,6 @@ func (h *Handler) initialize() (string, error) {
 	h.lp.SetCursorShape(loop.BAR_CURSOR, true)
 	h.lp.AllowLineWrapping(false)
 	h.lp.SetWindowTitle("Command Palette")
-	h.lp.MouseTrackingMode(loop.BUTTONS_AND_DRAG_MOUSE_TRACKING)
 
 	if err := h.loadData(); err != nil {
 		return "", err
@@ -338,12 +337,16 @@ func (h *Handler) drawGroupedResults(startY, maxRows, width int) {
 			lastMode = b.Mode
 			lastCategory = ""
 			if b.Mode != "" {
-				// Non-default mode: show "Keyboard mode: name" header (purple), no category separators
+				// Non-default mode: show "── Keyboard mode: name ──" header (purple), no category separators
 				if len(lines) > 0 {
 					lines = append(lines, displayLine{itemIdx: -1, isHeader: true})
 				}
+				label := "Keyboard mode: " + b.Mode
+				labelWidth := wcswidth.Stringwidth(label)
+				sepLen := max(0, width-labelWidth-6)
+				sep := strings.Repeat("\u2500", sepLen)
 				lines = append(lines, displayLine{
-					text:      fmt.Sprintf("  Keyboard mode: %s", b.Mode),
+					text:      fmt.Sprintf("  \u2500\u2500 %s %s", label, sep),
 					isModeHdr: true, isHeader: true, itemIdx: -1,
 				})
 			}
@@ -508,7 +511,7 @@ func (h *Handler) onMouseEvent(ev *loop.MouseEvent) error {
 		}
 	case loop.MOUSE_MOVE:
 		fi := h.rowToFilteredIdx(ev.Cell.Y)
-		h.lp.PopPointerShape()
+		h.lp.ClearPointerShapes()
 		if fi >= 0 {
 			h.lp.PushPointerShape(loop.POINTER_POINTER)
 		}
@@ -625,6 +628,7 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 
 	handler := &Handler{lp: lp}
+	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
 
 	lp.OnInitialize = func() (string, error) {
 		return handler.initialize()
