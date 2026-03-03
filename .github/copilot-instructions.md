@@ -12,11 +12,14 @@
 - To build individual kittens use the build command above **do not** try to run go build
   yourself.
 
+Once a build is done, the kitty and kitten binaries will be in the `kitty/launcher` directory.
+Note that the kitty binary can run python files using `kitty +launch file.py`.
+When it does so the kitty fast_data_types module is available to the python
+code.
+
 ## Test Procedures
 - To run the complete test suite, run `./test.py`
 - To run a specific test, run `./test.py test-name` t
   `test-name` is the name of the test without the
   leading `test_` for Python tests and without the leading `Test` for Go tests.
 
-## Benchmarking
-- To run the benchmark: `./benchmark.py`
