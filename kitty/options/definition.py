@@ -3836,8 +3836,9 @@ Some quick examples to illustrate common tasks::
     # multi-key shortcuts
     map ctrl+x>ctrl+y>z action
 
-The full list of actions that can be mapped to key presses is available
-:doc:`here </actions>`.
+You can browse and trigger these actions by pressing :sc:`command_palette` to
+run the command palette. The full list of actions that can be mapped to
+key presses is available :doc:`here </actions>`.
 ''')
 
 opt('kitty_mod', 'ctrl+shift',
@@ -4531,6 +4532,9 @@ agr('shortcuts.misc', 'Miscellaneous')
 
 map('Show documentation',
     'show_kitty_doc kitty_mod+f1 show_kitty_doc overview')
+
+map('Command palette',
+    'command_palette kitty_mod+f3 command_palette')
 
 map('Toggle fullscreen',
     'toggle_fullscreen kitty_mod+f11 toggle_fullscreen',

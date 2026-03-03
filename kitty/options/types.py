@@ -959,6 +959,8 @@ defaults.map = [
     KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=121),), definition='kitten hints --type hyperlink'),
     # show_kitty_doc
     KeyDefinition(trigger=SingleKey(mods=256, key=57364), definition='show_kitty_doc overview'),
+    # command_palette
+    KeyDefinition(trigger=SingleKey(mods=256, key=57366), definition='command_palette'),
     # toggle_fullscreen
     KeyDefinition(trigger=SingleKey(mods=256, key=57374), definition='toggle_fullscreen'),
     # toggle_maximized

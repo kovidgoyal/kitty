@@ -167,6 +167,9 @@ Detailed list of changes
 - Allow dragging window borders to resize kitty windows in all the different
   layouts, controlled by :opt:`window_drag_tolerance` (:pull:`9447`)
 
+- A command palette to browse and trigger all mapped and unmapped actions
+  (:pull:`9545`)
+
 - choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
 
 - Fix tab bar rendering glitches when using :opt:`tab_bar_filter` in some
