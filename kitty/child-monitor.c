@@ -778,6 +778,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                         }
                         tab->cursor_trail.needs_render = true;
                         tab->cursor_trail.updated_at = now;
+                        os_window->cursor_blink_zero_time = now;
                     }
                     if (update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
                         needs_render = true;
