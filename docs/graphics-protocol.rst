@@ -54,6 +54,7 @@ Libraries:
 * `image.nvim <https://github.com/3rd/image.nvim>`_ - Bringing images to neovim
 * `image_preview.nvim <https://github.com/adelarsq/image_preview.nvim/>`_ - Image preview for neovim
 * `kui.nvim <https://github.com/romgrk/kui.nvim>`_  - Build sophisticated UIs inside neovim using the kitty graphics protocol
+* `kitty-graphics.el <https://github.com/cashmeredev/kitty-graphics.el>`_ - Images in emacs
 * `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
 * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
 

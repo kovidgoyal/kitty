@@ -308,6 +308,7 @@ Various image viewing plugins for editors
 * `image.nvim <https://github.com/3rd/image.nvim>`_ - Bringing images to neovim
 * `image_preview.nvim <https://github.com/adelarsq/image_preview.nvim/>`_ - Image preview for neovim
 * `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_  - view images inside nvim
+* `kitty-graphics.el <https://github.com/cashmeredev/kitty-graphics.el>`_ - view images in emacs
 
 Scrollback manipulation
 -------------------------
