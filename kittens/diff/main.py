@@ -76,11 +76,11 @@ only applies when a changed chunk has equal numbers of added and removed lines.
 '''
     )
 
-opt('word_regex', r'\S+',
+opt('word_regex', r'[^\s\p{P}]+',
     long_text='''
 The regular expression used to define a word when :opt:`word_diff_mode` is
-:code:`words`. The default value of :code:`\\S+` matches any run of
-non-whitespace characters. The expression must be a valid Go regular expression.
+:code:`words`. The default value matches any run of non-whitespace and
+non-punctuation characters. The expression must be a valid Go regular expression.
 If an invalid expression is provided, diff will fail with an error.
 '''
     )
