@@ -269,11 +269,17 @@ class WindowList:
         return ans
 
     def notify_on_active_window_change(self, old_active_window: WindowType | None, new_active_window: WindowType | None) -> None:
-        if old_active_window is not None:
-            old_active_window.focus_changed(False)
-        if new_active_window is not None:
-            new_active_window.focus_changed(True)
         tab = self.tabref()
+        is_tab_focused = False
+        if tab is not None:
+            tm = tab.tab_manager_ref()
+            if tm is not None:
+                is_tab_focused = tm.active_tab is tab
+        if is_tab_focused:
+            if old_active_window is not None:
+                old_active_window.focus_changed(False)
+            if new_active_window is not None:
+                new_active_window.focus_changed(True)
         if tab is not None:
             tab.active_window_changed()
 
