@@ -143,7 +143,20 @@ func word_diff_center(left, right string, re *regexp.Regexp) Center {
 		right_words[i] = word{text: right[m[0]:m[1]], offset: m[0], size: m[1] - m[0]}
 	}
 
-	m, n := len(left_words), len(right_words)
+	// Strip common prefix and suffix words so LCS only runs on the differing middle.
+	prefix := 0
+	for prefix < len(left_words) && prefix < len(right_words) && left_words[prefix].text == right_words[prefix].text {
+		prefix++
+	}
+	suffix := 0
+	for suffix < len(left_words)-prefix && suffix < len(right_words)-prefix &&
+		left_words[len(left_words)-1-suffix].text == right_words[len(right_words)-1-suffix].text {
+		suffix++
+	}
+	lw := left_words[prefix : len(left_words)-suffix]
+	rw := right_words[prefix : len(right_words)-suffix]
+
+	m, n := len(lw), len(rw)
 	// LCS dynamic programming table
 	dp := make([][]int, m+1)
 	for i := range dp {
@@ -151,7 +164,7 @@ func word_diff_center(left, right string, re *regexp.Regexp) Center {
 	}
 	for i := 1; i <= m; i++ {
 		for j := 1; j <= n; j++ {
-			if left_words[i-1].text == right_words[j-1].text {
+			if lw[i-1].text == rw[j-1].text {
 				dp[i][j] = dp[i-1][j-1] + 1
 			} else if dp[i-1][j] > dp[i][j-1] {
 				dp[i][j] = dp[i-1][j]
@@ -161,12 +174,12 @@ func word_diff_center(left, right string, re *regexp.Regexp) Center {
 		}
 	}
 
-	// Backtrack to find changed words
+	// Backtrack to find changed words within the middle slice.
 	left_changed := make([]bool, m)
 	right_changed := make([]bool, n)
 	i, j := m, n
 	for i > 0 && j > 0 {
-		if left_words[i-1].text == right_words[j-1].text {
+		if lw[i-1].text == rw[j-1].text {
 			i--
 			j--
 		} else if dp[i-1][j] > dp[i][j-1] {
@@ -189,12 +202,12 @@ func word_diff_center(left, right string, re *regexp.Regexp) Center {
 	var ans Center
 	for i, changed := range left_changed {
 		if changed {
-			ans.left_regions = append(ans.left_regions, Region{offset: left_words[i].offset, size: left_words[i].size})
+			ans.left_regions = append(ans.left_regions, Region{offset: lw[i].offset, size: lw[i].size})
 		}
 	}
 	for i, changed := range right_changed {
 		if changed {
-			ans.right_regions = append(ans.right_regions, Region{offset: right_words[i].offset, size: right_words[i].size})
+			ans.right_regions = append(ans.right_regions, Region{offset: rw[i].offset, size: rw[i].size})
 		}
 	}
 	return ans

@@ -22,6 +22,8 @@ func TestWordDiffCenter(t *testing.T) {
 	tests := []tc{
 		{
 			left: "the quick brown fox", right: "the slow brown fox",
+			// common prefix: "the"; common suffix: "brown fox"
+			// only "quick" vs "slow" is compared
 			left_regions:  []Region{{4, 5}},
 			right_regions: []Region{{4, 4}},
 		},
@@ -32,18 +34,31 @@ func TestWordDiffCenter(t *testing.T) {
 		},
 		{
 			left: "foo bar baz", right: "foo qux baz",
+			// common prefix: "foo"; common suffix: "baz"
+			// only "bar" vs "qux" compared
 			left_regions:  []Region{{4, 3}},
 			right_regions: []Region{{4, 3}},
 		},
 		{
 			left: "aaa bbb ccc", right: "aaa xxx yyy ccc",
+			// common prefix: "aaa"; common suffix: "ccc"
+			// only "bbb" vs "xxx yyy" compared
 			left_regions:  []Region{{4, 3}},
 			right_regions: []Region{{4, 3}, {8, 3}},
 		},
 		{
 			left: "aaa bbb ccc ddd", right: "aaa ccc ddd",
+			// common prefix: "aaa"; common suffix: "ccc ddd"
+			// only "bbb" vs "" compared → "bbb" is deleted
 			left_regions:  []Region{{4, 3}},
 			right_regions: nil,
+		},
+		{
+			// prefix/suffix trimming: "the quick brown" is common prefix,
+			// "over the lazy dog" is common suffix; only "fox" vs "cat" differ
+			left: "the quick brown fox over the lazy dog", right: "the quick brown cat over the lazy dog",
+			left_regions:  []Region{{16, 3}},
+			right_regions: []Region{{16, 3}},
 		},
 	}
 	for _, tc := range tests {
