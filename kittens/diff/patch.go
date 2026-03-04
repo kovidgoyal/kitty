@@ -199,28 +199,39 @@ func word_diff_center(left, right string, re *regexp.Regexp) Center {
 		j--
 	}
 
-	// Collect the words that were flagged as changed on each side.
-	var left_changed_words, right_changed_words []word
-	for i, changed := range left_changed {
-		if changed {
-			left_changed_words = append(left_changed_words, lw[i])
-		}
+	// Remap changed flags to absolute indices within the full words arrays.
+	left_changed_abs := make([]bool, len(left_words))
+	right_changed_abs := make([]bool, len(right_words))
+	for k, c := range left_changed {
+		left_changed_abs[prefix+k] = c
 	}
-	for i, changed := range right_changed {
-		if changed {
-			right_changed_words = append(right_changed_words, rw[i])
+	for k, c := range right_changed {
+		right_changed_abs[prefix+k] = c
+	}
+
+	// Verify that every changed word at index i has a corresponding changed
+	// word at the same index i on the other side.  If any position is changed
+	// on exactly one side, the lines differ in word count and it makes more
+	// sense to highlight the single changed central region of the whole line.
+	max_idx := max(len(left_words), len(right_words))
+	for idx := 0; idx < max_idx; idx++ {
+		lc := idx < len(left_words) && left_changed_abs[idx]
+		rc := idx < len(right_words) && right_changed_abs[idx]
+		if lc != rc {
+			return changed_center(left, right)
 		}
 	}
 
-	// For each positionally paired changed word, apply character-level
-	// prefix/suffix trimming so only the truly differing central bytes are
-	// highlighted.  Unpaired words (pure insertions/deletions) keep their
-	// full-word region.
+	// All changed words are positionally paired.  Apply character-level
+	// prefix/suffix trimming to each pair so only the differing central bytes
+	// are highlighted.
 	var ans Center
-	pairs := min(len(left_changed_words), len(right_changed_words))
-	for k := 0; k < pairs; k++ {
-		lword := left_changed_words[k]
-		rword := right_changed_words[k]
+	for idx := range left_words {
+		if !left_changed_abs[idx] {
+			continue
+		}
+		lword := left_words[idx]
+		rword := right_words[idx]
 		lt := left[lword.offset : lword.offset+lword.size]
 		rt := right[rword.offset : rword.offset+rword.size]
 		ll, rl := len(lt), len(rt)
@@ -241,14 +252,6 @@ func word_diff_center(left, right string, re *regexp.Regexp) Center {
 		if rsize > 0 {
 			ans.right_regions = append(ans.right_regions, Region{offset: rword.offset + cpfx, size: rsize})
 		}
-	}
-	for k := pairs; k < len(left_changed_words); k++ {
-		w := left_changed_words[k]
-		ans.left_regions = append(ans.left_regions, Region{offset: w.offset, size: w.size})
-	}
-	for k := pairs; k < len(right_changed_words); k++ {
-		w := right_changed_words[k]
-		ans.right_regions = append(ans.right_regions, Region{offset: w.offset, size: w.size})
 	}
 	return ans
 }

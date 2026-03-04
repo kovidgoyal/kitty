@@ -21,9 +21,9 @@ func TestWordDiffCenter(t *testing.T) {
 	}
 	tests := []tc{
 		{
+			// word count equal, single substitution at index 1 → positional pair
+			// "quick" vs "slow": no common chars → full words
 			left: "the quick brown fox", right: "the slow brown fox",
-			// word prefix: "the"; word suffix: "brown fox"
-			// pair "quick" vs "slow": no common char prefix/suffix → full words
 			left_regions:  []Region{{4, 5}},
 			right_regions: []Region{{4, 4}},
 		},
@@ -33,53 +33,65 @@ func TestWordDiffCenter(t *testing.T) {
 			right_regions: nil,
 		},
 		{
+			// word count equal, single substitution at index 1 → positional pair
+			// "bar" vs "qux": no common chars → full words
 			left: "foo bar baz", right: "foo qux baz",
-			// word prefix: "foo"; word suffix: "baz"
-			// pair "bar" vs "qux": no common char prefix/suffix → full words
 			left_regions:  []Region{{4, 3}},
 			right_regions: []Region{{4, 3}},
 		},
 		{
+			// left has 3 words, right has 4 → word counts differ with unmatched
+			// changed words → fall back to changed_center
+			// changed_center gives: offset=4 (common "aaa "), suffix="ccc"(4)
+			// left_size=3 ("bbb"), right_size=7 ("xxx yyy")
 			left: "aaa bbb ccc", right: "aaa xxx yyy ccc",
-			// word prefix: "aaa"; word suffix: "ccc"
-			// left changed: ["bbb"], right changed: ["xxx","yyy"]
-			// pair ("bbb","xxx"): no common chars → full words; "yyy" is excess
 			left_regions:  []Region{{4, 3}},
-			right_regions: []Region{{4, 3}, {8, 3}},
+			right_regions: []Region{{4, 7}},
 		},
 		{
+			// word on left deleted: unmatched changed word → fall back to changed_center
+			// changed_center: prefix="aaa "(4), suffix=" ccc ddd"(8)
+			// left_size=3 ("bbb"), right_size=-1 → nil
 			left: "aaa bbb ccc ddd", right: "aaa ccc ddd",
-			// word prefix: "aaa"; word suffix: "ccc ddd"
-			// left changed: ["bbb"], right changed: [] → pure deletion, full word
 			left_regions:  []Region{{4, 3}},
 			right_regions: nil,
 		},
 		{
-			// word prefix/suffix trimming first, then char-level trimming on the pair
+			// word counts equal, single substitution at index 3 → positional pair
+			// "fox" vs "cat": no common chars → full words
 			left: "the quick brown fox over the lazy dog", right: "the quick brown cat over the lazy dog",
-			// pair "fox" vs "cat": no common char prefix/suffix → full words
 			left_regions:  []Region{{16, 3}},
 			right_regions: []Region{{16, 3}},
 		},
 		{
-			// intra-word char-level trimming: "version1" → "version2"
-			// word prefix: none; word suffix: none
-			// pair "version1" vs "version2": char prefix="version"(7), suffix=""
+			// single word, positional pair with common char prefix "version" (7)
 			left:          "version1",
 			right:         "version2",
 			left_regions:  []Region{{7, 1}},
 			right_regions: []Region{{7, 1}},
 		},
 		{
-			// intra-word char-level trimming embedded in a sentence
-			// word prefix: "update"; word suffix: "done"
-			// pair "prefixABsuffix" vs "prefixCDsuffix":
-			//   char prefix="prefix"(6), char suffix="suffix"(6)
-			//   left highlight: offset=7+6=13, size=2; right same
+			// positional pair at index 1, char prefix="prefix"(6), suffix="suffix"(6)
+			// word at offset 7 → highlight offset 13, size 2
 			left:          "update prefixABsuffix done",
 			right:         "update prefixCDsuffix done",
 			left_regions:  []Region{{13, 2}},
 			right_regions: []Region{{13, 2}},
+		},
+		{
+			// equal word count, multiple positional pairs (all words changed)
+			// each pair has no common chars → full-word regions
+			left: "aaa bbb ccc", right: "xxx yyy zzz",
+			left_regions:  []Region{{0, 3}, {4, 3}, {8, 3}},
+			right_regions: []Region{{0, 3}, {4, 3}, {8, 3}},
+		},
+		{
+			// pure insertion on right side → unmatched changed word → fall back to changed_center
+			// changed_center finds common prefix "aaa bbb ccc" (11 bytes) and suffix "";
+			// left_size=0 (nil), right_size=4 (" ddd" inserted at the end)
+			left: "aaa bbb ccc", right: "aaa bbb ccc ddd",
+			left_regions:  nil,
+			right_regions: []Region{{11, 4}},
 		},
 	}
 	for _, tc := range tests {
