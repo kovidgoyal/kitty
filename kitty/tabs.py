@@ -1164,6 +1164,11 @@ class TabManager:  # {{{
             # focus_tab.
             if (at := self.active_tab) and (w := at.active_window):
                 w.last_focused_at = monotonic()
+        active_tab = self.active_tab
+        for tab in added_tabs:
+            w = tab.active_window
+            for q in tab:
+                q.focus_changed(w is q and tab is active_tab)
 
     @property
     def active_tab_idx(self) -> int:
