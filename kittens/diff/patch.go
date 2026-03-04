@@ -199,16 +199,56 @@ func word_diff_center(left, right string, re *regexp.Regexp) Center {
 		j--
 	}
 
-	var ans Center
+	// Collect the words that were flagged as changed on each side.
+	var left_changed_words, right_changed_words []word
 	for i, changed := range left_changed {
 		if changed {
-			ans.left_regions = append(ans.left_regions, Region{offset: lw[i].offset, size: lw[i].size})
+			left_changed_words = append(left_changed_words, lw[i])
 		}
 	}
 	for i, changed := range right_changed {
 		if changed {
-			ans.right_regions = append(ans.right_regions, Region{offset: rw[i].offset, size: rw[i].size})
+			right_changed_words = append(right_changed_words, rw[i])
 		}
+	}
+
+	// For each positionally paired changed word, apply character-level
+	// prefix/suffix trimming so only the truly differing central bytes are
+	// highlighted.  Unpaired words (pure insertions/deletions) keep their
+	// full-word region.
+	var ans Center
+	pairs := min(len(left_changed_words), len(right_changed_words))
+	for k := 0; k < pairs; k++ {
+		lword := left_changed_words[k]
+		rword := right_changed_words[k]
+		lt := left[lword.offset : lword.offset+lword.size]
+		rt := right[rword.offset : rword.offset+rword.size]
+		ll, rl := len(lt), len(rt)
+		ml := min(ll, rl)
+		cpfx := 0
+		for cpfx < ml && lt[cpfx] == rt[cpfx] {
+			cpfx++
+		}
+		csfx := 0
+		for csfx < ml-cpfx && lt[ll-1-csfx] == rt[rl-1-csfx] {
+			csfx++
+		}
+		lsize := ll - cpfx - csfx
+		rsize := rl - cpfx - csfx
+		if lsize > 0 {
+			ans.left_regions = append(ans.left_regions, Region{offset: lword.offset + cpfx, size: lsize})
+		}
+		if rsize > 0 {
+			ans.right_regions = append(ans.right_regions, Region{offset: rword.offset + cpfx, size: rsize})
+		}
+	}
+	for k := pairs; k < len(left_changed_words); k++ {
+		w := left_changed_words[k]
+		ans.left_regions = append(ans.left_regions, Region{offset: w.offset, size: w.size})
+	}
+	for k := pairs; k < len(right_changed_words); k++ {
+		w := right_changed_words[k]
+		ans.right_regions = append(ans.right_regions, Region{offset: w.offset, size: w.size})
 	}
 	return ans
 }
