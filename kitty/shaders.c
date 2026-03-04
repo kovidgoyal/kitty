@@ -1400,18 +1400,28 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
     // note that during live resize rendering is done in layers
     if (os_window->live_resize.in_progress) blank_os_window(os_window);
     if (os_window->needs_layers) {
-        if (os_window->indirect_output.width != os_window->viewport_width || os_window->indirect_output.height != os_window->viewport_height) {
-            if (os_window->indirect_output.texture_id) free_texture(&os_window->indirect_output.texture_id);
-            if (os_window->indirect_output.framebuffer_id) free_framebuffer(&os_window->indirect_output.framebuffer_id);
+        // Ensure the global shared texture is large enough for this window
+        if (global_state.layers_render_texture.width < os_window->viewport_width ||
+                global_state.layers_render_texture.height < os_window->viewport_height) {
+            if (global_state.layers_render_texture.texture_id) free_texture(&global_state.layers_render_texture.texture_id);
+            if (global_state.layers_render_texture.framebuffer_id) free_framebuffer(&global_state.layers_render_texture.framebuffer_id);
+            unsigned new_w = (unsigned)MAX(global_state.layers_render_texture.width, os_window->viewport_width);
+            unsigned new_h = (unsigned)MAX(global_state.layers_render_texture.height, os_window->viewport_height);
+            setup_texture_as_render_target(new_w, new_h, &global_state.layers_render_texture.texture_id, &global_state.layers_render_texture.framebuffer_id);
+            global_state.layers_render_texture.width = (int)new_w;
+            global_state.layers_render_texture.height = (int)new_h;
+            global_state.layers_render_texture.texture_generation++;
         }
-        if (os_window->indirect_output.texture_id == 0) {
-            os_window->indirect_output.width = os_window->viewport_width;
-            os_window->indirect_output.height = os_window->viewport_height;
-            setup_texture_as_render_target((unsigned) os_window->viewport_width, (unsigned)os_window->viewport_height, &os_window->indirect_output.texture_id, &os_window->indirect_output.framebuffer_id);
+        // Create per-window framebuffer if needed and attach the global texture to it
+        if (!os_window->indirect_output.framebuffer_id) glGenFramebuffers(1, &os_window->indirect_output.framebuffer_id);
+        if (os_window->indirect_output.attached_texture_generation != global_state.layers_render_texture.texture_generation) {
+            bind_framebuffer_for_output(os_window->indirect_output.framebuffer_id);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, global_state.layers_render_texture.texture_id, 0);
+            os_window->indirect_output.attached_texture_generation = global_state.layers_render_texture.texture_generation;
         }
         set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
         bind_framebuffer_for_output(0);
-        save_viewport_using_bottom_left_origin(0, 0, os_window->indirect_output.width, os_window->indirect_output.height);
+        save_viewport_using_bottom_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height);
         clear_current_framebuffer();
         draw_bg_image(os_window, tab);
     }
@@ -1425,8 +1435,10 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window) {
         bind_framebuffer_for_output(0);
         bind_program(BLIT_PROGRAM);
         glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-        glBindTexture(GL_TEXTURE_2D, os_window->indirect_output.texture_id);
-        glUniform4f(blit_program_layout.uniforms.src_rect, 0, 1, 1, 0);
+        glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
+        float sx = global_state.layers_render_texture.width > 0 ? (float)os_window->viewport_width / (float)global_state.layers_render_texture.width : 1.f;
+        float sy = global_state.layers_render_texture.height > 0 ? (float)os_window->viewport_height / (float)global_state.layers_render_texture.height : 1.f;
+        glUniform4f(blit_program_layout.uniforms.src_rect, 0, sy, sx, 0);
         glUniform4f(blit_program_layout.uniforms.dest_rect, -1, 1, 1, -1);
         restore_viewport();
         if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
