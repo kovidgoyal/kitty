@@ -707,6 +707,48 @@ setup_texture_as_render_target(unsigned width, unsigned height, GLuint *texture_
     }
 }
 
+static uint32_t
+get_or_create_indirect_output_texture(int width, int height) {
+    for (size_t i = 0; i < global_state.num_indirect_output_textures; i++) {
+        IndirectOutputTexture *t = &global_state.indirect_output_textures[i];
+        if (t->width == width && t->height == height) return t->texture_id;
+    }
+    // Create texture (and a temporary framebuffer for validation/format detection).
+    GLuint texture_id = 0, temp_fb = 0;
+    setup_texture_as_render_target((unsigned)width, (unsigned)height, &texture_id, &temp_fb);
+    free_framebuffer(&temp_fb);
+    IndirectOutputTexture *tmp = realloc(
+        global_state.indirect_output_textures,
+        (global_state.num_indirect_output_textures + 1) * sizeof(IndirectOutputTexture));
+    if (!tmp) fatal("Out of memory allocating indirect_output_textures");
+    global_state.indirect_output_textures = tmp;
+    global_state.indirect_output_textures[global_state.num_indirect_output_textures++] = (IndirectOutputTexture){
+        .width = width, .height = height, .texture_id = texture_id
+    };
+    return texture_id;
+}
+
+void
+prune_indirect_output_textures(void) {
+    for (size_t i = 0; i < global_state.num_indirect_output_textures; i++) {
+        IndirectOutputTexture *t = &global_state.indirect_output_textures[i];
+        bool needed = false;
+        for (size_t j = 0; j < global_state.num_os_windows; j++) {
+            OSWindow *w = &global_state.os_windows[j];
+            if (w->viewport_width == t->width && w->viewport_height == t->height) {
+                needed = true;
+                break;
+            }
+        }
+        if (!needed) {
+            free_texture(&t->texture_id);
+            // Replace the removed entry with the last entry and re-check index i.
+            global_state.indirect_output_textures[i] = global_state.indirect_output_textures[--global_state.num_indirect_output_textures];
+            i--;
+        }
+    }
+}
+
 static void
 set_cell_uniforms(bool force) {
     static bool constants_set = false;
@@ -1400,14 +1442,21 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
     // note that during live resize rendering is done in layers
     if (os_window->live_resize.in_progress) blank_os_window(os_window);
     if (os_window->needs_layers) {
-        if (os_window->indirect_output.width != os_window->viewport_width || os_window->indirect_output.height != os_window->viewport_height) {
-            if (os_window->indirect_output.texture_id) free_texture(&os_window->indirect_output.texture_id);
+        bool size_changed = os_window->indirect_output.width != os_window->viewport_width ||
+                            os_window->indirect_output.height != os_window->viewport_height;
+        if (size_changed) prune_indirect_output_textures();
+        uint32_t texture_id = get_or_create_indirect_output_texture(os_window->viewport_width, os_window->viewport_height);
+        if (texture_id != os_window->indirect_output.texture_id) {
             if (os_window->indirect_output.framebuffer_id) free_framebuffer(&os_window->indirect_output.framebuffer_id);
-        }
-        if (os_window->indirect_output.texture_id == 0) {
+            GLuint fbo_id = 0;
+            glGenFramebuffers(1, &fbo_id);
+            glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture_id, 0);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            os_window->indirect_output.framebuffer_id = fbo_id;
+            os_window->indirect_output.texture_id = texture_id;
             os_window->indirect_output.width = os_window->viewport_width;
             os_window->indirect_output.height = os_window->viewport_height;
-            setup_texture_as_render_target((unsigned) os_window->viewport_width, (unsigned)os_window->viewport_height, &os_window->indirect_output.texture_id, &os_window->indirect_output.framebuffer_id);
         }
         set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
         bind_framebuffer_for_output(0);

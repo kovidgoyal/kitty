@@ -491,7 +491,6 @@ destroy_os_window_item(OSWindow *w) {
     free(w->tabs); w->tabs = NULL;
     free_bgimage(&w->bgimage, true);
     zero_at_ptr(&w->bgimage);
-    if (w->indirect_output.texture_id) free_texture(&w->indirect_output.texture_id);
     if (w->indirect_output.framebuffer_id) free_framebuffer(&w->indirect_output.framebuffer_id);
 }
 
@@ -506,6 +505,7 @@ remove_os_window(id_type os_window_id) {
         WITH_OS_WINDOW_REFS
             REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, destroy_os_window_item, global_state.capacity);
         END_WITH_OS_WINDOW_REFS
+        prune_indirect_output_textures();
         update_os_window_references();
     }
     return found;

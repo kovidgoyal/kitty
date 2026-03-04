@@ -356,6 +356,11 @@ effective_os_window_alpha(OSWindow *w) {
         1.f : w->background_opacity.alpha;
 }
 
+typedef struct {
+    int width, height;
+    uint32_t texture_id;
+} IndirectOutputTexture;
+
 typedef struct GlobalState {
     Options opts;
 
@@ -403,6 +408,8 @@ typedef struct GlobalState {
         id_type id; bool drag_started;
         double x, y;
     } tab_being_dragged;
+    IndirectOutputTexture *indirect_output_textures;
+    size_t num_indirect_output_textures;
 } GlobalState;
 
 extern GlobalState global_state;
@@ -457,6 +464,7 @@ bool update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *
 void set_gpu_viewport(unsigned w, unsigned h);
 void free_texture(uint32_t*);
 void free_framebuffer(uint32_t*);
+void prune_indirect_output_textures(void);
 void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool, bool, RepeatStrategy);
 void send_sprite_to_gpu(FONTS_DATA_HANDLE fg, sprite_index, pixel*, sprite_index);
 void blank_canvas(float, color_type, bool);
