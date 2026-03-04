@@ -1410,13 +1410,14 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
             setup_texture_as_render_target(new_w, new_h, &global_state.layers_render_texture.texture_id, &global_state.layers_render_texture.framebuffer_id);
             global_state.layers_render_texture.width = (int)new_w;
             global_state.layers_render_texture.height = (int)new_h;
+            global_state.layers_render_texture.texture_generation++;
         }
         // Create per-window framebuffer if needed and attach the global texture to it
         if (!os_window->indirect_output.framebuffer_id) glGenFramebuffers(1, &os_window->indirect_output.framebuffer_id);
-        if (os_window->indirect_output.attached_texture_id != global_state.layers_render_texture.texture_id) {
+        if (os_window->indirect_output.attached_texture_generation != global_state.layers_render_texture.texture_generation) {
             bind_framebuffer_for_output(os_window->indirect_output.framebuffer_id);
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, global_state.layers_render_texture.texture_id, 0);
-            os_window->indirect_output.attached_texture_id = global_state.layers_render_texture.texture_id;
+            os_window->indirect_output.attached_texture_generation = global_state.layers_render_texture.texture_generation;
         }
         set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
         bind_framebuffer_for_output(0);

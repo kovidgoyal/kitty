@@ -312,7 +312,7 @@ typedef struct OSWindow {
     Tab *tabs;
     BackgroundImage *bgimage;
     struct {
-        uint32_t framebuffer_id, attached_texture_id;
+        uint32_t framebuffer_id, attached_texture_generation;
     } indirect_output;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
     bool focused_at_last_render, needs_render, needs_layers;
@@ -403,7 +403,7 @@ typedef struct GlobalState {
         double x, y;
     } tab_being_dragged;
     struct {
-        uint32_t texture_id, framebuffer_id;
+        uint32_t texture_id, framebuffer_id, texture_generation;
         int width, height;
     } layers_render_texture;
 } GlobalState;
