@@ -123,10 +123,6 @@ def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None,
                     print(fmt.format(f), str(getattr(opts, f)))
 
     compare_maps(opts.mousemap, opts.kitty_mod, default_opts.mousemap, default_opts.kitty_mod, print)
-    def as_sc(k: SingleKey, v: KeyDefinition) -> Shortcut:
-        if v.is_sequence:
-            return Shortcut((v.trigger,) + v.rest)
-        return Shortcut((k,))
 
     def as_str(defns: Sequence[KeyDefinition]) -> str:
         seen = set()
@@ -138,10 +134,20 @@ def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None,
                 uniq.append(d)
         return ', '.join(d.human_repr() for d in uniq)
 
+    def build_shortcut_map(km: KeyboardMode) -> ShortcutMap:
+        result: ShortcutMap = {}
+        for defns in km.keymap.values():
+            by_seq: dict[tuple[SingleKey, ...], list[KeyDefinition]] = {}
+            for d in defns:
+                by_seq.setdefault(d.full_key_sequence_to_trigger, []).append(d)
+            for seq, seq_defns in by_seq.items():
+                result[Shortcut(seq)] = as_str(seq_defns)
+        return result
+
     for kmn, initial_ in default_opts.keyboard_modes.items():
-        initial = {as_sc(k, v[0]): as_str(v) for k, v in initial_.keymap.items()}
+        initial = build_shortcut_map(initial_)
         final_ = opts.keyboard_modes.get(kmn, KeyboardMode(kmn))
-        final = {as_sc(k, v[0]): as_str(v) for k, v in final_.keymap.items()}
+        final = build_shortcut_map(final_)
         if not kmn and global_shortcuts:
             for action, sk in global_shortcuts.items():
                 sc = Shortcut((sk,))
@@ -151,9 +157,9 @@ def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None,
     new_keyboard_modes = set(opts.keyboard_modes) - set(default_opts.keyboard_modes)
     for kmn in new_keyboard_modes:
         initial_ = KeyboardMode(kmn)
-        initial = {as_sc(k, v[0]): as_str(v) for k, v in initial_.keymap.items()}
+        initial = build_shortcut_map(initial_)
         final_ = opts.keyboard_modes[kmn]
-        final = {as_sc(k, v[0]): as_str(v) for k, v in final_.keymap.items()}
+        final = build_shortcut_map(final_)
         compare_maps(final, opts.kitty_mod, initial, default_opts.kitty_mod, print, mode_name=kmn)
     if colors:
         print(f'{title("Colors")}:', end='\n\t')
