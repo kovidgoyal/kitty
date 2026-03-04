@@ -832,10 +832,21 @@ HANDLER(handle_button_event) {
     Tab *t = osw->tabs + osw->active_tab;
     bool is_release = !osw->mouse_button_pressed[button];
 
+    if (button == GLFW_MOUSE_BUTTON_LEFT && is_release && osw->suppress_left_mouse_release) {
+        osw->suppress_left_mouse_release = false;
+        return;
+    }
+
     if (handle_scrollbar_mouse(w, button, is_release ? RELEASE : PRESS, modifiers)) return;
 
-    if (window_idx != t->active_window && !is_release) {
+    if (osw->is_focused && window_idx != t->active_window && !is_release) {
         call_boss(switch_focus_to_in_active_tab, "K", t->windows[window_idx].id);
+        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+            // Treat split-focus transfer clicks as focus-only and suppress
+            // the matching release to avoid release-without-press reports.
+            osw->suppress_left_mouse_release = true;
+            return;
+        }
     }
 
     Screen *screen = w->render_data.screen;
