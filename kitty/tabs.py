@@ -1479,6 +1479,10 @@ class TabManager:  # {{{
     def remove(self, removed_tab: Tab) -> None:
         active_tab_before_removal = self.active_tab
         tabs = tuple(self.tabs_to_be_shown_in_tab_bar)
+        try:
+            idx_before_removal = tabs.index(active_tab_before_removal)
+        except Exception:
+            idx_before_removal = -1
         remove_tab(self.os_window_id, removed_tab.id)
         self.tabs.remove(removed_tab)
         while True:
@@ -1529,7 +1533,10 @@ class TabManager:  # {{{
                         next_active_tab = tabs[-1]
                         remove_from_end_of_active_history(next_active_tab)
                 if next_active_tab not in self.tabs:
-                    next_active_tab = self.tabs[max(0, min(self.active_tab_idx, len(self.tabs) - 1))]
+                    if idx_before_removal > -1 and (left_tabs := tuple(t for t in tabs if t is not removed_tab)):
+                        next_active_tab = left_tabs[max(0, min(idx_before_removal, len(left_tabs) - 1))]
+                    else:
+                        next_active_tab = self.tabs[max(0, min(self.active_tab_idx, len(self.tabs) - 1))]
                 self._set_active_tab(self.tabs.index(next_active_tab), store_in_history=False)
         else:
             if len(self.tabs):
