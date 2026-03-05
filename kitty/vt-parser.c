@@ -396,6 +396,7 @@ find_st_terminator(PS *self, size_t *end_pos) {
 // OSC {{{
 
 #include "parse-multicell-command.h"
+#include "parse-dnd-command.h"
 
 static bool
 is_osc_52(PS *self) {
@@ -574,6 +575,8 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
         case TEXT_SIZE_CODE:
             parse_multicell_code(self, buf + i, limit - i);
             break;
+        case DND_CODE:
+            parse_dnd_code(self, buf + i, limit - i); break;
         case 133:
 #ifdef DUMP_COMMANDS
             START_DISPATCH
