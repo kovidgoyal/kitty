@@ -178,6 +178,12 @@ You can also customize what happens when clicking on :term:`hyperlinks` in
 kitty, having it open files in your editor, download remote files, open things
 in your browser, etc. For details, see :doc:`here <open_actions>`.
 
+Additionally, various bits of the kitty UI itself work with the mouse. You can
+drag and drop tabs in the tab bar to re-order them or move them from one OS
+Window to another, or even pop them out into a new OS Window.
+You can drag window borders to resize windows. You can double click on empty regions
+of the tab bar to create new tabs.
+
 .. toctree::
    :hidden:
 
