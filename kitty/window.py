@@ -1209,7 +1209,7 @@ class Window:
             prefilled = ''
         get_boss().get_line(
             _('Enter the new title for this window below. An empty title will cause the default title to be used.'),
-            self.set_title, window=self, initial_value=prefilled)
+            self.set_title, window=self, initial_value=prefilled, window_title=_('Rename window'))
 
     def set_user_var(self, key: str, val: str | bytes | None) -> None:
         key = sanitize_control_codes(key).replace('\n', ' ')

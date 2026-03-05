@@ -1753,20 +1753,24 @@ class TabManager:  # {{{
 
     def handle_window_title_bar_mouse(self, window_id: int, button: int, modifiers: int, action: int) -> None:
         now = monotonic()
-        if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and len(self.recent_title_bar_mouse_events) > 2:
-            ci = get_click_interval()
-            prev, prev2 = self.recent_title_bar_mouse_events[-1], self.recent_title_bar_mouse_events[-2]
-            if (
-                prev.button == button and prev2.button == button and
-                prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
-                prev.tab_id == window_id and prev2.tab_id == window_id and
-                now - prev.at <= ci and now - prev2.at <= 2 * ci
-            ):  # double click on window title bar
-                w = get_boss().window_id_map.get(window_id)
-                if w is not None:
-                    w.set_window_title()
-                self.recent_title_bar_mouse_events.clear()
-                return
+        boss = get_boss()
+        if button == GLFW_MOUSE_BUTTON_LEFT:
+            if action == GLFW_PRESS:
+                if (w := boss.window_id_map.get(window_id)) is not None:
+                    get_boss().set_active_window(w, switch_os_window_if_needed=True)
+            elif action == GLFW_RELEASE and len(self.recent_title_bar_mouse_events) > 2:
+                ci = get_click_interval()
+                prev, prev2 = self.recent_title_bar_mouse_events[-1], self.recent_title_bar_mouse_events[-2]
+                if (
+                    prev.button == button and prev2.button == button and
+                    prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
+                    prev.tab_id == window_id and prev2.tab_id == window_id and
+                    now - prev.at <= ci and now - prev2.at <= 2 * ci
+                ):  # double click on window title bar
+                    if (w := boss.window_id_map.get(window_id)) is not None:
+                        w.set_window_title()
+                    self.recent_title_bar_mouse_events.clear()
+                    return
         self.recent_title_bar_mouse_events.append(TabMouseEvent(button, modifiers, action, now, window_id))
         if len(self.recent_title_bar_mouse_events) > 5:
             self.recent_title_bar_mouse_events.popleft()
