@@ -1508,6 +1508,18 @@ screen_dirty_line_graphics(Screen *self, const unsigned int top, const unsigned 
 }
 
 void
+screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *payload) {
+    if (!self->window_id) return;
+    switch(cmd->type) {
+        case 'a':
+            (void)payload;
+            break;
+        case 'e':
+            break;
+    }
+}
+
+void
 screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload) {
     unsigned int x = self->cursor->x, y = self->cursor->y;
     const char *response = grman_handle_command(self->grman, cmd, payload, self->cursor, &self->is_dirty, self->cell_size);
