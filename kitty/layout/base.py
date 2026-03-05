@@ -369,12 +369,12 @@ class Layout:
         self.blank_rects = []
         # Set show_title_bar flag on each visible window before layout
         opts = get_options()
-        title_bar_enabled = opts.window_title_bar != 'none'
+        min_windows = opts.window_title_bar_min_windows
         visible_groups = list(all_windows.iter_all_layoutable_groups(only_visible=True))
         num_visible = len(visible_groups)
         for wg in visible_groups:
             for w in wg.windows:
-                w.show_title_bar = title_bar_enabled and num_visible > 1
+                w.show_title_bar = min_windows > 0 and num_visible >= min_windows
         self.do_layout(all_windows)
 
     def layout_single_window_group(self, wg: WindowGroup, add_blank_rects: bool = True) -> None:

@@ -1078,8 +1078,8 @@ class Window:
         )
         rendered_title = pts.render(data, progress_percent)
 
-        # If template evaluates to empty/whitespace, zero title bar geometry to hide it
-        if not rendered_title or not rendered_title.strip():
+        # If template evaluates to empty string, zero title bar geometry to hide it
+        if not rendered_title:
             set_window_title_bar_render_data(
                 self.os_window_id, self.tab_id, self.id, pts.screen,
                 0, 0, 0, 0,

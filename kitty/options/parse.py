@@ -1513,7 +1513,10 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for window_title_bar")
         ans["window_title_bar"] = val
 
-    choices_for_window_title_bar = frozenset(('none', 'top', 'bottom'))
+    choices_for_window_title_bar = frozenset(('top', 'bottom'))
+
+    def window_title_bar_min_windows(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['window_title_bar_min_windows'] = positive_int(val)
 
     def window_title_bar_active_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_title_bar_active_background'] = to_color_or_none(val)

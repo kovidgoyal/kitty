@@ -1467,15 +1467,23 @@ actually resize the window itself, but instead, the layout row/column/slot, whic
 in multiple windows getting resized.
 ''')
 
-opt('window_title_bar', 'none',
-    choices=('none', 'top', 'bottom'),
+opt('window_title_bar', 'top',
+    choices=('top', 'bottom'),
     long_text='''
-Show a title bar for each window when there are multiple windows in a tab.
-The title bar displays the window title and is hidden when only a single window
-is visible. The value controls the position of the title bar relative to the
-window content. Set to :code:`none` to disable.
+Control the position of the window title bar relative to the window content.
+Use :opt:`window_title_bar_min_windows` to control when title bars are shown.
 '''
     )
+
+opt('window_title_bar_min_windows', '0',
+    option_type='positive_int',
+    long_text='''
+The minimum number of visible windows in a tab before window title bars
+are shown. A value of :code:`0` means never show. :code:`1` means always
+show. :code:`2` or more means show only when at least that many windows
+are visible. Similar to :opt:`tab_bar_min_tabs` for the tab bar.
+'''
+)
 
 opt('window_title_template', '"{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.window}{progress_percent}{title}"',
     option_type='tab_title_template',

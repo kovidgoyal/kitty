@@ -37,7 +37,7 @@ choices_for_terminfo_type = typing.Literal['path', 'direct', 'none']
 choices_for_undercurl_style = typing.Literal['thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense']
 choices_for_underline_hyperlinks = typing.Literal['hover', 'always', 'never']
 choices_for_window_logo_position = choices_for_placement_strategy
-choices_for_window_title_bar = typing.Literal['none', 'top', 'bottom']
+choices_for_window_title_bar = typing.Literal['top', 'bottom']
 choices_for_window_title_bar_align = choices_for_tab_bar_align
 
 option_names = (
@@ -501,6 +501,7 @@ option_names = (
     'window_resize_step_cells',
     'window_resize_step_lines',
     'window_title_bar',
+    'window_title_bar_min_windows',
     'window_title_bar_active_background',
     'window_title_bar_active_foreground',
     'window_title_bar_align',
@@ -700,7 +701,8 @@ class Options:
     window_padding_width: FloatEdges = FloatEdges(left=0, top=0, right=0, bottom=0)
     window_resize_step_cells: int = 2
     window_resize_step_lines: int = 2
-    window_title_bar: choices_for_window_title_bar = 'none'
+    window_title_bar: choices_for_window_title_bar = 'top'
+    window_title_bar_min_windows: int = 0
     window_title_bar_active_background: kitty.fast_data_types.Color | None = None
     window_title_bar_active_foreground: kitty.fast_data_types.Color | None = None
     window_title_bar_align: choices_for_window_title_bar_align = 'center'
