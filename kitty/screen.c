@@ -1511,11 +1511,8 @@ void
 screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *payload) {
     if (!self->window_id) return;
     switch(cmd->type) {
-        case 'a':
-            (void)payload;
-            break;
-        case 'e':
-            break;
+        case 'a': register_drop_window(self->window_id, payload, cmd->payload_sz, true); break;
+        case 'A': register_drop_window(self->window_id, NULL, 0, false); break;
     }
 }
 
