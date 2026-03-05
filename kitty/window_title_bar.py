@@ -134,7 +134,6 @@ class WindowTitleBarScreen:
         opts = get_options()
         s = self.screen
         s.cursor.x = 0
-        s.erase_in_line(2, False)
 
         is_active = data.is_active
         if is_active:
@@ -181,6 +180,7 @@ class WindowTitleBarScreen:
         title_str = str(title)
         align = opts.window_title_bar_align
 
+        s.erase_in_line(2, False)
         if align == 'left':
             draw_attributed_string(title_str, s)
         else:
