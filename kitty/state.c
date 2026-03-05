@@ -63,7 +63,7 @@ GlobalState global_state = {{0}};
     }}
 
 static double
-dpi_for_os_window(OSWindow *os_window) {
+dpi_for_os_window(const OSWindow *os_window) {
     double dpi = (os_window->fonts_data->logical_dpi_x + os_window->fonts_data->logical_dpi_y) / 2.;
     if (dpi == 0) dpi = (global_state.default_dpi.x + global_state.default_dpi.y) / 2.;
     return dpi;
@@ -84,7 +84,7 @@ dpi_for_os_window_id(id_type os_window_id) {
 }
 
 static long
-pt_to_px_for_os_window(double pt, OSWindow *w) {
+pt_to_px_for_os_window(double pt, const OSWindow *w) {
     const double dpi = dpi_for_os_window(w);
     return ((long)round((pt * (dpi / 72.0))));
 }
@@ -638,7 +638,7 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
 
 
 void
-os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
+os_window_regions(const OSWindow *os_window, Region *central, Region *tab_bar) {
     if (!OPT(tab_bar_hidden) && os_window->num_tabs && !os_window->has_too_few_tabs) {
         long margin_outer = pt_to_px_for_os_window(OPT(tab_bar_margin_height.outer), os_window);
         long margin_inner = pt_to_px_for_os_window(OPT(tab_bar_margin_height.inner), os_window);
