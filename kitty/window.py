@@ -84,6 +84,7 @@ from .fast_data_types import (
     set_window_logo,
     set_window_padding,
     set_window_render_data,
+    set_window_title_bar_render_data,
     update_ime_position_for_window,
     update_pointer_shape,
     update_window_title,
@@ -732,6 +733,8 @@ class Window:
         self.tabref: Callable[[], TabType | None] = weakref.ref(tab)
         self.destroyed = False
         self.geometry: WindowGeometry = WindowGeometry(0, 0, 0, 0, 0, 0)
+        self.show_title_bar: bool = False
+        self._title_bar_screen: Any = None
         self.needs_layout = True
         self.is_visible_in_layout: bool = True
         self.child = child
@@ -977,13 +980,36 @@ class Window:
     def set_geometry(self, new_geometry: WindowGeometry) -> None:
         if self.destroyed:
             return
-        if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
-            self.screen.resize(max(0, new_geometry.ynum), max(0, new_geometry.xnum))
+        # Determine if we need a title bar and compute adjusted dimensions
+        opts = get_options()
+        position = opts.window_title_bar
+        show_tb = self.show_title_bar and new_geometry.ynum > 1
+
+        if show_tb:
+            render_ynum = new_geometry.ynum - 1
+            cell_width, cell_height = cell_size_for_window(self.os_window_id)
+            if position == 'top':
+                render_top = new_geometry.top + cell_height
+                render_bottom = new_geometry.bottom
+                tb_top = new_geometry.top
+                tb_bottom = new_geometry.top + cell_height
+            else:
+                render_top = new_geometry.top
+                render_bottom = new_geometry.bottom - cell_height
+                tb_top = new_geometry.bottom - cell_height
+                tb_bottom = new_geometry.bottom
+        else:
+            render_ynum = new_geometry.ynum
+            render_top = new_geometry.top
+            render_bottom = new_geometry.bottom
+
+        if self.needs_layout or new_geometry.xnum != self.screen.columns or render_ynum != self.screen.lines:
+            self.screen.resize(max(0, render_ynum), max(0, new_geometry.xnum))
             self.needs_layout = False
             call_watchers(weakref.ref(self), 'on_resize', {'old_geometry': self.geometry, 'new_geometry': new_geometry})
         current_pty_size = (
             self.screen.lines, self.screen.columns,
-            max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
+            max(0, new_geometry.right - new_geometry.left), max(0, render_bottom - render_top))
         update_ime_position = False
         if current_pty_size != self.last_reported_pty_size:
             if self._pause_resize_notifications_to_child is None:
@@ -993,13 +1019,77 @@ class Window:
         else:
             mark_os_window_dirty(self.os_window_id)
 
+        # Store original geometry for borders/padding calculations
         self.geometry = g = new_geometry
+        # Set C-side render data with adjusted top/bottom for content area
         set_window_render_data(self.os_window_id, self.tab_id, self.id, self.screen,
-                             g.left, g.top, g.right, g.bottom,
+                             g.left, render_top, g.right, render_bottom,
                              g.spaces.left, g.spaces.top, g.spaces.right, g.spaces.bottom)
         self.update_effective_padding()
+
+        # Handle title bar screen
+        if show_tb:
+            from .window_title_bar import WindowTitleBarScreen
+            if self._title_bar_screen is None:
+                self._title_bar_screen = WindowTitleBarScreen(self.os_window_id, cell_width, cell_height)
+            tb_geom = WindowGeometry(
+                left=g.left, top=tb_top, right=g.right, bottom=tb_bottom,
+                xnum=0, ynum=1,
+            )
+            self._title_bar_screen.layout(tb_geom)
+            set_window_title_bar_render_data(
+                self.os_window_id, self.tab_id, self.id, self._title_bar_screen.screen,
+                tb_geom.left, tb_geom.top, tb_geom.right, tb_geom.bottom,
+            )
+        elif self._title_bar_screen is not None:
+            # Clear title bar render data
+            set_window_title_bar_render_data(
+                self.os_window_id, self.tab_id, self.id, self._title_bar_screen.screen,
+                0, 0, 0, 0,
+            )
+            self._title_bar_screen = None
+
         if update_ime_position:
             update_ime_position_for_window(self.id, True)
+
+    def update_title_bar(self, is_active: bool = False) -> None:
+        pts = self._title_bar_screen
+        if pts is None:
+            return
+        from .progress import ProgressState
+        from .window_title_bar import WindowTitleData
+
+        progress_percent = ''
+        if self.progress.state is not ProgressState.unset:
+            if self.progress.state is ProgressState.indeterminate:
+                progress_percent = '[…] '
+            elif self.progress.percent > 0:
+                progress_percent = f'[{self.progress.percent}%] '
+
+        has_activity = self.has_activity_since_last_focus
+
+        data = WindowTitleData(
+            title=self.title or '',
+            is_active=is_active,
+            window_id=self.id,
+            tab_id=self.tab_id,
+            needs_attention=self.needs_attention,
+            has_activity_since_last_focus=has_activity,
+        )
+        rendered_title = pts.render(data, progress_percent)
+
+        # If template evaluates to empty string, zero title bar geometry to hide it
+        if not rendered_title:
+            set_window_title_bar_render_data(
+                self.os_window_id, self.tab_id, self.id, pts.screen,
+                0, 0, 0, 0,
+            )
+        else:
+            g = pts.geometry
+            set_window_title_bar_render_data(
+                self.os_window_id, self.tab_id, self.id, pts.screen,
+                g.left, g.top, g.right, g.bottom,
+            )
 
     def close(self) -> None:
         get_boss().mark_window_for_close(self)
