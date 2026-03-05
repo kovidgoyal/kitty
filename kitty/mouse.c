@@ -832,9 +832,12 @@ HANDLER(handle_button_event) {
     Tab *t = osw->tabs + osw->active_tab;
     bool is_release = !osw->mouse_button_pressed[button];
 
-    if (button == GLFW_MOUSE_BUTTON_LEFT && is_release && osw->suppress_left_mouse_release) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && osw->suppress_left_mouse_release) {
+        if (is_release) {
+            osw->suppress_left_mouse_release = false;
+            return;
+        }
         osw->suppress_left_mouse_release = false;
-        return;
     }
 
     if (handle_scrollbar_mouse(w, button, is_release ? RELEASE : PRESS, modifiers)) return;
