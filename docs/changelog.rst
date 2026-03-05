@@ -167,6 +167,9 @@ Detailed list of changes
 - Allow dragging window borders to resize kitty windows in all the different
   layouts, controlled by :opt:`window_drag_tolerance` (:pull:`9447`)
 
+- Allow showing :opt:`configurable window titles <window_title_bar>` for individual kitty
+  windows via a window title bar (:pull:`9450`)
+
 - A command palette to browse and trigger all mapped and unmapped actions
   (:pull:`9545`)
 

@@ -813,7 +813,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
             // Prepare window title bar screen data for GPU
             WindowRenderData *trd = &w->window_title_render_data;
-            if (trd->screen) {
+            if (trd->screen && trd->geometry.bottom > trd->geometry.top && trd->geometry.right > trd->geometry.left) {
                 trd->screen->cursor_render_info.is_visible = false;
                 if (send_cell_data_to_gpu(trd->vao_idx, trd->screen, os_window)) needs_render = true;
             }
@@ -878,7 +878,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
             draw_cells(&WD, os_window, is_active_window, false, num_of_visible_windows == 1, w);
             if (WD.screen->start_visual_bell_at != 0) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
             WindowRenderData *trd = &w->window_title_render_data;
-            if (trd->screen && num_visible_windows > 1 && trd->geometry.right > trd->geometry.left && trd->geometry.bottom > trd->geometry.top)
+            if (trd->screen && trd->geometry.right > trd->geometry.left && trd->geometry.bottom > trd->geometry.top)
                 draw_cells(trd, os_window, i == tab->active_window, true, false, NULL);
         }
     }

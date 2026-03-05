@@ -61,7 +61,6 @@ from .typing_compat import EdgeLiteral, SessionTab, SessionType, TypedDict
 from .utils import cmdline_for_hold, color_as_int, log_error, platform_window_id, resolved_shell, shlex_split, which
 from .window import CwdRequest, Watchers, Window, WindowCreationSpec, WindowDict, global_watchers
 from .window_list import WindowList
-from .window_title_bar import WindowTitleBarManager
 
 P = ParamSpec('P')
 T = TypeVar('T')
@@ -171,7 +170,6 @@ class Tab:  # {{{
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or get_options().enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id)
-        self.window_title_bar_manager = WindowTitleBarManager(self.os_window_id, self.id)
         self.windows: WindowList = WindowList(self)
         self._last_used_layout: str | None = None
         self._current_layout_name: str | None = None
@@ -441,8 +439,15 @@ class Tab:  # {{{
         self.name = title or ''
         self.mark_tab_bar_dirty()
 
+    def update_window_title_bars(self) -> None:
+        active_group = self.windows.active_group
+        for wg in self.windows.iter_all_layoutable_groups(only_visible=True):
+            is_active = wg is active_group
+            for w in wg.windows:
+                w.update_title_bar(is_active=is_active)
+
     def title_changed(self, window: Window) -> None:
-        self.window_title_bar_manager.update(self.windows)
+        self.update_window_title_bars()
         if window is self.active_window:
             tm = self.tab_manager_ref()
             if tm is not None:
@@ -471,7 +476,7 @@ class Tab:  # {{{
                 current_layout=ly, tab_bar_rects=tm.tab_bar_rects,
                 draw_window_borders=draw_borders
             )
-            self.window_title_bar_manager.update(self.windows)
+            self.update_window_title_bars()
 
     def create_layout_object(self, name: str) -> Layout:
         return create_layout_object_for(name, self.os_window_id, self.id)

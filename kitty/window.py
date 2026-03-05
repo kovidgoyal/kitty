@@ -659,6 +659,7 @@ class Window:
     creation_spec: WindowCreationSpec | None = None
     created_in_session_name: str = ''
     serialized_id: int = 0
+    show_title_bar: bool = False  # must be set before calling set_geometry
 
     @classmethod
     @contextmanager
@@ -733,7 +734,6 @@ class Window:
         self.tabref: Callable[[], TabType | None] = weakref.ref(tab)
         self.destroyed = False
         self.geometry: WindowGeometry = WindowGeometry(0, 0, 0, 0, 0, 0)
-        self.show_title_bar: bool = False
         self._title_bar_screen: Any = None
         self.needs_layout = True
         self.is_visible_in_layout: bool = True
@@ -1029,8 +1029,8 @@ class Window:
 
         # Handle title bar screen
         if show_tb:
-            from .window_title_bar import WindowTitleBarScreen
             if self._title_bar_screen is None:
+                from .window_title_bar import WindowTitleBarScreen
                 self._title_bar_screen = WindowTitleBarScreen(self.os_window_id, cell_width, cell_height)
             tb_geom = WindowGeometry(
                 left=g.left, top=tb_top, right=g.right, bottom=tb_bottom,
@@ -1053,8 +1053,7 @@ class Window:
             update_ime_position_for_window(self.id, True)
 
     def update_title_bar(self, is_active: bool = False) -> None:
-        pts = self._title_bar_screen
-        if pts is None:
+        if (pts := self._title_bar_screen) is None:
             return
         from .progress import ProgressState
         from .window_title_bar import WindowTitleData
@@ -1076,19 +1075,17 @@ class Window:
             needs_attention=self.needs_attention,
             has_activity_since_last_focus=has_activity,
         )
-        rendered_title = pts.render(data, progress_percent)
-
         # If template evaluates to empty string, zero title bar geometry to hide it
-        if not rendered_title:
-            set_window_title_bar_render_data(
-                self.os_window_id, self.tab_id, self.id, pts.screen,
-                0, 0, 0, 0,
-            )
-        else:
+        if pts.render(data, progress_percent):
             g = pts.geometry
             set_window_title_bar_render_data(
                 self.os_window_id, self.tab_id, self.id, pts.screen,
                 g.left, g.top, g.right, g.bottom,
+            )
+        else:
+            set_window_title_bar_render_data(
+                self.os_window_id, self.tab_id, self.id, pts.screen,
+                0, 0, 0, 0,
             )
 
     def close(self) -> None:

@@ -1472,6 +1472,7 @@ opt('window_title_bar', 'top',
     long_text='''
 Control the position of the window title bar relative to the window content.
 Use :opt:`window_title_bar_min_windows` to control when title bars are shown.
+Use :opt:`window_title_template` to format the displayed window title.
 '''
     )
 

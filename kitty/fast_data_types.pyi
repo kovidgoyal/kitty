@@ -1389,6 +1389,9 @@ class Screen:
     def insert_characters(self, num: int) -> None:
         pass
 
+    def delete_characters(self, num: int) -> None: ...
+    def erase_characters(self, num: int) -> None: ...
+
     def line_edge_colors(self) -> Tuple[int, int]:
         pass
 

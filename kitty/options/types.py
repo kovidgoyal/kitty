@@ -501,12 +501,12 @@ option_names = (
     'window_resize_step_cells',
     'window_resize_step_lines',
     'window_title_bar',
-    'window_title_bar_min_windows',
     'window_title_bar_active_background',
     'window_title_bar_active_foreground',
     'window_title_bar_align',
     'window_title_bar_inactive_background',
     'window_title_bar_inactive_foreground',
+    'window_title_bar_min_windows',
     'window_title_template',
 )
 
@@ -702,12 +702,12 @@ class Options:
     window_resize_step_cells: int = 2
     window_resize_step_lines: int = 2
     window_title_bar: choices_for_window_title_bar = 'top'
-    window_title_bar_min_windows: int = 0
     window_title_bar_active_background: kitty.fast_data_types.Color | None = None
     window_title_bar_active_foreground: kitty.fast_data_types.Color | None = None
     window_title_bar_align: choices_for_window_title_bar_align = 'center'
     window_title_bar_inactive_background: kitty.fast_data_types.Color | None = None
     window_title_bar_inactive_foreground: kitty.fast_data_types.Color | None = None
+    window_title_bar_min_windows: int = 0
     window_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.window}{progress_percent}{title}'
     action_alias: dict[str, str] = {}
     env: dict[str, str] = {}

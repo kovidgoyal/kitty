@@ -1515,9 +1515,6 @@ class Parser:
 
     choices_for_window_title_bar = frozenset(('top', 'bottom'))
 
-    def window_title_bar_min_windows(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['window_title_bar_min_windows'] = positive_int(val)
-
     def window_title_bar_active_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_title_bar_active_background'] = to_color_or_none(val)
 
@@ -1537,6 +1534,9 @@ class Parser:
 
     def window_title_bar_inactive_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_title_bar_inactive_foreground'] = to_color_or_none(val)
+
+    def window_title_bar_min_windows(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['window_title_bar_min_windows'] = positive_int(val)
 
     def window_title_template(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_title_template'] = tab_title_template(val)

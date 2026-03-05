@@ -12,9 +12,9 @@ from .fast_data_types import (
     get_options,
 )
 from .rgb import color_as_sgr, color_from_int, to_color
+from .tab_bar import draw_attributed_string, safe_builtins
 from .types import WindowGeometry, run_once
-from .utils import color_as_int, log_error, sgr_sanitizer_pat
-from .window_list import WindowList
+from .utils import color_as_int, log_error
 
 
 @lru_cache
@@ -28,12 +28,6 @@ def _compile_template(template: str) -> Any:
         return compile('f"""' + template + '"""', '<window_title_template>', 'eval')
     except Exception as e:
         _report_template_failure(template, str(e))
-
-
-safe_builtins = {
-    'max': max, 'min': min, 'str': str, 'repr': repr, 'abs': abs,
-    'len': len, 'chr': chr, 'ord': ord,
-}
 
 
 def _resolve_color(opt_val: Any, fallback_val: Any) -> Any:
@@ -83,17 +77,6 @@ class WindowTitleFormatter:
     nobold = '\x1b[22m'
     italic = '\x1b[3m'
     noitalic = '\x1b[23m'
-
-
-def _draw_attributed_string(title: str, screen: Screen) -> None:
-    if '\x1b' in title:
-        for x in sgr_sanitizer_pat(for_splitting=True).split(title):
-            if x.startswith('\x1b') and x.endswith('m'):
-                screen.apply_sgr(x[2:-1])
-            else:
-                screen.draw(x)
-    else:
-        screen.draw(title)
 
 
 class WindowTitleData(NamedTuple):
@@ -199,45 +182,19 @@ class WindowTitleBarScreen:
         align = opts.window_title_bar_align
 
         if align == 'left':
-            _draw_attributed_string(title_str, s)
+            draw_attributed_string(title_str, s)
         else:
             # Measure the title length by drawing to cursor position 0
             # and checking where the cursor ends up
-            _draw_attributed_string(title_str, s)
+            draw_attributed_string(title_str, s)
             title_len = s.cursor.x
-            s.cursor.x = 0
-            s.erase_in_line(2, False)
-            s.cursor.fg = fg
-            s.cursor.bg = bg
-
             if align == 'center':
                 pad = max(0, (s.columns - title_len) // 2)
             else:  # right
                 pad = max(0, s.columns - title_len)
-
-            for _ in range(pad):
-                s.draw(' ')
-            _draw_attributed_string(title_str, s)
-
-        # Fill remaining cells with background
-        while s.cursor.x < s.columns:
-            s.draw(' ')
-
+            if pad:
+                s.cursor.x = 0
+                s.insert_characters(pad)
+                s.cursor.x = 0
+                s.erase_characters(pad)
         return title_str
-
-
-class WindowTitleBarManager:
-
-    def __init__(self, os_window_id: int, tab_id: int):
-        self.os_window_id = os_window_id
-        self.tab_id = tab_id
-
-    def update(self, all_windows: WindowList) -> None:
-        active_group = all_windows.active_group
-        for wg in all_windows.iter_all_layoutable_groups(only_visible=True):
-            is_active = wg is active_group
-            for w in wg.windows:
-                w.update_title_bar(is_active=is_active)
-
-    def destroy(self) -> None:
-        pass
