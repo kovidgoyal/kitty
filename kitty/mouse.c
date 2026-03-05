@@ -1155,12 +1155,10 @@ void
 mouse_event(const int button, int modifiers, int action) {
     MouseShape old_cursor = mouse_cursor_shape;
     unsigned int window_idx = 0;
-    Window *w = NULL;
-
-    OSWindow *osw = global_state.callback_os_window;
+    Window *w = NULL; OSWindow *osw = global_state.callback_os_window;
 
     if (OPT(debug_keyboard)) {
-        if (button < 0) { debug("%s x: %.1f y: %.1f ", "\x1b[36mMove\x1b[m", global_state.callback_os_window->mouse_x, global_state.callback_os_window->mouse_y); }
+        if (button < 0) { debug("%s x: %.1f y: %.1f ", "\x1b[36mMove\x1b[m", osw->mouse_x, osw->mouse_y); }
         else { debug("%s mouse_button: %d %s", action == GLFW_RELEASE ? "\x1b[32mRelease\x1b[m" : "\x1b[31mPress\x1b[m", button, format_mods(modifiers)); }
     }
     if (global_state.redirect_mouse_handling) {
@@ -1168,7 +1166,7 @@ mouse_event(const int button, int modifiers, int action) {
         call_boss(mouse_event, "OK iiii dd",
                 (r.in_tab_bar ? Py_True : Py_False), (w ? w->id : 0),
                 action, modifiers, button, currently_pressed_button(),
-                global_state.callback_os_window->mouse_x, global_state.callback_os_window->mouse_y
+                osw->mouse_x, osw->mouse_y
         );
         debug("mouse handling redirected\n");
         return;
@@ -1179,7 +1177,7 @@ mouse_event(const int button, int modifiers, int action) {
             if (w) {
                 if (currently_pressed_button() == global_state.active_drag_button) {
                     clamp_to_window = true;
-                    Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+                    Tab *t = osw->tabs + osw->active_tab;
                     for (window_idx = 0; window_idx < t->num_windows && t->windows[window_idx].id != w->id; window_idx++);
                     handle_move_event(w, currently_pressed_button(), modifiers, window_idx);
                     clamp_to_window = false;
@@ -1205,7 +1203,7 @@ mouse_event(const int button, int modifiers, int action) {
                 if (currently_pressed_button() == GLFW_MOUSE_BUTTON_LEFT) {
                     if (w->render_data.screen->modes.mouse_tracking_mode >= MOTION_MODE && w->render_data.screen->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL) {
                         clamp_to_window = true;
-                        Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+                        Tab *t = osw->tabs + osw->active_tab;
                         for (window_idx = 0; window_idx < t->num_windows && t->windows[window_idx].id != w->id; window_idx++);
                         handle_move_event(w, global_state.tracked_drag_button, modifiers, window_idx);
                         clamp_to_window = false;
@@ -1219,7 +1217,7 @@ mouse_event(const int button, int modifiers, int action) {
             if (w && w->render_data.screen->modes.mouse_tracking_mode >= BUTTON_MODE && w->render_data.screen->modes.mouse_tracking_protocol >= SGR_PROTOCOL) {
                 global_state.tracked_drag_in_window = 0;
                 clamp_to_window = true;
-                Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+                Tab *t = osw->tabs + osw->active_tab;
                 for (window_idx = 0; window_idx < t->num_windows && t->windows[window_idx].id != w->id; window_idx++);
                 debug("sent to child as drag end\n");
                 handle_button_event(w, button, modifiers, window_idx);
@@ -1270,7 +1268,7 @@ mouse_event(const int button, int modifiers, int action) {
     } else if (w) {
         debug("grabbed: %d\n", w->render_data.screen->modes.mouse_tracking_mode != 0);
         handle_event(w, button, modifiers, window_idx);
-    } else if (button == GLFW_MOUSE_BUTTON_LEFT && global_state.callback_os_window->mouse_button_pressed[button]) {
+    } else if (button == GLFW_MOUSE_BUTTON_LEFT && osw->mouse_button_pressed[button]) {
         // initial click, clamp it to the closest window
         w = closest_window_for_event(&window_idx);
         if (w) {
