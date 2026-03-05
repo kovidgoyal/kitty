@@ -1400,7 +1400,7 @@ scroll_event(const GLFWScrollEvent *ev) {
         osw->mouse_x = mouse_x * osw->viewport_x_ratio;
         osw->mouse_y = mouse_y * osw->viewport_y_ratio;
     }
-    MouseRegion r = mouse_region(false, false);
+    MouseRegion r = mouse_region(false, true);
     Window *w = r.window;
     if (!w && !r.in_tab_bar) {
         // fallback to last active window
