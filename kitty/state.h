@@ -206,7 +206,7 @@ typedef struct WindowBarData {
 
 typedef struct Window {
     id_type id;
-    bool visible;
+    bool visible, accepts_drops;
     PyObject *title;
     WindowRenderData render_data;
     WindowRenderData window_title_render_data;
