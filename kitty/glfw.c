@@ -765,6 +765,29 @@ read_drop_data(GLFWwindow *window, GLFWDropEvent *ev) {
 #undef finish
 }
 
+void
+register_drop_window(id_type window_id, const uint8_t *payload, size_t payload_sz, bool on) {
+    Window *w = window_for_window_id(window_id);
+    OSWindow *osw = os_window_for_kitty_window(window_id);
+    if (w && osw && osw->handle) {
+        w->accepts_drops = on;
+        if (on && payload && payload_sz) {
+#ifdef __APPLE__
+            RAII_ALLOC(char, copy, malloc(payload_sz + 1)); if (!copy) return;
+            RAII_ALLOC(const char*, mimes, calloc(payload_sz, sizeof(char*))); if (!mimes) return;
+            memcpy(copy, payload, payload_sz); copy[payload_sz] = 0;
+            size_t num = 0;
+            char* token = strtok(copy, " ");
+            while (token != NULL) {
+                mimes[num++] = token;
+                token = strtok(NULL, " ");
+            }
+            glfwCocoaRegisterMIMETypes(osw->handle, mimes, num);
+#endif
+        }
+    }
+}
+
 static void
 on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
     if (!set_callback_window(window)) return;
