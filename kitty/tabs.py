@@ -1725,6 +1725,19 @@ class TabManager:  # {{{
                 else:
                     drag_started = get_tab_being_dragged()[1]
                     if not drag_started:
+                        if len(self.recent_mouse_events) > 2:
+                            ci = get_click_interval()
+                            prev, prev2 = self.recent_mouse_events[-1], self.recent_mouse_events[-2]
+                            if (
+                                prev.button == button and prev2.button == button and
+                                prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
+                                prev.tab_id == tab.id and prev2.tab_id == tab.id and
+                                now - prev.at <= ci and now - prev2.at <= 2 * ci
+                            ):  # double click on tab
+                                get_boss().set_tab_title()
+                                self.recent_mouse_events.clear()
+                                set_tab_being_dragged()
+                                return
                         self.set_active_tab(tab)
                         set_tab_being_dragged()
             elif button == GLFW_MOUSE_BUTTON_MIDDLE:
