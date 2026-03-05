@@ -1126,6 +1126,7 @@ class TabManager:  # {{{
         self.wm_class = wm_class
         self.created_in_session_name = startup_session.session_name if startup_session else ''
         self.recent_mouse_events: Deque[TabMouseEvent] = deque()
+        self.recent_title_bar_mouse_events: Deque[TabMouseEvent] = deque()
         self.wm_name = wm_name
         self.args = args
         self.tab_bar_hidden = get_options().tab_bar_style == 'hidden'
@@ -1749,6 +1750,26 @@ class TabManager:  # {{{
         self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, tab.id if tab else 0))
         if len(self.recent_mouse_events) > 5:
             self.recent_mouse_events.popleft()
+
+    def handle_window_title_bar_mouse(self, window_id: int, button: int, modifiers: int, action: int) -> None:
+        now = monotonic()
+        if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and len(self.recent_title_bar_mouse_events) > 2:
+            ci = get_click_interval()
+            prev, prev2 = self.recent_title_bar_mouse_events[-1], self.recent_title_bar_mouse_events[-2]
+            if (
+                prev.button == button and prev2.button == button and
+                prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
+                prev.tab_id == window_id and prev2.tab_id == window_id and
+                now - prev.at <= ci and now - prev2.at <= 2 * ci
+            ):  # double click on window title bar
+                w = get_boss().window_id_map.get(window_id)
+                if w is not None:
+                    w.set_window_title()
+                self.recent_title_bar_mouse_events.clear()
+                return
+        self.recent_title_bar_mouse_events.append(TabMouseEvent(button, modifiers, action, now, window_id))
+        if len(self.recent_title_bar_mouse_events) > 5:
+            self.recent_title_bar_mouse_events.popleft()
 
     def update_progress(self) -> None:
         self.num_of_windows_with_progress = 0

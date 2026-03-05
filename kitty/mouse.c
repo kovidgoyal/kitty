@@ -891,6 +891,14 @@ HANDLER(handle_event) {
 }
 
 static void
+handle_window_title_bar_mouse(Window *w, int button, int modifiers, int action) {
+    OSWindow *osw = global_state.callback_os_window;
+    if (osw && button > -1) {
+        call_boss(handle_window_title_bar_mouse, "KKiii", osw->id, w->id, button, modifiers, action);
+    }
+}
+
+static void
 handle_tab_bar_mouse(int button, int modifiers, int action) {
     set_currently_hovered_window(0, modifiers);
     OSWindow *w = global_state.callback_os_window;
@@ -1035,8 +1043,10 @@ focus_in_event(void) {
 void
 update_mouse_pointer_shape(void) {
     mouse_cursor_shape = TEXT_POINTER;
-    MouseRegion r = mouse_region(false, false);
+    MouseRegion r = mouse_region(false, true);
     if (r.in_tab_bar) {
+        mouse_cursor_shape = POINTER_POINTER;
+    } else if (r.in_title_bar) {
         mouse_cursor_shape = POINTER_POINTER;
     } else if (r.window) {
         if (handle_scrollbar_mouse(r.window, -1, MOVE, 0)) {
@@ -1075,7 +1085,7 @@ enter_event(int modifiers) {
     MouseRegion r = mouse_region(false, false);
     Window *w = r.window;
     set_currently_hovered_window(w ? w->id : 0, modifiers);
-    if (!w || r.in_tab_bar) return;
+    if (!w || r.in_tab_bar || r.in_title_bar) return;
 
     if (handle_scrollbar_mouse(w, -1, MOVE, modifiers)) return;
 
@@ -1250,13 +1260,17 @@ mouse_event(const int button, int modifiers, int action) {
         }
         return;
     }
-    MouseRegion r = mouse_region(true, false);
+    MouseRegion r = mouse_region(true, true);
     set_currently_hovered_window(w ? w->id : 0, modifiers);
 
     if (r.in_tab_bar || global_state.tab_being_dragged.id) {
         mouse_cursor_shape = POINTER_POINTER;
         handle_tab_bar_mouse(button, modifiers, action);
         debug("handled by tab bar\n");
+    } else if (r.in_title_bar && r.window) {
+        mouse_cursor_shape = POINTER_POINTER;
+        handle_window_title_bar_mouse(r.window, button, modifiers, action);
+        debug("handled by window title bar\n");
     } else if (r.window_border) {
         debug("window border: %s window id: %llu\n", border_name(r.window_border), w ? w->id : 0);
         if (r.window_border & LEFT_EDGE) {

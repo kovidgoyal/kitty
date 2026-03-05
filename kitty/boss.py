@@ -1385,6 +1385,10 @@ class Boss:
             run_update_check(get_options().update_check_interval * 60 * 60)
             self.update_check_started = True
 
+    def handle_window_title_bar_mouse(self, os_window_id: int, window_id: int, button: int, modifiers: int, action: int) -> None:
+        if tm := self.os_window_map.get(os_window_id):
+            tm.handle_window_title_bar_mouse(window_id, button, modifiers, action)
+
     def handle_tab_bar_mouse(self, os_window_id: int, x: float, y: float, button: int, modifiers: int, action: int) -> None:
         if tm := self.os_window_map.get(os_window_id):
             tm.handle_tab_bar_mouse(x, y, button, modifiers, action)
