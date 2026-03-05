@@ -182,7 +182,8 @@ Additionally, various bits of the kitty UI itself work with the mouse. You can
 drag and drop tabs in the tab bar to re-order them or move them from one OS
 Window to another, or even pop them out into a new OS Window.
 You can drag window borders to resize windows. You can double click on empty regions
-of the tab bar to create new tabs.
+of the tab bar to create new tabs or double click on an existing tab to rename
+it.
 
 .. toctree::
    :hidden:

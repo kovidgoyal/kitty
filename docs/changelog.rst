@@ -267,6 +267,8 @@ Detailed list of changes
 - Make shift+left click extend the current selection instead of starting a new
   selection when the mouse is not grabbed by the TUI application (:disc:`9608`)
 
+- Allow double clicking on a tab to rename it (:pull:`9609`)
+
 
 0.45.0 [2025-12-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

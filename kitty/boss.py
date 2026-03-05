@@ -1228,7 +1228,8 @@ class Boss:
         window: Window | None = None,  # the window associated with the confirmation
         prompt: str = '> ',
         is_password: bool = False,
-        initial_value: str = ''
+        initial_value: str = '',
+        window_title: str = '',
     ) -> None:
         result: str = ''
 
@@ -1242,6 +1243,8 @@ class Boss:
         cmd = ['--type', 'password' if is_password else 'line', '--message', msg, '--prompt', prompt]
         if initial_value:
             cmd.append('--default=' + initial_value)
+        if window_title:
+            cmd.append(f'--title={window_title}')
         self.run_kitten_with_metadata(
             'ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''}, action_on_removal=on_popup_overlay_removal
         )
@@ -2340,7 +2343,7 @@ class Boss:
                 prefilled = ''
             self.get_line(
                 _('Enter the new title for this tab below. An empty title will cause the default title to be used.'),
-                tab.set_title, window=tab.active_window, initial_value=prefilled)
+                tab.set_title, window=tab.active_window, initial_value=prefilled, window_title=_('Rename tab'))
 
     def create_special_window_for_show_error(self, title: str, msg: str, overlay_for: int | None = None) -> SpecialWindowInstance:
         ec = sys.exc_info()

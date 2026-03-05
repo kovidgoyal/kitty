@@ -1734,6 +1734,7 @@ class TabManager:  # {{{
                                 prev.tab_id == tab.id and prev2.tab_id == tab.id and
                                 now - prev.at <= ci and now - prev2.at <= 2 * ci
                             ):  # double click on tab
+                                self.set_active_tab(tab)
                                 get_boss().set_tab_title()
                                 self.recent_mouse_events.clear()
                                 set_tab_being_dragged()
