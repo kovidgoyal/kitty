@@ -983,6 +983,14 @@ boundary, use :code:`move-end` instead of :code:`extend`.
 '''
     )
 
+mma('Extend the current selection with shift',
+    'extend_selection_shift shift+left press ungrabbed mouse_selection extend',
+    long_text='''
+If you want only the end of the selection to be moved instead of the nearest
+boundary, use :code:`move-end` instead of :code:`extend`.
+'''
+    )
+
 mma('Paste from the primary selection even when grabbed',
     'paste_selection_grabbed shift+middle release ungrabbed,grabbed paste_selection',
     )
@@ -992,7 +1000,7 @@ mma('Discard press event for middle click paste',
     )
 
 mma('Start selecting text even when grabbed',
-    'start_simple_selection_grabbed shift+left press ungrabbed,grabbed mouse_selection normal',
+    'start_simple_selection_grabbed shift+left press grabbed mouse_selection normal',
     )
 
 mma('Start selecting text in a rectangle even when grabbed',

@@ -1090,6 +1090,8 @@ defaults.mouse_map = [
     MouseMapping(mods=6, repeat_count=3, definition='mouse_selection line_from_point'),
     # extend_selection
     MouseMapping(button=1, definition='mouse_selection extend'),
+    # extend_selection_shift
+    MouseMapping(mods=1, definition='mouse_selection extend'),
     # paste_selection_grabbed
     MouseMapping(button=2, mods=1, repeat_count=-1, grabbed=True, definition='paste_selection'),
     # paste_selection_grabbed
@@ -1098,8 +1100,6 @@ defaults.mouse_map = [
     MouseMapping(button=2, mods=1, grabbed=True, definition='discard_event'),
     # start_simple_selection_grabbed
     MouseMapping(mods=1, grabbed=True, definition='mouse_selection normal'),
-    # start_simple_selection_grabbed
-    MouseMapping(mods=1, definition='mouse_selection normal'),
     # start_rectangle_selection_grabbed
     MouseMapping(mods=7, grabbed=True, definition='mouse_selection rectangle'),
     # start_rectangle_selection_grabbed
