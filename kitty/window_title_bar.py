@@ -9,11 +9,8 @@ from .constants import config_dir
 from .fast_data_types import (
     DECAWM,
     Screen,
-    cell_size_for_window,
     get_options,
-    set_window_title_bar_render_data,
 )
-from .progress import ProgressState
 from .rgb import color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
 from .utils import color_as_int, log_error, sgr_sanitizer_pat
@@ -150,7 +147,7 @@ class WindowTitleBarScreen:
         self.screen.resize(1, ncells)
         self.geometry = geometry
 
-    def render(self, data: WindowTitleData, progress_percent: str) -> None:
+    def render(self, data: WindowTitleData, progress_percent: str) -> str:
         opts = get_options()
         s = self.screen
         s.cursor.x = 0
@@ -226,122 +223,21 @@ class WindowTitleBarScreen:
         while s.cursor.x < s.columns:
             s.draw(' ')
 
+        return title_str
+
 
 class WindowTitleBarManager:
 
     def __init__(self, os_window_id: int, tab_id: int):
         self.os_window_id = os_window_id
         self.tab_id = tab_id
-        self._screens: dict[int, WindowTitleBarScreen] = {}
-
-    def _clear_all(self) -> None:
-        for wid, pts in self._screens.items():
-            # Zero geometry so the C render loop skips drawing
-            set_window_title_bar_render_data(
-                self.os_window_id, self.tab_id, wid, pts.screen,
-                0, 0, 0, 0,
-            )
-        self._screens.clear()
 
     def update(self, all_windows: WindowList) -> None:
-        opts = get_options()
-        position = opts.window_title_bar
-        if position == 'none':
-            if self._screens:
-                self._clear_all()
-            return
-
-        visible_groups = list(all_windows.iter_all_layoutable_groups(only_visible=True))
-        if len(visible_groups) < 2:
-            if self._screens:
-                self._clear_all()
-            return
-
-        cell_width, cell_height = cell_size_for_window(self.os_window_id)
         active_group = all_windows.active_group
-        seen_window_ids: set[int] = set()
-
-        for wg in visible_groups:
-            geom = wg.geometry
-            if geom is None:
-                continue
-
-            window = wg.windows[-1] if wg.windows else None
-            if window is None:
-                continue
-
-            # Validate geometry has enough space for a title bar
-            if geom.right <= geom.left or geom.bottom <= geom.top:
-                continue
-            if position == 'top' and geom.top < cell_height:
-                continue
-            if position == 'bottom' and geom.bottom + cell_height < geom.bottom:  # overflow check
-                continue
-
-            wid = window.id
-            seen_window_ids.add(wid)
-
-            if wid not in self._screens:
-                self._screens[wid] = WindowTitleBarScreen(self.os_window_id, cell_width, cell_height)
-
-            pts = self._screens[wid]
-
-            # Calculate title bar geometry
-            if position == 'top':
-                title_geom = WindowGeometry(
-                    left=geom.left,
-                    top=geom.top - cell_height,
-                    right=geom.right,
-                    bottom=geom.top,
-                    xnum=0, ynum=1,
-                )
-            else:
-                title_geom = WindowGeometry(
-                    left=geom.left,
-                    top=geom.bottom,
-                    right=geom.right,
-                    bottom=geom.bottom + cell_height,
-                    xnum=0, ynum=1,
-                )
-
-            pts.layout(title_geom)
-
+        for wg in all_windows.iter_all_layoutable_groups(only_visible=True):
             is_active = wg is active_group
-
-            # Get bell/activity state from the window object
-            needs_attention = getattr(window, 'needs_attention', False)
-            has_activity = getattr(window, 'has_activity_since_last_focus', False)
-            if callable(has_activity):
-                has_activity = has_activity()
-
-            # Get progress info
-            progress_percent = ''
-            progress = getattr(window, 'progress', None)
-            if progress is not None and progress.state is not ProgressState.unset:
-                if progress.state is ProgressState.indeterminate:
-                    progress_percent = '[…] '
-                elif progress.percent > 0:
-                    progress_percent = f'[{progress.percent}%] '
-
-            data = WindowTitleData(
-                title=window.title or '',
-                is_active=is_active,
-                window_id=wid,
-                tab_id=self.tab_id,
-                needs_attention=needs_attention,
-                has_activity_since_last_focus=has_activity,
-            )
-            pts.render(data, progress_percent)
-
-            set_window_title_bar_render_data(
-                self.os_window_id, self.tab_id, wid, pts.screen,
-                title_geom.left, title_geom.top, title_geom.right, title_geom.bottom,
-            )
-
-        # Clean up screens for windows that are no longer visible
-        stale = set(self._screens) - seen_window_ids
-        for wid in stale:
-            del self._screens[wid]
+            for w in wg.windows:
+                w.update_title_bar(is_active=is_active)
 
     def destroy(self) -> None:
-        self._screens.clear()
+        pass
