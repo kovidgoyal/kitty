@@ -938,22 +938,6 @@ mouse_region(bool detect_borders, bool detect_title_bar) {
     }
     if (in_central && w->num_tabs > 0) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
-        if (detect_title_bar) {
-            for (unsigned int i = 0; i < t->num_windows; i++) {
-                Window *win = t->windows + i;
-                if (!win->visible) continue;
-                const WindowRenderData *trd = &win->window_title_render_data;
-                if (trd->screen && trd->geometry.right > trd->geometry.left && trd->geometry.bottom > trd->geometry.top) {
-                    if (w->mouse_x >= trd->geometry.left && w->mouse_x < trd->geometry.right &&
-                            w->mouse_y >= trd->geometry.top && w->mouse_y < trd->geometry.bottom) {
-                        ans.in_title_bar = true;
-                        ans.window = win;
-                        ans.window_idx = i;
-                        return ans;
-                    }
-                }
-            }
-        }
         if (detect_borders && num_visible_windows(t) > 1) {
             id_type window_id = 0;
             double dpi = (w->fonts_data->logical_dpi_x + w->fonts_data->logical_dpi_y) / 2.;
@@ -1001,8 +985,18 @@ mouse_region(bool detect_borders, bool detect_title_bar) {
             }
         }
         for (unsigned int i = 0; i < t->num_windows; i++) {
-            if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
-                ans.window_idx = i; ans.window = t->windows + i;
+            Window *win = t->windows + i;
+            if (contains_mouse(win) && win->render_data.screen) {
+                ans.window_idx = i; ans.window = win; break;
+            } else if (detect_title_bar && win->visible) {
+                const WindowRenderData *trd = &win->window_title_render_data;
+                if (trd->screen && trd->geometry.right > trd->geometry.left && trd->geometry.bottom > trd->geometry.top) {
+                    if (w->mouse_x >= trd->geometry.left && w->mouse_x < trd->geometry.right &&
+                            w->mouse_y >= trd->geometry.top && w->mouse_y < trd->geometry.bottom) {
+                        ans.in_title_bar = true; ans.window = win; ans.window_idx = i;
+                        break;
+                    }
+                }
             }
         }
     }
