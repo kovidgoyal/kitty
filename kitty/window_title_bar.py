@@ -177,24 +177,13 @@ class WindowTitleBarScreen:
             _report_template_failure(template, str(e))
             title = data.title
 
-        title_str = str(title)
         align = opts.window_title_bar_align
-
         s.erase_in_line(2, False)
-        if align == 'left':
-            draw_attributed_string(title_str, s)
-        else:
-            # Measure the title length by drawing to cursor position 0
-            # and checking where the cursor ends up
-            draw_attributed_string(title_str, s)
-            title_len = s.cursor.x
-            if align == 'center':
-                pad = max(0, (s.columns - title_len) // 2)
-            else:  # right
-                pad = max(0, s.columns - title_len)
-            if pad:
-                s.cursor.x = 0
-                s.insert_characters(pad)
-                s.cursor.x = 0
-                s.erase_characters(pad)
+        draw_attributed_string((title_str := str(title)), s)
+        title_len = s.cursor.x
+        if align != 'left' and (pad := max(0, (s.columns - title_len) // (2 if align == 'center' else 1))):
+            s.cursor.x = 0
+            s.insert_characters(pad)
+            s.cursor.x = 0
+            s.erase_characters(pad)
         return title_str
