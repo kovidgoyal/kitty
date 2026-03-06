@@ -44,11 +44,18 @@ string_arrays_cmp(const char **a, size_t an, const char **b, size_t bn) {
 }
 
 static size_t
-send_payload_to_child(id_type id, const char *header, size_t header_sz, const char *data, size_t data_sz) {
+send_payload_to_child(id_type id, const char *header, size_t header_sz, const char *data, const size_t data_sz) {
     size_t offset = 0;
     char buf[4096 + 1024];
     memcpy(buf, header, header_sz);
     buf[header_sz++] = ':'; buf[header_sz++] = 'm'; buf[header_sz++] = '=';
+    if (!data_sz) {
+        buf[header_sz++] = 0x1b; buf[header_sz++] = '\\';
+        bool found, too_much_data;
+        schedule_write_to_child_if_possible(id, buf, header_sz, &found, &too_much_data);
+        if (too_much_data) return 0;
+        return 1;
+    }
     while (offset < data_sz) {
         size_t chunk = data_sz - offset;
         size_t p = header_sz;
@@ -79,7 +86,8 @@ flush_pending(id_type id, PendingData *pending) {
             }
             break;
         } else {
-            free(e->buf);
+            if (!e->data_sz && !written) break;
+            free(e->buf); zero_at_ptr(e);
             remove_i_from_array(pending->items, 0, pending->count);
         }
     }
@@ -90,7 +98,7 @@ static void
 queue_payload_to_child(id_type id, PendingData *pending, const char *header, size_t header_sz, const char *data, size_t data_sz) {
     size_t offset = 0;
     if (flush_pending(id, pending)) offset = send_payload_to_child(id, header, header_sz, data, data_sz);
-    if (offset < data_sz) {
+    if (offset < data_sz || (!offset && !data_sz)) {
         ensure_space_for(pending, items, PendingEntry, pending->count + 1, capacity, 32, true);
         char *buf = malloc(header_sz + data_sz - offset);
         if (!buf) fatal("Out of memory");
@@ -143,5 +151,16 @@ drop_move_on_child(Window *w, const char** mimes, size_t num_mimes) {
         buf[header_size++] = 0x1b; buf[header_size++] = '\\';
         bool found, too_much_data;
         schedule_write_to_child_if_possible(w->id, buf, header_size, &found, &too_much_data);
+    }
+}
+
+void
+drop_left_child(Window *w) {
+    w->drop.hovered = false;
+    drop_free_offered_mimes(w);
+    if (w->drop.allowed) {
+        char buf[128];
+        int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;i=%u:t=m:x=-1:y=-1", DND_CODE, w->drop.client_id);
+        queue_payload_to_child(w->id, &w->drop.pending, buf, header_size, NULL, 0);
     }
 }

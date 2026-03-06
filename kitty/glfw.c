@@ -772,13 +772,17 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
     if (!set_callback_window(window)) return;
     OSWindow *os_window = global_state.callback_os_window;
     Window *w = NULL;
+    bool is_kitty_ui_drag = false;
+    for (size_t i = 0; i < ev->num_mimes; i++) {
+        if (is_droppable_mime(ev->mimes[i]) >= TAB_DRAG_MIME_NUMBER) { is_kitty_ui_drag = true; break;}
+    }
     switch (ev->type) {
         case GLFW_DROP_ENTER:
         case GLFW_DROP_MOVE:
             os_window->last_drag_event.x = (int)(ev->xpos * os_window->viewport_x_ratio);
             os_window->last_drag_event.y = (int)(ev->ypos * os_window->viewport_y_ratio);
             on_mouse_position_update(ev->xpos, ev->ypos);
-            if (global_state.mouse_hover_in_window && (w = window_for_window_id(global_state.mouse_hover_in_window)) && w->drop.allowed) {
+            if (!is_kitty_ui_drag && global_state.mouse_hover_in_window && (w = window_for_window_id(global_state.mouse_hover_in_window)) && w->drop.allowed) {
                 drop_move_on_child(w, ev->mimes, ev->num_mimes);
                 return;
             }
@@ -787,9 +791,18 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
                 ev->from_self ? Py_True : Py_False, Py_False);
             /* fallthrough */
         case GLFW_DROP_STATUS_UPDATE:
-            update_allowed_mimes_for_drop(ev);
+            if (is_kitty_ui_drag) update_allowed_mimes_for_drop(ev);
+            else {
+            }
             break;
         case GLFW_DROP_LEAVE:
+            for (size_t tc = 0; tc < os_window->num_tabs; tc++) {
+                Tab *t = os_window->tabs + tc;
+                for (size_t i = 0; i < t->num_windows; i++) {
+                    Window *w = t->windows + i;
+                    if (w->drop.hovered) drop_left_child(w);
+                }
+            }
             call_boss(on_drop_move, "KiiOO",
                 os_window->id, os_window->last_drag_event.x, os_window->last_drag_event.y,
                 ev->from_self ? Py_True : Py_False, Py_True);
