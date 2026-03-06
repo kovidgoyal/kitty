@@ -246,7 +246,7 @@ typedef struct Window {
         bool is_hovering;
     } scrollbar;
     struct {
-        bool wanted, hovered;
+        bool wanted, hovered, dropped;
         uint32_t client_id;
         PendingData pending;
 
