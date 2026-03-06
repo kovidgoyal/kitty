@@ -224,6 +224,7 @@ IGNORED_DEPENDENCY_CVES = [
     'CVE-2025-15367',
     'CVE-2025-12781',
     'CVE-2025-11468',
+    'CVE-2026-2297',
     # github.com/nwaples/rardecode/v2
     'CVE-2025-11579', # rardecode is version 2.2.1, not vulnerable
 ]
