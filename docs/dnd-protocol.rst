@@ -24,7 +24,9 @@ their metadata. Each chunk must have a payload of no more than 4096 base64
 encoded bytes without trailing padding, except the last chunk which may
 optionally have trailing padding. Only the first chunk is guaranteed to have
 metadata other than the ``m`` key. Subsequent chunks may optionally omit all
-metadata except the ``m`` and ``i`` keys.
+metadata except the ``m`` and ``i`` keys. While a chunked transfer is in
+progress it is a protocol error to for the sending side to
+send any protocol related escape codes other than chunked ones.
 
 All integer values used in this escape code must be 32-bit signed or unsigned
 integers encoded in decimal representation.
