@@ -334,6 +334,11 @@ def parsers() -> None:
         't': ('type', flag('aA')),
         'm': ('more', 'uint'),
         'i': ('client_id', 'uint'),
+        'o': ('operation', 'uint'),
+        'x': ('cell_x', 'int'),
+        'y': ('cell_y', 'int'),
+        'X': ('pixel_x', 'int'),
+        'Y': ('pixel_y', 'int'),
     }
     text = generate(
         'parse_dnd_code', 'screen_handle_dnd_command', 'dnd_command', keymap, 'DnDCommand',
