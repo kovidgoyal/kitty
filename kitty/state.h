@@ -204,9 +204,18 @@ typedef struct WindowBarData {
     bool needs_render;
 } WindowBarData;
 
+typedef struct PendingEntry {
+    char *buf; size_t header_sz;
+    size_t data_sz;
+} PendingEntry;
+
+typedef struct PendingData {
+    PendingEntry *items; size_t count, capacity;
+} PendingData;
+
 typedef struct Window {
     id_type id;
-    bool visible, accepts_drops;
+    bool visible;
     PyObject *title;
     WindowRenderData render_data;
     WindowRenderData window_title_render_data;
@@ -236,6 +245,12 @@ typedef struct Window {
         double drag_start_scrolled_by;
         bool is_hovering;
     } scrollbar;
+    struct {
+        bool allowed, hovered;
+        uint32_t client_id;
+        const char **offerred_mimes; size_t num_offerred_mimes;
+        PendingData pending;
+    } drop;
 } Window;
 
 typedef struct BorderRect {

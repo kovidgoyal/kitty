@@ -321,9 +321,10 @@ add_child(ChildMonitor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-#define schedule_write_to_child_generic(id, num, va_start, get_next_arg, va_end) \
+static const unsigned write_buf_limit = 100 * 1024 * 1024;
+
+#define schedule_write_to_child_generic(id, num, va_start, get_next_arg, va_end, found, too_much_data) \
     ChildMonitor *self = the_monitor; \
-    bool found = false; \
     const char *data; \
     size_t szval, sz = 0; \
     va_start(ap, num); \
@@ -339,8 +340,8 @@ add_child(ChildMonitor *self, PyObject *args) {
             screen_mutex(lock, write); \
             size_t space_left = screen->write_buf_sz - screen->write_buf_used; \
             if (space_left < sz) { \
-                if (screen->write_buf_used + sz > 100 * 1024 * 1024) { \
-                    log_error("Too much data being sent to child with id: %lu, ignoring it", id); \
+                if (screen->write_buf_used + sz > write_buf_limit) { \
+                    too_much_data = true; \
                     screen_mutex(unlock, write); \
                     break; \
                 } \
@@ -366,19 +367,57 @@ add_child(ChildMonitor *self, PyObject *args) {
             break; \
         } \
     } \
-    children_mutex(unlock); \
-    return found;
+    children_mutex(unlock);
 
-bool
-schedule_write_to_child(unsigned long id, unsigned int num, ...) {
-    va_list ap;
-#define get_next_arg(ap) data = va_arg(ap, const char*); szval = va_arg(ap, size_t);
-    schedule_write_to_child_generic(id, num, va_start, get_next_arg, va_end);
-#undef get_next_arg
+void
+schedule_write_to_child_if_possible(id_type id, const char *data, size_t sz, bool *found, bool *too_much_data) {
+    children_mutex(lock);
+    ChildMonitor *self = the_monitor;
+    *found = false; *too_much_data = false;
+    for (size_t i = 0; i < self->count; i++) {
+        if (children[i].id == id) {
+            Screen *screen = children[i].screen;
+            screen_mutex(lock, write);
+            size_t space_left = screen->write_buf_sz - screen->write_buf_used;
+            if (space_left < sz) {
+                if (screen->write_buf_used + sz > write_buf_limit) {
+                    *too_much_data = true;
+                    screen_mutex(unlock, write);
+                    break;
+                }
+                screen->write_buf_sz = screen->write_buf_used + sz;
+                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
+                if (screen->write_buf == NULL) { fatal("Out of memory."); }
+            }
+            *found = true;
+            memcpy(screen->write_buf + screen->write_buf_used, data, sz);
+            screen->write_buf_used += sz;
+            if (screen->write_buf_sz > BUFSIZ && screen->write_buf_used < BUFSIZ) {
+                screen->write_buf_sz = BUFSIZ;
+                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
+                if (screen->write_buf == NULL) { fatal("Out of memory."); }
+            }
+            if (screen->write_buf_used) wakeup_io_loop(self, false);
+            screen_mutex(unlock, write);
+            break;
+        }
+    }
+    children_mutex(unlock);
 }
 
 bool
-schedule_write_to_child_python(unsigned long id, const char *prefix, PyObject *ap, const char *suffix) {
+schedule_write_to_child(id_type id, unsigned num, ...) {
+    va_list ap;
+    bool too_much_data = false, found = false;
+#define get_next_arg(ap) data = va_arg(ap, const char*); szval = va_arg(ap, size_t);
+    schedule_write_to_child_generic(id, num, va_start, get_next_arg, va_end, found, too_much_data);
+#undef get_next_arg
+    if (too_much_data) log_error("Too much data being written to child with id: %llu dropping it", id);
+    return found;
+}
+
+bool
+schedule_write_to_child_python(id_type id, const char *prefix, PyObject *ap, const char *suffix) {
     if (!PyTuple_Check(ap)) return false;
     bool has_prefix = prefix && prefix[0], has_suffix = suffix && suffix[0];
     const size_t extra = (has_prefix ? 1 : 0) + (has_suffix ? 1 : 0);
@@ -403,7 +442,10 @@ schedule_write_to_child_python(unsigned long id, const char *prefix, PyObject *a
         } \
     } \
 }
-    schedule_write_to_child_generic(id, num, py_start, get_next_arg, py_end);
+    bool found = false, too_much_data = false;
+    schedule_write_to_child_generic(id, num, py_start, get_next_arg, py_end, found, too_much_data);
+    if (too_much_data) log_error("Too much data being written to child with id: %llu dropping it", id);
+    return found;
 #undef py_start
 #undef py_end
 #undef get_next_arg

@@ -18,7 +18,7 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
   (void)is_negative;
   size_t sz;
 
-  enum KEYS { type = 't', more = 'm' };
+  enum KEYS { type = 't', more = 'm', client_id = 'i' };
 
   enum KEYS key = 'a';
   if (parser_buf[pos] == ';')
@@ -34,6 +34,9 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
         value_state = FLAG;
         break;
       case more:
+        value_state = UINT;
+        break;
+      case client_id:
         value_state = UINT;
         break;
       default:
@@ -59,7 +62,7 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
 
       case type: {
         g.type = parser_buf[pos++];
-        if (g.type != 'a' && g.type != 'e') {
+        if (g.type != 'A' && g.type != 'a') {
           REPORT_ERROR("Malformed DnDCommand control block, unknown flag value "
                        "for type: 0x%x",
                        g.type);
@@ -121,6 +124,7 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
     break
       switch (key) {
         U(more);
+        U(client_id);
       default:
         break;
       }
@@ -178,11 +182,12 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
     break;
   }
 
-  REPORT_VA_COMMAND("K s {sc sI  ss#}", self->window_id, "dnd_command",
+  REPORT_VA_COMMAND("K s {sc sI sI  ss#}", self->window_id, "dnd_command",
 
                     "type", g.type,
 
-                    "more", (unsigned int)g.more,
+                    "more", (unsigned int)g.more, "client_id",
+                    (unsigned int)g.client_id,
 
                     "", (char *)parser_buf, g.payload_sz);
 

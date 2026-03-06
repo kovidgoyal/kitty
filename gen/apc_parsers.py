@@ -333,6 +333,7 @@ def parsers() -> None:
     keymap = {
         't': ('type', flag('aA')),
         'm': ('more', 'uint'),
+        'i': ('client_id', 'uint'),
     }
     text = generate(
         'parse_dnd_code', 'screen_handle_dnd_command', 'dnd_command', keymap, 'DnDCommand',
