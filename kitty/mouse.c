@@ -8,6 +8,7 @@
 #include "state.h"
 #include "screen.h"
 #include "charsets.h"
+#include "dnd.h"
 #include <limits.h>
 #include <math.h>
 #include "glfw-wrapper.h"
@@ -179,6 +180,7 @@ set_currently_hovered_window(id_type window_id, int modifiers) {
         if (left_window) {
             if (left_window->scrollbar.is_hovering) update_scrollbar_hover_state(left_window, false);
             if (left_window->render_data.screen) screen_mark_url(left_window->render_data.screen, 0, 0, 0, 0);
+            if (left_window->drop.hovered) drop_left_child(left_window);
             int sz = encode_mouse_event(left_window, 0, LEAVE, modifiers);
             if (sz > 0) {
                 mouse_event_buf[sz] = 0;
