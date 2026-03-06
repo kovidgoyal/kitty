@@ -15,6 +15,7 @@
 #include "data-types.h"
 #include "control-codes.h"
 #include "screen.h"
+#include "dnd.h"
 #include "state.h"
 #include "iqsort.h"
 #include "fonts.h"
@@ -1513,6 +1514,10 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
     switch(cmd->type) {
         case 'a': register_drop_window(self->window_id, payload, cmd->payload_sz, true, cmd->client_id); break;
         case 'A': register_drop_window(self->window_id, NULL, 0, false, cmd->client_id); break;
+        case 'm': {
+            Window *w = window_for_window_id(self->window_id);
+            if (w) drop_set_status(w, cmd->operation, (const char*)payload, cmd->payload_sz, cmd->more);
+        } break;
     }
 }
 
