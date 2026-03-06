@@ -41,6 +41,17 @@ drop_free_data(Window *w) {
     free_pending(&w->drop.pending);
 }
 
+static void
+reset_drop(Window *w) {
+    bool wanted = w->drop.wanted; uint32_t cid = w->drop.client_id;
+    drop_free_data(w);
+    zero_at_ptr(&w->drop);
+    if (wanted) {
+        w->drop.wanted = wanted;
+        w->drop.client_id = cid;
+    }
+}
+
 static int
 string_arrays_cmp(const char **a, size_t an, const char **b, size_t bn) {
     if (an != bn) return (int)an - (int)bn;
@@ -102,6 +113,18 @@ flush_pending(id_type id, PendingData *pending) {
     return pending->count > 0;
 }
 
+#define check_for_pending_writes() \
+    add_main_loop_timer(ms_to_monotonic_t(20), false, flush_pending_payloads, (void*)(uintptr_t)id, NULL)
+
+static void
+flush_pending_payloads(id_type timer_id UNUSED, void *x) {
+    id_type id = (uintptr_t)x;
+    Window *w = window_for_window_id(id);
+    if (w && w->drop.wanted) {
+        if (!flush_pending(w->id, &w->drop.pending)) check_for_pending_writes();
+    }
+}
+
 static void
 queue_payload_to_child(id_type id, PendingData *pending, const char *header, size_t header_sz, const char *data, size_t data_sz) {
     size_t offset = 0;
@@ -114,14 +137,16 @@ queue_payload_to_child(id_type id, PendingData *pending, const char *header, siz
         PendingEntry *e = &pending->items[pending->count++];
         e->buf = buf; e->header_sz = header_sz; e->data_sz = data_sz - offset;
     }
+    if (pending->count) check_for_pending_writes();
 }
 
 void
-drop_move_on_child(Window *w, const char** mimes, size_t num_mimes) {
+drop_move_on_child(Window *w, const char** mimes, size_t num_mimes, bool is_drop) {
     if (!w->drop.hovered) {
-        drop_free_offered_mimes(w);
+        reset_drop(w);
         w->drop.hovered = true;
     }
+    if (is_drop) { w->drop.dropped = true; w->drop.hovered = false; }
     size_t mimes_total_size = 0;
     if (mimes && (w->drop.offerred_mimes == NULL || string_arrays_cmp(mimes, num_mimes, w->drop.offerred_mimes, w->drop.num_offerred_mimes) != 0)) {
         drop_free_offered_mimes(w);
@@ -139,10 +164,11 @@ drop_move_on_child(Window *w, const char** mimes, size_t num_mimes) {
         w->drop.num_offerred_mimes = num_mimes;
     }
     // we simply drop this event if there is too much data being written to the child
-    if (w->drop.pending.count) return;
+    if (w->drop.pending.count && !is_drop) return;
     char buf[128];
-    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;i=%u:t=m:x=%u:y=%u:X=%d:Y=%d", DND_CODE, w->drop.client_id,
-            w->mouse_pos.cell_x, w->mouse_pos.cell_y, (int)w->mouse_pos.global_x, (int)w->mouse_pos.global_y);
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;i=%u:t=%c:x=%u:y=%u:X=%d:Y=%d", DND_CODE, w->drop.client_id,
+            is_drop ? 'M' : 'm', w->mouse_pos.cell_x, w->mouse_pos.cell_y,
+            (int)w->mouse_pos.global_x, (int)w->mouse_pos.global_y);
     if (mimes_total_size) {
         mimes_total_size += 1;
         RAII_ALLOC(char, mbuf, malloc(mimes_total_size));
@@ -157,8 +183,7 @@ drop_move_on_child(Window *w, const char** mimes, size_t num_mimes) {
         }
     } else {
         buf[header_size++] = 0x1b; buf[header_size++] = '\\';
-        bool found, too_much_data;
-        schedule_write_to_child_if_possible(w->id, buf, header_size, &found, &too_much_data);
+        queue_payload_to_child(w->id, &w->drop.pending, buf, header_size, NULL, 0);
     }
 }
 
@@ -215,6 +240,7 @@ drop_update_mimes(Window *w, const char **allowed_mimes, size_t allowed_mimes_co
 void
 drop_left_child(Window *w) {
     w->drop.hovered = false;
+    w->drop.dropped = false;
     drop_free_offered_mimes(w);
     if (w->drop.wanted) {
         char buf[128];

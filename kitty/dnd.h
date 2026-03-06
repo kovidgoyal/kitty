@@ -8,7 +8,7 @@
 
 #include "state.h"
 
-void drop_move_on_child(Window *w, const char **mimes, size_t num_mimes);
+void drop_move_on_child(Window *w, const char **mimes, size_t num_mimes, bool is_drop);
 void drop_left_child(Window *w);
 void drop_free_data(Window *w);
 void drop_set_status(Window *w, int operation, const char *payload, size_t payload_sz, bool more);

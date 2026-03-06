@@ -808,7 +808,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
             os_window->last_drag_event.y = (int)(ev->ypos * os_window->viewport_y_ratio);
             on_mouse_position_update(ev->xpos, ev->ypos);
             if (!is_kitty_ui_drag && wid && (w = window_for_window_id(wid)) && w->drop.wanted) {
-                drop_move_on_child(w, ev->mimes, ev->num_mimes);
+                drop_move_on_child(w, ev->mimes, ev->num_mimes, false);
                 ev->num_mimes = drop_update_mimes(w, ev->mimes, ev->num_mimes);
                 return;
             }
@@ -836,20 +836,24 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
         case GLFW_DROP_DROP:
             Py_CLEAR(global_state.drop_dest.data);
             global_state.drop_dest.drop_has_happened = true;
-            if (ev->from_self) {
-                if (global_state.drag_source.drag_data) {
-                    global_state.drag_source.was_dropped = true;
-                    WINDOW_CALLBACK(on_drop, "OOii", global_state.drag_source.drag_data, Py_True,
-                        global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
-                } else log_error("Got a drop from self but drag_source.drag_data is NULL");
-                ev->finish_drop(window, GLFW_DRAG_OPERATION_COPY);
-                break;
-            }
-            update_allowed_mimes_for_drop(ev);
-            ev->num_mimes = remove_duplicate_mimes(ev->mimes, ev->num_mimes);
-            global_state.drop_dest.num_left = ev->num_mimes;
-            if (!global_state.drop_dest.num_left || !(global_state.drop_dest.data = PyDict_New())) {
-                ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+            if (is_kitty_ui_drag) {
+                if (ev->from_self) {
+                    if (global_state.drag_source.drag_data) {
+                        global_state.drag_source.was_dropped = true;
+                        WINDOW_CALLBACK(on_drop, "OOii", global_state.drag_source.drag_data, Py_True,
+                            global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
+                    } else log_error("Got a drop from self but drag_source.drag_data is NULL");
+                    ev->finish_drop(window, GLFW_DRAG_OPERATION_COPY);
+                    break;
+                }
+                update_allowed_mimes_for_drop(ev);
+                ev->num_mimes = remove_duplicate_mimes(ev->mimes, ev->num_mimes);
+                global_state.drop_dest.num_left = ev->num_mimes;
+                if (!global_state.drop_dest.num_left || !(global_state.drop_dest.data = PyDict_New())) {
+                    ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+                }
+            } else if (wid && (w = window_for_window_id(wid)) && w->drop.wanted && w->drop.hovered) {
+                drop_move_on_child(w, ev->mimes, ev->num_mimes, true);
             }
             break;
         case GLFW_DROP_DATA_AVAILABLE:
