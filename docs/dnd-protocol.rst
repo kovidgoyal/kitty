@@ -11,16 +11,29 @@ There is one central escape code used for this protocol, which is of the form::
 
     OSC _dnd_code ; metadata ; base64 encoded payload ST
 
-Here, ``OSC`` is the bytes ``ESC ] (0x1b 0x5b)``. The ``metadata`` is a colon
-separated list of ``key=value`` pairs. The final part of the escape code is the
-:rfc:`base64 <4648>` encoded payload data, whose meaning depends on the
-metadata. The payload must be no more than 4096 bytes *before base64 encoding*.
+Here, ``OSC`` is the bytes ``ESC ] (0x1b 0x5b)`` and ST is ``ESC \\ (0x1b 0x5c)``.
+The ``metadata`` is a colon separated list of ``key=value`` pairs.
+The final part of the escape code is the :rfc:`base64 <4648>` encoded payload data,
+whose meaning depends on the metadata.
+
+The payload must be no more than 4096 bytes encoded bytes. 4096 is the limit to
+be applied after encoding. When the payload is larger than 4096 base64 encoded
+bytes, it is chunked up using the ``m`` key. An escape code that has a too long
+payload is transmitted in chunks. All but the last chunk must have ``m=1`` in
+their metadata. Each chunk must have a payload of no more than 4096 base64
+encoded bytes without trailing padding, except the last chunk which may
+optionally have trailing padding. Only the first chunk is guaranteed to have
+metadata other than the ``m`` key. Subsequent chunks may optionally omit all
+metadata except the ``m`` and ``i`` keys.
+
+All integer values used in this escape code must be 32-bit signed or unsigned
+integers encoded in decimal representation.
 
 Accepting drops
 -----------------
 
 In order to inform the terminal emulator that the program accepts drops, it
-must, send the following escape code::
+must send the following escape code::
 
     OSC _dnd_code ; t=a ; payload ST
 
@@ -45,10 +58,21 @@ take, and the default value they take when missing. All integers are 32-bit.
 =======  ====================  =========  =================
 Key      Value                 Default    Description
 =======  ====================  =========  =================
-``t``    Single character.     ``a``      The overall action this graphics command is performing.
-         ``(a, A,                         ``t`` - transmit data, ``T`` - transmit data and display image,
-         )``                              ``q`` - query terminal, ``p`` - put (display) previous transmitted image,
-                                          ``d`` - delete image, ``f`` - transmit data for animation frames,
-                                          ``a`` - control animation, ``c`` - compose animation frames
+``t``    Single character.     ``a``      The type of drag and drop event.
+         ``(a, A,                         ``a`` - start accepting drops
+         )``                              ``A`` - stop accepting drops
 
+``m``    Chunking indicator    ``0``      ``0`` or ``i``
+
+``i``    Postive integer       ``0``      This id is for use by multiplexers.
+                                          When it is set, all responses from
+                                          the terminal in that session will
+                                          have it set to the same value.
+**Keys for location**
+-----------------------------------------------------------
+``x``    Positive integer      ``0``      Cell x-coordinate origin is 0, 0 at top left of screen
+``y``    Positive integer      ``0``      Cell y-coordinate origin is 0, 0 at top left of screen
+``X``    Integer               ``0``      Pixel x-coordinate origin is 0, 0 at top left of screen
+``Y``    Integer               ``0``      Pixel y-coordinate origin is 0, 0 at top left of screen
+=======  ====================  =========  =================
 
