@@ -63,6 +63,12 @@ list of MIME types that are available for dropping. To avoid overhead, the
 terminal should only send this list for the first move event and subsequently
 only if the list changes.
 
+When the drag leaves the window, the terminal will send the same event but
+with ``x, y = -1, -1`` to indicate that the drag has left the window. For such
+events the list of MIME types must be empty. Note that the terminal must never
+send negative cell co-ordinates for any other reason.
+
+
 Metadata reference
 ---------------------------
 
@@ -85,8 +91,8 @@ Key      Value                 Default    Description
                                           have it set to the same value.
 **Keys for location**
 -----------------------------------------------------------
-``x``    Positive integer      ``0``      Cell x-coordinate origin is 0, 0 at top left of screen
-``y``    Positive integer      ``0``      Cell y-coordinate origin is 0, 0 at top left of screen
+``x``    Integer               ``0``      Cell x-coordinate origin is 0, 0 at top left of screen
+``y``    Integer               ``0``      Cell y-coordinate origin is 0, 0 at top left of screen
 ``X``    Integer               ``0``      Pixel x-coordinate origin is 0, 0 at top left of screen
 ``Y``    Integer               ``0``      Pixel y-coordinate origin is 0, 0 at top left of screen
 =======  ====================  =========  =================
