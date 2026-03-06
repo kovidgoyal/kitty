@@ -7,6 +7,7 @@
 #include "state.h"
 #include "cleanup.h"
 #include "monotonic.h"
+#include "dnd.h"
 #include "charsets.h"
 #include "control-codes.h"
 #include <structmember.h>
@@ -766,12 +767,14 @@ read_drop_data(GLFWwindow *window, GLFWDropEvent *ev) {
 }
 
 void
-register_drop_window(id_type window_id, const uint8_t *payload, size_t payload_sz, bool on) {
+register_drop_window(id_type window_id, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id) {
     Window *w = window_for_window_id(window_id);
     OSWindow *osw = os_window_for_kitty_window(window_id);
     if (w && osw && osw->handle) {
-        w->accepts_drops = on;
-        if (on && payload && payload_sz) {
+        w->drop.allowed = on;
+        w->drop.client_id = client_id;
+        if (!on) { drop_free_data(w); zero_at_ptr(&w->drop); }
+        else if (payload && payload_sz) {
 #ifdef __APPLE__
             RAII_ALLOC(char, copy, malloc(payload_sz + 1)); if (!copy) return;
             RAII_ALLOC(const char*, mimes, calloc(payload_sz, sizeof(char*))); if (!mimes) return;
@@ -792,12 +795,17 @@ static void
 on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
     if (!set_callback_window(window)) return;
     OSWindow *os_window = global_state.callback_os_window;
+    Window *w = NULL;
     switch (ev->type) {
         case GLFW_DROP_ENTER:
         case GLFW_DROP_MOVE:
             os_window->last_drag_event.x = (int)(ev->xpos * os_window->viewport_x_ratio);
             os_window->last_drag_event.y = (int)(ev->ypos * os_window->viewport_y_ratio);
             on_mouse_position_update(ev->xpos, ev->ypos);
+            if (global_state.mouse_hover_in_window && (w = window_for_window_id(global_state.mouse_hover_in_window)) && w->drop.allowed) {
+                drop_move_on_child(w, ev->mimes, ev->num_mimes);
+                return;
+            }
             call_boss(on_drop_move, "KiiOO",
                 os_window->id, os_window->last_drag_event.x, os_window->last_drag_event.y,
                 ev->from_self ? Py_True : Py_False, Py_False);
