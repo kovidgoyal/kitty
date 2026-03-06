@@ -68,6 +68,21 @@ with ``x, y = -1, -1`` to indicate that the drag has left the window. For such
 events the list of MIME types must be empty. Note that the terminal must never
 send negative cell co-ordinates for any other reason.
 
+The client program must inform the terminal whether it will accept
+the potential drop and which MIME types of the set of offered MIME types it
+accepts. Until the client does so the terminal will indicate to the OS that
+the drop is not accepted. To do so, the client sends an escape code of the
+form::
+
+    OSC _dnd_code ; t=m:o=O ; MIME list ST
+
+Here the ``o`` key is the operation the client intends to perform if a drop
+occurs which can be either ``1`` for copy or ``2`` for move or ``0`` for not
+accepted. The MIME list is the ordered list of MIME types from the offered list
+that the client wants. If no MIME type list is present, it is equivalent to no
+change in the offered list of MIME types. The list should be ordered in order
+of decreasing preference. Some platforms may assume show the user some
+indication of the first MIME type in the list.
 
 Metadata reference
 ---------------------------
@@ -89,6 +104,11 @@ Key      Value                 Default    Description
                                           When it is set, all responses from
                                           the terminal in that session will
                                           have it set to the same value.
+
+``o``    Positive integer      ``0``      What drop operation to perform. ``0``
+                                          means rejected, ``1`` means copy and
+                                          ``2`` means move.
+
 **Keys for location**
 -----------------------------------------------------------
 ``x``    Integer               ``0``      Cell x-coordinate origin is 0, 0 at top left of screen

@@ -19,6 +19,8 @@ typedef struct DnDCommand {
     unsigned more;
     uint32_t client_id;
     size_t payload_sz;
+    int32_t cell_x, cell_y, pixel_x, pixel_y;
+    uint32_t operation;
 } DnDCommand;
 
 typedef struct {

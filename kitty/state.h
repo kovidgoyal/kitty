@@ -246,10 +246,15 @@ typedef struct Window {
         bool is_hovering;
     } scrollbar;
     struct {
-        bool allowed, hovered;
+        bool wanted, hovered;
         uint32_t client_id;
-        const char **offerred_mimes; size_t num_offerred_mimes;
         PendingData pending;
+
+        const char **offerred_mimes; size_t num_offerred_mimes;
+
+        char *accepted_mimes; size_t accepted_mimes_sz;
+        int accepted_operation; bool accept_in_progress;
+
     } drop;
 } Window;
 
@@ -402,6 +407,7 @@ typedef struct GlobalState {
         id_type os_window_id;
         double x, y;
         size_t num_left;
+        bool drop_has_happened;
     } drop_dest;
 
     struct {
@@ -529,3 +535,4 @@ void setup_os_window_for_rendering(OSWindow*, Tab*, Window*, bool);
 void swap_window_buffers(OSWindow *w);
 void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h);
 bool current_framebuffer_is_ok(void);
+void request_drop_status_update(OSWindow *osw);
