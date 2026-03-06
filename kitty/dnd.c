@@ -7,6 +7,7 @@
 
 #include "dnd.h"
 #include "base64.h"
+#include "control-codes.h"
 
 static void
 drop_free_offered_mimes(Window *w) {
@@ -124,7 +125,7 @@ drop_move_on_child(Window *w, const char** mimes, size_t num_mimes) {
     // we simply drop this event if there is too much data being written to the child
     if (w->drop.pending.count) return;
     char buf[128];
-    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;i=%u:t=m:x=%u:y=%u:X=%d:Y=%d", w->drop.client_id,
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;i=%u:t=m:x=%u:y=%u:X=%d:Y=%d", DND_CODE, w->drop.client_id,
             w->mouse_pos.cell_x, w->mouse_pos.cell_y, (int)w->mouse_pos.global_x, (int)w->mouse_pos.global_y);
     if (mimes_total_size) {
         mimes_total_size += 1;

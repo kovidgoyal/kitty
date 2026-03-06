@@ -51,6 +51,18 @@ code::
 
 to inform the terminal that it no longer wants drops.
 
+Whenever the user drags something over the window, the terminal will send an
+escape code of the form::
+
+    OSC _dnd_code ; t=m:x=x:y=y:X=X:Y=Y ; optional MIME list ST
+
+Here, ``x, y`` identify the cell over which the drag is currently present.
+The ``(0, 0)`` cell is at top left of the screen. ``X and Y`` are the pixel
+offsets from the top-left. The optional list of MIMES is a space separated
+list of MIME types that are available for dropping. To avoid overhead, the
+terminal should only send this list for the first move event and subsequently
+only if the list changes.
+
 Metadata reference
 ---------------------------
 
@@ -63,6 +75,7 @@ Key      Value                 Default    Description
 ``t``    Single character.     ``a``      The type of drag and drop event.
          ``(a, A,                         ``a`` - start accepting drops
          )``                              ``A`` - stop accepting drops
+                                          ``m`` - a drop move event
 
 ``m``    Chunking indicator    ``0``      ``0`` or ``i``
 
