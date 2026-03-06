@@ -665,11 +665,15 @@ class Boss:
         startup_session = next(create_sessions(get_options(), special_window=sw, cwd_from=cwd_from))
         startup_session.session_name = ''
         ans = self.add_os_window(startup_session)
-        if cwd_from is not None and (sow := cwd_from.window) and (tm := self.os_window_map.get(ans)) and sow.created_in_session_name:
-            for tab in tm:
-                tab.created_in_session_name = sow.created_in_session_name
-                for w in tab:
-                    w.created_in_session_name = sow.created_in_session_name
+        if cwd_from is not None and (sow := cwd_from.window) and (tm := self.os_window_map.get(ans)):
+            session_name = sow.created_in_session_name
+            if not session_name and (sow_tab := sow.tabref()):
+                session_name = sow_tab.created_in_session_name
+            if session_name:
+                for tab in tm:
+                    tab.created_in_session_name = session_name
+                    for w in tab:
+                        w.created_in_session_name = session_name
         return ans
 
     @ac('win', 'New OS Window')
@@ -2942,7 +2946,10 @@ class Boss:
         else:
             w = tab.new_window(cwd_from=cwd_from, location=location, allow_remote_control=allow_remote_control)
         if cwd_from is not None and (sw := cwd_from.window):
-            w.created_in_session_name = sw.created_in_session_name
+            session_name = sw.created_in_session_name
+            if not session_name and (sw_tab := sw.tabref()):
+                session_name = sw_tab.created_in_session_name
+            w.created_in_session_name = session_name
         return w
 
     @ac('win', 'Create a new window')

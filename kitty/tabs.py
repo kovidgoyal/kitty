@@ -280,6 +280,8 @@ class Tab:  # {{{
             launched_window: Window | None = None
             if isinstance(spec, SpecialWindowInstance):
                 launched_window = self.new_special_window(spec)
+                if launched_window is not None:
+                    launched_window.created_in_session_name = self.created_in_session_name
             else:
                 from .launch import launch
                 spec.opts.add_to_session = self.created_in_session_name
@@ -1463,6 +1465,8 @@ class TabManager:  # {{{
         session_name = ''
         if cwd_from is not None and (sw := cwd_from.window):
             session_name = sw.created_in_session_name
+            if not session_name and (sw_tab := sw.tabref()):
+                session_name = sw_tab.created_in_session_name
         t = Tab(self, no_initial_window=True, session_name=session_name) if empty_tab else Tab(
                 self, special_window=special_window, cwd_from=cwd_from, session_name=session_name)
         if not empty_tab and session_name:
