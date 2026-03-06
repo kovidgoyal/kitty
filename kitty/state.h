@@ -180,7 +180,7 @@ typedef struct ClickQueue {
 } ClickQueue;
 
 typedef struct MousePosition {
-    unsigned int cell_x, cell_y;
+    unsigned cell_x, cell_y;
     double global_x, global_y;
     bool in_left_half_of_cell;
 } MousePosition;
