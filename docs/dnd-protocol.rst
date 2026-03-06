@@ -66,7 +66,8 @@ only if the list changes.
 When the drag leaves the window, the terminal will send the same event but
 with ``x, y = -1, -1`` to indicate that the drag has left the window. For such
 events the list of MIME types must be empty. Note that the terminal must never
-send negative cell co-ordinates for any other reason.
+send negative cell co-ordinates for any other reason. No more movement escape
+codes ``t=m`` will be sent until this drop or another re-enters the window.
 
 The client program must inform the terminal whether it will accept
 the potential drop and which MIME types of the set of offered MIME types it
@@ -81,8 +82,22 @@ occurs which can be either ``1`` for copy or ``2`` for move or ``0`` for not
 accepted. The MIME list is the ordered list of MIME types from the offered list
 that the client wants. If no MIME type list is present, it is equivalent to no
 change in the offered list of MIME types. The list should be ordered in order
-of decreasing preference. Some platforms may assume show the user some
+of decreasing preference. Some platforms may show the user some
 indication of the first MIME type in the list.
+
+When the user triggers a drop on the window, the terminal will send an escape
+code of the form::
+
+    OSC _dnd_code ; t=M: ... ; MIME list ST
+
+This is the same as the movement escape codes above, except that ``t=M``
+(upper case M instead of lower case m), indicating this is a drop.
+Once this escape code is received, no more movement escape codes ``t=m``
+will be sent until a new drop enters the window. The MIME list here is
+mandatory, terminals must send the full list of MIME types available in
+the drop. The client program can now request data for the MIME types
+it is interested in.
+
 
 Metadata reference
 ---------------------------
@@ -97,6 +112,7 @@ Key      Value                 Default    Description
          ``(a, A,                         ``a`` - start accepting drops
          )``                              ``A`` - stop accepting drops
                                           ``m`` - a drop move event
+                                          ``M`` - a drop dropped event
 
 ``m``    Chunking indicator    ``0``      ``0`` or ``i``
 
