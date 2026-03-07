@@ -865,12 +865,13 @@ PYWRAP1(set_tab_bar_render_data) {
 }
 
 PYWRAP1(set_window_title_bar_render_data) {
-    WindowGeometry g;
+    WindowGeometry g = {0};
     id_type os_window_id, tab_id, window_id;
     Screen *screen;
     PA("KKKOIIII", &os_window_id, &tab_id, &window_id, &screen, &g.left, &g.top, &g.right, &g.bottom);
     WITH_WINDOW(os_window_id, tab_id, window_id)
         init_window_render_data(&window->window_title_render_data, g, screen);
+        screen->reload_all_gpu_data = true;
     END_WITH_WINDOW
     Py_RETURN_NONE;
 }
