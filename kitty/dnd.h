@@ -16,3 +16,4 @@ void drop_request_data(Window *w, const char *mime);
 void drop_set_status(Window *w, int operation, const char *payload, size_t payload_sz, bool more);
 size_t drop_update_mimes(Window *w, const char **allowed_mimes, size_t allowed_mimes_count);
 void drop_dispatch_data(Window *w, const char *data, ssize_t sz);
+void drop_finish(Window *w);
