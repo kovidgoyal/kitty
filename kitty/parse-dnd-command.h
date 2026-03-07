@@ -18,7 +18,16 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
   (void)is_negative;
   size_t sz;
 
-  enum KEYS { type = 't', more = 'm', client_id = 'i' };
+  enum KEYS {
+    type = 't',
+    more = 'm',
+    client_id = 'i',
+    operation = 'o',
+    cell_x = 'x',
+    cell_y = 'y',
+    pixel_x = 'X',
+    pixel_y = 'Y'
+  };
 
   enum KEYS key = 'a';
   if (parser_buf[pos] == ';')
@@ -38,6 +47,21 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
         break;
       case client_id:
         value_state = UINT;
+        break;
+      case operation:
+        value_state = UINT;
+        break;
+      case cell_x:
+        value_state = INT;
+        break;
+      case cell_y:
+        value_state = INT;
+        break;
+      case pixel_x:
+        value_state = INT;
+        break;
+      case pixel_y:
+        value_state = INT;
         break;
       default:
         REPORT_ERROR(
@@ -62,7 +86,8 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
 
       case type: {
         g.type = parser_buf[pos++];
-        if (g.type != 'A' && g.type != 'a') {
+        if (g.type != 'A' && g.type != 'M' && g.type != 'R' && g.type != 'a' &&
+            g.type != 'm' && g.type != 'r') {
           REPORT_ERROR("Malformed DnDCommand control block, unknown flag value "
                        "for type: 0x%x",
                        g.type);
@@ -109,7 +134,10 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
     break
       READ_UINT;
       switch (key) {
-        ;
+        I(cell_x);
+        I(cell_y);
+        I(pixel_x);
+        I(pixel_y);
       default:
         break;
       }
@@ -125,6 +153,7 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
       switch (key) {
         U(more);
         U(client_id);
+        U(operation);
       default:
         break;
       }
@@ -182,14 +211,18 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
     break;
   }
 
-  REPORT_VA_COMMAND("K s {sc sI sI  ss#}", self->window_id, "dnd_command",
+  REPORT_VA_COMMAND(
+      "K s {sc sI sI sI si si si si ss#}", self->window_id, "dnd_command",
 
-                    "type", g.type,
+      "type", g.type,
 
-                    "more", (unsigned int)g.more, "client_id",
-                    (unsigned int)g.client_id,
+      "more", (unsigned int)g.more, "client_id", (unsigned int)g.client_id,
+      "operation", (unsigned int)g.operation,
 
-                    "", (char *)parser_buf, g.payload_sz);
+      "cell_x", (int)g.cell_x, "cell_y", (int)g.cell_y, "pixel_x",
+      (int)g.pixel_x, "pixel_y", (int)g.pixel_y,
+
+      "", (char *)parser_buf, g.payload_sz);
 
   screen_handle_dnd_command(self->screen, &g, parser_buf);
 }
