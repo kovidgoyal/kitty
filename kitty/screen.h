@@ -326,7 +326,6 @@ bool screen_pause_rendering(Screen *self, bool pause, int for_in_ms);
 void screen_check_pause_rendering(Screen *self, monotonic_t now);
 void screen_designate_charset(Screen *self, uint32_t which, uint32_t as);
 void screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_params);
-void register_drop_window(id_type window_id, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)
