@@ -98,6 +98,22 @@ mandatory, terminals must send the full list of MIME types available in
 the drop. The client program can now request data for the MIME types
 it is interested in.
 
+Requesting data is done by sending an escape code of the form::
+
+    OSC _dnd_code ; t=r ; MIME type ST
+
+This will request data for the specifid MIME type. The terminal must respond
+with a series of escape codes of the form::
+
+    OSC _dnd_code ; t=r ; data ST
+
+End of data is indicated by an empty payload. If some error occures while
+getting the data, the terminal must send an escape code of the form::
+
+    OSC _dnd_code ; t=R ; POSIX error name ST
+
+Here POSIX error name is a POSIX symbolic error name such as ``ENOENT`` or
+``EIO`` or the value ``EUNKNOWN`` for an unknown error.
 
 Metadata reference
 ---------------------------
@@ -113,6 +129,7 @@ Key      Value                 Default    Description
          )``                              ``A`` - stop accepting drops
                                           ``m`` - a drop move event
                                           ``M`` - a drop dropped event
+                                          ``r`` - request dropped data
 
 ``m``    Chunking indicator    ``0``      ``0`` or ``i``
 

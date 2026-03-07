@@ -39,6 +39,8 @@ drop_free_data(Window *w) {
     drop_free_offered_mimes(w);
     drop_free_accepted_mimes(w);
     free_pending(&w->drop.pending);
+    free(w->drop.registered_mimes); w->drop.registered_mimes = NULL;
+    free(w->drop.getting_data_for_mime); w->drop.getting_data_for_mime = NULL;
 }
 
 static void
@@ -51,6 +53,40 @@ reset_drop(Window *w) {
         w->drop.client_id = cid;
     }
 }
+
+void
+drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id, bool more) {
+    w->drop.wanted = on;
+    w->drop.client_id = client_id;
+    if (!on) { drop_free_data(w); zero_at_ptr(&w->drop); return; }
+    if (!payload || !payload_sz) return;
+    size_t sz = w->drop.registered_mimes ? strlen(w->drop.registered_mimes) : 0;
+    if (sz + payload_sz > 1024 * 1024) return;
+    w->drop.registered_mimes = realloc(w->drop.registered_mimes, sz + payload_sz + 1);
+    if (w->drop.registered_mimes) {
+        memcpy(w->drop.registered_mimes + sz, payload, payload_sz);
+        sz += payload_sz;
+        w->drop.registered_mimes[sz] = 0;
+    }
+    if (more) return;
+    if (w->drop.registered_mimes) {
+        OSWindow *osw = os_window_for_kitty_window(w->id);
+        if (osw) {
+            size_t num = 0;
+            RAII_ALLOC(const char*, mimes, malloc(sizeof(char*) * strlen(w->drop.registered_mimes)));
+            if (mimes) {
+                char* token = strtok(w->drop.registered_mimes, " ");
+                while (token != NULL) {
+                    mimes[num++] = token;
+                    token = strtok(NULL, " ");
+                }
+                register_mimes_for_drop(osw, mimes, num);
+            }
+        }
+    }
+    free(w->drop.registered_mimes); w->drop.registered_mimes = NULL;
+}
+
 
 static int
 string_arrays_cmp(const char **a, size_t an, const char **b, size_t bn) {
@@ -235,6 +271,54 @@ drop_update_mimes(Window *w, const char **allowed_mimes, size_t allowed_mimes_co
     while(allowed_mimes_count && ms[allowed_mimes_count-1].key == sentinel) allowed_mimes_count--;
     for (size_t i = 0; i < allowed_mimes_count; i++) allowed_mimes[i] = ms[i].m;
     return allowed_mimes_count;
+}
+
+static const char*
+get_errno_name(int err) {
+    switch (err) {
+        case EPERM: return "EPERM";
+        case ENOENT: return "ENOENT";
+        case EIO: return "EIO";
+        default: return "EUNKNOWN";
+    }
+}
+
+static void
+drop_send_error(Window *w, int error_code) {
+    char buf[128];
+    uint8_t ebuf[32];
+    size_t b64_len = sizeof(ebuf);
+    const char *e = get_errno_name(error_code);
+    base64_encode8((const uint8_t*)e, strlen(e), ebuf, &b64_len, false);
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;i=%u:t=R", DND_CODE, w->drop.client_id);
+    queue_payload_to_child(w->id, &w->drop.pending, buf, header_size, (char*)ebuf, b64_len);
+}
+
+void
+drop_request_data(Window *w, const char *mime) {
+    if (w->drop.getting_data_for_mime) { free(w->drop.getting_data_for_mime); w->drop.getting_data_for_mime = NULL; }
+    OSWindow *osw = os_window_for_kitty_window(w->id);
+    if (!osw) return;
+    if (w->drop.offerred_mimes) {
+        for (size_t i = 0; i < w->drop.num_offerred_mimes; i++) {
+            if (strcmp(mime, w->drop.offerred_mimes[i]) == 0) {
+                w->drop.getting_data_for_mime = strdup(mime);
+                if (w->drop.getting_data_for_mime) request_drop_data(osw, w->id, mime);
+                return;
+            }
+        }
+    }
+    drop_send_error(w, ENOENT);
+}
+
+void
+drop_dispatch_data(Window *w, const char *data, ssize_t sz) {
+    if (sz < 0) drop_send_error(w, -sz);
+    else {
+        char buf[128];
+        int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;i=%u:t=r", DND_CODE, w->drop.client_id);
+        queue_payload_to_child(w->id, &w->drop.pending, buf, header_size, sz ? data : NULL, sz);
+    }
 }
 
 void
