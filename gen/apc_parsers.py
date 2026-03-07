@@ -342,7 +342,7 @@ def parsers() -> None:
     }
     text = generate(
         'parse_dnd_code', 'screen_handle_dnd_command', 'dnd_command', keymap, 'DnDCommand',
-        payload_is_base64=True, start_parsing_at=0, field_sep=':')
+        payload_is_base64=False, start_parsing_at=0, field_sep=':')
     write_header(text, 'kitty/parse-dnd-command.h')
 
 
