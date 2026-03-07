@@ -1261,6 +1261,7 @@ mouse_event(const int button, int modifiers, int action) {
         return;
     }
     MouseRegion r = mouse_region(true, true);
+    w = r.window;
     set_currently_hovered_window(w && !r.window_border && !r.in_title_bar ? w->id : 0, modifiers);
 
     if (r.in_tab_bar || global_state.tab_being_dragged.id) {
