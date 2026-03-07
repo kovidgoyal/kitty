@@ -248,13 +248,14 @@ typedef struct Window {
     struct {
         bool wanted, hovered, dropped;
         uint32_t client_id;
+        char *registered_mimes;
         PendingData pending;
 
         const char **offerred_mimes; size_t num_offerred_mimes;
 
         char *accepted_mimes; size_t accepted_mimes_sz;
         int accepted_operation; bool accept_in_progress;
-
+        char *getting_data_for_mime;
     } drop;
 } Window;
 
@@ -404,7 +405,7 @@ typedef struct GlobalState {
 
     struct {
         PyObject *data;
-        id_type os_window_id;
+        id_type os_window_id, client_window_data_request;
         double x, y;
         size_t num_left;
         bool drop_has_happened;
@@ -536,3 +537,5 @@ void swap_window_buffers(OSWindow *w);
 void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h);
 bool current_framebuffer_is_ok(void);
 void request_drop_status_update(OSWindow *osw);
+void register_mimes_for_drop(OSWindow *w, const char **mimes, size_t sz);
+void request_drop_data(OSWindow *w, id_type wid, const char* mime);

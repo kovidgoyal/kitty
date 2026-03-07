@@ -767,28 +767,17 @@ read_drop_data(GLFWwindow *window, GLFWDropEvent *ev) {
 }
 
 void
-register_drop_window(id_type window_id, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id) {
-    Window *w = window_for_window_id(window_id);
-    OSWindow *osw = os_window_for_kitty_window(window_id);
-    if (w && osw && osw->handle) {
-        w->drop.wanted = on;
-        w->drop.client_id = client_id;
-        if (!on) { drop_free_data(w); zero_at_ptr(&w->drop); }
-        else if (payload && payload_sz) {
+register_mimes_for_drop(OSWindow *w, const char **mimes, size_t sz) {
+    (void)w; (void)mimes; (void)sz;
 #ifdef __APPLE__
-            RAII_ALLOC(char, copy, malloc(payload_sz + 1)); if (!copy) return;
-            RAII_ALLOC(const char*, mimes, calloc(payload_sz, sizeof(char*))); if (!mimes) return;
-            memcpy(copy, payload, payload_sz); copy[payload_sz] = 0;
-            size_t num = 0;
-            char* token = strtok(copy, " ");
-            while (token != NULL) {
-                mimes[num++] = token;
-                token = strtok(NULL, " ");
-            }
-            glfwCocoaRegisterMIMETypes(osw->handle, mimes, num);
+    if (w->handle) glfwCocoaRegisterMIMETypes(w->handle, mimes, sz);
 #endif
-        }
-    }
+}
+
+void
+request_drop_data(OSWindow *w, id_type wid, const char* mime) {
+    global_state.drop_dest.client_window_data_request = wid;
+    if (w->handle) glfwRequestDropData(w->handle, mime);
 }
 
 static void
@@ -800,6 +789,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
     for (size_t i = 0; i < ev->num_mimes; i++) {
         if (is_droppable_mime(ev->mimes[i]) >= TAB_DRAG_MIME_NUMBER) { is_kitty_ui_drag = true; break;}
     }
+    bool is_client_drop = !is_kitty_ui_drag && wid && (w = window_for_window_id(wid)) && w->drop.wanted;
     switch (ev->type) {
         case GLFW_DROP_ENTER:
         case GLFW_DROP_MOVE:
@@ -807,7 +797,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
             os_window->last_drag_event.x = (int)(ev->xpos * os_window->viewport_x_ratio);
             os_window->last_drag_event.y = (int)(ev->ypos * os_window->viewport_y_ratio);
             on_mouse_position_update(ev->xpos, ev->ypos);
-            if (!is_kitty_ui_drag && wid && (w = window_for_window_id(wid)) && w->drop.wanted) {
+            if (is_client_drop) {
                 drop_move_on_child(w, ev->mimes, ev->num_mimes, false);
                 ev->num_mimes = drop_update_mimes(w, ev->mimes, ev->num_mimes);
                 return;
@@ -817,9 +807,8 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
                 ev->from_self ? Py_True : Py_False, Py_False);
             /* fallthrough */
         case GLFW_DROP_STATUS_UPDATE:
-            if (is_kitty_ui_drag) update_allowed_mimes_for_drop(ev);
-            else if (wid && (w = window_for_window_id(wid)) && w->drop.wanted && w->drop.hovered)
-                ev->num_mimes = drop_update_mimes(w, ev->mimes, ev->num_mimes);
+            if (is_client_drop) ev->num_mimes = drop_update_mimes(w, ev->mimes, ev->num_mimes);
+            else update_allowed_mimes_for_drop(ev);
             break;
         case GLFW_DROP_LEAVE:
             for (size_t tc = 0; tc < os_window->num_tabs; tc++) {
@@ -836,6 +825,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
         case GLFW_DROP_DROP:
             Py_CLEAR(global_state.drop_dest.data);
             global_state.drop_dest.drop_has_happened = true;
+            global_state.drop_dest.client_window_data_request = 0;
             if (is_kitty_ui_drag) {
                 if (ev->from_self) {
                     if (global_state.drag_source.drag_data) {
@@ -852,13 +842,20 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
                 if (!global_state.drop_dest.num_left || !(global_state.drop_dest.data = PyDict_New())) {
                     ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
                 }
-            } else if (wid && (w = window_for_window_id(wid)) && w->drop.wanted && w->drop.hovered) {
-                drop_move_on_child(w, ev->mimes, ev->num_mimes, true);
-            }
+            } else if (is_client_drop) drop_move_on_child(w, ev->mimes, ev->num_mimes, true);
             break;
         case GLFW_DROP_DATA_AVAILABLE:
-            if (!global_state.drop_dest.data) ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
-            else read_drop_data(window, ev);
+            if (global_state.drop_dest.client_window_data_request) {
+                if ((w = window_for_window_id(global_state.drop_dest.client_window_data_request))) {
+                    char buf[3072];
+                    ssize_t ret = ev->read_data(window, ev, buf, sizeof(buf));
+                    drop_dispatch_data(w, buf, ret);
+                    if (ret <= 0) ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+                }
+            } else {
+                if (!global_state.drop_dest.data) ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+                else read_drop_data(window, ev);
+            }
             break;
     }
 }
