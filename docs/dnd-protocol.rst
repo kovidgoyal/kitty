@@ -113,7 +113,18 @@ getting the data, the terminal must send an escape code of the form::
     OSC _dnd_code ; t=R ; POSIX error name ST
 
 Here POSIX error name is a POSIX symbolic error name such as ``ENOENT`` or
-``EIO`` or the value ``EUNKNOWN`` for an unknown error.
+``EIO`` or the value ``EUNKNOWN`` for an unknown error. Note that if a client
+sends a request for another MIME type before the data for the revious MIME type
+is completed, the terminal *must* switch over to sending data for the new MIME
+type.
+
+Once the client program finishes reading all the dropped data it needs, it must
+send an escape code of the form::
+
+    OSC _dnd_code ; t=r ST
+
+That is, it must send a request for data with no MIME type specified. The
+terminal emulator must then inform the OS that the drop is completed.
 
 Metadata reference
 ---------------------------
