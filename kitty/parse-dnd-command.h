@@ -7,7 +7,7 @@
 static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
                                   const size_t parser_buf_pos) {
   unsigned int pos = 0;
-
+  size_t payload_start = 0;
   enum PARSER_STATES { KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE, PAYLOAD };
   enum PARSER_STATES state = KEY, value_state = FLAG;
   DnDCommand g = {0};
@@ -180,15 +180,8 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
 
     case PAYLOAD: {
       sz = parser_buf_pos - pos;
-      g.payload_sz = MAX(BUF_EXTRA, sz);
-      if (!base64_decode8(parser_buf + pos, sz, parser_buf, &g.payload_sz)) {
-        g.payload_sz = MAX(BUF_EXTRA, sz);
-        REPORT_ERROR("Failed to parse DnDCommand command payload with error:   "
-                     "  invalid base64 data in chunk of size: %zu with output "
-                     "buffer size: %zu",
-                     sz, g.payload_sz);
-        return;
-      }
+      payload_start = pos;
+      g.payload_sz = sz;
       pos = parser_buf_pos;
     } break;
 
@@ -222,7 +215,7 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
       "cell_x", (int)g.cell_x, "cell_y", (int)g.cell_y, "pixel_x",
       (int)g.pixel_x, "pixel_y", (int)g.pixel_y,
 
-      "", (char *)parser_buf, g.payload_sz);
+      "", (char *)parser_buf + payload_start, g.payload_sz);
 
-  screen_handle_dnd_command(self->screen, &g, parser_buf);
+  screen_handle_dnd_command(self->screen, &g, parser_buf + payload_start);
 }

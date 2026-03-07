@@ -13,23 +13,25 @@ There is one central escape code used for this protocol, which is of the form::
 
 Here, ``OSC`` is the bytes ``ESC ] (0x1b 0x5b)`` and ST is ``ESC \\ (0x1b 0x5c)``.
 The ``metadata`` is a colon separated list of ``key=value`` pairs.
-The final part of the escape code is the :rfc:`base64 <4648>` encoded payload data,
-whose meaning depends on the metadata.
+The final part of the escape code is the payload data, whose meaning depends on the metadata.
 
-The payload must be no more than 4096 bytes encoded bytes. 4096 is the limit to
-be applied after encoding. When the payload is larger than 4096 base64 encoded
+The payload must be no more than 4096 bytes. When the payload is larger than 4096
 bytes, it is chunked up using the ``m`` key. An escape code that has a too long
 payload is transmitted in chunks. All but the last chunk must have ``m=1`` in
-their metadata. Each chunk must have a payload of no more than 4096 base64
-encoded bytes without trailing padding, except the last chunk which may
-optionally have trailing padding. Only the first chunk is guaranteed to have
-metadata other than the ``m`` key. Subsequent chunks may optionally omit all
+their metadata. Each chunk must have a payload of no more than 4096 bytes.
+Only the first chunk is guaranteed to have metadata other than the ``m`` key.
+Subsequent chunks may optionally omit all
 metadata except the ``m`` and ``i`` keys. While a chunked transfer is in
 progress it is a protocol error to for the sending side to
 send any protocol related escape codes other than chunked ones.
 
 All integer values used in this escape code must be 32-bit signed or unsigned
 integers encoded in decimal representation.
+
+When transferring binary data the payload is :rfc:`base64 <4648>` encoded. The
+4096 bytes limit applies to *encoded bytes*, that is, it is applied after
+encoding. base64 padding bytes are optional and may or may not be present at
+the end of the last chunk.
 
 Accepting drops
 -----------------
@@ -105,9 +107,9 @@ Requesting data is done by sending an escape code of the form::
 This will request data for the specifid MIME type. The terminal must respond
 with a series of escape codes of the form::
 
-    OSC _dnd_code ; t=r ; data ST
+    OSC _dnd_code ; t=r ; base64 encoded data ST
 
-End of data is indicated by an empty payload. If some error occures while
+End of data is indicated by an empty payload. If some error occurs while
 getting the data, the terminal must send an escape code of the form::
 
     OSC _dnd_code ; t=R ; POSIX error name ST
