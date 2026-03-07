@@ -207,6 +207,7 @@ typedef struct WindowBarData {
 typedef struct PendingEntry {
     char *buf; size_t header_sz;
     size_t data_sz;
+    bool as_base64;
 } PendingEntry;
 
 typedef struct PendingData {
