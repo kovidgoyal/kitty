@@ -1519,7 +1519,8 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
         case 'm': drop_set_status(w, cmd->operation, (const char*)payload, cmd->payload_sz, cmd->more); break;
         case 'r': {
             char buf[256];
-            if (w && cmd->payload_sz + 1 < sizeof(buf)) {
+            if (!cmd->payload_sz) drop_finish(w);
+            else if (cmd->payload_sz + 1 < sizeof(buf)) {
                 memcpy(buf, payload, cmd->payload_sz); buf[cmd->payload_sz] = 0;
                 drop_request_data(w, buf);
             }

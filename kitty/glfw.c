@@ -822,10 +822,12 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
         case GLFW_DROP_DATA_AVAILABLE:
             if (global_state.drop_dest.client_window_data_request) {
                 if ((w = window_for_window_id(global_state.drop_dest.client_window_data_request))) {
-                    char buf[3072];
-                    ssize_t ret = ev->read_data(window, ev, buf, sizeof(buf));
-                    drop_dispatch_data(w, buf, ret);
-                    if (ret <= 0) ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+                    if (w->drop.getting_data_for_mime && strcmp(w->drop.getting_data_for_mime, ev->mimes[0]) == 0) {
+                        char buf[3072];
+                        ssize_t ret = ev->read_data(window, ev, buf, sizeof(buf));
+                        drop_dispatch_data(w, buf, ret);
+                        if (ret <= 0) ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+                    }
                 }
             } else {
                 if (!global_state.drop_dest.data) ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
