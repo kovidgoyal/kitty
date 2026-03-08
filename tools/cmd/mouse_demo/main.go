@@ -3,13 +3,94 @@
 package mouse_demo
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"strconv"
+	"strings"
 
+	kitty "github.com/kovidgoyal/kitty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 )
 
 var _ = fmt.Print
+
+const dnd_accepted_mimes = "text/plain text/uri-list"
+
+func dnd_escape(metadata, payload string) string {
+	b := strings.Builder{}
+	b.WriteString(fmt.Sprintf("\x1b]%d;", kitty.DndCode))
+	b.WriteString(metadata)
+	if payload != "" {
+		b.WriteByte(';')
+		b.WriteString(payload)
+	}
+	b.WriteString("\x1b\\")
+	return b.String()
+}
+
+func dnd_start_accepting() string {
+	return dnd_escape("t=a", dnd_accepted_mimes)
+}
+
+func dnd_stop_accepting() string {
+	return dnd_escape("t=A", "")
+}
+
+func dnd_accept_drag(mimes string) string {
+	return dnd_escape("t=m:o=1", mimes)
+}
+
+func dnd_request_data(mime string) string {
+	return dnd_escape("t=r", mime)
+}
+
+func dnd_finish() string {
+	return dnd_escape("t=r", "")
+}
+
+type dnd_state struct {
+	dragging      bool
+	drag_mimes    []string
+	drop_mimes    []string
+	collecting    string // MIME type currently being collected
+	collect_buf   strings.Builder
+	plain_text    string
+	uri_list      []string
+	has_drop_data bool
+}
+
+func (d *dnd_state) reset_drag() {
+	d.dragging = false
+	d.drag_mimes = nil
+}
+
+func (d *dnd_state) reset_drop_data() {
+	d.drop_mimes = nil
+	d.collecting = ""
+	d.collect_buf.Reset()
+	d.plain_text = ""
+	d.uri_list = nil
+	d.has_drop_data = false
+}
+
+func draw_rounded_box(lp *loop.Loop, width int, lines []string) {
+	if width < 4 {
+		width = 4
+	}
+	inner_width := width - 2
+	// Top border
+	lp.QueueWriteString("╭" + strings.Repeat("─", inner_width) + "╮\r\n")
+	for _, line := range lines {
+		if len(line) > inner_width {
+			line = line[:inner_width]
+		}
+		padding := inner_width - len(line)
+		lp.QueueWriteString("│" + line + strings.Repeat(" ", padding) + "│\r\n")
+	}
+	// Bottom border
+	lp.QueueWriteString("╰" + strings.Repeat("─", inner_width) + "╯\r\n")
+}
 
 func Run(args []string) (rc int, err error) {
 	all_pointer_shapes := []loop.PointerShape{
@@ -60,36 +141,14 @@ func Run(args []string) (rc int, err error) {
 	}
 	lp.MouseTrackingMode(loop.FULL_MOUSE_TRACKING)
 	var current_mouse_event *loop.MouseEvent
+	var dnd dnd_state
 
 	draw_screen := func() {
 		lp.StartAtomicUpdate()
 		defer lp.EndAtomicUpdate()
 		lp.AllowLineWrapping(false)
 		defer lp.AllowLineWrapping(true)
-		if current_mouse_event == nil {
-			lp.ClearScreen()
-			lp.Println(`Move the mouse or click to see mouse events`)
-			return
-		}
 		lp.ClearScreen()
-		if current_mouse_event.Event_type == loop.MOUSE_LEAVE {
-			lp.Println("Mouse has left the window")
-			return
-		}
-		lp.Printf("Position: %d, %d (pixels)\r\n", current_mouse_event.Pixel.X, current_mouse_event.Pixel.Y)
-		lp.Printf("Cell    : %d, %d\r\n", current_mouse_event.Cell.X, current_mouse_event.Cell.Y)
-		lp.Printf("Type    : %s\r\n", current_mouse_event.Event_type)
-		y := 3
-		if current_mouse_event.Buttons != loop.NO_MOUSE_BUTTON {
-			lp.Println(current_mouse_event.Buttons.String())
-			y += 1
-		}
-		if mods := current_mouse_event.Mods.String(); mods != "" {
-			lp.Printf("Modifiers: %s\r\n", mods)
-			y += 1
-		}
-		lp.Println("Hover the mouse over the names below to see the shapes")
-		y += 1
 
 		sw := 80
 		sh := 24
@@ -98,50 +157,225 @@ func Run(args []string) (rc int, err error) {
 			sh = int(s.HeightCells)
 		}
 
-		num_cols := max(1, sw/col_width)
-		pos := 0
-		colfmt := "%-" + strconv.Itoa(col_width) + "s"
-		is_on_name := false
-		var ps loop.PointerShape
-		for y < sh && pos < len(all_pointer_shapes) {
-			is_row := y == current_mouse_event.Cell.Y
-			for c := 0; c < num_cols && pos < len(all_pointer_shapes); c++ {
-				name := all_pointer_shape_names[pos]
-				is_hovered := false
-				if is_row {
-					start_x := c * col_width
-					x := current_mouse_event.Cell.X
-					if x < start_x+len(name) && x >= start_x {
-						is_on_name = true
-						is_hovered = true
-						ps = all_pointer_shapes[pos]
+		if current_mouse_event == nil {
+			lp.Println(`Move the mouse or click to see mouse events`)
+			lp.Println("Hover the mouse over the names below to see the shapes")
+			lp.Println()
+			for pos := 0; pos < len(all_pointer_shapes); {
+				num_cols := max(1, sw/col_width)
+				colfmt := "%-" + strconv.Itoa(col_width) + "s"
+				for c := 0; c < num_cols && pos < len(all_pointer_shapes); c++ {
+					lp.Printf(colfmt, all_pointer_shape_names[pos])
+					pos++
+				}
+				lp.Println()
+			}
+		} else if current_mouse_event.Event_type == loop.MOUSE_LEAVE {
+			lp.Println("Mouse has left the window")
+		} else {
+			lp.Printf("Position: %d, %d (pixels)\r\n", current_mouse_event.Pixel.X, current_mouse_event.Pixel.Y)
+			lp.Printf("Cell    : %d, %d\r\n", current_mouse_event.Cell.X, current_mouse_event.Cell.Y)
+			lp.Printf("Type    : %s\r\n", current_mouse_event.Event_type)
+			y := 3
+			if current_mouse_event.Buttons != loop.NO_MOUSE_BUTTON {
+				lp.Println(current_mouse_event.Buttons.String())
+				y += 1
+			}
+			if mods := current_mouse_event.Mods.String(); mods != "" {
+				lp.Printf("Modifiers: %s\r\n", mods)
+				y += 1
+			}
+			lp.Println("Hover the mouse over the names below to see the shapes")
+			y += 1
+
+			num_cols := max(1, sw/col_width)
+			pos := 0
+			colfmt := "%-" + strconv.Itoa(col_width) + "s"
+			is_on_name := false
+			var ps loop.PointerShape
+			for y < sh && pos < len(all_pointer_shapes) {
+				is_row := y == current_mouse_event.Cell.Y
+				for c := 0; c < num_cols && pos < len(all_pointer_shapes); c++ {
+					name := all_pointer_shape_names[pos]
+					is_hovered := false
+					if is_row {
+						start_x := c * col_width
+						x := current_mouse_event.Cell.X
+						if x < start_x+len(name) && x >= start_x {
+							is_on_name = true
+							is_hovered = true
+							ps = all_pointer_shapes[pos]
+						}
+					}
+					if is_hovered {
+						lp.QueueWriteString("\x1b[31m")
+					}
+					lp.Printf(colfmt, name)
+					lp.QueueWriteString("\x1b[m")
+					pos++
+				}
+				y += 1
+				lp.Println()
+			}
+			lp.PopPointerShape()
+			if is_on_name {
+				lp.PushPointerShape(ps)
+			}
+		}
+
+		// Draw the drop area below the pointer shapes list
+		lp.Println()
+		box_width := min(sw, 60)
+		if dnd.dragging {
+			lines := []string{"Dragging over window. MIME types:"}
+			for _, m := range dnd.drag_mimes {
+				lines = append(lines, "  "+m)
+			}
+			draw_rounded_box(lp, box_width, lines)
+		} else if dnd.has_drop_data {
+			lines := []string{}
+			if dnd.plain_text != "" {
+				lines = append(lines, "text/plain: "+dnd.plain_text)
+			}
+			for _, u := range dnd.uri_list {
+				lines = append(lines, "URL: "+u)
+			}
+			if len(lines) == 0 {
+				lines = []string{"Drop received (no recognized content)"}
+			}
+			draw_rounded_box(lp, box_width, lines)
+		} else {
+			draw_rounded_box(lp, box_width, []string{"Drop something onto this window"})
+		}
+	}
+
+	handle_dnd_osc := func(raw []byte) error {
+		// raw is the OSC payload after ESC ] and before ST
+		// Format: 72;metadata;payload  or  72;metadata
+		prefix := fmt.Sprintf("%d;", kitty.DndCode)
+		if !bytes.HasPrefix(raw, []byte(prefix)) {
+			return nil
+		}
+		rest := string(raw[len(prefix):])
+		// Split into metadata and optional payload
+		meta, payload, _ := strings.Cut(rest, ";")
+		// Parse metadata key=value pairs separated by ':'
+		meta_map := make(map[string]string)
+		for _, kv := range strings.Split(meta, ":") {
+			k, v, _ := strings.Cut(kv, "=")
+			if k != "" {
+				meta_map[k] = v
+			}
+		}
+		t := meta_map["t"]
+		switch t {
+		case "m":
+			// Drag move event from terminal
+			// Check if drag has left the window (x=-1, y=-1)
+			if meta_map["x"] == "-1" || meta_map["y"] == "-1" {
+				dnd.reset_drag()
+				draw_screen()
+				return nil
+			}
+			mimes := strings.Fields(payload)
+			if len(mimes) > 0 {
+				dnd.drag_mimes = mimes
+			}
+			dnd.dragging = true
+			// Accept the drag with copy operation
+			accepted_mimes := []string{}
+			for _, m := range dnd.drag_mimes {
+				if m == "text/plain" || m == "text/uri-list" {
+					accepted_mimes = append(accepted_mimes, m)
+				}
+			}
+			if len(accepted_mimes) > 0 {
+				lp.QueueWriteString(dnd_accept_drag(strings.Join(accepted_mimes, " ")))
+			}
+			draw_screen()
+		case "M":
+			// Drop event from terminal
+			dnd.dragging = false
+			mimes := strings.Fields(payload)
+			dnd.drop_mimes = mimes
+			dnd.reset_drop_data()
+			// Request data for text/plain first, then text/uri-list
+			for _, m := range mimes {
+				if m == "text/plain" {
+					dnd.collecting = "text/plain"
+					lp.QueueWriteString(dnd_request_data("text/plain"))
+					return nil
+				}
+			}
+			for _, m := range mimes {
+				if m == "text/uri-list" {
+					dnd.collecting = "text/uri-list"
+					lp.QueueWriteString(dnd_request_data("text/uri-list"))
+					return nil
+				}
+			}
+			// Nothing to collect, signal done
+			lp.QueueWriteString(dnd_finish())
+			dnd.has_drop_data = true
+			draw_screen()
+		case "r":
+			// Data response from terminal
+			if payload == "" {
+				// End of data for current MIME type
+				if dnd.collecting == "text/plain" {
+					text := dnd.collect_buf.String()
+					// Get first line
+					if idx := strings.IndexByte(text, '\n'); idx >= 0 {
+						dnd.plain_text = text[:idx]
+					} else {
+						dnd.plain_text = text
+					}
+					dnd.collect_buf.Reset()
+					// Now request text/uri-list if available
+					for _, m := range dnd.drop_mimes {
+						if m == "text/uri-list" {
+							dnd.collecting = "text/uri-list"
+							lp.QueueWriteString(dnd_request_data("text/uri-list"))
+							return nil
+						}
+					}
+				} else if dnd.collecting == "text/uri-list" {
+					text := dnd.collect_buf.String()
+					dnd.collect_buf.Reset()
+					// Parse URI list: lines starting with # are comments
+					for _, line := range strings.Split(text, "\n") {
+						line = strings.TrimRight(line, "\r")
+						if line != "" && !strings.HasPrefix(line, "#") {
+							dnd.uri_list = append(dnd.uri_list, line)
+						}
 					}
 				}
-				if is_hovered {
-					lp.QueueWriteString("\x1b[31m")
+				dnd.collecting = ""
+				// Signal done
+				lp.QueueWriteString(dnd_finish())
+				dnd.has_drop_data = true
+				draw_screen()
+			} else {
+				// Decode base64 payload and append to buffer
+				decoded, err := base64.StdEncoding.DecodeString(payload)
+				if err == nil {
+					dnd.collect_buf.Write(decoded)
 				}
-				lp.Printf(colfmt, name)
-				lp.QueueWriteString("\x1b[m")
-				pos++
 			}
-			y += 1
-			lp.Println()
 		}
-		lp.PopPointerShape()
-		if is_on_name {
-			lp.PushPointerShape(ps)
-		}
+		return nil
 	}
 
 	lp.OnInitialize = func() (string, error) {
 		lp.SetWindowTitle("kitty mouse features demo")
 		lp.SetCursorVisible(false)
+		lp.QueueWriteString(dnd_start_accepting())
 		draw_screen()
 		return "", nil
 	}
 	lp.OnFinalize = func() string {
 		lp.SetCursorVisible(true)
-		return ""
+		return dnd_stop_accepting()
 	}
 
 	lp.OnMouseEvent = func(ev *loop.MouseEvent) error {
@@ -157,6 +391,12 @@ func Run(args []string) (rc int, err error) {
 	}
 	lp.OnResize = func(old_size loop.ScreenSize, new_size loop.ScreenSize) error {
 		draw_screen()
+		return nil
+	}
+	lp.OnEscapeCode = func(etype loop.EscapeCodeType, raw []byte) error {
+		if etype == loop.OSC {
+			return handle_dnd_osc(raw)
+		}
 		return nil
 	}
 	err = lp.Run()
