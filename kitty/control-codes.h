@@ -235,5 +235,3 @@
 #define PENDING_MODE 2026
 // Text size OSC number
 #define TEXT_SIZE_CODE 66
-// Drag and drop protocol
-#define DND_CODE 72
