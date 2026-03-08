@@ -613,7 +613,7 @@ def generate_constants() -> str:
     from kittens.query_terminal.main import all_queries
     from kitty.colors import ThemeFile
     from kitty.config import option_names_for_completion
-    from kitty.fast_data_types import FILE_TRANSFER_CODE
+    from kitty.fast_data_types import DND_CODE, FILE_TRANSFER_CODE
     from kitty.options.utils import allowed_shell_integration_values, url_style_map
     from kitty.simple_cli_definitions import CONFIG_HELP
     del sys.modules['kittens.hints.main']
@@ -637,6 +637,7 @@ type VersionType struct {{
 const VersionString string = "{kc.str_version}"
 const WebsiteBaseURL string = "{kc.website_base_url}"
 const FileTransferCode int = {FILE_TRANSFER_CODE}
+const DndCode int = {DND_CODE}
 const ImagePlaceholderChar rune = {placeholder_char}
 const SSHControlMasterTemplate = "{kc.ssh_control_master_template}"
 const RC_ENCRYPTION_PROTOCOL_VERSION string = "{kc.RC_ENCRYPTION_PROTOCOL_VERSION}"
