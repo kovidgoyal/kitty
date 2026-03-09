@@ -5,6 +5,7 @@ from kitty.config import defaults
 from kitty.fast_data_types import Region
 from kitty.layout.base import lgd
 from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
+from kitty.layout.splits import Pair
 from kitty.types import WindowGeometry
 from kitty.window import EdgeWidths
 from kitty.window_list import WindowList, reset_group_id_counter
@@ -271,3 +272,55 @@ class TestLayout(BaseTest):
         self.ae(q.neighbors_for_window(windows[1], all_windows), {'left': [1], 'bottom': [3, 4]})
         self.ae(q.neighbors_for_window(windows[2], all_windows), {'left': [1], 'right': [4], 'top': [2]})
         self.ae(q.neighbors_for_window(windows[3], all_windows), {'left': [3], 'top': [2]})
+
+    def test_splits_maximize(self):
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        w1 = Window(1)
+        q.add_window(all_windows, w1)
+        w2 = Window(2)
+        q.add_window(all_windows, w2, location='vsplit')
+        w3 = Window(3)
+        q.add_window(all_windows, w3, location='hsplit')
+        # Layout: w1 | (w2 above w3) — horizontal split at root, vertical split on right
+        root = q.pairs_root
+        # root is horizontal, containing w1 and [w2/w3 vertical pair]
+        self.ae(root.horizontal, True)
+        right_pair = root.two if isinstance(root.two, Pair) else root.one
+        self.assertIsInstance(right_pair, Pair)
+
+        # Focus window 3 (bottom-right)
+        all_windows.set_active_group_idx(all_windows.groups.index(all_windows.group_for_window(w3)))
+
+        # Save original biases
+        root_bias_before = root.bias
+        right_pair_bias_before = right_pair.bias
+
+        # maximize vertical (fill full height) — affects vertical (horizontal==False) pairs
+        result = q.layout_action('maximize', ('vertical',), all_windows)
+        self.assertTrue(result)
+        # right_pair is vertical (horizontal==False) so its bias should be 0.0 (w3 is in 'two')
+        self.ae(right_pair.bias, 0.0)
+        # root is horizontal so its bias should be unchanged
+        self.ae(root.bias, root_bias_before)
+        # _maximized_biases should track w3's vertical maximize
+        self.assertIn((all_windows.active_group.id, False), q._maximized_biases)
+
+        # Toggle back
+        result = q.layout_action('maximize', ('vertical',), all_windows)
+        self.assertTrue(result)
+        self.ae(right_pair.bias, right_pair_bias_before)
+        self.ae(getattr(q, '_maximized_biases', {}), {})
+
+        # maximize horizontal (fill full width) — affects horizontal pairs
+        result = q.layout_action('maximize', ('horizontal',), all_windows)
+        self.assertTrue(result)
+        # root is horizontal, w3 is under root.two (right side), so bias should be 0.0
+        self.ae(root.bias, 0.0)
+        # right_pair is vertical, so unchanged
+        self.ae(right_pair.bias, right_pair_bias_before)
+
+        # Toggle back
+        result = q.layout_action('maximize', ('horizontal',), all_windows)
+        self.assertTrue(result)
+        self.ae(root.bias, root_bias_before)
