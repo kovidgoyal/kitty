@@ -164,14 +164,14 @@ flush_pending_payloads(id_type timer_id UNUSED, void *x) {
     id_type id = (uintptr_t)x;
     Window *w = window_for_window_id(id);
     if (w && w->drop.wanted) {
-        if (!flush_pending(w->id, &w->drop.pending)) check_for_pending_writes();
+        if (flush_pending(w->id, &w->drop.pending)) check_for_pending_writes();
     }
 }
 
 static void
 queue_payload_to_child(id_type id, PendingData *pending, const char *header, size_t header_sz, const char *data, size_t data_sz, bool as_base64) {
     size_t offset = 0;
-    if (flush_pending(id, pending)) offset = send_payload_to_child(id, header, header_sz, data, data_sz, as_base64);
+    if (!flush_pending(id, pending)) offset = send_payload_to_child(id, header, header_sz, data, data_sz, as_base64);
     if (offset < data_sz || (!offset && !data_sz)) {
         ensure_space_for(pending, items, PendingEntry, pending->count + 1, capacity, 32, true);
         char *buf = malloc(header_sz + data_sz - offset);
@@ -218,7 +218,7 @@ drop_move_on_child(Window *w, const char** mimes, size_t num_mimes, bool is_drop
         if (mbuf) {
             size_t pos = 0;
             for (size_t i = 0; i < w->drop.num_offerred_mimes && pos < mimes_total_size; i++) {
-                int n = snprintf(mbuf, mimes_total_size - pos, mbuf + pos, "%s ", w->drop.offerred_mimes[i]);
+                int n = snprintf(mbuf + pos, mimes_total_size - pos, "%s ", w->drop.offerred_mimes[i]);
                 if (n < 0) break;
                 pos += n;
             }
