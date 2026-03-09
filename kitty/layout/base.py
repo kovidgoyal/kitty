@@ -371,7 +371,8 @@ class Layout:
         # Set show_title_bar flag on each visible window before layout
         min_windows = get_options().window_title_bar_min_windows
         visible_groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
-        show_title_bar = min_windows > 0 and len(visible_groups) >= min_windows
+        force_show = getattr(all_windows, '_force_show_title_bars', False)
+        show_title_bar = force_show or (min_windows > 0 and len(visible_groups) >= min_windows)
         for wg in visible_groups:
             for w in wg.windows:
                 w.show_title_bar = show_title_bar

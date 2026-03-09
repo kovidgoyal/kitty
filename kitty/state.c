@@ -1551,6 +1551,20 @@ get_tab_being_dragged(PyObject *self UNUSED, PyObject *args UNUSED) {
 }
 #undef tbd
 
+#define wbd global_state.window_being_dragged
+static PyObject*
+set_window_being_dragged(PyObject *self UNUSED, PyObject *args) {
+    zero_at_ptr(&wbd);
+    if (!PyArg_ParseTuple(args, "|Kpdd", &wbd.id, &wbd.drag_started, &wbd.x, &wbd.y)) return NULL;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+get_window_being_dragged(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return Py_BuildValue("KOdd", wbd.id, wbd.drag_started ? Py_True : Py_False, wbd.x, wbd.y);
+}
+#undef wbd
+
 static PyObject*
 request_callback_with_thumbnail(PyObject *self UNUSED, PyObject *args) {
     unsigned long long os_window_id, window_id = 0;
@@ -1579,6 +1593,8 @@ static PyMethodDef module_methods[] = {
     M(request_callback_with_thumbnail, METH_VARARGS),
     M(set_tab_being_dragged, METH_VARARGS),
     M(get_tab_being_dragged, METH_NOARGS),
+    M(set_window_being_dragged, METH_VARARGS),
+    M(get_window_being_dragged, METH_NOARGS),
     MW(update_pointer_shape, METH_VARARGS),
     MW(current_os_window, METH_NOARGS),
     MW(next_window_id, METH_NOARGS),

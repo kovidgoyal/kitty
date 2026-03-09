@@ -909,14 +909,15 @@ static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWw
         self.identifier = @"kitty-content-view";
 
         [self updateTrackingAreas];
-        char tab_mime[64];
+        char tab_mime[64], window_mime[64];
         snprintf(tab_mime, sizeof(tab_mime), "application/net.kovidgoyal.kitty-tab-%d", getpid());
+        snprintf(window_mime, sizeof(window_mime), "application/net.kovidgoyal.kitty-window-%d", getpid());
         NSMutableArray *types = [NSMutableArray arrayWithObjects:
             NSPasteboardTypeFileURL, NSPasteboardTypeString, NSPasteboardTypeURL, NSPasteboardTypeColor,
             NSPasteboardTypeFont, NSPasteboardTypeHTML, NSPasteboardTypePDF, NSPasteboardTypePNG,
             NSPasteboardTypeRTF, NSPasteboardTypeSound, NSPasteboardTypeTIFF,
             UTTypeData.identifier, UTTypeItem.identifier, UTTypeContent.identifier,
-            mime_to_uti(tab_mime),
+            mime_to_uti(tab_mime), mime_to_uti(window_mime),
         nil];
         // Add file promise types
         [types addObjectsFromArray:[NSFilePromiseReceiver readableDraggedTypes]];
@@ -1591,6 +1592,10 @@ update_drop_state(_GLFWwindow *window, size_t mime_count) {
         for (size_t i = 0; i < d->mimes_count; i++)
             _glfwPlatformRequestDropData(window, d->mimes[i]);
     }
+    // Restore first-responder status after native DnD; the drag operation can
+    // displace the content view from first responder, silently breaking keyboard
+    // input even though osw->is_focused remains true.
+    [window->ns.object makeFirstResponder:window->ns.view];
     return YES;
 }
 

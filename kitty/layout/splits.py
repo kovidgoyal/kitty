@@ -684,6 +684,28 @@ class Splits(Layout):
             self.pairs_root.swap_windows(before.id, after.id)
         return moved
 
+    def insert_window_next_to(
+        self,
+        all_windows: WindowList,
+        window: 'WindowType',
+        next_to: 'WindowType',
+        horizontal: bool,
+        after: bool
+    ) -> None:
+        """Reposition an existing window as a split adjacent to next_to."""
+        src_wg = all_windows.group_for_window(window)
+        dest_wg = all_windows.group_for_window(next_to)
+        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id:
+            return
+        # Remove from current position in pairs_root
+        self.remove_windows(src_wg.id)
+        # Re-insert next to dest
+        pair = self.pairs_root.pair_for_window(dest_wg.id)
+        if pair is not None:
+            self.pairs_root.split_and_add(dest_wg.id, src_wg.id, horizontal, after)
+        else:
+            self.pairs_root.balanced_add(src_wg.id)
+
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> bool | None:
         if action_name == 'rotate':
             args = args or ('90',)

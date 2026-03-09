@@ -95,6 +95,7 @@ from .fast_data_types import (
     get_options,
     get_os_window_size,
     get_tab_being_dragged,
+    get_window_being_dragged,
     glfw_get_monitor_workarea,
     global_font_size,
     grab_keyboard,
@@ -120,6 +121,7 @@ from .fast_data_types import (
     set_os_window_size,
     set_os_window_title,
     set_tab_being_dragged,
+    set_window_being_dragged,
     start_drag_with_data,
     thread_write,
     toggle_fullscreen,
@@ -1389,9 +1391,9 @@ class Boss:
             run_update_check(get_options().update_check_interval * 60 * 60)
             self.update_check_started = True
 
-    def handle_window_title_bar_mouse(self, os_window_id: int, window_id: int, button: int, modifiers: int, action: int) -> None:
+    def handle_window_title_bar_mouse(self, os_window_id: int, window_id: int, x: float, y: float, button: int, modifiers: int, action: int) -> None:
         if tm := self.os_window_map.get(os_window_id):
-            tm.handle_window_title_bar_mouse(window_id, button, modifiers, action)
+            tm.handle_window_title_bar_mouse(window_id, x, y, button, modifiers, action)
 
     def handle_tab_bar_mouse(self, os_window_id: int, x: float, y: float, button: int, modifiers: int, action: int) -> None:
         if tm := self.os_window_map.get(os_window_id):
@@ -1925,6 +1927,10 @@ class Boss:
                 for q in self.all_tab_managers:
                     is_dest = q is tm and (in_tab_bar or os_window_id != tab.os_window_id) and not is_leave
                     q.on_tab_drop_move(tab_id, is_dest, x, y)
+            window_id, drag_started = get_window_being_dragged()[:2]
+            if window_id and drag_started:
+                for q in self.all_tab_managers:
+                    q.on_window_drop_move(window_id, not is_leave, x, y)
 
     def on_drop(self, os_window_id: int, drop: dict[str, bytes] | int, from_self: bool, x: int, y: int) -> None:
         if isinstance(drop, int):
@@ -1936,6 +1942,14 @@ class Boss:
             self.show_error(_('Drop failed'), f'[{code}] {msg}')
             return
         if (tm := self.os_window_map.get(os_window_id)) is None:
+            return
+        window_mime_key = f'application/net.kovidgoyal.kitty-window-{os.getpid()}'
+        if (widb := drop.get(window_mime_key)):
+            window_id = int(widb)
+            tm.on_window_drop(x, y, window_id)
+            set_window_being_dragged()
+            for q in self.all_tab_managers:
+                q.on_window_drop_move()
             return
         if (tidb := drop.get(f'application/net.kovidgoyal.kitty-tab-{os.getpid()}')) and (tab := self.tab_for_id(int(tidb))):
             central, tab_bar = viewport_for_window(os_window_id)[:2]
@@ -1967,6 +1981,27 @@ class Boss:
         self, was_dropped: bool, was_canceled: bool, accepted_mime_type: str, action: int, data: dict[str, bytes] | None,
         needs_toplevel_on_wayland: bool
     ) -> None:
+        window_mime_key = f'application/net.kovidgoyal.kitty-window-{os.getpid()}'
+        if (wid_bytes := (data or {}).get(window_mime_key)):
+            window_id = int(wid_bytes.decode())
+            if get_window_being_dragged()[0] == window_id:
+                # Drop was not handled by on_drop (e.g. dropped outside kitty or on Wayland)
+                for tm in self.all_tab_managers:
+                    for tab in tm:
+                        if tab.force_show_title_bars:
+                            tab.force_show_title_bars = False
+                            tab.relayout()
+                set_window_being_dragged()
+                for tm in self.all_tab_managers:
+                    tm.on_window_drop_move()
+                if was_dropped and not was_canceled:
+                    if (window := self.window_id_map.get(window_id)):
+                        src_tab = window.tabref()
+                        src_tm = self.os_window_map.get(src_tab.os_window_id) if src_tab else None
+                        total_windows = sum(len(t) for t in src_tm) if src_tm else 0
+                        if total_windows > 1:
+                            self._move_window_to(window, target_os_window_id='new')
+            return
         if (tab_id := int((data or {}).get(f'application/net.kovidgoyal.kitty-tab-{os.getpid()}', b'0').decode())
         ) and get_tab_being_dragged()[0] == tab_id and (tab := self.tab_for_id(tab_id)):
             if needs_toplevel_on_wayland:
@@ -3232,6 +3267,46 @@ class Boss:
             self._cleanup_tab_after_window_removal(src_tab)
             target_tab.make_active()
 
+    def _swap_windows(self, window_a: Window, window_b: Window) -> None:
+        tab = window_a.tabref()
+        if tab is None or tab is not window_b.tabref():
+            return
+        wg_b = tab.windows.group_for_window(window_b)
+        if wg_b is None:
+            return
+        with self.suppress_focus_change_events():
+            tab.windows.set_active_window_group_for(window_a)
+            tab.current_layout.move_window_to_group(tab.windows, wg_b.id)
+            tab.relayout()
+
+    def _insert_window_in_direction(
+        self, window: Window, dest_window: Window,
+        direction: str
+    ) -> None:
+        src_tab = window.tabref()
+        dest_tab = dest_window.tabref()
+        if src_tab is None or dest_tab is None:
+            return
+        with self.suppress_focus_change_events():
+            if src_tab is not dest_tab:
+                target_tab_id = dest_tab.id
+                self._move_window_to(window, target_tab_id=target_tab_id)
+                dest_tab_fresh = self.tab_for_id(dest_tab.id)
+                if dest_tab_fresh is None:
+                    return
+                src_tab = dest_tab_fresh
+            layout = src_tab.current_layout
+            horizontal = direction in ('left', 'right')
+            after = direction in ('right', 'bottom')
+            if hasattr(layout, 'insert_window_next_to'):
+                layout.insert_window_next_to(src_tab.windows, window, dest_window, horizontal, after)
+            else:
+                wg_dest = src_tab.windows.group_for_window(dest_window)
+                if wg_dest:
+                    src_tab.windows.set_active_window_group_for(window)
+                    layout.move_window_to_group(src_tab.windows, wg_dest.id)
+            src_tab.relayout()
+
     def _move_tab_to(self, tab: Tab | None = None, target_os_window_id: int | None = None) -> Tab | None:
         tab = tab or self.active_tab
         if tab is None:
@@ -3322,6 +3397,32 @@ class Boss:
             ((None, f'Current tab: {format_tab_title(t)}') if t is ct else (t.id, format_tab_title(t)) for t in self.all_tabs),
             chosen
         )
+
+    @ac('win', '''
+        Temporarily show window title bars to allow drag-to-reorder
+
+        When window title bars are hidden (because :opt:`window_title_bar_min_windows`
+        is not met), this action forces them temporarily visible so that they can be
+        dragged to reorder windows. After any drag operation completes, the bars are
+        automatically hidden again. Press again to cancel before dragging.
+
+        Has no effect on tabs where title bars are already naturally visible.
+
+        Map an action to this, then press it before dragging a window title bar.
+        ''')
+    def toggle_window_title_bars(self) -> None:
+        tm = self.active_tab_manager
+        if tm is None:
+            return
+        opts = get_options()
+        min_w = opts.window_title_bar_min_windows
+        currently_forced = any(t.force_show_title_bars for t in tm)
+        for t in tm:
+            visible = sum(1 for _ in t.windows.iter_all_layoutable_groups(only_visible=True))
+            naturally_visible = min_w > 0 and visible >= min_w
+            if not naturally_visible:
+                t.force_show_title_bars = not currently_forced
+                t.relayout()
 
     @ac('win', '''
         Detach a window, moving it to another tab or OS Window
