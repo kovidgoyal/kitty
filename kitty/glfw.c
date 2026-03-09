@@ -826,7 +826,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
                         char buf[3072];
                         ssize_t ret = ev->read_data(window, ev, buf, sizeof(buf));
                         drop_dispatch_data(w, buf, ret);
-                        if (ret <= 0) ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+                        if (ret < 0) ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
                     }
                 }
             } else {
