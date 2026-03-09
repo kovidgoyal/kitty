@@ -298,7 +298,8 @@ control commands as you like and process their output.
 :ac:`launch` command with ``--type=background --allow-remote-control``.
 For more advanced usage, including fine grained permissions, setting
 env vars, command line interpolation, passing data to STDIN, etc.
-the :doc:`launch <launch>` command should be used.
+the :doc:`launch <launch>` command should be used. Relative paths to scripts
+are interpreted with respect to the kitty config directory.
 
 .. note:: You do not need :opt:`allow_remote_control` to use these mappings,
    as they are not actual remote programs, but are simply a way to reuse the

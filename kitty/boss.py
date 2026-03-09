@@ -165,6 +165,7 @@ from .utils import (
     parse_address_spec,
     parse_os_window_state,
     platform_window_id,
+    resolve_custom_file,
     safe_print,
     sanitize_url_for_display_to_user,
     shlex_split,
@@ -855,9 +856,11 @@ class Boss:
 
             map f1 remote_control_script /path/to/script arg1 arg2 ...
 
-        See :ref:`rc_mapping` for details.
+        See :ref:`rc_mapping` for details. Relative paths are resolved with respect
+        to the kitty config directory.
         ''')
     def remote_control_script(self, path: str, *args: str) -> None:
+        path = resolve_custom_file(path)
         path = which(path) or path
         if not os.access(path, os.X_OK):
             self.show_error('Remote control script not executable', f'The script {path} is not executable check its permissions')
