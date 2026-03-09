@@ -1987,10 +1987,10 @@ class Boss:
             if get_window_being_dragged()[0] == window_id:
                 # Drop was not handled by on_drop (e.g. dropped outside kitty or on Wayland)
                 for tm in self.all_tab_managers:
-                    for tab in tm:
-                        if tab.force_show_title_bars:
-                            tab.force_show_title_bars = False
-                            tab.relayout()
+                    for t in tm:
+                        if t.force_show_title_bars:
+                            t.force_show_title_bars = False
+                            t.relayout()
                 set_window_being_dragged()
                 for tm in self.all_tab_managers:
                     tm.on_window_drop_move()
