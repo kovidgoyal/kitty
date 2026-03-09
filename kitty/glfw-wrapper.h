@@ -2290,6 +2290,10 @@ typedef GLFWdropeventfun (*glfwSetDropEventCallback_func)(GLFWwindow*, GLFWdrope
 GFW_EXTERN glfwSetDropEventCallback_func glfwSetDropEventCallback_impl;
 #define glfwSetDropEventCallback glfwSetDropEventCallback_impl
 
+typedef void (*glfwRequestDropUpdate_func)(GLFWwindow*);
+GFW_EXTERN glfwRequestDropUpdate_func glfwRequestDropUpdate_impl;
+#define glfwRequestDropUpdate glfwRequestDropUpdate_impl
+
 typedef int (*glfwRequestDropData_func)(GLFWwindow*, const char*);
 GFW_EXTERN glfwRequestDropData_func glfwRequestDropData_impl;
 #define glfwRequestDropData glfwRequestDropData_impl

@@ -4976,7 +4976,8 @@ GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* window, GLFWscrollfun ca
 GLFWAPI GLFWliveresizefun glfwSetLiveResizeCallback(GLFWwindow* window, GLFWliveresizefun callback);
 
 GLFWAPI GLFWdropeventfun glfwSetDropEventCallback(GLFWwindow *window, GLFWdropeventfun callback);
-GLFWAPI void glfwRequestDropUpdate(GLFWwindow *window);  // ask for update before GLFW_DROP_DROP happens
+// ask for update before GLFW_DROP_DROP happens
+GLFWAPI void glfwRequestDropUpdate(GLFWwindow *window);
 GLFWAPI int glfwRequestDropData(GLFWwindow *window, const char *mime);
 GLFWAPI void glfwEndDrop(GLFWwindow *window, GLFWDragOperationType op);
 GLFWAPI GLFWdragsourcefun glfwSetDragSourceCallback(GLFWwindow* window, GLFWdragsourcefun callback);
