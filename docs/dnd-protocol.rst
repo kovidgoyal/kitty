@@ -104,7 +104,7 @@ Requesting data is done by sending an escape code of the form::
 
     OSC _dnd_code ; t=r ; MIME type ST
 
-This will request data for the specifid MIME type. The terminal must respond
+This will request data for the specified MIME type. The terminal must respond
 with a series of escape codes of the form::
 
     OSC _dnd_code ; t=r ; base64 encoded data ST
@@ -116,7 +116,7 @@ getting the data, the terminal must send an escape code of the form::
 
 Here POSIX error name is a POSIX symbolic error name such as ``ENOENT`` or
 ``EIO`` or the value ``EUNKNOWN`` for an unknown error. Note that if a client
-sends a request for another MIME type before the data for the revious MIME type
+sends a request for another MIME type before the data for the previous MIME type
 is completed, the terminal *must* switch over to sending data for the new MIME
 type.
 
