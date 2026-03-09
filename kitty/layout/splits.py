@@ -502,6 +502,44 @@ class Pair:
             return False
         return self.two.is_group_on_second(gid)
 
+    def find_window_in_tree(self, window_id: int) -> 'list[tuple[Pair, bool]] | None':
+        # Returns list of (pair, is_in_one) from self down to the pair containing window_id.
+        if self.one == window_id:
+            return [(self, True)]
+        if self.two == window_id:
+            return [(self, False)]
+        if isinstance(self.one, Pair):
+            path = self.one.find_window_in_tree(window_id)
+            if path is not None:
+                return [(self, True)] + path
+        if isinstance(self.two, Pair):
+            path = self.two.find_window_in_tree(window_id)
+            if path is not None:
+                return [(self, False)] + path
+        return None
+
+    def path_from_root(self, target: 'Pair') -> 'list[str] | None':
+        if self is target:
+            return []
+        if isinstance(self.one, Pair):
+            sub = self.one.path_from_root(target)
+            if sub is not None:
+                return ['one'] + sub
+        if isinstance(self.two, Pair):
+            sub = self.two.path_from_root(target)
+            if sub is not None:
+                return ['two'] + sub
+        return None
+
+    def pair_at_path(self, path: 'list[str]') -> 'Pair | None':
+        current: Pair = self
+        for step in path:
+            child = current.one if step == 'one' else current.two
+            if not isinstance(child, Pair):
+                return None
+            current = child
+        return current
+
 
 class SplitsLayoutOpts(LayoutOpts):
 
@@ -749,6 +787,46 @@ class Splits(Layout):
                 if pair is not None:
                     pair.set_bias(wg.id, bias)
                     return True
+        elif action_name == 'maximize':
+            args = args or ('horizontal',)
+            axis = args[0]
+            is_horizontal = axis == 'horizontal'
+            wg = all_windows.active_group
+            if wg is not None:
+                key = (wg.id, is_horizontal)
+                maximized_biases: dict[tuple[int, bool], list[tuple[Pair, float]]] = getattr(self, '_maximized_biases', {})
+                if key in maximized_biases:
+                    # Already maximized along this axis for this window — toggle back
+                    current_pair_ids = {id(p) for p in self.pairs_root.self_and_descendants()}
+                    for pair_ref, saved_bias in maximized_biases.pop(key):
+                        if id(pair_ref) in current_pair_ids:
+                            pair_ref.bias = saved_bias
+                    self._maximized_biases = maximized_biases
+                    return True
+                else:
+                    # Undo any existing maximize along the same axis (different window)
+                    stale_keys = [k for k in maximized_biases if k[1] == is_horizontal]
+                    if stale_keys:
+                        current_pair_ids = {id(p) for p in self.pairs_root.self_and_descendants()}
+                        for k in stale_keys:
+                            for pair_ref, saved_bias in maximized_biases.pop(k):
+                                if id(pair_ref) in current_pair_ids:
+                                    pair_ref.bias = saved_bias
+                    # Maximize: set biases along the path to give maximum space to active window
+                    # Only adjust pairs whose split axis matches the requested direction:
+                    # horizontal maximize expands width (affects horizontal/side-by-side splits),
+                    # vertical maximize expands height (affects vertical/top-bottom splits).
+                    tree_path = self.pairs_root.find_window_in_tree(wg.id)
+                    if tree_path is not None:
+                        saved_biases: list[tuple[Pair, float]] = []
+                        for pair, is_in_one in tree_path:
+                            if pair.horizontal == is_horizontal and not pair.is_redundant:
+                                saved_biases.append((pair, pair.bias))
+                                pair.bias = 1.0 if is_in_one else 0.0
+                        if saved_biases:
+                            maximized_biases[key] = saved_biases
+                            self._maximized_biases = maximized_biases
+                    return True
 
         return None
 
@@ -818,7 +896,25 @@ class Splits(Layout):
         return ans
 
     def layout_state(self) -> dict[str, Any]:
-        return {'pairs': self.pairs_root.serialize()}
+        ans: dict[str, Any] = {'pairs': self.pairs_root.serialize()}
+        maximized_biases: dict[tuple[int, bool], list[tuple[Pair, float]]] = getattr(self, '_maximized_biases', {})
+        if maximized_biases:
+            serialized_maximized = []
+            for (window_id, is_horizontal), saved_biases_list in maximized_biases.items():
+                entries = []
+                for pair_ref, saved_bias in saved_biases_list:
+                    path = self.pairs_root.path_from_root(pair_ref)
+                    if path is not None:
+                        entries.append({'path': path, 'bias': saved_bias})
+                if entries:
+                    serialized_maximized.append({
+                        'window_id': window_id,
+                        'is_horizontal': is_horizontal,
+                        'saved_biases': entries,
+                    })
+            if serialized_maximized:
+                ans['maximized'] = serialized_maximized
+        return ans
 
     def set_layout_state(self, layout_state: dict[str, Any], map_group_id: WindowMapper) -> bool:
         new_root = Pair()
@@ -827,5 +923,21 @@ class Splits(Layout):
         if before == frozenset(new_root.all_window_ids()):
             self.pairs_root = new_root
             self.layout_opts = SplitsLayoutOpts(layout_state['opts'])
+            if 'maximized' in layout_state:
+                maximized_biases: dict[tuple[int, bool], list[tuple[Pair, float]]] = {}
+                for entry in layout_state['maximized']:
+                    new_window_id = map_group_id(entry['window_id'])
+                    if new_window_id is None:
+                        continue
+                    is_horizontal: bool = entry['is_horizontal']
+                    saved_biases_list: list[tuple[Pair, float]] = []
+                    for saved in entry['saved_biases']:
+                        pair = new_root.pair_at_path(saved['path'])
+                        if pair is not None:
+                            saved_biases_list.append((pair, saved['bias']))
+                    if saved_biases_list:
+                        maximized_biases[(new_window_id, is_horizontal)] = saved_biases_list
+                if maximized_biases:
+                    self._maximized_biases = maximized_biases
             return True
         return False

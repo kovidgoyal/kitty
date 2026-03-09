@@ -184,10 +184,24 @@ define a few extra key bindings in :file:`kitty.conf`::
     # window's size.
     map ctrl+. layout_action bias 80
 
+    # Maximize the active window along the horizontal axis (fill full width),
+    # keeping other windows visible in their vertical positions. Press again to
+    # restore the original layout.
+    map ctrl+shift+right layout_action maximize horizontal
+
+    # Maximize the active window along the vertical axis (fill full height),
+    # keeping other windows visible in their horizontal positions. Press again
+    # to restore the original layout.
+    map ctrl+shift+up layout_action maximize vertical
+
 
 Windows can be resized using :ref:`window_resizing`. You can swap the windows
 in a split using the ``rotate`` action with an argument of ``180`` and rotate
-and swap with an argument of ``270``.
+and swap with an argument of ``270``. The ``maximize`` action expands the active
+window to fill the maximum available space along a single axis while keeping
+the rest of the layout intact. Use ``maximize horizontal`` to fill the full
+width and ``maximize vertical`` to fill the full height. Calling it again
+restores the original split sizes.
 
 This layout takes one option, ``split_axis`` that controls whether new windows
 are placed into vertical or horizontal splits when a :option:`--location
