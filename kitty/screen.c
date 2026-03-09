@@ -15,6 +15,7 @@
 #include "data-types.h"
 #include "control-codes.h"
 #include "screen.h"
+#include "dnd.h"
 #include "state.h"
 #include "iqsort.h"
 #include "fonts.h"
@@ -1505,6 +1506,26 @@ screen_dirty_line_graphics(Screen *self, const unsigned int top, const unsigned 
     }
     if (need_to_remove)
         grman_remove_cell_images(main_buf ? self->main_grman : self->alt_grman, top, bottom);
+}
+
+void
+screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *payload) {
+    if (!self->window_id) return;
+    Window *w = window_for_window_id(self->window_id);
+    if (!w) return;
+    switch(cmd->type) {
+        case 'a': drop_register_window(w, payload, cmd->payload_sz, true, cmd->client_id, cmd->more); break;
+        case 'A': drop_register_window(w, NULL, 0, false, cmd->client_id, cmd->more); break;
+        case 'm': drop_set_status(w, cmd->operation, (const char*)payload, cmd->payload_sz, cmd->more); break;
+        case 'r': {
+            char buf[256];
+            if (!cmd->payload_sz) drop_finish(w);
+            else if (cmd->payload_sz + 1 < sizeof(buf)) {
+                memcpy(buf, payload, cmd->payload_sz); buf[cmd->payload_sz] = 0;
+                drop_request_data(w, buf);
+            }
+        } break;
+    }
 }
 
 void
