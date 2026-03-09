@@ -296,9 +296,9 @@ func Run(args []string) (rc int, err error) {
 		case "M":
 			// Drop event from terminal
 			dnd.dragging = false
+			dnd.reset_drop_data()
 			mimes := strings.Fields(payload)
 			dnd.drop_mimes = mimes
-			dnd.reset_drop_data()
 			// Request data for text/plain first, then text/uri-list
 			for _, m := range mimes {
 				if m == "text/plain" {
@@ -357,7 +357,7 @@ func Run(args []string) (rc int, err error) {
 				draw_screen()
 			} else {
 				// Decode base64 payload and append to buffer
-				decoded, err := base64.StdEncoding.DecodeString(payload)
+				decoded, err := base64.RawStdEncoding.DecodeString(payload)
 				if err == nil {
 					dnd.collect_buf.Write(decoded)
 				}
