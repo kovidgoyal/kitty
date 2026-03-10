@@ -99,10 +99,11 @@ string_arrays_cmp(const char **a, size_t an, const char **b, size_t bn) {
 }
 
 static size_t
-send_payload_to_child(id_type id, const char *header, size_t header_sz, const char *data, const size_t data_sz, bool as_base64) {
+send_payload_to_child(id_type id, uint32_t client_id, const char *header, size_t header_sz, const char *data, const size_t data_sz, bool as_base64) {
     size_t offset = 0;
     char buf[4096 + 1024];
     memcpy(buf, header, header_sz);
+    if (client_id) header_sz += snprintf(buf + header_sz, sizeof(buf) - header_sz, ":i=%u", (unsigned)client_id);
     if (!data_sz) {
         buf[header_sz++] = 0x1b; buf[header_sz++] = '\\';
         bool found, too_much_data;
@@ -140,7 +141,7 @@ static bool
 flush_pending(id_type id, PendingData *pending) {
     while (pending->count) {
         PendingEntry *e = pending->items;
-        size_t written = send_payload_to_child(id, e->buf, e->header_sz, e->buf + e->header_sz, e->data_sz, e->as_base64);
+        size_t written = send_payload_to_child(id, e->client_id, e->buf, e->header_sz, e->buf + e->header_sz, e->data_sz, e->as_base64);
         if (written < e->data_sz) {
             if (written) {
                 e->data_sz -= written;
@@ -169,16 +170,17 @@ flush_pending_payloads(id_type timer_id UNUSED, void *x) {
 }
 
 static void
-queue_payload_to_child(id_type id, PendingData *pending, const char *header, size_t header_sz, const char *data, size_t data_sz, bool as_base64) {
+queue_payload_to_child(id_type id, uint32_t client_id, PendingData *pending, const char *header, size_t header_sz, const char *data, size_t data_sz, bool as_base64) {
     size_t offset = 0;
-    if (flush_pending(id, pending)) offset = send_payload_to_child(id, header, header_sz, data, data_sz, as_base64);
+    if (flush_pending(id, pending)) offset = send_payload_to_child(id, client_id, header, header_sz, data, data_sz, as_base64);
     if (offset < data_sz || (!offset && !data_sz)) {
         ensure_space_for(pending, items, PendingEntry, pending->count + 1, capacity, 32, true);
         char *buf = malloc(header_sz + data_sz - offset);
         if (!buf) fatal("Out of memory");
         memcpy(buf, header, header_sz); memcpy(buf + header_sz, data, data_sz - offset);
         PendingEntry *e = &pending->items[pending->count++];
-        e->buf = buf; e->header_sz = header_sz; e->data_sz = data_sz - offset; e->as_base64 = as_base64;
+        e->buf = buf; e->header_sz = header_sz; e->data_sz = data_sz - offset;
+        e->as_base64 = as_base64; e->client_id = client_id;
     }
     if (pending->count) check_for_pending_writes();
 }
@@ -209,7 +211,7 @@ drop_move_on_child(Window *w, const char** mimes, size_t num_mimes, bool is_drop
     // we simply drop this event if there is too much data being written to the child
     if (w->drop.pending.count && !is_drop) return;
     char buf[128];
-    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;i=%u:t=%c:x=%u:y=%u:X=%d:Y=%d", DND_CODE, w->drop.client_id,
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=%c:x=%u:y=%u:X=%d:Y=%d", DND_CODE,
             is_drop ? 'M' : 'm', w->mouse_pos.cell_x, w->mouse_pos.cell_y,
             (int)w->mouse_pos.global_x, (int)w->mouse_pos.global_y);
     if (mimes_total_size) {
@@ -222,11 +224,11 @@ drop_move_on_child(Window *w, const char** mimes, size_t num_mimes, bool is_drop
                 if (n < 0) break;
                 pos += n;
             }
-            queue_payload_to_child(w->id, &w->drop.pending, buf, header_size, mbuf, pos, false);
+            queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, mbuf, pos, false);
         }
     } else {
         buf[header_size++] = 0x1b; buf[header_size++] = '\\';
-        queue_payload_to_child(w->id, &w->drop.pending, buf, header_size, NULL, 0, false);
+        queue_payload_to_child(w->id, w->drop.client_id,  &w->drop.pending, buf, header_size, NULL, 0, false);
     }
 }
 
@@ -305,8 +307,8 @@ static void
 drop_send_error(Window *w, int error_code) {
     char buf[128];
     const char *e = get_errno_name(error_code);
-    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;i=%u:t=R", DND_CODE, w->drop.client_id);
-    queue_payload_to_child(w->id, &w->drop.pending, buf, header_size, e, strlen(e), false);
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=R", DND_CODE);
+    queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, e, strlen(e), false);
 }
 
 void
@@ -331,8 +333,8 @@ drop_dispatch_data(Window *w, const char *data, ssize_t sz) {
     if (sz < 0) drop_send_error(w, -sz);
     else {
         char buf[128];
-        int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;i=%u:t=r", DND_CODE, w->drop.client_id);
-        queue_payload_to_child(w->id, &w->drop.pending, buf, header_size, sz ? data : NULL, sz, true);
+        int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=r", DND_CODE);
+        queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, sz ? data : NULL, sz, true);
     }
 }
 
@@ -343,7 +345,7 @@ drop_left_child(Window *w) {
     drop_free_offered_mimes(w);
     if (w->drop.wanted) {
         char buf[128];
-        int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;i=%u:t=m:x=-1:y=-1", DND_CODE, w->drop.client_id);
-        queue_payload_to_child(w->id, &w->drop.pending, buf, header_size, NULL, 0, false);
+        int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=m:x=-1:y=-1", DND_CODE);
+        queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, NULL, 0, false);
     }
 }
