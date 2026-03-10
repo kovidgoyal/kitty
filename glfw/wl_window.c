@@ -2364,8 +2364,23 @@ destroy_data_offer(_GLFWWaylandDataOffer *offer) {
         for (size_t i = 0; i < offer->mimes_count; i++) free((char*)offer->mimes[i]);
         free(offer->mimes);
     }
+    free(offer->copy_mimes);  // pointer array only; strings are owned by mimes[]
     if (offer->requested_drop_data) destroy_drop_data(offer);
     memset(offer, 0, sizeof(offer[0]));
+}
+
+// Reset the working copy of mimes so the next callback sees the full original
+// list.  Returns false on allocation failure.
+static bool
+reset_copy_mimes(_GLFWWaylandDataOffer *offer) {
+    if (offer->mimes_count == 0) { offer->copy_mimes_count = 0; return true; }
+    if (!offer->copy_mimes) {
+        offer->copy_mimes = malloc(offer->mimes_count * sizeof(const char*));
+        if (!offer->copy_mimes) return false;
+    }
+    memcpy(offer->copy_mimes, offer->mimes, offer->mimes_count * sizeof(const char*));
+    offer->copy_mimes_count = offer->mimes_count;
+    return true;
 }
 
 static void
@@ -2481,13 +2496,11 @@ static void handle_primary_selection_offer(void *data UNUSED, struct zwp_primary
 // Helper function to update drop state from callback results
 static void
 update_drop_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUSED, size_t accepted_count) {
-    // The backend's mimes/mimes_count are NOT modified – they always hold the
-    // full original list so that every future callback sees all available types.
+    d->copy_mimes_count = accepted_count;
     bool accepted = accepted_count > 0;
     bool acceptance_changed = (accepted != d->drag_accepted);
-    // The first entry in the accepted list is the preferred mime for the drop.
-    const char **accepted_mimes = _glfwGetLastDropAcceptedMimes(NULL);
-    const char* new_preferred_mime = (accepted && accepted_mimes) ? accepted_mimes[0] : NULL;
+    // The first entry in the accepted (sorted) copy is the preferred MIME.
+    const char* new_preferred_mime = (accepted && d->copy_mimes) ? d->copy_mimes[0] : NULL;
     bool mime_changed = false;
 
     // Check if the preferred MIME changed
@@ -2521,10 +2534,12 @@ drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint
         if (window->wl.surface == surface) {
             double xpos = wl_fixed_to_double(x);
             double ypos = wl_fixed_to_double(y);
-            size_t mime_count = _glfwInputDropEvent(
-                    window, GLFW_DROP_ENTER, xpos, ypos,
-                    offer->mimes, offer->mimes_count, offer->is_self_offer);
-            update_drop_state(offer, window, mime_count);
+            if (reset_copy_mimes(offer)) {
+                size_t mime_count = _glfwInputDropEvent(
+                        window, GLFW_DROP_ENTER, xpos, ypos,
+                        offer->copy_mimes, offer->copy_mimes_count, offer->is_self_offer);
+                update_drop_state(offer, window, mime_count);
+            }
             break;
         }
         window = window->next;
@@ -2642,12 +2657,10 @@ drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     _GLFWwindow* window = _glfw.windowListHead;
     while (window) {
         if (window->wl.surface == offer->surface) {
-            size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, offer->mimes, offer->mimes_count, offer->is_self_offer);
-            if (!offer->mimes) { destroy_data_offer(offer); return; }
-            // Use the accepted mimes from the callback, not the full original list.
-            const char **accepted_mimes = _glfwGetLastDropAcceptedMimes(NULL);
-            if (accepted_mimes) {
-                for (size_t i = 0; i < num_accepted; i++) request_drop_data(offer, accepted_mimes[i]);
+            if (reset_copy_mimes(offer)) {
+                size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, offer->copy_mimes, offer->copy_mimes_count, offer->is_self_offer);
+                if (!offer->copy_mimes) { destroy_data_offer(offer); return; }
+                for (size_t i = 0; i < num_accepted; i++) request_drop_data(offer, offer->copy_mimes[i]);
             }
             break;
         }
@@ -2664,9 +2677,11 @@ motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t
         if (window->wl.surface == offer->surface) {
             double xpos = wl_fixed_to_double(x);
             double ypos = wl_fixed_to_double(y);
-            size_t mime_count = _glfwInputDropEvent(
-                window, GLFW_DROP_MOVE, xpos, ypos, offer->mimes, offer->mimes_count, offer->is_self_offer);
-            update_drop_state(offer, window, mime_count);
+            if (reset_copy_mimes(offer)) {
+                size_t mime_count = _glfwInputDropEvent(
+                    window, GLFW_DROP_MOVE, xpos, ypos, offer->copy_mimes, offer->copy_mimes_count, offer->is_self_offer);
+                update_drop_state(offer, window, mime_count);
+            }
             break;
         }
         window = window->next;
@@ -2676,8 +2691,8 @@ motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t
 void
 _glfwPlatformRequestDropUpdate(_GLFWwindow* window) {
     _GLFWWaylandDataOffer *d = &_glfw.wl.drop_data_offer;
-    if (d->id) {
-        size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_STATUS_UPDATE, 0, 0, d->mimes, d->mimes_count, d->is_self_offer);
+    if (d->id && reset_copy_mimes(d)) {
+        size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_STATUS_UPDATE, 0, 0, d->copy_mimes, d->copy_mimes_count, d->is_self_offer);
         update_drop_state(d, window, mime_count);
     }
 }

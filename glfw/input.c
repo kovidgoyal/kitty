@@ -402,54 +402,22 @@ void _glfwInputCursorEnter(_GLFWwindow* window, bool entered)
         window->callbacks.cursorEnter((GLFWwindow*) window, entered);
 }
 
-// Static storage for the accepted mimes from the last drop callback.
-// Valid until the next call to _glfwInputDropEvent.  Since GLFW is
-// single-threaded this is safe.
-static const char **s_accepted_mimes = NULL;
-static size_t s_accepted_count = 0;
-static size_t s_accepted_capacity = 0;
-
-// Return the accepted mimes written by the most recent drop callback.
-// The pointers in the returned array are owned by the backend's original
-// mimes storage and must not be freed by the caller.
-const char** _glfwGetLastDropAcceptedMimes(size_t *count_out) {
-    if (count_out) *count_out = s_accepted_count;
-    return s_accepted_mimes;
-}
-
 // Notifies shared code of a drop event.
-// The callback receives a temporary copy of the mimes array so that any
-// reordering or filtering it performs does not alter the backend's original
-// list.  After the callback returns the accepted (possibly reordered) mimes
-// are available via _glfwGetLastDropAcceptedMimes().
+// The caller is responsible for passing a mutable working-copy of the mimes
+// array (reset to the full original list before each call) so that the
+// callback can sort/filter in-place without touching the backend's canonical
+// storage.  The return value is ev.num_mimes after the callback returns,
+// i.e. the number of accepted (possibly reordered) mimes starting at
+// mimes[0].
 size_t _glfwInputDropEvent(_GLFWwindow *window, GLFWDropEventType type, double xpos, double ypos, const char** mimes, size_t num_mimes, bool from_self) {
     if (!window->callbacks.drop_event) return 0;
-    s_accepted_count = 0;
-    // Build a temporary copy of the mimes pointer array so the callback
-    // can sort/filter without touching the backend's original storage.
-    const char **copy = NULL;
-    if (mimes && num_mimes > 0) {
-        if (num_mimes > s_accepted_capacity) {
-            free(s_accepted_mimes);
-            s_accepted_mimes = (const char**)malloc(num_mimes * sizeof(const char*));
-            s_accepted_capacity = s_accepted_mimes ? num_mimes : 0;
-        }
-        copy = s_accepted_mimes;
-        // If allocation failed we cannot safely isolate the callback from the
-        // original mimes array – skip the callback rather than risk corruption.
-        if (!copy) return 0;
-        memcpy(copy, mimes, num_mimes * sizeof(const char*));
-    }
     GLFWDropEvent ev = {
-        .mimes=copy ? copy : mimes, .type=type, .xpos=xpos, .ypos=ypos, .num_mimes=num_mimes, .from_self=from_self,
+        .mimes=mimes, .type=type, .xpos=xpos, .ypos=ypos, .num_mimes=num_mimes, .from_self=from_self,
         .read_data=type == GLFW_DROP_DATA_AVAILABLE ? _glfwPlatformReadAvailableDropData : NULL,
         .finish_drop=type == GLFW_DROP_DATA_AVAILABLE || type == GLFW_DROP_DROP ? _glfwPlatformEndDrop : NULL,
     };
     window->callbacks.drop_event((GLFWwindow*)window, &ev);
-    // ev.mimes == copy (when copy != NULL), ev.num_mimes is the accepted count.
-    // s_accepted_mimes[0..ev.num_mimes-1] now holds the accepted/sorted mimes.
-    s_accepted_count = ev.num_mimes;
-    return s_accepted_count;
+    return ev.num_mimes;
 }
 
 // Notifies shared code that the OS wants data for a MIME type from the drag source
