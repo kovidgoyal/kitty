@@ -103,7 +103,6 @@ send_payload_to_child(id_type id, const char *header, size_t header_sz, const ch
     size_t offset = 0;
     char buf[4096 + 1024];
     memcpy(buf, header, header_sz);
-    buf[header_sz++] = ':'; buf[header_sz++] = 'm'; buf[header_sz++] = '=';
     if (!data_sz) {
         buf[header_sz++] = 0x1b; buf[header_sz++] = '\\';
         bool found, too_much_data;
@@ -111,6 +110,7 @@ send_payload_to_child(id_type id, const char *header, size_t header_sz, const ch
         if (too_much_data) return 0;
         return 1;
     }
+    buf[header_sz++] = ':'; buf[header_sz++] = 'm'; buf[header_sz++] = '=';
     const size_t limit = as_base64 ? 3072 : 4096;
     while (offset < data_sz) {
         size_t chunk = data_sz - offset;
