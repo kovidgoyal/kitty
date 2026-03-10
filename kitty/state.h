@@ -253,7 +253,7 @@ typedef struct Window {
         char *registered_mimes;
         PendingData pending;
 
-        const char **offerred_mimes; size_t num_offerred_mimes;
+        const char **offerred_mimes; size_t num_offerred_mimes, offered_mimes_total_size;
 
         char *accepted_mimes; size_t accepted_mimes_sz;
         int accepted_operation; bool accept_in_progress;
