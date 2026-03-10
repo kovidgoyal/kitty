@@ -17,6 +17,7 @@ import (
 
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
+var _ = debugprintln
 
 const dnd_accepted_mimes = "text/plain text/uri-list"
 
