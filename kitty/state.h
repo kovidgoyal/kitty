@@ -204,6 +204,17 @@ typedef struct WindowBarData {
     bool needs_render;
 } WindowBarData;
 
+typedef struct PendingEntry {
+    char *buf; size_t header_sz;
+    size_t data_sz;
+    bool as_base64;
+    uint32_t client_id;
+} PendingEntry;
+
+typedef struct PendingData {
+    PendingEntry *items; size_t count, capacity;
+} PendingData;
+
 typedef struct Window {
     id_type id;
     bool visible;
@@ -236,6 +247,18 @@ typedef struct Window {
         double drag_start_scrolled_by;
         bool is_hovering;
     } scrollbar;
+    struct {
+        bool wanted, hovered, dropped;
+        uint32_t client_id;
+        char *registered_mimes;
+        PendingData pending;
+
+        const char **offerred_mimes; size_t num_offerred_mimes, offered_mimes_total_size;
+
+        char *accepted_mimes; size_t accepted_mimes_sz;
+        int accepted_operation; bool accept_in_progress;
+        char *getting_data_for_mime;
+    } drop;
 } Window;
 
 typedef struct BorderRect {
@@ -384,9 +407,10 @@ typedef struct GlobalState {
 
     struct {
         PyObject *data;
-        id_type os_window_id;
+        id_type os_window_id, client_window_data_request;
         double x, y;
         size_t num_left;
+        bool drop_has_happened;
     } drop_dest;
 
     struct {
@@ -514,3 +538,6 @@ void setup_os_window_for_rendering(OSWindow*, Tab*, Window*, bool);
 void swap_window_buffers(OSWindow *w);
 void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h);
 bool current_framebuffer_is_ok(void);
+void request_drop_status_update(OSWindow *osw);
+void register_mimes_for_drop(OSWindow *w, const char **mimes, size_t sz);
+void request_drop_data(OSWindow *w, id_type wid, const char* mime);

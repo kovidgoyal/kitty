@@ -377,6 +377,42 @@ schedule_write_to_child(unsigned long id, unsigned int num, ...) {
 #undef get_next_arg
 }
 
+void
+schedule_write_to_child_if_possible(id_type id, const char *data, size_t sz, bool *found, bool *too_much_data) {
+    children_mutex(lock);
+    ChildMonitor *self = the_monitor;
+    *found = false; *too_much_data = false;
+    for (size_t i = 0; i < self->count; i++) {
+        if (children[i].id == id) {
+            Screen *screen = children[i].screen;
+            screen_mutex(lock, write);
+            size_t space_left = screen->write_buf_sz - screen->write_buf_used;
+            if (space_left < sz) {
+                if (screen->write_buf_used + sz > 100u * 1024u * 1024u) {
+                    *too_much_data = true;
+                    screen_mutex(unlock, write);
+                    break;
+                }
+                screen->write_buf_sz = screen->write_buf_used + sz;
+                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
+                if (screen->write_buf == NULL) { fatal("Out of memory."); }
+            }
+            *found = true;
+            memcpy(screen->write_buf + screen->write_buf_used, data, sz);
+            screen->write_buf_used += sz;
+            if (screen->write_buf_sz > BUFSIZ && screen->write_buf_used < BUFSIZ) {
+                screen->write_buf_sz = BUFSIZ;
+                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
+                if (screen->write_buf == NULL) { fatal("Out of memory."); }
+            }
+            if (screen->write_buf_used) wakeup_io_loop(self, false);
+            screen_mutex(unlock, write);
+            break;
+        }
+    }
+    children_mutex(unlock);
+}
+
 bool
 schedule_write_to_child_python(unsigned long id, const char *prefix, PyObject *ap, const char *suffix) {
     if (!PyTuple_Check(ap)) return false;

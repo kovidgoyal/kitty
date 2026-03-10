@@ -14,6 +14,15 @@
 
 typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } ScrollType;
 
+typedef struct DnDCommand {
+    char type;
+    unsigned more;
+    uint32_t client_id;
+    size_t payload_sz;
+    int32_t cell_x, cell_y, pixel_x, pixel_y;
+    uint32_t operation;
+} DnDCommand;
+
 typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM, mCOLOR_PREFERENCE_NOTIFICATION,
          mBRACKETED_PASTE, mFOCUS_TRACKING, mDECSACE, mHANDLE_TERMIOS_SIGNALS, mINBAND_RESIZE_NOTIFICATION,
@@ -290,6 +299,7 @@ void set_active_hyperlink(Screen*, char*, char*);
 hyperlink_id_type screen_mark_hyperlink(Screen*, index_type, index_type);
 void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload);
 void screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const uint8_t *payload);
+void screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *payload);
 bool screen_open_url(Screen*);
 bool screen_set_last_visited_prompt(Screen*, index_type);
 bool screen_select_cmd_output(Screen*, index_type);
