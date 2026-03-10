@@ -11,10 +11,12 @@ import (
 	"strings"
 
 	kitty "github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 )
 
 var _ = fmt.Print
+var debugprintln = tty.DebugPrintln
 
 const dnd_accepted_mimes = "text/plain text/uri-list"
 
@@ -301,15 +303,12 @@ func Run(args []string) (rc int, err error) {
 			mimes := strings.Fields(payload)
 			dnd.drop_mimes = mimes
 			// Request data for text/plain first, then text/uri-list
-			if slices.Contains(mimes, "text/plain") {
-				dnd.collecting = "text/plain"
-				lp.QueueWriteString(dnd_request_data("text/plain"))
-				return nil
-			}
-			if slices.Contains(mimes, "text/uri-list") {
-				dnd.collecting = "text/uri-list"
-				lp.QueueWriteString(dnd_request_data("text/uri-list"))
-				return nil
+			for _, x := range []string{"text/plain", "text/uri-list"} {
+				if slices.Contains(mimes, x) {
+					dnd.collecting = x
+					lp.QueueWriteString(dnd_request_data(x))
+					return nil
+				}
 			}
 			// Nothing to collect, signal done
 			lp.QueueWriteString(dnd_finish())

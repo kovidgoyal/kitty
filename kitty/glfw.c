@@ -794,6 +794,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
         case GLFW_DROP_ENTER:
         case GLFW_DROP_MOVE:
             global_state.drop_dest.drop_has_happened = false;
+            global_state.drop_dest.os_window_id = os_window->id;
             os_window->last_drag_event.x = (int)(ev->xpos * os_window->viewport_x_ratio);
             os_window->last_drag_event.y = (int)(ev->ypos * os_window->viewport_y_ratio);
             on_mouse_position_update(ev->xpos, ev->ypos);
@@ -826,6 +827,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
             Py_CLEAR(global_state.drop_dest.data);
             global_state.drop_dest.drop_has_happened = true;
             global_state.drop_dest.client_window_data_request = 0;
+            global_state.drop_dest.os_window_id = os_window->id;
             if (is_kitty_ui_drag) {
                 if (ev->from_self) {
                     if (global_state.drag_source.drag_data) {
@@ -864,8 +866,9 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
 
 void
 request_drop_status_update(OSWindow *osw) {
-    if (osw && osw->handle && !global_state.drop_dest.drop_has_happened && global_state.drop_dest.os_window_id == osw->id)
+    if (osw && osw->handle && !global_state.drop_dest.drop_has_happened && global_state.drop_dest.os_window_id == osw->id) {
         glfwRequestDropUpdate(osw->handle);
+    }
 }
 
 static void
