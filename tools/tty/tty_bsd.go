@@ -1,6 +1,5 @@
 // License: GPLv3 Copyright: 2022, Kovid Goyal, <kovid at kovidgoyal.net>
 //go:build darwin || freebsd || openbsd || netbsd || dragonfly
-// +build darwin freebsd openbsd netbsd dragonfly
 
 package tty
 

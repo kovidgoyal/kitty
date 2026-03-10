@@ -309,8 +309,8 @@ func (self *Readline) history_search_highlighter(text string, x, y int) string {
 	lines := utils.Splitlines(text)
 	for _, tok := range self.history_search.tokens {
 		for i, line := range lines {
-			if idx := strings.Index(line, tok); idx > -1 {
-				lines[i] = line[:idx] + self.fmt_ctx.Green(tok) + line[idx+len(tok):]
+			if before, after, ok := strings.Cut(line, tok); ok {
+				lines[i] = before + self.fmt_ctx.Green(tok) + after
 				break
 			}
 		}

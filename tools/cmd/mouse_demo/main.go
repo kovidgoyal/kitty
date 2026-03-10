@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -261,7 +262,7 @@ func Run(args []string) (rc int, err error) {
 		meta, payload, _ := strings.Cut(rest, ";")
 		// Parse metadata key=value pairs separated by ':'
 		meta_map := make(map[string]string)
-		for _, kv := range strings.Split(meta, ":") {
+		for kv := range strings.SplitSeq(meta, ":") {
 			k, v, _ := strings.Cut(kv, "=")
 			if k != "" {
 				meta_map[k] = v
@@ -300,19 +301,15 @@ func Run(args []string) (rc int, err error) {
 			mimes := strings.Fields(payload)
 			dnd.drop_mimes = mimes
 			// Request data for text/plain first, then text/uri-list
-			for _, m := range mimes {
-				if m == "text/plain" {
-					dnd.collecting = "text/plain"
-					lp.QueueWriteString(dnd_request_data("text/plain"))
-					return nil
-				}
+			if slices.Contains(mimes, "text/plain") {
+				dnd.collecting = "text/plain"
+				lp.QueueWriteString(dnd_request_data("text/plain"))
+				return nil
 			}
-			for _, m := range mimes {
-				if m == "text/uri-list" {
-					dnd.collecting = "text/uri-list"
-					lp.QueueWriteString(dnd_request_data("text/uri-list"))
-					return nil
-				}
+			if slices.Contains(mimes, "text/uri-list") {
+				dnd.collecting = "text/uri-list"
+				lp.QueueWriteString(dnd_request_data("text/uri-list"))
+				return nil
 			}
 			// Nothing to collect, signal done
 			lp.QueueWriteString(dnd_finish())
@@ -325,25 +322,23 @@ func Run(args []string) (rc int, err error) {
 				if dnd.collecting == "text/plain" {
 					text := dnd.collect_buf.String()
 					// Get first line
-					if idx := strings.IndexByte(text, '\n'); idx >= 0 {
-						dnd.plain_text = text[:idx]
+					if before, _, ok := strings.Cut(text, "\n"); ok {
+						dnd.plain_text = before
 					} else {
 						dnd.plain_text = text
 					}
 					dnd.collect_buf.Reset()
 					// Now request text/uri-list if available
-					for _, m := range dnd.drop_mimes {
-						if m == "text/uri-list" {
-							dnd.collecting = "text/uri-list"
-							lp.QueueWriteString(dnd_request_data("text/uri-list"))
-							return nil
-						}
+					if slices.Contains(dnd.drop_mimes, "text/uri-list") {
+						dnd.collecting = "text/uri-list"
+						lp.QueueWriteString(dnd_request_data("text/uri-list"))
+						return nil
 					}
 				} else if dnd.collecting == "text/uri-list" {
 					text := dnd.collect_buf.String()
 					dnd.collect_buf.Reset()
 					// Parse URI list: lines starting with # are comments
-					for _, line := range strings.Split(text, "\n") {
+					for line := range strings.SplitSeq(text, "\n") {
 						line = strings.TrimRight(line, "\r")
 						if line != "" && !strings.HasPrefix(line, "#") {
 							dnd.uri_list = append(dnd.uri_list, line)

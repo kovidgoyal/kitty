@@ -69,11 +69,11 @@ func ScanFuncForSeparator(sep string) StringScannerScanFunc {
 
 	}
 	return func(data string) (remaining_data, token string) {
-		idx := strings.Index(data, sep)
-		if idx < 0 {
+		before, after, ok := strings.Cut(data, sep)
+		if !ok {
 			return "", data
 		}
-		return data[idx+len(sep):], data[:idx]
+		return after, before
 	}
 }
 

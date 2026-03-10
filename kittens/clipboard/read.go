@@ -388,11 +388,9 @@ func run_get_loop(opts *Options, args []string) (err error) {
 					if getting_data_for != current_mime {
 						if prev := requested_mimes[getting_data_for]; prev != nil && !prev.all_data_received {
 							prev.all_data_received = true
-							wg.Add(1)
-							go func() {
+							wg.Go(func() {
 								prev.commit()
-								wg.Done()
-							}()
+							})
 
 						}
 						getting_data_for = current_mime
@@ -405,11 +403,9 @@ func run_get_loop(opts *Options, args []string) (err error) {
 			case "DONE":
 				if prev := requested_mimes[getting_data_for]; getting_data_for != "" && prev != nil && !prev.all_data_received {
 					prev.all_data_received = true
-					wg.Add(1)
-					go func() {
+					wg.Go(func() {
 						prev.commit()
-						wg.Done()
-					}()
+					})
 					getting_data_for = ""
 				}
 				lp.Quit(0)

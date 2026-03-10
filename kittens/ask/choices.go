@@ -342,9 +342,9 @@ func GetChoices(o *Options) (response string, err error) {
 		lp.QueueWriteString(strings.Repeat("\r\n", y))
 		for _, line := range msg_lines {
 			if replacement_text != "" {
-				idx := strings.Index(line, replacement_text)
-				if idx > -1 {
-					x := wcswidth.Stringwidth(line[:idx])
+				before, _, ok := strings.Cut(line, replacement_text)
+				if ok {
+					x := wcswidth.Stringwidth(before)
 					replacement_range = Range{x, x + wcswidth.Stringwidth(replacement_text), y}
 				}
 			}

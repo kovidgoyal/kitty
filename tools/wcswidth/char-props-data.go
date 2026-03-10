@@ -388,10 +388,10 @@ var charprops_t3 = [106]CharProps{
 
 // Array accessor function that avoids bounds checking
 func charprops_for(x uint32) CharProps {
-	t1 := uintptr(*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&charprops_t1[0])) + uintptr(x>>charprops_shift)*1)))
+	t1 := uintptr(*(*uint8)(unsafe.Add(unsafe.Pointer(&charprops_t1[0]), uintptr(x>>charprops_shift)*1)))
 	t1_shifted := (t1 << charprops_shift) + (uintptr(x) & charprops_mask)
-	t2 := uintptr(*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&charprops_t2[0])) + t1_shifted*1)))
-	return *(*CharProps)(unsafe.Pointer(uintptr(unsafe.Pointer(&charprops_t3[0])) + t2*4))
+	t2 := uintptr(*(*uint8)(unsafe.Add(unsafe.Pointer(&charprops_t2[0]), t1_shifted*1)))
+	return *(*CharProps)(unsafe.Add(unsafe.Pointer(&charprops_t3[0]), t2*4))
 }
 
 const graphemesegmentationresult_mask = 15
@@ -3285,9 +3285,9 @@ var graphemesegmentationresult_t2 = [2880]GraphemeSegmentationResult{
 
 // Array accessor function that avoids bounds checking
 func graphemesegmentationresult_for(x uint16) GraphemeSegmentationResult {
-	t1 := uintptr(*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&graphemesegmentationresult_t1[0])) + uintptr(x>>graphemesegmentationresult_shift)*1)))
+	t1 := uintptr(*(*uint8)(unsafe.Add(unsafe.Pointer(&graphemesegmentationresult_t1[0]), uintptr(x>>graphemesegmentationresult_shift)*1)))
 	t1_shifted := (t1 << graphemesegmentationresult_shift) + (uintptr(x) & graphemesegmentationresult_mask)
-	return *(*GraphemeSegmentationResult)(unsafe.Pointer(uintptr(unsafe.Pointer(&graphemesegmentationresult_t2[0])) + t1_shifted*2))
+	return *(*GraphemeSegmentationResult)(unsafe.Add(unsafe.Pointer(&graphemesegmentationresult_t2[0]), t1_shifted*2))
 }
 
 func grapheme_segmentation_key(r GraphemeSegmentationResult, ch CharProps) uint16 {

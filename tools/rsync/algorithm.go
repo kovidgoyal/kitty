@@ -646,10 +646,3 @@ func find_hash(hh []BlockHash, hv uint64) (uint64, bool) {
 	}
 	return 0, false
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

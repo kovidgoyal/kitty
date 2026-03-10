@@ -125,7 +125,7 @@ func run_tests(tests []*test_struct) (err error) {
 			case 'c':
 				lp.Quit(0)
 			case 'R':
-				if idx := bytes.IndexByte(data, ';'); idx > -1 {
+				if found := bytes.Contains(data, []byte{';'}); found {
 					if cpos, err := cpos_from_report(utils.UnsafeBytesToString(data[:len(data)-1])); err != nil {
 						return err
 					} else {

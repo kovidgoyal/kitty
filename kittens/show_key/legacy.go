@@ -9,6 +9,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"io"
 	"os"
+	"strings"
 
 	"golang.org/x/sys/unix"
 )
@@ -17,24 +18,24 @@ var _ = fmt.Print
 
 func print_key(buf []byte, ctx *markup.Context) {
 	const ctrl_keys = "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
-	unix := ""
-	send_text := ""
+	var unix strings.Builder
+	var send_text strings.Builder
 	for _, ch := range buf {
 		switch {
 		case int(ch) < len(ctrl_keys):
-			unix += "^" + ctrl_keys[ch:ch+1]
+			unix.WriteString("^" + ctrl_keys[ch:ch+1])
 		case ch == 127:
-			unix += "^?"
+			unix.WriteString("^?")
 		default:
-			unix += string(rune(ch))
+			unix.WriteString(string(rune(ch)))
 		}
 	}
 	for _, ch := range string(buf) {
 		q := fmt.Sprintf("%#v", string(ch))
-		send_text += q[1 : len(q)-1]
+		send_text.WriteString(q[1 : len(q)-1])
 	}
-	os.Stdout.WriteString(unix + "\t\t")
-	os.Stdout.WriteString(ctx.Yellow(send_text) + "\r\n")
+	os.Stdout.WriteString(unix.String() + "\t\t")
+	os.Stdout.WriteString(ctx.Yellow(send_text.String()) + "\r\n")
 }
 
 func run_legacy_loop(opts *Options) (err error) {
