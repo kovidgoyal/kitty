@@ -310,6 +310,8 @@ typedef struct _GLFWWaylandDataOffer
     struct wl_surface *surface;
     const char **mimes;
     size_t mimes_capacity, mimes_count;
+    const char **copy_mimes;   // Working copy passed to callbacks; pointers into mimes[]
+    size_t copy_mimes_count;   // Count of entries in copy_mimes (accepted count after callback)
     bool drag_accepted, dropped;
     uint32_t serial;
     struct {

@@ -1458,8 +1458,10 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 static void
 free_drop_data(_GLFWwindow *window) {
     if (window->ns.drop_data.mimes) {
-        for (size_t i = 0; i < window->ns.drop_data.mimes_count; i++) free(window->ns.drop_data.mimes + i);
+        for (size_t i = 0; i < window->ns.drop_data.mimes_count; i++) free((void*)window->ns.drop_data.mimes[i]);
+        free(window->ns.drop_data.mimes);
     }
+    free(window->ns.drop_data.copy_mimes);  // pointer array only; strings owned by mimes[]
     if (window->ns.drop_data.pasteboard) [window->ns.drop_data.pasteboard release];
     if (window->ns.drop_data.data_mapping) [window->ns.drop_data.data_mapping release];
     if (window->ns.drop_data.file_promise_mapping) {
@@ -1476,12 +1478,24 @@ free_drop_data(_GLFWwindow *window) {
 }
 
 static void
-update_drop_state(_GLFWwindow *window, size_t mime_count) {
+update_drop_state(_GLFWwindow *window, size_t accepted_count) {
     _GLFWDropData *d = &window->ns.drop_data;
-    for (size_t i = mime_count; i < d->mimes_count; i++) {
-        if (d->mimes[i]) { free((void*)d->mimes[i]); d->mimes[i] = NULL; }
+    d->copy_mimes_count = accepted_count;
+    d->drag_accepted = accepted_count > 0;
+}
+
+// Reset the working copy of mimes so the next callback sees the full original
+// list.  Returns false on allocation failure.
+static bool
+reset_drop_copy_mimes(_GLFWDropData *d) {
+    if (d->mimes_count == 0) { d->copy_mimes_count = 0; return true; }
+    if (!d->copy_mimes) {
+        d->copy_mimes = malloc(d->mimes_count * sizeof(const char*));
+        if (!d->copy_mimes) return false;
     }
-    d->mimes_count = mime_count;
+    memcpy(d->copy_mimes, d->mimes, d->mimes_count * sizeof(const char*));
+    d->copy_mimes_count = d->mimes_count;
+    return true;
 }
 
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
@@ -1546,14 +1560,17 @@ update_drop_state(_GLFWwindow *window, size_t mime_count) {
     window->ns.drop_data.mimes = mime_array;
     window->ns.drop_data.mimes_count = mime_count;
     bool from_self = ([sender draggingSource] != nil);
-    mime_count = _glfwInputDropEvent(window, GLFW_DROP_ENTER, xpos, ypos, mime_array, mime_count, from_self);
-    update_drop_state(window, mime_count);
-    return mime_count ? NSDragOperationGeneric :NSDragOperationNone;
+    _GLFWDropData *d = &window->ns.drop_data;
+    if (reset_drop_copy_mimes(d)) {
+        size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_ENTER, xpos, ypos, d->copy_mimes, d->copy_mimes_count, from_self);
+        update_drop_state(window, accepted_count);
+    }
+    return window->ns.drop_data.drag_accepted ? NSDragOperationGeneric : NSDragOperationNone;
 }
 
 - (NSDragOperation)draggingUpdated:(id <NSDraggingInfo>)sender
 {
-    if (!window->ns.drop_data.mimes_count) return NSDragOperationNone;
+    if (!window->ns.drop_data.drag_accepted) return NSDragOperationNone;
     const NSRect contentRect = [window->ns.view frame];
     const NSPoint pos = [sender draggingLocation];
     double xpos = pos.x;
@@ -1561,35 +1578,40 @@ update_drop_state(_GLFWwindow *window, size_t mime_count) {
 
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
-    size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_MOVE, xpos, ypos, d->mimes, d->mimes_count, from_self);
-    update_drop_state(window, mime_count);
-    return mime_count ? NSDragOperationGeneric :NSDragOperationNone;
+    if (reset_drop_copy_mimes(d)) {
+        size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_MOVE, xpos, ypos, d->copy_mimes, d->copy_mimes_count, from_self);
+        update_drop_state(window, accepted_count);
+    }
+    return window->ns.drop_data.drag_accepted ? NSDragOperationGeneric : NSDragOperationNone;
 }
 
 - (void)draggingExited:(id <NSDraggingInfo>)sender
 {
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
-    size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_LEAVE, 0, 0, d->mimes, d->mimes_count, from_self);
-    update_drop_state(window, mime_count);
+    if (reset_drop_copy_mimes(d)) {
+        size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_LEAVE, 0, 0, d->copy_mimes, d->copy_mimes_count, from_self);
+        update_drop_state(window, accepted_count);
+    }
     free_drop_data(window);
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
 {
-    if (!window->ns.drop_data.mimes_count) return NO;
+    if (!window->ns.drop_data.drag_accepted) return NO;
     const NSRect contentRect = [window->ns.view frame];
     const NSPoint pos = [sender draggingLocation];
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
-    size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_DROP, xpos, ypos, d->mimes, d->mimes_count, from_self);
-    if (d->mimes) {
-        update_drop_state(window, mime_count);
+    if (!reset_drop_copy_mimes(d)) return NO;
+    size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, xpos, ypos, d->copy_mimes, d->copy_mimes_count, from_self);
+    if (d->copy_mimes) {
+        update_drop_state(window, num_accepted);
         window->ns.drop_data.pasteboard = [[sender draggingPasteboard] retain];
-        for (size_t i = 0; i < d->mimes_count; i++)
-            _glfwPlatformRequestDropData(window, d->mimes[i]);
+        for (size_t i = 0; i < num_accepted; i++)
+            _glfwPlatformRequestDropData(window, d->copy_mimes[i]);
     }
     return YES;
 }
