@@ -1958,10 +1958,11 @@ class Boss:
             y -= central.top
             if tab := tm.active_tab:
                 for window in tab:
-                    g = window.geometry
-                    if g.left <= x < g.right and g.top <= y < g.bottom:
-                        window.on_drop(drop)
-                        break
+                    if window.is_visible_in_layout:
+                        g = window.geometry
+                        if g.left <= x < g.right and g.top <= y < g.bottom:
+                            window.on_drop(drop)
+                            break
         elif tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < tab_bar.bottom:
             if (tab_id := tm.tab_bar.tab_id_at(x)) and (tab := self.tab_for_id(tab_id)) and (w := tab.active_window):
                 w.on_drop(drop)
