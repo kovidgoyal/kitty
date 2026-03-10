@@ -828,7 +828,9 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
             global_state.drop_dest.drop_has_happened = true;
             global_state.drop_dest.client_window_data_request = 0;
             global_state.drop_dest.os_window_id = os_window->id;
-            if (is_kitty_ui_drag) {
+            if (is_client_drop) {
+                drop_move_on_child(w, ev->mimes, ev->num_mimes, true);
+            } else {
                 if (ev->from_self) {
                     if (global_state.drag_source.drag_data) {
                         global_state.drag_source.was_dropped = true;
@@ -844,7 +846,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
                 if (!global_state.drop_dest.num_left || !(global_state.drop_dest.data = PyDict_New())) {
                     ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
                 }
-            } else if (is_client_drop) drop_move_on_child(w, ev->mimes, ev->num_mimes, true);
+            }
             break;
         case GLFW_DROP_DATA_AVAILABLE:
             if (global_state.drop_dest.client_window_data_request) {
