@@ -1498,7 +1498,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
 
 static void
 end_drop(_GLFWwindow *window, GLFWDragOperationType op) {
-    bool accepted = dnd.mimes_count > 0 || dnd.dropped;
+    bool accepted = dnd.drag_accepted || dnd.dropped;
     XEvent reply = { ClientMessage };
     reply.xclient.window = dnd.source;
     reply.xclient.message_type = _glfw.x11.XdndFinished;
@@ -1520,14 +1520,14 @@ end_drop(_GLFWwindow *window, GLFWDragOperationType op) {
 
 
 static void
-update_drop_state(_GLFWwindow* window, size_t mime_count) {
-    for (size_t i = mime_count; i < dnd.mimes_count; i++) {
-        if (dnd.mimes[i]) { XFree((void*)dnd.mimes[i]); dnd.mimes[i] = NULL; }
-    }
-    dnd.mimes_count = mime_count;
-    bool accepted = mime_count > 0;
-    // The first MIME in the sorted list is the preferred one for drop
-    const char* new_preferred_mime = (accepted && mime_count > 0) ? dnd.mimes[0] : NULL;
+update_drop_state(_GLFWwindow* window, size_t accepted_count) {
+    // The backend's mimes/mimes_count are NOT modified – they always hold the
+    // full original list so that every future callback sees all available types.
+    bool accepted = accepted_count > 0;
+    dnd.drag_accepted = accepted;
+    // The first entry in the accepted list is the preferred mime for the drop.
+    const char **accepted_mimes = _glfwGetLastDropAcceptedMimes(NULL);
+    const char* new_preferred_mime = (accepted && accepted_mimes) ? accepted_mimes[0] : NULL;
     // Check if the preferred MIME changed
     bool mime_changed = strncmp(new_preferred_mime ? new_preferred_mime : "", dnd.format, arraysz(dnd.format)) != 0;
     if (mime_changed) {
@@ -1572,6 +1572,7 @@ void
 free_dnd_data(void) {
     dnd.source = None;
     dnd.target_window = None;
+    dnd.drag_accepted = false;
     free_dnd_mimes();
     if (dnd.selection_requests) {
         for (size_t i = 0; i < dnd.selection_requests_count; i++) {
@@ -1640,15 +1641,12 @@ drop_start(_GLFWwindow *window, XEvent *event) {
     update_dnd_mimes(event);
     dnd.from_self = _glfw.x11.drag.source_window != None && dnd.source == _glfw.x11.drag.source_window;
     // Position is not known yet at enter time, will be updated with XdndPosition
-    size_t mimes_count = _glfwInputDropEvent(
+    size_t accepted_count = _glfwInputDropEvent(
         window, GLFW_DROP_ENTER, 0, 0, dnd.mimes, dnd.mimes_count, dnd.from_self);
-    update_drop_state(window, mimes_count);
-    // Update cached mime count with callback result
-    if (dnd.mimes_count > 0) {
-        // The first MIME type in the reordered list is the preferred one
-        strncpy(dnd.format, dnd.mimes[0], arraysz(dnd.format) - 1);
-        dnd.format_priority = 1;
-    }
+    update_drop_state(window, accepted_count);
+    // Set format_priority when the callback accepted at least one MIME type.
+    // dnd.format has already been updated by update_drop_state.
+    if (accepted_count > 0) dnd.format_priority = 1;
 }
 
 static void
@@ -1695,9 +1693,13 @@ drop(_GLFWwindow *window, XEvent *event) {
     if (dnd.version > _GLFW_XDND_VERSION || dnd.version < 2) return;
     dnd.dropped = true;
     dnd.drop_time = (unsigned long)event->xclient.data.l[2];
-    size_t mimes_count = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, dnd.mimes, dnd.mimes_count, dnd.from_self);
+    size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, dnd.mimes, dnd.mimes_count, dnd.from_self);
     if (!dnd.mimes) return;
-    for (size_t i = 0; i < mimes_count; i++) _glfwPlatformRequestDropData(window, dnd.mimes[i]);
+    // Use the accepted mimes from the callback, not the full original list.
+    const char **accepted_mimes = _glfwGetLastDropAcceptedMimes(NULL);
+    if (accepted_mimes) {
+        for (size_t i = 0; i < num_accepted; i++) _glfwPlatformRequestDropData(window, accepted_mimes[i]);
+    }
 }
 
 static void

@@ -2480,15 +2480,14 @@ static void handle_primary_selection_offer(void *data UNUSED, struct zwp_primary
 
 // Helper function to update drop state from callback results
 static void
-update_drop_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUSED, size_t mime_count) {
-    for (size_t i = mime_count; i < d->mimes_count; i++) {
-        if (d->mimes[i]) { free((void*)d->mimes[i]); d->mimes[i] = NULL; }
-    }
-    d->mimes_count = mime_count;
-    bool accepted = mime_count > 0;
+update_drop_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUSED, size_t accepted_count) {
+    // The backend's mimes/mimes_count are NOT modified – they always hold the
+    // full original list so that every future callback sees all available types.
+    bool accepted = accepted_count > 0;
     bool acceptance_changed = (accepted != d->drag_accepted);
-    // The first MIME in the sorted list is the preferred one for drop
-    const char* new_preferred_mime = (accepted && mime_count > 0) ? d->mimes[0] : NULL;
+    // The first entry in the accepted list is the preferred mime for the drop.
+    const char **accepted_mimes = _glfwGetLastDropAcceptedMimes(NULL);
+    const char* new_preferred_mime = (accepted && accepted_mimes) ? accepted_mimes[0] : NULL;
     bool mime_changed = false;
 
     // Check if the preferred MIME changed
@@ -2643,9 +2642,13 @@ drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     _GLFWwindow* window = _glfw.windowListHead;
     while (window) {
         if (window->wl.surface == offer->surface) {
-            size_t num_mimes = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, offer->mimes, offer->mimes_count, offer->is_self_offer);
+            size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, offer->mimes, offer->mimes_count, offer->is_self_offer);
             if (!offer->mimes) { destroy_data_offer(offer); return; }
-            for (size_t i = 0; i < num_mimes; i++) request_drop_data(offer, offer->mimes[i]);
+            // Use the accepted mimes from the callback, not the full original list.
+            const char **accepted_mimes = _glfwGetLastDropAcceptedMimes(NULL);
+            if (accepted_mimes) {
+                for (size_t i = 0; i < num_accepted; i++) request_drop_data(offer, accepted_mimes[i]);
+            }
             break;
         }
         window = window->next;
