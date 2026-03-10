@@ -119,6 +119,7 @@ typedef UInt8 (*PFN_LMGetKbdType)(void);
 typedef struct _GLFWDropData {
     const char **mimes;
     size_t mimes_count;
+    bool drag_accepted;
     id pasteboard;
     id data_mapping;
     id file_promise_mapping;

@@ -1476,12 +1476,10 @@ free_drop_data(_GLFWwindow *window) {
 }
 
 static void
-update_drop_state(_GLFWwindow *window, size_t mime_count) {
-    _GLFWDropData *d = &window->ns.drop_data;
-    for (size_t i = mime_count; i < d->mimes_count; i++) {
-        if (d->mimes[i]) { free((void*)d->mimes[i]); d->mimes[i] = NULL; }
-    }
-    d->mimes_count = mime_count;
+update_drop_state(_GLFWwindow *window, size_t accepted_count) {
+    // The backend's mimes/mimes_count are NOT modified – they always hold the
+    // full original list so that every future callback sees all available types.
+    window->ns.drop_data.drag_accepted = accepted_count > 0;
 }
 
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
@@ -1546,14 +1544,14 @@ update_drop_state(_GLFWwindow *window, size_t mime_count) {
     window->ns.drop_data.mimes = mime_array;
     window->ns.drop_data.mimes_count = mime_count;
     bool from_self = ([sender draggingSource] != nil);
-    mime_count = _glfwInputDropEvent(window, GLFW_DROP_ENTER, xpos, ypos, mime_array, mime_count, from_self);
-    update_drop_state(window, mime_count);
-    return mime_count ? NSDragOperationGeneric :NSDragOperationNone;
+    size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_ENTER, xpos, ypos, mime_array, mime_count, from_self);
+    update_drop_state(window, accepted_count);
+    return window->ns.drop_data.drag_accepted ? NSDragOperationGeneric : NSDragOperationNone;
 }
 
 - (NSDragOperation)draggingUpdated:(id <NSDraggingInfo>)sender
 {
-    if (!window->ns.drop_data.mimes_count) return NSDragOperationNone;
+    if (!window->ns.drop_data.drag_accepted) return NSDragOperationNone;
     const NSRect contentRect = [window->ns.view frame];
     const NSPoint pos = [sender draggingLocation];
     double xpos = pos.x;
@@ -1561,35 +1559,39 @@ update_drop_state(_GLFWwindow *window, size_t mime_count) {
 
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
-    size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_MOVE, xpos, ypos, d->mimes, d->mimes_count, from_self);
-    update_drop_state(window, mime_count);
-    return mime_count ? NSDragOperationGeneric :NSDragOperationNone;
+    size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_MOVE, xpos, ypos, d->mimes, d->mimes_count, from_self);
+    update_drop_state(window, accepted_count);
+    return window->ns.drop_data.drag_accepted ? NSDragOperationGeneric : NSDragOperationNone;
 }
 
 - (void)draggingExited:(id <NSDraggingInfo>)sender
 {
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
-    size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_LEAVE, 0, 0, d->mimes, d->mimes_count, from_self);
-    update_drop_state(window, mime_count);
+    size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_LEAVE, 0, 0, d->mimes, d->mimes_count, from_self);
+    update_drop_state(window, accepted_count);
     free_drop_data(window);
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
 {
-    if (!window->ns.drop_data.mimes_count) return NO;
+    if (!window->ns.drop_data.drag_accepted) return NO;
     const NSRect contentRect = [window->ns.view frame];
     const NSPoint pos = [sender draggingLocation];
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
-    size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_DROP, xpos, ypos, d->mimes, d->mimes_count, from_self);
+    size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, xpos, ypos, d->mimes, d->mimes_count, from_self);
     if (d->mimes) {
-        update_drop_state(window, mime_count);
+        update_drop_state(window, num_accepted);
         window->ns.drop_data.pasteboard = [[sender draggingPasteboard] retain];
-        for (size_t i = 0; i < d->mimes_count; i++)
-            _glfwPlatformRequestDropData(window, d->mimes[i]);
+        // Use the accepted mimes from the callback, not the full original list.
+        const char **accepted_mimes = _glfwGetLastDropAcceptedMimes(NULL);
+        if (accepted_mimes) {
+            for (size_t i = 0; i < num_accepted; i++)
+                _glfwPlatformRequestDropData(window, accepted_mimes[i]);
+        }
     }
     return YES;
 }
