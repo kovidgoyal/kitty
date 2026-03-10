@@ -208,6 +208,7 @@ typedef struct PendingEntry {
     char *buf; size_t header_sz;
     size_t data_sz;
     bool as_base64;
+    uint32_t client_id;
 } PendingEntry;
 
 typedef struct PendingData {
