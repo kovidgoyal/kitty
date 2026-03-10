@@ -17,6 +17,7 @@ drop_free_offered_mimes(Window *w) {
         free(w->drop.offerred_mimes); w->drop.offerred_mimes = NULL;
     }
     w->drop.num_offerred_mimes = 0;
+    w->drop.offered_mimes_total_size = 0;
 }
 
 static void
@@ -192,14 +193,14 @@ drop_move_on_child(Window *w, const char** mimes, size_t num_mimes, bool is_drop
         w->drop.hovered = true;
     }
     if (is_drop) { w->drop.dropped = true; w->drop.hovered = false; }
-    size_t mimes_total_size = 0;
     if (mimes && (w->drop.offerred_mimes == NULL || string_arrays_cmp(mimes, num_mimes, w->drop.offerred_mimes, w->drop.num_offerred_mimes) != 0)) {
         drop_free_offered_mimes(w);
         w->drop.offerred_mimes = malloc(num_mimes * sizeof(char*));
         if (w->drop.offerred_mimes) {
+            w->drop.offered_mimes_total_size = 0;
             for (size_t i = 0; i < num_mimes; i++) {
                 size_t l = strlen(mimes[i]);
-                mimes_total_size += 1 + l;
+                w->drop.offered_mimes_total_size += 1 + l;
                 char *p = malloc(l + 1);
                 if (!p) fatal("Out of memory");
                 memcpy(p, mimes[i], l); p[l] = 0;
@@ -214,8 +215,8 @@ drop_move_on_child(Window *w, const char** mimes, size_t num_mimes, bool is_drop
     int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=%c:x=%u:y=%u:X=%d:Y=%d", DND_CODE,
             is_drop ? 'M' : 'm', w->mouse_pos.cell_x, w->mouse_pos.cell_y,
             (int)w->mouse_pos.global_x, (int)w->mouse_pos.global_y);
-    if (mimes_total_size) {
-        mimes_total_size += 1;
+    if (w->drop.offered_mimes_total_size) {
+        const size_t mimes_total_size = 1 + w->drop.offered_mimes_total_size;
         RAII_ALLOC(char, mbuf, malloc(mimes_total_size));
         if (mbuf) {
             size_t pos = 0;
