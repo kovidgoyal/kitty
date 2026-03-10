@@ -20,7 +20,7 @@ const dnd_accepted_mimes = "text/plain text/uri-list"
 
 func dnd_escape(metadata, payload string) string {
 	b := strings.Builder{}
-	b.WriteString(fmt.Sprintf("\x1b]%d;", kitty.DndCode))
+	fmt.Fprintf(&b, "\x1b]%d;", kitty.DndCode)
 	b.WriteString(metadata)
 	if payload != "" {
 		b.WriteByte(';')
@@ -319,7 +319,8 @@ func Run(args []string) (rc int, err error) {
 			// Data response from terminal
 			if payload == "" {
 				// End of data for current MIME type
-				if dnd.collecting == "text/plain" {
+				switch dnd.collecting {
+				case "text/plain":
 					text := dnd.collect_buf.String()
 					// Get first line
 					if before, _, ok := strings.Cut(text, "\n"); ok {
@@ -334,7 +335,7 @@ func Run(args []string) (rc int, err error) {
 						lp.QueueWriteString(dnd_request_data("text/uri-list"))
 						return nil
 					}
-				} else if dnd.collecting == "text/uri-list" {
+				case "text/uri-list":
 					text := dnd.collect_buf.String()
 					dnd.collect_buf.Reset()
 					// Parse URI list: lines starting with # are comments
