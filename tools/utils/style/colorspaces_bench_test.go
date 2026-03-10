@@ -9,50 +9,50 @@ import (
 // Benchmark color parsing functions to demonstrate performance
 
 func BenchmarkParseOklch(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = parseOklch("0.5 0.1 180")
 	}
 }
 
 func BenchmarkParseLab(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = parseLab("50 0 0")
 	}
 }
 
 func BenchmarkParseColorHex(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = ParseColor("#ff0000")
 	}
 }
 
 func BenchmarkParseColorOklch(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = ParseColor("oklch(0.5 0.1 180)")
 	}
 }
 
 func BenchmarkParseColorLab(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = ParseColor("lab(50 0 0)")
 	}
 }
 
 func BenchmarkParseColorWithComment(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = ParseColor("oklch(0.5 0.1 180) # vibrant color")
 	}
 }
 
 // Benchmark the gamut mapping algorithm specifically
 func BenchmarkOklchToSrgbGamutMap(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		oklchToSrgbGamutMap(0.7, 0.4, 25) // Very saturated color requiring gamut mapping
 	}
 }
 
 func BenchmarkOklchToSrgbGamutMapInGamut(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		oklchToSrgbGamutMap(0.5, 0.05, 180) // Already in gamut
 	}
 }
@@ -71,8 +71,7 @@ func BenchmarkParseManyColors(b *testing.B) {
 		"green",
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for _, color := range colors {
 			_, _ = ParseColor(color)
 		}

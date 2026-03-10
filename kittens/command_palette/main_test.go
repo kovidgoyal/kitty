@@ -65,7 +65,7 @@ func TestFlattenAllBindings(t *testing.T) {
 func TestDefaultModeComesFirst(t *testing.T) {
 	h := newTestHandler()
 	// First 5 items should be from default mode
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		if h.all_items[i].binding.Mode != "" {
 			t.Fatalf("Item %d should be from default mode, got mode=%q", i, h.all_items[i].binding.Mode)
 		}

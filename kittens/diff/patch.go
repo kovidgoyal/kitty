@@ -215,7 +215,7 @@ func word_diff_center(left, right string, re *regexp.Regexp) Center {
 	// on exactly one side, the lines differ in word count and it makes more
 	// sense to highlight the single changed central region of the whole line.
 	max_idx := max(len(left_words), len(right_words))
-	for idx := 0; idx < max_idx; idx++ {
+	for idx := range max_idx {
 		lc := idx < len(left_words) && left_changed_abs[idx]
 		rc := idx < len(right_words) && right_changed_abs[idx]
 		if lc != rc {

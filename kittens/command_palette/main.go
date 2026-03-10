@@ -255,7 +255,7 @@ func (h *Handler) updateFilter() {
 
 	// Score each column independently
 	colResults := [3][]fzf.Result{}
-	for c := 0; c < 3; c++ {
+	for c := range 3 {
 		results, err := h.matcher.Score(colSlices[c], h.query)
 		if err == nil {
 			colResults[c] = results
@@ -276,7 +276,7 @@ func (h *Handler) updateFilter() {
 		bestScore := uint(0)
 		bestCol := 0
 		var bestPositions []int
-		for c := 0; c < 3; c++ {
+		for c := range 3 {
 			if colResults[c] != nil && i < len(colResults[c]) && colResults[c][i].Score > bestScore {
 				bestScore = colResults[c][i].Score
 				bestCol = c
@@ -357,10 +357,7 @@ func (h *Handler) draw_screen() {
 	resultsStartY := 2
 	helpY := height - 1
 	hintsY := height
-	resultsHeight := helpY - resultsStartY
-	if resultsHeight < 1 {
-		resultsHeight = 1
-	}
+	resultsHeight := max(helpY-resultsStartY, 1)
 
 	h.results_start_y = resultsStartY
 	h.results_height = resultsHeight
@@ -381,10 +378,7 @@ func (h *Handler) draw_screen() {
 	h.lp.MoveCursorTo(1, helpY)
 	if b := h.selectedBinding(); b != nil && b.Help != "" {
 		helpStr := b.Help
-		maxLen := width - 2
-		if maxLen < 3 {
-			maxLen = 3
-		}
+		maxLen := max(width-2, 3)
 		if wcswidth.Stringwidth(helpStr) > maxLen {
 			// Truncate by runes to avoid breaking multi-byte characters
 			runes := []rune(helpStr)
