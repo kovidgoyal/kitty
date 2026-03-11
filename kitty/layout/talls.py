@@ -12,48 +12,46 @@ class TallSplits(Splits):
     name = 'talls'
     layout_opts = SplitsLayoutOpts({})
 
-    def _count_rows_in_column(self, node: 'Pair | int | None') -> int:
-        """Count vertical rows, treating horizontal (vsplit) sub-pairs as single rows."""
+    def _count_items_in_chain(self, node: 'Pair | int | None', horizontal: bool) -> int:
+        """Count items in a chain of pairs with the given orientation."""
         if node is None:
             return 0
         if isinstance(node, int):
             return 1
-        if not node.horizontal and not node.is_redundant:
-            return 1 + self._count_rows_in_column(node.two)
+        if node.horizontal == horizontal and not node.is_redundant:
+            return 1 + self._count_items_in_chain(node.two, horizontal)
         return 1
 
-    def _rebalance_vertical_chain(self, node: 'Pair | int | None') -> None:
-        """Rebalance any vertical chain so all rows get equal space."""
+    def _rebalance_chain(self, node: 'Pair | int | None', horizontal: bool) -> None:
+        """Rebalance a chain of pairs so all items get equal space."""
         if node is None or isinstance(node, int):
             return
-        if node.horizontal or node.is_redundant:
+        if node.horizontal != horizontal or node.is_redundant:
             return
-        count = self._count_rows_in_column(node)
+        count = self._count_items_in_chain(node, horizontal)
         if count <= 1:
             return
         current = node
         remaining = count
-        while (isinstance(current, Pair) and not current.horizontal
+        while (isinstance(current, Pair) and current.horizontal == horizontal
                and not current.is_redundant and remaining > 1):
             current.bias = 1.0 / remaining
             remaining -= 1
             current = current.two
 
-    def _find_vertical_chain_root(self, start: 'Pair') -> 'Pair':
-        """Walk up from start to find the topmost vertical pair in this chain."""
+    def _find_chain_root(self, start: 'Pair', horizontal: bool) -> 'Pair':
+        """Walk up to find the topmost pair of the given orientation in this chain."""
         root = self.pairs_root
         current = start
         while True:
             parent = current.parent(root)
-            if parent is None or parent.horizontal or parent is root:
+            if parent is None or parent.horizontal != horizontal or parent is root:
                 break
             current = parent
         return current
 
     def _rebalance_right_column(self) -> None:
-        """Set biases so all rows in the right column get equal vertical space."""
-        right = self.pairs_root.two
-        self._rebalance_vertical_chain(right)
+        self._rebalance_chain(self.pairs_root.two, horizontal=False)
 
     def _append_to_right_column(self, new_group_id: int) -> None:
         """Add a new window as the last row in the right column."""
@@ -71,7 +69,6 @@ class TallSplits(Splits):
             root.two = new_pair
             return
 
-        # Walk down the vertical chain to find the last vertical pair
         current = right
         while isinstance(current, Pair) and not current.horizontal and not current.is_redundant:
             next_node = current.two
@@ -99,6 +96,17 @@ class TallSplits(Splits):
             return True
         return False
 
+    def _rebalance_around(self, window: WindowType, all_windows: WindowList, horizontal: bool) -> None:
+        """Find the chain containing window and rebalance it."""
+        root = self.pairs_root
+        wg = all_windows.group_for_window(window)
+        if wg is None:
+            return
+        pair = root.pair_for_window(wg.id)
+        if pair is not None:
+            chain_root = self._find_chain_root(pair, horizontal)
+            self._rebalance_chain(chain_root, horizontal)
+
     def remove_windows(self, *windows_to_remove: int) -> None:
         super().remove_windows(*windows_to_remove)
         self._rebalance_right_column()
@@ -112,7 +120,13 @@ class TallSplits(Splits):
         next_to: WindowType | None = None,
     ) -> None:
         if location in ('vsplit', 'hsplit', 'split'):
-            return super().add_non_overlay_window(all_windows, window, location, bias, next_to)
+            super().add_non_overlay_window(all_windows, window, location, bias, next_to)
+            # Rebalance the chain matching the split orientation
+            if location == 'vsplit':
+                self._rebalance_around(window, all_windows, horizontal=True)
+            elif location == 'hsplit':
+                self._rebalance_around(window, all_windows, horizontal=False)
+            return
 
         root = self.pairs_root
         window_count = sum(1 for _ in root.all_window_ids())
@@ -145,16 +159,16 @@ class TallSplits(Splits):
             group_id = ag.id
 
             if not self._is_top_level(group_id):
-                # Nested inside a vsplit/sub-split: add below focused pane
+                # Nested inside a sub-split: add below focused pane
                 pair = root.pair_for_window(group_id)
                 if pair is not None:
                     target_group = all_windows.add_window(window, next_to=aw, before=not after)
                     pair.split_and_add(group_id, target_group.id, horizontal=False, after=True)
-                    # Rebalance the vertical chain this new split belongs to
+                    # Rebalance the vertical chain
                     new_pair = root.pair_for_window(target_group.id)
                     if new_pair is not None:
-                        chain_root = self._find_vertical_chain_root(new_pair)
-                        self._rebalance_vertical_chain(chain_root)
+                        chain_root = self._find_chain_root(new_pair, horizontal=False)
+                        self._rebalance_chain(chain_root, horizontal=False)
                     return
 
         # Top-level: append new row to right column
