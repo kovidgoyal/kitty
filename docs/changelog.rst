@@ -17,7 +17,7 @@ level. The kitty scrollback buffer grew support for :opt:`smooth scrolling
 <pixel_scroll>` and :opt:`momentum based scrolling <momentum_scroll>`
 for a natural, smooth and kinetic scrolling experience.
 
-Additionally, you can now :pull:`drag kitty tabs around <9296>` with the mouse
+Additionally, you can now :opt:`drag kitty tabs around <tab_bar_drag_threshold>` with the mouse
 to re-order them, move them to another kitty OS Window or even detach them into
 their own OS Window.
 
@@ -176,7 +176,7 @@ Detailed list of changes
 
 - macOS: Implement support for Apple dictation to input text in kitty (:iss:`3732`)
 
-- Allow dragging tabs in the tab bar to re-order, move to another OS Window or
+- Allow dragging tabs (opt:`tab_bar_drag_threshold`) in the tab bar to re-order, move to another OS Window or
   detach (:pull:`9296`)
 
 - Allow dragging window borders to resize kitty windows in all the different
