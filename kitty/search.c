@@ -13,6 +13,7 @@ search_init(SearchState *state) {
 void
 search_destroy(SearchState *state) {
     free(state->matches);
+    free(state->cached_canvas);
     memset(state, 0, sizeof(SearchState));
 }
 
@@ -38,6 +39,11 @@ search_deactivate(SearchState *state) {
     state->query_ucs4_len = 0;
     state->query_utf8[0] = '\0';
     state->cursor_pos = 0;
+    free(state->cached_canvas);
+    state->cached_canvas = NULL;
+    state->cached_canvas_width = 0;
+    state->cached_canvas_height = 0;
+    state->cached_display_text[0] = '\0';
 }
 
 bool

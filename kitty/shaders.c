@@ -885,52 +885,60 @@ draw_search_bar(const UIRenderData *ui) {
                       1, 8, 0x585b70, 0, 0.0f);
 
     // 3. Build display text
+    SearchState *search = &screen->search;
     char display_text[512];
-    size_t mc = screen->search.match_count;
-    size_t cm = screen->search.current_match;
-    if (mc > 0 && screen->search.query_utf8_len > 0) {
+    size_t mc = search->match_count;
+    size_t cm = search->current_match;
+    if (mc > 0 && search->query_utf8_len > 0) {
         if (mc >= SEARCH_MAX_MATCHES) {
             snprintf(display_text, sizeof(display_text), "%.*s   %d+",
-                     (int)screen->search.query_utf8_len, screen->search.query_utf8,
+                     (int)search->query_utf8_len, search->query_utf8,
                      SEARCH_MAX_MATCHES);
         } else {
             snprintf(display_text, sizeof(display_text), "%.*s   %zu of %zu",
-                     (int)screen->search.query_utf8_len, screen->search.query_utf8,
+                     (int)search->query_utf8_len, search->query_utf8,
                      cm + 1, mc);
         }
-    } else if (screen->search.query_utf8_len > 0) {
+    } else if (search->query_utf8_len > 0) {
         snprintf(display_text, sizeof(display_text), "%.*s   0 matches",
-                 (int)screen->search.query_utf8_len, screen->search.query_utf8);
+                 (int)search->query_utf8_len, search->query_utf8);
     } else {
         snprintf(display_text, sizeof(display_text), "Search...");
     }
 
-    // 4. Render text using the alpha mask pattern (same as draw_window_number)
-    StringCanvas rendered = render_simple_text(ui->os_window->fonts_data, display_text);
-    if (rendered.canvas) {
-        unsigned text_left = bar_left + 12;
-        unsigned text_top = bar_top + (bar_height - (unsigned)rendered.height) / 2;
-        unsigned text_width = (unsigned)rendered.width;
-        unsigned text_height = (unsigned)rendered.height;
+    // 4. Re-render text only when display text changed (cache the canvas)
+    if (strcmp(display_text, search->cached_display_text) != 0) {
+        free(search->cached_canvas);
+        search->cached_canvas = NULL;
+        snprintf(search->cached_display_text, sizeof(search->cached_display_text), "%s", display_text);
+        StringCanvas rendered = render_simple_text(ui->os_window->fonts_data, display_text);
+        if (rendered.canvas) {
+            search->cached_canvas = rendered.canvas;
+            search->cached_canvas_width = rendered.width;
+            search->cached_canvas_height = rendered.height;
+        }
+    }
 
-        // Clamp text to bar width
+    if (search->cached_canvas) {
+        unsigned text_left = bar_left + 12;
+        unsigned text_top = bar_top + (bar_height - (unsigned)search->cached_canvas_height) / 2;
+        unsigned text_width = (unsigned)search->cached_canvas_width;
+        unsigned text_height = (unsigned)search->cached_canvas_height;
+
         if (text_left + text_width > bar_left + bar_width - 12) {
             text_width = bar_left + bar_width - 12 - text_left;
         }
 
         bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
-        ImageRenderData *ird = load_alpha_mask_texture(text_width, text_height, rendered.canvas);
+        ImageRenderData *ird = load_alpha_mask_texture(text_width, text_height, search->cached_canvas);
         gpu_data_for_image(ird, -1, 1, 1, -1);
         glUniform1i(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.image, GRAPHICS_UNIT);
-        // Light gray text color (0xCDD6F4)
         color_vec3(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_fg, 0xCDD6F4);
-        // Transparent background
         glUniform4f(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_bg_premult, 0.f, 0.f, 0.f, 0.f);
         save_viewport_using_top_left_origin(text_left, text_top, text_width, text_height,
                                             ui->full_framebuffer_height);
         draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, ird, 0, 1, 1.f);
         restore_viewport();
-        free(rendered.canvas);
     }
 }
 
