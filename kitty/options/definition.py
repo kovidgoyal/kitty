@@ -4170,7 +4170,12 @@ a manual mapping with a special pager for this, you can use something like:
 For more sophisticated control, such as using the current selection, use :ac:`remote_control_script`.
 ''')
 
-map('Search the scrollback within a pager', 'search_scrollback cmd+f search_scrollback', only='macos')
+map('Search in scrollback',
+    'toggle_search cmd+f toggle_search',
+    only='macos')
+map('Search in scrollback',
+    'toggle_search ctrl+shift+f toggle_search',
+    only='!macos')
 
 
 egr()  # }}}

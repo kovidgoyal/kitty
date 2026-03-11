@@ -1638,6 +1638,13 @@ class Boss:
         self.mappings.push_keyboard_mode(new_mode)
 
     def dispatch_possible_special_key(self, ev: KeyEvent) -> bool:
+        w = self.active_window
+        if w is not None and w.screen.search_is_active():
+            # Let normal dispatch try first (so Cmd+F can toggle search off)
+            if self.mappings.dispatch_possible_special_key(ev):
+                return True
+            # Route remaining keys to search handler
+            return w.handle_search_key_event(ev)
         return self.mappings.dispatch_possible_special_key(ev)
 
     def cancel_current_visual_select(self) -> None:
