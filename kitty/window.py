@@ -716,6 +716,7 @@ class Window:
         self.last_reported_pty_size = (-1, -1, -1, -1)
         self._pause_resize_notifications_to_child: tuple[int, int, int, int] | None = None
         self._search_query_text: str = ''
+        self._search_debounce_timer: Optional[int] = None
         self.needs_attention = False
         self.ignore_focus_changes = self.initial_ignore_focus_changes
         self.override_title = override_title
@@ -1009,6 +1010,7 @@ class Window:
             self.needs_layout = False
             if self.screen.search_is_active() and self._search_query_text:
                 self.screen.search_set_query(self._search_query_text)
+                self.screen.search_run_scan()
             call_watchers(weakref.ref(self), 'on_resize', {'old_geometry': self.geometry, 'new_geometry': new_geometry})
         current_pty_size = (
             self.screen.lines, self.screen.columns,
@@ -2256,6 +2258,25 @@ class Window:
                 w.screen.paste_bytes(sanitized)
                 w.send_key('enter')
 
+    def _search_update_query(self) -> None:
+        """Update query text immediately (for display) and debounce the scan."""
+        self.screen.search_set_query(self._search_query_text)
+        if self._search_debounce_timer is not None:
+            from kitty.fast_data_types import remove_timer
+            remove_timer(self._search_debounce_timer)
+            self._search_debounce_timer = None
+        if self._search_query_text:
+            self._search_debounce_timer = add_timer(self._search_run_scan, 0.05, False)
+        else:
+            self.screen.search_run_scan()
+        self.refresh()
+
+    def _search_run_scan(self, timer_id: Optional[int] = None) -> None:
+        self._search_debounce_timer = None
+        if self.screen.search_is_active():
+            self.screen.search_run_scan()
+            self.refresh()
+
     @ac('sc', 'Toggle search overlay for finding text in scrollback')
     def toggle_search(self) -> None:
         if self.screen.search_is_active():
@@ -2304,8 +2325,7 @@ class Window:
                 self._search_query_text = ''
             elif self._search_query_text:
                 self._search_query_text = self._search_query_text[:-1]
-            self.screen.search_set_query(self._search_query_text)
-            self.refresh()
+            self._search_update_query()
             return True
 
         # Paste: Cmd+V (macOS) or Ctrl+V (Linux)
@@ -2316,17 +2336,15 @@ class Window:
                 if text:
                     text = text.replace('\n', ' ').replace('\r', '')
                     self._search_query_text += text
-                    self.screen.search_set_query(self._search_query_text)
             except Exception:
                 pass
-            self.refresh()
+            self._search_update_query()
             return True
 
         # Printable text
         if ev.text:
             self._search_query_text += ev.text
-            self.screen.search_set_query(self._search_query_text)
-            self.refresh()
+            self._search_update_query()
             return True
 
         return True  # consume all keys when search is active

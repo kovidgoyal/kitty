@@ -812,14 +812,13 @@ draw_search_highlights(const UIRenderData *ui) {
     unsigned cw = ui->cell_width;
     unsigned ch = ui->cell_height;
 
-    bind_program(TINT_PROGRAM);
     for (size_t i = lo; i < search->match_count; i++) {
         SearchMatch *m = &search->matches[i];
         if (m->line >= visible_end) break;
 
         unsigned visual_row = (unsigned)(m->line - visible_start);
         unsigned x = ui->screen_left + (unsigned)(m->column * cw);
-        unsigned y = ui->screen_top + visual_row * ch;
+        unsigned y = ui->screen_top + visual_row * ch + screen->pixel_scroll_offset_y;
         unsigned w = (unsigned)(m->length * cw);
         unsigned h = ch;
 
@@ -828,16 +827,17 @@ draw_search_highlights(const UIRenderData *ui) {
         bool is_current = (i == search->current_match);
 
         save_viewport_using_top_left_origin(x, y, w, h, ui->full_framebuffer_height);
+        bind_program(TINT_PROGRAM);
         if (is_current) {
-            // Bright orange, 80% opacity (premultiplied) - clearly distinct
+            // Focused: bright yellow (#FFDD00), 70% opacity
             glUniform4f(tint_program_layout.uniforms.tint_color,
-                        srgb_color(255) * 0.8f, srgb_color(165) * 0.8f,
-                        srgb_color(0) * 0.8f, 0.8f);
+                        srgb_color(255) * 0.70f, srgb_color(221) * 0.70f,
+                        srgb_color(0) * 0.70f, 0.70f);
         } else {
-            // Dim yellow, 15% opacity (premultiplied) - subtle background
+            // Unfocused: golden (#B8860B), 45% opacity
             glUniform4f(tint_program_layout.uniforms.tint_color,
-                        srgb_color(249) * 0.15f, srgb_color(226) * 0.15f,
-                        srgb_color(175) * 0.15f, 0.15f);
+                        srgb_color(184) * 0.45f, srgb_color(134) * 0.45f,
+                        srgb_color(11) * 0.45f, 0.45f);
         }
         glUniform4f(tint_program_layout.uniforms.edges, -1, 1, 1, -1);
         draw_quad(true, 0);

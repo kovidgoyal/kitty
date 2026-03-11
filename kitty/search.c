@@ -250,20 +250,18 @@ search_scroll_to_match(SearchState *state, void *screen_ptr) {
     size_t hist_count = (screen->linebuf == screen->main_linebuf) ? screen->historybuf->count : 0;
 
     if (m->line < hist_count) {
-        size_t lines_from_bottom = hist_count - m->line;
+        // scrolled_by = N means viewport top is at unified line (hist_count - N)
+        // To center match at line L: hist_count - N + half_screen = L
+        // So N = hist_count - L + half_screen
         size_t half_screen = screen->lines / 2;
-        unsigned int target;
-        if (lines_from_bottom > half_screen) {
-            target = (unsigned int)(lines_from_bottom - half_screen);
-        } else {
-            target = 0;
-        }
+        size_t target = hist_count - m->line + half_screen;
         if (target > screen->historybuf->count) target = screen->historybuf->count;
         screen_history_scroll_to_absolute(screen, (double)target);
     } else {
+        // Match is on the visible screen buffer
         size_t screen_line = m->line - hist_count;
-        (void)screen_line;
-        if (screen->scrolled_by > 0) {
+        if (screen->scrolled_by > 0 && screen_line < (size_t)screen->scrolled_by) {
+            // Match is hidden behind scroll, unscroll enough to show it
             screen_history_scroll_to_absolute(screen, 0);
         }
     }

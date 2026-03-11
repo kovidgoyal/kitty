@@ -5879,10 +5879,15 @@ screen_search_set_query(Screen *self, PyObject *args) {
     Py_ssize_t query_len;
     if (!PyArg_ParseTuple(args, "s#", &query, &query_len)) return NULL;
     if (search_set_query(&self->search, query, (size_t)query_len)) {
-        search_run_scan(&self->search, self);
         Py_RETURN_TRUE;
     }
     Py_RETURN_FALSE;
+}
+
+static PyObject*
+screen_search_run_scan(Screen *self, PyObject *args UNUSED) {
+    search_run_scan(&self->search, self);
+    Py_RETURN_NONE;
 }
 
 static PyObject*
@@ -6111,6 +6116,7 @@ static PyMethodDef methods[] = {
     {"search_activate", (PyCFunction)screen_search_activate, METH_NOARGS, ""},
     {"search_deactivate", (PyCFunction)screen_search_deactivate, METH_NOARGS, ""},
     {"search_set_query", (PyCFunction)screen_search_set_query, METH_VARARGS, ""},
+    {"search_run_scan", (PyCFunction)screen_search_run_scan, METH_NOARGS, ""},
     {"search_is_active", (PyCFunction)screen_search_is_active, METH_NOARGS, ""},
     {"search_match_count", (PyCFunction)screen_search_match_count, METH_NOARGS, ""},
     {"search_current_match", (PyCFunction)screen_search_current_match, METH_NOARGS, ""},
