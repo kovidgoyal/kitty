@@ -1018,7 +1018,7 @@ if is_macos:
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57355), definition='scroll_page_down'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57356), definition='scroll_home'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57357), definition='scroll_end'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=102), definition='search_scrollback'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=102), definition='toggle_search'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57345), definition='new_window'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=110), definition='new_os_window'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=100), definition='close_window'))
@@ -1062,6 +1062,9 @@ if is_macos:
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=104), definition='hide_macos_other_apps'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=109), definition='minimize_macos_window'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=113), definition='quit'))
+
+if not is_macos:
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=5, key=102), definition='toggle_search'))
 
 defaults.mouse_map = [
     # click_url_or_select
