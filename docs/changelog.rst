@@ -13,8 +13,9 @@ Mousing [0.46]
 ~~~~~~~~~~~~~~~
 
 kitty already had excellent mouse support, but now it is taking it to the next
-level. The kitty scrollback buffer grew support for :pull:`smooth scrolling <9330>`
-and momentum based scrolling for a natural, smooth and kinetic scrolling experience.
+level. The kitty scrollback buffer grew support for :opt:`smooth scrolling
+<pixel_scroll>` and :opt:`momentum based scrolling <momentum_scroll>`
+for a natural, smooth and kinetic scrolling experience.
 
 Additionally, you can now :pull:`drag kitty tabs around <9296>` with the mouse
 to re-order them, move them to another kitty OS Window or even detach them into
