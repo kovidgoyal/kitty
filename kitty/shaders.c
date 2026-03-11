@@ -796,7 +796,7 @@ draw_search_highlights(const UIRenderData *ui) {
 
     size_t hist_count = (screen->linebuf == screen->main_linebuf) ? screen->historybuf->count : 0;
 
-    size_t visible_start = (screen->scrolled_by > 0 && hist_count > 0)
+    size_t visible_start = (screen->scrolled_by > 0 && hist_count > 0 && (size_t)screen->scrolled_by <= hist_count)
         ? (hist_count - (size_t)screen->scrolled_by)
         : hist_count;
     size_t visible_end = visible_start + screen->lines;
@@ -812,6 +812,7 @@ draw_search_highlights(const UIRenderData *ui) {
     unsigned cw = ui->cell_width;
     unsigned ch = ui->cell_height;
 
+    bind_program(TINT_PROGRAM);
     for (size_t i = lo; i < search->match_count; i++) {
         SearchMatch *m = &search->matches[i];
         if (m->line >= visible_end) break;
@@ -827,7 +828,6 @@ draw_search_highlights(const UIRenderData *ui) {
         bool is_current = (i == search->current_match);
 
         save_viewport_using_top_left_origin(x, y, w, h, ui->full_framebuffer_height);
-        bind_program(TINT_PROGRAM);
         if (is_current) {
             // Bright yellow, 50% opacity (premultiplied)
             glUniform4f(tint_program_layout.uniforms.tint_color,

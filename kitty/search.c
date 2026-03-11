@@ -1,5 +1,6 @@
 #include "search.h"
 #include "lineops.h"
+#include "line.h"
 #include "screen.h"
 #include <stdlib.h>
 #include <string.h>
@@ -118,6 +119,9 @@ ucs4_find(const char_type *haystack, size_t haystack_len,
     return NULL;
 }
 
+// Map codepoint index (from unicode_in_range output) to cell column.
+// Must replicate unicode_in_range's skipping logic: multicell continuation
+// cells AND tab-padding space cells are skipped in the codepoint output.
 static size_t
 codepoint_offset_to_cell_column(const Line *line, size_t cp_offset) {
     size_t cp_idx = 0;
@@ -125,6 +129,10 @@ codepoint_offset_to_cell_column(const Line *line, size_t cp_offset) {
         if (line->cpu_cells[c].is_multicell && line->cpu_cells[c].x) continue;
         if (cp_idx == cp_offset) return c;
         cp_idx++;
+        // Tab: unicode_in_range outputs 1 codepoint but skips trailing space cells
+        if (cell_is_char(line->cpu_cells + c, '\t')) {
+            while (c + 1 < line->xnum && cell_is_char(line->cpu_cells + c + 1, ' ')) c++;
+        }
     }
     return line->xnum;
 }
@@ -137,6 +145,12 @@ count_cells_for_codepoints(const Line *line, size_t start_cell, size_t num_codep
         cells++;
         if (line->cpu_cells[c].is_multicell && line->cpu_cells[c].x) continue;
         cps++;
+        if (cell_is_char(line->cpu_cells + c, '\t')) {
+            while (c + 1 < line->xnum && cell_is_char(line->cpu_cells + c + 1, ' ')) {
+                c++;
+                cells++;
+            }
+        }
     }
     return cells;
 }
@@ -201,7 +215,7 @@ search_run_scan(SearchState *state, void *screen_ptr) {
 
     if (state->match_count > 0) {
         size_t visible_start;
-        if (screen->scrolled_by > 0 && history_count > 0) {
+        if (screen->scrolled_by > 0 && history_count > 0 && (size_t)screen->scrolled_by <= history_count) {
             visible_start = history_count - (size_t)screen->scrolled_by;
         } else {
             visible_start = history_count;
