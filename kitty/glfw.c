@@ -518,6 +518,9 @@ update_modifier_state_on_modifier_key_event(GLFWkeyevent *ev, int key_modifier, 
 static void
 key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
     if (!set_callback_window(w)) return;
+#ifdef __APPLE__
+    cocoa_clear_dock_badge_if_set();
+#endif
 #ifndef __APPLE__
     bool is_left;
     int key_modifier = key_to_modifier(ev->key, &is_left);
@@ -554,6 +557,9 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
 static void
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!set_callback_window(w)) return;
+#ifdef __APPLE__
+    cocoa_clear_dock_badge_if_set();
+#endif
     monotonic_t now = monotonic();
     cursor_active_callback(now);
     mods_at_last_key_or_button_event = mods;

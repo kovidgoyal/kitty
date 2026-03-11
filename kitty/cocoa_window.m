@@ -1341,13 +1341,21 @@ cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
 
 // Dock badge {{{
 
+static bool dock_badge_is_set = false;
+
 void
 cocoa_set_dock_badge(const char *label) {
     @autoreleasepool {
         NSDockTile *dockTile = [NSApp dockTile];
         [dockTile setBadgeLabel:label ? @(label) : nil];
         [dockTile display];
+        dock_badge_is_set = (label != NULL);
     }
+}
+
+void
+cocoa_clear_dock_badge_if_set(void) {
+    if (dock_badge_is_set) cocoa_set_dock_badge(NULL);
 }
 
 // }}}
