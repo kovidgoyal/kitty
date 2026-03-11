@@ -11,6 +11,7 @@
 #include "monotonic.h"
 #include "line-buf.h"
 #include "history.h"
+#include "search.h"
 
 typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } ScrollType;
 
@@ -108,6 +109,7 @@ typedef struct {
     double pending_scroll_pixels_x, pending_scroll_pixels_y;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
+    SearchState search;
     id_type window_id;
     Selections selections, url_ranges;
     struct {

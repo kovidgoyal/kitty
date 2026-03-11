@@ -162,6 +162,7 @@ new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         init_tabstops(self->alt_tabstops, self->columns);
         self->key_encoding_flags = self->main_key_encoding_flags;
         if (!init_overlay_line(self, self->columns, false)) { Py_CLEAR(self); return NULL; }
+        search_init(&self->search);
         self->hyperlink_pool = alloc_hyperlink_pool();
         if (!self->hyperlink_pool) { Py_CLEAR(self); return PyErr_NoMemory(); }
         self->as_ansi_buf.hyperlink_pool = self->hyperlink_pool;
@@ -671,6 +672,7 @@ dealloc(Screen* self) {
     free(self->url_ranges.items);
     free(self->paused_rendering.url_ranges.items);
     free(self->paused_rendering.selections.items);
+    search_destroy(&self->search);
     free_hyperlink_pool(self->hyperlink_pool);
     free(self->as_ansi_buf.buf);
     free(self->last_rendered_window_char.canvas);
