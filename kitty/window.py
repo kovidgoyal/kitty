@@ -2018,7 +2018,7 @@ class Window:
     def handle_dangerous_paste_confirmation(self, unsanitized: bytes, sanitized: bytes, choice: str) -> None:
         if choice == 's':
             self.paste_text(sanitized)
-        elif choice == 'p':
+        elif choice == 'a':
             self.paste_text(unsanitized)
 
     def handle_large_paste_confirmation(self, btext: bytes, confirmed: bool) -> None:
