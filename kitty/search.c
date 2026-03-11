@@ -13,7 +13,8 @@ search_init(SearchState *state) {
 void
 search_destroy(SearchState *state) {
     free(state->matches);
-    free(state->cached_canvas);
+    free(state->cached_query_canvas);
+    free(state->cached_count_canvas);
     memset(state, 0, sizeof(SearchState));
 }
 
@@ -39,11 +40,16 @@ search_deactivate(SearchState *state) {
     state->query_ucs4_len = 0;
     state->query_utf8[0] = '\0';
     state->cursor_pos = 0;
-    free(state->cached_canvas);
-    state->cached_canvas = NULL;
-    state->cached_canvas_width = 0;
-    state->cached_canvas_height = 0;
-    state->cached_display_text[0] = '\0';
+    free(state->cached_query_canvas);
+    state->cached_query_canvas = NULL;
+    state->cached_query_width = 0;
+    state->cached_query_height = 0;
+    state->cached_query_text[0] = '\0';
+    free(state->cached_count_canvas);
+    state->cached_count_canvas = NULL;
+    state->cached_count_width = 0;
+    state->cached_count_height = 0;
+    state->cached_count_text[0] = '\0';
 }
 
 bool
@@ -188,12 +194,20 @@ search_scan_line(SearchState *state, Line *line, size_t line_idx, ANSIBuf *buf) 
     }
 }
 
+static bool
+query_is_only_whitespace(const char_type *query, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        if (query[i] != ' ' && query[i] != '\t') return false;
+    }
+    return true;
+}
+
 void
 search_run_scan(SearchState *state, void *screen_ptr) {
     Screen *screen = (Screen*)screen_ptr;
     state->match_count = 0;
 
-    if (state->query_ucs4_len == 0) {
+    if (state->query_ucs4_len == 0 || query_is_only_whitespace(state->query_ucs4, state->query_ucs4_len)) {
         state->is_dirty = false;
         return;
     }
@@ -201,7 +215,7 @@ search_run_scan(SearchState *state, void *screen_ptr) {
     ANSIBuf buf = {0};
     size_t history_count = 0;
 
-    if (screen->linebuf == screen->main_linebuf && screen->historybuf->count > 0) {
+    if (screen->linebuf == screen->main_linebuf && screen->historybuf && screen->historybuf->count > 0) {
         history_count = screen->historybuf->count;
         for (size_t i = 0; i < history_count && state->match_count < SEARCH_MAX_MATCHES; i++) {
             index_type lnum = (index_type)(history_count - 1 - i);
@@ -220,24 +234,26 @@ search_run_scan(SearchState *state, void *screen_ptr) {
     state->is_dirty = false;
 
     if (state->match_count > 0) {
+        // Set current_match to the first match visible on screen (no scrolling)
         size_t visible_start;
         if (screen->scrolled_by > 0 && history_count > 0 && (size_t)screen->scrolled_by <= history_count) {
             visible_start = history_count - (size_t)screen->scrolled_by;
         } else {
             visible_start = history_count;
         }
+        size_t visible_end = visible_start + screen->lines;
         size_t lo = 0, hi = state->match_count;
         while (lo < hi) {
             size_t mid = lo + (hi - lo) / 2;
             if (state->matches[mid].line < visible_start) lo = mid + 1;
             else hi = mid;
         }
-        if (lo < state->match_count) {
+        if (lo < state->match_count && state->matches[lo].line < visible_end) {
             state->current_match = lo;
         } else {
-            state->current_match = state->match_count - 1;
+            // No match on screen, point to first match overall
+            state->current_match = 0;
         }
-        search_scroll_to_match(state, screen);
     }
 }
 

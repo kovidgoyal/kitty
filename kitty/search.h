@@ -41,10 +41,15 @@ typedef struct {
     bool render_dirty;   // bar visual needs update
 
     // Cached text rendering (avoid calling render_simple_text every frame)
-    uint8_t *cached_canvas;
-    size_t cached_canvas_width;
-    size_t cached_canvas_height;
-    char cached_display_text[512];
+    uint8_t *cached_query_canvas;
+    size_t cached_query_width;
+    size_t cached_query_height;
+    char cached_query_text[512];
+
+    uint8_t *cached_count_canvas;
+    size_t cached_count_width;
+    size_t cached_count_height;
+    char cached_count_text[128];
 } SearchState;
 
 // API
