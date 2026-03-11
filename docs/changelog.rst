@@ -184,7 +184,7 @@ Detailed list of changes
 - Allow showing :opt:`configurable window titles <window_title_bar>` for individual kitty
   windows via a window title bar (:pull:`9450`)
 
-- A command palette to browse and trigger all mapped and unmapped actions
+- A command palette (:sc:`command_palette`) to browse and trigger all mapped and unmapped actions
   (:pull:`9545`)
 
 - choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
