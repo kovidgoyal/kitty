@@ -7,6 +7,7 @@ from .grid import Grid
 from .splits import Splits
 from .stack import Stack
 from .tall import Fat, Tall
+from .talls import TallSplits
 from .vertical import Horizontal, Vertical
 
 all_layouts: dict[str, type[Layout]] = {
@@ -17,6 +18,7 @@ all_layouts: dict[str, type[Layout]] = {
     Horizontal.name: Horizontal,
     Grid.name: Grid,
     Splits.name: Splits,
+    TallSplits.name: TallSplits,
 }
 
 KeyType = tuple[str, int, int, str]
