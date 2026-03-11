@@ -1007,6 +1007,8 @@ class Window:
         if self.needs_layout or new_geometry.xnum != self.screen.columns or render_ynum != self.screen.lines:
             self.screen.resize(max(0, render_ynum), max(0, new_geometry.xnum))
             self.needs_layout = False
+            if self.screen.search_is_active() and self._search_query_text:
+                self.screen.search_set_query(self._search_query_text)
             call_watchers(weakref.ref(self), 'on_resize', {'old_geometry': self.geometry, 'new_geometry': new_geometry})
         current_pty_size = (
             self.screen.lines, self.screen.columns,
