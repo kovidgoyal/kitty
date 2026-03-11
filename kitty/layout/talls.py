@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Union
-
 from kitty.typing_compat import WindowType
 from kitty.window_list import WindowList
 
 from .splits import Pair, Splits, SplitsLayoutOpts
-
-LeafType = Union[int, 'Pair']
 
 
 class TallSplits(Splits):
@@ -18,7 +14,7 @@ class TallSplits(Splits):
 
     # -- Chain helpers (work for both horizontal and vertical chains) --
 
-    def _collect_chain_leaves(self, node: 'Pair | int | None', horizontal: bool) -> list[LeafType]:
+    def _collect_chain_leaves(self, node: 'Pair | int | None', horizontal: bool) -> 'list[Pair | int]':
         """Collect all leaf items from a chain in order.
         Items of the same orientation are flattened; other pairs are kept as opaque leaves."""
         if node is None:
@@ -72,25 +68,20 @@ class TallSplits(Splits):
             current = parent
         return current
 
-    def _rebalance_chain_around(self, window: WindowType, all_windows: WindowList, horizontal: bool) -> None:
-        """Find the chain containing window, flatten it in place, and rebalance."""
-        root = self.pairs_root
-        wg = all_windows.group_for_window(window)
-        if wg is None:
-            return
-        pair = root.pair_for_window(wg.id)
+    def _rebalance_chain_for_group(self, group_id: int, horizontal: bool) -> None:
+        """Find the chain containing group_id, flatten it in place, and rebalance."""
+        pair = self.pairs_root.pair_for_window(group_id)
         if pair is None:
             return
         chain_root = self._find_chain_root(pair, horizontal)
         self._rebuild_chain_in_place(chain_root, horizontal)
 
-    def _rebalance_right_column(self) -> None:
-        root = self.pairs_root
-        right = root.two
-        if right is None or isinstance(right, int):
+    def _rebalance_chain_around(self, window: WindowType, all_windows: WindowList, horizontal: bool) -> None:
+        """Find the chain containing window, flatten it in place, and rebalance."""
+        wg = all_windows.group_for_window(window)
+        if wg is None:
             return
-        if isinstance(right, Pair):
-            self._rebuild_chain_in_place(right, horizontal=False)
+        self._rebalance_chain_for_group(wg.id, horizontal)
 
     def _append_to_right_column(self, new_group_id: int) -> None:
         """Add a new window as the last row in the right column."""
@@ -203,13 +194,9 @@ class TallSplits(Splits):
                 if pair is not None:
                     target_group = all_windows.add_window(window, next_to=aw, before=not after)
                     pair.split_and_add(group_id, target_group.id, horizontal=False, after=True)
-                    # Rebalance the vertical chain in place
-                    new_pair = root.pair_for_window(target_group.id)
-                    if new_pair is not None:
-                        chain_root = self._find_chain_root(new_pair, horizontal=False)
-                        self._rebuild_chain_in_place(chain_root, horizontal=False)
+                    self._rebalance_chain_for_group(target_group.id, horizontal=False)
                     return
 
         target_group = all_windows.add_window(window, next_to=aw, before=not after)
         self._append_to_right_column(target_group.id)
-        self._rebalance_right_column()
+        self._rebalance_all_chains()
