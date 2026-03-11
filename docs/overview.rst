@@ -33,6 +33,9 @@ frames-per-second. Press :sc:`edit_config_file` in kitty to open its fully
 commented sample config file in your text editor. For details see the
 :doc:`configuration docs <conf>`.
 
+You can quickly browse all available mappable actions by pressing
+:sc:`command_palette`.
+
 .. toctree::
    :hidden:
 
