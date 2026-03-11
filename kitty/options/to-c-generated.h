@@ -1176,15 +1176,28 @@ convert_from_opts_dim_opacity(PyObject *py_opts, Options *opts) {
 }
 
 static void
-convert_from_python_generate_256_palette(PyObject *val, Options *opts) {
-    opts->generate_256_palette = PyObject_IsTrue(val);
+convert_from_python_palette_generate(PyObject *val, Options *opts) {
+    opts->palette_generate = PyObject_IsTrue(val);
 }
 
 static void
-convert_from_opts_generate_256_palette(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "generate_256_palette");
+convert_from_opts_palette_generate(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "palette_generate");
     if (ret == NULL) return;
-    convert_from_python_generate_256_palette(ret, opts);
+    convert_from_python_palette_generate(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_palette_harmonious(PyObject *val, Options *opts) {
+    opts->palette_harmonious = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_palette_harmonious(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "palette_harmonious");
+    if (ret == NULL) return;
+    convert_from_python_palette_harmonious(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1565,7 +1578,9 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     if (PyErr_Occurred()) return false;
     convert_from_opts_dim_opacity(py_opts, opts);
     if (PyErr_Occurred()) return false;
-    convert_from_opts_generate_256_palette(py_opts, opts);
+    convert_from_opts_palette_generate(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_palette_harmonious(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_close_on_child_death(py_opts, opts);
     if (PyErr_Occurred()) return false;

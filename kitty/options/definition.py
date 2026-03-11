@@ -1848,10 +1848,18 @@ opt('selection_background', '#fffacd',
     option_type='to_color_or_none',
     )
 
-opt('generate_256_palette', True,
+opt('palette_generate', True,
     option_type='to_bool', ctype='bool',
     long_text='''
 Whether to automatically generate colors 16-255 from your base16 palette.
+'''
+    )
+
+opt('palette_harmonious', False,
+    option_type='to_bool', ctype='bool',
+    long_text='''
+Whether to invert generated light theme colors (see :opt:`palette_generate`).
+This helps give the 256-color palette more semantic meaning.
 '''
     )
 

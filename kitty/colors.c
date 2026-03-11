@@ -179,20 +179,26 @@ lerp_lab(float t, float *a, float *b, float *out) {
 }
 
 static void
-generate_256_palette(color_type *color_table, color_type bg, color_type fg) {
+generate_256_palette(color_type *color_table, color_type bg, color_type fg, bool harmonious) {
     float base8_lab[8][3], bg_lab[3], fg_lab[3];
     for (int i = 0; i < 8; i++) color_type_to_lab(color_table[i], base8_lab[i]);
     color_type_to_lab(bg ? bg : color_table[0], bg_lab);
     color_type_to_lab(fg ? fg : color_table[7], fg_lab);
 
+    bool is_light_theme = fg_lab[0] < bg_lab[0];
+    bool invert = is_light_theme && !harmonious;
+
+    float *corner0 = invert ? fg_lab : bg_lab;
+    float *corner7 = invert ? bg_lab : fg_lab;
+
     int idx = 16;
     for (int r = 0; r < 6; r++) {
         float c0[3], c1[3], c2[3], c3[3];
         float tr = r / 5.0f;
-        lerp_lab(tr, bg_lab, base8_lab[1], c0);
+        lerp_lab(tr, corner0, base8_lab[1], c0);
         lerp_lab(tr, base8_lab[2], base8_lab[3], c1);
         lerp_lab(tr, base8_lab[4], base8_lab[5], c2);
-        lerp_lab(tr, base8_lab[6], fg_lab, c3);
+        lerp_lab(tr, base8_lab[6], corner7, c3);
         for (int g = 0; g < 6; g++) {
             float c4[3], c5[3];
             float tg = g / 5.0f;
@@ -212,7 +218,7 @@ generate_256_palette(color_type *color_table, color_type bg, color_type fg) {
     for (int i = 0; i < 24; i++) {
         float t = (i + 1) / 25.0f;
         float lab[3];
-        lerp_lab(t, bg_lab, fg_lab, lab);
+        lerp_lab(t, corner0, corner7, lab);
         if (color_table[idx] == NULL_COLOR_TYPE) {
             color_table[idx] = lab_to_color_type(lab);
         }
@@ -259,8 +265,9 @@ set_colortable(ColorProfile *self, PyObject *opts) {
     size_t itemsize = PyLong_AsSize_t(r2);
     if (itemsize != sizeof(unsigned long)) { PyErr_Format(PyExc_TypeError, "color_table has incorrect itemsize: %zu", itemsize); return false; }
     for (size_t i = 0; i < arraysz(FG_BG_256); i++) self->color_table[i] = color_table[i];
-    if (PyObject_IsTrue(PyObject_GetAttrString(opts, "generate_256_palette")))
-        generate_256_palette(self->color_table, self->configured.default_bg.rgb, self->configured.default_fg.rgb);
+    if (PyObject_IsTrue(PyObject_GetAttrString(opts, "palette_generate")))
+        generate_256_palette(self->color_table, self->configured.default_bg.rgb, self->configured.default_fg.rgb,
+                             PyObject_IsTrue(PyObject_GetAttrString(opts, "palette_harmonious")));
     else
         fill_256_palette(self->color_table);
     memcpy(self->orig_color_table, self->color_table, arraysz(self->color_table) * sizeof(self->color_table[0]));

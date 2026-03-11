@@ -140,7 +140,8 @@ typedef struct Options {
     struct { float thickness; int unit; } underline_exclusion;
     float box_drawing_scale[4];
     double momentum_scroll;
-    bool generate_256_palette;
+    bool palette_generate;
+    bool palette_harmonious;
 } Options;
 
 typedef struct WindowLogoRenderData {

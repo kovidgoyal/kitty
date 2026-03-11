@@ -1023,8 +1023,11 @@ class Parser:
     def forward_stdio(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['forward_stdio'] = to_bool(val)
 
-    def generate_256_palette(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['generate_256_palette'] = to_bool(val)
+    def palette_generate(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['palette_generate'] = to_bool(val)
+
+    def palette_harmonious(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['palette_harmonious'] = to_bool(val)
 
     def hide_window_decorations(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['hide_window_decorations'] = hide_window_decorations(val)

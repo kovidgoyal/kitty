@@ -1579,7 +1579,7 @@ class TestScreen(BaseTest):
         t('=fleur', 'move')
 
     def test_color_profile(self):
-        defaults.generate_256_palette = False
+        defaults.palette_generate = False
         c = ColorProfile(defaults)
         for i in range(8):
             col = getattr(defaults, f'color{i}')

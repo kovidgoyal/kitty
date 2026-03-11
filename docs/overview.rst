@@ -282,7 +282,7 @@ Generating the 256-color palette
 --------------------------------
 
 kitty generates the full 256-color palette based on your base16 theme automatically.
-This can be disabled by setting `generate_256_palette false` in your kitty.conf.
+This can be disabled by setting `palette_generate false` in your kitty.conf.
 To view the rationale and implementation behind this feature, see :doc:`generate-256-palette`.
 
 .. toctree::
