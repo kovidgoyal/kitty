@@ -22,7 +22,7 @@ to re-order them, move them to another kitty OS Window or even detach them into
 their own OS Window.
 
 Finally, a long requested feature, the ability to resize kitty windows (aka
-splits) with the mouse was finally implemented.
+splits) with the mouse was implemented.
 
 Choose files, fast [0.45]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
