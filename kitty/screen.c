@@ -5861,6 +5861,65 @@ current_selections(Screen *self, PyObject *a UNUSED) {
 WRAP0(update_only_line_graphics_data)
 WRAP0(bell)
 
+static PyObject*
+screen_search_activate(Screen *self, PyObject *args UNUSED) {
+    search_activate(&self->search);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+screen_search_deactivate(Screen *self, PyObject *args UNUSED) {
+    search_deactivate(&self->search);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+screen_search_set_query(Screen *self, PyObject *args) {
+    const char *query;
+    Py_ssize_t query_len;
+    if (!PyArg_ParseTuple(args, "s#", &query, &query_len)) return NULL;
+    if (search_set_query(&self->search, query, (size_t)query_len)) {
+        search_run_scan(&self->search, self);
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+static PyObject*
+screen_search_is_active(Screen *self, PyObject *args UNUSED) {
+    if (search_is_active(&self->search)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+static PyObject*
+screen_search_match_count(Screen *self, PyObject *args UNUSED) {
+    return PyLong_FromSize_t(self->search.match_count);
+}
+
+static PyObject*
+screen_search_current_match(Screen *self, PyObject *args UNUSED) {
+    return PyLong_FromSize_t(self->search.current_match);
+}
+
+static PyObject*
+screen_search_next(Screen *self, PyObject *args UNUSED) {
+    SearchState *s = &self->search;
+    if (s->match_count == 0) Py_RETURN_NONE;
+    s->current_match = (s->current_match + 1) % s->match_count;
+    search_scroll_to_match(s, self);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+screen_search_prev(Screen *self, PyObject *args UNUSED) {
+    SearchState *s = &self->search;
+    if (s->match_count == 0) Py_RETURN_NONE;
+    if (s->current_match == 0) s->current_match = s->match_count - 1;
+    else s->current_match--;
+    search_scroll_to_match(s, self);
+    Py_RETURN_NONE;
+}
+
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
 
@@ -6049,6 +6108,14 @@ static PyMethodDef methods[] = {
     MND(bell, METH_NOARGS)
     MND(current_selections, METH_NOARGS)
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
+    {"search_activate", (PyCFunction)screen_search_activate, METH_NOARGS, ""},
+    {"search_deactivate", (PyCFunction)screen_search_deactivate, METH_NOARGS, ""},
+    {"search_set_query", (PyCFunction)screen_search_set_query, METH_VARARGS, ""},
+    {"search_is_active", (PyCFunction)screen_search_is_active, METH_NOARGS, ""},
+    {"search_match_count", (PyCFunction)screen_search_match_count, METH_NOARGS, ""},
+    {"search_current_match", (PyCFunction)screen_search_current_match, METH_NOARGS, ""},
+    {"search_next", (PyCFunction)screen_search_next, METH_NOARGS, ""},
+    {"search_prev", (PyCFunction)screen_search_prev, METH_NOARGS, ""},
 
     {NULL}  /* Sentinel */
 };
