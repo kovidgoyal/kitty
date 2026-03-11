@@ -2264,6 +2264,7 @@ class Window:
         else:
             self.screen.search_activate()
             self._search_query_text = ''
+        self.refresh()
 
     def handle_search_key_event(self, ev: 'KeyEvent') -> bool:
         """Handle a key event when search is active. Returns True if consumed."""
@@ -2285,6 +2286,7 @@ class Window:
         if key == GLFW_FKEY_ESCAPE:
             self.screen.search_deactivate()
             self._search_query_text = ''
+            self.refresh()
             return True
 
         # Enter / Shift+Enter: navigate matches
@@ -2293,6 +2295,7 @@ class Window:
                 self.screen.search_prev()
             else:
                 self.screen.search_next()
+            self.refresh()
             return True
 
         # Backspace
@@ -2302,6 +2305,7 @@ class Window:
             elif self._search_query_text:
                 self._search_query_text = self._search_query_text[:-1]
             self.screen.search_set_query(self._search_query_text)
+            self.refresh()
             return True
 
         # Paste: Cmd+V (macOS) or Ctrl+V (Linux)
@@ -2315,12 +2319,14 @@ class Window:
                     self.screen.search_set_query(self._search_query_text)
             except Exception:
                 pass
+            self.refresh()
             return True
 
         # Printable text
         if ev.text:
             self._search_query_text += ev.text
             self.screen.search_set_query(self._search_query_text)
+            self.refresh()
             return True
 
         return True  # consume all keys when search is active

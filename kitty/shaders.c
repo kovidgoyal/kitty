@@ -829,15 +829,15 @@ draw_search_highlights(const UIRenderData *ui) {
 
         save_viewport_using_top_left_origin(x, y, w, h, ui->full_framebuffer_height);
         if (is_current) {
-            // Bright yellow, 50% opacity (premultiplied)
+            // Bright orange, 80% opacity (premultiplied) - clearly distinct
             glUniform4f(tint_program_layout.uniforms.tint_color,
-                        srgb_color(249) * 0.5f, srgb_color(226) * 0.5f,
-                        srgb_color(175) * 0.5f, 0.5f);
+                        srgb_color(255) * 0.8f, srgb_color(165) * 0.8f,
+                        srgb_color(0) * 0.8f, 0.8f);
         } else {
-            // Dim yellow, 20% opacity (premultiplied)
+            // Dim yellow, 15% opacity (premultiplied) - subtle background
             glUniform4f(tint_program_layout.uniforms.tint_color,
-                        srgb_color(249) * 0.2f, srgb_color(226) * 0.2f,
-                        srgb_color(175) * 0.2f, 0.2f);
+                        srgb_color(249) * 0.15f, srgb_color(226) * 0.15f,
+                        srgb_color(175) * 0.15f, 0.15f);
         }
         glUniform4f(tint_program_layout.uniforms.edges, -1, 1, 1, -1);
         draw_quad(true, 0);
