@@ -16,6 +16,7 @@
 #include "srgb_gamma.h"
 #include "uniforms_generated.h"
 #include "state.h"
+#include "search.h"
 
 enum {
     CELL_PROGRAM, CELL_FG_PROGRAM, CELL_BG_PROGRAM, CELL_PROGRAM_SENTINEL,
@@ -787,6 +788,152 @@ draw_visual_bell(const UIRenderData *ui) {
 #undef COLOR
 }
 
+static void
+draw_search_highlights(const UIRenderData *ui) {
+    Screen *screen = ui->screen;
+    SearchState *search = &screen->search;
+    if (!search->is_active || search->match_count == 0 || search->query_ucs4_len == 0) return;
+
+    size_t hist_count = (screen->linebuf == screen->main_linebuf) ? screen->historybuf->count : 0;
+
+    size_t visible_start = (screen->scrolled_by > 0 && hist_count > 0)
+        ? (hist_count - (size_t)screen->scrolled_by)
+        : hist_count;
+    size_t visible_end = visible_start + screen->lines;
+
+    // Binary search for first match in visible range
+    size_t lo = 0, hi = search->match_count;
+    while (lo < hi) {
+        size_t mid = lo + (hi - lo) / 2;
+        if (search->matches[mid].line < visible_start) lo = mid + 1;
+        else hi = mid;
+    }
+
+    unsigned cw = ui->cell_width;
+    unsigned ch = ui->cell_height;
+
+    for (size_t i = lo; i < search->match_count; i++) {
+        SearchMatch *m = &search->matches[i];
+        if (m->line >= visible_end) break;
+
+        unsigned visual_row = (unsigned)(m->line - visible_start);
+        unsigned x = ui->screen_left + (unsigned)(m->column * cw);
+        unsigned y = ui->screen_top + visual_row * ch;
+        unsigned w = (unsigned)(m->length * cw);
+        unsigned h = ch;
+
+        if (x + w > ui->screen_left + ui->screen_width) w = ui->screen_left + ui->screen_width - x;
+
+        bool is_current = (i == search->current_match);
+
+        save_viewport_using_top_left_origin(x, y, w, h, ui->full_framebuffer_height);
+        bind_program(TINT_PROGRAM);
+        if (is_current) {
+            // Bright yellow, 50% opacity (premultiplied)
+            glUniform4f(tint_program_layout.uniforms.tint_color,
+                        srgb_color(249) * 0.5f, srgb_color(226) * 0.5f,
+                        srgb_color(175) * 0.5f, 0.5f);
+        } else {
+            // Dim yellow, 20% opacity (premultiplied)
+            glUniform4f(tint_program_layout.uniforms.tint_color,
+                        srgb_color(249) * 0.2f, srgb_color(226) * 0.2f,
+                        srgb_color(175) * 0.2f, 0.2f);
+        }
+        glUniform4f(tint_program_layout.uniforms.edges, -1, 1, 1, -1);
+        draw_quad(true, 0);
+        restore_viewport();
+    }
+}
+
+static void
+draw_search_bar(const UIRenderData *ui) {
+    Screen *screen = ui->screen;
+    if (!screen->search.is_active) return;
+
+    unsigned cw = ui->cell_width;
+    unsigned ch = ui->cell_height;
+
+    // Calculate bar dimensions
+    unsigned min_width = 20 * cw;
+    unsigned max_width = (unsigned)(ui->screen_width * 0.6f);
+    unsigned query_cells = (unsigned)screen->search.query_ucs4_len;
+    if (query_cells < 10) query_cells = 10;
+    unsigned content_cells = query_cells + 14;
+    unsigned bar_width = content_cells * cw + 24;
+    if (bar_width < min_width) bar_width = min_width;
+    if (bar_width > max_width) bar_width = max_width;
+
+    unsigned bar_height = ch + 16;
+    unsigned padding = 8;
+
+    unsigned bar_left = ui->screen_left + ui->screen_width - bar_width - padding;
+    unsigned bar_top = ui->screen_top + padding;
+
+    // 1. Draw filled background using TINT_PROGRAM (dark semi-transparent)
+    save_viewport_using_top_left_origin(bar_left, bar_top, bar_width, bar_height,
+                                        ui->full_framebuffer_height);
+    bind_program(TINT_PROGRAM);
+    glUniform4f(tint_program_layout.uniforms.tint_color,
+                srgb_color(48) * 0.9f, srgb_color(48) * 0.9f, srgb_color(48) * 0.9f, 0.9f);
+    glUniform4f(tint_program_layout.uniforms.edges, -1, 1, 1, -1);
+    draw_quad(true, 0);
+    restore_viewport();
+
+    // 2. Draw rounded border
+    Viewport rect = { .left = bar_left, .top = bar_top, .width = bar_width, .height = bar_height };
+    draw_rounded_rect(ui->os_window, rect, ui->full_framebuffer_height,
+                      1, 8, 0x585b70, 0, 0.0f);
+
+    // 3. Build display text
+    char display_text[512];
+    size_t mc = screen->search.match_count;
+    size_t cm = screen->search.current_match;
+    if (mc > 0 && screen->search.query_utf8_len > 0) {
+        if (mc >= SEARCH_MAX_MATCHES) {
+            snprintf(display_text, sizeof(display_text), "%.*s   %d+",
+                     (int)screen->search.query_utf8_len, screen->search.query_utf8,
+                     SEARCH_MAX_MATCHES);
+        } else {
+            snprintf(display_text, sizeof(display_text), "%.*s   %zu of %zu",
+                     (int)screen->search.query_utf8_len, screen->search.query_utf8,
+                     cm + 1, mc);
+        }
+    } else if (screen->search.query_utf8_len > 0) {
+        snprintf(display_text, sizeof(display_text), "%.*s   0 matches",
+                 (int)screen->search.query_utf8_len, screen->search.query_utf8);
+    } else {
+        snprintf(display_text, sizeof(display_text), "Search...");
+    }
+
+    // 4. Render text using the alpha mask pattern (same as draw_window_number)
+    StringCanvas rendered = render_simple_text(ui->os_window->fonts_data, display_text);
+    if (rendered.canvas) {
+        unsigned text_left = bar_left + 12;
+        unsigned text_top = bar_top + (bar_height - (unsigned)rendered.height) / 2;
+        unsigned text_width = (unsigned)rendered.width;
+        unsigned text_height = (unsigned)rendered.height;
+
+        // Clamp text to bar width
+        if (text_left + text_width > bar_left + bar_width - 12) {
+            text_width = bar_left + bar_width - 12 - text_left;
+        }
+
+        bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
+        ImageRenderData *ird = load_alpha_mask_texture(text_width, text_height, rendered.canvas);
+        gpu_data_for_image(ird, -1, 1, 1, -1);
+        glUniform1i(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.image, GRAPHICS_UNIT);
+        // Light gray text color (0xCDD6F4)
+        color_vec3(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_fg, 0xCDD6F4);
+        // Transparent background
+        glUniform4f(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_bg_premult, 0.f, 0.f, 0.f, 0.f);
+        save_viewport_using_top_left_origin(text_left, text_top, text_width, text_height,
+                                            ui->full_framebuffer_height);
+        draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, ird, 0, 1, 1.f);
+        restore_viewport();
+        free(rendered.canvas);
+    }
+}
+
 static bool
 has_scrollbar(Window *w, Screen *screen) {
     if (screen->linebuf != screen->main_linebuf || !screen->historybuf->count) return false;
@@ -1110,6 +1257,8 @@ call_cell_program(int program, const UIRenderData *ui, ssize_t vao_idx, bool for
 static void
 draw_cells_without_layers(const UIRenderData *ui, ssize_t vao_idx) {
     call_cell_program(CELL_PROGRAM, ui, vao_idx, true, DRAW_BOTH_BG);
+    draw_search_highlights(ui);
+    draw_search_bar(ui);
 }
 
 static void
@@ -1140,6 +1289,8 @@ draw_cells_with_layers(const UIRenderData *ui, ssize_t vao_idx) {
             GRAPHICS_PROGRAM, ui->grd.images, ui->grd.num_of_below_refs + ui->grd.num_of_negative_refs,
             ui->grd.num_of_positive_refs, ui->inactive_text_alpha);
 
+    draw_search_highlights(ui);
+    draw_search_bar(ui);
     draw_visual_bell(ui);
     draw_scrollbar(ui);
     draw_hyperlink_target(ui);
