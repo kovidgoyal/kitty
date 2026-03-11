@@ -39,6 +39,7 @@ typedef struct {
     bool is_active;
     bool is_dirty;       // query changed, needs re-scan
     bool render_dirty;   // bar visual needs update
+    bool content_dirty;  // terminal output changed, needs re-scan
 
     // Cached text rendering (avoid calling render_simple_text every frame)
     uint8_t *cached_query_canvas;

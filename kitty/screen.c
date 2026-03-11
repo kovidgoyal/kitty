@@ -1214,6 +1214,7 @@ static void
 draw_text(Screen *self, const uint32_t *chars, size_t num_chars) {
     PREPARE_FOR_DRAW_TEXT;
     self->is_dirty = true;
+    if (self->search.is_active && self->search.query_ucs4_len > 0) self->search.content_dirty = true;
     draw_text_loop(self, chars, num_chars, &s);
 }
 
@@ -2065,6 +2066,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     } \
     linebuf_clear_line(self->linebuf, bottom, true); \
     self->is_dirty = true; \
+    if (self->search.is_active && self->search.query_ucs4_len > 0) self->search.content_dirty = true; \
     index_selection(self, &self->selections, true, top, bottom); \
     clear_selection(&self->url_ranges);
 
@@ -5897,6 +5899,15 @@ screen_search_is_active(Screen *self, PyObject *args UNUSED) {
 }
 
 static PyObject*
+screen_search_check_content_dirty(Screen *self, PyObject *args UNUSED) {
+    if (self->search.content_dirty) {
+        self->search.content_dirty = false;
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+static PyObject*
 screen_search_match_count(Screen *self, PyObject *args UNUSED) {
     return PyLong_FromSize_t(self->search.match_count);
 }
@@ -6118,6 +6129,7 @@ static PyMethodDef methods[] = {
     {"search_set_query", (PyCFunction)screen_search_set_query, METH_VARARGS, ""},
     {"search_run_scan", (PyCFunction)screen_search_run_scan, METH_NOARGS, ""},
     {"search_is_active", (PyCFunction)screen_search_is_active, METH_NOARGS, ""},
+    {"search_check_content_dirty", (PyCFunction)screen_search_check_content_dirty, METH_NOARGS, ""},
     {"search_match_count", (PyCFunction)screen_search_match_count, METH_NOARGS, ""},
     {"search_current_match", (PyCFunction)screen_search_current_match, METH_NOARGS, ""},
     {"search_next", (PyCFunction)screen_search_next, METH_NOARGS, ""},

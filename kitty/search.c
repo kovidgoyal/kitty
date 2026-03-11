@@ -205,10 +205,20 @@ query_is_only_whitespace(const char_type *query, size_t len) {
 void
 search_run_scan(SearchState *state, void *screen_ptr) {
     Screen *screen = (Screen*)screen_ptr;
+
+    // Save previous match position to restore after re-scan
+    bool had_previous_match = state->match_count > 0 && state->current_match < state->match_count;
+    size_t prev_line = 0, prev_column = 0;
+    if (had_previous_match) {
+        prev_line = state->matches[state->current_match].line;
+        prev_column = state->matches[state->current_match].column;
+    }
+
     state->match_count = 0;
 
     if (state->query_ucs4_len == 0 || query_is_only_whitespace(state->query_ucs4, state->query_ucs4_len)) {
         state->is_dirty = false;
+        state->content_dirty = false;
         return;
     }
 
@@ -232,27 +242,46 @@ search_run_scan(SearchState *state, void *screen_ptr) {
 
     free(buf.buf);
     state->is_dirty = false;
+    state->content_dirty = false;
+    state->render_dirty = true;
 
     if (state->match_count > 0) {
-        // Set current_match to the first match visible on screen (no scrolling)
-        size_t visible_start;
-        if (screen->scrolled_by > 0 && history_count > 0 && (size_t)screen->scrolled_by <= history_count) {
-            visible_start = history_count - (size_t)screen->scrolled_by;
+        if (had_previous_match) {
+            // Restore position: find the same match (or closest after it) by line/column
+            // History lines shift when new content arrives, so adjust for that
+            bool found = false;
+            for (size_t i = 0; i < state->match_count; i++) {
+                if (state->matches[i].line > prev_line ||
+                    (state->matches[i].line == prev_line && state->matches[i].column >= prev_column)) {
+                    state->current_match = i;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                // Previous match was past all current matches, wrap to end
+                state->current_match = state->match_count - 1;
+            }
         } else {
-            visible_start = history_count;
-        }
-        size_t visible_end = visible_start + screen->lines;
-        size_t lo = 0, hi = state->match_count;
-        while (lo < hi) {
-            size_t mid = lo + (hi - lo) / 2;
-            if (state->matches[mid].line < visible_start) lo = mid + 1;
-            else hi = mid;
-        }
-        if (lo < state->match_count && state->matches[lo].line < visible_end) {
-            state->current_match = lo;
-        } else {
-            // No match on screen, point to first match overall
-            state->current_match = 0;
+            // First scan: set current_match to the first match visible on screen
+            size_t visible_start;
+            if (screen->scrolled_by > 0 && history_count > 0 && (size_t)screen->scrolled_by <= history_count) {
+                visible_start = history_count - (size_t)screen->scrolled_by;
+            } else {
+                visible_start = history_count;
+            }
+            size_t visible_end = visible_start + screen->lines;
+            size_t lo = 0, hi = state->match_count;
+            while (lo < hi) {
+                size_t mid = lo + (hi - lo) / 2;
+                if (state->matches[mid].line < visible_start) lo = mid + 1;
+                else hi = mid;
+            }
+            if (lo < state->match_count && state->matches[lo].line < visible_end) {
+                state->current_match = lo;
+            } else {
+                state->current_match = 0;
+            }
         }
     }
 }

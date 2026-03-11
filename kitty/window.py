@@ -717,6 +717,7 @@ class Window:
         self._pause_resize_notifications_to_child: tuple[int, int, int, int] | None = None
         self._search_query_text: str = ''
         self._search_debounce_timer: Optional[int] = None
+        self._search_content_timer: Optional[int] = None
         self.needs_attention = False
         self.ignore_focus_changes = self.initial_ignore_focus_changes
         self.override_title = override_title
@@ -2277,14 +2278,32 @@ class Window:
             self.screen.search_run_scan()
             self.refresh()
 
+    def _search_check_content(self, timer_id: Optional[int] = None) -> None:
+        if self.screen.search_is_active() and self._search_query_text:
+            if self.screen.search_check_content_dirty():
+                self.screen.search_run_scan()
+                self.refresh()
+
+    def _search_start_content_timer(self) -> None:
+        self._search_stop_content_timer()
+        self._search_content_timer = add_timer(self._search_check_content, 0.2, True)
+
+    def _search_stop_content_timer(self) -> None:
+        if self._search_content_timer is not None:
+            from kitty.fast_data_types import remove_timer
+            remove_timer(self._search_content_timer)
+            self._search_content_timer = None
+
     @ac('sc', 'Toggle search overlay for finding text in scrollback')
     def toggle_search(self) -> None:
         if self.screen.search_is_active():
             self.screen.search_deactivate()
             self._search_query_text = ''
+            self._search_stop_content_timer()
         else:
             self.screen.search_activate()
             self._search_query_text = ''
+            self._search_start_content_timer()
         self.refresh()
 
     def handle_search_key_event(self, ev: 'KeyEvent') -> bool:
@@ -2307,6 +2326,7 @@ class Window:
         if key == GLFW_FKEY_ESCAPE:
             self.screen.search_deactivate()
             self._search_query_text = ''
+            self._search_stop_content_timer()
             self.refresh()
             return True
 
