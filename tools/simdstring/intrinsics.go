@@ -33,6 +33,18 @@ var IndexC0 func(data []byte) int = index_c0_scalar
 // Return the index at which the first C0 byte is found or -1 when no such bytes are present.
 var IndexC0String func(data string) int = index_c0_string_scalar
 
+// Return the index of the first byte in data that is not equal to b. If all bytes equal b, -1 is returned.
+var NotIndexByte func(data []byte, b byte) int = not_index_byte_scalar
+
+// Return the index of the first byte in text that is not equal to b. If all bytes equal b, -1 is returned.
+var NotIndexByteString func(text string, b byte) int = not_index_byte_string_scalar
+
+// Return the index of the first byte in data that is neither a nor b. If all bytes are a or b, -1 is returned.
+var NotIndexByte2 func(data []byte, a, b byte) int = not_index_byte2_scalar
+
+// Return the index of the first byte in text that is neither a nor b. If all bytes are a or b, -1 is returned.
+var NotIndexByte2String func(text string, a, b byte) int = not_index_byte2_string_scalar
+
 func init() {
 	switch runtime.GOARCH {
 	case "amd64":
@@ -51,6 +63,10 @@ func init() {
 		IndexByte2String = index_byte2_string_asm_256
 		IndexC0 = index_c0_asm_256
 		IndexC0String = index_c0_string_asm_256
+		NotIndexByte = not_index_byte_asm_256
+		NotIndexByteString = not_index_byte_string_asm_256
+		NotIndexByte2 = not_index_byte2_asm_256
+		NotIndexByte2String = not_index_byte2_string_asm_256
 		VectorSize = 32
 	} else if Have128bit {
 		IndexByte = index_byte_asm_128
@@ -59,6 +75,10 @@ func init() {
 		IndexByte2String = index_byte2_string_asm_128
 		IndexC0 = index_c0_asm_128
 		IndexC0String = index_c0_string_asm_128
+		NotIndexByte = not_index_byte_asm_128
+		NotIndexByteString = not_index_byte_string_asm_128
+		NotIndexByte2 = not_index_byte2_asm_128
+		NotIndexByte2String = not_index_byte2_string_asm_128
 		VectorSize = 16
 	}
 }
