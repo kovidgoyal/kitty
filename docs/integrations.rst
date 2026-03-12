@@ -16,7 +16,7 @@ images and other types of documents directly in your terminal, even over SSH.
 
 .. _tool_bookorat:
 
-`bookorat <https://github.com/bugzmanov/bookokrat>`
+`bookorat <https://github.com/bugzmanov/bookokrat>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A terminal PDF/EPUB viewer
 
