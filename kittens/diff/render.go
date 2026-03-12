@@ -548,8 +548,8 @@ type DiffData struct {
 	available_cols, margin_size int
 
 	left_lines, right_lines   []string
-	left_moved_lines          map[int]bool
-	right_moved_lines         map[int]bool
+	left_moved_lines          *utils.Set[int]
+	right_moved_lines         *utils.Set[int]
 }
 
 func hunk_title(hunk *Hunk) string {
@@ -618,14 +618,14 @@ func lines_for_diff_chunk(data *DiffData, _ int, chunk *Chunk, _ int, ans []*Log
 		}
 		if i < chunk.left_count {
 			left_lnum = chunk.left_start + i
-			left_is_moved := data.left_moved_lines[left_lnum]
+			left_is_moved := data.left_moved_lines != nil && data.left_moved_lines.Has(left_lnum)
 			ll = render_half_line(left_lnum, data.left_lines[left_lnum], "remove", data.available_cols, center, left_is_moved, ll)
 			left_lnum++
 		}
 
 		if i < chunk.right_count {
 			right_lnum = chunk.right_start + i
-			right_is_moved := data.right_moved_lines[right_lnum]
+			right_is_moved := data.right_moved_lines != nil && data.right_moved_lines.Has(right_lnum)
 			rl = render_half_line(right_lnum, data.right_lines[right_lnum], "add", data.available_cols, center, right_is_moved, rl)
 			right_lnum++
 		}
