@@ -544,7 +544,7 @@ func parse_patch(raw string, left_lines, right_lines []string) (ans *Patch, err 
 		ans.largest_line_number = ans.all_hunks[len(ans.all_hunks)-1].largest_line_number
 	}
 	err = ans.compute_centers(left_lines, right_lines)
-	if err == nil {
+	if err == nil && conf.Mark_moved_lines {
 		ans.detect_moved_lines(left_lines, right_lines)
 	}
 	return

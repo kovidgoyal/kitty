@@ -168,6 +168,8 @@ Detailed list of changes
 0.46.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- diff kitten: Highlight moved lines using a different background color (:opt:`kitten-diff.mark_moved_lines`) (:iss:`3241`)
+
 - Fix a regression that broke ``kitten update-self`` (:iss:`9642`)
 
 - macOS: Clear bell alert badge on dock icon on mouse/keyboard activity (:iss:`9640`)

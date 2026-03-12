@@ -547,9 +547,9 @@ type DiffData struct {
 	left_path, right_path       string
 	available_cols, margin_size int
 
-	left_lines, right_lines   []string
-	left_moved_lines          *utils.Set[int]
-	right_moved_lines         *utils.Set[int]
+	left_lines, right_lines []string
+	left_moved_lines        *utils.Set[int]
+	right_moved_lines       *utils.Set[int]
 }
 
 func hunk_title(hunk *Hunk) string {
