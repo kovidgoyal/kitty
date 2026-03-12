@@ -15,8 +15,7 @@ var VectorSize = 1
 // Return the index at which b first occurs in data. If not found -1 is returned.
 var IndexByte func(data []byte, b byte) int = index_byte_scalar
 
-// Return the index at which either a or b first occurs in text. If neither is
-// found -1 is returned.
+// Return the index at which b first occurs in text. If not found -1 is returned.
 var IndexByteString func(text string, b byte) int = index_byte_string_scalar
 
 // Return the index at which either a or b first occurs in data. If neither is
