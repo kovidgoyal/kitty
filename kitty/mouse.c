@@ -1388,7 +1388,7 @@ pixel_scroll_enabled_for_screen(const Screen *screen) {
 
 void
 scroll_event(const GLFWScrollEvent *ev) {
-    debug("\x1b[36mScroll\x1b[m %s x: %f y: %f momentum: %s modifiers: %s\n", scroll_offset_type(ev->offset_type), ev->x_offset, ev->y_offset, scroll_phase(ev->momentum_type), format_mods(ev->keyboard_modifiers));
+    debug("\x1b[36mScroll\x1b[m type=%s x: %f y: %f momentum: %s modifiers: %s\n", scroll_offset_type(ev->offset_type), ev->x_offset, ev->y_offset, scroll_phase(ev->momentum_type), format_mods(ev->keyboard_modifiers));
     static id_type window_for_momentum_scroll = 0;
     static bool main_screen_for_momentum_scroll = false;
     // allow scroll events even if window is not currently focused (in
@@ -1461,14 +1461,14 @@ scroll_event(const GLFWScrollEvent *ev) {
                             write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf);
                         }
                     }
-            } else {
-                    if (screen->linebuf == screen->main_linebuf) {
-                        screen_history_scroll(screen, abs(s), upwards);
-                        if (screen->selections.in_progress) update_drag(w);
+                } else {
+                        if (screen->linebuf == screen->main_linebuf) {
+                            screen_history_scroll(screen, abs(s), upwards);
+                            if (screen->selections.in_progress) update_drag(w);
+                        }
+                        else fake_scroll(w, abs(s), upwards);
                     }
-                    else fake_scroll(w, abs(s), upwards);
                 }
-            }
         }
     }
     if (ev->x_offset != 0.0) {
