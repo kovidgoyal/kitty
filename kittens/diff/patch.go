@@ -336,6 +336,7 @@ func (self *Hunk) finalize(left_lines, right_lines []string) error {
 type Patch struct {
 	all_hunks                                       []*Hunk
 	largest_line_number, added_count, removed_count int
+	left_moved_lines, right_moved_lines             map[int]bool
 }
 
 func (self *Patch) Len() int { return len(self.all_hunks) }
@@ -451,6 +452,48 @@ func (self *Patch) compute_centers(left_lines, right_lines []string) error {
 	return nil
 }
 
+func (self *Patch) detect_moved_lines(left_lines, right_lines []string) {
+	// Build maps from line text to sets of line numbers for removed and added lines.
+	removed := make(map[string][]int) // text -> left line numbers
+	added := make(map[string][]int)   // text -> right line numbers
+	is_non_blank := func(text string) bool {
+		return strings.IndexFunc(text, func(r rune) bool { return r != ' ' && r != '\t' }) >= 0
+	}
+	for _, hunk := range self.all_hunks {
+		for _, chunk := range hunk.chunks {
+			if !chunk.is_context {
+				for i := 0; i < chunk.left_count; i++ {
+					lnum := chunk.left_start + i
+					text := left_lines[lnum]
+					if is_non_blank(text) {
+						removed[text] = append(removed[text], lnum)
+					}
+				}
+				for i := 0; i < chunk.right_count; i++ {
+					rnum := chunk.right_start + i
+					text := right_lines[rnum]
+					if is_non_blank(text) {
+						added[text] = append(added[text], rnum)
+					}
+				}
+			}
+		}
+	}
+	// Lines that appear in both removed and added sets are moved lines.
+	self.left_moved_lines = make(map[int]bool)
+	self.right_moved_lines = make(map[int]bool)
+	for text, lnums := range removed {
+		if rnums, ok := added[text]; ok {
+			for _, lnum := range lnums {
+				self.left_moved_lines[lnum] = true
+			}
+			for _, rnum := range rnums {
+				self.right_moved_lines[rnum] = true
+			}
+		}
+	}
+}
+
 func parse_patch(raw string, left_lines, right_lines []string) (ans *Patch, err error) {
 	ans = &Patch{all_hunks: make([]*Hunk, 0, 32)}
 	var current_hunk *Hunk
@@ -486,6 +529,9 @@ func parse_patch(raw string, left_lines, right_lines []string) (ans *Patch, err 
 		ans.largest_line_number = ans.all_hunks[len(ans.all_hunks)-1].largest_line_number
 	}
 	err = ans.compute_centers(left_lines, right_lines)
+	if err == nil {
+		ans.detect_moved_lines(left_lines, right_lines)
+	}
 	return
 }
 
