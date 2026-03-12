@@ -1286,7 +1286,10 @@ def build_static_kittens(
     cmd = go + ['build', '-v']
     vcs_rev = args.vcs_rev or get_vcs_rev()
     ld_flags: List[str] = []
-    modpath = 'github.com/kovidgoyal/kitty'
+    with open('go.mod') as f:
+        m = re.search(r'^module\s+(\S+)', f.read(), flags=re.M)
+        assert m is not None
+        modpath = m.group(1).strip()
     binary_data_flags = [f"-X {modpath}.VCSRevision={vcs_rev}"]
     if for_freeze:
         binary_data_flags.append(f"-X {modpath}.IsFrozenBuild=true")
