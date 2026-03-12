@@ -1251,7 +1251,7 @@ class Window:
             try:
                 parts = tuple(map(int, raw_data.split(';')))[1:]
             except Exception:
-                log_error(f'Ignoring malmormed OSC 9;4 progress report: {raw_data!r}')
+                log_error(f'Ignoring malformed OSC 9;4 progress report: {raw_data!r}')
                 return
             self.progress.update(*parts[:2])
             if (tab := self.tabref()) is not None:
