@@ -170,6 +170,8 @@ Detailed list of changes
 
 - Fix a regression that broke ``kitten update-self`` (:iss:`9642`)
 
+- macOS: Clear bell alert badge on dock icon on mouse/keyboard activity (:iss:`9640`)
+
 0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
