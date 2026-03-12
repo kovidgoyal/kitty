@@ -83,8 +83,10 @@ class TallSplits(Splits):
             return
         self._rebalance_chain_for_group(wg.id, horizontal)
 
-    def _append_to_right_column(self, new_group_id: int) -> None:
-        """Add a new window as the last row in the right column."""
+    def _insert_in_right_column(self, new_group_id: int, after_group_id: int | None = None) -> None:
+        """Insert a new window into the right column.
+        If after_group_id is given, insert right after that window.
+        Otherwise append to the end."""
         root = self.pairs_root
         right = root.two
 
@@ -94,11 +96,40 @@ class TallSplits(Splits):
 
         if isinstance(right, int):
             new_pair = Pair(horizontal=False)
-            new_pair.one = right
-            new_pair.two = new_group_id
+            if after_group_id is not None and right == after_group_id:
+                new_pair.one = right
+                new_pair.two = new_group_id
+            else:
+                new_pair.one = right
+                new_pair.two = new_group_id
             root.two = new_pair
             return
 
+        # Walk the vertical chain to find insertion point
+        if after_group_id is not None:
+            current = right
+            while isinstance(current, Pair) and not current.horizontal and not current.is_redundant:
+                if current.one == after_group_id:
+                    # Insert between current.one and current.two
+                    new_pair = Pair(horizontal=False)
+                    new_pair.one = new_group_id
+                    new_pair.two = current.two
+                    current.two = new_pair
+                    return
+                if current.two == after_group_id:
+                    # after_group_id is the last item, append after it
+                    new_pair = Pair(horizontal=False)
+                    new_pair.one = current.two
+                    new_pair.two = new_group_id
+                    current.two = new_pair
+                    return
+                next_node = current.two
+                if isinstance(next_node, Pair) and not next_node.horizontal and not next_node.is_redundant:
+                    current = next_node
+                else:
+                    break
+
+        # Fallback: append to end
         current = right
         while isinstance(current, Pair) and not current.horizontal and not current.is_redundant:
             next_node = current.two
@@ -186,6 +217,7 @@ class TallSplits(Splits):
             root.balanced_add(g.id)
             return
 
+        insert_after = None
         if aw is not None and (ag := all_windows.group_for_window(aw)) is not None:
             group_id = ag.id
 
@@ -197,6 +229,10 @@ class TallSplits(Splits):
                     self._rebalance_chain_for_group(target_group.id, horizontal=False)
                     return
 
+            # If focused on a right-column tile, insert after it
+            if group_id != root.one:
+                insert_after = group_id
+
         target_group = all_windows.add_window(window, next_to=aw, before=not after)
-        self._append_to_right_column(target_group.id)
+        self._insert_in_right_column(target_group.id, after_group_id=insert_after)
         self._rebalance_all_chains()
