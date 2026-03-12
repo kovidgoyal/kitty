@@ -1415,6 +1415,11 @@ handle_mouse_move_event(_GLFWwindow *window, const int x, const int y) {
     window->x11.lastCursorPosY = y;
 }
 
+static bool
+number_has_fractional_part(double x) {
+    return fabs(x - round(x)) >= 1e-6;
+}
+
 static void
 handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
     XIScrollDevice *d = NULL;
@@ -1442,24 +1447,35 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             scroll_valuator_found = true;
             double delta = value - v->value;
             v->value = value;
-            if (v->is_vertical) delta *= -1;
+            delta *= -1;
             double *off = v->is_vertical ? &yOffset : &xOffset;
             *off = delta;
-            if (!d->is_highres) {
-                if (v->increment == 120.) type = GLFW_SCROLL_OFFEST_V120;
-                else {
-                    // XInput2 has no reliable way to distinguish high res scroll devices so we
-                    // assume that if fractional values are seen it must be high res. Sigh, Linux, the
-                    // land of truly wondrous wonders. See https://github.com/kovidgoyal/kitty/issues/9649
-                    double int_part; bool delta_is_fractional = modf(delta, &int_part) != 0.;
-                    if (delta_is_fractional) d->is_highres = true;
-                    else {
-                        type = GLFW_SCROLL_OFFSET_LINES;
-                        if (v->increment != 0) *off /= v->increment;
+            d->num_events++;
+            if (!d->type_detected) {
+                if (v->increment == 120.) {
+                    d->type_detected = true;
+                    d->offset_type = GLFW_SCROLL_OFFEST_V120;
+                } else {
+                    bool delta_is_fractional = number_has_fractional_part(delta);
+                    if (delta_is_fractional) {
+                        if (fabs(delta * 120 - round(delta * 120)) < 0.01) {
+                            d->type_detected = d->num_events > 2;
+                            d->offset_type = GLFW_SCROLL_OFFEST_V120;
+                        } else {
+                            d->type_detected = true;
+                            d->offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
+                        }
+                    } else {
+                        d->type_detected = d->num_events > 2;
+                        d->offset_type = GLFW_SCROLL_OFFSET_LINES;
                     }
                 }
             }
+            if (d->offset_type == GLFW_SCROLL_OFFSET_LINES) {
+                if (v->increment != 0) *off /= v->increment;
+            }
         }
+        type = d->offset_type;
         if (xOffset != 0 || yOffset != 0) {
             // Get keyboard modifiers
             int mods = translateState(de->mods.effective);
@@ -1473,7 +1489,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             };
 
             // For high-resolution, finger-based scrolling, use timer-based momentum scrolling
-            if (d->is_highres && d->is_finger_based && type == GLFW_SCROLL_OFFEST_HIGHRES) {
+            if (d->is_finger_based && type == GLFW_SCROLL_OFFEST_HIGHRES) {
                 // Reset the timer on each scroll event
                 x11_cancel_momentum_scroll_timer();
 

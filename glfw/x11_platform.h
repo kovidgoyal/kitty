@@ -239,12 +239,14 @@ typedef struct XIScrollValuator {
 } XIScrollValuator;
 
 typedef struct XIScrollDevice {
-    bool is_highres;
     bool is_finger_based;
+    bool type_detected;
     int deviceid, sourceid;
     XIScrollValuator valuators[8];
     unsigned num_valuators;
     char name[32];
+    unsigned num_events;
+    GLFWOffsetType offset_type;
 } XIScrollDevice;
 
 typedef struct XdndSelectionRequest {
