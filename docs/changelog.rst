@@ -172,6 +172,8 @@ Detailed list of changes
 
 - macOS: Clear bell alert badge on dock icon on mouse/keyboard activity (:iss:`9640`)
 
+- Fix a regression that broke accept anyway shortcut in the paste confirmation dialog (:pull:`9640`)
+
 0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
