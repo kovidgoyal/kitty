@@ -165,6 +165,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.46.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix a regression that broke ``kitten update-self`` (:iss:`9642`)
+
 0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -1286,11 +1286,12 @@ def build_static_kittens(
     cmd = go + ['build', '-v']
     vcs_rev = args.vcs_rev or get_vcs_rev()
     ld_flags: List[str] = []
-    binary_data_flags = [f"-X kitty.VCSRevision={vcs_rev}"]
+    modpath = 'github.com/kovidgoyal/kitty'
+    binary_data_flags = [f"-X {modpath}.VCSRevision={vcs_rev}"]
     if for_freeze:
-        binary_data_flags.append("-X kitty.IsFrozenBuild=true")
+        binary_data_flags.append(f"-X {modpath}.IsFrozenBuild=true")
     if for_platform:
-        binary_data_flags.append("-X kitty.IsStandaloneBuild=true")
+        binary_data_flags.append(f"-X {modpath}.IsStandaloneBuild=true")
     if not args.debug:
         ld_flags.append('-s')
         ld_flags.append('-w')
