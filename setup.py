@@ -949,7 +949,7 @@ def add_builtin_fonts(args: Options) -> None:
                     break
         else:
             lines = subprocess.check_output([
-                'fc-match', '--format', '%{file}\n%{postscriptname}', f'term:postscriptname={psname}', 'file', 'postscriptname']).decode().splitlines()
+                'fc-list', '--format', '%{file}\n%{postscriptname}', f':postscriptname={psname}']).decode().splitlines()
             if len(lines) != 2:
                 raise SystemExit(f'fc-match returned unexpected output: {lines}')
             if lines[1] != psname:
