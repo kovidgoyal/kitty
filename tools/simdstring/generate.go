@@ -404,6 +404,12 @@ func encode_cmgt16b(a, b, dest Register) (ans uint32) {
 	return 0x271<<21 | b.ARMId()<<16 | 0xd<<10 | a.ARMId()<<5 | dest.ARMId()
 }
 
+func encode_not16b(src, dest Register) uint32 {
+	// NOT Vd.16B, Vn.16B (alias of MVN)
+	// Encoding: 0 Q 1 01110 size 10000 00101 10 Rn Rd (Q=1, size=00 for .16B)
+	return 0x6E205800 | (src.ARMId() << 5) | dest.ARMId()
+}
+
 func (f *Function) MaskForCountDestructive(vec, ans Register) {
 	// vec is clobbered by this function
 	f.Comment("Count the number of bytes to the first 0xff byte and put the result in", ans)
@@ -690,7 +696,8 @@ func (f *Function) Or(a, b, dest Register) {
 
 func (f *Function) NotSelf(r Register) {
 	if f.ISA.Goarch == ARM64 {
-		f.instr("VMVN", r.ARMFullWidth(), r.ARMFullWidth())
+		f.Comment("Go assembler doesn't support the VMVN instruction, below we have: NOT", r.ARMFullWidth()+",", r.ARMFullWidth())
+		f.instr("WORD", fmt.Sprintf("$0x%x", encode_not16b(r, r)))
 		f.AddTrailingComment(r, "= ~", r, "(bitwise NOT)")
 		return
 	}
