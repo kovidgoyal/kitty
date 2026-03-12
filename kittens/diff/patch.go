@@ -453,24 +453,16 @@ func (self *Patch) compute_centers(left_lines, right_lines []string) error {
 	return nil
 }
 
+// Use SIMD to efficiently find non-blank lines: a line is non-blank if it
+// contains at least one character that is not a space or tab.
+func is_non_blank(text string) bool {
+	return simdstring.NotIndexByte2String(text, ' ', '\t') >= 0
+}
+
 func (self *Patch) detect_moved_lines(left_lines, right_lines []string) {
 	// Build maps from line text to lists of line numbers for removed and added lines.
 	removed := make(map[string][]int) // text -> left line numbers
 	added := make(map[string][]int)   // text -> right line numbers
-	// Use SIMD to efficiently find non-blank lines: a line is non-blank if it
-	// contains at least one character that is not a space or tab.
-	is_non_blank := func(text string) bool {
-		for len(text) > 0 {
-			idx := simdstring.IndexByte2String(text, ' ', '\t')
-			if idx != 0 {
-				// idx < 0: no space/tab found, remaining chars are non-blank;
-				// idx > 0: non-blank chars exist before the first space/tab.
-				return true
-			}
-			text = text[1:]
-		}
-		return false
-	}
 	for _, hunk := range self.all_hunks {
 		for _, chunk := range hunk.chunks {
 			if !chunk.is_context {
