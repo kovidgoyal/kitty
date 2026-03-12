@@ -461,8 +461,8 @@ func is_non_blank(text string) bool {
 
 func (self *Patch) detect_moved_lines(left_lines, right_lines []string) {
 	// Build maps from line text to lists of line numbers for removed and added lines.
-	removed := make(map[string][]int) // text -> left line numbers
-	added := make(map[string][]int)   // text -> right line numbers
+	removed := make(map[string][]int, len(left_lines)) // text -> left line numbers
+	added := make(map[string][]int, len(right_lines))  // text -> right line numbers
 	for _, hunk := range self.all_hunks {
 		for _, chunk := range hunk.chunks {
 			if !chunk.is_context {
