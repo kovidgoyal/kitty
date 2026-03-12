@@ -152,6 +152,12 @@ opt('dark_highlight_added_bg', '#31503d', option_type='to_color')
 opt('added_margin_bg', '#cdffd8', option_type='to_color')
 opt('dark_added_margin_bg', '#31503d', option_type='to_color')
 
+opt('moved_bg', '#fffde7', option_type='to_color', long_text='Moved text backgrounds (same text that was removed in one place and added in another)')
+opt('dark_moved_bg', '#2c2200', option_type='to_color')
+
+opt('moved_margin_bg', '#fff3b0', option_type='to_color')
+opt('dark_moved_margin_bg', '#4a3800', option_type='to_color')
+
 opt('filler_bg', '#fafbfc', option_type='to_color', long_text='Filler (empty) line background')
 opt('dark_filler_bg', '#262c36', option_type='to_color')
 
