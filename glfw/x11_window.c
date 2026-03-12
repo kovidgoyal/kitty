@@ -1447,9 +1447,16 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             *off = delta;
             if (!d->is_highres) {
                 if (v->increment == 120.) type = GLFW_SCROLL_OFFEST_V120;
-                else if (fabs(delta) >= fabs(v->increment)) {
-                    type = GLFW_SCROLL_OFFSET_LINES;
-                    if (v->increment != 0) *off /= v->increment;
+                else {
+                    // XInput2 has no reliable way to distinguish high res scroll devices so we
+                    // assume that if fractional values are seen it must be high res. Sigh, Linux, the
+                    // land of truly wondrous wonders. See https://github.com/kovidgoyal/kitty/issues/9649
+                    double int_part; bool delta_is_fractional = modf(delta, &int_part) != 0.;
+                    if (delta_is_fractional) d->is_highres = true;
+                    else {
+                        type = GLFW_SCROLL_OFFSET_LINES;
+                        if (v->increment != 0) *off /= v->increment;
+                    }
                 }
             }
         }
