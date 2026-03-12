@@ -29,6 +29,7 @@
 
 #define _GNU_SOURCE
 #include "internal.h"
+#include "math.h"
 #include "backend_utils.h"
 #include "linux_notify.h"
 #include "../kitty/monotonic.h"
@@ -1446,7 +1447,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             *off = delta;
             if (!d->is_highres) {
                 if (v->increment == 120.) type = GLFW_SCROLL_OFFEST_V120;
-                else {
+                else if (fabs(delta) >= fabs(v->increment)) {
                     type = GLFW_SCROLL_OFFSET_LINES;
                     if (v->increment != 0) *off /= v->increment;
                 }

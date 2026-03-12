@@ -178,6 +178,8 @@ Detailed list of changes
 
 - Fix kitty hanging on startup on Intel macs (:iss:`9643`)
 
+- X11: Fix a regression that caused some high res scroll devices to be treated as line based scroll devices (:iss:`9649`)
+
 0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
