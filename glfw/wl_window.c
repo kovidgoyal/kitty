@@ -2577,7 +2577,7 @@ _glfwPlatformReadAvailableDropData(GLFWwindow *w, GLFWDropEvent *ev, char *buffe
     for (size_t o = 0; o < offer->dd_count; o++) {
         if (offer->requested_drop_data[o].fd == fd) {
             ssize_t ret;
-            do { ret = read(fd, buffer, sz); } while (ret < 0 && errno == EINTR);
+            do { ret = read(fd, buffer, sz); } while (ret < 0 && (errno == EINTR || errno == EAGAIN));
             if (ret <= 0) removeWatch(&_glfw.wl.eventLoopData, offer->requested_drop_data[o].watch_id);
             return ret < 0 ? -errno : ret;
         }

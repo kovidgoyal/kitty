@@ -182,6 +182,8 @@ Detailed list of changes
 
 - Wayland: Fix momentum scrolling not working on compositors that send a stop frame with no axis information (:iss:`9653`)
 
+- Linux: Fix regression that broke drag and drop from GTK applications (:iss:`9656`)
+
 0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

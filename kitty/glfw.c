@@ -729,7 +729,7 @@ update_allowed_mimes_for_drop(GLFWDropEvent *ev) {
             }
         }
         if (prio_arr != priorities) free(prio_arr);
-        ev->num_mimes = remove_duplicate_mimes(ev->mimes, new_count);
+        ev->num_mimes = new_count;
     }
 }
 
@@ -799,6 +799,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
                 break;
             }
             update_allowed_mimes_for_drop(ev);
+            ev->num_mimes = remove_duplicate_mimes(ev->mimes, ev->num_mimes);
             global_state.drop_dest.num_left = ev->num_mimes;
             if (!global_state.drop_dest.num_left || !(global_state.drop_dest.data = PyDict_New())) {
                 ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
