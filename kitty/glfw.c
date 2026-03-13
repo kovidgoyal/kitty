@@ -734,6 +734,7 @@ read_drop_data(GLFWwindow *window, GLFWDropEvent *ev) {
         PyObject *data = chunk;
         RAII_PyObject(existing, PyDict_GetItemString(global_state.drop_dest.data, ev->mimes[0]));
         if (existing) {
+            existing = Py_NewRef(existing);  // because PyBytes_Concat steals a reference
             PyBytes_Concat(&existing, chunk);
             data = existing;
         }
