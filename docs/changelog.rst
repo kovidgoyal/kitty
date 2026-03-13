@@ -180,6 +180,8 @@ Detailed list of changes
 
 - X11: Fix a regression that caused some high res scroll devices to be treated as line based scroll devices (:iss:`9649`)
 
+- Wayland: Fix momentum scrolling not working on compositors that send a stop frame with no axis information (:iss:`9653`)
+
 0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

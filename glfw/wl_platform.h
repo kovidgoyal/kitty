@@ -212,6 +212,7 @@ typedef struct _GLFWwindowWayland
         uint32_t source_type;
         monotonic_t x_start_time, x_stop_time, y_stop_time, y_start_time;
     } pointer_curr_axis_info;
+    GLFWOffsetType prev_frame_offset_type;
 
     _GLFWcursor*                currentCursor;
     double                      cursorPosX, cursorPosY, allCursorPosX, allCursorPosY;
