@@ -682,6 +682,23 @@ is_droppable_mime(const char *mime) {
     return 0;
 }
 
+static size_t
+remove_duplicate_mimes(const char **mimes, size_t count) {
+    // Use simple O(n²) scan since lists are typically small
+    size_t new_count = 0;
+    for (size_t i = 0; i < count; i++) {
+        bool is_duplicate = false;
+        for (size_t j = 0; j < new_count; j++) {
+            if (strcmp(mimes[i], mimes[j]) == 0) { is_duplicate = true; break; }
+        }
+        if (!is_duplicate) {
+            if (new_count != i) SWAP(mimes[i], mimes[new_count]);
+            new_count++;
+        }
+    }
+    return new_count;
+}
+
 static void
 update_allowed_mimes_for_drop(GLFWDropEvent *ev) {
     if (ev->mimes && ev->num_mimes) {
@@ -712,7 +729,7 @@ update_allowed_mimes_for_drop(GLFWDropEvent *ev) {
             }
         }
         if (prio_arr != priorities) free(prio_arr);
-        ev->num_mimes = new_count;
+        ev->num_mimes = remove_duplicate_mimes(ev->mimes, new_count);
     }
 }
 
