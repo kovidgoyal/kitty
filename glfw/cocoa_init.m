@@ -844,6 +844,8 @@ has_apple_fn_global_shortcut(void) {
     NSDictionary *hitoolbox_settings = [[NSUserDefaults standardUserDefaults] persistentDomainForName:@"com.apple.HIToolbox"];
     id obj = [hitoolbox_settings objectForKey:@"AppleFnUsageType"];
     if (![obj isKindOfClass:[NSNumber class]]) return false;
+    // Non-zero AppleFnUsageType means macOS has reserved Fn/Globe for a
+    // system action such as input source switching, emoji picker, or dictation.
     return [obj integerValue] != 0;
 }
 

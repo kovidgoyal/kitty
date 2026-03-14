@@ -47,6 +47,7 @@ class TestBuild(BaseTest):
             #import <AppKit/AppKit.h>
             #import <dlfcn.h>
             #import <objc/runtime.h>
+            #import <objc/message.h>
 
             static int start_calls = 0;
             static int stop_calls = 0;
@@ -91,7 +92,9 @@ class TestBuild(BaseTest):
                     require_true(view_cls != Nil, "GLFWContentView class not loaded");
                     require_true(context_cls != Nil, "GLFWTextInputContext class not loaded");
 
-                    id view = [[view_cls alloc] initWithFrame:NSMakeRect(0, 0, 10, 10)];
+                    SEL init_with_glfw_window = NSSelectorFromString(@"initWithGlfwWindow:");
+                    id view = ((id (*)(id, SEL, void *)) objc_msgSend)([view_cls alloc], init_with_glfw_window, NULL);
+                    require_true(view != nil, "GLFWContentView initWithGlfwWindow: failed");
                     require_true([view respondsToSelector:start], "GLFWContentView does not expose startDictation:");
                     require_true([view respondsToSelector:stop], "GLFWContentView does not expose stopDictation:");
 
@@ -106,8 +109,9 @@ class TestBuild(BaseTest):
                     require_true(start_calls == 2, "doCommandBySelector:startDictation: was swallowed");
                     require_true(last_sender == view, "doCommandBySelector:startDictation: should forward self as sender");
 
-                    id context = [[context_cls alloc] initWithClient:view];
-                    require_true(context != nil, "GLFWTextInputContext initWithClient: failed");
+                    id context = [view inputContext];
+                    require_true(context != nil, "GLFWContentView inputContext missing");
+                    require_true([context isKindOfClass:context_cls], "GLFWContentView inputContext has wrong class");
                     [context doCommandBySelector:stop];
                     require_true(stop_calls == 1, "GLFWTextInputContext did not forward stopDictation:");
                     require_true(last_sender == nil, "GLFWTextInputContext should forward nil sender");
