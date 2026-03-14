@@ -99,6 +99,22 @@ polymorphic_string_as_utf8(id string) {
     return [characters UTF8String];
 }
 
+static bool
+forward_dictation_selector_to_app(SEL selector, id sender) {
+    static SEL start_dictation_selector = NULL, stop_dictation_selector = NULL;
+    if (start_dictation_selector == NULL) {
+        start_dictation_selector = NSSelectorFromString(@"startDictation:");
+        stop_dictation_selector = NSSelectorFromString(@"stopDictation:");
+    }
+    if (selector != start_dictation_selector && selector != stop_dictation_selector) return false;
+    if ([NSApp respondsToSelector:selector]) {
+        debug_key("Forwarding %s to NSApp\n", [NSStringFromSelector(selector) UTF8String]);
+        [NSApp performSelector:selector withObject:sender];
+        return true;
+    }
+    return false;
+}
+
 static uint32_t
 vk_code_to_functional_key_code(uint8_t key_code) {  // {{{
     switch(key_code) {
@@ -842,6 +858,7 @@ static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWw
     // With the default macOS keybindings, pressing certain key combinations
     // (e.g. Ctrl+/, Ctrl+Cmd+Down/Left/Right) will produce a beep sound.
     debug_key("\n\tTextInputCtx: doCommandBySelector: (%s)\n", [NSStringFromSelector(selector) UTF8String]);
+    if (forward_dictation_selector_to_app(selector, nil)) return;
 }
 @end // }}}
 
@@ -1930,6 +1947,17 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 - (void)doCommandBySelector:(SEL)selector
 {
     debug_key("\n\tdoCommandBySelector: (%s)\n", [NSStringFromSelector(selector) UTF8String]);
+    if (forward_dictation_selector_to_app(selector, self)) return;
+}
+
+- (void)startDictation:(id)sender
+{
+    forward_dictation_selector_to_app(_cmd, sender);
+}
+
+- (void)stopDictation:(id)sender
+{
+    forward_dictation_selector_to_app(_cmd, sender);
 }
 
 - (BOOL)isAccessibilityElement

@@ -839,6 +839,22 @@ is_apple_jis_layout_function_key(NSEvent *event) {
     return [event keyCode] == 0x66 /* kVK_JIS_Eisu */ || [event keyCode] == 0x68 /* kVK_JIS_Kana */;
 }
 
+static bool
+has_apple_fn_global_shortcut(void) {
+    NSDictionary *hitoolbox_settings = [[NSUserDefaults standardUserDefaults] persistentDomainForName:@"com.apple.HIToolbox"];
+    id obj = [hitoolbox_settings objectForKey:@"AppleFnUsageType"];
+    if (![obj isKindOfClass:[NSNumber class]]) return false;
+    return [obj integerValue] != 0;
+}
+
+static bool
+is_apple_fn_global_shortcut(NSEvent *event) {
+    if ([event keyCode] != 0x3f /* kVK_Function */) return false;
+    NSEventModifierFlags mods = USEFUL_MODS([event modifierFlags]);
+    if (mods != 0 && mods != NSEventModifierFlagFunction) return false;
+    return has_apple_fn_global_shortcut();
+}
+
 GLFWAPI GLFWapplicationshouldhandlereopenfun glfwSetApplicationShouldHandleReopen(GLFWapplicationshouldhandlereopenfun callback) {
     GLFWapplicationshouldhandlereopenfun previous = handle_reopen_callback;
     handle_reopen_callback = callback;
@@ -949,6 +965,10 @@ int _glfwPlatformInit(bool *supports_window_occlusion)
         debug_key("-------------- flags changed -----------------\n");
         debug_key("%s\n", [[event description] UTF8String]);
         last_keydown_shortcut_event.virtual_key_code = 0xffff;
+        if (!_glfw.ignoreOSKeyboardProcessing && !_glfw.keyboard_grabbed && is_apple_fn_global_shortcut(event)) {
+            debug_key("flagsChanged triggered global fn shortcut ignoring\n");
+            return event;
+        }
         // switching to the next input source is only confirmed when all modifier keys are released
         if (last_keydown_shortcut_event.input_source_switch_modifiers) {
             if (!([event modifierFlags] & last_keydown_shortcut_event.input_source_switch_modifiers))
