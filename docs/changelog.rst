@@ -186,6 +186,8 @@ Detailed list of changes
 
 - macOS: Fix using Fn key for start dictation not working (:iss:`9661`)
 
+- Don't use neighboring tab colors for tab bar margins in translucent windows (:iss:`9663`)
+
 0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
