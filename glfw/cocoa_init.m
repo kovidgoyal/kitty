@@ -311,6 +311,26 @@ static NSDictionary<NSString*,NSNumber*> *global_shortcuts = nil;
     }
 }
 
+- (void)applicationDidBecomeActive:(NSNotification *)notification {
+    (void)notification;
+    // When the application becomes active after switching spaces (e.g., swiping
+    // back from a fullscreen app on another space), macOS may not send
+    // windowDidBecomeKey: for the already-key window. This leaves GLFW thinking
+    // no window has focus (since windowDidResignKey: was sent when leaving).
+    // Ensure GLFW's focus state is updated to match the actual key window.
+    NSWindow *keyWindow = [NSApp keyWindow];
+    if (keyWindow) {
+        for (_GLFWwindow *window = _glfw.windowListHead; window; window = window->next) {
+            if (window->ns.object == keyWindow) {
+                if (_glfw.focusedWindowId != window->id) {
+                    _glfwInputWindowFocus(window, true);
+                }
+                break;
+            }
+        }
+    }
+}
+
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender
 {
     (void)sender;
