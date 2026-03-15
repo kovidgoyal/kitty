@@ -166,6 +166,8 @@ class WindowGroup:
 
 class WindowList:
 
+    _force_show_title_bars: bool = False
+
     def __init__(self, tab: TabType) -> None:
         self.all_windows: list[WindowType] = []
         self.id_map: dict[int, WindowType] = {}

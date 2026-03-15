@@ -1550,6 +1550,16 @@ opt('window_title_bar_align', 'center',
     choices=('left', 'center', 'right'),
     long_text='Horizontal alignment of the text in window title bars.'
     )
+
+opt('window_title_bar_drag_threshold', '5',
+    option_type='positive_int',
+    long_text='''
+Pixel distance the mouse must move before a window title bar drag begins.
+Zero disables dragging. Drop on a title bar swaps positions; drop on a
+window body inserts in the quadrant direction (left/right/top/bottom).
+Drop on the tab bar moves the window to that tab; drop outside kitty
+detaches it to a new OS window.
+''')
 egr()  # }}}
 
 

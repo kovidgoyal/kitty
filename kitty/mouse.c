@@ -893,8 +893,10 @@ HANDLER(handle_event) {
 static void
 handle_window_title_bar_mouse(Window *w, int button, int modifiers, int action) {
     OSWindow *osw = global_state.callback_os_window;
-    if (osw && button > -1) {
-        call_boss(handle_window_title_bar_mouse, "KKiii", osw->id, w->id, button, modifiers, action);
+    if (!osw) return;
+    if (button > -1 || global_state.window_being_dragged.id) {
+        call_boss(handle_window_title_bar_mouse, "KKddiii",
+            osw->id, w->id, osw->mouse_x, osw->mouse_y, button, modifiers, action);
     }
 }
 
@@ -1268,9 +1270,13 @@ mouse_event(const int button, int modifiers, int action) {
         mouse_cursor_shape = POINTER_POINTER;
         handle_tab_bar_mouse(button, modifiers, action);
         debug("handled by tab bar\n");
-    } else if (r.in_title_bar && r.window) {
+    } else if ((r.in_title_bar && r.window) || global_state.window_being_dragged.id) {
         mouse_cursor_shape = POINTER_POINTER;
-        handle_window_title_bar_mouse(r.window, button, modifiers, action);
+        Window *tw = r.window;
+        if (!tw && global_state.window_being_dragged.id) {
+            tw = window_for_window_id(global_state.window_being_dragged.id);
+        }
+        if (tw) handle_window_title_bar_mouse(tw, button, modifiers, action);
         debug("handled by window title bar\n");
     } else if (r.window_border) {
         debug("window border: %s window id: %llu\n", border_name(r.window_border), w ? w->id : 0);

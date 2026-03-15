@@ -504,6 +504,7 @@ option_names = (
     'window_title_bar_active_background',
     'window_title_bar_active_foreground',
     'window_title_bar_align',
+    'window_title_bar_drag_threshold',
     'window_title_bar_inactive_background',
     'window_title_bar_inactive_foreground',
     'window_title_bar_min_windows',
@@ -705,6 +706,7 @@ class Options:
     window_title_bar_active_background: kitty.fast_data_types.Color | None = None
     window_title_bar_active_foreground: kitty.fast_data_types.Color | None = None
     window_title_bar_align: choices_for_window_title_bar_align = 'center'
+    window_title_bar_drag_threshold: int = 5
     window_title_bar_inactive_background: kitty.fast_data_types.Color | None = None
     window_title_bar_inactive_foreground: kitty.fast_data_types.Color | None = None
     window_title_bar_min_windows: int = 0

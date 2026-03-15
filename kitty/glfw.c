@@ -670,12 +670,16 @@ window_focus_callback(GLFWwindow *w, int focused) {
 }
 
 #define TAB_DRAG_MIME_NUMBER 400
+#define WINDOW_DRAG_MIME_NUMBER 401
 
 static int
 is_droppable_mime(const char *mime) {
     static char tab_mime[64] = {0};
     if (!tab_mime[0]) snprintf(tab_mime, sizeof(tab_mime), "application/net.kovidgoyal.kitty-tab-%d", getpid());
     if (strcmp(mime, tab_mime) == 0) return TAB_DRAG_MIME_NUMBER;
+    static char window_mime[64] = {0};
+    if (!window_mime[0]) snprintf(window_mime, sizeof(window_mime), "application/net.kovidgoyal.kitty-window-%d", getpid());
+    if (strcmp(mime, window_mime) == 0) return WINDOW_DRAG_MIME_NUMBER;
     if (strcmp(mime, "text/uri-list") == 0) return 3;
     if (strcmp(mime, "text/plain;charset=utf-8") == 0) return 2;
     if (strcmp(mime, "text/plain") == 0) return 1;
@@ -2916,8 +2920,11 @@ start_drag_with_data(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
         GLFWDragSourceItem *item = items + num++;
         item->mime_type = PyUnicode_AsUTF8(key);
         item->optional_data = PyBytes_AS_STRING(value); item->data_size = PyBytes_GET_SIZE(value);
-        if (global_state.is_wayland && is_droppable_mime(item->mime_type) == TAB_DRAG_MIME_NUMBER)
-            needs_toplevel_on_wayland = true;
+        if (global_state.is_wayland) {
+            int mime_num = is_droppable_mime(item->mime_type);
+            if (mime_num == TAB_DRAG_MIME_NUMBER || mime_num == WINDOW_DRAG_MIME_NUMBER)
+                needs_toplevel_on_wayland = true;
+        }
     }
     free_drag_source();
     global_state.drag_source.is_active = true;
