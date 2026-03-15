@@ -188,6 +188,8 @@ Detailed list of changes
 
 - Don't use neighboring tab colors for tab bar margins in translucent windows (:iss:`9663`)
 
+- macOS: Fix OS window focus not restored when switching spaces (:iss:`9665`)
+
 0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
