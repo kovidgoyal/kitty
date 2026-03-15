@@ -184,6 +184,8 @@ Detailed list of changes
 
 - Linux: Fix regression that broke drag and drop from GTK applications (:iss:`9656`)
 
+- macOS: Fix using Fn key for start dictation not working (:iss:`9661`)
+
 0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

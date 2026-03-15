@@ -4,6 +4,7 @@
 
 import json
 import os
+import shutil
 import stat
 import subprocess
 import sys
@@ -40,8 +41,8 @@ class TestBuild(BaseTest):
 
     def test_macos_dictation_forwarding(self) -> None:
         from kitty.constants import glfw_path, is_macos
-        if not is_macos:
-            self.skipTest('Dictation smoke test is macOS only')
+        if not is_macos or not shutil.which('clang'):
+                self.skipTest('Dictation smoke test is macOS only and requires clang')
         cocoa_module = glfw_path('cocoa')
         probe = textwrap.dedent('''\
             #import <AppKit/AppKit.h>
