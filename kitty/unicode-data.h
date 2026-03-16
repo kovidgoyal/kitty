@@ -58,7 +58,9 @@ is_url_char(uint32_t ch) {
 static inline bool
 can_strip_from_end_of_url(uint32_t ch) {
     // remove trailing punctuation
-    return (char_props_for(ch).is_punctuation && ch != '/' && ch != '&' && ch != '-' && ch != ')' && ch != ']' && ch != '}');
+    return (char_props_for(ch).is_punctuation &&
+        ch != '/' && ch != '&' && ch != '-' && ch != ')' && ch != ']' && ch != '}' && ch != '*'
+    );
 }
 
 static inline bool

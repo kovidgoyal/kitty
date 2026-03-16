@@ -269,7 +269,7 @@ typedef struct {
 } ColorProfile;
 
 typedef struct {
-    unsigned int width, height;
+    unsigned width, height;
 } CellPixelSize;
 
 typedef struct {int x;} *SPRITE_MAP_HANDLE;
@@ -333,6 +333,7 @@ void focus_in_event(void);
 void scroll_event(const GLFWScrollEvent *ev);
 void on_key_input(const GLFWkeyevent *ev);
 void request_window_attention(id_type, bool);
+void free_drag_source(void);
 locale_t get_c_locale(void);
 #ifndef __APPLE__
 void play_canberra_sound(const char *which_sound, const char *event_id, bool is_path, const char *role, const char *theme_name);

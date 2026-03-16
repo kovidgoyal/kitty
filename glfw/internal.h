@@ -478,8 +478,10 @@ struct _GLFWwindow
         GLFWcursorenterfun      cursorEnter;
         GLFWscrollfun           scroll;
         GLFWkeyboardfun         keyboard;
-        GLFWdropfun             drop;
         GLFWliveresizefun       liveResize;
+
+        GLFWdragsourcefun       drag_source;
+        GLFWdropeventfun drop_event;
     } callbacks;
 
     // This is defined in the window API's platform.h
@@ -662,6 +664,12 @@ struct _GLFWlibrary
     _GLFWlibraryEGL egl;
     // This is defined in osmesa_context.h
     _GLFWlibraryOSMesa osmesa;
+
+    struct {
+        GLFWDragSourceItem *items; size_t item_count;
+        GLFWid window_id, instance_id; int operations;
+        bool needs_toplevel_on_wayland;
+    } drag;
 };
 
 // Global state shared between compilation units of GLFW
@@ -818,7 +826,21 @@ void _glfwInputScroll(_GLFWwindow* window, const GLFWScrollEvent *ev);
 void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods);
 void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos);
 void _glfwInputCursorEnter(_GLFWwindow* window, bool entered);
-int _glfwInputDrop(_GLFWwindow* window, const char *mime, const char *text, size_t sz);
+// Platform functions for drop data reading
+void _glfwPlatformRequestDropUpdate(_GLFWwindow* window);
+size_t _glfwInputDropEvent(_GLFWwindow *window, GLFWDropEventType type, double xpos, double ypos, const char** mimes, size_t num_mimes, bool from_self);
+ssize_t _glfwPlatformReadAvailableDropData(GLFWwindow *w, GLFWDropEvent *ev, char *buffer, size_t sz);
+void _glfwPlatformEndDrop(GLFWwindow *w, GLFWDragOperationType op);
+int _glfwPlatformRequestDropData(_GLFWwindow *window, const char *mime);
+// Platform functions for drag source
+int _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail);
+void _glfwFreeDragSourceData(void);
+void _glfwPlatformFreeDragSourceData(void);
+void _glfwInputDragSourceRequest(_GLFWwindow* window, GLFWDragEvent *ev);
+int _glfwPlatformDragDataReady(const char *mime_type);
+int _glfwPlatformChangeDragImage(const GLFWimage *thumbnail);
+
+
 void _glfwInputColorScheme(GLFWColorScheme, bool);
 void _glfwPlatformInputColorScheme(GLFWColorScheme);
 void _glfwInputJoystick(_GLFWjoystick* js, int event);
@@ -899,3 +921,4 @@ void _glfw_free_clipboard_data(_GLFWClipboardData *cd);
 
 #define debug_rendering(...) if (_glfw.hints.init.debugRendering) { timed_debug_print(__VA_ARGS__); }
 #define debug_input(...) if (_glfw.hints.init.debugKeyboard) { timed_debug_print(__VA_ARGS__); }
+#define safe_close(fd) do { errno = 0; close(fd); } while(errno == EINTR)

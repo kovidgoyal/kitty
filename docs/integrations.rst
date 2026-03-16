@@ -14,6 +14,12 @@ Image and document viewers
 Powered by kitty's :doc:`graphics-protocol` there exist many tools for viewing
 images and other types of documents directly in your terminal, even over SSH.
 
+.. _tool_bookokrat:
+
+`bookokrat <https://github.com/bugzmanov/bookokrat>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A terminal PDF/EPUB viewer
+
 .. _tool_termpdf:
 
 `termpdf.py <https://github.com/dsanson/termpdf.py>`_
@@ -49,6 +55,8 @@ Display various types of files nicely formatted with images in the terminal
 
 A markdown editor that uses the text-sizing protocol for large headings and
 the graphics protocol for images.
+
+.. _tool_presentterm:
 
 `presenterm <https://github.com/mfontanini/presenterm>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -165,7 +173,12 @@ keyboard protocols.
 Another terminal file manager, with previews of file contents powered by kitty's
 graphics protocol.
 
-.. _tool_presentterm:
+.. _tool_far2l:
+
+`far2l <https://github.com/elfmz/far2l>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Text-mode dual panel (orthodox) file manager and also terminal emulator, uses
+the kitty graphics and keyboard protocols (both as client and as terminal)
 
 
 System and data visualisation tools
@@ -254,6 +267,7 @@ View and manage the system clipboard under Wayland in your kitty terminal
 TUI for QEMU used to manage virtual machines, can display the Virtual Machine
 in the terminal using the kitty graphics protocol.
 
+
 Editor integration
 -----------------------
 
@@ -294,6 +308,7 @@ Various image viewing plugins for editors
 * `image.nvim <https://github.com/3rd/image.nvim>`_ - Bringing images to neovim
 * `image_preview.nvim <https://github.com/adelarsq/image_preview.nvim/>`_ - Image preview for neovim
 * `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_  - view images inside nvim
+* `kitty-graphics.el <https://github.com/cashmeredev/kitty-graphics.el>`_ - view images in emacs
 
 Scrollback manipulation
 -------------------------

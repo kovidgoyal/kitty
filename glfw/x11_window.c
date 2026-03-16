@@ -29,6 +29,7 @@
 
 #define _GNU_SOURCE
 #include "internal.h"
+#include "math.h"
 #include "backend_utils.h"
 #include "linux_notify.h"
 #include "../kitty/monotonic.h"
@@ -93,6 +94,17 @@ x11_cancel_momentum_scroll_timer(void) {
 // covers GLX functions
 //
 static unsigned _glfwDispatchX11Events(void);
+
+// Forward declarations for drag source helper functions
+static void send_drag_data(const char *mime_type, const char *data, size_t data_sz,
+                          Window requestor, Atom property, Atom target);
+static bool add_pending_request(const char *mime_type, Window requestor, Atom property, Atom target);
+static void handle_drag_motion(int root_x, int root_y, Time timestamp);
+static void handle_drag_button_release(Time timestamp);
+static void handle_xdnd_status(const XClientMessageEvent *event);
+static void handle_xdnd_finished(const XClientMessageEvent *event);
+static bool create_drag_thumbnail(const GLFWimage* thumbnail, int x, int y);
+static bool render_drag_thumbnail_to_pixmap(const GLFWimage* thumbnail);
 
 static void
 handleEvents(monotonic_t timeout) {
@@ -1096,18 +1108,101 @@ static void handleSelectionClear(XEvent* event)
     }
 }
 
-static void handleSelectionRequest(XEvent* event)
-{
+static void
+handleSelectionRequest(XEvent* event) {
     const XSelectionRequestEvent* request = &event->xselectionrequest;
 
     XEvent reply = { SelectionNotify };
-    reply.xselection.property = writeTargetToProperty(request);
     reply.xselection.display = request->display;
     reply.xselection.requestor = request->requestor;
     reply.xselection.selection = request->selection;
     reply.xselection.target = request->target;
     reply.xselection.time = request->time;
+    reply.xselection.property = None;
 
+    // Handle XdndSelection (drag and drop) specially
+    if (request->selection == _glfw.x11.XdndSelection && _glfw.drag.window_id) {
+        // Handle TARGETS request for XdndSelection
+        if (request->target == _glfw.x11.TARGETS) {
+            // Return the list of supported MIME type atoms
+            Atom *targets = calloc(_glfw.x11.drag.type_count + 2, sizeof(Atom));
+            if (targets) {
+                targets[0] = _glfw.x11.TARGETS;
+                targets[1] = _glfw.x11.MULTIPLE;
+                for (size_t i = 0; i < _glfw.x11.drag.type_count; i++) targets[i + 2] = _glfw.x11.drag.type_atoms[i];
+                XChangeProperty(_glfw.x11.display,
+                                request->requestor,
+                                request->property,
+                                XA_ATOM,
+                                32,
+                                PropModeReplace,
+                                (unsigned char*)targets,
+                                _glfw.x11.drag.type_count + 2);
+                free(targets);
+                reply.xselection.property = request->property;
+            }
+        } else {
+            // Find the matching MIME type for the requested target
+            const char* mime_type = NULL;
+            for (size_t i = 0; i < _glfw.x11.drag.type_count; i++) {
+                if (_glfw.x11.drag.type_atoms[i] == request->target) {
+                    mime_type = _glfw.drag.items[i].mime_type;
+                    break;
+                }
+            }
+            if (mime_type) {
+                // Check if we have preset data
+                const char *data = NULL;
+                size_t data_sz = 0;
+                for (size_t i = 0; i < _glfw.drag.item_count; i++) {
+                    if (strcmp(_glfw.drag.items[i].mime_type, mime_type) == 0) {
+                        data = _glfw.drag.items[i].optional_data;
+                        data_sz = _glfw.drag.items[i].data_size;
+                        break;
+                    }
+                }
+
+                if (data && data_sz > 0) {
+                    // We have preset data, send it immediately
+                    send_drag_data(mime_type, data, data_sz, request->requestor,
+                                  request->property, request->target);
+                    reply.xselection.property = request->property;
+                } else {
+                    // Add to pending requests for on-demand data
+                    if (add_pending_request(mime_type, request->requestor,
+                                          request->property, request->target)) {
+                        // Request data from application
+                        _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+                        if (window) {
+                            GLFWDragEvent ev = {
+                                .type = GLFW_DRAG_DATA_REQUEST,
+                                .mime_type = mime_type,
+                                .data = NULL,
+                                .data_sz = 0,
+                                .err_num = 0
+                            };
+                            _glfwInputDragSourceRequest(window, &ev);
+
+                            if (ev.data && ev.data_sz > 0) {
+                                // Data provided synchronously
+                                send_drag_data(mime_type, ev.data, ev.data_sz,
+                                             request->requestor, request->property,
+                                             request->target);
+                                reply.xselection.property = request->property;
+                            } else {
+                                // Data will be provided asynchronously via _glfwPlatformDragDataReady
+                                // Don't send SelectionNotify yet - it will be sent when data is ready
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        // Handle regular clipboard/primary selection
+        reply.xselection.property = writeTargetToProperty(request);
+    }
     XSendEvent(_glfw.x11.display, request->requestor, False, 0, &reply);
 }
 
@@ -1320,6 +1415,11 @@ handle_mouse_move_event(_GLFWwindow *window, const int x, const int y) {
     window->x11.lastCursorPosY = y;
 }
 
+static bool
+number_has_fractional_part(double x) {
+    return fabs(x - round(x)) >= 1e-6;
+}
+
 static void
 handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
     XIScrollDevice *d = NULL;
@@ -1347,17 +1447,35 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             scroll_valuator_found = true;
             double delta = value - v->value;
             v->value = value;
-            if (v->is_vertical) delta *= -1;
+            delta *= -1;
             double *off = v->is_vertical ? &yOffset : &xOffset;
             *off = delta;
-            if (!d->is_highres) {
-                if (v->increment == 120.) type = GLFW_SCROLL_OFFEST_V120;
-                else {
-                    type = GLFW_SCROLL_OFFSET_LINES;
-                    if (v->increment != 0) *off /= v->increment;
+            d->num_events++;
+            if (!d->type_detected) {
+                if (v->increment == 120.) {
+                    d->type_detected = true;
+                    d->offset_type = GLFW_SCROLL_OFFEST_V120;
+                } else {
+                    bool delta_is_fractional = number_has_fractional_part(delta);
+                    if (delta_is_fractional) {
+                        if (fabs(delta * 120 - round(delta * 120)) < 0.01) {
+                            d->type_detected = d->num_events > 2;
+                            d->offset_type = GLFW_SCROLL_OFFEST_V120;
+                        } else {
+                            d->type_detected = true;
+                            d->offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
+                        }
+                    } else {
+                        d->type_detected = d->num_events > 2;
+                        d->offset_type = GLFW_SCROLL_OFFSET_LINES;
+                    }
                 }
             }
+            if (d->offset_type == GLFW_SCROLL_OFFSET_LINES) {
+                if (v->increment != 0) *off /= v->increment;
+            }
         }
+        type = d->offset_type;
         if (xOffset != 0 || yOffset != 0) {
             // Get keyboard modifiers
             int mods = translateState(de->mods.effective);
@@ -1371,7 +1489,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             };
 
             // For high-resolution, finger-based scrolling, use timer-based momentum scrolling
-            if (d->is_highres && d->is_finger_based && type == GLFW_SCROLL_OFFEST_HIGHRES) {
+            if (d->is_finger_based && type == GLFW_SCROLL_OFFEST_HIGHRES) {
                 // Reset the timer on each scroll event
                 x11_cancel_momentum_scroll_timer();
 
@@ -1399,6 +1517,348 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
     }
 }
 
+#define dnd _glfw.x11.xdnd
+// Dropping of data onto window {{{
+
+static void
+end_drop(_GLFWwindow *window, GLFWDragOperationType op) {
+    bool accepted = dnd.drag_accepted || dnd.dropped;
+    XEvent reply = { ClientMessage };
+    reply.xclient.window = dnd.source;
+    reply.xclient.message_type = _glfw.x11.XdndFinished;
+    reply.xclient.format = 32;
+    reply.xclient.data.l[0] = window->x11.handle;
+    reply.xclient.data.l[1] = accepted ? 1 : 0;
+    reply.xclient.data.l[2] = None;
+    if (dnd.version >= 5) {
+        switch(op) {
+            case GLFW_DRAG_OPERATION_COPY: reply.xclient.data.l[2] = _glfw.x11.XdndActionCopy; break;
+            case GLFW_DRAG_OPERATION_MOVE: reply.xclient.data.l[2] = _glfw.x11.XdndActionMove; break;
+            case GLFW_DRAG_OPERATION_GENERIC: reply.xclient.data.l[2] = _glfw.x11.XdndActionCopy; break;
+            case GLFW_DRAG_OPERATION_NONE: reply.xclient.data.l[2] = _glfw.x11.XdndActionCopy; break;
+        }
+    }
+    XSendEvent(_glfw.x11.display, dnd.source, False, NoEventMask, &reply);
+    XFlush(_glfw.x11.display);
+}
+
+
+static void
+update_drop_state(_GLFWwindow* window, size_t accepted_count) {
+    dnd.copy_mimes_count = accepted_count;
+    bool accepted = accepted_count > 0;
+    dnd.drag_accepted = accepted;
+    // The first entry in the accepted (sorted) copy is the preferred MIME.
+    const char* new_preferred_mime = (accepted && dnd.copy_mimes) ? dnd.copy_mimes[0] : NULL;
+    // Check if the preferred MIME changed
+    bool mime_changed = strncmp(new_preferred_mime ? new_preferred_mime : "", dnd.format, arraysz(dnd.format)) != 0;
+    if (mime_changed) {
+        if (new_preferred_mime) strncpy(dnd.format, new_preferred_mime, arraysz(dnd.format)-1);
+        else dnd.format[0] = 0;
+    }
+    if (accepted) {
+        XEvent reply = { ClientMessage };
+        reply.xclient.window = dnd.source;
+        reply.xclient.message_type = _glfw.x11.XdndStatus;
+        reply.xclient.format = 32;
+        reply.xclient.data.l[0] = window->x11.handle;
+        reply.xclient.data.l[2] = 0; // Specify an empty rectangle
+        reply.xclient.data.l[3] = 0;
+
+        if (dnd.format_priority > 0 && accepted) {
+            // Reply that we are ready to copy the dragged data
+            reply.xclient.data.l[1] = 1; // Accept with no rectangle
+            if (_glfw.x11.xdnd.version >= 2) reply.xclient.data.l[4] = _glfw.x11.XdndActionCopy;
+        }
+        XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source, False, NoEventMask, &reply);
+        XFlush(_glfw.x11.display);
+    } else {
+        end_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+    }
+}
+
+static void
+free_dnd_mimes(void) {
+    // Free any previously cached MIME types
+    if (dnd.mimes) {
+        for (size_t j = 0; j < dnd.mimes_count; j++) {
+            if (dnd.mimes[j]) XFree((void*)dnd.mimes[j]);
+        }
+        free(dnd.mimes);
+        dnd.mimes = NULL;
+        dnd.mimes_count = 0;
+    }
+    free(dnd.copy_mimes);  // pointer array only; strings are owned by mimes[]
+    dnd.copy_mimes = NULL;
+    dnd.copy_mimes_count = 0;
+}
+
+// Reset the working copy of mimes so the next callback sees the full original
+// list.  Returns false on allocation failure.
+static bool
+reset_dnd_copy_mimes(void) {
+    if (dnd.mimes_count == 0) { dnd.copy_mimes_count = 0; return true; }
+    if (!dnd.copy_mimes) {
+        dnd.copy_mimes = malloc(dnd.mimes_count * sizeof(const char*));
+        if (!dnd.copy_mimes) return false;
+    }
+    memcpy(dnd.copy_mimes, dnd.mimes, dnd.mimes_count * sizeof(const char*));
+    dnd.copy_mimes_count = dnd.mimes_count;
+    return true;
+}
+
+void
+free_dnd_data(void) {
+    dnd.source = None;
+    dnd.target_window = None;
+    dnd.drag_accepted = false;
+    free_dnd_mimes();
+    if (dnd.selection_requests) {
+        for (size_t i = 0; i < dnd.selection_requests_count; i++) {
+            free(dnd.selection_requests[i].mime);
+            if (dnd.selection_requests[i].data) XFree(dnd.selection_requests[i].data);
+        }
+        free(dnd.selection_requests); dnd.selection_requests = NULL;
+    }
+    dnd.selection_requests_count = 0; dnd.selection_requests_capacity = 0;
+    dnd.format[0] = 0;
+}
+
+static void
+update_dnd_mimes(XEvent *event) {
+    unsigned long i, count;
+    Atom* formats = NULL;
+    const bool list = event->xclient.data.l[1] & 1;
+    free_dnd_mimes();
+    // Get the MIME types before calling the callback
+    if (list) {
+        count = _glfwGetWindowPropertyX11(dnd.source, _glfw.x11.XdndTypeList, XA_ATOM, (unsigned char**) &formats);
+    } else {
+        count = 3;
+        formats = (Atom*) event->xclient.data.l + 2;
+    }
+
+    // Get atom names and store them in the xdnd structure
+    char **atom_names = calloc(count, sizeof(char*));
+    int valid_mime_count = 0;
+    if (atom_names) {
+        get_atom_names(formats, count, atom_names);
+        // Compact the array to only valid MIME types
+        for (i = 0; i < count; i++) {
+            if (atom_names[i]) {
+                if (valid_mime_count != (int)i) {
+                    atom_names[valid_mime_count] = atom_names[i];
+                    atom_names[i] = NULL;
+                }
+                valid_mime_count++;
+            }
+        }
+        // Store the MIME types for later use
+        dnd.mimes = (const char**)atom_names;
+        dnd.mimes_count = valid_mime_count;
+    }
+    if (list && formats) XFree(formats);
+}
+
+void
+_glfwPlatformEndDrop(GLFWwindow *w, GLFWDragOperationType op) {
+    end_drop((_GLFWwindow*)w, op);
+    free_dnd_data();
+}
+
+
+static void
+drop_start(_GLFWwindow *window, XEvent *event) {
+    // A drag operation has entered the window
+    if (dnd.version > _GLFW_XDND_VERSION) return;
+    free_dnd_data();
+    dnd.source  = event->xclient.data.l[0];
+    dnd.version = event->xclient.data.l[1] >> 24;
+    dnd.target_window = window->x11.handle;
+    dnd.format[0] = 0;
+    dnd.format_priority  = 0;
+    update_dnd_mimes(event);
+    dnd.from_self = _glfw.x11.drag.source_window != None && dnd.source == _glfw.x11.drag.source_window;
+    // Position is not known yet at enter time, will be updated with XdndPosition
+    if (reset_dnd_copy_mimes()) {
+        size_t accepted_count = _glfwInputDropEvent(
+            window, GLFW_DROP_ENTER, 0, 0, dnd.copy_mimes, dnd.copy_mimes_count, dnd.from_self);
+        update_drop_state(window, accepted_count);
+        // Set format_priority when the callback accepted at least one MIME type.
+        // dnd.format has already been updated by update_drop_state.
+        if (accepted_count > 0) dnd.format_priority = 1;
+    }
+}
+
+static void
+drop_leave(_GLFWwindow *window, XEvent *event UNUSED) {
+    // The drag operation has left the window
+    _glfwInputDropEvent(window, GLFW_DROP_LEAVE, 0, 0, NULL, 0, dnd.from_self);
+    if (!dnd.dropped) {
+        free_dnd_data();
+    }
+}
+
+static void
+drop_move(_GLFWwindow *window, XEvent *event) {
+    // The drag operation has moved over the window
+    if (_glfw.x11.xdnd.version > _GLFW_XDND_VERSION) return;
+
+    const int xabs = (event->xclient.data.l[2] >> 16) & 0xffff;
+    const int yabs = (event->xclient.data.l[2]) & 0xffff;
+    Window dummy;
+    int xpos = 0, ypos = 0;
+    _glfwGrabErrorHandlerX11();
+    XTranslateCoordinates(_glfw.x11.display, _glfw.x11.root, window->x11.handle, xabs, yabs, &xpos, &ypos, &dummy);
+    _glfwReleaseErrorHandlerX11();
+    if (_glfw.x11.errorCode != Success) _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to get DND event position");
+    _glfwInputCursorPos(window, xpos, ypos);
+    if (reset_dnd_copy_mimes()) {
+        size_t mimes_count = _glfwInputDropEvent(window, GLFW_DROP_MOVE, xpos, ypos, dnd.copy_mimes, dnd.copy_mimes_count, dnd.from_self);
+        update_drop_state(window, mimes_count);
+    }
+}
+
+void
+_glfwPlatformRequestDropUpdate(_GLFWwindow* window) {
+    // Check if there's an active drag over this window
+    if (dnd.source == None || dnd.target_window != window->x11.handle) return;
+    // Call the drag callback with STATUS_UPDATE event to get updated state
+    // Position values are not valid for this event type
+    if (reset_dnd_copy_mimes()) {
+        size_t mimes_count = _glfwInputDropEvent(window, GLFW_DROP_STATUS_UPDATE, 0, 0, dnd.copy_mimes, dnd.copy_mimes_count, dnd.from_self);
+        update_drop_state(window, mimes_count);
+    }
+}
+
+
+static void
+drop(_GLFWwindow *window, XEvent *event) {
+    // The drag operation has finished by dropping on the window
+    if (dnd.version > _GLFW_XDND_VERSION || dnd.version < 2) return;
+    dnd.dropped = true;
+    dnd.drop_time = (unsigned long)event->xclient.data.l[2];
+    if (!reset_dnd_copy_mimes()) return;
+    size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, dnd.copy_mimes, dnd.copy_mimes_count, dnd.from_self);
+    if (!dnd.copy_mimes) return;
+    for (size_t i = 0; i < num_accepted; i++) _glfwPlatformRequestDropData(window, dnd.copy_mimes[i]);
+}
+
+static void
+request_selection(_GLFWwindow *window, XdndSelectionRequest *r) {
+    Atom target_atom = XInternAtom(_glfw.x11.display, r->mime, False);
+    XConvertSelection(_glfw.x11.display,
+                        _glfw.x11.XdndSelection,
+                        target_atom,
+                        _glfw.x11.XdndSelection,
+                        window->x11.handle,
+                        dnd.drop_time);
+    XFlush(_glfw.x11.display);
+    r->inflight = true;
+}
+
+typedef struct {
+    char *mime;
+    GLFWid window_id;
+} notify_data;
+
+static void
+free_notify_data(unsigned long long timer_id UNUSED, void *x) {
+    notify_data *d = x;
+    free(d->mime); free(x);
+}
+
+static void
+notify_drop_data_available(unsigned long long timer_id UNUSED, void *x) {
+    notify_data *d = x;
+    const char * mimes[1] = {d->mime};
+    _GLFWwindow *window = _glfwWindowForId(d->window_id);
+    if (window) _glfwInputDropEvent(window, GLFW_DROP_DATA_AVAILABLE, 0, 0, mimes, 1, dnd.from_self);
+}
+
+ssize_t
+_glfwPlatformReadAvailableDropData(GLFWwindow *w, GLFWDropEvent *ev, char *buffer, size_t sz) {
+    _GLFWwindow *window = (_GLFWwindow*)w;
+    const char *mime = ev->mimes[0];
+    for (size_t i = 0; i < dnd.selection_requests_count; i++) {
+        XdndSelectionRequest *r = dnd.selection_requests + i;
+        if (strcmp(r->mime, mime) == 0) {
+            if (!r->got_data) return -EINVAL;
+            if (r->offset >= r->size) return 0;
+            size_t to_read = MIN(sz, r->size - r->offset);
+            memcpy(buffer, r->data, to_read);
+            r->offset += to_read;
+            if (to_read) {
+                notify_data *d = malloc(sizeof(notify_data));
+                if (d) {
+                    d->mime = _glfw_strdup(mime);
+                    d->window_id = window->id;
+                    _glfwPlatformAddTimer(0, false, notify_drop_data_available, d, free_notify_data);
+                }
+            }
+            return to_read;
+        }
+    }
+    return -ENOENT;
+}
+
+static XdndSelectionRequest*
+inflight_selection_request(void) {
+    for (size_t i = 0; i < dnd.selection_requests_count; i++) {
+        XdndSelectionRequest *r = dnd.selection_requests + i;
+        if (r->inflight) return r;
+    }
+    return NULL;
+}
+
+int
+_glfwPlatformRequestDropData(_GLFWwindow *window, const char *mime) {
+    if (!dnd.mimes) return EINVAL;
+    for (size_t i = 0; i < dnd.selection_requests_count; i++) {
+        XdndSelectionRequest *r = dnd.selection_requests + i;
+        if (strcmp(r->mime, mime) == 0) {
+            if (r->got_data) {
+                r->offset = 0;
+                const char * mimes[1] = {mime};
+                _glfwInputDropEvent(window, GLFW_DROP_DATA_AVAILABLE, 0, 0, mimes, 1, dnd.from_self);
+            }
+            return 0;
+        }
+    }
+    if (!dnd.selection_requests || dnd.selection_requests_count + 1 >= dnd.selection_requests_capacity) {
+        dnd.selection_requests_capacity = dnd.selection_requests_count + 8;
+        dnd.selection_requests = realloc(
+            dnd.selection_requests, sizeof(dnd.selection_requests[0]) * dnd.selection_requests_capacity);
+        if (!dnd.selection_requests) return ENOMEM;
+    }
+    XdndSelectionRequest *r = dnd.selection_requests + dnd.selection_requests_count++;
+    memset(r, 0, sizeof(r[0]));
+    r->mime = _glfw_strdup(mime);
+    if (!inflight_selection_request()) request_selection(window, r);
+    return 0;
+}
+
+static void
+drop_selection_notify(_GLFWwindow *window, XEvent *event) {  // requested drop data is available
+    XdndSelectionRequest *r = inflight_selection_request();
+    if (!r) return;
+    r->size = _glfwGetWindowPropertyX11(
+        event->xselection.requestor, event->xselection.property, event->xselection.target, &r->data);
+    r->inflight = false; r->got_data = true;
+    const char * mimes[1] = {r->mime};
+    _glfwInputDropEvent(window, GLFW_DROP_DATA_AVAILABLE, 0, 0, mimes, 1, dnd.from_self);
+    for (size_t i = 0; i < dnd.selection_requests_count; i++) {
+        XdndSelectionRequest *r = dnd.selection_requests + i;
+        if (!r->got_data) {
+            request_selection(window, r);
+            break;
+        }
+    }
+}
+
+
+// }}}
+#undef dnd
 
 // Process the specified X event
 //
@@ -1666,6 +2126,11 @@ static void processEvent(XEvent *event)
         {
             const int mods = translateState(event->xbutton.state);
 
+            // Handle drag drop on button release
+            if (_glfw.x11.drag.active && event->xbutton.button == Button1) {
+                handle_drag_button_release(event->xbutton.time);
+                return;
+            }
 
             if (event->xbutton.button == Button1)
             {
@@ -1733,6 +2198,17 @@ static void processEvent(XEvent *event)
 
         case MotionNotify:
         {
+            // Handle drag motion
+            if (_glfw.x11.drag.active) {
+                int root_x, root_y;
+                Window child;
+                XTranslateCoordinates(_glfw.x11.display,
+                                     event->xmotion.window, _glfw.x11.root,
+                                     event->xmotion.x, event->xmotion.y,
+                                     &root_x, &root_y, &child);
+                handle_drag_motion(root_x, root_y, event->xmotion.time);
+            }
+
             x11_cancel_momentum_scroll_timer();
             glfw_cancel_momentum_scroll();
             handle_mouse_move_event(window, event->xmotion.x, event->xmotion.y);
@@ -1794,11 +2270,8 @@ static void processEvent(XEvent *event)
         {
             // Custom client message, probably from the window manager
 
-            if (event->xclient.message_type == None)
-                return;
-
-            if (event->xclient.message_type == _glfw.x11.WM_PROTOCOLS)
-            {
+            if (event->xclient.message_type == None) return;
+            if (event->xclient.message_type == _glfw.x11.WM_PROTOCOLS) {
                 const Atom protocol = event->xclient.data.l[0];
                 if (protocol == None)
                     return;
@@ -1824,176 +2297,19 @@ static void processEvent(XEvent *event)
                                &reply);
                 }
             }
-            else if (event->xclient.message_type == _glfw.x11.XdndEnter)
-            {
-                // A drag operation has entered the window
-                unsigned long i, count;
-                Atom* formats = NULL;
-                const bool list = event->xclient.data.l[1] & 1;
-
-                _glfw.x11.xdnd.source  = event->xclient.data.l[0];
-                _glfw.x11.xdnd.version = event->xclient.data.l[1] >> 24;
-                memset(_glfw.x11.xdnd.format, 0, sizeof(_glfw.x11.xdnd.format));
-                _glfw.x11.xdnd.format_priority  = 0;
-
-                if (_glfw.x11.xdnd.version > _GLFW_XDND_VERSION)
-                    return;
-
-                if (list)
-                {
-                    count = _glfwGetWindowPropertyX11(_glfw.x11.xdnd.source,
-                                                      _glfw.x11.XdndTypeList,
-                                                      XA_ATOM,
-                                                      (unsigned char**) &formats);
-                }
-                else
-                {
-                    count = 3;
-                    formats = (Atom*) event->xclient.data.l + 2;
-                }
-                char **atom_names = calloc(count, sizeof(char*));
-                if (atom_names) {
-                    get_atom_names(formats, count, atom_names);
-
-                    for (i = 0;  i < count;  i++)
-                    {
-                        if (atom_names[i]) {
-                            int prio = _glfwInputDrop(window, atom_names[i], NULL, 0);
-                            if (prio > _glfw.x11.xdnd.format_priority) {
-                                _glfw.x11.xdnd.format_priority = prio;
-                                strncpy(_glfw.x11.xdnd.format, atom_names[i], arraysz(_glfw.x11.xdnd.format) - 1);
-                            }
-                            XFree(atom_names[i]);
-                        }
-                    }
-                    free(atom_names);
-                }
-
-                if (list && formats)
-                    XFree(formats);
-            }
-            else if (event->xclient.message_type == _glfw.x11.XdndDrop)
-            {
-                // The drag operation has finished by dropping on the window
-                Time time = CurrentTime;
-
-                if (_glfw.x11.xdnd.version > _GLFW_XDND_VERSION)
-                    return;
-
-                if (_glfw.x11.xdnd.format_priority > 0)
-                {
-                    if (_glfw.x11.xdnd.version >= 1)
-                        time = event->xclient.data.l[2];
-
-                    // Request the chosen format from the source window
-                    XConvertSelection(_glfw.x11.display,
-                                      _glfw.x11.XdndSelection,
-                                      XInternAtom(_glfw.x11.display, _glfw.x11.xdnd.format, 0),
-                                      _glfw.x11.XdndSelection,
-                                      window->x11.handle,
-                                      time);
-                }
-                else if (_glfw.x11.xdnd.version >= 2)
-                {
-                    XEvent reply = { ClientMessage };
-                    reply.xclient.window = _glfw.x11.xdnd.source;
-                    reply.xclient.message_type = _glfw.x11.XdndFinished;
-                    reply.xclient.format = 32;
-                    reply.xclient.data.l[0] = window->x11.handle;
-                    reply.xclient.data.l[1] = 0; // The drag was rejected
-                    reply.xclient.data.l[2] = None;
-
-                    XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source,
-                               False, NoEventMask, &reply);
-                    XFlush(_glfw.x11.display);
-                }
-            }
-            else if (event->xclient.message_type == _glfw.x11.XdndPosition)
-            {
-                // The drag operation has moved over the window
-                const int xabs = (event->xclient.data.l[2] >> 16) & 0xffff;
-                const int yabs = (event->xclient.data.l[2]) & 0xffff;
-                Window dummy;
-                int xpos = 0, ypos = 0;
-
-                if (_glfw.x11.xdnd.version > _GLFW_XDND_VERSION)
-                    return;
-
-                _glfwGrabErrorHandlerX11();
-                XTranslateCoordinates(_glfw.x11.display,
-                                      _glfw.x11.root,
-                                      window->x11.handle,
-                                      xabs, yabs,
-                                      &xpos, &ypos,
-                                      &dummy);
-                _glfwReleaseErrorHandlerX11();
-                if (_glfw.x11.errorCode != Success)
-                    _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to get DND event position");
-
-                _glfwInputCursorPos(window, xpos, ypos);
-
-                XEvent reply = { ClientMessage };
-                reply.xclient.window = _glfw.x11.xdnd.source;
-                reply.xclient.message_type = _glfw.x11.XdndStatus;
-                reply.xclient.format = 32;
-                reply.xclient.data.l[0] = window->x11.handle;
-                reply.xclient.data.l[2] = 0; // Specify an empty rectangle
-                reply.xclient.data.l[3] = 0;
-
-                if (_glfw.x11.xdnd.format_priority > 0)
-                {
-                    // Reply that we are ready to copy the dragged data
-                    reply.xclient.data.l[1] = 1; // Accept with no rectangle
-                    if (_glfw.x11.xdnd.version >= 2)
-                        reply.xclient.data.l[4] = _glfw.x11.XdndActionCopy;
-                }
-
-                XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source,
-                           False, NoEventMask, &reply);
-                XFlush(_glfw.x11.display);
-            }
-
+            else if (event->xclient.message_type == _glfw.x11.XdndEnter) { drop_start(window, event); }
+            else if (event->xclient.message_type == _glfw.x11.XdndDrop) { drop(window, event); }
+            else if (event->xclient.message_type == _glfw.x11.XdndLeave) { drop_leave(window, event); }
+            else if (event->xclient.message_type == _glfw.x11.XdndPosition) { drop_move(window, event); }
+            else if (event->xclient.message_type == _glfw.x11.XdndStatus) { handle_xdnd_status(&event->xclient); }
+            else if (event->xclient.message_type == _glfw.x11.XdndFinished) { handle_xdnd_finished(&event->xclient); }
             return;
         }
 
         case SelectionNotify:
-        {
-            if (event->xselection.property == _glfw.x11.XdndSelection)
-            {
-                // The converted data from the drag operation has arrived
-                char* data;
-                const unsigned long result =
-                    _glfwGetWindowPropertyX11(event->xselection.requestor,
-                                              event->xselection.property,
-                                              event->xselection.target,
-                                              (unsigned char**) &data);
-
-                if (result)
-                {
-                    _glfwInputDrop(window, _glfw.x11.xdnd.format, data, result);
-                }
-
-                if (data)
-                    XFree(data);
-
-                if (_glfw.x11.xdnd.version >= 2)
-                {
-                    XEvent reply = { ClientMessage };
-                    reply.xclient.window = _glfw.x11.xdnd.source;
-                    reply.xclient.message_type = _glfw.x11.XdndFinished;
-                    reply.xclient.format = 32;
-                    reply.xclient.data.l[0] = window->x11.handle;
-                    reply.xclient.data.l[1] = result;
-                    reply.xclient.data.l[2] = _glfw.x11.XdndActionCopy;
-
-                    XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source,
-                               False, NoEventMask, &reply);
-                    XFlush(_glfw.x11.display);
-                }
-            }
-
+            if (event->type == SelectionNotify && event->xselection.selection == _glfw.x11.XdndSelection &&
+                event->xselection.property == _glfw.x11.XdndSelection) drop_selection_notify(window, event);
             return;
-        }
 
         case FocusIn:
         {
@@ -2344,7 +2660,7 @@ void _glfwPlatformSetWindowIcon(_GLFWwindow* window,
 
             for (j = 0;  j < images[i].width * images[i].height;  j++)
             {
-                unsigned char *p = images->pixels + j * 4;
+                const unsigned char *p = images->pixels + j * 4;
                 const unsigned char r = *p++, g = *p++, b = *p++, a = *p++;
                 *target++ = a << 24 | (r << 16) | (g << 8) | b;
             }
@@ -3616,4 +3932,663 @@ GLFWAPI int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
     return XSetCommand(_glfw.x11.display, window->x11.handle, argv, argc);
 }
 
+// Drag source {{{
 
+// Helper function to check if a window supports XdndAware
+static bool
+window_supports_xdnd(Window win, int *version_out) {
+    Atom actual_type;
+    int actual_format;
+    unsigned long count, bytes_after;
+    unsigned char *data = NULL;
+    bool supported = false;
+
+    if (XGetWindowProperty(_glfw.x11.display, win, _glfw.x11.XdndAware,
+                          0, 1, False, XA_ATOM,
+                          &actual_type, &actual_format,
+                          &count, &bytes_after, &data) == Success) {
+        if (actual_type == XA_ATOM && actual_format == 32 && count > 0) {
+            supported = true;
+            if (version_out) {
+                int version = *(int*)data;
+                *version_out = (version < _GLFW_XDND_VERSION) ? version : _GLFW_XDND_VERSION;
+            }
+        }
+        if (data) XFree(data);
+    }
+    return supported;
+}
+
+// Find the XdndAware window at the given coordinates
+static Window
+find_xdnd_aware_target(Window root, int root_x, int root_y, int *version_out) {
+    Window target = None;
+    Window child = root;
+    Window parent = root;
+    Window *children = NULL;
+    unsigned int nchildren = 0;
+
+    // Walk down the window tree to find the deepest window at these coordinates
+    while (child != None) {
+        target = child;
+        int x, y;
+        if (!XTranslateCoordinates(_glfw.x11.display, root, target,
+                                   root_x, root_y, &x, &y, &child)) {
+            break;
+        }
+        if (child == None) break;
+    }
+
+    // Walk up the tree to find an XdndAware window
+    while (target != None && target != root) {
+        if (window_supports_xdnd(target, version_out)) {
+            // Check for XdndProxy
+            Atom actual_type;
+            int actual_format;
+            unsigned long count, bytes_after;
+            unsigned char *data = NULL;
+
+            if (XGetWindowProperty(_glfw.x11.display, target, _glfw.x11.XdndProxy,
+                                  0, 1, False, XA_WINDOW,
+                                  &actual_type, &actual_format,
+                                  &count, &bytes_after, &data) == Success) {
+                if (actual_type == XA_WINDOW && actual_format == 32 && count > 0) {
+                    Window proxy = *(Window*)data;
+                    XFree(data);
+                    // Verify the proxy is XdndAware
+                    if (window_supports_xdnd(proxy, NULL)) {
+                        return proxy;
+                    }
+                } else if (data) {
+                    XFree(data);
+                }
+            }
+            return target;
+        }
+
+        // Move to parent
+        Window new_parent;
+        if (XQueryTree(_glfw.x11.display, target, &parent, &new_parent, &children, &nchildren)) {
+            if (children) XFree(children);
+            target = new_parent;
+        } else {
+            break;
+        }
+    }
+
+    return None;
+}
+
+// Send XdndEnter message to target window
+static void
+send_xdnd_enter(Window target, int version) {
+    XEvent event;
+    memset(&event, 0, sizeof(event));
+
+    event.xclient.type = ClientMessage;
+    event.xclient.window = target;
+    event.xclient.message_type = _glfw.x11.XdndEnter;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+    event.xclient.data.l[1] = (version << 24);
+
+    // If we have more than 3 types, set the type list flag
+    if (_glfw.x11.drag.type_count > 3) {
+        event.xclient.data.l[1] |= 1;  // More than 3 types, use property
+        // Set the XdndTypeList property on source window
+        XChangeProperty(_glfw.x11.display, _glfw.x11.drag.source_window,
+                       _glfw.x11.XdndTypeList, XA_ATOM, 32,
+                       PropModeReplace,
+                       (unsigned char*)_glfw.x11.drag.type_atoms,
+                       _glfw.x11.drag.type_count);
+    } else {
+        // Embed up to 3 types in the message
+        for (size_t i = 0; i < _glfw.x11.drag.type_count && i < 3; i++) {
+            event.xclient.data.l[2 + i] = _glfw.x11.drag.type_atoms[i];
+        }
+    }
+
+    XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+    XFlush(_glfw.x11.display);
+}
+
+// Send XdndPosition message to target window
+static void
+send_xdnd_position(Window target, int root_x, int root_y, Time timestamp) {
+    XEvent event;
+    memset(&event, 0, sizeof(event));
+
+    event.xclient.type = ClientMessage;
+    event.xclient.window = target;
+    event.xclient.message_type = _glfw.x11.XdndPosition;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+    event.xclient.data.l[1] = 0;  // Reserved
+    event.xclient.data.l[2] = (root_x << 16) | root_y;
+    event.xclient.data.l[3] = timestamp;
+    event.xclient.data.l[4] = _glfw.x11.drag.action_atom;
+
+    XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+    XFlush(_glfw.x11.display);
+    _glfw.x11.drag.waiting_for_status = true;
+}
+
+// Send XdndLeave message to target window
+static void
+send_xdnd_leave(Window target) {
+    XEvent event;
+    memset(&event, 0, sizeof(event));
+
+    event.xclient.type = ClientMessage;
+    event.xclient.window = target;
+    event.xclient.message_type = _glfw.x11.XdndLeave;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+
+    XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+    XFlush(_glfw.x11.display);
+}
+
+// Send XdndDrop message to target window
+static void
+send_xdnd_drop(Window target, Time timestamp) {
+    XEvent event;
+    memset(&event, 0, sizeof(event));
+
+    event.xclient.type = ClientMessage;
+    event.xclient.window = target;
+    event.xclient.message_type = _glfw.x11.XdndDrop;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = _glfw.x11.drag.source_window;
+    event.xclient.data.l[1] = 0;  // Reserved
+    event.xclient.data.l[2] = timestamp;
+
+    XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
+    XFlush(_glfw.x11.display);
+}
+
+// Render thumbnail pixels into _glfw.x11.drag.thumbnail_pixmap / thumbnail_gc.
+// thumbnail_window must already exist. On success returns true.
+static bool
+render_drag_thumbnail_to_pixmap(const GLFWimage* thumbnail) {
+    // Free any previous pixmap / GC
+    if (_glfw.x11.drag.thumbnail_gc != None) {
+        XFreeGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_gc);
+        _glfw.x11.drag.thumbnail_gc = None;
+    }
+    if (_glfw.x11.drag.thumbnail_pixmap != None) {
+        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
+        _glfw.x11.drag.thumbnail_pixmap = None;
+    }
+
+    _glfw.x11.drag.thumbnail_pixmap = XCreatePixmap(
+        _glfw.x11.display,
+        _glfw.x11.drag.thumbnail_window,
+        thumbnail->width,
+        thumbnail->height,
+        DefaultDepth(_glfw.x11.display, _glfw.x11.screen)
+    );
+    if (!_glfw.x11.drag.thumbnail_pixmap) return false;
+
+    _glfw.x11.drag.thumbnail_gc = XCreateGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap, 0, NULL);
+    if (!_glfw.x11.drag.thumbnail_gc) {
+        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
+        _glfw.x11.drag.thumbnail_pixmap = None;
+        return false;
+    }
+
+    Visual* visual = DefaultVisual(_glfw.x11.display, _glfw.x11.screen);
+    XImage* ximage = XCreateImage(
+        _glfw.x11.display,
+        visual,
+        DefaultDepth(_glfw.x11.display, _glfw.x11.screen),
+        ZPixmap,
+        0,
+        NULL,
+        thumbnail->width,
+        thumbnail->height,
+        32,
+        0
+    );
+    if (!ximage) {
+        XFreeGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_gc);
+        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
+        _glfw.x11.drag.thumbnail_gc = None;
+        _glfw.x11.drag.thumbnail_pixmap = None;
+        return false;
+    }
+
+    int pixels_size = thumbnail->width * thumbnail->height * 4;
+    unsigned char* ximage_data = malloc(pixels_size);
+    if (!ximage_data) {
+        XDestroyImage(ximage);
+        XFreeGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_gc);
+        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
+        _glfw.x11.drag.thumbnail_gc = None;
+        _glfw.x11.drag.thumbnail_pixmap = None;
+        return false;
+    }
+    ximage->data = (char*)ximage_data;
+
+    const unsigned char* src = thumbnail->pixels;
+    for (int i = 0; i < thumbnail->width * thumbnail->height; i++) {
+        unsigned char r = src[i * 4 + 0];
+        unsigned char g = src[i * 4 + 1];
+        unsigned char b = src[i * 4 + 2];
+        unsigned char a = src[i * 4 + 3];
+        if (a < 255) {
+            r = (r * a) / 255;
+            g = (g * a) / 255;
+            b = (b * a) / 255;
+        }
+        unsigned long pixel;
+        if (ximage->byte_order == LSBFirst)
+            pixel = ((unsigned long)a << 24) | ((unsigned long)r << 16) | ((unsigned long)g << 8) | b;
+        else
+            pixel = ((unsigned long)b << 24) | ((unsigned long)g << 16) | ((unsigned long)r << 8) | a;
+        XPutPixel(ximage, i % thumbnail->width, i / thumbnail->width, pixel);
+    }
+
+    XPutImage(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap, _glfw.x11.drag.thumbnail_gc,
+              ximage, 0, 0, 0, 0, thumbnail->width, thumbnail->height);
+    XDestroyImage(ximage);
+
+    XSetWindowBackgroundPixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_window,
+                               _glfw.x11.drag.thumbnail_pixmap);
+    return true;
+}
+
+// Create thumbnail window for drag operation
+static bool
+create_drag_thumbnail(const GLFWimage* thumbnail, int x, int y) {
+    if (!thumbnail || !thumbnail->pixels || thumbnail->width <= 0 || thumbnail->height <= 0) {
+        return true;  // No thumbnail is fine
+    }
+
+    // Create an override-redirect window for the drag icon
+    XSetWindowAttributes attrs;
+    attrs.override_redirect = True;
+    attrs.background_pixel = 0;
+
+    _glfw.x11.drag.thumbnail_window = XCreateWindow(
+        _glfw.x11.display,
+        _glfw.x11.root,
+        x, y,
+        thumbnail->width, thumbnail->height,
+        0,  // border width
+        CopyFromParent,  // depth
+        InputOutput,     // class
+        CopyFromParent,  // visual
+        CWOverrideRedirect | CWBackPixel,
+        &attrs
+    );
+
+    if (!_glfw.x11.drag.thumbnail_window) {
+        return false;
+    }
+
+    if (!render_drag_thumbnail_to_pixmap(thumbnail)) {
+        XDestroyWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window);
+        _glfw.x11.drag.thumbnail_window = None;
+        return false;
+    }
+
+    // Map the window to make it visible
+    XMapRaised(_glfw.x11.display, _glfw.x11.drag.thumbnail_window);
+    XFlush(_glfw.x11.display);
+
+    return true;
+}
+
+// Handle motion during drag
+static void
+handle_drag_motion(int root_x, int root_y, Time timestamp) {
+    if (!_glfw.x11.drag.active) return;
+
+    // Move thumbnail window to follow cursor
+    if (_glfw.x11.drag.thumbnail_window != None) {
+        XMoveWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window, root_x + 10, root_y + 10);
+    }
+
+    int version = _GLFW_XDND_VERSION;
+    Window new_target = find_xdnd_aware_target(_glfw.x11.root, root_x, root_y, &version);
+
+    if (new_target != _glfw.x11.drag.current_target) {
+        // Send leave to old target
+        if (_glfw.x11.drag.current_target != None) {
+            send_xdnd_leave(_glfw.x11.drag.current_target);
+        }
+
+        _glfw.x11.drag.current_target = new_target;
+        _glfw.x11.drag.waiting_for_status = false;
+        _glfw.x11.drag.accepted = false;
+
+        // Send enter to new target
+        if (new_target != None) {
+            _glfw.x11.drag.xdnd_version = version;
+            send_xdnd_enter(new_target, version);
+        }
+    }
+
+    // Send position to current target
+    if (_glfw.x11.drag.current_target != None && !_glfw.x11.drag.waiting_for_status) {
+        send_xdnd_position(_glfw.x11.drag.current_target, root_x, root_y, timestamp);
+    }
+}
+
+// Handle button release during drag (drop)
+static void
+handle_drag_button_release(Time timestamp) {
+    if (!_glfw.x11.drag.active) return;
+
+    if (_glfw.x11.drag.current_target != None && _glfw.x11.drag.accepted) {
+        send_xdnd_drop(_glfw.x11.drag.current_target, timestamp);
+    } else {
+        // Drag was cancelled or not accepted
+        _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+        if (window) {
+            GLFWDragEvent ev = {.type = GLFW_DRAG_CANCELLED};
+            _glfwInputDragSourceRequest(window, &ev);
+        }
+        _glfwFreeDragSourceData();
+    }
+}
+
+// Handle XdndStatus message from drop target
+static void
+handle_xdnd_status(const XClientMessageEvent *event) {
+    if (!_glfw.x11.drag.active) return;
+    if (event->data.l[0] != (long)_glfw.x11.drag.current_target) return;
+
+    _glfw.x11.drag.waiting_for_status = false;
+    _glfw.x11.drag.accepted = (event->data.l[1] & 1) != 0;
+
+    if (_glfw.x11.drag.accepted && event->data.l[4] != None) {
+        _glfw.x11.drag.accepted_action = event->data.l[4];
+    }
+}
+
+// Handle XdndFinished message from drop target
+static void
+handle_xdnd_finished(const XClientMessageEvent *event) {
+    if (!_glfw.x11.drag.active) return;
+    if (event->data.l[0] != (long)_glfw.x11.drag.current_target) return;
+
+    _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+    if (window) {
+        bool accepted = (event->data.l[1] & 1) != 0;
+        GLFWDragOperationType action = 0;
+
+        if (accepted && event->data.l[2] != None) {
+            Atom action_atom = event->data.l[2];
+            if (action_atom == _glfw.x11.XdndActionCopy) {
+                action = GLFW_DRAG_OPERATION_COPY;
+            } else if (action_atom == _glfw.x11.XdndActionMove) {
+                action = GLFW_DRAG_OPERATION_MOVE;
+            } else if (action_atom == _glfw.x11.XdndActionLink) {
+                action = GLFW_DRAG_OPERATION_GENERIC;
+            }
+        }
+
+        GLFWDragEvent ev = {.type = GLFW_DRAG_FINSHED, .action = action};
+        _glfwInputDragSourceRequest(window, &ev);
+    }
+
+    _glfwFreeDragSourceData();
+}
+
+// Add a pending data request
+static bool
+add_pending_request(const char *mime_type, Window requestor, Atom property, Atom target) {
+    if (_glfw.x11.drag.pending_count >= _glfw.x11.drag.pending_capacity) {
+        size_t new_capacity = _glfw.x11.drag.pending_capacity == 0 ? 8 : _glfw.x11.drag.pending_capacity * 2;
+        void *new_ptr = realloc(_glfw.x11.drag.pending_requests,
+                               new_capacity * sizeof(_glfw.x11.drag.pending_requests[0]));
+        if (!new_ptr) return false;
+        _glfw.x11.drag.pending_requests = new_ptr;
+        _glfw.x11.drag.pending_capacity = new_capacity;
+    }
+
+    size_t idx = _glfw.x11.drag.pending_count++;
+    _glfw.x11.drag.pending_requests[idx].mime_type = _glfw_strdup(mime_type);
+    _glfw.x11.drag.pending_requests[idx].requestor = requestor;
+    _glfw.x11.drag.pending_requests[idx].property = property;
+    _glfw.x11.drag.pending_requests[idx].target = target;
+    _glfw.x11.drag.pending_requests[idx].inflight = true;
+
+    return _glfw.x11.drag.pending_requests[idx].mime_type != NULL;
+}
+
+// Send drag data via XChangeProperty
+static void
+send_drag_data(const char *mime_type, const char *data, size_t data_sz,
+               Window requestor, Atom property, Atom target) {
+    (void)mime_type;  // Parameter kept for consistency with other platforms
+    if (data && data_sz > 0) {
+        XChangeProperty(_glfw.x11.display, requestor, property,
+                       target, 8, PropModeReplace,
+                       (unsigned char*)data, data_sz);
+    } else {
+        // Send empty property to indicate no data
+        XChangeProperty(_glfw.x11.display, requestor, property,
+                       target, 8, PropModeReplace,
+                       (unsigned char*)"", 0);
+    }
+}
+
+int
+_glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
+    // If a drag is already active, cancel it first
+    if (_glfw.x11.drag.active) {
+        _glfwFreeDragSourceData();
+    }
+
+    // Convert MIME types to atoms
+    _glfw.x11.drag.type_count = _glfw.drag.item_count;
+    _glfw.x11.drag.type_atoms = calloc(_glfw.drag.item_count, sizeof(Atom));
+    if (!_glfw.x11.drag.type_atoms) {
+        return ENOMEM;
+    }
+
+    for (size_t i = 0; i < _glfw.drag.item_count; i++) {
+        _glfw.x11.drag.type_atoms[i] = XInternAtom(_glfw.x11.display,
+                                                    _glfw.drag.items[i].mime_type,
+                                                    False);
+    }
+
+    // Determine action atom based on operations
+    if (_glfw.drag.operations & GLFW_DRAG_OPERATION_COPY) {
+        _glfw.x11.drag.action_atom = _glfw.x11.XdndActionCopy;
+    } else if (_glfw.drag.operations & GLFW_DRAG_OPERATION_MOVE) {
+        _glfw.x11.drag.action_atom = _glfw.x11.XdndActionMove;
+    } else {
+        _glfw.x11.drag.action_atom = _glfw.x11.XdndActionCopy;
+    }
+
+    _glfw.x11.drag.source_window = window->x11.handle;
+    _glfw.x11.drag.active = true;
+    _glfw.x11.drag.current_target = None;
+    _glfw.x11.drag.waiting_for_status = false;
+    _glfw.x11.drag.accepted = false;
+
+    // Initialize thumbnail fields
+    _glfw.x11.drag.thumbnail_window = None;
+    _glfw.x11.drag.thumbnail_pixmap = None;
+    _glfw.x11.drag.thumbnail_gc = None;
+
+    // Get current cursor position for thumbnail placement
+    Window root_return, child_return;
+    int root_x, root_y, win_x, win_y;
+    unsigned int mask_return;
+    XQueryPointer(_glfw.x11.display, _glfw.x11.root,
+                  &root_return, &child_return,
+                  &root_x, &root_y, &win_x, &win_y, &mask_return);
+
+    // Create thumbnail window if thumbnail is provided
+    if (!create_drag_thumbnail(thumbnail, root_x + 10, root_y + 10)) {
+        // Thumbnail creation failed, but continue with drag operation
+        _glfw.x11.drag.thumbnail_window = None;
+        _glfw.x11.drag.thumbnail_pixmap = None;
+        _glfw.x11.drag.thumbnail_gc = None;
+    }
+
+    // Grab the pointer to track drag motion
+    int result = XGrabPointer(_glfw.x11.display, window->x11.handle, False,
+                             ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
+                             GrabModeAsync, GrabModeAsync,
+                             None, None, CurrentTime);
+
+    if (result != GrabSuccess) {
+        free(_glfw.x11.drag.type_atoms);
+        _glfw.x11.drag.type_atoms = NULL;
+        _glfw.x11.drag.type_count = 0;
+        _glfw.x11.drag.active = false;
+        // Clean up thumbnail if it was created
+        if (_glfw.x11.drag.thumbnail_gc != None) {
+            XFreeGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_gc);
+            _glfw.x11.drag.thumbnail_gc = None;
+        }
+        if (_glfw.x11.drag.thumbnail_pixmap != None) {
+            XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
+            _glfw.x11.drag.thumbnail_pixmap = None;
+        }
+        if (_glfw.x11.drag.thumbnail_window != None) {
+            XDestroyWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window);
+            _glfw.x11.drag.thumbnail_window = None;
+        }
+        return EIO;
+    }
+
+    // Set ourselves as the XdndSelection owner
+    XSetSelectionOwner(_glfw.x11.display, _glfw.x11.XdndSelection,
+                       window->x11.handle, CurrentTime);
+
+    return 0;
+}
+
+void
+_glfwPlatformFreeDragSourceData(void) {
+    if (_glfw.x11.drag.active) {
+        // Send leave to current target
+        if (_glfw.x11.drag.current_target != None) {
+            send_xdnd_leave(_glfw.x11.drag.current_target);
+        }
+
+        // Ungrab the pointer
+        XUngrabPointer(_glfw.x11.display, CurrentTime);
+
+        _glfw.x11.drag.active = false;
+        _glfw.x11.drag.current_target = None;
+    }
+
+    // Clean up thumbnail resources
+    if (_glfw.x11.drag.thumbnail_gc != None) {
+        XFreeGC(_glfw.x11.display, _glfw.x11.drag.thumbnail_gc);
+        _glfw.x11.drag.thumbnail_gc = None;
+    }
+    if (_glfw.x11.drag.thumbnail_pixmap != None) {
+        XFreePixmap(_glfw.x11.display, _glfw.x11.drag.thumbnail_pixmap);
+        _glfw.x11.drag.thumbnail_pixmap = None;
+    }
+    if (_glfw.x11.drag.thumbnail_window != None) {
+        XDestroyWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window);
+        _glfw.x11.drag.thumbnail_window = None;
+    }
+
+    // Free type atoms
+    if (_glfw.x11.drag.type_atoms) {
+        free(_glfw.x11.drag.type_atoms);
+        _glfw.x11.drag.type_atoms = NULL;
+    }
+    _glfw.x11.drag.type_count = 0;
+
+    // Free pending requests
+    if (_glfw.x11.drag.pending_requests) {
+        for (size_t i = 0; i < _glfw.x11.drag.pending_count; i++) {
+            free((void*)_glfw.x11.drag.pending_requests[i].mime_type);
+        }
+        free(_glfw.x11.drag.pending_requests);
+        _glfw.x11.drag.pending_requests = NULL;
+    }
+    _glfw.x11.drag.pending_count = 0;
+    _glfw.x11.drag.pending_capacity = 0;
+}
+
+int
+_glfwPlatformChangeDragImage(const GLFWimage *thumbnail) {
+    if (!_glfw.x11.drag.active) return 0;
+    if (!thumbnail || !thumbnail->pixels || thumbnail->width <= 0 || thumbnail->height <= 0) return 0;
+
+    if (_glfw.x11.drag.thumbnail_window == None) {
+        // No thumbnail window yet; query cursor position and create one
+        Window root_return, child_return;
+        int root_x, root_y, win_x, win_y;
+        unsigned int mask_return;
+        XQueryPointer(_glfw.x11.display, _glfw.x11.root,
+                      &root_return, &child_return,
+                      &root_x, &root_y, &win_x, &win_y, &mask_return);
+        if (!create_drag_thumbnail(thumbnail, root_x + 10, root_y + 10)) return EIO;
+        return 0;
+    }
+
+    // Resize the existing window to match the new thumbnail dimensions
+    XResizeWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window,
+                  thumbnail->width, thumbnail->height);
+
+    if (!render_drag_thumbnail_to_pixmap(thumbnail)) return EIO;
+
+    XClearWindow(_glfw.x11.display, _glfw.x11.drag.thumbnail_window);
+    XFlush(_glfw.x11.display);
+    return 0;
+}
+
+int
+_glfwPlatformDragDataReady(const char *mime_type) {
+    // Find the pending request for this MIME type
+    for (size_t i = 0; i < _glfw.x11.drag.pending_count; i++) {
+        if (_glfw.x11.drag.pending_requests[i].inflight &&
+            strcmp(_glfw.x11.drag.pending_requests[i].mime_type, mime_type) == 0) {
+
+            // Get the drag event with data from the application
+            _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+            if (!window) return ENODEV;
+
+            GLFWDragEvent ev = {
+                .type = GLFW_DRAG_DATA_REQUEST,
+                .mime_type = mime_type,
+                .data = NULL,
+                .data_sz = 0,
+                .err_num = 0
+            };
+
+            _glfwInputDragSourceRequest(window, &ev);
+
+            // Send the data
+            send_drag_data(mime_type, ev.data, ev.data_sz,
+                          _glfw.x11.drag.pending_requests[i].requestor,
+                          _glfw.x11.drag.pending_requests[i].property,
+                          _glfw.x11.drag.pending_requests[i].target);
+
+            // Send SelectionNotify
+            XEvent reply;
+            memset(&reply, 0, sizeof(reply));
+            reply.xselection.type = SelectionNotify;
+            reply.xselection.display = _glfw.x11.display;
+            reply.xselection.requestor = _glfw.x11.drag.pending_requests[i].requestor;
+            reply.xselection.selection = _glfw.x11.XdndSelection;
+            reply.xselection.target = _glfw.x11.drag.pending_requests[i].target;
+            reply.xselection.property = _glfw.x11.drag.pending_requests[i].property;
+            reply.xselection.time = CurrentTime;
+
+            XSendEvent(_glfw.x11.display,
+                      _glfw.x11.drag.pending_requests[i].requestor,
+                      False, 0, &reply);
+
+            _glfw.x11.drag.pending_requests[i].inflight = false;
+            break;
+        }
+    }
+
+    return 0;
+}
+// }}}

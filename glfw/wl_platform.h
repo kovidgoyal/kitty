@@ -63,6 +63,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-fractional-scale-v1-client-protocol.h"
 #include "wayland-viewporter-client-protocol.h"
 #include "wayland-kwin-blur-v1-client-protocol.h"
+#include "wayland-ext-background-effect-v1-client-protocol.h"
 #include "wayland-wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "wayland-single-pixel-buffer-v1-client-protocol.h"
 #include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
@@ -70,6 +71,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-xdg-toplevel-icon-v1-client-protocol.h"
 #include "wayland-xdg-system-bell-v1-client-protocol.h"
 #include "wayland-xdg-toplevel-tag-v1-client-protocol.h"
+#include "wayland-xdg-toplevel-drag-v1-client-protocol.h"
 
 #define _glfw_dlopen(name) dlopen(name, RTLD_LAZY | RTLD_LOCAL)
 #define _glfw_dlclose(handle) dlclose(handle)
@@ -184,6 +186,7 @@ typedef struct _GLFWwindowWayland
     struct wp_fractional_scale_v1 *wp_fractional_scale_v1;
     struct wp_viewport *wp_viewport;
     struct org_kde_kwin_blur *org_kde_kwin_blur;
+    struct ext_background_effect_surface_v1 *ext_background_effect_surface_v1;
     bool has_blur, expect_scale_from_compositor, window_fully_created;
     struct {
         bool surface_configured, preferred_scale_received, fractional_scale_received;
@@ -209,6 +212,7 @@ typedef struct _GLFWwindowWayland
         uint32_t source_type;
         monotonic_t x_start_time, x_stop_time, y_stop_time, y_start_time;
     } pointer_curr_axis_info;
+    GLFWOffsetType prev_frame_offset_type;
 
     _GLFWcursor*                currentCursor;
     double                      cursorPosX, cursorPosY, allCursorPosX, allCursorPosY;
@@ -231,7 +235,7 @@ typedef struct _GLFWwindowWayland
     } pointerLock;
 
     struct {
-        bool serverSide, buffer_destroyed, titlebar_needs_update, dragging;
+        bool serverSide, buffer_destroyed, titlebar_needs_update, dragging, titlebar_hidden;
         _GLFWCSDSurface focus;
 
         _GLFWWaylandCSDSurface titlebar, shadow_left, shadow_right, shadow_top, shadow_bottom, shadow_upper_left, shadow_upper_right, shadow_lower_left, shadow_lower_right;
@@ -296,19 +300,9 @@ typedef struct _GLFWwindowWayland
     struct zwp_keyboard_shortcuts_inhibitor_v1 *keyboard_shortcuts_inhibitor;
 } _GLFWwindowWayland;
 
-typedef enum _GLFWWaylandOfferType
-{
-    EXPIRED,
-    CLIPBOARD,
-    DRAG_AND_DROP,
-    PRIMARY_SELECTION
-}_GLFWWaylandOfferType ;
-
 typedef struct _GLFWWaylandDataOffer
 {
     void *id;
-    _GLFWWaylandOfferType offer_type;
-    size_t idx;
     bool is_self_offer;
     bool is_primary;
     const char *mime_for_drop;
@@ -317,6 +311,16 @@ typedef struct _GLFWWaylandDataOffer
     struct wl_surface *surface;
     const char **mimes;
     size_t mimes_capacity, mimes_count;
+    const char **copy_mimes;   // Working copy passed to callbacks; pointers into mimes[]
+    size_t copy_mimes_count;   // Count of entries in copy_mimes (accepted count after callback)
+    bool drag_accepted, dropped;
+    uint32_t serial;
+    struct {
+        id_type watch_id;
+        int fd;
+        char *mime;
+    } *requested_drop_data;
+    size_t dd_capacity, dd_count;
 } _GLFWWaylandDataOffer;
 
 // Wayland-specific global data
@@ -346,11 +350,14 @@ typedef struct _GLFWlibraryWayland
     struct xdg_toplevel_icon_manager_v1* xdg_toplevel_icon_manager_v1;
     struct xdg_system_bell_v1* xdg_system_bell_v1;
     struct xdg_toplevel_tag_manager_v1* xdg_toplevel_tag_manager_v1;
+    struct xdg_toplevel_drag_manager_v1* xdg_toplevel_drag_manager_v1;
     struct wp_cursor_shape_manager_v1* wp_cursor_shape_manager_v1;
     struct wp_cursor_shape_device_v1* wp_cursor_shape_device_v1;
     struct wp_fractional_scale_manager_v1 *wp_fractional_scale_manager_v1;
     struct wp_viewporter *wp_viewporter;
     struct org_kde_kwin_blur_manager *org_kde_kwin_blur_manager;
+    struct ext_background_effect_manager_v1 *ext_background_effect_manager_v1;
+    uint32_t ext_background_effect_capabilities;
     struct zwlr_layer_shell_v1* zwlr_layer_shell_v1; uint32_t zwlr_layer_shell_v1_version;
     struct wp_single_pixel_buffer_manager_v1 *wp_single_pixel_buffer_manager_v1;
     struct zwp_idle_inhibit_manager_v1* idle_inhibit_manager;
@@ -402,10 +409,31 @@ typedef struct _GLFWlibraryWayland
     } activation_requests;
 
     EventLoopData eventLoopData;
-    size_t dataOffersCounter;
-    _GLFWWaylandDataOffer dataOffers[8];
+    _GLFWWaylandDataOffer untyped_data_offers[8];
+    _GLFWWaylandDataOffer clipboard_data_offer, primary_data_offer, drop_data_offer;
+
     bool has_preferred_buffer_scale;
     char *compositor_name;
+
+    // Drag source state
+    struct {
+        struct wl_data_source* source;
+        struct wl_surface *drag_icon;
+        struct wp_viewport *drag_viewport;
+        struct xdg_toplevel_drag_v1 *toplevel_drag;
+        struct xdg_surface *toplevel_xdg_surface;
+        struct xdg_toplevel *toplevel_xdg_toplevel;
+        struct wl_buffer *toplevel_buffer;
+        struct {
+            const char *mime_type;
+            int fd;
+            GLFWid watch_id;
+            char *pending_data;
+            size_t sz, offset;
+        } *data_requests;
+        size_t count, capacity;
+        GLFWDragOperationType action;
+    } drag;
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data

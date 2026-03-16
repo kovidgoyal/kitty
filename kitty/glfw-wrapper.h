@@ -1005,6 +1005,20 @@ typedef struct GLFWwindow GLFWwindow;
  */
 typedef struct GLFWcursor GLFWcursor;
 
+/*! @brief Opaque drop data object.
+ *
+ *  Opaque drop data object representing data from a drag and drop operation.
+ *  This object is passed to the drop callback and can be used to query
+ *  available MIME types and read the dropped data in chunks.
+ *
+ *  @see @ref path_drop
+ *  @see @ref glfwGetDropMimeTypes
+ *  @see @ref glfwReadDropData
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
 typedef enum {
     GLFW_RELEASE = 0,
     GLFW_PRESS = 1,
@@ -1095,6 +1109,38 @@ typedef struct GLFWDBUSNotificationData {
     const char *app_name, *icon, *summary, *body, *category, **actions; size_t num_actions;
     int32_t timeout; uint8_t urgency; uint32_t replaces; int muted;
 } GLFWDBUSNotificationData;
+
+typedef enum { GLFW_DROP_ENTER, GLFW_DROP_MOVE, GLFW_DROP_LEAVE, GLFW_DROP_DROP, GLFW_DROP_STATUS_UPDATE, GLFW_DROP_DATA_AVAILABLE } GLFWDropEventType;
+
+/*! @brief Drag operation types.
+ *
+ *  These constants specify the type of drag operation (copy, move, or generic).
+ *
+ *  @ingroup input
+ */
+typedef enum {
+    GLFW_DRAG_OPERATION_NONE = 0,  // no operation, drop was not accepted
+    /*! Move the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_MOVE = 1,
+    /*! Copy the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_COPY = 2,
+    /*! Generic drag operation (platform decides semantics). */
+    GLFW_DRAG_OPERATION_GENERIC = 4
+} GLFWDragOperationType;
+
+
+typedef struct GLFWDropEvent {
+    GLFWDropEventType type;
+    const char **mimes; size_t num_mimes;
+    // Positions are only valid for GLFW_DROP_ENTER and GLFW_DROP_MOVE.
+    // They are in window co-ordinates same as for mouse events
+    double xpos, ypos;
+    bool from_self;  // Only valid upto GLFW_DROP_DROP
+    ssize_t (*read_data)(GLFWwindow *w, struct GLFWDropEvent* ev, char *buffer, size_t sz);  // Only valid for GLFW_DROP_DATA_AVAILABLE
+    void (*finish_drop)(GLFWwindow *w, GLFWDragOperationType op); // Only valid for GLFW_DROP_DROP and GLFW_DROP_DATA_AVAILABLE
+} GLFWDropEvent;
+typedef void (* GLFWdropeventfun)(GLFWwindow*, GLFWDropEvent *event);
+
 
 /*! @brief The function pointer type for error callbacks.
  *
@@ -1494,32 +1540,74 @@ typedef void (* GLFWscrollfun)(GLFWwindow*,const GLFWScrollEvent*);
  */
 typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
 
-/*! @brief The function pointer type for drag and drop callbacks.
+typedef enum {
+    GLFW_DRAG_DATA_REQUEST,  // request data for specified mime type
+    GLFW_DRAG_CANCELLED,
+    GLFW_DRAG_FINSHED,
+    GLFW_DRAG_ACCEPTED,  // mimetype was accepted or NULL if drag was accepted but no mime type specified
+    GLFW_DRAG_ACTION_CHANGED,  // action was changed 0 or GLFWDragOperationType
+    GLFW_DRAG_DROPPED,  // drop was performed but no data transferred yet
+} GLFWDragEventType;
+
+typedef struct GLFWDragSourceItem {
+    const char *mime_type;
+    // Can be on null to provide data when the drag is started should be used only when the data is relatively small
+    const char *optional_data;
+    size_t data_size;
+} GLFWDragSourceItem;
+
+typedef struct GLFWDragEvent {
+    GLFWDragEventType type;
+    // When the drag event callback is called with a mimetype and no data, the
+    // application should set the data ans data_sz and err_num fields.
+    // Once glfw is done reading the data the drag event callback will be
+    // called with the data pointer unchanged. The application is now free
+    // to delete the data, as needed.
+    const char *mime_type;
+    const char *data; size_t data_sz;
+    int err_num;  // POSIX error code indicating failure fetching data
+    GLFWDragOperationType action;  // can be 0 indicating no action
+} GLFWDragEvent;
+
+typedef void (* GLFWdragsourcefun)(GLFWwindow* window, GLFWDragEvent *ev);
+
+/*! @brief The function pointer type for drag event callbacks.
  *
- *  This is the function pointer type for drop callbacks. A drop
+ *  This is the function pointer type for drag event callbacks. A drag event
  *  callback function has the following signature:
  *  @code
- *  int function_name(GLFWwindow* window, const char* mime, const char* text)
+ *  int function_name(GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int* mime_count)
  *  @endcode
  *
- *  @param[in] window The window that received the event.
- *  @param[in] mime The UTF-8 encoded drop mime-type
- *  @param[in] data The dropped data or NULL for drag enter events
- *  @param[in] sz The size of the dropped data
- *  @return For drag events should return the priority for the specified mime type. A priority of zero
- *  or lower means the mime type is not accepted. Highest priority will be the finally accepted mime-type.
+ *  @param[in] window The window that received the drag event.
+ *  @param[in] event The drag event type: @ref GLFW_DRAG_ENTER, @ref GLFW_DRAG_MOVE,
+ *  or @ref GLFW_DRAG_LEAVE.
+ *  @param[in] xpos The x-coordinate of the drag position in window coordinates.
+ *  @param[in] ypos The y-coordinate of the drag position in window coordinates.
+ *  @param[in,out] mime_types A writable array of MIME type strings available from the drag source.
+ *  For @ref GLFW_DRAG_ENTER and @ref GLFW_DRAG_MOVE events this is non-NULL and contains all
+ *  available MIME types. The callback is responsible for sorting this list by priority and
+ *  keeping only the MIME types it wants to accept. The first MIME type in the sorted list
+ *  will be used for the drop operation. The strings are only valid for the duration of the
+ *  callback; if you need to store them, make copies. For @ref GLFW_DRAG_LEAVE events this
+ *  is `NULL`.
+ *  @param[in,out] mime_count Pointer to the number of MIME types in the array. The callback
+ *  should update this to reflect the new count after sorting and filtering. For
+ *  @ref GLFW_DRAG_LEAVE events this is `NULL`.
+ *  @return For @ref GLFW_DRAG_ENTER and @ref GLFW_DRAG_MOVE events, return non-zero
+ *  to accept the drag or zero to reject it. This allows the application to
+ *  dynamically accept or reject the drag based on the current position.
+ *  Return value is ignored for @ref GLFW_DRAG_LEAVE events.
  *
- *  @pointer_lifetime The text is valid until the
- *  callback function returns.
+ *  @sa @ref drag_events
+ *  @sa @ref glfwSetDragCallback
+ *  @sa @ref glfwUpdateDragState
  *
- *  @sa @ref path_drop
- *  @sa @ref glfwSetDropCallback
- *
- *  @since Added in version 3.1.
+ *  @since Added in version 4.0.
  *
  *  @ingroup input
  */
-typedef int (* GLFWdropfun)(GLFWwindow*, const char *, const char*, size_t);
+typedef int (* GLFWdragfun)(GLFWwindow*, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int* mime_count);
 
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 
@@ -1672,7 +1760,7 @@ typedef struct GLFWimage
     int height;
     /*! The pixel data of this image, arranged left-to-right, top-to-bottom.
      */
-    unsigned char* pixels;
+    const unsigned char* pixels;
 } GLFWimage;
 
 /*! @brief Gamepad input state
@@ -2194,13 +2282,29 @@ typedef GLFWscrollfun (*glfwSetScrollCallback_func)(GLFWwindow*, GLFWscrollfun);
 GFW_EXTERN glfwSetScrollCallback_func glfwSetScrollCallback_impl;
 #define glfwSetScrollCallback glfwSetScrollCallback_impl
 
-typedef GLFWdropfun (*glfwSetDropCallback_func)(GLFWwindow*, GLFWdropfun);
-GFW_EXTERN glfwSetDropCallback_func glfwSetDropCallback_impl;
-#define glfwSetDropCallback glfwSetDropCallback_impl
-
 typedef GLFWliveresizefun (*glfwSetLiveResizeCallback_func)(GLFWwindow*, GLFWliveresizefun);
 GFW_EXTERN glfwSetLiveResizeCallback_func glfwSetLiveResizeCallback_impl;
 #define glfwSetLiveResizeCallback glfwSetLiveResizeCallback_impl
+
+typedef GLFWdropeventfun (*glfwSetDropEventCallback_func)(GLFWwindow*, GLFWdropeventfun);
+GFW_EXTERN glfwSetDropEventCallback_func glfwSetDropEventCallback_impl;
+#define glfwSetDropEventCallback glfwSetDropEventCallback_impl
+
+typedef int (*glfwRequestDropData_func)(GLFWwindow*, const char*);
+GFW_EXTERN glfwRequestDropData_func glfwRequestDropData_impl;
+#define glfwRequestDropData glfwRequestDropData_impl
+
+typedef void (*glfwEndDrop_func)(GLFWwindow*, GLFWDragOperationType);
+GFW_EXTERN glfwEndDrop_func glfwEndDrop_impl;
+#define glfwEndDrop glfwEndDrop_impl
+
+typedef GLFWdragsourcefun (*glfwSetDragSourceCallback_func)(GLFWwindow*, GLFWdragsourcefun);
+GFW_EXTERN glfwSetDragSourceCallback_func glfwSetDragSourceCallback_impl;
+#define glfwSetDragSourceCallback glfwSetDragSourceCallback_impl
+
+typedef int (*glfwStartDrag_func)(GLFWwindow*, const GLFWDragSourceItem*, size_t, const GLFWimage*, int, bool);
+GFW_EXTERN glfwStartDrag_func glfwStartDrag_impl;
+#define glfwStartDrag glfwStartDrag_impl
 
 typedef int (*glfwJoystickPresent_func)(int);
 GFW_EXTERN glfwJoystickPresent_func glfwJoystickPresent_impl;
@@ -2338,6 +2442,10 @@ typedef void (*glfwCocoaRequestRenderFrame_func)(GLFWwindow*, GLFWcocoarenderfra
 GFW_EXTERN glfwCocoaRequestRenderFrame_func glfwCocoaRequestRenderFrame_impl;
 #define glfwCocoaRequestRenderFrame glfwCocoaRequestRenderFrame_impl
 
+typedef bool (*glfwCocoaRecreateGLDrawable_func)(GLFWwindow*);
+GFW_EXTERN glfwCocoaRecreateGLDrawable_func glfwCocoaRecreateGLDrawable_impl;
+#define glfwCocoaRecreateGLDrawable glfwCocoaRecreateGLDrawable_impl
+
 typedef GLFWcocoarenderframefun (*glfwCocoaSetWindowResizeCallback_func)(GLFWwindow*, GLFWcocoarenderframefun);
 GFW_EXTERN glfwCocoaSetWindowResizeCallback_func glfwCocoaSetWindowResizeCallback_impl;
 #define glfwCocoaSetWindowResizeCallback glfwCocoaSetWindowResizeCallback_impl
@@ -2361,6 +2469,10 @@ GFW_EXTERN glfwCocoaCycleThroughOSWindows_func glfwCocoaCycleThroughOSWindows_im
 typedef void (*glfwCocoaSetWindowChrome_func)(GLFWwindow*, unsigned int, bool, unsigned int, int, unsigned int, bool, int, float, bool);
 GFW_EXTERN glfwCocoaSetWindowChrome_func glfwCocoaSetWindowChrome_impl;
 #define glfwCocoaSetWindowChrome glfwCocoaSetWindowChrome_impl
+
+typedef void (*glfwCocoaRegisterMIMETypes_func)(GLFWwindow*, const char**, size_t);
+GFW_EXTERN glfwCocoaRegisterMIMETypes_func glfwCocoaRegisterMIMETypes_impl;
+#define glfwCocoaRegisterMIMETypes glfwCocoaRegisterMIMETypes_impl
 
 typedef const char* (*glfwGetPrimarySelectionString_func)(GLFWwindow*);
 GFW_EXTERN glfwGetPrimarySelectionString_func glfwGetPrimarySelectionString_impl;
@@ -2389,6 +2501,10 @@ GFW_EXTERN glfwWaylandRunWithActivationToken_func glfwWaylandRunWithActivationTo
 typedef bool (*glfwWaylandSetTitlebarColor_func)(GLFWwindow*, uint32_t, bool);
 GFW_EXTERN glfwWaylandSetTitlebarColor_func glfwWaylandSetTitlebarColor_impl;
 #define glfwWaylandSetTitlebarColor glfwWaylandSetTitlebarColor_impl
+
+typedef void (*glfwWaylandSetTitlebarHidden_func)(GLFWwindow*, bool);
+GFW_EXTERN glfwWaylandSetTitlebarHidden_func glfwWaylandSetTitlebarHidden_impl;
+#define glfwWaylandSetTitlebarHidden glfwWaylandSetTitlebarHidden_impl
 
 typedef void (*glfwWaylandRedrawCSDWindowTitle_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandRedrawCSDWindowTitle_func glfwWaylandRedrawCSDWindowTitle_impl;

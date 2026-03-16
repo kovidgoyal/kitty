@@ -885,14 +885,16 @@ cocoa_update_menu_bar_title(PyObject *pytitle) {
         title = @(PyUnicode_AsUTF8(pytitle));
     }
     if (!title) return;
-    NSMenu *bar = [NSApp mainMenu];
+    NSString *menuTitle = [NSString stringWithFormat:@" :: %@", title];
     if (title_menu != NULL) {
-        [bar removeItem:title_menu];
+        [[title_menu submenu] setTitle:menuTitle];
+    } else {
+        NSMenu *bar = [NSApp mainMenu];
+        title_menu = [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
+        NSMenu *m = [[NSMenu alloc] initWithTitle:menuTitle];
+        [title_menu setSubmenu:m];
+        [m release];
     }
-    title_menu = [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
-    NSMenu *m = [[NSMenu alloc] initWithTitle:[NSString stringWithFormat:@" :: %@", title]];
-    [title_menu setSubmenu:m];
-    [m release];
 }
 
 void
@@ -1337,6 +1339,27 @@ cocoa_show_progress_bar_on_dock_icon(PyObject *self UNUSED, PyObject *args) {
 }
 // }}}
 
+// Dock badge {{{
+
+static bool dock_badge_is_set = false;
+
+void
+cocoa_set_dock_badge(const char *label) {
+    @autoreleasepool {
+        NSDockTile *dockTile = [NSApp dockTile];
+        [dockTile setBadgeLabel:label ? @(label) : nil];
+        [dockTile display];
+        dock_badge_is_set = (label != NULL);
+    }
+}
+
+void
+cocoa_clear_dock_badge_if_set(void) {
+    if (dock_badge_is_set) cocoa_set_dock_badge(NULL);
+}
+
+// }}}
+
 static PyMethodDef module_methods[] = {
     {"cocoa_play_system_sound_by_id_async", play_system_sound_by_id_async, METH_O, ""},
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
@@ -1358,5 +1381,12 @@ init_cocoa(PyObject *module) {
     cocoa_clear_global_shortcuts();
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     register_at_exit_cleanup_func(COCOA_CLEANUP_FUNC, cleanup);
+    [[NSNotificationCenter defaultCenter]
+        addObserverForName:NSApplicationDidBecomeActiveNotification
+        object:nil
+        queue:[NSOperationQueue mainQueue]
+        usingBlock:^(NSNotification *note UNUSED) {
+            cocoa_set_dock_badge(NULL);
+        }];
     return true;
 }

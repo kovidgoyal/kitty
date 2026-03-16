@@ -1290,6 +1290,7 @@ class KeyMapOptions:
     mode: str = ''
     on_unknown: LiteralField[OnUnknown] = LiteralField[OnUnknown](get_args(OnUnknown))
     on_action: LiteralField[OnAction] = LiteralField[OnAction](get_args(OnAction))
+    timeout: float | None = None
 
 
 default_key_map_options = KeyMapOptions()
@@ -1349,6 +1350,8 @@ class KeyboardMode:
     on_unknown: OnUnknown = get_args(OnUnknown)[0]
     on_action : OnAction = get_args(OnAction)[0]
     sequence_keys: list[defines.KeyEvent] | None = None
+    timeout: float = 0.0
+    timeout_timer_id: int | None = None
 
     def __init__(self, name: str = '') -> None:
         self.name = name
@@ -1356,6 +1359,8 @@ class KeyboardMode:
 
 
 KeyboardModeMap = dict[str, KeyboardMode]
+key_map_option_converters: defaultdict[str, Callable[[str], Any]] = defaultdict(lambda: (lambda x: x))
+key_map_option_converters['timeout'] = float
 
 
 def parse_options_for_map(val: str) -> tuple[KeyMapOptions, str]:
@@ -1365,7 +1370,7 @@ def parse_options_for_map(val: str) -> tuple[KeyMapOptions, str]:
     while (tok := s.next_word())[0] > -1:
         x = tok[1]
         if expecting_arg:
-            object.__setattr__(ans, expecting_arg, x)
+            object.__setattr__(ans, expecting_arg, key_map_option_converters[expecting_arg](x))
             expecting_arg = ''
         elif x.startswith('--'):
             expecting_arg = x[2:]
@@ -1375,7 +1380,7 @@ def parse_options_for_map(val: str) -> tuple[KeyMapOptions, str]:
             if expecting_arg not in allowed_key_map_options:
                 raise KeyError(f'The map option {x} is unknown. Allowed options: {", ".join(allowed_key_map_options)}')
             if sep == '=':
-                object.__setattr__(ans, k, v)
+                object.__setattr__(ans, k, key_map_option_converters[k](v))
                 expecting_arg = ''
         else:
             return ans, val[tok[0]:]

@@ -353,11 +353,23 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetScrollCallback_impl) = dlsym(handle, "glfwSetScrollCallback");
     if (glfwSetScrollCallback_impl == NULL) fail("Failed to load glfw function glfwSetScrollCallback with error: %s", dlerror());
 
-    *(void **) (&glfwSetDropCallback_impl) = dlsym(handle, "glfwSetDropCallback");
-    if (glfwSetDropCallback_impl == NULL) fail("Failed to load glfw function glfwSetDropCallback with error: %s", dlerror());
-
     *(void **) (&glfwSetLiveResizeCallback_impl) = dlsym(handle, "glfwSetLiveResizeCallback");
     if (glfwSetLiveResizeCallback_impl == NULL) fail("Failed to load glfw function glfwSetLiveResizeCallback with error: %s", dlerror());
+
+    *(void **) (&glfwSetDropEventCallback_impl) = dlsym(handle, "glfwSetDropEventCallback");
+    if (glfwSetDropEventCallback_impl == NULL) fail("Failed to load glfw function glfwSetDropEventCallback with error: %s", dlerror());
+
+    *(void **) (&glfwRequestDropData_impl) = dlsym(handle, "glfwRequestDropData");
+    if (glfwRequestDropData_impl == NULL) fail("Failed to load glfw function glfwRequestDropData with error: %s", dlerror());
+
+    *(void **) (&glfwEndDrop_impl) = dlsym(handle, "glfwEndDrop");
+    if (glfwEndDrop_impl == NULL) fail("Failed to load glfw function glfwEndDrop with error: %s", dlerror());
+
+    *(void **) (&glfwSetDragSourceCallback_impl) = dlsym(handle, "glfwSetDragSourceCallback");
+    if (glfwSetDragSourceCallback_impl == NULL) fail("Failed to load glfw function glfwSetDragSourceCallback with error: %s", dlerror());
+
+    *(void **) (&glfwStartDrag_impl) = dlsym(handle, "glfwStartDrag");
+    if (glfwStartDrag_impl == NULL) fail("Failed to load glfw function glfwStartDrag with error: %s", dlerror());
 
     *(void **) (&glfwJoystickPresent_impl) = dlsym(handle, "glfwJoystickPresent");
     if (glfwJoystickPresent_impl == NULL) fail("Failed to load glfw function glfwJoystickPresent with error: %s", dlerror());
@@ -461,6 +473,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwCocoaRequestRenderFrame_impl) = dlsym(handle, "glfwCocoaRequestRenderFrame");
     if (glfwCocoaRequestRenderFrame_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwCocoaRecreateGLDrawable_impl) = dlsym(handle, "glfwCocoaRecreateGLDrawable");
+    if (glfwCocoaRecreateGLDrawable_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwCocoaSetWindowResizeCallback_impl) = dlsym(handle, "glfwCocoaSetWindowResizeCallback");
     if (glfwCocoaSetWindowResizeCallback_impl == NULL) dlerror(); // clear error indicator
 
@@ -478,6 +493,9 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwCocoaSetWindowChrome_impl) = dlsym(handle, "glfwCocoaSetWindowChrome");
     if (glfwCocoaSetWindowChrome_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwCocoaRegisterMIMETypes_impl) = dlsym(handle, "glfwCocoaRegisterMIMETypes");
+    if (glfwCocoaRegisterMIMETypes_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetPrimarySelectionString_impl) = dlsym(handle, "glfwGetPrimarySelectionString");
     if (glfwGetPrimarySelectionString_impl == NULL) dlerror(); // clear error indicator
@@ -499,6 +517,9 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwWaylandSetTitlebarColor_impl) = dlsym(handle, "glfwWaylandSetTitlebarColor");
     if (glfwWaylandSetTitlebarColor_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwWaylandSetTitlebarHidden_impl) = dlsym(handle, "glfwWaylandSetTitlebarHidden");
+    if (glfwWaylandSetTitlebarHidden_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwWaylandRedrawCSDWindowTitle_impl) = dlsym(handle, "glfwWaylandRedrawCSDWindowTitle");
     if (glfwWaylandRedrawCSDWindowTitle_impl == NULL) dlerror(); // clear error indicator

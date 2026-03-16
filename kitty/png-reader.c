@@ -164,7 +164,7 @@ png_write_to_memory(png_structp png_ptr, png_bytep data, png_size_t length) {
 static void png_flush_memory(png_structp png_ptr) { (void)png_ptr; }
 
 static const char*
-create_png_from_data(char *data, size_t width, size_t height, size_t stride, size_t *out_size, bool flip_vertically, int color_type) {
+create_png_from_data(const char *data, size_t width, size_t height, size_t stride, size_t *out_size, bool flip_vertically, int color_type) {
     *out_size = 0;
     png_memory_write_state state = {.capacity=width*height * sizeof(uint32_t)};
     state.buffer = malloc(state.capacity);
@@ -202,12 +202,25 @@ create_png_from_data(char *data, size_t width, size_t height, size_t stride, siz
 }
 
 const char*
-png_from_32bit_rgba(char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically) {
+png_from_32bit_rgba(const char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically) {
     return create_png_from_data(data, width, height, 4 * width, out_size, flip_vertically, PNG_COLOR_TYPE_RGBA);
 }
 
+PyObject*
+png_from_32bit_rgba_data(PyObject *self UNUSED, PyObject *args) {
+    int flip_vertically = 0; const char* data; Py_ssize_t len;
+    unsigned width, height;
+    if (!PyArg_ParseTuple(args, "y#II|p", &data, &len, &width, &height, &flip_vertically)) return NULL;
+    size_t out_size;
+    const char *out = create_png_from_data(data, width, height, 4 * width, &out_size, flip_vertically, PNG_COLOR_TYPE_RGBA);
+    PyObject *ans = PyBytes_FromStringAndSize(out, out_size);
+    free((void*)out);
+    return ans;
+}
+
+
 const char*
-png_from_24bit_rgb(char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically) {
+png_from_24bit_rgb(const char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically) {
     return create_png_from_data(data, width, height, 3 * width, out_size, flip_vertically, PNG_COLOR_TYPE_RGB);
 }
 
@@ -237,6 +250,7 @@ load_png_data(PyObject *self UNUSED, PyObject *args) {
 
 static PyMethodDef module_methods[] = {
     METHODB(load_png_data, METH_VARARGS),
+    METHODB(png_from_32bit_rgba_data, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

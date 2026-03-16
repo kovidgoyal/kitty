@@ -23,7 +23,7 @@ def generate_srgb_lut(line_prefix: str = '    ') -> list[str]:
     lines: list[str] = []
 
     for i in range(256):
-        values.append(f'{to_linear(i / 255.0):1.5f}f')
+        values.append(f'{to_linear(i / 255.0):1.8f}f')
 
     for i in range(16):
         lines.append(line_prefix + ', '.join(values[i * 16:(i + 1) * 16]) + ',')

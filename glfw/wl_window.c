@@ -39,6 +39,7 @@
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/mman.h>
 #include <assert.h>
 #include <unistd.h>
@@ -343,7 +344,25 @@ update_regions(_GLFWwindow* window) {
         wl_region_destroy(region);
     }
     // Set blur region
-    if (_glfw.wl.org_kde_kwin_blur_manager) {
+    if (_glfw.wl.ext_background_effect_manager_v1) {
+        if (window->wl.has_blur && (_glfw.wl.ext_background_effect_capabilities & EXT_BACKGROUND_EFFECT_MANAGER_V1_CAPABILITY_BLUR)) {
+            if (!window->wl.ext_background_effect_surface_v1)
+                window->wl.ext_background_effect_surface_v1 = ext_background_effect_manager_v1_get_background_effect(
+                    _glfw.wl.ext_background_effect_manager_v1, window->wl.surface);
+            if (window->wl.ext_background_effect_surface_v1) {
+                struct wl_region* region = wl_compositor_create_region(_glfw.wl.compositor);
+                if (region) {
+                    wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
+                    ext_background_effect_surface_v1_set_blur_region(window->wl.ext_background_effect_surface_v1, region);
+                    wl_region_destroy(region);
+                }
+            }
+        } else {
+            if (window->wl.ext_background_effect_surface_v1) {
+                ext_background_effect_surface_v1_set_blur_region(window->wl.ext_background_effect_surface_v1, NULL);
+            }
+        }
+    } else if (_glfw.wl.org_kde_kwin_blur_manager) {
         if (window->wl.has_blur) {
             if (!window->wl.org_kde_kwin_blur)
                 window->wl.org_kde_kwin_blur = org_kde_kwin_blur_manager_create(_glfw.wl.org_kde_kwin_blur_manager, window->wl.surface);
@@ -605,7 +624,7 @@ create_surface(_GLFWwindow* window, const _GLFWwndconfig* wndconfig) {
         }
     }
     window->wl.window_fully_created = !window->wl.expect_scale_from_compositor;
-    if (_glfw.wl.org_kde_kwin_blur_manager && wndconfig->blur_radius > 0) _glfwPlatformSetWindowBlur(window, wndconfig->blur_radius);
+    if ((_glfw.wl.ext_background_effect_manager_v1 || _glfw.wl.org_kde_kwin_blur_manager) && wndconfig->blur_radius > 0) _glfwPlatformSetWindowBlur(window, wndconfig->blur_radius);
 
     window->wl.integer_scale.deduced = scale;
     if (_glfw.wl.has_preferred_buffer_scale) { scale = 1; window->wl.integer_scale.preferred = 1; }
@@ -812,6 +831,8 @@ apply_xdg_configure_changes(_GLFWwindow *window) {
     if (window->wl.pending_state & PENDING_STATE_DECORATION) {
         uint32_t mode = window->wl.pending.decoration_mode;
         bool has_server_side_decorations = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+        // Force CSD when decorations are hidden or titlebar is hidden
+        if (!window->decorated || window->wl.decorations.titlebar_hidden) has_server_side_decorations = false;
         window->wl.decorations.serverSide = has_server_side_decorations;
         window->wl.current.decoration_mode = mode;
     }
@@ -959,8 +980,14 @@ static void
 setXdgDecorations(_GLFWwindow* window)
 {
     if (window->wl.xdg.decoration) {
-        window->wl.decorations.serverSide = true;
-        zxdg_toplevel_decoration_v1_set_mode(window->wl.xdg.decoration, window->decorated ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE: ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+        if (window->wl.decorations.titlebar_hidden) {
+            window->wl.decorations.serverSide = false;
+            zxdg_toplevel_decoration_v1_set_mode(window->wl.xdg.decoration, ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+            csd_set_visible(window, csd_should_window_be_decorated(window));
+        } else {
+            window->wl.decorations.serverSide = true;
+            zxdg_toplevel_decoration_v1_set_mode(window->wl.xdg.decoration, window->decorated ? ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE: ZXDG_TOPLEVEL_DECORATION_V1_MODE_CLIENT_SIDE);
+        }
     } else {
         window->wl.decorations.serverSide = false;
         csd_set_visible(window, csd_should_window_be_decorated(window));
@@ -1511,6 +1538,8 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
         wp_viewport_destroy(window->wl.wp_viewport);
     if (window->wl.org_kde_kwin_blur)
         org_kde_kwin_blur_release(window->wl.org_kde_kwin_blur);
+    if (window->wl.ext_background_effect_surface_v1)
+        ext_background_effect_surface_v1_destroy(window->wl.ext_background_effect_surface_v1);
 
     if (window->context.destroy)
         window->context.destroy(window);
@@ -1559,6 +1588,14 @@ void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
 
 void
 _glfwPlatformSetWindowIcon(_GLFWwindow* window, int count, const GLFWimage* images) {
+    if (is_layer_shell(window)) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Cannot set window icon on layer shell surfaces");
+        return;
+    }
+    if (!window->wl.xdg.toplevel) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Ignoring attempt to set window icon on window without a toplevel");
+        return;
+    }
     if (!_glfw.wl.xdg_toplevel_icon_manager_v1) {
         static bool warned_once = false;
         if (!warned_once) {
@@ -1706,7 +1743,8 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
     if (window->decorated && !window->monitor && !window->wl.decorations.serverSide)
     {
         if (top)
-            *top = window->wl.decorations.metrics.top - window->wl.decorations.metrics.visible_titlebar_height;
+            *top = window->wl.decorations.titlebar_hidden ? 0 :
+                window->wl.decorations.metrics.top - window->wl.decorations.metrics.visible_titlebar_height;
         if (left)
             *left = window->wl.decorations.metrics.width;
         if (right)
@@ -2258,35 +2296,6 @@ read_offer(int data_pipe, GLFWclipboardwritedatafun write_data, void *object) {
 }
 
 
-typedef struct chunked_writer {
-    char *buf; size_t sz, cap;
-} chunked_writer;
-
-static bool
-write_chunk(void *object, const char *data, size_t sz) {
-    chunked_writer *cw = object;
-    if (cw->cap < cw->sz + sz) {
-        cw->cap = MAX(cw->cap * 2, cw->sz + 8*sz);
-        cw->buf = realloc(cw->buf, cw->cap * sizeof(cw->buf[0]));
-    }
-    memcpy(cw->buf + cw->sz, data, sz);
-    cw->sz += sz;
-    return true;
-}
-
-
-static char*
-read_offer_string(int data_pipe, size_t *sz) {
-    chunked_writer cw = {0};
-    read_offer(data_pipe, write_chunk, &cw);
-    if (cw.buf) {
-        *sz = cw.sz;
-        return cw.buf;
-    }
-    *sz = 0;
-    return NULL;
-}
-
 static void
 read_clipboard_data_offer(struct wl_data_offer *data_offer, const char *mime, GLFWclipboardwritedatafun write_data, void *object) {
     int pipefd[2];
@@ -2303,14 +2312,6 @@ read_primary_selection_offer(struct zwp_primary_selection_offer_v1 *primary_sele
     zwp_primary_selection_offer_v1_receive(primary_selection_offer, mime, pipefd[1]);
     close(pipefd[1]);
     read_offer(pipefd[0], write_data, object);
-}
-
-static char* read_data_offer(struct wl_data_offer *data_offer, const char *mime, size_t *sz) {
-    int pipefd[2];
-    if (pipe2(pipefd, O_CLOEXEC) != 0) return NULL;
-    wl_data_offer_receive(data_offer, mime, pipefd[1]);
-    close(pipefd[1]);
-    return read_offer_string(pipefd[0], sz);
 }
 
 static void data_source_canceled(void *data UNUSED, struct wl_data_source *wl_data_source) {
@@ -2335,7 +2336,7 @@ static void primary_selection_source_canceled(void *data UNUSED, struct zwp_prim
 static void dummy_data_source_target(void* data UNUSED, struct wl_data_source* wl_data_source UNUSED, const char* mime_type UNUSED) {
 }
 
-static void dummy_data_source_action(void* data UNUSED, struct wl_data_source* wl_data_source UNUSED, uint dnd_action UNUSED) {
+static void dummy_data_source_action(void* data UNUSED, struct wl_data_source* wl_data_source UNUSED, unsigned int dnd_action UNUSED) {
 }
 
 static const struct wl_data_source_listener data_source_listener = {
@@ -2350,6 +2351,17 @@ static const struct zwp_primary_selection_source_v1_listener primary_selection_s
     .cancelled = primary_selection_source_canceled,
 };
 
+// Getting data from clipboard and drops {{{
+static void
+destroy_drop_data(_GLFWWaylandDataOffer *offer) {
+    for (size_t i = 0; i < offer->dd_count; i++) {
+        if (offer->requested_drop_data[i].mime) free(offer->requested_drop_data[i].mime);
+        if (offer->requested_drop_data[i].fd > -1) { safe_close(offer->requested_drop_data[i].fd); }
+        if (offer->requested_drop_data[i].watch_id) removeWatch(&_glfw.wl.eventLoopData, offer->requested_drop_data[i].watch_id);
+    }
+    free(offer->requested_drop_data);
+}
+
 void
 destroy_data_offer(_GLFWWaylandDataOffer *offer) {
     if (offer->id) {
@@ -2360,47 +2372,56 @@ destroy_data_offer(_GLFWWaylandDataOffer *offer) {
         for (size_t i = 0; i < offer->mimes_count; i++) free((char*)offer->mimes[i]);
         free(offer->mimes);
     }
-    memset(offer, 0, sizeof(_GLFWWaylandDataOffer));
+    free(offer->copy_mimes);  // pointer array only; strings are owned by mimes[]
+    if (offer->requested_drop_data) destroy_drop_data(offer);
+    memset(offer, 0, sizeof(offer[0]));
 }
 
-static void prune_unclaimed_data_offers(void) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id && !_glfw.wl.dataOffers[i].offer_type) {
-            destroy_data_offer(&_glfw.wl.dataOffers[i]);
-        }
+// Reset the working copy of mimes so the next callback sees the full original
+// list.  Returns false on allocation failure.
+static bool
+reset_copy_mimes(_GLFWWaylandDataOffer *offer) {
+    if (offer->mimes_count == 0) { offer->copy_mimes_count = 0; return true; }
+    if (!offer->copy_mimes) {
+        offer->copy_mimes = malloc(offer->mimes_count * sizeof(const char*));
+        if (!offer->copy_mimes) return false;
     }
-}
-
-static void mark_selection_offer(void *data UNUSED, struct wl_data_device *data_device UNUSED, struct wl_data_offer *data_offer)
-{
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == data_offer) {
-            _glfw.wl.dataOffers[i].offer_type = CLIPBOARD;
-        } else if (_glfw.wl.dataOffers[i].offer_type == CLIPBOARD) {
-            _glfw.wl.dataOffers[i].offer_type = EXPIRED;  // previous selection offer
-        }
-    }
-    prune_unclaimed_data_offers();
-}
-
-static void mark_primary_selection_offer(void *data UNUSED, struct zwp_primary_selection_device_v1* primary_selection_device UNUSED,
-        struct zwp_primary_selection_offer_v1 *primary_selection_offer) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == primary_selection_offer) {
-            _glfw.wl.dataOffers[i].offer_type = PRIMARY_SELECTION;
-        } else if (_glfw.wl.dataOffers[i].offer_type == PRIMARY_SELECTION) {
-            _glfw.wl.dataOffers[i].offer_type = EXPIRED;  // previous selection offer
-        }
-    }
-    prune_unclaimed_data_offers();
+    memcpy(offer->copy_mimes, offer->mimes, offer->mimes_count * sizeof(const char*));
+    offer->copy_mimes_count = offer->mimes_count;
+    return true;
 }
 
 static void
-set_offer_mimetype(_GLFWWaylandDataOffer* offer, const char* mime) {
+mark_data_offer(_GLFWWaylandDataOffer *ans, void *id) {
+    if (ans->id) destroy_data_offer(ans);
+    for (size_t i = 0; i < arraysz(_glfw.wl.untyped_data_offers); i++) {
+        _GLFWWaylandDataOffer *offer = _glfw.wl.untyped_data_offers + i;
+        if (offer->id == id) {
+            *ans = *offer;
+            memset(offer, 0, sizeof(offer[0]));
+            break;
+        }
+    }
+}
+
+static void
+mark_selection_offer(void *data UNUSED, struct wl_data_device *data_device UNUSED, struct wl_data_offer *data_offer) {
+    mark_data_offer(&_glfw.wl.clipboard_data_offer, data_offer);
+}
+
+static void
+mark_primary_selection_offer(void *data UNUSED, struct zwp_primary_selection_device_v1* primary_selection_device UNUSED,
+        struct zwp_primary_selection_offer_v1 *primary_selection_offer) {
+    mark_data_offer(&_glfw.wl.primary_data_offer, primary_selection_offer);
+}
+
+static void
+add_offer_mimetype(_GLFWWaylandDataOffer* offer, const char* mime, bool is_self_offer) {
+    if (is_self_offer) offer->is_self_offer = is_self_offer;
     if (strcmp(mime, clipboard_mime()) == 0) {
         offer->is_self_offer = true;
     }
-    if (!offer->mimes || offer->mimes_count >= offer->mimes_capacity - 1) {
+    if (!offer->mimes || offer->mimes_count + 1 >= offer->mimes_capacity) {
         offer->mimes = realloc(offer->mimes, sizeof(char*) * (offer->mimes_capacity + 64));
         if (offer->mimes) offer->mimes_capacity += 64;
         else return;
@@ -2408,42 +2429,41 @@ set_offer_mimetype(_GLFWWaylandDataOffer* offer, const char* mime) {
     offer->mimes[offer->mimes_count++] = _glfw_strdup(mime);
 }
 
-static void handle_offer_mimetype(void *data UNUSED, struct wl_data_offer* id, const char *mime) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == id) {
-            set_offer_mimetype(&_glfw.wl.dataOffers[i], mime);
-            break;
-        }
+static _GLFWWaylandDataOffer*
+data_offer_for_id(void *id) {
+    for (size_t i = 0; i < arraysz(_glfw.wl.untyped_data_offers); i++) {
+        _GLFWWaylandDataOffer *offer = _glfw.wl.untyped_data_offers + i;
+        if (offer->id == id) return offer;
     }
+    if (_glfw.wl.clipboard_data_offer.id == id) return &_glfw.wl.clipboard_data_offer;
+    if (_glfw.wl.primary_data_offer.id == id) return &_glfw.wl.primary_data_offer;
+    if (_glfw.wl.drop_data_offer.id == id) return &_glfw.wl.drop_data_offer;
+    return NULL;
+}
+
+static void
+add_generic_offer_mimetype(void *id, const char *mime, bool is_self_offer) {
+    _GLFWWaylandDataOffer *offer = data_offer_for_id(id);
+    if (offer) add_offer_mimetype(offer, mime, is_self_offer);
+}
+
+static void handle_offer_mimetype(void *data UNUSED, struct wl_data_offer* id, const char *mime) {
+    add_generic_offer_mimetype(id, mime, strcmp(mime, clipboard_mime()) == 0);
 }
 
 static void handle_primary_selection_offer_mimetype(void *data UNUSED, struct zwp_primary_selection_offer_v1* id, const char *mime) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == id) {
-            set_offer_mimetype((_GLFWWaylandDataOffer*)&_glfw.wl.dataOffers[i], mime);
-            break;
-        }
-    }
+    add_generic_offer_mimetype(id, mime, strcmp(mime, clipboard_mime()) == 0);
 }
 
 static void data_offer_source_actions(void *data UNUSED, struct wl_data_offer* id, uint32_t actions) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == id) {
-            _glfw.wl.dataOffers[i].source_actions = actions;
-            break;
-        }
-    }
+    _GLFWWaylandDataOffer *offer = data_offer_for_id(id);
+    if (offer) offer->source_actions = actions;
 }
 
 static void data_offer_action(void *data UNUSED, struct wl_data_offer* id, uint32_t action) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == id) {
-            _glfw.wl.dataOffers[i].dnd_action = action;
-            break;
-        }
-    }
+    _GLFWWaylandDataOffer *offer = data_offer_for_id(id);
+    if (offer) offer->dnd_action = action;
 }
-
 
 static const struct wl_data_offer_listener data_offer_listener = {
     .offer = handle_offer_mimetype,
@@ -2455,25 +2475,20 @@ static const struct zwp_primary_selection_offer_v1_listener primary_selection_of
     .offer = handle_primary_selection_offer_mimetype,
 };
 
-static size_t
+static void
 handle_data_offer_generic(void *id, bool is_primary) {
-    size_t smallest_idx = SIZE_MAX, pos = 0;
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].idx && _glfw.wl.dataOffers[i].idx < smallest_idx) {
-            smallest_idx = _glfw.wl.dataOffers[i].idx;
-            pos = i;
-        }
-        if (_glfw.wl.dataOffers[i].id == NULL) {
-            pos = i;
-            goto end;
+    for (size_t i = 0; i < arraysz(_glfw.wl.untyped_data_offers); i++) {
+        _GLFWWaylandDataOffer *offer = _glfw.wl.untyped_data_offers + i;
+        if (offer->id == NULL) {
+            offer->id = id;
+            offer->is_primary = is_primary;
+            return;
         }
     }
-    if (_glfw.wl.dataOffers[pos].id) destroy_data_offer(&_glfw.wl.dataOffers[pos]);
-end:
-    _glfw.wl.dataOffers[pos].id = id;
-    _glfw.wl.dataOffers[pos].is_primary = is_primary;
-    _glfw.wl.dataOffers[pos].idx = ++_glfw.wl.dataOffersCounter;
-    return pos;
+    if (is_primary) zwp_primary_selection_offer_v1_destroy(id);
+    else wl_data_offer_destroy(id);
+    _glfwInputError(GLFW_PLATFORM_ERROR,
+                    "Wayland: too many untyped data offers");
 }
 
 static void handle_data_offer(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, struct wl_data_offer *id) {
@@ -2486,70 +2501,208 @@ static void handle_primary_selection_offer(void *data UNUSED, struct zwp_primary
     zwp_primary_selection_offer_v1_add_listener(id, &primary_selection_offer_listener, NULL);
 }
 
-static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x UNUSED, wl_fixed_t y UNUSED, struct wl_data_offer *id) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
-        if (d->id == id) {
-            d->offer_type = DRAG_AND_DROP;
-            d->surface = surface;
+// Helper function to update drop state from callback results
+static void
+update_drop_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUSED, size_t accepted_count) {
+    d->copy_mimes_count = accepted_count;
+    bool accepted = accepted_count > 0;
+    bool acceptance_changed = (accepted != d->drag_accepted);
+    // The first entry in the accepted (sorted) copy is the preferred MIME.
+    const char* new_preferred_mime = (accepted && d->copy_mimes) ? d->copy_mimes[0] : NULL;
+    bool mime_changed = false;
+
+    // Check if the preferred MIME changed
+    if (d->mime_for_drop == NULL && new_preferred_mime != NULL) {
+        mime_changed = true;
+    } else if (d->mime_for_drop != NULL && new_preferred_mime == NULL) {
+        mime_changed = true;
+    } else if (d->mime_for_drop != NULL && new_preferred_mime != NULL) {
+        mime_changed = (strcmp(d->mime_for_drop, new_preferred_mime) != 0);
+    }
+
+    if (acceptance_changed || mime_changed) {
+        d->drag_accepted = accepted;
+        d->mime_for_drop = new_preferred_mime;
+        wl_data_offer_accept(d->id, d->serial, d->mime_for_drop);
+    }
+}
+
+static void
+drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    mark_data_offer(offer, id);
+    if (!offer->id) return;
+    offer->is_self_offer = (_glfw.drag.window_id != 0);
+    offer->surface = surface;
+    offer->serial = serial;
+    offer->drag_accepted = false;
+    offer->mime_for_drop = NULL;
+    _GLFWwindow* window = _glfw.windowListHead;
+    while (window) {
+        if (window->wl.surface == surface) {
+            double xpos = wl_fixed_to_double(x);
+            double ypos = wl_fixed_to_double(y);
+            if (reset_copy_mimes(offer)) {
+                size_t mime_count = _glfwInputDropEvent(
+                        window, GLFW_DROP_ENTER, xpos, ypos,
+                        offer->copy_mimes, offer->copy_mimes_count, offer->is_self_offer);
+                update_drop_state(offer, window, mime_count);
+            }
+            break;
+        }
+        window = window->next;
+    }
+}
+
+static void
+drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (offer->id) {
+        _GLFWwindow* window = _glfw.windowListHead;
+        while (window) {
+            if (window->wl.surface == _glfw.wl.drop_data_offer.surface) {
+                _glfwInputDropEvent(window, GLFW_DROP_LEAVE, 0, 0, NULL, 0, offer->is_self_offer);
+                break;
+            }
+            window = window->next;
+        }
+        if (!offer->dropped) destroy_data_offer(offer);
+    }
+}
+
+void
+_glfwPlatformEndDrop(GLFWwindow *w UNUSED, GLFWDragOperationType op UNUSED) {
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (offer->id) destroy_data_offer(offer);
+}
+
+ssize_t
+_glfwPlatformReadAvailableDropData(GLFWwindow *w, GLFWDropEvent *ev, char *buffer, size_t sz) {
+    _GLFWwindow *window = (_GLFWwindow*)w;
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (!offer->id || offer->surface != window->wl.surface) return -ENOENT;
+    int fd = (int)ev->xpos;
+    for (size_t o = 0; o < offer->dd_count; o++) {
+        if (offer->requested_drop_data[o].fd == fd) {
+            ssize_t ret;
+            do { ret = read(fd, buffer, sz); } while (ret < 0 && (errno == EINTR || errno == EAGAIN));
+            if (ret <= 0) removeWatch(&_glfw.wl.eventLoopData, offer->requested_drop_data[o].watch_id);
+            return ret < 0 ? -errno : ret;
+        }
+    }
+    return -ENOENT;
+}
+
+static void
+drop_data_available(int fd, int events UNUSED, void *data UNUSED) {
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (!offer->id) return;
+    for (size_t o = 0; o < offer->dd_count; o++) {
+        if (offer->requested_drop_data[o].fd == fd) {
             _GLFWwindow* window = _glfw.windowListHead;
-            int format_priority = 0;
-            while (window)
-            {
-                if (window->wl.surface == surface) {
-                    for (size_t j = 0; j < d->mimes_count; j++) {
-                        int prio = _glfwInputDrop(window, d->mimes[j], NULL, 0);
-                        if (prio > format_priority) d->mime_for_drop = d->mimes[j];
-                    }
-                    break;
+            while (window) {
+                if (window->wl.surface == offer->surface) {
+                    const char *mimes[1] = {offer->requested_drop_data[o].mime};
+                    _glfwInputDropEvent(window, GLFW_DROP_DATA_AVAILABLE, fd, 0, mimes, 1, offer->is_self_offer);
+                    return;
                 }
                 window = window->next;
             }
-            wl_data_offer_accept(id, serial, d->mime_for_drop);
-        } else if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
-            _glfw.wl.dataOffers[i].offer_type = EXPIRED;  // previous drag offer
-        }
-    }
-    prune_unclaimed_data_offers();
-}
-
-static void drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
-            destroy_data_offer(&_glfw.wl.dataOffers[i]);
+            destroy_data_offer(offer);
         }
     }
 }
 
-static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP && _glfw.wl.dataOffers[i].mime_for_drop) {
-            size_t sz = 0;
-            char *d = read_data_offer(_glfw.wl.dataOffers[i].id, _glfw.wl.dataOffers[i].mime_for_drop, &sz);
-            if (d) {
-                // We dont do finish as this requires version 3 for wl_data_device_manager
-                // which then requires more work with calling set_actions for drag and drop to function
-                // wl_data_offer_finish(_glfw.wl.dataOffers[i].id);
+static int
+request_drop_data(_GLFWWaylandDataOffer *offer, const char *mime) {
+    int pipefd[2];
+    if (pipe2(pipefd, O_CLOEXEC | O_NONBLOCK) != 0) return errno;
+    wl_data_offer_receive(offer->id, mime, pipefd[1]);
+    safe_close(pipefd[1]);
+    // Flush to ensure the compositor processes the receive request
+    wl_display_flush(_glfw.wl.display);
+    id_type watch_id = addWatch(&_glfw.wl.eventLoopData, "drop_data", pipefd[0], POLLIN | POLLERR | POLLHUP, true, drop_data_available, NULL);
+    if (!watch_id) {
+        safe_close(pipefd[0]);
+        return ERANGE;
+    }
+    char *mt = _glfw_strdup(mime);
+    if (!mt) {
+        safe_close(pipefd[0]);
+        removeWatch(&_glfw.wl.eventLoopData, watch_id);
+        return ENOMEM;
+    }
+    if (!offer->requested_drop_data || offer->dd_count + 1 >= offer->dd_capacity) {
+        void *p = realloc(offer->requested_drop_data, sizeof(offer->requested_drop_data[0]) * (offer->dd_capacity + 8));
+        if (!p) {
+            safe_close(pipefd[0]);
+            removeWatch(&_glfw.wl.eventLoopData, watch_id);
+            free(mt);
+            return ENOMEM;
+        }
+        offer->requested_drop_data = p;
+        offer->dd_capacity += 64;
+    }
+    offer->requested_drop_data[offer->dd_count].mime = mt;
+    offer->requested_drop_data[offer->dd_count].watch_id = watch_id;
+    offer->requested_drop_data[offer->dd_count].fd = pipefd[0];
+    offer->dd_count++;
+    return 0;
+}
 
-                _GLFWwindow* window = _glfw.windowListHead;
-                while (window)
-                {
-                    if (window->wl.surface == _glfw.wl.dataOffers[i].surface) {
-                        _glfwInputDrop(window, _glfw.wl.dataOffers[i].mime_for_drop, d, sz);
-                        break;
-                    }
-                    window = window->next;
-                }
+int
+_glfwPlatformRequestDropData(_GLFWwindow *window UNUSED, const char *mime) {
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (offer->id) return request_drop_data(offer, mime);
+    return EINVAL;
+}
 
-                free(d);
+static void
+drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (!offer->id) return;
+    offer->dropped = true;
+    _GLFWwindow* window = _glfw.windowListHead;
+    while (window) {
+        if (window->wl.surface == offer->surface) {
+            if (reset_copy_mimes(offer)) {
+                size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, offer->copy_mimes, offer->copy_mimes_count, offer->is_self_offer);
+                if (!offer->copy_mimes) { destroy_data_offer(offer); return; }
+                for (size_t i = 0; i < num_accepted; i++) request_drop_data(offer, offer->copy_mimes[i]);
             }
-            destroy_data_offer(&_glfw.wl.dataOffers[i]);
             break;
         }
+        window = window->next;
     }
 }
 
-static void motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t time UNUSED, wl_fixed_t x UNUSED, wl_fixed_t y UNUSED) {
+static void
+motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t time UNUSED, wl_fixed_t x, wl_fixed_t y) {
+    _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
+    if (!offer->id) return;
+    _GLFWwindow* window = _glfw.windowListHead;
+    while (window) {
+        if (window->wl.surface == offer->surface) {
+            double xpos = wl_fixed_to_double(x);
+            double ypos = wl_fixed_to_double(y);
+            if (reset_copy_mimes(offer)) {
+                size_t mime_count = _glfwInputDropEvent(
+                    window, GLFW_DROP_MOVE, xpos, ypos, offer->copy_mimes, offer->copy_mimes_count, offer->is_self_offer);
+                update_drop_state(offer, window, mime_count);
+            }
+            break;
+        }
+        window = window->next;
+    }
+}
+
+void
+_glfwPlatformRequestDropUpdate(_GLFWwindow* window) {
+    _GLFWWaylandDataOffer *d = &_glfw.wl.drop_data_offer;
+    if (d->id && reset_copy_mimes(d)) {
+        size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_STATUS_UPDATE, 0, 0, d->copy_mimes, d->copy_mimes_count, d->is_self_offer);
+        update_drop_state(d, window, mime_count);
+    }
 }
 
 static const struct wl_data_device_listener data_device_listener = {
@@ -2565,7 +2718,7 @@ static const struct zwp_primary_selection_device_v1_listener primary_selection_d
     .data_offer = handle_primary_selection_offer,
     .selection = mark_primary_selection_offer,
 };
-
+// }}}
 
 void _glfwSetupWaylandDataDevice(void) {
     _glfw.wl.dataDevice = wl_data_device_manager_get_data_device(_glfw.wl.dataDeviceManager, _glfw.wl.seat);
@@ -2702,39 +2855,34 @@ plain_text_mime_for_offer(const _GLFWWaylandDataOffer *d) {
 
 void
 _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char* mime_type, GLFWclipboardwritedatafun write_data, void *object) {
-    _GLFWWaylandOfferType offer_type = clipboard_type == GLFW_PRIMARY_SELECTION ? PRIMARY_SELECTION : CLIPBOARD;
-    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
-        if (d->id && d->offer_type == offer_type) {
-            if (d->is_self_offer) {
-                write_data(object, NULL, 1);
-                return;
-            }
-            if (mime_type == NULL) {
-                bool ok = true;
-                for (size_t o = 0; o < d->mimes_count; o++) {
-                    const char *q = d->mimes[o];
-                    if (strchr(d->mimes[0], '/')) {
-                        if (strcmp(q, clipboard_mime()) == 0) continue;
-                        if (strcmp(q, "text/plain;charset=utf-8") == 0) q = "text/plain";
-                    } else {
-                        if (strcmp(q, "UTF8_STRING") == 0 || strcmp(q, "STRING") == 0 || strcmp(q, "TEXT") == 0) q = "text/plain";
-                    }
-                    if (ok) ok = write_data(object, q, strlen(q));
-                }
-                return;
-            }
-            if (strcmp(mime_type, "text/plain") == 0) {
-                mime_type = plain_text_mime_for_offer(d);
-                if (!mime_type) return;
-            }
-            if (d->is_primary) {
-                read_primary_selection_offer(d->id, mime_type, write_data, object);
+    _GLFWWaylandDataOffer *d = clipboard_type == GLFW_PRIMARY_SELECTION ? &_glfw.wl.primary_data_offer : &_glfw.wl.clipboard_data_offer;
+    if (!d->id) return;
+    if (d->is_self_offer) {
+        write_data(object, NULL, 1);
+        return;
+    }
+    if (mime_type == NULL) {
+        bool ok = true;
+        for (size_t o = 0; o < d->mimes_count; o++) {
+            const char *q = d->mimes[o];
+            if (strchr(d->mimes[0], '/')) {
+                if (strcmp(q, clipboard_mime()) == 0) continue;
+                if (strcmp(q, "text/plain;charset=utf-8") == 0) q = "text/plain";
             } else {
-                read_clipboard_data_offer(d->id, mime_type, write_data, object);
+                if (strcmp(q, "UTF8_STRING") == 0 || strcmp(q, "STRING") == 0 || strcmp(q, "TEXT") == 0) q = "text/plain";
             }
-            break;
+            if (ok) ok = write_data(object, q, strlen(q));
         }
+        return;
+    }
+    if (strcmp(mime_type, "text/plain") == 0) {
+        mime_type = plain_text_mime_for_offer(d);
+        if (!mime_type) return;
+    }
+    if (d->is_primary) {
+        read_primary_selection_offer(d->id, mime_type, write_data, object);
+    } else {
+        read_clipboard_data_offer(d->id, mime_type, write_data, object);
     }
 }
 
@@ -2939,6 +3087,16 @@ GLFWAPI void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle) {
     if (csd_change_title(window)) commit_window_surface_if_safe(window);
 }
 
+GLFWAPI void glfwWaylandSetTitlebarHidden(GLFWwindow *handle, bool hidden) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    if (window->wl.decorations.titlebar_hidden != hidden) {
+        window->wl.decorations.titlebar_hidden = hidden;
+        setXdgDecorations(window);
+        inform_compositor_of_window_geometry(window, "SetTitlebarHidden");
+        commit_window_surface_if_safe(window);
+    }
+}
+
 const GLFWLayerShellConfig*
 _glfwPlatformGetLayerShellConfig(_GLFWwindow *window) {
     return &window->wl.layer_shell.config;
@@ -2964,3 +3122,366 @@ GLFWAPI bool glfwWaylandBeep(GLFWwindow *handle) {
     return true;
 }
 
+// Drag source {{{
+
+static void
+drag_toplevel_xdg_surface_configure(void *data UNUSED, struct xdg_surface *surface, uint32_t serial) {
+    xdg_surface_ack_configure(surface, serial);
+    if (_glfw.wl.drag.toplevel_buffer) {
+        wl_surface_attach(_glfw.wl.drag.drag_icon, _glfw.wl.drag.toplevel_buffer, 0, 0);
+        wl_surface_damage(_glfw.wl.drag.drag_icon, 0, 0, INT32_MAX, INT32_MAX);
+        wl_buffer_destroy(_glfw.wl.drag.toplevel_buffer);
+        _glfw.wl.drag.toplevel_buffer = NULL;
+    }
+    if (_glfw.wl.drag.drag_icon) wl_surface_commit(_glfw.wl.drag.drag_icon);
+}
+
+static const struct xdg_surface_listener drag_toplevel_xdg_surface_listener = {
+    .configure = drag_toplevel_xdg_surface_configure,
+};
+
+static void drag_toplevel_configure(void *data UNUSED, struct xdg_toplevel *toplevel UNUSED,
+                                    int32_t width UNUSED, int32_t height UNUSED,
+                                    struct wl_array *states UNUSED) {}
+static void drag_toplevel_close(void *data UNUSED, struct xdg_toplevel *toplevel UNUSED) {}
+#ifdef XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION
+static void drag_toplevel_configure_bounds(void *data UNUSED, struct xdg_toplevel *toplevel UNUSED,
+                                           int32_t width UNUSED, int32_t height UNUSED) {}
+static void drag_toplevel_wm_capabilities(void *data UNUSED, struct xdg_toplevel *toplevel UNUSED,
+                                          struct wl_array *caps UNUSED) {}
+#endif
+static const struct xdg_toplevel_listener drag_toplevel_listener = {
+    .configure = drag_toplevel_configure,
+    .close = drag_toplevel_close,
+#ifdef XDG_TOPLEVEL_WM_CAPABILITIES_SINCE_VERSION
+    .configure_bounds = drag_toplevel_configure_bounds,
+    .wm_capabilities = drag_toplevel_wm_capabilities,
+#endif
+};
+
+static void
+cancel_drag(GLFWDragEventType type) {
+    _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+    if (window) {
+        GLFWDragEvent ev = {.type=type};
+        _glfwInputDragSourceRequest(window, &ev);
+    }
+    _glfwFreeDragSourceData();
+}
+
+#define dr _glfw.wl.drag.data_requests[i]
+
+static void
+finish_drag_write(size_t i) {
+    if (dr.watch_id) removeWatch(&_glfw.wl.eventLoopData, dr.watch_id);
+    dr.watch_id = 0;
+    if (dr.fd > -1) safe_close(dr.fd);
+    dr.fd = -1;
+    free((void*)dr.mime_type); dr.mime_type = NULL;
+}
+
+static ssize_t
+write_as_much_as_possible(int fd, const char *data, size_t sz) {
+    size_t ans = 0;
+    while (ans < sz) {
+        ssize_t ret = write(fd, data + ans, sz - ans);
+        if (ret < 0) {
+            if (errno == EINTR) continue;
+            if (errno == EAGAIN) return ans;
+            return ret;
+        }
+        ans += ret;
+    }
+    return ans;
+}
+
+static void
+send_drag_data(_GLFWwindow *window, size_t i) {
+    ssize_t ret;
+    bool has_preset_data = _glfw.drag.items[i].data_size > 0;
+#define on_fail _glfwInputError(\
+        GLFW_PLATFORM_ERROR, "Wayland: failed to write drag source data to pipe with error: %s", strerror(errno)); \
+        cancel_drag(GLFW_DRAG_CANCELLED);
+
+    if (dr.sz > dr.offset) {
+        ret = write_as_much_as_possible(dr.fd, dr.pending_data + dr.offset, dr.sz - dr.offset);
+        if (ret < 0) { on_fail; } else {
+            dr.offset += ret;
+            if (dr.offset >= dr.sz) {
+                free(dr.pending_data); dr.sz = 0; dr.offset = 0;
+                if (has_preset_data) finish_drag_write(i);
+            }
+        }
+    } else if (has_preset_data) {
+        do { ret = write(dr.fd, _glfw.drag.items[i].optional_data, _glfw.drag.items[i].data_size); } while (ret < 0 && errno == EINTR);
+        if (ret < 0) {
+            on_fail;
+        } else {
+            if ((size_t)ret >= _glfw.drag.items[i].data_size) {
+                finish_drag_write(i);
+            } else {
+                void *pending = malloc(_glfw.drag.items[i].data_size - ret);
+                if (!pending) { on_fail; } else {
+                    dr.pending_data = pending; dr.sz = _glfw.drag.items[i].data_size - ret; dr.offset = 0;
+                }
+            }
+        }
+    } else {
+        GLFWDragEvent ev = {.type=GLFW_DRAG_DATA_REQUEST, .mime_type=dr.mime_type};
+        _glfwInputDragSourceRequest(window, &ev);
+        if (ev.err_num) {
+            if (ev.err_num == EAGAIN) { removeWatch(&_glfw.wl.eventLoopData, dr.watch_id); dr.watch_id = 0; }
+            else cancel_drag(GLFW_DRAG_CANCELLED);
+        } else {
+            if (ev.data_sz) {
+                ret = write_as_much_as_possible(dr.fd, ev.data, ev.data_sz);
+                if (ret >= 0) {
+                    if ((size_t)ret < ev.data_sz) {
+                        void *pending = malloc(ev.data_sz - ret);
+                        if (!pending) { on_fail; } else {
+                            dr.pending_data = pending; dr.sz = ev.data_sz - ret; dr.offset = 0;
+                            memcpy(pending, ev.data + ret, dr.sz);
+                        }
+                    }
+                }
+                _glfwInputDragSourceRequest(window, &ev);
+                if (ret < 0) { on_fail; }
+            } else finish_drag_write(i);
+        }
+    }
+#undef on_fail
+}
+
+static void
+ready_for_drag_data(int fd, int events UNUSED, void *data UNUSED) {
+    _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+    if (!window) { _glfwFreeDragSourceData(); return; }
+    for (size_t i = 0; i < _glfw.wl.drag.count; i++) {
+        if (dr.fd == fd) {
+            send_drag_data(window, i);
+            break;
+        }
+    }
+}
+
+static GLFWid
+add_drag_watch(int fd) {
+    return addWatch(
+        &_glfw.wl.eventLoopData, "drag_source", fd, POLLOUT | POLLERR | POLLHUP, true, ready_for_drag_data, NULL);
+}
+
+int
+_glfwPlatformChangeDragImage(const GLFWimage *thumbnail) {
+    if (!thumbnail || !thumbnail->pixels) return 0;
+    struct wl_buffer* icon_buffer = createShmBuffer(thumbnail, false, true);
+    if (!icon_buffer) return ENOMEM;
+    _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+    if (_glfw.wl.drag.drag_viewport) {
+        double f_scale = window ? _glfwWaylandWindowScale(window) : 1.0;
+        int logical_width = (int)(thumbnail->width / f_scale);
+        int logical_height = (int)(thumbnail->height / f_scale);
+        wp_viewport_set_destination(_glfw.wl.drag.drag_viewport, logical_width, logical_height);
+    } else {
+        int scale = window ? _glfwWaylandIntegerWindowScale(window) : 1;
+        wl_surface_set_buffer_scale(_glfw.wl.drag.drag_icon, scale);
+    }
+    wl_surface_attach(_glfw.wl.drag.drag_icon, icon_buffer, 0, 0);
+    wl_surface_damage(_glfw.wl.drag.drag_icon, 0, 0, INT32_MAX, INT32_MAX);
+    wl_surface_commit(_glfw.wl.drag.drag_icon);
+    wl_buffer_destroy(icon_buffer);
+    return 0;
+}
+
+int
+_glfwPlatformDragDataReady(const char *mime_type) {
+    for (size_t i = 0; i < _glfw.wl.drag.count; i++) {
+        if (strcmp(dr.mime_type, mime_type) == 0) {
+            if (!dr.watch_id) dr.watch_id = add_drag_watch(dr.fd);
+        }
+    }
+    return 0;
+}
+
+static void
+drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const char *mime_type, int fd) {
+    _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+#define abort() safe_close(fd); cancel_drag(GLFW_DRAG_CANCELLED);  return
+    if (!window) { abort(); }
+    mime_type = _glfw_strdup(mime_type);
+    if (!mime_type) { abort(); }
+    if (!_glfw.wl.drag.data_requests || _glfw.wl.drag.capacity <= _glfw.wl.drag.count + 1) {
+        _glfw.wl.drag.capacity = MAX(8u, _glfw.wl.drag.capacity * 2);
+        if (!(_glfw.wl.drag.data_requests = realloc(_glfw.wl.drag.data_requests, sizeof(_glfw.wl.drag.data_requests[0]) * _glfw.wl.drag.capacity))) { abort(); }
+    }
+    const size_t i = _glfw.wl.drag.count++;
+    memset(&dr, 0, sizeof(_glfw.wl.drag.data_requests[0]));
+    dr.mime_type = mime_type; dr.fd = fd;
+    dr.watch_id = add_drag_watch(fd);
+#undef abort
+}
+
+#undef dr
+static void
+drag_source_target(void *data UNUSED, struct wl_data_source *source UNUSED, const char *mime_type) {
+    _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+    if (window) {
+        GLFWDragEvent ev = {.type=GLFW_DRAG_ACCEPTED, .mime_type=mime_type};
+        _glfwInputDragSourceRequest(window, &ev);
+    } else cancel_drag(GLFW_DRAG_CANCELLED);
+}
+
+static void
+drag_source_action(void *data UNUSED, struct wl_data_source *source UNUSED, uint32_t dnd_action) {
+    _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+    if (window) {
+        GLFWDragOperationType op = GLFW_DRAG_OPERATION_GENERIC;
+        switch (dnd_action) {
+            case WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE: op = 0; break;
+            case WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY: op = GLFW_DRAG_OPERATION_COPY; break;
+            case WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE: op = GLFW_DRAG_OPERATION_MOVE; break;
+        }
+        _glfw.wl.drag.action = op;
+        GLFWDragEvent ev = {.type=GLFW_DRAG_ACTION_CHANGED, .action=op};
+        _glfwInputDragSourceRequest(window, &ev);
+    } else cancel_drag(GLFW_DRAG_CANCELLED);
+}
+
+static void
+drag_source_dnd_drop_performed(void *data UNUSED, struct wl_data_source *source UNUSED) {
+    _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+    if (window) {
+        GLFWDragEvent ev = {.type=GLFW_DRAG_DROPPED};
+        _glfwInputDragSourceRequest(window, &ev);
+    } else cancel_drag(GLFW_DRAG_CANCELLED);
+}
+
+static void
+drag_source_dnd_finished(void *data UNUSED, struct wl_data_source *source UNUSED) {
+    _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+    if (window) {
+        GLFWDragEvent ev = {.type=GLFW_DRAG_FINSHED, .action=_glfw.wl.drag.action};
+        _glfwInputDragSourceRequest(window, &ev);
+    }
+    _glfwFreeDragSourceData();
+}
+
+static void
+drag_source_cancelled(void *data UNUSED, struct wl_data_source *source UNUSED) {
+    // Uber competent Wayland people contravene their own spec and make it
+    // impossible to distinguish between drag cancelled and dropped but not
+    // accepted. https://gitlab.freedesktop.org/wayland/wayland/-/issues/140
+    // so we assume this is a drop unless we are in top-level mode. Sigh.
+    cancel_drag(_glfw.wl.drag.toplevel_xdg_toplevel ? GLFW_DRAG_CANCELLED : GLFW_DRAG_DROPPED);
+}
+
+
+static const struct wl_data_source_listener drag_source_listener = {
+    .send = drag_source_send,
+    .cancelled = drag_source_cancelled,
+    .target = drag_source_target,
+    .action = drag_source_action,
+    .dnd_drop_performed = drag_source_dnd_drop_performed,
+    .dnd_finished = drag_source_dnd_finished,
+};
+
+void
+_glfwPlatformFreeDragSourceData(void) {
+    if (_glfw.wl.drag.drag_viewport) wp_viewport_destroy(_glfw.wl.drag.drag_viewport);
+    if (_glfw.wl.drag.toplevel_drag) xdg_toplevel_drag_v1_destroy(_glfw.wl.drag.toplevel_drag);
+    if (_glfw.wl.drag.toplevel_buffer) wl_buffer_destroy(_glfw.wl.drag.toplevel_buffer);
+    if (_glfw.wl.drag.toplevel_xdg_toplevel) xdg_toplevel_destroy(_glfw.wl.drag.toplevel_xdg_toplevel);
+    if (_glfw.wl.drag.toplevel_xdg_surface) xdg_surface_destroy(_glfw.wl.drag.toplevel_xdg_surface);
+    if (_glfw.wl.drag.drag_icon) wl_surface_destroy(_glfw.wl.drag.drag_icon);
+    if (_glfw.wl.drag.source) wl_data_source_destroy(_glfw.wl.drag.source);
+    if (_glfw.wl.drag.data_requests) {
+        for (size_t i = 0; i < _glfw.wl.drag.count; i++) {
+            free((void*)_glfw.wl.drag.data_requests[i].mime_type);
+            free(_glfw.wl.drag.data_requests[i].pending_data);
+            if (_glfw.wl.drag.data_requests[i].watch_id) removeWatch(&_glfw.wl.eventLoopData, _glfw.wl.drag.data_requests[i].watch_id);
+            if (_glfw.wl.drag.data_requests[i].fd > -1) { safe_close(_glfw.wl.drag.data_requests[i].fd); }
+        }
+        free(_glfw.wl.drag.data_requests);
+    }
+    memset(&_glfw.wl.drag, 0, sizeof(_glfw.wl.drag));
+}
+
+int
+_glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
+    if (!_glfw.wl.dataDeviceManager) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Data device manager not available");
+        return ENOTSUP;
+    }
+
+    if (!_glfw.wl.dataDevice) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Data device not available");
+        return ENOTSUP;
+    }
+
+    // Create the data source
+    _glfw.wl.drag.source = wl_data_device_manager_create_data_source(_glfw.wl.dataDeviceManager);
+    if (!_glfw.wl.drag.source) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Failed to create data source for drag");
+        return ENOMEM;
+    }
+
+    // Set the DND action based on operation type (bitfield)
+    uint32_t wl_actions = 0; int operations = _glfw.drag.operations;
+    if (operations & GLFW_DRAG_OPERATION_COPY)
+        wl_actions |= WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY;
+    if (operations & GLFW_DRAG_OPERATION_MOVE)
+        wl_actions |= WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE;
+    if (operations & GLFW_DRAG_OPERATION_GENERIC)
+        wl_actions |= WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY | WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE;
+    wl_data_source_set_actions(_glfw.wl.drag.source, wl_actions);
+
+    for (size_t i = 0; i < _glfw.drag.item_count; i++) wl_data_source_offer(_glfw.wl.drag.source, _glfw.drag.items[i].mime_type);
+    wl_data_source_add_listener(_glfw.wl.drag.source, &drag_source_listener, NULL);
+
+    // Set up the drag icon surface if thumbnail is provided
+    if (thumbnail && thumbnail->pixels) {
+        _glfw.wl.drag.drag_icon = wl_compositor_create_surface(_glfw.wl.compositor);
+        if (!_glfw.wl.drag.drag_icon) return ENOMEM;
+        struct wl_buffer* icon_buffer = NULL;
+        icon_buffer = createShmBuffer(thumbnail, false, true);
+        if (!icon_buffer) return ENOMEM;
+        if (_glfw.wl.wp_viewporter) {
+            double f_scale = _glfwWaylandWindowScale(window);
+            int logical_width = (int)(thumbnail->width / f_scale);
+            int logical_height = (int)(thumbnail->height / f_scale);
+            _glfw.wl.drag.drag_viewport = wp_viewporter_get_viewport(
+                    _glfw.wl.wp_viewporter, _glfw.wl.drag.drag_icon);
+            wp_viewport_set_destination(_glfw.wl.drag.drag_viewport, logical_width, logical_height);
+        } else {
+            int scale = _glfwWaylandIntegerWindowScale(window);
+            wl_surface_set_buffer_scale(_glfw.wl.drag.drag_icon, scale);
+        }
+
+        if (_glfw.drag.needs_toplevel_on_wayland && _glfw.wl.xdg_toplevel_drag_manager_v1) {
+            _glfw.wl.drag.toplevel_drag = xdg_toplevel_drag_manager_v1_get_xdg_toplevel_drag(
+                _glfw.wl.xdg_toplevel_drag_manager_v1, _glfw.wl.drag.source);
+            if (!_glfw.wl.drag.toplevel_drag) return ENOMEM;
+            _glfw.wl.drag.toplevel_xdg_surface = xdg_wm_base_get_xdg_surface(
+                        _glfw.wl.wmBase, _glfw.wl.drag.drag_icon);
+            if (!_glfw.wl.drag.toplevel_xdg_surface) return ENOMEM;
+            xdg_surface_add_listener(_glfw.wl.drag.toplevel_xdg_surface,
+                                        &drag_toplevel_xdg_surface_listener, NULL);
+            _glfw.wl.drag.toplevel_xdg_toplevel = xdg_surface_get_toplevel(
+                    _glfw.wl.drag.toplevel_xdg_surface);
+            if (!_glfw.wl.drag.toplevel_xdg_toplevel) return ENOMEM;
+            xdg_toplevel_add_listener(_glfw.wl.drag.toplevel_xdg_toplevel, &drag_toplevel_listener, NULL);
+            _glfw.wl.drag.toplevel_buffer = icon_buffer; icon_buffer = NULL;
+            xdg_toplevel_drag_v1_attach(_glfw.wl.drag.toplevel_drag,
+                                    _glfw.wl.drag.toplevel_xdg_toplevel, 0, 0);
+        } else wl_surface_attach(_glfw.wl.drag.drag_icon, icon_buffer, 0, 0);
+        wl_surface_commit(_glfw.wl.drag.drag_icon);
+        if (icon_buffer) wl_buffer_destroy(icon_buffer);
+    }
+    // Start the drag operation
+    wl_data_device_start_drag(
+        _glfw.wl.dataDevice, _glfw.wl.drag.source, window->wl.surface,
+        _glfw.wl.xdg_toplevel_drag_manager_v1 ? NULL : _glfw.wl.drag.drag_icon,
+        _glfw.wl.pointer_serial);
+
+    return 0;
+}
+// }}}

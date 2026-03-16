@@ -62,7 +62,8 @@ typedef struct Options {
     bool scrollback_fill_enlarged_window;
     char_type *select_by_word_characters;
     char_type *select_by_word_characters_forward;
-    color_type url_color, background, foreground, active_border_color, inactive_border_color, bell_border_color, tab_bar_background, tab_bar_margin_color;
+    color_type url_color, background, foreground, active_border_color, inactive_border_color, bell_border_color, tab_bar_background, tab_bar_margin_color,
+        window_title_bar_active_foreground, window_title_bar_active_background, window_title_bar_inactive_foreground, window_title_bar_inactive_background;
     monotonic_t repaint_delay, input_delay;
     bool focus_follows_mouse;
     unsigned int hide_window_decorations;
@@ -98,6 +99,7 @@ typedef struct Options {
     bool sync_to_monitor;
     bool close_on_child_death;
     bool window_alert_on_bell;
+    bool macos_dock_badge_on_bell;
     bool debug_keyboard;
     bool allow_hyperlinks;
     struct { monotonic_t on_end, on_pause; } resize_debounce_time;
@@ -142,6 +144,7 @@ typedef struct Options {
     double momentum_scroll;
     bool palette_generate;
     bool palette_harmonious;
+    double window_drag_tolerance;
 } Options;
 
 typedef struct WindowLogoRenderData {
@@ -208,6 +211,7 @@ typedef struct Window {
     bool visible;
     PyObject *title;
     WindowRenderData render_data;
+    WindowRenderData window_title_render_data;
     WindowLogoRenderData window_logo;
     MousePosition mouse_pos;
     struct {
@@ -238,7 +242,10 @@ typedef struct Window {
 
 typedef struct BorderRect {
     float left, top, right, bottom;
+    struct { unsigned left, top, right, bottom; } px;
     uint32_t color;
+    long long border_type;
+    bool horizontal;
 } BorderRect;
 
 typedef struct BorderRects {
@@ -309,8 +316,7 @@ typedef struct OSWindow {
     Tab *tabs;
     BackgroundImage *bgimage;
     struct {
-        uint32_t texture_id, framebuffer_id;
-        int width, height;
+        uint32_t framebuffer_id, attached_texture_generation;
     } indirect_output;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
     bool focused_at_last_render, needs_render, needs_layers;
@@ -327,6 +333,7 @@ typedef struct OSWindow {
     double mouse_x, mouse_y;
     bool mouse_button_pressed[32];
     bool has_too_few_tabs;
+    bool suppress_left_mouse_release;
     PyObject *window_title;
     bool disallow_title_changes, title_is_overriden;
     bool viewport_size_dirty, viewport_updated_at_least_once;
@@ -344,6 +351,7 @@ typedef struct OSWindow {
     id_type last_focused_counter;
     CloseRequest close_request;
     bool is_layer_shell, hide_on_focus_loss;
+    struct { int x, y; } last_drag_event;
 } OSWindow;
 
 static inline float
@@ -367,7 +375,7 @@ typedef struct GlobalState {
     bool has_pending_resizes, has_pending_closes;
     bool check_for_active_animated_images;
     struct { double x, y; } default_dpi;
-    id_type active_drag_in_window, tracked_drag_in_window, mouse_hover_in_window;
+    id_type active_drag_in_window, tracked_drag_in_window, mouse_hover_in_window, active_drag_resize;
     int active_drag_button, tracked_drag_button;
     CloseRequest quit_request;
     bool redirect_mouse_handling;
@@ -375,6 +383,34 @@ typedef struct GlobalState {
     int gl_version;
     bool supports_framebuffer_srgb;
     PyObject *options_object;
+
+    struct {
+        PyObject *data;
+        id_type os_window_id;
+        double x, y;
+        size_t num_left;
+    } drop_dest;
+
+    struct {
+        bool is_active, was_dropped, was_canceled, needs_toplevel_on_wayland;
+        char *accepted_mime_type;
+        int action, thumbnail_idx;
+        PyObject *drag_data, *thumbnails;
+    } drag_source;
+    struct {
+        id_type os_window, window;
+        char callback[32];
+        bool include_tab_bar;
+        double scale; unsigned max_width;
+    } thumbnail_callback;
+    struct {
+        id_type id; bool drag_started;
+        double x, y;
+    } tab_being_dragged;
+    struct {
+        uint32_t texture_id, framebuffer_id, texture_generation;
+        int width, height;
+    } layers_render_texture;
 } GlobalState;
 
 extern GlobalState global_state;
@@ -417,7 +453,7 @@ OSWindow* os_window_for_kitty_window(id_type);
 OSWindow* os_window_for_id(id_type);
 OSWindow* add_os_window(void);
 OSWindow* current_os_window(void);
-void os_window_regions(OSWindow*, Region *main, Region *tab_bar);
+void os_window_regions(const OSWindow*, Region *main, Region *tab_bar);
 bool drag_scroll(Window *, OSWindow*);
 void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, color_type, unsigned int, bool, OSWindow *w);
 ssize_t create_cell_vao(void);
@@ -478,3 +514,5 @@ void dispatch_buffered_keys(Window *w);
 bool screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen);
 void setup_os_window_for_rendering(OSWindow*, Tab*, Window*, bool);
 void swap_window_buffers(OSWindow *w);
+void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h);
+bool current_framebuffer_is_ok(void);

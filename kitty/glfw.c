@@ -276,9 +276,10 @@ show_mouse_cursor(GLFWwindow *w) {
 }
 
 void
-cursor_active_callback(GLFWwindow *w, monotonic_t now) {
+cursor_active_callback(monotonic_t now) {
+    if (!global_state.callback_os_window) return;
     if (OPT(mouse_hide.unhide_wait) == 0) {
-        show_mouse_cursor(w);
+        show_mouse_cursor(global_state.callback_os_window->handle);
     } else if (OPT(mouse_hide.unhide_wait) > 0) {
             if (global_state.callback_os_window->mouse_activate_deadline == -1) {
                 global_state.callback_os_window->mouse_activate_deadline = OPT(mouse_hide.unhide_wait) + now;
@@ -292,7 +293,7 @@ cursor_active_callback(GLFWwindow *w, monotonic_t now) {
                         now < global_state.callback_os_window->mouse_activate_deadline + s_double_to_monotonic_t(0.5) &&
                         global_state.callback_os_window->mouse_show_threshold == 0
                 ) {
-                    show_mouse_cursor(w);
+                    show_mouse_cursor(global_state.callback_os_window->handle);
                 }
                 global_state.callback_os_window->mouse_activate_deadline = -1;
             }
@@ -346,9 +347,27 @@ static void
 cocoa_out_of_sequence_render(OSWindow *window) {
     make_os_window_context_current(window);
     window->needs_render = true;
+
+    // On macOS Tahoe, the default framebuffer can become undefined during
+    // screen change events. Try to recover by recreating the drawable.
+    // See https://github.com/kovidgoyal/kitty/issues/9463
+    if (!current_framebuffer_is_ok()) {
+        debug_rendering("Cocoa OpenGL framebuffer broken, re-creating\n");
+        if (!glfwCocoaRecreateGLDrawable(window->handle) || !current_framebuffer_is_ok()) {
+            debug_rendering("Cocoa OpenGL framebuffer re-creation failed\n");
+            request_tick_callback();
+            return;
+        }
+    }
+
     bool rendered = false;
-    if (window->fonts_data->sprite_map) rendered = render_os_window(window, monotonic(), true);
+    if (window->fonts_data->sprite_map) {
+        window->needs_render = true;
+        window->render_state = RENDER_FRAME_READY;
+        rendered = render_os_window(window, monotonic(), true);
+    }
     if (!rendered) {
+        debug_rendering("Cocoa out of sequence render did not happen\n");
         blank_os_window(window);
         swap_window_buffers(window);
     }
@@ -499,6 +518,9 @@ update_modifier_state_on_modifier_key_event(GLFWkeyevent *ev, int key_modifier, 
 static void
 key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
     if (!set_callback_window(w)) return;
+#ifdef __APPLE__
+    cocoa_clear_dock_badge_if_set();
+#endif
 #ifndef __APPLE__
     bool is_left;
     int key_modifier = key_to_modifier(ev->key, &is_left);
@@ -522,7 +544,7 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
     global_state.callback_os_window->mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
     if (entered) {
         debug_input("Mouse cursor entered window: %llu at %fx%f\n", global_state.callback_os_window->id, x, y);
-        cursor_active_callback(w, now);
+        cursor_active_callback(now);
         if (is_window_ready_for_callbacks()) enter_event(mods_at_last_key_or_button_event);
     } else {
         debug_input("Mouse cursor left window: %llu\n", global_state.callback_os_window->id);
@@ -535,8 +557,11 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
 static void
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!set_callback_window(w)) return;
+#ifdef __APPLE__
+    cocoa_clear_dock_badge_if_set();
+#endif
     monotonic_t now = monotonic();
-    cursor_active_callback(w, now);
+    cursor_active_callback(now);
     mods_at_last_key_or_button_event = mods;
     OSWindow *window = global_state.callback_os_window;
     window->last_mouse_activity_at = now;
@@ -557,10 +582,9 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
 }
 
 static void
-cursor_pos_callback(GLFWwindow *w, double x, double y) {
-    if (!set_callback_window(w)) return;
+on_mouse_position_update(double x, double y) {
     monotonic_t now = monotonic();
-    cursor_active_callback(w, now);
+    cursor_active_callback(now);
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;
     global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
@@ -568,6 +592,12 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
     global_state.callback_os_window->has_received_cursor_pos_event = true;
     if (is_window_ready_for_callbacks()) mouse_event(-1, mods_at_last_key_or_button_event, -1);
     request_tick_callback();
+}
+
+static void
+cursor_pos_callback(GLFWwindow *w, double x, double y) {
+    if (!set_callback_window(w)) return;
+    on_mouse_position_update(x, y);
     global_state.callback_os_window = NULL;
 }
 
@@ -575,9 +605,7 @@ static void
 scroll_callback(GLFWwindow *w, const GLFWScrollEvent *ev) {
     if (!set_callback_window(w)) return;
     monotonic_t now = monotonic();
-    if (OPT(mouse_hide.scroll_unhide)) {
-        cursor_active_callback(w, now);
-    }
+    if (OPT(mouse_hide.scroll_unhide)) cursor_active_callback(now);
     global_state.callback_os_window->last_mouse_activity_at = now;
     if (is_window_ready_for_callbacks()) scroll_event(ev);
     request_tick_callback();
@@ -591,6 +619,7 @@ set_os_window_visibility(OSWindow *w, int set_visible, bool move_to_active_scree
     if (set_visible) {
         glfwShowWindow(w->handle, move_to_active_screen);
         w->needs_render = true;
+        w->render_state = RENDER_FRAME_NOT_REQUESTED;
         w->keep_rendering_till_swap = 256;  // try this many times
         request_tick_callback();
     } else glfwHideWindow(w->handle);
@@ -612,7 +641,7 @@ window_focus_callback(GLFWwindow *w, int focused) {
     monotonic_t now = monotonic();
     id_type wid = osw->id;
     if (focused) {
-        cursor_active_callback(w, now);
+        cursor_active_callback(now);
         focus_in_event();
         osw->last_focused_counter = ++focus_counter;
         global_state.check_for_active_animated_images = true;
@@ -640,20 +669,147 @@ window_focus_callback(GLFWwindow *w, int focused) {
 #undef osw
 }
 
+#define TAB_DRAG_MIME_NUMBER 400
+
 static int
-drop_callback(GLFWwindow *w, const char *mime, const char *data, size_t sz) {
-    if (!set_callback_window(w)) return 0;
-#define RETURN(x) { global_state.callback_os_window = NULL; return x; }
-    if (!data) {
-        if (strcmp(mime, "text/uri-list") == 0) RETURN(3);
-        if (strcmp(mime, "text/plain;charset=utf-8") == 0) RETURN(2);
-        if (strcmp(mime, "text/plain") == 0) RETURN(1);
-        RETURN(0);
+is_droppable_mime(const char *mime) {
+    static char tab_mime[64] = {0};
+    if (!tab_mime[0]) snprintf(tab_mime, sizeof(tab_mime), "application/net.kovidgoyal.kitty-tab-%d", getpid());
+    if (strcmp(mime, tab_mime) == 0) return TAB_DRAG_MIME_NUMBER;
+    if (strcmp(mime, "text/uri-list") == 0) return 3;
+    if (strcmp(mime, "text/plain;charset=utf-8") == 0) return 2;
+    if (strcmp(mime, "text/plain") == 0) return 1;
+    return 0;
+}
+
+static size_t
+remove_duplicate_mimes(const char **mimes, size_t count) {
+    // Use simple O(n²) scan since lists are typically small
+    size_t new_count = 0;
+    for (size_t i = 0; i < count; i++) {
+        bool is_duplicate = false;
+        for (size_t j = 0; j < new_count; j++) {
+            if (strcmp(mimes[i], mimes[j]) == 0) { is_duplicate = true; break; }
+        }
+        if (!is_duplicate) {
+            if (new_count != i) SWAP(mimes[i], mimes[new_count]);
+            new_count++;
+        }
     }
-    WINDOW_CALLBACK(on_drop, "sy#", mime, data, (Py_ssize_t)sz);
-    request_tick_callback();
-    RETURN(0);
-#undef RETURN
+    return new_count;
+}
+
+static void
+update_allowed_mimes_for_drop(GLFWDropEvent *ev) {
+    if (ev->mimes && ev->num_mimes) {
+        // Sort MIME types by priority (descending) and keep only accepted ones
+        // Use simple bubble sort since lists are typically small
+        size_t new_count = 0;
+        // Use stack-allocated array for priorities (count is typically small)
+        int priorities[32];
+        int* prio_arr = (ev->num_mimes <= (int)arraysz(priorities)) ? priorities : (int*)malloc(ev->num_mimes * sizeof(int));
+        if (!prio_arr) return;
+        // First pass: filter droppable MIME types and cache priorities
+        for (size_t i = 0; i < ev->num_mimes; i++) {
+            int prio = is_droppable_mime(ev->mimes[i]);
+            if (prio > 0) {
+                // Move this mime to the new_count position
+                if (new_count != i) { SWAP(ev->mimes[i], ev->mimes[new_count]); }
+                prio_arr[new_count] = prio;
+                new_count++;
+            }
+        }
+        // Second pass: sort by cached priorities (descending)
+        for (size_t i = 0; i + 1 < new_count; i++) {
+            for (size_t j = i + 1; j < new_count; j++) {
+                if (prio_arr[j] > prio_arr[i]) {
+                    SWAP(ev->mimes[i], ev->mimes[j]);
+                    SWAP(prio_arr[i], prio_arr[j]);
+                }
+            }
+        }
+        if (prio_arr != priorities) free(prio_arr);
+        ev->num_mimes = new_count;
+    }
+}
+
+static void
+read_drop_data(GLFWwindow *window, GLFWDropEvent *ev) {
+    RAII_PyObject(chunk, PyBytes_FromStringAndSize(NULL, 8192));
+#define finish(ok) ev->finish_drop(window, ok ? GLFW_DRAG_OPERATION_COPY : GLFW_DRAG_OPERATION_GENERIC); Py_CLEAR(global_state.drop_dest.data); if (PyErr_Occurred()) PyErr_Print()
+    if (!chunk) { finish(false); return; }
+    ssize_t ret = ev->read_data(window, ev, PyBytes_AS_STRING(chunk), PyBytes_GET_SIZE(chunk));
+    if (ret == 0) {
+        global_state.drop_dest.num_left--;
+        if (!global_state.drop_dest.num_left) {
+            WINDOW_CALLBACK(on_drop, "OOii", global_state.drop_dest.data, Py_False,
+                global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
+            finish(true);
+        }
+    } else if (ret > 0) {
+        _PyBytes_Resize(&chunk, ret);
+        PyObject *data = chunk;
+        RAII_PyObject(existing, PyDict_GetItemString(global_state.drop_dest.data, ev->mimes[0]));
+        if (existing) {
+            existing = Py_NewRef(existing);  // because PyBytes_Concat steals a reference
+            PyBytes_Concat(&existing, chunk);
+            data = existing;
+        }
+        if (!data || PyDict_SetItemString(global_state.drop_dest.data, ev->mimes[0], data) != 0) { finish(false); }
+    } else {
+        int posix_errno = -ret;
+        WINDOW_CALLBACK(on_drop, "iOii", posix_errno, Py_False,
+            global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
+        finish(false);
+    }
+#undef finish
+}
+
+static void
+on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
+    if (!set_callback_window(window)) return;
+    OSWindow *os_window = global_state.callback_os_window;
+    switch (ev->type) {
+        case GLFW_DROP_ENTER:
+        case GLFW_DROP_MOVE:
+            os_window->last_drag_event.x = (int)(ev->xpos * os_window->viewport_x_ratio);
+            os_window->last_drag_event.y = (int)(ev->ypos * os_window->viewport_y_ratio);
+            on_mouse_position_update(ev->xpos, ev->ypos);
+            call_boss(on_drop_move, "KiiOO",
+                os_window->id, os_window->last_drag_event.x, os_window->last_drag_event.y,
+                ev->from_self ? Py_True : Py_False, Py_False);
+            /* fallthrough */
+        case GLFW_DROP_STATUS_UPDATE:
+            update_allowed_mimes_for_drop(ev);
+            break;
+        case GLFW_DROP_LEAVE:
+            call_boss(on_drop_move, "KiiOO",
+                os_window->id, os_window->last_drag_event.x, os_window->last_drag_event.y,
+                ev->from_self ? Py_True : Py_False, Py_True);
+            break;
+        case GLFW_DROP_DROP:
+            Py_CLEAR(global_state.drop_dest.data);
+            if (ev->from_self) {
+                if (global_state.drag_source.drag_data) {
+                    global_state.drag_source.was_dropped = true;
+                    WINDOW_CALLBACK(on_drop, "OOii", global_state.drag_source.drag_data, Py_True,
+                        global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
+                } else log_error("Got a drop from self but drag_source.drag_data is NULL");
+                ev->finish_drop(window, GLFW_DRAG_OPERATION_COPY);
+                break;
+            }
+            update_allowed_mimes_for_drop(ev);
+            ev->num_mimes = remove_duplicate_mimes(ev->mimes, ev->num_mimes);
+            global_state.drop_dest.num_left = ev->num_mimes;
+            if (!global_state.drop_dest.num_left || !(global_state.drop_dest.data = PyDict_New())) {
+                ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+            }
+            break;
+        case GLFW_DROP_DATA_AVAILABLE:
+            if (!global_state.drop_dest.data) ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+            else read_drop_data(window, ev);
+            break;
+    }
 }
 
 static void
@@ -670,6 +826,55 @@ application_close_requested_callback(int flags) {
         }
     }
 }
+
+#define ds (global_state.drag_source)
+
+void
+free_drag_source(void) {
+    if (ds.accepted_mime_type) free(ds.accepted_mime_type);
+    Py_CLEAR(ds.drag_data); Py_CLEAR(ds.thumbnails);
+    zero_at_ptr(&ds);
+}
+
+static void
+drag_source_callback(GLFWwindow *window UNUSED, GLFWDragEvent *ev) {
+#define finish \
+    call_boss(on_drag_source_finished, "OOsiOO", \
+            ds.was_dropped ? Py_True : Py_False, ds.was_canceled ? Py_True: Py_False, \
+            ds.accepted_mime_type ? ds.accepted_mime_type : "", \
+            ds.action, ds.drag_data ? ds.drag_data : Py_None, ds.needs_toplevel_on_wayland ? Py_True : Py_False); \
+    free_drag_source();
+
+    switch (ev->type) {
+        case GLFW_DRAG_DATA_REQUEST: // we currently pre-provide all data so this should never happen
+            if (ev->data_sz) {
+                // previously returned data is consumed, free it
+            } else {
+                ev->err_num = ENOENT;
+            }
+            break;
+        case GLFW_DRAG_ACCEPTED:
+            free(ds.accepted_mime_type);
+            ds.accepted_mime_type = ev->mime_type ? strdup(ev->mime_type) : NULL;
+            break;
+        case GLFW_DRAG_ACTION_CHANGED:
+            ds.action = ev->action; break;
+        case GLFW_DRAG_DROPPED:
+            ds.was_dropped = true;
+            if (ev->action == GLFW_DRAG_OPERATION_NONE) {
+                finish
+            }
+            break;
+        case GLFW_DRAG_CANCELLED:
+            ds.was_canceled = true;
+            /* fallthrough */
+        case GLFW_DRAG_FINSHED:
+            finish
+            break;
+    }
+#undef finish
+}
+#undef ds
 
 static char*
 get_current_selection(void) {
@@ -884,6 +1089,7 @@ set_os_window_icon(PyObject UNUSED *self, PyObject *args) {
     if(!PyArg_ParseTuple(args, "K|O", &id, &what)) return NULL;
     OSWindow *os_window = os_window_for_id(id);
     if (!os_window) { PyErr_Format(PyExc_KeyError, "No OS Window with id: %llu", id); return NULL; }
+    if (os_window->is_layer_shell && global_state.is_wayland) Py_RETURN_NONE;
     if (!what || what == Py_None) {
         glfwSetWindowIcon(os_window->handle, 0, NULL);
         Py_RETURN_NONE;
@@ -1118,6 +1324,14 @@ intercept_cocoa_fullscreen(GLFWwindow *w) {
                 global_state.callback_os_window);
         return false;
     }
+    // macOS Split View uses Cocoa fullscreen internally, so the window
+    // can end up with NSWindowStyleMaskFullScreen set even when
+    // macos_traditional_fullscreen is enabled. Redirecting to traditional
+    // fullscreen would crash in setStyleMask: (see #9572).
+    if (glfwIsFullscreen(w, 1)) {
+        global_state.callback_os_window->background_opacity.os_forces_opaque = false;
+        return false;
+    }
     toggle_fullscreen_for_os_window(global_state.callback_os_window);
     global_state.callback_os_window = NULL;
     return true;
@@ -1167,6 +1381,10 @@ apply_window_chrome_state(GLFWwindow *w, WindowChromeState new_state, int width,
     // Need to resize the window again after hiding decorations or title bar to take up screen space
     if (window_decorations_changed) glfwSetWindowSize(w, width, height);
 #else
+        if (global_state.is_wayland && glfwWaylandSetTitlebarHidden) {
+            bool titlebar_only = (new_state.hide_window_decorations & 2) != 0;
+            glfwWaylandSetTitlebarHidden(w, titlebar_only);
+        }
         if (window_decorations_changed) {
             bool hide_window_decorations = new_state.hide_window_decorations & 1;
             glfwSetWindowAttrib(w, GLFW_DECORATED, !hide_window_decorations);
@@ -1446,6 +1664,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
     if (glfw_window == NULL) glfw_failure;
 #undef glfw_failure
+    // Set titlebar-only mode before the window becomes visible
+    if (global_state.is_wayland && (OPT(hide_window_decorations) & 2) && glfwWaylandSetTitlebarHidden) {
+        glfwWaylandSetTitlebarHidden(glfw_window, true);
+    }
     glfwMakeContextCurrent(glfw_window);
     if (is_first_window) gl_init();
     bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);
@@ -1508,7 +1730,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwCocoaSetWindowResizeCallback(glfw_window, cocoa_os_window_resized);
 #endif
     send_prerendered_sprites_for_window(w);
-    if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
+    if (logo.pixels && logo.width && logo.height && (!lsc || !global_state.is_wayland)) glfwSetWindowIcon(glfw_window, 1, &logo);
     set_glfw_mouse_pointer_shape_in_window(glfw_window, OPT(default_pointer_shape));
     update_os_window_viewport(w, false);
     glfwSetWindowPosCallback(glfw_window, window_pos_callback);
@@ -1527,7 +1749,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwSetCursorEnterCallback(glfw_window, cursor_enter_callback);
     glfwSetScrollCallback(glfw_window, scroll_callback);
     glfwSetKeyboardCallback(glfw_window, key_callback);
-    glfwSetDropCallback(glfw_window, drop_callback);
+
+    glfwSetDragSourceCallback(glfw_window, drag_source_callback);
+    glfwSetDropEventCallback(glfw_window, on_drop);
     monotonic_t now = monotonic();
     w->is_focused = true;
     w->cursor_blink_zero_time = now;
@@ -1977,6 +2201,16 @@ ring_bell(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyObject*
+request_attention(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long os_window_id;
+    if (!PyArg_ParseTuple(args, "K", &os_window_id)) return NULL;
+    OSWindow *w = os_window_for_id(os_window_id);
+    if (w && w->handle) glfwRequestWindowAttention(w->handle);
+    Py_RETURN_NONE;
+}
+
+
+static PyObject*
 get_content_scale_for_window(PYNOARG) {
     OSWindow *w = global_state.callback_os_window ? global_state.callback_os_window : global_state.os_windows;
     float xscale, yscale;
@@ -2063,6 +2297,9 @@ request_window_attention(id_type kitty_window_id, bool audio_bell) {
     if (w) {
         if (audio_bell) ring_audio_bell(w);
         if (OPT(window_alert_on_bell)) glfwRequestWindowAttention(w->handle);
+#ifdef __APPLE__
+        if (OPT(macos_dock_badge_on_bell)) cocoa_set_dock_badge("!");
+#endif
         glfwPostEmptyEvent();
     }
 }
@@ -2603,6 +2840,100 @@ grab_keyboard(PyObject *self UNUSED, PyObject *action) {
     return Py_NewRef(glfwGrabKeyboard(action == Py_None ? 2 : PyObject_IsTrue(action)) ? Py_True : Py_False);
 }
 
+static PyObject*
+draw_single_line_of_text(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long os_window_id;
+    const char *text;
+    unsigned int fg, bg;
+    int width, padding_y = 2;
+    if (!PyArg_ParseTuple(args, "KsIIi|i", &os_window_id, &text, &fg, &bg, &width, &padding_y)) return NULL;
+    OSWindow *w = os_window_for_id(os_window_id);
+    if (!w || !w->fonts_data) {
+        PyErr_SetString(PyExc_KeyError, "OS Window with specified id does not exist or has no fonts data");
+        return NULL;
+    }
+    double font_sz_pts = w->fonts_data->font_sz_in_pts;
+    double ydpi = w->fonts_data->logical_dpi_y;
+    size_t height = (size_t)w->fonts_data->fcm.cell_height + padding_y;
+    size_t buf_sz = (size_t)width * height * 4;
+    RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, buf_sz)); if (!ans) return NULL;
+    if (!draw_window_title(font_sz_pts, ydpi, text, fg, bg, (uint8_t*)PyBytes_AS_STRING(ans), width, height)) {
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Failed to render text");
+        return NULL;
+    }
+    return Py_NewRef(ans);
+}
+
+static bool
+get_thumbnail(PyObject *thumbnails, GLFWimage *thumbnail, int idx) {
+    RAII_PyObject(t, PySequence_GetItem(thumbnails, idx));
+    if (!PyTuple_Check(t) || PyTuple_GET_SIZE(t) != 3) { PyErr_SetString(PyExc_TypeError, "thumbnail must be a 3-tuple"); return false; }
+    thumbnail->pixels = (uint8_t*)PyBytes_AS_STRING(PyTuple_GET_ITEM(t, 0));
+    thumbnail->width = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(t, 1));
+    thumbnail->height = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(t, 2));
+    return true;
+}
+
+static PyObject*
+change_drag_thumbnail(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long os_window_id; int idx = -1;
+    if (!PyArg_ParseTuple(args, "K|i", &os_window_id, &idx)) return NULL;
+    if (global_state.drag_source.thumbnail_idx == idx) Py_RETURN_NONE;
+    OSWindow *w = os_window_for_id(os_window_id);
+    if (!w || !w->handle) { PyErr_SetString(PyExc_KeyError, "OS Window with specified id does not exist"); return NULL; }
+    GLFWimage thumbnail = {0};
+    if (idx >=0 && global_state.drag_source.thumbnails && idx < PySequence_Size(global_state.drag_source.thumbnails)) {
+        if (!get_thumbnail(global_state.drag_source.thumbnails, &thumbnail, idx)) return NULL;
+        global_state.drag_source.thumbnail_idx = idx;
+    } else global_state.drag_source.thumbnail_idx = -1;
+    errno = glfwStartDrag(w->handle, NULL, 0, thumbnail.pixels ? &thumbnail : NULL, -2, false);
+    if (errno != 0) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+start_drag_with_data(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
+    static const char* kwlist[] = {"os_window_id", "data_map", "thumbnails", "operations", NULL};
+    unsigned long long os_window_id; PyObject *data_map;
+    int operations = GLFW_DRAG_OPERATION_MOVE;
+    PyObject *thumbnails = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "KO!|Oi", (char**)kwlist,
+            &os_window_id, &PyDict_Type, &data_map, &thumbnails, &operations)) return NULL;
+    OSWindow *w = os_window_for_id(os_window_id);
+    if (!w || !w->handle) { PyErr_SetString(PyExc_KeyError, "OS Window with specified id does not exist"); return NULL; }
+    GLFWimage thumbnail = {0};
+    if (!PySequence_Check(thumbnails)) { PyErr_SetString(PyExc_TypeError, "thumbnails must be a sequence"); return NULL; }
+    if (thumbnails && PySequence_Size(thumbnails) && !get_thumbnail(thumbnails, &thumbnail, 0)) return NULL;
+    RAII_ALLOC(GLFWDragSourceItem, items, calloc(PyDict_Size(data_map), sizeof(GLFWDragSourceItem)));
+    if (!items) { PyErr_NoMemory(); return NULL; }
+    PyObject *key, *value; Py_ssize_t pos = 0; size_t num = 0;
+    bool needs_toplevel_on_wayland = false;
+    while (PyDict_Next(data_map, &pos, &key, &value)) {
+        if (!PyUnicode_Check(key)) { PyErr_SetString(PyExc_TypeError, "data_map must have string keys"); return NULL; }
+        if (!PyBytes_Check(value)) { PyErr_SetString(PyExc_TypeError, "data_map must have bytes values"); return NULL; }
+        GLFWDragSourceItem *item = items + num++;
+        item->mime_type = PyUnicode_AsUTF8(key);
+        item->optional_data = PyBytes_AS_STRING(value); item->data_size = PyBytes_GET_SIZE(value);
+        if (global_state.is_wayland && is_droppable_mime(item->mime_type) == TAB_DRAG_MIME_NUMBER)
+            needs_toplevel_on_wayland = true;
+    }
+    free_drag_source();
+    global_state.drag_source.is_active = true;
+    global_state.drag_source.needs_toplevel_on_wayland = needs_toplevel_on_wayland;
+    global_state.drag_source.drag_data = Py_NewRef(data_map);
+    if (thumbnails) global_state.drag_source.thumbnails = Py_NewRef(thumbnails);
+    global_state.drag_source.thumbnail_idx = thumbnail.pixels ? 0 : -1;
+    errno = glfwStartDrag(w->handle, items, num, thumbnail.pixels ? &thumbnail : NULL, operations, needs_toplevel_on_wayland);
+    if (errno != 0) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
@@ -2614,6 +2945,9 @@ static PyMethodDef module_methods[] = {
     METHODB(grab_keyboard, METH_O),
     METHODB(pointer_name_to_css_name, METH_O),
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
+    {"start_drag_with_data", (PyCFunction)(void (*) (void))(start_drag_with_data), METH_VARARGS | METH_KEYWORDS, NULL},
+    METHODB(change_drag_thumbnail, METH_VARARGS),
+    METHODB(draw_single_line_of_text, METH_VARARGS),
     METHODB(set_default_window_icon, METH_VARARGS),
     METHODB(set_os_window_icon, METH_VARARGS),
     METHODB(set_clipboard_data_types, METH_VARARGS),
@@ -2622,6 +2956,7 @@ static PyMethodDef module_methods[] = {
     METHODB(macos_cycle_through_os_windows, METH_O),
     METHODB(get_content_scale_for_window, METH_NOARGS),
     METHODB(ring_bell, METH_VARARGS),
+    METHODB(request_attention, METH_VARARGS),
     METHODB(toggle_fullscreen, METH_VARARGS),
     METHODB(toggle_maximized, METH_VARARGS),
     METHODB(change_os_window_state, METH_VARARGS),
@@ -2657,7 +2992,7 @@ static PyMethodDef module_methods[] = {
 };
 
 void cleanup_glfw(void) {
-    if (logo.pixels) free(logo.pixels);
+    if (logo.pixels) free((void*)logo.pixels);
     logo.pixels = NULL;
     Py_CLEAR(edge_spacing_func);
 #ifndef __APPLE__
@@ -2674,6 +3009,9 @@ init_glfw(PyObject *m) {
 
 // constants {{{
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
+    ADDC(GLFW_DRAG_OPERATION_MOVE);
+    ADDC(GLFW_DRAG_OPERATION_COPY);
+    ADDC(GLFW_DRAG_OPERATION_GENERIC);
     ADDC(GLFW_RELEASE);
     ADDC(GLFW_PRESS);
     ADDC(GLFW_REPEAT);

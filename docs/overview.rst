@@ -33,6 +33,9 @@ frames-per-second. Press :sc:`edit_config_file` in kitty to open its fully
 commented sample config file in your text editor. For details see the
 :doc:`configuration docs <conf>`.
 
+You can quickly browse all available mappable actions by pressing
+:sc:`command_palette`.
+
 .. toctree::
    :hidden:
 
@@ -177,6 +180,13 @@ All these actions can be customized in :file:`kitty.conf` as described
 You can also customize what happens when clicking on :term:`hyperlinks` in
 kitty, having it open files in your editor, download remote files, open things
 in your browser, etc. For details, see :doc:`here <open_actions>`.
+
+Additionally, various bits of the kitty UI itself work with the mouse. You can
+drag and drop tabs in the tab bar to re-order them or move them from one OS
+Window to another, or even pop them out into a new OS Window.
+You can drag window borders to resize windows. You can double click on empty regions
+of the tab bar to create new tabs or double click on an existing tab to rename
+it.
 
 .. toctree::
    :hidden:

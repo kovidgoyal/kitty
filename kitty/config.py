@@ -99,6 +99,7 @@ def finalize_keys(opts: Options, accumulate_bad_lines: list[BadLine] | None = No
             modes[defn.options.new_mode] = nm = KeyboardMode(defn.options.new_mode)
             nm.on_unknown = defn.options.on_unknown
             nm.on_action = defn.options.on_action
+            nm.timeout = defn.options.timeout if defn.options.timeout is not None else opts.map_timeout
             defn.definition = f'push_keyboard_mode {defn.options.new_mode}'
         try:
             m = modes[defn.options.mode]

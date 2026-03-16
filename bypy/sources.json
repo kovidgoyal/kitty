@@ -1,9 +1,9 @@
 [
     {
-        "name": "zlib 1.3.1",
+        "name": "zlib 1.3.2",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32",
+            "hash": "sha256:d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3",
             "urls": ["https://zlib.net/{filename}"]
         }
     },
@@ -30,10 +30,10 @@
     },
 
     {
-        "name": "openssl 3.5.4",
+        "name": "openssl 3.5.5",
         "unix": {
             "file_extension": "tar.gz",
-            "hash": "sha256:967311f84955316969bdb1d8d4b983718ef42338639c621ec4c34fddef355e99",
+            "hash": "sha256:b28c91532a8b65a1f983b4c28b7488174e4a01008e29ce8e69bd789f28bc2a89",
             "urls": ["https://www.openssl.org/source/{filename}"]
         }
     },
@@ -145,19 +145,19 @@
     },
 
     {
-        "name": "python 3.12.12",
+        "name": "python 3.14.3",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:fb85a13414b028c49ba18bbd523c2d055a30b56b18b92ce454ea2c51edc656c4",
+            "hash": "sha256:a97d5549e9ad81fe17159ed02c68774ad5d266c72f8d9a0b5a9c371fe85d902b",
             "urls": ["https://www.python.org/ftp/python/{version}/Python-{version}.{file_extension}"]
         }
     },
 
     {
-        "name": "libpng 1.6.54",
+        "name": "libpng 1.6.55",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:01c9d8a303c941ec2c511c14312a3b1d36cedb41e2f5168ccdaa85d53b887805",
+            "hash": "sha256:d925722864837ad5ae2a82070d4b2e0603dc72af44bd457c3962298258b8e82d",
             "urls": ["https://downloads.sourceforge.net/sourceforge/libpng/{filename}"]
         }
     },
@@ -202,11 +202,11 @@
     },
 
     {
-        "name": "glib 2.82.5",
+        "name": "glib 2.86.3",
         "os": "linux",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:05c2031f9bdf6b5aba7a06ca84f0b4aced28b19bf1b50c6ab25cc675277cbc3f",
+            "hash": "sha256:b3211d8d34b9df5dca05787ef0ad5d7ca75dec998b970e1aab0001d229977c65",
             "urls": ["https://download.gnome.org/sources/glib/{version_except_last}/{filename}"]
         }
     },

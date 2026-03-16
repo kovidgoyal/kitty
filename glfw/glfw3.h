@@ -109,6 +109,16 @@ extern "C" {
 
 #include <stdbool.h>
 
+/* Include for ssize_t on POSIX systems. On Windows we define it if needed. */
+#if !defined(_WIN32)
+  #include <sys/types.h>
+#else
+  #if !defined(SSIZE_T_DEFINED)
+    typedef intptr_t ssize_t;
+    #define SSIZE_T_DEFINED
+  #endif
+#endif
+
 #if defined(GLFW_INCLUDE_VULKAN)
   #include <vulkan/vulkan.h>
 #endif /* Vulkan header */
@@ -1267,6 +1277,20 @@ typedef struct GLFWwindow GLFWwindow;
  */
 typedef struct GLFWcursor GLFWcursor;
 
+/*! @brief Opaque drop data object.
+ *
+ *  Opaque drop data object representing data from a drag and drop operation.
+ *  This object is passed to the drop callback and can be used to query
+ *  available MIME types and read the dropped data in chunks.
+ *
+ *  @see @ref path_drop
+ *  @see @ref glfwGetDropMimeTypes
+ *  @see @ref glfwReadDropData
+ *
+ *  @since Added in version 4.0.
+ *
+ *  @ingroup input
+ */
 typedef enum {
     GLFW_RELEASE = 0,
     GLFW_PRESS = 1,
@@ -1357,6 +1381,38 @@ typedef struct GLFWDBUSNotificationData {
     const char *app_name, *icon, *summary, *body, *category, **actions; size_t num_actions;
     int32_t timeout; uint8_t urgency; uint32_t replaces; int muted;
 } GLFWDBUSNotificationData;
+
+typedef enum { GLFW_DROP_ENTER, GLFW_DROP_MOVE, GLFW_DROP_LEAVE, GLFW_DROP_DROP, GLFW_DROP_STATUS_UPDATE, GLFW_DROP_DATA_AVAILABLE } GLFWDropEventType;
+
+/*! @brief Drag operation types.
+ *
+ *  These constants specify the type of drag operation (copy, move, or generic).
+ *
+ *  @ingroup input
+ */
+typedef enum {
+    GLFW_DRAG_OPERATION_NONE = 0,  // no operation, drop was not accepted
+    /*! Move the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_MOVE = 1,
+    /*! Copy the dragged data to the destination. */
+    GLFW_DRAG_OPERATION_COPY = 2,
+    /*! Generic drag operation (platform decides semantics). */
+    GLFW_DRAG_OPERATION_GENERIC = 4
+} GLFWDragOperationType;
+
+
+typedef struct GLFWDropEvent {
+    GLFWDropEventType type;
+    const char **mimes; size_t num_mimes;
+    // Positions are only valid for GLFW_DROP_ENTER and GLFW_DROP_MOVE.
+    // They are in window co-ordinates same as for mouse events
+    double xpos, ypos;
+    bool from_self;  // Only valid upto GLFW_DROP_DROP
+    ssize_t (*read_data)(GLFWwindow *w, struct GLFWDropEvent* ev, char *buffer, size_t sz);  // Only valid for GLFW_DROP_DATA_AVAILABLE
+    void (*finish_drop)(GLFWwindow *w, GLFWDragOperationType op); // Only valid for GLFW_DROP_DROP and GLFW_DROP_DATA_AVAILABLE
+} GLFWDropEvent;
+typedef void (* GLFWdropeventfun)(GLFWwindow*, GLFWDropEvent *event);
+
 
 /*! @brief The function pointer type for error callbacks.
  *
@@ -1756,32 +1812,74 @@ typedef void (* GLFWscrollfun)(GLFWwindow*,const GLFWScrollEvent*);
  */
 typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
 
-/*! @brief The function pointer type for drag and drop callbacks.
+typedef enum {
+    GLFW_DRAG_DATA_REQUEST,  // request data for specified mime type
+    GLFW_DRAG_CANCELLED,
+    GLFW_DRAG_FINSHED,
+    GLFW_DRAG_ACCEPTED,  // mimetype was accepted or NULL if drag was accepted but no mime type specified
+    GLFW_DRAG_ACTION_CHANGED,  // action was changed 0 or GLFWDragOperationType
+    GLFW_DRAG_DROPPED,  // drop was performed but no data transferred yet
+} GLFWDragEventType;
+
+typedef struct GLFWDragSourceItem {
+    const char *mime_type;
+    // Can be on null to provide data when the drag is started should be used only when the data is relatively small
+    const char *optional_data;
+    size_t data_size;
+} GLFWDragSourceItem;
+
+typedef struct GLFWDragEvent {
+    GLFWDragEventType type;
+    // When the drag event callback is called with a mimetype and no data, the
+    // application should set the data ans data_sz and err_num fields.
+    // Once glfw is done reading the data the drag event callback will be
+    // called with the data pointer unchanged. The application is now free
+    // to delete the data, as needed.
+    const char *mime_type;
+    const char *data; size_t data_sz;
+    int err_num;  // POSIX error code indicating failure fetching data
+    GLFWDragOperationType action;  // can be 0 indicating no action
+} GLFWDragEvent;
+
+typedef void (* GLFWdragsourcefun)(GLFWwindow* window, GLFWDragEvent *ev);
+
+/*! @brief The function pointer type for drag event callbacks.
  *
- *  This is the function pointer type for drop callbacks. A drop
+ *  This is the function pointer type for drag event callbacks. A drag event
  *  callback function has the following signature:
  *  @code
- *  int function_name(GLFWwindow* window, const char* mime, const char* text)
+ *  int function_name(GLFWwindow* window, int event, double xpos, double ypos, const char** mime_types, int* mime_count)
  *  @endcode
  *
- *  @param[in] window The window that received the event.
- *  @param[in] mime The UTF-8 encoded drop mime-type
- *  @param[in] data The dropped data or NULL for drag enter events
- *  @param[in] sz The size of the dropped data
- *  @return For drag events should return the priority for the specified mime type. A priority of zero
- *  or lower means the mime type is not accepted. Highest priority will be the finally accepted mime-type.
+ *  @param[in] window The window that received the drag event.
+ *  @param[in] event The drag event type: @ref GLFW_DRAG_ENTER, @ref GLFW_DRAG_MOVE,
+ *  or @ref GLFW_DRAG_LEAVE.
+ *  @param[in] xpos The x-coordinate of the drag position in window coordinates.
+ *  @param[in] ypos The y-coordinate of the drag position in window coordinates.
+ *  @param[in,out] mime_types A writable array of MIME type strings available from the drag source.
+ *  For @ref GLFW_DRAG_ENTER and @ref GLFW_DRAG_MOVE events this is non-NULL and contains all
+ *  available MIME types. The callback is responsible for sorting this list by priority and
+ *  keeping only the MIME types it wants to accept. The first MIME type in the sorted list
+ *  will be used for the drop operation. The strings are only valid for the duration of the
+ *  callback; if you need to store them, make copies. For @ref GLFW_DRAG_LEAVE events this
+ *  is `NULL`.
+ *  @param[in,out] mime_count Pointer to the number of MIME types in the array. The callback
+ *  should update this to reflect the new count after sorting and filtering. For
+ *  @ref GLFW_DRAG_LEAVE events this is `NULL`.
+ *  @return For @ref GLFW_DRAG_ENTER and @ref GLFW_DRAG_MOVE events, return non-zero
+ *  to accept the drag or zero to reject it. This allows the application to
+ *  dynamically accept or reject the drag based on the current position.
+ *  Return value is ignored for @ref GLFW_DRAG_LEAVE events.
  *
- *  @pointer_lifetime The text is valid until the
- *  callback function returns.
+ *  @sa @ref drag_events
+ *  @sa @ref glfwSetDragCallback
+ *  @sa @ref glfwUpdateDragState
  *
- *  @sa @ref path_drop
- *  @sa @ref glfwSetDropCallback
- *
- *  @since Added in version 3.1.
+ *  @since Added in version 4.0.
  *
  *  @ingroup input
  */
-typedef int (* GLFWdropfun)(GLFWwindow*, const char *, const char*, size_t);
+typedef int (* GLFWdragfun)(GLFWwindow*, GLFWDragEventType event, double xpos, double ypos, const char** mime_types, int* mime_count);
 
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 
@@ -1934,7 +2032,7 @@ typedef struct GLFWimage
     int height;
     /*! The pixel data of this image, arranged left-to-right, top-to-bottom.
      */
-    unsigned char* pixels;
+    const unsigned char* pixels;
 } GLFWimage;
 
 /*! @brief Gamepad input state
@@ -4875,43 +4973,18 @@ GLFWAPI GLFWcursorenterfun glfwSetCursorEnterCallback(GLFWwindow* window, GLFWcu
  */
 GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* window, GLFWscrollfun callback);
 
-/*! @brief Sets the path drop callback.
- *
- *  This function sets the path drop callback of the specified window, which is
- *  called when one or more dragged paths are dropped on the window.
- *
- *  Because the path array and its strings may have been generated specifically
- *  for that event, they are not guaranteed to be valid after the callback has
- *  returned.  If you wish to use them after the callback returns, you need to
- *  make a deep copy.
- *
- *  @param[in] window The window whose callback to set.
- *  @param[in] callback The new file drop callback, or `NULL` to remove the
- *  currently set callback.
- *  @return The previously set callback, or `NULL` if no callback was set or the
- *  library had not been [initialized](@ref intro_init).
- *
- *  @callback_signature
- *  @code
- *  void function_name(GLFWwindow* window, int path_count, const char* paths[])
- *  @endcode
- *  For more information about the callback parameters, see the
- *  [function pointer type](@ref GLFWdropfun).
- *
- *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
- *
- *  @remark @wayland File drop is currently unimplemented.
- *
- *  @thread_safety This function must only be called from the main thread.
- *
- *  @sa @ref path_drop
- *
- *  @since Added in version 3.1.
- *
- *  @ingroup input
- */
-GLFWAPI GLFWdropfun glfwSetDropCallback(GLFWwindow* window, GLFWdropfun callback);
 GLFWAPI GLFWliveresizefun glfwSetLiveResizeCallback(GLFWwindow* window, GLFWliveresizefun callback);
+
+GLFWAPI GLFWdropeventfun glfwSetDropEventCallback(GLFWwindow *window, GLFWdropeventfun callback);
+GLFWAPI void glfwRequestDropUpdate(GLFWwindow *window);  // ask for update before GLFW_DROP_DROP happens
+GLFWAPI int glfwRequestDropData(GLFWwindow *window, const char *mime);
+GLFWAPI void glfwEndDrop(GLFWwindow *window, GLFWDragOperationType op);
+GLFWAPI GLFWdragsourcefun glfwSetDragSourceCallback(GLFWwindow* window, GLFWdragsourcefun callback);
+
+// Start a drag. If called with operations == -1 indicates that previously
+// requested data via GLFW_DRAG_DATA_REQUEST is ready. operations == -2 means
+// that the drag image is changed.
+GLFWAPI int glfwStartDrag(GLFWwindow* window, const GLFWDragSourceItem *items, size_t mime_count, const GLFWimage* thumbnail, int operations, bool needs_toplevel_on_wayland);
 
 /*! @brief Returns whether the specified joystick is present.
  *

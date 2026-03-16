@@ -239,13 +239,22 @@ typedef struct XIScrollValuator {
 } XIScrollValuator;
 
 typedef struct XIScrollDevice {
-    bool is_highres;
     bool is_finger_based;
+    bool type_detected;
     int deviceid, sourceid;
     XIScrollValuator valuators[8];
     unsigned num_valuators;
     char name[32];
+    unsigned num_events;
+    GLFWOffsetType offset_type;
 } XIScrollDevice;
+
+typedef struct XdndSelectionRequest {
+    char *mime;
+    bool inflight, got_data;
+    unsigned char *data;
+    size_t offset, size;
+} XdndSelectionRequest;
 
 // X11-specific global data
 //
@@ -311,10 +320,14 @@ typedef struct _GLFWlibraryX11
     Atom            XdndPosition;
     Atom            XdndStatus;
     Atom            XdndActionCopy;
+    Atom            XdndActionMove;
+    Atom            XdndActionLink;
     Atom            XdndDrop;
     Atom            XdndFinished;
     Atom            XdndSelection;
     Atom            XdndTypeList;
+    Atom            XdndLeave;
+    Atom            XdndProxy;
 
     // Selection (clipboard) atoms
     Atom            TARGETS;
@@ -379,9 +392,47 @@ typedef struct _GLFWlibraryX11
     struct {
         int         version;
         Window      source;
-        char        format[128];
+        char        format[256];
         int         format_priority;
+        Window      target_window;  // For drag events: the window being dragged over
+        const char** mimes;          // Cached MIME types from drag enter (original, never reordered)
+        size_t       mimes_count;    // Count of MIME types (full original list, never reduced)
+        const char** copy_mimes;     // Working copy passed to callbacks; pointers into mimes[]
+        size_t       copy_mimes_count; // Accepted count after last callback
+        bool drag_accepted;          // Whether the callback accepted at least one MIME type
+        bool from_self, dropped;
+        Time drop_time;
+        XdndSelectionRequest *selection_requests;
+        size_t selection_requests_count, selection_requests_capacity;
     } xdnd;
+
+    // Drag source state
+    struct {
+        Window           source_window;
+        Atom*            type_atoms;    // Atoms for each MIME type
+        size_t           type_count;
+        Atom             action_atom;   // XdndActionCopy, XdndActionMove, or XdndActionLink
+        bool             active;        // Whether a drag is currently active
+        Window           current_target;// Current drop target window under cursor
+        Window           proxy_target;  // Proxy target if current_target has XdndProxy
+        int              xdnd_version;  // Xdnd version supported by current target
+        bool             waiting_for_status; // Waiting for XdndStatus from target
+        bool             accepted;      // Whether target accepted the drag
+        Atom             accepted_action; // Action accepted by target
+        struct {
+            const char *mime_type;
+            Window     requestor;
+            Atom       property;
+            Atom       target;
+            bool       inflight;
+        } *pending_requests;
+        size_t           pending_count;
+        size_t           pending_capacity;
+        // Thumbnail window for drag icon
+        Window           thumbnail_window;
+        Pixmap           thumbnail_pixmap;
+        GC               thumbnail_gc;
+    } drag;
 
     struct {
         void*       handle;
@@ -501,4 +552,4 @@ void _glfwInputErrorX11(int error, const char* message);
 void _glfwGetSystemContentScaleX11(float* xscale, float* yscale, bool bypass_cache);
 void _glfwPushSelectionToManagerX11(void);
 void read_xi_scroll_devices(void);
-
+void free_dnd_data(void);

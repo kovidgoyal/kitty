@@ -9,6 +9,21 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+Mousing [0.46]
+~~~~~~~~~~~~~~~
+
+kitty already had excellent mouse support, but now it is taking it to the next
+level. The kitty scrollback buffer grew support for :opt:`smooth scrolling
+<pixel_scroll>` and :opt:`momentum based scrolling <momentum_scroll>`
+for a natural, smooth and kinetic scrolling experience.
+
+Additionally, you can now :opt:`drag kitty tabs around <tab_bar_drag_threshold>` with the mouse
+to re-order them, move them to another kitty OS Window or even detach them into
+their own OS Window.
+
+Finally, a long requested feature, the ability to resize kitty windows (aka
+splits) with the mouse was implemented.
+
 Choose files, fast [0.45]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -150,7 +165,32 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.46.0 [future]
+0.46.1 [2026-03-16]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- diff kitten: Highlight moved lines using a different background color (:opt:`kitten-diff.mark_moved_lines`) (:iss:`3241`)
+
+- Fix a regression that broke ``kitten update-self`` (:iss:`9642`)
+
+- macOS: Clear bell alert badge on dock icon on mouse/keyboard activity (:iss:`9640`)
+
+- Fix a regression that broke accept anyway shortcut in the paste confirmation dialog (:pull:`9640`)
+
+- Fix kitty hanging on startup on Intel macs (:iss:`9643`)
+
+- X11: Fix a regression that caused some high res scroll devices to be treated as line based scroll devices (:iss:`9649`)
+
+- Wayland: Fix momentum scrolling not working on compositors that send a stop frame with no axis information (:iss:`9653`)
+
+- Linux: Fix regression that broke drag and drop from GTK applications (:iss:`9656`)
+
+- macOS: Fix using Fn key for start dictation not working (:iss:`9661`)
+
+- Don't use neighboring tab colors for tab bar margins in translucent windows (:iss:`9663`)
+
+- macOS: Fix OS window focus not restored when switching spaces (:iss:`9665`)
+
+0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Pixel scrolling for the kitty scrollback buffer controlled via :opt:`pixel_scroll` (:pull:`9330`)
@@ -160,6 +200,18 @@ Detailed list of changes
 - X11: support high resolution scroll events from touchpads, etc
 
 - macOS: Implement support for Apple dictation to input text in kitty (:iss:`3732`)
+
+- Allow dragging tabs (opt:`tab_bar_drag_threshold`) in the tab bar to re-order, move to another OS Window or
+  detach (:pull:`9296`)
+
+- Allow dragging window borders to resize kitty windows in all the different
+  layouts, controlled by :opt:`window_drag_tolerance` (:pull:`9447`)
+
+- Allow showing :opt:`configurable window titles <window_title_bar>` for individual kitty
+  windows via a window title bar (:pull:`9450`)
+
+- A command palette (:sc:`command_palette`) to browse and trigger all mapped and unmapped actions
+  (:pull:`9545`)
 
 - choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
 
@@ -171,6 +223,8 @@ Detailed list of changes
 
 - Fix a regression that broke using line numbers with the edit-in-kitty command
   (:pull:`9346`)
+
+- Key maps: Allow specifying a timeout for multi key mappings and keyboard modes (:pull:`9551`)
 
 - macOS: Fix changes to :opt:`macos_titlebar_color` while in full screen not being applied after exiting fullscreen (:iss:`9350`)
 
@@ -207,6 +261,59 @@ Detailed list of changes
 
 - kitten choose-files: Fix TAB completion in the choose save file name prompt
   not working with respect to the current working directory (:iss:`9387`)
+
+- Fix line-at-once selection not extending wrapped lines into scrollback (:iss:`9437`)
+
+- ssh kitten: Restore keyboard mode even if the ssh connection drops
+
+- edit-in-kitty: Handle connection drop more gracefully (:pull:`9480`)
+
+- macOS: Fix changing window title with global menubar menu open causes menu to
+  get stuck (:pull:`9490`)
+
+- Fix :opt:`focus_follows_mouse` not working during a drag and drop (:iss:`9497`)
+
+- :ac:`goto_session`: Add a ``--active-only`` option to select from only active
+  sessions (:pull:`9503`)
+
+- Shell integration: Allow sending click events to shells using y co-ordinates
+  relative to prompts (:iss:`9500`)
+
+- A new action :ac:`copy_selection_or_last_command_output` (:pull:`9512`)
+
+- Wayland: Add support for the background blur extension (:iss:`9534`)
+
+- macOS: A new option :opt:`macos_dock_badge_on_bell` to show a badge on the
+  kitty dock icon when a bell occurs (:pull:`9529`)
+
+- macOS: Workaround for yet another Tahoe bug causing rendering to fail
+  (:pull:`9520`)
+
+- URL detection: Allow trailing asterisks in URLs (:iss:`9543`)
+
+- Wayland: Add support for :code:`titlebar-only` in :opt:`hide_window_decorations`
+  to hide the titlebar while keeping shadows for window resizing. (:pull:`9486`)
+
+- Text sizing protocol: Fix alignment/cropping issues when rendering text with
+  a fractional scale (:iss:`9471`)
+
+- macOS: Fix a crash when using :opt:`macos_traditional_fullscreen` with split
+  view (:pull:`9573`)
+
+- macOS: Fix flickering during OS Window resize (:disc:`9582`)
+
+- Cursor trail: Show a cursor trail when switching tabs (:pull:`9588`)
+
+- Make shift+left click extend the current selection instead of starting a new
+  selection when the mouse is not grabbed by the TUI application (:disc:`9608`)
+
+- Allow double clicking on a tab to rename it (:pull:`9609`)
+
+- :ac:`remote_control_script` resolve relative paths with respect to kitty
+  config directory (:iss:`9625`)
+
+- Splits layout: Add new mappable actions to maximize a window in the splits
+  layout (:iss:`9629`)
 
 
 0.45.0 [2025-12-24]

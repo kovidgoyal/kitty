@@ -216,8 +216,12 @@ read_xi_scroll_devices(void) {
                 if (_glfw.x11.xi.num_scroll_devices >= arraysz(_glfw.x11.xi.scroll_devices)) continue;
                 d = &_glfw.x11.xi.scroll_devices[_glfw.x11.xi.num_scroll_devices++];
                 *d = (XIScrollDevice){
-                    .is_highres=is_highres, .is_finger_based=is_finger_based, .deviceid=device->deviceid, .sourceid=scroll->sourceid,
+                    .is_finger_based=is_finger_based, .deviceid=device->deviceid, .sourceid=scroll->sourceid,
                 };
+                if (is_highres) {
+                    d->type_detected = true;
+                    d->offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
+                }
                 memcpy(d->name, device->name, MIN(sizeof(d->name)-1, strlen(device->name)));
             }
             if (d->num_valuators >= arraysz(d->valuators)) continue;
@@ -506,10 +510,14 @@ static bool initExtensions(void)
     _glfw.x11.XdndPosition = XInternAtom(_glfw.x11.display, "XdndPosition", False);
     _glfw.x11.XdndStatus = XInternAtom(_glfw.x11.display, "XdndStatus", False);
     _glfw.x11.XdndActionCopy = XInternAtom(_glfw.x11.display, "XdndActionCopy", False);
+    _glfw.x11.XdndActionMove = XInternAtom(_glfw.x11.display, "XdndActionMove", False);
+    _glfw.x11.XdndActionLink = XInternAtom(_glfw.x11.display, "XdndActionLink", False);
     _glfw.x11.XdndDrop = XInternAtom(_glfw.x11.display, "XdndDrop", False);
     _glfw.x11.XdndFinished = XInternAtom(_glfw.x11.display, "XdndFinished", False);
     _glfw.x11.XdndSelection = XInternAtom(_glfw.x11.display, "XdndSelection", False);
     _glfw.x11.XdndTypeList = XInternAtom(_glfw.x11.display, "XdndTypeList", False);
+    _glfw.x11.XdndLeave = XInternAtom(_glfw.x11.display, "XdndLeave", False);
+    _glfw.x11.XdndProxy = XInternAtom(_glfw.x11.display, "XdndProxy", False);
 
     // ICCCM, EWMH and Motif window property atoms
     // These can be set safely even without WM support
@@ -816,6 +824,7 @@ void _glfwPlatformTerminate(void)
     if (_glfw.x11.clipboard_atoms.array) { free(_glfw.x11.clipboard_atoms.array); }
     if (_glfw.x11.primary_atoms.array) { free(_glfw.x11.primary_atoms.array); }
 
+    free_dnd_data();
     if (_glfw.x11.display)
     {
         XCloseDisplay(_glfw.x11.display);

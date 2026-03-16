@@ -345,3 +345,48 @@ GLFWAPI id glfwGetNSGLContext(GLFWwindow* handle)
 
     return window->context.nsgl.object;
 }
+
+GLFWAPI bool
+glfwCocoaRecreateGLDrawable(GLFWwindow *w) {
+    _GLFWwindow* window = (_GLFWwindow*)w;
+    if (window->context.client == GLFW_NO_API) return false;
+    @try {
+        // Save current state
+        NSOpenGLPixelFormat *pixelFormat = window->context.nsgl.pixelFormat;
+        NSOpenGLContext *oldContext = window->context.nsgl.object;
+
+        // Create a new context sharing resources with the old one
+        NSOpenGLContext *newContext = [[NSOpenGLContext alloc]
+            initWithFormat:pixelFormat
+              shareContext:oldContext];
+        if (newContext == nil) return false;
+
+        // Copy settings from old context
+        GLint opacity = 0;
+        [oldContext getValues:&opacity forParameter:NSOpenGLContextParameterSurfaceOpacity];
+        [newContext setValues:&opacity forParameter:NSOpenGLContextParameterSurfaceOpacity];
+        GLint interval = 0;
+        [newContext setValues:&interval forParameter:NSOpenGLContextParameterSwapInterval];
+
+        // Detach old context
+        [NSOpenGLContext clearCurrentContext];
+        [oldContext clearDrawable];
+
+        // Attach new context to the view
+        [window->ns.view setWantsBestResolutionOpenGLSurface:window->ns.retina];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        [newContext setView:window->ns.view];
+#pragma clang diagnostic pop
+        [newContext makeCurrentContext];
+        [newContext update];
+
+        // Replace context
+        window->context.nsgl.object = newContext;
+        [oldContext release];
+    } @catch (NSException *e) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to recreate NSGL context: %s (%s)", [[e name] UTF8String], [[e reason] UTF8String]);
+        return false;
+    }
+    return true;
+}

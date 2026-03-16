@@ -309,6 +309,7 @@ def generate_wrappers(glfw_header: str) -> None:
     GLFWapplicationwillfinishlaunchingfun glfwSetApplicationWillFinishLaunching(GLFWapplicationwillfinishlaunchingfun callback)
     uint32_t glfwGetCocoaKeyEquivalent(uint32_t glfw_key, int glfw_mods, int* cocoa_mods)
     void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback)
+    bool glfwCocoaRecreateGLDrawable(GLFWwindow *w)
     GLFWcocoarenderframefun glfwCocoaSetWindowResizeCallback(GLFWwindow *w, GLFWcocoarenderframefun callback)
     void* glfwGetX11Display(void)
     unsigned long glfwGetX11Window(GLFWwindow* window)
@@ -316,6 +317,7 @@ def generate_wrappers(glfw_header: str) -> None:
     void glfwCocoaCycleThroughOSWindows(bool backwards)
     void glfwCocoaSetWindowChrome(GLFWwindow* window, unsigned int color, bool use_system_color, unsigned int system_color,\
     int background_blur, unsigned int hide_window_decorations, bool show_text_in_titlebar, int color_space, float background_opacity, bool resizable)
+    void glfwCocoaRegisterMIMETypes(GLFWwindow *window, const char **mimes, size_t count)
     const char* glfwGetPrimarySelectionString(GLFWwindow* window, void)
     int glfwGetNativeKeyForName(const char* key_name, int case_sensitive)
     void glfwRequestWaylandFrameEvent(GLFWwindow *handle, unsigned long long id, GLFWwaylandframecallbackfunc callback)
@@ -323,6 +325,7 @@ def generate_wrappers(glfw_header: str) -> None:
     const char* glfwWaylandMissingCapabilities(void)
     void glfwWaylandRunWithActivationToken(GLFWwindow *handle, GLFWactivationcallback cb, void *cb_data)
     bool glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, bool use_system_color)
+    void glfwWaylandSetTitlebarHidden(GLFWwindow *handle, bool hidden)
     void glfwWaylandRedrawCSDWindowTitle(GLFWwindow *handle)
     bool glfwWaylandIsWindowFullyCreated(GLFWwindow *handle)
     bool glfwWaylandBeep(GLFWwindow *handle)

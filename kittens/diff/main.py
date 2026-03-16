@@ -65,6 +65,30 @@ Can be specified multiple times to use multiple patterns. For example::
 ''',
     )
 
+opt('mark_moved_lines', 'yes', option_type='to_bool', long_text='''
+Highlight lines that are moved, that is removed from the left and added to the right
+differently, using the :opt:`moved_bg` color.''')
+
+opt('word_diff_mode', 'words', choices=('words', 'central'),
+    long_text='''
+The algorithm to use for highlighting which parts of changed lines differ.
+When set to :code:`words`, changed words in each changed line are highlighted.
+When set to :code:`central`, the central changed region of each changed line is
+highlighted at the byte level. The :code:`words` mode is generally more useful
+as it shows exactly which words changed. Note that the :code:`words` mode
+only applies when a changed chunk has equal numbers of added and removed lines.
+'''
+    )
+
+opt('word_regex', r'[^\s\p{P}]+',
+    long_text='''
+The regular expression used to define a word when :opt:`word_diff_mode` is
+:code:`words`. The default value matches any run of non-whitespace and
+non-punctuation characters. The expression must be a valid Go regular expression.
+If an invalid expression is provided, diff will fail with an error.
+'''
+    )
+
 egr()  # }}}
 
 # colors {{{
@@ -131,6 +155,12 @@ opt('dark_highlight_added_bg', '#31503d', option_type='to_color')
 
 opt('added_margin_bg', '#cdffd8', option_type='to_color')
 opt('dark_added_margin_bg', '#31503d', option_type='to_color')
+
+opt('moved_bg', '#fffde7', option_type='to_color', long_text='Moved text backgrounds (same text that was removed in one place and added in another)')
+opt('dark_moved_bg', '#003333', option_type='to_color')
+
+opt('moved_margin_bg', '#fff3b0', option_type='to_color')
+opt('dark_moved_margin_bg', '#00495b', option_type='to_color')
 
 opt('filler_bg', '#fafbfc', option_type='to_color', long_text='Filler (empty) line background')
 opt('dark_filler_bg', '#262c36', option_type='to_color')
@@ -309,11 +339,13 @@ usage = 'file_or_directory_left file_or_directory_right'
 if __name__ == '__main__':
     main(sys.argv)
 elif __name__ == '__doc__':
+    from kitty.guess_mime_type import text_mimes
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
     cd['short_desc'] = 'Pretty, side-by-side diffing of files and images'
-    cd['args_completion'] = CompletionSpec.from_string('type:file mime:text/* mime:image/* group:"Text and image files"')
+    mimes = ' '.join(f'mime:{x}' for x in ('text/*', 'image/*') + tuple(text_mimes))
+    cd['args_completion'] = CompletionSpec.from_string(f'type:file {mimes} group:"Text and image files"')
 elif __name__ == '__conf__':
     sys.options_definition = definition  # type: ignore

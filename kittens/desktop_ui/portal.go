@@ -65,6 +65,7 @@ type Portal struct {
 	settings                    SettingsMap
 	lock                        sync.Mutex
 	opts                        *Config
+	server_options              *ServerOptions
 	file_chooser_first_instance *exec.Cmd
 }
 
@@ -75,8 +76,8 @@ func to_color(spec string) (v dbus.Variant, err error) {
 	return
 }
 
-func NewPortal(opts *Config) (p *Portal, err error) {
-	ans := Portal{opts: opts}
+func NewPortal(opts *Config, server_options *ServerOptions) (p *Portal, err error) {
+	ans := Portal{opts: opts, server_options: server_options}
 	ans.settings = SettingsMap{
 		SETTINGS_CANARY_NAMESPACE: map[string]dbus.Variant{
 			SETTINGS_CANARY_KEY: dbus.MakeVariant("running"),
@@ -641,6 +642,14 @@ func (self *Portal) ReadAll(namespaces []string) (ReadAllType, *dbus.Error) {
 	return values, nil
 }
 
+func (self *Portal) reload_portal_settings() {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	if config, err := load_server_config(self.server_options); err == nil {
+		self.opts = config
+	}
+}
+
 type vmap map[string]dbus.Variant
 type Filter_expression struct {
 	Ftype uint32
@@ -726,6 +735,7 @@ type ChooserResponse struct {
 }
 
 func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, result_dict vmap) {
+	self.reload_portal_settings()
 	response = RESPONSE_ENDED
 	tdir, err := os.MkdirTemp("", "kitty-cfd")
 	if err != nil {

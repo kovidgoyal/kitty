@@ -6,7 +6,7 @@ import os
 import shutil
 from collections.abc import Container, Iterable, Iterator, Sequence
 from contextlib import suppress
-from typing import Any, Callable, NamedTuple, TypedDict
+from typing import Any, Callable, Literal, NamedTuple, TypedDict
 
 from .boss import Boss
 from .child import Child
@@ -218,8 +218,8 @@ to use a window other than the currently active window.
 --next-to
 A match expression to select the window next to which the new window is created.
 See :ref:`search_syntax` for the syntax for specifying windows. If not specified
-defaults to the active window. When used via remote control and a target tab is
-specified this option is ignored unless the matched window is in the specified tab.
+defaults to the active window. When used via remote control
+this option is ignored unless the matched window is in the target tab (default active tab).
 When using :option:`--type <launch --type>` of :code:`tab`, the tab will be created
 in the OS Window containing the matched window.
 
@@ -904,8 +904,10 @@ def parse_message(msg: str, simple: Container[str]) -> Iterator[tuple[str, str]]
 
 
 class EditCmd:
+    abort_signaled: Literal['closed', 'replaced', 'disconnected', ''] = ''
 
-    def __init__(self, msg: str) -> None:
+    def __init__(self, msg: str, child_is_remote: bool) -> None:
+        self.child_is_remote = child_is_remote
         self.tdir = ''
         self.args: list[str] = []
         self.cwd = self.file_name = self.file_localpath = ''
@@ -914,7 +916,6 @@ class EditCmd:
         self.file_size = -1
         self.version = 0
         self.source_window_id = self.editor_window_id = -1
-        self.abort_signaled = ''
         simple = 'file_inode', 'file_data', 'abort_signaled', 'version'
         for k, v in parse_message(msg, simple):
             if k == 'file_inode':
@@ -962,8 +963,9 @@ class EditCmd:
 
     def __del__(self) -> None:
         if self.tdir:
-            with suppress(OSError):
-                shutil.rmtree(self.tdir)
+            if not self.abort_signaled == 'disconnected':
+                with suppress(OSError):
+                    shutil.rmtree(self.tdir)
             self.tdir = ''
 
     def read_data(self) -> bytes:
@@ -1002,6 +1004,12 @@ class EditCmd:
             self.schedule_check()
 
     def send_data(self, window: Window, data_type: str, data: bytes = b'') -> None:
+        if not self.is_local_file and self.child_is_remote and not window.child_is_remote:
+            self.abort_signaled = 'disconnected'
+            get_boss().show_error(
+                'edit-in-kitty', f'Failed to sync file due to the SSH connection dropping. Your local changes can still be found at {self.file_localpath}'
+            )
+            return
         window.write_to_child(f'KITTY_DATA_START\n{data_type}\n')
         if data:
             import base64
@@ -1090,7 +1098,7 @@ edits_in_flight: dict[int, EditCmd] = {}
 
 
 def remote_edit(msg: str, window: Window) -> None:
-    c = EditCmd(msg)
+    c = EditCmd(msg, window.child_is_remote)
     if c.abort_signaled:
         q = edits_in_flight.pop(window.id, None)
         if q is not None:

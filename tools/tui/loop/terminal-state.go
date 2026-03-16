@@ -31,6 +31,8 @@ const (
 	RESTORE_COLORS                = "\033[#Q"
 	DECSACE_DEFAULT_REGION_SELECT = "\033[*x"
 	CLEAR_SCREEN                  = "\033[H\033[2J"
+	POP_KEY_FLAGS                 = "\033[<u"
+	PUSH_KEY_FLAGS                = "\033[>u"
 )
 
 type CursorShapes uint

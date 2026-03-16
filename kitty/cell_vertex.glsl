@@ -182,12 +182,15 @@ uint read_sprite_decorations_idx() {
 
 uvec2 get_decorations_indices(uint in_url /* [0, 1] */, uint text_attrs) {
     uint decorations_idx = read_sprite_decorations_idx();
+    // decorations_idx == 0 means no decorations, for example, for a blank line
+    // when drawing fractionally scaled text
+    uint has_decorations = uint(zero_or_one(float(decorations_idx)));
     uint strike_style = ((text_attrs >> STRIKE_SHIFT) & BIT_MASK); // 0 or 1
     uint strike_idx = decorations_idx * strike_style;
     uint underline_style = ((text_attrs >> DECORATION_SHIFT) & DECORATION_MASK);
     underline_style = in_url * url_style + (1u - in_url) * underline_style; // [0, 5]
     uint has_underline = uint(step(0.5f, float(underline_style)));  // [0, 1]
-    return uvec2(strike_idx, has_underline * (decorations_idx + underline_style));
+    return has_decorations * uvec2(strike_idx, has_underline * (decorations_idx + underline_style));
 }
 
 uint is_cursor(uint x, uint y) {

@@ -22,6 +22,7 @@ groups: dict[ActionGroup, str] = {
     'sc': 'Scrolling',
     'win': 'Window management',
     'tab': 'Tab management',
+    'fs': 'Font sizes',
     'mouse': 'Mouse actions',
     'mk': 'Marks',
     'lay': 'Layouts',

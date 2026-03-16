@@ -174,6 +174,8 @@ class Selection(BaseTest):
             self.ae(face_from_descriptor(ff['bold']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
 
 def block_helpers(s, sprites, cell_width, cell_height):
+    mr = {}
+    actual = b''
     block_size = cell_width * cell_height * 4
 
     def full_block():
@@ -216,7 +218,9 @@ def block_helpers(s, sprites, cell_width, cell_height):
         return '\n'.join(row(y) for y in range(cell_height))
 
     def assert_blocks(a, b, msg=''):
+        nonlocal mr, actual, full_block, half_block, quarter_block, block_test, empty_block
         if a != b:
+            del mr, actual, full_block, half_block, quarter_block, block_test, empty_block
             msg = msg or 'block not equal'
             if len(a) != len(b):
                 assert_blocks.__msg = msg + f' block lengths not equal: {len(a)/4} != {len(b)/4}'
@@ -237,13 +241,14 @@ def block_helpers(s, sprites, cell_width, cell_height):
         return ans
 
     def block_test(*expected, **kw):
+        nonlocal mr, actual
         mr = multiline_render(kw.pop('text', '█'), **kw)
         try:
             z = zip(expected, mr, strict=True)
         except TypeError:
             z = zip(expected, mr)
         for i, (expected, actual) in enumerate(z):
-            assert_blocks(expected(), actual, f'Block {i} is not equal')
+            assert_blocks(expected(), actual, f'Block {i} expected != actual')
 
 
     return full_block, empty_block, upper_half_block, lower_half_block, quarter_block, block_as_str, block_test

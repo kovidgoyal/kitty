@@ -1483,7 +1483,7 @@ cursor_within_margins(Screen *self) {
 }
 
 static inline void
-reset_pixel_scroll(Screen *self, double val) { self->pixel_scroll_offset_y = val; }
+reset_pixel_scroll(Screen *self, unsigned val) { self->pixel_scroll_offset_y = val; }
 
 
 // Remove all cell images from a portion of the screen and mark lines that
@@ -2318,7 +2318,8 @@ screen_cursor_at_a_shell_prompt(const Screen *self) {
 }
 
 bool
-screen_prompt_supports_click_events(const Screen *self) {
+screen_prompt_supports_click_events(const Screen *self, bool *is_relative) {
+    *is_relative = (bool) self->prompt_settings.relative_click_events;
     return (bool) self->prompt_settings.supports_click_events;
 }
 
@@ -3065,7 +3066,13 @@ parse_prompt_mark(Screen *self, char *buf, PromptKind *pk) {
         if (strcmp(token, "k=s") == 0) *pk = SECONDARY_PROMPT;
         else if (strcmp(token, "redraw=0") == 0) self->prompt_settings.redraws_prompts_at_all = 0;
         else if (strcmp(token, "special_key=1") == 0) self->prompt_settings.uses_special_keys_for_cursor_movement = 1;
-        else if (strcmp(token, "click_events=1") == 0) self->prompt_settings.supports_click_events = 1;
+        else if (strcmp(token, "click_events=1") == 0) {
+            self->prompt_settings.supports_click_events = 1;
+            self->prompt_settings.relative_click_events = 0;
+        } else if (strcmp(token, "click_events=2") == 0) {
+            self->prompt_settings.supports_click_events = 1;
+            self->prompt_settings.relative_click_events = 1;
+        }
     }
 }
 
@@ -3746,7 +3753,7 @@ apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int
     iteration_data(s, &s->last_rendered, self->columns, -self->historybuf->count, 0);
     Line *line;
     const int y_min = MAX(-extra_leading_rows - (int)self->scrolled_by, s->last_rendered.y),
-          y_limit = MIN(s->last_rendered.y_limit, (int)self->lines + extra_leading_rows);
+          y_limit = MIN(s->last_rendered.y_limit, (int)self->lines - (int)self->scrolled_by);
     for (int y = y_min; y < y_limit; y++) {
         if (self->paused_rendering.expires_at) {
             linebuf_init_line(self->paused_rendering.linebuf, y);
@@ -3972,7 +3979,7 @@ static hyperlink_id_type
 hyperlink_id_for_range(Screen *self, const Selection *sel) {
     IterationData idata;
     iteration_data(sel, &idata, self->columns, -self->historybuf->count, 0);
-    for (int i = 0, y = idata.y; y < idata.y_limit && y < (int)self->lines; y++, i++) {
+    for (int y = idata.y; y < idata.y_limit && y < (int)self->lines; y++) {
         Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
         for (index_type x = xr.x; x < xr.x_limit; x++) {
@@ -4922,14 +4929,18 @@ cell_is_blank(const CPUCell *c) {
     return !cell_has_text(c) || cell_is_char(c, ' ');
 }
 
-bool
-screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end) {
-    if (y >= self->lines) { return false; }
-    Line *line = visual_line_(self, y);
+static void
+screen_selection_range_for_line_(Line *line, index_type *start, index_type *end) {
     index_type xlimit = line->xnum, xstart = 0;
     while (xlimit > 0 && cell_is_blank(line->cpu_cells + xlimit - 1)) xlimit--;
     while (xstart < xlimit && cell_is_blank(line->cpu_cells + xstart)) xstart++;
     *start = xstart; *end = xlimit > 0 ? xlimit - 1 : 0;
+}
+
+bool
+screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end) {
+    if (y >= self->lines) { return false; }
+    screen_selection_range_for_line_(visual_line_(self, y), start, end);
     return true;
 }
 
@@ -4997,7 +5008,7 @@ void
 screen_history_scroll_to_absolute(Screen *self, double target_scrolled_by) {
     if (self->linebuf != self->main_linebuf) return;
     index_type target_scrolled_by_line = (index_type)target_scrolled_by;
-    double pixel_scroll_offset_y = (target_scrolled_by - target_scrolled_by_line) * self->cell_size.height;
+    unsigned pixel_scroll_offset_y = (unsigned)((target_scrolled_by - target_scrolled_by_line) * self->cell_size.height);
     if (!OPT(pixel_scroll)) pixel_scroll_offset_y = 0;
     if (target_scrolled_by_line > self->historybuf->count) target_scrolled_by_line = self->historybuf->count;
     if (target_scrolled_by_line >= self->historybuf->count) pixel_scroll_offset_y = 0;
@@ -5020,7 +5031,7 @@ screen_apply_pixel_scroll(Screen *self, double delta_pixels) {
     if (total < 0.0) total = 0.0;
     if (total > max_total) total = max_total;
     const unsigned int new_scrolled_by = (unsigned int)floor(total / cell_height);
-    const double offset = total - (double)new_scrolled_by * cell_height;
+    const unsigned offset = (unsigned)(total - (double)new_scrolled_by * cell_height);
     bool changed = false;
     if (new_scrolled_by != self->scrolled_by) {
         self->scrolled_by = new_scrolled_by;
@@ -5055,9 +5066,8 @@ screen_history_scroll(Screen *self, int amt, bool upwards) {
         amt = MIN((unsigned int)amt, self->scrolled_by);
         amt *= -1;
     }
-    if (amt == 0) return false;
     unsigned int new_scroll = MIN(self->scrolled_by + amt, self->historybuf->count);
-    if (new_scroll != self->scrolled_by) {
+    if (new_scroll != self->scrolled_by || (new_scroll == 0 && self->pixel_scroll_offset_y != 0)) {
         self->scrolled_by = new_scroll;
         reset_pixel_scroll(self, 0);
         dirty_scroll(self);
@@ -5073,15 +5083,23 @@ screen_fractional_scroll(Screen *self, double amt) {
     double before_pixels = self->pixel_scroll_offset_y;
     double integral_part, fractional_part = modf(amt, &integral_part);
     int lines = (int)integral_part;
-    double pixels = fractional_part * self->cell_size.height;
+    int pixels = (int)(fractional_part * self->cell_size.height);
     if (amt > 0) {  // downwards
-        pixels = pixels > self->pixel_scroll_offset_y ? pixels - self->pixel_scroll_offset_y : 0;
-        self->pixel_scroll_offset_y = 0;
-        self->scrolled_by = self->scrolled_by > (unsigned)lines ? self->scrolled_by - lines : 0;
-        if (pixels > 0 && self->scrolled_by > 0) {
-            self->scrolled_by--; self->pixel_scroll_offset_y = self->cell_size.height - pixels;
+        if (fractional_part != 0) pixels = MAX(1, pixels);
+        if (lines > (int)self->scrolled_by) {
+            self->scrolled_by = 0; self->pixel_scroll_offset_y = 0;
+        } else {
+            self->scrolled_by -= lines;
+            if (pixels <= (int)self->pixel_scroll_offset_y) self->pixel_scroll_offset_y -= pixels;
+            else {
+                self->pixel_scroll_offset_y = 0;
+                if (self->scrolled_by) {
+                    self->scrolled_by--; self->pixel_scroll_offset_y = self->cell_size.height - pixels;
+                }
+            }
         }
     } else {
+        if (fractional_part != 0) pixels = MIN(-1, pixels);
         self->pixel_scroll_offset_y -= pixels;  // pixels is negative
         if (self->pixel_scroll_offset_y >= self->cell_size.height) {
             self->pixel_scroll_offset_y = 0; self->scrolled_by++;
@@ -5261,6 +5279,18 @@ continue_line_upwards(Screen *self, index_type top_line, SelectionBoundary *star
 }
 
 static index_type
+continue_line_upwards_scrollback(Screen *self, int top_line, SelectionBoundary *start, SelectionBoundary *end) {
+    index_type num_in_scrollback = 0;
+    Line *line = NULL;
+    while (range_line_is_continued(self, top_line) && (line = range_line_(self, top_line-1))) {
+        screen_selection_range_for_line_(line, &start->x, &end->x) ;
+        top_line--; num_in_scrollback++;
+    }
+    return num_in_scrollback;
+}
+
+
+static index_type
 continue_line_downwards(Screen *self, index_type bottom_line, SelectionBoundary *start, SelectionBoundary *end) {
     while (bottom_line + 1 < self->lines && visual_line_is_continued(self, bottom_line + 1)) {
         if (!screen_selection_range_for_line(self, bottom_line + 1, &start->x, &end->x)) break;
@@ -5400,6 +5430,15 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                     } else {
                         top_line = continue_line_upwards(self, top_line, &up_start, &up_end);
                         S;
+                        // extend into scrollback if needed
+                        if (top_line == 0 && self->linebuf == self->main_linebuf) {
+                            index_type num_in_scrollback = continue_line_upwards_scrollback(
+                                    self, top_line, &up_start, &up_end);
+                            if (num_in_scrollback) {
+                                s->start_scrolled_by += num_in_scrollback;
+                                s->start.x = up_start.x;
+                            }
+                        }
                     }
                 }
 #undef S
@@ -5413,6 +5452,15 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                     if (!s->adjusting_start) { a = &s->end; b = &s->start; }
                     if (adjusted_boundary_is_before) {
                         a->in_left_half_of_cell = true; a->x = up_start.x; a->y = top_line;
+                        // extend into scrollback if needed
+                        if (top_line == 0 && self->linebuf == self->main_linebuf) {
+                            index_type num_in_scrollback = continue_line_upwards_scrollback(
+                                    self, top_line, &up_start, &up_end);
+                            if (num_in_scrollback) {
+                                s->start_scrolled_by += num_in_scrollback;
+                                s->start.x = up_start.x;
+                            }
+                        }
                     } else {
                         a->in_left_half_of_cell = false; a->x = down_end.x; a->y = bottom_line;
                     }

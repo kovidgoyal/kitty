@@ -57,7 +57,7 @@ expand_tilde(const char* path, char *ans, size_t ans_sz) {
         prefix = home;
     } else {
         // If the path is "~user/something", get the specified user's home directory
-        char* slash = strchr(path, '/');
+        char *slash = (char*)strchr(path, '/');  // path is temporarily modified here and then restored
         if (slash) {
             *slash = 0; prefix = home_path_for(path + 1); *slash = '/';
         } else prefix = home_path_for(path + 1);

@@ -799,6 +799,19 @@ convert_from_opts_window_alert_on_bell(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_macos_dock_badge_on_bell(PyObject *val, Options *opts) {
+    opts->macos_dock_badge_on_bell = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_macos_dock_badge_on_bell(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "macos_dock_badge_on_bell");
+    if (ret == NULL) return;
+    convert_from_python_macos_dock_badge_on_bell(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_bell_path(PyObject *val, Options *opts) {
     bell_path(val, opts);
 }
@@ -964,6 +977,71 @@ convert_from_opts_resize_in_steps(PyObject *py_opts, Options *opts) {
     PyObject *ret = PyObject_GetAttrString(py_opts, "resize_in_steps");
     if (ret == NULL) return;
     convert_from_python_resize_in_steps(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_window_drag_tolerance(PyObject *val, Options *opts) {
+    opts->window_drag_tolerance = PyFloat_AsDouble(val);
+}
+
+static void
+convert_from_opts_window_drag_tolerance(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "window_drag_tolerance");
+    if (ret == NULL) return;
+    convert_from_python_window_drag_tolerance(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_window_title_bar_active_foreground(PyObject *val, Options *opts) {
+    opts->window_title_bar_active_foreground = color_or_none_as_int(val);
+}
+
+static void
+convert_from_opts_window_title_bar_active_foreground(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "window_title_bar_active_foreground");
+    if (ret == NULL) return;
+    convert_from_python_window_title_bar_active_foreground(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_window_title_bar_active_background(PyObject *val, Options *opts) {
+    opts->window_title_bar_active_background = color_or_none_as_int(val);
+}
+
+static void
+convert_from_opts_window_title_bar_active_background(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "window_title_bar_active_background");
+    if (ret == NULL) return;
+    convert_from_python_window_title_bar_active_background(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_window_title_bar_inactive_foreground(PyObject *val, Options *opts) {
+    opts->window_title_bar_inactive_foreground = color_or_none_as_int(val);
+}
+
+static void
+convert_from_opts_window_title_bar_inactive_foreground(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "window_title_bar_inactive_foreground");
+    if (ret == NULL) return;
+    convert_from_python_window_title_bar_inactive_foreground(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_window_title_bar_inactive_background(PyObject *val, Options *opts) {
+    opts->window_title_bar_inactive_background = color_or_none_as_int(val);
+}
+
+static void
+convert_from_opts_window_title_bar_inactive_background(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "window_title_bar_inactive_background");
+    if (ret == NULL) return;
+    convert_from_python_window_title_bar_inactive_background(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1520,6 +1598,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     if (PyErr_Occurred()) return false;
     convert_from_opts_window_alert_on_bell(py_opts, opts);
     if (PyErr_Occurred()) return false;
+    convert_from_opts_macos_dock_badge_on_bell(py_opts, opts);
+    if (PyErr_Occurred()) return false;
     convert_from_opts_bell_path(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_linux_bell_theme(py_opts, opts);
@@ -1545,6 +1625,16 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_resize_debounce_time(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_resize_in_steps(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_window_drag_tolerance(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_window_title_bar_active_foreground(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_window_title_bar_active_background(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_window_title_bar_inactive_foreground(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_window_title_bar_inactive_background(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_tab_bar_edge(py_opts, opts);
     if (PyErr_Occurred()) return false;

@@ -571,7 +571,7 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
         case 50: REPORT_ERROR("Ignoring OSC 50 used for font changing in XTerm"); break;
         case 51: REPORT_ERROR("Ignoring OSC 51 used by emacs shell"); break;
         case 60: case 61: REPORT_ERROR("Ignoring OSC 60/61 used for query control in XTerm"); break;
-        case 66:
+        case TEXT_SIZE_CODE:
             parse_multicell_code(self, buf + i, limit - i);
             break;
         case 133:

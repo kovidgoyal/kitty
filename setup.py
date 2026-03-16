@@ -923,11 +923,21 @@ def add_builtin_fonts(args: Options) -> None:
             continue
         font_file = ''
         if is_macos:
-            for candidate in (os.path.expanduser('~/Library/Fonts'), '/Library/Fonts', '/System/Library/Fonts', '/Network/Library/Fonts'):
+            candidates = (
+                os.path.expanduser('~/Library/Fonts'), '/Library/Fonts', '/System/Library/Fonts', '/Network/Library/Fonts')
+            for candidate in candidates:
                 q = os.path.join(candidate, filename)
                 if os.path.exists(q):
                     font_file = q
                     break
+            else:
+                for candidate in candidates:
+                    for root, _, files in os.walk(candidate):
+                        if filename in files:
+                            font_file = os.path.join(root, filename)
+                            break
+                    if font_file:
+                        break
         elif is_windows:
             for candidate in (
                     os.path.expandvars(r'%userprofile%\AppData\Local\Microsoft\Windows\Fonts'),
@@ -939,7 +949,7 @@ def add_builtin_fonts(args: Options) -> None:
                     break
         else:
             lines = subprocess.check_output([
-                'fc-match', '--format', '%{file}\n%{postscriptname}', f'term:postscriptname={psname}', 'file', 'postscriptname']).decode().splitlines()
+                'fc-list', '--format', '%{file}\n%{postscriptname}', f':postscriptname={psname}']).decode().splitlines()
             if len(lines) != 2:
                 raise SystemExit(f'fc-match returned unexpected output: {lines}')
             if lines[1] != psname:
@@ -1276,11 +1286,15 @@ def build_static_kittens(
     cmd = go + ['build', '-v']
     vcs_rev = args.vcs_rev or get_vcs_rev()
     ld_flags: List[str] = []
-    binary_data_flags = [f"-X kitty.VCSRevision={vcs_rev}"]
+    with open('go.mod') as f:
+        m = re.search(r'^module\s+(\S+)', f.read(), flags=re.M)
+        assert m is not None
+        modpath = m.group(1).strip()
+    binary_data_flags = [f"-X {modpath}.VCSRevision={vcs_rev}"]
     if for_freeze:
-        binary_data_flags.append("-X kitty.IsFrozenBuild=true")
+        binary_data_flags.append(f"-X {modpath}.IsFrozenBuild=true")
     if for_platform:
-        binary_data_flags.append("-X kitty.IsStandaloneBuild=true")
+        binary_data_flags.append(f"-X {modpath}.IsStandaloneBuild=true")
     if not args.debug:
         ld_flags.append('-s')
         ld_flags.append('-w')
@@ -1696,7 +1710,7 @@ def macos_info_plist(for_quake: str = '') -> bytes:
         NSHumanReadableCopyright=time.strftime('Copyright %Y, Kovid Goyal'),
         CFBundleGetInfoString='kitty - The fast, feature-rich, GPU based terminal emulator. https://sw.kovidgoyal.net/kitty/',
         # Operating System Version
-        LSMinimumSystemVersion='11.0.0',
+        LSMinimumSystemVersion='12.0.0',
         # Categorization
         CFBundlePackageType='APPL',
         CFBundleSignature='????',

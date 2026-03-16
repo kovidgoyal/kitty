@@ -62,11 +62,11 @@ def shortcut_matches(s: SingleKey, ev: KeyEvent) -> bool:
 
 
 class Mappings:
+    "Manage all keyboard mappings"
 
-    ' Manage all keyboard mappings '
-
-    def __init__(self, global_shortcuts:dict[str, SingleKey] | None = None, callback_on_mode_change: Callable[[], Any] = lambda: None) -> None:
+    def __init__(self, global_shortcuts: dict[str, SingleKey] | None = None, callback_on_mode_change: Callable[[], Any] = lambda: None) -> None:
         self.keyboard_mode_stack: list[KeyboardMode] = []
+        self.mode_timeout_timer_id: int | None = None
         self.update_keymap(global_shortcuts)
         self.callback_on_mode_change = callback_on_mode_change
 
@@ -87,6 +87,7 @@ class Mappings:
 
     def clear_keyboard_modes(self) -> None:
         had_mode = bool(self.keyboard_mode_stack)
+        self._cancel_mode_timeout()
         self.keyboard_mode_stack = []
         self.set_ignore_os_keyboard_processing(False)
         if had_mode:
@@ -95,6 +96,7 @@ class Mappings:
     def pop_keyboard_mode(self) -> bool:
         passthrough = True
         if self.keyboard_mode_stack:
+            self._cancel_mode_timeout()
             self.keyboard_mode_stack.pop()
             if not self.keyboard_mode_stack:
                 self.set_ignore_os_keyboard_processing(False)
@@ -110,11 +112,37 @@ class Mappings:
     def _push_keyboard_mode(self, mode: KeyboardMode) -> None:
         self.keyboard_mode_stack.append(mode)
         self.set_ignore_os_keyboard_processing(True)
+        self._start_mode_timeout(mode)
         self.callback_on_mode_change()
 
     def push_keyboard_mode(self, new_mode: str) -> None:
         mode = self.keyboard_modes[new_mode]
         self._push_keyboard_mode(mode)
+
+    def _start_mode_timeout(self, mode: KeyboardMode) -> None:
+        if mode.timeout > 0:
+            from .fast_data_types import add_timer
+
+            self._cancel_mode_timeout()
+            self.mode_timeout_timer_id = mode.timeout_timer_id = add_timer(
+                    self._on_mode_timeout, mode.timeout, False)
+
+    def _cancel_mode_timeout(self) -> None:
+        if self.mode_timeout_timer_id is not None:
+            from .fast_data_types import remove_timer
+
+            remove_timer(self.mode_timeout_timer_id)
+            self.mode_timeout_timer_id = None
+
+    def _on_mode_timeout(self, timer_id: int | None) -> None:
+        self.mode_timeout_timer_id = None
+        if self.keyboard_mode_stack:
+            self.pop_keyboard_mode()
+
+    def _get_effective_timeout(self, key_def: KeyDefinition) -> float:
+        if key_def.options.timeout is not None:
+            return key_def.options.timeout
+        return self.get_options().map_timeout
 
     def matching_key_actions(self, candidates: Iterable[KeyDefinition]) -> list[KeyDefinition]:
         w = self.get_active_window()
@@ -128,8 +156,9 @@ class Mappings:
                         is_applicable = True
                 except Exception:
                     self.clear_keyboard_modes()
-                    self.show_error(_('Invalid key mapping'), _(
-                        'The match expression {0} is not valid for {1}').format(x.options.when_focus_on, '--when-focus-on'))
+                    self.show_error(
+                        _('Invalid key mapping'), _('The match expression {0} is not valid for {1}').format(x.options.when_focus_on, '--when-focus-on')
+                    )
                     return []
             else:
                 is_applicable = True
@@ -143,10 +172,10 @@ class Mappings:
                 if not x.rest:
                     last_terminal_idx = i
             if last_terminal_idx > -1:
-                if last_terminal_idx == len(matches) -1:
+                if last_terminal_idx == len(matches) - 1:
                     matches = matches[last_terminal_idx:]
                 else:
-                    matches = matches[last_terminal_idx+1:]
+                    matches = matches[last_terminal_idx + 1 :]
             q = matches[-1].options.when_focus_on
             matches = [x for x in matches if x.options.when_focus_on == q]
         elif matches:
@@ -192,6 +221,7 @@ class Mappings:
                         sm = KeyboardMode('__sequence__')
                         sm.on_action = 'end'
                         sm.sequence_keys = [ev]
+                        sm.timeout = self._get_effective_timeout(final_actions[0])
                         for fa in final_actions:
                             sm.keymap[fa.rest[0]].append(fa.shift_sequence_and_copy())
                         self._push_keyboard_mode(sm)
@@ -206,6 +236,7 @@ class Mappings:
                                     w.send_key_sequence(*mode.sequence_keys)
                             return consumed
                         mode.sequence_keys.append(ev)
+                        self._start_mode_timeout(mode)
                         self.debug_print('\n\x1b[35mKeyPress\x1b[m matched sequence prefix, ', end='')
                         mode.keymap.clear()
                         for fa in final_actions:
@@ -219,6 +250,8 @@ class Mappings:
                         self.callback_on_mode_change()
                         if not self.keyboard_mode_stack:
                             self.set_ignore_os_keyboard_processing(False)
+                elif not is_root_mode and mode_pos < len(self.keyboard_mode_stack) and self.keyboard_mode_stack[mode_pos] is mode:
+                    self._start_mode_timeout(mode)
                 return consumed
         return False
 
@@ -252,5 +285,7 @@ class Mappings:
 
     def set_cocoa_global_shortcuts(self, opts: Options) -> dict[str, SingleKey]:
         from .main import set_cocoa_global_shortcuts
+
         return set_cocoa_global_shortcuts(opts)
+
     # }}}

@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from collections.abc import Generator, Sequence
+import sys
+from collections.abc import Generator, Iterator, Sequence
 from itertools import islice, repeat
 from typing import Any
 
 from kitty.borders import BorderColor
 from kitty.conf.utils import to_bool
-from kitty.types import Edges, NeighborsMap, WindowMapper
+from kitty.fast_data_types import BOTTOM_EDGE, RIGHT_EDGE
+from kitty.types import Edges, NeighborsMap, WindowMapper, WindowResizeDragData
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
@@ -22,6 +24,36 @@ from .base import (
     safe_increment_bias,
 )
 from .vertical import borders
+
+
+def drag_resize_target_windows(
+        click_window: WindowType,
+        edges: int,
+        x: float, y: float,
+        num_full_size_windows: int,
+        all_windows: WindowList,
+        main_is_horizontal: bool = True
+) -> WindowResizeDragData:
+    groups = tuple(all_windows.iter_all_layoutable_groups())
+    horizontal = vertical = click_window
+    min_dist = float(sys.maxsize)
+    height_increases_downwards = bool(edges & BOTTOM_EDGE)
+    width_increases_rightwards = bool(edges & RIGHT_EDGE)
+    for gr in groups[num_full_size_windows:]:
+        if gr.windows:
+            w = gr.windows[-1]
+            g = w.geometry
+            if main_is_horizontal:
+                if (dist := min(abs(g.top - y), abs(g.bottom - y))) < min_dist:
+                    min_dist = dist
+                    vertical = w
+                    height_increases_downwards = y > g.top + (g.bottom - g.top) / 2
+            else:
+                if (dist := min(abs(g.left - x), abs(g.right - x))) < min_dist:
+                    min_dist = dist
+                    horizontal = w
+                    width_increases_rightwards = x > g.left + (g.right - g.left) / 2
+    return WindowResizeDragData(horizontal.id, width_increases_rightwards, vertical.id, height_increases_downwards)
 
 
 def neighbors_for_tall_window(
@@ -269,7 +301,7 @@ class Tall(Layout):
                 return False
         return None
 
-    def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
+    def minimal_borders(self, all_windows: WindowList) -> Iterator[BorderLine]:
         num = all_windows.num_groups
         if num < 2 or not lgd.draw_minimal_borders:
             return
@@ -296,47 +328,29 @@ class Tall(Layout):
                 color = BorderColor.inactive
                 if needs_borders_map.get(wg.id):
                     color = BorderColor.active if wg is active_group else BorderColor.bell
+                wid = wg.active_window_id
+                mult = 1 if mirrored else -1
+                def h(left: int, right: int, top: int, mult: int) -> None:
+                    e = Edges(left, top, right, top + bw)
+                    perp_borders.append(BorderLine(e, color, mult*wid, True))
+                def v(top: int, bottom: int, left: int, mult: int) -> None:
+                    e = Edges(left, top, left + bw, bottom)
+                    perp_borders.append(BorderLine(e, color, mult*wid, False))
+
                 if self.main_is_horizontal:
-                    e1 = Edges(
-                        xl.content_pos - xl.space_before,
-                        yl.content_pos - yl.space_before,
-                        xl.content_pos + xl.content_size + xl.space_after,
-                        yl.content_pos - yl.space_before + bw
-                    )
-                    e3 = Edges(
-                        xl.content_pos - xl.space_before,
-                        yl.content_pos + yl.content_size + yl.space_after - bw,
-                        xl.content_pos + xl.content_size + xl.space_after,
-                        yl.content_pos + yl.content_size + yl.space_after,
-                    )
-                    e2 = Edges(
-                        xl.content_pos + ((xl.content_size + xl.space_after - bw) if mirrored else -xl.space_before),
-                        yl.content_pos - yl.space_before,
-                        xl.content_pos + ((xl.content_size + xl.space_after) if mirrored else (bw - xl.space_before)),
-                        yl.content_pos + yl.content_size + yl.space_after,
-                    )
+                    h(xl.content_pos - xl.space_before, xl.content_pos + xl.content_size + xl.space_after,
+                      yl.content_pos - yl.space_before, -1)
+                    v(yl.content_pos - yl.space_before, yl.content_pos + yl.content_size + yl.space_after,
+                      xl.content_pos + ((xl.content_size + xl.space_after - bw) if mirrored else -xl.space_before), mult)
+                    h(xl.content_pos - xl.space_before, xl.content_pos + xl.content_size + xl.space_after,
+                      yl.content_pos + yl.content_size + yl.space_after - bw, 1)
                 else:
-                    e1 = Edges(
-                        xl.content_pos - xl.space_before,
-                        yl.content_pos - yl.space_before,
-                        xl.content_pos - xl.space_before + bw,
-                        yl.content_pos + yl.content_size + yl.space_after,
-                    )
-                    e3 = Edges(
-                        xl.content_pos + xl.content_size + xl.space_after - bw,
-                        yl.content_pos - yl.space_before,
-                        xl.content_pos + xl.content_size + xl.space_after,
-                        yl.content_pos + yl.content_size + yl.space_after,
-                    )
-                    e2 = Edges(
-                        xl.content_pos - xl.space_before,
-                        yl.content_pos + ((yl.content_size + yl.space_after - bw) if mirrored else -yl.space_before),
-                        xl.content_pos + xl.content_size + xl.space_after,
-                        yl.content_pos + ((yl.content_size + yl.space_after) if mirrored else (bw - yl.space_before)),
-                    )
-                perp_borders.append(BorderLine(e1, color))
-                perp_borders.append(BorderLine(e2, color))
-                perp_borders.append(BorderLine(e3, color))
+                    v(yl.content_pos - yl.space_before, yl.content_pos + yl.content_size + yl.space_after,
+                      xl.content_pos - xl.space_before, -1)
+                    h(xl.content_pos - xl.space_before, xl.content_pos + xl.content_size + xl.space_after,
+                      yl.content_pos + ((yl.content_size + yl.space_after - bw) if mirrored else -yl.space_before), mult)
+                    v(yl.content_pos - yl.space_before, yl.content_pos + yl.content_size + yl.space_after,
+                      xl.content_pos + xl.content_size + xl.space_after - bw, 1)
 
         mirrored = self.layout_opts.mirrored
         yield from borders(
@@ -356,6 +370,11 @@ class Tall(Layout):
         self.biased_map = {int(k): v for k, v in layout_state['biased_map'].items()}
         self.layout_opts = TallLayoutOpts(layout_state['opts'])
         return True
+
+    def drag_resize_target_windows(
+        self, click_window: WindowType, x: float, y: float, edges: int, all_windows: WindowList,
+    ) -> WindowResizeDragData:
+        return drag_resize_target_windows(click_window, edges, x, y, self.num_full_size_windows, all_windows, self.main_is_horizontal)
 
 
 class Fat(Tall):

@@ -84,6 +84,7 @@ from .fast_data_types import (
     set_window_logo,
     set_window_padding,
     set_window_render_data,
+    set_window_title_bar_render_data,
     update_ime_position_for_window,
     update_pointer_shape,
     update_window_title,
@@ -106,6 +107,7 @@ from .utils import (
     log_error,
     open_cmd,
     open_url,
+    parse_uri_list,
     path_from_osc7_url,
     resolve_custom_file,
     resolved_shell,
@@ -657,6 +659,7 @@ class Window:
     creation_spec: WindowCreationSpec | None = None
     created_in_session_name: str = ''
     serialized_id: int = 0
+    show_title_bar: bool = False  # must be set before calling set_geometry
 
     @classmethod
     @contextmanager
@@ -711,6 +714,7 @@ class Window:
         self.kitten_result_processors: list[Callable[['Window', Any], None]] = []
         self.child_is_launched = False
         self.last_reported_pty_size = (-1, -1, -1, -1)
+        self._pause_resize_notifications_to_child: tuple[int, int, int, int] | None = None
         self.needs_attention = False
         self.ignore_focus_changes = self.initial_ignore_focus_changes
         self.override_title = override_title
@@ -730,6 +734,7 @@ class Window:
         self.tabref: Callable[[], TabType | None] = weakref.ref(tab)
         self.destroyed = False
         self.geometry: WindowGeometry = WindowGeometry(0, 0, 0, 0, 0, 0)
+        self._title_bar_screen: Any = None
         self.needs_layout = True
         self.is_visible_in_layout: bool = True
         self.child = child
@@ -944,46 +949,144 @@ class Window:
         wakeup_io_loop()
         wakeup_main_loop()
 
+    def pause_resize_notifications_to_child(self, pause: bool = True) -> None:
+        if pause:
+            if self._pause_resize_notifications_to_child is None:
+                self._pause_resize_notifications_to_child = -1, -1, -1, -1
+        else:
+            p, self._pause_resize_notifications_to_child = self._pause_resize_notifications_to_child, None
+            if p and p[0] > 0:
+                if self.resize_child(p):
+                    update_ime_position_for_window(self.id, True)
+
+    def resize_child(self, current_pty_size: tuple[int, int, int, int]) -> bool:
+        boss = get_boss()
+        boss.child_monitor.resize_pty(self.id, *current_pty_size)
+        self.last_resized_at = monotonic()
+        self.last_reported_pty_size = current_pty_size
+        self.notify_child_of_resize()
+        update_ime_position = False
+        if not self.child_is_launched:
+            self.child.mark_terminal_ready()
+            self.child_is_launched = True
+            update_ime_position = True
+            if boss.args.debug_rendering:
+                now = monotonic()
+                print(f'[{now:.3f}] Child launched', file=sys.stderr)
+        elif boss.args.debug_rendering:
+            print(f'[{monotonic():.3f}] SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
+        return update_ime_position
+
     def set_geometry(self, new_geometry: WindowGeometry) -> None:
         if self.destroyed:
             return
-        if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
-            self.screen.resize(max(0, new_geometry.ynum), max(0, new_geometry.xnum))
+        # Determine if we need a title bar and compute adjusted dimensions
+        opts = get_options()
+        position = opts.window_title_bar
+        show_tb = self.show_title_bar and new_geometry.ynum > 1
+
+        if show_tb:
+            render_ynum = new_geometry.ynum - 1
+            cell_width, cell_height = cell_size_for_window(self.os_window_id)
+            if position == 'top':
+                render_top = new_geometry.top + cell_height
+                render_bottom = new_geometry.bottom
+                tb_top = new_geometry.top
+                tb_bottom = new_geometry.top + cell_height
+            else:
+                render_top = new_geometry.top
+                render_bottom = new_geometry.bottom - cell_height
+                tb_top = new_geometry.bottom - cell_height
+                tb_bottom = new_geometry.bottom
+        else:
+            render_ynum = new_geometry.ynum
+            render_top = new_geometry.top
+            render_bottom = new_geometry.bottom
+
+        if self.needs_layout or new_geometry.xnum != self.screen.columns or render_ynum != self.screen.lines:
+            self.screen.resize(max(0, render_ynum), max(0, new_geometry.xnum))
             self.needs_layout = False
             call_watchers(weakref.ref(self), 'on_resize', {'old_geometry': self.geometry, 'new_geometry': new_geometry})
         current_pty_size = (
             self.screen.lines, self.screen.columns,
-            max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
+            max(0, new_geometry.right - new_geometry.left), max(0, render_bottom - render_top))
         update_ime_position = False
         if current_pty_size != self.last_reported_pty_size:
-            boss = get_boss()
-            boss.child_monitor.resize_pty(self.id, *current_pty_size)
-            self.last_resized_at = monotonic()
-            self.last_reported_pty_size = current_pty_size
-            self.notify_child_of_resize()
-            if not self.child_is_launched:
-                self.child.mark_terminal_ready()
-                self.child_is_launched = True
-                update_ime_position = True
-                if boss.args.debug_rendering:
-                    now = monotonic()
-                    print(f'[{now:.3f}] Child launched', file=sys.stderr)
-            elif boss.args.debug_rendering:
-                print(f'[{monotonic():.3f}] SIGWINCH sent to child in window: {self.id} with size: {current_pty_size}', file=sys.stderr)
+            if self._pause_resize_notifications_to_child is None:
+                update_ime_position = self.resize_child(current_pty_size)
+            else:
+                self._pause_resize_notifications_to_child = current_pty_size
         else:
             mark_os_window_dirty(self.os_window_id)
 
+        # Store original geometry for borders/padding calculations
         self.geometry = g = new_geometry
+        # Set C-side render data with adjusted top/bottom for content area
         set_window_render_data(self.os_window_id, self.tab_id, self.id, self.screen,
-                             g.left, g.top, g.right, g.bottom,
+                             g.left, render_top, g.right, render_bottom,
                              g.spaces.left, g.spaces.top, g.spaces.right, g.spaces.bottom)
         self.update_effective_padding()
+
+        # Handle title bar screen
+        if show_tb:
+            if self._title_bar_screen is None:
+                from .window_title_bar import WindowTitleBarScreen
+                self._title_bar_screen = WindowTitleBarScreen(self.os_window_id, cell_width, cell_height)
+            tb_geom = WindowGeometry(
+                left=g.left, top=tb_top, right=g.right, bottom=tb_bottom,
+                xnum=0, ynum=1,
+            )
+            self._title_bar_screen.layout(tb_geom)
+            set_window_title_bar_render_data(
+                self.os_window_id, self.tab_id, self.id, self._title_bar_screen.screen,
+                tb_geom.left, tb_geom.top, tb_geom.right, tb_geom.bottom,
+            )
+        elif self._title_bar_screen is not None:
+            # Clear title bar render data
+            set_window_title_bar_render_data(
+                self.os_window_id, self.tab_id, self.id, self._title_bar_screen.screen,
+                0, 0, 0, 0,
+            )
+            self._title_bar_screen = None
+
         if update_ime_position:
             update_ime_position_for_window(self.id, True)
 
-    def contains(self, x: int, y: int) -> bool:
-        g = self.geometry
-        return g.left <= x <= g.right and g.top <= y <= g.bottom
+    def update_title_bar(self, is_active: bool = False) -> None:
+        if (pts := self._title_bar_screen) is None:
+            return
+        from .progress import ProgressState
+        from .window_title_bar import WindowTitleData
+
+        progress_percent = ''
+        if self.progress.state is not ProgressState.unset:
+            if self.progress.state is ProgressState.indeterminate:
+                progress_percent = '[…] '
+            elif self.progress.percent > 0:
+                progress_percent = f'[{self.progress.percent}%] '
+
+        has_activity = self.has_activity_since_last_focus
+
+        data = WindowTitleData(
+            title=self.title or '',
+            is_active=is_active,
+            window_id=self.id,
+            tab_id=self.tab_id,
+            needs_attention=self.needs_attention,
+            has_activity_since_last_focus=has_activity,
+        )
+        # If template evaluates to empty string, zero title bar geometry to hide it
+        if pts.render(data, progress_percent):
+            g = pts.geometry
+            set_window_title_bar_render_data(
+                self.os_window_id, self.tab_id, self.id, pts.screen,
+                g.left, g.top, g.right, g.bottom,
+            )
+        else:
+            set_window_title_bar_render_data(
+                self.os_window_id, self.tab_id, self.id, pts.screen,
+                0, 0, 0, 0,
+            )
 
     def close(self) -> None:
         get_boss().mark_window_for_close(self)
@@ -1106,7 +1209,7 @@ class Window:
             prefilled = ''
         get_boss().get_line(
             _('Enter the new title for this window below. An empty title will cause the default title to be used.'),
-            self.set_title, window=self, initial_value=prefilled)
+            self.set_title, window=self, initial_value=prefilled, window_title=_('Rename window'))
 
     def set_user_var(self, key: str, val: str | bytes | None) -> None:
         key = sanitize_control_codes(key).replace('\n', ' ')
@@ -1148,7 +1251,7 @@ class Window:
             try:
                 parts = tuple(map(int, raw_data.split(';')))[1:]
             except Exception:
-                log_error(f'Ignoring malmormed OSC 9;4 progress report: {raw_data!r}')
+                log_error(f'Ignoring malformed OSC 9;4 progress report: {raw_data!r}')
                 return
             self.progress.update(*parts[:2])
             if (tab := self.tabref()) is not None:
@@ -1848,7 +1951,7 @@ class Window:
         self.clipboard_request_manager.send_paste_event(is_primary_selection)
         return True
 
-    def paste_with_actions(self, text: str) -> None:
+    def paste_with_actions(self, text: str, from_drop: bool = False, is_uri_list: bool = False) -> None:
         if self.destroyed or not text:
             return
         opts = get_options()
@@ -1857,18 +1960,24 @@ class Window:
             if not text:
                 return
         if 'quote-urls-at-prompt' in opts.paste_actions and self.at_prompt:
-            prefixes = '|'.join(opts.url_prefixes)
-            m = re.match(f'({prefixes}):(.+)', text)
-            if m is not None:
-                scheme, rest = m.group(1), m.group(2)
-                if rest.startswith('//') or scheme in ('mailto', 'irc'):
-                    import shlex
-                    text = shlex.quote(text)
+            if is_uri_list:
+                import shlex
+                urls = text.splitlines(keepends=False)
+                text = ' '.join(map(shlex.quote, urls))
+            else:
+                prefixes = '|'.join(opts.url_prefixes)
+                m = re.match(f'({prefixes}):(.+)', text)
+                if m is not None:
+                    scheme, rest = m.group(1), m.group(2)
+                    if rest.startswith('//') or scheme in ('mailto', 'irc'):
+                        import shlex
+                        text = shlex.quote(text)
         if 'replace-dangerous-control-codes' in opts.paste_actions:
             text = replace_c0_codes_except_nl_space_tab(text)
         if 'replace-newline' in opts.paste_actions and 'confirm' not in opts.paste_actions:
             text = text.replace('\n', '\x1bE')
         btext = text.encode('utf-8')
+        which = 'drop' if from_drop else 'paste'
         if 'confirm' in opts.paste_actions:
             sanitized = replace_c0_codes_except_nl_space_tab(btext)
             replaced_c0_control_codes = sanitized != btext
@@ -1885,27 +1994,31 @@ class Window:
                 replaced_newlines = t != sanitized
                 sanitized = t
             if replaced_c0_control_codes or replaced_newlines:
-                msg = _('The text to be pasted contains terminal control codes.\n\nIf the terminal program you are pasting into does not properly'
-                        ' sanitize pasted text, this can lead to \x1b[31mcode execution vulnerabilities\x1b[39m.\n\nHow would you like to proceed?')
+                msg = _(
+                    'The text to be {0} contains terminal control codes.\n\nIf the terminal program you are {1}'
+                    ' into does not properly sanitize text, this can lead to'
+                    ' \x1b[31mcode execution vulnerabilities\x1b[39m.\n\nHow would you like to proceed?'
+                ).format('dropped' if from_drop else 'pasted', 'dropping' if from_drop else 'pasting')
                 get_boss().choose(
                     msg, partial(self.handle_dangerous_paste_confirmation, btext, sanitized),
-                    's;green:Sanitize and paste', 'p;red:Paste anyway', 'c;yellow:Cancel',
-                    window=self, default='s', title=_('Allow paste?'),
+                    's;green:Sanitize and ' + which, f'a;red:{which.capitalize()} anyway', 'c;yellow:Cancel',
+                    window=self, default='s', title=_('Allow {}?').format(which),
                 )
                 return
         if 'confirm-if-large' in opts.paste_actions:
             msg = ''
             if len(btext) > 16 * 1024:
-                msg = _('Pasting very large amounts of text ({} bytes) can be slow.').format(len(btext))
-                get_boss().confirm(msg + _(' Are you sure?'), partial(self.handle_large_paste_confirmation, btext), window=self, title=_(
-                'Allow large paste?'))
+                msg = _('{1} very large amounts of text ({0} bytes) can be slow.').format(
+                    len(btext), 'Dropping' if from_drop else 'Pasting')
+                get_boss().confirm(msg + _(' Are you sure?'), partial(self.handle_large_paste_confirmation, btext),
+                                   window=self, title=_('Allow large {}?').format('drop' if from_drop else 'paste'))
                 return
         self.paste_text(btext)
 
     def handle_dangerous_paste_confirmation(self, unsanitized: bytes, sanitized: bytes, choice: str) -> None:
         if choice == 's':
             self.paste_text(sanitized)
-        elif choice == 'p':
+        elif choice == 'a':
             self.paste_text(unsanitized)
 
     def handle_large_paste_confirmation(self, btext: bytes, confirmed: bool) -> None:
@@ -1941,6 +2054,21 @@ class Window:
     def current_mouse_position(self) -> Optional['MousePosition']:
         ' Return the last position at which a mouse event was received by this window '
         return get_mouse_data_for_window(self.os_window_id, self.tab_id, self.id)
+
+    def on_drop(self, drop: dict[str, bytes]) -> None:
+        text = ''
+        is_uri_list = False
+        if uri_list := drop.pop('text/uri-list', b''):
+            urls = parse_uri_list(uri_list.decode('utf-8', 'replace'))
+            text = '\n'.join(urls)
+            is_uri_list = True
+        elif tp := drop.pop('text/plain', b''):
+            text = tp.decode('utf-8', 'replace')
+        elif tp := drop.pop('text/plain;charset=utf-8', b''):
+            text = tp.decode('utf-8', 'replace')
+        if text:
+            self.paste_with_actions(text, from_drop=True, is_uri_list=is_uri_list)
+
 
     # Serialization {{{
     def as_dict(
@@ -2100,14 +2228,14 @@ class Window:
 
     # actions {{{
 
-    @ac('cp', 'Show scrollback in a pager like less')
+    @ac('sc', 'Show scrollback in a pager like less')
     def show_scrollback(self) -> Optional['Window']:
         text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
         data = self.pipe_data(text, has_wrap_markers=True)
         cursor_on_screen = self.screen.scrolled_by < self.screen.lines - self.screen.cursor.y
         return get_boss().display_scrollback(self, data['text'], data['input_line_number'], report_cursor=cursor_on_screen)
 
-    @ac('cp', '''
+    @ac('sc', '''
         Search scrollback in a pager like less. If there is selected text, it is automatically searched for.
         Note that this assumes that pressing the / key triggers search mode in the page configured as the
         scrollback pager.
@@ -2130,7 +2258,7 @@ class Window:
         text = text.replace('\r\n', '\n').replace('\r', '\n')
         get_boss().display_scrollback(self, text, title=title, report_cursor=False)
 
-    @ac('cp', '''
+    @ac('sc', '''
         Show output from the first shell command on screen in a pager like less
 
         Requires :ref:`shell_integration` to work
@@ -2138,7 +2266,7 @@ class Window:
     def show_first_command_output_on_screen(self) -> None:
         self.show_cmd_output(CommandOutput.first_on_screen, 'First command output on screen')
 
-    @ac('cp', '''
+    @ac('sc', '''
         Show output from the last shell command in a pager like less
 
         Requires :ref:`shell_integration` to work
@@ -2146,7 +2274,7 @@ class Window:
     def show_last_command_output(self) -> None:
         self.show_cmd_output(CommandOutput.last_run, 'Last command output')
 
-    @ac('cp', '''
+    @ac('sc', '''
         Show the first command output below the last scrolled position via scroll_to_prompt
         or the last mouse clicked command output in a pager like less
 
@@ -2155,7 +2283,7 @@ class Window:
     def show_last_visited_command_output(self) -> None:
         self.show_cmd_output(CommandOutput.last_visited, 'Last visited command output')
 
-    @ac('cp', '''
+    @ac('sc', '''
         Show the last non-empty output from a shell command in a pager like less
 
         Requires :ref:`shell_integration` to work
@@ -2219,6 +2347,12 @@ class Window:
     def copy_and_clear_or_interrupt(self) -> None:
         self.copy_or_interrupt()
         self.screen.clear_selection()
+
+    @ac('cp', 'Copy the selected text from the active window to the clipboard,'
+        ' if no selection, copy the last command output (requires shell integration to work)')
+    def copy_selection_or_last_command_output(self) -> None:
+        if (text := self.text_for_selection() or self.cmd_output(CommandOutput.last_non_empty, as_ansi=False, add_wrap_markers=False)):
+            set_clipboard_string(text)
 
     @ac('cp', 'Pass the selected text from the active window to the specified program')
     def pass_selection_to_program(self, *args: str) -> None:

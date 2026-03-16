@@ -183,7 +183,7 @@ glfw_handle_scroll_event_for_momentum(
     const bool is_synthetic_momentum_start_event = stopped && momentum_scroll_gesture_detection_timeout_ms;
     if (!w) { cancel_existing_scroll(true); return; }
     if (!is_finger_based || ev->offset_type != GLFW_SCROLL_OFFEST_HIGHRES || s.friction < 0 || s.friction >= 1) {
-        _glfwInputScroll(w, ev);
+        if (ev->x_offset != 0 || ev->y_offset != 0) _glfwInputScroll(w, ev);
         return;
     }
     monotonic_t now = monotonic();

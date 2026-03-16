@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import ctypes
 import os
 import sys
 from collections.abc import Callable, Generator
@@ -218,6 +217,7 @@ def set_font_family(opts: Options | None = None, override_font_size: float | Non
 
 
 if TYPE_CHECKING:
+    import ctypes
     CBufType = ctypes.Array[ctypes.c_ubyte]
 else:
     CBufType = None

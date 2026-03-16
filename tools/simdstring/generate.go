@@ -404,6 +404,12 @@ func encode_cmgt16b(a, b, dest Register) (ans uint32) {
 	return 0x271<<21 | b.ARMId()<<16 | 0xd<<10 | a.ARMId()<<5 | dest.ARMId()
 }
 
+func encode_not16b(src, dest Register) uint32 {
+	// NOT Vd.16B, Vn.16B (alias of MVN)
+	// Encoding: 0 Q 1 01110 size 10000 00101 10 Rn Rd (Q=1, size=00 for .16B)
+	return 0x6E205800 | (src.ARMId() << 5) | dest.ARMId()
+}
+
 func (f *Function) MaskForCountDestructive(vec, ans Register) {
 	// vec is clobbered by this function
 	f.Comment("Count the number of bytes to the first 0xff byte and put the result in", ans)
@@ -686,6 +692,24 @@ func (f *Function) Or(a, b, dest Register) {
 		}
 	}
 	f.AddTrailingComment(dest, "=", a, "|", b, "(bitwise)")
+}
+
+func (f *Function) NotSelf(r Register) {
+	if f.ISA.Goarch == ARM64 {
+		f.Comment("Go assembler doesn't support the VMVN instruction, below we have: NOT", r.ARMFullWidth()+",", r.ARMFullWidth())
+		f.instr("WORD", fmt.Sprintf("$0x%x", encode_not16b(r, r)))
+		f.AddTrailingComment(r, "= ~", r, "(bitwise NOT)")
+		return
+	}
+	all_ones := f.Vec(r.Size)
+	defer f.ReleaseReg(all_ones)
+	f.AllOnesRegister(all_ones)
+	if r.Size == 128 {
+		f.instr("PXOR", all_ones, r)
+	} else {
+		f.instr("VPXOR", all_ones, r, r)
+	}
+	f.AddTrailingComment(r, "= ~", r, "(bitwise NOT)")
 }
 
 func (f *Function) And(a, b, dest Register) {
@@ -1504,6 +1528,54 @@ func (s *State) indexc0() {
 
 }
 
+func (s *State) not_index_byte_body(f *Function) {
+	b := f.Vec()
+	f.Set1Epi8("b", b)
+	test_bytes := func(bytes_to_test, test_ans Register) {
+		f.CmpEqEpi8(bytes_to_test, b, test_ans)
+		f.NotSelf(test_ans)
+	}
+	s.index_func(f, test_bytes)
+}
+
+func (s *State) not_index_byte() {
+	f := s.NewFunction("not_index_byte_asm", "Find the index of the first byte that is not b", []FunctionParam{{"data", ByteSlice}, {"b", types.Byte}}, []FunctionParam{{"ans", types.Int}})
+	if s.ISA.HasSIMD {
+		s.not_index_byte_body(f)
+	}
+	f = s.NewFunction("not_index_byte_string_asm", "Find the index of the first byte that is not b", []FunctionParam{{"data", types.String}, {"b", types.Byte}}, []FunctionParam{{"ans", types.Int}})
+	if s.ISA.HasSIMD {
+		s.not_index_byte_body(f)
+	}
+
+}
+
+func (s *State) not_index_byte2_body(f *Function) {
+	b1 := f.Vec()
+	b2 := f.Vec()
+	f.Set1Epi8("b1", b1)
+	f.Set1Epi8("b2", b2)
+	test_bytes := func(bytes_to_test, test_ans Register) {
+		f.CmpEqEpi8(bytes_to_test, b1, test_ans)
+		f.CmpEqEpi8(bytes_to_test, b2, bytes_to_test)
+		f.Or(test_ans, bytes_to_test, test_ans)
+		f.NotSelf(test_ans)
+	}
+	s.index_func(f, test_bytes)
+}
+
+func (s *State) not_index_byte2() {
+	f := s.NewFunction("not_index_byte2_asm", "Find the index of the first byte that is neither b1 nor b2", []FunctionParam{{"data", ByteSlice}, {"b1", types.Byte}, {"b2", types.Byte}}, []FunctionParam{{"ans", types.Int}})
+	if s.ISA.HasSIMD {
+		s.not_index_byte2_body(f)
+	}
+	f = s.NewFunction("not_index_byte2_string_asm", "Find the index of the first byte that is neither b1 nor b2", []FunctionParam{{"data", types.String}, {"b1", types.Byte}, {"b2", types.Byte}}, []FunctionParam{{"ans", types.Int}})
+	if s.ISA.HasSIMD {
+		s.not_index_byte2_body(f)
+	}
+
+}
+
 func (s *State) Generate() {
 	s.test_load()
 	s.test_set1_epi8()
@@ -1516,6 +1588,8 @@ func (s *State) Generate() {
 	s.indexbyte2()
 	s.indexc0()
 	s.indexbyte()
+	s.not_index_byte()
+	s.not_index_byte2()
 
 	s.OutputFunction()
 }

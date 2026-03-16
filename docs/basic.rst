@@ -117,6 +117,9 @@ Similarly, you can detach the current tab, with::
     # asks which OS Window to move the tab into
     map ctrl+f4 detach_tab ask
 
+Note that tabs can be re-arranged, detached and moved to another OS Window in
+the same kitty instance using drag and drop.
+
 Finally, you can define a shortcut to close all windows in a tab other than the
 currently active window::
 

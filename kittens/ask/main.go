@@ -9,6 +9,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/cli/markup"
 	"github.com/kovidgoyal/kitty/tools/tui"
+	"github.com/kovidgoyal/kitty/tools/tui/loop"
 )
 
 var _ = fmt.Print
@@ -18,7 +19,10 @@ type Response struct {
 	Response string   `json:"response"`
 }
 
-func show_message(msg string) {
+func show_message(msg, title string) {
+	if title != "" {
+		fmt.Printf("%s", loop.EscapeCodeToSetWindowTitle(title))
+	}
 	if msg != "" {
 		m := markup.New(true)
 		fmt.Println(m.Bold(msg))
@@ -38,7 +42,7 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 			return 1, err
 		}
 	case "password":
-		show_message(o.Message)
+		show_message(o.Message, o.Title)
 		pw, err := tui.ReadPassword(o.Prompt, false)
 		if err != nil {
 			if errors.Is(err, tui.Canceled) {
@@ -49,13 +53,13 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		}
 		result.Response = pw
 	case "line":
-		show_message(o.Message)
+		show_message(o.Message, o.Title)
 		result.Response, err = get_line(o, false)
 		if err != nil {
 			return 1, err
 		}
 	case "file":
-		show_message(o.Message)
+		show_message(o.Message, o.Title)
 		result.Response, err = get_line(o, true)
 		if err != nil {
 			return 1, err

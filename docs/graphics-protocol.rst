@@ -54,6 +54,7 @@ Libraries:
 * `image.nvim <https://github.com/3rd/image.nvim>`_ - Bringing images to neovim
 * `image_preview.nvim <https://github.com/adelarsq/image_preview.nvim/>`_ - Image preview for neovim
 * `kui.nvim <https://github.com/romgrk/kui.nvim>`_  - Build sophisticated UIs inside neovim using the kitty graphics protocol
+* `kitty-graphics.el <https://github.com/cashmeredev/kitty-graphics.el>`_ - Images in emacs
 * `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
 * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
 
@@ -66,6 +67,7 @@ Other terminals that have implemented the graphics protocol:
 * `wayst <https://github.com/91861/wayst>`_
 * `WezTerm <https://github.com/wez/wezterm/issues/986>`_
 * `iTerm2 <https://github.com/gnachman/iTerm2/commit/4fe5b2173193b6c3e45234b6b2ab7a144a5cfa01>`_
+* `xterm.js <https://github.com/xtermjs/xterm.js/discussions/5683>`_
 
 
 Getting the window size

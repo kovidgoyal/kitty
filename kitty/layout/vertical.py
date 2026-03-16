@@ -50,8 +50,8 @@ def borders(
         color = BorderColor.inactive
         if needs_borders_map.get(wg.id):
             color = BorderColor.active if wg is active_group else BorderColor.bell
-        borders.append(BorderLine(e1, color))
-        borders.append(BorderLine(e2, color))
+        borders.append(BorderLine(e1, color, -wg.active_window_id, not is_horizontal))
+        borders.append(BorderLine(e2, color, wg.active_window_id, not is_horizontal))
 
     last_idx = len(borders) - 1 - end_offset
     for i, x in enumerate(borders):

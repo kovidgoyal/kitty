@@ -229,7 +229,7 @@ wakeup_io_loop(ChildMonitor *self, bool in_signal_handler) {
 
 static void* io_loop(void *data);
 static void* talk_loop(void *data);
-static void send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz);
+static void send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz, bool is_async_response);
 static void wakeup_talk_loop(bool);
 static bool add_peer_to_injection_queue(int peer_fd, int pipe_fd);
 static bool talk_thread_started = false;
@@ -507,10 +507,11 @@ parse_input(ChildMonitor *self) {
                 if (!resp) PyErr_Print();
             }
             if (resp) {
-                if (PyBytes_Check(resp)) send_response_to_peer(msg->peer_id, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp));
-                else if (resp == Py_None) send_response_to_peer(msg->peer_id, NULL, 0);
+                if (PyBytes_Check(resp)) send_response_to_peer(msg->peer_id, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp), false);
+                else if (resp == Py_None) send_response_to_peer(msg->peer_id, NULL, 0, false);
+                else if (resp == Py_True) send_response_to_peer(msg->peer_id, NULL, 0, true);
                 Py_CLEAR(resp);
-            } else send_response_to_peer(msg->peer_id, NULL, 0);
+            } else send_response_to_peer(msg->peer_id, NULL, 0, false);
         }
         free(msgs); msgs = NULL;
     }
@@ -768,6 +769,12 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
                 if (OPT(cursor_trail)) {
+                    if (os_window->last_active_tab != os_window->active_tab && os_window->last_active_tab < os_window->num_tabs) {
+                        tab->cursor_trail = os_window->tabs[os_window->last_active_tab].cursor_trail;
+                        tab->cursor_trail.needs_render = true;
+                        tab->cursor_trail.updated_at = now;
+                        os_window->cursor_blink_zero_time = now;
+                    }
                     if (update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
                         needs_render = true;
                         // A max wait of zero causes key input processing to be
@@ -780,7 +787,6 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                         set_maximum_wait(OPT(cursor_trail) - now + WD.screen->cursor->position_changed_by_client_at);
                     }
                 }
-
             } else {
                 if (WD.screen->cursor_render_info.render_even_when_unfocused) {
                     if (collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window)) needs_render = true;
@@ -805,9 +811,52 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
             }
             if (send_cell_data_to_gpu(WD.vao_idx, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
+            // Prepare window title bar screen data for GPU
+            WindowRenderData *trd = &w->window_title_render_data;
+            if (trd->screen && trd->geometry.bottom > trd->geometry.top && trd->geometry.right > trd->geometry.left) {
+                trd->screen->cursor_render_info.is_visible = false;
+                if (send_cell_data_to_gpu(trd->vao_idx, trd->screen, os_window)) needs_render = true;
+            }
         }
     }
     return needs_render || was_previously_rendered_with_layers != os_window->needs_layers;
+}
+
+static void
+thumbnail_callback(OSWindow *os_window) {
+#define tc global_state.thumbnail_callback
+    Region region = {.right=os_window->viewport_width, .bottom=os_window->viewport_height};
+    if (tc.window) {
+        Window *w = window_for_window_id(tc.window);
+        if (!w) return;
+        region.left = w->render_data.geometry.left;
+        region.top = w->render_data.geometry.top;
+        region.right = w->render_data.geometry.right;
+        region.bottom = w->render_data.geometry.bottom;
+    } else {
+        if (!tc.include_tab_bar) {
+            Region central = {0}, tab_bar = {0};
+            os_window_regions(os_window, &central, &tab_bar);
+            if (tab_bar.bottom > tab_bar.top) region = central;
+        }
+    }
+    unsigned vw = region.right - region.left, vh = region.bottom - region.top;
+    unsigned thumb_w = (unsigned)(vw * tc.scale), thumb_h = (unsigned)(vh * tc.scale);
+    if (thumb_w > tc.max_width) {
+        thumb_w = tc.max_width;
+        double scale = 300. / vw;
+        thumb_h = (unsigned)(vh * scale + 0.5f);
+    }
+    RAII_PyObject(pixels, PyBytes_FromStringAndSize(NULL, 4 * thumb_w * thumb_h));
+    if (pixels && global_state.boss) {
+        take_screenshot_of_rectangular_region(
+            os_window, region, (unsigned char*)PyBytes_AS_STRING(pixels), &thumb_w, &thumb_h);
+        _PyBytes_Resize(&pixels, 4 * thumb_w *thumb_h);
+        PyObject *r = PyObject_CallMethod(
+            global_state.boss, tc.callback, "KKOII", os_window->id, tc.window, pixels, thumb_w, thumb_h);
+        if (!r) PyErr_Print(); else Py_DECREF(r);
+    }
+#undef tc
 }
 
 static void
@@ -828,9 +877,16 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
             if (is_active_window) active_window = w;
             draw_cells(&WD, os_window, is_active_window, false, num_of_visible_windows == 1, w);
             if (WD.screen->start_visual_bell_at != 0) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
+            WindowRenderData *trd = &w->window_title_render_data;
+            if (trd->screen && trd->geometry.right > trd->geometry.left && trd->geometry.bottom > trd->geometry.top)
+                draw_cells(trd, os_window, i == tab->active_window, true, false, NULL);
         }
     }
     setup_os_window_for_rendering(os_window, tab, active_window, false);
+    if (global_state.thumbnail_callback.os_window == os_window->id) {
+        thumbnail_callback(os_window);
+        global_state.thumbnail_callback.os_window = 0;
+    }
     swap_window_buffers(os_window);
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
@@ -856,22 +912,24 @@ no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_
 bool
 render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
     if (!w->num_tabs) return false;
-    if (!should_os_window_be_rendered(w)) {
+    if (!should_os_window_be_rendered(w) && global_state.thumbnail_callback.os_window != w->id) {
         update_os_window_title(w);
         if (w->is_focused) change_menubar_title(w->window_title);
         return false;
     }
     if (!w->keep_rendering_till_swap && USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
         if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, ms_to_monotonic_t(250ll))) request_frame_render(w);
-        // dont respect render frames soon after a resize on Wayland as they cause flicker because
-        // we want to fill the newly resized buffer ASAP, not at compositors convenience
-        if (!global_state.is_wayland || (monotonic() - w->viewport_resized_at) > s_double_to_monotonic_t(1)) {
-            return false;
+        if (w->id != global_state.thumbnail_callback.os_window) {
+            // dont respect render frames soon after a resize on Wayland as they cause flicker because
+            // we want to fill the newly resized buffer ASAP, not at compositors convenience
+            if (!global_state.is_wayland || (monotonic() - w->viewport_resized_at) > s_double_to_monotonic_t(1)) {
+                return false;
+            }
         }
     }
     w->render_calls++;
     make_os_window_context_current(w);
-    bool needs_render = w->redraw_count > 0 || w->live_resize.in_progress;
+    bool needs_render = w->redraw_count > 0 || w->live_resize.in_progress || global_state.thumbnail_callback.os_window == w->id;
     if (w->viewport_size_dirty) {
         set_gpu_viewport(w->viewport_width, w->viewport_height);
         w->viewport_size_dirty = false;
@@ -894,7 +952,7 @@ render(monotonic_t now, bool input_read) {
     EVDBG("input_read: %d, check_for_active_animated_images: %d\n", input_read, global_state.check_for_active_animated_images);
     static monotonic_t last_render_at = MONOTONIC_T_MIN;
     monotonic_t time_since_last_render = last_render_at == MONOTONIC_T_MIN ? OPT(repaint_delay) : now - last_render_at;
-    if (!input_read && time_since_last_render < OPT(repaint_delay)) {
+    if (!input_read && time_since_last_render < OPT(repaint_delay) && !global_state.thumbnail_callback.os_window) {
         set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
         return;
     }
@@ -1648,7 +1706,7 @@ io_loop(void *data) {
 typedef struct {
     id_type id;
     size_t num_of_unresponded_messages_sent_to_main_thread, fd_array_idx;
-    bool finished_reading;
+    bool finished_reading, waiting_for_async_response;
     int fd;
     struct {
         char *data;
@@ -1855,7 +1913,7 @@ prune_peers(ChildMonitor *self) {
     bool pruned = false;
     for (size_t idx = talk_data.num_peers; idx-- > 0;) {
         Peer *p = talk_data.peers + idx;
-        if (p->read.finished && !p->num_of_unresponded_messages_sent_to_main_thread && !p->write.used) {
+        if (p->read.finished && !p->num_of_unresponded_messages_sent_to_main_thread && !p->write.used && !p->waiting_for_async_response) {
             notify_on_peer_removal(self, p);
             free_peer(p);
             remove_i_from_array(talk_data.peers, idx, talk_data.num_peers);
@@ -1977,12 +2035,13 @@ end:
 }
 
 static void
-send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz) {
+send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz, bool is_async_response) {
     bool wakeup = false;
     talk_mutex(lock);
     for (size_t i = 0; i < talk_data.num_peers; i++) {
         Peer *peer = talk_data.peers + i;
         if (peer->id == peer_id) {
+            peer->waiting_for_async_response = is_async_response;
             if (peer->num_of_unresponded_messages_sent_to_main_thread) peer->num_of_unresponded_messages_sent_to_main_thread--;
             if (!peer->write.failed) {
                 if (peer->write.capacity - peer->write.used < msg_sz) {
@@ -2060,8 +2119,9 @@ static PyObject*
 send_data_to_peer(PyObject *self UNUSED, PyObject *args) {
     char * msg; Py_ssize_t sz;
     unsigned long long peer_id;
-    if (!PyArg_ParseTuple(args, "Ks#", &peer_id, &msg, &sz)) return NULL;
-    send_response_to_peer(peer_id, msg, sz);
+    int is_async_response = 0;
+    if (!PyArg_ParseTuple(args, "Ks#|p", &peer_id, &msg, &sz, &is_async_response)) return NULL;
+    send_response_to_peer(peer_id, msg, sz, is_async_response);
     Py_RETURN_NONE;
 }
 

@@ -104,9 +104,8 @@ typedef struct ExtraCursors {
 typedef struct {
     PyObject_HEAD
 
-    unsigned int columns, lines, margin_top, margin_bottom, scrolled_by;
+    unsigned int columns, lines, margin_top, margin_bottom, scrolled_by, pixel_scroll_offset_y;
     double pending_scroll_pixels_x, pending_scroll_pixels_y;
-    double pixel_scroll_offset_y;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
     id_type window_id;
@@ -154,6 +153,7 @@ typedef struct {
             unsigned int redraws_prompts_at_all: 1;
             unsigned int uses_special_keys_for_cursor_movement: 1;
             unsigned int supports_click_events: 1;
+            unsigned int relative_click_events: 1;
         };
         unsigned int val;
     } prompt_settings;
@@ -307,7 +307,7 @@ void screen_modify_other_keys(Screen *self, unsigned, unsigned);
 void screen_report_key_encoding_flags(Screen *self);
 int screen_detect_url(Screen *screen, unsigned int x, unsigned int y);
 int screen_cursor_at_a_shell_prompt(const Screen *);
-bool screen_prompt_supports_click_events(const Screen *);
+bool screen_prompt_supports_click_events(const Screen *, bool *is_relative);
 bool screen_fake_move_cursor_to_position(Screen *, index_type x, index_type y);
 bool screen_send_signal_for_key(Screen *, char key);
 bool get_line_edge_colors(Screen *self, color_type *left, color_type *right);

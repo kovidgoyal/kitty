@@ -215,7 +215,7 @@ def modmap() -> dict[str, int]:
 
 if TYPE_CHECKING:
     from typing import Literal
-    ActionGroup = Literal['cp', 'sc', 'win', 'tab', 'mouse', 'mk', 'lay', 'misc', 'debug', 'session']
+    ActionGroup = Literal['cp', 'sc', 'win', 'tab', 'fs', 'mouse', 'mk', 'lay', 'misc', 'debug', 'session']
 else:
     ActionGroup = str
 
@@ -241,3 +241,25 @@ class NeighborsMap(TypedDict, total=False):
     top: list[int]
     right: list[int]
     bottom: list[int]
+
+
+class WindowResizeDragData(NamedTuple):
+    horizontal_id: int | None = None
+    width_increases_rightwards: bool = True
+    vertical_id: int | None = None
+    height_increases_downwards: bool = True
+
+
+class WindowResizeDrag(NamedTuple):
+    is_active: bool = False
+    cell_width: int = 0
+    cell_height: int = 0
+    initial_x: float = 0
+    initial_y: float = 0
+    last_step_x: float = 0
+    last_step_y: float = 0
+    tab_id: int = 0
+    data: WindowResizeDragData = WindowResizeDragData()
+
+    def __bool__(self) -> bool:
+        return self.is_active
