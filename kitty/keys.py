@@ -44,6 +44,8 @@ def get_shortcut(keymap: KeyMap, ev: KeyEvent) -> list[KeyDefinition] | None:
     ans = keymap.get(SingleKey(mods, False, ev.key))
     if ans is None and ev.shifted_key and mods & GLFW_MOD_SHIFT:
         ans = keymap.get(SingleKey(mods & (~GLFW_MOD_SHIFT), False, ev.shifted_key))
+    if ans is None and ev.alternate_key and get_options().match_physical_keys:
+        ans = keymap.get(SingleKey(mods, False, ev.alternate_key))
     if ans is None:
         ans = keymap.get(SingleKey(mods, True, ev.native_key))
     return ans
@@ -57,6 +59,8 @@ def shortcut_matches(s: SingleKey, ev: KeyEvent) -> bool:
     if s.key == ev.key and mods == smods:
         return True
     if ev.shifted_key and mods & GLFW_MOD_SHIFT and (mods & ~GLFW_MOD_SHIFT) == smods and ev.shifted_key == s.key:
+        return True
+    if ev.alternate_key and s.key == ev.alternate_key and mods == smods and get_options().match_physical_keys:
         return True
     return False
 
