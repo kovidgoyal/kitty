@@ -1089,7 +1089,7 @@ set_os_window_icon(PyObject UNUSED *self, PyObject *args) {
     if(!PyArg_ParseTuple(args, "K|O", &id, &what)) return NULL;
     OSWindow *os_window = os_window_for_id(id);
     if (!os_window) { PyErr_Format(PyExc_KeyError, "No OS Window with id: %llu", id); return NULL; }
-    if (w->is_layer_shell && global_state.is_wayland) Py_RETURN_NONE;
+    if (os_window->is_layer_shell && global_state.is_wayland) Py_RETURN_NONE;
     if (!what || what == Py_None) {
         glfwSetWindowIcon(os_window->handle, 0, NULL);
         Py_RETURN_NONE;
