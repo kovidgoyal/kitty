@@ -165,7 +165,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.46.1 [future]
+0.46.1 [2026-03-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - diff kitten: Highlight moved lines using a different background color (:opt:`kitten-diff.mark_moved_lines`) (:iss:`3241`)
