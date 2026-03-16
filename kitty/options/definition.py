@@ -1848,7 +1848,7 @@ opt('selection_background', '#fffacd',
     option_type='to_color_or_none',
     )
 
-opt('palette_generate', True,
+opt('palette_generate', False,
     option_type='to_bool', ctype='bool',
     long_text='''
 Whether to automatically generate colors 16-255 from your base16 palette.
