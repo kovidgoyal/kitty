@@ -1588,6 +1588,14 @@ void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
 
 void
 _glfwPlatformSetWindowIcon(_GLFWwindow* window, int count, const GLFWimage* images) {
+    if (is_layer_shell(window)) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Cannot set window icon on layer shell surfaces");
+        return;
+    }
+    if (!window->wl.xdg.toplevel) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Ignoring attempt to set window icon on window without a toplevel");
+        return;
+    }
     if (!_glfw.wl.xdg_toplevel_icon_manager_v1) {
         static bool warned_once = false;
         if (!warned_once) {
