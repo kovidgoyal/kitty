@@ -3947,9 +3947,12 @@ opt('match_physical_keys', 'no',
     option_type='to_bool', ctype='bool',
     long_text='''
 When enabled, keyboard shortcuts are matched using the key's position on a
-standard PC-101 keyboard layout (the "base layout key") as a fallback. This
-means shortcuts like :kbd:`ctrl+c` will work even when a non-Latin keyboard
-layout (e.g., Cyrillic) is active. The base layout key is only used as a
+standard PC-101 keyboard layout (the "base layout key" from the
+:doc:`keyboard protocol </keyboard-protocol>`) as a fallback. This means
+shortcuts like :kbd:`ctrl+c` will work even when a non-Latin keyboard layout
+(e.g., Cyrillic) is active. For example, pressing :kbd:`ctrl+С` on a Russian
+layout will match a :kbd:`ctrl+c` shortcut because the physical key corresponds
+to :kbd:`c` in the standard layout. The base layout key is only used as a
 fallback — if a shortcut is explicitly mapped to a key in the active layout
 (e.g., :kbd:`ctrl+с`), that mapping takes priority. Default is disabled for
 backward compatibility.
