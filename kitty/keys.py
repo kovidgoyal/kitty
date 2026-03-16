@@ -60,7 +60,7 @@ def shortcut_matches(s: SingleKey, ev: KeyEvent) -> bool:
         return True
     if ev.shifted_key and mods & GLFW_MOD_SHIFT and (mods & ~GLFW_MOD_SHIFT) == smods and ev.shifted_key == s.key:
         return True
-    if ev.alternate_key and s.key == ev.alternate_key and mods == smods and get_options().match_physical_keys:
+    if ev.alternate_key and get_options().match_physical_keys and s.key == ev.alternate_key and mods == smods:
         return True
     return False
 

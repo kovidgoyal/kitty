@@ -129,6 +129,7 @@ typedef struct Options {
     unsigned long wayland_titlebar_color;
     struct { struct MenuItem *entries; size_t count; } global_menu;
     bool wayland_enable_ime;
+    bool match_physical_keys;
     struct {
         size_t num;
         struct {
