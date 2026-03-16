@@ -654,3 +654,58 @@ class TestKeys(BaseTest):
         self.ae(tm('m', 'a'), [True, True])
         self.ae(tm.actions, ['push_keyboard_mode mw', 'new_window'])
         af(tm.ignore_os_keyboard_processing)
+
+    def test_match_physical_keys(self):
+        from unittest.mock import MagicMock, patch
+
+        from kitty.keys import get_shortcut, shortcut_matches
+
+        ctrl = defines.GLFW_MOD_CONTROL
+        cyrillic_s = 0x441  # Cyrillic 'с'
+        latin_c = ord('c')
+
+        action_copy = ['copy_to_clipboard']
+        action_cyrillic = ['cyrillic_action']
+
+        keymap = {defines.SingleKey(ctrl, False, latin_c): action_copy}
+
+        opts_on = MagicMock()
+        opts_on.match_physical_keys = True
+        opts_off = MagicMock()
+        opts_off.match_physical_keys = False
+
+        # get_shortcut: alternate_key matches when option is enabled
+        with patch('kitty.keys.get_options', return_value=opts_on):
+            ev = defines.KeyEvent(cyrillic_s, 0, latin_c, ctrl)
+            self.assertIs(get_shortcut(keymap, ev), action_copy)
+
+        # get_shortcut: alternate_key does NOT match when option is disabled
+        with patch('kitty.keys.get_options', return_value=opts_off):
+            ev = defines.KeyEvent(cyrillic_s, 0, latin_c, ctrl)
+            self.assertIsNone(get_shortcut(keymap, ev))
+
+        # shortcut_matches: alternate_key matches when option is enabled
+        with patch('kitty.keys.get_options', return_value=opts_on):
+            s = defines.SingleKey(ctrl, False, latin_c)
+            ev = defines.KeyEvent(cyrillic_s, 0, latin_c, ctrl)
+            self.assertTrue(shortcut_matches(s, ev))
+
+        # shortcut_matches: alternate_key does NOT match when option is disabled
+        with patch('kitty.keys.get_options', return_value=opts_off):
+            s = defines.SingleKey(ctrl, False, latin_c)
+            ev = defines.KeyEvent(cyrillic_s, 0, latin_c, ctrl)
+            self.assertFalse(shortcut_matches(s, ev))
+
+        # key match takes priority over alternate_key
+        both_keymap = {
+            defines.SingleKey(ctrl, False, cyrillic_s): action_cyrillic,
+            defines.SingleKey(ctrl, False, latin_c): action_copy,
+        }
+        with patch('kitty.keys.get_options', return_value=opts_on):
+            ev = defines.KeyEvent(cyrillic_s, 0, latin_c, ctrl)
+            self.assertIs(get_shortcut(both_keymap, ev), action_cyrillic)
+
+        # alternate_key is 0 (not set): no crash, no match
+        with patch('kitty.keys.get_options', return_value=opts_on):
+            ev = defines.KeyEvent(cyrillic_s, 0, 0, ctrl)
+            self.assertIsNone(get_shortcut(keymap, ev))
