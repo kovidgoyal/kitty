@@ -178,27 +178,34 @@ lerp_lab(float t, float *a, float *b, float *out) {
     out[2] = a[2] + t * (b[2] - a[2]);
 }
 
+// For more information, see
+// https://gist.github.com/jake-stewart/0a8ea46159a7da2c808e5be2177e1783
 static void
 generate_256_palette(color_type *color_table, color_type bg, color_type fg, bool harmonious) {
-    float base8_lab[8][3], bg_lab[3], fg_lab[3];
-    for (int i = 0; i < 8; i++) color_type_to_lab(color_table[i], base8_lab[i]);
-    color_type_to_lab(bg ? bg : color_table[0], bg_lab);
-    color_type_to_lab(fg ? fg : color_table[7], fg_lab);
+    float base8_lab[8][3];
+    for (int i = 0; i < 8; i++) {
+        color_type_to_lab(color_table[i], base8_lab[i]);
+    }
+    color_type_to_lab(bg, base8_lab[0]);
+    color_type_to_lab(fg, base8_lab[7]);
 
-    bool is_light_theme = fg_lab[0] < bg_lab[0];
+    bool is_light_theme = base8_lab[7][0] < base8_lab[0][0];
     bool invert = is_light_theme && !harmonious;
-
-    float *corner0 = invert ? fg_lab : bg_lab;
-    float *corner7 = invert ? bg_lab : fg_lab;
+    if (invert) {
+        float tmp[3];
+        memcpy(tmp, base8_lab[0], sizeof(tmp));
+        memcpy(base8_lab[0], base8_lab[7], sizeof(tmp));
+        memcpy(base8_lab[7], tmp, sizeof(tmp));
+    }
 
     int idx = 16;
     for (int r = 0; r < 6; r++) {
         float c0[3], c1[3], c2[3], c3[3];
         float tr = r / 5.0f;
-        lerp_lab(tr, corner0, base8_lab[1], c0);
+        lerp_lab(tr, base8_lab[0], base8_lab[1], c0);
         lerp_lab(tr, base8_lab[2], base8_lab[3], c1);
         lerp_lab(tr, base8_lab[4], base8_lab[5], c2);
-        lerp_lab(tr, base8_lab[6], corner7, c3);
+        lerp_lab(tr, base8_lab[6], base8_lab[7], c3);
         for (int g = 0; g < 6; g++) {
             float c4[3], c5[3];
             float tg = g / 5.0f;
@@ -218,7 +225,7 @@ generate_256_palette(color_type *color_table, color_type bg, color_type fg, bool
     for (int i = 0; i < 24; i++) {
         float t = (i + 1) / 25.0f;
         float lab[3];
-        lerp_lab(t, corner0, corner7, lab);
+        lerp_lab(t, base8_lab[0], base8_lab[7], lab);
         if (color_table[idx] == NULL_COLOR_TYPE) {
             color_table[idx] = lab_to_color_type(lab);
         }
