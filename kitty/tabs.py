@@ -1337,8 +1337,14 @@ class TabManager:  # {{{
                 return self.tab_for_id(self.active_tab_history[-1])
         elif loc in ('left', 'right'):
             delta = -1 if loc == 'left' else 1
-            idx = (len(tabs) + self.active_tab_idx + delta) % len(tabs)
-            return tabs[idx]
+            at = self.active_tab
+            if at is not None:
+                try:
+                    active_idx = tabs.index(at)
+                except ValueError:
+                    return None
+                idx = (len(tabs) + active_idx + delta) % len(tabs)
+                return tabs[idx]
         return None
 
     def goto_tab(self, tab_num: int) -> None:
@@ -1439,8 +1445,15 @@ class TabManager:  # {{{
     def move_tab(self, delta: int = 1) -> None:
         tabs = tuple(self.tabs_to_be_shown_in_tab_bar)
         if len(tabs) > 1:
-            idx = self.active_tab_idx
-            new_active_tab = tabs[(idx + len(tabs) + delta) % len(tabs)]
+            at = self.active_tab
+            if at is None:
+                return
+            try:
+                filtered_idx = tabs.index(at)
+            except ValueError:
+                return
+            new_active_tab = tabs[(filtered_idx + len(tabs) + delta) % len(tabs)]
+            idx = self.tabs.index(at)
             nidx = self.tabs.index(new_active_tab)
             step = 1 if idx < nidx else -1
             for i in range(idx, nidx, step):
