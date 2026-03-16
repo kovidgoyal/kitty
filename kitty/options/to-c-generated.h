@@ -1448,6 +1448,19 @@ convert_from_opts_wayland_enable_ime(PyObject *py_opts, Options *opts) {
     Py_DECREF(ret);
 }
 
+static void
+convert_from_python_match_physical_keys(PyObject *val, Options *opts) {
+    opts->match_physical_keys = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_match_physical_keys(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "match_physical_keys");
+    if (ret == NULL) return;
+    convert_from_python_match_physical_keys(ret, opts);
+    Py_DECREF(ret);
+}
+
 static bool
 convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_font_size(py_opts, opts);
@@ -1671,6 +1684,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_macos_colorspace(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_wayland_enable_ime(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_match_physical_keys(py_opts, opts);
     if (PyErr_Occurred()) return false;
     return true;
 }

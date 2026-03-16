@@ -3943,6 +3943,19 @@ remove the default shortcuts.
 '''
     )
 
+opt('match_physical_keys', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+When enabled, keyboard shortcuts are matched using the key's position on a
+standard PC-101 keyboard layout (the "base layout key") as a fallback. This
+means shortcuts like :kbd:`ctrl+c` will work even when a non-Latin keyboard
+layout (e.g., Cyrillic) is active. The base layout key is only used as a
+fallback — if a shortcut is explicitly mapped to a key in the active layout
+(e.g., :kbd:`ctrl+с`), that mapping takes priority. Default is disabled for
+backward compatibility.
+'''
+    )
+
 opt('map_timeout', '0.0', option_type='positive_float', long_text='''
 The default timeout (in seconds) for multi-key mappings and modal keyboard modes.
 If you press the first key(s) of a multi-key mapping and don't press the next

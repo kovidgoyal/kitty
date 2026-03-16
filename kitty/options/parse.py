@@ -1144,6 +1144,9 @@ class Parser:
     def mark3_foreground(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['mark3_foreground'] = to_color(val)
 
+    def match_physical_keys(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['match_physical_keys'] = to_bool(val)
+
     def menu_map(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in menu_map(val, ans["menu_map"]):
             ans["menu_map"][k] = v
