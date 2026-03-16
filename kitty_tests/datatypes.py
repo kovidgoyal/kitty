@@ -66,6 +66,7 @@ class TestDataTypes(BaseTest):
         def c(spec, r=0, g=0, b=0, a=0):
             c = to_color(spec)
             self.ae(Color(r, g, b, a), c, spec)
+            self.ae(Color(r, green=g, alpha=a, blue=b), c, spec)
 
         c('#eee # comment', 0xee, 0xee, 0xee)
         c('#234567', 0x23, 0x45, 0x67)

@@ -696,19 +696,19 @@ color_vectorcall(PyObject *type UNUSED, PyObject *const *args, size_t nargsf, Py
         rgba[i] = (unsigned char)val;
     }
     if (kwnames) {
-        static const char *const kwnames_list[] = {"red", "green", "blue", "alpha"};
-        const Py_ssize_t nkwargs = PyTuple_GET_SIZE(kwnames);
-        for (Py_ssize_t i = 0; i < nkwargs; i++) {
+        const unsigned num = PyTuple_GET_SIZE(kwnames);
+        for (unsigned i = 0; i < num; i++) {
             const char *name = PyUnicode_AsUTF8(PyTuple_GET_ITEM(kwnames, i));
             if (!name) return NULL;
-            int idx = -1;
-            for (int j = 0; j < 4; j++) {
-                if (strcmp(name, kwnames_list[j]) == 0) { idx = j; break; }
+            int idx;
+#define C(ch, i, expected) case ch: idx = i; if (strcmp(name, expected) != 0) { \
+            PyErr_Format(PyExc_TypeError, "Color() got an unexpected keyword argument '%s'", name); return NULL; }; break;
+            switch(name[0]) {
+                C('r', 0, "red"); C('g', 1, "green"); C('b', 2, "blue"); C('a', 3, "alpha");
+                default:
+                PyErr_Format(PyExc_TypeError, "Color() got an unexpected keyword argument '%s'", name); return NULL;
             }
-            if (idx < 0) {
-                PyErr_Format(PyExc_TypeError, "Color() got an unexpected keyword argument '%s'", name);
-                return NULL;
-            }
+#undef C
             if (idx < nargs) {
                 PyErr_Format(PyExc_TypeError, "Color() got multiple values for argument '%s'", name);
                 return NULL;
