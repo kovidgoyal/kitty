@@ -170,6 +170,9 @@ Detailed list of changes
 
 - Watchers: Add an `on_quit` event to global watchers (:iss:`9675`)
 
+- Wayland: Fix a crash on some compositors when dragging a tab between OS
+  Windows (:iss:`9677`)
+
 0.46.1 [2026-03-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
