@@ -144,7 +144,6 @@ typedef struct _GLFWwindowNS
     bool            titlebar_hidden;
     unsigned long   pre_full_screen_style_mask;
     CGRect          pre_traditional_fullscreen_frame;
-    id              safe_area_cover_windows;  // NSArray of companion NSWindows covering safe-area inset strips in traditional fullscreen
 
     // Cached window properties to filter out duplicate events
     int             width, height;
