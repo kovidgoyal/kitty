@@ -145,6 +145,7 @@ class Tab:  # {{{
     inactive_fg: int | None = None
     inactive_bg: int | None = None
     confirm_close_window_id: int = 0
+    renaming_in_window: int = 0
     num_of_windows_with_progress: int = 0
     total_progress: int = 0
     has_indeterminate_progress: bool = False
