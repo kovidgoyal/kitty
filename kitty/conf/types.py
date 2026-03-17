@@ -244,7 +244,9 @@ class Option:
     def is_color_table_color(self) -> bool:
         return self.name.startswith('color') and self.name[5:].isdigit()
 
-    def as_conf(self, commented: bool = False, level: int = 0, option_group: list['Option'] = []) -> list[str]:
+    def as_conf(self, commented: bool = False, level: int = 0, option_group: list['Option'] = None) -> list[str]:
+        if option_group is None:
+            option_group = []
         ans: list[str] = []
         a = ans.append
         if not self.documented:
@@ -264,8 +266,10 @@ class Option:
 
     def as_rst(
         self, conf_name: str, shortcut_slugs: dict[str, tuple[str, str]],
-        kitty_mod: str, level: int = 0, option_group: list['Option'] = []
+        kitty_mod: str, level: int = 0, option_group: list['Option'] = None
     ) -> list[str]:
+        if option_group is None:
+            option_group = []
         ans: list[str] = []
         a = ans.append
         if not self.documented:
