@@ -305,6 +305,7 @@ class Watchers:
     on_cmd_startstop: list[Watcher]
     on_color_scheme_preference_change: list[Watcher]
     on_tab_bar_dirty: list[Watcher]
+    on_quit: list[Watcher]
 
     def __init__(self) -> None:
         self.on_resize = []
@@ -315,6 +316,7 @@ class Watchers:
         self.on_cmd_startstop = []
         self.on_color_scheme_preference_change = []
         self.on_tab_bar_dirty = []
+        self.on_quit = []
 
     def add(self, others: 'Watchers') -> None:
         def merge(base: list[Watcher], other: list[Watcher]) -> None:
@@ -329,12 +331,14 @@ class Watchers:
         merge(self.on_cmd_startstop, others.on_cmd_startstop)
         merge(self.on_color_scheme_preference_change, others.on_color_scheme_preference_change)
         merge(self.on_tab_bar_dirty, others.on_tab_bar_dirty)
+        merge(self.on_quit, others.on_quit)
 
     def clear(self) -> None:
         del self.on_close[:], self.on_resize[:], self.on_focus_change[:]
         del self.on_set_user_var[:], self.on_title_change[:], self.on_cmd_startstop[:]
         del self.on_color_scheme_preference_change[:]
         del self.on_tab_bar_dirty[:]
+        del self.on_quit[:]
 
     def copy(self) -> 'Watchers':
         ans = Watchers()
@@ -346,12 +350,14 @@ class Watchers:
         ans.on_cmd_startstop = self.on_cmd_startstop[:]
         ans.on_color_scheme_preference_change = self.on_color_scheme_preference_change[:]
         ans.on_tab_bar_dirty = self.on_tab_bar_dirty[:]
+        ans.on_quit = self.on_quit[:]
         return ans
 
     @property
     def has_watchers(self) -> bool:
         return bool(self.on_close or self.on_resize or self.on_focus_change or self.on_color_scheme_preference_change
-                    or self.on_set_user_var or self.on_title_change or self.on_cmd_startstop or self.on_tab_bar_dirty)
+                    or self.on_set_user_var or self.on_title_change or self.on_cmd_startstop or self.on_tab_bar_dirty
+                    or self.on_quit)
 
 
 def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: dict[str, Any]) -> None:
