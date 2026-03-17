@@ -178,6 +178,8 @@ Detailed list of changes
 
 - Prevent stacking of multiple rename tab windows (:iss:`9691`)
 
+- choose files kitten: Fix a regression that caused incorrect highlight of matched letters
+
 0.46.1 [2026-03-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
