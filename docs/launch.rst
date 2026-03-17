@@ -185,12 +185,12 @@ create :file:`~/.config/kitty/mywatcher.py` and use :option:`launch --watcher` =
         # managing all tabs in a single OS Window.
         ...
 
-    def on_quit(boss: Boss, window: Window, data: dict[str, Any]) -> bool | None:
+    def on_quit(boss: Boss, window: Window, data: dict[str, Any]) -> None:
         # called when kitty is about to quit. This is called in *global watchers*
         # only. It is called twice: once before the quit confirmation dialog is
         # shown (data['confirmed'] will be False) and once after the user has
-        # confirmed quitting (data['confirmed'] will be True). Returning False
-        # from this function will abort the quit in both cases.
+        # confirmed quitting (data['confirmed'] will be True). Setting
+        # data['aborted'] to True will abort the quit in both cases.
         ...
 
 

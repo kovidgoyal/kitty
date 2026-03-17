@@ -2091,26 +2091,20 @@ class Boss:
     quit_confirmation_window_id: int = 0
 
     def _call_on_quit_watchers(self, data: dict[str, Any]) -> bool:
-        boss = self
         w = self.active_window
         if w is None:
-            for os_window in self.os_window_map.values():
-                for tab in os_window:
-                    for window in tab:
-                        w = window
-                        break
-                    if w is not None:
-                        break
-                if w is not None:
-                    break
+            for window in self.window_id_map.values():
+                w = window
+                break
+        if w is None:
+            return True
         for watcher in global_watchers().on_quit:
             try:
-                ret = watcher(boss, w, data)
+                watcher(self, w, data)
             except Exception:
                 import traceback
                 traceback.print_exc()
-                continue
-            if ret is False:
+            if data.get('aborted'):
                 return False
         return True
 
