@@ -176,6 +176,8 @@ Detailed list of changes
 - Fix incorrect behavior when using the actions to move tab forward/backward
   with a tab_bar_filter active (:iss:`9672`)
 
+- Prevent stacking of multiple rename tab windows (:iss:`9691`)
+
 0.46.1 [2026-03-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

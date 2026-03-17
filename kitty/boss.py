@@ -1252,9 +1252,10 @@ class Boss:
             cmd.append('--default=' + initial_value)
         if window_title:
             cmd.append(f'--title={window_title}')
-        return self.run_kitten_with_metadata(
+        w = self.run_kitten_with_metadata(
             'ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''}, action_on_removal=on_popup_overlay_removal
         )
+        return w if isinstance(w, Window) else None
 
     def get_save_filepath(
         self, msg: str,  # can contain newlines and ANSI formatting
@@ -2377,18 +2378,16 @@ class Boss:
                     title = ''
                 tab.set_title(title)
                 return
-            if tab.renaming_in_window and tab.renaming_in_window in self.window_id_map:
-                w = self.window_id_map[tab.renaming_in_window]
-                if w in tab:
-                    tab.set_active_window(w)
-                    return
-            prefilled = tab.name or tab.title
-            if title in ('" "', "' '"):
-                prefilled = ''
+            if (w := self.window_id_map.get(tab.renaming_in_window)) is not None and w in tab:
+                tab.set_active_window(w)
+                return
+            prefilled = (tab.name or tab.title).strip()
+            tab_id = tab.id
 
             def on_rename_done(new_title: str) -> None:
-                tab.renaming_in_window = 0
-                tab.set_title(new_title)
+                if (tab := self.tab_for_id(tab_id)) is not None:
+                    tab.renaming_in_window = 0
+                    tab.set_title(new_title)
 
             overlay_window = self.get_line(
                 _('Enter the new title for this tab below. An empty title will cause the default title to be used.'),
