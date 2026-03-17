@@ -165,6 +165,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.50.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Watchers: Add an `on_quit` event to global watchers (:iss:`9675`)
+
 0.46.1 [2026-03-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -2098,6 +2098,7 @@ class Boss:
                 break
         if w is None:
             return True
+        data['aborted'] = False
         for watcher in global_watchers().on_quit:
             try:
                 watcher(self, w, data)
