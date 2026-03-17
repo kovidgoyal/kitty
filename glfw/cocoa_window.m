@@ -595,6 +595,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 @end
 
 static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWwindow*, bool, bool);
+static void _glfwUpdateNotchCover(_GLFWwindow*);
 
 @implementation GLFWWindowDelegate
 
@@ -814,6 +815,7 @@ static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWw
             NSWindowStyleMask savedMask = window->ns.pre_full_screen_style_mask;
             CGRect savedFrame = window->ns.pre_traditional_fullscreen_frame;
             window->ns.in_traditional_fullscreen = false;
+            _glfwUpdateNotchCover(window);
             window->ns.suppress_frame_constraints = true;
             dispatch_async(dispatch_get_main_queue(), ^{
                 _GLFWwindow *w = NULL;
@@ -2432,6 +2434,12 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (_glfw.ns.disabledCursorWindow == window)
         _glfw.ns.disabledCursorWindow = NULL;
     free_drop_data(window);
+    if (window->ns.notch_cover_window) {
+        [w removeChildWindow:window->ns.notch_cover_window];
+        [window->ns.notch_cover_window close];
+        [window->ns.notch_cover_window release];
+        window->ns.notch_cover_window = nil;
+    }
 
     [w orderOut:nil];
 
@@ -3358,6 +3366,41 @@ make_window_fullscreen_after_show(unsigned long long timer_id, void* data) {
     }
 }
 
+static void
+_glfwUpdateNotchCover(_GLFWwindow* w) {
+    NSWindow *window = w->ns.object;
+    if (w->ns.notch_cover_window) {
+        [window removeChildWindow:w->ns.notch_cover_window];
+        [w->ns.notch_cover_window close];
+        [w->ns.notch_cover_window release];
+        w->ns.notch_cover_window = nil;
+    }
+    if (!w->ns.in_traditional_fullscreen) return;
+    if (@available(macOS 12.0, *)) {
+        CGFloat insetTop = window.screen.safeAreaInsets.top;
+        if (insetTop <= 0) return;
+        NSRect sf = [window.screen frame];
+        NSWindow *bg_window = [[NSWindow alloc] initWithContentRect:sf styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO];
+        [bg_window setBackgroundColor:[NSColor clearColor]];
+        [bg_window setHasShadow:NO];
+        [bg_window setOpaque:NO];
+        [bg_window setIgnoresMouseEvents:YES];
+        [bg_window setReleasedWhenClosed:NO];
+        // Add a colored subview only in the notch strip area
+        NSView *notchView = [[NSView alloc] initWithFrame:NSMakeRect(0, sf.size.height - insetTop, sf.size.width, insetTop)];
+        notchView.wantsLayer = YES;
+        unsigned int c = w->ns.notch_cover_color;
+        float a = w->ns.notch_cover_opacity;
+        notchView.layer.backgroundColor = [NSColor colorWithSRGBRed:((c >> 16) & 0xFF) / 255.0
+                                                              green:((c >> 8) & 0xFF) / 255.0
+                                                               blue:(c & 0xFF) / 255.0
+                                                              alpha:a].CGColor;
+        [bg_window.contentView addSubview:notchView];
+        [window addChildWindow:bg_window ordered:NSWindowBelow];
+        w->ns.notch_cover_window = bg_window;
+    }
+}
+
 bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     NSWindow *window = w->ns.object;
     bool made_fullscreen = true;
@@ -3380,8 +3423,13 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                 w->ns.pre_traditional_fullscreen_frame = [window frame];
                 [window setStyleMask: NSWindowStyleMaskBorderless];
                 [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
-                [window setFrame:[window.screen frame] display:YES];
+                NSRect screenFrame = [window.screen frame];
+                if (@available(macOS 12.0, *)) {
+                    screenFrame.size.height -= window.screen.safeAreaInsets.top;
+                }
+                [window setFrame:screenFrame display:YES];
                 w->ns.in_traditional_fullscreen = true;
+                _glfwUpdateNotchCover(w);
             } else {
                 made_fullscreen = false;
                 if (sm & NSWindowStyleMaskFullScreen) {
@@ -3399,6 +3447,7 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                     [window setStyleMask: w->ns.pre_full_screen_style_mask];
                     [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
                     w->ns.in_traditional_fullscreen = false;
+                    _glfwUpdateNotchCover(w);
                 }
             }
         } else {
@@ -3970,6 +4019,9 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
 
     // HACK: Changing the style mask can cause the first responder to be cleared
     [nsw makeFirstResponder:window->ns.view];
+    window->ns.notch_cover_color = color;
+    window->ns.notch_cover_opacity = background_opacity;
+    if (window->ns.notch_cover_window) _glfwUpdateNotchCover(window);
 }}
 
 GLFWAPI uint32_t
