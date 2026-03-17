@@ -1237,7 +1237,7 @@ class Boss:
         is_password: bool = False,
         initial_value: str = '',
         window_title: str = '',
-    ) -> None:
+    ) -> Window | None:
         result: str = ''
 
         def callback_(res: dict[str, Any], x: int, boss: Boss) -> None:
@@ -1252,7 +1252,7 @@ class Boss:
             cmd.append('--default=' + initial_value)
         if window_title:
             cmd.append(f'--title={window_title}')
-        self.run_kitten_with_metadata(
+        return self.run_kitten_with_metadata(
             'ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''}, action_on_removal=on_popup_overlay_removal
         )
 
@@ -2377,12 +2377,24 @@ class Boss:
                     title = ''
                 tab.set_title(title)
                 return
+            if tab.renaming_in_window and tab.renaming_in_window in self.window_id_map:
+                w = self.window_id_map[tab.renaming_in_window]
+                if w in tab:
+                    tab.set_active_window(w)
+                    return
             prefilled = tab.name or tab.title
             if title in ('" "', "' '"):
                 prefilled = ''
-            self.get_line(
+
+            def on_rename_done(new_title: str) -> None:
+                tab.renaming_in_window = 0
+                tab.set_title(new_title)
+
+            overlay_window = self.get_line(
                 _('Enter the new title for this tab below. An empty title will cause the default title to be used.'),
-                tab.set_title, window=tab.active_window, initial_value=prefilled, window_title=_('Rename tab'))
+                on_rename_done, window=tab.active_window, initial_value=prefilled, window_title=_('Rename tab'))
+            if overlay_window is not None:
+                tab.renaming_in_window = overlay_window.id
 
     def create_special_window_for_show_error(self, title: str, msg: str, overlay_for: int | None = None) -> SpecialWindowInstance:
         ec = sys.exc_info()
