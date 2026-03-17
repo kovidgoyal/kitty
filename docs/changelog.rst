@@ -180,6 +180,8 @@ Detailed list of changes
 
 - choose files kitten: Fix a regression that caused incorrect highlight of matched letters
 
+- macOS: When using :opt:`macos_traditional_fullscreen` do not render content under the notch (:pull:`9678`)
+
 0.46.1 [2026-03-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

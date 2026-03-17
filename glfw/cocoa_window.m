@@ -3386,6 +3386,7 @@ _glfwUpdateNotchCover(_GLFWwindow* w) {
         [bg_window setOpaque:NO];
         [bg_window setIgnoresMouseEvents:YES];
         [bg_window setReleasedWhenClosed:NO];
+        [bg_window setColorSpace:[window colorSpace]];
         // Add a colored subview only in the notch strip area
         NSView *notchView = [[NSView alloc] initWithFrame:NSMakeRect(0, sf.size.height - insetTop, sf.size.width, insetTop)];
         notchView.wantsLayer = YES;
@@ -3398,6 +3399,7 @@ _glfwUpdateNotchCover(_GLFWwindow* w) {
         [bg_window.contentView addSubview:notchView];
         [window addChildWindow:bg_window ordered:NSWindowBelow];
         w->ns.notch_cover_window = bg_window;
+        [notchView release];
     }
 }
 
