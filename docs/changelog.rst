@@ -173,6 +173,9 @@ Detailed list of changes
 - Wayland: Fix a crash on some compositors when dragging a tab between OS
   Windows (:iss:`9677`)
 
+- Fix incorrect behavior when using the actions to move tab forward/backward
+  with a tab_bar_filter active (:iss:`9672`)
+
 0.46.1 [2026-03-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
