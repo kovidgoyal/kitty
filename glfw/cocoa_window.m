@@ -595,6 +595,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 @end
 
 static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWwindow*, bool, bool);
+static void remove_traditional_fullscreen_safe_area_covers(_GLFWwindow*);
 
 @implementation GLFWWindowDelegate
 
@@ -822,6 +823,7 @@ static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWw
                 }
                 if (w) {
                     NSWindow *nswindow = w->ns.object;
+                    remove_traditional_fullscreen_safe_area_covers(w);
                     [nswindow setStyleMask: savedMask];
                     [nswindow setFrame: savedFrame display:YES];
                     update_titlebar_button_visibility_after_fullscreen_transition(w, true, false);
@@ -2432,7 +2434,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (_glfw.ns.disabledCursorWindow == window)
         _glfw.ns.disabledCursorWindow = NULL;
     free_drop_data(window);
-
+    remove_traditional_fullscreen_safe_area_covers(window);
     [w orderOut:nil];
 
     if (window->monitor)
@@ -3358,6 +3360,98 @@ make_window_fullscreen_after_show(unsigned long long timer_id, void* data) {
     }
 }
 
+// Safe-area inset cover windows for traditional fullscreen {{{
+
+static NSColor *
+background_color_for_traditional_fullscreen(_GLFWwindow *window) {
+#define tc window->ns.last_applied_titlebar_settings.color
+    if (tc.was_set) {
+        return [NSColor colorWithSRGBRed:tc.red green:tc.green blue:tc.blue alpha:tc.alpha];
+    }
+#undef tc
+    return [NSColor windowBackgroundColor];
+}
+
+static void
+remove_traditional_fullscreen_safe_area_covers(_GLFWwindow *window) {
+    if (!window->ns.safe_area_cover_windows) return;
+    NSArray *covers = (NSArray *)window->ns.safe_area_cover_windows;
+    for (NSWindow *cover in covers) {
+        NSWindow *parent = [cover parentWindow];
+        if (parent) [parent removeChildWindow:cover];
+        [cover orderOut:nil];
+        [cover close];
+    }
+    [covers release];
+    window->ns.safe_area_cover_windows = nil;
+}
+
+static void
+add_traditional_fullscreen_safe_area_covers(_GLFWwindow *window) {
+    if (@available(macOS 12.0, *)) {
+        NSWindow *mainWindow = window->ns.object;
+        NSScreen *screen = [mainWindow screen] ?: [NSScreen mainScreen];
+        NSEdgeInsets insets = screen.safeAreaInsets;
+        if (insets.top <= 0.0 && insets.bottom <= 0.0 && insets.left <= 0.0 && insets.right <= 0.0) return;
+
+        NSRect sf = screen.frame;
+        NSColor *bgColor = background_color_for_traditional_fullscreen(window);
+        // Resolve any dynamic / pattern colour to a concrete sRGB value so it
+        // renders correctly on a CALayer.
+        NSColor *resolvedColor = [bgColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]] ?: bgColor;
+        bool opaque = ([resolvedColor alphaComponent] >= 1.0);
+        NSMutableArray *covers = [NSMutableArray arrayWithCapacity:4];
+
+        struct { CGFloat value; NSRect frame; } edges[4] = {
+            // top (e.g. notch / menu-bar safe area)
+            {insets.top,    NSMakeRect(NSMinX(sf), NSMaxY(sf) - insets.top,  NSWidth(sf),   insets.top)},
+            // bottom
+            {insets.bottom, NSMakeRect(NSMinX(sf), NSMinY(sf),               NSWidth(sf),   insets.bottom)},
+            // left
+            {insets.left,   NSMakeRect(NSMinX(sf), NSMinY(sf) + insets.bottom, insets.left, NSHeight(sf) - insets.top - insets.bottom)},
+            // right
+            {insets.right,  NSMakeRect(NSMaxX(sf) - insets.right, NSMinY(sf) + insets.bottom, insets.right, NSHeight(sf) - insets.top - insets.bottom)},
+        };
+
+        for (int i = 0; i < 4; i++) {
+            if (edges[i].value <= 0.0) continue;
+            NSWindow *cover = [[NSWindow alloc]
+                initWithContentRect:edges[i].frame
+                styleMask:NSWindowStyleMaskBorderless
+                backing:NSBackingStoreBuffered
+                defer:NO
+                screen:screen];
+            // Prevent Cocoa from releasing the window when it is closed or when
+            // the parent orders out (it moves with the parent as a child window).
+            // Lifetime is managed exclusively by the safe_area_cover_windows array.
+            [cover setReleasedWhenClosed:NO];
+            [cover setLevel:[mainWindow level]];
+            if (!opaque) {
+                [cover setOpaque:NO];
+                [cover setBackgroundColor:[NSColor clearColor]];
+            }
+            // Use a subview to render the background colour rectangle so that
+            // the alpha channel is respected independently of the window opaque flag.
+            NSRect fillFrame = NSMakeRect(0, 0, NSWidth(edges[i].frame), NSHeight(edges[i].frame));
+            NSView *fillView = [[NSView alloc] initWithFrame:fillFrame];
+            fillView.wantsLayer = YES;
+            fillView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+            fillView.layer.backgroundColor = resolvedColor.CGColor;
+            [cover setContentView:fillView];
+            [fillView release];
+            [mainWindow addChildWindow:cover ordered:NSWindowBelow];
+            [cover orderFront:nil];
+            [covers addObject:cover];
+            [cover release];
+        }
+        // Always store the array (even if empty); remove_traditional_fullscreen_safe_area_covers
+        // handles the nil check and iterates over the contents safely.
+        window->ns.safe_area_cover_windows = [covers retain];
+    }
+}
+
+// }}}
+
 bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     NSWindow *window = w->ns.object;
     bool made_fullscreen = true;
@@ -3380,8 +3474,20 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                 w->ns.pre_traditional_fullscreen_frame = [window frame];
                 [window setStyleMask: NSWindowStyleMaskBorderless];
                 [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
-                [window setFrame:[window.screen frame] display:YES];
+                // Respect NSScreen safeAreaInsets (e.g. the notch on newer Macs):
+                // size the window to avoid the inset areas, then cover those
+                // areas with companion subview windows painted in the background colour.
+                NSRect fullscreenFrame = [window.screen frame];
+                if (@available(macOS 12.0, *)) {
+                    NSEdgeInsets insets = window.screen.safeAreaInsets;
+                    fullscreenFrame.origin.x    += insets.left;
+                    fullscreenFrame.origin.y    += insets.bottom;
+                    fullscreenFrame.size.width  -= (insets.left + insets.right);
+                    fullscreenFrame.size.height -= (insets.top  + insets.bottom);
+                }
+                [window setFrame:fullscreenFrame display:YES];
                 w->ns.in_traditional_fullscreen = true;
+                add_traditional_fullscreen_safe_area_covers(w);
             } else {
                 made_fullscreen = false;
                 if (sm & NSWindowStyleMaskFullScreen) {
@@ -3396,6 +3502,7 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                     [window toggleFullScreen:nil];
                     return true;
                 } else {
+                    remove_traditional_fullscreen_safe_area_covers(w);
                     [window setStyleMask: w->ns.pre_full_screen_style_mask];
                     [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
                     w->ns.in_traditional_fullscreen = false;
