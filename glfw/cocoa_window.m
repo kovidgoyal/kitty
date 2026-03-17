@@ -595,7 +595,6 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 @end
 
 static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWwindow*, bool, bool);
-static void remove_traditional_fullscreen_safe_area_covers(NSView*);
 
 @implementation GLFWWindowDelegate
 
@@ -823,7 +822,6 @@ static void remove_traditional_fullscreen_safe_area_covers(NSView*);
                 }
                 if (w) {
                     NSWindow *nswindow = w->ns.object;
-                    remove_traditional_fullscreen_safe_area_covers(w->ns.view);
                     [nswindow setStyleMask: savedMask];
                     [nswindow setFrame: savedFrame display:YES];
                     update_titlebar_button_visibility_after_fullscreen_transition(w, true, false);
@@ -2434,7 +2432,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (_glfw.ns.disabledCursorWindow == window)
         _glfw.ns.disabledCursorWindow = NULL;
     free_drop_data(window);
-    remove_traditional_fullscreen_safe_area_covers(window->ns.view);
+
     [w orderOut:nil];
 
     if (window->monitor)
@@ -3360,69 +3358,20 @@ make_window_fullscreen_after_show(unsigned long long timer_id, void* data) {
     }
 }
 
-// Safe-area inset cover views for traditional fullscreen {{{
+@implementation NSView (FindByIdentifier)
 
-#define SAFE_AREA_COVER_TAG @"kitty-safe-area-cover"
-
-static NSColor *
-background_color_for_traditional_fullscreen(_GLFWwindow *window) {
-#define tc window->ns.last_applied_titlebar_settings.color
-    if (tc.was_set) {
-        return [NSColor colorWithSRGBRed:tc.red green:tc.green blue:tc.blue alpha:tc.alpha];
+- (NSArray<NSView *> *)viewsWithIdentifier:(NSUserInterfaceItemIdentifier)identifier {
+    NSMutableArray<NSView *> *result = [NSMutableArray array];
+    if ([self.identifier isEqual:identifier]) {
+        [result addObject:self];
     }
-#undef tc
-    return [NSColor windowBackgroundColor];
+    for (NSView *sub in self.subviews) {
+        [result addObjectsFromArray:[sub viewsWithIdentifier:identifier]];
+    }
+    return result;
 }
 
-static void
-remove_traditional_fullscreen_safe_area_covers(NSView *contentView) {
-    if (!contentView) return;
-    for (NSView *subview in [contentView viewsWithIdentifier:SAFE_AREA_COVER_TAG]) {
-        [subview removeFromSuperview];
-    }
-}
-
-static void
-add_traditional_fullscreen_safe_area_covers(_GLFWwindow *window) {
-    if (@available(macOS 12.0, *)) {
-        NSWindow *mainWindow = window->ns.object;
-        NSScreen *screen = [mainWindow screen];
-        if (!screen) screen = [NSScreen mainScreen];
-        NSEdgeInsets insets = screen.safeAreaInsets;
-        if (insets.top <= 0.0 && insets.bottom <= 0.0 && insets.left <= 0.0 && insets.right <= 0.0) return;
-
-        NSView *contentView = window->ns.view;
-        if (!contentView) return;
-        NSRect cv = [contentView bounds];
-        NSColor *bgColor = background_color_for_traditional_fullscreen(window);
-        NSColor *resolvedColor = [bgColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
-        if (!resolvedColor) resolvedColor = bgColor;
-
-        struct { CGFloat value; NSRect frame; NSAutoresizingMaskOptions mask; } edges[4] = {
-            // top (e.g. notch / menu-bar safe area)
-            {insets.top,    NSMakeRect(0, NSHeight(cv) - insets.top, NSWidth(cv), insets.top), NSViewWidthSizable | NSViewMinYMargin},
-            // bottom
-            {insets.bottom, NSMakeRect(0, 0, NSWidth(cv), insets.bottom), NSViewWidthSizable | NSViewMaxYMargin},
-            // left
-            {insets.left,   NSMakeRect(0, insets.bottom, insets.left, NSHeight(cv) - insets.top - insets.bottom), NSViewHeightSizable | NSViewMaxXMargin},
-            // right
-            {insets.right,  NSMakeRect(NSWidth(cv) - insets.right, insets.bottom, insets.right, NSHeight(cv) - insets.top - insets.bottom), NSViewHeightSizable | NSViewMinXMargin},
-        };
-
-        for (int i = 0; i < 4; i++) {
-            if (edges[i].value <= 0.0) continue;
-            NSView *cover = [[NSView alloc] initWithFrame:edges[i].frame];
-            cover.wantsLayer = YES;
-            cover.layer.backgroundColor = resolvedColor.CGColor;
-            cover.identifier = SAFE_AREA_COVER_TAG;
-            cover.autoresizingMask = edges[i].mask;
-            [contentView addSubview:cover];
-            [cover release];
-        }
-    }
-}
-
-// }}}
+@end
 
 bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     NSWindow *window = w->ns.object;
@@ -3446,9 +3395,16 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                 w->ns.pre_traditional_fullscreen_frame = [window frame];
                 [window setStyleMask: NSWindowStyleMaskBorderless];
                 [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
-                [window setFrame:[window.screen frame] display:YES];
+                NSRect fullFrame = [window.screen frame];
+                if (@available(macOS 12.0, *)) {
+                    NSEdgeInsets insets = window.screen.safeAreaInsets;
+                    fullFrame.origin.x += insets.left;
+                    fullFrame.origin.y += insets.bottom;
+                    fullFrame.size.width -= (insets.left + insets.right);
+                    fullFrame.size.height -= (insets.top + insets.bottom);
+                }
+                [window setFrame:fullFrame display:YES];
                 w->ns.in_traditional_fullscreen = true;
-                add_traditional_fullscreen_safe_area_covers(w);
             } else {
                 made_fullscreen = false;
                 if (sm & NSWindowStyleMaskFullScreen) {
@@ -3463,7 +3419,6 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                     [window toggleFullScreen:nil];
                     return true;
                 } else {
-                    remove_traditional_fullscreen_safe_area_covers(w->ns.view);
                     [window setStyleMask: w->ns.pre_full_screen_style_mask];
                     [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
                     w->ns.in_traditional_fullscreen = false;
@@ -3832,21 +3787,6 @@ GLFWAPI GLFWcocoarenderframefun glfwCocoaSetWindowResizeCallback(GLFWwindow *w, 
     window->ns.resizeCallback = cb;
     return current;
 }
-
-@implementation NSView (FindByIdentifier)
-
-- (NSArray<NSView *> *)viewsWithIdentifier:(NSUserInterfaceItemIdentifier)identifier {
-    NSMutableArray<NSView *> *result = [NSMutableArray array];
-    if ([self.identifier isEqual:identifier]) {
-        [result addObject:self];
-    }
-    for (NSView *sub in self.subviews) {
-        [result addObjectsFromArray:[sub viewsWithIdentifier:identifier]];
-    }
-    return result;
-}
-
-@end
 
 static
 void clear_title_bar_background_views(NSWindow *window) {
