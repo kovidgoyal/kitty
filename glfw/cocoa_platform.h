@@ -141,6 +141,9 @@ typedef struct _GLFWwindowNS
     bool            in_traditional_fullscreen;
     bool            in_fullscreen_transition;
     bool            suppress_frame_constraints;
+    id              notch_cover_window;
+    unsigned int    notch_cover_color;
+    float           notch_cover_opacity;
     bool            titlebar_hidden;
     unsigned long   pre_full_screen_style_mask;
     CGRect          pre_traditional_fullscreen_frame;
