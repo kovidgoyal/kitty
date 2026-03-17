@@ -3397,6 +3397,7 @@ _glfwUpdateNotchCover(_GLFWwindow* w) {
                                                                blue:(c & 0xFF) / 255.0
                                                               alpha:a].CGColor;
         [bg_window.contentView addSubview:notchView];
+        // must be above otherwise shadow of main window is rendered over bg_window
         [window addChildWindow:bg_window ordered:NSWindowAbove];
         w->ns.notch_cover_window = bg_window;
         [notchView release];
