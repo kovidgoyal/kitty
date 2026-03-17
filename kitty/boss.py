@@ -173,7 +173,7 @@ from .utils import (
     timed_debug_print,
     which,
 )
-from .window import CommandOutput, CwdRequest, Window
+from .window import CommandOutput, CwdRequest, Window, global_watchers
 
 if TYPE_CHECKING:
 
@@ -2090,6 +2090,24 @@ class Boss:
 
     quit_confirmation_window_id: int = 0
 
+    def _call_on_quit_watchers(self, data: dict[str, Any]) -> bool:
+        w = self.active_window
+        if w is None:
+            for window in self.window_id_map.values():
+                w = window
+                break
+        if w is None:
+            return True
+        for watcher in global_watchers().on_quit:
+            try:
+                watcher(self, w, data)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+            if data.get('aborted'):
+                return False
+        return True
+
     @ac('win', 'Quit, closing all windows')
     def quit(self, *args: Any) -> None:
         windows = []
@@ -2102,6 +2120,8 @@ class Boss:
         num = num_active_windows if x < 0 else len(windows)
         needs_confirmation = x != 0 and num >= abs(x)
         if not needs_confirmation:
+            if not self._call_on_quit_watchers({'confirmed': True}):
+                return
             set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
             return
         if current_application_quit_request() == CLOSE_BEING_CONFIRMED:
@@ -2116,6 +2136,8 @@ class Boss:
                         tab.set_active_window(w)
                         return
             return
+        if not self._call_on_quit_watchers({'confirmed': False}):
+            return
         msg = msg or _('It has {} windows.').format(num)
         w = self.confirm(_('Are you sure you want to quit kitty?') + ' '  + msg, self.handle_quit_confirmation, window=active_window, title=_('Quit kitty?'))
         self.quit_confirmation_window_id = w.id
@@ -2123,6 +2145,10 @@ class Boss:
 
     def handle_quit_confirmation(self, confirmed: bool) -> None:
         self.quit_confirmation_window_id = 0
+        if confirmed:
+            if not self._call_on_quit_watchers({'confirmed': True}):
+                set_application_quit_request(NO_CLOSE_REQUESTED)
+                return
         set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if confirmed else NO_CLOSE_REQUESTED)
 
     def notify_on_os_window_death(self, address: str) -> None:
