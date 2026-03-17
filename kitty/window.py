@@ -238,6 +238,7 @@ class WindowDict(TypedDict):
     is_focused: bool
     is_active: bool
     title: str
+    title_overridden: bool
     pid: int | None
     cwd: str
     cmdline: list[str]
@@ -2088,6 +2089,7 @@ class Window:
             'is_focused': is_focused,
             'is_active': is_active,
             'title': self.title,
+            'title_overridden': self.override_title is not None,
             'pid': self.child.pid,
             'cwd': self.child.current_cwd or self.child.cwd,
             'cmdline': self.child.cmdline,

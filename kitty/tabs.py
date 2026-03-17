@@ -93,6 +93,7 @@ class TabDict(TypedDict):
     is_focused: bool
     is_active: bool
     title: str
+    title_overridden: bool
     layout: str
     layout_state: dict[str, Any]
     layout_opts: dict[str, Any]
@@ -1388,6 +1389,7 @@ class TabManager:  # {{{
                         'is_focused': tab is active_tab and tab.os_window_id == current_focused_os_window_id(),
                         'is_active': tab is active_tab,
                         'title': tab.name or tab.title,
+                        'title_overridden': bool(tab.name),
                         'layout': str(tab.current_layout.name),
                         'layout_state': tab.current_layout.serialize(tab.windows),
                         'layout_opts': tab.current_layout.layout_opts.serialized(),
