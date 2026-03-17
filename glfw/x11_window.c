@@ -4048,8 +4048,11 @@ send_xdnd_enter(Window target, int version) {
         }
     }
 
+    _glfwGrabErrorHandlerX11();
     XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
     XFlush(_glfw.x11.display);
+    _glfwReleaseErrorHandlerX11();
+    if (_glfw.x11.errorCode == BadWindow) _glfw.x11.drag.current_target = None;
 }
 
 // Send XdndPosition message to target window
@@ -4068,9 +4071,12 @@ send_xdnd_position(Window target, int root_x, int root_y, Time timestamp) {
     event.xclient.data.l[3] = timestamp;
     event.xclient.data.l[4] = _glfw.x11.drag.action_atom;
 
+    _glfwGrabErrorHandlerX11();
     XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
     XFlush(_glfw.x11.display);
-    _glfw.x11.drag.waiting_for_status = true;
+    _glfwReleaseErrorHandlerX11();
+    if (_glfw.x11.errorCode == BadWindow) _glfw.x11.drag.current_target = None;
+    else _glfw.x11.drag.waiting_for_status = true;
 }
 
 // Send XdndLeave message to target window
@@ -4085,8 +4091,11 @@ send_xdnd_leave(Window target) {
     event.xclient.format = 32;
     event.xclient.data.l[0] = _glfw.x11.drag.source_window;
 
+    _glfwGrabErrorHandlerX11();
     XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
     XFlush(_glfw.x11.display);
+    _glfwReleaseErrorHandlerX11();
+    // BadWindow on leave is benign – the target window is already gone
 }
 
 // Send XdndDrop message to target window
@@ -4103,8 +4112,19 @@ send_xdnd_drop(Window target, Time timestamp) {
     event.xclient.data.l[1] = 0;  // Reserved
     event.xclient.data.l[2] = timestamp;
 
+    _glfwGrabErrorHandlerX11();
     XSendEvent(_glfw.x11.display, target, False, NoEventMask, &event);
     XFlush(_glfw.x11.display);
+    _glfwReleaseErrorHandlerX11();
+    if (_glfw.x11.errorCode == BadWindow) {
+        // Target window was destroyed; cancel the drag gracefully
+        _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
+        if (window) {
+            GLFWDragEvent ev = {.type = GLFW_DRAG_CANCELLED};
+            _glfwInputDragSourceRequest(window, &ev);
+        }
+        _glfwFreeDragSourceData();
+    }
 }
 
 // Render thumbnail pixels into _glfw.x11.drag.thumbnail_pixmap / thumbnail_gc.

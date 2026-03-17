@@ -3177,6 +3177,7 @@ finish_drag_write(size_t i) {
     dr.watch_id = 0;
     if (dr.fd > -1) safe_close(dr.fd);
     dr.fd = -1;
+    free(dr.pending_data); dr.pending_data = NULL; dr.sz = 0; dr.offset = 0;
     free((void*)dr.mime_type); dr.mime_type = NULL;
 }
 
@@ -3198,31 +3199,49 @@ write_as_much_as_possible(int fd, const char *data, size_t sz) {
 static void
 send_drag_data(_GLFWwindow *window, size_t i) {
     ssize_t ret;
-    bool has_preset_data = _glfw.drag.items[i].data_size > 0;
+    // Find the item matching the mime type for this data request.
+    // We cannot use i directly to index _glfw.drag.items because the compositor
+    // may call drag_source_send multiple times (once per target entered), making
+    // data_requests grow independently of the items array.
+    size_t item_idx = _glfw.drag.item_count;  // sentinel: not found
+    for (size_t j = 0; j < _glfw.drag.item_count; j++) {
+        if (dr.mime_type && _glfw.drag.items[j].mime_type &&
+                strcmp(_glfw.drag.items[j].mime_type, dr.mime_type) == 0) {
+            item_idx = j; break;
+        }
+    }
+    if (item_idx == _glfw.drag.item_count) {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+            "Wayland: compositor requested data for unrecognised MIME type: %s",
+            dr.mime_type ? dr.mime_type : "(null)");
+    }
+    bool has_preset_data = item_idx < _glfw.drag.item_count && _glfw.drag.items[item_idx].data_size > 0;
+    // On write error, only close this pipe; do NOT destroy the wl_data_source
+    // since the compositor must send cancelled/dnd_finished before that is safe.
 #define on_fail _glfwInputError(\
         GLFW_PLATFORM_ERROR, "Wayland: failed to write drag source data to pipe with error: %s", strerror(errno)); \
-        cancel_drag(GLFW_DRAG_CANCELLED);
+        finish_drag_write(i); return;
 
     if (dr.sz > dr.offset) {
         ret = write_as_much_as_possible(dr.fd, dr.pending_data + dr.offset, dr.sz - dr.offset);
         if (ret < 0) { on_fail; } else {
             dr.offset += ret;
             if (dr.offset >= dr.sz) {
-                free(dr.pending_data); dr.sz = 0; dr.offset = 0;
-                if (has_preset_data) finish_drag_write(i);
+                free(dr.pending_data); dr.pending_data = NULL; dr.sz = 0; dr.offset = 0;
+                finish_drag_write(i);
             }
         }
     } else if (has_preset_data) {
-        do { ret = write(dr.fd, _glfw.drag.items[i].optional_data, _glfw.drag.items[i].data_size); } while (ret < 0 && errno == EINTR);
+        do { ret = write(dr.fd, _glfw.drag.items[item_idx].optional_data, _glfw.drag.items[item_idx].data_size); } while (ret < 0 && errno == EINTR);
         if (ret < 0) {
             on_fail;
         } else {
-            if ((size_t)ret >= _glfw.drag.items[i].data_size) {
+            if ((size_t)ret >= _glfw.drag.items[item_idx].data_size) {
                 finish_drag_write(i);
             } else {
-                void *pending = malloc(_glfw.drag.items[i].data_size - ret);
-                if (!pending) { on_fail; } else {
-                    dr.pending_data = pending; dr.sz = _glfw.drag.items[i].data_size - ret; dr.offset = 0;
+                void *pending = malloc(_glfw.drag.items[item_idx].data_size - ret);
+                if (!pending) { errno = ENOMEM; on_fail; } else {
+                    dr.pending_data = pending; dr.sz = _glfw.drag.items[item_idx].data_size - ret; dr.offset = 0;
                 }
             }
         }
@@ -3231,21 +3250,20 @@ send_drag_data(_GLFWwindow *window, size_t i) {
         _glfwInputDragSourceRequest(window, &ev);
         if (ev.err_num) {
             if (ev.err_num == EAGAIN) { removeWatch(&_glfw.wl.eventLoopData, dr.watch_id); dr.watch_id = 0; }
-            else cancel_drag(GLFW_DRAG_CANCELLED);
+            else { finish_drag_write(i); return; }
         } else {
             if (ev.data_sz) {
                 ret = write_as_much_as_possible(dr.fd, ev.data, ev.data_sz);
-                if (ret >= 0) {
-                    if ((size_t)ret < ev.data_sz) {
-                        void *pending = malloc(ev.data_sz - ret);
-                        if (!pending) { on_fail; } else {
-                            dr.pending_data = pending; dr.sz = ev.data_sz - ret; dr.offset = 0;
-                            memcpy(pending, ev.data + ret, dr.sz);
-                        }
+                if (ret >= 0 && (size_t)ret < ev.data_sz) {
+                    void *pending = malloc(ev.data_sz - ret);
+                    if (!pending) { ret = -1; } else {
+                        dr.pending_data = pending; dr.sz = ev.data_sz - ret; dr.offset = 0;
+                        memcpy(pending, ev.data + ret, dr.sz);
                     }
                 }
                 _glfwInputDragSourceRequest(window, &ev);
                 if (ret < 0) { on_fail; }
+                else if ((size_t)ret >= ev.data_sz) { finish_drag_write(i); }
             } else finish_drag_write(i);
         }
     }
