@@ -406,6 +406,7 @@ class Boss:
         self.color_settings_at_startup: dict[str, Color | None] = {
                 k: opts[k] for k in opts if isinstance(opts[k], Color) or k in nullable_colors}
         self.current_visual_select: VisualSelect | None = None
+        self.tab_rename_dialogs: set[int] = set()
         # A list of events received so far that are potentially part of a sequence keybinding.
         self.cached_values = cached_values
         self.os_window_map: dict[int, TabManager] = {}
@@ -2377,12 +2378,22 @@ class Boss:
                     title = ''
                 tab.set_title(title)
                 return
-            prefilled = tab.name or tab.title
+            if tab.id in self.tab_rename_dialogs:
+                return
+            w = tab.active_window_for_cwd or tab.active_window
+            prefilled = tab.name or (w.title if w else tab.title)
             if title in ('" "', "' '"):
                 prefilled = ''
+            tab_id = tab.id
+            self.tab_rename_dialogs.add(tab_id)
+
+            def on_rename_done(new_title: str) -> None:
+                self.tab_rename_dialogs.discard(tab_id)
+                tab.set_title(new_title)
+
             self.get_line(
                 _('Enter the new title for this tab below. An empty title will cause the default title to be used.'),
-                tab.set_title, window=tab.active_window, initial_value=prefilled, window_title=_('Rename tab'))
+                on_rename_done, window=w, initial_value=prefilled, window_title=_('Rename tab'))
 
     def create_special_window_for_show_error(self, title: str, msg: str, overlay_for: int | None = None) -> SpecialWindowInstance:
         ec = sys.exc_info()
