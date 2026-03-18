@@ -1828,14 +1828,13 @@ class TabManager:  # {{{
             set_window_being_dragged()
             return
         opts = get_options()
-        if opts.window_title_bar != 'none':
-            min_w = opts.window_title_bar_min_windows
-            for tm in boss.all_tab_managers:
-                for t in tm:
-                    visible = sum(1 for _ in t.windows.iter_all_layoutable_groups(only_visible=True))
-                    if not (min_w > 0 and visible >= min_w):
-                        t.force_show_title_bars = True
-                        t.relayout()
+        min_w = opts.window_title_bar_min_windows
+        for tm in boss.all_tab_managers:
+            for t in tm:
+                visible = sum(1 for _ in t.windows.iter_all_layoutable_groups(only_visible=True))
+                if not (min_w > 0 and visible >= min_w):
+                    t.force_show_title_bars = True
+                    t.relayout()
         title = str(w.title or '')
         fg = color_as_int(opts.window_title_bar_active_foreground or opts.active_tab_foreground)
         bg = color_as_int(opts.window_title_bar_active_background or opts.active_tab_background)
