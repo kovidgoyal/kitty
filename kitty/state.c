@@ -1246,6 +1246,7 @@ PYWRAP0(apply_options_update) {
         OSWindow *os_window = global_state.os_windows + o;
         get_platform_dependent_config_values(os_window->handle);
         os_window->background_opacity.alpha = OPT(background_opacity);
+        set_os_window_chrome(os_window);
         if (!os_window->redraw_count) os_window->redraw_count++;
         for (size_t t = 0; t < os_window->num_tabs; t++) {
             Tab *tab = os_window->tabs + t;

@@ -402,7 +402,13 @@ void _glfwInputCursorEnter(_GLFWwindow* window, bool entered)
         window->callbacks.cursorEnter((GLFWwindow*) window, entered);
 }
 
-// Notifies shared code of a drop event
+// Notifies shared code of a drop event.
+// The caller is responsible for passing a mutable working-copy of the mimes
+// array (reset to the full original list before each call) so that the
+// callback can sort/filter in-place without touching the backend's canonical
+// storage.  The return value is ev.num_mimes after the callback returns,
+// i.e. the number of accepted (possibly reordered) mimes starting at
+// mimes[0].
 size_t _glfwInputDropEvent(_GLFWwindow *window, GLFWDropEventType type, double xpos, double ypos, const char** mimes, size_t num_mimes, bool from_self) {
     if (!window->callbacks.drop_event) return 0;
     GLFWDropEvent ev = {

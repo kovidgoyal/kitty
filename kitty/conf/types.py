@@ -9,7 +9,7 @@ from collections.abc import Callable, Iterable, Iterator
 from functools import lru_cache
 from importlib import import_module
 from re import Match
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Sequence, Union, cast
 
 import kitty.conf.utils as generic_parsers
 from kitty.constants import website_url
@@ -244,7 +244,7 @@ class Option:
     def is_color_table_color(self) -> bool:
         return self.name.startswith('color') and self.name[5:].isdigit()
 
-    def as_conf(self, commented: bool = False, level: int = 0, option_group: list['Option'] = []) -> list[str]:
+    def as_conf(self, commented: bool = False, level: int = 0, option_group: Sequence['Option'] = ()) -> list[str]:
         ans: list[str] = []
         a = ans.append
         if not self.documented:
@@ -264,13 +264,13 @@ class Option:
 
     def as_rst(
         self, conf_name: str, shortcut_slugs: dict[str, tuple[str, str]],
-        kitty_mod: str, level: int = 0, option_group: list['Option'] = []
+        kitty_mod: str, level: int = 0, option_group: Sequence['Option'] = ()
     ) -> list[str]:
         ans: list[str] = []
         a = ans.append
         if not self.documented:
             return ans
-        mopts = [self] + option_group
+        mopts = [self] + list(option_group)
         a('.. opt:: ' + ', '.join(f'{conf_name}.{mo.name}' for mo in mopts))
         if any(mo.defval_as_string for mo in mopts):
             a('.. code-block:: conf')

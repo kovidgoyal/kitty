@@ -212,6 +212,7 @@ typedef struct _GLFWwindowWayland
         uint32_t source_type;
         monotonic_t x_start_time, x_stop_time, y_stop_time, y_start_time;
     } pointer_curr_axis_info;
+    GLFWOffsetType prev_frame_offset_type;
 
     _GLFWcursor*                currentCursor;
     double                      cursorPosX, cursorPosY, allCursorPosX, allCursorPosY;
@@ -310,6 +311,8 @@ typedef struct _GLFWWaylandDataOffer
     struct wl_surface *surface;
     const char **mimes;
     size_t mimes_capacity, mimes_count;
+    const char **copy_mimes;   // Working copy passed to callbacks; pointers into mimes[]
+    size_t copy_mimes_count;   // Count of entries in copy_mimes (accepted count after callback)
     bool drag_accepted, dropped;
     uint32_t serial;
     struct {

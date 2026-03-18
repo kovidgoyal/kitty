@@ -790,7 +790,7 @@ func (h *Handler) triggerSelected() {
 
 func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if tty.IsTerminal(os.Stdin.Fd()) {
-		return 1, fmt.Errorf("This kitten must only be run via a mapping in kitty.conf")
+		return 1, fmt.Errorf("This kitten must only be run via the command_palette action mapped to a shortcut in kitty.conf")
 	}
 	output := tui.KittenOutputSerializer()
 	lp, err := loop.New()

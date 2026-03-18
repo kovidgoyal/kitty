@@ -167,6 +167,7 @@ from .utils import (
     parse_address_spec,
     parse_os_window_state,
     platform_window_id,
+    resolve_custom_file,
     safe_print,
     sanitize_url_for_display_to_user,
     shlex_split,
@@ -174,7 +175,7 @@ from .utils import (
     timed_debug_print,
     which,
 )
-from .window import CommandOutput, CwdRequest, Window
+from .window import CommandOutput, CwdRequest, Window, global_watchers
 
 if TYPE_CHECKING:
 
@@ -857,9 +858,11 @@ class Boss:
 
             map f1 remote_control_script /path/to/script arg1 arg2 ...
 
-        See :ref:`rc_mapping` for details.
+        See :ref:`rc_mapping` for details. Relative paths are resolved with respect
+        to the kitty config directory.
         ''')
     def remote_control_script(self, path: str, *args: str) -> None:
+        path = resolve_custom_file(path)
         path = which(path) or path
         if not os.access(path, os.X_OK):
             self.show_error('Remote control script not executable', f'The script {path} is not executable check its permissions')
@@ -1236,7 +1239,7 @@ class Boss:
         is_password: bool = False,
         initial_value: str = '',
         window_title: str = '',
-    ) -> None:
+    ) -> Window | None:
         result: str = ''
 
         def callback_(res: dict[str, Any], x: int, boss: Boss) -> None:
@@ -1251,9 +1254,10 @@ class Boss:
             cmd.append('--default=' + initial_value)
         if window_title:
             cmd.append(f'--title={window_title}')
-        self.run_kitten_with_metadata(
+        w = self.run_kitten_with_metadata(
             'ask', cmd, window=window, custom_callback=callback_, default_data={'response': ''}, action_on_removal=on_popup_overlay_removal
         )
+        return w if isinstance(w, Window) else None
 
     def get_save_filepath(
         self, msg: str,  # can contain newlines and ANSI formatting
@@ -1969,10 +1973,11 @@ class Boss:
             y -= central.top
             if tab := tm.active_tab:
                 for window in tab:
-                    g = window.geometry
-                    if g.left <= x < g.right and g.top <= y < g.bottom:
-                        window.on_drop(drop)
-                        break
+                    if window.is_visible_in_layout:
+                        g = window.geometry
+                        if g.left <= x < g.right and g.top <= y < g.bottom:
+                            window.on_drop(drop)
+                            break
         elif tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < tab_bar.bottom:
             if (tab_id := tm.tab_bar.tab_id_at(x)) and (tab := self.tab_for_id(tab_id)) and (w := tab.active_window):
                 w.on_drop(drop)
@@ -2121,6 +2126,25 @@ class Boss:
 
     quit_confirmation_window_id: int = 0
 
+    def _call_on_quit_watchers(self, data: dict[str, Any]) -> bool:
+        w = self.active_window
+        if w is None:
+            for window in self.window_id_map.values():
+                w = window
+                break
+        if w is None:
+            return True
+        data['aborted'] = False
+        for watcher in global_watchers().on_quit:
+            try:
+                watcher(self, w, data)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+            if data.get('aborted'):
+                return False
+        return True
+
     @ac('win', 'Quit, closing all windows')
     def quit(self, *args: Any) -> None:
         windows = []
@@ -2133,6 +2157,8 @@ class Boss:
         num = num_active_windows if x < 0 else len(windows)
         needs_confirmation = x != 0 and num >= abs(x)
         if not needs_confirmation:
+            if not self._call_on_quit_watchers({'confirmed': True}):
+                return
             set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
             return
         if current_application_quit_request() == CLOSE_BEING_CONFIRMED:
@@ -2147,6 +2173,8 @@ class Boss:
                         tab.set_active_window(w)
                         return
             return
+        if not self._call_on_quit_watchers({'confirmed': False}):
+            return
         msg = msg or _('It has {} windows.').format(num)
         w = self.confirm(_('Are you sure you want to quit kitty?') + ' '  + msg, self.handle_quit_confirmation, window=active_window, title=_('Quit kitty?'))
         self.quit_confirmation_window_id = w.id
@@ -2154,6 +2182,10 @@ class Boss:
 
     def handle_quit_confirmation(self, confirmed: bool) -> None:
         self.quit_confirmation_window_id = 0
+        if confirmed:
+            if not self._call_on_quit_watchers({'confirmed': True}):
+                set_application_quit_request(NO_CLOSE_REQUESTED)
+                return
         set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if confirmed else NO_CLOSE_REQUESTED)
 
     def notify_on_os_window_death(self, address: str) -> None:
@@ -2381,12 +2413,22 @@ class Boss:
                     title = ''
                 tab.set_title(title)
                 return
-            prefilled = tab.name or tab.title
-            if title in ('" "', "' '"):
-                prefilled = ''
-            self.get_line(
+            if (w := self.window_id_map.get(tab.renaming_in_window)) is not None and w in tab:
+                tab.set_active_window(w)
+                return
+            prefilled = (tab.name or tab.title).strip()
+            tab_id = tab.id
+
+            def on_rename_done(new_title: str) -> None:
+                if (tab := self.tab_for_id(tab_id)) is not None:
+                    tab.renaming_in_window = 0
+                    tab.set_title(new_title)
+
+            overlay_window = self.get_line(
                 _('Enter the new title for this tab below. An empty title will cause the default title to be used.'),
-                tab.set_title, window=tab.active_window, initial_value=prefilled, window_title=_('Rename tab'))
+                on_rename_done, window=tab.active_window, initial_value=prefilled, window_title=_('Rename tab'))
+            if overlay_window is not None:
+                tab.renaming_in_window = overlay_window.id
 
     def create_special_window_for_show_error(self, title: str, msg: str, overlay_for: int | None = None) -> SpecialWindowInstance:
         ec = sys.exc_info()

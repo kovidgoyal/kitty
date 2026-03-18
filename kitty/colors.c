@@ -682,6 +682,45 @@ new_color(PyTypeObject *type UNUSED, PyObject *args, PyObject *kwds) {
     return (PyObject*) alloc_color(r, g, b, a);
 }
 
+static PyObject *
+color_vectorcall(PyObject *type UNUSED, PyObject *const *args, size_t nargsf, PyObject *kwnames) {
+    const Py_ssize_t nargs = PyVectorcall_NARGS(nargsf);
+    if (nargs > 4) {
+        PyErr_SetString(PyExc_TypeError, "Color() takes at most 4 arguments");
+        return NULL;
+    }
+    unsigned char rgba[4] = {0, 0, 0, 0};
+    for (Py_ssize_t i = 0; i < nargs; i++) {
+        unsigned long val = PyLong_AsUnsignedLongMask(args[i]);
+        if (val == (unsigned long)-1 && PyErr_Occurred()) return NULL;
+        rgba[i] = (unsigned char)val;
+    }
+    if (kwnames) {
+        const unsigned num = PyTuple_GET_SIZE(kwnames);
+        for (unsigned i = 0; i < num; i++) {
+            const char *name = PyUnicode_AsUTF8(PyTuple_GET_ITEM(kwnames, i));
+            if (!name) return NULL;
+            int idx;
+#define C(ch, i, expected) case ch: idx = i; if (strcmp(name, expected) != 0) { \
+            PyErr_Format(PyExc_TypeError, "Color() got an unexpected keyword argument '%s'", name); return NULL; }; break;
+            switch(name[0]) {
+                C('r', 0, "red"); C('g', 1, "green"); C('b', 2, "blue"); C('a', 3, "alpha");
+                default:
+                PyErr_Format(PyExc_TypeError, "Color() got an unexpected keyword argument '%s'", name); return NULL;
+            }
+#undef C
+            if (idx < nargs) {
+                PyErr_Format(PyExc_TypeError, "Color() got multiple values for argument '%s'", name);
+                return NULL;
+            }
+            unsigned long val = PyLong_AsUnsignedLongMask(args[nargs + i]);
+            if (val == (unsigned long)-1 && PyErr_Occurred()) return NULL;
+            rgba[idx] = (unsigned char)val;
+        }
+    }
+    return (PyObject*)alloc_color(rgba[0], rgba[1], rgba[2], rgba[3]);
+}
+
 static PyObject*
 Color_as_int(Color *self) {
     return PyLong_FromUnsignedLong(self->color.val);
@@ -1140,9 +1179,10 @@ PyTypeObject Color_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "kitty.fast_data_types.Color",
     .tp_basicsize = sizeof(Color),
-    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_HAVE_VECTORCALL,
     .tp_doc = "Color",
     .tp_new = new_color,
+    .tp_vectorcall = color_vectorcall,
     .tp_getset = color_getsetters,
     .tp_as_number = &color_number_methods,
     .tp_methods = color_methods,

@@ -99,6 +99,22 @@ polymorphic_string_as_utf8(id string) {
     return [characters UTF8String];
 }
 
+static bool
+forward_dictation_selector_to_app(SEL selector, id sender) {
+    static SEL start_dictation_selector = NULL, stop_dictation_selector = NULL;
+    if (start_dictation_selector == NULL) {
+        start_dictation_selector = NSSelectorFromString(@"startDictation:");
+        stop_dictation_selector = NSSelectorFromString(@"stopDictation:");
+    }
+    if (selector != start_dictation_selector && selector != stop_dictation_selector) return false;
+    if ([NSApp respondsToSelector:selector]) {
+        debug_key("Forwarding %s to NSApp\n", [NSStringFromSelector(selector) UTF8String]);
+        [NSApp performSelector:selector withObject:sender];
+        return true;
+    }
+    return false;
+}
+
 static uint32_t
 vk_code_to_functional_key_code(uint8_t key_code) {  // {{{
     switch(key_code) {
@@ -579,6 +595,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 @end
 
 static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWwindow*, bool, bool);
+static void _glfwUpdateNotchCover(_GLFWwindow*);
 
 @implementation GLFWWindowDelegate
 
@@ -798,6 +815,7 @@ static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWw
             NSWindowStyleMask savedMask = window->ns.pre_full_screen_style_mask;
             CGRect savedFrame = window->ns.pre_traditional_fullscreen_frame;
             window->ns.in_traditional_fullscreen = false;
+            _glfwUpdateNotchCover(window);
             window->ns.suppress_frame_constraints = true;
             dispatch_async(dispatch_get_main_queue(), ^{
                 _GLFWwindow *w = NULL;
@@ -842,6 +860,7 @@ static void update_titlebar_button_visibility_after_fullscreen_transition(_GLFWw
     // With the default macOS keybindings, pressing certain key combinations
     // (e.g. Ctrl+/, Ctrl+Cmd+Down/Left/Right) will produce a beep sound.
     debug_key("\n\tTextInputCtx: doCommandBySelector: (%s)\n", [NSStringFromSelector(selector) UTF8String]);
+    if (forward_dictation_selector_to_app(selector, nil)) return;
 }
 @end // }}}
 
@@ -1459,8 +1478,10 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 static void
 free_drop_data(_GLFWwindow *window) {
     if (window->ns.drop_data.mimes) {
-        for (size_t i = 0; i < window->ns.drop_data.mimes_count; i++) free(window->ns.drop_data.mimes + i);
+        for (size_t i = 0; i < window->ns.drop_data.mimes_count; i++) free((void*)window->ns.drop_data.mimes[i]);
+        free(window->ns.drop_data.mimes);
     }
+    free(window->ns.drop_data.copy_mimes);  // pointer array only; strings owned by mimes[]
     if (window->ns.drop_data.pasteboard) [window->ns.drop_data.pasteboard release];
     if (window->ns.drop_data.data_mapping) [window->ns.drop_data.data_mapping release];
     if (window->ns.drop_data.file_promise_mapping) {
@@ -1477,12 +1498,24 @@ free_drop_data(_GLFWwindow *window) {
 }
 
 static void
-update_drop_state(_GLFWwindow *window, size_t mime_count) {
+update_drop_state(_GLFWwindow *window, size_t accepted_count) {
     _GLFWDropData *d = &window->ns.drop_data;
-    for (size_t i = mime_count; i < d->mimes_count; i++) {
-        if (d->mimes[i]) { free((void*)d->mimes[i]); d->mimes[i] = NULL; }
+    d->copy_mimes_count = accepted_count;
+    d->drag_accepted = accepted_count > 0;
+}
+
+// Reset the working copy of mimes so the next callback sees the full original
+// list.  Returns false on allocation failure.
+static bool
+reset_drop_copy_mimes(_GLFWDropData *d) {
+    if (d->mimes_count == 0) { d->copy_mimes_count = 0; return true; }
+    if (!d->copy_mimes) {
+        d->copy_mimes = malloc(d->mimes_count * sizeof(const char*));
+        if (!d->copy_mimes) return false;
     }
-    d->mimes_count = mime_count;
+    memcpy(d->copy_mimes, d->mimes, d->mimes_count * sizeof(const char*));
+    d->copy_mimes_count = d->mimes_count;
+    return true;
 }
 
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
@@ -1547,14 +1580,17 @@ update_drop_state(_GLFWwindow *window, size_t mime_count) {
     window->ns.drop_data.mimes = mime_array;
     window->ns.drop_data.mimes_count = mime_count;
     bool from_self = ([sender draggingSource] != nil);
-    mime_count = _glfwInputDropEvent(window, GLFW_DROP_ENTER, xpos, ypos, mime_array, mime_count, from_self);
-    update_drop_state(window, mime_count);
-    return mime_count ? NSDragOperationGeneric :NSDragOperationNone;
+    _GLFWDropData *d = &window->ns.drop_data;
+    if (reset_drop_copy_mimes(d)) {
+        size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_ENTER, xpos, ypos, d->copy_mimes, d->copy_mimes_count, from_self);
+        update_drop_state(window, accepted_count);
+    }
+    return window->ns.drop_data.drag_accepted ? NSDragOperationGeneric : NSDragOperationNone;
 }
 
 - (NSDragOperation)draggingUpdated:(id <NSDraggingInfo>)sender
 {
-    if (!window->ns.drop_data.mimes_count) return NSDragOperationNone;
+    if (!window->ns.drop_data.drag_accepted) return NSDragOperationNone;
     const NSRect contentRect = [window->ns.view frame];
     const NSPoint pos = [sender draggingLocation];
     double xpos = pos.x;
@@ -1562,35 +1598,40 @@ update_drop_state(_GLFWwindow *window, size_t mime_count) {
 
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
-    size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_MOVE, xpos, ypos, d->mimes, d->mimes_count, from_self);
-    update_drop_state(window, mime_count);
-    return mime_count ? NSDragOperationGeneric :NSDragOperationNone;
+    if (reset_drop_copy_mimes(d)) {
+        size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_MOVE, xpos, ypos, d->copy_mimes, d->copy_mimes_count, from_self);
+        update_drop_state(window, accepted_count);
+    }
+    return window->ns.drop_data.drag_accepted ? NSDragOperationGeneric : NSDragOperationNone;
 }
 
 - (void)draggingExited:(id <NSDraggingInfo>)sender
 {
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
-    size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_LEAVE, 0, 0, d->mimes, d->mimes_count, from_self);
-    update_drop_state(window, mime_count);
+    if (reset_drop_copy_mimes(d)) {
+        size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_LEAVE, 0, 0, d->copy_mimes, d->copy_mimes_count, from_self);
+        update_drop_state(window, accepted_count);
+    }
     free_drop_data(window);
 }
 
 - (BOOL)performDragOperation:(id <NSDraggingInfo>)sender
 {
-    if (!window->ns.drop_data.mimes_count) return NO;
+    if (!window->ns.drop_data.drag_accepted) return NO;
     const NSRect contentRect = [window->ns.view frame];
     const NSPoint pos = [sender draggingLocation];
     double xpos = pos.x;
     double ypos = contentRect.size.height - pos.y;
     bool from_self = ([sender draggingSource] != nil);
     _GLFWDropData *d = &window->ns.drop_data;
-    size_t mime_count = _glfwInputDropEvent(window, GLFW_DROP_DROP, xpos, ypos, d->mimes, d->mimes_count, from_self);
-    if (d->mimes) {
-        update_drop_state(window, mime_count);
+    if (!reset_drop_copy_mimes(d)) return NO;
+    size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, xpos, ypos, d->copy_mimes, d->copy_mimes_count, from_self);
+    if (d->copy_mimes) {
+        update_drop_state(window, num_accepted);
         window->ns.drop_data.pasteboard = [[sender draggingPasteboard] retain];
-        for (size_t i = 0; i < d->mimes_count; i++)
-            _glfwPlatformRequestDropData(window, d->mimes[i]);
+        for (size_t i = 0; i < num_accepted; i++)
+            _glfwPlatformRequestDropData(window, d->copy_mimes[i]);
     }
     // Restore first-responder status after native DnD; the drag operation can
     // displace the content view from first responder, silently breaking keyboard
@@ -1913,6 +1954,17 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 - (void)doCommandBySelector:(SEL)selector
 {
     debug_key("\n\tdoCommandBySelector: (%s)\n", [NSStringFromSelector(selector) UTF8String]);
+    if (forward_dictation_selector_to_app(selector, self)) return;
+}
+
+- (void)startDictation:(id)sender
+{
+    forward_dictation_selector_to_app(_cmd, sender);
+}
+
+- (void)stopDictation:(id)sender
+{
+    forward_dictation_selector_to_app(_cmd, sender);
 }
 
 - (BOOL)isAccessibilityElement
@@ -2387,6 +2439,12 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (_glfw.ns.disabledCursorWindow == window)
         _glfw.ns.disabledCursorWindow = NULL;
     free_drop_data(window);
+    if (window->ns.notch_cover_window) {
+        [w removeChildWindow:window->ns.notch_cover_window];
+        [window->ns.notch_cover_window close];
+        [window->ns.notch_cover_window release];
+        window->ns.notch_cover_window = nil;
+    }
 
     [w orderOut:nil];
 
@@ -3313,6 +3371,44 @@ make_window_fullscreen_after_show(unsigned long long timer_id, void* data) {
     }
 }
 
+static void
+_glfwUpdateNotchCover(_GLFWwindow* w) {
+    NSWindow *window = w->ns.object;
+    if (w->ns.notch_cover_window) {
+        [window removeChildWindow:w->ns.notch_cover_window];
+        [w->ns.notch_cover_window close];
+        [w->ns.notch_cover_window release];
+        w->ns.notch_cover_window = nil;
+    }
+    if (!w->ns.in_traditional_fullscreen) return;
+    if (@available(macOS 12.0, *)) {
+        CGFloat insetTop = window.screen.safeAreaInsets.top;
+        if (insetTop <= 0) return;
+        NSRect sf = [window.screen frame];
+        NSWindow *bg_window = [[NSWindow alloc] initWithContentRect:sf styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO];
+        [bg_window setBackgroundColor:[NSColor clearColor]];
+        [bg_window setHasShadow:NO];
+        [bg_window setOpaque:NO];
+        [bg_window setIgnoresMouseEvents:YES];
+        [bg_window setReleasedWhenClosed:NO];
+        [bg_window setColorSpace:[window colorSpace]];
+        // Add a colored subview only in the notch strip area
+        NSView *notchView = [[NSView alloc] initWithFrame:NSMakeRect(0, sf.size.height - insetTop, sf.size.width, insetTop)];
+        notchView.wantsLayer = YES;
+        unsigned int c = w->ns.notch_cover_color;
+        float a = w->ns.notch_cover_opacity;
+        notchView.layer.backgroundColor = [NSColor colorWithSRGBRed:((c >> 16) & 0xFF) / 255.0
+                                                              green:((c >> 8) & 0xFF) / 255.0
+                                                               blue:(c & 0xFF) / 255.0
+                                                              alpha:a].CGColor;
+        [bg_window.contentView addSubview:notchView];
+        // must be above otherwise shadow of main window is rendered over bg_window
+        [window addChildWindow:bg_window ordered:NSWindowAbove];
+        w->ns.notch_cover_window = bg_window;
+        [notchView release];
+    }
+}
+
 bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     NSWindow *window = w->ns.object;
     bool made_fullscreen = true;
@@ -3335,8 +3431,13 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                 w->ns.pre_traditional_fullscreen_frame = [window frame];
                 [window setStyleMask: NSWindowStyleMaskBorderless];
                 [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
-                [window setFrame:[window.screen frame] display:YES];
+                NSRect screenFrame = [window.screen frame];
+                if (@available(macOS 12.0, *)) {
+                    screenFrame.size.height -= window.screen.safeAreaInsets.top;
+                }
+                [window setFrame:screenFrame display:YES];
                 w->ns.in_traditional_fullscreen = true;
+                _glfwUpdateNotchCover(w);
             } else {
                 made_fullscreen = false;
                 if (sm & NSWindowStyleMaskFullScreen) {
@@ -3354,6 +3455,7 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                     [window setStyleMask: w->ns.pre_full_screen_style_mask];
                     [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
                     w->ns.in_traditional_fullscreen = false;
+                    _glfwUpdateNotchCover(w);
                 }
             }
         } else {
@@ -3925,6 +4027,9 @@ GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool us
 
     // HACK: Changing the style mask can cause the first responder to be cleared
     [nsw makeFirstResponder:window->ns.view];
+    window->ns.notch_cover_color = color;
+    window->ns.notch_cover_opacity = background_opacity;
+    if (window->ns.notch_cover_window) _glfwUpdateNotchCover(window);
 }}
 
 GLFWAPI uint32_t

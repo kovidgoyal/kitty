@@ -9,6 +9,21 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+Mousing [0.46]
+~~~~~~~~~~~~~~~
+
+kitty already had excellent mouse support, but now it is taking it to the next
+level. The kitty scrollback buffer grew support for :opt:`smooth scrolling
+<pixel_scroll>` and :opt:`momentum based scrolling <momentum_scroll>`
+for a natural, smooth and kinetic scrolling experience.
+
+Additionally, you can now :opt:`drag kitty tabs around <tab_bar_drag_threshold>` with the mouse
+to re-order them, move them to another kitty OS Window or even detach them into
+their own OS Window.
+
+Finally, a long requested feature, the ability to resize kitty windows (aka
+splits) with the mouse was implemented.
+
 Choose files, fast [0.45]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -150,7 +165,49 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.46.0 [future]
+0.47.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Watchers: Add an `on_quit` event to global watchers (:iss:`9675`)
+
+- Wayland: Fix a crash on some compositors when dragging a tab between OS
+  Windows (:iss:`9677`)
+
+- Fix incorrect behavior when using the actions to move tab forward/backward
+  with a tab_bar_filter active (:iss:`9672`)
+
+- Prevent stacking of multiple rename tab windows (:iss:`9691`)
+
+- choose files kitten: Fix a regression that caused incorrect highlight of matched letters
+
+- macOS: When using :opt:`macos_traditional_fullscreen` do not render content under the notch (:pull:`9678`)
+
+0.46.1 [2026-03-16]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- diff kitten: Highlight moved lines using a different background color (:opt:`kitten-diff.mark_moved_lines`) (:iss:`3241`)
+
+- Fix a regression that broke ``kitten update-self`` (:iss:`9642`)
+
+- macOS: Clear bell alert badge on dock icon on mouse/keyboard activity (:iss:`9640`)
+
+- Fix a regression that broke accept anyway shortcut in the paste confirmation dialog (:pull:`9640`)
+
+- Fix kitty hanging on startup on Intel macs (:iss:`9643`)
+
+- X11: Fix a regression that caused some high res scroll devices to be treated as line based scroll devices (:iss:`9649`)
+
+- Wayland: Fix momentum scrolling not working on compositors that send a stop frame with no axis information (:iss:`9653`)
+
+- Linux: Fix regression that broke drag and drop from GTK applications (:iss:`9656`)
+
+- macOS: Fix using Fn key for start dictation not working (:iss:`9661`)
+
+- Don't use neighboring tab colors for tab bar margins in translucent windows (:iss:`9663`)
+
+- macOS: Fix OS window focus not restored when switching spaces (:iss:`9665`)
+
+0.46.0 [2026-03-11]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Pixel scrolling for the kitty scrollback buffer controlled via :opt:`pixel_scroll` (:pull:`9330`)
@@ -161,7 +218,7 @@ Detailed list of changes
 
 - macOS: Implement support for Apple dictation to input text in kitty (:iss:`3732`)
 
-- Allow dragging tabs in the tab bar to re-order, move to another OS Window or
+- Allow dragging tabs (opt:`tab_bar_drag_threshold`) in the tab bar to re-order, move to another OS Window or
   detach (:pull:`9296`)
 
 - Allow dragging window borders to resize kitty windows in all the different
@@ -170,7 +227,7 @@ Detailed list of changes
 - Allow showing :opt:`configurable window titles <window_title_bar>` for individual kitty
   windows via a window title bar (:pull:`9450`)
 
-- A command palette to browse and trigger all mapped and unmapped actions
+- A command palette (:sc:`command_palette`) to browse and trigger all mapped and unmapped actions
   (:pull:`9545`)
 
 - choose-files kitten: Fix JXL image preview not working (:iss:`9323`)
@@ -268,6 +325,12 @@ Detailed list of changes
   selection when the mouse is not grabbed by the TUI application (:disc:`9608`)
 
 - Allow double clicking on a tab to rename it (:pull:`9609`)
+
+- :ac:`remote_control_script` resolve relative paths with respect to kitty
+  config directory (:iss:`9625`)
+
+- Splits layout: Add new mappable actions to maximize a window in the splits
+  layout (:iss:`9629`)
 
 
 0.45.0 [2025-12-24]

@@ -518,6 +518,9 @@ update_modifier_state_on_modifier_key_event(GLFWkeyevent *ev, int key_modifier, 
 static void
 key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
     if (!set_callback_window(w)) return;
+#ifdef __APPLE__
+    cocoa_clear_dock_badge_if_set();
+#endif
 #ifndef __APPLE__
     bool is_left;
     int key_modifier = key_to_modifier(ev->key, &is_left);
@@ -554,6 +557,9 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
 static void
 mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!set_callback_window(w)) return;
+#ifdef __APPLE__
+    cocoa_clear_dock_badge_if_set();
+#endif
     monotonic_t now = monotonic();
     cursor_active_callback(now);
     mods_at_last_key_or_button_event = mods;
@@ -680,6 +686,23 @@ is_droppable_mime(const char *mime) {
     return 0;
 }
 
+static size_t
+remove_duplicate_mimes(const char **mimes, size_t count) {
+    // Use simple O(n²) scan since lists are typically small
+    size_t new_count = 0;
+    for (size_t i = 0; i < count; i++) {
+        bool is_duplicate = false;
+        for (size_t j = 0; j < new_count; j++) {
+            if (strcmp(mimes[i], mimes[j]) == 0) { is_duplicate = true; break; }
+        }
+        if (!is_duplicate) {
+            if (new_count != i) SWAP(mimes[i], mimes[new_count]);
+            new_count++;
+        }
+    }
+    return new_count;
+}
+
 static void
 update_allowed_mimes_for_drop(GLFWDropEvent *ev) {
     if (ev->mimes && ev->num_mimes) {
@@ -732,6 +755,7 @@ read_drop_data(GLFWwindow *window, GLFWDropEvent *ev) {
         PyObject *data = chunk;
         RAII_PyObject(existing, PyDict_GetItemString(global_state.drop_dest.data, ev->mimes[0]));
         if (existing) {
+            existing = Py_NewRef(existing);  // because PyBytes_Concat steals a reference
             PyBytes_Concat(&existing, chunk);
             data = existing;
         }
@@ -779,6 +803,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
                 break;
             }
             update_allowed_mimes_for_drop(ev);
+            ev->num_mimes = remove_duplicate_mimes(ev->mimes, ev->num_mimes);
             global_state.drop_dest.num_left = ev->num_mimes;
             if (!global_state.drop_dest.num_left || !(global_state.drop_dest.data = PyDict_New())) {
                 ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
@@ -1068,6 +1093,7 @@ set_os_window_icon(PyObject UNUSED *self, PyObject *args) {
     if(!PyArg_ParseTuple(args, "K|O", &id, &what)) return NULL;
     OSWindow *os_window = os_window_for_id(id);
     if (!os_window) { PyErr_Format(PyExc_KeyError, "No OS Window with id: %llu", id); return NULL; }
+    if (os_window->is_layer_shell && global_state.is_wayland) Py_RETURN_NONE;
     if (!what || what == Py_None) {
         glfwSetWindowIcon(os_window->handle, 0, NULL);
         Py_RETURN_NONE;
@@ -1708,7 +1734,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwCocoaSetWindowResizeCallback(glfw_window, cocoa_os_window_resized);
 #endif
     send_prerendered_sprites_for_window(w);
-    if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
+    if (logo.pixels && logo.width && logo.height && (!lsc || !global_state.is_wayland)) glfwSetWindowIcon(glfw_window, 1, &logo);
     set_glfw_mouse_pointer_shape_in_window(glfw_window, OPT(default_pointer_shape));
     update_os_window_viewport(w, false);
     glfwSetWindowPosCallback(glfw_window, window_pos_callback);

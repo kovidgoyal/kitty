@@ -239,12 +239,14 @@ typedef struct XIScrollValuator {
 } XIScrollValuator;
 
 typedef struct XIScrollDevice {
-    bool is_highres;
     bool is_finger_based;
+    bool type_detected;
     int deviceid, sourceid;
     XIScrollValuator valuators[8];
     unsigned num_valuators;
     char name[32];
+    unsigned num_events;
+    GLFWOffsetType offset_type;
 } XIScrollDevice;
 
 typedef struct XdndSelectionRequest {
@@ -393,8 +395,11 @@ typedef struct _GLFWlibraryX11
         char        format[256];
         int         format_priority;
         Window      target_window;  // For drag events: the window being dragged over
-        const char** mimes;          // Cached MIME types from drag enter
-        size_t       mimes_count;    // Current count of MIME types (may be reduced by callback)
+        const char** mimes;          // Cached MIME types from drag enter (original, never reordered)
+        size_t       mimes_count;    // Count of MIME types (full original list, never reduced)
+        const char** copy_mimes;     // Working copy passed to callbacks; pointers into mimes[]
+        size_t       copy_mimes_count; // Accepted count after last callback
+        bool drag_accepted;          // Whether the callback accepted at least one MIME type
         bool from_self, dropped;
         Time drop_time;
         XdndSelectionRequest *selection_requests;

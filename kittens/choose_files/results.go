@@ -112,12 +112,10 @@ func (h *Handler) render_match_with_positions(text string, add_ellipsis bool, po
 	for chunk := range split_up_text(text, add_ellipsis, positions) {
 		if chunk.text != "" {
 			if chunk.emphasize {
-				h.lp.QueueWriteString(prefix)
-				defer func() {
-					h.lp.QueueWriteString(suffix)
-				}()
+				h.lp.QueueWriteString(prefix + chunk.text + suffix)
+			} else {
+				h.lp.QueueWriteString(chunk.text)
 			}
-			h.lp.QueueWriteString(chunk.text)
 		}
 	}
 }

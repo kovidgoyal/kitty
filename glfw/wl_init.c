@@ -206,27 +206,35 @@ pointer_handle_frame(void *data UNUSED, struct wl_pointer *pointer UNUSED) {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;
     GLFWScrollEvent ev = {.keyboard_modifiers=_glfw.wl.xkb.states.modifiers};
+    bool found = false;
 
     if (info.discrete.y_axis_type != AXIS_EVENT_UNKNOWN) {
         ev.unscaled.y = info.discrete.y;
         if (info.discrete.y_axis_type == AXIS_EVENT_VALUE120) ev.offset_type = GLFW_SCROLL_OFFEST_V120;
+        found = true;
     } else if (info.continuous.y_axis_type != AXIS_EVENT_UNKNOWN) {
         ev.offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
         ev.unscaled.y = info.continuous.y;
+        found = true;
     }
 
     if (info.discrete.x_axis_type != AXIS_EVENT_UNKNOWN) {
         ev.unscaled.x = info.discrete.x;
         if (info.discrete.x_axis_type == AXIS_EVENT_VALUE120) ev.offset_type = GLFW_SCROLL_OFFEST_V120;
+        found = true;
     } else if (info.continuous.x_axis_type != AXIS_EVENT_UNKNOWN) {
         ev.offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
         ev.unscaled.x = info.continuous.x;
+        found = true;
     }
+    bool stopped = info.y_stop_received || info.x_stop_received;
+    if (!found && stopped) ev.offset_type = window->wl.prev_frame_offset_type;
     ev.unscaled.x *= -1;
     const double scale = ev.offset_type == GLFW_SCROLL_OFFEST_HIGHRES ? _glfwWaylandWindowScale(window) : 1;
     ev.x_offset = scale * ev.unscaled.x; ev.y_offset = scale * ev.unscaled.y;
     glfw_handle_scroll_event_for_momentum(
-        window, &ev, info.y_stop_received || info.x_stop_received, info.source_type == WL_POINTER_AXIS_SOURCE_FINGER);
+        window, &ev, stopped, info.source_type == WL_POINTER_AXIS_SOURCE_FINGER);
+    window->wl.prev_frame_offset_type = ev.offset_type;
     /* clear pointer_curr_axis_info for next frame */
     memset(&info, 0, sizeof(info));
 }

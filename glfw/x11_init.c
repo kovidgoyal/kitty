@@ -216,8 +216,12 @@ read_xi_scroll_devices(void) {
                 if (_glfw.x11.xi.num_scroll_devices >= arraysz(_glfw.x11.xi.scroll_devices)) continue;
                 d = &_glfw.x11.xi.scroll_devices[_glfw.x11.xi.num_scroll_devices++];
                 *d = (XIScrollDevice){
-                    .is_highres=is_highres, .is_finger_based=is_finger_based, .deviceid=device->deviceid, .sourceid=scroll->sourceid,
+                    .is_finger_based=is_finger_based, .deviceid=device->deviceid, .sourceid=scroll->sourceid,
                 };
+                if (is_highres) {
+                    d->type_detected = true;
+                    d->offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
+                }
                 memcpy(d->name, device->name, MIN(sizeof(d->name)-1, strlen(device->name)));
             }
             if (d->num_valuators >= arraysz(d->valuators)) continue;

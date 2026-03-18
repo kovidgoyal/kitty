@@ -19,12 +19,12 @@ require (
 	github.com/kovidgoyal/imaging v1.8.20
 	github.com/nwaples/rardecode/v2 v2.2.2
 	github.com/seancfoley/ipaddress-go v1.7.1
-	github.com/shirou/gopsutil/v4 v4.26.1
+	github.com/shirou/gopsutil/v4 v4.26.2
 	github.com/ulikunitz/xz v0.5.15
 	github.com/zeebo/xxh3 v1.1.0
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	golang.org/x/image v0.36.0
-	golang.org/x/sys v0.41.0
+	golang.org/x/sys v0.42.0
 	golang.org/x/text v0.34.0
 	howett.net/plist v1.0.1
 )
@@ -36,7 +36,7 @@ require (
 // replace github.com/kovidgoyal/imaging => ../imaging
 
 require (
-	github.com/ebitengine/purego v0.9.1 // indirect
+	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect

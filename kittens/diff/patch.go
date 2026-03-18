@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	parallel "github.com/kovidgoyal/go-parallel"
+	"github.com/kovidgoyal/kitty/tools/simdstring"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/images"
 	"github.com/kovidgoyal/kitty/tools/utils/shlex"
@@ -336,6 +337,7 @@ func (self *Hunk) finalize(left_lines, right_lines []string) error {
 type Patch struct {
 	all_hunks                                       []*Hunk
 	largest_line_number, added_count, removed_count int
+	left_moved_lines, right_moved_lines             *utils.Set[int]
 }
 
 func (self *Patch) Len() int { return len(self.all_hunks) }
@@ -451,6 +453,54 @@ func (self *Patch) compute_centers(left_lines, right_lines []string) error {
 	return nil
 }
 
+// Use SIMD to efficiently find non-blank lines: a line is non-blank if it
+// contains at least one character that is not a space or tab.
+func is_non_blank(text string) bool {
+	return simdstring.NotIndexByte2String(text, ' ', '\t') >= 0
+}
+
+func (self *Patch) detect_moved_lines(left_lines, right_lines []string) {
+	// Build maps from line text to lists of line numbers for removed and added lines.
+	removed := make(map[string][]int, len(left_lines)) // text -> left line numbers
+	added := make(map[string][]int, len(right_lines))  // text -> right line numbers
+	for _, hunk := range self.all_hunks {
+		for _, chunk := range hunk.chunks {
+			if !chunk.is_context {
+				for i := 0; i < chunk.left_count; i++ {
+					lnum := chunk.left_start + i
+					text := left_lines[lnum]
+					if is_non_blank(text) {
+						removed[text] = append(removed[text], lnum)
+					}
+				}
+				for i := 0; i < chunk.right_count; i++ {
+					rnum := chunk.right_start + i
+					text := right_lines[rnum]
+					if is_non_blank(text) {
+						added[text] = append(added[text], rnum)
+					}
+				}
+			}
+		}
+	}
+	// Lines that appear in both removed and added sets are moved lines. When a
+	// line appears multiple times on each side, only min(left_count,
+	// right_count) occurrences are marked as moved.
+	self.left_moved_lines = utils.NewSet[int]()
+	self.right_moved_lines = utils.NewSet[int]()
+	for text, lnums := range removed {
+		if rnums, ok := added[text]; ok {
+			count := min(len(lnums), len(rnums))
+			for _, lnum := range lnums[:count] {
+				self.left_moved_lines.Add(lnum)
+			}
+			for _, rnum := range rnums[:count] {
+				self.right_moved_lines.Add(rnum)
+			}
+		}
+	}
+}
+
 func parse_patch(raw string, left_lines, right_lines []string) (ans *Patch, err error) {
 	ans = &Patch{all_hunks: make([]*Hunk, 0, 32)}
 	var current_hunk *Hunk
@@ -486,6 +536,9 @@ func parse_patch(raw string, left_lines, right_lines []string) (ans *Patch, err 
 		ans.largest_line_number = ans.all_hunks[len(ans.all_hunks)-1].largest_line_number
 	}
 	err = ans.compute_centers(left_lines, right_lines)
+	if err == nil && conf.Mark_moved_lines {
+		ans.detect_moved_lines(left_lines, right_lines)
+	}
 	return
 }
 
