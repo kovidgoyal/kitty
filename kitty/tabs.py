@@ -1828,6 +1828,14 @@ class TabManager:  # {{{
             set_window_being_dragged()
             return
         opts = get_options()
+        if opts.window_title_bar != 'none':
+            min_w = opts.window_title_bar_min_windows
+            for tm in boss.all_tab_managers:
+                for t in tm:
+                    visible = sum(1 for _ in t.windows.iter_all_layoutable_groups(only_visible=True))
+                    if not (min_w > 0 and visible >= min_w):
+                        t.force_show_title_bars = True
+                        t.relayout()
         title = str(w.title or '')
         fg = color_as_int(opts.window_title_bar_active_foreground or opts.active_tab_foreground)
         bg = color_as_int(opts.window_title_bar_active_background or opts.active_tab_background)
@@ -1905,7 +1913,20 @@ class TabManager:  # {{{
             return
         self._set_drag_target_tab(0)
         dest_window = self._find_window_at(x, y)
-        target_id = dest_window.id if (dest_window and dest_window.id != window_id) else 0
+        if dest_window and dest_window.id != window_id and dest_window.show_title_bar:
+            from .fast_data_types import cell_size_for_window
+            _, ch = cell_size_for_window(self.os_window_id)
+            g = dest_window.geometry
+            opts = get_options()
+            tb_top = g.top if opts.window_title_bar == 'top' else g.bottom - ch
+            tb_bottom = tb_top + ch
+            from .fast_data_types import viewport_for_window
+            central = viewport_for_window(self.os_window_id)[0]
+            rel_y = y - central.top
+            in_title_bar = tb_top <= rel_y < tb_bottom
+            target_id = dest_window.id if in_title_bar else 0
+        else:
+            target_id = 0
         self._set_drag_target_window(target_id)
 
     def on_window_drop(self, x: int, y: int, window_id: int) -> None:
@@ -1923,6 +1944,8 @@ class TabManager:  # {{{
         if in_tab_bar:
             if (tab_id := self.tab_bar.tab_id_at(x)) and (dest_tab := self.tab_for_id(tab_id)):
                 boss._move_window_to(w, target_tab_id=dest_tab.id)
+            else:
+                boss._move_window_to(w, target_tab_id='new')
             return
 
         # Case 2: Drop in central area
