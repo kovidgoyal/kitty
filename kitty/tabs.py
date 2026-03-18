@@ -1124,6 +1124,7 @@ class TabBeingDropped(NamedTuple):
 
 class WindowBeingDropped(NamedTuple):
     window_id: int  # the window whose title bar is currently highlighted as a drop target
+    quadrant: int = 0  # 0=none, 1=left, 2=right, 3=top, 4=bottom, 5=full(swap)
 
 
 class TabManager:  # {{{
@@ -1881,21 +1882,26 @@ class TabManager:  # {{{
                 return win
         return None
 
-    def _set_drag_target_window(self, window_id: int) -> None:
-        """Highlight window_id's title bar as the drop target; 0 clears."""
+    def _set_drag_target_window(self, window_id: int, quadrant: int = 0) -> None:
+        """Highlight window_id's title bar as the drop target; 0 clears. quadrant!=0 shows quadrant overlay instead."""
+        from .fast_data_types import set_window_drag_overlay
         boss = get_boss()
         prev_id = self.window_being_dropped.window_id if self.window_being_dropped else 0
-        if prev_id == window_id:
+        prev_quadrant = self.window_being_dropped.quadrant if self.window_being_dropped else 0
+        if prev_id == window_id and prev_quadrant == quadrant:
             return
         if prev_id and (prev_w := boss.window_id_map.get(prev_id)):
             prev_w.is_drag_target = False
+            set_window_drag_overlay(self.os_window_id, prev_w.tab_id, prev_id, 0)
             if prev_w._title_bar_screen is not None:
                 tab = prev_w.tabref()
                 prev_w.update_title_bar(is_active=tab is not None and tab.active_window is prev_w)
         if window_id and (new_w := boss.window_id_map.get(window_id)):
-            new_w.is_drag_target = True
-            new_w.update_title_bar(is_active=True)
-            self.window_being_dropped = WindowBeingDropped(window_id=window_id)
+            if quadrant == 5:
+                new_w.is_drag_target = True
+                new_w.update_title_bar(is_active=True)
+            set_window_drag_overlay(self.os_window_id, new_w.tab_id, window_id, quadrant)
+            self.window_being_dropped = WindowBeingDropped(window_id=window_id, quadrant=quadrant)
         else:
             self.window_being_dropped = None
 
@@ -1912,21 +1918,23 @@ class TabManager:  # {{{
             return
         self._set_drag_target_tab(0)
         dest_window = self._find_window_at(x, y)
-        if dest_window and dest_window.id != window_id and dest_window.show_title_bar:
-            from .fast_data_types import cell_size_for_window
-            _, ch = cell_size_for_window(self.os_window_id)
-            g = dest_window.geometry
-            opts = get_options()
-            tb_top = g.top if opts.window_title_bar == 'top' else g.bottom - ch
-            tb_bottom = tb_top + ch
-            from .fast_data_types import viewport_for_window
-            central = viewport_for_window(self.os_window_id)[0]
-            rel_y = y - central.top
-            in_title_bar = tb_top <= rel_y < tb_bottom
-            target_id = dest_window.id if in_title_bar else 0
+        if dest_window and dest_window.id != window_id:
+            quadrant = 5
+            active_tab = self.active_tab
+            if active_tab is not None and hasattr(active_tab.current_layout, 'insert_window_next_to'):
+                from .fast_data_types import viewport_for_window as _vfw
+                central = _vfw(self.os_window_id)[0]
+                rel_x = x - central.left
+                rel_y = y - central.top
+                g = dest_window.geometry
+                dx = rel_x - (g.left + g.right) / 2
+                dy = rel_y - (g.top + g.bottom) / 2
+                quad_map = {'left': 1, 'right': 2, 'top': 3, 'bottom': 4}
+                direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
+                quadrant = quad_map[direction]
+            self._set_drag_target_window(dest_window.id, quadrant)
         else:
-            target_id = 0
-        self._set_drag_target_window(target_id)
+            self._set_drag_target_window(0)
 
     def on_window_drop(self, x: int, y: int, window_id: int) -> None:
         from .fast_data_types import cell_size_for_window, viewport_for_window

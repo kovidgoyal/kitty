@@ -864,6 +864,25 @@ PYWRAP1(set_tab_bar_render_data) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(set_window_drag_overlay) {
+    id_type os_window_id, tab_id, window_id;
+    int quadrant;
+    PA("KKKi", &os_window_id, &tab_id, &window_id, &quadrant);
+    WITH_WINDOW(os_window_id, tab_id, window_id)
+        Screen *s = window->render_data.screen;
+        if (s) {
+            if (quadrant == 0) {
+                s->start_drag_overlay_at = 0;
+                s->drag_overlay_quadrant = 0;
+            } else if (s->drag_overlay_quadrant != (uint8_t)quadrant) {
+                s->start_drag_overlay_at = monotonic();
+                s->drag_overlay_quadrant = (uint8_t)quadrant;
+            }
+        }
+    END_WITH_WINDOW
+    Py_RETURN_NONE;
+}
+
 PYWRAP1(set_window_title_bar_render_data) {
     WindowGeometry g = {0};
     id_type os_window_id, tab_id, window_id;
@@ -1632,6 +1651,7 @@ static PyMethodDef module_methods[] = {
     MW(set_tab_bar_render_data, METH_VARARGS),
     MW(set_window_title_bar_render_data, METH_VARARGS),
     MW(set_window_render_data, METH_VARARGS),
+    MW(set_window_drag_overlay, METH_VARARGS),
     MW(set_window_padding, METH_VARARGS),
     MW(viewport_for_window, METH_VARARGS),
     MW(cell_size_for_window, METH_VARARGS),

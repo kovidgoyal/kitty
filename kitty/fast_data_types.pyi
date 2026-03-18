@@ -1536,6 +1536,9 @@ def spawn(
     pass
 
 
+def set_window_drag_overlay(os_window_id: int, tab_id: int, window_id: int, quadrant: int) -> None: ...
+
+
 def set_window_padding(os_window_id: int, tab_id: int, window_id: int, left: int, top: int, right: int, bottom: int) -> None:
     pass
 
