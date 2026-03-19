@@ -553,6 +553,15 @@ static void enableSmoothScrolling(_GLFWwindow* window)
     XISelectEvents(_glfw.x11.display, window->x11.handle, &em, 1);
 }
 
+static void
+resetScrollValuators(void) {
+    for (unsigned i = 0; i < _glfw.x11.xi.num_scroll_devices; i++) {
+        XIScrollDevice *d = &_glfw.x11.xi.scroll_devices[i];
+        for (unsigned k = 0; k < d->num_valuators; k++)
+            d->valuators[k].initialized = false;
+    }
+}
+
 // Apply disabled cursor mode to a focused window
 //
 static void disableCursor(_GLFWwindow* window)
@@ -1445,6 +1454,11 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             }
             if (!v) continue;
             scroll_valuator_found = true;
+            if (!v->initialized) {
+                v->initialized = true;
+                v->value = value;
+                continue;
+            }
             double delta = value - v->value;
             v->value = value;
             delta *= -1;
@@ -2344,6 +2358,7 @@ static void processEvent(XEvent *event)
             if (window->monitor && window->autoIconify)
                 _glfwPlatformIconifyWindow(window);
 
+            resetScrollValuators();
             _glfwInputWindowFocus(window, false);
             return;
         }
