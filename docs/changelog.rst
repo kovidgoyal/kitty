@@ -182,6 +182,8 @@ Detailed list of changes
 
 - macOS: When using :opt:`macos_traditional_fullscreen` do not render content under the notch (:pull:`9678`)
 
+- X11: Fix massive scroll when switching focus between kitty and another application (:iss:`9703`)
+
 0.46.1 [2026-03-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
