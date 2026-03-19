@@ -582,7 +582,7 @@ pyreorder_tabs(PyObject *self UNUSED, PyObject *args) {
     if (PyTuple_GET_SIZE(args) < 2) Py_RETURN_NONE;
     id_type os_window_id = PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(args, 0));
     WITH_OS_WINDOW(os_window_id)
-        if (PyTuple_GET_SIZE(args) != os_window->num_tabs + 1) { PyErr_SetString(PyExc_ValueError, "number of tabs not correct"); return NULL; }
+        if (PyTuple_GET_SIZE(args) != (Py_ssize_t)(os_window->num_tabs + 1)) { PyErr_SetString(PyExc_ValueError, "number of tabs not correct"); return NULL; }
         if (!os_window->num_tabs) Py_RETURN_NONE;
         RAII_ALLOC(Tab, tabs, calloc(os_window->capacity, sizeof(Tab)));
         RAII_ALLOC(char, used, calloc(os_window->num_tabs, sizeof(char)));
