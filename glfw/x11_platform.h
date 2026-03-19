@@ -235,7 +235,7 @@ typedef struct AtomArray {
 } AtomArray;
 
 typedef struct XIScrollValuator {
-    double increment, value, min, max; int number, resolution, mode; bool is_vertical;
+    double increment, value, min, max; int number, resolution, mode; bool is_vertical, initialized;
 } XIScrollValuator;
 
 typedef struct XIScrollDevice {

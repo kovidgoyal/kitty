@@ -3,7 +3,7 @@
 
 from kitty.config import defaults
 from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_SIZE, Color, ColorProfile, Cursor
-from kitty.marks import marker_from_function, marker_from_regex
+from kitty.marks import marker_from_function, marker_from_regex, marker_from_text
 from kitty.window import pagerhist
 
 from . import BaseTest, draw_multicell, parse_bytes
@@ -999,6 +999,21 @@ class TestScreen(BaseTest):
         s.draw('x')
         s.set_marker(marker_from_function(mark_x))
         self.ae(s.marked_cells(), [(2, 0, 1), (4, 0, 2)])
+        # Test CJK/wide characters not at position 0 (issue #9705)
+        s = self.create_screen(cols=20)
+        s.draw('テスト世界')
+        s.set_marker(marker_from_regex('テ', 3))
+        self.ae(s.marked_cells(), cells(0, 1))
+        s.set_marker(marker_from_regex('世', 3))
+        self.ae(s.marked_cells(), cells(6, 7))
+        s.set_marker(marker_from_text('世界', 3))
+        self.ae(s.marked_cells(), cells(6, 7, 8, 9))
+        s = self.create_screen(cols=20)
+        s.draw('ABテCD世EF')
+        s.set_marker(marker_from_regex('テ', 3))
+        self.ae(s.marked_cells(), cells(2, 3))
+        s.set_marker(marker_from_regex('世', 3))
+        self.ae(s.marked_cells(), cells(6, 7))
 
     def test_hyperlinks(self):
         s = self.create_screen()

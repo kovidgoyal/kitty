@@ -247,7 +247,7 @@ read_xi_scroll_devices(void) {
             }
             if (!v) continue;
             v->value = vi->value; v->mode = vi->mode; v->resolution = vi->resolution;
-            v->min = vi->min; v->max = vi->max;
+            v->min = vi->min; v->max = vi->max; v->initialized = true;
         }
     }
     XIFreeDeviceInfo(devices);

@@ -984,7 +984,7 @@ apply_mark(Line *line, const uint16_t mark, index_type *cell_pos, unsigned int *
             }
         } else if (line->cpu_cells[x].is_multicell) {
             *match_pos += lc.count - 1;
-            index_type x_limit = MIN(line->xnum, mcd_x_limit(line->cpu_cells + x));
+            index_type x_limit = MIN(line->xnum, x + mcd_x_limit(line->cpu_cells + x));
             for (; x < x_limit; x++) { MARK; }
             x--;
         } else {
