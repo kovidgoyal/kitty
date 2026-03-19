@@ -184,6 +184,8 @@ Detailed list of changes
 
 - X11: Fix massive scroll when switching focus between kitty and another application (:iss:`9703`)
 
+- Markers: Fix marking not working for multicell characters (:iss:`9705`)
+
 0.46.1 [2026-03-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
