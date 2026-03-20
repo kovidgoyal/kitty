@@ -2206,6 +2206,7 @@ static void processEvent(XEvent *event)
 
         case LeaveNotify:
         {
+            resetScrollValuators();
             _glfwInputCursorEnter(window, false);
             return;
         }
