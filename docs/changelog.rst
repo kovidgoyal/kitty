@@ -186,6 +186,9 @@ Detailed list of changes
 
 - Markers: Fix marking not working for multicell characters (:iss:`9705`)
 
+- Fix a regression in 0.46 that broke drag select in unfocused windows
+  (:iss:`9713`)
+
 0.46.1 [2026-03-16]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
