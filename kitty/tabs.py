@@ -1858,10 +1858,8 @@ class TabManager:  # {{{
         self.mark_tab_bar_dirty()
 
     def _clear_force_show_title_bars(self) -> None:
-        log_error('DRAG DEBUG: _clear_force_show_title_bars called')
         boss = get_boss()
         for tm in boss.all_tab_managers:
-            log_error(f'DRAG DEBUG: clearing tm={tm.os_window_id} window_being_dropped={tm.window_being_dropped}')
             tm._set_drag_target_window(0)
             tm._set_drag_target_tab(0)
             for tab in tm:
@@ -1890,23 +1888,18 @@ class TabManager:  # {{{
         boss = get_boss()
         prev_id = self.window_being_dropped.window_id if self.window_being_dropped else 0
         prev_quadrant = self.window_being_dropped.quadrant if self.window_being_dropped else 0
-        log_error(f'DRAG DEBUG: _set_drag_target_window window_id={window_id} quadrant={quadrant} prev_id={prev_id} prev_quadrant={prev_quadrant}')
         if prev_id == window_id and prev_quadrant == quadrant:
             return
         if prev_id and (prev_w := boss.window_id_map.get(prev_id)):
-            log_error(f'DRAG DEBUG: clearing overlay on prev_id={prev_id} tab_id={prev_w.tab_id}')
             prev_w.is_drag_target = False
             set_window_drag_overlay(self.os_window_id, prev_w.tab_id, prev_id, 0)
             if prev_w._title_bar_screen is not None:
                 tab = prev_w.tabref()
                 prev_w.update_title_bar(is_active=tab is not None and tab.active_window is prev_w)
-        elif prev_id:
-            log_error(f'DRAG DEBUG: prev_id={prev_id} not found in window_id_map — overlay may be stuck!')
         if window_id and (new_w := boss.window_id_map.get(window_id)):
             if quadrant == 5:
                 new_w.is_drag_target = True
                 new_w.update_title_bar(is_active=True)
-            log_error(f'DRAG DEBUG: setting overlay on window_id={window_id} tab_id={new_w.tab_id} quadrant={quadrant}')
             set_window_drag_overlay(self.os_window_id, new_w.tab_id, window_id, quadrant)
             self.window_being_dropped = WindowBeingDropped(window_id=window_id, quadrant=quadrant)
         else:
@@ -1958,11 +1951,10 @@ class TabManager:  # {{{
     def on_window_drop(self, x: int, y: int, window_id: int) -> None:
         from .fast_data_types import cell_size_for_window, viewport_for_window
         boss = get_boss()
+        self._clear_force_show_title_bars()
         w = boss.window_id_map.get(window_id)
         if w is None:
-            self._clear_force_show_title_bars()
             return
-        self._clear_force_show_title_bars()
         set_window_being_dragged()
         central, tab_bar = viewport_for_window(self.os_window_id)[:2]
 
