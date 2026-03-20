@@ -1124,7 +1124,7 @@ class TabBeingDropped(NamedTuple):
 
 class WindowBeingDropped(NamedTuple):
     window_id: int  # the window whose title bar is currently highlighted as a drop target
-    quadrant: int = 0  # 0=none, 1=left, 2=right, 3=top, 4=bottom, 5=full(swap)
+    quadrant: int = 0  # 0=none, 1=left, 2=right, 3=top, 4=bottom, 5=full+titlebar, 6=full
 
 
 class TabManager:  # {{{
@@ -1921,27 +1921,30 @@ class TabManager:  # {{{
         if dest_window and dest_window.id != window_id:
             from .fast_data_types import viewport_for_window as _vfw
             central = _vfw(self.os_window_id)[0]
-            rel_x = x - central.left
             rel_y = y - central.top
-            in_title_bar = False
             if dest_window.show_title_bar:
                 from .fast_data_types import cell_size_for_window
                 _, ch = cell_size_for_window(self.os_window_id)
                 g = dest_window.geometry
                 opts = get_options()
                 tb_top = g.top if opts.window_title_bar == 'top' else g.bottom - ch
-                in_title_bar = tb_top <= rel_y < tb_top + ch
-            if not in_title_bar:
-                active_tab = self.active_tab
-                if active_tab is not None and hasattr(active_tab.current_layout, 'insert_window_next_to'):
-                    g = dest_window.geometry
-                    dx = rel_x - (g.left + g.right) / 2
-                    dy = rel_y - (g.top + g.bottom) / 2
-                    quad_map = {'left': 1, 'right': 2, 'top': 3, 'bottom': 4}
-                    direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
-                    self._set_drag_target_window(dest_window.id, quad_map[direction])
+                if tb_top <= rel_y < tb_top + ch:
+                    # Title bar hover: full window + title bar highlight (swap)
+                    self._set_drag_target_window(dest_window.id, 5)
                     return
-            self._set_drag_target_window(dest_window.id, 5)
+            active_tab = self.active_tab
+            if active_tab is not None and hasattr(active_tab.current_layout, 'insert_window_next_to'):
+                # Splits layout body hover: directional half-window overlay
+                rel_x = x - central.left
+                g = dest_window.geometry
+                dx = rel_x - (g.left + g.right) / 2
+                dy = rel_y - (g.top + g.bottom) / 2
+                quad_map = {'left': 1, 'right': 2, 'top': 3, 'bottom': 4}
+                direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
+                self._set_drag_target_window(dest_window.id, quad_map[direction])
+            else:
+                # All other body hover: full window overlay only (reorder/swap, no title bar flash)
+                self._set_drag_target_window(dest_window.id, 6)
         else:
             self._set_drag_target_window(0)
 

@@ -800,7 +800,8 @@ draw_drag_preview_overlay(const UIRenderData *ui) {
         case 2: left   =  0.f; break;  // right half
         case 3: bottom =  0.f; break;  // top half
         case 4: top    =  0.f; break;  // bottom half
-        case 5: break;                 // full window (swap)
+        case 5: break;                 // full window + title bar highlight (title bar hover)
+        case 6: break;                 // full window, no title bar highlight (body hover)
         default: return;
     }
     bind_program(TINT_PROGRAM);
