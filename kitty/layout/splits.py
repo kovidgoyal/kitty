@@ -740,7 +740,7 @@ class Splits(Layout):
         # Re-insert next to dest
         pair = self.pairs_root.pair_for_window(dest_wg.id)
         if pair is not None:
-            self.pairs_root.split_and_add(dest_wg.id, src_wg.id, horizontal, after)
+            pair.split_and_add(dest_wg.id, src_wg.id, horizontal, after)
         else:
             self.pairs_root.balanced_add(src_wg.id)
 
