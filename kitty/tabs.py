@@ -1919,20 +1919,29 @@ class TabManager:  # {{{
         self._set_drag_target_tab(0)
         dest_window = self._find_window_at(x, y)
         if dest_window and dest_window.id != window_id:
-            quadrant = 5
-            active_tab = self.active_tab
-            if active_tab is not None and hasattr(active_tab.current_layout, 'insert_window_next_to'):
-                from .fast_data_types import viewport_for_window as _vfw
-                central = _vfw(self.os_window_id)[0]
-                rel_x = x - central.left
-                rel_y = y - central.top
+            from .fast_data_types import viewport_for_window as _vfw
+            central = _vfw(self.os_window_id)[0]
+            rel_x = x - central.left
+            rel_y = y - central.top
+            in_title_bar = False
+            if dest_window.show_title_bar:
+                from .fast_data_types import cell_size_for_window
+                _, ch = cell_size_for_window(self.os_window_id)
                 g = dest_window.geometry
-                dx = rel_x - (g.left + g.right) / 2
-                dy = rel_y - (g.top + g.bottom) / 2
-                quad_map = {'left': 1, 'right': 2, 'top': 3, 'bottom': 4}
-                direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
-                quadrant = quad_map[direction]
-            self._set_drag_target_window(dest_window.id, quadrant)
+                opts = get_options()
+                tb_top = g.top if opts.window_title_bar == 'top' else g.bottom - ch
+                in_title_bar = tb_top <= rel_y < tb_top + ch
+            if not in_title_bar:
+                active_tab = self.active_tab
+                if active_tab is not None and hasattr(active_tab.current_layout, 'insert_window_next_to'):
+                    g = dest_window.geometry
+                    dx = rel_x - (g.left + g.right) / 2
+                    dy = rel_y - (g.top + g.bottom) / 2
+                    quad_map = {'left': 1, 'right': 2, 'top': 3, 'bottom': 4}
+                    direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
+                    self._set_drag_target_window(dest_window.id, quad_map[direction])
+                    return
+            self._set_drag_target_window(dest_window.id, 5)
         else:
             self._set_drag_target_window(0)
 
