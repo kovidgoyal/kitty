@@ -128,6 +128,56 @@ send an escape code of the form::
 That is, it must send a request for data with no MIME type specified. The
 terminal emulator must then inform the OS that the drop is completed.
 
+In order to support dropping of files from remote machines or to remote
+machines, clients can first request the text/uri-list MIME type to get a list
+of dropped URIs. For every ``file://`` URI they can send the terminal emulator
+a data request of the form::
+
+    OSC _dnd_code ; t=s ; text/uri-list:idx ST
+
+Here ``idx`` is the zero based index into the array of MIME types in
+the ``text/uri-list`` entry. The terminal will then read the file and
+transmit the data as for a normal MIME data request.
+
+Terminals must reply with ``t=R ; ENOENT`` if the index is out of bounds.
+If the client does not first request the ``text/uri-list`` MIME type or that
+MIME type is not present in the drop, the terminal must reply with
+``t=R ; EINVAL``. Similarly if the client requests an entry that is not a
+``file://`` URI the terminal must reply with ``EUNKNOWN``.
+
+Terminals must ONLY send data for regular files. Symbolic links must be
+resolved and the corresponding file read. If the terminal does not have
+permission to read the file it must reply with ``t=R ; EPERM``. Terminals
+must respond with ``t=R ; EINVAL`` if the file is not a regular file after
+resolving symlinks and ``t=R ; ENOENT`` if the file does not exist.
+
+
+Dropping directories
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If the file is actually a directory the terminal must respond with ``t=d:x=idx ; payload``.
+Here payload is a null byte separated list of entries in the directory that are
+either regular files, directories or symlinks. The payload must be base64
+encoded and might be chunked if the directory has a lot of entries. The first
+entry in the list must be a unique identifier for the directory, to prevent
+symlink loops. Terminals may use whatever identifier is most suitable for their platforms, clients should
+not re-request the contents of a directory whose identifier they have seen
+before.
+
+``idx`` is an arbitrary 32 bit integer that acts as a handle to this
+directory. The client can now read the files in this directory using requests of the form
+``t=d:x=idx:y=num``, here ``num`` is the index into the list of
+directory entries previously transmitted to the client. Here, ``1`` will
+correspond to the first entry in the directory. Once the client is done
+reading a directory it should transmit ``t=d:x=idx`` to the terminal. The
+terminal can then free any resources associated with that directory. The
+directory handle is now invalid and terminals must return ``EINVAL`` if the
+client sends a request using and invalid directory handle. It is recommended
+that clients traverse directories breadth first to minimise resource usage in
+the terminal. Terminals may deny directory traversal requests if too many
+resources are used, in order to prevent denial or service attacks. In such
+cases the terminal must respond with ``ENOMEM``.
+
 Metadata reference
 ---------------------------
 
@@ -143,6 +193,8 @@ Key      Value                 Default    Description
                                           ``m`` - a drop move event
                                           ``M`` - a drop dropped event
                                           ``r`` - request dropped data
+                                          ``R`` - report an error while retrieving data
+                                          ``d`` - send directory contents
 
 ``m``    Chunking indicator    ``0``      ``0`` or ``i``
 
