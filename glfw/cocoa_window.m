@@ -1497,10 +1497,10 @@ free_drop_data(_GLFWwindow *window) {
 }
 
 static void
-update_drop_state(_GLFWwindow *window, size_t accepted_count) {
+update_drop_state(_GLFWwindow *window, size_t accepted_count, GLFWDropEventType t) {
     _GLFWDropData *d = &window->ns.drop_data;
     d->copy_mimes_count = accepted_count;
-    d->drag_accepted = accepted_count > 0;
+    if (t == GLFW_DROP_ENTER || t == GLFW_DROP_MOVE) d->drag_accepted = accepted_count > 0;
 }
 
 // Reset the working copy of mimes so the next callback sees the full original
@@ -1582,7 +1582,7 @@ reset_drop_copy_mimes(_GLFWDropData *d) {
     _GLFWDropData *d = &window->ns.drop_data;
     if (reset_drop_copy_mimes(d)) {
         size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_ENTER, xpos, ypos, d->copy_mimes, d->copy_mimes_count, from_self);
-        update_drop_state(window, accepted_count);
+        update_drop_state(window, accepted_count, GLFW_DROP_ENTER);
     }
     return window->ns.drop_data.drag_accepted ? NSDragOperationGeneric : NSDragOperationNone;
 }
@@ -1599,7 +1599,7 @@ reset_drop_copy_mimes(_GLFWDropData *d) {
     _GLFWDropData *d = &window->ns.drop_data;
     if (reset_drop_copy_mimes(d)) {
         size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_MOVE, xpos, ypos, d->copy_mimes, d->copy_mimes_count, from_self);
-        update_drop_state(window, accepted_count);
+        update_drop_state(window, accepted_count, GLFW_DROP_MOVE);
     }
     return window->ns.drop_data.drag_accepted ? NSDragOperationGeneric : NSDragOperationNone;
 }
@@ -1610,7 +1610,7 @@ reset_drop_copy_mimes(_GLFWDropData *d) {
     _GLFWDropData *d = &window->ns.drop_data;
     if (reset_drop_copy_mimes(d)) {
         size_t accepted_count = _glfwInputDropEvent(window, GLFW_DROP_LEAVE, 0, 0, d->copy_mimes, d->copy_mimes_count, from_self);
-        update_drop_state(window, accepted_count);
+        update_drop_state(window, accepted_count, GLFW_DROP_LEAVE);
     }
     free_drop_data(window);
 }
@@ -1627,7 +1627,7 @@ reset_drop_copy_mimes(_GLFWDropData *d) {
     if (!reset_drop_copy_mimes(d)) return NO;
     size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, xpos, ypos, d->copy_mimes, d->copy_mimes_count, from_self);
     if (d->copy_mimes) {
-        update_drop_state(window, num_accepted);
+        update_drop_state(window, num_accepted, GLFW_DROP_DROP);
         window->ns.drop_data.pasteboard = [[sender draggingPasteboard] retain];
         for (size_t i = 0; i < num_accepted; i++)
             _glfwPlatformRequestDropData(window, d->copy_mimes[i]);

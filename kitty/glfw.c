@@ -830,6 +830,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
             global_state.drop_dest.os_window_id = os_window->id;
             if (is_client_drop) {
                 drop_move_on_child(w, ev->mimes, ev->num_mimes, true);
+                ev->num_mimes = 0;  // we wait for the client to request MIMEs
             } else {
                 if (ev->from_self) {
                     if (global_state.drag_source.drag_data) {
