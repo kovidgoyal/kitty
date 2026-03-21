@@ -1594,6 +1594,12 @@ class TabManager:  # {{{
         self.mark_tab_bar_dirty()
         removed_tab.destroy()
 
+    def _new_tab_drop_indicator(self) -> TabBarData:
+        return TabBarData(
+            '+', self.window_drag_target_tab_id == -1, False, -1, self.os_window_id,
+            0, 0, '', False, None, None, None, None, 0, 0, 0, '', '',
+        )
+
     @property
     def tab_bar_data(self) -> Sequence[TabBarData]:
         at = self.active_tab
@@ -1601,11 +1607,16 @@ class TabManager:  # {{{
         dragged_tab_id, drag_started = get_tab_being_dragged()[:2]
         if drag_started:
             tab_being_dragged_from_here = self.tab_for_id(dragged_tab_id) is not None
+        window_drag_active = get_window_being_dragged()[1]
         if self.tab_being_dropped is None:
             wdtt = self.window_drag_target_tab_id
             if tab_being_dragged_from_here:
-                return tuple(t.data_for_tab_bar(t is at or t.id == wdtt) for t in self.tabs_to_be_shown_in_tab_bar if t.id != dragged_tab_id)
-            return tuple(t.data_for_tab_bar(t is at or t.id == wdtt) for t in self.tabs_to_be_shown_in_tab_bar)
+                tabs = tuple(t.data_for_tab_bar(t is at or t.id == wdtt) for t in self.tabs_to_be_shown_in_tab_bar if t.id != dragged_tab_id)
+            else:
+                tabs = tuple(t.data_for_tab_bar(t is at or t.id == wdtt) for t in self.tabs_to_be_shown_in_tab_bar)
+            if window_drag_active:
+                tabs = tabs + (self._new_tab_drop_indicator(),)
+            return tabs
         tmap = {t.id:t for t in self.tabs}
         at = self.active_tab
         ans = []
@@ -1831,6 +1842,7 @@ class TabManager:  # {{{
         opts = get_options()
         min_w = opts.window_title_bar_min_windows
         for tm in boss.all_tab_managers:
+            tm.mark_tab_bar_dirty()
             for t in tm:
                 visible = sum(1 for _ in t.windows.iter_all_layoutable_groups(only_visible=True))
                 if not (min_w > 0 and visible >= min_w):
@@ -1956,6 +1968,7 @@ class TabManager:  # {{{
         if w is None:
             return
         set_window_being_dragged()
+        self.mark_tab_bar_dirty()
         central, tab_bar = viewport_for_window(self.os_window_id)[:2]
 
         # Case 1: Drop on tab bar → move to that tab
