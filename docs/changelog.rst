@@ -165,6 +165,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.47.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

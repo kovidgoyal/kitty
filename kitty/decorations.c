@@ -1269,7 +1269,7 @@ mid_lines(Canvas *self, uint level, ...) {
             case BOTTOM_LEFT: p1 = l; p2 = b; break;
             case BOTTOM_RIGHT: p1 = r; p2 = b; break;
         }
-        thick_line(self, th, p1, p2);
+        thick_line(self, diagonal_thickness(th, p1, p2), p1, p2);
     }
     va_end(args);
 }
