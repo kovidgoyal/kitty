@@ -555,7 +555,7 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
         case 'd':  // direct
             if (load_data->buf_capacity - load_data->buf_used < g->payload_sz) {
                 if (load_data->buf_used + g->payload_sz > MAX_DATA_SZ || data_fmt != PNG) ABRT("EFBIG", "Too much data");
-                load_data->buf_capacity = MIN(2 * load_data->buf_capacity, MAX_DATA_SZ);
+                load_data->buf_capacity = MAX(MIN(2 * load_data->buf_capacity, MAX_DATA_SZ), load_data->buf_used + g->payload_sz);
                 load_data->buf = realloc(load_data->buf, load_data->buf_capacity);
                 if (load_data->buf == NULL) {
                     load_data->buf_capacity = 0; load_data->buf_used = 0;

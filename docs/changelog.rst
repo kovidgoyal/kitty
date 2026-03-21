@@ -170,6 +170,8 @@ Detailed list of changes
 
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
 
+- Graphics protocol: Fix crash when handling invalid PNG image with direct transmission
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
