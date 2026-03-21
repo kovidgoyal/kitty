@@ -593,6 +593,21 @@ progress_bar(Canvas *self, Segment which, bool filled) {
     for (uint y = y1; y < y2; y++) memset(self->mask + y * self->width + x1, 255, minus(min(x2, self->width), x1));
 }
 
+// thick_line extends by thickness/2 pixels in the y-direction for each x
+// column. For a diagonal line with slope m = dy/dx the perceived perpendicular
+// thickness is therefore (thickness/2) / sqrt(1 + m²). Multiply the nominal
+// thickness by sqrt(1 + m²) so the visual weight matches that of horizontal
+// and vertical lines of the same specified thickness.
+static uint
+diagonal_thickness(uint base, Point p1, Point p2) {
+    int dx = (int)p2.x - (int)p1.x;
+    if (dx == 0) return base;
+    // m is squared below so its sign does not matter; no need for abs(dx).
+    double m = ((double)((int)p2.y - (int)p1.y)) / (double)dx;
+    uint ans = (uint)round(base * sqrt(1.0 + m * m));
+    return ans > 0 ? ans : 1;
+}
+
 static void
 half_cross_line(Canvas *self, uint level, Corner corner) {
     uint my = minus(self->height, 1) / 2; Point p1 = {0}, p2 = {0};
@@ -602,7 +617,7 @@ half_cross_line(Canvas *self, uint level, Corner corner) {
         case TOP_RIGHT: p1.x = minus(self->width, 1); p2.y = my; break;
         case BOTTOM_RIGHT: p2.x = minus(self->width, 1), p2.y = minus(self->height, 1); p1.y = my; break;
     }
-    thick_line(self, thickness(self, level, true), p1, p2);
+    thick_line(self, diagonal_thickness(thickness(self, level, true), p1, p2), p1, p2);
 }
 
 static void
@@ -610,7 +625,7 @@ cross_line(Canvas *self, uint level, bool left) {
     uint w = minus(self->width, 1), h = minus(self->height, 1);
     Point p1 = {0}, p2 = {0};
     if (left) p2 = (Point){.x=w, .y=h}; else { p1.x = w; p2.y = h; }
-    thick_line(self, thickness(self, level, true), p1, p2);
+    thick_line(self, diagonal_thickness(thickness(self, level, true), p1, p2), p1, p2);
 }
 
 typedef struct CubicBezier {
