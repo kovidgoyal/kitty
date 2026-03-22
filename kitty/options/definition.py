@@ -1635,6 +1635,16 @@ The horizontal alignment of the tab bar, can be one of: :code:`left`,
 '''
     )
 
+opt('tab_bar_show_new_tab_button', 'no', option_type='to_bool', ctype='bool',
+    long_text='''
+When set to :code:`yes`, a :code:`+` button is always shown at the end of the
+tab bar as a clickable shortcut to open a new tab. When set to :code:`no`
+(the default), the button is hidden at rest but still appears temporarily
+while a window is being dragged, so it can be used as a drop target to open
+the window in a new tab.
+'''
+    )
+
 opt('tab_bar_min_tabs', '2', option_type='tab_bar_min_tabs',
     long_text='The minimum number of tabs that must exist before the tab bar is shown.'
 )

@@ -1607,13 +1607,15 @@ class TabManager:  # {{{
         dragged_tab_id, drag_started = get_tab_being_dragged()[:2]
         if drag_started:
             tab_being_dragged_from_here = self.tab_for_id(dragged_tab_id) is not None
+        window_drag_active = get_window_being_dragged()[1]
         if self.tab_being_dropped is None:
             wdtt = self.window_drag_target_tab_id
             if tab_being_dragged_from_here:
                 tabs = tuple(t.data_for_tab_bar(t is at or t.id == wdtt) for t in self.tabs_to_be_shown_in_tab_bar if t.id != dragged_tab_id)
             else:
                 tabs = tuple(t.data_for_tab_bar(t is at or t.id == wdtt) for t in self.tabs_to_be_shown_in_tab_bar)
-            tabs = tabs + (self._new_tab_drop_indicator(),)
+            if window_drag_active or get_options().tab_bar_show_new_tab_button:
+                tabs = tabs + (self._new_tab_drop_indicator(),)
             return tabs
         tmap = {t.id:t for t in self.tabs}
         at = self.active_tab
