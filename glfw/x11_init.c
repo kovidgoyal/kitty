@@ -156,8 +156,11 @@ read_xi_scroll_devices(void) {
     if (!xi.available || xi.major < 2 || (xi.major == 2 && xi.minor < 1) || !xi.LIBINPUT_SCROLL_METHOD_ENABLED) return;
 #undef xi
     int deviceCount;
+    // Grab the error handler to prevent XI_BadDevice errors from killing kitty
+    // when a device is removed between XIQueryDevice and XIGetProperty calls.
+    _glfwGrabErrorHandlerX11();
     XIDeviceInfo* devices = XIQueryDevice(_glfw.x11.display, XIAllDevices, &deviceCount);
-    if (!devices) return;
+    if (!devices) { _glfwReleaseErrorHandlerX11(); return; }
     for (int i = 0; i < deviceCount; i++) {
         XIDeviceInfo* device = &devices[i];
         if (device->use == XIMasterPointer) _glfw.x11.xi.master_pointer_id = device->deviceid;
@@ -251,6 +254,7 @@ read_xi_scroll_devices(void) {
         }
     }
     XIFreeDeviceInfo(devices);
+    _glfwReleaseErrorHandlerX11();
 }
 
 // Look for and initialize supported X11 extensions
