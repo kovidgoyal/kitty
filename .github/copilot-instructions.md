@@ -30,3 +30,6 @@ code.
   leading `test_` for Python tests and without the leading `Test` for Go tests.
 - Do not use go test or ./setup.py test to run tests
 
+## PR guidance
+When creating a pull request, add an entry in the file docs/changelog.rst
+describing the change.
