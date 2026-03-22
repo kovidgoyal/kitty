@@ -1632,7 +1632,8 @@ class Window:
             if ac == 'ask':
                 get_boss().confirm(_(
                     'A program running in this window wants to clone it into another window.'
-                    ' Allow it do so, once?'),
+                    ' WARNING: cloning a window is unsafe, as it allows arbitrary code execution,'
+                    ' only accept this request if you trust the environment you are cloning. Allow the clone, once?'),
                     partial(self.handle_remote_clone_confirmation, cdata), window=self,
                     title=_('Allow cloning of window?'),
                 )
