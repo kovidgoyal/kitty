@@ -1747,7 +1747,7 @@ class TabManager:  # {{{
             return
 
         tab_id_at_x = self.tab_bar.tab_id_at(int(x))
-        if tab_id_at_x == -1:
+        if tab_id_at_x < 0:  # synthetic tab (e.g. "+" new-tab button)
             if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE:
                 self.new_tab()
             return
