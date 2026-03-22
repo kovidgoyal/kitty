@@ -1607,15 +1607,13 @@ class TabManager:  # {{{
         dragged_tab_id, drag_started = get_tab_being_dragged()[:2]
         if drag_started:
             tab_being_dragged_from_here = self.tab_for_id(dragged_tab_id) is not None
-        window_drag_active = get_window_being_dragged()[1]
         if self.tab_being_dropped is None:
             wdtt = self.window_drag_target_tab_id
             if tab_being_dragged_from_here:
                 tabs = tuple(t.data_for_tab_bar(t is at or t.id == wdtt) for t in self.tabs_to_be_shown_in_tab_bar if t.id != dragged_tab_id)
             else:
                 tabs = tuple(t.data_for_tab_bar(t is at or t.id == wdtt) for t in self.tabs_to_be_shown_in_tab_bar)
-            if window_drag_active:
-                tabs = tabs + (self._new_tab_drop_indicator(),)
+            tabs = tabs + (self._new_tab_drop_indicator(),)
             return tabs
         tmap = {t.id:t for t in self.tabs}
         at = self.active_tab
@@ -1746,7 +1744,12 @@ class TabManager:  # {{{
                     request_callback_with_thumbnail("start_tab_drag", self.os_window_id)
             return
 
-        tab = self.tab_for_id(self.tab_bar.tab_id_at(int(x)))
+        tab_id_at_x = self.tab_bar.tab_id_at(int(x))
+        if tab_id_at_x == -1:
+            if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE:
+                self.new_tab()
+            return
+        tab = self.tab_for_id(tab_id_at_x)
         now = monotonic()
         if tab is None:
             if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and len(self.recent_mouse_events) > 2:
