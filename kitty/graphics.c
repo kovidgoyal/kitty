@@ -1827,9 +1827,10 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
         set_command_failed_response("ENOENT", "No destination frame number %u exists in image id: %u\n", g->other_frame_number, img->client_id);
         return;
     }
-    const unsigned int width = g->width ? g->width : img->width;
-    const unsigned int height = g->height ? g->height : img->height;
-    const unsigned int dest_x = g->x_offset, dest_y = g->y_offset, src_x = g->cell_x_offset, src_y = g->cell_y_offset;
+    // Use uint64_t to avoid overflow when testing for validity. All dimensions are 32bit numbers.
+    const uint64_t width = g->width ? g->width : img->width;
+    const uint64_t height = g->height ? g->height : img->height;
+    const uint64_t dest_x = g->x_offset, dest_y = g->y_offset, src_x = g->cell_x_offset, src_y = g->cell_y_offset;
     if (dest_x + width > img->width || dest_y + height > img->height) {
         set_command_failed_response("EINVAL", "The destination rectangle is out of bounds");
         return;

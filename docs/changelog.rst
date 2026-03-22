@@ -172,6 +172,8 @@ Detailed list of changes
 
 - Graphics protocol: Fix crash when handling invalid PNG image with direct transmission
 
+- Graphics protocol: Fix crash when handling invalid offset values in graphics compose commands
+
 - X11: Fix a regression in the previous release that caused an occasional crash on input device removal (:iss:`9723`)
 
 0.46.2 [2026-03-21]
