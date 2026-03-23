@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
-	"github.com/kovidgoyal/kitty/tools/fzf"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
@@ -39,16 +38,166 @@ type InputData struct {
 	CategoryOrder map[string][]string             `json:"category_order"`
 }
 
-// DisplayItem wraps a binding with its per-column search texts for FZF scoring
-type DisplayItem struct {
-	binding  Binding
-	colTexts [3]string // [0]=key, [1]=action_display, [2]=category
+// wordToken represents a single word extracted from column text, with its
+// rune-level position in the original string for match highlighting.
+type wordToken struct {
+	word     string // lowercased word
+	startPos int    // rune offset in original column text
+	endPos   int    // rune offset past last char
 }
 
-// matchInfo stores which column matched and the matched character positions
+// tokenizeWords splits s into words on delimiters (_ space + / -) and returns
+// each word with its rune position in the original string.
+func tokenizeWords(s string) []wordToken {
+	runes := []rune(strings.ToLower(s))
+	var tokens []wordToken
+	start := -1
+	for i, r := range runes {
+		if isWordDelimiter(r) {
+			if start >= 0 {
+				tokens = append(tokens, wordToken{
+					word:     string(runes[start:i]),
+					startPos: start,
+					endPos:   i,
+				})
+				start = -1
+			}
+		} else if start < 0 {
+			start = i
+		}
+	}
+	if start >= 0 {
+		tokens = append(tokens, wordToken{
+			word:     string(runes[start:]),
+			startPos: start,
+			endPos:   len(runes),
+		})
+	}
+	return tokens
+}
+
+// tokenizeQuery splits a query string into lowercase tokens on whitespace only.
+// Delimiter characters like _ + / - are preserved within tokens so the user can
+// search for compound names (e.g. "mouse_selection") as a single unit.
+func tokenizeQuery(s string) []string {
+	parts := strings.Fields(s)
+	for i := range parts {
+		parts[i] = strings.ToLower(parts[i])
+	}
+	return parts
+}
+
+// isWordDelimiter returns true for characters used to split column text into words.
+func isWordDelimiter(r rune) bool {
+	return r == '_' || r == ' ' || r == '+' || r == '/' || r == '-'
+}
+
+// matchSingleWord finds the best-matching word for a simple (no-delimiter) query
+// token against a column's pre-tokenized words.
+//
+// Scoring: exact=4, prefix=3, edit-distance-1=2, edit-distance-2=1, none=0.
+func matchSingleWord(queryToken string, words []wordToken) (score int, positions []int) {
+	for _, w := range words {
+		var s int
+		var pos []int
+
+		if w.word == queryToken {
+			// Exact match
+			s = 4
+			pos = runeRange(w.startPos, w.endPos)
+		} else if strings.HasPrefix(w.word, queryToken) {
+			// Prefix match — highlight only the matched prefix
+			s = 3
+			pos = runeRange(w.startPos, w.startPos+len([]rune(queryToken)))
+		} else if len(queryToken) >= 4 && len(w.word) >= 4 {
+			// Typo tolerance via edit distance (only for words >= 4 chars)
+			dist := utils.LevenshteinDistance(queryToken, w.word, false)
+			if dist == 1 {
+				s = 2
+				pos = runeRange(w.startPos, w.endPos)
+			} else if dist == 2 {
+				s = 1
+				pos = runeRange(w.startPos, w.endPos)
+			}
+		}
+
+		if s > score {
+			score = s
+			positions = pos
+		}
+	}
+	return
+}
+
+// bestWordMatch finds the best match for queryToken against a column's words.
+// For compound tokens (containing _ + / -), it first tries an exact substring
+// match against the full column text, then falls back to matching each sub-part
+// independently against individual words.
+func bestWordMatch(queryToken string, words []wordToken, colText string) (score int, positions []int) {
+	if !strings.ContainsAny(queryToken, "_+/-") {
+		return matchSingleWord(queryToken, words)
+	}
+
+	// Compound token: try exact substring match in the column text
+	colLower := strings.ToLower(colText)
+	if idx := strings.Index(colLower, queryToken); idx != -1 {
+		runeIdx := len([]rune(colLower[:idx]))
+		qRuneLen := len([]rune(queryToken))
+		subParts := strings.FieldsFunc(queryToken, isWordDelimiter)
+		return 4 * len(subParts), runeRange(runeIdx, runeIdx+qRuneLen)
+	}
+
+	// Fallback: match each sub-part independently against words
+	subParts := strings.FieldsFunc(queryToken, isWordDelimiter)
+	var totalScore int
+	var allPos []int
+	for _, sub := range subParts {
+		s, p := matchSingleWord(sub, words)
+		totalScore += s
+		allPos = append(allPos, p...)
+	}
+	if totalScore > 0 {
+		return totalScore, allPos
+	}
+	return 0, nil
+}
+
+// runeRange returns a slice of consecutive ints from start to end-1.
+func runeRange(start, end int) []int {
+	pos := make([]int, end-start)
+	for i := range pos {
+		pos[i] = start + i
+	}
+	return pos
+}
+
+// DisplayItem wraps a binding with its per-column search texts and pre-tokenized
+// words for word-level matching.
+type DisplayItem struct {
+	binding       Binding
+	keyText       string
+	actionText    string
+	categoryText  string
+	keyWords      []wordToken
+	actionWords   []wordToken
+	categoryWords []wordToken
+}
+
+// matchInfo stores matched character positions per column for multi-token highlighting
 type matchInfo struct {
-	colIdx    int   // which column matched: 0=key, 1=action_display, 2=category
-	positions []int // rune positions in the matched column text
+	keyPositions      []int // matched rune positions in key column
+	actionPositions   []int // matched rune positions in action column
+	categoryPositions []int // matched rune positions in category column
+}
+
+// scoredItem holds ranking data for a single item matching the current query.
+type scoredItem struct {
+	idx           int
+	nMatched      int
+	actionScore   int
+	keyScore      int
+	categoryScore int
+	mi            matchInfo
 }
 
 type displayLine struct {
@@ -84,7 +233,24 @@ func truncateToWidth(s string, maxWidth int) string {
 	return string(runes) + "..."
 }
 
-// CachedSettings holds persistent UI settings stored in command-palette.json.
+// sectionHeader returns a separator line like "  ── label ─────────".
+func sectionHeader(label string, width int) string {
+	labelWidth := wcswidth.Stringwidth(label)
+	sepLen := max(0, width-labelWidth-6)
+	sep := strings.Repeat("\u2500", sepLen)
+	return fmt.Sprintf("  \u2500\u2500 %s %s", label, sep)
+}
+
+// keyDisplayText returns the display string for a binding's key column,
+// substituting unmappedLabel for empty keys and truncating to maxKeyDisplayWidth.
+func keyDisplayText(b *Binding) string {
+	key := b.Key
+	if key == "" {
+		key = unmappedLabel
+	}
+	return truncateToWidth(key, maxKeyDisplayWidth)
+}
+
 type CachedSettings struct {
 	ShowUnmapped bool `json:"show_unmapped"`
 }
@@ -93,7 +259,6 @@ type Handler struct {
 	lp              *loop.Loop
 	screen_size     loop.ScreenSize
 	all_items       []DisplayItem
-	matcher         *fzf.FuzzyMatcher
 	filtered_idx    []int       // indices into all_items for current results
 	match_infos     []matchInfo // parallel to filtered_idx, valid when query != ""
 	query           string
@@ -129,7 +294,6 @@ func (h *Handler) initialize() (string, error) {
 		return "", err
 	}
 
-	h.matcher = fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME)
 	h.updateFilter()
 	h.draw_screen()
 	h.lp.SendOverlayReady()
@@ -153,8 +317,8 @@ func (h *Handler) loadData() error {
 }
 
 // flattenBindings converts the hierarchical mode/category/binding data into
-// a flat list suitable for display and FZF scoring. Uses the explicit ordering
-// arrays from Python since Go maps do not preserve insertion order.
+// a flat list suitable for display and word-level scoring. Uses the explicit
+// ordering arrays from Python since Go maps do not preserve insertion order.
 func (h *Handler) flattenBindings() {
 	// Use explicit mode ordering from Python, falling back to sorted keys
 	modeNames := h.input_data.ModeOrder
@@ -204,8 +368,13 @@ func (h *Handler) flattenBindings() {
 					keyText = unmappedLabel
 				}
 				h.all_items = append(h.all_items, DisplayItem{
-					binding:  b,
-					colTexts: [3]string{keyText, b.ActionDisplay, catName},
+					binding:       b,
+					keyText:       keyText,
+					actionText:    b.ActionDisplay,
+					categoryText:  catName,
+					keyWords:      tokenizeWords(keyText),
+					actionWords:   tokenizeWords(b.ActionDisplay),
+					categoryWords: tokenizeWords(catName),
 				})
 			}
 		}
@@ -217,14 +386,21 @@ func (h *Handler) flattenBindings() {
 		b.Mode = ""
 		b.IsMouse = true
 		h.all_items = append(h.all_items, DisplayItem{
-			binding:  b,
-			colTexts: [3]string{b.Key, b.ActionDisplay, "Mouse actions"},
+			binding:       b,
+			keyText:       b.Key,
+			actionText:    b.ActionDisplay,
+			categoryText:  "Mouse actions",
+			keyWords:      tokenizeWords(b.Key),
+			actionWords:   tokenizeWords(b.ActionDisplay),
+			categoryWords: tokenizeWords("Mouse actions"),
 		})
 	}
 }
 
 func (h *Handler) updateFilter() {
-	if h.query == "" {
+	tokens := tokenizeQuery(h.query)
+
+	if len(tokens) == 0 {
 		// Show all items in original order, respecting the show_unmapped toggle
 		h.filtered_idx = make([]int, 0, len(h.all_items))
 		for i, item := range h.all_items {
@@ -239,62 +415,60 @@ func (h *Handler) updateFilter() {
 		return
 	}
 
-	nItems := len(h.all_items)
-
-	// Build per-column text slices for batch FZF scoring
-	colSlices := [3][]string{
-		make([]string, nItems),
-		make([]string, nItems),
-		make([]string, nItems),
-	}
-	for i, item := range h.all_items {
-		colSlices[0][i] = item.colTexts[0]
-		colSlices[1][i] = item.colTexts[1]
-		colSlices[2][i] = item.colTexts[2]
-	}
-
-	// Score each column independently
-	colResults := [3][]fzf.Result{}
-	for c := range 3 {
-		results, err := h.matcher.Score(colSlices[c], h.query)
-		if err == nil {
-			colResults[c] = results
-		}
-	}
-
-	type scored struct {
-		idx       int
-		score     uint
-		colIdx    int
-		positions []int
-	}
-	var matches []scored
+	var matches []scoredItem
 	for i := range h.all_items {
 		if !h.show_unmapped && h.all_items[i].binding.Key == "" {
 			continue
 		}
-		bestScore := uint(0)
-		bestCol := 0
-		var bestPositions []int
-		for c := range 3 {
-			if colResults[c] != nil && i < len(colResults[c]) && colResults[c][i].Score > bestScore {
-				bestScore = colResults[c][i].Score
-				bestCol = c
-				bestPositions = colResults[c][i].Positions
+		item := &h.all_items[i]
+		var s scoredItem
+		s.idx = i
+
+		for _, qt := range tokens {
+			ks, kp := bestWordMatch(qt, item.keyWords, item.keyText)
+			as, ap := bestWordMatch(qt, item.actionWords, item.actionText)
+			cs, cp := bestWordMatch(qt, item.categoryWords, item.categoryText)
+
+			best := max(ks, max(as, cs))
+			if best > 0 {
+				s.nMatched++
 			}
+			s.keyScore += ks
+			s.actionScore += as
+			s.categoryScore += cs
+			s.mi.keyPositions = append(s.mi.keyPositions, kp...)
+			s.mi.actionPositions = append(s.mi.actionPositions, ap...)
+			s.mi.categoryPositions = append(s.mi.categoryPositions, cp...)
 		}
-		if bestScore > 0 {
-			matches = append(matches, scored{idx: i, score: bestScore, colIdx: bestCol, positions: bestPositions})
+
+		if s.nMatched > 0 {
+			matches = append(matches, s)
 		}
 	}
+
+	// Sort: most tokens matched > actionScore > keyScore > categoryScore > shorter ActionDisplay
 	sort.Slice(matches, func(i, j int) bool {
-		return matches[i].score > matches[j].score
+		if matches[i].nMatched != matches[j].nMatched {
+			return matches[i].nMatched > matches[j].nMatched
+		}
+		if matches[i].actionScore != matches[j].actionScore {
+			return matches[i].actionScore > matches[j].actionScore
+		}
+		if matches[i].keyScore != matches[j].keyScore {
+			return matches[i].keyScore > matches[j].keyScore
+		}
+		if matches[i].categoryScore != matches[j].categoryScore {
+			return matches[i].categoryScore > matches[j].categoryScore
+		}
+		return len(h.all_items[matches[i].idx].binding.ActionDisplay) < len(h.all_items[matches[j].idx].binding.ActionDisplay)
 	})
+
+	// Build filtered_idx and match_infos
 	h.filtered_idx = make([]int, len(matches))
 	h.match_infos = make([]matchInfo, len(matches))
 	for i, m := range matches {
 		h.filtered_idx[i] = m.idx
-		h.match_infos[i] = matchInfo{colIdx: m.colIdx, positions: m.positions}
+		h.match_infos[i] = m.mi
 	}
 	h.selected_idx = 0
 	h.scroll_offset = 0
@@ -377,16 +551,7 @@ func (h *Handler) draw_screen() {
 	// Draw help text for selected binding
 	h.lp.MoveCursorTo(1, helpY)
 	if b := h.selectedBinding(); b != nil && b.Help != "" {
-		helpStr := b.Help
-		maxLen := max(width-2, 3)
-		if wcswidth.Stringwidth(helpStr) > maxLen {
-			// Truncate by runes to avoid breaking multi-byte characters
-			runes := []rune(helpStr)
-			for len(runes) > 0 && wcswidth.Stringwidth(string(runes))+3 > maxLen {
-				runes = runes[:len(runes)-1]
-			}
-			helpStr = string(runes) + "..."
-		}
+		helpStr := truncateToWidth(b.Help, max(width-2, 3))
 		h.lp.QueueWriteString(h.lp.SprintStyled("dim italic", " "+helpStr))
 	}
 
@@ -400,11 +565,11 @@ func (h *Handler) draw_screen() {
 		h.lp.SprintStyled("fg=bright-yellow", "[Esc]") + " Quit  " +
 		h.lp.SprintStyled("fg=bright-yellow", "\u2191\u2193") + " Navigate  " +
 		h.lp.SprintStyled("fg=bright-yellow", "[F12]") + " " + unmappedToggleLabel + " unmapped"
-	matchInfo := ""
+	matchCount := ""
 	if h.query != "" {
-		matchInfo = fmt.Sprintf("  %d/%d", len(h.filtered_idx), len(h.all_items))
+		matchCount = fmt.Sprintf("  %d/%d", len(h.filtered_idx), len(h.all_items))
 	}
-	h.lp.QueueWriteString(" " + footer + h.lp.SprintStyled("dim", matchInfo))
+	h.lp.QueueWriteString(" " + footer + h.lp.SprintStyled("dim", matchCount))
 
 	// Position cursor at end of search text for typing
 	h.lp.MoveCursorTo(3+wcswidth.Stringwidth(h.query), searchBarY)
@@ -424,16 +589,11 @@ func (h *Handler) drawGroupedResults(startY, maxRows, width int) {
 			lastMode = b.Mode
 			lastCategory = ""
 			if b.Mode != "" {
-				// Non-default mode: show "── Keyboard mode: name ──" header (purple), no category separators
 				if len(lines) > 0 {
 					lines = append(lines, displayLine{itemIdx: -1, isHeader: true})
 				}
-				label := "Keyboard mode: " + b.Mode
-				labelWidth := wcswidth.Stringwidth(label)
-				sepLen := max(0, width-labelWidth-6)
-				sep := strings.Repeat("\u2500", sepLen)
 				lines = append(lines, displayLine{
-					text:      fmt.Sprintf("  \u2500\u2500 %s %s", label, sep),
+					text:      sectionHeader("Keyboard mode: "+b.Mode, width),
 					isModeHdr: true, isHeader: true, itemIdx: -1,
 				})
 			}
@@ -445,21 +605,14 @@ func (h *Handler) drawGroupedResults(startY, maxRows, width int) {
 			if len(lines) > 0 && !lines[len(lines)-1].isHeader {
 				lines = append(lines, displayLine{itemIdx: -1, isHeader: true})
 			}
-			catWidth := wcswidth.Stringwidth(b.Category)
-			sepLen := max(0, width-catWidth-6)
-			sep := strings.Repeat("\u2500", sepLen)
 			lines = append(lines, displayLine{
-				text:     fmt.Sprintf("  \u2500\u2500 %s %s", b.Category, sep),
+				text:     sectionHeader(b.Category, width),
 				isHeader: true, itemIdx: -1,
 			})
 		}
 
-		// Binding line — key column shows "(unmapped)" for actions with no shortcut
-		keyDisplay := b.Key
-		if keyDisplay == "" {
-			keyDisplay = unmappedLabel
-		}
-		keyDisplay = truncateToWidth(keyDisplay, maxKeyDisplayWidth)
+		// Binding line
+		keyDisplay := keyDisplayText(b)
 		lines = append(lines, displayLine{
 			text:    fmt.Sprintf("    %-*s %s", maxKeyDisplayWidth, keyDisplay, b.ActionDisplay),
 			itemIdx: fi,
@@ -482,11 +635,7 @@ func (h *Handler) drawFlatResults(startY, maxRows, width int) {
 	for fi, idx := range h.filtered_idx {
 		item := &h.all_items[idx]
 		b := &item.binding
-		keyDisplay := b.Key
-		if keyDisplay == "" {
-			keyDisplay = unmappedLabel
-		}
-		keyDisplay = truncateToWidth(keyDisplay, maxKeyDisplayWidth)
+		keyDisplay := keyDisplayText(b)
 		catSuffix := ""
 		if b.Mode != "" {
 			catSuffix = fmt.Sprintf(" [%s/%s]", b.Mode, b.Category)
@@ -549,37 +698,26 @@ func (h *Handler) drawLines(lines []displayLine, startY, maxRows, width int) {
 		} else if li.isHeader {
 			h.lp.QueueWriteString(h.lp.SprintStyled("fg=bright-blue", text))
 		} else if li.itemIdx == h.selected_idx {
-			// Selected item: highlight with reverse video
-			padded := text
-			textWidth := wcswidth.Stringwidth(text)
-			if textWidth < width {
-				padded += strings.Repeat(" ", width-textWidth)
-			}
-			h.lp.QueueWriteString(h.lp.SprintStyled("fg=black bg=white", padded))
+			// Selected item: highlight with reverse video, preserving match highlights
+			h.drawBindingLine(li.itemIdx, width, true)
 		} else {
-			h.drawBindingLine(text, li.itemIdx, width)
+			h.drawBindingLine(li.itemIdx, width, false)
 		}
 	}
 }
 
-func (h *Handler) drawBindingLine(text string, filteredIdx, width int) {
+func (h *Handler) drawBindingLine(filteredIdx, width int, isSelected bool) {
 	if filteredIdx < 0 || filteredIdx >= len(h.filtered_idx) {
-		h.lp.QueueWriteString(text)
 		return
 	}
 	idx := h.filtered_idx[filteredIdx]
 	if idx < 0 || idx >= len(h.all_items) {
-		h.lp.QueueWriteString(text)
 		return
 	}
 	b := &h.all_items[idx].binding
 
-	// Build the key display (using unmappedLabel for items with no shortcut)
-	rawKey := b.Key
-	if rawKey == "" {
-		rawKey = unmappedLabel
-	}
-	keyDisplay := truncateToWidth(rawKey, maxKeyDisplayWidth)
+	// Build the key display
+	keyDisplay := keyDisplayText(b)
 
 	// Determine match info for highlighting (only set when a query is active)
 	var mi *matchInfo
@@ -587,49 +725,76 @@ func (h *Handler) drawBindingLine(text string, filteredIdx, width int) {
 		mi = &h.match_infos[filteredIdx]
 	}
 
-	const matchStyle = "fg=bright-yellow"
-	const keyStyle = "fg=green"
-	const unmappedStyle = "dim fg=green"
+	// Style definitions vary based on whether this row is selected
+	var matchStyle, keyStyle, unmappedStyle, baseStyle string
+	if isSelected {
+		matchStyle = "fg=bright-yellow reverse"
+		keyStyle = "fg=green reverse"
+		unmappedStyle = "dim fg=green reverse"
+		baseStyle = "reverse"
+	} else {
+		matchStyle = "fg=bright-yellow"
+		keyStyle = "fg=green"
+		unmappedStyle = "dim fg=green"
+	}
+
+	// styled applies baseStyle to s when selected, or returns s unchanged.
+	styled := func(s string) string {
+		if baseStyle != "" {
+			return h.lp.SprintStyled(baseStyle, s)
+		}
+		return s
+	}
 
 	// Render key column (4-space indent + key padded to maxKeyDisplayWidth + space)
 	paddingLen := max(0, maxKeyDisplayWidth-wcswidth.Stringwidth(keyDisplay))
-	if mi != nil && mi.colIdx == 0 {
-		ks := keyStyle
-		if b.Key == "" {
-			ks = unmappedStyle
-		}
-		h.lp.QueueWriteString("    ")
-		h.lp.QueueWriteString(h.highlightMatchedChars(keyDisplay, mi.positions, ks, matchStyle))
-		h.lp.QueueWriteString(strings.Repeat(" ", paddingLen) + " ")
-	} else if b.Key == "" {
-		h.lp.QueueWriteString(h.lp.SprintStyled(unmappedStyle, "    "+keyDisplay+strings.Repeat(" ", paddingLen)+" "))
+	pad := strings.Repeat(" ", paddingLen) + " "
+	ks := keyStyle
+	if b.Key == "" {
+		ks = unmappedStyle
+	}
+	if mi != nil && len(mi.keyPositions) > 0 {
+		h.lp.QueueWriteString(styled("    "))
+		h.lp.QueueWriteString(h.highlightMatchedChars(keyDisplay, mi.keyPositions, ks, matchStyle))
+		h.lp.QueueWriteString(styled(pad))
 	} else {
-		h.lp.QueueWriteString(h.lp.SprintStyled(keyStyle, "    "+keyDisplay+strings.Repeat(" ", paddingLen)+" "))
+		h.lp.QueueWriteString(h.lp.SprintStyled(ks, "    "+keyDisplay+pad))
 	}
 
 	// Render action display column
-	if mi != nil && mi.colIdx == 1 {
-		h.lp.QueueWriteString(h.highlightMatchedChars(b.ActionDisplay, mi.positions, "", matchStyle))
+	if mi != nil && len(mi.actionPositions) > 0 {
+		h.lp.QueueWriteString(h.highlightMatchedChars(b.ActionDisplay, mi.actionPositions, baseStyle, matchStyle))
 	} else {
-		h.lp.QueueWriteString(b.ActionDisplay)
+		h.lp.QueueWriteString(styled(b.ActionDisplay))
 	}
 
 	// Render category suffix (only present in flat / search-results mode)
 	if h.query != "" {
-		if mi != nil && mi.colIdx == 2 {
-			if b.Mode != "" {
-				h.lp.QueueWriteString(fmt.Sprintf(" [%s/", b.Mode))
-			} else {
-				h.lp.QueueWriteString(" [")
-			}
-			h.lp.QueueWriteString(h.highlightMatchedChars(b.Category, mi.positions, "", matchStyle))
-			h.lp.QueueWriteString("]")
+		prefix := " ["
+		if b.Mode != "" {
+			prefix = fmt.Sprintf(" [%s/", b.Mode)
+		}
+		if mi != nil && len(mi.categoryPositions) > 0 {
+			h.lp.QueueWriteString(styled(prefix))
+			h.lp.QueueWriteString(h.highlightMatchedChars(b.Category, mi.categoryPositions, baseStyle, matchStyle))
+			h.lp.QueueWriteString(styled("]"))
 		} else {
+			h.lp.QueueWriteString(styled(prefix + b.Category + "]"))
+		}
+	}
+
+	// For selected rows, pad the rest of the line with reverse video
+	if isSelected {
+		// Calculate rendered width and pad to fill the line
+		rendered := 4 + wcswidth.Stringwidth(keyDisplay) + paddingLen + 1 + wcswidth.Stringwidth(b.ActionDisplay)
+		if h.query != "" {
+			rendered += 2 + wcswidth.Stringwidth(b.Category) + 1
 			if b.Mode != "" {
-				h.lp.QueueWriteString(fmt.Sprintf(" [%s/%s]", b.Mode, b.Category))
-			} else {
-				h.lp.QueueWriteString(fmt.Sprintf(" [%s]", b.Category))
+				rendered += wcswidth.Stringwidth(b.Mode) + 1
 			}
+		}
+		if pad := width - rendered; pad > 0 {
+			h.lp.QueueWriteString(h.lp.SprintStyled(baseStyle, strings.Repeat(" ", pad)))
 		}
 	}
 }
