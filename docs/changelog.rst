@@ -168,6 +168,8 @@ Detailed list of changes
 0.47.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- :doc:`remote control`: Expose :code:`session_name` in the output of ``kitten @ ls`` for each window (:iss:`9732`)
+
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
 
 - Graphics protocol: Fix crash when handling invalid PNG image with direct transmission
