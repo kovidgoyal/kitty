@@ -2,7 +2,6 @@
 with pkgs; let
   inherit (lib) optional optionals;
   inherit (xorg) libX11 libXrandr libXinerama libXcursor libXi libXext;
-  inherit (darwin.apple_sdk.frameworks) Cocoa CoreGraphics Foundation IOKit Kernel OpenGL UniformTypeIdentifiers;
   harfbuzzWithCoreText = harfbuzz.override {withCoreText = stdenv.isDarwin;};
 in
   with python3Packages;
@@ -14,22 +13,12 @@ in
           lcms2
           xxHash
           simde
-          go_1_24
+          go
           matplotlib
         ]
         ++ optionals stdenv.isDarwin [
-          Cocoa
-          CoreGraphics
-          Foundation
-          IOKit
-          Kernel
-          OpenGL
-          UniformTypeIdentifiers
           libpng
           zlib
-        ]
-        ++ lib.optionals (stdenv.isDarwin && (builtins.hasAttr "UserNotifications" darwin.apple_sdk.frameworks)) [
-          darwin.apple_sdk.frameworks.UserNotifications
         ]
         ++ optionals stdenv.isLinux [
           fontconfig
