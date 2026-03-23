@@ -311,9 +311,10 @@ monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
     return ms_to_monotonic_t(500ll);
 }
 
-monotonic_t _glfwPlatformGetKeyboardRepeatDelay(void)
+void _glfwPlatformGetKeyboardRepeatDelay(monotonic_t *delay, monotonic_t *interval)
 {
-    return ms_to_monotonic_t(500ll);
+    if (delay) *delay = ms_to_monotonic_t(500ll);
+    if (interval) *interval = ms_to_monotonic_t(30ll);
 }
 
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)

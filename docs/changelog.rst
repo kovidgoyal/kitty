@@ -178,7 +178,7 @@ Detailed list of changes
 
 - Command palette: Improve searching to use word level matching (:pull:`9727`)
 
-- GLFW: Add ``glfwGetKeyboardRepeatDelay()`` to the GLFW API to query the current keyboard key-repeat delay from the OS, implemented for X11, Wayland and Cocoa backends
+- GLFW: Add ``glfwGetKeyboardRepeatDelay()`` to the GLFW API to query the current keyboard key-repeat initial delay and repeat interval from the OS, implemented for X11, Wayland and Cocoa backends
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

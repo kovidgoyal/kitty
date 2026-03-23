@@ -2206,7 +2206,7 @@ typedef bool (*glfwGrabKeyboard_func)(int);
 GFW_EXTERN glfwGrabKeyboard_func glfwGrabKeyboard_impl;
 #define glfwGrabKeyboard glfwGrabKeyboard_impl
 
-typedef monotonic_t (*glfwGetKeyboardRepeatDelay_func)(void);
+typedef void (*glfwGetKeyboardRepeatDelay_func)(monotonic_t*, monotonic_t*);
 GFW_EXTERN glfwGetKeyboardRepeatDelay_func glfwGetKeyboardRepeatDelay_impl;
 #define glfwGetKeyboardRepeatDelay glfwGetKeyboardRepeatDelay_impl
 

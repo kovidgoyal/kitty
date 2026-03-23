@@ -2876,16 +2876,16 @@ monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
     return ms_to_monotonic_t(500ll);
 }
 
-monotonic_t _glfwPlatformGetKeyboardRepeatDelay(void)
+void _glfwPlatformGetKeyboardRepeatDelay(monotonic_t *delay, monotonic_t *interval)
 {
-    monotonic_t delay = ms_to_monotonic_t(500ll);
     XkbDescPtr xkb = XkbAllocKeyboard();
     if (xkb) {
-        if (XkbGetControls(_glfw.x11.display, XkbRepeatKeysMask, xkb) == Success)
-            delay = ms_to_monotonic_t(xkb->ctrls->repeat_delay);
+        if (XkbGetControls(_glfw.x11.display, XkbRepeatKeysMask, xkb) == Success) {
+            if (delay) *delay = ms_to_monotonic_t(xkb->ctrls->repeat_delay);
+            if (interval) *interval = ms_to_monotonic_t(xkb->ctrls->repeat_interval);
+        }
         XkbFreeKeyboard(xkb, 0, True);
     }
-    return delay;
 }
 
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)

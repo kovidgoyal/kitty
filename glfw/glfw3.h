@@ -4370,7 +4370,7 @@ GLFWAPI void glfwPostEmptyEvent(void);
 GLFWAPI bool glfwGetIgnoreOSKeyboardProcessing(void);
 GLFWAPI void glfwSetIgnoreOSKeyboardProcessing(bool enabled);
 GLFWAPI bool glfwGrabKeyboard(int grab);
-GLFWAPI monotonic_t glfwGetKeyboardRepeatDelay(void);
+GLFWAPI void glfwGetKeyboardRepeatDelay(monotonic_t *delay, monotonic_t *interval);
 
 /*! @brief Returns the value of an input option for the specified window.
  *
