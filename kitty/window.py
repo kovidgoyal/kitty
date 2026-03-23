@@ -254,6 +254,7 @@ class WindowDict(TypedDict):
     created_at: int
     in_alternate_screen: bool
     neighbors: NeighborsMap
+    session_name: str
 
 
 class PipeData(TypedDict):
@@ -2106,6 +2107,7 @@ class Window:
             'created_at': self.created_at,
             'in_alternate_screen': self.screen.is_using_alternate_linebuf(),
             'neighbors': neighbors_map,
+            'session_name': self.created_in_session_name,
         }
 
     def serialize_state(self) -> dict[str, Any]:
