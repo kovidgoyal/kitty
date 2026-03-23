@@ -720,6 +720,11 @@ GLFWAPI bool glfwGrabKeyboard(int grab) {
     return _glfw.keyboard_grabbed;
 }
 
+GLFWAPI monotonic_t glfwGetKeyboardRepeatDelay(void) {
+    _GLFW_REQUIRE_INIT_OR_RETURN(ms_to_monotonic_t(500ll));
+    return _glfwPlatformGetKeyboardRepeatDelay();
+}
+
 GLFWAPI int glfwGetInputMode(GLFWwindow* handle, int mode)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;

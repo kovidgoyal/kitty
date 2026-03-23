@@ -2782,6 +2782,11 @@ monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
     return s_double_to_monotonic_t([NSEvent doubleClickInterval]);
 }
 
+monotonic_t _glfwPlatformGetKeyboardRepeatDelay(void)
+{
+    return s_double_to_monotonic_t([NSEvent keyRepeatDelay]);
+}
+
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
 {
     [window->ns.object miniaturize:nil];
