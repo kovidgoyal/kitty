@@ -512,6 +512,15 @@ class TestGraphics(BaseTest):
         sl(png_data, f=100, expecting_data=expected)
         # test error handling for loading bad png data
         self.assertRaisesRegex(ValueError, '[EBADPNG]', load_png_data, b'dsfsdfsfsfd')
+        # Test that a large PNG chunk sent via direct transmission doesn't crash
+        # when its size exceeds 2 * initial_buf_capacity. Without the fix in
+        # commit 48ab623, the buffer reallocation used MIN(2*buf_capacity, MAX_DATA_SZ)
+        # which could leave buf_capacity smaller than the payload size, causing a
+        # heap buffer overflow when the data was copied in.
+        # Initial buf_capacity for PNG without an explicit S= is 10, so 2*10=20;
+        # a 25-byte chunk previously caused a crash.
+        res = pl(b'x' * 25, f=100)
+        self.ae(res.partition(':')[0], 'EBADPNG')
 
     def test_gr_operations_with_numbers(self):
         s = self.create_screen()
@@ -1263,6 +1272,15 @@ class TestGraphics(BaseTest):
             {'gap': 40, 'id': 2, 'data': b'abcdefghijkl'*3},
             {'gap': 40, 'id': 3, 'data': b'3' * 12 + (b'333abc' + b'3' * 6) * 2},
         ))
+        # Test that compose commands with offset values that would overflow a 32-bit
+        # unsigned integer are correctly rejected with EINVAL instead of crashing.
+        # In the old code, UINT32_MAX + img->width wrapped around as uint32_t to a
+        # small value that bypassed the bounds check, causing a crash (fix: e9661f0).
+        for offset_param in ('x', 'y', 'X', 'Y'):
+            self.assertEqual(
+                li(payload=b'', a='c', i=1, r=1, c=2, s=0, v=0, f=0, **{offset_param: 0xFFFFFFFF}).code,
+                'EINVAL', f'Expected EINVAL for overflow in compose offset parameter {offset_param!r}'
+            )
 
     def test_graphics_quota_enforcement(self):
         s = self.create_screen()
