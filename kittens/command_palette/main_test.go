@@ -84,18 +84,18 @@ func newTestHandler() *Handler {
 		addBinding("mw", "Miscellaneous", Binding{
 			Key: "left", Action: "neighboring_window",
 			ActionDisplay: "neighboring_window left",
-			Definition: "neighboring_window left", Help: "Focus neighbor window",
+			Definition:    "neighboring_window left", Help: "Focus neighbor window",
 		}).
 		addBinding("mw", "Miscellaneous", testBinding("esc", "pop_keyboard_mode", "Pop keyboard mode")).
 		addMouse(Binding{
 			Key: "left press ungrabbed", Action: "mouse_selection",
 			ActionDisplay: "mouse_selection normal",
-			Definition: "mouse_selection normal",
+			Definition:    "mouse_selection normal",
 		}).
 		addMouse(Binding{
 			Key: "ctrl+left press ungrabbed", Action: "mouse_selection",
 			ActionDisplay: "mouse_selection rectangle",
-			Definition: "mouse_selection rectangle",
+			Definition:    "mouse_selection rectangle",
 		}).
 		build()
 }
@@ -1370,7 +1370,7 @@ func TestQueryRankingCrossColumnVsCategoryOnly(t *testing.T) {
 		addBinding("", "Scroll buffer", Binding{
 			Key: "ctrl+l", Action: "clear_terminal",
 			ActionDisplay: "clear_terminal reset active",
-			Definition: "clear_terminal reset active", Help: "Clear screen",
+			Definition:    "clear_terminal reset active", Help: "Clear screen",
 		}).
 		build()
 
