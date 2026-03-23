@@ -168,7 +168,7 @@ Detailed list of changes
 0.47.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- :doc:`remote control`: Expose :code:`session_name` in the output of ``kitten @ ls`` for each window (:iss:`9732`)
+- :doc:`Remote control <remote-control>`: Expose :code:`session_name` in the output of ``kitten @ ls`` for each window (:iss:`9732`)
 
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
 
@@ -179,8 +179,6 @@ Detailed list of changes
 - X11: Fix a regression in the previous release that caused an occasional crash on input device removal (:iss:`9723`)
 
 - Command palette: Improve searching to use word level matching (:pull:`9727`)
-
-- GLFW: Add ``glfwGetKeyboardRepeatDelay()`` to the GLFW API to query the current keyboard key-repeat initial delay and repeat interval from the OS, implemented for X11, Wayland and Cocoa backends
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
