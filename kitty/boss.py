@@ -2346,7 +2346,7 @@ class Boss:
         self.run_kitten_with_metadata('unicode_input', window=self.window_for_dispatch)
 
     @ac('misc', '''
-        Browse and trigger keyboard shortcuts and actions in a searchable overlay.
+        Browse and trigger keyboard shortcuts and actions in a searchable overlay (:doc:`/kittens/command-palette`)
         ''')
     def command_palette(self) -> None:
         from kittens.command_palette.main import collect_keys_data

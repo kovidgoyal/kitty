@@ -9,6 +9,6 @@ configuration examples, see the default shortcut links for each action.
 To read about keyboard mapping in more detail, see :doc:`mapping`.
 
 You can also browse and trigger these actions by pressing :sc:`command_palette`
-to run the command palette.
+to run the :doc:`/kittens/command-palette`.
 
 .. include:: /generated/actions.rst

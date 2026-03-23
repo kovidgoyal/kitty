@@ -176,6 +176,8 @@ Detailed list of changes
 
 - X11: Fix a regression in the previous release that caused an occasional crash on input device removal (:iss:`9723`)
 
+- Command palette: Improve searching to use word level matching (:pull:`9727`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

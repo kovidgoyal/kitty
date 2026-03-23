@@ -11,12 +11,12 @@ The command palette lets you browse, search and trigger all keyboard shortcuts
 and actions in |kitty| from a single searchable overlay. Press
 :sc:`command_palette` to open it (default: :kbd:`Ctrl+Shift+F3`).
 
-.. figure:: ../screenshots/command-palette.png
+.. figure:: ../screenshots/command-palette.webp
     :alt: A screenshot of the command palette kitten
     :align: center
     :width: 100%
 
-    The command palette showing search results for "window close"
+    The command palette showing search results for ``win close``.
 
 All mapped actions (those with a keyboard shortcut) and unmapped actions (those
 available but not bound to any key) are listed, organized by category. Mouse
