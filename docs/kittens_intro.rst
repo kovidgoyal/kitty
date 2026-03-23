@@ -13,6 +13,7 @@ Extend with kittens
    kittens/themes
    kittens/choose-fonts
    kittens/hints
+   kittens/command-palette
    kittens/quick-access-terminal
    kittens/choose-files
    kittens/panel
@@ -52,6 +53,11 @@ Some prominent kittens:
 :doc:`Hints <kittens/hints>`
     Select and open/paste/insert arbitrary text snippets such as URLs,
     filenames, words, lines, etc. from the terminal screen.
+
+
+:doc:`Command palette <kittens/command-palette>`
+    Browse, search and trigger all keyboard shortcuts and actions from a
+    single searchable overlay.
 
 
 :doc:`Quick access terminal <kittens/quick-access-terminal>`

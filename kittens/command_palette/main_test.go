@@ -5,53 +5,99 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-
-	"github.com/kovidgoyal/kitty/tools/fzf"
 )
 
-func sampleInputJSON() string {
-	return `{
-		"modes": {
-			"": {
-				"Copy/paste": [
-					{"key": "ctrl+shift+c", "action": "copy_to_clipboard", "action_display": "copy_to_clipboard", "definition": "copy_to_clipboard", "help": "Copy the selected text from the active window to the clipboard", "long_help": ""},
-					{"key": "ctrl+shift+v", "action": "paste_from_clipboard", "action_display": "paste_from_clipboard", "definition": "paste_from_clipboard", "help": "Paste from the clipboard to the active window", "long_help": ""}
-				],
-				"Scrolling": [
-					{"key": "ctrl+shift+up", "action": "scroll_line_up", "action_display": "scroll_line_up", "definition": "scroll_line_up", "help": "Scroll up one line", "long_help": ""},
-					{"key": "ctrl+shift+down", "action": "scroll_line_down", "action_display": "scroll_line_down", "definition": "scroll_line_down", "help": "Scroll down one line", "long_help": ""}
-				],
-				"Window management": [
-					{"key": "ctrl+shift+enter", "action": "new_window", "action_display": "new_window", "definition": "new_window", "help": "Open a new window", "long_help": ""}
-				]
-			},
-			"mw": {
-				"Miscellaneous": [
-					{"key": "left", "action": "neighboring_window", "action_display": "neighboring_window left", "definition": "neighboring_window left", "help": "Focus neighbor window", "long_help": ""},
-					{"key": "esc", "action": "pop_keyboard_mode", "action_display": "pop_keyboard_mode", "definition": "pop_keyboard_mode", "help": "Pop keyboard mode", "long_help": ""}
-				]
-			}
+// testBinding creates a Binding where Action, ActionDisplay, and Definition all
+// equal action. Covers 90% of test bindings.
+func testBinding(key, action, help string) Binding {
+	return Binding{
+		Key:           key,
+		Action:        action,
+		ActionDisplay: action,
+		Definition:    action,
+		Help:          help,
+	}
+}
+
+// testMouseBinding creates a mouse Binding where ActionDisplay differs from
+// Action. Action is derived as the first word of actionDisplay.
+func testMouseBinding(key, actionDisplay string) Binding {
+	action := actionDisplay
+	if idx := strings.IndexByte(actionDisplay, ' '); idx >= 0 {
+		action = actionDisplay[:idx]
+	}
+	return Binding{
+		Key:           key,
+		Action:        action,
+		ActionDisplay: actionDisplay,
+		Definition:    actionDisplay,
+	}
+}
+
+// testHandlerBuilder constructs a Handler with programmatic data (no JSON round-trip).
+type testHandlerBuilder struct {
+	input InputData
+}
+
+func newBuilder() *testHandlerBuilder {
+	return &testHandlerBuilder{
+		input: InputData{
+			Modes:         make(map[string]map[string][]Binding),
+			CategoryOrder: make(map[string][]string),
 		},
-		"mouse": [
-			{"key": "left press ungrabbed", "action": "mouse_selection", "action_display": "mouse_selection normal", "definition": "mouse_selection normal", "help": "", "long_help": ""},
-			{"key": "ctrl+left press ungrabbed", "action": "mouse_selection", "action_display": "mouse_selection rectangle", "definition": "mouse_selection rectangle", "help": "", "long_help": ""}
-		],
-		"mode_order": ["", "mw"],
-		"category_order": {
-			"": ["Copy/paste", "Scrolling", "Window management"],
-			"mw": ["Miscellaneous"]
-		}
-	}`
+	}
+}
+
+func (b *testHandlerBuilder) addBinding(mode, category string, binding Binding) *testHandlerBuilder {
+	if b.input.Modes[mode] == nil {
+		b.input.Modes[mode] = make(map[string][]Binding)
+		b.input.ModeOrder = append(b.input.ModeOrder, mode)
+	}
+	cats := b.input.Modes[mode]
+	if _, ok := cats[category]; !ok {
+		b.input.CategoryOrder[mode] = append(b.input.CategoryOrder[mode], category)
+	}
+	cats[category] = append(cats[category], binding)
+	return b
+}
+
+func (b *testHandlerBuilder) addMouse(binding Binding) *testHandlerBuilder {
+	b.input.Mouse = append(b.input.Mouse, binding)
+	return b
+}
+
+func (b *testHandlerBuilder) build() *Handler {
+	h := &Handler{}
+	h.input_data = b.input
+	h.flattenBindings()
+	h.show_unmapped = true
+	return h
 }
 
 func newTestHandler() *Handler {
-	h := &Handler{}
-	if err := json.Unmarshal([]byte(sampleInputJSON()), &h.input_data); err != nil {
-		panic("test data JSON is invalid: " + err.Error())
-	}
-	h.flattenBindings()
-	h.matcher = fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME)
-	return h
+	return newBuilder().
+		addBinding("", "Copy/paste", testBinding("ctrl+shift+c", "copy_to_clipboard", "Copy the selected text from the active window to the clipboard")).
+		addBinding("", "Copy/paste", testBinding("ctrl+shift+v", "paste_from_clipboard", "Paste from the clipboard to the active window")).
+		addBinding("", "Scrolling", testBinding("ctrl+shift+up", "scroll_line_up", "Scroll up one line")).
+		addBinding("", "Scrolling", testBinding("ctrl+shift+down", "scroll_line_down", "Scroll down one line")).
+		addBinding("", "Window management", testBinding("ctrl+shift+enter", "new_window", "Open a new window")).
+		addBinding("mw", "Miscellaneous", Binding{
+			Key: "left", Action: "neighboring_window",
+			ActionDisplay: "neighboring_window left",
+			Definition:    "neighboring_window left", Help: "Focus neighbor window",
+		}).
+		addBinding("mw", "Miscellaneous", testBinding("esc", "pop_keyboard_mode", "Pop keyboard mode")).
+		addMouse(Binding{
+			Key: "left press ungrabbed", Action: "mouse_selection",
+			ActionDisplay: "mouse_selection normal",
+			Definition:    "mouse_selection normal",
+		}).
+		addMouse(Binding{
+			Key: "ctrl+left press ungrabbed", Action: "mouse_selection",
+			ActionDisplay: "mouse_selection rectangle",
+			Definition:    "mouse_selection rectangle",
+		}).
+		build()
 }
 
 func TestFlattenAllBindings(t *testing.T) {
@@ -156,14 +202,12 @@ func TestFilterMatchesSubset(t *testing.T) {
 	// Verify all returned items contain relevant text in at least one column
 	for _, idx := range h.filtered_idx {
 		item := &h.all_items[idx]
-		found := false
-		for _, col := range item.colTexts {
-			if strings.Contains(strings.ToLower(col), "clipboard") {
-				found = true
-				break
-			}
+		found := strings.Contains(strings.ToLower(item.keyText), "clipboard") ||
+			strings.Contains(strings.ToLower(item.actionText), "clipboard") ||
+			strings.Contains(strings.ToLower(item.categoryText), "clipboard")
+		if !found {
+			t.Fatalf("Matched item %q has no column containing 'clipboard'", item.actionText)
 		}
-		_ = found // FZF does fuzzy matching, so this is a soft check
 	}
 }
 
@@ -239,16 +283,16 @@ func TestSelectedBindingNilWhenOverflowIndex(t *testing.T) {
 func TestSearchTextContainsKeyAndAction(t *testing.T) {
 	h := newTestHandler()
 	for i, item := range h.all_items {
-		// colTexts[0] = key (or unmappedLabel for empty key), [1] = action_display, [2] = category
+		// keyText = key (or unmappedLabel for empty key), actionText = action_display, categoryText = category
 		expectedKey := item.binding.Key
 		if expectedKey == "" {
 			expectedKey = unmappedLabel
 		}
-		if !strings.Contains(item.colTexts[0], expectedKey) {
-			t.Fatalf("Item %d: colTexts[0] %q should contain key %q", i, item.colTexts[0], expectedKey)
+		if !strings.Contains(item.keyText, expectedKey) {
+			t.Fatalf("Item %d: keyText %q should contain key %q", i, item.keyText, expectedKey)
 		}
-		if !strings.Contains(item.colTexts[1], item.binding.ActionDisplay) {
-			t.Fatalf("Item %d: colTexts[1] %q should contain action %q", i, item.colTexts[1], item.binding.ActionDisplay)
+		if !strings.Contains(item.actionText, item.binding.ActionDisplay) {
+			t.Fatalf("Item %d: actionText %q should contain action %q", i, item.actionText, item.binding.ActionDisplay)
 		}
 	}
 }
@@ -271,13 +315,7 @@ func TestHelpTextPreserved(t *testing.T) {
 }
 
 func TestEmptyInputData(t *testing.T) {
-	h := &Handler{}
-	emptyJSON := `{"modes": {}, "mouse": [], "mode_order": [], "category_order": {}}`
-	if err := json.Unmarshal([]byte(emptyJSON), &h.input_data); err != nil {
-		t.Fatal(err)
-	}
-	h.flattenBindings()
-	h.matcher = fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME)
+	h := newBuilder().build()
 	h.updateFilter()
 
 	if len(h.all_items) != 0 {
@@ -560,7 +598,7 @@ func TestScrollAdjustRevealsSectionHeader(t *testing.T) {
 	}
 }
 
-func TestColTextsPopulated(t *testing.T) {
+func TestDisplayItemFieldsPopulated(t *testing.T) {
 	h := newTestHandler()
 	for i, item := range h.all_items {
 		if item.binding.IsMouse {
@@ -570,14 +608,14 @@ func TestColTextsPopulated(t *testing.T) {
 		if expectedKey == "" {
 			expectedKey = unmappedLabel
 		}
-		if item.colTexts[0] != expectedKey {
-			t.Fatalf("Item %d: colTexts[0]=%q expected %q", i, item.colTexts[0], expectedKey)
+		if item.keyText != expectedKey {
+			t.Fatalf("Item %d: keyText=%q expected %q", i, item.keyText, expectedKey)
 		}
-		if item.colTexts[1] != item.binding.ActionDisplay {
-			t.Fatalf("Item %d: colTexts[1]=%q expected %q", i, item.colTexts[1], item.binding.ActionDisplay)
+		if item.actionText != item.binding.ActionDisplay {
+			t.Fatalf("Item %d: actionText=%q expected %q", i, item.actionText, item.binding.ActionDisplay)
 		}
-		if item.colTexts[2] != item.binding.Category {
-			t.Fatalf("Item %d: colTexts[2]=%q expected %q", i, item.colTexts[2], item.binding.Category)
+		if item.categoryText != item.binding.Category {
+			t.Fatalf("Item %d: categoryText=%q expected %q", i, item.categoryText, item.binding.Category)
 		}
 	}
 }
@@ -594,14 +632,12 @@ func TestFilterSingleColumnMatch(t *testing.T) {
 	// All matched items should have 'scroll' in exactly one column, not spread across columns
 	for _, idx := range h.filtered_idx {
 		item := &h.all_items[idx]
-		colMatch := false
-		for _, col := range item.colTexts {
-			if strings.Contains(strings.ToLower(col), "scroll") {
-				colMatch = true
-				break
-			}
+		colMatch := strings.Contains(strings.ToLower(item.keyText), "scroll") ||
+			strings.Contains(strings.ToLower(item.actionText), "scroll") ||
+			strings.Contains(strings.ToLower(item.categoryText), "scroll")
+		if !colMatch {
+			t.Fatalf("Matched item %q has no column containing 'scroll'", item.actionText)
 		}
-		_ = colMatch // FZF does fuzzy matching; at least the characters should appear in one column
 	}
 }
 
@@ -616,8 +652,8 @@ func TestFilterMatchInfosParallelToFilteredIdx(t *testing.T) {
 		t.Fatalf("match_infos length %d != filtered_idx length %d", len(h.match_infos), len(h.filtered_idx))
 	}
 	for i, mi := range h.match_infos {
-		if mi.colIdx < 0 || mi.colIdx > 2 {
-			t.Fatalf("match_infos[%d].colIdx=%d out of range [0,2]", i, mi.colIdx)
+		if len(mi.keyPositions) == 0 && len(mi.actionPositions) == 0 && len(mi.categoryPositions) == 0 {
+			t.Fatalf("match_infos[%d] has no positions in any column", i)
 		}
 	}
 }
@@ -633,25 +669,10 @@ func TestFilterMatchInfosNilWhenNoQuery(t *testing.T) {
 
 func TestUnmappedActionDisplayed(t *testing.T) {
 	// Inject an item with an empty key (unmapped action) and verify display
-	h := &Handler{}
-	unmappedJSON := `{
-		"modes": {
-			"": {
-				"Miscellaneous": [
-					{"key": "ctrl+n", "action": "new_window", "action_display": "new_window", "definition": "new_window", "help": "Open new window", "long_help": ""},
-					{"key": "", "action": "scroll_home", "action_display": "scroll_home", "definition": "scroll_home", "help": "Scroll to top", "long_help": ""}
-				]
-			}
-		},
-		"mouse": [],
-		"mode_order": [""],
-		"category_order": {"": ["Miscellaneous"]}
-	}`
-	if err := json.Unmarshal([]byte(unmappedJSON), &h.input_data); err != nil {
-		t.Fatal(err)
-	}
-	h.flattenBindings()
-	h.matcher = fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME)
+	h := newBuilder().
+		addBinding("", "Miscellaneous", testBinding("ctrl+n", "new_window", "Open new window")).
+		addBinding("", "Miscellaneous", testBinding("", "scroll_home", "Scroll to top")).
+		build()
 
 	if len(h.all_items) != 2 {
 		t.Fatalf("Expected 2 items, got %d", len(h.all_items))
@@ -667,9 +688,9 @@ func TestUnmappedActionDisplayed(t *testing.T) {
 	if unmapped == nil {
 		t.Fatal("Expected to find unmapped item")
 	}
-	// colTexts[0] should be unmappedLabel, not empty
-	if unmapped.colTexts[0] != unmappedLabel {
-		t.Fatalf("Expected colTexts[0]=%q for unmapped item, got %q", unmappedLabel, unmapped.colTexts[0])
+	// keyText should be unmappedLabel, not empty
+	if unmapped.keyText != unmappedLabel {
+		t.Fatalf("Expected keyText=%q for unmapped item, got %q", unmappedLabel, unmapped.keyText)
 	}
 
 	// With show_unmapped=true, unmapped action should be searchable
@@ -694,25 +715,11 @@ func TestUnmappedActionDisplayed(t *testing.T) {
 func TestShowUnmappedToggle(t *testing.T) {
 	// TestShowUnmappedToggle creates a handler with both mapped and unmapped items
 	// and verifies that the show_unmapped flag correctly filters the display.
-	h := &Handler{}
-	mixedJSON := `{
-		"modes": {
-			"": {
-				"Copy/paste": [
-					{"key": "ctrl+c", "action": "copy", "action_display": "copy", "definition": "copy", "help": "Copy", "long_help": ""},
-					{"key": "", "action": "paste_from_buffer", "action_display": "paste_from_buffer", "definition": "paste_from_buffer", "help": "Paste from buffer", "long_help": ""}
-				]
-			}
-		},
-		"mouse": [],
-		"mode_order": [""],
-		"category_order": {"": ["Copy/paste"]}
-	}`
-	if err := json.Unmarshal([]byte(mixedJSON), &h.input_data); err != nil {
-		t.Fatal(err)
-	}
-	h.flattenBindings()
-	h.matcher = fzf.NewFuzzyMatcher(fzf.DEFAULT_SCHEME)
+	h := newBuilder().
+		addBinding("", "Copy/paste", testBinding("ctrl+c", "copy", "Copy")).
+		addBinding("", "Copy/paste", testBinding("", "paste_from_buffer", "Paste from buffer")).
+		build()
+	h.show_unmapped = false // override default from build()
 
 	if len(h.all_items) != 2 {
 		t.Fatalf("Expected 2 items in all_items, got %d", len(h.all_items))
@@ -742,6 +749,647 @@ func TestShowUnmappedToggle(t *testing.T) {
 	for _, idx := range h.filtered_idx {
 		if h.all_items[idx].binding.Key == "" {
 			t.Fatal("Unmapped item should not appear in search results when show_unmapped=false")
+		}
+	}
+}
+
+// newMultiTokenTestHandler creates a handler with items designed to test
+// multi-token search. It has items where different tokens match different
+// columns, enabling cross-column and RRF ranking tests.
+func newMultiTokenTestHandler() *Handler {
+	return newBuilder().
+		addBinding("", "Copy/paste", testBinding("ctrl+shift+c", "copy_to_clipboard", "Copy selected text")).
+		addBinding("", "Copy/paste", testBinding("ctrl+shift+v", "paste_from_clipboard", "Paste from clipboard")).
+		addBinding("", "Scrolling", testBinding("ctrl+shift+up", "scroll_line_up", "Scroll up one line")).
+		addBinding("", "Scrolling", testBinding("ctrl+shift+down", "scroll_line_down", "Scroll down one line")).
+		addBinding("", "Scrolling", testBinding("ctrl+shift+page_up", "scroll_page_up", "Scroll up one page")).
+		addBinding("", "Scrolling", testBinding("ctrl+shift+home", "scroll_home", "Scroll to top")).
+		addBinding("", "Window management", testBinding("ctrl+shift+enter", "new_window", "Open a new window")).
+		addBinding("", "Window management", testBinding("ctrl+shift+w", "close_window", "Close the active window")).
+		addBinding("", "Tab management", testBinding("ctrl+shift+t", "new_tab", "Open a new tab")).
+		addBinding("", "Tab management", testBinding("ctrl+shift+q", "close_tab", "Close the active tab")).
+		build()
+}
+
+func TestMultiTokenAllMatchRanksAbovePartial(t *testing.T) {
+	// An item matching ALL tokens should rank above an item matching only SOME tokens.
+	// "scroll up" should rank scroll_line_up and scroll_page_up (both tokens match)
+	// above scroll_home or scroll_line_down (only "scroll" matches).
+	h := newMultiTokenTestHandler()
+	h.query = "scroll up"
+	h.updateFilter()
+
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected matches for 'scroll up'")
+	}
+
+	// Items matching both "scroll" and "up" should appear before items matching only one token.
+	// scroll_line_up and scroll_page_up match both; scroll_line_down and scroll_home match only "scroll".
+	topResults := make([]string, 0)
+	for i, idx := range h.filtered_idx {
+		action := h.all_items[idx].binding.ActionDisplay
+		if i < 2 {
+			topResults = append(topResults, action)
+		}
+	}
+	for _, action := range topResults {
+		if !strings.Contains(action, "scroll") || !strings.Contains(action, "up") {
+			t.Fatalf("Top result %q should match both 'scroll' and 'up'", action)
+		}
+	}
+}
+
+func TestMultiTokenCrossColumnMatch(t *testing.T) {
+	// A query with tokens that match different columns should find the item.
+	// "ctrl+shift+c copy" — "ctrl+shift+c" matches the key column,
+	// "copy" matches the action column.
+	h := newMultiTokenTestHandler()
+	h.query = "ctrl+shift+c copy"
+	h.updateFilter()
+
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected matches for cross-column query 'ctrl+shift+c copy'")
+	}
+
+	// copy_to_clipboard (key=ctrl+shift+c, action=copy_to_clipboard) should be the top result
+	topAction := h.all_items[h.filtered_idx[0]].binding.ActionDisplay
+	if topAction != "copy_to_clipboard" {
+		t.Fatalf("Expected top result to be 'copy_to_clipboard', got %q", topAction)
+	}
+}
+
+func TestMultiTokenCrossColumnCategoryMatch(t *testing.T) {
+	// A token matching the category column combined with a token matching the action column.
+	// "window close" — "window" matches category "Window management",
+	// "close" matches action "close_window".
+	h := newMultiTokenTestHandler()
+	h.query = "window close"
+	h.updateFilter()
+
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected matches for 'window close'")
+	}
+
+	// close_window should rank highly since both tokens match
+	found := false
+	for _, idx := range h.filtered_idx[:min(3, len(h.filtered_idx))] {
+		if h.all_items[idx].binding.ActionDisplay == "close_window" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("Expected 'close_window' in top results for 'window close'")
+	}
+}
+
+func TestMultiTokenExtraWhitespace(t *testing.T) {
+	// Extra whitespace in the query should not produce empty/ghost tokens.
+	// "  scroll   up  " should behave the same as "scroll up".
+	h := newMultiTokenTestHandler()
+	h.query = "scroll up"
+	h.updateFilter()
+	normalResults := make([]int, len(h.filtered_idx))
+	copy(normalResults, h.filtered_idx)
+
+	h.query = "  scroll   up  "
+	h.updateFilter()
+
+	if len(h.filtered_idx) != len(normalResults) {
+		t.Fatalf("Extra whitespace changed result count: %d vs %d", len(h.filtered_idx), len(normalResults))
+	}
+	for i := range h.filtered_idx {
+		if h.filtered_idx[i] != normalResults[i] {
+			t.Fatalf("Extra whitespace changed result order at position %d", i)
+		}
+	}
+}
+
+func TestMultiTokenAllWhitespaceIsEmptyQuery(t *testing.T) {
+	// A query that is only whitespace should behave like an empty query:
+	// return all items in original order with no match_infos.
+	h := newMultiTokenTestHandler()
+	h.query = "   "
+	h.updateFilter()
+
+	if len(h.filtered_idx) != len(h.all_items) {
+		t.Fatalf("All-whitespace query should return all %d items, got %d", len(h.all_items), len(h.filtered_idx))
+	}
+	if h.match_infos != nil {
+		t.Fatal("All-whitespace query should produce nil match_infos")
+	}
+}
+
+func TestMultiTokenSingleTokenRegression(t *testing.T) {
+	// A single-token query (no spaces) should produce the same results as before.
+	h := newMultiTokenTestHandler()
+	h.query = "clipboard"
+	h.updateFilter()
+
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected matches for single token 'clipboard'")
+	}
+	// All results should have "clipboard" matched in at least one column
+	for _, idx := range h.filtered_idx {
+		item := &h.all_items[idx]
+		anyMatch := strings.Contains(strings.ToLower(item.keyText), "clipboard") ||
+			strings.Contains(strings.ToLower(item.actionText), "clipboard") ||
+			strings.Contains(strings.ToLower(item.categoryText), "clipboard")
+		if !anyMatch {
+			t.Fatalf("Matched item %q has no column containing 'clipboard'", item.actionText)
+		}
+	}
+	// match_infos should still be parallel to filtered_idx
+	if len(h.match_infos) != len(h.filtered_idx) {
+		t.Fatalf("match_infos length %d != filtered_idx length %d", len(h.match_infos), len(h.filtered_idx))
+	}
+}
+
+func TestMultiTokenNoMatchReturnsEmpty(t *testing.T) {
+	// When no item matches any token, the result should be empty.
+	h := newMultiTokenTestHandler()
+	h.query = "zzzzz xxxxx"
+	h.updateFilter()
+
+	if len(h.filtered_idx) != 0 {
+		t.Fatalf("Expected no matches for nonsense multi-token query, got %d", len(h.filtered_idx))
+	}
+}
+
+func TestMultiTokenPartialMatchStillShown(t *testing.T) {
+	// Items matching only some tokens should still appear,
+	// but ranked lower than items matching all tokens.
+	h := newMultiTokenTestHandler()
+	h.query = "scroll zzzznonexistent"
+	h.updateFilter()
+
+	// "scroll" matches several items, "zzzznonexistent" matches nothing.
+	// Items matching "scroll" should still appear.
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected partial matches when one token matches and one doesn't")
+	}
+
+	// Verify that matched items are related to "scroll"
+	for _, idx := range h.filtered_idx {
+		item := &h.all_items[idx]
+		anyMatch := strings.Contains(strings.ToLower(item.keyText), "scroll") ||
+			strings.Contains(strings.ToLower(item.actionText), "scroll") ||
+			strings.Contains(strings.ToLower(item.categoryText), "scroll")
+		if !anyMatch {
+			t.Fatalf("Matched item %q has no column containing 'scroll'", item.actionText)
+		}
+	}
+}
+
+func TestMultiTokenMatchInfosTrackMultipleColumns(t *testing.T) {
+	// When tokens match different columns, match_infos should reflect
+	// positions in each matched column so highlighting works correctly.
+	h := newMultiTokenTestHandler()
+	h.query = "tab close"
+	h.updateFilter()
+
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected matches for 'tab close'")
+	}
+	if len(h.match_infos) != len(h.filtered_idx) {
+		t.Fatalf("match_infos length %d != filtered_idx length %d", len(h.match_infos), len(h.filtered_idx))
+	}
+
+	// Find close_tab — "tab" matches category "Tab management" and action "close_tab",
+	// "close" matches action "close_tab". match_infos must have positions in multiple columns.
+	for fi, idx := range h.filtered_idx {
+		if h.all_items[idx].binding.ActionDisplay == "close_tab" {
+			mi := h.match_infos[fi]
+			if len(mi.actionPositions) == 0 {
+				t.Fatal("close_tab: expected match positions in action column")
+			}
+			if len(mi.categoryPositions) == 0 {
+				t.Fatal("close_tab: expected match positions in category column for 'tab' in 'Tab management'")
+			}
+			return
+		}
+	}
+	t.Fatal("Expected close_tab in results for 'tab close'")
+}
+
+func TestMultiTokenOrderIndependence(t *testing.T) {
+	// Token order should not matter: "close window" and "window close"
+	// should produce the same set of results (possibly in different order,
+	// but the same items).
+	h := newMultiTokenTestHandler()
+
+	h.query = "window close"
+	h.updateFilter()
+	results1 := make(map[int]bool)
+	for _, idx := range h.filtered_idx {
+		results1[idx] = true
+	}
+
+	h.query = "close window"
+	h.updateFilter()
+	results2 := make(map[int]bool)
+	for _, idx := range h.filtered_idx {
+		results2[idx] = true
+	}
+
+	if len(results1) != len(results2) {
+		t.Fatalf("Token order changed result count: %d vs %d", len(results1), len(results2))
+	}
+	for idx := range results1 {
+		if !results2[idx] {
+			t.Fatalf("Item %d present in 'window close' but not 'close window'", idx)
+		}
+	}
+}
+
+// topActions returns the action_display names of the first n results after
+// running query on h. It is a test helper for verifying ranking.
+func topActions(h *Handler, query string, n int) []string {
+	h.query = query
+	h.updateFilter()
+	var result []string
+	for i, idx := range h.filtered_idx {
+		if i >= n {
+			break
+		}
+		result = append(result, h.all_items[idx].binding.ActionDisplay)
+	}
+	return result
+}
+
+func TestQueryRankingScrollUp(t *testing.T) {
+	h := newMultiTokenTestHandler()
+	top := topActions(h, "scroll up", 4)
+	if len(top) < 4 {
+		t.Fatalf("Expected at least 4 results for 'scroll up', got %d", len(top))
+	}
+	// Top 2 should match both "scroll" and "up", with scroll_line_up first (shorter)
+	for _, action := range top[:2] {
+		if !strings.Contains(action, "scroll") || !strings.Contains(action, "up") {
+			t.Fatalf("Top result %q should match both 'scroll' and 'up'", action)
+		}
+	}
+	if top[0] != "scroll_line_up" {
+		t.Fatalf("Expected scroll_line_up first, got %q", top[0])
+	}
+	if top[1] != "scroll_page_up" {
+		t.Fatalf("Expected scroll_page_up second, got %q", top[1])
+	}
+	// Items matching only "scroll" (not "up") should rank below
+	for _, action := range top[2:] {
+		if strings.Contains(action, "up") {
+			continue // other "up" matches are fine here
+		}
+		if !strings.Contains(action, "scroll") {
+			t.Fatalf("Lower result %q should still contain 'scroll'", action)
+		}
+	}
+}
+
+func TestQueryRankingNewWindow(t *testing.T) {
+	h := newMultiTokenTestHandler()
+	top := topActions(h, "new window", 3)
+	if len(top) == 0 {
+		t.Fatal("Expected results for 'new window'")
+	}
+	if top[0] != "new_window" {
+		t.Fatalf("Expected new_window first, got %q", top[0])
+	}
+	// close_window should not appear above new_window
+	for i, action := range top {
+		if action == "close_window" && i == 0 {
+			t.Fatal("close_window should not be the top result for 'new window'")
+		}
+	}
+}
+
+func TestQueryRankingCloseTab(t *testing.T) {
+	h := newMultiTokenTestHandler()
+	top := topActions(h, "close tab", 3)
+	if len(top) == 0 {
+		t.Fatal("Expected results for 'close tab'")
+	}
+	if top[0] != "close_tab" {
+		t.Fatalf("Expected close_tab first, got %q", top[0])
+	}
+}
+
+func TestQueryRankingSingleToken(t *testing.T) {
+	h := newMultiTokenTestHandler()
+	top := topActions(h, "clipboard", 2)
+	if len(top) < 2 {
+		t.Fatalf("Expected at least 2 results for 'clipboard', got %d", len(top))
+	}
+	// copy_to_clipboard is shorter than paste_from_clipboard
+	if top[0] != "copy_to_clipboard" {
+		t.Fatalf("Expected copy_to_clipboard first, got %q", top[0])
+	}
+	if top[1] != "paste_from_clipboard" {
+		t.Fatalf("Expected paste_from_clipboard second, got %q", top[1])
+	}
+}
+
+func TestQueryRankingExactActionMatch(t *testing.T) {
+	h := newMultiTokenTestHandler()
+	top := topActions(h, "new_tab", 1)
+	if len(top) == 0 {
+		t.Fatal("Expected results for 'new_tab'")
+	}
+	if top[0] != "new_tab" {
+		t.Fatalf("Expected new_tab first, got %q", top[0])
+	}
+}
+
+// newMouseTestHandler creates a handler with realistic mouse bindings matching
+// the actual kitty command palette data, to test ranking of mouse_selection queries.
+// Includes keyboard bindings with "selection" in their names to ensure mouse_selection
+// items rank above them for the query "mouse selection".
+func newMouseTestHandler() *Handler {
+	return newBuilder().
+		addBinding("", "Scrolling", testBinding("ctrl+shift+up", "scroll_line_up", "Scroll up")).
+		addBinding("", "Copy/paste", testBinding("ctrl+shift+c", "copy_to_clipboard", "Copy selected text")).
+		addBinding("", "Copy/paste", testBinding("shift+insert", "paste_selection", "Paste from primary selection")).
+		addBinding("", "Copy/paste", testBinding("ctrl+shift+v", "paste_from_clipboard", "Paste from clipboard")).
+		addBinding("", "Copy/paste", testBinding("", "copy_or_interrupt", "Copy selection or interrupt")).
+		addBinding("", "Copy/paste", testBinding("", "copy_and_clear_or_interrupt", "Copy selection and clear")).
+		addBinding("", "Copy/paste", testBinding("", "pass_selection_to_program", "Pass selection to program")).
+		addMouse(testMouseBinding("shift+left click ungrabbed", "mouse_handle_click selection link prompt")).
+		addMouse(testMouseBinding("shift+left click grabbed ungrabbed", "mouse_handle_click selection link prompt")).
+		addMouse(testMouseBinding("ctrl+shift+left release grabbed ungrabbed", "mouse_handle_click link")).
+		addMouse(testMouseBinding("shift+middle release ungrabbed grabbed", "paste_selection")).
+		addMouse(testMouseBinding("middle release ungrabbed", "paste_from_selection")).
+		addMouse(testMouseBinding("left drag ungrabbed", "mouse_selection")).
+		addMouse(testMouseBinding("shift+left drag ungrabbed", "mouse_selection")).
+		addMouse(testMouseBinding("left triplepress ungrabbed", "mouse_selection line")).
+		addMouse(testMouseBinding("shift+left doublepress ungrabbed", "mouse_selection word")).
+		addMouse(testMouseBinding("shift+left triplepress ungrabbed", "mouse_selection line_from_point")).
+		addMouse(testMouseBinding("shift+left triplepress+grabbed", "mouse_selection line_from_point")).
+		addMouse(testMouseBinding("right press ungrabbed", "mouse_selection extend")).
+		addMouse(testMouseBinding("shift+left press ungrabbed", "mouse_selection extend")).
+		addMouse(testMouseBinding("left press ungrabbed", "mouse_selection normal")).
+		addMouse(testMouseBinding("ctrl+left press ungrabbed", "mouse_selection rectangle")).
+		addMouse(testMouseBinding("ctrl+shift+right press ungrabbed", "mouse_selection rectangle extend")).
+		addMouse(testMouseBinding("ctrl+shift+left press ungrabbed", "mouse_selection rectangle extend")).
+		addMouse(testMouseBinding("shift+left triplepress", "mouse_selection line_from_point")).
+		addMouse(testMouseBinding("left press", "mouse_selection normal")).
+		build()
+}
+
+// searchResult captures the full display state of a single result row:
+// all three visible columns plus which columns have highlighted match positions.
+type searchResult struct {
+	key      string // key binding
+	action   string // action_display
+	category string // category
+	// Which columns have highlighted (matched) character positions.
+	keyMatch      bool
+	actionMatch   bool
+	categoryMatch bool
+}
+
+// queryResults runs query on h and returns the full display state of each result.
+func queryResults(h *Handler, query string) []searchResult {
+	h.query = query
+	h.updateFilter()
+	results := make([]searchResult, len(h.filtered_idx))
+	for i, idx := range h.filtered_idx {
+		item := &h.all_items[idx]
+		results[i] = searchResult{
+			key:           item.keyText,
+			action:        item.actionText,
+			category:      item.categoryText,
+			keyMatch:      len(h.match_infos[i].keyPositions) > 0,
+			actionMatch:   len(h.match_infos[i].actionPositions) > 0,
+			categoryMatch: len(h.match_infos[i].categoryPositions) > 0,
+		}
+	}
+	return results
+}
+
+func TestQueryRankingMouseSelection(t *testing.T) {
+	h := newMouseTestHandler()
+	results := queryResults(h, "mouse selection")
+
+	if len(results) == 0 {
+		t.Fatal("Expected results for 'mouse selection'")
+	}
+
+	// Bare "mouse_selection" (shortest, exact match for both tokens) must rank
+	// above all suffixed variants like mouse_selection line/word/extend/normal.
+	if results[0].action != "mouse_selection" {
+		t.Fatalf("Expected bare 'mouse_selection' first, got %q", results[0].action)
+	}
+
+	// All mouse_selection variants (action starts with "mouse_selection") must
+	// rank above any non-mouse_selection item.
+	lastMouseSelection := -1
+	firstOther := -1
+	for i, r := range results {
+		if strings.HasPrefix(r.action, "mouse_selection") {
+			lastMouseSelection = i
+		} else if firstOther == -1 {
+			firstOther = i
+		}
+	}
+	if firstOther != -1 && firstOther < lastMouseSelection {
+		t.Fatalf("Non-mouse_selection item %q at position %d ranks above mouse_selection item at position %d",
+			results[firstOther].action, firstOther+1, lastMouseSelection+1)
+	}
+
+	// Every mouse_selection result must have action column highlighted (both
+	// "mouse" and "selection" appear in the action text).
+	for i, r := range results {
+		if !strings.HasPrefix(r.action, "mouse_selection") {
+			continue
+		}
+		if !r.actionMatch {
+			t.Fatalf("Result %d (%s): mouse_selection item must have action column highlighted", i+1, r.action)
+		}
+	}
+
+	// mouse_handle_click also matches both "mouse" and "selection" in its action
+	// text, but it's a longer string so it should rank below mouse_selection items.
+	for i, r := range results {
+		if strings.HasPrefix(r.action, "mouse_handle_click") {
+			if i < lastMouseSelection {
+				t.Fatalf("Result %d (%s): should rank below all mouse_selection variants (last at %d)",
+					i+1, r.action, lastMouseSelection+1)
+			}
+		}
+	}
+}
+
+func TestQueryRankingMouseSelectionSingleToken(t *testing.T) {
+	h := newMouseTestHandler()
+	results := queryResults(h, "mouse")
+	if len(results) == 0 {
+		t.Fatal("Expected results for 'mouse'")
+	}
+	// Bare "mouse_selection" (shortest action with "mouse") should be first
+	if results[0].action != "mouse_selection" {
+		t.Fatalf("Expected bare 'mouse_selection' first, got %q", results[0].action)
+	}
+	// Items matching only via category (paste_selection, paste_from_selection)
+	// should rank below items matching "mouse" in the action column.
+	lastActionMatch := -1
+	for i, r := range results {
+		if r.actionMatch {
+			lastActionMatch = i
+		}
+	}
+	for i, r := range results {
+		if !r.actionMatch && r.categoryMatch && i < lastActionMatch {
+			t.Fatalf("Result %d (%s): category-only match should rank below action matches", i+1, r.action)
+		}
+	}
+}
+
+func TestQueryRankingShorterMatchFirst(t *testing.T) {
+	h := newMouseTestHandler()
+	// "mouse_selection normal" (shorter) should rank above "mouse_selection rectangle" (longer)
+	// when both match equally well
+	top := topActions(h, "mouse_selection normal", 1)
+	if len(top) == 0 {
+		t.Fatal("Expected results")
+	}
+	if top[0] != "mouse_selection normal" {
+		t.Fatalf("Expected 'mouse_selection normal' first, got %q", top[0])
+	}
+}
+
+func TestQueryMatchInfoColumns(t *testing.T) {
+	// Verify match_infos correctly tracks positions in all 3 columns: key, action, category.
+	h := newMultiTokenTestHandler()
+
+	// "ctrl clipboard" — "ctrl" matches key column (ctrl+shift+c), "clipboard" matches action
+	h.query = "ctrl clipboard"
+	h.updateFilter()
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected matches for 'ctrl clipboard'")
+	}
+
+	// Find copy_to_clipboard in results
+	for fi, idx := range h.filtered_idx {
+		if h.all_items[idx].binding.ActionDisplay != "copy_to_clipboard" {
+			continue
+		}
+		mi := h.match_infos[fi]
+		// Key column (col 0) should have positions for "ctrl"
+		if len(mi.keyPositions) == 0 {
+			t.Fatal("copy_to_clipboard: expected match positions in key column for 'ctrl'")
+		}
+		// Action column (col 1) should have positions for "clipboard"
+		if len(mi.actionPositions) == 0 {
+			t.Fatal("copy_to_clipboard: expected match positions in action column for 'clipboard'")
+		}
+		return
+	}
+	t.Fatal("Expected copy_to_clipboard in results")
+}
+
+func TestQueryMatchInfoCategoryColumn(t *testing.T) {
+	// Verify the category column (col 2) gets match positions when a token matches it.
+	h := newMultiTokenTestHandler()
+
+	// "tab close" — "tab" matches category "Tab management", "close" matches action close_tab
+	h.query = "tab close"
+	h.updateFilter()
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected matches for 'tab close'")
+	}
+	for fi, idx := range h.filtered_idx {
+		if h.all_items[idx].binding.ActionDisplay != "close_tab" {
+			continue
+		}
+		mi := h.match_infos[fi]
+		// Action column (col 1) should have positions for "close" and/or "tab"
+		if len(mi.actionPositions) == 0 {
+			t.Fatal("close_tab: expected match positions in action column")
+		}
+		// Category column (col 2) should have positions for "tab" in "Tab management"
+		if len(mi.categoryPositions) == 0 {
+			t.Fatal("close_tab: expected match positions in category column for 'tab'")
+		}
+		return
+	}
+	t.Fatal("Expected close_tab in results")
+}
+
+func TestQueryMatchInfoKeyColumn(t *testing.T) {
+	// Verify the key column (col 0) gets match positions when searching by key binding.
+	h := newMouseTestHandler()
+
+	// "left press" — matches key column for mouse bindings
+	h.query = "left press"
+	h.updateFilter()
+	if len(h.filtered_idx) == 0 {
+		t.Fatal("Expected matches for 'left press'")
+	}
+	// At least one result should have positions in the key column
+	foundKeyMatch := false
+	for fi := range h.filtered_idx {
+		mi := h.match_infos[fi]
+		if len(mi.keyPositions) > 0 {
+			foundKeyMatch = true
+			break
+		}
+	}
+	if !foundKeyMatch {
+		t.Fatal("Expected at least one result with match positions in key column for 'left press'")
+	}
+}
+
+func TestQueryRankingShorterActionFirst(t *testing.T) {
+	// When 2 tokens both match in the action column of item A,
+	// A should rank above item B that also matches both tokens but has a
+	// longer action string. This verifies that shorter matches are preferred.
+	h := newBuilder().
+		addBinding("", "Window management", testBinding("ctrl+n", "new_window", "Open a new window")).
+		addBinding("", "Window management", testBinding("ctrl+w", "close_active", "Close the active pane")).
+		addBinding("", "Miscellaneous", testBinding("ctrl+shift+n", "new_os_window", "Open new OS window")).
+		build()
+
+	// "new window" — both tokens match new_window's action coherently,
+	// while new_os_window also matches but is longer.
+	top := topActions(h, "new window", 2)
+	if len(top) < 2 {
+		t.Fatalf("Expected at least 2 results, got %d", len(top))
+	}
+	// new_window should beat new_os_window (shorter action string)
+	if top[0] != "new_window" {
+		t.Fatalf("Expected new_window first (shorter match), got %q", top[0])
+	}
+}
+
+func TestQueryRankingCrossColumnVsCategoryOnly(t *testing.T) {
+	// An item matching tokens across key+action columns should rank above
+	// an item that only matches via the category column.
+	h := newBuilder().
+		addBinding("", "Scrolling", testBinding("ctrl+shift+up", "scroll_line_up", "Scroll up")).
+		addBinding("", "Scrolling", testBinding("page_up", "scroll_page_up", "Scroll one page up")).
+		addBinding("", "Scroll buffer", Binding{
+			Key: "ctrl+l", Action: "clear_terminal",
+			ActionDisplay: "clear_terminal reset active",
+			Definition:    "clear_terminal reset active", Help: "Clear screen",
+		}).
+		build()
+
+	// "scroll up" — scroll_line_up and scroll_page_up match both tokens in action;
+	// clear_terminal only matches "scroll" via its category "Scroll buffer".
+	top := topActions(h, "scroll up", 3)
+	if len(top) < 2 {
+		t.Fatalf("Expected at least 2 results, got %d", len(top))
+	}
+	// Both scroll_*_up actions should rank above clear_terminal
+	for i, action := range top[:2] {
+		if !strings.Contains(action, "scroll") || !strings.Contains(action, "up") {
+			t.Fatalf("Result %d: expected scroll_*_up variant, got %q", i+1, action)
+		}
+	}
+	// If clear_terminal appears, it should be last
+	for i, action := range top {
+		if action == "clear_terminal" && i < 2 {
+			t.Fatalf("clear_terminal (category-only match) should rank below action matches, but got position %d", i+1)
 		}
 	}
 }
