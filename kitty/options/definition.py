@@ -838,7 +838,7 @@ opt('focus_follows_mouse', 'no',
     long_text='''
 Set the active window to the window under the mouse when moving the mouse around.
 On macOS, this will also cause the OS Window under the mouse to be focused automatically when the
-mouse enters it.
+mouse enters it, as long as the kitty application is the active application.
 '''
     )
 
