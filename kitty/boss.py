@@ -1934,7 +1934,7 @@ class Boss:
             window_id, drag_started = get_window_being_dragged()[:2]
             if window_id and drag_started:
                 for q in self.all_tab_managers:
-                    q.on_window_drop_move(window_id, not is_leave, x, y)
+                    q.on_window_drop_move(window_id, (not is_leave) and (q is tm), x, y)
 
     def on_drop(self, os_window_id: int, drop: dict[str, bytes] | int, from_self: bool, x: int, y: int) -> None:
         if isinstance(drop, int):

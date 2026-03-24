@@ -1644,9 +1644,9 @@ class TabManager:  # {{{
                 self.layout_tab_bar()
             return
         if self.tab_bar_should_be_visible:
-            all_tabs = [t.tab_id for t in self.tab_bar.last_laid_out_tabs]
+            all_tabs = [t.tab_id for t in self.tab_bar.last_laid_out_tabs if t.tab_id >= 0]
         else:
-            all_tabs = [t.tab_id for t in self.tab_bar_data]
+            all_tabs = [t.tab_id for t in self.tab_bar_data if t.tab_id >= 0]
         force_update = False
         if self.tab_being_dropped is None:
             tab = get_boss().tab_for_id(tab_id)
