@@ -180,6 +180,8 @@ Detailed list of changes
 
 - Command palette: Improve searching to use word level matching (:pull:`9727`)
 
+- hints kitten: A new option to set the background color of matched text (:pull:`9745`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
