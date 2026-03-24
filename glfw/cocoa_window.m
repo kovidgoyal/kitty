@@ -4209,11 +4209,22 @@ set_image_for_dragging_item(NSDraggingItem *draggingItem, const GLFWimage *thumb
         if (!_glfw.ns.drag_image) { [imageRep release]; return ENOMEM; }
         [_glfw.ns.drag_image addRepresentation:imageRep];
         [imageRep release];
+        if (!_glfw.ns.drag_session) {
+            _GLFWwindow *glfw_window = _glfwWindowForId(_glfw.drag.window_id);
+            if (glfw_window && glfw_window->ns.view) {
+                NSRect contentRect = [glfw_window->ns.view frame];
+                NSPoint cursor = NSMakePoint(glfw_window->virtualCursorPosX,
+                                             contentRect.size.height - glfw_window->virtualCursorPosY);
+                [draggingItem setDraggingFrame:NSMakeRect(cursor.x, cursor.y, pointSize.width, pointSize.height) contents:nil];
+            } else {
+                [draggingItem setDraggingFrame:NSMakeRect(0, 0, pointSize.width, pointSize.height) contents:nil];
+            }
+        }
         [draggingItem setImageComponentsProvider:^NSArray<NSDraggingImageComponent *> * _Nonnull{
             NSDraggingImageComponent *icon = [NSDraggingImageComponent draggingImageComponentWithKey:NSDraggingImageComponentIconKey];
             NSImage *image = _glfw.ns.drag_image;
             icon.contents = image;
-            icon.frame = NSMakeRect(pointSize.width, pointSize.height, pointSize.width, pointSize.height);
+            icon.frame = NSMakeRect(0, 0, pointSize.width, pointSize.height);
             return @[icon];
         }];
     }
