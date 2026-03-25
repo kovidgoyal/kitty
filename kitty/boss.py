@@ -2381,7 +2381,10 @@ class Boss:
             if (w := self.window_id_map.get(tab.renaming_in_window)) is not None and w in tab:
                 tab.set_active_window(w)
                 return
-            prefilled = (tab.name or tab.title).strip()
+            if title in ('" "', "' '"):
+                prefilled = ''
+            else:
+                prefilled = (tab.name or tab.title).strip()
             tab_id = tab.id
 
             def on_rename_done(new_title: str) -> None:
