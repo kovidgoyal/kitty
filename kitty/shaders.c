@@ -857,23 +857,18 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
 static bool
 show_hyperlink_targets_with_modifiers(int mods) {
     switch (OPT(show_hyperlink_targets)) {
-        case SHOW_HYPERLINK_TARGETS_ALWAYS:
-            return true;
-        case SHOW_HYPERLINK_TARGETS_CTRL:
-            return (mods & GLFW_MOD_CONTROL) != 0;
-        case SHOW_HYPERLINK_TARGETS_SHIFT:
-            return (mods & GLFW_MOD_SHIFT) != 0;
-        case SHOW_HYPERLINK_TARGETS_CMD:
-            return (mods & GLFW_MOD_SUPER) != 0;
-        case SHOW_HYPERLINK_TARGETS_NEVER:
-        default:
-            return false;
+        case SHOW_HYPERLINK_TARGETS_ALWAYS: return true;
+        case SHOW_HYPERLINK_TARGETS_CTRL: return (mods & GLFW_MOD_CONTROL) != 0;
+        case SHOW_HYPERLINK_TARGETS_SHIFT: return (mods & GLFW_MOD_SHIFT) != 0;
+        case SHOW_HYPERLINK_TARGETS_SUPER: return (mods & GLFW_MOD_SUPER) != 0;
+        case SHOW_HYPERLINK_TARGETS_ALT: return (mods & GLFW_MOD_ALT) != 0;
+        default: return false;
     }
 }
 
 static bool
 has_hyperlink_target(OSWindow *os_window, Window *w, Screen *screen) {
-    return show_hyperlink_targets_with_modifiers(global_state.mouse_modifiers) &&
+    return show_hyperlink_targets_with_modifiers(global_state.mods_at_last_key_or_button_event) &&
         screen->current_hyperlink_under_mouse.id &&
         w && !is_mouse_hidden(os_window) &&
         global_state.mouse_hover_in_window == w->id;

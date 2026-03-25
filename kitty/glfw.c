@@ -526,7 +526,6 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
     if (key_modifier != -1) update_modifier_state_on_modifier_key_event(ev, key_modifier, is_left);
     #endif
     global_state.mods_at_last_key_or_button_event = ev->mods;
-    global_state.mouse_modifiers = ev->mods & ~GLFW_LOCK_MASK;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
     if (is_window_ready_for_callbacks() && !ev->fake_event_on_focus_change) on_key_input(ev);
     global_state.callback_os_window = NULL;
@@ -563,7 +562,6 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     monotonic_t now = monotonic();
     cursor_active_callback(now);
     global_state.mods_at_last_key_or_button_event = mods;
-    global_state.mouse_modifiers = mods & ~GLFW_LOCK_MASK;
     OSWindow *window = global_state.callback_os_window;
     window->last_mouse_activity_at = now;
     if (button >= 0 && (unsigned int)button < arraysz(global_state.callback_os_window->mouse_button_pressed)) {

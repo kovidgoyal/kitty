@@ -35,8 +35,9 @@ typedef enum ShowHyperlinkTargets {
     SHOW_HYPERLINK_TARGETS_NEVER = 0,
     SHOW_HYPERLINK_TARGETS_ALWAYS = 1,
     SHOW_HYPERLINK_TARGETS_CTRL = 2,
-    SHOW_HYPERLINK_TARGETS_SHIFT = 3,
-    SHOW_HYPERLINK_TARGETS_CMD = 4
+    SHOW_HYPERLINK_TARGETS_SHIFT = 4,
+    SHOW_HYPERLINK_TARGETS_SUPER = 8,
+    SHOW_HYPERLINK_TARGETS_ALT = 16
 } ShowHyperlinkTargets;
 
 struct MenuItem {
@@ -405,7 +406,6 @@ typedef struct GlobalState {
     struct { double x, y; } default_dpi;
     id_type active_drag_in_window, tracked_drag_in_window, mouse_hover_in_window, active_drag_resize;
     int active_drag_button, tracked_drag_button;
-    int mouse_modifiers;
     int mods_at_last_key_or_button_event;
     CloseRequest quit_request;
     bool redirect_mouse_handling;

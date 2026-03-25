@@ -18,8 +18,8 @@ from kitty.options.utils import (
     mouse_hide_wait, narrow_symbols, notify_on_cmd_finish, optional_edge_width, parse_font_spec,
     parse_map, parse_mouse_map, paste_actions, pointer_shape_when_dragging, remote_control_password,
     resize_debounce_time, scrollback_lines, scrollback_pager_history_size, scrollbar_color,
-    shell_integration, store_multiple, symbol_map, tab_activity_symbol, tab_bar_edge,
-    tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
+    shell_integration, show_hyperlink_targets, store_multiple, symbol_map, tab_activity_symbol,
+    tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
     tab_title_template, text_fg_override_threshold, titlebar_color, to_cursor_shape,
     to_cursor_unfocused_shape, to_font_size, to_layout_names, to_modifiers,
     transparent_background_colors, underline_exclusion, url_prefixes, url_style, visual_bell_duration,
@@ -1290,16 +1290,7 @@ class Parser:
         ans['shell_integration'] = shell_integration(val)
 
     def show_hyperlink_targets(self, val: str, ans: dict[str, typing.Any]) -> None:
-        val = val.lower()
-        if val == 'yes':
-            val = 'always'
-        elif val == 'no':
-            val = 'never'
-        if val not in self.choices_for_show_hyperlink_targets:
-            raise ValueError(f"The value {val} is not a valid choice for show_hyperlink_targets")
-        ans["show_hyperlink_targets"] = val
-
-    choices_for_show_hyperlink_targets = frozenset(('ctrl', 'cmd', 'shift', 'always', 'never'))
+        ans['show_hyperlink_targets'] = show_hyperlink_targets(val)
 
     def single_window_margin_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['single_window_margin_width'] = optional_edge_width(val)

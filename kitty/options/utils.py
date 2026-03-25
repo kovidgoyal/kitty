@@ -601,6 +601,24 @@ def url_prefixes(x: str) -> tuple[str, ...]:
     return tuple(a.lower() for a in x.replace(',', ' ').split())
 
 
+
+def show_hyperlink_targets(x: str) -> Literal['never', 'always', 'Ctrl', 'Shift', 'Super', 'Alt']:
+    q = x.lower()
+    if q in ('never', 'n', 'no', 'false'):
+        return 'never'
+    if q in ('y', 'yes', 'true', 'always'):
+        return 'always'
+    if q == 'ctrl':
+        return 'Ctrl'
+    if q == 'shift':
+        return 'Shift'
+    if q in ('super', 'cmd'):
+        return 'Super'
+    if q in ('alt', 'meta'):
+        return 'Alt'
+    raise KeyError(f'Unknown value for show_hyperlink_targets: {x!r}')
+
+
 def copy_on_select(raw: str) -> str:
     q = raw.lower()
     # boolean values special cased for backwards compat
