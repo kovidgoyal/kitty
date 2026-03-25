@@ -605,7 +605,7 @@ convert_from_opts_url_excluded_characters(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_show_hyperlink_targets(PyObject *val, Options *opts) {
-    opts->show_hyperlink_targets = PyObject_IsTrue(val);
+    opts->show_hyperlink_targets = show_hyperlink_targets(val);
 }
 
 static void

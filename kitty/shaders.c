@@ -855,19 +855,40 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
 }
 
 static bool
+show_hyperlink_targets_with_modifiers(int mods) {
+    switch (OPT(show_hyperlink_targets)) {
+        case SHOW_HYPERLINK_TARGETS_ALWAYS:
+            return true;
+        case SHOW_HYPERLINK_TARGETS_CTRL:
+            return (mods & GLFW_MOD_CONTROL) != 0;
+        case SHOW_HYPERLINK_TARGETS_SHIFT:
+            return (mods & GLFW_MOD_SHIFT) != 0;
+        case SHOW_HYPERLINK_TARGETS_CMD:
+            return (mods & GLFW_MOD_SUPER) != 0;
+        case SHOW_HYPERLINK_TARGETS_NEVER:
+        default:
+            return false;
+    }
+}
+
+static bool
 has_hyperlink_target(OSWindow *os_window, Window *w, Screen *screen) {
-    return OPT(show_hyperlink_targets) && screen->current_hyperlink_under_mouse.id && w && !is_mouse_hidden(os_window) && global_state.mouse_hover_in_window == w->id;
+    return show_hyperlink_targets_with_modifiers(global_state.mouse_modifiers) &&
+        screen->current_hyperlink_under_mouse.id &&
+        w && !is_mouse_hidden(os_window) &&
+        global_state.mouse_hover_in_window == w->id;
 }
 
 static void
 draw_hyperlink_target(const UIRenderData *ui) {
     if (!has_hyperlink_target(ui->os_window, ui->window, ui->screen)) return;
     Screen *screen = ui->screen;
-    const bool along_bottom = screen->current_hyperlink_under_mouse.y < 3;
     Window *window = ui->window;
+    const bool along_bottom = screen->current_hyperlink_under_mouse.y < 3;
     WindowBarData *bd = &window->url_target_bar_data;
-    if (bd->hyperlink_id_for_title_object != screen->current_hyperlink_under_mouse.id) {
-        bd->hyperlink_id_for_title_object = screen->current_hyperlink_under_mouse.id;
+    hyperlink_id_type hid = screen->current_hyperlink_under_mouse.id;
+    if (bd->hyperlink_id_for_title_object != hid) {
+        bd->hyperlink_id_for_title_object = hid;
         Py_CLEAR(bd->last_drawn_title_object_id);
         const char *url = get_hyperlink_for_id(screen->hyperlink_pool, bd->hyperlink_id_for_title_object, true);
         if (url == NULL) url = "";
