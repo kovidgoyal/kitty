@@ -714,11 +714,15 @@ a double backslash.
 '''
     )
 
-opt('show_hyperlink_targets', 'no',
-    option_type='to_bool', ctype='bool',
+opt('show_hyperlink_targets', 'never', choices=('ctrl', 'cmd', 'shift', 'always', 'never'),
+    ctype='show_hyperlink_targets',
     long_text='''
 When the mouse hovers over a terminal hyperlink, show the actual URL that will
-be activated when the hyperlink is clicked.
+be activated when the hyperlink is clicked. Set to :code:`ctrl`, :code:`cmd` or
+:code:`shift` to show only while the corresponding modifier key is pressed
+(:kbd:`Ctrl`, :kbd:`Super` (macOS :kbd:`Cmd`), :kbd:`Shift`). If multiple modifiers
+are pressed, the URL is shown as long as the configured modifier is among them.
+:code:`always` to always show, or :code:`never` to never show.
 ''')
 
 

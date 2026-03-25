@@ -31,6 +31,13 @@ typedef struct UrlPrefix {
 
 typedef enum AdjustmentUnit { POINT = 0, PERCENT = 1, PIXEL = 2 } AdjustmentUnit;
 typedef enum UnderlineHyperlinks { UNDERLINE_ON_HOVER = 0, UNDERLINE_ALWAYS = 1, UNDERLINE_NEVER = 2 } UnderlineHyperlinks;
+typedef enum ShowHyperlinkTargets {
+    SHOW_HYPERLINK_TARGETS_NEVER = 0,
+    SHOW_HYPERLINK_TARGETS_ALWAYS = 1,
+    SHOW_HYPERLINK_TARGETS_CTRL = 2,
+    SHOW_HYPERLINK_TARGETS_SHIFT = 3,
+    SHOW_HYPERLINK_TARGETS_CMD = 4
+} ShowHyperlinkTargets;
 
 struct MenuItem {
     const char* *location;
@@ -122,7 +129,7 @@ typedef struct Options {
     struct {
         float val; AdjustmentUnit unit;
     } underline_position, underline_thickness, strikethrough_position, strikethrough_thickness, cell_width, cell_height, baseline;
-    bool show_hyperlink_targets;
+    ShowHyperlinkTargets show_hyperlink_targets;
     UnderlineHyperlinks underline_hyperlinks;
     int background_blur;
     long macos_titlebar_color;
@@ -398,6 +405,8 @@ typedef struct GlobalState {
     struct { double x, y; } default_dpi;
     id_type active_drag_in_window, tracked_drag_in_window, mouse_hover_in_window, active_drag_resize;
     int active_drag_button, tracked_drag_button;
+    int mouse_modifiers;
+    int mods_at_last_key_or_button_event;
     CloseRequest quit_request;
     bool redirect_mouse_handling;
     WindowLogoTable *all_window_logos;

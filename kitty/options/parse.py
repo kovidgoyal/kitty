@@ -1290,7 +1290,16 @@ class Parser:
         ans['shell_integration'] = shell_integration(val)
 
     def show_hyperlink_targets(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['show_hyperlink_targets'] = to_bool(val)
+        val = val.lower()
+        if val == 'yes':
+            val = 'always'
+        elif val == 'no':
+            val = 'never'
+        if val not in self.choices_for_show_hyperlink_targets:
+            raise ValueError(f"The value {val} is not a valid choice for show_hyperlink_targets")
+        ans["show_hyperlink_targets"] = val
+
+    choices_for_show_hyperlink_targets = frozenset(('ctrl', 'cmd', 'shift', 'always', 'never'))
 
     def single_window_margin_width(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['single_window_margin_width'] = optional_edge_width(val)

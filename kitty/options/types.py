@@ -28,6 +28,7 @@ choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none'
 choices_for_placement_strategy = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
 choices_for_scrollbar = typing.Literal['scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered']
+choices_for_show_hyperlink_targets = typing.Literal['ctrl', 'cmd', 'shift', 'always', 'never']
 choices_for_strip_trailing_spaces = typing.Literal['always', 'never', 'smart']
 choices_for_tab_bar_align = typing.Literal['left', 'center', 'right']
 choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant', 'custom']
@@ -646,7 +647,7 @@ class Options:
     selection_foreground: kitty.fast_data_types.Color | None = Color(0, 0, 0)
     shell: str = '.'
     shell_integration: frozenset[str] = frozenset({'enabled'})
-    show_hyperlink_targets: bool = False
+    show_hyperlink_targets: choices_for_show_hyperlink_targets = 'never'
     single_window_margin_width: FloatEdges = FloatEdges(left=-1.0, top=-1.0, right=-1.0, bottom=-1.0)
     single_window_padding_width: FloatEdges = FloatEdges(left=-1.0, top=-1.0, right=-1.0, bottom=-1.0)
     startup_session: str | None = None

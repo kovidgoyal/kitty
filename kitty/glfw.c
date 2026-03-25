@@ -457,8 +457,6 @@ refresh_callback(GLFWwindow *w) {
     request_tick_callback();
 }
 
-static int mods_at_last_key_or_button_event = 0;
-
 #ifndef __APPLE__
 typedef struct modifier_key_state {
     bool left, right;
@@ -526,8 +524,9 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
     bool is_left;
     int key_modifier = key_to_modifier(ev->key, &is_left);
     if (key_modifier != -1) update_modifier_state_on_modifier_key_event(ev, key_modifier, is_left);
-#endif
-    mods_at_last_key_or_button_event = ev->mods;
+    #endif
+    global_state.mods_at_last_key_or_button_event = ev->mods;
+    global_state.mouse_modifiers = ev->mods & ~GLFW_LOCK_MASK;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
     if (is_window_ready_for_callbacks() && !ev->fake_event_on_focus_change) on_key_input(ev);
     global_state.callback_os_window = NULL;
@@ -546,10 +545,10 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
     if (entered) {
         debug_input("Mouse cursor entered window: %llu at %fx%f\n", global_state.callback_os_window->id, x, y);
         cursor_active_callback(now);
-        if (is_window_ready_for_callbacks()) enter_event(mods_at_last_key_or_button_event);
+        if (is_window_ready_for_callbacks()) enter_event(global_state.mods_at_last_key_or_button_event);
     } else {
         debug_input("Mouse cursor left window: %llu\n", global_state.callback_os_window->id);
-        if (is_window_ready_for_callbacks()) leave_event(mods_at_last_key_or_button_event);
+        if (is_window_ready_for_callbacks()) leave_event(global_state.mods_at_last_key_or_button_event);
     }
     request_tick_callback();
     global_state.callback_os_window = NULL;
@@ -563,7 +562,8 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
 #endif
     monotonic_t now = monotonic();
     cursor_active_callback(now);
-    mods_at_last_key_or_button_event = mods;
+    global_state.mods_at_last_key_or_button_event = mods;
+    global_state.mouse_modifiers = mods & ~GLFW_LOCK_MASK;
     OSWindow *window = global_state.callback_os_window;
     window->last_mouse_activity_at = now;
     if (button >= 0 && (unsigned int)button < arraysz(global_state.callback_os_window->mouse_button_pressed)) {
@@ -591,7 +591,7 @@ on_mouse_position_update(double x, double y) {
     global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
     global_state.callback_os_window->mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
     global_state.callback_os_window->has_received_cursor_pos_event = true;
-    if (is_window_ready_for_callbacks()) mouse_event(-1, mods_at_last_key_or_button_event, -1);
+    if (is_window_ready_for_callbacks()) mouse_event(-1, global_state.mods_at_last_key_or_button_event, -1);
     request_tick_callback();
 }
 

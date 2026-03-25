@@ -98,6 +98,17 @@ underline_hyperlinks(PyObject *x) {
     }
 }
 
+static inline ShowHyperlinkTargets
+show_hyperlink_targets(PyObject *x) {
+    const char *in = PyUnicode_AsUTF8(x);
+    if (!in) return SHOW_HYPERLINK_TARGETS_NEVER;
+    if (strcmp(in, "always") == 0) return SHOW_HYPERLINK_TARGETS_ALWAYS;
+    if (strcmp(in, "ctrl") == 0) return SHOW_HYPERLINK_TARGETS_CTRL;
+    if (strcmp(in, "shift") == 0) return SHOW_HYPERLINK_TARGETS_SHIFT;
+    if (strcmp(in, "cmd") == 0) return SHOW_HYPERLINK_TARGETS_CMD;
+    return SHOW_HYPERLINK_TARGETS_NEVER;
+}
+
 static inline BackgroundImageLayout
 bglayout(PyObject *layout_name) {
     const char *name = PyUnicode_AsUTF8(layout_name);
