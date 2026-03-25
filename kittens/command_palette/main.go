@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
+	"github.com/kovidgoyal/kitty/tools/config"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
@@ -256,21 +257,23 @@ type CachedSettings struct {
 }
 
 type Handler struct {
-	lp              *loop.Loop
-	screen_size     loop.ScreenSize
-	all_items       []DisplayItem
-	filtered_idx    []int       // indices into all_items for current results
-	match_infos     []matchInfo // parallel to filtered_idx, valid when query != ""
-	query           string
-	selected_idx    int
-	scroll_offset   int
-	input_data      InputData
-	result          string // action definition to execute after exit
-	display_lines   []displayLine
-	results_start_y int
-	results_height  int
-	show_unmapped   bool
-	cv              *utils.CachedValues[*CachedSettings]
+	lp                 *loop.Loop
+	screen_size        loop.ScreenSize
+	all_items          []DisplayItem
+	filtered_idx       []int       // indices into all_items for current results
+	match_infos        []matchInfo // parallel to filtered_idx, valid when query != ""
+	query              string
+	selected_idx       int
+	scroll_offset      int
+	input_data         InputData
+	result             string // action definition to execute after exit
+	display_lines      []displayLine
+	results_start_y    int
+	results_height     int
+	show_unmapped      bool
+	cv                 *utils.CachedValues[*CachedSettings]
+	shortcut_tracker   config.ShortcutTracker
+	keyboard_shortcuts []*config.KeyAction
 }
 
 func (h *Handler) initialize() (string, error) {
@@ -289,6 +292,8 @@ func (h *Handler) initialize() (string, error) {
 	h.cv = utils.NewCachedValues("command-palette", &CachedSettings{ShowUnmapped: true})
 	settings := h.cv.Load()
 	h.show_unmapped = settings.ShowUnmapped
+
+	h.keyboard_shortcuts = config.ResolveShortcuts(NewConfig().KeyboardShortcuts)
 
 	if err := h.loadData(); err != nil {
 		return "", err
@@ -852,16 +857,27 @@ func (h *Handler) onKeyEvent(ev *loop.KeyEvent) error {
 		h.triggerSelected()
 		return nil
 	}
-	if ev.MatchesPressOrRepeat("up") || ev.MatchesPressOrRepeat("ctrl+k") || ev.MatchesPressOrRepeat("ctrl+p") {
+	if ev.MatchesPressOrRepeat("up") {
 		ev.Handled = true
 		h.moveSelection(-1)
 		return nil
 	}
-	if ev.MatchesPressOrRepeat("down") || ev.MatchesPressOrRepeat("ctrl+j") || ev.MatchesPressOrRepeat("ctrl+n") {
+	if ev.MatchesPressOrRepeat("down") {
 		ev.Handled = true
 		h.moveSelection(1)
 		return nil
 	}
+	if ac := h.shortcut_tracker.Match(ev, h.keyboard_shortcuts); ac != nil {
+		ev.Handled = true
+		switch ac.Name {
+		case "selection_up":
+			h.moveSelection(-1)
+		case "selection_down":
+			h.moveSelection(1)
+		}
+		return nil
+	}
+
 	if ev.MatchesPressOrRepeat("page_up") {
 		ev.Handled = true
 		delta := max(1, int(h.screen_size.HeightCells)-4)

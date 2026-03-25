@@ -156,15 +156,15 @@ map('Change to root directory', 'cd_root ctrl+/ cd /')
 map('Change to home directory', 'cd_home ctrl+~ cd ~')
 map('Change to home directory', 'cd_home ctrl+` cd ~')
 map('Change to home directory', 'cd_home ctrl+shift+` cd ~')
-map('Change to temp directory', 'cd_tmp ctrl+t cd /tmp')
+map('Change to temp directory', 'cd_tmp --allow-fallback=shifted,ascii ctrl+t cd /tmp')
 
-map('Next filter', 'next_filter ctrl+f 1')
-map('Previous filter', 'prev_filter alt+f -1')
+map('Next filter', 'next_filter --allow-fallback=shifted,ascii ctrl+f 1')
+map('Previous filter', 'prev_filter --allow-fallback=shifted,ascii alt+f -1')
 
-map('Toggle showing dotfiles', 'toggle_dotfiles alt+h toggle dotfiles')
-map('Toggle showing ignored files', 'toggle_ignorefiles alt+i toggle ignorefiles')
-map('Toggle sorting by dates', 'toggle_sort_by_dates alt+d toggle sort_by_dates')
-map('Toggle showing preview', 'toggle_preview alt+p toggle preview')
+map('Toggle showing dotfiles', 'toggle_dotfiles --allow-fallback=shifted,ascii alt+h toggle dotfiles')
+map('Toggle showing ignored files', 'toggle_ignorefiles --allow-fallback=shifted,ascii alt+i toggle ignorefiles')
+map('Toggle sorting by dates', 'toggle_sort_by_dates --allow-fallback=shifted,ascii alt+d toggle sort_by_dates')
+map('Toggle showing preview', 'toggle_preview --allow-fallback=shifted,ascii alt+p toggle preview')
 
 egr()  # }}}
 

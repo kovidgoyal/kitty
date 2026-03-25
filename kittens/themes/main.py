@@ -3,7 +3,58 @@
 
 import sys
 
+from kitty.conf.types import Definition
 from kitty.simple_cli_definitions import CompletionSpec
+
+definition = Definition(
+    '!kittens.themes',
+)
+
+agr = definition.add_group
+egr = definition.end_group
+map = definition.add_map
+
+# shortcuts {{{
+agr('shortcuts', 'Keyboard shortcuts')
+
+# Browsing mode shortcuts
+map('Quit',
+    'quit --allow-fallback=shifted,ascii q quit',
+    )
+map('Scroll down',
+    'scroll_down --allow-fallback=shifted,ascii j scroll_down',
+    )
+map('Scroll up',
+    'scroll_up --allow-fallback=shifted,ascii k scroll_up',
+    )
+map('Start search',
+    'search --allow-fallback=shifted,ascii s search',
+    )
+map('Accept theme',
+    'accept --allow-fallback=shifted,ascii c accept',
+    )
+
+# Accepting mode shortcuts
+map('Abort and return to browsing',
+    'abort --allow-fallback=shifted,ascii a abort',
+    )
+map('Place theme file',
+    'place_theme --allow-fallback=shifted,ascii p place_theme',
+    )
+map('Modify config file',
+    'modify_conf --allow-fallback=shifted,ascii m modify_conf',
+    )
+map('Save as dark scheme',
+    'dark_scheme --allow-fallback=shifted,ascii d dark_scheme',
+    )
+map('Save as light scheme',
+    'light_scheme --allow-fallback=shifted,ascii l light_scheme',
+    )
+map('Save as no preference scheme',
+    'no_preference --allow-fallback=shifted,ascii n no_preference',
+    )
+
+egr()  # }}}
 
 help_text = (
     'Change the kitty theme. If no theme name is supplied, run interactively, otherwise'
@@ -57,3 +108,5 @@ elif __name__ == '__doc__':
     cd['help_text'] = help_text
     cd['short_desc'] = 'Manage kitty color schemes easily'
     cd['args_completion'] = CompletionSpec.from_string('type:special group:complete_themes')
+elif __name__ == '__conf__':
+    sys.options_definition = definition  # type: ignore

@@ -225,6 +225,8 @@ class KeyEvent(NamedTuple):
         is_shifted = bool(self.shifted_key and self.shift)
         if is_shifted and (mods & ~SHIFT, self.shifted_key) == spec:
             return True
+        if self.alternate_key and self.key and len(self.key) == 1 and 127 < ord(self.key) < 0xE000 and (mods, self.alternate_key) == spec:
+            return True
         return False
 
     def matches_without_mods(self, spec: str | ParsedShortcut, types: int = EventType.PRESS | EventType.REPEAT) -> bool:

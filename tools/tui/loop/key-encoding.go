@@ -7,6 +7,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/kovidgoyal/kitty"
 )
@@ -285,7 +286,12 @@ func ParseShortcut(spec string) *ParsedShortcut {
 	return &ans
 }
 
-func (self *KeyEvent) MatchesParsedShortcut(ps *ParsedShortcut, event_type KeyEventType) bool {
+func isNonASCIIKey(key string) bool {
+	r, size := utf8.DecodeRuneInString(key)
+	return size > 0 && size == len(key) && r > 127 && r < 0xE000 && r != utf8.RuneError
+}
+
+func (self *KeyEvent) MatchesParsedShortcutWithFallback(ps *ParsedShortcut, event_type KeyEventType, allowFallback string) bool {
 	if self.Type&event_type == 0 {
 		return false
 	}
@@ -293,10 +299,17 @@ func (self *KeyEvent) MatchesParsedShortcut(ps *ParsedShortcut, event_type KeyEv
 	if mods == ps.Mods && self.Key == ps.KeyName {
 		return true
 	}
-	if self.ShiftedKey != "" && mods&SHIFT != 0 && (mods & ^SHIFT) == ps.Mods && self.ShiftedKey == ps.KeyName {
+	if strings.Contains(allowFallback, "shifted") && self.ShiftedKey != "" && mods&SHIFT != 0 && (mods & ^SHIFT) == ps.Mods && self.ShiftedKey == ps.KeyName {
+		return true
+	}
+	if strings.Contains(allowFallback, "ascii") && self.AlternateKey != "" && isNonASCIIKey(self.Key) && mods == ps.Mods && self.AlternateKey == ps.KeyName {
 		return true
 	}
 	return false
+}
+
+func (self *KeyEvent) MatchesParsedShortcut(ps *ParsedShortcut, event_type KeyEventType) bool {
+	return self.MatchesParsedShortcutWithFallback(ps, event_type, "shifted,ascii")
 }
 
 func (self *KeyEvent) Matches(spec string, event_type KeyEventType) bool {
@@ -305,6 +318,10 @@ func (self *KeyEvent) Matches(spec string, event_type KeyEventType) bool {
 
 func (self *KeyEvent) MatchesPressOrRepeat(spec string) bool {
 	return self.MatchesParsedShortcut(ParseShortcut(spec), PRESS|REPEAT)
+}
+
+func (self *KeyEvent) MatchesPressOrRepeatWithFallback(spec string, allowFallback string) bool {
+	return self.MatchesParsedShortcutWithFallback(ParseShortcut(spec), PRESS|REPEAT, allowFallback)
 }
 
 func (self *KeyEvent) MatchesCaseSensitiveTextOrKey(spec string) bool {

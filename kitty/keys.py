@@ -23,13 +23,14 @@ from .fast_data_types import (
     set_ignore_os_keyboard_processing,
 )
 from .options.types import Options
-from .options.utils import KeyboardMode, KeyDefinition, KeyMap
+from .options.utils import KeyboardMode, KeyDefinition, KeyMap, KeyMapOptions
 from .typing_compat import ScreenType
 
 if TYPE_CHECKING:
     from .window import Window
 
 mod_mask = GLFW_MOD_ALT | GLFW_MOD_CONTROL | GLFW_MOD_SHIFT | GLFW_MOD_SUPER | GLFW_MOD_META | GLFW_MOD_HYPER
+_global_shortcut_options = KeyMapOptions(allow_fallback='shifted,ascii')
 
 
 def keyboard_mode_name(screen: ScreenType) -> str:
@@ -43,7 +44,17 @@ def get_shortcut(keymap: KeyMap, ev: KeyEvent) -> list[KeyDefinition] | None:
     mods = ev.mods & mod_mask
     ans = keymap.get(SingleKey(mods, False, ev.key))
     if ans is None and ev.shifted_key and mods & GLFW_MOD_SHIFT:
-        ans = keymap.get(SingleKey(mods & (~GLFW_MOD_SHIFT), False, ev.shifted_key))
+        candidate = keymap.get(SingleKey(mods & (~GLFW_MOD_SHIFT), False, ev.shifted_key))
+        if candidate:
+            filtered = [d for d in candidate if 'shifted' in d.options.allow_fallback]
+            if filtered:
+                ans = filtered
+    if ans is None and ev.alternate_key and 127 < ev.key < 0xE000:
+        candidate = keymap.get(SingleKey(mods, False, ev.alternate_key))
+        if candidate:
+            filtered = [d for d in candidate if 'ascii' in d.options.allow_fallback]
+            if filtered:
+                ans = filtered
     if ans is None:
         ans = keymap.get(SingleKey(mods, True, ev.native_key))
     return ans
@@ -57,6 +68,8 @@ def shortcut_matches(s: SingleKey, ev: KeyEvent) -> bool:
     if s.key == ev.key and mods == smods:
         return True
     if ev.shifted_key and mods & GLFW_MOD_SHIFT and (mods & ~GLFW_MOD_SHIFT) == smods and ev.shifted_key == s.key:
+        return True
+    if ev.alternate_key and 127 < ev.key < 0xE000 and ev.alternate_key == s.key and mods == smods:
         return True
     return False
 
@@ -77,7 +90,7 @@ class Mappings:
     def update_keymap(self, global_shortcuts: dict[str, SingleKey] | None = None) -> None:
         if global_shortcuts is None:
             global_shortcuts = self.set_cocoa_global_shortcuts(self.get_options()) if is_macos else {}
-        self.global_shortcuts_map: KeyMap = {v: [KeyDefinition(definition=k)] for k, v in global_shortcuts.items()}
+        self.global_shortcuts_map: KeyMap = {v: [KeyDefinition(definition=k, options=_global_shortcut_options)] for k, v in global_shortcuts.items()}
         self.global_shortcuts = global_shortcuts
         self.keyboard_modes = self.get_options().keyboard_modes.copy()
         km = self.keyboard_modes[''].keymap

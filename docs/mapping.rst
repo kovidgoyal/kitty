@@ -274,6 +274,55 @@ for copying to clipboard.
    and you cannot have mappings with and without conditions applying to multi-keys
    with the same first key.
 
+Non-Latin keyboard layout support
+--------------------------------------
+
+When using a non-Latin keyboard layout (e.g. Russian, Arabic, Greek), letter-key
+shortcuts like :kbd:`Ctrl+C` stop working because the key produces a non-Latin
+character. kitty solves this with the ``--allow-fallback`` option on the ``map``
+directive, which controls how shortcuts fall back to the physical key position.
+
+The ``--allow-fallback`` option accepts a comma-separated list of fallback types:
+
+``shifted``
+    Fall back to the *shifted key* — the character produced when Shift is held
+    with the key. This is the default for all mappings and preserves the existing
+    behavior.
+
+``ascii``
+    Fall back to the *alternate key* — the character that the physical key would
+    produce in a standard US layout. This only triggers when the key produces a
+    non-ASCII character, so it has no effect on Latin-based layouts like Dvorak
+    or Colemak.
+
+``none``
+    Disable all fallback matching. The mapping will only match the exact key
+    specified, ignoring both shifted and alternate key positions.
+
+For example::
+
+    # Enable both shifted and ASCII fallback (used by default kitty shortcuts)
+    map --allow-fallback=shifted,ascii kitty_mod+c copy_to_clipboard
+
+    # Only ASCII fallback, no shifted key fallback
+    map --allow-fallback=ascii ctrl+s save_something
+
+    # Disable all fallback (neither shifted nor alternate key matching)
+    map --allow-fallback=none ctrl+x some_action
+
+All default kitty shortcuts use ``--allow-fallback=shifted,ascii``, so they work
+out of the box with non-Latin layouts. Custom mappings without an explicit
+``--allow-fallback`` get the default value of ``shifted``, which preserves
+backward compatibility.
+
+.. note::
+
+   The ``ascii`` fallback uses a non-ASCII guard: it only activates when
+   the key produces a character with a Unicode code point above 127. This means
+   alternative Latin layouts (Dvorak, Colemak, etc.) are never affected by the
+   ``ascii`` fallback — only non-Latin layouts trigger it.
+
+
 Sending arbitrary text or keys to the program running in kitty
 --------------------------------------------------------------------------------
 
