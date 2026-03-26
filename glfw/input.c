@@ -1160,6 +1160,7 @@ GLFWAPI GLFWdragsourcefun glfwSetDragSourceCallback(GLFWwindow* handle, GLFWdrag
 
 void
 _glfwFreeDragSourceData(void) {
+    GLFWid drag_window_id = _glfw.drag.window_id;
     _glfwPlatformFreeDragSourceData();
     if (_glfw.drag.items) {
         for (size_t i = 0; i < _glfw.drag.item_count; i++) {
@@ -1171,6 +1172,15 @@ _glfwFreeDragSourceData(void) {
     GLFWid iid = _glfw.drag.instance_id;
     memset(&_glfw.drag, 0, sizeof(_glfw.drag));
     _glfw.drag.instance_id = iid;
+    // Send a synthetic left button release to the drag source window if the
+    // button is still marked as pressed. The focus-loss release was suppressed
+    // while the drag was in progress, and on some platforms (Wayland, Cocoa)
+    // the OS never sends a natural button release after the drag ends.
+    if (drag_window_id) {
+        _GLFWwindow* drag_window = _glfwWindowForId(drag_window_id);
+        if (drag_window && drag_window->mouseButtons[GLFW_MOUSE_BUTTON_LEFT] == GLFW_PRESS)
+            _glfwInputMouseClick(drag_window, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, 0);
+    }
 }
 
 GLFWAPI int
