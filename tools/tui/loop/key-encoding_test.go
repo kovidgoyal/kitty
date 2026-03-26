@@ -108,6 +108,60 @@ func TestMatchesParsedShortcutWithFallback(t *testing.T) {
 	}
 }
 
+func TestMatchesParsedShortcutPriorityWithFallback(t *testing.T) {
+	psA := ParseShortcut("a")
+	psCtrlC := ParseShortcut("ctrl+c")
+
+	// Direct match: priority 0
+	evDirect := &KeyEvent{Type: PRESS, Key: "a"}
+	if p := evDirect.MatchesParsedShortcutPriorityWithFallback(psA, PRESS, ""); p != 0 {
+		t.Fatalf("direct match should have priority 0, got %d", p)
+	}
+
+	// No match: priority -1
+	evNoMatch := &KeyEvent{Type: PRESS, Key: "b"}
+	if p := evNoMatch.MatchesParsedShortcutPriorityWithFallback(psA, PRESS, "shifted,ascii"); p != -1 {
+		t.Fatalf("no match should have priority -1, got %d", p)
+	}
+
+	// Shifted fallback at position 0 in "shifted,ascii": priority 1
+	evShifted := &KeyEvent{Type: PRESS, Mods: SHIFT, Key: "A", ShiftedKey: "a"}
+	if p := evShifted.MatchesParsedShortcutPriorityWithFallback(psA, PRESS, "shifted,ascii"); p != 1 {
+		t.Fatalf("shifted fallback first in 'shifted,ascii' should have priority 1, got %d", p)
+	}
+
+	// Shifted fallback at position 1 in "ascii,shifted": priority 2
+	if p := evShifted.MatchesParsedShortcutPriorityWithFallback(psA, PRESS, "ascii,shifted"); p != 2 {
+		t.Fatalf("shifted fallback second in 'ascii,shifted' should have priority 2, got %d", p)
+	}
+
+	// Shifted fallback only in "shifted": priority 1 (same as first position)
+	if p := evShifted.MatchesParsedShortcutPriorityWithFallback(psA, PRESS, "shifted"); p != 1 {
+		t.Fatalf("shifted fallback only in 'shifted' should have priority 1, got %d", p)
+	}
+
+	// Shifted fallback not allowed: priority -1
+	if p := evShifted.MatchesParsedShortcutPriorityWithFallback(psA, PRESS, "ascii"); p != -1 {
+		t.Fatalf("shifted fallback not in 'ascii' should have priority -1, got %d", p)
+	}
+
+	// ASCII (alternate key) fallback at position 1 in "shifted,ascii": priority 2
+	evASCII := &KeyEvent{Type: PRESS, Mods: CTRL, Key: "с", AlternateKey: "c"}
+	if p := evASCII.MatchesParsedShortcutPriorityWithFallback(psCtrlC, PRESS, "shifted,ascii"); p != 2 {
+		t.Fatalf("ascii fallback second in 'shifted,ascii' should have priority 2, got %d", p)
+	}
+
+	// ASCII fallback at position 0 in "ascii,shifted": priority 1
+	if p := evASCII.MatchesParsedShortcutPriorityWithFallback(psCtrlC, PRESS, "ascii,shifted"); p != 1 {
+		t.Fatalf("ascii fallback first in 'ascii,shifted' should have priority 1, got %d", p)
+	}
+
+	// ASCII fallback only in "ascii": priority 1
+	if p := evASCII.MatchesParsedShortcutPriorityWithFallback(psCtrlC, PRESS, "ascii"); p != 1 {
+		t.Fatalf("ascii fallback only in 'ascii' should have priority 1, got %d", p)
+	}
+}
+
 func TestMatchesParsedShortcutUnconditionalAlternateKey(t *testing.T) {
 	// Unconditional match via MatchesPressOrRepeat (hardcoded shortcuts)
 	ev := &KeyEvent{Type: PRESS, Mods: CTRL, Key: "с", AlternateKey: "c"}

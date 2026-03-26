@@ -326,36 +326,65 @@ func ParseMap(val string) (*KeyAction, error) {
 	return &KeyAction{Name: action_name, Args: action_args, Normalized_keys: NormalizeShortcuts(spec), AllowFallback: allow_fallback}, nil
 }
 
+type partialMatch struct {
+	action   *KeyAction
+	priority int
+}
+
 type ShortcutTracker struct {
-	partial_matches      []*KeyAction
+	partial_matches      []partialMatch
 	partial_num_consumed int
 }
 
 func (self *ShortcutTracker) Match(ev *loop.KeyEvent, all_actions []*KeyAction) *KeyAction {
 	if self.partial_num_consumed > 0 {
 		ev.Handled = true
-		self.partial_matches = utils.Filter(self.partial_matches, func(ac *KeyAction) bool {
-			return self.partial_num_consumed < len(ac.Normalized_keys) && ev.MatchesPressOrRepeatWithFallback(ac.Normalized_keys[self.partial_num_consumed], ac.AllowFallback)
-		})
+		new_matches := self.partial_matches[:0]
+		for _, pm := range self.partial_matches {
+			if self.partial_num_consumed >= len(pm.action.Normalized_keys) {
+				continue
+			}
+			p := ev.MatchesPressOrRepeatPriorityWithFallback(pm.action.Normalized_keys[self.partial_num_consumed], pm.action.AllowFallback)
+			if p >= 0 {
+				if p > pm.priority {
+					pm.priority = p
+				}
+				new_matches = append(new_matches, pm)
+			}
+		}
+		self.partial_matches = new_matches
 		if len(self.partial_matches) == 0 {
 			self.partial_num_consumed = 0
 			return nil
 		}
 	} else {
-		self.partial_matches = utils.Filter(all_actions, func(ac *KeyAction) bool {
-			return ev.MatchesPressOrRepeatWithFallback(ac.Normalized_keys[0], ac.AllowFallback)
-		})
+		new_matches := self.partial_matches[:0]
+		for _, ac := range all_actions {
+			p := ev.MatchesPressOrRepeatPriorityWithFallback(ac.Normalized_keys[0], ac.AllowFallback)
+			if p >= 0 {
+				new_matches = append(new_matches, partialMatch{action: ac, priority: p})
+			}
+		}
+		self.partial_matches = new_matches
 		if len(self.partial_matches) == 0 {
 			return nil
 		}
 		ev.Handled = true
 	}
 	self.partial_num_consumed++
-	for _, x := range self.partial_matches {
-		if self.partial_num_consumed >= len(x.Normalized_keys) {
-			self.partial_num_consumed = 0
-			return x
+	var best *partialMatch
+	for i := range self.partial_matches {
+		pm := &self.partial_matches[i]
+		if self.partial_num_consumed >= len(pm.action.Normalized_keys) {
+			if best == nil || pm.priority < best.priority {
+				best = pm
+			}
 		}
+	}
+	if best != nil {
+		self.partial_num_consumed = 0
+		self.partial_matches = nil
+		return best.action
 	}
 	return nil
 }

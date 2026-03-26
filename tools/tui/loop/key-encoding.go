@@ -292,20 +292,44 @@ func isNonASCIIKey(key string) bool {
 }
 
 func (self *KeyEvent) MatchesParsedShortcutWithFallback(ps *ParsedShortcut, event_type KeyEventType, allowFallback string) bool {
+	return self.MatchesParsedShortcutPriorityWithFallback(ps, event_type, allowFallback) >= 0
+}
+
+// MatchesParsedShortcutPriorityWithFallback returns the match priority for the given shortcut:
+//   - returns -1 if the event does not match
+//   - returns 0 for a direct match (no fallback needed)
+//   - returns the 1-based position of the matching fallback type in allowFallback for a fallback match
+//     (e.g., "shifted" at position 0 in "shifted,ascii" returns 1; "ascii" at position 1 returns 2)
+//
+// Lower values indicate higher priority, so callers should prefer matches with smaller return values.
+func (self *KeyEvent) MatchesParsedShortcutPriorityWithFallback(ps *ParsedShortcut, event_type KeyEventType, allowFallback string) int {
 	if self.Type&event_type == 0 {
-		return false
+		return -1
 	}
 	mods := self.Mods.WithoutLocks()
 	if mods == ps.Mods && self.Key == ps.KeyName {
-		return true
+		return 0
 	}
-	if strings.Contains(allowFallback, "shifted") && self.ShiftedKey != "" && mods&SHIFT != 0 && (mods & ^SHIFT) == ps.Mods && self.ShiftedKey == ps.KeyName {
-		return true
+	canShifted := self.ShiftedKey != "" && mods&SHIFT != 0 && (mods & ^SHIFT) == ps.Mods && self.ShiftedKey == ps.KeyName
+	canASCII := self.AlternateKey != "" && isNonASCIIKey(self.Key) && mods == ps.Mods && self.AlternateKey == ps.KeyName
+	for i, part := range strings.Split(allowFallback, ",") {
+		switch strings.TrimSpace(part) {
+		case "shifted":
+			if canShifted {
+				return i + 1
+			}
+		case "ascii":
+			if canASCII {
+				return i + 1
+			}
+		}
 	}
-	if strings.Contains(allowFallback, "ascii") && self.AlternateKey != "" && isNonASCIIKey(self.Key) && mods == ps.Mods && self.AlternateKey == ps.KeyName {
-		return true
-	}
-	return false
+	return -1
+}
+
+// MatchesPressOrRepeatPriorityWithFallback returns the match priority (see MatchesParsedShortcutPriorityWithFallback).
+func (self *KeyEvent) MatchesPressOrRepeatPriorityWithFallback(spec string, allowFallback string) int {
+	return self.MatchesParsedShortcutPriorityWithFallback(ParseShortcut(spec), PRESS|REPEAT, allowFallback)
 }
 
 func (self *KeyEvent) MatchesParsedShortcut(ps *ParsedShortcut, event_type KeyEventType) bool {
