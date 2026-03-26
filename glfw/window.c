@@ -63,8 +63,14 @@ void _glfwInputWindowFocus(_GLFWwindow* window, bool focused)
 
         for (int button = 0;  button <= GLFW_MOUSE_BUTTON_LAST;  button++)
         {
-            if (window->mouseButtons[button] == GLFW_PRESS)
+            if (window->mouseButtons[button] == GLFW_PRESS) {
+                // Skip releasing the left mouse button when a drag is in
+                // progress from this window to avoid spurious release events.
+                // The release will be sent after the drag completes.
+                if (button == GLFW_MOUSE_BUTTON_LEFT && _glfw.drag.window_id == window->id)
+                    continue;
                 _glfwInputMouseClick(window, button, GLFW_RELEASE, 0);
+            }
         }
     } else
         _glfw.focusedWindowId = window->id;
