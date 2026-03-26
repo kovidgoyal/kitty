@@ -12,7 +12,7 @@ from kitty.options.utils import pointer_shape_names
 definition = Definition(
     'kitty',
     Action('map', 'parse_map', {'keyboard_modes': 'KeyboardModeMap', 'alias_map': 'AliasMap'},
-           ['KeyDefinition', 'kitty.fast_data_types.SingleKey']),
+           ['KeyDefinition', 'KeyMapOptions', 'kitty.fast_data_types.SingleKey']),
     Action('mouse_map', 'parse_mouse_map', {'mousemap': 'MouseMap'}, ['MouseMapping']),
     has_color_table=True,
 )
@@ -3926,6 +3926,14 @@ Some quick examples to illustrate common tasks::
     # multi-key shortcuts
     map ctrl+x>ctrl+y>z action
 
+For non-Latin keyboard layouts (Russian, Arabic, etc.), the :code:`--allow-fallback`
+option controls physical key fallback. Values: :code:`shifted` (default — shifted key
+fallback), :code:`ascii` (alternate key / physical position fallback, only for non-ASCII
+keys), :code:`none` (disable all fallback), or a comma-separated combination.
+All default shortcuts use :code:`--allow-fallback=shifted,ascii`::
+
+    map --allow-fallback=shifted,ascii kitty_mod+c copy_to_clipboard
+
 You can browse and trigger these actions by pressing :sc:`command_palette` to
 run the command palette. The full list of actions that can be mapped to
 key presses is available :doc:`here </actions>`.
@@ -3998,7 +4006,7 @@ option applied.
 agr('shortcuts.clipboard', 'Clipboard')
 
 map('Copy to clipboard',
-    'copy_to_clipboard kitty_mod+c copy_to_clipboard',
+    'copy_to_clipboard --allow-fallback=shifted,ascii kitty_mod+c copy_to_clipboard',
     long_text='''
 There is also a :ac:`copy_or_interrupt` action that can be optionally mapped
 to :kbd:`Ctrl+C`. It will copy only if there is a selection and send an
@@ -4009,27 +4017,27 @@ the key through to the application running in the terminal if there is no select
 '''
     )
 map('Copy to clipboard or pass through',
-    'copy_or_noop cmd+c copy_or_noop',
+    'copy_or_noop --allow-fallback=shifted,ascii cmd+c copy_or_noop',
     only='macos',
     )
 
 map('Paste from clipboard',
-    'paste_from_clipboard kitty_mod+v paste_from_clipboard',
+    'paste_from_clipboard --allow-fallback=shifted,ascii kitty_mod+v paste_from_clipboard',
     )
 map('Paste from clipboard',
-    'paste_from_clipboard cmd+v paste_from_clipboard',
+    'paste_from_clipboard --allow-fallback=shifted,ascii cmd+v paste_from_clipboard',
     only='macos',
     )
 
 map('Paste from selection',
-    'paste_from_selection kitty_mod+s paste_from_selection',
+    'paste_from_selection --allow-fallback=shifted,ascii kitty_mod+s paste_from_selection',
     )
 map('Paste from selection',
     'paste_from_selection shift+insert paste_from_selection',
     )
 
 map('Pass selection to program',
-    'pass_selection_to_program kitty_mod+o pass_selection_to_program',
+    'pass_selection_to_program --allow-fallback=shifted,ascii kitty_mod+o pass_selection_to_program',
     long_text='''
 You can also pass the contents of the current selection to any program with
 :ac:`pass_selection_to_program`. By default, the system's open program is used,
@@ -4054,7 +4062,7 @@ map('Scroll line up',
     'scroll_line_up kitty_mod+up scroll_line_up',
     )
 map('Scroll line up',
-    'scroll_line_up kitty_mod+k scroll_line_up',
+    'scroll_line_up --allow-fallback=shifted,ascii kitty_mod+k scroll_line_up',
     )
 map('Scroll line up',
     'scroll_line_up opt+cmd+page_up scroll_line_up',
@@ -4069,7 +4077,7 @@ map('Scroll line down',
     'scroll_line_down kitty_mod+down scroll_line_down',
     )
 map('Scroll line down',
-    'scroll_line_down kitty_mod+j scroll_line_down',
+    'scroll_line_down --allow-fallback=shifted,ascii kitty_mod+j scroll_line_down',
     )
 map('Scroll line down',
     'scroll_line_down opt+cmd+page_down scroll_line_down',
@@ -4113,7 +4121,7 @@ map('Scroll to bottom',
     )
 
 map('Scroll to previous shell prompt',
-    'scroll_to_previous_prompt kitty_mod+z scroll_to_prompt -1',
+    'scroll_to_previous_prompt --allow-fallback=shifted,ascii kitty_mod+z scroll_to_prompt -1',
     long_text='''
 Use a parameter of :code:`0` for :ac:`scroll_to_prompt` to scroll to the last
 jumped to or the last clicked position. Requires :ref:`shell integration
@@ -4121,10 +4129,10 @@ jumped to or the last clicked position. Requires :ref:`shell integration
 '''
     )
 
-map('Scroll to next shell prompt', 'scroll_to_next_prompt kitty_mod+x scroll_to_prompt 1')
+map('Scroll to next shell prompt', 'scroll_to_next_prompt --allow-fallback=shifted,ascii kitty_mod+x scroll_to_prompt 1')
 
 map('Browse scrollback buffer in pager',
-    'show_scrollback kitty_mod+h show_scrollback',
+    'show_scrollback --allow-fallback=shifted,ascii kitty_mod+h show_scrollback',
     long_text='''
 You can pipe the contents of the current screen and history buffer as
 :file:`STDIN` to an arbitrary program using :option:`launch --stdin-source`.
@@ -4139,7 +4147,7 @@ see :doc:`launch`.
     )
 
 map('Browse output of the last shell command in pager',
-    'show_last_command_output kitty_mod+g show_last_command_output',
+    'show_last_command_output --allow-fallback=shifted,ascii kitty_mod+g show_last_command_output',
     long_text='''
 You can also define additional shortcuts to get the command output.
 For example, to get the first command output on screen::
@@ -4176,7 +4184,7 @@ a manual mapping with a special pager for this, you can use something like:
 For more sophisticated control, such as using the current selection, use :ac:`remote_control_script`.
 ''')
 
-map('Search the scrollback within a pager', 'search_scrollback cmd+f search_scrollback', only='macos')
+map('Search the scrollback within a pager', 'search_scrollback --allow-fallback=shifted,ascii cmd+f search_scrollback', only='macos')
 
 
 egr()  # }}}
@@ -4220,7 +4228,7 @@ map('New window',
     )
 
 map('New OS window',
-    'new_os_window kitty_mod+n new_os_window',
+    'new_os_window --allow-fallback=shifted,ascii kitty_mod+n new_os_window',
     long_text='''
 Works like :ac:`new_window` above, except that it opens a top-level :term:`OS
 window <os_window>`. In particular you can use :ac:`new_os_window_with_cwd` to
@@ -4228,15 +4236,15 @@ open a window with the current working directory.
 '''
     )
 map('New OS window',
-    'new_os_window cmd+n new_os_window',
+    'new_os_window --allow-fallback=shifted,ascii cmd+n new_os_window',
     only='macos',
     )
 
 map('Close window',
-    'close_window kitty_mod+w close_window',
+    'close_window --allow-fallback=shifted,ascii kitty_mod+w close_window',
     )
 map('Close window',
-    'close_window shift+cmd+d close_window',
+    'close_window --allow-fallback=shifted,ascii shift+cmd+d close_window',
     only='macos',
     )
 
@@ -4249,11 +4257,11 @@ map('Previous window',
     )
 
 map('Move window forward',
-    'move_window_forward kitty_mod+f move_window_forward',
+    'move_window_forward --allow-fallback=shifted,ascii kitty_mod+f move_window_forward',
     )
 
 map('Move window backward',
-    'move_window_backward kitty_mod+b move_window_backward',
+    'move_window_backward --allow-fallback=shifted,ascii kitty_mod+b move_window_backward',
     )
 
 map('Move window to top',
@@ -4261,10 +4269,10 @@ map('Move window to top',
     )
 
 map('Start resizing window',
-    'start_resizing_window kitty_mod+r start_resizing_window',
+    'start_resizing_window --allow-fallback=shifted,ascii kitty_mod+r start_resizing_window',
     )
 map('Start resizing window',
-    'start_resizing_window cmd+r start_resizing_window',
+    'start_resizing_window --allow-fallback=shifted,ascii cmd+r start_resizing_window',
     only='macos',
     )
 
@@ -4386,23 +4394,23 @@ map('Previous tab',
     )
 
 map('New tab',
-    'new_tab kitty_mod+t new_tab',
+    'new_tab --allow-fallback=shifted,ascii kitty_mod+t new_tab',
     )
 map('New tab',
-    'new_tab cmd+t new_tab',
+    'new_tab --allow-fallback=shifted,ascii cmd+t new_tab',
     only='macos',
     )
 
 map('Close tab',
-    'close_tab kitty_mod+q close_tab',
+    'close_tab --allow-fallback=shifted,ascii kitty_mod+q close_tab',
     )
 map('Close tab',
-    'close_tab cmd+w close_tab',
+    'close_tab --allow-fallback=shifted,ascii cmd+w close_tab',
     only='macos',
     )
 
 map('Close OS window',
-    'close_os_window shift+cmd+w close_os_window',
+    'close_os_window --allow-fallback=shifted,ascii shift+cmd+w close_os_window',
     only='macos',
     )
 
@@ -4415,10 +4423,10 @@ map('Move tab backward',
     )
 
 map('Set tab title',
-    'set_tab_title kitty_mod+alt+t set_tab_title',
+    'set_tab_title --allow-fallback=shifted,ascii kitty_mod+alt+t set_tab_title',
     )
 map('Set tab title',
-    'set_tab_title shift+cmd+i set_tab_title',
+    'set_tab_title --allow-fallback=shifted,ascii shift+cmd+i set_tab_title',
     only='macos',
     )
 egr('''
@@ -4444,7 +4452,7 @@ end of the tabs list, use::
 agr('shortcuts.layout', 'Layout management')
 
 map('Next layout',
-    'next_layout kitty_mod+l next_layout',
+    'next_layout --allow-fallback=shifted,ascii kitty_mod+l next_layout',
     )
 egr('''
 You can also create shortcuts to switch to specific :term:`layouts <layout>`::
@@ -4537,7 +4545,7 @@ insert it into the terminal or copy it to the clipboard.
 ''')
 
 map('Open URL',
-    'open_url kitty_mod+e open_url_with_hints',
+    'open_url --allow-fallback=shifted,ascii kitty_mod+e open_url_with_hints',
     long_text='''
 Open a currently visible URL using the keyboard. The program used to open the
 URL is specified in :opt:`open_url_with`.
@@ -4545,7 +4553,7 @@ URL is specified in :opt:`open_url_with`.
     )
 
 map('Insert selected path',
-    'insert_selected_path kitty_mod+p>f kitten hints --type path --program -',
+    'insert_selected_path --allow-fallback=shifted,ascii kitty_mod+p>f kitten hints --type path --program -',
     long_text='''
 Select a path/filename and insert it into the terminal. Useful, for instance to
 run :program:`git` commands on a filename output from a previous :program:`git`
@@ -4554,12 +4562,12 @@ command.
     )
 
 map('Open selected path',
-    'open_selected_path kitty_mod+p>shift+f kitten hints --type path',
+    'open_selected_path --allow-fallback=shifted,ascii kitty_mod+p>shift+f kitten hints --type path',
     long_text='Select a path/filename and open it with the default open program.'
     )
 
 map('Insert chosen file',
-    'insert_chosen_file kitty_mod+p>c kitten choose-files',
+    'insert_chosen_file --allow-fallback=shifted,ascii kitty_mod+p>c kitten choose-files',
     long_text='''
 Select a file using the :doc:`choose-files </kittens/choose-files>` kitten and insert
 it into the terminal.
@@ -4567,7 +4575,7 @@ it into the terminal.
     )
 
 map('Insert chosen directory',
-    'insert_chosen_directory kitty_mod+p>d kitten choose-files --mode=dir',
+    'insert_chosen_directory --allow-fallback=shifted,ascii kitty_mod+p>d kitten choose-files --mode=dir',
     long_text='''
 Select a directory using the :doc:`choose-files </kittens/choose-files>` kitten and insert
 it into the terminal.
@@ -4576,7 +4584,7 @@ it into the terminal.
 
 
 map('Insert selected line',
-    'insert_selected_line kitty_mod+p>l kitten hints --type line --program -',
+    'insert_selected_line --allow-fallback=shifted,ascii kitty_mod+p>l kitten hints --type line --program -',
     long_text='''
 Select a line of text and insert it into the terminal. Useful for the output of
 things like: ``ls -1``.
@@ -4584,12 +4592,12 @@ things like: ``ls -1``.
     )
 
 map('Insert selected word',
-    'insert_selected_word kitty_mod+p>w kitten hints --type word --program -',
+    'insert_selected_word --allow-fallback=shifted,ascii kitty_mod+p>w kitten hints --type word --program -',
     long_text='Select words and insert into terminal.'
     )
 
 map('Insert selected hash',
-    'insert_selected_hash kitty_mod+p>h kitten hints --type hash --program -',
+    'insert_selected_hash --allow-fallback=shifted,ascii kitty_mod+p>h kitten hints --type hash --program -',
     long_text='''
 Select something that looks like a hash and insert it into the terminal. Useful
 with :program:`git`, which uses SHA1 hashes to identify commits.
@@ -4597,7 +4605,7 @@ with :program:`git`, which uses SHA1 hashes to identify commits.
     )
 
 map('Open the selected file at the selected line',
-    'goto_file_line kitty_mod+p>n kitten hints --type linenum',
+    'goto_file_line --allow-fallback=shifted,ascii kitty_mod+p>n kitten hints --type linenum',
     long_text='''
 Select something that looks like :code:`filename:linenum` and open it in
 your default editor at the specified line number.
@@ -4605,7 +4613,7 @@ your default editor at the specified line number.
     )
 
 map('Open the selected hyperlink',
-    'open_selected_hyperlink kitty_mod+p>y kitten hints --type hyperlink',
+    'open_selected_hyperlink --allow-fallback=shifted,ascii kitty_mod+p>y kitten hints --type hyperlink',
     long_text='''
 Select a :term:`hyperlink <hyperlinks>` (i.e. a URL that has been marked as such
 by the terminal program, for example, by ``ls --hyperlink=auto``).
@@ -4630,7 +4638,7 @@ map('Toggle fullscreen',
     'toggle_fullscreen kitty_mod+f11 toggle_fullscreen',
     )
 map('Toggle fullscreen',
-    'toggle_fullscreen ctrl+cmd+f toggle_fullscreen',
+    'toggle_fullscreen --allow-fallback=shifted,ascii ctrl+cmd+f toggle_fullscreen',
     only='macos',
     )
 
@@ -4639,7 +4647,7 @@ map('Toggle maximized',
     )
 
 map('Toggle macOS secure keyboard entry',
-    'toggle_macos_secure_keyboard_entry opt+cmd+s toggle_macos_secure_keyboard_entry',
+    'toggle_macos_secure_keyboard_entry --allow-fallback=shifted,ascii opt+cmd+s toggle_macos_secure_keyboard_entry',
     only='macos',
     )
 
@@ -4647,7 +4655,7 @@ map('macOS Cycle through OS Windows', 'macos_cycle_through_os_windows cmd+` maco
 map('macOS Cycle through OS Windows backwards', 'macos_cycle_through_os_windows_backwards cmd+shift+` macos_cycle_through_os_windows_backwards', only='macos')
 
 map('Unicode input',
-    'input_unicode_character kitty_mod+u kitten unicode_input',
+    'input_unicode_character --allow-fallback=shifted,ascii kitty_mod+u kitten unicode_input',
     )
 map('Unicode input',
     'input_unicode_character ctrl+cmd+space kitten unicode_input',
@@ -4671,19 +4679,19 @@ Open the kitty shell in a new :code:`window` / :code:`tab` / :code:`overlay` /
     )
 
 map('Increase background opacity',
-    'increase_background_opacity kitty_mod+a>m set_background_opacity +0.1',
+    'increase_background_opacity --allow-fallback=shifted,ascii kitty_mod+a>m set_background_opacity +0.1',
     )
 
 map('Decrease background opacity',
-    'decrease_background_opacity kitty_mod+a>l set_background_opacity -0.1',
+    'decrease_background_opacity --allow-fallback=shifted,ascii kitty_mod+a>l set_background_opacity -0.1',
     )
 
 map('Make background fully opaque',
-    'full_background_opacity kitty_mod+a>1 set_background_opacity 1',
+    'full_background_opacity --allow-fallback=shifted,ascii kitty_mod+a>1 set_background_opacity 1',
     )
 
 map('Reset background opacity',
-    'reset_background_opacity kitty_mod+a>d set_background_opacity default',
+    'reset_background_opacity --allow-fallback=shifted,ascii kitty_mod+a>d set_background_opacity default',
     )
 
 map('Reset the terminal',

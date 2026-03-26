@@ -10,6 +10,7 @@ from collections.abc import Callable, Iterator
 from typing import Any, get_type_hints
 
 from kitty.conf.types import Definition, MultiOption, Option, ParserFuncType, unset
+from kitty.options.utils import parse_options_for_map
 from kitty.simple_cli_definitions import serialize_as_go_string
 from kitty.types import _T
 
@@ -618,9 +619,15 @@ def gen_go_code(defn: Definition) -> str:
     if keyboard_shortcuts:
         a('KeyboardShortcuts: []*config.KeyAction{')
         for sc in keyboard_shortcuts:
-            aname, aargs = map(serialize_as_go_string, sc.action_def.partition(' ')[::2])
-            a('{'f'Name: "{aname}", Args: "{aargs}", Normalized_keys: []string''{')
-            ns = normalize_shortcuts(sc.key_text)
+            options, leftover = parse_options_for_map(sc.parseable_text)
+            allow_fallback = options.allow_fallback
+            key_spec, action = leftover.split(None, 1)
+            aname, _, aargs = action.partition(' ')
+            aname = serialize_as_go_string(aname)
+            aargs = serialize_as_go_string(aargs)
+            fb = f', AllowFallback: "{serialize_as_go_string(allow_fallback)}"'
+            a('{'f'Name: "{aname}", Args: "{aargs}"{fb}, Normalized_keys: []string''{')
+            ns = normalize_shortcuts(key_spec)
             a(', '.join(f'"{serialize_as_go_string(x)}"' for x in ns) + ',')
             a('}''},')
         a('},')
@@ -653,23 +660,22 @@ def gen_go_code(defn: Definition) -> str:
     has_parsers = bool(go_parsers or keyboard_shortcuts)
     a('func (c *Config) Parse(key, val string) (err error) {')
     if has_parsers:
-        if go_parsers:
-            a('switch key {')
-            a('default: return fmt.Errorf("Unknown configuration key: %#v", key)')
-            for oname, pname in go_parsers.items():
-                ol = oname.lower()
-                is_multiple = oname in multiopts
-                a(f'case "{ol}":')
-                if is_multiple:
-                    a(f'var temp_val []{go_types[oname]}')
-                else:
-                    a(f'var temp_val {go_types[oname]}')
-                a(f'temp_val, err = {pname}')
-                a(f'if err != nil {{ return fmt.Errorf("Failed to parse {ol} = %#v with error: %w", val, err) }}')
-                if is_multiple:
-                    a(f'c.{oname} = append(c.{oname}, temp_val...)')
-                else:
-                    a(f'c.{oname} = temp_val')
+        a('switch key {')
+        a('default: return fmt.Errorf("Unknown configuration key: %#v", key)')
+        for oname, pname in go_parsers.items():
+            ol = oname.lower()
+            is_multiple = oname in multiopts
+            a(f'case "{ol}":')
+            if is_multiple:
+                a(f'var temp_val []{go_types[oname]}')
+            else:
+                a(f'var temp_val {go_types[oname]}')
+            a(f'temp_val, err = {pname}')
+            a(f'if err != nil {{ return fmt.Errorf("Failed to parse {ol} = %#v with error: %w", val, err) }}')
+            if is_multiple:
+                a(f'c.{oname} = append(c.{oname}, temp_val...)')
+            else:
+                a(f'c.{oname} = temp_val')
         if keyboard_shortcuts:
             a('case "map":')
             a('tempsc, err := config.ParseMap(val)')

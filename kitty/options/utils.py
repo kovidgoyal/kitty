@@ -1284,24 +1284,27 @@ class LiteralField(Generic[T]):
         self._vals = vals
 
     def __set_name__(self, owner: object, name: str) -> None:
-        self._name = "_" + name
+        self._name = name
 
     def __get__(self, obj: object, type: type | None = None) -> T:
         if obj is None:
             return self._vals[0]
-        return getattr(obj, self._name, self._vals[0])
+        val = obj.__dict__.get(self._name)
+        if val is None or isinstance(val, LiteralField):
+            return self._vals[0]
+        return val
 
     def __set__(self, obj: object, value: str) -> None:
         if value not in self._vals:
-            raise KeyError(f'Invalid value for {self._name[1:]}: {value!r}')
-        object.__setattr__(obj, self._name, value)
+            raise KeyError(f'Invalid value for {self._name}: {value!r}')
+        obj.__dict__[self._name] = value
 
 
 OnUnknown = Literal['beep', 'end', 'ignore', 'passthrough']
 OnAction = Literal['keep', 'end']
 
 
-@dataclass(init=False, frozen=True)
+@dataclass(frozen=True)
 class KeyMapOptions:
     when_focus_on: str = ''
     new_mode: str = ''
@@ -1309,6 +1312,7 @@ class KeyMapOptions:
     on_unknown: LiteralField[OnUnknown] = LiteralField[OnUnknown](get_args(OnUnknown))
     on_action: LiteralField[OnAction] = LiteralField[OnAction](get_args(OnAction))
     timeout: float | None = None
+    allow_fallback: str = 'shifted'
 
 
 default_key_map_options = KeyMapOptions()
@@ -1379,6 +1383,22 @@ class KeyboardMode:
 KeyboardModeMap = dict[str, KeyboardMode]
 key_map_option_converters: defaultdict[str, Callable[[str], Any]] = defaultdict(lambda: (lambda x: x))
 key_map_option_converters['timeout'] = float
+
+
+_allowed_fallback_values = frozenset(('shifted', 'ascii'))
+
+
+def _convert_allow_fallback(val: str) -> str:
+    if not val or val == 'none':
+        return ''
+    parts = tuple(x.strip() for x in val.split(','))
+    invalid = set(parts) - _allowed_fallback_values
+    if invalid:
+        raise ValueError(f'allow_fallback values must be a subset of {_allowed_fallback_values}, got: {invalid}')
+    return ','.join(parts)
+
+
+key_map_option_converters['allow_fallback'] = _convert_allow_fallback
 
 
 def parse_options_for_map(val: str) -> tuple[KeyMapOptions, str]:

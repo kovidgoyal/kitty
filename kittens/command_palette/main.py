@@ -6,10 +6,37 @@ import sys
 from functools import partial
 from typing import Any
 
+from kitty.conf.types import Definition
 from kitty.fast_data_types import add_timer, get_boss
 from kitty.typing_compat import BossType
 
 from ..tui.handler import result_handler
+
+definition = Definition(
+    '!kittens.command_palette',
+)
+
+agr = definition.add_group
+egr = definition.end_group
+map = definition.add_map
+
+# shortcuts {{{
+agr('shortcuts', 'Keyboard shortcuts')
+
+map('Move selection up',
+    'selection_up --allow-fallback=shifted,ascii ctrl+k selection_up',
+    )
+map('Move selection up',
+    'selection_up --allow-fallback=shifted,ascii ctrl+p selection_up',
+    )
+map('Move selection down',
+    'selection_down --allow-fallback=shifted,ascii ctrl+j selection_down',
+    )
+map('Move selection down',
+    'selection_down --allow-fallback=shifted,ascii ctrl+n selection_down',
+    )
+
+egr()  # }}}
 
 
 def collect_keys_data(opts: Any) -> dict[str, Any]:
@@ -188,3 +215,5 @@ elif __name__ == '__doc__':
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
     cd['short_desc'] = help_text
+elif __name__ == '__conf__':
+    sys.options_definition = definition  # type: ignore

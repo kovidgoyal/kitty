@@ -62,15 +62,17 @@ type handler struct {
 	opts        *Options
 	cached_data *CachedData
 
-	state            State
-	fetch_result     chan fetch_data
-	all_themes       *themes.Themes
-	themes_closer    io.Closer
-	themes_list      *ThemesList
-	category_filters map[string]func(*themes.Theme) bool
-	colors_set_once  bool
-	tabs             []string
-	rl               *readline.Readline
+	state              State
+	fetch_result       chan fetch_data
+	all_themes         *themes.Themes
+	themes_closer      io.Closer
+	themes_list        *ThemesList
+	category_filters   map[string]func(*themes.Theme) bool
+	colors_set_once    bool
+	tabs               []string
+	rl                 *readline.Readline
+	shortcut_tracker   config.ShortcutTracker
+	keyboard_shortcuts []*config.KeyAction
 }
 
 // fetching {{{
@@ -123,6 +125,7 @@ func (self *handler) initialize() {
 	self.category_filters = make(map[string]func(*themes.Theme) bool, len(category_filters)+1)
 	maps.Copy(self.category_filters, category_filters)
 	self.category_filters["recent"] = recent_filter(self.cached_data.Recent)
+	self.keyboard_shortcuts = config.ResolveShortcuts(NewConfig().KeyboardShortcuts)
 	go self.fetch_themes()
 	self.draw_screen()
 }
@@ -230,7 +233,7 @@ func (self *handler) next(delta int, allow_wrapping bool) {
 }
 
 func (self *handler) on_browsing_key_event(ev *loop.KeyEvent) error {
-	if ev.MatchesPressOrRepeat("esc") || ev.MatchesCaseInsensitiveTextOrKey("q") {
+	if ev.MatchesPressOrRepeat("esc") {
 		self.lp.Quit(0)
 		ev.Handled = true
 		return nil
@@ -255,12 +258,12 @@ func (self *handler) on_browsing_key_event(ev *loop.KeyEvent) error {
 		ev.Handled = true
 		return nil
 	}
-	if ev.MatchesCaseInsensitiveTextOrKey("j") || ev.MatchesPressOrRepeat("down") {
+	if ev.MatchesPressOrRepeat("down") {
 		self.next(1, true)
 		ev.Handled = true
 		return nil
 	}
-	if ev.MatchesCaseInsensitiveTextOrKey("k") || ev.MatchesPressOrRepeat("up") {
+	if ev.MatchesPressOrRepeat("up") {
 		self.next(-1, true)
 		ev.Handled = true
 		return nil
@@ -281,12 +284,12 @@ func (self *handler) on_browsing_key_event(ev *loop.KeyEvent) error {
 		}
 		return nil
 	}
-	if ev.MatchesCaseInsensitiveTextOrKey("s") || ev.MatchesCaseInsensitiveTextOrKey("/") {
+	if ev.MatchesCaseInsensitiveTextOrKey("/") {
 		ev.Handled = true
 		self.start_search()
 		return nil
 	}
-	if ev.MatchesCaseInsensitiveTextOrKey("c") || ev.MatchesPressOrRepeat("enter") {
+	if ev.MatchesPressOrRepeat("enter") {
 		ev.Handled = true
 		if self.themes_list == nil || self.themes_list.Len() == 0 {
 			self.lp.Beep()
@@ -294,6 +297,27 @@ func (self *handler) on_browsing_key_event(ev *loop.KeyEvent) error {
 			self.state = ACCEPTING
 			self.draw_screen()
 		}
+		return nil
+	}
+	if ac := self.shortcut_tracker.Match(ev, self.keyboard_shortcuts); ac != nil {
+		switch ac.Name {
+		case "quit":
+			self.lp.Quit(0)
+		case "scroll_down":
+			self.next(1, true)
+		case "scroll_up":
+			self.next(-1, true)
+		case "search":
+			self.start_search()
+		case "accept":
+			if self.themes_list == nil || self.themes_list.Len() == 0 {
+				self.lp.Beep()
+			} else {
+				self.state = ACCEPTING
+				self.draw_screen()
+			}
+		}
+		return nil
 	}
 	return nil
 }
@@ -495,48 +519,40 @@ func (self *handler) draw_theme_demo() {
 // accepting {{{
 
 func (self *handler) on_accepting_key_event(ev *loop.KeyEvent) error {
-	if ev.MatchesCaseInsensitiveTextOrKey("q") || ev.MatchesPressOrRepeat("esc") || ev.MatchesPressOrRepeat("shift+q") {
+	if ev.MatchesPressOrRepeat("esc") {
 		ev.Handled = true
 		self.lp.Quit(0)
 		return nil
 	}
-	if ev.MatchesCaseInsensitiveTextOrKey("a") || ev.MatchesPressOrRepeat("shift+a") {
-		ev.Handled = true
-		self.state = BROWSING
-		self.draw_screen()
+	if ac := self.shortcut_tracker.Match(ev, self.keyboard_shortcuts); ac != nil {
+		switch ac.Name {
+		case "quit":
+			self.lp.Quit(0)
+		case "abort":
+			self.state = BROWSING
+			self.draw_screen()
+		case "place_theme":
+			self.themes_list.CurrentTheme().SaveInDir(utils.ConfigDir())
+			self.update_recent()
+			self.lp.Quit(0)
+		case "modify_conf":
+			self.themes_list.CurrentTheme().SaveInConf(utils.ConfigDir(), self.opts.ReloadIn, self.opts.ConfigFileName)
+			self.update_recent()
+			self.lp.Quit(0)
+		case "dark_scheme":
+			self.themes_list.CurrentTheme().SaveInFile(utils.ConfigDir(), kitty.DarkThemeFileName)
+			self.update_recent()
+			self.lp.Quit(0)
+		case "light_scheme":
+			self.themes_list.CurrentTheme().SaveInFile(utils.ConfigDir(), kitty.LightThemeFileName)
+			self.update_recent()
+			self.lp.Quit(0)
+		case "no_preference":
+			self.themes_list.CurrentTheme().SaveInFile(utils.ConfigDir(), kitty.NoPreferenceThemeFileName)
+			self.update_recent()
+			self.lp.Quit(0)
+		}
 		return nil
-	}
-	if ev.MatchesCaseInsensitiveTextOrKey("p") || ev.MatchesPressOrRepeat("shift+p") {
-		ev.Handled = true
-		self.themes_list.CurrentTheme().SaveInDir(utils.ConfigDir())
-		self.update_recent()
-		self.lp.Quit(0)
-		return nil
-	}
-	if ev.MatchesCaseInsensitiveTextOrKey("m") || ev.MatchesPressOrRepeat("shift+m") {
-		ev.Handled = true
-		self.themes_list.CurrentTheme().SaveInConf(utils.ConfigDir(), self.opts.ReloadIn, self.opts.ConfigFileName)
-		self.update_recent()
-		self.lp.Quit(0)
-		return nil
-	}
-
-	scheme := func(name string) error {
-		ev.Handled = true
-		self.themes_list.CurrentTheme().SaveInFile(utils.ConfigDir(), name)
-		self.update_recent()
-		self.lp.Quit(0)
-		return nil
-
-	}
-	if ev.MatchesCaseInsensitiveTextOrKey("d") || ev.MatchesPressOrRepeat("shift+d") {
-		return scheme(kitty.DarkThemeFileName)
-	}
-	if ev.MatchesCaseInsensitiveTextOrKey("l") || ev.MatchesPressOrRepeat("shift+l") {
-		return scheme(kitty.LightThemeFileName)
-	}
-	if ev.MatchesCaseInsensitiveTextOrKey("n") || ev.MatchesPressOrRepeat("shift+n") {
-		return scheme(kitty.NoPreferenceThemeFileName)
 	}
 	return nil
 }

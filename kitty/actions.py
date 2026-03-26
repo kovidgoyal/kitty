@@ -87,8 +87,13 @@ def as_rst() -> str:
         return group_title(x).lower()
 
     def kitten_link(text: str) -> str:
-        x = text.split()
-        return f':doc:`kittens/{x[2]}`' if len(x) > 2 else ''
+        # skip any --flag tokens at the start, then key, then 'kitten', then kitten name
+        parts = text.split()
+        # find 'kitten' token and take the next one as the kitten name
+        for i, p in enumerate(parts):
+            if p == 'kitten' and i + 1 < len(parts):
+                return f':doc:`kittens/{parts[i + 1]}`'
+        return ''
 
     for group in sorted(allg, key=key):
         title = group_title(group)

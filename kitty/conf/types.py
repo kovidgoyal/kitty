@@ -431,21 +431,26 @@ class ShortcutMapping(Mapping):
     setting_name: str = 'map'
 
     def __init__(
-        self, name: str, key: str, action_def: str, short_text: str, long_text: str, add_to_default: bool, documented: bool, group: 'Group', only: Only
+        self, name: str, raw_definition: str, short_text: str, long_text: str,
+        add_to_default: bool, documented: bool, group: 'Group', only: Only,
     ):
         self.name = name
         self.only = only
-        self.key = key
-        self.action_def = action_def
+        self._raw_definition = raw_definition
         self.short_text = short_text
         self.long_text = long_text
         self.documented = documented
         self.add_to_default = add_to_default
         self.group = group
+        from kitty.options.utils import parse_options_for_map
+        _, remainder = parse_options_for_map(raw_definition)
+        parts = remainder.split(maxsplit=1)
+        self.key = parts[0] if parts else ''
+        self.action_def = parts[1] if len(parts) > 1 else ''
 
     @property
     def parseable_text(self) -> str:
-        return f'{self.key} {self.action_def}'
+        return self._raw_definition
 
     @property
     def key_text(self) -> str:
@@ -733,8 +738,8 @@ class Definition:
     def add_map(
         self, short_text: str, defn: str, long_text: str = '', add_to_default: bool = True, documented: bool = True, only: Only = ''
     ) -> None:
-        name, key, action_def = defn.split(maxsplit=2)
-        sc = ShortcutMapping(name, key, action_def, short_text, long_text.strip(), add_to_default, documented, self.current_group, only)
+        name, rest = defn.split(maxsplit=1)
+        sc = ShortcutMapping(name, rest, short_text, long_text.strip(), add_to_default, documented, self.current_group, only)
         self.current_group.append(sc)
         self.shortcut_map.setdefault(name, []).append(sc)
 
