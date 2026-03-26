@@ -36,78 +36,6 @@ within a fixed width across all faces of the font, otherwise they aren't really
 monospaced.
 
 
-Using a color theme with a background color does not work well in vim?
------------------------------------------------------------------------
-
-First, be sure to `use a color scheme in vim <https://github.com/kovidgoyal/kitty/discussions/8196#discussioncomment-11739991>`__
-instead of relying on the terminal theme. Otherwise, background and text selection colours
-may be difficult to read.
-
-Sadly, vim has very poor out-of-the-box detection for modern terminal features.
-Furthermore, it `recently broke detection even more <https://github.com/vim/vim/issues/11729>`__.
-It kind of, but not really, supports terminfo, except it overrides it with its own hard-coded
-values when it feels like it. Worst of all, it has no ability to detect modern
-features not present in terminfo, at all, even security sensitive ones like
-bracketed paste.
-
-Thankfully, probably as a consequence of this lack of detection, vim allows users to
-configure these low level details. So, to make vim work well with any modern
-terminal, including kitty, add the following to your :file:`~/.vimrc`.
-
-.. code-block:: vim
-
-    " Mouse support
-    set mouse=a
-    set ttymouse=sgr
-    set balloonevalterm
-    " Styled and colored underline support
-    let &t_AU = "\e[58:5:%dm"
-    let &t_8u = "\e[58:2:%lu:%lu:%lum"
-    let &t_Us = "\e[4:2m"
-    let &t_Cs = "\e[4:3m"
-    let &t_ds = "\e[4:4m"
-    let &t_Ds = "\e[4:5m"
-    let &t_Ce = "\e[4:0m"
-    " Strikethrough
-    let &t_Ts = "\e[9m"
-    let &t_Te = "\e[29m"
-    " Truecolor support
-    let &t_8f = "\e[38:2:%lu:%lu:%lum"
-    let &t_8b = "\e[48:2:%lu:%lu:%lum"
-    let &t_RF = "\e]10;?\e\\"
-    let &t_RB = "\e]11;?\e\\"
-    " Bracketed paste
-    let &t_BE = "\e[?2004h"
-    let &t_BD = "\e[?2004l"
-    let &t_PS = "\e[200~"
-    let &t_PE = "\e[201~"
-    " Cursor control
-    let &t_RC = "\e[?12$p"
-    let &t_SH = "\e[%d q"
-    let &t_RS = "\eP$q q\e\\"
-    let &t_SI = "\e[5 q"
-    let &t_SR = "\e[3 q"
-    let &t_EI = "\e[1 q"
-    let &t_VS = "\e[?12l"
-    " Focus tracking
-    let &t_fe = "\e[?1004h"
-    let &t_fd = "\e[?1004l"
-    execute "set <FocusGained>=\<Esc>[I"
-    execute "set <FocusLost>=\<Esc>[O"
-    " Window title
-    let &t_ST = "\e[22;2t"
-    let &t_RT = "\e[23;2t"
-
-    " vim hardcodes background color erase even if the terminfo file does
-    " not contain bce. This causes incorrect background rendering when
-    " using a color theme with a background color in terminals such as
-    " kitty that do not support background color erase.
-    let &t_ut=''
-
-These settings must be placed **before** setting the ``colorscheme``. It is
-also important that the value of the vim ``term`` variable is not changed
-after these settings.
-
 I get errors about the terminal being unknown or opening the terminal failing or functional keys like arrow keys don't work?
 -------------------------------------------------------------------------------------------------------------------------------
 
@@ -568,6 +496,79 @@ The remaining used memory can be investigated using valgrind again, and it will
 come from arenas in the GPU drivers and the per thread arenas glibc's malloc
 maintains. These too allocate memory in large blocks and don't release it back
 to the OS immediately.
+
+
+Using a color theme with a background color does not work well in vim?
+-----------------------------------------------------------------------
+
+First, be sure to `use a color scheme in vim <https://github.com/kovidgoyal/kitty/discussions/8196#discussioncomment-11739991>`__
+instead of relying on the terminal theme. Otherwise, background and text selection colours
+may be difficult to read.
+
+Sadly, vim has very poor out-of-the-box detection for modern terminal features.
+Furthermore, it `recently broke detection even more <https://github.com/vim/vim/issues/11729>`__.
+It kind of, but not really, supports terminfo, except it overrides it with its own hard-coded
+values when it feels like it. Worst of all, it has no ability to detect modern
+features not present in terminfo, at all, even security sensitive ones like
+bracketed paste.
+
+Thankfully, probably as a consequence of this lack of detection, vim allows users to
+configure these low level details. So, to make vim work well with any modern
+terminal, including kitty, add the following to your :file:`~/.vimrc`.
+
+.. code-block:: vim
+
+    " Mouse support
+    set mouse=a
+    set ttymouse=sgr
+    set balloonevalterm
+    " Styled and colored underline support
+    let &t_AU = "\e[58:5:%dm"
+    let &t_8u = "\e[58:2:%lu:%lu:%lum"
+    let &t_Us = "\e[4:2m"
+    let &t_Cs = "\e[4:3m"
+    let &t_ds = "\e[4:4m"
+    let &t_Ds = "\e[4:5m"
+    let &t_Ce = "\e[4:0m"
+    " Strikethrough
+    let &t_Ts = "\e[9m"
+    let &t_Te = "\e[29m"
+    " Truecolor support
+    let &t_8f = "\e[38:2:%lu:%lu:%lum"
+    let &t_8b = "\e[48:2:%lu:%lu:%lum"
+    let &t_RF = "\e]10;?\e\\"
+    let &t_RB = "\e]11;?\e\\"
+    " Bracketed paste
+    let &t_BE = "\e[?2004h"
+    let &t_BD = "\e[?2004l"
+    let &t_PS = "\e[200~"
+    let &t_PE = "\e[201~"
+    " Cursor control
+    let &t_RC = "\e[?12$p"
+    let &t_SH = "\e[%d q"
+    let &t_RS = "\eP$q q\e\\"
+    let &t_SI = "\e[5 q"
+    let &t_SR = "\e[3 q"
+    let &t_EI = "\e[1 q"
+    let &t_VS = "\e[?12l"
+    " Focus tracking
+    let &t_fe = "\e[?1004h"
+    let &t_fd = "\e[?1004l"
+    execute "set <FocusGained>=\<Esc>[I"
+    execute "set <FocusLost>=\<Esc>[O"
+    " Window title
+    let &t_ST = "\e[22;2t"
+    let &t_RT = "\e[23;2t"
+
+    " vim hardcodes background color erase even if the terminfo file does
+    " not contain bce. This causes incorrect background rendering when
+    " using a color theme with a background color in terminals such as
+    " kitty that do not support background color erase.
+    let &t_ut=''
+
+These settings must be placed **before** setting the ``colorscheme``. It is
+also important that the value of the vim ``term`` variable is not changed
+after these settings.
 
 
 Why does kitty sometimes start slowly on my Linux system?
