@@ -274,6 +274,9 @@ for copying to clipboard.
    and you cannot have mappings with and without conditions applying to multi-keys
    with the same first key.
 
+
+.. _mapping-fallback:
+
 Non-Latin keyboard layout support
 --------------------------------------
 
