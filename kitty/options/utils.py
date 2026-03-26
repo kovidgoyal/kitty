@@ -1395,14 +1395,14 @@ key_map_option_converters['timeout'] = float
 
 def _convert_allow_fallback(val: str) -> tuple[KeyFallbackType, ...]:
     match val:
-        case '' | 'none':
-            return ()
         case 'shifted,ascii':
             return (KeyFallbackType.shifted, KeyFallbackType.alternate)
-        case 'ascii,shifted':
-            return (KeyFallbackType.alternate, KeyFallbackType.shifted)
         case 'shifted':
             return (KeyFallbackType.shifted,)
+        case '' | 'none':
+            return ()
+        case 'ascii,shifted':
+            return (KeyFallbackType.alternate, KeyFallbackType.shifted)
         case 'ascii':
             return (KeyFallbackType.alternate,)
     raise ValueError(f'allow_fallback values must be a subset of shifted, ascii, got: {val}')
