@@ -445,7 +445,7 @@ class ShortcutMapping(Mapping):
         from kitty.options.utils import parse_options_for_map
         _, remainder = parse_options_for_map(raw_definition)
         parts = remainder.split(maxsplit=1)
-        self.key = parts[0] if parts else ''
+        self.key = parts[0]
         self.action_def = parts[1] if len(parts) > 1 else ''
 
     @property

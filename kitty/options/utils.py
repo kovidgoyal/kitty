@@ -1292,7 +1292,7 @@ class LiteralField(Generic[T]):
         val = obj.__dict__.get(self._name)
         if val is None or isinstance(val, LiteralField):
             return self._vals[0]
-        return val
+        return cast(T, val)
 
     def __set__(self, obj: object, value: str) -> None:
         if value not in self._vals:
@@ -1304,6 +1304,14 @@ OnUnknown = Literal['beep', 'end', 'ignore', 'passthrough']
 OnAction = Literal['keep', 'end']
 
 
+class KeyFallbackType(enum.Enum):
+    shifted = 'shifted'
+    alternate = 'alternate'
+
+    def __repr__(self) -> str:
+        return f'KeyFallbackType.{self.value}'
+
+
 @dataclass(frozen=True)
 class KeyMapOptions:
     when_focus_on: str = ''
@@ -1312,7 +1320,7 @@ class KeyMapOptions:
     on_unknown: LiteralField[OnUnknown] = LiteralField[OnUnknown](get_args(OnUnknown))
     on_action: LiteralField[OnAction] = LiteralField[OnAction](get_args(OnAction))
     timeout: float | None = None
-    allow_fallback: str = 'shifted'
+    allow_fallback: tuple[KeyFallbackType, ...] = (KeyFallbackType.shifted,)
 
 
 default_key_map_options = KeyMapOptions()
@@ -1385,17 +1393,19 @@ key_map_option_converters: defaultdict[str, Callable[[str], Any]] = defaultdict(
 key_map_option_converters['timeout'] = float
 
 
-_allowed_fallback_values = frozenset(('shifted', 'ascii'))
-
-
-def _convert_allow_fallback(val: str) -> str:
-    if not val or val == 'none':
-        return ''
-    parts = tuple(x.strip() for x in val.split(','))
-    invalid = set(parts) - _allowed_fallback_values
-    if invalid:
-        raise ValueError(f'allow_fallback values must be a subset of {_allowed_fallback_values}, got: {invalid}')
-    return ','.join(parts)
+def _convert_allow_fallback(val: str) -> tuple[KeyFallbackType, ...]:
+    match val:
+        case '' | 'none':
+            return ()
+        case 'shifted,ascii':
+            return (KeyFallbackType.shifted, KeyFallbackType.alternate)
+        case 'ascii,shifted':
+            return (KeyFallbackType.alternate, KeyFallbackType.shifted)
+        case 'shifted':
+            return (KeyFallbackType.shifted,)
+        case 'ascii':
+            return (KeyFallbackType.alternate,)
+    raise ValueError(f'allow_fallback values must be a subset of shifted, ascii, got: {val}')
 
 
 key_map_option_converters['allow_fallback'] = _convert_allow_fallback

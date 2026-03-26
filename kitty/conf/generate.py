@@ -173,6 +173,8 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
             fmod = f'{loc}.options.utils'
         imports.add((fmod, ftype))
         return ftype
+    if loc == 'kitty':
+        imports.add(('kitty.options.utils', 'KeyFallbackType'))
 
     for aname, action in defn.actions.items():
         option_names.add(aname)
@@ -620,7 +622,7 @@ def gen_go_code(defn: Definition) -> str:
         a('KeyboardShortcuts: []*config.KeyAction{')
         for sc in keyboard_shortcuts:
             options, leftover = parse_options_for_map(sc.parseable_text)
-            allow_fallback = options.allow_fallback
+            allow_fallback = ','.join(x.value for x in options.allow_fallback)
             key_spec, action = leftover.split(None, 1)
             aname, _, aargs = action.partition(' ')
             aname = serialize_as_go_string(aname)

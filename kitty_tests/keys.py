@@ -6,6 +6,7 @@ from functools import partial
 import kitty.fast_data_types as defines
 from kitty.key_encoding import EventType, KeyEvent, decode_key_event, encode_key_event
 from kitty.keys import Mappings
+from kitty.options.utils import KeyFallbackType
 
 from . import BaseTest
 
@@ -680,7 +681,7 @@ class TestKeys(BaseTest):
 
     def test_get_shortcut_per_mapping_fallback(self):
         from kitty.keys import get_shortcut
-        from kitty.options.utils import KeyDefinition, KeyMapOptions
+        from kitty.options.utils import KeyDefinition, KeyMapOptions, _convert_allow_fallback
 
         ctrl = defines.GLFW_MOD_CONTROL
         shift = defines.GLFW_MOD_SHIFT
@@ -688,8 +689,7 @@ class TestKeys(BaseTest):
         latin_c = ord('c')
 
         def make_kd(definition='test_action', allow_fallback='shifted'):
-            opts = KeyMapOptions()
-            object.__setattr__(opts, 'allow_fallback', allow_fallback)
+            opts = KeyMapOptions(allow_fallback=_convert_allow_fallback(allow_fallback))
             return KeyDefinition(definition=definition, options=opts)
 
         # non-ASCII key + alternate_key + allow_fallback includes ascii → match
@@ -699,6 +699,18 @@ class TestKeys(BaseTest):
         result = get_shortcut(keymap, ev)
         self.assertIsNotNone(result)
         self.assertIs(result[0], kd_ascii)
+
+        # sorting by fallback order
+        kd1 = make_kd('ascii', allow_fallback='ascii,shifted')
+        kd2 = make_kd('shifted', allow_fallback='shifted,ascii')
+        keymap = {defines.SingleKey(ctrl, False, latin_c): [kd1, kd2]}
+        ev = defines.KeyEvent(cyrillic_s, 0, latin_c, ctrl)
+        result = get_shortcut(keymap, ev)
+        self.assertEqual(result, [kd1, kd2])
+        keymap = {defines.SingleKey(0, False, latin_c): [kd1, kd2]}
+        ev = defines.KeyEvent(ord('C'), latin_c, 0, shift)
+        result = get_shortcut(keymap, ev)
+        self.assertEqual(result, [kd2, kd1])
 
         # non-ASCII key + alternate_key + allow_fallback='shifted' (no ascii) → no ascii match
         kd_shifted_only = make_kd('copy', allow_fallback='shifted')
@@ -842,34 +854,34 @@ class TestKeys(BaseTest):
 
         # default: no --allow-fallback → allow_fallback='shifted'
         kd = first_kd('ctrl+c copy_to_clipboard')
-        self.ae(kd.options.allow_fallback, 'shifted')
+        self.ae(kd.options.allow_fallback, (KeyFallbackType.shifted,))
 
         # --allow-fallback=shifted,ascii
         kd = first_kd('--allow-fallback=shifted,ascii ctrl+c copy_to_clipboard')
-        self.assertIn('shifted', kd.options.allow_fallback)
-        self.assertIn('ascii', kd.options.allow_fallback)
+        self.assertIn(KeyFallbackType.shifted, kd.options.allow_fallback)
+        self.assertIn(KeyFallbackType.alternate, kd.options.allow_fallback)
 
         # --allow-fallback=ascii (only ascii, no shifted)
         kd = first_kd('--allow-fallback=ascii ctrl+c copy_to_clipboard')
-        self.ae(kd.options.allow_fallback, 'ascii')
-        self.assertNotIn('shifted', kd.options.allow_fallback)
+        self.ae(kd.options.allow_fallback, (KeyFallbackType.alternate,))
+        self.assertNotIn(KeyFallbackType.shifted, kd.options.allow_fallback)
 
         # --allow-fallback=shifted (explicit, same as default)
         kd = first_kd('--allow-fallback=shifted ctrl+c copy_to_clipboard')
-        self.ae(kd.options.allow_fallback, 'shifted')
+        self.ae(kd.options.allow_fallback, (KeyFallbackType.shifted,))
 
         # invalid value raises
         self.assertRaises(ValueError, first_kd, '--allow-fallback=bogus ctrl+c copy_to_clipboard')
 
         # order normalization: ascii,shifted → sorted as ascii,shifted
         kd = first_kd('--allow-fallback=ascii,shifted ctrl+c copy_to_clipboard')
-        self.ae(kd.options.allow_fallback, 'ascii,shifted')
+        self.ae(kd.options.allow_fallback, (KeyFallbackType.alternate, KeyFallbackType.shifted))
 
         # --allow-fallback=none → empty string (no fallback)
         kd = first_kd('--allow-fallback=none ctrl+c copy_to_clipboard')
-        self.ae(kd.options.allow_fallback, '')
+        self.ae(kd.options.allow_fallback, ())
 
         # combined with other options
         kd = first_kd('--when-focus-on 1 --allow-fallback=ascii ctrl+c copy_to_clipboard')
-        self.ae(kd.options.allow_fallback, 'ascii')
+        self.ae(kd.options.allow_fallback, (KeyFallbackType.alternate,))
         self.ae(kd.options.when_focus_on, '1')

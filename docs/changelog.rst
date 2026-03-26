@@ -168,6 +168,8 @@ Detailed list of changes
 0.47.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- For builtin key mappings automatically fallback to matching ASCII key when the pressed key has no matches and is a non-English character (:pull:`9671`)
+
 - :doc:`Remote control <remote-control>`: Expose :code:`session_name` in the output of ``kitten @ ls`` for each window (:iss:`9732`)
 
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
@@ -183,6 +185,7 @@ Detailed list of changes
 - hints kitten: A new option to set the background color of matched text (:pull:`9745`)
 
 - The :opt:`show_hyperlink_targets` option now allows specifying a keyboard modifier so that target URLs are only shown on hover when the modifier is pressed (:pull:`9741`)
+
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

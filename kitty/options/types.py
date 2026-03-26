@@ -11,8 +11,8 @@ import kitty.fast_data_types
 from kitty.fonts import FontSpec
 import kitty.fonts
 from kitty.options.utils import (
-    AliasMap, KeyDefinition, KeyMapOptions, KeyboardModeMap, MouseHideWait, MouseMap, MouseMapping,
-    NotifyOnCmdFinish, TabBarMarginHeight
+    AliasMap, KeyDefinition, KeyFallbackType, KeyMapOptions, KeyboardModeMap, MouseHideWait, MouseMap,
+    MouseMapping, NotifyOnCmdFinish, TabBarMarginHeight
 )
 import kitty.options.utils
 from kitty.types import FloatEdges
@@ -848,23 +848,23 @@ defaults.watcher = {}
 
 defaults.map = [
     # copy_to_clipboard
-    KeyDefinition(trigger=SingleKey(mods=256, key=99), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='copy_to_clipboard'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=99), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='copy_to_clipboard'),
     # paste_from_clipboard
-    KeyDefinition(trigger=SingleKey(mods=256, key=118), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='paste_from_clipboard'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=118), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='paste_from_clipboard'),
     # paste_from_selection
-    KeyDefinition(trigger=SingleKey(mods=256, key=115), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='paste_from_selection'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=115), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='paste_from_selection'),
     # paste_from_selection
     KeyDefinition(trigger=SingleKey(mods=1, key=57348), definition='paste_from_selection'),
     # pass_selection_to_program
-    KeyDefinition(trigger=SingleKey(mods=256, key=111), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='pass_selection_to_program'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=111), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='pass_selection_to_program'),
     # scroll_line_up
     KeyDefinition(trigger=SingleKey(mods=256, key=57352), definition='scroll_line_up'),
     # scroll_line_up
-    KeyDefinition(trigger=SingleKey(mods=256, key=107), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='scroll_line_up'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=107), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='scroll_line_up'),
     # scroll_line_down
     KeyDefinition(trigger=SingleKey(mods=256, key=57353), definition='scroll_line_down'),
     # scroll_line_down
-    KeyDefinition(trigger=SingleKey(mods=256, key=106), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='scroll_line_down'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=106), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='scroll_line_down'),
     # scroll_page_up
     KeyDefinition(trigger=SingleKey(mods=256, key=57354), definition='scroll_page_up'),
     # scroll_page_down
@@ -874,33 +874,33 @@ defaults.map = [
     # scroll_end
     KeyDefinition(trigger=SingleKey(mods=256, key=57357), definition='scroll_end'),
     # scroll_to_previous_prompt
-    KeyDefinition(trigger=SingleKey(mods=256, key=122), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='scroll_to_prompt -1'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=122), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='scroll_to_prompt -1'),
     # scroll_to_next_prompt
-    KeyDefinition(trigger=SingleKey(mods=256, key=120), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='scroll_to_prompt 1'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=120), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='scroll_to_prompt 1'),
     # show_scrollback
-    KeyDefinition(trigger=SingleKey(mods=256, key=104), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='show_scrollback'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=104), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='show_scrollback'),
     # show_last_command_output
-    KeyDefinition(trigger=SingleKey(mods=256, key=103), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='show_last_command_output'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=103), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='show_last_command_output'),
     # search_scrollback
     KeyDefinition(trigger=SingleKey(mods=256, key=47), definition='search_scrollback'),
     # new_window
     KeyDefinition(trigger=SingleKey(mods=256, key=57345), definition='new_window'),
     # new_os_window
-    KeyDefinition(trigger=SingleKey(mods=256, key=110), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='new_os_window'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=110), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='new_os_window'),
     # close_window
-    KeyDefinition(trigger=SingleKey(mods=256, key=119), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='close_window'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=119), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='close_window'),
     # next_window
     KeyDefinition(trigger=SingleKey(mods=256, key=93), definition='next_window'),
     # previous_window
     KeyDefinition(trigger=SingleKey(mods=256, key=91), definition='previous_window'),
     # move_window_forward
-    KeyDefinition(trigger=SingleKey(mods=256, key=102), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='move_window_forward'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=102), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='move_window_forward'),
     # move_window_backward
-    KeyDefinition(trigger=SingleKey(mods=256, key=98), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='move_window_backward'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=98), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='move_window_backward'),
     # move_window_to_top
     KeyDefinition(trigger=SingleKey(mods=256, key=96), definition='move_window_to_top'),
     # start_resizing_window
-    KeyDefinition(trigger=SingleKey(mods=256, key=114), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='start_resizing_window'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=114), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='start_resizing_window'),
     # first_window
     KeyDefinition(trigger=SingleKey(mods=256, key=49), definition='first_window'),
     # second_window
@@ -934,17 +934,17 @@ defaults.map = [
     # previous_tab
     KeyDefinition(trigger=SingleKey(mods=5, key=57346), definition='previous_tab'),
     # new_tab
-    KeyDefinition(trigger=SingleKey(mods=256, key=116), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='new_tab'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=116), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='new_tab'),
     # close_tab
-    KeyDefinition(trigger=SingleKey(mods=256, key=113), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='close_tab'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=113), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='close_tab'),
     # move_tab_forward
     KeyDefinition(trigger=SingleKey(mods=256, key=46), definition='move_tab_forward'),
     # move_tab_backward
     KeyDefinition(trigger=SingleKey(mods=256, key=44), definition='move_tab_backward'),
     # set_tab_title
-    KeyDefinition(trigger=SingleKey(mods=258, key=116), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='set_tab_title'),
+    KeyDefinition(trigger=SingleKey(mods=258, key=116), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='set_tab_title'),
     # next_layout
-    KeyDefinition(trigger=SingleKey(mods=256, key=108), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='next_layout'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=108), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='next_layout'),
     # increase_font_size
     KeyDefinition(trigger=SingleKey(mods=256, key=61), definition='change_font_size all +2.0'),
     # increase_font_size
@@ -958,25 +958,25 @@ defaults.map = [
     # reset_font_size
     KeyDefinition(trigger=SingleKey(mods=256, key=57347), definition='change_font_size all 0'),
     # open_url
-    KeyDefinition(trigger=SingleKey(mods=256, key=101), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='open_url_with_hints'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=101), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='open_url_with_hints'),
     # insert_selected_path
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=102),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='kitten hints --type path --program -'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=102),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='kitten hints --type path --program -'),
     # open_selected_path
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(mods=1, key=102),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='kitten hints --type path'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(mods=1, key=102),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='kitten hints --type path'),
     # insert_chosen_file
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=99),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='kitten choose-files'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=99),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='kitten choose-files'),
     # insert_chosen_directory
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=100),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='kitten choose-files --mode=dir'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=100),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='kitten choose-files --mode=dir'),
     # insert_selected_line
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=108),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='kitten hints --type line --program -'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=108),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='kitten hints --type line --program -'),
     # insert_selected_word
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=119),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='kitten hints --type word --program -'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=119),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='kitten hints --type word --program -'),
     # insert_selected_hash
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=104),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='kitten hints --type hash --program -'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=104),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='kitten hints --type hash --program -'),
     # goto_file_line
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=110),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='kitten hints --type linenum'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=110),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='kitten hints --type linenum'),
     # open_selected_hyperlink
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=121),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='kitten hints --type hyperlink'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=112), rest=(SingleKey(key=121),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='kitten hints --type hyperlink'),
     # show_kitty_doc
     KeyDefinition(trigger=SingleKey(mods=256, key=57364), definition='show_kitty_doc overview'),
     # command_palette
@@ -986,19 +986,19 @@ defaults.map = [
     # toggle_maximized
     KeyDefinition(trigger=SingleKey(mods=256, key=57373), definition='toggle_maximized'),
     # input_unicode_character
-    KeyDefinition(trigger=SingleKey(mods=256, key=117), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='kitten unicode_input'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=117), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='kitten unicode_input'),
     # edit_config_file
     KeyDefinition(trigger=SingleKey(mods=256, key=57365), definition='edit_config_file'),
     # kitty_shell
     KeyDefinition(trigger=SingleKey(mods=256, key=57344), definition='kitty_shell window'),
     # increase_background_opacity
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=109),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='set_background_opacity +0.1'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=109),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='set_background_opacity +0.1'),
     # decrease_background_opacity
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=108),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='set_background_opacity -0.1'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=108),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='set_background_opacity -0.1'),
     # full_background_opacity
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=49),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='set_background_opacity 1'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=49),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='set_background_opacity 1'),
     # reset_background_opacity
-    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=100),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='set_background_opacity default'),
+    KeyDefinition(is_sequence=True, trigger=SingleKey(mods=256, key=97), rest=(SingleKey(key=100),), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='set_background_opacity default'),
     # reset_terminal
     KeyDefinition(trigger=SingleKey(mods=256, key=57349), definition='clear_terminal reset active'),
     # reload_config_file
@@ -1008,8 +1008,8 @@ defaults.map = [
 ]
 
 if is_macos:
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=99), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='copy_or_noop'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=118), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='paste_from_clipboard'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=99), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='copy_or_noop'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=118), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='paste_from_clipboard'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=57354), definition='scroll_line_up'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57352), definition='scroll_line_up'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=57355), definition='scroll_line_down'))
@@ -1018,11 +1018,11 @@ if is_macos:
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57355), definition='scroll_page_down'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57356), definition='scroll_home'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57357), definition='scroll_end'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=102), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='search_scrollback'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=102), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='search_scrollback'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57345), definition='new_window'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=110), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='new_os_window'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=100), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='close_window'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=114), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='start_resizing_window'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=110), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='new_os_window'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=100), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='close_window'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=114), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='start_resizing_window'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=49), definition='first_window'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=50), definition='second_window'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=51), definition='third_window'))
@@ -1034,18 +1034,18 @@ if is_macos:
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57), definition='ninth_window'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=93), definition='next_tab'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=91), definition='previous_tab'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=116), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='new_tab'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=119), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='close_tab'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=119), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='close_os_window'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=105), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='set_tab_title'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=116), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='new_tab'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=119), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='close_tab'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=119), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='close_os_window'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=105), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='set_tab_title'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=43), definition='change_font_size all +2.0'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=61), definition='change_font_size all +2.0'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=61), definition='change_font_size all +2.0'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=45), definition='change_font_size all -2.0'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=45), definition='change_font_size all -2.0'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=48), definition='change_font_size all 0'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=102), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='toggle_fullscreen'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=115), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback='ascii,shifted'), definition='toggle_macos_secure_keyboard_entry'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=102), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='toggle_fullscreen'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=115), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='toggle_macos_secure_keyboard_entry'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=96), definition='macos_cycle_through_os_windows'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=9, key=96), definition='macos_cycle_through_os_windows_backwards'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=12, key=32), definition='kitten unicode_input'))

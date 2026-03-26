@@ -259,7 +259,7 @@ func validateAllowFallback(value string) error {
 	if value == "" || value == "none" {
 		return nil
 	}
-	for _, part := range strings.Split(value, ",") {
+	for part := range strings.SplitSeq(value, ",") {
 		part = strings.TrimSpace(part)
 		if part != "shifted" && part != "ascii" {
 			return fmt.Errorf("Invalid allow-fallback value %#v, allowed values: shifted, ascii, none", part)
