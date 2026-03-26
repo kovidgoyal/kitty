@@ -155,6 +155,19 @@ See :doc:`color-stack` for details on the syntax for specifying colors and
 how to query current colors.
 
 
+Why is there padding between the text area and the window border?
+------------------------------------------------------------------
+
+Terminal screens are a grid of fixed size cells. When the window size is
+not an exact multiple of the cell size, there is some leftover space that
+appears as padding. Additionally you can add your own padding with
+:opt:`window_padding_width`. This padding can be particularly noticeable when
+using TUI programs that have a background color different from the terminal
+background color. In such cases either change their background color to match
+the terminal or more correctly, open a bug report against such programs and ask
+them to :doc:`change the terminal default background color <color-stack>`
+using OSC escape codes when starting and restore it when quitting to have it work automatically.
+
 How do I specify command line options for kitty on macOS?
 ---------------------------------------------------------------
 
