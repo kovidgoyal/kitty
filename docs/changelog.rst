@@ -186,8 +186,6 @@ Detailed list of changes
 
 - The :opt:`show_hyperlink_targets` option now allows specifying a keyboard modifier so that target URLs are only shown on hover when the modifier is pressed (:pull:`9741`)
 
-- Shortcut matching: When multiple shortcuts match a key event via different fallback types, the one whose :opt:`allow_fallback <map>` lists the matching fallback type first wins (higher priority). Direct matches always take priority over fallback matches.
-
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
