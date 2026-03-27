@@ -986,15 +986,32 @@ mouse_region(bool detect_borders, bool detect_title_bar) {
                     window_id = closest_horiz->border_type < 0 ? -closest_horiz->border_type : closest_horiz->border_type;
             }
             if (ans.window_border) {
-                if (window_id) {
-                    for (unsigned int i = 0; i < t->num_windows; i++)
-                        if (t->windows[i].id == window_id) {
-                            ans.window = t->windows + i;
-                            ans.window_idx = i;
+                // If a hovered scrollbar overlaps this border region, the
+                // scrollbar takes precedence to avoid flickering when the
+                // expanded hover-width scrollbar straddles the border.
+                bool scrollbar_takes_precedence = false;
+                if (OPT(scrollbar_interactive)) {
+                    for (unsigned int i = 0; i < t->num_windows; i++) {
+                        Window *win = t->windows + i;
+                        if (!win->visible || !win->render_data.screen) continue;
+                        if (win->scrollbar.is_hovering && get_scrollbar_hit_type(win, w->mouse_x, w->mouse_y) != SCROLLBAR_HIT_NONE) {
+                            scrollbar_takes_precedence = true;
                             break;
                         }
+                    }
                 }
-                return ans;
+                if (!scrollbar_takes_precedence) {
+                    if (window_id) {
+                        for (unsigned int i = 0; i < t->num_windows; i++)
+                            if (t->windows[i].id == window_id) {
+                                ans.window = t->windows + i;
+                                ans.window_idx = i;
+                                break;
+                            }
+                    }
+                    return ans;
+                }
+                ans.window_border = 0;
             }
         }
         for (unsigned int i = 0; i < t->num_windows; i++) {
