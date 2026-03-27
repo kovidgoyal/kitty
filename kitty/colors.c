@@ -181,8 +181,10 @@ lerp_lab(float t, float *a, float *b, float *out) {
 // For more information, see
 // https://gist.github.com/jake-stewart/0a8ea46159a7da2c808e5be2177e1783
 static void
-generate_256_palette(color_type *color_table, color_type bg, color_type fg, bool semantic) {
+generate_256_palette(ColorProfile *self, color_type *color_table, bool semantic) {
     float base8_lab[8][3];
+    const color_type bg = colorprofile_to_color(self, self->overridden.default_bg, self->configured.default_bg).rgb;
+    const color_type fg = colorprofile_to_color(self, self->overridden.default_fg, self->configured.default_fg).rgb;
     color_type_to_lab(bg, base8_lab[0]);
     color_type_to_lab(fg, base8_lab[7]);
     for (int i = 1; i < 7; i++) color_type_to_lab(color_table[i], base8_lab[i]);
@@ -262,8 +264,7 @@ set_colortable(ColorProfile *self, PyObject *opts) {
     size_t itemsize = PyLong_AsSize_t(r2);
     if (itemsize != sizeof(unsigned long)) { PyErr_Format(PyExc_TypeError, "color_table has incorrect itemsize: %zu", itemsize); return false; }
     for (size_t i = 0; i < arraysz(FG_BG_256); i++) self->color_table[i] = color_table[i];
-    if (dynamic_palette) generate_256_palette(
-        self->color_table, self->configured.default_bg.rgb, self->configured.default_fg.rgb, semantic_generation);
+    if (dynamic_palette) generate_256_palette(self, self->color_table, semantic_generation);
     else fixed_color_palette(self->color_table);
     memcpy(self->orig_color_table, self->color_table, arraysz(self->color_table) * sizeof(self->color_table[0]));
     return true;
@@ -394,10 +395,8 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
         for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(profiles); j++) {
             ColorProfile *self = (ColorProfile*)PyTuple_GET_ITEM(profiles, j);
             if (dynamic) {
-                generate_256_palette(
-                    self->color_table, self->configured.default_bg.rgb, self->configured.default_fg.rgb, semantic);
-                if (change_configured) generate_256_palette(
-                    self->orig_color_table, self->configured.default_bg.rgb, self->configured.default_fg.rgb, semantic);
+                generate_256_palette(self, self->color_table, semantic);
+                if (change_configured) generate_256_palette(self, self->orig_color_table, semantic);
             } else {
                 fixed_color_palette(self->color_table);
                 if (change_configured) fixed_color_palette(self->orig_color_table);
