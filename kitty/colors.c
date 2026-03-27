@@ -614,15 +614,11 @@ set_color(ColorProfile *self, PyObject *args) {
     unsigned char i;
     unsigned long val;
     if (!PyArg_ParseTuple(args, "Bk", &i, &val)) return NULL;
-    self->color_table[i] = val;
     self->dirty = true;
-    if (val == NULL_COLOR_VALUE) {
+    if (val == NULL_COLOR_VALUE && i >= 16) {
         bool semantic, dynamic = palette_generation_is_dynamic(global_state.options_object, &semantic);
-        if (dynamic) {
-            if (i >= 16) self->color_table[i] = generate_256_palette_color(self, self->color_table, i, semantic);
-            else generate_256_palette(self, self->color_table, semantic);
-        } else self->color_table[i] = FG_BG_256[i];
-    }
+        self->color_table[i] = dynamic ? generate_256_palette_color(self, self->color_table, i, semantic) : FG_BG_256[i];
+    } else self->color_table[i] = val;
     Py_RETURN_NONE;
 }
 
