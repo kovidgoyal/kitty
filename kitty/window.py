@@ -49,6 +49,7 @@ from .fast_data_types import (
     GLFW_RELEASE,
     GLFW_REPEAT,
     NO_CURSOR_SHAPE,
+    NULL_COLOR_VALUE,
     SCROLL_FULL,
     SCROLL_LINE,
     SCROLL_PAGE,
@@ -577,9 +578,13 @@ def color_control(cp: ColorProfile, code: int, value: str | bytes | memoryview =
                 else:
                     if 0 <= colnum <= 255:
                         val = val.partition('@')[0]
-                        col = to_color(val)
-                        if col is not None:
-                            cp.set_color(colnum, color_as_int(col))
+                        if val:
+                            if (col := to_color(val)) is not None:
+                                cp.set_color(colnum, color_as_int(col))
+                        elif colnum > 15:
+                            cp.set_color(colnum, NULL_COLOR_VALUE)
+                        else:
+                            cp.set_color(colnum, get_options().color_table[colnum])
         else:
             if attr:
                 delattr(cp, attr)

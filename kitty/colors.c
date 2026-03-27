@@ -586,6 +586,11 @@ set_color(ColorProfile *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "Bk", &i, &val)) return NULL;
     self->color_table[i] = val;
     self->dirty = true;
+    if (val == NULL_COLOR_VALUE) {
+        bool semantic, dynamic = palette_generation_is_dynamic(global_state.options_object, &semantic);
+        if (dynamic) generate_256_palette(self, self->color_table, semantic);
+        else self->color_table[i] = FG_BG_256[i];
+    }
     Py_RETURN_NONE;
 }
 
