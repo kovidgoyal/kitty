@@ -4,7 +4,7 @@
 from collections.abc import Generator, Iterable, Iterator, Sequence
 from functools import partial
 from itertools import repeat
-from typing import Any, Callable, NamedTuple
+from typing import Any, Callable, ClassVar, Literal, NamedTuple
 
 from kitty.borders import BorderColor
 from kitty.fast_data_types import BOTTOM_EDGE, RIGHT_EDGE, Region, get_options, set_active_window, viewport_for_window
@@ -232,6 +232,12 @@ class Layout:
     must_draw_borders = False  # can be overridden to customize behavior from kittens
     layout_opts = LayoutOpts({})
     only_active_window_visible = False
+    # Controls drag-and-drop overlay display and valid direction axis for body drops.
+    # 'full'   – full-window overlay, positional swap (Stack and any unrecognised layout)
+    # 'axis_y' – top/bottom halves only (Vertical, Tall, Grid)
+    # 'axis_x' – left/right halves only (Horizontal, Fat)
+    # 'free'   – 4-way free direction (Splits; handled by its own insert_window_next_to override)
+    drag_overlay_mode: ClassVar[Literal['full', 'axis_y', 'axis_x', 'free']] = 'full'
 
     def __init__(self, os_window_id: int, tab_id: int, layout_opts: str = '') -> None:
         self.set_owner(os_window_id, tab_id)
@@ -302,6 +308,31 @@ class Layout:
 
     def move_window_to_group(self, all_windows: WindowList, group: int) -> bool:
         return all_windows.move_window_group(to_group=group)
+
+    def insert_window_next_to(
+        self,
+        all_windows: WindowList,
+        window: WindowType,
+        next_to: WindowType,
+        horizontal: bool,
+        after: bool,
+    ) -> None:
+        """Reposition window as a linear neighbour of next_to.
+
+        For axis_x/axis_y layouts this performs a positional insert that preserves
+        the order of all other groups. For 'full' layouts it falls back to a swap.
+        The Splits layout overrides this with tree-based logic.
+        """
+        src_wg = all_windows.group_for_window(window)
+        dest_wg = all_windows.group_for_window(next_to)
+        if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id:
+            return
+        all_windows.set_active_window_group_for(window)
+        if self.drag_overlay_mode in ('axis_x', 'axis_y'):
+            all_windows.insert_window_group_next_to(dest_wg.id, after)
+        else:
+            # 'full' fallback: swap (preserves existing behaviour for Stack etc.)
+            self.move_window_to_group(all_windows, dest_wg.id)
 
     def add_window(
         self, all_windows: WindowList, window: WindowType, location: str | None = None,

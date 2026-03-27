@@ -3340,13 +3340,7 @@ class Boss:
             layout = src_tab.current_layout
             horizontal = direction in ('left', 'right')
             after = direction in ('right', 'bottom')
-            if hasattr(layout, 'insert_window_next_to'):
-                layout.insert_window_next_to(src_tab.windows, window, dest_window, horizontal, after)
-            else:
-                wg_dest = src_tab.windows.group_for_window(dest_window)
-                if wg_dest:
-                    src_tab.windows.set_active_window_group_for(window)
-                    layout.move_window_to_group(src_tab.windows, wg_dest.id)
+            layout.insert_window_next_to(src_tab.windows, window, dest_window, horizontal, after)
             src_tab.relayout()
 
     def _move_tab_to(self, tab: Tab | None = None, target_os_window_id: int | None = None) -> Tab | None:

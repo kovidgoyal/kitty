@@ -4,7 +4,7 @@
 import sys
 from collections.abc import Generator, Iterator, Sequence
 from itertools import islice, repeat
-from typing import Any
+from typing import Any, ClassVar, Literal
 
 from kitty.borders import BorderColor
 from kitty.conf.utils import to_bool
@@ -136,6 +136,7 @@ class Tall(Layout):
     name = 'tall'
     main_is_horizontal = True
     no_minimal_window_borders = True
+    drag_overlay_mode: ClassVar[Literal['axis_y']] = 'axis_y'
     layout_opts = TallLayoutOpts({})
     main_axis_layout = Layout.xlayout
     perp_axis_layout = Layout.ylayout
@@ -381,5 +382,6 @@ class Fat(Tall):
 
     name = 'fat'
     main_is_horizontal = False
+    drag_overlay_mode: ClassVar[Literal['axis_x']] = 'axis_x'
     main_axis_layout = Layout.ylayout
     perp_axis_layout = Layout.xlayout

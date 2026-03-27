@@ -5,7 +5,7 @@ from collections.abc import Callable, Generator, Iterator, Sequence
 from functools import lru_cache
 from itertools import repeat
 from math import ceil, floor
-from typing import Any
+from typing import Any, ClassVar, Literal
 
 from kitty.borders import BorderColor
 from kitty.types import Edges, NeighborsMap, WindowMapper
@@ -34,6 +34,7 @@ class Grid(Layout):
 
     name: str = 'grid'
     no_minimal_window_borders = True
+    drag_overlay_mode: ClassVar[Literal['axis_y']] = 'axis_y'
 
     def remove_all_biases(self) -> bool:
         self.biased_rows: dict[int, float] = {}

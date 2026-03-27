@@ -1950,18 +1950,25 @@ class TabManager:  # {{{
                     self._set_drag_target_window(dest_window.id, 5)
                     return
             active_tab = self.active_tab
-            if active_tab is not None and hasattr(active_tab.current_layout, 'insert_window_next_to'):
-                # Splits layout body hover: directional half-window overlay
+            if active_tab is not None:
+                mode = active_tab.current_layout.drag_overlay_mode
                 rel_x = x - central.left
                 g = dest_window.geometry
                 dx = rel_x - (g.left + g.right) / 2
                 dy = rel_y - (g.top + g.bottom) / 2
                 quad_map = {'left': 1, 'right': 2, 'top': 3, 'bottom': 4}
-                direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
+                if mode == 'axis_y':
+                    direction = 'bottom' if dy > 0 else 'top'
+                elif mode == 'axis_x':
+                    direction = 'right' if dx > 0 else 'left'
+                elif mode == 'free':
+                    direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
+                else:  # 'full' (Stack, etc.): full-window overlay, no directional highlight
+                    self._set_drag_target_window(dest_window.id, 6)
+                    return
                 self._set_drag_target_window(dest_window.id, quad_map[direction])
             else:
-                # All other body hover: full window overlay only (reorder/swap, no title bar flash)
-                self._set_drag_target_window(dest_window.id, 6)
+                self._set_drag_target_window(0)
         else:
             self._set_drag_target_window(0)
 
@@ -2024,13 +2031,16 @@ class TabManager:  # {{{
                 # Cross-tab title bar drop: move to the destination tab
                 boss._move_window_to(w, target_tab_id=active_tab.id)
         else:
-            # Quadrant-based directional insert
             g = dest_window.geometry
-            win_cx = (g.left + g.right) / 2
-            win_cy = (g.top + g.bottom) / 2
-            dx = rel_x - win_cx
-            dy = rel_y - win_cy
-            direction: str = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
+            dx = rel_x - (g.left + g.right) / 2
+            dy = rel_y - (g.top + g.bottom) / 2
+            mode = active_tab.current_layout.drag_overlay_mode
+            if mode == 'axis_y':
+                direction: str = 'bottom' if dy > 0 else 'top'
+            elif mode == 'axis_x':
+                direction = 'right' if dx > 0 else 'left'
+            else:  # 'free' (Splits) or 'full' (swap fallback)
+                direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
             boss._insert_window_in_direction(w, dest_window, direction)
 
     def update_progress(self) -> None:
