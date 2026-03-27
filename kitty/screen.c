@@ -5353,7 +5353,7 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
     if (upd.set_as_nearest_extend || self->selections.extension_in_progress) {
         self->selections.extension_in_progress = true;
         bool start_is_nearer = false;
-        if (self->selections.extend_mode == EXTEND_LINE || self->selections.extend_mode == EXTEND_LINE_FROM_POINT || self->selections.extend_mode == EXTEND_WORD_AND_LINE_FROM_POINT) {
+        if (self->selections.extend_mode == EXTEND_LINE || self->selections.extend_mode == EXTEND_LINE_FROM_BEGIN || self->selections.extend_mode == EXTEND_LINE_FROM_POINT || self->selections.extend_mode == EXTEND_WORD_AND_LINE_FROM_POINT) {
             if (abs_start.y == abs_end.y) {
                 if (abs_current_input.y == abs_start.y) start_is_nearer = selection_boundary_less_than(&abs_start, &abs_end) ? (abs_current_input.x <= abs_start.x) : (abs_current_input.x <= abs_end.x);
                 else start_is_nearer = selection_boundary_less_than(&abs_start, &abs_end) ? (abs_current_input.y > abs_start.y) : (abs_current_input.y < abs_end.y);
@@ -5418,6 +5418,7 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
             }
             break;
         }
+        case EXTEND_LINE_FROM_BEGIN:
         case EXTEND_LINE_FROM_POINT:
         case EXTEND_WORD_AND_LINE_FROM_POINT:
         case EXTEND_LINE: {
@@ -5436,7 +5437,9 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
     s->start.x = up_start.x; s->end.x = bottom_line == top_line ? up_end.x : down_end.x;
                     down_start = up_start; down_end = up_end;
                     bottom_line = continue_line_downwards(self, bottom_line, &down_start, &down_end);
-                    if (self->selections.extend_mode == EXTEND_LINE_FROM_POINT) {
+                    if (self->selections.extend_mode == EXTEND_LINE_FROM_BEGIN) {
+                        S; s->start.x = 0;
+                    } else if (self->selections.extend_mode == EXTEND_LINE_FROM_POINT) {
                         if (x <= up_end.x) {
                             S; s->start.x = MAX(x, up_start.x);
                         }

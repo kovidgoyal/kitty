@@ -972,6 +972,10 @@ mma('Select a line',
     'select_line left triplepress ungrabbed mouse_selection line',
     )
 
+mma('Select line from beginning of line',
+    'select_line_from_begin left triplepress ungrabbed mouse_selection line_from_begin',
+    )
+
 mma('Select line from point',
     'select_line_from_point ctrl+alt+left triplepress ungrabbed mouse_selection line_from_point',
     long_text='Select from the clicked point to the end of the line.'
@@ -1017,6 +1021,10 @@ mma('Select a word even when grabbed',
 
 mma('Select a line even when grabbed',
     'select_line_grabbed shift+left triplepress ungrabbed,grabbed mouse_selection line',
+    )
+
+mma('Select line from begin even when grabbed',
+    'select_line_from_begin_grabbed left triplepress ungrabbed,grabbed mouse_selection line_from_begin',
     )
 
 mma('Select line from point even when grabbed',

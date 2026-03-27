@@ -1110,6 +1110,7 @@ typedef enum MouseSelectionType {
     MOUSE_SELECTION_RECTANGLE,
     MOUSE_SELECTION_WORD,
     MOUSE_SELECTION_LINE,
+    MOUSE_SELECTION_LINE_FROM_BEGIN,
     MOUSE_SELECTION_LINE_FROM_POINT,
     MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT,
     MOUSE_SELECTION_MOVE_END,
@@ -1140,6 +1141,9 @@ mouse_selection(Window *w, int code, int button) {
             break;
         case MOUSE_SELECTION_LINE:
             if (screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end)) S(EXTEND_LINE);
+            break;
+        case MOUSE_SELECTION_LINE_FROM_BEGIN:
+            if (screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end)) S(EXTEND_LINE_FROM_BEGIN);
             break;
         case MOUSE_SELECTION_LINE_FROM_POINT:
             if (screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end) && end > w->mouse_pos.cell_x) S(EXTEND_LINE_FROM_POINT);
@@ -1591,6 +1595,7 @@ init_mouse(PyObject *module) {
     PyModule_AddIntMacro(module, MOUSE_SELECTION_RECTANGLE);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_WORD);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_LINE);
+    PyModule_AddIntMacro(module, MOUSE_SELECTION_LINE_FROM_BEGIN);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_LINE_FROM_POINT);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_MOVE_END);
