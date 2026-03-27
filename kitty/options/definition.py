@@ -1023,7 +1023,7 @@ mma('Select a line even when grabbed',
     'select_line_grabbed shift+left triplepress ungrabbed,grabbed mouse_selection line',
     )
 
-mma('Select line from first cell',
+mma('Select line from first cell even when grabbed',
     'select_line_from_begin_grabbed shift+alt+left triplepress ungrabbed,grabbed mouse_selection line_from_begin',
     )
 
