@@ -972,8 +972,8 @@ mma('Select a line',
     'select_line left triplepress ungrabbed mouse_selection line',
     )
 
-mma('Select line from beginning of line',
-    'select_line_from_begin left triplepress ungrabbed mouse_selection line_from_begin',
+mma('Select line from first cell',
+    'select_line_from_begin alt+left triplepress ungrabbed mouse_selection line_from_begin',
     )
 
 mma('Select line from point',
@@ -1023,8 +1023,8 @@ mma('Select a line even when grabbed',
     'select_line_grabbed shift+left triplepress ungrabbed,grabbed mouse_selection line',
     )
 
-mma('Select line from begin even when grabbed',
-    'select_line_from_begin_grabbed left triplepress ungrabbed,grabbed mouse_selection line_from_begin',
+mma('Select line from first cell',
+    'select_line_from_begin_grabbed shift+alt+left triplepress ungrabbed,grabbed mouse_selection line_from_begin',
     )
 
 mma('Select line from point even when grabbed',

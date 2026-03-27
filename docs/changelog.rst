@@ -194,6 +194,8 @@ Detailed list of changes
 
 - Fix completion for ``edit-in-kitty`` not including some common text file types
 
+- Allow holding the :kbd:`Alt` key and triple-clicking to select from the first cell even if it is empty (:pull:`9758`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
