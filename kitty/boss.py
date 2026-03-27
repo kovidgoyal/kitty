@@ -2302,7 +2302,7 @@ class Boss:
                         cmd + args,
                         stdin=data,
                         env=env,
-                        cwd=w.cwd_of_child,
+                        cwd=CwdRequest(w).cwd_of_child or w.cwd_of_child,
                         overlay_for=w.id,
                         overlay_behind=end_kitten.has_ready_notification,
                     ),
