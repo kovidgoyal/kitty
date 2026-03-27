@@ -190,6 +190,8 @@ Detailed list of changes
 
 - Fix scrollbar hover/interaction not working when the scrollbar is drawn in the window margin area (:iss:`9756`)
 
+- Fix completion for ``edit-in-kitty`` not including some common text file types
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

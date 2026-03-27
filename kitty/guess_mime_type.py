@@ -26,6 +26,8 @@ text_mimes = (
     'application/x-sh',
     'application/x-csh',
     'application/x-shellscript',
+    'application/x-fishscript',
+    'application/x-awk',
     'application/javascript',
     'application/json',
     'application/xml',
