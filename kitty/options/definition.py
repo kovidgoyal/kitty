@@ -1981,8 +1981,9 @@ opt('selection_background', '#fffacd',
 
 opt('palette_generate', 'fixed', choices=('fixed', 'semantic', 'legacy'), long_text='''
 How to fill in any colors that are unset (set to :code:`none`) in the 256-color palette.
-By default, for legacy compatibility, these are set to a fixed set of values. Instead,
-you can have kitty :link:`generate them based on the first 16 colors <https://gist.github.com/jake-stewart/0a8ea46159a7da2c808e5be2177e1783>`.
+By default, for legacy compatibility, these are set to the fixed set of values used by historic terminals.
+
+Instead, you can have kitty :link:`generate them based on the first 16 colors <https://gist.github.com/jake-stewart/0a8ea46159a7da2c808e5be2177e1783>`.
 
 The value :code:`semantic` means use an algorithm that gives good readability in light themes
 but changes the meaning of some colors compared to the fixed color encoding. The value
