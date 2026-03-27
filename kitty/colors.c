@@ -181,8 +181,7 @@ lerp_lab(float t, float *a, float *b, float *out) {
 // For more information, see
 // https://gist.github.com/jake-stewart/0a8ea46159a7da2c808e5be2177e1783
 static void
-generate_256_palette(ColorProfile *self, color_type *color_table, bool semantic) {
-    float base8_lab[8][3];
+setup_256_palette_lab(ColorProfile *self, color_type *color_table, bool semantic, float base8_lab[8][3]) {
     const color_type bg = colorprofile_to_color(self, self->overridden.default_bg, self->configured.default_bg).rgb;
     const color_type fg = colorprofile_to_color(self, self->overridden.default_fg, self->configured.default_fg).rgb;
     color_type_to_lab(bg, base8_lab[0]);
@@ -197,6 +196,12 @@ generate_256_palette(ColorProfile *self, color_type *color_table, bool semantic)
         memcpy(base8_lab[0], base8_lab[7], sizeof(tmp));
         memcpy(base8_lab[7], tmp, sizeof(tmp));
     }
+}
+
+static void
+generate_256_palette(ColorProfile *self, color_type *color_table, bool semantic) {
+    float base8_lab[8][3];
+    setup_256_palette_lab(self, color_table, semantic, base8_lab);
 
     int idx = 16;
     for (int r = 0; r < 6; r++) {
@@ -230,6 +235,31 @@ generate_256_palette(ColorProfile *self, color_type *color_table, bool semantic)
             color_table[idx] = lab_to_color_type(lab);
         }
         idx++;
+    }
+}
+
+static color_type
+generate_256_palette_color(ColorProfile *self, color_type *color_table, unsigned int idx, bool semantic) {
+    float base8_lab[8][3];
+    setup_256_palette_lab(self, color_table, semantic, base8_lab);
+
+    if (idx < 232) {
+        unsigned int i = idx - 16;
+        int r = i / 36, g = (i % 36) / 6, b = i % 6;
+        float c0[3], c1[3], c2[3], c3[3], c4[3], c5[3], c6[3];
+        lerp_lab(r / 5.0f, base8_lab[0], base8_lab[1], c0);
+        lerp_lab(r / 5.0f, base8_lab[2], base8_lab[3], c1);
+        lerp_lab(r / 5.0f, base8_lab[4], base8_lab[5], c2);
+        lerp_lab(r / 5.0f, base8_lab[6], base8_lab[7], c3);
+        lerp_lab(g / 5.0f, c0, c1, c4);
+        lerp_lab(g / 5.0f, c2, c3, c5);
+        lerp_lab(b / 5.0f, c4, c5, c6);
+        return lab_to_color_type(c6);
+    } else {
+        int i = idx - 232;
+        float lab[3];
+        lerp_lab((i + 1) / 25.0f, base8_lab[0], base8_lab[7], lab);
+        return lab_to_color_type(lab);
     }
 }
 
@@ -588,8 +618,10 @@ set_color(ColorProfile *self, PyObject *args) {
     self->dirty = true;
     if (val == NULL_COLOR_VALUE) {
         bool semantic, dynamic = palette_generation_is_dynamic(global_state.options_object, &semantic);
-        if (dynamic) generate_256_palette(self, self->color_table, semantic);
-        else self->color_table[i] = FG_BG_256[i];
+        if (dynamic) {
+            if (i >= 16) self->color_table[i] = generate_256_palette_color(self, self->color_table, i, semantic);
+            else generate_256_palette(self, self->color_table, semantic);
+        } else self->color_table[i] = FG_BG_256[i];
     }
     Py_RETURN_NONE;
 }
