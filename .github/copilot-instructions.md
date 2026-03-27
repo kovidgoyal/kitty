@@ -1,7 +1,7 @@
 Before implementing any code changes or responding to a request, run the
 following three commands:
 
-sudo apt-get install -y libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev ca-certificates libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev libx11-xcb-dev zsh libpng-dev liblcms2-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev libxxhash-dev uuid-dev libsimde-dev libsystemd-dev libcairo2-dev zsh bash dash systemd-coredump gdb
+sudo apt-get install -y --fix-missing libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev ca-certificates libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev libx11-xcb-dev zsh libpng-dev liblcms2-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev libxxhash-dev uuid-dev libsimde-dev libsystemd-dev libcairo2-dev zsh bash dash systemd-coredump gdb
 sudo chmod -R og-w /usr/share/zsh
 ./dev.sh build
 
