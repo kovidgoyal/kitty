@@ -46,6 +46,7 @@ static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECA
 static void
 clear_selection(Selections *selections) {
     selections->in_progress = false;
+    selections->extension_in_progress = false;
     selections->extend_mode = EXTEND_CELL;
     selections->count = 0;
 }
