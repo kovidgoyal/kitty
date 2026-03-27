@@ -382,6 +382,16 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O!O!O!p", &PyDict_Type, &spec, &PyTuple_Type, &transparent_background_colors, &PyTuple_Type, &profiles, &change_configured)) return NULL;
     char key[32] = {0};
     bool has_null_values = false;
+    bool semantic, dynamic = palette_generation_is_dynamic(global_state.options_object, &semantic);
+    if (dynamic) {
+        for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(profiles); j++) {
+            ColorProfile *self = (ColorProfile*)PyTuple_GET_ITEM(profiles, j);
+            for (size_t i = 16; i < arraysz(FG_BG_256); i++) {
+                self->color_table[i] = NULL_COLOR_VALUE;
+                if (change_configured) self->orig_color_table[i] = NULL_COLOR_VALUE;
+            }
+        }
+    }
     for (size_t i = 0; i < arraysz(FG_BG_256); i++) {
         snprintf(key, sizeof(key) - 1, "color%zu", i);
         patch_color_table(key, profiles, spec, i, change_configured, &has_null_values);
@@ -420,8 +430,7 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
         if (change_configured) set_transparent_background_colors(self->configured_transparent_colors, transparent_background_colors);
     }
 
-    if (has_null_values) {
-        bool semantic, dynamic = palette_generation_is_dynamic(global_state.options_object, &semantic);
+    if (dynamic || has_null_values) {
         for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(profiles); j++) {
             ColorProfile *self = (ColorProfile*)PyTuple_GET_ITEM(profiles, j);
             if (dynamic) {
