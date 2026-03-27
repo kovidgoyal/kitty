@@ -561,7 +561,7 @@ class Splits(Layout):
     needs_all_windows = True
     layout_opts = SplitsLayoutOpts({})
     no_minimal_window_borders = True
-    drag_overlay_mode: ClassVar[Literal['free']] = 'free'
+    drag_overlay_mode = 'free'
 
     @property
     def default_axis_is_horizontal(self) -> bool | None:
