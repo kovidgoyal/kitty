@@ -188,6 +188,8 @@ Detailed list of changes
 
 - Fix a spurious mouse button release event being sent when dragging out of an OS window causes focus loss
 
+- Fix scrollbar hover/interaction not working when the scrollbar is drawn in the window margin area (:iss:`9756`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
