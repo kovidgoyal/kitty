@@ -1094,6 +1094,8 @@ defaults.mouse_map = [
     MouseMapping(repeat_count=2, definition='mouse_selection word'),
     # select_line
     MouseMapping(repeat_count=3, definition='mouse_selection line'),
+    # select_line_from_begin
+    MouseMapping(mods=6, repeat_count=3, definition='mouse_selection line_from_begin'),
     # select_line_from_point
     MouseMapping(mods=6, repeat_count=3, definition='mouse_selection line_from_point'),
     # extend_selection
@@ -1124,6 +1126,10 @@ defaults.mouse_map = [
     MouseMapping(mods=7, repeat_count=3, grabbed=True, definition='mouse_selection line_from_point'),
     # select_line_from_point_grabbed
     MouseMapping(mods=7, repeat_count=3, definition='mouse_selection line_from_point'),
+    # select_line_from_begin_grabbed
+    MouseMapping(mods=7, repeat_count=3, grabbed=True, definition='mouse_selection line_from_begin'),
+    # select_line_from_begin_grabbed
+    MouseMapping(mods=7, repeat_count=3, definition='mouse_selection line_from_begin'),
     # extend_selection_grabbed
     MouseMapping(button=1, mods=1, grabbed=True, definition='mouse_selection extend'),
     # extend_selection_grabbed

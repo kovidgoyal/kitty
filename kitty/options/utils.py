@@ -444,6 +444,7 @@ def mouse_selection(func: str, rest: str) -> FuncArgsType:
             'rectangle': defines.MOUSE_SELECTION_RECTANGLE,
             'word': defines.MOUSE_SELECTION_WORD,
             'line': defines.MOUSE_SELECTION_LINE,
+            'line_from_begin': defines.MOUSE_SELECTION_LINE_FROM_BEGIN,
             'line_from_point': defines.MOUSE_SELECTION_LINE_FROM_POINT,
             'word_and_line_from_point': defines.MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT,
             'upto_surrounding_whitespace': defines.MOUSE_SELECTION_UPTO_SURROUNDING_WHITESPACE,
