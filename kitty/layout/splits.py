@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections.abc import Collection, Generator, Iterator, Sequence
-from typing import Any, ClassVar, Literal, Optional, TypedDict, Union
+from typing import Any, Optional, TypedDict, Union
 
 from kitty.borders import BorderColor
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE
