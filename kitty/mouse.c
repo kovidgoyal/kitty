@@ -1012,6 +1012,18 @@ mouse_region(bool detect_borders, bool detect_title_bar) {
                 }
             }
         }
+        // If no window was found via contains_mouse, check if the mouse is in any
+        // window's scrollbar hit area. The scrollbar may be drawn in the margin
+        // which is outside the area covered by contains_mouse.
+        if (!ans.window && OPT(scrollbar_interactive)) {
+            for (unsigned int i = 0; i < t->num_windows; i++) {
+                Window *win = t->windows + i;
+                if (!win->visible || !win->render_data.screen) continue;
+                if (get_scrollbar_hit_type(win, w->mouse_x, w->mouse_y) != SCROLLBAR_HIT_NONE) {
+                    ans.window_idx = i; ans.window = win; break;
+                }
+            }
+        }
     }
     return ans;
 }
