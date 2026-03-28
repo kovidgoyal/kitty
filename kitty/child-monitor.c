@@ -852,8 +852,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 }
             }
             if (send_cell_data_to_gpu(WD.vao_idx, WD.screen, os_window)) needs_render = true;
-            if (WD.screen->start_visual_bell_at != 0) needs_render = true;
-            if (WD.screen->start_drag_overlay_at != 0) needs_render = true;
+            if (WD.screen->start_visual_bell_at | WD.screen->start_drag_overlay_at) needs_render = true;
             // Prepare window title bar screen data for GPU
             WindowRenderData *trd = &w->window_title_render_data;
             if (trd->screen && trd->geometry.bottom > trd->geometry.top && trd->geometry.right > trd->geometry.left) {
@@ -919,8 +918,7 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
             bool is_active_window = i == tab->active_window;
             if (is_active_window) active_window = w;
             draw_cells(&WD, os_window, is_active_window, false, num_of_visible_windows == 1, w);
-            if (WD.screen->start_visual_bell_at != 0) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
-            if (WD.screen->start_drag_overlay_at != 0) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
+            if (WD.screen->start_visual_bell_at | WD.screen->start_drag_overlay_at) set_maximum_wait(ANIMATION_SAMPLE_WAIT);
             WindowRenderData *trd = &w->window_title_render_data;
             if (trd->screen && trd->geometry.right > trd->geometry.left && trd->geometry.bottom > trd->geometry.top)
                 draw_cells(trd, os_window, i == tab->active_window, true, false, NULL);

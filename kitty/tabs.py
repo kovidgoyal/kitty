@@ -12,7 +12,7 @@ from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
 from contextlib import suppress
 from functools import wraps
 from gettext import gettext as _
-from typing import Any, Concatenate, Deque, NamedTuple, Optional, ParamSpec, TypeVar, cast
+from typing import Any, Concatenate, Deque, Literal, NamedTuple, Optional, ParamSpec, TypeVar, cast
 
 from .borders import Border, Borders
 from .child import Child
@@ -2044,7 +2044,7 @@ class TabManager:  # {{{
             dy = rel_y - (g.top + g.bottom) / 2
             mode = active_tab.current_layout.drag_overlay_mode
             if mode == 'axis_y':
-                direction: str = 'bottom' if dy > 0 else 'top'
+                direction: Literal['left', 'right', 'top', 'bottom'] = 'bottom' if dy > 0 else 'top'
             elif mode == 'axis_x':
                 direction = 'right' if dx > 0 else 'left'
             else:  # 'free' (Splits) or 'full' (swap fallback)

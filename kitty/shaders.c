@@ -733,12 +733,6 @@ set_cell_uniforms(bool force) {
 // UI Layer {{{
 static Animation *default_visual_bell_animation = NULL;
 
-static bool
-has_visual_bell(Screen *screen) {
-    return screen->start_visual_bell_at > 0;
-
-}
-
 static float
 get_visual_bell_intensity(Screen *screen) {
     if (screen->start_visual_bell_at > 0) {
@@ -775,21 +769,25 @@ draw_visual_bell_flash(GLfloat intensity, const color_type flash) {
     draw_quad(true, 0);
 }
 
-static void
-draw_visual_bell(const UIRenderData *ui) {
-    if (!has_visual_bell(ui->screen)) return;
-    Screen *screen = ui->screen;
-    float intensity = get_visual_bell_intensity(screen);
-    if (intensity <= 0) return;
+static color_type
+get_flash_color(const Screen *screen) {
 #define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
-    color_type flash = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
-    draw_visual_bell_flash(intensity, flash);
+      return !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
 #undef COLOR
 }
 
 static void
-draw_drag_preview_overlay(const UIRenderData *ui) {
+draw_visual_bell(const UIRenderData *ui) {
+    if (!ui->screen->start_visual_bell_at) return;
     Screen *screen = ui->screen;
+    float intensity = get_visual_bell_intensity(screen);
+    if (intensity <= 0) return;
+    draw_visual_bell_flash(intensity, get_flash_color(screen));
+}
+
+static void
+draw_drag_preview_overlay(const UIRenderData *ui) {
+    const Screen *screen = ui->screen;
     if (!screen->start_drag_overlay_at || !screen->drag_overlay_quadrant) return;
     const monotonic_t elapsed = monotonic() - screen->start_drag_overlay_at;
     const monotonic_t fade_ms = ms_to_monotonic_t(150ll);
@@ -806,11 +804,7 @@ draw_drag_preview_overlay(const UIRenderData *ui) {
     }
     bind_program(TINT_PROGRAM);
     float a = intensity * 0.25f;
-#define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, \
-    screen->color_profile->overridden.name, screen->color_profile->configured.name, \
-    screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
-    color_type hint = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
-#undef COLOR
+    color_type hint = get_flash_color(screen);
 #define C(shift) (srgb_color((hint >> shift) & 0xFF) * a)
     glUniform4f(tint_program_layout.uniforms.tint_color, C(16), C(8), C(0), a);
 #undef C
@@ -1128,7 +1122,7 @@ draw_window_logo(const UIRenderData *ui) {
 
 bool
 screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen) {
-    const bool has_ui = w && (has_visual_bell(screen) || has_scrollbar(w, screen) || has_hyperlink_target(os_window, w, screen) || has_window_number(w, screen) || w->window_logo.id);
+    const bool has_ui = w && ((screen->start_visual_bell_at | screen->start_drag_overlay_at) || has_scrollbar(w, screen) || has_hyperlink_target(os_window, w, screen) || has_window_number(w, screen) || w->window_logo.id);
     GraphicsManager *grman = screen->paused_rendering.expires_at && screen->paused_rendering.grman ? screen->paused_rendering.grman : screen->grman;
     return has_ui || grman_has_images(grman);
 }
@@ -1188,6 +1182,7 @@ draw_cells_with_layers(const UIRenderData *ui, ssize_t vao_idx) {
             ui->grd.num_of_positive_refs, ui->inactive_text_alpha);
 
     draw_visual_bell(ui);
+    draw_drag_preview_overlay(ui);
     draw_scrollbar(ui);
     draw_hyperlink_target(ui);
     draw_window_number(ui);
@@ -1256,7 +1251,6 @@ draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_wind
         ui.screen_left, ui.screen_top, ui.screen_width, ui.screen_height, ui.full_framebuffer_height);
     if (ui.os_window->needs_layers) draw_cells_with_layers(&ui, srd->vao_idx);
     else draw_cells_without_layers(&ui, srd->vao_idx);
-    draw_drag_preview_overlay(&ui);
     restore_viewport();
 }
 // }}}
