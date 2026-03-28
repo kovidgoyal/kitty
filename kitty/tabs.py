@@ -1113,6 +1113,14 @@ class Tab:  # {{{
         tm = self.tab_manager_ref()
         if tm is not None:
             tm.set_active_tab(self)
+
+    def swap_windows(self, window_a: Window, window_b: Window) -> None:
+        if (wg_b := self.windows.group_for_window(window_b)) is None:
+            return
+        with get_boss().suppress_focus_change_events():
+            self.windows.set_active_window_group_for(window_a)
+            self.current_layout.move_window_to_group(self.windows, wg_b.id)
+            self.relayout()
 # }}}
 
 
@@ -2024,9 +2032,9 @@ class TabManager:  # {{{
             return
 
         if dest_in_title_bar:
-            if w.tabref() is dest_window.tabref():
+            if (src_tab := w.tabref()) is dest_window.tabref() and src_tab is not None:
                 # Same tab: swap positions
-                boss._swap_windows(w, dest_window)
+                src_tab.swap_windows(w, dest_window)
             else:
                 # Cross-tab title bar drop: move to the destination tab
                 boss._move_window_to(w, target_tab_id=active_tab.id)

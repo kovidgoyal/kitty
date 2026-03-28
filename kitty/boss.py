@@ -3325,8 +3325,7 @@ class Boss:
             tab.relayout()
 
     def _insert_window_in_direction(
-        self, window: Window, dest_window: Window,
-        direction: str
+        self, window: Window, dest_window: Window, direction: Literal['left', 'right', 'top', 'bottom'],
     ) -> None:
         src_tab = window.tabref()
         dest_tab = dest_window.tabref()
