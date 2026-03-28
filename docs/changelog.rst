@@ -201,6 +201,8 @@ Detailed list of changes
 
 - Allow holding the :kbd:`Alt` key and triple-clicking to select from the first cell even if it is empty (:pull:`9758`)
 
+- Window drag: Use a screenshot of the window contents as the drag thumbnail, just like tab dragging does
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

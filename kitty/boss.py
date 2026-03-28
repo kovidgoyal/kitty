@@ -1407,6 +1407,10 @@ class Boss:
         if tm := self.os_window_map.get(os_window_id):
             tm.start_tab_drag(pixels, width, height)
 
+    def start_window_drag(self, os_window_id: int, window_id: int, pixels: bytes, width: int, height: int) -> None:
+        if tm := self.os_window_map.get(os_window_id):
+            tm.start_window_drag(pixels, width, height)
+
     def on_window_resize(self, os_window_id: int, w: int, h: int, dpi_changed: bool) -> None:
         if dpi_changed:
             self.on_dpi_change(os_window_id)
