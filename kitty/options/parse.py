@@ -1359,6 +1359,9 @@ class Parser:
     def tab_bar_min_tabs(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_min_tabs'] = tab_bar_min_tabs(val)
 
+    def tab_bar_show_new_tab_button(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['tab_bar_show_new_tab_button'] = to_bool(val)
+
     def tab_bar_style(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_tab_bar_style:
@@ -1536,6 +1539,9 @@ class Parser:
         ans["window_title_bar_align"] = val
 
     choices_for_window_title_bar_align = choices_for_tab_bar_align
+
+    def window_title_bar_drag_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['window_title_bar_drag_threshold'] = positive_int(val)
 
     def window_title_bar_inactive_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_title_bar_inactive_background'] = to_color_or_none(val)

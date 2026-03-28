@@ -462,6 +462,7 @@ option_names = (
     'tab_bar_margin_height',
     'tab_bar_margin_width',
     'tab_bar_min_tabs',
+    'tab_bar_show_new_tab_button',
     'tab_bar_style',
     'tab_fade',
     'tab_powerline_style',
@@ -506,6 +507,7 @@ option_names = (
     'window_title_bar_active_background',
     'window_title_bar_active_foreground',
     'window_title_bar_align',
+    'window_title_bar_drag_threshold',
     'window_title_bar_inactive_background',
     'window_title_bar_inactive_foreground',
     'window_title_bar_min_windows',
@@ -665,6 +667,7 @@ class Options:
     tab_bar_margin_height: TabBarMarginHeight = TabBarMarginHeight(outer=0, inner=0)
     tab_bar_margin_width: float = 0
     tab_bar_min_tabs: int = 2
+    tab_bar_show_new_tab_button: bool = False
     tab_bar_style: choices_for_tab_bar_style = 'fade'
     tab_fade: tuple[float, ...] = (0.25, 0.5, 0.75, 1.0)
     tab_powerline_style: choices_for_tab_powerline_style = 'angled'
@@ -708,6 +711,7 @@ class Options:
     window_title_bar_active_background: kitty.fast_data_types.Color | None = None
     window_title_bar_active_foreground: kitty.fast_data_types.Color | None = None
     window_title_bar_align: choices_for_window_title_bar_align = 'center'
+    window_title_bar_drag_threshold: int = 5
     window_title_bar_inactive_background: kitty.fast_data_types.Color | None = None
     window_title_bar_inactive_foreground: kitty.fast_data_types.Color | None = None
     window_title_bar_min_windows: int = 0

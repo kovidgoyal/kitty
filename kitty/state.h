@@ -440,6 +440,10 @@ typedef struct GlobalState {
         double x, y;
     } tab_being_dragged;
     struct {
+        id_type id; bool drag_started;
+        double x, y;
+    } window_being_dragged;
+    struct {
         uint32_t texture_id, framebuffer_id, texture_generation;
         int width, height;
     } layers_render_texture;

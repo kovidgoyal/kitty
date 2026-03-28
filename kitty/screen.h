@@ -138,6 +138,8 @@ typedef struct {
     ScreenModes modes, saved_modes;
     ColorProfile *color_profile;
     monotonic_t start_visual_bell_at;
+    monotonic_t start_drag_overlay_at;  // 0 = inactive
+    uint8_t drag_overlay_quadrant;      // 1=left 2=right 3=top 4=bottom 0=none
 
     uint8_t *write_buf;
     size_t write_buf_sz, write_buf_used;

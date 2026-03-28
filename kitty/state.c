@@ -866,6 +866,25 @@ PYWRAP1(set_tab_bar_render_data) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(set_window_drag_overlay) {
+    id_type os_window_id, tab_id, window_id;
+    int quadrant;
+    PA("KKKi", &os_window_id, &tab_id, &window_id, &quadrant);
+    WITH_WINDOW(os_window_id, tab_id, window_id)
+        Screen *s = window->render_data.screen;
+        if (s) {
+            if (quadrant == 0) {
+                s->start_drag_overlay_at = 0;
+                s->drag_overlay_quadrant = 0;
+            } else if (s->drag_overlay_quadrant != (uint8_t)quadrant) {
+                s->start_drag_overlay_at = monotonic();
+                s->drag_overlay_quadrant = (uint8_t)quadrant;
+            }
+        }
+    END_WITH_WINDOW
+    Py_RETURN_NONE;
+}
+
 PYWRAP1(set_window_title_bar_render_data) {
     WindowGeometry g = {0};
     id_type os_window_id, tab_id, window_id;
@@ -1554,6 +1573,20 @@ get_tab_being_dragged(PyObject *self UNUSED, PyObject *args UNUSED) {
 }
 #undef tbd
 
+#define wbd global_state.window_being_dragged
+static PyObject*
+set_window_being_dragged(PyObject *self UNUSED, PyObject *args) {
+    zero_at_ptr(&wbd);
+    if (!PyArg_ParseTuple(args, "|Kpdd", &wbd.id, &wbd.drag_started, &wbd.x, &wbd.y)) return NULL;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+get_window_being_dragged(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return Py_BuildValue("KOdd", wbd.id, wbd.drag_started ? Py_True : Py_False, wbd.x, wbd.y);
+}
+#undef wbd
+
 static PyObject*
 request_callback_with_thumbnail(PyObject *self UNUSED, PyObject *args) {
     unsigned long long os_window_id, window_id = 0;
@@ -1582,6 +1615,8 @@ static PyMethodDef module_methods[] = {
     M(request_callback_with_thumbnail, METH_VARARGS),
     M(set_tab_being_dragged, METH_VARARGS),
     M(get_tab_being_dragged, METH_NOARGS),
+    M(set_window_being_dragged, METH_VARARGS),
+    M(get_window_being_dragged, METH_NOARGS),
     MW(update_pointer_shape, METH_VARARGS),
     MW(current_os_window, METH_NOARGS),
     MW(next_window_id, METH_NOARGS),
@@ -1618,6 +1653,7 @@ static PyMethodDef module_methods[] = {
     MW(set_tab_bar_render_data, METH_VARARGS),
     MW(set_window_title_bar_render_data, METH_VARARGS),
     MW(set_window_render_data, METH_VARARGS),
+    MW(set_window_drag_overlay, METH_VARARGS),
     MW(set_window_padding, METH_VARARGS),
     MW(viewport_for_window, METH_VARARGS),
     MW(cell_size_for_window, METH_VARARGS),

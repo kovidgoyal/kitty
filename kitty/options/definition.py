@@ -1562,6 +1562,16 @@ opt('window_title_bar_align', 'center',
     choices=('left', 'center', 'right'),
     long_text='Horizontal alignment of the text in window title bars.'
     )
+
+opt('window_title_bar_drag_threshold', '5',
+    option_type='positive_int',
+    long_text='''
+Pixel distance the mouse must move before a window title bar drag begins.
+Zero disables dragging. Drop on a title bar swaps positions; drop on a
+window body inserts in the quadrant direction (left/right/top/bottom).
+Drop on the tab bar moves the window to that tab; drop outside kitty
+detaches it to a new OS window.
+''')
 egr()  # }}}
 
 
@@ -1634,6 +1644,16 @@ opt('tab_bar_align', 'left',
     long_text='''
 The horizontal alignment of the tab bar, can be one of: :code:`left`,
 :code:`center`, :code:`right`.
+'''
+    )
+
+opt('tab_bar_show_new_tab_button', 'no', option_type='to_bool', ctype='bool',
+    long_text='''
+When set to :code:`yes`, a :code:`+` button is always shown at the end of the
+tab bar as a clickable shortcut to open a new tab. When set to :code:`no`
+(the default), the button is hidden at rest but still appears temporarily
+while a window is being dragged, so it can be used as a drop target to open
+the window in a new tab.
 '''
     )
 

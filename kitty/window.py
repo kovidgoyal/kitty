@@ -673,6 +673,7 @@ class Window:
     created_in_session_name: str = ''
     serialized_id: int = 0
     show_title_bar: bool = False  # must be set before calling set_geometry
+    is_drag_target: bool = False  # highlight this window's title bar as a drop target
 
     @classmethod
     @contextmanager
@@ -1082,7 +1083,7 @@ class Window:
 
         data = WindowTitleData(
             title=self.title or '',
-            is_active=is_active,
+            is_active=is_active or self.is_drag_target,
             window_id=self.id,
             tab_id=self.tab_id,
             needs_attention=self.needs_attention,

@@ -265,6 +265,8 @@ safe_builtins = {
 
 
 def apply_title_template(draw_data: DrawData, tab: TabBarData, index: int, max_title_length: int = 0) -> str:
+    if tab.tab_id < 0:
+        return tab.title  # synthetic tab — render title literally, skip user template
     ta = TabAccessor(tab.tab_id)
     data = {
         'index': index,

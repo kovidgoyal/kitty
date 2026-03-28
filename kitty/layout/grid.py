@@ -34,6 +34,7 @@ class Grid(Layout):
 
     name: str = 'grid'
     no_minimal_window_borders = True
+    drag_overlay_mode = 'axis_y'
 
     def remove_all_biases(self) -> bool:
         self.biased_rows: dict[int, float] = {}

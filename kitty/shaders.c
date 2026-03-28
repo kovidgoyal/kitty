@@ -787,6 +787,37 @@ draw_visual_bell(const UIRenderData *ui) {
 #undef COLOR
 }
 
+static void
+draw_drag_preview_overlay(const UIRenderData *ui) {
+    Screen *screen = ui->screen;
+    if (!screen->start_drag_overlay_at || !screen->drag_overlay_quadrant) return;
+    const monotonic_t elapsed = monotonic() - screen->start_drag_overlay_at;
+    const monotonic_t fade_ms = ms_to_monotonic_t(150ll);
+    float intensity = elapsed >= fade_ms ? 1.0f : (float)elapsed / (float)fade_ms;
+    GLfloat left = -1.f, top = 1.f, right = 1.f, bottom = -1.f;
+    switch (screen->drag_overlay_quadrant) {
+        case 1: right  =  0.f; break;  // left half
+        case 2: left   =  0.f; break;  // right half
+        case 3: bottom =  0.f; break;  // top half
+        case 4: top    =  0.f; break;  // bottom half
+        case 5: break;                 // full window + title bar highlight (title bar hover)
+        case 6: break;                 // full window, no title bar highlight (body hover)
+        default: return;
+    }
+    bind_program(TINT_PROGRAM);
+    float a = intensity * 0.25f;
+#define COLOR(name, fallback) colorprofile_to_color_with_fallback(screen->color_profile, \
+    screen->color_profile->overridden.name, screen->color_profile->configured.name, \
+    screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback)
+    color_type hint = !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
+#undef COLOR
+#define C(shift) (srgb_color((hint >> shift) & 0xFF) * a)
+    glUniform4f(tint_program_layout.uniforms.tint_color, C(16), C(8), C(0), a);
+#undef C
+    glUniform4f(tint_program_layout.uniforms.edges, left, top, right, bottom);
+    draw_quad(true, 0);
+}
+
 static bool
 has_scrollbar(Window *w, Screen *screen) {
     if (screen->linebuf != screen->main_linebuf || !screen->historybuf->count) return false;
@@ -1225,6 +1256,7 @@ draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_wind
         ui.screen_left, ui.screen_top, ui.screen_width, ui.screen_height, ui.full_framebuffer_height);
     if (ui.os_window->needs_layers) draw_cells_with_layers(&ui, srd->vao_idx);
     else draw_cells_without_layers(&ui, srd->vao_idx);
+    draw_drag_preview_overlay(&ui);
     restore_viewport();
 }
 // }}}
