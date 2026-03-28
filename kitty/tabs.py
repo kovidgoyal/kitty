@@ -1751,54 +1751,55 @@ class TabManager:  # {{{
             return
 
         tab_id_at_x = self.tab_bar.tab_id_at(int(x))
-        if tab_id_at_x < 0:  # synthetic tab (e.g. "+" new-tab button)
-            if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE:
-                self.new_tab()
-            return
-        tab = self.tab_for_id(tab_id_at_x)
         now = monotonic()
-        if tab is None:
-            if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and len(self.recent_mouse_events) > 2:
-                ci = get_click_interval()
-                prev, prev2 = self.recent_mouse_events[-1], self.recent_mouse_events[-2]
-                if (
-                    prev.button == button and prev2.button == button and
-                    prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
-                    prev.tab_id == 0 and prev2.tab_id == 0 and
-                    now - prev.at <= ci and now - prev2.at <= 2 * ci
-                ):  # double click
+        if tab_id_at_x < 0:  # synthetic tab (e.g. "+" new-tab button)
+            if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and self.recent_mouse_events:
+                if (prev := self.recent_mouse_events[-1]).button == button and prev.action == GLFW_PRESS and prev.tab_id == tab_id_at_x:
                     self.new_tab()
-                    self.recent_mouse_events.clear()
-                    return
         else:
-            if button == GLFW_MOUSE_BUTTON_LEFT:
-                if action == GLFW_PRESS:
-                    set_tab_being_dragged(tab.id, False, x, y)
-                else:
-                    drag_started = get_tab_being_dragged()[1]
-                    if not drag_started:
-                        if len(self.recent_mouse_events) > 2:
-                            ci = get_click_interval()
-                            prev, prev2 = self.recent_mouse_events[-1], self.recent_mouse_events[-2]
-                            if (
-                                prev.button == button and prev2.button == button and
-                                prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
-                                prev.tab_id == tab.id and prev2.tab_id == tab.id and
-                                now - prev.at <= ci and now - prev2.at <= 2 * ci
-                            ):  # double click on tab
-                                self.set_active_tab(tab)
-                                get_boss().set_tab_title()
-                                self.recent_mouse_events.clear()
-                                set_tab_being_dragged()
-                                return
-                        self.set_active_tab(tab)
-                        set_tab_being_dragged()
-            elif button == GLFW_MOUSE_BUTTON_MIDDLE:
-                if action == GLFW_RELEASE and self.recent_mouse_events:
-                    p = self.recent_mouse_events[-1]
-                    if p.button == button and p.action == GLFW_PRESS and p.tab_id == tab.id:
-                        get_boss().close_tab(tab)
-        self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, tab.id if tab else 0))
+            tab = self.tab_for_id(tab_id_at_x)
+            if tab is None:
+                if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and len(self.recent_mouse_events) > 2:
+                    ci = get_click_interval()
+                    prev, prev2 = self.recent_mouse_events[-1], self.recent_mouse_events[-2]
+                    if (
+                        prev.button == button and prev2.button == button and
+                        prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
+                        prev.tab_id == 0 and prev2.tab_id == 0 and
+                        now - prev.at <= ci and now - prev2.at <= 2 * ci
+                    ):  # double click
+                        self.new_tab()
+                        self.recent_mouse_events.clear()
+                        return
+            else:
+                if button == GLFW_MOUSE_BUTTON_LEFT:
+                    if action == GLFW_PRESS:
+                        set_tab_being_dragged(tab.id, False, x, y)
+                    else:
+                        drag_started = get_tab_being_dragged()[1]
+                        if not drag_started:
+                            if len(self.recent_mouse_events) > 2:
+                                ci = get_click_interval()
+                                prev, prev2 = self.recent_mouse_events[-1], self.recent_mouse_events[-2]
+                                if (
+                                    prev.button == button and prev2.button == button and
+                                    prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
+                                    prev.tab_id == tab.id and prev2.tab_id == tab.id and
+                                    now - prev.at <= ci and now - prev2.at <= 2 * ci
+                                ):  # double click on tab
+                                    self.set_active_tab(tab)
+                                    get_boss().set_tab_title()
+                                    self.recent_mouse_events.clear()
+                                    set_tab_being_dragged()
+                                    return
+                            self.set_active_tab(tab)
+                            set_tab_being_dragged()
+                elif button == GLFW_MOUSE_BUTTON_MIDDLE:
+                    if action == GLFW_RELEASE and self.recent_mouse_events:
+                        p = self.recent_mouse_events[-1]
+                        if p.button == button and p.action == GLFW_PRESS and p.tab_id == tab.id:
+                            get_boss().close_tab(tab)
+        self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, tab_id_at_x))
         if len(self.recent_mouse_events) > 5:
             self.recent_mouse_events.popleft()
 
