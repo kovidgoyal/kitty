@@ -1602,12 +1602,6 @@ class TabManager:  # {{{
         self.mark_tab_bar_dirty()
         removed_tab.destroy()
 
-    def _new_tab_drop_indicator(self) -> TabBarData:
-        return TabBarData(
-            '+', self.window_drag_target_tab_id == -1, False, -1, self.os_window_id,
-            0, 0, '', False, None, None, None, None, 0, 0, 0, '', '',
-        )
-
     @property
     def tab_bar_data(self) -> Sequence[TabBarData]:
         at = self.active_tab
@@ -1623,7 +1617,8 @@ class TabManager:  # {{{
             else:
                 tabs = tuple(t.data_for_tab_bar(t is at or t.id == wdtt) for t in self.tabs_to_be_shown_in_tab_bar)
             if window_drag_active or get_options().tab_bar_show_new_tab_button:
-                tabs = tabs + (self._new_tab_drop_indicator(),)
+                tabs = tabs + (TabBarData(
+                    title='+', is_active=self.window_drag_target_tab_id == -1, os_window_id=self.os_window_id),)
             return tabs
         tmap = {t.id:t for t in self.tabs}
         at = self.active_tab

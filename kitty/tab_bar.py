@@ -38,23 +38,23 @@ from .utils import color_as_int, log_error, sgr_sanitizer_pat
 
 class TabBarData(NamedTuple):
     title: str
-    is_active: bool
-    needs_attention: bool
-    tab_id: int
-    os_window_id: int
-    num_windows: int
-    num_window_groups: int
-    layout_name: str
-    has_activity_since_last_focus: bool
-    active_fg: int | None
-    active_bg: int | None
-    inactive_fg: int | None
-    inactive_bg: int | None
-    num_of_windows_with_progress: int
-    total_progress: int
-    last_focused_window_with_progress_id: int
-    session_name: str
-    active_session_name: str
+    is_active: bool = False
+    needs_attention: bool = False
+    tab_id: int = -1
+    os_window_id: int = 0
+    num_windows: int = 0
+    num_window_groups: int = 0
+    layout_name: str = ''
+    has_activity_since_last_focus: bool = False
+    active_fg: int | None = None
+    active_bg: int | None = None
+    inactive_fg: int | None = None
+    inactive_bg: int | None = None
+    num_of_windows_with_progress: int = 0
+    total_progress: int = 0
+    last_focused_window_with_progress_id: int = 0
+    session_name: str = ''
+    active_session_name: str = ''
 
 
 class DrawData(NamedTuple):
