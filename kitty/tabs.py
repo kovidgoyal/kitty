@@ -1144,6 +1144,7 @@ class TabManager:  # {{{
     tab_being_dropped: TabBeingDropped | None = None
     window_being_dropped: WindowBeingDropped | None = None
     window_drag_target_tab_id: int = 0
+    window_drag_over_me: bool = False
 
     def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: SessionType | None = None):
         self.os_window_id = os_window_id
@@ -1243,6 +1244,8 @@ class TabManager:  # {{{
     def tab_bar_should_be_visible(self) -> bool:
         if self.tab_being_dropped is not None:
             return True  # keep tab bar visible in the dest
+        if self.window_drag_over_me:
+            return True  # keep tab bar visible when a window is being dragged over this OS window
         count = get_options().tab_bar_min_tabs
         if count < 1:
             return True
@@ -1929,7 +1932,17 @@ class TabManager:  # {{{
         if not is_dest:
             self._set_drag_target_window(0)
             self._set_drag_target_tab(0)
+            if self.window_drag_over_me:
+                self.window_drag_over_me = False
+                if not self.tab_bar_hidden:
+                    self.layout_tab_bar()
+                    self.resize(only_tabs=True)
             return
+        if not self.window_drag_over_me:
+            self.window_drag_over_me = True
+            if not self.tab_bar_hidden:
+                self.layout_tab_bar()
+                self.resize(only_tabs=True)
         from .fast_data_types import viewport_for_window
         tab_bar = viewport_for_window(self.os_window_id)[1]
         if tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < tab_bar.bottom:

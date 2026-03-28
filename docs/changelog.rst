@@ -203,6 +203,8 @@ Detailed list of changes
 
 - Window drag: Use a screenshot of the window contents as the drag thumbnail, just like tab dragging does
 
+- Window drag: Force the tab bar to be visible when dragging a window over an OS window, so the window can be dropped onto a tab
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
