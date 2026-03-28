@@ -1812,7 +1812,7 @@ class TabManager:  # {{{
                 dist_sq = (x - start_x)**2 + (y - start_y)**2
                 if threshold and dist_sq > threshold * threshold:
                     set_window_being_dragged(dragged_window_id, True, start_x, start_y)
-                    self.start_window_drag(dragged_window_id)
+                    request_callback_with_thumbnail("start_window_drag", self.os_window_id, dragged_window_id)
             return
 
         if button == GLFW_MOUSE_BUTTON_LEFT:
@@ -1842,7 +1842,8 @@ class TabManager:  # {{{
         if len(self.recent_title_bar_mouse_events) > 5:
             self.recent_title_bar_mouse_events.popleft()
 
-    def start_window_drag(self, window_id: int) -> None:
+    def start_window_drag(self, pixels: bytes, width: int, height: int) -> None:
+        window_id = get_window_being_dragged()[0]
         boss = get_boss()
         if (w := boss.window_id_map.get(window_id)) is None:
             set_window_being_dragged()
@@ -1859,10 +1860,9 @@ class TabManager:  # {{{
         title = str(w.title or '')
         fg = color_as_int(opts.window_title_bar_active_foreground or opts.active_tab_foreground)
         bg = color_as_int(opts.window_title_bar_active_background or opts.active_tab_background)
-        thumb_width = 480
-        title_pixels = draw_single_line_of_text(self.os_window_id, title, 0xff000000 | fg, 0xff000000 | bg, thumb_width)
-        title_height = len(title_pixels) // (thumb_width * 4)
-        thumbnails = ((title_pixels, thumb_width, title_height),)
+        title_pixels = draw_single_line_of_text(self.os_window_id, title, 0xff000000 | fg, 0xff000000 | bg, width)
+        title_height = len(title_pixels) // (width * 4)
+        thumbnails = ((title_pixels, width, title_height), (title_pixels + pixels, width, title_height + height))
         drag_data = {f'application/net.kovidgoyal.kitty-window-{os.getpid()}': str(window_id).encode()}
         try:
             start_drag_with_data(self.os_window_id, drag_data, thumbnails)
