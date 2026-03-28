@@ -154,10 +154,10 @@
     },
 
     {
-        "name": "libpng 1.6.55",
+        "name": "libpng 1.6.56",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:d925722864837ad5ae2a82070d4b2e0603dc72af44bd457c3962298258b8e82d",
+            "hash": "sha256:f7d8bf1601b7804f583a254ab343a6549ca6cf27d255c302c47af2d9d36a6f18",
             "urls": ["https://downloads.sourceforge.net/sourceforge/libpng/{filename}"]
         }
     },
@@ -242,12 +242,12 @@
     },
 
     {
-        "name": "fontconfig 2.13.1",
+        "name": "fontconfig 2.17.1",
         "os": "linux",
         "unix": {
-            "file_extension": "tar.bz2",
-            "hash": "sha256:f655dd2a986d7aa97e052261b36aa67b0a64989496361eca8d604e6414006741",
-            "urls": ["https://www.fontconfig.org/release/{filename}"]
+            "file_extension": "tar.xz",
+            "hash": "sha256:9f5cae93f4fffc1fbc05ae99cdfc708cd60dfd6612ffc0512827025c026fa541",
+            "urls": ["https://gitlab.freedesktop.org/api/v4/projects/890/packages/generic/fontconfig/{version}/{filename}"]
         }
     },
 
