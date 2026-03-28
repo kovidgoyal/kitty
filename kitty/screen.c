@@ -3105,8 +3105,8 @@ shell_prompt_marking(Screen *self, char *buf) {
         switch (ch) {
             case 'A': {
                 PromptKind pk = PROMPT_START;
+                self->prompt_settings.val = 0;
                 self->prompt_settings.redraws_prompts_at_all = 1;
-                self->prompt_settings.uses_special_keys_for_cursor_movement = 0;
                 parse_prompt_mark(self, buf+1, &pk);
                 self->linebuf->line_attrs[self->cursor->y].prompt_kind = pk;
                 if (pk == PROMPT_START) CALLBACK("cmd_output_marking", "O", Py_False);
