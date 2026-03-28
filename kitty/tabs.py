@@ -1903,7 +1903,7 @@ class TabManager:  # {{{
         return None
 
     def _set_drag_target_window(self, window_id: int, quadrant: int = 0) -> None:
-        """Highlight window_id's title bar as the drop target; 0 clears. quadrant!=0 shows quadrant overlay instead."""
+        ''' Highlight window_id's title bar as the drop target; 0 clears. quadrant!=0 shows quadrant overlay instead '''
         from .fast_data_types import set_window_drag_overlay
         boss = get_boss()
         prev_id = self.window_being_dropped.window_id if self.window_being_dropped else 0
