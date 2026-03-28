@@ -1487,6 +1487,13 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             }
             if (d->offset_type == GLFW_SCROLL_OFFSET_LINES) {
                 if (v->increment != 0) *off /= v->increment;
+            } else if (d->offset_type == GLFW_SCROLL_OFFEST_V120 && v->increment != 0 && v->increment != 120.) {
+                // On XWayland, scroll deltas are in scroll-increment units (typically
+                // where increment=1.0 means one line), but the heuristic may classify
+                // them as V120. Since the V120 code path downstream divides by 120,
+                // we must normalize to actual V120 units here to avoid ~120x reduction
+                // in scroll speed. For real V120 devices (increment=120), this is a no-op.
+                *off *= 120. / v->increment;
             }
         }
         type = d->offset_type;
