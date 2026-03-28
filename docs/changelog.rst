@@ -172,6 +172,11 @@ Detailed list of changes
 
 - For builtin key mappings automatically :ref:`fallback <mapping-fallback>` to matching the US-PC layout key when the pressed key has no matches and is a non-English character (:pull:`9671`)
 
+- Allow drag and drop of windows to re-arrange them, move them to another
+  tab/OS Window or detach them into a new OS Window. See
+  :ac:`toggle_window_title_bars` to temporarily show window title bars to drag
+  them around (:pull:`9626`)
+
 - :doc:`Remote control <remote-control>`: Expose :code:`session_name` in the output of ``kitten @ ls`` for each window (:iss:`9732`)
 
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
