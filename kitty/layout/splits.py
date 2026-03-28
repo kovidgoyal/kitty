@@ -10,7 +10,7 @@ from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper, Windo
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import BorderLine, Layout, LayoutOpts, blank_rects_for_window, lgd, window_geometry_from_layouts
+from .base import BorderLine, DragOverlayMode, Layout, LayoutOpts, blank_rects_for_window, lgd, window_geometry_from_layouts
 
 
 class SerializedPair(TypedDict, total=False):
@@ -561,7 +561,7 @@ class Splits(Layout):
     needs_all_windows = True
     layout_opts = SplitsLayoutOpts({})
     no_minimal_window_borders = True
-    drag_overlay_mode = 'free'
+    drag_overlay_mode = DragOverlayMode.free
 
     @property
     def default_axis_is_horizontal(self) -> bool | None:
@@ -731,7 +731,7 @@ class Splits(Layout):
         horizontal: bool,
         after: bool
     ) -> None:
-        """Reposition an existing window as a split adjacent to next_to."""
+        ''' Reposition an existing window as a split adjacent to next_to '''
         src_wg = all_windows.group_for_window(window)
         dest_wg = all_windows.group_for_window(next_to)
         if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id:

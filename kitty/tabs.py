@@ -54,7 +54,7 @@ from .fast_data_types import (
     swap_tabs,
     sync_os_window_title,
 )
-from .layout.base import Layout
+from .layout.base import DragOverlayMode, Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
 from .progress import ProgressState
 from .tab_bar import TabBar, TabBarData, apply_title_template
@@ -466,9 +466,9 @@ class Tab:  # {{{
     def relayout(self) -> None:
         if self.allow_relayouts:
             if self.windows:
-                self.windows._force_show_title_bars = self.force_show_title_bars
+                self.windows.force_show_title_bars = self.force_show_title_bars
                 self.current_layout(self.windows)
-                self.windows._force_show_title_bars = False
+                self.windows.force_show_title_bars = False
             self.relayout_borders()
 
     def relayout_borders(self) -> None:
@@ -1959,21 +1959,21 @@ class TabManager:  # {{{
                     return
             active_tab = self.active_tab
             if active_tab is not None:
-                mode = active_tab.current_layout.drag_overlay_mode
                 rel_x = x - central.left
                 g = dest_window.geometry
                 dx = rel_x - (g.left + g.right) / 2
                 dy = rel_y - (g.top + g.bottom) / 2
                 quad_map = {'left': 1, 'right': 2, 'top': 3, 'bottom': 4}
-                if mode == 'axis_y':
-                    direction = 'bottom' if dy > 0 else 'top'
-                elif mode == 'axis_x':
-                    direction = 'right' if dx > 0 else 'left'
-                elif mode == 'free':
-                    direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
-                else:  # 'full' (Stack, etc.): full-window overlay, no directional highlight
-                    self._set_drag_target_window(dest_window.id, 6)
-                    return
+                match active_tab.current_layout.drag_overlay_mode:
+                    case DragOverlayMode.axis_y:
+                        direction = 'bottom' if dy > 0 else 'top'
+                    case DragOverlayMode.axis_x:
+                        direction = 'right' if dx > 0 else 'left'
+                    case DragOverlayMode.free:
+                        direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
+                    case DragOverlayMode.full:
+                        self._set_drag_target_window(dest_window.id, 6)
+                        return
                 self._set_drag_target_window(dest_window.id, quad_map[direction])
             else:
                 self._set_drag_target_window(0)
@@ -2042,13 +2042,13 @@ class TabManager:  # {{{
             g = dest_window.geometry
             dx = rel_x - (g.left + g.right) / 2
             dy = rel_y - (g.top + g.bottom) / 2
-            mode = active_tab.current_layout.drag_overlay_mode
-            if mode == 'axis_y':
-                direction: Literal['left', 'right', 'top', 'bottom'] = 'bottom' if dy > 0 else 'top'
-            elif mode == 'axis_x':
-                direction = 'right' if dx > 0 else 'left'
-            else:  # 'free' (Splits) or 'full' (swap fallback)
-                direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
+            match active_tab.current_layout.drag_overlay_mode:
+                case DragOverlayMode.axis_y:
+                    direction: Literal['left', 'right', 'top', 'bottom'] = 'bottom' if dy > 0 else 'top'
+                case DragOverlayMode.axis_x:
+                    direction = 'right' if dx > 0 else 'left'
+                case DragOverlayMode.free | DragOverlayMode.full:
+                    direction = ('right' if dx > 0 else 'left') if abs(dx) >= abs(dy) else ('bottom' if dy > 0 else 'top')
             boss._insert_window_in_direction(w, dest_window, direction)
 
     def update_progress(self) -> None:

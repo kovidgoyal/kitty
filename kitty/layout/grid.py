@@ -12,7 +12,7 @@ from kitty.types import Edges, NeighborsMap, WindowMapper
 from kitty.typing_compat import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
-from .base import BorderLine, Layout, LayoutData, LayoutDimension, ListOfWindows, layout_dimension, lgd
+from .base import BorderLine, DragOverlayMode, Layout, LayoutData, LayoutDimension, ListOfWindows, layout_dimension, lgd
 from .tall import neighbors_for_tall_window
 
 
@@ -34,7 +34,7 @@ class Grid(Layout):
 
     name: str = 'grid'
     no_minimal_window_borders = True
-    drag_overlay_mode = 'axis_y'
+    drag_overlay_mode = DragOverlayMode.axis_y
 
     def remove_all_biases(self) -> bool:
         self.biased_rows: dict[int, float] = {}

@@ -2,9 +2,10 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections.abc import Generator, Iterable, Iterator, Sequence
+from enum import Enum
 from functools import partial
 from itertools import repeat
-from typing import Any, Callable, ClassVar, Literal, NamedTuple
+from typing import Any, Callable, ClassVar, NamedTuple
 
 from kitty.borders import BorderColor
 from kitty.fast_data_types import BOTTOM_EDGE, RIGHT_EDGE, Region, get_options, set_active_window, viewport_for_window
@@ -225,6 +226,14 @@ def create_window_id_map_for_unserialize(all_windows: WindowList) -> dict[int, i
     return window_id_map
 
 
+class DragOverlayMode(Enum):
+    ' Controls drag-and-drop overlay display and valid direction axis for body drops '
+    full = 'full'  # full-window overlay, positional swap (Stack and any unrecognised layout)
+    axis_x = 'axis_x'  # top/bottom halves only (Vertical, Tall, Grid)
+    axis_y = 'axis_y'  # left/right halves only (Horizontal, Fat)
+    free = 'free'  # 4-way free direction (Splits; handled by its own insert_window_next_to override)
+
+
 class Layout:
 
     name: str = ''
@@ -232,12 +241,7 @@ class Layout:
     must_draw_borders = False  # can be overridden to customize behavior from kittens
     layout_opts = LayoutOpts({})
     only_active_window_visible = False
-    # Controls drag-and-drop overlay display and valid direction axis for body drops.
-    # 'full'   – full-window overlay, positional swap (Stack and any unrecognised layout)
-    # 'axis_y' – top/bottom halves only (Vertical, Tall, Grid)
-    # 'axis_x' – left/right halves only (Horizontal, Fat)
-    # 'free'   – 4-way free direction (Splits; handled by its own insert_window_next_to override)
-    drag_overlay_mode: ClassVar[Literal['full', 'axis_y', 'axis_x', 'free']] = 'full'
+    drag_overlay_mode: ClassVar[DragOverlayMode] = DragOverlayMode.full
 
     def __init__(self, os_window_id: int, tab_id: int, layout_opts: str = '') -> None:
         self.set_owner(os_window_id, tab_id)
@@ -317,18 +321,19 @@ class Layout:
         horizontal: bool,
         after: bool,
     ) -> None:
-        """Reposition window as a linear neighbour of next_to.
+        '''
+        Reposition window as a linear neighbour of next_to.
 
         For axis_x/axis_y layouts this performs a positional insert that preserves
         the order of all other groups. For 'full' layouts it falls back to a swap.
         The Splits layout overrides this with tree-based logic.
-        """
+        '''
         src_wg = all_windows.group_for_window(window)
         dest_wg = all_windows.group_for_window(next_to)
         if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id:
             return
         all_windows.set_active_window_group_for(window)
-        if self.drag_overlay_mode in ('axis_x', 'axis_y'):
+        if self.drag_overlay_mode in (DragOverlayMode.axis_x, DragOverlayMode.axis_y):
             all_windows.insert_window_group_next_to(dest_wg.id, after)
         else:
             # 'full' fallback: swap (preserves existing behaviour for Stack etc.)
@@ -402,7 +407,7 @@ class Layout:
         # Set show_title_bar flag on each visible window before layout
         min_windows = get_options().window_title_bar_min_windows
         visible_groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
-        force_show = getattr(all_windows, '_force_show_title_bars', False)
+        force_show = all_windows.force_show_title_bars
         show_title_bar = force_show or (min_windows > 0 and len(visible_groups) >= min_windows)
         for wg in visible_groups:
             for w in wg.windows:
