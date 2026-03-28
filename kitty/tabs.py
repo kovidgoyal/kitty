@@ -1242,10 +1242,8 @@ class TabManager:  # {{{
 
     @property
     def tab_bar_should_be_visible(self) -> bool:
-        if self.tab_being_dropped is not None:
+        if self.tab_being_dropped is not None or self.window_drag_over_me:
             return True  # keep tab bar visible in the dest
-        if self.window_drag_over_me:
-            return True  # keep tab bar visible when a window is being dragged over this OS window
         count = get_options().tab_bar_min_tabs
         if count < 1:
             return True
