@@ -1753,9 +1753,11 @@ class TabManager:  # {{{
         tab_id_at_x = self.tab_bar.tab_id_at(int(x))
         now = monotonic()
         if tab_id_at_x < 0:  # synthetic tab (e.g. "+" new-tab button)
-            if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and self.recent_mouse_events:
-                if (prev := self.recent_mouse_events[-1]).button == button and prev.action == GLFW_PRESS and prev.tab_id == tab_id_at_x:
-                    self.new_tab()
+            if (
+                button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and self.recent_mouse_events and
+                (prev := self.recent_mouse_events[-1]).button == button and prev.action == GLFW_PRESS and prev.tab_id == tab_id_at_x
+            ):
+                self.new_tab()
         else:
             tab = self.tab_for_id(tab_id_at_x)
             if tab is None:
