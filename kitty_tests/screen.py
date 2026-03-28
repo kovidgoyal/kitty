@@ -1593,6 +1593,7 @@ class TestScreen(BaseTest):
         t('=fleur', 'move')
 
     def test_color_profile(self):
+        from kitty.fast_data_types import patch_color_profiles
         opts = self.set_options({'palette_generate': 'fixed'})
         c = ColorProfile(opts)
         for i in range(8):
@@ -1616,9 +1617,11 @@ class TestScreen(BaseTest):
         q({'selection_background': ''})
         self.assertIsNone(s.color_profile.highlight_bg)
         q({'selection_background': '?'}, {'selection_background': ''})
+        self.assertTrue(s.color_profile.palette_color_is_generated(213))
         opts = self.set_options({'palette_generate': 'semantic'})
         q({'213': ''})
         q({'213': '?'}, {'213': Color(216, 125, 215)})
+        self.assertTrue(s.color_profile.palette_color_is_generated(213))
         s.color_profile.reload_from_opts(opts)
         q({'transparent_background_color9': '?'}, {'transparent_background_color9': '?'})
         q({'transparent_background_color2': '?'}, {'transparent_background_color2': ''})
@@ -1626,6 +1629,17 @@ class TestScreen(BaseTest):
         q({'transparent_background_color2': '?'}, {'transparent_background_color2': (Color(255, 0, 0), 126)})
         q({'transparent_background_color2': '#ffffff@-1'})
         q({'transparent_background_color2': '?'}, {'transparent_background_color2': (Color(255, 255, 255), 255)})
+        opts.color114 = Color(1, 1, 4)
+        s.color_profile.reload_from_opts(opts)
+        self.assertTrue(s.color_profile.palette_color_is_generated(213))
+        self.assertFalse(s.color_profile.palette_color_is_generated(114))
+        q({'213': '?'}, {'213': Color(216, 125, 215)})
+        patch_color_profiles(
+            {'background': Color(255, 255, 255), 'foreground': Color(0, 0, 0)}, (), (s.color_profile,), True)
+        self.assertTrue(s.color_profile.palette_color_is_generated(213))
+        self.assertFalse(s.color_profile.palette_color_is_generated(114))
+        q({'213': '?'}, {'213': Color(216, 125, 215)})
+
 
     def test_multi_cursors(self):
         s = self.create_screen()

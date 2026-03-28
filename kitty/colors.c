@@ -15,6 +15,7 @@
 #endif
 
 static const color_type NULL_COLOR_VALUE = 0xffffffff;
+static const color_type GENERATED_COLOR_MASK = 0xff000000;
 
 static uint32_t FG_BG_256[256] = {
     0x000000,  // 0
@@ -122,6 +123,10 @@ set_mark_colors(ColorProfile *self, PyObject *opts) {
     return true;
 }
 
+// Generating 256 color palette {{{
+// For more information, see
+// https://gist.github.com/jake-stewart/0a8ea46159a7da2c808e5be2177e1783
+
 static void
 color_type_to_lab(color_type color, float *lab) {
     float r = ((color >> 16) & 0xff) / 255.0f;
@@ -168,7 +173,7 @@ lab_to_color_type(float *lab) {
     uint8_t gb = (uint8_t)(fminf(fmaxf(g, 0.0f), 1.0f) * 255.0f + 0.5f);
     uint8_t bb = (uint8_t)(fminf(fmaxf(b, 0.0f), 1.0f) * 255.0f + 0.5f);
 
-    return (rb << 16) | (gb << 8) | bb;
+    return GENERATED_COLOR_MASK | (rb << 16) | (gb << 8) | bb;
 }
 
 static void
@@ -178,8 +183,6 @@ lerp_lab(float t, float *a, float *b, float *out) {
     out[2] = a[2] + t * (b[2] - a[2]);
 }
 
-// For more information, see
-// https://gist.github.com/jake-stewart/0a8ea46159a7da2c808e5be2177e1783
 static void
 setup_256_palette_lab(ColorProfile *self, color_type *color_table, bool semantic, float base8_lab[8][3]) {
     const color_type bg = colorprofile_to_color(self, self->overridden.default_bg, self->configured.default_bg).rgb;
@@ -197,6 +200,9 @@ setup_256_palette_lab(ColorProfile *self, color_type *color_table, bool semantic
         memcpy(base8_lab[7], tmp, sizeof(tmp));
     }
 }
+
+static bool
+is_generated_color(const color_type c) { return (c & GENERATED_COLOR_MASK) == GENERATED_COLOR_MASK; }
 
 static void
 generate_256_palette(ColorProfile *self, color_type *color_table, bool semantic) {
@@ -217,7 +223,7 @@ generate_256_palette(ColorProfile *self, color_type *color_table, bool semantic)
             lerp_lab(tg, c0, c1, c4);
             lerp_lab(tg, c2, c3, c5);
             for (int b = 0; b < 6; b++) {
-                if (color_table[idx] == NULL_COLOR_VALUE) {
+                if (is_generated_color(color_table[idx])) {
                     float c6[3];
                     lerp_lab(b / 5.0f, c4, c5, c6);
                     color_table[idx] = lab_to_color_type(c6);
@@ -231,9 +237,7 @@ generate_256_palette(ColorProfile *self, color_type *color_table, bool semantic)
         float t = (i + 1) / 25.0f;
         float lab[3];
         lerp_lab(t, base8_lab[0], base8_lab[7], lab);
-        if (color_table[idx] == NULL_COLOR_VALUE) {
-            color_table[idx] = lab_to_color_type(lab);
-        }
+        if (is_generated_color(color_table[idx])) color_table[idx] = lab_to_color_type(lab);
         idx++;
     }
 }
@@ -267,7 +271,7 @@ static void
 fixed_color_palette(color_type *color_table) {
     init_FG_BG_table();
     for (unsigned i = 16; i < arraysz(FG_BG_256); i++) {
-        if (color_table[i] == NULL_COLOR_VALUE) color_table[i] = FG_BG_256[i];
+        if (is_generated_color(color_table[i])) color_table[i] = GENERATED_COLOR_MASK | FG_BG_256[i];
     }
 }
 
@@ -276,11 +280,15 @@ palette_generation_is_dynamic(PyObject *opts, bool *semantic) {
     bool ans = false; *semantic = false;
     if (opts) {
         RAII_PyObject(policy, PyObject_GetAttrString(opts, "palette_generate")); if (!policy) return ans;
-        ans = PyUnicode_CompareWithASCIIString(policy, "fixed") != 0;
-        *semantic = ans && PyUnicode_CompareWithASCIIString(policy, "semantic") == 0;
+        switch(PyUnicode_AsUTF8(policy)[0]) {
+            case 'f': break;
+            case 's': *semantic = true; /* fallthrough */
+            default: ans = true;
+        }
     }
     return ans;
 }
+// }}}
 
 static bool
 set_colortable(ColorProfile *self, PyObject *opts) {
@@ -296,7 +304,7 @@ set_colortable(ColorProfile *self, PyObject *opts) {
     for (size_t i = 0; i < arraysz(FG_BG_256); i++) self->color_table[i] = color_table[i];
     if (dynamic_palette) generate_256_palette(self, self->color_table, semantic_generation);
     else fixed_color_palette(self->color_table);
-    memcpy(self->orig_color_table, self->color_table, arraysz(self->color_table) * sizeof(self->color_table[0]));
+    memcpy(self->orig_color_table, self->color_table, sizeof(self->color_table));
     return true;
 }
 
@@ -462,7 +470,7 @@ colorprofile_to_color(const ColorProfile *self, DynamicColor entry, DynamicColor
             return defval;
         case COLOR_IS_INDEX: {
             DynamicColor ans;
-            ans.rgb = self->color_table[entry.rgb & 0xff] & 0xffffff;
+            ans.rgb = self->color_table[entry.rgb & 0xff] & (~GENERATED_COLOR_MASK);
             ans.type = COLOR_IS_RGB;
             return ans;
         }
@@ -483,7 +491,7 @@ colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, Dyna
         case COLOR_IS_RGB:
             return entry.rgb;
         case COLOR_IS_INDEX:
-            return self->color_table[entry.rgb & 0xff] & 0xffffff;
+            return self->color_table[entry.rgb & 0xff] & (~GENERATED_COLOR_MASK);
     }
     return entry.rgb;
 }
@@ -494,7 +502,7 @@ colortable_colors_into_dict(ColorProfile *self, unsigned start, unsigned limit, 
     static char buf[32] = {'c', 'o', 'l', 'o', 'r', 0};
     for (unsigned i = start; i < limit; i++) {
         snprintf(buf + 5, sizeof(buf) - 6, "%u", i);
-        PyObject *val = PyLong_FromUnsignedLong(self->color_table[i]);
+        PyObject *val = PyLong_FromUnsignedLong(self->color_table[i] &(~GENERATED_COLOR_MASK));
         if (!val) return false;
         int ret = PyDict_SetItemString(ans, buf, val);
         Py_DECREF(val);
@@ -575,7 +583,7 @@ as_color(ColorProfile *self, PyObject *val) {
     switch(t) {
         case 1:
             r = (entry >> 8) & 0xff;
-            col = self->color_table[r];
+            col = self->color_table[r] & (~GENERATED_COLOR_MASK);
             break;
         case 2:
             col = entry >> 8;
@@ -617,7 +625,7 @@ set_color(ColorProfile *self, PyObject *args) {
     self->dirty = true;
     if (val == NULL_COLOR_VALUE && i >= 16) {
         bool semantic, dynamic = palette_generation_is_dynamic(global_state.options_object, &semantic);
-        self->color_table[i] = dynamic ? generate_256_palette_color(self, self->color_table, i, semantic) : FG_BG_256[i];
+        self->color_table[i] = dynamic ? generate_256_palette_color(self, self->color_table, i, semantic) : GENERATED_COLOR_MASK | FG_BG_256[i];
     } else self->color_table[i] = val;
     Py_RETURN_NONE;
 }
@@ -626,7 +634,7 @@ void
 copy_color_table_to_buffer(ColorProfile *self, color_type *buf, int offset, size_t stride) {
     size_t i;
     stride = MAX(1u, stride);
-    for (i = 0, buf = buf + offset; i < arraysz(self->color_table); i++, buf += stride) *buf = self->color_table[i];
+    for (i = 0, buf = buf + offset; i < arraysz(self->color_table); i++, buf += stride) *buf = self->color_table[i] & (~GENERATED_COLOR_MASK);
     // Copy the mark colors
     for (i = 0; i < arraysz(self->mark_backgrounds); i++) {
         *buf = self->mark_backgrounds[i]; buf += stride;
@@ -778,11 +786,26 @@ static PyMemberDef cp_members[] = {
 };
 
 static PyObject*
-reload_from_opts(ColorProfile *self, PyObject *args UNUSED) {
-    PyObject *opts = global_state.options_object;
-    if (!PyArg_ParseTuple(args, "|O", &opts)) return NULL;
+palette_color_is_generated(ColorProfile *self, PyObject *x) {
+    if (!PyLong_Check(x)) { PyErr_SetString(PyExc_TypeError, "idx must be an integer"); return NULL; }
+    size_t idx = PyLong_AsUnsignedLong(x);
+    if (idx >= arraysz(FG_BG_256)) { PyErr_SetString(PyExc_IndexError, "idx out of bounds"); return NULL; }
+    return Py_NewRef(is_generated_color(self->color_table[idx]) ? Py_True : Py_False);
+}
+
+static PyObject*
+reload_from_opts(ColorProfile *self, PyObject *args, PyObject *kw) {
+    PyObject *opts = NULL;
+    int reset_overriden_colors = 1;
+    static const char* kwlist[] = {"opts", "reset_overriden_colors", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|Op", (char**)kwlist, &opts, &reset_overriden_colors)) return NULL;
+    if (opts == NULL) opts = global_state.options_object;
     self->dirty = true;
     if (!set_configured_colors(self, opts)) return NULL;
+    if (reset_overriden_colors) {
+        zero_at_ptr(&self->overridden);
+        memset(self->overriden_transparent_colors, 0, sizeof(self->overriden_transparent_colors));
+    }
     if (!set_mark_colors(self, opts)) return NULL;
     if (!set_colortable(self, opts)) return NULL;
     Py_RETURN_NONE;
@@ -826,8 +849,9 @@ static PyMethodDef cp_methods[] = {
     METHOD(as_color, METH_O)
     METHOD(reset_color, METH_O)
     METHOD(set_color, METH_VARARGS)
+    METHODB(palette_color_is_generated, METH_O),
     METHODB(get_transparent_background_color, METH_O),
-    METHODB(reload_from_opts, METH_VARARGS),
+    {"reload_from_opts", (PyCFunction)(void (*) (void))(reload_from_opts), METH_VARARGS | METH_KEYWORDS, NULL},
     {"set_transparent_background_color", (PyCFunction)(void(*)(void))set_transparent_background_color, METH_FASTCALL, ""},
     {NULL}  /* Sentinel */
 };

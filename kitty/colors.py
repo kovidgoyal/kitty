@@ -248,7 +248,7 @@ def patch_options_with_color_spec(
 
 
 def patch_colors(
-    spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors, configured: bool = False,
+    spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors = (), configured: bool = False,
     windows: Sequence[WindowType] | None = None, notify_on_bg_change: bool = True,
     background_image_options: BackgroundImageOptions | None = None
 ) -> None:
