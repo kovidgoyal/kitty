@@ -10,9 +10,11 @@ from kitty.fast_data_types import (
     base64_decode,
     base64_encode,
     has_avx2,
+    has_avx512bw,
     has_sse4_2,
     test_find_either_of_two_bytes,
     test_utf8_decode_to_sentinel,
+    test_xor64,
 )
 
 from . import BaseTest, parse_bytes
@@ -187,7 +189,7 @@ class TestParser(BaseTest):
 
     def test_utf8_simd_decode(self):
         def unsupported(which):
-            return (which == 2 and not has_sse4_2) or (which == 3 and not has_avx2)
+            return (which == 2 and not has_sse4_2) or (which == 3 and not has_avx2) or (which == 4 and not has_avx512bw)
 
         def reset_state():
             test_utf8_decode_to_sentinel(b'', -1)
@@ -221,13 +223,15 @@ class TestParser(BaseTest):
             return actual
 
         def double_test(x):
-            for which in (2, 3):
+            for which in (2, 3, 4):
                 t(x, which=which)
             t(x*2, which=3)
+            t(x*4, which=4)
             reset_state()
 
         # incomplete trailer at end of vector
         t("a"*10 + "😸😸" + "b"*15)
+        t("a"*10 + "😸😸" + "b"*15, which=4)
 
         x = double_test
         x('2:α3')
@@ -237,7 +241,7 @@ class TestParser(BaseTest):
         x('abc\x1bd1234efgh5678')
         x('abcd1234efgh5678ijklABCDmnopEFGH')
 
-        for which in (2, 3):
+        for which in (2, 3, 4):
             x = partial(t, which=which)
             x('abcdef', 'ghijk')
             x('2:α3', ':≤4:😸|')
@@ -259,7 +263,7 @@ class TestParser(BaseTest):
             expected = 'filler' + expected
             self.ae(expected, actual, f'Failed for: {src!r} with {which=}')
 
-        for which in (1, 2, 3):
+        for which in (1, 2, 3, 4):
             pb = partial(test_expected, which=which)
             pb('ニチ', 'ニチ')
             pb('\x84\x85', '\x84\x85')
@@ -637,12 +641,27 @@ class TestParser(BaseTest):
             pb(b'"\xf5\x80\x80\x80"', '"\ufffd\ufffd\ufffd\ufffd"')
 
 
+    def test_xor_data64(self):
+        import os
+        key = os.urandom(64)
+        for data_sz in (0, 1, 7, 16, 32, 63, 64, 65, 128, 256, 300):
+            data = os.urandom(data_sz)
+            expected = bytes(b ^ key[i % 64] for i, b in enumerate(data))
+            for which in (1, 2, 3, 4):
+                if (which == 2 and not has_sse4_2) or (which == 3 and not has_avx2) or (which == 4 and not has_avx512bw):
+                    continue
+                for align_offset in range(64):
+                    actual = test_xor64(key, data, which, align_offset)
+                    self.ae(expected, actual, f'Failed for {data_sz=} {which=} {align_offset=}')
+
     def test_find_either_of_two_bytes(self):
         sizes = []
         if has_sse4_2:
             sizes.append(2)
         if has_avx2:
             sizes.append(3)
+        if has_avx512bw:
+            sizes.append(4)
         sizes.append(0)
 
         def test(buf, a, b, align_offset=0):

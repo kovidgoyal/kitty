@@ -168,6 +168,8 @@ Detailed list of changes
 0.47.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Add an AVX-512 C implementation for the SIMD string functions (``find_either_of_two_bytes``, ``utf8_decode_to_esc``, ``xor_data64``), using 512-bit ZMM registers on CPUs that support AVX-512BW/VBMI. Automatically selected at runtime when AVX-512 hardware is available.
+
 - A new option :opt:`palette_generate` to automatically generate the 256 color palette from the first 16 colors (:pull:`9426`)
 
 - For builtin key mappings automatically :ref:`fallback <mapping-fallback>` to matching the US-PC layout key when the pressed key has no matches and is a non-English character (:pull:`9671`)

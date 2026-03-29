@@ -52,7 +52,10 @@ void xor_data64(const uint8_t key[64], uint8_t* data, const size_t data_sz);
 // SIMD implementations, internal use
 bool utf8_decode_to_esc_128(UTF8Decoder *d, const uint8_t *src, size_t src_sz);
 bool utf8_decode_to_esc_256(UTF8Decoder *d, const uint8_t *src, size_t src_sz);
+bool utf8_decode_to_esc_512(UTF8Decoder *d, const uint8_t *src, size_t src_sz);
 const uint8_t* find_either_of_two_bytes_128(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);
 const uint8_t* find_either_of_two_bytes_256(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);
+const uint8_t* find_either_of_two_bytes_512(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b);
 void xor_data64_128(const uint8_t key[64], uint8_t* data, const size_t data_sz);
 void xor_data64_256(const uint8_t key[64], uint8_t* data, const size_t data_sz);
+void xor_data64_512(const uint8_t key[64], uint8_t* data, const size_t data_sz);

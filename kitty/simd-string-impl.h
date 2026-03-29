@@ -35,6 +35,11 @@ _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
 #endif
 #include <simde/x86/avx2.h>
 #include <simde/arm/neon.h>
+#if KITTY_SIMD_LEVEL == 512
+START_IGNORE_DIAGNOSTIC("-Wsign-conversion")
+#include <simde/x86/avx512.h>
+END_IGNORE_DIAGNOSTIC
+#endif
 #if  defined(__clang__) && __clang_major__ > 13
 _Pragma("clang diagnostic pop")
 #endif
@@ -111,7 +116,7 @@ w(left, sixteen_bytes, 16)
 #undef shift_right_by_bytes_macro
 #undef shift_left_by_bytes_macro
 
-#else
+#elif KITTY_SIMD_LEVEL == 256
 
 #if defined(SIMDE_ARCH_AMD64) || defined(SIMDE_ARCH_X86)
 #define zero_upper _mm256_zeroupper
@@ -217,6 +222,126 @@ static inline integer_t shuffle_impl256(const integer_t value, const integer_t s
 
 #define shuffle_epi8 shuffle_impl256
 #define sum_bytes(x) (sum_bytes_128(simde_mm256_extracti128_si256(x, 0)) + sum_bytes_128(simde_mm256_extracti128_si256(x, 1)))
+
+#elif KITTY_SIMD_LEVEL == 512
+
+#define zero_upper()
+#define set1_epi8(x) simde_mm512_set1_epi8((char)(x))
+#define set_epi8 simde_mm512_set_epi8
+#define add_epi8 simde_mm512_add_epi8
+#define load_unaligned simde_mm512_loadu_si512
+#define load_aligned(x) simde_mm512_load_si512((const void*)(x))
+#define store_unaligned simde_mm512_storeu_si512
+#define store_aligned(dest, vec) simde_mm512_store_si512((void*)(dest), vec)
+// cmpeq/cmpgt/cmplt in AVX-512 return bitmasks; wrap with movm_epi8 to produce vectors
+#define cmpeq_epi8(a, b) simde_mm512_movm_epi8(simde_mm512_cmpeq_epi8_mask(a, b))
+#define cmpgt_epi8(a, b) simde_mm512_movm_epi8(simde_mm512_cmpgt_epi8_mask(a, b))
+#define cmplt_epi8(a, b) cmpgt_epi8(b, a)
+#define or_si simde_mm512_or_si512
+#define and_si simde_mm512_and_si512
+#define xor_si simde_mm512_xor_si512
+#define andnot_si simde_mm512_andnot_si512
+// movemask_epi8 for 512-bit returns a 64-bit mask (one bit per byte)
+#define movemask_epi8 simde_mm512_movepi8_mask
+// blendv_epi8: convert vector mask (high bit of each byte) to bitmask for AVX-512 blend
+#define blendv_epi8(a, b, mask) simde_mm512_mask_blend_epi8(simde_mm512_movepi8_mask(mask), a, b)
+#define subtract_saturate_epu8 simde_mm512_subs_epu8
+#define subtract_epi8 simde_mm512_sub_epi8
+#define shift_left_by_bits16 simde_mm512_slli_epi16
+#define shift_right_by_bits32 simde_mm512_srli_epi32
+#define create_zero_integer simde_mm512_setzero_si512
+#define create_all_ones_integer() simde_mm512_set1_epi64(-1LL)
+#define numbered_bytes() simde_mm512_set_epi8(63,62,61,60,59,58,57,56,55,54,53,52,51,50,49,48,47,46,45,44,43,42,41,40,39,38,37,36,35,34,33,32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0)
+
+static inline int
+FUNC(is_zero)(const integer_t a) { return simde_mm512_test_epi8_mask(a, a) == 0; }
+
+// For 512-bit byte shifts we use permutex2var_epi64 (64-bit element permutation across two registers)
+// to shift whole qwords, then srli/slli_epi64 to shift the remaining bits within qwords.
+//
+// permutex2var_epi64(a, idx, b): result_qword[i] = a[idx[i]&7] if !(idx[i]&8), else b[idx[i]&7]
+// Using b=setzero, an index with bit 3 set (>=8) selects zero from b.
+// For right shift by N qwords: idx[i] = i+N if i+N<8 (from a), else 8 (zero from b).
+// For left shift by N qwords: idx[i] = i-N if i>=N (from a), else 8 (zero from b).
+
+static inline integer_t shift_right_by_bytes(const integer_t A, unsigned n) {
+    if (!n) return A;
+    const simde__m512i zero = simde_mm512_setzero_si512();
+    const unsigned qwords = n >> 3;
+    const unsigned bits = (n & 7u) << 3;
+    // Shift whole qwords right (toward lower indices), filling top qwords with zero
+    const simde__m512i qidx = simde_mm512_set_epi64(
+        (long long)(qwords > 7 ? 8 : qwords + 7),
+        (long long)(qwords > 6 ? 8 : qwords + 6),
+        (long long)(qwords > 5 ? 8 : qwords + 5),
+        (long long)(qwords > 4 ? 8 : qwords + 4),
+        (long long)(qwords > 3 ? 8 : qwords + 3),
+        (long long)(qwords > 2 ? 8 : qwords + 2),
+        (long long)(qwords > 1 ? 8 : qwords + 1),
+        (long long)(qwords >= 8 ? 8 : qwords + 0));
+    const simde__m512i qshifted = simde_mm512_permutex2var_epi64(A, qidx, zero);
+    if (!bits) return qshifted;
+    // Shift remaining bits within each qword, carrying high bits from the next higher qword
+    const simde__m512i lo = simde_mm512_srli_epi64(qshifted, bits);
+    // One-qword right shift of qshifted to get the carry source for each qword
+    const simde__m512i carry_src = simde_mm512_permutex2var_epi64(qshifted,
+        simde_mm512_set_epi64(8LL, 7LL, 6LL, 5LL, 4LL, 3LL, 2LL, 1LL), zero);
+    const simde__m512i hi = simde_mm512_slli_epi64(carry_src, (long long)(64 - bits));
+    return simde_mm512_or_si512(lo, hi);
+}
+
+static inline integer_t shift_left_by_bytes(const integer_t A, unsigned n) {
+    if (!n) return A;
+    const simde__m512i zero = simde_mm512_setzero_si512();
+    const unsigned qwords = n >> 3;
+    const unsigned bits = (n & 7u) << 3;
+    // Shift whole qwords left (toward higher indices), filling bottom qwords with zero
+    const simde__m512i qidx = simde_mm512_set_epi64(
+        (long long)(qwords > 7 ? 8 : 7 - qwords),
+        (long long)(qwords > 6 ? 8 : 6 - qwords),
+        (long long)(qwords > 5 ? 8 : 5 - qwords),
+        (long long)(qwords > 4 ? 8 : 4 - qwords),
+        (long long)(qwords > 3 ? 8 : 3 - qwords),
+        (long long)(qwords > 2 ? 8 : 2 - qwords),
+        (long long)(qwords > 1 ? 8 : 1 - qwords),
+        (long long)(qwords > 0 ? 8 : 0));
+    const simde__m512i qshifted = simde_mm512_permutex2var_epi64(A, qidx, zero);
+    if (!bits) return qshifted;
+    // Shift remaining bits within each qword, carrying low bits from the previous lower qword
+    const simde__m512i hi = simde_mm512_slli_epi64(qshifted, bits);
+    // One-qword left shift of qshifted to get the carry source for each qword
+    const simde__m512i carry_src = simde_mm512_permutex2var_epi64(qshifted,
+        simde_mm512_set_epi64(6LL, 5LL, 4LL, 3LL, 2LL, 1LL, 0LL, 8LL), zero);
+    const simde__m512i lo = simde_mm512_srli_epi64(carry_src, (long long)(64 - bits));
+    return simde_mm512_or_si512(hi, lo);
+}
+
+#define w(dir, word, num) static inline integer_t shift_##dir##_by_##word(const integer_t A) { return shift_##dir##_by_bytes(A, num); }
+
+w(right, one_byte, 1)
+w(right, two_bytes, 2)
+w(right, four_bytes, 4)
+w(right, eight_bytes, 8)
+w(right, sixteen_bytes, 16)
+w(right, thirty_two_bytes, 32)
+w(left, one_byte, 1)
+w(left, two_bytes, 2)
+w(left, four_bytes, 4)
+w(left, eight_bytes, 8)
+w(left, sixteen_bytes, 16)
+w(left, thirty_two_bytes, 32)
+#undef w
+
+// shuffle_epi8 for 512-bit: permutexvar_epi8 performs a full cross-register byte permutation.
+// All indices in our use-case are in [0, 63], so no out-of-range zeroing is needed.
+#define shuffle_epi8(a, idx) simde_mm512_permutexvar_epi8((idx), (a))
+// sum_bytes: sum all bytes by summing the four 128-bit quarters using sad_epu8
+#define sum_bytes(x) ( \
+    sum_bytes_128(simde_mm256_extracti128_si256(simde_mm512_extracti64x4_epi64(x, 0), 0)) + \
+    sum_bytes_128(simde_mm256_extracti128_si256(simde_mm512_extracti64x4_epi64(x, 0), 1)) + \
+    sum_bytes_128(simde_mm256_extracti128_si256(simde_mm512_extracti64x4_epi64(x, 1), 0)) + \
+    sum_bytes_128(simde_mm256_extracti128_si256(simde_mm512_extracti64x4_epi64(x, 1), 1)))
+
 #endif
 
 #define print_register_as_bytes(r) { \
@@ -290,6 +415,22 @@ bytes_to_first_match_ignoring_leading_n(const integer_t vec, uintptr_t num_ignor
 
 #else
 
+#if KITTY_SIMD_LEVEL == 512
+
+static inline int
+bytes_to_first_match(const integer_t vec) {
+    const uint64_t m = movemask_epi8(vec);
+    return m ? __builtin_ctzll(m) : -1;
+}
+
+static inline int
+bytes_to_first_match_ignoring_leading_n(const integer_t vec, const uintptr_t num_ignored) {
+    const uint64_t m = movemask_epi8(vec) >> num_ignored;
+    return m ? __builtin_ctzll(m) : -1;
+}
+
+#else
+
 static inline int
 bytes_to_first_match(const integer_t vec) {
     return is_zero(vec) ? -1 : __builtin_ctz(movemask_epi8(vec));
@@ -302,6 +443,7 @@ bytes_to_first_match_ignoring_leading_n(const integer_t vec, const uintptr_t num
     return mask ? __builtin_ctz(mask) : -1;
 }
 
+#endif
 
 #endif
 
@@ -328,9 +470,12 @@ FUNC(xor_data64)(const uint8_t key[KEY_SIZE], uint8_t* data, const size_t data_s
     memcpy(aligned_key, key + unaligned_bytes, KEY_SIZE - unaligned_bytes);
     memcpy(aligned_key + KEY_SIZE - unaligned_bytes, key, unaligned_bytes);
 
-    const integer_t v1 = load_aligned(aligned_key), v2 = load_aligned(aligned_key + sizeof(integer_t));
+    const integer_t v1 = load_aligned(aligned_key);
 #if KITTY_SIMD_LEVEL == 128
+    const integer_t v2 = load_aligned(aligned_key + sizeof(integer_t));
     const integer_t v3 = load_aligned(aligned_key + 2*sizeof(integer_t)), v4 = load_aligned(aligned_key + 3 * sizeof(integer_t));
+#elif KITTY_SIMD_LEVEL == 256
+    const integer_t v2 = load_aligned(aligned_key + sizeof(integer_t));
 #endif
     // Process KEY_SIZE aligned chunks using SIMD
     integer_t d;
@@ -340,9 +485,11 @@ FUNC(xor_data64)(const uint8_t key[KEY_SIZE], uint8_t* data, const size_t data_s
     // p is aligned to first KEY_SIZE boundary >= data and limit is aligned to first KEY_SIZE boundary <= (data + data_sz)
 #define do_one(which) d = load_aligned(p); store_aligned(p, xor_si(which, d)); p += sizeof(integer_t);
     while (p < limit) {
-        do_one(v1); do_one(v2);
-#if KITTY_SIMD_LEVEL == 128
-        do_one(v3); do_one(v4);
+        do_one(v1);
+#if KITTY_SIMD_LEVEL == 256
+        do_one(v2);
+#elif KITTY_SIMD_LEVEL == 128
+        do_one(v2); do_one(v3); do_one(v4);
 #endif
     }
 #undef do_one
@@ -403,6 +550,24 @@ FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
         store_unaligned((integer_t*)p, unpacked);
         vec = shift_right_by_bytes128(vec, output_increment);
     }
+#elif KITTY_SIMD_LEVEL == 512
+    // For 512-bit: expand 8 bytes at a time (via 256-bit cvtepu8_epi32), processing 4 128-bit quarters
+    uint32_t *p = d->output.storage + d->output.pos;
+    const uint32_t *limit = p + src_sz;
+#define do_quarter(q256, lane) { \
+        simde__m128i x_ = simde_mm256_extracti128_si256(q256, lane); \
+        simde_mm256_storeu_si256((simde__m256i*)p, simde_mm256_cvtepu8_epi32(x_)); p += 8; \
+        if (p < limit) { \
+            simde_mm256_storeu_si256((simde__m256i*)p, simde_mm256_cvtepu8_epi32(shift_right_by_bytes128(x_, 8))); p += 8; \
+        } \
+}
+    simde__m256i lo256 = simde_mm512_extracti64x4_epi64(vec, 0);
+    simde__m256i hi256 = simde_mm512_extracti64x4_epi64(vec, 1);
+    do_quarter(lo256, 0)
+    if (p < limit) { do_quarter(lo256, 1) }
+    if (p < limit) { do_quarter(hi256, 0) }
+    if (p < limit) { do_quarter(hi256, 1) }
+#undef do_quarter
 #else
     const uint32_t *p = d->output.storage + d->output.pos, *limit = p + src_sz;
     simde__m128i x = simde_mm256_extracti128_si256(vec, 0);
@@ -441,6 +606,43 @@ FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integ
         output2 = shift_right_by_bytes128(output2, output_increment);
         output3 = shift_right_by_bytes128(output3, output_increment);
     }
+#elif KITTY_SIMD_LEVEL == 512
+    // For 512-bit: combine three output byte-streams into codepoints, 8 at a time
+    uint32_t *p = d->output.storage + d->output.pos;
+    const uint32_t *limit = p + num_codepoints;
+    simde__m256i lo1 = simde_mm512_extracti64x4_epi64(output1, 0), hi1 = simde_mm512_extracti64x4_epi64(output1, 1);
+    simde__m256i lo2 = simde_mm512_extracti64x4_epi64(output2, 0), hi2 = simde_mm512_extracti64x4_epi64(output2, 1);
+    simde__m256i lo3 = simde_mm512_extracti64x4_epi64(output3, 0), hi3 = simde_mm512_extracti64x4_epi64(output3, 1);
+    simde__m128i x1, x2, x3;
+#define chunk256() { \
+        const simde__m256i u1 = simde_mm256_cvtepu8_epi32(x1); \
+        const simde__m256i u2 = simde_mm256_cvtepu8_epi32(x2); \
+        const simde__m256i u3 = simde_mm256_cvtepu8_epi32(x3); \
+        const simde__m256i u2s = simde_mm256_slli_epi32(u2, 8); \
+        const simde__m256i u3s = simde_mm256_slli_epi32(u3, 16); \
+        simde_mm256_storeu_si256((simde__m256i*)p, simde_mm256_or_si256(simde_mm256_or_si256(u1, u2s), u3s)); \
+        p += 8; \
+}
+#define do_half(h1_, h2_, h3_) { \
+    x1 = simde_mm256_extracti128_si256(h1_, 0); x2 = simde_mm256_extracti128_si256(h2_, 0); x3 = simde_mm256_extracti128_si256(h3_, 0); \
+    chunk256(); \
+    if (p < limit) { \
+        x1 = shift_right_by_bytes128(x1, 8); x2 = shift_right_by_bytes128(x2, 8); x3 = shift_right_by_bytes128(x3, 8); \
+        chunk256(); \
+    } \
+    if (p < limit) { \
+        x1 = simde_mm256_extracti128_si256(h1_, 1); x2 = simde_mm256_extracti128_si256(h2_, 1); x3 = simde_mm256_extracti128_si256(h3_, 1); \
+        chunk256(); \
+    } \
+    if (p < limit) { \
+        x1 = shift_right_by_bytes128(x1, 8); x2 = shift_right_by_bytes128(x2, 8); x3 = shift_right_by_bytes128(x3, 8); \
+        chunk256(); \
+    } \
+}
+    do_half(lo1, lo2, lo3)
+    if (p < limit) { do_half(hi1, hi2, hi3) }
+#undef chunk256
+#undef do_half
 #else
     uint32_t *p = d->output.storage + d->output.pos;
     const uint32_t *limit = p + num_codepoints;
@@ -568,7 +770,11 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
         bool check_for_trailing_bytes = !sentinel_found;
 
         debug_register(vec);
+#if KITTY_SIMD_LEVEL == 512
+        uint64_t ascii_mask;
+#else
         int32_t ascii_mask;
+#endif
 
 #define abort_with_invalid_utf8() { \
     scalar_decode_all(d, start_of_current_chunk, chunk_src_sz + num_of_trailing_bytes); \
@@ -655,7 +861,7 @@ start_classification:
         // Therefore there is a count mismatch, indicating that the chunk is ill-formed UTF-8.
         // (If the following "\x01" were absent, and the "\x7f" were the last byte of the chunk,
         // then the `check_for_trailing_bytes` validation above detects the error as a trailing incomplete sequence.)
-        const int ascii_sequence_count_mismatches = ascii_mask ^ movemask_epi8(cmpgt_epi8(counts, zero));
+        const bool ascii_sequence_count_mismatches = (ascii_mask ^ movemask_epi8(cmpgt_epi8(counts, zero))) != 0;
         chunk_is_invalid = set1_epi8(ascii_sequence_count_mismatches ? 0xff : 0x00);
 
         // Validate 2-byte sequence starter bytes: 0xC0..0xC1 are invalid (overlong encodings for U+0000..U+007F).
@@ -758,15 +964,19 @@ start_classification:
         shifts = add_epi8(shifts, shift_right_by_two_bytes(shifts));
         shifts = add_epi8(shifts, shift_right_by_four_bytes(shifts));
         shifts = add_epi8(shifts, shift_right_by_eight_bytes(shifts));
-#if KITTY_SIMD_LEVEL == 256
+#if KITTY_SIMD_LEVEL >= 256
         shifts = add_epi8(shifts, shift_right_by_sixteen_bytes(shifts));
+#endif
+#if KITTY_SIMD_LEVEL == 512
+        shifts = add_epi8(shifts, shift_right_by_thirty_two_bytes(shifts));
 #endif
         // zero the shifts for discarded continuation bytes
         shifts = and_si(shifts, cmplt_epi8(counts, two));
         // now we need to convert shifts into a mask for the shuffle. The mask has each byte of the
-        // form 0000xxxx the lower four bits indicating the destination location for the byte. For 256 bit shuffle we use lower 5 bits.
+        // form 0000xxxx the lower four bits indicating the destination location for the byte. For 256-bit shuffle we use lower 5 bits,
+        // and for 512-bit shuffle we use lower 6 bits.
         // First we move the numbers in shifts to discard the unwanted UTF-8 sequence bytes. We note that the numbers
-        // are bounded by sizeof(integer_t) and so we need at most 4 (for 128 bit) or 5 (for 256 bit) moves. The numbers are
+        // are bounded by sizeof(integer_t) and so we need at most 4 (for 128-bit), 5 (for 256-bit) or 6 (for 512-bit) moves. The numbers are
         // monotonic from left to right and change value only at the end of a UTF-8 sequence. We move them leftwards, accumulating the
         // moves bit-by-bit.
 #define move(shifts, amt, which_bit) blendv_epi8(shifts, shift_left_by_##amt(shifts), shift_left_by_##amt(shift_left_by_bits16(shifts, 8 - which_bit)))
@@ -774,8 +984,11 @@ start_classification:
         shifts = move(shifts, two_bytes, 2);
         shifts = move(shifts, four_bytes, 3);
         shifts = move(shifts, eight_bytes, 4);
-#if KITTY_SIMD_LEVEL == 256
+#if KITTY_SIMD_LEVEL >= 256
         shifts = move(shifts, sixteen_bytes, 5);
+#endif
+#if KITTY_SIMD_LEVEL == 512
+        shifts = move(shifts, thirty_two_bytes, 6);
 #endif
 #undef move
         // convert the shifts into a suitable mask for shuffle by adding the byte number to each byte
@@ -845,11 +1058,13 @@ start_classification:
 #undef shift_right_by_four_bytes
 #undef shift_right_by_eight_bytes
 #undef shift_right_by_sixteen_bytes
+#undef shift_right_by_thirty_two_bytes
 #undef shift_left_by_one_byte
 #undef shift_left_by_two_bytes
 #undef shift_left_by_four_bytes
 #undef shift_left_by_eight_bytes
 #undef shift_left_by_sixteen_bytes
+#undef shift_left_by_thirty_two_bytes
 #undef shift_left_by_bits16
 #undef shift_right_by_bits32
 #undef shift_right_by_bytes128

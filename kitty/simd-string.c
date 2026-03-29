@@ -8,7 +8,7 @@
 #include "data-types.h"
 #include "charsets.h"
 #include "simd-string.h"
-static bool has_sse4_2 = false, has_avx2 = false;
+static bool has_sse4_2 = false, has_avx2 = false, has_avx512bw = false;
 
 // xor_data64 {{{
 static void xor_data64_scalar(const uint8_t key[64], uint8_t* data, const size_t data_sz) { for (size_t i = 0; i < data_sz; i++) data[i] ^= key[i & 63]; }
@@ -93,6 +93,8 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
             func = utf8_decode_to_esc_128; break;
         case 3:
             func = utf8_decode_to_esc_256; break;
+        case 4:
+            func = utf8_decode_to_esc_512; break;
     }
     RAII_PyObject(ans, PyUnicode_FromString(""));
     ssize_t p = 0;
@@ -124,6 +126,8 @@ test_find_either_of_two_bytes(PyObject *self UNUSED, PyObject *args) {
             func = find_either_of_two_bytes_128; break;
         case 3:
             func = find_either_of_two_bytes_256; break;
+        case 4:
+            func = find_either_of_two_bytes_512; break;
         case 0: break;
         default:
             PyErr_SetString(PyExc_ValueError, "Unknown which_function");
@@ -158,6 +162,8 @@ test_xor64(PyObject *self UNUSED, PyObject *args) {
             func = xor_data64_128; break;
         case 3:
             func = xor_data64_256; break;
+        case 4:
+            func = xor_data64_512; break;
         case 0: break;
         default:
             PyErr_SetString(PyExc_ValueError, "Unknown which_function");
@@ -195,7 +201,11 @@ init_simd(void *x) {
     PyObject *module = (PyObject*)x;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
 #define A(x, val) { Py_INCREF(Py_##val); if (0 != PyModule_AddObject(module, #x, Py_##val)) return false; }
-#define do_check() { has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0; has_avx2 = __builtin_cpu_supports("avx2") != 0; }
+#define do_check() { \
+    has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0; \
+    has_avx2 = __builtin_cpu_supports("avx2") != 0; \
+    has_avx512bw = __builtin_cpu_supports("avx512bw") != 0; \
+}
 
 #ifdef __APPLE__
 #ifdef __arm64__
@@ -225,14 +235,23 @@ init_simd(void *x) {
     if (simd_env) {
         has_sse4_2 = strcmp(simd_env, "128") == 0;
         has_avx2 = strcmp(simd_env, "256") == 0;
+        has_avx512bw = strcmp(simd_env, "512") == 0;
     }
 
 #undef do_check
+    if (has_avx512bw) {
+        A(has_avx512bw, True);
+        find_either_of_two_bytes_impl = find_either_of_two_bytes_512;
+        utf8_decode_to_esc_impl = utf8_decode_to_esc_512;
+        xor_data64_impl = xor_data64_512;
+    } else {
+        A(has_avx512bw, False);
+    }
     if (has_avx2) {
         A(has_avx2, True);
-        find_either_of_two_bytes_impl = find_either_of_two_bytes_256;
-        utf8_decode_to_esc_impl = utf8_decode_to_esc_256;
-        xor_data64_impl = xor_data64_256;
+        if (find_either_of_two_bytes_impl == find_either_of_two_bytes_scalar) find_either_of_two_bytes_impl = find_either_of_two_bytes_256;
+        if (utf8_decode_to_esc_impl == utf8_decode_to_esc_scalar) utf8_decode_to_esc_impl = utf8_decode_to_esc_256;
+        if (xor_data64_impl == xor_data64_scalar) xor_data64_impl = xor_data64_256;
     } else {
         A(has_avx2, False);
     }
