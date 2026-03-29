@@ -19,6 +19,7 @@ import (
 	"github.com/kovidgoyal/kitty/kittens/panel"
 	"github.com/kovidgoyal/kitty/kittens/query_terminal"
 	"github.com/kovidgoyal/kitty/kittens/quick_access_terminal"
+	"github.com/kovidgoyal/kitty/kittens/search"
 	"github.com/kovidgoyal/kitty/kittens/show_key"
 	"github.com/kovidgoyal/kitty/kittens/ssh"
 	"github.com/kovidgoyal/kitty/kittens/themes"
@@ -102,6 +103,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	command_palette.EntryPoint(root)
 	// query-terminal
 	query_terminal.EntryPoint(root)
+	// search
+	search.EntryPoint(root)
 	// __pytest__
 	pytest.EntryPoint(root)
 	// __hold_till_enter__

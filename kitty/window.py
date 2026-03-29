@@ -2252,22 +2252,14 @@ class Window:
         return get_boss().display_scrollback(self, data['text'], data['input_line_number'], report_cursor=cursor_on_screen)
 
     @ac('sc', '''
-        Search scrollback in a pager like less. If there is selected text, it is automatically searched for.
-        Note that this assumes that pressing the / key triggers search mode in the page configured as the
-        scrollback pager.
+        Search in a built-in pager like less. If there is selected text, it is automatically searched for.
     ''')
     def search_scrollback(self) -> None:
         text = self.text_for_selection()
-        w = self.show_scrollback()
-        if w is not None:
-            w.send_key('/')
-            if text:
-                btext = text.encode()
-                sanitized = replace_c0_codes_except_nl_space_tab(btext)
-                if not w.screen.in_bracketed_paste_mode:
-                    sanitized = sanitized.replace(b'\n', b'\x1bE')
-                w.screen.paste_bytes(sanitized)
-                w.send_key('enter')
+        scrollback = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
+
+        args = ['--selection=' + text]
+        get_boss().run_kitten_with_metadata('search', args, input_data=scrollback, window=self)
 
     def show_cmd_output(self, which: CommandOutput, title: str = 'Command output', as_ansi: bool = True, add_wrap_markers: bool = True) -> None:
         text = self.cmd_output(which, as_ansi=as_ansi, add_wrap_markers=add_wrap_markers)
