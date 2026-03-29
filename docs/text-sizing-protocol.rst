@@ -506,12 +506,12 @@ is such a function in the Python language:
             g = graphemes[i]
             if g is graphemes[-1]:
                 prev_g = graphemes[i-1]
-                yield f'\x1b[{prev_g.width}D'  # move cursor back]
+                yield f'\x1b[{prev_g.width}D'  # move cursor back
                 yield g.text
-                yield f'\x1b[{g.width}D'  # move cursor back]
-                yield f'\x1b[{prev_g.width}@'  # insert cells]
+                yield f'\x1b[{g.width}D'  # move cursor back
+                yield f'\x1b[{prev_g.width}@'  # insert cells
                 yield prev_g.text
-                yield f'\x1b[{g.width}C'  # move cursor forward]
+                yield f'\x1b[{g.width}C'  # move cursor forward
 
 Then, using ``wcswidth()`` the application can split long text into lines of
 width no more than the screen width and use the above function to write each
