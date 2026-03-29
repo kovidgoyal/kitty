@@ -485,4 +485,34 @@ cell wide but it is *not* moved back to the previous line.
 
 To avoid this issue, it is recommended applications detect when ``U+FE0E`` is
 present and in such cases use the width part of the text sizing protocol
-to control rendering.
+to control rendering. Alternately, applications can segment text into graphemes
+and given a list of graphemes and their widths it is possible to write a simple
+function that will output them to the terminal so as to avoid this issue. Below
+is such a function in the Python language:
+
+.. code-block:: python
+
+    class Grapheme:
+        text: str
+        width: int
+
+    def output_one_line(iterator_over_graphemes):
+        ' Output graphemes so that they affect exactly wcswidth cells only (works for >= 2 graphemes) '
+        graphemes = tuple(iterator_over_graphemes)
+        if not graphemes:
+            return
+        yield graphemes[0].text
+        for i in range(1, len(graphemes)):
+            g = graphemes[i]
+            if g is graphemes[-1]:
+                prev_g = graphemes[i-1]
+                yield f'\x1b[{prev_g.width}D'  # move cursor back]
+                yield g.text
+                yield f'\x1b[{g.width}D'  # move cursor back]
+                yield f'\x1b[{prev_g.width}@'  # insert cells]
+                yield prev_g.text
+                yield f'\x1b[{g.width}C'  # move cursor forward]
+
+Then, using ``wcswidth()`` the application can split long text into lines of
+width no more than the screen width and use the above function to write each
+line to the terminal robustly.
