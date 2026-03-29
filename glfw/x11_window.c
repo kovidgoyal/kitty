@@ -1466,15 +1466,17 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             *off = delta;
             d->num_events++;
             if (!d->type_detected) {
+                debug_input("Detecting scroll device type: delta: %.3f delta*120: %.3f v->increment: %.3f\n", delta, delta * 120, v->increment);
                 if (v->increment == 120.) {
                     d->type_detected = true;
                     d->offset_type = GLFW_SCROLL_OFFEST_V120;
+                    d->v120_offset_needs_scaling = false;
                 } else {
-                    bool delta_is_fractional = number_has_fractional_part(delta);
-                    if (delta_is_fractional) {
+                    if (number_has_fractional_part(delta)) {
                         if (fabs(delta * 120 - round(delta * 120)) < 0.01) {
                             d->type_detected = d->num_events > 2;
                             d->offset_type = GLFW_SCROLL_OFFEST_V120;
+                            d->v120_offset_needs_scaling = v->increment == 1.;
                         } else {
                             d->type_detected = true;
                             d->offset_type = GLFW_SCROLL_OFFEST_HIGHRES;
@@ -1485,8 +1487,14 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
                     }
                 }
             }
-            if (d->offset_type == GLFW_SCROLL_OFFSET_LINES) {
-                if (v->increment != 0) *off /= v->increment;
+            if (v->increment != 0) {
+                if (d->offset_type == GLFW_SCROLL_OFFSET_LINES) {
+                    *off /= v->increment;
+                } else if (d->offset_type == GLFW_SCROLL_OFFEST_V120 && d->v120_offset_needs_scaling) {
+                    // On XWayland, scroll deltas are in scroll-increment units (typically
+                    // where increment=1.0 means one line or one v120).
+                    *off *= 120.;
+                }
             }
         }
         type = d->offset_type;

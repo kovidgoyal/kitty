@@ -247,6 +247,7 @@ typedef struct XIScrollDevice {
     char name[32];
     unsigned num_events;
     GLFWOffsetType offset_type;
+    bool v120_offset_needs_scaling;
 } XIScrollDevice;
 
 typedef struct XdndSelectionRequest {

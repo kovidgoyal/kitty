@@ -187,6 +187,8 @@ Detailed list of changes
 
 - X11: Fix a regression in the previous release that caused an occasional crash on input device removal (:iss:`9723`)
 
+- XWayland: Fix a regression where some wheel mice were not scrolling properly (:pull:`9770`)
+
 - Command palette: Improve searching to use word level matching (:pull:`9727`)
 
 - hints kitten: A new option to set the background color of matched text (:pull:`9745`)
