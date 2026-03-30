@@ -87,6 +87,8 @@ class TabMouseEvent(NamedTuple):
     modifiers: int
     action: int
     at: float
+    x: float
+    y: float
     tab_id: int = 0
 
 
@@ -1801,7 +1803,7 @@ class TabManager:  # {{{
                         p = self.recent_mouse_events[-1]
                         if p.button == button and p.action == GLFW_PRESS and p.tab_id == tab.id:
                             get_boss().close_tab(tab)
-        self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, tab_id_at_x))
+        self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, x, y, tab_id_at_x))
         if len(self.recent_mouse_events) > 5:
             self.recent_mouse_events.popleft()
 
@@ -1842,7 +1844,7 @@ class TabManager:  # {{{
                             w.set_window_title()
                         self.recent_title_bar_mouse_events.clear()
                         return
-        self.recent_title_bar_mouse_events.append(TabMouseEvent(button, modifiers, action, now, window_id))
+        self.recent_title_bar_mouse_events.append(TabMouseEvent(button, modifiers, action, now, x, y, window_id))
         if len(self.recent_title_bar_mouse_events) > 5:
             self.recent_title_bar_mouse_events.popleft()
 
