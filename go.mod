@@ -12,7 +12,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
-	github.com/klauspost/compress v1.18.4
+	github.com/klauspost/compress v1.18.5
 	github.com/kovidgoyal/dbus v0.0.0-20250519011319-e811c41c0bc1
 	github.com/kovidgoyal/go-parallel v1.1.1
 	github.com/kovidgoyal/go-shm v1.0.0
