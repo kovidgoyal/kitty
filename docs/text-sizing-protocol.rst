@@ -461,7 +461,7 @@ Unicode variation selectors
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 There are two code points (:code:`U+FE0E` and :code:`U+FE0F`) that can actually
-`alter the width of the previous code point <http://www.unicode.org/reports/tr11/#ED4>`__
+`alter the width of the previous code point <https://www.unicode.org/reports/tr11/#ED4>`__
 by changing their presentation between ``Emoji_Presentation`` and ``Text_Presentation``.
 When adding a code point to the previous cell these have to be handled specially.
 
