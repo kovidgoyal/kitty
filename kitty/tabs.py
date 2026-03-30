@@ -82,14 +82,46 @@ def update_tab_bar_visibility(func: Callable[Concatenate['TabManager', P], T]) -
     return cast(Callable[Concatenate['TabManager', P], T], wrapper)
 
 
-class TabMouseEvent(NamedTuple):
+class MouseEvent(NamedTuple):
     button: int
     modifiers: int
     action: int
     at: float
     x: float
     y: float
-    tab_id: int = 0
+    object_id: int = 0
+
+
+class MouseEvents(deque[MouseEvent]):
+
+    def add(self, button: int, modifiers: int, action: int, x: float, y: float, object_id: int) -> None:
+        super().append(MouseEvent(button, modifiers, action, monotonic(), x, y, object_id))
+        if len(self) > 5:
+            self.popleft()
+
+    def is_click(self, button: int = GLFW_MOUSE_BUTTON_LEFT) -> bool:
+        if len(self) < 2:
+            return False
+        cur, prev = self[-1], self[-2]
+        if cur.button != button:
+            return False
+        return (
+            cur.button == prev.button and prev.action == GLFW_PRESS and cur.action == GLFW_RELEASE and
+            cur.object_id == prev.object_id and cur.at - prev.at <= get_click_interval()
+        )
+
+    def is_double_click(self, button: int = GLFW_MOUSE_BUTTON_LEFT) -> bool:
+        if len(self) < 3:
+            return False
+        cur, prev, prev2 = self[-1], self[-2], self[-3]
+        if cur.button != button:
+            return False
+        return (
+            cur.button == prev.button == prev2.button and
+            prev.action == GLFW_PRESS and cur.action == prev2.action == GLFW_RELEASE and
+            cur.object_id == prev.object_id == prev2.object_id and
+            cur.at - prev.at <= (ci := get_click_interval()) and cur.at - prev2.at <= 2 * ci
+        )
 
 
 class TabDict(TypedDict):
@@ -1152,8 +1184,8 @@ class TabManager:  # {{{
         self.os_window_id = os_window_id
         self.wm_class = wm_class
         self.created_in_session_name = startup_session.session_name if startup_session else ''
-        self.recent_mouse_events: Deque[TabMouseEvent] = deque()
-        self.recent_title_bar_mouse_events: Deque[TabMouseEvent] = deque()
+        self.recent_tab_bar_mouse_events = MouseEvents()
+        self.recent_title_bar_mouse_events = MouseEvents()
         self.wm_name = wm_name
         self.args = args
         self.tab_bar_hidden = get_options().tab_bar_style == 'hidden'
@@ -1753,64 +1785,38 @@ class TabManager:  # {{{
             return
 
         tab_id_at_x = self.tab_bar.tab_id_at(int(x))
-        now = monotonic()
+        self.recent_tab_bar_mouse_events.add(button, modifiers, action, x, y, tab_id_at_x)
         if tab_id_at_x < 0:  # synthetic tab (e.g. "+" new-tab button)
-            if (
-                button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and self.recent_mouse_events and
-                (prev := self.recent_mouse_events[-1]).button == button and prev.action == GLFW_PRESS and prev.tab_id == tab_id_at_x
-            ):
+            if self.recent_tab_bar_mouse_events.is_click():
                 self.new_tab()
-        else:
-            tab = self.tab_for_id(tab_id_at_x)
-            if tab is None:
-                if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE and len(self.recent_mouse_events) > 2:
-                    ci = get_click_interval()
-                    prev, prev2 = self.recent_mouse_events[-1], self.recent_mouse_events[-2]
-                    if (
-                        prev.button == button and prev2.button == button and
-                        prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
-                        prev.tab_id == 0 and prev2.tab_id == 0 and
-                        now - prev.at <= ci and now - prev2.at <= 2 * ci
-                    ):  # double click
-                        self.new_tab()
-                        self.recent_mouse_events.clear()
-                        return
-            else:
-                if button == GLFW_MOUSE_BUTTON_LEFT:
-                    if action == GLFW_PRESS:
-                        set_tab_being_dragged(tab.id, False, x, y)
-                    else:
-                        drag_started = get_tab_being_dragged()[1]
-                        if not drag_started:
-                            if len(self.recent_mouse_events) > 2:
-                                ci = get_click_interval()
-                                prev, prev2 = self.recent_mouse_events[-1], self.recent_mouse_events[-2]
-                                if (
-                                    prev.button == button and prev2.button == button and
-                                    prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
-                                    prev.tab_id == tab.id and prev2.tab_id == tab.id and
-                                    now - prev.at <= ci and now - prev2.at <= 2 * ci
-                                ):  # double click on tab
-                                    self.set_active_tab(tab)
-                                    get_boss().set_tab_title()
-                                    self.recent_mouse_events.clear()
-                                    set_tab_being_dragged()
-                                    return
-                            self.set_active_tab(tab)
-                            set_tab_being_dragged()
-                elif button == GLFW_MOUSE_BUTTON_MIDDLE:
-                    if action == GLFW_RELEASE and self.recent_mouse_events:
-                        p = self.recent_mouse_events[-1]
-                        if p.button == button and p.action == GLFW_PRESS and p.tab_id == tab.id:
-                            get_boss().close_tab(tab)
-        self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, x, y, tab_id_at_x))
-        if len(self.recent_mouse_events) > 5:
-            self.recent_mouse_events.popleft()
+            return
+        drag_started = get_tab_being_dragged()[1]
+        if drag_started:
+            return
+        tab = self.tab_for_id(tab_id_at_x)
+        if tab is None:
+            if self.recent_tab_bar_mouse_events.is_double_click(GLFW_MOUSE_BUTTON_LEFT):
+                self.new_tab()
+            return
+        if button == GLFW_MOUSE_BUTTON_LEFT:
+            if action == GLFW_PRESS:
+                set_tab_being_dragged(tab.id, False, x, y)
+                return
+            if self.recent_tab_bar_mouse_events.is_double_click(GLFW_MOUSE_BUTTON_LEFT):
+                self.set_active_tab(tab)
+                get_boss().set_tab_title()
+                set_tab_being_dragged()
+            elif self.recent_tab_bar_mouse_events.is_click(GLFW_MOUSE_BUTTON_LEFT):
+                self.set_active_tab(tab)
+            set_tab_being_dragged()
+            return
+        if button == GLFW_MOUSE_BUTTON_MIDDLE:
+            if self.recent_tab_bar_mouse_events.is_click(GLFW_MOUSE_BUTTON_MIDDLE):
+                get_boss().close_tab(tab)
+            return
 
     def handle_window_title_bar_mouse(self, window_id: int, x: float, y: float, button: int, modifiers: int, action: int) -> None:
-        now = monotonic()
         boss = get_boss()
-
         if button == -1:  # motion event
             dragged_window_id, drag_started, start_x, start_y = get_window_being_dragged()
             if dragged_window_id and not drag_started:
@@ -1820,33 +1826,22 @@ class TabManager:  # {{{
                     set_window_being_dragged(dragged_window_id, True, start_x, start_y)
                     request_callback_with_thumbnail("start_window_drag", self.os_window_id, dragged_window_id)
             return
+        self.recent_title_bar_mouse_events.add(button, modifiers, action, x, y, window_id)
+        if button != GLFW_MOUSE_BUTTON_LEFT:
+            return
+        if action == GLFW_PRESS:
+            if (w := boss.window_id_map.get(window_id)) is not None:
+                boss.set_active_window(w, switch_os_window_if_needed=True)
+            threshold = get_options().window_title_bar_drag_threshold
+            if threshold:
+                set_window_being_dragged(window_id, False, x, y)
+            return
 
-        if button == GLFW_MOUSE_BUTTON_LEFT:
-            if action == GLFW_PRESS:
-                if (w := boss.window_id_map.get(window_id)) is not None:
-                    boss.set_active_window(w, switch_os_window_if_needed=True)
-                threshold = get_options().window_title_bar_drag_threshold
-                if threshold:
-                    set_window_being_dragged(window_id, False, x, y)
-            elif action == GLFW_RELEASE:
-                dragged_window_id, drag_started = get_window_being_dragged()[:2]
-                set_window_being_dragged()
-                if not drag_started and len(self.recent_title_bar_mouse_events) > 2:
-                    ci = get_click_interval()
-                    prev, prev2 = self.recent_title_bar_mouse_events[-1], self.recent_title_bar_mouse_events[-2]
-                    if (
-                        prev.button == button and prev2.button == button and
-                        prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
-                        prev.tab_id == window_id and prev2.tab_id == window_id and
-                        now - prev.at <= ci and now - prev2.at <= 2 * ci
-                    ):  # double click on window title bar
-                        if (w := boss.window_id_map.get(window_id)) is not None:
-                            w.set_window_title()
-                        self.recent_title_bar_mouse_events.clear()
-                        return
-        self.recent_title_bar_mouse_events.append(TabMouseEvent(button, modifiers, action, now, x, y, window_id))
-        if len(self.recent_title_bar_mouse_events) > 5:
-            self.recent_title_bar_mouse_events.popleft()
+        dragged_window_id, drag_started = get_window_being_dragged()[:2]
+        set_window_being_dragged()
+        if not drag_started and self.recent_title_bar_mouse_events.is_double_click():
+            if (w := boss.window_id_map.get(window_id)) is not None:
+                w.set_window_title()
 
     def start_window_drag(self, pixels: bytes, width: int, height: int) -> None:
         window_id = get_window_being_dragged()[0]
