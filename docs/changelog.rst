@@ -203,6 +203,8 @@ Detailed list of changes
 
 - Allow holding the :kbd:`Alt` key and triple-clicking to select from the first cell even if it is empty (:pull:`9758`)
 
+- Fix double click to rename tab being triggered too easily (:iss:`9774`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
