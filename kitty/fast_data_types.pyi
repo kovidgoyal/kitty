@@ -1326,6 +1326,9 @@ class Screen:
     def scroll(self, amt: int, upwards: bool) -> bool:
         pass
 
+    def scroll_to_absolute(self, amt: float) -> None:
+        pass
+
     def fractional_scroll(self, amt: float) -> bool:
         pass
 

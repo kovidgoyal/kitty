@@ -128,14 +128,14 @@ _SCROLL_ANIMATION_FRAME_INTERVAL: float = 1.0 / 60.0
 
 
 class ScrollAnimation:
-    __slots__ = ('timer', 'start', 'duration', 'total', 'done')
+    __slots__ = ('timer', 'start', 'duration', 'total', 'start_scrolled_by')
 
     def __init__(self) -> None:
         self.timer: int = 0
         self.start: float = 0.
         self.duration: float = 0.
         self.total: float = 0.
-        self.done: float = 0.
+        self.start_scrolled_by: int = 0
 
 
 if TYPE_CHECKING:
@@ -2417,13 +2417,13 @@ class Window:
         now = monotonic()
         elapsed = now - a.start
         progress = min(1.0, elapsed / a.duration) if a.duration > 0 else 1.0
-        target = a.total * progress
-        delta = target - a.done
-        if delta:
-            self.screen.fractional_scroll(delta)
-            a.done = target
         if progress >= 1.0:
+            # Ensure we land exactly on a line boundary with pixel_scroll_offset_y = 0
+            self.screen.scroll_to_absolute(a.start_scrolled_by - a.total)
             a.timer = 0
+        else:
+            # Use absolute positioning to avoid pixel rounding errors from incremental fractional scrolls
+            self.screen.scroll_to_absolute(a.start_scrolled_by - a.total * progress)
 
     def finish_scroll_animation(self) -> None:
         ' Finish any in-progress scroll animation immediately '
@@ -2431,11 +2431,8 @@ class Window:
         if a.timer:
             remove_timer(a.timer)
             a.timer = 0
-            # Always complete to the full integer line target to avoid partial scrolls
-            remaining = a.total - a.done
-            if remaining:
-                self.screen.fractional_scroll(remaining)
-                a.done = a.total
+            # Scroll to the exact integer target line, ensuring pixel_scroll_offset_y = 0
+            self.screen.scroll_to_absolute(a.start_scrolled_by - a.total)
 
     def _start_scroll_animation(self, lines: float) -> None:
         ' Start a smooth scroll animation for the given number of lines (negative=up, positive=down) '
@@ -2450,7 +2447,7 @@ class Window:
         a.start = monotonic()
         a.duration = duration
         a.total = lines
-        a.done = 0.
+        a.start_scrolled_by = self.screen.scrolled_by
         a.timer = add_timer(self._scroll_animation_tick, min(_SCROLL_ANIMATION_FRAME_INTERVAL, duration / 2), True)
 
     @ac('sc', 'Scroll up by one line when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')

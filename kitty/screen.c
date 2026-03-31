@@ -5150,6 +5150,16 @@ fractional_scroll(Screen *self, PyObject *amt) {
 }
 
 static PyObject*
+scroll_to_absolute(Screen *self, PyObject *amt) {
+    double y;
+    if (PyFloat_Check(amt)) y = PyFloat_AS_DOUBLE(amt);
+    else if (PyLong_Check(amt)) y = PyLong_AsDouble(amt);
+    else { PyErr_SetString(PyExc_TypeError, "amt must be a number"); return NULL; }
+    screen_history_scroll_to_absolute(self, y);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 scroll(Screen *self, PyObject *args) {
     int amt, upwards;
     if (!PyArg_ParseTuple(args, "ip", &amt, &upwards)) return NULL;
@@ -6055,6 +6065,7 @@ static PyMethodDef methods[] = {
     MND(text_for_marked_url, METH_VARARGS)
     MND(is_rectangle_select, METH_NOARGS)
     MND(scroll, METH_VARARGS)
+    MND(scroll_to_absolute, METH_O)
     MND(fractional_scroll, METH_O)
     MND(scroll_to_prompt, METH_VARARGS)
     MND(set_last_visited_prompt, METH_VARARGS)
