@@ -2419,11 +2419,11 @@ class Window:
         progress = min(1.0, elapsed / a.duration) if a.duration > 0 else 1.0
         if progress >= 1.0:
             # Ensure we land exactly on a line boundary with pixel_scroll_offset_y = 0
-            self.screen.scroll_to_absolute(a.start_scrolled_by - a.total)
+            self.screen.scroll_to_absolute(max(0, a.start_scrolled_by - a.total))
             a.timer = 0
         else:
             # Use absolute positioning to avoid pixel rounding errors from incremental fractional scrolls
-            self.screen.scroll_to_absolute(a.start_scrolled_by - a.total * progress)
+            self.screen.scroll_to_absolute(max(0.0, a.start_scrolled_by - a.total * progress))
 
     def finish_scroll_animation(self) -> None:
         ' Finish any in-progress scroll animation immediately '
@@ -2432,7 +2432,7 @@ class Window:
             remove_timer(a.timer)
             a.timer = 0
             # Scroll to the exact integer target line, ensuring pixel_scroll_offset_y = 0
-            self.screen.scroll_to_absolute(a.start_scrolled_by - a.total)
+            self.screen.scroll_to_absolute(max(0, a.start_scrolled_by - a.total))
 
     def _start_scroll_animation(self, lines: float) -> None:
         ' Start a smooth scroll animation for the given number of lines (negative=up, positive=down) '
