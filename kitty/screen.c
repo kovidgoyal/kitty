@@ -189,6 +189,9 @@ screen_reset(Screen *self) {
     memset(self->main_key_encoding_flags, 0, sizeof(self->main_key_encoding_flags));
     memset(self->alt_key_encoding_flags, 0, sizeof(self->alt_key_encoding_flags));
     self->display_window_char = 0;
+    self->progress_state = PROGRESS_STATE_UNSET;
+    self->progress_percent = 0;
+    self->progress_indeterminate_anim_at = 0;
     self->prompt_settings.val = 0;
     self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
@@ -4766,6 +4769,25 @@ set_window_char(Screen *self, PyObject *a) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+set_progress(Screen *self, PyObject *a) {
+    unsigned int state = 0, percent = 0;
+    if (!PyArg_ParseTuple(a, "II", &state, &percent)) return NULL;
+    ProgressBarState new_state = (ProgressBarState)(state > PROGRESS_STATE_PAUSED ? PROGRESS_STATE_UNSET : state);
+    uint8_t new_percent = (uint8_t)(percent > 100 ? 100 : percent);
+    if (self->progress_state != new_state || self->progress_percent != new_percent) {
+        self->progress_state = new_state;
+        self->progress_percent = new_percent;
+        // Start or stop indeterminate animation
+        if (new_state == PROGRESS_STATE_INDETERMINATE && self->progress_indeterminate_anim_at == 0) {
+            self->progress_indeterminate_anim_at = monotonic();
+        } else if (new_state != PROGRESS_STATE_INDETERMINATE) {
+            self->progress_indeterminate_anim_at = 0;
+        }
+        self->is_dirty = true;
+    }
+    Py_RETURN_NONE;
+}
 
 static PyObject*
 is_using_alternate_linebuf(Screen *self, PyObject *a UNUSED) {
@@ -6007,6 +6029,7 @@ static PyMethodDef methods[] = {
     MND(cursor_position, METH_VARARGS)
     MND(erase_last_command, METH_VARARGS)
     MND(set_window_char, METH_VARARGS)
+    MND(set_progress, METH_VARARGS)
     MND(set_mode, METH_VARARGS)
     MND(reset_mode, METH_VARARGS)
     MND(reset, METH_NOARGS)

@@ -71,6 +71,20 @@ scrollbar(PyObject *src) {
     return SCROLLBAR_ON_SCROLLED;
 }
 
+static inline ProgressBarPosition
+progress_bar(PyObject *src) {
+    const char *q = PyUnicode_AsUTF8(src);
+    if (!q) return PROGRESS_BAR_BOTTOM;
+    switch (q[0]) {
+        case 'l': return PROGRESS_BAR_LEFT;
+        case 'r': return PROGRESS_BAR_RIGHT;
+        case 't': return PROGRESS_BAR_TOP;
+        case 'b': return PROGRESS_BAR_BOTTOM;
+        case 'h': return PROGRESS_BAR_HIDDEN;
+    }
+    return PROGRESS_BAR_BOTTOM;
+}
+
 static inline unsigned
 undercurl_style(PyObject *x) {
     RAII_PyObject(thick, PyUnicode_FromString("thick"));

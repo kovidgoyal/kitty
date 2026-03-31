@@ -116,6 +116,8 @@ typedef enum MouseShapes {
 } MouseShape;
 typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
 typedef enum { SCROLLBAR_NEVER, SCROLLBAR_ON_SCROLLED, SCROLLBAR_ON_HOVERED, SCROLLBAR_ON_SCROLL_AND_HOVER, SCROLLBAR_ALWAYS } ScrollbarVisibilityPolicy;
+typedef enum { PROGRESS_BAR_HIDDEN, PROGRESS_BAR_LEFT, PROGRESS_BAR_RIGHT, PROGRESS_BAR_TOP, PROGRESS_BAR_BOTTOM } ProgressBarPosition;
+typedef enum { PROGRESS_STATE_UNSET, PROGRESS_STATE_SET, PROGRESS_STATE_ERROR, PROGRESS_STATE_INDETERMINATE, PROGRESS_STATE_PAUSED } ProgressBarState;
 typedef enum { TILING, SCALED, MIRRORED, CLAMPED, CENTER_CLAMPED, CENTER_SCALED } BackgroundImageLayout;
 typedef struct ImageAnchorPosition {
     float canvas_x, canvas_y, image_x, image_y;

@@ -1280,6 +1280,7 @@ class Window:
                 log_error(f'Ignoring malformed OSC 9;4 progress report: {raw_data!r}')
                 return
             self.progress.update(*parts[:2])
+            self.screen.set_progress(self.progress.state.value, self.progress.percent)
             if (tab := self.tabref()) is not None:
                 tab.update_progress()
             self.clear_progress_if_needed()
@@ -1291,6 +1292,7 @@ class Window:
         if timer_id is not None:  # this is a timer callback
             self.clear_progress_timer = 0
         if self.progress.clear_progress():
+            self.screen.set_progress(0, 0)
             if (tab := self.tabref()) is not None:
                 tab.update_progress()
         else:
@@ -1469,7 +1471,11 @@ class Window:
         self.screen.send_escape_code_to_child(ESC_OSC, f'{code};rgb:{r:04x}/{g:04x}/{b:04x}')
 
     def on_reset(self) -> None:
-        pass
+        from .progress import ProgressState
+        if self.progress.state is not ProgressState.unset:
+            self.progress.update(0)  # unset
+            if (tab := self.tabref()) is not None:
+                tab.update_progress()
 
     def notify_child_of_resize(self) -> None:
         pty_size = self.last_reported_pty_size

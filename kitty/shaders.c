@@ -1077,6 +1077,190 @@ draw_scrollbar(const UIRenderData *ui) {
     }
 }
 
+static bool
+has_progress_bar(Screen *screen) {
+    if (OPT(progress_bar) == PROGRESS_BAR_HIDDEN) return false;
+    return screen && screen->progress_state != PROGRESS_STATE_UNSET;
+}
+
+static void
+draw_progress_handle(const UIRenderData *ui, color_type bar_color, float opacity, unsigned bar_radius,
+                     GLsizei track_left, GLsizei track_top, GLsizei track_width, GLsizei track_height,
+                     float handle_start, float handle_size, bool is_horizontal) {
+    // handle_start and handle_size are fractions of the track length (0..1)
+    // For horizontal: handle moves left-to-right; For vertical: handle moves top-to-bottom
+    // Use lroundf to avoid sub-pixel jitter at the leading edge
+    GLsizei handle_left, handle_top;
+    GLsizei handle_w, handle_h;
+    if (is_horizontal) {
+        GLsizei handle_start_px = (GLsizei)lroundf(handle_start * track_width);
+        GLsizei handle_end_px = (GLsizei)lroundf((handle_start + handle_size) * track_width);
+        GLsizei handle_w_px = handle_end_px - handle_start_px;
+        if (handle_w_px < 1) handle_w_px = 1;
+        handle_left = track_left + handle_start_px;
+        handle_top = track_top;
+        handle_w = handle_w_px;
+        handle_h = track_height;
+    } else {
+        GLsizei handle_start_px = (GLsizei)lroundf(handle_start * track_height);
+        GLsizei handle_end_px = (GLsizei)lroundf((handle_start + handle_size) * track_height);
+        GLsizei handle_h_px = handle_end_px - handle_start_px;
+        if (handle_h_px < 1) handle_h_px = 1;
+        handle_left = track_left;
+        handle_top = track_top + handle_start_px;
+        handle_w = track_width;
+        handle_h = handle_h_px;
+    }
+
+    if (bar_radius > 0) {
+        bind_program(ROUNDED_RECT_PROGRAM);
+        color_vec4(rounded_rect_program_layout.uniforms.color, bar_color, opacity);
+        color_vec4(rounded_rect_program_layout.uniforms.background_color, 0, 0.0f);
+
+        float y = (float)ui->full_framebuffer_height - (float)(handle_top + handle_h);
+        glUniform4f(rounded_rect_program_layout.uniforms.rect,
+                    (float)handle_left, y,
+                    (float)handle_w, (float)handle_h);
+
+        float thickness = (float)(is_horizontal ? handle_h : handle_w);
+        glUniform2f(rounded_rect_program_layout.uniforms.params, thickness, (float)bar_radius);
+
+        save_viewport_using_top_left_origin(handle_left, handle_top, handle_w, handle_h, ui->full_framebuffer_height);
+        draw_quad(true, 0);
+        restore_viewport();
+    } else {
+        // Use GL coordinates within the track viewport, snapped to pixel boundaries
+        GLsizei track_len = is_horizontal ? track_width : track_height;
+        float start_snapped = (float)lroundf(handle_start * track_len) / (float)track_len;
+        float end_snapped = (float)lroundf((handle_start + handle_size) * track_len) / (float)track_len;
+        float start_gl = -1.0f + 2.0f * start_snapped;
+        float end_gl = -1.0f + 2.0f * end_snapped;
+        bind_program(TINT_PROGRAM);
+        set_color_uniform_with_opacity(bar_color, opacity);
+        if (is_horizontal) {
+            // edges: left, top, right, bottom
+            save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
+            glUniform4f(tint_program_layout.uniforms.edges, start_gl, 1.f, end_gl, -1.f);
+        } else {
+            save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
+            // For vertical: start_gl is top in GL coords (inverted y), so bottom_gl = -end_gl, top_gl = -start_gl
+            glUniform4f(tint_program_layout.uniforms.edges, -1.f, -start_gl, 1.f, -end_gl);
+        }
+        draw_quad(true, 0);
+        restore_viewport();
+    }
+}
+
+static void
+draw_progress_bar(const UIRenderData *ui) {
+    Screen *screen = ui->screen;
+    Window *window = ui->window;
+    if (!window || !has_progress_bar(screen)) return;
+
+    const ProgressBarPosition pos = OPT(progress_bar);
+    const bool is_horizontal = (pos == PROGRESS_BAR_TOP || pos == PROGRESS_BAR_BOTTOM);
+    color_type bar_color = scrollbar_color(screen, OPT(scrollbar_handle_color));
+    color_type track_color = scrollbar_color(screen, OPT(scrollbar_track_color));
+    float opacity = OPT(scrollbar_handle_opacity);
+    float track_opacity = OPT(scrollbar_track_hover_opacity);
+    GLsizei bar_thickness_px = (GLsizei)(OPT(scrollbar_width) * ui->cell_width);
+    GLsizei gap_px = (GLsizei)(OPT(scrollbar_gap) * ui->cell_width);
+    unsigned bar_radius = (unsigned)(OPT(scrollbar_radius) * ui->cell_width);
+    if (bar_thickness_px < 1) return;
+
+    // Calculate window boundaries including padding
+    GLsizei window_left_edge = ui->screen_left - (GLsizei)window->render_data.geometry.spaces.left;
+    GLsizei window_top_edge = ui->screen_top - (GLsizei)window->render_data.geometry.spaces.top;
+    GLsizei window_width = ui->screen_width + (GLsizei)(window->render_data.geometry.spaces.left + window->render_data.geometry.spaces.right);
+    GLsizei window_height = ui->screen_height + (GLsizei)(window->render_data.geometry.spaces.top + window->render_data.geometry.spaces.bottom);
+
+    // Position the track depending on the chosen edge
+    GLsizei track_left, track_top, track_width, track_height;
+    switch (pos) {
+        case PROGRESS_BAR_BOTTOM:
+            track_left = window_left_edge + gap_px;
+            track_width = window_width - 2 * gap_px;
+            track_height = bar_thickness_px;
+            track_top = window_top_edge + window_height - bar_thickness_px - gap_px;
+            break;
+        case PROGRESS_BAR_TOP:
+            track_left = window_left_edge + gap_px;
+            track_width = window_width - 2 * gap_px;
+            track_height = bar_thickness_px;
+            track_top = window_top_edge + gap_px;
+            break;
+        case PROGRESS_BAR_LEFT:
+            track_left = window_left_edge + gap_px;
+            track_width = bar_thickness_px;
+            track_top = window_top_edge + gap_px;
+            track_height = window_height - 2 * gap_px;
+            break;
+        case PROGRESS_BAR_RIGHT:
+            track_left = window_left_edge + window_width - bar_thickness_px - gap_px;
+            track_width = bar_thickness_px;
+            track_top = window_top_edge + gap_px;
+            track_height = window_height - 2 * gap_px;
+            break;
+        default:
+            return;
+    }
+    if (track_width <= 0 || track_height <= 0) return;
+
+    // Calculate fill fraction and indeterminate animation
+    float fill_fraction = 0.0f;
+    bool is_indeterminate = false;
+    switch (screen->progress_state) {
+        case PROGRESS_STATE_SET:
+        case PROGRESS_STATE_PAUSED:
+            fill_fraction = screen->progress_percent / 100.0f;
+            break;
+        case PROGRESS_STATE_ERROR:
+            fill_fraction = 1.0f;
+            break;
+        case PROGRESS_STATE_INDETERMINATE:
+            is_indeterminate = true;
+            break;
+        default:
+            return;
+    }
+
+    // Draw track (background)
+    save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
+    if (track_opacity > 0) {
+        bind_program(TINT_PROGRAM);
+        set_color_uniform_with_opacity(track_color, track_opacity);
+        glUniform4f(tint_program_layout.uniforms.edges, -1.f, 1.f, 1.f, -1.f);
+        draw_quad(true, 0);
+    }
+    restore_viewport();
+
+    // Draw fill or indeterminate handle
+    // For vertical bars, progress grows from bottom to top, so invert the fraction
+    if (is_indeterminate) {
+        // Animate a handle bouncing back and forth like a scrollbar thumb
+        const float handle_size = 0.15f;  // 15% of track length
+        const monotonic_t cycle = s_double_to_monotonic_t(2.0);  // 2 second full cycle (forth and back)
+        monotonic_t elapsed = screen->progress_indeterminate_anim_at > 0 ? monotonic() - screen->progress_indeterminate_anim_at : 0;
+        double t = (double)(elapsed % cycle) / (double)cycle;  // 0..1 over one cycle
+        // Triangle wave: goes 0→1→0 over one cycle
+        float pos_frac = (float)(t < 0.5 ? t * 2.0 : 2.0 - t * 2.0);
+        if (!is_horizontal) pos_frac = 1.0f - pos_frac;  // vertical: bounce bottom-to-top first
+        float handle_start = pos_frac * (1.0f - handle_size);
+        if (opacity > 0.0f) {
+            draw_progress_handle(ui, bar_color, opacity, bar_radius,
+                                 track_left, track_top, track_width, track_height,
+                                 handle_start, handle_size, is_horizontal);
+        }
+    } else if (fill_fraction > 0.0f && opacity > 0.0f) {
+        float handle_start = is_horizontal ? 0.0f : 1.0f - fill_fraction;
+        draw_progress_handle(ui, bar_color, opacity, bar_radius,
+                             track_left, track_top, track_width, track_height,
+                             handle_start, fill_fraction, is_horizontal);
+    }
+}
+
+
+
 static void
 draw_window_logo(const UIRenderData *ui) {
     struct { unsigned width, height; int left, top; } w;
@@ -1122,7 +1306,7 @@ draw_window_logo(const UIRenderData *ui) {
 
 bool
 screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen) {
-    const bool has_ui = w && ((screen->start_visual_bell_at | screen->start_drag_overlay_at) || has_scrollbar(w, screen) || has_hyperlink_target(os_window, w, screen) || has_window_number(w, screen) || w->window_logo.id);
+    const bool has_ui = w && ((screen->start_visual_bell_at | screen->start_drag_overlay_at) || has_scrollbar(w, screen) || has_progress_bar(screen) || has_hyperlink_target(os_window, w, screen) || has_window_number(w, screen) || w->window_logo.id);
     GraphicsManager *grman = screen->paused_rendering.expires_at && screen->paused_rendering.grman ? screen->paused_rendering.grman : screen->grman;
     return has_ui || grman_has_images(grman);
 }
@@ -1183,6 +1367,7 @@ draw_cells_with_layers(const UIRenderData *ui, ssize_t vao_idx) {
 
     draw_visual_bell(ui);
     draw_drag_preview_overlay(ui);
+    draw_progress_bar(ui);
     draw_scrollbar(ui);
     draw_hyperlink_target(ui);
     draw_window_number(ui);

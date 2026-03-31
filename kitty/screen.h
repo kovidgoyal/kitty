@@ -169,6 +169,9 @@ typedef struct {
         unsigned int val;
     } prompt_settings;
     char display_window_char;
+    ProgressBarState progress_state;
+    uint8_t progress_percent; // 0-100
+    monotonic_t progress_indeterminate_anim_at;  // animation start time for indeterminate progress
     struct {
         char ch;
         uint8_t *canvas;
