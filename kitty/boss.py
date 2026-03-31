@@ -3707,6 +3707,6 @@ class Boss:
         if w := self.active_window:
             w.search_scrollback()
 
-    def copy_to_clipboard(self) -> None:
+    def copy_or_noop(self) -> None:
         if w := self.active_window:
-            w.copy_to_clipboard()
+            w.copy_or_noop()
