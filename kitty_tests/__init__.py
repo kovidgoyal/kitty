@@ -153,6 +153,9 @@ class Callbacks:
     def on_activity_since_last_focus(self) -> None:
         pass
 
+    def finish_scroll_animation(self) -> None:
+        pass
+
     def on_mouse_event(self, event):
         ev = MouseEvent(**event)
         opts = get_options()

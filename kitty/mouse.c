@@ -20,6 +20,14 @@ static MouseShape mouse_cursor_shape = TEXT_POINTER;
 typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE, LEAVE } MouseAction;
 #define debug debug_input
 
+static void
+finish_scroll_animation(Screen *screen) {
+    if (screen->callbacks != Py_None) {
+        PyObject *ret = PyObject_CallMethod(screen->callbacks, "finish_scroll_animation", NULL);
+        if (ret == NULL) PyErr_Print(); else Py_DECREF(ret);
+    }
+}
+
 // Encoding of mouse events {{{
 #define SHIFT_INDICATOR  (1 << 2)
 #define ALT_INDICATOR (1 << 3)
@@ -340,6 +348,7 @@ static bool
 do_drag_scroll(Window *w, bool upwards) {
     Screen *screen = w->render_data.screen;
     if (screen->linebuf == screen->main_linebuf) {
+        finish_scroll_animation(screen);
         screen_history_scroll(screen, SCROLL_LINE, upwards);
         update_drag(w);
         if (mouse_cursor_shape != DEFAULT_POINTER) {
@@ -506,6 +515,7 @@ handle_scrollbar_track_click(Window *w, double mouse_y) {
     if (!w) return;
     Screen *screen = w->render_data.screen;
     if (!validate_scrollbar_state(w)) return;
+    finish_scroll_animation(screen);
 
     if (OPT(scrollbar_jump_on_click)) {
         ScrollbarGeometry geom = calculate_scrollbar_geometry(w);
@@ -563,6 +573,7 @@ static void
 handle_scrollbar_drag(Window *w, double mouse_y) {
     if (!w || !w->scrollbar.is_dragging || !validate_scrollbar_state(w)) return;
     Screen *screen = w->render_data.screen;
+    finish_scroll_animation(screen);
     ScrollbarGeometry geom = calculate_scrollbar_geometry(w);
     double scrollbar_height = geom.bottom - geom.top;
     double mouse_pane_fraction = (mouse_y - geom.top) / scrollbar_height;
@@ -1486,6 +1497,7 @@ scroll_event(const GLFWScrollEvent *ev) {
         case GLFW_MOMENTUM_PHASE_MAY_BEGIN:
             break;
     }
+    finish_scroll_animation(screen);
     if (ev->y_offset != 0.0) {
         if (screen->modes.mouse_tracking_mode == NO_TRACKING && pixel_scroll_enabled_for_screen(screen) && (ev->offset_type == GLFW_SCROLL_OFFEST_HIGHRES || ev->offset_type == GLFW_SCROLL_OFFEST_V120)) {
             double delta_pixels;
