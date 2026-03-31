@@ -1235,6 +1235,7 @@ draw_progress_bar(const UIRenderData *ui) {
     restore_viewport();
 
     // Draw fill or indeterminate handle
+    // For vertical bars, progress grows from bottom to top, so invert the fraction
     if (is_indeterminate) {
         // Animate a handle bouncing back and forth like a scrollbar thumb
         const float handle_size = 0.15f;  // 15% of track length
@@ -1243,6 +1244,7 @@ draw_progress_bar(const UIRenderData *ui) {
         double t = (double)(elapsed % cycle) / (double)cycle;  // 0..1 over one cycle
         // Triangle wave: goes 0→1→0 over one cycle
         float pos_frac = (float)(t < 0.5 ? t * 2.0 : 2.0 - t * 2.0);
+        if (!is_horizontal) pos_frac = 1.0f - pos_frac;  // vertical: bounce bottom-to-top first
         float handle_start = pos_frac * (1.0f - handle_size);
         if (opacity > 0.0f) {
             draw_progress_handle(ui, bar_color, opacity, bar_radius,
@@ -1250,9 +1252,10 @@ draw_progress_bar(const UIRenderData *ui) {
                                  handle_start, handle_size, is_horizontal);
         }
     } else if (fill_fraction > 0.0f && opacity > 0.0f) {
+        float handle_start = is_horizontal ? 0.0f : 1.0f - fill_fraction;
         draw_progress_handle(ui, bar_color, opacity, bar_radius,
                              track_left, track_top, track_width, track_height,
-                             0.0f, fill_fraction, is_horizontal);
+                             handle_start, fill_fraction, is_horizontal);
     }
 }
 
