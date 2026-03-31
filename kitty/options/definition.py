@@ -2901,32 +2901,32 @@ egr()  # }}}
 agr('shortcuts.scrolling', 'Scrolling')
 
 map('Scroll line up',
-    'scroll_line_up kitty_mod+up scroll_line_up',
+    'scroll_line_up kitty_mod+up scroll_line_up smooth',
     )
 map('Scroll line up',
-    'scroll_line_up --allow-fallback=shifted,ascii kitty_mod+k scroll_line_up',
+    'scroll_line_up --allow-fallback=shifted,ascii kitty_mod+k scroll_line_up smooth',
     )
 map('Scroll line up',
-    'scroll_line_up opt+cmd+page_up scroll_line_up',
+    'scroll_line_up opt+cmd+page_up scroll_line_up smooth',
     only='macos',
     )
 map('Scroll line up',
-    'scroll_line_up cmd+up scroll_line_up',
+    'scroll_line_up cmd+up scroll_line_up smooth',
     only='macos',
     )
 
 map('Scroll line down',
-    'scroll_line_down kitty_mod+down scroll_line_down',
+    'scroll_line_down kitty_mod+down scroll_line_down smooth',
     )
 map('Scroll line down',
-    'scroll_line_down --allow-fallback=shifted,ascii kitty_mod+j scroll_line_down',
+    'scroll_line_down --allow-fallback=shifted,ascii kitty_mod+j scroll_line_down smooth',
     )
 map('Scroll line down',
-    'scroll_line_down opt+cmd+page_down scroll_line_down',
+    'scroll_line_down opt+cmd+page_down scroll_line_down smooth',
     only='macos',
     )
 map('Scroll line down',
-    'scroll_line_down cmd+down scroll_line_down',
+    'scroll_line_down cmd+down scroll_line_down smooth',
     only='macos',
     )
 

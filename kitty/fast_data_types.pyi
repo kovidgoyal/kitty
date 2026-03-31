@@ -1326,6 +1326,9 @@ class Screen:
     def scroll(self, amt: int, upwards: bool) -> bool:
         pass
 
+    def scroll_to_absolute(self, amt: float) -> None:
+        pass
+
     def fractional_scroll(self, amt: float) -> bool:
         pass
 
@@ -1626,6 +1629,10 @@ def redirect_mouse_handling(yes: bool) -> None:
 
 
 def get_click_interval() -> float:
+    pass
+
+
+def glfw_get_keyboard_repeat_interval() -> float:
     pass
 
 

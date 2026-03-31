@@ -870,13 +870,13 @@ defaults.map = [
     # pass_selection_to_program
     KeyDefinition(trigger=SingleKey(mods=256, key=111), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='pass_selection_to_program'),
     # scroll_line_up
-    KeyDefinition(trigger=SingleKey(mods=256, key=57352), definition='scroll_line_up'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=57352), definition='scroll_line_up smooth'),
     # scroll_line_up
-    KeyDefinition(trigger=SingleKey(mods=256, key=107), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='scroll_line_up'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=107), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='scroll_line_up smooth'),
     # scroll_line_down
-    KeyDefinition(trigger=SingleKey(mods=256, key=57353), definition='scroll_line_down'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=57353), definition='scroll_line_down smooth'),
     # scroll_line_down
-    KeyDefinition(trigger=SingleKey(mods=256, key=106), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='scroll_line_down'),
+    KeyDefinition(trigger=SingleKey(mods=256, key=106), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='scroll_line_down smooth'),
     # scroll_page_up
     KeyDefinition(trigger=SingleKey(mods=256, key=57354), definition='scroll_page_up'),
     # scroll_page_down
@@ -1022,10 +1022,10 @@ defaults.map = [
 if is_macos:
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=99), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='copy_or_noop'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=118), options=KeyMapOptions(when_focus_on='', new_mode='', mode='', on_unknown='beep', on_action='keep', timeout=None, allow_fallback=(KeyFallbackType.shifted, KeyFallbackType.alternate)), definition='paste_from_clipboard'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=57354), definition='scroll_line_up'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57352), definition='scroll_line_up'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=57355), definition='scroll_line_down'))
-    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57353), definition='scroll_line_down'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=57354), definition='scroll_line_up smooth'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57352), definition='scroll_line_up smooth'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=10, key=57355), definition='scroll_line_down smooth'))
+    defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57353), definition='scroll_line_down smooth'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57354), definition='scroll_page_up'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57355), definition='scroll_page_down'))
     defaults.map.append(KeyDefinition(trigger=SingleKey(mods=8, key=57356), definition='scroll_home'))
