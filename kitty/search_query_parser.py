@@ -93,7 +93,8 @@ class NotNode(SearchTreeNode):
         self.rhs = rhs
 
     def __call__(self, candidates: set[T], get_matches: GetMatches[T]) -> set[T]:
-        return candidates.difference(self.rhs(candidates, get_matches))
+        rhs_result: set[T] = self.rhs(candidates, get_matches)
+        return candidates.difference(rhs_result)
 
     def iter_token_nodes(self) -> Iterator['TokenNode']:
         yield from self.rhs.iter_token_nodes()
