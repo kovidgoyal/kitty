@@ -1647,6 +1647,12 @@ class Boss:
     def dispatch_possible_special_key(self, ev: KeyEvent) -> bool:
         return self.mappings.dispatch_possible_special_key(ev)
 
+    def on_shortcut_key_release(self, ev: KeyEvent) -> bool:
+        window = self.active_window
+        if window is not None:
+            window.finish_scroll_animation()
+        return False
+
     def cancel_current_visual_select(self) -> None:
         if self.current_visual_select:
             self.current_visual_select.cancel()

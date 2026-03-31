@@ -2743,6 +2743,15 @@ get_click_interval(PyObject *self UNUSED, PyObject *args UNUSED) {
     return PyFloat_FromDouble(monotonic_t_to_s_double(OPT(click_interval)));
 }
 
+static PyObject*
+glfw_get_keyboard_repeat_interval(PyObject *self UNUSED, PyObject *args UNUSED) {
+#define DEFAULT_KEYBOARD_REPEAT_INTERVAL_MS 30ll
+    monotonic_t interval = ms_to_monotonic_t(DEFAULT_KEYBOARD_REPEAT_INTERVAL_MS);
+    glfwGetKeyboardRepeatDelay(NULL, &interval);
+    return PyFloat_FromDouble(monotonic_t_to_s_double(interval));
+#undef DEFAULT_KEYBOARD_REPEAT_INTERVAL_MS
+}
+
 id_type
 add_main_loop_timer(monotonic_t interval, bool repeats, timer_callback_fun callback, void *callback_data, timer_callback_fun free_callback) {
     return glfwAddTimer(interval, repeats, callback, callback_data, free_callback);
@@ -3031,6 +3040,7 @@ static PyMethodDef module_methods[] = {
     METHODB(x11_display, METH_NOARGS),
     METHODB(wayland_compositor_data, METH_NOARGS),
     METHODB(get_click_interval, METH_NOARGS),
+    METHODB(glfw_get_keyboard_repeat_interval, METH_NOARGS),
     METHODB(is_layer_shell_supported, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
     METHODB(strip_csi, METH_O),

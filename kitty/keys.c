@@ -292,7 +292,8 @@ on_key_input(const GLFWkeyevent *ev) {
         screen = w->render_data.screen;
     } else if (w->last_special_key_pressed == key) {
         w->last_special_key_pressed = 0;
-        debug("ignoring release event for previous press that was handled as shortcut\n");
+        dispatch_key_event(on_shortcut_key_release);
+        debug("dispatched release event for shortcut key\n");
         return;
     }
     if (w->buffered_keys.enabled) {

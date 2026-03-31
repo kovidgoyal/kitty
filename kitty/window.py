@@ -71,6 +71,7 @@ from .fast_data_types import (
     get_mouse_data_for_window,
     get_options,
     get_window_logo_settings_if_not_default,
+    glfw_get_keyboard_repeat_interval,
     is_css_pointer_name_valid,
     is_modifier_key,
     last_focused_os_window_id,
@@ -80,6 +81,7 @@ from .fast_data_types import (
     move_cursor_to_mouse_if_in_prompt,
     pointer_name_to_css_name,
     pt_to_px,
+    remove_timer,
     replace_c0_codes_except_nl_space_tab,
     set_redirect_keys_to_overlay,
     set_window_logo,
@@ -120,6 +122,9 @@ from .utils import (
 )
 
 MatchPatternType = Union[Pattern[str], tuple[Pattern[str], Optional[Pattern[str]]]]
+
+# Target ~60 fps for scroll animation ticks
+_SCROLL_ANIMATION_FRAME_INTERVAL: float = 1.0 / 60.0
 
 
 if TYPE_CHECKING:
@@ -759,6 +764,11 @@ class Window:
             self.screen.copy_colors_from(copy_colors_from.screen)
         self.remote_control_passwords = remote_control_passwords
         self.allow_remote_control = allow_remote_control
+        self._scroll_animation_timer: int = 0
+        self._scroll_animation_start: float = 0.
+        self._scroll_animation_duration: float = 0.
+        self._scroll_animation_total: float = 0.
+        self._scroll_animation_done: float = 0.
 
     def remote_control_allowed(self, pcmd: dict[str, Any], extra_data: dict[str, Any]) -> bool:
         if not self.allow_remote_control:
@@ -2388,27 +2398,68 @@ class Window:
     def scroll_fractional_lines(self, amt: float) -> bool | None:
         ' Scroll fractionally, negative values are up and positive values are down '
         if self.screen.is_main_linebuf():
+            self.finish_scroll_animation()
             self.screen.fractional_scroll(amt)
             return None
         return True
 
+    def _scroll_animation_tick(self, timer_id: int | None) -> None:
+        if not self._scroll_animation_timer:
+            return
+        now = monotonic()
+        elapsed = now - self._scroll_animation_start
+        progress = min(1.0, elapsed / self._scroll_animation_duration) if self._scroll_animation_duration > 0 else 1.0
+        target = self._scroll_animation_total * progress
+        delta = target - self._scroll_animation_done
+        if delta:
+            self.screen.fractional_scroll(delta)
+            self._scroll_animation_done = target
+        if progress >= 1.0:
+            self._scroll_animation_timer = 0
+
+    def finish_scroll_animation(self) -> None:
+        ' Finish any in-progress scroll animation immediately '
+        if self._scroll_animation_timer:
+            remove_timer(self._scroll_animation_timer)
+            self._scroll_animation_timer = 0
+            remaining = self._scroll_animation_total - self._scroll_animation_done
+            if remaining:
+                self.screen.fractional_scroll(remaining)
+                self._scroll_animation_done = self._scroll_animation_total
+
+    def _start_scroll_animation(self, lines: float) -> None:
+        ' Start a smooth scroll animation for the given number of lines (negative=up, positive=down) '
+        self.finish_scroll_animation()
+        if not self.screen.is_main_linebuf():
+            return
+        duration = glfw_get_keyboard_repeat_interval()
+        if duration <= 0:
+            self.screen.fractional_scroll(lines)
+            return
+        self._scroll_animation_start = monotonic()
+        self._scroll_animation_duration = duration
+        self._scroll_animation_total = lines
+        self._scroll_animation_done = 0.
+        self._scroll_animation_timer = add_timer(self._scroll_animation_tick, min(_SCROLL_ANIMATION_FRAME_INTERVAL, duration / 2), True)
+
     @ac('sc', 'Scroll up by one line when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
     def scroll_line_up(self) -> bool | None:
         if self.screen.is_main_linebuf():
-            self.screen.scroll(SCROLL_LINE, True)
+            self._start_scroll_animation(-1.0)
             return None
         return True
 
     @ac('sc', 'Scroll down by one line when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
     def scroll_line_down(self) -> bool | None:
         if self.screen.is_main_linebuf():
-            self.screen.scroll(SCROLL_LINE, False)
+            self._start_scroll_animation(1.0)
             return None
         return True
 
     @ac('sc', 'Scroll up by one page when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
     def scroll_page_up(self) -> bool | None:
         if self.screen.is_main_linebuf():
+            self.finish_scroll_animation()
             self.screen.scroll(SCROLL_PAGE, True)
             return None
         return True
@@ -2416,6 +2467,7 @@ class Window:
     @ac('sc', 'Scroll down by one page when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
     def scroll_page_down(self) -> bool | None:
         if self.screen.is_main_linebuf():
+            self.finish_scroll_animation()
             self.screen.scroll(SCROLL_PAGE, False)
             return None
         return True
@@ -2423,6 +2475,7 @@ class Window:
     @ac('sc', 'Scroll to the top of the scrollback buffer when in main screen')
     def scroll_home(self) -> bool | None:
         if self.screen.is_main_linebuf():
+            self.finish_scroll_animation()
             self.screen.scroll(SCROLL_FULL, True)
             return None
         return True
@@ -2430,6 +2483,7 @@ class Window:
     @ac('sc', 'Scroll to the bottom of the scrollback buffer when in main screen')
     def scroll_end(self) -> bool | None:
         if self.screen.is_main_linebuf():
+            self.finish_scroll_animation()
             self.screen.scroll(SCROLL_FULL, False)
             return None
         return True
@@ -2455,6 +2509,7 @@ class Window:
         ''')
     def scroll_to_prompt(self, num_of_prompts: int = -1, scroll_offset: int = 0) -> bool | None:
         if self.screen.is_main_linebuf():
+            self.finish_scroll_animation()
             self.screen.scroll_to_prompt(num_of_prompts, scroll_offset)
             return None
         return True
