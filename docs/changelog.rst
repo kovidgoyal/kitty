@@ -211,6 +211,8 @@ Detailed list of changes
 
 - macOS: Add Copy and Paste menu items to the Edit menu in the global menu bar (:iss:`9780`)
 
+- Fix dragging of splits layout borders sometimes moving in the wrong direction (:pull:`9447`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
