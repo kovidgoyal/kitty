@@ -37,6 +37,7 @@ from .constants import (
 from .fast_data_types import (
     GLFW_MOD_ALT,
     GLFW_MOD_SHIFT,
+    GLFW_MOD_SUPER,
     SingleKey,
     create_os_window,
     free_font_data,
@@ -110,7 +111,8 @@ def init_glfw(opts: Options, debug_keyboard: bool = False, debug_rendering: bool
 
 
 def get_macos_shortcut_for(
-    func_map: dict[tuple[str, ...], list[SingleKey]], defn: str = 'new_os_window', lookup_name: str = ''
+    func_map: dict[tuple[str, ...], list[SingleKey]], defn: str = 'new_os_window', lookup_name: str = '',
+    prefer_cmd_shortcut: bool = False,
 ) -> SingleKey | None:
     # for maximum robustness we should use opts.alias_map to resolve
     # aliases however this requires parsing everything on startup which could
@@ -123,13 +125,14 @@ def get_macos_shortcut_for(
     if candidates:
         from .fast_data_types import cocoa_set_global_shortcut
         alt_mods = GLFW_MOD_ALT, GLFW_MOD_ALT | GLFW_MOD_SHIFT
-        # Reverse list so that later defined keyboard shortcuts take priority over earlier defined ones
-        for candidate in reversed(candidates):
-            if candidate.mods in alt_mods:
-                # Option based shortcuts dont work in the global menubar,
-                # presumably because Apple reserves them for IME, see
-                # https://github.com/kovidgoyal/kitty/issues/3515
-                continue
+        valid = [c for c in candidates if c.mods not in alt_mods]
+        if prefer_cmd_shortcut:
+            # Put cmd+<key> candidates first so they take priority in the menubar
+            valid = sorted(valid, key=lambda c: 0 if c.mods == GLFW_MOD_SUPER else 1)
+        else:
+            # Reverse list so that later defined keyboard shortcuts take priority over earlier defined ones
+            valid = list(reversed(valid))
+        for candidate in valid:
             if cocoa_set_global_shortcut(lookup_name or qkey[0], candidate[0], candidate[2]):
                 ans = candidate
                 break
@@ -219,6 +222,9 @@ def set_cocoa_global_shortcuts(opts: Options) -> dict[str, SingleKey]:
         val = get_macos_shortcut_for(func_map, f'open_url {website_url()}', lookup_name='open_kitty_website')
         if val is not None:
             global_shortcuts['open_kitty_website'] = val
+        val = get_macos_shortcut_for(func_map, 'paste_from_clipboard', prefer_cmd_shortcut=True)
+        if val is not None:
+            global_shortcuts['paste_from_clipboard'] = val
     return global_shortcuts
 
 
