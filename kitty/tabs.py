@@ -112,7 +112,8 @@ class MouseEvents(deque[MouseEvent]):
 
     def click_count(self, button: int = GLFW_MOUSE_BUTTON_LEFT) -> Literal[0, 1, 2]:
         if len(self) > 1 and self[-1].button == button and self[-1].is_click(self[-2]):
-            if len(self) > 3 and self[-3].is_click(self[-4]) and self[-1].at - self[-4].at <= 2 * get_click_interval():
+            if len(self) > 3 and self[-3].is_click(self[-4]) and \
+                    self[-1].at - self[-4].at <= 2 * get_click_interval() and self[-2].distance_squared(self[-3]) < 2:
                 return 2
             return 1
         return 0
