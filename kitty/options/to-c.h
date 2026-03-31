@@ -74,6 +74,7 @@ scrollbar(PyObject *src) {
 static inline ProgressBarPosition
 progress_bar(PyObject *src) {
     const char *q = PyUnicode_AsUTF8(src);
+    if (!q) return PROGRESS_BAR_BOTTOM;
     switch (q[0]) {
         case 'l': return PROGRESS_BAR_LEFT;
         case 'r': return PROGRESS_BAR_RIGHT;
