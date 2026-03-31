@@ -1077,6 +1077,108 @@ draw_scrollbar(const UIRenderData *ui) {
     }
 }
 
+static bool
+has_progress_bar(Screen *screen) {
+    if (!OPT(progress_bar)) return false;
+    return screen && screen->progress_state != 0;
+}
+
+static void
+draw_progress_bar(const UIRenderData *ui) {
+    Screen *screen = ui->screen;
+    Window *window = ui->window;
+    if (!window || !has_progress_bar(screen)) return;
+
+    color_type bar_color = scrollbar_color(screen, OPT(scrollbar_handle_color));
+    color_type track_color = scrollbar_color(screen, OPT(scrollbar_track_color));
+    float opacity = OPT(scrollbar_handle_opacity);
+    // Use track_hover_opacity for the progress bar track so it's visible by default
+    float track_opacity = OPT(scrollbar_track_hover_opacity);
+    GLsizei bar_height_px = (GLsizei)(OPT(scrollbar_width) * ui->cell_width);
+    GLsizei gap_px = (GLsizei)(OPT(scrollbar_gap) * ui->cell_width);
+    unsigned bar_radius = (unsigned)(OPT(scrollbar_radius) * ui->cell_width);
+    if (bar_height_px < 1) return;
+
+    // Calculate window boundaries including padding
+    GLsizei window_left_edge = ui->screen_left - (GLsizei)window->render_data.geometry.spaces.left;
+    GLsizei window_bottom_edge = ui->screen_top + ui->screen_height + (GLsizei)window->render_data.geometry.spaces.bottom;
+    GLsizei window_width = ui->screen_width + (GLsizei)(window->render_data.geometry.spaces.left + window->render_data.geometry.spaces.right);
+
+    // Position progress bar along the bottom with gap
+    GLsizei bar_left = window_left_edge + gap_px;
+    GLsizei bar_width = window_width - 2 * gap_px;
+    GLsizei bar_top = window_bottom_edge - bar_height_px - gap_px;
+    if (bar_width <= 0) return;
+
+    // Calculate fill fraction based on progress state
+    float fill_fraction = 0.0f;
+    bool draw_fill = true;
+    switch (screen->progress_state) {
+        case 1:  // set - show percentage fill
+        case 4:  // paused - show percentage fill
+            fill_fraction = screen->progress_percent / 100.0f;
+            break;
+        case 2:  // error - show full fill
+            fill_fraction = 1.0f;
+            break;
+        case 3:  // indeterminate - track only, no fill
+            draw_fill = false;
+            break;
+        default:
+            return;
+    }
+
+    // Set viewport for progress bar area
+    save_viewport_using_top_left_origin(bar_left, bar_top, bar_width, bar_height_px, ui->full_framebuffer_height);
+
+    // Draw progress bar track (background)
+    if (track_opacity > 0) {
+        bind_program(TINT_PROGRAM);
+        set_color_uniform_with_opacity(track_color, track_opacity);
+        glUniform4f(tint_program_layout.uniforms.edges, -1.f, 1.f, 1.f, -1.f);
+        draw_quad(true, 0);
+    }
+
+    // Draw progress bar fill (handle)
+    if (draw_fill && fill_fraction > 0.0f && opacity > 0.0f) {
+        if (bar_radius > 0) {
+            // Rounded fill - use rounded rect program
+            GLsizei fill_width_px = (GLsizei)(fill_fraction * bar_width);
+            if (fill_width_px < 1) fill_width_px = 1;
+
+            restore_viewport();
+
+            bind_program(ROUNDED_RECT_PROGRAM);
+            color_vec4(rounded_rect_program_layout.uniforms.color, bar_color, opacity);
+            color_vec4(rounded_rect_program_layout.uniforms.background_color, 0, 0.0f);
+
+            float y = (float)ui->full_framebuffer_height - (float)(bar_top + bar_height_px);
+            glUniform4f(rounded_rect_program_layout.uniforms.rect,
+                        (float)bar_left, y,
+                        (float)fill_width_px, (float)bar_height_px);
+
+            float thickness = (float)bar_height_px;
+            glUniform2f(rounded_rect_program_layout.uniforms.params, thickness, (float)bar_radius);
+
+            save_viewport_using_top_left_origin(bar_left, bar_top, fill_width_px, bar_height_px, ui->full_framebuffer_height);
+            draw_quad(true, 0);
+            restore_viewport();
+        } else {
+            // Simple rectangular fill using GL coordinates in the track viewport
+            // fill_fraction maps to [-1, 1] range, left = -1, right = -1 + 2*fill_fraction
+            float fill_right_gl = -1.0f + 2.0f * fill_fraction;
+            bind_program(TINT_PROGRAM);
+            set_color_uniform_with_opacity(bar_color, opacity);
+            glUniform4f(tint_program_layout.uniforms.edges, -1.f, 1.f, fill_right_gl, -1.f);
+            draw_quad(true, 0);
+            restore_viewport();
+        }
+    } else {
+        restore_viewport();
+    }
+}
+
+
 static void
 draw_window_logo(const UIRenderData *ui) {
     struct { unsigned width, height; int left, top; } w;
@@ -1122,7 +1224,7 @@ draw_window_logo(const UIRenderData *ui) {
 
 bool
 screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen) {
-    const bool has_ui = w && ((screen->start_visual_bell_at | screen->start_drag_overlay_at) || has_scrollbar(w, screen) || has_hyperlink_target(os_window, w, screen) || has_window_number(w, screen) || w->window_logo.id);
+    const bool has_ui = w && ((screen->start_visual_bell_at | screen->start_drag_overlay_at) || has_scrollbar(w, screen) || has_progress_bar(screen) || has_hyperlink_target(os_window, w, screen) || has_window_number(w, screen) || w->window_logo.id);
     GraphicsManager *grman = screen->paused_rendering.expires_at && screen->paused_rendering.grman ? screen->paused_rendering.grman : screen->grman;
     return has_ui || grman_has_images(grman);
 }
@@ -1183,6 +1285,7 @@ draw_cells_with_layers(const UIRenderData *ui, ssize_t vao_idx) {
 
     draw_visual_bell(ui);
     draw_drag_preview_overlay(ui);
+    draw_progress_bar(ui);
     draw_scrollbar(ui);
     draw_hyperlink_target(ui);
     draw_window_number(ui);

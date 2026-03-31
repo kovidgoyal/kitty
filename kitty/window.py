@@ -1280,6 +1280,7 @@ class Window:
                 log_error(f'Ignoring malformed OSC 9;4 progress report: {raw_data!r}')
                 return
             self.progress.update(*parts[:2])
+            self.screen.set_progress(self.progress.state.value, self.progress.percent)
             if (tab := self.tabref()) is not None:
                 tab.update_progress()
             self.clear_progress_if_needed()
@@ -1291,6 +1292,7 @@ class Window:
         if timer_id is not None:  # this is a timer callback
             self.clear_progress_timer = 0
         if self.progress.clear_progress():
+            self.screen.set_progress(0, 0)
             if (tab := self.tabref()) is not None:
                 tab.update_progress()
         else:

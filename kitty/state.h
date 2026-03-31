@@ -87,6 +87,7 @@ typedef struct Options {
     float scrollbar_width, scrollbar_radius, scrollbar_gap, scrollbar_min_handle_height, scrollbar_hitbox_expansion;
     float scrollbar_hover_width, scrollbar_handle_opacity, scrollbar_track_opacity, scrollbar_track_hover_opacity;
     color_type scrollbar_handle_color, scrollbar_track_color;
+    bool progress_bar;
 
     float text_contrast, text_gamma_adjustment;
     bool text_old_gamma;
@@ -121,6 +122,7 @@ typedef struct Options {
     char_type *url_excluded_characters;
     bool detect_urls;
     bool tab_bar_hidden;
+    bool tab_bar_show_new_tab_button;
     double font_size;
     struct {
         double outer, inner;

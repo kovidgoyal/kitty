@@ -170,6 +170,8 @@ Detailed list of changes
 
 - A new option :opt:`palette_generate` to automatically generate the 256 color palette from the first 16 colors (:pull:`9426`)
 
+- Add a :opt:`progress_bar` option to draw a visual progress bar at the bottom of the terminal window when a program reports progress using the OSC 9;4 escape sequence. The bar reuses the scrollbar's track and handle colors and opacity settings (:iss:`9777`)
+
 - For builtin key mappings automatically :ref:`fallback <mapping-fallback>` to matching the US-PC layout key when the pressed key has no matches and is a non-English character (:pull:`9671`)
 
 - Allow drag and drop of windows to re-arrange them, move them to another

@@ -435,6 +435,19 @@ convert_from_opts_scrollbar_track_color(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_progress_bar(PyObject *val, Options *opts) {
+    opts->progress_bar = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_progress_bar(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "progress_bar");
+    if (ret == NULL) return;
+    convert_from_python_progress_bar(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_scrollback_pager_history_size(PyObject *val, Options *opts) {
     opts->scrollback_pager_history_size = PyLong_AsUnsignedLong(val);
 }
@@ -1085,6 +1098,19 @@ convert_from_opts_tab_bar_style(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_tab_bar_show_new_tab_button(PyObject *val, Options *opts) {
+    opts->tab_bar_show_new_tab_button = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_tab_bar_show_new_tab_button(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "tab_bar_show_new_tab_button");
+    if (ret == NULL) return;
+    convert_from_python_tab_bar_show_new_tab_button(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_tab_bar_background(PyObject *val, Options *opts) {
     opts->tab_bar_background = color_or_none_as_int(val);
 }
@@ -1516,6 +1542,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     if (PyErr_Occurred()) return false;
     convert_from_opts_scrollbar_track_color(py_opts, opts);
     if (PyErr_Occurred()) return false;
+    convert_from_opts_progress_bar(py_opts, opts);
+    if (PyErr_Occurred()) return false;
     convert_from_opts_scrollback_pager_history_size(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_scrollback_fill_enlarged_window(py_opts, opts);
@@ -1615,6 +1643,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_tab_bar_margin_height(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_tab_bar_style(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_tab_bar_show_new_tab_button(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_tab_bar_background(py_opts, opts);
     if (PyErr_Occurred()) return false;
