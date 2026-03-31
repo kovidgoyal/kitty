@@ -498,9 +498,9 @@ class Pair:
             return False
         if self.two == gid:
             return True
-        if not isinstance(self.two, Pair):
-            return False
-        return self.two.is_group_on_second(gid)
+        if isinstance(self.two, Pair):
+            return self.two.pair_for_window(gid) is not None
+        return False
 
     def find_window_in_tree(self, window_id: int) -> 'list[tuple[Pair, bool]] | None':
         # Returns list of (pair, is_in_one) from self down to the pair containing window_id.
