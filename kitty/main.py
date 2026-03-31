@@ -128,7 +128,9 @@ def get_macos_shortcut_for(
         valid = [c for c in candidates if c.mods not in alt_mods]
         if prefer_cmd_shortcut:
             # Put cmd+<key> candidates first so they take priority in the menubar
-            valid = sorted(valid, key=lambda c: 0 if c.mods == GLFW_MOD_SUPER else 1)
+            cmd_candidates = [c for c in valid if c.mods == GLFW_MOD_SUPER]
+            other_candidates = [c for c in reversed(valid) if c.mods != GLFW_MOD_SUPER]
+            valid = cmd_candidates + other_candidates
         else:
             # Reverse list so that later defined keyboard shortcuts take priority over earlier defined ones
             valid = list(reversed(valid))
