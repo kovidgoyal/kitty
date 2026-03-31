@@ -123,19 +123,14 @@ from .utils import (
 
 MatchPatternType = Union[Pattern[str], tuple[Pattern[str], Optional[Pattern[str]]]]
 
-# Target ~60 fps for scroll animation ticks
-_SCROLL_ANIMATION_FRAME_INTERVAL: float = 1.0 / 60.0
-
 
 class ScrollAnimation:
-    __slots__ = ('timer', 'start', 'duration', 'total', 'start_scrolled_by')
-
-    def __init__(self) -> None:
-        self.timer: int = 0
-        self.start: float = 0.
-        self.duration: float = 0.
-        self.total: float = 0.
-        self.start_scrolled_by: int = 0
+    timer: int = 0
+    start: float = 0.
+    duration: float = 0.
+    total: float = 0.
+    start_scrolled_by: int = 0
+    frame_interval: float = 1.0 / 60.0  # Target ~60 fps for scroll animation ticks
 
 
 if TYPE_CHECKING:
@@ -775,7 +770,7 @@ class Window:
             self.screen.copy_colors_from(copy_colors_from.screen)
         self.remote_control_passwords = remote_control_passwords
         self.allow_remote_control = allow_remote_control
-        self._scroll_animation = ScrollAnimation()
+        self.scroll_animation = ScrollAnimation()
 
     def remote_control_allowed(self, pcmd: dict[str, Any], extra_data: dict[str, Any]) -> bool:
         if not self.allow_remote_control:
@@ -2410,8 +2405,8 @@ class Window:
             return None
         return True
 
-    def _scroll_animation_tick(self, timer_id: int | None) -> None:
-        a = self._scroll_animation
+    def scroll_animation_tick(self, timer_id: int | None) -> None:
+        a = self.scroll_animation
         if not a.timer:
             return
         now = monotonic()
@@ -2427,14 +2422,14 @@ class Window:
 
     def finish_scroll_animation(self) -> None:
         ' Finish any in-progress scroll animation immediately '
-        a = self._scroll_animation
+        a = self.scroll_animation
         if a.timer:
             remove_timer(a.timer)
             a.timer = 0
             # Scroll to the exact integer target line, ensuring pixel_scroll_offset_y = 0
             self.screen.scroll_to_absolute(max(0, a.start_scrolled_by - a.total))
 
-    def _start_scroll_animation(self, lines: float) -> None:
+    def start_scroll_animation(self, lines: float) -> None:
         ' Start a smooth scroll animation for the given number of lines (negative=up, positive=down) '
         self.finish_scroll_animation()
         if not self.screen.is_main_linebuf():
@@ -2443,24 +2438,23 @@ class Window:
         if duration <= 0:
             self.screen.fractional_scroll(lines)
             return
-        a = self._scroll_animation
+        a = self.scroll_animation
         a.start = monotonic()
         a.duration = duration
         a.total = lines
         a.start_scrolled_by = self.screen.scrolled_by
-        a.timer = add_timer(self._scroll_animation_tick, min(_SCROLL_ANIMATION_FRAME_INTERVAL, duration / 2), True)
+        a.timer = add_timer(self.scroll_animation_tick, min(ScrollAnimation.frame_interval, duration / 2), True)
 
     @ac('sc', '''
         Scroll up by one line when in main screen. To scroll by different amounts, you can map the remote_control
-        scroll-window action. Pass the ``smooth`` argument to have the scrolling be animated over the keyboard
-        repeat interval. For example::
+        scroll-window action. Pass the ``smooth`` argument to have the scrolling be animated. For example::
 
             map kitty_mod+up scroll_line_up smooth
         ''')
     def scroll_line_up(self, smooth: bool = False) -> bool | None:
         if self.screen.is_main_linebuf():
             if smooth:
-                self._start_scroll_animation(-1.0)
+                self.start_scroll_animation(-1.0)
             else:
                 self.finish_scroll_animation()
                 self.screen.scroll(SCROLL_LINE, True)
@@ -2469,15 +2463,14 @@ class Window:
 
     @ac('sc', '''
         Scroll down by one line when in main screen. To scroll by different amounts, you can map the remote_control
-        scroll-window action. Pass the ``smooth`` argument to have the scrolling be animated over the keyboard
-        repeat interval. For example::
+        scroll-window action. Pass the ``smooth`` argument to have the scrolling be animated. For example::
 
             map kitty_mod+down scroll_line_down smooth
         ''')
     def scroll_line_down(self, smooth: bool = False) -> bool | None:
         if self.screen.is_main_linebuf():
             if smooth:
-                self._start_scroll_animation(1.0)
+                self.start_scroll_animation(1.0)
             else:
                 self.finish_scroll_animation()
                 self.screen.scroll(SCROLL_LINE, False)
