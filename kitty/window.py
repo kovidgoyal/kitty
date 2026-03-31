@@ -127,6 +127,17 @@ MatchPatternType = Union[Pattern[str], tuple[Pattern[str], Optional[Pattern[str]
 _SCROLL_ANIMATION_FRAME_INTERVAL: float = 1.0 / 60.0
 
 
+class ScrollAnimation:
+    __slots__ = ('timer', 'start', 'duration', 'total', 'done')
+
+    def __init__(self) -> None:
+        self.timer: int = 0
+        self.start: float = 0.
+        self.duration: float = 0.
+        self.total: float = 0.
+        self.done: float = 0.
+
+
 if TYPE_CHECKING:
     from kittens.tui.handler import OpenUrlHandler
 
@@ -764,11 +775,7 @@ class Window:
             self.screen.copy_colors_from(copy_colors_from.screen)
         self.remote_control_passwords = remote_control_passwords
         self.allow_remote_control = allow_remote_control
-        self._scroll_animation_timer: int = 0
-        self._scroll_animation_start: float = 0.
-        self._scroll_animation_duration: float = 0.
-        self._scroll_animation_total: float = 0.
-        self._scroll_animation_done: float = 0.
+        self._scroll_animation = ScrollAnimation()
 
     def remote_control_allowed(self, pcmd: dict[str, Any], extra_data: dict[str, Any]) -> bool:
         if not self.allow_remote_control:
@@ -2404,28 +2411,31 @@ class Window:
         return True
 
     def _scroll_animation_tick(self, timer_id: int | None) -> None:
-        if not self._scroll_animation_timer:
+        a = self._scroll_animation
+        if not a.timer:
             return
         now = monotonic()
-        elapsed = now - self._scroll_animation_start
-        progress = min(1.0, elapsed / self._scroll_animation_duration) if self._scroll_animation_duration > 0 else 1.0
-        target = self._scroll_animation_total * progress
-        delta = target - self._scroll_animation_done
+        elapsed = now - a.start
+        progress = min(1.0, elapsed / a.duration) if a.duration > 0 else 1.0
+        target = a.total * progress
+        delta = target - a.done
         if delta:
             self.screen.fractional_scroll(delta)
-            self._scroll_animation_done = target
+            a.done = target
         if progress >= 1.0:
-            self._scroll_animation_timer = 0
+            a.timer = 0
 
     def finish_scroll_animation(self) -> None:
         ' Finish any in-progress scroll animation immediately '
-        if self._scroll_animation_timer:
-            remove_timer(self._scroll_animation_timer)
-            self._scroll_animation_timer = 0
-            remaining = self._scroll_animation_total - self._scroll_animation_done
+        a = self._scroll_animation
+        if a.timer:
+            remove_timer(a.timer)
+            a.timer = 0
+            # Always complete to the full integer line target to avoid partial scrolls
+            remaining = a.total - a.done
             if remaining:
                 self.screen.fractional_scroll(remaining)
-                self._scroll_animation_done = self._scroll_animation_total
+                a.done = a.total
 
     def _start_scroll_animation(self, lines: float) -> None:
         ' Start a smooth scroll animation for the given number of lines (negative=up, positive=down) '
@@ -2436,11 +2446,12 @@ class Window:
         if duration <= 0:
             self.screen.fractional_scroll(lines)
             return
-        self._scroll_animation_start = monotonic()
-        self._scroll_animation_duration = duration
-        self._scroll_animation_total = lines
-        self._scroll_animation_done = 0.
-        self._scroll_animation_timer = add_timer(self._scroll_animation_tick, min(_SCROLL_ANIMATION_FRAME_INTERVAL, duration / 2), True)
+        a = self._scroll_animation
+        a.start = monotonic()
+        a.duration = duration
+        a.total = lines
+        a.done = 0.
+        a.timer = add_timer(self._scroll_animation_tick, min(_SCROLL_ANIMATION_FRAME_INTERVAL, duration / 2), True)
 
     @ac('sc', 'Scroll up by one line when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
     def scroll_line_up(self) -> bool | None:
