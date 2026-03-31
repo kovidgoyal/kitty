@@ -219,6 +219,12 @@ def set_cocoa_global_shortcuts(opts: Options) -> dict[str, SingleKey]:
         val = get_macos_shortcut_for(func_map, f'open_url {website_url()}', lookup_name='open_kitty_website')
         if val is not None:
             global_shortcuts['open_kitty_website'] = val
+        val = get_macos_shortcut_for(func_map, 'paste_from_clipboard')
+        if val is not None:
+            global_shortcuts['paste_from_clipboard'] = val
+        val = get_macos_shortcut_for(func_map, 'copy_or_noop')
+        if val is not None:
+            global_shortcuts['copy_or_noop'] = val
     return global_shortcuts
 
 
