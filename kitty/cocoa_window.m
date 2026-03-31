@@ -298,6 +298,15 @@ PENDING(copy_or_noop, COPY_OR_NOOP)
         if (![pb stringForType:NSPasteboardTypeString]) return NO;
     } else if (item.action == @selector(copy_or_noop:)) {
         if (![NSApp keyWindow]) return NO;
+        OSWindow *osw = current_os_window();
+        if (osw && osw->num_tabs > osw->active_tab) {
+            Tab *tab = osw->tabs + osw->active_tab;
+            if (tab->num_windows > tab->active_window) {
+                Screen *screen = tab->windows[tab->active_window].render_data.screen;
+                if (screen && screen_has_selection(screen)) return YES;
+            }
+        }
+        return NO;
     }
     return YES;
 }
