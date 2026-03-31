@@ -128,7 +128,7 @@ def get_macos_shortcut_for(
         valid = [c for c in candidates if c.mods not in alt_mods]
         if prefer_cmd_shortcut:
             # Put cmd+<key> candidates first so they take priority in the menubar
-            cmd_candidates = [c for c in valid if c.mods == GLFW_MOD_SUPER]
+            cmd_candidates = [c for c in reversed(valid) if c.mods == GLFW_MOD_SUPER]
             other_candidates = [c for c in reversed(valid) if c.mods != GLFW_MOD_SUPER]
             valid = cmd_candidates + other_candidates
         else:
@@ -227,6 +227,9 @@ def set_cocoa_global_shortcuts(opts: Options) -> dict[str, SingleKey]:
         val = get_macos_shortcut_for(func_map, 'paste_from_clipboard', prefer_cmd_shortcut=True)
         if val is not None:
             global_shortcuts['paste_from_clipboard'] = val
+        val = get_macos_shortcut_for(func_map, 'copy_to_clipboard', prefer_cmd_shortcut=True)
+        if val is not None:
+            global_shortcuts['copy_to_clipboard'] = val
     return global_shortcuts
 
 

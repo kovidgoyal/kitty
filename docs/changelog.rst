@@ -207,7 +207,7 @@ Detailed list of changes
 
 - Fix a crash when user tries to select while the client program is using synchronised rendering and generating large amounts of output (:iss:`9778`)
 
-- macOS: Add a Paste menu item to the Edit menu in the global menu bar (:iss:`9780`)
+- macOS: Add Copy and Paste menu items to the Edit menu in the global menu bar (:iss:`9780`)
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -3706,3 +3706,7 @@ class Boss:
     def search_scrollback_in_active(self) -> None:
         if w := self.active_window:
             w.search_scrollback()
+
+    def copy_to_clipboard(self) -> None:
+        if w := self.active_window:
+            w.copy_to_clipboard()

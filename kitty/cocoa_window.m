@@ -268,6 +268,7 @@ PENDING(hide_macos_other_apps, HIDE_OTHERS)
 PENDING(minimize_macos_window, MINIMIZE)
 PENDING(quit, QUIT)
 PENDING(paste_from_clipboard, PASTE_FROM_CLIPBOARD)
+PENDING(copy_to_clipboard, COPY_TO_CLIPBOARD)
 
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
     if (item.action == @selector(toggle_macos_secure_keyboard_entry:)) {
@@ -290,6 +291,12 @@ PENDING(paste_from_clipboard, PASTE_FROM_CLIPBOARD)
         item.action == @selector(next_tab:) ||
         item.action == @selector(detach_tab:))
     {
+        if (![NSApp keyWindow]) return NO;
+    } else if (item.action == @selector(paste_from_clipboard:)) {
+        if (![NSApp keyWindow]) return NO;
+        NSPasteboard *pb = [NSPasteboard generalPasteboard];
+        if (![pb stringForType:NSPasteboardTypeString]) return NO;
+    } else if (item.action == @selector(copy_to_clipboard:)) {
         if (![NSApp keyWindow]) return NO;
     }
     return YES;
@@ -324,7 +331,7 @@ typedef struct {
     GlobalShortcut toggle_macos_secure_keyboard_entry, toggle_fullscreen, open_kitty_website;
     GlobalShortcut hide_macos_app, hide_macos_other_apps, minimize_macos_window, quit, search_scrollback;
     GlobalShortcut macos_cycle_through_os_windows, macos_cycle_through_os_windows_backwards;
-    GlobalShortcut paste_from_clipboard;
+    GlobalShortcut paste_from_clipboard, copy_to_clipboard;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
 
@@ -344,7 +351,7 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
     else Q(open_kitty_website); else Q(hide_macos_app); else Q(hide_macos_other_apps);
     else Q(minimize_macos_window); else Q(quit); else Q(search_scrollback);
     else Q(macos_cycle_through_os_windows); else Q(macos_cycle_through_os_windows_backwards);
-    else Q(paste_from_clipboard);
+    else Q(paste_from_clipboard); else Q(copy_to_clipboard);
 #undef Q
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
     int cocoa_mods;
@@ -801,6 +808,7 @@ cocoa_create_global_menu(void) {
     MENU_ITEM(editMenu, @"Clear Last Command", clear_last_command);
     MENU_ITEM(editMenu, @"Find", search_scrollback);
     [editMenu addItem:[NSMenuItem separatorItem]];
+    MENU_ITEM(editMenu, @"Copy", copy_to_clipboard);
     MENU_ITEM(editMenu, @"Paste", paste_from_clipboard);
     [editMenu release];
 
