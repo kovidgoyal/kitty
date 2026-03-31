@@ -88,6 +88,11 @@ def parse_send_text_bytes(text: str) -> bytes:
     return defines.expand_ansi_c_escapes(text).encode('utf-8')
 
 
+@func_with_args('scroll_line_up', 'scroll_line_down')
+def scroll_line_updown(func: str, rest: str) -> FuncArgsType:
+    return func, [rest.strip().lower() == 'smooth']
+
+
 @func_with_args('scroll_prompt_to_top')
 def scroll_prompt_to_top(func: str, rest: str) -> FuncArgsType:
     return func, [to_bool(rest) if rest else False]

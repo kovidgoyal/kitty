@@ -2450,17 +2450,37 @@ class Window:
         a.start_scrolled_by = self.screen.scrolled_by
         a.timer = add_timer(self._scroll_animation_tick, min(_SCROLL_ANIMATION_FRAME_INTERVAL, duration / 2), True)
 
-    @ac('sc', 'Scroll up by one line when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
-    def scroll_line_up(self) -> bool | None:
+    @ac('sc', '''
+        Scroll up by one line when in main screen. To scroll by different amounts, you can map the remote_control
+        scroll-window action. Pass the ``smooth`` argument to have the scrolling be animated over the keyboard
+        repeat interval. For example::
+
+            map kitty_mod+up scroll_line_up smooth
+        ''')
+    def scroll_line_up(self, smooth: bool = False) -> bool | None:
         if self.screen.is_main_linebuf():
-            self._start_scroll_animation(-1.0)
+            if smooth:
+                self._start_scroll_animation(-1.0)
+            else:
+                self.finish_scroll_animation()
+                self.screen.scroll(SCROLL_LINE, True)
             return None
         return True
 
-    @ac('sc', 'Scroll down by one line when in main screen. To scroll by different amounts, you can map the remote_control scroll-window action.')
-    def scroll_line_down(self) -> bool | None:
+    @ac('sc', '''
+        Scroll down by one line when in main screen. To scroll by different amounts, you can map the remote_control
+        scroll-window action. Pass the ``smooth`` argument to have the scrolling be animated over the keyboard
+        repeat interval. For example::
+
+            map kitty_mod+down scroll_line_down smooth
+        ''')
+    def scroll_line_down(self, smooth: bool = False) -> bool | None:
         if self.screen.is_main_linebuf():
-            self._start_scroll_animation(1.0)
+            if smooth:
+                self._start_scroll_animation(1.0)
+            else:
+                self.finish_scroll_animation()
+                self.screen.scroll(SCROLL_LINE, False)
             return None
         return True
 
