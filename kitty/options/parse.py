@@ -1202,7 +1202,12 @@ class Parser:
     choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
 
     def progress_bar(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['progress_bar'] = to_bool(val)
+        val = val.lower()
+        if val not in self.choices_for_progress_bar:
+            raise ValueError(f"The value {val} is not a valid choice for progress_bar")
+        ans["progress_bar"] = val
+
+    choices_for_progress_bar = frozenset(('left', 'right', 'top', 'bottom', 'hidden'))
 
     def remember_window_position(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['remember_window_position'] = to_bool(val)

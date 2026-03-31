@@ -171,6 +171,7 @@ typedef struct {
     char display_window_char;
     uint8_t progress_state;   // 0=unset 1=set 2=error 3=indeterminate 4=paused
     uint8_t progress_percent; // 0-100
+    monotonic_t progress_indeterminate_anim_at;  // animation start time for indeterminate progress
     struct {
         char ch;
         uint8_t *canvas;

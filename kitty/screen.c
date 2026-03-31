@@ -189,6 +189,9 @@ screen_reset(Screen *self) {
     memset(self->main_key_encoding_flags, 0, sizeof(self->main_key_encoding_flags));
     memset(self->alt_key_encoding_flags, 0, sizeof(self->alt_key_encoding_flags));
     self->display_window_char = 0;
+    self->progress_state = 0;
+    self->progress_percent = 0;
+    self->progress_indeterminate_anim_at = 0;
     self->prompt_settings.val = 0;
     self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
@@ -4775,6 +4778,12 @@ set_progress(Screen *self, PyObject *a) {
     if (self->progress_state != new_state || self->progress_percent != new_percent) {
         self->progress_state = new_state;
         self->progress_percent = new_percent;
+        // Start or stop indeterminate animation
+        if (new_state == 3 && self->progress_indeterminate_anim_at == 0) {
+            self->progress_indeterminate_anim_at = monotonic();
+        } else if (new_state != 3) {
+            self->progress_indeterminate_anim_at = 0;
+        }
         self->is_dirty = true;
     }
     Py_RETURN_NONE;

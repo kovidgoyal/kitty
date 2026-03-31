@@ -1079,8 +1079,70 @@ draw_scrollbar(const UIRenderData *ui) {
 
 static bool
 has_progress_bar(Screen *screen) {
-    if (!OPT(progress_bar)) return false;
+    if (OPT(progress_bar) == PROGRESS_BAR_HIDDEN) return false;
     return screen && screen->progress_state != 0;
+}
+
+static void
+draw_progress_handle(const UIRenderData *ui, color_type bar_color, float opacity, unsigned bar_radius,
+                     GLsizei track_left, GLsizei track_top, GLsizei track_width, GLsizei track_height,
+                     float handle_start, float handle_size, bool is_horizontal) {
+    // handle_start and handle_size are fractions of the track length (0..1)
+    // For horizontal: handle moves left-to-right; For vertical: handle moves top-to-bottom
+    GLsizei handle_left, handle_top;
+    GLsizei handle_w, handle_h;
+    if (is_horizontal) {
+        GLsizei handle_w_px = (GLsizei)(handle_size * track_width);
+        if (handle_w_px < 1) handle_w_px = 1;
+        GLsizei handle_left_px = (GLsizei)(handle_start * track_width);
+        handle_left = track_left + handle_left_px;
+        handle_top = track_top;
+        handle_w = handle_w_px;
+        handle_h = track_height;
+    } else {
+        GLsizei handle_h_px = (GLsizei)(handle_size * track_height);
+        if (handle_h_px < 1) handle_h_px = 1;
+        GLsizei handle_top_px = (GLsizei)(handle_start * track_height);
+        handle_left = track_left;
+        handle_top = track_top + handle_top_px;
+        handle_w = track_width;
+        handle_h = handle_h_px;
+    }
+
+    if (bar_radius > 0) {
+        bind_program(ROUNDED_RECT_PROGRAM);
+        color_vec4(rounded_rect_program_layout.uniforms.color, bar_color, opacity);
+        color_vec4(rounded_rect_program_layout.uniforms.background_color, 0, 0.0f);
+
+        float y = (float)ui->full_framebuffer_height - (float)(handle_top + handle_h);
+        glUniform4f(rounded_rect_program_layout.uniforms.rect,
+                    (float)handle_left, y,
+                    (float)handle_w, (float)handle_h);
+
+        float thickness = (float)(is_horizontal ? handle_h : handle_w);
+        glUniform2f(rounded_rect_program_layout.uniforms.params, thickness, (float)bar_radius);
+
+        save_viewport_using_top_left_origin(handle_left, handle_top, handle_w, handle_h, ui->full_framebuffer_height);
+        draw_quad(true, 0);
+        restore_viewport();
+    } else {
+        // Use GL coordinates within the track viewport
+        float start_gl = -1.0f + 2.0f * handle_start;
+        float end_gl = -1.0f + 2.0f * (handle_start + handle_size);
+        bind_program(TINT_PROGRAM);
+        set_color_uniform_with_opacity(bar_color, opacity);
+        if (is_horizontal) {
+            // edges: left, top, right, bottom
+            save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
+            glUniform4f(tint_program_layout.uniforms.edges, start_gl, 1.f, end_gl, -1.f);
+        } else {
+            save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
+            // For vertical: start_gl is top in GL coords (inverted y), so bottom_gl = -end_gl, top_gl = -start_gl
+            glUniform4f(tint_program_layout.uniforms.edges, -1.f, -start_gl, 1.f, -end_gl);
+        }
+        draw_quad(true, 0);
+        restore_viewport();
+    }
 }
 
 static void
@@ -1089,94 +1151,105 @@ draw_progress_bar(const UIRenderData *ui) {
     Window *window = ui->window;
     if (!window || !has_progress_bar(screen)) return;
 
+    const ProgressBarPosition pos = OPT(progress_bar);
+    const bool is_horizontal = (pos == PROGRESS_BAR_TOP || pos == PROGRESS_BAR_BOTTOM);
     color_type bar_color = scrollbar_color(screen, OPT(scrollbar_handle_color));
     color_type track_color = scrollbar_color(screen, OPT(scrollbar_track_color));
     float opacity = OPT(scrollbar_handle_opacity);
-    // Use track_hover_opacity for the progress bar track so it's visible by default
     float track_opacity = OPT(scrollbar_track_hover_opacity);
-    GLsizei bar_height_px = (GLsizei)(OPT(scrollbar_width) * ui->cell_width);
+    GLsizei bar_thickness_px = (GLsizei)(OPT(scrollbar_width) * ui->cell_width);
     GLsizei gap_px = (GLsizei)(OPT(scrollbar_gap) * ui->cell_width);
     unsigned bar_radius = (unsigned)(OPT(scrollbar_radius) * ui->cell_width);
-    if (bar_height_px < 1) return;
+    if (bar_thickness_px < 1) return;
 
     // Calculate window boundaries including padding
     GLsizei window_left_edge = ui->screen_left - (GLsizei)window->render_data.geometry.spaces.left;
-    GLsizei window_bottom_edge = ui->screen_top + ui->screen_height + (GLsizei)window->render_data.geometry.spaces.bottom;
+    GLsizei window_top_edge = ui->screen_top - (GLsizei)window->render_data.geometry.spaces.top;
     GLsizei window_width = ui->screen_width + (GLsizei)(window->render_data.geometry.spaces.left + window->render_data.geometry.spaces.right);
+    GLsizei window_height = ui->screen_height + (GLsizei)(window->render_data.geometry.spaces.top + window->render_data.geometry.spaces.bottom);
 
-    // Position progress bar along the bottom with gap
-    GLsizei bar_left = window_left_edge + gap_px;
-    GLsizei bar_width = window_width - 2 * gap_px;
-    GLsizei bar_top = window_bottom_edge - bar_height_px - gap_px;
-    if (bar_width <= 0) return;
+    // Position the track depending on the chosen edge
+    GLsizei track_left, track_top, track_width, track_height;
+    switch (pos) {
+        case PROGRESS_BAR_BOTTOM:
+            track_left = window_left_edge + gap_px;
+            track_width = window_width - 2 * gap_px;
+            track_height = bar_thickness_px;
+            track_top = window_top_edge + window_height - bar_thickness_px - gap_px;
+            break;
+        case PROGRESS_BAR_TOP:
+            track_left = window_left_edge + gap_px;
+            track_width = window_width - 2 * gap_px;
+            track_height = bar_thickness_px;
+            track_top = window_top_edge + gap_px;
+            break;
+        case PROGRESS_BAR_LEFT:
+            track_left = window_left_edge + gap_px;
+            track_width = bar_thickness_px;
+            track_top = window_top_edge + gap_px;
+            track_height = window_height - 2 * gap_px;
+            break;
+        case PROGRESS_BAR_RIGHT:
+            track_left = window_left_edge + window_width - bar_thickness_px - gap_px;
+            track_width = bar_thickness_px;
+            track_top = window_top_edge + gap_px;
+            track_height = window_height - 2 * gap_px;
+            break;
+        default:
+            return;
+    }
+    if (track_width <= 0 || track_height <= 0) return;
 
-    // Calculate fill fraction based on progress state
+    // Calculate fill fraction and indeterminate animation
     float fill_fraction = 0.0f;
-    bool draw_fill = true;
+    bool is_indeterminate = false;
     switch (screen->progress_state) {
-        case 1:  // set - show percentage fill
-        case 4:  // paused - show percentage fill
+        case 1:  // set
+        case 4:  // paused
             fill_fraction = screen->progress_percent / 100.0f;
             break;
-        case 2:  // error - show full fill
+        case 2:  // error - full fill
             fill_fraction = 1.0f;
             break;
-        case 3:  // indeterminate - track only, no fill
-            draw_fill = false;
+        case 3:  // indeterminate
+            is_indeterminate = true;
             break;
         default:
             return;
     }
 
-    // Set viewport for progress bar area
-    save_viewport_using_top_left_origin(bar_left, bar_top, bar_width, bar_height_px, ui->full_framebuffer_height);
-
-    // Draw progress bar track (background)
+    // Draw track (background)
+    save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
     if (track_opacity > 0) {
         bind_program(TINT_PROGRAM);
         set_color_uniform_with_opacity(track_color, track_opacity);
         glUniform4f(tint_program_layout.uniforms.edges, -1.f, 1.f, 1.f, -1.f);
         draw_quad(true, 0);
     }
+    restore_viewport();
 
-    // Draw progress bar fill (handle)
-    if (draw_fill && fill_fraction > 0.0f && opacity > 0.0f) {
-        if (bar_radius > 0) {
-            // Rounded fill - use rounded rect program
-            GLsizei fill_width_px = (GLsizei)(fill_fraction * bar_width);
-            if (fill_width_px < 1) fill_width_px = 1;
-
-            restore_viewport();
-
-            bind_program(ROUNDED_RECT_PROGRAM);
-            color_vec4(rounded_rect_program_layout.uniforms.color, bar_color, opacity);
-            color_vec4(rounded_rect_program_layout.uniforms.background_color, 0, 0.0f);
-
-            float y = (float)ui->full_framebuffer_height - (float)(bar_top + bar_height_px);
-            glUniform4f(rounded_rect_program_layout.uniforms.rect,
-                        (float)bar_left, y,
-                        (float)fill_width_px, (float)bar_height_px);
-
-            float thickness = (float)bar_height_px;
-            glUniform2f(rounded_rect_program_layout.uniforms.params, thickness, (float)bar_radius);
-
-            save_viewport_using_top_left_origin(bar_left, bar_top, fill_width_px, bar_height_px, ui->full_framebuffer_height);
-            draw_quad(true, 0);
-            restore_viewport();
-        } else {
-            // Simple rectangular fill using GL coordinates in the track viewport
-            // fill_fraction maps to [-1, 1] range, left = -1, right = -1 + 2*fill_fraction
-            float fill_right_gl = -1.0f + 2.0f * fill_fraction;
-            bind_program(TINT_PROGRAM);
-            set_color_uniform_with_opacity(bar_color, opacity);
-            glUniform4f(tint_program_layout.uniforms.edges, -1.f, 1.f, fill_right_gl, -1.f);
-            draw_quad(true, 0);
-            restore_viewport();
+    // Draw fill or indeterminate handle
+    if (is_indeterminate) {
+        // Animate a handle bouncing back and forth like a scrollbar thumb
+        const float handle_size = 0.15f;  // 15% of track length
+        const monotonic_t cycle = s_double_to_monotonic_t(2.0);  // 2 second full cycle (forth and back)
+        monotonic_t elapsed = screen->progress_indeterminate_anim_at > 0 ? monotonic() - screen->progress_indeterminate_anim_at : 0;
+        double t = (double)(elapsed % cycle) / (double)cycle;  // 0..1 over one cycle
+        // Triangle wave: goes 0→1→0 over one cycle
+        float pos_frac = (float)(t < 0.5 ? t * 2.0 : 2.0 - t * 2.0);
+        float handle_start = pos_frac * (1.0f - handle_size);
+        if (opacity > 0.0f) {
+            draw_progress_handle(ui, bar_color, opacity, bar_radius,
+                                 track_left, track_top, track_width, track_height,
+                                 handle_start, handle_size, is_horizontal);
         }
-    } else {
-        restore_viewport();
+    } else if (fill_fraction > 0.0f && opacity > 0.0f) {
+        draw_progress_handle(ui, bar_color, opacity, bar_radius,
+                             track_left, track_top, track_width, track_height,
+                             0.0f, fill_fraction, is_horizontal);
     }
 }
+
 
 
 static void

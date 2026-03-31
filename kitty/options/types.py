@@ -28,6 +28,7 @@ choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none'
 choices_for_palette_generate = typing.Literal['fixed', 'semantic', 'legacy']
 choices_for_placement_strategy = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
+choices_for_progress_bar = typing.Literal['left', 'right', 'top', 'bottom', 'hidden']
 choices_for_scrollbar = typing.Literal['scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered']
 choices_for_strip_trailing_spaces = typing.Literal['always', 'never', 'smart']
 choices_for_tab_bar_align = typing.Literal['left', 'center', 'right']
@@ -623,7 +624,7 @@ class Options:
     placement_strategy: choices_for_placement_strategy = 'center'
     pointer_shape_when_dragging: tuple[str, str] = ('beam', 'crosshair')
     pointer_shape_when_grabbed: choices_for_pointer_shape_when_grabbed = 'arrow'
-    progress_bar: bool = True
+    progress_bar: choices_for_progress_bar = 'bottom'
     remember_window_position: bool = False
     remember_window_size: bool = True
     repaint_delay: int = 10

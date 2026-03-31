@@ -436,7 +436,7 @@ convert_from_opts_scrollbar_track_color(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_progress_bar(PyObject *val, Options *opts) {
-    opts->progress_bar = PyObject_IsTrue(val);
+    opts->progress_bar = progress_bar(val);
 }
 
 static void
