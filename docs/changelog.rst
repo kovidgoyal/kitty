@@ -205,6 +205,8 @@ Detailed list of changes
 
 - Fix double click to rename tab being triggered too easily (:iss:`9774`)
 
+- Fix a crash when user tries to select while the client program is using synchronised rendering and generating large amounts of output (:iss:`9778`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

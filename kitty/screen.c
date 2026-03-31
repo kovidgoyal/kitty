@@ -3771,20 +3771,23 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 }
 
 static void
-apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int extra_leading_rows) {
+apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, int extra_leading_rows, int scrolled_by) {
     iteration_data(s, &s->last_rendered, self->columns, -self->historybuf->count, 0);
     Line *line;
-    const int y_min = MAX(-extra_leading_rows - (int)self->scrolled_by, s->last_rendered.y),
-          y_limit = MIN(s->last_rendered.y_limit, (int)self->lines - (int)self->scrolled_by);
+    const int y_min = MAX(-extra_leading_rows - scrolled_by, s->last_rendered.y),
+          y_limit = MIN(s->last_rendered.y_limit, (int)self->lines - scrolled_by);
     for (int y = y_min; y < y_limit; y++) {
         if (self->paused_rendering.expires_at) {
-            linebuf_init_line(self->paused_rendering.linebuf, y);
+            // paused_rendering.linebuf stores only the visible rows captured at pause time
+            const int paused_y = y + scrolled_by;
+            if (paused_y < 0 || paused_y >= (int)self->lines) continue;
+            linebuf_init_line(self->paused_rendering.linebuf, paused_y);
             line = self->paused_rendering.linebuf->line;
         } else {
             line = checked_range_line(self, y);
             if (!line) continue;
         }
-        const int y_in_data = (y + extra_leading_rows + self->scrolled_by);
+        const int y_in_data = (y + extra_leading_rows + scrolled_by);
         uint8_t *line_start = data + self->columns * y_in_data;
         XRange xr = xrange_for_iteration_with_multicells(&s->last_rendered, y, line);
         for (index_type x = xr.x; x < xr.x_limit; x++) {
@@ -3818,14 +3821,15 @@ screen_apply_selection(Screen *self, void *address_, size_t size) {
     uint8_t *address = address_;
     memset(address, 0, size);
     const int offset = pixel_scroll_enabled(self);
+    const unsigned int scrolled_by = self->paused_rendering.expires_at ? self->paused_rendering.scrolled_by : self->scrolled_by;
     Selections *sel = self->paused_rendering.expires_at ? &self->paused_rendering.selections : &self->selections;
-    for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, sel->items + i, 1, offset);
+    for (size_t i = 0; i < sel->count; i++) apply_selection(self, address, sel->items + i, 1, offset, scrolled_by);
     sel->last_rendered_count = sel->count;
     sel = self->paused_rendering.expires_at ? &self->paused_rendering.url_ranges : &self->url_ranges;
     for (size_t i = 0; i < sel->count; i++) {
         Selection *s = sel->items + i;
         if (OPT(underline_hyperlinks) == UNDERLINE_NEVER && s->is_hyperlink) continue;
-        apply_selection(self, address, s, 2, offset);
+        apply_selection(self, address, s, 2, offset, scrolled_by);
     }
     sel->last_rendered_count = sel->count;
     address += offset * self->columns; size -= offset * self->columns;
