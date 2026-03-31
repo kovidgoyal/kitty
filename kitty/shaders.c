@@ -1080,7 +1080,7 @@ draw_scrollbar(const UIRenderData *ui) {
 static bool
 has_progress_bar(Screen *screen) {
     if (OPT(progress_bar) == PROGRESS_BAR_HIDDEN) return false;
-    return screen && screen->progress_state != 0;
+    return screen && screen->progress_state != PROGRESS_STATE_UNSET;
 }
 
 static void
@@ -1089,22 +1089,25 @@ draw_progress_handle(const UIRenderData *ui, color_type bar_color, float opacity
                      float handle_start, float handle_size, bool is_horizontal) {
     // handle_start and handle_size are fractions of the track length (0..1)
     // For horizontal: handle moves left-to-right; For vertical: handle moves top-to-bottom
+    // Use lroundf to avoid sub-pixel jitter at the leading edge
     GLsizei handle_left, handle_top;
     GLsizei handle_w, handle_h;
     if (is_horizontal) {
-        GLsizei handle_w_px = (GLsizei)(handle_size * track_width);
+        GLsizei handle_start_px = (GLsizei)lroundf(handle_start * track_width);
+        GLsizei handle_end_px = (GLsizei)lroundf((handle_start + handle_size) * track_width);
+        GLsizei handle_w_px = handle_end_px - handle_start_px;
         if (handle_w_px < 1) handle_w_px = 1;
-        GLsizei handle_left_px = (GLsizei)(handle_start * track_width);
-        handle_left = track_left + handle_left_px;
+        handle_left = track_left + handle_start_px;
         handle_top = track_top;
         handle_w = handle_w_px;
         handle_h = track_height;
     } else {
-        GLsizei handle_h_px = (GLsizei)(handle_size * track_height);
+        GLsizei handle_start_px = (GLsizei)lroundf(handle_start * track_height);
+        GLsizei handle_end_px = (GLsizei)lroundf((handle_start + handle_size) * track_height);
+        GLsizei handle_h_px = handle_end_px - handle_start_px;
         if (handle_h_px < 1) handle_h_px = 1;
-        GLsizei handle_top_px = (GLsizei)(handle_start * track_height);
         handle_left = track_left;
-        handle_top = track_top + handle_top_px;
+        handle_top = track_top + handle_start_px;
         handle_w = track_width;
         handle_h = handle_h_px;
     }
@@ -1126,9 +1129,12 @@ draw_progress_handle(const UIRenderData *ui, color_type bar_color, float opacity
         draw_quad(true, 0);
         restore_viewport();
     } else {
-        // Use GL coordinates within the track viewport
-        float start_gl = -1.0f + 2.0f * handle_start;
-        float end_gl = -1.0f + 2.0f * (handle_start + handle_size);
+        // Use GL coordinates within the track viewport, snapped to pixel boundaries
+        GLsizei track_len = is_horizontal ? track_width : track_height;
+        float start_snapped = (float)lroundf(handle_start * track_len) / (float)track_len;
+        float end_snapped = (float)lroundf((handle_start + handle_size) * track_len) / (float)track_len;
+        float start_gl = -1.0f + 2.0f * start_snapped;
+        float end_gl = -1.0f + 2.0f * end_snapped;
         bind_program(TINT_PROGRAM);
         set_color_uniform_with_opacity(bar_color, opacity);
         if (is_horizontal) {
@@ -1204,14 +1210,14 @@ draw_progress_bar(const UIRenderData *ui) {
     float fill_fraction = 0.0f;
     bool is_indeterminate = false;
     switch (screen->progress_state) {
-        case 1:  // set
-        case 4:  // paused
+        case PROGRESS_STATE_SET:
+        case PROGRESS_STATE_PAUSED:
             fill_fraction = screen->progress_percent / 100.0f;
             break;
-        case 2:  // error - full fill
+        case PROGRESS_STATE_ERROR:
             fill_fraction = 1.0f;
             break;
-        case 3:  // indeterminate
+        case PROGRESS_STATE_INDETERMINATE:
             is_indeterminate = true;
             break;
         default:

@@ -519,7 +519,7 @@ use the current selection background color. Also, you can use an
 arbitrary color, such as :code:`#12af59` or :code:`red`.
 ''')
 
-opt('progress_bar', 'bottom', ctype='progress_bar', choices=(
+opt('progress_bar', 'top', ctype='progress_bar', choices=(
     'left', 'right', 'top', 'bottom', 'hidden'), long_text='''\
 When a program uses the OSC 9;4 escape sequence to report progress, draw a progress bar
 in the specified position of the window. The bar uses the same track and handle colors and opacity settings

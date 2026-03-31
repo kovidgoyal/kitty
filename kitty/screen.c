@@ -189,7 +189,7 @@ screen_reset(Screen *self) {
     memset(self->main_key_encoding_flags, 0, sizeof(self->main_key_encoding_flags));
     memset(self->alt_key_encoding_flags, 0, sizeof(self->alt_key_encoding_flags));
     self->display_window_char = 0;
-    self->progress_state = 0;
+    self->progress_state = PROGRESS_STATE_UNSET;
     self->progress_percent = 0;
     self->progress_indeterminate_anim_at = 0;
     self->prompt_settings.val = 0;
@@ -4773,15 +4773,15 @@ static PyObject*
 set_progress(Screen *self, PyObject *a) {
     unsigned int state = 0, percent = 0;
     if (!PyArg_ParseTuple(a, "II", &state, &percent)) return NULL;
-    uint8_t new_state = (uint8_t)(state & 0xff);
+    ProgressBarState new_state = (ProgressBarState)(state > PROGRESS_STATE_PAUSED ? PROGRESS_STATE_UNSET : state);
     uint8_t new_percent = (uint8_t)(percent > 100 ? 100 : percent);
     if (self->progress_state != new_state || self->progress_percent != new_percent) {
         self->progress_state = new_state;
         self->progress_percent = new_percent;
         // Start or stop indeterminate animation
-        if (new_state == 3 && self->progress_indeterminate_anim_at == 0) {
+        if (new_state == PROGRESS_STATE_INDETERMINATE && self->progress_indeterminate_anim_at == 0) {
             self->progress_indeterminate_anim_at = monotonic();
-        } else if (new_state != 3) {
+        } else if (new_state != PROGRESS_STATE_INDETERMINATE) {
             self->progress_indeterminate_anim_at = 0;
         }
         self->is_dirty = true;
