@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import inspect
-from typing import NamedTuple, cast
+from typing import NamedTuple
 
 from .boss import Boss
 from .tabs import Tab
@@ -50,7 +50,7 @@ def get_all_actions() -> dict[ActionGroup, list[Action]]:
         short_help = first
         long_help = '\n'.join(lines).strip()
         assert spec.group in groups
-        return Action(getattr(x, '__name__'), cast(ActionGroup, spec.group), short_help, long_help)
+        return Action(getattr(x, '__name__'), spec.group, short_help, long_help)
 
     seen = set()
     for cls in (Window, Tab, Boss):
