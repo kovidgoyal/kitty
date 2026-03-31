@@ -519,25 +519,21 @@ use the current selection background color. Also, you can use an
 arbitrary color, such as :code:`#12af59` or :code:`red`.
 ''')
 
-opt('progress_bar', 'top', ctype='progress_bar', choices=(
-    'left', 'right', 'top', 'bottom', 'hidden'), long_text='''\
+opt('progress_bar', 'top', ctype='progress_bar', choices=('left', 'right', 'top', 'bottom', 'hidden'), long_text='''\
 When a program uses the OSC 9;4 escape sequence to report progress, draw a progress bar
-in the specified position of the window. The bar uses the same track and handle colors and opacity settings
-as the scrollbar (:opt:`scrollbar_track_color`, :opt:`scrollbar_handle_color`,
-:opt:`scrollbar_track_hover_opacity`, :opt:`scrollbar_handle_opacity`,
-:opt:`scrollbar_width`, :opt:`scrollbar_gap`, :opt:`scrollbar_radius`).
-When the progress bar and scrollbar overlap, the progress bar is drawn underneath the scrollbar.
+in the specified position of the window. The bar uses the same style and color settings
+as the scrollbar .
 
 :code:`left`
-    means a vertical progress bar on the left edge.
+    a vertical progress bar on the left edge
 :code:`right`
-    means a vertical progress bar on the right edge.
+    a vertical progress bar on the right edge
 :code:`top`
-    means a horizontal progress bar on the top edge.
+    a horizontal progress bar on the top edge
 :code:`bottom`
-    means a horizontal progress bar on the bottom edge.
+    a horizontal progress bar on the bottom edge
 :code:`hidden`
-    means disable the progress bar.
+    dont show the progress bar
 ''')
 
 opt('scrollback_pager', 'less --chop-long-lines --RAW-CONTROL-CHARS +INPUT_LINE_NUMBER',

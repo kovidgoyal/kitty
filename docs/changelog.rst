@@ -170,8 +170,6 @@ Detailed list of changes
 
 - A new option :opt:`palette_generate` to automatically generate the 256 color palette from the first 16 colors (:pull:`9426`)
 
-- Add a :opt:`progress_bar` option to draw a visual progress bar when a program reports progress using the OSC 9;4 escape sequence. The bar can be positioned on any edge of the window (left, right, top, bottom) and reuses the scrollbar's track and handle colors and opacity settings. In the indeterminate state, a handle animates back and forth (:iss:`9777`)
-
 - For builtin key mappings automatically :ref:`fallback <mapping-fallback>` to matching the US-PC layout key when the pressed key has no matches and is a non-English character (:pull:`9671`)
 
 - Allow drag and drop of windows to re-arrange them, move them to another
@@ -180,6 +178,8 @@ Detailed list of changes
   them around (:pull:`9626`)
 
 - Have :ac:`scroll_line_up` and :ac:`scroll_line_down` smooth scroll by default. Can be restored to old behavior by re-mapping without the ``smooth`` argument (:iss:`9689`)
+
+- Draw a progress bar at the top of the window when a program reports progress using the OSC 9;4 escape sequence, controlled by :opt:`progress_bar` (:iss:`9777`)
 
 - :doc:`Remote control <remote-control>`: Expose :code:`session_name` in the output of ``kitten @ ls`` for each window (:iss:`9732`)
 
