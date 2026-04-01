@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
@@ -21,6 +22,7 @@ func (self *KilledBySignal) Error() string { return self.Msg }
 var Canceled = errors.New("Canceled by user")
 
 const password_symbol = "🔒"
+const blink_interval = 500 * time.Millisecond
 
 func ReadPassword(prompt string, kill_if_signaled bool) (password string, err error) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.FullKeyboardProtocol)
@@ -30,6 +32,7 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 	}
 	capspress_was_locked := false
 	has_caps_lock := false
+	lock_visible := true
 
 	redraw_prompt := func() {
 		lp.QueueWriteString("\r")
@@ -37,12 +40,23 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 		if has_caps_lock {
 			lp.QueueWriteString("\x1b[31m[CapsLock on!]\x1b[39m ")
 		}
-		lp.QueueWriteString(prompt + shadow + password_symbol)
+		symbol := password_symbol
+		if !lock_visible {
+			symbol = strings.Repeat(" ", wcswidth.Stringwidth(password_symbol))
+		}
+		lp.QueueWriteString(prompt + shadow + symbol)
 	}
 
 	lp.OnInitialize = func() (string, error) {
 		lp.SetCursorVisible(false)
-		lp.QueueWriteString(prompt + password_symbol)
+		redraw_prompt()
+		if _, err := lp.AddTimer(blink_interval, true, func(loop.IdType) error {
+			lock_visible = !lock_visible
+			redraw_prompt()
+			return nil
+		}); err != nil {
+			return "", err
+		}
 		return "", nil
 	}
 
