@@ -633,10 +633,14 @@ class TestDnDProtocol(BaseTest):
             bc_content = bytes(range(256)) * 20  # binary data
             bde_content = b'deep nested file\n'
 
-            (open(os.path.join(root, 'a.txt'), 'wb')).write(a_content)
+            def w(data, *a):
+                with open(os.path.join(root, *a), 'wb') as f:
+                    f.write(data)
+
+            w(a_content, 'a.txt')
             os.makedirs(os.path.join(root, 'b', 'd'))
-            (open(os.path.join(root, 'b', 'c.txt'), 'wb')).write(bc_content)
-            (open(os.path.join(root, 'b', 'd', 'e.txt'), 'wb')).write(bde_content)
+            w(bc_content, 'b', 'c.txt')
+            w(bde_content, 'b', 'd', 'e.txt')
 
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
