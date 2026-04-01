@@ -522,9 +522,10 @@ drop_send_file_data(Window *w, const char *path) {
             case EACCES: case EPERM:   drop_send_error(w, EPERM); break;
             default:                   drop_send_error(w, EIO); break;
         }
+        safe_close(fd, __FILE__, __LINE__);
         return;
     }
-    if (!S_ISREG(st.st_mode)) { drop_send_error(w, EINVAL); return; }
+    if (!S_ISREG(st.st_mode)) { drop_send_error(w, EINVAL); safe_close(fd, __FILE__, __LINE__); return; }
 
     size_t data_sz = (size_t)st.st_size;
     char *data = NULL;
