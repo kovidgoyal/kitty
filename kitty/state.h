@@ -225,6 +225,13 @@ typedef struct PendingData {
     PendingEntry *items; size_t count, capacity;
 } PendingData;
 
+typedef struct DirHandle {
+    char *path;           /* absolute path of the directory (malloc'd) */
+    char **entries;       /* array of entry names (each malloc'd) */
+    size_t num_entries;
+    uint32_t id;          /* handle id, 1-based; 0 = invalid */
+} DirHandle;
+
 typedef struct Window {
     id_type id;
     bool visible;
@@ -269,6 +276,9 @@ typedef struct Window {
         char *accepted_mimes; size_t accepted_mimes_sz;
         int accepted_operation; bool accept_in_progress;
         char *getting_data_for_mime;
+
+        DirHandle *dir_handles; size_t num_dir_handles, dir_handles_capacity;
+        uint32_t next_dir_handle_id;
     } drop;
 } Window;
 

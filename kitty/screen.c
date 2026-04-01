@@ -1529,6 +1529,18 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
                 drop_request_data(w, buf);
             }
         } break;
+        case 's': {
+            if (cmd->payload_sz)
+                drop_request_uri_data(w, (const char*)payload, cmd->payload_sz);
+            else
+                drop_send_einval(w);
+        } break;
+        case 'd': {
+            if (cmd->cell_x > 0)
+                drop_handle_dir_request(w, (uint32_t)cmd->cell_x, cmd->cell_y);
+            else
+                drop_send_einval(w);
+        } break;
     }
 }
 
