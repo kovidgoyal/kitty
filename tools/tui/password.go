@@ -20,6 +20,8 @@ func (self *KilledBySignal) Error() string { return self.Msg }
 
 var Canceled = errors.New("Canceled by user")
 
+const password_symbol = "🔒"
+
 func ReadPassword(prompt string, kill_if_signaled bool) (password string, err error) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.FullKeyboardProtocol)
 	shadow := ""
@@ -30,22 +32,22 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 	has_caps_lock := false
 
 	redraw_prompt := func() {
-		text := prompt + shadow
 		lp.QueueWriteString("\r")
 		lp.ClearToEndOfLine()
 		if has_caps_lock {
 			lp.QueueWriteString("\x1b[31m[CapsLock on!]\x1b[39m ")
 		}
-		lp.QueueWriteString(text)
+		lp.QueueWriteString(prompt + shadow + password_symbol)
 	}
 
 	lp.OnInitialize = func() (string, error) {
-		lp.QueueWriteString(prompt)
-		lp.SetCursorShape(loop.BAR_CURSOR, true)
+		lp.SetCursorVisible(false)
+		lp.QueueWriteString(prompt + password_symbol)
 		return "", nil
 	}
 
 	lp.OnFinalize = func() string {
+		lp.SetCursorVisible(true)
 		lp.SetCursorShape(loop.BLOCK_CURSOR, true)
 		return "\r\n"
 	}
@@ -55,10 +57,9 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 		password += text
 		new_width := wcswidth.Stringwidth(password)
 		if new_width > old_width {
-			extra := strings.Repeat("*", new_width-old_width)
-			lp.QueueWriteString(extra)
-			shadow += extra
+			shadow += strings.Repeat("*", new_width-old_width)
 		}
+		redraw_prompt()
 		return nil
 	}
 
@@ -91,8 +92,8 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 						delta = len(shadow)
 					}
 					shadow = shadow[:len(shadow)-delta]
-					lp.QueueWriteString(strings.Repeat("\x08\x1b[P", delta))
 				}
+				redraw_prompt()
 			} else {
 				lp.Beep()
 			}
