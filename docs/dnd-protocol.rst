@@ -128,10 +128,13 @@ send an escape code of the form::
 That is, it must send a request for data with no MIME type specified. The
 terminal emulator must then inform the OS that the drop is completed.
 
+Dropping from remote machines
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 In order to support dropping of files from remote machines or to remote
-machines, clients can first request the text/uri-list MIME type to get a list
-of dropped URIs. For every ``file://`` URI they can send the terminal emulator
-a data request of the form::
+machines, clients can first request the :rfc:`text/uri-list <2483>` MIME
+type to get a list of dropped URIs. For every URI in the list, they can
+send the terminal emulator a data request of the form::
 
     OSC _dnd_code ; t=s ; text/uri-list:idx ST
 
@@ -142,18 +145,20 @@ transmit the data as for a normal MIME data request.
 Terminals must reply with ``t=R ; ENOENT`` if the index is out of bounds.
 If the client does not first request the ``text/uri-list`` MIME type or that
 MIME type is not present in the drop, the terminal must reply with
-``t=R ; EINVAL``. Similarly if the client requests an entry that is not a
-``file://`` URI the terminal must reply with ``EUNKNOWN``.
+``t=R ; EINVAL``. Terminals must support at least ``file://`` URIs.
+If the client requests an entry that is not a supported URI type the
+terminal must reply with ``t=R ; EUNKNOWN``.
 
 Terminals must ONLY send data for regular files. Symbolic links must be
 resolved and the corresponding file read. If the terminal does not have
 permission to read the file it must reply with ``t=R ; EPERM``. Terminals
 must respond with ``t=R ; EINVAL`` if the file is not a regular file after
-resolving symlinks and ``t=R ; ENOENT`` if the file does not exist.
+resolving symlinks and ``t=R ; ENOENT`` if the file does not exist. If an
+I/O error occurs the terminal must send ``t=R ; EIO``.
 
 
-Dropping directories
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Reading remote directories
++++++++++++++++++++++++++++
 
 If the file is actually a directory the terminal must respond with ``t=d:x=idx ; payload``.
 Here payload is a null byte separated list of entries in the directory that are
@@ -162,7 +167,8 @@ encoded and might be chunked if the directory has a lot of entries. The first
 entry in the list must be a unique identifier for the directory, to prevent
 symlink loops. Terminals may use whatever identifier is most suitable for their platforms, clients should
 not re-request the contents of a directory whose identifier they have seen
-before.
+before. On POSIX platforms the identifier would typically be device and inode
+number.
 
 ``idx`` is an arbitrary 32 bit integer that acts as a handle to this
 directory. The client can now read the files in this directory using requests of the form
@@ -194,6 +200,7 @@ Key      Value                 Default    Description
                                           ``M`` - a drop dropped event
                                           ``r`` - request dropped data
                                           ``R`` - report an error while retrieving data
+                                          ``s`` - request data from the URI list entry
                                           ``d`` - send directory contents
 
 ``m``    Chunking indicator    ``0``      ``0`` or ``i``

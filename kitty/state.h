@@ -261,6 +261,7 @@ typedef struct Window {
         bool wanted, hovered, dropped;
         uint32_t client_id;
         char *registered_mimes;
+        char *uri_list; size_t uri_list_sz;
         PendingData pending;
 
         const char **offerred_mimes; size_t num_offerred_mimes, offered_mimes_total_size;

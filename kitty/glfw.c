@@ -857,7 +857,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
                     if (w->drop.getting_data_for_mime && strcmp(w->drop.getting_data_for_mime, ev->mimes[0]) == 0) {
                         char buf[3072];
                         ssize_t ret = ev->read_data(window, ev, buf, sizeof(buf));
-                        drop_dispatch_data(w, buf, ret);
+                        drop_dispatch_data(w, ev->mimes[0], buf, ret);
                         if (ret < 0) ev->finish_drop(window, GLFW_DRAG_OPERATION_GENERIC);
                     }
                 }

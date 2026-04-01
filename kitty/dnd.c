@@ -41,6 +41,7 @@ drop_free_data(Window *w) {
     drop_free_accepted_mimes(w);
     free_pending(&w->drop.pending);
     free(w->drop.registered_mimes); w->drop.registered_mimes = NULL;
+    free(w->drop.uri_list); w->drop.uri_list = NULL;
     free(w->drop.getting_data_for_mime); w->drop.getting_data_for_mime = NULL;
 }
 
@@ -330,12 +331,18 @@ drop_request_data(Window *w, const char *mime) {
 }
 
 void
-drop_dispatch_data(Window *w, const char *data, ssize_t sz) {
+drop_dispatch_data(Window *w, const char *mime, const char *data, ssize_t sz) {
     if (sz < 0) drop_send_error(w, -sz);
     else {
         char buf[128];
         int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=r", DND_CODE);
         queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, sz ? data : NULL, sz, true);
+        if (strcmp(mime, "text/uri-list") == 0) {
+            w->drop.uri_list_sz += sz;
+            w->drop.uri_list = realloc(w->drop.uri_list, w->drop.uri_list_sz);
+            if (w->drop.uri_list) memcpy(w->drop.uri_list + w->drop.uri_list_sz - sz, data, sz);
+            else w->drop.uri_list_sz = 0;
+        }
     }
 }
 
