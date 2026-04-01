@@ -217,6 +217,8 @@ Detailed list of changes
 
 - Password input in kittens: hide the cursor and display 🔒 (U+1F512) at the end of typed characters to make it visually clear the user is entering a password
 
+- DnD: Send file contents in 3 KiB chunks rather than reading the entire file into memory, preventing excessive memory use when transferring large files
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

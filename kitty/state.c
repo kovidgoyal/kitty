@@ -307,6 +307,7 @@ initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
     else {
         w->render_data.vao_idx = -1;
     }
+    w->drop.file_fd = -1;
 }
 
 static id_type

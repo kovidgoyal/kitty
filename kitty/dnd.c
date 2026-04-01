@@ -71,8 +71,21 @@ drop_free_dir_handles(Window *w) {
     w->drop.next_dir_handle_id = 0;
 }
 
+static void
+drop_close_file_fd(Window *w) {
+    if (w->drop.file_fd >= 0) {
+        safe_close(w->drop.file_fd, __FILE__, __LINE__);
+        w->drop.file_fd = -1;
+    }
+    if (w->drop.file_send_timer) {
+        remove_main_loop_timer(w->drop.file_send_timer);
+        w->drop.file_send_timer = 0;
+    }
+}
+
 void
 drop_free_data(Window *w) {
+    drop_close_file_fd(w);
     drop_free_offered_mimes(w);
     drop_free_accepted_mimes(w);
     free_pending(&w->drop.pending);
@@ -87,6 +100,7 @@ reset_drop(Window *w) {
     bool wanted = w->drop.wanted; uint32_t cid = w->drop.client_id;
     drop_free_data(w);
     zero_at_ptr(&w->drop);
+    w->drop.file_fd = -1;
     if (wanted) {
         w->drop.wanted = wanted;
         w->drop.client_id = cid;
@@ -97,7 +111,7 @@ void
 drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id, bool more) {
     w->drop.wanted = on;
     w->drop.client_id = client_id;
-    if (!on) { drop_free_data(w); zero_at_ptr(&w->drop); return; }
+    if (!on) { drop_free_data(w); zero_at_ptr(&w->drop); w->drop.file_fd = -1; return; }
     if (!payload || !payload_sz) return;
     size_t sz = w->drop.registered_mimes ? strlen(w->drop.registered_mimes) : 0;
     if (sz + payload_sz > 1024 * 1024) return;
@@ -502,10 +516,71 @@ drop_send_error_str(Window *w, const char *err_name) {
     queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, err_name, strlen(err_name), false);
 }
 
-/* Read a regular file and send its contents as t=r chunks followed by an
- * empty end-of-data t=r. */
+/* Size of each file read chunk; fits in one base64 sub-chunk (≤4096 chars). */
+#define FILE_CHUNK_SIZE 3072
+/* Abort file transfer if no data has been sent to the child for this long. */
+#define FILE_SEND_TIMEOUT_SECONDS 90
+
+static void drop_send_file_chunks(Window *w);
+
+static void
+file_send_timer_callback(id_type timer_id UNUSED, void *x) {
+    id_type id = (uintptr_t)x;
+    Window *w = window_for_window_id(id);
+    if (!w || w->drop.file_fd < 0) return;
+    w->drop.file_send_timer = 0;
+    if (monotonic() - w->drop.last_file_send_at > s_to_monotonic_t(FILE_SEND_TIMEOUT_SECONDS)) {
+        drop_close_file_fd(w);
+        drop_send_error(w, EIO);
+        return;
+    }
+    drop_send_file_chunks(w);
+}
+
+static void
+drop_send_file_chunks(Window *w) {
+    if (!flush_pending(w->id, &w->drop.pending)) {
+        w->drop.file_send_timer = add_main_loop_timer(ms_to_monotonic_t(20), false, file_send_timer_callback, (void*)(uintptr_t)w->id, NULL);
+        return;
+    }
+    char hdr[128];
+    int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r", DND_CODE);
+    while (1) {
+        char buf[FILE_CHUNK_SIZE];
+        ssize_t n;
+        do { n = read(w->drop.file_fd, buf, sizeof(buf)); } while (n < 0 && errno == EINTR);
+        if (n < 0) {
+            drop_close_file_fd(w);
+            drop_send_error(w, EIO);
+            return;
+        }
+        if (n == 0) {
+            /* EOF: close fd and send the empty end-of-data signal */
+            drop_close_file_fd(w);
+            queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
+            return;
+        }
+        size_t sent = send_payload_to_child(w->id, w->drop.client_id, hdr, hdr_sz, buf, (size_t)n, true);
+        if (sent > 0) w->drop.last_file_send_at = monotonic();
+        if (sent < (size_t)n) {
+            /* Partial send: rewind file pointer and retry via timer */
+            if (lseek(w->drop.file_fd, -(off_t)(((size_t)n) - sent), SEEK_CUR) < 0) {
+                drop_close_file_fd(w);
+                drop_send_error(w, EIO);
+                return;
+            }
+            w->drop.file_send_timer = add_main_loop_timer(ms_to_monotonic_t(20), false, file_send_timer_callback, (void*)(uintptr_t)w->id, NULL);
+            return;
+        }
+        /* Full chunk sent: loop and read next chunk */
+    }
+}
+
+/* Open a regular file and begin sending its contents as t=r chunks followed
+ * by an empty end-of-data t=r, using chunked I/O to avoid large allocations. */
 static void
 drop_send_file_data(Window *w, const char *path) {
+    drop_close_file_fd(w);
     int fd = safe_open(path, O_RDONLY | O_CLOEXEC, 0);
     if (fd < 0) {
         switch (errno) {
@@ -526,33 +601,9 @@ drop_send_file_data(Window *w, const char *path) {
         return;
     }
     if (!S_ISREG(st.st_mode)) { drop_send_error(w, EINVAL); safe_close(fd, __FILE__, __LINE__); return; }
-
-    size_t data_sz = (size_t)st.st_size;
-    char *data = NULL;
-    if (data_sz) {
-        data = malloc(data_sz);
-        if (!data) { safe_close(fd, __FILE__, __LINE__); drop_send_error(w, EIO); return; }
-        size_t done = 0;
-        while (done < data_sz) {
-            ssize_t n = read(fd, data + done, data_sz - done);
-            if (n < 0) {
-                if (errno == EINTR) continue;
-                free(data); safe_close(fd, __FILE__, __LINE__); drop_send_error(w, EIO); return;
-            }
-            if (n == 0) break;
-            done += (size_t)n;
-        }
-        data_sz = done;
-    }
-    safe_close(fd, __FILE__, __LINE__);
-
-    char hdr[128];
-    int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r", DND_CODE);
-    if (data_sz)
-        queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, data, data_sz, true);
-    free(data);
-    /* end-of-data signal */
-    queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
+    w->drop.file_fd = fd;
+    w->drop.last_file_send_at = monotonic();
+    drop_send_file_chunks(w);
 }
 
 /* Allocate a new DirHandle for the given path and entries (takes ownership of

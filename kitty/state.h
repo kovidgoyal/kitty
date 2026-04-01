@@ -279,6 +279,10 @@ typedef struct Window {
 
         DirHandle *dir_handles; size_t num_dir_handles, dir_handles_capacity;
         uint32_t next_dir_handle_id;
+
+        int file_fd;                    /* open file descriptor for chunked file send, -1 when none */
+        monotonic_t last_file_send_at;  /* time of last successful file chunk write */
+        id_type file_send_timer;        /* pending file-send retry timer, 0 = none */
     } drop;
 } Window;
 
