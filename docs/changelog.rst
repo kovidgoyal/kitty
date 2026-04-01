@@ -213,7 +213,7 @@ Detailed list of changes
 
 - macOS: Add Copy and Paste menu items to the Edit menu in the global menu bar (:iss:`9780`)
 
-- Fix dragging of splits layout borders sometimes moving in the wrong direction (:pull:`9447`)
+- Fix dragging of splits layout borders sometimes moving in the wrong direction or having no effect (:pull:`9447`)
 
 - Password input in kittens: hide the cursor and display 🔒 (U+1F512) at the end of typed characters to make it visually clear the user is entering a password
 

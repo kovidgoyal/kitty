@@ -880,12 +880,7 @@ class Splits(Layout):
         p = pair
         def size_increases_forwards(p: Pair) -> bool:
             in_leading_half = not p.is_group_on_second(wg.id)
-            if p is pair:
-                return is_leading_edge != in_leading_half
-            parent = pair_parent_map.get(p) or Pair()
-            if parent.horizontal != p.horizontal and is_leading_edge:
-                return True
-            return not in_leading_half
+            return is_leading_edge != in_leading_half
 
         def ancestor_with_neighboring_border_of_same_orientation(p: Pair) -> Pair | None:
             horizontal = bool(edges & (LEFT_EDGE | RIGHT_EDGE))
@@ -908,11 +903,21 @@ class Splits(Layout):
             if p.is_redundant:
                 continue
             if ans.horizontal_id is None and p.horizontal:
-                p, fwd = pair_or_parent(p)
-                ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=fwd)
+                new_p, fwd = pair_or_parent(p)
+                p = new_p
+                if not p.horizontal and ans.vertical_id is None:
+                    # pair_or_parent redirected to a vertical pair; use it for vertical resize
+                    ans = ans._replace(vertical_id=id(p), height_increases_downwards=fwd)
+                else:
+                    ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=fwd)
             if ans.vertical_id is None and not p.horizontal:
-                p, fwd = pair_or_parent(p)
-                ans = ans._replace(vertical_id=id(p), height_increases_downwards=fwd)
+                new_p, fwd = pair_or_parent(p)
+                p = new_p
+                if p.horizontal and ans.horizontal_id is None:
+                    # pair_or_parent redirected to a horizontal pair; use it for horizontal resize
+                    ans = ans._replace(horizontal_id=id(p), width_increases_rightwards=fwd)
+                else:
+                    ans = ans._replace(vertical_id=id(p), height_increases_downwards=fwd)
             if (parent := pair_parent_map.get(p)) is None:
                 break
             p = parent
