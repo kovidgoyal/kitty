@@ -10,6 +10,16 @@
 #include "control-codes.h"
 #include "iqsort.h"
 
+// In test mode, this callable is invoked instead of schedule_write_to_child_if_possible.
+// It receives (window_id: int, data: bytes) and its return value is ignored.
+static PyObject *g_dnd_test_write_func = NULL;
+
+void
+dnd_set_test_write_func(PyObject *func) {
+    Py_XDECREF(g_dnd_test_write_func);
+    g_dnd_test_write_func = Py_XNewRef(func);
+}
+
 static void
 drop_free_offered_mimes(Window *w) {
     if (w->drop.offerred_mimes) {
@@ -100,6 +110,16 @@ string_arrays_cmp(const char **a, size_t an, const char **b, size_t bn) {
     return 0;
 }
 
+static bool
+test_write_chunk(id_type id, const char *buf, size_t sz) {
+    // In test mode, deliver the chunk to the registered Python callable.
+    // Returns true when the test interceptor consumed the data (no real write needed).
+    if (!g_dnd_test_write_func) return false;
+    RAII_PyObject(ret, PyObject_CallFunction(g_dnd_test_write_func, "Ky#", (unsigned long long)id, buf, (Py_ssize_t)sz));
+    if (!ret) PyErr_Print();
+    return true;
+}
+
 static size_t
 send_payload_to_child(id_type id, uint32_t client_id, const char *header, size_t header_sz, const char *data, const size_t data_sz, bool as_base64) {
     size_t offset = 0;
@@ -108,9 +128,11 @@ send_payload_to_child(id_type id, uint32_t client_id, const char *header, size_t
     if (client_id) header_sz += snprintf(buf + header_sz, sizeof(buf) - header_sz, ":i=%u", (unsigned)client_id);
     if (!data_sz) {
         buf[header_sz++] = 0x1b; buf[header_sz++] = '\\';
-        bool found, too_much_data;
-        schedule_write_to_child_if_possible(id, buf, header_sz, &found, &too_much_data);
-        if (too_much_data) return 0;
+        if (!test_write_chunk(id, buf, header_sz)) {
+            bool found, too_much_data;
+            schedule_write_to_child_if_possible(id, buf, header_sz, &found, &too_much_data);
+            if (too_much_data) return 0;
+        }
         return 1;
     }
     buf[header_sz++] = ':'; buf[header_sz++] = 'm'; buf[header_sz++] = '=';
@@ -130,10 +152,12 @@ send_payload_to_child(id_type id, uint32_t client_id, const char *header, size_t
             p += chunk;
         }
         buf[p++] = 0x1b; buf[p++] = '\\';
-        bool found, too_much_data;
-        schedule_write_to_child_if_possible(id, buf, p, &found, &too_much_data);
-        if (too_much_data) break;
-        if (!found) return data_sz;
+        if (!test_write_chunk(id, buf, p)) {
+            bool found, too_much_data;
+            schedule_write_to_child_if_possible(id, buf, p, &found, &too_much_data);
+            if (too_much_data) break;
+            if (!found) return data_sz;
+        }
         offset += chunk;
     }
     return offset;
