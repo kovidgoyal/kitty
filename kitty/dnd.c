@@ -506,17 +506,6 @@ drop_send_error_str(Window *w, const char *err_name) {
  * empty end-of-data t=r. */
 static void
 drop_send_file_data(Window *w, const char *path) {
-    struct stat st;
-    if (stat(path, &st) < 0) {
-        switch (errno) {
-            case ENOENT: case ENOTDIR: drop_send_error(w, ENOENT); break;
-            case EACCES: case EPERM:   drop_send_error(w, EPERM); break;
-            default:                   drop_send_error(w, EIO); break;
-        }
-        return;
-    }
-    if (!S_ISREG(st.st_mode)) { drop_send_error(w, EINVAL); return; }
-
     int fd = safe_open(path, O_RDONLY | O_CLOEXEC, 0);
     if (fd < 0) {
         switch (errno) {
@@ -526,6 +515,16 @@ drop_send_file_data(Window *w, const char *path) {
         }
         return;
     }
+    struct stat st;
+    if (fstat(fd, &st) < 0) {
+        switch (errno) {
+            case ENOENT: case ENOTDIR: drop_send_error(w, ENOENT); break;
+            case EACCES: case EPERM:   drop_send_error(w, EPERM); break;
+            default:                   drop_send_error(w, EIO); break;
+        }
+        return;
+    }
+    if (!S_ISREG(st.st_mode)) { drop_send_error(w, EINVAL); return; }
 
     size_t data_sz = (size_t)st.st_size;
     char *data = NULL;
