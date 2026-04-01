@@ -8,6 +8,7 @@
 #include "dnd.h"
 #include "base64.h"
 #include "control-codes.h"
+#include "safe-wrappers.h"
 #include "iqsort.h"
 #include <dirent.h>
 #include <fcntl.h>
@@ -516,7 +517,7 @@ drop_send_file_data(Window *w, const char *path) {
     }
     if (!S_ISREG(st.st_mode)) { drop_send_error(w, EINVAL); return; }
 
-    int fd = open(path, O_RDONLY | O_CLOEXEC);
+    int fd = safe_open(path, O_RDONLY | O_CLOEXEC, 0);
     if (fd < 0) {
         switch (errno) {
             case ENOENT: case ENOTDIR: drop_send_error(w, ENOENT); break;
@@ -530,20 +531,20 @@ drop_send_file_data(Window *w, const char *path) {
     char *data = NULL;
     if (data_sz) {
         data = malloc(data_sz);
-        if (!data) { close(fd); drop_send_error(w, EIO); return; }
+        if (!data) { safe_close(fd, __FILE__, __LINE__); drop_send_error(w, EIO); return; }
         size_t done = 0;
         while (done < data_sz) {
             ssize_t n = read(fd, data + done, data_sz - done);
             if (n < 0) {
                 if (errno == EINTR) continue;
-                free(data); close(fd); drop_send_error(w, EIO); return;
+                free(data); safe_close(fd, __FILE__, __LINE__); drop_send_error(w, EIO); return;
             }
             if (n == 0) break;
             done += (size_t)n;
         }
         data_sz = done;
     }
-    close(fd);
+    safe_close(fd, __FILE__, __LINE__);
 
     char hdr[128];
     int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r", DND_CODE);

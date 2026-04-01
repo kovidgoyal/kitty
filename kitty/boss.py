@@ -3716,28 +3716,3 @@ class Boss:
     def copy_or_noop(self) -> None:
         if w := self.active_window:
             w.copy_or_noop()
-
-    def nth_decoded_file_url(self, n: int, text_uri_list: bytes) -> tuple[bool, str]:
-        ' Return the abspath of the nth url in text_uri_list if it is a valid file:// URL. Appropriate error code returned otherwise '
-        from urllib.parse import unquote, urlparse
-        for line in text_uri_list.decode().splitlines():
-            if line.startswith('#'):
-                continue
-            if n <= 0:
-                break
-            n -= 1
-        else:
-            return False, 'ENOENT'
-        try:
-            purl = urlparse(line.strip())
-            if purl.scheme != 'file':
-                return False, 'EUNKNOWN'
-            if not purl.path:
-                return False, 'EINVAL'
-            path = unquote(purl.path)
-            if not os.path.isabs(path):
-                return False, 'EINVAL'
-            path = os.path.abspath(os.path.realpath(path))
-            return True, path
-        except Exception:
-            return False, 'EINVAL'

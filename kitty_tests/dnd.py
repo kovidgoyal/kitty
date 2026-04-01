@@ -514,7 +514,8 @@ class TestDnDProtocol(BaseTest):
 
     def test_uri_file_transfer_basic(self) -> None:
         """t=s request sends the content of a regular file as t=r chunks."""
-        import os, tempfile
+        import os
+        import tempfile
         content = b'Hello, remote DnD world!\n' * 100
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(content)
@@ -537,7 +538,8 @@ class TestDnDProtocol(BaseTest):
 
     def test_uri_file_transfer_integrity(self) -> None:
         """File content is transferred byte-for-byte (binary integrity)."""
-        import os, tempfile
+        import os
+        import tempfile
         # Use binary content with all byte values to check integrity
         content = bytes(range(256)) * 512  # 128 KiB
         with tempfile.NamedTemporaryFile(delete=False) as f:
@@ -571,7 +573,8 @@ class TestDnDProtocol(BaseTest):
 
     def test_uri_file_transfer_out_of_bounds(self) -> None:
         """t=s with an index beyond the URI list returns ENOENT."""
-        import os, tempfile
+        import os
+        import tempfile
         with tempfile.NamedTemporaryFile(delete=False) as f:
             fpath = f.name
         try:
@@ -588,7 +591,8 @@ class TestDnDProtocol(BaseTest):
 
     def test_uri_request_without_uri_list_returns_einval(self) -> None:
         """t=s without prior text/uri-list request returns EINVAL."""
-        import os, tempfile
+        import os
+        import tempfile
         with tempfile.NamedTemporaryFile(delete=False) as f:
             fpath = f.name
         try:
@@ -619,7 +623,9 @@ class TestDnDProtocol(BaseTest):
 
     def test_uri_directory_transfer_tree(self) -> None:
         """Full directory tree transfer: listing, sub-dirs, file integrity."""
-        import os, tempfile, hashlib
+        import hashlib
+        import os
+        import tempfile
 
         # Build a tree: root/ a.txt  b/  b/c.txt  b/d/  b/d/e.txt
         with tempfile.TemporaryDirectory() as root:
@@ -739,7 +745,8 @@ class TestDnDProtocol(BaseTest):
 
     def test_dir_handle_close_and_reuse(self) -> None:
         """Closing a directory handle invalidates it; subsequent requests return EINVAL."""
-        import os, tempfile
+        import os
+        import tempfile
         with tempfile.TemporaryDirectory() as root:
             open(os.path.join(root, 'f.txt'), 'w').close()
             uri_list = f'file://{root}\r\n'.encode()
@@ -765,7 +772,8 @@ class TestDnDProtocol(BaseTest):
 
     def test_dir_entry_out_of_bounds_returns_enoent(self) -> None:
         """Reading a directory entry with an out-of-range index returns ENOENT."""
-        import os, tempfile
+        import os
+        import tempfile
         with tempfile.TemporaryDirectory() as root:
             open(os.path.join(root, 'only.txt'), 'w').close()
             uri_list = f'file://{root}\r\n'.encode()
@@ -786,7 +794,8 @@ class TestDnDProtocol(BaseTest):
 
     def test_dir_unique_identifier_prevents_loops(self) -> None:
         """Each directory listing starts with a unique id (dev:inode format)."""
-        import os, tempfile
+        import os
+        import tempfile
         with tempfile.TemporaryDirectory() as root:
             sub = os.path.join(root, 'sub')
             os.mkdir(sub)
@@ -822,7 +831,8 @@ class TestDnDProtocol(BaseTest):
 
     def test_window_close_during_transfer_no_leak(self) -> None:
         """Closing the window while dir handles are open frees all resources (no crash)."""
-        import os, tempfile
+        import os
+        import tempfile
         with tempfile.TemporaryDirectory() as root:
             open(os.path.join(root, 'f.txt'), 'w').close()
             uri_list = f'file://{root}\r\n'.encode()
