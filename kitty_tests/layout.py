@@ -2,7 +2,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 from kitty.config import defaults
-from kitty.fast_data_types import Region
+from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
 from kitty.layout.base import lgd
 from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
 from kitty.layout.splits import Pair
@@ -324,3 +324,208 @@ class TestLayout(BaseTest):
         result = q.layout_action('maximize', ('horizontal',), all_windows)
         self.assertTrue(result)
         self.ae(root.bias, root_bias_before)
+
+    def test_drag_resize_target_windows(self):
+        # Helper: call drag_resize_target_windows with given window and edge flags.
+        def drtw(q, all_windows, window, edges):
+            return q.drag_resize_target_windows(window, 0, 0, edges, all_windows)
+
+        # --- 2-window horizontal split: A | B ---
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        wA = Window(1)
+        q.add_window(all_windows, wA)
+        wB = Window(2)
+        q.add_window(all_windows, wB, location='vsplit')
+        q(all_windows)
+        root = q.pairs_root
+        self.ae(root.horizontal, True)
+        root_id = id(root)
+
+        # Right edge of A (left of divider): divider belongs to root, A is on one-side
+        d = drtw(q, all_windows, wA, RIGHT_EDGE)
+        self.ae(d.horizontal_id, root_id)
+        self.ae(d.width_increases_rightwards, True)
+
+        # Left edge of B (right of divider): same divider, same direction
+        d = drtw(q, all_windows, wB, LEFT_EDGE)
+        self.ae(d.horizontal_id, root_id)
+        self.ae(d.width_increases_rightwards, True)
+
+        # Right edge of B (outer border): direction reversed
+        d = drtw(q, all_windows, wB, RIGHT_EDGE)
+        self.ae(d.horizontal_id, root_id)
+        self.ae(d.width_increases_rightwards, False)
+
+        # --- 2-window vertical split: A / B ---
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        wA = Window(1)
+        q.add_window(all_windows, wA)
+        wB = Window(2)
+        q.add_window(all_windows, wB, location='hsplit')
+        q(all_windows)
+        root = q.pairs_root
+        self.ae(root.horizontal, False)
+        root_id = id(root)
+
+        # Bottom edge of A: divider belongs to root, A is in one-side
+        d = drtw(q, all_windows, wA, BOTTOM_EDGE)
+        self.ae(d.vertical_id, root_id)
+        self.ae(d.height_increases_downwards, True)
+
+        # Top edge of B: same divider
+        d = drtw(q, all_windows, wB, TOP_EDGE)
+        self.ae(d.vertical_id, root_id)
+        self.ae(d.height_increases_downwards, True)
+
+        # Bottom edge of B (outer border): direction reversed
+        d = drtw(q, all_windows, wB, BOTTOM_EDGE)
+        self.ae(d.vertical_id, root_id)
+        self.ae(d.height_increases_downwards, False)
+
+        # --- 3-window layout: top_pair(A | B) / C ---
+        # root(vertical) -> one: top_pair(horizontal, one=A, two=B), two: C
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        wA = Window(1)
+        q.add_window(all_windows, wA)
+        wC = Window(3)
+        q.add_window(all_windows, wC, location='hsplit')  # C below A (vertical root)
+        all_windows.set_active_window_group_for(wA)
+        wB = Window(2)
+        q.add_window(all_windows, wB, location='vsplit')  # B right of A (horizontal top_pair)
+        q(all_windows)
+        root = q.pairs_root
+        self.ae(root.horizontal, False)
+        top_pair = root.one
+        self.assertIsInstance(top_pair, Pair)
+        self.ae(top_pair.horizontal, True)
+        root_id = id(root)
+        top_pair_id = id(top_pair)
+
+        # Divider between A and B: belongs to top_pair
+        d = drtw(q, all_windows, wA, RIGHT_EDGE)
+        self.ae(d.horizontal_id, top_pair_id)
+        self.ae(d.width_increases_rightwards, True)
+
+        d = drtw(q, all_windows, wB, LEFT_EDGE)
+        self.ae(d.horizontal_id, top_pair_id)
+        self.ae(d.width_increases_rightwards, True)
+
+        # Divider between top_pair and C: belongs to root
+        d = drtw(q, all_windows, wA, BOTTOM_EDGE)
+        self.ae(d.vertical_id, root_id)
+        self.ae(d.height_increases_downwards, True)
+
+        d = drtw(q, all_windows, wB, BOTTOM_EDGE)
+        self.ae(d.vertical_id, root_id)
+        self.ae(d.height_increases_downwards, True)
+
+        d = drtw(q, all_windows, wC, TOP_EDGE)
+        self.ae(d.vertical_id, root_id)
+        self.ae(d.height_increases_downwards, True)
+
+        # --- 3-window layout: A | right_pair(B / C) ---
+        # root(horizontal) -> one: A, two: right_pair(vertical, one=B, two=C)
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        wA = Window(1)
+        q.add_window(all_windows, wA)
+        wB = Window(2)
+        q.add_window(all_windows, wB, location='vsplit')  # B right of A (horizontal root)
+        wC = Window(3)
+        q.add_window(all_windows, wC, location='hsplit')  # C below B (vertical right_pair)
+        q(all_windows)
+        root = q.pairs_root
+        self.ae(root.horizontal, True)
+        right_pair = root.two
+        self.assertIsInstance(right_pair, Pair)
+        self.ae(right_pair.horizontal, False)
+        root_id = id(root)
+        right_pair_id = id(right_pair)
+
+        # Divider between A and right_pair: A at RIGHT_EDGE -> root
+        d = drtw(q, all_windows, wA, RIGHT_EDGE)
+        self.ae(d.horizontal_id, root_id)
+        self.ae(d.width_increases_rightwards, True)
+
+        # B at LEFT_EDGE: B is on the leading side of right_pair, border belongs to root
+        d = drtw(q, all_windows, wB, LEFT_EDGE)
+        self.ae(d.horizontal_id, root_id)
+        self.ae(d.width_increases_rightwards, True)
+
+        # Divider between B and C: belongs to right_pair
+        d = drtw(q, all_windows, wB, BOTTOM_EDGE)
+        self.ae(d.vertical_id, right_pair_id)
+        self.ae(d.height_increases_downwards, True)
+
+        d = drtw(q, all_windows, wC, TOP_EDGE)
+        self.ae(d.vertical_id, right_pair_id)
+        self.ae(d.height_increases_downwards, True)
+
+        # --- 4-window layout (bug scenario): left_pair(A/C) | right_pair(B/D) ---
+        # root(horizontal) -> one: left_pair(vertical, one=A, two=C),
+        #                      two: right_pair(vertical, one=B, two=D)
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        wA = Window(1)
+        q.add_window(all_windows, wA)
+        wB = Window(2)
+        q.add_window(all_windows, wB, location='vsplit')   # B right of A
+        all_windows.set_active_window_group_for(wA)
+        wC = Window(3)
+        q.add_window(all_windows, wC, location='hsplit')   # C below A
+        all_windows.set_active_window_group_for(wB)
+        wD = Window(4)
+        q.add_window(all_windows, wD, location='hsplit')   # D below B
+        q(all_windows)
+        root = q.pairs_root
+        self.ae(root.horizontal, True)
+        left_pair = root.one
+        right_pair = root.two
+        self.assertIsInstance(left_pair, Pair)
+        self.assertIsInstance(right_pair, Pair)
+        self.ae(left_pair.horizontal, False)
+        self.ae(right_pair.horizontal, False)
+        root_id = id(root)
+        left_pair_id = id(left_pair)
+        right_pair_id = id(right_pair)
+
+        # Bug #1: A at RIGHT_EDGE should give root with correct (rightward) direction
+        d = drtw(q, all_windows, wA, RIGHT_EDGE)
+        self.ae(d.horizontal_id, root_id)
+        self.ae(d.width_increases_rightwards, True)
+
+        # Bug #2: B at LEFT_EDGE should find root and give correct direction
+        d = drtw(q, all_windows, wB, LEFT_EDGE)
+        self.ae(d.horizontal_id, root_id)
+        self.ae(d.width_increases_rightwards, True)
+
+        # C at RIGHT_EDGE: same divider between left_pair and right_pair
+        d = drtw(q, all_windows, wC, RIGHT_EDGE)
+        self.ae(d.horizontal_id, root_id)
+        self.ae(d.width_increases_rightwards, True)
+
+        # D at LEFT_EDGE: same divider
+        d = drtw(q, all_windows, wD, LEFT_EDGE)
+        self.ae(d.horizontal_id, root_id)
+        self.ae(d.width_increases_rightwards, True)
+
+        # Vertical divider within left_pair (between A and C)
+        d = drtw(q, all_windows, wA, BOTTOM_EDGE)
+        self.ae(d.vertical_id, left_pair_id)
+        self.ae(d.height_increases_downwards, True)
+
+        d = drtw(q, all_windows, wC, TOP_EDGE)
+        self.ae(d.vertical_id, left_pair_id)
+        self.ae(d.height_increases_downwards, True)
+
+        # Vertical divider within right_pair (between B and D)
+        d = drtw(q, all_windows, wB, BOTTOM_EDGE)
+        self.ae(d.vertical_id, right_pair_id)
+        self.ae(d.height_increases_downwards, True)
+
+        d = drtw(q, all_windows, wD, TOP_EDGE)
+        self.ae(d.vertical_id, right_pair_id)
+        self.ae(d.height_increases_downwards, True)
