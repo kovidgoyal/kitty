@@ -73,9 +73,9 @@ drop_free_dir_handles(Window *w) {
 
 static void
 drop_close_file_fd(Window *w) {
-    if (w->drop.file_fd >= 0) {
-        safe_close(w->drop.file_fd, __FILE__, __LINE__);
-        w->drop.file_fd = -1;
+    if (w->drop.file_fd_plus_one) {
+        safe_close(w->drop.file_fd_plus_one - 1, __FILE__, __LINE__);
+        w->drop.file_fd_plus_one = 0;
     }
     if (w->drop.file_send_timer) {
         remove_main_loop_timer(w->drop.file_send_timer);
@@ -100,7 +100,6 @@ reset_drop(Window *w) {
     bool wanted = w->drop.wanted; uint32_t cid = w->drop.client_id;
     drop_free_data(w);
     zero_at_ptr(&w->drop);
-    w->drop.file_fd = -1;
     if (wanted) {
         w->drop.wanted = wanted;
         w->drop.client_id = cid;
@@ -111,7 +110,7 @@ void
 drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id, bool more) {
     w->drop.wanted = on;
     w->drop.client_id = client_id;
-    if (!on) { drop_free_data(w); zero_at_ptr(&w->drop); w->drop.file_fd = -1; return; }
+    if (!on) { drop_free_data(w); zero_at_ptr(&w->drop); return; }
     if (!payload || !payload_sz) return;
     size_t sz = w->drop.registered_mimes ? strlen(w->drop.registered_mimes) : 0;
     if (sz + payload_sz > 1024 * 1024) return;
@@ -527,7 +526,7 @@ static void
 file_send_timer_callback(id_type timer_id UNUSED, void *x) {
     id_type id = (uintptr_t)x;
     Window *w = window_for_window_id(id);
-    if (!w || w->drop.file_fd < 0) return;
+    if (!w || !w->drop.file_fd_plus_one) return;
     w->drop.file_send_timer = 0;
     if (monotonic() - w->drop.last_file_send_at > s_to_monotonic_t(FILE_SEND_TIMEOUT_SECONDS)) {
         drop_close_file_fd(w);
@@ -548,7 +547,7 @@ drop_send_file_chunks(Window *w) {
     while (1) {
         char buf[FILE_CHUNK_SIZE];
         ssize_t n;
-        do { n = read(w->drop.file_fd, buf, sizeof(buf)); } while (n < 0 && errno == EINTR);
+        do { n = read(w->drop.file_fd_plus_one - 1, buf, sizeof(buf)); } while (n < 0 && errno == EINTR);
         if (n < 0) {
             drop_close_file_fd(w);
             drop_send_error(w, EIO);
@@ -564,7 +563,7 @@ drop_send_file_chunks(Window *w) {
         if (sent > 0) w->drop.last_file_send_at = monotonic();
         if (sent < (size_t)n) {
             /* Partial send: rewind file pointer and retry via timer */
-            if (lseek(w->drop.file_fd, -(off_t)(((size_t)n) - sent), SEEK_CUR) < 0) {
+            if (lseek(w->drop.file_fd_plus_one - 1, -(off_t)(((size_t)n) - sent), SEEK_CUR) < 0) {
                 drop_close_file_fd(w);
                 drop_send_error(w, EIO);
                 return;
@@ -601,7 +600,7 @@ drop_send_file_data(Window *w, const char *path) {
         return;
     }
     if (!S_ISREG(st.st_mode)) { drop_send_error(w, EINVAL); safe_close(fd, __FILE__, __LINE__); return; }
-    w->drop.file_fd = fd;
+    w->drop.file_fd_plus_one = fd + 1;
     w->drop.last_file_send_at = monotonic();
     drop_send_file_chunks(w);
 }
