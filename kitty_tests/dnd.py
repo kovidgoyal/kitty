@@ -3,7 +3,7 @@
 
 import errno
 import re
-from base64 import standard_b64decode, standard_b64encode
+from base64 import standard_b64decode
 from contextlib import contextmanager
 
 from kitty.fast_data_types import (
@@ -18,7 +18,6 @@ from kitty.fast_data_types import (
 )
 
 from . import BaseTest, parse_bytes
-
 
 # ---- helpers ----------------------------------------------------------------
 
@@ -159,8 +158,6 @@ def dnd_test_window():
     * ``screen``       – Screen object whose window_id matches the fake window
     * ``capture``      – _WriteCapture accumulating bytes sent to the child
     """
-    from kitty.fast_data_types import get_options
-    from kitty.options.types import defaults
     capture = _WriteCapture()
     dnd_set_test_write_func(capture)
     os_window_id, window_id = dnd_test_create_fake_window()
