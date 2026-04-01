@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
@@ -20,6 +21,9 @@ func (self *KilledBySignal) Error() string { return self.Msg }
 
 var Canceled = errors.New("Canceled by user")
 
+const password_symbol = "🔒"
+const blink_interval = 500 * time.Millisecond
+
 func ReadPassword(prompt string, kill_if_signaled bool) (password string, err error) {
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.FullKeyboardProtocol)
 	shadow := ""
@@ -28,24 +32,36 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 	}
 	capspress_was_locked := false
 	has_caps_lock := false
+	lock_visible := true
 
 	redraw_prompt := func() {
-		text := prompt + shadow
 		lp.QueueWriteString("\r")
 		lp.ClearToEndOfLine()
 		if has_caps_lock {
 			lp.QueueWriteString("\x1b[31m[CapsLock on!]\x1b[39m ")
 		}
-		lp.QueueWriteString(text)
+		symbol := password_symbol
+		if !lock_visible {
+			symbol = strings.Repeat(" ", wcswidth.Stringwidth(password_symbol))
+		}
+		lp.QueueWriteString(prompt + shadow + symbol)
 	}
 
 	lp.OnInitialize = func() (string, error) {
-		lp.QueueWriteString(prompt)
-		lp.SetCursorShape(loop.BAR_CURSOR, true)
+		lp.SetCursorVisible(false)
+		redraw_prompt()
+		if _, err := lp.AddTimer(blink_interval, true, func(loop.IdType) error {
+			lock_visible = !lock_visible
+			redraw_prompt()
+			return nil
+		}); err != nil {
+			return "", err
+		}
 		return "", nil
 	}
 
 	lp.OnFinalize = func() string {
+		lp.SetCursorVisible(true)
 		lp.SetCursorShape(loop.BLOCK_CURSOR, true)
 		return "\r\n"
 	}
@@ -55,10 +71,9 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 		password += text
 		new_width := wcswidth.Stringwidth(password)
 		if new_width > old_width {
-			extra := strings.Repeat("*", new_width-old_width)
-			lp.QueueWriteString(extra)
-			shadow += extra
+			shadow += strings.Repeat("*", new_width-old_width)
 		}
+		redraw_prompt()
 		return nil
 	}
 
@@ -91,8 +106,8 @@ func ReadPassword(prompt string, kill_if_signaled bool) (password string, err er
 						delta = len(shadow)
 					}
 					shadow = shadow[:len(shadow)-delta]
-					lp.QueueWriteString(strings.Repeat("\x08\x1b[P", delta))
 				}
+				redraw_prompt()
 			} else {
 				lp.Beep()
 			}
