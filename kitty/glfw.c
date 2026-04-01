@@ -876,6 +876,162 @@ request_drop_status_update(OSWindow *osw) {
     }
 }
 
+// DnD testing infrastructure {{{
+
+static PyObject *
+py_dnd_set_test_write_func(PyObject *self UNUSED, PyObject *func) {
+    // Pass None to clear the interceptor and restore normal operation.
+    dnd_set_test_write_func(func == Py_None ? NULL : func);
+    Py_RETURN_NONE;
+}
+
+static void
+destroy_fake_window_contents(Window *w) {
+    // Free window resources without touching GPU objects (none allocated for fake windows).
+    drop_free_data(w);
+    free(w->pending_clicks.clicks); zero_at_ptr(&w->pending_clicks);
+    free(w->buffered_keys.key_data); zero_at_ptr(&w->buffered_keys);
+    Py_CLEAR(w->render_data.screen);
+    Py_CLEAR(w->title);
+    Py_CLEAR(w->title_bar_data.last_drawn_title_object_id);
+    free(w->title_bar_data.buf); w->title_bar_data.buf = NULL;
+    Py_CLEAR(w->url_target_bar_data.last_drawn_title_object_id);
+    free(w->url_target_bar_data.buf); w->url_target_bar_data.buf = NULL;
+    // render_data.vao_idx is -1 so release_gpu_resources_for_window is safe, but we skip it
+    // since we never allocated those resources.
+}
+
+static PyObject *
+dnd_test_create_fake_window(PyObject *self UNUSED, PyObject *args UNUSED) {
+    // Create a minimal OS window + tab + window without any OpenGL/GPU resources.
+    // Returns (os_window_id, window_id).
+    ensure_space_for(&global_state, os_windows, OSWindow, global_state.num_os_windows + 1, capacity, 1, true);
+    OSWindow *osw = global_state.os_windows + global_state.num_os_windows++;
+    zero_at_ptr(osw);
+    osw->id = ++global_state.os_window_id_counter;
+    osw->tab_bar_render_data.vao_idx = -1;
+    osw->background_opacity.alpha = OPT(background_opacity);
+    osw->created_at = monotonic();
+    // osw->handle intentionally left NULL - no real GLFW window
+
+    ensure_space_for(osw, tabs, Tab, 1, capacity, 1, true);
+    Tab *tab = &osw->tabs[0];
+    zero_at_ptr(tab);
+    tab->id = ++global_state.tab_id_counter;
+    tab->border_rects.vao_idx = -1;
+    osw->num_tabs = 1;
+    osw->active_tab = 0;
+
+    ensure_space_for(tab, windows, Window, 1, capacity, 1, true);
+    Window *w = &tab->windows[0];
+    zero_at_ptr(w);
+    w->id = ++global_state.window_id_counter;
+    w->visible = true;
+    w->render_data.vao_idx = -1;
+    w->window_title_render_data.vao_idx = -1;
+    w->drop.wanted = true;
+    tab->num_windows = 1;
+    tab->active_window = 0;
+
+    global_state.mouse_hover_in_window = w->id;
+    return Py_BuildValue("KK", (unsigned long long)osw->id, (unsigned long long)w->id);
+}
+
+static PyObject *
+dnd_test_cleanup_fake_window(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long os_window_id;
+    if (!PyArg_ParseTuple(args, "K", &os_window_id)) return NULL;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        if (global_state.os_windows[i].id == (id_type)os_window_id) {
+            OSWindow *osw = global_state.os_windows + i;
+            for (size_t t = 0; t < osw->num_tabs; t++) {
+                Tab *tab = osw->tabs + t;
+                for (size_t j = 0; j < tab->num_windows; j++) {
+                    Window *win = tab->windows + j;
+                    if (global_state.mouse_hover_in_window == win->id)
+                        global_state.mouse_hover_in_window = 0;
+                    destroy_fake_window_contents(win);
+                }
+                free(tab->border_rects.rect_buf); tab->border_rects.rect_buf = NULL;
+                free(tab->windows); tab->windows = NULL;
+            }
+            Py_CLEAR(osw->window_title);
+            Py_CLEAR(osw->tab_bar_render_data.screen);
+            free(osw->tabs); osw->tabs = NULL;
+            remove_i_from_array(global_state.os_windows, i, global_state.num_os_windows);
+            break;
+        }
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_set_mouse_pos(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long window_id;
+    int cell_x, cell_y, pixel_x, pixel_y;
+    if (!PyArg_ParseTuple(args, "Kiiii", &window_id, &cell_x, &cell_y, &pixel_x, &pixel_y)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
+    w->mouse_pos.cell_x = (unsigned int)cell_x;
+    w->mouse_pos.cell_y = (unsigned int)cell_y;
+    w->mouse_pos.global_x = pixel_x;
+    w->mouse_pos.global_y = pixel_y;
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_fake_drop_event(PyObject *self UNUSED, PyObject *args) {
+    // Simulate a drop enter/move/drop event. mimes_seq must be a sequence of str, or
+    // None to simulate a leave event.
+    unsigned long long window_id;
+    int is_drop;
+    PyObject *mimes_seq;
+    if (!PyArg_ParseTuple(args, "KpO", &window_id, &is_drop, &mimes_seq)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
+    if (mimes_seq == Py_None) {
+        drop_left_child(w);
+        Py_RETURN_NONE;
+    }
+    RAII_PyObject(fast_seq, PySequence_Fast(mimes_seq, "mimes must be a sequence"));
+    if (!fast_seq) return NULL;
+    Py_ssize_t num_mimes = PySequence_Fast_GET_SIZE(fast_seq);
+    RAII_ALLOC(const char*, mimes, malloc(sizeof(const char*) * (num_mimes ? num_mimes : 1)));
+    if (!mimes) return PyErr_NoMemory();
+    for (Py_ssize_t i = 0; i < num_mimes; i++) {
+        mimes[i] = PyUnicode_AsUTF8(PySequence_Fast_GET_ITEM(fast_seq, i));
+        if (!mimes[i]) return NULL;
+    }
+    drop_move_on_child(w, mimes, (size_t)num_mimes, is_drop ? true : false);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_fake_drop_data(PyObject *self UNUSED, PyObject *args) {
+    // Simulate OS delivering drop data for the given MIME type.
+    // If error_code > 0, simulate an error (e.g. ENOENT=2, EIO=5, EPERM=1).
+    // Otherwise deliver data and the mandatory end-of-data signal.
+    unsigned long long window_id;
+    const char *mime;
+    RAII_PY_BUFFER(data);
+    int error_code = 0;
+    if (!PyArg_ParseTuple(args, "Ksy*|i", &window_id, &mime, &data, &error_code)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
+    if (error_code > 0) {
+        drop_dispatch_data(w, mime, NULL, -(ssize_t)error_code);
+    } else if (data.len > 0) {
+        drop_dispatch_data(w, mime, (const char*)data.buf, (ssize_t)data.len);
+        drop_dispatch_data(w, mime, NULL, 0);  // mandatory end-of-data signal
+    } else {
+        // Empty data: just the end-of-data signal (sz=0 is the sentinel for "no more data").
+        drop_dispatch_data(w, mime, NULL, 0);
+    }
+    Py_RETURN_NONE;
+}
+
+// }}}
+
 static void
 application_close_requested_callback(int flags) {
     if (flags) {
@@ -3065,6 +3221,12 @@ static PyMethodDef module_methods[] = {
     {"glfw_get_monitor_workarea", (PyCFunction)get_monitor_workarea, METH_NOARGS, ""},
     {"glfw_get_monitor_names", (PyCFunction)get_monitor_names, METH_NOARGS, ""},
     {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""},
+    {"dnd_set_test_write_func", (PyCFunction)py_dnd_set_test_write_func, METH_O, ""},
+    METHODB(dnd_test_create_fake_window, METH_NOARGS),
+    METHODB(dnd_test_cleanup_fake_window, METH_VARARGS),
+    METHODB(dnd_test_set_mouse_pos, METH_VARARGS),
+    METHODB(dnd_test_fake_drop_event, METH_VARARGS),
+    METHODB(dnd_test_fake_drop_data, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
