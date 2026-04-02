@@ -488,6 +488,9 @@ get_nth_file_url(const char *uri_list, size_t uri_list_sz, int n, char **path_ou
 
     RAII_ALLOC(char, path, strdup(slash));
     if (!path) { *error_out = "ENOMEM"; return false; }
+    /* Strip any query (?...) or fragment (#...) from the path */
+    char *query_or_fragment_start = path + strcspn(path, "?#");
+    *query_or_fragment_start = 0;
     url_decode_inplace(path);
     if (path[0] != '/') { *error_out = "EINVAL"; return false; }
 
