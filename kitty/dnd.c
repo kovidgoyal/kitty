@@ -552,6 +552,11 @@ drop_send_file_chunks(Window *w) {
         ssize_t n;
         do { n = read(w->drop.file_fd_plus_one - 1, buf, sizeof(buf)); } while (n < 0 && errno == EINTR);
         if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                /* No data available right now; retry via timer */
+                w->drop.file_send_timer = add_main_loop_timer(ms_to_monotonic_t(20), false, file_send_timer_callback, (void*)(uintptr_t)w->id, NULL);
+                return;
+            }
             drop_close_file_fd(w);
             drop_send_error(w, EIO);
             return;
@@ -583,7 +588,7 @@ drop_send_file_chunks(Window *w) {
 static void
 drop_send_file_data(Window *w, const char *path) {
     drop_close_file_fd(w);
-    int fd = safe_open(path, O_RDONLY | O_CLOEXEC, 0);
+    int fd = safe_open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK, 0);
     if (fd < 0) {
         switch (errno) {
             case ENOENT: case ENOTDIR: drop_send_error(w, ENOENT); break;
