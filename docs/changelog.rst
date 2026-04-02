@@ -183,6 +183,8 @@ Detailed list of changes
 
 - :doc:`Remote control <remote-control>`: Expose :code:`session_name` in the output of ``kitten @ ls`` for each window (:iss:`9732`)
 
+- Drag and drop: Ignore query and fragment parts of ``file://`` URLs when parsing dropped file paths
+
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
 
 - Graphics protocol: Fix crash when handling invalid PNG image with direct transmission
