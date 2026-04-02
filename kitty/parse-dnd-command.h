@@ -86,8 +86,9 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
 
       case type: {
         g.type = parser_buf[pos++];
-        if (g.type != 'A' && g.type != 'M' && g.type != 'R' && g.type != 'a' &&
-            g.type != 'd' && g.type != 'm' && g.type != 'r' && g.type != 's') {
+        if (g.type != 'A' && g.type != 'M' && g.type != 'O' && g.type != 'P' &&
+            g.type != 'R' && g.type != 'a' && g.type != 'd' && g.type != 'm' &&
+            g.type != 'o' && g.type != 'p' && g.type != 'r' && g.type != 's') {
           REPORT_ERROR("Malformed DnDCommand control block, unknown flag value "
                        "for type: 0x%x",
                        g.type);

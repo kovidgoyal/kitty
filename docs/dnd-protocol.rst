@@ -186,6 +186,94 @@ the terminal. Terminals may deny directory traversal requests if too many
 resources are used, in order to prevent denial or service attacks. In such
 cases the terminal must respond with ``ENOMEM``.
 
+Starting drags
+-----------------
+
+Terminal programs can inform the terminal emulator that they
+are willing to act as a source of drag data by sending the
+sending the escape code::
+
+    OSC _dnd_code ; t=o ST
+
+On exit, or if the program no longer is willing to start drag gestures, it must
+send ``t=O`` to the terminal to indicate it no longer wants to offer drag data.
+
+When the user performs the platform specific gesture to start a drag operation,
+the terminal will send the same escape code back to the terminal program
+informing it that it can potentially start a drag. The gesture is typically holding the
+left mouse button down and dragging a short distance, but this protocol does
+not mandate any particular gesture to start drag operations. The terminal, when
+sending the event will also set the ``x, y, X, Y`` keys to indicate the cell
+and pixel locations in the window of the start drag event.
+
+If the terminal program determines that it wants to start a drag at that
+location, it must send the terminal the ``t=o:o=flags`` escape code again, but
+with a payload consisting of the space separated MIME types it offers. The
+``flags`` indicate what types of operations the client supports, ``1`` for
+copy, ``2`` for move and ``3`` for either. Note that at this time the drag
+operation has not actually started, this gives the terminal program the
+opportunity to pre-send some data or set one or more images to act as
+thumbnails for the drag operation.
+
+If at the time the terminal receives this request the drag gesture has already
+been terminated or the terminal otherwise determines that it is not appropriate
+to start the drag, it must reply with ``t=R ; EPERM`` to indicate the drag
+offer was not accepted.
+
+For some well known types like ``text/plain`` or ``text/uri-list`` the
+terminal program should pre-send the data for them unless it is very large.
+This is because some platforms, such as macOS, need pre sent data to be able
+to interoperate with native programs. The terminal emulator should reply with
+``t=R ; EFBIG`` if too much data is sent and cancel the drag. Terminals must
+accept at least 64MB of present data.
+
+Pre sent data is sent with escape codes of the form::
+
+    OSC _dnd_code ; t=p:x=idx ; base64 encoded data ST
+
+Here ``idx`` is the zero based index into the list of previously sent MIME
+types indicating this data is for that MIME type. Transmission should be chunked
+using the ``m`` key. End of data is indicated by sending the escape code with no
+payload and ``m=0``. Terminal programs should pre-read this data and only send
+the ``t=o`` key indicating the offer if the data is available.
+
+To associate one or more images with the drag operation, the terminal program
+must transmit the data for the image with the ``idx`` value above being a
+negative number starting with ``-1`` for the first image and so on. When
+transmitting images, the image data format is specified using the ``y`` key.
+A value of ``y=24`` mean 24bit RGB data and ``y=32`` means 32bit RGBA data.
+Colors in the RGB/A data must be in the sRGB color space.
+Using ``y=100`` means the data is a PNG image. Additionally, the ``X`` and
+``Y`` keys must be used to specify the width and height of the image data in
+pixels. If the size of the transmitted data does not match the image dimensions
+the terminal must replay with ``t=R ; EINVAL``. Terminals are free to impose a
+limit on the amount of image data, too avoid Denial-of-service attacks. If the
+image data is too much or the image is too large they must reply with ``t=R ;
+EFBIG`` and abort the drag. By default, the drag will be started using the
+first image, if any. During the drag, the terminal program can change the
+image by sending::
+
+    OSC _dnd_code ; t=P:x=idx ST
+
+Where ``idx`` is now a zero based index with zero being the first image and so on.
+
+Once the terminal program has present all data and images for the drag
+operation, it indicates the drag should be started by sending ``t=P:x=-1``. At
+this time if the user has already cancelled the drag or the terminal determines
+the drag operation is not allowed, it must respond with ``t=R ; EPERM``. If any
+other error occurs starting the drag operation, it must respond with the appropriate
+POSIX error code. If the drag operation is successfully started, it must respond with
+``t=R ; OK``.
+
+Multiplexers
+-----------------
+
+To support multiplexers, the ``i`` key exists. When the terminal receives and
+``t=a`` or ``t=o`` escape code that has the ``i`` key set, all escape codes it
+sends to the terminal program must include the ``i`` key with the same value.
+This allows terminal multiplexers to direct the response codes to the correct
+client.
+
 Metadata reference
 ---------------------------
 
@@ -201,9 +289,13 @@ Key      Value                 Default    Description
                                           ``m`` - a drop move event
                                           ``M`` - a drop dropped event
                                           ``r`` - request dropped data
-                                          ``R`` - report an error while retrieving data
+                                          ``R`` - report an error to the terminal program
                                           ``s`` - request data from the URI list entry
                                           ``d`` - send directory contents
+                                          ``o`` - start offering drags
+                                          ``O`` - stop offering drags
+                                          ``p`` - present data for drag offers
+                                          ``P`` - Change drag image or start drag
 
 ``m``    Chunking indicator    ``0``      ``0`` or ``i``
 
@@ -223,4 +315,6 @@ Key      Value                 Default    Description
 ``X``    Integer               ``0``      Pixel x-coordinate origin is 0, 0 at top left of screen
 ``Y``    Integer               ``0``      Pixel y-coordinate origin is 0, 0 at top left of screen
 =======  ====================  =========  =================
+
+
 

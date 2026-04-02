@@ -217,7 +217,6 @@ Detailed list of changes
 
 - Password input in kittens: hide the cursor and display 🔒 (U+1F512) at the end of typed characters to make it visually clear the user is entering a password
 
-- DnD: Use non-blocking I/O when reading file chunks in ``drop_send_file_chunks()`` to avoid blocking the main event loop
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
