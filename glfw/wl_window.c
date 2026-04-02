@@ -3410,6 +3410,12 @@ static const struct wl_data_source_listener drag_source_listener = {
 };
 
 void
+_glfwPlatformCancelDrag(_GLFWwindow* window UNUSED) {
+    if (!_glfw.drag.window_id) return;
+    cancel_drag(GLFW_DRAG_CANCELLED);
+}
+
+void
 _glfwPlatformFreeDragSourceData(void) {
     if (_glfw.wl.drag.drag_viewport) wp_viewport_destroy(_glfw.wl.drag.drag_viewport);
     if (_glfw.wl.drag.toplevel_drag) xdg_toplevel_drag_v1_destroy(_glfw.wl.drag.toplevel_drag);

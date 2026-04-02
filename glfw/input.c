@@ -1190,6 +1190,7 @@ glfwStartDrag(GLFWwindow* handle, const GLFWDragSourceItem *items, size_t item_c
     _GLFW_REQUIRE_INIT_OR_RETURN(EINVAL);
     if (operations == -1) return _glfwPlatformDragDataReady(items[0].mime_type);
     if (operations == -2) return _glfwPlatformChangeDragImage(thumbnail);
+    if (operations == -3) { _glfwPlatformCancelDrag(window); return 0; }
     _glfwFreeDragSourceData();
     _glfw.drag.instance_id++;
     if (!items || !item_count) return 0;

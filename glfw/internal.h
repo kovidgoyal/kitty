@@ -835,6 +835,7 @@ void _glfwPlatformEndDrop(GLFWwindow *w, GLFWDragOperationType op);
 int _glfwPlatformRequestDropData(_GLFWwindow *window, const char *mime);
 // Platform functions for drag source
 int _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail);
+void _glfwPlatformCancelDrag(_GLFWwindow* window);
 void _glfwFreeDragSourceData(void);
 void _glfwPlatformFreeDragSourceData(void);
 void _glfwInputDragSourceRequest(_GLFWwindow* window, GLFWDragEvent *ev);
