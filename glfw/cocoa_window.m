@@ -4423,6 +4423,17 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {@autore
 @end
 
 void
+_glfwPlatformCancelDrag(_GLFWwindow* window UNUSED) {@autoreleasepool{
+    if (!_glfw.drag.window_id) return;
+    _GLFWwindow* drag_win = _glfwWindowForId(_glfw.drag.window_id);
+    if (drag_win) {
+        GLFWDragEvent ev = {.type = GLFW_DRAG_CANCELLED};
+        _glfwInputDragSourceRequest(drag_win, &ev);
+    }
+    _glfwFreeDragSourceData();
+}}
+
+void
 _glfwPlatformFreeDragSourceData(void) {
     if (_glfw.ns.drag_session) [_glfw.ns.drag_session release];
     _glfw.ns.drag_session = nil;

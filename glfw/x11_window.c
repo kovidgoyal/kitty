@@ -4523,6 +4523,17 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
 }
 
 void
+_glfwPlatformCancelDrag(_GLFWwindow* window UNUSED) {
+    if (!_glfw.drag.window_id) return;
+    _GLFWwindow* drag_win = _glfwWindowForId(_glfw.drag.window_id);
+    if (drag_win) {
+        GLFWDragEvent ev = {.type = GLFW_DRAG_CANCELLED};
+        _glfwInputDragSourceRequest(drag_win, &ev);
+    }
+    _glfwFreeDragSourceData();
+}
+
+void
 _glfwPlatformFreeDragSourceData(void) {
     if (_glfw.x11.drag.active) {
         // Send leave to current target
