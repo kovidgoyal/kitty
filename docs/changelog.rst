@@ -183,8 +183,6 @@ Detailed list of changes
 
 - :doc:`Remote control <remote-control>`: Expose :code:`session_name` in the output of ``kitten @ ls`` for each window (:iss:`9732`)
 
-- Drag and drop: Ignore query and fragment parts of ``file://`` URLs when parsing dropped file paths
-
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
 
 - Graphics protocol: Fix crash when handling invalid PNG image with direct transmission
@@ -218,8 +216,6 @@ Detailed list of changes
 - Fix dragging of splits layout borders sometimes moving in the wrong direction or having no effect (:pull:`9447`)
 
 - Password input in kittens: hide the cursor and display 🔒 (U+1F512) at the end of typed characters to make it visually clear the user is entering a password
-
-- DnD: Send file contents in 3 KiB chunks rather than reading the entire file into memory, preventing excessive memory use when transferring large files
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
