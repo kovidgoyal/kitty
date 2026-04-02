@@ -1777,7 +1777,7 @@ class TabManager:  # {{{
         if button == -1:  # motion
             dragged_tab_id, drag_started, start_x, start_y = get_tab_being_dragged()
             if dragged_tab_id and self.tab_for_id(dragged_tab_id) is not None and not drag_started:
-                threshold = get_options().tab_bar_drag_threshold
+                threshold = get_options().drag_threshold
                 if threshold and math.sqrt((x-start_x)**2 + (y-start_y)**2) > threshold:
                     set_tab_being_dragged(dragged_tab_id, True, start_x, start_y)
                     request_callback_with_thumbnail("start_tab_drag", self.os_window_id)
@@ -1827,7 +1827,7 @@ class TabManager:  # {{{
         if button == -1:  # motion event
             dragged_window_id, drag_started, start_x, start_y = get_window_being_dragged()
             if dragged_window_id and not drag_started:
-                threshold = get_options().window_title_bar_drag_threshold
+                threshold = get_options().drag_threshold
                 dist_sq = (x - start_x)**2 + (y - start_y)**2
                 if threshold and dist_sq > threshold * threshold:
                     set_window_being_dragged(dragged_window_id, True, start_x, start_y)
@@ -1840,7 +1840,7 @@ class TabManager:  # {{{
         if action == GLFW_PRESS:
             if (w := boss.window_id_map.get(window_id)) is not None:
                 boss.set_active_window(w, switch_os_window_if_needed=True)
-            threshold = get_options().window_title_bar_drag_threshold
+            threshold = get_options().drag_threshold
             if threshold:
                 set_window_being_dragged(window_id, False, x, y)
             return

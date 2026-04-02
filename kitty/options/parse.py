@@ -971,6 +971,9 @@ class Parser:
     def disable_ligatures(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['disable_ligatures'] = disable_ligatures(val)
 
+    def drag_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['drag_threshold'] = positive_int(val)
+
     def draw_minimal_borders(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['draw_minimal_borders'] = to_bool(val)
 
@@ -1346,9 +1349,6 @@ class Parser:
     def tab_bar_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_background'] = to_color_or_none(val)
 
-    def tab_bar_drag_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['tab_bar_drag_threshold'] = positive_int(val)
-
     def tab_bar_edge(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_edge'] = tab_bar_edge(val)
 
@@ -1547,9 +1547,6 @@ class Parser:
         ans["window_title_bar_align"] = val
 
     choices_for_window_title_bar_align = choices_for_tab_bar_align
-
-    def window_title_bar_drag_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['window_title_bar_drag_threshold'] = positive_int(val)
 
     def window_title_bar_inactive_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_title_bar_inactive_background'] = to_color_or_none(val)

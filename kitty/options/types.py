@@ -350,6 +350,7 @@ option_names = (
     'detect_urls',
     'dim_opacity',
     'disable_ligatures',
+    'drag_threshold',
     'draw_minimal_borders',
     'draw_window_borders_for_single_window',
     'dynamic_background_opacity',
@@ -457,7 +458,6 @@ option_names = (
     'tab_activity_symbol',
     'tab_bar_align',
     'tab_bar_background',
-    'tab_bar_drag_threshold',
     'tab_bar_edge',
     'tab_bar_filter',
     'tab_bar_margin_color',
@@ -509,7 +509,6 @@ option_names = (
     'window_title_bar_active_background',
     'window_title_bar_active_foreground',
     'window_title_bar_align',
-    'window_title_bar_drag_threshold',
     'window_title_bar_inactive_background',
     'window_title_bar_inactive_foreground',
     'window_title_bar_min_windows',
@@ -568,6 +567,7 @@ class Options:
     detect_urls: bool = True
     dim_opacity: float = 0.4
     disable_ligatures: int = 0
+    drag_threshold: int = 5
     draw_minimal_borders: bool = True
     draw_window_borders_for_single_window: bool = False
     dynamic_background_opacity: bool = False
@@ -663,7 +663,6 @@ class Options:
     tab_activity_symbol: str = ''
     tab_bar_align: choices_for_tab_bar_align = 'left'
     tab_bar_background: kitty.fast_data_types.Color | None = None
-    tab_bar_drag_threshold: int = 5
     tab_bar_edge: int = 8
     tab_bar_filter: str = ''
     tab_bar_margin_color: kitty.fast_data_types.Color | None = None
@@ -714,7 +713,6 @@ class Options:
     window_title_bar_active_background: kitty.fast_data_types.Color | None = None
     window_title_bar_active_foreground: kitty.fast_data_types.Color | None = None
     window_title_bar_align: choices_for_window_title_bar_align = 'center'
-    window_title_bar_drag_threshold: int = 5
     window_title_bar_inactive_background: kitty.fast_data_types.Color | None = None
     window_title_bar_inactive_foreground: kitty.fast_data_types.Color | None = None
     window_title_bar_min_windows: int = 0

@@ -884,6 +884,19 @@ sets the shape when dragging in rectangular selection mode.
 '''
     )
 
+opt('drag_threshold', '5', option_type='positive_int', long_text='''
+The threshold distance the mouse must move to start a drag and drop. Dragging
+works for tabs and windows. You can drag tabs to re-order them, detach
+them into new OS Windows or move them to another OS Window. Similarly,
+by dragging the titlebar of a window (see :ac:`toggle_window_title_bars`)
+you can re-order it in its layout, detach it or move it to another tab.
+A value of zero disables all dragging.
+
+Note that on Wayland, :link:`because of poor design
+<https://gitlab.freedesktop.org/wayland/wayland/-/issues/140>` cancelling
+a drag will detach the tab. This is worked around for compositors that support
+:link:`xdg-toplevel-drag <https://wayland.app/protocols/xdg-toplevel-drag-v1>`.
+''')
 
 # mouse.mousemap {{{
 agr('mouse.mousemap', 'Mouse actions', '''
@@ -1580,15 +1593,6 @@ opt('window_title_bar_align', 'center',
     long_text='Horizontal alignment of the text in window title bars.'
     )
 
-opt('window_title_bar_drag_threshold', '5',
-    option_type='positive_int',
-    long_text='''
-Pixel distance the mouse must move before a window title bar drag begins.
-Zero disables dragging. Drop on a title bar swaps positions; drop on a
-window body inserts in the quadrant direction (left/right/top/bottom).
-Drop on the tab bar moves the window to that tab; drop outside kitty
-detaches it to a new OS window.
-''')
 egr()  # }}}
 
 
@@ -1848,23 +1852,6 @@ the window is translucent, in which case the default background is used as it
 looks better.
 ''')
 
-opt(
-    'tab_bar_drag_threshold',
-    '5',
-    option_type='positive_int',
-    long_text="""
-Control when dragging of tabs to re-order them happens.
-The value is the drag threshold in pixels, the distance the mouse must move
-before a drag begins. A value of zero disables tab dragging entirely.
-Dragging a tab to another kitty window moves it there, while dragging
-outside any kitty window detaches it into a new OS window.
-
-Note that on Wayland, :link:`because of poor design
-<https://gitlab.freedesktop.org/wayland/wayland/-/issues/140>` cancelling
-a drag will detach the tab. This is worked around for compositors that support
-:link:`xdg-toplevel-drag <https://wayland.app/protocols/xdg-toplevel-drag-v1>`.
-""",
-)
 egr()  # }}}
 
 
