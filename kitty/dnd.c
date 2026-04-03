@@ -867,6 +867,7 @@ drag_free_offer(Window *w) {
         free(ds.items);
     }
     ds.num_mimes = 0;
+    ds.pre_sent_total_sz = 0;
 }
 
 void
@@ -901,8 +902,25 @@ drag_add_mimes(Window *w, int allowed_operations, const char *data, size_t sz, b
                 p += strlen(p) + 1;
             } else p++;
         }
+        ds.pre_sent_total_sz = 0;
     }
-#undef abrt
 }
 
+void
+drag_add_pre_sent_data(Window *w, unsigned idx, const uint8_t *payload, size_t sz) {
+    if (!ds.offer_being_built || idx >= ds.num_mimes) abrt(EINVAL);
+    if (sz + ds.pre_sent_total_sz > 64 * 1024 * 1024) abrt(EFBIG);
+    ds.pre_sent_total_sz += sz;
+    DragSourceItem *item = ds.items + idx;
+    if (item->data_capacity < sz + item->data_size) {
+        size_t newcap = MAX(item->data_size * 2, sz + item->data_size);
+        item->optional_data = realloc(item->optional_data, newcap);
+        if (!item->optional_data) abrt(ENOMEM);
+        item->data_capacity = newcap;
+    }
+    memcpy(item->optional_data + item->data_size, payload, sz);
+    item->data_size += sz;
+}
+
+#undef abrt
 #undef ds

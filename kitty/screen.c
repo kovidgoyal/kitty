@@ -1548,6 +1548,9 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
                 cancel_current_drag_source();
             }
         } break;
+        case 'p': {
+            if (cmd->cell_x >= 0) drag_add_pre_sent_data(w, cmd->cell_x, payload, cmd->payload_sz);
+        } break;
     }
 }
 

@@ -236,7 +236,7 @@ typedef struct DirHandle {
 typedef struct DragSourceItem {
     const char *mime_type;
     char *optional_data;
-    size_t data_size;
+    size_t data_size, data_capacity;
 } DragSourceItem;
 
 typedef struct Window {
@@ -296,6 +296,7 @@ typedef struct Window {
         struct { double x, y; monotonic_t at; } initial_left_press;
         char *mimes_buf; size_t num_mimes, bufsz;
         DragSourceItem *items;
+        size_t pre_sent_total_sz;
         int allowed_operations;
         bool offer_being_built;
     } drag_source;
