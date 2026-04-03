@@ -855,7 +855,45 @@ drop_left_child(Window *w) {
     }
 }
 
+#define ds w->drag_source
+
 void
 drag_free_offer(Window *w) {
-    (void)w;
+    free(ds.mimes); ds.mimes = NULL;
+    free(ds.mimes_buf); ds.mimes_buf = NULL;
+    ds.allowed_operations = 0;
+    ds.offer_being_built = false;
 }
+
+void
+drag_add_mimes(Window *w, int allowed_operations, const char *data, size_t sz, bool has_more) {
+#define abrt(code) drop_send_error(w, code); drag_free_offer(w); return
+    if (allowed_operations && ds.offer_being_built) drag_free_offer(w);
+    if (allowed_operations && !ds.allowed_operations) ds.allowed_operations = allowed_operations;
+    if (!ds.allowed_operations) { abrt(EINVAL); }
+    ds.offer_being_built = true;
+    size_t new_sz = ds.bufsz + sz;
+    if (new_sz > 1024 * 1024) { abrt(EFBIG); }
+    ds.mimes = realloc(ds.mimes, ds.bufsz + sz + 1);
+    if (!ds.mimes) { abrt(ENOMEM); }
+    memcpy(ds.mimes_buf + ds.bufsz, data, sz);
+    ds.bufsz = new_sz;
+    ds.mimes_buf[ds.bufsz] = 0;
+    if (!has_more) {
+        char *ptr = ds.mimes_buf;
+        size_t rough_count = 0;
+        while ((ptr = strchr(ptr, ' ')) != NULL) {
+            *ptr = 0; ptr++;
+            rough_count++;
+        }
+        ds.mimes = calloc(rough_count + 1, sizeof(void*));
+        if (!ds.mimes) { abrt(ENOMEM); }
+        ds.num_mimes = 0;
+        // TODO: Populate ds.mimes with pointers to the mime strings in
+        // ds.mimes_buf and set ds.num_mimes to the number of such
+        // strings.
+    }
+#undef abrt
+}
+
+#undef ds

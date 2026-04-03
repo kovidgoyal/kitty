@@ -214,7 +214,9 @@ copy, ``2`` for move and ``3`` for either. The transmission should be chunked
 if the list of MIME types is too long. Note that at this time the drag
 operation has not actually started, this gives the terminal program the
 opportunity to pre-send some data or set one or more images to act as
-thumbnails for the drag operation.
+thumbnails for the drag operation. If the list of MIME types is too long the
+terminal may cancel the operation by responding with ``t=R ; EFBIG`` or ``t=R ;
+ENOMEM``.
 
 If at the time the terminal receives this request the drag gesture has already
 been terminated or the terminal otherwise determines that it is not appropriate

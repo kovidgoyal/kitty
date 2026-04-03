@@ -288,6 +288,9 @@ typedef struct Window {
     struct {
         bool can_offer;
         struct { double x, y; monotonic_t at; } initial_left_press;
+        char *mimes_buf; const char **mimes; size_t num_mimes, bufsz;
+        int allowed_operations;
+        bool offer_being_built;
     } drag_source;
 } Window;
 
