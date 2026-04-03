@@ -926,7 +926,7 @@ drag_add_pre_sent_data(Window *w, unsigned idx, const uint8_t *payload, size_t s
         base64_init_stream_decoder(&item.base64_state);
     }
     if (item.data_capacity < sz + item.data_size) {
-        size_t newcap = MAX(item.data_size * 2, sz + item.data_size);
+        size_t newcap = MAX(item.data_capacity * 2, sz + item.data_size);
         item.optional_data = realloc(item.optional_data, newcap);
         if (!item.optional_data) abrt(ENOMEM);
         item.data_capacity = newcap;
@@ -952,7 +952,7 @@ drag_add_image(Window *w, unsigned idx, int fmt, int width, int height, const ui
         base64_init_stream_decoder(&img.base64_state);
     }
     if (img.capacity < sz + img.sz) {
-        size_t newcap = MAX(img.sz * 2, sz + img.sz);
+        size_t newcap = MAX(img.capacity * 2, sz + img.sz);
         img.data = realloc(img.data, newcap);
         if (!img.data) abrt(ENOMEM);
         img.capacity = newcap;
