@@ -1538,7 +1538,7 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
             else drop_send_einval(w);
         } break;
         case 'o': {
-            if (cmd->payload_sz > 0) ;
+            if (cmd->payload_sz > 0) drag_add_mimes(w, (int)cmd->operation, (const char*)payload, cmd->payload_sz, cmd->more);
             else w->drag_source.can_offer = true;
         } break;
         case 'O': {

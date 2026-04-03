@@ -874,8 +874,8 @@ drag_add_mimes(Window *w, int allowed_operations, const char *data, size_t sz, b
     ds.offer_being_built = true;
     size_t new_sz = ds.bufsz + sz;
     if (new_sz > 1024 * 1024) { abrt(EFBIG); }
-    ds.mimes = realloc(ds.mimes, ds.bufsz + sz + 1);
-    if (!ds.mimes) { abrt(ENOMEM); }
+    ds.mimes_buf = realloc(ds.mimes_buf, ds.bufsz + sz + 1);
+    if (!ds.mimes_buf) { abrt(ENOMEM); }
     memcpy(ds.mimes_buf + ds.bufsz, data, sz);
     ds.bufsz = new_sz;
     ds.mimes_buf[ds.bufsz] = 0;
@@ -889,9 +889,18 @@ drag_add_mimes(Window *w, int allowed_operations, const char *data, size_t sz, b
         ds.mimes = calloc(rough_count + 1, sizeof(void*));
         if (!ds.mimes) { abrt(ENOMEM); }
         ds.num_mimes = 0;
-        // TODO: Populate ds.mimes with pointers to the mime strings in
-        // ds.mimes_buf and set ds.num_mimes to the number of such
-        // strings.
+        // ds.mimes_buf contains MIME strings separated by one or more NULL
+        // bytes and ends with a NULL byte; collect pointers to non-empty ones.
+        char *p = ds.mimes_buf, *end = ds.mimes_buf + ds.bufsz;
+        while (p < end) {
+            if (*p) {
+                if (ds.num_mimes >= rough_count + 1) break;
+                ds.mimes[ds.num_mimes++] = p;
+                p += strlen(p) + 1;
+            } else {
+                p++;
+            }
+        }
     }
 #undef abrt
 }
