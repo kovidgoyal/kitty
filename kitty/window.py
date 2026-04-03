@@ -2121,6 +2121,7 @@ class Window:
             'cmdline': self.child.cmdline,
             'last_reported_cmdline': self.last_cmd_cmdline,
             'last_cmd_exit_status': self.last_cmd_exit_status,
+            'last_focused_at': self.last_focused_at,
             'env': self.child.environ or self.child.final_env,
             'foreground_processes': self.child.foreground_processes,
             'is_self': is_self,
