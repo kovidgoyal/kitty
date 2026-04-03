@@ -308,11 +308,12 @@ drop_set_status(Window *w, int operation, const char *payload, size_t payload_sz
         }
     }
     if (payload_sz) {
-        w->drop.accepted_mimes = realloc(w->drop.accepted_mimes, w->drop.accepted_mimes_sz + payload_sz + 2);
-        if (w->drop.accepted_mimes) {
-            memcpy(w->drop.accepted_mimes + w->drop.accepted_mimes_sz, payload, payload_sz);
-            w->drop.accepted_mimes_sz += payload_sz;
-        }
+        if (w->drop.accepted_mimes_sz + payload_sz > 1024 * 1024) return;
+        char *new_buf = realloc(w->drop.accepted_mimes, w->drop.accepted_mimes_sz + payload_sz + 2);
+        if (!new_buf) return;
+        w->drop.accepted_mimes = new_buf;
+        memcpy(w->drop.accepted_mimes + w->drop.accepted_mimes_sz, payload, payload_sz);
+        w->drop.accepted_mimes_sz += payload_sz;
     }
     if (!more) {
         w->drop.accept_in_progress = false;

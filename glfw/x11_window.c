@@ -937,7 +937,9 @@ get_clipboard_data(const _GLFWClipboardData *cd, const char *mime, char **data) 
         if (!chunk.sz) break;
         if (cap < sz + chunk.sz) {
             cap = MAX(cap * 2, sz + 4 * chunk.sz);
-            buf = realloc(buf, cap * sizeof(buf[0]));
+            char *new_buf = realloc(buf, cap * sizeof(buf[0]));
+            if (!new_buf) { free(buf); *data = NULL; cd->get_data(NULL, iter, cd->ctype); return 0; }
+            buf = new_buf;
         }
         memcpy(buf + sz, chunk.data, chunk.sz);
         sz += chunk.sz;
@@ -3636,7 +3638,9 @@ write_chunk(void *object, const char *data, size_t sz) {
     if (data) {
         if (cw->cap < cw->sz + sz) {
             cw->cap = MAX(cw->cap * 2, cw->sz + 8*sz);
-            cw->buf = realloc(cw->buf, cw->cap * sizeof(cw->buf[0]));
+            char *new_buf = realloc(cw->buf, cw->cap * sizeof(cw->buf[0]));
+            if (!new_buf) return false;
+            cw->buf = new_buf;
         }
         memcpy(cw->buf + cw->sz, data, sz);
         cw->sz += sz;

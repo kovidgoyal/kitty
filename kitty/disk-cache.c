@@ -16,6 +16,7 @@
 #include "cross-platform-random.h"
 #include <structmember.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <time.h>
@@ -40,7 +41,7 @@ static uint64_t key_hash(KEY_TY k);
 #define HASH_FN key_hash
 static bool keys_are_equal(CacheKey a, CacheKey b) { return a.hash_keylen == b.hash_keylen && memcmp(a.hash_key, b.hash_key, a.hash_keylen) == 0; }
 #define CMPR_FN keys_are_equal
-static void free_cache_value(CacheValue *cv) { free(cv->data); cv->data = NULL; free(cv); }
+static void free_cache_value(CacheValue *cv) { explicit_bzero(cv->encryption_key, sizeof(cv->encryption_key)); free(cv->data); cv->data = NULL; free(cv); }
 static void free_cache_key(CacheKey cv) { free(cv.hash_key); cv.hash_key = NULL; }
 #define KEY_DTOR_FN free_cache_key
 #define VAL_DTOR_FN free_cache_value
