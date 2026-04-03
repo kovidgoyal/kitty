@@ -181,7 +181,7 @@ Detailed list of changes
 
 - Draw a progress bar at the top of the window when a program reports progress using the OSC 9;4 escape sequence, controlled by :opt:`progress_bar` (:iss:`9777`)
 
-- :doc:`Remote control <remote-control>`: Expose :code:`session_name` in the output of ``kitten @ ls`` for each window (:iss:`9732`)
+- :doc:`Remote control <remote-control>`: Expose :code:`session_name` and :code:`last_focused_at` in the output of ``kitten @ ls`` for each window (:iss:`9732`, :iss:`9799`)
 
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
 
@@ -215,7 +215,7 @@ Detailed list of changes
 
 - Fix dragging of splits layout borders sometimes moving in the wrong direction or having no effect (:pull:`9447`)
 
-- Password input in kittens: hide the cursor and display 🔒 (U+1F512) at the end of typed characters to make it visually clear the user is entering a password
+- Password input in kittens: hide the cursor and display a blinking 🔒 at the end of typed characters to make it visually clear the user is entering a password
 
 
 0.46.2 [2026-03-21]
