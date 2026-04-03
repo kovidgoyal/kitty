@@ -643,6 +643,10 @@ handle_scrollbar_mouse(Window *w, int button, MouseAction action, int modifiers 
 }
 // }}}
 
+static double
+distance(double x1, double y1, double x2, double y2) {
+    return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+}
 
 HANDLER(handle_move_event) {
     modifiers &= ~GLFW_LOCK_MASK;
@@ -672,11 +676,13 @@ HANDLER(handle_move_event) {
         int sz = encode_mouse_button(w, button, button >=0 ? DRAG : MOVE, modifiers);
         if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf); }
     }
-}
-
-static double
-distance(double x1, double y1, double x2, double y2) {
-    return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+    if (w->drag_source.can_offer && w->drag_source.initial_left_press.at && distance(w->mouse_pos.global_x, w->mouse_pos.global_y, w->drag_source.initial_left_press.x, w->drag_source.initial_left_press.y) > OPT(drag_threshold)) {
+        zero_at_ptr(&w->drag_source.initial_left_press);
+        snprintf(mouse_event_buf, sizeof(mouse_event_buf), "%d;t=o:x=%d:y=%d:X=%d:Y=%d",
+            DND_CODE, w->mouse_pos.cell_x, w->mouse_pos.cell_y, (int)w->mouse_pos.global_x, (int)w->mouse_pos.global_y);
+        write_escape_code_to_child(screen, ESC_OSC, mouse_event_buf);
+        debug("Sent drag start event to child\n");
+    }
 }
 
 static void
@@ -870,6 +876,15 @@ HANDLER(handle_button_event) {
 
     bool a, b;
     if (!set_mouse_position(w, &a, &b)) return;
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        if (is_release) {
+            zero_at_ptr(&w->drag_source.initial_left_press);
+        } else if (w->drag_source.can_offer) {
+            w->drag_source.initial_left_press.x = w->mouse_pos.global_x;
+            w->drag_source.initial_left_press.y = w->mouse_pos.global_x;
+            w->drag_source.initial_left_press.at = monotonic();
+        }
+    }
     id_type wid = w->id;
     if (!dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, screen->modes.mouse_tracking_mode != 0)) {
         if (!suppress_child_forwarding && screen->modes.mouse_tracking_mode != 0) {

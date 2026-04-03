@@ -257,7 +257,7 @@ image by sending::
 
 Where ``idx`` is now a zero based index with zero being the first image and so on.
 
-Once the terminal program has present all data and images for the drag
+Once the terminal program has sent all data and images for the drag
 operation, it indicates the drag should be started by sending ``t=P:x=-1``. At
 this time if the user has already cancelled the drag or the terminal determines
 the drag operation is not allowed, it must respond with ``t=R ; EPERM``. If any

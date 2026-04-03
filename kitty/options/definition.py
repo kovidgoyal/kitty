@@ -884,7 +884,7 @@ sets the shape when dragging in rectangular selection mode.
 '''
     )
 
-opt('drag_threshold', '5', option_type='positive_int', long_text='''
+opt('drag_threshold', '5', option_type='positive_int', ctype='int', long_text='''
 The threshold distance the mouse must move to start a drag and drop. Dragging
 works for tabs and windows. You can drag tabs to re-order them, detach
 them into new OS Windows or move them to another OS Window. Similarly,

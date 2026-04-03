@@ -153,6 +153,7 @@ typedef struct Options {
     double momentum_scroll;
     double window_drag_tolerance;
     bool generate_256_palette;
+    int drag_threshold;
 } Options;
 
 typedef struct WindowLogoRenderData {
@@ -284,6 +285,10 @@ typedef struct Window {
         monotonic_t last_file_send_at;  /* time of last successful file chunk write */
         id_type file_send_timer;        /* pending file-send retry timer, 0 = none */
     } drop;
+    struct {
+        bool can_offer;
+        struct { double x, y; monotonic_t at; } initial_left_press;
+    } drag_source;
 } Window;
 
 typedef struct BorderRect {
@@ -441,6 +446,7 @@ typedef struct GlobalState {
 
     struct {
         bool is_active, was_dropped, was_canceled, needs_toplevel_on_wayland;
+        id_type from_window, from_os_window;
         char *accepted_mime_type;
         int action, thumbnail_idx;
         PyObject *drag_data, *thumbnails;
@@ -571,3 +577,4 @@ bool current_framebuffer_is_ok(void);
 void request_drop_status_update(OSWindow *osw);
 void register_mimes_for_drop(OSWindow *w, const char **mimes, size_t sz);
 void request_drop_data(OSWindow *w, id_type wid, const char* mime);
+void cancel_current_drag_source(void);

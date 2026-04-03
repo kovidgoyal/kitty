@@ -854,3 +854,8 @@ drop_left_child(Window *w) {
         queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, NULL, 0, false);
     }
 }
+
+void
+drag_free_offer(Window *w) {
+    (void)w;
+}

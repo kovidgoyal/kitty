@@ -21,3 +21,6 @@ size_t drop_update_mimes(Window *w, const char **allowed_mimes, size_t allowed_m
 void drop_dispatch_data(Window *w, const char *mime_type, const char *data, ssize_t sz);
 void drop_finish(Window *w);
 void dnd_set_test_write_func(PyObject *func);
+
+
+void drag_free_offer(Window *w);

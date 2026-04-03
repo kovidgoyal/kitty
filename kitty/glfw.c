@@ -1056,6 +1056,12 @@ free_drag_source(void) {
     zero_at_ptr(&ds);
 }
 
+void
+cancel_current_drag_source(void) {
+    if (!ds.from_os_window) return; OSWindow *w = os_window_for_id(ds.from_os_window); if (!w || !w->handle) return;
+    glfwStartDrag(w->handle, NULL, 0, NULL, -3, false);
+}
+
 static void
 drag_source_callback(GLFWwindow *window UNUSED, GLFWDragEvent *ev) {
 #define finish \
@@ -3115,6 +3121,8 @@ change_drag_thumbnail(PyObject *self UNUSED, PyObject *args) {
         if (!get_thumbnail(global_state.drag_source.thumbnails, &thumbnail, idx)) return NULL;
         global_state.drag_source.thumbnail_idx = idx;
     } else global_state.drag_source.thumbnail_idx = -1;
+    global_state.drag_source.from_os_window = w->id;
+    global_state.drag_source.from_window = 0;
     errno = glfwStartDrag(w->handle, NULL, 0, thumbnail.pixels ? &thumbnail : NULL, -2, false);
     if (errno != 0) {
         PyErr_SetFromErrno(PyExc_OSError);
