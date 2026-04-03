@@ -256,6 +256,7 @@ class WindowDict(TypedDict):
     cmdline: list[str]
     last_reported_cmdline: str
     last_cmd_exit_status: int
+    last_focused_at: float
     env: dict[str, str]
     foreground_processes: list[ProcessDesc]
     is_self: bool
