@@ -7,6 +7,10 @@
 
 #define MAX_KEY_SIZE 16u
 
+#ifdef __APPLE__
+// needed for memset_s
+#define __STDC_WANT_LIB_EXT1__ 1
+#endif
 #include "disk-cache.h"
 #include "safe-wrappers.h"
 #include "simd-string.h"
@@ -41,7 +45,15 @@ static uint64_t key_hash(KEY_TY k);
 #define HASH_FN key_hash
 static bool keys_are_equal(CacheKey a, CacheKey b) { return a.hash_keylen == b.hash_keylen && memcmp(a.hash_key, b.hash_key, a.hash_keylen) == 0; }
 #define CMPR_FN keys_are_equal
-static void free_cache_value(CacheValue *cv) { explicit_bzero(cv->encryption_key, sizeof(cv->encryption_key)); free(cv->data); cv->data = NULL; free(cv); }
+static void free_cache_value(CacheValue *cv) {
+#ifdef __APPLE__
+    memset_s(cv->encryption_key, sizeof(cv->encryption_key), 0, sizeof(cv->encryption_key));
+#else
+    explicit_bzero(cv->encryption_key, sizeof(cv->encryption_key));
+#endif
+    free(cv->data); cv->data = NULL;
+    free(cv);
+}
 static void free_cache_key(CacheKey cv) { free(cv.hash_key); cv.hash_key = NULL; }
 #define KEY_DTOR_FN free_cache_key
 #define VAL_DTOR_FN free_cache_value

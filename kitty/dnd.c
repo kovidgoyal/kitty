@@ -17,6 +17,8 @@
 #include <unistd.h>
 #include <errno.h>
 
+static const size_t MIME_LIST_SIZE_CAP = 1024 * 1024;
+
 // In test mode, this callable is invoked instead of schedule_write_to_child_if_possible.
 // It receives (window_id: int, data: bytes) and its return value is ignored.
 static PyObject *g_dnd_test_write_func = NULL;
@@ -113,7 +115,7 @@ drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool 
     if (!on) { drop_free_data(w); zero_at_ptr(&w->drop); return; }
     if (!payload || !payload_sz) return;
     size_t sz = w->drop.registered_mimes ? strlen(w->drop.registered_mimes) : 0;
-    if (sz + payload_sz > 1024 * 1024) return;
+    if (sz + payload_sz > MIME_LIST_SIZE_CAP) return;
     w->drop.registered_mimes = realloc(w->drop.registered_mimes, sz + payload_sz + 1);
     if (w->drop.registered_mimes) {
         memcpy(w->drop.registered_mimes + sz, payload, payload_sz);
@@ -308,7 +310,7 @@ drop_set_status(Window *w, int operation, const char *payload, size_t payload_sz
         }
     }
     if (payload_sz) {
-        if (w->drop.accepted_mimes_sz + payload_sz > 1024 * 1024) return;
+        if (w->drop.accepted_mimes_sz + payload_sz > MIME_LIST_SIZE_CAP) return;
         char *new_buf = realloc(w->drop.accepted_mimes, w->drop.accepted_mimes_sz + payload_sz + 2);
         if (!new_buf) return;
         w->drop.accepted_mimes = new_buf;
@@ -879,7 +881,7 @@ drag_add_mimes(Window *w, int allowed_operations, const char *data, size_t sz, b
     if (!ds.allowed_operations) { abrt(EINVAL); }
     ds.offer_being_built = true;
     size_t new_sz = ds.bufsz + sz;
-    if (new_sz > 1024 * 1024) abrt(EFBIG);
+    if (new_sz > MIME_LIST_SIZE_CAP) abrt(EFBIG);
     ds.mimes_buf = realloc(ds.mimes_buf, ds.bufsz + sz + 1);
     if (!ds.mimes_buf) abrt(ENOMEM);
     memcpy(ds.mimes_buf + ds.bufsz, data, sz);

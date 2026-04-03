@@ -12,12 +12,7 @@ from contextlib import suppress
 from functools import lru_cache, partial
 from time import time_ns
 from types import GeneratorType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Optional,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, cast
 
 from .cli import parse_args
 from .cli_stub import RCOptions
@@ -39,6 +34,7 @@ from .utils import TTYIO, log_error, parse_address_spec, resolve_custom_file
 
 active_async_requests: dict[str, float] = {}
 active_streams: dict[str, str] = {}
+T = TypeVar('T')
 if TYPE_CHECKING:
     from .window import Window
 
@@ -104,10 +100,11 @@ def fnmatch_pattern(pat: str) -> 're.Pattern[str]':
     return re.compile(translate(pat))
 
 
-def _ct_password_lookup(passwords: dict[str, Any], pw: str) -> Any:
+def constant_time_lookup(passwords: dict[str, T], pw: str) -> T | None:
     result = None
+    c = hmac.compare_digest
     for k, v in passwords.items():
-        if hmac.compare_digest(k, pw):
+        if c(k, pw):
             result = v
     return result
 
@@ -119,7 +116,7 @@ def remote_control_allowed(
     if not remote_control_passwords:
         return True
     pw = pcmd.get('password', '')
-    auth_items = _ct_password_lookup(remote_control_passwords, pw)
+    auth_items = constant_time_lookup(remote_control_passwords, pw)
     if pw == '!':
         auth_items = None
     if auth_items is None:
@@ -194,10 +191,10 @@ def is_cmd_allowed(pcmd: dict[str, Any], window: Optional['Window'], from_socket
             return False
         pa = password_authorizer(auth_items)
         return pa.is_cmd_allowed(pcmd, window, from_socket, extra_data)
-    q = _ct_password_lookup(user_password_allowed, pw)
+    q = constant_time_lookup(user_password_allowed, pw)
     if q is not None:
         return q
-    auth_items = _ct_password_lookup(get_options().remote_control_password, pw)
+    auth_items = constant_time_lookup(get_options().remote_control_password, pw)
     if auth_items is None:
         return None
     pa = password_authorizer(auth_items)

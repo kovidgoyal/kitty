@@ -182,7 +182,8 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 	dest_path = filepath.Clean(dest_path)
 
 	mode := func(hdr int64) fs.FileMode {
-		return fs.FileMode(hdr) & fs.ModePerm
+		// yes, we really want to preserve sticky bits and setuid/setgid bits
+		return fs.FileMode(hdr) & (fs.ModePerm | fs.ModeSetgid | fs.ModeSetuid | fs.ModeSticky)
 	}
 
 	set_metadata := func(chmod func(mode fs.FileMode) error, hdr_mode int64) (err error) {
