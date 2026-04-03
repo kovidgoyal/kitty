@@ -859,23 +859,27 @@ drop_left_child(Window *w) {
 
 void
 drag_free_offer(Window *w) {
-    free(ds.mimes); ds.mimes = NULL;
     free(ds.mimes_buf); ds.mimes_buf = NULL;
     ds.allowed_operations = 0;
     ds.offer_being_built = false;
+    if (ds.items) {
+        for (size_t i=0; i < ds.num_mimes; i++) free(ds.items[i].optional_data);
+        free(ds.items);
+    }
+    ds.num_mimes = 0;
 }
 
 void
 drag_add_mimes(Window *w, int allowed_operations, const char *data, size_t sz, bool has_more) {
-#define abrt(code) drop_send_error(w, code); drag_free_offer(w); return
+#define abrt(code) { drop_send_error(w, code); drag_free_offer(w); return; }
     if (allowed_operations && ds.offer_being_built) drag_free_offer(w);
     if (allowed_operations && !ds.allowed_operations) ds.allowed_operations = allowed_operations;
     if (!ds.allowed_operations) { abrt(EINVAL); }
     ds.offer_being_built = true;
     size_t new_sz = ds.bufsz + sz;
-    if (new_sz > 1024 * 1024) { abrt(EFBIG); }
+    if (new_sz > 1024 * 1024) abrt(EFBIG);
     ds.mimes_buf = realloc(ds.mimes_buf, ds.bufsz + sz + 1);
-    if (!ds.mimes_buf) { abrt(ENOMEM); }
+    if (!ds.mimes_buf) abrt(ENOMEM);
     memcpy(ds.mimes_buf + ds.bufsz, data, sz);
     ds.bufsz = new_sz;
     ds.mimes_buf[ds.bufsz] = 0;
@@ -886,20 +890,16 @@ drag_add_mimes(Window *w, int allowed_operations, const char *data, size_t sz, b
             *ptr = 0; ptr++;
             rough_count++;
         }
-        ds.mimes = calloc(rough_count + 1, sizeof(void*));
-        if (!ds.mimes) { abrt(ENOMEM); }
-        ds.num_mimes = 0;
-        // ds.mimes_buf contains MIME strings separated by one or more NULL
-        // bytes and ends with a NULL byte; collect pointers to non-empty ones.
+        ds.items = calloc(rough_count + 2, sizeof(ds.items[0]));
+        if (!ds.items) abrt(ENOMEM);
         char *p = ds.mimes_buf, *end = ds.mimes_buf + ds.bufsz;
+        ds.num_mimes = 0;
         while (p < end) {
             if (*p) {
                 if (ds.num_mimes >= rough_count + 1) break;
-                ds.mimes[ds.num_mimes++] = p;
+                ds.items[ds.num_mimes++].mime_type = p;
                 p += strlen(p) + 1;
-            } else {
-                p++;
-            }
+            } else p++;
         }
     }
 #undef abrt

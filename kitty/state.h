@@ -233,6 +233,12 @@ typedef struct DirHandle {
     uint32_t id;          /* handle id, 1-based; 0 = invalid */
 } DirHandle;
 
+typedef struct DragSourceItem {
+    const char *mime_type;
+    char *optional_data;
+    size_t data_size;
+} DragSourceItem;
+
 typedef struct Window {
     id_type id;
     bool visible;
@@ -288,7 +294,8 @@ typedef struct Window {
     struct {
         bool can_offer;
         struct { double x, y; monotonic_t at; } initial_left_press;
-        char *mimes_buf; const char **mimes; size_t num_mimes, bufsz;
+        char *mimes_buf; size_t num_mimes, bufsz;
+        DragSourceItem *items;
         int allowed_operations;
         bool offer_being_built;
     } drag_source;
