@@ -1058,7 +1058,8 @@ free_drag_source(void) {
 
 void
 cancel_current_drag_source(void) {
-    if (!ds.from_os_window) return; OSWindow *w = os_window_for_id(ds.from_os_window); if (!w || !w->handle) return;
+    if (!ds.from_os_window) return;
+    OSWindow *w = os_window_for_id(ds.from_os_window); if (!w || !w->handle) return;
     glfwStartDrag(w->handle, NULL, 0, NULL, -3, false);
 }
 

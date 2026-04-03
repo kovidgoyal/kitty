@@ -210,7 +210,8 @@ If the terminal program determines that it wants to start a drag at that
 location, it must send the terminal the ``t=o:o=flags`` escape code again, but
 with a payload consisting of the space separated MIME types it offers. The
 ``flags`` indicate what types of operations the client supports, ``1`` for
-copy, ``2`` for move and ``3`` for either. Note that at this time the drag
+copy, ``2`` for move and ``3`` for either. The transmission should be chunked
+if the list of MIME types is too long. Note that at this time the drag
 operation has not actually started, this gives the terminal program the
 opportunity to pre-send some data or set one or more images to act as
 thumbnails for the drag operation.
@@ -225,7 +226,7 @@ terminal program should pre-send the data for them unless it is very large.
 This is because some platforms, such as macOS, need pre sent data to be able
 to interoperate with native programs. The terminal emulator should reply with
 ``t=R ; EFBIG`` if too much data is sent and cancel the drag. Terminals must
-accept at least 64MB of present data.
+accept at least 64MB of pre sent data.
 
 Pre sent data is sent with escape codes of the form::
 
