@@ -265,8 +265,9 @@ operation, it indicates the drag should be started by sending ``t=P:x=-1``. At
 this time if the user has already cancelled the drag or the terminal determines
 the drag operation is not allowed, it must respond with ``t=R ; EPERM``. If any
 other error occurs starting the drag operation, it must respond with the appropriate
-POSIX error code. If the drag operation is successfully started, it must respond with
-``t=R ; OK``.
+POSIX error code. If it determines that the image data after conversion to
+display format is too large, it must respond with ``t=R ; EFBIG``. If the drag
+operation is successfully started, it must respond with ``t=R ; OK``.
 
 Multiplexers
 -----------------

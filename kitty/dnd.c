@@ -18,6 +18,7 @@
 #include <errno.h>
 
 static const size_t MIME_LIST_SIZE_CAP = 1024 * 1024;
+static const size_t PRESENT_DATA_CAP = 64 * 1024 * 1024;
 
 // In test mode, this callable is invoked instead of schedule_write_to_child_if_possible.
 // It receives (window_id: int, data: bytes) and its return value is ignored.
@@ -869,8 +870,13 @@ drag_free_offer(Window *w) {
         for (size_t i=0; i < ds.num_mimes; i++) free(ds.items[i].optional_data);
         free(ds.items);
     }
+    for (size_t i = 0; i < arraysz(ds.images); i++) {
+        if (ds.images[i].data) free(ds.images[i].data);
+        zero_at_ptr(ds.images + i);
+    }
     ds.num_mimes = 0;
     ds.pre_sent_total_sz = 0;
+    ds.images_sent_total_sz = 0;
 }
 
 void
@@ -912,22 +918,49 @@ drag_add_mimes(Window *w, int allowed_operations, const char *data, size_t sz, b
 void
 drag_add_pre_sent_data(Window *w, unsigned idx, const uint8_t *payload, size_t sz) {
     if (!ds.offer_being_built || idx >= ds.num_mimes) abrt(EINVAL);
-    if (sz + ds.pre_sent_total_sz > 64 * 1024 * 1024) abrt(EFBIG);
+    if (sz + ds.pre_sent_total_sz > PRESENT_DATA_CAP) abrt(EFBIG);
     ds.pre_sent_total_sz += sz;
-    DragSourceItem *item = ds.items + idx;
-    if (!item->data_decode_initialized) {
-        item->data_decode_initialized = true;
-        base64_init_stream_decoder(&item->base64_state);
+#define item ds.items[idx]
+    if (!item.data_decode_initialized) {
+        item.data_decode_initialized = true;
+        base64_init_stream_decoder(&item.base64_state);
     }
-    if (item->data_capacity < sz + item->data_size) {
-        size_t newcap = MAX(item->data_size * 2, sz + item->data_size);
-        item->optional_data = realloc(item->optional_data, newcap);
-        if (!item->optional_data) abrt(ENOMEM);
-        item->data_capacity = newcap;
+    if (item.data_capacity < sz + item.data_size) {
+        size_t newcap = MAX(item.data_size * 2, sz + item.data_size);
+        item.optional_data = realloc(item.optional_data, newcap);
+        if (!item.optional_data) abrt(ENOMEM);
+        item.data_capacity = newcap;
     }
-    size_t outlen = item->data_capacity - item->data_size;
-    if (!base64_decode_stream(&item->base64_state, payload, sz, item->optional_data + item->data_size, &outlen)) abrt(EINVAL);
-    item->data_size += outlen;
+    size_t outlen = item.data_capacity - item.data_size;
+    if (!base64_decode_stream(&item.base64_state, payload, sz, item.optional_data + item.data_size, &outlen)) abrt(EINVAL);
+    item.data_size += outlen;
+#undef item
+}
+
+void
+drag_add_image(Window *w, unsigned idx, int fmt, int width, int height, const uint8_t *payload, size_t sz) {
+    if (idx + 1 >= arraysz(ds.images)) abrt(EFBIG);
+    if (ds.images_sent_total_sz + sz > PRESENT_DATA_CAP) abrt(EFBIG);
+    ds.images_sent_total_sz += sz;
+#define img ds.images[idx]
+    if (!img.started) {
+        if (fmt != 24 && fmt != 32 && fmt != 100) abrt(EINVAL);
+        if (width < 1 || height < 1) abrt(EINVAL);
+        img.started = true;
+        img.width = width; img.height = height;
+        img.fmt = fmt;
+        base64_init_stream_decoder(&img.base64_state);
+    }
+    if (img.capacity < sz + img.sz) {
+        size_t newcap = MAX(img.sz * 2, sz + img.sz);
+        img.data = realloc(img.data, newcap);
+        if (!img.data) abrt(ENOMEM);
+        img.capacity = newcap;
+    }
+    size_t outlen = img.capacity - img.sz;
+    if (!base64_decode_stream(&img.base64_state, payload, sz, img.data + img.sz, &outlen)) abrt(EINVAL);
+    img.sz += outlen;
+#undef img
 }
 
 #undef abrt

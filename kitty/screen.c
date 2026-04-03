@@ -1550,6 +1550,7 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
         } break;
         case 'p': {
             if (cmd->cell_x >= 0) drag_add_pre_sent_data(w, cmd->cell_x, payload, cmd->payload_sz);
+            else drag_add_image(w, -cmd->cell_x, cmd->cell_y, cmd->pixel_x, cmd->pixel_y, payload, cmd->payload_sz);
         } break;
     }
 }

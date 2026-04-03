@@ -299,7 +299,10 @@ typedef struct Window {
         struct { double x, y; monotonic_t at; } initial_left_press;
         char *mimes_buf; size_t num_mimes, bufsz;
         DragSourceItem *items;
-        size_t pre_sent_total_sz;
+        struct {
+            int width, height, fmt; uint8_t *data; size_t sz, capacity; bool started; base64_state base64_state;
+        } images[16];
+        size_t pre_sent_total_sz, images_sent_total_sz;
         int allowed_operations;
         bool offer_being_built;
     } drag_source;
