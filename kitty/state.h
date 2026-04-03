@@ -10,6 +10,7 @@
 #include "screen.h"
 #include "monotonic.h"
 #include "window_logo.h"
+#include "base64.h"
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 #include <hb.h>
@@ -235,8 +236,10 @@ typedef struct DirHandle {
 
 typedef struct DragSourceItem {
     const char *mime_type;
-    char *optional_data;
+    uint8_t *optional_data;
     size_t data_size, data_capacity;
+    base64_state base64_state;
+    bool data_decode_initialized;
 } DragSourceItem;
 
 typedef struct Window {

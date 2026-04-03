@@ -912,14 +912,19 @@ drag_add_pre_sent_data(Window *w, unsigned idx, const uint8_t *payload, size_t s
     if (sz + ds.pre_sent_total_sz > 64 * 1024 * 1024) abrt(EFBIG);
     ds.pre_sent_total_sz += sz;
     DragSourceItem *item = ds.items + idx;
+    if (!item->data_decode_initialized) {
+        item->data_decode_initialized = true;
+        base64_init_stream_decoder(&item->base64_state);
+    }
     if (item->data_capacity < sz + item->data_size) {
         size_t newcap = MAX(item->data_size * 2, sz + item->data_size);
         item->optional_data = realloc(item->optional_data, newcap);
         if (!item->optional_data) abrt(ENOMEM);
         item->data_capacity = newcap;
     }
-    memcpy(item->optional_data + item->data_size, payload, sz);
-    item->data_size += sz;
+    size_t outlen = item->data_capacity - item->data_size;
+    if (!base64_decode_stream(&item->base64_state, payload, sz, item->optional_data + item->data_size, &outlen)) abrt(EINVAL);
+    item->data_size += outlen;
 }
 
 #undef abrt
