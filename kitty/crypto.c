@@ -14,6 +14,7 @@
 #include <openssl/pem.h>
 #include <openssl/bio.h>
 #include <openssl/rand.h>
+#include <openssl/crypto.h>
 #include <sys/mman.h>
 #include <structmember.h>
 
@@ -72,8 +73,8 @@ dealloc_secret(Secret *self) {
 
 static int
 __eq__(Secret *a, Secret *b) {
-    const size_t l = a->secret_len < b->secret_len ? a->secret_len : b->secret_len;
-    return memcmp(a->secret, b->secret, l) == 0;
+    if (a->secret_len != b->secret_len) return 0;
+    return CRYPTO_memcmp(a->secret, b->secret, a->secret_len) == 0;
 }
 
 static Py_ssize_t

@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import base64
+import hmac
 import json
 import os
 import re
@@ -103,6 +104,14 @@ def fnmatch_pattern(pat: str) -> 're.Pattern[str]':
     return re.compile(translate(pat))
 
 
+def _ct_password_lookup(passwords: dict[str, Any], pw: str) -> Any:
+    result = None
+    for k, v in passwords.items():
+        if hmac.compare_digest(k, pw):
+            result = v
+    return result
+
+
 def remote_control_allowed(
     pcmd: dict[str, Any], remote_control_passwords: dict[str, Sequence[str]] | None,
     window: Optional['Window'], extra_data: dict[str, Any]
@@ -110,7 +119,7 @@ def remote_control_allowed(
     if not remote_control_passwords:
         return True
     pw = pcmd.get('password', '')
-    auth_items = remote_control_passwords.get(pw)
+    auth_items = _ct_password_lookup(remote_control_passwords, pw)
     if pw == '!':
         auth_items = None
     if auth_items is None:
@@ -185,10 +194,10 @@ def is_cmd_allowed(pcmd: dict[str, Any], window: Optional['Window'], from_socket
             return False
         pa = password_authorizer(auth_items)
         return pa.is_cmd_allowed(pcmd, window, from_socket, extra_data)
-    q = user_password_allowed.get(pw)
+    q = _ct_password_lookup(user_password_allowed, pw)
     if q is not None:
         return q
-    auth_items = get_options().remote_control_password.get(pw)
+    auth_items = _ct_password_lookup(get_options().remote_control_password, pw)
     if auth_items is None:
         return None
     pa = password_authorizer(auth_items)

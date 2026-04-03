@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import errno
+import hmac
 import inspect
 import io
 import json
@@ -572,12 +573,12 @@ def check_bypass(password: str, request_id: str, bypass_data: str) -> bool:
             delta = time_ns() - int(timestamp)
             if abs(delta) > 5 * 60 * 1e9:
                 return False
-            return payload == f'{request_id};{password}'
+            return hmac.compare_digest(payload, f'{request_id};{password}')
         except Exception as err:
             log_error(f'Invalid file transmission bypass data received: {err}')
             return False
     elif protocol == 'sha256':
-        return (encode_bypass(request_id, password) == bypass_data) if password else False
+        return hmac.compare_digest(encode_bypass(request_id, password), bypass_data) if password else False
     else:
         log_error(f'Invalid file transmission bypass data received with protocol: {protocol}')
     return False

@@ -1940,7 +1940,7 @@ write_to_peer(Peer *peer) {
     else if (n < 0) {
         if (errno != EINTR) { log_error("write() to peer socket failed with error: %s", strerror(errno)); peer->write.used = 0; peer->write.failed = true; }
     } else {
-        if ((size_t)n > peer->write.used) memmove(peer->write.data, peer->write.data + n, peer->write.used - n);
+        if ((size_t)n < peer->write.used) memmove(peer->write.data, peer->write.data + n, peer->write.used - n);
         peer->write.used -= n;
     }
     talk_mutex(unlock);

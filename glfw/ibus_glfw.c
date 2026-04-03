@@ -287,7 +287,9 @@ get_ibus_address_file_name(void) {
     addr = getenv("IBUS_ADDRESS");
     int offset = 0;
     if (addr && addr[0]) {
-        memcpy(ans, addr, GLFW_MIN(strlen(addr), sizeof(ans)));
+        size_t len = GLFW_MIN(strlen(addr), sizeof(ans) - 1);
+        memcpy(ans, addr, len);
+        ans[len] = '\0';
         return ans;
     }
     const char* disp_num = NULL;
