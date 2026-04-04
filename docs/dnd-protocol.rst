@@ -259,6 +259,7 @@ image by sending::
     OSC _dnd_code ; t=P:x=idx ST
 
 Where ``idx`` is now a zero based index with zero being the first image and so on.
+Sending an ``idx`` out of bounds means the drag image should be removed.
 
 Once the terminal program has sent all data and images for the drag
 operation, it indicates the drag should be started by sending ``t=P:x=-1``. At

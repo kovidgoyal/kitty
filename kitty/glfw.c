@@ -3110,6 +3110,21 @@ get_thumbnail(PyObject *thumbnails, GLFWimage *thumbnail, int idx) {
     return true;
 }
 
+bool
+change_drag_image(int idx) {
+    if (!global_state.drag_source.from_os_window) return false;
+    OSWindow *w = os_window_for_id(global_state.drag_source.from_os_window);
+    if (!w || !w->handle) { errno = EINVAL; return false; }
+    if (global_state.drag_source.thumbnail_idx == idx) return true;
+    GLFWimage thumbnail = {0};
+    if (idx >=0 && global_state.drag_source.thumbnails && idx < PySequence_Size(global_state.drag_source.thumbnails)) {
+        if (!get_thumbnail(global_state.drag_source.thumbnails, &thumbnail, idx)) { errno = ENOMEM; PyErr_Clear(); return NULL; }
+        global_state.drag_source.thumbnail_idx = idx;
+    } else global_state.drag_source.thumbnail_idx = -1;
+    errno = glfwStartDrag(w->handle, NULL, 0, thumbnail.pixels ? &thumbnail : NULL, -2, false);
+    return errno == 0;
+}
+
 static PyObject*
 change_drag_thumbnail(PyObject *self UNUSED, PyObject *args) {
     unsigned long long os_window_id; int idx = -1;

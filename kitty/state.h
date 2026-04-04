@@ -234,13 +234,7 @@ typedef struct DirHandle {
     uint32_t id;          /* handle id, 1-based; 0 = invalid */
 } DirHandle;
 
-typedef struct DragSourceItem {
-    const char *mime_type;
-    uint8_t *optional_data;
-    size_t data_size, data_capacity;
-    base64_state base64_state;
-    bool data_decode_initialized;
-} DragSourceItem;
+typedef enum { DRAG_SOURCE_NONE, DRAG_SOURCE_BEING_BUILT, DRAG_SOURCE_STARTED, DRAG_SOURCE_DROPPED } DragSourceState;
 
 typedef struct Window {
     id_type id;
@@ -298,13 +292,17 @@ typedef struct Window {
         bool can_offer;
         struct { double x, y; monotonic_t at; } initial_left_press;
         char *mimes_buf; size_t num_mimes, bufsz;
-        DragSourceItem *items;
+        struct {
+            const char *mime_type; uint8_t *optional_data; size_t data_size, data_capacity; base64_state base64_state;
+            bool data_decode_initialized;
+        } *items;
         struct {
             int width, height, fmt; uint8_t *data; size_t sz, capacity; bool started; base64_state base64_state;
         } images[16];
         size_t pre_sent_total_sz, images_sent_total_sz;
+        unsigned img_idx;
         int allowed_operations;
-        bool offer_being_built;
+        DragSourceState state;
     } drag_source;
 } Window;
 
@@ -595,3 +593,4 @@ void request_drop_status_update(OSWindow *osw);
 void register_mimes_for_drop(OSWindow *w, const char **mimes, size_t sz);
 void request_drop_data(OSWindow *w, id_type wid, const char* mime);
 void cancel_current_drag_source(void);
+bool change_drag_image(int idx);
