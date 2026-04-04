@@ -242,19 +242,20 @@ the ``t=o`` key indicating the offer if the data is available.
 
 To associate one or more images with the drag operation, the terminal program
 must transmit the data for the image with the ``idx`` value above being a
-negative number starting with ``-1`` for the first image and so on. When
-transmitting images, the image data format is specified using the ``y`` key.
-A value of ``y=24`` mean 24bit RGB data and ``y=32`` means 32bit RGBA data.
-Colors in the RGB/A data must be in the sRGB color space.
-Using ``y=100`` means the data is a PNG image. Additionally, the ``X`` and
-``Y`` keys must be used to specify the width and height of the image data in
-pixels. If the size of the transmitted data does not match the image dimensions
-the terminal must replay with ``t=R ; EINVAL``. Terminals are free to impose a
-limit on the amount of image data, too avoid Denial-of-service attacks. If the
-image data is too much or the image is too large they must reply with ``t=R ;
-EFBIG`` and abort the drag. By default, the drag will be started using the
-first image, if any. During the drag, the terminal program can change the
-image by sending::
+negative number starting with ``-1`` for the first image and so on. Clients
+**must** transmit all images consecutively in order, starting with the frist,
+then the second and so on. When transmitting images, the image data format is
+specified using the ``y`` key. A value of ``y=24`` mean 24bit RGB data and
+``y=32`` means 32bit RGBA data. Colors in the RGB/A data must be in the sRGB
+color space. Using ``y=100`` means the data is a PNG image. Additionally, the
+``X`` and ``Y`` keys must be used to specify the width and height of the image
+data in pixels. If the size of the transmitted data does not match the image
+dimensions the terminal must replay with ``t=R ; EINVAL``. Terminals are free
+to impose a limit on the amount of image data, too avoid Denial-of-service
+attacks. If the image data is too much or the image is too large they must
+reply with ``t=R ; EFBIG`` and abort the drag. By default, the drag will be
+started using the first image, if any. During the drag, the terminal program
+can change the image by sending::
 
     OSC _dnd_code ; t=P:x=idx ST
 

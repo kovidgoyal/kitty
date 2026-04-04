@@ -594,3 +594,4 @@ void register_mimes_for_drop(OSWindow *w, const char **mimes, size_t sz);
 void request_drop_data(OSWindow *w, id_type wid, const char* mime);
 void cancel_current_drag_source(void);
 bool change_drag_image(int idx);
+int start_window_drag(Window *w);

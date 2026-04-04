@@ -3147,6 +3147,44 @@ change_drag_thumbnail(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+int
+start_window_drag(Window *w) {
+    OSWindow *osw = os_window_for_kitty_window(w->id);
+    if (!osw || !osw->handle) return EINVAL;
+    RAII_ALLOC(GLFWDragSourceItem, items, calloc(w->drag_source.num_mimes, sizeof(GLFWDragSourceItem)));
+    if (!items) return ENOMEM;
+    for (size_t i = 0; i < w->drag_source.num_mimes; i++) {
+        items[i].mime_type = w->drag_source.items[i].mime_type;
+        items[i].optional_data = (char*)w->drag_source.items[i].optional_data;
+        items[i].data_size = w->drag_source.items[i].data_size;
+    }
+    size_t num_images = 0;
+    for (size_t i = 0; i < arraysz(w->drag_source.images); i++) if (w->drag_source.images[i].data) num_images++;
+    RAII_PyObject(images, PyTuple_New(num_images));
+    if (!images) { PyErr_Clear(); return ENOMEM; }
+    for (size_t i = 0, n = 0; i < arraysz(w->drag_source.images); i++) {
+        if (w->drag_source.images[i].data) {
+            PyObject *t = Py_BuildValue(
+                "y#ii", w->drag_source.images[i].data, w->drag_source.images[i].sz, w->drag_source.images[i].width, w->drag_source.images[i].height);
+            if (!t) { PyErr_Clear(); return ENOMEM; }
+            PyTuple_SET_ITEM(images, n, t); n++;
+        }
+    }
+    GLFWimage thumbnail = {0};
+    if (w->drag_source.img_idx < num_images && !get_thumbnail(images, &thumbnail, w->drag_source.img_idx)) return ENOMEM;
+    free_drag_source();
+    global_state.drag_source.thumbnails = Py_NewRef(images);
+    global_state.drag_source.is_active = true;
+    global_state.drag_source.needs_toplevel_on_wayland = true;
+    global_state.drag_source.from_window = w->id;
+    global_state.drag_source.from_os_window = osw->id;
+    global_state.drag_source.thumbnail_idx = w->drag_source.img_idx < num_images ? (int)w->drag_source.img_idx : -1;
+    int ret = glfwStartDrag(osw->handle, items, w->drag_source.num_mimes, thumbnail.pixels ? &thumbnail : NULL, w->drag_source.allowed_operations, true);
+    if (ret != 0) free_drag_source();
+    return ret;
+}
+
+
 static PyObject*
 start_drag_with_data(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     static const char* kwlist[] = {"os_window_id", "data_map", "thumbnails", "operations", NULL};
@@ -3185,6 +3223,7 @@ start_drag_with_data(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     errno = glfwStartDrag(w->handle, items, num, thumbnail.pixels ? &thumbnail : NULL, operations, needs_toplevel_on_wayland);
     if (errno != 0) {
         PyErr_SetFromErrno(PyExc_OSError);
+        free_drag_source();
         return NULL;
     }
     Py_RETURN_NONE;

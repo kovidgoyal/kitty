@@ -862,11 +862,8 @@ drop_left_child(Window *w) {
 
 #define ds w->drag_source
 
-void
-drag_free_offer(Window *w) {
-    free(ds.mimes_buf); ds.mimes_buf = NULL;
-    ds.allowed_operations = 0;
-    ds.state = DRAG_SOURCE_NONE;
+static void
+drag_free_built_data(Window *w) {
     if (ds.items) {
         for (size_t i=0; i < ds.num_mimes; i++) free(ds.items[i].optional_data);
         free(ds.items);
@@ -875,6 +872,14 @@ drag_free_offer(Window *w) {
         if (ds.images[i].data) free(ds.images[i].data);
         zero_at_ptr(ds.images + i);
     }
+}
+
+void
+drag_free_offer(Window *w) {
+    free(ds.mimes_buf); ds.mimes_buf = NULL;
+    drag_free_built_data(w);
+    ds.allowed_operations = 0;
+    ds.state = DRAG_SOURCE_NONE;
     ds.num_mimes = 0;
     ds.pre_sent_total_sz = 0;
     ds.images_sent_total_sz = 0;
@@ -1027,6 +1032,13 @@ drag_start(Window *w) {
             if (total_size > 2 * PRESENT_DATA_CAP) abrt(EFBIG);
             if (img.sz != (size_t)img.width * (size_t)img.height * 4u) abrt(EINVAL);
         }
+    }
+    int err = start_window_drag(w);
+    if (err != 0) {
+        abrt(err);
+    } else {
+        drag_free_built_data(w);
+        ds.state = DRAG_SOURCE_STARTED;
     }
 }
 
