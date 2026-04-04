@@ -1563,6 +1563,18 @@ os_window_focus_counters(PyObject *self UNUSED, PyObject *args UNUSED) {
 
 
 static PyObject*
+get_os_window_mouse_pos(PyObject *self UNUSED, PyObject *args) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = &global_state.os_windows[i];
+        if (w->id == os_window_id)
+            return Py_BuildValue("dd", w->mouse_x, w->mouse_y);
+    }
+    return Py_BuildValue("dd", 0.0, 0.0);
+}
+
+static PyObject*
 get_mouse_data_for_window(PyObject *self UNUSED, PyObject *args) {
     id_type os_window_id, tab_id, window_id;
     PA("KKK", &os_window_id, &tab_id, &window_id);
@@ -1625,6 +1637,7 @@ request_callback_with_thumbnail(PyObject *self UNUSED, PyObject *args) {
 
 static PyMethodDef module_methods[] = {
     M(os_window_focus_counters, METH_NOARGS),
+    M(get_os_window_mouse_pos, METH_VARARGS),
     M(get_mouse_data_for_window, METH_VARARGS),
     M(request_callback_with_thumbnail, METH_VARARGS),
     M(set_tab_being_dragged, METH_VARARGS),

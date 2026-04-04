@@ -2005,6 +2005,13 @@ class Boss:
             url = 'file://' + quote(os.path.abspath(url))
         start_drag_with_data(os_window_id, {'text/uri-list': (url + '\r\n').encode()}, (), operations=GLFW_DRAG_OPERATION_COPY)
 
+    def _wayland_self_drop(self, data: dict[str, bytes], timer_id: int | None = None) -> None:
+        from .fast_data_types import current_focused_os_window_id, get_os_window_mouse_pos
+        os_window_id = current_focused_os_window_id()
+        if os_window_id and self.os_window_map.get(os_window_id):
+            x, y = get_os_window_mouse_pos(os_window_id)
+            self.on_drop(os_window_id, data, True, int(x), int(y))
+
     def on_drag_source_finished(
         self, was_dropped: bool, was_canceled: bool, accepted_mime_type: str, action: int, data: dict[str, bytes] | None,
         needs_toplevel_on_wayland: bool
@@ -2042,7 +2049,12 @@ class Boss:
                 tm.on_tab_drop_move()
             if was_dropped:  # detach tab into new OS Window
                 self._move_tab_to(tab)
-
+        elif is_wayland() and was_dropped and not was_canceled and data and 'text/uri-list' in data:
+            # On Wayland, compositors don't send drop events back to the drag
+            # source surface, so self-drops never reach on_drop. Use a short
+            # timer to let the pointer ungrab so the OS window's mouse position
+            # updates, then route through on_drop for proper hit-testing.
+            add_timer(partial(self._wayland_self_drop, data), 0.05, False)
 
     @ac('win', '''
         Focus the nth OS window if positive or the previously active OS windows if negative. When the number is larger

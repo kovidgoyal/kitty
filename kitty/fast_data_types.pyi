@@ -1819,6 +1819,9 @@ class MousePosition(TypedDict):
     cell_y: int
     in_left_half_of_cell: bool
 
+def get_os_window_mouse_pos(os_window_id: int) -> tuple[float, float]: ...
+
+
 def get_mouse_data_for_window(os_window_id: int, tab_id: int, window_id: int) -> Optional[MousePosition]: ...
 
 
