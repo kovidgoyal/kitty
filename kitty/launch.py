@@ -1111,6 +1111,7 @@ def remote_edit(msg: str, window: Window) -> None:
     c.opts.source_window = c.opts.next_to = f'id:{window.id}'
     # We ignore env vars as some editors execute code present in env vars such as VIMINIT
     c.opts.env = ()
+    c.opts.copy_env = False
     w = launch(get_boss(), c.opts, cmdline)
     if w is not None:
         c.source_window_id = window.id
