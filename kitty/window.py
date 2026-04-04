@@ -1843,6 +1843,20 @@ class Window:
     def mouse_selection(self, code: int) -> None:
         mouse_selection(self.os_window_id, self.tab_id, self.id, code, self.current_mouse_event_button)
 
+    @ac('mouse', '''
+        Drag the URL or hyperlink under the mouse for drag-and-drop
+
+        If the mouse is over a detected URL or OSC 8 hyperlink, initiates a
+        platform drag-and-drop operation. The URL can be dropped into other
+        applications such as file managers, browsers, or text editors. If no
+        URL is found under the mouse, falls back to starting a normal text
+        selection.
+        ''')
+    def mouse_drag_url(self) -> None:
+        from .fast_data_types import mouse_start_url_drag
+        if not mouse_start_url_drag(self.os_window_id, self.tab_id, self.id, self.current_mouse_event_button):
+            self.mouse_selection(0)  # fallback to normal selection
+
     @ac('mouse', 'Paste the current primary selection')
     def paste_selection(self) -> None:
         txt = get_boss().current_primary_selection()

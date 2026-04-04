@@ -397,8 +397,25 @@ set_mouse_cursor_for_screen(Screen *screen) {
     }
 }
 
+static double
+distance(double x1, double y1, double x2, double y2) {
+    return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
+}
+
 static void
 handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
+    if (w->hyperlink_drag.pending && !w->hyperlink_drag.drag_started && button == global_state.active_drag_button) {
+        if (distance(w->mouse_pos.global_x, w->mouse_pos.global_y,
+                     w->hyperlink_drag.start_x, w->hyperlink_drag.start_y) > OPT(drag_threshold)) {
+            w->hyperlink_drag.drag_started = true;
+            call_boss(start_hyperlink_drag, "KKi",
+                global_state.callback_os_window->id, w->id,
+                w->hyperlink_drag.hyperlink_id);
+        }
+        return;
+    }
+    if (w->hyperlink_drag.drag_started) return;
+
     Screen *screen = w->render_data.screen;
     if (screen->selections.in_progress && (button == global_state.active_drag_button)) {
         monotonic_t now = monotonic();
@@ -642,11 +659,6 @@ handle_scrollbar_mouse(Window *w, int button, MouseAction action, int modifiers 
     return true;
 }
 // }}}
-
-static double
-distance(double x1, double y1, double x2, double y2) {
-    return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
-}
 
 HANDLER(handle_move_event) {
     modifiers &= ~GLFW_LOCK_MASK;
@@ -1222,6 +1234,24 @@ mouse_selection(Window *w, int code, int button) {
 #undef S
 }
 
+bool
+mouse_start_url_drag(Window *w, int button) {
+    if (OPT(drag_threshold) <= 0) return false;
+    Screen *screen = w->render_data.screen;
+    int hid = screen_detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
+    if (hid > 0 || (hid != 0 && OPT(detect_urls))) {
+        global_state.active_drag_in_window = w->id;
+        global_state.active_drag_button = button;
+        w->hyperlink_drag.pending = true;
+        w->hyperlink_drag.drag_started = false;
+        w->hyperlink_drag.start_x = w->mouse_pos.global_x;
+        w->hyperlink_drag.start_y = w->mouse_pos.global_y;
+        w->hyperlink_drag.hyperlink_id = hid;
+        return true;
+    }
+    return false;
+}
+
 static const char*
 border_name(int edges) {
     switch(edges) {
@@ -1282,7 +1312,10 @@ mouse_event(const int button, int modifiers, int action) {
                 // it would normally be cleared.
                 if (osw) osw->suppress_left_mouse_release = false;
                 debug("handled as drag end\n");
-                dispatch_possible_click(w, button, modifiers);
+                if (!w->hyperlink_drag.drag_started) {
+                    dispatch_possible_click(w, button, modifiers);
+                }
+                zero_at_ptr(&w->hyperlink_drag);
                 return;
             }
         }

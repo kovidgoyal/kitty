@@ -304,6 +304,12 @@ typedef struct Window {
         int allowed_operations;
         DragSourceState state;
     } drag_source;
+    struct {
+        bool pending;
+        bool drag_started;
+        double start_x, start_y;
+        int hyperlink_id;
+    } hyperlink_drag;
 } Window;
 
 typedef struct BorderRect {
@@ -567,6 +573,7 @@ bool mouse_set_last_visited_cmd_output(Window *w);
 bool mouse_select_cmd_output(Window *w);
 bool move_cursor_to_mouse_if_at_shell_prompt(Window *w);
 void mouse_selection(Window *w, int code, int button);
+bool mouse_start_url_drag(Window *w, int button);
 const char* format_mods(unsigned mods);
 void dispatch_pending_clicks(id_type, void*);
 void send_pending_click_to_window(Window*, int);

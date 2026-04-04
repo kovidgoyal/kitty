@@ -1992,6 +1992,19 @@ class Boss:
             if (tab_id := tm.tab_bar.tab_id_at(x)) and (tab := self.tab_for_id(tab_id)) and (w := tab.active_window):
                 w.on_drop(drop)
 
+    def start_hyperlink_drag(self, os_window_id: int, window_id: int, hyperlink_id: int) -> None:
+        from .fast_data_types import GLFW_DRAG_OPERATION_COPY
+        w = self.window_id_map.get(window_id)
+        if w is None:
+            return
+        url = w.screen.hyperlink_for_id(hyperlink_id) if hyperlink_id > 0 else w.screen.current_url_text()
+        if not url:
+            return
+        if '://' not in url:
+            from urllib.parse import quote
+            url = 'file://' + quote(os.path.abspath(url))
+        start_drag_with_data(os_window_id, {'text/uri-list': (url + '\r\n').encode()}, (), operations=GLFW_DRAG_OPERATION_COPY)
+
     def on_drag_source_finished(
         self, was_dropped: bool, was_canceled: bool, accepted_mime_type: str, action: int, data: dict[str, bytes] | None,
         needs_toplevel_on_wayland: bool
@@ -2029,6 +2042,7 @@ class Boss:
                 tm.on_tab_drop_move()
             if was_dropped:  # detach tab into new OS Window
                 self._move_tab_to(tab)
+
 
     @ac('win', '''
         Focus the nth OS window if positive or the previously active OS windows if negative. When the number is larger

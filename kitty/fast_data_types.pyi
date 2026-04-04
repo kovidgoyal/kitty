@@ -1566,6 +1566,9 @@ def move_cursor_to_mouse_if_in_prompt(os_window_id: int, tab_id: int, window_id:
 def mouse_selection(os_window_id: int, tab_id: int, window_id: int, code: int, button: int) -> None:
     pass
 
+def mouse_start_url_drag(os_window_id: int, tab_id: int, window_id: int, button: int) -> bool:
+    pass
+
 
 def send_mouse_event(
     screen: Screen, cell_x: int, cell_y: int, button: int, action: int, mods: int,

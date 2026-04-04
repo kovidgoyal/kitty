@@ -1456,6 +1456,19 @@ pymouse_selection(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+pymouse_start_url_drag(PyObject *self UNUSED, PyObject *args) {
+    id_type os_window_id, tab_id, window_id;
+    int button;
+    PA("KKKi", &os_window_id, &tab_id, &window_id, &button);
+    bool started = false;
+    WITH_WINDOW(os_window_id, tab_id, window_id);
+    started = mouse_start_url_drag(window, button);
+    END_WITH_WINDOW;
+    if (started) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 PYWRAP1(get_window_logo_settings_if_not_default) {
     id_type os_window_id, tab_id, window_id;
     PA("KKK", &os_window_id, &tab_id, &window_id);
@@ -1548,6 +1561,7 @@ os_window_focus_counters(PyObject *self UNUSED, PyObject *args UNUSED) {
     return ans;
 }
 
+
 static PyObject*
 get_mouse_data_for_window(PyObject *self UNUSED, PyObject *args) {
     id_type os_window_id, tab_id, window_id;
@@ -1629,6 +1643,7 @@ static PyMethodDef module_methods[] = {
     MW(move_cursor_to_mouse_if_in_prompt, METH_VARARGS),
     MW(redirect_mouse_handling, METH_O),
     MW(mouse_selection, METH_VARARGS),
+    MW(mouse_start_url_drag, METH_VARARGS),
     MW(set_window_logo, METH_VARARGS),
     MW(get_window_logo_settings_if_not_default, METH_VARARGS),
     MW(set_ignore_os_keyboard_processing, METH_O),
