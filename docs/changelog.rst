@@ -217,6 +217,8 @@ Detailed list of changes
 
 - Password input in kittens: hide the cursor and display a blinking 🔒 at the end of typed characters to make it visually clear the user is entering a password
 
+- edit-in-kitty: Ignore environment variables as some editors execute code present in env vars
+
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

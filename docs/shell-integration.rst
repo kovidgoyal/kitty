@@ -313,7 +313,8 @@ window, etc. Not all arguments are supported, see the discussion in the
 :ref:`clone_shell` section above.
 
 In order to avoid remote code execution, kitty will only execute the configured
-editor and pass the file path to edit to it.
+editor and pass the file path to edit to it and it will strip all environment
+variables from the :command:`edit-in-kitty` command line.
 
 .. note:: To edit files using sudo the best method is to set the
    :code:`SUDO_EDITOR` environment variable to ``kitten edit-in-kitty`` and
