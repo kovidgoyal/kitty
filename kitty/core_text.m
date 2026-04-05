@@ -1165,6 +1165,13 @@ postscript_name_for_face(const PyObject *face_) {
     return "";
 }
 
+const char*
+family_name_for_face(const PyObject *face_) {
+    const CTFace *self = (const CTFace*)face_;
+    if (self->family_name) return PyUnicode_AsUTF8(self->family_name);
+    return "";
+}
+
 
 static PyObject *
 repr(CTFace *self) {

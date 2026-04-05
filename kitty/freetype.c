@@ -435,6 +435,12 @@ postscript_name_for_face(const PyObject *face_) {
     return ps_name ? ps_name : "";
 }
 
+const char*
+family_name_for_face(const PyObject *face_) {
+    const Face *self = (const Face*)face_;
+    return self->face->family_name ? self->face->family_name : "";
+}
+
 static unsigned int
 calc_cell_width(Face *self) {
     unsigned int ans = 0;

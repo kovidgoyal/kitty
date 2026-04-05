@@ -494,14 +494,29 @@ end:
 static bool face_has_codepoint(const void *face, char_type cp) { return glyph_id_for_codepoint(face, cp) > 0; }
 
 PyObject*
-create_fallback_face(PyObject UNUSED *base_face, const ListOfChars *lc, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
+create_fallback_face(PyObject *base_face, const ListOfChars *lc, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
     ensure_initialized();
     PyObject *ans = NULL;
     RAII_PyObject(d, NULL);
     FcPattern *pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
     bool glyph_found = false;
-    AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)(emoji_presentation ? "emoji" : "monospace"), "family");
+
+    // Get the family name from the base face to use as the preferred fallback.
+    // This ensures that when a character is not found in the configured font,
+    // we first try to find a font in the same family before falling back to
+    // generic "monospace".
+    const char *preferred_family = family_name_for_face(base_face);
+
+    // Add the preferred family first, then add "monospace" as fallback.
+    // Fontconfig will try families in order.
+    if (!emoji_presentation && preferred_family && preferred_family[0]) {
+        AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)preferred_family, "family");
+        // Add "monospace" as a fallback family after the preferred family
+        AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)"monospace", "family");
+    } else {
+        AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)(emoji_presentation ? "emoji" : "monospace"), "family");
+    }
     if (!emoji_presentation && bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
     if (!emoji_presentation && italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
     if (emoji_presentation) { AP(FcPatternAddBool, FC_COLOR, true, "color"); }
