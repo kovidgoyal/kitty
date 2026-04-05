@@ -951,7 +951,7 @@ def add_builtin_fonts(args: Options) -> None:
             lines = subprocess.check_output([
                 'fc-list', '--format', '%{file}\n%{postscriptname}', f':postscriptname={psname}']).decode().splitlines()
             if len(lines) != 2:
-                raise SystemExit(f'fc-match returned unexpected output: {lines}')
+                raise SystemExit(f'fc-list returned unexpected output: {lines}')
             if lines[1] != psname:
                 raise SystemExit(f'The font {human_name!r} was not found on your system, please install it')
             font_file = lines[0]
