@@ -3111,7 +3111,7 @@ draw_single_line_of_text(PyObject *self UNUSED, PyObject *args) {
     size_t height = (size_t)w->fonts_data->fcm.cell_height + padding_y;
     if (max_width) {
         size_t text_w = text_width_for_single_line(font_sz_pts, ydpi, text, height);
-        if (text_w > 0 && (int)text_w < width) width = (int)text_w;
+        if (text_w > 0 && text_w < (size_t)width) width = (int)text_w;
     }
     size_t buf_sz = (size_t)width * height * 4;
     RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, buf_sz)); if (!ans) return NULL;
