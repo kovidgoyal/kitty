@@ -3087,12 +3087,13 @@ grab_keyboard(PyObject *self UNUSED, PyObject *action) {
 }
 
 static PyObject*
-draw_single_line_of_text(PyObject *self UNUSED, PyObject *args) {
+draw_single_line_of_text(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     unsigned long long os_window_id;
     const char *text;
     unsigned int fg, bg;
     int width, padding_y = 2, max_width = 0;
-    if (!PyArg_ParseTuple(args, "KsIIi|ip", &os_window_id, &text, &fg, &bg, &width, &padding_y, &max_width)) return NULL;
+    static const char* kwlist[] = {"os_window_id", "text", "fg", "bg", "width", "padding_y", "max_width", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "KsIIi|ip", (char**)kwlist, &os_window_id, &text, &fg, &bg, &width, &padding_y, &max_width)) return NULL;
     OSWindow *w = os_window_for_id(os_window_id);
     if (!w || !w->fonts_data) {
         PyErr_SetString(PyExc_KeyError, "OS Window with specified id does not exist or has no fonts data");
@@ -3256,7 +3257,7 @@ static PyMethodDef module_methods[] = {
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     {"start_drag_with_data", (PyCFunction)(void (*) (void))(start_drag_with_data), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(change_drag_thumbnail, METH_VARARGS),
-    METHODB(draw_single_line_of_text, METH_VARARGS),
+    {"draw_single_line_of_text", (PyCFunction)(void (*) (void))(draw_single_line_of_text), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_default_window_icon, METH_VARARGS),
     METHODB(set_os_window_icon, METH_VARARGS),
     METHODB(set_clipboard_data_types, METH_VARARGS),

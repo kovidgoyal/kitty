@@ -1321,7 +1321,7 @@ class Window:
         fg = color_as_int(self.screen.color_profile.default_fg)
         bg = color_as_int(self.screen.color_profile.default_bg)
         width = self.geometry.right - self.geometry.left
-        pixels, width = draw_single_line_of_text(self.os_window_id, url, 0xff000000 | fg, 0xff000000 | bg, width)
+        pixels, width = draw_single_line_of_text(self.os_window_id, url, 0xff000000 | fg, 0xff000000 | bg, width, max_width=True)
         height = len(pixels) // (width * 4)
         thumbnails = ((pixels, width, height),)
         drag_data = {'text/uri-list': (url + '\r\n').encode()}

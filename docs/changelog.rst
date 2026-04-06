@@ -185,8 +185,6 @@ Detailed list of changes
 
 - Allow optionally dragging URLs with the mouse, see :sc:`start_simple_selection` (:pull:`9804`)
 
-- Improve ``draw_single_line_of_text()`` to accept an optional ``max_width`` parameter. When set, the width is treated as a maximum and reduced to the actual text width if smaller. The function now returns both pixel data and actual width used.
-
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
 
 - Graphics protocol: Fix crash when handling invalid PNG image with direct transmission
