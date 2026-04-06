@@ -30,4 +30,5 @@ code.
 
 ## PR guidance
 When creating a pull request, add an entry in the file docs/changelog.rst
-describing the change.
+describing the change, if it is a user visible change. For internal changes, do
+not add a changelog entry.
