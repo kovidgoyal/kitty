@@ -1762,7 +1762,7 @@ class TabManager:  # {{{
                 else:
                     fg = color_as_int(opts.inactive_tab_foreground)
                     bg = color_as_int(opts.inactive_tab_background)
-                title_pixels = draw_single_line_of_text(self.os_window_id, title, 0xff000000 | fg, 0xff000000 | bg, width)
+                title_pixels, width = draw_single_line_of_text(self.os_window_id, title, 0xff000000 | fg, 0xff000000 | bg, width)
                 title_height = len(title_pixels) // (width * 4)
                 thumbnails = ((title_pixels, width, title_height), (title_pixels + pixels, width, title_height + height))
                 drag_data = {
@@ -1870,7 +1870,7 @@ class TabManager:  # {{{
         title = str(w.title or '')
         fg = color_as_int(opts.window_title_bar_active_foreground or opts.active_tab_foreground)
         bg = color_as_int(opts.window_title_bar_active_background or opts.active_tab_background)
-        title_pixels = draw_single_line_of_text(self.os_window_id, title, 0xff000000 | fg, 0xff000000 | bg, width)
+        title_pixels, width = draw_single_line_of_text(self.os_window_id, title, 0xff000000 | fg, 0xff000000 | bg, width)
         title_height = len(title_pixels) // (width * 4)
         thumbnails = ((title_pixels + pixels, width, title_height + height),)
         drag_data = {f'application/net.kovidgoyal.kitty-window-{os.getpid()}': str(window_id).encode()}
