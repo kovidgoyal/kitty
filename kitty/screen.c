@@ -1512,6 +1512,16 @@ screen_dirty_line_graphics(Screen *self, const unsigned int top, const unsigned 
         grman_remove_cell_images(main_buf ? self->main_grman : self->alt_grman, top, bottom);
 }
 
+static bool
+screen_mark_potential_url_drag(Screen *self) {
+    Window *w;
+    if ((!self->current_hyperlink_under_mouse.id && !self->current_hyperlink_under_mouse.has_detected_url) || !self->window_id || !(w = window_for_window_id(self->window_id))) return false;
+    w->drag_source.potential_url_drag.active = true;
+    w->drag_source.potential_url_drag.x = w->mouse_pos.cell_x;
+    w->drag_source.potential_url_drag.y = w->mouse_pos.cell_y;
+    return true;
+}
+
 void
 screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *payload) {
     if (!self->window_id) return;
@@ -4084,13 +4094,13 @@ current_url_text(Screen *self, PyObject *args UNUSED) {
 
 
 bool
-screen_open_url(Screen *self) {
+screen_open_url(Screen *self, const char *callback) {
     if (!self->url_ranges.count) return false;
     hyperlink_id_type hid = hyperlink_id_for_range(self, self->url_ranges.items);
     if (hid) {
         const char *url = get_hyperlink_for_id(self->hyperlink_pool, hid, true);
         if (url) {
-            CALLBACK("open_url", "sH", url, hid);
+            CALLBACK(callback, "sH", url, hid);
             return true;
         }
     }
@@ -4101,7 +4111,7 @@ screen_open_url(Screen *self) {
     }
     bool found = false;
     if (PyUnicode_Check(text)) {
-        CALLBACK("open_url", "OH", text, 0);
+        CALLBACK(callback, "OH", text, 0);
         found = true;
     }
     Py_CLEAR(text);
@@ -5948,6 +5958,12 @@ current_selections(Screen *self, PyObject *a UNUSED) {
 WRAP0(update_only_line_graphics_data)
 WRAP0(bell)
 
+static PyObject*
+mark_potential_url_drag(Screen *self, PyObject *a UNUSED) {
+    if (screen_mark_potential_url_drag(self)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
 
@@ -6136,6 +6152,7 @@ static PyMethodDef methods[] = {
     MND(scroll_to_next_mark, METH_VARARGS)
     MND(update_only_line_graphics_data, METH_NOARGS)
     MND(bell, METH_NOARGS)
+    MND(mark_potential_url_drag, METH_NOARGS)
     MND(current_selections, METH_NOARGS)
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 

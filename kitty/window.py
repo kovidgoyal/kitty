@@ -48,6 +48,7 @@ from .fast_data_types import (
     GLFW_PRESS,
     GLFW_RELEASE,
     GLFW_REPEAT,
+    MOUSE_SELECTION_NORMAL,
     NO_CURSOR_SHAPE,
     NULL_COLOR_VALUE,
     SCROLL_FULL,
@@ -65,6 +66,7 @@ from .fast_data_types import (
     click_mouse_cmd_output,
     click_mouse_url,
     current_focused_os_window_id,
+    draw_single_line_of_text,
     encode_key_for_tty,
     get_boss,
     get_click_interval,
@@ -88,6 +90,7 @@ from .fast_data_types import (
     set_window_padding,
     set_window_render_data,
     set_window_title_bar_render_data,
+    start_drag_with_data,
     update_ime_position_for_window,
     update_pointer_shape,
     update_window_title,
@@ -1309,6 +1312,24 @@ class Window:
             return False
         return get_boss().combine(action, window_for_dispatch=self, dispatch_type='MouseEvent')
 
+    def drag_url(self, url: str, hyperlink_id: int) -> None:
+        if not url:
+            return
+        if url.startswith('/'):
+            from urllib.parse import quote
+            url = 'file://' + quote(os.path.abspath(url))
+        fg = color_as_int(self.screen.color_profile.default_fg)
+        bg = color_as_int(self.screen.color_profile.default_bg)
+        width = self.geometry.right - self.geometry.left
+        pixels = draw_single_line_of_text(self.os_window_id, url, 0xff000000 | fg, 0xff000000 | bg, width)
+        height = len(pixels) // (width * 4)
+        thumbnails = ((pixels, width, height),)
+        drag_data = {'text/uri-list': (url + '\r\n').encode()}
+        try:
+            start_drag_with_data(self.os_window_id, drag_data, thumbnails)
+        except OSError as e:
+            log_error(f'Failed to start URL drag: {e}')
+
     def open_url(self, url: str, hyperlink_id: int, cwd: str | None = None) -> None:
         boss = get_boss()
         try:
@@ -1841,6 +1862,10 @@ class Window:
         For examples, see :ref:`conf-kitty-mouse.mousemap`
         ''')
     def mouse_selection(self, code: int) -> None:
+        if code == MOUSE_SELECTION_NORMAL - 1:
+            code = MOUSE_SELECTION_NORMAL
+            if self.screen.mark_potential_url_drag():
+                return
         mouse_selection(self.os_window_id, self.tab_id, self.id, code, self.current_mouse_event_button)
 
     @ac('mouse', 'Paste the current primary selection')

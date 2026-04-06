@@ -183,6 +183,8 @@ Detailed list of changes
 
 - :doc:`Remote control <remote-control>`: Expose :code:`session_name` and :code:`last_focused_at` in the output of ``kitten @ ls`` for each window (:iss:`9732`, :iss:`9799`)
 
+- Allow optionally dragging URLs with the mouse, see :sc:`start_simple_selection` (:pull:`9804`)
+
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
 
 - Graphics protocol: Fix crash when handling invalid PNG image with direct transmission

@@ -446,6 +446,7 @@ def mouse_selection(func: str, rest: str) -> FuncArgsType:
             'normal': defines.MOUSE_SELECTION_NORMAL,
             'extend': defines.MOUSE_SELECTION_EXTEND,
             'move-end': defines.MOUSE_SELECTION_MOVE_END,
+            'move_end': defines.MOUSE_SELECTION_MOVE_END,
             'rectangle': defines.MOUSE_SELECTION_RECTANGLE,
             'word': defines.MOUSE_SELECTION_WORD,
             'line': defines.MOUSE_SELECTION_LINE,
@@ -453,6 +454,7 @@ def mouse_selection(func: str, rest: str) -> FuncArgsType:
             'line_from_point': defines.MOUSE_SELECTION_LINE_FROM_POINT,
             'word_and_line_from_point': defines.MOUSE_SELECTION_WORD_AND_LINE_FROM_POINT,
             'upto_surrounding_whitespace': defines.MOUSE_SELECTION_UPTO_SURROUNDING_WHITESPACE,
+            'drag_or_normal_select': defines.MOUSE_SELECTION_NORMAL - 1,
         }
         setattr(mouse_selection, 'code_map', cmap)
     return func, [cmap[rest]]

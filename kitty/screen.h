@@ -186,6 +186,7 @@ typedef struct {
     struct {
         hyperlink_id_type id;
         index_type x, y;
+        bool has_detected_url;
     } current_hyperlink_under_mouse;
     struct {
         uint8_t stack[16], count;
@@ -305,7 +306,7 @@ hyperlink_id_type screen_mark_hyperlink(Screen*, index_type, index_type);
 void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload);
 void screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const uint8_t *payload);
 void screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *payload);
-bool screen_open_url(Screen*);
+bool screen_open_url(Screen* self, const char* callback);
 bool screen_set_last_visited_prompt(Screen*, index_type);
 bool screen_select_cmd_output(Screen*, index_type);
 void screen_dirty_sprite_positions(Screen *self);

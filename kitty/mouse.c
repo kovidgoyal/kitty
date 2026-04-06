@@ -413,9 +413,10 @@ handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
 static void
 detect_url(Screen *screen, unsigned int x, unsigned int y) {
     int hid = screen_detect_url(screen, x, y);
-    screen->current_hyperlink_under_mouse.id = 0;
+    zero_at_ptr(&screen->current_hyperlink_under_mouse);
     if (hid != 0) {
         mouse_cursor_shape = POINTER_POINTER;
+        screen->current_hyperlink_under_mouse.has_detected_url = hid < 0;
         if (hid > 0) {
             screen->current_hyperlink_under_mouse.id = (hyperlink_id_type)hid;
             screen->current_hyperlink_under_mouse.x = x;
@@ -672,16 +673,26 @@ HANDLER(handle_move_event) {
     if (should_handle_in_kitty(w, screen, button)) {
         handle_mouse_movement_in_kitty(w, button, mouse_cell_changed | cell_half_changed);
     } else {
-        if (!mouse_cell_changed && screen->modes.mouse_tracking_protocol != SGR_PIXEL_PROTOCOL) return;
-        int sz = encode_mouse_button(w, button, button >=0 ? DRAG : MOVE, modifiers);
-        if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf); }
+        if (mouse_cell_changed || screen->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL) {
+            int sz = encode_mouse_button(w, button, button >=0 ? DRAG : MOVE, modifiers);
+            if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf); }
+        }
     }
-    if (w->drag_source.can_offer && w->drag_source.initial_left_press.at && distance(w->mouse_pos.global_x, w->mouse_pos.global_y, w->drag_source.initial_left_press.x, w->drag_source.initial_left_press.y) > OPT(drag_threshold)) {
+    if (w->drag_source.initial_left_press.at && distance(w->mouse_pos.global_x, w->mouse_pos.global_y, w->drag_source.initial_left_press.x, w->drag_source.initial_left_press.y) > OPT(drag_threshold)) {
         zero_at_ptr(&w->drag_source.initial_left_press);
-        snprintf(mouse_event_buf, sizeof(mouse_event_buf), "%d;t=o:x=%d:y=%d:X=%d:Y=%d",
-            DND_CODE, w->mouse_pos.cell_x, w->mouse_pos.cell_y, (int)w->mouse_pos.global_x, (int)w->mouse_pos.global_y);
-        write_escape_code_to_child(screen, ESC_OSC, mouse_event_buf);
-        debug("Sent drag start event to child\n");
+        if (w->drag_source.can_offer) {
+            snprintf(mouse_event_buf, sizeof(mouse_event_buf), "%d;t=o:x=%d:y=%d:X=%d:Y=%d",
+                DND_CODE, w->mouse_pos.cell_x, w->mouse_pos.cell_y, (int)w->mouse_pos.global_x, (int)w->mouse_pos.global_y);
+            write_escape_code_to_child(screen, ESC_OSC, mouse_event_buf);
+            debug("Sent drag start event to child\n");
+        } else if (w->drag_source.potential_url_drag.active) {
+            w->drag_source.potential_url_drag.active = false;
+            screen_detect_url(screen, w->drag_source.potential_url_drag.x, w->drag_source.potential_url_drag.y);
+            if (screen->current_hyperlink_under_mouse.id || screen->current_hyperlink_under_mouse.has_detected_url) {
+                screen_open_url(screen, "drag_url");
+                debug("Started URL drag\n");
+            }
+        }
     }
 }
 
@@ -749,7 +760,7 @@ bool
 mouse_open_url(Window *w) {
     Screen *screen = w->render_data.screen;
     detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
-    return screen_open_url(screen);
+    return screen_open_url(screen, "open_url");
 }
 
 bool
@@ -847,6 +858,7 @@ HANDLER(handle_button_event) {
     modifiers &= ~GLFW_LOCK_MASK;
     OSWindow *osw = global_state.callback_os_window;
     if (!osw) return;
+    w->drag_source.potential_url_drag.active = false;
 
     Tab *t = osw->tabs + osw->active_tab;
     bool is_release = !osw->mouse_button_pressed[button];
@@ -879,7 +891,7 @@ HANDLER(handle_button_event) {
     if (button == GLFW_MOUSE_BUTTON_LEFT) {
         if (is_release) {
             zero_at_ptr(&w->drag_source.initial_left_press);
-        } else if (w->drag_source.can_offer) {
+        } else {
             w->drag_source.initial_left_press.x = w->mouse_pos.global_x;
             w->drag_source.initial_left_press.y = w->mouse_pos.global_x;
             w->drag_source.initial_left_press.at = monotonic();

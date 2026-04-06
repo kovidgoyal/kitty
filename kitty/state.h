@@ -290,6 +290,7 @@ typedef struct Window {
     } drop;
     struct {
         bool can_offer;
+        struct { index_type x, y; bool active; } potential_url_drag;
         struct { double x, y; monotonic_t at; } initial_left_press;
         char *mimes_buf; size_t num_mimes, bufsz;
         struct {

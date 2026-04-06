@@ -988,6 +988,12 @@ mma('Paste from the primary selection',
 
 mma('Start selecting text',
     'start_simple_selection left press ungrabbed mouse_selection normal',
+    long_text='''
+If you would like to drag and drop hyperlinks or detected URLs, instead of
+:code:`normal` use :code:`drag_or_normal_select`, then if a hyperlink is under
+the mouse it will be dragged based on :opt:`drag_threshold` otherwise a normal
+selection will be performed.
+'''
     )
 
 mma('Start selecting text in a rectangle',
