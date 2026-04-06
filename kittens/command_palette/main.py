@@ -265,7 +265,9 @@ def add_alias_sections(
                 target_list.append(build_alias_entry(opts.alias_map, display, expansion))
 
     default_mode_cats = modes.setdefault('', {})
-    sort_key = lambda b: (b['key'] == '', b['key'] or b['action_display'])
+    def sort_key(b: dict[str, str]) -> tuple[bool, str]:
+        return (b['key'] == '', b['key'] or b['action_display'])
+
     for section_name, entries in (('Action aliases', action_alias_entries), ('Kitten aliases', kitten_alias_entries)):
         if entries:
             existing = default_mode_cats.get(section_name, [])
