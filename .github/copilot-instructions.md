@@ -29,6 +29,6 @@ code.
 - Do not use go test or ./setup.py test to run tests
 
 ## PR guidance
-When creating a pull request, add an entry in the file docs/changelog.rst
-describing the change, if it is a user visible change. For internal changes, do
-not add a changelog entry.
+When creating a pull request, if the changes in the pull request are user
+visible compared to the previous kitty release, add an entry in the file docs/changelog.rst
+describing the change.
