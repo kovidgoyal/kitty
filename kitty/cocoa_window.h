@@ -64,6 +64,7 @@ void cocoa_update_menu_bar_title(PyObject*);
 size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
 monotonic_t cocoa_cursor_blink_interval(void);
 bool cocoa_render_line_of_text(const char *text, const color_type fg, const color_type bg, uint8_t *rgba_output, const size_t width, const size_t height);
+size_t cocoa_text_width_for_single_line(const char *text, const size_t height);
 extern uint8_t* render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *result_height);
 void get_cocoa_key_equivalent(uint32_t, int, char *key, size_t key_sz, int*);
 void set_cocoa_pending_action(CocoaPendingAction action, const char*);

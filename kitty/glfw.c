@@ -1154,9 +1154,14 @@ apple_url_open_callback(const char* url) {
 
 
 bool
-draw_window_title(double font_sz_pts UNUSED, double ydpi UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
+draw_window_title(double font_sz_pts UNUSED, double ydpi UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height, size_t *actual_width) {
     static char buf[2048];
     strip_csi_(text, buf, arraysz(buf));
+    if (actual_width) {
+        size_t text_w = cocoa_text_width_for_single_line(buf, height);
+        if (text_w > 0 && text_w < width) width = text_w;
+        *actual_width = width;
+    }
     return cocoa_render_line_of_text(buf, fg, bg, output_buf, width, height);
 }
 
@@ -1204,13 +1209,18 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
 }
 
 bool
-draw_window_title(double font_sz_pts, double ydpi, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
+draw_window_title(double font_sz_pts, double ydpi, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height, size_t *actual_width) {
     FreeTypeRenderCtx ctx;
     if (!(ctx = freetype_render_ctx(false))) return false;
     static char buf[2048];
     strip_csi_(text, buf, arraysz(buf));
     unsigned px_sz = (unsigned)(font_sz_pts * ydpi / 72.);
     px_sz = MIN(px_sz, 3 * height / 4);
+    if (actual_width) {
+        size_t text_w = freetype_text_width_for_single_line(ctx, buf, px_sz);
+        if (text_w > 0 && text_w < width) width = text_w;
+        *actual_width = width;
+    }
 #define RGB2BGR(x) (x & 0xFF000000) | ((x & 0xFF0000) >> 16) | (x & 0x00FF00) | ((x & 0x0000FF) << 16)
     bool ok = render_single_line(ctx, buf, px_sz, RGB2BGR(fg), RGB2BGR(bg), output_buf, width, height, 0, 0, 0, false);
 #undef RGB2BGR
@@ -3077,12 +3087,13 @@ grab_keyboard(PyObject *self UNUSED, PyObject *action) {
 }
 
 static PyObject*
-draw_single_line_of_text(PyObject *self UNUSED, PyObject *args) {
+draw_single_line_of_text(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     unsigned long long os_window_id;
     const char *text;
     unsigned int fg, bg;
-    int width, padding_y = 2;
-    if (!PyArg_ParseTuple(args, "KsIIi|i", &os_window_id, &text, &fg, &bg, &width, &padding_y)) return NULL;
+    int width, padding_y = 2, max_width = 0;
+    static const char* kwlist[] = {"os_window_id", "text", "fg", "bg", "width", "padding_y", "max_width", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "KsIIi|ip", (char**)kwlist, &os_window_id, &text, &fg, &bg, &width, &padding_y, &max_width)) return NULL;
     OSWindow *w = os_window_for_id(os_window_id);
     if (!w || !w->fonts_data) {
         PyErr_SetString(PyExc_KeyError, "OS Window with specified id does not exist or has no fonts data");
@@ -3093,11 +3104,15 @@ draw_single_line_of_text(PyObject *self UNUSED, PyObject *args) {
     size_t height = (size_t)w->fonts_data->fcm.cell_height + padding_y;
     size_t buf_sz = (size_t)width * height * 4;
     RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, buf_sz)); if (!ans) return NULL;
-    if (!draw_window_title(font_sz_pts, ydpi, text, fg, bg, (uint8_t*)PyBytes_AS_STRING(ans), width, height)) {
+    size_t actual_width = width;
+    if (!draw_window_title(font_sz_pts, ydpi, text, fg, bg, (uint8_t*)PyBytes_AS_STRING(ans), width, height, max_width ? &actual_width : NULL)) {
         if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Failed to render text");
         return NULL;
     }
-    return Py_NewRef(ans);
+    if (actual_width < (size_t)width) {
+        if (_PyBytes_Resize(&ans, actual_width * height * 4) < 0) return NULL;
+    }
+    return Py_BuildValue("Oi", ans, (int)actual_width);
 }
 
 static bool
@@ -3242,7 +3257,7 @@ static PyMethodDef module_methods[] = {
     {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     {"start_drag_with_data", (PyCFunction)(void (*) (void))(start_drag_with_data), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(change_drag_thumbnail, METH_VARARGS),
-    METHODB(draw_single_line_of_text, METH_VARARGS),
+    {"draw_single_line_of_text", (PyCFunction)(void (*) (void))(draw_single_line_of_text), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_default_window_icon, METH_VARARGS),
     METHODB(set_os_window_icon, METH_VARARGS),
     METHODB(set_clipboard_data_types, METH_VARARGS),

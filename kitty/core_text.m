@@ -974,6 +974,21 @@ cocoa_render_line_of_text(const char *text, const color_type fg, const color_typ
     return true;
 }
 
+size_t
+cocoa_text_width_for_single_line(const char *text, const size_t height) {
+    if (!text || !text[0]) return 0;
+    if (!ensure_ui_font(height)) return 0;
+    NSAttributedString *str = [[NSAttributedString alloc] initWithString:@(text) attributes:@{(NSString *)kCTFontAttributeName: (__bridge id)system_ui_font}];
+    if (!str) return 0;
+    CTLineRef line = CTLineCreateWithAttributedString((CFAttributedStringRef)str);
+    [str release];
+    if (!line) return 0;
+    CGFloat ascent, descent, leading;
+    double width = CTLineGetTypographicBounds(line, &ascent, &descent, &leading);
+    CFRelease(line);
+    return (size_t)ceil(width);
+}
+
 uint8_t*
 render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *result_height) {
     if (!ensure_ui_font(*result_height)) { PyErr_SetString(PyExc_RuntimeError, "failed to create UI font"); return NULL; }
