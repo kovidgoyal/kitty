@@ -284,7 +284,7 @@ vec3 fg_override(float under_luminance, float over_luminance, vec3 under, vec3 o
     float result_a_ratio = contrast_ratio(under_luminance, dot(result_a, Y));
     float result_b_ratio = contrast_ratio(under_luminance, dot(result_b, Y));
     vec3 result = mix(result_a, result_b, step(result_a_ratio, result_b_ratio));
-    return mix(result, over, max(step(diff.r + diff.g + diff.g, 0.001f), step(min_contrast_ratio, ratio)));
+    return mix(result, over, max(step(diff.r + diff.g + diff.b, 0.001f), step(min_contrast_ratio, ratio)));
 }
 #endif
 
