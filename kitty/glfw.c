@@ -1154,17 +1154,15 @@ apple_url_open_callback(const char* url) {
 
 
 bool
-draw_window_title(double font_sz_pts UNUSED, double ydpi UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
+draw_window_title(double font_sz_pts UNUSED, double ydpi UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height, size_t *actual_width) {
     static char buf[2048];
     strip_csi_(text, buf, arraysz(buf));
+    if (actual_width) {
+        size_t text_w = cocoa_text_width_for_single_line(buf, height);
+        if (text_w > 0 && text_w < width) width = text_w;
+        *actual_width = width;
+    }
     return cocoa_render_line_of_text(buf, fg, bg, output_buf, width, height);
-}
-
-size_t
-text_width_for_single_line(double font_sz_pts UNUSED, double ydpi UNUSED, const char *text, size_t height) {
-    static char buf[2048];
-    strip_csi_(text, buf, arraysz(buf));
-    return cocoa_text_width_for_single_line(buf, height);
 }
 
 
@@ -1211,29 +1209,23 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
 }
 
 bool
-draw_window_title(double font_sz_pts, double ydpi, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
+draw_window_title(double font_sz_pts, double ydpi, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height, size_t *actual_width) {
     FreeTypeRenderCtx ctx;
     if (!(ctx = freetype_render_ctx(false))) return false;
     static char buf[2048];
     strip_csi_(text, buf, arraysz(buf));
     unsigned px_sz = (unsigned)(font_sz_pts * ydpi / 72.);
     px_sz = MIN(px_sz, 3 * height / 4);
+    if (actual_width) {
+        size_t text_w = freetype_text_width_for_single_line(ctx, buf, px_sz);
+        if (text_w > 0 && text_w < width) width = text_w;
+        *actual_width = width;
+    }
 #define RGB2BGR(x) (x & 0xFF000000) | ((x & 0xFF0000) >> 16) | (x & 0x00FF00) | ((x & 0x0000FF) << 16)
     bool ok = render_single_line(ctx, buf, px_sz, RGB2BGR(fg), RGB2BGR(bg), output_buf, width, height, 0, 0, 0, false);
 #undef RGB2BGR
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;
-}
-
-size_t
-text_width_for_single_line(double font_sz_pts, double ydpi, const char *text, size_t height) {
-    FreeTypeRenderCtx ctx;
-    if (!(ctx = freetype_render_ctx(false))) return 0;
-    static char buf[2048];
-    strip_csi_(text, buf, arraysz(buf));
-    unsigned px_sz = (unsigned)(font_sz_pts * ydpi / 72.);
-    px_sz = MIN(px_sz, 3 * height / 4);
-    return freetype_text_width_for_single_line(ctx, buf, px_sz);
 }
 
 uint8_t*
@@ -3109,17 +3101,17 @@ draw_single_line_of_text(PyObject *self UNUSED, PyObject *args) {
     double font_sz_pts = w->fonts_data->font_sz_in_pts;
     double ydpi = w->fonts_data->logical_dpi_y;
     size_t height = (size_t)w->fonts_data->fcm.cell_height + padding_y;
-    if (max_width) {
-        size_t text_w = text_width_for_single_line(font_sz_pts, ydpi, text, height);
-        if (text_w > 0 && text_w < (size_t)width) width = (int)text_w;
-    }
     size_t buf_sz = (size_t)width * height * 4;
     RAII_PyObject(ans, PyBytes_FromStringAndSize(NULL, buf_sz)); if (!ans) return NULL;
-    if (!draw_window_title(font_sz_pts, ydpi, text, fg, bg, (uint8_t*)PyBytes_AS_STRING(ans), width, height)) {
+    size_t actual_width = width;
+    if (!draw_window_title(font_sz_pts, ydpi, text, fg, bg, (uint8_t*)PyBytes_AS_STRING(ans), width, height, max_width ? &actual_width : NULL)) {
         if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Failed to render text");
         return NULL;
     }
-    return Py_BuildValue("Oi", ans, width);
+    if (actual_width < (size_t)width) {
+        if (_PyBytes_Resize(&ans, actual_width * height * 4) < 0) return NULL;
+    }
+    return Py_BuildValue("Oi", ans, (int)actual_width);
 }
 
 static bool
