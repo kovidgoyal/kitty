@@ -5395,6 +5395,47 @@ continue_line_downwards(Screen *self, index_type bottom_line, SelectionBoundary 
     return bottom_line;
 }
 
+static index_type
+continue_line_downwards_offscreen(Screen *self, int bottom_line, SelectionBoundary *start, SelectionBoundary *end) {
+    index_type num_offscreen = 0;
+    Line *line = NULL;
+    while ((line = checked_range_line(self, bottom_line + 1)) && range_line_is_continued(self, bottom_line + 1)) {
+        screen_selection_range_for_line_(line, &start->x, &end->x);
+        bottom_line++; num_offscreen++;
+    }
+    return num_offscreen;
+}
+
+static index_type
+continue_word_upwards_scrollback(Screen *self, int range_y, index_type *start_x) {
+    index_type num_in_scrollback = 0;
+    Line *line = NULL;
+    while (*start_x == 0 && range_line_is_continued(self, range_y) && (line = checked_range_line(self, range_y - 1))) {
+        if (!is_char_ok_for_word_extension(line, self->columns - 1, false)) break;
+        range_y--;
+        num_in_scrollback++;
+        index_type s = self->columns - 1;
+        while (s > 0 && is_char_ok_for_word_extension(line, s - 1, false)) s--;
+        *start_x = s;
+    }
+    return num_in_scrollback;
+}
+
+static index_type
+continue_word_downwards_offscreen(Screen *self, int range_y, index_type *end_x) {
+    index_type num_offscreen = 0;
+    Line *line = NULL;
+    while (*end_x >= self->columns - 1 && (line = checked_range_line(self, range_y + 1)) && range_line_is_continued(self, range_y + 1)) {
+        if (!is_char_ok_for_word_extension(line, 0, true)) break;
+        range_y++;
+        num_offscreen++;
+        index_type e = 0;
+        while (e < self->columns - 1 && is_char_ok_for_word_extension(line, e + 1, true)) e++;
+        *end_x = e;
+    }
+    return num_offscreen;
+}
+
 static int
 clamp_selection_input_to_multicell(Screen *self, const Selection *s, index_type x, index_type y, bool in_left_half_of_cell) {
     int delta = 0;
@@ -5487,6 +5528,25 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                 }
                 if (s->adjusting_start || adjust_both_ends) s->start_scrolled_by = self->scrolled_by;
                 if (!s->adjusting_start || adjust_both_ends) s->end_scrolled_by = self->scrolled_by;
+                // extend word into scrollback if needed
+                if (start.y == 0 && self->linebuf == self->main_linebuf &&
+                        (adjust_both_ends || adjusted_boundary_is_before)) {
+                    index_type num_in_scrollback = continue_word_upwards_scrollback(self, 0, &start.x);
+                    if (num_in_scrollback) {
+                        s->start_scrolled_by += num_in_scrollback;
+                        s->start.x = start.x;
+                    }
+                }
+                // extend word below viewport if needed
+                if (end.y >= self->lines - 1 && self->scrolled_by > 0 && self->linebuf == self->main_linebuf &&
+                        (adjust_both_ends || !adjusted_boundary_is_before)) {
+                    int range_bottom = (int)end.y - (int)self->scrolled_by;
+                    index_type num_below_viewport = continue_word_downwards_offscreen(self, range_bottom, &end.x);
+                    if (num_below_viewport) {
+                        s->end_scrolled_by -= num_below_viewport;
+                        s->end.x = end.x;
+                    }
+                }
             } else {
                 *a = s->input_current;
                 if (s->adjusting_start) s->start_scrolled_by = self->scrolled_by; else s->end_scrolled_by = self->scrolled_by;
@@ -5538,6 +5598,16 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                                 s->start.x = up_start.x;
                             }
                         }
+                        // extend below viewport if needed
+                        if (bottom_line >= self->lines - 1 && self->scrolled_by > 0 && self->linebuf == self->main_linebuf) {
+                            int range_bottom = (int)bottom_line - (int)self->scrolled_by;
+                            index_type num_below_viewport = continue_line_downwards_offscreen(
+                                    self, range_bottom, &down_start, &down_end);
+                            if (num_below_viewport) {
+                                s->end_scrolled_by -= num_below_viewport;
+                                s->end.x = down_end.x;
+                            }
+                        }
                     }
                 }
 #undef S
@@ -5562,6 +5632,16 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                         }
                     } else {
                         a->in_left_half_of_cell = false; a->x = down_end.x; a->y = bottom_line;
+                        // extend below viewport if needed
+                        if (bottom_line >= self->lines - 1 && self->scrolled_by > 0 && self->linebuf == self->main_linebuf) {
+                            int range_bottom = (int)bottom_line - (int)self->scrolled_by;
+                            index_type num_below_viewport = continue_line_downwards_offscreen(
+                                    self, range_bottom, &down_start, &down_end);
+                            if (num_below_viewport) {
+                                s->end_scrolled_by -= num_below_viewport;
+                                s->end.x = down_end.x;
+                            }
+                        }
                     }
                     // allow selecting whitespace at the start of the top line
                     if (a->y == top_line && s->input_current.y == top_line && s->input_current.x < a->x && adjusted_boundary_is_before) a->x = s->input_current.x;
