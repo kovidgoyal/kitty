@@ -223,6 +223,8 @@ Detailed list of changes
 
 - edit-in-kitty: Ignore environment variables as some editors execute code present in env vars
 
+- Command palette :sc:`command_palette`: nicer grouping of aliases and combined actions (:pull:`9819`)
+
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
