@@ -852,11 +852,13 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
                 ev->num_mimes = 0;  // we wait for the client to request MIMEs
             } else {
                 if (ev->from_self) {
-                    if (global_state.drag_source.drag_data) {
+                    PyObject *data = global_state.drag_source.drag_data ? global_state.drag_source.drag_data : global_state.drop_dest.self_drag_data;
+                    if (data) {
                         global_state.drag_source.was_dropped = true;
-                        WINDOW_CALLBACK(on_drop, "OOii", global_state.drag_source.drag_data, Py_True,
+                        WINDOW_CALLBACK(on_drop, "OOii", data, Py_True,
                             global_state.callback_os_window->last_drag_event.x, global_state.callback_os_window->last_drag_event.y);
                     } else log_error("Got a drop from self but drag_source.drag_data is NULL");
+                    Py_CLEAR(global_state.drop_dest.self_drag_data);
                     ev->finish_drop(window, GLFW_DRAG_OPERATION_COPY);
                     break;
                 }
@@ -1084,7 +1086,7 @@ static void
 drag_source_callback(GLFWwindow *window UNUSED, GLFWDragEvent *ev) {
 #define finish \
     call_boss(on_drag_source_finished, "OOsiOO", \
-            ds.was_dropped ? Py_True : Py_False, ds.was_canceled ? Py_True: Py_False, \
+            ds.was_dropped && !global_state.drop_dest.os_window_id ? Py_True : Py_False, ds.was_canceled ? Py_True: Py_False, \
             ds.accepted_mime_type ? ds.accepted_mime_type : "", \
             ds.action, ds.drag_data ? ds.drag_data : Py_None, ds.needs_toplevel_on_wayland ? Py_True : Py_False); \
     free_drag_source();
@@ -1105,9 +1107,14 @@ drag_source_callback(GLFWwindow *window UNUSED, GLFWDragEvent *ev) {
             ds.action = ev->action; break;
         case GLFW_DRAG_DROPPED:
             ds.was_dropped = true;
-            if (ev->action == GLFW_DRAG_OPERATION_NONE) {
-                finish
+            // On Wayland, we cant trust the value of ev->action as it is zero
+            // when dropping outside any application which is a case we want to
+            // handle.
+            if (global_state.drop_dest.os_window_id && ds.drag_data) {
+                Py_CLEAR(global_state.drop_dest.self_drag_data);
+                global_state.drop_dest.self_drag_data = Py_NewRef(ds.drag_data);
             }
+            finish;
             break;
         case GLFW_DRAG_CANCELLED:
             ds.was_canceled = true;

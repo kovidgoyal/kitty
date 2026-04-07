@@ -453,7 +453,7 @@ typedef struct GlobalState {
     PyObject *options_object;
 
     struct {
-        PyObject *data;
+        PyObject *data, *self_drag_data;
         id_type os_window_id, client_window_data_request;
         double x, y;
         size_t num_left;
