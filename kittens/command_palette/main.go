@@ -27,6 +27,7 @@ type Binding struct {
 	Definition    string `json:"definition"`
 	Help          string `json:"help"`
 	LongHelp      string `json:"long_help"`
+	Alias         string `json:"alias"`
 	Category      string
 	Mode          string
 	IsMouse       bool
@@ -276,6 +277,7 @@ type Handler struct {
 	keyboard_shortcuts []*config.KeyAction
 }
 
+// initialize sets up the TUI: screen size, cursor, cached settings, and initial data load.
 func (h *Handler) initialize() (string, error) {
 	sz, err := h.lp.ScreenSize()
 	if err != nil {
@@ -305,6 +307,7 @@ func (h *Handler) initialize() (string, error) {
 	return "", nil
 }
 
+// loadData reads JSON input data from stdin and flattens it into display items.
 func (h *Handler) loadData() error {
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
@@ -319,6 +322,38 @@ func (h *Handler) loadData() error {
 
 	h.flattenBindings()
 	return nil
+}
+
+// bindingToDisplayItem converts a Binding into a DisplayItem with pre-tokenized
+// words for word-level matching.
+func bindingToDisplayItem(b Binding) DisplayItem {
+	keyText := b.Key
+	if keyText == "" {
+		keyText = unmappedLabel
+	}
+	actionText := b.ActionDisplay
+	if b.Alias != "" {
+		actionText = b.Alias + " " + actionText
+	}
+	return DisplayItem{
+		binding:       b,
+		keyText:       keyText,
+		actionText:    actionText,
+		categoryText:  b.Category,
+		keyWords:      tokenizeWords(keyText),
+		actionWords:   tokenizeWords(actionText),
+		categoryWords: tokenizeWords(b.Category),
+	}
+}
+
+// flattenCategoryBindings appends all bindings from a single category to items.
+func flattenCategoryBindings(bindings []Binding, catName, modeName string, items *[]DisplayItem) {
+	for _, b := range bindings {
+		b.Category = catName
+		b.Mode = modeName
+		b.IsMouse = false
+		*items = append(*items, bindingToDisplayItem(b))
+	}
 }
 
 // flattenBindings converts the hierarchical mode/category/binding data into
@@ -364,24 +399,7 @@ func (h *Handler) flattenBindings() {
 			if !ok {
 				continue
 			}
-			for _, b := range bindings {
-				b.Category = catName
-				b.Mode = modeName
-				b.IsMouse = false
-				keyText := b.Key
-				if keyText == "" {
-					keyText = unmappedLabel
-				}
-				h.all_items = append(h.all_items, DisplayItem{
-					binding:       b,
-					keyText:       keyText,
-					actionText:    b.ActionDisplay,
-					categoryText:  catName,
-					keyWords:      tokenizeWords(keyText),
-					actionWords:   tokenizeWords(b.ActionDisplay),
-					categoryWords: tokenizeWords(catName),
-				})
-			}
+			flattenCategoryBindings(bindings, catName, modeName, &h.all_items)
 		}
 	}
 
@@ -390,18 +408,11 @@ func (h *Handler) flattenBindings() {
 		b.Category = "Mouse actions"
 		b.Mode = ""
 		b.IsMouse = true
-		h.all_items = append(h.all_items, DisplayItem{
-			binding:       b,
-			keyText:       b.Key,
-			actionText:    b.ActionDisplay,
-			categoryText:  "Mouse actions",
-			keyWords:      tokenizeWords(b.Key),
-			actionWords:   tokenizeWords(b.ActionDisplay),
-			categoryWords: tokenizeWords("Mouse actions"),
-		})
+		h.all_items = append(h.all_items, bindingToDisplayItem(b))
 	}
 }
 
+// updateFilter rebuilds the filtered item list based on the current query.
 func (h *Handler) updateFilter() {
 	tokens := tokenizeQuery(h.query)
 
@@ -508,6 +519,7 @@ func (h *Handler) highlightMatchedChars(text string, positions []int, baseStyle,
 	return sb.String()
 }
 
+// selectedBinding returns the currently selected binding, or nil if none.
 func (h *Handler) selectedBinding() *Binding {
 	if h.selected_idx < 0 || h.selected_idx >= len(h.filtered_idx) {
 		return nil
@@ -519,6 +531,7 @@ func (h *Handler) selectedBinding() *Binding {
 	return &h.all_items[idx].binding
 }
 
+// draw_screen renders the full palette UI: query input, help bar, and results.
 func (h *Handler) draw_screen() {
 	h.lp.StartAtomicUpdate()
 	defer h.lp.EndAtomicUpdate()
@@ -580,6 +593,7 @@ func (h *Handler) draw_screen() {
 	h.lp.MoveCursorTo(3+wcswidth.Stringwidth(h.query), searchBarY)
 }
 
+// drawGroupedResults renders results organized by mode and category headers.
 func (h *Handler) drawGroupedResults(startY, maxRows, width int) {
 	var lines []displayLine
 	lastMode := ""
@@ -619,7 +633,7 @@ func (h *Handler) drawGroupedResults(startY, maxRows, width int) {
 		// Binding line
 		keyDisplay := keyDisplayText(b)
 		lines = append(lines, displayLine{
-			text:    fmt.Sprintf("    %-*s %s", maxKeyDisplayWidth, keyDisplay, b.ActionDisplay),
+			text:    fmt.Sprintf("    %-*s %s", maxKeyDisplayWidth, keyDisplay, item.actionText),
 			itemIdx: fi,
 		})
 	}
@@ -628,6 +642,7 @@ func (h *Handler) drawGroupedResults(startY, maxRows, width int) {
 	h.drawLines(lines, startY, maxRows, width)
 }
 
+// drawFlatResults renders a flat list of scored results without category headers.
 func (h *Handler) drawFlatResults(startY, maxRows, width int) {
 	if len(h.filtered_idx) == 0 {
 		h.lp.MoveCursorTo(1, startY)
@@ -648,7 +663,7 @@ func (h *Handler) drawFlatResults(startY, maxRows, width int) {
 			catSuffix = fmt.Sprintf(" [%s]", b.Category)
 		}
 		lines = append(lines, displayLine{
-			text:    fmt.Sprintf("    %-*s %-30s%s", maxKeyDisplayWidth, keyDisplay, b.ActionDisplay, catSuffix),
+			text:    fmt.Sprintf("    %-*s %-30s%s", maxKeyDisplayWidth, keyDisplay, item.actionText, catSuffix),
 			itemIdx: fi,
 		})
 	}
@@ -657,6 +672,7 @@ func (h *Handler) drawFlatResults(startY, maxRows, width int) {
 	h.drawLines(lines, startY, maxRows, width)
 }
 
+// drawLines renders display lines within the visible scroll window.
 func (h *Handler) drawLines(lines []displayLine, startY, maxRows, width int) {
 	if maxRows <= 0 || len(lines) == 0 {
 		return
@@ -711,6 +727,38 @@ func (h *Handler) drawLines(lines []displayLine, startY, maxRows, width int) {
 	}
 }
 
+// drawCategorySuffix renders the " [category]" or " [mode/category]" suffix
+// with optional match highlighting.
+func (h *Handler) drawCategorySuffix(b *Binding, mi *matchInfo, baseStyle, matchStyle string) {
+	styled := func(s string) string {
+		if baseStyle != "" {
+			return h.lp.SprintStyled(baseStyle, s)
+		}
+		return s
+	}
+	prefix := " ["
+	if b.Mode != "" {
+		prefix = fmt.Sprintf(" [%s/", b.Mode)
+	}
+	if mi != nil && len(mi.categoryPositions) > 0 {
+		h.lp.QueueWriteString(styled(prefix))
+		h.lp.QueueWriteString(h.highlightMatchedChars(b.Category, mi.categoryPositions, baseStyle, matchStyle))
+		h.lp.QueueWriteString(styled("]"))
+	} else {
+		h.lp.QueueWriteString(styled(prefix + b.Category + "]"))
+	}
+}
+
+// categorySuffixWidth returns the display width of the category suffix.
+func categorySuffixWidth(b *Binding) int {
+	w := 2 + wcswidth.Stringwidth(b.Category) + 1 // " [" + category + "]"
+	if b.Mode != "" {
+		w += wcswidth.Stringwidth(b.Mode) + 1 // mode + "/"
+	}
+	return w
+}
+
+// drawBindingLine renders a single binding row with key, action, and optional category.
 func (h *Handler) drawBindingLine(filteredIdx, width int, isSelected bool) {
 	if filteredIdx < 0 || filteredIdx >= len(h.filtered_idx) {
 		return
@@ -720,6 +768,7 @@ func (h *Handler) drawBindingLine(filteredIdx, width int, isSelected bool) {
 		return
 	}
 	b := &h.all_items[idx].binding
+	actionDisplay := h.all_items[idx].actionText
 
 	// Build the key display
 	keyDisplay := keyDisplayText(b)
@@ -768,35 +817,21 @@ func (h *Handler) drawBindingLine(filteredIdx, width int, isSelected bool) {
 
 	// Render action display column
 	if mi != nil && len(mi.actionPositions) > 0 {
-		h.lp.QueueWriteString(h.highlightMatchedChars(b.ActionDisplay, mi.actionPositions, baseStyle, matchStyle))
+		h.lp.QueueWriteString(h.highlightMatchedChars(actionDisplay, mi.actionPositions, baseStyle, matchStyle))
 	} else {
-		h.lp.QueueWriteString(styled(b.ActionDisplay))
+		h.lp.QueueWriteString(styled(actionDisplay))
 	}
 
 	// Render category suffix (only present in flat / search-results mode)
 	if h.query != "" {
-		prefix := " ["
-		if b.Mode != "" {
-			prefix = fmt.Sprintf(" [%s/", b.Mode)
-		}
-		if mi != nil && len(mi.categoryPositions) > 0 {
-			h.lp.QueueWriteString(styled(prefix))
-			h.lp.QueueWriteString(h.highlightMatchedChars(b.Category, mi.categoryPositions, baseStyle, matchStyle))
-			h.lp.QueueWriteString(styled("]"))
-		} else {
-			h.lp.QueueWriteString(styled(prefix + b.Category + "]"))
-		}
+		h.drawCategorySuffix(b, mi, baseStyle, matchStyle)
 	}
 
 	// For selected rows, pad the rest of the line with reverse video
 	if isSelected {
-		// Calculate rendered width and pad to fill the line
-		rendered := 4 + wcswidth.Stringwidth(keyDisplay) + paddingLen + 1 + wcswidth.Stringwidth(b.ActionDisplay)
+		rendered := 4 + wcswidth.Stringwidth(keyDisplay) + paddingLen + 1 + wcswidth.Stringwidth(actionDisplay)
 		if h.query != "" {
-			rendered += 2 + wcswidth.Stringwidth(b.Category) + 1
-			if b.Mode != "" {
-				rendered += wcswidth.Stringwidth(b.Mode) + 1
-			}
+			rendered += categorySuffixWidth(b)
 		}
 		if pad := width - rendered; pad > 0 {
 			h.lp.QueueWriteString(h.lp.SprintStyled(baseStyle, strings.Repeat(" ", pad)))
@@ -820,6 +855,7 @@ func (h *Handler) rowToFilteredIdx(cellY int) int {
 	return h.display_lines[lineIdx].itemIdx
 }
 
+// onMouseEvent handles mouse clicks to select and trigger items.
 func (h *Handler) onMouseEvent(ev *loop.MouseEvent) error {
 	switch ev.Event_type {
 	case loop.MOUSE_CLICK:
@@ -840,6 +876,7 @@ func (h *Handler) onMouseEvent(ev *loop.MouseEvent) error {
 	return nil
 }
 
+// onKeyEvent handles keyboard input for navigation, selection, and query editing.
 func (h *Handler) onKeyEvent(ev *loop.KeyEvent) error {
 	if ev.MatchesPressOrRepeat("escape") {
 		ev.Handled = true
@@ -930,6 +967,7 @@ func (h *Handler) onKeyEvent(ev *loop.KeyEvent) error {
 	return nil
 }
 
+// onText handles typed characters, appending them to the search query.
 func (h *Handler) onText(text string, from_key_event bool, in_bracketed_paste bool) error {
 	h.query += text
 	h.updateFilter()
@@ -937,12 +975,14 @@ func (h *Handler) onText(text string, from_key_event bool, in_bracketed_paste bo
 	return nil
 }
 
+// onResize redraws the screen when the terminal is resized.
 func (h *Handler) onResize(old, new_size loop.ScreenSize) error {
 	h.screen_size = new_size
 	h.draw_screen()
 	return nil
 }
 
+// moveSelection moves the selected item by delta positions, clamping to bounds.
 func (h *Handler) moveSelection(delta int) {
 	if len(h.filtered_idx) == 0 {
 		return
@@ -953,6 +993,7 @@ func (h *Handler) moveSelection(delta int) {
 	h.draw_screen()
 }
 
+// triggerSelected sets the selected binding's definition as the result and exits.
 func (h *Handler) triggerSelected() {
 	b := h.selectedBinding()
 	if b == nil || b.IsMouse {
@@ -963,6 +1004,7 @@ func (h *Handler) triggerSelected() {
 	h.lp.Quit(0)
 }
 
+// main runs the command palette TUI as a kitty overlay.
 func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if tty.IsTerminal(os.Stdin.Fd()) {
 		return 1, fmt.Errorf("This kitten must only be run via the command_palette action mapped to a shortcut in kitty.conf")
@@ -1005,6 +1047,7 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	return
 }
 
+// EntryPoint registers the command palette subcommand on the parent CLI.
 func EntryPoint(parent *cli.Command) {
 	create_cmd(parent, main)
 }
