@@ -314,6 +314,8 @@ typedef struct _GLFWWaylandDataOffer
     const char **copy_mimes;   // Working copy passed to callbacks; pointers into mimes[]
     size_t copy_mimes_count;   // Count of entries in copy_mimes (accepted count after callback)
     bool drag_accepted, dropped;
+    enum wl_data_device_manager_dnd_action preferred;
+    int allowed;
     uint32_t serial;
     struct {
         id_type watch_id;

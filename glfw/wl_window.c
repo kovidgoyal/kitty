@@ -2510,14 +2510,25 @@ static void handle_primary_selection_offer(void *data UNUSED, struct zwp_primary
 
 // Helper function to update drop state from callback results
 static void
-update_drop_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUSED, size_t accepted_count) {
+update_drop_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window, size_t accepted_count) {
     d->copy_mimes_count = accepted_count;
     bool accepted = accepted_count > 0;
     bool acceptance_changed = (accepted != d->drag_accepted);
     // The first entry in the accepted (sorted) copy is the preferred MIME.
     const char* new_preferred_mime = (accepted && d->copy_mimes) ? d->copy_mimes[0] : NULL;
     bool mime_changed = false;
-
+    enum wl_data_device_manager_dnd_action preferred = WL_DATA_DEVICE_MANAGER_DND_ACTION_NONE; int allowed = 0;
+    if (accepted && window->drop_operation.allowed) {
+        if (window->drop_operation.allowed & GLFW_DRAG_OPERATION_GENERIC) allowed |= WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY | WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE;
+        if (window->drop_operation.allowed & GLFW_DRAG_OPERATION_COPY) allowed |= WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY;
+        if (window->drop_operation.allowed & GLFW_DRAG_OPERATION_MOVE) allowed |= WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE;
+        switch (window->drop_operation.preferred) {
+            case GLFW_DRAG_OPERATION_GENERIC: preferred = WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY; break;
+            case GLFW_DRAG_OPERATION_COPY: preferred = WL_DATA_DEVICE_MANAGER_DND_ACTION_COPY; break;
+            case GLFW_DRAG_OPERATION_MOVE: preferred = WL_DATA_DEVICE_MANAGER_DND_ACTION_MOVE; break;
+            case GLFW_DRAG_OPERATION_NONE: break;
+        }
+    }
     // Check if the preferred MIME changed
     if (d->mime_for_drop == NULL && new_preferred_mime != NULL) {
         mime_changed = true;
@@ -2526,11 +2537,14 @@ update_drop_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window UNUSED, size_t a
     } else if (d->mime_for_drop != NULL && new_preferred_mime != NULL) {
         mime_changed = (strcmp(d->mime_for_drop, new_preferred_mime) != 0);
     }
+    const bool op_changed = preferred != d->preferred || allowed != d->allowed;
 
-    if (acceptance_changed || mime_changed) {
+    if (acceptance_changed || mime_changed || op_changed) {
         d->drag_accepted = accepted;
         d->mime_for_drop = new_preferred_mime;
+        d->preferred = preferred; d->allowed = allowed;
         wl_data_offer_accept(d->id, d->serial, d->mime_for_drop);
+        wl_data_offer_set_actions(d->id, d->allowed, d->preferred);
     }
 }
 

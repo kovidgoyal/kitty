@@ -305,10 +305,11 @@ drop_move_on_child(Window *w, const char** mimes, size_t num_mimes, bool is_drop
 void
 drop_set_status(Window *w, int operation, const char *payload, size_t payload_sz, bool more) {
     if (!w->drop.accept_in_progress) {
-        drop_free_accepted_mimes(w); w->drop.accept_in_progress = true; w->drop.accepted_operation = 0;
+        drop_free_accepted_mimes(w); w->drop.accept_in_progress = true;
         switch(operation) {
-            case 1: case 2: w->drop.accepted_operation = operation; break;
-            default: w->drop.accepted_operation = 0; break;
+            case 1: w->drop.accepted_operation = GLFW_DRAG_OPERATION_COPY; break;
+            case 2: w->drop.accepted_operation = GLFW_DRAG_OPERATION_MOVE; break;
+            default: w->drop.accepted_operation = GLFW_DRAG_OPERATION_NONE; break;
         }
     }
     if (payload_sz) {
@@ -335,17 +336,14 @@ void
 drop_finish(Window *w) {
     OSWindow *osw = os_window_for_kitty_window(w->id);
     if (osw && osw->handle) {
-        int op = GLFW_DRAG_OPERATION_GENERIC;
-        if (w->drop.accepted_operation == 1) op = GLFW_DRAG_OPERATION_COPY;
-        else if (w->drop.accepted_operation == 2) op = GLFW_DRAG_OPERATION_MOVE;
-        glfwEndDrop(osw->handle, op);
+        glfwEndDrop(osw->handle, w->drop.accepted_operation);
     }
 }
 
 size_t
 drop_update_mimes(Window *w, const char **allowed_mimes, size_t allowed_mimes_count) {
     if (w->drop.accept_in_progress) return allowed_mimes_count;
-    if (!w->drop.accepted_operation) return 0;
+    if (w->drop.accepted_operation == GLFW_DRAG_OPERATION_NONE) return 0;
     typedef struct mime_sorter { const char *m; ssize_t key; } mime_sorter;
     if (!w->drop.accepted_mimes) return allowed_mimes_count;
     RAII_ALLOC(mime_sorter, ms, malloc(sizeof(mime_sorter) * allowed_mimes_count));

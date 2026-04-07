@@ -801,8 +801,11 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
             os_window->last_drag_event.y = (int)(ev->ypos * os_window->viewport_y_ratio);
             on_mouse_position_update(ev->xpos, ev->ypos);
             if (is_client_drop) {
+                if (ev->type == GLFW_DROP_ENTER) w->drop.accepted_operation = GLFW_DRAG_OPERATION_COPY;
                 drop_move_on_child(w, ev->mimes, ev->num_mimes, false);
                 ev->num_mimes = drop_update_mimes(w, ev->mimes, ev->num_mimes);
+                ev->operation.allowed = w->drop.accepted_operation;
+                ev->operation.preferred = w->drop.accepted_operation;
                 return;
             }
             call_boss(on_drop_move, "KiiOO",
@@ -810,8 +813,21 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
                 ev->from_self ? Py_True : Py_False, Py_False);
             /* fallthrough */
         case GLFW_DROP_STATUS_UPDATE:
-            if (is_client_drop) ev->num_mimes = drop_update_mimes(w, ev->mimes, ev->num_mimes);
-            else update_allowed_mimes_for_drop(ev);
+            if (is_client_drop) {
+                ev->num_mimes = drop_update_mimes(w, ev->mimes, ev->num_mimes);
+                ev->operation.allowed = w->drop.accepted_operation;
+                ev->operation.preferred = w->drop.accepted_operation;
+            } else {
+                update_allowed_mimes_for_drop(ev);
+                if (ev->num_mimes == 0) zero_at_ptr(&ev->operation);
+                else if (is_kitty_ui_drag) {
+                    ev->operation.preferred = GLFW_DRAG_OPERATION_MOVE;
+                    ev->operation.allowed = GLFW_DRAG_OPERATION_MOVE;
+                } else {
+                    ev->operation.preferred = GLFW_DRAG_OPERATION_MOVE;
+                    ev->operation.allowed = GLFW_DRAG_OPERATION_MOVE;
+                }
+            }
             break;
         case GLFW_DROP_LEAVE:
             for (size_t tc = 0; tc < os_window->num_tabs; tc++) {
