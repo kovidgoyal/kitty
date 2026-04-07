@@ -370,6 +370,7 @@ get_errno_name(int err) {
         case EIO: return "EIO";
         case EINVAL: return "EINVAL";
         case ENOMEM: return "ENOMEM";
+        case 0: return "OK";
         default: return "EUNKNOWN";
     }
 }
@@ -1037,6 +1038,7 @@ drag_start(Window *w) {
     } else {
         drag_free_built_data(w);
         ds.state = DRAG_SOURCE_STARTED;
+        drop_send_error(w, 0);  // send OK
     }
 }
 
