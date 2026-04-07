@@ -27,20 +27,48 @@ result, and press :kbd:`Enter` to run it.
 Searching
 -----------
 
-As you type into the search bar, the palette filters results in real time using
-word-level matching across three columns: key, action, and category.
+As you type into the search bar, the palette filters results in real time.
+Matching is case-insensitive and works across three columns simultaneously:
+the **key** (keyboard shortcut), the **action** name, and the **category**.
+Matched characters are highlighted so you can see exactly where each term hit.
 
-Multiple search terms are supported. Typing ``scroll page`` matches items that
-contain both "scroll" and "page" in any column. Items matching more of your
-search terms rank higher than those matching fewer.
+**Multiple words**
+    Separate your terms with spaces. Typing ``scroll page`` looks for items
+    that contain *scroll* and *page* anywhere across the key, action, or
+    category columns. Items that match more of your terms are ranked higher
+    than those that match fewer.
 
-The search also handles compound tokens that contain delimiters such as
-underscores or slashes. For example, typing ``mouse_selection`` matches the
-full compound name as a unit. Typo tolerance is built in for words of four
-characters or longer.
+**How individual words are matched**
+    Each word in your query is compared against every word in the three
+    columns. The best match wins and determines the item's score for that
+    term:
 
-Matched characters are highlighted in the results so you can see exactly where
-each term matched.
+    - *Exact word* — the query word equals a column word exactly (highest score).
+    - *Prefix* — the column word starts with the query word,
+      e.g. ``scr`` matches ``scroll``.
+    - *Typo tolerance* — for words of four characters or longer, a single
+      typo (one character inserted, deleted, or substituted) still produces a
+      match, and two typos give a lower-scoring match.
+
+    An item appears in the results as long as at least one query word matches
+    something. Items where more query words match rank above those where fewer
+    match.
+
+**Compound names**
+    Delimiters such as ``_``, ``+``, ``/``, and ``-`` are kept intact inside a
+    query word, so you can search for compound action names as a unit.
+    Typing ``mouse_selection`` first tries to find that exact substring in each
+    column. If that fails, it splits the token into its parts (``mouse`` and
+    ``selection``) and matches each part independently against the column words.
+
+**Ranking**
+    When multiple items match the same query, they are sorted by:
+
+    1. Number of query words that matched (more is better).
+    2. Score on the action column (action matches outrank key or category matches).
+    3. Score on the key column.
+    4. Score on the category column.
+    5. Shorter action name as a tiebreaker (more specific results first).
 
 
 Keyboard controls
