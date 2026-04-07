@@ -3531,14 +3531,21 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
             _glfw.wl.drag.toplevel_buffer = icon_buffer; icon_buffer = NULL;
             xdg_toplevel_drag_v1_attach(_glfw.wl.drag.toplevel_drag,
                                     _glfw.wl.drag.toplevel_xdg_toplevel, 0, 0);
-        } else wl_surface_attach(_glfw.wl.drag.drag_icon, icon_buffer, 0, 0);
+        } else {
+            wl_surface_attach(_glfw.wl.drag.drag_icon, icon_buffer, 0, 0);
+            wl_surface_damage(_glfw.wl.drag.drag_icon, 0, 0, INT32_MAX, INT32_MAX);
+        }
         wl_surface_commit(_glfw.wl.drag.drag_icon);
         if (icon_buffer) wl_buffer_destroy(icon_buffer);
+        // For toplevel drags, ensure the xdg surface is configured and the
+        // buffer is attached before starting the drag. GNOME requires the
+        // toplevel to be mapped (have content) before the drag begins.
+        if (_glfw.wl.drag.toplevel_xdg_surface) wl_display_roundtrip(_glfw.wl.display);
     }
     // Start the drag operation
     wl_data_device_start_drag(
         _glfw.wl.dataDevice, _glfw.wl.drag.source, window->wl.surface,
-        _glfw.wl.xdg_toplevel_drag_manager_v1 ? NULL : _glfw.wl.drag.drag_icon,
+        _glfw.wl.drag.toplevel_drag ? NULL : _glfw.wl.drag.drag_icon,
         _glfw.wl.pointer_serial);
 
     return 0;
