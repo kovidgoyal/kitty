@@ -2385,7 +2385,7 @@ destroy_data_offer(_GLFWWaylandDataOffer *offer) {
 }
 
 // Reset the working copy of mimes so the next callback sees the full original
-// list.  Returns false on allocation failure.
+// list. Returns false on allocation failure.
 static bool
 reset_copy_mimes(_GLFWWaylandDataOffer *offer) {
     if (offer->mimes_count == 0) { offer->copy_mimes_count = 0; return true; }
@@ -2550,6 +2550,7 @@ update_drop_state(_GLFWWaylandDataOffer *d, _GLFWwindow* window, size_t accepted
 
 static void
 drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
+    debug_input("Drop entered\n");
     _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
     mark_data_offer(offer, id);
     if (!offer->id) return;
@@ -2577,6 +2578,7 @@ drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint
 
 static void
 drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
+    debug_input("Drop left window\n");
     _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
     if (offer->id) {
         _GLFWwindow* window = _glfw.windowListHead;
@@ -2680,6 +2682,7 @@ _glfwPlatformRequestDropData(_GLFWwindow *window UNUSED, const char *mime) {
 
 static void
 drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
+    debug_input("Drop dropped\n");
     _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
     if (!offer->id) return;
     offer->dropped = true;
@@ -2688,8 +2691,10 @@ drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
         if (window->wl.surface == offer->surface) {
             if (reset_copy_mimes(offer)) {
                 size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, offer->copy_mimes, offer->copy_mimes_count, offer->is_self_offer);
-                if (!offer->copy_mimes) { destroy_data_offer(offer); return; }
-                for (size_t i = 0; i < num_accepted; i++) request_drop_data(offer, offer->copy_mimes[i]);
+                if (offer->copy_mimes) {  // a self drop will cause this to be NULL as glfw.c calls end drop from within the drop event handler
+                    update_drop_state(offer, window, num_accepted);
+                    for (size_t i = 0; i < num_accepted; i++) request_drop_data(offer, offer->copy_mimes[i]);
+                }
             }
             break;
         }
@@ -2699,6 +2704,7 @@ drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
 
 static void
 motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t time UNUSED, wl_fixed_t x, wl_fixed_t y) {
+    debug_input("Drop moved\n");
     _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
     if (!offer->id) return;
     _GLFWwindow* window = _glfw.windowListHead;
@@ -3343,6 +3349,7 @@ _glfwPlatformDragDataReady(const char *mime_type) {
 
 static void
 drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const char *mime_type, int fd) {
+    debug_input("Drag source data request received for MIME: %s on fd: %d\n", mime_type, fd);
     _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
 #define abort() safe_close(fd); cancel_drag(GLFW_DRAG_CANCELLED);  return
     if (!window) { abort(); }
@@ -3362,6 +3369,7 @@ drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const 
 #undef dr
 static void
 drag_source_target(void *data UNUSED, struct wl_data_source *source UNUSED, const char *mime_type) {
+    debug_input("Drag source accepted MIME type: %s\n", mime_type);
     _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
     if (window) {
         GLFWDragEvent ev = {.type=GLFW_DRAG_ACCEPTED, .mime_type=mime_type};
@@ -3371,6 +3379,7 @@ drag_source_target(void *data UNUSED, struct wl_data_source *source UNUSED, cons
 
 static void
 drag_source_action(void *data UNUSED, struct wl_data_source *source UNUSED, uint32_t dnd_action) {
+    debug_input("Drag source action changed: %d\n", dnd_action);
     _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
     if (window) {
         GLFWDragOperationType op = GLFW_DRAG_OPERATION_GENERIC;
@@ -3387,6 +3396,7 @@ drag_source_action(void *data UNUSED, struct wl_data_source *source UNUSED, uint
 
 static void
 drag_source_dnd_drop_performed(void *data UNUSED, struct wl_data_source *source UNUSED) {
+    debug_input("Drag source drop performed\n");
     _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
     if (window) {
         GLFWDragEvent ev = {.type=GLFW_DRAG_DROPPED};
@@ -3396,6 +3406,7 @@ drag_source_dnd_drop_performed(void *data UNUSED, struct wl_data_source *source 
 
 static void
 drag_source_dnd_finished(void *data UNUSED, struct wl_data_source *source UNUSED) {
+    debug_input("Drag source finished\n");
     _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
     if (window) {
         GLFWDragEvent ev = {.type=GLFW_DRAG_FINSHED, .action=_glfw.wl.drag.action};
@@ -3406,6 +3417,7 @@ drag_source_dnd_finished(void *data UNUSED, struct wl_data_source *source UNUSED
 
 static void
 drag_source_cancelled(void *data UNUSED, struct wl_data_source *source UNUSED) {
+    debug_input("Drag source cancelled: has_toplevel: %d\n", !!_glfw.wl.drag.toplevel_xdg_toplevel);
     // Uber competent Wayland people contravene their own spec and make it
     // impossible to distinguish between drag cancelled and dropped but not
     // accepted. https://gitlab.freedesktop.org/wayland/wayland/-/issues/140
