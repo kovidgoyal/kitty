@@ -3535,13 +3535,6 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
             _glfw.wl.drag.toplevel_buffer = icon_buffer; icon_buffer = NULL;
             // Initial empty commit triggers the xdg_surface configure event.
             wl_surface_commit(_glfw.wl.drag.drag_icon);
-            // Wait for configure to fire and the buffer to be attached.
-            // GNOME/mutter requires the xdg_toplevel window to exist (be mapped)
-            // before xdg_toplevel_drag_v1_attach, and the seat to be set on the
-            // data source (which happens during start_drag) before start_window_drag.
-            while (_glfw.wl.drag.toplevel_buffer) {
-                if (wl_display_roundtrip(_glfw.wl.display) == -1) break;
-            }
         } else {
             // For non-toplevel drag: set pending buffer state but do NOT commit yet.
             // The surface gets the DND role when start_drag is called. Committing
@@ -3560,11 +3553,7 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
         _glfw.wl.pointer_serial);
 
     if (_glfw.wl.drag.toplevel_drag) {
-        // Attach the toplevel AFTER start_drag. GNOME/mutter's
-        // xdg_toplevel_drag_attach implementation requires:
-        // 1) The MetaWindow to exist (surface must be mapped first)
-        // 2) The seat to be set on the data source (done by start_drag)
-        // Without both, the attach is silently dropped by mutter.
+        // Attach the toplevel AFTER start_drag, otherwise doesnt work on mutter
         xdg_toplevel_drag_v1_attach(_glfw.wl.drag.toplevel_drag,
                                     _glfw.wl.drag.toplevel_xdg_toplevel, 0, 0);
     } else if (_glfw.wl.drag.drag_icon) {
