@@ -5395,6 +5395,17 @@ continue_line_downwards(Screen *self, index_type bottom_line, SelectionBoundary 
     return bottom_line;
 }
 
+static index_type
+continue_line_downwards_offscreen(Screen *self, int bottom_line, SelectionBoundary *start, SelectionBoundary *end) {
+    index_type num_offscreen = 0;
+    Line *line = NULL;
+    while ((line = checked_range_line(self, bottom_line + 1)) && range_line_is_continued(self, bottom_line + 1)) {
+        screen_selection_range_for_line_(line, &start->x, &end->x);
+        bottom_line++; num_offscreen++;
+    }
+    return num_offscreen;
+}
+
 static int
 clamp_selection_input_to_multicell(Screen *self, const Selection *s, index_type x, index_type y, bool in_left_half_of_cell) {
     int delta = 0;
@@ -5538,6 +5549,16 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                                 s->start.x = up_start.x;
                             }
                         }
+                        // extend below viewport if needed
+                        if (bottom_line >= self->lines - 1 && self->scrolled_by > 0 && self->linebuf == self->main_linebuf) {
+                            int range_bottom = (int)bottom_line - (int)self->scrolled_by;
+                            index_type num_below_viewport = continue_line_downwards_offscreen(
+                                    self, range_bottom, &down_start, &down_end);
+                            if (num_below_viewport) {
+                                s->end_scrolled_by -= num_below_viewport;
+                                s->end.x = down_end.x;
+                            }
+                        }
                     }
                 }
 #undef S
@@ -5562,6 +5583,16 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                         }
                     } else {
                         a->in_left_half_of_cell = false; a->x = down_end.x; a->y = bottom_line;
+                        // extend below viewport if needed
+                        if (bottom_line >= self->lines - 1 && self->scrolled_by > 0 && self->linebuf == self->main_linebuf) {
+                            int range_bottom = (int)bottom_line - (int)self->scrolled_by;
+                            index_type num_below_viewport = continue_line_downwards_offscreen(
+                                    self, range_bottom, &down_start, &down_end);
+                            if (num_below_viewport) {
+                                s->end_scrolled_by -= num_below_viewport;
+                                s->end.x = down_end.x;
+                            }
+                        }
                     }
                     // allow selecting whitespace at the start of the top line
                     if (a->y == top_line && s->input_current.y == top_line && s->input_current.x < a->x && adjusted_boundary_is_before) a->x = s->input_current.x;

@@ -255,6 +255,33 @@ class TestMouse(BaseTest):
         release(x=2, button=GLFW_MOUSE_BUTTON_RIGHT)
         self.ae(sel(), 'ABCDE12345\n678')
 
+        # line select for wrapped lines below viewport
+        s.reset()
+        s.scroll(100, False)
+        # draw enough content to enable scrolling: fill lines-1 visual lines, then draw a long wrapped line
+        s.draw(('X' * s.columns) * (s.lines - 1))
+        s.linefeed(), s.carriage_return()
+        s.draw('ABCDE12345')  # wraps to 2 visual lines, second one pushed below viewport
+        # scroll up by 1 so top visual line of the wrapped text is visible but bottom wraps off-screen
+        s.scroll(1, True)
+        multi_click(x=1, y=s.lines - 1, count=3)
+        self.ae(sel(), 'ABCDE12345')
+        # extending selection to a line that wraps below viewport
+        s.reset()
+        s.scroll(100, False)
+        s.draw(('X' * s.columns) * (s.lines - 2))
+        s.linefeed(), s.carriage_return()
+        s.draw('678')
+        s.linefeed(), s.carriage_return()
+        s.draw('ABCDE12345')
+        s.scroll(1, True)
+        multi_click(x=1, y=3, count=3)
+        self.ae(sel(), '678')
+        press(x=2, y=s.lines - 1, button=GLFW_MOUSE_BUTTON_RIGHT)
+        release(x=2, y=s.lines - 1, button=GLFW_MOUSE_BUTTON_RIGHT)
+        self.ae(sel(), '678\nABCDE12345')
+        s.scroll(100, False)
+
         # Rectangle select
         init()
         press(x=1, y=1, modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL)

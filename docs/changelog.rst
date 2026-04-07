@@ -217,6 +217,8 @@ Detailed list of changes
 
 - Fix dragging of splits layout borders sometimes moving in the wrong direction or having no effect (:pull:`9447`)
 
+- Fix triple-click line selection not extending wrapped lines beyond the bottom edge of the viewport
+
 - Password input in kittens: hide the cursor and display a blinking 🔒 at the end of typed characters to make it visually clear the user is entering a password
 
 - edit-in-kitty: Ignore environment variables as some editors execute code present in env vars
