@@ -282,6 +282,25 @@ class TestMouse(BaseTest):
         self.ae(sel(), '678\nABCDE12345')
         s.scroll(100, False)
 
+        # word select for wrapped words in scrollback
+        s.reset()
+        s.draw('abcde12345')
+        s.linefeed(), s.carriage_return()
+        s.draw(('X' * s.columns) * (s.lines-1))
+        multi_click(x=1)
+        self.ae(sel(), 'abcde12345')
+
+        # word select for wrapped words below viewport
+        s.reset()
+        s.scroll(100, False)
+        s.draw(('X' * s.columns) * (s.lines - 1))
+        s.linefeed(), s.carriage_return()
+        s.draw('abcde12345')
+        s.scroll(1, True)
+        multi_click(x=1, y=s.lines - 1)
+        self.ae(sel(), 'abcde12345')
+        s.scroll(100, False)
+
         # Rectangle select
         init()
         press(x=1, y=1, modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL)

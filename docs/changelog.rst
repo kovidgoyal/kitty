@@ -217,7 +217,7 @@ Detailed list of changes
 
 - Fix dragging of splits layout borders sometimes moving in the wrong direction or having no effect (:pull:`9447`)
 
-- Fix triple-click line selection not extending wrapped lines beyond the bottom edge of the viewport
+- Fix triple-click line selection and double-click word selection not extending wrapped lines beyond the edges of the viewport
 
 - Password input in kittens: hide the cursor and display a blinking 🔒 at the end of typed characters to make it visually clear the user is entering a password
 
