@@ -196,6 +196,15 @@ set_currently_hovered_window(id_type window_id, int modifiers) {
                 debug("Sent mouse leave event to window: %llu\n", left_window->id);
             }
         }
+        if (window_id && OPT(focus_follows_mouse) && global_state.callback_os_window && global_state.callback_os_window->num_tabs) {
+            Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+            for (unsigned i = 0; i < t->num_windows; i++) {
+                if (t->windows[i].id == window_id) {
+                    if (i != t->active_window) call_boss(switch_focus_to_in_active_tab, "K", window_id);
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -654,12 +663,6 @@ HANDLER(handle_move_event) {
 
     if (handle_scrollbar_mouse(w, -1, MOVE, modifiers)) return;
 
-    if (OPT(focus_follows_mouse)) {
-        Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
-        if (window_idx != t->active_window) {
-            call_boss(switch_focus_to_in_active_tab, "K", t->windows[window_idx].id);
-        }
-    }
     bool mouse_cell_changed = false;
     bool cell_half_changed = false;
     if (!set_mouse_position(w, &mouse_cell_changed, &cell_half_changed)) {

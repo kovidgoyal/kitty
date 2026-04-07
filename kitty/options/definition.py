@@ -857,7 +857,10 @@ fallback to 0.5.
 opt('focus_follows_mouse', 'no',
     option_type='to_bool', ctype='bool',
     long_text='''
-Set the active window to the window under the mouse when moving the mouse around.
+Set the active window to the window under the mouse when the mouse crosses
+into a different window. The active window does not change while the mouse
+moves around within a single window, so an accidental mouse bump will not
+undo a keyboard-driven window switch.
 On macOS, this will also cause the OS Window under the mouse to be focused automatically when the
 mouse enters it, as long as the kitty application is the active application.
 '''
