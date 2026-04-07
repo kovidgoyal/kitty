@@ -830,6 +830,7 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
             }
             break;
         case GLFW_DROP_LEAVE:
+            global_state.drop_dest.os_window_id = 0;
             for (size_t tc = 0; tc < os_window->num_tabs; tc++) {
                 Tab *t = os_window->tabs + tc;
                 for (size_t i = 0; i < t->num_windows; i++) {
