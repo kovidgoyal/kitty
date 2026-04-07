@@ -3420,12 +3420,13 @@ drag_source_dnd_finished(void *data UNUSED, struct wl_data_source *source UNUSED
 
 static void
 drag_source_cancelled(void *data UNUSED, struct wl_data_source *source UNUSED) {
-    debug_input("Drag source cancelled: has_toplevel: %d\n", !!_glfw.wl.drag.toplevel_xdg_toplevel);
     // Uber competent Wayland people contravene their own spec and make it
     // impossible to distinguish between drag cancelled and dropped but not
     // accepted. https://gitlab.freedesktop.org/wayland/wayland/-/issues/140
     // so we assume this is a drop unless we are in top-level mode. Sigh.
-    cancel_drag(_glfw.wl.drag.toplevel_xdg_toplevel ? GLFW_DRAG_CANCELLED : GLFW_DRAG_DROPPED);
+    const GLFWDragEventType t = _glfw.wl.drag.toplevel_xdg_toplevel ? GLFW_DRAG_CANCELLED : GLFW_DRAG_DROPPED;
+    debug_input("Drag source cancelled: is_drop: %d\n", t == GLFW_DRAG_DROPPED);
+    cancel_drag(t);
 }
 
 
