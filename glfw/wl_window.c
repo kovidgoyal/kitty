@@ -3155,14 +3155,15 @@ static void
 drag_toplevel_xdg_surface_configure(void *data UNUSED, struct xdg_surface *surface, uint32_t serial) {
     debug_input("Drag toplevel surface configured\n");
     xdg_surface_ack_configure(surface, serial);
-    if (_glfw.wl.drag.toplevel_buffer) {
-        wl_surface_attach(_glfw.wl.drag.drag_icon, _glfw.wl.drag.toplevel_buffer, 0, 0);
+    struct wl_buffer *buf = _glfw.wl.drag.toplevel_buffer;
+    if (buf) {
+        wl_surface_attach(_glfw.wl.drag.drag_icon, buf, 0, 0);
         wl_surface_damage(_glfw.wl.drag.drag_icon, 0, 0, INT32_MAX, INT32_MAX);
-        wl_buffer_destroy(_glfw.wl.drag.toplevel_buffer);
         _glfw.wl.drag.toplevel_buffer = NULL;
         debug_input("Drag toplevel icon buffer attached\n");
     }
     if (_glfw.wl.drag.drag_icon) wl_surface_commit(_glfw.wl.drag.drag_icon);
+    if (buf) wl_buffer_destroy(buf);
 }
 
 static const struct xdg_surface_listener drag_toplevel_xdg_surface_listener = {
@@ -3496,11 +3497,12 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
     for (size_t i = 0; i < _glfw.drag.item_count; i++) wl_data_source_offer(_glfw.wl.drag.source, _glfw.drag.items[i].mime_type);
     wl_data_source_add_listener(_glfw.wl.drag.source, &drag_source_listener, NULL);
 
+    struct wl_buffer* icon_buffer = NULL;
+
     // Set up the drag icon surface if thumbnail is provided
     if (thumbnail && thumbnail->pixels) {
         _glfw.wl.drag.drag_icon = wl_compositor_create_surface(_glfw.wl.compositor);
         if (!_glfw.wl.drag.drag_icon) return ENOMEM;
-        struct wl_buffer* icon_buffer = NULL;
         icon_buffer = createShmBuffer(thumbnail, false, true);
         if (!icon_buffer) return ENOMEM;
         if (_glfw.wl.wp_viewporter) {
@@ -3516,6 +3518,7 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
         }
 
         if (_glfw.drag.needs_toplevel_on_wayland && _glfw.wl.xdg_toplevel_drag_manager_v1) {
+            // get_xdg_toplevel_drag must be called before start_drag per protocol spec
             _glfw.wl.drag.toplevel_drag = xdg_toplevel_drag_manager_v1_get_xdg_toplevel_drag(
                 _glfw.wl.xdg_toplevel_drag_manager_v1, _glfw.wl.drag.source);
             if (!_glfw.wl.drag.toplevel_drag) return ENOMEM;
@@ -3529,24 +3532,48 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
             if (!_glfw.wl.drag.toplevel_xdg_toplevel) return ENOMEM;
             xdg_toplevel_add_listener(_glfw.wl.drag.toplevel_xdg_toplevel, &drag_toplevel_listener, NULL);
             _glfw.wl.drag.toplevel_buffer = icon_buffer; icon_buffer = NULL;
-            xdg_toplevel_drag_v1_attach(_glfw.wl.drag.toplevel_drag,
-                                    _glfw.wl.drag.toplevel_xdg_toplevel, 0, 0);
+            // Initial empty commit triggers the xdg_surface configure event.
+            wl_surface_commit(_glfw.wl.drag.drag_icon);
+            // Wait for configure to fire and the buffer to be attached.
+            // GNOME/mutter requires the xdg_toplevel window to exist (be mapped)
+            // before xdg_toplevel_drag_v1_attach, and the seat to be set on the
+            // data source (which happens during start_drag) before start_window_drag.
+            while (_glfw.wl.drag.toplevel_buffer) {
+                if (wl_display_roundtrip(_glfw.wl.display) == -1) break;
+            }
         } else {
+            // For non-toplevel drag: set pending buffer state but do NOT commit yet.
+            // The surface gets the DND role when start_drag is called. Committing
+            // before role assignment means mutter won't process the buffer through
+            // the DND surface role's apply_state path.
             wl_surface_attach(_glfw.wl.drag.drag_icon, icon_buffer, 0, 0);
             wl_surface_damage(_glfw.wl.drag.drag_icon, 0, 0, INT32_MAX, INT32_MAX);
         }
-        wl_surface_commit(_glfw.wl.drag.drag_icon);
-        if (icon_buffer) wl_buffer_destroy(icon_buffer);
-        // For toplevel drags, ensure the xdg surface is configured and the
-        // buffer is attached before starting the drag. GNOME requires the
-        // toplevel to be mapped (have content) before the drag begins.
-        if (_glfw.wl.drag.toplevel_xdg_surface) wl_display_roundtrip(_glfw.wl.display);
     }
-    // Start the drag operation
+
+    // Start the drag operation. For toplevel drags the icon surface is NULL
+    // since the xdg_toplevel itself serves as the visible drag representation.
     wl_data_device_start_drag(
         _glfw.wl.dataDevice, _glfw.wl.drag.source, window->wl.surface,
         _glfw.wl.drag.toplevel_drag ? NULL : _glfw.wl.drag.drag_icon,
         _glfw.wl.pointer_serial);
+
+    if (_glfw.wl.drag.toplevel_drag) {
+        // Attach the toplevel AFTER start_drag. GNOME/mutter's
+        // xdg_toplevel_drag_attach implementation requires:
+        // 1) The MetaWindow to exist (surface must be mapped first)
+        // 2) The seat to be set on the data source (done by start_drag)
+        // Without both, the attach is silently dropped by mutter.
+        xdg_toplevel_drag_v1_attach(_glfw.wl.drag.toplevel_drag,
+                                    _glfw.wl.drag.toplevel_xdg_toplevel, 0, 0);
+    } else if (_glfw.wl.drag.drag_icon) {
+        // For non-toplevel drag: now that start_drag has assigned the DND role
+        // to the icon surface, commit the pending buffer+damage state. This
+        // ensures mutter's DND surface role processes the buffer.
+        wl_surface_commit(_glfw.wl.drag.drag_icon);
+    }
+
+    if (icon_buffer) wl_buffer_destroy(icon_buffer);
 
     return 0;
 }
