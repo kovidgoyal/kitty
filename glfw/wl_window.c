@@ -3153,12 +3153,14 @@ GLFWAPI bool glfwWaylandBeep(GLFWwindow *handle) {
 
 static void
 drag_toplevel_xdg_surface_configure(void *data UNUSED, struct xdg_surface *surface, uint32_t serial) {
+    debug_input("Drag toplevel surface configured\n");
     xdg_surface_ack_configure(surface, serial);
     if (_glfw.wl.drag.toplevel_buffer) {
         wl_surface_attach(_glfw.wl.drag.drag_icon, _glfw.wl.drag.toplevel_buffer, 0, 0);
         wl_surface_damage(_glfw.wl.drag.drag_icon, 0, 0, INT32_MAX, INT32_MAX);
         wl_buffer_destroy(_glfw.wl.drag.toplevel_buffer);
         _glfw.wl.drag.toplevel_buffer = NULL;
+        debug_input("Drag toplevel icon buffer attached\n");
     }
     if (_glfw.wl.drag.drag_icon) wl_surface_commit(_glfw.wl.drag.drag_icon);
 }
