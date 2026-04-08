@@ -3967,7 +3967,10 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         while (x_limit && !line->cpu_cells[x_limit - 1].temp_flag) x_limit--;
         while (x_start < x_limit && !line->cpu_cells[x_start].temp_flag) x_start++;
         bool is_only_whitespace_line = false;
-        if (strip_trailing_whitespace) {
+        // Don't strip trailing whitespace from soft-wrapped lines as those spaces
+        // are part of the original text content that continues on the next line
+        const bool line_is_continued = x_limit == line->xnum && line->cpu_cells[line->xnum-1].next_char_was_wrapped;
+        if (strip_trailing_whitespace && !line_is_continued) {
             index_type new_limit = limit_without_trailing_whitespace(line, x_limit);
             if (new_limit != x_limit) {
                 x_limit = new_limit;
@@ -4018,7 +4021,10 @@ ansi_for_range(Screen *self, const Selection *sel, bool insert_newlines, bool st
         while (x_limit && !line->cpu_cells[x_limit - 1].temp_flag) x_limit--;
         while (x_start < x_limit && !line->cpu_cells[x_start].temp_flag) x_start++;
         bool is_only_whitespace_line = false;
-        if (strip_trailing_whitespace) {
+        // Don't strip trailing whitespace from soft-wrapped lines as those spaces
+        // are part of the original text content that continues on the next line
+        const bool line_is_continued = x_limit == line->xnum && line->cpu_cells[line->xnum-1].next_char_was_wrapped;
+        if (strip_trailing_whitespace && !line_is_continued) {
             index_type new_limit = limit_without_trailing_whitespace(line, x_limit);
             if (new_limit != x_limit) {
                 x_limit = new_limit;

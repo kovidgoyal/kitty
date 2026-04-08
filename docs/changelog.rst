@@ -229,6 +229,8 @@ Detailed list of changes
 
 - hints kitten: Fix trailing punctuation not being removed from URLs (:pull:`9828`)
 
+- Fix copy/paste dropping spaces at soft-wrap boundaries when ``strip_trailing_spaces`` is set (:iss:`9834`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
