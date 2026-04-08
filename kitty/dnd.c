@@ -1052,6 +1052,52 @@ drag_start(Window *w) {
     }
 }
 
+void
+drag_notify(Window *w, DragNotifyType type) {
+    char buf[128];
+    size_t sz = snprintf(buf, sizeof(buf), "t=e:x=%d", type + 1);
+    switch(type) {
+        case DRAG_NOTIFY_ACCEPTED:
+            for (size_t i = 0; i < ds.num_mimes; i++) {
+                if (strcmp(ds.items[i].mime_type, global_state.drag_source.accepted_mime_type) == 0) {
+                    sz += snprintf(buf + sz, sizeof(buf) - sz, "y=%zu", i); break;
+                }
+            }
+        case DRAG_NOTIFY_ACTION_CHANGED:
+            switch (global_state.drag_source.action) {
+                case GLFW_DRAG_OPERATION_MOVE:
+                    sz += snprintf(buf + sz, sizeof(buf) - sz, "o=2"); break;
+                default:
+                    sz += snprintf(buf + sz, sizeof(buf) - sz, "o=1"); break;
+            }
+        case DRAG_NOTIFY_DROPPED: break;
+        case DRAG_NOTIFY_FINISHED:
+            sz += snprintf(buf + sz, sizeof(buf) - sz, "y=%d", global_state.drag_source.was_canceled ? 1 : 0); break;
+    }
+    queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, sz, NULL, 0, false);
+}
+
+int
+drag_free_data(Window *w, const char *mime_type, const char* data, size_t sz) {
+    (void)w; (void)mime_type; (void)data; (void)sz;
+    return 0;
+}
+
+const char*
+drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
+    *err_code = ENOENT; *sz = 0;
+    for (size_t i = 0; i < ds.num_mimes; i++) {
+        if (strcmp(ds.items[i].mime_type, mime_type) == 0) {
+            char buf[128];
+            size_t sz = snprintf(buf, sizeof(buf), "t=e:x=%d:y=%zu", DRAG_NOTIFY_FINISHED + 2, i);
+            queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, sz, NULL, 0, false);
+            *err_code = EAGAIN;
+            return NULL;
+        }
+    }
+    return NULL;
+}
+
 #undef img
 #undef abrt
 #undef ds

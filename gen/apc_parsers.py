@@ -331,7 +331,7 @@ def parsers() -> None:
     write_header(text, 'kitty/parse-multicell-command.h')
 
     keymap = {
-        't': ('type', flag('aAmMrRsdoOpP')),
+        't': ('type', flag('aAmMrRsdoOpPeE')),
         'm': ('more', 'uint'),
         'i': ('client_id', 'uint'),
         'o': ('operation', 'uint'),

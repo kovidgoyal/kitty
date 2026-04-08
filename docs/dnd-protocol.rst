@@ -271,6 +271,40 @@ POSIX error code. If it determines that the image data after conversion to
 display format is too large, it must respond with ``t=R ; EFBIG``. If the drag
 operation is successfully started, it must respond with ``t=R ; OK``.
 
+As the drag progresses, status changes are reported using the ``t=e`` escape
+code. The variants are listed in the table below:
+
+.. list-table:: Drag offer events
+
+   * - Code
+     - Description
+   * - ``t=e : x=1 : y=idx``
+     - The drag has been accepted by a client. ``idx`` is a zero based index into the list of MIME types
+       pointing to the MIME type the client is likely to want
+   * - ``t=e : x=2 : o=O``
+     - The action the client is likely to perform has changed to the value indicated by the ``o`` key
+   * - ``t=e : x=3``
+     - The drag offer has been dropped onto a client, there are likely to be requests for data in the near future
+   * - ``t=e : x=4 : y=0 or 1``
+     - The drag is finished. If ``y=1`` then the drag was canceled by the user.
+   * - ``t=e : x=5 : y=idx``
+     - Request data for the MIME type at the zero based index ``idx`` in the list of MIME types
+
+The client program should respond to data requests with escape codes of the
+form::
+
+    OSC _dnd_code ; t=e:m=0 or 1 ; base64 encoded data ST
+
+This, is the data for requested MIME type. The data should be chunkedusing the
+``m`` key. End of data is denoted by ``m=0`` and an rmpty payload. If an error
+occurs the client should send::
+
+    OSC _dnd_code ; t=E; ERR_CODE ST
+
+Where ``ERR_CODE`` is a POSIX error code such as ``ENOENT`` if the MIME type is
+not found or ``EIO`` if an IO error occurred and so on.
+
+
 Multiplexers
 -----------------
 
@@ -302,6 +336,7 @@ Key      Value                 Default    Description
                                           ``O`` - stop offering drags
                                           ``p`` - present data for drag offers
                                           ``P`` - Change drag image or start drag
+                                          ``e`` - a drag offer event occurred
 
 ``m``    Chunking indicator    ``0``      ``0`` or ``i``
 

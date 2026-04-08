@@ -8,6 +8,7 @@
 
 #include "state.h"
 
+
 void drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id, bool more);
 void drop_move_on_child(Window *w, const char **mimes, size_t num_mimes, bool is_drop);
 void drop_left_child(Window *w);
@@ -23,9 +24,13 @@ void drop_finish(Window *w);
 void dnd_set_test_write_func(PyObject *func);
 
 
+typedef enum { DRAG_NOTIFY_ACCEPTED, DRAG_NOTIFY_ACTION_CHANGED, DRAG_NOTIFY_DROPPED, DRAG_NOTIFY_FINISHED } DragNotifyType;
 void drag_free_offer(Window *w);
 void drag_add_mimes(Window *w, int allowed_operations, uint32_t client_id, const char *data, size_t sz, bool has_more);
 void drag_add_pre_sent_data(Window *w, unsigned idx, const uint8_t *payload, size_t sz);
 void drag_add_image(Window *w, unsigned idx_, int fmt, int width, int height, const uint8_t *payload, size_t sz);
 void drag_change_image(Window *w, unsigned idx);
 void drag_start(Window *w);
+void drag_notify(Window *w, DragNotifyType type);
+int drag_free_data(Window *w, const char *mime_type, const char* data, size_t sz);
+const char* drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code);

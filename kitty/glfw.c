@@ -1084,42 +1084,59 @@ cancel_current_drag_source(void) {
 
 static void
 drag_source_callback(GLFWwindow *window UNUSED, GLFWDragEvent *ev) {
-#define finish \
+#define finish { \
     call_boss(on_drag_source_finished, "OOsiOO", \
-            ds.was_dropped && !global_state.drop_dest.os_window_id ? Py_True : Py_False, ds.was_canceled ? Py_True: Py_False, \
-            ds.accepted_mime_type ? ds.accepted_mime_type : "", \
-            ds.action, ds.drag_data ? ds.drag_data : Py_None, ds.needs_toplevel_on_wayland ? Py_True : Py_False); \
-    free_drag_source();
+        ds.was_dropped && !global_state.drop_dest.os_window_id ? Py_True : Py_False, ds.was_canceled ? Py_True: Py_False, \
+        ds.accepted_mime_type ? ds.accepted_mime_type : "", \
+        ds.action, ds.drag_data ? ds.drag_data : Py_None, ds.needs_toplevel_on_wayland ? Py_True : Py_False); \
+    free_drag_source(); \
+}
+    Window *w = NULL;
+    bool is_client_drag = false;
+    if (ds.from_window && (w = window_for_window_id(ds.from_window)) && w->drag_source.state) {
+        is_client_drag = true;
+    }
 
     switch (ev->type) {
-        case GLFW_DRAG_DATA_REQUEST: // we currently pre-provide all data so this should never happen
-            if (ev->data_sz) {
-                // previously returned data is consumed, free it
-            } else {
-                ev->err_num = ENOENT;
+        case GLFW_DRAG_DATA_REQUEST:
+            ev->err_num = ENOENT;
+            if (is_client_drag) {
+                ev->err_num = 0;
+                if (ev->data_sz) {
+                    ev->err_num = drag_free_data(w, ev->mime_type, ev->data, ev->data_sz);
+                } else {
+                    ev->data = drag_get_data(w, ev->mime_type, &ev->data_sz, &ev->err_num);
+                }
             }
             break;
         case GLFW_DRAG_ACCEPTED:
             free(ds.accepted_mime_type);
             ds.accepted_mime_type = ev->mime_type ? strdup(ev->mime_type) : NULL;
+            if (is_client_drag) drag_notify(w, DRAG_NOTIFY_ACCEPTED);
             break;
         case GLFW_DRAG_ACTION_CHANGED:
             ds.action = ev->action; break;
+            if (is_client_drag) drag_notify(w, DRAG_NOTIFY_ACTION_CHANGED);
         case GLFW_DRAG_DROPPED:
             ds.was_dropped = true;
             // On Wayland, we cant trust the value of ev->action as it is zero
             // when dropping outside any application which is a case we want to
             // handle.
-            if (global_state.drop_dest.os_window_id && ds.drag_data) {
-                Py_CLEAR(global_state.drop_dest.self_drag_data);
-                global_state.drop_dest.self_drag_data = Py_NewRef(ds.drag_data);
+            if (is_client_drag) {
+                drag_notify(w, DRAG_NOTIFY_DROPPED);
+            } else {
+                if (global_state.drop_dest.os_window_id && ds.drag_data) {
+                    Py_CLEAR(global_state.drop_dest.self_drag_data);
+                    global_state.drop_dest.self_drag_data = Py_NewRef(ds.drag_data);
+                }
+                finish;
             }
-            finish;
             break;
         case GLFW_DRAG_CANCELLED:
             ds.was_canceled = true;
             /* fallthrough */
         case GLFW_DRAG_FINSHED:
+            if (is_client_drag) drag_notify(w, DRAG_NOTIFY_FINISHED);
             finish
             break;
     }
