@@ -67,6 +67,10 @@ func TestHintMarking(t *testing.T) {
 	r(`<a href="`+u+`">moo`, u)
 	r("\x1b[mhttp://test.me/1234\n\x1b[mx", "http://test.me/1234")
 	r("\x1b[mhttp://test.me/12345\r\x1b[m6\n\x1b[mx", "http://test.me/123456")
+	r("http://example.com,", "http://example.com")
+	r("http://example.com.", "http://example.com")
+	r("http://example.com!", "http://example.com")
+	r("http://example.com?", "http://example.com")
 
 	opts.Type = "linenum"
 	m := func(text, path string, line int) {

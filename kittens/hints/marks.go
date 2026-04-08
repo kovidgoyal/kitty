@@ -174,7 +174,7 @@ var PostProcessorMap = sync.OnceValue(func() map[string]PostProcessorFunc {
 					e -= len(url) - idx
 				}
 			}
-			for e > 1 && is_punctuation(char_at(text, e)) { // remove trailing punctuation
+			for e > 1 && is_punctuation(char_at(text, e-1)) { // remove trailing punctuation
 				e--
 			}
 			// truncate url at closing bracket/quote
