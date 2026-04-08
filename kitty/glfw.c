@@ -1115,8 +1115,9 @@ drag_source_callback(GLFWwindow *window UNUSED, GLFWDragEvent *ev) {
             if (is_client_drag) drag_notify(w, DRAG_NOTIFY_ACCEPTED);
             break;
         case GLFW_DRAG_ACTION_CHANGED:
-            ds.action = ev->action; break;
+            ds.action = ev->action;
             if (is_client_drag) drag_notify(w, DRAG_NOTIFY_ACTION_CHANGED);
+            break;
         case GLFW_DRAG_DROPPED:
             ds.was_dropped = true;
             // On Wayland, we cant trust the value of ev->action as it is zero

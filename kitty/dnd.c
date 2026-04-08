@@ -1065,14 +1065,14 @@ drag_notify(Window *w, DragNotifyType type) {
                 if (strcmp(ds.items[i].mime_type, global_state.drag_source.accepted_mime_type) == 0) {
                     sz += snprintf(buf + sz, sizeof(buf) - sz, "y=%zu", i); break;
                 }
-            }
+            } break;
         case DRAG_NOTIFY_ACTION_CHANGED:
             switch (global_state.drag_source.action) {
                 case GLFW_DRAG_OPERATION_MOVE:
                     sz += snprintf(buf + sz, sizeof(buf) - sz, "o=2"); break;
                 default:
                     sz += snprintf(buf + sz, sizeof(buf) - sz, "o=1"); break;
-            }
+            } break;
         case DRAG_NOTIFY_DROPPED: break;
         case DRAG_NOTIFY_FINISHED:
             sz += snprintf(buf + sz, sizeof(buf) - sz, "y=%d", global_state.drag_source.was_canceled ? 1 : 0); break;
