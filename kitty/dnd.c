@@ -864,7 +864,10 @@ drop_left_child(Window *w) {
 static void
 drag_free_built_data(Window *w) {
     if (ds.items) {
-        for (size_t i=0; i < ds.num_mimes; i++) free(ds.items[i].optional_data);
+        for (size_t i=0; i < ds.num_mimes; i++) {
+            free(ds.items[i].optional_data);
+            if (ds.items[i].fd_plus_one) safe_close(ds.items[i].fd_plus_one, __FILE__, __LINE__);
+        }
         free(ds.items);
     }
     for (size_t i = 0; i < arraysz(ds.images); i++) {
