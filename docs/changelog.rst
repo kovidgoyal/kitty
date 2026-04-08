@@ -227,6 +227,7 @@ Detailed list of changes
 
 - Command palette :sc:`command_palette`: nicer grouping of aliases and combined actions (:pull:`9819`)
 
+- hints kitten: Fix trailing punctuation not being removed from URLs (:pull:`9828`)
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
