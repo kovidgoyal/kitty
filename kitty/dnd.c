@@ -1117,7 +1117,13 @@ drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
                 off_t end = lseek(fd, 0, SEEK_END);
                 if (end < 0) { *err_code = EIO; return NULL; }
                 if (lseek(fd, 0, SEEK_SET) < 0) { *err_code = EIO; return NULL; }
-                char *data = malloc(end ? (size_t)end : 1);
+                if (end == 0) {
+                    safe_close(fd, __FILE__, __LINE__);
+                    ds.items[i].fd_plus_one = 0;
+                    *err_code = 0;
+                    return NULL;
+                }
+                char *data = malloc((size_t)end);
                 if (!data) { *err_code = ENOMEM; return NULL; }
                 size_t total = 0;
                 while (total < (size_t)end) {
@@ -1194,7 +1200,7 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
     // Open temp file if not yet open
     if (!ds.items[idx].fd_plus_one) {
         int fd = open_item_tmpfile();
-        if (fd < 0) { cancel_drag(w, ENOMEM); return; }
+        if (fd < 0) { cancel_drag(w, EIO); return; }
         ds.items[idx].fd_plus_one = fd + 1;
         ds.items[idx].data_decode_initialized = true;
         base64_init_stream_decoder(&ds.items[idx].base64_state);
