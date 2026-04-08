@@ -1101,6 +1101,8 @@ drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
 void
 drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *payload, size_t payload_sz) {
     (void)w; (void)idx; (void)has_more; (void)payload; (void)payload_sz;
+    // call notify_drag_data_ready() after writing payload to file and
+    // dont forget to check the return value of notify_drag_data_ready()
 }
 #undef img
 #undef abrt

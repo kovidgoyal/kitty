@@ -1144,6 +1144,14 @@ drag_source_callback(GLFWwindow *window UNUSED, GLFWDragEvent *ev) {
 }
 #undef ds
 
+int
+notify_drag_data_ready(id_type os_window_id, const char *mime_type) {
+    OSWindow *w = os_window_for_id(os_window_id);
+    GLFWDragSourceItem item = {.mime_type = mime_type};
+    if (w && w->handle) return glfwStartDrag(w->handle, &item, 1, NULL, -1, false);
+    return ENOENT;
+}
+
 static char*
 get_current_selection(void) {
     if (!global_state.boss) return NULL;
