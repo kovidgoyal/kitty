@@ -866,7 +866,7 @@ drag_free_built_data(Window *w) {
     if (ds.items) {
         for (size_t i=0; i < ds.num_mimes; i++) {
             free(ds.items[i].optional_data);
-            if (ds.items[i].fd_plus_one) safe_close(ds.items[i].fd_plus_one, __FILE__, __LINE__);
+            if (ds.items[i].fd_plus_one > 0) safe_close(ds.items[i].fd_plus_one - 1, __FILE__, __LINE__);
         }
         free(ds.items);
     }
@@ -1049,7 +1049,19 @@ drag_start(Window *w) {
     if (err != 0) {
         abrt(err);
     } else {
-        drag_free_built_data(w);
+        // Free images and optional_data but keep the items array for later
+        // data requests from the drop target
+        for (size_t i = 0; i < ds.num_mimes; i++) {
+            free(ds.items[i].optional_data);
+            ds.items[i].optional_data = NULL;
+            ds.items[i].data_size = 0;
+            ds.items[i].data_capacity = 0;
+            ds.items[i].data_decode_initialized = false;
+        }
+        for (size_t i = 0; i < arraysz(ds.images); i++) {
+            if (ds.images[i].data) free(ds.images[i].data);
+            zero_at_ptr(ds.images + i);
+        }
         ds.state = DRAG_SOURCE_STARTED;
         drag_send_error(w, 0);  // send OK
     }
@@ -1082,18 +1094,63 @@ drag_notify(Window *w, DragNotifyType type) {
 
 int
 drag_free_data(Window *w, const char *mime_type, const char* data, size_t sz) {
-    (void)w; (void)mime_type; (void)data; (void)sz;
+    (void)w; (void)mime_type; (void)sz;
+    free((void*)data);
     return 0;
 }
 
 const char*
 drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
     *err_code = ENOENT; *sz = 0;
+    if (!ds.items) return NULL;
     for (size_t i = 0; i < ds.num_mimes; i++) {
         if (strcmp(ds.items[i].mime_type, mime_type) == 0) {
+            if (ds.items[i].fd_plus_one < 0) {
+                // Error was stored by drag_process_item_data
+                *err_code = -ds.items[i].fd_plus_one;
+                ds.items[i].fd_plus_one = 0;
+                return NULL;
+            }
+            if (ds.items[i].fd_plus_one > 0) {
+                // data_size = read position, data_capacity = bytes written to file
+                if (ds.items[i].data_capacity > ds.items[i].data_size) {
+                    // Unread data available, use pread to read from read_pos
+                    size_t available = ds.items[i].data_capacity - ds.items[i].data_size;
+                    char *data = malloc(available);
+                    if (!data) { *err_code = ENOMEM; return NULL; }
+                    size_t total = 0;
+                    while (total < available) {
+                        ssize_t n = pread(ds.items[i].fd_plus_one - 1, data + total,
+                                          available - total,
+                                          (off_t)(ds.items[i].data_size + total));
+                        if (n < 0) {
+                            if (errno == EINTR) continue;
+                            free(data);
+                            *err_code = EIO;
+                            return NULL;
+                        }
+                        if (n == 0) break;
+                        total += (size_t)n;
+                    }
+                    ds.items[i].data_size += total;
+                    *sz = total;
+                    *err_code = 0;
+                    return data;
+                }
+                // No unread data
+                if (!ds.items[i].data_decode_initialized) {
+                    // Transfer complete and all data read
+                    *err_code = 0;
+                    return NULL;
+                }
+                // Still receiving data from client, wait
+                *err_code = EAGAIN;
+                return NULL;
+            }
+            // No fd yet, request data from the client
             char buf[128];
-            size_t sz = snprintf(buf, sizeof(buf), "t=e:x=%d:y=%zu", DRAG_NOTIFY_FINISHED + 2, i);
-            queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, sz, NULL, 0, false);
+            int header_sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=e:x=%d:y=%zu", DND_CODE, DRAG_NOTIFY_FINISHED + 2, i);
+            queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_sz, NULL, 0, false);
             *err_code = EAGAIN;
             return NULL;
         }
@@ -1101,11 +1158,93 @@ drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
     return NULL;
 }
 
+static int
+parse_errno_name(const uint8_t *data, size_t sz) {
+    if (sz >= 6 && memcmp(data, "ENOENT", 6) == 0) return ENOENT;
+    if (sz >= 5 && memcmp(data, "EPERM", 5) == 0) return EPERM;
+    if (sz >= 6 && memcmp(data, "EINVAL", 6) == 0) return EINVAL;
+    if (sz >= 6 && memcmp(data, "ENOMEM", 6) == 0) return ENOMEM;
+    if (sz >= 5 && memcmp(data, "EFBIG", 5) == 0) return EFBIG;
+    if (sz >= 3 && memcmp(data, "EIO", 3) == 0) return EIO;
+    return EIO;
+}
+
+static int
+open_item_tmpfile(void) {
+    int fd = -1;
+#ifdef O_TMPFILE
+    fd = safe_open("/tmp", O_TMPFILE | O_CLOEXEC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+#endif
+    if (fd < 0) {
+        char name[] = "/tmp/kitty-dnd-XXXXXXXXXXXX";
+        fd = safe_mkstemp(name);
+        if (fd >= 0) unlink(name);
+    }
+    return fd;
+}
+
 void
 drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *payload, size_t payload_sz) {
-    (void)w; (void)idx; (void)has_more; (void)payload; (void)payload_sz;
-    // call notify_drag_data_ready() after writing payload to file and
-    // dont forget to check the return value of notify_drag_data_ready()
+    if ((ds.state != DRAG_SOURCE_STARTED && ds.state != DRAG_SOURCE_DROPPED) || idx >= ds.num_mimes || !ds.items) return;
+
+    if (has_more < 0) {
+        // Error from the client program
+        if (ds.items[idx].fd_plus_one > 0) {
+            safe_close(ds.items[idx].fd_plus_one - 1, __FILE__, __LINE__);
+        }
+        int err = parse_errno_name(payload, payload_sz);
+        ds.items[idx].fd_plus_one = -err;
+        ds.items[idx].data_decode_initialized = false;
+        int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
+        if (ret) cancel_drag(w, ret);
+        return;
+    }
+
+    // End of data: has_more == 0 and empty payload
+    if (has_more == 0 && payload_sz == 0) {
+        ds.items[idx].data_decode_initialized = false;
+        if (ds.items[idx].fd_plus_one > 0) {
+            int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
+            if (ret) cancel_drag(w, ret);
+        }
+        return;
+    }
+
+    // Open temp file if not yet open
+    if (!ds.items[idx].fd_plus_one) {
+        int fd = open_item_tmpfile();
+        if (fd < 0) { cancel_drag(w, EIO); return; }
+        ds.items[idx].fd_plus_one = fd + 1;
+        ds.items[idx].data_decode_initialized = true;
+        ds.items[idx].data_size = 0;     // read position for pread
+        ds.items[idx].data_capacity = 0; // bytes written to file
+        base64_init_stream_decoder(&ds.items[idx].base64_state);
+    }
+
+    // Decode and write payload data
+    if (payload_sz > 0) {
+        RAII_ALLOC(uint8_t, decoded, malloc(payload_sz));
+        if (!decoded) { cancel_drag(w, ENOMEM); return; }
+        size_t outlen = payload_sz;
+        if (!base64_decode_stream(&ds.items[idx].base64_state, payload, payload_sz, decoded, &outlen)) {
+            cancel_drag(w, EINVAL);
+            return;
+        }
+        size_t written = 0;
+        while (written < outlen) {
+            ssize_t n = write(ds.items[idx].fd_plus_one - 1, decoded + written, outlen - written);
+            if (n < 0) {
+                if (errno == EINTR) continue;
+                cancel_drag(w, EIO);
+                return;
+            }
+            written += (size_t)n;
+        }
+        ds.items[idx].data_capacity += outlen;
+        // Notify as soon as any data is available
+        int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
+        if (ret) cancel_drag(w, ret);
+    }
 }
 #undef img
 #undef abrt
