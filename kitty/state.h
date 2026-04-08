@@ -295,7 +295,7 @@ typedef struct Window {
         char *mimes_buf; size_t num_mimes, bufsz;
         struct {
             const char *mime_type; uint8_t *optional_data; size_t data_size, data_capacity; base64_state base64_state;
-            bool data_decode_initialized;
+            bool data_decode_initialized; int fd_plus_one;
         } *items;
         struct {
             int width, height, fmt; uint8_t *data; size_t sz, capacity; bool started; base64_state base64_state;
