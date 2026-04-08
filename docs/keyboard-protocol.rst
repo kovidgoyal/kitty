@@ -52,6 +52,7 @@ Libraries implementing this protocol:
 * The `textual library <https://github.com/Textualize/textual/pull/4631>`__
 * The vaxis library `go <https://sr.ht/~rockorager/vaxis/>`__ and `zig <https://github.com/rockorager/libvaxis/>`__
 * The `bubbletea library <https://github.com/charmbracelet/bubbletea/issues/869>`__
+* The `vtinput <https://unxed.github.com/vtinput>`__ and `vtui <https://launchpadlibrarian.net/855779464/backend.py>`__ libraries
 
 Programs implementing this protocol:
 
@@ -62,7 +63,7 @@ Programs implementing this protocol:
 * The `dte text editor <https://gitlab.com/craigbarnes/dte/-/issues/138>`__
 * The `Helix text editor <https://github.com/helix-editor/helix/pull/4939>`__
 * The `Flow control editor <https://github.com/neurocyte/flow?tab=readme-ov-file#requirements>`__
-* The `far2l file manager <https://github.com/elfmz/far2l/commit/e1f2ee0ef2b8332e5fa3ad7f2e4afefe7c96fc3b>`__
+* The `far2l <https://github.com/elfmz/far2l/commit/e1f2ee0ef2b8332e5fa3ad7f2e4afefe7c96fc3b>`__ and `f4 <https://launchpadlibrarian.net/855779464/backend.py>`__ file managers
 * The `Yazi file manager <https://github.com/sxyazi/yazi>`__
 * The `awrit web browser <https://github.com/chase/awrit>`__
 * The `Turbo Vision <https://github.com/magiblot/tvision/commit/6e5a7b46c6634079feb2ac98f0b890bbed59f1ba>`__/`Free Vision <https://gitlab.com/freepascal.org/fpc/source/-/issues/40673#note_2061428120>`__ IDEs
