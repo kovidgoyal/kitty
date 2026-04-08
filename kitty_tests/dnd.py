@@ -1037,30 +1037,15 @@ class TestDnDProtocol(BaseTest):
             self.ae(events[0]['type'], 'R')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
-    def test_drag_pre_send_data_too_much_returns_efbig(self) -> None:
-        """Pre-sending more than 64MB of data returns EFBIG."""
+    def test_drag_pre_send_data_moderate_chunk(self) -> None:
+        """Pre-sending a moderate chunk of data succeeds without triggering size cap."""
         with dnd_test_window() as (osw, wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
-            # Create a large chunk – the cap is 64MB total pre-sent data.
-            # We'll send chunks until we exceed the cap.
-            # Each chunk can be up to 4096 bytes (base64 encoded).
-            # To exceed 64MB quickly, send a few very large chunks.
+            # The size cap is 64MB (PRESENT_DATA_CAP = 64 * 1024 * 1024).
+            # We can't realistically send 64MB in a unit test, so we verify
+            # that a moderate chunk is accepted without error.
             chunk_raw = b'X' * 3072  # 3072 bytes = 4096 base64
             chunk_b64 = standard_b64encode(chunk_raw).decode()
-            # Send enough chunks to exceed 64MB = 67108864 bytes
-            # But we can't send that many escape codes in a test, so let's use
-            # a creative approach - send a chunk that claims large data through
-            # the base64 decoded size tracking.
-            # Actually, the cap checks pre_sent_total_sz against PRESENT_DATA_CAP (64MB).
-            # pre_sent_total_sz += sz where sz is the raw b64 payload length, not decoded.
-            # Let's verify by sending moderate amount and checking the cap isn't hit,
-            # then we need to exceed it. Since we can't actually send 64MB in a test,
-            # let's just verify the mechanism works with smaller amounts.
-            # Actually looking at the code more carefully:
-            # ds.pre_sent_total_sz += sz; where sz is the raw base64 encoded payload size
-            # and PRESENT_DATA_CAP = 64 * 1024 * 1024
-            # We can't realistically test the 64MB cap in a unit test.
-            # Instead, let's just test that pre-sending works for valid data.
             parse_bytes(screen, client_drag_pre_send(0, chunk_b64))
             self._assert_no_output(cap, wid)
 
@@ -1131,7 +1116,7 @@ class TestDnDProtocol(BaseTest):
             self.ae(events[0]['type'], 'R')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
-    def test_drag_add_too_many_images_returns_efbig(self) -> None:
+    def test_drag_add_too_many_images_returns_error(self) -> None:
         """Adding more than the maximum number of images returns an error."""
         with dnd_test_window() as (osw, wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
@@ -1145,14 +1130,14 @@ class TestDnDProtocol(BaseTest):
                 parse_bytes(screen, client_drag_add_image(i, 32, 2, 2, data_b64))
             self._assert_no_output(cap, wid)
 
-            # Image 15 (C idx=15) should fail
+            # Image 15 (C idx=15) should fail with an error (EFBIG)
             parse_bytes(screen, client_drag_add_image(15, 32, 2, 2, data_b64))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
             self.ae(events[0]['type'], 'R')
 
-    def test_drag_start_no_real_window_returns_error(self) -> None:
-        """Starting a drag with a fake window (no GLFW handle) returns an error."""
+    def test_drag_start_no_real_window_returns_einval_or_eperm(self) -> None:
+        """Starting a drag with a fake window (no GLFW handle) returns EINVAL or EPERM."""
         with dnd_test_window() as (osw, wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Try to start the drag – the fake window has no osw->handle, so
