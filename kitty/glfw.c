@@ -3190,6 +3190,9 @@ int
 start_window_drag(Window *w) {
     OSWindow *osw = os_window_for_kitty_window(w->id);
     if (!osw || !osw->handle) return EINVAL;
+    // Deny the drag start if mouse is not still pressed and over the originating window
+    if (!osw->mouse_button_pressed[GLFW_MOUSE_BUTTON_LEFT]) return EPERM;
+    if (global_state.mouse_hover_in_window != global_state.drag_source.from_window) return EPERM;
     RAII_ALLOC(GLFWDragSourceItem, items, calloc(w->drag_source.num_mimes, sizeof(GLFWDragSourceItem)));
     if (!items) return ENOMEM;
     for (size_t i = 0; i < w->drag_source.num_mimes; i++) {
