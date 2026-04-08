@@ -297,13 +297,17 @@ form::
 
 This, is the data for the MIME type identified by ``idx`` which is a zero based
 index into the list of MIME types. The data should be chunkedusing the
-``m`` key. End of data is denoted by ``m=0`` and an rmpty payload. If an error
+``m`` key. End of data is denoted by ``m=0`` and an empty payload. If an error
 occurs the client should send::
 
-    OSC _dnd_code ; t=E; ERR_CODE ST
+    OSC _dnd_code ; t=E:y=idx ; ERR_CODE ST
 
 Where ``ERR_CODE`` is a POSIX error code such as ``ENOENT`` if the MIME type is
 not found or ``EIO`` if an IO error occurred and so on.
+
+If the client wants to cancel the full drag at any time, it should send:
+
+    OSC _dnd_code ; t=E:y=-1 ST
 
 
 Multiplexers

@@ -1570,7 +1570,12 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
             drag_process_item_data(w, cmd->cell_y, cmd->more, payload, cmd->payload_sz);
         } break;
         case 'E': {
-            drag_process_item_data(w, cmd->cell_y, -1, payload, cmd->payload_sz);
+            if (cmd->cell_y == -1) {
+                drag_free_offer(w);
+                if (global_state.drag_source.is_active && global_state.drag_source.from_window == w->id) {
+                    cancel_current_drag_source();
+                }
+            } else drag_process_item_data(w, cmd->cell_y, -1, payload, cmd->payload_sz);
         } break;
     }
 }
