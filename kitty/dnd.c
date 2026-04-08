@@ -1112,37 +1112,40 @@ drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
                 return NULL;
             }
             if (ds.items[i].fd_plus_one > 0) {
-                // Data is available in the temp file, read it
-                int fd = ds.items[i].fd_plus_one - 1;
-                off_t end = lseek(fd, 0, SEEK_END);
-                if (end < 0) { *err_code = EIO; return NULL; }
-                if (lseek(fd, 0, SEEK_SET) < 0) { *err_code = EIO; return NULL; }
-                if (end == 0) {
-                    safe_close(fd, __FILE__, __LINE__);
-                    ds.items[i].fd_plus_one = 0;
+                // data_size = read position, data_capacity = bytes written to file
+                if (ds.items[i].data_capacity > ds.items[i].data_size) {
+                    // Unread data available, use pread to read from read_pos
+                    size_t available = ds.items[i].data_capacity - ds.items[i].data_size;
+                    char *data = malloc(available);
+                    if (!data) { *err_code = ENOMEM; return NULL; }
+                    size_t total = 0;
+                    while (total < available) {
+                        ssize_t n = pread(ds.items[i].fd_plus_one - 1, data + total,
+                                          available - total,
+                                          (off_t)(ds.items[i].data_size + total));
+                        if (n < 0) {
+                            if (errno == EINTR) continue;
+                            free(data);
+                            *err_code = EIO;
+                            return NULL;
+                        }
+                        if (n == 0) break;
+                        total += (size_t)n;
+                    }
+                    ds.items[i].data_size += total;
+                    *sz = total;
+                    *err_code = 0;
+                    return data;
+                }
+                // No unread data
+                if (!ds.items[i].data_decode_initialized) {
+                    // Transfer complete and all data read
                     *err_code = 0;
                     return NULL;
                 }
-                char *data = malloc((size_t)end);
-                if (!data) { *err_code = ENOMEM; return NULL; }
-                size_t total = 0;
-                while (total < (size_t)end) {
-                    ssize_t n = read(fd, data + total, (size_t)end - total);
-                    if (n < 0) {
-                        if (errno == EINTR) continue;
-                        free(data);
-                        *err_code = EIO;
-                        return NULL;
-                    }
-                    if (n == 0) break;
-                    total += (size_t)n;
-                }
-                // Close and reset the fd after reading
-                safe_close(fd, __FILE__, __LINE__);
-                ds.items[i].fd_plus_one = 0;
-                *sz = total;
-                *err_code = 0;
-                return data;
+                // Still receiving data from client, wait
+                *err_code = EAGAIN;
+                return NULL;
             }
             // No fd yet, request data from the client
             char buf[128];
@@ -1197,12 +1200,24 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
         return;
     }
 
+    // End of data: has_more == 0 and empty payload
+    if (has_more == 0 && payload_sz == 0) {
+        ds.items[idx].data_decode_initialized = false;
+        if (ds.items[idx].fd_plus_one > 0) {
+            int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
+            if (ret) cancel_drag(w, ret);
+        }
+        return;
+    }
+
     // Open temp file if not yet open
     if (!ds.items[idx].fd_plus_one) {
         int fd = open_item_tmpfile();
         if (fd < 0) { cancel_drag(w, EIO); return; }
         ds.items[idx].fd_plus_one = fd + 1;
         ds.items[idx].data_decode_initialized = true;
+        ds.items[idx].data_size = 0;     // read position for pread
+        ds.items[idx].data_capacity = 0; // bytes written to file
         base64_init_stream_decoder(&ds.items[idx].base64_state);
     }
 
@@ -1225,15 +1240,8 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
             }
             written += (size_t)n;
         }
-    }
-
-    if (has_more == 0) {
-        // All data received, seek to beginning and notify
-        if (lseek(ds.items[idx].fd_plus_one - 1, 0, SEEK_SET) < 0) {
-            cancel_drag(w, EIO);
-            return;
-        }
-        ds.items[idx].data_decode_initialized = false;
+        ds.items[idx].data_capacity += outlen;
+        // Notify as soon as any data is available
         int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
         if (ret) cancel_drag(w, ret);
     }
