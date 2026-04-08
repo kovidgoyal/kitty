@@ -885,19 +885,29 @@ drag_free_offer(Window *w) {
 }
 
 static void
+drag_send_error(Window *w, int error_code) {
+    char buf[128];
+    const char *e = get_errno_name(error_code);
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=R", DND_CODE);
+    queue_payload_to_child(
+        w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_size, e, strlen(e), false);
+}
+
+static void
 cancel_drag(Window *w, int error_code) {
-    if (error_code) drop_send_error(w, error_code);
+    if (error_code) drag_send_error(w, error_code);
     if (global_state.drag_source.is_active && global_state.drag_source.from_window == w->id) cancel_current_drag_source();
     drag_free_offer(w);
 }
 
 void
-drag_add_mimes(Window *w, int allowed_operations, const char *data, size_t sz, bool has_more) {
+drag_add_mimes(Window *w, int allowed_operations, uint32_t client_id, const char *data, size_t sz, bool has_more) {
 #define abrt(code) { cancel_drag(w, code); return; }
     if (allowed_operations && ds.state != DRAG_SOURCE_NONE) cancel_drag(w, 0);
     if (allowed_operations && !ds.allowed_operations) ds.allowed_operations = allowed_operations;
     if (!ds.allowed_operations) { abrt(EINVAL); }
     ds.state = DRAG_SOURCE_BEING_BUILT;
+    ds.client_id = client_id;
     size_t new_sz = ds.bufsz + sz;
     if (new_sz > MIME_LIST_SIZE_CAP) abrt(EFBIG);
     ds.mimes_buf = realloc(ds.mimes_buf, ds.bufsz + sz + 1);
@@ -1038,7 +1048,7 @@ drag_start(Window *w) {
     } else {
         drag_free_built_data(w);
         ds.state = DRAG_SOURCE_STARTED;
-        drop_send_error(w, 0);  // send OK
+        drag_send_error(w, 0);  // send OK
     }
 }
 

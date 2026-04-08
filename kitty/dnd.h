@@ -24,7 +24,7 @@ void dnd_set_test_write_func(PyObject *func);
 
 
 void drag_free_offer(Window *w);
-void drag_add_mimes(Window *w, int allowed_operations, const char *data, size_t sz, bool has_more);
+void drag_add_mimes(Window *w, int allowed_operations, uint32_t client_id, const char *data, size_t sz, bool has_more);
 void drag_add_pre_sent_data(Window *w, unsigned idx, const uint8_t *payload, size_t sz);
 void drag_add_image(Window *w, unsigned idx_, int fmt, int width, int height, const uint8_t *payload, size_t sz);
 void drag_change_image(Window *w, unsigned idx);

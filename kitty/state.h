@@ -304,6 +304,8 @@ typedef struct Window {
         unsigned img_idx;
         int allowed_operations;
         DragSourceState state;
+        PendingData pending;
+        uint32_t client_id;
     } drag_source;
 } Window;
 
