@@ -908,6 +908,7 @@ static void
 destroy_fake_window_contents(Window *w) {
     // Free window resources without touching GPU objects (none allocated for fake windows).
     drop_free_data(w);
+    drag_free_offer(w);
     free(w->pending_clicks.clicks); zero_at_ptr(&w->pending_clicks);
     free(w->buffered_keys.key_data); zero_at_ptr(&w->buffered_keys);
     Py_CLEAR(w->render_data.screen);

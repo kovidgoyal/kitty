@@ -869,6 +869,7 @@ drag_free_built_data(Window *w) {
             if (ds.items[i].fd_plus_one > 0) safe_close(ds.items[i].fd_plus_one - 1, __FILE__, __LINE__);
         }
         free(ds.items);
+        ds.items = NULL;
     }
     for (size_t i = 0; i < arraysz(ds.images); i++) {
         if (ds.images[i].data) free(ds.images[i].data);
