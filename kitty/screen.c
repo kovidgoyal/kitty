@@ -1566,7 +1566,12 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
             if (cmd->cell_x >= 0) drag_change_image(w, cmd->cell_x);
             else drag_start(w);
         } break;
-
+        case 'e': {
+            drag_process_item_data(w, cmd->cell_y, cmd->more, payload, cmd->payload_sz);
+        } break;
+        case 'E': {
+            drag_process_item_data(w, cmd->cell_y, -1, payload, cmd->payload_sz);
+        } break;
     }
 }
 

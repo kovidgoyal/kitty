@@ -1098,6 +1098,10 @@ drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
     return NULL;
 }
 
+void
+drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *payload, size_t payload_sz) {
+    (void)w; (void)idx; (void)has_more; (void)payload; (void)payload_sz;
+}
 #undef img
 #undef abrt
 #undef ds
