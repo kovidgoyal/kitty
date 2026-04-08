@@ -702,13 +702,15 @@ class TestScreen(BaseTest):
         s.start_selection(0, 0)
         s.update_selection(1, 3)
         self.ae(ts(), ''.join(('ab   ', 'cd')))
-        self.ae(ts(False, True), ''.join(('ab', 'cd')))
+        # soft-wrapped lines preserve trailing spaces (issue #9834)
+        self.ae(ts(False, True), 'ab   cd')
         s.reset()
         s.draw('ab        cd')
         s.start_selection(0, 0)
         s.update_selection(3, 4)
         self.ae(s.text_for_selection(), ('ab   ', '     ', 'cd'))
-        self.ae(s.text_for_selection(False, True), ('ab', '\n', 'cd'))
+        # soft-wrapped lines preserve trailing spaces (issue #9834)
+        self.ae(s.text_for_selection(False, True), ('ab   ', '     ', 'cd'))
         s.reset()
         s.draw('a')
         s.select_graphic_rendition(32)
@@ -719,7 +721,8 @@ class TestScreen(BaseTest):
         s.update_selection(1, 3)
         self.ae(s.text_for_selection(), ('abc  ', 'xy'))
         self.ae(s.text_for_selection(True), ('a\x1b[32mb\x1b[39mc  ', 'xy', '\x1b[m'))
-        self.ae(s.text_for_selection(True, True), ('a\x1b[32mb\x1b[39mc', 'xy', '\x1b[m'))
+        # soft-wrapped lines preserve trailing spaces in ANSI mode too (issue #9834)
+        self.ae(s.text_for_selection(True, True), ('a\x1b[32mb\x1b[39mc  ', 'xy', '\x1b[m'))
         # ]]]]]]]]]]]]]]]]]]]]
         s.reset()
         s.draw('a'), s.carriage_return(), s.linefeed(), s.linefeed(), s.draw('b')
@@ -727,6 +730,16 @@ class TestScreen(BaseTest):
         s.update_selection(4, 4)
         self.ae(''.join(s.text_for_selection()), 'a\n\nb')
         self.ae(''.join(s.text_for_selection(True)), 'a\n\nb')
+        # Trailing spaces on soft-wrapped lines must be preserved when strip_trailing_whitespace
+        # is set: a space at the line-wrap boundary is word-separator content, not padding
+        # (regression test for issue #9834)
+        s.reset()
+        s.draw('1234 5')  # "1234 " soft-wraps at col 4; space must survive stripping
+        s.start_selection(0, 0)
+        s.update_selection(4, 4)
+        self.ae(s.text_for_selection(), ('1234 ', '5'))
+        self.ae(s.text_for_selection(False, True), ('1234 ', '5'))
+        self.ae(s.text_for_selection(True, True), ('1234 ', '5', ''))
 
     def test_soft_hyphen(self):
         s = self.create_screen()
