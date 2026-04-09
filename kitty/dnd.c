@@ -415,11 +415,11 @@ get_errno_name(int err) {
 static int
 drop_append_request_keys(Window *w, char *buf, size_t bufsize) {
     int sz = 0;
-    if (w->drop.current_request_x)
+    if (w->drop.current_request_x && sz < (int)bufsize - 1)
         sz += snprintf(buf + sz, bufsize - sz, ":x=%d", (int)w->drop.current_request_x);
-    if (w->drop.current_request_y)
+    if (w->drop.current_request_y && sz < (int)bufsize - 1)
         sz += snprintf(buf + sz, bufsize - sz, ":y=%d", (int)w->drop.current_request_y);
-    if (w->drop.current_request_Y)
+    if (w->drop.current_request_Y && sz < (int)bufsize - 1)
         sz += snprintf(buf + sz, bufsize - sz, ":Y=%d", (int)w->drop.current_request_Y);
     return sz;
 }
