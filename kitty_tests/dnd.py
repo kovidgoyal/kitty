@@ -50,37 +50,40 @@ def client_accept(operation: int, mimes: str = '', client_id: int = 0) -> bytes:
     return _osc(f'{meta};{mimes}')
 
 
-def client_request_data(mime: str = '', client_id: int = 0, request_id: int = 0) -> bytes:
-    """Escape code a client sends to request data (t=r) or finish the drop (t=r with no MIME)."""
+def client_request_data(idx: int = 0, client_id: int = 0) -> bytes:
+    """Escape code a client sends to request data (t=r:x=idx) or finish the drop (t=r with no x).
+
+    *idx*: 1-based index into the list of MIME types. 0 or omitted means finish.
+    """
     meta = f'{DND_CODE};t=r'
-    if request_id:
-        meta += f':r={request_id}'
+    if idx > 0:
+        meta += f':x={idx}'
     if client_id:
         meta += f':i={client_id}'
-    return _osc(f'{meta};{mime}')
+    return _osc(meta)
 
 
-def client_request_uri_data(idx: int, client_id: int = 0, request_id: int = 0) -> bytes:
-    """Escape code a client sends to request a file from the URI list (t=s ; text/uri-list:idx)."""
-    meta = f'{DND_CODE};t=s'
-    if request_id:
-        meta += f':r={request_id}'
+def client_request_uri_data(mime_idx: int, file_idx: int, client_id: int = 0) -> bytes:
+    """Escape code a client sends to request a file from the URI list (t=r:x=mime_idx:y=file_idx).
+
+    *mime_idx*: 1-based index of text/uri-list in the MIME list.
+    *file_idx*: 1-based index into the URI list entries.
+    """
+    meta = f'{DND_CODE};t=r:x={mime_idx}:y={file_idx}'
     if client_id:
         meta += f':i={client_id}'
-    return _osc(f'{meta};text/uri-list:{idx}')
+    return _osc(meta)
 
 
-def client_dir_read(handle_id: int, entry_num: int | None = None, client_id: int = 0, request_id: int = 0) -> bytes:
-    """Escape code for a directory request (t=d:x=handle_id[:y=entry_num]).
+def client_dir_read(handle_id: int, entry_num: int | None = None, client_id: int = 0) -> bytes:
+    """Escape code for a directory request (t=r:Y=handle[:x=entry_num]).
 
     * entry_num=None → close the directory handle.
     * entry_num>=1   → read that entry (1-based).
     """
-    meta = f'{DND_CODE};t=d:x={handle_id}'
+    meta = f'{DND_CODE};t=r:Y={handle_id}'
     if entry_num is not None:
-        meta += f':y={entry_num}'
-    if request_id:
-        meta += f':r={request_id}'
+        meta += f':x={entry_num}'
     if client_id:
         meta += f':i={client_id}'
     return _osc(meta)
@@ -416,8 +419,8 @@ class TestDnDProtocol(BaseTest):
             self.ae(events[0]['type'], 'M')
             self.assertIn(b'text/plain', events[0]['payload'])
 
-            # Client requests data
-            parse_bytes(screen, client_request_data('text/plain'))
+            # Client requests data (idx=1 for 'text/plain', first in the MIME list)
+            parse_bytes(screen, client_request_data(1))
 
             # OS delivers data
             dnd_test_fake_drop_data(wid, 'text/plain', payload_data)
@@ -429,19 +432,19 @@ class TestDnDProtocol(BaseTest):
             self.ae(combined, payload_data)
 
             # Client finishes
-            parse_bytes(screen, client_request_data(''))
+            parse_bytes(screen, client_request_data())
             self._assert_no_output(cap, wid)
 
     def test_request_unknown_mime(self) -> None:
-        """Requesting a MIME type not in the offered set yields an error."""
+        """Requesting an out-of-range MIME index yields an error."""
         with dnd_test_window() as (osw, wid, screen, cap):
             parse_bytes(screen, client_register('text/plain'))
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            # Client requests a MIME that was not offered.
-            parse_bytes(screen, client_request_data('image/png'))
+            # Client requests index 99 which is out of range.
+            parse_bytes(screen, client_request_data(99))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
             self.ae(events[0]['type'], 'R')
@@ -455,7 +458,7 @@ class TestDnDProtocol(BaseTest):
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            parse_bytes(screen, client_request_data('text/plain'))
+            parse_bytes(screen, client_request_data(1))
 
             # Simulate I/O error (EIO = 5 on Linux)
             dnd_test_fake_drop_data(wid, 'text/plain', b'', errno.EIO)
@@ -472,7 +475,7 @@ class TestDnDProtocol(BaseTest):
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            parse_bytes(screen, client_request_data('text/plain'))
+            parse_bytes(screen, client_request_data(1))
             dnd_test_fake_drop_data(wid, 'text/plain', b'', errno.EPERM)
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
@@ -490,7 +493,7 @@ class TestDnDProtocol(BaseTest):
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            parse_bytes(screen, client_request_data('text/plain'))
+            parse_bytes(screen, client_request_data(1))
             dnd_test_fake_drop_data(wid, 'text/plain', big_payload)
             raw = cap.consume(wid)
             data_events = parse_escape_codes_b64(raw)
@@ -512,7 +515,7 @@ class TestDnDProtocol(BaseTest):
             self.ae(events[0]['meta'].get('i'), str(client_id))
 
     def test_multiple_mimes_priority(self) -> None:
-        """The client can specify a preferred MIME ordering."""
+        """The client can request data from any offered MIME type by index."""
         with dnd_test_window() as (osw, wid, screen, cap):
             parse_bytes(screen, client_register('text/plain text/uri-list'))
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
@@ -520,8 +523,8 @@ class TestDnDProtocol(BaseTest):
             dnd_test_fake_drop_event(wid, True, ['text/plain', 'text/uri-list'])
             cap.consume(wid)
 
-            # Request text/uri-list first (different from registration order).
-            parse_bytes(screen, client_request_data('text/uri-list'))
+            # Request text/uri-list (idx=2, since it's the 2nd in the offered list).
+            parse_bytes(screen, client_request_data(2))
             dnd_test_fake_drop_data(wid, 'text/uri-list', b'file:///tmp/test\n')
             raw = cap.consume(wid)
             data_events = parse_escape_codes_b64(raw)
@@ -584,7 +587,7 @@ class TestDnDProtocol(BaseTest):
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            parse_bytes(screen, client_request_data('text/plain'))
+            parse_bytes(screen, client_request_data(1))
             dnd_test_fake_drop_data(wid, 'text/plain', b'hello')
             raw = cap.consume(wid)
             events = parse_escape_codes(raw)
@@ -602,7 +605,7 @@ class TestDnDProtocol(BaseTest):
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            parse_bytes(screen, client_request_data('text/plain'))
+            parse_bytes(screen, client_request_data(1))
             dnd_test_fake_drop_data(wid, 'text/plain', b'')
             raw = cap.consume(wid)
             events = parse_escape_codes(raw)
@@ -611,7 +614,7 @@ class TestDnDProtocol(BaseTest):
             self.assertEqual(len(r_events), 1, raw)
             self.ae(r_events[0]['payload'], b'')
 
-    # ---- t=s / t=d (remote file/directory transfer) tests ----------------
+    # ---- remote file/directory transfer tests ----------------
 
     def _setup_uri_drop(self, screen, wid, cap, uri_list_data: bytes, mimes=None):
         """Register, drop, deliver text/uri-list data, discard move/drop events."""
@@ -621,13 +624,14 @@ class TestDnDProtocol(BaseTest):
         dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
         dnd_test_fake_drop_event(wid, True, mimes)
         cap.consume(wid)
-        # Client requests and receives the URI list
-        parse_bytes(screen, client_request_data('text/uri-list'))
+        # Client requests and receives the URI list (idx=2 for text/uri-list in the default MIME list)
+        uri_idx = mimes.index('text/uri-list') + 1  # 1-based
+        parse_bytes(screen, client_request_data(uri_idx))
         dnd_test_fake_drop_data(wid, 'text/uri-list', uri_list_data)
         cap.consume(wid)  # discard t=r data for text/uri-list
 
     def test_uri_file_transfer_basic(self) -> None:
-        """t=s request sends the content of a regular file as t=r chunks."""
+        """URI file request sends the content of a regular file as t=r chunks."""
         import os
         import tempfile
         content = b'Hello, remote DnD world!\n' * 100
@@ -638,7 +642,7 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{fpath}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
                 r_events = [e for e in events if e['type'] == 'r']
@@ -663,7 +667,7 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{fpath}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
                 r_events = [e for e in events if e['type'] == 'r']
@@ -674,19 +678,19 @@ class TestDnDProtocol(BaseTest):
             os.unlink(fpath)
 
     def test_uri_file_transfer_enoent(self) -> None:
-        """t=s with an out-of-range index returns ENOENT."""
+        """URI file request with an out-of-range index returns ENOENT."""
         uri_list = b'file:///tmp/no_such_file_exists_dnd_test_xyz\r\n'
         with dnd_test_window() as (osw, wid, screen, cap):
             self._setup_uri_drop(screen, wid, cap, uri_list)
-            # Index 0 refers to a non-existent file
-            parse_bytes(screen, client_request_uri_data(0))
+            # File at index 1 does not exist
+            parse_bytes(screen, client_request_uri_data(2, 1))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
             self.ae(events[0]['type'], 'R')
             self.assertIn(events[0]['payload'].strip(), [b'ENOENT', b'EPERM'])
 
     def test_uri_file_transfer_out_of_bounds(self) -> None:
-        """t=s with an index beyond the URI list returns ENOENT."""
+        """URI file request with an index beyond the URI list returns ENOENT."""
         import os
         import tempfile
         with tempfile.NamedTemporaryFile(delete=False) as f:
@@ -695,7 +699,7 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{fpath}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(99))  # out of range
+                parse_bytes(screen, client_request_uri_data(2, 100))  # out of range
                 events = self._get_events(cap, wid)
                 self.assertEqual(len(events), 1, events)
                 self.ae(events[0]['type'], 'R')
@@ -704,7 +708,7 @@ class TestDnDProtocol(BaseTest):
             os.unlink(fpath)
 
     def test_uri_request_without_uri_list_returns_einval(self) -> None:
-        """t=s without prior text/uri-list request returns EINVAL."""
+        """URI file request without prior text/uri-list request returns EINVAL."""
         import os
         import tempfile
         with tempfile.NamedTemporaryFile(delete=False) as f:
@@ -716,7 +720,7 @@ class TestDnDProtocol(BaseTest):
                 dnd_test_fake_drop_event(wid, True, ['text/plain', 'text/uri-list'])
                 cap.consume(wid)
                 # Do NOT request text/uri-list first
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 events = self._get_events(cap, wid)
                 self.assertEqual(len(events), 1, events)
                 self.ae(events[0]['type'], 'R')
@@ -725,11 +729,11 @@ class TestDnDProtocol(BaseTest):
             os.unlink(fpath)
 
     def test_uri_non_regular_file_returns_einval(self) -> None:
-        """t=s for a non-regular file (e.g. /dev/null) returns EINVAL."""
+        """URI file request for a non-regular file (e.g. /dev/null) returns EINVAL."""
         uri_list = b'file:///dev/null\r\n'
         with dnd_test_window() as (osw, wid, screen, cap):
             self._setup_uri_drop(screen, wid, cap, uri_list)
-            parse_bytes(screen, client_request_uri_data(0))
+            parse_bytes(screen, client_request_uri_data(2, 1))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
             self.ae(events[0]['type'], 'R')
@@ -761,16 +765,16 @@ class TestDnDProtocol(BaseTest):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
 
                 # Request the root directory (idx=0)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_events = [e for e in events if e['type'] == 'd']
-                self.assertTrue(d_events, 'expected t=d listing for root')
+                d_events = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
+                self.assertTrue(d_events, 'expected directory listing for root')
 
                 root_listing_payload = b''.join(
                     chunk for e in d_events for chunk in e['chunks'] if chunk
                 )
-                root_handle_id = int(d_events[0]['meta']['x'])
+                root_handle_id = int(d_events[0]['meta']['Y'])
                 self.assertGreater(root_handle_id, 0)
 
                 # Decode null-separated entries (no unique identifier prefix)
@@ -779,7 +783,7 @@ class TestDnDProtocol(BaseTest):
                 self.assertIn('a.txt', entry_names)
                 self.assertIn('b', entry_names)
 
-                # Find index of 'a.txt' in the entries list (1-based for t=d:y=)
+                # Find index of 'a.txt' in the entries list (1-based)
                 entries_list = [e.decode() for e in root_entries]
                 a_idx = entries_list.index('a.txt') + 1
                 b_idx = entries_list.index('b') + 1
@@ -792,17 +796,17 @@ class TestDnDProtocol(BaseTest):
                 a_data = b''.join(e['payload'] for e in r_events if e['payload'])
                 self.ae(a_data, a_content)
 
-                # Read sub-directory b → should get a new t=d listing
+                # Read sub-directory b → should get a new directory listing
                 parse_bytes(screen, client_dir_read(root_handle_id, b_idx))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                b_d_events = [e for e in events if e['type'] == 'd']
-                self.assertTrue(b_d_events, 'expected t=d listing for b/')
+                b_d_events = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
+                self.assertTrue(b_d_events, 'expected directory listing for b/')
 
                 b_listing_payload = b''.join(
                     chunk for e in b_d_events for chunk in e['chunks'] if chunk
                 )
-                b_handle_id = int(b_d_events[0]['meta']['x'])
+                b_handle_id = int(b_d_events[0]['meta']['Y'])
                 self.assertNotEqual(b_handle_id, root_handle_id)
 
                 b_entries = [e for e in b_listing_payload.split(b'\x00') if e]
@@ -825,17 +829,17 @@ class TestDnDProtocol(BaseTest):
                 self.ae(hashlib.sha256(bc_data).digest(),
                         hashlib.sha256(bc_content).digest())
 
-                # Read sub-directory b/d → yet another t=d listing
+                # Read sub-directory b/d → yet another directory listing
                 parse_bytes(screen, client_dir_read(b_handle_id, bd_idx))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                bd_d_events = [e for e in events if e['type'] == 'd']
-                self.assertTrue(bd_d_events, 'expected t=d listing for b/d/')
+                bd_d_events = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
+                self.assertTrue(bd_d_events, 'expected directory listing for b/d/')
 
                 bd_listing_payload = b''.join(
                     chunk for e in bd_d_events for chunk in e['chunks'] if chunk
                 )
-                bd_handle_id = int(bd_d_events[0]['meta']['x'])
+                bd_handle_id = int(bd_d_events[0]['meta']['Y'])
                 bd_entries = [e for e in bd_listing_payload.split(b'\x00') if e]
                 bd_names = {e.decode() for e in bd_entries}
                 self.assertIn('e.txt', bd_names)
@@ -867,12 +871,12 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_ev = [e for e in events if e['type'] == 'd']
+                d_ev = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
                 self.assertTrue(d_ev)
-                hid = int(d_ev[0]['meta']['x'])
+                hid = int(d_ev[0]['meta']['Y'])
 
                 # Close the handle
                 parse_bytes(screen, client_dir_read(hid))
@@ -894,11 +898,11 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_ev = [e for e in events if e['type'] == 'd']
-                hid = int(d_ev[0]['meta']['x'])
+                d_ev = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
+                hid = int(d_ev[0]['meta']['Y'])
 
                 # Entry 999 does not exist
                 parse_bytes(screen, client_dir_read(hid, 999))
@@ -916,10 +920,10 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_ev = [e for e in events if e['type'] == 'd']
+                d_ev = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
                 payload = b''.join(
                     chunk for e in d_ev for chunk in e['chunks'] if chunk
                 )
@@ -939,14 +943,14 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_ev = [e for e in events if e['type'] == 'd']
+                d_ev = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
                 payload = b''.join(
                     chunk for e in d_ev for chunk in e['chunks'] if chunk
                 )
-                hid = int(d_ev[0]['meta']['x'])
+                hid = int(d_ev[0]['meta']['Y'])
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
                 self.assertIn('link.txt', entries)
                 self.assertIn('real.txt', entries)
@@ -975,14 +979,14 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_ev = [e for e in events if e['type'] == 'd']
+                d_ev = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
                 payload = b''.join(
                     chunk for e in d_ev for chunk in e['chunks'] if chunk
                 )
-                hid = int(d_ev[0]['meta']['x'])
+                hid = int(d_ev[0]['meta']['Y'])
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
                 self.assertIn('link_to_dir', entries)
                 link_idx = entries.index('link_to_dir') + 1
@@ -1009,14 +1013,14 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_ev = [e for e in events if e['type'] == 'd']
+                d_ev = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
                 payload = b''.join(
                     chunk for e in d_ev for chunk in e['chunks'] if chunk
                 )
-                hid = int(d_ev[0]['meta']['x'])
+                hid = int(d_ev[0]['meta']['Y'])
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
                 link_idx = entries.index('abs_link.txt') + 1
 
@@ -1039,14 +1043,14 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_ev = [e for e in events if e['type'] == 'd']
+                d_ev = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
                 payload = b''.join(
                     chunk for e in d_ev for chunk in e['chunks'] if chunk
                 )
-                hid = int(d_ev[0]['meta']['x'])
+                hid = int(d_ev[0]['meta']['Y'])
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
                 reg_idx = entries.index('regular.txt') + 1
 
@@ -1072,14 +1076,14 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_ev = [e for e in events if e['type'] == 'd']
+                d_ev = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
                 payload = b''.join(
                     chunk for e in d_ev for chunk in e['chunks'] if chunk
                 )
-                hid = int(d_ev[0]['meta']['x'])
+                hid = int(d_ev[0]['meta']['Y'])
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
 
                 # Read regular file
@@ -1115,14 +1119,14 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_ev = [e for e in events if e['type'] == 'd']
+                d_ev = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
                 payload = b''.join(
                     chunk for e in d_ev for chunk in e['chunks'] if chunk
                 )
-                root_hid = int(d_ev[0]['meta']['x'])
+                root_hid = int(d_ev[0]['meta']['Y'])
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
                 sub_idx = entries.index('sub') + 1
 
@@ -1130,11 +1134,11 @@ class TestDnDProtocol(BaseTest):
                 parse_bytes(screen, client_dir_read(root_hid, sub_idx))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_ev = [e for e in events if e['type'] == 'd']
+                d_ev = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
                 sub_payload = b''.join(
                     chunk for e in d_ev for chunk in e['chunks'] if chunk
                 )
-                sub_hid = int(d_ev[0]['meta']['x'])
+                sub_hid = int(d_ev[0]['meta']['Y'])
                 sub_entries = [e.decode() for e in sub_payload.split(b'\x00') if e]
                 self.assertIn('nested_link.txt', sub_entries)
 
@@ -1157,11 +1161,11 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_ev = [e for e in events if e['type'] == 'd']
-                hid = int(d_ev[0]['meta']['x'])
+                d_ev = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
+                hid = int(d_ev[0]['meta']['Y'])
 
                 # Index 1 should read the first entry
                 parse_bytes(screen, client_dir_read(hid, 1))
@@ -1185,7 +1189,7 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{link}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
                 r_events = [e for e in events if e['type'] == 'r']
@@ -1207,10 +1211,10 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{link}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_events = [e for e in events if e['type'] == 'd']
+                d_events = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
                 self.assertTrue(d_events, 'top-level symlink to dir should return directory listing')
                 payload = b''.join(
                     chunk for e in d_events for chunk in e['chunks'] if chunk
@@ -1229,7 +1233,7 @@ class TestDnDProtocol(BaseTest):
             # which calls drop_free_data → drop_free_dir_handles.
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 cap.consume(wid)
                 # Intentionally leave the handle open – cleanup happens in __exit__
 
@@ -1747,105 +1751,86 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_start())
             self.assert_error(cap, wid)
 
-    # ---- Request queue and request_id tests ----------------------------------
 
-    def test_request_id_echoed_in_data_response(self) -> None:
-        """request_id is echoed back as r=ID in data responses."""
-        payload_data = b'hello request_id'
+    # ---- Request queue and disambiguation tests --------------------------------
+
+    def test_x_key_echoed_in_data_response(self) -> None:
+        """x= key is echoed in data responses to identify which request is being answered."""
+        payload_data = b'hello disambiguation'
         with dnd_test_window() as (osw, wid, screen, cap):
             parse_bytes(screen, client_register('text/plain'))
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            parse_bytes(screen, client_request_data('text/plain', request_id=42))
+            parse_bytes(screen, client_request_data(1))
             dnd_test_fake_drop_data(wid, 'text/plain', payload_data)
             raw = cap.consume(wid)
             events = parse_escape_codes_b64(raw)
             r_events = [e for e in events if e['type'] == 'r']
             self.assertTrue(r_events, 'no t=r events')
             for ev in r_events:
-                self.ae(ev['meta'].get('r'), '42', f'expected r=42, got {ev["meta"]}')
-            combined = b''.join(e['payload'] for e in r_events)
-            self.ae(combined, payload_data)
+                self.ae(ev['meta'].get('x'), '1')
 
-    def test_request_id_echoed_in_error_response(self) -> None:
-        """request_id is echoed back as r=ID in error responses."""
+    def test_x_key_echoed_in_error_response(self) -> None:
+        """x= key is echoed in error responses."""
         with dnd_test_window() as (osw, wid, screen, cap):
             parse_bytes(screen, client_register('text/plain'))
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            parse_bytes(screen, client_request_data('image/png', request_id=99))
+            # Request out-of-range index -> error
+            parse_bytes(screen, client_request_data(99))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
             self.ae(events[0]['type'], 'R')
-            self.ae(events[0]['meta'].get('r'), '99')
+            self.ae(events[0]['meta'].get('x'), '99')
             self.ae(events[0]['payload'].strip(), b'ENOENT')
 
-    def test_request_id_zero_not_included(self) -> None:
-        """When request_id is 0 (default), r= is not included in responses."""
-        payload_data = b'no request_id'
+    def test_x_key_in_error_for_io_failure(self) -> None:
+        """x= key is echoed in I/O error responses."""
         with dnd_test_window() as (osw, wid, screen, cap):
             parse_bytes(screen, client_register('text/plain'))
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            # Request without request_id (defaults to 0)
-            parse_bytes(screen, client_request_data('text/plain'))
-            dnd_test_fake_drop_data(wid, 'text/plain', payload_data)
-            raw = cap.consume(wid)
-            events = parse_escape_codes_b64(raw)
-            r_events = [e for e in events if e['type'] == 'r']
-            self.assertTrue(r_events, 'no t=r events')
-            for ev in r_events:
-                self.assertNotIn('r', ev['meta'], f'r= should not be present when request_id=0, got {ev["meta"]}')
-
-    def test_request_id_in_error_for_io_failure(self) -> None:
-        """request_id is echoed in I/O error responses."""
-        with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
-            dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
-            dnd_test_fake_drop_event(wid, True, ['text/plain'])
-            cap.consume(wid)
-
-            parse_bytes(screen, client_request_data('text/plain', request_id=77))
+            parse_bytes(screen, client_request_data(1))
             dnd_test_fake_drop_data(wid, 'text/plain', b'', errno.EIO)
             events = self._get_events(cap, wid)
-            self.assertEqual(len(events), 1, events)
+            self.assertEqual(len(events), 1)
             self.ae(events[0]['type'], 'R')
-            self.ae(events[0]['meta'].get('r'), '77')
+            self.ae(events[0]['meta'].get('x'), '1')
             self.ae(events[0]['payload'].strip(), b'EIO')
 
-    def test_multiple_queued_requests_fifo(self) -> None:
-        """Multiple requests with different request_ids are served in FIFO order."""
+    def test_fifo_order_with_different_indices(self) -> None:
+        """Multiple requests with different x= values are served in FIFO order."""
         with dnd_test_window() as (osw, wid, screen, cap):
             parse_bytes(screen, client_register('text/plain text/html'))
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain', 'text/html'])
             cap.consume(wid)
 
-            # Queue two requests
-            parse_bytes(screen, client_request_data('text/plain', request_id=1))
-            parse_bytes(screen, client_request_data('text/html', request_id=2))
+            # Queue two requests: idx=1 (text/plain) then idx=2 (text/html)
+            parse_bytes(screen, client_request_data(1))
+            parse_bytes(screen, client_request_data(2))
 
-            # First request (text/plain) gets served first
+            # First request (idx=1) gets served first
             dnd_test_fake_drop_data(wid, 'text/plain', b'plain data')
             raw = cap.consume(wid)
             events = parse_escape_codes_b64(raw)
-            r_events = [e for e in events if e['type'] == 'r' and e['meta'].get('r') == '1']
-            self.assertTrue(r_events, 'no t=r events for first request')
+            r_events = [e for e in events if e['type'] == 'r' and e['meta'].get('x') == '1']
+            self.assertTrue(r_events, 'no t=r events for first request (x=1)')
             combined = b''.join(e['payload'] for e in r_events)
             self.ae(combined, b'plain data')
 
-            # Second request (text/html) gets served next
+            # Second request (idx=2) gets served next
             dnd_test_fake_drop_data(wid, 'text/html', b'<html>data</html>')
             raw = cap.consume(wid)
             events = parse_escape_codes_b64(raw)
-            r_events = [e for e in events if e['type'] == 'r' and e['meta'].get('r') == '2']
-            self.assertTrue(r_events, 'no t=r events for second request')
+            r_events = [e for e in events if e['type'] == 'r' and e['meta'].get('x') == '2']
+            self.assertTrue(r_events, 'no t=r events for second request (x=2)')
             combined = b''.join(e['payload'] for e in r_events)
             self.ae(combined, b'<html>data</html>')
 
@@ -1857,26 +1842,26 @@ class TestDnDProtocol(BaseTest):
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            # Queue: request for unknown MIME (error) followed by valid request
-            parse_bytes(screen, client_request_data('image/png', request_id=10))
-            parse_bytes(screen, client_request_data('text/plain', request_id=11))
+            # Queue: request for out-of-range index (error) followed by valid request
+            parse_bytes(screen, client_request_data(99))
+            parse_bytes(screen, client_request_data(1))
 
-            # The error for request 10 should have been sent immediately
+            # The error for index 99 should have been sent immediately
             raw = cap.consume(wid)
             events = parse_escape_codes(raw)
             err_events = [e for e in events if e['type'] == 'R']
             self.assertEqual(len(err_events), 1, events)
-            self.ae(err_events[0]['meta'].get('r'), '10')
+            self.ae(err_events[0]['meta'].get('x'), '99')
             self.ae(err_events[0]['payload'].strip(), b'ENOENT')
 
-            # Now serve request 11
+            # Now serve request for index 1
             dnd_test_fake_drop_data(wid, 'text/plain', b'second request data')
             raw = cap.consume(wid)
             events = parse_escape_codes_b64(raw)
             r_events = [e for e in events if e['type'] == 'r']
             self.assertTrue(r_events, 'no t=r events for second request')
             for ev in r_events:
-                self.ae(ev['meta'].get('r'), '11')
+                self.ae(ev['meta'].get('x'), '1')
 
     def test_queue_overflow_returns_emfile(self) -> None:
         """Exceeding 128 queued requests returns EMFILE and ends the drop."""
@@ -1887,11 +1872,11 @@ class TestDnDProtocol(BaseTest):
             cap.consume(wid)
 
             # First request starts async processing
-            parse_bytes(screen, client_request_data('text/plain', request_id=1))
+            parse_bytes(screen, client_request_data(1))
 
             # Queue 127 more requests (fill to capacity = 128)
             for i in range(2, 129):
-                parse_bytes(screen, client_request_data('text/plain', request_id=i))
+                parse_bytes(screen, client_request_data(1))
 
             # No error yet - queue is at capacity
             raw = cap.consume(wid)
@@ -1899,19 +1884,18 @@ class TestDnDProtocol(BaseTest):
             self.assertEqual(len(err_events), 0, f'unexpected errors: {err_events}')
 
             # 129th request should trigger EMFILE
-            parse_bytes(screen, client_request_data('text/plain', request_id=999))
+            parse_bytes(screen, client_request_data(1))
             raw = cap.consume(wid)
             events = parse_escape_codes(raw)
             err_events = [e for e in events if e['type'] == 'R']
             self.assertTrue(err_events, 'expected EMFILE error')
-            self.ae(err_events[0]['meta'].get('r'), '999')
             self.ae(err_events[0]['payload'].strip(), b'EMFILE')
 
-    def test_request_id_in_uri_file_response(self) -> None:
-        """request_id is echoed in t=s (URI file) data responses."""
+    def test_xy_keys_in_uri_file_response(self) -> None:
+        """x= and y= keys are echoed in URI file data responses."""
         import os
         import tempfile
-        content = b'URI file with request_id\n'
+        content = b'URI file with disambiguation\n'
         with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(content)
             fpath = f.name
@@ -1919,31 +1903,33 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{fpath}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0, request_id=55))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
                 r_events = [e for e in events if e['type'] == 'r']
                 self.assertTrue(r_events, 'no t=r events')
                 for ev in r_events:
-                    self.ae(ev['meta'].get('r'), '55')
+                    self.ae(ev['meta'].get('x'), '2')
+                    self.ae(ev['meta'].get('y'), '1')
                 combined = b''.join(e['payload'] for e in r_events)
                 self.ae(combined, content)
         finally:
             os.unlink(fpath)
 
-    def test_request_id_in_uri_error_response(self) -> None:
-        """request_id is echoed in t=s error responses."""
+    def test_xy_keys_in_uri_error_response(self) -> None:
+        """x= and y= keys are echoed in URI file error responses."""
         uri_list = b'file:///tmp/no_such_file_dnd_test_xyz\r\n'
         with dnd_test_window() as (osw, wid, screen, cap):
             self._setup_uri_drop(screen, wid, cap, uri_list)
-            parse_bytes(screen, client_request_uri_data(0, request_id=66))
+            parse_bytes(screen, client_request_uri_data(2, 1))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
             self.ae(events[0]['type'], 'R')
-            self.ae(events[0]['meta'].get('r'), '66')
+            self.ae(events[0]['meta'].get('x'), '2')
+            self.ae(events[0]['meta'].get('y'), '1')
 
-    def test_request_id_in_dir_listing_response(self) -> None:
-        """request_id is echoed in directory listing (t=d) responses."""
+    def test_Y_key_in_dir_listing_response(self) -> None:
+        """Y= key (new handle) and X=2 are present in directory listing responses."""
         import os
         import tempfile
         with tempfile.TemporaryDirectory() as root:
@@ -1951,16 +1937,18 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0, request_id=88))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_events = [e for e in events if e['type'] == 'd']
-                self.assertTrue(d_events, 'expected t=d listing')
+                d_events = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
+                self.assertTrue(d_events, 'expected directory listing')
                 for ev in d_events:
-                    self.ae(ev['meta'].get('r'), '88')
+                    self.ae(ev['meta'].get('x'), '2')
+                    self.ae(ev['meta'].get('y'), '1')
+                    self.assertTrue(int(ev['meta'].get('Y', '0')) > 0, 'Y= must be non-zero handle')
 
-    def test_request_id_in_dir_entry_file_response(self) -> None:
-        """request_id is echoed when reading a file via directory handle (t=d)."""
+    def test_Y_and_x_keys_in_dir_entry_file_response(self) -> None:
+        """Y= and x= keys are echoed when reading a file via directory handle."""
         import os
         import tempfile
         content = b'directory file content\n'
@@ -1970,30 +1958,30 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                # Get dir listing first (no request_id needed for setup)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_events = [e for e in events if e['type'] == 'd']
+                d_events = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
                 self.assertTrue(d_events)
-                handle_id = int(d_events[0]['meta']['x'])
+                handle_id = int(d_events[0]['meta']['Y'])
                 listing = b''.join(chunk for e in d_events for chunk in e['chunks'] if chunk)
                 entries = [e.decode() for e in listing.split(b'\x00') if e]
                 f_idx = entries.index('f.txt') + 1
 
-                # Read file with request_id
-                parse_bytes(screen, client_dir_read(handle_id, f_idx, request_id=33))
+                # Read file from directory
+                parse_bytes(screen, client_dir_read(handle_id, f_idx))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
                 r_events = [e for e in events if e['type'] == 'r']
                 self.assertTrue(r_events, 'no t=r events')
                 for ev in r_events:
-                    self.ae(ev['meta'].get('r'), '33')
+                    self.ae(ev['meta'].get('x'), str(f_idx))
+                    self.ae(ev['meta'].get('Y'), str(handle_id))
                 combined = b''.join(e['payload'] for e in r_events)
                 self.ae(combined, content)
 
-    def test_request_id_in_dir_entry_error_response(self) -> None:
-        """request_id is echoed when a directory entry read fails."""
+    def test_Y_and_x_keys_in_dir_entry_error_response(self) -> None:
+        """Y= and x= keys are echoed when a directory entry read fails."""
         import os
         import tempfile
         with tempfile.TemporaryDirectory() as root:
@@ -2001,22 +1989,23 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
-                parse_bytes(screen, client_request_uri_data(0))
+                parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                d_events = [e for e in events if e['type'] == 'd']
-                handle_id = int(d_events[0]['meta']['x'])
+                d_events = [e for e in events if e['type'] == 'r' and e['meta'].get('X') == '2']
+                handle_id = int(d_events[0]['meta']['Y'])
 
-                # Out-of-range entry with request_id
-                parse_bytes(screen, client_dir_read(handle_id, 999, request_id=44))
+                # Out-of-range entry
+                parse_bytes(screen, client_dir_read(handle_id, 999))
                 events = self._get_events(cap, wid)
                 self.assertEqual(len(events), 1)
                 self.ae(events[0]['type'], 'R')
-                self.ae(events[0]['meta'].get('r'), '44')
+                self.ae(events[0]['meta'].get('x'), '999')
+                self.ae(events[0]['meta'].get('Y'), str(handle_id))
                 self.ae(events[0]['payload'].strip(), b'ENOENT')
 
-    def test_mixed_request_types_with_ids(self) -> None:
-        """Mixed r/s/d request types with request_ids are processed in order."""
+    def test_mixed_request_types_processed_in_order(self) -> None:
+        """Mixed MIME data and URI file requests are processed in FIFO order."""
         import os
         import tempfile
         file_content = b'mixed request file\n'
@@ -2028,21 +2017,21 @@ class TestDnDProtocol(BaseTest):
             with dnd_test_window() as (osw, wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
 
-                # Queue: MIME data request, then URI file request
-                parse_bytes(screen, client_request_data('text/plain', request_id=100))
-                parse_bytes(screen, client_request_uri_data(0, request_id=200))
+                # Queue: MIME data request (x=1), then URI file request (x=2,y=1)
+                parse_bytes(screen, client_request_data(1))
+                parse_bytes(screen, client_request_uri_data(2, 1))
 
                 # Serve first request (MIME data); the URI file request
                 # completes synchronously right after so all output is in one batch
                 dnd_test_fake_drop_data(wid, 'text/plain', b'plain text')
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
-                r_events_100 = [e for e in events if e['type'] == 'r' and e['meta'].get('r') == '100']
-                self.assertTrue(r_events_100, 'no events with r=100')
+                r_events_x1 = [e for e in events if e['type'] == 'r' and e['meta'].get('x') == '1' and 'y' not in e['meta']]
+                self.assertTrue(r_events_x1, 'no events with x=1 (MIME data)')
 
-                r_events_200 = [e for e in events if e['type'] == 'r' and e['meta'].get('r') == '200']
-                self.assertTrue(r_events_200, 'no events with r=200')
-                combined = b''.join(e['payload'] for e in r_events_200)
+                r_events_x2y1 = [e for e in events if e['type'] == 'r' and e['meta'].get('x') == '2' and e['meta'].get('y') == '1']
+                self.assertTrue(r_events_x2y1, 'no events with x=2,y=1 (URI file)')
+                combined = b''.join(e['payload'] for e in r_events_x2y1)
                 self.ae(combined, file_content)
         finally:
             os.unlink(fpath)
@@ -2056,8 +2045,8 @@ class TestDnDProtocol(BaseTest):
             cap.consume(wid)
 
             # Queue: data request then finish
-            parse_bytes(screen, client_request_data('text/plain', request_id=5))
-            parse_bytes(screen, client_request_data(''))  # finish
+            parse_bytes(screen, client_request_data(1))
+            parse_bytes(screen, client_request_data())  # finish
 
             # Serve the data request
             dnd_test_fake_drop_data(wid, 'text/plain', b'data before finish')
@@ -2066,7 +2055,7 @@ class TestDnDProtocol(BaseTest):
             r_events = [e for e in events if e['type'] == 'r']
             self.assertTrue(r_events, 'no t=r events')
             for ev in r_events:
-                self.ae(ev['meta'].get('r'), '5')
+                self.ae(ev['meta'].get('x'), '1')
 
     def test_multiple_sync_errors_processed_immediately(self) -> None:
         """Multiple queued requests that all fail synchronously are processed immediately."""
@@ -2076,33 +2065,32 @@ class TestDnDProtocol(BaseTest):
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            # Queue three requests for unknown MIMEs
-            parse_bytes(screen, client_request_data('image/png', request_id=1))
-            parse_bytes(screen, client_request_data('image/gif', request_id=2))
-            parse_bytes(screen, client_request_data('image/jpeg', request_id=3))
+            # Queue three requests for out-of-range indices
+            parse_bytes(screen, client_request_data(10))
+            parse_bytes(screen, client_request_data(20))
+            parse_bytes(screen, client_request_data(30))
 
             # All three errors should be available immediately
             raw = cap.consume(wid)
             events = parse_escape_codes(raw)
             err_events = [e for e in events if e['type'] == 'R']
             self.assertEqual(len(err_events), 3, f'expected 3 errors, got {len(err_events)}: {err_events}')
-            self.ae(err_events[0]['meta'].get('r'), '1')
-            self.ae(err_events[1]['meta'].get('r'), '2')
-            self.ae(err_events[2]['meta'].get('r'), '3')
+            self.ae(err_events[0]['meta'].get('x'), '10')
+            self.ae(err_events[1]['meta'].get('x'), '20')
+            self.ae(err_events[2]['meta'].get('x'), '30')
             for ev in err_events:
                 self.ae(ev['payload'].strip(), b'ENOENT')
 
-    def test_request_id_backward_compat_full_flow(self) -> None:
-        """Full drop flow without request_id (backward compatibility) still works."""
-        payload_data = b'backward compat data'
+    def test_no_r_key_in_responses(self) -> None:
+        """Responses must not contain the old r= key."""
+        payload_data = b'no r= key test'
         with dnd_test_window() as (osw, wid, screen, cap):
             parse_bytes(screen, client_register('text/plain'))
             dnd_test_set_mouse_pos(wid, 2, 3, 16, 24)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
 
-            # Request without request_id
-            parse_bytes(screen, client_request_data('text/plain'))
+            parse_bytes(screen, client_request_data(1))
             dnd_test_fake_drop_data(wid, 'text/plain', payload_data)
             raw = cap.consume(wid)
             events = parse_escape_codes_b64(raw)
@@ -2110,10 +2098,10 @@ class TestDnDProtocol(BaseTest):
             self.assertTrue(r_events)
             combined = b''.join(e['payload'] for e in r_events)
             self.ae(combined, payload_data)
-            # Verify no r= in metadata
+            # Verify no r= key in metadata
             for ev in r_events:
-                self.assertNotIn('r', ev['meta'])
+                self.assertNotIn('r', ev['meta'], f'r= should not be present, got {ev["meta"]}')
 
             # Finish
-            parse_bytes(screen, client_request_data(''))
+            parse_bytes(screen, client_request_data())
             self._assert_no_output(cap, wid)
