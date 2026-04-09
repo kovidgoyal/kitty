@@ -256,19 +256,19 @@ if the list of MIME types is too long. Note that at this time the drag
 operation has not actually started, this gives the terminal program the
 opportunity to pre-send some data or set one or more images to act as
 thumbnails for the drag operation. If the list of MIME types is too long the
-terminal may cancel the operation by responding with ``t=R ; EFBIG`` or ``t=R ;
+terminal may cancel the operation by responding with ``t=E ; EFBIG`` or ``t=E ;
 ENOMEM``.
 
 If at the time the terminal receives this request the drag gesture has already
 been terminated or the terminal otherwise determines that it is not appropriate
-to start the drag, it must reply with ``t=R ; EPERM`` to indicate the drag
+to start the drag, it must reply with ``t=E ; EPERM`` to indicate the drag
 offer was not accepted.
 
 For some well known types like ``text/plain`` or ``text/uri-list`` the
 terminal program should pre-send the data for them unless it is very large.
 This is because some platforms, such as macOS, need pre sent data to be able
 to interoperate with native programs. The terminal emulator should reply with
-``t=R ; EFBIG`` if too much data is sent and cancel the drag. Terminals must
+``t=E ; EFBIG`` if too much data is sent and cancel the drag. Terminals must
 accept at least 64MB of pre sent data.
 
 Pre sent data is sent with escape codes of the form::
@@ -291,10 +291,10 @@ specified using the ``y`` key. A value of ``y=24`` mean 24bit RGB data and
 color space. Using ``y=100`` means the data is a PNG image. Additionally, the
 ``X`` and ``Y`` keys must be used to specify the width and height of the image
 data in pixels. If the size of the transmitted data does not match the image
-dimensions the terminal must replay with ``t=R ; EINVAL``. Terminals are free
+dimensions the terminal must replay with ``t=E ; EINVAL``. Terminals are free
 to impose a limit on the amount of image data, too avoid Denial-of-service
 attacks. If the image data is too much or the image is too large they must
-reply with ``t=R ; EFBIG`` and abort the drag. By default, the drag will be
+reply with ``t=E ; EFBIG`` and abort the drag. By default, the drag will be
 started using the first image, if any. During the drag, the terminal program
 can change the image by sending::
 
@@ -306,11 +306,11 @@ Sending an ``idx`` out of bounds means the drag image should be removed.
 Once the terminal program has sent all data and images for the drag
 operation, it indicates the drag should be started by sending ``t=P:x=-1``. At
 this time if the user has already cancelled the drag or the terminal determines
-the drag operation is not allowed, it must respond with ``t=R ; EPERM``. If any
+the drag operation is not allowed, it must respond with ``t=E ; EPERM``. If any
 other error occurs starting the drag operation, it must respond with the appropriate
 POSIX error code. If it determines that the image data after conversion to
-display format is too large, it must respond with ``t=R ; EFBIG``. If the drag
-operation is successfully started, it must respond with ``t=R ; OK``.
+display format is too large, it must respond with ``t=E ; EFBIG``. If the drag
+operation is successfully started, it must respond with ``t=E ; OK``.
 
 As the drag progresses, status changes are reported using the ``t=e`` escape
 code. The variants are listed in the table below:
@@ -341,18 +341,18 @@ index into the list of MIME types. The data should be chunked using the
 ``m`` key. End of data is denoted by ``m=0`` and an empty payload. If an error
 occurs the client should send::
 
-    OSC _dnd_code ; t=E:y=idx ; ERR_CODE ST
+    OSC _dnd_code ; t=E:y=idx ; POSIX error name ST
 
-Where ``ERR_CODE`` is a POSIX error code such as ``ENOENT`` if the MIME type is
-not found or ``EIO`` if an IO error occurred and so on.
+Where ``POSIX error name`` is a POSIX symbolic error name such as ``ENOENT``
+if the MIME type is not found or ``EIO`` if an IO error occurred and so on.
 
 If the client wants to cancel the full drag at any time, it should send:
 
     OSC _dnd_code ; t=E:y=-1 ST
 
 If ``t=e`` or ``t=E`` escape codes are sent to the terminal before the drag is
-started and the terminal replies with ``t=R ; OK``, the terminal must respond
-with ``t=R ; EINVAL`` and abort the drag.
+started and the terminal has responded with ``t=E ; OK``, the terminal must respond
+with ``t=E ; EINVAL`` and abort the drag.
 
 Multiplexers
 -----------------
