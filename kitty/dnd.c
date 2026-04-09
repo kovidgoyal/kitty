@@ -20,7 +20,6 @@
 
 static const size_t MIME_LIST_SIZE_CAP = 1024 * 1024;
 static const size_t PRESENT_DATA_CAP = 64 * 1024 * 1024;
-#define DROP_REQUEST_QUEUE_CAP 128
 
 // In test mode, this callable is invoked instead of schedule_write_to_child_if_possible.
 // It receives (window_id: int, data: bytes) and its return value is ignored.
@@ -1005,7 +1004,7 @@ drop_enqueue_request(Window *w, uint32_t request_id, char type, const char *payl
         return;
     }
 
-    if (w->drop.num_data_requests >= DROP_REQUEST_QUEUE_CAP) {
+    if (w->drop.num_data_requests >= arraysz(w->drop.data_requests)) {
         /* Queue full: deny with EMFILE and end the drop */
         uint32_t saved = w->drop.current_request_id;
         w->drop.current_request_id = request_id;
