@@ -710,9 +710,6 @@ drop_find_dir_handle(Window *w, uint32_t id) {
  * send the listing to the client as a t=d:x=handle_id response. */
 static void
 drop_send_dir_listing(Window *w, const char *path) {
-    struct stat st;
-    if (stat(path, &st) < 0) { drop_send_error(w, EIO); return; }
-
     DIR *dir = opendir(path);
     if (!dir) {
         switch (errno) {
@@ -723,16 +720,10 @@ drop_send_dir_listing(Window *w, const char *path) {
         return;
     }
 
-    /* Build null-separated payload: unique_id\0entry1\0entry2\0... */
+    /* Build null-separated payload: entry1\0entry2\0... */
     size_t payload_cap = 4096, payload_sz = 0;
     char *payload = malloc(payload_cap);
     if (!payload) { closedir(dir); drop_send_error(w, EIO); return; }
-
-    /* First entry: unique identifier (device:inode) */
-    char uid[64];
-    int uid_len = snprintf(uid, sizeof(uid), "%llu:%llu",
-                           (unsigned long long)st.st_dev,
-                           (unsigned long long)st.st_ino);
 
 #define APPEND(s, n) do { \
     size_t _n = (size_t)(n); \
@@ -747,8 +738,6 @@ drop_send_dir_listing(Window *w, const char *path) {
     payload_sz += _n; \
     payload[payload_sz++] = 0; \
 } while(0)
-
-    APPEND(uid, uid_len);
 
     /* Collect directory entries */
     size_t ents_cap = 16, ents_num = 0;
@@ -909,8 +898,8 @@ do_drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num) {
         drop_send_error(w, EIO); return true;
     }
 
-    struct stat st;
-    if (stat(full, &st) < 0) {
+    struct stat lst;
+    if (lstat(full, &lst) < 0) {
         switch (errno) {
             case ENOENT: case ENOTDIR: case ELOOP: drop_send_error(w, ENOENT); break;
             case EACCES: case EPERM:               drop_send_error(w, EPERM); break;
@@ -919,10 +908,32 @@ do_drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num) {
         return true;
     }
 
-    if (S_ISDIR(st.st_mode)) {
+    if (S_ISLNK(lst.st_mode)) {
+        /* Symlink: send the symlink target as t=r:X=1 */
+        char target[PATH_MAX];
+        ssize_t tlen = readlink(full, target, sizeof(target) - 1);
+        if (tlen < 0) {
+            switch (errno) {
+                case ENOENT: case ENOTDIR: drop_send_error(w, ENOENT); break;
+                case EACCES: case EPERM:   drop_send_error(w, EPERM); break;
+                default:                   drop_send_error(w, EIO); break;
+            }
+            return true;
+        }
+        target[tlen] = '\0';
+        char hdr[128];
+        int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r:X=1", DND_CODE);
+        if (w->drop.current_request_id)
+            hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":r=%u", (unsigned)w->drop.current_request_id);
+        queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, target, (size_t)tlen, true);
+        queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
+        return true;
+    }
+
+    if (S_ISDIR(lst.st_mode)) {
         drop_send_dir_listing(w, full);
         return true;
-    } else if (S_ISREG(st.st_mode)) {
+    } else if (S_ISREG(lst.st_mode)) {
         return drop_send_file_data(w, full);
     } else {
         drop_send_error(w, EINVAL);
