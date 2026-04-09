@@ -23,7 +23,6 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
     more = 'm',
     client_id = 'i',
     operation = 'o',
-    request_id = 'r',
     cell_x = 'x',
     cell_y = 'y',
     pixel_x = 'X',
@@ -50,9 +49,6 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
         value_state = UINT;
         break;
       case operation:
-        value_state = UINT;
-        break;
-      case request_id:
         value_state = UINT;
         break;
       case cell_x:
@@ -91,9 +87,8 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
       case type: {
         g.type = parser_buf[pos++];
         if (g.type != 'A' && g.type != 'E' && g.type != 'M' && g.type != 'O' &&
-            g.type != 'P' && g.type != 'R' && g.type != 'a' && g.type != 'd' &&
-            g.type != 'e' && g.type != 'm' && g.type != 'o' && g.type != 'p' &&
-            g.type != 'r' && g.type != 's') {
+            g.type != 'P' && g.type != 'R' && g.type != 'a' && g.type != 'e' &&
+            g.type != 'm' && g.type != 'o' && g.type != 'p' && g.type != 'r') {
           REPORT_ERROR("Malformed DnDCommand control block, unknown flag value "
                        "for type: 0x%x",
                        g.type);
@@ -160,7 +155,6 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
         U(more);
         U(client_id);
         U(operation);
-        U(request_id);
       default:
         break;
       }
@@ -212,13 +206,12 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
   }
 
   REPORT_VA_COMMAND(
-      "K s {sc sI sI sI sI si si si si ss#}", self->window_id, "dnd_command",
+      "K s {sc sI sI sI si si si si ss#}", self->window_id, "dnd_command",
 
       "type", g.type,
 
       "more", (unsigned int)g.more, "client_id", (unsigned int)g.client_id,
-      "operation", (unsigned int)g.operation, "request_id",
-      (unsigned int)g.request_id,
+      "operation", (unsigned int)g.operation,
 
       "cell_x", (int)g.cell_x, "cell_y", (int)g.cell_y, "pixel_x",
       (int)g.pixel_x, "pixel_y", (int)g.pixel_y,

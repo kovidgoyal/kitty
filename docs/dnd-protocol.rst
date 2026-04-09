@@ -104,23 +104,22 @@ it is interested in.
 
 Requesting data is done by sending an escape code of the form::
 
-    OSC _dnd_code ; t=r:r=request_id ; MIME type ST
+    OSC _dnd_code ; t=r:x=idx ST
 
+Here ``idx`` is a 1-based index into the list of MIME types sent previously.
 This will request data for the specified MIME type. The terminal must respond
 with a series of escape codes of the form::
 
-    OSC _dnd_code ; t=r:r=request_id ; base64 encoded data ST
+    OSC _dnd_code ; t=r:x=idx; base64 encoded data possibly chunked ST
 
-End of data is indicated by an empty payload. If some error occurs while
+End of data is indicated by an empty payload and ``m=0``. If some error occurs while
 getting the data, the terminal must send an escape code of the form::
 
-    OSC _dnd_code ; t=R:r=request_id ; POSIX error name ST
+    OSC _dnd_code ; t=R:x=idx ; POSIX error name ST
 
-Here POSIX error name is a POSIX symbolic error name such as ``ENOENT`` or
-``EIO`` or the value ``EUNKNOWN`` for an unknown error. Note that if a client
-sends a request for another MIME type before the data for the previous MIME type
-is completed, the terminal *must* switch over to sending data for the new MIME
-type.
+Here ``POSIX error name`` is a POSIX symbolic error name such as ``ENOENT`` or
+``EIO`` or the value ``EUNKNOWN`` for an unknown error. Unless otherwise noted,
+any error response means the drop is terminated.
 
 Once the client program finishes reading all the dropped data it needs, it must
 send an escape code of the form::
@@ -138,51 +137,78 @@ clients can first request the :rfc:`text/uri-list <2483>` MIME
 type to get a list of dropped URIs. For every URI in the list, they can
 send the terminal emulator a data request of the form::
 
-    OSC _dnd_code ; t=s:r=request_id ; text/uri-list:idx ST
+    OSC _dnd_code ; t=r:x=idx:y=subidx ST
 
-Here ``idx`` is the zero based index into the array of MIME types in
+Here ``idx`` is the one based index of the ``text/uri-list`` MIME type. And
+``subidx`` is the one based index into the array of MIME types in
 the ``text/uri-list`` entry. The terminal will then read the file and
-transmit the data as for a normal MIME data request.
+transmit the data as for a normal MIME data request, except it will have
+``y=subidx`` as well in its response, for example::
 
-Terminals must reply with ``t=R:r=request_id ; ENOENT`` if the index is out of bounds.
+    OSC _dnd_code ; t=r:x=idx:y=subidx ; base64 encoded data possibly chunked ST
+
+Similarly, error responses are as above, except for the addition of
+``y=subidx``, for example::
+
+    OSC _dnd_code ; t=R:x=idx:y=subidx ; POSIX error name ST
+
+Terminals must reply with ``ENOENT`` if the index is out of bounds.
 If the client does not first request the ``text/uri-list`` MIME type or that
 MIME type is not present in the drop, the terminal must reply with
-``t=R:r=request_id ; EINVAL``. Terminals must support at least ``file://`` URIs.
+``EINVAL``. Terminals must support at least ``file://`` URIs.
 If the client requests an entry that is not a supported URI type the
-terminal must reply with ``t=R:r=request_id ; EUNKNOWN``.
+terminal must reply with ``EUNKNOWN``.
 
 Terminals must ONLY send data for regular files or directories. Symbolic links must be
 resolved and the corresponding file or directory read. If the terminal does not have
-permission to read the file it must reply with ``t=R:r=request_id ; EPERM``. Terminals
-must respond with ``t=R:r=request_id ; EINVAL`` if the file is not a regular file after
-resolving symlinks and ``t=R:r=request_id ; ENOENT`` if the file does not exist. If an
-I/O error occurs the terminal must send ``t=R:r=request_id ; EIO``.
+permission to read the file it must reply with ``EPERM``. Terminals
+must respond with ``EINVAL`` if the file is not a regular file after
+resolving symlinks and ``ENOENT`` if the file does not exist. If an
+I/O error occurs the terminal must send ``EIO``.
 
-For security reasons, terminals must reply with ``t=R:r=request_id ; EPERM`` if the drag
+For security reasons, terminals must reply with ``EPERM`` if the drag
 originated in the same window as the drop, this prevents malicious programs
 from reading files on the computer by starting their own drag. This is a
 defense in depth feature since drags can only be started by the terminal, but
 it helps in case of accidental drag starts and drops into the same window.
 
-Terminals may queue requests with different ids and respond in order, or they
-may respond in any order. If too many requests are received, they must deny
-the request with ``t:R:r=request_id ; EMFILE`` and end the drop.
+Clients may send multiple requests without waiting for any request to complete.
+Terminals may queue requests and respond in any order they choose, including
+interleaving responses to different requests. However, for simplicity, this
+specification recommends terminals queue requests and respond in first-in,
+first-out order. Every response can be matched to a corresponding request
+using the ``x``, ``y`` and ``Y`` keys. To prevent Denial of service attacks,
+if too many requests are received, terminals must deny the request
+with ``EMFILE`` and end the drop.
 
 
 Reading remote directories
 +++++++++++++++++++++++++++
 
-If the file is actually a directory the terminal must respond with ``t=d:x=idx:r=request_id ; payload``.
-Here payload is a null byte separated list of entries in the directory that are
+If the file is actually a directory the terminal must instead respond with::
+
+    OSC _dnd_code ; t=r:x=idx:y=subidx:Y=handle:X=2 ; base64 encoded list of dir entries ST
+
+The presence of ``X=2`` indicates this is a directory response not a regular
+file. Here, the payload is a null byte separated list of entries in the directory that are
 either regular files, directories or symlinks. The payload must be base64
 encoded and might be chunked if the directory has a lot of entries.
 
-``idx`` is an arbitrary 32 bit integer that acts as a handle to this
-directory. The client can now read the files in this directory using requests of the form
-``t=d:x=idx:y=num:r=request_id``, here ``num`` is the 1-based index into the list of
-directory entries previously transmitted to the client, where, ``1`` will
-correspond to the first entry in the directory. Once the client is done
-reading a directory it should transmit ``t=d:x=idx:r=request_id`` to the terminal. The
+``handle`` is an arbitrary non-zero integer that acts as a handle to this
+directory. The client can now read the files in this directory using requests of the form::
+
+    OSC _dnd_code ; t=r:Y=handle:x=num ST
+
+Here ``num`` is the 1-based index into the list of directory entries previously transmitted
+to the client. The terminal will respond with an escape code of the form::
+
+    OSC _dnd_code ; t=r:Y=handle:x=num ; base64 encoded data of entry ST
+
+In case of any errors, the terminal will respond with::
+
+    OSC _dnd_code ; t=R:Y=handle:x=num ; POSIX error name ST
+
+Once the client is done reading a directory it should transmit ``t=r:Y=handle`` to the terminal. The
 terminal can then free any resources associated with that directory. The
 directory handle is now invalid and terminals must return ``EINVAL`` if the
 client sends a request using an invalid directory handle. It is recommended
@@ -192,12 +218,13 @@ resources are used, in order to prevent denial or service attacks. In such
 cases the terminal must respond with ``ENOMEM``.
 
 When transmitting a symlink that is inside a directory,
-the terminal responds with escape code of the form::
+the terminal responds with an escape code of the form::
 
-    OSC _dnd_code ; t=r:r=request_id:X=1 ; base64 encoded symlink target ST
+    OSC _dnd_code ; t=r:Y=handle:x=num:X=1 ; base64 encoded symlink target ST
 
-Here, the presence of ``X=1`` indicates that the file is a symlink, not a
-regular file.
+The presence of ``X=1`` indicates that the file is a symlink, not a
+regular file. Similarly for sub-directories it would be ``X=2`` and the payload
+would be the null separated list of directory entries, as above.
 
 
 Starting drags
@@ -351,9 +378,7 @@ Key      Value                 Default    Description
                                           ``m`` - a drop move event
                                           ``M`` - a drop dropped event
                                           ``r`` - request dropped data
-                                          ``R`` - report an error to the terminal program
-                                          ``s`` - request data from the URI list entry
-                                          ``d`` - send directory contents
+                                          ``R`` - report an error
                                           ``o`` - start offering drags
                                           ``O`` - stop offering drags
                                           ``p`` - present data for drag offers
@@ -371,8 +396,6 @@ Key      Value                 Default    Description
 ``o``    Positive integer      ``0``      What drop operation to perform. ``0``
                                           means rejected, ``1`` means copy and
                                           ``2`` means move.
-
-``r``    Positive integer      ``0``      The request id
 
 **Keys for location**
 -----------------------------------------------------------

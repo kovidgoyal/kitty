@@ -17,7 +17,7 @@ typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } Scr
 typedef struct DnDCommand {
     char type;
     unsigned more;
-    uint32_t client_id, request_id;
+    uint32_t client_id;
     size_t payload_sz;
     int32_t cell_x, cell_y, pixel_x, pixel_y;
     uint32_t operation;
