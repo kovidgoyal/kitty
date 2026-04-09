@@ -49,6 +49,7 @@ machine_id(void) {
 
 void
 dnd_set_test_write_func(PyObject *func) {
+    (void)machine_id;
     Py_XDECREF(g_dnd_test_write_func);
     g_dnd_test_write_func = Py_XNewRef(func);
 }
