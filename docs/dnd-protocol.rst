@@ -190,7 +190,7 @@ correspond to the first entry in the directory. Once the client is done
 reading a directory it should transmit ``t=d:x=idx:r=request_id`` to the terminal. The
 terminal can then free any resources associated with that directory. The
 directory handle is now invalid and terminals must return ``EINVAL`` if the
-client sends a request using and invalid directory handle. It is recommended
+client sends a request using an invalid directory handle. It is recommended
 that clients traverse directories breadth first to minimise resource usage in
 the terminal. Terminals may deny directory traversal requests if too many
 resources are used, in order to prevent denial or service attacks. In such
