@@ -231,6 +231,9 @@ Detailed list of changes
 
 - Fix copy/paste dropping spaces at soft-wrap boundaries when :opt:`strip_trailing_spaces` is set (:iss:`9834`)
 
+- Allow setting negative values for :opt:`inactive_text_alpha` to control
+  whether to only fade inactive windows or unfocused windows (:pull:`9837`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

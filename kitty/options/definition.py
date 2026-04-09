@@ -1400,12 +1400,14 @@ opt('inactive_text_alpha', '1.0',
     option_type='signed_unit_float', ctype='float',
     long_text='''
 Fade the text in inactive windows by the specified amount. This must be a
-number between negative one and one. The absolute value controls the actual
-opacity, with zero being fully faded and one being fully opaque. Negative
-values cause fading to be applied based only on whether the current window is
-active, ignoring the extra single-window unfocused case.
-'''
-    )
+number between -1 and 1. The absolute value controls the actual
+opacity, with zero being fully faded and one being fully opaque. When a positive number is
+used the text is faded even if only a single window is visible when the OS window
+is not focused. Negative numbers means that text is only faded when more than one kitty window
+is visible in an OS Window. Fading happens in all but the active window, even if the OS Window
+is not focused. Thus this is useful if you want to rely on the window manager to indicate OS Window focus
+and this feature to indicate which kitty window is active insidethe OS Window.
+''')
 
 opt('hide_window_decorations', 'no',
     option_type='hide_window_decorations', ctype='uint',

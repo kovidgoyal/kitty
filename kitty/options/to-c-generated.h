@@ -734,6 +734,19 @@ convert_from_opts_pointer_shape_when_dragging(PyObject *py_opts, Options *opts) 
 }
 
 static void
+convert_from_python_drag_threshold(PyObject *val, Options *opts) {
+    opts->drag_threshold = PyLong_AsLong(val);
+}
+
+static void
+convert_from_opts_drag_threshold(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "drag_threshold");
+    if (ret == NULL) return;
+    convert_from_python_drag_threshold(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_repaint_delay(PyObject *val, Options *opts) {
     opts->repaint_delay = parse_ms_long_to_monotonic_t(val);
 }
@@ -1574,6 +1587,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_default_pointer_shape(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_pointer_shape_when_dragging(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_drag_threshold(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_repaint_delay(py_opts, opts);
     if (PyErr_Occurred()) return false;
