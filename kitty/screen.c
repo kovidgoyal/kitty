@@ -1532,25 +1532,7 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
         case 'A': drop_register_window(w, NULL, 0, false, cmd->client_id, cmd->more); break;
         case 'm': drop_set_status(w, cmd->operation, (const char*)payload, cmd->payload_sz, cmd->more); break;
         case 'r': {
-            drop_enqueue_request(w, cmd->request_id, 'r', (const char*)payload, cmd->payload_sz, 0, 0);
-        } break;
-        case 's': {
-            if (cmd->payload_sz) drop_enqueue_request(w, cmd->request_id, 's', (const char*)payload, cmd->payload_sz, 0, 0);
-            else {
-                uint32_t saved = w->drop.current_request_id;
-                w->drop.current_request_id = cmd->request_id;
-                drop_send_einval(w);
-                w->drop.current_request_id = saved;
-            }
-        } break;
-        case 'd': {
-            if (cmd->cell_x > 0) drop_enqueue_request(w, cmd->request_id, 'd', NULL, 0, cmd->cell_x, cmd->cell_y);
-            else {
-                uint32_t saved = w->drop.current_request_id;
-                w->drop.current_request_id = cmd->request_id;
-                drop_send_einval(w);
-                w->drop.current_request_id = saved;
-            }
+            drop_enqueue_request(w, cmd->cell_x, cmd->cell_y, cmd->pixel_y);
         } break;
         case 'o': {
             if (cmd->payload_sz > 0) drag_add_mimes(w, (int)cmd->operation, cmd->client_id, (const char*)payload, cmd->payload_sz, cmd->more);
