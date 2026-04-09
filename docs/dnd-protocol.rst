@@ -104,17 +104,17 @@ it is interested in.
 
 Requesting data is done by sending an escape code of the form::
 
-    OSC _dnd_code ; t=r ; MIME type ST
+    OSC _dnd_code ; t=r:r=request_id ; MIME type ST
 
 This will request data for the specified MIME type. The terminal must respond
 with a series of escape codes of the form::
 
-    OSC _dnd_code ; t=r ; base64 encoded data ST
+    OSC _dnd_code ; t=r:r=request_id ; base64 encoded data ST
 
 End of data is indicated by an empty payload. If some error occurs while
 getting the data, the terminal must send an escape code of the form::
 
-    OSC _dnd_code ; t=R ; POSIX error name ST
+    OSC _dnd_code ; t=R:r=request_id ; POSIX error name ST
 
 Here POSIX error name is a POSIX symbolic error name such as ``ENOENT`` or
 ``EIO`` or the value ``EUNKNOWN`` for an unknown error. Note that if a client
@@ -138,37 +138,41 @@ clients can first request the :rfc:`text/uri-list <2483>` MIME
 type to get a list of dropped URIs. For every URI in the list, they can
 send the terminal emulator a data request of the form::
 
-    OSC _dnd_code ; t=s ; text/uri-list:idx ST
+    OSC _dnd_code ; t=s:r=request_id ; text/uri-list:idx ST
 
 Here ``idx`` is the zero based index into the array of MIME types in
 the ``text/uri-list`` entry. The terminal will then read the file and
 transmit the data as for a normal MIME data request.
 
-Terminals must reply with ``t=R ; ENOENT`` if the index is out of bounds.
+Terminals must reply with ``t=R:r=request_id ; ENOENT`` if the index is out of bounds.
 If the client does not first request the ``text/uri-list`` MIME type or that
 MIME type is not present in the drop, the terminal must reply with
-``t=R ; EINVAL``. Terminals must support at least ``file://`` URIs.
+``t=R:r=request_id ; EINVAL``. Terminals must support at least ``file://`` URIs.
 If the client requests an entry that is not a supported URI type the
-terminal must reply with ``t=R ; EUNKNOWN``.
+terminal must reply with ``t=R:r=request_id ; EUNKNOWN``.
 
 Terminals must ONLY send data for regular files. Symbolic links must be
 resolved and the corresponding file read. If the terminal does not have
-permission to read the file it must reply with ``t=R ; EPERM``. Terminals
-must respond with ``t=R ; EINVAL`` if the file is not a regular file after
-resolving symlinks and ``t=R ; ENOENT`` if the file does not exist. If an
-I/O error occurs the terminal must send ``t=R ; EIO``.
+permission to read the file it must reply with ``t=R:r=request_id ; EPERM``. Terminals
+must respond with ``t=R:r=request_id ; EINVAL`` if the file is not a regular file after
+resolving symlinks and ``t=R:r=request_id ; ENOENT`` if the file does not exist. If an
+I/O error occurs the terminal must send ``t=R:r=request_id ; EIO``.
 
-For security reasons, terminals must reply with ``t=R ; EPERM`` if the drag
+For security reasons, terminals must reply with ``t=R:r=request_id ; EPERM`` if the drag
 originated in the same window as the drop, this prevents malicious programs
 from reading files on the computer by starting their own drag. This is a
 defense in depth feature since drags can only be started by the terminal, but
 it helps in case of accidental drag starts and drops into the same window.
 
+Terminals may queue requests with different ids and respond in order, or they
+may respond in any order. If too many requests are received, they must deny
+the request with ``t:R:r=request_id ; EMFILE`` and end the drop.
+
 
 Reading remote directories
 +++++++++++++++++++++++++++
 
-If the file is actually a directory the terminal must respond with ``t=d:x=idx ; payload``.
+If the file is actually a directory the terminal must respond with ``t=d:x=idx:r=request_id ; payload``.
 Here payload is a null byte separated list of entries in the directory that are
 either regular files, directories or symlinks. The payload must be base64
 encoded and might be chunked if the directory has a lot of entries. The first
@@ -180,10 +184,10 @@ number.
 
 ``idx`` is an arbitrary 32 bit integer that acts as a handle to this
 directory. The client can now read the files in this directory using requests of the form
-``t=d:x=idx:y=num``, here ``num`` is the index into the list of
+``t=d:x=idx:y=num:r=request_id``, here ``num`` is the index into the list of
 directory entries previously transmitted to the client. Here, ``1`` will
 correspond to the first entry in the directory. Once the client is done
-reading a directory it should transmit ``t=d:x=idx`` to the terminal. The
+reading a directory it should transmit ``t=d:x=idx:r=request_id`` to the terminal. The
 terminal can then free any resources associated with that directory. The
 directory handle is now invalid and terminals must return ``EINVAL`` if the
 client sends a request using and invalid directory handle. It is recommended
@@ -352,7 +356,7 @@ Key      Value                 Default    Description
                                           ``P`` - Change drag image or start drag
                                           ``e`` - a drag offer event occurred
 
-``m``    Chunking indicator    ``0``      ``0`` or ``i``
+``m``    Chunking indicator    ``0``      ``0`` or ``1``
 
 ``i``    Postive integer       ``0``      This id is for use by multiplexers.
                                           When it is set, all responses from
@@ -362,6 +366,8 @@ Key      Value                 Default    Description
 ``o``    Positive integer      ``0``      What drop operation to perform. ``0``
                                           means rejected, ``1`` means copy and
                                           ``2`` means move.
+
+``r``    Positive integer      ``0``      The request id
 
 **Keys for location**
 -----------------------------------------------------------

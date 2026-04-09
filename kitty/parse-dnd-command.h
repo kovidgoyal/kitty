@@ -23,6 +23,7 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
     more = 'm',
     client_id = 'i',
     operation = 'o',
+    request_id = 'r',
     cell_x = 'x',
     cell_y = 'y',
     pixel_x = 'X',
@@ -49,6 +50,9 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
         value_state = UINT;
         break;
       case operation:
+        value_state = UINT;
+        break;
+      case request_id:
         value_state = UINT;
         break;
       case cell_x:
@@ -156,6 +160,7 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
         U(more);
         U(client_id);
         U(operation);
+        U(request_id);
       default:
         break;
       }
@@ -207,12 +212,13 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
   }
 
   REPORT_VA_COMMAND(
-      "K s {sc sI sI sI si si si si ss#}", self->window_id, "dnd_command",
+      "K s {sc sI sI sI sI si si si si ss#}", self->window_id, "dnd_command",
 
       "type", g.type,
 
       "more", (unsigned int)g.more, "client_id", (unsigned int)g.client_id,
-      "operation", (unsigned int)g.operation,
+      "operation", (unsigned int)g.operation, "request_id",
+      (unsigned int)g.request_id,
 
       "cell_x", (int)g.cell_x, "cell_y", (int)g.cell_y, "pixel_x",
       (int)g.pixel_x, "pixel_y", (int)g.pixel_y,

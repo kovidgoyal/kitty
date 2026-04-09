@@ -392,6 +392,7 @@ get_errno_name(int err) {
         case ENOENT: return "ENOENT";
         case EIO: return "EIO";
         case EINVAL: return "EINVAL";
+        case EMFILE: return "EMFILE";
         case ENOMEM: return "ENOMEM";
         case 0: return "OK";
         default: return "EUNKNOWN";
@@ -1195,6 +1196,7 @@ parse_errno_name(const uint8_t *data, size_t sz) {
     if (sz >= 6 && memcmp(data, "ENOMEM", 6) == 0) return ENOMEM;
     if (sz >= 5 && memcmp(data, "EFBIG", 5) == 0) return EFBIG;
     if (sz >= 3 && memcmp(data, "EIO", 3) == 0) return EIO;
+    if (sz >= 6 && memcmp(data, "EMFILE", 6) == 0) return EMFILE;
     return EIO;
 }
 

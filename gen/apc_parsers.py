@@ -335,6 +335,7 @@ def parsers() -> None:
         'm': ('more', 'uint'),
         'i': ('client_id', 'uint'),
         'o': ('operation', 'uint'),
+        'r': ('request_id', 'uint'),
         'x': ('cell_x', 'int'),
         'y': ('cell_y', 'int'),
         'X': ('pixel_x', 'int'),
