@@ -311,6 +311,15 @@ def conf_parsing(self):
     self.ae(opts.kitty_mod, to_modifiers('alt'))
     self.ae(next(keys_for_func(opts, 'next_layout')).mods, opts.kitty_mod)
 
+    opts = p('inactive_text_alpha 0.25')
+    self.ae(opts.inactive_text_alpha, 0.25)
+    opts = p('inactive_text_alpha -0.25')
+    self.ae(opts.inactive_text_alpha, -0.25)
+    opts = p('inactive_text_alpha 2')
+    self.ae(opts.inactive_text_alpha, 1.0)
+    opts = p('inactive_text_alpha -2')
+    self.ae(opts.inactive_text_alpha, -1.0)
+
     # deprecation handling
     opts = p('clear_all_shortcuts y', 'send_text all f1 hello')
     self.ae(len(opts.keyboard_modes[''].keymap), 1)

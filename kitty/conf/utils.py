@@ -67,6 +67,10 @@ def unit_float(x: ConvertibleToNumbers) -> float:
     return max(0, min(float(x), 1))
 
 
+def signed_unit_float(x: ConvertibleToNumbers) -> float:
+    return max(-1, min(float(x), 1))
+
+
 def number_with_unit(x: str, default_unit: str, *extra_units: str) -> tuple[float, str]:
     if (mat := number_unit_pat.match(x)) is not None:
         try:

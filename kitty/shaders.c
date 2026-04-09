@@ -1405,9 +1405,15 @@ draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_wind
     bind_vertex_array(srd->vao_idx);
     // We draw with inactive text alpha if:
     // - We're not drawing the tab bar
-    // - There's only a single window and the os window is not focused
     // - There are multiple windows and the current window is not active
-    float current_inactive_text_alpha = is_tab_bar || (!is_single_window && is_active_window) || (is_single_window && screen->cursor_render_info.is_focused) ? 1.0f : (float)OPT(inactive_text_alpha);
+    // When inactive_text_alpha is negative, its absolute value is used as the
+    // opacity and fading is based only on whether the current window is active.
+    float configured_inactive_text_alpha = (float)OPT(inactive_text_alpha);
+    bool use_active_window_only = configured_inactive_text_alpha < 0.f;
+    if (configured_inactive_text_alpha < 0.f) configured_inactive_text_alpha = -configured_inactive_text_alpha;
+    float current_inactive_text_alpha = use_active_window_only ?
+        (is_tab_bar || is_active_window ? 1.0f : configured_inactive_text_alpha) :
+        (is_tab_bar || (!is_single_window && is_active_window) || (is_single_window && screen->cursor_render_info.is_focused) ? 1.0f : configured_inactive_text_alpha);
     float bg_alpha = effective_os_window_alpha(os_window);
 
     color_type default_bg = cell_update_uniform_block(

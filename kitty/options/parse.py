@@ -4,8 +4,8 @@
 import typing
 import collections.abc  # noqa: F401, RUF100
 from kitty.conf.utils import (
-    merge_dicts, positive_float, positive_int, python_string, to_bool, to_cmdline, to_color,
-    to_color_or_none, unit_float
+    merge_dicts, positive_float, positive_int, python_string, signed_unit_float, to_bool, to_cmdline,
+    to_color, to_color_or_none, unit_float
 )
 from kitty.options.utils import (
     action_alias, active_tab_title_template, allow_hyperlinks, bell_on_tab, box_drawing_scale,
@@ -1045,7 +1045,7 @@ class Parser:
         ans['inactive_tab_foreground'] = to_color(val)
 
     def inactive_text_alpha(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['inactive_text_alpha'] = unit_float(val)
+        ans['inactive_text_alpha'] = signed_unit_float(val)
 
     def initial_window_height(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['initial_window_height'] = window_size(val)
