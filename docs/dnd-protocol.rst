@@ -306,7 +306,7 @@ form::
     OSC _dnd_code ; t=e:y=idx:m=0 or 1 ; base64 encoded data ST
 
 This, is the data for the MIME type identified by ``idx`` which is a zero based
-index into the list of MIME types. The data should be chunkedusing the
+index into the list of MIME types. The data should be chunked using the
 ``m`` key. End of data is denoted by ``m=0`` and an empty payload. If an error
 occurs the client should send::
 
