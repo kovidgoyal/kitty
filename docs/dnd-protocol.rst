@@ -179,8 +179,8 @@ encoded and might be chunked if the directory has a lot of entries.
 
 ``idx`` is an arbitrary 32 bit integer that acts as a handle to this
 directory. The client can now read the files in this directory using requests of the form
-``t=d:x=idx:y=num:r=request_id``, here ``num`` is the 0-based index into the list of
-directory entries previously transmitted to the client, where, ``0`` will
+``t=d:x=idx:y=num:r=request_id``, here ``num`` is the 1-based index into the list of
+directory entries previously transmitted to the client, where, ``1`` will
 correspond to the first entry in the directory. Once the client is done
 reading a directory it should transmit ``t=d:x=idx:r=request_id`` to the terminal. The
 terminal can then free any resources associated with that directory. The

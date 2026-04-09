@@ -872,7 +872,7 @@ drop_request_uri_data(Window *w, const char *payload, size_t payload_sz) {
 
 /* Handle a t=d request from the client.
  * handle_id: the directory handle (x= key).
- * entry_num: <0 means close the handle; >=0 means read that entry (0-based).
+ * entry_num: 0 means close the handle; >=1 means read that entry (1-based).
  * Returns true if completed synchronously, false if async file I/O started. */
 static bool
 do_drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num) {
@@ -881,7 +881,7 @@ do_drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num) {
     DirHandle *h = drop_find_dir_handle(w, handle_id);
     if (!h) { drop_send_error(w, EINVAL); return true; }
 
-    if (entry_num < 0) {
+    if (entry_num == 0) {
         /* Close the handle */
         size_t hidx = (size_t)(h - w->drop.dir_handles);
         drop_free_dir_handle(h);
@@ -889,8 +889,8 @@ do_drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num) {
         return true;
     }
 
-    /* Read the entry at 0-based index */
-    size_t eidx = (size_t)entry_num;
+    /* Read the entry at 1-based index */
+    size_t eidx = (size_t)(entry_num - 1);
     if (eidx >= h->num_entries) { drop_send_error(w, ENOENT); return true; }
 
     char full[PATH_MAX];

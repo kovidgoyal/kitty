@@ -74,7 +74,7 @@ def client_dir_read(handle_id: int, entry_num: int | None = None, client_id: int
     """Escape code for a directory request (t=d:x=handle_id[:y=entry_num]).
 
     * entry_num=None → close the directory handle.
-    * entry_num>=0   → read that entry (0-based).
+    * entry_num>=1   → read that entry (1-based).
     """
     meta = f'{DND_CODE};t=d:x={handle_id}'
     if entry_num is not None:
@@ -779,10 +779,10 @@ class TestDnDProtocol(BaseTest):
                 self.assertIn('a.txt', entry_names)
                 self.assertIn('b', entry_names)
 
-                # Find index of 'a.txt' in the entries list (0-based for t=d:y=)
+                # Find index of 'a.txt' in the entries list (1-based for t=d:y=)
                 entries_list = [e.decode() for e in root_entries]
-                a_idx = entries_list.index('a.txt')
-                b_idx = entries_list.index('b')
+                a_idx = entries_list.index('a.txt') + 1
+                b_idx = entries_list.index('b') + 1
 
                 # Read a.txt
                 parse_bytes(screen, client_dir_read(root_handle_id, a_idx))
@@ -811,8 +811,8 @@ class TestDnDProtocol(BaseTest):
                 self.assertIn('d', b_names)
 
                 b_entries_list = [e.decode() for e in b_entries]
-                bc_idx = b_entries_list.index('c.txt')
-                bd_idx = b_entries_list.index('d')
+                bc_idx = b_entries_list.index('c.txt') + 1
+                bd_idx = b_entries_list.index('d') + 1
 
                 # Read b/c.txt (binary integrity)
                 parse_bytes(screen, client_dir_read(b_handle_id, bc_idx))
@@ -841,7 +841,7 @@ class TestDnDProtocol(BaseTest):
                 self.assertIn('e.txt', bd_names)
 
                 bd_entries_list = [e.decode() for e in bd_entries]
-                bde_idx = bd_entries_list.index('e.txt')
+                bde_idx = bd_entries_list.index('e.txt') + 1
 
                 # Read b/d/e.txt
                 parse_bytes(screen, client_dir_read(bd_handle_id, bde_idx))
@@ -879,7 +879,7 @@ class TestDnDProtocol(BaseTest):
                 self._assert_no_output(cap, wid)
 
                 # Now try to read from the closed handle → EINVAL
-                parse_bytes(screen, client_dir_read(hid, 0))
+                parse_bytes(screen, client_dir_read(hid, 1))
                 events = self._get_events(cap, wid)
                 self.assertEqual(len(events), 1)
                 self.ae(events[0]['type'], 'R')
@@ -950,7 +950,7 @@ class TestDnDProtocol(BaseTest):
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
                 self.assertIn('link.txt', entries)
                 self.assertIn('real.txt', entries)
-                link_idx = entries.index('link.txt')
+                link_idx = entries.index('link.txt') + 1
 
                 # Read the symlink entry → should get t=r with X=1 and target path
                 parse_bytes(screen, client_dir_read(hid, link_idx))
@@ -985,7 +985,7 @@ class TestDnDProtocol(BaseTest):
                 hid = int(d_ev[0]['meta']['x'])
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
                 self.assertIn('link_to_dir', entries)
-                link_idx = entries.index('link_to_dir')
+                link_idx = entries.index('link_to_dir') + 1
 
                 # Read the symlink → should get t=r with X=1
                 parse_bytes(screen, client_dir_read(hid, link_idx))
@@ -1018,7 +1018,7 @@ class TestDnDProtocol(BaseTest):
                 )
                 hid = int(d_ev[0]['meta']['x'])
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
-                link_idx = entries.index('abs_link.txt')
+                link_idx = entries.index('abs_link.txt') + 1
 
                 parse_bytes(screen, client_dir_read(hid, link_idx))
                 raw = cap.consume(wid)
@@ -1048,7 +1048,7 @@ class TestDnDProtocol(BaseTest):
                 )
                 hid = int(d_ev[0]['meta']['x'])
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
-                reg_idx = entries.index('regular.txt')
+                reg_idx = entries.index('regular.txt') + 1
 
                 parse_bytes(screen, client_dir_read(hid, reg_idx))
                 raw = cap.consume(wid)
@@ -1083,7 +1083,7 @@ class TestDnDProtocol(BaseTest):
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
 
                 # Read regular file
-                data_idx = entries.index('data.bin')
+                data_idx = entries.index('data.bin') + 1
                 parse_bytes(screen, client_dir_read(hid, data_idx))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
@@ -1093,7 +1093,7 @@ class TestDnDProtocol(BaseTest):
                         b'\x00\x01\x02\x03')
 
                 # Read symlink
-                alias_idx = entries.index('alias.bin')
+                alias_idx = entries.index('alias.bin') + 1
                 parse_bytes(screen, client_dir_read(hid, alias_idx))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
@@ -1124,7 +1124,7 @@ class TestDnDProtocol(BaseTest):
                 )
                 root_hid = int(d_ev[0]['meta']['x'])
                 entries = [e.decode() for e in payload.split(b'\x00') if e]
-                sub_idx = entries.index('sub')
+                sub_idx = entries.index('sub') + 1
 
                 # Open subdirectory
                 parse_bytes(screen, client_dir_read(root_hid, sub_idx))
@@ -1138,7 +1138,7 @@ class TestDnDProtocol(BaseTest):
                 sub_entries = [e.decode() for e in sub_payload.split(b'\x00') if e]
                 self.assertIn('nested_link.txt', sub_entries)
 
-                link_idx = sub_entries.index('nested_link.txt')
+                link_idx = sub_entries.index('nested_link.txt') + 1
                 parse_bytes(screen, client_dir_read(sub_hid, link_idx))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
@@ -1147,8 +1147,8 @@ class TestDnDProtocol(BaseTest):
                 self.ae(b''.join(e['payload'] for e in r_events if e['payload']),
                         b'target.txt')
 
-    def test_dir_entry_zero_based_index(self) -> None:
-        """Directory entry index 0 reads the first entry (0-based)."""
+    def test_dir_entry_one_based_index(self) -> None:
+        """Directory entry index 1 reads the first entry (1-based)."""
         import os
         import tempfile
         with tempfile.TemporaryDirectory() as root:
@@ -1163,12 +1163,12 @@ class TestDnDProtocol(BaseTest):
                 d_ev = [e for e in events if e['type'] == 'd']
                 hid = int(d_ev[0]['meta']['x'])
 
-                # Index 0 should read the first entry
-                parse_bytes(screen, client_dir_read(hid, 0))
+                # Index 1 should read the first entry
+                parse_bytes(screen, client_dir_read(hid, 1))
                 raw = cap.consume(wid)
                 events = parse_escape_codes_b64(raw)
                 r_events = [e for e in events if e['type'] == 'r']
-                self.assertTrue(r_events, 'entry index 0 should read the first entry')
+                self.assertTrue(r_events, 'entry index 1 should read the first entry')
                 data = b''.join(e['payload'] for e in r_events if e['payload'])
                 self.ae(data, b'first file')
 
@@ -1979,7 +1979,7 @@ class TestDnDProtocol(BaseTest):
                 handle_id = int(d_events[0]['meta']['x'])
                 listing = b''.join(chunk for e in d_events for chunk in e['chunks'] if chunk)
                 entries = [e.decode() for e in listing.split(b'\x00') if e]
-                f_idx = entries.index('f.txt')
+                f_idx = entries.index('f.txt') + 1
 
                 # Read file with request_id
                 parse_bytes(screen, client_dir_read(handle_id, f_idx, request_id=33))
