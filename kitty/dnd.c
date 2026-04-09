@@ -457,13 +457,6 @@ do_drop_request_data(Window *w, int32_t idx) {
 }
 
 void
-drop_request_data(Window *w, const char *mime) {
-    /* This function is no longer used in the new protocol; MIME data requests
-     * are now handled through the unified t=r queue via do_drop_request_data. */
-    (void)w; (void)mime;
-}
-
-void
 drop_dispatch_data(Window *w, const char *mime, const char *data, ssize_t sz) {
     if (sz < 0) {
         drop_send_error(w, -sz);
