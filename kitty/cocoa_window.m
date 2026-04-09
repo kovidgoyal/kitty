@@ -12,6 +12,7 @@
 #include <Availability.h>
 #include <Carbon/Carbon.h>
 #include <Cocoa/Cocoa.h>
+#import <IOKit/IOKitLib.h>
 #include <UserNotifications/UserNotifications.h>
 #import <AudioToolbox/AudioServices.h>
 
@@ -1382,9 +1383,33 @@ cocoa_clear_dock_badge_if_set(void) {
 
 // }}}
 
+static PyObject*
+cocoa_get_machine_id(PyObject *self UNUSED, PyObject *args UNUSED) {
+    static char ans[1024] = {0};
+    static bool done = false;
+    if (!done) {
+        done = true;
+        CFMutableDictionaryRef matching = IOServiceMatching("IOPlatformExpertDevice");
+        // Get the matching service
+        io_service_t service = IOServiceGetMatchingService(kIOMainPortDefault, matching);
+        if (service) {
+            CFTypeRef uuid = IORegistryEntryCreateCFProperty(service, CFSTR("IOPlatformUUID"), kCFAllocatorDefault, 0);
+            if (uuid) {
+                // Transfer ownership to NSString using ARC __bridge_transfer
+                NSString *s = (NSString*)uuid;
+                [s getCString:ans maxLength:sizeof(ans) encoding:NSUTF8StringEncoding];
+            }
+            // Release the I/O object
+            IOObjectRelease(service);
+        }
+    }
+    return PyUnicode_FromString(ans);
+}
+
 static PyMethodDef module_methods[] = {
     {"cocoa_play_system_sound_by_id_async", play_system_sound_by_id_async, METH_O, ""},
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
+    {"cocoa_get_machine_id", (PyCFunction)cocoa_get_machine_id, METH_NOARGS, ""},
     {"cocoa_set_global_shortcut", (PyCFunction)cocoa_set_global_shortcut, METH_VARARGS, ""},
     {"cocoa_send_notification", (PyCFunction)(void(*)(void))cocoa_send_notification, METH_VARARGS | METH_KEYWORDS, ""},
     {"cocoa_remove_delivered_notification", (PyCFunction)cocoa_remove_delivered_notification, METH_O, ""},
