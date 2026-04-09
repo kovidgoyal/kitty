@@ -2628,6 +2628,8 @@ The color of the kitty window's titlebar on macOS. A value of
 :code:`background` means to use the background color of the currently active
 window and finally you can use an arbitrary color, such as :code:`#12af59` or
 :code:`red`.
+
+Note that when using :ref:`auto_color_scheme` this option is overridden by the color scheme file and must be set inside it to take effect.
 '''
     )
 
