@@ -1276,7 +1276,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_offer_mimes(0, 'text/plain'))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
     def test_drag_offer_copy_only(self) -> None:
@@ -1315,7 +1315,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_pre_send(5, data))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
     def test_drag_pre_send_data_moderate_chunk(self) -> None:
@@ -1337,7 +1337,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_pre_send(0, data))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
     def test_drag_add_image_rgba_valid(self) -> None:
@@ -1370,7 +1370,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_add_image(1, 16, 2, 2, data_b64))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
     def test_drag_add_image_invalid_dimensions_returns_einval(self) -> None:
@@ -1383,7 +1383,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_add_image(1, 24, 0, 2, data_b64))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
     def test_drag_add_image_without_offer_returns_einval(self) -> None:
@@ -1394,7 +1394,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_add_image(1, 32, 2, 2, data_b64))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
     def test_drag_add_too_many_images_returns_error(self) -> None:
@@ -1415,7 +1415,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_add_image(15, 32, 2, 2, data_b64))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
 
     def test_drag_start_no_real_window_returns_einval_or_eperm(self) -> None:
         """Starting a drag with a fake window (no GLFW handle) returns EINVAL or EPERM."""
@@ -1426,7 +1426,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_start())
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
             # Error is EINVAL because osw->handle is NULL
             self.assertIn(events[0]['payload'].strip(), [b'EINVAL', b'EPERM'])
 
@@ -1436,7 +1436,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_start())
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
     def test_drag_free_offer_cleans_up(self) -> None:
@@ -1456,7 +1456,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_pre_send(0, data))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
     def test_drag_cancel_from_client(self) -> None:
@@ -1471,7 +1471,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_start())
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
     def test_drag_second_offer_replaces_first(self) -> None:
@@ -1500,7 +1500,7 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_start(client_id=client_id))
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
+            self.ae(events[0]['type'], 'E')
             self.ae(events[0]['meta'].get('i'), str(client_id))
 
     def test_drag_change_image_before_start(self) -> None:
@@ -1640,7 +1640,7 @@ class TestDnDProtocol(BaseTest):
     def assert_error(self, cap, wid, code='EINVAL'):
         events = self._get_events(cap, wid)
         self.assertEqual(len(events), 1, events)
-        self.ae(events[0]['type'], 'R')
+        self.ae(events[0]['type'], 'E')
         self.ae(events[0]['payload'].strip(), code.encode())
 
     def test_drag_pre_send_multiple_mimes(self) -> None:
