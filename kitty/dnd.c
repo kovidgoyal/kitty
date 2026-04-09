@@ -25,6 +25,28 @@ static const size_t PRESENT_DATA_CAP = 64 * 1024 * 1024;
 // It receives (window_id: int, data: bytes) and its return value is ignored.
 static PyObject *g_dnd_test_write_func = NULL;
 
+static const char*
+machine_id(void) {
+    static bool done = false;
+    static char ans[512] = {0};
+    if (!done) {
+        done = true;
+        RAII_PyObject(mname, PyUnicode_DecodeFSDefault("kitty.machine_id"));
+        if (mname) {
+            RAII_PyObject(module, PyImport_Import(mname));
+            if (module) {
+                RAII_PyObject(func, PyObject_GetAttrString(module, "machine_id"));
+                if (func) {
+                    RAII_PyObject(ret, PyObject_CallFunction(func, "s", "tty-dnd-protocol-machine-id"));
+                    if (ret) snprintf(ans, sizeof(ans), "%s", PyUnicode_AsUTF8(ret));
+                }
+            }
+        }
+        if (PyErr_Occurred()) PyErr_Print();
+    }
+    return ans;
+}
+
 void
 dnd_set_test_write_func(PyObject *func) {
     Py_XDECREF(g_dnd_test_write_func);

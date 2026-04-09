@@ -133,8 +133,8 @@ terminal emulator must then inform the OS that the drop is completed.
 Dropping from remote machines
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In order to support dropping of files from remote machines or to remote
-machines, clients can first request the :rfc:`text/uri-list <2483>` MIME
+In order to support dropping of files from remote machines,
+clients can first request the :rfc:`text/uri-list <2483>` MIME
 type to get a list of dropped URIs. For every URI in the list, they can
 send the terminal emulator a data request of the form::
 
