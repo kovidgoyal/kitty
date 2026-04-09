@@ -1397,10 +1397,13 @@ opt('bell_border_color', '#ff5a00',
     )
 
 opt('inactive_text_alpha', '1.0',
-    option_type='unit_float', ctype='float',
+    option_type='signed_unit_float', ctype='float',
     long_text='''
-Fade the text in inactive windows by the specified amount (a number between zero
-and one, with zero being fully faded).
+Fade the text in inactive windows by the specified amount. This must be a
+number between negative one and one. The absolute value controls the actual
+opacity, with zero being fully faded and one being fully opaque. Negative
+values cause fading to be applied based only on whether the current window is
+active, ignoring the extra single-window unfocused case.
 '''
     )
 
