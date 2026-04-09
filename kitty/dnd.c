@@ -1084,7 +1084,7 @@ static void
 drag_send_error(Window *w, int error_code) {
     char buf[128];
     const char *e = get_errno_name(error_code);
-    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=R", DND_CODE);
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=E", DND_CODE);
     queue_payload_to_child(
         w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_size, e, strlen(e), false);
 }
