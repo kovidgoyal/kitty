@@ -151,8 +151,8 @@ MIME type is not present in the drop, the terminal must reply with
 If the client requests an entry that is not a supported URI type the
 terminal must reply with ``t=R:r=request_id ; EUNKNOWN``.
 
-Terminals must ONLY send data for regular files. Symbolic links must be
-resolved and the corresponding file read. If the terminal does not have
+Terminals must ONLY send data for regular files or directories. Symbolic links must be
+resolved and the corresponding file or directory read. If the terminal does not have
 permission to read the file it must reply with ``t=R:r=request_id ; EPERM``. Terminals
 must respond with ``t=R:r=request_id ; EINVAL`` if the file is not a regular file after
 resolving symlinks and ``t=R:r=request_id ; ENOENT`` if the file does not exist. If an
@@ -175,17 +175,12 @@ Reading remote directories
 If the file is actually a directory the terminal must respond with ``t=d:x=idx:r=request_id ; payload``.
 Here payload is a null byte separated list of entries in the directory that are
 either regular files, directories or symlinks. The payload must be base64
-encoded and might be chunked if the directory has a lot of entries. The first
-entry in the list must be a unique identifier for the directory, to prevent
-symlink loops. Terminals may use whatever identifier is most suitable for their platforms, clients should
-not re-request the contents of a directory whose identifier they have seen
-before. On POSIX platforms the identifier would typically be device and inode
-number.
+encoded and might be chunked if the directory has a lot of entries.
 
 ``idx`` is an arbitrary 32 bit integer that acts as a handle to this
 directory. The client can now read the files in this directory using requests of the form
-``t=d:x=idx:y=num:r=request_id``, here ``num`` is the index into the list of
-directory entries previously transmitted to the client. Here, ``1`` will
+``t=d:x=idx:y=num:r=request_id``, here ``num`` is the 0-based index into the list of
+directory entries previously transmitted to the client, where, ``0`` will
 correspond to the first entry in the directory. Once the client is done
 reading a directory it should transmit ``t=d:x=idx:r=request_id`` to the terminal. The
 terminal can then free any resources associated with that directory. The
@@ -195,6 +190,15 @@ that clients traverse directories breadth first to minimise resource usage in
 the terminal. Terminals may deny directory traversal requests if too many
 resources are used, in order to prevent denial or service attacks. In such
 cases the terminal must respond with ``ENOMEM``.
+
+When transmitting a symlink that is inside a directory,
+the terminal responds with escape code of the form::
+
+    OSC _dnd_code ; t=r:r=request_id:X=1 ; base64 encoded symlink target ST
+
+Here, the presence of ``X=1`` indicates that the file is a symlink, not a
+regular file.
+
 
 Starting drags
 -----------------
@@ -355,6 +359,7 @@ Key      Value                 Default    Description
                                           ``p`` - present data for drag offers
                                           ``P`` - Change drag image or start drag
                                           ``e`` - a drag offer event occurred
+                                          ``E`` - a drag offer data error occurred
 
 ``m``    Chunking indicator    ``0``      ``0`` or ``1``
 
