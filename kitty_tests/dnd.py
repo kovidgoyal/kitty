@@ -1108,7 +1108,7 @@ class TestDnDProtocol(BaseTest):
         import tempfile
         with tempfile.TemporaryDirectory() as root:
             sub = os.path.join(root, 'sub')
-            os.makedirs(sub)
+            os.mkdir(sub)
             with open(os.path.join(sub, 'target.txt'), 'w') as f:
                 f.write('nested target')
             os.symlink('target.txt', os.path.join(sub, 'nested_link.txt'))
