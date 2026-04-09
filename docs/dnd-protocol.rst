@@ -158,6 +158,12 @@ must respond with ``t=R ; EINVAL`` if the file is not a regular file after
 resolving symlinks and ``t=R ; ENOENT`` if the file does not exist. If an
 I/O error occurs the terminal must send ``t=R ; EIO``.
 
+For security reasons, terminals must reply with ``t=R ; EPERM`` if the drag
+originated in the same window as the drop, this prevents malicious programs
+from reading files on the computer by starting their own drag. This is a
+defense in depth feature since drags can only be started by the terminal, but
+it helps in case of accidental drag starts and drops into the same window.
+
 
 Reading remote directories
 +++++++++++++++++++++++++++
@@ -309,6 +315,9 @@ If the client wants to cancel the full drag at any time, it should send:
 
     OSC _dnd_code ; t=E:y=-1 ST
 
+If ``t=e`` or ``t=E`` escape codes are sent to the terminal before the drag is
+started and the terminal replies with ``t=R ; OK``, the terminal must respond
+with ``t=R ; EINVAL`` and abort the drag.
 
 Multiplexers
 -----------------

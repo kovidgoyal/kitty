@@ -1297,22 +1297,22 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, final_img)
             self._assert_no_output(cap, wid)
 
-    def test_drag_process_item_data_without_started_state_ignored(self) -> None:
+    def test_drag_process_item_data_without_started_state_invalid(self) -> None:
         """Sending t=e data before the drag is started is silently ignored."""
         with dnd_test_window() as (osw, wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # State is BEING_BUILT, not STARTED – drag_process_item_data should return early
             data_b64 = standard_b64encode(b'premature data').decode()
             parse_bytes(screen, client_drag_send_data(0, data_b64))
-            self._assert_no_output(cap, wid)
+            self.assert_error(cap, wid)
 
-    def test_drag_error_from_client_without_started_state_ignored(self) -> None:
+    def test_drag_error_from_client_without_started_state_invalid(self) -> None:
         """Sending t=E with a MIME index before the drag is started is silently ignored."""
         with dnd_test_window() as (osw, wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # State is BEING_BUILT – sending an error for index 0 should be ignored
             parse_bytes(screen, client_drag_send_error(0, 'EIO'))
-            self._assert_no_output(cap, wid)
+            self.assert_error(cap, wid)
 
     def test_drag_offer_with_empty_mimes_after_cancel(self) -> None:
         """After cancelling, a new offer can be started from scratch."""
@@ -1354,10 +1354,13 @@ class TestDnDProtocol(BaseTest):
 
             # Attempting to start should fail since unregister called drag_free_offer
             parse_bytes(screen, client_drag_start())
-            events = self._get_events(cap, wid)
-            self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
-            self.ae(events[0]['payload'].strip(), b'EINVAL')
+            self.assert_error(cap, wid)
+
+    def assert_error(self, cap, wid, code='EINVAL'):
+        events = self._get_events(cap, wid)
+        self.assertEqual(len(events), 1, events)
+        self.ae(events[0]['type'], 'R')
+        self.ae(events[0]['payload'].strip(), code.encode())
 
     def test_drag_pre_send_multiple_mimes(self) -> None:
         """Pre-sent data can be provided for multiple different MIME types."""
@@ -1429,10 +1432,7 @@ class TestDnDProtocol(BaseTest):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Send completely invalid base64
             parse_bytes(screen, client_drag_pre_send(0, '!@#$%^&*()'))
-            events = self._get_events(cap, wid)
-            self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
-            self.ae(events[0]['payload'].strip(), b'EINVAL')
+            self.assert_error(cap, wid)
 
     def test_drag_add_image_invalid_base64_returns_einval(self) -> None:
         """Adding an image with invalid base64 data returns EINVAL."""
@@ -1440,10 +1440,7 @@ class TestDnDProtocol(BaseTest):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Invalid base64 as image data
             parse_bytes(screen, client_drag_add_image(1, 32, 1, 1, '!@#$%^&*()'))
-            events = self._get_events(cap, wid)
-            self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
-            self.ae(events[0]['payload'].strip(), b'EINVAL')
+            self.assert_error(cap, wid)
 
     def test_drag_start_with_image_size_mismatch(self) -> None:
         """Starting a drag when image data size doesn't match dimensions returns EINVAL."""
@@ -1459,10 +1456,7 @@ class TestDnDProtocol(BaseTest):
             # Actually no - for fmt=32, expand_rgb_data is not called, only for fmt=24.
             # The check img.sz != width*height*4 happens in drag_start.
             parse_bytes(screen, client_drag_start())
-            events = self._get_events(cap, wid)
-            self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
-            self.ae(events[0]['payload'].strip(), b'EINVAL')
+            self.assert_error(cap, wid)
 
     def test_drag_start_with_rgb_image_size_mismatch(self) -> None:
         """Starting a drag when RGB image data size doesn't match w*h*3 returns EINVAL."""
@@ -1474,8 +1468,4 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_add_image(1, 24, 2, 2, data_b64))
             # drag_start calls expand_rgb_data which checks sz == w*h*3
             parse_bytes(screen, client_drag_start())
-            events = self._get_events(cap, wid)
-            self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'R')
-            self.ae(events[0]['payload'].strip(), b'EINVAL')
-
+            self.assert_error(cap, wid)

@@ -752,6 +752,9 @@ drop_request_uri_data(Window *w, const char *payload, size_t payload_sz) {
     if (!w->drop.uri_list || !w->drop.uri_list_sz) {
         drop_send_error(w, EINVAL); return;
     }
+    if (global_state.drag_source.from_window == w->id && w->drag_source.state != DRAG_SOURCE_NONE) {
+        drop_send_error(w, EPERM); return;
+    }
 
     /* Payload format: "text/uri-list:idx" */
     const char *colon = memchr(payload, ':', payload_sz);
@@ -1070,6 +1073,7 @@ drag_start(Window *w) {
 
 void
 drag_notify(Window *w, DragNotifyType type) {
+    if (ds.state < DRAG_SOURCE_STARTED) return;
     char buf[128];
     size_t sz = snprintf(buf, sizeof(buf), "t=e:x=%d", type + 1);
     switch(type) {
@@ -1091,6 +1095,7 @@ drag_notify(Window *w, DragNotifyType type) {
             sz += snprintf(buf + sz, sizeof(buf) - sz, "y=%d", global_state.drag_source.was_canceled ? 1 : 0); break;
     }
     queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, sz, NULL, 0, false);
+    if (type == DRAG_NOTIFY_FINISHED) drag_free_offer(w);
 }
 
 int
@@ -1103,7 +1108,7 @@ drag_free_data(Window *w, const char *mime_type, const char* data, size_t sz) {
 const char*
 drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
     *err_code = ENOENT; *sz = 0;
-    if (!ds.items) return NULL;
+    if (!ds.items || ds.state < DRAG_SOURCE_DROPPED) return NULL;
     for (size_t i = 0; i < ds.num_mimes; i++) {
         if (strcmp(ds.items[i].mime_type, mime_type) == 0) {
             if (ds.items[i].fd_plus_one < 0) {
@@ -1186,7 +1191,10 @@ open_item_tmpfile(void) {
 
 void
 drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *payload, size_t payload_sz) {
-    if ((ds.state != DRAG_SOURCE_STARTED && ds.state != DRAG_SOURCE_DROPPED) || idx >= ds.num_mimes || !ds.items) return;
+    if ((ds.state < DRAG_SOURCE_DROPPED) || idx >= ds.num_mimes || !ds.items) {
+        abrt(EINVAL);
+        return;
+    }
 
     if (has_more < 0) {
         // Error from the client program
