@@ -20,10 +20,13 @@
 
 static const size_t MIME_LIST_SIZE_CAP = 1024 * 1024;
 static const size_t PRESENT_DATA_CAP = 64 * 1024 * 1024;
+#define DROP_REQUEST_QUEUE_CAP 128
 
 // In test mode, this callable is invoked instead of schedule_write_to_child_if_possible.
 // It receives (window_id: int, data: bytes) and its return value is ignored.
 static PyObject *g_dnd_test_write_func = NULL;
+static void drop_process_queue(Window *w);
+static void drop_pop_request(Window *w);
 
 static const char*
 machine_id(void) {
@@ -110,6 +113,14 @@ drop_close_file_fd(Window *w) {
     }
 }
 
+static void
+drop_free_request_queue(Window *w) {
+    for (size_t i = 0; i < w->drop.num_data_requests; i++)
+        free(w->drop.data_requests[i].payload);
+    w->drop.num_data_requests = 0;
+    w->drop.current_request_id = 0;
+}
+
 void
 drop_free_data(Window *w) {
     drop_close_file_fd(w);
@@ -120,6 +131,7 @@ drop_free_data(Window *w) {
     free(w->drop.uri_list); w->drop.uri_list = NULL;
     free(w->drop.getting_data_for_mime); w->drop.getting_data_for_mime = NULL;
     drop_free_dir_handles(w);
+    drop_free_request_queue(w);
 }
 
 static void
@@ -404,6 +416,8 @@ drop_send_error(Window *w, int error_code) {
     char buf[128];
     const char *e = get_errno_name(error_code);
     int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=R", DND_CODE);
+    if (w->drop.current_request_id)
+        header_size += snprintf(buf + header_size, sizeof(buf) - header_size, ":r=%u", (unsigned)w->drop.current_request_id);
     queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, e, strlen(e), false);
 }
 
@@ -412,29 +426,42 @@ drop_send_einval(Window *w) {
     drop_send_error(w, EINVAL);
 }
 
-void
-drop_request_data(Window *w, const char *mime) {
+/* Returns true if the request completed synchronously (error, no-op),
+ * false if an async OS data fetch was started. */
+static bool
+do_drop_request_data(Window *w, const char *mime) {
     if (w->drop.getting_data_for_mime) { free(w->drop.getting_data_for_mime); w->drop.getting_data_for_mime = NULL; }
     OSWindow *osw = os_window_for_kitty_window(w->id);
-    if (!osw) return;
+    if (!osw) return true;
     if (w->drop.offerred_mimes) {
         for (size_t i = 0; i < w->drop.num_offerred_mimes; i++) {
             if (strcmp(mime, w->drop.offerred_mimes[i]) == 0) {
                 w->drop.getting_data_for_mime = strdup(mime);
                 if (w->drop.getting_data_for_mime) request_drop_data(osw, w->id, mime);
-                return;
+                return false; /* async: completion via drop_dispatch_data */
             }
         }
     }
     drop_send_error(w, ENOENT);
+    return true;
+}
+
+void
+drop_request_data(Window *w, const char *mime) {
+    do_drop_request_data(w, mime);
 }
 
 void
 drop_dispatch_data(Window *w, const char *mime, const char *data, ssize_t sz) {
-    if (sz < 0) drop_send_error(w, -sz);
-    else {
+    if (sz < 0) {
+        drop_send_error(w, -sz);
+        drop_pop_request(w);
+        drop_process_queue(w);
+    } else {
         char buf[128];
         int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=r", DND_CODE);
+        if (w->drop.current_request_id)
+            header_size += snprintf(buf + header_size, sizeof(buf) - header_size, ":r=%u", (unsigned)w->drop.current_request_id);
         queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, sz ? data : NULL, sz, true);
         if (strcmp(mime, "text/uri-list") == 0) {
             w->drop.uri_list_sz += sz;
@@ -442,6 +469,7 @@ drop_dispatch_data(Window *w, const char *mime, const char *data, ssize_t sz) {
             if (w->drop.uri_list) memcpy(w->drop.uri_list + w->drop.uri_list_sz - sz, data, sz);
             else w->drop.uri_list_sz = 0;
         }
+        if (sz == 0) { drop_pop_request(w); drop_process_queue(w); }
     }
 }
 
@@ -543,6 +571,8 @@ static void
 drop_send_error_str(Window *w, const char *err_name) {
     char buf[128];
     int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=R", DND_CODE);
+    if (w->drop.current_request_id)
+        header_size += snprintf(buf + header_size, sizeof(buf) - header_size, ":r=%u", (unsigned)w->drop.current_request_id);
     queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, err_name, strlen(err_name), false);
 }
 
@@ -562,6 +592,8 @@ file_send_timer_callback(id_type timer_id UNUSED, void *x) {
     if (monotonic() - w->drop.last_file_send_at > s_to_monotonic_t(FILE_SEND_TIMEOUT_SECONDS)) {
         drop_close_file_fd(w);
         drop_send_error(w, EIO);
+        drop_pop_request(w);
+        drop_process_queue(w);
         return;
     }
     drop_send_file_chunks(w);
@@ -575,6 +607,8 @@ drop_send_file_chunks(Window *w) {
     }
     char hdr[128];
     int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r", DND_CODE);
+    if (w->drop.current_request_id)
+        hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":r=%u", (unsigned)w->drop.current_request_id);
     while (1) {
         char buf[FILE_CHUNK_SIZE];
         ssize_t n;
@@ -587,12 +621,16 @@ drop_send_file_chunks(Window *w) {
             }
             drop_close_file_fd(w);
             drop_send_error(w, EIO);
+            drop_pop_request(w);
+            drop_process_queue(w);
             return;
         }
         if (n == 0) {
             /* EOF: close fd and send the empty end-of-data signal */
             drop_close_file_fd(w);
             queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
+            drop_pop_request(w);
+            drop_process_queue(w);
             return;
         }
         size_t sent = send_payload_to_child(w->id, w->drop.client_id, hdr, hdr_sz, buf, (size_t)n, true);
@@ -602,6 +640,8 @@ drop_send_file_chunks(Window *w) {
             if (lseek(w->drop.file_fd_plus_one - 1, -(off_t)(((size_t)n) - sent), SEEK_CUR) < 0) {
                 drop_close_file_fd(w);
                 drop_send_error(w, EIO);
+                drop_pop_request(w);
+                drop_process_queue(w);
                 return;
             }
             w->drop.file_send_timer = add_main_loop_timer(ms_to_monotonic_t(20), false, file_send_timer_callback, (void*)(uintptr_t)w->id, NULL);
@@ -612,8 +652,9 @@ drop_send_file_chunks(Window *w) {
 }
 
 /* Open a regular file and begin sending its contents as t=r chunks followed
- * by an empty end-of-data t=r, using chunked I/O to avoid large allocations. */
-static void
+ * by an empty end-of-data t=r, using chunked I/O to avoid large allocations.
+ * Returns true if completed synchronously (error), false if async I/O started. */
+static bool
 drop_send_file_data(Window *w, const char *path) {
     drop_close_file_fd(w);
     int fd = safe_open(path, O_RDONLY | O_CLOEXEC | O_NONBLOCK, 0);
@@ -623,7 +664,7 @@ drop_send_file_data(Window *w, const char *path) {
             case EACCES: case EPERM:   drop_send_error(w, EPERM); break;
             default:                   drop_send_error(w, EIO); break;
         }
-        return;
+        return true;
     }
     struct stat st;
     if (fstat(fd, &st) < 0) {
@@ -633,12 +674,13 @@ drop_send_file_data(Window *w, const char *path) {
             default:                   drop_send_error(w, EIO); break;
         }
         safe_close(fd, __FILE__, __LINE__);
-        return;
+        return true;
     }
-    if (!S_ISREG(st.st_mode)) { drop_send_error(w, EINVAL); safe_close(fd, __FILE__, __LINE__); return; }
+    if (!S_ISREG(st.st_mode)) { drop_send_error(w, EINVAL); safe_close(fd, __FILE__, __LINE__); return true; }
     w->drop.file_fd_plus_one = fd + 1;
     w->drop.last_file_send_at = monotonic();
     drop_send_file_chunks(w);
+    return false; /* async: completion via drop_send_file_chunks */
 }
 
 /* Allocate a new DirHandle for the given path and entries (takes ownership of
@@ -760,6 +802,8 @@ drop_send_dir_listing(Window *w, const char *path) {
 
     char hdr[128];
     int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=d:x=%u", DND_CODE, (unsigned)handle_id);
+    if (w->drop.current_request_id)
+        hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":r=%u", (unsigned)w->drop.current_request_id);
     /* payload_sz includes a trailing null; omit it – the null-separated format
      * does not require a trailing null after the last entry. */
     size_t send_sz = payload_sz > 0 ? payload_sz - 1 : 0;
@@ -770,41 +814,42 @@ drop_send_dir_listing(Window *w, const char *path) {
     queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
 }
 
-/* Handle a t=s request: send the file/directory at URI-list index idx. */
-void
-drop_request_uri_data(Window *w, const char *payload, size_t payload_sz) {
+/* Handle a t=s request: send the file/directory at URI-list index idx.
+ * Returns true if completed synchronously, false if async file I/O started. */
+static bool
+do_drop_request_uri_data(Window *w, const char *payload, size_t payload_sz) {
     if (!w->drop.uri_list || !w->drop.uri_list_sz) {
-        drop_send_error(w, EINVAL); return;
+        drop_send_error(w, EINVAL); return true;
     }
     if (global_state.drag_source.from_window == w->id && w->drag_source.state != DRAG_SOURCE_NONE) {
-        drop_send_error(w, EPERM); return;
+        drop_send_error(w, EPERM); return true;
     }
 
     /* Payload format: "text/uri-list:idx" */
     const char *colon = memchr(payload, ':', payload_sz);
-    if (!colon) { drop_send_error(w, EINVAL); return; }
+    if (!colon) { drop_send_error(w, EINVAL); return true; }
 
     size_t mime_len = (size_t)(colon - payload);
     if (mime_len != 13 || strncmp(payload, "text/uri-list", 13) != 0) {
-        drop_send_error(w, EINVAL); return;
+        drop_send_error(w, EINVAL); return true;
     }
 
     const char *idx_str = colon + 1;
     size_t idx_len = payload_sz - mime_len - 1;
     char idx_buf[32];
-    if (!idx_len || idx_len >= sizeof(idx_buf)) { drop_send_error(w, EINVAL); return; }
+    if (!idx_len || idx_len >= sizeof(idx_buf)) { drop_send_error(w, EINVAL); return true; }
     memcpy(idx_buf, idx_str, idx_len);
     idx_buf[idx_len] = 0;
 
     char *endp;
     long idx = strtol(idx_buf, &endp, 10);
-    if (endp == idx_buf || *endp != 0 || idx < 0) { drop_send_error(w, EINVAL); return; }
+    if (endp == idx_buf || *endp != 0 || idx < 0) { drop_send_error(w, EINVAL); return true; }
 
     char *path = NULL;
     const char *err = NULL;
     if (!get_nth_file_url(w->drop.uri_list, w->drop.uri_list_sz, (int)idx, &path, &err)) {
         drop_send_error_str(w, err);
-        return;
+        return true;
     }
 
     struct stat st;
@@ -815,44 +860,54 @@ drop_request_uri_data(Window *w, const char *payload, size_t payload_sz) {
             case EACCES: case EPERM:   drop_send_error(w, EPERM); break;
             default:                   drop_send_error(w, EIO); break;
         }
-        return;
+        return true;
     }
 
+    bool sync;
     if (S_ISDIR(st.st_mode)) {
         drop_send_dir_listing(w, path);
+        sync = true;
     } else if (S_ISREG(st.st_mode)) {
-        drop_send_file_data(w, path);
+        sync = drop_send_file_data(w, path);
     } else {
         drop_send_error(w, EINVAL);
+        sync = true;
     }
     free(path);
+    return sync;
+}
+
+void
+drop_request_uri_data(Window *w, const char *payload, size_t payload_sz) {
+    do_drop_request_uri_data(w, payload, payload_sz);
 }
 
 /* Handle a t=d request from the client.
  * handle_id: the directory handle (x= key).
- * entry_num: 0 means close the handle; >=1 means read that entry (1-based). */
-void
-drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num) {
-    if (!handle_id) { drop_send_error(w, EINVAL); return; }
+ * entry_num: 0 means close the handle; >=1 means read that entry (1-based).
+ * Returns true if completed synchronously, false if async file I/O started. */
+static bool
+do_drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num) {
+    if (!handle_id) { drop_send_error(w, EINVAL); return true; }
 
     DirHandle *h = drop_find_dir_handle(w, handle_id);
-    if (!h) { drop_send_error(w, EINVAL); return; }
+    if (!h) { drop_send_error(w, EINVAL); return true; }
 
     if (entry_num == 0) {
         /* Close the handle */
         size_t hidx = (size_t)(h - w->drop.dir_handles);
         drop_free_dir_handle(h);
         remove_i_from_array(w->drop.dir_handles, hidx, w->drop.num_dir_handles);
-        return;
+        return true;
     }
 
     /* Read the entry at 1-based index */
     size_t eidx = (size_t)(entry_num - 1);
-    if (eidx >= h->num_entries) { drop_send_error(w, ENOENT); return; }
+    if (eidx >= h->num_entries) { drop_send_error(w, ENOENT); return true; }
 
     char full[PATH_MAX];
     if (snprintf(full, sizeof(full), "%s/%s", h->path, h->entries[eidx]) >= (int)sizeof(full)) {
-        drop_send_error(w, EIO); return;
+        drop_send_error(w, EIO); return true;
     }
 
     struct stat st;
@@ -862,16 +917,120 @@ drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num) {
             case EACCES: case EPERM:               drop_send_error(w, EPERM); break;
             default:                               drop_send_error(w, EIO); break;
         }
-        return;
+        return true;
     }
 
     if (S_ISDIR(st.st_mode)) {
         drop_send_dir_listing(w, full);
+        return true;
     } else if (S_ISREG(st.st_mode)) {
-        drop_send_file_data(w, full);
+        return drop_send_file_data(w, full);
     } else {
         drop_send_error(w, EINVAL);
+        return true;
     }
+}
+
+void
+drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num) {
+    do_drop_handle_dir_request(w, handle_id, entry_num);
+}
+
+/* --- Request queue management --- */
+
+/* Pop the head of the queue (the request that just completed). */
+static void
+drop_pop_request(Window *w) {
+    if (w->drop.num_data_requests == 0) return;
+    free(w->drop.data_requests[0].payload);
+    w->drop.num_data_requests--;
+    if (w->drop.num_data_requests > 0) {
+        memmove(w->drop.data_requests, w->drop.data_requests + 1,
+                w->drop.num_data_requests * sizeof(w->drop.data_requests[0]));
+    }
+    w->drop.current_request_id = 0;
+}
+
+/* Process queued requests in FIFO order.
+ * Must be called after popping a completed request, or after enqueuing
+ * the first request into an empty queue. */
+static void
+drop_process_queue(Window *w) {
+    while (w->drop.num_data_requests > 0) {
+        w->drop.current_request_id = w->drop.data_requests[0].request_id;
+        char type = w->drop.data_requests[0].type;
+        bool sync = true;
+        switch (type) {
+            case 'r':
+                if (w->drop.data_requests[0].payload && w->drop.data_requests[0].payload_sz > 0)
+                    sync = do_drop_request_data(w, w->drop.data_requests[0].payload);
+                else {
+                    /* finish: empty t=r */
+                    drop_pop_request(w);
+                    drop_close_file_fd(w);
+                    drop_free_request_queue(w);
+                    drop_finish(w);
+                    return;
+                }
+                break;
+            case 's':
+                sync = do_drop_request_uri_data(w, w->drop.data_requests[0].payload, w->drop.data_requests[0].payload_sz);
+                break;
+            case 'd':
+                sync = do_drop_handle_dir_request(w, (uint32_t)w->drop.data_requests[0].cell_x, w->drop.data_requests[0].cell_y);
+                break;
+            default:
+                break;
+        }
+        if (sync) {
+            drop_pop_request(w);
+            /* Loop continues to process next request */
+        } else {
+            /* Async operation in progress; completion will call drop_process_queue */
+            return;
+        }
+    }
+}
+
+void
+drop_enqueue_request(Window *w, uint32_t request_id, char type, const char *payload, size_t payload_sz, int32_t cell_x, int32_t cell_y) {
+    /* Handle finish (empty t=r): if there are no in-flight requests, finish immediately */
+    if (type == 'r' && payload_sz == 0 && w->drop.num_data_requests == 0) {
+        drop_close_file_fd(w);
+        drop_finish(w);
+        return;
+    }
+
+    if (w->drop.num_data_requests >= DROP_REQUEST_QUEUE_CAP) {
+        /* Queue full: deny with EMFILE and end the drop */
+        uint32_t saved = w->drop.current_request_id;
+        w->drop.current_request_id = request_id;
+        drop_send_error(w, EMFILE);
+        w->drop.current_request_id = saved;
+        /* End the drop and clear the queue */
+        drop_close_file_fd(w);
+        drop_free_request_queue(w);
+        drop_finish(w);
+        return;
+    }
+
+    size_t idx = w->drop.num_data_requests;
+    w->drop.data_requests[idx].request_id = request_id;
+    w->drop.data_requests[idx].type = type;
+    w->drop.data_requests[idx].payload = NULL;
+    w->drop.data_requests[idx].payload_sz = 0;
+    w->drop.data_requests[idx].cell_x = cell_x;
+    w->drop.data_requests[idx].cell_y = cell_y;
+    if (payload && payload_sz > 0) {
+        w->drop.data_requests[idx].payload = malloc(payload_sz + 1);
+        if (!w->drop.data_requests[idx].payload) return;
+        memcpy(w->drop.data_requests[idx].payload, payload, payload_sz);
+        w->drop.data_requests[idx].payload[payload_sz] = 0;
+        w->drop.data_requests[idx].payload_sz = payload_sz;
+    }
+    bool was_empty = (w->drop.num_data_requests == 0);
+    w->drop.num_data_requests++;
+    if (was_empty) drop_process_queue(w);
 }
 
 void
