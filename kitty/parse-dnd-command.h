@@ -11,6 +11,7 @@ static inline void parse_dnd_code(PS *self, uint8_t *parser_buf,
   enum PARSER_STATES { KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE, PAYLOAD };
   enum PARSER_STATES state = KEY, value_state = FLAG;
   DnDCommand g = {0};
+  g.cell_y = -1;
   unsigned int i, code;
   uint64_t lcode;
   int64_t accumulator;

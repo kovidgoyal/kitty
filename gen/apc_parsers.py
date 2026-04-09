@@ -114,6 +114,7 @@ def generate(
     payload_is_base64: bool = True,
     start_parsing_at: int = 1,
     field_sep: str = ',',
+    post_init: str = '',
 ) -> str:
     type_map = resolve_keys(keymap)
     keys_enum = enum(keymap)
@@ -164,6 +165,7 @@ static inline void
     enum PARSER_STATES {{ KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE {payload} }};
     enum PARSER_STATES state = KEY, value_state = FLAG;
     {command_class} g = {{0}};
+    {post_init}
     unsigned int i, code;
     uint64_t lcode; int64_t accumulator;
     bool is_negative; (void)is_negative;
@@ -343,7 +345,7 @@ def parsers() -> None:
     }
     text = generate(
         'parse_dnd_code', 'screen_handle_dnd_command', 'dnd_command', keymap, 'DnDCommand',
-        payload_is_base64=False, start_parsing_at=0, field_sep=':')
+        payload_is_base64=False, start_parsing_at=0, field_sep=':', post_init='g.cell_y = -1;')
     write_header(text, 'kitty/parse-dnd-command.h')
 
 
