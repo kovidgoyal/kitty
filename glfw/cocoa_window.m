@@ -3419,6 +3419,7 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     NSWindow *window = w->ns.object;
     bool made_fullscreen = true;
     bool traditional = !(flags & 1);
+    bool ignore_safe_area_insets = flags & 2;
     NSWindowStyleMask sm = [window styleMask];
     if (traditional) {
         if (@available(macOS 10.15.7, *)) {
@@ -3438,12 +3439,14 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
                 [window setStyleMask: NSWindowStyleMaskBorderless];
                 [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
                 NSRect screenFrame = [window.screen frame];
-                if (@available(macOS 12.0, *)) {
-                    screenFrame.size.height -= window.screen.safeAreaInsets.top;
+                if (!ignore_safe_area_insets) {
+                    if (@available(macOS 12.0, *)) {
+                        screenFrame.size.height -= window.screen.safeAreaInsets.top;
+                    }
                 }
                 [window setFrame:screenFrame display:YES];
                 w->ns.in_traditional_fullscreen = true;
-                _glfwUpdateNotchCover(w);
+                if (!ignore_safe_area_insets) _glfwUpdateNotchCover(w);
             } else {
                 made_fullscreen = false;
                 if (sm & NSWindowStyleMaskFullScreen) {

@@ -2695,6 +2695,15 @@ pretty.
 '''
     )
 
+opt('macos_fullscreen_ignore_safe_area_insets', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+When using :opt:`macos_traditional_fullscreen`, ignore the safe area insets on
+displays such as MacBook screens with a notch. This allows kitty to use the
+full display frame instead of leaving space for the notch area.
+'''
+    )
+
 opt('macos_show_window_title_in', 'all',
     choices=('all', 'menubar', 'none', 'window'), ctype='window_title_in',
     long_text='''

@@ -386,6 +386,7 @@ option_names = (
     'macos_colorspace',
     'macos_custom_beam_cursor',
     'macos_dock_badge_on_bell',
+    'macos_fullscreen_ignore_safe_area_insets',
     'macos_hide_from_tasks',
     'macos_menubar_title_max_length',
     'macos_option_as_alt',
@@ -598,6 +599,7 @@ class Options:
     macos_colorspace: choices_for_macos_colorspace = 'srgb'
     macos_custom_beam_cursor: bool = False
     macos_dock_badge_on_bell: bool = True
+    macos_fullscreen_ignore_safe_area_insets: bool = False
     macos_hide_from_tasks: bool = False
     macos_menubar_title_max_length: int = 0
     macos_option_as_alt: int = 0

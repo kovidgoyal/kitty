@@ -1094,6 +1094,9 @@ class Parser:
     def macos_dock_badge_on_bell(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_dock_badge_on_bell'] = to_bool(val)
 
+    def macos_fullscreen_ignore_safe_area_insets(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['macos_fullscreen_ignore_safe_area_insets'] = to_bool(val)
+
     def macos_hide_from_tasks(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_hide_from_tasks'] = to_bool(val)
 
