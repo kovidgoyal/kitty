@@ -287,6 +287,16 @@ typedef struct Window {
         int file_fd_plus_one;           /* open file descriptor + 1 for chunked file send, 0 when none */
         monotonic_t last_file_send_at;  /* time of last successful file chunk write */
         id_type file_send_timer;        /* pending file-send retry timer, 0 = none */
+
+        struct {
+            uint32_t request_id;
+            char type;               /* 'r' = MIME data, 's' = URI data, 'd' = directory, 'f' = finish */
+            char *payload;           /* malloc'd copy of the MIME type / URI payload */
+            size_t payload_sz;
+            int32_t cell_x, cell_y;  /* for 'd' type: handle_id, entry_num */
+        } data_requests[128];
+        size_t num_data_requests;
+        uint32_t current_request_id;
     } drop;
     struct {
         bool can_offer;
