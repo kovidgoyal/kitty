@@ -44,6 +44,12 @@ typedef struct {
     size_t mmap_size;
 } BackgroundImage;
 
+typedef struct {
+    char **paths;
+    BackgroundImage **images;
+    unsigned int count;
+} BackgroundImageList;
+
 
 #ifdef GRAPHICS_INTERNAL_APIS
 typedef struct {

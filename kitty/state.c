@@ -1314,6 +1314,8 @@ PYWRAP1(update_tab_bar_edge_colors) {
     Py_RETURN_FALSE;
 }
 
+static uint32_t bgimage_id_counter = 0;
+
 static PyObject*
 pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     const char *path;
@@ -1340,7 +1342,6 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
             free(bgimage);
             return NULL;
         }
-        static uint32_t bgimage_id_counter = 0;
         bgimage->id = ++bgimage_id_counter;
         send_bgimage_to_gpu(layout, bgimage);
         bgimage->refcnt++;
@@ -1366,6 +1367,143 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     }
     if (bgimage) free_bgimage(&bgimage, true);
     Py_RETURN_NONE;
+}
+
+static void
+free_bg_image_list(bool release_textures) {
+    BackgroundImageList *list = &global_state.bg_image_list;
+    for (unsigned i = 0; i < list->count; i++) {
+        if (list->paths[i]) free(list->paths[i]);
+        if (list->images[i]) {
+            list->images[i]->refcnt = 1;
+            free_bgimage(&list->images[i], release_textures);
+        }
+    }
+    free(list->paths); list->paths = NULL;
+    free(list->images); list->images = NULL;
+    list->count = 0;
+}
+
+static PyObject*
+pyset_bg_image_paths(PyObject *self UNUSED, PyObject *args) {
+    PyObject *paths_list;
+    if (!PyArg_ParseTuple(args, "O!", &PyList_Type, &paths_list)) return NULL;
+
+    free_bg_image_list(true);
+
+    Py_ssize_t count = PyList_GET_SIZE(paths_list);
+    if (count == 0) Py_RETURN_NONE;
+
+    BackgroundImageList *list = &global_state.bg_image_list;
+    list->paths = calloc(count, sizeof(char*));
+    list->images = calloc(count, sizeof(BackgroundImage*));
+    if (!list->paths || !list->images) return PyErr_NoMemory();
+
+    for (Py_ssize_t i = 0; i < count; i++) {
+        const char *path = PyUnicode_AsUTF8(PyList_GET_ITEM(paths_list, i));
+        if (!path) continue;
+        list->paths[i] = strdup(path);
+        list->images[i] = NULL;  // lazy loaded
+    }
+    list->count = (unsigned int)count;
+
+    // Sync images[0] with the already-loaded global bgimage
+    if (global_state.bgimage && global_state.bgimage->texture_id) {
+        list->images[0] = global_state.bgimage;
+        global_state.bgimage->refcnt++;
+    }
+
+    Py_RETURN_NONE;
+}
+
+static BackgroundImage*
+load_bg_image_at_index(unsigned int idx) {
+    BackgroundImageList *list = &global_state.bg_image_list;
+    if (idx >= list->count) return NULL;
+
+    BackgroundImage *bgimage = calloc(1, sizeof(BackgroundImage));
+    if (!bgimage) return NULL;
+
+    if (!image_path_to_bitmap(list->paths[idx], &bgimage->bitmap, &bgimage->width, &bgimage->height, &bgimage->mmap_size)) {
+        free(bgimage);
+        // Remove failed entry from list
+        free(list->paths[idx]);
+        for (unsigned i = idx; i < list->count - 1; i++) {
+            list->paths[i] = list->paths[i + 1];
+            list->images[i] = list->images[i + 1];
+        }
+        list->count--;
+        return NULL;  // caller should retry with same index
+    }
+
+    bgimage->id = ++bgimage_id_counter;
+    send_bgimage_to_gpu(OPT(background_image_layout), bgimage);
+    bgimage->refcnt = 1;  // owned by list
+    list->images[idx] = bgimage;
+    return bgimage;
+}
+
+static PyObject*
+pychange_bg_image(PyObject *self UNUSED, PyObject *args) {
+    id_type os_window_id;
+    int value;
+    int is_delta;
+    if (!PyArg_ParseTuple(args, "Kip", &os_window_id, &value, &is_delta)) return NULL;
+
+    BackgroundImageList *list = &global_state.bg_image_list;
+    if (list->count == 0) Py_RETURN_FALSE;
+
+    bool success = false;
+    WITH_OS_WINDOW(os_window_id)
+        make_os_window_context_current(os_window);
+
+        int new_idx;
+        if (is_delta) {
+            int count = (int)list->count;
+            new_idx = ((os_window->bg_image_idx + value) % count + count) % count;
+        } else {
+            new_idx = value;
+            if (new_idx < 0) new_idx = 0;
+            if (new_idx >= (int)list->count) new_idx = (int)list->count - 1;
+        }
+
+        // Lazy load with retry on failure
+        int attempts = 0;
+        while (list->count > 0 && attempts < (int)list->count) {
+            if (new_idx >= (int)list->count) new_idx = 0;
+            if (list->images[new_idx]) break;
+            if (load_bg_image_at_index((unsigned int)new_idx)) break;
+            attempts++;
+        }
+
+        if (list->count > 0 && new_idx < (int)list->count && list->images[new_idx]) {
+            os_window->bg_image_idx = new_idx;
+
+            // Release old bgimage
+            if (os_window->bgimage) {
+                os_window->bgimage->refcnt--;
+                if (os_window->bgimage->refcnt == 0) {
+                    bool in_list = false;
+                    for (unsigned i = 0; i < list->count; i++) {
+                        if (list->images[i] == os_window->bgimage) { in_list = true; break; }
+                    }
+                    if (!in_list) {
+                        free_bgimage_bitmap(os_window->bgimage);
+                        free_texture(&os_window->bgimage->texture_id);
+                        free(os_window->bgimage);
+                    }
+                }
+            }
+
+            os_window->bgimage = list->images[new_idx];
+            os_window->bgimage->refcnt++;
+            os_window->render_calls = 0;
+            success = true;
+        }
+    END_WITH_OS_WINDOW
+
+    if (success) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
 }
 
 PYWRAP0(destroy_global_data) {
@@ -1676,6 +1814,8 @@ static PyMethodDef module_methods[] = {
     MW(set_os_window_pos, METH_VARARGS),
     MW(global_font_size, METH_VARARGS),
     {"set_background_image", (PyCFunction)(void (*) (void))pyset_background_image, METH_VARARGS | METH_KEYWORDS, ""},
+    {"set_bg_image_paths", (PyCFunction)pyset_bg_image_paths, METH_VARARGS, ""},
+    {"change_bg_image", (PyCFunction)pychange_bg_image, METH_VARARGS, ""},
     MW(os_window_font_size, METH_VARARGS),
     MW(set_os_window_size, METH_VARARGS),
     MW(get_os_window_size, METH_VARARGS),
@@ -1710,6 +1850,7 @@ finalize(void) {
     // the GPU driver should take care of it when the OpenGL context is
     // destroyed.
     free_bgimage(&global_state.bgimage, false);
+    free_bg_image_list(false);
     free_window_logo_table(&global_state.all_window_logos);
     global_state.bgimage = NULL;
     free_drag_source();

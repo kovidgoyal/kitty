@@ -79,8 +79,9 @@ failed, the command will exit with a success code.
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) != 1:
-            self.fatal('Must specify path to exactly one PNG image')
+            self.fatal('Must specify path to exactly one PNG image, or an index (+N, -N, N)')
         path = os.path.expanduser(args[0])
+        import re
         import secrets
         ret = {
             'match': opts.match,
@@ -89,6 +90,10 @@ failed, the command will exit with a success code.
             'all': opts.all,
             'stream_id': secrets.token_urlsafe(),
         }
+        # Handle index arguments (+N, -N, or N)
+        if re.match(r'^[+-]?\d+$', path):
+            ret['data'] = f'index:{path}'
+            return ret
         if path.lower() == 'none':
             ret['data'] = '-'
             return ret
@@ -112,6 +117,14 @@ failed, the command will exit with a success code.
         windows = self.windows_for_payload(boss, window, payload_get, window_match_name='match')
         os_windows = tuple({w.os_window_id for w in windows if w})
         layout = payload_get('layout')
+        if isinstance(data, str) and data.startswith('index:'):
+            from kitty.fast_data_types import change_bg_image
+            index_str = data[6:]
+            is_delta = index_str[0] in '+-'
+            value = int(index_str)
+            for osw_id in os_windows:
+                change_bg_image(osw_id, value, is_delta)
+            return None
         if data == '-':
             path = None
             tfile = BytesIO()

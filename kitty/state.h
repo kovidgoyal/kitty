@@ -394,6 +394,7 @@ typedef struct OSWindow {
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
     BackgroundImage *bgimage;
+    int bg_image_idx;
     struct {
         uint32_t framebuffer_id, attached_texture_generation;
     } indirect_output;
@@ -445,6 +446,7 @@ typedef struct GlobalState {
     id_type os_window_id_counter, tab_id_counter, window_id_counter;
     PyObject *boss;
     BackgroundImage *bgimage;
+    BackgroundImageList bg_image_list;
     OSWindow *os_windows;
     size_t num_os_windows, capacity;
     OSWindow *callback_os_window;

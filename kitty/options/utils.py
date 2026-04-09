@@ -177,6 +177,11 @@ def simple_parse(func: str, rest: str) -> FuncArgsType:
     return func, (rest,)
 
 
+@func_with_args('change_background_image')
+def parse_change_background_image(func: str, rest: str) -> FuncArgsType:
+    return func, (rest.strip() if rest.strip() else '+1',)
+
+
 @func_with_args('set_font_size')
 def float_parse(func: str, rest: str) -> FuncArgsType:
     return func, (float(rest),)

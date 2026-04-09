@@ -61,6 +61,7 @@ option_names = (
     'background_opacity',
     'background_tint',
     'background_tint_gaps',
+    'background_image_paths',
     'bell_border_color',
     'bell_on_tab',
     'bell_path',
@@ -534,6 +535,7 @@ class Options:
     background_opacity: float = 1.0
     background_tint: float = 0
     background_tint_gaps: float = 1.0
+    background_image_paths: tuple[str, ...] = ()
     bell_border_color: Color = Color(255, 90, 0)
     bell_on_tab: str = '🔔 '
     bell_path: str | None = None

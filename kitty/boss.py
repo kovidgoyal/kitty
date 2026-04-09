@@ -115,6 +115,8 @@ from .fast_data_types import (
     send_data_to_peer,
     set_application_quit_request,
     set_background_image,
+    set_bg_image_paths,
+    change_bg_image,
     set_boss,
     set_options,
     set_os_window_chrome,
@@ -1389,6 +1391,10 @@ class Boss:
                 self.launch_urls(*urls)
             else:
                 self.startup_first_child(first_os_window_id, startup_sessions=startup_sessions)
+
+        paths = getattr(get_options(), 'background_image_paths', ())
+        if paths:
+            set_bg_image_paths(list(paths))
 
         if get_options().update_check_interval > 0 and not self.update_check_started and getattr(sys, 'frozen', False):
             from .update_check import run_update_check
@@ -3139,6 +3145,9 @@ class Boss:
             set_background_image(opts.background_image, tuple(self.os_window_map), True, opts.background_image_layout)
         except Exception as e:
             log_error(f'Failed to set background image with error: {e}')
+        paths = getattr(opts, 'background_image_paths', ())
+        if paths:
+            set_bg_image_paths(list(paths))
         for tm in self.all_tab_managers:
             tm.apply_options()
         # Update colors
@@ -3540,6 +3549,19 @@ class Boss:
         linear_interpolation: bool | None = None, tint: float | None = None, tint_gaps: float | None = None
     ) -> None:
         set_background_image(path, os_windows, configured, layout, png_data, linear_interpolation, tint, tint_gaps)
+
+    @ac('misc', 'Change the background image from the list of images matched by the :opt:`background_image` glob pattern')
+    def change_background_image(self, delta: str = '+1') -> None:
+        aw = self.active_window
+        if aw is None:
+            return
+        try:
+            if delta[0] in '+-':
+                change_bg_image(aw.os_window_id, int(delta), True)
+            else:
+                change_bg_image(aw.os_window_id, int(delta), False)
+        except (ValueError, IndexError):
+            log_error(f'Invalid argument to change_background_image: {delta}')
 
     # Can be called with kitty -o "map f1 send_test_notification"
     def send_test_notification(self) -> None:

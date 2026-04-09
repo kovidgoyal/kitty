@@ -732,6 +732,14 @@ def set_background_image(
     pass
 
 
+def set_bg_image_paths(paths: list[str]) -> None:
+    pass
+
+
+def change_bg_image(os_window_id: int, value: int, is_delta: bool) -> bool:
+    pass
+
+
 def set_boss(boss: Boss) -> None:
     pass
 
