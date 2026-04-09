@@ -289,14 +289,11 @@ typedef struct Window {
         id_type file_send_timer;        /* pending file-send retry timer, 0 = none */
 
         struct {
-            uint32_t request_id;
-            char type;               /* 'r' = MIME data, 's' = URI data, 'd' = directory, 'f' = finish */
-            char *payload;           /* malloc'd copy of the MIME type / URI payload */
-            size_t payload_sz;
-            int32_t cell_x, cell_y;  /* for 'd' type: handle_id, entry_num */
+            int32_t cell_x, cell_y;  /* x= and y= keys from request */
+            int32_t pixel_y;         /* Y= key from request (dir handle) */
         } data_requests[128];
         size_t num_data_requests;
-        uint32_t current_request_id;
+        int32_t current_request_x, current_request_y, current_request_Y;
     } drop;
     struct {
         bool can_offer;
