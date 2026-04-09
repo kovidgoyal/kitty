@@ -1918,6 +1918,65 @@ class Window:
                 import traceback
                 traceback.print_exc()
 
+    def respawn_child(
+        self, cwd: str | None = None, argv: list[str] | None = None,
+        env: dict[str, str] | None = None, cwd_from: 'CwdRequest | None' = None,
+        hold: bool = False, hold_after_ssh: bool = False,
+    ) -> bool:
+        import signal
+
+        if not self.child or self.destroyed:
+            return False
+
+        # Fork new child process. The new child is blocked on
+        # terminal_ready_fd until mark_terminal_ready() is called during
+        # relayout, so it cannot produce output yet.
+        result = self.child.respawn(cwd=cwd, argv=argv, env=env, cwd_from=cwd_from,
+                                    hold=hold, hold_after_ssh=hold_after_ssh)
+        if result is None:
+            return False
+        old_pid, old_fd = result
+
+        # Redirect old_fd to the new child's pty via dup2.
+        # Safe because the new child is still blocked on terminal_ready_fd.
+        new_fd = self.child.child_fd
+        if new_fd != old_fd:
+            os.dup2(new_fd, old_fd)
+            os.close(new_fd)
+            self.child.child_fd = old_fd
+
+        # Now swap the screen in the child monitor.
+        cell_width, cell_height = cell_size_for_window(self.os_window_id)
+        opts = get_options()
+        self.screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
+        get_boss().child_monitor.replace_child(self.id, self.child.pid, old_fd, self.screen)
+
+        # Kill the old process group — matching the normal close path
+        # (hangup() in child-monitor.c uses killpg). Safe because
+        # replace_child already updated the pid, so mark_child_for_removal
+        # won't match.
+        with suppress(ProcessLookupError, OSError):
+            pgid = os.getpgid(old_pid)
+            os.killpg(pgid, signal.SIGHUP)
+
+        # Reset state so set_geometry will initialize the new child properly
+        self.needs_layout = True
+        self.child_is_launched = False
+        self.last_reported_pty_size = (-1, -1, -1, -1)
+        self._pause_resize_notifications_to_child = None
+        self.finish_scroll_animation()
+        self.kitten_result = None
+        self.kitten_result_processors = []
+        if hasattr(self, '_file_transmission'):
+            del self._file_transmission
+
+        # Trigger relayout to connect new screen to renderer
+        tab = self.tabref()
+        if tab is not None:
+            tab.relayout()
+
+        return True
+
     def destroy(self) -> None:
         self.call_watchers(self.watchers.on_close, {})
         self.destroyed = True

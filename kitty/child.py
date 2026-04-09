@@ -261,6 +261,7 @@ class Child:
         self.id = next(child_counter)
         self.add_listen_on_env_var = add_listen_on_env_var
         self.argv = list(argv)
+        self.argv_before_cwd_rewrite = list(argv)
         self.pass_fds = pass_fds
         self.remote_control_fd = remote_control_fd
         if cwd_from:
@@ -421,6 +422,71 @@ class Child:
             except OSError as err:
                 log_error("Could not move child process into a systemd scope: " + str(err))
         return pid
+
+    def respawn(
+        self, cwd: str | None = None, argv: list[str] | None = None,
+        env: dict[str, str] | None = None, cwd_from: 'CwdRequest | None' = None,
+        hold: bool = False, hold_after_ssh: bool = False,
+    ) -> tuple[int, int] | None:
+        """Respawn the child process with a new shell.
+
+        Args:
+            cwd: Working directory for the new process. If None, keeps previous cwd.
+            argv: Optional command to run (defaults to original argv)
+            env: Additional environment variables to merge into child env.
+            cwd_from: CwdRequest for resolving cwd. May rewrite argv for ssh kitten sessions.
+            hold: Keep window open after child exits.
+            hold_after_ssh: Keep window open after ssh session ends.
+
+        Returns:
+            A tuple of (old_pid, old_fd) on success, or None if failed.
+            The new child is blocked on terminal_ready_fd, so the caller
+            can safely dup2 and swap the screen before it produces output.
+        """
+        if not self.forked:
+            return None
+
+        old_pid = self.pid
+        old_fd = self.child_fd
+        old_id = self.id
+        self.forked = False
+
+        # Get a new id like a new Child would, so systemd scope name is unique
+        self.id = next(child_counter)
+
+        if argv is not None:
+            self.argv = list(argv)
+            self.argv_before_cwd_rewrite = list(argv)
+        else:
+            # Reset to pre-rewrite argv so modify_argv_for_launch_with_cwd
+            # starts from the original command, not a previously rewritten one
+            self.argv = list(self.argv_before_cwd_rewrite)
+        if env is not None:
+            self.env.update(env)
+        self.hold = hold
+
+        # Resolve cwd, rewriting argv for ssh sessions if needed
+        # (mirrors the logic in Child.__init__).
+        if cwd_from:
+            try:
+                resolved = cwd_from.modify_argv_for_launch_with_cwd(self.argv, self.env, hold_after_ssh=hold_after_ssh) or cwd or self.cwd
+            except Exception as err:
+                log_error(f'Failed to read cwd of {cwd_from} with error: {err}')
+                resolved = cwd or self.cwd
+            self.cwd = os.path.abspath(resolved)
+        else:
+            self.cwd = os.path.expandvars(os.path.expanduser(cwd or self.cwd))
+
+        new_pid = self.fork()
+        if new_pid is None:
+            # fork failed, restore state so the old child remains functional
+            self.forked = True
+            self.pid = old_pid
+            self.child_fd = old_fd
+            self.id = old_id
+            return None
+
+        return old_pid, old_fd
 
     def __del__(self) -> None:
         fd = getattr(self, 'terminal_ready_fd', -1)

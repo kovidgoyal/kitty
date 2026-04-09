@@ -168,6 +168,8 @@ Detailed list of changes
 0.47.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- A new action :ac:`respawn_window` to restart the shell in the currently active window without changing its position in the layout. Supports ``--cwd``, ``--env``, ``--hold``, and command arguments.
+
 - A new option :opt:`palette_generate` to automatically generate the 256 color palette from the first 16 colors (:pull:`9426`)
 
 - For builtin key mappings automatically :ref:`fallback <mapping-fallback>` to matching the US-PC layout key when the pressed key has no matches and is a non-English character (:pull:`9671`)

@@ -321,6 +321,49 @@ add_child(ChildMonitor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject *
+replace_child(ChildMonitor *self, PyObject *args) {
+#define replace_child_doc "replace_child(id, pid, fd, screen) -> Replace the child process for a window, updating pid/fd/screen. Used by respawn_window."
+    id_type id;
+    int pid, fd;
+    PyObject *screen;
+    if (!PyArg_ParseTuple(args, "kiiO", &id, &pid, &fd, &screen)) {
+        return NULL;
+    }
+    children_mutex(lock);
+    bool found = false;
+    for (size_t i = 0; i < self->count; i++) {
+        if (children[i].id == id) {
+            // Drain old screen's write buffer so stale input is not sent to new child
+            {
+                Screen *screen = children[i].screen;
+                screen_mutex(lock, write);
+                screen->write_buf_used = 0;
+                screen_mutex(unlock, write);
+            }
+
+            children[i].pid = pid;
+            children[i].fd = fd;
+            children_fds[EXTRA_FDS + i].fd = fd;
+            Py_DECREF(children[i].screen);
+            children[i].screen = (Screen*)screen;
+            Py_INCREF(screen);
+            // Clear removal flag: if the old child died before this call,
+            // needs_removal may already be set. Reset it so the window survives.
+            children[i].needs_removal = false;
+            found = true;
+            break;
+        }
+    }
+    children_mutex(unlock);
+    if (!found) {
+        PyErr_SetString(PyExc_KeyError, "Child with given id not found");
+        return NULL;
+    }
+    wakeup_io_loop(self, false);
+    Py_RETURN_NONE;
+}
+
 static const unsigned write_buf_limit = 100 * 1024 * 1024;
 
 #define schedule_write_to_child_generic(id, num, va_start, get_next_arg, va_end, found, too_much_data) \
@@ -2115,6 +2158,7 @@ send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz, bool is_a
 // Boilerplate {{{
 static PyMethodDef methods[] = {
     METHOD(add_child, METH_VARARGS)
+    METHOD(replace_child, METH_VARARGS)
     METHOD(inject_peer, METH_O)
     METHOD(needs_write, METH_VARARGS)
     METHOD(start, METH_NOARGS)

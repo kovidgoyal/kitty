@@ -3085,6 +3085,53 @@ class Boss:
             opts.next_to = opts.next_to or f'id:{self.window_for_dispatch.id}'
         launch(self, opts, args_)
 
+    @ac('win', '''
+Respawn the currently active window
+
+Restart the shell in the currently active window without changing its position
+in the layout. The terminal screen will be cleared and a new shell will start.
+Supports :code:`--cwd`, :code:`--env`, :code:`--hold`, and command arguments::
+
+    map f5 respawn_window
+    map ctrl+f5 respawn_window --cwd current
+    map shift+f5 respawn_window --cwd /some/path
+    map alt+f5 respawn_window --env FOO=bar /bin/zsh
+''')
+    def respawn_window(self, *args: str) -> None:
+        from kitty.launch import get_env, parse_launch_args
+        from kitty.window import CwdRequest, CwdRequestType
+
+        window = self.window_for_dispatch or self.active_window
+        if not window:
+            return
+
+        try:
+            opts, cmd_args = parse_launch_args(args)
+        except ValueError as e:
+            self.show_error(_('Invalid arguments'), str(e))
+            return
+
+        cwd: str | None = None
+        cwd_from: CwdRequest | None = None
+        if opts.cwd:
+            if opts.cwd == 'current':
+                cwd_from = CwdRequest(window)
+            elif opts.cwd == 'last_reported':
+                cwd_from = CwdRequest(window, CwdRequestType.last_reported)
+            elif opts.cwd == 'oldest':
+                cwd_from = CwdRequest(window, CwdRequestType.oldest)
+            elif opts.cwd == 'root':
+                cwd_from = CwdRequest(window, CwdRequestType.root)
+            else:
+                cwd = opts.cwd
+
+        env = get_env(opts, window.child) or None
+        argv = cmd_args or None
+
+        if not window.respawn_child(cwd=cwd, argv=argv, env=env, cwd_from=cwd_from,
+                                    hold=opts.hold, hold_after_ssh=opts.hold_after_ssh):
+            self.show_error(_('Respawn failed'), _('Failed to respawn window'))
+
     @ac('tab', 'Move the active tab forward. You can also use drag and drop to re-arrange tabs.')
     def move_tab_forward(self) -> None:
         tm = self.active_tab_manager
