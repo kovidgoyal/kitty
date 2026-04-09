@@ -951,6 +951,13 @@ drop_pop_request(Window *w) {
     w->drop.current_request_id = 0;
 }
 
+static void
+drop_finish_and_clear_queue(Window *w) {
+    drop_close_file_fd(w);
+    drop_free_request_queue(w);
+    drop_finish(w);
+}
+
 /* Process queued requests in FIFO order.
  * Must be called after popping a completed request, or after enqueuing
  * the first request into an empty queue. */
@@ -967,9 +974,7 @@ drop_process_queue(Window *w) {
                 else {
                     /* finish: empty t=r */
                     drop_pop_request(w);
-                    drop_close_file_fd(w);
-                    drop_free_request_queue(w);
-                    drop_finish(w);
+                    drop_finish_and_clear_queue(w);
                     return;
                 }
                 break;
@@ -996,8 +1001,7 @@ void
 drop_enqueue_request(Window *w, uint32_t request_id, char type, const char *payload, size_t payload_sz, int32_t cell_x, int32_t cell_y) {
     /* Handle finish (empty t=r): if there are no in-flight requests, finish immediately */
     if (type == 'r' && payload_sz == 0 && w->drop.num_data_requests == 0) {
-        drop_close_file_fd(w);
-        drop_finish(w);
+        drop_finish_and_clear_queue(w);
         return;
     }
 
@@ -1007,10 +1011,7 @@ drop_enqueue_request(Window *w, uint32_t request_id, char type, const char *payl
         w->drop.current_request_id = request_id;
         drop_send_error(w, EMFILE);
         w->drop.current_request_id = saved;
-        /* End the drop and clear the queue */
-        drop_close_file_fd(w);
-        drop_free_request_queue(w);
-        drop_finish(w);
+        drop_finish_and_clear_queue(w);
         return;
     }
 
@@ -1023,7 +1024,13 @@ drop_enqueue_request(Window *w, uint32_t request_id, char type, const char *payl
     w->drop.data_requests[idx].cell_y = cell_y;
     if (payload && payload_sz > 0) {
         w->drop.data_requests[idx].payload = malloc(payload_sz + 1);
-        if (!w->drop.data_requests[idx].payload) return;
+        if (!w->drop.data_requests[idx].payload) {
+            uint32_t saved = w->drop.current_request_id;
+            w->drop.current_request_id = request_id;
+            drop_send_error(w, ENOMEM);
+            w->drop.current_request_id = saved;
+            return;
+        }
         memcpy(w->drop.data_requests[idx].payload, payload, payload_sz);
         w->drop.data_requests[idx].payload[payload_sz] = 0;
         w->drop.data_requests[idx].payload_sz = payload_sz;
