@@ -62,13 +62,6 @@ type Loop struct {
 	// Queried capabilities from terminal
 	TerminalCapabilities TerminalCapabilities
 
-	// Set this to true to avoid doing a query response loop to the terminal at
-	// exit. This loop is needed for most kittens to ensure that in-flight
-	// responses such as in-band resize notifications, color queries, kitty
-	// keyboard events, etc. are not leaked to the shell. For some special
-	// purpose uses of the loop, this is not appropriate, hence this setting.
-	NoRoundtripToTerminalOnExit bool
-
 	// Suspend the loop restoring terminal state, and run the provided function. When it returns terminal state is
 	// put back to what it was before suspending unless the function returns an error or an error occurs saving/restoring state.
 	SuspendAndRun func(func() error) error
@@ -147,10 +140,9 @@ func New(options ...func(self *Loop)) (*Loop, error) {
 func NewForSimpleInteraction() (*Loop, error) {
 	lp, err := New(
 		NoAlternateScreen, NoRestoreColors, NoMouseTracking, NoInBandResizeNotifications,
-		NoFocusTracking, NoKeyboardStateChange,
+		NoFocusTracking, NoKeyboardStateChange, NoRoundtripToTerminalOnExit,
 	)
 	if err == nil {
-		lp.NoRoundtripToTerminalOnExit = true
 		lp.terminal_options.color_scheme_change_notification = false
 	}
 	return lp, err
@@ -175,6 +167,15 @@ func (self *Loop) NoAlternateScreen() *Loop {
 
 func NoAlternateScreen(self *Loop) {
 	self.terminal_options.Alternate_screen = false
+}
+
+func (self *Loop) NoRoundtripToTerminalOnExit() *Loop {
+	self.terminal_options.roundtrip_on_exit = false
+	return self
+}
+
+func NoRoundtripToTerminalOnExit(self *Loop) {
+	self.terminal_options.roundtrip_on_exit = false
 }
 
 func (self *Loop) OnlyDisambiguateKeys() *Loop {

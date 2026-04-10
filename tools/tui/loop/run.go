@@ -30,6 +30,7 @@ func new_loop() *Loop {
 	l.terminal_options.in_band_resize_notification = true
 	l.terminal_options.color_scheme_change_notification = false
 	l.terminal_options.kitty_keyboard_mode = DISAMBIGUATE_KEYS | REPORT_ALTERNATE_KEYS | REPORT_ALL_KEYS_AS_ESCAPE_CODES | REPORT_TEXT_WITH_KEYS
+	l.terminal_options.roundtrip_on_exit = true
 	l.escape_code_parser.HandleCSI = l.handle_csi
 	l.escape_code_parser.HandleOSC = l.handle_osc
 	l.escape_code_parser.HandleDCS = l.handle_dcs
@@ -452,7 +453,7 @@ func (self *Loop) run() (err error) {
 		case <-tty_leftover_read_channel:
 		default:
 		}
-		if !self.NoRoundtripToTerminalOnExit {
+		if self.terminal_options.roundtrip_on_exit {
 			// ensure that any terminal responses such as kitty keyboard events,
 			// color scheme changes, in-band resize notifications, etc. do not
 			// bleed into the shell.

@@ -33,7 +33,7 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 	}
 	if io_data.on_key_event != nil {
 		lp.FullKeyboardProtocol()
-		lp.NoRoundtripToTerminalOnExit = false
+		lp.NoRoundtripToTerminalOnExit()
 	} else {
 		lp.NoKeyboardStateChange()
 	}

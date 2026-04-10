@@ -106,6 +106,12 @@ type TerminalStateOptions struct {
 	in_band_resize_notification      bool
 	focus_tracking                   bool
 	color_scheme_change_notification bool
+	// Set this to true to avoid doing a query response loop to the terminal at
+	// exit. This loop is needed for most kittens to ensure that in-flight
+	// responses such as in-band resize notifications, color queries, kitty
+	// keyboard events, etc. are not leaked to the shell. For some special
+	// purpose uses of the loop, this is not appropriate, hence this setting.
+	roundtrip_on_exit bool
 }
 
 func set_modes(sb *strings.Builder, modes ...Mode) {
