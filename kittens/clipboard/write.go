@@ -43,11 +43,10 @@ func (self *Input) has_mime_matching(predicate func(string) bool) bool {
 }
 
 func write_loop(inputs []*Input, opts *Options) (err error) {
-	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking, loop.NoInBandResizeNotifications, loop.NoFocusTracking)
+	lp, err := loop.NewForSimpleInteraction()
 	if err != nil {
 		return err
 	}
-	lp.NoRoundtripToTerminalOnExit = true
 	var waiting_for_write loop.IdType
 	var buf [4096]byte
 	aliases, aerr := parse_aliases(opts.Alias)

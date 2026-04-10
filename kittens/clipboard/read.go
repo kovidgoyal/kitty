@@ -286,11 +286,10 @@ func parse_aliases(raw []string) (map[string][]string, error) {
 }
 
 func run_get_loop(opts *Options, args []string) (err error) {
-	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking, loop.NoInBandResizeNotifications, loop.NoFocusTracking)
+	lp, err := loop.NewForSimpleInteraction()
 	if err != nil {
 		return err
 	}
-	lp.NoRoundtripToTerminalOnExit = true
 	var available_mimes []string
 	var wg sync.WaitGroup
 	var getting_data_for string

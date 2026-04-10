@@ -112,11 +112,10 @@ func (p *parsed_data) generate_chunks(callback func(string)) {
 }
 
 func (p *parsed_data) run_loop() (err error) {
-	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking, loop.NoInBandResizeNotifications, loop.NoFocusTracking)
+	lp, err := loop.NewForSimpleInteraction()
 	if err != nil {
 		return err
 	}
-	lp.NoRoundtripToTerminalOnExit = true
 	activated := -1
 	prefix := ESC_CODE_PREFIX + "i=" + p.identifier
 

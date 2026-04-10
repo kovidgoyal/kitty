@@ -110,11 +110,10 @@ func run_plain_text_loop(opts *Options) (err error) {
 			defer tempfile.Close()
 		}
 	}
-	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking, loop.NoInBandResizeNotifications)
+	lp, err := loop.NewForSimpleInteraction()
 	if err != nil {
 		return
 	}
-	lp.NoRoundtripToTerminalOnExit = true
 	dest := "c"
 	if opts.UsePrimary {
 		dest = "p"

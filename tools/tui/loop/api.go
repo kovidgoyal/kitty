@@ -141,6 +141,21 @@ func New(options ...func(self *Loop)) (*Loop, error) {
 	return l, nil
 }
 
+// Create a loop that does not change terminal state such as keyboard mode,
+// resize/focus notifications, mouse tracking, alternate screen etc. Useful
+// for special purpose kittens such as icat/clipboard/@ etc.
+func NewForSimpleInteraction() (*Loop, error) {
+	lp, err := New(
+		NoAlternateScreen, NoRestoreColors, NoMouseTracking, NoInBandResizeNotifications,
+		NoFocusTracking, NoKeyboardStateChange,
+	)
+	if err == nil {
+		lp.NoRoundtripToTerminalOnExit = true
+		lp.terminal_options.color_scheme_change_notification = false
+	}
+	return lp, err
+}
+
 func (self *Loop) AddTimer(interval time.Duration, repeats bool, callback TimerCallback) (IdType, error) {
 	return self.add_timer(interval, repeats, callback)
 }

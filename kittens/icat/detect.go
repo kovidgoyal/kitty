@@ -21,12 +21,11 @@ func DetectSupport(timeout time.Duration) (memory, files, direct bool, err error
 	temp_files_to_delete := make([]string, 0, 8)
 	shm_files_to_delete := make([]shm.MMap, 0, 8)
 	var direct_query_id, file_query_id, memory_query_id uint32
-	lp, e := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoMouseTracking, loop.NoInBandResizeNotifications, loop.NoFocusTracking)
+	lp, e := loop.NewForSimpleInteraction()
 	if e != nil {
 		err = e
 		return
 	}
-	lp.NoRoundtripToTerminalOnExit = true
 	print_error := func(format string, args ...any) {
 		lp.Println(fmt.Sprintf(format, args...))
 	}

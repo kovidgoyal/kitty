@@ -26,11 +26,10 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 			queries[i] = x
 		}
 	}
-	lp, err := loop.New(loop.NoAlternateScreen, loop.NoKeyboardStateChange, loop.NoMouseTracking, loop.NoRestoreColors, loop.NoInBandResizeNotifications, loop.NoFocusTracking)
+	lp, err := loop.NewForSimpleInteraction()
 	if err != nil {
 		return 1, err
 	}
-	lp.NoRoundtripToTerminalOnExit = true
 	timed_out := false
 	lp.OnInitialize = func() (string, error) {
 		lp.QueryTerminal(queries...)
