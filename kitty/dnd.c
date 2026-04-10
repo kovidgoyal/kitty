@@ -691,7 +691,9 @@ static uint32_t
 drop_alloc_dir_handle(Window *w, const char *path, char **entries, size_t num_entries) {
     ensure_space_for(&w->drop, dir_handles, DirHandle, w->drop.num_dir_handles + 1, dir_handles_capacity, 4, true);
     w->drop.next_dir_handle_id++;
-    if (w->drop.next_dir_handle_id == 0) w->drop.next_dir_handle_id = 1;
+    /* Handles 0 and 1 are reserved (0 = absent, 1 = symlink indicator), so
+     * valid directory handles must be >= 2. */
+    if (w->drop.next_dir_handle_id <= 1) w->drop.next_dir_handle_id = 2;
     DirHandle *h = &w->drop.dir_handles[w->drop.num_dir_handles++];
     zero_at_ptr(h);
     h->id = w->drop.next_dir_handle_id;
@@ -793,12 +795,14 @@ drop_send_dir_listing(Window *w, const char *path) {
 
     char hdr[128];
     int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r", DND_CODE);
-    /* For dir listings, echo the x and y keys from the request, then add Y=new_handle:X=2 */
-    if (w->drop.current_request_x)
-        hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":x=%d", (int)w->drop.current_request_x);
-    if (w->drop.current_request_y)
-        hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":y=%d", (int)w->drop.current_request_y);
-    hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":Y=%u:X=2", (unsigned)handle_id);
+    /* Echo all request keys (x, y, Y) so the client can unambiguously identify
+     * which filesystem object this listing corresponds to.  For top-level URI
+     * file requests Y is absent; for sub-dir reads Y holds the parent handle
+     * and x holds the 1-based entry index.  The new handle is X itself (a value
+     * > 1 distinguishes directories from regular files (X absent / X=0) and
+     * symlinks (X=1)). */
+    hdr_sz += drop_append_request_keys(w, hdr + hdr_sz, sizeof(hdr) - hdr_sz);
+    hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":X=%u", (unsigned)handle_id);
     /* payload_sz includes a trailing null; omit it – the null-separated format
      * does not require a trailing null after the last entry. */
     size_t send_sz = payload_sz > 0 ? payload_sz - 1 : 0;
