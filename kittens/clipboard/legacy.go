@@ -114,6 +114,7 @@ func run_plain_text_loop(opts *Options) (err error) {
 	if err != nil {
 		return
 	}
+	lp.NoRoundtripToTerminalOnExit = true
 	dest := "c"
 	if opts.UsePrimary {
 		dest = "p"

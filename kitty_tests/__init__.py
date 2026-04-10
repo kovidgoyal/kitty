@@ -145,7 +145,12 @@ class Callbacks:
         self.bell_count += 1
 
     def on_da1(self) -> None:
-        payload = da1(get_options())
+        opts = None
+        with suppress(RuntimeError):
+            opts = get_options()
+        if opts is None:
+            opts = defaults
+        payload = da1(opts)
         self.da1.append(payload)
         if self.pty and self.pty.needs_da1:
             self.pty.send_da1_response(payload)
@@ -331,7 +336,7 @@ class PTY:
 
     def __init__(
         self, argv=None, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20,
-        cwd=None, env=None, stdin_fd=None, stdout_fd=None, needs_da1=False,
+        cwd=None, env=None, stdin_fd=None, stdout_fd=None, needs_da1=True,
     ):
         self.is_child = False
         if isinstance(argv, str):

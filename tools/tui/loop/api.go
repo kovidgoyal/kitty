@@ -58,10 +58,16 @@ type Loop struct {
 	style_ctx                              style.Context
 	atomic_update_active                   bool
 	pointer_shapes                         []PointerShape
-	waiting_for_capabilities_response      bool
 
 	// Queried capabilities from terminal
 	TerminalCapabilities TerminalCapabilities
+
+	// Set this to true to avoid doing a query response loop to the terminal at
+	// exit. This loop is needed for most kittens to ensure that in-flight
+	// responses such as in-band resize notifications, color queries, kitty
+	// keyboard events, etc. are not leaked to the shell. For some special
+	// purpose uses of the loop, this is not appropriate, hence this setting.
+	NoRoundtripToTerminalOnExit bool
 
 	// Suspend the loop restoring terminal state, and run the provided function. When it returns terminal state is
 	// put back to what it was before suspending unless the function returns an error or an error occurs saving/restoring state.
@@ -333,7 +339,7 @@ func (self *Loop) Run() (err error) {
 			os.Stderr.WriteString(err.Error())
 			os.Stderr.WriteString("\n")
 			if is_terminal {
-				if term, err := tty.OpenControllingTerm(tty.SetRaw); err == nil {
+				if term, err := tty.OpenControllingTerm(tty.SetRaw); err != nil {
 					defer term.RestoreAndClose()
 					term.DebugPrintln(err.Error())
 					fmt.Println("Press any key to exit.\r")
@@ -568,12 +574,7 @@ func (self *Loop) CurrentPointerShape() (ans PointerShape, has_shape bool) {
 // callback will be called once the query response is received. This
 // function should be called as early as possible ideally in OnInitialize.
 func (self *Loop) QueryCapabilities() {
-	if !self.waiting_for_capabilities_response {
-		self.waiting_for_capabilities_response = true
-		self.StartAtomicUpdate()
-		self.QueueWriteString("\x1b[?u\x1b[?996n\x1b[c")
-		self.EndAtomicUpdate()
-	}
+	self.QueueWriteString("\x1b[?u\x1b[?996n\x1b[c")
 }
 
 type Alignment int

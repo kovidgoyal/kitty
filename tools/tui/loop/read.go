@@ -115,11 +115,17 @@ func has_da1_response(s string) bool {
 	return pat.FindString(s) != ""
 }
 
-func read_until_primary_device_attributes_response(term *tty.Term, initial_bytes []byte, timeout time.Duration) {
-	s := strings.Builder{}
-	if initial_bytes != nil {
-		s.Write(initial_bytes)
+func do_roundtrip_to_terminal(term *tty.Term, timeout time.Duration) {
+	// ask for primary device attributes
+	for {
+		if err := term.WriteAllString("\x1b[c"); err != nil && !is_temporary_error(err) {
+			return
+		} else {
+			break
+		}
 	}
+	s := strings.Builder{}
+	s.Grow(256)
 	received := make(chan error)
 	go func() {
 		defer func() {
@@ -128,17 +134,19 @@ func read_until_primary_device_attributes_response(term *tty.Term, initial_bytes
 				received <- fmt.Errorf("%s", text)
 			}
 		}()
-		buf := make([]byte, 1024)
-		n, err := read_ignoring_temporary_errors(term, buf)
-		if n > 0 {
-			s.Write(buf[:n])
-			if has_da1_response(s.String()) {
-				received <- nil
-				return
+		for {
+			buf := make([]byte, 1024)
+			n, err := read_ignoring_temporary_errors(term, buf)
+			if n > 0 {
+				s.Write(buf[:n])
+				if has_da1_response(s.String()) {
+					received <- nil
+					return
+				}
 			}
-		}
-		if err != nil {
-			received <- err
+			if err != nil {
+				received <- err
+			}
 		}
 	}()
 	select {

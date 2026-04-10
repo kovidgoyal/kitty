@@ -237,6 +237,8 @@ Detailed list of changes
 - A new option :opt:`macos_fullscreen_ignore_safe_area_insets` to control
   whether to ignore the notch space when using :opt:`macos_traditional_fullscreen` (:pull:`9841`)
 
+- Fix some responses from terminal sometimes leaking into shell on after kitten exit (:iss:`9839`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

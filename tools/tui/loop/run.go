@@ -87,38 +87,72 @@ func (self *Loop) update_screen_size() error {
 }
 
 func (self *Loop) handle_csi(raw []byte) (err error) {
+	if len(raw) == 0 {
+		return nil
+	}
 	csi := string(raw)
-	if strings.HasSuffix(csi, "t") && strings.HasPrefix(csi, "48;") {
-		if parts := strings.Split(csi[3:len(csi)-1], ";"); len(parts) > 3 {
-			var parsed [4]int
-			ok := true
-			for i, x := range parts {
-				x, _, _ = strings.Cut(x, ":")
-				if parsed[i], err = strconv.Atoi(x); err != nil {
-					ok = false
-					break
+	switch raw[len(raw)-1] {
+	case 't':
+		if strings.HasSuffix(csi, "t") {
+			if parts := strings.Split(csi[3:len(csi)-1], ";"); len(parts) > 3 {
+				var parsed [4]int
+				ok := true
+				for i, x := range parts {
+					x, _, _ = strings.Cut(x, ":")
+					if parsed[i], err = strconv.Atoi(x); err != nil {
+						ok = false
+						break
+					}
 				}
-			}
-			if ok {
-				self.seen_inband_resize = true
-				old_size := self.screen_size
-				s := &self.screen_size
-				s.updated = true
-				s.HeightCells, s.WidthCells = uint(parsed[0]), uint(parsed[1])
-				s.HeightPx, s.WidthPx = uint(parsed[2]), uint(parsed[3])
-				s.CellWidth = s.WidthPx / s.WidthCells
-				s.CellHeight = s.HeightPx / s.HeightCells
-				if self.OnResize != nil {
-					return self.OnResize(old_size, self.screen_size)
+				if ok {
+					self.seen_inband_resize = true
+					old_size := self.screen_size
+					s := &self.screen_size
+					s.updated = true
+					s.HeightCells, s.WidthCells = uint(parsed[0]), uint(parsed[1])
+					s.HeightPx, s.WidthPx = uint(parsed[2]), uint(parsed[3])
+					s.CellWidth = s.WidthPx / s.WidthCells
+					s.CellHeight = s.HeightPx / s.HeightCells
+					if self.OnResize != nil {
+						return self.OnResize(old_size, self.screen_size)
+					}
+					return nil
 				}
-				return nil
 			}
 		}
-	} else if csi == "I" || csi == "O" {
-		if self.OnFocusChange != nil {
-			return self.OnFocusChange(csi == "I")
+	case 'I', 'O':
+		if len(csi) == 1 {
+			if self.OnFocusChange != nil {
+				return self.OnFocusChange(csi == "I")
+			}
 		}
 		return nil
+	case 'c':
+		if strings.HasPrefix(csi, "?") {
+			if self.OnCapabilitiesReceived != nil {
+				if err = self.OnCapabilitiesReceived(self.TerminalCapabilities); err != nil {
+					return err
+				}
+			}
+		}
+	case 'u':
+		if strings.HasPrefix(csi, "?") {
+			self.TerminalCapabilities.KeyboardProtocol = true
+			self.TerminalCapabilities.KeyboardProtocolResponseReceived = true
+		}
+	case 'n':
+		if strings.HasPrefix(csi, "?997;") {
+			switch csi[len(csi)-2] {
+			case '1':
+				self.TerminalCapabilities.ColorPreference = DARK_COLOR_PREFERENCE
+			case '2':
+				self.TerminalCapabilities.ColorPreference = LIGHT_COLOR_PREFERENCE
+			}
+			self.TerminalCapabilities.ColorPreferenceResponseReceived = true
+			if self.OnColorSchemeChange != nil {
+				return self.OnColorSchemeChange(self.TerminalCapabilities.ColorPreference)
+			}
+		}
 	}
 	ke := KeyEventFromCSI(csi)
 	if ke != nil {
@@ -129,38 +163,6 @@ func (self *Loop) handle_csi(raw []byte) (err error) {
 		me := MouseEventFromCSI(csi, sz)
 		if me != nil {
 			return self.handle_mouse_event(me)
-		}
-	}
-	if self.waiting_for_capabilities_response {
-		if strings.HasPrefix(csi, "?") && strings.HasSuffix(csi, "c") {
-			self.waiting_for_capabilities_response = false
-			if self.OnCapabilitiesReceived != nil {
-				if err = self.OnCapabilitiesReceived(self.TerminalCapabilities); err != nil {
-					return err
-				}
-			}
-		} else if strings.HasPrefix(csi, "?997;") && strings.HasSuffix(csi, "n") {
-			switch csi[len(csi)-2] {
-			case '1':
-				self.TerminalCapabilities.ColorPreference = DARK_COLOR_PREFERENCE
-			case '2':
-				self.TerminalCapabilities.ColorPreference = LIGHT_COLOR_PREFERENCE
-			}
-			self.TerminalCapabilities.ColorPreferenceResponseReceived = true
-		} else if strings.HasPrefix(csi, "?") && strings.HasSuffix(csi, "u") {
-			self.TerminalCapabilities.KeyboardProtocol = true
-			self.TerminalCapabilities.KeyboardProtocolResponseReceived = true
-		}
-	} else if self.terminal_options.color_scheme_change_notification && strings.HasPrefix(csi, "?997;") && strings.HasSuffix(csi, "n") {
-		switch csi[len(csi)-2] {
-		case '1':
-			self.TerminalCapabilities.ColorPreference = DARK_COLOR_PREFERENCE
-		case '2':
-			self.TerminalCapabilities.ColorPreference = LIGHT_COLOR_PREFERENCE
-		}
-		self.TerminalCapabilities.ColorPreferenceResponseReceived = true
-		if self.OnColorSchemeChange != nil {
-			return self.OnColorSchemeChange(self.TerminalCapabilities.ColorPreference)
 		}
 	}
 	if self.OnEscapeCode != nil {
@@ -446,19 +448,16 @@ func (self *Loop) run() (err error) {
 		// wait for tty reader to exit cleanly
 		for range tty_read_channel {
 		}
-		if !self.waiting_for_capabilities_response {
-			close(tty_leftover_read_channel)
-			return
-		}
-		var pending_bytes []byte
 		select {
-		case msg, ok := <-tty_leftover_read_channel:
-			if ok {
-				pending_bytes = msg
-			}
+		case <-tty_leftover_read_channel:
 		default:
 		}
-		read_until_primary_device_attributes_response(controlling_term, pending_bytes, 2*time.Second)
+		if !self.NoRoundtripToTerminalOnExit {
+			// ensure that any terminal responses such as kitty keyboard events,
+			// color scheme changes, in-band resize notifications, etc. do not
+			// bleed into the shell.
+			do_roundtrip_to_terminal(controlling_term, 2*time.Second)
+		}
 	}
 
 	defer func() {

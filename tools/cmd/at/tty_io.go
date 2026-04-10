@@ -32,13 +32,14 @@ func do_chunked_io(io_data *rc_io_data) (serialized_response []byte, err error) 
 	// arrives, leading to the notification being sent to whatever is executed
 	// after us. Similarly no focus tracking.
 	lp, err := loop.New(loop.NoAlternateScreen, loop.NoRestoreColors, loop.NoInBandResizeNotifications, loop.NoFocusTracking)
+	if err != nil {
+		return
+	}
 	if io_data.on_key_event != nil {
 		lp.FullKeyboardProtocol()
 	} else {
 		lp.NoKeyboardStateChange()
-	}
-	if err != nil {
-		return
+		lp.NoRoundtripToTerminalOnExit = true
 	}
 
 	const (
