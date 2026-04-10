@@ -234,6 +234,9 @@ Detailed list of changes
 - Allow setting negative values for :opt:`inactive_text_alpha` to control
   whether to only fade inactive windows or unfocused windows (:pull:`9837`)
 
+- A new option :opt:`macos_fullscreen_ignore_safe_area_insets` to control
+  whether to ignore the notch space when using :opt:`macos_traditional_fullscreen` (:pull:`9841`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
