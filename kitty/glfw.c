@@ -10,6 +10,7 @@
 #include "dnd.h"
 #include "charsets.h"
 #include "control-codes.h"
+#include "safe-wrappers.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
 #ifdef __APPLE__
@@ -1048,6 +1049,92 @@ dnd_test_fake_drop_data(PyObject *self UNUSED, PyObject *args) {
         drop_dispatch_data(w, mime, NULL, 0);
     }
     Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_setup_remote_drag(PyObject *self UNUSED, PyObject *args) {
+    // Set up a drag source window in "waiting for t=k" state for testing.
+    // The caller provides the text/uri-list data (as raw bytes).
+    // This simulates: client offered mimes, drag started, drop happened,
+    // client sent text/uri-list data with Y=1 flag.
+    unsigned long long window_id;
+    RAII_PY_BUFFER(uri_data);
+    if (!PyArg_ParseTuple(args, "Ky*", &window_id, &uri_data)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
+
+    // Clean any existing drag state
+    drag_free_offer(w);
+
+    // Set up MIME list with text/uri-list
+    const char *mime = "text/uri-list";
+    size_t mime_len = strlen(mime);
+    w->drag_source.mimes_buf = malloc(mime_len + 1);
+    if (!w->drag_source.mimes_buf) return PyErr_NoMemory();
+    memcpy(w->drag_source.mimes_buf, mime, mime_len + 1);
+    w->drag_source.num_mimes = 1;
+
+    // Allocate items array
+    w->drag_source.items = calloc(1, sizeof(w->drag_source.items[0]));
+    if (!w->drag_source.items) { drag_free_offer(w); return PyErr_NoMemory(); }
+    w->drag_source.items[0].mime_type = w->drag_source.mimes_buf;
+
+    // Create temp file with uri-list data
+    w->drag_source.state = DRAG_SOURCE_DROPPED;
+
+    // Set up remote drag state
+    RemoteDrag *rd = &w->drag_source.remote_drag;
+    rd->active = true;
+    rd->waiting_for_k = true;
+    rd->uri_list_mime_idx = 0;
+    free(rd->uri_list_data);
+    rd->uri_list_data = malloc(uri_data.len + 1);
+    if (!rd->uri_list_data) { drag_free_offer(w); return PyErr_NoMemory(); }
+    memcpy(rd->uri_list_data, uri_data.buf, uri_data.len);
+    rd->uri_list_data[uri_data.len] = 0;
+    rd->uri_list_data_sz = (size_t)uri_data.len;
+
+    // Create the temp file for the uri-list MIME item
+    int fd = -1;
+#ifdef O_TMPFILE
+    fd = safe_open("/tmp", O_TMPFILE | O_CLOEXEC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+#endif
+    if (fd < 0) {
+        char name[] = "/tmp/kitty-dnd-test-XXXXXXXXXXXX";
+        fd = safe_mkstemp(name);
+        if (fd >= 0) unlink(name);
+    }
+    if (fd < 0) { drag_free_offer(w); PyErr_SetString(PyExc_OSError, "Cannot create temp file"); return NULL; }
+    w->drag_source.items[0].fd_plus_one = fd + 1;
+    w->drag_source.items[0].data_size = 0;
+    w->drag_source.items[0].data_capacity = 0;
+    w->drag_source.items[0].data_decode_initialized = false;
+
+    // Write the uri-list data to the temp file
+    size_t written = 0;
+    while (written < (size_t)uri_data.len) {
+        ssize_t n = write(fd, (const char*)uri_data.buf + written, (size_t)uri_data.len - written);
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            drag_free_offer(w); PyErr_SetString(PyExc_OSError, "Cannot write temp file"); return NULL;
+        }
+        written += (size_t)n;
+    }
+    w->drag_source.items[0].data_capacity = written;
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+dnd_test_get_remote_drag_temp_dir(PyObject *self UNUSED, PyObject *args) {
+    // Return the remote drag temp directory path for inspection.
+    unsigned long long window_id;
+    if (!PyArg_ParseTuple(args, "K", &window_id)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
+    RemoteDrag *rd = &w->drag_source.remote_drag;
+    if (!rd->temp_dir) Py_RETURN_NONE;
+    return PyUnicode_FromString(rd->temp_dir);
 }
 
 // }}}
@@ -3361,6 +3448,8 @@ static PyMethodDef module_methods[] = {
     METHODB(dnd_test_set_mouse_pos, METH_VARARGS),
     METHODB(dnd_test_fake_drop_event, METH_VARARGS),
     METHODB(dnd_test_fake_drop_data, METH_VARARGS),
+    METHODB(dnd_test_setup_remote_drag, METH_VARARGS),
+    METHODB(dnd_test_get_remote_drag_temp_dir, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

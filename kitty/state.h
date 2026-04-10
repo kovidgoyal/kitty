@@ -234,6 +234,42 @@ typedef struct DirHandle {
     uint32_t id;          /* handle id, 1-based; 0 = invalid */
 } DirHandle;
 
+/* Remote drag directory handle: maps a handle id to a local temp dir path */
+typedef struct RemoteDragDir {
+    uint32_t handle;      /* client-assigned directory handle id (>1) */
+    char *local_path;     /* full local temp dir path (malloc'd) */
+    char **entries;       /* array of entry names (each malloc'd) */
+    size_t num_entries;
+} RemoteDragDir;
+
+/* State for receiving files during a "drag to remote machine" operation. */
+typedef struct RemoteDrag {
+    bool active;                  /* whether we are receiving t=k data */
+    bool waiting_for_k;           /* true after uri-list received, waiting for t=k */
+    char *temp_dir;               /* base temp directory (malloc'd) */
+    size_t total_bytes;           /* total bytes written (cap enforced) */
+
+    /* Current receive state for chunked base64 data */
+    int fd_plus_one;              /* fd for file being written (0=none, >0=fd+1) */
+    base64_state b64;
+    bool b64_initialized;
+
+    /* Mapping from top-level URI indices to local paths */
+    struct { char *name; char *local_path; } *entries;
+    size_t num_entries;
+
+    /* Directory handles received from client */
+    RemoteDragDir *dirs;
+    size_t num_dirs, dirs_capacity;
+
+    /* Original uri-list data (buffered for rewriting) */
+    char *uri_list_data;
+    size_t uri_list_data_sz;
+
+    /* MIME index for text/uri-list (0-based into ds.items) */
+    size_t uri_list_mime_idx;
+} RemoteDrag;
+
 typedef enum { DRAG_SOURCE_NONE, DRAG_SOURCE_BEING_BUILT, DRAG_SOURCE_STARTED, DRAG_SOURCE_DROPPED } DragSourceState;
 
 typedef struct Window {
@@ -313,6 +349,7 @@ typedef struct Window {
         DragSourceState state;
         PendingData pending;
         uint32_t client_id;
+        RemoteDrag remote_drag;
     } drag_source;
 } Window;
 

@@ -35,3 +35,4 @@ void drag_notify(Window *w, DragNotifyType type);
 int drag_free_data(Window *w, const char *mime_type, const char* data, size_t sz);
 const char* drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code);
 void drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *payload, size_t payload_sz);
+void drag_receive_remote_data(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_x, int32_t pixel_y, unsigned more, const uint8_t *payload, size_t payload_sz);

@@ -1073,10 +1073,74 @@ drag_free_built_data(Window *w) {
     }
 }
 
+/* Recursively remove a directory and its contents (best effort). */
+static void
+remove_dir_recursive(const char *path) {
+    DIR *dir = opendir(path);
+    if (!dir) return;
+    struct dirent *de;
+    while ((de = readdir(dir)) != NULL) {
+        if (strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
+        char full[PATH_MAX];
+        if (snprintf(full, sizeof(full), "%s/%s", path, de->d_name) >= (int)sizeof(full)) continue;
+        struct stat st;
+        if (lstat(full, &st) < 0) continue;
+        if (S_ISDIR(st.st_mode)) remove_dir_recursive(full);
+        else unlink(full);
+    }
+    closedir(dir);
+    rmdir(path);
+}
+
+static void
+drag_free_remote_drag(Window *w) {
+    RemoteDrag *rd = &ds.remote_drag;
+    if (rd->fd_plus_one > 0) {
+        safe_close(rd->fd_plus_one - 1, __FILE__, __LINE__);
+        rd->fd_plus_one = 0;
+    }
+    if (rd->entries) {
+        for (size_t i = 0; i < rd->num_entries; i++) {
+            free(rd->entries[i].name);
+            free(rd->entries[i].local_path);
+        }
+        free(rd->entries);
+        rd->entries = NULL;
+    }
+    rd->num_entries = 0;
+    if (rd->dirs) {
+        for (size_t i = 0; i < rd->num_dirs; i++) {
+            free(rd->dirs[i].local_path);
+            if (rd->dirs[i].entries) {
+                for (size_t j = 0; j < rd->dirs[i].num_entries; j++)
+                    free(rd->dirs[i].entries[j]);
+                free(rd->dirs[i].entries);
+            }
+        }
+        free(rd->dirs);
+        rd->dirs = NULL;
+    }
+    rd->num_dirs = 0;
+    rd->dirs_capacity = 0;
+    free(rd->uri_list_data); rd->uri_list_data = NULL;
+    rd->uri_list_data_sz = 0;
+    if (rd->temp_dir) {
+        remove_dir_recursive(rd->temp_dir);
+        free(rd->temp_dir);
+        rd->temp_dir = NULL;
+    }
+    rd->active = false;
+    rd->waiting_for_k = false;
+    rd->total_bytes = 0;
+    rd->b64_initialized = false;
+    rd->uri_list_mime_idx = 0;
+}
+
 void
 drag_free_offer(Window *w) {
     free(ds.mimes_buf); ds.mimes_buf = NULL;
     drag_free_built_data(w);
+    drag_free_remote_drag(w);
     ds.allowed_operations = 0;
     ds.state = DRAG_SOURCE_NONE;
     ds.num_mimes = 0;
@@ -1349,6 +1413,12 @@ drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
             // No fd yet, request data from the client
             char buf[128];
             int header_sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=e:x=%d:y=%zu", DND_CODE, DRAG_NOTIFY_FINISHED + 2, i);
+            // For text/uri-list, add Y=1 to signal remote drag support
+            if (strcmp(mime_type, "text/uri-list") == 0) {
+                header_sz += snprintf(buf + header_sz, sizeof(buf) - header_sz, ":Y=1");
+                ds.remote_drag.active = true;
+                ds.remote_drag.uri_list_mime_idx = i;
+            }
             queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_sz, NULL, 0, false);
             *err_code = EAGAIN;
             return NULL;
@@ -1407,6 +1477,29 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
     if (has_more == 0 && payload_sz == 0) {
         ds.items[idx].data_decode_initialized = false;
         if (ds.items[idx].fd_plus_one > 0) {
+            // If this is text/uri-list and remote drag is active, delay notification
+            if (ds.remote_drag.active && idx == ds.remote_drag.uri_list_mime_idx) {
+                // Read the uri-list data from the temp file for later rewriting
+                size_t sz = ds.items[idx].data_capacity;
+                if (sz > 0) {
+                    char *buf = malloc(sz + 1);
+                    if (buf) {
+                        size_t total = 0;
+                        while (total < sz) {
+                            ssize_t n = pread(ds.items[idx].fd_plus_one - 1, buf + total, sz - total, (off_t)total);
+                            if (n <= 0) break;
+                            total += (size_t)n;
+                        }
+                        buf[total] = 0;
+                        free(ds.remote_drag.uri_list_data);
+                        ds.remote_drag.uri_list_data = buf;
+                        ds.remote_drag.uri_list_data_sz = total;
+                    }
+                }
+                ds.remote_drag.waiting_for_k = true;
+                // Don't notify yet - wait for t=k data
+                return;
+            }
             int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
             if (ret) cancel_drag(w, ret);
         }
@@ -1448,6 +1541,538 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
         int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
         if (ret) cancel_drag(w, ret);
     }
+}
+
+/* ---- Remote drag receive (t=k) ------------------------------------------ */
+
+#define REMOTE_DRAG_MAX_BYTES ((size_t)(1024ULL * 1024ULL * 1024ULL))  /* 1 GB */
+
+static void
+remote_drag_abort(Window *w, int error_code) {
+    drag_send_error(w, error_code);
+    drag_free_remote_drag(w);
+}
+
+/* Create the temp directory if it doesn't exist yet.
+ * Returns true on success, false on error (sends error to client). */
+static bool
+remote_drag_ensure_temp_dir(Window *w) {
+    RemoteDrag *rd = &ds.remote_drag;
+    if (rd->temp_dir) return true;
+    char tmpl[] = "/tmp/kitty-remote-dnd-XXXXXX";
+    char *dir = mkdtemp(tmpl);
+    if (!dir) { remote_drag_abort(w, EIO); return false; }
+    rd->temp_dir = strdup(dir);
+    if (!rd->temp_dir) { rmdir(dir); remote_drag_abort(w, ENOMEM); return false; }
+    return true;
+}
+
+/* Close the current file being written, if any. */
+static void
+remote_drag_close_fd(RemoteDrag *rd) {
+    if (rd->fd_plus_one > 0) {
+        safe_close(rd->fd_plus_one - 1, __FILE__, __LINE__);
+        rd->fd_plus_one = 0;
+    }
+    rd->b64_initialized = false;
+}
+
+/* Find a remote drag directory by handle. */
+static RemoteDragDir *
+remote_drag_find_dir(RemoteDrag *rd, uint32_t handle) {
+    for (size_t i = 0; i < rd->num_dirs; i++)
+        if (rd->dirs[i].handle == handle) return &rd->dirs[i];
+    return NULL;
+}
+
+/* Decode base64 payload and write to fd.
+ * Returns decoded byte count or (size_t)-1 on error. */
+static size_t
+remote_drag_decode_and_write(Window *w, RemoteDrag *rd, const uint8_t *payload, size_t payload_sz) {
+    if (payload_sz == 0) return 0;
+    RAII_ALLOC(uint8_t, decoded, malloc(payload_sz));
+    if (!decoded) { remote_drag_abort(w, ENOMEM); return (size_t)-1; }
+    size_t outlen = payload_sz;
+    if (!base64_decode_stream(&rd->b64, payload, payload_sz, decoded, &outlen)) {
+        remote_drag_abort(w, EINVAL);
+        return (size_t)-1;
+    }
+    if (rd->total_bytes + outlen > REMOTE_DRAG_MAX_BYTES) {
+        remote_drag_abort(w, EFBIG);
+        return (size_t)-1;
+    }
+    if (rd->fd_plus_one <= 0) { remote_drag_abort(w, EIO); return (size_t)-1; }
+    size_t written = 0;
+    while (written < outlen) {
+        ssize_t n = write(rd->fd_plus_one - 1, decoded + written, outlen - written);
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            remote_drag_abort(w, EIO);
+            return (size_t)-1;
+        }
+        written += (size_t)n;
+    }
+    rd->total_bytes += outlen;
+    return outlen;
+}
+
+/* Decode base64 payload and return the decoded bytes (caller must free).
+ * Returns NULL on error (sends error to client). */
+static uint8_t *
+remote_drag_decode_payload(Window *w, RemoteDrag *rd, const uint8_t *payload, size_t payload_sz, size_t *out_sz) {
+    *out_sz = 0;
+    if (payload_sz == 0) return NULL;
+    uint8_t *decoded = malloc(payload_sz);
+    if (!decoded) { remote_drag_abort(w, ENOMEM); return NULL; }
+    size_t outlen = payload_sz;
+    if (!base64_decode_stream(&rd->b64, payload, payload_sz, decoded, &outlen)) {
+        free(decoded);
+        remote_drag_abort(w, EINVAL);
+        return NULL;
+    }
+    *out_sz = outlen;
+    return decoded;
+}
+
+/* Determine the local path for a top-level URI entry at index idx (1-based). */
+static char *
+remote_drag_path_for_uri(RemoteDrag *rd, const char *uri_list, size_t uri_list_sz, int idx) {
+    /* Extract the filename from the idx-th file:// URL in the uri-list. */
+    char *buf = malloc(uri_list_sz + 1);
+    if (!buf) return NULL;
+    memcpy(buf, uri_list, uri_list_sz);
+    buf[uri_list_sz] = 0;
+
+    const char *found_line = NULL;
+    char *p = buf;
+    int n = idx - 1; /* convert to 0-based */
+    while (*p) {
+        char *eol = p + strcspn(p, "\r\n");
+        char saved = *eol; *eol = 0;
+        char *end = eol;
+        while (end > p && (end[-1] == ' ' || end[-1] == '\t')) { end--; *end = 0; }
+        if (*p && *p != '#') {
+            if (n <= 0) { found_line = p; break; }
+            n--;
+        }
+        if (saved == 0) break;
+        p = eol + 1;
+        while (*p == '\r' || *p == '\n') p++;
+    }
+
+    char *name = NULL;
+    if (found_line && strncmp(found_line, "file://", 7) == 0) {
+        const char *rest = found_line + 7;
+        const char *slash = strchr(rest, '/');
+        if (slash) {
+            /* Find the last path component */
+            const char *last_slash = strrchr(slash, '/');
+            if (last_slash && last_slash[1]) {
+                name = strdup(last_slash + 1);
+            } else {
+                name = strdup(slash + 1);
+            }
+        }
+    }
+    free(buf);
+
+    if (!name || !name[0]) {
+        free(name);
+        /* Fallback name */
+        char fallback[32];
+        snprintf(fallback, sizeof(fallback), "file_%d", idx);
+        name = strdup(fallback);
+    }
+
+    /* URL-decode the name */
+    url_decode_inplace(name);
+
+    /* Sanitize: replace path separators */
+    for (char *c = name; *c; c++) {
+        if (*c == '/') *c = '_';
+    }
+
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/%s", rd->temp_dir, name);
+    free(name);
+    return strdup(path);
+}
+
+/* Get or create the local path for top-level URI index (1-based). */
+static const char *
+remote_drag_get_entry_path(Window *w, RemoteDrag *rd, int idx) {
+    /* Check if we already have this entry */
+    for (size_t i = 0; i < rd->num_entries; i++) {
+        /* entries store 1-based idx in name as "idx" prefix */
+        /* Actually store with idx directly */
+    }
+    /* Grow array if needed */
+    size_t needed = (size_t)idx;
+    if (needed > rd->num_entries) {
+        void *new_entries = realloc(rd->entries, sizeof(rd->entries[0]) * needed);
+        if (!new_entries) { remote_drag_abort(w, ENOMEM); return NULL; }
+        rd->entries = new_entries;
+        for (size_t i = rd->num_entries; i < needed; i++) {
+            rd->entries[i].name = NULL;
+            rd->entries[i].local_path = NULL;
+        }
+        rd->num_entries = needed;
+    }
+    size_t eidx = (size_t)(idx - 1);
+    if (!rd->entries[eidx].local_path) {
+        rd->entries[eidx].local_path = remote_drag_path_for_uri(
+            rd, rd->uri_list_data, rd->uri_list_data_sz, idx);
+        if (!rd->entries[eidx].local_path) {
+            remote_drag_abort(w, ENOMEM);
+            return NULL;
+        }
+    }
+    return rd->entries[eidx].local_path;
+}
+
+/* Get the local path for a directory entry (Y=parent_handle, y=entry_num 1-based). */
+static const char *
+remote_drag_get_dir_entry_path(Window *w, RemoteDrag *rd, uint32_t parent_handle, int entry_num) {
+    RemoteDragDir *parent = remote_drag_find_dir(rd, parent_handle);
+    if (!parent) { remote_drag_abort(w, EINVAL); return NULL; }
+    if (entry_num < 1 || (size_t)entry_num > parent->num_entries) {
+        remote_drag_abort(w, EINVAL);
+        return NULL;
+    }
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/%s", parent->local_path, parent->entries[entry_num - 1]);
+    return strdup(path);
+}
+
+/* Handle a top-level file data chunk: t=k:x=idx with no X= or X=0 */
+static void
+remote_drag_handle_file(Window *w, RemoteDrag *rd, const char *path, bool more, const uint8_t *payload, size_t payload_sz) {
+    /* End-of-data marker: file already being written, got m=0 with no payload → close */
+    if (rd->b64_initialized && !more && payload_sz == 0) {
+        remote_drag_close_fd(rd);
+        return;
+    }
+    if (!rd->b64_initialized) {
+        /* If file already exists and no data to write, this is just a late end marker */
+        if (payload_sz == 0 && !more) {
+            struct stat st;
+            if (lstat(path, &st) == 0) return; /* file already exists, skip */
+        }
+        remote_drag_close_fd(rd);
+        int fd = safe_open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, S_IRUSR | S_IWUSR);
+        if (fd < 0) { remote_drag_abort(w, EIO); return; }
+        rd->fd_plus_one = fd + 1;
+        rd->b64_initialized = true;
+        base64_init_stream_decoder(&rd->b64);
+    }
+    if (payload_sz > 0) {
+        if (remote_drag_decode_and_write(w, rd, payload, payload_sz) == (size_t)-1) return;
+    }
+    if (!more) {
+        remote_drag_close_fd(rd);
+    }
+}
+
+/* Handle a symlink: t=k:x=idx:X=1 */
+static void
+remote_drag_handle_symlink(Window *w, RemoteDrag *rd, const char *path, bool more, const uint8_t *payload, size_t payload_sz) {
+    if (!rd->b64_initialized) {
+        rd->b64_initialized = true;
+        base64_init_stream_decoder(&rd->b64);
+        /* Remove any existing file at the path */
+        unlink(path);
+    }
+    /* We need the full target to create the symlink, so accumulate if chunked */
+    size_t out_sz = 0;
+    uint8_t *decoded = remote_drag_decode_payload(w, rd, payload, payload_sz, &out_sz);
+    if (payload_sz > 0 && !decoded) return; /* error already sent */
+
+    if (!more) {
+        rd->b64_initialized = false;
+        if (decoded && out_sz > 0) {
+            char *target = malloc(out_sz + 1);
+            if (!target) { free(decoded); remote_drag_abort(w, ENOMEM); return; }
+            memcpy(target, decoded, out_sz);
+            target[out_sz] = 0;
+            if (symlink(target, path) < 0) {
+                /* Not fatal - just create a regular file with the target as content */
+                int fd = safe_open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, S_IRUSR | S_IWUSR);
+                if (fd >= 0) {
+                    size_t ww = 0;
+                    while (ww < out_sz) {
+                        ssize_t n = write(fd, decoded + ww, out_sz - ww);
+                        if (n < 0) { if (errno == EINTR) continue; break; }
+                        ww += (size_t)n;
+                    }
+                    safe_close(fd, __FILE__, __LINE__);
+                }
+            }
+            free(target);
+            rd->total_bytes += out_sz;
+            if (rd->total_bytes > REMOTE_DRAG_MAX_BYTES) {
+                free(decoded);
+                remote_drag_abort(w, EFBIG);
+                return;
+            }
+        }
+    }
+    free(decoded);
+}
+
+/* Handle a directory listing: t=k:x=idx:X=handle (handle > 1)
+ * Payload is base64 encoded null-separated list of entry names. */
+static void
+remote_drag_handle_dir(Window *w, RemoteDrag *rd, const char *path, uint32_t handle,
+                       bool more, const uint8_t *payload, size_t payload_sz) {
+    if (!rd->b64_initialized) {
+        rd->b64_initialized = true;
+        base64_init_stream_decoder(&rd->b64);
+        /* Create the directory */
+        if (mkdir(path, S_IRWXU) < 0 && errno != EEXIST) {
+            remote_drag_abort(w, EIO);
+            return;
+        }
+    }
+
+    size_t out_sz = 0;
+    uint8_t *decoded = remote_drag_decode_payload(w, rd, payload, payload_sz, &out_sz);
+    if (payload_sz > 0 && !decoded) return;
+
+    if (!more) {
+        rd->b64_initialized = false;
+        /* Parse null-separated entry names and create the dir handle */
+        size_t num_entries = 0;
+        if (decoded && out_sz > 0) {
+            for (size_t i = 0; i < out_sz; i++)
+                if (decoded[i] == 0) num_entries++;
+            /* If last byte is not null, add one more entry */
+            if (out_sz > 0 && decoded[out_sz - 1] != 0) num_entries++;
+        }
+
+        char **entries = NULL;
+        if (num_entries > 0) {
+            entries = calloc(num_entries, sizeof(char *));
+            if (!entries) { free(decoded); remote_drag_abort(w, ENOMEM); return; }
+            size_t eidx = 0;
+            const char *start = (const char *)decoded;
+            for (size_t i = 0; i < out_sz && eidx < num_entries; i++) {
+                if (decoded[i] == 0) {
+                    if (i > (size_t)(start - (const char *)decoded)) {
+                        entries[eidx] = strndup(start, i - (size_t)(start - (const char *)decoded));
+                        if (!entries[eidx]) {
+                            for (size_t j = 0; j < eidx; j++) free(entries[j]);
+                            free(entries); free(decoded);
+                            remote_drag_abort(w, ENOMEM);
+                            return;
+                        }
+                        eidx++;
+                    }
+                    start = (const char *)decoded + i + 1;
+                }
+            }
+            /* Handle last entry if not null-terminated */
+            if (start < (const char *)decoded + out_sz && eidx < num_entries) {
+                size_t len = (size_t)((const char *)decoded + out_sz - start);
+                entries[eidx] = strndup(start, len);
+                if (!entries[eidx]) {
+                    for (size_t j = 0; j < eidx; j++) free(entries[j]);
+                    free(entries); free(decoded);
+                    remote_drag_abort(w, ENOMEM);
+                    return;
+                }
+                eidx++;
+            }
+            num_entries = eidx; /* actual count of non-empty entries */
+        }
+
+        /* Register the directory handle */
+        ensure_space_for(rd, dirs, RemoteDragDir, rd->num_dirs + 1, dirs_capacity, 4, true);
+        RemoteDragDir *d = &rd->dirs[rd->num_dirs++];
+        zero_at_ptr(d);
+        d->handle = handle;
+        d->local_path = strdup(path);
+        d->entries = entries;
+        d->num_entries = num_entries;
+
+        if (!d->local_path) {
+            remote_drag_abort(w, ENOMEM);
+            free(decoded);
+            return;
+        }
+    }
+    free(decoded);
+}
+
+/* Rewrite the text/uri-list to replace file:// URLs with local temp paths.
+ * Returns a malloc'd modified uri-list, or NULL on error. */
+static char *
+remote_drag_rewrite_uri_list(RemoteDrag *rd, size_t *out_sz) {
+    *out_sz = 0;
+    if (!rd->uri_list_data || !rd->uri_list_data_sz) return NULL;
+
+    /* Estimate output size */
+    size_t cap = rd->uri_list_data_sz * 2 + 4096;
+    char *out = malloc(cap);
+    if (!out) return NULL;
+    size_t pos = 0;
+
+    char *buf = malloc(rd->uri_list_data_sz + 1);
+    if (!buf) { free(out); return NULL; }
+    memcpy(buf, rd->uri_list_data, rd->uri_list_data_sz);
+    buf[rd->uri_list_data_sz] = 0;
+
+    char *p = buf;
+    int file_idx = 0; /* 0-based */
+    while (*p) {
+        char *eol = p + strcspn(p, "\r\n");
+        char saved = *eol;
+        char *next = eol;
+        if (saved) next++;
+        while (*next == '\r' || *next == '\n') next++;
+        *eol = 0;
+
+        /* trim trailing whitespace */
+        char *end = eol;
+        while (end > p && (end[-1] == ' ' || end[-1] == '\t')) { end--; *end = 0; }
+
+        if (*p && *p != '#' && strncmp(p, "file://", 7) == 0) {
+            /* Replace with local path */
+            size_t eidx = (size_t)file_idx;
+            if (eidx < rd->num_entries && rd->entries[eidx].local_path) {
+                const char *local = rd->entries[eidx].local_path;
+                size_t llen = strlen(local);
+                size_t needed = pos + 7 + llen + 3; /* file:// + path + \r\n + null */
+                if (needed > cap) {
+                    cap = needed * 2;
+                    char *new_out = realloc(out, cap);
+                    if (!new_out) { free(buf); free(out); return NULL; }
+                    out = new_out;
+                }
+                pos += (size_t)snprintf(out + pos, cap - pos, "file://%s\r\n", local);
+            } else {
+                /* Keep original */
+                size_t line_len = strlen(p);
+                size_t needed = pos + line_len + 3;
+                if (needed > cap) {
+                    cap = needed * 2;
+                    char *new_out = realloc(out, cap);
+                    if (!new_out) { free(buf); free(out); return NULL; }
+                    out = new_out;
+                }
+                pos += (size_t)snprintf(out + pos, cap - pos, "%s\r\n", p);
+            }
+            file_idx++;
+        } else if (*p) {
+            /* Comment or non-file line - keep as-is */
+            size_t line_len = strlen(p);
+            size_t needed = pos + line_len + 3;
+            if (needed > cap) {
+                cap = needed * 2;
+                char *new_out = realloc(out, cap);
+                if (!new_out) { free(buf); free(out); return NULL; }
+                out = new_out;
+            }
+            pos += (size_t)snprintf(out + pos, cap - pos, "%s\r\n", p);
+        }
+
+        p = next;
+    }
+    free(buf);
+    *out_sz = pos;
+    return out;
+}
+
+/* Complete the remote drag: rewrite the uri-list and notify. */
+static void
+remote_drag_complete(Window *w) {
+    RemoteDrag *rd = &ds.remote_drag;
+    remote_drag_close_fd(rd);
+
+    if (!rd->active || !rd->waiting_for_k) return;
+
+    /* Rewrite the uri-list in the temp file */
+    size_t idx = rd->uri_list_mime_idx;
+    if (idx < ds.num_mimes && ds.items && ds.items[idx].fd_plus_one > 0) {
+        size_t new_sz = 0;
+        char *new_list = remote_drag_rewrite_uri_list(rd, &new_sz);
+        if (new_list) {
+            /* Truncate and rewrite the temp file */
+            if (ftruncate(ds.items[idx].fd_plus_one - 1, 0) == 0) {
+                lseek(ds.items[idx].fd_plus_one - 1, 0, SEEK_SET);
+                size_t written = 0;
+                while (written < new_sz) {
+                    ssize_t n = write(ds.items[idx].fd_plus_one - 1, new_list + written, new_sz - written);
+                    if (n < 0) { if (errno == EINTR) continue; break; }
+                    written += (size_t)n;
+                }
+                ds.items[idx].data_size = 0;
+                ds.items[idx].data_capacity = written;
+            }
+            free(new_list);
+        }
+        /* Mark the data as complete and notify */
+        ds.items[idx].data_decode_initialized = false;
+        if (global_state.drag_source.from_os_window) {
+            int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
+            if (ret) cancel_drag(w, ret);
+        }
+    }
+
+    rd->waiting_for_k = false;
+}
+
+void
+drag_receive_remote_data(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_x, int32_t pixel_y,
+                         unsigned more, const uint8_t *payload, size_t payload_sz) {
+    RemoteDrag *rd = &ds.remote_drag;
+    if (!rd->active || !rd->waiting_for_k) {
+        drag_send_error(w, EINVAL);
+        return;
+    }
+
+    int32_t x = cell_x;   /* x= key: URI index (1-based) for top-level, or 0 for dir children */
+    int32_t y = cell_y;   /* y= key: entry num in parent dir (1-based) */
+    int32_t X = pixel_x;  /* X= key: 0=file, 1=symlink, >1=directory handle */
+    int32_t Y = pixel_y;  /* Y= key: parent directory handle (0 for top-level) */
+
+    /* Completion: all keys zero, no payload */
+    if (x == 0 && y == 0 && X == 0 && Y == 0 && payload_sz == 0 && !more) {
+        remote_drag_complete(w);
+        return;
+    }
+
+    if (!remote_drag_ensure_temp_dir(w)) return;
+
+    const char *path = NULL;
+    char *alloc_path = NULL;
+
+    if (Y != 0) {
+        /* Directory child: Y=parent-handle, y=entry_num */
+        if (y < 1) { remote_drag_abort(w, EINVAL); return; }
+        alloc_path = (char*)remote_drag_get_dir_entry_path(w, rd, (uint32_t)Y, y);
+        if (!alloc_path) return; /* error already sent */
+        path = alloc_path;
+    } else if (x > 0) {
+        /* Top-level entry: x=idx */
+        path = remote_drag_get_entry_path(w, rd, x);
+        if (!path) return; /* error already sent */
+    } else {
+        remote_drag_abort(w, EINVAL);
+        return;
+    }
+
+    if (X == 0) {
+        /* Regular file */
+        remote_drag_handle_file(w, rd, path, more != 0, payload, payload_sz);
+    } else if (X == 1) {
+        /* Symlink */
+        remote_drag_handle_symlink(w, rd, path, more != 0, payload, payload_sz);
+    } else {
+        /* Directory (X > 1 is the handle) */
+        remote_drag_handle_dir(w, rd, path, (uint32_t)X, more != 0, payload, payload_sz);
+    }
+
+    free(alloc_path);
 }
 #undef img
 #undef abrt

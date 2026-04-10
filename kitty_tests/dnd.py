@@ -14,7 +14,9 @@ from kitty.fast_data_types import (
     dnd_test_create_fake_window,
     dnd_test_fake_drop_data,
     dnd_test_fake_drop_event,
+    dnd_test_get_remote_drag_temp_dir,
     dnd_test_set_mouse_pos,
+    dnd_test_setup_remote_drag,
 )
 
 from . import BaseTest, parse_bytes
@@ -24,6 +26,11 @@ from . import BaseTest, parse_bytes
 def _osc(payload: str) -> bytes:
     """Wrap *payload* in an OSC escape sequence (OSC payload ST)."""
     return f'\x1b]{payload}\x1b\\'.encode()
+
+
+def b64(data: bytes) -> str:
+    """Base64-encode raw bytes and return as str (convenience for tests)."""
+    return standard_b64encode(data).decode()
 
 
 def client_register(mimes: str = '', client_id: int = 0) -> bytes:
@@ -192,6 +199,82 @@ def client_drag_send_error(idx: int, err_name: str = '', client_id: int = 0) -> 
 def client_drag_cancel(client_id: int = 0) -> bytes:
     """Escape code a client sends to cancel the full drag (t=E:y=-1)."""
     meta = f'{DND_CODE};t=E:y=-1'
+    if client_id:
+        meta += f':i={client_id}'
+    return _osc(meta)
+
+
+# ---- remote drag (t=k) helpers ---------------------------------------------
+
+def client_remote_file_data(idx: int, data_b64: str, client_id: int = 0, more: bool = False,
+                            parent_handle: int = 0, entry_num: int = 0) -> bytes:
+    """Escape code to send file data for a remote drag (t=k:x=idx:m=0/1).
+
+    *idx*: 1-based index into the URI list (for top-level).
+    *data_b64*: base64-encoded file data (caller encodes).
+    *parent_handle*: if > 0, adds Y=parent_handle for directory children.
+    *entry_num*: if > 0, adds y=entry_num for directory children.
+    """
+    meta = f'{DND_CODE};t=k'
+    if idx > 0:
+        meta += f':x={idx}'
+    if parent_handle > 0:
+        meta += f':Y={parent_handle}'
+    if entry_num > 0:
+        meta += f':y={entry_num}'
+    if client_id:
+        meta += f':i={client_id}'
+    if more:
+        meta += ':m=1'
+    return _osc(f'{meta};{data_b64}')
+
+
+def client_remote_symlink(idx: int, target_b64: str, client_id: int = 0, more: bool = False,
+                          parent_handle: int = 0, entry_num: int = 0) -> bytes:
+    """Escape code to send symlink target (t=k:x=idx:X=1:m=0/1).
+
+    *target_b64*: base64-encoded symlink target path.
+    """
+    meta = f'{DND_CODE};t=k:X=1'
+    if idx > 0:
+        meta += f':x={idx}'
+    if parent_handle > 0:
+        meta += f':Y={parent_handle}'
+    if entry_num > 0:
+        meta += f':y={entry_num}'
+    if client_id:
+        meta += f':i={client_id}'
+    if more:
+        meta += ':m=1'
+    return _osc(f'{meta};{target_b64}')
+
+
+def client_remote_dir(idx: int, handle: int, entries: list[str], client_id: int = 0,
+                      more: bool = False, parent_handle: int = 0, entry_num: int = 0) -> bytes:
+    """Escape code to send directory listing (t=k:x=idx:X=handle:m=0/1).
+
+    *handle*: directory handle id (must be > 1).
+    *entries*: list of entry names (null-separated in payload).
+    """
+    meta = f'{DND_CODE};t=k:X={handle}'
+    if idx > 0:
+        meta += f':x={idx}'
+    if parent_handle > 0:
+        meta += f':Y={parent_handle}'
+    if entry_num > 0:
+        meta += f':y={entry_num}'
+    if client_id:
+        meta += f':i={client_id}'
+    if more:
+        meta += ':m=1'
+    payload = b'\x00'.join(e.encode() for e in entries)
+    data_b64 = standard_b64encode(payload).decode() if payload else ''
+    return _osc(f'{meta};{data_b64}')
+
+
+def client_remote_finish(client_id: int = 0) -> bytes:
+    """Escape code to signal remote drag completion (t=k with no keys)."""
+    meta = f'{DND_CODE};t=k'
     if client_id:
         meta += f':i={client_id}'
     return _osc(meta)
@@ -2178,3 +2261,393 @@ class TestDnDProtocol(BaseTest):
             # Finish
             parse_bytes(screen, client_request_data())
             self._assert_no_output(cap, wid)
+
+
+    # ---- Remote drag (t=k) tests ----------------------------------------
+
+    def _setup_remote_drag(self, screen, wid, cap, uri_list_data: bytes):
+        """Set up a drag source in 'waiting for t=k' state."""
+        dnd_test_setup_remote_drag(wid, uri_list_data)
+
+    def test_remote_drag_single_file(self) -> None:
+        """Remote drag: single file transfer creates temp file with correct content."""
+        import os
+        content = b'Hello, remote drag!\n'
+        uri_list = b'file:///remote/path/hello.txt\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_file_data(1, b64(content)))
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            self.assertIsNotNone(temp_dir, 'temp directory should have been created')
+            self.assertTrue(os.path.isdir(temp_dir), f'{temp_dir} should be a directory')
+
+            fpath = os.path.join(temp_dir, 'hello.txt')
+            self.assertTrue(os.path.isfile(fpath), f'{fpath} should exist')
+            with open(fpath, 'rb') as f:
+                self.ae(f.read(), content)
+
+    def test_remote_drag_multiple_files(self) -> None:
+        """Remote drag: multiple files are transferred correctly."""
+        import os
+        content_a = b'file A content'
+        content_b = b'file B content'
+        uri_list = b'file:///remote/a.txt\r\nfile:///remote/b.txt\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_file_data(1, b64(content_a)))
+            parse_bytes(screen, client_remote_file_data(2, b64(content_b)))
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            self.assertIsNotNone(temp_dir)
+            with open(os.path.join(temp_dir, 'a.txt'), 'rb') as f:
+                self.ae(f.read(), content_a)
+            with open(os.path.join(temp_dir, 'b.txt'), 'rb') as f:
+                self.ae(f.read(), content_b)
+
+    def test_remote_drag_chunked_file(self) -> None:
+        """Remote drag: large file sent in multiple chunks."""
+        import os
+        chunk1 = b'A' * 4096
+        chunk2 = b'B' * 4096
+        chunk3 = b'C' * 2048
+        full_content = chunk1 + chunk2 + chunk3
+        full_b64 = b64(full_content)
+        split = len(full_b64) // 3
+        b64_c1 = full_b64[:split]
+        b64_c2 = full_b64[split:2*split]
+        b64_c3 = full_b64[2*split:]
+        uri_list = b'file:///remote/big.bin\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_file_data(1, b64_c1, more=True))
+            parse_bytes(screen, client_remote_file_data(1, b64_c2, more=True))
+            parse_bytes(screen, client_remote_file_data(1, b64_c3))
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            self.assertIsNotNone(temp_dir)
+            with open(os.path.join(temp_dir, 'big.bin'), 'rb') as f:
+                self.ae(f.read(), full_content)
+
+    def test_remote_drag_binary_integrity(self) -> None:
+        """Remote drag: binary data with all byte values transfers correctly."""
+        import os
+        content = bytes(range(256)) * 100  # 25600 bytes
+        uri_list = b'file:///remote/binary.dat\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_file_data(1, b64(content)))
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            with open(os.path.join(temp_dir, 'binary.dat'), 'rb') as f:
+                self.ae(f.read(), content)
+
+    def test_remote_drag_symlink(self) -> None:
+        """Remote drag: symlink is created with correct target."""
+        import os
+        uri_list = b'file:///remote/link.txt\r\n'
+        target = b'/remote/target.txt'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_symlink(1, b64(target)))
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            link_path = os.path.join(temp_dir, 'link.txt')
+            self.assertTrue(os.path.islink(link_path), f'{link_path} should be a symlink')
+            self.ae(os.readlink(link_path), target.decode())
+
+    def test_remote_drag_relative_symlink(self) -> None:
+        """Remote drag: relative symlink target."""
+        import os
+        uri_list = b'file:///remote/alias.txt\r\n'
+        target = b'../other/file.txt'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_symlink(1, b64(target)))
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            link_path = os.path.join(temp_dir, 'alias.txt')
+            self.assertTrue(os.path.islink(link_path))
+            self.ae(os.readlink(link_path), target.decode())
+
+    def test_remote_drag_directory_basic(self) -> None:
+        """Remote drag: directory with files is created correctly."""
+        import os
+        uri_list = b'file:///remote/mydir\r\n'
+        file_content = b'inside directory\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+
+            parse_bytes(screen, client_remote_dir(1, 2, ['data.txt', 'info.txt']))
+            parse_bytes(screen, client_remote_file_data(
+                0, b64(file_content), parent_handle=2, entry_num=1))
+            parse_bytes(screen, client_remote_file_data(
+                0, b64(b'info content'), parent_handle=2, entry_num=2))
+
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            dir_path = os.path.join(temp_dir, 'mydir')
+            self.assertTrue(os.path.isdir(dir_path))
+            with open(os.path.join(dir_path, 'data.txt'), 'rb') as f:
+                self.ae(f.read(), file_content)
+            with open(os.path.join(dir_path, 'info.txt'), 'rb') as f:
+                self.ae(f.read(), b'info content')
+
+    def test_remote_drag_directory_three_levels_deep(self) -> None:
+        """Remote drag: directory tree 3 levels deep with files at each level."""
+        import hashlib
+        import os
+        uri_list = b'file:///remote/root\r\n'
+        a_content = b'aaa' * 100
+        b_content = bytes(range(256)) * 10
+        c_content = b'deep nested content\n' * 50
+
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+
+            parse_bytes(screen, client_remote_dir(1, 2, ['a.txt', 'sub']))
+            parse_bytes(screen, client_remote_file_data(
+                0, b64(a_content), parent_handle=2, entry_num=1))
+            parse_bytes(screen, client_remote_dir(
+                0, 3, ['b.txt', 'deep'], parent_handle=2, entry_num=2))
+            parse_bytes(screen, client_remote_file_data(
+                0, b64(b_content), parent_handle=3, entry_num=1))
+            parse_bytes(screen, client_remote_dir(
+                0, 4, ['c.txt'], parent_handle=3, entry_num=2))
+            parse_bytes(screen, client_remote_file_data(
+                0, b64(c_content), parent_handle=4, entry_num=1))
+
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            root_path = os.path.join(temp_dir, 'root')
+            self.assertTrue(os.path.isdir(root_path))
+            with open(os.path.join(root_path, 'a.txt'), 'rb') as f:
+                self.ae(f.read(), a_content)
+            sub_path = os.path.join(root_path, 'sub')
+            self.assertTrue(os.path.isdir(sub_path))
+            with open(os.path.join(sub_path, 'b.txt'), 'rb') as f:
+                data = f.read()
+                self.ae(data, b_content)
+                self.ae(hashlib.sha256(data).digest(), hashlib.sha256(b_content).digest())
+            deep_path = os.path.join(sub_path, 'deep')
+            self.assertTrue(os.path.isdir(deep_path))
+            with open(os.path.join(deep_path, 'c.txt'), 'rb') as f:
+                self.ae(f.read(), c_content)
+
+    def test_remote_drag_symlink_in_directory(self) -> None:
+        """Remote drag: symlink inside a directory is created correctly."""
+        import os
+        uri_list = b'file:///remote/dir_with_link\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+
+            parse_bytes(screen, client_remote_dir(1, 2, ['real.txt', 'link.txt']))
+            parse_bytes(screen, client_remote_file_data(
+                0, b64(b'real content'), parent_handle=2, entry_num=1))
+            parse_bytes(screen, client_remote_symlink(
+                0, b64(b'real.txt'), parent_handle=2, entry_num=2))
+
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            dir_path = os.path.join(temp_dir, 'dir_with_link')
+            with open(os.path.join(dir_path, 'real.txt'), 'rb') as f:
+                self.ae(f.read(), b'real content')
+            link_path = os.path.join(dir_path, 'link.txt')
+            self.assertTrue(os.path.islink(link_path))
+            self.ae(os.readlink(link_path), 'real.txt')
+
+    def test_remote_drag_symlink_in_nested_dir(self) -> None:
+        """Remote drag: symlink in a nested subdirectory."""
+        import os
+        uri_list = b'file:///remote/outer\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+
+            parse_bytes(screen, client_remote_dir(1, 2, ['inner']))
+            parse_bytes(screen, client_remote_dir(
+                0, 3, ['target.txt', 'nested_link.txt'], parent_handle=2, entry_num=1))
+            parse_bytes(screen, client_remote_file_data(
+                0, b64(b'target data'), parent_handle=3, entry_num=1))
+            parse_bytes(screen, client_remote_symlink(
+                0, b64(b'target.txt'), parent_handle=3, entry_num=2))
+
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            inner_path = os.path.join(temp_dir, 'outer', 'inner')
+            self.assertTrue(os.path.isdir(inner_path))
+            link_path = os.path.join(inner_path, 'nested_link.txt')
+            self.assertTrue(os.path.islink(link_path))
+            self.ae(os.readlink(link_path), 'target.txt')
+
+    def test_remote_drag_empty_file(self) -> None:
+        """Remote drag: empty file is created correctly."""
+        import os
+        uri_list = b'file:///remote/empty.txt\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_file_data(1, ''))
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            fpath = os.path.join(temp_dir, 'empty.txt')
+            self.assertTrue(os.path.isfile(fpath))
+            self.ae(os.path.getsize(fpath), 0)
+
+    def test_remote_drag_empty_directory(self) -> None:
+        """Remote drag: empty directory is created."""
+        import os
+        uri_list = b'file:///remote/emptydir\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_dir(1, 2, []))
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            dir_path = os.path.join(temp_dir, 'emptydir')
+            self.assertTrue(os.path.isdir(dir_path))
+            self.ae(os.listdir(dir_path), [])
+
+    def test_remote_drag_without_setup_returns_error(self) -> None:
+        """Sending t=k without remote drag setup returns EINVAL error."""
+        with dnd_test_window() as (osw, wid, screen, cap):
+            parse_bytes(screen, client_remote_file_data(1, b64(b'data')))
+            events = self._get_events(cap, wid)
+            self.assertEqual(len(events), 1, events)
+            self.ae(events[0]['type'], 'E')
+            self.ae(events[0]['payload'].strip(), b'EINVAL')
+
+    def test_remote_drag_finish_without_data(self) -> None:
+        """Sending t=k completion without any data just completes the remote drag."""
+        with dnd_test_window() as (osw, wid, screen, cap):
+            uri_list = b'file:///remote/no_data.txt\r\n'
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_finish())
+            self._assert_no_output(cap, wid)
+
+    def test_remote_drag_cleanup_on_window_close(self) -> None:
+        """Closing the window during remote drag cleans up temp files (no crash)."""
+        uri_list = b'file:///remote/temp_file.txt\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_file_data(1, b64(b'temp data')))
+
+    def test_remote_drag_1gb_cap(self) -> None:
+        """Remote drag enforces 1GB transfer limit."""
+        uri_list = b'file:///remote/huge.bin\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            chunk = b'X' * 10000
+            parse_bytes(screen, client_remote_file_data(1, b64(chunk)))
+            parse_bytes(screen, client_remote_finish())
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            self.assertIsNotNone(temp_dir)
+
+    def test_remote_drag_mixed_files_and_symlinks(self) -> None:
+        """Remote drag: mix of regular files and symlinks at top level."""
+        import os
+        uri_list = b'file:///remote/file1.txt\r\nfile:///remote/link1.txt\r\nfile:///remote/file2.txt\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+
+            parse_bytes(screen, client_remote_file_data(1, b64(b'file1 content')))
+            parse_bytes(screen, client_remote_symlink(2, b64(b'/some/target')))
+            parse_bytes(screen, client_remote_file_data(3, b64(b'file2 content')))
+
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            with open(os.path.join(temp_dir, 'file1.txt'), 'rb') as f:
+                self.ae(f.read(), b'file1 content')
+            self.assertTrue(os.path.islink(os.path.join(temp_dir, 'link1.txt')))
+            self.ae(os.readlink(os.path.join(temp_dir, 'link1.txt')), '/some/target')
+            with open(os.path.join(temp_dir, 'file2.txt'), 'rb') as f:
+                self.ae(f.read(), b'file2 content')
+
+    def test_remote_drag_directory_with_mixed_content(self) -> None:
+        """Remote drag: directory with files, symlinks, and subdirectories."""
+        import os
+        uri_list = b'file:///remote/project\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+
+            parse_bytes(screen, client_remote_dir(1, 2, ['README.md', 'src', 'build_link']))
+            parse_bytes(screen, client_remote_file_data(
+                0, b64(b'# Project\n'), parent_handle=2, entry_num=1))
+            parse_bytes(screen, client_remote_dir(
+                0, 3, ['main.py'], parent_handle=2, entry_num=2))
+            parse_bytes(screen, client_remote_file_data(
+                0, b64(b'print("hello")\n'), parent_handle=3, entry_num=1))
+            parse_bytes(screen, client_remote_symlink(
+                0, b64(b'src'), parent_handle=2, entry_num=3))
+
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            proj_dir = os.path.join(temp_dir, 'project')
+            self.assertTrue(os.path.isdir(proj_dir))
+            with open(os.path.join(proj_dir, 'README.md'), 'rb') as f:
+                self.ae(f.read(), b'# Project\n')
+            src_dir = os.path.join(proj_dir, 'src')
+            self.assertTrue(os.path.isdir(src_dir))
+            with open(os.path.join(src_dir, 'main.py'), 'rb') as f:
+                self.ae(f.read(), b'print("hello")\n')
+            build_link = os.path.join(proj_dir, 'build_link')
+            self.assertTrue(os.path.islink(build_link))
+            self.ae(os.readlink(build_link), 'src')
+
+    def test_remote_drag_file_with_special_chars(self) -> None:
+        """Remote drag: filename with spaces and special characters."""
+        import os
+        uri_list = b'file:///remote/my%20file%20(1).txt\r\n'
+        content = b'special chars content'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_file_data(1, b64(content)))
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            fpath = os.path.join(temp_dir, 'my file (1).txt')
+            self.assertTrue(os.path.isfile(fpath), f'{fpath} should exist')
+            with open(fpath, 'rb') as f:
+                self.ae(f.read(), content)
+
+    def test_remote_drag_early_termination_cancel(self) -> None:
+        """Remote drag: client cancels during transfer via t=E:y=-1."""
+        with dnd_test_window() as (osw, wid, screen, cap):
+            uri_list = b'file:///remote/cancelled.txt\r\n'
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_file_data(1, b64(b'partial data'), more=True))
+            parse_bytes(screen, client_drag_cancel())
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            self.assertIsNone(temp_dir, 'temp dir should be cleaned up after cancel')
+
+    def test_remote_drag_completion_signal_format(self) -> None:
+        """Remote drag: completion signal is t=k with all keys at default (zero)."""
+        with dnd_test_window() as (osw, wid, screen, cap):
+            uri_list = b'file:///remote/f.txt\r\n'
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_file_data(1, b64(b'data')))
+            parse_bytes(screen, _osc(f'{DND_CODE};t=k'))
+            self._assert_no_output(cap, wid)
+
+    def test_remote_drag_non_file_uri_preserved(self) -> None:
+        """Remote drag: non-file:// URIs in the list are preserved unchanged."""
+        import os
+        uri_list = b'file:///remote/data.txt\r\nhttps://example.com\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            parse_bytes(screen, client_remote_file_data(1, b64(b'data content')))
+            parse_bytes(screen, client_remote_finish())
+
+            temp_dir = dnd_test_get_remote_drag_temp_dir(wid)
+            self.assertTrue(os.path.isfile(os.path.join(temp_dir, 'data.txt')))
