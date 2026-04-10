@@ -1502,6 +1502,8 @@ toggle_fullscreen_for_os_window(OSWindow *w) {
     if (!w->is_layer_shell) {
 #ifdef __APPLE__
         if (!OPT(macos_traditional_fullscreen)) return do_toggle_fullscreen(w, 1, false);
+        unsigned int flags = OPT(macos_fullscreen_ignore_safe_area_insets) ? 2u : 0u;
+        return do_toggle_fullscreen(w, flags, true);
 #endif
         return do_toggle_fullscreen(w, 0, true);
     }
