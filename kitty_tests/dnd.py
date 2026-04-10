@@ -16,6 +16,7 @@ from kitty.fast_data_types import (
     dnd_test_fake_drop_event,
     dnd_test_get_remote_drag_temp_dir,
     dnd_test_set_mouse_pos,
+    dnd_test_set_remote_drag_max_bytes,
     dnd_test_setup_remote_drag,
 )
 

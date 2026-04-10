@@ -242,6 +242,18 @@ typedef struct RemoteDragDir {
     size_t num_entries;
 } RemoteDragDir;
 
+/* Per-entry state for an active chunked transfer in a remote drag */
+typedef struct RemoteDragActiveEntry {
+    int32_t x;              /* top-level URI index (1-based) or 0 for dir children */
+    int32_t y;              /* entry num in parent dir (1-based) */
+    int32_t Y;              /* parent directory handle (0 for top-level) */
+    int fd_plus_one;        /* fd for file being written (0=none, >0=fd+1) */
+    base64_state b64;
+    bool b64_initialized;
+} RemoteDragActiveEntry;
+
+#define REMOTE_DRAG_MAX_ACTIVE_ENTRIES 32
+
 /* State for receiving files during a "drag to remote machine" operation. */
 typedef struct RemoteDrag {
     bool active;                  /* whether we are receiving t=k data */
@@ -249,10 +261,9 @@ typedef struct RemoteDrag {
     char *temp_dir;               /* base temp directory (malloc'd) */
     size_t total_bytes;           /* total bytes written (cap enforced) */
 
-    /* Current receive state for chunked base64 data */
-    int fd_plus_one;              /* fd for file being written (0=none, >0=fd+1) */
-    base64_state b64;
-    bool b64_initialized;
+    /* Per-entry receive state for chunked base64 data (supports interleaving) */
+    RemoteDragActiveEntry active_entries[REMOTE_DRAG_MAX_ACTIVE_ENTRIES];
+    size_t num_active_entries;
 
     /* Mapping from top-level URI indices to local paths */
     struct { char *name; char *local_path; } *entries;

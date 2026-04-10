@@ -1139,6 +1139,14 @@ dnd_test_get_remote_drag_temp_dir(PyObject *self UNUSED, PyObject *args) {
 
 // }}}
 
+static PyObject *
+dnd_test_set_remote_drag_max_bytes(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long val;
+    if (!PyArg_ParseTuple(args, "K", &val)) return NULL;
+    remote_drag_max_bytes = (size_t)val;
+    Py_RETURN_NONE;
+}
+
 static void
 application_close_requested_callback(int flags) {
     if (flags) {
@@ -3450,6 +3458,7 @@ static PyMethodDef module_methods[] = {
     METHODB(dnd_test_fake_drop_data, METH_VARARGS),
     METHODB(dnd_test_setup_remote_drag, METH_VARARGS),
     METHODB(dnd_test_get_remote_drag_temp_dir, METH_VARARGS),
+    METHODB(dnd_test_set_remote_drag_max_bytes, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
