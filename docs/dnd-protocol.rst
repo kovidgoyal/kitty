@@ -185,28 +185,35 @@ with ``EMFILE`` and end the drop.
 Reading remote directories
 +++++++++++++++++++++++++++
 
-If the file is actually a directory the terminal must instead respond with::
+If the file pointed to by a ``file://`` URL is actually a directory the terminal must instead respond with::
 
-    OSC _dnd_code ; t=r:x=idx:y=subidx:Y=handle:X=2 ; base64 encoded list of dir entries ST
+    OSC _dnd_code ; t=r:x=idx:y=subidx:X=handle ; base64 encoded list of dir entries ST
 
-The presence of ``X=2`` indicates this is a directory response not a regular
-file. Here, the payload is a null byte separated list of entries in the directory that are
+The presence of ``X=handle`` indicates this is a directory response not a regular
+file or symlink. For regular files, ``X=0``. For symlinks, ``X=1``.
+For directories ``X`` is an arbitrary integer (``handle``) other than ``0`` or ``1``.
+Here, the payload is a null byte separated list of entries in the directory that are
 either regular files, directories or symlinks. The payload must be base64
 encoded and might be chunked if the directory has a lot of entries.
 
-``handle`` is an arbitrary non-zero integer that acts as a handle to this
-directory. The client can now read the files in this directory using requests of the form::
+The client can now read the files in this directory using requests of the form::
 
     OSC _dnd_code ; t=r:Y=handle:x=num ST
 
 Here ``num`` is the 1-based index into the list of directory entries previously transmitted
-to the client. The terminal will respond with an escape code of the form::
+to the client. The terminal will respond with an escape code of the forms ::
 
-    OSC _dnd_code ; t=r:Y=handle:x=num ; base64 encoded data of entry ST
+    OSC _dnd_code ; t=r:Y=handle:x=num ; base64 encoded data of regular file ST
+    OSC _dnd_code ; t=r:Y=handle:x=num:X=1 ; base64 encoded symlink target ST
+    OSC _dnd_code ; t=r:Y=handle:x=num:X=child-handle ; base64 encoded list of entries in sub-dir ST
 
 In case of any errors, the terminal will respond with::
 
     OSC _dnd_code ; t=R:Y=handle:x=num ; POSIX error name ST
+
+In the above, the ``Y=handle`` and ``x=num`` keys allow the client to know
+which directory entry the response concerns. The ``handle`` points to the
+parent directory and ``num`` to the entry within the parent dir.
 
 Once the client is done reading a directory it should transmit ``t=r:Y=handle`` to the terminal. The
 terminal can then free any resources associated with that directory. The
@@ -216,15 +223,6 @@ that clients traverse directories breadth first to minimise resource usage in
 the terminal. Terminals may deny directory traversal requests if too many
 resources are used, in order to prevent denial or service attacks. In such
 cases the terminal must respond with ``ENOMEM``.
-
-When transmitting a symlink that is inside a directory,
-the terminal responds with an escape code of the form::
-
-    OSC _dnd_code ; t=r:Y=handle:x=num:X=1 ; base64 encoded symlink target ST
-
-The presence of ``X=1`` indicates that the file is a symlink, not a
-regular file. Similarly for sub-directories it would be ``X=2`` and the payload
-would be the null separated list of directory entries, as above.
 
 
 Starting drags
