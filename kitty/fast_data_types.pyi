@@ -732,7 +732,7 @@ def set_background_image(
     pass
 
 
-def set_bg_image_paths(paths: list[str]) -> None:
+def set_bg_image_paths(paths: tuple[str, ...]) -> None:
     pass
 
 

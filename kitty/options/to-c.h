@@ -167,7 +167,17 @@ bganchor(PyObject *anchor_name) {
 }
 
 static inline void
-background_image(PyObject *src, Options *opts) { STR_SETTER(background_image); }
+background_image(PyObject *src, Options *opts) {
+    free(opts->background_image);
+    opts->background_image = NULL;
+    if (src == Py_None || !PyTuple_Check(src) || PyTuple_GET_SIZE(src) == 0) return;
+    PyObject *first = PyTuple_GET_ITEM(src, 0);
+    Py_ssize_t sz;
+    const char *s = PyUnicode_AsUTF8AndSize(first, &sz);
+    if (!s) return;
+    opts->background_image = calloc(sz + 1, sizeof(char));
+    if (opts->background_image) memcpy(opts->background_image, s, sz);
+}
 
 static inline void
 bell_path(PyObject *src, Options *opts) { STR_SETTER(bell_path); }

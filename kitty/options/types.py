@@ -61,7 +61,6 @@ option_names = (
     'background_opacity',
     'background_tint',
     'background_tint_gaps',
-    'background_image_paths',
     'bell_border_color',
     'bell_on_tab',
     'bell_path',
@@ -529,13 +528,12 @@ class Options:
     allow_remote_control: choices_for_allow_remote_control = 'no'
     background: Color = Color(0, 0, 0)
     background_blur: int = 0
-    background_image: str | None = None
+    background_image: tuple[str, ...] = ()
     background_image_layout: choices_for_background_image_layout = 'tiled'
     background_image_linear: bool = False
     background_opacity: float = 1.0
     background_tint: float = 0
     background_tint_gaps: float = 1.0
-    background_image_paths: tuple[str, ...] = ()
     bell_border_color: Color = Color(255, 90, 0)
     bell_on_tab: str = '🔔 '
     bell_path: str | None = None

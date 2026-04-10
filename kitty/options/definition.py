@@ -1956,7 +1956,7 @@ this option by reloading the config is not supported.
 
 
 opt('background_image', 'none',
-    option_type='config_or_absolute_path', ctype='!background_image',
+    option_type='background_image', ctype='!background_image',
     long_text='Path to a background image or a glob pattern matching multiple images. Must be in PNG/JPEG/WEBP/TIFF/GIF/BMP format.'
     ' When a glob pattern matches multiple images, they are sorted lexically and the first is used.'
     ' Use the :ac:`change_background_image` action to cycle through them.'

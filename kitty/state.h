@@ -394,7 +394,7 @@ typedef struct OSWindow {
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
     BackgroundImage *bgimage;
-    int bg_image_idx;
+    unsigned int bg_image_idx;
     struct {
         uint32_t framebuffer_id, attached_texture_generation;
     } indirect_output;

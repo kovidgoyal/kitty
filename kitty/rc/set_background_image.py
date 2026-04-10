@@ -46,7 +46,9 @@ class SetBackgroundImage(RemoteCommand):
     desc = (
         'Set the background image for the specified OS windows. You must specify the path to an image that'
         ' will be used as the background. If you specify the special value :code:`none` then any existing image will'
-        ' be removed. Supported image formats are: '
+        ' be removed. You can also specify :code:`+N` or :code:`-N` to cycle forward/backward through the'
+        ' background image list (wraps around), or a plain integer :code:`N` to jump to an absolute index.'
+        ' When setting by path, the current list index is unaffected. Supported image formats are: '
     ) + ', '.join(SUPPORTED_IMAGE_FORMATS)
     options_spec = f'''\
 --all -a
@@ -73,7 +75,7 @@ default=false
 Don't wait for a response from kitty. This means that even if setting the background image
 failed, the command will exit with a success code.
 ''' + '\n\n' + MATCH_WINDOW_OPTION
-    args = RemoteCommand.Args(spec='PATH_TO_PNG_IMAGE', count=1, json_field='data', special_parse='!read_window_logo(io_data, args[0])',
+    args = RemoteCommand.Args(spec='PATH_TO_PNG_IMAGE', count=1, json_field='data', special_parse='!read_background_image(io_data, args[0])',
                               completion=ImageCompletion)
     reads_streaming_data = True
 

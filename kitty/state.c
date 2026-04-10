@@ -1372,26 +1372,34 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
 static void
 free_bg_image_list(bool release_textures) {
     BackgroundImageList *list = &global_state.bg_image_list;
-    for (unsigned i = 0; i < list->count; i++) {
-        if (list->paths[i]) free(list->paths[i]);
-        if (list->images[i]) {
-            list->images[i]->refcnt = 1;
-            free_bgimage(&list->images[i], release_textures);
+    if (list->paths) {
+        for (unsigned i = 0; i < list->count; i++) {
+            if (list->paths[i]) free(list->paths[i]);
         }
+        free(list->paths);
+        list->paths = NULL;
     }
-    free(list->paths); list->paths = NULL;
-    free(list->images); list->images = NULL;
+    if (list->images) {
+        for (unsigned i = 0; i < list->count; i++) {
+            if (list->images[i]) {
+                list->images[i]->refcnt = 1;
+                free_bgimage(&list->images[i], release_textures);
+            }
+        }
+        free(list->images);
+        list->images = NULL;
+    }
     list->count = 0;
 }
 
 static PyObject*
 pyset_bg_image_paths(PyObject *self UNUSED, PyObject *args) {
-    PyObject *paths_list;
-    if (!PyArg_ParseTuple(args, "O!", &PyList_Type, &paths_list)) return NULL;
+    PyObject *paths_tuple;
+    if (!PyArg_ParseTuple(args, "O!", &PyTuple_Type, &paths_tuple)) return NULL;
 
     free_bg_image_list(true);
 
-    Py_ssize_t count = PyList_GET_SIZE(paths_list);
+    Py_ssize_t count = PyTuple_GET_SIZE(paths_tuple);
     if (count == 0) Py_RETURN_NONE;
 
     BackgroundImageList *list = &global_state.bg_image_list;
@@ -1400,7 +1408,7 @@ pyset_bg_image_paths(PyObject *self UNUSED, PyObject *args) {
     if (!list->paths || !list->images) return PyErr_NoMemory();
 
     for (Py_ssize_t i = 0; i < count; i++) {
-        const char *path = PyUnicode_AsUTF8(PyList_GET_ITEM(paths_list, i));
+        const char *path = PyUnicode_AsUTF8(PyTuple_GET_ITEM(paths_tuple, i));
         if (!path) continue;
         list->paths[i] = strdup(path);
         list->images[i] = NULL;  // lazy loaded
@@ -1457,26 +1465,27 @@ pychange_bg_image(PyObject *self UNUSED, PyObject *args) {
     WITH_OS_WINDOW(os_window_id)
         make_os_window_context_current(os_window);
 
-        int new_idx;
+        unsigned int new_idx;
         if (is_delta) {
-            int count = (int)list->count;
-            new_idx = ((os_window->bg_image_idx + value) % count + count) % count;
+            unsigned int count = list->count;
+            int cur = (int)os_window->bg_image_idx;
+            new_idx = (unsigned int)(((cur + value) % (int)count + (int)count) % (int)count);
         } else {
-            new_idx = value;
-            if (new_idx < 0) new_idx = 0;
-            if (new_idx >= (int)list->count) new_idx = (int)list->count - 1;
+            if (value < 0) new_idx = 0;
+            else if ((unsigned int)value >= list->count) new_idx = list->count - 1;
+            else new_idx = (unsigned int)value;
         }
 
         // Lazy load with retry on failure
-        int attempts = 0;
-        while (list->count > 0 && attempts < (int)list->count) {
-            if (new_idx >= (int)list->count) new_idx = 0;
+        unsigned int attempts = 0;
+        while (list->count > 0 && attempts < list->count) {
+            if (new_idx >= list->count) new_idx = 0;
             if (list->images[new_idx]) break;
-            if (load_bg_image_at_index((unsigned int)new_idx)) break;
+            if (load_bg_image_at_index(new_idx)) break;
             attempts++;
         }
 
-        if (list->count > 0 && new_idx < (int)list->count && list->images[new_idx]) {
+        if (list->count > 0 && new_idx < list->count && list->images[new_idx]) {
             os_window->bg_image_idx = new_idx;
 
             // Release old bgimage

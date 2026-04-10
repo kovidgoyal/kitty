@@ -860,6 +860,22 @@ def config_or_absolute_path(x: str, env: dict[str, str] | None = None) -> str | 
     return resolve_abs_or_config_path(x, env)
 
 
+def background_image(x: str) -> tuple[str, ...]:
+    import glob as glob_mod
+    import os
+    if not x or x.lower() == 'none':
+        return ()
+    path = resolve_abs_or_config_path(x)
+    matches = sorted(glob_mod.glob(path))
+    image_exts = {'.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.tiff'}
+    matches = [m for m in matches if os.path.isfile(m) and os.path.splitext(m)[1].lower() in image_exts]
+    if matches:
+        return tuple(matches)
+    if os.path.isfile(path):
+        return (path,)
+    return ()
+
+
 def filter_notification(val: str, current_val: dict[str, str]) -> Iterable[tuple[str, str]]:
     yield val, ''
 

@@ -8,7 +8,7 @@ from kitty.conf.utils import (
     to_color, to_color_or_none, unit_float
 )
 from kitty.options.utils import (
-    action_alias, active_tab_title_template, allow_hyperlinks, bell_on_tab, box_drawing_scale,
+    action_alias, active_tab_title_template, allow_hyperlinks, background_image, bell_on_tab, box_drawing_scale,
     clear_all_mouse_actions, clear_all_shortcuts, clipboard_control, clone_source_strategies,
     config_or_absolute_path, confirm_close, copy_on_select, cursor_blink_interval, cursor_text_color,
     cursor_trail_decay, deprecated_adjust_line_height, deprecated_hide_window_decorations_aliases,
@@ -77,22 +77,7 @@ class Parser:
         ans['background_blur'] = int(val)
 
     def background_image(self, val: str, ans: dict[str, typing.Any]) -> None:
-        import glob as glob_mod
-        import os
-        path = config_or_absolute_path(val)
-        if path is None:
-            ans['background_image'] = None
-            ans['background_image_paths'] = ()
-            return
-        matches = sorted(glob_mod.glob(path))
-        image_exts = {'.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.tiff'}
-        matches = [m for m in matches if os.path.isfile(m) and os.path.splitext(m)[1].lower() in image_exts]
-        if matches:
-            ans['background_image'] = matches[0]
-            ans['background_image_paths'] = tuple(matches)
-        else:
-            ans['background_image'] = path
-            ans['background_image_paths'] = (path,) if os.path.isfile(path) else ()
+        ans['background_image'] = background_image(val)
 
     def background_image_layout(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()

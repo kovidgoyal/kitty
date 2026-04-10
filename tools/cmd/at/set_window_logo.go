@@ -37,23 +37,7 @@ func isIndexArg(s string) bool {
 	return true
 }
 
-func read_window_logo(io_data *rc_io_data, path string) (func(io_data *rc_io_data) (bool, error), error) {
-	if strings.ToLower(path) == "none" {
-		io_data.rc.Stream = false
-		return func(io_data *rc_io_data) (bool, error) {
-			set_payload_data(io_data, "-")
-			return true, nil
-		}, nil
-	}
-
-	if isIndexArg(path) {
-		io_data.rc.Stream = false
-		return func(io_data *rc_io_data) (bool, error) {
-			set_payload_data(io_data, "index:"+path)
-			return true, nil
-		}, nil
-	}
-
+func read_image_file(io_data *rc_io_data, path string) (func(io_data *rc_io_data) (bool, error), error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -102,4 +86,33 @@ func read_window_logo(io_data *rc_io_data, path string) (func(io_data *rc_io_dat
 		}
 		return false, nil
 	}, nil
+}
+
+func read_window_logo(io_data *rc_io_data, path string) (func(io_data *rc_io_data) (bool, error), error) {
+	if strings.ToLower(path) == "none" {
+		io_data.rc.Stream = false
+		return func(io_data *rc_io_data) (bool, error) {
+			set_payload_data(io_data, "-")
+			return true, nil
+		}, nil
+	}
+	return read_image_file(io_data, path)
+}
+
+func read_background_image(io_data *rc_io_data, path string) (func(io_data *rc_io_data) (bool, error), error) {
+	if strings.ToLower(path) == "none" {
+		io_data.rc.Stream = false
+		return func(io_data *rc_io_data) (bool, error) {
+			set_payload_data(io_data, "-")
+			return true, nil
+		}, nil
+	}
+	if isIndexArg(path) {
+		io_data.rc.Stream = false
+		return func(io_data *rc_io_data) (bool, error) {
+			set_payload_data(io_data, "index:"+path)
+			return true, nil
+		}, nil
+	}
+	return read_image_file(io_data, path)
 }

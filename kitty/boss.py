@@ -1392,9 +1392,9 @@ class Boss:
             else:
                 self.startup_first_child(first_os_window_id, startup_sessions=startup_sessions)
 
-        paths = getattr(get_options(), 'background_image_paths', ())
+        paths = get_options().background_image
         if paths:
-            set_bg_image_paths(list(paths))
+            set_bg_image_paths(paths)
 
         if get_options().update_check_interval > 0 and not self.update_check_started and getattr(sys, 'frozen', False):
             from .update_check import run_update_check
@@ -3142,12 +3142,12 @@ class Boss:
             cocoa_recreate_global_menu()
         # Update misc options
         try:
-            set_background_image(opts.background_image, tuple(self.os_window_map), True, opts.background_image_layout)
+            first_path = opts.background_image[0] if opts.background_image else None
+            set_background_image(first_path, tuple(self.os_window_map), True, opts.background_image_layout)
         except Exception as e:
             log_error(f'Failed to set background image with error: {e}')
-        paths = getattr(opts, 'background_image_paths', ())
-        if paths:
-            set_bg_image_paths(list(paths))
+        if opts.background_image:
+            set_bg_image_paths(opts.background_image)
         for tm in self.all_tab_managers:
             tm.apply_options()
         # Update colors
@@ -3550,7 +3550,10 @@ class Boss:
     ) -> None:
         set_background_image(path, os_windows, configured, layout, png_data, linear_interpolation, tint, tint_gaps)
 
-    @ac('misc', 'Change the background image from the list of images matched by the :opt:`background_image` glob pattern')
+    @ac('misc', 'Change the background image from the list resolved by the :opt:`background_image` glob.'
+        ' The argument specifies which image to switch to:'
+        ' :code:`+N` or :code:`-N` moves forward/backward by N positions (wraps around), default is :code:`+1`.'
+        ' A plain integer :code:`N` jumps to absolute index N (clamped to list bounds).')
     def change_background_image(self, delta: str = '+1') -> None:
         aw = self.active_window
         if aw is None:
