@@ -352,6 +352,61 @@ If ``t=e`` or ``t=E`` escape codes are sent to the terminal before the drag is
 started and the terminal has responded with ``t=E ; OK``, the terminal must respond
 with ``t=E ; EINVAL`` and abort the drag.
 
+Dragging to remote machines
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To support dragging files to remote machines, when requesting the data for the
+``text/uri-list`` MIME type, terminal emulators can add the ``Y=1`` key. On
+receipt of this key, the client should first send the ``text/uri-list`` as
+normal and then a series of responses for every ``file://`` URL type in the
+list of the form::
+
+    OSC _dnd_code ; t=k:x=idx:m=0 or 1 ; base64 encoded file data ST
+    OSC _dnd_code ; t=k:x=idx:X=1:m=0 or 1 ; base64 encoded symlink target ST
+    OSC _dnd_code ; t=k:x=idx:X=handle:m=0 or 1 ; base64 encoded null separated list of directory entries ST
+
+These represent possibly chunked data for files, symlinks and directories, as
+denoted by the ``X`` key. As always, end of data is indicated by an escape code
+with ``m=0`` and no payload. ``idx`` is the one based index into the list of
+entries in the ``text/uri-list`` MIME type. ``file://`` URLs that point to
+symlinks must be resolved to files or directories and sent. So actual symlinks
+will appear only when recursing through directories as described below. Only
+regular files should be sent.
+
+Terminals should write the transmitted data into a temporary directory
+and replace the entries in the ``text/uri-list`` data with the transmitted
+files/directories.
+
+Every directory must be transmitted with ``X=handle``. The payload
+is a null separated list of regular files, directories and symlinks in the
+directory. ``handle`` is an integer other than ``0`` or ``1``
+that serves as an identifier for the directory. Directories must be traversed
+in breadth first order. The children of a directory are reported by
+adding ``Y=parent-handle:y=num`` to the escape codes above. Here
+``parent-handle`` is the handle of the directory being traversed and ``num``
+is the one based index into the list of entries in the directory.
+
+Once all data is transmitted, the client informs the terminal emulator of
+completion with::
+
+    OSC _dnd_code ; t=k ; ST
+
+If any error occurs in the client while reading the data, it can inform
+the terminal using::
+
+    OSC _dnd_code ; t=E ; POSIX error name ST
+
+The terminal must then abort the drag.
+
+Terminals are free to impose resource limits on how much data they accept,
+if a limit is breached or some errors occurs, they can abort the drag and
+inform the client of it with::
+
+    OSC _dnd_code ; t=E ; POSIX error name ST
+
+The error code for too many resources is ``EMFILE`` for IO errors is ``EIO``
+and so on.
+
 Multiplexers
 -----------------
 
@@ -383,6 +438,7 @@ Key      Value                 Default    Description
                                           ``P`` - Change drag image or start drag
                                           ``e`` - a drag offer event occurred
                                           ``E`` - a drag offer data error occurred
+                                          ``k`` - data for uri-list items in drag offer
 
 ``m``    Chunking indicator    ``0``      ``0`` or ``1``
 
