@@ -693,7 +693,7 @@ drop_alloc_dir_handle(Window *w, const char *path, char **entries, size_t num_en
     w->drop.next_dir_handle_id++;
     /* Handles 0 and 1 are reserved (0 = absent, 1 = symlink indicator), so
      * valid directory handles must be >= 2. */
-    if (w->drop.next_dir_handle_id <= 1) w->drop.next_dir_handle_id = 2;
+    if (w->drop.next_dir_handle_id < 2) w->drop.next_dir_handle_id = 2;
     DirHandle *h = &w->drop.dir_handles[w->drop.num_dir_handles++];
     zero_at_ptr(h);
     h->id = w->drop.next_dir_handle_id;

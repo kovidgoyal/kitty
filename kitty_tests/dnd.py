@@ -753,7 +753,7 @@ class TestDnDProtocol(BaseTest):
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
     def test_uri_directory_transfer_tree(self) -> None:
-        """Full directory tree (≥ 3 levels deep) transfer: listing, sub-dirs, file integrity.
+        """Full directory tree (>= 3 levels deep) transfer: listing, sub-dirs, file integrity.
 
         Also verifies that every response from the terminal unambiguously
         identifies the filesystem object it refers to.  For sub-directory
@@ -2014,6 +2014,9 @@ class TestDnDProtocol(BaseTest):
                     self.ae(ev['meta'].get('y'), '1')
                     handle = dir_handle(ev)
                     self.assertGreater(handle, 1, 'X= must be a directory handle (> 1)')
+                    # In a fresh window the handle counter starts at 1, so the
+                    # first allocated handle must be exactly 2.
+                    self.ae(handle, 2, 'first allocated directory handle must be 2')
                     self.assertIsNone(ev['meta'].get('Y'),
                                      'Y= must not be present in top-level dir response')
 
