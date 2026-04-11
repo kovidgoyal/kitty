@@ -1057,8 +1057,9 @@ drop_left_child(Window *w) {
 
 #define ds w->drag_source
 
-static void
-drag_free_built_data(Window *w) {
+void
+drag_free_offer(Window *w) {
+    free(ds.mimes_buf); ds.mimes_buf = NULL; ds.bufsz = 0;
     if (ds.items) {
         for (size_t i=0; i < ds.num_mimes; i++) {
             free(ds.items[i].optional_data);
@@ -1072,12 +1073,6 @@ drag_free_built_data(Window *w) {
         if (ds.images[i].data) free(ds.images[i].data);
         zero_at_ptr(ds.images + i);
     }
-}
-
-void
-drag_free_offer(Window *w) {
-    free(ds.mimes_buf); ds.mimes_buf = NULL; ds.bufsz = 0;
-    drag_free_built_data(w);
     ds.allowed_operations = 0;
     ds.state = DRAG_SOURCE_NONE;
     ds.pre_sent_total_sz = 0;
@@ -1148,6 +1143,7 @@ drag_add_mimes(Window *w, int allowed_operations, uint32_t client_id, const char
         while (p < end) {
             if (*p) {
                 if (ds.num_mimes >= rough_count + 1) break;
+                ds.items[ds.num_mimes].is_uri_list = strcmp(p, "text/uri-list") == 0;
                 ds.items[ds.num_mimes++].mime_type = p;
                 p += strlen(p) + 1;
             } else p++;
@@ -1367,8 +1363,9 @@ drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
             }
             // No fd yet, request data from the client
             char buf[128];
+            ds.items[i].requested_remote_files = ds.is_remote_client && ds.items[i].is_uri_list;
             int header_sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=e:x=%d:y=%zu:Y=%d",
-                    DND_CODE, DRAG_NOTIFY_FINISHED + 2, i, ds.is_remote_client);
+                    DND_CODE, DRAG_NOTIFY_FINISHED + 2, i, ds.items[i].requested_remote_files);
             queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_sz, NULL, 0, false);
             *err_code = EAGAIN;
             return NULL;
@@ -1427,8 +1424,10 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
     if (has_more == 0 && payload_sz == 0) {
         ds.items[idx].data_decode_initialized = false;
         if (ds.items[idx].fd_plus_one > 0) {
-            int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
-            if (ret) cancel_drag(w, ret);
+            if (!ds.items[idx].requested_remote_files) {
+                int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
+                if (ret) cancel_drag(w, ret);
+            }
         }
         return;
     }
@@ -1465,8 +1464,10 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
         }
         ds.items[idx].data_capacity += outlen;
         // Notify as soon as any data is available
-        int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
-        if (ret) cancel_drag(w, ret);
+        if (!ds.items[idx].requested_remote_files) {
+            int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
+            if (ret) cancel_drag(w, ret);
+        }
     }
 }
 
