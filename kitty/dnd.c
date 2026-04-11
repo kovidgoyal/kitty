@@ -1569,16 +1569,19 @@ finish_remote_data(Window *w, size_t item_idx) {
 }
 
 static void
-toplevel_data_for_drag(Window *w, unsigned uri_item_idx, unsigned item_type, bool has_more, const uint8_t *payload, size_t payload_sz) {
-    (void)w; (void)uri_item_idx; (void)item_type; (void)has_more; (void)payload; (void)payload_sz;
+toplevel_data_for_drag(
+    Window *w, unsigned mime_item_idx, unsigned uri_item_idx, unsigned item_type,
+    bool has_more, const uint8_t *payload, size_t payload_sz
+) {
+    (void)w; (void)uri_item_idx; (void)item_type; (void)has_more; (void)payload; (void)payload_sz; (void)mime_item_idx;
 }
 
 static void
 subdir_data_for_drag(
-    Window *w, unsigned uri_item_idx, int handle, unsigned entry_num, unsigned item_type, bool has_more,
-    const uint8_t *payload, size_t payload_sz
+    Window *w, unsigned mime_item_idx, unsigned uri_item_idx, int handle, unsigned entry_num, unsigned item_type,
+    bool has_more, const uint8_t *payload, size_t payload_sz
 ) {
-    (void)w; (void)uri_item_idx; (void)item_type; (void)has_more; (void)payload; (void)payload_sz; (void)handle; (void)entry_num;
+    (void)w; (void)uri_item_idx; (void)item_type; (void)has_more; (void)payload; (void)payload_sz; (void)handle; (void)entry_num; (void)mime_item_idx;
 }
 
 
@@ -1599,8 +1602,8 @@ drag_remote_file_data(
     }
     if (X < 0) abrt(EINVAL);
     if (!x && !y && !Y) { finish_remote_data(w, item_idx); return; }
-    if (!Y) toplevel_data_for_drag(w, x - 1, X, has_more, payload, payload_sz);
-    else subdir_data_for_drag(w, x - 1, Y, y - 1, X, has_more, payload, payload_sz);
+    if (!Y) toplevel_data_for_drag(w, item_idx, x - 1, X, has_more, payload, payload_sz);
+    else subdir_data_for_drag(w, item_idx, x - 1, Y, y - 1, X, has_more, payload, payload_sz);
 }
 #undef img
 #undef abrt
