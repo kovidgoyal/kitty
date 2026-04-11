@@ -1535,7 +1535,7 @@ fill_rect(Canvas *self, uint x_start, uint y_start, uint x_end, uint y_end) {
 static void
 draw_separated_block(Canvas *self, uint num_cols, uint num_rows, uint which) {
     // Each "separated" block is drawn with a small gap around it.
-    // Use approximately 1/8 of the cell dimensions as the gap.
+    // Use 1/8 of the cell dimensions as the gap (at least 1 pixel).
     uint gap_x = max(1u, self->width / 8u);
     uint gap_y = max(1u, self->height / 8u);
     uint total_gap_x = (num_cols + 1) * gap_x;
