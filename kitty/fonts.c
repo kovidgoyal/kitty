@@ -738,7 +738,7 @@ START_ALLOW_CASE_RANGE
         case 0x1fb00 ... 0x1fbae:  // symbols for legacy computing
         case 0x1fbce ... 0x1fbef:  // blocks, diagonals, circles (legacy computing)
         case 0x1cd00 ... 0x1cde5:  // octants
-        case 0x1cc1b ... 0x1cc2f:  // box drawing variants + separated block quadrants (supplement)
+        case 0x1cc1b ... 0x1cc2f:  // box drawing variants, double diagonals, separated block quadrants (supplement)
         case 0x1cc30 ... 0x1cc3f:  // twelfth and quarter circle arcs (supplement)
         case 0x1ce16 ... 0x1ce19:  // box drawings light vertical T-junctions (supplement)
         case 0x1ce51 ... 0x1ceaf:  // separated block sextants, sixteenth blocks, quarter parts (supplement)
