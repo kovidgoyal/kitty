@@ -852,6 +852,24 @@ static double circle_y(const void *v, double t) { const Circle *c=v; return c->y
 static double circle_prime_x(const void *v, double t) { const Circle *c=v; return -c->radius * sin(c->start + c->amt * t); }
 static double circle_prime_y(const void *v, double t) { const Circle *c=v; return c->radius * cos(c->start + c->amt * t); }
 
+typedef struct Ellipse {
+    double x, y, rx, ry;
+    double start, end, amt;
+} Ellipse;
+
+static Ellipse
+ellipse(double x, double y, double rx, double ry, double start_at, double end_at) {
+    double conv = M_PI / 180.;
+    Ellipse ans = {.x=x, .y=y, .rx=rx, .ry=ry, .start=start_at*conv, .end=end_at*conv};
+    ans.amt = ans.end - ans.start;
+    return ans;
+}
+
+static double ellipse_x(const void *v, double t) { const Ellipse *e=v; return e->x + e->rx * cos(e->start + e->amt * t); }
+static double ellipse_y(const void *v, double t) { const Ellipse *e=v; return e->y + e->ry * sin(e->start + e->amt * t); }
+static double ellipse_prime_x(const void *v, double t) { const Ellipse *e=v; return -e->rx * sin(e->start + e->amt * t); }
+static double ellipse_prime_y(const void *v, double t) { const Ellipse *e=v; return e->ry * cos(e->start + e->amt * t); }
+
 static void
 spinner(Canvas *self, uint level, double start_degrees, double end_degrees) {
     double x = self->width / 2.0, y = self->height / 2.0;
@@ -1627,20 +1645,6 @@ diagonal_line(Canvas *self, uint level, int x1, int y1, int x2, int y2) {
     thick_line(self, diagonal_thickness(thickness(self, level, true), p1, p2), p1, p2);
 }
 
-// Draw a small filled square at a junction point to prevent visual thinning
-// when two diagonal lines meet. The square size matches the line thickness.
-static void
-diagonal_join(Canvas *self, uint level, int jx, int jy) {
-    uint th = thickness(self, level, true);
-    int half = (int)(th / 2);
-    int extra = (int)(th % 2);
-    for (int y = MAX(0, jy - half); y < MIN(jy + half + extra, (int)self->height); y++) {
-        for (int x = MAX(0, jx - half); x < MIN(jx + half + extra, (int)self->width); x++) {
-            self->mask[x + y * self->width] = 255;
-        }
-    }
-}
-
 // Justified half/quarter circle (filled)
 // For top/bottom: diameter = cell width, circle centered horizontally.
 //   Top: flat edge at top, arc going down. Bottom: flat edge at bottom, arc going up.
@@ -1682,7 +1686,9 @@ justified_quarter_circle(Canvas *self, Corner corner) {
 }
 
 // Justified half circle outline (white/unfilled circle arc)
-// Diameter = cell width for all edges. Vertically centered for left/right.
+// Diameter = cell width for all edges.
+// For left/right, center is at the cell edge so that two adjacent arcs
+// (e.g. RIGHT then LEFT) share the diameter line and join seamlessly.
 static void
 justified_half_circle_outline(Canvas *self, uint level, Edge edge) {
     double cx, cy, radius;
@@ -1699,10 +1705,10 @@ justified_half_circle_outline(Canvas *self, uint level, Edge edge) {
             cx = w / 2.0; cy = h - half_lw;
             start_deg = 180; end_deg = 360; break;
         case LEFT_EDGE:
-            cx = half_lw; cy = h / 2.0;
+            cx = 0; cy = h / 2.0;
             start_deg = 270; end_deg = 450; break;
         case RIGHT_EDGE:
-            cx = w - half_lw; cy = h / 2.0;
+            cx = w; cy = h / 2.0;
             start_deg = 90; end_deg = 270; break;
         default: return;
     }
@@ -1717,83 +1723,89 @@ justified_half_circle_outline(Canvas *self, uint level, Edge edge) {
 //   printf '\U1cc30\U1cc31\U1cc32\U1cc33\n\U1cc34  \U1cc37\n\U1cc38  \U1cc3b\n\U1cc3c\U1cc3d\U1cc3e\U1cc3f'
 // The 4 quarter circles form a continuous circle when printed in a 2x2 grid:
 //   printf '\U1cc35\U1cc36\n\U1cc39\U1cc3a'
-// For the twelfth circles: the shared circle center is at the center of the 4x4 grid.
-// Each cell at grid position (col, row) has local center at (2w - col*w, 2h - row*h).
-// Radius = 2*min(w, h). Each arc spans 30° (1/12 of 360°).
-// For the quarter circles: center at corner shared by the 2x2 grid, radius = min(w, h).
+//
+// For the twelfth circles: in a 4x4 grid of cells (total size 4w × 4h), an
+// ellipse is centered at (2w, 2h) with semi-axes rx=2w and ry=2h so it
+// exactly inscribes the grid. Each cell draws its 30° arc segment.
+// For each cell at grid position (col, row), the local center is at
+// (2w - col*w, 2h - row*h).
+//
+// For the quarter circles: in a 2x2 grid, the ellipse center is at (w, h)
+// with semi-axes rx=w, ry=h.
 static void
 twelfth_circle(Canvas *self, uint level, uint pos) {
     double line_width = thickness_as_float(self, level, true);
     double half_lw = fmax(0.5, line_width / 2.0);
     double w = self->width, h = self->height;
-    double cx, cy, radius, start_deg, end_deg;
+    double cx, cy, rx, ry, start_deg, end_deg;
 
     switch (pos) {
-        // Top row (row=0): arcs from the upper part of the circle
+        // Top row (row=0): arcs from the upper part of the ellipse
         case 0: // upper left twelfth (col=0, row=0): 210° to 240°
-            cx = 2*w; cy = 2*h; radius = 2*fmin(w, h) - half_lw;
+            cx = 2*w; cy = 2*h; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 210; end_deg = 240; break;
         case 1: // upper centre left twelfth (col=1, row=0): 240° to 270°
-            cx = w; cy = 2*h; radius = 2*fmin(w, h) - half_lw;
+            cx = w; cy = 2*h; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 240; end_deg = 270; break;
         case 2: // upper centre right twelfth (col=2, row=0): 270° to 300°
-            cx = 0; cy = 2*h; radius = 2*fmin(w, h) - half_lw;
+            cx = 0; cy = 2*h; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 270; end_deg = 300; break;
         case 3: // upper right twelfth (col=3, row=0): 300° to 330°
-            cx = -w; cy = 2*h; radius = 2*fmin(w, h) - half_lw;
+            cx = -w; cy = 2*h; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 300; end_deg = 330; break;
 
         // Side cells row=1
         case 4: // upper middle left twelfth (col=0, row=1): 180° to 210°
-            cx = 2*w; cy = h; radius = 2*fmin(w, h) - half_lw;
+            cx = 2*w; cy = h; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 180; end_deg = 210; break;
         case 5: // upper left quarter circle (2x2 grid: col=0, row=0)
-            // Center at bottom-right corner of cell, radius = min(w,h)
-            cx = w; cy = h; radius = fmin(w, h) - half_lw;
+            // Center at bottom-right corner of cell
+            cx = w; cy = h; rx = w - half_lw; ry = h - half_lw;
             start_deg = 180; end_deg = 270; break;
         case 6: // upper right quarter circle (2x2 grid: col=1, row=0)
             // Center at bottom-left corner of cell
-            cx = 0; cy = h; radius = fmin(w, h) - half_lw;
+            cx = 0; cy = h; rx = w - half_lw; ry = h - half_lw;
             start_deg = 270; end_deg = 360; break;
         case 7: // upper middle right twelfth (col=3, row=1): 330° to 360°
-            cx = -w; cy = h; radius = 2*fmin(w, h) - half_lw;
+            cx = -w; cy = h; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 330; end_deg = 360; break;
 
         // Side cells row=2
         case 8: // lower middle left twelfth (col=0, row=2): 150° to 180°
-            cx = 2*w; cy = 0; radius = 2*fmin(w, h) - half_lw;
+            cx = 2*w; cy = 0; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 150; end_deg = 180; break;
         case 9: // lower left quarter circle (2x2 grid: col=0, row=1)
             // Center at top-right corner of cell
-            cx = w; cy = 0; radius = fmin(w, h) - half_lw;
+            cx = w; cy = 0; rx = w - half_lw; ry = h - half_lw;
             start_deg = 90; end_deg = 180; break;
         case 10: // lower right quarter circle (2x2 grid: col=1, row=1)
             // Center at top-left corner of cell
-            cx = 0; cy = 0; radius = fmin(w, h) - half_lw;
+            cx = 0; cy = 0; rx = w - half_lw; ry = h - half_lw;
             start_deg = 0; end_deg = 90; break;
         case 11: // lower middle right twelfth (col=3, row=2): 0° to 30°
-            cx = -w; cy = 0; radius = 2*fmin(w, h) - half_lw;
+            cx = -w; cy = 0; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 0; end_deg = 30; break;
 
-        // Bottom row (row=3): arcs from the lower part of the circle
+        // Bottom row (row=3): arcs from the lower part of the ellipse
         case 12: // lower left twelfth (col=0, row=3): 120° to 150°
-            cx = 2*w; cy = -h; radius = 2*fmin(w, h) - half_lw;
+            cx = 2*w; cy = -h; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 120; end_deg = 150; break;
         case 13: // lower centre left twelfth (col=1, row=3): 90° to 120°
-            cx = w; cy = -h; radius = 2*fmin(w, h) - half_lw;
+            cx = w; cy = -h; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 90; end_deg = 120; break;
         case 14: // lower centre right twelfth (col=2, row=3): 60° to 90°
-            cx = 0; cy = -h; radius = 2*fmin(w, h) - half_lw;
+            cx = 0; cy = -h; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 60; end_deg = 90; break;
         case 15: // lower right twelfth (col=3, row=3): 30° to 60°
-            cx = -w; cy = -h; radius = 2*fmin(w, h) - half_lw;
+            cx = -w; cy = -h; rx = 2*w - half_lw; ry = 2*h - half_lw;
             start_deg = 30; end_deg = 60; break;
         default: return;
     }
-    if (radius < 1) radius = 1;
-    Circle c = circle(cx, cy, radius, start_deg, end_deg);
+    if (rx < 1) rx = 1;
+    if (ry < 1) ry = 1;
+    Ellipse e = ellipse(cx, cy, rx, ry, start_deg, end_deg);
     draw_parametrized_curve_with_derivative_and_antialiasing(
-        self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y, 0, 0, NULL);
+        self, &e, line_width, ellipse_x, ellipse_y, ellipse_prime_x, ellipse_prime_y, 0, 0, NULL);
 }
 
 void
@@ -2179,7 +2191,6 @@ START_ALLOW_CASE_RANGE
         // Key points used: UL=(0,0), UC=(w/2,0), UR=(w,0), ML=(0,h/2), MC=(w/2,h/2), MR=(w,h/2),
         //                  LL=(0,h), LC=(w/2,h), LR=(w,h)
 #define DL(x1,y1,x2,y2) diagonal_line(c, 1, x1, y1, x2, y2)
-#define DJ(x,y) diagonal_join(c, 1, x, y)
 #define W (int)minus(c->width,1)
 #define H (int)minus(c->height,1)
 #define HW ((int)(c->width/2))
@@ -2203,21 +2214,20 @@ START_ALLOW_CASE_RANGE
         // 1FBD8: upper left to middle centre to upper right (V open down)
         SS(0x1fbd8, DL(0, 0, HW, HH); DL(HW, HH, W, 0));
         // 1FBD9: upper right to middle centre to lower right (> shape)
-        SS(0x1fbd9, DL(W, 0, HW, HH); DL(HW, HH, W, H); DJ(HW, HH));
+        SS(0x1fbd9, DL(W, 0, HW, HH); DL(HW, HH, W, H));
         // 1FBDA: lower left to middle centre to lower right (^ shape)
         SS(0x1fbda, DL(0, H, HW, HH); DL(HW, HH, W, H));
         // 1FBDB: upper left to middle centre to lower left (< shape)
-        SS(0x1fbdb, DL(0, 0, HW, HH); DL(HW, HH, 0, H); DJ(HW, HH));
+        SS(0x1fbdb, DL(0, 0, HW, HH); DL(HW, HH, 0, H));
         // 1FBDC: upper left to lower centre to upper right (V with apex at bottom-center)
         SS(0x1fbdc, DL(0, 0, HW, H); DL(HW, H, W, 0));
         // 1FBDD: upper right to middle left to lower right (> with apex at middle-left)
-        SS(0x1fbdd, DL(W, 0, 0, HH); DL(0, HH, W, H); DJ(0, HH));
+        SS(0x1fbdd, DL(W, 0, 0, HH); DL(0, HH, W, H));
         // 1FBDE: lower left to upper centre to lower right (^ with apex at upper-center)
         SS(0x1fbde, DL(0, H, HW, 0); DL(HW, 0, W, H));
         // 1FBDF: upper left to middle right to lower left (< with apex at middle-right)
-        SS(0x1fbdf, DL(0, 0, W, HH); DL(W, HH, 0, H); DJ(W, HH));
+        SS(0x1fbdf, DL(0, 0, W, HH); DL(W, HH, 0, H));
 #undef DL
-#undef DJ
 #undef W
 #undef H
 #undef HW
