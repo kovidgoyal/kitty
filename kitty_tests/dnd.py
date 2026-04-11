@@ -93,7 +93,7 @@ def client_dir_read(handle_id: int, entry_num: int | None = None, client_id: int
 
 def client_drag_register(client_id: int = 0) -> bytes:
     """Escape code a client sends to start offering drags (t=o, no payload)."""
-    meta = f'{DND_CODE};t=o'
+    meta = f'{DND_CODE};t=o:x=1'
     if client_id:
         meta += f':i={client_id}'
     return _osc(meta)
@@ -101,7 +101,7 @@ def client_drag_register(client_id: int = 0) -> bytes:
 
 def client_drag_unregister(client_id: int = 0) -> bytes:
     """Escape code a client sends to stop offering drags (t=O)."""
-    meta = f'{DND_CODE};t=O'
+    meta = f'{DND_CODE};t=o:x=2'
     if client_id:
         meta += f':i={client_id}'
     return _osc(meta)
@@ -1303,6 +1303,7 @@ class TestDnDProtocol(BaseTest):
 
     def _setup_drag_offer(self, screen, wid, cap, mimes: str = 'text/plain', operations: int = 1, client_id: int = 0):
         """Send t=o with operations and payload to set up a drag offer being built."""
+        parse_bytes(screen, client_drag_register())
         parse_bytes(screen, client_drag_offer_mimes(operations, mimes, client_id=client_id))
         cap.consume(wid)  # discard any output
 
@@ -1320,6 +1321,7 @@ class TestDnDProtocol(BaseTest):
     def test_drag_offer_single_mime(self) -> None:
         """Client can offer a drag with a single MIME type."""
         with dnd_test_window() as (osw, wid, screen, cap):
+            parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
             # No error expected – the offer is being built.
             self._assert_no_output(cap, wid)
@@ -1327,35 +1329,37 @@ class TestDnDProtocol(BaseTest):
     def test_drag_offer_multiple_mimes(self) -> None:
         """Client can offer a drag with multiple MIME types."""
         with dnd_test_window() as (osw, wid, screen, cap):
+            parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(3, 'text/plain text/uri-list application/json'))
             self._assert_no_output(cap, wid)
 
     def test_drag_offer_no_operations_returns_einval(self) -> None:
         """Offering MIME types with operations=0 (no valid operations) returns EINVAL."""
         with dnd_test_window() as (osw, wid, screen, cap):
+            parse_bytes(screen, client_drag_register())
             # First need a valid offer to set allowed_operations, but if we pass o=0
             # directly and there's no prior offer, drag_add_mimes should abort with EINVAL.
             parse_bytes(screen, client_drag_offer_mimes(0, 'text/plain'))
-            events = self._get_events(cap, wid)
-            self.assertEqual(len(events), 1, events)
-            self.ae(events[0]['type'], 'E')
-            self.ae(events[0]['payload'].strip(), b'EINVAL')
+            self.assert_error(cap, wid)
 
     def test_drag_offer_copy_only(self) -> None:
         """Offering with operations=1 (copy only) is accepted."""
         with dnd_test_window() as (osw, wid, screen, cap):
+            parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
             self._assert_no_output(cap, wid)
 
     def test_drag_offer_move_only(self) -> None:
         """Offering with operations=2 (move only) is accepted."""
         with dnd_test_window() as (osw, wid, screen, cap):
+            parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(2, 'text/plain'))
             self._assert_no_output(cap, wid)
 
     def test_drag_offer_copy_and_move(self) -> None:
         """Offering with operations=3 (copy+move) is accepted."""
         with dnd_test_window() as (osw, wid, screen, cap):
+            parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(3, 'text/plain text/html'))
             self._assert_no_output(cap, wid)
 
@@ -1556,6 +1560,7 @@ class TestDnDProtocol(BaseTest):
         """The client_id (i=…) set during drag offer is echoed in error replies."""
         client_id = 99
         with dnd_test_window() as (osw, wid, screen, cap):
+            parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain', client_id=client_id))
             self._assert_no_output(cap, wid)
             # Starting the drag will fail (no real window), producing an error with client_id
@@ -1582,6 +1587,7 @@ class TestDnDProtocol(BaseTest):
         """A large MIME list can be sent in chunks using m=1."""
         with dnd_test_window() as (osw, wid, screen, cap):
             # First chunk with m=1 (more coming)
+            parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain ', more=True))
             self._assert_no_output(cap, wid)
 

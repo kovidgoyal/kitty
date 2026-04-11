@@ -1067,6 +1067,7 @@ drag_free_built_data(Window *w) {
         free(ds.items);
         ds.items = NULL;
     }
+    ds.num_mimes = 0;
     for (size_t i = 0; i < arraysz(ds.images); i++) {
         if (ds.images[i].data) free(ds.images[i].data);
         zero_at_ptr(ds.images + i);
@@ -1075,11 +1076,10 @@ drag_free_built_data(Window *w) {
 
 void
 drag_free_offer(Window *w) {
-    free(ds.mimes_buf); ds.mimes_buf = NULL;
+    free(ds.mimes_buf); ds.mimes_buf = NULL; ds.bufsz = 0;
     drag_free_built_data(w);
     ds.allowed_operations = 0;
     ds.state = DRAG_SOURCE_NONE;
-    ds.num_mimes = 0;
     ds.pre_sent_total_sz = 0;
     ds.images_sent_total_sz = 0;
 }
@@ -1100,12 +1100,31 @@ cancel_drag(Window *w, int error_code) {
     drag_free_offer(w);
 }
 
+#define abrt(code) { cancel_drag(w, code); return; }
+
+void
+drag_start_offerring(Window *w, const char *client_machine_id, size_t sz) {
+    ds.can_offer = true; ds.is_remote_client = false;
+    if (sz && client_machine_id) {
+        const char *host_machine_id = machine_id();
+        if (host_machine_id) {
+            size_t hsz = strlen(host_machine_id);
+            if (hsz != sz || memcmp(host_machine_id, client_machine_id, sz) != 0) ds.is_remote_client = true;
+        }
+    }
+}
+
+void
+drag_stop_offerring(Window *w) {
+    drag_free_offer(w);
+    ds.can_offer = false; ds.is_remote_client = false;
+}
+
 void
 drag_add_mimes(Window *w, int allowed_operations, uint32_t client_id, const char *data, size_t sz, bool has_more) {
-#define abrt(code) { cancel_drag(w, code); return; }
-    if (allowed_operations && ds.state != DRAG_SOURCE_NONE) cancel_drag(w, 0);
+    if (!ds.can_offer) abrt(EINVAL);
     if (allowed_operations && !ds.allowed_operations) ds.allowed_operations = allowed_operations;
-    if (!ds.allowed_operations) { abrt(EINVAL); }
+    if (!ds.allowed_operations || ds.state > DRAG_SOURCE_BEING_BUILT) abrt(EINVAL);
     ds.state = DRAG_SOURCE_BEING_BUILT;
     ds.client_id = client_id;
     size_t new_sz = ds.bufsz + sz;
@@ -1348,7 +1367,8 @@ drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
             }
             // No fd yet, request data from the client
             char buf[128];
-            int header_sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=e:x=%d:y=%zu", DND_CODE, DRAG_NOTIFY_FINISHED + 2, i);
+            int header_sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=e:x=%d:y=%zu:Y=%d",
+                    DND_CODE, DRAG_NOTIFY_FINISHED + 2, i, ds.is_remote_client);
             queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_sz, NULL, 0, false);
             *err_code = EAGAIN;
             return NULL;
@@ -1448,6 +1468,14 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
         int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[idx].mime_type);
         if (ret) cancel_drag(w, ret);
     }
+}
+
+void
+drag_remote_file_data(
+    Window *w, int32_t x, int32_t y, int32_t X, int32_t Y, bool has_more, const uint8_t *payload, size_t payload_sz
+) {
+    (void)w; (void)x; (void)y; (void)X; (void)Y; (void)has_more; (void)payload; (void)payload_sz;
+    // TODO: Implement this
 }
 #undef img
 #undef abrt

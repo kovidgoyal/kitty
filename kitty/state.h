@@ -296,7 +296,7 @@ typedef struct Window {
         int32_t current_request_x, current_request_y, current_request_Y;
     } drop;
     struct {
-        bool can_offer;
+        bool can_offer, is_remote_client;
         struct { index_type x, y; bool active; } potential_url_drag;
         struct { double x, y; monotonic_t at; } initial_left_press;
         char *mimes_buf; size_t num_mimes, bufsz;

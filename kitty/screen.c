@@ -1535,14 +1535,13 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
             drop_enqueue_request(w, cmd->cell_x, cmd->cell_y, cmd->pixel_y);
         } break;
         case 'o': {
-            if (cmd->payload_sz > 0) drag_add_mimes(w, (int)cmd->operation, cmd->client_id, (const char*)payload, cmd->payload_sz, cmd->more);
-            else w->drag_source.can_offer = true;
-        } break;
-        case 'O': {
-            drag_free_offer(w);
-            w->drag_source.can_offer = false;
-            if (global_state.drag_source.is_active && global_state.drag_source.from_window == w->id) {
-                cancel_current_drag_source();
+            switch (cmd->cell_x) {
+                case 1: drag_start_offerring(w, (const char*)payload, cmd->payload_sz); break;
+                case 2: drag_stop_offerring(w); break;
+                case 0:
+                    drag_add_mimes(
+                        w, (int)cmd->operation, cmd->client_id, (const char*)payload, cmd->payload_sz, cmd->more);
+                    break;
             }
         } break;
         case 'p': {
@@ -1563,6 +1562,10 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
                     cancel_current_drag_source();
                 }
             } else drag_process_item_data(w, cmd->cell_y, -1, payload, cmd->payload_sz);
+        } break;
+        case 'k': {
+            drag_remote_file_data(
+                w, cmd->cell_x, cmd->cell_y, cmd->pixel_x, cmd->pixel_y, cmd->more != 0, payload, cmd->payload_sz);
         } break;
     }
 }

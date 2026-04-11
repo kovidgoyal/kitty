@@ -232,10 +232,12 @@ Terminal programs can inform the terminal emulator that they
 are willing to act as a source of drag data by sending the
 sending the escape code::
 
-    OSC _dnd_code ; t=o ST
+    OSC _dnd_code ; t=o:x=1 ; optional machine id ST
 
 On exit, or if the program no longer is willing to start drag gestures, it must
-send ``t=O`` to the terminal to indicate it no longer wants to offer drag data.
+send ``t=o:x=2`` to the terminal to indicate it no longer wants to offer drag data.
+The ``machine id`` is optional and is used to enable dragging from remote
+machines. See :ref:`below <machine_id>` for its semantics.
 
 When the user performs the platform specific gesture to start a drag operation,
 the terminal will send the same escape code back to the terminal program
@@ -356,7 +358,9 @@ Dragging to remote machines
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To support dragging files to remote machines, when requesting the data for the
-``text/uri-list`` MIME type, terminal emulators can add the ``Y=1`` key. On
+``text/uri-list`` MIME type, terminal emulators can add the ``Y=1`` key.
+Terminals can examine the :ref:`machine_id` sent with the enable drag offers
+``t=o`` escape code to decide whether to use ``Y=1`` or not. On
 receipt of this key, the client should first send the ``text/uri-list`` as
 normal and then a series of responses for every ``file://`` URL type in the
 list of the form::
@@ -366,12 +370,12 @@ list of the form::
     OSC _dnd_code ; t=k:x=idx:X=handle:m=0 or 1 ; base64 encoded null separated list of directory entries ST
 
 These represent possibly chunked data for files, symlinks and directories, as
-denoted by the ``X`` key. As always, end of data is indicated by an escape code
-with ``m=0`` and no payload. ``idx`` is the one based index into the list of
-entries in the ``text/uri-list`` MIME type. ``file://`` URLs that point to
-symlinks must be resolved to files or directories and sent. So actual symlinks
-will appear only when recursing through directories as described below. Only
-regular files should be sent.
+denoted by the ``X`` key. As above, end of data for an individual entry is
+indicated by an escape code with ``m=0`` and no payload. ``idx`` is the one
+based index into the list of entries in the ``text/uri-list`` MIME type.
+``file://`` URLs that point to symlinks must be resolved to files or
+directories and sent. So actual symlinks will appear only when recursing
+through directories as described below. Only regular files should be sent.
 
 Terminals should write the transmitted data into a temporary directory
 and replace the entries in the ``text/uri-list`` data with the transmitted
@@ -384,12 +388,16 @@ that serves as an identifier for the directory. Directories must be traversed
 in breadth first order. The children of a directory are reported by
 adding ``Y=parent-handle:y=num`` to the escape codes above. Here
 ``parent-handle`` is the handle of the directory being traversed and ``num``
-is the one based index into the list of entries in the directory.
+is the one based index into the list of entries in the directory. Thus, the
+set of keys ``x, y, Y`` uniquely determine an entry.
 
 Once all data is transmitted, the client informs the terminal emulator of
 completion with::
 
     OSC _dnd_code ; t=k ; ST
+
+At this point, the terminal should send the modified data for ``text/uri-list``
+to the drop destination.
 
 If any error occurs in the client while reading the data, it can inform
 the terminal using::
@@ -432,8 +440,7 @@ Key      Value                 Default    Description
                                           ``M`` - a drop dropped event
                                           ``r`` - request dropped data
                                           ``R`` - report an error
-                                          ``o`` - start offering drags
-                                          ``O`` - stop offering drags
+                                          ``o`` - start offering drags or start a drag
                                           ``p`` - present data for drag offers
                                           ``P`` - Change drag image or start drag
                                           ``e`` - a drag offer event occurred
@@ -460,4 +467,16 @@ Key      Value                 Default    Description
 =======  ====================  =========  =================
 
 
+.. _machine_id:
 
+Machine id
+-----------------
+
+The machine id is used to detect when a drag is started on a remote machine. It
+is of the form: ``version:ASCII printable chars``. The leading ``version`` field
+allows for changing the format or semantics of this field in the future. The
+actual id is the machine id (the contents of :file:`/etc/machine-id` on
+Linux/BSD and :file:`HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\MachineGuid` on Windows and ``IOPlatformUUID`` on macOS). This machine id is then hashed using a :rfc:`HMAC <2104>`
+with :rfc:`SHA-256 <6234>` as the digest algorithm and the key being the ASCII bytes:
+``tty-dnd-protocol-machine-id``. The hashing is done so as to not easily leak the
+actual machine id and to ensure that the value is of fixed size.
