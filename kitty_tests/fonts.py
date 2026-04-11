@@ -1216,3 +1216,7 @@ box_chars = {  # {{{
  }  # }}}
 for ch in range(0x1cd00, 0x1cde5+1):  # octants
     box_chars.add(chr(ch))
+for ch in range(0x1cc21, 0x1cc30):  # separated block quadrants (supplement)
+    box_chars.add(chr(ch))
+for ch in range(0x1ce51, 0x1ceb0):  # separated block sextants, sixteenth blocks, quarter parts (supplement)
+    box_chars.add(chr(ch))
