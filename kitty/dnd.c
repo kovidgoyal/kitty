@@ -1476,15 +1476,94 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
 }
 
 static const char**
-parse_uri_list(int fd) {
-    (void)fd;
-    // TODO: Implement this, it should read the uri list from fd, parse
-    // it ignoring comments, see get_nth_file_url() for an example of
-    // parsing a uri list. If an error occurs it should call abrt() with
-    // appropriate error code and return NULL. The returned value should
-    // be a list of strings alloced by malloc with each string also
-    // alloced by malloc.
-    return NULL;
+parse_uri_list(Window *w, int fd, size_t *num_uris_out) {
+    *num_uris_out = 0;
+    // Determine file size and read all data
+    off_t file_size = lseek(fd, 0, SEEK_END);
+    if (file_size < 0) { cancel_drag(w, EIO); return NULL; }
+    if (lseek(fd, 0, SEEK_SET) < 0) { cancel_drag(w, EIO); return NULL; }
+    char *buf = malloc((size_t)file_size + 1);
+    if (!buf) { cancel_drag(w, ENOMEM); return NULL; }
+    size_t total = 0;
+    while (total < (size_t)file_size) {
+        ssize_t n = read(fd, buf + total, (size_t)file_size - total);
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            free(buf); cancel_drag(w, EIO); return NULL;
+        }
+        if (n == 0) break;
+        total += (size_t)n;
+    }
+    buf[total] = '\0';
+
+    // First pass: count non-comment, non-empty lines
+    size_t count = 0;
+    char *p = buf;
+    while (*p) {
+        char *eol = p + strcspn(p, "\r\n");
+        char saved = *eol; *eol = '\0';
+        char *end = eol;
+        while (end > p && (end[-1] == ' ' || end[-1] == '\t')) end--;
+        char saved_end = *end; *end = '\0';
+        if (*p && *p != '#') count++;
+        *end = saved_end;
+        *eol = saved;
+        if (saved == '\0') break;
+        p = eol + 1;
+        while (*p == '\r' || *p == '\n') p++;
+    }
+
+    const char **result = malloc((count + 1) * sizeof(const char*));
+    if (!result) { free(buf); cancel_drag(w, ENOMEM); return NULL; }
+
+    // Second pass: fill in decoded URI strings
+    size_t idx = 0;
+    p = buf;
+    while (*p && idx < count) {
+        char *eol = p + strcspn(p, "\r\n");
+        char saved = *eol; *eol = '\0';
+        char *end = eol;
+        while (end > p && (end[-1] == ' ' || end[-1] == '\t')) end--;
+        *end = '\0';
+        if (*p && *p != '#') {
+            char *decoded = NULL;
+            if (strncmp(p, "file://", 7) == 0) {
+                const char *rest = p + 7;
+                const char *slash = strchr(rest, '/');
+                if (slash) {
+                    size_t host_len = (size_t)(slash - rest);
+                    if (host_len == 0 || (host_len == 9 && strncasecmp(rest, "localhost", 9) == 0)) {
+                        decoded = strdup(slash);
+                        if (decoded) {
+                            char *qf = decoded + strcspn(decoded, "?#");
+                            *qf = '\0';
+                            url_decode_inplace(decoded);
+                        }
+                    } else {
+                        decoded = strdup(p);
+                    }
+                } else {
+                    decoded = strdup(p);
+                }
+            } else {
+                decoded = strdup(p);
+            }
+            if (!decoded) {
+                for (size_t k = 0; k < idx; k++) free((char*)result[k]);
+                free(result); free(buf);
+                cancel_drag(w, ENOMEM); return NULL;
+            }
+            result[idx++] = decoded;
+        }
+        *eol = saved;
+        if (saved == '\0') break;
+        p = eol + 1;
+        while (*p == '\r' || *p == '\n') p++;
+    }
+    result[idx] = NULL;
+    free(buf);
+    *num_uris_out = idx;
+    return result;
 }
 
 
@@ -1500,7 +1579,7 @@ drag_remote_file_data(
     }
     if (item_idx == ds.num_mimes || ds.items[item_idx].fd_plus_one == 0) abrt(EINVAL);
     if (ds.items[item_idx].uri_list == NULL) {
-        ds.items[item_idx].uri_list = parse_uri_list(ds.items[item_idx].fd_plus_one-1);
+        ds.items[item_idx].uri_list = parse_uri_list(w, ds.items[item_idx].fd_plus_one-1, &ds.items[item_idx].num_uris);
         if (!ds.items[item_idx].uri_list) return;
     }
     (void)x; (void)y; (void)X; (void)Y; (void)has_more; (void)payload; (void)payload_sz;
