@@ -117,10 +117,10 @@
     },
 
     {
-        "name": "xz 5.8.1",
+        "name": "xz 5.8.3",
         "unix": {
             "file_extension": "tar.gz",
-            "hash": "sha256:507825b599356c10dca1cd720c9d0d0c9d5400b9de300af00e4d1ea150795543",
+            "hash": "sha256:3d3a1b973af218114f4f889bbaa2f4c037deaae0c8e815eec381c3d546b974a0",
             "urls": ["https://tukaani.org/xz/{filename}"]
         }
     },
@@ -154,10 +154,10 @@
     },
 
     {
-        "name": "libpng 1.6.56",
+        "name": "libpng 1.6.57",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:f7d8bf1601b7804f583a254ab343a6549ca6cf27d255c302c47af2d9d36a6f18",
+            "hash": "sha256:d10c20d7171569804cae8dfc13ba6dcd0662c41ed39d43d4d429314aafb10a80",
             "urls": ["https://downloads.sourceforge.net/sourceforge/libpng/{filename}"]
         }
     },
