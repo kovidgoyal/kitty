@@ -1482,14 +1482,14 @@ parse_uri_list(Window *w, int fd, size_t *num_uris_out) {
     off_t file_size = lseek(fd, 0, SEEK_END);
     if (file_size < 0) { cancel_drag(w, EIO); return NULL; }
     if (lseek(fd, 0, SEEK_SET) < 0) { cancel_drag(w, EIO); return NULL; }
-    char *buf = malloc((size_t)file_size + 1);
+    RAII_ALLOC(char, buf, malloc((size_t)file_size + 1));
     if (!buf) { cancel_drag(w, ENOMEM); return NULL; }
     size_t total = 0;
     while (total < (size_t)file_size) {
         ssize_t n = read(fd, buf + total, (size_t)file_size - total);
         if (n < 0) {
             if (errno == EINTR) continue;
-            free(buf); cancel_drag(w, EIO); return NULL;
+            cancel_drag(w, EIO); return NULL;
         }
         if (n == 0) break;
         total += (size_t)n;
@@ -1513,8 +1513,8 @@ parse_uri_list(Window *w, int fd, size_t *num_uris_out) {
         while (*p == '\r' || *p == '\n') p++;
     }
 
-    const char **result = malloc((count + 1) * sizeof(const char*));
-    if (!result) { free(buf); cancel_drag(w, ENOMEM); return NULL; }
+    const char **result = calloc((count + 1), sizeof(const char*));
+    if (!result) { cancel_drag(w, ENOMEM); return NULL; }
 
     // Second pass: fill in decoded URI strings
     size_t idx = 0;
@@ -1526,32 +1526,10 @@ parse_uri_list(Window *w, int fd, size_t *num_uris_out) {
         while (end > p && (end[-1] == ' ' || end[-1] == '\t')) end--;
         *end = '\0';
         if (*p && *p != '#') {
-            char *decoded = NULL;
-            if (strncmp(p, "file://", 7) == 0) {
-                const char *rest = p + 7;
-                const char *slash = strchr(rest, '/');
-                if (slash) {
-                    size_t host_len = (size_t)(slash - rest);
-                    if (host_len == 0 || (host_len == 9 && strncasecmp(rest, "localhost", 9) == 0)) {
-                        decoded = strdup(slash);
-                        if (decoded) {
-                            char *qf = decoded + strcspn(decoded, "?#");
-                            *qf = '\0';
-                            url_decode_inplace(decoded);
-                        }
-                    } else {
-                        decoded = strdup(p);
-                    }
-                } else {
-                    decoded = strdup(p);
-                }
-            } else {
-                decoded = strdup(p);
-            }
+            char *decoded = strdup(p);
             if (!decoded) {
                 for (size_t k = 0; k < idx; k++) free((char*)result[k]);
-                free(result); free(buf);
-                cancel_drag(w, ENOMEM); return NULL;
+                free(result); cancel_drag(w, ENOMEM); return NULL;
             }
             result[idx++] = decoded;
         }
@@ -1560,8 +1538,6 @@ parse_uri_list(Window *w, int fd, size_t *num_uris_out) {
         p = eol + 1;
         while (*p == '\r' || *p == '\n') p++;
     }
-    result[idx] = NULL;
-    free(buf);
     *num_uris_out = idx;
     return result;
 }
