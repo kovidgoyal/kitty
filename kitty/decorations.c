@@ -1593,6 +1593,187 @@ sextant(Canvas *self, uint which) {
 #undef add_row
 }
 
+// Double diagonal lines - two parallel diagonal lines with a gap between them.
+// Similar to how dhline/dvline draw double horizontal/vertical lines.
+static void
+double_cross_line(Canvas *self, uint level, bool left) {
+    uint w = minus(self->width, 1), h = minus(self->height, 1);
+    // The gap is perpendicular to the line direction
+    uint gap = thickness(self, level + 1, true);
+    // Offset endpoints perpendicular to the diagonal to create two parallel lines
+    // For a line from (x1,y1) to (x2,y2), we shift in the x-direction
+    Point p1a = {0}, p2a = {0}, p1b = {0}, p2b = {0};
+    if (left) {
+        // upper-left to lower-right direction
+        p1a = (Point){.x=0, .y=gap}; p2a = (Point){.x=minus(w, gap), .y=h};
+        p1b = (Point){.x=gap, .y=0}; p2b = (Point){.x=w, .y=minus(h, gap)};
+    } else {
+        // upper-right to lower-left direction
+        p1a = (Point){.x=w, .y=gap}; p2a = (Point){.x=gap, .y=h};
+        p1b = (Point){.x=minus(w, gap), .y=0}; p2b = (Point){.x=0, .y=minus(h, gap)};
+    }
+    uint th = thickness(self, level, true);
+    thick_line(self, diagonal_thickness(th, p1a, p2a), p1a, p2a);
+    thick_line(self, diagonal_thickness(th, p1b, p2b), p1b, p2b);
+}
+
+// Diagonal box drawings for U+1FBD0-U+1FBDF
+// These draw light diagonal lines between specific points on the cell boundary.
+// The naming convention uses: upper/lower for top/bottom edges, left/right for side edges,
+// centre for the midpoint of top or bottom edges, middle for the midpoint of left or right edges.
+static void
+diagonal_line(Canvas *self, uint level, int x1, int y1, int x2, int y2) {
+    Point p1 = {.x=x1, .y=y1}, p2 = {.x=x2, .y=y2};
+    thick_line(self, diagonal_thickness(thickness(self, level, true), p1, p2), p1, p2);
+}
+
+// Justified half/quarter circle (filled)
+// A half circle touching one edge of the cell, filled solid.
+// edge: which cell edge the flat side touches (e.g. TOP_EDGE means flat at top, arc goes down)
+static void
+justified_half_circle(Canvas *self, Edge edge) {
+    double cx, cy, radius;
+    switch (edge) {
+        case TOP_EDGE:    // flat at top, semicircle going down
+            cx = self->width / 2.0; cy = 0; radius = fmin(self->width / 2.0, (double)self->height); break;
+        case BOTTOM_EDGE: // flat at bottom, semicircle going up
+            cx = self->width / 2.0; cy = self->height; radius = fmin(self->width / 2.0, (double)self->height); break;
+        case LEFT_EDGE:   // flat at left, semicircle going right
+            cx = 0; cy = self->height / 2.0; radius = fmin((double)self->width, self->height / 2.0); break;
+        case RIGHT_EDGE:  // flat at right, semicircle going left
+            cx = self->width; cy = self->height / 2.0; radius = fmin((double)self->width, self->height / 2.0); break;
+        default: return;
+    }
+    fill_circle_of_radius(self, cx, cy, radius, 255);
+}
+
+// Justified quarter circle (filled)
+// A quarter circle touching one corner of the cell, filled solid.
+static void
+justified_quarter_circle(Canvas *self, Corner corner) {
+    double cx, cy, radius;
+    radius = fmin((double)self->width, (double)self->height);
+    switch (corner) {
+        case TOP_RIGHT:    cx = self->width; cy = 0; break;
+        case BOTTOM_LEFT:  cx = 0; cy = self->height; break;
+        case BOTTOM_RIGHT: cx = self->width; cy = self->height; break;
+        case TOP_LEFT:     cx = 0; cy = 0; break;
+        default: return;
+    }
+    fill_circle_of_radius(self, cx, cy, radius, 255);
+}
+
+// Justified half circle outline (white/unfilled circle arc drawn as a stroked curve)
+// edge: which cell edge the diameter touches
+static void
+justified_half_circle_outline(Canvas *self, uint level, Edge edge) {
+    double cx, cy, radius;
+    double line_width = thickness_as_float(self, level, true);
+    double half_lw = fmax(0.5, line_width / 2.0);
+    double start_deg, end_deg;
+    switch (edge) {
+        case TOP_EDGE:    // flat at top, arc going down
+            cx = self->width / 2.0; cy = half_lw;
+            radius = fmin(self->width / 2.0, (double)self->height) - half_lw;
+            start_deg = 0; end_deg = 180; break;
+        case BOTTOM_EDGE: // flat at bottom, arc going up
+            cx = self->width / 2.0; cy = self->height - half_lw;
+            radius = fmin(self->width / 2.0, (double)self->height) - half_lw;
+            start_deg = 180; end_deg = 360; break;
+        case LEFT_EDGE:   // flat at left, arc going right
+            cx = half_lw; cy = self->height / 2.0;
+            radius = fmin((double)self->width, self->height / 2.0) - half_lw;
+            start_deg = 270; end_deg = 450; break;
+        case RIGHT_EDGE:  // flat at right, arc going left
+            cx = self->width - half_lw; cy = self->height / 2.0;
+            radius = fmin((double)self->width, self->height / 2.0) - half_lw;
+            start_deg = 90; end_deg = 270; break;
+        default: return;
+    }
+    if (radius < 1) radius = 1;
+    Circle c = circle(cx, cy, radius, start_deg, end_deg);
+    draw_parametrized_curve_with_derivative_and_antialiasing(
+        self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y, 0, 0, NULL);
+}
+
+// Twelfth/quarter circle arcs for U+1CC30-U+1CC3F
+// These are arc segments positioned at specific locations around the cell edges.
+// The 16 positions form a 4x4 grid of arcs around the cell perimeter:
+//   Row 0 (top): upper-left, upper-centre-left, upper-centre-right, upper-right
+//   Row 1: upper-middle-left, upper-left-quarter, upper-right-quarter, upper-middle-right
+//   Row 2: lower-middle-left, lower-left-quarter, lower-right-quarter, lower-middle-right
+//   Row 3 (bottom): lower-left, lower-centre-left, lower-centre-right, lower-right
+static void
+twelfth_circle(Canvas *self, uint level, uint pos) {
+    double line_width = thickness_as_float(self, level, true);
+    double half_lw = fmax(0.5, line_width / 2.0);
+    double w = self->width, h = self->height;
+    double cx, cy, radius, start_deg, end_deg;
+
+    switch (pos) {
+        // Top edge arcs: center is on the top edge, arcs curve downward
+        case 0: // upper left twelfth circle - at top-left corner, small arc
+            cx = 0; cy = 0; radius = fmin(w / 2.0, h / 2.0) - half_lw;
+            start_deg = 0; end_deg = 90; break;
+        case 1: // upper centre left twelfth circle
+            cx = w / 4.0; cy = 0; radius = fmin(w / 4.0, h / 2.0) - half_lw;
+            start_deg = 0; end_deg = 90; break;
+        case 2: // upper centre right twelfth circle
+            cx = 3.0 * w / 4.0; cy = 0; radius = fmin(w / 4.0, h / 2.0) - half_lw;
+            start_deg = 90; end_deg = 180; break;
+        case 3: // upper right twelfth circle
+            cx = w; cy = 0; radius = fmin(w / 2.0, h / 2.0) - half_lw;
+            start_deg = 90; end_deg = 180; break;
+
+        // Upper middle arcs: center is on the left/right edge at 1/4 height
+        case 4: // upper middle left twelfth circle
+            cx = 0; cy = h / 4.0; radius = fmin(w / 2.0, h / 4.0) - half_lw;
+            start_deg = 270; end_deg = 360; break;
+        case 5: // upper left quarter circle - large quarter arc at top-left
+            cx = 0; cy = 0; radius = fmin(w, h) - half_lw;
+            start_deg = 0; end_deg = 90; break;
+        case 6: // upper right quarter circle - large quarter arc at top-right
+            cx = w; cy = 0; radius = fmin(w, h) - half_lw;
+            start_deg = 90; end_deg = 180; break;
+        case 7: // upper middle right twelfth circle
+            cx = w; cy = h / 4.0; radius = fmin(w / 2.0, h / 4.0) - half_lw;
+            start_deg = 180; end_deg = 270; break;
+
+        // Lower middle arcs: center is on the left/right edge at 3/4 height
+        case 8: // lower middle left twelfth circle
+            cx = 0; cy = 3.0 * h / 4.0; radius = fmin(w / 2.0, h / 4.0) - half_lw;
+            start_deg = 0; end_deg = 90; break;
+        case 9: // lower left quarter circle - large quarter arc at bottom-left
+            cx = 0; cy = h; radius = fmin(w, h) - half_lw;
+            start_deg = 270; end_deg = 360; break;
+        case 10: // lower right quarter circle - large quarter arc at bottom-right
+            cx = w; cy = h; radius = fmin(w, h) - half_lw;
+            start_deg = 180; end_deg = 270; break;
+        case 11: // lower middle right twelfth circle
+            cx = w; cy = 3.0 * h / 4.0; radius = fmin(w / 2.0, h / 4.0) - half_lw;
+            start_deg = 90; end_deg = 180; break;
+
+        // Bottom edge arcs: center is on the bottom edge, arcs curve upward
+        case 12: // lower left twelfth circle
+            cx = 0; cy = h; radius = fmin(w / 2.0, h / 2.0) - half_lw;
+            start_deg = 270; end_deg = 360; break;
+        case 13: // lower centre left twelfth circle
+            cx = w / 4.0; cy = h; radius = fmin(w / 4.0, h / 2.0) - half_lw;
+            start_deg = 270; end_deg = 360; break;
+        case 14: // lower centre right twelfth circle
+            cx = 3.0 * w / 4.0; cy = h; radius = fmin(w / 4.0, h / 2.0) - half_lw;
+            start_deg = 180; end_deg = 270; break;
+        case 15: // lower right twelfth circle
+            cx = w; cy = h; radius = fmin(w / 2.0, h / 2.0) - half_lw;
+            start_deg = 180; end_deg = 270; break;
+        default: return;
+    }
+    if (radius < 1) radius = 1;
+    Circle c = circle(cx, cy, radius, start_deg, end_deg);
+    draw_parametrized_curve_with_derivative_and_antialiasing(
+        self, &c, line_width, circle_x, circle_y, circle_prime_x, circle_prime_y, 0, 0, NULL);
+}
+
 void
 render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, double dpi_x, double dpi_y, double scale) {
     Canvas canvas = {.mask=buf, .width = width, .height = height, .dpi={.x=dpi_x, .y=dpi_y}, .supersample_factor=1u, .scale=scale}, ss = canvas;
@@ -1962,9 +2143,110 @@ START_ALLOW_CASE_RANGE
         case 0x1fbe7: octant(c, 0xe7); break;
         case 0x1cd00 ... 0x1cde5: octant(c, ch - 0x1cd00); break;
 
+        // U+1FBCE LEFT TWO THIRDS BLOCK
+        case 0x1fbce: fill_rect(c, 0, 0, 2 * c->width / 3, c->height); break;
+        // U+1FBCF LEFT ONE THIRD BLOCK
+        case 0x1fbcf: fill_rect(c, 0, 0, c->width / 3, c->height); break;
+
+        // U+1FBE4 UPPER CENTRE ONE QUARTER BLOCK
+        case 0x1fbe4: fill_rect(c, c->width / 4, 0, 3 * c->width / 4, c->height / 2); break;
+        // U+1FBE5 LOWER CENTRE ONE QUARTER BLOCK
+        case 0x1fbe5: fill_rect(c, c->width / 4, c->height / 2, 3 * c->width / 4, c->height); break;
+
+        // U+1FBD0-1FBDF Diagonal box drawings (supersampled for anti-aliasing)
+        // Key points used: UL=(0,0), UC=(w/2,0), UR=(w,0), ML=(0,h/2), MC=(w/2,h/2), MR=(w,h/2),
+        //                  LL=(0,h), LC=(w/2,h), LR=(w,h)
+#define DL(x1,y1,x2,y2) diagonal_line(c, 1, x1, y1, x2, y2)
+#define W (int)minus(c->width,1)
+#define H (int)minus(c->height,1)
+#define HW ((int)(c->width/2))
+#define HH ((int)(c->height/2))
+        // 1FBD0: middle right to lower left
+        SS(0x1fbd0, DL(W, HH, 0, H));
+        // 1FBD1: upper right to middle left
+        SS(0x1fbd1, DL(W, 0, 0, HH));
+        // 1FBD2: upper left to middle right
+        SS(0x1fbd2, DL(0, 0, W, HH));
+        // 1FBD3: middle left to lower right
+        SS(0x1fbd3, DL(0, HH, W, H));
+        // 1FBD4: upper left to lower centre
+        SS(0x1fbd4, DL(0, 0, HW, H));
+        // 1FBD5: upper centre to lower right
+        SS(0x1fbd5, DL(HW, 0, W, H));
+        // 1FBD6: upper right to lower centre
+        SS(0x1fbd6, DL(W, 0, HW, H));
+        // 1FBD7: upper centre to lower left
+        SS(0x1fbd7, DL(HW, 0, 0, H));
+        // 1FBD8: upper left to middle centre to upper right (V open down)
+        SS(0x1fbd8, DL(0, 0, HW, HH); DL(HW, HH, W, 0));
+        // 1FBD9: upper right to middle centre to lower right (> shape)
+        SS(0x1fbd9, DL(W, 0, HW, HH); DL(HW, HH, W, H));
+        // 1FBDA: lower left to middle centre to lower right (^ shape)
+        SS(0x1fbda, DL(0, H, HW, HH); DL(HW, HH, W, H));
+        // 1FBDB: upper left to middle centre to lower left (< shape)
+        SS(0x1fbdb, DL(0, 0, HW, HH); DL(HW, HH, 0, H));
+        // 1FBDC: upper left to lower centre to upper right (V with apex at bottom-center)
+        SS(0x1fbdc, DL(0, 0, HW, H); DL(HW, H, W, 0));
+        // 1FBDD: upper right to middle left to lower right (> with apex at middle-left)
+        SS(0x1fbdd, DL(W, 0, 0, HH); DL(0, HH, W, H));
+        // 1FBDE: lower left to upper centre to lower right (^ with apex at upper-center)
+        SS(0x1fbde, DL(0, H, HW, 0); DL(HW, 0, W, H));
+        // 1FBDF: upper left to middle right to lower left (< with apex at middle-right)
+        SS(0x1fbdf, DL(0, 0, W, HH); DL(W, HH, 0, H));
+#undef DL
+#undef W
+#undef H
+#undef HW
+#undef HH
+
+        // U+1FBE0-1FBE3 Justified half white circles (outlines)
+        S(0x1fbe0, justified_half_circle_outline, 1, TOP_EDGE);
+        S(0x1fbe1, justified_half_circle_outline, 1, RIGHT_EDGE);
+        S(0x1fbe2, justified_half_circle_outline, 1, BOTTOM_EDGE);
+        S(0x1fbe3, justified_half_circle_outline, 1, LEFT_EDGE);
+
+        // U+1FBE8-1FBEB Justified half black circles (filled)
+        S(0x1fbe8, justified_half_circle, TOP_EDGE);
+        S(0x1fbe9, justified_half_circle, RIGHT_EDGE);
+        S(0x1fbea, justified_half_circle, BOTTOM_EDGE);
+        S(0x1fbeb, justified_half_circle, LEFT_EDGE);
+
+        // U+1FBEC-1FBEF Justified quarter black circles (filled)
+        S(0x1fbec, justified_quarter_circle, TOP_RIGHT);
+        S(0x1fbed, justified_quarter_circle, BOTTOM_LEFT);
+        S(0x1fbee, justified_quarter_circle, BOTTOM_RIGHT);
+        S(0x1fbef, justified_quarter_circle, TOP_LEFT);
+
+        // U+1CC1B-1CC1E Box drawing variants
+        // 1CC1B: HORIZONTAL AND UPPER RIGHT - full hline + half vline going up from right quarter
+        CC(0x1cc1b, hline(c, 1); draw_vline(c, 0, c->height / 2, 3 * c->width / 4, 1));
+        // 1CC1C: HORIZONTAL AND LOWER RIGHT - full hline + half vline going down from right quarter
+        CC(0x1cc1c, hline(c, 1); draw_vline(c, c->height / 2, c->height, 3 * c->width / 4, 1));
+        // 1CC1D: TOP AND UPPER LEFT - half vline from top to 1/4 + half hline going left from that point
+        CC(0x1cc1d, draw_vline(c, 0, c->height / 4, c->width / 2, 1); draw_hline(c, 0, c->width / 2, c->height / 4, 1));
+        // 1CC1E: BOTTOM AND LOWER LEFT - half vline from bottom to 3/4 + half hline going left from that point
+        CC(0x1cc1e, draw_vline(c, 3 * c->height / 4, c->height, c->width / 2, 1); draw_hline(c, 0, c->width / 2, 3 * c->height / 4, 1));
+
+        // U+1CC1F-1CC20 Double diagonal lines
+        S(0x1cc1f, double_cross_line, 1, false);
+        S(0x1cc20, double_cross_line, 1, true);
+
         // Symbols for Legacy Computing Supplement (U+1CC00–U+1CEBF)
         // Separated Block Quadrant (bit 0=TL, 1=TR, 2=BL, 3=BR)
         case 0x1cc21 ... 0x1cc21 + 14: draw_separated_block(c, 2, 2, ch - 0x1cc21 + 1); break;
+
+        // U+1CC30-1CC3F Twelfth and quarter circle arcs
+        case 0x1cc30 ... 0x1cc3f: twelfth_circle(c, 1, ch - 0x1cc30); break;
+
+        // U+1CE16-1CE19 Box drawings light vertical with offset horizontal
+        // 1CE16: VERTICAL AND TOP RIGHT - full vline + half hline going right from 1/4 height
+        CC(0x1ce16, vline(c, 1); draw_hline(c, c->width / 2, c->width, c->height / 4, 1));
+        // 1CE17: VERTICAL AND BOTTOM RIGHT - full vline + half hline going right from 3/4 height
+        CC(0x1ce17, vline(c, 1); draw_hline(c, c->width / 2, c->width, 3 * c->height / 4, 1));
+        // 1CE18: VERTICAL AND TOP LEFT - full vline + half hline going left from 1/4 height
+        CC(0x1ce18, vline(c, 1); draw_hline(c, 0, c->width / 2, c->height / 4, 1));
+        // 1CE19: VERTICAL AND BOTTOM LEFT - full vline + half hline going left from 3/4 height
+        CC(0x1ce19, vline(c, 1); draw_hline(c, 0, c->width / 2, 3 * c->height / 4, 1));
         // Separated Block Sextant (same bit encoding as regular sextants)
         case 0x1ce51 ... 0x1ce51 + 62: draw_separated_block(c, 2, 3, ch - 0x1ce51 + 1); break;
         // One Sixteenth Block: individual 1/16 cells in a 4x4 grid, row-major

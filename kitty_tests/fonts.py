@@ -1216,7 +1216,11 @@ box_chars = {  # {{{
  }  # }}}
 for ch in range(0x1cd00, 0x1cde5+1):  # octants
     box_chars.add(chr(ch))
-for ch in range(0x1cc21, 0x1cc30):  # separated block quadrants (supplement)
+for ch in range(0x1fbce, 0x1fbf0):  # blocks, diagonals, circles (legacy computing)
+    box_chars.add(chr(ch))
+for ch in range(0x1cc1b, 0x1cc40):  # box drawing variants, separated quadrants, circle arcs (supplement)
+    box_chars.add(chr(ch))
+for ch in range(0x1ce16, 0x1ce1a):  # box drawings light vertical T-junctions (supplement)
     box_chars.add(chr(ch))
 for ch in range(0x1ce51, 0x1ceb0):  # separated block sextants, sixteenth blocks, quarter parts (supplement)
     box_chars.add(chr(ch))

@@ -736,8 +736,11 @@ START_ALLOW_CASE_RANGE
         case 0xe0b0 ... 0xe0bf: case 0xe0d6 ... 0xe0d7:    // powerline box drawing
         case 0xee00 ... 0xee0b:    // fira code progress bar/spinner
         case 0x1fb00 ... 0x1fbae:  // symbols for legacy computing
-        case 0x1cd00 ... 0x1cde5: case 0x1fbe6: case 0x1fbe7:  // octants
-        case 0x1cc21 ... 0x1cc2f:  // separated block quadrants (supplement)
+        case 0x1fbce ... 0x1fbef:  // blocks, diagonals, circles (legacy computing)
+        case 0x1cd00 ... 0x1cde5:  // octants
+        case 0x1cc1b ... 0x1cc2f:  // box drawing variants + separated block quadrants (supplement)
+        case 0x1cc30 ... 0x1cc3f:  // twelfth and quarter circle arcs (supplement)
+        case 0x1ce16 ... 0x1ce19:  // box drawings light vertical T-junctions (supplement)
         case 0x1ce51 ... 0x1ceaf:  // separated block sextants, sixteenth blocks, quarter parts (supplement)
         case 0xf5d0 ... 0xf60d:    // branch drawing characters
             if (allow_use_of_box_fonts) return BOX_FONT;
@@ -780,13 +783,18 @@ START_ALLOW_CASE_RANGE
             return 0xf00 + ch - 0x2800; // IDs from 0xf00 to 0xfff
         case 0x1fb00 ... 0x1fbae:
             return 0x1000 + ch - 0x1fb00; // IDs from 0x1000 to 0x10ae
+        case 0x1fbce ... 0x1fbef:
+            return 0x10af + ch - 0x1fbce; // IDs from 0x10af to 0x10e0 (34 chars)
         case 0x1cd00 ... 0x1cde5:
             return 0x1100 + ch - 0x1cd00; // IDs from 0x1100 to 0x11e5
-        case 0x1fbe6: case 0x1fbe7: return 0x11e6 + ch - 0x1fbe6;
-        case 0x1cc21 ... 0x1cc2f:
-            return 0x11e8 + ch - 0x1cc21; // IDs from 0x11e8 to 0x11f6 (15 chars)
+        case 0x1cc1b ... 0x1cc2f:
+            return 0x11e8 + ch - 0x1cc1b; // IDs from 0x11e8 to 0x11fc (21 chars)
+        case 0x1cc30 ... 0x1cc3f:
+            return 0x11fd + ch - 0x1cc30; // IDs from 0x11fd to 0x120c (16 chars)
+        case 0x1ce16 ... 0x1ce19:
+            return 0x120d + ch - 0x1ce16; // IDs from 0x120d to 0x1210 (4 chars)
         case 0x1ce51 ... 0x1ceaf:
-            return 0x11f7 + ch - 0x1ce51; // IDs from 0x11f7 to 0x1254 (95 chars)
+            return 0x1211 + ch - 0x1ce51; // IDs from 0x1211 to 0x126e (95 chars)
         case 0xf5d0 ... 0xf60d:
             return 0x2000 + ch - 0xf5d0; // IDs from 0x2000 to 0x203d
         default:
