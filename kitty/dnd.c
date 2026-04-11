@@ -1064,6 +1064,10 @@ drag_free_offer(Window *w) {
         for (size_t i=0; i < ds.num_mimes; i++) {
             free(ds.items[i].optional_data);
             if (ds.items[i].fd_plus_one > 0) safe_close(ds.items[i].fd_plus_one - 1, __FILE__, __LINE__);
+            if (ds.items[i].uri_list) {
+                for (size_t k = 0; k < ds.items[i].num_uris; k++) free((char*)ds.items[i].uri_list[k]);
+                free(ds.items[i].uri_list);
+            }
         }
         free(ds.items);
         ds.items = NULL;
@@ -1471,11 +1475,35 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
     }
 }
 
+static const char**
+parse_uri_list(int fd) {
+    (void)fd;
+    // TODO: Implement this, it should read the uri list from fd, parse
+    // it ignoring comments, see get_nth_file_url() for an example of
+    // parsing a uri list. If an error occurs it should call abrt() with
+    // appropriate error code and return NULL. The returned value should
+    // be a list of strings alloced by malloc with each string also
+    // alloced by malloc.
+    return NULL;
+}
+
+
 void
 drag_remote_file_data(
     Window *w, int32_t x, int32_t y, int32_t X, int32_t Y, bool has_more, const uint8_t *payload, size_t payload_sz
 ) {
-    (void)w; (void)x; (void)y; (void)X; (void)Y; (void)has_more; (void)payload; (void)payload_sz;
+    size_t item_idx = ds.num_mimes;
+    for (size_t i = 0; i < ds.num_mimes; i++) {
+        if (ds.items[i].requested_remote_files) {
+            item_idx = i; break;
+        }
+    }
+    if (item_idx == ds.num_mimes || ds.items[item_idx].fd_plus_one == 0) abrt(EINVAL);
+    if (ds.items[item_idx].uri_list == NULL) {
+        ds.items[item_idx].uri_list = parse_uri_list(ds.items[item_idx].fd_plus_one-1);
+        if (!ds.items[item_idx].uri_list) return;
+    }
+    (void)x; (void)y; (void)X; (void)Y; (void)has_more; (void)payload; (void)payload_sz;
     // TODO: Implement this
 }
 #undef img

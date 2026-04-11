@@ -303,6 +303,7 @@ typedef struct Window {
         struct {
             const char *mime_type; uint8_t *optional_data; size_t data_size, data_capacity; base64_state base64_state;
             bool data_decode_initialized, is_uri_list, requested_remote_files; int fd_plus_one;
+            const char** uri_list; size_t num_uris;
         } *items;
         struct {
             int width, height, fmt; uint8_t *data; size_t sz, capacity; bool started; base64_state base64_state;
