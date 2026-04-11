@@ -1458,9 +1458,8 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
         }
         size_t written = 0;
         while (written < outlen) {
-            ssize_t n = write(ds.items[idx].fd_plus_one - 1, decoded + written, outlen - written);
+            ssize_t n = safe_write(ds.items[idx].fd_plus_one - 1, decoded + written, outlen - written);
             if (n < 0) {
-                if (errno == EINTR) continue;
                 cancel_drag(w, EIO);
                 return;
             }
@@ -1542,6 +1541,46 @@ parse_uri_list(Window *w, int fd, size_t *num_uris_out) {
     return result;
 }
 
+static int
+write_all(int fd, const void *buf, size_t sz) {
+    size_t pos = 0; const char *p = buf;
+    while (pos < sz) {
+        ssize_t ret = safe_write(fd, p + pos, sz - pos);
+        if (ret < 0) return ret;
+        pos += ret;
+    }
+    return 0;
+}
+
+static void
+finish_remote_data(Window *w, size_t item_idx) {
+    const int fd = ds.items[item_idx].fd_plus_one - 1;
+    if (safe_ftruncate(fd, 0) != 0) abrt(errno);
+    if (lseek(fd, 0, SEEK_SET) == -1) abrt(errno);
+    for (size_t i = 0; i < ds.items[item_idx].num_uris; i++) {
+        int ret = write_all(fd, ds.items[item_idx].uri_list[i], strlen(ds.items[item_idx].uri_list[i]));
+        free((char*)ds.items[item_idx].uri_list[i]); ds.items[item_idx].uri_list[i] = NULL;
+        if (ret) abrt(ret);
+        if ((ret = write_all(fd, "\r\n", 2))) abrt(ret);
+    }
+    free(ds.items[item_idx].uri_list); ds.items[item_idx].uri_list = NULL; ds.items[item_idx].num_uris = 0;
+    int ret = notify_drag_data_ready(global_state.drag_source.from_os_window, ds.items[item_idx].mime_type);
+    abrt(ret);
+}
+
+static void
+toplevel_data_for_drag(Window *w, unsigned uri_item_idx, unsigned item_type, bool has_more, const uint8_t *payload, size_t payload_sz) {
+    (void)w; (void)uri_item_idx; (void)item_type; (void)has_more; (void)payload; (void)payload_sz;
+}
+
+static void
+subdir_data_for_drag(
+    Window *w, unsigned uri_item_idx, int handle, unsigned entry_num, unsigned item_type, bool has_more,
+    const uint8_t *payload, size_t payload_sz
+) {
+    (void)w; (void)uri_item_idx; (void)item_type; (void)has_more; (void)payload; (void)payload_sz; (void)handle; (void)entry_num;
+}
+
 
 void
 drag_remote_file_data(
@@ -1558,8 +1597,10 @@ drag_remote_file_data(
         ds.items[item_idx].uri_list = parse_uri_list(w, ds.items[item_idx].fd_plus_one-1, &ds.items[item_idx].num_uris);
         if (!ds.items[item_idx].uri_list) return;
     }
-    (void)x; (void)y; (void)X; (void)Y; (void)has_more; (void)payload; (void)payload_sz;
-    // TODO: Implement this
+    if (X < 0) abrt(EINVAL);
+    if (!x && !y && !Y) { finish_remote_data(w, item_idx); return; }
+    if (!Y) toplevel_data_for_drag(w, x - 1, X, has_more, payload, payload_sz);
+    else subdir_data_for_drag(w, x - 1, Y, y - 1, X, has_more, payload, payload_sz);
 }
 #undef img
 #undef abrt
