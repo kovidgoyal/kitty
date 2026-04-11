@@ -1523,6 +1523,50 @@ braille(Canvas *self, uint8_t which) {
 }
 
 static void
+fill_rect(Canvas *self, uint x_start, uint y_start, uint x_end, uint y_end) {
+    if (x_end > self->width) x_end = self->width;
+    if (y_end > self->height) y_end = self->height;
+    for (uint y = y_start; y < y_end; y++) {
+        uint off = y * self->width;
+        memset(self->mask + off + x_start, 255, x_end - x_start);
+    }
+}
+
+static void
+draw_separated_block(Canvas *self, uint num_cols, uint num_rows, uint which) {
+    // Each "separated" block is drawn with a small gap around it.
+    // Use approximately 1/8 of the cell dimensions as the gap.
+    uint gap_x = max(1u, self->width / 8u);
+    uint gap_y = max(1u, self->height / 8u);
+    uint total_gap_x = (num_cols + 1) * gap_x;
+    uint total_gap_y = (num_rows + 1) * gap_y;
+    uint block_w = total_gap_x < self->width ? (self->width - total_gap_x) / num_cols : 0;
+    uint block_h = total_gap_y < self->height ? (self->height - total_gap_y) / num_rows : 0;
+    for (uint row = 0; row < num_rows; row++) {
+        for (uint col = 0; col < num_cols; col++) {
+            if (which & (1u << (row * num_cols + col))) {
+                uint x_start = gap_x + col * (block_w + gap_x);
+                uint y_start = gap_y + row * (block_h + gap_y);
+                fill_rect(self, x_start, y_start, x_start + block_w, y_start + block_h);
+            }
+        }
+    }
+}
+
+static void
+sixteenth_block(Canvas *self, uint pos) {
+    // Fill one cell in a 4x4 grid (no gaps, just a 1/16 solid fill).
+    uint row = pos / 4u, col = pos % 4u;
+    uint block_w = self->width / 4u;
+    uint block_h = self->height / 4u;
+    uint x_start = col * block_w;
+    uint y_start = row * block_h;
+    uint x_end = col == 3u ? self->width : x_start + block_w;
+    uint y_end = row == 3u ? self->height : y_start + block_h;
+    fill_rect(self, x_start, y_start, x_end, y_end);
+}
+
+static void
 draw_sextant(Canvas *self, uint row, uint col) {
     Point start = {0}, end = {.x=self->width, .y = self->height};
     switch(row) {
@@ -1917,6 +1961,35 @@ START_ALLOW_CASE_RANGE
         case 0x1fbe6: octant(c, 0xe6); break;
         case 0x1fbe7: octant(c, 0xe7); break;
         case 0x1cd00 ... 0x1cde5: octant(c, ch - 0x1cd00); break;
+
+        // Symbols for Legacy Computing Supplement (U+1CC00–U+1CEBF)
+        // Separated Block Quadrant (bit 0=TL, 1=TR, 2=BL, 3=BR)
+        case 0x1cc21 ... 0x1cc21 + 14: draw_separated_block(c, 2, 2, ch - 0x1cc21 + 1); break;
+        // Separated Block Sextant (same bit encoding as regular sextants)
+        case 0x1ce51 ... 0x1ce51 + 62: draw_separated_block(c, 2, 3, ch - 0x1ce51 + 1); break;
+        // One Sixteenth Block: individual 1/16 cells in a 4x4 grid, row-major
+        case 0x1ce90 ... 0x1ce90 + 15: sixteenth_block(c, ch - 0x1ce90); break;
+        // One Quarter Block partial fills: each is a sub-rectangle of one of the four quarter strips
+        // Lower quarter (y: 3H/4 to H)
+        case 0x1cea0: fill_rect(c, c->width/2, 3*c->height/4, c->width, c->height); break;
+        case 0x1cea1: fill_rect(c, c->width/4, 3*c->height/4, c->width, c->height); break;
+        case 0x1cea2: fill_rect(c, 0, 3*c->height/4, 3*c->width/4, c->height); break;
+        case 0x1cea3: fill_rect(c, 0, 3*c->height/4, c->width/2, c->height); break;
+        // Left quarter (x: 0 to W/4)
+        case 0x1cea4: fill_rect(c, 0, c->height/2, c->width/4, c->height); break;
+        case 0x1cea5: fill_rect(c, 0, c->height/4, c->width/4, c->height); break;
+        case 0x1cea6: fill_rect(c, 0, 0, c->width/4, 3*c->height/4); break;
+        case 0x1cea7: fill_rect(c, 0, 0, c->width/4, c->height/2); break;
+        // Upper quarter (y: 0 to H/4)
+        case 0x1cea8: fill_rect(c, 0, 0, c->width/2, c->height/4); break;
+        case 0x1cea9: fill_rect(c, 0, 0, 3*c->width/4, c->height/4); break;
+        case 0x1ceaa: fill_rect(c, c->width/4, 0, c->width, c->height/4); break;
+        case 0x1ceab: fill_rect(c, c->width/2, 0, c->width, c->height/4); break;
+        // Right quarter (x: 3W/4 to W)
+        case 0x1ceac: fill_rect(c, 3*c->width/4, 0, c->width, c->height/2); break;
+        case 0x1cead: fill_rect(c, 3*c->width/4, 0, c->width, 3*c->height/4); break;
+        case 0x1ceae: fill_rect(c, 3*c->width/4, c->height/4, c->width, c->height); break;
+        case 0x1ceaf: fill_rect(c, 3*c->width/4, c->height/2, c->width, c->height); break;
     }
     free(canvas.holes); free(canvas.y_limits);
     free(ss.holes); free(ss.y_limits);
