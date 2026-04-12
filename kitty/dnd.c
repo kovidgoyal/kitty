@@ -21,11 +21,26 @@
 static const size_t MIME_LIST_SIZE_CAP = 1024 * 1024;
 static const size_t PRESENT_DATA_CAP = 64 * 1024 * 1024;
 
+// Utils {{{
 // In test mode, this callable is invoked instead of schedule_write_to_child_if_possible.
 // It receives (window_id: int, data: bytes) and its return value is ignored.
 static PyObject *g_dnd_test_write_func = NULL;
 static void drop_process_queue(Window *w);
 static void drop_pop_request(Window *w);
+
+static const char*
+get_errno_name(int err) {
+    switch (err) {
+        case EPERM: return "EPERM";
+        case ENOENT: return "ENOENT";
+        case EIO: return "EIO";
+        case EINVAL: return "EINVAL";
+        case EMFILE: return "EMFILE";
+        case ENOMEM: return "ENOMEM";
+        case 0: return "OK";
+        default: return "EUNKNOWN";
+    }
+}
 
 static const char*
 machine_id(void) {
@@ -54,96 +69,6 @@ dnd_set_test_write_func(PyObject *func) {
     (void)machine_id;
     Py_XDECREF(g_dnd_test_write_func);
     g_dnd_test_write_func = Py_XNewRef(func);
-}
-
-static void
-drop_free_offered_mimes(Window *w) {
-    if (w->drop.offerred_mimes) {
-        for (size_t i = 0; i < w->drop.num_offerred_mimes; i++) free((void*)w->drop.offerred_mimes[i]);
-        free(w->drop.offerred_mimes); w->drop.offerred_mimes = NULL;
-    }
-    w->drop.num_offerred_mimes = 0;
-    w->drop.offered_mimes_total_size = 0;
-}
-
-static void
-drop_free_accepted_mimes(Window *w) {
-    free(w->drop.accepted_mimes); w->drop.accepted_mimes = NULL;
-    w->drop.accepted_mimes_sz = 0;
-}
-
-static void
-free_pending(PendingData *pending) {
-    if (pending->items) {
-        for (size_t i = 0; i < pending->count; i++) free(pending->items[i].buf);
-        free(pending->items);
-    }
-    zero_at_ptr(pending);
-}
-
-static void
-drop_free_dir_handle(DirHandle *h) {
-    free(h->path);
-    for (size_t i = 0; i < h->num_entries; i++) free(h->entries[i]);
-    free(h->entries);
-    zero_at_ptr(h);
-}
-
-static void
-drop_free_dir_handles(Window *w) {
-    for (size_t i = 0; i < w->drop.num_dir_handles; i++)
-        drop_free_dir_handle(&w->drop.dir_handles[i]);
-    free(w->drop.dir_handles);
-    w->drop.dir_handles = NULL;
-    w->drop.num_dir_handles = 0;
-    w->drop.dir_handles_capacity = 0;
-    w->drop.next_dir_handle_id = 0;
-}
-
-static void
-drop_close_file_fd(Window *w) {
-    if (w->drop.file_fd_plus_one) {
-        safe_close(w->drop.file_fd_plus_one - 1, __FILE__, __LINE__);
-        w->drop.file_fd_plus_one = 0;
-    }
-    if (w->drop.file_send_timer) {
-        remove_main_loop_timer(w->drop.file_send_timer);
-        w->drop.file_send_timer = 0;
-    }
-}
-
-static void
-drop_free_request_queue(Window *w) {
-    w->drop.num_data_requests = 0;
-    w->drop.current_request_x = 0;
-    w->drop.current_request_y = 0;
-    w->drop.current_request_Y = 0;
-}
-
-void
-drop_free_data(Window *w) {
-    drop_close_file_fd(w);
-    drop_free_offered_mimes(w);
-    drop_free_accepted_mimes(w);
-    free_pending(&w->drop.pending);
-    free(w->drop.registered_mimes); w->drop.registered_mimes = NULL;
-    free(w->drop.uri_list); w->drop.uri_list = NULL;
-    free(w->drop.getting_data_for_mime); w->drop.getting_data_for_mime = NULL;
-    drop_free_dir_handles(w);
-    drop_free_request_queue(w);
-}
-
-static void
-reset_drop(Window *w) {
-    bool wanted = w->drop.wanted; uint32_t cid = w->drop.client_id;
-    bool is_remote_client = w->drop.is_remote_client;
-    drop_free_data(w);
-    zero_at_ptr(&w->drop);
-    if (wanted) {
-        w->drop.wanted = wanted;
-        w->drop.client_id = cid;
-        w->drop.is_remote_client = is_remote_client;
-    }
 }
 
 static int
@@ -269,6 +194,122 @@ is_same_machine(const char *client_machine_id, size_t sz) {
     return sz == hsz && memcmp(client_machine_id, host_machine_id, sz) == 0;
 }
 
+static void
+url_decode_inplace(char *str) {
+    char *src = str, *dst = str;
+    while (*src) {
+        if (*src == '%' && src[1] && src[2]) {
+            unsigned int hi = 0, lo = 0;
+            char c1 = src[1], c2 = src[2];
+            if (c1 >= '0' && c1 <= '9') hi = c1 - '0';
+            else if (c1 >= 'a' && c1 <= 'f') hi = c1 - 'a' + 10;
+            else if (c1 >= 'A' && c1 <= 'F') hi = c1 - 'A' + 10;
+            else { *dst++ = *src++; continue; }
+            if (c2 >= '0' && c2 <= '9') lo = c2 - '0';
+            else if (c2 >= 'a' && c2 <= 'f') lo = c2 - 'a' + 10;
+            else if (c2 >= 'A' && c2 <= 'F') lo = c2 - 'A' + 10;
+            else { *dst++ = *src++; continue; }
+            *dst++ = (char)((hi << 4) | lo);
+            src += 3;
+        } else {
+            *dst++ = *src++;
+        }
+    }
+    *dst = 0;
+}
+
+// }}}
+
+// Dropping {{{
+static void
+drop_free_offered_mimes(Window *w) {
+    if (w->drop.offerred_mimes) {
+        for (size_t i = 0; i < w->drop.num_offerred_mimes; i++) free((void*)w->drop.offerred_mimes[i]);
+        free(w->drop.offerred_mimes); w->drop.offerred_mimes = NULL;
+    }
+    w->drop.num_offerred_mimes = 0;
+    w->drop.offered_mimes_total_size = 0;
+}
+
+static void
+drop_free_accepted_mimes(Window *w) {
+    free(w->drop.accepted_mimes); w->drop.accepted_mimes = NULL;
+    w->drop.accepted_mimes_sz = 0;
+}
+
+static void
+free_pending(PendingData *pending) {
+    if (pending->items) {
+        for (size_t i = 0; i < pending->count; i++) free(pending->items[i].buf);
+        free(pending->items);
+    }
+    zero_at_ptr(pending);
+}
+
+static void
+drop_free_dir_handle(DirHandle *h) {
+    free(h->path);
+    for (size_t i = 0; i < h->num_entries; i++) free(h->entries[i]);
+    free(h->entries);
+    zero_at_ptr(h);
+}
+
+static void
+drop_free_dir_handles(Window *w) {
+    for (size_t i = 0; i < w->drop.num_dir_handles; i++)
+        drop_free_dir_handle(&w->drop.dir_handles[i]);
+    free(w->drop.dir_handles);
+    w->drop.dir_handles = NULL;
+    w->drop.num_dir_handles = 0;
+    w->drop.dir_handles_capacity = 0;
+    w->drop.next_dir_handle_id = 0;
+}
+
+static void
+drop_close_file_fd(Window *w) {
+    if (w->drop.file_fd_plus_one) {
+        safe_close(w->drop.file_fd_plus_one - 1, __FILE__, __LINE__);
+        w->drop.file_fd_plus_one = 0;
+    }
+    if (w->drop.file_send_timer) {
+        remove_main_loop_timer(w->drop.file_send_timer);
+        w->drop.file_send_timer = 0;
+    }
+}
+
+static void
+drop_free_request_queue(Window *w) {
+    w->drop.num_data_requests = 0;
+    w->drop.current_request_x = 0;
+    w->drop.current_request_y = 0;
+    w->drop.current_request_Y = 0;
+}
+
+void
+drop_free_data(Window *w) {
+    drop_close_file_fd(w);
+    drop_free_offered_mimes(w);
+    drop_free_accepted_mimes(w);
+    free_pending(&w->drop.pending);
+    free(w->drop.registered_mimes); w->drop.registered_mimes = NULL;
+    free(w->drop.uri_list); w->drop.uri_list = NULL;
+    free(w->drop.getting_data_for_mime); w->drop.getting_data_for_mime = NULL;
+    drop_free_dir_handles(w);
+    drop_free_request_queue(w);
+}
+
+static void
+reset_drop(Window *w) {
+    bool wanted = w->drop.wanted; uint32_t cid = w->drop.client_id;
+    bool is_remote_client = w->drop.is_remote_client;
+    drop_free_data(w);
+    zero_at_ptr(&w->drop);
+    if (wanted) {
+        w->drop.wanted = wanted;
+        w->drop.client_id = cid;
+        w->drop.is_remote_client = is_remote_client;
+    }
+}
 void
 drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id, bool more) {
     w->drop.wanted = on;
@@ -415,20 +456,6 @@ drop_update_mimes(Window *w, const char **allowed_mimes, size_t allowed_mimes_co
     return allowed_mimes_count;
 }
 
-static const char*
-get_errno_name(int err) {
-    switch (err) {
-        case EPERM: return "EPERM";
-        case ENOENT: return "ENOENT";
-        case EIO: return "EIO";
-        case EINVAL: return "EINVAL";
-        case EMFILE: return "EMFILE";
-        case ENOMEM: return "ENOMEM";
-        case 0: return "OK";
-        default: return "EUNKNOWN";
-    }
-}
-
 /* Append the current request disambiguation keys (x, y, Y) to a header buffer.
  * Returns the number of bytes written. */
 static int
@@ -500,30 +527,6 @@ drop_dispatch_data(Window *w, const char *mime, const char *data, ssize_t sz) {
 }
 
 // ---- Remote file / directory transfer ----
-
-static void
-url_decode_inplace(char *str) {
-    char *src = str, *dst = str;
-    while (*src) {
-        if (*src == '%' && src[1] && src[2]) {
-            unsigned int hi = 0, lo = 0;
-            char c1 = src[1], c2 = src[2];
-            if (c1 >= '0' && c1 <= '9') hi = c1 - '0';
-            else if (c1 >= 'a' && c1 <= 'f') hi = c1 - 'a' + 10;
-            else if (c1 >= 'A' && c1 <= 'F') hi = c1 - 'A' + 10;
-            else { *dst++ = *src++; continue; }
-            if (c2 >= '0' && c2 <= '9') lo = c2 - '0';
-            else if (c2 >= 'a' && c2 <= 'f') lo = c2 - 'a' + 10;
-            else if (c2 >= 'A' && c2 <= 'F') lo = c2 - 'A' + 10;
-            else { *dst++ = *src++; continue; }
-            *dst++ = (char)((hi << 4) | lo);
-            src += 3;
-        } else {
-            *dst++ = *src++;
-        }
-    }
-    *dst = 0;
-}
 
 /* Return the nth (0-based) file path from a text/uri-list.
  * On success returns true and *path_out is a malloc'd absolute resolved path.
@@ -1069,7 +1072,9 @@ drop_left_child(Window *w) {
         queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, NULL, 0, false);
     }
 }
+// }}}
 
+// Dragging {{{
 #define ds w->drag_source
 
 void
@@ -1617,3 +1622,4 @@ drag_remote_file_data(
 #undef img
 #undef abrt
 #undef ds
+// }}}
