@@ -38,7 +38,7 @@ the end of the last chunk.
 Accepting drops
 -----------------
 
-In order to inform the terminal emulator that the program accepts drops, it
+In order to inform the terminal emulator that the client accepts drops, it
 must send the following escape code::
 
     OSC _dnd_code ; t=a ; payload ST
@@ -48,7 +48,17 @@ The list of MIME types is optional, it is needed if the program wants to accept
 exotic or private use MIME types on platforms such as macOS, where the system
 does not deliver drop events unless the MIME type is registered.
 
-When the program is done accepting drops, or at exit, it should send the escape
+The terminal emulator may respond to this escape code with an escape code of
+the form::
+
+    OSC _dnd_code ; t=a ; machine id ST
+
+Here, the :ref:`machine id <machine_id>` is an id that identifies the machine
+the terminal is running on and can be used by the client to determine whether
+to request remote files from the terminal when a drop occurs.
+See :ref:`below <machine_id>` for the semantics of the machine id.
+
+When the client is done accepting drops, or at exit, it should send the escape
 code::
 
     OSC _dnd_code ; t=A ST
@@ -132,8 +142,12 @@ terminal emulator must then inform the OS that the drop is completed.
 Dropping from remote machines
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In order to support dropping of files from remote machines,
-clients can first request the :rfc:`text/uri-list <2483>` MIME
+In order to support dropping of files from remote machines, the client
+can use the :ref:`machine id <machine_id>` previously sent by the terminal.
+If it is different from the id of the machine the client is running on, it
+can choose to request remote files, as follows.
+
+Clients can first request the :rfc:`text/uri-list <2483>` MIME
 type to get a list of dropped URIs. For every URI in the list, they can
 send the terminal emulator a data request of the form::
 

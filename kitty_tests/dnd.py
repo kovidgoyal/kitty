@@ -5,6 +5,7 @@ import errno
 import re
 from base64 import standard_b64decode, standard_b64encode
 from contextlib import contextmanager
+from functools import partial
 
 from kitty.fast_data_types import (
     DND_CODE,
@@ -16,6 +17,7 @@ from kitty.fast_data_types import (
     dnd_test_fake_drop_event,
     dnd_test_set_mouse_pos,
 )
+from kitty.machine_id import machine_id
 
 from . import BaseTest, parse_bytes
 
@@ -321,12 +323,22 @@ def dnd_test_window():
         dnd_test_cleanup_fake_window(os_window_id)
 
 
+machine_id = partial(machine_id, 'tty-dnd-protocol-machine-id')
+
 # ---- test class -------------------------------------------------------------
 
 class TestDnDProtocol(BaseTest):
 
     def _assert_no_output(self, capture: _WriteCapture, window_id: int) -> None:
         self.ae(capture.peek(window_id), b'', 'unexpected output to child')
+
+    def _register_for_drops(self, screen, cap, wid, mimes='text/plain text/uri-list', client_id=0) -> None:
+        parse_bytes(screen, client_register(mimes, client_id=client_id))
+        events = self._get_events(cap, wid)
+        self.assertEqual(len(events), 1, events)
+        self.ae(events[0]['type'], 'a')
+        self.ae(events[0]['payload'].strip().decode(), machine_id())
+
 
     def _get_events(self, capture: _WriteCapture, window_id: int) -> list[dict]:
         return parse_escape_codes(capture.consume(window_id))
@@ -336,10 +348,7 @@ class TestDnDProtocol(BaseTest):
         with dnd_test_window() as (osw, wid, screen, cap):
             # Client registers – state is already wanted=True from fake-window creation,
             # but calling the escape code should not break things.
-            parse_bytes(screen, client_register('text/plain text/uri-list'))
-            # No output expected at this point (no drop in progress).
-            self._assert_no_output(cap, wid)
-
+            self._register_for_drops(screen, cap, wid)
             # Client unregisters.
             parse_bytes(screen, client_unregister())
             self._assert_no_output(cap, wid)
@@ -347,7 +356,7 @@ class TestDnDProtocol(BaseTest):
     def test_drop_move_sends_move_event(self) -> None:
         """A drop entering and moving over the window generates t=m events."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 5, 3, 100, 60)
             dnd_test_fake_drop_event(wid, False, ['text/plain', 'text/uri-list'])
 
@@ -366,7 +375,7 @@ class TestDnDProtocol(BaseTest):
     def test_drop_move_mime_always_sent(self) -> None:
         """The current implementation always includes the MIME list in move events."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             mimes = ['text/plain']
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, False, mimes)
@@ -384,7 +393,7 @@ class TestDnDProtocol(BaseTest):
     def test_drop_leave_sends_leave_event(self) -> None:
         """Drop leaving sends t=m with x=-1,y=-1."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, False, ['text/plain'])
             cap.consume(wid)
@@ -400,7 +409,7 @@ class TestDnDProtocol(BaseTest):
     def test_client_accepts_drop(self) -> None:
         """Client sending t=m:o=1 is recorded and does not trigger extra output."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, False, ['text/plain'])
             cap.consume(wid)
@@ -414,7 +423,7 @@ class TestDnDProtocol(BaseTest):
         """Complete happy-path: move → accept → drop → request → data → finish."""
         payload_data = b'hello world'
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
 
             # Move
             dnd_test_set_mouse_pos(wid, 2, 3, 16, 24)
@@ -451,7 +460,7 @@ class TestDnDProtocol(BaseTest):
     def test_request_unknown_mime(self) -> None:
         """Requesting an out-of-range MIME index yields an error."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -466,7 +475,7 @@ class TestDnDProtocol(BaseTest):
     def test_data_error_propagation(self) -> None:
         """When data retrieval fails the client receives a t=R error code."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -483,7 +492,7 @@ class TestDnDProtocol(BaseTest):
     def test_data_eperm_error(self) -> None:
         """EPERM error is correctly forwarded to the client."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -501,7 +510,7 @@ class TestDnDProtocol(BaseTest):
         chunk_limit = 3072
         big_payload = b'X' * (chunk_limit * 3)  # 3 chunks expected
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -519,7 +528,7 @@ class TestDnDProtocol(BaseTest):
         """The client_id (i=…) set during registration is echoed in all replies."""
         client_id = 42
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain', client_id=client_id))
+            self._register_for_drops(screen, cap, wid, mimes='text/plain', client_id=client_id)
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, False, ['text/plain'])
             raw = cap.consume(wid)
@@ -530,7 +539,7 @@ class TestDnDProtocol(BaseTest):
     def test_multiple_mimes_priority(self) -> None:
         """The client can request data from any offered MIME type by index."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain text/uri-list'))
+            self._register_for_drops(screen, cap, wid, 'text/plain text/uri-list')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             # OS offers both types.
             dnd_test_fake_drop_event(wid, True, ['text/plain', 'text/uri-list'])
@@ -569,7 +578,7 @@ class TestDnDProtocol(BaseTest):
     def test_move_event_after_mime_change(self) -> None:
         """When offered MIME list changes, the new list is included in the move event."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, False, ['text/plain'])
             cap.consume(wid)
@@ -585,7 +594,7 @@ class TestDnDProtocol(BaseTest):
     def test_drop_event_has_uppercase_M(self) -> None:
         """A drop (not just a move) sends t=M (uppercase)."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             events = self._get_events(cap, wid)
@@ -595,7 +604,7 @@ class TestDnDProtocol(BaseTest):
     def test_data_end_signal(self) -> None:
         """The end-of-data signal is an empty payload escape code."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -613,7 +622,7 @@ class TestDnDProtocol(BaseTest):
     def test_empty_data(self) -> None:
         """Zero-byte payload is handled gracefully – only end signal is sent."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -633,7 +642,7 @@ class TestDnDProtocol(BaseTest):
         """Register, drop, deliver text/uri-list data, discard move/drop events."""
         if mimes is None:
             mimes = ['text/plain', 'text/uri-list']
-        parse_bytes(screen, client_register('text/plain text/uri-list'))
+        self._register_for_drops(screen, cap, wid, 'text/plain text/uri-list')
         dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
         dnd_test_fake_drop_event(wid, True, mimes)
         cap.consume(wid)
@@ -728,7 +737,7 @@ class TestDnDProtocol(BaseTest):
             fpath = f.name
         try:
             with dnd_test_window() as (osw, wid, screen, cap):
-                parse_bytes(screen, client_register('text/plain'))
+                self._register_for_drops(screen, cap, wid, 'text/plain')
                 dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
                 dnd_test_fake_drop_event(wid, True, ['text/plain', 'text/uri-list'])
                 cap.consume(wid)
@@ -1826,7 +1835,7 @@ class TestDnDProtocol(BaseTest):
         """x= key is echoed in data responses to identify which request is being answered."""
         payload_data = b'hello disambiguation'
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -1843,7 +1852,7 @@ class TestDnDProtocol(BaseTest):
     def test_x_key_echoed_in_error_response(self) -> None:
         """x= key is echoed in error responses."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -1859,7 +1868,7 @@ class TestDnDProtocol(BaseTest):
     def test_x_key_in_error_for_io_failure(self) -> None:
         """x= key is echoed in I/O error responses."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -1875,7 +1884,7 @@ class TestDnDProtocol(BaseTest):
     def test_fifo_order_with_different_indices(self) -> None:
         """Multiple requests with different x= values are served in FIFO order."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain text/html'))
+            self._register_for_drops(screen, cap, wid, 'text/plain text/html')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain', 'text/html'])
             cap.consume(wid)
@@ -1905,7 +1914,7 @@ class TestDnDProtocol(BaseTest):
     def test_request_after_error_proceeds(self) -> None:
         """After an error response, the next queued request is processed."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -1934,7 +1943,7 @@ class TestDnDProtocol(BaseTest):
     def test_queue_overflow_returns_emfile(self) -> None:
         """Exceeding 128 queued requests returns EMFILE and ends the drop."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -2118,7 +2127,7 @@ class TestDnDProtocol(BaseTest):
     def test_finish_after_queued_requests(self) -> None:
         """A finish (empty t=r) after queued requests processes remaining then finishes."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -2139,7 +2148,7 @@ class TestDnDProtocol(BaseTest):
     def test_multiple_sync_errors_processed_immediately(self) -> None:
         """Multiple queued requests that all fail synchronously are processed immediately."""
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)
@@ -2164,7 +2173,7 @@ class TestDnDProtocol(BaseTest):
         """Responses must not contain the old r= key."""
         payload_data = b'no r= key test'
         with dnd_test_window() as (osw, wid, screen, cap):
-            parse_bytes(screen, client_register('text/plain'))
+            self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 2, 3, 16, 24)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
             cap.consume(wid)

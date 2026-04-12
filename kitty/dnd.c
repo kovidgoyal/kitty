@@ -144,40 +144,6 @@ reset_drop(Window *w) {
     }
 }
 
-void
-drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id, bool more) {
-    w->drop.wanted = on;
-    w->drop.client_id = client_id;
-    if (!on) { drop_free_data(w); zero_at_ptr(&w->drop); return; }
-    if (!payload || !payload_sz) return;
-    size_t sz = w->drop.registered_mimes ? strlen(w->drop.registered_mimes) : 0;
-    if (sz + payload_sz > MIME_LIST_SIZE_CAP) return;
-    w->drop.registered_mimes = realloc(w->drop.registered_mimes, sz + payload_sz + 1);
-    if (w->drop.registered_mimes) {
-        memcpy(w->drop.registered_mimes + sz, payload, payload_sz);
-        sz += payload_sz;
-        w->drop.registered_mimes[sz] = 0;
-    }
-    if (more) return;
-    if (w->drop.registered_mimes) {
-        OSWindow *osw = os_window_for_kitty_window(w->id);
-        if (osw) {
-            size_t num = 0;
-            RAII_ALLOC(const char*, mimes, malloc(sizeof(char*) * strlen(w->drop.registered_mimes)));
-            if (mimes) {
-                char* token = strtok(w->drop.registered_mimes, " ");
-                while (token != NULL) {
-                    mimes[num++] = token;
-                    token = strtok(NULL, " ");
-                }
-                register_mimes_for_drop(osw, mimes, num);
-            }
-        }
-    }
-    free(w->drop.registered_mimes); w->drop.registered_mimes = NULL;
-}
-
-
 static int
 string_arrays_cmp(const char **a, size_t an, const char **b, size_t bn) {
     if (an != bn) return (int)an - (int)bn;
@@ -287,6 +253,46 @@ queue_payload_to_child(id_type id, uint32_t client_id, PendingData *pending, con
         e->as_base64 = as_base64; e->client_id = client_id;
     }
     if (pending->count) check_for_pending_writes();
+}
+
+void
+drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id, bool more) {
+    w->drop.wanted = on;
+    w->drop.client_id = client_id;
+    if (!on) { drop_free_data(w); zero_at_ptr(&w->drop); return; }
+    if (!payload || !payload_sz) return;
+    size_t sz = w->drop.registered_mimes ? strlen(w->drop.registered_mimes) : 0;
+    if (sz + payload_sz > MIME_LIST_SIZE_CAP) return;
+    w->drop.registered_mimes = realloc(w->drop.registered_mimes, sz + payload_sz + 1);
+    if (w->drop.registered_mimes) {
+        memcpy(w->drop.registered_mimes + sz, payload, payload_sz);
+        sz += payload_sz;
+        w->drop.registered_mimes[sz] = 0;
+    }
+    if (more) return;
+    if (w->drop.registered_mimes) {
+        OSWindow *osw = os_window_for_kitty_window(w->id);
+        if (osw) {
+            size_t num = 0;
+            RAII_ALLOC(const char*, mimes, malloc(sizeof(char*) * strlen(w->drop.registered_mimes)));
+            if (mimes) {
+                char* token = strtok(w->drop.registered_mimes, " ");
+                while (token != NULL) {
+                    mimes[num++] = token;
+                    token = strtok(NULL, " ");
+                }
+                register_mimes_for_drop(osw, mimes, num);
+            }
+        }
+    }
+    free(w->drop.registered_mimes); w->drop.registered_mimes = NULL;
+    const char* host_machine_id = machine_id();
+    if (host_machine_id) {
+        char header[32] = {0};
+        int n = snprintf(header, sizeof(header), "\x1b]%d;t=a", DND_CODE);
+        queue_payload_to_child(
+            w->id, w->drop.client_id, &w->drop.pending, header, n, host_machine_id, strlen(host_machine_id), false);
+    }
 }
 
 void
@@ -864,13 +870,6 @@ do_drop_request_uri_data(Window *w, int32_t mime_idx, int32_t file_idx) {
     }
     free(path);
     return sync;
-}
-
-void
-drop_request_uri_data(Window *w, const char *payload, size_t payload_sz) {
-    (void)w; (void)payload; (void)payload_sz;
-    /* This function is no longer used in the new protocol; URI data requests
-     * are now handled through the unified t=r queue via do_drop_request_uri_data. */
 }
 
 /* Handle a directory request from the client.
