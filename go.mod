@@ -9,6 +9,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.23.1
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/dlclark/regexp2 v1.11.5
+	github.com/ebitengine/purego v0.10.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
@@ -36,7 +37,6 @@ require (
 // replace github.com/kovidgoyal/imaging => ../imaging
 
 require (
-	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect
