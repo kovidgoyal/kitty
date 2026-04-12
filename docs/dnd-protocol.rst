@@ -230,7 +230,7 @@ directory handle is now invalid and terminals must return ``EINVAL`` if the
 client sends a request using an invalid directory handle. It is recommended
 that clients traverse directories breadth first to minimise resource usage in
 the terminal. Terminals may deny directory traversal requests if too many
-resources are used, in order to prevent denial or service attacks. In such
+resources are used, in order to prevent Denial of service attacks. In such
 cases the terminal must respond with ``ENOMEM``.
 
 
