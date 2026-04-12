@@ -10,14 +10,15 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	kitty "github.com/kovidgoyal/kitty"
+	"github.com/kovidgoyal/kitty"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/machine_id"
 )
 
 var _ = fmt.Print
@@ -41,13 +42,12 @@ func dnd_escape(metadata, payload string) string {
 // get_machine_id returns the machine id in the format expected by the DnD
 // protocol ("1:" followed by HMAC-SHA256 of /etc/machine-id).
 func get_machine_id() string {
-	data, err := os.ReadFile("/etc/machine-id")
+	ans, err := machine_id.MachineId()
 	if err != nil {
 		return ""
 	}
-	data = bytes.TrimRight(data, "\n")
 	mac := hmac.New(sha256.New, []byte("tty-dnd-protocol-machine-id"))
-	mac.Write(data)
+	mac.Write(utils.UnsafeStringToBytes(ans))
 	return "1:" + hex.EncodeToString(mac.Sum(nil))
 }
 
