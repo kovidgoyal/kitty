@@ -485,7 +485,7 @@ The machine id is used to detect when the source and destination machines for a
 drag and drop are different. It is of the form: ``version:ASCII printable
 chars``. The leading ``version`` field allows for changing the format or
 semantics of this field in the future. The actual id is the machine id (the
-contents of :file:`/etc/machine-id` on Linux/BSD and
+contents of :file:`/etc/machine-id` with trailing whitespace removed on Linux/BSD and
 :file:`HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\MachineGuid` on
 Windows and ``IOPlatformUUID`` on macOS). This machine id is then hashed using
 a :rfc:`HMAC <2104>` with :rfc:`SHA-256 <6234>` as the digest algorithm and the
