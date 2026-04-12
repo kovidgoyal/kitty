@@ -48,16 +48,6 @@ The list of MIME types is optional, it is needed if the program wants to accept
 exotic or private use MIME types on platforms such as macOS, where the system
 does not deliver drop events unless the MIME type is registered.
 
-The terminal emulator may respond to this escape code with an escape code of
-the form::
-
-    OSC _dnd_code ; t=a ; machine id ST
-
-Here, the :ref:`machine id <machine_id>` is an id that identifies the machine
-the terminal is running on and can be used by the client to determine whether
-to request remote files from the terminal when a drop occurs.
-See :ref:`below <machine_id>` for the semantics of the machine id.
-
 When the client is done accepting drops, or at exit, it should send the escape
 code::
 
@@ -143,12 +133,17 @@ Dropping from remote machines
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In order to support dropping of files from remote machines, the client
-can use the :ref:`machine id <machine_id>` previously sent by the terminal.
-If it is different from the id of the machine the client is running on, it
-can choose to request remote files, as follows.
+must inform the terminal of its :ref:`machine id <machine_id>` using the escape code::
 
-Clients can first request the :rfc:`text/uri-list <2483>` MIME
-type to get a list of dropped URIs. For every URI in the list, they can
+    OSC _dnd_code ; t=a:x=1 ; machine id ST
+
+Then, the client must first request the :rfc:`text/uri-list <2483>` MIME
+type to get a list of dropped URIs. When responding to this request,
+the terminal will send the usual ``t=r`` responses, but, in addition,
+if the client has sent its machine id and the terminal determines that
+the client is on a different machine based on the id, it will add the ``X=1``
+key to its response. The client should use this key to determine if it wants to
+request data for entries in the URI list. For every URI in the list, the client can
 send the terminal emulator a data request of the form::
 
     OSC _dnd_code ; t=r:x=idx:y=subidx ST
@@ -486,11 +481,22 @@ Key      Value                 Default    Description
 Machine id
 -----------------
 
-The machine id is used to detect when a drag is started on a remote machine. It
-is of the form: ``version:ASCII printable chars``. The leading ``version`` field
-allows for changing the format or semantics of this field in the future. The
-actual id is the machine id (the contents of :file:`/etc/machine-id` on
-Linux/BSD and :file:`HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\MachineGuid` on Windows and ``IOPlatformUUID`` on macOS). This machine id is then hashed using a :rfc:`HMAC <2104>`
-with :rfc:`SHA-256 <6234>` as the digest algorithm and the key being the ASCII bytes:
-``tty-dnd-protocol-machine-id``. The hashing is done so as to not easily leak the
-actual machine id and to ensure that the value is of fixed size.
+The machine id is used to detect when the source and destination machines for a
+drag and drop are different. It is of the form: ``version:ASCII printable
+chars``. The leading ``version`` field allows for changing the format or
+semantics of this field in the future. The actual id is the machine id (the
+contents of :file:`/etc/machine-id` on Linux/BSD and
+:file:`HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\MachineGuid` on
+Windows and ``IOPlatformUUID`` on macOS). This machine id is then hashed using
+a :rfc:`HMAC <2104>` with :rfc:`SHA-256 <6234>` as the digest algorithm and the
+key being the ASCII bytes: ``tty-dnd-protocol-machine-id``. The hashing is done
+so as to not easily leak the actual machine id and to ensure that the value is
+of fixed size. This gives a final value of::
+
+    1:hashed machine id hexadecimal encoded
+
+In the future, the ``version`` field may increase if the hashing algorithm is
+changed. If the terminal sees a version it does not understand, it must assume
+that the machine id does not match, aka the source and destination machines are
+different. This assumption means that remote drag and drop will still work, just with
+reduced performance in case of version mismatch.

@@ -1528,7 +1528,10 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
     Window *w = window_for_window_id(self->window_id);
     if (!w) return;
     switch(cmd->type) {
-        case 'a': drop_register_window(w, payload, cmd->payload_sz, true, cmd->client_id, cmd->more); break;
+        case 'a':
+            if (cmd->cell_x == 1) drop_register_machine_id(w, payload, cmd->payload_sz);
+            else drop_register_window(w, payload, cmd->payload_sz, true, cmd->client_id, cmd->more);
+            break;
         case 'A': drop_register_window(w, NULL, 0, false, cmd->client_id, cmd->more); break;
         case 'm': drop_set_status(w, cmd->operation, (const char*)payload, cmd->payload_sz, cmd->more); break;
         case 'r': {

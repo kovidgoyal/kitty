@@ -10,6 +10,7 @@
 
 
 void drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id, bool more);
+void drop_register_machine_id(Window *w, const uint8_t *machine_id, size_t sz);
 void drop_move_on_child(Window *w, const char **mimes, size_t num_mimes, bool is_drop);
 void drop_left_child(Window *w);
 void drop_free_data(Window *w);

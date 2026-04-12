@@ -269,7 +269,7 @@ typedef struct Window {
         bool is_hovering;
     } scrollbar;
     struct {
-        bool wanted, hovered, dropped;
+        bool wanted, hovered, dropped, is_remote_client;
         uint32_t client_id;
         char *registered_mimes;
         char *uri_list; size_t uri_list_sz;

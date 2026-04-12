@@ -3,13 +3,14 @@
 
 import errno
 import re
-from base64 import standard_b64decode, standard_b64encode
+from base64 import standard_b64encode
 from contextlib import contextmanager
 from functools import partial
 
 from kitty.fast_data_types import (
     DND_CODE,
     Screen,
+    StreamingBase64Decoder,
     dnd_set_test_write_func,
     dnd_test_cleanup_fake_window,
     dnd_test_create_fake_window,
@@ -30,10 +31,6 @@ def _osc(payload: str) -> bytes:
 
 def client_register(mimes: str = '', client_id: int = 0) -> bytes:
     """Escape code a client sends to start accepting drops (t=a)."""
-    meta = f'{DND_CODE};t=a'
-    if client_id:
-        meta += f':i={client_id}'
-    return _osc(f'{meta};{mimes}')
 
 
 def client_unregister(client_id: int = 0) -> bytes:
@@ -257,14 +254,17 @@ def parse_escape_codes_b64(data: bytes) -> list[dict]:
     """Like *parse_escape_codes* but base64-decodes each chunk's payload."""
     result = parse_escape_codes(data)
     for entry in result:
+        d = StreamingBase64Decoder()
+        decoded = b''
         decoded_chunks = []
-        full = b''
-        for chunk in entry['chunks']:
-            dec = standard_b64decode(chunk + b'==') if chunk else b''
+        for c in entry['chunks']:
+            dec = d.decode(c)
             decoded_chunks.append(dec)
-            full += dec
+            decoded += dec
+        # if d.needs_more_data():
+        #     raise AssertionError('Incomplete base64 data')
+        entry['payload'] = decoded
         entry['chunks'] = decoded_chunks
-        entry['payload'] = full
     return result
 
 
@@ -332,13 +332,19 @@ class TestDnDProtocol(BaseTest):
     def _assert_no_output(self, capture: _WriteCapture, window_id: int) -> None:
         self.ae(capture.peek(window_id), b'', 'unexpected output to child')
 
-    def _register_for_drops(self, screen, cap, wid, mimes='text/plain text/uri-list', client_id=0) -> None:
-        parse_bytes(screen, client_register(mimes, client_id=client_id))
-        events = self._get_events(cap, wid)
-        self.assertEqual(len(events), 1, events)
-        self.ae(events[0]['type'], 'a')
-        self.ae(events[0]['payload'].strip().decode(), machine_id())
-
+    def _register_for_drops(
+        self, screen, cap, wid, mimes='text/plain text/uri-list', client_id=0, register_machine_id=True
+    ) -> None:
+        meta = f'{DND_CODE};t=a'
+        if client_id:
+            meta += f':i={client_id}'
+        r = _osc(f'{meta};{mimes}')
+        parse_bytes(screen, r)
+        if register_machine_id:
+            if not isinstance(register_machine_id, str):
+                register_machine_id = machine_id()
+            parse_bytes(screen, _osc(f'{DND_CODE};t=a:x=1;1:{register_machine_id}'))
+        self._assert_no_output(cap, wid)
 
     def _get_events(self, capture: _WriteCapture, window_id: int) -> list[dict]:
         return parse_escape_codes(capture.consume(window_id))
@@ -642,7 +648,7 @@ class TestDnDProtocol(BaseTest):
         """Register, drop, deliver text/uri-list data, discard move/drop events."""
         if mimes is None:
             mimes = ['text/plain', 'text/uri-list']
-        self._register_for_drops(screen, cap, wid, 'text/plain text/uri-list')
+        self._register_for_drops(screen, cap, wid, 'text/plain text/uri-list', register_machine_id='remote')
         dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
         dnd_test_fake_drop_event(wid, True, mimes)
         cap.consume(wid)
@@ -650,7 +656,8 @@ class TestDnDProtocol(BaseTest):
         uri_idx = mimes.index('text/uri-list') + 1  # 1-based
         parse_bytes(screen, client_request_data(uri_idx))
         dnd_test_fake_drop_data(wid, 'text/uri-list', uri_list_data)
-        cap.consume(wid)  # discard t=r data for text/uri-list
+        events = parse_escape_codes_b64(cap.consume(wid))
+        self.assertEqual(events[0]['meta']['X'], '1')
 
     def test_uri_file_transfer_basic(self) -> None:
         """URI file request sends the content of a regular file as t=r chunks."""

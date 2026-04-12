@@ -136,11 +136,13 @@ drop_free_data(Window *w) {
 static void
 reset_drop(Window *w) {
     bool wanted = w->drop.wanted; uint32_t cid = w->drop.client_id;
+    bool is_remote_client = w->drop.is_remote_client;
     drop_free_data(w);
     zero_at_ptr(&w->drop);
     if (wanted) {
         w->drop.wanted = wanted;
         w->drop.client_id = cid;
+        w->drop.is_remote_client = is_remote_client;
     }
 }
 
@@ -255,10 +257,23 @@ queue_payload_to_child(id_type id, uint32_t client_id, PendingData *pending, con
     if (pending->count) check_for_pending_writes();
 }
 
+static bool
+is_same_machine(const char *client_machine_id, size_t sz) {
+    if (!sz || !client_machine_id) return true;
+    if (sz < 20) return false;
+    if (client_machine_id[0] != '1' || client_machine_id[1] != ':') return false;
+    client_machine_id = client_machine_id + 2; sz -= 2;
+    const char *host_machine_id = machine_id();
+    if (!host_machine_id) return true;
+    const size_t hsz = strlen(host_machine_id);
+    return sz == hsz && memcmp(client_machine_id, host_machine_id, sz) == 0;
+}
+
 void
 drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id, bool more) {
     w->drop.wanted = on;
     w->drop.client_id = client_id;
+    w->drop.is_remote_client = false;
     if (!on) { drop_free_data(w); zero_at_ptr(&w->drop); return; }
     if (!payload || !payload_sz) return;
     size_t sz = w->drop.registered_mimes ? strlen(w->drop.registered_mimes) : 0;
@@ -286,13 +301,11 @@ drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool 
         }
     }
     free(w->drop.registered_mimes); w->drop.registered_mimes = NULL;
-    const char* host_machine_id = machine_id();
-    if (host_machine_id) {
-        char header[32] = {0};
-        int n = snprintf(header, sizeof(header), "\x1b]%d;t=a", DND_CODE);
-        queue_payload_to_child(
-            w->id, w->drop.client_id, &w->drop.pending, header, n, host_machine_id, strlen(host_machine_id), false);
-    }
+}
+
+void
+drop_register_machine_id(Window *w, const uint8_t *machine_id, size_t sz) {
+    w->drop.is_remote_client = !is_same_machine((const char*)machine_id, sz);
 }
 
 void
@@ -471,9 +484,12 @@ drop_dispatch_data(Window *w, const char *mime, const char *data, ssize_t sz) {
     } else {
         char buf[128];
         int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=r", DND_CODE);
+        const bool is_uri_list = strcmp(mime, "text/uri-list") == 0;
+        if (is_uri_list) header_size += snprintf(
+            buf + header_size, sizeof(buf) - header_size, ":X=%d", w->drop.is_remote_client);
         header_size += drop_append_request_keys(w, buf + header_size, sizeof(buf) - header_size);
         queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, sz ? data : NULL, sz, true);
-        if (strcmp(mime, "text/uri-list") == 0) {
+        if (is_uri_list) {
             w->drop.uri_list_sz += sz;
             w->drop.uri_list = realloc(w->drop.uri_list, w->drop.uri_list_sz);
             if (w->drop.uri_list) memcpy(w->drop.uri_list + w->drop.uri_list_sz - sz, data, sz);
@@ -1102,14 +1118,8 @@ cancel_drag(Window *w, int error_code) {
 
 void
 drag_start_offerring(Window *w, const char *client_machine_id, size_t sz) {
-    ds.can_offer = true; ds.is_remote_client = false;
-    if (sz && client_machine_id) {
-        const char *host_machine_id = machine_id();
-        if (host_machine_id) {
-            size_t hsz = strlen(host_machine_id);
-            if (hsz != sz || memcmp(host_machine_id, client_machine_id, sz) != 0) ds.is_remote_client = true;
-        }
-    }
+    ds.can_offer = true;
+    ds.is_remote_client = !is_same_machine(client_machine_id, sz);
 }
 
 void
