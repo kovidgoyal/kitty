@@ -110,6 +110,7 @@ typedef struct Options {
     bool dynamic_background_opacity;
     float inactive_text_alpha;
     Edge tab_bar_edge;
+    int tab_title_max_length;
     DisableLigature disable_ligatures;
     bool force_ltr;
     bool resize_in_steps;
