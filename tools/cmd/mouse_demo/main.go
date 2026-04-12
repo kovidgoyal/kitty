@@ -103,13 +103,13 @@ type dnd_state struct {
 	dragging   bool
 	drag_mimes []string
 	// Current drag cell position (set from t=m events).
-	drag_cell_x  int
-	drag_cell_y  int
+	drag_cell_x   int
+	drag_cell_y   int
 	drag_over_box bool // true when the drag is currently over the drop region
 
 	// Drop handling.
 	drop_mimes        []string
-	uri_list_mime_idx int // 1-based index of text/uri-list in drop_mimes (0 = not present)
+	uri_list_mime_idx int  // 1-based index of text/uri-list in drop_mimes (0 = not present)
 	is_remote         bool // X=1 received in URI list response (client is on different machine)
 
 	// Collection state: what we're currently collecting.
@@ -118,9 +118,9 @@ type dnd_state struct {
 	collect_buf strings.Builder
 
 	// Results of drop.
-	plain_text string
-	uri_list   []string   // parsed file:// URIs from text/uri-list
-	file_infos []file_info // one entry per uri_list entry
+	plain_text    string
+	uri_list      []string    // parsed file:// URIs from text/uri-list
+	file_infos    []file_info // one entry per uri_list entry
 	has_drop_data bool
 
 	// File reading state.
