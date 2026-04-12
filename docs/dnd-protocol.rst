@@ -484,14 +484,27 @@ Machine id
 The machine id is used to detect when the source and destination machines for a
 drag and drop are different. It is of the form: ``version:ASCII printable
 chars``. The leading ``version`` field allows for changing the format or
-semantics of this field in the future. The actual id is the machine id (the
-contents of :file:`/etc/machine-id` with trailing whitespace removed on Linux/BSD and
-:file:`HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\MachineGuid` on
-Windows and ``IOPlatformUUID`` on macOS). This machine id is then hashed using
-a :rfc:`HMAC <2104>` with :rfc:`SHA-256 <6234>` as the digest algorithm and the
-key being the ASCII bytes: ``tty-dnd-protocol-machine-id``. The hashing is done
-so as to not easily leak the actual machine id and to ensure that the value is
-of fixed size. This gives a final value of::
+semantics of this field in the future. The actual id is the machine id which
+is:
+
+.. tab:: macOS
+
+   The value returned by the ``IOPlatformUUID`` system function.
+
+.. tab:: Windows
+
+   The contents of the :file:`HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\MachineGuid`
+   registry key.
+
+.. tab:: Other
+
+   The contents of the :file:`/etc/machine-id` file with trailing whitespace removed
+
+This machine id is then hashed using a :rfc:`HMAC <2104>` with :rfc:`SHA-256
+<6234>` as the digest algorithm and the key being the ASCII bytes:
+``tty-dnd-protocol-machine-id``. The hashing is done so as to not easily leak
+the actual machine id and to ensure that the value is of fixed size and
+consisting only of ASCII printable characters. This gives a final value of::
 
     1:hashed machine id hexadecimal encoded
 
