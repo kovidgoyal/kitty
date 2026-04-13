@@ -271,6 +271,8 @@ class WindowDict(TypedDict):
     in_alternate_screen: bool
     neighbors: NeighborsMap
     session_name: str
+    needs_attention: bool
+    has_activity_since_last_focus: bool
 
 
 class PipeData(TypedDict):
@@ -2160,6 +2162,8 @@ class Window:
             'in_alternate_screen': self.screen.is_using_alternate_linebuf(),
             'neighbors': neighbors_map,
             'session_name': self.created_in_session_name,
+            'needs_attention': self.needs_attention,
+            'has_activity_since_last_focus': self.has_activity_since_last_focus,
         }
 
     def serialize_state(self) -> dict[str, Any]:

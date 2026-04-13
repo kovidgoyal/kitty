@@ -129,6 +129,8 @@ class TabDict(TypedDict):
     is_active: bool
     title: str
     title_overridden: bool
+    needs_attention: bool
+    has_activity_since_last_focus: bool
     layout: str
     layout_state: dict[str, Any]
     layout_opts: dict[str, Any]
@@ -1444,6 +1446,8 @@ class TabManager:  # {{{
                         'is_active': tab is active_tab,
                         'title': tab.name or tab.title,
                         'title_overridden': bool(tab.name),
+                        'needs_attention': any(w.needs_attention for w in tab),
+                        'has_activity_since_last_focus': any(w.has_activity_since_last_focus for w in tab),
                         'layout': str(tab.current_layout.name),
                         'layout_state': tab.current_layout.serialize(tab.windows),
                         'layout_opts': tab.current_layout.layout_opts.serialized(),
