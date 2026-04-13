@@ -393,7 +393,7 @@ files/directories.
 Every directory must be transmitted with ``X=handle``. The payload
 is a null separated list of regular files, directories and symlinks in the
 directory. ``handle`` is an integer other than ``0`` or ``1``
-that serves as an identifier for the directory. Directories must be traversed
+that serves as an identifier for the directory. Directories should be traversed
 in breadth first order. The children of a directory are reported by
 adding ``Y=parent-handle:y=num`` to the escape codes above. Here
 ``parent-handle`` is the handle of the directory being traversed and ``num``

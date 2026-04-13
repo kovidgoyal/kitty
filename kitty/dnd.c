@@ -28,6 +28,17 @@ static PyObject *g_dnd_test_write_func = NULL;
 static void drop_process_queue(Window *w);
 static void drop_pop_request(Window *w);
 
+static size_t
+count_occurrences(const char *str, size_t len, char target) {
+    size_t count = 0;
+    const char *ptr = str;
+    while ((ptr = memchr(ptr, target, len - (ptr - str))) != NULL) {
+        count++; ptr++; // Move past the found character
+        if (ptr >= str + len) break;
+    }
+    return count;
+}
+
 static const char*
 get_errno_name(int err) {
     switch (err) {
@@ -63,6 +74,87 @@ machine_id(void) {
     }
     return ans;
 }
+
+static void
+rmtree_best_effort(const char *relpath, int dirfd) {
+    RAII_PyObject(mname, PyUnicode_DecodeFSDefault("kitty.utils"));
+    if (mname) {
+        RAII_PyObject(module, PyImport_Import(mname));
+        if (module) {
+            RAII_PyObject(func, PyObject_GetAttrString(module, "rmtree_best_effort"));
+            if (func) {
+                RAII_PyObject(ret, PyObject_CallFunction(func, "si", relpath, dirfd));
+            }
+        }
+    }
+    if (PyErr_Occurred()) PyErr_Print();
+    safe_close(dirfd, __FILE__, __LINE__);
+}
+
+static char*
+mktempdir_in_cache(const char *prefix, int *fd) {
+    char *ans = NULL;
+    RAII_PyObject(mname, PyUnicode_DecodeFSDefault("kitty.utils"));
+    if (mname) {
+        RAII_PyObject(module, PyImport_Import(mname));
+        if (module) {
+            RAII_PyObject(func, PyObject_GetAttrString(module, "mktempdir_in_cache"));
+            if (func) {
+                RAII_PyObject(ret, PyObject_CallFunction(func, "s", prefix));
+                if (ret) {
+                    if (PyArg_ParseTuple(ret, "si", &ans, fd)) {
+                        if (*fd < 0) {
+                            errno = -*fd;
+                            return NULL;
+                        }
+                        ans = strdup(ans);
+                        if (!ans) {
+                            errno = ENOMEM; return NULL;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (PyErr_Occurred()) PyErr_Print();
+    errno = EIO;
+    return NULL;
+}
+
+static char*
+as_file_url(const char *wd, const char *middle, const char *filename) {
+    RAII_PyObject(mname, PyUnicode_DecodeFSDefault("kitty.utils"));
+    if (mname) {
+        RAII_PyObject(module, PyImport_Import(mname));
+        if (module) {
+            RAII_PyObject(func, PyObject_GetAttrString(module, "as_file_url"));
+            if (func) {
+                RAII_PyObject(ret, PyObject_CallFunction(func, "sss", wd, middle, filename));
+                if (ret) return strdup(PyUnicode_AsUTF8(ret));
+            }
+        }
+    }
+    if (PyErr_Occurred()) PyErr_Print();
+    return NULL;
+}
+
+static char*
+sanitized_filename_from_url(const char *url) {
+    RAII_PyObject(mname, PyUnicode_DecodeFSDefault("kitty.utils"));
+    if (mname) {
+        RAII_PyObject(module, PyImport_Import(mname));
+        if (module) {
+            RAII_PyObject(func, PyObject_GetAttrString(module, "sanitized_filename_from_url"));
+            if (func) {
+                RAII_PyObject(ret, PyObject_CallFunction(func, "s", url));
+                if (ret) return strdup(PyUnicode_AsUTF8(ret));
+            }
+        }
+    }
+    if (PyErr_Occurred()) PyErr_Print();
+    return NULL;
+}
+
 
 void
 dnd_set_test_write_func(PyObject *func) {
@@ -1077,6 +1169,18 @@ drop_left_child(Window *w) {
 // Dragging {{{
 #define ds w->drag_source
 
+static void
+drag_free_remote_item(DragRemoteItem *x) {
+    free(x->dir_entry_name);
+    free(x->data);
+    if (x->fd_plus_one) safe_close(x->fd_plus_one-1, __FILE__, __LINE__);
+    if (x->top_level_parent_dir_fd_plus_one) safe_close(x->top_level_parent_dir_fd_plus_one-1, __FILE__, __LINE__);
+    if (x->children) {
+        for (size_t i = 0; i < x->children_sz; i++) drag_free_remote_item(x->children + i);
+    }
+    zero_at_ptr(x);
+}
+
 void
 drag_free_offer(Window *w) {
     free(ds.mimes_buf); ds.mimes_buf = NULL; ds.bufsz = 0;
@@ -1085,14 +1189,25 @@ drag_free_offer(Window *w) {
             free(ds.items[i].optional_data);
             if (ds.items[i].fd_plus_one > 0) safe_close(ds.items[i].fd_plus_one - 1, __FILE__, __LINE__);
             if (ds.items[i].uri_list) {
-                for (size_t k = 0; k < ds.items[i].num_uris; k++) free((char*)ds.items[i].uri_list[k]);
+                for (size_t k = 0; k < ds.items[i].num_uris; k++) free(ds.items[i].uri_list[k]);
                 free(ds.items[i].uri_list);
             }
+            if (ds.items[i].remote_items) {
+                for (size_t k = 0; k < ds.items[i].num_remote_items; k++) drag_free_remote_item(&ds.items[i].remote_items[k]);
+                free(ds.items[i].remote_items); ds.items[i].remote_items = NULL;
+                ds.items[i].num_remote_items = 0;
+            }
+            if (ds.items[i].base_dir_fd_plus_one) {
+                rmtree_best_effort(".", ds.items[i].base_dir_fd_plus_one - 1);
+                ds.items[i].base_dir_fd_plus_one = 0;
+            }
+            free(ds.items[i].base_dir_for_remote_items); ds.items[i].base_dir_for_remote_items = NULL;
         }
         free(ds.items);
         ds.items = NULL;
     }
     ds.num_mimes = 0;
+    ds.total_remote_data_size = 0;
     for (size_t i = 0; i < arraysz(ds.images); i++) {
         if (ds.images[i].data) free(ds.images[i].data);
         zero_at_ptr(ds.images + i);
@@ -1488,7 +1603,7 @@ drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *paylo
     }
 }
 
-static const char**
+static char**
 parse_uri_list(Window *w, int fd, size_t *num_uris_out) {
     *num_uris_out = 0;
     // Determine file size and read all data
@@ -1526,7 +1641,7 @@ parse_uri_list(Window *w, int fd, size_t *num_uris_out) {
         while (*p == '\r' || *p == '\n') p++;
     }
 
-    const char **result = calloc((count + 1), sizeof(const char*));
+    char **result = calloc((count + 1), sizeof(const char*));
     if (!result) { cancel_drag(w, ENOMEM); return NULL; }
 
     // Second pass: fill in decoded URI strings
@@ -1582,12 +1697,129 @@ finish_remote_data(Window *w, size_t item_idx) {
     abrt(ret);
 }
 
+#define mi ds.items[mime_item_idx]
+static size_t REMOTE_DRAG_LIMIT = 1024 * 1024 * 1024;
+
+static void
+populate_dir_entries(Window *w, DragRemoteItem *ri) {
+    size_t num = count_occurrences((char*)ri->data, ri->data_sz, 0) + 1;
+    ri->children = calloc(num + 1, sizeof(ri->children[0]));
+    if (!ri->children) abrt(ENOMEM);
+    ri->children_sz = 0;
+    const char *ptr = (char*)ri->data; const char *p = ptr;
+    while ((p = memchr(ptr, 0, ri->data_sz - (ptr - (char*)ri->data))) != NULL) {
+        char *name = strdup(ptr);
+        if (!name) abrt(ENOMEM);
+        ri->children[ri->children_sz++].dir_entry_name = name;
+        ptr = p + 1;
+        if ((uint8_t*)ptr >= ri->data + ri->data_sz) break;
+    }
+}
+
+static void
+add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload, size_t payload_sz, int dirfd) {
+    if (payload_sz && payload) {
+        if (payload_sz > 4096) abrt(EINVAL);
+        switch (ri->type) {
+            case 0: {
+                if (!ri->fd_plus_one) {
+                    int fd = safe_openat(dirfd, ri->dir_entry_name, O_CREAT | O_WRONLY, 0);
+                    if (fd < 0) abrt(errno);
+                    ri->fd_plus_one = fd + 1;
+                }
+                uint8_t buf[4096];
+                size_t outlen = sizeof(buf);
+                if (!base64_decode_stream(&ri->base64_state, payload, payload_sz, buf, &outlen)) abrt(EINVAL);
+                ds.total_remote_data_size += outlen;
+                if (outlen && write_all(ri->fd_plus_one-1, buf, outlen) < 0) abrt(errno);
+            } break;
+            default: {
+                if (ri->data_sz + payload_sz > ri->data_capacity) {
+                    size_t cap = MAX(ri->data_capacity * 2, ri->data_sz + payload_sz + 4096);
+                    if (cap > 10 * 1024) abrt(EMFILE);
+                    ri->data = realloc(ri->data, cap);
+                    if (!ri->data) abrt(ENOMEM);
+                    ri->data_capacity = cap;
+                }
+                size_t outlen = ri->data_capacity - ri->data_sz;
+                if (!base64_decode_stream(&ri->base64_state, payload, payload_sz, ri->data + ri->data_sz, &outlen)) abrt(EINVAL);
+                ds.total_remote_data_size += outlen;
+                ri->data_sz += outlen;
+            } break;
+        }
+    }
+    if (ds.total_remote_data_size > REMOTE_DRAG_LIMIT) abrt(EMFILE);
+    if (!has_more && !payload_sz) {  // all data received
+        switch (ri->type) {
+            case 0:
+                safe_close(ri->fd_plus_one-1, __FILE__, __LINE__);
+                ri->fd_plus_one = 0;
+                break;
+            case 1:
+                ri->data[ri->data_sz] = 0;
+                if (symlinkat((char*)ri->data, dirfd, ri->dir_entry_name) != 0) abrt(errno);
+                break;
+            default:
+                populate_dir_entries(w, ri);
+                break;
+        }
+        free(ri->data); ri->data = 0; ri->data_capacity = 0; ri->data_sz = 0;
+    }
+
+}
+
 static void
 toplevel_data_for_drag(
     Window *w, unsigned mime_item_idx, unsigned uri_item_idx, unsigned item_type,
     bool has_more, const uint8_t *payload, size_t payload_sz
 ) {
-    (void)w; (void)uri_item_idx; (void)item_type; (void)has_more; (void)payload; (void)payload_sz; (void)mime_item_idx;
+    if (!mi.remote_items) {
+        mi.remote_items = calloc(ds.num_mimes, sizeof(mi.remote_items[0]));
+        if (!mi.remote_items) abrt(ENOMEM);
+        mi.num_remote_items = ds.num_mimes;
+    }
+    if (!mi.base_dir_for_remote_items) {
+        int fd;
+        mi.base_dir_for_remote_items = mktempdir_in_cache("dnd-drag-", &fd);
+        if (!mi.base_dir_for_remote_items) abrt(errno);
+        mi.base_dir_fd_plus_one = fd + 1;
+    }
+    if (uri_item_idx >= mi.num_remote_items) abrt(EINVAL);
+    DragRemoteItem *ri = mi.remote_items + uri_item_idx;
+    if (!ri->started) {
+        ri->started = true;
+        ri->type = item_type;
+        base64_init_stream_decoder(&ri->base64_state);
+        if (uri_item_idx > mi.num_uris) abrt(EINVAL);
+        const char *uri = mi.uri_list[uri_item_idx];
+        char *fname = sanitized_filename_from_url(uri);
+        if (!fname) abrt(EINVAL);
+        ri->dir_entry_name = fname;
+        char path[32];
+        snprintf(path, sizeof(path), "%u", uri_item_idx);
+        if (mkdirat(mi.base_dir_fd_plus_one - 1, path, 0700) != 0 && errno != EEXIST) abrt(errno);
+        int fd = safe_openat(mi.base_dir_fd_plus_one - 1, path, O_RDONLY | O_DIRECTORY, 0);
+        if (fd < 0) abrt(errno);
+        ri->top_level_parent_dir_fd_plus_one = fd + 1;
+        mi.uri_list[uri_item_idx] = as_file_url(mi.base_dir_for_remote_items, path, ri->dir_entry_name);
+    }
+    add_payload(w, ri, has_more, payload, payload_sz, ri->top_level_parent_dir_fd_plus_one - 1);
+}
+
+static DragRemoteItem*
+find_by_handle(DragRemoteItem *parent, int handle, char *path_to_parent, size_t *path_len) {
+    if (parent->type == handle) return parent;
+    DragRemoteItem *x;
+    for (size_t i = 0; i < parent->children_sz; i++) {
+        DragRemoteItem *child = parent->children + i;
+        size_t before = *path_len;
+        size_t n = snprintf(path_to_parent + before, PATH_MAX - before, "/%s", child->dir_entry_name);
+        if (n + before + 1 >= PATH_MAX) return NULL;
+        *path_len += n;
+        if ((x = find_by_handle(parent->children + i, handle, path_to_parent, path_len))) return x;
+        *path_len = before;
+    }
+    return NULL;
 }
 
 static void
@@ -1595,9 +1827,43 @@ subdir_data_for_drag(
     Window *w, unsigned mime_item_idx, unsigned uri_item_idx, int handle, unsigned entry_num, unsigned item_type,
     bool has_more, const uint8_t *payload, size_t payload_sz
 ) {
-    (void)w; (void)uri_item_idx; (void)item_type; (void)has_more; (void)payload; (void)payload_sz; (void)handle; (void)entry_num; (void)mime_item_idx;
+    if (!mi.remote_items || uri_item_idx >= mi.num_remote_items) abrt(EINVAL);
+    DragRemoteItem *parent = NULL;
+    if (mi.currently_open_subdir) {
+        if (mi.currently_open_subdir->type == handle) parent = mi.currently_open_subdir;
+        else {
+            if (mi.currently_open_subdir->fd_plus_one) {
+                safe_close(mi.currently_open_subdir->fd_plus_one - 1, __FILE__, __LINE__);
+                mi.currently_open_subdir->fd_plus_one = 0;
+            }
+            mi.currently_open_subdir = NULL;
+        }
+    }
+    if (parent == NULL || !parent->fd_plus_one) {
+        char path[PATH_MAX+1]; path[PATH_MAX] = 0;
+        DragRemoteItem *root = mi.remote_items + uri_item_idx;
+        if (!root->dir_entry_name) abrt(EINVAL);
+        size_t pos = snprintf(path, PATH_MAX, "%s/%u/%s",
+            mi.base_dir_for_remote_items, uri_item_idx, root->dir_entry_name);
+        parent = find_by_handle(root, handle, path, &pos);
+        if (!parent) abrt(EINVAL);
+        mi.currently_open_subdir = parent;
+        if (!parent->fd_plus_one) {
+            int fd = safe_open(path, O_DIRECTORY | O_RDONLY, 0);
+            if (fd < 0) abrt(errno);
+            parent->fd_plus_one = fd + 1;
+        }
+    }
+    if (entry_num > parent->children_sz) abrt(EINVAL);
+    DragRemoteItem *ri = parent->children + entry_num;
+    if (!ri->started) {
+        ri->started = true;
+        ri->type = item_type;
+        base64_init_stream_decoder(&ri->base64_state);
+    }
+    add_payload(w, ri, has_more, payload, payload_sz, parent->fd_plus_one - 1);
 }
-
+#undef mi
 
 void
 drag_remote_file_data(

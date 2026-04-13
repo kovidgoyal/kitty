@@ -236,6 +236,19 @@ typedef struct DirHandle {
 
 typedef enum { DRAG_SOURCE_NONE, DRAG_SOURCE_BEING_BUILT, DRAG_SOURCE_STARTED, DRAG_SOURCE_DROPPED } DragSourceState;
 
+typedef struct DragRemoteItem {
+    int type;  // 0 regular file, 1 symlink, otherwise directory
+    int fd_plus_one;  // for regular files
+    int top_level_parent_dir_fd_plus_one;
+    uint8_t *data;  // for symlink targets and directory listing
+    size_t data_sz, data_capacity;
+    struct DragRemoteItem *children;  // for directories
+    size_t children_sz;
+    char *dir_entry_name;
+    base64_state base64_state;
+    bool started;
+} DragRemoteItem;
+
 typedef struct Window {
     id_type id;
     bool visible;
@@ -300,10 +313,15 @@ typedef struct Window {
         struct { index_type x, y; bool active; } potential_url_drag;
         struct { double x, y; monotonic_t at; } initial_left_press;
         char *mimes_buf; size_t num_mimes, bufsz;
+        size_t total_remote_data_size;
         struct {
             const char *mime_type; uint8_t *optional_data; size_t data_size, data_capacity; base64_state base64_state;
-            bool data_decode_initialized, is_uri_list, requested_remote_files; int fd_plus_one;
-            const char** uri_list; size_t num_uris;
+            bool data_decode_initialized, is_uri_list, requested_remote_files;
+            int fd_plus_one;
+            char** uri_list; size_t num_uris;
+            DragRemoteItem *remote_items; size_t num_remote_items;
+            DragRemoteItem *currently_open_subdir;
+            char *base_dir_for_remote_items; int base_dir_fd_plus_one;
         } *items;
         struct {
             int width, height, fmt; uint8_t *data; size_t sz, capacity; bool started; base64_state base64_state;

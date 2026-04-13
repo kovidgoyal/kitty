@@ -71,6 +71,16 @@ safe_open(const char *path, int flags, mode_t mode) {
     }
 }
 
+static inline int
+safe_openat(int dirfd, const char *path, int flags, mode_t mode) {
+    while (true) {
+        int fd = openat(dirfd, path, flags, mode);
+        if (fd == -1 && errno == EINTR) continue;
+        return fd;
+    }
+}
+
+
 static inline FILE*
 safe_fopen(const char *path, const char *mode) {
     while (true) {

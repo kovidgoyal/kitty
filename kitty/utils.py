@@ -23,6 +23,7 @@ from typing import (
 )
 
 from .constants import (
+    cache_dir,
     clear_handled_signals,
     config_dir,
     is_macos,
@@ -1150,3 +1151,38 @@ def unlock_file(f: BinaryIO) -> None:
     if not f.writable():
         raise ValueError('Cannot unlock files not opened in writable mode')
     fcntl.lockf(f, fcntl.LOCK_UN)
+
+
+def rmtree_best_effort(relpath: str, dir_fd: int) -> None:
+    import shutil
+    shutil.rmtree(relpath, ignore_errors=True, dir_fd=dir_fd)
+
+
+def mktempdir_in_cache(prefix: str) -> tuple[str, int]:
+    import tempfile
+    ans = tempfile.mkdtemp(prefix, dir=cache_dir())
+    try:
+        return os.path.abspath(ans), os.open(ans, os.O_DIRECTORY | os.O_RDWR)
+    except OSError as e:
+        import errno
+        import shutil
+        shutil.rmtree(ans, ignore_errors=True)
+        return "", -e.errno if e.errno is not None else -errno.EIO
+
+
+def sanitized_filename_from_url(url: str) -> str:
+    import posixpath
+    from urllib.parse import unquote, urlparse
+    try:
+        purl = urlparse(url)
+        fname = posixpath.basename(unquote(purl.path))
+        return fname.replace(os.sep, '_')
+    except Exception:
+        return ''
+
+
+def as_file_url(wd: str, *components: str) -> str:
+    path = os.path.abspath(os.path.join(wd, *components))
+    path = path.replace(os.sep, '/')
+    from urllib.parse import quote
+    return 'file://' + quote(path)
