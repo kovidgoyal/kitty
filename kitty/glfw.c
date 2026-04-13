@@ -1080,6 +1080,23 @@ dnd_test_force_drag_dropped(PyObject *self UNUSED, PyObject *args) {
     w->drag_source.state = DRAG_SOURCE_DROPPED;
     Py_RETURN_NONE;
 }
+
+static PyObject *
+dnd_test_request_drag_data(PyObject *self UNUSED, PyObject *args) {
+    // Simulate what drag_get_data does initially: find the MIME item at the
+    // given index, set requested_remote_files if appropriate, and return the
+    // escape code that would be sent to the client.
+    unsigned long long window_id;
+    unsigned idx;
+    if (!PyArg_ParseTuple(args, "KI", &window_id, &idx)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
+    if (w->drag_source.state < DRAG_SOURCE_DROPPED || idx >= w->drag_source.num_mimes || !w->drag_source.items) {
+        PyErr_SetString(PyExc_ValueError, "Invalid state or index"); return NULL;
+    }
+    w->drag_source.items[idx].requested_remote_files = w->drag_source.is_remote_client && w->drag_source.items[idx].is_uri_list;
+    Py_RETURN_NONE;
+}
 // }}}
 
 static void
@@ -3393,6 +3410,7 @@ static PyMethodDef module_methods[] = {
     METHODB(dnd_test_fake_drop_event, METH_VARARGS),
     METHODB(dnd_test_fake_drop_data, METH_VARARGS),
     METHODB(dnd_test_force_drag_dropped, METH_VARARGS),
+    METHODB(dnd_test_request_drag_data, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

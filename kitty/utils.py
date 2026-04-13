@@ -1162,7 +1162,7 @@ def mktempdir_in_cache(prefix: str) -> tuple[str, int]:
     import tempfile
     ans = tempfile.mkdtemp(prefix, dir=cache_dir())
     try:
-        return os.path.abspath(ans), os.open(ans, os.O_DIRECTORY | os.O_RDWR)
+        return os.path.abspath(ans), os.open(ans, os.O_DIRECTORY | os.O_RDONLY)
     except OSError as e:
         import errno
         import shutil

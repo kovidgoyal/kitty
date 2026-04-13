@@ -52,6 +52,9 @@ get_errno_name(int err) {
         case EINVAL: return "EINVAL";
         case EMFILE: return "EMFILE";
         case ENOMEM: return "ENOMEM";
+        case EFBIG: return "EFBIG";
+        case EISDIR: return "EISDIR";
+        case ENOSPC: return "ENOSPC";
         case 0: return "OK";
         default: return "EUNKNOWN";
     }
@@ -115,6 +118,7 @@ mktempdir_in_cache(const char *prefix, int *fd) {
                         if (!ans) {
                             errno = ENOMEM; return NULL;
                         }
+                        return ans;
                     }
                 }
             }
@@ -1717,13 +1721,17 @@ populate_dir_entries(Window *w, DragRemoteItem *ri) {
     ri->children = calloc(num + 1, sizeof(ri->children[0]));
     if (!ri->children) abrt(ENOMEM);
     ri->children_sz = 0;
-    const char *ptr = (char*)ri->data; const char *p = ptr;
-    while ((p = memchr(ptr, 0, ri->data_sz - (ptr - (char*)ri->data))) != NULL) {
-        char *name = strdup(ptr);
-        if (!name) abrt(ENOMEM);
-        ri->children[ri->children_sz++].dir_entry_name = name;
-        ptr = p + 1;
-        if ((uint8_t*)ptr >= ri->data + ri->data_sz) break;
+    const char *ptr = (char*)ri->data;
+    const char *end = (char*)ri->data + ri->data_sz;
+    while (ptr < end) {
+        const char *p = memchr(ptr, 0, (size_t)(end - ptr));
+        size_t len = p ? (size_t)(p - ptr) : (size_t)(end - ptr);
+        if (len > 0) {
+            char *name = strndup(ptr, len);
+            if (!name) abrt(ENOMEM);
+            ri->children[ri->children_sz++].dir_entry_name = name;
+        }
+        ptr = p ? p + 1 : end;
     }
 }
 
@@ -1771,6 +1779,7 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
                 if (symlinkat((char*)ri->data, dirfd, ri->dir_entry_name) != 0) abrt(errno);
                 break;
             default:
+                if (mkdirat(dirfd, ri->dir_entry_name, 0700) != 0 && errno != EEXIST) abrt(errno);
                 populate_dir_entries(w, ri);
                 break;
         }
