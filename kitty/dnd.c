@@ -52,6 +52,9 @@ get_errno_name(int err) {
         case EINVAL: return "EINVAL";
         case EMFILE: return "EMFILE";
         case ENOMEM: return "ENOMEM";
+        case EFBIG: return "EFBIG";
+        case EISDIR: return "EISDIR";
+        case ENOSPC: return "ENOSPC";
         case 0: return "OK";
         default: return "EUNKNOWN";
     }
@@ -115,6 +118,7 @@ mktempdir_in_cache(const char *prefix, int *fd) {
                         if (!ans) {
                             errno = ENOMEM; return NULL;
                         }
+                        return ans;
                     }
                 }
             }
@@ -168,6 +172,11 @@ dnd_set_test_write_func(PyObject *func, size_t mime_list_size_cap, size_t presen
     MIME_LIST_SIZE_CAP = mime_list_size_cap ? mime_list_size_cap : DEFAULT_MIME_LIST_SIZE_CAP;
     PRESENT_DATA_CAP = present_data_cap ? present_data_cap : DEFAULT_PRESENT_DATA_CAP;
     REMOTE_DRAG_LIMIT = remote_drag_limit ? remote_drag_limit : DEFAULT_REMOTE_DRAG_LIMIT;
+}
+
+bool
+dnd_is_test_mode(void) {
+    return g_dnd_test_write_func != NULL;
 }
 
 static int
@@ -1438,7 +1447,7 @@ drag_notify(Window *w, DragNotifyType type) {
                 default:
                     sz += snprintf(buf + sz, sizeof(buf) - sz, "o=1"); break;
             } break;
-        case DRAG_NOTIFY_DROPPED: break;
+        case DRAG_NOTIFY_DROPPED: ds.state = DRAG_SOURCE_DROPPED; break;
         case DRAG_NOTIFY_FINISHED:
             sz += snprintf(buf + sz, sizeof(buf) - sz, "y=%d", global_state.drag_source.was_canceled ? 1 : 0); break;
     }
@@ -1712,13 +1721,17 @@ populate_dir_entries(Window *w, DragRemoteItem *ri) {
     ri->children = calloc(num + 1, sizeof(ri->children[0]));
     if (!ri->children) abrt(ENOMEM);
     ri->children_sz = 0;
-    const char *ptr = (char*)ri->data; const char *p = ptr;
-    while ((p = memchr(ptr, 0, ri->data_sz - (ptr - (char*)ri->data))) != NULL) {
-        char *name = strdup(ptr);
-        if (!name) abrt(ENOMEM);
-        ri->children[ri->children_sz++].dir_entry_name = name;
-        ptr = p + 1;
-        if ((uint8_t*)ptr >= ri->data + ri->data_sz) break;
+    const char *ptr = (char*)ri->data;
+    const char *end = (char*)ri->data + ri->data_sz;
+    while (ptr < end) {
+        const char *p = memchr(ptr, 0, (size_t)(end - ptr));
+        size_t len = p ? (size_t)(p - ptr) : (size_t)(end - ptr);
+        if (len > 0) {
+            char *name = strndup(ptr, len);
+            if (!name) abrt(ENOMEM);
+            ri->children[ri->children_sz++].dir_entry_name = name;
+        }
+        ptr = p ? p + 1 : end;
     }
 }
 
@@ -1766,6 +1779,7 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
                 if (symlinkat((char*)ri->data, dirfd, ri->dir_entry_name) != 0) abrt(errno);
                 break;
             default:
+                if (mkdirat(dirfd, ri->dir_entry_name, 0700) != 0 && errno != EEXIST) abrt(errno);
                 populate_dir_entries(w, ri);
                 break;
         }
@@ -1780,9 +1794,9 @@ toplevel_data_for_drag(
     bool has_more, const uint8_t *payload, size_t payload_sz
 ) {
     if (!mi.remote_items) {
-        mi.remote_items = calloc(ds.num_mimes, sizeof(mi.remote_items[0]));
+        mi.remote_items = calloc(mi.num_uris, sizeof(mi.remote_items[0]));
         if (!mi.remote_items) abrt(ENOMEM);
-        mi.num_remote_items = ds.num_mimes;
+        mi.num_remote_items = mi.num_uris;
     }
     if (!mi.base_dir_for_remote_items) {
         int fd;
@@ -1796,7 +1810,7 @@ toplevel_data_for_drag(
         ri->started = true;
         ri->type = item_type;
         base64_init_stream_decoder(&ri->base64_state);
-        if (uri_item_idx > mi.num_uris) abrt(EINVAL);
+        if (uri_item_idx >= mi.num_uris) abrt(EINVAL);
         const char *uri = mi.uri_list[uri_item_idx];
         char *fname = sanitized_filename_from_url(uri);
         if (!fname) abrt(EINVAL);
@@ -1860,7 +1874,7 @@ subdir_data_for_drag(
             parent->fd_plus_one = fd + 1;
         }
     }
-    if (entry_num > parent->children_sz) abrt(EINVAL);
+    if (entry_num >= parent->children_sz) abrt(EINVAL);
     DragRemoteItem *ri = parent->children + entry_num;
     if (!ri->started) {
         ri->started = true;
