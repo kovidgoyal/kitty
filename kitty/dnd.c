@@ -25,6 +25,8 @@ static size_t PRESENT_DATA_CAP = DEFAULT_PRESENT_DATA_CAP;
 #define DEFAULT_REMOTE_DRAG_LIMIT 1024 * 1024 * 1024
 static size_t REMOTE_DRAG_LIMIT = DEFAULT_REMOTE_DRAG_LIMIT;
 static PyObject *g_dnd_test_write_func = NULL;
+static const unsigned file_permissions = 0644;
+static const unsigned dir_permissions = 0755;
 
 // Utils {{{
 // In test mode, this callable is invoked instead of schedule_write_to_child_if_possible.
@@ -1742,7 +1744,7 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
         switch (ri->type) {
             case 0: {
                 if (!ri->fd_plus_one) {
-                    int fd = safe_openat(dirfd, ri->dir_entry_name, O_CREAT | O_WRONLY, 0);
+                    int fd = safe_openat(dirfd, ri->dir_entry_name, O_CREAT | O_WRONLY, file_permissions);
                     if (fd < 0) abrt(errno);
                     ri->fd_plus_one = fd + 1;
                 }
@@ -1779,7 +1781,7 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
                 if (symlinkat((char*)ri->data, dirfd, ri->dir_entry_name) != 0) abrt(errno);
                 break;
             default:
-                if (mkdirat(dirfd, ri->dir_entry_name, 0700) != 0 && errno != EEXIST) abrt(errno);
+                if (mkdirat(dirfd, ri->dir_entry_name, dir_permissions) != 0 && errno != EEXIST) abrt(errno);
                 populate_dir_entries(w, ri);
                 break;
         }
@@ -1817,7 +1819,7 @@ toplevel_data_for_drag(
         ri->dir_entry_name = fname;
         char path[32];
         snprintf(path, sizeof(path), "%u", uri_item_idx);
-        if (mkdirat(mi.base_dir_fd_plus_one - 1, path, 0700) != 0 && errno != EEXIST) abrt(errno);
+        if (mkdirat(mi.base_dir_fd_plus_one - 1, path, dir_permissions) != 0 && errno != EEXIST) abrt(errno);
         int fd = safe_openat(mi.base_dir_fd_plus_one - 1, path, O_RDONLY | O_DIRECTORY, 0);
         if (fd < 0) abrt(errno);
         ri->top_level_parent_dir_fd_plus_one = fd + 1;
