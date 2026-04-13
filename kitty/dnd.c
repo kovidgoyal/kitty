@@ -18,13 +18,17 @@
 #include <unistd.h>
 #include <errno.h>
 
-static const size_t MIME_LIST_SIZE_CAP = 1024 * 1024;
-static const size_t PRESENT_DATA_CAP = 64 * 1024 * 1024;
+#define DEFAULT_MIME_LIST_SIZE_CAP 1024u * 1024u
+static size_t MIME_LIST_SIZE_CAP = DEFAULT_MIME_LIST_SIZE_CAP;
+#define DEFAULT_PRESENT_DATA_CAP 64 * 1024 * 1024
+static size_t PRESENT_DATA_CAP = DEFAULT_PRESENT_DATA_CAP;
+#define DEFAULT_REMOTE_DRAG_LIMIT 1024 * 1024 * 1024
+static size_t REMOTE_DRAG_LIMIT = DEFAULT_REMOTE_DRAG_LIMIT;
+static PyObject *g_dnd_test_write_func = NULL;
 
 // Utils {{{
 // In test mode, this callable is invoked instead of schedule_write_to_child_if_possible.
 // It receives (window_id: int, data: bytes) and its return value is ignored.
-static PyObject *g_dnd_test_write_func = NULL;
 static void drop_process_queue(Window *w);
 static void drop_pop_request(Window *w);
 
@@ -157,10 +161,13 @@ sanitized_filename_from_url(const char *url) {
 
 
 void
-dnd_set_test_write_func(PyObject *func) {
+dnd_set_test_write_func(PyObject *func, size_t mime_list_size_cap, size_t present_data_cap, size_t remote_drag_limit) {
     (void)machine_id;
-    Py_XDECREF(g_dnd_test_write_func);
+    Py_CLEAR(g_dnd_test_write_func);
     g_dnd_test_write_func = Py_XNewRef(func);
+    MIME_LIST_SIZE_CAP = mime_list_size_cap ? mime_list_size_cap : DEFAULT_MIME_LIST_SIZE_CAP;
+    PRESENT_DATA_CAP = present_data_cap ? present_data_cap : DEFAULT_PRESENT_DATA_CAP;
+    REMOTE_DRAG_LIMIT = remote_drag_limit ? remote_drag_limit : DEFAULT_REMOTE_DRAG_LIMIT;
 }
 
 static int
@@ -1698,7 +1705,6 @@ finish_remote_data(Window *w, size_t item_idx) {
 }
 
 #define mi ds.items[mime_item_idx]
-static size_t REMOTE_DRAG_LIMIT = 1024 * 1024 * 1024;
 
 static void
 populate_dir_entries(Window *w, DragRemoteItem *ri) {
@@ -1736,7 +1742,7 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
             default: {
                 if (ri->data_sz + payload_sz > ri->data_capacity) {
                     size_t cap = MAX(ri->data_capacity * 2, ri->data_sz + payload_sz + 4096);
-                    if (cap > 10 * 1024) abrt(EMFILE);
+                    if (cap > PRESENT_DATA_CAP) abrt(EMFILE);
                     ri->data = realloc(ri->data, cap);
                     if (!ri->data) abrt(ENOMEM);
                     ri->data_capacity = cap;

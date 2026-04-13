@@ -898,9 +898,11 @@ request_drop_status_update(OSWindow *osw) {
 // DnD testing infrastructure {{{
 
 static PyObject *
-py_dnd_set_test_write_func(PyObject *self UNUSED, PyObject *func) {
+py_dnd_set_test_write_func(PyObject *self UNUSED, PyObject *args) {
+    PyObject *func = Py_None; unsigned mime_list_size_cap = 0, present_data_cap = 0, remote_drag_limit = 0;
+    if (!PyArg_ParseTuple(args, "|OIII", &func, &mime_list_size_cap, &present_data_cap, &remote_drag_limit)) return NULL;
     // Pass None to clear the interceptor and restore normal operation.
-    dnd_set_test_write_func(func == Py_None ? NULL : func);
+    dnd_set_test_write_func(func == Py_None ? NULL : func, mime_list_size_cap, present_data_cap, remote_drag_limit);
     Py_RETURN_NONE;
 }
 
@@ -3355,7 +3357,7 @@ static PyMethodDef module_methods[] = {
     {"glfw_get_monitor_workarea", (PyCFunction)get_monitor_workarea, METH_NOARGS, ""},
     {"glfw_get_monitor_names", (PyCFunction)get_monitor_names, METH_NOARGS, ""},
     {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""},
-    {"dnd_set_test_write_func", (PyCFunction)py_dnd_set_test_write_func, METH_O, ""},
+    {"dnd_set_test_write_func", (PyCFunction)py_dnd_set_test_write_func, METH_VARARGS, ""},
     METHODB(dnd_test_create_fake_window, METH_NOARGS),
     METHODB(dnd_test_cleanup_fake_window, METH_VARARGS),
     METHODB(dnd_test_set_mouse_pos, METH_VARARGS),
