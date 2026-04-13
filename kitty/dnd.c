@@ -170,6 +170,11 @@ dnd_set_test_write_func(PyObject *func, size_t mime_list_size_cap, size_t presen
     REMOTE_DRAG_LIMIT = remote_drag_limit ? remote_drag_limit : DEFAULT_REMOTE_DRAG_LIMIT;
 }
 
+bool
+dnd_is_test_mode(void) {
+    return g_dnd_test_write_func != NULL;
+}
+
 static int
 string_arrays_cmp(const char **a, size_t an, const char **b, size_t bn) {
     if (an != bn) return (int)an - (int)bn;
@@ -1438,7 +1443,7 @@ drag_notify(Window *w, DragNotifyType type) {
                 default:
                     sz += snprintf(buf + sz, sizeof(buf) - sz, "o=1"); break;
             } break;
-        case DRAG_NOTIFY_DROPPED: break;
+        case DRAG_NOTIFY_DROPPED: ds.state = DRAG_SOURCE_DROPPED; break;
         case DRAG_NOTIFY_FINISHED:
             sz += snprintf(buf + sz, sizeof(buf) - sz, "y=%d", global_state.drag_source.was_canceled ? 1 : 0); break;
     }
@@ -1780,9 +1785,9 @@ toplevel_data_for_drag(
     bool has_more, const uint8_t *payload, size_t payload_sz
 ) {
     if (!mi.remote_items) {
-        mi.remote_items = calloc(ds.num_mimes, sizeof(mi.remote_items[0]));
+        mi.remote_items = calloc(mi.num_uris, sizeof(mi.remote_items[0]));
         if (!mi.remote_items) abrt(ENOMEM);
-        mi.num_remote_items = ds.num_mimes;
+        mi.num_remote_items = mi.num_uris;
     }
     if (!mi.base_dir_for_remote_items) {
         int fd;
@@ -1796,7 +1801,7 @@ toplevel_data_for_drag(
         ri->started = true;
         ri->type = item_type;
         base64_init_stream_decoder(&ri->base64_state);
-        if (uri_item_idx > mi.num_uris) abrt(EINVAL);
+        if (uri_item_idx >= mi.num_uris) abrt(EINVAL);
         const char *uri = mi.uri_list[uri_item_idx];
         char *fname = sanitized_filename_from_url(uri);
         if (!fname) abrt(EINVAL);
@@ -1860,7 +1865,7 @@ subdir_data_for_drag(
             parent->fd_plus_one = fd + 1;
         }
     }
-    if (entry_num > parent->children_sz) abrt(EINVAL);
+    if (entry_num >= parent->children_sz) abrt(EINVAL);
     DragRemoteItem *ri = parent->children + entry_num;
     if (!ri->started) {
         ri->started = true;

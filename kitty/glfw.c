@@ -1052,6 +1052,34 @@ dnd_test_fake_drop_data(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject *
+dnd_test_force_drag_dropped(PyObject *self UNUSED, PyObject *args) {
+    // Force the drag source state to DROPPED for testing purposes.
+    // This simulates what would happen after start_window_drag() succeeds
+    // and the drop target receives the data.
+    unsigned long long window_id;
+    if (!PyArg_ParseTuple(args, "K", &window_id)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
+    if (w->drag_source.state != DRAG_SOURCE_BEING_BUILT) {
+        PyErr_SetString(PyExc_ValueError, "Drag source state is not BEING_BUILT");
+        return NULL;
+    }
+    // Simulate what drag_start does on success, without calling start_window_drag
+    for (size_t i = 0; i < w->drag_source.num_mimes; i++) {
+        free(w->drag_source.items[i].optional_data);
+        w->drag_source.items[i].optional_data = NULL;
+        w->drag_source.items[i].data_size = 0;
+        w->drag_source.items[i].data_capacity = 0;
+        w->drag_source.items[i].data_decode_initialized = false;
+    }
+    for (size_t i = 0; i < arraysz(w->drag_source.images); i++) {
+        if (w->drag_source.images[i].data) free(w->drag_source.images[i].data);
+        zero_at_ptr(w->drag_source.images + i);
+    }
+    w->drag_source.state = DRAG_SOURCE_DROPPED;
+    Py_RETURN_NONE;
+}
 // }}}
 
 static void
@@ -1150,6 +1178,7 @@ drag_source_callback(GLFWwindow *window UNUSED, GLFWDragEvent *ev) {
 
 int
 notify_drag_data_ready(id_type os_window_id, const char *mime_type) {
+    if (dnd_is_test_mode()) return 0;  // In test mode, always succeed
     OSWindow *w = os_window_for_id(os_window_id);
     GLFWDragSourceItem item = {.mime_type = mime_type};
     if (w && w->handle) return glfwStartDrag(w->handle, &item, 1, NULL, -1, false);
@@ -3363,6 +3392,7 @@ static PyMethodDef module_methods[] = {
     METHODB(dnd_test_set_mouse_pos, METH_VARARGS),
     METHODB(dnd_test_fake_drop_event, METH_VARARGS),
     METHODB(dnd_test_fake_drop_data, METH_VARARGS),
+    METHODB(dnd_test_force_drag_dropped, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

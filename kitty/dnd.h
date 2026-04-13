@@ -22,6 +22,7 @@ size_t drop_update_mimes(Window *w, const char **allowed_mimes, size_t allowed_m
 void drop_dispatch_data(Window *w, const char *mime_type, const char *data, ssize_t sz);
 void drop_finish(Window *w);
 void dnd_set_test_write_func(PyObject*, size_t, size_t, size_t);
+bool dnd_is_test_mode(void);
 
 
 typedef enum { DRAG_NOTIFY_ACCEPTED, DRAG_NOTIFY_ACTION_CHANGED, DRAG_NOTIFY_DROPPED, DRAG_NOTIFY_FINISHED } DragNotifyType;
