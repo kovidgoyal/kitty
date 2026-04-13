@@ -3,7 +3,7 @@ The Drag and Drop protocol
 
 .. versionadded:: 0.47.0
 
-.. warning:: This protocol is still nuder development.
+.. warning:: This protocol is still under development.
 
 This protocol enables drag and drop functionality for terminal programs
 that is as good as the drag and drop functionality available for GUI
