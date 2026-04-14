@@ -321,6 +321,11 @@ def main():
         os.environ.pop('KITTY_SHELL_INTEGRATION', None)
         cmd = base64.standard_b64decode(exec_cmd).decode('utf-8')
         exec_with_better_error(login_shell, os.path.basename(login_shell), '-c', cmd)
+    remote_cmd = b'REMOTE_CMD'
+    if remote_cmd:
+        os.environ.pop('KITTY_SHELL_INTEGRATION', None)
+        cmd = base64.standard_b64decode(remote_cmd).decode('utf-8')
+        exec_with_better_error(login_shell, os.path.basename(login_shell), '-c', cmd)
     TEST_SCRIPT  # noqa
     if ksi and 'no-rc' not in ksi:
         exec_with_shell_integration()

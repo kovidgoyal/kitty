@@ -3,6 +3,7 @@
 package ssh
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"os/exec"
@@ -192,6 +193,40 @@ func ParseSSHArgs(args []string, extra_args ...string) (ssh_args []string, serve
 		err = &ErrInvalidSSHArgs{Msg: ""}
 	}
 	return
+}
+
+type SSHConfig struct {
+	RemoteCommand string
+}
+
+func LoadSSHConfig(hostname string) (config *SSHConfig, err error) {
+	cmd_args := []string{SSHExe(), hostname, "-G"}
+	cmd := exec.Command(cmd_args[0], cmd_args[1:]...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	_ = cmd.Run()
+
+	text := stdout.String()
+	scanner := bufio.NewScanner(strings.NewReader(text))
+
+	config = &SSHConfig{}
+	for scanner.Scan() {
+		line := scanner.Text()
+		i := strings.IndexByte(line, ' ')
+		if i <= 0 {
+			continue
+		}
+
+		key, val := line[:i], line[i+1:]
+		switch key {
+		case "remotecommand":
+			if val != "none" {
+				config.RemoteCommand = val
+			}
+		}
+	}
+	return config, nil
 }
 
 type SSHVersion struct{ Major, Minor int }
