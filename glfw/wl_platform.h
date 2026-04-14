@@ -364,6 +364,8 @@ typedef struct _GLFWlibraryWayland
     struct wp_single_pixel_buffer_manager_v1 *wp_single_pixel_buffer_manager_v1;
     struct zwp_idle_inhibit_manager_v1* idle_inhibit_manager;
     struct zwp_keyboard_shortcuts_inhibit_manager_v1 *keyboard_shortcuts_inhibit_manager;
+    struct zwp_pointer_gestures_v1* pointer_gestures;
+    struct zwp_pointer_gesture_hold_v1* pointer_gesture_hold;
 
     int                         compositorVersion;
     int                         seatVersion;

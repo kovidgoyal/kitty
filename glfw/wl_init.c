@@ -34,6 +34,7 @@
 #include "../kitty/monotonic.h"
 #include "wl_text_input.h"
 #include "wayland-text-input-unstable-v3-client-protocol.h"
+#include "wayland-pointer-gestures-unstable-v1-client-protocol.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -463,6 +464,22 @@ static const struct wl_keyboard_listener keyboardListener = {
     keyboardHandleRepeatInfo,
 };
 
+static void
+holdGestureHandleBegin(void *data UNUSED, struct zwp_pointer_gesture_hold_v1 *gesture UNUSED,
+                       uint32_t serial UNUSED, uint32_t time UNUSED,
+                       struct wl_surface *surface UNUSED, uint32_t fingers UNUSED) {
+    glfw_cancel_momentum_scroll();
+}
+
+static void
+holdGestureHandleEnd(void *data UNUSED, struct zwp_pointer_gesture_hold_v1 *gesture UNUSED,
+                     uint32_t serial UNUSED, uint32_t time UNUSED, int32_t cancelled UNUSED) {}
+
+static const struct zwp_pointer_gesture_hold_v1_listener holdGestureListener = {
+    .begin = holdGestureHandleBegin,
+    .end = holdGestureHandleEnd,
+};
+
 static void seatHandleCapabilities(void* data UNUSED,
                                    struct wl_seat* seat,
                                    enum wl_seat_capability caps)
@@ -476,11 +493,19 @@ static void seatHandleCapabilities(void* data UNUSED,
             _glfw.wl.wp_cursor_shape_device_v1 = NULL;
             _glfw.wl.wp_cursor_shape_device_v1 = wp_cursor_shape_manager_v1_get_pointer(_glfw.wl.wp_cursor_shape_manager_v1, _glfw.wl.pointer);
         }
+        if (_glfw.wl.pointer_gestures) {
+            _glfw.wl.pointer_gesture_hold = zwp_pointer_gestures_v1_get_hold_gesture(_glfw.wl.pointer_gestures, _glfw.wl.pointer);
+            zwp_pointer_gesture_hold_v1_add_listener(_glfw.wl.pointer_gesture_hold, &holdGestureListener, NULL);
+        }
     }
     else if (!(caps & WL_SEAT_CAPABILITY_POINTER) && _glfw.wl.pointer)
     {
         if (_glfw.wl.wp_cursor_shape_device_v1) wp_cursor_shape_device_v1_destroy(_glfw.wl.wp_cursor_shape_device_v1);
         _glfw.wl.wp_cursor_shape_device_v1 = NULL;
+        if (_glfw.wl.pointer_gesture_hold) {
+            zwp_pointer_gesture_hold_v1_destroy(_glfw.wl.pointer_gesture_hold);
+            _glfw.wl.pointer_gesture_hold = NULL;
+        }
         wl_pointer_destroy(_glfw.wl.pointer);
         _glfw.wl.pointer = NULL;
         if (_glfw.wl.cursorAnimationTimer) toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
@@ -675,6 +700,10 @@ static void registryHandleGlobal(void* data UNUSED,
     }
     else if (is(zwp_keyboard_shortcuts_inhibit_manager_v1)) {
         _glfw.wl.keyboard_shortcuts_inhibit_manager = wl_registry_bind(registry, name, &zwp_keyboard_shortcuts_inhibit_manager_v1_interface, 1);
+    }
+    else if (is(zwp_pointer_gestures_v1)) {
+        if (version >= 3)
+            _glfw.wl.pointer_gestures = wl_registry_bind(registry, name, &zwp_pointer_gestures_v1_interface, 3);
     }
     else if (is(xdg_toplevel_icon_manager_v1)) {
         _glfw.wl.xdg_toplevel_icon_manager_v1 = wl_registry_bind(registry, name, &xdg_toplevel_icon_manager_v1_interface, 1);
@@ -1005,6 +1034,10 @@ void _glfwPlatformTerminate(void)
         zwp_idle_inhibit_manager_v1_destroy(_glfw.wl.idle_inhibit_manager);
     if (_glfw.wl.keyboard_shortcuts_inhibit_manager)
         zwp_keyboard_shortcuts_inhibit_manager_v1_destroy(_glfw.wl.keyboard_shortcuts_inhibit_manager);
+    if (_glfw.wl.pointer_gesture_hold)
+        zwp_pointer_gesture_hold_v1_destroy(_glfw.wl.pointer_gesture_hold);
+    if (_glfw.wl.pointer_gestures)
+        zwp_pointer_gestures_v1_release(_glfw.wl.pointer_gestures);
 
     if (_glfw.wl.registry)
         wl_registry_destroy(_glfw.wl.registry);
