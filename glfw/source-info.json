@@ -1,178 +1,178 @@
 {
-  "cocoa": {
-    "headers": [
-      "cocoa_platform.h",
-      "cocoa_joystick.h",
-      "posix_thread.h",
-      "nsgl_context.h",
-      "egl_context.h",
-      "osmesa_context.h"
+    "cocoa": {
+        "headers": [
+            "cocoa_platform.h",
+            "cocoa_joystick.h",
+            "posix_thread.h",
+            "nsgl_context.h",
+            "egl_context.h",
+            "osmesa_context.h"
+        ],
+        "sources": [
+            "cocoa_init.m",
+            "cocoa_joystick.m",
+            "cocoa_monitor.m",
+            "cocoa_window.m",
+            "cocoa_displaylink.m",
+            "posix_thread.c",
+            "nsgl_context.m",
+            "egl_context.c",
+            "osmesa_context.c"
+        ]
+    },
+    "common": {
+        "headers": [
+            "internal.h",
+            "mappings.h"
+        ],
+        "sources": [
+            "context.c",
+            "init.c",
+            "input.c",
+            "monitor.c",
+            "vulkan.c",
+            "monotonic.c",
+            "window.c"
+        ]
+    },
+    "osmesa": {
+        "headers": [
+            "null_platform.h",
+            "null_joystick.h",
+            "posix_thread.h",
+            "osmesa_context.h"
+        ],
+        "sources": [
+            "null_init.c",
+            "null_monitor.c",
+            "null_window.c",
+            "null_joystick.c",
+            "posix_thread.c",
+            "osmesa_context.c"
+        ]
+    },
+    "wayland": {
+        "headers": [
+            "wl_platform.h",
+            "posix_thread.h",
+            "wl_cursors.h",
+            "wl_text_input.h",
+            "xkb_glfw.h",
+            "dbus_glfw.h",
+            "ibus_glfw.h",
+            "backend_utils.h",
+            "egl_context.h",
+            "osmesa_context.h",
+            "linux_joystick.h",
+            "null_joystick.h",
+            "linux_notify.h",
+            "linux_desktop_settings.h",
+            "wl_client_side_decorations.h",
+            "main_loop.h"
+        ],
+        "protocols": [
+            "stable/xdg-shell/xdg-shell.xml",
+            "stable/viewporter/viewporter.xml",
+            "unstable/relative-pointer/relative-pointer-unstable-v1.xml",
+            "unstable/pointer-constraints/pointer-constraints-unstable-v1.xml",
+            "unstable/pointer-gestures/pointer-gestures-unstable-v1.xml",
+            "unstable/xdg-decoration/xdg-decoration-unstable-v1.xml",
+            "unstable/primary-selection/primary-selection-unstable-v1.xml",
+            "unstable/text-input/text-input-unstable-v3.xml",
+            "staging/xdg-activation/xdg-activation-v1.xml",
+            "unstable/tablet/tablet-unstable-v2.xml",
+            "staging/cursor-shape/cursor-shape-v1.xml",
+            "staging/fractional-scale/fractional-scale-v1.xml",
+            "staging/single-pixel-buffer/single-pixel-buffer-v1.xml",
+            "unstable/idle-inhibit/idle-inhibit-unstable-v1.xml",
+            "unstable/keyboard-shortcuts-inhibit/keyboard-shortcuts-inhibit-unstable-v1.xml",
+            "staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml",
+            "staging/xdg-system-bell/xdg-system-bell-v1.xml",
+            "staging/xdg-toplevel-tag/xdg-toplevel-tag-v1.xml",
+            "staging/ext-background-effect/ext-background-effect-v1.xml",
+            "staging/xdg-toplevel-drag/xdg-toplevel-drag-v1.xml",
+            "kwin-blur-v1.xml",
+            "wlr-layer-shell-unstable-v1.xml"
+        ],
+        "sources": [
+            "wl_init.c",
+            "wl_monitor.c",
+            "wl_window.c",
+            "wl_cursors.c",
+            "wl_text_input.c",
+            "wl_client_side_decorations.c",
+            "posix_thread.c",
+            "xkb_glfw.c",
+            "dbus_glfw.c",
+            "ibus_glfw.c",
+            "egl_context.c",
+            "osmesa_context.c",
+            "backend_utils.c",
+            "linux_joystick.c",
+            "linux_desktop_settings.c",
+            "null_joystick.c",
+            "momentum-scroll.c",
+            "linux_notify.c"
+        ]
+    },
+    "wayland_protocols": [
+        1,
+        17
     ],
-    "sources": [
-      "cocoa_init.m",
-      "cocoa_joystick.m",
-      "cocoa_monitor.m",
-      "cocoa_window.m",
-      "cocoa_displaylink.m",
-      "posix_thread.c",
-      "nsgl_context.m",
-      "egl_context.c",
-      "osmesa_context.c"
-    ]
-  },
-  "common": {
-    "headers": [
-      "internal.h",
-      "mappings.h"
-    ],
-    "sources": [
-      "context.c",
-      "init.c",
-      "input.c",
-      "monitor.c",
-      "vulkan.c",
-      "monotonic.c",
-      "window.c"
-    ]
-  },
-  "osmesa": {
-    "headers": [
-      "null_platform.h",
-      "null_joystick.h",
-      "posix_thread.h",
-      "osmesa_context.h"
-    ],
-    "sources": [
-      "null_init.c",
-      "null_monitor.c",
-      "null_window.c",
-      "null_joystick.c",
-      "posix_thread.c",
-      "osmesa_context.c"
-    ]
-  },
-  "wayland": {
-    "headers": [
-      "wl_platform.h",
-      "posix_thread.h",
-      "wl_cursors.h",
-      "wl_text_input.h",
-      "xkb_glfw.h",
-      "dbus_glfw.h",
-      "ibus_glfw.h",
-      "backend_utils.h",
-      "egl_context.h",
-      "osmesa_context.h",
-      "linux_joystick.h",
-      "null_joystick.h",
-      "linux_notify.h",
-      "linux_desktop_settings.h",
-      "wl_client_side_decorations.h",
-      "main_loop.h"
-    ],
-    "protocols": [
-      "stable/xdg-shell/xdg-shell.xml",
-      "stable/viewporter/viewporter.xml",
-      "unstable/relative-pointer/relative-pointer-unstable-v1.xml",
-      "unstable/pointer-constraints/pointer-constraints-unstable-v1.xml",
-      "unstable/xdg-decoration/xdg-decoration-unstable-v1.xml",
-      "unstable/primary-selection/primary-selection-unstable-v1.xml",
-      "unstable/text-input/text-input-unstable-v3.xml",
-      "staging/xdg-activation/xdg-activation-v1.xml",
-      "unstable/tablet/tablet-unstable-v2.xml",
-      "staging/cursor-shape/cursor-shape-v1.xml",
-      "staging/fractional-scale/fractional-scale-v1.xml",
-      "staging/single-pixel-buffer/single-pixel-buffer-v1.xml",
-      "unstable/idle-inhibit/idle-inhibit-unstable-v1.xml",
-      "unstable/keyboard-shortcuts-inhibit/keyboard-shortcuts-inhibit-unstable-v1.xml",
-      "staging/xdg-toplevel-icon/xdg-toplevel-icon-v1.xml",
-      "staging/xdg-system-bell/xdg-system-bell-v1.xml",
-      "staging/xdg-toplevel-tag/xdg-toplevel-tag-v1.xml",
-      "staging/ext-background-effect/ext-background-effect-v1.xml",
-      "staging/xdg-toplevel-drag/xdg-toplevel-drag-v1.xml",
-
-      "kwin-blur-v1.xml",
-      "wlr-layer-shell-unstable-v1.xml"
-    ],
-    "sources": [
-      "wl_init.c",
-      "wl_monitor.c",
-      "wl_window.c",
-      "wl_cursors.c",
-      "wl_text_input.c",
-      "wl_client_side_decorations.c",
-      "posix_thread.c",
-      "xkb_glfw.c",
-      "dbus_glfw.c",
-      "ibus_glfw.c",
-      "egl_context.c",
-      "osmesa_context.c",
-      "backend_utils.c",
-      "linux_joystick.c",
-      "linux_desktop_settings.c",
-      "null_joystick.c",
-      "momentum-scroll.c",
-      "linux_notify.c"
-    ]
-  },
-  "wayland_protocols": [
-    1,
-    17
-  ],
-  "win32": {
-    "headers": [
-      "win32_platform.h",
-      "win32_joystick.h",
-      "wgl_context.h",
-      "egl_context.h",
-      "osmesa_context.h"
-    ],
-    "sources": [
-      "win32_init.c",
-      "win32_joystick.c",
-      "win32_monitor.c",
-      "win32_time.c",
-      "win32_thread.c",
-      "win32_window.c",
-      "wgl_context.c",
-      "egl_context.c",
-      "osmesa_context.c"
-    ]
-  },
-  "x11": {
-    "headers": [
-      "x11_platform.h",
-      "xkb_glfw.h",
-      "dbus_glfw.h",
-      "ibus_glfw.h",
-      "backend_utils.h",
-      "posix_thread.h",
-      "glx_context.h",
-      "egl_context.h",
-      "osmesa_context.h",
-      "linux_joystick.h",
-      "null_joystick.h",
-      "linux_notify.h",
-      "linux_desktop_settings.h",
-      "main_loop.h"
-    ],
-    "sources": [
-      "x11_init.c",
-      "x11_monitor.c",
-      "x11_window.c",
-      "xkb_glfw.c",
-      "dbus_glfw.c",
-      "ibus_glfw.c",
-      "posix_thread.c",
-      "glx_context.c",
-      "egl_context.c",
-      "osmesa_context.c",
-      "backend_utils.c",
-      "linux_joystick.c",
-      "null_joystick.c",
-      "linux_desktop_settings.c",
-      "momentum-scroll.c",
-      "linux_notify.c"
-    ]
-  }
+    "win32": {
+        "headers": [
+            "win32_platform.h",
+            "win32_joystick.h",
+            "wgl_context.h",
+            "egl_context.h",
+            "osmesa_context.h"
+        ],
+        "sources": [
+            "win32_init.c",
+            "win32_joystick.c",
+            "win32_monitor.c",
+            "win32_time.c",
+            "win32_thread.c",
+            "win32_window.c",
+            "wgl_context.c",
+            "egl_context.c",
+            "osmesa_context.c"
+        ]
+    },
+    "x11": {
+        "headers": [
+            "x11_platform.h",
+            "xkb_glfw.h",
+            "dbus_glfw.h",
+            "ibus_glfw.h",
+            "backend_utils.h",
+            "posix_thread.h",
+            "glx_context.h",
+            "egl_context.h",
+            "osmesa_context.h",
+            "linux_joystick.h",
+            "null_joystick.h",
+            "linux_notify.h",
+            "linux_desktop_settings.h",
+            "main_loop.h"
+        ],
+        "sources": [
+            "x11_init.c",
+            "x11_monitor.c",
+            "x11_window.c",
+            "xkb_glfw.c",
+            "dbus_glfw.c",
+            "ibus_glfw.c",
+            "posix_thread.c",
+            "glx_context.c",
+            "egl_context.c",
+            "osmesa_context.c",
+            "backend_utils.c",
+            "linux_joystick.c",
+            "null_joystick.c",
+            "linux_desktop_settings.c",
+            "momentum-scroll.c",
+            "linux_notify.c"
+        ]
+    }
 }
