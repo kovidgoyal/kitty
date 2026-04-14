@@ -185,6 +185,8 @@ Detailed list of changes
 
 - Allow optionally dragging URLs with the mouse, see :sc:`start_simple_selection` (:pull:`9804`)
 
+- Reduce CPU usage when ``tab_title_template`` uses ``active_exe`` by caching ``/proc`` scans during tab bar rendering (:iss:`9862`)
+
 - Change :opt:`focus_follows_mouse` to switch the active window only when the mouse crosses into a different window, instead of on every mouse motion event. Prevents accidental mouse bumps from undoing a keyboard-driven window switch.
 
 - Wayland: Use hold gestures to cancel momentum scrolling when fingers are placed on the trackpad, for a more natural kinetic scrolling experience (:iss:`9863`)

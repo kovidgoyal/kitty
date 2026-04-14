@@ -4,6 +4,7 @@
 import os
 import sys
 import termios
+import time
 from collections import defaultdict
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
@@ -96,27 +97,58 @@ def checked_terminfo_dir() -> str | None:
     return terminfo_dir if os.path.isdir(terminfo_dir) else None
 
 
+_pgmap_cache: DefaultDict[int, list[int]] | None = None
+_pgmap_cache_at: float = 0.0
+_pgmap_ttl: float = 0.0
+_pgmap_depth: int = 0
+
+
+def _refresh_pgmap_cache() -> DefaultDict[int, list[int]]:
+    global _pgmap_cache, _pgmap_cache_at
+    try:
+        _pgmap_cache = process_group_map()
+    except Exception:
+        _pgmap_cache = defaultdict(list)
+    _pgmap_cache_at = time.monotonic()
+    return _pgmap_cache
+
+
 def processes_in_group(grp: int) -> list[int]:
-    gmap: DefaultDict[int, list[int]] | None = getattr(process_group_map, 'cached_map', None)
-    if gmap is None:
-        try:
-            gmap = process_group_map()
-        except Exception:
-            gmap = defaultdict(list)
+    if _pgmap_depth > 0 and _pgmap_cache is not None:
+        if _pgmap_ttl <= 0 or (time.monotonic() - _pgmap_cache_at) < _pgmap_ttl:
+            return _pgmap_cache.get(grp, [])
+    try:
+        gmap = process_group_map()
+    except Exception:
+        gmap = defaultdict(list)
     return gmap.get(grp, [])
 
 
 @contextmanager
-def cached_process_data() -> Generator[None, None, None]:
-    try:
-        cm = process_group_map()
-    except Exception:
-        cm = defaultdict(list)
-    setattr(process_group_map, 'cached_map', cm)
+def cached_process_data(ttl: float = 0.0) -> Generator[None, None, None]:
+    """Cache process_group_map() results within this context.
+
+    With ttl=0 (default), a fresh snapshot is taken on entry and cleared
+    on exit. Suitable for short-lived operations like listing windows.
+    With ttl>0, the snapshot is reused across calls if still within the
+    TTL window. Suitable for high-frequency callers like tab bar rendering.
+    """
+    global _pgmap_cache, _pgmap_cache_at, _pgmap_ttl, _pgmap_depth
+    prev_cache, prev_at, prev_ttl = _pgmap_cache, _pgmap_cache_at, _pgmap_ttl
+    _pgmap_ttl = ttl
+    if ttl > 0 and _pgmap_cache is not None and (time.monotonic() - _pgmap_cache_at) < ttl:
+        pass  # reuse existing cache
+    else:
+        _refresh_pgmap_cache()
+    _pgmap_depth += 1
     try:
         yield
     finally:
-        delattr(process_group_map, 'cached_map')
+        _pgmap_depth -= 1
+        if _pgmap_depth == 0:
+            _pgmap_cache, _pgmap_cache_at, _pgmap_ttl = prev_cache, prev_at, prev_ttl
+        else:
+            _pgmap_ttl = prev_ttl
 
 
 def session_id(pids: Iterable[int]) -> int:

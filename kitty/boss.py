@@ -1926,7 +1926,8 @@ class Boss:
     def update_tab_bar_data(self, os_window_id: int) -> None:
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
-            tm.update_tab_bar_data()
+            with cached_process_data(ttl=1.0):
+                tm.update_tab_bar_data()
 
     def on_drop_move(self, os_window_id: int, x: int, y: int, from_self: bool, is_leave: bool) -> None:
         if (tm := self.os_window_map.get(os_window_id)) is None:
