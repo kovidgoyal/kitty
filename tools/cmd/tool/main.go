@@ -12,6 +12,7 @@ import (
 	"github.com/kovidgoyal/kitty/kittens/command_palette"
 	"github.com/kovidgoyal/kitty/kittens/desktop_ui"
 	"github.com/kovidgoyal/kitty/kittens/diff"
+	"github.com/kovidgoyal/kitty/kittens/dnd"
 	"github.com/kovidgoyal/kitty/kittens/hints"
 	"github.com/kovidgoyal/kitty/kittens/hyperlinked_grep"
 	"github.com/kovidgoyal/kitty/kittens/icat"
@@ -52,6 +53,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	edit_in_kitty.EntryPoint(root)
 	// clipboard
 	clipboard.EntryPoint(root)
+	// dnd
+	dnd.EntryPoint(root)
 	// icat
 	icat.EntryPoint(root)
 	// ssh
