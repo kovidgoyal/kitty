@@ -181,7 +181,7 @@ update_scrollbar_hover_state(Window *w, bool hovering) {
 }
 
 static void
-set_currently_hovered_window(id_type window_id, int modifiers) {
+set_currently_hovered_window(id_type window_id, int modifiers, bool focus_follows) {
     if (global_state.mouse_hover_in_window != window_id) {
         Window *left_window = window_for_id(global_state.mouse_hover_in_window);
         global_state.mouse_hover_in_window = window_id;
@@ -196,7 +196,7 @@ set_currently_hovered_window(id_type window_id, int modifiers) {
                 debug("Sent mouse leave event to window: %llu\n", left_window->id);
             }
         }
-        if (window_id && OPT(focus_follows_mouse) && global_state.callback_os_window && global_state.callback_os_window->num_tabs) {
+        if (focus_follows && window_id && OPT(focus_follows_mouse) && global_state.callback_os_window && global_state.callback_os_window->num_tabs) {
             Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
             for (unsigned i = 0; i < t->num_windows; i++) {
                 if (t->windows[i].id == window_id) {
@@ -927,7 +927,7 @@ currently_pressed_button(void) {
 HANDLER(handle_event) {
     modifiers &= ~GLFW_LOCK_MASK;
     set_mouse_cursor_for_screen(w->render_data.screen);
-    set_currently_hovered_window(w->id, modifiers);
+    set_currently_hovered_window(w->id, modifiers, true);
     if (button == -1) {
         button = currently_pressed_button();
         handle_move_event(w, button, modifiers, window_idx);
@@ -948,7 +948,7 @@ handle_window_title_bar_mouse(Window *w, int button, int modifiers, int action) 
 
 static void
 handle_tab_bar_mouse(int button, int modifiers, int action) {
-    set_currently_hovered_window(0, modifiers);
+    set_currently_hovered_window(0, modifiers, false);
     OSWindow *w = global_state.callback_os_window;
     // dont report motion events, as they are expensive and useless
     if (w && (button > -1 || global_state.tab_being_dragged.id)) {
@@ -1139,7 +1139,7 @@ update_mouse_pointer_shape(void) {
 void
 leave_event(int modifiers) {
     if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window) return;
-    set_currently_hovered_window(0, modifiers);
+    set_currently_hovered_window(0, modifiers, false);
 }
 
 void
@@ -1161,7 +1161,7 @@ enter_event(int modifiers) {
     if (global_state.redirect_mouse_handling || global_state.active_drag_in_window || global_state.tracked_drag_in_window) return;
     MouseRegion r = mouse_region(false, false);
     Window *w = r.window;
-    set_currently_hovered_window(w ? w->id : 0, modifiers);
+    set_currently_hovered_window(w ? w->id : 0, modifiers, false);
     if (!w || r.in_tab_bar || r.in_title_bar) return;
 
     if (handle_scrollbar_mouse(w, -1, MOVE, modifiers)) return;
@@ -1347,7 +1347,7 @@ mouse_event(const int button, int modifiers, int action) {
     }
     MouseRegion r = mouse_region(true, true);
     w = r.window; window_idx = r.window_idx;
-    set_currently_hovered_window(w && !r.window_border && !r.in_title_bar ? w->id : 0, modifiers);
+    set_currently_hovered_window(w && !r.window_border && !r.in_title_bar ? w->id : 0, modifiers, true);
 
     if (r.in_tab_bar || global_state.tab_being_dragged.id) {
         mouse_cursor_shape = POINTER_POINTER;

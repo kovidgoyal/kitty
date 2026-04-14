@@ -187,6 +187,8 @@ Detailed list of changes
 
 - Change :opt:`focus_follows_mouse` to switch the active window only when the mouse crosses into a different window, instead of on every mouse motion event. Prevents accidental mouse bumps from undoing a keyboard-driven window switch.
 
+- Fix :opt:`focus_follows_mouse` switching the active window when returning from another desktop/space, instead of preserving the previously active window.
+
 - Wayland: Use hold gestures to cancel momentum scrolling when fingers are placed on the trackpad, for a more natural kinetic scrolling experience (:iss:`9863`)
 
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
