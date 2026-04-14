@@ -6,11 +6,11 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/kovidgoyal/kitty"
 	"io"
 	"io/fs"
 	"maps"
@@ -27,6 +27,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/kovidgoyal/kitty"
 
 	"github.com/kovidgoyal/go-shm"
 	"github.com/kovidgoyal/kitty/tools/cli"
@@ -177,6 +179,7 @@ func set_askpass(hostname_for_match, uname string, overrides []string) (need_to_
 type connection_data struct {
 	remote_args        []string
 	host_opts          *Config
+	ssh_config         *SSHConfig
 	hostname_for_match string
 	username           string
 	echo_on            bool
@@ -408,6 +411,18 @@ func prepare_exec_cmd(cd *connection_data) string {
 	return "unset KITTY_SHELL_INTEGRATION; exec \"$login_shell\" -c '" + strings.Join(args, " ") + "'"
 }
 
+func prepare_remote_cmd(cd *connection_data) string {
+	if cd.ssh_config == nil || cd.ssh_config.RemoteCommand == "" {
+		return ""
+	}
+
+	remote_command := cd.ssh_config.RemoteCommand
+	if cd.script_type == "py" {
+		return base64.RawStdEncoding.EncodeToString(utils.UnsafeStringToBytes(remote_command))
+	}
+	return remote_command
+}
+
 var data_shm shm.MMap
 
 func prepare_script(script string, replacements map[string]string) string {
@@ -416,6 +431,9 @@ func prepare_script(script string, replacements map[string]string) string {
 	}
 	if _, found := replacements["EXPORT_HOME_CMD"]; !found {
 		replacements["EXPORT_HOME_CMD"] = ""
+	}
+	if _, found := replacements["REMOTE_CMD"]; !found {
+		replacements["REMOTE_CMD"] = ""
 	}
 	keys := utils.Keys(replacements)
 	for i, key := range keys {
@@ -434,6 +452,8 @@ func bootstrap_script(cd *connection_data) (err error) {
 	if len(cd.remote_args) > 0 {
 		exec_cmd = prepare_exec_cmd(cd)
 	}
+	remote_cmd := prepare_remote_cmd(cd)
+
 	pw, err := secrets.TokenHex()
 	if err != nil {
 		return err
@@ -467,6 +487,7 @@ func bootstrap_script(cd *connection_data) (err error) {
 	replacements := map[string]string{
 		"EXPORT_HOME_CMD": export_home_cmd,
 		"EXEC_CMD":        exec_cmd,
+		"REMOTE_CMD":      remote_cmd,
 		"TEST_SCRIPT":     cd.test_script,
 	}
 	add_bool := func(ok bool, key string) {
@@ -600,7 +621,7 @@ func change_colors(color_scheme string) (ans string, err error) {
 	return
 }
 
-func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err error) {
+func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config_channel <-chan *SSHConfig) (rc int, err error) {
 	go shell_integration.Data()
 	go RelevantKittyOpts()
 	defer func() {
@@ -757,6 +778,12 @@ func run_ssh(ssh_args, server_args, found_extra_args []string) (rc int, err erro
 		}
 	}
 	defer cleanup()
+	// Receive ssh config
+	ssh_config := <-ssh_config_channel
+	if ssh_config != nil && ssh_config.RemoteCommand != "" {
+		cmd = slices.Insert(cmd, insertion_point, "-o", "RemoteCommand=none")
+	}
+	cd.ssh_config = ssh_config
 	err = get_remote_command(&cd)
 	if err != nil {
 		return 1, err
@@ -833,13 +860,18 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	if passthrough {
 		return 1, unix.Exec(SSHExe(), utils.Concat([]string{"ssh"}, ssh_args, server_args), os.Environ())
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ssh_config_channel := ReadSSHConfig(ctx, server_args[0])
+
 	if os.Getenv("KITTY_WINDOW_ID") == "" || os.Getenv("KITTY_PID") == "" {
 		return 1, fmt.Errorf("The SSH kitten is meant to run inside a kitty window")
 	}
 	if !tty.IsTerminal(os.Stdin.Fd()) {
 		return 1, fmt.Errorf("The SSH kitten is meant for interactive use only, STDIN must be a terminal")
 	}
-	return run_ssh(ssh_args, server_args, found_extra_args)
+	return run_ssh(ssh_args, server_args, found_extra_args, ssh_config_channel)
 }
 
 func EntryPoint(parent *cli.Command) {

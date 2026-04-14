@@ -158,6 +158,8 @@ prepare_for_exec
 # If a command was passed to SSH execute it here
 EXEC_CMD
 
+REMOTE_CMD
+
 # Used in the tests
 TEST_SCRIPT
 
