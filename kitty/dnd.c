@@ -284,7 +284,8 @@ queue_payload_to_child(id_type id, uint32_t client_id, PendingData *pending, con
         ensure_space_for(pending, items, PendingEntry, pending->count + 1, capacity, 32, true);
         char *buf = malloc(header_sz + data_sz - offset);
         if (!buf) fatal("Out of memory");
-        memcpy(buf, header, header_sz); memcpy(buf + header_sz, data, data_sz - offset);
+        memcpy(buf, header, header_sz);
+        if (data_sz - offset) memcpy(buf + header_sz, data, data_sz - offset);
         PendingEntry *e = &pending->items[pending->count++];
         e->buf = buf; e->header_sz = header_sz; e->data_sz = data_sz - offset;
         e->as_base64 = as_base64; e->client_id = client_id;
@@ -429,8 +430,9 @@ drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool 
     if (!payload || !payload_sz) return;
     size_t sz = w->drop.registered_mimes ? strlen(w->drop.registered_mimes) : 0;
     if (sz + payload_sz > MIME_LIST_SIZE_CAP) return;
-    w->drop.registered_mimes = realloc(w->drop.registered_mimes, sz + payload_sz + 1);
-    if (w->drop.registered_mimes) {
+    char *tmp = realloc(w->drop.registered_mimes, sz + payload_sz + 1);
+    if (tmp) {
+        w->drop.registered_mimes = tmp;
         memcpy(w->drop.registered_mimes + sz, payload, payload_sz);
         sz += payload_sz;
         w->drop.registered_mimes[sz] = 0;
@@ -628,9 +630,9 @@ drop_dispatch_data(Window *w, const char *mime, const char *data, ssize_t sz) {
         queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, sz ? data : NULL, sz, true);
         if (is_uri_list) {
             w->drop.uri_list_sz += sz;
-            w->drop.uri_list = realloc(w->drop.uri_list, w->drop.uri_list_sz);
-            if (w->drop.uri_list) memcpy(w->drop.uri_list + w->drop.uri_list_sz - sz, data, sz);
-            else w->drop.uri_list_sz = 0;
+            char *tmp = realloc(w->drop.uri_list, w->drop.uri_list_sz);
+            if (tmp) { w->drop.uri_list = tmp; memcpy(w->drop.uri_list + w->drop.uri_list_sz - sz, data, sz); }
+            else { free(w->drop.uri_list); w->drop.uri_list = NULL; w->drop.uri_list_sz = 0; }
         }
         if (sz == 0) { drop_pop_request(w); drop_process_queue(w); }
     }
@@ -1195,6 +1197,7 @@ drag_free_remote_item(DragRemoteItem *x) {
     if (x->top_level_parent_dir_fd_plus_one) safe_close(x->top_level_parent_dir_fd_plus_one-1, __FILE__, __LINE__);
     if (x->children) {
         for (size_t i = 0; i < x->children_sz; i++) drag_free_remote_item(x->children + i);
+        free(x->children);
     }
     zero_at_ptr(x);
 }
@@ -1230,6 +1233,7 @@ drag_free_offer(Window *w) {
         if (ds.images[i].data) free(ds.images[i].data);
         zero_at_ptr(ds.images + i);
     }
+    free_pending(&ds.pending);
     ds.allowed_operations = 0;
     ds.state = DRAG_SOURCE_NONE;
     ds.pre_sent_total_sz = 0;
@@ -1275,8 +1279,9 @@ drag_add_mimes(Window *w, int allowed_operations, uint32_t client_id, const char
     ds.client_id = client_id;
     size_t new_sz = ds.bufsz + sz;
     if (new_sz > MIME_LIST_SIZE_CAP) abrt(EFBIG);
-    ds.mimes_buf = realloc(ds.mimes_buf, ds.bufsz + sz + 1);
-    if (!ds.mimes_buf) abrt(ENOMEM);
+    char *tmp = realloc(ds.mimes_buf, ds.bufsz + sz + 1);
+    if (!tmp) abrt(ENOMEM);
+    ds.mimes_buf = tmp;
     memcpy(ds.mimes_buf + ds.bufsz, data, sz);
     ds.bufsz = new_sz;
     ds.mimes_buf[ds.bufsz] = 0;
@@ -1315,8 +1320,9 @@ drag_add_pre_sent_data(Window *w, unsigned idx, const uint8_t *payload, size_t s
     }
     if (item.data_capacity < sz + item.data_size) {
         size_t newcap = MAX(item.data_capacity * 2, sz + item.data_size);
-        item.optional_data = realloc(item.optional_data, newcap);
-        if (!item.optional_data) abrt(ENOMEM);
+        uint8_t *tmp = realloc(item.optional_data, newcap);
+        if (!tmp) abrt(ENOMEM);
+        item.optional_data = tmp;
         item.data_capacity = newcap;
     }
     size_t outlen = item.data_capacity - item.data_size;
@@ -1343,8 +1349,9 @@ drag_add_image(Window *w, unsigned idx, int fmt, int width, int height, const ui
     }
     if (img.capacity < sz + img.sz) {
         size_t newcap = MAX(img.capacity * 2, sz + img.sz);
-        img.data = realloc(img.data, newcap);
-        if (!img.data) abrt(ENOMEM);
+        uint8_t *tmp = realloc(img.data, newcap);
+        if (!tmp) abrt(ENOMEM);
+        img.data = tmp;
         img.capacity = newcap;
     }
     size_t outlen = img.capacity - img.sz;
@@ -1362,7 +1369,7 @@ static bool
 expand_rgb_data(Window *w, size_t idx) {
 #define fail(code) { cancel_drag(w, code); return false; }
     if (img.sz != (size_t)img.width * (size_t)img.height * 3) fail(EINVAL);
-    const size_t sz = img.width * img.height * 4;
+    const size_t sz = (size_t)img.width * (size_t)img.height * 4u;
     RAII_ALLOC(uint8_t, expanded, malloc(sz));
     if (!expanded) fail(ENOMEM);
     memset(expanded, 0xff, sz);
@@ -1434,24 +1441,24 @@ void
 drag_notify(Window *w, DragNotifyType type) {
     if (ds.state < DRAG_SOURCE_STARTED) return;
     char buf[128];
-    size_t sz = snprintf(buf, sizeof(buf), "t=e:x=%d", type + 1);
+    size_t sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=e:x=%d", DND_CODE, type + 1);
     switch(type) {
         case DRAG_NOTIFY_ACCEPTED:
             for (size_t i = 0; i < ds.num_mimes; i++) {
                 if (strcmp(ds.items[i].mime_type, global_state.drag_source.accepted_mime_type) == 0) {
-                    sz += snprintf(buf + sz, sizeof(buf) - sz, "y=%zu", i); break;
+                    sz += snprintf(buf + sz, sizeof(buf) - sz, ":y=%zu", i); break;
                 }
             } break;
         case DRAG_NOTIFY_ACTION_CHANGED:
             switch (global_state.drag_source.action) {
                 case GLFW_DRAG_OPERATION_MOVE:
-                    sz += snprintf(buf + sz, sizeof(buf) - sz, "o=2"); break;
+                    sz += snprintf(buf + sz, sizeof(buf) - sz, ":o=2"); break;
                 default:
-                    sz += snprintf(buf + sz, sizeof(buf) - sz, "o=1"); break;
+                    sz += snprintf(buf + sz, sizeof(buf) - sz, ":o=1"); break;
             } break;
         case DRAG_NOTIFY_DROPPED: ds.state = DRAG_SOURCE_DROPPED; break;
         case DRAG_NOTIFY_FINISHED:
-            sz += snprintf(buf + sz, sizeof(buf) - sz, "y=%d", global_state.drag_source.was_canceled ? 1 : 0); break;
+            sz += snprintf(buf + sz, sizeof(buf) - sz, ":y=%d", global_state.drag_source.was_canceled ? 1 : 0); break;
     }
     queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, sz, NULL, 0, false);
     if (type == DRAG_NOTIFY_FINISHED) drag_free_offer(w);
@@ -1758,8 +1765,9 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
                 if (ri->data_sz + payload_sz > ri->data_capacity) {
                     size_t cap = MAX(ri->data_capacity * 2, ri->data_sz + payload_sz + 4096);
                     if (cap > PRESENT_DATA_CAP) abrt(EMFILE);
-                    ri->data = realloc(ri->data, cap);
-                    if (!ri->data) abrt(ENOMEM);
+                    uint8_t *tmp = realloc(ri->data, cap);
+                    if (!tmp) abrt(ENOMEM);
+                    ri->data = tmp;
                     ri->data_capacity = cap;
                 }
                 size_t outlen = ri->data_capacity - ri->data_sz;
@@ -1777,6 +1785,13 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
                 ri->fd_plus_one = 0;
                 break;
             case 1:
+                // Ensure room for the null terminator needed by symlinkat
+                if (ri->data_sz >= ri->data_capacity) {
+                    uint8_t *tmp = realloc(ri->data, ri->data_sz + 1);
+                    if (!tmp) abrt(ENOMEM);
+                    ri->data = tmp;
+                    ri->data_capacity = ri->data_sz + 1;
+                }
                 ri->data[ri->data_sz] = 0;
                 if (symlinkat((char*)ri->data, dirfd, ri->dir_entry_name) != 0) abrt(errno);
                 break;
@@ -1823,6 +1838,7 @@ toplevel_data_for_drag(
         int fd = safe_openat(mi.base_dir_fd_plus_one - 1, path, O_RDONLY | O_DIRECTORY, 0);
         if (fd < 0) abrt(errno);
         ri->top_level_parent_dir_fd_plus_one = fd + 1;
+        free(mi.uri_list[uri_item_idx]);
         mi.uri_list[uri_item_idx] = as_file_url(mi.base_dir_for_remote_items, path, ri->dir_entry_name);
     }
     add_payload(w, ri, has_more, payload, payload_sz, ri->top_level_parent_dir_fd_plus_one - 1);
@@ -2115,6 +2131,32 @@ dnd_test_request_drag_data(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject *
+dnd_test_drag_notify(PyObject *self UNUSED, PyObject *args) {
+    // Call drag_notify with a specific type for testing the protocol output.
+    // type: 0=ACCEPTED, 1=ACTION_CHANGED, 2=DROPPED, 3=FINISHED
+    // accepted_mime: the MIME type to set in global_state.drag_source.accepted_mime_type (for ACCEPTED)
+    // action: the action to set in global_state.drag_source.action (for ACTION_CHANGED)
+    // was_canceled: whether the drag was canceled (for FINISHED)
+    unsigned long long window_id;
+    int type;
+    const char *accepted_mime = NULL;
+    int action = 0, was_canceled = 0;
+    if (!PyArg_ParseTuple(args, "Ki|sii", &window_id, &type, &accepted_mime, &action, &was_canceled)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
+    if (type < 0 || type > 3) { PyErr_SetString(PyExc_ValueError, "Invalid type"); return NULL; }
+    if (accepted_mime && *accepted_mime) {
+        free(global_state.drag_source.accepted_mime_type);
+        global_state.drag_source.accepted_mime_type = strdup(accepted_mime);
+        if (!global_state.drag_source.accepted_mime_type) { PyErr_NoMemory(); return NULL; }
+    }
+    global_state.drag_source.action = action;
+    global_state.drag_source.was_canceled = was_canceled;
+    drag_notify(w, (DragNotifyType)type);
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef dnd_methods[] = {
     {"dnd_set_test_write_func", (PyCFunction)py_dnd_set_test_write_func, METH_VARARGS, ""},
     METHODB(dnd_test_create_fake_window, METH_NOARGS),
@@ -2124,6 +2166,7 @@ static PyMethodDef dnd_methods[] = {
     METHODB(dnd_test_fake_drop_data, METH_VARARGS),
     METHODB(dnd_test_force_drag_dropped, METH_VARARGS),
     METHODB(dnd_test_request_drag_data, METH_VARARGS),
+    METHODB(dnd_test_drag_notify, METH_VARARGS),
     {NULL, NULL, 0, NULL}
 };
 
