@@ -14,6 +14,7 @@ from kitty.fast_data_types import (
     dnd_set_test_write_func,
     dnd_test_cleanup_fake_window,
     dnd_test_create_fake_window,
+    dnd_test_drag_notify,
     dnd_test_fake_drop_data,
     dnd_test_fake_drop_event,
     dnd_test_force_drag_dropped,
@@ -2989,3 +2990,81 @@ class TestDnDProtocol(BaseTest):
             events = self._get_events(cap, wid)
             # Should get a move event
             self.assertTrue(len(events) >= 1, events)
+
+    def test_drag_notify_colon_separators(self) -> None:
+        """drag_notify output has proper colon separators between metadata keys."""
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_drag_offer(screen, wid, cap, 'text/plain text/html')
+            dnd_test_force_drag_dropped(wid)
+            # DRAG_NOTIFY_ACCEPTED (type=0) should produce t=e:x=1:y=<idx>
+            dnd_test_drag_notify(wid, 0, 'text/html')
+            events = self._get_events(cap, wid)
+            self.assertEqual(len(events), 1, events)
+            self.ae(events[0]['type'], 'e')
+            # Verify proper key formatting with colons
+            self.ae(events[0]['meta'].get('x'), '1')
+            self.ae(events[0]['meta'].get('y'), '1')  # text/html is index 1
+
+    def test_drag_notify_action_changed_colon_separator(self) -> None:
+        """drag_notify ACTION_CHANGED output has proper colon separators."""
+        from kitty.fast_data_types import GLFW_DRAG_OPERATION_MOVE
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_drag_offer(screen, wid, cap, 'text/plain')
+            dnd_test_force_drag_dropped(wid)
+            # DRAG_NOTIFY_ACTION_CHANGED (type=1) with MOVE action
+            dnd_test_drag_notify(wid, 1, '', GLFW_DRAG_OPERATION_MOVE)
+            events = self._get_events(cap, wid)
+            self.assertEqual(len(events), 1, events)
+            self.ae(events[0]['type'], 'e')
+            self.ae(events[0]['meta'].get('x'), '2')  # ACTION_CHANGED = type+1 = 2
+            self.ae(events[0]['meta'].get('o'), '2')   # MOVE = o=2
+
+    def test_drag_notify_finished_colon_separator(self) -> None:
+        """drag_notify FINISHED output has proper colon separators."""
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_drag_offer(screen, wid, cap, 'text/plain')
+            dnd_test_force_drag_dropped(wid)
+            # DRAG_NOTIFY_FINISHED (type=3) with was_canceled=0
+            dnd_test_drag_notify(wid, 3, '', 0, 0)
+            events = self._get_events(cap, wid)
+            self.assertEqual(len(events), 1, events)
+            self.ae(events[0]['type'], 'e')
+            self.ae(events[0]['meta'].get('x'), '4')  # FINISHED = type+1 = 4
+            self.ae(events[0]['meta'].get('y'), '0')   # was_canceled = 0
+
+    def test_remote_drag_children_freed_on_cleanup(self) -> None:
+        """Remote drag with directories properly frees the children array on cleanup."""
+        uri_list = b'file:///home/user/mydir\r\n'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            # Create a directory entry (X=2 means directory handle=2)
+            dir_listing = standard_b64encode(b'file1.txt\x00subdir').decode()
+            parse_bytes(screen, client_remote_file(1, dir_listing, item_type=2))
+            self._assert_no_output(cap, wid)
+            # Finish the directory entry
+            parse_bytes(screen, client_remote_file(1, '', item_type=2))
+            self._assert_no_output(cap, wid)
+            # Now send file data for the first child (entry_num=1, Y=handle)
+            file_data = standard_b64encode(b'hello').decode()
+            parse_bytes(screen, client_remote_file(1, file_data, item_type=0, parent_handle=2, entry_num=1))
+            parse_bytes(screen, client_remote_file(1, '', item_type=0, parent_handle=2, entry_num=1))
+            self._assert_no_output(cap, wid)
+            # Cleanup happens when context manager exits - no crash means children are freed
+
+    def test_remote_drag_uri_replaced_without_leak(self) -> None:
+        """Remote drag replaces URI string without leaking the original."""
+        uri_list = b'file:///home/user/hello.txt\r\n'
+        file_content = b'test content'
+        with dnd_test_window() as (osw, wid, screen, cap):
+            self._setup_remote_drag(screen, wid, cap, uri_list)
+            b64 = standard_b64encode(file_content).decode()
+            # Send file data - this replaces the URI string in the uri_list
+            parse_bytes(screen, client_remote_file(1, b64, item_type=0))
+            self._assert_no_output(cap, wid)
+            # End of data for this file
+            parse_bytes(screen, client_remote_file(1, '', item_type=0))
+            self._assert_no_output(cap, wid)
+            # Completion signal
+            parse_bytes(screen, client_remote_file_finish())
+            self._assert_no_output(cap, wid)
+            # No crash or leak - cleanup happens in context manager exit
