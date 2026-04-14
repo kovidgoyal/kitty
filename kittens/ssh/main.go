@@ -6,6 +6,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -620,7 +621,7 @@ func change_colors(color_scheme string) (ans string, err error) {
 	return
 }
 
-func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config *SSHConfig) (rc int, err error) {
+func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config_channel <-chan *SSHConfig) (rc int, err error) {
 	go shell_integration.Data()
 	go RelevantKittyOpts()
 	defer func() {
@@ -630,13 +631,10 @@ func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config *SSHCo
 		}
 	}()
 	cmd := append([]string{SSHExe()}, ssh_args...)
-	cd := connection_data{remote_args: server_args[1:], ssh_config: ssh_config}
+	cd := connection_data{remote_args: server_args[1:]}
 	hostname := server_args[0]
 	if len(cd.remote_args) == 0 {
 		cmd = append(cmd, "-t")
-	}
-	if cd.ssh_config != nil && cd.ssh_config.RemoteCommand != "" {
-		cmd = append(cmd, "-o", "RemoteCommand=none")
 	}
 	insertion_point := len(cmd)
 	cmd = append(cmd, "--", hostname)
@@ -780,6 +778,12 @@ func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config *SSHCo
 		}
 	}
 	defer cleanup()
+	// Receive ssh config
+	ssh_config := <-ssh_config_channel
+	if ssh_config != nil && ssh_config.RemoteCommand != "" {
+		cmd = slices.Insert(cmd, insertion_point, "-o", "RemoteCommand=none")
+	}
+	cd.ssh_config = ssh_config
 	err = get_remote_command(&cd)
 	if err != nil {
 		return 1, err
@@ -856,17 +860,18 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 	if passthrough {
 		return 1, unix.Exec(SSHExe(), utils.Concat([]string{"ssh"}, ssh_args, server_args), os.Environ())
 	}
-	ssh_config, err := LoadSSHConfig(server_args[0])
-	if err != nil {
-		return 1, err
-	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ssh_config_channel := ReadSSHConfig(ctx, server_args[0])
+
 	if os.Getenv("KITTY_WINDOW_ID") == "" || os.Getenv("KITTY_PID") == "" {
 		return 1, fmt.Errorf("The SSH kitten is meant to run inside a kitty window")
 	}
 	if !tty.IsTerminal(os.Stdin.Fd()) {
 		return 1, fmt.Errorf("The SSH kitten is meant for interactive use only, STDIN must be a terminal")
 	}
-	return run_ssh(ssh_args, server_args, found_extra_args, ssh_config)
+	return run_ssh(ssh_args, server_args, found_extra_args, ssh_config_channel)
 }
 
 func EntryPoint(parent *cli.Command) {

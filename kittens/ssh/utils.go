@@ -5,6 +5,7 @@ package ssh
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 	"regexp"
@@ -199,34 +200,53 @@ type SSHConfig struct {
 	RemoteCommand string
 }
 
-func LoadSSHConfig(hostname string) (config *SSHConfig, err error) {
-	cmd_args := []string{SSHExe(), hostname, "-G"}
-	cmd := exec.Command(cmd_args[0], cmd_args[1:]...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	_ = cmd.Run()
+// ReadSSHConfig Asynchronously read ssh configuration
+func ReadSSHConfig(ctx context.Context, hostname string) <-chan *SSHConfig {
+	ch := make(chan *SSHConfig, 1)
 
-	text := stdout.String()
-	scanner := bufio.NewScanner(strings.NewReader(text))
+	go func() {
+		defer close(ch)
 
-	config = &SSHConfig{}
-	for scanner.Scan() {
-		line := scanner.Text()
-		i := strings.IndexByte(line, ' ')
-		if i <= 0 {
-			continue
+		cmd_args := []string{SSHExe(), hostname, "-G"}
+		cmd := exec.CommandContext(ctx, cmd_args[0], cmd_args[1:]...)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			return
 		}
 
-		key, val := line[:i], line[i+1:]
-		switch key {
-		case "remotecommand":
-			if val != "none" {
-				config.RemoteCommand = val
+		text := stdout.String()
+		scanner := bufio.NewScanner(strings.NewReader(text))
+
+		config := &SSHConfig{}
+		for scanner.Scan() {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
+			line := scanner.Text()
+			i := strings.IndexByte(line, ' ')
+			if i <= 0 {
+				continue
+			}
+
+			key, val := line[:i], line[i+1:]
+			switch key {
+			case "remotecommand":
+				if val != "none" {
+					config.RemoteCommand = val
+				}
 			}
 		}
-	}
-	return config, nil
+		select {
+		case <-ctx.Done():
+			return
+		case ch <- config:
+		}
+	}()
+	return ch
 }
 
 type SSHVersion struct{ Major, Minor int }
