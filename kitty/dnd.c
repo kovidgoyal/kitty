@@ -2146,9 +2146,10 @@ dnd_test_drag_notify(PyObject *self UNUSED, PyObject *args) {
     Window *w = window_for_window_id((id_type)window_id);
     if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
     if (type < 0 || type > 3) { PyErr_SetString(PyExc_ValueError, "Invalid type"); return NULL; }
-    if (accepted_mime) {
+    if (accepted_mime && *accepted_mime) {
         free(global_state.drag_source.accepted_mime_type);
         global_state.drag_source.accepted_mime_type = strdup(accepted_mime);
+        if (!global_state.drag_source.accepted_mime_type) { PyErr_NoMemory(); return NULL; }
     }
     global_state.drag_source.action = action;
     global_state.drag_source.was_canceled = was_canceled;
