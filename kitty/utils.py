@@ -33,7 +33,19 @@ from .constants import (
     shell_path,
     ssh_control_master_template,
 )
-from .fast_data_types import WINDOW_FULLSCREEN, WINDOW_HIDDEN, WINDOW_MAXIMIZED, WINDOW_MINIMIZED, WINDOW_NORMAL, Color, Shlex, get_options, monotonic, open_tty
+from .fast_data_types import (
+    WINDOW_FULLSCREEN,
+    WINDOW_HIDDEN,
+    WINDOW_MAXIMIZED,
+    WINDOW_MINIMIZED,
+    WINDOW_NORMAL,
+    Color,
+    Shlex,
+    get_boss,
+    get_options,
+    monotonic,
+    open_tty,
+)
 from .fast_data_types import timed_debug_print as _timed_debug_print
 from .types import run_once
 from .typing_compat import AddressFamily, PopenType, StartupCtx
@@ -1158,16 +1170,19 @@ def rmtree_best_effort(relpath: str, dir_fd: int) -> None:
     shutil.rmtree(relpath, ignore_errors=True, dir_fd=dir_fd)
 
 
-def mktempdir_in_cache(prefix: str) -> tuple[str, int]:
+def mktempdir_in_cache(prefix: str, delete_on_kitty_exit: bool) -> tuple[str, int]:
     import tempfile
-    ans = tempfile.mkdtemp(prefix, dir=cache_dir())
+    ans = os.path.abspath(tempfile.mkdtemp(prefix, dir=cache_dir()))
     try:
-        return os.path.abspath(ans), os.open(ans, os.O_DIRECTORY | os.O_RDONLY)
+        retval = ans, os.open(ans, os.O_DIRECTORY | os.O_RDONLY)
     except OSError as e:
         import errno
         import shutil
         shutil.rmtree(ans, ignore_errors=True)
         return "", -e.errno if e.errno is not None else -errno.EIO
+    if delete_on_kitty_exit:
+        get_boss().atexit.rmtree(retval[0])
+    return retval
 
 
 def sanitized_filename_from_url(url: str) -> str:

@@ -109,7 +109,7 @@ mktempdir_in_cache(const char *prefix, int *fd) {
         if (module) {
             RAII_PyObject(func, PyObject_GetAttrString(module, "mktempdir_in_cache"));
             if (func) {
-                RAII_PyObject(ret, PyObject_CallFunction(func, "s", prefix));
+                RAII_PyObject(ret, PyObject_CallFunction(func, "sO", prefix, dnd_is_test_mode() ? Py_False : Py_True));
                 if (ret) {
                     if (PyArg_ParseTuple(ret, "si", &ans, fd)) {
                         if (*fd < 0) {
