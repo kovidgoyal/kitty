@@ -201,13 +201,15 @@ type SSHConfig struct {
 }
 
 // ReadSSHConfig Asynchronously read ssh configuration
-func ReadSSHConfig(ctx context.Context, hostname string) <-chan *SSHConfig {
+func ReadSSHConfig(ctx context.Context, ssh_args []string, hostname string) <-chan *SSHConfig {
 	ch := make(chan *SSHConfig, 1)
 
 	go func() {
 		defer close(ch)
 
-		cmd_args := []string{SSHExe(), hostname, "-G"}
+		cmd_args := []string{SSHExe(), "-G"}
+		cmd_args = append(cmd_args, ssh_args...)
+		cmd_args = append(cmd_args, hostname)
 		cmd := exec.CommandContext(ctx, cmd_args[0], cmd_args[1:]...)
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout

@@ -630,7 +630,9 @@ func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config_channe
 			_ = data_shm.Unlink()
 		}
 	}()
-	cmd := append([]string{SSHExe()}, ssh_args...)
+	// In ssh CLI parsing first -o wins
+	cmd := []string{SSHExe(), "-o", "RemoteCommand=none"}
+	cmd = append(cmd, ssh_args...)
 	cd := connection_data{remote_args: server_args[1:]}
 	hostname := server_args[0]
 	if len(cd.remote_args) == 0 {
@@ -638,6 +640,7 @@ func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config_channe
 	}
 	insertion_point := len(cmd)
 	cmd = append(cmd, "--", hostname)
+	cmd = slices.Insert(cmd, insertion_point, "-o", "RemoteCommand=none")
 	uname, hostname_for_match := get_destination(hostname)
 	overrides, literal_env, err := parse_kitten_args(found_extra_args, uname, hostname_for_match)
 	if err != nil {
@@ -779,11 +782,7 @@ func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config_channe
 	}
 	defer cleanup()
 	// Receive ssh config
-	ssh_config := <-ssh_config_channel
-	if ssh_config != nil && ssh_config.RemoteCommand != "" {
-		cmd = slices.Insert(cmd, insertion_point, "-o", "RemoteCommand=none")
-	}
-	cd.ssh_config = ssh_config
+	cd.ssh_config = <-ssh_config_channel
 	err = get_remote_command(&cd)
 	if err != nil {
 		return 1, err
@@ -820,8 +819,7 @@ func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config_channe
 	err = c.Wait()
 	drain_potential_tty_garbage(term)
 	if err != nil {
-		var exit_err *exec.ExitError
-		if errors.As(err, &exit_err) {
+		if exit_err, ok := errors.AsType[*exec.ExitError](err); ok {
 			if state := exit_err.ProcessState.String(); state == "signal: interrupt" {
 				cleanup()
 				_ = unix.Kill(os.Getpid(), unix.SIGINT)
@@ -863,7 +861,7 @@ func main(cmd *cli.Command, o *Options, args []string) (rc int, err error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ssh_config_channel := ReadSSHConfig(ctx, server_args[0])
+	ssh_config_channel := ReadSSHConfig(ctx, ssh_args, server_args[0])
 
 	if os.Getenv("KITTY_WINDOW_ID") == "" || os.Getenv("KITTY_PID") == "" {
 		return 1, fmt.Errorf("The SSH kitten is meant to run inside a kitty window")
