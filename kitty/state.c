@@ -226,6 +226,7 @@ ensure_background_images_generation(bool release_texture) {
     if (global_state.background_images.generation == OPT(background_images).generation) return;
     free_global_background_images(release_texture);
     global_state.background_images.generation = OPT(background_images).generation;
+    global_state.background_images.entries_attempted = 0;
     for (size_t i = 0; i < OPT(background_images).count; i++) OPT(background_images).entries[i].load_attempted = false;
     if (OPT(background_images).count) {
         global_state.background_images.images = calloc(
@@ -1420,7 +1421,9 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
             bgimage->refcnt++;
             if (OPT(background_images).count > 0) {
                 free(OPT(background_images).entries[0].path);
-                OPT(background_images).entries[0].path = strdup(path);
+                char *new_path = strdup(path);
+                if (!new_path) fatal("Out of memory");
+                OPT(background_images).entries[0].path = new_path;
                 OPT(background_images).entries[0].load_attempted = true;
             }
         } else free_global_background_images(true);
