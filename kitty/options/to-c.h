@@ -184,7 +184,7 @@ background_images(PyObject *src, Options *opts) {
         bool changed = false;
         for (size_t i = 0; i < new_count; i++) {
             const char *p = PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i));
-            if (!p || strcmp(p, opts->background_images.paths[i]) != 0) { changed = true; break; }
+            if (!p || !opts->background_images.paths[i] || strcmp(p, opts->background_images.paths[i]) != 0) { changed = true; break; }
         }
         if (!changed) return;
     }
