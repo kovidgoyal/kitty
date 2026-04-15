@@ -116,11 +116,14 @@ class CachedProcessData:
     def processes_in_group(self, grp: int) -> list[int]:
         return self.process_group_map()[grp]
 
+    def clear_cache(self) -> None:
+        self.cached_result = None
+        self.cache_at = 0
+
     def start_caching(self, refresh: bool = False) -> bool:
         prev, self.cache_active = self.cache_active, True
         if refresh or monotonic() - self.cache_at > self.ttl:
-            self.cached_result = None
-            self.cache_at = 0
+            self.clear_cache()
         return prev
 
     def stop_caching(self, prev: bool) -> None:
