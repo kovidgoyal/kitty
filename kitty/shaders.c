@@ -450,7 +450,7 @@ pick_cursor_color(color_type cell_fg, color_type cell_bg, color_type *cursor_fg,
 
 static bool
 has_bgimage(OSWindow *w) {
-    return w->bgimage && w->bgimage->texture_id > 0;
+    return background_image_for_os_window(w) != NULL;
 }
 
 static color_type
@@ -1526,13 +1526,14 @@ draw_cursor_trail(CursorTrail *trail, Window *active_window) {
 // OSWindow {{{
 static void
 draw_bg_image(OSWindow *os_window, Tab *tab) {
-    if (!has_bgimage(os_window)) return;
+    BackgroundImage *bg = background_image_for_os_window(os_window);
+    if (!bg) return;
     BackgroundImageRenderSettings s = {
         .os_window.width = os_window->viewport_width, .os_window.height = os_window->viewport_height,
-        .instance_id = os_window->bgimage->id, .layout=OPT(background_image_layout),
+        .instance_id = bg->id, .layout=OPT(background_image_layout),
         .linear=OPT(background_image_linear), .bgcolor=OPT(background), .opacity=effective_os_window_alpha(os_window),
     };
-    GLfloat iwidth = os_window->bgimage->width, iheight = os_window->bgimage->height;
+    GLfloat iwidth = bg->width, iheight = bg->height;
     GLfloat vwidth = s.os_window.width, vheight = s.os_window.height;
     if (CENTER_SCALED == OPT(background_image_layout)) {
         GLfloat ifrac = iwidth / iheight;
@@ -1570,7 +1571,7 @@ draw_bg_image(OSWindow *os_window, Tab *tab) {
     glUniform1i(bgimage_program_layout.uniforms.image, GRAPHICS_UNIT);
     color_vec4(bgimage_program_layout.uniforms.background, s.bgcolor, s.opacity);
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-    glBindTexture(GL_TEXTURE_2D, os_window->bgimage->texture_id);
+    glBindTexture(GL_TEXTURE_2D, bg->texture_id);
     draw_quad(false, 0);
     unbind_program();
 }

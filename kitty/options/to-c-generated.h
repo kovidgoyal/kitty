@@ -1203,7 +1203,7 @@ convert_from_opts_dynamic_background_opacity(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_background_image(PyObject *val, Options *opts) {
-    background_image(val, opts);
+    background_images(val, opts);
 }
 
 static void

@@ -529,7 +529,7 @@ class Options:
     allow_remote_control: choices_for_allow_remote_control = 'no'
     background: Color = Color(0, 0, 0)
     background_blur: int = 0
-    background_image: str | None = None
+    background_image: tuple[str, ...] = ()
     background_image_layout: choices_for_background_image_layout = 'tiled'
     background_image_linear: bool = False
     background_opacity: float = 1.0

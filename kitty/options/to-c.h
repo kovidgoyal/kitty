@@ -167,7 +167,28 @@ bganchor(PyObject *anchor_name) {
 }
 
 static inline void
-background_image(PyObject *src, Options *opts) { STR_SETTER(background_image); }
+free_background_images(Options *opts) {
+    if (opts->background_images.paths) {
+        for (size_t i = 0; i < opts->background_images.count; i++) free(opts->background_images.paths[i]);
+        free(opts->background_images.paths);
+    }
+    opts->background_images.paths = NULL;
+    opts->background_images.count = 0;
+}
+
+static inline void
+background_images(PyObject *src, Options *opts) {
+    free_background_images(opts);
+    static unsigned generation = 0;
+    opts->background_images.generation = ++generation;
+    if (!PyTuple_Check(src) || PyTuple_GET_SIZE(src) == 0) return;
+    opts->background_images.paths = calloc(PyTuple_GET_SIZE(src), sizeof(opts->background_images.paths[0]));
+    if (opts->background_images.paths) {
+        opts->background_images.count = PyTuple_GET_SIZE(src);
+        for (size_t i = 0; i < opts->background_images.count; i++) opts->background_images.paths[i] = strdup(
+                PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i)));
+    }
+}
 
 static inline void
 bell_path(PyObject *src, Options *opts) { STR_SETTER(bell_path); }
@@ -554,8 +575,9 @@ free_allocs_in_options(Options *opts) {
     free_menu_map(opts);
     free_url_prefixes(opts);
     free_font_features(opts);
+    free_background_images(opts);
 #define F(x) free(opts->x); opts->x = NULL;
     F(select_by_word_characters); F(url_excluded_characters); F(select_by_word_characters_forward);
-    F(background_image); F(bell_path); F(bell_theme); F(default_window_logo);
+    F(bell_path); F(bell_theme); F(default_window_logo);
 #undef F
 }

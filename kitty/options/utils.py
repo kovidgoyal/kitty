@@ -855,6 +855,15 @@ def config_or_absolute_path(x: str, env: dict[str, str] | None = None) -> str | 
     return resolve_abs_or_config_path(x, env)
 
 
+def background_images(x: str) -> tuple[str, ...]:
+    if x.lower() in ('none', ''):
+        return ()
+    from glob import glob
+    x = resolve_abs_or_config_path(x, None)
+    return tuple(x for x in sorted(glob(x)) if x.rpartition('.')[-1].lower() in (
+        'jpeg', 'jpg', 'png', 'webp', 'tiff', 'bmp', 'gif'))
+
+
 def filter_notification(val: str, current_val: dict[str, str]) -> Iterable[tuple[str, str]]:
     yield val, ''
 

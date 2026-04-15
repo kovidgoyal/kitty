@@ -1956,8 +1956,13 @@ this option by reloading the config is not supported.
 
 
 opt('background_image', 'none',
-    option_type='config_or_absolute_path', ctype='!background_image',
-    long_text='Path to a background image. Must be in PNG/JPEG/WEBP/TIFF/GIF/BMP format.'
+    option_type='background_images', ctype='!background_images',
+    long_text='Glob pattern matching one or more background images. Must be in PNG/JPEG/WEBP/TIFF/GIF/BMP format.'
+    ' The first one is used as the default image, you can change the current image using :ac:`change_background_image`.'
+    ' Multiple images are stored in GPU VRAM (on demand) so that transitioning between them is instant.'
+    ' In order to move between images in the list of background images, use the remote control command'
+    ' :code:`set-backround-image`, see `kitten set-backround-image --help` for details. You can map the command'
+    ' to a key like this: :code:`map f1 remote_control set-backround-image +1`.'
     ' Note that when using :ref:`auto_color_scheme` this option is overridden by the color scheme file and must be set inside it to take effect.'
     )
 

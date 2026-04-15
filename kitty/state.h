@@ -93,7 +93,11 @@ typedef struct Options {
     float text_contrast, text_gamma_adjustment;
     bool text_old_gamma;
 
-    char *background_image, *default_window_logo;
+    char *default_window_logo;
+    struct {
+        char **paths; size_t count;
+        unsigned generation;
+    } background_images;
     BackgroundImageLayout background_image_layout;
     ImageAnchorPosition window_logo_position;
     bool background_image_linear;
@@ -409,7 +413,11 @@ typedef struct OSWindow {
     int viewport_width, viewport_height, window_width, window_height;
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
-    BackgroundImage *bgimage;
+    struct {
+        size_t global_bg_images_idx;
+        BackgroundImage *override;
+        bool no_image;
+    } background_image;
     struct {
         uint32_t framebuffer_id, attached_texture_generation;
     } indirect_output;
@@ -460,7 +468,11 @@ typedef struct GlobalState {
 
     id_type os_window_id_counter, tab_id_counter, window_id_counter;
     PyObject *boss;
-    BackgroundImage *bgimage;
+    struct {
+        BackgroundImage **images;
+        size_t count;
+        unsigned generation;
+    } background_images;
     OSWindow *os_windows;
     size_t num_os_windows, capacity;
     OSWindow *callback_os_window;
@@ -625,3 +637,4 @@ void cancel_current_drag_source(void);
 bool change_drag_image(int idx);
 int start_window_drag(Window *w);
 int notify_drag_data_ready(id_type os_window_id, const char *mime_type);
+BackgroundImage* background_image_for_os_window(OSWindow *w);

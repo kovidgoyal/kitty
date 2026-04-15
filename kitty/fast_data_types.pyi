@@ -728,6 +728,8 @@ def set_background_image(
     linear: bool | None = None,
     tint: float | None = None,
     tint_gaps: float | None = None,
+    global_index: int = -1,
+    is_increment: bool = False,
 ) -> None:
     pass
 

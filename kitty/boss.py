@@ -3141,11 +3141,6 @@ class Boss:
         if is_macos:
             from .fast_data_types import cocoa_recreate_global_menu
             cocoa_recreate_global_menu()
-        # Update misc options
-        try:
-            set_background_image(opts.background_image, tuple(self.os_window_map), True, opts.background_image_layout)
-        except Exception as e:
-            log_error(f'Failed to set background image with error: {e}')
         for tm in self.all_tab_managers:
             tm.apply_options()
         # Update colors
@@ -3544,9 +3539,12 @@ class Boss:
 
     def set_background_image(
         self, path: str | None, os_windows: tuple[int, ...], configured: bool, layout: str | None, png_data: bytes = b'',
-        linear_interpolation: bool | None = None, tint: float | None = None, tint_gaps: float | None = None
+        linear_interpolation: bool | None = None, tint: float | None = None, tint_gaps: float | None = None,
+        global_index: int = -1, is_increment: bool = False,
     ) -> None:
-        set_background_image(path, os_windows, configured, layout, png_data, linear_interpolation, tint, tint_gaps)
+        set_background_image(
+            path, os_windows, configured, layout, png_data, linear_interpolation, tint, tint_gaps,
+            global_index, is_increment)
 
     # Can be called with kitty -o "map f1 send_test_notification"
     def send_test_notification(self) -> None:
