@@ -275,7 +275,7 @@ increment_bg_image_idx(size_t idx, int delta) {
     }
     if ((unsigned)abs(delta) <= idx) return idx + delta;
     // wrap to last image, which means we need to load all
-    global_background_image(OPT(background_images).count);
+    if (OPT(background_images).count > 0) global_background_image(OPT(background_images).count - 1);
     return global_state.background_images.count ? global_state.background_images.count - 1 : 0;
 }
 
