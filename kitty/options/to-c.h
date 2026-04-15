@@ -168,11 +168,11 @@ bganchor(PyObject *anchor_name) {
 
 static inline void
 free_background_images(Options *opts) {
-    if (opts->background_images.paths) {
-        for (size_t i = 0; i < opts->background_images.count; i++) free(opts->background_images.paths[i]);
-        free(opts->background_images.paths);
+    if (opts->background_images.entries) {
+        for (size_t i = 0; i < opts->background_images.count; i++) free(opts->background_images.entries[i].path);
+        free(opts->background_images.entries);
     }
-    opts->background_images.paths = NULL;
+    opts->background_images.entries = NULL;
     opts->background_images.count = 0;
 }
 
@@ -184,18 +184,20 @@ background_images(PyObject *src, Options *opts) {
         bool changed = false;
         for (size_t i = 0; i < new_count; i++) {
             const char *p = PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i));
-            if (!p || !opts->background_images.paths[i] || strcmp(p, opts->background_images.paths[i]) != 0) { changed = true; break; }
+            if (!p || !opts->background_images.entries[i].path || strcmp(p, opts->background_images.entries[i].path) != 0) { changed = true; break; }
         }
         if (!changed) return;
     }
     free_background_images(opts);
     opts->background_images.generation = ++generation;
     if (!new_count) return;
-    opts->background_images.paths = calloc(new_count, sizeof(opts->background_images.paths[0]));
-    if (opts->background_images.paths) {
+    opts->background_images.entries = calloc(new_count, sizeof(opts->background_images.entries[0]));
+    if (opts->background_images.entries) {
         opts->background_images.count = new_count;
-        for (size_t i = 0; i < opts->background_images.count; i++) opts->background_images.paths[i] = strdup(
-                PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i)));
+        for (size_t i = 0; i < opts->background_images.count; i++) {
+            opts->background_images.entries[i].path = strdup(PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i)));
+            opts->background_images.entries[i].load_attempted = false;
+        }
     }
 }
 

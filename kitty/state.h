@@ -95,7 +95,8 @@ typedef struct Options {
 
     char *default_window_logo;
     struct {
-        char **paths; size_t count;
+        struct { char *path; bool load_attempted; } *entries;
+        size_t count;
         unsigned generation;
     } background_images;
     BackgroundImageLayout background_image_layout;
@@ -470,7 +471,7 @@ typedef struct GlobalState {
     PyObject *boss;
     struct {
         BackgroundImage **images;
-        size_t count;
+        size_t count, entries_attempted;
         unsigned generation;
     } background_images;
     OSWindow *os_windows;
