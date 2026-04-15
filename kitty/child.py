@@ -128,7 +128,6 @@ class CachedProcessData:
 
     def stop_caching(self, prev: bool) -> None:
         self.cache_active = prev
-        self.cached_result = None
 
 
 process_data_cache = CachedProcessData()
