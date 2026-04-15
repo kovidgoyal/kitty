@@ -178,15 +178,25 @@ free_background_images(Options *opts) {
 
 static inline void
 background_images(PyObject *src, Options *opts) {
-    free_background_images(opts);
     static unsigned generation = 0;
+    size_t new_count = (PyTuple_Check(src) && PyTuple_GET_SIZE(src) > 0) ? (size_t)PyTuple_GET_SIZE(src) : 0;
+    if (new_count == opts->background_images.count && opts->background_images.paths) {
+        bool changed = false;
+        for (size_t i = 0; i < new_count; i++) {
+            const char *p = PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i));
+            if (!p || !opts->background_images.paths[i] || strcmp(p, opts->background_images.paths[i]) != 0) { changed = true; break; }
+        }
+        if (!changed) return;
+    }
+    free_background_images(opts);
     opts->background_images.generation = ++generation;
-    if (!PyTuple_Check(src) || PyTuple_GET_SIZE(src) == 0) return;
-    opts->background_images.paths = calloc(PyTuple_GET_SIZE(src), sizeof(opts->background_images.paths[0]));
+    if (!new_count) return;
+    opts->background_images.paths = calloc(new_count, sizeof(opts->background_images.paths[0]));
     if (opts->background_images.paths) {
-        opts->background_images.count = PyTuple_GET_SIZE(src);
-        for (size_t i = 0; i < opts->background_images.count; i++) opts->background_images.paths[i] = strdup(
-                PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i)));
+        opts->background_images.count = new_count;
+        for (size_t i = 0; i < opts->background_images.count; i++) {
+            opts->background_images.paths[i] = strdup(PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i)));
+        }
     }
 }
 

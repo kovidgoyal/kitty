@@ -226,6 +226,7 @@ ensure_background_images_generation(bool release_texture) {
     if (global_state.background_images.generation == OPT(background_images).generation) return;
     free_global_background_images(release_texture);
     global_state.background_images.generation = OPT(background_images).generation;
+    global_state.background_images.entries_attempted = 0;
     if (OPT(background_images).count) {
         global_state.background_images.images = calloc(
                 OPT(background_images).count, sizeof(global_state.background_images.images[0]));
@@ -238,12 +239,11 @@ static unsigned bg_image_id_counter = 0;
 static BackgroundImage*
 global_background_image(size_t idx) {
     ensure_background_images_generation(true);
-    while (global_state.background_images.count <= idx && OPT(background_images).count) {
-        RAII_ALLOC(char, path, OPT(background_images).paths[0]);  // transfer ownership
-        remove_i_from_array(OPT(background_images.paths), 0, OPT(background_images).count);
+    while (global_state.background_images.count <= idx && global_state.background_images.entries_attempted < OPT(background_images).count) {
+        size_t j = global_state.background_images.entries_attempted++;
         BackgroundImage *img = calloc(1, sizeof(BackgroundImage));
         if (!img) fatal("Out of memory");
-        if (image_path_to_bitmap(path, &img->bitmap, &img->width, &img->height, &img->mmap_size)) {
+        if (image_path_to_bitmap(OPT(background_images).paths[j], &img->bitmap, &img->width, &img->height, &img->mmap_size)) {
             if (send_bgimage_to_gpu(OPT(background_image_layout), img)) {
                 img->refcnt++;
                 img->id = ++bg_image_id_counter;
@@ -273,7 +273,7 @@ increment_bg_image_idx(size_t idx, int delta) {
     }
     if ((unsigned)abs(delta) <= idx) return idx + delta;
     // wrap to last image, which means we need to load all
-    global_background_image(global_state.background_images.count + OPT(background_images).count + 1);
+    if (OPT(background_images).count > 0) global_background_image(OPT(background_images).count - 1);
     return global_state.background_images.count ? global_state.background_images.count - 1 : 0;
 }
 
@@ -1417,6 +1417,12 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
             }
             global_state.background_images.images[0] = bgimage;
             bgimage->refcnt++;
+            if (OPT(background_images).count > 0) {
+                free(OPT(background_images).paths[0]);
+                char *new_path = strdup(path);
+                if (!new_path) fatal("Out of memory");
+                OPT(background_images).paths[0] = new_path;
+            }
         } else free_global_background_images(true);
         OPT(background_image_layout) = layout;
         if (pylinear && pylinear != Py_None) convert_from_python_background_image_linear(pylinear, &global_state.opts);
