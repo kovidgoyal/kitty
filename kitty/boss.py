@@ -27,7 +27,7 @@ from weakref import WeakValueDictionary
 
 from kitty.types import WindowResizeDrag
 
-from .child import cached_process_data, default_env, set_default_env
+from .child import cached_process_data, default_env, process_data_cache, set_default_env
 from .cli import create_opts, green, parse_args
 from .cli_stub import CLIOptions, SaveAsSessionOptions
 from .clipboard import (
@@ -1922,6 +1922,13 @@ class Boss:
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
             tm.mark_tab_bar_dirty()
+
+    def cache_process_data(self, enable: bool) -> None:
+        ' Turn on caching of process data. Must be called in enable/disable pairs. '
+        if enable:
+            self.process_data_cache_active = process_data_cache.start_caching()
+        else:
+            process_data_cache.stop_caching(self.process_data_cache_active)
 
     def update_tab_bar_data(self, os_window_id: int) -> None:
         tm = self.os_window_map.get(os_window_id)

@@ -243,6 +243,8 @@ Detailed list of changes
 
 - Render block elements from the Unicode Symbols for Legacy Computing Supplement block (U+1CC00–U+1CEBF): separated block quadrants, separated block sextants, one sixteenth blocks, and one quarter block partial fills (:disc:`9849`)
 
+- Improve performance of using active process data when rendering the tab bar by only scanning processes once per second (:iss:`9862`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

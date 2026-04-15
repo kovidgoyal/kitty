@@ -8,6 +8,7 @@ from collections import defaultdict
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
 from itertools import count
+from time import monotonic
 from typing import TYPE_CHECKING, DefaultDict, Iterable, Mapping, Optional, TypedDict
 
 import kitty.fast_data_types as fast_data_types
@@ -96,27 +97,48 @@ def checked_terminfo_dir() -> str | None:
     return terminfo_dir if os.path.isdir(terminfo_dir) else None
 
 
-def processes_in_group(grp: int) -> list[int]:
-    gmap: DefaultDict[int, list[int]] | None = getattr(process_group_map, 'cached_map', None)
-    if gmap is None:
-        try:
-            gmap = process_group_map()
-        except Exception:
-            gmap = defaultdict(list)
-    return gmap.get(grp, [])
+class CachedProcessData:
+
+    cached_result: DefaultDict[int, list[int]] | None = None
+    cache_active: bool = False
+    cache_at: float = 0
+    ttl: float = 1
+
+    def process_group_map(self) -> DefaultDict[int, list[int]]:
+        if self.cached_result is None or not self.cache_active:
+            try:
+                self.cached_result = process_group_map()
+            except Exception:
+                self.cached_result = defaultdict(list)
+            self.cache_at = monotonic()
+        return self.cached_result
+
+    def processes_in_group(self, grp: int) -> list[int]:
+        return self.process_group_map()[grp]
+
+    def start_caching(self, refresh: bool = False) -> bool:
+        prev, self.cache_active = self.cache_active, True
+        if refresh or monotonic() - self.cache_at > self.ttl:
+            self.cached_result = None
+            self.cache_at = 0
+        return prev
+
+    def stop_caching(self, prev: bool) -> None:
+        self.cache_active = prev
+        self.cached_result = None
+
+
+process_data_cache = CachedProcessData()
+processes_in_group = process_data_cache.processes_in_group
 
 
 @contextmanager
 def cached_process_data() -> Generator[None, None, None]:
-    try:
-        cm = process_group_map()
-    except Exception:
-        cm = defaultdict(list)
-    setattr(process_group_map, 'cached_map', cm)
+    orig = process_data_cache.start_caching(refresh=True)
     try:
         yield
     finally:
-        delattr(process_group_map, 'cached_map')
+        process_data_cache.stop_caching(orig)
 
 
 def session_id(pids: Iterable[int]) -> int:

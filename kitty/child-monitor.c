@@ -1001,6 +1001,7 @@ render(monotonic_t now, bool input_read) {
 
     const bool scan_for_animated_images = global_state.check_for_active_animated_images;
     global_state.check_for_active_animated_images = false;
+    call_boss(cache_process_data, "O", Py_True);
 
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
@@ -1021,6 +1022,7 @@ render(monotonic_t now, bool input_read) {
 
     }
     last_render_at = now;
+    call_boss(cache_process_data, "O", Py_False);
 #undef TD
 }
 
