@@ -175,7 +175,7 @@ free_bgimage_bitmap(BackgroundImage *bgimage) {
     bgimage->mmap_size = 0;
 }
 
-static void
+static bool
 send_bgimage_to_gpu(BackgroundImageLayout layout, BackgroundImage *bgimage) {
     RepeatStrategy r = REPEAT_DEFAULT;
     switch (layout) {
@@ -194,6 +194,7 @@ send_bgimage_to_gpu(BackgroundImageLayout layout, BackgroundImage *bgimage) {
     send_image_to_gpu(&bgimage->texture_id, bgimage->bitmap + delta, bgimage->width,
             bgimage->height, false, true, OPT(background_image_linear), r);
     free_bgimage_bitmap(bgimage);
+    return bgimage->texture_id > 0;
 }
 
 static void
@@ -206,7 +207,7 @@ free_bgimage(BackgroundImage **bgimage, bool release_texture) {
             free(*bgimage);
         }
     }
-    bgimage = NULL;
+    *bgimage = NULL;
 }
 
 static void
@@ -225,9 +226,11 @@ ensure_background_images_generation(bool release_texture) {
     if (global_state.background_images.generation == OPT(background_images).generation) return;
     free_global_background_images(release_texture);
     global_state.background_images.generation = OPT(background_images).generation;
-    global_state.background_images.images = calloc(
-            OPT(background_images).count, sizeof(global_state.background_images.images[0]));
-    if (!global_state.background_images.images) fatal("Out of memory");
+    if (OPT(background_images).count) {
+        global_state.background_images.images = calloc(
+                OPT(background_images).count, sizeof(global_state.background_images.images[0]));
+        if (!global_state.background_images.images) fatal("Out of memory");
+    }
 }
 
 static unsigned bg_image_id_counter = 0;
@@ -241,10 +244,11 @@ global_background_image(size_t idx) {
         BackgroundImage *img = calloc(1, sizeof(BackgroundImage));
         if (!img) fatal("Out of memory");
         if (image_path_to_bitmap(path, &img->bitmap, &img->width, &img->height, &img->mmap_size)) {
-            img->refcnt++;
-            img->id = ++bg_image_id_counter;
-            global_state.background_images.images[global_state.background_images.count++] = img;
-            send_bgimage_to_gpu(OPT(background_image_layout), img);
+            if (send_bgimage_to_gpu(OPT(background_image_layout), img)) {
+                img->refcnt++;
+                img->id = ++bg_image_id_counter;
+                global_state.background_images.images[global_state.background_images.count++] = img;
+            } else free(img);
         } else free(img);
     }
     return global_state.background_images.count > idx ? global_state.background_images.images[idx] : NULL;
@@ -267,7 +271,7 @@ increment_bg_image_idx(size_t idx, int delta) {
         size_t new_idx = idx + delta;
         return global_background_image(new_idx) ? new_idx : 0;
     }
-    if (-delta <= (ssize_t)idx) return idx + delta;
+    if ((unsigned)abs(delta) <= idx) return idx + delta;
     // wrap to last image, which means we need to load all
     global_background_image(global_state.background_images.count + OPT(background_images).count + 1);
     return global_state.background_images.count ? global_state.background_images.count - 1 : 0;
@@ -1393,7 +1397,11 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
             return NULL;
         }
         bgimage->id = ++bg_image_id_counter;
-        send_bgimage_to_gpu(layout, bgimage);
+        if (!send_bgimage_to_gpu(layout, bgimage)) {
+            PyErr_Format(PyExc_ValueError, "Failed to send image to GPU image from: %s", path);
+            free(bgimage);
+            return NULL;
+        }
         bgimage->refcnt++;
     }
     if (configured) {
@@ -1404,6 +1412,8 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
                 free_global_background_images(true);
                 global_state.background_images.images = calloc(1, sizeof(global_state.background_images.images[0]));
                 if (!global_state.background_images.images) fatal("Out of memory");
+                global_state.background_images.count = 1;
+                global_state.background_images.generation = OPT(background_images).generation;
             }
             global_state.background_images.images[0] = bgimage;
             bgimage->refcnt++;

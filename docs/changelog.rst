@@ -2014,7 +2014,7 @@ Detailed list of changes
   window resize (:iss:`5162`)
 
 - Remote control: Fix commands with large or asynchronous payloads like
-  :command:`kitty @ set-backround-image`, :command:`kitty @ set-window-logo`
+  :command:`kitty @ set-background-image`, :command:`kitty @ set-window-logo`
   and :command:`kitty @ select-window` not working correctly
   when using a socket (:iss:`5165`)
 

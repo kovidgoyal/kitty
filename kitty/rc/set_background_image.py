@@ -100,7 +100,7 @@ failed, the command will exit with a success code.
             ret['data'] = '-'
             return ret
         import re
-        if re.match(r'[+-]?\d+', path) is not None:
+        if re.match(r'[+-]?\d+$', path) is not None:
             ret['data'] = f'index:{path}'
             return ret
         if not is_png(path):

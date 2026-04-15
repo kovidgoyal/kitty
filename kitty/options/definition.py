@@ -1961,8 +1961,8 @@ opt('background_image', 'none',
     ' The first one is used as the default image.'
     ' Multiple images are stored in GPU VRAM (on demand) so that transitioning between them is instant.'
     ' In order to move between images in the list of background images, use the remote control command'
-    ' :code:`set-backround-image`, see `kitten set-backround-image --help` for details. You can map the command'
-    ' to a key like this: :code:`map f1 remote_control set-backround-image +1`.'
+    ' :code:`set-background-image`, see `kitten set-background-image --help` for details. You can map the command'
+    ' to a key like this: :code:`map f1 remote_control set-background-image +1`.'
     ' Note that when using :ref:`auto_color_scheme` this option is overridden by the color scheme file and must be set inside it to take effect.'
     )
 
