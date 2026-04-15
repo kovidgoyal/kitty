@@ -418,9 +418,12 @@ func prepare_remote_cmd(cd *connection_data) string {
 
 	remote_command := cd.ssh_config.RemoteCommand
 	if cd.script_type == "py" {
-		return base64.RawStdEncoding.EncodeToString(utils.UnsafeStringToBytes(remote_command))
+		return base64.StdEncoding.EncodeToString(utils.UnsafeStringToBytes(remote_command))
 	}
-	return remote_command
+	if remote_command == "" {
+		return ""
+	}
+	return remote_command + "\n\nexit"
 }
 
 var data_shm shm.MMap
@@ -435,6 +438,7 @@ func prepare_script(script string, replacements map[string]string) string {
 	if _, found := replacements["REMOTE_CMD"]; !found {
 		replacements["REMOTE_CMD"] = ""
 	}
+	replacements["HAS_REMOTE_CMD"] = utils.IfElse(replacements["REMOTE_CMD"] == "", "n", "y")
 	keys := utils.Keys(replacements)
 	for i, key := range keys {
 		keys[i] = "\\b" + key + "\\b"
@@ -640,7 +644,6 @@ func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config_channe
 	}
 	insertion_point := len(cmd)
 	cmd = append(cmd, "--", hostname)
-	cmd = slices.Insert(cmd, insertion_point, "-o", "RemoteCommand=none")
 	uname, hostname_for_match := get_destination(hostname)
 	overrides, literal_env, err := parse_kitten_args(found_extra_args, uname, hostname_for_match)
 	if err != nil {
