@@ -37,6 +37,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/cmd/update_self"
 	"github.com/kovidgoyal/kitty/tools/tui"
 	"github.com/kovidgoyal/kitty/tools/utils/images"
+	"github.com/kovidgoyal/kitty/tools/watch"
 )
 
 var _ = fmt.Print
@@ -135,7 +136,7 @@ func KittyToolEntryPoints(root *cli.Command) {
 		},
 	})
 	// __watch_conf__
-
+	watch.EntryPoint(root)
 	// __convert_image__
 	images.ConvertEntryPoint(root)
 	// __atexit__

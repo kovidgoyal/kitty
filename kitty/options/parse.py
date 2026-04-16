@@ -71,6 +71,9 @@ class Parser:
 
     choices_for_allow_remote_control = frozenset(('password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true'))
 
+    def auto_reload_config(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['auto_reload_config'] = float(val)
+
     def background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['background'] = to_color(val)
 

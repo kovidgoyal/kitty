@@ -2393,6 +2393,15 @@ reloading the config is not supported.
 '''
     )
 
+opt('auto_reload_config', '0.1', option_type='float', long_text='''
+Automatically reload configuration files when they are changed. The setting
+is the number of seconds to wait before reloading the config files. This allows
+multiple changes to be debounced. Use a negative value to disable automatic reload.
+You can manually reload with :sc:`reload_config_file`. Note that automatic
+reload works only if the :file:`kitty.conf` already exists when kitty is started.
+Changes to this setting by reloading configuration are ignored.
+''')
+
 opt('startup_session', 'none',
     option_type='config_or_absolute_path',
     long_text='''

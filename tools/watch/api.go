@@ -27,7 +27,9 @@ func watch_dirs(ctx context.Context, paths []string, debounce time.Duration, eve
 		fswatcher.WithCooldown(debounce),
 	}
 	for _, path := range paths {
-		opts = append(opts, fswatcher.WithPath(path))
+		if unix.Access(path, unix.R_OK|unix.X_OK) == nil {
+			opts = append(opts, fswatcher.WithPath(path))
+		}
 	}
 	w, err := fswatcher.New(opts...)
 	if err != nil {

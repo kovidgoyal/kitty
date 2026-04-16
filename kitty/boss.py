@@ -1390,10 +1390,15 @@ class Boss:
             else:
                 self.startup_first_child(first_os_window_id, startup_sessions=startup_sessions)
 
-        if get_options().update_check_interval > 0 and not self.update_check_started and getattr(sys, 'frozen', False):
+
+        if (opts := get_options()).update_check_interval > 0 and not self.update_check_started and getattr(sys, 'frozen', False):
             from .update_check import run_update_check
             run_update_check(get_options().update_check_interval * 60 * 60)
             self.update_check_started = True
+        if opts.auto_reload_config >= 0 and not hasattr(self, 'config_reload_watcher_process'):
+            self.config_reload_watcher_process = subprocess.Popen(
+                [kitten_exe(), '__watch_conf__', str(os.getpid()), str(int(opts.auto_reload_config * 1000))] +
+                list(opts.all_config_paths), stdin=subprocess.PIPE)
 
     def handle_window_title_bar_mouse(self, os_window_id: int, window_id: int, x: float, y: float, button: int, modifiers: int, action: int) -> None:
         if tm := self.os_window_map.get(os_window_id):

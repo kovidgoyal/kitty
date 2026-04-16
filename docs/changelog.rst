@@ -181,6 +181,8 @@ Detailed list of changes
 
 - Draw a progress bar at the top of the window when a program reports progress using the OSC 9;4 escape sequence, controlled by :opt:`progress_bar` (:iss:`9777`)
 
+- Automatically reload configuration on changes, controlled by :opt:`auto_reload_config`
+
 - Allow specifying multiple background images for :opt:`background_image` that are stored on GPU to allow fast image switching (:pull:`9836`)
 
 - :doc:`Remote control <remote-control>`: Expose :code:`session_name` and :code:`last_focused_at` in the output of ``kitten @ ls`` for each window (:iss:`9732`, :iss:`9799`)
