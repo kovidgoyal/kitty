@@ -182,9 +182,10 @@ func EntryPoint(root *cli.Command) {
 			if err != nil {
 				return 1, err
 			}
+			config_paths := utils.Map(resolve_path, args[2:])
 			if err = watch_for_kitty_config_changes(
 				func() error { return signal_kitty_to_reload_config(kitty_pid) },
-				time.Millisecond*time.Duration(debounce_time_ms), args[2:]); err != nil {
+				time.Millisecond*time.Duration(debounce_time_ms), config_paths); err != nil {
 				return 1, err
 			}
 			return 0, nil
