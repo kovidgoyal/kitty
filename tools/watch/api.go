@@ -178,9 +178,12 @@ func EntryPoint(root *cli.Command) {
 			if err != nil {
 				return 1, err
 			}
-			debounce_time_ms, err := strconv.ParseUint(args[1], 10, 64)
+			debounce_time_ms, err := strconv.Atoi(args[1])
 			if err != nil {
 				return 1, err
+			}
+			if debounce_time_ms < 0 {
+				return 0, fmt.Errorf("debounce_time must be >= 0")
 			}
 			config_paths := utils.Map(resolve_path, args[2:])
 			if err = watch_for_kitty_config_changes(
