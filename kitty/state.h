@@ -95,7 +95,7 @@ typedef struct Options {
 
     char *default_window_logo;
     struct {
-        struct { char *path; } *entries;
+        char **paths;
         size_t count;
         unsigned generation;
     } background_images;
