@@ -247,6 +247,8 @@ Detailed list of changes
 
 - Improve performance of using active process data when rendering the tab bar by only scanning processes once per second (:iss:`9862`)
 
+- macOS: Fix occasional phantom cursors being drawn on screen (:iss:`9725`)
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
