@@ -22,11 +22,14 @@ import (
 var _ = fmt.Print
 
 // watch_dir starts fswatcher in a background goroutine and pipes events to a custom channel.
-func watch_dir(ctx context.Context, path string, debounce time.Duration, eventChan chan<- fswatcher.WatchEvent) error {
-	w, err := fswatcher.New(
-		fswatcher.WithPath(path),
+func watch_dirs(ctx context.Context, paths []string, debounce time.Duration, eventChan chan<- fswatcher.WatchEvent) error {
+	opts := []fswatcher.WatcherOpt{
 		fswatcher.WithCooldown(debounce),
-	)
+	}
+	for _, path := range paths {
+		opts = append(opts, fswatcher.WithPath(path))
+	}
+	w, err := fswatcher.New(opts...)
 	if err != nil {
 		return err
 	}
@@ -108,10 +111,9 @@ func watch_for_kitty_config_changes(action func() error, debounce_time time.Dura
 		}
 		return nil
 	}
-	for _, path := range dirs_to_watch {
-		if err := watch_dir(ctx, path, debounce_time, event_chan); err != nil {
-			return err
-		}
+
+	if err := watch_dirs(ctx, dirs_to_watch, debounce_time, event_chan); err != nil {
+		return err
 	}
 	stdinClosed := make(chan struct{})
 	go func() {
