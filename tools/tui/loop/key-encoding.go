@@ -405,9 +405,9 @@ func (self *KeyEvent) AsCSI() string {
 	if self.Mods != 0 || action > 1 || self.Text != "" {
 		m := uint(self.Mods)
 		if action > 1 || m != 0 {
-			ans.WriteString(fmt.Sprintf(";%d", m+1))
+			fmt.Fprintf(ans, ";%d", m+1)
 			if action > 1 {
-				ans.WriteString(fmt.Sprintf(":%d", action))
+				fmt.Fprintf(ans, ":%d", action)
 			}
 		} else if self.Text != "" {
 			ans.WriteString(";")

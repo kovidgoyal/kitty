@@ -159,7 +159,7 @@ func (self *TerminalStateOptions) SetStateEscapeCodes() string {
 		sb.WriteString("\033[>u")
 	case NO_KEYBOARD_STATE_CHANGE:
 	default:
-		sb.WriteString(fmt.Sprintf("\033[>%du", self.kitty_keyboard_mode))
+		fmt.Fprintf(sb, "\033[>%du", self.kitty_keyboard_mode)
 	}
 	if self.mouse_tracking != NO_MOUSE_TRACKING {
 		sb.WriteString(MOUSE_SGR_PIXEL_MODE.EscapeCodeToSet())
