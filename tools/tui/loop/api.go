@@ -3,6 +3,8 @@
 package loop
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -13,8 +15,10 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/kovidgoyal/go-parallel"
+	"github.com/kovidgoyal/kitty"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/machine_id"
 	"github.com/kovidgoyal/kitty/tools/utils/style"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
@@ -652,4 +656,59 @@ func (self *Loop) DrawSizedText(text string, spec SizedText) {
 	b.WriteString(text)
 	b.WriteString("\a")
 	self.QueueWriteString(b.String())
+}
+
+func (self *Loop) QueueDnDData(metadata map[string]string, payload string, as_base64 bool) IdType {
+	b := strings.Builder{}
+	b.Grow(64)
+	fmt.Fprintf(&b, "\x1b]%d;", kitty.DndCode)
+	is_first := false
+	for key, val := range metadata {
+		if !is_first {
+			b.WriteString(":")
+		}
+		is_first = false
+		fmt.Fprintf(&b, "%s=%s", key, val)
+	}
+	payload_sz := len(payload)
+	if payload_sz == 0 {
+		b.WriteString("\x1b\\")
+		return self.QueueWriteString(b.String())
+	}
+	if as_base64 {
+		payload_sz = base64.RawStdEncoding.EncodedLen(payload_sz)
+		dest := make([]byte, base64.RawStdEncoding.EncodedLen(len(payload)))
+		base64.RawStdEncoding.Encode(dest, utils.UnsafeStringToBytes(payload))
+		payload = utils.UnsafeBytesToString(dest)
+	}
+	const chunk_size = 4096
+	var ans IdType
+	for i := 0; i < len(payload); i += chunk_size {
+		end := i + chunk_size
+		is_last := end >= len(payload)
+		end = min(end, len(payload))
+		if i == 0 {
+			fmt.Fprintf(&b, "m=%d;", utils.IfElse(is_last, 0, 1))
+			self.QueueWriteString(b.String())
+		} else {
+			self.QueueWriteString(fmt.Sprintf("\x1b]%d;m=%d;", kitty.DndCode, utils.IfElse(is_last, 0, 1)))
+		}
+		self.QueueWriteString(payload[i:end])
+		ans = self.QueueWriteString("\x1b\\")
+	}
+	return ans
+}
+
+func (self *Loop) StartAcceptingDrops(mime_types ...string) {
+	self.QueueDnDData(map[string]string{"t": "a"}, strings.Join(mime_types, " "), false)
+	if ans, err := machine_id.MachineId(); err == nil {
+		mac := hmac.New(sha256.New, []byte("tty-dnd-protocol-machine-id"))
+		mac.Write(utils.UnsafeStringToBytes(ans))
+		ans = "1:" + hex.EncodeToString(mac.Sum(nil))
+		self.QueueDnDData(map[string]string{"t": "a", "x": "1"}, ans, false)
+	}
+}
+
+func (self *Loop) StopAcceptingDrops() {
+	self.QueueDnDData(map[string]string{"t": "A"}, "", false)
 }
