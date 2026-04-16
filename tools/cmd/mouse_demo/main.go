@@ -3,92 +3,20 @@
 package mouse_demo
 
 import (
-	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/kovidgoyal/kitty"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
-	"github.com/kovidgoyal/kitty/tools/utils"
-	"github.com/kovidgoyal/kitty/tools/utils/machine_id"
 )
 
 var _ = fmt.Print
 var debugprintln = tty.DebugPrintln
 var _ = debugprintln
-
-const dnd_accepted_mimes = "text/plain text/uri-list"
-
-func dnd_escape(metadata, payload string) string {
-	b := strings.Builder{}
-	fmt.Fprintf(&b, "\x1b]%d;", kitty.DndCode)
-	b.WriteString(metadata)
-	if payload != "" {
-		b.WriteByte(';')
-		b.WriteString(payload)
-	}
-	b.WriteString("\x1b\\")
-	return b.String()
-}
-
-// get_machine_id returns the machine id in the format expected by the DnD
-// protocol ("1:" followed by HMAC-SHA256 of /etc/machine-id).
-func get_machine_id() string {
-	ans, err := machine_id.MachineId()
-	if err != nil {
-		return ""
-	}
-	mac := hmac.New(sha256.New, []byte("tty-dnd-protocol-machine-id"))
-	mac.Write(utils.UnsafeStringToBytes(ans))
-	return "1:" + hex.EncodeToString(mac.Sum(nil))
-}
-
-func dnd_start_accepting(machine_id string) string {
-	result := dnd_escape("t=a", dnd_accepted_mimes)
-	if machine_id != "" {
-		result += dnd_escape("t=a:x=1", machine_id)
-	}
-	return result
-}
-
-func dnd_stop_accepting() string {
-	return dnd_escape("t=A", "")
-}
-
-func dnd_accept_drag(mimes string) string {
-	return dnd_escape("t=m:o=1", mimes)
-}
-
-func dnd_reject_drag() string {
-	return dnd_escape("t=m:o=0", "")
-}
-
-// dnd_request_mime_data requests MIME type data by 1-based index.
-func dnd_request_mime_data(idx int) string {
-	return dnd_escape(fmt.Sprintf("t=r:x=%d", idx), "")
-}
-
-// dnd_request_file requests individual file data by MIME index and file subindex.
-func dnd_request_file(mime_idx, file_idx int) string {
-	return dnd_escape(fmt.Sprintf("t=r:x=%d:y=%d", mime_idx, file_idx), "")
-}
-
-// dnd_close_dir closes a directory handle by sending t=r:Y=handle.
-func dnd_close_dir(handle int) string {
-	return dnd_escape(fmt.Sprintf("t=r:Y=%d", handle), "")
-}
-
-func dnd_finish() string {
-	return dnd_escape("t=r", "")
-}
 
 // file_info holds metadata about a dropped file.
 type file_info struct {
@@ -258,8 +186,6 @@ func Run(args []string) (rc int, err error) {
 	var current_mouse_event *loop.MouseEvent
 	var dnd dnd_state
 
-	machine_id := get_machine_id()
-
 	// build_box_lines computes the drop box content lines based on current state.
 	build_box_lines := func() []string {
 		if dnd.drag_over_box {
@@ -428,7 +354,11 @@ func Run(args []string) (rc int, err error) {
 				// Request this file via the protocol.
 				dnd.file_read_size = 0
 				dnd.collecting = "file"
-				lp.QueueWriteString(dnd_request_file(dnd.uri_list_mime_idx, dnd.file_read_idx+1))
+				lp.QueueDnDData(map[string]string{
+					"t": "r",
+					"x": strconv.Itoa(dnd.uri_list_mime_idx),
+					"y": strconv.Itoa(dnd.file_read_idx + 1),
+				}, "", false)
 				return
 			}
 			// Non-file URI: record as-is with no size info.
@@ -437,50 +367,30 @@ func Run(args []string) (rc int, err error) {
 		}
 		// All files processed; finish the drop.
 		dnd.collecting = ""
-		lp.QueueWriteString(dnd_finish())
+		lp.QueueDnDData(map[string]string{"t": "r"}, "", false)
 		dnd.has_drop_data = true
 		draw_screen()
 	}
 
-	handle_dnd_osc := func(raw []byte) error {
-		// raw is the OSC payload after ESC ] and before ST.
-		// Format: DND_CODE;metadata[;payload]
-		prefix := fmt.Sprintf("%d;", kitty.DndCode)
-		if !bytes.HasPrefix(raw, []byte(prefix)) {
-			return nil
-		}
-		rest := string(raw[len(prefix):])
-		// Split into metadata and optional payload.
-		meta, payload, _ := strings.Cut(rest, ";")
-		// Parse metadata key=value pairs separated by ':'.
-		meta_map := make(map[string]string)
-		for kv := range strings.SplitSeq(meta, ":") {
-			k, v, _ := strings.Cut(kv, "=")
-			if k != "" {
-				meta_map[k] = v
-			}
-		}
-		t := meta_map["t"]
-		switch t {
-		case "m":
+	handle_dnd_cmd := func(cmd loop.DndCommand) error {
+		switch cmd.Type {
+		case 'm':
 			// Drag move event from terminal.
 			// Check if drag has left the window (x=-1, y=-1).
-			if meta_map["x"] == "-1" || meta_map["y"] == "-1" {
+			if cmd.X == -1 || cmd.Y == -1 {
 				dnd.reset_drag()
 				draw_screen()
 				return nil
 			}
-			mimes := strings.Fields(payload)
+			mimes := strings.Fields(string(cmd.Payload))
 			if len(mimes) > 0 {
 				dnd.drag_mimes = mimes
 			}
 			dnd.dragging = true
-			cx, _ := strconv.Atoi(meta_map["x"])
-			cy, _ := strconv.Atoi(meta_map["y"])
-			dnd.drag_cell_x = cx
-			dnd.drag_cell_y = cy
+			dnd.drag_cell_x = cmd.X
+			dnd.drag_cell_y = cmd.Y
 
-			over_box := dnd.is_over_drop_box(cx, cy)
+			over_box := dnd.is_over_drop_box(cmd.X, cmd.Y)
 			dnd.drag_over_box = over_box
 
 			if over_box {
@@ -492,18 +402,18 @@ func Run(args []string) (rc int, err error) {
 					}
 				}
 				if len(accepted_mimes) > 0 {
-					lp.QueueWriteString(dnd_accept_drag(strings.Join(accepted_mimes, " ")))
+					lp.QueueDnDData(map[string]string{"t": "m", "o": "1"}, strings.Join(accepted_mimes, " "), false)
 				}
 			} else {
 				// Not over drop region; reject the drag.
-				lp.QueueWriteString(dnd_reject_drag())
+				lp.QueueDnDData(map[string]string{"t": "m", "o": "0"}, "", false)
 			}
 			draw_screen()
-		case "M":
+		case 'M':
 			// Drop event from terminal.
 			dnd.reset_drag()
 			dnd.reset_drop_data()
-			mimes := strings.Fields(payload)
+			mimes := strings.Fields(string(cmd.Payload))
 			dnd.drop_mimes = mimes
 
 			// Find the MIME indices we need.
@@ -517,35 +427,32 @@ func Run(args []string) (rc int, err error) {
 			for idx, m := range mimes {
 				if m == "text/plain" {
 					dnd.collecting = "text/plain"
-					lp.QueueWriteString(dnd_request_mime_data(idx + 1))
+					lp.QueueDnDData(map[string]string{"t": "r", "x": strconv.Itoa(idx + 1)}, "", false)
 					return nil
 				}
 			}
 			if dnd.uri_list_mime_idx > 0 {
 				dnd.collecting = "text/uri-list"
-				lp.QueueWriteString(dnd_request_mime_data(dnd.uri_list_mime_idx))
+				lp.QueueDnDData(map[string]string{"t": "r", "x": strconv.Itoa(dnd.uri_list_mime_idx)}, "", false)
 				return nil
 			}
 			// Nothing to collect; signal done.
-			lp.QueueWriteString(dnd_finish())
+			lp.QueueDnDData(map[string]string{"t": "r"}, "", false)
 			dnd.has_drop_data = true
 			draw_screen()
-		case "r":
+		case 'r':
 			// Data response from terminal.
-			resp_y, _ := strconv.Atoi(meta_map["y"])
-			resp_X, _ := strconv.Atoi(meta_map["X"])
-
-			is_file_response := resp_y != 0
+			is_file_response := cmd.Y != 0
 			if is_file_response {
 				// Response for an individual file request (t=r:x=idx:y=subidx).
-				if payload == "" {
+				if !cmd.Has_more && len(cmd.Payload) == 0 {
 					// End of file data.
 					fi := file_info{}
-					if resp_X > 1 {
+					if cmd.Xp > 1 {
 						// Directory: close the handle.
 						fi.is_dir = true
-						lp.QueueWriteString(dnd_close_dir(resp_X))
-					} else if resp_X == 1 {
+						lp.QueueDnDData(map[string]string{"t": "r", "Y": strconv.Itoa(cmd.Xp)}, "", false)
+					} else if cmd.Xp == 1 {
 						fi.is_link = true
 						fi.size = dnd.file_read_size
 					} else {
@@ -556,7 +463,7 @@ func Run(args []string) (rc int, err error) {
 					draw_screen()
 					start_next_file_request()
 				} else {
-					decoded, err := base64.RawStdEncoding.DecodeString(payload)
+					decoded, err := base64.RawStdEncoding.DecodeString(string(cmd.Payload))
 					if err == nil {
 						dnd.file_read_size += int64(len(decoded))
 					}
@@ -565,7 +472,7 @@ func Run(args []string) (rc int, err error) {
 			}
 
 			// Response for a MIME type data request.
-			if payload == "" {
+			if !cmd.Has_more && len(cmd.Payload) == 0 {
 				// End of MIME type data.
 				switch dnd.collecting {
 				case "text/plain":
@@ -580,14 +487,14 @@ func Run(args []string) (rc int, err error) {
 					// Now request text/uri-list if available.
 					if dnd.uri_list_mime_idx > 0 {
 						dnd.collecting = "text/uri-list"
-						lp.QueueWriteString(dnd_request_mime_data(dnd.uri_list_mime_idx))
+						lp.QueueDnDData(map[string]string{"t": "r", "x": strconv.Itoa(dnd.uri_list_mime_idx)}, "", false)
 						return nil
 					}
 				case "text/uri-list":
 					text := dnd.collect_buf.String()
 					dnd.collect_buf.Reset()
 					// Check if terminal indicated remote files (X=1 in URI list response).
-					if resp_X == 1 {
+					if cmd.Xp == 1 {
 						dnd.is_remote = true
 					}
 					// Parse URI list: lines starting with # are comments.
@@ -605,33 +512,32 @@ func Run(args []string) (rc int, err error) {
 					}
 				}
 				dnd.collecting = ""
-				lp.QueueWriteString(dnd_finish())
+				lp.QueueDnDData(map[string]string{"t": "r"}, "", false)
 				dnd.has_drop_data = true
 				draw_screen()
 			} else {
-				decoded, err := base64.RawStdEncoding.DecodeString(payload)
+				decoded, err := base64.RawStdEncoding.DecodeString(string(cmd.Payload))
 				if err == nil {
 					dnd.collect_buf.Write(decoded)
 					// Capture X from URI list response (may be in first chunk).
-					if dnd.collecting == "text/uri-list" && resp_X != 0 {
-						dnd.is_remote = resp_X == 1
+					if dnd.collecting == "text/uri-list" && cmd.Xp != 0 {
+						dnd.is_remote = cmd.Xp == 1
 					}
 				}
 			}
-		case "R":
+		case 'R':
 			// Error response from terminal.
-			resp_y, _ := strconv.Atoi(meta_map["y"])
-			is_file_response := resp_y != 0
+			is_file_response := cmd.Y != 0
 			if is_file_response && dnd.collecting == "file" {
 				// Record the error for this file.
-				dnd.file_infos = append(dnd.file_infos, file_info{err_msg: payload})
+				dnd.file_infos = append(dnd.file_infos, file_info{err_msg: string(cmd.Payload)})
 				dnd.file_read_idx++
 				draw_screen()
 				start_next_file_request()
 			} else if !is_file_response {
 				// Error getting MIME data; finish the drop with what we have.
 				dnd.collecting = ""
-				lp.QueueWriteString(dnd_finish())
+				lp.QueueDnDData(map[string]string{"t": "r"}, "", false)
 				dnd.has_drop_data = true
 				draw_screen()
 			}
@@ -642,13 +548,14 @@ func Run(args []string) (rc int, err error) {
 	lp.OnInitialize = func() (string, error) {
 		lp.SetWindowTitle("kitty mouse features demo")
 		lp.SetCursorVisible(false)
-		lp.QueueWriteString(dnd_start_accepting(machine_id))
+		lp.StartAcceptingDrops("text/plain", "text/uri-list")
 		draw_screen()
 		return "", nil
 	}
 	lp.OnFinalize = func() string {
 		lp.SetCursorVisible(true)
-		return dnd_stop_accepting()
+		lp.StopAcceptingDrops()
+		return ""
 	}
 
 	lp.OnMouseEvent = func(ev *loop.MouseEvent) error {
@@ -666,12 +573,7 @@ func Run(args []string) (rc int, err error) {
 		draw_screen()
 		return nil
 	}
-	lp.OnEscapeCode = func(etype loop.EscapeCodeType, raw []byte) error {
-		if etype == loop.OSC {
-			return handle_dnd_osc(raw)
-		}
-		return nil
-	}
+	lp.OnDnDData = handle_dnd_cmd
 	err = lp.Run()
 	if err != nil {
 		rc = 1
