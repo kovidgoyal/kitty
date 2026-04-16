@@ -384,15 +384,15 @@ func (self *KeyEvent) AsCSI() string {
 	ans.Grow(32)
 	ans.WriteString("\033[")
 	if key != 1 || self.Mods != 0 || shifted_key != 0 || alternate_key != 0 || self.Text != "" {
-		ans.WriteString(fmt.Sprint(key))
+		fmt.Fprint(&ans, key)
 	}
 	if shifted_key != 0 || alternate_key != 0 {
 		ans.WriteString(":")
 		if shifted_key != 0 {
-			ans.WriteString(fmt.Sprint(shifted_key))
+			fmt.Fprint(&ans, shifted_key)
 		}
 		if alternate_key != 0 {
-			ans.WriteString(fmt.Sprint(":", alternate_key))
+			fmt.Fprint(&ans, ":", alternate_key)
 		}
 	}
 	action := 1
@@ -405,9 +405,9 @@ func (self *KeyEvent) AsCSI() string {
 	if self.Mods != 0 || action > 1 || self.Text != "" {
 		m := uint(self.Mods)
 		if action > 1 || m != 0 {
-			fmt.Fprintf(ans, ";%d", m+1)
+			fmt.Fprintf(&ans, ";%d", m+1)
 			if action > 1 {
-				fmt.Fprintf(ans, ":%d", action)
+				fmt.Fprintf(&ans, ":%d", action)
 			}
 		} else if self.Text != "" {
 			ans.WriteString(";")
