@@ -1622,10 +1622,13 @@ screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_scree
     self->is_dirty = true;
     grman_mark_layers_dirty(self->grman);
     clear_all_selections(self);
-    if (self->extra_cursors.count) {
-        self->extra_cursors.count = 0;
-        self->extra_cursors.dirty = true;
-    }
+    self->extra_cursors.count = 0;
+    // Force re-upload of the selection buffer as the number of render lines
+    // changes when pixel_scroll_enabled changes (which depends on which
+    // linebuf is active). Without this, the selection buffer can be smaller
+    // than the cell data buffer, causing OOB reads that produce cursor
+    // artifacts (see #9725).
+    self->extra_cursors.dirty = true;
     global_state.check_for_active_animated_images = true;
 }
 
