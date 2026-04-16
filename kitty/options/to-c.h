@@ -196,7 +196,6 @@ background_images(PyObject *src, Options *opts) {
         opts->background_images.count = new_count;
         for (size_t i = 0; i < opts->background_images.count; i++) {
             opts->background_images.entries[i].path = strdup(PyUnicode_AsUTF8(PyTuple_GET_ITEM(src, i)));
-            opts->background_images.entries[i].load_attempted = false;
         }
     }
 }
