@@ -94,9 +94,10 @@ func get_set_of_config_files(config_paths []string) *utils.Set[string] {
 	return cp.AllIncludedFiles
 }
 
-func watch_for_kitty_config_changes(action func() error, debounce_time time.Duration, config_paths []string) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+// watch_for_config_changes watches the directories derived from config_paths and calls action
+// whenever a watched config file (including includes and auto color scheme files) changes.
+// It runs until ctx is cancelled.
+func watch_for_config_changes(ctx context.Context, action func() error, debounce_time time.Duration, config_paths []string) error {
 	event_chan := make(chan fswatcher.WatchEvent)
 	all_paths := get_set_of_config_files(config_paths)
 	dirs_to_watch := get_unique_directories(all_paths.AsSlice())
@@ -115,23 +116,28 @@ func watch_for_kitty_config_changes(action func() error, debounce_time time.Dura
 	if err := watch_dirs(ctx, dirs_to_watch, debounce_time, event_chan); err != nil {
 		return err
 	}
-	stdinClosed := make(chan struct{})
-	go func() {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-		}
-		close(stdinClosed)
-	}()
 	for {
 		select {
 		case event := <-event_chan:
 			if err := filtered_action(event); err != nil {
 				fmt.Fprintf(os.Stderr, "failed to signal kitty in event: %s with error: %s\n", event, err)
 			}
-		case <-stdinClosed:
+		case <-ctx.Done():
 			return nil
 		}
 	}
+}
+
+func watch_for_kitty_config_changes(action func() error, debounce_time time.Duration, config_paths []string) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+		}
+		cancel()
+	}()
+	return watch_for_config_changes(ctx, action, debounce_time, config_paths)
 }
 
 func signal_kitty_to_reload_config(kitty_pid int) error {
