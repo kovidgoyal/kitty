@@ -23,8 +23,8 @@ func testBinding(key, action, help string) Binding {
 // Action. Action is derived as the first word of actionDisplay.
 func testMouseBinding(key, actionDisplay string) Binding {
 	action := actionDisplay
-	if idx := strings.IndexByte(actionDisplay, ' '); idx >= 0 {
-		action = actionDisplay[:idx]
+	if before, _, ok := strings.Cut(actionDisplay, " "); ok {
+		action = before
 	}
 	return Binding{
 		Key:           key,

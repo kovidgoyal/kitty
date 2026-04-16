@@ -142,8 +142,8 @@ func bestWordMatch(queryToken string, words []wordToken, colText string) (score 
 
 	// Compound token: try exact substring match in the column text
 	colLower := strings.ToLower(colText)
-	if idx := strings.Index(colLower, queryToken); idx != -1 {
-		runeIdx := len([]rune(colLower[:idx]))
+	if before, _, ok := strings.Cut(colLower, queryToken); ok {
+		runeIdx := len([]rune(before))
 		qRuneLen := len([]rune(queryToken))
 		subParts := strings.FieldsFunc(queryToken, isWordDelimiter)
 		return 4 * len(subParts), runeRange(runeIdx, runeIdx+qRuneLen)

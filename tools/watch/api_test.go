@@ -245,7 +245,7 @@ func TestWatchForConfigChangesDebounce(t *testing.T) {
 	// Write to the file several times rapidly within the debounce window.
 	// The fswatcher debouncer drops events that occur within the cooldown period
 	// after the first event, so only the first write should produce an action call.
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		write_file(t, main_conf, fmt.Sprintf("font_size %d\n", 12+i))
 		time.Sleep(20 * time.Millisecond)
 	}
