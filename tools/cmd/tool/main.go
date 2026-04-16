@@ -134,6 +134,7 @@ func KittyToolEntryPoints(root *cli.Command) {
 			return confirm_and_run_exe(args)
 		},
 	})
+	// __watch_conf__
 
 	// __convert_image__
 	images.ConvertEntryPoint(root)

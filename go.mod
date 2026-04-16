@@ -20,6 +20,7 @@ require (
 	github.com/kovidgoyal/imaging v1.8.21
 	github.com/nwaples/rardecode/v2 v2.2.2
 	github.com/seancfoley/ipaddress-go v1.7.1
+	github.com/sgtdi/fswatcher v1.2.0
 	github.com/shirou/gopsutil/v4 v4.26.3
 	github.com/ulikunitz/xz v0.5.15
 	github.com/zeebo/xxh3 v1.1.0

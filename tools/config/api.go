@@ -39,9 +39,10 @@ type ConfigLine struct {
 }
 
 type ConfigParser struct {
-	LineHandler     func(key, val string) error
-	CommentsHandler func(line string) error
-	SourceHandler   func(text, path string)
+	LineHandler      func(key, val string) error
+	CommentsHandler  func(line string) error
+	SourceHandler    func(text, path string)
+	AllIncludedFiles *utils.Set[string]
 
 	bad_lines     []ConfigLine
 	seen_includes map[string]bool
@@ -111,11 +112,16 @@ func ExpandVars(x string) string {
 	})
 }
 
+const OverridesFileName = "<overrides>"
+
 func (self *ConfigParser) parse(scanner Scanner, name, base_path_for_includes string, depth int) error {
 	if self.seen_includes[name] { // avoid include loops
 		return nil
 	}
 	self.seen_includes[name] = true
+	if self.AllIncludedFiles != nil && name != OverridesFileName {
+		self.AllIncludedFiles.Add(name)
+	}
 
 	recurse := func(r io.Reader, nname, base_path_for_includes string) error {
 		if depth > 32 {
