@@ -673,13 +673,10 @@ func (self *Loop) QueueDnDData(metadata map[string]string, payload string, as_ba
 	b := strings.Builder{}
 	b.Grow(64)
 	fmt.Fprintf(&b, "\x1b]%d;", kitty.DndCode)
-	is_first := false
+	sep := ""
 	for key, val := range metadata {
-		if !is_first {
-			b.WriteString(":")
-		}
-		is_first = false
-		fmt.Fprintf(&b, "%s=%s", key, val)
+		fmt.Fprintf(&b, "%s%s=%s", sep, key, val)
+		sep = ":"
 	}
 	payload_sz := len(payload)
 	if payload_sz == 0 {
@@ -699,7 +696,7 @@ func (self *Loop) QueueDnDData(metadata map[string]string, payload string, as_ba
 		is_last := end >= len(payload)
 		end = min(end, len(payload))
 		if i == 0 {
-			fmt.Fprintf(&b, "m=%d;", utils.IfElse(is_last, 0, 1))
+			fmt.Fprintf(&b, "%sm=%d;", sep, utils.IfElse(is_last, 0, 1))
 			self.QueueWriteString(b.String())
 		} else {
 			self.QueueWriteString(fmt.Sprintf("\x1b]%d;m=%d;", kitty.DndCode, utils.IfElse(is_last, 0, 1)))
