@@ -41,6 +41,14 @@ const (
 	PM
 )
 
+type DndCommand struct {
+	Type         byte
+	Has_more     bool
+	Operation    int
+	X, Y, Xp, Yp int
+	Payload      []byte
+}
+
 type Loop struct {
 	controlling_term                       *tty.Term
 	terminal_options                       TerminalStateOptions
@@ -101,6 +109,9 @@ type Loop struct {
 
 	// Called when a response to a query command is received
 	OnQueryResponse func(key, val string, valid bool) error
+
+	// Called when a drag and drop protocol escape code is received
+	OnDnDData func(cmd DndCommand) error
 
 	// Called when any input from tty is received
 	OnReceivedData func(data []byte) error

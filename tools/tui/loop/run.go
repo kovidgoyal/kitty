@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/kovidgoyal/kitty"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/utils"
 )
@@ -233,7 +234,57 @@ func (self *Loop) handle_key_event(ev *KeyEvent) error {
 	return nil
 }
 
+func (self *Loop) handle_dnd(data []byte) error {
+	var payload []byte
+	if idx := bytes.IndexByte(data, ';'); idx >= 0 {
+		payload = data[idx+1:]
+		data = data[:idx]
+	}
+	cmd := DndCommand{Payload: payload}
+	for field := range bytes.SplitSeq(data, []byte{':'}) {
+		if k, v, found := bytes.Cut(field, []byte{'='}); found && len(k) == 1 && len(v) > 0 {
+			switch k[0] {
+			case 't':
+				cmd.Type = v[0]
+			case 'm':
+				cmd.Has_more = v[0] == '1'
+			case 'o':
+				if val, err := strconv.Atoi(utils.UnsafeBytesToString(v)); err == nil {
+					cmd.Operation = val
+				}
+			case 'x':
+				if val, err := strconv.Atoi(utils.UnsafeBytesToString(v)); err == nil {
+					cmd.X = val
+				}
+			case 'y':
+				if val, err := strconv.Atoi(utils.UnsafeBytesToString(v)); err == nil {
+					cmd.Y = val
+				}
+			case 'X':
+				if val, err := strconv.Atoi(utils.UnsafeBytesToString(v)); err == nil {
+					cmd.Xp = val
+				}
+			case 'Y':
+				if val, err := strconv.Atoi(utils.UnsafeBytesToString(v)); err == nil {
+					cmd.Yp = val
+				}
+			}
+		}
+	}
+	return self.OnDnDData(cmd)
+}
+
 func (self *Loop) handle_osc(raw []byte) error {
+	if idx := bytes.IndexByte(raw, ';'); idx >= 2 {
+		if code, err := strconv.ParseUint(utils.UnsafeBytesToString(raw[:idx]), 10, 0); err == nil {
+			switch code {
+			case uint64(kitty.DndCode):
+				if self.OnDnDData != nil {
+					return self.handle_dnd(raw[idx+1:])
+				}
+			}
+		}
+	}
 	if self.OnEscapeCode != nil {
 		return self.OnEscapeCode(OSC, raw)
 	}
