@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
-	"sync"
+	"strings"
 	"time"
 
 	"github.com/sgtdi/fswatcher"
@@ -38,17 +39,48 @@ func watch_dir(ctx context.Context, path string, debounce time.Duration, eventCh
 	return nil
 }
 
-type config_file_collection struct {
-	mutex         sync.Mutex
-	config_paths  []string
-	dirs_to_watch []string
+// returns the closest unique parent directories for a list of paths.
+// It excludes any directory that is a subdirectory of another directory already in the result set.
+func get_unique_directories(paths []string) []string {
+	if len(paths) == 0 {
+		return nil
+	}
+
+	// 1. Extract parent directories and remove duplicates
+	dirMap := utils.NewSet[string](len(paths))
+	for _, p := range paths {
+		dirMap.Add(filepath.Dir(p))
+	}
+
+	// 2. Convert map to a sorted slice
+	// Sorting ensures that shorter paths (potential parents) come before longer ones (potential children)
+	uniqueDirs := dirMap.AsSlice()
+	sort.Strings(uniqueDirs)
+
+	// 3. Filter out subdirectories
+	var result []string
+	for _, current := range uniqueDirs {
+		isSubDir := false
+		for _, parent := range result {
+			// Check if 'current' is a subdirectory of 'parent'
+			// Strings.HasPrefix is safe here because paths are sorted and Cleaned by filepath.Dir
+			if current == parent || strings.HasPrefix(current, parent+string(filepath.Separator)) {
+				isSubDir = true
+				break
+			}
+		}
+		if !isSubDir {
+			result = append(result, current)
+		}
+	}
+	return result
 }
 
-func (cfc *config_file_collection) get_list_of_config_files() *utils.Set[string] {
+func get_set_of_config_files(config_paths []string) *utils.Set[string] {
 	cp := config.ConfigParser{
 		AllIncludedFiles: utils.NewSet[string](), LineHandler: func(k, v string) error { return nil }}
-	cp.ParseFiles(cfc.config_paths...)
-	for _, path := range cfc.config_paths {
+	cp.ParseFiles(config_paths...)
+	for _, path := range config_paths {
 		path = filepath.Clean(path)
 		cp.AllIncludedFiles.Add(path)
 		for _, q := range []string{"dark-theme.auto.conf", "light-theme.auto.conf", "no-preference-theme.auto.conf"} {
@@ -59,36 +91,24 @@ func (cfc *config_file_collection) get_list_of_config_files() *utils.Set[string]
 	return cp.AllIncludedFiles
 }
 
-func (cfc *config_file_collection) EventIsSignificant(ev fswatcher.WatchEvent) bool {
-	cfc.mutex.Lock()
-	defer cfc.mutex.Unlock()
-	conf_files := cfc.get_list_of_config_files()
-	q := filepath.Clean(ev.Path)
-	return conf_files.Has(q)
-}
-
 func watch_for_kitty_config_changes(action func() error, debounce_time time.Duration, config_paths []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	event_chan := make(chan fswatcher.WatchEvent)
-	dirs := utils.NewSet[string](len(config_paths))
-	for _, path := range config_paths {
-		if parent := filepath.Dir(path); parent != "" && parent != "." && parent != "/" {
-			dirs.Add(path)
-		}
-	}
-	if dirs.Len() == 0 {
+	all_paths := get_set_of_config_files(config_paths)
+	dirs_to_watch := get_unique_directories(all_paths.AsSlice())
+	if len(dirs_to_watch) == 0 {
 		return fmt.Errorf("No directories to watch provided")
 	}
-	cfc := config_file_collection{config_paths: config_paths, dirs_to_watch: dirs.AsSlice()}
 
 	filtered_action := func(ev fswatcher.WatchEvent) error {
-		if cfc.EventIsSignificant(ev) {
+		all_paths := get_set_of_config_files(config_paths)
+		if all_paths.Has(filepath.Clean(ev.Path)) {
 			return action()
 		}
 		return nil
 	}
-	for _, path := range cfc.dirs_to_watch {
+	for _, path := range dirs_to_watch {
 		if err := watch_dir(ctx, path, debounce_time, event_chan); err != nil {
 			return err
 		}
