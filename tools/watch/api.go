@@ -79,19 +79,38 @@ func get_unique_directories(paths []string) []string {
 	return result
 }
 
+// resolve_path resolves symlinks in the directory component of path so the result
+// matches what the OS-level file-system watcher (FSEvents on macOS, inotify on Linux)
+// reports. This is important on macOS where /tmp is a symlink to /private/tmp.
+// If the directory cannot be resolved (e.g. it doesn't exist yet) the path is
+// returned cleaned but unresolved.
+func resolve_path(path string) string {
+	dir := filepath.Dir(path)
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		return filepath.Join(resolved, filepath.Base(path))
+	}
+	return filepath.Clean(path)
+}
+
 func get_set_of_config_files(config_paths []string) *utils.Set[string] {
 	cp := config.ConfigParser{
 		AllIncludedFiles: utils.NewSet[string](), LineHandler: func(k, v string) error { return nil }}
 	cp.ParseFiles(config_paths...)
+	// Resolve symlinks in all paths collected by the parser (important on macOS
+	// where /tmp -> /private/tmp causes mismatches with FSEvents-reported paths).
+	result := utils.NewSet[string](cp.AllIncludedFiles.Len() + len(config_paths)*4)
+	for _, p := range cp.AllIncludedFiles.AsSlice() {
+		result.Add(resolve_path(p))
+	}
 	for _, path := range config_paths {
-		path = filepath.Clean(path)
-		cp.AllIncludedFiles.Add(path)
+		path = resolve_path(path)
+		result.Add(path)
+		dir := filepath.Dir(path)
 		for _, q := range []string{"dark-theme.auto.conf", "light-theme.auto.conf", "no-preference-theme.auto.conf"} {
-			q = filepath.Join(filepath.Dir(path), q)
-			cp.AllIncludedFiles.Add(filepath.Clean(q))
+			result.Add(resolve_path(filepath.Join(dir, q)))
 		}
 	}
-	return cp.AllIncludedFiles
+	return result
 }
 
 // watch_for_config_changes watches the directories derived from config_paths and calls action
@@ -107,7 +126,7 @@ func watch_for_config_changes(ctx context.Context, action func() error, debounce
 
 	filtered_action := func(ev fswatcher.WatchEvent) error {
 		all_paths := get_set_of_config_files(config_paths)
-		if all_paths.Has(filepath.Clean(ev.Path)) {
+		if all_paths.Has(resolve_path(ev.Path)) {
 			return action()
 		}
 		return nil
