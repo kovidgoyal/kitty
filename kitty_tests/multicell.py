@@ -14,6 +14,18 @@ class TestMulticell(BaseTest):
     def test_multicell(self):
         test_multicell(self)
 
+    def test_overlay_line_does_not_crash_on_uninit_linebuf_view(self):
+        # Regression: screen_draw_overlay_line accessed self->linebuf->line->cpu_cells
+        # without ever calling linebuf_init_line, so on render paths that
+        # initialize a stack-local Line (render_line_for_virtual_y) the shared
+        # view's cpu_cells stayed NULL and the multicell-trim loop dereferenced
+        # NULL + xstart * sizeof(CPUCell). Reproduces by placing a wide cell at
+        # xstart>0 and triggering the overlay draw directly.
+        for xstart in (1, 2, 3):
+            s = self.create_screen(cols=10, lines=5)
+            s.draw('好好')  # two 2-cell wide chars covering columns 0..3
+            s.test_draw_overlay_line('xy', xstart, 0)  # would SIGSEGV without fix
+
 
 def test_multicell(self: TestMulticell) -> None:
     from kitty.tab_bar import as_rgb
