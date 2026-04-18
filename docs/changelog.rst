@@ -193,6 +193,8 @@ Detailed list of changes
 
 - Wayland: Use hold gestures to cancel momentum scrolling when fingers are placed on the trackpad, for a more natural kinetic scrolling experience (:iss:`9863`)
 
+- macOS: Switch to new Tahoe style application icon with different background in light and dark modes
+
 - Fix thickness of diagonal lines in box drawing characters not the same as horizontal/vertical lines (:iss:`9719`)
 
 - Graphics protocol: Fix crash when handling invalid PNG image with direct transmission
