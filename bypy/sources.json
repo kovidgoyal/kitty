@@ -78,7 +78,7 @@
     },
 
     {
-        "name": "sqlite 3.50.4",
+        "name": "sqlite 3.53.0",
         "unix": {
             "file_extension": "tar.gz",
             "hash": "sha256:a3db587a1b92ee5ddac2f66b3edb41b26f9c867275782d46c3a088977d6a5b18",
