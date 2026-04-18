@@ -4283,6 +4283,11 @@ screen_update_overlay_text(Screen *self, const char *utf8_text) {
 static void
 screen_draw_overlay_line(Screen *self) {
     if (!self->overlay_line.overlay_text) return;
+    // self->linebuf->line is a shared view that callers may not have pointed
+    // at the overlay row (e.g. render_line_for_virtual_y inits a stack-local
+    // Line instead). Without this, line->cpu_cells can be NULL or stale,
+    // crashing the cell loops below.
+    linebuf_init_line(self->linebuf, self->overlay_line.ynum);
     // Right-align the overlay to ensure that the pre-edit text just entered is visible when the cursor is near the end of the line.
     index_type xstart = self->overlay_line.text_len <= self->columns ? self->columns - self->overlay_line.text_len : 0;
     if (self->overlay_line.xstart < xstart) xstart = self->overlay_line.xstart;
@@ -6067,6 +6072,26 @@ test_create_write_buffer(Screen *screen UNUSED, PyObject *args UNUSED) {
 }
 
 static PyObject*
+test_draw_overlay_line(Screen *self, PyObject *args) {
+    PyObject *text;
+    unsigned int xstart, ynum;
+    if (!PyArg_ParseTuple(args, "UII", &text, &xstart, &ynum)) return NULL;
+    if (ynum >= self->lines || xstart >= self->columns) {
+        PyErr_SetString(PyExc_IndexError, "ynum or xstart out of range");
+        return NULL;
+    }
+    Py_INCREF(text);
+    Py_XDECREF(self->overlay_line.overlay_text);
+    self->overlay_line.overlay_text = text;
+    self->overlay_line.text_len = (index_type)PyUnicode_GET_LENGTH(text);
+    self->overlay_line.xstart = xstart;
+    self->overlay_line.ynum = ynum;
+    self->overlay_line.is_active = true;
+    screen_draw_overlay_line(self);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 test_commit_write_buffer(Screen *screen, PyObject *args) {
     RAII_PY_BUFFER(srcbuf); RAII_PY_BUFFER(destbuf);
     if (!PyArg_ParseTuple(args, "y*y*", &srcbuf, &destbuf)) return NULL;
@@ -6153,6 +6178,7 @@ static PyMethodDef methods[] = {
     METHODB(test_create_write_buffer, METH_NOARGS),
     METHODB(test_commit_write_buffer, METH_VARARGS),
     METHODB(test_parse_written_data, METH_VARARGS),
+    METHODB(test_draw_overlay_line, METH_VARARGS),
     MND(line_edge_colors, METH_NOARGS)
     MND(line, METH_O)
     MND(dump_lines_with_attrs, METH_VARARGS)
