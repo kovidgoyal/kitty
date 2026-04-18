@@ -719,6 +719,10 @@ def default_save_as_session_opts() -> SaveAsSessionOptions:
 
 def save_as_session(boss: BossType, cmdline: Sequence[str]) -> None:
     opts, args = parse_save_as_options_spec_args(list(cmdline))
+    if args and len(args) > 1:
+        boss.show_error(_('Invalid save_as_session command line'), _(
+            'save_as_session must have no more than a single path argument. Note that any flags/options should come before the path'))
+        return
     path = args[0] if args else ''
     if path == '.':
         sn = boss.active_session
