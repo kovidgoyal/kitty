@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -318,10 +319,23 @@ func title_lines(left_path, right_path string, columns, margin_size int, ans []*
 
 type LogicalLines struct {
 	lines                []*LogicalLine
+	title_line_indices   []int // sorted indices of TITLE_LINEs in lines -- used for sticky_header
 	margin_size, columns int
 }
 
 func (self *LogicalLines) At(i int) *LogicalLine { return self.lines[i] }
+
+func (self *LogicalLines) TitleLineIdxFor(line_idx int) int {
+	if len(self.title_line_indices) == 0 || line_idx < 0 {
+		return -1
+	}
+	// first title index > line_idx, so the one before it is our answer
+	i := sort.SearchInts(self.title_line_indices, line_idx+1)
+	if i == 0 {
+		return -1
+	}
+	return self.title_line_indices[i-1]
+}
 
 func (self *LogicalLines) ScreenLineAt(pos ScrollPos) *ScreenLine {
 	if pos.logical_line < len(self.lines) && pos.logical_line >= 0 {
@@ -793,8 +807,13 @@ func rename_lines(path, other_path string, columns, margin_size int, ans []*Logi
 func render(collection *Collection, diff_map map[string]*Patch, screen_size screen_size, largest_line_number int, image_size graphics.Size) (result *LogicalLines, err error) {
 	margin_size := utils.Max(3, len(strconv.Itoa(largest_line_number))+1)
 	ans := make([]*LogicalLine, 0, 1024)
+	var title_line_indices []int
+	track_titles := conf != nil && conf.Sticky_header
 	columns := screen_size.columns
 	err = collection.Apply(func(path, item_type, changed_path string) error {
+		if track_titles {
+			title_line_indices = append(title_line_indices, len(ans))
+		}
 		ans = title_lines(path, changed_path, columns, margin_size, ans)
 		defer func() {
 			ans = append(ans, &LogicalLine{line_type: EMPTY_LINE, screen_lines: []*ScreenLine{{}}})
@@ -863,5 +882,5 @@ func render(collection *Collection, diff_map map[string]*Patch, screen_size scre
 		// Having am empty list of lines causes panics later on
 		ll = []*LogicalLine{{line_type: EMPTY_LINE, screen_lines: []*ScreenLine{{}}}}
 	}
-	return &LogicalLines{lines: ll, margin_size: margin_size, columns: columns}, err
+	return &LogicalLines{lines: ll, title_line_indices: title_line_indices, margin_size: margin_size, columns: columns}, err
 }
