@@ -5,12 +5,11 @@ import builtins
 import re
 import textwrap
 import typing
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from functools import lru_cache
 from importlib import import_module
 from re import Match
 from typing import Any, Optional, Union, cast
-from collections.abc import Sequence
 
 import kitty.conf.utils as generic_parsers
 from kitty.constants import website_url

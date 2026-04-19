@@ -6,12 +6,11 @@ import os
 import re
 import shlex
 import sys
-from collections.abc import Callable, Generator, Iterator, Mapping
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
 from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
 from typing import TYPE_CHECKING, Any, Optional, Union
-from collections.abc import Sequence
 
 from .cli_stub import CLIOptions, GotoSessionOptions, SaveAsSessionOptions
 from .constants import config_dir, unserialize_launch_flag

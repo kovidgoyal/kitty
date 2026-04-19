@@ -5,12 +5,11 @@ import os
 import sys
 import termios
 from collections import defaultdict
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from itertools import count
 from time import monotonic
 from typing import TYPE_CHECKING, DefaultDict, Optional, TypedDict
-from collections.abc import Iterable, Mapping
 
 import kitty.fast_data_types as fast_data_types
 

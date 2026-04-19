@@ -3,11 +3,10 @@
 
 import weakref
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import suppress
 from itertools import count
 from typing import Any, Deque, Union
-from collections.abc import Sequence
 
 from .fast_data_types import Color, get_options
 from .types import OverlayType, WindowGeometry

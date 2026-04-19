@@ -5,9 +5,8 @@
 import os
 import re
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from contextlib import suppress
-from collections.abc import Iterable
 
 from .constants import shell_integration_dir
 from .fast_data_types import get_options

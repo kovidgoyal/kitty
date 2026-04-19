@@ -6,10 +6,10 @@
 
 import re
 import sys
+from collections.abc import Iterator, Sequence
 from enum import Enum, auto
 from functools import lru_cache
 from typing import Any, NamedTuple
-from collections.abc import Iterator, Sequence
 
 if getattr(sys, 'running_from_setup', False):
     is_macos = 'darwin' in sys.platform.lower()

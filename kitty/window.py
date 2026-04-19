@@ -7,7 +7,7 @@ import re
 import sys
 import weakref
 from collections import deque
-from collections.abc import Callable, Generator, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
 from contextlib import contextmanager, suppress
 from enum import Enum, IntEnum, auto
 from functools import lru_cache, partial
@@ -24,7 +24,6 @@ from typing import (
     Optional,
     Union,
 )
-from collections.abc import Iterator
 
 from .child import ProcessDesc
 from .cli_stub import CLIOptions, SaveAsSessionOptions
