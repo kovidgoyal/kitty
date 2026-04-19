@@ -51,7 +51,7 @@ def find_all_tests(package: str = '', excludes: Sequence[str] = ('main', 'gr')) 
     suits = []
     if not package:
         package = __name__.rpartition('.')[0] if '.' in __name__ else 'kitty_tests'
-    for x in contents(package):
+    for x in sorted(contents(package)):
         name, ext = os.path.splitext(x)
         if ext in ('.py', '.pyc') and name not in excludes:
             m = importlib.import_module(package + '.' + x.partition('.')[0])
