@@ -200,7 +200,7 @@ def client_drag_cancel(client_id: int = 0) -> bytes:
 
 
 def client_remote_file(
-    uri_idx: int, data_b64: str = '', *,
+    uri_idx: int = 0, data_b64: str = '', *,
     item_type: int = 0, more: bool = False,
     parent_handle: int = 0, entry_num: int = 0,
     client_id: int = 0,
@@ -2935,7 +2935,7 @@ class TestDnDProtocol(BaseTest):
             b64_2 = standard_b64encode(chunk2).decode()
             parse_bytes(screen, client_remote_file(1, b64_1, item_type=2, more=True))
             self._assert_no_output(cap, wid)
-            parse_bytes(screen, client_remote_file(1, b64_2, item_type=2))
+            parse_bytes(screen, client_remote_file(data_b64=b64_2))
             self._assert_no_output(cap, wid)
             # End of listing
             parse_bytes(screen, client_remote_file(1, '', item_type=2))
@@ -2945,6 +2945,7 @@ class TestDnDProtocol(BaseTest):
             b64 = standard_b64encode(b'c1').decode()
             parse_bytes(screen, client_remote_file(
                 1, b64, item_type=0, parent_handle=2, entry_num=1))
+            self._assert_no_output(cap, wid)
             parse_bytes(screen, client_remote_file(
                 1, '', item_type=0, parent_handle=2, entry_num=1))
             self._assert_no_output(cap, wid)

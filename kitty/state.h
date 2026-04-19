@@ -319,6 +319,7 @@ typedef struct Window {
         struct { double x, y; monotonic_t at; } initial_left_press;
         char *mimes_buf; size_t num_mimes, bufsz;
         size_t total_remote_data_size;
+        struct { int32_t x, y, X, Y; bool active; } in_flight_remote_file_data;
         struct {
             const char *mime_type; uint8_t *optional_data; size_t data_size, data_capacity; base64_state base64_state;
             bool data_decode_initialized, is_uri_list, requested_remote_files;

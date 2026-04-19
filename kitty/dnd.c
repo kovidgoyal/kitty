@@ -1238,6 +1238,7 @@ drag_free_offer(Window *w) {
     ds.state = DRAG_SOURCE_NONE;
     ds.pre_sent_total_sz = 0;
     ds.images_sent_total_sz = 0;
+    zero_at_ptr(&ds.in_flight_remote_file_data);
 }
 
 static void
@@ -1907,6 +1908,16 @@ void
 drag_remote_file_data(
     Window *w, int32_t x, int32_t y, int32_t X, int32_t Y, bool has_more, const uint8_t *payload, size_t payload_sz
 ) {
+    if (ds.in_flight_remote_file_data.active) {
+        x = ds.in_flight_remote_file_data.x; y = ds.in_flight_remote_file_data.y;
+        ds.in_flight_remote_file_data.Y = Y; ds.in_flight_remote_file_data.X = X;
+    }
+    if (!has_more) zero_at_ptr(&ds.in_flight_remote_file_data);
+    else if (!ds.in_flight_remote_file_data.active) {
+        ds.in_flight_remote_file_data.active = true;
+        ds.in_flight_remote_file_data.x = x; ds.in_flight_remote_file_data.y = y;
+        ds.in_flight_remote_file_data.Y = Y; ds.in_flight_remote_file_data.X = X;
+    }
     size_t item_idx = ds.num_mimes;
     for (size_t i = 0; i < ds.num_mimes; i++) {
         if (ds.items[i].requested_remote_files) {
