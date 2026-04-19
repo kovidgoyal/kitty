@@ -89,7 +89,7 @@ If an invalid expression is provided, diff will fail with an error.
 '''
     )
 
-opt('sticky_header', 'no', option_type='to_bool', long_text='''
+opt('sticky_header', 'yes', option_type='to_bool', long_text='''
 When scrolled past the header of a file, keep the file's name and separator
 pinned to the top of the screen.
 ''')
