@@ -253,6 +253,9 @@ Detailed list of changes
 
 - macOS: Fix occasional phantom cursors being drawn on screen (:iss:`9725`)
 
+- diff kitten: A new option :opt:`kitten-diff.sticky_header` to pin the current file's name to the top of the screen as you scroll through a multi-file diff (:pull:`9891`)
+
+
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

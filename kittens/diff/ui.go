@@ -414,7 +414,11 @@ func (self *Handler) draw_screen() {
 	}
 	pos := self.scroll_pos
 	seen_images := utils.NewSet[int]()
-	for num_written := 0; num_written < self.screen_size.num_lines; num_written++ {
+	num_written := 0
+	if conf != nil && conf.Sticky_header {
+		num_written = self.draw_sticky_header(&pos)
+	}
+	for ; num_written < self.screen_size.num_lines; num_written++ {
 		ll := self.logical_lines.At(pos.logical_line)
 		if ll == nil || self.logical_lines.ScreenLineAt(pos) == nil {
 			num_written--
@@ -441,6 +445,32 @@ func (self *Handler) draw_screen() {
 		}
 	}
 	self.draw_status_line()
+}
+
+func (self *Handler) draw_sticky_header(pos *ScrollPos) int {
+	title_idx := self.logical_lines.TitleLineIdxFor(pos.logical_line)
+	if title_idx < 0 {
+		return 0
+	}
+	// If the next line is a different file's TITLE_LINE, skip sticky so the
+	// real title flows into view naturally instead of being consumed.
+	next := pos.logical_line + 1
+	if next < self.logical_lines.Len() && self.logical_lines.At(next).line_type == TITLE_LINE && next != title_idx {
+		return 0
+	}
+	// file title
+	self.logical_lines.At(title_idx).render_screen_line(0, self.lp, self.logical_lines.margin_size, self.logical_lines.columns)
+	self.lp.MoveCursorVertically(1)
+	self.lp.QueueWriteString("\x1b[m\r")
+	self.logical_lines.IncrementScrollPosBy(pos, 1)
+
+	// separator
+	self.logical_lines.At(title_idx+1).render_screen_line(0, self.lp, self.logical_lines.margin_size, self.logical_lines.columns)
+	self.lp.MoveCursorVertically(1)
+	self.lp.QueueWriteString("\x1b[m\r")
+	self.logical_lines.IncrementScrollPosBy(pos, 1)
+
+	return 2
 }
 
 func (self *Handler) draw_status_line() {
