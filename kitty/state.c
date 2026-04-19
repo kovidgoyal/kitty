@@ -749,7 +749,7 @@ owners_for_window_id(id_type window_id, OSWindow **os_window, Tab **tab) {
 bool
 make_window_context_current(id_type window_id) {
     OSWindow *os_window;
-    if (owners_for_window_id(window_id, &os_window, NULL)) {
+    if (owners_for_window_id(window_id, &os_window, NULL) && os_window->handle) {
         make_os_window_context_current(os_window);
         return true;
     }

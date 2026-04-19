@@ -55,9 +55,14 @@ type drop_dest struct {
 func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[string]drag_source, uri_list_buffer *bytes.Buffer) (err error) {
 	allow_drops, allow_drags, drop_accepted := len(drop_dests) > 0, len(drag_sources) > 0, false
 	drop_copy_allowed, drop_move_allowed, drag_started := false, false, false
+	in_test_mode := false
 	lp, err := loop.New()
 	if err != nil {
 		return err
+	}
+	send_test_response := func(payload string) {
+		in_test_mode = true
+		lp.DebugPrintln(payload)
 	}
 	render_screen := func() error {
 		lp.StartAtomicUpdate()
@@ -84,7 +89,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			// corresponding operation type. The button should consist of the
 			// triple sized text and a frame with rounded corners around the
 			// text drawn using unicode box drawing symbols.
-			_, _ = drop_copy_allowed, drop_move_allowed
+			_, _, _ = drop_copy_allowed, drop_move_allowed, in_test_mode
 
 		}
 		return nil
@@ -97,6 +102,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		if allow_drags {
 			lp.StartOfferingDrags()
 		}
+		lp.SetWindowTitle("Drag and drop")
 		return "", render_screen()
 	}
 	lp.OnFinalize = func() string {
@@ -146,6 +152,15 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		// corresponding to the drag sources, including the files in the
 		// uri-list and exit.
 
+		switch cmd.Type {
+		case 'T':
+			switch string(cmd.Payload) {
+			case "PING":
+				send_test_response("PONG")
+			default:
+				send_test_response("UNKNOWN TEST COMMAND: " + string(cmd.Payload))
+			}
+		}
 		return nil
 	}
 	lp.OnKeyEvent = func(e *loop.KeyEvent) (err error) {

@@ -421,6 +421,7 @@ reset_drop(Window *w) {
         w->drop.is_remote_client = is_remote_client;
     }
 }
+
 void
 drop_register_window(Window *w, const uint8_t *payload, size_t payload_sz, bool on, uint32_t client_id, bool more) {
     w->drop.wanted = on;
@@ -2177,6 +2178,18 @@ dnd_test_drag_notify(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+dnd_test_probe_state(PyObject *self UNUSED, PyObject *args) {
+    const char *q; unsigned long long window_id;
+    if (!PyArg_ParseTuple(args, "Ks", &window_id, &q)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
+    if (strcmp(q, "drop_is_remote_client") == 0) {
+        return Py_NewRef(w->drop.is_remote_client ? Py_True : Py_False);
+    }
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef dnd_methods[] = {
     {"dnd_set_test_write_func", (PyCFunction)py_dnd_set_test_write_func, METH_VARARGS, ""},
     METHODB(dnd_test_create_fake_window, METH_NOARGS),
@@ -2187,6 +2200,7 @@ static PyMethodDef dnd_methods[] = {
     METHODB(dnd_test_force_drag_dropped, METH_VARARGS),
     METHODB(dnd_test_request_drag_data, METH_VARARGS),
     METHODB(dnd_test_drag_notify, METH_VARARGS),
+    METHODB(dnd_test_probe_state, METH_VARARGS),
     {NULL, NULL, 0, NULL}
 };
 

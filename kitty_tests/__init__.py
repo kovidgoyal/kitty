@@ -336,7 +336,7 @@ class PTY:
 
     def __init__(
         self, argv=None, rows=25, columns=80, scrollback=100, cell_width=10, cell_height=20,
-        cwd=None, env=None, stdin_fd=None, stdout_fd=None, needs_da1=True,
+        cwd=None, env=None, stdin_fd=None, stdout_fd=None, needs_da1=True, window_id=0,
     ):
         self.is_child = False
         if isinstance(argv, str):
@@ -377,7 +377,7 @@ class PTY:
         self.set_window_size(rows=rows, columns=columns)
         self.needs_da1 = needs_da1
         self.callbacks = Callbacks(self)
-        self.screen = Screen(self.callbacks, rows, columns, scrollback, cell_width, cell_height, 0, self.callbacks)
+        self.screen = Screen(self.callbacks, rows, columns, scrollback, cell_width, cell_height, window_id, self.callbacks)
         self.received_bytes = b''
 
     def reset_termios_state(self):
@@ -392,6 +392,12 @@ class PTY:
     def is_echo_on(self):
         s = termios.tcgetattr(self.master_fd)
         return True if s[3] & termios.ECHO else False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        self.__del__()
 
     def __del__(self):
         if not self.is_child:
