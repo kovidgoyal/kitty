@@ -236,7 +236,7 @@ def geninclude(path: str) -> list[str]:
         if path.endswith('.py'):
             return pygeninclude(path)
         import subprocess
-        cp = subprocess.run([path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        cp = subprocess.run([path], capture_output=True, text=True)
         if cp.returncode != 0:
             raise GenincludeError(f'Running the geninclude program: {path} failed with exit code: {cp.returncode} and STDERR:\n{cp.stderr}')
         return cp.stdout.splitlines()

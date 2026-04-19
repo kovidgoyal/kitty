@@ -7,7 +7,7 @@ import re
 import subprocess
 from collections.abc import Callable
 from contextlib import suppress
-from typing import Iterable
+from collections.abc import Iterable
 
 from .constants import shell_integration_dir
 from .fast_data_types import get_options

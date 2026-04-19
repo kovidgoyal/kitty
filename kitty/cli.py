@@ -517,7 +517,7 @@ def seq_as_rst(
         if (otype := opt.type).startswith('bool-'):
             val_name = f' [={help_defval_for_bool(otype)}]'
         else:
-            val_name = ' <{}>'.format(opt.dest.upper())
+            val_name = f' <{opt.dest.upper()}>'
         a(defn + ', '.join(o + val_name for o in sorted(opt.aliases)))
         if opt.help:
             defval = opt.default

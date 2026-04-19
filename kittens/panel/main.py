@@ -6,7 +6,8 @@ import sys
 from contextlib import suppress
 from functools import partial
 from types import MappingProxyType
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
+from collections.abc import Iterable, Mapping, Sequence
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions

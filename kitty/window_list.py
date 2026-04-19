@@ -6,7 +6,8 @@ from collections import deque
 from collections.abc import Iterator
 from contextlib import suppress
 from itertools import count
-from typing import Any, Deque, Sequence, Union
+from typing import Any, Deque, Union
+from collections.abc import Sequence
 
 from .fast_data_types import Color, get_options
 from .types import OverlayType, WindowGeometry
@@ -238,7 +239,7 @@ class WindowList:
         for wg in state['window_groups']:
             old_group_id = wg['id']
             if new_group_id := ans.get(old_group_id):
-                groups.append((g := gmap[new_group_id]))
+                groups.append(g := gmap[new_group_id])
                 new_window_ids = []
                 for old_window_id in wg['window_ids']:
                     if new_window_id := window_id_map.get(old_window_id):

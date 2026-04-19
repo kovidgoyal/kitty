@@ -9,7 +9,8 @@ from collections.abc import Callable, Iterable, Iterator
 from functools import lru_cache
 from importlib import import_module
 from re import Match
-from typing import Any, Optional, Sequence, Union, cast
+from typing import Any, Optional, Union, cast
+from collections.abc import Sequence
 
 import kitty.conf.utils as generic_parsers
 from kitty.constants import website_url

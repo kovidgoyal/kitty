@@ -19,12 +19,12 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Deque,
-    Iterator,
     Literal,
     NamedTuple,
     Optional,
     Union,
 )
+from collections.abc import Iterator
 
 from .child import ProcessDesc
 from .cli_stub import CLIOptions, SaveAsSessionOptions
