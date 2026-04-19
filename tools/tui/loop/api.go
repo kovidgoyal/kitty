@@ -720,3 +720,17 @@ func (self *Loop) StartAcceptingDrops(mime_types ...string) {
 func (self *Loop) StopAcceptingDrops() {
 	self.QueueDnDData(map[string]string{"t": "A"}, "", false)
 }
+
+func (self *Loop) StartOfferingDrags() {
+	payload := ""
+	if ans, err := machine_id.MachineId(); err == nil {
+		mac := hmac.New(sha256.New, []byte("tty-dnd-protocol-machine-id"))
+		mac.Write(utils.UnsafeStringToBytes(ans))
+		payload = "1:" + hex.EncodeToString(mac.Sum(nil))
+	}
+	self.QueueDnDData(map[string]string{"t": "o", "x": "1"}, payload, false)
+}
+
+func (self *Loop) StopOfferingDrags() {
+	self.QueueDnDData(map[string]string{"t": "o", "x": "2"}, "", false)
+}

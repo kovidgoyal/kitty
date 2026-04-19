@@ -249,7 +249,7 @@ The ``machine id`` is optional and is used to enable dragging from remote
 machines. See :ref:`below <machine_id>` for its semantics.
 
 When the user performs the platform specific gesture to start a drag operation,
-the terminal will send the same escape code back to the terminal program
+the terminal will send the escape code ``t=o`` back to the terminal program
 informing it that it can potentially start a drag. The gesture is typically holding the
 left mouse button down and dragging a short distance, but this protocol does
 not mandate any particular gesture to start drag operations. The terminal, when

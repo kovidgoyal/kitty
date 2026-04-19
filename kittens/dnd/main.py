@@ -15,7 +15,9 @@ Can be specified multiple times to drag multiple MIME types.
 type=list
 When receiving a drop, use the specified file as the data destination for the specified
 MIME type. Syntax is: mime-type:path/to/file. For example image/jpeg:mypic.jpg
-Can be specified multiple times to enable receiving multiple MIME types.
+Can be specified multiple times to enable receiving multiple MIME types. If no path is specified,
+it will prevent that MIME type being dropped, useful to disable accepting text/plain and
+text/uri-list.
 
 
 --confirm-drop-overwrite
@@ -35,8 +37,8 @@ file manager or similar program to copy the files.
 If the text/uri-list MIME type is dropped onto this window, the files and directories in it are
 copied into the current working directory.
 
-If data is present on STDIN it is set as text/plain when dragging. Any text/plain data that is
-dropped onto this window is output to STDOUT, if STDOUT is connected to a file, otherwise it
+If data is present on STDIN it is set as text/plain when dragging, unless text/plain is specified via --drag.
+Any text/plain data that is dropped onto this window is output to STDOUT, if STDOUT is connected to a file, otherwise it
 is discarded.
 '''
 
