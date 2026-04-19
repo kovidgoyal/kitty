@@ -354,11 +354,7 @@ func Run(args []string) (rc int, err error) {
 				// Request this file via the protocol.
 				dnd.file_read_size = 0
 				dnd.collecting = "file"
-				lp.QueueDnDData(map[string]string{
-					"t": "r",
-					"x": strconv.Itoa(dnd.uri_list_mime_idx),
-					"y": strconv.Itoa(dnd.file_read_idx + 1),
-				}, "", false)
+				lp.QueueDnDData(loop.DndCommand{Type: 'r', X: dnd.uri_list_mime_idx, Y: dnd.file_read_idx + 1})
 				return
 			}
 			// Non-file URI: record as-is with no size info.
@@ -367,7 +363,7 @@ func Run(args []string) (rc int, err error) {
 		}
 		// All files processed; finish the drop.
 		dnd.collecting = ""
-		lp.QueueDnDData(map[string]string{"t": "r"}, "", false)
+		lp.QueueDnDData(loop.DndCommand{Type: 'r'})
 		dnd.has_drop_data = true
 		draw_screen()
 	}
@@ -402,11 +398,11 @@ func Run(args []string) (rc int, err error) {
 					}
 				}
 				if len(accepted_mimes) > 0 {
-					lp.QueueDnDData(map[string]string{"t": "m", "o": "1"}, strings.Join(accepted_mimes, " "), false)
+					lp.QueueDnDData(loop.DndCommand{Type: 'm', Operation: 1, Payload: []byte(strings.Join(accepted_mimes, " "))})
 				}
 			} else {
 				// Not over drop region; reject the drag.
-				lp.QueueDnDData(map[string]string{"t": "m", "o": "0"}, "", false)
+				lp.QueueDnDData(loop.DndCommand{Type: 'm'})
 			}
 			draw_screen()
 		case 'M':
@@ -427,17 +423,17 @@ func Run(args []string) (rc int, err error) {
 			for idx, m := range mimes {
 				if m == "text/plain" {
 					dnd.collecting = "text/plain"
-					lp.QueueDnDData(map[string]string{"t": "r", "x": strconv.Itoa(idx + 1)}, "", false)
+					lp.QueueDnDData(loop.DndCommand{Type: 'r', X: idx + 1})
 					return nil
 				}
 			}
 			if dnd.uri_list_mime_idx > 0 {
 				dnd.collecting = "text/uri-list"
-				lp.QueueDnDData(map[string]string{"t": "r", "x": strconv.Itoa(dnd.uri_list_mime_idx)}, "", false)
+				lp.QueueDnDData(loop.DndCommand{Type: 'r', X: dnd.uri_list_mime_idx})
 				return nil
 			}
 			// Nothing to collect; signal done.
-			lp.QueueDnDData(map[string]string{"t": "r"}, "", false)
+			lp.QueueDnDData(loop.DndCommand{Type: 'r'})
 			dnd.has_drop_data = true
 			draw_screen()
 		case 'r':
@@ -451,7 +447,7 @@ func Run(args []string) (rc int, err error) {
 					if cmd.Xp > 1 {
 						// Directory: close the handle.
 						fi.is_dir = true
-						lp.QueueDnDData(map[string]string{"t": "r", "Y": strconv.Itoa(cmd.Xp)}, "", false)
+						lp.QueueDnDData(loop.DndCommand{Type: 'r', Yp: cmd.Xp})
 					} else if cmd.Xp == 1 {
 						fi.is_link = true
 						fi.size = dnd.file_read_size
@@ -487,7 +483,8 @@ func Run(args []string) (rc int, err error) {
 					// Now request text/uri-list if available.
 					if dnd.uri_list_mime_idx > 0 {
 						dnd.collecting = "text/uri-list"
-						lp.QueueDnDData(map[string]string{"t": "r", "x": strconv.Itoa(dnd.uri_list_mime_idx)}, "", false)
+						lp.QueueDnDData(
+							loop.DndCommand{Type: 'r', X: dnd.uri_list_mime_idx})
 						return nil
 					}
 				case "text/uri-list":
@@ -512,7 +509,7 @@ func Run(args []string) (rc int, err error) {
 					}
 				}
 				dnd.collecting = ""
-				lp.QueueDnDData(map[string]string{"t": "r"}, "", false)
+				lp.QueueDnDData(loop.DndCommand{Type: 'r'})
 				dnd.has_drop_data = true
 				draw_screen()
 			} else {
@@ -537,7 +534,7 @@ func Run(args []string) (rc int, err error) {
 			} else if !is_file_response {
 				// Error getting MIME data; finish the drop with what we have.
 				dnd.collecting = ""
-				lp.QueueDnDData(map[string]string{"t": "r"}, "", false)
+				lp.QueueDnDData(loop.DndCommand{Type: 'r'})
 				dnd.has_drop_data = true
 				draw_screen()
 			}

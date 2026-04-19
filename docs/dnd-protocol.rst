@@ -11,7 +11,7 @@ programs.
 
 There is one central escape code used for this protocol, which is of the form::
 
-    OSC _dnd_code ; metadata ; base64 encoded payload ST
+    OSC _dnd_code ; metadata ; payload ST
 
 Here, ``OSC`` is the bytes ``ESC ] (0x1b 0x5b)`` and ST is ``ESC \\ (0x1b 0x5c)``.
 The ``metadata`` is a colon separated list of ``key=value`` pairs.

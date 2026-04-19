@@ -669,15 +669,22 @@ func (self *Loop) DrawSizedText(text string, spec SizedText) {
 	self.QueueWriteString(b.String())
 }
 
-func (self *Loop) QueueDnDData(metadata map[string]string, payload string, as_base64 bool) IdType {
+func (self *Loop) QueueDnDData(cmd DndCommand) IdType {
 	b := strings.Builder{}
 	b.Grow(64)
-	fmt.Fprintf(&b, "\x1b]%d;", kitty.DndCode)
-	sep := ""
-	for key, val := range metadata {
-		fmt.Fprintf(&b, "%s%s=%s", sep, key, val)
-		sep = ":"
+	as_base64 := cmd.Type == 'r'
+	fmt.Fprintf(&b, "\x1b]%d;t=%c", kitty.DndCode, cmd.Type)
+	add := func(key byte, val int) {
+		if val != 0 {
+			fmt.Fprintf(&b, ":%c=%d", key, val)
+		}
 	}
+	add('o', cmd.Operation)
+	add('x', cmd.X)
+	add('y', cmd.Y)
+	add('X', cmd.Xp)
+	add('Y', cmd.Yp)
+	payload := utils.UnsafeBytesToString(cmd.Payload)
 	payload_sz := len(payload)
 	if payload_sz == 0 {
 		b.WriteString("\x1b\\")
@@ -696,7 +703,7 @@ func (self *Loop) QueueDnDData(metadata map[string]string, payload string, as_ba
 		is_last := end >= len(payload)
 		end = min(end, len(payload))
 		if i == 0 {
-			fmt.Fprintf(&b, "%sm=%d;", sep, utils.IfElse(is_last, 0, 1))
+			fmt.Fprintf(&b, ":m=%d;", utils.IfElse(is_last, 0, 1))
 			self.QueueWriteString(b.String())
 		} else {
 			self.QueueWriteString(fmt.Sprintf("\x1b]%d;m=%d;", kitty.DndCode, utils.IfElse(is_last, 0, 1)))
@@ -722,14 +729,14 @@ func effective_machine_id(m string) string {
 }
 
 func (self *Loop) StartAcceptingDrops(machine_id string, mime_types ...string) {
-	self.QueueDnDData(map[string]string{"t": "a"}, strings.Join(mime_types, " "), false)
+	self.QueueDnDData(DndCommand{Type: 'a', Payload: []byte(strings.Join(mime_types, " "))})
 	if m := effective_machine_id(machine_id); m != "" {
-		self.QueueDnDData(map[string]string{"t": "a", "x": "1"}, m, false)
+		self.QueueDnDData(DndCommand{Type: 'a', X: 1, Payload: []byte(m)})
 	}
 }
 
 func (self *Loop) StopAcceptingDrops() {
-	self.QueueDnDData(map[string]string{"t": "A"}, "", false)
+	self.QueueDnDData(DndCommand{Type: 'A'})
 }
 
 func (self *Loop) StartOfferingDrags(machine_id string) {
@@ -737,9 +744,9 @@ func (self *Loop) StartOfferingDrags(machine_id string) {
 	if m := effective_machine_id(machine_id); m != "" {
 		payload = m
 	}
-	self.QueueDnDData(map[string]string{"t": "o", "x": "1"}, payload, false)
+	self.QueueDnDData(DndCommand{Type: 'o', X: 1, Payload: []byte(payload)})
 }
 
 func (self *Loop) StopOfferingDrags() {
-	self.QueueDnDData(map[string]string{"t": "o", "x": "2"}, "", false)
+	self.QueueDnDData(DndCommand{Type: 'o', X: 2})
 }
