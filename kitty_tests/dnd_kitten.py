@@ -88,9 +88,9 @@ class TestDnDKitten(BaseTest):
     def tearDown(self):
         dnd_set_test_write_func(None)
         dnd_test_cleanup_fake_window(self.capture.os_window_id)
-        del self.capture
-        del self.screen
-        del self.pty
+        self.capture = None
+        self.screen = None
+        self.pty = None
 
     def test_dnd_kitten_drop(self):
         for remote_client in (False, True):
