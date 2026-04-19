@@ -684,9 +684,8 @@ HANDLER(handle_move_event) {
     if (w->drag_source.initial_left_press.at && distance(w->mouse_pos.global_x, w->mouse_pos.global_y, w->drag_source.initial_left_press.x, w->drag_source.initial_left_press.y) > OPT(drag_threshold)) {
         zero_at_ptr(&w->drag_source.initial_left_press);
         if (w->drag_source.can_offer) {
-            snprintf(mouse_event_buf, sizeof(mouse_event_buf), "%d;t=o:x=%d:y=%d:X=%d:Y=%d",
-                DND_CODE, w->mouse_pos.cell_x, w->mouse_pos.cell_y, (int)w->mouse_pos.global_x, (int)w->mouse_pos.global_y);
-            write_escape_code_to_child(screen, ESC_OSC, mouse_event_buf);
+            drag_offer_start_to_child(
+                w, w->mouse_pos.cell_x, w->mouse_pos.cell_y, (int)w->mouse_pos.global_x, (int)w->mouse_pos.global_y);
             debug("Sent drag start event to child\n");
         } else if (w->drag_source.potential_url_drag.active) {
             w->drag_source.potential_url_drag.active = false;

@@ -1905,6 +1905,15 @@ subdir_data_for_drag(
 #undef mi
 
 void
+drag_offer_start_to_child(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_x, int32_t pixel_y) {
+    char buf[256];
+    int header_size = snprintf(
+        buf, sizeof(buf), "%d;t=o:x=%d:y=%d:X=%d:Y=%d", DND_CODE, cell_x, cell_y, pixel_x, pixel_y);
+    queue_payload_to_child(
+        w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_size, NULL, 0, false);
+}
+
+void
 drag_remote_file_data(
     Window *w, int32_t x, int32_t y, int32_t X, int32_t Y, bool has_more, const uint8_t *payload, size_t payload_sz
 ) {

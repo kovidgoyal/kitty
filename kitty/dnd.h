@@ -37,3 +37,4 @@ void drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *
 void drag_remote_file_data(Window *w, int32_t x, int32_t y, int32_t X, int32_t Y, bool has_more, const uint8_t *payload, size_t payload_sz);
 void drag_start_offerring(Window *w, const char *client_machine_id, size_t sz);
 void drag_stop_offerring(Window *w);
+void drag_offer_start_to_child(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_x, int32_t pixel_y);
