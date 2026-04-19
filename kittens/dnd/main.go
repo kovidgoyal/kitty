@@ -75,7 +75,8 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			// TODO: If a drop has entered the window and offers MIME types
 			// present in drop_dests then drop_accepted will be true. In this
 			// case draw two buttons with triple sized text "Copy" and "Move"
-			// and a message above them saying drop onto the buttons below.
+			// using lp.DrawSizedText() with scale=3 which uses the kitty text
+			// sizing protocol. Also draw, a message above them saying drop onto the buttons below.
 			// Below the buttons if there is space show the list of mime types
 			// in the drag. Be careful to not accept drops if drag_started is
 			// true, that is if the drag is coming from self.
