@@ -320,7 +320,7 @@ def dir_handle(e: dict) -> int:
 
 # ---- test context manager ---------------------------------------------------
 
-class _WriteCapture:
+class WriteCapture:
     """Accumulates bytes delivered by the DnD write interceptor."""
 
     def __init__(self) -> None:
@@ -343,18 +343,17 @@ class _WriteCapture:
 def dnd_test_window(mime_list_cap=0, present_data_cap=0, remote_drag_limit=0):
     """Context manager that creates a fake window + write-capture harness.
 
-    Yields (os_window_id, window_id, screen, capture) where:
-    * ``os_window_id`` – OS-level window ID
+    Yields (window_id, screen, capture) where:
     * ``window_id``    – kitty window ID (pass to the fake-event helpers)
     * ``screen``       – Screen object whose window_id matches the fake window
-    * ``capture``      – _WriteCapture accumulating bytes sent to the child
+    * ``capture``      – WriteCapture accumulating bytes sent to the child
     """
-    capture = _WriteCapture()
+    capture = WriteCapture()
     dnd_set_test_write_func(capture, mime_list_cap, present_data_cap, remote_drag_limit)
     os_window_id, window_id = dnd_test_create_fake_window()
     try:
         screen = Screen(None, 24, 80, 0, 0, 0, window_id)
-        yield os_window_id, window_id, screen, capture
+        yield window_id, screen, capture
     finally:
         dnd_set_test_write_func(None)
         dnd_test_cleanup_fake_window(os_window_id)
@@ -366,7 +365,7 @@ machine_id = partial(machine_id, 'tty-dnd-protocol-machine-id')
 
 class TestDnDProtocol(BaseTest):
 
-    def _assert_no_output(self, capture: _WriteCapture, window_id: int) -> None:
+    def _assert_no_output(self, capture: WriteCapture, window_id: int) -> None:
         self.ae(capture.peek(window_id), b'', 'unexpected output to child')
 
     def _register_for_drops(
@@ -383,12 +382,12 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, _osc(f'{DND_CODE};t=a:x=1;1:{register_machine_id}'))
         self._assert_no_output(cap, wid)
 
-    def _get_events(self, capture: _WriteCapture, window_id: int) -> list[dict]:
+    def _get_events(self, capture: WriteCapture, window_id: int) -> list[dict]:
         return parse_escape_codes(capture.consume(window_id))
 
     def test_register_and_unregister(self) -> None:
         """Client can register and unregister for drops."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             # Client registers – state is already wanted=True from fake-window creation,
             # but calling the escape code should not break things.
             self._register_for_drops(screen, cap, wid)
@@ -398,7 +397,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drop_move_sends_move_event(self) -> None:
         """A drop entering and moving over the window generates t=m events."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 5, 3, 100, 60)
             dnd_test_fake_drop_event(wid, False, ['text/plain', 'text/uri-list'])
@@ -417,7 +416,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drop_move_mime_always_sent(self) -> None:
         """The current implementation always includes the MIME list in move events."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             mimes = ['text/plain']
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
@@ -435,7 +434,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drop_leave_sends_leave_event(self) -> None:
         """Drop leaving sends t=m with x=-1,y=-1."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, False, ['text/plain'])
@@ -451,7 +450,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_client_accepts_drop(self) -> None:
         """Client sending t=m:o=1 is recorded and does not trigger extra output."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, False, ['text/plain'])
@@ -465,7 +464,7 @@ class TestDnDProtocol(BaseTest):
     def test_full_drop_flow(self) -> None:
         """Complete happy-path: move → accept → drop → request → data → finish."""
         payload_data = b'hello world'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
 
             # Move
@@ -502,7 +501,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_request_unknown_mime(self) -> None:
         """Requesting an out-of-range MIME index yields an error."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -517,7 +516,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_data_error_propagation(self) -> None:
         """When data retrieval fails the client receives a t=R error code."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -534,7 +533,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_data_eperm_error(self) -> None:
         """EPERM error is correctly forwarded to the client."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -552,7 +551,7 @@ class TestDnDProtocol(BaseTest):
         # Each chunk is ≤ 3072 bytes of raw data (base64-encoded to ≤ 4096 bytes).
         chunk_limit = 3072
         big_payload = b'X' * (chunk_limit * 3)  # 3 chunks expected
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -570,7 +569,7 @@ class TestDnDProtocol(BaseTest):
     def test_client_id_propagated(self) -> None:
         """The client_id (i=…) set during registration is echoed in all replies."""
         client_id = 42
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, mimes='text/plain', client_id=client_id)
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, False, ['text/plain'])
@@ -581,7 +580,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_multiple_mimes_priority(self) -> None:
         """The client can request data from any offered MIME type by index."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain text/uri-list')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             # OS offers both types.
@@ -598,7 +597,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drop_without_register_no_output(self) -> None:
         """If the client has not registered, no escape codes are sent on drop."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             # Explicitly unregister (clears the wanted flag).
             parse_bytes(screen, client_unregister())
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
@@ -611,7 +610,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_malformed_dnd_command_invalid_type(self) -> None:
         """A DnD command with an unknown type character is silently ignored."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             # 'z' is not a valid type; the parser should emit an error and return
             # without calling any handler – no crash, no output.
             bad_cmd = _osc(f'{DND_CODE};t=z;')
@@ -620,7 +619,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_move_event_after_mime_change(self) -> None:
         """When offered MIME list changes, the new list is included in the move event."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, False, ['text/plain'])
@@ -636,7 +635,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drop_event_has_uppercase_M(self) -> None:
         """A drop (not just a move) sends t=M (uppercase)."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -646,7 +645,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_data_end_signal(self) -> None:
         """The end-of-data signal is an empty payload escape code."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -664,7 +663,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_empty_data(self) -> None:
         """Zero-byte payload is handled gracefully – only end signal is sent."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -706,7 +705,7 @@ class TestDnDProtocol(BaseTest):
             fpath = f.name
         try:
             uri_list = f'file://{fpath}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -731,7 +730,7 @@ class TestDnDProtocol(BaseTest):
             fpath = f.name
         try:
             uri_list = f'file://{fpath}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -746,7 +745,7 @@ class TestDnDProtocol(BaseTest):
     def test_uri_file_transfer_enoent(self) -> None:
         """URI file request with an out-of-range index returns ENOENT."""
         uri_list = b'file:///tmp/no_such_file_exists_dnd_test_xyz\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_uri_drop(screen, wid, cap, uri_list)
             # File at index 1 does not exist
             parse_bytes(screen, client_request_uri_data(2, 1))
@@ -763,7 +762,7 @@ class TestDnDProtocol(BaseTest):
             fpath = f.name
         try:
             uri_list = f'file://{fpath}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 100))  # out of range
                 events = self._get_events(cap, wid)
@@ -780,7 +779,7 @@ class TestDnDProtocol(BaseTest):
         with tempfile.NamedTemporaryFile(delete=False) as f:
             fpath = f.name
         try:
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._register_for_drops(screen, cap, wid, 'text/plain')
                 dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
                 dnd_test_fake_drop_event(wid, True, ['text/plain', 'text/uri-list'])
@@ -797,7 +796,7 @@ class TestDnDProtocol(BaseTest):
     def test_uri_non_regular_file_returns_einval(self) -> None:
         """URI file request for a non-regular file (e.g. /dev/null) returns EINVAL."""
         uri_list = b'file:///dev/null\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_uri_drop(screen, wid, cap, uri_list)
             parse_bytes(screen, client_request_uri_data(2, 1))
             events = self._get_events(cap, wid)
@@ -835,7 +834,7 @@ class TestDnDProtocol(BaseTest):
             w(bde_content, 'b', 'd', 'e.txt')
 
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
 
                 # Request the root directory (mime_idx=2, file_idx=1)
@@ -984,7 +983,7 @@ class TestDnDProtocol(BaseTest):
         with tempfile.TemporaryDirectory() as root:
             open(os.path.join(root, 'f.txt'), 'w').close()
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1011,7 +1010,7 @@ class TestDnDProtocol(BaseTest):
         with tempfile.TemporaryDirectory() as root:
             open(os.path.join(root, 'only.txt'), 'w').close()
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1033,7 +1032,7 @@ class TestDnDProtocol(BaseTest):
         with tempfile.TemporaryDirectory() as root:
             open(os.path.join(root, 'hello.txt'), 'w').close()
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1056,7 +1055,7 @@ class TestDnDProtocol(BaseTest):
                 f.write('real content')
             os.symlink('real.txt', os.path.join(root, 'link.txt'))
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1092,7 +1091,7 @@ class TestDnDProtocol(BaseTest):
             os.mkdir(os.path.join(root, 'subdir'))
             os.symlink('subdir', os.path.join(root, 'link_to_dir'))
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1126,7 +1125,7 @@ class TestDnDProtocol(BaseTest):
                 f.write('content')
             os.symlink(real_file, os.path.join(root, 'abs_link.txt'))
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1156,7 +1155,7 @@ class TestDnDProtocol(BaseTest):
             with open(os.path.join(root, 'regular.txt'), 'w') as f:
                 f.write('hello')
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1189,7 +1188,7 @@ class TestDnDProtocol(BaseTest):
                 f.write(b'\x00\x01\x02\x03')
             os.symlink('data.bin', os.path.join(root, 'alias.bin'))
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1232,7 +1231,7 @@ class TestDnDProtocol(BaseTest):
                 f.write('nested target')
             os.symlink('target.txt', os.path.join(sub, 'nested_link.txt'))
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1274,7 +1273,7 @@ class TestDnDProtocol(BaseTest):
             with open(os.path.join(root, 'first.txt'), 'w') as f:
                 f.write('first file')
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1302,7 +1301,7 @@ class TestDnDProtocol(BaseTest):
             link = os.path.join(root, 'link.txt')
             os.symlink(real, link)
             uri_list = f'file://{link}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1324,7 +1323,7 @@ class TestDnDProtocol(BaseTest):
             link = os.path.join(root, 'linkdir')
             os.symlink(sub, link)
             uri_list = f'file://{link}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -1346,7 +1345,7 @@ class TestDnDProtocol(BaseTest):
             uri_list = f'file://{root}\r\n'.encode()
             # The context manager calls dnd_test_cleanup_fake_window on exit,
             # which calls drop_free_data → drop_free_dir_handles.
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 cap.consume(wid)
@@ -1362,7 +1361,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_register_and_unregister(self) -> None:
         """Client can register and unregister willingness to offer drags."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             # Register for drag offers (t=o, no payload).
             parse_bytes(screen, client_drag_register())
             self._assert_no_output(cap, wid)
@@ -1373,7 +1372,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_offer_single_mime(self) -> None:
         """Client can offer a drag with a single MIME type."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
             # No error expected – the offer is being built.
@@ -1381,14 +1380,14 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_offer_multiple_mimes(self) -> None:
         """Client can offer a drag with multiple MIME types."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(3, 'text/plain text/uri-list application/json'))
             self._assert_no_output(cap, wid)
 
     def test_drag_offer_no_operations_returns_einval(self) -> None:
         """Offering MIME types with operations=0 (no valid operations) returns EINVAL."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             parse_bytes(screen, client_drag_register())
             # First need a valid offer to set allowed_operations, but if we pass o=0
             # directly and there's no prior offer, drag_add_mimes should abort with EINVAL.
@@ -1397,28 +1396,28 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_offer_copy_only(self) -> None:
         """Offering with operations=1 (copy only) is accepted."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
             self._assert_no_output(cap, wid)
 
     def test_drag_offer_move_only(self) -> None:
         """Offering with operations=2 (move only) is accepted."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(2, 'text/plain'))
             self._assert_no_output(cap, wid)
 
     def test_drag_offer_copy_and_move(self) -> None:
         """Offering with operations=3 (copy+move) is accepted."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(3, 'text/plain text/html'))
             self._assert_no_output(cap, wid)
 
     def test_drag_pre_send_data_valid(self) -> None:
         """Pre-sending data for a valid MIME index succeeds."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain text/html')
             data = standard_b64encode(b'hello pre-sent').decode()
             # Send data for index 0 (text/plain)
@@ -1427,7 +1426,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_pre_send_data_out_of_range_returns_einval(self) -> None:
         """Pre-sending data for an out-of-range MIME index returns EINVAL."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             data = standard_b64encode(b'some data').decode()
             # Index 5 is out of range (we only offered one MIME type)
@@ -1439,7 +1438,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_pre_send_data_moderate_chunk(self) -> None:
         """Pre-sending a moderate chunk of data succeeds without triggering size cap."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # The size cap is 64MB (PRESENT_DATA_CAP = 64 * 1024 * 1024).
             # We can't realistically send 64MB in a unit test, so we verify
@@ -1451,7 +1450,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_pre_send_without_offer_returns_einval(self) -> None:
         """Pre-sending data without a prior offer returns EINVAL."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             data = standard_b64encode(b'orphan data').decode()
             parse_bytes(screen, client_drag_pre_send(0, data))
             events = self._get_events(cap, wid)
@@ -1461,7 +1460,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_add_image_rgba_valid(self) -> None:
         """Adding a valid RGBA image succeeds without error."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # 2x2 RGBA image = 2*2*4 = 16 bytes
             pixel_data = b'\xff\x00\x00\xff' * 4  # 4 red pixels
@@ -1471,7 +1470,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_add_image_rgb_valid(self) -> None:
         """Adding a valid RGB image succeeds without error."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # 2x2 RGB image = 2*2*3 = 12 bytes
             pixel_data = b'\xff\x00\x00' * 4  # 4 red pixels (RGB)
@@ -1481,7 +1480,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_add_image_invalid_format_returns_einval(self) -> None:
         """Adding an image with an invalid format (not 24/32/100) returns EINVAL."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             pixel_data = b'\xff\x00\x00' * 4
             data_b64 = standard_b64encode(pixel_data).decode()
@@ -1494,7 +1493,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_add_image_invalid_dimensions_returns_einval(self) -> None:
         """Adding an image with zero or negative dimensions returns EINVAL."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             pixel_data = b'\xff\x00\x00' * 4
             data_b64 = standard_b64encode(pixel_data).decode()
@@ -1507,7 +1506,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_add_image_without_offer_returns_einval(self) -> None:
         """Adding an image without a prior drag offer returns EINVAL."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             pixel_data = b'\xff\x00\x00\xff' * 4
             data_b64 = standard_b64encode(pixel_data).decode()
             parse_bytes(screen, client_drag_add_image(1, 32, 2, 2, data_b64))
@@ -1518,7 +1517,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_add_too_many_images_returns_error(self) -> None:
         """Adding more than the maximum number of images returns an error."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             pixel_data = b'\xff\x00\x00\xff' * 4  # 2x2 RGBA
             data_b64 = standard_b64encode(pixel_data).decode()
@@ -1538,7 +1537,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_start_no_real_window_returns_einval_or_eperm(self) -> None:
         """Starting a drag with a fake window (no GLFW handle) returns EINVAL or EPERM."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Try to start the drag – the fake window has no osw->handle, so
             # start_window_drag returns EINVAL.
@@ -1551,7 +1550,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_start_without_offer_returns_einval(self) -> None:
         """Starting a drag without a prior offer returns EINVAL."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             parse_bytes(screen, client_drag_start())
             events = self._get_events(cap, wid)
             self.assertEqual(len(events), 1, events)
@@ -1560,7 +1559,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_free_offer_cleans_up(self) -> None:
         """Sending t=O cleans up a partially built drag offer."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain text/html')
             # Pre-send some data
             data = standard_b64encode(b'test data').decode()
@@ -1580,7 +1579,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_cancel_from_client(self) -> None:
         """Client can cancel a drag via t=E:y=-1."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Cancel the drag
             parse_bytes(screen, client_drag_cancel())
@@ -1595,7 +1594,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_second_offer_replaces_first(self) -> None:
         """A second offer with operations replaces the first one."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             # First offer
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             data = standard_b64encode(b'first data').decode()
@@ -1612,7 +1611,7 @@ class TestDnDProtocol(BaseTest):
     def test_drag_client_id_propagated(self) -> None:
         """The client_id (i=…) set during drag offer is echoed in error replies."""
         client_id = 99
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain', client_id=client_id))
             self._assert_no_output(cap, wid)
@@ -1625,7 +1624,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_change_image_before_start(self) -> None:
         """Changing the drag image index before starting is accepted silently."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Add an image
             pixel_data = b'\xff\x00\x00\xff' * 4  # 2x2 RGBA
@@ -1638,7 +1637,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_chunked_mime_offer(self) -> None:
         """A large MIME list can be sent in chunks using m=1."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             # First chunk with m=1 (more coming)
             parse_bytes(screen, client_drag_register())
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain ', more=True))
@@ -1662,7 +1661,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_pre_send_chunked_data(self) -> None:
         """Pre-sent data can be chunked across multiple escape codes."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
 
             # Split raw data at a 3-byte boundary so base64 encoding produces
@@ -1682,7 +1681,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_add_image_chunked(self) -> None:
         """Image data can be chunked across multiple escape codes."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # 2x2 RGBA = 16 bytes total, split at a 3-byte boundary
             pixel_data = b'\xff\x00\x00\xff' * 4  # 16 bytes
@@ -1701,7 +1700,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_process_item_data_without_started_state_invalid(self) -> None:
         """Sending t=e data before the drag is started is silently ignored."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # State is BEING_BUILT, not STARTED – drag_process_item_data should return early
             data_b64 = standard_b64encode(b'premature data').decode()
@@ -1710,7 +1709,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_error_from_client_without_started_state_invalid(self) -> None:
         """Sending t=E with a MIME index before the drag is started is silently ignored."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # State is BEING_BUILT – sending an error for index 0 should be ignored
             parse_bytes(screen, client_drag_send_error(0, 'EIO'))
@@ -1718,7 +1717,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_offer_with_empty_mimes_after_cancel(self) -> None:
         """After cancelling, a new offer can be started from scratch."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             # Build and cancel
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             parse_bytes(screen, client_drag_cancel())
@@ -1732,7 +1731,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_multiple_images_sequential(self) -> None:
         """Multiple images can be added sequentially with different indices."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Image 1: 1x1 RGBA
             img1 = standard_b64encode(b'\xff\x00\x00\xff').decode()
@@ -1749,7 +1748,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_offer_then_unregister_then_start_fails(self) -> None:
         """After unregistering (t=O), starting a drag (t=P:x=-1) fails."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             parse_bytes(screen, client_drag_unregister())
             self._assert_no_output(cap, wid)
@@ -1766,7 +1765,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_pre_send_multiple_mimes(self) -> None:
         """Pre-sent data can be provided for multiple different MIME types."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain text/html image/png')
             # Pre-send for text/plain (index 0)
             d0 = standard_b64encode(b'plain text data').decode()
@@ -1783,7 +1782,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_window_close_during_build_no_crash(self) -> None:
         """Closing the window while a drag offer is being built frees resources (no crash)."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain text/html')
             # Add an image
             pixel_data = b'\xff\x00\x00\xff' * 4  # 2x2 RGBA
@@ -1796,7 +1795,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_change_image_out_of_bounds(self) -> None:
         """Changing to an out-of-bounds image index is accepted (means remove image)."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Add one image
             pixel_data = b'\xff\x00\x00\xff' * 4
@@ -1809,7 +1808,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_offer_then_cancel_then_new_offer(self) -> None:
         """After cancelling a drag, building a completely new offer works."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             # First offer
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             d1 = standard_b64encode(b'data1').decode()
@@ -1830,7 +1829,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_pre_send_invalid_base64_returns_einval(self) -> None:
         """Pre-sending invalid base64 data returns EINVAL."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Send completely invalid base64
             parse_bytes(screen, client_drag_pre_send(0, '!@#$%^&*()'))
@@ -1838,7 +1837,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_add_image_invalid_base64_returns_einval(self) -> None:
         """Adding an image with invalid base64 data returns EINVAL."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Invalid base64 as image data
             parse_bytes(screen, client_drag_add_image(1, 32, 1, 1, '!@#$%^&*()'))
@@ -1846,7 +1845,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_start_with_image_size_mismatch(self) -> None:
         """Starting a drag when image data size doesn't match dimensions returns EINVAL."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Claim 2x2 RGBA (16 bytes) but send only 8 bytes
             wrong_data = b'\xff\x00\x00\xff' * 2  # only 8 bytes
@@ -1862,7 +1861,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_start_with_rgb_image_size_mismatch(self) -> None:
         """Starting a drag when RGB image data size doesn't match w*h*3 returns EINVAL."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Claim 2x2 RGB (12 bytes) but send 8 bytes
             wrong_data = b'\xff\x00\x00' * 2 + b'\x00\x00'  # 8 bytes, not 12
@@ -1878,7 +1877,7 @@ class TestDnDProtocol(BaseTest):
     def test_x_key_echoed_in_data_response(self) -> None:
         """x= key is echoed in data responses to identify which request is being answered."""
         payload_data = b'hello disambiguation'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -1895,7 +1894,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_x_key_echoed_in_error_response(self) -> None:
         """x= key is echoed in error responses."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -1911,7 +1910,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_x_key_in_error_for_io_failure(self) -> None:
         """x= key is echoed in I/O error responses."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -1927,7 +1926,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_fifo_order_with_different_indices(self) -> None:
         """Multiple requests with different x= values are served in FIFO order."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain text/html')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain', 'text/html'])
@@ -1957,7 +1956,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_request_after_error_proceeds(self) -> None:
         """After an error response, the next queued request is processed."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -1986,7 +1985,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_queue_overflow_returns_emfile(self) -> None:
         """Exceeding 128 queued requests returns EMFILE and ends the drop."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -2022,7 +2021,7 @@ class TestDnDProtocol(BaseTest):
             fpath = f.name
         try:
             uri_list = f'file://{fpath}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -2040,7 +2039,7 @@ class TestDnDProtocol(BaseTest):
     def test_xy_keys_in_uri_error_response(self) -> None:
         """x= and y= keys are echoed in URI file error responses."""
         uri_list = b'file:///tmp/no_such_file_dnd_test_xyz\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_uri_drop(screen, wid, cap, uri_list)
             parse_bytes(screen, client_request_uri_data(2, 1))
             events = self._get_events(cap, wid)
@@ -2061,7 +2060,7 @@ class TestDnDProtocol(BaseTest):
         with tempfile.TemporaryDirectory() as root:
             open(os.path.join(root, 'file.txt'), 'w').close()
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -2088,7 +2087,7 @@ class TestDnDProtocol(BaseTest):
             with open(os.path.join(root, 'f.txt'), 'wb') as f:
                 f.write(content)
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -2119,7 +2118,7 @@ class TestDnDProtocol(BaseTest):
         with tempfile.TemporaryDirectory() as root:
             open(os.path.join(root, 'only.txt'), 'w').close()
             uri_list = f'file://{root}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume(wid)
@@ -2146,7 +2145,7 @@ class TestDnDProtocol(BaseTest):
             fpath = f.name
         try:
             uri_list = f'file://{fpath}\r\n'.encode()
-            with dnd_test_window() as (osw, wid, screen, cap):
+            with dnd_test_window() as (wid, screen, cap):
                 self._setup_uri_drop(screen, wid, cap, uri_list)
 
                 # Queue: MIME data request (x=1), then URI file request (x=2,y=1)
@@ -2170,7 +2169,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_finish_after_queued_requests(self) -> None:
         """A finish (empty t=r) after queued requests processes remaining then finishes."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -2191,7 +2190,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_multiple_sync_errors_processed_immediately(self) -> None:
         """Multiple queued requests that all fail synchronously are processed immediately."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 0, 0, 0, 0)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -2216,7 +2215,7 @@ class TestDnDProtocol(BaseTest):
     def test_no_r_key_in_responses(self) -> None:
         """Responses must not contain the old r= key."""
         payload_data = b'no r= key test'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._register_for_drops(screen, cap, wid, 'text/plain')
             dnd_test_set_mouse_pos(wid, 2, 3, 16, 24)
             dnd_test_fake_drop_event(wid, True, ['text/plain'])
@@ -2271,7 +2270,7 @@ class TestDnDProtocol(BaseTest):
         """Transfer a single regular file via t=k."""
         uri_list = b'file:///home/user/hello.txt\r\n'
         file_content = b'Hello, World!'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             b64 = standard_b64encode(file_content).decode()
             # Send file data for URI index 1 (1-based), type=0 (file)
@@ -2288,7 +2287,7 @@ class TestDnDProtocol(BaseTest):
         """Transfer a symlink via t=k with X=1."""
         uri_list = b'file:///home/user/link\r\n'
         target = b'/usr/share/target'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             b64 = standard_b64encode(target).decode()
             # Send symlink data (X=1)
@@ -2306,7 +2305,7 @@ class TestDnDProtocol(BaseTest):
         uri_list = b'file:///home/user/mydir\r\n'
         # Directory listing: two entries separated by null bytes
         dir_entries = b'file1.txt\x00file2.txt'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             b64 = standard_b64encode(dir_entries).decode()
             # Send directory listing (X=2, handle for this directory)
@@ -2344,7 +2343,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_multiple_uris(self) -> None:
         """Transfer multiple files from a URI list."""
         uri_list = b'file:///home/user/a.txt\r\nfile:///home/user/b.txt\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # File 1 (URI index 1)
             b64 = standard_b64encode(b'aaa').decode()
@@ -2364,7 +2363,7 @@ class TestDnDProtocol(BaseTest):
         """File data can be sent in multiple chunks with m=1."""
         uri_list = b'file:///home/user/big.bin\r\n'
         file_data = b'A' * 100 + b'B' * 200
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Split the base64 stream across two chunks
             full_b64 = standard_b64encode(file_data).decode()
@@ -2390,7 +2389,7 @@ class TestDnDProtocol(BaseTest):
         """Directory can contain symlinks (X=1 type for children)."""
         uri_list = b'file:///home/user/proj\r\n'
         dir_entries = b'readme.txt\x00link'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Top-level directory (handle=2)
             b64 = standard_b64encode(dir_entries).decode()
@@ -2431,7 +2430,7 @@ class TestDnDProtocol(BaseTest):
                         link -> /target
         """
         uri_list = b'file:///home/user/root\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
 
             # Level 0: root directory (handle=2)
@@ -2504,7 +2503,7 @@ class TestDnDProtocol(BaseTest):
                         link -> /target
         """
         uri_list = b'file:///home/user/root\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
 
             # Root directory (handle=2)
@@ -2566,7 +2565,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_completion_signal(self) -> None:
         """The completion signal t=k with no keys works correctly."""
         uri_list = b'file:///home/user/f.txt\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             b64 = standard_b64encode(b'data').decode()
             parse_bytes(screen, client_remote_file(1, b64, item_type=0))
@@ -2578,7 +2577,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_invalid_uri_index(self) -> None:
         """Sending t=k with an out-of-bounds URI index returns an error."""
         uri_list = b'file:///home/user/a.txt\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # URI index 2 is out of bounds (only 1 URI)
             b64 = standard_b64encode(b'data').decode()
@@ -2588,7 +2587,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_invalid_entry_num(self) -> None:
         """Sending t=k with an out-of-bounds entry number in a directory returns error."""
         uri_list = b'file:///home/user/dir\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Create directory with 1 entry
             dir_entries = b'file1.txt'
@@ -2606,7 +2605,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_invalid_handle(self) -> None:
         """Sending t=k with a non-existent directory handle returns error."""
         uri_list = b'file:///home/user/dir\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Create directory (handle=2)
             dir_entries = b'file1.txt'
@@ -2624,7 +2623,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_invalid_base64(self) -> None:
         """Sending invalid base64 data in t=k returns an error."""
         uri_list = b'file:///home/user/f.txt\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Send garbage that's not valid base64
             parse_bytes(screen, client_remote_file(1, '!@#$%^&*()', item_type=0))
@@ -2633,7 +2632,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_too_large_chunk(self) -> None:
         """Chunks larger than 4096 bytes are rejected."""
         uri_list = b'file:///home/user/f.txt\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Send a chunk > 4096 bytes (the b64 payload is checked before decoding)
             big_b64 = standard_b64encode(b'x' * 4097).decode()
@@ -2643,7 +2642,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_negative_X_rejected(self) -> None:
         """Sending t=k with X < 0 is rejected."""
         uri_list = b'file:///home/user/f.txt\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Directly construct escape code with negative X
             parse_bytes(screen, _osc(f'{DND_CODE};t=k:x=1:X=-1'))
@@ -2651,7 +2650,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_remote_drag_without_remote_flag_fails(self) -> None:
         """t=k fails if the drag is not from a remote client."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             # Register with local machine_id (is_remote_client=False)
             parse_bytes(screen, _osc(f'{DND_CODE};t=o:x=1;{machine_id()}'))
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain text/uri-list'))
@@ -2667,7 +2666,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_remote_drag_without_dropped_state_fails(self) -> None:
         """t=k fails if the drag state is not DROPPED (data not yet delivered)."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             # Only register, don't progress to DROPPED state
             parse_bytes(screen, _osc(f'{DND_CODE};t=o:x=1;different-machine-id'))
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/uri-list'))
@@ -2680,7 +2679,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_dos_remote_drag_limit(self) -> None:
         """Total remote data size exceeding REMOTE_DRAG_LIMIT triggers EMFILE error."""
         uri_list = b'file:///home/user/big.bin\r\n'
-        with dnd_test_window(remote_drag_limit=50) as (osw, wid, screen, cap):
+        with dnd_test_window(remote_drag_limit=50) as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # First chunk within limit
             b64 = standard_b64encode(b'x' * 30).decode()
@@ -2694,7 +2693,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_dos_present_data_cap_on_directory(self) -> None:
         """Directory listing data exceeding PRESENT_DATA_CAP triggers EMFILE error."""
         uri_list = b'file:///home/user/dir\r\n'
-        with dnd_test_window(present_data_cap=20) as (osw, wid, screen, cap):
+        with dnd_test_window(present_data_cap=20) as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Send a directory listing that will exceed the cap
             big_listing = b'\x00'.join([f'file{i}.txt'.encode() for i in range(100)])
@@ -2705,7 +2704,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_error_from_client(self) -> None:
         """Client error (t=E) during remote drag aborts correctly."""
         uri_list = b'file:///home/user/f.txt\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Client reports an error
             parse_bytes(screen, client_drag_cancel())
@@ -2728,7 +2727,7 @@ class TestDnDProtocol(BaseTest):
             eta -> /link-tgt  (symlink)
         """
         uri_list = b'file:///home/user/root\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
 
             # Root directory (handle=10)
@@ -2795,7 +2794,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_remote_drag_process_item_data_basic(self) -> None:
         """Basic drag_process_item_data: send data for a MIME type after DROPPED state."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             # Set up a non-remote drag with text/plain
             parse_bytes(screen, _osc(f'{DND_CODE};t=o:x=1;{machine_id()}'))
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
@@ -2815,7 +2814,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_remote_drag_process_item_data_error(self) -> None:
         """Client can report an error via t=E for a MIME data delivery."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             parse_bytes(screen, _osc(f'{DND_CODE};t=o:x=1;{machine_id()}'))
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
             cap.consume(wid)
@@ -2828,7 +2827,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_remote_drag_process_item_data_invalid_index(self) -> None:
         """Sending data for a non-existent MIME index is rejected."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             parse_bytes(screen, _osc(f'{DND_CODE};t=o:x=1;{machine_id()}'))
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
             cap.consume(wid)
@@ -2841,7 +2840,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_mixed_file_dir_symlink(self) -> None:
         """Transfer mixed content: file, directory and symlink as separate URIs."""
         uri_list = b'file:///tmp/a.txt\r\nfile:///tmp/mydir\r\nfile:///tmp/mylink\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
 
             # URI 1: regular file
@@ -2874,7 +2873,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_empty_file(self) -> None:
         """Transfer an empty file (end-of-data immediately after start)."""
         uri_list = b'file:///home/user/empty.txt\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Start file transfer, then immediately end (no data chunks)
             parse_bytes(screen, client_remote_file(1, '', item_type=0))
@@ -2885,7 +2884,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_empty_directory(self) -> None:
         """Transfer a directory with no entries."""
         uri_list = b'file:///home/user/emptydir\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Empty directory listing (single entry name)
             b64 = standard_b64encode(b'').decode()
@@ -2897,7 +2896,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_uri_list_with_comments(self) -> None:
         """URI list with comment lines (starting with #) should filter them out."""
         uri_list = b'# this is a comment\r\nfile:///home/user/f.txt\r\n# another comment\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Only 1 real URI (f.txt), so URI index 1 should work
             b64 = standard_b64encode(b'content').decode()
@@ -2912,7 +2911,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_multiple_chunks_directory_listing(self) -> None:
         """Directory listing data can be sent in multiple chunks."""
         uri_list = b'file:///home/user/dir\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Send directory listing in two chunks
             chunk1 = b'file1.txt\x00fi'
@@ -2949,7 +2948,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_dos_mime_list_size_cap(self) -> None:
         """Exceeding MIME_LIST_SIZE_CAP when offering MIME types returns EFBIG."""
-        with dnd_test_window(mime_list_cap=20) as (osw, wid, screen, cap):
+        with dnd_test_window(mime_list_cap=20) as (wid, screen, cap):
             parse_bytes(screen, client_drag_register())
             # Offer MIME types that exceed the cap
             long_mime = 'x' * 30
@@ -2958,7 +2957,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_dos_present_data_cap_pre_send(self) -> None:
         """Exceeding PRESENT_DATA_CAP with pre-sent data returns EFBIG."""
-        with dnd_test_window(present_data_cap=50) as (osw, wid, screen, cap):
+        with dnd_test_window(present_data_cap=50) as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Pre-send data exceeding the cap
             big_data = standard_b64encode(b'x' * 60).decode()
@@ -2967,7 +2966,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_dos_mime_list_size_cap_drop_target(self) -> None:
         """Exceeding MIME_LIST_SIZE_CAP when registering for drops silently ignores the excess."""
-        with dnd_test_window(mime_list_cap=10) as (osw, wid, screen, cap):
+        with dnd_test_window(mime_list_cap=10) as (wid, screen, cap):
             # Register with MIME types exceeding the cap
             long_mimes = 'text/plain text/html application/json'
             self._register_for_drops(screen, cap, wid, long_mimes)
@@ -2980,7 +2979,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_notify_colon_separators(self) -> None:
         """drag_notify output has proper colon separators between metadata keys."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain text/html')
             dnd_test_force_drag_dropped(wid)
             # DRAG_NOTIFY_ACCEPTED (type=0) should produce t=e:x=1:y=<idx>
@@ -2995,7 +2994,7 @@ class TestDnDProtocol(BaseTest):
     def test_drag_notify_action_changed_colon_separator(self) -> None:
         """drag_notify ACTION_CHANGED output has proper colon separators."""
         from kitty.fast_data_types import GLFW_DRAG_OPERATION_MOVE
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             dnd_test_force_drag_dropped(wid)
             # DRAG_NOTIFY_ACTION_CHANGED (type=1) with MOVE action
@@ -3008,7 +3007,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_drag_notify_finished_colon_separator(self) -> None:
         """drag_notify FINISHED output has proper colon separators."""
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             dnd_test_force_drag_dropped(wid)
             # DRAG_NOTIFY_FINISHED (type=3) with was_canceled=0
@@ -3022,7 +3021,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_children_freed_on_cleanup(self) -> None:
         """Remote drag with directories properly frees the children array on cleanup."""
         uri_list = b'file:///home/user/mydir\r\n'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Create a directory entry (X=2 means directory handle=2)
             dir_listing = standard_b64encode(b'file1.txt\x00subdir').decode()
@@ -3042,7 +3041,7 @@ class TestDnDProtocol(BaseTest):
         """Remote drag replaces URI string without leaking the original."""
         uri_list = b'file:///home/user/hello.txt\r\n'
         file_content = b'test content'
-        with dnd_test_window() as (osw, wid, screen, cap):
+        with dnd_test_window() as (wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             b64 = standard_b64encode(file_content).decode()
             # Send file data - this replaces the URI string in the uri_list
