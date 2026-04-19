@@ -452,6 +452,12 @@ func (self *Handler) draw_sticky_header(pos *ScrollPos) int {
 	if title_idx < 0 {
 		return 0
 	}
+	// If the next line is a different file's TITLE_LINE, skip sticky so the
+	// real title flows into view naturally instead of being consumed.
+	next := pos.logical_line + 1
+	if next < self.logical_lines.Len() && self.logical_lines.At(next).line_type == TITLE_LINE && next != title_idx {
+		return 0
+	}
 	// file title
 	self.logical_lines.At(title_idx).render_screen_line(0, self.lp, self.logical_lines.margin_size, self.logical_lines.columns)
 	self.lp.MoveCursorVertically(1)
