@@ -31,4 +31,6 @@ code.
 ## PR guidance
 When creating a pull request, if the changes in the pull request are user
 visible compared to the previous kitty release, add an entry in the file docs/changelog.rst
-describing the change.
+describing the change. If the changes include changes to Go code, run gofmt on
+the changed Go files to ensure they are formatted correctly, before submitting
+your changes.
