@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kovidgoyal/kitty"
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
@@ -219,107 +218,80 @@ func send_drag_data_response(lp *loop.Loop, idx int, data []byte) {
 }
 
 // send_dnd_k_small sends a small, memory-resident payload (e.g. symlink target or
-// directory entry list) via t=k. meta_suffix contains all key=val pairs after "t=k",
-// including the leading colon (e.g. ":x=1:X=2:Y=3:y=4").
-// The full header (including x, X, Y, y) is included in every chunk so the terminal
-// can route each chunk to the correct item even when the payload spans multiple chunks.
-func send_dnd_k_small(lp *loop.Loop, meta_suffix string, data []byte) {
-	hdr := fmt.Sprintf("\x1b]%d;t=k%s", kitty.DndCode, meta_suffix)
+// directory entry list) as a t=k DnD data item. meta must include "t":"k" plus
+// the routing keys (x, X, Y, y as needed). QueueDnDData handles chunking; the
+// terminal carries routing keys from the first chunk to all subsequent chunks.
+func send_dnd_k_small(lp *loop.Loop, meta map[string]string, data []byte) {
 	if len(data) > 0 {
-		b64 := base64.RawStdEncoding.EncodeToString(data)
-		const chunk = 4096
-		for i := 0; i < len(b64); i += chunk {
-			end := i + chunk
-			if end > len(b64) {
-				end = len(b64)
-			}
-			m_val := "1"
-			if end >= len(b64) {
-				m_val = "0"
-			}
-			// Include the full header in every chunk: the terminal uses x, X, Y, y
-			// to route each chunk to the correct DragRemoteItem.
-			lp.QueueWriteString(hdr + ":m=" + m_val + ";")
-			lp.QueueWriteString(b64[i:end])
-			lp.QueueWriteString("\x1b\\")
-		}
+		lp.QueueDnDData(meta, utils.UnsafeBytesToString(data), true)
 	}
-	// End-of-data signal: empty payload
-	lp.QueueWriteString(hdr + ";\x1b\\")
+	lp.QueueDnDData(meta, "", false)
 }
 
 const (
 	// remote_drag_limit matches DEFAULT_REMOTE_DRAG_LIMIT in dnd.c (1 GiB).
 	remote_drag_limit int64 = 1024 * 1024 * 1024
-	// dnd_raw_chunk_size matches FILE_CHUNK_SIZE in dnd.c (3072 bytes raw → 4096 base64 chars).
-	dnd_raw_chunk_size = 3072
+	// remote_batch_raw is the number of raw bytes per batch (32 chunks × 3072 bytes).
+	// QueueDnDData with as_base64=true splits this into 32 chunks of 4096 base64 chars.
+	remote_batch_raw = 32 * 3072
 )
 
-// stream_dnd_k_file streams the content of r as t=k escape codes in 3072-byte raw
-// chunks (matching FILE_CHUNK_SIZE in dnd.c). meta_suffix is appended after "t=k"
-// (e.g. ":x=1" or ":x=2:Y=3:y=1"). total_sent is updated with raw bytes sent; if
-// the cumulative total exceeds remote_drag_limit an error is returned without sending
-// any more data or the end-of-data signal — the caller must send t=E on error.
-func stream_dnd_k_file(lp *loop.Loop, meta_suffix string, r io.Reader, total_sent *int64) error {
-	hdr := fmt.Sprintf("\x1b]%d;t=k%s", kitty.DndCode, meta_suffix)
-	raw := make([]byte, dnd_raw_chunk_size)
-	b64 := make([]byte, base64.RawStdEncoding.EncodedLen(dnd_raw_chunk_size))
-	for {
-		n, err := io.ReadFull(r, raw)
-		is_last := err == io.ErrUnexpectedEOF || err == io.EOF
-		if n > 0 {
-			*total_sent += int64(n)
-			if *total_sent > remote_drag_limit {
-				return fmt.Errorf("remote drag data exceeds the 1 GiB limit; use a local drag instead")
-			}
-			b64n := base64.RawStdEncoding.EncodedLen(n)
-			base64.RawStdEncoding.Encode(b64[:b64n], raw[:n])
-			m_val := "1"
-			if is_last {
-				m_val = "0"
-			}
-			lp.QueueWriteString(hdr + ":m=" + m_val + ";")
-			lp.QueueWriteBytesCopy(b64[:b64n])
-			lp.QueueWriteString("\x1b\\")
-		}
-		if is_last {
-			break
-		}
-		if err != nil {
-			return err
-		}
-	}
-	// End-of-data signal: empty payload
-	lp.QueueWriteString(hdr + ";\x1b\\")
-	return nil
+// rfs_item_kind identifies what kind of work item is in the remote files streamer queue.
+type rfs_item_kind int
+
+const (
+	rfs_small  rfs_item_kind = iota // small data (dir listing, symlink)
+	rfs_file                        // regular file to stream in batches
+	rfs_signal                      // empty end signal (missing or unreadable item)
+	rfs_done                        // final completion signal
+)
+
+// rfs_item is one unit of work in the remote_files_streamer queue.
+type rfs_item struct {
+	kind      rfs_item_kind
+	meta      map[string]string // routing metadata (always set)
+	data      []byte            // non-nil for rfs_small
+	file_path string            // non-empty for rfs_file
 }
 
-// send_remote_files sends all file:// URI content for a remote drag via t=k escape
-// codes. File data is streamed in 3072-byte chunks so large files are never fully
-// loaded into memory. Symlink targets and directory entry lists are small and may be
-// accumulated. Returns an error if the total exceeds the 1 GiB remote drag limit.
-func send_remote_files(lp *loop.Loop, uri_list []uri_list_item) error {
-	handle_counter := 2 // 0=file, 1=symlink; directories start at 2
-	var total_sent int64
+// remote_files_streamer streams all file:// URI content for a remote drag via t=k
+// escape codes. Files are sent in 32-chunk batches (32 × 3072 bytes raw each) with
+// the loop's OnWriteComplete callback used to pace writes so the write queue never
+// holds more than ~32 chunks of file data at a time. Small payloads (dir listings,
+// symlink targets) are queued immediately without waiting for flow control.
+type remote_files_streamer struct {
+	lp         *loop.Loop
+	total_sent int64
+	batch_id   loop.IdType // id of last QueueDnDData call; 0 = no active batch
+	items      []rfs_item
+	cur_item   int
+	cur_file   *os.File
+	cur_meta   map[string]string
+}
+
+// build_rfs_items performs the BFS directory traversal for uri_list and returns the
+// flat list of rfs_items that the remote_files_streamer will process in order.
+func build_rfs_items(uri_list []uri_list_item) []rfs_item {
+	handle_counter := 2 // directories start at handle 2
+	var items []rfs_item
 
 	type dir_work struct {
 		path          string
 		handle        int
 		parent_handle int
 		entry_num     int
-		uri_idx       int
+		uri_x         int
 	}
 
 	for uri_idx, item := range uri_list {
 		x := uri_idx + 1 // 1-based
 		st, err := os.Stat(item.path)
 		if err != nil {
-			// Unreadable item: send empty end-of-data to mark absence
-			lp.QueueWriteString(fmt.Sprintf("\x1b]%d;t=k:x=%d;\x1b\\", kitty.DndCode, x))
+			items = append(items, rfs_item{rfs_signal, map[string]string{"t": "k", "x": strconv.Itoa(x)}, nil, ""})
 			continue
 		}
 		if st.IsDir() {
-			queue := []dir_work{{path: item.path, handle: handle_counter, parent_handle: 0, entry_num: 0, uri_idx: x}}
+			queue := []dir_work{{item.path, handle_counter, 0, 0, x}}
 			handle_counter++
 			for len(queue) > 0 {
 				work := queue[0]
@@ -332,65 +304,105 @@ func send_remote_files(lp *loop.Loop, uri_list []uri_list_item) error {
 				for _, e := range entries {
 					names = append(names, e.Name())
 				}
-				entry_bytes := []byte(strings.Join(names, "\x00"))
-				var dir_meta string
+				listing := []byte(strings.Join(names, "\x00"))
+				dir_meta := map[string]string{"t": "k", "x": strconv.Itoa(work.uri_x), "X": strconv.Itoa(work.handle)}
 				if work.parent_handle != 0 {
-					dir_meta = fmt.Sprintf(":x=%d:X=%d:Y=%d:y=%d", work.uri_idx, work.handle, work.parent_handle, work.entry_num)
-				} else {
-					dir_meta = fmt.Sprintf(":x=%d:X=%d", work.uri_idx, work.handle)
+					dir_meta["Y"] = strconv.Itoa(work.parent_handle)
+					dir_meta["y"] = strconv.Itoa(work.entry_num)
 				}
-				send_dnd_k_small(lp, dir_meta, entry_bytes)
-
+				items = append(items, rfs_item{rfs_small, dir_meta, listing, ""})
 				for i, e := range entries {
 					child_path := filepath.Join(work.path, e.Name())
 					child_num := i + 1 // 1-based
 					if e.Type()&os.ModeSymlink != 0 {
 						target, _ := os.Readlink(child_path)
-						sym_meta := fmt.Sprintf(":x=%d:X=1:Y=%d:y=%d", work.uri_idx, work.handle, child_num)
-						send_dnd_k_small(lp, sym_meta, []byte(target))
+						sym_meta := map[string]string{
+							"t": "k", "x": strconv.Itoa(work.uri_x),
+							"X": "1", "Y": strconv.Itoa(work.handle), "y": strconv.Itoa(child_num),
+						}
+						items = append(items, rfs_item{rfs_small, sym_meta, []byte(target), ""})
 					} else if e.IsDir() {
-						child_handle := handle_counter
+						ch := handle_counter
 						handle_counter++
-						queue = append(queue, dir_work{
-							path:          child_path,
-							handle:        child_handle,
-							parent_handle: work.handle,
-							entry_num:     child_num,
-							uri_idx:       work.uri_idx,
-						})
+						queue = append(queue, dir_work{child_path, ch, work.handle, child_num, work.uri_x})
 					} else {
-						f, err := os.Open(child_path)
-						if err != nil {
-							lp.QueueWriteString(fmt.Sprintf("\x1b]%d;t=k:x=%d:Y=%d:y=%d;\x1b\\",
-								kitty.DndCode, work.uri_idx, work.handle, child_num))
-							continue
+						file_meta := map[string]string{
+							"t": "k", "x": strconv.Itoa(work.uri_x),
+							"Y": strconv.Itoa(work.handle), "y": strconv.Itoa(child_num),
 						}
-						file_meta := fmt.Sprintf(":x=%d:Y=%d:y=%d", work.uri_idx, work.handle, child_num)
-						err = stream_dnd_k_file(lp, file_meta, f, &total_sent)
-						f.Close()
-						if err != nil {
-							return err
-						}
+						items = append(items, rfs_item{rfs_file, file_meta, nil, child_path})
 					}
 				}
 			}
 		} else {
-			// Top-level regular file: stream in chunks
-			f, err := os.Open(item.path)
-			if err != nil {
-				lp.QueueWriteString(fmt.Sprintf("\x1b]%d;t=k:x=%d;\x1b\\", kitty.DndCode, x))
-				continue
-			}
-			file_meta := fmt.Sprintf(":x=%d", x)
-			err = stream_dnd_k_file(lp, file_meta, f, &total_sent)
-			f.Close()
-			if err != nil {
-				return err
-			}
+			file_meta := map[string]string{"t": "k", "x": strconv.Itoa(x)}
+			items = append(items, rfs_item{rfs_file, file_meta, nil, item.path})
 		}
 	}
-	// All data transmitted: send completion signal
-	lp.QueueWriteString(fmt.Sprintf("\x1b]%d;t=k;\x1b\\", kitty.DndCode))
+	items = append(items, rfs_item{kind: rfs_done})
+	return items
+}
+
+// start begins streaming: processes all pending small items and opens the first file.
+func (s *remote_files_streamer) start() error {
+	return s.advance()
+}
+
+// send_file_batch reads the next batch of up to remote_batch_raw bytes from the
+// current file and queues it via QueueDnDData. When the file is exhausted the
+// end-of-data signal is sent and advance() is called to move to the next item.
+func (s *remote_files_streamer) send_file_batch() error {
+	buf := make([]byte, remote_batch_raw)
+	n, err := io.ReadFull(s.cur_file, buf)
+	is_last := err == io.ErrUnexpectedEOF || err == io.EOF
+	if n > 0 {
+		s.total_sent += int64(n)
+		if s.total_sent > remote_drag_limit {
+			_ = s.cur_file.Close()
+			s.cur_file = nil
+			return fmt.Errorf("remote drag data exceeds the 1 GiB limit; use a local drag instead")
+		}
+		s.batch_id = s.lp.QueueDnDData(s.cur_meta, utils.UnsafeBytesToString(buf[:n]), true)
+	}
+	if is_last {
+		_ = s.cur_file.Close()
+		s.cur_file = nil
+		s.lp.QueueDnDData(s.cur_meta, "", false)
+		s.batch_id = 0
+		s.cur_item++
+		return s.advance()
+	}
+	return nil
+}
+
+// advance processes small items immediately and starts streaming the next file.
+func (s *remote_files_streamer) advance() error {
+	for s.cur_item < len(s.items) {
+		item := s.items[s.cur_item]
+		switch item.kind {
+		case rfs_small:
+			send_dnd_k_small(s.lp, item.meta, item.data)
+			s.cur_item++
+		case rfs_signal:
+			s.lp.QueueDnDData(item.meta, "", false)
+			s.cur_item++
+		case rfs_file:
+			f, err := os.Open(item.file_path)
+			if err != nil {
+				s.lp.QueueDnDData(item.meta, "", false)
+				s.cur_item++
+				continue
+			}
+			s.cur_file = f
+			s.cur_meta = item.meta
+			s.cur_item++
+			return s.send_file_batch()
+		case rfs_done:
+			s.lp.QueueDnDData(map[string]string{"t": "k"}, "", false)
+			s.cur_item++
+			return nil
+		}
+	}
 	return nil
 }
 
@@ -523,7 +535,6 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 	// file rather than accumulating in drop_chunks.  nil means accumulate.
 	var drop_streaming_file *os.File  // open file for streaming writes; closed on end signal
 	var drop_streaming_dest io.Writer // destination for streaming (may be file or io.WriteCloser)
-	drop_streaming_write_err := false // true when a streaming write failed; discard remaining chunks
 
 	// Remote file fetch state (used when drop_is_remote)
 	var remote_drop *remote_drop_state
@@ -535,6 +546,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 	var drag_mime_list []string
 	drag_started := false
 	drag_action_final := 0 // 0=unknown, 1=copy, 2=move
+	var remote_streamer *remote_files_streamer
 
 	lp, err := loop.New()
 	if err != nil {
@@ -638,7 +650,6 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			drop_streaming_file = nil
 		}
 		drop_streaming_dest = nil
-		drop_streaming_write_err = false
 		lp.QueueDnDData(map[string]string{"t": "r"}, "", false)
 		drop_in_progress = false
 		drop_accepted = false
@@ -1110,25 +1121,23 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 					drop_current_xp = cmd.Xp
 				}
 				// stream_write writes data to the current streaming dest, checking for errors.
-				// On failure, it closes the file and sets drop_streaming_write_err so subsequent
-				// chunks are discarded until the end-of-data signal.
-				stream_write := func(w io.Writer, b []byte) {
+				// On failure, it closes the file and returns the error.
+				stream_write := func(w io.Writer, b []byte) error {
 					if _, werr := w.Write(b); werr != nil {
 						if drop_streaming_file != nil {
 							_ = drop_streaming_file.Close()
 							drop_streaming_file = nil
 						}
 						drop_streaming_dest = nil
-						drop_streaming_write_err = true
+						return werr
 					}
-				}
-				if drop_streaming_write_err {
-					// A write already failed for this item; discard remaining chunks.
 					return nil
 				}
 				if drop_streaming_dest != nil {
 					// Already in streaming mode: write directly.
-					stream_write(drop_streaming_dest, data)
+					if err := stream_write(drop_streaming_dest, data); err != nil {
+						return err
+					}
 				} else if drop_current_mime_x != 0 {
 					// Normal MIME response: stream to destination if it's not text/uri-list.
 					mime_type := drop_mime_list[drop_current_mime_x-1]
@@ -1136,14 +1145,18 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 					if mime_type != "text/uri-list" && dd.dest != nil {
 						// io.WriteCloser destination: stream directly.
 						drop_streaming_dest = dd.dest
-						stream_write(drop_streaming_dest, data)
+						if err := stream_write(drop_streaming_dest, data); err != nil {
+							return err
+						}
 					} else if mime_type != "text/uri-list" && dd.path != "" {
 						// File path destination: open file and start streaming.
 						_ = os.MkdirAll(filepath.Dir(dd.path), 0o755)
 						if f, ferr := os.OpenFile(dd.path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); ferr == nil {
 							drop_streaming_file = f
 							drop_streaming_dest = f
-							stream_write(drop_streaming_dest, data)
+							if err := stream_write(drop_streaming_dest, data); err != nil {
+								return err
+							}
 						} else {
 							drop_chunks.Write(data)
 						}
@@ -1173,7 +1186,9 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 						if f, ferr := os.OpenFile(dst_path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); ferr == nil {
 							drop_streaming_file = f
 							drop_streaming_dest = f
-							stream_write(drop_streaming_dest, data)
+							if err := stream_write(drop_streaming_dest, data); err != nil {
+								return err
+							}
 						} else {
 							drop_chunks.Write(data)
 						}
@@ -1188,19 +1203,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			}
 			// Empty payload: end-of-data signal.
 
-			// If a write error occurred during streaming, reset and advance.
-			if drop_streaming_write_err {
-				drop_streaming_write_err = false
-				drop_streaming_file = nil
-				drop_streaming_dest = nil
-				drop_chunks.Reset()
-				drop_current_xp = 0
-				if drop_current_mime_x != 0 {
-					drop_current_mime_x = 0
-				}
-				return start_next_drop_fetch()
-			}
-
+			// If we were streaming, the file is already fully written.
 			// If we were streaming, the file is already fully written.
 			if drop_streaming_dest != nil || drop_streaming_file != nil {
 				if drop_streaming_file != nil {
