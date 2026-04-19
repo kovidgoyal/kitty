@@ -523,6 +523,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 	// file rather than accumulating in drop_chunks.  nil means accumulate.
 	var drop_streaming_file *os.File  // open file for streaming writes; closed on end signal
 	var drop_streaming_dest io.Writer // destination for streaming (may be file or io.WriteCloser)
+	drop_streaming_write_err := false // true when a streaming write failed; discard remaining chunks
 
 	// Remote file fetch state (used when drop_is_remote)
 	var remote_drop *remote_drop_state
@@ -637,6 +638,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			drop_streaming_file = nil
 		}
 		drop_streaming_dest = nil
+		drop_streaming_write_err = false
 		lp.QueueDnDData(map[string]string{"t": "r"}, "", false)
 		drop_in_progress = false
 		drop_accepted = false
@@ -1107,9 +1109,26 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 				if cmd.Xp != 0 && drop_current_xp == 0 {
 					drop_current_xp = cmd.Xp
 				}
+				// stream_write writes data to the current streaming dest, checking for errors.
+				// On failure, it closes the file and sets drop_streaming_write_err so subsequent
+				// chunks are discarded until the end-of-data signal.
+				stream_write := func(w io.Writer, b []byte) {
+					if _, werr := w.Write(b); werr != nil {
+						if drop_streaming_file != nil {
+							_ = drop_streaming_file.Close()
+							drop_streaming_file = nil
+						}
+						drop_streaming_dest = nil
+						drop_streaming_write_err = true
+					}
+				}
+				if drop_streaming_write_err {
+					// A write already failed for this item; discard remaining chunks.
+					return nil
+				}
 				if drop_streaming_dest != nil {
 					// Already in streaming mode: write directly.
-					_, _ = drop_streaming_dest.Write(data)
+					stream_write(drop_streaming_dest, data)
 				} else if drop_current_mime_x != 0 {
 					// Normal MIME response: stream to destination if it's not text/uri-list.
 					mime_type := drop_mime_list[drop_current_mime_x-1]
@@ -1117,14 +1136,14 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 					if mime_type != "text/uri-list" && dd.dest != nil {
 						// io.WriteCloser destination: stream directly.
 						drop_streaming_dest = dd.dest
-						_, _ = drop_streaming_dest.Write(data)
+						stream_write(drop_streaming_dest, data)
 					} else if mime_type != "text/uri-list" && dd.path != "" {
 						// File path destination: open file and start streaming.
 						_ = os.MkdirAll(filepath.Dir(dd.path), 0o755)
 						if f, ferr := os.OpenFile(dd.path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); ferr == nil {
 							drop_streaming_file = f
 							drop_streaming_dest = f
-							_, _ = drop_streaming_dest.Write(data)
+							stream_write(drop_streaming_dest, data)
 						} else {
 							drop_chunks.Write(data)
 						}
@@ -1154,7 +1173,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 						if f, ferr := os.OpenFile(dst_path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); ferr == nil {
 							drop_streaming_file = f
 							drop_streaming_dest = f
-							_, _ = drop_streaming_dest.Write(data)
+							stream_write(drop_streaming_dest, data)
 						} else {
 							drop_chunks.Write(data)
 						}
@@ -1168,6 +1187,19 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 				return nil
 			}
 			// Empty payload: end-of-data signal.
+
+			// If a write error occurred during streaming, reset and advance.
+			if drop_streaming_write_err {
+				drop_streaming_write_err = false
+				drop_streaming_file = nil
+				drop_streaming_dest = nil
+				drop_chunks.Reset()
+				drop_current_xp = 0
+				if drop_current_mime_x != 0 {
+					drop_current_mime_x = 0
+				}
+				return start_next_drop_fetch()
+			}
 
 			// If we were streaming, the file is already fully written.
 			if drop_streaming_dest != nil || drop_streaming_file != nil {
@@ -1277,6 +1309,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 				drop_streaming_file = nil
 			}
 			drop_streaming_dest = nil
+			drop_streaming_write_err = false
 			drop_chunks.Reset()
 			drop_current_mime_x = 0
 			drop_current_xp = 0
