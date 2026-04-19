@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kovidgoyal/kitty"
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
@@ -67,13 +68,13 @@ func (b button_pos) contains(cell_x, cell_y int) bool {
 
 // remote_dir holds state for one directory being traversed during a remote drop
 type remote_dir struct {
-	handle      int
-	entries     []string // null-separated filenames, already split
-	local_path  string   // local destination directory
-	x_key       int      // 'x' key for requests (1-based MIME idx for top-level, 1-based uri sub-idx for files)
-	parent_Y    int      // 'Y' (directory handle) for parent; 0 means this is accessed via y_key
-	parent_y    int      // 'y' (entry number in parent) for children of a parent dir
-	dirs_to_close []int  // handles of sub-directories opened in this dir
+	handle        int
+	entries       []string // null-separated filenames, already split
+	local_path    string   // local destination directory
+	x_key         int      // 'x' key for requests (1-based MIME idx for top-level, 1-based uri sub-idx for files)
+	parent_Y      int      // 'Y' (directory handle) for parent; 0 means this is accessed via y_key
+	parent_y      int      // 'y' (entry number in parent) for children of a parent dir
+	dirs_to_close []int    // handles of sub-directories opened in this dir
 }
 
 // decode_b64 decodes base64-encoded data, tolerating optional padding.
@@ -217,65 +218,107 @@ func send_drag_data_response(lp *loop.Loop, idx int, data []byte) {
 	lp.QueueDnDData(map[string]string{"t": "e", "y": idx_str, "m": "0"}, "", false)
 }
 
-// send_remote_file_data sends a file's content via the t=k protocol.
-// uri_idx is 1-based; parent_handle and entry_num are for directory children (0 for top-level).
-func send_remote_file_data(lp *loop.Loop, uri_idx, item_type, parent_handle, entry_num int, data []byte) {
-	meta := map[string]string{
-		"t": "k",
-		"x": strconv.Itoa(uri_idx),
-		"X": strconv.Itoa(item_type),
-	}
-	if parent_handle != 0 {
-		meta["Y"] = strconv.Itoa(parent_handle)
-		meta["y"] = strconv.Itoa(entry_num)
-	}
+// send_dnd_k_small sends a small, memory-resident payload (e.g. symlink target or
+// directory entry list) via t=k. meta_suffix contains all key=val pairs after "t=k",
+// including the leading colon (e.g. ":x=1:X=2:Y=3:y=4").
+// The full header (including x, X, Y, y) is included in every chunk so the terminal
+// can route each chunk to the correct item even when the payload spans multiple chunks.
+func send_dnd_k_small(lp *loop.Loop, meta_suffix string, data []byte) {
+	hdr := fmt.Sprintf("\x1b]%d;t=k%s", kitty.DndCode, meta_suffix)
 	if len(data) > 0 {
-		lp.QueueDnDData(meta, utils.UnsafeBytesToString(data), true)
+		b64 := base64.RawStdEncoding.EncodeToString(data)
+		const chunk = 4096
+		for i := 0; i < len(b64); i += chunk {
+			end := i + chunk
+			if end > len(b64) {
+				end = len(b64)
+			}
+			m_val := "1"
+			if end >= len(b64) {
+				m_val = "0"
+			}
+			// Include the full header in every chunk: the terminal uses x, X, Y, y
+			// to route each chunk to the correct DragRemoteItem.
+			lp.QueueWriteString(hdr + ":m=" + m_val + ";")
+			lp.QueueWriteString(b64[i:end])
+			lp.QueueWriteString("\x1b\\")
+		}
 	}
-	// End-of-data: same meta, empty payload
-	lp.QueueDnDData(meta, "", false)
+	// End-of-data signal: empty payload
+	lp.QueueWriteString(hdr + ";\x1b\\")
 }
 
-// send_remote_dir_entries sends a directory's null-separated entry list via t=k.
-// handle is the unique integer assigned to this directory (> 1).
-func send_remote_dir_entries(lp *loop.Loop, uri_idx, handle, parent_handle, entry_num int, entries []byte) {
-	meta := map[string]string{
-		"t": "k",
-		"x": strconv.Itoa(uri_idx),
-		"X": strconv.Itoa(handle),
+const (
+	// remote_drag_limit matches DEFAULT_REMOTE_DRAG_LIMIT in dnd.c (1 GiB).
+	remote_drag_limit int64 = 1024 * 1024 * 1024
+	// dnd_raw_chunk_size matches FILE_CHUNK_SIZE in dnd.c (3072 bytes raw → 4096 base64 chars).
+	dnd_raw_chunk_size = 3072
+)
+
+// stream_dnd_k_file streams the content of r as t=k escape codes in 3072-byte raw
+// chunks (matching FILE_CHUNK_SIZE in dnd.c). meta_suffix is appended after "t=k"
+// (e.g. ":x=1" or ":x=2:Y=3:y=1"). total_sent is updated with raw bytes sent; if
+// the cumulative total exceeds remote_drag_limit an error is returned without sending
+// any more data or the end-of-data signal — the caller must send t=E on error.
+func stream_dnd_k_file(lp *loop.Loop, meta_suffix string, r io.Reader, total_sent *int64) error {
+	hdr := fmt.Sprintf("\x1b]%d;t=k%s", kitty.DndCode, meta_suffix)
+	raw := make([]byte, dnd_raw_chunk_size)
+	b64 := make([]byte, base64.RawStdEncoding.EncodedLen(dnd_raw_chunk_size))
+	for {
+		n, err := io.ReadFull(r, raw)
+		is_last := err == io.ErrUnexpectedEOF || err == io.EOF
+		if n > 0 {
+			*total_sent += int64(n)
+			if *total_sent > remote_drag_limit {
+				return fmt.Errorf("remote drag data exceeds the 1 GiB limit; use a local drag instead")
+			}
+			b64n := base64.RawStdEncoding.EncodedLen(n)
+			base64.RawStdEncoding.Encode(b64[:b64n], raw[:n])
+			m_val := "1"
+			if is_last {
+				m_val = "0"
+			}
+			lp.QueueWriteString(hdr + ":m=" + m_val + ";")
+			lp.QueueWriteBytesCopy(b64[:b64n])
+			lp.QueueWriteString("\x1b\\")
+		}
+		if is_last {
+			break
+		}
+		if err != nil {
+			return err
+		}
 	}
-	if parent_handle != 0 {
-		meta["Y"] = strconv.Itoa(parent_handle)
-		meta["y"] = strconv.Itoa(entry_num)
-	}
-	if len(entries) > 0 {
-		lp.QueueDnDData(meta, utils.UnsafeBytesToString(entries), true)
-	}
-	lp.QueueDnDData(meta, "", false)
+	// End-of-data signal: empty payload
+	lp.QueueWriteString(hdr + ";\x1b\\")
+	return nil
 }
 
-// send_remote_files sends all file:// URI content for a remote drag request.
-// It reads files/directories from the uri_list and sends them using t=k escape codes.
-func send_remote_files(lp *loop.Loop, uri_list []uri_list_item) {
+// send_remote_files sends all file:// URI content for a remote drag via t=k escape
+// codes. File data is streamed in 3072-byte chunks so large files are never fully
+// loaded into memory. Symlink targets and directory entry lists are small and may be
+// accumulated. Returns an error if the total exceeds the 1 GiB remote drag limit.
+func send_remote_files(lp *loop.Loop, uri_list []uri_list_item) error {
 	handle_counter := 2 // 0=file, 1=symlink; directories start at 2
+	var total_sent int64
 
 	type dir_work struct {
-		path         string
-		handle       int
+		path          string
+		handle        int
 		parent_handle int
-		entry_num    int
-		uri_idx      int
+		entry_num     int
+		uri_idx       int
 	}
 
 	for uri_idx, item := range uri_list {
 		x := uri_idx + 1 // 1-based
 		st, err := os.Stat(item.path)
 		if err != nil {
-			send_remote_file_data(lp, x, 0, 0, 0, nil)
+			// Unreadable item: send empty end-of-data to mark absence
+			lp.QueueWriteString(fmt.Sprintf("\x1b]%d;t=k:x=%d;\x1b\\", kitty.DndCode, x))
 			continue
 		}
 		if st.IsDir() {
-			// Send directory listing; then recurse using BFS
 			queue := []dir_work{{path: item.path, handle: handle_counter, parent_handle: 0, entry_num: 0, uri_idx: x}}
 			handle_counter++
 			for len(queue) > 0 {
@@ -290,46 +333,65 @@ func send_remote_files(lp *loop.Loop, uri_list []uri_list_item) {
 					names = append(names, e.Name())
 				}
 				entry_bytes := []byte(strings.Join(names, "\x00"))
-				send_remote_dir_entries(lp, work.uri_idx, work.handle, work.parent_handle, work.entry_num, entry_bytes)
+				var dir_meta string
+				if work.parent_handle != 0 {
+					dir_meta = fmt.Sprintf(":x=%d:X=%d:Y=%d:y=%d", work.uri_idx, work.handle, work.parent_handle, work.entry_num)
+				} else {
+					dir_meta = fmt.Sprintf(":x=%d:X=%d", work.uri_idx, work.handle)
+				}
+				send_dnd_k_small(lp, dir_meta, entry_bytes)
+
 				for i, e := range entries {
 					child_path := filepath.Join(work.path, e.Name())
 					child_num := i + 1 // 1-based
 					if e.Type()&os.ModeSymlink != 0 {
-						target, err := os.Readlink(child_path)
-						if err != nil {
-							target = ""
-						}
-						send_remote_file_data(lp, work.uri_idx, 1, work.handle, child_num, []byte(target))
+						target, _ := os.Readlink(child_path)
+						sym_meta := fmt.Sprintf(":x=%d:X=1:Y=%d:y=%d", work.uri_idx, work.handle, child_num)
+						send_dnd_k_small(lp, sym_meta, []byte(target))
 					} else if e.IsDir() {
 						child_handle := handle_counter
 						handle_counter++
 						queue = append(queue, dir_work{
-							path: child_path, handle: child_handle,
-							parent_handle: work.handle, entry_num: child_num, uri_idx: work.uri_idx,
+							path:          child_path,
+							handle:        child_handle,
+							parent_handle: work.handle,
+							entry_num:     child_num,
+							uri_idx:       work.uri_idx,
 						})
-						// Send an empty directory listing placeholder; will be sent when dequeued
-						// The actual listing is sent when the queue item is processed above.
-						// So we just enqueue — the send happens at head-of-queue processing.
 					} else {
-						data, err := os.ReadFile(child_path)
+						f, err := os.Open(child_path)
 						if err != nil {
-							data = nil
+							lp.QueueWriteString(fmt.Sprintf("\x1b]%d;t=k:x=%d:Y=%d:y=%d;\x1b\\",
+								kitty.DndCode, work.uri_idx, work.handle, child_num))
+							continue
 						}
-						send_remote_file_data(lp, work.uri_idx, 0, work.handle, child_num, data)
+						file_meta := fmt.Sprintf(":x=%d:Y=%d:y=%d", work.uri_idx, work.handle, child_num)
+						err = stream_dnd_k_file(lp, file_meta, f, &total_sent)
+						f.Close()
+						if err != nil {
+							return err
+						}
 					}
 				}
 			}
 		} else {
-			// Regular file
-			data, err := os.ReadFile(item.path)
+			// Top-level regular file: stream in chunks
+			f, err := os.Open(item.path)
 			if err != nil {
-				data = nil
+				lp.QueueWriteString(fmt.Sprintf("\x1b]%d;t=k:x=%d;\x1b\\", kitty.DndCode, x))
+				continue
 			}
-			send_remote_file_data(lp, x, 0, 0, 0, data)
+			file_meta := fmt.Sprintf(":x=%d", x)
+			err = stream_dnd_k_file(lp, file_meta, f, &total_sent)
+			f.Close()
+			if err != nil {
+				return err
+			}
 		}
 	}
-	// Completion signal
-	lp.QueueDnDData(map[string]string{"t": "k"}, "", false)
+	// All data transmitted: send completion signal
+	lp.QueueWriteString(fmt.Sprintf("\x1b]%d;t=k;\x1b\\", kitty.DndCode))
+	return nil
 }
 
 // parse_uri_list parses a text/uri-list payload, returning file:// URI paths.
@@ -453,9 +515,14 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 
 	// Sequential MIME fetch state
 	var drop_pending_mime_xs []int // 1-based MIME indexes still to fetch
-	drop_current_mime_x := 0      // currently fetching (1-based), 0=none
-	drop_current_xp := 0          // Xp from first data chunk (e.g., X=1 for remote uri-list)
+	drop_current_mime_x := 0       // currently fetching (1-based), 0=none
+	drop_current_xp := 0           // Xp from first data chunk (e.g., X=1 for remote uri-list)
 	var drop_chunks bytes.Buffer
+
+	// Streaming receive state: for regular files, write chunks directly to a destination
+	// file rather than accumulating in drop_chunks.  nil means accumulate.
+	var drop_streaming_file *os.File  // open file for streaming writes; closed on end signal
+	var drop_streaming_dest io.Writer // destination for streaming (may be file or io.WriteCloser)
 
 	// Remote file fetch state (used when drop_is_remote)
 	var remote_drop *remote_drop_state
@@ -565,6 +632,11 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 
 	// finish_drop signals the terminal that we're done receiving drop data.
 	finish_drop := func() error {
+		if drop_streaming_file != nil {
+			_ = drop_streaming_file.Close()
+			drop_streaming_file = nil
+		}
+		drop_streaming_dest = nil
 		lp.QueueDnDData(map[string]string{"t": "r"}, "", false)
 		drop_in_progress = false
 		drop_accepted = false
@@ -864,9 +936,12 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 				send_drag_data_response(lp, idx, data)
 
 				// If the terminal requests remote file data (Yp == 1 for text/uri-list),
-				// send file content via t=k after the URI list data.
+				// stream file content via t=k after the URI list data.
 				if cmd.Yp == 1 && mime == "text/uri-list" && len(ds.uri_list) > 0 {
-					send_remote_files(lp, ds.uri_list)
+					if err := send_remote_files(lp, ds.uri_list); err != nil {
+						lp.QueueDnDData(map[string]string{"t": "E"}, "EMFILE", false)
+						return fmt.Errorf("remote drag failed: %w", err)
+					}
 				}
 			}
 
@@ -1020,22 +1095,96 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 
 		case 'r':
 			// Data from terminal in response to our t=r request.
-			// Accumulate base64-decoded data from each chunk. Only process
-			// when we receive the empty end-of-data signal (empty payload, m=0).
+			// For regular files, write decoded chunks directly to the destination
+			// (streaming mode). For symlinks, directories, and text/uri-list,
+			// accumulate in drop_chunks and process on the end-of-data signal.
 			if len(cmd.Payload) > 0 {
-				// Data chunk: accumulate and remember any X= flag (e.g., X=1 for remote)
 				data, err := decode_b64(cmd.Payload)
-				if err == nil && len(data) > 0 {
-					drop_chunks.Write(data)
+				if err != nil {
+					return nil
 				}
+				// Record X= type from the first non-empty chunk.
 				if cmd.Xp != 0 && drop_current_xp == 0 {
 					drop_current_xp = cmd.Xp
 				}
-				// Wait for more chunks or the empty end signal
+				if drop_streaming_dest != nil {
+					// Already in streaming mode: write directly.
+					_, _ = drop_streaming_dest.Write(data)
+				} else if drop_current_mime_x != 0 {
+					// Normal MIME response: stream to destination if it's not text/uri-list.
+					mime_type := drop_mime_list[drop_current_mime_x-1]
+					dd := drop_dests[mime_type]
+					if mime_type != "text/uri-list" && dd.dest != nil {
+						// io.WriteCloser destination: stream directly.
+						drop_streaming_dest = dd.dest
+						_, _ = drop_streaming_dest.Write(data)
+					} else if mime_type != "text/uri-list" && dd.path != "" {
+						// File path destination: open file and start streaming.
+						_ = os.MkdirAll(filepath.Dir(dd.path), 0o755)
+						if f, ferr := os.OpenFile(dd.path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); ferr == nil {
+							drop_streaming_file = f
+							drop_streaming_dest = f
+							_, _ = drop_streaming_dest.Write(data)
+						} else {
+							drop_chunks.Write(data)
+						}
+					} else {
+						// text/uri-list or no configured destination: accumulate.
+						drop_chunks.Write(data)
+					}
+				} else if remote_drop != nil && cmd.Xp == 0 {
+					// Regular file in a remote fetch (top-level URI or dir entry).
+					// Determine the local destination path from context.
+					var dst_path string
+					var dst_ok bool
+					if cmd.Yp != 0 && len(remote_drop.dir_stack) > 0 {
+						top := remote_drop.dir_stack[len(remote_drop.dir_stack)-1]
+						if top.current_entry >= 0 && top.current_entry < len(top.entries) {
+							dst_path, dst_ok = safe_dest_path(top.local_path, top.entries[top.current_entry])
+						}
+					} else if cmd.X == remote_drop.uri_list_x && cmd.Y > 0 {
+						subidx := cmd.Y
+						if subidx >= 1 && subidx <= len(remote_drop.file_paths) {
+							filename := filepath.Base(remote_drop.file_paths[subidx-1])
+							dst_path, dst_ok = safe_dest_path(remote_drop.dest_dir, filename)
+						}
+					}
+					if dst_ok && dst_path != "" {
+						_ = os.MkdirAll(filepath.Dir(dst_path), 0o755)
+						if f, ferr := os.OpenFile(dst_path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); ferr == nil {
+							drop_streaming_file = f
+							drop_streaming_dest = f
+							_, _ = drop_streaming_dest.Write(data)
+						} else {
+							drop_chunks.Write(data)
+						}
+					} else {
+						drop_chunks.Write(data)
+					}
+				} else {
+					// Symlink, directory, or unknown item type: accumulate.
+					drop_chunks.Write(data)
+				}
 				return nil
 			}
-			// Empty payload: this is the end-of-data signal.
-			// Identify what this response is for and process accumulated data.
+			// Empty payload: end-of-data signal.
+
+			// If we were streaming, the file is already fully written.
+			if drop_streaming_dest != nil || drop_streaming_file != nil {
+				if drop_streaming_file != nil {
+					_ = drop_streaming_file.Close()
+					drop_streaming_file = nil
+				}
+				drop_streaming_dest = nil
+				drop_chunks.Reset()
+				drop_current_xp = 0
+				if drop_current_mime_x != 0 {
+					drop_current_mime_x = 0
+					return start_next_drop_fetch()
+				}
+				// Remote file or dir entry: advance to next fetch.
+				return start_next_drop_fetch()
+			}
 
 			if remote_drop != nil {
 				// Directory entry response: Y=handle matches top of dir stack
@@ -1062,7 +1211,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 						if ok {
 							xp := cmd.Xp
 							if xp == 0 {
-								// Regular file
+								// Regular file (empty data case, e.g. 0-byte file)
 								_ = os.MkdirAll(filepath.Dir(dst), 0o755)
 								_ = os.WriteFile(dst, full_data, 0o644)
 							} else if xp == 1 {
@@ -1121,9 +1270,13 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			}
 			drop_current_mime_x = 0
 			return start_next_drop_fetch()
-
 		case 'R':
 			// Error from terminal for a data request; skip this item.
+			if drop_streaming_file != nil {
+				_ = drop_streaming_file.Close()
+				drop_streaming_file = nil
+			}
+			drop_streaming_dest = nil
 			drop_chunks.Reset()
 			drop_current_mime_x = 0
 			drop_current_xp = 0
