@@ -340,7 +340,7 @@ class _WriteCapture:
 
 
 @contextmanager
-def dnd_test_window():
+def dnd_test_window(mime_list_cap=0, present_data_cap=0, remote_drag_limit=0):
     """Context manager that creates a fake window + write-capture harness.
 
     Yields (os_window_id, window_id, screen, capture) where:
@@ -349,20 +349,6 @@ def dnd_test_window():
     * ``screen``       – Screen object whose window_id matches the fake window
     * ``capture``      – _WriteCapture accumulating bytes sent to the child
     """
-    capture = _WriteCapture()
-    dnd_set_test_write_func(capture)
-    os_window_id, window_id = dnd_test_create_fake_window()
-    try:
-        screen = Screen(None, 24, 80, 0, 0, 0, window_id)
-        yield os_window_id, window_id, screen, capture
-    finally:
-        dnd_set_test_write_func(None)
-        dnd_test_cleanup_fake_window(os_window_id)
-
-
-@contextmanager
-def dnd_test_window_with_limits(mime_list_cap=0, present_data_cap=0, remote_drag_limit=0):
-    """Like dnd_test_window but with custom resource limits for DoS testing."""
     capture = _WriteCapture()
     dnd_set_test_write_func(capture, mime_list_cap, present_data_cap, remote_drag_limit)
     os_window_id, window_id = dnd_test_create_fake_window()
@@ -2694,7 +2680,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_dos_remote_drag_limit(self) -> None:
         """Total remote data size exceeding REMOTE_DRAG_LIMIT triggers EMFILE error."""
         uri_list = b'file:///home/user/big.bin\r\n'
-        with dnd_test_window_with_limits(remote_drag_limit=50) as (osw, wid, screen, cap):
+        with dnd_test_window(remote_drag_limit=50) as (osw, wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # First chunk within limit
             b64 = standard_b64encode(b'x' * 30).decode()
@@ -2708,7 +2694,7 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_dos_present_data_cap_on_directory(self) -> None:
         """Directory listing data exceeding PRESENT_DATA_CAP triggers EMFILE error."""
         uri_list = b'file:///home/user/dir\r\n'
-        with dnd_test_window_with_limits(present_data_cap=20) as (osw, wid, screen, cap):
+        with dnd_test_window(present_data_cap=20) as (osw, wid, screen, cap):
             self._setup_remote_drag(screen, wid, cap, uri_list)
             # Send a directory listing that will exceed the cap
             big_listing = b'\x00'.join([f'file{i}.txt'.encode() for i in range(100)])
@@ -2963,7 +2949,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_dos_mime_list_size_cap(self) -> None:
         """Exceeding MIME_LIST_SIZE_CAP when offering MIME types returns EFBIG."""
-        with dnd_test_window_with_limits(mime_list_cap=20) as (osw, wid, screen, cap):
+        with dnd_test_window(mime_list_cap=20) as (osw, wid, screen, cap):
             parse_bytes(screen, client_drag_register())
             # Offer MIME types that exceed the cap
             long_mime = 'x' * 30
@@ -2972,7 +2958,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_dos_present_data_cap_pre_send(self) -> None:
         """Exceeding PRESENT_DATA_CAP with pre-sent data returns EFBIG."""
-        with dnd_test_window_with_limits(present_data_cap=50) as (osw, wid, screen, cap):
+        with dnd_test_window(present_data_cap=50) as (osw, wid, screen, cap):
             self._setup_drag_offer(screen, wid, cap, 'text/plain')
             # Pre-send data exceeding the cap
             big_data = standard_b64encode(b'x' * 60).decode()
@@ -2981,7 +2967,7 @@ class TestDnDProtocol(BaseTest):
 
     def test_dos_mime_list_size_cap_drop_target(self) -> None:
         """Exceeding MIME_LIST_SIZE_CAP when registering for drops silently ignores the excess."""
-        with dnd_test_window_with_limits(mime_list_cap=10) as (osw, wid, screen, cap):
+        with dnd_test_window(mime_list_cap=10) as (osw, wid, screen, cap):
             # Register with MIME types exceeding the cap
             long_mimes = 'text/plain text/html application/json'
             self._register_for_drops(screen, cap, wid, long_mimes)
