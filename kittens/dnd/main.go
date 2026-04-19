@@ -113,7 +113,8 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		// If allow_drags, start a drag when the terminal sends the t=o
 		// event. Presend data for any drag_source objects that have non nil
 		// data fields and whose data size is <= 1MB. Set drag_started to true.
-		// reset drag_started at the end of the drag.
+		// reset drag_started at the end of the drag. Use opts.DragAction to
+		// set what actions are allowed.
 
 		// If a drop enters the window and has one or more MIME types present
 		// in drop_dests, accept the drop, unless drag_started is true.
@@ -132,6 +133,17 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		// progress the render_screen() function should hide the drop
 		// destination buttons and instead show the text "Drop in progress,
 		// reading data..."
+		// Be very careful when writing dropped data from uri-list nothing
+		// should be written outside the destination directory (the current
+		// working directory by default). In particular, symlinks must be
+		// handled with care.
+
+		// When acting as a drag source, dont forget to implement support for
+		// remote dragging, which means providing data for the text/uri-list
+		// mime type file:// entries when the terminal requests it using the
+		// dnd protocol. If the action chosen is move, delete the files
+		// corresponding to the drag sources, including the files in the
+		// uri-list and exit.
 
 		return nil
 	}

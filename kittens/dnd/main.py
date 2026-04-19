@@ -24,7 +24,16 @@ text/uri-list.
 type=bool-set
 Ask for confirmation when dropping text/uri-list data if the drop will cause any existing
 files to be overwritten. Note that confirmation is asked only for actual file conflicts, non
-conflicting files are automatically created, always.
+conflicting files are automatically created.
+
+
+--drag-action
+type=choices
+default=copy
+choices=copy,move,either
+The set of allowed actions when dragging. If :code:`either` is chosen then the drop destination can pick
+which action it wants. If the action is a move, then the dragged files are deleted when the drag finishes
+and the kitten exits after the drag.
 '''.format
 
 help_text = '''\
