@@ -61,12 +61,13 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		return err
 	}
 	send_test_response := func(payload string) {
-		in_test_mode = true
 		lp.DebugPrintln(payload)
 	}
 	render_screen := func() error {
-		lp.StartAtomicUpdate()
-		defer lp.EndAtomicUpdate()
+		if !in_test_mode {
+			lp.StartAtomicUpdate()
+			defer lp.EndAtomicUpdate()
+		}
 		lp.ClearScreen()
 		if allow_drags {
 			if drag_started {
@@ -157,6 +158,9 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			switch string(cmd.Payload) {
 			case "PING":
 				send_test_response("PONG")
+			case "SETUP":
+				in_test_mode = true
+				lp.NoRoundtripToTerminalOnExit()
 			default:
 				send_test_response("UNKNOWN TEST COMMAND: " + string(cmd.Payload))
 			}

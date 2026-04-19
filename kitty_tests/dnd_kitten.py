@@ -5,7 +5,13 @@ import tempfile
 from base64 import standard_b64encode
 
 from kitty.constants import kitten_exe
-from kitty.fast_data_types import DND_CODE, dnd_set_test_write_func, dnd_test_cleanup_fake_window, dnd_test_create_fake_window, dnd_test_probe_state
+from kitty.fast_data_types import (
+    DND_CODE,
+    dnd_set_test_write_func,
+    dnd_test_cleanup_fake_window,
+    dnd_test_create_fake_window,
+    dnd_test_probe_state,
+)
 
 from . import PTY, BaseTest
 from .dnd import WriteCapture
@@ -28,6 +34,7 @@ class TestDnDKitten(BaseTest):
         self.capture = capture
         self.test_dir = self.enterContext(tempfile.TemporaryDirectory())
         self.messages_from_kitten = ''
+        self.set_options({'tab_bar_style': 'hidden'})
 
     def send_dnd_command_to_kitten(self, payload=b'', as_base64=False, flush=False, **metadata):
         header = f'\x1b]{DND_CODE};'
@@ -63,6 +70,7 @@ class TestDnDKitten(BaseTest):
         self.assertEqual(remote_client, self.probe_state('drop_is_remote_client'))
         if self.probe_state('drag_can_offer'):
             self.assertEqual(remote_client, self.probe_state('drag_is_remote_client'))
+        self.send_dnd_command_to_kitten('SETUP', t='T')
 
     def append(self, text):
         self.messages_from_kitten += text
