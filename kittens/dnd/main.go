@@ -97,10 +97,10 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 	lp.OnInitialize = func() (string, error) {
 		lp.AllowLineWrapping(false)
 		if allow_drops {
-			lp.StartAcceptingDrops(slices.Collect(maps.Keys(drop_dests))...)
+			lp.StartAcceptingDrops(opts.MachineId, slices.Collect(maps.Keys(drop_dests))...)
 		}
 		if allow_drags {
-			lp.StartOfferingDrags()
+			lp.StartOfferingDrags(opts.MachineId)
 		}
 		lp.SetWindowTitle("Drag and drop")
 		return "", render_screen()

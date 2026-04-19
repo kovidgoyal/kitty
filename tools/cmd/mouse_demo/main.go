@@ -548,7 +548,7 @@ func Run(args []string) (rc int, err error) {
 	lp.OnInitialize = func() (string, error) {
 		lp.SetWindowTitle("kitty mouse features demo")
 		lp.SetCursorVisible(false)
-		lp.StartAcceptingDrops("text/plain", "text/uri-list")
+		lp.StartAcceptingDrops("", "text/plain", "text/uri-list")
 		draw_screen()
 		return "", nil
 	}

@@ -707,13 +707,24 @@ func (self *Loop) QueueDnDData(metadata map[string]string, payload string, as_ba
 	return ans
 }
 
-func (self *Loop) StartAcceptingDrops(mime_types ...string) {
-	self.QueueDnDData(map[string]string{"t": "a"}, strings.Join(mime_types, " "), false)
-	if ans, err := machine_id.MachineId(); err == nil {
+func effective_machine_id(m string) string {
+	if m == "" {
+		if ans, err := machine_id.MachineId(); err == nil {
+			m = ans
+		}
+	}
+	if m != "" {
 		mac := hmac.New(sha256.New, []byte("tty-dnd-protocol-machine-id"))
-		mac.Write(utils.UnsafeStringToBytes(ans))
-		ans = "1:" + hex.EncodeToString(mac.Sum(nil))
-		self.QueueDnDData(map[string]string{"t": "a", "x": "1"}, ans, false)
+		mac.Write(utils.UnsafeStringToBytes(m))
+		m = "1:" + hex.EncodeToString(mac.Sum(nil))
+	}
+	return m
+}
+
+func (self *Loop) StartAcceptingDrops(machine_id string, mime_types ...string) {
+	self.QueueDnDData(map[string]string{"t": "a"}, strings.Join(mime_types, " "), false)
+	if m := effective_machine_id(machine_id); m != "" {
+		self.QueueDnDData(map[string]string{"t": "a", "x": "1"}, m, false)
 	}
 }
 
@@ -721,12 +732,10 @@ func (self *Loop) StopAcceptingDrops() {
 	self.QueueDnDData(map[string]string{"t": "A"}, "", false)
 }
 
-func (self *Loop) StartOfferingDrags() {
+func (self *Loop) StartOfferingDrags(machine_id string) {
 	payload := ""
-	if ans, err := machine_id.MachineId(); err == nil {
-		mac := hmac.New(sha256.New, []byte("tty-dnd-protocol-machine-id"))
-		mac.Write(utils.UnsafeStringToBytes(ans))
-		payload = "1:" + hex.EncodeToString(mac.Sum(nil))
+	if m := effective_machine_id(machine_id); m != "" {
+		payload = m
 	}
 	self.QueueDnDData(map[string]string{"t": "o", "x": "1"}, payload, false)
 }

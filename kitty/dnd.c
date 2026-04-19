@@ -2184,8 +2184,17 @@ dnd_test_probe_state(PyObject *self UNUSED, PyObject *args) {
     if (!PyArg_ParseTuple(args, "Ks", &window_id, &q)) return NULL;
     Window *w = window_for_window_id((id_type)window_id);
     if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
+    if (strcmp(q, "drop_wanted") == 0) {
+        return Py_NewRef(w->drop.wanted ? Py_True : Py_False);
+    }
+    if (strcmp(q, "drag_can_offer") == 0) {
+        return Py_NewRef(w->drag_source.can_offer ? Py_True : Py_False);
+    }
     if (strcmp(q, "drop_is_remote_client") == 0) {
         return Py_NewRef(w->drop.is_remote_client ? Py_True : Py_False);
+    }
+    if (strcmp(q, "drag_is_remote_client") == 0) {
+        return Py_NewRef(w->drag_source.is_remote_client ? Py_True : Py_False);
     }
     Py_RETURN_NONE;
 }

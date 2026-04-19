@@ -51,13 +51,18 @@ class TestDnDKitten(BaseTest):
             self.pty.write_to_child(chunk)
             self.pty.write_to_child(b'\x1b\\', flush=is_last and flush)
 
-    def finish_setup(self, cmd=None):
-        cmd = cmd or [kitten_exe(), 'dnd']
+    def finish_setup(self, remote_client: bool = False):
+        cmd = [kitten_exe(), 'dnd']
+        if remote_client:
+            cmd.append('--machine-id=remote-client-for-test')
         self.pty = self.enterContext(PTY(argv=cmd, rows=25, columns=80, window_id=self.capture.window_id))
         self.pty.callbacks.printbuf = self
         self.screen = self.pty.screen
         self.pty.wait_till(lambda: bool(self.pty.callbacks.titlebuf))
-        self.assertFalse(self.probe_state('drop_is_remote_client'))
+        self.assertTrue(self.probe_state('drop_wanted'))
+        self.assertEqual(remote_client, self.probe_state('drop_is_remote_client'))
+        if self.probe_state('drag_can_offer'):
+            self.assertEqual(remote_client, self.probe_state('drag_is_remote_client'))
 
     def append(self, text):
         self.messages_from_kitten += text
@@ -80,4 +85,6 @@ class TestDnDKitten(BaseTest):
         del self.pty
 
     def test_dnd_kitten_drop(self):
-        self.finish_setup()
+        for remote_client in (False, True):
+            with self.subTest(remote_client=remote_client):
+                self.finish_setup(remote_client=remote_client)
