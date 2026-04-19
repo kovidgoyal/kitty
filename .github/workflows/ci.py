@@ -24,6 +24,9 @@ SW = ''
 
 
 def do_print_crash_reports() -> None:
+    sys.stdout.flush()
+    sys.stderr.flush()
+    time.sleep(2)
     print('Printing available crash reports...')
     if is_macos:
         end_time = time.monotonic() + 90
