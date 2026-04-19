@@ -99,7 +99,7 @@ class TestLayout(BaseTest):
 
     def setUp(self):
         super().setUp()
-        self.set_options()
+        self.set_options({'tab_bar_style': 'hidden'})
 
     def do_ops_test(self, q):
         windows = create_windows(q)
