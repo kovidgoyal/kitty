@@ -49,6 +49,8 @@ copied into the current working directory.
 If data is present on STDIN it is set as text/plain when dragging, unless text/plain is specified via --drag.
 Any text/plain data that is dropped onto this window is output to STDOUT, if STDOUT is connected to a file, otherwise it
 is discarded.
+
+Press the Esc or Ctrl+C keys to quit the kitten at any time, cancelling any in progress drag.
 '''
 
 usage = '[files to drag]'
