@@ -158,8 +158,7 @@ func read_drag_source(ds drag_source) ([]byte, error) {
 		return ds.data, nil
 	}
 	if ds.file != nil {
-		if _, err := ds.file.Seek(0, io.SeekStart); err == nil {
-		}
+		_, _ = ds.file.Seek(0, io.SeekStart)
 		return io.ReadAll(ds.file)
 	}
 	if ds.path != "" {
@@ -364,8 +363,7 @@ func handle_local_uri_list(data []byte, dest_dir string, confirm_overwrite bool)
 	var normal_pairs [][2]string
 
 	for _, src := range paths {
-		st, err := os.Stat(src)
-		if err != nil {
+		if _, err := os.Stat(src); err != nil {
 			continue
 		}
 		base := filepath.Base(src)
@@ -379,7 +377,6 @@ func handle_local_uri_list(data []byte, dest_dir string, confirm_overwrite bool)
 		} else {
 			normal_pairs = append(normal_pairs, [2]string{src, dst})
 		}
-		_ = st
 	}
 
 	// Copy non-conflicting files
@@ -452,8 +449,6 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 	drop_move_allowed := false
 	drop_in_progress := false
 	drop_is_remote := false
-	drop_operation := 1 // 1=copy, 2=move (current intention)
-	_ = drop_operation
 	drop_uri_list_x := 0 // 1-based index of text/uri-list in drop_mime_list (0=absent)
 
 	// Sequential MIME fetch state
@@ -562,7 +557,6 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 				lp.MoveCursorTo((W-wcswidth.Stringwidth(mime_msg))/2+1, mime_row+1)
 				lp.QueueWriteString(mime_msg)
 			}
-			_ = btn_height
 		}
 		return nil
 	}
@@ -968,7 +962,6 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			if chosen_op == 0 {
 				lp.QueueDnDData(map[string]string{"t": "m", "o": "0"}, "", false)
 			} else {
-				drop_operation = chosen_op
 				lp.QueueDnDData(
 					map[string]string{"t": "m", "o": strconv.Itoa(chosen_op)},
 					strings.Join(accepted, " "), false)
