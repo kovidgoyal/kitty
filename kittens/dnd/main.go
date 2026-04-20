@@ -75,6 +75,17 @@ func truncate_at_space(text string, width int) (string, string) {
 	return text[:p], text[p:]
 }
 
+type drop_status struct {
+	offered_mimes                []string
+	accepted_mimes               []string
+	cell_x, cell_y               int
+	action                       int
+	in_window                    bool
+	reading_data                 bool
+	requesting_mime_idx_plus_one int
+	is_remote_client             bool
+}
+
 func paragraph_as_lines(text string, width int) (ans []string) {
 	for text != "" {
 		var line string
@@ -87,6 +98,7 @@ func paragraph_as_lines(text string, width int) (ans []string) {
 
 func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[string]drag_source, uri_list_buffer *bytes.Buffer) (err error) {
 	allow_drops, allow_drags := len(drop_dests) > 0, len(drag_sources) > 0
+	data_has_been_dropped := false
 	drag_started := false
 	in_test_mode := false
 	lp, err := loop.New()
@@ -98,71 +110,14 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		lp.DebugPrintln(payload)
 	}
 
-	var drop_status struct {
-		offered_mimes  []string
-		accepted_mimes []string
-		cell_x, cell_y int
-		action         int
-		in_window      bool
-	}
+	drop_status := drop_status{cell_x: -1, cell_y: -1}
+	reset_drop_status := drop_status
 	drop_status.cell_x, drop_status.cell_y = -1, -1
 	const copy_on_drop = 1
 	const move_on_drop = 2
 
 	var copy_button_region, move_button_region button_region
 	var offered_mimes_buf strings.Builder
-
-	on_drop_move := func(cell_x, cell_y int, has_more bool, offered_mimes string) (needs_rerender bool) {
-		prev_status := drop_status
-		drop_status.cell_x, drop_status.cell_y = cell_x, cell_y
-		if offered_mimes != "" {
-			offered_mimes_buf.WriteString(offered_mimes)
-			if has_more {
-				return
-			}
-			offered_mimes := offered_mimes_buf.String()
-			drop_status.offered_mimes = strings.Fields(offered_mimes)
-			drop_status.accepted_mimes = make([]string, 0, len(drop_status.offered_mimes))
-			seen := utils.NewSet[string](len(drop_status.offered_mimes))
-			for _, x := range drop_status.offered_mimes {
-				if _, found := drop_dests[x]; found && !seen.Has(x) {
-					drop_status.accepted_mimes = append(drop_status.accepted_mimes, x)
-					seen.Add(x)
-				}
-			}
-		}
-		offered_mimes_buf.Reset()
-		if copy_button_region.has(cell_x, cell_y) {
-			drop_status.action = copy_on_drop
-		} else if move_button_region.has(cell_x, cell_y) {
-			drop_status.action = move_on_drop
-		} else {
-			switch opts.DropAnywhere {
-			case "disallowed":
-				drop_status.action = 0
-				drop_status.accepted_mimes = nil
-			case "copy":
-				drop_status.action = copy_on_drop
-			case "move":
-				drop_status.action = move_on_drop
-			}
-		}
-		drop_status.in_window = cell_x > -1 && cell_y > -1
-		if !drop_status.in_window {
-			drop_status.offered_mimes = nil
-		}
-		mimes_changed := !slices.Equal(prev_status.accepted_mimes, drop_status.accepted_mimes)
-		needs_rerender = prev_status.action != drop_status.action || mimes_changed
-		if needs_rerender {
-			c := DC{Type: 'm', Operation: drop_status.action}
-			if drop_status.action != 0 && len(drop_status.accepted_mimes) > 0 {
-				c.Payload = utils.UnsafeStringToBytes(strings.Join(drop_status.accepted_mimes, " "))
-			}
-			lp.QueueDnDData(c)
-		}
-		needs_rerender = needs_rerender || drop_status.in_window != prev_status.in_window
-		return
-	}
 
 	render_screen := func() error { // {{{
 		if !in_test_mode {
@@ -173,6 +128,10 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		copy_button_region, move_button_region = button_region{}, button_region{}
 		if drag_started {
 			lp.Println("Dragging data...")
+			return nil
+		}
+		if drop_status.reading_data {
+			lp.Println("Reading dropped data, please wait...")
 			return nil
 		}
 		y := 0
@@ -204,7 +163,11 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 				next_line()
 			}
 			if allow_drops {
-				render_paragraph(`Drag some data from another application into this window to transfer the files here.`)
+				if data_has_been_dropped {
+					render_paragraph(`Data has been successfully dropped. You can drop more data or press Esc to quit.`)
+				} else {
+					render_paragraph(`Drag some data from another application into this window to transfer the files here.`)
+				}
 			}
 		}
 		frame_width, padding_width := 4, 8
@@ -265,6 +228,99 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		return nil
 	} // }}}
 
+	// Drop handling {{{
+	end_drop := func() {
+		lp.QueueDnDData(DC{Type: 'r'}) // end drop
+		drop_status = reset_drop_status
+		render_screen()
+	}
+
+	all_mime_data_dropped := func() {
+		if _, found := drop_dests["text/uri-list"]; found && drop_status.is_remote_client {
+			// TODO: Handle remote client
+		} else {
+			drop_status = reset_drop_status
+			data_has_been_dropped = true
+			render_screen()
+		}
+	}
+
+	request_mime_data := func() {
+		drop_status.requesting_mime_idx_plus_one++
+		idx := drop_status.requesting_mime_idx_plus_one - 1
+		if idx >= len(drop_status.accepted_mimes) {
+			all_mime_data_dropped()
+			return
+		}
+		lp.QueueDnDData(DC{Type: 'r', X: idx + 1})
+	}
+
+	on_drop_move := func(cell_x, cell_y int, has_more bool, offered_mimes string, is_drop bool) (needs_rerender bool) {
+		prev_status := drop_status
+		drop_status.cell_x, drop_status.cell_y = cell_x, cell_y
+		if offered_mimes != "" {
+			offered_mimes_buf.WriteString(offered_mimes)
+			if has_more {
+				return
+			}
+			offered_mimes := offered_mimes_buf.String()
+			drop_status.offered_mimes = strings.Fields(offered_mimes)
+			drop_status.accepted_mimes = make([]string, 0, len(drop_status.offered_mimes))
+			seen := utils.NewSet[string](len(drop_status.offered_mimes))
+			for _, x := range drop_status.offered_mimes {
+				if _, found := drop_dests[x]; found && !seen.Has(x) {
+					drop_status.accepted_mimes = append(drop_status.accepted_mimes, x)
+					seen.Add(x)
+				}
+			}
+		}
+		offered_mimes_buf.Reset()
+		if copy_button_region.has(cell_x, cell_y) {
+			drop_status.action = copy_on_drop
+		} else if move_button_region.has(cell_x, cell_y) {
+			drop_status.action = move_on_drop
+		} else {
+			switch opts.DropAnywhere {
+			case "disallowed":
+				drop_status.action = 0
+				drop_status.accepted_mimes = nil
+			case "copy":
+				drop_status.action = copy_on_drop
+			case "move":
+				drop_status.action = move_on_drop
+			}
+		}
+		drop_status.in_window = cell_x > -1 && cell_y > -1
+		if !drop_status.in_window || drag_started { // disallow self drag and drop
+			drop_status = reset_drop_status
+		}
+		mimes_changed := !slices.Equal(prev_status.accepted_mimes, drop_status.accepted_mimes)
+		needs_rerender = prev_status.action != drop_status.action || mimes_changed
+		if needs_rerender && !is_drop {
+			c := DC{Type: 'm', Operation: drop_status.action}
+			if drop_status.action != 0 && len(drop_status.accepted_mimes) > 0 {
+				c.Payload = utils.UnsafeStringToBytes(strings.Join(drop_status.accepted_mimes, " "))
+			}
+			lp.QueueDnDData(c)
+		}
+		needs_rerender = needs_rerender || drop_status.in_window != prev_status.in_window
+		if is_drop {
+			needs_rerender = true
+			if drop_status.action == 0 || len(drop_status.accepted_mimes) == 0 || drag_started {
+				end_drop()
+				return
+			}
+			drop_status.reading_data = true
+			request_mime_data()
+		}
+		return
+	}
+
+	on_drop_data := func(cmd DC) error {
+		return nil
+	}
+	// }}}
+
 	lp.OnInitialize = func() (string, error) {
 		lp.AllowLineWrapping(false)
 		lp.SetCursorVisible(false)
@@ -277,6 +333,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		lp.SetWindowTitle("Drag and drop")
 		return "", render_screen()
 	}
+
 	lp.OnFinalize = func() string {
 		lp.AllowLineWrapping(true)
 		lp.SetCursorVisible(true)
@@ -288,6 +345,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		}
 		return ""
 	}
+
 	lp.OnDnDData = func(cmd loop.DndCommand) error {
 		// TODO: Use lp.QueueDnDData to implement drag and drop protocol
 		// If allow_drags, start a drag when the terminal sends the t=o
@@ -350,9 +408,19 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			if cmd.Payload != nil {
 				payload = utils.UnsafeBytesToString(cmd.Payload)
 			}
-			if on_drop_move(cmd.X, cmd.Y, cmd.Has_more, payload) {
+			if on_drop_move(cmd.X, cmd.Y, cmd.Has_more, payload, false) {
 				render_screen()
 			}
+		case 'M':
+			if on_drop_move(cmd.X, cmd.Y, cmd.Has_more, utils.UnsafeBytesToString(cmd.Payload), true) {
+				render_screen()
+			}
+		case 'R':
+			return fmt.Errorf("error from the terminal while reading dropped data: %s", string(cmd.Payload))
+		case 'r':
+			err := on_drop_data(cmd)
+			render_screen()
+			return err
 		}
 		return nil
 	}

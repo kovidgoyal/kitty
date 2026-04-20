@@ -13,6 +13,7 @@ from kitty.fast_data_types import (
     dnd_set_test_write_func,
     dnd_test_cleanup_fake_window,
     dnd_test_create_fake_window,
+    dnd_test_fake_drop_event,
     dnd_test_probe_state,
 )
 
@@ -23,7 +24,7 @@ from .dnd import WriteCapture
 class Capture(WriteCapture):
 
     def __call__(self, window_id: int, data: bytes) -> None:
-        self.pty.write(data)
+        self.pty.write_to_child(data)
 
 
 class TestDnDKitten(BaseTest):
@@ -71,6 +72,7 @@ class TestDnDKitten(BaseTest):
         if remote_client:
             cmd.append('--machine-id=remote-client-for-test')
         self.pty = self.enterContext(PTY(argv=cmd, cwd=self.kitten_wd, rows=25, columns=80, window_id=self.capture.window_id))
+        self.capture.pty = self.pty
         self.pty.callbacks.printbuf = self
         self.screen = self.pty.screen
         self.pty.wait_till(lambda: bool(self.pty.callbacks.titlebuf))
@@ -137,20 +139,25 @@ class TestDnDKitten(BaseTest):
         copy, move = self.get_button_geometry()
         all_mimes = 'text/uri-list a/b c/d'
         for b, expected in ((copy, GLFW_DRAG_OPERATION_COPY), (move, GLFW_DRAG_OPERATION_MOVE)):
-            self.send_dnd_command_to_kitten(all_mimes, t='m', x=str(b[0] + 1), y=str(b[1] + 1))
+            dnd_test_fake_drop_event(self.capture.window_id, False, all_mimes.split(), b[0] + 1, b[1] + 1)
             self.wait_for_state('drop_action', expected)
             self.assertEqual('text/uri-list', self.probe_state('drop_mimes').rstrip('\x00'))
         self.send_dnd_command_to_kitten('DROP_MIMES')
         self.wait_for_responses(all_mimes)
-        self.send_dnd_command_to_kitten(t='m', x='-1', y='-1')
+        dnd_test_fake_drop_event(self.capture.window_id, False)
         self.send_dnd_command_to_kitten('DROP_MIMES')
         self.wait_for_responses('')
-        large_mimes = (all_mimes + ' ') * 300
+        large_mimes = ((all_mimes + ' ') * 300).rstrip()
         self.assertGreater(len(large_mimes), 4096)
-        self.send_dnd_command_to_kitten(all_mimes, t='m', x=str(copy[0] + 1), y=str(copy[1] + 1))
+        dnd_test_fake_drop_event(self.capture.window_id, False, large_mimes.split(), copy[0] + 1, copy[1] + 1)
         self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
         self.send_dnd_command_to_kitten('DROP_MIMES')
-        self.wait_for_responses(all_mimes)
-        self.send_dnd_command_to_kitten(t='m', x='-1', y='-1')
+        self.wait_for_responses(large_mimes)
+        dnd_test_fake_drop_event(self.capture.window_id, False)
         self.send_dnd_command_to_kitten('DROP_MIMES')
         self.wait_for_responses('')
+        dnd_test_fake_drop_event(self.capture.window_id, False, all_mimes.split(), copy[0] + 1, copy[1] + 1)
+        self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
+        dnd_test_fake_drop_event(self.capture.window_id, True, all_mimes.split(), copy[0] + 1, copy[1] + 1)
+        self.send_dnd_command_to_kitten('DROP_MIMES')
+        self.wait_for_responses(all_mimes)

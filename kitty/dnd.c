@@ -2061,8 +2061,9 @@ dnd_test_fake_drop_event(PyObject *self UNUSED, PyObject *args) {
     // None to simulate a leave event.
     unsigned long long window_id;
     int is_drop;
-    PyObject *mimes_seq;
-    if (!PyArg_ParseTuple(args, "KpO", &window_id, &is_drop, &mimes_seq)) return NULL;
+    PyObject *mimes_seq = Py_None;
+    int x = -2, y = -2;
+    if (!PyArg_ParseTuple(args, "Kp|Oii", &window_id, &is_drop, &mimes_seq, &x, &y)) return NULL;
     Window *w = window_for_window_id((id_type)window_id);
     if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
     if (mimes_seq == Py_None) {
@@ -2078,6 +2079,8 @@ dnd_test_fake_drop_event(PyObject *self UNUSED, PyObject *args) {
         mimes[i] = PyUnicode_AsUTF8(PySequence_Fast_GET_ITEM(fast_seq, i));
         if (!mimes[i]) return NULL;
     }
+    if (x > -1) w->mouse_pos.cell_x = x;
+    if (y > -1) w->mouse_pos.cell_y = y;
     drop_move_on_child(w, mimes, (size_t)num_mimes, is_drop ? true : false);
     Py_RETURN_NONE;
 }
