@@ -236,9 +236,18 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 				lp.MoveCursorVertically(1)
 			}
 		}
+		const fg = 32
+		if drop_status.action == copy_on_drop {
+			lp.Printf("\x1b[%dm", fg)
+		}
 		render_box(1, "Copy", &copy_button_region)
+		lp.QueueWriteString("\x1b[m")
 		box_width := 6 + len("move")*scale
+		if drop_status.action == move_on_drop {
+			lp.Printf("\x1b[%dm", fg)
+		}
 		render_box(1+int(sz.WidthCells)-box_width, "Move", &move_button_region)
+		lp.QueueWriteString("\x1b[m")
 		_ = in_test_mode
 		return nil
 	}
