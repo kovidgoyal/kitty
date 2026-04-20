@@ -128,7 +128,15 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		} else if move_button_region.has(cell_x, cell_y) {
 			drop_status.action = move_on_drop
 		} else {
-			drop_status.action = 0
+			switch opts.DropAnywhere {
+			case "disallowed":
+				drop_status.action = 0
+				drop_status.accepted_mimes = nil
+			case "copy":
+				drop_status.action = copy_on_drop
+			case "move":
+				drop_status.action = move_on_drop
+			}
 		}
 		drop_status.in_window = cell_x > -1 && cell_y > -1
 		mimes_changed := !slices.Equal(prev_status.accepted_mimes, drop_status.accepted_mimes)

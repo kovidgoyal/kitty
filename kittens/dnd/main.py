@@ -27,6 +27,14 @@ files to be overwritten. Note that confirmation is asked only for actual file co
 conflicting files are automatically created.
 
 
+--drop-anywhere
+choices=disallowed,copy,move
+default=disallowed
+type=choices
+Allow dropping anywhere, not just on the Copy or Move drop regions. Dropping anywhere will perform
+the specified action.
+
+
 --machine-id
 The machine id to use instead of the actual machine id.
 '''.format
