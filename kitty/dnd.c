@@ -2206,6 +2206,16 @@ dnd_test_probe_state(PyObject *self UNUSED, PyObject *args) {
         if (w->drop.accepted_mimes == NULL) return PyUnicode_FromString("");
         return PyUnicode_FromStringAndSize(w->drop.accepted_mimes, w->drop.accepted_mimes_sz);
     }
+    if (strcmp(q, "drop_data_requests") == 0) {
+        PyObject *ans = PyTuple_New(w->drop.num_data_requests);
+        for (size_t i = 0; i < w->drop.num_data_requests; i++) {
+#define item w->drop.data_requests[i]
+            PyObject *x = Py_BuildValue("iii", item.cell_x, item.cell_y, item.pixel_y);
+            PyTuple_SET_ITEM(ans, i, x);
+#undef item
+        }
+        return ans;
+    }
     Py_RETURN_NONE;
 }
 

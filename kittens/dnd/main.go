@@ -51,6 +51,7 @@ type drop_dest struct {
 	human_name, path string
 	dest             io.WriteCloser
 	mime_type        string
+	completed        bool
 }
 
 type button_region struct {
@@ -76,14 +77,14 @@ func truncate_at_space(text string, width int) (string, string) {
 }
 
 type drop_status struct {
-	offered_mimes                []string
-	accepted_mimes               []string
-	cell_x, cell_y               int
-	action                       int
-	in_window                    bool
-	reading_data                 bool
-	requesting_mime_idx_plus_one int
-	is_remote_client             bool
+	offered_mimes        []string
+	accepted_mimes       []string
+	cell_x, cell_y       int
+	action               int
+	in_window            bool
+	reading_data         bool
+	is_remote_client     bool
+	remote_phase_started bool
 }
 
 func paragraph_as_lines(text string, width int) (ans []string) {
@@ -96,7 +97,7 @@ func paragraph_as_lines(text string, width int) (ans []string) {
 	return
 }
 
-func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[string]drag_source, uri_list_buffer *bytes.Buffer) (err error) {
+func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[string]drag_source, uri_list_buffer *bytes.Buffer) (err error) {
 	allow_drops, allow_drags := len(drop_dests) > 0, len(drag_sources) > 0
 	data_has_been_dropped := false
 	drag_started := false
@@ -235,7 +236,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		render_screen()
 	}
 
-	all_mime_data_dropped := func() {
+	all_mime_data_dropped := func() error {
 		if _, found := drop_dests["text/uri-list"]; found && drop_status.is_remote_client {
 			// TODO: Handle remote client
 		} else {
@@ -243,16 +244,13 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			data_has_been_dropped = true
 			render_screen()
 		}
+		return nil
 	}
 
 	request_mime_data := func() {
-		drop_status.requesting_mime_idx_plus_one++
-		idx := drop_status.requesting_mime_idx_plus_one - 1
-		if idx >= len(drop_status.accepted_mimes) {
-			all_mime_data_dropped()
-			return
+		for idx := range drop_status.accepted_mimes {
+			lp.QueueDnDData(DC{Type: 'r', X: idx + 1})
 		}
-		lp.QueueDnDData(DC{Type: 'r', X: idx + 1})
 	}
 
 	on_drop_move := func(cell_x, cell_y int, has_more bool, offered_mimes string, is_drop bool) (needs_rerender bool) {
@@ -316,7 +314,38 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		return
 	}
 
+	on_remote_drop_data := func(cmd DC) error {
+		// TODO: Implement this
+		return nil
+	}
+
 	on_drop_data := func(cmd DC) error {
+		if drop_status.remote_phase_started {
+			return on_remote_drop_data(cmd)
+		}
+		if cmd.X < 0 || cmd.X > len(drop_status.accepted_mimes) {
+			return fmt.Errorf("terminal sent drop data for a index outside the list of accepted MIMEs")
+		}
+		mime := drop_status.accepted_mimes[cmd.X]
+		dest := drop_dests[mime]
+		if cmd.Xp == 1 && mime == "text/uri-list" {
+			drop_status.is_remote_client = true
+		}
+		if !cmd.Has_more && len(cmd.Payload) == 0 {
+			dest.completed = true
+			pending := false
+			for _, d := range drop_dests {
+				if !d.completed {
+					pending = true
+					break
+				}
+			}
+			if !pending {
+				return all_mime_data_dropped()
+			}
+			return nil
+		}
+		// TODO: Implement this
 		return nil
 	}
 	// }}}
@@ -449,12 +478,12 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 }
 
 func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
-	drop_dests := make(map[string]drop_dest)
+	drop_dests := make(map[string]*drop_dest)
 	if os.Stdout != nil && !tty.IsTerminal(os.Stdout.Fd()) {
-		drop_dests["text/plain"] = drop_dest{human_name: "STDOUT", dest: os.Stdout, mime_type: "text/plain"}
+		drop_dests["text/plain"] = &drop_dest{human_name: "STDOUT", dest: os.Stdout, mime_type: "text/plain"}
 	}
 	uri_list_buffer := &bytes.Buffer{}
-	drop_dests["text/uri-list"] = drop_dest{
+	drop_dests["text/uri-list"] = &drop_dest{
 		human_name: "Files", mime_type: "text/uri-list", dest: &bufferWriteCloser{uri_list_buffer}}
 	for _, spec := range opts.Drop {
 		mime, dest, _ := strings.Cut(spec, ":")
@@ -465,7 +494,7 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 			if err != nil {
 				return 1, err
 			}
-			drop_dests[mime] = drop_dest{human_name: dest, path: path, mime_type: mime}
+			drop_dests[mime] = &drop_dest{human_name: dest, path: path, mime_type: mime}
 		}
 	}
 	drag_sources := make(map[string]drag_source)

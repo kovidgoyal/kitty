@@ -67,10 +67,11 @@ class TestDnDKitten(BaseTest):
             self.pty.write_to_child(chunk)
             self.pty.write_to_child(b'\x1b\\', flush=is_last and flush)
 
-    def finish_setup(self, remote_client: bool = False):
+    def finish_setup(self, remote_client: bool = False, cli_args = ()):
         cmd = [kitten_exe(), 'dnd']
         if remote_client:
             cmd.append('--machine-id=remote-client-for-test')
+        cmd += list(cli_args)
         self.pty = self.enterContext(PTY(argv=cmd, cwd=self.kitten_wd, rows=25, columns=80, window_id=self.capture.window_id))
         self.capture.pty = self.pty
         self.pty.callbacks.printbuf = self
@@ -128,14 +129,13 @@ class TestDnDKitten(BaseTest):
         self.pty = None
 
     def test_dnd_kitten_drop(self):
-        self.finish_setup(remote_client=False)
         self.dnd_kitten_drop(False)
 
     def test_dnd_kitten_drop_remote(self):
-        self.finish_setup(remote_client=True)
         self.dnd_kitten_drop(True)
 
     def dnd_kitten_drop(self, remote_client):
+        self.finish_setup(remote_client=remote_client, cli_args=('--drop=image/png:images/image.png',))
         copy, move = self.get_button_geometry()
         all_mimes = 'text/uri-list a/b c/d'
         for b, expected in ((copy, GLFW_DRAG_OPERATION_COPY), (move, GLFW_DRAG_OPERATION_MOVE)):
@@ -153,11 +153,14 @@ class TestDnDKitten(BaseTest):
         self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
         self.send_dnd_command_to_kitten('DROP_MIMES')
         self.wait_for_responses(large_mimes)
+        del large_mimes
         dnd_test_fake_drop_event(self.capture.window_id, False)
         self.send_dnd_command_to_kitten('DROP_MIMES')
         self.wait_for_responses('')
+        all_mimes += ' image/png'
         dnd_test_fake_drop_event(self.capture.window_id, False, all_mimes.split(), copy[0] + 1, copy[1] + 1)
         self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
         dnd_test_fake_drop_event(self.capture.window_id, True, all_mimes.split(), copy[0] + 1, copy[1] + 1)
         self.send_dnd_command_to_kitten('DROP_MIMES')
         self.wait_for_responses(all_mimes)
+        self.wait_for_state('drop_data_requests', ((1,0,0), (2,0,0)))
