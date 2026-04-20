@@ -2196,6 +2196,13 @@ dnd_test_probe_state(PyObject *self UNUSED, PyObject *args) {
     if (strcmp(q, "drag_is_remote_client") == 0) {
         return Py_NewRef(w->drag_source.is_remote_client ? Py_True : Py_False);
     }
+    if (strcmp(q, "drop_action") == 0) {
+        return PyLong_FromLong((long)w->drop.accepted_operation);
+    }
+    if (strcmp(q, "drop_mimes") == 0) {
+        if (w->drop.accepted_mimes == NULL) return PyUnicode_FromString("");
+        return PyUnicode_FromStringAndSize(w->drop.accepted_mimes, w->drop.accepted_mimes_sz);
+    }
     Py_RETURN_NONE;
 }
 

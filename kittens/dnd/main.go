@@ -110,19 +110,28 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 	const move_on_drop = 2
 
 	var copy_button_region, move_button_region button_region
+	var offered_mimes_buf strings.Builder
 
-	on_drop_move := func(cell_x, cell_y int, offered_mimes string) (needs_rerender bool) {
+	on_drop_move := func(cell_x, cell_y int, has_more bool, offered_mimes string) (needs_rerender bool) {
 		prev_status := drop_status
 		drop_status.cell_x, drop_status.cell_y = cell_x, cell_y
 		if offered_mimes != "" {
+			offered_mimes_buf.WriteString(offered_mimes)
+			if has_more {
+				return
+			}
+			offered_mimes := offered_mimes_buf.String()
 			drop_status.offered_mimes = strings.Fields(offered_mimes)
 			drop_status.accepted_mimes = make([]string, 0, len(drop_status.offered_mimes))
+			seen := utils.NewSet[string](len(drop_status.offered_mimes))
 			for _, x := range drop_status.offered_mimes {
-				if _, found := drop_dests[x]; found {
+				if _, found := drop_dests[x]; found && !seen.Has(x) {
 					drop_status.accepted_mimes = append(drop_status.accepted_mimes, x)
+					seen.Add(x)
 				}
 			}
 		}
+		offered_mimes_buf.Reset()
 		if copy_button_region.has(cell_x, cell_y) {
 			drop_status.action = copy_on_drop
 		} else if move_button_region.has(cell_x, cell_y) {
@@ -139,10 +148,13 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			}
 		}
 		drop_status.in_window = cell_x > -1 && cell_y > -1
+		if !drop_status.in_window {
+			drop_status.offered_mimes = nil
+		}
 		mimes_changed := !slices.Equal(prev_status.accepted_mimes, drop_status.accepted_mimes)
 		needs_rerender = prev_status.action != drop_status.action || mimes_changed
 		if needs_rerender {
-			c := DC{Type: 'm'}
+			c := DC{Type: 'm', Operation: drop_status.action}
 			if drop_status.action != 0 && len(drop_status.accepted_mimes) > 0 {
 				c.Payload = utils.UnsafeStringToBytes(strings.Join(drop_status.accepted_mimes, " "))
 			}
@@ -152,12 +164,13 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		return
 	}
 
-	render_screen := func() error {
+	render_screen := func() error { // {{{
 		if !in_test_mode {
 			lp.StartAtomicUpdate()
 			defer lp.EndAtomicUpdate()
 		}
 		lp.ClearScreen()
+		copy_button_region, move_button_region = button_region{}, button_region{}
 		if drag_started {
 			lp.Println("Dragging data...")
 			return nil
@@ -196,7 +209,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 		}
 		frame_width, padding_width := 4, 8
 		text_width := len("copymove")
-		scale := 4
+		scale := 5
 		for scale > 1 && frame_width+padding_width+text_width*scale > int(sz.WidthCells) {
 			scale--
 		}
@@ -241,16 +254,17 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			lp.Printf("\x1b[%dm", fg)
 		}
 		render_box(1, "Copy", &copy_button_region)
-		lp.QueueWriteString("\x1b[m")
+		lp.QueueWriteString("\x1b[39m")
 		box_width := 6 + len("move")*scale
 		if drop_status.action == move_on_drop {
 			lp.Printf("\x1b[%dm", fg)
 		}
 		render_box(1+int(sz.WidthCells)-box_width, "Move", &move_button_region)
-		lp.QueueWriteString("\x1b[m")
+		lp.QueueWriteString("\x1b[39m")
 		_ = in_test_mode
 		return nil
-	}
+	} // }}}
+
 	lp.OnInitialize = func() (string, error) {
 		lp.AllowLineWrapping(false)
 		lp.SetCursorVisible(false)
@@ -319,6 +333,14 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			case "SETUP":
 				in_test_mode = true
 				lp.NoRoundtripToTerminalOnExit()
+			case "GEOMETRY":
+				send_test_response(fmt.Sprintf("GEOMETRY:%d:%d:%d:%d:%d:%d:%d:%d", copy_button_region.left, copy_button_region.top, copy_button_region.width, copy_button_region.height, move_button_region.left, move_button_region.top, move_button_region.width, move_button_region.height))
+			case "DROP_MIMES":
+				if drop_status.offered_mimes != nil {
+					send_test_response(strings.Join(drop_status.offered_mimes, " "))
+				} else {
+					send_test_response("")
+				}
 			default:
 				send_test_response("UNKNOWN TEST COMMAND: " + string(cmd.Payload))
 			}
@@ -328,7 +350,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 			if cmd.Payload != nil {
 				payload = utils.UnsafeBytesToString(cmd.Payload)
 			}
-			if on_drop_move(cmd.X, cmd.Y, payload) {
+			if on_drop_move(cmd.X, cmd.Y, cmd.Has_more, payload) {
 				render_screen()
 			}
 		}
