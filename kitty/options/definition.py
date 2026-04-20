@@ -866,6 +866,15 @@ mouse enters it, as long as the kitty application is the active application.
 '''
     )
 
+opt('focus_follows_drop', 'no',
+    option_type='to_bool',
+    long_text='''
+When something is dropped onto a window, automatically focus that window. If
+disabled (the default), the drop content is delivered to the target window but
+keyboard focus remains on the previously active window.
+'''
+    )
+
 opt('pointer_shape_when_grabbed', 'arrow',
     choices=pointer_shape_names, ctype='pointer_shape',
     long_text='''

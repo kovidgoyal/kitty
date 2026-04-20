@@ -1998,6 +1998,8 @@ class Boss:
                     if window.is_visible_in_layout:
                         g = window.geometry
                         if g.left <= x < g.right and g.top <= y < g.bottom:
+                            if get_options().focus_follows_drop and window is not tab.active_window:
+                                tab.set_active_window(window)
                             window.on_drop(drop)
                             break
         elif tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < tab_bar.bottom:
