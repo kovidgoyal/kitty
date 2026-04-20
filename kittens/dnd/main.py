@@ -27,15 +27,6 @@ files to be overwritten. Note that confirmation is asked only for actual file co
 conflicting files are automatically created.
 
 
---drag-action
-type=choices
-default=copy
-choices=copy,move,either
-The set of allowed actions when dragging. If :code:`either` is chosen then the drop destination can pick
-which action it wants. If the action is a move, then the dragged files are deleted when the drag finishes
-and the kitten exits after the drag.
-
-
 --machine-id
 The machine id to use instead of the actual machine id.
 '''.format

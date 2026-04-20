@@ -18,6 +18,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
 
 var _ = fmt.Append
@@ -52,51 +53,190 @@ type drop_dest struct {
 	mime_type        string
 }
 
+type button_region struct {
+	left, width, top, height int
+}
+
+func (r button_region) has(x, y int) bool {
+	return r.left <= x && x < r.left+r.width && r.top <= y && y < r.top+r.height
+}
+
+type DC = loop.DndCommand
+
+func truncate_at_space(text string, width int) (string, string) {
+	truncated, p := wcswidth.TruncateToVisualLengthWithWidth(text, width)
+	if len(truncated) == len(text) {
+		return text, ""
+	}
+	i := strings.LastIndexByte(truncated, ' ')
+	if i > 0 && p-i < 12 {
+		p = i + 1
+	}
+	return text[:p], text[p:]
+}
+
+func paragraph_as_lines(text string, width int) (ans []string) {
+	for text != "" {
+		var line string
+		if line, text = truncate_at_space(text, width); line != "" {
+			ans = append(ans, line)
+		}
+	}
+	return
+}
+
 func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[string]drag_source, uri_list_buffer *bytes.Buffer) (err error) {
-	allow_drops, allow_drags, drop_accepted := len(drop_dests) > 0, len(drag_sources) > 0, false
-	drop_copy_allowed, drop_move_allowed, drag_started := false, false, false
+	allow_drops, allow_drags := len(drop_dests) > 0, len(drag_sources) > 0
+	drag_started := false
 	in_test_mode := false
 	lp, err := loop.New()
 	if err != nil {
 		return err
 	}
+
 	send_test_response := func(payload string) {
 		lp.DebugPrintln(payload)
 	}
+
+	var drop_status struct {
+		offered_mimes  []string
+		accepted_mimes []string
+		cell_x, cell_y int
+		action         int
+		in_window      bool
+	}
+	drop_status.cell_x, drop_status.cell_y = -1, -1
+	const copy_on_drop = 1
+	const move_on_drop = 2
+
+	var copy_button_region, move_button_region button_region
+
+	on_drop_move := func(cell_x, cell_y int, offered_mimes string) (needs_rerender bool) {
+		prev_status := drop_status
+		drop_status.cell_x, drop_status.cell_y = cell_x, cell_y
+		if offered_mimes != "" {
+			drop_status.offered_mimes = strings.Fields(offered_mimes)
+			drop_status.accepted_mimes = make([]string, 0, len(drop_status.offered_mimes))
+			for _, x := range drop_status.offered_mimes {
+				if _, found := drop_dests[x]; found {
+					drop_status.accepted_mimes = append(drop_status.accepted_mimes, x)
+				}
+			}
+		}
+		if copy_button_region.has(cell_x, cell_y) {
+			drop_status.action = copy_on_drop
+		} else if move_button_region.has(cell_x, cell_y) {
+			drop_status.action = move_on_drop
+		} else {
+			drop_status.action = 0
+		}
+		drop_status.in_window = cell_x > -1 && cell_y > -1
+		mimes_changed := !slices.Equal(prev_status.accepted_mimes, drop_status.accepted_mimes)
+		needs_rerender = prev_status.action != drop_status.action || mimes_changed
+		if needs_rerender {
+			c := DC{Type: 'm'}
+			if drop_status.action != 0 && len(drop_status.accepted_mimes) > 0 {
+				c.Payload = utils.UnsafeStringToBytes(strings.Join(drop_status.accepted_mimes, " "))
+			}
+			lp.QueueDnDData(c)
+		}
+		needs_rerender = needs_rerender || drop_status.in_window != prev_status.in_window
+		return
+	}
+
 	render_screen := func() error {
 		if !in_test_mode {
 			lp.StartAtomicUpdate()
 			defer lp.EndAtomicUpdate()
 		}
 		lp.ClearScreen()
-		if allow_drags {
-			if drag_started {
-				lp.QueueWriteString("Dragging data...")
-				return nil
+		if drag_started {
+			lp.Println("Dragging data...")
+			return nil
+		}
+		y := 0
+		sz, _ := lp.ScreenSize()
+		render_paragraph := func(text string) {
+			for _, line := range paragraph_as_lines(text, int(sz.WidthCells)) {
+				lp.Println(line)
+				y++
 			}
-			// TODO: Sow a message to the user saying that they can start
-			// dragging anywhere in this window to initiate a drag and drop
 		}
-		if drop_accepted {
-			// TODO: If a drop has entered the window and offers MIME types
-			// present in drop_dests then drop_accepted will be true. In this
-			// case draw two buttons with triple sized text "Copy" and "Move"
-			// using lp.DrawSizedText() with scale=3 which uses the kitty text
-			// sizing protocol. Also draw, a message above them saying drop onto the buttons below.
-			// Below the buttons if there is space show the list of mime types
-			// in the drag. Be careful to not accept drops if drag_started is
-			// true, that is if the drag is coming from self.
-			// The buttons should only be shown if the drag allows the
-			// corresponding operation type. The button should consist of the
-			// triple sized text and a frame with rounded corners around the
-			// text drawn using unicode box drawing symbols.
-			_, _, _ = drop_copy_allowed, drop_move_allowed, in_test_mode
+		next_line := func() {
+			lp.Println()
+			y++
+		}
+		if drop_status.in_window {
+			if drop_status.action == 0 {
+				render_paragraph("A drag is active. Drop it into one of the boxes below to perform that action on the dragged data. Available MIME types in the drag:")
+				next_line()
+				render_paragraph(strings.Join(drop_status.offered_mimes, " "))
+			} else {
+				render_paragraph("The drag can be dropped. Supported MIME types:")
+				next_line()
+				render_paragraph(strings.Join(drop_status.accepted_mimes, " "))
+			}
+		} else {
+			// Neither active drag nor drop over window
+			if allow_drags {
+				render_paragraph(`Start dragging anywhere in this window to initiate a drag and drop. If you start the drag in one of the Copy or Move boxes below, only that action will be allowed when dropping, otherwise, the drop destination can pick either copy or move.`)
+				next_line()
+			}
+			if allow_drops {
+				render_paragraph(`Drag some data from another application into this window to transfer the files here.`)
+			}
+		}
+		frame_width, padding_width := 4, 8
+		text_width := len("copymove")
+		scale := 4
+		for scale > 1 && frame_width+padding_width+text_width*scale > int(sz.WidthCells) {
+			scale--
+		}
+		height := scale + 4
+		boxy := 1 + max(0, int(sz.HeightCells)-height)
+		lp.MoveCursorTo(1, boxy)
+		lp.ClearToEndOfScreen()
 
+		render_box := func(x int, text string, r *button_region) {
+			width := scale*wcswidth.Stringwidth(text) + 6
+			r.left = x - 1
+			r.top = boxy - 1
+			r.width = width
+			r.height = height
+			lp.MoveCursorTo(x, boxy)
+			for i := range height {
+				lp.SaveCursorPosition()
+				switch i {
+				case 0:
+					lp.QueueWriteString("╭")
+					lp.QueueWriteString(strings.Repeat("─", width-2))
+					lp.QueueWriteString("╮")
+				case height - 1:
+					lp.QueueWriteString("╰")
+					lp.QueueWriteString(strings.Repeat("─", width-2))
+					lp.QueueWriteString("╯")
+				default:
+					lp.QueueWriteString("│")
+					if i == 2 {
+						lp.MoveCursorHorizontally(2)
+						lp.DrawSizedText(text, loop.SizedText{Scale: scale})
+					}
+					lp.MoveCursorTo(x+width-1, boxy+i)
+					lp.QueueWriteString("│")
+				}
+				lp.RestoreCursorPosition()
+				lp.MoveCursorVertically(1)
+			}
 		}
+		render_box(1, "Copy", &copy_button_region)
+		box_width := 6 + len("move")*scale
+		render_box(1+int(sz.WidthCells)-box_width, "Move", &move_button_region)
+		_ = in_test_mode
 		return nil
 	}
 	lp.OnInitialize = func() (string, error) {
 		lp.AllowLineWrapping(false)
+		lp.SetCursorVisible(false)
 		if allow_drops {
 			lp.StartAcceptingDrops(opts.MachineId, slices.Collect(maps.Keys(drop_dests))...)
 		}
@@ -108,6 +248,7 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 	}
 	lp.OnFinalize = func() string {
 		lp.AllowLineWrapping(true)
+		lp.SetCursorVisible(true)
 		if allow_drops {
 			lp.StopAcceptingDrops()
 		}
@@ -163,6 +304,15 @@ func run_loop(opts *Options, drop_dests map[string]drop_dest, drag_sources map[s
 				lp.NoRoundtripToTerminalOnExit()
 			default:
 				send_test_response("UNKNOWN TEST COMMAND: " + string(cmd.Payload))
+			}
+		// Drops
+		case 'm':
+			payload := ""
+			if cmd.Payload != nil {
+				payload = utils.UnsafeBytesToString(cmd.Payload)
+			}
+			if on_drop_move(cmd.X, cmd.Y, payload) {
+				render_screen()
 			}
 		}
 		return nil
