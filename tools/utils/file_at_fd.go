@@ -48,7 +48,7 @@ func openAt(dirFile *os.File, name string, flags int, perm os.FileMode) (*os.Fil
 	dirFd := int(dirFile.Fd())
 
 	// Call the underlying system call
-	fd, err := unix.Openat(dirFd, name, flags, uint32(perm))
+	fd, err := unix.Openat(dirFd, name, flags|unix.O_CLOEXEC, uint32(perm))
 	if err != nil {
 		return nil, &os.PathError{Op: "openat", Path: name, Err: err}
 	}
