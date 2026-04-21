@@ -3,6 +3,7 @@
 
 import os
 import random
+import shutil
 import tempfile
 from base64 import standard_b64encode
 from functools import partial
@@ -37,7 +38,7 @@ def create_fs(base):
         if sz == 0:
             sz = random.randint(5713, 9879)
         with open(join(*path), 'wb') as f:
-            f.write(os.urandom(sz))
+            f.write(b'x' * sz)
     os.makedirs(join('d1', 'sd', 'ssd'))
     os.mkdir(join('d2'))
     os.symlink('/does-not-exist', join('s1'))
@@ -160,7 +161,8 @@ class TestDnDKitten(BaseTest):
         self.dnd_kitten_drop(True)
 
     def dnd_kitten_drop(self, remote_client):
-        self.finish_setup(remote_client=remote_client, cli_args=('--drop=image/png:images/image.png',))
+        img_drop_path = 'images/image.png'
+        self.finish_setup(remote_client=remote_client, cli_args=(f'--drop=image/png:{img_drop_path}',))
         copy, move = self.get_button_geometry()
         all_mimes = 'text/uri-list a/b c/d'
         for b, expected in ((copy, GLFW_DRAG_OPERATION_COPY), (move, GLFW_DRAG_OPERATION_MOVE)):
@@ -200,5 +202,24 @@ class TestDnDKitten(BaseTest):
         uri_list.insert(3, 'ignore://me')
         dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', '\r\n'.join(uri_list).encode())
         self.assertEqual('image/png', self.probe_state('drop_getting_data_for_mime'))
+
+        def send_file_in_chunks(f, mime, sz=3072):
+            while True:
+                chunk = f.read(sz)
+                if not chunk:
+                    break
+                dnd_test_fake_drop_data(self.capture.window_id, mime, chunk, 0, True)
+            dnd_test_fake_drop_data(self.capture.window_id, mime, b'')
+
+        with open(os.path.join(self.src_data_dir, 'some-image.png'), 'rb') as f:
+            send_file_in_chunks(f, 'image/png', 1117)
+
         self.send_dnd_command_to_kitten('DROP_IS_REMOTE')
         self.wait_for_responses(str(remote_client))
+        jn = os.path.join
+        self.assert_files_have_same_content(jn(self.src_data_dir, 'some-image.png'), jn(self.kitten_wd, img_drop_path))
+        shutil.rmtree(os.path.dirname(jn(self.kitten_wd, img_drop_path)))
+
+    def assert_files_have_same_content(self, a, b):
+        with open(a, 'rb') as fa, open(b, 'rb') as fb:
+            self.assertEqual(fa.read(), fb.read(), f'{a} ({os.path.getsize(a)}) != {b} ({os.path.getsize(b)})')

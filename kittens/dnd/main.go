@@ -4,6 +4,7 @@ package dnd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -18,6 +19,7 @@ import (
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
+	"github.com/kovidgoyal/kitty/tools/utils/streaming_base64"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
 
@@ -52,6 +54,69 @@ type drop_dest struct {
 	dest             io.WriteCloser
 	mime_type        string
 	completed        bool
+	close_on_finish  bool
+	b64_decoder      streaming_base64.StreamingBase64Decoder
+}
+
+func open_file_for_writing(path string) (*os.File, error) {
+	f, err := os.Create(path)
+	if errors.Is(err, os.ErrNotExist) {
+		dir := filepath.Dir(path)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, err
+		}
+		return os.Create(path)
+	}
+	return f, err
+}
+
+func (d *drop_dest) write(chunk []byte) (err error) {
+	if d.dest == nil {
+		d.dest, err = open_file_for_writing(d.path)
+		d.close_on_finish = true
+		if err != nil {
+			return
+		}
+
+	}
+	_, err = d.dest.Write(chunk)
+	return
+}
+
+func (d *drop_dest) finish() error {
+	defer func() {
+		d.completed = true
+		if d.dest != nil && d.close_on_finish {
+			d.dest.Close()
+			d.dest = nil
+		}
+	}()
+	if chunk, err := d.b64_decoder.Finish(); err != nil {
+		return err
+	} else if len(chunk) > 0 {
+		return d.write(chunk)
+	}
+	return nil
+}
+
+func (d *drop_dest) add_data(x []byte, output_buf []byte, has_more bool) error {
+	d.completed = false
+	for chunk, err := range d.b64_decoder.Decode(x, output_buf) {
+		if err == nil {
+			err = d.write(chunk)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if !has_more {
+		if chunk, err := d.b64_decoder.Finish(); err != nil {
+			return err
+		} else if len(chunk) > 0 {
+			return d.write(chunk)
+		}
+	}
+	return nil
 }
 
 type button_region struct {
@@ -322,20 +387,25 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 		return nil
 	}
 
+	var drop_buf []byte
+
 	on_drop_data := func(cmd DC) error {
 		if drop_status.remote_phase_started {
 			return on_remote_drop_data(cmd)
 		}
 		idx := cmd.X - 1
-		if idx < 0 || idx > len(drop_status.accepted_mimes) {
+		if idx < 0 || idx > len(drop_status.offered_mimes) {
 			return fmt.Errorf("terminal sent drop data for a index outside the list of accepted MIMEs")
 		}
-		mime := drop_status.accepted_mimes[idx]
+		mime := drop_status.offered_mimes[idx]
 		dest := drop_dests[mime]
 		if cmd.Xp == 1 && mime == "text/uri-list" {
 			drop_status.is_remote_client = true
 		}
 		if !cmd.Has_more && len(cmd.Payload) == 0 {
+			if err := dest.finish(); err != nil {
+				return err
+			}
 			dest.completed = true
 			pending := false
 			for _, d := range drop_dests {
@@ -349,8 +419,10 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 			}
 			return nil
 		}
-		// TODO: Implement this
-		return nil
+		if sz := max(4096, len(cmd.Payload)+4); len(drop_buf) < sz {
+			drop_buf = make([]byte, sz)
+		}
+		return dest.add_data(cmd.Payload, drop_buf, cmd.Has_more)
 	}
 	// }}}
 

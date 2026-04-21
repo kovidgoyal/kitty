@@ -2094,7 +2094,7 @@ dnd_test_fake_drop_data(PyObject *self UNUSED, PyObject *args) {
     const char *mime;
     RAII_PY_BUFFER(data);
     int error_code = 0, no_eod = 0;
-    if (!PyArg_ParseTuple(args, "Ksy*|ii", &window_id, &mime, &data, &error_code, &no_eod)) return NULL;
+    if (!PyArg_ParseTuple(args, "Ksy*|ip", &window_id, &mime, &data, &error_code, &no_eod)) return NULL;
     Window *w = window_for_window_id((id_type)window_id);
     if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
     if (error_code > 0) {
