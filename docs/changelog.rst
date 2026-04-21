@@ -255,6 +255,8 @@ Detailed list of changes
 
 - diff kitten: Keep the current (topmost) filename visible when scrolling, controlled by a new option :opt:`kitten-diff.sticky_header` (:pull:`9891`)
 
+- Add an option to :opt:`focus_follows_mouse` to only switch focus on drops rather than movement (:pull:`9896`)
+
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

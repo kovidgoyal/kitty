@@ -843,6 +843,9 @@ on_drop(GLFWwindow *window, GLFWDropEvent *ev) {
                 ev->from_self ? Py_True : Py_False, Py_True);
             break;
         case GLFW_DROP_DROP:
+            if (w && OPT(focus_follows_mouse).on_drop) {
+                call_boss(set_active_window, "KO", w->id, Py_True);
+            }
             Py_CLEAR(global_state.drop_dest.data);
             global_state.drop_dest.drop_has_happened = true;
             global_state.drop_dest.client_window_data_request = 0;

@@ -22,6 +22,7 @@ choices_for_allow_cloning = typing.Literal['yes', 'y', 'true', 'no', 'n', 'false
 choices_for_allow_remote_control = typing.Literal['password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true']
 choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered', 'cscaled']
 choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'cell', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing']
+choices_for_focus_follows_mouse = typing.Literal['no', 'n', 'false', 'y', 'yes', 'true', 'drop']
 choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
 choices_for_macos_colorspace = typing.Literal['srgb', 'default', 'displayp3']
 choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']
@@ -578,7 +579,7 @@ class Options:
     enable_audio_bell: bool = True
     enabled_layouts: list[str] = ['fat', 'grid', 'horizontal', 'splits', 'stack', 'tall', 'vertical']
     file_transfer_confirmation_bypass: str = ''
-    focus_follows_mouse: bool = False
+    focus_follows_mouse: choices_for_focus_follows_mouse = 'no'
     font_family: FontSpec = FontSpec(family=None, style=None, postscript_name=None, full_name=None, system='monospace', axes=(), variable_name=None, features=(), created_from_string='monospace')
     font_size: float = 11.0
     force_ltr: bool = False

@@ -683,7 +683,7 @@ convert_from_opts_click_interval(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_focus_follows_mouse(PyObject *val, Options *opts) {
-    opts->focus_follows_mouse = PyObject_IsTrue(val);
+    focus_follows_mouse(val, opts);
 }
 
 static void

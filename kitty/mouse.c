@@ -196,7 +196,7 @@ set_currently_hovered_window(id_type window_id, int modifiers) {
                 debug("Sent mouse leave event to window: %llu\n", left_window->id);
             }
         }
-        if (window_id && OPT(focus_follows_mouse) && global_state.callback_os_window && global_state.callback_os_window->num_tabs) {
+        if (window_id && OPT(focus_follows_mouse).on_cross && global_state.callback_os_window && global_state.callback_os_window->num_tabs) {
             Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
             for (unsigned i = 0; i < t->num_windows; i++) {
                 if (t->windows[i].id == window_id) {

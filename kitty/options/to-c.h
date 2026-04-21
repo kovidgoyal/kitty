@@ -559,6 +559,22 @@ tab_bar_style(PyObject *val, Options *opts) {
 }
 
 static inline void
+focus_follows_mouse(PyObject *val, Options *opts) {
+    zero_at_ptr(&opts->focus_follows_mouse);
+    const char *q = PyUnicode_AsUTF8(val);
+    switch(q[0]) {
+        case 'y': case 't':
+            opts->focus_follows_mouse.on_cross = true;
+            opts->focus_follows_mouse.on_drop = true;
+            break;
+        case 'd':
+            opts->focus_follows_mouse.on_drop = true;
+            break;
+    }
+}
+
+
+static inline void
 tab_bar_margin_height(PyObject *val, Options *opts) {
     if (!PyTuple_Check(val) || PyTuple_GET_SIZE(val) != 2) {
         PyErr_SetString(PyExc_TypeError, "tab_bar_margin_height is not a 2-item tuple");

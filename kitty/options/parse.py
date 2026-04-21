@@ -1012,7 +1012,12 @@ class Parser:
             ans["filter_notification"][k] = v
 
     def focus_follows_mouse(self, val: str, ans: dict[str, typing.Any]) -> None:
-        ans['focus_follows_mouse'] = to_bool(val)
+        val = val.lower()
+        if val not in self.choices_for_focus_follows_mouse:
+            raise ValueError(f"The value {val} is not a valid choice for focus_follows_mouse")
+        ans["focus_follows_mouse"] = val
+
+    choices_for_focus_follows_mouse = frozenset(('no', 'n', 'false', 'y', 'yes', 'true', 'drop'))
 
     def font_family(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['font_family'] = parse_font_spec(val)
