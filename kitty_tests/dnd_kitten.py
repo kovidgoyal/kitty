@@ -2,8 +2,10 @@
 # License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import random
 import tempfile
 from base64 import standard_b64encode
+from functools import partial
 
 from kitty.constants import kitten_exe
 from kitty.fast_data_types import (
@@ -13,9 +15,11 @@ from kitty.fast_data_types import (
     dnd_set_test_write_func,
     dnd_test_cleanup_fake_window,
     dnd_test_create_fake_window,
+    dnd_test_fake_drop_data,
     dnd_test_fake_drop_event,
     dnd_test_probe_state,
 )
+from kitty.utils import as_file_url
 
 from . import PTY, BaseTest
 from .dnd import WriteCapture
@@ -25,6 +29,27 @@ class Capture(WriteCapture):
 
     def __call__(self, window_id: int, data: bytes) -> None:
         self.pty.write_to_child(data)
+
+
+def create_fs(base):
+    join = partial(os.path.join, base)
+    def w(sz, *path):
+        if sz == 0:
+            sz = random.randint(5713, 9879)
+        with open(join(*path), 'wb') as f:
+            f.write(os.urandom(sz))
+    os.makedirs(join('d1', 'sd', 'ssd'))
+    os.mkdir(join('d2'))
+    os.symlink('/does-not-exist', join('s1'))
+    os.symlink('d1', join('sd'))
+    os.symlink('/', join('sr'))
+    os.symlink('../d1', join('d1', 'sr'))
+    w(4096 * 3 + 113, 'some-image.png')
+    w(0, 'd1', 'f1')
+    w(0, 'd1', 'f2')
+    w(0, 'd1', 'sd', 'f1')
+    w(0, 'd1', 'sd', 'ssd', 'f1')
+    os.symlink('../moose', join('d1', 'sd', 'ssd', 's1'))
 
 
 class TestDnDKitten(BaseTest):
@@ -164,3 +189,13 @@ class TestDnDKitten(BaseTest):
         self.send_dnd_command_to_kitten('DROP_MIMES')
         self.wait_for_responses(all_mimes)
         self.wait_for_state('drop_data_requests', ((1,0,0), (2,0,0)))
+        self.assertEqual('text/uri-list', self.probe_state('drop_getting_data_for_mime'))
+        create_fs(self.src_data_dir)
+        uri_list = []
+        for x in os.listdir(self.src_data_dir):
+            uri_list.append(as_file_url(self.src_data_dir, x))
+        uri_list = ['moose://cow', 'frog:march'] + uri_list
+        uri_list.insert(3, 'ignore://me')
+        dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', '\r\n'.join(uri_list).encode())
+        self.send_dnd_command_to_kitten('DROP_IS_REMOTE')
+        self.wait_for_responses(str(remote_client))

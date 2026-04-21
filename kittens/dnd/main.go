@@ -323,10 +323,11 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 		if drop_status.remote_phase_started {
 			return on_remote_drop_data(cmd)
 		}
-		if cmd.X < 0 || cmd.X > len(drop_status.accepted_mimes) {
+		idx := cmd.X - 1
+		if idx < 0 || idx > len(drop_status.accepted_mimes) {
 			return fmt.Errorf("terminal sent drop data for a index outside the list of accepted MIMEs")
 		}
-		mime := drop_status.accepted_mimes[cmd.X]
+		mime := drop_status.accepted_mimes[idx]
 		dest := drop_dests[mime]
 		if cmd.Xp == 1 && mime == "text/uri-list" {
 			drop_status.is_remote_client = true
@@ -428,6 +429,8 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 				} else {
 					send_test_response("")
 				}
+			case "DROP_IS_REMOTE":
+				send_test_response(utils.IfElse(drop_status.is_remote_client, "True", "False"))
 			default:
 				send_test_response("UNKNOWN TEST COMMAND: " + string(cmd.Payload))
 			}

@@ -2093,15 +2093,15 @@ dnd_test_fake_drop_data(PyObject *self UNUSED, PyObject *args) {
     unsigned long long window_id;
     const char *mime;
     RAII_PY_BUFFER(data);
-    int error_code = 0;
-    if (!PyArg_ParseTuple(args, "Ksy*|i", &window_id, &mime, &data, &error_code)) return NULL;
+    int error_code = 0, no_eod = 0;
+    if (!PyArg_ParseTuple(args, "Ksy*|ii", &window_id, &mime, &data, &error_code, &no_eod)) return NULL;
     Window *w = window_for_window_id((id_type)window_id);
     if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
     if (error_code > 0) {
         drop_dispatch_data(w, mime, NULL, -(ssize_t)error_code);
     } else if (data.len > 0) {
         drop_dispatch_data(w, mime, (const char*)data.buf, (ssize_t)data.len);
-        drop_dispatch_data(w, mime, NULL, 0);  // mandatory end-of-data signal
+        if (!no_eod) drop_dispatch_data(w, mime, NULL, 0);  // mandatory end-of-data signal
     } else {
         // Empty data: just the end-of-data signal (sz=0 is the sentinel for "no more data").
         drop_dispatch_data(w, mime, NULL, 0);
@@ -2215,6 +2215,9 @@ dnd_test_probe_state(PyObject *self UNUSED, PyObject *args) {
 #undef item
         }
         return ans;
+    }
+    if (strcmp(q, "drop_getting_data_for_mime") == 0) {
+        return PyUnicode_FromString(w->drop.getting_data_for_mime ? w->drop.getting_data_for_mime : "");
     }
     Py_RETURN_NONE;
 }
