@@ -185,10 +185,12 @@ class TestDnDKitten(BaseTest):
         all_mimes += ' image/png'
         dnd_test_fake_drop_event(self.capture.window_id, False, all_mimes.split(), copy[0] + 1, copy[1] + 1)
         self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
+        self.assertEqual('text/uri-list\x00image/png', self.probe_state('drop_mimes').rstrip('\x00'))
         dnd_test_fake_drop_event(self.capture.window_id, True, all_mimes.split(), copy[0] + 1, copy[1] + 1)
         self.send_dnd_command_to_kitten('DROP_MIMES')
         self.wait_for_responses(all_mimes)
-        self.wait_for_state('drop_data_requests', ((1,0,0), (2,0,0)))
+        self.assertEqual('text/uri-list\x00image/png', self.probe_state('drop_mimes').rstrip('\x00'))
+        self.wait_for_state('drop_data_requests', ((1,0,0), (4,0,0)))
         self.assertEqual('text/uri-list', self.probe_state('drop_getting_data_for_mime'))
         create_fs(self.src_data_dir)
         uri_list = []
@@ -197,5 +199,6 @@ class TestDnDKitten(BaseTest):
         uri_list = ['moose://cow', 'frog:march'] + uri_list
         uri_list.insert(3, 'ignore://me')
         dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', '\r\n'.join(uri_list).encode())
+        self.assertEqual('image/png', self.probe_state('drop_getting_data_for_mime'))
         self.send_dnd_command_to_kitten('DROP_IS_REMOTE')
         self.wait_for_responses(str(remote_client))

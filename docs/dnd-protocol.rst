@@ -106,9 +106,9 @@ Requesting data is done by sending an escape code of the form::
 
     OSC _dnd_code ; t=r:x=idx ST
 
-Here ``idx`` is a 1-based index into the list of MIME types sent previously.
-This will request data for the specified MIME type. The terminal must respond
-with a series of escape codes of the form::
+Here ``idx`` is a 1-based index into the list of MIME types sent in the ``t=M``
+drop event. This will request data for the specified MIME type.
+The terminal must respond with a series of escape codes of the form::
 
     OSC _dnd_code ; t=r:x=idx; base64 encoded data possibly chunked ST
 

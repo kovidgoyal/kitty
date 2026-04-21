@@ -248,8 +248,11 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 	}
 
 	request_mime_data := func() {
-		for idx := range drop_status.accepted_mimes {
-			lp.QueueDnDData(DC{Type: 'r', X: idx + 1})
+		accepted := utils.NewSetWithItems(drop_status.accepted_mimes...)
+		for idx, m := range drop_status.offered_mimes {
+			if accepted.Has(m) {
+				lp.QueueDnDData(DC{Type: 'r', X: idx + 1})
+			}
 		}
 	}
 
