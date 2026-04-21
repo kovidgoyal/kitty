@@ -5,11 +5,58 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print
+
+// MkdirAt creates a new subdirectory named 'name' inside the directory
+// pointed to by parentDir.
+func MkdirAt(parentDir *os.File, name string, perm os.FileMode) error {
+	// parentDir.Fd() gives us the base directory handle
+	fd := int(parentDir.Fd())
+
+	// unix.Mkdirat(dirfd, path, mode)
+	// We convert the os.FileMode to a uint32 for the syscall
+	err := unix.Mkdirat(fd, name, uint32(perm))
+	if err != nil {
+		return &os.PathError{
+			Op:   "mkdirat",
+			Path: name,
+			Err:  err,
+		}
+	}
+	return nil
+}
+
+// OpenAt opens a file relative to the directory pointed to by dirFile.
+// Matches the behavior of os.Open (read-only).
+func OpenAt(dirFile *os.File, name string) (*os.File, error) {
+	return openAt(dirFile, name, os.O_RDONLY, 0)
+}
+
+// CreateAt creates or truncates a file relative to the directory pointed to by dirFile.
+// Matches the behavior of os.Create (read-write, creates if doesn't exist, truncates).
+func CreateAt(dirFile *os.File, name string) (*os.File, error) {
+	return openAt(dirFile, name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+}
+
+// Internal helper to wrap the unix.Openat syscall
+func openAt(dirFile *os.File, name string, flags int, perm os.FileMode) (*os.File, error) {
+	dirFd := int(dirFile.Fd())
+
+	// Call the underlying system call
+	fd, err := unix.Openat(dirFd, name, flags, uint32(perm))
+	if err != nil {
+		return nil, &os.PathError{Op: "openat", Path: name, Err: err}
+	}
+	name = filepath.Join(dirFile.Name(), name)
+	// os.NewFile takes the raw fd and the name and returns a high-level *os.File.
+	// This allows you to use standard methods like .Read(), .Write(), and .Close().
+	return os.NewFile(uintptr(fd), name), nil
+}
 
 // RemoveChildren recursively removes all files and subdirectories
 // within the directory pointed to by dirFile. Removes all it can but returns
