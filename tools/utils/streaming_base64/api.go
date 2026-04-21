@@ -1,12 +1,15 @@
 package streaming_base64
 
 import (
-	"encoding/base64"
 	"fmt"
 	"iter"
+
+	"github.com/emmansun/base64"
 )
 
 var _ = fmt.Print
+
+type CorruptInputError = base64.CorruptInputError
 
 type StreamingBase64Decoder struct {
 	leftover     [4]byte
@@ -15,9 +18,9 @@ type StreamingBase64Decoder struct {
 }
 
 func wrap_error(err error, chunkOffset int64) error {
-	if e, ok := err.(base64.CorruptInputError); ok {
+	if e, ok := err.(CorruptInputError); ok {
 		// CorruptInputError is an int64 representing the relative byte offset
-		return base64.CorruptInputError(int64(e) + chunkOffset)
+		return CorruptInputError(int64(e) + chunkOffset)
 	}
 	return err
 }
@@ -106,7 +109,7 @@ func (s *StreamingBase64Decoder) Finish() ([]byte, error) {
 	case 0:
 		return nil, nil
 	case 1:
-		return nil, base64.CorruptInputError(s.total_read - 1)
+		return nil, CorruptInputError(s.total_read - 1)
 	case 2:
 		s.leftover[2] = '='
 		s.leftover[3] = '='

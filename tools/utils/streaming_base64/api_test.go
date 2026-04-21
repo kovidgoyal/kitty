@@ -4,9 +4,10 @@ package streaming_base64
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"testing"
+
+	"github.com/emmansun/base64"
 )
 
 var _ = fmt.Print
@@ -84,16 +85,16 @@ func roundtripNoPadding(t *testing.T, plaintext []byte, chunkSize int) {
 // leftover after decoding (but 2 base64 chars left when unpadded).
 func TestRoundtripAllChunkSizes(t *testing.T) {
 	plaintexts := [][]byte{
-		{},                                           // 0 bytes  → 0 encoded  → num_leftover=0
-		[]byte("a"),                                  // 1 byte   → 4 encoded  → no leftover (padded)
-		[]byte("ab"),                                 // 2 bytes  → 4 encoded  → no leftover (padded)
-		[]byte("abc"),                                // 3 bytes  → 4 encoded  → no leftover
-		[]byte("abcd"),                               // 4 bytes  → 8 encoded  → no leftover
-		[]byte("abcde"),                              // 5 bytes  → 8 encoded  → no leftover (padded)
-		[]byte("abcdef"),                             // 6 bytes  → 8 encoded  → no leftover (padded)
-		[]byte("Hello, World!"),                      // 13 bytes → 20 encoded
+		{},                      // 0 bytes  → 0 encoded  → num_leftover=0
+		[]byte("a"),             // 1 byte   → 4 encoded  → no leftover (padded)
+		[]byte("ab"),            // 2 bytes  → 4 encoded  → no leftover (padded)
+		[]byte("abc"),           // 3 bytes  → 4 encoded  → no leftover
+		[]byte("abcd"),          // 4 bytes  → 8 encoded  → no leftover
+		[]byte("abcde"),         // 5 bytes  → 8 encoded  → no leftover (padded)
+		[]byte("abcdef"),        // 6 bytes  → 8 encoded  → no leftover (padded)
+		[]byte("Hello, World!"), // 13 bytes → 20 encoded
 		[]byte("The quick brown fox jumps over the"), // 34 bytes → 48 encoded
-		bytes.Repeat([]byte{0x00, 0xff, 0x80}, 17),  // binary data
+		bytes.Repeat([]byte{0x00, 0xff, 0x80}, 17),   // binary data
 	}
 	for _, plain := range plaintexts {
 		for chunkSize := 1; chunkSize <= 7; chunkSize++ {
@@ -109,14 +110,14 @@ func TestRoundtripAllChunkSizes(t *testing.T) {
 // padding bytes for all relevant chunk sizes.
 func TestRoundtripNoPaddingAllChunkSizes(t *testing.T) {
 	plaintexts := [][]byte{
-		[]byte("a"),                     // 1 byte  → "YQ" (2 base64 chars, no pad)
-		[]byte("ab"),                    // 2 bytes → "YWI" (3 base64 chars, no pad)
-		[]byte("abc"),                   // 3 bytes → "YWJj" (4 chars, no leftover)
-		[]byte("abcd"),                  // 4 bytes → "YWJjZA" (6 chars)
-		[]byte("Hello, World!"),         // mixed
-		bytes.Repeat([]byte{0xde}, 10),  // binary, 1 mod 3 remainder
-		bytes.Repeat([]byte{0xbe}, 11),  // binary, 2 mod 3 remainder
-		bytes.Repeat([]byte{0xef}, 12),  // binary, 0 mod 3 remainder
+		[]byte("a"),                    // 1 byte  → "YQ" (2 base64 chars, no pad)
+		[]byte("ab"),                   // 2 bytes → "YWI" (3 base64 chars, no pad)
+		[]byte("abc"),                  // 3 bytes → "YWJj" (4 chars, no leftover)
+		[]byte("abcd"),                 // 4 bytes → "YWJjZA" (6 chars)
+		[]byte("Hello, World!"),        // mixed
+		bytes.Repeat([]byte{0xde}, 10), // binary, 1 mod 3 remainder
+		bytes.Repeat([]byte{0xbe}, 11), // binary, 2 mod 3 remainder
+		bytes.Repeat([]byte{0xef}, 12), // binary, 0 mod 3 remainder
 	}
 	for _, plain := range plaintexts {
 		for chunkSize := 1; chunkSize <= 7; chunkSize++ {
@@ -199,7 +200,7 @@ func TestFinishNumLeftover(t *testing.T) {
 	t.Run("leftover=1", func(t *testing.T) {
 		// Feed 5 base64 chars: 4 will be consumed, 1 leftover.
 		encoded := []byte(base64.StdEncoding.EncodeToString([]byte("abc"))) // "YWJj" (4)
-		encoded = append(encoded, 'Y')                                       // + 1 → total 5
+		encoded = append(encoded, 'Y')                                      // + 1 → total 5
 		var d StreamingBase64Decoder
 		outBuf := make([]byte, 16)
 		for _, err := range d.Decode(encoded, outBuf) {
@@ -268,9 +269,9 @@ func TestFinishNumLeftover(t *testing.T) {
 // byte offset within the full stream.
 func TestErrorOffsetInDecode(t *testing.T) {
 	tests := []struct {
-		name        string
-		chunks      []string // successive calls to Decode
-		wantOffset  int64
+		name       string
+		chunks     []string // successive calls to Decode
+		wantOffset int64
 	}{
 		{
 			// Error in the very first block (no leftovers involved).
