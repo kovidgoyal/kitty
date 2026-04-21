@@ -22,10 +22,17 @@ func wrap_error(err error, chunkOffset int64) error {
 	return err
 }
 
+// The size of output buffer needed for the provided size of input
+func (s *StreamingBase64Decoder) NeededOutputLen(input_len int) int {
+	return ((input_len + s.num_leftover) / 4) * 3
+}
+
+// Decode provided input, iterating in chunks. Each chunk is a slice from the
+// provided output buffer, which must be at least s.NeededOutputLen() in size.
 func (s *StreamingBase64Decoder) Decode(input []byte, output []byte) iter.Seq2[[]byte, error] {
 	// Base64 decoding: 4 input bytes -> 3 output bytes.
 	// We check if output is large enough for this chunk + any buffered data.
-	maxPossibleOutput := ((len(input) + s.num_leftover) / 4) * 3
+	maxPossibleOutput := s.NeededOutputLen(len(input))
 	return func(yield func([]byte, error) bool) {
 		if len(output) < maxPossibleOutput {
 			yield(nil, fmt.Errorf("output slice too small: need at least %d, got %d", maxPossibleOutput, len(output)))
@@ -88,7 +95,13 @@ func (s *StreamingBase64Decoder) Decode(input []byte, output []byte) iter.Seq2[[
 	}
 }
 
+// Finish decoding the stream. Resets the decoder. Returned slice can be nil
+// if no leftover bytes are present.
 func (s *StreamingBase64Decoder) Finish() ([]byte, error) {
+	defer func() {
+		s.num_leftover = 0
+		s.total_read = 0
+	}()
 	switch s.num_leftover {
 	case 0:
 		return nil, nil
