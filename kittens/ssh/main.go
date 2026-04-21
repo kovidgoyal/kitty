@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,9 +27,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kovidgoyal/kitty"
+	"github.com/emmansun/base64"
+	"golang.org/x/sys/unix"
 
 	"github.com/kovidgoyal/go-shm"
+	"github.com/kovidgoyal/kitty"
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/themes"
 	"github.com/kovidgoyal/kitty/tools/tty"
@@ -40,8 +41,6 @@ import (
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/secrets"
 	"github.com/kovidgoyal/kitty/tools/utils/shlex"
-
-	"golang.org/x/sys/unix"
 )
 
 var _ = fmt.Print

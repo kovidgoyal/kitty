@@ -1,11 +1,12 @@
 package at
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/tty"
 )

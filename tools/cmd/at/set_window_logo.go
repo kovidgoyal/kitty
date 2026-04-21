@@ -4,12 +4,13 @@ package at
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"image"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/utils/images"
 )

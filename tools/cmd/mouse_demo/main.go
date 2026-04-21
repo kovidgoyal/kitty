@@ -3,12 +3,13 @@
 package mouse_demo
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/url"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"

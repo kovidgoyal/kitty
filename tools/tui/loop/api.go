@@ -5,13 +5,13 @@ package loop
 import (
 	"crypto/hmac"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/emmansun/base64"
 	"golang.org/x/sys/unix"
 
 	"github.com/kovidgoyal/go-parallel"

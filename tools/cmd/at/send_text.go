@@ -3,15 +3,17 @@
 package at
 
 import (
-	"encoding/base64"
 	"errors"
+	"io"
+	"os"
+	"strings"
+
+	"github.com/emmansun/base64"
+
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/shlex"
-	"io"
-	"os"
-	"strings"
 )
 
 var end_reading_from_stdin = errors.New("end reading from STDIN")

@@ -4,12 +4,13 @@ package clipboard
 
 import (
 	"bytes"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"

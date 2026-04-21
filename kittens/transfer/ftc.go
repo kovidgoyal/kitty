@@ -3,7 +3,6 @@
 package transfer
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -13,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty"
 	"github.com/kovidgoyal/kitty/tools/utils"

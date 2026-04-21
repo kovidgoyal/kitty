@@ -3,7 +3,6 @@
 package tty
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/emmansun/base64"
 	"golang.org/x/sys/unix"
 
 	"github.com/kovidgoyal/kitty/tools/utils"

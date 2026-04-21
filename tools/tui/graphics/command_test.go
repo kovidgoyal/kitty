@@ -5,11 +5,12 @@ package graphics
 import (
 	"bytes"
 	"compress/zlib"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/emmansun/base64"
 
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/exp/rand"

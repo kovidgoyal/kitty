@@ -4,7 +4,6 @@ package edit_in_kitty
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"io/fs"
@@ -12,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/emmansun/base64"
 	"golang.org/x/sys/unix"
 
 	"github.com/kovidgoyal/kitty/tools/cli"

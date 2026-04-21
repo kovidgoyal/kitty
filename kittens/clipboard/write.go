@@ -3,7 +3,6 @@
 package clipboard
 
 import (
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +10,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"

@@ -4,9 +4,10 @@ package secrets
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+
+	"github.com/emmansun/base64"
 )
 
 var _ = fmt.Print

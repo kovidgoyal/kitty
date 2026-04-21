@@ -3,8 +3,9 @@
 package tui
 
 import (
-	"encoding/base64"
 	"fmt"
+
+	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/utils"
 )

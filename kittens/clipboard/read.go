@@ -4,7 +4,6 @@ package clipboard
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"image"
 	"io"
@@ -13,6 +12,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"

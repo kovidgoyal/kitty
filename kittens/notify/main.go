@@ -2,7 +2,6 @@ package notify
 
 import (
 	"bytes"
-	"encoding/base64"
 	"fmt"
 	"image"
 	"io"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/tty"
