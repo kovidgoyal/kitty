@@ -5,11 +5,12 @@ package graphics
 import (
 	"bytes"
 	"compress/zlib"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/kitty/tools/tty"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"

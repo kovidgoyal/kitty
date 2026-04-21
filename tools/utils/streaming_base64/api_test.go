@@ -19,10 +19,7 @@ func collectDecode(t *testing.T, d *StreamingBase64Decoder, encoded []byte, chun
 	t.Helper()
 	var result []byte
 	for len(encoded) > 0 {
-		end := chunkSize
-		if end > len(encoded) {
-			end = len(encoded)
-		}
+		end := min(chunkSize, len(encoded))
 		chunk := encoded[:end]
 		encoded = encoded[end:]
 
