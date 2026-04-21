@@ -83,7 +83,6 @@ func (s *StreamingBase64Decoder) Decode(input []byte, output []byte) iter.Seq2[[
 				if !yield(output[outOffset:outOffset+n], nil) {
 					return
 				}
-				outOffset += n
 			}
 			currIn = currIn[processableLen:]
 			s.total_read += int64(processableLen)
