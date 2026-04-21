@@ -7,6 +7,7 @@ import shutil
 import tempfile
 from base64 import standard_b64encode
 from functools import partial
+from urllib.parse import unquote, urlparse
 
 from kitty.constants import kitten_exe
 from kitty.fast_data_types import (
@@ -62,7 +63,7 @@ class TestDnDKitten(BaseTest):
         capture.window_id = window_id
         capture.os_window_id = os_window_id
         self.capture = capture
-        self.test_dir = self.enterContext(tempfile.TemporaryDirectory())
+        self.test_dir = os.path.realpath(self.enterContext(tempfile.TemporaryDirectory()))
         self.kitten_wd = os.path.join(self.test_dir, 'kitten')
         os.mkdir(self.kitten_wd)
         self.src_data_dir = os.path.join(self.test_dir, 'src')
@@ -195,11 +196,18 @@ class TestDnDKitten(BaseTest):
         self.wait_for_state('drop_data_requests', ((1,0,0), (4,0,0)))
         self.assertEqual('text/uri-list', self.probe_state('drop_getting_data_for_mime'))
         create_fs(self.src_data_dir)
-        uri_list = []
+        uri_list, path_list = [], []
         for x in os.listdir(self.src_data_dir):
             uri_list.append(as_file_url(self.src_data_dir, x))
-        uri_list = ['moose://cow', 'frog:march'] + uri_list
+        uri_list = ['moose:cow', '# file:///frog/march'] + uri_list
         uri_list.insert(3, 'ignore://me')
+        for x in uri_list:
+            if x.startswith('#'):
+                continue
+            if x.startswith('file://'):
+                path_list.append(unquote(urlparse(x).path))
+            else:
+                path_list.append('')
         dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', '\r\n'.join(uri_list).encode())
         self.assertEqual('image/png', self.probe_state('drop_getting_data_for_mime'))
 
@@ -216,6 +224,8 @@ class TestDnDKitten(BaseTest):
 
         self.send_dnd_command_to_kitten('DROP_IS_REMOTE')
         self.wait_for_responses(str(remote_client))
+        self.send_dnd_command_to_kitten('DROP_URI_LIST')
+        self.wait_for_responses('|'.join(path_list))
         jn = os.path.join
         self.assert_files_have_same_content(jn(self.src_data_dir, 'some-image.png'), jn(self.kitten_wd, img_drop_path))
         shutil.rmtree(os.path.dirname(jn(self.kitten_wd, img_drop_path)))

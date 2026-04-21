@@ -144,6 +144,7 @@ func truncate_at_space(text string, width int) (string, string) {
 type drop_status struct {
 	offered_mimes        []string
 	accepted_mimes       []string
+	uri_list             []string
 	cell_x, cell_y       int
 	action               int
 	in_window            bool
@@ -158,6 +159,25 @@ func paragraph_as_lines(text string, width int) (ans []string) {
 		if line, text = truncate_at_space(text, width); line != "" {
 			ans = append(ans, line)
 		}
+	}
+	return
+}
+
+func parse_uri_list(src string) (ans []string, err error) {
+	for _, line := range utils.NewSeparatorScanner("", "\r\n").Split(src) {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		if !strings.HasPrefix(line, "file://") {
+			ans = append(ans, "")
+			continue
+		}
+		p, err := url.Parse(line)
+		if err != nil {
+			return nil, err
+		}
+		ans = append(ans, filepath.Clean(p.Path))
 	}
 	return
 }
@@ -301,15 +321,24 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 		render_screen()
 	}
 
-	all_mime_data_dropped := func() error {
-		if _, found := drop_dests["text/uri-list"]; found && drop_status.is_remote_client {
-			// TODO: Handle remote client
-		} else {
+	all_mime_data_dropped := func() (err error) {
+		if _, found := drop_dests["text/uri-list"]; found {
+			if drop_status.uri_list, err = parse_uri_list(uri_list_buffer.String()); err != nil {
+				return err
+			}
+		}
+		if len(drop_status.uri_list) == 0 {
 			drop_status = reset_drop_status
 			data_has_been_dropped = true
 			render_screen()
+			return
 		}
-		return nil
+		if drop_status.is_remote_client {
+			// TODO: Handle remote client
+		} else {
+			// TODO: copy URLs
+		}
+		return
 	}
 
 	request_mime_data := func() {
@@ -506,6 +535,8 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 				}
 			case "DROP_IS_REMOTE":
 				send_test_response(utils.IfElse(drop_status.is_remote_client, "True", "False"))
+			case "DROP_URI_LIST":
+				send_test_response(strings.Join(drop_status.uri_list, "|"))
 			default:
 				send_test_response("UNKNOWN TEST COMMAND: " + string(cmd.Payload))
 			}
