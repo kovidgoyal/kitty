@@ -257,6 +257,8 @@ Detailed list of changes
 
 - Add an option to :opt:`focus_follows_mouse` to only switch focus on drops rather than movement (:pull:`9896`)
 
+- Fix setting :opt:`momentum_scroll` to zero not *fully* disabling momentum scrolling (:iss:`9904`)
+
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

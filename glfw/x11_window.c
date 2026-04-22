@@ -1513,7 +1513,7 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             };
 
             // For high-resolution, finger-based scrolling, use timer-based momentum scrolling
-            if (d->is_finger_based && type == GLFW_SCROLL_OFFEST_HIGHRES) {
+            if (d->is_finger_based && type == GLFW_SCROLL_OFFEST_HIGHRES && glfw_is_momentum_scroll_enabled()) {
                 // Reset the timer on each scroll event
                 x11_cancel_momentum_scroll_timer();
 

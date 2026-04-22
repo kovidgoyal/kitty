@@ -917,6 +917,7 @@ void glfw_handle_scroll_event_for_momentum(_GLFWwindow *w, const GLFWScrollEvent
 #else
 #define momentum_scroll_gesture_detection_timeout_ms 0
 #endif
+bool glfw_is_momentum_scroll_enabled(void);
 
 char* _glfw_strdup(const char* source);
 
