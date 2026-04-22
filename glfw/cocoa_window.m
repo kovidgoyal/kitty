@@ -4088,6 +4088,9 @@ glfwCocoaCycleThroughOSWindows(bool backwards) {
         ) [filteredWindows addObject:window];
     }
     if (filteredWindows.count < 2) return;
+    [filteredWindows sortUsingComparator:^NSComparisonResult(NSWindow *a, NSWindow *b) {
+        return [@(a.windowNumber) compare:@(b.windowNumber)];
+    }];
     NSWindow *keyWindow = [NSApp keyWindow];
     NSUInteger index = [filteredWindows indexOfObject:keyWindow];
     NSUInteger nextIndex = 0;
