@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2026, kitty contributors
 
+from bisect import bisect_left, insort
 from collections import deque
 
 from .fast_data_types import DECAWM, Screen, get_options
@@ -15,7 +16,8 @@ class FPSCounterScreen:
         self.screen = Screen(None, 1, 32, 0, cell_width, cell_height)
         self.screen.reset_mode(DECAWM)
         self.last_text = ''
-        self.samples: deque[int] = deque(maxlen=1000)
+        self.samples: deque[int] = deque()
+        self.sorted_samples: list[int] = []
         self.geometry = 0, 0, 0, 0
 
     def required_columns(self) -> int:
@@ -31,14 +33,20 @@ class FPSCounterScreen:
         return changed
 
     def add_sample(self, fps: int) -> None:
-        self.samples.append(max(0, fps))
+        fps = max(0, fps)
+        if len(self.samples) >= 1000:
+            oldest = self.samples.popleft()
+            idx = bisect_left(self.sorted_samples, oldest)
+            if idx < len(self.sorted_samples):
+                self.sorted_samples.pop(idx)
+        self.samples.append(fps)
+        insort(self.sorted_samples, fps)
 
     def _percentile(self, q: float) -> int:
-        if not self.samples:
+        if not self.sorted_samples:
             return 0
-        data = sorted(self.samples)
-        idx = min(len(data) - 1, max(0, int(round((len(data) - 1) * q))))
-        return data[idx]
+        idx = min(len(self.sorted_samples) - 1, max(0, int(round((len(self.sorted_samples) - 1) * q))))
+        return self.sorted_samples[idx]
 
     def render(self, fps: int) -> bool:
         self.add_sample(fps)
