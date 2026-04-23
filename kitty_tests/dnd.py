@@ -809,9 +809,11 @@ class TestDnDProtocol(BaseTest):
         """A broken symlink in the URI list is transmitted as a symlink (X=1) with the target."""
         import os
         import tempfile
+        import uuid
+        does_not_exist = '/' + str(uuid.uuid4())
         with tempfile.TemporaryDirectory() as root:
             broken_link = os.path.join(root, 'broken.txt')
-            os.symlink('/does-not-exist', broken_link)
+            os.symlink(does_not_exist, broken_link)
             uri_list = f'file://{broken_link}\r\n'.encode()
             with dnd_test_window() as (screen, cap):
                 self._setup_uri_drop(screen, cap, uri_list)
@@ -823,7 +825,7 @@ class TestDnDProtocol(BaseTest):
                 self.assertEqual(r_events[0]['meta'].get('X'), '1',
                                  'broken symlink response must have X=1')
                 target = b''.join(e['payload'] for e in r_events if e['payload'])
-                self.ae(target, b'/does-not-exist')
+                self.ae(target, does_not_exist.encode())
 
     def test_uri_non_broken_symlink_to_file_transmitted_as_file(self) -> None:
         """A non-broken symlink to a regular file is transmitted as the file content, not as a symlink."""

@@ -5,6 +5,7 @@ import os
 import random
 import shutil
 import tempfile
+import uuid
 from base64 import standard_b64encode
 from functools import partial
 from urllib.parse import unquote, urlparse
@@ -42,7 +43,7 @@ def create_fs(base):
             f.write(b'x' * sz)
     os.makedirs(join('d1', 'sd', 'ssd'))
     os.mkdir(join('d2'))
-    os.symlink('/does-not-exist', join('s1'))
+    os.symlink('/' + str(uuid.uuid4()), join('s1'))
     os.symlink('d1', join('sd'))
     os.symlink('/', join('sr'))
     os.symlink('../d1', join('d1', 'sr'))
