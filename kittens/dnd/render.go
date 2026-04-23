@@ -10,6 +10,36 @@ import (
 
 var _ = fmt.Print
 
+type button_region struct {
+	left, width, top, height int
+}
+
+func (r button_region) has(x, y int) bool {
+	return r.left <= x && x < r.left+r.width && r.top <= y && y < r.top+r.height
+}
+
+func truncate_at_space(text string, width int) (string, string) {
+	truncated, p := wcswidth.TruncateToVisualLengthWithWidth(text, width)
+	if len(truncated) == len(text) {
+		return text, ""
+	}
+	i := strings.LastIndexByte(truncated, ' ')
+	if i > 0 && p-i < 12 {
+		p = i + 1
+	}
+	return text[:p], text[p:]
+}
+
+func paragraph_as_lines(text string, width int) (ans []string) {
+	for text != "" {
+		var line string
+		if line, text = truncate_at_space(text, width); line != "" {
+			ans = append(ans, line)
+		}
+	}
+	return
+}
+
 func (dnd *dnd) render_screen() error {
 	lp := dnd.lp
 	if !dnd.in_test_mode {
