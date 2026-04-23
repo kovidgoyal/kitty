@@ -121,7 +121,7 @@ func uniqify_child_names(names []string, is_case_sensitive_filesystem bool) []st
 	return names
 }
 
-func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_more bool, parent *remote_dir_entry, is_case_sensitive_filesystem bool) error {
+func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_more bool, is_case_sensitive_filesystem bool) error {
 	if len(data) > 0 {
 		for chunk, derr := range d.b64_decoder.Decode(data, output_buf) {
 			if derr != nil {
@@ -143,7 +143,6 @@ func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_m
 			d.dest.Close()
 			d.dest = nil
 			d.base_dir = d.base_dir.unref()
-			parent.num_children_finished++
 		}()
 		if dest, ok := d.dest.(*bufferWriteCloser); ok {
 			if d.item_type == 1 {
@@ -199,9 +198,9 @@ type drop_status struct {
 	reading_data     bool
 	is_remote_client bool
 
-	root_remote_dir     *remote_dir_entry
-	open_remote_dir     *remote_dir_entry
-	pending_remote_dirs []*remote_dir_entry
+	root_remote_dir      *remote_dir_entry
+	open_remote_dir      *remote_dir_entry
+	current_remote_entry *remote_dir_entry // used for m=1 only
 }
 
 var reset_drop_status = drop_status{cell_x: -1, cell_y: -1}
@@ -357,7 +356,6 @@ func (dnd *dnd) on_drop_move(cell_x, cell_y int, has_more bool, offered_mimes st
 	return
 }
 
-var current_remote_entry *remote_dir_entry
 var drop_buf []byte
 
 func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
@@ -366,7 +364,7 @@ func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 		return fmt.Errorf("got a remote data response form the terminal without an open remote dir")
 	}
 	if cmd.X == 0 && cmd.Y == 0 && cmd.Yp == 0 {
-		if current_remote_entry == nil {
+		if drop_status.current_remote_entry == nil {
 			return fmt.Errorf("got a remote data response form the terminal without a current remote entry")
 		}
 	} else {
@@ -374,26 +372,33 @@ func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 		if num < 0 || num >= len(drop_status.open_remote_dir.children) {
 			return fmt.Errorf("got a remote data response from the terminal for an entry that does not exist")
 		}
-		current_remote_entry = drop_status.open_remote_dir.children[num]
+		drop_status.current_remote_entry = drop_status.open_remote_dir.children[num]
 	}
-	if current_remote_entry.dest == nil {
-		current_remote_entry.item_type = cmd.Xp
+	e := drop_status.current_remote_entry
+	if e.dest == nil {
+		e.item_type = cmd.Xp
 		switch cmd.Xp {
 		case 0:
-			f, err := utils.CreateAt(drop_status.open_remote_dir.base_dir.handle, current_remote_entry.name)
+			f, err := utils.CreateAt(e.base_dir.handle, e.name)
 			if err != nil {
 				return err
 			}
-			current_remote_entry.dest = f
+			e.dest = f
 		default:
-			current_remote_entry.dest = &bufferWriteCloser{&bytes.Buffer{}}
+			e.dest = &bufferWriteCloser{&bytes.Buffer{}}
 		}
 	}
 	if sz := max(4096, len(cmd.Payload)+4); len(drop_buf) < sz {
 		drop_buf = make([]byte, sz)
 	}
-	if err = current_remote_entry.add_remote_data(cmd.Payload, drop_buf, cmd.Has_more, drop_status.open_remote_dir, dnd.is_case_sensitive_filesystem); err != nil {
+	if err = e.add_remote_data(cmd.Payload, drop_buf, cmd.Has_more, dnd.is_case_sensitive_filesystem); err != nil {
 		return err
+	}
+	if e.dest == nil { // this entry is finished
+		drop_status.open_remote_dir.num_children_finished++
+		if e.item_type != 0 && e.item_type != 1 {
+			// TODO: request the children
+		}
 	}
 	return nil
 }

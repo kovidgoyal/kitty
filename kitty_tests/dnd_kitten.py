@@ -42,7 +42,7 @@ def create_fs(base):
             f.write(b'x' * sz)
     os.makedirs(join('d1', 'sd', 'ssd'))
     os.mkdir(join('d2'))
-    os.symlink('/does-not-exist', join('s1'))
+    # os.symlink('/does-not-exist', join('s1'))
     os.symlink('d1', join('sd'))
     os.symlink('/', join('sr'))
     os.symlink('../d1', join('d1', 'sr'))

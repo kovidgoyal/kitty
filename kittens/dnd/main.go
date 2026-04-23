@@ -51,20 +51,22 @@ type DC = loop.DndCommand
 
 type dir_handle struct {
 	handle *os.File
-	refcnt int32
+	refcnt atomic.Int32
 }
 
 func new_dir_handle(x *os.File) *dir_handle {
-	return &dir_handle{x, 1}
+	ans := dir_handle{x, atomic.Int32{}}
+	ans.refcnt.Store(1)
+	return &ans
 }
 
 func (d *dir_handle) newref() *dir_handle {
-	atomic.AddInt32(&d.refcnt, 1)
+	d.refcnt.Add(1)
 	return d
 }
 
 func (d *dir_handle) unref() *dir_handle {
-	if atomic.AddInt32(&d.refcnt, -1) <= 0 {
+	if d.refcnt.Add(-1) <= 0 {
 		d.handle.Close()
 		d.handle = nil
 	}

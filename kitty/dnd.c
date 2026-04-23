@@ -668,7 +668,6 @@ get_nth_file_url(const char *uri_list, size_t uri_list_sz, int n, char **path_ou
         p = eol + 1;
         while (*p == '\r' || *p == '\n') p++;
     }
-
     if (!found_line) { *error_out = "ENOENT"; return false; }
 
     /* Must be a file:// URL */
@@ -695,10 +694,9 @@ get_nth_file_url(const char *uri_list, size_t uri_list_sz, int n, char **path_ou
     char resolved[PATH_MAX];
     if (!realpath(path, resolved)) {
         switch (errno) {
-            case ENOENT: case ENOTDIR: *error_out = "ENOENT"; break;
-            case EACCES: case EPERM:   *error_out = "EPERM"; break;
-            case ELOOP:                *error_out = "ENOENT"; break;
-            default:                   *error_out = "EINVAL"; break;
+            case ENOENT: case ENOTDIR: case ELOOP: *error_out = "ENOENT"; break;
+            case EACCES: case EPERM: *error_out = "EPERM"; break;
+            default: *error_out = "EINVAL"; break;
         }
         return false;
     }
@@ -951,7 +949,7 @@ drop_send_dir_listing(Window *w, const char *path) {
     queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
 }
 
-/* Handle a t=s request: send the file/directory at URI-list index idx.
+/* Send the file/directory at URI-list index idx.
  * Returns true if completed synchronously, false if async file I/O started. */
 static bool
 do_drop_request_uri_data(Window *w, int32_t mime_idx, int32_t file_idx) {
