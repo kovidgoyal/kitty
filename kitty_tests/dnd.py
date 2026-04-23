@@ -805,6 +805,78 @@ class TestDnDProtocol(BaseTest):
             self.ae(events[0]['type'], 'R')
             self.ae(events[0]['payload'].strip(), b'EINVAL')
 
+    def test_uri_broken_symlink_returns_symlink_target(self) -> None:
+        """A broken symlink in the URI list is transmitted as a symlink (X=1) with the target."""
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as root:
+            broken_link = os.path.join(root, 'broken.txt')
+            os.symlink('/does-not-exist', broken_link)
+            uri_list = f'file://{broken_link}\r\n'.encode()
+            with dnd_test_window() as (screen, cap):
+                self._setup_uri_drop(screen, cap, uri_list)
+                parse_bytes(screen, client_request_uri_data(2, 1))
+                raw = cap.consume()
+                events = parse_escape_codes_b64(raw)
+                r_events = [e for e in events if e['type'] == 'r']
+                self.assertTrue(r_events, 'expected t=r response for broken symlink')
+                self.assertEqual(r_events[0]['meta'].get('X'), '1',
+                                 'broken symlink response must have X=1')
+                target = b''.join(e['payload'] for e in r_events if e['payload'])
+                self.ae(target, b'/does-not-exist')
+
+    def test_uri_non_broken_symlink_to_file_transmitted_as_file(self) -> None:
+        """A non-broken symlink to a regular file is transmitted as the file content, not as a symlink."""
+        import os
+        import tempfile
+        content = b'content of the real file\n' * 10
+        with tempfile.TemporaryDirectory() as root:
+            real_file = os.path.join(root, 'real.txt')
+            with open(real_file, 'wb') as f:
+                f.write(content)
+            link_path = os.path.join(root, 'link.txt')
+            os.symlink(real_file, link_path)
+            uri_list = f'file://{link_path}\r\n'.encode()
+            with dnd_test_window() as (screen, cap):
+                self._setup_uri_drop(screen, cap, uri_list)
+                parse_bytes(screen, client_request_uri_data(2, 1))
+                raw = cap.consume()
+                events = parse_escape_codes_b64(raw)
+                r_events = [e for e in events if e['type'] == 'r']
+                self.assertTrue(r_events, 'expected t=r response for symlink to file')
+                # Must NOT have X=1 (not a symlink response, but actual file data)
+                self.assertNotEqual(r_events[0]['meta'].get('X'), '1',
+                                    'non-broken symlink to file must not have X=1')
+                combined = b''.join(e['payload'] for e in r_events if e['payload'])
+                self.ae(combined, content)
+
+    def test_uri_non_broken_symlink_to_directory_transmitted_as_directory(self) -> None:
+        """A non-broken symlink to a directory is transmitted as a directory listing, not as a symlink."""
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as root:
+            real_dir = os.path.join(root, 'realdir')
+            os.makedirs(real_dir)
+            with open(os.path.join(real_dir, 'inside.txt'), 'w') as f:
+                f.write('hello')
+            link_path = os.path.join(root, 'linkdir')
+            os.symlink(real_dir, link_path)
+            uri_list = f'file://{link_path}\r\n'.encode()
+            with dnd_test_window() as (screen, cap):
+                self._setup_uri_drop(screen, cap, uri_list)
+                parse_bytes(screen, client_request_uri_data(2, 1))
+                raw = cap.consume()
+                events = parse_escape_codes_b64(raw)
+                # Must receive a directory listing (X > 1 indicates a dir handle)
+                d_events = [e for e in events if e['type'] == 'r' and is_dir_event(e)]
+                self.assertTrue(d_events, 'expected directory listing for symlink to directory')
+                # Must NOT have X=1 (that flag means symlink, not directory handle)
+                payload = b''.join(
+                    chunk for e in d_events for chunk in e['chunks'] if chunk
+                )
+                entries = [e.decode() for e in payload.split(b'\x00') if e]
+                self.assertIn('inside.txt', entries)
+
     def test_uri_directory_transfer_tree(self) -> None:
         """Full directory tree (>= 3 levels deep) transfer: listing, sub-dirs, file integrity.
 
