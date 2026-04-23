@@ -176,12 +176,10 @@ type remote_dir_entry struct {
 	b64_decoder streaming_base64.StreamingBase64Decoder
 }
 
-var is_case_sensitive_filesystem bool = true
-
 const case_conflict_template = "case-conflict-%d-%s"
 
-func uniqify_child_names(names []string) []string {
-	if !is_case_sensitive_filesystem {
+func uniqify_child_names(names []string, is_case_sensitive_filesystem bool) []string {
+	if is_case_sensitive_filesystem {
 		seen := utils.NewSet[string](len(names))
 		for i, x := range names {
 			name := x
@@ -197,7 +195,7 @@ func uniqify_child_names(names []string) []string {
 	return names
 }
 
-func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_more bool, parent *remote_dir_entry) error {
+func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_more bool, parent *remote_dir_entry, is_case_sensitive_filesystem bool) error {
 	if len(data) > 0 {
 		for chunk, derr := range d.b64_decoder.Decode(data, output_buf) {
 			if derr != nil {
@@ -236,7 +234,7 @@ func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_m
 					handle := new_dir_handle(f)
 					defer handle.unref()
 					s := utils.NewSeparatorScanner("", "\x00")
-					for _, name := range uniqify_child_names(s.Split(dest.String())) {
+					for _, name := range uniqify_child_names(s.Split(dest.String()), is_case_sensitive_filesystem) {
 						d.children = append(d.children, &remote_dir_entry{name: name, base_dir: handle.newref()})
 					}
 				}
@@ -290,7 +288,31 @@ func parse_uri_list(src string) (ans []string, err error) {
 	return
 }
 
-func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[string]drag_source, uri_list_buffer *bytes.Buffer) (err error) {
+type drag_status struct {
+	active bool
+}
+
+type dnd struct {
+	opts                     *Options
+	drop_dests               map[string]*drop_dest
+	drag_sources             map[string]drag_source
+	allow_drops, allow_drags bool
+
+	lp                                     *loop.Loop
+	drop_status                            drop_status
+	base_tempdir                           *os.File
+	is_case_sensitive_filesystem           bool
+	data_has_been_dropped                  bool
+	drag_started                           bool
+	in_test_mode                           bool
+	copy_button_region, move_button_region button_region
+}
+
+func (dnd *dnd) send_test_response(payload string) {
+	dnd.lp.DebugPrintln(payload)
+}
+
+func (dnd *dnd) run_loop() (err error) {
 	base_dir, err := os.Getwd()
 	if err != nil {
 		return err
@@ -314,7 +336,7 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 		return
 	}
 	if _, serr := os.Stat(filepath.Join(base_dir, strings.ToUpper(filepath.Base(base_tdir)))); serr == nil {
-		is_case_sensitive_filesystem = false
+		dnd.is_case_sensitive_filesystem = false
 	}
 	tdir_counter := 0
 	new_tdir := func() (dir_file *os.File, err error) {
@@ -327,136 +349,16 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 		return
 	}
 
-	allow_drops, allow_drags := len(drop_dests) > 0, len(drag_sources) > 0
-	data_has_been_dropped := false
-	drag_started := false
-	in_test_mode := false
-	lp, err := loop.New()
-	if err != nil {
+	dnd.allow_drops, dnd.allow_drags = len(dnd.drop_dests) > 0, len(dnd.drag_sources) > 0
+	if dnd.lp, err = loop.New(); err != nil {
 		return err
-	}
-
-	send_test_response := func(payload string) {
-		lp.DebugPrintln(payload)
 	}
 
 	drop_status := drop_status{cell_x: -1, cell_y: -1}
 	reset_drop_status := drop_status
 	drop_status.cell_x, drop_status.cell_y = -1, -1
-	const copy_on_drop = 1
-	const move_on_drop = 2
 
-	var copy_button_region, move_button_region button_region
 	var offered_mimes_buf strings.Builder
-
-	render_screen := func() error { // {{{
-		if !in_test_mode {
-			lp.StartAtomicUpdate()
-			defer lp.EndAtomicUpdate()
-		}
-		lp.ClearScreen()
-		copy_button_region, move_button_region = button_region{}, button_region{}
-		if drag_started {
-			lp.Println("Dragging data...")
-			return nil
-		}
-		if drop_status.reading_data {
-			lp.Println("Reading dropped data, please wait...")
-			return nil
-		}
-		y := 0
-		sz, _ := lp.ScreenSize()
-		render_paragraph := func(text string) {
-			for _, line := range paragraph_as_lines(text, int(sz.WidthCells)) {
-				lp.Println(line)
-				y++
-			}
-		}
-		next_line := func() {
-			lp.Println()
-			y++
-		}
-		if drop_status.in_window {
-			if drop_status.action == 0 {
-				render_paragraph("A drag is active. Drop it into one of the boxes below to perform that action on the dragged data. Available MIME types in the drag:")
-				next_line()
-				render_paragraph(strings.Join(drop_status.offered_mimes, " "))
-			} else {
-				render_paragraph("The drag can be dropped. Supported MIME types:")
-				next_line()
-				render_paragraph(strings.Join(drop_status.accepted_mimes, " "))
-			}
-		} else {
-			// Neither active drag nor drop over window
-			if allow_drags {
-				render_paragraph(`Start dragging anywhere in this window to initiate a drag and drop. If you start the drag in one of the Copy or Move boxes below, only that action will be allowed when dropping, otherwise, the drop destination can pick either copy or move.`)
-				next_line()
-			}
-			if allow_drops {
-				if data_has_been_dropped {
-					render_paragraph(`Data has been successfully dropped. You can drop more data or press Esc to quit.`)
-				} else {
-					render_paragraph(`Drag some data from another application into this window to transfer the files here.`)
-				}
-			}
-		}
-		frame_width, padding_width := 4, 8
-		text_width := len("copymove")
-		scale := 5
-		for scale > 1 && frame_width+padding_width+text_width*scale > int(sz.WidthCells) {
-			scale--
-		}
-		height := scale + 4
-		boxy := 1 + max(0, int(sz.HeightCells)-height)
-		lp.MoveCursorTo(1, boxy)
-		lp.ClearToEndOfScreen()
-
-		render_box := func(x int, text string, r *button_region) {
-			width := scale*wcswidth.Stringwidth(text) + 6
-			r.left = x - 1
-			r.top = boxy - 1
-			r.width = width
-			r.height = height
-			lp.MoveCursorTo(x, boxy)
-			for i := range height {
-				lp.SaveCursorPosition()
-				switch i {
-				case 0:
-					lp.QueueWriteString("╭")
-					lp.QueueWriteString(strings.Repeat("─", width-2))
-					lp.QueueWriteString("╮")
-				case height - 1:
-					lp.QueueWriteString("╰")
-					lp.QueueWriteString(strings.Repeat("─", width-2))
-					lp.QueueWriteString("╯")
-				default:
-					lp.QueueWriteString("│")
-					if i == 2 {
-						lp.MoveCursorHorizontally(2)
-						lp.DrawSizedText(text, loop.SizedText{Scale: scale})
-					}
-					lp.MoveCursorTo(x+width-1, boxy+i)
-					lp.QueueWriteString("│")
-				}
-				lp.RestoreCursorPosition()
-				lp.MoveCursorVertically(1)
-			}
-		}
-		const fg = 32
-		if drop_status.action == copy_on_drop {
-			lp.Printf("\x1b[%dm", fg)
-		}
-		render_box(1, "Copy", &copy_button_region)
-		lp.QueueWriteString("\x1b[39m")
-		box_width := 6 + len("move")*scale
-		if drop_status.action == move_on_drop {
-			lp.Printf("\x1b[%dm", fg)
-		}
-		render_box(1+int(sz.WidthCells)-box_width, "Move", &move_button_region)
-		lp.QueueWriteString("\x1b[39m")
-		_ = in_test_mode
-		return nil
-	} // }}}
 
 	// Drop handling {{{
 	var close_remote_tree func(*remote_dir_entry)
@@ -470,25 +372,26 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 	}
 
 	end_drop := func() {
-		lp.QueueDnDData(DC{Type: 'r'}) // end drop
+		dnd.lp.QueueDnDData(DC{Type: 'r'}) // end drop
 		if drop_status.root_remote_dir != nil {
 			close_remote_tree(drop_status.root_remote_dir)
 			drop_status.root_remote_dir = nil
 		}
 		drop_status = reset_drop_status
-		render_screen()
+		dnd.render_screen()
 	}
 
 	all_mime_data_dropped := func() (err error) {
-		if _, found := drop_dests["text/uri-list"]; found {
-			if drop_status.uri_list, err = parse_uri_list(uri_list_buffer.String()); err != nil {
+		if s, found := dnd.drop_dests["text/uri-list"]; found {
+			b := s.dest.(*bufferWriteCloser)
+			if drop_status.uri_list, err = parse_uri_list(b.String()); err != nil {
 				return err
 			}
 		}
 		if len(drop_status.uri_list) == 0 {
 			drop_status = reset_drop_status
-			data_has_been_dropped = true
-			render_screen()
+			dnd.data_has_been_dropped = true
+			dnd.render_screen()
 			return
 		}
 		f, err := new_tdir()
@@ -507,7 +410,7 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 					c = &remote_dir_entry{}
 				} else {
 					name := filepath.Base(x)
-					if !is_case_sensitive_filesystem {
+					if !dnd.is_case_sensitive_filesystem {
 						key := strings.ToLower(name)
 						for q := 0; seen.Has(key); q++ {
 							name = fmt.Sprintf(case_conflict_template, q+1, filepath.Base(x))
@@ -516,7 +419,7 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 						seen.Add(key)
 					}
 					c = &remote_dir_entry{base_dir: rd.newref(), name: name}
-					lp.QueueDnDData(DC{Type: 'r', X: idx + 1, Y: i + 1})
+					dnd.lp.QueueDnDData(DC{Type: 'r', X: idx + 1, Y: i + 1})
 				}
 				drop_status.root_remote_dir.children = append(drop_status.root_remote_dir.children, c)
 			}
@@ -531,7 +434,7 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 		accepted := utils.NewSetWithItems(drop_status.accepted_mimes...)
 		for idx, m := range drop_status.offered_mimes {
 			if accepted.Has(m) {
-				lp.QueueDnDData(DC{Type: 'r', X: idx + 1})
+				dnd.lp.QueueDnDData(DC{Type: 'r', X: idx + 1})
 			}
 		}
 	}
@@ -549,19 +452,19 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 			drop_status.accepted_mimes = make([]string, 0, len(drop_status.offered_mimes))
 			seen := utils.NewSet[string](len(drop_status.offered_mimes))
 			for _, x := range drop_status.offered_mimes {
-				if _, found := drop_dests[x]; found && !seen.Has(x) {
+				if _, found := dnd.drop_dests[x]; found && !seen.Has(x) {
 					drop_status.accepted_mimes = append(drop_status.accepted_mimes, x)
 					seen.Add(x)
 				}
 			}
 		}
 		offered_mimes_buf.Reset()
-		if copy_button_region.has(cell_x, cell_y) {
+		if dnd.copy_button_region.has(cell_x, cell_y) {
 			drop_status.action = copy_on_drop
-		} else if move_button_region.has(cell_x, cell_y) {
+		} else if dnd.move_button_region.has(cell_x, cell_y) {
 			drop_status.action = move_on_drop
 		} else {
-			switch opts.DropAnywhere {
+			switch dnd.opts.DropAnywhere {
 			case "disallowed":
 				drop_status.action = 0
 				drop_status.accepted_mimes = nil
@@ -572,7 +475,7 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 			}
 		}
 		drop_status.in_window = cell_x > -1 && cell_y > -1
-		if !drop_status.in_window || drag_started { // disallow self drag and drop
+		if !drop_status.in_window || dnd.drag_started { // disallow self drag and drop
 			drop_status = reset_drop_status
 		}
 		mimes_changed := !slices.Equal(prev_status.accepted_mimes, drop_status.accepted_mimes)
@@ -582,12 +485,12 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 			if drop_status.action != 0 && len(drop_status.accepted_mimes) > 0 {
 				c.Payload = utils.UnsafeStringToBytes(strings.Join(drop_status.accepted_mimes, " "))
 			}
-			lp.QueueDnDData(c)
+			dnd.lp.QueueDnDData(c)
 		}
 		needs_rerender = needs_rerender || drop_status.in_window != prev_status.in_window
 		if is_drop {
 			needs_rerender = true
-			if drop_status.action == 0 || len(drop_status.accepted_mimes) == 0 || drag_started {
+			if drop_status.action == 0 || len(drop_status.accepted_mimes) == 0 || dnd.drag_started {
 				end_drop()
 				return
 			}
@@ -631,7 +534,7 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 		if sz := max(4096, len(cmd.Payload)+4); len(drop_buf) < sz {
 			drop_buf = make([]byte, sz)
 		}
-		if err = current_remote_entry.add_remote_data(cmd.Payload, drop_buf, cmd.Has_more, drop_status.open_remote_dir); err != nil {
+		if err = current_remote_entry.add_remote_data(cmd.Payload, drop_buf, cmd.Has_more, drop_status.open_remote_dir, dnd.is_case_sensitive_filesystem); err != nil {
 			return err
 		}
 		return nil
@@ -646,7 +549,7 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 			return fmt.Errorf("terminal sent drop data for a index outside the list of accepted MIMEs")
 		}
 		mime := drop_status.offered_mimes[idx]
-		dest := drop_dests[mime]
+		dest := dnd.drop_dests[mime]
 		if cmd.Xp == 1 && mime == "text/uri-list" {
 			drop_status.is_remote_client = true
 		}
@@ -656,7 +559,7 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 			}
 			dest.completed = true
 			pending := false
-			for _, d := range drop_dests {
+			for _, d := range dnd.drop_dests {
 				if !d.completed {
 					pending = true
 					break
@@ -674,32 +577,32 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 	}
 	// }}}
 
-	lp.OnInitialize = func() (string, error) {
-		lp.AllowLineWrapping(false)
-		lp.SetCursorVisible(false)
-		if allow_drops {
-			lp.StartAcceptingDrops(opts.MachineId, slices.Collect(maps.Keys(drop_dests))...)
+	dnd.lp.OnInitialize = func() (string, error) {
+		dnd.lp.AllowLineWrapping(false)
+		dnd.lp.SetCursorVisible(false)
+		if dnd.allow_drops {
+			dnd.lp.StartAcceptingDrops(dnd.opts.MachineId, slices.Collect(maps.Keys(dnd.drop_dests))...)
 		}
-		if allow_drags {
-			lp.StartOfferingDrags(opts.MachineId)
+		if dnd.allow_drags {
+			dnd.lp.StartOfferingDrags(dnd.opts.MachineId)
 		}
-		lp.SetWindowTitle("Drag and drop")
-		return "", render_screen()
+		dnd.lp.SetWindowTitle("Drag and drop")
+		return "", dnd.render_screen()
 	}
 
-	lp.OnFinalize = func() string {
-		lp.AllowLineWrapping(true)
-		lp.SetCursorVisible(true)
-		if allow_drops {
-			lp.StopAcceptingDrops()
+	dnd.lp.OnFinalize = func() string {
+		dnd.lp.AllowLineWrapping(true)
+		dnd.lp.SetCursorVisible(true)
+		if dnd.allow_drops {
+			dnd.lp.StopAcceptingDrops()
 		}
-		if allow_drags {
-			lp.StopOfferingDrags()
+		if dnd.allow_drags {
+			dnd.lp.StopOfferingDrags()
 		}
 		return ""
 	}
 
-	lp.OnDnDData = func(cmd loop.DndCommand) error {
+	dnd.lp.OnDnDData = func(cmd loop.DndCommand) error {
 		// TODO: Use lp.QueueDnDData to implement drag and drop protocol
 		// If allow_drags, start a drag when the terminal sends the t=o
 		// event. Presend data for any drag_source objects that have non nil
@@ -740,24 +643,24 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 		case 'T':
 			switch string(cmd.Payload) {
 			case "PING":
-				send_test_response("PONG")
+				dnd.send_test_response("PONG")
 			case "SETUP":
-				in_test_mode = true
-				lp.NoRoundtripToTerminalOnExit()
+				dnd.in_test_mode = true
+				dnd.lp.NoRoundtripToTerminalOnExit()
 			case "GEOMETRY":
-				send_test_response(fmt.Sprintf("GEOMETRY:%d:%d:%d:%d:%d:%d:%d:%d", copy_button_region.left, copy_button_region.top, copy_button_region.width, copy_button_region.height, move_button_region.left, move_button_region.top, move_button_region.width, move_button_region.height))
+				dnd.send_test_response(fmt.Sprintf("GEOMETRY:%d:%d:%d:%d:%d:%d:%d:%d", dnd.copy_button_region.left, dnd.copy_button_region.top, dnd.copy_button_region.width, dnd.copy_button_region.height, dnd.move_button_region.left, dnd.move_button_region.top, dnd.move_button_region.width, dnd.move_button_region.height))
 			case "DROP_MIMES":
 				if drop_status.offered_mimes != nil {
-					send_test_response(strings.Join(drop_status.offered_mimes, " "))
+					dnd.send_test_response(strings.Join(drop_status.offered_mimes, " "))
 				} else {
-					send_test_response("")
+					dnd.send_test_response("")
 				}
 			case "DROP_IS_REMOTE":
-				send_test_response(utils.IfElse(drop_status.is_remote_client, "True", "False"))
+				dnd.send_test_response(utils.IfElse(drop_status.is_remote_client, "True", "False"))
 			case "DROP_URI_LIST":
-				send_test_response(strings.Join(drop_status.uri_list, "|"))
+				dnd.send_test_response(strings.Join(drop_status.uri_list, "|"))
 			default:
-				send_test_response("UNKNOWN TEST COMMAND: " + string(cmd.Payload))
+				dnd.send_test_response("UNKNOWN TEST COMMAND: " + string(cmd.Payload))
 			}
 		// Drops
 		case 'm':
@@ -766,40 +669,40 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 				payload = utils.UnsafeBytesToString(cmd.Payload)
 			}
 			if on_drop_move(cmd.X, cmd.Y, cmd.Has_more, payload, false) {
-				render_screen()
+				dnd.render_screen()
 			}
 		case 'M':
 			if on_drop_move(cmd.X, cmd.Y, cmd.Has_more, utils.UnsafeBytesToString(cmd.Payload), true) {
-				render_screen()
+				dnd.render_screen()
 			}
 		case 'R':
 			return fmt.Errorf("error from the terminal while reading dropped data: %s", string(cmd.Payload))
 		case 'r':
 			err := on_drop_data(cmd)
-			render_screen()
+			dnd.render_screen()
 			return err
 		}
 		return nil
 	}
-	lp.OnKeyEvent = func(e *loop.KeyEvent) (err error) {
+	dnd.lp.OnKeyEvent = func(e *loop.KeyEvent) (err error) {
 		e.Handled = true
 		if e.MatchesPressOrRepeat("ctrl+c") || e.MatchesPressOrRepeat("esc") {
-			lp.Quit(0)
+			dnd.lp.Quit(0)
 			return
 		}
 		return nil
 	}
-	lp.OnResize = func(old_size loop.ScreenSize, new_size loop.ScreenSize) error {
-		return render_screen()
+	dnd.lp.OnResize = func(old_size loop.ScreenSize, new_size loop.ScreenSize) error {
+		return dnd.render_screen()
 	}
-	err = lp.Run()
+	err = dnd.lp.Run()
 	if err != nil {
 		return
 	}
-	ds := lp.DeathSignalName()
+	ds := dnd.lp.DeathSignalName()
 	if ds != "" {
 		fmt.Println("Killed by signal: ", ds)
-		lp.KillIfSignalled()
+		dnd.lp.KillIfSignalled()
 		return
 	}
 	return
@@ -810,9 +713,8 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 	if os.Stdout != nil && !tty.IsTerminal(os.Stdout.Fd()) {
 		drop_dests["text/plain"] = &drop_dest{human_name: "STDOUT", dest: os.Stdout, mime_type: "text/plain"}
 	}
-	uri_list_buffer := &bytes.Buffer{}
 	drop_dests["text/uri-list"] = &drop_dest{
-		human_name: "Files", mime_type: "text/uri-list", dest: &bufferWriteCloser{uri_list_buffer}}
+		human_name: "Files", mime_type: "text/uri-list", dest: &bufferWriteCloser{&bytes.Buffer{}}}
 	for _, spec := range opts.Drop {
 		mime, dest, _ := strings.Cut(spec, ":")
 		if dest == "" {
@@ -885,8 +787,8 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 			human_name: "Files", mime_type: "text/uri-list", uri_list: uri_list, data: utils.UnsafeStringToBytes(payload),
 		}
 	}
-	err = run_loop(opts, drop_dests, drag_sources, uri_list_buffer)
-	if err != nil {
+	dnd := dnd{opts: opts, drop_dests: drop_dests, drag_sources: drag_sources}
+	if err = dnd.run_loop(); err != nil {
 		return 1, err
 	}
 	return 0, nil
