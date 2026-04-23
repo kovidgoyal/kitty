@@ -396,7 +396,10 @@ func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 	}
 	if e.dest == nil { // this entry is finished
 		drop_status.open_remote_dir.num_children_finished++
-		if e.item_type != 0 && e.item_type != 1 {
+		if len(e.children) > 0 {
+			if e.item_type != 0 && e.item_type != 1 {
+				dnd.lp.QueueDnDData(DC{Type: 'r', Yp: e.item_type}) // close directory in terminal
+			}
 			// TODO: request the children
 		}
 	}

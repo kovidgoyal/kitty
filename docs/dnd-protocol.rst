@@ -169,10 +169,14 @@ If the client requests an entry that is not a supported URI type the
 terminal must reply with ``EUNKNOWN``.
 
 Terminals must ONLY send data for regular files or directories. Symbolic links must be
-resolved and the corresponding file or directory read. If the terminal does not have
-permission to read the file it must reply with ``EPERM``. Terminals
-must respond with ``EINVAL`` if the file is not a regular file after
-resolving symlinks and ``ENOENT`` if the file does not exist. If an
+resolved and the corresponding file or directory read. Only if the symbolic
+link cannot be resolved must it be transmitted as a symbolic link (in which
+case ``X=1`` and the payload is the base64 encoded target of the symlink. See
+below for more details about sending symlinks.
+
+If the terminal does not have permission to read the file it must reply with
+``EPERM``. Terminals must respond with ``EINVAL`` if the file is not a regular
+file after resolving symlinks and ``ENOENT`` if the file does not exist. If an
 I/O error occurs the terminal must send ``EIO``.
 
 For security reasons, terminals must reply with ``EPERM`` if the drag

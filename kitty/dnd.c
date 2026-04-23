@@ -690,18 +690,7 @@ get_nth_file_url(const char *uri_list, size_t uri_list_sz, int n, char **path_ou
     *query_or_fragment_start = 0;
     url_decode_inplace(path);
     if (path[0] != '/') { *error_out = "EINVAL"; return false; }
-
-    char resolved[PATH_MAX];
-    if (!realpath(path, resolved)) {
-        switch (errno) {
-            case ENOENT: case ENOTDIR: case ELOOP: *error_out = "ENOENT"; break;
-            case EACCES: case EPERM: *error_out = "EPERM"; break;
-            default: *error_out = "EINVAL"; break;
-        }
-        return false;
-    }
-
-    *path_out = strdup(resolved);
+    *path_out = strdup(path);
     if (!*path_out) { *error_out = "ENOMEM"; return false; }
     return true;
 }
@@ -949,6 +938,16 @@ drop_send_dir_listing(Window *w, const char *path) {
     queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
 }
 
+static void
+drop_send_symlink(Window *w, const char *target, size_t sz) {
+    char hdr[128];
+    int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r", DND_CODE);
+    hdr_sz += drop_append_request_keys(w, hdr + hdr_sz, sizeof(hdr) - hdr_sz);
+    hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":X=1");
+    queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, target, sz, true);
+    queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
+}
+
 /* Send the file/directory at URI-list index idx.
  * Returns true if completed synchronously, false if async file I/O started. */
 static bool
@@ -970,7 +969,7 @@ do_drop_request_uri_data(Window *w, int32_t mime_idx, int32_t file_idx) {
     if (file_idx < 1) { drop_send_error(w, EINVAL); return true; }
     int file_n = file_idx - 1;
 
-    char *path = NULL;
+    RAII_ALLOC(char, path, NULL);
     const char *err = NULL;
     if (!get_nth_file_url(w->drop.uri_list, w->drop.uri_list_sz, file_n, &path, &err)) {
         drop_send_error_str(w, err);
@@ -979,12 +978,18 @@ do_drop_request_uri_data(Window *w, int32_t mime_idx, int32_t file_idx) {
 
     struct stat st;
     if (stat(path, &st) < 0) {
-        free(path);
-        switch (errno) {
-            case ENOENT: case ENOTDIR: drop_send_error(w, ENOENT); break;
-            case EACCES: case EPERM:   drop_send_error(w, EPERM); break;
-            default:                   drop_send_error(w, EIO); break;
+        if (lstat(path, &st) < 0) {
+            switch (errno) {
+                case ENOENT: case ENOTDIR: drop_send_error(w, ENOENT); break;
+                case EACCES: case EPERM:   drop_send_error(w, EPERM); break;
+                default:                   drop_send_error(w, EIO); break;
+            }
+            return true;
         }
+        // We have a broken symlink
+        char target[PATH_MAX]; ssize_t tgtsz;
+        if ((tgtsz = readlink(path, target, sizeof(target)-1)) < 0) drop_send_error(w, ENOENT);
+        drop_send_symlink(w, target, tgtsz);
         return true;
     }
 
@@ -998,7 +1003,6 @@ do_drop_request_uri_data(Window *w, int32_t mime_idx, int32_t file_idx) {
         drop_send_error(w, EINVAL);
         sync = true;
     }
-    free(path);
     return sync;
 }
 
