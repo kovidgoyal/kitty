@@ -533,6 +533,11 @@ instead of ignoring them. Also prints out miscellaneous debug information.
 Useful when debugging rendering problems.
 
 
+--debug-show-fps
+type=bool-set
+Show an on-screen FPS/debug timing overlay.
+
+
 --debug-input --debug-keyboard
 dest=debug_keyboard
 type=bool-set
@@ -778,7 +783,6 @@ Path to a log file to store STDOUT/STDERR when using :option:`--detach`
 --debug-rendering
 type=bool-set
 For internal debugging use.
-
 
 --debug-input
 type=bool-set

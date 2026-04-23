@@ -756,6 +756,7 @@ change_menubar_title(PyObject *title UNUSED) {
 static bool
 prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows, bool *all_windows_have_same_bg, bool scan_for_animated_images) {
 #define TD os_window->tab_bar_render_data
+#define FD os_window->fps_overlay_render_data
     bool needs_render = os_window->needs_render;
     os_window->needs_render = false;
     bool was_previously_rendered_with_layers = os_window->needs_layers;
@@ -773,6 +774,10 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
         zero_at_ptr(cri); cri->x = TD.screen->cursor->x; cri->y = TD.screen->cursor->y;
         if (send_cell_data_to_gpu(TD.vao_idx, TD.screen, os_window)) needs_render = true;
         os_window->needs_layers = os_window->needs_layers || screen_needs_rendering_in_layers(os_window, NULL, TD.screen);
+    }
+    if (FD.screen && FD.geometry.bottom > FD.geometry.top && FD.geometry.right > FD.geometry.left) {
+        FD.screen->cursor_render_info.is_visible = false;
+        if (send_cell_data_to_gpu(FD.vao_idx, FD.screen, os_window)) needs_render = true;
     }
     if (OPT(mouse_hide.hide_wait) > 0 && !is_mouse_hidden(os_window)) {
         if (now - os_window->last_mouse_activity_at >= OPT(mouse_hide.hide_wait)) hide_mouse(os_window);
@@ -861,6 +866,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
             }
         }
     }
+#undef FD
     return needs_render || was_previously_rendered_with_layers != os_window->needs_layers;
 }
 
@@ -903,6 +909,7 @@ thumbnail_callback(OSWindow *os_window) {
 
 static void
 render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
+#define FD os_window->fps_overlay_render_data
     Tab *tab = os_window->tabs + os_window->active_tab;
     setup_os_window_for_rendering(os_window, tab, NULL, true);
     BorderRects *br = &tab->border_rects;
@@ -924,18 +931,37 @@ render_prepared_os_window(OSWindow *os_window, unsigned int active_window_id, co
                 draw_cells(trd, os_window, i == tab->active_window, true, false, NULL);
         }
     }
+    if (FD.screen && FD.geometry.right > FD.geometry.left && FD.geometry.bottom > FD.geometry.top) {
+        draw_cells(&FD, os_window, false, true, false, NULL);
+    }
     setup_os_window_for_rendering(os_window, tab, active_window, false);
     if (global_state.thumbnail_callback.os_window == os_window->id) {
         thumbnail_callback(os_window);
         global_state.thumbnail_callback.os_window = 0;
     }
     swap_window_buffers(os_window);
+    if (FD.screen && FD.geometry.right > FD.geometry.left && FD.geometry.bottom > FD.geometry.top) {
+        if (!os_window->fps_count_start_at) os_window->fps_count_start_at = monotonic();
+        os_window->rendered_frames++;
+        monotonic_t now = monotonic();
+        if (now - os_window->fps_count_start_at >= s_double_to_monotonic_t(1.0)) {
+            double elapsed = monotonic_t_to_s_double(now - os_window->fps_count_start_at);
+            if (elapsed > 0) os_window->current_fps = (unsigned)(((double)os_window->rendered_frames / elapsed) + 0.5);
+            os_window->rendered_frames = 0;
+            os_window->fps_count_start_at = now;
+        }
+    } else {
+        os_window->fps_count_start_at = 0;
+        os_window->rendered_frames = 0;
+        os_window->current_fps = 0;
+    }
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
     if (os_window->redraw_count) os_window->redraw_count--;
     if (USE_RENDER_FRAMES) request_frame_render(os_window);
 #undef WD
 #undef TD
+#undef FD
 }
 
 static bool

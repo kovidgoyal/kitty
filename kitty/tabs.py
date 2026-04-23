@@ -1178,6 +1178,8 @@ class TabManager:  # {{{
     window_being_dropped: WindowBeingDropped | None = None
     window_drag_target_tab_id: int = 0
     window_drag_over_me: bool = False
+    _fps_timer_id: int = 0
+    _fps_counter: Any = None
 
     def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: SessionType | None = None):
         self.os_window_id = os_window_id
@@ -1195,6 +1197,7 @@ class TabManager:  # {{{
 
         if startup_session is not None:
             self.add_tabs_from_session(startup_session)
+        self.refresh_fps_counter()
 
     @update_tab_bar_visibility
     def add_tabs_from_session(self, session: SessionType, session_name: str = '') -> None:
@@ -1301,6 +1304,64 @@ class TabManager:  # {{{
         self.mark_tab_bar_dirty()
         self.tab_bar.layout()
 
+    def clear_fps_counter(self) -> None:
+        if self._fps_timer_id:
+            from .fast_data_types import remove_timer
+            remove_timer(self._fps_timer_id)
+            self._fps_timer_id = 0
+        if self._fps_counter is not None:
+            from .fast_data_types import set_fps_overlay_render_data
+            set_fps_overlay_render_data(self.os_window_id, self._fps_counter.screen, 0, 0, 0, 0)
+            self._fps_counter = None
+
+    def show_fps_counter(self) -> bool:
+        return bool(getattr(self.args, 'debug_show_fps', False))
+
+    def layout_fps_counter(self) -> bool:
+        if self._fps_counter is None:
+            return False
+        from .fast_data_types import set_fps_overlay_render_data, viewport_for_window
+        central, _, _, _, cw, ch = viewport_for_window(self.os_window_id)
+        if cw <= 0 or ch <= 0:
+            return False
+        columns = min(self._fps_counter.screen.columns, max(1, central.width // cw))
+        width = columns * cw
+        left = max(central.left, central.right - width)
+        top = central.top
+        if self._fps_counter.layout(left, top, columns):
+            right, bottom = self._fps_counter.geometry[2:]
+            set_fps_overlay_render_data(self.os_window_id, self._fps_counter.screen, left, top, right, bottom)
+            return True
+        return False
+
+    def update_fps_counter(self, timer_id: int | None = None) -> None:
+        if not self.show_fps_counter():
+            self.clear_fps_counter()
+            return
+        from .fast_data_types import viewport_for_window
+        _, _, _, _, cw, ch = viewport_for_window(self.os_window_id)
+        if cw <= 0 or ch <= 0:
+            return
+        if self._fps_counter is None or self._fps_counter.cell_width != cw or self._fps_counter.cell_height != ch:
+            from .fps_counter import FPSCounterScreen
+            self._fps_counter = FPSCounterScreen(self.os_window_id, cw, ch)
+        from .fast_data_types import fps_of_window, set_fps_overlay_render_data
+        changed = self._fps_counter.render(fps_of_window(self.os_window_id))
+        if self.layout_fps_counter():
+            changed = True
+        if changed:
+            left, top, right, bottom = self._fps_counter.geometry
+            set_fps_overlay_render_data(self.os_window_id, self._fps_counter.screen, left, top, right, bottom)
+
+    def refresh_fps_counter(self) -> None:
+        if not self.show_fps_counter():
+            self.clear_fps_counter()
+            return
+        if not self._fps_timer_id:
+            from .fast_data_types import add_timer
+            self._fps_timer_id = add_timer(self.update_fps_counter, 0.25, True)
+        self.update_fps_counter()
+
     @property
     def any_window(self) -> Window | None:
         for t in self:
@@ -1332,6 +1393,8 @@ class TabManager:  # {{{
                 self.layout_tab_bar()
         for tab in self.tabs:
             tab.relayout()
+        if self._fps_counter is not None:
+            self.update_fps_counter()
 
     def set_active_tab_idx(self, idx: int) -> None:
         self._set_active_tab(idx)
@@ -2083,6 +2146,7 @@ class TabManager:  # {{{
         return self.tab_bar.blank_rects if self.tab_bar_should_be_visible else ()
 
     def destroy(self) -> None:
+        self.clear_fps_counter()
         for t in self:
             t.destroy()
         self.tab_bar.destroy()
@@ -2097,4 +2161,5 @@ class TabManager:  # {{{
         self.tab_bar.apply_options()
         self.update_tab_bar_data()
         self.layout_tab_bar()
+        self.refresh_fps_counter()
 # }}}

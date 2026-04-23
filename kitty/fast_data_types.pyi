@@ -1124,6 +1124,10 @@ def viewport_for_window(
     pass
 
 
+def fps_of_window(os_window_id: int) -> int:
+    pass
+
+
 TermiosPtr = NewType('TermiosPtr', int)
 
 
@@ -1413,6 +1417,12 @@ class Screen:
     def pause_rendering(self, pause: bool = True, for_how_long_in_ms: int = 100) -> bool: ...
 
 def set_tab_bar_render_data(
+    os_window_id: int, screen: Screen, left: int, top: int, right: int, bottom: int
+) -> None:
+    pass
+
+
+def set_fps_overlay_render_data(
     os_window_id: int, screen: Screen, left: int, top: int, right: int, bottom: int
 ) -> None:
     pass

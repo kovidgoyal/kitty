@@ -429,6 +429,7 @@ typedef struct OSWindow {
     bool focused_at_last_render, needs_render, needs_layers;
     unsigned keep_rendering_till_swap;
     WindowRenderData tab_bar_render_data;
+    WindowRenderData fps_overlay_render_data;
     struct {
         color_type left, right;
     } tab_bar_edge_color;
@@ -455,6 +456,8 @@ typedef struct OSWindow {
     enum RENDER_STATE render_state;
     monotonic_t last_render_frame_received_at;
     uint64_t render_calls;
+    monotonic_t fps_count_start_at;
+    unsigned rendered_frames, current_fps;
     id_type last_focused_counter;
     CloseRequest close_request;
     bool is_layer_shell, hide_on_focus_loss;

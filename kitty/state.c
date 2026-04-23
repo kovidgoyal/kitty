@@ -285,6 +285,7 @@ add_os_window(void) {
     zero_at_ptr(ans);
     ans->id = ++global_state.os_window_id_counter;
     ans->tab_bar_render_data.vao_idx = create_cell_vao();
+    ans->fps_overlay_render_data.vao_idx = create_cell_vao();
     ans->background_opacity.alpha = OPT(background_opacity);
     ans->created_at = monotonic();
     END_WITH_OS_WINDOW_REFS
@@ -544,8 +545,9 @@ destroy_os_window_item(OSWindow *w) {
         Tab *tab = w->tabs + t - 1;
         remove_tab_inner(w, tab->id);
     }
-    Py_CLEAR(w->window_title); Py_CLEAR(w->tab_bar_render_data.screen);
+    Py_CLEAR(w->window_title); Py_CLEAR(w->tab_bar_render_data.screen); Py_CLEAR(w->fps_overlay_render_data.screen);
     remove_vao(w->tab_bar_render_data.vao_idx);
+    remove_vao(w->fps_overlay_render_data.vao_idx);
     free(w->tabs); w->tabs = NULL;
     free_bgimage(&w->background_image.override, true);
     zero_at_ptr(&w->background_image);
@@ -918,6 +920,19 @@ PYWRAP1(set_tab_bar_render_data) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(set_fps_overlay_render_data) {
+    WindowGeometry g = {0};
+    id_type os_window_id;
+    Screen *screen;
+    PA("KOIIII", &os_window_id, &screen, &g.left, &g.top, &g.right, &g.bottom);
+    WITH_OS_WINDOW(os_window_id)
+        init_window_render_data(&os_window->fps_overlay_render_data, g, screen);
+        screen->reload_all_gpu_data = true;
+        if (!os_window->redraw_count) os_window->redraw_count++;
+    END_WITH_OS_WINDOW
+    Py_RETURN_NONE;
+}
+
 PYWRAP1(set_window_drag_overlay) {
     id_type os_window_id, tab_id, window_id;
     int quadrant;
@@ -983,6 +998,16 @@ PYWRAP1(viewport_for_window) {
     END_WITH_OS_WINDOW
 end:
     return Py_BuildValue("NNiiII", wrap_region(&central), wrap_region(&tab_bar), vw, vh, cell_width, cell_height);
+}
+
+PYWRAP1(fps_of_window) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    WITH_OS_WINDOW(os_window_id)
+        return PyLong_FromUnsignedLong(os_window->current_fps);
+    END_WITH_OS_WINDOW
+    PyErr_SetString(PyExc_ValueError, "No such window");
+    return NULL;
 }
 
 PYWRAP1(cell_size_for_window) {
@@ -1735,11 +1760,13 @@ static PyMethodDef module_methods[] = {
     MW(reorder_tabs, METH_VARARGS),
     MW(set_borders_rects, METH_VARARGS),
     MW(set_tab_bar_render_data, METH_VARARGS),
+    MW(set_fps_overlay_render_data, METH_VARARGS),
     MW(set_window_title_bar_render_data, METH_VARARGS),
     MW(set_window_render_data, METH_VARARGS),
     MW(set_window_drag_overlay, METH_VARARGS),
     MW(set_window_padding, METH_VARARGS),
     MW(viewport_for_window, METH_VARARGS),
+    MW(fps_of_window, METH_VARARGS),
     MW(cell_size_for_window, METH_VARARGS),
     MW(os_window_has_background_image, METH_VARARGS),
     MW(mark_os_window_for_close, METH_VARARGS),
