@@ -23,12 +23,14 @@ from .fast_data_types import (
     GLFW_MOUSE_BUTTON_MIDDLE,
     GLFW_PRESS,
     GLFW_RELEASE,
+    add_timer,
     add_tab,
     attach_window,
     buffer_keys_in_window,
     current_focused_os_window_id,
     detach_window,
     draw_single_line_of_text,
+    fps_of_window,
     get_boss,
     get_click_interval,
     get_options,
@@ -39,6 +41,7 @@ from .fast_data_types import (
     mark_tab_bar_dirty,
     monotonic,
     next_window_id,
+    remove_timer,
     remove_tab,
     remove_window,
     reorder_tabs,
@@ -46,6 +49,7 @@ from .fast_data_types import (
     request_callback_with_thumbnail,
     ring_bell,
     set_active_tab,
+    set_fps_overlay_render_data,
     set_active_window,
     set_redirect_keys_to_overlay,
     set_tab_being_dragged,
@@ -53,6 +57,7 @@ from .fast_data_types import (
     start_drag_with_data,
     swap_tabs,
     sync_os_window_title,
+    viewport_for_window,
 )
 from .layout.base import DragOverlayMode, Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
@@ -1180,6 +1185,11 @@ class TabManager:  # {{{
     window_drag_over_me: bool = False
     _fps_timer_id: int = 0
     _fps_counter: Any = None
+    _fps_cell_width: int = 0
+    _fps_cell_height: int = 0
+
+    def _noop_fps_counter(self, timer_id: int | None = None) -> None:
+        pass
 
     def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: SessionType | None = None):
         self.os_window_id = os_window_id
@@ -1194,6 +1204,14 @@ class TabManager:  # {{{
         self.active_tab_history: Deque[int] = deque()
         self.tab_bar = TabBar(self.os_window_id)
         self._active_tab_idx = 0
+        if bool(getattr(args, 'debug_show_fps', False)):
+            self.clear_fps_counter = self._clear_fps_counter
+            self.update_fps_counter = self._update_fps_counter
+            self.refresh_fps_counter = self._refresh_fps_counter
+        else:
+            self.clear_fps_counter = self._noop_fps_counter
+            self.update_fps_counter = self._noop_fps_counter
+            self.refresh_fps_counter = self._noop_fps_counter
 
         if startup_session is not None:
             self.add_tabs_from_session(startup_session)
@@ -1304,26 +1322,23 @@ class TabManager:  # {{{
         self.mark_tab_bar_dirty()
         self.tab_bar.layout()
 
-    def clear_fps_counter(self) -> None:
+    def _clear_fps_counter(self, timer_id: int | None = None) -> None:
         if self._fps_timer_id:
-            from .fast_data_types import remove_timer
             remove_timer(self._fps_timer_id)
             self._fps_timer_id = 0
         if self._fps_counter is not None:
-            from .fast_data_types import set_fps_overlay_render_data
             set_fps_overlay_render_data(self.os_window_id, self._fps_counter.screen, 0, 0, 0, 0)
             self._fps_counter = None
 
-    def show_fps_counter(self) -> bool:
-        return bool(getattr(self.args, 'debug_show_fps', False))
-
     def layout_fps_counter(self) -> bool:
-        if self._fps_counter is None:
-            return False
-        from .fast_data_types import set_fps_overlay_render_data, viewport_for_window
         central, _, _, _, cw, ch = viewport_for_window(self.os_window_id)
         if cw <= 0 or ch <= 0:
             return False
+        if self._fps_counter is None or self._fps_cell_width != cw or self._fps_cell_height != ch:
+            from .fps_counter import FPSCounterScreen
+            self._fps_counter = FPSCounterScreen(self.os_window_id, cw, ch)
+            self._fps_cell_width = cw
+            self._fps_cell_height = ch
         columns = min(self._fps_counter.screen.columns, max(1, central.width // cw))
         width = columns * cw
         left = max(central.left, central.right - width)
@@ -1334,32 +1349,18 @@ class TabManager:  # {{{
             return True
         return False
 
-    def update_fps_counter(self, timer_id: int | None = None) -> None:
-        if not self.show_fps_counter():
-            self.clear_fps_counter()
+    def _update_fps_counter(self, timer_id: int | None = None) -> None:
+        if self._fps_counter is None:
             return
-        from .fast_data_types import viewport_for_window
-        _, _, _, _, cw, ch = viewport_for_window(self.os_window_id)
-        if cw <= 0 or ch <= 0:
-            return
-        if self._fps_counter is None or self._fps_counter.cell_width != cw or self._fps_counter.cell_height != ch:
-            from .fps_counter import FPSCounterScreen
-            self._fps_counter = FPSCounterScreen(self.os_window_id, cw, ch)
-        from .fast_data_types import fps_of_window, set_fps_overlay_render_data
         changed = self._fps_counter.render(fps_of_window(self.os_window_id))
-        if self.layout_fps_counter():
-            changed = True
         if changed:
             left, top, right, bottom = self._fps_counter.geometry
             set_fps_overlay_render_data(self.os_window_id, self._fps_counter.screen, left, top, right, bottom)
 
-    def refresh_fps_counter(self) -> None:
-        if not self.show_fps_counter():
-            self.clear_fps_counter()
-            return
+    def _refresh_fps_counter(self) -> None:
         if not self._fps_timer_id:
-            from .fast_data_types import add_timer
             self._fps_timer_id = add_timer(self.update_fps_counter, 0.25, True)
+        self.layout_fps_counter()
         self.update_fps_counter()
 
     @property
@@ -1393,8 +1394,8 @@ class TabManager:  # {{{
                 self.layout_tab_bar()
         for tab in self.tabs:
             tab.relayout()
-        if self._fps_counter is not None:
-            self.update_fps_counter()
+        self.layout_fps_counter()
+        self.update_fps_counter()
 
     def set_active_tab_idx(self, idx: int) -> None:
         self._set_active_tab(idx)
@@ -2161,5 +2162,6 @@ class TabManager:  # {{{
         self.tab_bar.apply_options()
         self.update_tab_bar_data()
         self.layout_tab_bar()
+        self.layout_fps_counter()
         self.refresh_fps_counter()
 # }}}
