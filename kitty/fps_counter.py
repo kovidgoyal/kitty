@@ -40,20 +40,14 @@ class FPSCounterScreen:
         idx = min(len(data) - 1, max(0, int(round((len(data) - 1) * q))))
         return data[idx]
 
-    def _ms(self, fps: int) -> str:
-        if fps <= 0:
-            return '--'
-        return f'{1000.0 / fps:.1f}'
-
     def render(self, fps: int) -> bool:
         self.add_sample(fps)
         p50 = self._percentile(0.50)
         p99 = self._percentile(0.99)
-        text = (
-            f'FPS {fps:>3} {self._ms(fps):>5}ms  '
-            f'P50 {p50:>3} {self._ms(p50):>5}ms  '
-            f'P99 {p99:>3} {self._ms(p99):>5}ms'
-        )
+        fps_ms = 0 if fps <= 0 else (1000 + fps // 2) // fps
+        p50_ms = 0 if p50 <= 0 else (1000 + p50 // 2) // p50
+        p99_ms = 0 if p99 <= 0 else (1000 + p99 // 2) // p99
+        text = f'fps {fps} {fps_ms}ms p50 {p50} {p50_ms}ms p99 {p99} {p99_ms}ms'
         text_changed = text != self.last_text
         resized = False
         if text_changed:
