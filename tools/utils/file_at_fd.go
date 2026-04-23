@@ -37,6 +37,12 @@ func OpenAt(dirFile *os.File, name string) (*os.File, error) {
 	return openAt(dirFile, name, os.O_RDONLY, 0)
 }
 
+// Create a symlink named name in the directory pointed to by dirFile. The
+// target of the symlink is set to target
+func SymlinkAt(dirFile *os.File, name, target string) error {
+	return unix.Symlinkat(target, int(dirFile.Fd()), name)
+}
+
 // CreateAt creates or truncates a file relative to the directory pointed to by dirFile.
 // Matches the behavior of os.Create (read-write, creates if doesn't exist, truncates).
 func CreateAt(dirFile *os.File, name string) (*os.File, error) {

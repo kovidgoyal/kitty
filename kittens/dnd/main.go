@@ -13,7 +13,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/tty"
@@ -141,16 +143,122 @@ func truncate_at_space(text string, width int) (string, string) {
 	return text[:p], text[p:]
 }
 
+type dir_handle struct {
+	handle *os.File
+	refcnt int32
+}
+
+func new_dir_handle(x *os.File) *dir_handle {
+	return &dir_handle{x, 1}
+}
+
+func (d *dir_handle) newref() *dir_handle {
+	atomic.AddInt32(&d.refcnt, 1)
+	return d
+}
+
+func (d *dir_handle) unref() *dir_handle {
+	if atomic.AddInt32(&d.refcnt, -1) <= 0 {
+		d.handle.Close()
+		d.handle = nil
+	}
+	return nil
+}
+
+type remote_dir_entry struct {
+	base_dir              *dir_handle
+	name                  string
+	item_type             int
+	children              []*remote_dir_entry
+	num_children_finished int
+
+	dest        io.WriteCloser
+	b64_decoder streaming_base64.StreamingBase64Decoder
+}
+
+var is_case_sensitive_filesystem bool = true
+
+const case_conflict_template = "case-conflict-%d-%s"
+
+func uniqify_child_names(names []string) []string {
+	if !is_case_sensitive_filesystem {
+		seen := utils.NewSet[string](len(names))
+		for i, x := range names {
+			name := x
+			key := strings.ToLower(name)
+			for q := 0; seen.Has(key); q++ {
+				name = fmt.Sprintf(case_conflict_template, q+1, x)
+				key = strings.ToLower(name)
+			}
+			seen.Add(key)
+			names[i] = name
+		}
+	}
+	return names
+}
+
+func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_more bool, parent *remote_dir_entry) error {
+	if len(data) > 0 {
+		for chunk, derr := range d.b64_decoder.Decode(data, output_buf) {
+			if derr != nil {
+				return derr
+			}
+			if _, derr = d.dest.Write(chunk); derr != nil {
+				return derr
+			}
+		}
+	} else if !has_more {
+		if chunk, derr := d.b64_decoder.Finish(); derr != nil {
+			return derr
+		} else {
+			if _, derr = d.dest.Write(chunk); derr != nil {
+				return derr
+			}
+		}
+		defer func() {
+			d.dest.Close()
+			d.dest = nil
+			d.base_dir = d.base_dir.unref()
+			parent.num_children_finished++
+		}()
+		if dest, ok := d.dest.(*bufferWriteCloser); ok {
+			if d.item_type == 1 {
+				if derr := utils.SymlinkAt(d.base_dir.handle, d.name, dest.String()); derr != nil {
+					return derr
+				}
+			} else { // directory
+				if derr := utils.MkdirAt(d.base_dir.handle, d.name, 0o755); derr != nil {
+					return derr
+				}
+				if f, derr := utils.OpenAt(d.base_dir.handle, d.name); derr != nil {
+					return derr
+				} else {
+					handle := new_dir_handle(f)
+					defer handle.unref()
+					s := utils.NewSeparatorScanner("", "\x00")
+					for _, name := range uniqify_child_names(s.Split(dest.String())) {
+						d.children = append(d.children, &remote_dir_entry{name: name, base_dir: handle.newref()})
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
 type drop_status struct {
-	offered_mimes        []string
-	accepted_mimes       []string
-	uri_list             []string
-	cell_x, cell_y       int
-	action               int
-	in_window            bool
-	reading_data         bool
-	is_remote_client     bool
-	remote_phase_started bool
+	offered_mimes    []string
+	accepted_mimes   []string
+	uri_list         []string
+	cell_x, cell_y   int
+	action           int
+	in_window        bool
+	reading_data     bool
+	is_remote_client bool
+
+	root_remote_dir     *remote_dir_entry
+	open_remote_dir     *remote_dir_entry
+	pending_remote_dirs []*remote_dir_entry
 }
 
 func paragraph_as_lines(text string, width int) (ans []string) {
@@ -183,6 +291,42 @@ func parse_uri_list(src string) (ans []string, err error) {
 }
 
 func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[string]drag_source, uri_list_buffer *bytes.Buffer) (err error) {
+	base_dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	base_tdir, err := os.MkdirTemp(base_dir, ".dnd-kitten-drop-*")
+	if err != nil {
+		return err
+	}
+	var base_tdir_f *os.File
+	defer func() {
+		if base_tdir_f != nil {
+			utils.RemoveChildren(base_tdir_f)
+			base_tdir_f.Close()
+		}
+		if terr := os.RemoveAll(base_tdir); terr != nil && err == nil {
+			err = terr
+		}
+	}()
+	base_tdir_f, err = os.Open(base_tdir)
+	if err != nil {
+		return
+	}
+	if _, serr := os.Stat(filepath.Join(base_dir, strings.ToUpper(filepath.Base(base_tdir)))); serr == nil {
+		is_case_sensitive_filesystem = false
+	}
+	tdir_counter := 0
+	new_tdir := func() (dir_file *os.File, err error) {
+		tdir_counter++
+		name := strconv.Itoa(tdir_counter)
+		if err = utils.MkdirAt(base_tdir_f, name, 0o700); err != nil {
+			return nil, err
+		}
+		dir_file, err = utils.OpenAt(base_tdir_f, name)
+		return
+	}
+
 	allow_drops, allow_drags := len(drop_dests) > 0, len(drag_sources) > 0
 	data_has_been_dropped := false
 	drag_started := false
@@ -315,8 +459,22 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 	} // }}}
 
 	// Drop handling {{{
+	var close_remote_tree func(*remote_dir_entry)
+	close_remote_tree = func(root *remote_dir_entry) {
+		if root.base_dir != nil {
+			root.base_dir = root.base_dir.unref()
+		}
+		for _, child := range root.children {
+			close_remote_tree(child)
+		}
+	}
+
 	end_drop := func() {
 		lp.QueueDnDData(DC{Type: 'r'}) // end drop
+		if drop_status.root_remote_dir != nil {
+			close_remote_tree(drop_status.root_remote_dir)
+			drop_status.root_remote_dir = nil
+		}
 		drop_status = reset_drop_status
 		render_screen()
 	}
@@ -333,8 +491,36 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 			render_screen()
 			return
 		}
+		f, err := new_tdir()
+		if err != nil {
+			return err
+		}
+		rd := new_dir_handle(f)
+		defer rd.unref()
+		drop_status.root_remote_dir = &remote_dir_entry{}
 		if drop_status.is_remote_client {
-			// TODO: Handle remote client
+			seen := utils.NewSet[string](len(drop_status.uri_list))
+			idx := slices.Index(drop_status.offered_mimes, "text/uri-list")
+			for i, x := range drop_status.uri_list {
+				var c *remote_dir_entry
+				if x == "" {
+					c = &remote_dir_entry{}
+				} else {
+					name := filepath.Base(x)
+					if !is_case_sensitive_filesystem {
+						key := strings.ToLower(name)
+						for q := 0; seen.Has(key); q++ {
+							name = fmt.Sprintf(case_conflict_template, q+1, filepath.Base(x))
+							key = strings.ToLower(name)
+						}
+						seen.Add(key)
+					}
+					c = &remote_dir_entry{base_dir: rd.newref(), name: name}
+					lp.QueueDnDData(DC{Type: 'r', X: idx + 1, Y: i + 1})
+				}
+				drop_status.root_remote_dir.children = append(drop_status.root_remote_dir.children, c)
+			}
+			drop_status.open_remote_dir = drop_status.root_remote_dir
 		} else {
 			// TODO: copy URLs
 		}
@@ -411,15 +597,48 @@ func run_loop(opts *Options, drop_dests map[string]*drop_dest, drag_sources map[
 		return
 	}
 
+	var current_remote_entry *remote_dir_entry
+	var drop_buf []byte
+
 	on_remote_drop_data := func(cmd DC) error {
-		// TODO: Implement this
+		if drop_status.open_remote_dir == nil {
+			return fmt.Errorf("got a remote data response form the terminal without an open remote dir")
+		}
+		if cmd.X == 0 && cmd.Y == 0 && cmd.Yp == 0 {
+			if current_remote_entry == nil {
+				return fmt.Errorf("got a remote data response form the terminal without a current remote entry")
+			}
+		} else {
+			num := utils.IfElse(cmd.Yp != 0 && cmd.Yp != 1, cmd.X, cmd.Y) - 1
+			if num < 0 || num >= len(drop_status.open_remote_dir.children) {
+				return fmt.Errorf("got a remote data response from the terminal for an entry that does not exist")
+			}
+			current_remote_entry = drop_status.open_remote_dir.children[num]
+		}
+		if current_remote_entry.dest == nil {
+			current_remote_entry.item_type = cmd.Xp
+			switch cmd.Xp {
+			case 0:
+				f, err := utils.CreateAt(drop_status.open_remote_dir.base_dir.handle, current_remote_entry.name)
+				if err != nil {
+					return err
+				}
+				current_remote_entry.dest = f
+			default:
+				current_remote_entry.dest = &bufferWriteCloser{&bytes.Buffer{}}
+			}
+		}
+		if sz := max(4096, len(cmd.Payload)+4); len(drop_buf) < sz {
+			drop_buf = make([]byte, sz)
+		}
+		if err = current_remote_entry.add_remote_data(cmd.Payload, drop_buf, cmd.Has_more, drop_status.open_remote_dir); err != nil {
+			return err
+		}
 		return nil
 	}
 
-	var drop_buf []byte
-
 	on_drop_data := func(cmd DC) error {
-		if drop_status.remote_phase_started {
+		if drop_status.root_remote_dir != nil {
 			return on_remote_drop_data(cmd)
 		}
 		idx := cmd.X - 1
