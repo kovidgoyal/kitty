@@ -18,6 +18,7 @@ from .borders import Border, Borders
 from .child import Child
 from .cli_stub import CLIOptions, SaveAsSessionOptions
 from .constants import appname
+from .fps_counter import FPSCounterScreen
 from .fast_data_types import (
     GLFW_MOUSE_BUTTON_LEFT,
     GLFW_MOUSE_BUTTON_MIDDLE,
@@ -1185,11 +1186,9 @@ class TabManager:  # {{{
     window_drag_over_me: bool = False
     _fps_timer_id: int = 0
     _fps_counter: Any = None
+    _show_fps_counter: bool = False
     _fps_cell_width: int = 0
     _fps_cell_height: int = 0
-
-    def _noop_fps_counter(self, timer_id: int | None = None) -> None:
-        pass
 
     def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: SessionType | None = None):
         self.os_window_id = os_window_id
@@ -1204,14 +1203,7 @@ class TabManager:  # {{{
         self.active_tab_history: Deque[int] = deque()
         self.tab_bar = TabBar(self.os_window_id)
         self._active_tab_idx = 0
-        if bool(getattr(args, 'debug_show_fps', False)):
-            self.clear_fps_counter = self._clear_fps_counter
-            self.update_fps_counter = self._update_fps_counter
-            self.refresh_fps_counter = self._refresh_fps_counter
-        else:
-            self.clear_fps_counter = self._noop_fps_counter
-            self.update_fps_counter = self._noop_fps_counter
-            self.refresh_fps_counter = self._noop_fps_counter
+        self._show_fps_counter = bool(getattr(args, 'debug_show_fps', False))
 
         if startup_session is not None:
             self.add_tabs_from_session(startup_session)
@@ -1322,7 +1314,7 @@ class TabManager:  # {{{
         self.mark_tab_bar_dirty()
         self.tab_bar.layout()
 
-    def _clear_fps_counter(self, timer_id: int | None = None) -> None:
+    def clear_fps_counter(self, timer_id: int | None = None) -> None:
         if self._fps_timer_id:
             remove_timer(self._fps_timer_id)
             self._fps_timer_id = 0
@@ -1331,11 +1323,12 @@ class TabManager:  # {{{
             self._fps_counter = None
 
     def layout_fps_counter(self) -> bool:
+        if not self._show_fps_counter:
+            return False
         central, _, _, _, cw, ch = viewport_for_window(self.os_window_id)
         if cw <= 0 or ch <= 0:
             return False
         if self._fps_counter is None or self._fps_cell_width != cw or self._fps_cell_height != ch:
-            from .fps_counter import FPSCounterScreen
             self._fps_counter = FPSCounterScreen(self.os_window_id, cw, ch)
             self._fps_cell_width = cw
             self._fps_cell_height = ch
@@ -1349,15 +1342,17 @@ class TabManager:  # {{{
             return True
         return False
 
-    def _update_fps_counter(self, timer_id: int | None = None) -> None:
-        if self._fps_counter is None:
+    def update_fps_counter(self, timer_id: int | None = None) -> None:
+        if not self._show_fps_counter or self._fps_counter is None:
             return
         changed = self._fps_counter.render(fps_of_window(self.os_window_id))
         if changed:
             left, top, right, bottom = self._fps_counter.geometry
             set_fps_overlay_render_data(self.os_window_id, self._fps_counter.screen, left, top, right, bottom)
 
-    def _refresh_fps_counter(self) -> None:
+    def refresh_fps_counter(self) -> None:
+        if not self._show_fps_counter:
+            return
         if not self._fps_timer_id:
             self._fps_timer_id = add_timer(self.update_fps_counter, 0.25, True)
         self.layout_fps_counter()
