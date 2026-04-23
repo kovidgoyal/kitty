@@ -4,6 +4,7 @@
 import os
 import random
 import shutil
+import stat
 import tempfile
 import uuid
 from base64 import standard_b64encode
@@ -56,6 +57,24 @@ def create_fs(base):
 
 
 class TestDnDKitten(BaseTest):
+
+    def assert_trees_equal(self, a: str, b: str):
+        a_name = os.path.relpath(a, self.test_dir)
+        b_name = os.path.relpath(b, self.test_dir)
+        entries_a, entries_b = os.listdir(a), os.listdir(b)
+        self.assertEqual(set(entries_a), set(entries_b), f'readdir() different for {a_name} vs {b_name}')
+        for x in entries_a:
+            ca, cb = os.path.join(a, x), os.path.join(b, x)
+            sta, stb = os.lstat(ca), os.lstat(cb)
+            self.assertEqual(
+                stat.S_IFMT(sta.st_mode), stat.S_IFMT(stb.st_mode), f'type mismatch for {a_name}/{x} vs {b_name}/{x}')
+            if stat.S_ISDIR(sta.st_mode):
+                self.assert_trees_equal(ca, cb)
+            elif stat.S_ISLNK(sta.st_mode):
+                self.assertEqual(os.readlink(ca), os.readlink(cb))
+            elif stat.S_ISREG(sta.st_mode):
+                with open(ca, 'rb') as fa, open(cb, 'rb') as fb:
+                    self.assertEqual(fa.read(), fb.read())
 
     def setUp(self):
         capture = Capture()

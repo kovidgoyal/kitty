@@ -198,9 +198,19 @@ type drop_status struct {
 	reading_data     bool
 	is_remote_client bool
 
-	root_remote_dir      *remote_dir_entry
-	open_remote_dir      *remote_dir_entry
-	current_remote_entry *remote_dir_entry // used for m=1 only
+	root_remote_dir           *remote_dir_entry
+	open_remote_dir           *remote_dir_entry
+	current_remote_entry      *remote_dir_entry // used for m=1 only
+	pending_remote_dirs       []*remote_dir_entry
+	remote_dir_handle_counter int32
+}
+
+func (d *drop_status) next_dir_handle() int32 {
+	d.remote_dir_handle_counter++
+	for d.remote_dir_handle_counter == 0 || d.remote_dir_handle_counter == 1 {
+		d.remote_dir_handle_counter++
+	}
+	return d.remote_dir_handle_counter
 }
 
 var reset_drop_status = drop_status{cell_x: -1, cell_y: -1}
@@ -394,13 +404,38 @@ func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 	if err = e.add_remote_data(cmd.Payload, drop_buf, cmd.Has_more, dnd.is_case_sensitive_filesystem); err != nil {
 		return err
 	}
-	if e.dest == nil { // this entry is finished
-		drop_status.open_remote_dir.num_children_finished++
-		if len(e.children) > 0 {
-			if e.item_type != 0 && e.item_type != 1 {
-				dnd.lp.QueueDnDData(DC{Type: 'r', Yp: e.item_type}) // close directory in terminal
+	if e.dest == nil { // received all data for this entry
+		drop_status.current_remote_entry = nil
+		parent := drop_status.open_remote_dir
+		parent.num_children_finished++
+		if parent.num_children_finished >= len(parent.children) { // parent is finished
+			drop_status.open_remote_dir = nil
+			parent.base_dir = parent.base_dir.unref()
+			if parent.item_type != 0 {
+				dnd.lp.QueueDnDData(DC{Type: 'r', Yp: parent.item_type}) // close directory in terminal
 			}
-			// TODO: request the children
+			for _, c := range parent.children {
+				is_pending := false
+				if c.item_type != 0 && c.item_type != 1 {
+					if len(c.children) > 0 {
+						dnd.drop_status.pending_remote_dirs = append(dnd.drop_status.pending_remote_dirs, c)
+						is_pending = true
+					}
+				}
+				if !is_pending {
+					c.base_dir = c.base_dir.unref()
+				}
+			}
+			if len(drop_status.pending_remote_dirs) > 0 {
+				drop_status.open_remote_dir = drop_status.pending_remote_dirs[0]
+				drop_status.pending_remote_dirs = drop_status.pending_remote_dirs[1:]
+				for i := range drop_status.open_remote_dir.children {
+					dnd.lp.QueueDnDData(DC{Type: 'r', X: i + 1, Yp: drop_status.open_remote_dir.item_type}) // close directory in terminal
+				}
+			} else {
+				dnd.data_has_been_dropped = true
+				dnd.end_drop()
+			}
 		}
 	}
 	return nil
