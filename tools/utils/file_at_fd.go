@@ -1,11 +1,16 @@
 package utils
 
 import (
+	"container/list"
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"sync/atomic"
+	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -14,17 +19,21 @@ var _ = fmt.Print
 
 // MkdirAt creates a new subdirectory named 'name' inside the directory
 // pointed to by parentDir.
-func MkdirAt(parentDir *os.File, name string, perm os.FileMode) error {
+func MkdirAt(parentDir *os.File, name string, perm os.FileMode) (err error) {
 	// parentDir.Fd() gives us the base directory handle
 	fd := int(parentDir.Fd())
 
 	// unix.Mkdirat(dirfd, path, mode)
 	// We convert the os.FileMode to a uint32 for the syscall
-	err := unix.Mkdirat(fd, name, uint32(perm))
+	for {
+		if err = unix.Mkdirat(fd, name, uint32(perm)); err != unix.EINTR {
+			break
+		}
+	}
 	if err != nil {
-		return &os.PathError{
+		return &fs.PathError{
 			Op:   "mkdirat",
-			Path: name,
+			Path: filepath.Join(parentDir.Name(), name),
 			Err:  err,
 		}
 	}
@@ -34,46 +43,187 @@ func MkdirAt(parentDir *os.File, name string, perm os.FileMode) error {
 // OpenAt opens a file relative to the directory pointed to by dirFile.
 // Matches the behavior of os.Open (read-only).
 func OpenAt(dirFile *os.File, name string) (*os.File, error) {
-	return openAt(dirFile, name, os.O_RDONLY, 0)
+	return openAt(dirFile, name, unix.O_RDONLY, 0)
+}
+
+// Opens a directory relative to the directory pointed to by dirFile.
+// Matches the behavior of os.Open (read-only).
+func OpenDirAt(dirFile *os.File, name string) (*os.File, error) {
+	return openAt(dirFile, name, unix.O_RDONLY|unix.O_DIRECTORY, 0)
 }
 
 // Create a symlink named name in the directory pointed to by dirFile. The
 // target of the symlink is set to target
-func SymlinkAt(dirFile *os.File, name, target string) error {
-	return unix.Symlinkat(target, int(dirFile.Fd()), name)
+func SymlinkAt(dirFile *os.File, name, target string) (err error) {
+	for {
+		if err = unix.Symlinkat(target, int(dirFile.Fd()), name); err != unix.EINTR {
+			break
+		}
+	}
+	if err != nil {
+		return &fs.PathError{
+			Op:   "symlinkat",
+			Path: filepath.Join(dirFile.Name(), name),
+			Err:  err,
+		}
+
+	}
+	return
 }
 
 // CreateAt creates or truncates a file relative to the directory pointed to by dirFile.
 // Matches the behavior of os.Create (read-write, creates if doesn't exist, truncates).
 func CreateAt(dirFile *os.File, name string) (*os.File, error) {
-	return openAt(dirFile, name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	return openAt(dirFile, name, unix.O_RDWR|unix.O_CREAT|unix.O_TRUNC, 0666)
 }
 
 // Internal helper to wrap the unix.Openat syscall
-func openAt(dirFile *os.File, name string, flags int, perm os.FileMode) (*os.File, error) {
+func openAt(dirFile *os.File, name string, flags int, perm os.FileMode) (ans *os.File, err error) {
 	dirFd := int(dirFile.Fd())
-
 	// Call the underlying system call
-	fd, err := unix.Openat(dirFd, name, flags|unix.O_CLOEXEC, uint32(perm))
+	var fd int
+	for {
+		if fd, err = unix.Openat(dirFd, name, flags|unix.O_CLOEXEC, uint32(perm)); err != unix.EINTR {
+			break
+		}
+	}
+	name = filepath.Join(dirFile.Name(), name)
 	if err != nil {
 		return nil, &os.PathError{Op: "openat", Path: name, Err: err}
 	}
-	name = filepath.Join(dirFile.Name(), name)
-	// os.NewFile takes the raw fd and the name and returns a high-level *os.File.
-	// This allows you to use standard methods like .Read(), .Write(), and .Close().
 	return os.NewFile(uintptr(fd), name), nil
+}
+
+type UnixFileInfo struct {
+	name string
+	stat *unix.Stat_t
+	mode os.FileMode
+}
+
+func NewUnixFileInfo(name string, stat *unix.Stat_t) os.FileInfo {
+	rawMode := stat.Mode
+	// Start with the standard 9-bit permissions
+	mode := os.FileMode(rawMode & 0777)
+
+	// Map the file type bits using S_IFMT
+	switch rawMode & unix.S_IFMT {
+	case unix.S_IFDIR:
+		mode |= os.ModeDir
+	case unix.S_IFLNK:
+		mode |= os.ModeSymlink
+	case unix.S_IFBLK:
+		mode |= os.ModeDevice
+	case unix.S_IFCHR:
+		// Go uses ModeDevice | ModeCharDevice for character devices
+		mode |= os.ModeDevice | os.ModeCharDevice
+	case unix.S_IFIFO:
+		mode |= os.ModeNamedPipe
+	case unix.S_IFSOCK:
+		mode |= os.ModeSocket
+	}
+
+	// Map setuid, setgid, and sticky bits
+	if rawMode&unix.S_ISUID != 0 {
+		mode |= os.ModeSetuid
+	}
+	if rawMode&unix.S_ISGID != 0 {
+		mode |= os.ModeSetgid
+	}
+	if rawMode&unix.S_ISVTX != 0 {
+		mode |= os.ModeSticky
+	}
+	return &UnixFileInfo{name, stat, mode}
+}
+
+func (m *UnixFileInfo) Name() string       { return m.name }
+func (m *UnixFileInfo) Size() int64        { return m.stat.Size }
+func (m *UnixFileInfo) Mode() os.FileMode  { return m.mode }
+func (m *UnixFileInfo) ModTime() time.Time { return time.Unix(m.stat.Mtim.Unix()) }
+func (m *UnixFileInfo) IsDir() bool        { return m.Mode().IsDir() }
+func (m *UnixFileInfo) Sys() any           { return m.stat }
+func (m *UnixFileInfo) Dev() int           { return int(m.stat.Rdev) }
+
+// Get file info relative to the parent FD, follows symlinks
+func StatAt(dirFile *os.File, name string) (ans os.FileInfo, err error) {
+	var stat unix.Stat_t
+	for {
+		if err = unix.Fstatat(int(dirFile.Fd()), name, &stat, 0); err != unix.EINTR {
+			break
+		}
+	}
+	name = filepath.Join(dirFile.Name(), name)
+	if err != nil {
+		return nil, &os.PathError{Op: "statat", Path: name, Err: err}
+	}
+	return NewUnixFileInfo(name, &stat), nil
+}
+
+// Get file info relative to the parent FD, do not follows symlinks
+func LstatAt(dirFile *os.File, name string) (ans os.FileInfo, err error) {
+	var stat unix.Stat_t
+	for {
+		if err = unix.Fstatat(int(dirFile.Fd()), name, &stat, unix.AT_SYMLINK_NOFOLLOW); err != unix.EINTR {
+			break
+		}
+	}
+	name = filepath.Join(dirFile.Name(), name)
+	if err != nil {
+		return nil, &os.PathError{Op: "lstatat", Path: name, Err: err}
+	}
+	return NewUnixFileInfo(name, &stat), nil
+}
+
+// Remove file relative to parent fd
+func UnlinkAt(parent *os.File, name string) (err error) {
+	for {
+		if err = unix.Unlinkat(int(parent.Fd()), name, 0); err != unix.EINTR {
+			break
+		}
+	}
+	if err != nil {
+		err = &os.PathError{Op: "unlinkat", Path: filepath.Join(parent.Name(), name), Err: err}
+	}
+	return
+}
+
+// Remove empty directory relative to parent fd
+func RemoveDirAt(parent *os.File, name string) (err error) {
+	for {
+		if err = unix.Unlinkat(int(parent.Fd()), name, unix.AT_REMOVEDIR); err != unix.EINTR {
+			break
+		}
+	}
+	if err != nil {
+		err = &os.PathError{Op: "unlinkat", Path: filepath.Join(parent.Name(), name), Err: err}
+	}
+	return
+}
+
+// Create a hardlink pointing to oldname called newname relative to the
+// specified directories. If oldname is a symlink,
+// a new symlink is created pointing to its target when follow_symlinks is true otherwise to it.
+func LinkAt(oldparent *os.File, oldname string, newparent *os.File, newname string, follow_symlinks bool) (err error) {
+	flags := IfElse(follow_symlinks, unix.AT_SYMLINK_FOLLOW, 0)
+	for {
+		if err = unix.Linkat(int(oldparent.Fd()), oldname, int(newparent.Fd()), newname, flags); err != unix.EINTR {
+			break
+		}
+	}
+	if err != nil {
+		err = &os.PathError{Op: "linkat", Path: fmt.Sprintf("%s -> %s", filepath.Join(newparent.Name(), newname), filepath.Join(oldparent.Name(), oldname)), Err: err}
+	}
+	return
 }
 
 // RemoveChildren recursively removes all files and subdirectories
 // within the directory pointed to by dirFile. Removes all it can but returns
 // the first error, if any.
 func RemoveChildren(dirFile *os.File) error {
-	fd := int(dirFile.Fd())
 	var firstErr error
 
 	// Rewind directory pointer to ensure we start from the beginning
-	if _, err := dirFile.Seek(0, 0); err != nil {
-		return &os.PathError{Op: "seek", Path: dirFile.Name(), Err: err}
+	if _, err := dirFile.Seek(0, io.SeekStart); err != nil {
+		return err
 	}
 
 	for {
@@ -90,44 +240,326 @@ func RemoveChildren(dirFile *os.File) error {
 		}
 
 		for _, name := range names {
-			var stat unix.Stat_t
+			var stat os.FileInfo
 			// Get file info relative to the parent FD
-			err := unix.Fstatat(fd, name, &stat, unix.AT_SYMLINK_NOFOLLOW)
-			if err != nil {
+			if stat, err = LstatAt(dirFile, name); err != nil {
 				if firstErr == nil {
-					firstErr = &os.PathError{Op: "fstatat", Path: name, Err: err}
+					firstErr = err
 				}
 				continue
 			}
-
-			if (stat.Mode & unix.S_IFMT) == unix.S_IFDIR {
+			if stat.IsDir() {
 				// Open subdirectory relative to parent FD
-				childFd, err := unix.Openat(fd, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC, 0)
-				if err != nil {
+				var childFile *os.File
+				if childFile, err = OpenDirAt(dirFile, name); err != nil {
 					if firstErr == nil {
-						firstErr = &os.PathError{Op: "openat", Path: name, Err: err}
+						firstErr = err
 					}
 					continue
 				}
-
-				childFile := os.NewFile(uintptr(childFd), name)
 				if err := RemoveChildren(childFile); err != nil && firstErr == nil {
 					firstErr = err
 				}
 				childFile.Close()
 
 				// Remove the empty subdirectory
-				if err := unix.Unlinkat(fd, name, unix.AT_REMOVEDIR); err != nil && firstErr == nil {
-					firstErr = &os.PathError{Op: "unlinkat", Path: name, Err: err}
+				if err = RemoveDirAt(dirFile, name); err != nil && firstErr == nil {
+					firstErr = err
 				}
 			} else {
 				// Remove file/symlink
-				if err := unix.Unlinkat(fd, name, 0); err != nil && firstErr == nil {
-					firstErr = &os.PathError{Op: "unlinkat", Path: name, Err: err}
+				if err = UnlinkAt(dirFile, name); err != nil && firstErr == nil {
+					firstErr = err
 				}
 			}
 		}
 	}
-	_, _ = dirFile.Seek(0, 0)
+	_, _ = dirFile.Seek(0, io.SeekStart)
 	return firstErr
+}
+
+func DupFile(f *os.File) (ans *os.File, err error) {
+	var fd int
+	for {
+		if fd, err = unix.Dup(int(f.Fd())); err != unix.EINTR {
+			break
+		}
+	}
+	if err != nil {
+		return nil, &os.PathError{Op: "dup", Path: f.Name(), Err: err}
+	}
+	return os.NewFile(uintptr(fd), f.Name()), nil
+}
+
+func ReadLinkAt(parent *os.File, name string) (ans string, err error) {
+	buf := [unix.PathMax]byte{}
+	var n int
+	for {
+		if n, err = unix.Readlinkat(int(parent.Fd()), name, buf[:]); err != unix.EINTR {
+			break
+		}
+	}
+	if err != nil {
+		return "", &os.PathError{Op: "readlinkat", Path: filepath.Join(parent.Name(), name), Err: err}
+	}
+	return UnsafeBytesToString(buf[:n]), nil
+}
+
+func ConvertFileModeToUnix(goMode os.FileMode) uint32 {
+	// 1. Start with the basic permission bits (0777)
+	unixMode := uint32(goMode.Perm())
+
+	// 2. Map the type bits
+	// We use the os.ModeXXX constants to identify the type
+	switch {
+	case goMode.IsDir():
+		unixMode |= unix.S_IFDIR
+	case goMode&os.ModeSymlink != 0:
+		unixMode |= unix.S_IFLNK
+	case goMode&os.ModeNamedPipe != 0:
+		unixMode |= unix.S_IFIFO
+	case goMode&os.ModeSocket != 0:
+		unixMode |= unix.S_IFSOCK
+	case goMode&os.ModeDevice != 0:
+		if goMode&os.ModeCharDevice != 0 {
+			unixMode |= unix.S_IFCHR
+		} else {
+			unixMode |= unix.S_IFBLK
+		}
+	default:
+		// Default to a regular file
+		unixMode |= unix.S_IFREG
+	}
+
+	// 3. Map special bits
+	if goMode&os.ModeSetuid != 0 {
+		unixMode |= unix.S_ISUID
+	}
+	if goMode&os.ModeSetgid != 0 {
+		unixMode |= unix.S_ISGID
+	}
+	if goMode&os.ModeSticky != 0 {
+		unixMode |= unix.S_ISVTX
+	}
+
+	return unixMode
+}
+
+func MknodAt(parent *os.File, name string, mode os.FileMode, dev int) (err error) {
+	unix_mode := ConvertFileModeToUnix(mode)
+	for {
+		if err = unix.Mknodat(int(parent.Fd()), name, unix_mode, dev); err != unix.EINTR {
+			break
+		}
+	}
+	if err != nil {
+		err = &os.PathError{Op: "mknodat", Path: filepath.Join(parent.Name(), name), Err: err}
+	}
+	return
+}
+
+// Not thread safe reference counted wrapper for os.File
+type RefCountedFile struct {
+	f      *os.File
+	refcnt atomic.Int32
+}
+
+func NewRefCountedFile(f *os.File) *RefCountedFile {
+	ans := RefCountedFile{f: f}
+	ans.refcnt.Add(1)
+	return &ans
+}
+
+func (f *RefCountedFile) NewRef() *RefCountedFile {
+	f.refcnt.Add(1)
+	return f
+}
+
+func (f *RefCountedFile) Unref() *RefCountedFile {
+	if f.refcnt.Add(-1) == 0 {
+		f.f.Close()
+		f.f = nil
+	}
+	return nil
+}
+
+func (f *RefCountedFile) File() *os.File { return f.f }
+
+type CopyFolderOptions struct {
+	Disallow_hardlinks bool
+	Filter_files       func(parent *os.File, child os.FileInfo) bool
+}
+
+func copy_file_and_close(ctx context.Context, src *os.File, dest *os.File) (err error) {
+	err_chan := make(chan error)
+	defer func() {
+		src.Close()
+		dest.Close()
+	}()
+	go func() {
+		// this go routine will automatically exit when src/dest are closed
+		// even if copying is not complete. io.Copy() automatically use
+		// sendfile() or similar mechanisms for efficiency.
+		_, err := io.Copy(dest, src)
+		err_chan <- err
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-err_chan:
+		return err
+	}
+}
+
+func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *os.File, opts CopyFolderOptions, completed_channel chan error) {
+	is_ok := opts.Filter_files
+	if is_ok == nil {
+		is_ok = func(*os.File, os.FileInfo) bool { return true }
+	}
+	type item struct {
+		src_parent, dest_parent *RefCountedFile
+		child                   os.FileInfo
+	}
+	queue := list.New()
+	is_cancelled := func() bool {
+		select {
+		case <-ctx.Done():
+			completed_channel <- ctx.Err()
+			return true
+		default:
+			return false
+		}
+	}
+	defer func() {
+		for {
+			v := queue.Front()
+			if v == nil {
+				break
+			}
+			item := v.Value.(*item)
+
+			if item.src_parent != nil {
+				item.src_parent.Unref()
+			}
+			if item.dest_parent != nil {
+				item.dest_parent.Unref()
+			}
+		}
+	}()
+
+	src, dest := NewRefCountedFile(src_folder), NewRefCountedFile(dest_folder)
+	fail := func(err error) bool {
+		completed_channel <- err
+		return false
+	}
+
+	do_one := func(src *RefCountedFile, dest *RefCountedFile) bool {
+		defer func() {
+			src.Unref()
+			dest.Unref()
+		}()
+		if is_cancelled() {
+			return false
+		}
+		children, err := src.File().Readdir(-1)
+		if err != nil {
+			return fail(err)
+		}
+		for _, child := range children {
+			if is_cancelled() {
+				return false
+			}
+			if !is_ok(src_folder, child) {
+				continue
+			}
+			if child.IsDir() {
+				queue.PushBack(&item{src.NewRef(), dest.NewRef(), child})
+			} else {
+				// First try a hardlink which works for regular files and symlinks at least
+				if !opts.Disallow_hardlinks && LinkAt(src.File(), child.Name(), dest.File(), child.Name(), true) == nil {
+					continue
+				}
+				t := child.Mode().Type()
+				switch {
+				case t.IsRegular():
+					sf, err := OpenAt(src.File(), child.Name())
+					if err != nil {
+						return fail(err)
+					}
+					df, err := OpenAt(dest.File(), child.Name())
+					if err != nil {
+						sf.Close()
+						return fail(err)
+					}
+					if err = copy_file_and_close(ctx, sf, df); err != nil {
+						UnlinkAt(dest.File(), child.Name()) // dont leave partially copied files around
+						return fail(err)
+					}
+				case t&os.ModeSymlink != 0:
+					target, err := ReadLinkAt(src.File(), child.Name())
+					if err != nil {
+						return fail(err)
+					}
+					if err = SymlinkAt(dest.File(), child.Name(), target); err != nil {
+						return fail(err)
+					}
+				case t&os.ModeDevice != 0:
+					if err = MknodAt(dest.File(), child.Name(), child.Mode(), child.(*UnixFileInfo).Dev()); err != nil {
+						return fail(err)
+					}
+				}
+			}
+		}
+		return true
+	}
+
+	next_dir := func(src_parent *RefCountedFile, dest_parent *RefCountedFile, child os.FileInfo) (ok bool) {
+		src, dest = nil, nil
+		defer func() {
+			src_parent.Unref()
+			dest_parent.Unref()
+			if !ok {
+				if src != nil {
+					src = src.Unref()
+				}
+				if dest != nil {
+					dest = dest.Unref()
+				}
+			}
+		}()
+		sf, err := OpenDirAt(src_parent.File(), child.Name())
+		if err != nil {
+			completed_channel <- err
+			return false
+		}
+		src = NewRefCountedFile(sf)
+		if err = MkdirAt(dest_parent.File(), child.Name(), child.Mode().Perm()); err != nil {
+			completed_channel <- err
+			return false
+		}
+		df, err := OpenDirAt(dest_parent.File(), child.Name())
+		if err != nil {
+			completed_channel <- err
+			return false
+		}
+		dest = NewRefCountedFile(df)
+		ok = true
+		return
+	}
+
+	for {
+		if !do_one(src, dest) {
+			return
+		}
+		v := queue.Front()
+		if v == nil {
+			break
+		}
+		n := v.Value.(*item)
+		if !next_dir(n.src_parent, n.dest_parent, n.child) {
+			return
+		}
+	}
+	completed_channel <- nil
 }
