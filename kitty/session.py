@@ -688,6 +688,13 @@ working directory. This is useful when kitty is launched from locations where th
 is not your home directory, such as from system-wide shortcuts. Note that :code:`--relocatable` is
 typically not used with :code:`--base-dir`, since relocatable is meant for session files that are
 co-located with their project directories.
+
+
+--extension
+When specified, a default file extension is applied to the session filename when no extension is
+provided. Useful in combination with :code:`--base-dir` as it enable you to enter only the name of
+the session you are saving as it will then be prefixed with the base directory and suffixed with
+the extension provided.
 '''
 
 
@@ -698,6 +705,9 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str)
     if opts.base_dir and not os.path.isabs(path):
         base_dir = os.path.abspath(os.path.expanduser(opts.base_dir))
         path = os.path.join(base_dir, path)
+    path = os.path.abspath(os.path.expanduser(path))
+    if opts.extension and os.path.splitext(path)[-1:] == ('',):
+        path = f"{path}.{opts.extension}"
     path = os.path.abspath(os.path.expanduser(path))
     session = '\n'.join(boss.serialize_state_as_session(path, opts))
     os.makedirs(os.path.dirname(path), exist_ok=True)
