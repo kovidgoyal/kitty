@@ -453,8 +453,8 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 
 	do_one := func(src *RefCountedFile, dest *RefCountedFile) bool {
 		defer func() {
-			src.Unref()
-			dest.Unref()
+			src = src.Unref()
+			dest = dest.Unref()
 		}()
 		if is_cancelled() {
 			return false
@@ -530,17 +530,13 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 			completed_channel <- err
 			return false
 		}
-		src = NewRefCountedFile(sf)
-		if err = MkdirAt(dest_parent.File(), child.Name(), child.Mode().Perm()); err != nil {
-			completed_channel <- err
-			return false
-		}
-		df, err := OpenDirAt(dest_parent.File(), child.Name())
+		df, err := CreateDirAt(dest_parent.File(), child.Name(), child.Mode().Perm())
 		if err != nil {
+			sf.Close()
 			completed_channel <- err
 			return false
 		}
-		dest = NewRefCountedFile(df)
+		src, dest = NewRefCountedFile(sf), NewRefCountedFile(df)
 		ok = true
 		return
 	}
@@ -553,7 +549,7 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 		if v == nil {
 			break
 		}
-		n := v.Value.(*item)
+		n := queue.Remove(v).(*item)
 		if !next_dir(n.src_parent, n.dest_parent, n.child) {
 			return
 		}

@@ -28,4 +28,3 @@ func readLinkAt(parent *os.File, name string, buf []byte) (n int, err error) {
 	}
 	return
 }
-
