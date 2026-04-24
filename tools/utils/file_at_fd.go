@@ -148,7 +148,7 @@ func (m *UnixFileInfo) Mode() os.FileMode  { return m.mode }
 func (m *UnixFileInfo) ModTime() time.Time { return time.Unix(m.stat.Mtim.Unix()) }
 func (m *UnixFileInfo) IsDir() bool        { return m.Mode().IsDir() }
 func (m *UnixFileInfo) Sys() any           { return m.stat }
-func (m *UnixFileInfo) Dev() int           { return int(m.stat.Rdev) }
+func (m *UnixFileInfo) Dev() uint64        { return uint64(m.stat.Rdev) }
 
 // Get file info relative to the parent FD, follows symlinks
 func StatAt(dirFile *os.File, name string) (ans os.FileInfo, err error) {
@@ -300,12 +300,7 @@ func DupFile(f *os.File) (ans *os.File, err error) {
 
 func ReadLinkAt(parent *os.File, name string) (ans string, err error) {
 	buf := [unix.PathMax]byte{}
-	var n int
-	for {
-		if n, err = unix.Readlinkat(int(parent.Fd()), name, buf[:]); err != unix.EINTR {
-			break
-		}
-	}
+	n, err := readLinkAt(parent, name, buf[:])
 	if err != nil {
 		return "", &os.PathError{Op: "readlinkat", Path: filepath.Join(parent.Name(), name), Err: err}
 	}
@@ -352,7 +347,7 @@ func ConvertFileModeToUnix(goMode os.FileMode) uint32 {
 	return unixMode
 }
 
-func MknodAt(parent *os.File, name string, mode os.FileMode, dev int) (err error) {
+func MknodAt(parent *os.File, name string, mode os.FileMode, dev uint64) (err error) {
 	unix_mode := ConvertFileModeToUnix(mode)
 	if err = mknodAt(parent, name, unix_mode, dev); err != nil {
 		err = &os.PathError{Op: "mknodat", Path: filepath.Join(parent.Name(), name), Err: err}
