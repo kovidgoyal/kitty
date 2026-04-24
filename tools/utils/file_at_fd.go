@@ -347,12 +347,7 @@ func ConvertFileModeToUnix(goMode os.FileMode) uint32 {
 
 func MknodAt(parent *os.File, name string, mode os.FileMode, dev int) (err error) {
 	unix_mode := ConvertFileModeToUnix(mode)
-	for {
-		if err = unix.Mknodat(int(parent.Fd()), name, unix_mode, dev); err != unix.EINTR {
-			break
-		}
-	}
-	if err != nil {
+	if err = mknodAt(parent, name, unix_mode, dev); err != nil {
 		err = &os.PathError{Op: "mknodat", Path: filepath.Join(parent.Name(), name), Err: err}
 	}
 	return
