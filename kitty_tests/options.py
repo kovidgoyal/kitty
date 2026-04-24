@@ -126,6 +126,7 @@ version
 
 def launcher(self):
     import tempfile
+
     from kitty.constants import is_macos
     kexe = kitty_exe()
     cfgdir = None
