@@ -262,10 +262,10 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 	if err != nil {
 		return err
 	}
-	rd := new_dir_handle(f)
-	defer rd.unref()
-	drop_status.root_remote_dir = &remote_dir_entry{}
 	if drop_status.is_remote_client {
+		rd := new_dir_handle(f)
+		defer rd.unref()
+		drop_status.root_remote_dir = &remote_dir_entry{}
 		seen := utils.NewSet[string](len(drop_status.uri_list))
 		idx := slices.Index(drop_status.offered_mimes, "text/uri-list")
 		for i, x := range drop_status.uri_list {
@@ -289,7 +289,7 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 		}
 		drop_status.open_remote_dir = drop_status.root_remote_dir
 	} else {
-		// TODO: copy URLs
+		// TODO: Implement this
 	}
 	return
 }
