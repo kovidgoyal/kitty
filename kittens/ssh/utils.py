@@ -155,7 +155,9 @@ def get_ssh_data(msgb: memoryview, request_id: str) -> Iterator[bytes|memoryview
                 raise ValueError(f'Incorrect request id: {rq_id!r} expecting the KITTY_PID-KITTY_WINDOW_ID for the current kitty window')
         except Exception as e:
             traceback.print_exc()
-            yield f'{e}\n'.encode()
+            import re
+            msg = re.sub(r'[^a-zA-Z0-9 ]+', '_', str(e))
+            yield f'{msg}\n'.encode()
         else:
             yield b'OK\n'
             encoded_data = memoryview(env_data['tarfile'].encode('ascii'))
