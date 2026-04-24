@@ -434,8 +434,7 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 			if v == nil {
 				break
 			}
-			item := v.Value.(*item)
-
+			item := queue.Remove(v).(*item)
 			if item.src_parent != nil {
 				item.src_parent.Unref()
 			}
@@ -446,6 +445,10 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 	}()
 
 	src, dest := NewRefCountedFile(src_folder), NewRefCountedFile(dest_folder)
+	// Add an extra reference so that the files passed into this function are
+	// not closed in do_one()
+	src.NewRef()
+	dest.NewRef()
 	fail := func(err error) bool {
 		completed_channel <- err
 		return false
@@ -484,7 +487,7 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 					if err != nil {
 						return fail(err)
 					}
-					df, err := OpenAt(dest.File(), child.Name())
+					df, err := CreateDirAt(dest.File(), child.Name(), child.Mode().Perm())
 					if err != nil {
 						sf.Close()
 						return fail(err)
