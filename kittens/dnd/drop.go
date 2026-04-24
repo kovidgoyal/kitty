@@ -234,11 +234,7 @@ func (dnd *dnd) end_drop() {
 func (dnd *dnd) new_tdir() (dir_file *os.File, err error) {
 	dnd.tdir_counter++
 	name := strconv.Itoa(dnd.tdir_counter)
-	if err = utils.MkdirAt(dnd.base_tempdir, name, 0o700); err != nil {
-		return nil, err
-	}
-	dir_file, err = utils.OpenAt(dnd.base_tempdir, name)
-	return
+	return utils.CreateDirAt(dnd.base_tempdir, name, 0o700)
 }
 
 func (dnd *dnd) all_mime_data_dropped() (err error) {
