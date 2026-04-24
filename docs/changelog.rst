@@ -259,6 +259,8 @@ Detailed list of changes
 
 - Fix setting :opt:`momentum_scroll` to zero not *fully* disabling momentum scrolling (:iss:`9904`)
 
+- macOS: Fix args passed via ``open --args`` being ignored when :file:`macos-launch-services-cmdline` is present (:iss:`9910`)
+
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

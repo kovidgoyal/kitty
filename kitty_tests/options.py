@@ -125,14 +125,18 @@ version
 
 
 def launcher(self):
+    import tempfile
+    from kitty.constants import is_macos
     kexe = kitty_exe()
     cfgdir = None
-    def get_report(cmdline: str, launch_services= False):
+    def get_report(cmdline: str, launch_services= False, config_dir: str = ''):
         nonlocal cfgdir
         args = list(shlex_split(cmdline))
         env = dict(os.environ)
         if launch_services:
             env['KITTY_LAUNCHED_BY_LAUNCH_SERVICES'] = '1'
+        if config_dir:
+            env['KITTY_CONFIG_DIRECTORY'] = config_dir
         cp = subprocess.run([kexe, "+testing-launcher-code"] + args, env=env, stdout=subprocess.PIPE)
         self.assertEqual(cp.returncode, 0)
         ans = {}
@@ -199,6 +203,17 @@ def launcher(self):
     si('+open -1 --instance-group=g x y', instance_group='g', open_urls=['x', 'y'])
     dt('--detach --session=moose --detached-log=xyz', detached_log='xyz', session='moose')
     pn('+kitten panel -1 --edge=left', edge='left')
+
+    if is_macos:
+        with tempfile.TemporaryDirectory() as tdir:
+            with open(tdir + '/macos-launch-services-cmdline', 'w') as f:
+                f.write('kitty --title from-file\n')
+            # File args are used when launched by launch services
+            r, output = get_report('', launch_services=True, config_dir=tdir)
+            self.assertEqual(r.get('title'), 'from-file', f'Expected title=from-file in:\n{output}')
+            # User args passed via open --args are appended after file args (and override them)
+            r, output = get_report('--title from-args', launch_services=True, config_dir=tdir)
+            self.assertEqual(r.get('title'), 'from-args', f'Expected title=from-args to override from-file in:\n{output}')
 
 
 def conf_parsing(self):

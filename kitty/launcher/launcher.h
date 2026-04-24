@@ -25,4 +25,5 @@ typedef struct argv_array {
 
 void single_instance_main(int argc, char *argv[], const CLIOptions *opts);
 bool get_argv_from(const char *filename, const char* argv0, argv_array *ans);
+bool append_arg_to_argv_array(argv_array *a, const char *arg);
 void free_argv_array(argv_array *a);

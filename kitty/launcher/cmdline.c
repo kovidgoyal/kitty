@@ -13,6 +13,24 @@
 #include <os/log.h>
 #endif
 
+bool
+append_arg_to_argv_array(argv_array *a, const char *arg) {
+    if (a->count + 2 > a->capacity) {
+        size_t cap = a->capacity * 2;
+        if (!cap) cap = 256;
+        void *m = realloc(a->argv, cap * sizeof(a->argv[0]));
+        if (!m) return false;
+        a->argv = m;
+        a->capacity = cap;
+        a->needs_free = true;
+    }
+    // arg points into the process's original argv which persists for the lifetime
+    // of the process and is never modified through this pointer.
+    a->argv[a->count++] = (char*)arg;
+    a->argv[a->count] = 0;
+    return true;
+}
+
 void
 free_argv_array(argv_array *a) {
     if (a && a->needs_free) {
