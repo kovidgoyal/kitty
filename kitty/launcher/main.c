@@ -539,7 +539,19 @@ main(int argc_, char *argv_[], char* envp[]) {
         if (launched_by_launch_services && config_dir[0]) {
             char cbuf[PATH_MAX];
             safe_snprintf(cbuf, sizeof(cbuf), "%s/macos-launch-services-cmdline", config_dir);
+            int orig_argc = argc_; char **orig_argv = argv_;
             if (!get_argv_from(cbuf, argva.argv[0], &argva)) exit(1);
+            // If the file was loaded (argva replaced), append any extra args passed via open --args
+            if (argva.needs_free) {
+                for (int i = 1; i < orig_argc; i++) {
+                    // Skip Apple-internal process serial number args (-psn_*)
+                    if (strncmp(orig_argv[i], "-psn_", sizeof("-psn_") - 1) == 0) continue;
+                    if (!append_arg_to_argv_array(&argva, orig_argv[i])) {
+                        fprintf(stderr, "Out of memory while processing launch services args\n");
+                        exit(1);
+                    }
+                }
+            }
         }
     }
 #else

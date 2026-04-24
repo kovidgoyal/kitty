@@ -650,19 +650,26 @@ class TestDataTypes(BaseTest):
                 shutil.rmtree(dot_config)
             with tempfile.TemporaryDirectory() as tdir:
                 with open(tdir + '/macos-launch-services-cmdline', 'w') as f:
-                    print('kitty +runpy "import sys; print(sys.argv[-1])"', file=f)
-                    print('next-line', file=f)
-                    print()
+                    print('kitty --title from-file', file=f)
                 if is_macos:
                     env = os.environ.copy()
                     env['KITTY_CONFIG_DIRECTORY'] = tdir
                     env['KITTY_LAUNCHED_BY_LAUNCH_SERVICES'] = '1'
-                    cp = subprocess.run([kitty_exe(), '+runpy', 'import json, sys; print(json.dumps(sys.argv))'], env=env, stdout=subprocess.PIPE)
-                    actual = cp.stdout.strip().decode()
+                    # Test 1: file args are loaded when no extra user args are present
+                    cp = subprocess.run([kitty_exe(), '+testing-launcher-code'], env=env, stdout=subprocess.PIPE)
+                    actual = cp.stdout.decode()
                     if cp.returncode != 0:
                         print(actual)
-                        raise AssertionError(f'kitty +runpy failed with return code: {cp.returncode}')
-                    self.ae('next-line', actual)
+                        raise AssertionError(f'kitty +testing-launcher-code failed with return code: {cp.returncode}')
+                    self.assertIn('from-file', actual)
+                    # Test 2: extra args passed via open --args are appended after file args
+                    cp = subprocess.run([kitty_exe(), '+testing-launcher-code', '--title', 'from-args'], env=env, stdout=subprocess.PIPE)
+                    actual = cp.stdout.decode()
+                    if cp.returncode != 0:
+                        print(actual)
+                        raise AssertionError(f'kitty +testing-launcher-code failed with return code: {cp.returncode}')
+                    # from-args overrides from-file because user args are appended after file args
+                    self.assertIn('from-args', actual)
                 os.makedirs(tdir + '/good/kitty')
                 open(tdir + '/good/kitty/kitty.conf', 'w').close()
                 data = os.urandom(32879)
