@@ -194,8 +194,10 @@ type=bool-set
 Copy the environment variables from the :option:`source window <launch --source-window>` into the newly
 launched child process. Note that this only copies the environment when the
 window was first created, as it is not possible to get updated environment variables
-from arbitrary processes. To copy that environment, use either the :ref:`clone-in-kitty
-<clone_shell>` feature or the kitty remote control feature with :option:`kitten @ launch --copy-env`.
+from arbitrary processes. In particular, this means, if you are running a shell in the
+window and the shell has set env vars in its rc files, these will **not** be copied.
+To copy that environment, use either the :ref:`clone-in-kitty <clone_shell>` feature
+or the kitty remote control feature with :option:`kitten @ launch --copy-env`.
 
 
 --location
