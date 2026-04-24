@@ -77,6 +77,13 @@ func CreateAt(dirFile *os.File, name string) (*os.File, error) {
 	return openAt(dirFile, name, unix.O_RDWR|unix.O_CREAT|unix.O_TRUNC, 0666)
 }
 
+func CreateDirAt(parent *os.File, name string, permissions os.FileMode) (*os.File, error) {
+	if err := MkdirAt(parent, name, permissions); err != nil {
+		return nil, err
+	}
+	return OpenDirAt(parent, name)
+}
+
 // Internal helper to wrap the unix.Openat syscall
 func openAt(dirFile *os.File, name string, flags int, perm os.FileMode) (ans *os.File, err error) {
 	dirFd := int(dirFile.Fd())

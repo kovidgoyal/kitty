@@ -150,10 +150,7 @@ func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_m
 					return derr
 				}
 			} else { // directory
-				if derr := utils.MkdirAt(d.base_dir.handle, d.name, 0o755); derr != nil {
-					return derr
-				}
-				if f, derr := utils.OpenAt(d.base_dir.handle, d.name); derr != nil {
+				if f, derr := utils.CreateDirAt(d.base_dir.handle, d.name, 0o755); derr != nil {
 					return derr
 				} else {
 					handle := new_dir_handle(f)
