@@ -435,6 +435,11 @@ func copy_file_and_close(ctx context.Context, src *os.File, dest *os.File) (err 
 // Existing regular files are overwritten, without changing their permissions.
 // Existing directories also do not have their permissions updated.
 func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *os.File, opts CopyFolderOptions) (final_error error) {
+	// Ensure we get all dir contents
+	_, err := src_folder.Seek(0, io.SeekStart)
+	if err != nil {
+		return err
+	}
 	// When following symlinks, store previously seen source items with the
 	// abspaths they have been copied to in dest. Items are identified with
 	// device + inode number which should be globally unique. This ensures 1)
