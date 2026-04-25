@@ -433,8 +433,13 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 	// target
 	type dir_ident struct{ dev, inode uint64 }
 	get_dir_ident := func(i os.FileInfo) dir_ident {
-		s := i.Sys().(*syscall.Stat_t)
-		return dir_ident{uint64(s.Dev), uint64(s.Ino)}
+		switch s := i.Sys().(type) {
+		case *syscall.Stat_t:
+			return dir_ident{uint64(s.Dev), uint64(s.Ino)}
+		case *unix.Stat_t:
+			return dir_ident{uint64(s.Dev), uint64(s.Ino)}
+		}
+		panic("unknown stat result type from os.FileInfo")
 	}
 	var seen_map map[dir_ident]string
 	if opts.Follow_symlinks {
@@ -489,26 +494,11 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 		final_error = lerr
 		return false
 	}
-	mark_as_seen := func(dest_parent *os.File, child string, child_file *os.File) bool {
-		if !opts.Follow_symlinks {
-			return true
+	mark_as_seen := func(dest_parent *os.File, child os.FileInfo) {
+		if opts.Follow_symlinks {
+			path := filepath.Join(dest_parent.Name(), child.Name())
+			seen_map[get_dir_ident(child)] = filepath.Clean(path)
 		}
-		var st os.FileInfo
-		var serr error
-		var path string
-		if child_file == nil {
-			st, serr = LstatAt(dest_parent, child)
-			path = filepath.Join(dest_parent.Name(), child)
-		} else {
-			st, serr = child_file.Stat()
-			path = child_file.Name()
-		}
-		if serr != nil {
-			final_error = serr
-			return false
-		}
-		seen_map[get_dir_ident(st)] = filepath.Clean(path)
-		return true
 	}
 
 	var do_one_child func(src *RefCountedFile, dest *RefCountedFile, child os.FileInfo, from_symlink bool) bool
@@ -516,6 +506,7 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 		if child.IsDir() {
 			queue.PushBack(&item{src.NewRef(), dest.NewRef(), child})
 		} else {
+			mark_as_seen(dest.File(), child)
 			// First try a hardlink which works for regular files and symlinks at least
 			if !opts.Disallow_hardlinks && LinkAt(src.File(), child.Name(), dest.File(), child.Name(), opts.Follow_symlinks) == nil {
 				return true
@@ -535,9 +526,6 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 				if err = copy_file_and_close(ctx, sf, df); err != nil {
 					UnlinkAt(dest.File(), child.Name()) // dont leave partially copied files around
 					return fail(err)
-				}
-				if !mark_as_seen(dest.File(), child.Name(), df) {
-					return false
 				}
 			case t&os.ModeSymlink != 0:
 				if opts.Follow_symlinks && !from_symlink {
@@ -567,9 +555,6 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 							if err = SymlinkAt(dest.File(), child.Name(), target); err != nil {
 								return fail(err)
 							}
-							if !mark_as_seen(dest.File(), child.Name(), nil) {
-								return false
-							}
 							return true
 						}
 						// we dont care aboutleaking a ref counted file here
@@ -584,19 +569,12 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 					if err = SymlinkAt(dest.File(), child.Name(), target); err != nil {
 						return fail(err)
 					}
-					if !mark_as_seen(dest.File(), child.Name(), nil) {
-						return false
-					}
 				}
 			case t&os.ModeDevice != 0:
 				if err := MknodAt(dest.File(), child.Name(), child.Mode(), child.(*UnixFileInfo).Dev()); err != nil {
 					return fail(err)
 				}
-				if !mark_as_seen(dest.File(), child.Name(), nil) {
-					return false
-				}
 			}
-
 		}
 		return true
 	}
@@ -629,6 +607,7 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 
 	next_dir := func(src_parent *RefCountedFile, dest_parent *RefCountedFile, child os.FileInfo) (ok bool) {
 		src, dest = nil, nil
+		mark_as_seen(dest_parent.File(), child)
 		defer func() {
 			src_parent.Unref()
 			dest_parent.Unref()
@@ -653,7 +632,7 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 			return false
 		}
 		src, dest = NewRefCountedFile(sf), NewRefCountedFile(df)
-		ok = mark_as_seen(dest_parent.File(), child.Name(), df)
+		ok = true
 		return
 	}
 
