@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -73,8 +74,8 @@ func SymlinkAt(dirFile *os.File, name, target string) (err error) {
 
 // CreateAt creates or truncates a file relative to the directory pointed to by dirFile.
 // Matches the behavior of os.Create (read-write, creates if doesn't exist, truncates).
-func CreateAt(dirFile *os.File, name string) (*os.File, error) {
-	return openAt(dirFile, name, unix.O_RDWR|unix.O_CREAT|unix.O_TRUNC, 0666)
+func CreateAt(dirFile *os.File, name string, permissions os.FileMode) (*os.File, error) {
+	return openAt(dirFile, name, unix.O_RDWR|unix.O_CREAT|unix.O_TRUNC, permissions)
 }
 
 // Create the specified directory, open it and return the file object. If the
@@ -82,7 +83,7 @@ func CreateAt(dirFile *os.File, name string) (*os.File, error) {
 // permissions, matching the behavior of CreateAt().
 func CreateDirAt(parent *os.File, name string, permissions os.FileMode) (*os.File, error) {
 	if err := MkdirAt(parent, name, permissions); err != nil {
-		if err == unix.EEXIST {
+		if errors.Is(err, unix.EEXIST) {
 			return OpenDirAt(parent, name)
 		}
 		return nil, err
@@ -164,8 +165,8 @@ func StatAt(dirFile *os.File, name string) (ans os.FileInfo, err error) {
 			break
 		}
 	}
-	name = filepath.Join(dirFile.Name(), name)
 	if err != nil {
+		name = filepath.Join(dirFile.Name(), name)
 		return nil, &os.PathError{Op: "statat", Path: name, Err: err}
 	}
 	return NewUnixFileInfo(name, &stat), nil
@@ -179,8 +180,8 @@ func LstatAt(dirFile *os.File, name string) (ans os.FileInfo, err error) {
 			break
 		}
 	}
-	name = filepath.Join(dirFile.Name(), name)
 	if err != nil {
+		name = filepath.Join(dirFile.Name(), name)
 		return nil, &os.PathError{Op: "lstatat", Path: name, Err: err}
 	}
 	return NewUnixFileInfo(name, &stat), nil
@@ -424,10 +425,15 @@ func copy_file_and_close(ctx context.Context, src *os.File, dest *os.File) (err 
 // Existing regular files are overwritten, without changing their permissions.
 // Existing directories also do not have their permissions updated.
 func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *os.File, opts CopyFolderOptions) (final_error error) {
-	is_ok := opts.Filter_files
+	// When following symlinks, store previously seen source items with the
+	// abspaths they have been copied to in dest. Items are identified with
+	// device + inode number which should be globally unique. This ensures 1)
+	// no file/dir is copied more than once because of a symlink 2) symlinks
+	// are changed to point to the relative location of the previously copied
+	// target
 	type dir_ident struct{ dev, inode uint64 }
 	get_dir_ident := func(i os.FileInfo) dir_ident {
-		s := i.Sys().(*unix.Stat_t)
+		s := i.Sys().(*syscall.Stat_t)
 		return dir_ident{uint64(s.Dev), uint64(s.Ino)}
 	}
 	var seen_map map[dir_ident]string
@@ -436,9 +442,11 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 		if s, err := src_folder.Stat(); err != nil {
 			return err
 		} else {
-			seen_map[get_dir_ident(s)] = src_folder.Name()
+			seen_map[get_dir_ident(s)] = dest_folder.Name()
 		}
 	}
+
+	is_ok := opts.Filter_files
 	if is_ok == nil {
 		is_ok = func(*os.File, os.FileInfo) bool { return true }
 	}
@@ -519,7 +527,7 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 				if err != nil {
 					return fail(err)
 				}
-				df, err := CreateDirAt(dest.File(), child.Name(), child.Mode().Perm())
+				df, err := CreateAt(dest.File(), child.Name(), child.Mode().Perm())
 				if err != nil {
 					sf.Close()
 					return fail(err)
@@ -528,7 +536,7 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 					UnlinkAt(dest.File(), child.Name()) // dont leave partially copied files around
 					return fail(err)
 				}
-				if !mark_as_seen(dest.File(), df.Name(), df) {
+				if !mark_as_seen(dest.File(), child.Name(), df) {
 					return false
 				}
 			case t&os.ModeSymlink != 0:
@@ -542,27 +550,32 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 					if err != nil {
 						return do_one_child(src, dest, child, true)
 					}
-					pdf := os.NewFile(uintptr(pfd), parent_dir)
 					child_name := filepath.Base(rpath)
-					defer pdf.Close()
-					st, err := StatAt(pdf, child_name)
-					if err != nil {
-						return do_one_child(src, dest, child, true)
-					}
-					id := get_dir_ident(st)
-					if existing_path, found := seen_map[id]; found {
-						target, err := filepath.Rel(dest.File().Name(), existing_path)
+					return func() bool {
+						pdf := os.NewFile(uintptr(pfd), parent_dir)
+						defer pdf.Close()
+						st, err := StatAt(pdf, child_name)
 						if err != nil {
 							return do_one_child(src, dest, child, true)
 						}
-						if err = SymlinkAt(dest.File(), child.Name(), target); err != nil {
-							return fail(err)
+						id := get_dir_ident(st)
+						if existing_path, found := seen_map[id]; found {
+							target, err := filepath.Rel(dest.File().Name(), existing_path)
+							if err != nil {
+								return do_one_child(src, dest, child, true)
+							}
+							if err = SymlinkAt(dest.File(), child.Name(), target); err != nil {
+								return fail(err)
+							}
+							if !mark_as_seen(dest.File(), child.Name(), nil) {
+								return false
+							}
+							return true
 						}
-						if !mark_as_seen(dest.File(), child.Name(), nil) {
-							return false
-						}
-					}
-					return do_one_child(NewRefCountedFile(pdf), dest, st, true)
+						// we dont care aboutleaking a ref counted file here
+						// since the defer above is closing the actual open file.
+						return do_one_child(NewRefCountedFile(pdf), dest, st, true)
+					}()
 				} else {
 					target, err := ReadLinkAt(src.File(), child.Name())
 					if err != nil {
