@@ -172,10 +172,7 @@ Detailed list of changes
 
 - For builtin key mappings automatically :ref:`fallback <mapping-fallback>` to matching the US-PC layout key when the pressed key has no matches and is a non-English character (:pull:`9671`)
 
-- Allow drag and drop of windows to re-arrange them, move them to another
-  tab/OS Window or detach them into a new OS Window. See
-  :ac:`toggle_window_title_bars` to temporarily show window title bars to drag
-  them around (:pull:`9626`)
+- Allow drag and drop of windows to re-arrange them, move them to another tab/OS Window or detach them into a new OS Window. See :ac:`toggle_window_title_bars` to temporarily show window title bars to drag them around (:pull:`9626`)
 
 - Have :ac:`scroll_line_up` and :ac:`scroll_line_down` smooth scroll by default. Can be restored to old behavior by re-mapping without the ``smooth`` argument (:iss:`9689`)
 
