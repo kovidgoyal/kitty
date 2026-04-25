@@ -505,75 +505,75 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 	do_one_child = func(src *RefCountedFile, dest *RefCountedFile, child os.FileInfo, from_symlink bool) bool {
 		if child.IsDir() {
 			queue.PushBack(&item{src.NewRef(), dest.NewRef(), child})
-		} else {
-			mark_as_seen(dest.File(), child)
-			// First try a hardlink which works for regular files and symlinks at least
-			if !opts.Disallow_hardlinks && LinkAt(src.File(), child.Name(), dest.File(), child.Name(), opts.Follow_symlinks) == nil {
-				return true
+			return true
+		}
+		mark_as_seen(dest.File(), child)
+		// First try a hardlink which works for regular files and symlinks at least
+		if !opts.Disallow_hardlinks && LinkAt(src.File(), child.Name(), dest.File(), child.Name(), opts.Follow_symlinks) == nil {
+			return true
+		}
+		t := child.Mode().Type()
+		switch {
+		case t.IsRegular():
+			sf, err := OpenAt(src.File(), child.Name())
+			if err != nil {
+				return fail(err)
 			}
-			t := child.Mode().Type()
-			switch {
-			case t.IsRegular():
-				sf, err := OpenAt(src.File(), child.Name())
+			df, err := CreateAt(dest.File(), child.Name(), child.Mode().Perm())
+			if err != nil {
+				sf.Close()
+				return fail(err)
+			}
+			if err = copy_file_and_close(ctx, sf, df); err != nil {
+				UnlinkAt(dest.File(), child.Name()) // dont leave partially copied files around
+				return fail(err)
+			}
+		case t&os.ModeSymlink != 0:
+			if opts.Follow_symlinks && !from_symlink {
+				rpath, err := filepath.EvalSymlinks(filepath.Join(src.File().Name(), child.Name()))
 				if err != nil {
-					return fail(err)
+					return do_one_child(src, dest, child, true)
 				}
-				df, err := CreateAt(dest.File(), child.Name(), child.Mode().Perm())
+				parent_dir := filepath.Dir(rpath)
+				pfd, err := unix.Open(parent_dir, unix.O_DIRECTORY|unix.O_RDONLY|unix.O_CLOEXEC, 0)
 				if err != nil {
-					sf.Close()
-					return fail(err)
+					return do_one_child(src, dest, child, true)
 				}
-				if err = copy_file_and_close(ctx, sf, df); err != nil {
-					UnlinkAt(dest.File(), child.Name()) // dont leave partially copied files around
-					return fail(err)
-				}
-			case t&os.ModeSymlink != 0:
-				if opts.Follow_symlinks && !from_symlink {
-					rpath, err := filepath.EvalSymlinks(filepath.Join(src.File().Name(), child.Name()))
+				child_name := filepath.Base(rpath)
+				return func() bool {
+					pdf := os.NewFile(uintptr(pfd), parent_dir)
+					defer pdf.Close()
+					st, err := StatAt(pdf, child_name)
 					if err != nil {
 						return do_one_child(src, dest, child, true)
 					}
-					parent_dir := filepath.Dir(rpath)
-					pfd, err := unix.Open(parent_dir, unix.O_DIRECTORY|unix.O_RDONLY|unix.O_CLOEXEC, 0)
-					if err != nil {
-						return do_one_child(src, dest, child, true)
-					}
-					child_name := filepath.Base(rpath)
-					return func() bool {
-						pdf := os.NewFile(uintptr(pfd), parent_dir)
-						defer pdf.Close()
-						st, err := StatAt(pdf, child_name)
+					id := get_dir_ident(st)
+					if existing_path, found := seen_map[id]; found {
+						target, err := filepath.Rel(dest.File().Name(), existing_path)
 						if err != nil {
 							return do_one_child(src, dest, child, true)
 						}
-						id := get_dir_ident(st)
-						if existing_path, found := seen_map[id]; found {
-							target, err := filepath.Rel(dest.File().Name(), existing_path)
-							if err != nil {
-								return do_one_child(src, dest, child, true)
-							}
-							if err = SymlinkAt(dest.File(), child.Name(), target); err != nil {
-								return fail(err)
-							}
-							return true
+						if err = SymlinkAt(dest.File(), child.Name(), target); err != nil {
+							return fail(err)
 						}
-						// we dont care aboutleaking a ref counted file here
-						// since the defer above is closing the actual open file.
-						return do_one_child(NewRefCountedFile(pdf), dest, st, true)
-					}()
-				} else {
-					target, err := ReadLinkAt(src.File(), child.Name())
-					if err != nil {
-						return fail(err)
+						return true
 					}
-					if err = SymlinkAt(dest.File(), child.Name(), target); err != nil {
-						return fail(err)
-					}
-				}
-			case t&os.ModeDevice != 0:
-				if err := MknodAt(dest.File(), child.Name(), child.Mode(), child.(*UnixFileInfo).Dev()); err != nil {
+					// we dont care aboutleaking a ref counted file here
+					// since the defer above is closing the actual open file.
+					return do_one_child(NewRefCountedFile(pdf), dest, st, true)
+				}()
+			} else {
+				target, err := ReadLinkAt(src.File(), child.Name())
+				if err != nil {
 					return fail(err)
 				}
+				if err = SymlinkAt(dest.File(), child.Name(), target); err != nil {
+					return fail(err)
+				}
+			}
+		case t&os.ModeDevice != 0:
+			if err := MknodAt(dest.File(), child.Name(), child.Mode(), child.(*UnixFileInfo).Dev()); err != nil {
+				return fail(err)
 			}
 		}
 		return true
@@ -587,19 +587,28 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 		if is_cancelled() {
 			return false
 		}
-		children, err := src.File().Readdir(-1)
-		if err != nil {
-			return fail(err)
-		}
-		for _, child := range children {
-			if is_cancelled() {
-				return false
+		for {
+			dir_entries, err := src.File().ReadDir(64)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				return fail(err)
 			}
-			if !is_ok(src.File(), child) {
-				continue
-			}
-			if !do_one_child(src, dest, child, false) {
-				return false
+			for _, entry := range dir_entries {
+				if is_cancelled() {
+					return false
+				}
+				child, err := entry.Info()
+				if err != nil {
+					return fail(err)
+				}
+				if !is_ok(src.File(), child) {
+					continue
+				}
+				if !do_one_child(src, dest, child, false) {
+					return false
+				}
 			}
 		}
 		return true
