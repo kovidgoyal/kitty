@@ -1679,12 +1679,12 @@ tab navigation actions such as :ac:`goto_tab`, :ac:`next_tab`, :ac:`previous_tab
 are automatically restricted to work only on matching tabs.
 ''')
 
-opt('tab_bar_align', 'left',
-    choices=('left', 'center', 'right'),
+opt('tab_bar_align', 'start',
+    choices=('start', 'center', 'end', 'left', 'right'),
     long_text='''
-The horizontal alignment of the tab bar. For vertical tab bars this controls the
-alignment of each tab title within the sidebar. Can be one of: :code:`left`,
-:code:`center`, :code:`right`.
+The alignment of the tab bar, can be one of: :code:`start`, :code:`center`,
+:code:`end`, :code:`left`, :code:`right`. The values :code:`left` and
+:code:`right` are aliases for :code:`start` and :code:`end` respectively.
 '''
     )
 

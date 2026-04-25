@@ -103,6 +103,7 @@ def as_rgb(x: int) -> int:
 
 
 VERTICAL_EDGES = frozenset({LEFT_EDGE, RIGHT_EDGE})
+MAX_VERTICAL_TAB_LINES = 2
 
 
 def is_vertical_edge(edge: int) -> bool:
@@ -116,6 +117,14 @@ def edge_name(edge: int) -> EdgeLiteral:
         RIGHT_EDGE: 'right',
         BOTTOM_EDGE: 'bottom',
     }.get(edge, 'bottom')
+
+
+def normalized_tab_bar_align(align: str) -> str:
+    if align == 'left':
+        return 'start'
+    if align == 'right':
+        return 'end'
+    return align
 
 
 @lru_cache
@@ -657,15 +666,16 @@ class TabBar:
             self.draw_func = load_custom_draw_tab()
         else:
             self.draw_func = draw_tab_with_fade
-        if opts.tab_bar_align == 'center':
+        self.tab_bar_align = normalized_tab_bar_align(opts.tab_bar_align)
+        if self.tab_bar_align == 'center':
             self.align_factor = 2
-        elif opts.tab_bar_align == 'right':
+        elif self.tab_bar_align == 'end':
             self.align_factor = 1
         else:
             self.align_factor = 0
-        if opts.tab_bar_align == 'center':
+        if self.tab_bar_align == 'center':
             self.align: Callable[[], None] = partial(self.align_with_factor, 2)
-        elif opts.tab_bar_align == 'right':
+        elif self.tab_bar_align == 'end':
             self.align = self.align_with_factor
         else:
             self.align = lambda: None
@@ -886,23 +896,33 @@ class TabBar:
         if not data:
             return
         max_tab_length = max(1, s.columns - 1)
-        rows_to_draw = min(len(data), s.lines)
-        draw_ellipsis = len(data) > s.lines and s.lines > 1
+        tab_line_height = max(1, min(MAX_VERTICAL_TAB_LINES, s.lines // max(1, len(data))))
+        rows_to_draw = min(len(data), max(1, s.lines // tab_line_height))
+        draw_ellipsis = len(data) > rows_to_draw and s.lines > 1
         if draw_ellipsis:
+            tab_line_height = 1
+            rows_to_draw = min(len(data), s.lines)
             rows_to_draw -= 1
+        total_lines = rows_to_draw * tab_line_height + int(draw_ellipsis)
+        if self.tab_bar_align == 'center':
+            start_row = max(0, (s.lines - total_lines) // 2)
+        elif self.tab_bar_align == 'end':
+            start_row = max(0, s.lines - total_lines)
+        else:
+            start_row = 0
         cr: list[TabExtent] = []
         for i, t in enumerate(data[:rows_to_draw]):
             s.cursor.x = 0
-            s.cursor.y = i
+            row = start_row + i * tab_line_height
+            s.cursor.y = row
             s.cursor.bg = as_rgb(self.draw_data.tab_bg(t))
             s.cursor.fg = as_rgb(self.draw_data.tab_fg(t))
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
-            end = self.draw_func(self.draw_data, s, t, 0, max_tab_length, i + 1, True, ExtraData())
-            self.align_row(i, end)
-            cr.append(TabExtent(tab_id=t.tab_id, x=CellRange(0, s.columns - 1), y=CellRange(i, i)))
+            self.draw_func(self.draw_data, s, t, 0, max_tab_length, i + 1, True, ExtraData())
+            cr.append(TabExtent(tab_id=t.tab_id, x=CellRange(0, s.columns - 1), y=CellRange(row, min(s.lines - 1, row + tab_line_height - 1))))
         if draw_ellipsis:
             s.cursor.x = 0
-            s.cursor.y = s.lines - 1
+            s.cursor.y = start_row + rows_to_draw * tab_line_height
             s.cursor.bg = as_rgb(color_as_int(self.draw_data.default_bg))
             s.cursor.fg = as_rgb(0xff0000)
             s.draw('…')
@@ -917,16 +937,6 @@ class TabBar:
             self.screen.cursor.x = 0
             self.screen.insert_characters(shift)
             self.tab_extents = tuple(te.shifted(x=shift) for te in self.tab_extents)
-
-    def align_row(self, row: int, end: int) -> None:
-        if not self.align_factor:
-            return
-        if end < self.screen.columns - 1:
-            shift = (self.screen.columns - end) // self.align_factor
-            if shift > 0:
-                self.screen.cursor.y = row
-                self.screen.cursor.x = 0
-                self.screen.insert_characters(shift)
 
     def destroy(self) -> None:
         self.screen.reset_callbacks()
