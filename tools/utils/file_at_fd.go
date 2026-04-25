@@ -557,7 +557,10 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 				child_name := filepath.Base(rpath)
 				return func() bool {
 					pdf := os.NewFile(uintptr(pfd), parent_dir)
-					defer pdf.Close()
+					// Use a RefCountedFile so that if st is a directory the fd
+					// stays alive until the queued item is processed by next_dir.
+					rcf := NewRefCountedFile(pdf)
+					defer rcf.Unref()
 					st, err := StatAt(pdf, child_name)
 					if err != nil {
 						return do_one_child(src, dest, child, true)
@@ -573,9 +576,7 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 						}
 						return true
 					}
-					// we dont care aboutleaking a ref counted file here
-					// since the defer above is closing the actual open file.
-					return do_one_child(NewRefCountedFile(pdf), dest, st, true)
+					return do_one_child(rcf, dest, st, true)
 				}()
 			} else {
 				target, err := ReadLinkAt(src.File(), child.Name())
