@@ -258,6 +258,8 @@ Detailed list of changes
 
 - macOS: Fix args passed via ``open --args`` being ignored when :file:`macos-launch-services-cmdline` is present (:iss:`9910`)
 
+- :ac:`save_as_session`: when the filename input by the user has no extension, automatically add the ``.kitty-session`` extension (:pull:`9919`)
+
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

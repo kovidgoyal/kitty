@@ -691,7 +691,7 @@ co-located with their project directories.
 '''
 
 
-def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str) -> None:
+def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str, path_input_by_user: bool = False) -> None:
     if not path:
         return
     from .config import atomic_save
@@ -699,6 +699,8 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str)
         base_dir = os.path.abspath(os.path.expanduser(opts.base_dir))
         path = os.path.join(base_dir, path)
     path = os.path.abspath(os.path.expanduser(path))
+    if path_input_by_user and '.' not in os.path.basename(path):
+        path += '.kitty-session'
     session = '\n'.join(boss.serialize_state_as_session(path, opts))
     os.makedirs(os.path.dirname(path), exist_ok=True)
     atomic_save(session.encode(), path)
@@ -732,4 +734,4 @@ def save_as_session(boss: BossType, cmdline: Sequence[str]) -> None:
     else:
         boss.get_save_filepath(_(
             'Enter the path at which to save the session, usually session files are given the .kitty-session file extension'),
-                               partial(save_as_session_part2, boss, opts))
+                               partial(save_as_session_part2, boss, opts, path_input_by_user=True))
