@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kovidgoyal/go-parallel"
 	"golang.org/x/sys/unix"
 )
 
@@ -402,6 +403,11 @@ func copy_file_and_close(ctx context.Context, src *os.File, dest *os.File) (err 
 		dest.Close()
 	}()
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				err_chan <- parallel.Format_stacktrace_on_panic(r, 1)
+			}
+		}()
 		// this go routine will automatically exit when src/dest are closed
 		// even if copying is not complete. io.Copy() automatically use
 		// sendfile() or similar mechanisms for efficiency.
@@ -411,6 +417,10 @@ func copy_file_and_close(ctx context.Context, src *os.File, dest *os.File) (err 
 
 	select {
 	case <-ctx.Done():
+		// wait for go routine to exit
+		src.Close()
+		dest.Close()
+		<-err_chan
 		return ctx.Err()
 	case err := <-err_chan:
 		return err
