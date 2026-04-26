@@ -372,6 +372,7 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 		}
 	}
 	dnd := dnd{opts: opts, drop_dests: drop_dests, drag_sources: drag_sources}
+	defer dnd.reset_drop()
 	if err = dnd.run_loop(); err != nil {
 		return 1, err
 	}

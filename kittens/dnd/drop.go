@@ -2,9 +2,11 @@ package dnd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -12,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/utils/streaming_base64"
 )
@@ -124,6 +127,77 @@ func uniqify_child_names(names []string, is_case_sensitive_filesystem bool) []st
 	return names
 }
 
+func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string) (err error) {
+	var src_file *os.File
+	defer func() {
+		if src_file != nil {
+			src_file.Close()
+		}
+	}()
+	for _, path := range uri_list {
+		if path == "" {
+			continue
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		if src_file != nil {
+			src_file.Close()
+		}
+		if src_file, err = os.Open(path); err != nil {
+			return err
+		}
+		st, err := src_file.Stat()
+		if err != nil {
+			return err
+		}
+		if st.IsDir() {
+			d, err := utils.CreateDirAt(dest_dir, filepath.Base(src_file.Name()), st.Mode().Perm())
+			if err != nil {
+				return err
+			}
+			err = utils.CopyFolderContents(ctx, src_file, dest_dir, utils.CopyFolderOptions{
+				Filter_files: func(parent *os.File, child os.FileInfo) bool {
+					return child.IsDir() || child.Mode().IsRegular() || child.Mode()&fs.ModeSymlink != 0
+				},
+			})
+			d.Close()
+			if err != nil {
+				return err
+			}
+		} else if st.Mode().IsRegular() {
+			// First try a hard link
+			if err = os.Link(src_file.Name(), filepath.Join(dest_dir.Name(), filepath.Base(src_file.Name()))); err == nil {
+				continue
+			}
+			d, err := utils.CreateAt(dest_dir, filepath.Base(src_file.Name()), st.Mode().Perm())
+			if err != nil {
+				return err
+			}
+			err = utils.CopyFileAndClose(ctx, src_file, d)
+			src_file = nil // already closed
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return
+}
+
+func do_local_copy_in_goroutine(ctx context.Context, dest_dir *os.File, completion chan error, uri_list []string, wakeup func()) {
+	var err error
+	defer func() {
+		if r := recover(); r != nil {
+			err = parallel.Format_stacktrace_on_panic(r, 1)
+		}
+		completion <- err
+		wakeup()
+	}()
+	err = do_local_copy(ctx, dest_dir, uri_list)
+}
+
 func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_more bool, is_case_sensitive_filesystem bool) error {
 	if len(data) > 0 {
 		for chunk, derr := range d.b64_decoder.Decode(data, output_buf) {
@@ -198,13 +272,28 @@ type drop_status struct {
 	reading_data     bool
 	is_remote_client bool
 
+	dropping_to          *dir_handle
 	root_remote_dir      *remote_dir_entry
 	open_remote_dir      *remote_dir_entry
 	current_remote_entry *remote_dir_entry // used for m=1 only
 	pending_remote_dirs  []*remote_dir_entry
+
+	local_copy struct {
+		ctx        context.Context
+		dest_dir   *os.File
+		cancel_ctx context.CancelFunc
+		completion chan error
+	}
 }
 
 func (d *drop_status) reset() {
+	if d.local_copy.ctx != nil {
+		d.local_copy.cancel_ctx()
+		<-d.local_copy.completion
+	}
+	if d.dropping_to != nil {
+		d.dropping_to = d.dropping_to.unref()
+	}
 	*d = drop_status{cell_x: -1, cell_y: -1}
 }
 
@@ -268,9 +357,8 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 	if err != nil {
 		return err
 	}
+	dnd.drop_status.dropping_to = new_dir_handle(f)
 	if drop_status.is_remote_client {
-		rd := new_dir_handle(f)
-		defer rd.unref()
 		drop_status.root_remote_dir = &remote_dir_entry{}
 		seen := utils.NewSet[string](len(drop_status.uri_list))
 		idx := slices.Index(drop_status.offered_mimes, "text/uri-list")
@@ -288,14 +376,17 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 					}
 					seen.Add(key)
 				}
-				c = &remote_dir_entry{base_dir: rd.newref(), name: name}
+				c = &remote_dir_entry{base_dir: dnd.drop_status.dropping_to.newref(), name: name}
 				dnd.lp.QueueDnDData(DC{Type: 'r', X: idx + 1, Y: i + 1})
 			}
 			drop_status.root_remote_dir.children = append(drop_status.root_remote_dir.children, c)
 		}
 		drop_status.open_remote_dir = drop_status.root_remote_dir
 	} else {
-		// TODO: Implement this
+		drop_status.local_copy.dest_dir = f
+		drop_status.local_copy.ctx, drop_status.local_copy.cancel_ctx = context.WithCancel(context.Background())
+		drop_status.local_copy.completion = make(chan error, 1)
+		go do_local_copy_in_goroutine(drop_status.local_copy.ctx, f, drop_status.local_copy.completion, slices.Clone(drop_status.uri_list), func() { dnd.lp.WakeupMainThread() })
 	}
 	return
 }

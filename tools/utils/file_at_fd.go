@@ -396,7 +396,9 @@ type CopyFolderOptions struct {
 	Filter_files       func(parent *os.File, child os.FileInfo) bool
 }
 
-func copy_file_and_close(ctx context.Context, src *os.File, dest *os.File) (err error) {
+// Copy the file objects as efficiently as possible with cancellation. The
+// files are always closed before this function returns.
+func CopyFileAndClose(ctx context.Context, src *os.File, dest *os.File) (err error) {
 	err_chan := make(chan error)
 	go func() {
 		defer func() {
@@ -537,7 +539,7 @@ func CopyFolderContents(ctx context.Context, src_folder *os.File, dest_folder *o
 				sf.Close()
 				return fail(err)
 			}
-			if err = copy_file_and_close(ctx, sf, df); err != nil {
+			if err = CopyFileAndClose(ctx, sf, df); err != nil {
 				UnlinkAt(dest.File(), child.Name()) // dont leave partially copied files around
 				return fail(err)
 			}
