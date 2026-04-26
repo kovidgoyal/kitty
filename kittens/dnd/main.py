@@ -33,11 +33,8 @@ default=disallowed
 type=choices
 Allow dropping anywhere, not just on the Copy or Move drop regions. Dropping anywhere will perform
 the specified action.
-
-
---machine-id
-The machine id to use instead of the actual machine id.
 '''.format
+
 
 help_text = '''\
 Perform drag and drop operations, even over SSH.

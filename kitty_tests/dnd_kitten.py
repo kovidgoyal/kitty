@@ -116,19 +116,17 @@ class TestDnDKitten(BaseTest):
 
     def finish_setup(self, remote_client: bool = False, cli_args = ()):
         cmd = [kitten_exe(), 'dnd']
-        if remote_client:
-            cmd.append('--machine-id=remote-client-for-test')
         cmd += list(cli_args)
         self.pty = self.enterContext(PTY(argv=cmd, cwd=self.kitten_wd, rows=25, columns=80, window_id=self.capture.window_id))
         self.capture.pty = self.pty
         self.pty.callbacks.printbuf = self
         self.screen = self.pty.screen
-        self.pty.wait_till(lambda: bool(self.pty.callbacks.titlebuf))
+        self.send_dnd_command_to_kitten('SETUP_REMOTE' if remote_client else 'SETUP_LOCAL')
+        self.wait_for_responses('SETUP_DONE')
         self.assertTrue(self.probe_state('drop_wanted'))
         self.assertEqual(remote_client, self.probe_state('drop_is_remote_client'))
         if self.probe_state('drag_can_offer'):
             self.assertEqual(remote_client, self.probe_state('drag_is_remote_client'))
-        self.send_dnd_command_to_kitten('SETUP')
 
     def get_button_geometry(self, are_present: bool = True):
         self.send_dnd_command_to_kitten('GEOMETRY')

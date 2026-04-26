@@ -130,16 +130,16 @@ func (dnd *dnd) run_loop() (err error) {
 	if dnd.lp, err = loop.New(); err != nil {
 		return err
 	}
-	dnd.drop_status = reset_drop_status
+	dnd.drop_status.reset()
 
 	dnd.lp.OnInitialize = func() (string, error) {
 		dnd.lp.AllowLineWrapping(false)
 		dnd.lp.SetCursorVisible(false)
 		if dnd.allow_drops {
-			dnd.lp.StartAcceptingDrops(dnd.opts.MachineId, slices.Collect(maps.Keys(dnd.drop_dests))...)
+			dnd.lp.StartAcceptingDrops("", slices.Collect(maps.Keys(dnd.drop_dests))...)
 		}
 		if dnd.allow_drags {
-			dnd.lp.StartOfferingDrags(dnd.opts.MachineId)
+			dnd.lp.StartOfferingDrags("")
 		}
 		dnd.lp.SetWindowTitle("Drag and drop")
 		return "", dnd.render_screen()
@@ -199,9 +199,24 @@ func (dnd *dnd) run_loop() (err error) {
 			switch string(cmd.Payload) {
 			case "PING":
 				dnd.send_test_response("PONG")
-			case "SETUP":
+			case "SETUP_LOCAL", "SETUP_REMOTE":
 				dnd.in_test_mode = true
 				dnd.lp.NoRoundtripToTerminalOnExit()
+				dnd.drop_status.reset()
+				dnd.lp.StopAcceptingDrops()
+				dnd.lp.StopOfferingDrags()
+				machine_id := ""
+				if string(cmd.Payload) == "SETUP_REMOTE" {
+					machine_id = "remote-client-for-test"
+				}
+				if dnd.allow_drops {
+					dnd.lp.StartAcceptingDrops(machine_id, slices.Collect(maps.Keys(dnd.drop_dests))...)
+				}
+				if dnd.allow_drags {
+					dnd.lp.StartOfferingDrags(machine_id)
+				}
+				dnd.render_screen()
+				dnd.send_test_response("SETUP_DONE")
 			case "GEOMETRY":
 				dnd.send_test_response(fmt.Sprintf("GEOMETRY:%d:%d:%d:%d:%d:%d:%d:%d", dnd.copy_button_region.left, dnd.copy_button_region.top, dnd.copy_button_region.width, dnd.copy_button_region.height, dnd.move_button_region.left, dnd.move_button_region.top, dnd.move_button_region.width, dnd.move_button_region.height))
 			case "DROP_MIMES":

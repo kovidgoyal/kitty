@@ -195,22 +195,15 @@ type drop_status struct {
 	reading_data     bool
 	is_remote_client bool
 
-	root_remote_dir           *remote_dir_entry
-	open_remote_dir           *remote_dir_entry
-	current_remote_entry      *remote_dir_entry // used for m=1 only
-	pending_remote_dirs       []*remote_dir_entry
-	remote_dir_handle_counter int32
+	root_remote_dir      *remote_dir_entry
+	open_remote_dir      *remote_dir_entry
+	current_remote_entry *remote_dir_entry // used for m=1 only
+	pending_remote_dirs  []*remote_dir_entry
 }
 
-func (d *drop_status) next_dir_handle() int32 {
-	d.remote_dir_handle_counter++
-	for d.remote_dir_handle_counter == 0 || d.remote_dir_handle_counter == 1 {
-		d.remote_dir_handle_counter++
-	}
-	return d.remote_dir_handle_counter
+func (d *drop_status) reset() {
+	*d = drop_status{cell_x: -1, cell_y: -1}
 }
-
-var reset_drop_status = drop_status{cell_x: -1, cell_y: -1}
 
 func (root *remote_dir_entry) close_tree() {
 	if root.base_dir != nil {
@@ -227,7 +220,7 @@ func (dnd *dnd) end_drop() {
 		dnd.drop_status.root_remote_dir.close_tree()
 		dnd.drop_status.root_remote_dir = nil
 	}
-	dnd.drop_status = reset_drop_status
+	dnd.drop_status.reset()
 	dnd.render_screen()
 }
 
@@ -246,7 +239,7 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 		}
 	}
 	if len(drop_status.uri_list) == 0 {
-		*drop_status = reset_drop_status
+		dnd.drop_status.reset()
 		dnd.data_has_been_dropped = true
 		dnd.render_screen()
 		return
@@ -335,7 +328,7 @@ func (dnd *dnd) on_drop_move(cell_x, cell_y int, has_more bool, offered_mimes st
 	}
 	dnd.drop_status.in_window = cell_x > -1 && cell_y > -1
 	if !dnd.drop_status.in_window || dnd.drag_started { // disallow self drag and drop
-		dnd.drop_status = reset_drop_status
+		dnd.drop_status.reset()
 	}
 	mimes_changed := !slices.Equal(prev_status.accepted_mimes, dnd.drop_status.accepted_mimes)
 	needs_rerender = prev_status.action != dnd.drop_status.action || mimes_changed
