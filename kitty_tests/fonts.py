@@ -411,6 +411,10 @@ class Rendering(FontBaseTest):
         self.assertNotEqual(colon_glyph, ss(':', font='FiraCode-Medium.otf')[0][2])
         self.ae(colon_glyph, 1031)
         self.ae(groups('9:30', font='FiraCode-Medium.otf'), [(1, 1), (1, 1), (1, 1), (1, 1)])
+        self.ae(groups('#_(', font='FiraCode-Medium.otf'), [(3, 3)])
+        self.ae(groups('a#_(b', font='FiraCode-Medium.otf'), [(1, 1), (3, 3), (1, 1)])
+        self.ae(groups('<*>>', font='FiraCode-Medium.otf'), [(3, 3), (1, 1)])
+        self.ae(groups('a<*>>b', font='FiraCode-Medium.otf'), [(1, 1), (3, 3), (1, 1), (1, 1)])
 
         self.ae(groups('|\U0001F601|\U0001F64f|\U0001F63a|'), [(1, 1), (2, 1), (1, 1), (2, 1), (1, 1), (2, 1), (1, 1)])
         self.ae(groups('He\u0347\u0305llo\u0337,', font='LiberationMono-Regular.ttf'),
