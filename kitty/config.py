@@ -142,7 +142,10 @@ def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: list[BadLine] |
 
 
 def parse_config(
-    lines: Iterable[str], accumulate_bad_lines: list[BadLine] | None = None, effective_config_lines: Callable[[str, str], None] | None = None
+    lines: Iterable[str],
+    accumulate_bad_lines: list[BadLine] | None = None,
+    effective_config_lines: Callable[[str, str], None] | None = None,
+    allow_geninclude: bool = True,
 ) -> dict[str, Any]:
     from .options.parse import create_result_dict, parse_conf_item
     ans: dict[str, Any] = create_result_dict()
@@ -152,6 +155,7 @@ def parse_config(
         ans,
         accumulate_bad_lines=accumulate_bad_lines,
         effective_config_lines=effective_config_lines,
+        allow_geninclude=allow_geninclude,
     )
     return ans
 
