@@ -1509,6 +1509,7 @@ dot_liga_final_component(const char *glyph_name, char *output, size_t output_sz)
 
 static bool
 glyph_matches_dot_liga_final_component(hb_font_t *hbf, glyph_index dot_liga_glyph_id, glyph_index current_glyph_id) {
+    // For .liga + placeholder + final glyph cases
     char dot_liga_name[256], current_name[256], final_component[256];
     dot_liga_name[sizeof(dot_liga_name)-1] = 0; current_name[sizeof(current_name)-1] = 0;
     hb_font_glyph_to_string(hbf, dot_liga_glyph_id, dot_liga_name, sizeof(dot_liga_name) - 1);
