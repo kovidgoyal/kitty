@@ -2242,27 +2242,6 @@ class TestDnDProtocol(BaseTest):
         finally:
             os.unlink(fpath)
 
-    def test_finish_after_queued_requests(self) -> None:
-        """A finish (empty t=r) after queued requests processes remaining then finishes."""
-        with dnd_test_window() as (screen, cap):
-            self._register_for_drops(screen, cap, 'text/plain')
-            dnd_test_set_mouse_pos(cap.window_id, 0, 0, 0, 0)
-            dnd_test_fake_drop_event(cap.window_id, True, ['text/plain'])
-            cap.consume()
-
-            # Queue: data request then finish
-            parse_bytes(screen, client_request_data(1))
-            parse_bytes(screen, client_request_data())  # finish
-
-            # Serve the data request
-            dnd_test_fake_drop_data(cap.window_id, 'text/plain', b'data before finish')
-            raw = cap.consume()
-            events = parse_escape_codes_b64(raw)
-            r_events = [e for e in events if e['type'] == 'r']
-            self.assertTrue(r_events, 'no t=r events')
-            for ev in r_events:
-                self.ae(ev['meta'].get('x'), '1')
-
     def test_multiple_sync_errors_processed_immediately(self) -> None:
         """Multiple queued requests that all fail synchronously are processed immediately."""
         with dnd_test_window() as (screen, cap):

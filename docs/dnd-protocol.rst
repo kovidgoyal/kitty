@@ -127,7 +127,8 @@ send an escape code of the form::
     OSC _dnd_code ; t=r ST
 
 That is, it must send a request for data with no MIME type specified. The
-terminal emulator must then inform the OS that the drop is completed.
+terminal emulator must then inform the OS that the drop is completed. Any
+queued data requests must be discarded by the terminal.
 
 Dropping from remote machines
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

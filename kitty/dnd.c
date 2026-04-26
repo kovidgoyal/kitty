@@ -1145,9 +1145,9 @@ drop_process_queue(Window *w) {
 
 void
 drop_enqueue_request(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_y) {
-    /* Handle finish (x=0, y=0, Y=0): if there are no in-flight requests, finish immediately */
-    if (cell_x == 0 && cell_y == 0 && pixel_y == 0 && w->drop.num_data_requests == 0) {
+    if (cell_x == 0 && cell_y == 0 && pixel_y == 0) {  // drop finished
         drop_finish_and_clear_queue(w);
+        reset_drop(w);
         return;
     }
 
