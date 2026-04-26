@@ -1425,13 +1425,30 @@ ligature_type_from_glyph_name(const char *glyph_name, SpacerStrategy strategy) {
 
 #define G(x) (group_state.x)
 
+static bool
+shaped_glyphs_have_iosevka_join_names(hb_font_t *hbf) {
+    char glyph_name[128]; glyph_name[arraysz(glyph_name)-1] = 0;
+    for (unsigned i = 0; i < G(num_glyphs); i++) {
+        glyph_index glyph_id = G(info)[i].codepoint;
+        hb_font_glyph_to_string(hbf, glyph_id, glyph_name, arraysz(glyph_name)-1);
+        char *dot = strrchr(glyph_name, '.');
+        if (dot && (!strcmp(dot, ".join-l") || !strcmp(dot, ".join-r") || !strcmp(dot, ".join-m"))) return true;
+    }
+    return false;
+}
+
+static void
+set_ascii_cells(CPUCell *cpu_cells, const char *text, size_t len) {
+    for (size_t i = 0; i < len; i++) cell_set_char(cpu_cells + i, text[i]);
+}
+
 static void
 detect_spacer_strategy(hb_font_t *hbf, Font *font, const TextCache *tc) {
-    CPUCell cpu_cells[3] = {0};
-    for (unsigned i = 0; i < arraysz(cpu_cells); i++) cell_set_char(&cpu_cells[i], '=');
+    CPUCell cpu_cells[5] = {0};
+    set_ascii_cells(cpu_cells, "===", 3);
     const CellAttrs w1 = {0};
-    GPUCell gpu_cells[3] = {{.attrs = w1}, {.attrs = w1}, {.attrs = w1}};
-    shape(cpu_cells, gpu_cells, arraysz(cpu_cells), hbf, font, false, tc);
+    GPUCell gpu_cells[5] = {{.attrs = w1}, {.attrs = w1}, {.attrs = w1}, {.attrs = w1}, {.attrs = w1}};
+    shape(cpu_cells, gpu_cells, 3, hbf, font, false, tc);
     font->spacer_strategy = SPACERS_BEFORE;
     if (G(num_glyphs) > 1) {
         glyph_index glyph_id = G(info)[G(num_glyphs) - 1].codepoint;
@@ -1439,14 +1456,16 @@ detect_spacer_strategy(hb_font_t *hbf, Font *font, const TextCache *tc) {
         bool is_empty = is_special && is_empty_glyph(glyph_id, font);
         if (is_empty) font->spacer_strategy = SPACERS_AFTER;
     }
+    set_ascii_cells(cpu_cells, "==", 2);
     shape(cpu_cells, gpu_cells, 2, hbf, font, false, tc);
-    if (G(num_glyphs)) {
-        char glyph_name[128]; glyph_name[arraysz(glyph_name)-1] = 0;
-        for (unsigned i = 0; i < G(num_glyphs); i++) {
-            glyph_index glyph_id = G(info)[i].codepoint;
-            hb_font_glyph_to_string(hbf, glyph_id, glyph_name, arraysz(glyph_name)-1);
-            char *dot = strrchr(glyph_name, '.');
-            if (dot && (!strcmp(dot, ".join-l") || !strcmp(dot, ".join-r") || !strcmp(dot, ".join-m"))) {
+    if (shaped_glyphs_have_iosevka_join_names(hbf)) font->spacer_strategy = SPACERS_IOSEVKA;
+    if (font->spacer_strategy != SPACERS_IOSEVKA) {
+        static const char *samples[] = {"->", "<-", "<<=", "<==>"};
+        for (size_t s = 0; s < arraysz(samples); s++) {
+            size_t len = strlen(samples[s]);
+            set_ascii_cells(cpu_cells, samples[s], len);
+            shape(cpu_cells, gpu_cells, len, hbf, font, false, tc);
+            if (shaped_glyphs_have_iosevka_join_names(hbf)) {
                 font->spacer_strategy = SPACERS_IOSEVKA;
                 break;
             }
@@ -1456,8 +1475,8 @@ detect_spacer_strategy(hb_font_t *hbf, Font *font, const TextCache *tc) {
     // If spacer_strategy is still default, check ### glyph to confirm strategy
     // https://github.com/kovidgoyal/kitty/issues/4721
     if (font->spacer_strategy == SPACERS_BEFORE) {
-        for (unsigned i = 0; i < arraysz(cpu_cells); i++) cell_set_char(&cpu_cells[i], '#');
-        shape(cpu_cells, gpu_cells, arraysz(cpu_cells), hbf, font, false, tc);
+        set_ascii_cells(cpu_cells, "###", 3);
+        shape(cpu_cells, gpu_cells, 3, hbf, font, false, tc);
         if (G(num_glyphs) > 1) {
             glyph_index glyph_id = G(info)[G(num_glyphs) - 1].codepoint;
             bool is_special = is_special_glyph(glyph_id, font, &G(current_cell_data));
@@ -1472,6 +1491,33 @@ ligature_type_for_glyph(hb_font_t *hbf, glyph_index glyph_id, SpacerStrategy str
     static char glyph_name[128]; glyph_name[arraysz(glyph_name)-1] = 0;
     hb_font_glyph_to_string(hbf, glyph_id, glyph_name, arraysz(glyph_name)-1);
     return ligature_type_from_glyph_name(glyph_name, strategy);
+}
+
+static bool
+dot_liga_final_component(const char *glyph_name, char *output, size_t output_sz) {
+    static const char suffix[] = ".liga";
+    const size_t suffix_len = sizeof(suffix) - 1;
+    size_t len = strlen(glyph_name);
+    if (len <= suffix_len || strcmp(glyph_name + len - suffix_len, suffix) != 0) return false;
+    len -= suffix_len;
+    const char *start = glyph_name;
+    for (const char *p = glyph_name; p < glyph_name + len; p++) {
+        if (*p == '_') start = p + 1;
+    }
+    const size_t component_len = (size_t)(glyph_name + len - start);
+    if (!component_len || component_len >= output_sz) return false;
+    memcpy(output, start, component_len);
+    output[component_len] = 0;
+    return true;
+}
+
+static bool
+glyph_matches_dot_liga_final_component(hb_font_t *hbf, glyph_index dot_liga_glyph_id, glyph_index current_glyph_id) {
+    char dot_liga_name[128] = {0}, current_name[128] = {0}, final_component[128] = {0};
+    hb_font_glyph_to_string(hbf, dot_liga_glyph_id, dot_liga_name, sizeof(dot_liga_name) - 1);
+    if (!dot_liga_final_component(dot_liga_name, final_component, sizeof(final_component))) return false;
+    hb_font_glyph_to_string(hbf, current_glyph_id, current_name, sizeof(current_name) - 1);
+    return strcmp(final_component, current_name) == 0;
 }
 
 #define L INFINITE_LIGATURE_START
@@ -1618,7 +1664,10 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
                 else if (font->spacer_strategy == SPACERS_BEFORE) add_to_current_group = G(prev_was_empty);
                 else add_to_current_group = is_empty;
             } else {
-                add_to_current_group = !G(prev_was_special) || !current_group->num_cells;
+                add_to_current_group = !G(prev_was_special) || !current_group->num_cells || (
+                    G(prev_was_empty) && current_group->has_special_glyph &&
+                    glyph_matches_dot_liga_final_component(hbf, G(info)[current_group->first_glyph_idx].codepoint, glyph_id)
+                );
             }
         }
 #if 0

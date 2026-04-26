@@ -369,6 +369,14 @@ class Rendering(FontBaseTest):
             self.ae(g('abcd'), [(1, 1) for i in range(4)])
             self.ae(g('A===B!=C'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
             self.ae(g('A=>>B!=C'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
+            self.ae(g('->'), [(2, 2)])
+            self.ae(g('<-'), [(2, 2)])
+            self.ae(g('==>'), [(3, 3)])
+            self.ae(g('<=='), [(3, 3)])
+            self.ae(g('a->b'), [(1, 1), (2, 2), (1, 1)])
+            self.ae(g('a<-b'), [(1, 1), (2, 2), (1, 1)])
+            self.ae(g('a==>b'), [(1, 1), (3, 3), (1, 1)])
+            self.ae(g('a<==b'), [(1, 1), (3, 3), (1, 1)])
             if 'iosevka' in font:
                 self.ae(g('--->'), [(4, 4)])
                 self.ae(g('-' * 12 + '>'), [(13, 13)])
@@ -380,7 +388,25 @@ class Rendering(FontBaseTest):
                 self.ae(g('===--<>=='), [(3, 3), (2, 2), (2, 2), (2, 2)])
                 self.ae(g('==!=<>==<><><>'), [(4, 4), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)])
                 self.ae(g('-' * 18), [(18, 18)])
+                self.ae(g('<==>'), [(4, 4)])
+                self.ae(g('<!--'), [(4, 4)])
+                self.ae(g('a<==>b'), [(1, 1), (4, 4), (1, 1)])
+                self.ae(g('a<!--b'), [(1, 1), (4, 4), (1, 1)])
             self.ae(g('a>\u2060<b'), [(1, 1), (1, 2), (1, 1), (1, 1)])
+        comfy = partial(groups, font='ComfyCode-Regular.ttf')
+        comfy_cases = {
+            '->': ('a->b', 2),
+            '<-': ('a<-b', 2),
+            '==>': ('a==>b', 3),
+            '<==': ('a<==b', 3),
+        }
+        for text, (wrapped, ligature_width) in comfy_cases.items():
+            baseline = comfy(text)
+            self.assertIn(baseline, ([(ligature_width, ligature_width)], [(1, 1) for i in range(ligature_width)]))
+            if baseline == [(ligature_width, ligature_width)]:
+                self.ae(comfy(wrapped), [(1, 1), (ligature_width, ligature_width), (1, 1)])
+            else:
+                self.ae(comfy(wrapped), [(1, 1) for i in range(len(wrapped))])
         colon_glyph = ss('9:30', font='FiraCode-Medium.otf')[1][2]
         self.assertNotEqual(colon_glyph, ss(':', font='FiraCode-Medium.otf')[0][2])
         self.ae(colon_glyph, 1031)
