@@ -1489,35 +1489,6 @@ ligature_type_for_glyph(hb_font_t *hbf, glyph_index glyph_id, SpacerStrategy str
     return ligature_type_from_glyph_name(glyph_name, strategy);
 }
 
-static bool
-dot_liga_final_component(const char *glyph_name, char *output, size_t output_sz) {
-    static const char suffix[] = ".liga";
-    static const size_t suffix_len = sizeof(suffix) - 1;
-    size_t len = strlen(glyph_name);
-    if (len <= suffix_len || strcmp(glyph_name + len - suffix_len, suffix) != 0) return false;
-    len -= suffix_len;
-    const char *start = glyph_name;
-    for (const char *p = glyph_name; p < glyph_name + len; p++) {
-        if (*p == '_') start = p + 1;
-    }
-    const size_t component_len = (size_t)(glyph_name + len - start);
-    if (!component_len || component_len + 1 >= output_sz) return false;
-    memcpy(output, start, component_len);
-    output[component_len] = 0;
-    return true;
-}
-
-static bool
-glyph_matches_dot_liga_final_component(hb_font_t *hbf, glyph_index dot_liga_glyph_id, glyph_index current_glyph_id) {
-    // For .liga + placeholder + final glyph cases
-    char dot_liga_name[256], current_name[256], final_component[256];
-    dot_liga_name[sizeof(dot_liga_name)-1] = 0; current_name[sizeof(current_name)-1] = 0;
-    hb_font_glyph_to_string(hbf, dot_liga_glyph_id, dot_liga_name, sizeof(dot_liga_name) - 1);
-    if (!dot_liga_final_component(dot_liga_name, final_component, sizeof(final_component))) return false;
-    hb_font_glyph_to_string(hbf, current_glyph_id, current_name, sizeof(current_name) - 1);
-    return strcmp(final_component, current_name) == 0;
-}
-
 #define L INFINITE_LIGATURE_START
 #define M INFINITE_LIGATURE_MIDDLE
 #define R INFINITE_LIGATURE_END
@@ -1662,10 +1633,7 @@ group_normal(Font *font, hb_font_t *hbf, const TextCache *tc, ListOfChars *lc) {
                 else if (font->spacer_strategy == SPACERS_BEFORE) add_to_current_group = G(prev_was_empty);
                 else add_to_current_group = is_empty;
             } else {
-                add_to_current_group = !G(prev_was_special) || !current_group->num_cells || (
-                    G(prev_was_empty) && current_group->has_special_glyph &&
-                    glyph_matches_dot_liga_final_component(hbf, G(info)[current_group->first_glyph_idx].codepoint, glyph_id)
-                );
+                add_to_current_group = !G(prev_was_special) || !current_group->num_cells;
             }
         }
 #if 0
