@@ -398,10 +398,6 @@ type CopyFolderOptions struct {
 
 func copy_file_and_close(ctx context.Context, src *os.File, dest *os.File) (err error) {
 	err_chan := make(chan error)
-	defer func() {
-		src.Close()
-		dest.Close()
-	}()
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -417,12 +413,14 @@ func copy_file_and_close(ctx context.Context, src *os.File, dest *os.File) (err 
 
 	select {
 	case <-ctx.Done():
-		// wait for go routine to exit
 		src.Close()
 		dest.Close()
+		// wait for go routine to exit
 		<-err_chan
 		return ctx.Err()
 	case err := <-err_chan:
+		src.Close()
+		dest.Close()
 		return err
 	}
 }
