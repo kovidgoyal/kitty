@@ -377,6 +377,7 @@ class Rendering(FontBaseTest):
             self.ae(g('a<-b'), [(1, 1), (2, 2), (1, 1)])
             self.ae(g('a==>b'), [(1, 1), (3, 3), (1, 1)])
             self.ae(g('a<==b'), [(1, 1), (3, 3), (1, 1)])
+            print(111111111, font, g('<<==='))
             if 'iosevka' in font:
                 self.ae(g('--->'), [(4, 4)])
                 self.ae(g('-' * 12 + '>'), [(13, 13)])
