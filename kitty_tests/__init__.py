@@ -408,8 +408,17 @@ class PTY:
                 os.close(self.slave_fd)
                 del self.slave_fd
             if self.child_pid > 0 and not self.child_waited_for:
-                os.waitpid(self.child_pid, 0)
-                self.child_waited_for = True
+                st = time.monotonic()
+                while time.monotonic() - st < 2:
+                    pid, ec = os.waitpid(self.child_pid, os.WNOHANG)
+                    if pid == self.child_pid:
+                        self.child_waited_for = True
+                        break
+                    time.sleep(0.1)
+                if not self.child_waited_for:
+                    os.kill(self.child_pid, signal.SIGKILL)
+                    os.waitpid(self.child_pid, 0)
+                    self.child_waited_for = True
 
     def write_to_child(self, data, flush=False):
         if isinstance(data, str):
@@ -453,7 +462,9 @@ class PTY:
             msg = 'The condition was not met'
             if timeout_msg is not None:
                 msg = timeout_msg()
-            raise TimeoutError(f'Timed out after {timeout} seconds: {msg}. {self.screen_contents_for_error()}')
+            if not msg.endswith('\n'):
+                msg += '. '
+            raise TimeoutError(f'Timed out after {timeout} seconds: {msg}{self.screen_contents_for_error()}')
 
     def wait_till_child_exits(self, timeout=30 if BaseTest.is_ci else 10, require_exit_code=None):
         end_time = time.monotonic() + timeout

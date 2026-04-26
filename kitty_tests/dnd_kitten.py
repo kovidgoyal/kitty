@@ -129,6 +129,8 @@ class TestDnDKitten(BaseTest):
 
     def reset_kitten(self, remote_client: bool, clear_tdir=True):
         if clear_tdir:
+            self.send_dnd_command_to_kitten('PING')
+            self.wait_for_responses('PONG')
             shutil.rmtree(self.kitten_wd)
             os.mkdir(self.kitten_wd)
             shutil.rmtree(self.src_data_dir)
@@ -160,7 +162,7 @@ class TestDnDKitten(BaseTest):
         def wait_till():
             return q == self.messages_from_kitten.strip()
         try:
-            self.pty.wait_till(wait_till, timeout, lambda: f'Responses so far: Expected:\n{q!r}\nActual:\n{self.messages_from_kitten.strip()!r} != {q!r}')
+            self.pty.wait_till(wait_till, timeout, lambda: f'Responses so far: Expected:\n{q!r}\nActual:\n{self.messages_from_kitten.strip()!r}\n')
         finally:
             self.messages_from_kitten = ''
 
@@ -249,16 +251,21 @@ class TestDnDKitten(BaseTest):
                 dnd_test_fake_drop_data(self.capture.window_id, mime, chunk, 0, True)
             dnd_test_fake_drop_data(self.capture.window_id, mime, b'')
 
+        self.send_dnd_command_to_kitten('DROP_IS_REMOTE')
+        self.wait_for_responses(str(remote_client))
+
         with open(os.path.join(self.src_data_dir, 'some-image.png'), 'rb') as f:
             send_file_in_chunks(f, 'image/png', 1117)
 
-        self.send_dnd_command_to_kitten('DROP_IS_REMOTE')
-        self.wait_for_responses(str(remote_client))
         self.send_dnd_command_to_kitten('DROP_URI_LIST')
         self.wait_for_responses('|'.join(path_list))
         jn = os.path.join
         self.assert_files_have_same_content(jn(self.src_data_dir, 'some-image.png'), jn(self.kitten_wd, img_drop_path))
         shutil.rmtree(os.path.dirname(jn(self.kitten_wd, img_drop_path)))
+        if remote_client:
+            pass
+        else:
+            self.wait_for_state('drop_action', 0)
 
     def assert_files_have_same_content(self, a, b):
         with open(a, 'rb') as fa, open(b, 'rb') as fb:

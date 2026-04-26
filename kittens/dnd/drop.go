@@ -146,19 +146,19 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string) (e
 		if src_file != nil {
 			src_file.Close()
 		}
-		if src_file, err = os.Open(path); err != nil {
-			return err
-		}
-		st, err := src_file.Stat()
+		st, err := os.Lstat(path)
 		if err != nil {
 			return err
 		}
 		if st.IsDir() {
-			d, err := utils.CreateDirAt(dest_dir, filepath.Base(src_file.Name()), st.Mode().Perm())
+			if src_file, err = os.Open(path); err != nil {
+				return err
+			}
+			d, err := utils.CreateDirAt(dest_dir, filepath.Base(path), st.Mode().Perm())
 			if err != nil {
 				return err
 			}
-			err = utils.CopyFolderContents(ctx, src_file, dest_dir, utils.CopyFolderOptions{
+			err = utils.CopyFolderContents(ctx, src_file, d, utils.CopyFolderOptions{
 				Filter_files: func(parent *os.File, child os.FileInfo) bool {
 					return child.IsDir() || child.Mode().IsRegular() || child.Mode()&fs.ModeSymlink != 0
 				},
@@ -169,16 +169,29 @@ func do_local_copy(ctx context.Context, dest_dir *os.File, uri_list []string) (e
 			}
 		} else if st.Mode().IsRegular() {
 			// First try a hard link
-			if err = os.Link(src_file.Name(), filepath.Join(dest_dir.Name(), filepath.Base(src_file.Name()))); err == nil {
+			dest := filepath.Join(dest_dir.Name(), filepath.Base(path))
+			if err = os.Link(path, dest); err == nil {
 				continue
 			}
-			d, err := utils.CreateAt(dest_dir, filepath.Base(src_file.Name()), st.Mode().Perm())
+			if src_file, err = os.Open(path); err != nil {
+				return err
+			}
+			d, err := utils.CreateAt(dest_dir, filepath.Base(dest), st.Mode().Perm())
 			if err != nil {
 				return err
 			}
 			err = utils.CopyFileAndClose(ctx, src_file, d)
 			src_file = nil // already closed
 			if err != nil {
+				return err
+			}
+		} else if st.Mode()&fs.ModeSymlink != 0 {
+			target, err := os.Readlink(path)
+			if err != nil {
+				return err
+			}
+			dest := filepath.Join(dest_dir.Name(), filepath.Base(path))
+			if err := os.Symlink(target, dest); err != nil {
 				return err
 			}
 		}
@@ -280,7 +293,6 @@ type drop_status struct {
 
 	local_copy struct {
 		ctx        context.Context
-		dest_dir   *os.File
 		cancel_ctx context.CancelFunc
 		completion chan error
 	}
@@ -347,6 +359,24 @@ func (dnd *dnd) all_drop_data_received() {
 	dnd.end_drop()
 }
 
+func (dnd *dnd) drop_on_wakeup() error {
+	if dnd.drop_status.local_copy.completion == nil {
+		return nil
+	}
+	select {
+	case err := <-dnd.drop_status.local_copy.completion:
+		dnd.drop_status.local_copy.ctx = nil
+		dnd.drop_status.local_copy.completion = nil
+		if err != nil {
+			return err
+		}
+		dnd.all_drop_data_received()
+		return nil
+	default:
+		return nil
+	}
+}
+
 func (dnd *dnd) new_tdir() (dir_file *os.File, err error) {
 	dnd.tdir_counter++
 	name := strconv.Itoa(dnd.tdir_counter)
@@ -355,12 +385,6 @@ func (dnd *dnd) new_tdir() (dir_file *os.File, err error) {
 
 func (dnd *dnd) all_mime_data_dropped() (err error) {
 	drop_status := &dnd.drop_status
-	if s, found := dnd.drop_dests["text/uri-list"]; found {
-		b := s.dest.(*bufferWriteCloser)
-		if drop_status.uri_list, err = parse_uri_list(b.String()); err != nil {
-			return err
-		}
-	}
 	if len(drop_status.uri_list) == 0 {
 		dnd.data_has_been_dropped = true
 		dnd.end_drop()
@@ -396,7 +420,6 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 		}
 		drop_status.open_remote_dir = drop_status.root_remote_dir
 	} else {
-		drop_status.local_copy.dest_dir = f
 		drop_status.local_copy.ctx, drop_status.local_copy.cancel_ctx = context.WithCancel(context.Background())
 		drop_status.local_copy.completion = make(chan error, 1)
 		go do_local_copy_in_goroutine(drop_status.local_copy.ctx, f, drop_status.local_copy.completion, slices.Clone(drop_status.uri_list), func() { dnd.lp.WakeupMainThread() })
@@ -569,6 +592,13 @@ func (dnd *dnd) on_drop_data(cmd DC) error {
 			return err
 		}
 		dest.completed = true
+		if mime == "text/uri-list" {
+			b := dest.dest.(*bufferWriteCloser)
+			var err error
+			if drop_status.uri_list, err = parse_uri_list(b.String()); err != nil {
+				return err
+			}
+		}
 		pending := false
 		for _, d := range dnd.drop_dests {
 			if !d.completed {

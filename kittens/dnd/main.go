@@ -168,6 +168,13 @@ func (dnd *dnd) run_loop() (err error) {
 		return ""
 	}
 
+	dnd.lp.OnWakeup = func() error {
+		if err := dnd.drop_on_wakeup(); err != nil {
+			return err
+		}
+		return nil
+	}
+
 	dnd.lp.OnDnDData = func(cmd loop.DndCommand) error {
 		// TODO: Use lp.QueueDnDData to implement drag and drop protocol
 		// If allow_drags, start a drag when the terminal sends the t=o
@@ -176,35 +183,12 @@ func (dnd *dnd) run_loop() (err error) {
 		// reset drag_started at the end of the drag. Use opts.DragAction to
 		// set what actions are allowed.
 
-		// If a drop enters the window and has one or more MIME types present
-		// in drop_dests, accept the drop, unless drag_started is true.
-
-		// Redraw the screen whenever drag or drop status changes.
-
-		// When a drop happens, write all data for the MIME types present in
-		// both drop_dests and the actual dropped data. For the text/uri-list
-		// type if the terminal indicates it is coming from a remote machine
-		// request the data for the file:// entries from the uri-list using the
-		// dnd protocol and write it, otherwise, copy the file URLs using
-		// normal file system operations. If opts.ConfirmDropOverwrite is true
-		// then when some data would overwrite existing file, put it into a
-		// temp file instead and after all data is transferred as the user for
-		// confirmation and overwrite or not accordingly. While a drop is in
-		// progress the render_screen() function should hide the drop
-		// destination buttons and instead show the text "Drop in progress,
-		// reading data..."
-		// Be very careful when writing dropped data from uri-list nothing
-		// should be written outside the destination directory (the current
-		// working directory by default). In particular, symlinks must be
-		// handled with care.
-
 		// When acting as a drag source, dont forget to implement support for
 		// remote dragging, which means providing data for the text/uri-list
 		// mime type file:// entries when the terminal requests it using the
 		// dnd protocol. If the action chosen is move, delete the files
 		// corresponding to the drag sources, including the files in the
 		// uri-list and exit.
-
 		switch cmd.Type {
 		case 'T':
 			switch string(cmd.Payload) {
