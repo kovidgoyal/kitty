@@ -44,12 +44,15 @@ func open_file_for_writing(path string) (*os.File, error) {
 
 func (d *drop_dest) write(chunk []byte) (err error) {
 	if d.dest == nil {
-		d.dest, err = open_file_for_writing(d.path)
-		d.close_on_finish = true
-		if err != nil {
-			return
+		if d.path == "" {
+			d.dest = &bufferWriteCloser{&bytes.Buffer{}}
+		} else {
+			d.dest, err = open_file_for_writing(d.path)
+			d.close_on_finish = true
+			if err != nil {
+				return
+			}
 		}
-
 	}
 	_, err = d.dest.Write(chunk)
 	return
@@ -205,6 +208,23 @@ func (d *drop_status) reset() {
 	*d = drop_status{cell_x: -1, cell_y: -1}
 }
 
+func (d *drop_dest) reset() {
+	if d.dest != nil && d.dest != os.Stdout {
+		d.dest.Close()
+		d.dest = nil
+	}
+	d.completed = false
+	d.close_on_finish = false
+	d.b64_decoder = streaming_base64.StreamingBase64Decoder{}
+}
+
+func (dnd *dnd) reset_drop() {
+	dnd.drop_status.reset()
+	for _, x := range dnd.drop_dests {
+		x.reset()
+	}
+}
+
 func (root *remote_dir_entry) close_tree() {
 	if root.base_dir != nil {
 		root.base_dir = root.base_dir.unref()
@@ -220,7 +240,7 @@ func (dnd *dnd) end_drop() {
 		dnd.drop_status.root_remote_dir.close_tree()
 		dnd.drop_status.root_remote_dir = nil
 	}
-	dnd.drop_status.reset()
+	dnd.reset_drop()
 	dnd.render_screen()
 }
 
@@ -239,7 +259,7 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 		}
 	}
 	if len(drop_status.uri_list) == 0 {
-		dnd.drop_status.reset()
+		dnd.reset_drop()
 		dnd.data_has_been_dropped = true
 		dnd.render_screen()
 		return
@@ -328,7 +348,7 @@ func (dnd *dnd) on_drop_move(cell_x, cell_y int, has_more bool, offered_mimes st
 	}
 	dnd.drop_status.in_window = cell_x > -1 && cell_y > -1
 	if !dnd.drop_status.in_window || dnd.drag_started { // disallow self drag and drop
-		dnd.drop_status.reset()
+		dnd.reset_drop()
 	}
 	mimes_changed := !slices.Equal(prev_status.accepted_mimes, dnd.drop_status.accepted_mimes)
 	needs_rerender = prev_status.action != dnd.drop_status.action || mimes_changed

@@ -98,39 +98,50 @@ func (dnd *dnd) send_test_response(payload string) {
 	dnd.lp.DebugPrintln(payload)
 }
 
-func (dnd *dnd) run_loop() (err error) {
-	base_dir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
+func (dnd *dnd) setup_base_dir(base_dir string) error {
 	base_tdir, err := os.MkdirTemp(base_dir, ".dnd-kitten-drop-*")
 	if err != nil {
 		return err
 	}
-	var base_tdir_f *os.File
-	defer func() {
-		if base_tdir_f != nil {
-			utils.RemoveChildren(base_tdir_f)
-			base_tdir_f.Close()
-		}
-		if terr := os.RemoveAll(base_tdir); terr != nil && err == nil {
-			err = terr
-		}
-	}()
-	base_tdir_f, err = os.Open(base_tdir)
+	bf, err := os.Open(base_tdir)
 	if err != nil {
-		return
+		os.RemoveAll(base_tdir)
+		return err
 	}
-	dnd.base_tempdir = base_tdir_f
+	dnd.base_tempdir = bf
 	if _, serr := os.Stat(filepath.Join(base_dir, strings.ToUpper(filepath.Base(base_tdir)))); serr == nil {
 		dnd.is_case_sensitive_filesystem = false
 	}
+	return nil
+}
+
+func (dnd *dnd) remove_tdir() error {
+	path := dnd.base_tempdir.Name()
+	dnd.base_tempdir.Close()
+	dnd.base_tempdir = nil
+	return os.RemoveAll(path)
+}
+
+func (dnd *dnd) run_loop() (err error) {
+	defer func() {
+		if dnd.in_test_mode && err != nil {
+			debugprintln("dnd kitten exiting with error: ", err)
+		}
+	}()
+	base_dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	if err = dnd.setup_base_dir(base_dir); err != nil {
+		return err
+	}
+	defer dnd.remove_tdir()
 
 	dnd.allow_drops, dnd.allow_drags = len(dnd.drop_dests) > 0, len(dnd.drag_sources) > 0
 	if dnd.lp, err = loop.New(); err != nil {
 		return err
 	}
-	dnd.drop_status.reset()
+	dnd.reset_drop()
 
 	dnd.lp.OnInitialize = func() (string, error) {
 		dnd.lp.AllowLineWrapping(false)
@@ -205,6 +216,8 @@ func (dnd *dnd) run_loop() (err error) {
 				dnd.drop_status.reset()
 				dnd.lp.StopAcceptingDrops()
 				dnd.lp.StopOfferingDrags()
+				dnd.remove_tdir()
+				dnd.setup_base_dir(base_dir)
 				machine_id := ""
 				if string(cmd.Payload) == "SETUP_REMOTE" {
 					machine_id = "remote-client-for-test"

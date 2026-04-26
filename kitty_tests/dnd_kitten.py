@@ -121,12 +121,20 @@ class TestDnDKitten(BaseTest):
         self.capture.pty = self.pty
         self.pty.callbacks.printbuf = self
         self.screen = self.pty.screen
-        self.send_dnd_command_to_kitten('SETUP_REMOTE' if remote_client else 'SETUP_LOCAL')
-        self.wait_for_responses('SETUP_DONE')
+        self.reset_kitten(remote_client, clear_tdir=False)
         self.assertTrue(self.probe_state('drop_wanted'))
         self.assertEqual(remote_client, self.probe_state('drop_is_remote_client'))
         if self.probe_state('drag_can_offer'):
             self.assertEqual(remote_client, self.probe_state('drag_is_remote_client'))
+
+    def reset_kitten(self, remote_client: bool, clear_tdir=True):
+        if clear_tdir:
+            shutil.rmtree(self.kitten_wd)
+            os.mkdir(self.kitten_wd)
+            shutil.rmtree(self.src_data_dir)
+            os.mkdir(self.src_data_dir)
+        self.send_dnd_command_to_kitten('SETUP_REMOTE' if remote_client else 'SETUP_LOCAL')
+        self.wait_for_responses('SETUP_DONE')
 
     def get_button_geometry(self, are_present: bool = True):
         self.send_dnd_command_to_kitten('GEOMETRY')
@@ -152,7 +160,7 @@ class TestDnDKitten(BaseTest):
         def wait_till():
             return q == self.messages_from_kitten.strip()
         try:
-            self.pty.wait_till(wait_till, timeout, lambda: f'Responses so far: {self.messages_from_kitten!r}')
+            self.pty.wait_till(wait_till, timeout, lambda: f'Responses so far: Expected:\n{q!r}\nActual:\n{self.messages_from_kitten.strip()!r} != {q!r}')
         finally:
             self.messages_from_kitten = ''
 
@@ -166,6 +174,10 @@ class TestDnDKitten(BaseTest):
         self.send_dnd_command_to_kitten('PING')
         self.wait_for_responses('PONG')
 
+    def exit_kitten(self):
+        self.pty.write_to_child('\x1b[27u')  # ]
+        self.pty.wait_till_child_exits(require_exit_code=0)
+
     def tearDown(self):
         dnd_set_test_write_func(None)
         dnd_test_cleanup_fake_window(self.capture.os_window_id)
@@ -174,14 +186,14 @@ class TestDnDKitten(BaseTest):
         self.pty = None
 
     def test_dnd_kitten_drop(self):
-        self.dnd_kitten_drop(False)
-
-    def test_dnd_kitten_drop_remote(self):
-        self.dnd_kitten_drop(True)
-
-    def dnd_kitten_drop(self, remote_client):
         img_drop_path = 'images/image.png'
-        self.finish_setup(remote_client=remote_client, cli_args=(f'--drop=image/png:{img_drop_path}',))
+        self.finish_setup(cli_args=(f'--drop=image/png:{img_drop_path}',))
+        self.dnd_kitten_drop(False, img_drop_path)
+        self.reset_kitten(True)
+        self.dnd_kitten_drop(True, img_drop_path)
+        self.exit_kitten()
+
+    def dnd_kitten_drop(self, remote_client, img_drop_path):
         copy, move = self.get_button_geometry()
         all_mimes = 'text/uri-list a/b c/d'
         for b, expected in ((copy, GLFW_DRAG_OPERATION_COPY), (move, GLFW_DRAG_OPERATION_MOVE)):
@@ -215,7 +227,7 @@ class TestDnDKitten(BaseTest):
         self.assertEqual('text/uri-list', self.probe_state('drop_getting_data_for_mime'))
         create_fs(self.src_data_dir)
         uri_list, path_list = [], []
-        for x in os.listdir(self.src_data_dir):
+        for x in sorted(os.listdir(self.src_data_dir)):
             uri_list.append(as_file_url(self.src_data_dir, x))
         uri_list = ['moose:cow', '# file:///frog/march'] + uri_list
         uri_list.insert(3, 'ignore://me')
