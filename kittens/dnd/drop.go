@@ -333,6 +333,20 @@ func (dnd *dnd) end_drop() {
 	dnd.render_screen()
 }
 
+func (dnd *dnd) all_drop_data_received() {
+	dnd.data_has_been_dropped = true
+	var staging_dir *os.File
+	if dnd.drop_status.dropping_to != nil {
+		staging_dir = dnd.drop_status.dropping_to.handle
+	}
+	if staging_dir != nil {
+		// TODO: either copy all files or check for overwrites
+		if dnd.opts.ConfirmDropOverwrite {
+		}
+	}
+	dnd.end_drop()
+}
+
 func (dnd *dnd) new_tdir() (dir_file *os.File, err error) {
 	dnd.tdir_counter++
 	name := strconv.Itoa(dnd.tdir_counter)
@@ -348,9 +362,8 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 		}
 	}
 	if len(drop_status.uri_list) == 0 {
-		dnd.reset_drop()
 		dnd.data_has_been_dropped = true
-		dnd.render_screen()
+		dnd.end_drop()
 		return
 	}
 	f, err := dnd.new_tdir()
@@ -530,8 +543,7 @@ func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 					dnd.lp.QueueDnDData(DC{Type: 'r', X: i + 1, Yp: drop_status.open_remote_dir.item_type}) // close directory in terminal
 				}
 			} else {
-				dnd.data_has_been_dropped = true
-				dnd.end_drop()
+				dnd.all_drop_data_received()
 			}
 		}
 	}
