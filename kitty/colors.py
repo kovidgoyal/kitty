@@ -5,13 +5,14 @@ import os
 from collections.abc import Iterable, Sequence
 from contextlib import suppress
 from enum import Enum
-from typing import Literal, Optional, TypedDict
+from typing import Any, Literal, Optional, TypedDict
 
 from .config import parse_config
 from .constants import config_dir
 from .fast_data_types import Color, get_boss, get_options, glfw_get_system_color_theme, patch_color_profiles, patch_global_colors, set_os_window_chrome
-from .options.types import Options, nullable_colors, special_colors
+from .options.types import Options, all_colors, nullable_colors, special_colors
 from .rgb import color_from_int
+from .types import run_once
 from .typing_compat import WindowType
 
 ColorsSpec = dict[str, Optional[int]]
@@ -191,19 +192,32 @@ class ThemeColors:
 theme_colors = ThemeColors()
 
 
-def parse_colors(args: Iterable[str | Iterable[str]], background_image_options: BackgroundImageOptions | None = None) -> Colors:
+@run_once
+def all_color_related_conf_keys() -> frozenset[str]:
+    return all_colors | frozenset(BackgroundImageOptions.__optional_keys__) | frozenset({'transparent_background_colors'})
+
+
+def parse_colors(
+    args: Iterable[str | Iterable[str]], background_image_options: BackgroundImageOptions | None = None,
+    allow_reading_conf_files: bool = True,
+) -> Colors:
+    from kitty.options.parse import parse_conf_item
     colors: dict[str, Color | None | int] = {}
     nullable_color_map: dict[str, int | None] = {}
     special_color_map: dict[str, int] = {}
     transparent_background_colors = ()
+    allowed = all_color_related_conf_keys()
     for spec in args:
+        conf: dict[str, Any] = {}
         if isinstance(spec, str):
-            if '=' in spec:
-                conf = parse_config((spec.replace('=', ' '),))
-            else:
+            k, sep, v = spec.partition('=')
+            if sep == '=':
+                if k in allowed:
+                    parse_conf_item(k, v, conf)
+            elif allow_reading_conf_files:
                 with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
                     conf = parse_config(f)
-        else:
+        elif allow_reading_conf_files:
             conf = parse_config(spec)
         transparent_background_colors = conf.pop('transparent_background_colors', ())
         if background_image_options is not None:
