@@ -266,7 +266,7 @@ over SSH when using :doc:`kittens/ssh`.
 
 The :command:`clone-in-kitty` command takes almost all the same arguments as the
 :doc:`launch <launch>` command, so you can open a new tab instead or a new OS
-window, etc. Arguments of launch that can cause code execution or that don't
+window, etc. Arguments of launch that that don't
 make sense when cloning are ignored. Most prominently, the following options are
 ignored: :option:`--allow-remote-control <launch --allow-remote-control>`,
 :option:`--copy-cmdline <launch --copy-cmdline>`, :option:`--copy-env <launch
@@ -314,7 +314,8 @@ window, etc. Not all arguments are supported, see the discussion in the
 
 In order to avoid remote code execution, kitty will only execute the configured
 editor and pass the file path to edit to it and it will strip all environment
-variables from the :command:`edit-in-kitty` command line.
+variables from the :command:`edit-in-kitty` command line. Additionally, parsing
+of colors is more limited, reading colors from config files is not allowed.
 
 .. note:: To edit files using sudo the best method is to set the
    :code:`SUDO_EDITOR` environment variable to ``kitten edit-in-kitty`` and

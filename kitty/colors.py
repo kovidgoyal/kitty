@@ -212,6 +212,7 @@ def parse_colors(
         if isinstance(spec, str):
             k, sep, v = spec.partition('=')
             if sep == '=':
+                k, v = k.strip(), v.strip()
                 if k in allowed:
                     parse_conf_item(k, v, conf)
             elif allow_reading_conf_files:

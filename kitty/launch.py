@@ -869,18 +869,24 @@ def launch(
 @run_once
 def clone_safe_opts() -> frozenset[str]:
     return frozenset((
-        'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'env', 'var', 'hold',
+        'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'var', 'hold',
         'location', 'os_window_class', 'os_window_name', 'os_window_title', 'os_window_state',
-        'logo', 'logo_position', 'logo_alpha', 'color', 'spacing', 'next_to', 'hold_after_ssh'
+        'logo', 'logo_position', 'logo_alpha', 'spacing', 'next_to', 'hold_after_ssh'
     ))
 
 
-def parse_opts_for_clone(args: list[str]) -> tuple[LaunchCLIOptions, list[str]]:
+def parse_opts_for_clone(args: list[str], allow_env: bool = False) -> tuple[LaunchCLIOptions, list[str]]:
     unsafe, unsafe_args = parse_launch_args(args)
     default_opts, default_args = parse_launch_args()
     # only copy safe options, those that dont lead to local code exec
     for x in clone_safe_opts():
         setattr(default_opts, x, getattr(unsafe, x))
+    if allow_env:
+        # Env is not safe in general because some programs may execute code
+        # based on the value of env vars, such as VIMINIT for vim.
+        default_opts.env = unsafe.env
+    # color specs that dont have = will be parsed as a conf file. That is unsafe because of geninclude.
+    default_opts.color = [x for x in unsafe.color if '=' in x]
     return default_opts, unsafe_args
 
 
@@ -1074,7 +1080,7 @@ class CloneCmd:
         self.bash_version = ''
         self.history = ''
         self.parse_message(msg)
-        self.opts = parse_opts_for_clone(self.args)[0]
+        self.opts = parse_opts_for_clone(self.args, allow_env=True)[0]
 
     def parse_message(self, msg: str) -> None:
         simple = 'pid', 'envfmt', 'shell', 'bash_version'
@@ -1111,9 +1117,6 @@ def remote_edit(msg: str, window: Window) -> None:
         return
     cmdline = get_editor(path_to_edit=c.file_localpath, line_number=c.line_number)
     c.opts.source_window = c.opts.next_to = f'id:{window.id}'
-    # We ignore env vars as some editors execute code present in env vars such as VIMINIT
-    c.opts.env = ()
-    c.opts.copy_env = False
     w = launch(get_boss(), c.opts, cmdline)
     if w is not None:
         c.source_window_id = window.id
