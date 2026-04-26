@@ -1711,16 +1711,20 @@ class Window:
                 shm.write(b'\x01')
 
         message: str = data['message']
+        window_title = 'A program wants your input'
         if data['type'] == 'confirm':
             get_boss().confirm(
                 message, callback, window=self, confirm_on_cancel=bool(data.get('confirm_on_cancel')),
-                confirm_on_accept=bool(data.get('confirm_on_accept', True)))
+                confirm_on_accept=bool(data.get('confirm_on_accept', True)), title=window_title)
         elif data['type'] == 'choose':
             get_boss().choose(
-                message, callback, *data['choices'], window=self, default=data.get('default', ''))
+                message, callback, *data['choices'], window=self, default=data.get('default', ''), title=window_title)
         elif data['type'] == 'get_line':
+            which = 'password' if data.get('is_password') else 'input'
+            message = f'\x1b[33mA program running in this window is asking for your {which}\x1b[m\n\n{message}'
             get_boss().get_line(
-                message, callback, window=self, is_password=bool(data.get('is_password')), prompt=data.get('prompt', '> '))
+                message, callback, window=self, is_password=bool(data.get('is_password')),
+                prompt=data.get('prompt', '> '), window_title=window_title)
         else:
             log_error(f'Ignoring ask request with unknown type: {data["type"]}')
 
