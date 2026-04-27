@@ -21,28 +21,18 @@ func openDir(t *testing.T, path string) *os.File {
 }
 
 // buildTree creates a directory tree described by a map of relative path ->
-// content. A nil content value creates a directory; a non-nil value (even
-// empty string) creates a regular file. Symlink entries are expressed via the
-// separate symlinks map: relative link name -> target string.
+// content. Each entry creates a regular file with the given content (parent
+// directories are created automatically). Symlink entries are expressed via
+// the separate symlinks map: relative link name -> target string.
 func buildTree(t *testing.T, base string, files map[string]string, symlinks map[string]string) {
 	t.Helper()
 	for rel, content := range files {
 		full := filepath.Join(base, rel)
-		if content == "" && files[rel] == "" {
-			// Create parent dirs in case they are missing.
-			if err := os.MkdirAll(filepath.Dir(full), 0755); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(full, []byte(content), 0644); err != nil {
-				t.Fatal(err)
-			}
-		} else {
-			if err := os.MkdirAll(filepath.Dir(full), 0755); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.WriteFile(full, []byte(content), 0644); err != nil {
-				t.Fatal(err)
-			}
+		if err := os.MkdirAll(filepath.Dir(full), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0644); err != nil {
+			t.Fatal(err)
 		}
 	}
 	for name, target := range symlinks {
