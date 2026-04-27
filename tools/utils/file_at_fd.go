@@ -265,15 +265,17 @@ func RemoveChildren(dirFile *os.File) error {
 					}
 					continue
 				}
-				if err := RemoveChildren(childFile); err != nil && firstErr == nil {
+				err = RemoveChildren(childFile)
+				childFile.Close()
+				if err == nil {
+					// Remove the empty subdirectory
+					if err = RemoveDirAt(dirFile, name); err != nil && firstErr == nil {
+						firstErr = err
+					}
+				} else if firstErr == nil {
 					firstErr = err
 				}
 				childFile.Close()
-
-				// Remove the empty subdirectory
-				if err = RemoveDirAt(dirFile, name); err != nil && firstErr == nil {
-					firstErr = err
-				}
 			} else {
 				// Remove file/symlink
 				if err = UnlinkAt(dirFile, name); err != nil && firstErr == nil {
