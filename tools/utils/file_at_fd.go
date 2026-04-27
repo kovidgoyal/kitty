@@ -230,60 +230,91 @@ func LinkAt(oldparent *os.File, oldname string, newparent *os.File, newname stri
 	return
 }
 
-// RemoveChildren recursively removes all files and subdirectories
-// within the directory pointed to by dirFile. Removes all it can but returns
-// the first error, if any.
+// RemoveChildren removes all files and subdirectories within the directory
+// pointed to by dirFile using an explicit stack instead of recursion. Removes
+// all it can but returns the first error, if any.
 func RemoveChildren(dirFile *os.File) error {
 	var firstErr error
 
-	// Rewind directory pointer to ensure we start from the beginning
-	if _, err := dirFile.Seek(0, io.SeekStart); err != nil {
-		return err
+	// Each stack frame is one of two kinds:
+	//   expand: dir != nil  – read dir's children, unlink files, push subdirs
+	//   rmdir:  dir == nil  – rmdir name from parent (a dup'd fd), then close parent
+	type frame struct {
+		dir    *os.File // non-nil: expand this directory
+		name   string   // rmdir: child name to remove from parent
+		parent *os.File // rmdir: dup'd parent fd (closed after use)
+		close  bool     // expand: close dir when done (false only for the root)
 	}
 
-	for {
-		// Read names in small chunks to handle very large directories
-		entries, err := dirFile.ReadDir(64)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
+	stack := []frame{{dir: dirFile, close: false}}
+
+	for len(stack) > 0 {
+		f := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		if f.dir == nil {
+			// rmdir sentinel: the subdirectory is now empty, remove it.
+			if err := RemoveDirAt(f.parent, f.name); err != nil && firstErr == nil {
+				firstErr = err
+			}
+			f.parent.Close()
+			continue
+		}
+
+		// Rewind so we always start from the beginning of the directory.
+		if _, err := f.dir.Seek(0, io.SeekStart); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			if f.close {
+				f.dir.Close()
+			}
+			continue
+		}
+
+		for {
+			// Read entries in small chunks to handle very large directories.
+			entries, err := f.dir.ReadDir(64)
+			for _, entry := range entries {
+				name := entry.Name()
+				if entry.IsDir() {
+					childFile, openErr := OpenDirAt(f.dir, name)
+					if openErr != nil {
+						if firstErr == nil {
+							firstErr = openErr
+						}
+						continue
+					}
+					parentDup, dupErr := DupFile(f.dir)
+					if dupErr != nil {
+						if firstErr == nil {
+							firstErr = dupErr
+						}
+						childFile.Close()
+						continue
+					}
+					// Push rmdir sentinel first; LIFO ensures the expand frame
+					// below is processed before this rmdir sentinel.
+					stack = append(stack, frame{name: name, parent: parentDup}, frame{dir: childFile, close: true})
+				} else {
+					if unlinkErr := UnlinkAt(f.dir, name); unlinkErr != nil && firstErr == nil {
+						firstErr = unlinkErr
+					}
+				}
+			}
+			if err != nil {
+				if !errors.Is(err, io.EOF) && firstErr == nil {
+					firstErr = &os.PathError{Op: "readdir", Path: f.dir.Name(), Err: err}
+				}
 				break
 			}
-			if firstErr == nil {
-				firstErr = &os.PathError{Op: "readdirnames", Path: dirFile.Name(), Err: err}
-			}
-			break
 		}
 
-		for _, entry := range entries {
-			name := entry.Name()
-			if entry.IsDir() {
-				// Open subdirectory relative to parent FD
-				var childFile *os.File
-				if childFile, err = OpenDirAt(dirFile, name); err != nil {
-					if firstErr == nil {
-						firstErr = err
-					}
-					continue
-				}
-				err = RemoveChildren(childFile)
-				childFile.Close()
-				if err == nil {
-					// Remove the empty subdirectory
-					if err = RemoveDirAt(dirFile, name); err != nil && firstErr == nil {
-						firstErr = err
-					}
-				} else if firstErr == nil {
-					firstErr = err
-				}
-				childFile.Close()
-			} else {
-				// Remove file/symlink
-				if err = UnlinkAt(dirFile, name); err != nil && firstErr == nil {
-					firstErr = err
-				}
-			}
+		if f.close {
+			f.dir.Close()
 		}
 	}
+
 	_, _ = dirFile.Seek(0, io.SeekStart)
 	return firstErr
 }
