@@ -285,7 +285,7 @@ string_capabilities = {
     # DECSCUSR Set cursor style
     'Ss': r'\E[%p1%d\sq',
     # DECSCUSR Reset cursor style to power-on default
-    'Se': r'\E[2\sq',
+    'Se': r'\E[0\sq',
     # Set cursor color
     'Cs': r'\E]12;%p1%s\007',
     # Reset cursor color
