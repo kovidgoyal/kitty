@@ -350,6 +350,69 @@ func TestDupFile(t *testing.T) {
 	}
 }
 
+func TestRenameAt(t *testing.T) {
+	tmp := t.TempDir()
+	os.WriteFile(filepath.Join(tmp, "src.txt"), []byte("hello"), 0644)
+	d := openTestDir(t, tmp)
+
+	// Rename within the same directory.
+	if err := RenameAt(d, "src.txt", d, "dst.txt"); err != nil {
+		t.Fatalf("RenameAt same dir: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tmp, "src.txt")); !os.IsNotExist(err) {
+		t.Error("src.txt should no longer exist after rename")
+	}
+	if got := mustReadFile(t, filepath.Join(tmp, "dst.txt")); got != "hello" {
+		t.Errorf("dst.txt after rename: got %q, want %q", got, "hello")
+	}
+
+	// Rename to a different directory.
+	sub := filepath.Join(tmp, "subdir")
+	os.Mkdir(sub, 0755)
+	subDir := openTestDir(t, sub)
+	if err := RenameAt(d, "dst.txt", subDir, "moved.txt"); err != nil {
+		t.Fatalf("RenameAt cross-dir: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tmp, "dst.txt")); !os.IsNotExist(err) {
+		t.Error("dst.txt should no longer exist after cross-dir rename")
+	}
+	if got := mustReadFile(t, filepath.Join(sub, "moved.txt")); got != "hello" {
+		t.Errorf("moved.txt: got %q, want %q", got, "hello")
+	}
+
+	// Renaming a non-existent file should return an error.
+	if err := RenameAt(d, "nonexistent.txt", d, "out.txt"); err == nil {
+		t.Error("expected error when renaming non-existent file")
+	}
+
+	// Rename overwrites an existing destination file.
+	os.WriteFile(filepath.Join(tmp, "a.txt"), []byte("aaa"), 0644)
+	os.WriteFile(filepath.Join(tmp, "b.txt"), []byte("bbb"), 0644)
+	if err := RenameAt(d, "a.txt", d, "b.txt"); err != nil {
+		t.Fatalf("RenameAt overwrite: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tmp, "a.txt")); !os.IsNotExist(err) {
+		t.Error("a.txt should be gone after overwrite rename")
+	}
+	if got := mustReadFile(t, filepath.Join(tmp, "b.txt")); got != "aaa" {
+		t.Errorf("b.txt after overwrite: got %q, want %q", got, "aaa")
+	}
+
+	// Renaming a symlink should move the symlink itself, not the target.
+	os.WriteFile(filepath.Join(tmp, "target.txt"), []byte("target"), 0644)
+	os.Symlink("target.txt", filepath.Join(tmp, "link.txt"))
+	if err := RenameAt(d, "link.txt", d, "renamedlink.txt"); err != nil {
+		t.Fatalf("RenameAt symlink: %v", err)
+	}
+	linkTarget, err := os.Readlink(filepath.Join(tmp, "renamedlink.txt"))
+	if err != nil {
+		t.Fatalf("Readlink after rename: %v", err)
+	}
+	if linkTarget != "target.txt" {
+		t.Errorf("renamed symlink target: got %q, want %q", linkTarget, "target.txt")
+	}
+}
+
 // --- RemoveChildren tests (pre-existing, kept for reference) ---
 
 func TestRemoveChildren(t *testing.T) {
