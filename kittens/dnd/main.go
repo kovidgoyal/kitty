@@ -89,6 +89,10 @@ type dnd struct {
 	drag_started                           bool
 	in_test_mode                           bool
 	copy_button_region, move_button_region button_region
+	confirm_drop                           struct {
+		overwrites  []string
+		staging_dir *os.File
+	}
 }
 
 func (dnd *dnd) send_test_response(payload string) {
@@ -249,6 +253,14 @@ func (dnd *dnd) run_loop() (err error) {
 
 	dnd.lp.OnKeyEvent = func(e *loop.KeyEvent) (err error) {
 		e.Handled = true
+		if len(dnd.confirm_drop.overwrites) > 0 {
+			if e.MatchesPressOrRepeat("esc") {
+				return dnd.drop_confirm(false)
+			}
+			if e.MatchesPressOrRepeat("enter") {
+				return dnd.drop_confirm(true)
+			}
+		}
 		if e.MatchesPressOrRepeat("ctrl+c") || e.MatchesPressOrRepeat("esc") {
 			dnd.lp.Quit(0)
 			return
@@ -355,6 +367,10 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 	dnd := dnd{opts: opts, drop_dests: drop_dests, drag_sources: drag_sources}
 	defer func() {
 		dnd.reset_drop()
+		if dnd.confirm_drop.staging_dir != nil {
+			dnd.confirm_drop.staging_dir.Close()
+			dnd.confirm_drop.staging_dir = nil
+		}
 		dnd.drop_output_dir.Close()
 	}()
 	if err = dnd.run_loop(); err != nil {

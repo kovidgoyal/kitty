@@ -453,13 +453,28 @@ func (dnd *dnd) all_drop_data_received() error {
 	var staging_dir *os.File
 	if dnd.drop_status.dropping_to != nil {
 		staging_dir = dnd.drop_status.dropping_to.handle
+		dnd.drop_status.dropping_to = nil
 	}
+	defer dnd.end_drop()
 	if staging_dir != nil {
-		// TODO: either copy all files or check for overwrites
 		if dnd.opts.ConfirmDropOverwrite {
+			overwrites, err := find_overwrites(staging_dir, dnd.drop_output_dir)
+			if err != nil {
+				return err
+			}
+			if len(overwrites) > 0 {
+				dnd.confirm_drop.overwrites = overwrites
+				dnd.confirm_drop.staging_dir = staging_dir
+				return dnd.render_screen()
+			}
 		}
+		err := rename_contents(staging_dir, dnd.drop_output_dir)
+		staging_dir.Close()
+		if err != nil {
+			return err
+		}
+		return dnd.render_screen()
 	}
-	dnd.end_drop()
 	return nil
 }
 
@@ -718,4 +733,18 @@ func (dnd *dnd) on_drop_data(cmd DC) error {
 		drop_buf = make([]byte, sz)
 	}
 	return dest.add_data(cmd.Payload, drop_buf, cmd.Has_more)
+}
+
+func (dnd *dnd) drop_confirm(accepted bool) error {
+	staging_dir := dnd.confirm_drop.staging_dir
+	dnd.confirm_drop.overwrites = nil
+	dnd.confirm_drop.staging_dir = nil
+	defer staging_dir.Close()
+	dnd.data_has_been_dropped = accepted
+	if accepted {
+		if err := rename_contents(staging_dir, dnd.drop_output_dir); err != nil {
+			return err
+		}
+	}
+	return dnd.render_screen()
 }

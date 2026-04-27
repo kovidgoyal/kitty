@@ -68,6 +68,22 @@ func (dnd *dnd) render_screen() error {
 		lp.Println()
 		y++
 	}
+
+	if len(dnd.confirm_drop.overwrites) > 0 {
+		render_paragraph("Some of the dropped files will overwrite existing files, listed below. Press \x1b[32mEnter\x1b[39m to drop anyway or \x1b[31mEsc\x1b[39m to cancel the drop.")
+		sz, _ := lp.ScreenSize()
+		next_line()
+		next_line()
+		overwrites := dnd.confirm_drop.overwrites[:min(int(sz.HeightCells)-y-1, len(dnd.confirm_drop.overwrites))]
+		for _, x := range overwrites {
+			lp.Println(x)
+		}
+		if left := len(dnd.confirm_drop.overwrites) - len(overwrites); left > 0 {
+			lp.Printf("... (%d more)", left)
+		}
+		return nil
+	}
+
 	if dnd.drop_status.in_window {
 		if dnd.drop_status.action == 0 {
 			render_paragraph("A drag is active. Drop it into one of the boxes below to perform that action on the dragged data. Available MIME types in the drag:")
