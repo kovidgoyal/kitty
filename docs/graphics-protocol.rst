@@ -36,6 +36,7 @@ Some applications that use the kitty graphics protocol:
 * `fzf <https://github.com/junegunn/fzf/commit/d8188fce7b7bea982e7f9050c35e488e49fb8fd0>`_ - A command line fuzzy finder
 * `mpv <https://github.com/mpv-player/mpv/commit/874e28f4a41a916bb567a882063dd2589e9234e1>`_ - A video player that can play videos in the terminal
 * `neofetch <https://github.com/dylanaraps/neofetch>`_ - A command line system information tool
+* `nvim <https://github.com/neovim/neovim/issues/30889>`__ - A TUI editor that can display images in the terminal
 * `pixcat <https://github.com/mirukana/pixcat>`_ - a third party CLI and python library that wraps the graphics protocol
 * `ranger <https://github.com/ranger/ranger>`_ - a terminal file manager, with image previews
 * `termpdf.py <https://github.com/dsanson/termpdf.py>`_ - a terminal PDF/DJVU/CBR viewer
