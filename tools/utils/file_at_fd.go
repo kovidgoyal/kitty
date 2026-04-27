@@ -243,7 +243,7 @@ func RemoveChildren(dirFile *os.File) error {
 
 	for {
 		// Read names in small chunks to handle very large directories
-		names, err := dirFile.Readdirnames(64)
+		entries, err := dirFile.ReadDir(64)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -254,16 +254,9 @@ func RemoveChildren(dirFile *os.File) error {
 			break
 		}
 
-		for _, name := range names {
-			var stat os.FileInfo
-			// Get file info relative to the parent FD
-			if stat, err = LstatAt(dirFile, name); err != nil {
-				if firstErr == nil {
-					firstErr = err
-				}
-				continue
-			}
-			if stat.IsDir() {
+		for _, entry := range entries {
+			name := entry.Name()
+			if entry.IsDir() {
 				// Open subdirectory relative to parent FD
 				var childFile *os.File
 				if childFile, err = OpenDirAt(dirFile, name); err != nil {
