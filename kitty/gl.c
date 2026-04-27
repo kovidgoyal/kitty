@@ -509,7 +509,14 @@ void*
 map_vao_buffer_for_write_only(ssize_t vao_idx, size_t bufnum, int offset, unsigned size) {
     ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
     bind_buffer(buf_idx);
-    return map_buffer_range(buf_idx, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT, offset, size);
+    // Workaround for https://github.com/kovidgoyal/kitty/issues/9844: callers may map only a
+    // sub-range of a buffer and rely on bytes outside the range persisting from a previous
+    // upload. The OpenGL spec says GL_MAP_INVALIDATE_RANGE_BIT only authorizes discarding
+    // the mapped range, but some drivers (notably after GPU state transitions like system
+    // suspend/resume) discard or fail to preserve the unmapped tail, producing visual
+    // corruption in the color table. Omitting the flag forces the driver to preserve the
+    // entire buffer.
+    return map_buffer_range(buf_idx, GL_MAP_WRITE_BIT, offset, size);
 }
 
 void*
