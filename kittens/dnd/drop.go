@@ -228,39 +228,41 @@ func find_overwrites(src_dir *os.File, dest_dir *os.File) (ans []string, err err
 	stack.push(".")
 	for !stack.empty() {
 		relpath := stack.pop()
-		sd, err := utils.OpenDirAt(src_dir, relpath)
-		if err != nil {
-			return nil, err
-		}
-		src_children, err := sd.ReadDir(0)
-		sd.Close()
-		if err != nil {
-			return nil, err
-		}
-		dd, err := utils.OpenDirAt(dest_dir, relpath)
-		if err != nil {
-			return nil, err
-		}
-		dest_children, err := dd.ReadDir(0)
-		dd.Close()
-		if err != nil {
-			return nil, err
-		}
-		dest_map := make(map[string]os.DirEntry)
-		for _, x := range dest_children {
-			dest_map[x.Name()] = x
-		}
-		for _, x := range src_children {
-			if d, found := dest_map[x.Name()]; found {
-				relpath := utils.IfElse(relpath == ".", x.Name(), filepath.Join(relpath, x.Name()))
-				if !d.IsDir() || !x.IsDir() {
-					ans = append(ans, relpath)
-				} else {
-					stack.push(relpath)
-				}
-			} else {
-				continue
+		if err = func() (err error) {
+			sd, err := utils.OpenDirAt(src_dir, relpath)
+			if err != nil {
+				return err
 			}
+			defer sd.Close()
+			dd, err := utils.OpenDirAt(dest_dir, relpath)
+			if err != nil {
+				return err
+			}
+			defer dd.Close()
+			dest_children, err := dd.ReadDir(0)
+			src_children, err := sd.ReadDir(0)
+			if err != nil {
+				return err
+			}
+			dest_map := make(map[string]os.DirEntry)
+			for _, x := range dest_children {
+				dest_map[x.Name()] = x
+			}
+			for _, x := range src_children {
+				if d, found := dest_map[x.Name()]; found {
+					crelpath := utils.IfElse(relpath == ".", x.Name(), filepath.Join(relpath, x.Name()))
+					if !d.IsDir() || !x.IsDir() {
+						ans = append(ans, crelpath)
+					} else {
+						stack.push(crelpath)
+					}
+				} else {
+					continue
+				}
+			}
+			return
+		}(); err != nil {
+			return nil, err
 		}
 	}
 	return
@@ -273,32 +275,34 @@ func rename_contents(src_dir *os.File, dest_dir *os.File) (err error) {
 	stack.push(".")
 	for !stack.empty() {
 		relpath := stack.pop()
-		sd, err := utils.OpenDirAt(src_dir, relpath)
-		if err != nil {
-			return err
-		}
-		src_children, err := sd.ReadDir(0)
-		if err != nil {
-			return err
-		}
-		dd, err := utils.OpenDirAt(dest_dir, relpath)
-		if err != nil {
-			sd.Close()
-			return err
-		}
 		if err = func() error {
-			defer func() {
-				sd.Close()
-				dd.Close()
-			}()
-			for _, child := range src_children {
-				relpath := utils.IfElse(relpath == ".", child.Name(), filepath.Join(relpath, child.Name()))
-				rerr := utils.RenameAt(sd, child.Name(), dd, child.Name())
-				if rerr != nil {
-					if child.IsDir() {
-						stack.push(relpath)
-					} else {
-						return rerr
+			sd, err := utils.OpenDirAt(src_dir, relpath)
+			if err != nil {
+				return err
+			}
+			defer sd.Close()
+			dd, err := utils.OpenDirAt(dest_dir, relpath)
+			if err != nil {
+				return err
+			}
+			defer dd.Close()
+			for {
+				src_children, err := sd.ReadDir(64)
+				if err != nil {
+					if errors.Is(err, io.EOF) {
+						break
+					}
+					return err
+				}
+				for _, child := range src_children {
+					crelpath := utils.IfElse(relpath == ".", child.Name(), filepath.Join(relpath, child.Name()))
+					rerr := utils.RenameAt(sd, child.Name(), dd, child.Name())
+					if rerr != nil {
+						if child.IsDir() {
+							stack.push(crelpath)
+						} else {
+							return rerr
+						}
 					}
 				}
 			}
