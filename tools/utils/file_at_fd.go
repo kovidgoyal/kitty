@@ -315,6 +315,18 @@ func ReadLinkAt(parent *os.File, name string) (ans string, err error) {
 	return UnsafeBytesToString(buf[:n]), nil
 }
 
+func RenameAt(old_parent *os.File, old_name string, new_parent *os.File, new_name string) (err error) {
+	for {
+		if err = unix.Renameat(int(old_parent.Fd()), old_name, int(new_parent.Fd()), new_name); err != unix.EINTR {
+			break
+		}
+	}
+	if err != nil {
+		err = &os.LinkError{Op: "renameat", Old: filepath.Join(old_parent.Name(), old_name), New: filepath.Join(new_parent.Name(), new_name), Err: err}
+	}
+	return
+}
+
 func ConvertFileModeToUnix(goMode os.FileMode) uint32 {
 	// 1. Start with the basic permission bits (0777)
 	unixMode := uint32(goMode.Perm())

@@ -2,6 +2,7 @@ package dnd
 
 import (
 	"bytes"
+	"container/list"
 	"context"
 	"errors"
 	"fmt"
@@ -211,6 +212,104 @@ func do_local_copy_in_goroutine(ctx context.Context, dest_dir *os.File, completi
 	err = do_local_copy(ctx, dest_dir, uri_list)
 }
 
+type path_stack struct {
+	s list.List
+}
+
+func (p *path_stack) push(x string) { p.s.PushBack(x) }
+func (p *path_stack) pop() string   { return p.s.Remove(p.s.Front()).(string) }
+func (p *path_stack) empty() bool   { return p.s.Front() == nil }
+
+// Return a list of relative paths for all entries in the tree rooted at
+// src_dir that also exist in the tree rooted at dest_dir, except for
+// directories that exist in both places.
+func find_overwrites(src_dir *os.File, dest_dir *os.File) (ans []string, err error) {
+	stack := path_stack{}
+	stack.push(".")
+	for !stack.empty() {
+		relpath := stack.pop()
+		sd, err := utils.OpenDirAt(src_dir, relpath)
+		if err != nil {
+			return nil, err
+		}
+		src_children, err := sd.ReadDir(0)
+		sd.Close()
+		if err != nil {
+			return nil, err
+		}
+		dd, err := utils.OpenDirAt(dest_dir, relpath)
+		if err != nil {
+			return nil, err
+		}
+		dest_children, err := dd.ReadDir(0)
+		dd.Close()
+		if err != nil {
+			return nil, err
+		}
+		dest_map := make(map[string]os.DirEntry)
+		for _, x := range dest_children {
+			dest_map[x.Name()] = x
+		}
+		for _, x := range src_children {
+			if d, found := dest_map[x.Name()]; found {
+				relpath := utils.IfElse(relpath == ".", x.Name(), filepath.Join(relpath, x.Name()))
+				if !d.IsDir() || !x.IsDir() {
+					ans = append(ans, relpath)
+				} else {
+					stack.push(relpath)
+				}
+			} else {
+				continue
+			}
+		}
+	}
+	return
+}
+
+// Rename the contents of src_dir into dest_dir, handling the case of
+// directories already existing in dest_dir transparently.
+func rename_contents(src_dir *os.File, dest_dir *os.File) (err error) {
+	stack := path_stack{}
+	stack.push(".")
+	for !stack.empty() {
+		relpath := stack.pop()
+		sd, err := utils.OpenDirAt(src_dir, relpath)
+		if err != nil {
+			return err
+		}
+		src_children, err := sd.ReadDir(0)
+		if err != nil {
+			return err
+		}
+		dd, err := utils.OpenDirAt(dest_dir, relpath)
+		if err != nil {
+			sd.Close()
+			return err
+		}
+		if err = func() error {
+			defer func() {
+				sd.Close()
+				dd.Close()
+			}()
+			for _, child := range src_children {
+				relpath := utils.IfElse(relpath == ".", child.Name(), filepath.Join(relpath, child.Name()))
+				rerr := utils.RenameAt(sd, child.Name(), dd, child.Name())
+				if rerr != nil {
+					if child.IsDir() {
+						stack.push(relpath)
+					} else {
+						return rerr
+					}
+				}
+			}
+			return nil
+		}(); err != nil {
+			return err
+		}
+	}
+	return
+}
+
 func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_more bool, is_case_sensitive_filesystem bool) error {
 	if len(data) > 0 {
 		for chunk, derr := range d.b64_decoder.Decode(data, output_buf) {
@@ -345,7 +444,7 @@ func (dnd *dnd) end_drop() {
 	dnd.render_screen()
 }
 
-func (dnd *dnd) all_drop_data_received() {
+func (dnd *dnd) all_drop_data_received() error {
 	dnd.data_has_been_dropped = true
 	var staging_dir *os.File
 	if dnd.drop_status.dropping_to != nil {
@@ -357,6 +456,7 @@ func (dnd *dnd) all_drop_data_received() {
 		}
 	}
 	dnd.end_drop()
+	return nil
 }
 
 func (dnd *dnd) drop_on_wakeup() error {
@@ -370,8 +470,7 @@ func (dnd *dnd) drop_on_wakeup() error {
 		if err != nil {
 			return err
 		}
-		dnd.all_drop_data_received()
-		return nil
+		return dnd.all_drop_data_received()
 	default:
 		return nil
 	}
@@ -566,7 +665,7 @@ func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 					dnd.lp.QueueDnDData(DC{Type: 'r', X: i + 1, Yp: drop_status.open_remote_dir.item_type}) // close directory in terminal
 				}
 			} else {
-				dnd.all_drop_data_received()
+				return dnd.all_drop_data_received()
 			}
 		}
 	}

@@ -73,10 +73,6 @@ func (d *dir_handle) unref() *dir_handle {
 	return nil
 }
 
-type drag_status struct {
-	active bool
-}
-
 type dnd struct {
 	opts                     *Options
 	drop_dests               map[string]*drop_dest
@@ -85,6 +81,7 @@ type dnd struct {
 
 	lp                                     *loop.Loop
 	drop_status                            drop_status
+	drop_output_dir                        *os.File
 	base_tempdir                           *os.File
 	tdir_counter                           int
 	is_case_sensitive_filesystem           bool
@@ -356,7 +353,10 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 		}
 	}
 	dnd := dnd{opts: opts, drop_dests: drop_dests, drag_sources: drag_sources}
-	defer dnd.reset_drop()
+	defer func() {
+		dnd.reset_drop()
+		dnd.drop_output_dir.Close()
+	}()
 	if err = dnd.run_loop(); err != nil {
 		return 1, err
 	}
