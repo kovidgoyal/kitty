@@ -53,6 +53,7 @@ Libraries implementing this protocol:
 * The vaxis library `go <https://sr.ht/~rockorager/vaxis/>`__ and `zig <https://github.com/rockorager/libvaxis/>`__
 * The `bubbletea library <https://github.com/charmbracelet/bubbletea/issues/869>`__
 * The `vtinput <https://unxed.github.com/vtinput>`__ and `vtui <https://github.com/unxed/vtui>`__ libraries
+* The `tcell library <https://github.com/gdamore/tcell/commit/c10909b991eb87c009554fe9b2dfa7276e2649c1>`__
 
 Programs implementing this protocol:
 
