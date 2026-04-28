@@ -292,6 +292,7 @@ copy_line_to(LineBuf *self, PyObject *args) {
     unsigned int y;
     Line src, *dest;
     if (!PyArg_ParseTuple(args, "IO!", &y, &Line_Type, &dest)) return NULL;
+    if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
     src.xnum = self->xnum; dest->xnum = self->xnum;
     dest->ynum = y;
     dest->attrs = self->line_attrs[y];
