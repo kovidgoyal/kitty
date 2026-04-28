@@ -99,7 +99,13 @@ func (dnd *dnd) send_test_response(payload string) {
 	dnd.lp.DebugPrintln(payload)
 }
 
-func (dnd *dnd) setup_base_dir(base_dir string) error {
+func (dnd *dnd) setup_base_dir(base_dir string) (err error) {
+	if dnd.drop_output_dir != nil {
+		dnd.drop_output_dir.Close()
+	}
+	if dnd.drop_output_dir, err = os.Open(base_dir); err != nil {
+		return err
+	}
 	base_tdir, err := os.MkdirTemp(base_dir, ".dnd-kitten-drop-*")
 	if err != nil {
 		return err
@@ -113,7 +119,7 @@ func (dnd *dnd) setup_base_dir(base_dir string) error {
 	if _, serr := os.Stat(filepath.Join(base_dir, strings.ToUpper(filepath.Base(base_tdir)))); serr == nil {
 		dnd.is_case_sensitive_filesystem = false
 	}
-	return nil
+	return err
 }
 
 func (dnd *dnd) remove_tdir() error {
@@ -371,7 +377,9 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 			dnd.confirm_drop.staging_dir.Close()
 			dnd.confirm_drop.staging_dir = nil
 		}
-		dnd.drop_output_dir.Close()
+		if dnd.drop_output_dir != nil {
+			dnd.drop_output_dir.Close()
+		}
 	}()
 	if err = dnd.run_loop(); err != nil {
 		return 1, err
