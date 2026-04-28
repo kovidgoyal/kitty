@@ -279,7 +279,7 @@ class TestDataTypes(BaseTest):
         l2 = lb.create_line_copy(2)
         lb.copy_line_to(1, l2)
         self.ae(l2, lb2.line(2))
-        with self.assertRaises(ValueError):
+        with self.assertRaises(IndexError):
             lb.copy_line_to(lb.ynum, l2)
         lb.clear_line(0)
         self.ae(lb.line(0), LineBuf(1, lb.xnum).create_line_copy(0))
