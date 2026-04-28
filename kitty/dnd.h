@@ -16,7 +16,7 @@ void drop_left_child(Window *w);
 void drop_free_data(Window *w);
 void drop_send_einval(Window *w);
 void drop_handle_dir_request(Window *w, uint32_t handle_id, int32_t entry_num);
-void drop_enqueue_request(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_y);
+void drop_enqueue_request(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_y, uint32_t operation);
 void drop_set_status(Window *w, int operation, const char *payload, size_t payload_sz, bool more);
 size_t drop_update_mimes(Window *w, const char **allowed_mimes, size_t allowed_mimes_count);
 void drop_dispatch_data(Window *w, const char *mime_type, const char *data, ssize_t sz);

@@ -1535,7 +1535,7 @@ screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *pa
         case 'A': drop_register_window(w, NULL, 0, false, cmd->client_id, cmd->more); break;
         case 'm': drop_set_status(w, cmd->operation, (const char*)payload, cmd->payload_sz, cmd->more); break;
         case 'r': {
-            drop_enqueue_request(w, cmd->cell_x, cmd->cell_y, cmd->pixel_y);
+            drop_enqueue_request(w, cmd->cell_x, cmd->cell_y, cmd->pixel_y, cmd->operation);
         } break;
         case 'o': {
             switch (cmd->cell_x) {

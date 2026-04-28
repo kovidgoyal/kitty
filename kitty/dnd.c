@@ -509,15 +509,20 @@ drop_move_on_child(Window *w, const char** mimes, size_t num_mimes, bool is_drop
     }
 }
 
+static GLFWDragOperationType
+drop_operation_to_enum(uint32_t op) {
+    switch(op) {
+        case 1: return GLFW_DRAG_OPERATION_COPY;
+        case 2: return GLFW_DRAG_OPERATION_MOVE;
+        default: return GLFW_DRAG_OPERATION_NONE;
+    }
+}
+
 void
 drop_set_status(Window *w, int operation, const char *payload, size_t payload_sz, bool more) {
     if (!w->drop.accept_in_progress) {
         drop_free_accepted_mimes(w); w->drop.accept_in_progress = true;
-        switch(operation) {
-            case 1: w->drop.accepted_operation = GLFW_DRAG_OPERATION_COPY; break;
-            case 2: w->drop.accepted_operation = GLFW_DRAG_OPERATION_MOVE; break;
-            default: w->drop.accepted_operation = GLFW_DRAG_OPERATION_NONE; break;
-        }
+        w->drop.accepted_operation = drop_operation_to_enum(operation);
     }
     if (payload_sz) {
         if (w->drop.accepted_mimes_sz + payload_sz > MIME_LIST_SIZE_CAP) return;
@@ -1144,8 +1149,9 @@ drop_process_queue(Window *w) {
 }
 
 void
-drop_enqueue_request(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_y) {
+drop_enqueue_request(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_y, uint32_t operation) {
     if (cell_x == 0 && cell_y == 0 && pixel_y == 0) {  // drop finished
+        w->drop.accepted_operation = drop_operation_to_enum(operation);
         drop_finish_and_clear_queue(w);
         reset_drop(w);
         return;

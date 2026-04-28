@@ -124,11 +124,13 @@ any error response means the drop is terminated.
 Once the client program finishes reading all the dropped data it needs, it must
 send an escape code of the form::
 
-    OSC _dnd_code ; t=r ST
+    OSC _dnd_code ; t=r:o=operation ST
 
 That is, it must send a request for data with no MIME type specified. The
 terminal emulator must then inform the OS that the drop is completed. Any
-queued data requests must be discarded by the terminal.
+queued data requests must be discarded by the terminal. The ``operation``
+is required and must specify the final action the client took with the data.
+If unset (aka ``0``) the terminal must assume the drop was canceled.
 
 Dropping from remote machines
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
