@@ -263,6 +263,9 @@ class TestDnDKitten(BaseTest):
         self.assert_files_have_same_content(jn(self.src_data_dir, 'some-image.png'), jn(self.kitten_wd, img_drop_path))
         shutil.rmtree(os.path.dirname(jn(self.kitten_wd, img_drop_path)))
         if remote_client:
+            # TODO: need to send data for the items in the uri list based on
+            # current data requests using wait_for_state() to handle data
+            # requests as they arrive.
             pass
         else:
             self.wait_for_state('last_drop_action', GLFW_DRAG_OPERATION_COPY)
