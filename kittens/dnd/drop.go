@@ -393,7 +393,10 @@ type drop_status struct {
 	open_remote_dir      *remote_dir_entry
 	current_remote_entry *remote_dir_entry // used for m=1 only
 	pending_remote_dirs  []*remote_dir_entry
-
+	data_requests        struct {
+		pending         []DC
+		in_flight_count int
+	}
 	local_copy struct {
 		ctx        context.Context
 		cancel_ctx context.CancelFunc
@@ -543,7 +546,7 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 					seen.Add(key)
 				}
 				c = &remote_dir_entry{base_dir: dnd.drop_status.dropping_to.newref(), name: name}
-				dnd.lp.QueueDnDData(DC{Type: 'r', X: idx + 1, Y: i + 1})
+				dnd.queue_data_request(DC{Type: 'r', X: idx + 1, Y: i + 1})
 			}
 			drop_status.root_remote_dir.children = append(drop_status.root_remote_dir.children, c)
 		}
@@ -560,7 +563,7 @@ func (dnd *dnd) request_mime_data() {
 	accepted := utils.NewSetWithItems(dnd.drop_status.accepted_mimes...)
 	for idx, m := range dnd.drop_status.offered_mimes {
 		if accepted.Has(m) {
-			dnd.lp.QueueDnDData(DC{Type: 'r', X: idx + 1})
+			dnd.queue_data_request(DC{Type: 'r', X: idx + 1})
 		}
 	}
 }
@@ -630,6 +633,26 @@ func (dnd *dnd) on_drop_move(cell_x, cell_y int, has_more bool, offered_mimes st
 
 var drop_buf []byte
 
+const max_inflight_data_rquests = 64
+
+func (dnd *dnd) queue_data_request(cmd DC) {
+	if dnd.drop_status.data_requests.in_flight_count < max_inflight_data_rquests {
+		dnd.lp.QueueDnDData(cmd)
+		dnd.drop_status.data_requests.in_flight_count++
+	} else {
+		dnd.drop_status.data_requests.pending = append(dnd.drop_status.data_requests.pending, cmd)
+	}
+}
+
+func (dnd *dnd) data_request_completed() {
+	dnd.drop_status.data_requests.in_flight_count--
+	if len(dnd.drop_status.data_requests.pending) > 0 && dnd.drop_status.data_requests.in_flight_count < max_inflight_data_rquests {
+		dnd.lp.QueueDnDData(dnd.drop_status.data_requests.pending[0])
+		dnd.drop_status.data_requests.in_flight_count++
+		dnd.drop_status.data_requests.pending = dnd.drop_status.data_requests.pending[1:]
+	}
+}
+
 func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 	drop_status := &dnd.drop_status
 	if drop_status.open_remote_dir == nil {
@@ -670,6 +693,7 @@ func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 		drop_status.current_remote_entry = nil
 		parent := drop_status.open_remote_dir
 		parent.num_children_finished++
+		dnd.data_request_completed()
 		if parent.num_children_finished >= len(parent.children) { // parent is finished
 			drop_status.open_remote_dir = nil
 			parent.base_dir = parent.base_dir.unref()
@@ -692,7 +716,7 @@ func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 				drop_status.open_remote_dir = drop_status.pending_remote_dirs[0]
 				drop_status.pending_remote_dirs = drop_status.pending_remote_dirs[1:]
 				for i := range drop_status.open_remote_dir.children {
-					dnd.lp.QueueDnDData(DC{Type: 'r', X: i + 1, Yp: drop_status.open_remote_dir.item_type}) // close directory in terminal
+					dnd.queue_data_request(DC{Type: 'r', X: i + 1, Yp: drop_status.open_remote_dir.item_type})
 				}
 			} else {
 				return dnd.all_drop_data_received()
