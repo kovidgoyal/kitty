@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
+import fnmatch
 import os
 import random
 import shutil
@@ -35,7 +36,7 @@ class Capture(WriteCapture):
         self.pty.write_to_child(data)
 
 
-def create_fs(base):
+def create_fs(base, include_toplevel_working_symlink=False):
     join = partial(os.path.join, base)
     def w(sz, *path):
         if sz == 0:
@@ -45,7 +46,8 @@ def create_fs(base):
     os.makedirs(join('d1', 'sd', 'ssd'))
     os.mkdir(join('d2'))
     os.symlink('/' + str(uuid.uuid4()), join('s1'))  # non-existent
-    os.symlink('d1', join('sd'))
+    if include_toplevel_working_symlink:
+        os.symlink('d1', join('sd'))
     os.symlink('/', join('d1', 'sa'))  # absolute symlink in sub dir
     os.symlink('../d1', join('d1', 'sr'))
     w(4096 * 3 + 113, 'some-image.png')
@@ -58,10 +60,10 @@ def create_fs(base):
 
 class TestDnDKitten(BaseTest):
 
-    def assert_trees_equal(self, a: str, b: str):
+    def assert_trees_equal(self, a: str, b: str, ignored='.dnd-kitten-drop-*'):
         a_name = os.path.relpath(a, self.test_dir)
         b_name = os.path.relpath(b, self.test_dir)
-        entries_a, entries_b = os.listdir(a), os.listdir(b)
+        entries_a, entries_b = fnmatch.filterfalse(os.listdir(a), ignored), fnmatch.filterfalse(os.listdir(b), ignored)
         self.assertEqual(set(entries_a), set(entries_b), f'readdir() different for {a_name} vs {b_name}')
         for x in entries_a:
             ca, cb = os.path.join(a, x), os.path.join(b, x)
@@ -73,8 +75,7 @@ class TestDnDKitten(BaseTest):
             elif stat.S_ISLNK(sta.st_mode):
                 self.assertEqual(os.readlink(ca), os.readlink(cb))
             elif stat.S_ISREG(sta.st_mode):
-                with open(ca, 'rb') as fa, open(cb, 'rb') as fb:
-                    self.assertEqual(fa.read(), fb.read())
+                self.assert_files_have_same_content(ca, cb)
 
     def setUp(self):
         capture = Capture()
@@ -266,7 +267,7 @@ class TestDnDKitten(BaseTest):
         shutil.rmtree(os.path.dirname(jn(self.kitten_wd, img_drop_path)))
         self.wait_for_state('last_drop_action', GLFW_DRAG_OPERATION_COPY)
         self.wait_for_state('drop_action', 0)
-        # self.assert_trees_equal(self.src_data_dir, self.kitten_wd)
+        self.assert_trees_equal(self.src_data_dir, self.kitten_wd)
 
     def assert_files_have_same_content(self, a, b):
         with open(a, 'rb') as fa, open(b, 'rb') as fb:
