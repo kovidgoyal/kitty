@@ -423,6 +423,10 @@ func (d *drop_dest) reset() {
 }
 
 func (dnd *dnd) reset_drop() {
+	if dnd.drop_status.root_remote_dir != nil {
+		dnd.drop_status.root_remote_dir.close_tree()
+		dnd.drop_status.root_remote_dir = nil
+	}
 	dnd.drop_status.reset()
 	for _, x := range dnd.drop_dests {
 		x.reset()
@@ -438,24 +442,31 @@ func (root *remote_dir_entry) close_tree() {
 	}
 }
 
-func (dnd *dnd) end_drop() {
-	dnd.lp.QueueDnDData(DC{Type: 'r'}) // end drop
-	if dnd.drop_status.root_remote_dir != nil {
-		dnd.drop_status.root_remote_dir.close_tree()
-		dnd.drop_status.root_remote_dir = nil
+func (dnd *dnd) end_drop(success bool) {
+	if dnd.drop_status.reading_data {
+		dnd.lp.QueueDnDData(DC{
+			Type: 'r', Operation: utils.IfElse(success, dnd.drop_status.action, 0)}) // end drop
 	}
 	dnd.reset_drop()
-	dnd.render_screen()
 }
 
-func (dnd *dnd) all_drop_data_received() error {
+func (dnd *dnd) all_drop_data_received() (err error) {
 	dnd.data_has_been_dropped = true
 	var staging_dir *os.File
 	if dnd.drop_status.dropping_to != nil {
 		staging_dir = dnd.drop_status.dropping_to.handle
 		dnd.drop_status.dropping_to = nil
 	}
-	defer dnd.end_drop()
+	defer func() {
+		if err == nil {
+			if len(dnd.confirm_drop.overwrites) == 0 {
+				dnd.end_drop(true)
+			}
+			err = dnd.render_screen()
+		} else {
+			dnd.end_drop(false)
+		}
+	}()
 	if staging_dir != nil {
 		if dnd.opts.ConfirmDropOverwrite {
 			overwrites, err := find_overwrites(staging_dir, dnd.drop_output_dir)
@@ -473,7 +484,7 @@ func (dnd *dnd) all_drop_data_received() error {
 		if err != nil {
 			return err
 		}
-		return dnd.render_screen()
+		return nil
 	}
 	return nil
 }
@@ -505,8 +516,8 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 	drop_status := &dnd.drop_status
 	if len(drop_status.uri_list) == 0 {
 		dnd.data_has_been_dropped = true
-		dnd.end_drop()
-		return
+		dnd.end_drop(true)
+		return dnd.render_screen()
 	}
 	f, err := dnd.new_tdir()
 	if err != nil {
@@ -608,7 +619,7 @@ func (dnd *dnd) on_drop_move(cell_x, cell_y int, has_more bool, offered_mimes st
 	if is_drop {
 		needs_rerender = true
 		if dnd.drop_status.action == 0 || len(dnd.drop_status.accepted_mimes) == 0 || dnd.drag_started {
-			dnd.end_drop()
+			dnd.end_drop(false)
 			return
 		}
 		dnd.drop_status.reading_data = true
@@ -743,8 +754,12 @@ func (dnd *dnd) drop_confirm(accepted bool) error {
 	dnd.data_has_been_dropped = accepted
 	if accepted {
 		if err := rename_contents(staging_dir, dnd.drop_output_dir); err != nil {
+			dnd.end_drop(false)
 			return err
 		}
+		dnd.end_drop(true)
+	} else {
+		dnd.end_drop(false)
 	}
 	return dnd.render_screen()
 }

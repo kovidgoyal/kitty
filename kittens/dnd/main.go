@@ -372,7 +372,7 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 	}
 	dnd := dnd{opts: opts, drop_dests: drop_dests, drag_sources: drag_sources}
 	defer func() {
-		dnd.reset_drop()
+		dnd.end_drop(false)
 		if dnd.confirm_drop.staging_dir != nil {
 			dnd.confirm_drop.staging_dir.Close()
 			dnd.confirm_drop.staging_dir = nil

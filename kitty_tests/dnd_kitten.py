@@ -265,6 +265,7 @@ class TestDnDKitten(BaseTest):
         if remote_client:
             pass
         else:
+            self.wait_for_state('last_drop_action', GLFW_DRAG_OPERATION_COPY)
             self.wait_for_state('drop_action', 0)
 
     def assert_files_have_same_content(self, a, b):

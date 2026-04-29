@@ -1148,10 +1148,13 @@ drop_process_queue(Window *w) {
     }
 }
 
+static GLFWDragOperationType last_drop_finish_operation = GLFW_DRAG_OPERATION_NONE;
+
 void
 drop_enqueue_request(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_y, uint32_t operation) {
     if (cell_x == 0 && cell_y == 0 && pixel_y == 0) {  // drop finished
         w->drop.accepted_operation = drop_operation_to_enum(operation);
+        last_drop_finish_operation = w->drop.accepted_operation;
         drop_finish_and_clear_queue(w);
         reset_drop(w);
         return;
@@ -2209,6 +2212,9 @@ dnd_test_probe_state(PyObject *self UNUSED, PyObject *args) {
     }
     if (strcmp(q, "drop_action") == 0) {
         return PyLong_FromLong((long)w->drop.accepted_operation);
+    }
+    if (strcmp(q, "last_drop_action") == 0) {
+        return PyLong_FromLong((long)last_drop_finish_operation);
     }
     if (strcmp(q, "drop_mimes") == 0) {
         if (w->drop.accepted_mimes == NULL) return PyUnicode_FromString("");
