@@ -44,9 +44,9 @@ def create_fs(base):
             f.write(b'x' * sz)
     os.makedirs(join('d1', 'sd', 'ssd'))
     os.mkdir(join('d2'))
-    os.symlink('/' + str(uuid.uuid4()), join('s1'))
+    os.symlink('/' + str(uuid.uuid4()), join('s1'))  # non-existent
     os.symlink('d1', join('sd'))
-    os.symlink('/', join('sr'))
+    os.symlink('/', join('d1', 'sa'))  # absolute symlink in sub dir
     os.symlink('../d1', join('d1', 'sr'))
     w(4096 * 3 + 113, 'some-image.png')
     w(0, 'd1', 'f1')
@@ -190,9 +190,11 @@ class TestDnDKitten(BaseTest):
     def test_dnd_kitten_drop(self):
         img_drop_path = 'images/image.png'
         self.finish_setup(cli_args=(f'--drop=image/png:{img_drop_path}',))
-        self.dnd_kitten_drop(False, img_drop_path)
+        with self.subTest(remote=False):
+            self.dnd_kitten_drop(False, img_drop_path)
         self.reset_kitten(True)
-        self.dnd_kitten_drop(True, img_drop_path)
+        with self.subTest(remote=True):
+            self.dnd_kitten_drop(True, img_drop_path)
         self.exit_kitten()
 
     def dnd_kitten_drop(self, remote_client, img_drop_path):
@@ -262,14 +264,9 @@ class TestDnDKitten(BaseTest):
         jn = os.path.join
         self.assert_files_have_same_content(jn(self.src_data_dir, 'some-image.png'), jn(self.kitten_wd, img_drop_path))
         shutil.rmtree(os.path.dirname(jn(self.kitten_wd, img_drop_path)))
-        if remote_client:
-            # TODO: need to send data for the items in the uri list based on
-            # current data requests using wait_for_state() to handle data
-            # requests as they arrive.
-            pass
-        else:
-            self.wait_for_state('last_drop_action', GLFW_DRAG_OPERATION_COPY)
-            self.wait_for_state('drop_action', 0)
+        self.wait_for_state('last_drop_action', GLFW_DRAG_OPERATION_COPY)
+        self.wait_for_state('drop_action', 0)
+        # self.assert_trees_equal(self.src_data_dir, self.kitten_wd)
 
     def assert_files_have_same_content(self, a, b):
         with open(a, 'rb') as fa, open(b, 'rb') as fb:

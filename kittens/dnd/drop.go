@@ -535,6 +535,7 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 			var c *remote_dir_entry
 			if x == "" {
 				c = &remote_dir_entry{}
+				drop_status.root_remote_dir.num_children_finished++
 			} else {
 				name := filepath.Base(x)
 				if !dnd.is_case_sensitive_filesystem {
@@ -696,7 +697,9 @@ func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 		dnd.data_request_completed()
 		if parent.num_children_finished >= len(parent.children) { // parent is finished
 			drop_status.open_remote_dir = nil
-			parent.base_dir = parent.base_dir.unref()
+			if parent.base_dir != nil {
+				parent.base_dir = parent.base_dir.unref()
+			}
 			if parent.item_type != 0 {
 				dnd.lp.QueueDnDData(DC{Type: 'r', Yp: parent.item_type}) // close directory in terminal
 			}
@@ -709,7 +712,9 @@ func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 					}
 				}
 				if !is_pending {
-					c.base_dir = c.base_dir.unref()
+					if c.base_dir != nil {
+						c.base_dir = c.base_dir.unref()
+					}
 				}
 			}
 			if len(drop_status.pending_remote_dirs) > 0 {

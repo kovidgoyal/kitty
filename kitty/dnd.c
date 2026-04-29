@@ -518,8 +518,11 @@ drop_operation_to_enum(uint32_t op) {
     }
 }
 
+static GLFWDragOperationType last_drop_finish_operation = GLFW_DRAG_OPERATION_NONE;
+
 void
 drop_set_status(Window *w, int operation, const char *payload, size_t payload_sz, bool more) {
+    last_drop_finish_operation = GLFW_DRAG_OPERATION_NONE;
     if (!w->drop.accept_in_progress) {
         drop_free_accepted_mimes(w); w->drop.accept_in_progress = true;
         w->drop.accepted_operation = drop_operation_to_enum(operation);
@@ -1147,8 +1150,6 @@ drop_process_queue(Window *w) {
         }
     }
 }
-
-static GLFWDragOperationType last_drop_finish_operation = GLFW_DRAG_OPERATION_NONE;
 
 void
 drop_enqueue_request(Window *w, int32_t cell_x, int32_t cell_y, int32_t pixel_y, uint32_t operation) {
