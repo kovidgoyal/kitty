@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
 import fnmatch
+import itertools
 import os
 import random
 import shutil
@@ -63,7 +64,8 @@ class TestDnDKitten(BaseTest):
     def assert_trees_equal(self, a: str, b: str, ignored='.dnd-kitten-drop-*'):
         a_name = os.path.relpath(a, self.test_dir)
         b_name = os.path.relpath(b, self.test_dir)
-        entries_a, entries_b = fnmatch.filterfalse(os.listdir(a), ignored), fnmatch.filterfalse(os.listdir(b), ignored)
+        entries_a = list(itertools.filterfalse(lambda x: fnmatch.fnmatch(x, ignored), os.listdir(a)))
+        entries_b = list(itertools.filterfalse(lambda x: fnmatch.fnmatch(x, ignored), os.listdir(b)))
         self.assertEqual(set(entries_a), set(entries_b), f'readdir() different for {a_name} vs {b_name}')
         for x in entries_a:
             ca, cb = os.path.join(a, x), os.path.join(b, x)
@@ -181,6 +183,23 @@ class TestDnDKitten(BaseTest):
         self.pty.write_to_child('\x1b[27u')  # ]
         self.pty.wait_till_child_exits(require_exit_code=0)
 
+    def wait_for_confirm_pending(self, timeout=10):
+        """Poll until the kitten reports that an overwrite confirmation is pending."""
+        self.messages_from_kitten = ''
+        self.send_dnd_command_to_kitten('CONFIRM_PENDING', flush=True)
+
+        def check():
+            if self.messages_from_kitten.strip() == 'True':
+                self.messages_from_kitten = ''
+                return True
+            if self.messages_from_kitten.strip() == 'False':
+                # Not yet pending; ask again on the next iteration
+                self.messages_from_kitten = ''
+                self.send_dnd_command_to_kitten('CONFIRM_PENDING', flush=True)
+            return False
+
+        self.pty.wait_till(check, timeout, lambda: 'Timed out waiting for overwrite confirmation to become pending')
+
     def tearDown(self):
         dnd_set_test_write_func(None)
         dnd_test_cleanup_fake_window(self.capture.os_window_id)
@@ -190,7 +209,7 @@ class TestDnDKitten(BaseTest):
 
     def test_dnd_kitten_drop(self):
         img_drop_path = 'images/image.png'
-        self.finish_setup(cli_args=(f'--drop=image/png:{img_drop_path}',))
+        self.finish_setup(cli_args=(f'--drop=image/png:{img_drop_path}', '--confirm-drop-overwrite'))
         with self.subTest(remote=False):
             self.dnd_kitten_drop(False, img_drop_path)
         self.reset_kitten(True)
@@ -230,7 +249,7 @@ class TestDnDKitten(BaseTest):
         self.assertEqual('text/uri-list\x00image/png', self.probe_state('drop_mimes').rstrip('\x00'))
         self.wait_for_state('drop_data_requests', ((1,0,0), (4,0,0)))
         self.assertEqual('text/uri-list', self.probe_state('drop_getting_data_for_mime'))
-        create_fs(self.src_data_dir)
+        create_fs(self.src_data_dir, include_toplevel_working_symlink=not remote_client)
         uri_list, path_list = [], []
         for x in sorted(os.listdir(self.src_data_dir)):
             uri_list.append(as_file_url(self.src_data_dir, x))
@@ -268,6 +287,59 @@ class TestDnDKitten(BaseTest):
         self.wait_for_state('last_drop_action', GLFW_DRAG_OPERATION_COPY)
         self.wait_for_state('drop_action', 0)
         self.assert_trees_equal(self.src_data_dir, self.kitten_wd)
+
+        # ---- edge case: blank lines in text/uri-list are treated as empty entries ----
+        # RFC 2483 allows blank lines; parse_uri_list should skip them cleanly.
+        with tempfile.NamedTemporaryFile(dir=self.src_data_dir, suffix='.txt', delete=False) as tf:
+            tf.write(b'edge case blank line test')
+            edge_file = tf.name
+        blank_line_uri_list = ('\r\n' + as_file_url(self.src_data_dir, os.path.basename(edge_file)) + '\r\n\r\n').encode()
+        dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], copy[0]+1, copy[1]+1)
+        self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
+        dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], copy[0]+1, copy[1]+1)
+        self.wait_for_state('drop_data_requests', ((1, 0, 0),))
+        dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', blank_line_uri_list)
+        self.wait_for_state('drop_action', 0)
+        # The file should have been copied despite surrounding blank lines in the URI list.
+        self.assertTrue(os.path.exists(jn(self.kitten_wd, os.path.basename(edge_file))),
+                        'File from URI list with surrounding blank lines should be copied to destination')
+        os.unlink(edge_file)
+
+        # ---- overwrite confirmation: Enter key allows the overwrite ----
+        # kitten_wd already has 'some-image.png'; dropping the same filename again triggers confirmation.
+        enter_content = b'overwrite-enter-test-content'
+        with open(jn(self.src_data_dir, 'some-image.png'), 'wb') as f:
+            f.write(enter_content)
+
+        overwrite_uri = (as_file_url(self.src_data_dir, 'some-image.png') + '\r\n').encode()
+
+        def do_overwrite_drop():
+            dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], copy[0]+1, copy[1]+1)
+            self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
+            dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], copy[0]+1, copy[1]+1)
+            self.wait_for_state('drop_data_requests', ((1, 0, 0),))
+            dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', overwrite_uri)
+
+        do_overwrite_drop()
+        self.wait_for_confirm_pending()
+        self.pty.write_to_child('\x1b[13u')  # Enter key: confirm overwrite
+        self.wait_for_state('drop_action', 0)
+        with open(jn(self.kitten_wd, 'some-image.png'), 'rb') as f:
+            self.assertEqual(f.read(), enter_content,
+                             'Enter key should have confirmed the overwrite')
+
+        # ---- overwrite confirmation: Esc key cancels the overwrite ----
+        esc_content = b'overwrite-esc-test-content'
+        with open(jn(self.src_data_dir, 'some-image.png'), 'wb') as f:
+            f.write(esc_content)
+
+        do_overwrite_drop()
+        self.wait_for_confirm_pending()
+        self.pty.write_to_child('\x1b[27u')  # Esc key: cancel overwrite
+        self.wait_for_state('last_drop_action', 0)
+        with open(jn(self.kitten_wd, 'some-image.png'), 'rb') as f:
+            self.assertEqual(f.read(), enter_content,
+                             'Esc key should have cancelled the overwrite; file must be unchanged')
 
     def assert_files_have_same_content(self, a, b):
         with open(a, 'rb') as fa, open(b, 'rb') as fb:

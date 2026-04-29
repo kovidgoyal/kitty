@@ -233,6 +233,8 @@ func (dnd *dnd) run_loop() (err error) {
 				dnd.send_test_response(utils.IfElse(dnd.drop_status.is_remote_client, "True", "False"))
 			case "DROP_URI_LIST":
 				dnd.send_test_response(strings.Join(dnd.drop_status.uri_list, "|"))
+			case "CONFIRM_PENDING":
+				dnd.send_test_response(utils.IfElse(len(dnd.confirm_drop.overwrites) > 0, "True", "False"))
 			default:
 				dnd.send_test_response("UNKNOWN TEST COMMAND: " + string(cmd.Payload))
 			}
