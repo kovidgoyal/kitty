@@ -63,7 +63,9 @@ class TestDnDKitten(BaseTest):
     def assert_trees_equal(self, a: str, b: str, ignored='.dnd-kitten-drop-*'):
         a_name = os.path.relpath(a, self.test_dir)
         b_name = os.path.relpath(b, self.test_dir)
-        entries_a, entries_b = fnmatch.filterfalse(os.listdir(a), ignored), fnmatch.filterfalse(os.listdir(b), ignored)
+        def include(x):
+            return not fnmatch.fnmatch(x, ignored)
+        entries_a, entries_b = list(filter(include, os.listdir(a))), list(filter(include, os.listdir(b)))
         self.assertEqual(set(entries_a), set(entries_b), f'readdir() different for {a_name} vs {b_name}')
         for x in entries_a:
             ca, cb = os.path.join(a, x), os.path.join(b, x)
