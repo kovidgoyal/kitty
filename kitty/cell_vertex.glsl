@@ -16,8 +16,8 @@ layout(std140) uniform CellRenderData {
     // must have unique entries with 0 being default_bg and unset being UINT32_MAX
     uint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
     float bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
-    uint color_table[NUM_COLORS + MARK_MASK + MARK_MASK + 2];
 };
+uniform uint color_table[NUM_COLORS + MARK_MASK + MARK_MASK + 2];
 uniform float gamma_lut[256];
 uniform uint draw_bg_bitfield;
 uniform usampler2D sprite_decorations_map;

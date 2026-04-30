@@ -334,7 +334,6 @@ draw_rounded_rect(
 
 typedef struct {
     UniformBlock render_data;
-    ArrayInformation color_table;
     CellUniforms uniforms;
 } CellProgramLayout;
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
@@ -374,9 +373,6 @@ init_cell_program(void) {
     for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
         cell_program_layouts[i].render_data.index = block_index(i, "CellRenderData");
         cell_program_layouts[i].render_data.size = block_size(i, cell_program_layouts[i].render_data.index);
-        cell_program_layouts[i].color_table.size = get_uniform_information(i, "color_table[0]", GL_UNIFORM_SIZE);
-        cell_program_layouts[i].color_table.offset = get_uniform_information(i, "color_table[0]", GL_UNIFORM_OFFSET);
-        cell_program_layouts[i].color_table.stride = get_uniform_information(i, "color_table[0]", GL_UNIFORM_ARRAY_STRIDE);
         get_uniform_locations_cell(i, &cell_program_layouts[i].uniforms);
         bind_program(i);
         glUniform1fv(cell_program_layouts[i].uniforms.gamma_lut, arraysz(srgb_lut), srgb_lut);
@@ -470,10 +466,14 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     // Send the uniform data
     ColorProfile *cp = screen->paused_rendering.expires_at ? &screen->paused_rendering.color_profile : screen->color_profile;
     const bool color_table_needs_upload = cp->dirty || screen->reload_all_gpu_data;
-    const unsigned sz = color_table_needs_upload ? cell_program_layouts[CELL_PROGRAM].render_data.size : cell_program_layouts[CELL_PROGRAM].color_table.offset;
-    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, sz);
+    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, cell_program_layouts[CELL_PROGRAM].render_data.size);
     if (color_table_needs_upload) {
-        copy_color_table_to_buffer(cp, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
+        GLuint color_table_buf[256 + MARK_MASK + MARK_MASK + 2];
+        copy_color_table_to_buffer(cp, color_table_buf, 0, 1);
+        for (int prog = CELL_PROGRAM; prog < CELL_PROGRAM_SENTINEL; prog++) {
+            bind_program(prog);
+            glUniform1uiv(cell_program_layouts[prog].uniforms.color_table, arraysz(color_table_buf), color_table_buf);
+        }
     }
 #define COLOR(name) colorprofile_to_color(cp, cp->overridden.name, cp->configured.name).rgb
     rd->default_fg = COLOR(default_fg);
