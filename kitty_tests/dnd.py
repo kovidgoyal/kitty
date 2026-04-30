@@ -827,8 +827,8 @@ class TestDnDProtocol(BaseTest):
                 target = b''.join(e['payload'] for e in r_events if e['payload'])
                 self.ae(target, does_not_exist.encode())
 
-    def test_uri_non_broken_symlink_to_file_transmitted_as_file(self) -> None:
-        """A non-broken symlink to a regular file is transmitted as the file content, not as a symlink."""
+    def test_uri_non_broken_symlink_to_file_transmitted_as_symlink(self) -> None:
+        """A non-broken symlink to a regular file is transmitted as a symlink (X=1) with the target path."""
         import os
         import tempfile
         content = b'content of the real file\n' * 10
@@ -846,14 +846,13 @@ class TestDnDProtocol(BaseTest):
                 events = parse_escape_codes_b64(raw)
                 r_events = [e for e in events if e['type'] == 'r']
                 self.assertTrue(r_events, 'expected t=r response for symlink to file')
-                # Must NOT have X=1 (not a symlink response, but actual file data)
-                self.assertNotEqual(r_events[0]['meta'].get('X'), '1',
-                                    'non-broken symlink to file must not have X=1')
-                combined = b''.join(e['payload'] for e in r_events if e['payload'])
-                self.ae(combined, content)
+                self.assertEqual(r_events[0]['meta'].get('X'), '1',
+                                 'symlink to file must have X=1')
+                target = b''.join(e['payload'] for e in r_events if e['payload'])
+                self.ae(target, real_file.encode())
 
-    def test_uri_non_broken_symlink_to_directory_transmitted_as_directory(self) -> None:
-        """A non-broken symlink to a directory is transmitted as a directory listing, not as a symlink."""
+    def test_uri_non_broken_symlink_to_directory_transmitted_as_symlink(self) -> None:
+        """A non-broken symlink to a directory is transmitted as a symlink (X=1) with the target path."""
         import os
         import tempfile
         with tempfile.TemporaryDirectory() as root:
@@ -869,15 +868,12 @@ class TestDnDProtocol(BaseTest):
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume()
                 events = parse_escape_codes_b64(raw)
-                # Must receive a directory listing (X > 1 indicates a dir handle)
-                d_events = [e for e in events if e['type'] == 'r' and is_dir_event(e)]
-                self.assertTrue(d_events, 'expected directory listing for symlink to directory')
-                # Must NOT have X=1 (that flag means symlink, not directory handle)
-                payload = b''.join(
-                    chunk for e in d_events for chunk in e['chunks'] if chunk
-                )
-                entries = [e.decode() for e in payload.split(b'\x00') if e]
-                self.assertIn('inside.txt', entries)
+                r_events = [e for e in events if e['type'] == 'r']
+                self.assertTrue(r_events, 'expected t=r response for symlink to directory')
+                self.assertEqual(r_events[0]['meta'].get('X'), '1',
+                                 'symlink to directory must have X=1')
+                target = b''.join(e['payload'] for e in r_events if e['payload'])
+                self.ae(target, real_dir.encode())
 
     def test_uri_directory_transfer_tree(self) -> None:
         """Full directory tree (>= 3 levels deep) transfer: listing, sub-dirs, file integrity.
@@ -1365,8 +1361,8 @@ class TestDnDProtocol(BaseTest):
                 data = b''.join(e['payload'] for e in r_events if e['payload'])
                 self.ae(data, b'first file')
 
-    def test_top_level_symlink_to_file_resolved(self) -> None:
-        """Top-level symlink in URI list resolves to file and sends file data."""
+    def test_top_level_symlink_to_file_transmitted_as_symlink(self) -> None:
+        """Top-level symlink in URI list is transmitted as a symlink (X=1) with the target path."""
         import os
         import tempfile
         with tempfile.TemporaryDirectory() as root:
@@ -1382,12 +1378,14 @@ class TestDnDProtocol(BaseTest):
                 raw = cap.consume()
                 events = parse_escape_codes_b64(raw)
                 r_events = [e for e in events if e['type'] == 'r']
-                self.assertTrue(r_events, 'top-level symlink should resolve and send file data')
-                data = b''.join(e['payload'] for e in r_events if e['payload'])
-                self.ae(data, b'resolved content')
+                self.assertTrue(r_events, 'top-level symlink to file should be transmitted as symlink')
+                self.assertEqual(r_events[0]['meta'].get('X'), '1',
+                                 'top-level symlink to file must have X=1')
+                target = b''.join(e['payload'] for e in r_events if e['payload'])
+                self.ae(target, real.encode())
 
-    def test_top_level_symlink_to_dir_resolved(self) -> None:
-        """Top-level symlink to directory in URI list resolves and returns directory listing."""
+    def test_top_level_symlink_to_dir_transmitted_as_symlink(self) -> None:
+        """Top-level symlink to directory in URI list is transmitted as a symlink (X=1) with the target path."""
         import os
         import tempfile
         with tempfile.TemporaryDirectory() as root:
@@ -1403,13 +1401,12 @@ class TestDnDProtocol(BaseTest):
                 parse_bytes(screen, client_request_uri_data(2, 1))
                 raw = cap.consume()
                 events = parse_escape_codes_b64(raw)
-                d_events = [e for e in events if e['type'] == 'r' and is_dir_event(e)]
-                self.assertTrue(d_events, 'top-level symlink to dir should return directory listing')
-                payload = b''.join(
-                    chunk for e in d_events for chunk in e['chunks'] if chunk
-                )
-                entries = [e.decode() for e in payload.split(b'\x00') if e]
-                self.assertIn('inside.txt', entries)
+                r_events = [e for e in events if e['type'] == 'r']
+                self.assertTrue(r_events, 'top-level symlink to dir should be transmitted as symlink')
+                self.assertEqual(r_events[0]['meta'].get('X'), '1',
+                                 'top-level symlink to directory must have X=1')
+                target = b''.join(e['payload'] for e in r_events if e['payload'])
+                self.ae(target, sub.encode())
 
     def test_window_close_during_transfer_no_leak(self) -> None:
         """Closing the window while dir handles are open frees all resources (no crash)."""
