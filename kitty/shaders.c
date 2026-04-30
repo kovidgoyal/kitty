@@ -477,13 +477,16 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, i
     };
     // Send the uniform data
     ColorProfile *cp = screen->paused_rendering.expires_at ? &screen->paused_rendering.color_profile : screen->color_profile;
-    const bool color_table_needs_upload = cp->dirty || screen->reload_all_gpu_data;
-    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, cell_program_layouts[CELL_PROGRAM].render_data.size);
-    if (color_table_needs_upload) {
+    // Upload the color table into its own UBO first, before mapping the render-data
+    // UBO. Both buffers share GL_UNIFORM_BUFFER as their target, so we must never
+    // have them mapped simultaneously -- doing so causes glUnmapBuffer to operate on
+    // the wrong buffer object and leaves the first mapping invalid on many drivers.
+    if (cp->dirty || screen->reload_all_gpu_data) {
         GLuint *ct_buf = (GLuint*)map_vao_buffer_for_write_only(vao_idx, color_table_buf, 0, cell_program_layouts[CELL_PROGRAM].color_table.size);
         copy_color_table_to_buffer(cp, ct_buf, 0, cell_program_layouts[CELL_PROGRAM].color_table_stride / sizeof(GLuint));
         unmap_vao_buffer(vao_idx, color_table_buf);
     }
+    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, cell_program_layouts[CELL_PROGRAM].render_data.size);
 #define COLOR(name) colorprofile_to_color(cp, cp->overridden.name, cp->configured.name).rgb
     rd->default_fg = COLOR(default_fg);
     rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
