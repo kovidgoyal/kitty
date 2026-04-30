@@ -362,7 +362,7 @@ func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_m
 func parse_uri_list(src string) (ans []string, err error) {
 	for _, line := range utils.NewSeparatorScanner("", "\r\n").Split(src) {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "#") {
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
 		if !strings.HasPrefix(line, "file://") {
