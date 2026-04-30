@@ -2001,7 +2001,7 @@ class Boss:
                             window.on_drop(drop)
                             break
         elif tab_bar.left <= x < tab_bar.right and tab_bar.top <= y < tab_bar.bottom:
-            if (tab_id := tm.tab_bar.tab_id_at(x)) and (tab := self.tab_for_id(tab_id)) and (w := tab.active_window):
+            if (tab_id := tm.tab_bar.tab_id_at(x, y)) and (tab := self.tab_for_id(tab_id)) and (w := tab.active_window):
                 w.on_drop(drop)
 
     def on_drag_source_finished(

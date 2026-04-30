@@ -1356,7 +1356,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for tab_bar_align")
         ans["tab_bar_align"] = val
 
-    choices_for_tab_bar_align = frozenset(('left', 'center', 'right'))
+    choices_for_tab_bar_align = frozenset(('start', 'center', 'end', 'left', 'right'))
 
     def tab_bar_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_bar_background'] = to_color_or_none(val)
@@ -1558,7 +1558,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for window_title_bar_align")
         ans["window_title_bar_align"] = val
 
-    choices_for_window_title_bar_align = choices_for_tab_bar_align
+    choices_for_window_title_bar_align = frozenset(('left', 'center', 'right'))
 
     def window_title_bar_inactive_background(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['window_title_bar_inactive_background'] = to_color_or_none(val)

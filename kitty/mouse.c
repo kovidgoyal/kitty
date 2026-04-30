@@ -987,6 +987,8 @@ mouse_region(bool detect_borders, bool detect_title_bar) {
     const bool in_central = mouse_in_region(&central);
     if (!in_central) {
         if (
+                (tab_bar.left < central.left && w->mouse_x < central.left) ||
+                (tab_bar.right > central.right && w->mouse_x >= central.right) ||
                 (tab_bar.top < central.top && w->mouse_y < central.top) ||
                 (tab_bar.bottom > central.bottom && w->mouse_y >= central.bottom)
            ) ans.in_tab_bar = true;

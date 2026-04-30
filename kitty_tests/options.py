@@ -220,6 +220,7 @@ def launcher(self):
 def conf_parsing(self):
     from kitty.config import defaults, load_config
     from kitty.constants import is_macos
+    from kitty.fast_data_types import LEFT_EDGE, RIGHT_EDGE
     from kitty.fonts import FontModification, ModificationType, ModificationUnit, ModificationValue
     from kitty.options.utils import to_modifiers
     bad_lines = []
@@ -254,6 +255,18 @@ def conf_parsing(self):
     self.ae(opts.url_excluded_characters, "'''")
     opts = p("url_excluded_characters abc'")
     self.ae(opts.url_excluded_characters, "abc'")
+    opts = p('tab_bar_edge left')
+    self.ae(opts.tab_bar_edge, LEFT_EDGE)
+    opts = p('tab_bar_edge right')
+    self.ae(opts.tab_bar_edge, RIGHT_EDGE)
+    opts = p('tab_bar_align start')
+    self.ae(opts.tab_bar_align, 'start')
+    opts = p('tab_bar_align end')
+    self.ae(opts.tab_bar_align, 'end')
+    opts = p('tab_bar_align left')
+    self.ae(opts.tab_bar_align, 'left')
+    opts = p('tab_bar_align right')
+    self.ae(opts.tab_bar_align, 'right')
     opts = p('clear_all_shortcuts y', 'map f1 next_window')
     self.ae(len(opts.keyboard_modes[''].keymap), 1)
     opts = p('clear_all_mouse_actions y', 'mouse_map left click ungrabbed mouse_click_url_or_select')
