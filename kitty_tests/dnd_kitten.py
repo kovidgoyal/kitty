@@ -37,7 +37,7 @@ class Capture(WriteCapture):
         self.pty.write_to_child(data)
 
 
-def create_fs(base, include_toplevel_working_symlink=False):
+def create_fs(base, include_toplevel_working_symlink=True):
     join = partial(os.path.join, base)
     def w(sz, *path):
         if sz == 0:
@@ -232,7 +232,7 @@ class TestDnDKitten(BaseTest):
         self.assertEqual('text/uri-list\x00image/png', self.probe_state('drop_mimes').rstrip('\x00'))
         self.wait_for_state('drop_data_requests', ((1,0,0), (4,0,0)))
         self.assertEqual('text/uri-list', self.probe_state('drop_getting_data_for_mime'))
-        create_fs(self.src_data_dir, include_toplevel_working_symlink=not remote_client)
+        create_fs(self.src_data_dir)
         uri_list, path_list = [], []
         for x in sorted(os.listdir(self.src_data_dir)):
             uri_list.append(as_file_url(self.src_data_dir, x))

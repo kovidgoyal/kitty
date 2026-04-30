@@ -947,12 +947,14 @@ drop_send_dir_listing(Window *w, const char *path) {
 }
 
 static void
-drop_send_symlink(Window *w, const char *target, size_t sz) {
+drop_send_symlink(Window *w, const char *path) {
+    char target[PATH_MAX]; ssize_t tgtsz;
+    if ((tgtsz = readlink(path, target, sizeof(target)-1)) < 0) { drop_send_error(w, EIO); return; }
     char hdr[128];
     int hdr_sz = snprintf(hdr, sizeof(hdr), "\x1b]%d;t=r", DND_CODE);
     hdr_sz += drop_append_request_keys(w, hdr + hdr_sz, sizeof(hdr) - hdr_sz);
     hdr_sz += snprintf(hdr + hdr_sz, sizeof(hdr) - hdr_sz, ":X=1");
-    queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, target, sz, true);
+    queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, target, tgtsz, true);
     queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, hdr, hdr_sz, NULL, 0, true);
 }
 
@@ -985,31 +987,24 @@ do_drop_request_uri_data(Window *w, int32_t mime_idx, int32_t file_idx) {
     }
 
     struct stat st;
-    if (stat(path, &st) < 0) {
-        if (lstat(path, &st) < 0) {
-            switch (errno) {
-                case ENOENT: case ENOTDIR: drop_send_error(w, ENOENT); break;
-                case EACCES: case EPERM:   drop_send_error(w, EPERM); break;
-                default:                   drop_send_error(w, EIO); break;
-            }
-            return true;
+    if (lstat(path, &st) < 0) {
+        switch (errno) {
+            case ENOENT: case ENOTDIR: drop_send_error(w, ENOENT); break;
+            case EACCES: case EPERM:   drop_send_error(w, EPERM); break;
+            default:                   drop_send_error(w, EIO); break;
         }
-        // We have a broken symlink
-        char target[PATH_MAX]; ssize_t tgtsz;
-        if ((tgtsz = readlink(path, target, sizeof(target)-1)) < 0) drop_send_error(w, ENOENT);
-        drop_send_symlink(w, target, tgtsz);
         return true;
     }
 
-    bool sync;
+    bool sync = true;
     if (S_ISDIR(st.st_mode)) {
         drop_send_dir_listing(w, path);
-        sync = true;
     } else if (S_ISREG(st.st_mode)) {
         sync = drop_send_file_data(w, path);
+    } else if (S_ISLNK(st.st_mode)) {
+        drop_send_symlink(w, path);
     } else {
         drop_send_error(w, EINVAL);
-        sync = true;
     }
     return sync;
 }
