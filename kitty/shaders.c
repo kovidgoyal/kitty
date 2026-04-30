@@ -332,9 +332,12 @@ draw_rounded_rect(
 
 // Cell {{{
 
+enum { CELL_RENDER_DATA_BINDING_POINT = 0, COLOR_TABLE_BINDING_POINT = 1 };
+
 typedef struct {
     UniformBlock render_data;
-    ArrayInformation color_table;
+    UniformBlock color_table;
+    GLint color_table_stride;
     CellUniforms uniforms;
 } CellProgramLayout;
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
@@ -374,9 +377,11 @@ init_cell_program(void) {
     for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
         cell_program_layouts[i].render_data.index = block_index(i, "CellRenderData");
         cell_program_layouts[i].render_data.size = block_size(i, cell_program_layouts[i].render_data.index);
-        cell_program_layouts[i].color_table.size = get_uniform_information(i, "color_table[0]", GL_UNIFORM_SIZE);
-        cell_program_layouts[i].color_table.offset = get_uniform_information(i, "color_table[0]", GL_UNIFORM_OFFSET);
-        cell_program_layouts[i].color_table.stride = get_uniform_information(i, "color_table[0]", GL_UNIFORM_ARRAY_STRIDE);
+        cell_program_layouts[i].color_table.index = block_index(i, "ColorTable");
+        cell_program_layouts[i].color_table.size = block_size(i, cell_program_layouts[i].color_table.index);
+        cell_program_layouts[i].color_table_stride = get_uniform_information(i, "color_table[0]", GL_UNIFORM_ARRAY_STRIDE);
+        glUniformBlockBinding(program_id(i), cell_program_layouts[i].render_data.index, CELL_RENDER_DATA_BINDING_POINT);
+        glUniformBlockBinding(program_id(i), cell_program_layouts[i].color_table.index, COLOR_TABLE_BINDING_POINT);
         get_uniform_locations_cell(i, &cell_program_layouts[i].uniforms);
         bind_program(i);
         glUniform1fv(cell_program_layouts[i].uniforms.gamma_lut, arraysz(srgb_lut), srgb_lut);
@@ -399,7 +404,7 @@ init_cell_program(void) {
     get_uniform_locations_rounded_rect(ROUNDED_RECT_PROGRAM, &rounded_rect_program_layout.uniforms);
 }
 
-#define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
+#define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer, color_table_buffer };
 
 ssize_t
 create_cell_vao(void) {
@@ -418,6 +423,9 @@ create_cell_vao(void) {
 
     size_t bufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
     alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].render_data.size, bufnum, GL_STREAM_DRAW);
+
+    size_t ctbufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
+    alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].color_table.size, ctbufnum, GL_STREAM_DRAW);
 
     return vao_idx;
 #undef A
@@ -454,7 +462,7 @@ has_bgimage(OSWindow *w) {
 }
 
 static color_type
-cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, const CursorRenderInfo *cursor, OSWindow *os_window, float inactive_text_alpha, float bg_alpha) {
+cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, int color_table_buf, const CursorRenderInfo *cursor, OSWindow *os_window, float inactive_text_alpha, float bg_alpha) {
     struct GPUCellRenderData {
         GLfloat use_cell_bg_for_selection_fg, use_cell_fg_for_selection_color, use_cell_for_selection_bg;
 
@@ -470,10 +478,11 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, c
     // Send the uniform data
     ColorProfile *cp = screen->paused_rendering.expires_at ? &screen->paused_rendering.color_profile : screen->color_profile;
     const bool color_table_needs_upload = cp->dirty || screen->reload_all_gpu_data;
-    const unsigned sz = color_table_needs_upload ? cell_program_layouts[CELL_PROGRAM].render_data.size : cell_program_layouts[CELL_PROGRAM].color_table.offset;
-    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, sz);
+    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, cell_program_layouts[CELL_PROGRAM].render_data.size);
     if (color_table_needs_upload) {
-        copy_color_table_to_buffer(cp, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
+        GLuint *ct_buf = (GLuint*)map_vao_buffer_for_write_only(vao_idx, color_table_buf, 0, cell_program_layouts[CELL_PROGRAM].color_table.size);
+        copy_color_table_to_buffer(cp, ct_buf, 0, cell_program_layouts[CELL_PROGRAM].color_table_stride / sizeof(GLuint));
+        unmap_vao_buffer(vao_idx, color_table_buf);
     }
 #define COLOR(name) colorprofile_to_color(cp, cp->overridden.name, cp->configured.name).rgb
     rd->default_fg = COLOR(default_fg);
@@ -1324,7 +1333,8 @@ static void
 call_cell_program(int program, const UIRenderData *ui, ssize_t vao_idx, bool for_final_output, unsigned draw_bg_bitfield) {
     bind_program(program);
     CELL_BUFFERS;
-    bind_vao_uniform_buffer(vao_idx, uniform_buffer, cell_program_layouts[program].render_data.index);
+    bind_vao_uniform_buffer(vao_idx, uniform_buffer, CELL_RENDER_DATA_BINDING_POINT);
+    bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
     glUniform1ui(cell_program_layouts[program].uniforms.draw_bg_bitfield, draw_bg_bitfield);
     glUniform1f(cell_program_layouts[program].uniforms.row_offset, row_offset_for_screen(ui->screen));
     if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
@@ -1413,7 +1423,7 @@ draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_wind
     float bg_alpha = effective_os_window_alpha(os_window);
 
     color_type default_bg = cell_update_uniform_block(
-            srd->vao_idx, screen, uniform_buffer, &screen->cursor_render_info, os_window, current_inactive_text_alpha, bg_alpha);
+            srd->vao_idx, screen, uniform_buffer, color_table_buffer, &screen->cursor_render_info, os_window, current_inactive_text_alpha, bg_alpha);
     set_cell_uniforms(screen->reload_all_gpu_data);
     WindowLogoRenderData *wl;
     if (window && (wl = &window->window_logo) && wl->id && (wl->instance = find_window_logo(global_state.all_window_logos, wl->id)) && wl->instance->load_from_disk_ok) {
