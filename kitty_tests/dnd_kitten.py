@@ -183,23 +183,6 @@ class TestDnDKitten(BaseTest):
         self.pty.write_to_child('\x1b[27u')  # ]
         self.pty.wait_till_child_exits(require_exit_code=0)
 
-    def wait_for_confirm_pending(self, timeout=10):
-        """Poll until the kitten reports that an overwrite confirmation is pending."""
-        self.messages_from_kitten = ''
-        self.send_dnd_command_to_kitten('CONFIRM_PENDING', flush=True)
-
-        def check():
-            if self.messages_from_kitten.strip() == 'True':
-                self.messages_from_kitten = ''
-                return True
-            if self.messages_from_kitten.strip() == 'False':
-                # Not yet pending; ask again on the next iteration
-                self.messages_from_kitten = ''
-                self.send_dnd_command_to_kitten('CONFIRM_PENDING', flush=True)
-            return False
-
-        self.pty.wait_till(check, timeout, lambda: 'Timed out waiting for overwrite confirmation to become pending')
-
     def tearDown(self):
         dnd_set_test_write_func(None)
         dnd_test_cleanup_fake_window(self.capture.os_window_id)
@@ -308,38 +291,31 @@ class TestDnDKitten(BaseTest):
         # ---- overwrite confirmation: Enter key allows the overwrite ----
         # kitten_wd already has 'some-image.png'; dropping the same filename again triggers confirmation.
         enter_content = b'overwrite-enter-test-content'
-        with open(jn(self.src_data_dir, 'some-image.png'), 'wb') as f:
-            f.write(enter_content)
-
         overwrite_uri = (as_file_url(self.src_data_dir, 'some-image.png') + '\r\n').encode()
 
-        def do_overwrite_drop():
+        def do_overwrite_drop(src_content, key_press, action=GLFW_DRAG_OPERATION_COPY):
+            with open(jn(self.src_data_dir, 'some-image.png'), 'wb') as f:
+                f.write(src_content)
+            orig_content = b'content-to-be-overwritten'
+            path = jn(self.kitten_wd, 'some-image.png')
+            os.unlink(path)
+            with open(path, 'wb') as f:
+                f.write(orig_content)
+            expected_dest_content = src_content if action == GLFW_DRAG_OPERATION_COPY else orig_content
             dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], copy[0]+1, copy[1]+1)
             self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
             dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], copy[0]+1, copy[1]+1)
             self.wait_for_state('drop_data_requests', ((1, 0, 0),))
             dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', overwrite_uri)
+            self.pty.wait_till(lambda: 'overwrite existing' in self.pty.screen_contents())
+            self.pty.write_to_child(key_press)
+            self.wait_for_state('last_drop_action', action)
+            self.wait_for_state('drop_action', 0)
+            with open(jn(self.kitten_wd, 'some-image.png'), 'rb') as f:
+                self.assertEqual(expected_dest_content, f.read())
 
-        do_overwrite_drop()
-        self.wait_for_confirm_pending()
-        self.pty.write_to_child('\x1b[13u')  # Enter key: confirm overwrite
-        self.wait_for_state('drop_action', 0)
-        with open(jn(self.kitten_wd, 'some-image.png'), 'rb') as f:
-            self.assertEqual(f.read(), enter_content,
-                             'Enter key should have confirmed the overwrite')
-
-        # ---- overwrite confirmation: Esc key cancels the overwrite ----
-        esc_content = b'overwrite-esc-test-content'
-        with open(jn(self.src_data_dir, 'some-image.png'), 'wb') as f:
-            f.write(esc_content)
-
-        do_overwrite_drop()
-        self.wait_for_confirm_pending()
-        self.pty.write_to_child('\x1b[27u')  # Esc key: cancel overwrite
-        self.wait_for_state('last_drop_action', 0)
-        with open(jn(self.kitten_wd, 'some-image.png'), 'rb') as f:
-            self.assertEqual(f.read(), enter_content,
-                             'Esc key should have cancelled the overwrite; file must be unchanged')
+        do_overwrite_drop(enter_content, '\x1b[13u')
+        do_overwrite_drop(b'overwrite-esc-test-content', '\x1b[27u', 0)
 
     def assert_files_have_same_content(self, a, b):
         with open(a, 'rb') as fa, open(b, 'rb') as fb:

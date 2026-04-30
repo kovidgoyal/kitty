@@ -52,10 +52,6 @@ func (dnd *dnd) render_screen() error {
 		lp.Println("Dragging data...")
 		return nil
 	}
-	if dnd.drop_status.reading_data {
-		lp.Println("Reading dropped data, please wait...")
-		return nil
-	}
 	y := 0
 	sz, _ := lp.ScreenSize()
 	render_paragraph := func(text string) {
@@ -81,6 +77,11 @@ func (dnd *dnd) render_screen() error {
 		if left := len(dnd.confirm_drop.overwrites) - len(overwrites); left > 0 {
 			lp.Printf("... (%d more)", left)
 		}
+		return nil
+	}
+
+	if dnd.drop_status.reading_data {
+		lp.Println("Reading dropped data, please wait...")
 		return nil
 	}
 

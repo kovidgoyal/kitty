@@ -758,8 +758,9 @@ func (dnd *dnd) on_drop_data(cmd DC) error {
 			}
 		}
 		pending := false
+		expecting := utils.NewSetWithItems(drop_status.accepted_mimes...)
 		for _, d := range dnd.drop_dests {
-			if !d.completed {
+			if !d.completed && expecting.Has(d.mime_type) {
 				pending = true
 				break
 			}
