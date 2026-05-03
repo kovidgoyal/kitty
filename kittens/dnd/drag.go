@@ -31,7 +31,6 @@ type remote_data_item struct {
 	metadata                         os.FileInfo
 	file                             *os.File
 	write_id                         loop.IdType
-	base64                           streaming_base64.StreamingBase64Encoder
 	parent_dir_handle, idx_in_parent int
 	idx_in_uri_list                  int
 }
@@ -278,17 +277,12 @@ func (dnd *dnd) send_next_file_chunk() (err error) {
 	}
 	n, err := cr.file.Read(read_buf[:])
 	if n > 0 {
-		for chunk := range cr.base64.Encode(read_buf[:n], encode_buf[:]) {
-			dnd.drag_status.remote_item_write_id = dnd.send_remote_item_payload(cr.parent_dir_handle, cr.idx_in_parent, cr.idx_in_uri_list, 0, chunk)
-		}
+		dnd.drag_status.remote_item_write_id = dnd.send_remote_item_payload(cr.parent_dir_handle, cr.idx_in_parent, cr.idx_in_uri_list, 0, read_buf[:n])
 	}
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			cr.file.Close()
 			dnd.drag_status.current_remote_file = nil
-			if chunk := cr.base64.Finish(); len(chunk) > 0 {
-				dnd.send_remote_item_payload(cr.parent_dir_handle, cr.idx_in_parent, cr.idx_in_uri_list, 0, chunk)
-			}
 			dnd.drag_status.remote_item_write_id = dnd.send_remote_item_payload(cr.parent_dir_handle, cr.idx_in_parent, cr.idx_in_uri_list, 0, nil)
 			return
 		}
