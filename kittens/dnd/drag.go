@@ -31,6 +31,7 @@ type remote_data_item struct {
 	metadata                         os.FileInfo
 	file                             *os.File
 	write_id                         loop.IdType
+	base64                           streaming_base64.StreamingBase64Encoder
 	parent_dir_handle, idx_in_parent int
 	idx_in_uri_list                  int
 }
@@ -223,7 +224,11 @@ func (dnd *dnd) on_data_request_finished(i int) (err error) {
 func (dnd *dnd) send_remote_item_payload(parent_dir_handle, idx_in_parent, idx_in_uri_list, item_type int, payload []byte) loop.IdType {
 	cmd := DC{Type: 'k', Xp: item_type, X: idx_in_uri_list + 1}
 	if len(payload) > 0 {
-		cmd.Payload = utils.UnsafeStringToBytes(base64.RawStdEncoding.EncodeToString(payload))
+		if item_type == 0 {
+			cmd.Payload = payload
+		} else {
+			cmd.Payload = utils.UnsafeStringToBytes(base64.RawStdEncoding.EncodeToString(payload))
+		}
 	}
 	if parent_dir_handle != 0 {
 		cmd.Yp = parent_dir_handle
@@ -276,13 +281,31 @@ func (dnd *dnd) send_next_file_chunk() (err error) {
 		return dnd.next_remote_item()
 	}
 	n, err := cr.file.Read(read_buf[:])
+	if f, _ := os.OpenFile("/tmp/dnd_debug.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644); f != nil {
+		fmt.Fprintf(f, "DEBUG send_next_file_chunk: file=%s read n=%d err=%v\n", cr.path, n, err)
+		f.Close()
+	}
 	if n > 0 {
-		dnd.drag_status.remote_item_write_id = dnd.send_remote_item_payload(cr.parent_dir_handle, cr.idx_in_parent, cr.idx_in_uri_list, 0, read_buf[:n])
+		for chunk := range cr.base64.Encode(read_buf[:n], encode_buf[:]) {
+			if f, _ := os.OpenFile("/tmp/dnd_debug.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644); f != nil {
+				fmt.Fprintf(f, "DEBUG Encode chunk len=%d\n", len(chunk))
+				f.Close()
+			}
+			dnd.drag_status.remote_item_write_id = dnd.send_remote_item_payload(cr.parent_dir_handle, cr.idx_in_parent, cr.idx_in_uri_list, 0, chunk)
+		}
 	}
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			cr.file.Close()
 			dnd.drag_status.current_remote_file = nil
+			chunk := cr.base64.Finish()
+			if f, _ := os.OpenFile("/tmp/dnd_debug.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644); f != nil {
+				fmt.Fprintf(f, "DEBUG Finish chunk len=%d for file %s\n", len(chunk), cr.path)
+				f.Close()
+			}
+			if len(chunk) > 0 {
+				dnd.send_remote_item_payload(cr.parent_dir_handle, cr.idx_in_parent, cr.idx_in_uri_list, 0, chunk)
+			}
 			dnd.drag_status.remote_item_write_id = dnd.send_remote_item_payload(cr.parent_dir_handle, cr.idx_in_parent, cr.idx_in_uri_list, 0, nil)
 			return
 		}
