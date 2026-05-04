@@ -180,7 +180,7 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
                             break
                         end
                         if string match -r -q -- '^[aCcDghpRrtTu]$' "$flag"
-                            if test $i -ge $slen
+                            if test $i -eq $slen
                                 set skip_next "y"
                             end
                             break

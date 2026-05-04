@@ -45,7 +45,7 @@ if [[ -n "$KITTY_BASH_INJECT" ]]; then
                         case "$flag" in
                             e|v) is_sudoedit="y"; builtin break 2;;
                             a|C|c|D|g|h|p|R|r|t|T|u)
-                                if (( i + 1 >= ${#flags} )); then skip_next="y"; fi
+                                if (( i + 1 == ${#flags} )); then skip_next="y"; fi
                                 builtin break;;
                         esac
                         i=$(( i + 1 ))
