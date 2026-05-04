@@ -970,7 +970,23 @@ drag_source_callback(GLFWwindow *window UNUSED, GLFWDragEvent *ev) {
             // when dropping outside any application which is a case we want to
             // handle.
             if (is_client_drag) {
-                drag_notify(w, DRAG_NOTIFY_DROPPED);
+                // On Wayland (and some other platforms), wl_data_source.cancelled is sent
+                // when the drop destination does not accept the drop. This is mis-interpreted
+                // as GLFW_DRAG_DROPPED due to a Wayland protocol ambiguity. When the drop
+                // destination is the same OS window as the drag source (a self-drop), the
+                // kitten has already rejected the drop (returned NONE operation), so the
+                // compositor fires cancelled rather than dnd_drop_performed. On GNOME/Wayland,
+                // cancelled fires without a prior wl_data_device.leave so drop_dest.os_window_id
+                // is still set. Detect this case and treat it as a cancellation.
+                if (ds.from_os_window && global_state.drop_dest.os_window_id &&
+                        global_state.drop_dest.os_window_id == ds.from_os_window) {
+                    ds.was_canceled = true;
+                    ds.was_dropped = false;
+                    drag_notify(w, DRAG_NOTIFY_FINISHED);
+                    finish;
+                } else {
+                    drag_notify(w, DRAG_NOTIFY_DROPPED);
+                }
             } else {
                 if (global_state.drop_dest.os_window_id && ds.drag_data) {
                     Py_CLEAR(global_state.drop_dest.self_drag_data);

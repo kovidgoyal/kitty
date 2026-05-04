@@ -623,12 +623,6 @@ func (dnd *dnd) on_drop_move(cell_x, cell_y int, has_more bool, offered_mimes st
 	if is_drop {
 		needs_rerender = true
 		if dnd.drop_status.action == 0 || len(dnd.drop_status.accepted_mimes) == 0 || dnd.drag_status.active {
-			if dnd.drag_status.active {
-				// This is a self-drop (drag and drop on the same window). Mark it so
-				// that on_drag_event ignores the DRAG_NOTIFY_DROPPED notification.
-				dnd.drag_status.self_drop_rejected = true
-				dnd.drag_status.dropped = false
-			}
 			dnd.end_drop(false)
 			return
 		}
