@@ -45,6 +45,7 @@ type drag_status struct {
 	accepted_mime          int
 	accepted_operation     int
 	dropped                bool
+	self_drop_rejected     bool
 	data_requests          []*data_request
 	remote_items           []*remote_data_item
 	current_remote_file    *remote_data_item
@@ -185,7 +186,13 @@ func (dnd *dnd) on_drag_event(x, y, operation, Y int) (err error) {
 	case 2:
 		dnd.drag_status.accepted_operation = operation
 	case 3:
-		dnd.drag_status.dropped = true
+		// Only mark as dropped for external drops. For self-drops (same window),
+		// on_drop_move will set self_drop_rejected before or after this event fires.
+		if dnd.drag_status.self_drop_rejected {
+			dnd.drag_status.self_drop_rejected = false
+		} else {
+			dnd.drag_status.dropped = true
+		}
 	case 4:
 		dnd.reset_drag()
 	case 5:
