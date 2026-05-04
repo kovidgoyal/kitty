@@ -145,15 +145,54 @@ function __ksi_schedule --on-event fish_prompt -d "Setup kitty integration after
         # Ensure terminfo is available in sudo
         function sudo
             set --local is_sudoedit "n"
+            set --local skip_next "n"
+            set --local break_outer "n"
             for arg in $argv
-                if string match -q -- "-e" "$arg" or string match -q -- "--edit" "$arg"
-                    set is_sudoedit "y"
-                    break
+                if string match -q -- "$skip_next" "y"
+                    set skip_next "n"
+                    continue
                 end
                 if string match -q -- "--" "$arg"
                     break  # end of options
                 end
-                if not string match -r -q -- "^-" "$arg" and not string match -r -q -- "=" "$arg"
+                if string match -q -- "--edit" "$arg" or string match -q -- "--validate" "$arg"
+                    set is_sudoedit "y"
+                    break
+                end
+                if string match -r -q -- "^--" "$arg"
+                    if not string match -r -q -- "=" "$arg"
+                        switch $arg
+                            case "--user" "--group" "--host" "--chdir" "--chroot" "--role" "--type" "--command-timeout" "--auth-type" "--login-class" "--prompt" "--close-from" "--other-user"
+                                set skip_next "y"
+                        end
+                    end
+                    continue
+                end
+                if string match -r -q -- "^-" "$arg"
+                    set --local flags (string sub --start 2 -- "$arg")
+                    set --local slen (string length -- "$flags")
+                    set --local i 1
+                    while test $i -le $slen
+                        set --local flag (string sub --start $i --length 1 -- "$flags")
+                        if string match -q -- "e" "$flag" or string match -q -- "v" "$flag"
+                            set is_sudoedit "y"
+                            set break_outer "y"
+                            break
+                        end
+                        if string match -r -q -- '^[aCcDghpRrtTu]$' "$flag"
+                            if test $i -ge $slen
+                                set skip_next "y"
+                            end
+                            break
+                        end
+                        set i (math $i + 1)
+                    end
+                    if string match -q -- "$break_outer" "y"
+                        break
+                    end
+                    continue
+                end
+                if not string match -r -q -- "=" "$arg"
                     break  # reached the command
                 end
             end

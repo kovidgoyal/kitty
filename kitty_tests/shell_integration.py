@@ -4,6 +4,7 @@
 
 import errno
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -437,6 +438,120 @@ PS1="{ps1}"
             r'a\c b': 'a\0b',
         }.items():
             self.ae(decode_ansi_c_quoted_string(f"$'{q}'"), e, f'Failed to decode: {q!r}')
+
+    def _extract_bash_zsh_sudo_func(self, content):
+        """Extract the sudo() function from bash/zsh shell integration content using indentation."""
+        lines = content.split('\n')
+        start_idx = None
+        indent_len = None
+        for i, line in enumerate(lines):
+            stripped = line.lstrip()
+            if re.match(r'sudo\(\)', stripped):
+                start_idx = i
+                indent_len = len(line) - len(stripped)
+                break
+        if start_idx is None:
+            return None
+        for i in range(start_idx + 1, len(lines)):
+            line = lines[i]
+            stripped = line.strip()
+            if stripped == '}' and (len(line) - len(line.lstrip())) == indent_len:
+                return '\n'.join(lines[start_idx:i + 1])
+        return None
+
+    def _extract_fish_sudo_func(self, content):
+        """Extract the 'function sudo' block from fish shell integration content."""
+        lines = content.split('\n')
+        start_idx = None
+        depth = 0
+        for i, line in enumerate(lines):
+            stripped = line.lstrip()
+            if start_idx is None:
+                if re.match(r'function sudo\b', stripped):
+                    start_idx = i
+                    depth = 1
+            else:
+                if re.match(r'(function|if|for|while|switch|begin)\b', stripped):
+                    depth += 1
+                elif re.match(r'end\b', stripped):
+                    depth -= 1
+                    if depth == 0:
+                        return '\n'.join(lines[start_idx:i + 1])
+        return None
+
+    def test_sudo_wrapper(self):
+        """Test the sudo wrapper function from shell integration scripts against various command lines."""
+        test_cases = [
+            (['ls'],                                'with_terminfo', 'simple command'),
+            (['-e', 'file.txt'],                   'no_terminfo',   '-e flag'),
+            (['--edit', 'file.txt'],               'no_terminfo',   '--edit flag'),
+            (['-v'],                               'no_terminfo',   '-v validate flag'),
+            (['--validate'],                       'no_terminfo',   '--validate flag'),
+            (['-nv'],                              'no_terminfo',   '-nv grouped flags'),
+            (['-ne', 'file.txt'],                  'no_terminfo',   '-ne grouped flags'),
+            (['-u', 'root', 'ls'],                 'with_terminfo', '-u takes argument'),
+            (['-u', 'root', '-v'],                 'no_terminfo',   '-u arg then -v'),
+            (['--', '-v'],                         'with_terminfo', '-- ends option processing'),
+            (['TERM=xterm', 'ls'],                 'with_terminfo', 'env var before command'),
+            (['-g', 'wheel', 'ls'],                'with_terminfo', '-g takes argument'),
+            (['-D', '/tmp', 'ls'],                 'with_terminfo', '-D takes argument'),
+            (['-R', '/chroot', 'ls'],              'with_terminfo', '-R takes argument'),
+            (['-h', 'localhost', 'ls'],            'with_terminfo', '-h takes argument'),
+            (['-uroot', 'ls'],                     'with_terminfo', '-u with embedded argument'),
+            (['--user', 'root', 'ls'],             'with_terminfo', '--user takes argument'),
+            (['--user=root', 'ls'],                'with_terminfo', '--user=root self-contained'),
+        ]
+        ran_any = False
+        for shell in ('bash', 'zsh', 'fish'):
+            if shell == 'bash' and not bash_ok():
+                continue
+            if not shutil.which(shell):
+                continue
+            with self.subTest(shell=shell):
+                ran_any = True
+                if shell == 'fish':
+                    integration_file = os.path.join(
+                        shell_integration_dir, 'fish', 'vendor_conf.d', 'kitty-shell-integration.fish')
+                    with open(integration_file) as f:
+                        content = f.read()
+                    func = self._extract_fish_sudo_func(content)
+                    self.assertIsNotNone(func, f'Could not extract sudo function from {integration_file}')
+                    func = func.replace('command sudo TERMINFO="$TERMINFO" $argv', 'echo "with_terminfo"')
+                    func = func.replace('command sudo $argv', 'echo "no_terminfo"')
+                    script = func + '\nsudo $argv\n'
+                    suffix = '.fish'
+                else:
+                    if shell == 'bash':
+                        integration_file = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
+                    else:
+                        integration_file = os.path.join(shell_integration_dir, 'zsh', 'kitty-integration')
+                    with open(integration_file) as f:
+                        content = f.read()
+                    func = self._extract_bash_zsh_sudo_func(content)
+                    self.assertIsNotNone(func, f'Could not extract sudo function from {integration_file}')
+                    func = func.replace('builtin command sudo TERMINFO="$TERMINFO" "$@";', 'echo "with_terminfo";')
+                    func = func.replace('builtin command sudo "$@";', 'echo "no_terminfo";')
+                    script = func + '\nsudo "$@"\n'
+                    suffix = '.sh'
+                with tempfile.NamedTemporaryFile(mode='w', suffix=suffix, delete=False) as tf:
+                    tf.write(script)
+                    script_path = tf.name
+                try:
+                    for args, expected, desc in test_cases:
+                        with self.subTest(args=args, desc=desc):
+                            result = subprocess.run(
+                                [shell, script_path] + args,
+                                capture_output=True, text=True, timeout=5
+                            )
+                            self.assertEqual(
+                                result.stdout.strip(), expected,
+                                f'shell={shell}, args={args!r} ({desc}):\n'
+                                f'  stdout={result.stdout!r}\n  stderr={result.stderr!r}'
+                            )
+                finally:
+                    os.unlink(script_path)
+        if not ran_any:
+            self.skipTest('No supported shell (bash, zsh, fish) found')
 
 
 class ShellIntegrationWithKitten(ShellIntegration):

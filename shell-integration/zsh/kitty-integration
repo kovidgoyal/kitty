@@ -407,13 +407,38 @@ _ksi_deferred_init() {
             sudo() {
                 # Ensure terminfo is available in sudo
                 builtin local is_sudoedit="n"
+                builtin local skip_next="n"
+                builtin local flags flag i
                 for arg; do
-                    if [[ "$arg" == "-e" || $arg == "--edit" ]]; then
-                        is_sudoedit="y"
-                        builtin break;
-                    fi
+                    if [[ "$skip_next" == "y" ]]; then skip_next="n"; continue; fi
                     [[ "$arg" == "--" ]] && builtin break  # end of options
-                    [[ "$arg" != -* && "$arg" != *=* ]] && builtin break  # command found
+                    if [[ "$arg" == "--edit" || "$arg" == "--validate" ]]; then
+                        is_sudoedit="y"; builtin break
+                    fi
+                    if [[ "$arg" == --* ]]; then
+                        if [[ "$arg" != *=* ]]; then
+                            case "$arg" in
+                                --user|--group|--host|--chdir|--chroot|--role|--type|--command-timeout|--auth-type|--login-class|--prompt|--close-from|--other-user)
+                                    skip_next="y";;
+                            esac
+                        fi
+                        continue
+                    fi
+                    if [[ "$arg" == -* ]]; then
+                        flags="${arg:1}"; i=0
+                        while (( i < ${#flags} )); do
+                            flag="${flags:$i:1}"
+                            case "$flag" in
+                                e|v) is_sudoedit="y"; builtin break 2;;
+                                a|C|c|D|g|h|p|R|r|t|T|u)
+                                    if (( i + 1 >= ${#flags} )); then skip_next="y"; fi
+                                    builtin break;;
+                            esac
+                            i=$(( i + 1 ))
+                        done
+                        continue
+                    fi
+                    [[ "$arg" != *=* ]] && builtin break  # command found
                 done
                 if [[ "$is_sudoedit" == "y" ]]; then
                     builtin command sudo "$@";
