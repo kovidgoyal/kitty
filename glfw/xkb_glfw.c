@@ -886,7 +886,13 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         debug("num_syms: %d num_clean_syms: %d ignoring event\n", num_syms, num_clean_syms);
         return;
     }
-    xkb_sym = clean_syms[0];
+    // When known modifiers transform the key into a different functional key,
+    // we must use the state-mediated keysym. The terminal can reconstruct
+    // character variants from base_key + modifier (e.g. Shift+'a'='A') but not
+    // when the key becomes an entirely different functional key (e.g.
+    // caps:escape_shifted_capslock makes Shift+CapsLock produce Caps_Lock
+    // instead of Escape).
+    xkb_sym  = glfw_key_for_sym(syms[0]) >= GLFW_FKEY_FIRST ? syms[0] : clean_syms[0];
     shifted_xkb_sym = syms[0];
     debug("clean_sym: %s ", glfw_xkb_keysym_name(clean_syms[0]));
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
@@ -906,7 +912,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
             xkb_mod_mask_t consumed_unknown_mods = xkb_state_key_get_consumed_mods(sg->state, code_for_sym) & sg->activeUnknownModifiers;
             if (sg->activeUnknownModifiers) debug("%s", format_xkb_mods(xkb, "active_unknown_mods", sg->activeUnknownModifiers));
             if (consumed_unknown_mods) { debug("%s", format_xkb_mods(xkb, "consumed_unknown_mods", consumed_unknown_mods)); }
-            else if (!is_switch_layout_key(xkb_sym)) xkb_sym = clean_syms[0];
+            else if (!is_switch_layout_key(xkb_sym) && glfw_key_for_sym(syms[0]) < GLFW_FKEY_FIRST) xkb_sym = clean_syms[0];
             // xkb returns text even if alt and/or super are pressed
             if ( ((GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER | GLFW_MOD_HYPER | GLFW_MOD_META) & sg->modifiers) == 0) {
               xkb_state_key_get_utf8(sg->state, code_for_sym, key_text, sizeof(key_text));
