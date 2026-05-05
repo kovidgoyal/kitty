@@ -13,6 +13,7 @@ import (
 
 	"github.com/emmansun/base64"
 	"github.com/kovidgoyal/imaging"
+	choose_files "github.com/kovidgoyal/kitty/kittens/choose_files"
 	"github.com/kovidgoyal/kitty/tools/icons"
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -84,8 +85,9 @@ func find_drag_image(drag_sources map[string]*drag_source) image.Image {
 		}
 	}
 	for _, path := range all_paths {
-		_ = path
-		// TODO: Try to generate an image based preview using the machinery from the choose-files kitten
+		if img := choose_files.ThumbnailForPath(path); img != nil {
+			return img
+		}
 	}
 	return nil
 }
