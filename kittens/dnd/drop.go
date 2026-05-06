@@ -808,6 +808,10 @@ func (dnd *dnd) drop_confirm(accepted bool) error {
 		}
 		dnd.end_drop(true)
 	} else {
+		// Remove the staging directory immediately so that the dropped files do
+		// not linger in the temporary directory when the user rejects the
+		// overwrite confirmation.
+		os.RemoveAll(staging_dir.Name())
 		dnd.end_drop(false)
 	}
 	return dnd.render_screen()

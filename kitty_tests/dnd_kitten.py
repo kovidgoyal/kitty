@@ -322,6 +322,9 @@ class TestDnDKitten(BaseTest):
 
         do_overwrite_drop(enter_content, '\x1b[13u')
         do_overwrite_drop(b'overwrite-esc-test-content', '\x1b[27u', 0)  # ]]]
+        # After rejection the staged file must be removed immediately, not left in the temp dir.
+        self.roundtrip()
+        self.assert_no_staged_files()
 
         # ---- move operation: source items deleted for local client only ----
         move_file = jn(self.src_data_dir, 'move_test.txt')
@@ -360,6 +363,64 @@ class TestDnDKitten(BaseTest):
     def assert_files_have_same_content(self, a, b):
         with open(a, 'rb') as fa, open(b, 'rb') as fb:
             self.assertEqual(fa.read(), fb.read(), f'{a} ({os.path.getsize(a)}) != {b} ({os.path.getsize(b)})')
+
+    def assert_no_staged_files(self):
+        '''Assert that no dropped files linger in any staging subdirectory.'''
+        for entry in os.listdir(self.kitten_wd):
+            if fnmatch.fnmatch(entry, '.dnd-kitten-drop-*'):
+                base = os.path.join(self.kitten_wd, entry)
+                for sub in os.listdir(base):
+                    sub_path = os.path.join(base, sub)
+                    if os.path.isdir(sub_path):
+                        leftover = os.listdir(sub_path)
+                        self.assertEqual(
+                            [], leftover,
+                            f'Staged files must not remain in temp dir after drop is finalised: {sub_path}: {leftover}')
+
+    def _do_overwrite_no_confirm_drop(self, remote_client):
+        '''Drop a file that already exists at the destination without --confirm-drop-overwrite.
+        The existing file must be replaced silently and the staging dir must be empty afterwards.'''
+        jn = os.path.join
+        copy, _ = self.get_button_geometry()
+
+        src_content = b'replacement content from source'
+        dest_orig_content = b'original destination content'
+
+        with open(jn(self.src_data_dir, 'overwrite_me.txt'), 'wb') as f:
+            f.write(src_content)
+        dest_path = jn(self.kitten_wd, 'overwrite_me.txt')
+        with open(dest_path, 'wb') as f:
+            f.write(dest_orig_content)
+
+        uri_list = (as_file_url(self.src_data_dir, 'overwrite_me.txt') + '\r\n').encode()
+        dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], copy[0] + 1, copy[1] + 1)
+        self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
+        dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], copy[0] + 1, copy[1] + 1)
+        self.wait_for_state('drop_data_requests', ((1, 0, 0),))
+        dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', uri_list)
+        self.wait_for_state('last_drop_action', GLFW_DRAG_OPERATION_COPY)
+        self.wait_for_state('drop_action', 0)
+        self.roundtrip()
+
+        # The existing file at the destination must be replaced with the source content.
+        with open(dest_path, 'rb') as f:
+            self.assertEqual(
+                src_content, f.read(),
+                'Existing file must be replaced when --confirm-drop-overwrite is not set')
+
+        # The staging directory must be empty: the file must have been moved, not left behind.
+        self.assert_no_staged_files()
+
+    def test_dnd_kitten_overwrite_no_confirm(self):
+        '''Without --confirm-drop-overwrite, dropping a file onto an existing file must replace it
+        silently and must not leave the dropped file in the temporary staging directory.'''
+        self.finish_setup(cli_args=())
+        with self.subTest(remote=False):
+            self._do_overwrite_no_confirm_drop(False)
+        self.reset_kitten(True)
+        with self.subTest(remote=True):
+            self._do_overwrite_no_confirm_drop(True)
+        self.exit_kitten()
 
     def test_dnd_kitten_drag(self):
         from .graphics import png_data
