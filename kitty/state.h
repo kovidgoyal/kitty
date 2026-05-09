@@ -326,6 +326,8 @@ typedef struct Window {
             bool data_decode_initialized, is_uri_list, requested_remote_files, data_requested_from_client;
             int fd_plus_one;
             char** uri_list; size_t num_uris;
+            size_t num_file_entries;  // count of t=k:x=idx requests sent for file:// entries
+            size_t num_complete;      // count of top-level entries fully received
             DragRemoteItem *remote_items; size_t num_remote_items;
             DragRemoteItem *currently_open_subdir;
             char *base_dir_for_remote_items; int base_dir_fd_plus_one;

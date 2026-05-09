@@ -1452,6 +1452,11 @@ expand_png_data(Window *w, size_t idx) {
 
 static size_t last_total_image_size = 0;
 
+// Forward declarations for static helper functions used in drag_start
+static int open_item_tmpfile(void);
+static int write_all(int fd, const void *buf, size_t sz);
+static char** parse_uri_list(Window *w, int fd, size_t *num_uris_out);
+
 void
 drag_start(Window *w) {
     if (ds.state != DRAG_SOURCE_BEING_BUILT) abrt(EINVAL, "cannot start drag as drag source is not being built");
@@ -1522,19 +1527,53 @@ drag_start(Window *w) {
         }
     }
     last_total_image_size = total_size;
+    // For text/uri-list items with pre-sent data, write to a tmpfile so they can be served
+    // later when the OS requests the data. For remote clients, also parse the uri list and
+    // send t=k:x=idx requests for each file:// entry so the client knows to send their data.
+    for (size_t i = 0; i < ds.num_mimes; i++) {
+        if (!ds.items[i].is_uri_list || !ds.items[i].optional_data || ds.items[i].data_size == 0) continue;
+        int fd = open_item_tmpfile();
+        if (fd < 0) abrt(EIO, "failed to create tmpfile for uri list");
+        if (write_all(fd, ds.items[i].optional_data, ds.items[i].data_size) != 0) {
+            safe_close(fd, __FILE__, __LINE__);
+            abrt(EIO, "failed to write uri list to tmpfile");
+        }
+        ds.items[i].fd_plus_one = fd + 1;
+        ds.items[i].data_capacity = ds.items[i].data_size;
+        ds.items[i].data_size = 0;
+        ds.items[i].data_decode_initialized = false;
+        if (ds.is_remote_client) {
+            ds.items[i].uri_list = parse_uri_list(w, fd, &ds.items[i].num_uris);
+            if (!ds.items[i].uri_list) return;
+            size_t num_file_entries = 0;
+            for (size_t k = 0; k < ds.items[i].num_uris; k++) {
+                if (strncmp(ds.items[i].uri_list[k], "file://", 7) == 0) {
+                    char buf[64];
+                    int sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=k:x=%zu", DND_CODE, k + 1);
+                    queue_payload_to_child(w->id, ds.client_id, &ds.pending, buf, sz, NULL, 0, false);
+                    num_file_entries++;
+                }
+            }
+            ds.items[i].num_file_entries = num_file_entries;
+            ds.items[i].num_complete = 0;
+            ds.items[i].requested_remote_files = (num_file_entries > 0);
+        }
+    }
     int err = start_window_drag(w, dnd_is_test_mode());
     if (err != 0) {
         if (err == EPERM) abrt(err, "permission to start drag denied, this can happen if the user has already released the drag or if the mouse has moved out of the window");
         abrt(err, "failed to start drag in OS");
     } else {
-        // Free images and optional_data but keep the items array for later
-        // data requests from the drop target
+        // Free optional_data for all items and zero tracking fields, but preserve
+        // fd_plus_one/data_capacity/data_size for items whose data was written to a tmpfile.
         for (size_t i = 0; i < ds.num_mimes; i++) {
             free(ds.items[i].optional_data);
             ds.items[i].optional_data = NULL;
-            ds.items[i].data_size = 0;
-            ds.items[i].data_capacity = 0;
             ds.items[i].data_decode_initialized = false;
+            if (!ds.items[i].fd_plus_one) {
+                ds.items[i].data_size = 0;
+                ds.items[i].data_capacity = 0;
+            }
         }
         for (size_t i = 0; i < arraysz(ds.images); i++) {
             if (ds.images[i].data) free(ds.images[i].data);
@@ -1637,9 +1676,8 @@ drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code) {
             // No fd yet, request data from the client
             if (!ds.items[i].data_requested_from_client) {
                 char buf[128];
-                ds.items[i].requested_remote_files = ds.is_remote_client && ds.items[i].is_uri_list;
-                int header_sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=e:x=%d:y=%zu:Y=%d",
-                        DND_CODE, DRAG_NOTIFY_FINISHED + 2, i, ds.items[i].requested_remote_files);
+                int header_sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=e:x=%d:y=%zu",
+                        DND_CODE, DRAG_NOTIFY_FINISHED + 2, i);
                 queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_sz, NULL, 0, false);
                 ds.items[i].data_requested_from_client = true;
             }
@@ -2115,9 +2153,33 @@ drag_remote_file_data(
         if (!ds.items[item_idx].uri_list) return;
     }
     if (X < 0) abrt(EINVAL, "drag source remote item X cannot be negative");
-    if (!x && !y && !Y) { finish_remote_data(w, item_idx); return; }
-    if (!Y) toplevel_data_for_drag(w, item_idx, x - 1, X, has_more, payload, payload_sz);
-    else subdir_data_for_drag(w, item_idx, x - 1, Y, y - 1, X, has_more, payload, payload_sz);
+    if (!x && Y) {
+        // Directory completion signal: t=k:Y=handle — all data for this top-level directory received.
+        // Find the matching top-level remote_item and increment the completion counter.
+        if (ds.items[item_idx].remote_items) {
+            for (size_t ri = 0; ri < ds.items[item_idx].num_remote_items; ri++) {
+                if (ds.items[item_idx].remote_items[ri].type == Y && ds.items[item_idx].remote_items[ri].started) {
+                    if (++ds.items[item_idx].num_complete >= ds.items[item_idx].num_file_entries) finish_remote_data(w, item_idx);
+                    break;
+                }
+            }
+        }
+        return;
+    }
+    if (!x && !y && !Y) return;  // ignore old-style all-done signal for compatibility
+    if (!Y) {
+        toplevel_data_for_drag(w, item_idx, x - 1, X, has_more, payload, payload_sz);
+        // When a top-level file or symlink entry is fully received, increment completion counter.
+        if (!has_more && !payload_sz) {
+            size_t uri_item_idx = (size_t)(x - 1);
+            if (ds.items[item_idx].remote_items && uri_item_idx < ds.items[item_idx].num_remote_items) {
+                DragRemoteItem *ri = ds.items[item_idx].remote_items + uri_item_idx;
+                if (ri->started && ri->type <= 1) {  // file (0) or symlink (1)
+                    if (++ds.items[item_idx].num_complete >= ds.items[item_idx].num_file_entries) finish_remote_data(w, item_idx);
+                }
+            }
+        }
+    } else subdir_data_for_drag(w, item_idx, x - 1, Y, y - 1, X, has_more, payload, payload_sz);
 }
 #undef img
 #undef abrt
@@ -2288,18 +2350,56 @@ static PyObject *
 dnd_test_force_drag_dropped(PyObject *self UNUSED, PyObject *args) {
     // Force the drag source state to DROPPED for testing purposes.
     // This simulates what would happen after start_window_drag() succeeds
-    // and the drop target receives the data.
+    // and the drop target receives the data. For uri-list items with pre-sent
+    // optional_data from a remote client, it applies the new protocol logic:
+    // write the uri list to a tmpfile, parse it, and send t=k:x=idx requests.
     unsigned long long window_id;
     if (!PyArg_ParseTuple(args, "K", &window_id)) return NULL;
     Window *w = window_for_window_id((id_type)window_id);
     if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
-    // Simulate what drag_start does on success, without calling start_window_drag
     for (size_t i = 0; i < w->drag_source.num_mimes; i++) {
+        if (w->drag_source.items[i].is_uri_list && w->drag_source.items[i].optional_data &&
+                w->drag_source.items[i].data_size > 0 && w->drag_source.is_remote_client) {
+            // Apply new protocol: write uri list to tmpfile and send per-entry requests.
+            int fd = open_item_tmpfile();
+            if (fd < 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+            if (write_all(fd, w->drag_source.items[i].optional_data, w->drag_source.items[i].data_size) != 0) {
+                safe_close(fd, __FILE__, __LINE__);
+                free(w->drag_source.items[i].optional_data);
+                w->drag_source.items[i].optional_data = NULL;
+                PyErr_SetFromErrno(PyExc_OSError); return NULL;
+            }
+            w->drag_source.items[i].fd_plus_one = fd + 1;
+            w->drag_source.items[i].data_capacity = w->drag_source.items[i].data_size;
+            w->drag_source.items[i].data_size = 0;
+            w->drag_source.items[i].data_decode_initialized = false;
+            w->drag_source.items[i].uri_list = parse_uri_list(w, fd, &w->drag_source.items[i].num_uris);
+            if (!w->drag_source.items[i].uri_list) {
+                free(w->drag_source.items[i].optional_data);
+                w->drag_source.items[i].optional_data = NULL;
+                // parse_uri_list already called cancel_drag; just propagate the error
+                PyErr_SetString(PyExc_RuntimeError, "parse_uri_list failed"); return NULL;
+            }
+            size_t num_file_entries = 0;
+            for (size_t k = 0; k < w->drag_source.items[i].num_uris; k++) {
+                if (strncmp(w->drag_source.items[i].uri_list[k], "file://", 7) == 0) {
+                    char buf[64];
+                    int sz = snprintf(buf, sizeof(buf), "\x1b]%d;t=k:x=%zu", DND_CODE, k + 1);
+                    queue_payload_to_child(w->id, w->drag_source.client_id, &w->drag_source.pending, buf, sz, NULL, 0, false);
+                    num_file_entries++;
+                }
+            }
+            w->drag_source.items[i].num_file_entries = num_file_entries;
+            w->drag_source.items[i].num_complete = 0;
+            w->drag_source.items[i].requested_remote_files = (num_file_entries > 0);
+        }
         free(w->drag_source.items[i].optional_data);
         w->drag_source.items[i].optional_data = NULL;
-        w->drag_source.items[i].data_size = 0;
-        w->drag_source.items[i].data_capacity = 0;
         w->drag_source.items[i].data_decode_initialized = false;
+        if (!w->drag_source.items[i].fd_plus_one) {
+            w->drag_source.items[i].data_size = 0;
+            w->drag_source.items[i].data_capacity = 0;
+        }
     }
     for (size_t i = 0; i < arraysz(w->drag_source.images); i++) {
         if (w->drag_source.images[i].data) free(w->drag_source.images[i].data);

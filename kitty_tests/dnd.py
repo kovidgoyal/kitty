@@ -18,7 +18,6 @@ from kitty.fast_data_types import (
     dnd_test_fake_drop_data,
     dnd_test_fake_drop_event,
     dnd_test_force_drag_dropped,
-    dnd_test_request_drag_data,
     dnd_test_set_mouse_pos,
 )
 from kitty.machine_id import machine_id
@@ -237,8 +236,25 @@ def client_remote_file(
 
 
 def client_remote_file_finish(client_id: int = 0) -> bytes:
-    """Escape code signaling completion of all remote file data (t=k with no keys)."""
+    """Escape code signaling completion of all remote file data (t=k with no keys).
+
+    This is a no-op in the current protocol (ignored by the terminal) and is
+    kept only for backward compatibility in tests that exercise the old signal.
+    """
     meta = f'{DND_CODE};t=k'
+    if client_id:
+        meta += f':i={client_id}'
+    return _osc(meta)
+
+
+def client_remote_dir_done(handle: int, client_id: int = 0) -> bytes:
+    """Escape code signaling that all data for a top-level directory entry has been sent.
+
+    The terminal matches *handle* against the directory handle (X value) that was
+    originally sent for this top-level entry and increments its completion counter.
+    When all expected entries have been completed, ``finish_remote_data`` is called.
+    """
+    meta = f'{DND_CODE};t=k:Y={handle}'
     if client_id:
         meta += f':i={client_id}'
     return _osc(meta)
@@ -2329,28 +2345,28 @@ class TestDnDProtocol(BaseTest):
     def _setup_remote_drag(self, screen, cap, uri_list_data: bytes,
                            mimes: str = 'text/plain text/uri-list',
                            operations: int = 1, client_id: int = 0):
-        """Set up a remote drag offer in DROPPED state with uri-list data delivered.
+        """Set up a remote drag offer in DROPPED state with uri-list requests sent.
 
-        1. Register for drag offers with a *different* machine id (so is_remote_client=True).
+        New protocol flow:
+        1. Register for drag offers with a *different* machine id (is_remote_client=True).
         2. Offer MIME types including text/uri-list.
-        3. Force state to DROPPED.
-        4. Mark the text/uri-list item as requesting remote files.
-        5. Send the text/uri-list data via t=e escape codes.
+        3. Pre-send the text/uri-list data via t=p escape codes (before drag_start).
+        4. Force state to DROPPED, which also writes the uri list to a tmpfile, parses
+           it, and sends t=k:x=idx requests for each file:// entry.
+        5. Consume all output (including the t=k:x=idx request codes).
         """
         # Register with a different machine_id to make is_remote_client=True
         parse_bytes(screen, _osc(f'{DND_CODE};t=o:x=1;different-machine-id'))
         parse_bytes(screen, client_drag_offer_mimes(operations, mimes, client_id=client_id))
-        cap.consume()
-        dnd_test_force_drag_dropped(cap.window_id)
-        # Find the index of text/uri-list
+        # Pre-send the uri list data (new protocol: uri list is sent before drag_start)
         mime_list = mimes.split()
         uri_idx = mime_list.index('text/uri-list')
-        dnd_test_request_drag_data(cap.window_id, uri_idx)
-        # Send the uri-list data
         b64 = standard_b64encode(uri_list_data).decode()
-        parse_bytes(screen, client_drag_send_data(uri_idx, b64, client_id=client_id))
-        # End of data
-        parse_bytes(screen, client_drag_send_data(uri_idx, '', client_id=client_id))
+        parse_bytes(screen, client_drag_pre_send(uri_idx, b64, client_id=client_id))
+        # Force DROPPED state — this writes the uri list to a tmpfile, parses it, and
+        # sends t=k:x=idx requests for each file:// entry to the child.
+        dnd_test_force_drag_dropped(cap.window_id)
+        # Consume all output including the t=k:x=idx request codes
         cap.consume()
 
     def test_remote_drag_single_file(self) -> None:
@@ -2363,11 +2379,8 @@ class TestDnDProtocol(BaseTest):
             # Send file data for URI index 1 (1-based), type=0 (file)
             parse_bytes(screen, client_remote_file(1, b64, item_type=0))
             self._assert_no_output(cap)
-            # End of data for this file
+            # End of data — triggers finish_remote_data since this is the only file entry
             parse_bytes(screen, client_remote_file(1, '', item_type=0))
-            self._assert_no_output(cap)
-            # Completion signal
-            parse_bytes(screen, client_remote_file_finish())
             self._assert_no_output(cap)
 
     def test_remote_drag_single_symlink(self) -> None:
@@ -2380,11 +2393,8 @@ class TestDnDProtocol(BaseTest):
             # Send symlink data (X=1)
             parse_bytes(screen, client_remote_file(1, b64, item_type=1))
             self._assert_no_output(cap)
-            # End of data
+            # End of data — triggers finish_remote_data since this is the only entry
             parse_bytes(screen, client_remote_file(1, '', item_type=1))
-            self._assert_no_output(cap)
-            # Completion signal
-            parse_bytes(screen, client_remote_file_finish())
             self._assert_no_output(cap)
 
     def test_remote_drag_single_directory(self) -> None:
@@ -2423,8 +2433,8 @@ class TestDnDProtocol(BaseTest):
                 1, '', item_type=0, parent_handle=2, entry_num=2))
             self._assert_no_output(cap)
 
-            # Completion signal
-            parse_bytes(screen, client_remote_file_finish())
+            # Directory completion signal (handle=2) — triggers finish_remote_data
+            parse_bytes(screen, client_remote_dir_done(2))
             self._assert_no_output(cap)
 
     def test_remote_drag_multiple_uris(self) -> None:
@@ -2437,13 +2447,10 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_remote_file(1, b64, item_type=0))
             parse_bytes(screen, client_remote_file(1, '', item_type=0))
             self._assert_no_output(cap)
-            # File 2 (URI index 2)
+            # File 2 (URI index 2) — end-of-data triggers finish_remote_data
             b64 = standard_b64encode(b'bbb').decode()
             parse_bytes(screen, client_remote_file(2, b64, item_type=0))
             parse_bytes(screen, client_remote_file(2, '', item_type=0))
-            self._assert_no_output(cap)
-            # Completion
-            parse_bytes(screen, client_remote_file_finish())
             self._assert_no_output(cap)
 
     def test_remote_drag_chunked_file(self) -> None:
@@ -2465,11 +2472,8 @@ class TestDnDProtocol(BaseTest):
             # Second chunk with more=False (last chunk before end-of-data)
             parse_bytes(screen, client_remote_file(1, chunk2_b64, item_type=0))
             self._assert_no_output(cap)
-            # End of data
+            # End of data — triggers finish_remote_data
             parse_bytes(screen, client_remote_file(1, '', item_type=0))
-            self._assert_no_output(cap)
-            # Completion
-            parse_bytes(screen, client_remote_file_finish())
             self._assert_no_output(cap)
 
     def test_remote_drag_directory_with_symlink(self) -> None:
@@ -2500,8 +2504,8 @@ class TestDnDProtocol(BaseTest):
                 1, '', item_type=1, parent_handle=2, entry_num=2))
             self._assert_no_output(cap)
 
-            # Completion
-            parse_bytes(screen, client_remote_file_finish())
+            # Directory completion signal (handle=2) — triggers finish_remote_data
+            parse_bytes(screen, client_remote_dir_done(2))
             self._assert_no_output(cap)
 
     def test_remote_drag_deep_directory_tree_breadth_first(self) -> None:
@@ -2573,8 +2577,8 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_remote_file(
                 1, '', item_type=1, parent_handle=4, entry_num=2))
 
-            # Completion
-            parse_bytes(screen, client_remote_file_finish())
+            # Directory completion signal for the top-level directory (handle=2)
+            parse_bytes(screen, client_remote_dir_done(2))
             self._assert_no_output(cap)
 
     def test_remote_drag_deep_directory_tree_depth_first(self) -> None:
@@ -2645,20 +2649,19 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_remote_file(
                 1, '', item_type=1, parent_handle=4, entry_num=2))
 
-            # Completion
-            parse_bytes(screen, client_remote_file_finish())
+            # Directory completion signal for the top-level directory (handle=2)
+            parse_bytes(screen, client_remote_dir_done(2))
             self._assert_no_output(cap)
 
     def test_remote_drag_completion_signal(self) -> None:
-        """The completion signal t=k with no keys works correctly."""
+        """File transfers complete automatically when end-of-data is received."""
         uri_list = b'file:///home/user/f.txt\r\n'
         with dnd_test_window() as (screen, cap):
             self._setup_remote_drag(screen, cap, uri_list)
             b64 = standard_b64encode(b'data').decode()
             parse_bytes(screen, client_remote_file(1, b64, item_type=0))
+            # End-of-data automatically triggers finish_remote_data for files
             parse_bytes(screen, client_remote_file(1, '', item_type=0))
-            # Completion
-            parse_bytes(screen, client_remote_file_finish())
             self._assert_no_output(cap)
 
     def test_remote_drag_invalid_uri_index(self) -> None:
@@ -2743,10 +2746,8 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain text/uri-list'))
             cap.consume()
             dnd_test_force_drag_dropped(cap.window_id)
-            # Mark the uri-list item - but since is_remote_client is False,
-            # requested_remote_files will be False
-            dnd_test_request_drag_data(cap.window_id, 1)
-            # Try to send remote file data directly - should fail since no item has requested_remote_files
+            # is_remote_client=False means no t=k requests were sent and
+            # requested_remote_files is False — t=k should fail
             b64 = standard_b64encode(b'data').decode()
             parse_bytes(screen, client_remote_file(1, b64, item_type=0))
             self.assert_error(cap)
@@ -2780,7 +2781,9 @@ class TestDnDProtocol(BaseTest):
     def test_remote_drag_dos_present_data_cap_on_directory(self) -> None:
         """Directory listing data exceeding PRESENT_DATA_CAP triggers EMFILE error."""
         uri_list = b'file:///home/user/dir\r\n'
-        with dnd_test_window(present_data_cap=20) as (screen, cap):
+        # Use a cap large enough for the uri list (23 bytes) but small enough
+        # to reject the large directory listing.
+        with dnd_test_window(present_data_cap=100) as (screen, cap):
             self._setup_remote_drag(screen, cap, uri_list)
             # Send a directory listing that will exceed the cap
             big_listing = b'\x00'.join([f'file{i}.txt'.encode() for i in range(100)])
@@ -2875,8 +2878,8 @@ class TestDnDProtocol(BaseTest):
                 1, '', item_type=1, parent_handle=30, entry_num=2))
 
             self._assert_no_output(cap)
-            # Completion
-            parse_bytes(screen, client_remote_file_finish())
+            # Directory completion signal for the top-level directory (handle=10)
+            parse_bytes(screen, client_remote_dir_done(10))
             self._assert_no_output(cap)
 
     def test_remote_drag_process_item_data_basic(self) -> None:
@@ -2887,7 +2890,6 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
             cap.consume()
             dnd_test_force_drag_dropped(cap.window_id)
-            dnd_test_request_drag_data(cap.window_id, 0)
             # Send data for text/plain (index 0)
             b64 = standard_b64encode(b'test data').decode()
             parse_bytes(screen, client_drag_send_data(0, b64))
@@ -2906,7 +2908,6 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_drag_offer_mimes(1, 'text/plain'))
             cap.consume()
             dnd_test_force_drag_dropped(cap.window_id)
-            dnd_test_request_drag_data(cap.window_id, 0)
             # Client reports EPERM error
             parse_bytes(screen, client_drag_send_error(0, 'EPERM'))
             # The error should propagate but not crash
@@ -2954,7 +2955,9 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_remote_file(3, '', item_type=1))
 
             self._assert_no_output(cap)
-            parse_bytes(screen, client_remote_file_finish())
+            # Directory completion for URI 2 (handle=5) — triggers finish_remote_data
+            # (file 1 and symlink 3 already completed on end-of-data)
+            parse_bytes(screen, client_remote_dir_done(5))
             self._assert_no_output(cap)
 
     def test_remote_drag_empty_file(self) -> None:
@@ -2963,9 +2966,8 @@ class TestDnDProtocol(BaseTest):
         with dnd_test_window() as (screen, cap):
             self._setup_remote_drag(screen, cap, uri_list)
             # Start file transfer, then immediately end (no data chunks)
+            # End-of-data triggers finish_remote_data for the single file entry
             parse_bytes(screen, client_remote_file(1, '', item_type=0))
-            self._assert_no_output(cap)
-            parse_bytes(screen, client_remote_file_finish())
             self._assert_no_output(cap)
 
     def test_remote_drag_empty_directory(self) -> None:
@@ -2977,7 +2979,8 @@ class TestDnDProtocol(BaseTest):
             b64 = standard_b64encode(b'').decode()
             parse_bytes(screen, client_remote_file(1, b64, item_type=2))
             parse_bytes(screen, client_remote_file(1, '', item_type=2))
-            parse_bytes(screen, client_remote_file_finish())
+            # Directory completion signal (handle=2) — triggers finish_remote_data
+            parse_bytes(screen, client_remote_dir_done(2))
             self._assert_no_output(cap)
 
     def test_remote_drag_uri_list_with_comments(self) -> None:
@@ -3028,7 +3031,8 @@ class TestDnDProtocol(BaseTest):
                 1, '', item_type=0, parent_handle=2, entry_num=2))
             self._assert_no_output(cap)
 
-            parse_bytes(screen, client_remote_file_finish())
+            # Directory completion signal (handle=2) — triggers finish_remote_data
+            parse_bytes(screen, client_remote_dir_done(2))
             self._assert_no_output(cap)
 
     # ---- DoS limits tests ---------------------------------------------------
@@ -3134,11 +3138,8 @@ class TestDnDProtocol(BaseTest):
             # Send file data - this replaces the URI string in the uri_list
             parse_bytes(screen, client_remote_file(1, b64, item_type=0))
             self._assert_no_output(cap)
-            # End of data for this file
+            # End of data — triggers finish_remote_data for the single file entry
             parse_bytes(screen, client_remote_file(1, '', item_type=0))
-            self._assert_no_output(cap)
-            # Completion signal
-            parse_bytes(screen, client_remote_file_finish())
             self._assert_no_output(cap)
             # No crash or leak - cleanup happens in context manager exit
 

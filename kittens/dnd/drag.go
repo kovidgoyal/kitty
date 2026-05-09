@@ -22,11 +22,10 @@ import (
 var _ = fmt.Print
 
 type data_request struct {
-	drag_source      *drag_source
-	send_remote_data bool
-	index            int
-	write_id         loop.IdType
-	base64           streaming_base64.StreamingBase64Encoder
+	drag_source *drag_source
+	index       int
+	write_id    loop.IdType
+	base64      streaming_base64.StreamingBase64Encoder
 }
 
 type remote_data_item struct {
@@ -40,18 +39,20 @@ type remote_data_item struct {
 }
 
 type drag_status struct {
-	active                 bool
-	terminal_accepted_drag bool
-	offered_mimes          []string
-	accepted_mime          int
-	accepted_operation     int
-	dropped                bool
-	data_requests          []*data_request
-	remote_items           []*remote_data_item
-	current_remote_file    *remote_data_item
-	dir_handle_counter     int
-	remote_item_write_id   loop.IdType
-	remote_data_was_sent   bool
+	active                     bool
+	terminal_accepted_drag     bool
+	offered_mimes              []string
+	accepted_mime              int
+	accepted_operation         int
+	dropped                    bool
+	data_requests              []*data_request
+	remote_items               []*remote_data_item
+	current_remote_file        *remote_data_item
+	dir_handle_counter         int
+	remote_item_write_id       loop.IdType
+	remote_data_was_sent       bool
+	pending_remote_requests    []int // FIFO queue of 1-based uri list indices from t=k:x=idx requests
+	current_request_dir_handle int   // handle of top-level directory for current request (0 for file/symlink)
 }
 
 func find_drag_image(drag_sources map[string]*drag_source) image.Image {
@@ -177,7 +178,6 @@ func (dnd *dnd) on_potential_drag_start(cell_x, cell_y int) (err error) {
 		if len(s.data) > 0 && len(s.data)+total_preloaded_data_sz < 64*1024*1024 {
 			total_preloaded_data_sz += len(s.data)
 			dnd.lp.QueueDnDData(DC{Type: 'p', X: i, Operation: actions, Payload: s.data})
-			dnd.lp.QueueDnDData(DC{Type: 'p', X: i, Operation: actions})
 		}
 	}
 	dnd.drag_status.offered_mimes = mimes
@@ -256,7 +256,7 @@ func (dnd *dnd) on_drag_event(x, y, operation, Y int) (err error) {
 			}
 		}
 	case 5:
-		if err = dnd.handle_data_request(y, Y == 1); err != nil {
+		if err = dnd.handle_data_request(y); err != nil {
 			return err
 		}
 	}
@@ -272,28 +272,24 @@ func (dnd *dnd) finish_drag(errname string) {
 	dnd.reset_drag()
 }
 
-func (dnd *dnd) handle_data_request(idx int, send_remote_data bool) (err error) {
+func (dnd *dnd) handle_data_request(idx int) (err error) {
 	if idx < 0 || idx >= len(dnd.drag_status.offered_mimes) {
 		dnd.finish_drag("EINVAL")
 		return fmt.Errorf("terminal asked for drag data from MIME list with out of bounds index: %d", idx)
 	}
 	mime := dnd.drag_status.offered_mimes[idx]
 	ds := dnd.drag_sources[mime]
-	send_remote_data = send_remote_data && mime == "text/uri-list" && len(ds.uri_list) > 0
 	for _, dr := range dnd.drag_status.data_requests {
 		if dr.index == idx {
 			dnd.finish_drag("EINVAL")
 			return fmt.Errorf("terminal sent a duplicate drag data request")
 		}
 	}
-	dr := &data_request{drag_source: ds, send_remote_data: send_remote_data, index: idx}
+	dr := &data_request{drag_source: ds, index: idx}
 	if ds.path == "" {
 		dnd.lp.QueueDnDData(DC{Type: 'e', Y: idx, Payload: utils.UnsafeStringToBytes(base64.RawStdEncoding.EncodeToString(ds.data))})
 		dnd.lp.QueueDnDData(DC{Type: 'e', Y: idx}) // EOF
-		if !dr.send_remote_data {
-			return
-		}
-		return dnd.start_remote_data_send(ds)
+		return
 	} else {
 		if ds.file != nil {
 			ds.file.Close()
@@ -356,9 +352,7 @@ func (dnd *dnd) on_data_request_finished(i int) (err error) {
 		dr.drag_source.file = nil
 	}
 	dnd.drag_status.data_requests = slices.Delete(dnd.drag_status.data_requests, i, i+1)
-	if dr.send_remote_data {
-		err = dnd.start_remote_data_send(dr.drag_source)
-	} else if len(dnd.drag_status.data_requests) > 0 {
+	if len(dnd.drag_status.data_requests) > 0 {
 		err = dnd.send_data_for_data_request(0)
 	}
 	return
@@ -447,8 +441,13 @@ func (dnd *dnd) send_next_file_chunk() (err error) {
 
 func (dnd *dnd) next_remote_item() (err error) {
 	if len(dnd.drag_status.remote_items) < 1 {
-		dnd.lp.QueueDnDData(DC{Type: 'k'}) // inform terminal remote data is finished
-		if len(dnd.drag_status.data_requests) > 0 {
+		// Current request is complete. If it was for a directory, send a completion signal.
+		if handle := dnd.drag_status.current_request_dir_handle; handle != 0 {
+			dnd.drag_status.current_request_dir_handle = 0
+			dnd.drag_status.remote_item_write_id = dnd.lp.QueueDnDData(DC{Type: 'k', Yp: handle})
+		} else if len(dnd.drag_status.pending_remote_requests) > 0 {
+			return dnd.process_next_remote_request()
+		} else if len(dnd.drag_status.data_requests) > 0 {
 			err = dnd.send_data_for_data_request(0)
 		}
 		return
@@ -478,30 +477,66 @@ func (dnd *dnd) next_remote_item() (err error) {
 	return
 }
 
-func (dnd *dnd) start_remote_data_send(ds *drag_source) (err error) {
-	dnd.drag_status.dir_handle_counter = 2
-	dnd.drag_status.remote_item_write_id = 0
-	dnd.drag_status.remote_data_was_sent = true
-	items := []*remote_data_item{}
-	for i, x := range ds.uri_list {
-		if x.metadata.IsDir() {
-			if children, err := dnd.send_remote_dir(x.path, i, 0, i); err != nil {
-				return err
-			} else {
-				items = append(items, children...)
-			}
-		} else if x.metadata.Mode().Type()&os.ModeSymlink != 0 {
-			if err = dnd.send_remote_symlink(x.path, i, 0, i); err != nil {
-				return err
-			}
-		} else {
-			f := remote_data_item{idx_in_parent: i, idx_in_uri_list: i, metadata: x.metadata, path: x.path}
-			dnd.drag_status.remote_items = append(dnd.drag_status.remote_items, &f)
-		}
+// on_remote_data_request handles a t=k:x=idx request from the terminal, which asks the
+// client to send data for the uri list entry at the given 1-based index.
+func (dnd *dnd) on_remote_data_request(idx int) (err error) {
+	if idx < 1 {
+		dnd.finish_drag("EINVAL")
+		return fmt.Errorf("invalid remote data request index: %d", idx)
 	}
-	dnd.drag_status.remote_items = append(dnd.drag_status.remote_items, items...)
-	if dnd.drag_status.remote_item_write_id == 0 {
-		return dnd.next_remote_item()
+	// Initialize the handle counter and mark remote data as sent on the first request.
+	if dnd.drag_status.dir_handle_counter == 0 {
+		dnd.drag_status.dir_handle_counter = 2
+		dnd.drag_status.remote_data_was_sent = true
+	}
+	dnd.drag_status.pending_remote_requests = append(dnd.drag_status.pending_remote_requests, idx)
+	// Start processing immediately if the pipeline is idle.
+	if dnd.drag_status.remote_item_write_id == 0 && dnd.drag_status.current_remote_file == nil &&
+		len(dnd.drag_status.remote_items) == 0 {
+		return dnd.process_next_remote_request()
+	}
+	return
+}
+
+// process_next_remote_request dequeues the next pending remote data request and begins
+// sending data for that uri list entry.
+func (dnd *dnd) process_next_remote_request() (err error) {
+	if len(dnd.drag_status.pending_remote_requests) == 0 {
+		return
+	}
+	idx := dnd.drag_status.pending_remote_requests[0]
+	dnd.drag_status.pending_remote_requests = dnd.drag_status.pending_remote_requests[1:]
+
+	ds := dnd.drag_sources["text/uri-list"]
+	if ds == nil || idx < 1 || idx > len(ds.uri_list) {
+		dnd.finish_drag("EINVAL")
+		return fmt.Errorf("invalid remote data request index: %d", idx)
+	}
+	i := idx - 1 // convert to 0-based
+	x := ds.uri_list[i]
+
+	dnd.drag_status.current_request_dir_handle = 0
+	if x.metadata.IsDir() {
+		handle := dnd.drag_status.dir_handle_counter
+		children, err := dnd.send_remote_dir(x.path, i, 0, i)
+		if err != nil {
+			return err
+		}
+		dnd.drag_status.current_request_dir_handle = handle
+		dnd.drag_status.remote_items = append(dnd.drag_status.remote_items, children...)
+		if dnd.drag_status.remote_item_write_id == 0 {
+			return dnd.next_remote_item()
+		}
+	} else if x.metadata.Mode().Type()&os.ModeSymlink != 0 {
+		if err = dnd.send_remote_symlink(x.path, i, 0, i); err != nil {
+			return err
+		}
+	} else {
+		f := remote_data_item{idx_in_parent: i, idx_in_uri_list: i, metadata: x.metadata, path: x.path}
+		dnd.drag_status.remote_items = append(dnd.drag_status.remote_items, &f)
+		if dnd.drag_status.remote_item_write_id == 0 {
+			return dnd.next_remote_item()
+		}
 	}
 	return
 }
