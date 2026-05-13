@@ -872,10 +872,32 @@ pt_to_px(double pt, double dpi) {
 }
 
 static void
+apply_cairo_font_size(Face *self, unsigned sz_px) {
+    // The cairo path uses self->face_for_cairo (a second FT_Face opened in
+    // ensure_cairo_resources), which never receives the FT_Set_Transform set
+    // on self->face in face_from_descriptor. cairo owns FT_Set_Transform on
+    // its face and derives it from the font matrix on every render
+    // (_cairo_ft_unscaled_font_set_scale in cairo-ft-font.c), so the only
+    // channel that reaches glyph rasterization is the cairo font matrix
+    // itself. Encode FC_MATRIX there.
+    // FT_Matrix is xx,xy,yx,yy (row-major); cairo_matrix_init takes
+    // xx,yx,xy,yy. Same matrix, transposed argument order.
+    if (!self->has_matrix) { cairo_set_font_size(self->cairo.cr, sz_px); return; }
+    double s = (double)sz_px;
+    double xx = self->matrix.xx / 65536.0;
+    double xy = self->matrix.xy / 65536.0;
+    double yx = self->matrix.yx / 65536.0;
+    double yy = self->matrix.yy / 65536.0;
+    cairo_matrix_t m;
+    cairo_matrix_init(&m, xx * s, yx * s, xy * s, yy * s, 0, 0);
+    cairo_set_font_matrix(self->cairo.cr, &m);
+}
+
+static void
 set_cairo_font_size(Face *self, double size_in_pts) {
     unsigned sz_px = pt_to_px(size_in_pts, (self->xdpi + self->ydpi) / 2.0);
     if (self->cairo.size_in_px == sz_px) return;
-    cairo_set_font_size(self->cairo.cr, sz_px);
+    apply_cairo_font_size(self, sz_px);
     self->cairo.size_in_px = sz_px;
 }
 
@@ -885,7 +907,7 @@ fit_cairo_glyph(Face *self, cairo_glyph_t *g, cairo_text_extents_t *bb, cairo_sc
         double ratio = MIN(width / bb->width, height / bb->height);
         unsigned sz = (unsigned)(ratio * self->cairo.size_in_px);
         if (sz >= self->cairo.size_in_px) sz = self->cairo.size_in_px - 2;
-        cairo_set_font_size(self->cairo.cr, sz);
+        apply_cairo_font_size(self, sz);
         sf = cairo_get_scaled_font(self->cairo.cr);
         cairo_scaled_font_glyph_extents(sf, g, 1, bb);
         self->cairo.size_in_px = sz;
