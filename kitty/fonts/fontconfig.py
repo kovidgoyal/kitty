@@ -15,6 +15,7 @@ from kitty.fast_data_types import (
     FC_WIDTH_NORMAL,
     Face,
     fc_list,
+    fc_render_prepare,
 )
 from kitty.fast_data_types import (
     FC_WEIGHT_SEMIBOLD as FC_WEIGHT_BOLD,
@@ -181,6 +182,12 @@ def find_best_match(
     font_map = all_fonts_map(monospaced)
     scorer = create_scorer(bold, italic, monospaced, prefer_variable=prefer_variable)
     is_medium_face = not bold and not italic
+    spacing = FC_MONO if monospaced else -1
+    # candidates come from FcFontList, which skips fontconfig's MatchFont
+    # substitution pass. Run FcFontRenderPrepare so target="font" rules
+    # (notably 90-synthetic.conf's FC_MATRIX) attach to the chosen descriptor.
+    def prepare(p: FontConfigPattern) -> FontConfigPattern:
+        return fc_render_prepare(family, bold, italic, spacing, p)
     # First look for an exact match
     groups: tuple[FontCollectionMapType, ...] = ('ps_map', 'full_map', 'family_map')
     for which in groups:
@@ -191,7 +198,7 @@ def find_best_match(
                 continue  # IBM Plex Mono has fullname of regular face == family_name under fontconfig
             exact_match = find_best_match_in_candidates(cq, scorer, is_medium_face, ignore_face=ignore_face)
             if exact_match:
-                return exact_match
+                return prepare(exact_match)
 
     # Use fc-match to see if we can find a monospaced font that matches family
     # When aliases are defined, spacing can cause the incorrect font to be
@@ -214,7 +221,7 @@ def find_best_match(
                         family_name_candidates = font_map['family_map'].get(family_name_to_key(candidates[0]['family']))
                         if family_name_candidates and len(family_name_candidates) > 1:
                             candidates = family_name_candidates
-                    return scorer.sorted_candidates(candidates)[0]
+                    return prepare(scorer.sorted_candidates(candidates)[0])
     return find_last_resort_text_font(bold, italic, monospaced)
 
 

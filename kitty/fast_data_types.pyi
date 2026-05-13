@@ -457,6 +457,13 @@ def fc_match_postscript_name(
 
 def add_font_file(path: str) -> bool: ...
 def set_builtin_nerd_font(path: str) -> Union[CoreTextFont, FontConfigPattern]: ...
+def fc_render_prepare(
+    family: str,
+    bold: bool,
+    italic: bool,
+    spacing: int,
+    candidate: FontConfigPattern,
+) -> FontConfigPattern: ...
 
 
 class FeatureData(TypedDict):
