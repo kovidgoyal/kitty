@@ -930,6 +930,10 @@ int _glfwPlatformInit(bool *supports_window_occlusion)
         debug_key("---------------- key down -------------------\n");
         debug_key("%s\n", [[event description] UTF8String]);
         if (!_glfw.ignoreOSKeyboardProcessing && !_glfw.keyboard_grabbed) {
+            // On macOS Tahoe, performKeyEquivalent fails to match key
+            // equivalents on remapped layouts like "Dvorak - QWERTY ⌘"
+            // unless the event's characters property has been accessed first.
+            (void)[event characters];
             // first check if there is a global menu bar shortcut
             if ([[NSApp mainMenu] performKeyEquivalent:event]) {
                 debug_key("keyDown triggered global menu bar action ignoring\n");
