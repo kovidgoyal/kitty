@@ -1580,25 +1580,25 @@ update_drop_state(_GLFWwindow* window, size_t accepted_count) {
         if (new_preferred_mime) strncpy(dnd.format, new_preferred_mime, arraysz(dnd.format)-1);
         else dnd.format[0] = 0;
     }
+    XEvent reply = { ClientMessage };
+    reply.xclient.window = dnd.source;
+    reply.xclient.message_type = _glfw.x11.XdndStatus;
+    reply.xclient.format = 32;
+    reply.xclient.data.l[0] = window->x11.handle;
+    reply.xclient.data.l[2] = 0; // Specify an empty rectangle
+    reply.xclient.data.l[3] = 0;
     if (accepted) {
-        XEvent reply = { ClientMessage };
-        reply.xclient.window = dnd.source;
-        reply.xclient.message_type = _glfw.x11.XdndStatus;
-        reply.xclient.format = 32;
-        reply.xclient.data.l[0] = window->x11.handle;
-        reply.xclient.data.l[2] = 0; // Specify an empty rectangle
-        reply.xclient.data.l[3] = 0;
-
-        if (dnd.format_priority > 0 && accepted) {
-            // Reply that we are ready to copy the dragged data
-            reply.xclient.data.l[1] = 1; // Accept with no rectangle
-            if (_glfw.x11.xdnd.version >= 2) reply.xclient.data.l[4] = _glfw.x11.XdndActionCopy;
-        }
-        XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source, False, NoEventMask, &reply);
-        XFlush(_glfw.x11.display);
-    } else {
-        end_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+        // Reply that we are ready to accept the dragged data
+        reply.xclient.data.l[1] = 1; // Accept with no rectangle
+        if (_glfw.x11.xdnd.version >= 2) reply.xclient.data.l[4] = _glfw.x11.XdndActionCopy;
     }
+    // Send XdndStatus (accept or reject) to the drag source.
+    // Never send XdndFinished here: that must only happen after the actual drop
+    // data transfer completes (via _glfwPlatformEndDrop / glfwEndDrop).
+    // Sending XdndFinished prematurely during drag-over would terminate the
+    // drag source before the drop occurs, which breaks same-window DnD.
+    XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source, False, NoEventMask, &reply);
+    XFlush(_glfw.x11.display);
 }
 
 static void
@@ -1718,7 +1718,6 @@ drop_start(_GLFWwindow *window, XEvent *event) {
     dnd.version = event->xclient.data.l[1] >> 24;
     dnd.target_window = window->x11.handle;
     dnd.format[0] = 0;
-    dnd.format_priority  = 0;
     update_dnd_mimes(event);
     dnd.from_self = _glfw.x11.drag.source_window != None && dnd.source == _glfw.x11.drag.source_window;
     update_drop_source_actions(window);
@@ -1727,9 +1726,6 @@ drop_start(_GLFWwindow *window, XEvent *event) {
         size_t accepted_count = _glfwInputDropEvent(
             window, GLFW_DROP_ENTER, 0, 0, dnd.copy_mimes, dnd.copy_mimes_count, dnd.from_self);
         update_drop_state(window, accepted_count);
-        // Set format_priority when the callback accepted at least one MIME type.
-        // dnd.format has already been updated by update_drop_state.
-        if (accepted_count > 0) dnd.format_priority = 1;
     }
 }
 
