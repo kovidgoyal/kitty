@@ -2701,7 +2701,13 @@ drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
             if (reset_copy_mimes(offer)) {
                 size_t num_accepted = _glfwInputDropEvent(window, GLFW_DROP_DROP, 0, 0, offer->copy_mimes, offer->copy_mimes_count, offer->is_self_offer);
                 if (offer->copy_mimes) {  // a self drop will cause this to be NULL as glfw.c calls end drop from within the drop event handler
-                    update_drop_state(offer, window, num_accepted);
+                    // Only update drop state (which calls wl_data_offer_accept/set_actions) when there
+                    // are accepted MIMEs. For client drops (dnd kitten), drop_dest_callback sets
+                    // num_accepted to 0, but the drop IS being handled asynchronously by the kitten.
+                    // Calling update_drop_state with 0 would send wl_data_offer_accept(NULL) and
+                    // wl_data_offer_set_actions(NONE) after the drop, causing the compositor to send
+                    // wl_data_source.cancelled to the drag source and potentially abort the transfer.
+                    if (num_accepted > 0) update_drop_state(offer, window, num_accepted);
                     for (size_t i = 0; i < num_accepted; i++) request_drop_data(offer, offer->copy_mimes[i]);
                 }
             }

@@ -278,7 +278,6 @@ Detailed list of changes
 
 - Linux: Respect the fontconfig matrix setting commonly used for fake slant with fonts that do not have italic variants (:pull:`9990`)
 
-- X11: Fix drag and drop from one kitty window to another in the same tab using the :doc:`/kittens/dnd` kitten not registering drops on the Copy/Move buttons unless the mouse was moved off and back onto the button
 
 0.46.2 [2026-03-21]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
