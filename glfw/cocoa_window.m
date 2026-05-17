@@ -4599,10 +4599,12 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {@autore
     NSURL *srcURL = [NSURL fileURLWithPath:@(path)];
     switch (type) {
         case 0:
-            // Create a hard link to path at file_url
+            // Create a hard link to path at file_url or fallback to full copy
             if (![fileManager linkItemAtURL:srcURL toURL:file_url error:&error]) {
-                [self end_transfer_with_error:error];
-                return;
+                if (![fileManager copyItemAtURL:srcURL toURL:file_url error:&error]) {
+                    [self end_transfer_with_error:error];
+                    return;
+                }
             }
             break;
         case 1: {
@@ -4667,8 +4669,10 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {@autore
                     }
                 } else {
                     if (![fileManager linkItemAtURL:itemURL toURL:destURL error:&error]) {
-                        [self end_transfer_with_error:error];
-                        return;
+                        if (![fileManager copyItemAtURL:itemURL toURL:destURL error:&error]) {
+                            [self end_transfer_with_error:error];
+                            return;
+                        }
                     }
                 }
             }
