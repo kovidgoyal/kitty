@@ -2043,6 +2043,9 @@ populate_dir_entries(Window *w, DragRemoteItem *ri) {
         if (len > 0) {
             char *name = strndup(ptr, len);
             if (!name) abrt(ENOMEM, "out of memory processing drag source item directory entries");
+            for (size_t i = 0; i < len; i++) if (name[i] == '/') name[i] = '_';
+            if (len == 1 && name[0] == '.') name[0] = '_';
+            if (len == 2 && name[0] == '.' && name[1] == '.') name[0] = '_';
             child->dir_entry_name = name;
         }
         ptr = p ? p + 1 : end;
