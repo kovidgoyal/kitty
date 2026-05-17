@@ -416,11 +416,13 @@ Every directory must be transmitted with ``X=handle``. The payload
 is a null separated list of regular files, directories and symlinks in the
 directory. ``handle`` is an integer other than ``0`` or ``1``
 that serves as an identifier for the directory. Directories should be traversed
-in breadth first order. The children of a directory are reported by
+in breadth first order. The children of a directory are sent by
 adding ``Y=parent-handle:y=num`` to the escape codes above. Here
 ``parent-handle`` is the handle of the directory being traversed and ``num``
 is the one based index into the list of entries in the directory. Thus, the
-set of keys ``x, y, Y`` uniquely determine an entry.
+set of keys ``x, y, Y`` uniquely determine an entry. Clients **must** send all
+children of directories, recursively, terminals **must not** make requests
+for children of directories, only for the entries from the ``text/uri-list``.
 
 If any error occurs in the client while reading the data, it can inform
 the terminal using::
