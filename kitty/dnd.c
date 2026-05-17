@@ -640,7 +640,7 @@ drop_send_error(Window *w, int error_code, const char *desc) {
     char buf[128], details_buf[1024];
     int n;
     if (desc && desc[0]) n = snprintf(details_buf, sizeof(details_buf), "%s:%s", get_errno_name(error_code), desc);
-    else n = snprintf(details_buf, sizeof(details_buf), "%s:%s", get_errno_name(error_code), desc);
+    else n = snprintf(details_buf, sizeof(details_buf), "%s", get_errno_name(error_code));
     int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=R", DND_CODE);
     header_size += drop_append_request_keys(w, buf + header_size, sizeof(buf) - header_size);
     queue_payload_to_child(w->id, w->drop.client_id, &w->drop.pending, buf, header_size, details_buf, n, false);
