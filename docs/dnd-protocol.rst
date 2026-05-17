@@ -387,7 +387,8 @@ Dragging to remote machines
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To support dragging to remote machines, first of all clients **must** pre-send
-the data for the ``text/uri-list`` MIME type. Then, terminals can
+the data for the ``text/uri-list`` MIME type. All ``file://`` URLs that point
+to directories **must** end with a ``/``. Then, terminals can
 examine the :ref:`machine_id` sent with the enable drag offers
 ``t=o`` escape code to decide whether to request data for ``file://`` entries
 from the URI list. To request data for a particular entry, terminals send an

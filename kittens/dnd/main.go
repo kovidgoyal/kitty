@@ -395,6 +395,9 @@ func dnd_main(cmd *cli.Command, opts *Options, args []string) (rc int, err error
 			if runtime.GOOS == "windows" && !strings.HasPrefix(upath, "/") {
 				upath = "/" + upath
 			}
+			if st.IsDir() && !strings.HasSuffix(upath, "/") {
+				upath += "/"
+			}
 			u := &url.URL{Scheme: "file", Path: upath}
 			uri_list = append(uri_list, uri_list_item{path: path, uri: u.String(), human_name: arg, metadata: st})
 		} else {
