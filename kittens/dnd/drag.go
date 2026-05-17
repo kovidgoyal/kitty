@@ -419,8 +419,13 @@ func (dnd *dnd) send_next_file_chunk() (err error) {
 	}
 	n, err := cr.file.Read(read_buf[:])
 	if n > 0 {
+		encoded_chunk_sent := false
 		for chunk := range cr.base64.Encode(read_buf[:n], encode_buf[:]) {
 			dnd.drag_status.remote_item_write_id = dnd.send_remote_item_payload(cr.parent_dir_handle, cr.idx_in_parent, cr.idx_in_uri_list, 0, chunk)
+			encoded_chunk_sent = true
+		}
+		if !encoded_chunk_sent {
+			return dnd.send_next_file_chunk()
 		}
 	}
 	if err != nil {
