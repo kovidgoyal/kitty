@@ -2242,8 +2242,10 @@ finish_remote_data_if_all_items_received(Window *w, unsigned mime_item_idx) {
 
 static bool
 all_children_complete(DragRemoteItem *parent) {
-    for (size_t i = 0; i < parent->children_sz; i++) {
-        if (!parent->children[i].completed) return false;
+    if (parent->children) {
+        for (size_t i = 0; i < parent->children_sz; i++) {
+            if (!parent->children[i].completed) return false;
+        }
     }
     return true;
 }
