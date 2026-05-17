@@ -599,6 +599,21 @@ drop_finish(Window *w) {
     }
 }
 
+/* Return the byte offset of *mime* in the NUL-separated *buf* (length *buf_sz*),
+ * using exact string comparison.  Returns -1 if *mime* is not present.
+ * strstr() must not be used here because it does substring matching: a MIME
+ * type like "text/h" would falsely match against "text/html" in the buffer. */
+static ssize_t
+find_mime_exact_offset(const char *buf, size_t buf_sz, const char *mime) {
+    const char *p = buf;
+    const char *end = buf + buf_sz;
+    while (p < end && *p) {
+        if (strcmp(p, mime) == 0) return (ssize_t)(p - buf);
+        p += strlen(p) + 1;
+    }
+    return -1;
+}
+
 size_t
 drop_update_mimes(Window *w, const char **allowed_mimes, size_t allowed_mimes_count) {
     if (w->drop.accept_in_progress) return allowed_mimes_count;
@@ -607,11 +622,20 @@ drop_update_mimes(Window *w, const char **allowed_mimes, size_t allowed_mimes_co
     if (!w->drop.accepted_mimes) return allowed_mimes_count;
     RAII_ALLOC(mime_sorter, ms, malloc(sizeof(mime_sorter) * allowed_mimes_count));
     if (!ms) return allowed_mimes_count;
-    const ssize_t sentinel = allowed_mimes_count;
+    /* Use accepted_mimes_sz + 1 as the sentinel.  Every valid byte offset in the
+     * accepted_mimes buffer is in [0, accepted_mimes_sz - 1], so this value is
+     * strictly greater than any real offset and guarantees that not-found entries
+     * sort after all accepted ones.  The previous choice of allowed_mimes_count
+     * was incorrect: when allowed_mimes_count < accepted_mimes_sz (common when
+     * few MIME types are offered), real byte offsets of accepted entries beyond
+     * the first would exceed the sentinel and not-found entries would sort into
+     * the middle of the list, evading the trailing-trim that follows. */
+    const ssize_t sentinel = (ssize_t)(w->drop.accepted_mimes_sz + 1);
     for (size_t i = 0; i < allowed_mimes_count; i++) {
         ms[i].m = allowed_mimes[i];
-        const char *p = strstr(w->drop.accepted_mimes, ms[i].m);
-        ms[i].key = p ? p - w->drop.accepted_mimes : sentinel;
+        ssize_t offset = find_mime_exact_offset(
+            w->drop.accepted_mimes, w->drop.accepted_mimes_sz, ms[i].m);
+        ms[i].key = offset >= 0 ? offset : sentinel;
     }
 #define mimes_lt(a, b) ((a)->key < (b)->key)
     QSORT(mime_sorter, ms, allowed_mimes_count, mimes_lt);
@@ -2700,6 +2724,42 @@ dnd_test_drag_get_data(PyObject *self UNUSED, PyObject *args) {
     return ans;
 }
 
+/* Test helper: set up accepted-mimes state then call drop_update_mimes.
+ * Args: window_id (K), operation (i), accepted_mimes space-separated (s),
+ *       offered_mimes (list of str).
+ * Returns the filtered/prioritised MIME list as a Python list. */
+static PyObject*
+dnd_test_drop_update_mimes(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long window_id;
+    int operation;
+    const char *accepted;
+    PyObject *offered_seq;
+    if (!PyArg_ParseTuple(args, "KisO", &window_id, &operation, &accepted, &offered_seq)) return NULL;
+    Window *w = window_for_window_id((id_type)window_id);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "Window not found"); return NULL; }
+    /* Set up accepted_mimes via drop_set_status (more=false finalises the buffer). */
+    drop_set_status(w, operation, accepted, strlen(accepted), false);
+    RAII_PyObject(fast_seq, PySequence_Fast(offered_seq, "offered_mimes must be a sequence"));
+    if (!fast_seq) return NULL;
+    Py_ssize_t num = PySequence_Fast_GET_SIZE(fast_seq);
+    RAII_ALLOC(const char*, mimes, malloc(sizeof(const char*) * (num ? (size_t)num : 1u)));
+    if (!mimes) return PyErr_NoMemory();
+    for (Py_ssize_t i = 0; i < num; i++) {
+        mimes[i] = PyUnicode_AsUTF8(PySequence_Fast_GET_ITEM(fast_seq, i));
+        if (!mimes[i]) return NULL;
+    }
+    size_t count = (size_t)num;
+    count = drop_update_mimes(w, mimes, count);
+    PyObject *result = PyList_New((Py_ssize_t)count);
+    if (!result) return NULL;
+    for (size_t i = 0; i < count; i++) {
+        PyObject *s = PyUnicode_FromString(mimes[i]);
+        if (!s) { Py_DECREF(result); return NULL; }
+        PyList_SET_ITEM(result, (Py_ssize_t)i, s);
+    }
+    return result;
+}
+
 static PyMethodDef dnd_methods[] = {
     {"dnd_set_test_write_func", (PyCFunction)py_dnd_set_test_write_func, METH_VARARGS, ""},
     METHODB(dnd_test_create_fake_window, METH_NOARGS),
@@ -2714,6 +2774,7 @@ static PyMethodDef dnd_methods[] = {
     METHODB(dnd_test_drag_finish, METH_VARARGS),
     METHODB(dnd_test_probe_state, METH_VARARGS),
     METHODB(dnd_test_drag_get_data, METH_VARARGS),
+    METHODB(dnd_test_drop_update_mimes, METH_VARARGS),
     {NULL, NULL, 0, NULL}
 };
 

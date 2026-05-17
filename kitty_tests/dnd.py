@@ -16,6 +16,7 @@ from kitty.fast_data_types import (
     dnd_test_cleanup_fake_window,
     dnd_test_create_fake_window,
     dnd_test_drag_notify,
+    dnd_test_drop_update_mimes,
     dnd_test_fake_drop_data,
     dnd_test_fake_drop_event,
     dnd_test_force_drag_dropped,
@@ -3162,3 +3163,64 @@ class TestDnDProtocol(BaseTest):
             events = self._get_events(cap)
             self.assertEqual(len(events), 1, events)
             self.ae(events[0]['type'], 'q')
+
+    # ---- drop_update_mimes exact-match tests ----------------------------------------
+
+    def test_drop_update_mimes_exact_match_accepted(self) -> None:
+        """A MIME type that exactly matches an accepted type is included in the result."""
+        with dnd_test_window() as (screen, cap):
+            result = dnd_test_drop_update_mimes(
+                cap.window_id, 1, 'text/html text/plain',
+                ['text/html', 'text/plain', 'application/octet-stream'],
+            )
+            self.assertIn('text/html', result)
+            self.assertIn('text/plain', result)
+            # application/octet-stream was not accepted
+            self.assertNotIn('application/octet-stream', result)
+
+    def test_drop_update_mimes_no_false_positive_for_prefix(self) -> None:
+        """A MIME type that is a prefix of an accepted type must NOT be accepted.
+
+        Previously strstr() was used, which would match 'text/h' inside 'text/html'
+        and incorrectly report it as accepted.
+        """
+        with dnd_test_window() as (screen, cap):
+            result = dnd_test_drop_update_mimes(
+                cap.window_id, 1, 'text/html',
+                ['text/h', 'text/html'],
+            )
+            # Only the exact match should survive
+            self.assertNotIn('text/h', result, "'text/h' is a prefix of 'text/html' and must not be accepted")
+            self.assertIn('text/html', result)
+
+    def test_drop_update_mimes_no_false_positive_for_suffix(self) -> None:
+        """A MIME type that is a suffix-match inside the buffer must NOT be accepted."""
+        with dnd_test_window() as (screen, cap):
+            # accepted buffer looks like: "text/html\0\0"
+            # 'html' is a substring but not an entry
+            result = dnd_test_drop_update_mimes(
+                cap.window_id, 1, 'text/html',
+                ['html', 'text/html'],
+            )
+            self.assertNotIn('html', result, "'html' is a substring of 'text/html' and must not be accepted")
+            self.assertIn('text/html', result)
+
+    def test_drop_update_mimes_priority_order(self) -> None:
+        """Accepted MIME types are returned in the order specified by the client."""
+        with dnd_test_window() as (screen, cap):
+            # Client accepts text/plain first, then text/html
+            result = dnd_test_drop_update_mimes(
+                cap.window_id, 1, 'text/plain text/html',
+                ['text/html', 'text/plain'],
+            )
+            self.assertEqual(result, ['text/plain', 'text/html'],
+                             'accepted order (text/plain before text/html) must be preserved')
+
+    def test_drop_update_mimes_none_accepted(self) -> None:
+        """When no offered MIME type is accepted, the result is empty."""
+        with dnd_test_window() as (screen, cap):
+            result = dnd_test_drop_update_mimes(
+                cap.window_id, 1, 'text/plain',
+                ['application/pdf', 'image/png'],
+            )
+            self.assertEqual(result, [])
