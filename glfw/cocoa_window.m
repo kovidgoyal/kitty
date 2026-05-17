@@ -872,12 +872,13 @@ static void _glfwUpdateNotchCover(_GLFWwindow*);
     GLFWid windowId, instanceId;
     char* mimeType;  // MIME type for this provider
     char *file_name; // Optional file name for this provider
+    bool is_directory;
     NSFileHandle *file_handle;
     NSURL *file_url;
     void (^completion_handler)(NSError*);
 }
 
-- (instancetype)initWithWindow:(_GLFWwindow*)initWindow mimeType:(const char*)mime fileName:(const char*)name instanceId:(GLFWid)iid;
+- (instancetype)initWithWindow:(_GLFWwindow*)initWindow mimeType:(const char*)mime fileName:(const char*)name isDir:(bool)is_dir instanceId:(GLFWid)iid;
 - (void)request_drag_data;
 - (void)promised_data_ready:(const char*)data sz:(size_t)sz type:(int)type;
 - (void)end_transfer:(int)errorCode;
@@ -4461,8 +4462,10 @@ add_uri_list_drag_items(_GLFWwindow *window, NSMutableArray<NSDraggingItem*>* dr
         if (use_promises && [[url scheme] caseInsensitiveCompare:@"file"] == NSOrderedSame) {
             snprintf(buf, sizeof(buf), "kitty-internal/uri-list-item-%d", count);
             NSString *filename = [url lastPathComponent];
+            NSURLComponents *components = [NSURLComponents componentsWithString:line];
+            bool is_dir = [components.percentEncodedPath hasSuffix:@"/"];
             GLFWFilePromiseProviderDelegate* delegate = [[[GLFWFilePromiseProviderDelegate alloc]
-                initWithWindow:window mimeType:buf fileName:[filename UTF8String]
+                initWithWindow:window mimeType:buf fileName:[filename UTF8String] isDir:is_dir
                     instanceId:_glfw.drag.instance_id] autorelease];
             NSFilePromiseProvider *provider = [[[NSFilePromiseProvider alloc]
                 initWithFileType:UTTypeFileURL.identifier delegate:delegate] autorelease];
@@ -4496,7 +4499,7 @@ add_drag_items(_GLFWwindow *window, NSMutableArray<NSDraggingItem*>* dragItems, 
     } else {
         // Create file promise provider with our delegate
         GLFWFilePromiseProviderDelegate* delegate = [[[GLFWFilePromiseProviderDelegate alloc]
-            initWithWindow:window mimeType:mime_item->mime_type fileName:NULL instanceId:_glfw.drag.instance_id] autorelease];
+            initWithWindow:window mimeType:mime_item->mime_type fileName:NULL isDir:NO instanceId:_glfw.drag.instance_id] autorelease];
         NSFilePromiseProvider *provider = [[[NSFilePromiseProvider alloc]
             initWithFileType:utiString delegate:delegate] autorelease];
         w = provider;
@@ -4590,7 +4593,7 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {@autore
     if (file_handle) [file_handle release];
     file_handle = nil;
     NSFileManager *fileManager = [NSFileManager defaultManager];
-    // Erase the empty placeholder file created by writePromiseToURL:
+    // Erase the empty placeholder file/directory created by writePromiseToURL:
     [fileManager removeItemAtURL:file_url error:nil];
     NSError *error = nil;
     NSURL *srcURL = [NSURL fileURLWithPath:@(path)];
@@ -4711,12 +4714,13 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {@autore
     }
 }
 
-- (instancetype)initWithWindow:(_GLFWwindow*)initWindow mimeType:(const char*)mime fileName: (const char*)name instanceId:(GLFWid) instance_id {
+- (instancetype)initWithWindow:(_GLFWwindow*)initWindow mimeType:(const char*)mime fileName:(const char*)name isDir:(bool)is_dir instanceId:(GLFWid) instance_id {
     self = [super init];
     if (self) {
         windowId = initWindow ? initWindow->id : 0;
         mimeType = _glfw_strdup(mime);
         file_name = name ? _glfw_strdup(name) : nil;
+        is_directory = is_dir;
         instanceId = instance_id;
         if (file_promise_providers == nil) file_promise_providers = [[NSMutableArray alloc] init];
         [file_promise_providers addObject:self];
@@ -4758,23 +4762,26 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {@autore
         return;
     }
 
-    // Create the file
     NSError* error = nil;
-    if (![[NSFileManager defaultManager] createFileAtPath:url.path contents:nil attributes:nil]) {
-        error = [NSError errorWithDomain:NSPOSIXErrorDomain code:EIO userInfo:nil];
+    bool ok = is_directory ? [[NSFileManager defaultManager]
+        createDirectoryAtURL:url withIntermediateDirectories:YES attributes:nil error:&error] :
+        [[NSData data] writeToURL:url options:NSDataWritingAtomic error:&error];
+    if (!ok) {
+        NSLog(@"Failed to create file to send drag file provider promise data to with error: %@", error);
         completionHandler(error);
         return;
     }
-
-    NSFileHandle* fileHandle = [NSFileHandle fileHandleForWritingToURL:url error:&error];
-    if (!fileHandle) {
-        completionHandler(error);
-        NSError *error;
-        NSFileManager *fileManager = [NSFileManager defaultManager];
-        [fileManager removeItemAtURL:url error:&error];
-        return;
+    if (!is_directory) {
+        NSFileHandle* fileHandle = [NSFileHandle fileHandleForWritingToURL:url error:&error];
+        if (!fileHandle) {
+            completionHandler(error);
+            NSError *error;
+            NSFileManager *fileManager = [NSFileManager defaultManager];
+            [fileManager removeItemAtURL:url error:&error];
+            return;
+        }
+        file_handle = [fileHandle retain];
     }
-    file_handle = [fileHandle retain];
     completion_handler = Block_copy(completionHandler);
     file_url = [url retain];
     [self request_drag_data];
