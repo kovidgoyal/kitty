@@ -2088,8 +2088,16 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
     if (!has_more && !payload_sz) {  // all data received
         switch (ri->type) {
             case 0:
-                safe_close(ri->fd_plus_one-1, __FILE__, __LINE__);
-                ri->fd_plus_one = 0;
+                if (ri->fd_plus_one) {
+                    safe_close(ri->fd_plus_one - 1, __FILE__, __LINE__);
+                    ri->fd_plus_one = 0;
+                } else {
+                    // Empty file: no data payload was ever received so the file was never opened;
+                    // create it now so that it exists at the expected path for the caller.
+                    int fd = safe_openat(dirfd, ri->dir_entry_name, O_CREAT | O_WRONLY, file_permissions);
+                    if (fd < 0) abrt(errno, "could not create empty drag source item file");
+                    safe_close(fd, __FILE__, __LINE__);
+                }
                 break;
             case 1:
                 // Ensure room for the null terminator needed by symlinkat
@@ -2633,6 +2641,26 @@ dnd_test_probe_state(PyObject *self UNUSED, PyObject *args) {
                 }
             }
 #undef mi
+        }
+        Py_RETURN_NONE;
+    }
+    // "drag_remote_item_path:N" returns the full filesystem path for URI item N (0-based)
+    if (strncmp(q, "drag_remote_item_path:", 22) == 0) {
+        size_t uri_idx = (size_t)atoi(q + 22);
+        if (w->drag_source.base_dir_for_remote_items) {
+            for (size_t idx = 0; idx < w->drag_source.num_mimes; idx++) {
+#define mi w->drag_source.items[idx]
+                if (mi.is_uri_list && mi.remote_items && uri_idx < mi.num_remote_items) {
+                    const char *name = mi.remote_items[uri_idx].dir_entry_name;
+                    if (name) {
+                        char path[4096];
+                        snprintf(path, sizeof(path), "%s/%zu/%s",
+                            w->drag_source.base_dir_for_remote_items, uri_idx, name);
+                        return PyUnicode_FromString(path);
+                    }
+                }
+#undef mi
+            }
         }
         Py_RETURN_NONE;
     }
