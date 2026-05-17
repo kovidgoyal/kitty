@@ -289,7 +289,7 @@ def dnd_command(payload: str) -> None:
         m += f':m={more}'
     if (client_id := c.pop('client_id', None)):
         m += f':i={client_id}'
-    if (operation := c.pop('operation', None)) is not None and operation:
+    if (operation := c.pop('operation', None)):
         m += f':o={operation}'
     if (cell_x := c.pop('cell_x', None)):
         m += f':x={cell_x}'
