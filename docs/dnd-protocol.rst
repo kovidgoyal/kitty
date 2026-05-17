@@ -375,7 +375,7 @@ Where ``POSIX error name`` is a POSIX symbolic error name such as ``ENOENT``
 if the MIME type is not found or ``EIO`` if an IO error occurred and so on. The
 description is optional and must contain only :ref:`safe_utf8`.
 
-If the client wants to cancel the full drag at any time, it should send:
+If the client wants to cancel the full drag at any time, it should send::
 
     OSC _dnd_code ; t=E:y=-1 ST
 
