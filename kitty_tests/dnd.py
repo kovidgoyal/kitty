@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
 import errno
+import os
 import re
 from base64 import standard_b64encode
 from contextlib import contextmanager
@@ -2933,6 +2934,11 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_remote_file(1, '', item_type=0))
             self._assert_no_output(cap)
             self.assert_drag_data_complete(cap)
+            # Verify the empty file was actually created on disk
+            path = dnd_test_probe_state(cap.window_id, 'drag_remote_item_path:0')
+            self.assertIsNotNone(path, 'empty file path should be known')
+            self.assertTrue(os.path.isfile(path), f'empty file must exist on disk: {path}')
+            self.assertEqual(os.path.getsize(path), 0, f'file must be empty: {path}')
 
     def test_remote_drag_empty_directory(self) -> None:
         """Transfer a directory with no entries."""
@@ -2944,6 +2950,26 @@ class TestDnDProtocol(BaseTest):
             parse_bytes(screen, client_remote_file(1, b64, item_type=2))
             parse_bytes(screen, client_remote_file(1, '', item_type=2))
             self.assert_drag_data_complete(cap)
+
+    def test_remote_drag_dir_with_empty_file(self) -> None:
+        """Directory containing an empty file: the empty child file must be created on disk."""
+        uri_list = b'file:///home/user/mydir\r\n'
+        dir_entries = b'empty_child.txt'
+        with dnd_test_window() as (screen, cap):
+            self._setup_remote_drag(screen, cap, uri_list)
+            b64 = standard_b64encode(dir_entries).decode()
+            parse_bytes(screen, client_remote_file(1, b64, item_type=2))
+            parse_bytes(screen, client_remote_file(1, '', item_type=2))
+            # Send end-of-data for the child with no payload (empty file)
+            parse_bytes(screen, client_remote_file(1, '', item_type=0, parent_handle=2, entry_num=1))
+            self._assert_no_output(cap)
+            self.assert_drag_data_complete(cap)
+            # Verify the empty child file was actually created on disk
+            dir_path = dnd_test_probe_state(cap.window_id, 'drag_remote_item_path:0')
+            self.assertIsNotNone(dir_path, 'dir path should be known')
+            child_path = os.path.join(dir_path, 'empty_child.txt')
+            self.assertTrue(os.path.isfile(child_path), f'empty child file must exist on disk: {child_path}')
+            self.assertEqual(os.path.getsize(child_path), 0, f'child file must be empty: {child_path}')
 
     def test_remote_drag_uri_list_with_comments(self) -> None:
         """URI list with comment lines (starting with #) should filter them out."""
