@@ -308,7 +308,7 @@ class DumpCommands:  # {{{
                 if isinstance(x, (bytes, memoryview)):
                     return str(x, 'utf-8', 'replace')
                 if isinstance(x, dict):
-                    return json.dumps(x)
+                    return json.dumps({k: fmt(v) for k, v in x.items()})
                 return x
             safe_print(what, *map(fmt, a), flush=True)
 # }}}
