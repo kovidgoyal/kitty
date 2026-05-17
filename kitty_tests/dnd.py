@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
 import errno
+import os
 import re
 from base64 import standard_b64encode
 from contextlib import contextmanager
@@ -2934,7 +2935,6 @@ class TestDnDProtocol(BaseTest):
             self._assert_no_output(cap)
             self.assert_drag_data_complete(cap)
             # Verify the empty file was actually created on disk
-            import os
             path = dnd_test_probe_state(cap.window_id, 'drag_remote_item_path:0')
             self.assertIsNotNone(path, 'empty file path should be known')
             self.assertTrue(os.path.isfile(path), f'empty file must exist on disk: {path}')
@@ -2965,7 +2965,6 @@ class TestDnDProtocol(BaseTest):
             self._assert_no_output(cap)
             self.assert_drag_data_complete(cap)
             # Verify the empty child file was actually created on disk
-            import os
             dir_path = dnd_test_probe_state(cap.window_id, 'drag_remote_item_path:0')
             self.assertIsNotNone(dir_path, 'dir path should be known')
             child_path = os.path.join(dir_path, 'empty_child.txt')

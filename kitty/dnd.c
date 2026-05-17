@@ -2653,10 +2653,11 @@ dnd_test_probe_state(PyObject *self UNUSED, PyObject *args) {
                 if (mi.is_uri_list && mi.remote_items && uri_idx < mi.num_remote_items) {
                     const char *name = mi.remote_items[uri_idx].dir_entry_name;
                     if (name) {
-                        char path[4096];
-                        snprintf(path, sizeof(path), "%s/%zu/%s",
+                        char path[PATH_MAX + 1];
+                        int n = snprintf(path, sizeof(path), "%s/%zu/%s",
                             w->drag_source.base_dir_for_remote_items, uri_idx, name);
-                        return PyUnicode_FromString(path);
+                        if (n <= 0 || (size_t)n >= sizeof(path)) Py_RETURN_NONE;
+                        return PyUnicode_FromStringAndSize(path, (Py_ssize_t)n);
                     }
                 }
 #undef mi
