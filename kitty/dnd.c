@@ -2184,7 +2184,7 @@ subdir_data_for_drag(
     Window *w, unsigned mime_item_idx, unsigned uri_item_idx, int handle, unsigned entry_num, unsigned item_type,
     bool has_more, const uint8_t *payload, size_t payload_sz, DragRemoteItem **ri
 ) {
-    if (!mi.remote_items || uri_item_idx >= mi.num_remote_items) abrt(EINVAL, "drag source sub directory item uri list index out of range");
+    DragRemoteItem *root = *ri;
     DragRemoteItem *parent = NULL; *ri = NULL;
     if (mi.currently_open_subdir) {
         if (mi.currently_open_subdir->type == handle) parent = mi.currently_open_subdir;
@@ -2198,7 +2198,6 @@ subdir_data_for_drag(
     }
     if (parent == NULL || !parent->fd_plus_one) {
         char path[PATH_MAX+1]; path[PATH_MAX] = 0;
-        DragRemoteItem *root = mi.remote_items + uri_item_idx;
         if (!root->dir_entry_name) abrt(EINVAL, "drag source sub directory parent dir does not exist");
         size_t pos = snprintf(path, PATH_MAX, "%s/%u/%s",
             ds.base_dir_for_remote_items, uri_item_idx, root->dir_entry_name);
