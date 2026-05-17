@@ -304,11 +304,16 @@ class DumpCommands:  # {{{
             if self.draw_dump_buf:
                 safe_print('draw', ''.join(self.draw_dump_buf))
                 self.draw_dump_buf = []
+            def encode_dict_value(v: Any) -> Any:
+                if isinstance(v, (bytes, memoryview)):
+                    return str(v, 'utf-8', 'replace')
+                return v
+
             def fmt(x: Any) -> Any:
                 if isinstance(x, (bytes, memoryview)):
                     return str(x, 'utf-8', 'replace')
                 if isinstance(x, dict):
-                    return json.dumps(x)
+                    return json.dumps({k: encode_dict_value(v) for k, v in x.items()})
                 return x
             safe_print(what, *map(fmt, a), flush=True)
 # }}}
