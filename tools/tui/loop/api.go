@@ -696,7 +696,7 @@ func (self *Loop) QueueDnDData(cmd DndCommand) IdType {
 	}
 	if as_base64 {
 		payload_sz = base64.RawStdEncoding.EncodedLen(payload_sz)
-		dest := make([]byte, base64.RawStdEncoding.EncodedLen(len(payload)))
+		dest := make([]byte, payload_sz)
 		base64.RawStdEncoding.Encode(dest, utils.UnsafeStringToBytes(payload))
 		payload = utils.UnsafeBytesToString(dest)
 	} else {
