@@ -320,7 +320,7 @@ queue_payload_to_child(id_type id, uint32_t client_id, PendingData *pending, con
         char *buf = malloc(header_sz + data_sz - offset);
         if (!buf) fatal("Out of memory");
         memcpy(buf, header, header_sz);
-        if (data_sz - offset) memcpy(buf + header_sz, data, data_sz - offset);
+        if (data_sz - offset) memcpy(buf + header_sz, data + offset, data_sz - offset);
         PendingEntry *e = &pending->items[pending->count++];
         e->buf = buf; e->header_sz = header_sz; e->data_sz = data_sz - offset;
         e->as_base64 = as_base64; e->client_id = client_id;
