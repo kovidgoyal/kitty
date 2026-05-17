@@ -446,11 +446,12 @@ class TestDnDKitten(BaseTest):
             if line and not line.startswith('#'):
                 purl = urlparse(line)
                 if purl.scheme == 'file':
-                    paths.add(purl.path)
+                    fpath = purl.path.rstrip('/') or '/'
+                    paths.add(fpath)
                     if remote_client:
-                        self.assertNotEqual(self.src_data_dir, os.path.dirname(purl.path))
+                        self.assertNotEqual(self.src_data_dir, os.path.dirname(fpath))
                     else:
-                        self.assertEqual(self.src_data_dir, os.path.dirname(purl.path))
+                        self.assertEqual(self.src_data_dir, os.path.dirname(fpath))
         src_items = set(os.listdir(self.src_data_dir))
         self.assertEqual(src_items, {os.path.basename(x) for x in paths})
         if remote_client:

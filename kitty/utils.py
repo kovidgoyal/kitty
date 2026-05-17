@@ -1190,7 +1190,8 @@ def sanitized_filename_from_url(url: str) -> str:
     from urllib.parse import unquote, urlparse
     try:
         purl = urlparse(url)
-        fname = posixpath.basename(unquote(purl.path))
+        fpath = purl.path.rstrip('/') or '/'
+        fname = posixpath.basename(unquote(fpath))
         return fname.replace(os.sep, '_')
     except Exception:
         return ''

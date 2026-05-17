@@ -2103,7 +2103,11 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
                 if (symlinkat((char*)ri->data, dirfd, ri->dir_entry_name) != 0) abrt(errno, "failed to create symlink for drag source item");
                 break;
             default:
-                if (mkdirat(dirfd, ri->dir_entry_name, dir_permissions) != 0 && errno != EEXIST) abrt(errno, "failed to create directory for drag source item");
+                if (mkdirat(dirfd, ri->dir_entry_name, dir_permissions) != 0 && errno != EEXIST) {
+                    int err = errno;
+                    log_error("Failed to create directory for drag source item with name: %s and error: %s", ri->dir_entry_name, strerror(err));
+                    abrt(err, "failed to create directory for drag source item");
+                }
                 populate_dir_entries(w, ri);
                 break;
         }
@@ -2139,12 +2143,17 @@ toplevel_data_for_drag(
         const char *uri = mi.uri_list[uri_item_idx];
         char *fname = sanitized_filename_from_url(uri);
         if (!fname) abrt(EINVAL, "could not sanitize filename for URI in drag source uri-list");
+        if (!fname[0]) abrt(EINVAL, "URI must not have an empty path");
         ri->dir_entry_name = fname;
         char path[32];
         snprintf(path, sizeof(path), "%u", uri_item_idx);
-        if (mkdirat(ds.base_dir_fd_plus_one - 1, path, dir_permissions) != 0 && errno != EEXIST) abrt(errno, "failed to create directory for drag source item");
+        if (mkdirat(ds.base_dir_fd_plus_one - 1, path, dir_permissions) != 0 && errno != EEXIST) {
+            int err = errno;
+            log_error("Failed to create directory for drag source item at: %s/%u with error: %s", ds.base_dir_for_remote_items, uri_item_idx, strerror(err));
+            abrt(err, "failed to create directory for drag source item");
+        }
         int fd = safe_openat(ds.base_dir_fd_plus_one - 1, path, O_RDONLY | O_DIRECTORY, 0);
-        if (fd < 0) abrt(errno, "failed to create directory for drag source item");
+        if (fd < 0) abrt(errno, "failed to open directory for drag source item");
         ri->top_level_parent_dir_fd_plus_one = fd + 1;
         if (!ds.file_promises) {
             free(mi.uri_list[uri_item_idx]);
