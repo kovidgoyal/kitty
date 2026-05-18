@@ -117,3 +117,32 @@ func GuessMimeTypeWithFileSystemAccess(filename string) string {
 	}
 	return mt
 }
+
+func GuessFileExtensions(mime_type string) (ans []string) {
+	mime_type, _, err := mime.ParseMediaType(mime_type)
+	if err != nil {
+		return
+	}
+	seen := NewSet[string](8)
+	add := func(x string) {
+		if !seen.Has(x) {
+			seen.Add(x)
+			ans = append(ans, x)
+		}
+	}
+	for ext, q := range UserMimeMap() {
+		if ext != "" && q == mime_type {
+			add(ext)
+		}
+	}
+	// Go stdlib returns [".asc", ".text", ".txt"] for this
+	if mime_type == "text/plain" {
+		add(".txt")
+	}
+	if std, err := mime.ExtensionsByType(mime_type); err == nil {
+		for _, x := range std {
+			add(x)
+		}
+	}
+	return
+}

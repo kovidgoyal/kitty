@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"container/list"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +14,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/emmansun/base64"
 
 	"github.com/kovidgoyal/go-parallel"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -376,40 +377,10 @@ type parsed_uri struct {
 
 // ext_for_mime returns a file extension (with leading dot) for a MIME type.
 func ext_for_mime(mime string) string {
-	switch mime {
-	case "image/jpeg":
-		return ".jpg"
-	case "image/png":
-		return ".png"
-	case "image/gif":
-		return ".gif"
-	case "image/webp":
-		return ".webp"
-	case "image/svg+xml":
-		return ".svg"
-	case "text/plain":
-		return ".txt"
-	case "text/html":
-		return ".html"
-	case "text/css":
-		return ".css"
-	case "application/pdf":
-		return ".pdf"
-	case "application/json":
-		return ".json"
-	case "application/zip":
-		return ".zip"
-	default:
-		if _, subtype, found := strings.Cut(mime, "/"); found && subtype != "" {
-			subtype, _, _ = strings.Cut(subtype, "+")
-			subtype, _, _ = strings.Cut(subtype, ";")
-			subtype = strings.TrimSpace(subtype)
-			if subtype != "" {
-				return "." + subtype
-			}
-		}
-		return ""
+	for _, x := range utils.GuessFileExtensions(mime) {
+		return x
 	}
+	return ""
 }
 
 // parse_data_uri decodes a data: URI and returns the MIME type and raw data.
