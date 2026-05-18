@@ -1580,25 +1580,24 @@ update_drop_state(_GLFWwindow* window, size_t accepted_count) {
         if (new_preferred_mime) strncpy(dnd.format, new_preferred_mime, arraysz(dnd.format)-1);
         else dnd.format[0] = 0;
     }
-    if (accepted) {
-        XEvent reply = { ClientMessage };
-        reply.xclient.window = dnd.source;
-        reply.xclient.message_type = _glfw.x11.XdndStatus;
-        reply.xclient.format = 32;
-        reply.xclient.data.l[0] = window->x11.handle;
-        reply.xclient.data.l[2] = 0; // Specify an empty rectangle
-        reply.xclient.data.l[3] = 0;
+    XEvent reply = { ClientMessage };
+    reply.xclient.window = dnd.source;
+    reply.xclient.message_type = _glfw.x11.XdndStatus;
+    reply.xclient.format = 32;
+    reply.xclient.data.l[0] = window->x11.handle;
+    reply.xclient.data.l[2] = 0; // Specify an empty rectangle
+    reply.xclient.data.l[3] = 0;
 
-        if (dnd.format_priority > 0 && accepted) {
-            // Reply that we are ready to copy the dragged data
-            reply.xclient.data.l[1] = 1; // Accept with no rectangle
-            if (_glfw.x11.xdnd.version >= 2) reply.xclient.data.l[4] = _glfw.x11.XdndActionCopy;
-        }
-        XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source, False, NoEventMask, &reply);
-        XFlush(_glfw.x11.display);
-    } else {
-        end_drop(window, GLFW_DRAG_OPERATION_GENERIC);
+    if (accepted && dnd.format_priority > 0) {
+        // Reply that we are ready to copy the dragged data
+        reply.xclient.data.l[1] = 1; // Accept with no rectangle
+        if (_glfw.x11.xdnd.version >= 2) reply.xclient.data.l[4] = _glfw.x11.XdndActionCopy;
     }
+    // Always send XdndStatus (accepted or rejected). XdndFinished must only be
+    // sent after XdndDrop, never during drag motion — sending it here was
+    // prematurely terminating the drag source when no MIME type was accepted.
+    XSendEvent(_glfw.x11.display, _glfw.x11.xdnd.source, False, NoEventMask, &reply);
+    XFlush(_glfw.x11.display);
 }
 
 static void
