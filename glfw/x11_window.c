@@ -2119,6 +2119,7 @@ static void processEvent(XEvent *event)
 
             if (event->xbutton.button == Button1) {
                 cancel_momentum();
+                _glfw.x11.drag.last_button1_press_time = event->xbutton.time;
                 _glfwInputMouseClick(window, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, mods);
             } else if (event->xbutton.button == Button2) {
                 cancel_momentum();
@@ -4511,11 +4512,22 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
         _glfw.x11.drag.thumbnail_gc = None;
     }
 
-    // Grab the pointer to track drag motion
+    // Grab the pointer to track drag motion.
+    // Use the timestamp of the triggering Button1 press rather than
+    // CurrentTime.  When the drag start is asynchronous (e.g. initiated
+    // by the dnd kitten after an IPC round-trip), calling XGrabPointer
+    // with CurrentTime can cause some X11 compositors to emit a spurious
+    // synthetic ButtonRelease that immediately cancels the drag.  Using
+    // the actual button-press timestamp tells the server that the grab
+    // was effectively active since the button was pressed, which prevents
+    // those synthetic events.
+    Time grab_time = _glfw.x11.drag.last_button1_press_time
+                     ? _glfw.x11.drag.last_button1_press_time
+                     : CurrentTime;
     int result = XGrabPointer(_glfw.x11.display, window->x11.handle, False,
                              ButtonPressMask | ButtonReleaseMask | PointerMotionMask,
                              GrabModeAsync, GrabModeAsync,
-                             None, None, CurrentTime);
+                             None, None, grab_time);
 
     if (result != GrabSuccess) {
         free(_glfw.x11.drag.type_atoms);

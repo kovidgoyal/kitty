@@ -435,6 +435,12 @@ typedef struct _GLFWlibraryX11
         Window           thumbnail_window;
         Pixmap           thumbnail_pixmap;
         GC               thumbnail_gc;
+        // Timestamp of the most recent Button1 press, used when calling
+        // XGrabPointer so that the server treats the grab as starting from
+        // the button-press rather than from "now".  Using CurrentTime after
+        // an async delay (e.g. the dnd-kitten IPC round-trip) can cause
+        // some compositors to emit a spurious synthetic ButtonRelease.
+        Time             last_button1_press_time;
     } drag;
 
     struct {
