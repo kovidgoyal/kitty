@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
 
@@ -107,8 +108,9 @@ func (dnd *dnd) render_screen() error {
 			next_line()
 		}
 		if dnd.allow_drops {
-			if dnd.data_has_been_dropped {
-				render_paragraph(`Data has been successfully dropped. You can drop more data or press Esc to quit.`)
+			if dnd.num_dropped_files > 0 {
+				noun := utils.IfElse(dnd.num_dropped_files == 1, "file", "files")
+				render_paragraph(fmt.Sprintf(`%d %s %s been dropped in the last drop event. You can drop more data or press Esc to quit.`, dnd.num_dropped_files, noun, utils.IfElse(dnd.num_dropped_files == 1, "has", "have")))
 			} else {
 				render_paragraph(`Drag some data from another application into this window to transfer the files here.`)
 			}

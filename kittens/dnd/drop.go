@@ -550,8 +550,23 @@ func (dnd *dnd) end_drop(success bool) {
 	}
 }
 
+func (dnd *dnd) count_files_in_drop() int {
+	n := 0
+	for _, u := range dnd.drop_status.uri_list {
+		if (u.kind == parsed_uri_file && u.path != "") || u.kind == parsed_uri_data {
+			n++
+		}
+	}
+	for mime, d := range dnd.drop_dests {
+		if mime != "text/uri-list" && d.completed {
+			n++
+		}
+	}
+	return n
+}
+
 func (dnd *dnd) all_drop_data_received() (err error) {
-	dnd.data_has_been_dropped = true
+	dnd.num_dropped_files = dnd.count_files_in_drop()
 	var staging_dir *os.File
 	if dnd.drop_status.dropping_to != nil {
 		staging_dir = dnd.drop_status.dropping_to.handle
@@ -615,7 +630,7 @@ func (dnd *dnd) new_tdir() (dir_file *os.File, err error) {
 func (dnd *dnd) all_mime_data_dropped() (err error) {
 	drop_status := &dnd.drop_status
 	if len(drop_status.uri_list) == 0 {
-		dnd.data_has_been_dropped = true
+		dnd.num_dropped_files = dnd.count_files_in_drop()
 		dnd.end_drop(true)
 		return dnd.render_screen()
 	}
@@ -913,7 +928,9 @@ func (dnd *dnd) drop_confirm(accepted bool) error {
 	dnd.confirm_drop.overwrites = nil
 	dnd.confirm_drop.staging_dir = nil
 	defer staging_dir.Close()
-	dnd.data_has_been_dropped = accepted
+	if !accepted {
+		dnd.num_dropped_files = 0
+	}
 	if accepted {
 		if err := rename_contents(staging_dir, dnd.drop_output_dir); err != nil {
 			dnd.end_drop(false)

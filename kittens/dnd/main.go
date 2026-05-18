@@ -91,7 +91,7 @@ type dnd struct {
 	base_tempdir                           *os.File
 	tdir_counter                           int
 	is_case_sensitive_filesystem           bool
-	data_has_been_dropped                  bool
+	num_dropped_files                      int
 	drag_status                            drag_status
 	in_test_mode                           bool
 	copy_button_region, move_button_region button_region
