@@ -586,9 +586,11 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 
 func (dnd *dnd) request_mime_data() {
 	accepted := utils.NewSetWithItems(dnd.drop_status.accepted_mimes...)
+	seen := utils.NewSet[string](len(dnd.drop_status.accepted_mimes))
 	for idx, m := range dnd.drop_status.offered_mimes {
-		if accepted.Has(m) {
+		if accepted.Has(m) && !seen.Has(m) {
 			dnd.queue_data_request(DC{Type: 'r', X: idx + 1})
+			seen.Add(m)
 		}
 	}
 }
