@@ -772,7 +772,7 @@ func (dnd *dnd) on_drop_data(cmd DC) error {
 	}
 	idx := cmd.X - 1
 	if idx < 0 || idx > len(drop_status.offered_mimes) {
-		return fmt.Errorf("terminal sent drop data for a index outside the list of accepted MIMEs")
+		return fmt.Errorf("terminal sent drop data for an index (%d) outside the list of accepted MIMEs (length: %d)", idx, len(drop_status.offered_mimes))
 	}
 	mime := drop_status.offered_mimes[idx]
 	dest := dnd.drop_dests[mime]

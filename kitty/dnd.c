@@ -2067,7 +2067,11 @@ populate_dir_entries(Window *w, DragRemoteItem *ri) {
         if (len > 0) {
             char *name = strndup(ptr, len);
             if (!name) abrt(ENOMEM, "out of memory processing drag source item directory entries");
+#ifdef _WIN32
+            for (size_t i = 0; i < len; i++) if (name[i] == '/' || name[i] == '\\') name[i] = '_';
+#else
             for (size_t i = 0; i < len; i++) if (name[i] == '/') name[i] = '_';
+#endif
             if (len == 1 && name[0] == '.') name[0] = '_';
             if (len == 2 && name[0] == '.' && name[1] == '.') name[0] = '_';
             child->dir_entry_name = name;
@@ -2135,6 +2139,10 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
                     ri->data_capacity = ri->data_sz + 1;
                 }
                 ri->data[ri->data_sz] = 0;
+                // We allow arbitrary symlinks here even though they can lead
+                // outside the destination directory. This is safe because we
+                // only create files with open(O_EXCL) and mkdirat and symlinkat
+                // all fail with EEXIST if a symlink exists at the path.
                 if (symlinkat((char*)ri->data, dirfd, ri->dir_entry_name) != 0) abrt(errno, "failed to create symlink for drag source item");
                 break;
             default:
