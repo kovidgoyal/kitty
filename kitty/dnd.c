@@ -2085,7 +2085,7 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
         switch (ri->type) {
             case 0: {
                 if (!ri->fd_plus_one) {
-                    int fd = safe_openat(dirfd, ri->dir_entry_name, O_CREAT | O_WRONLY, file_permissions);
+                    int fd = safe_openat(dirfd, ri->dir_entry_name, O_CREAT | O_WRONLY | O_EXCL, file_permissions);
                     if (fd < 0) abrt(errno, "could not open drag source item data file");
                     ri->fd_plus_one = fd + 1;
                 }
@@ -2121,7 +2121,7 @@ add_payload(Window *w, DragRemoteItem *ri, bool has_more, const uint8_t *payload
                 } else {
                     // Empty file: no data payload was ever received so the file was never opened;
                     // create it now so that it exists at the expected path for the caller.
-                    int fd = safe_openat(dirfd, ri->dir_entry_name, O_CREAT | O_WRONLY, file_permissions);
+                    int fd = safe_openat(dirfd, ri->dir_entry_name, O_CREAT | O_WRONLY | O_EXCL, file_permissions);
                     if (fd < 0) abrt(errno, "could not create empty drag source item file");
                     safe_close(fd, __FILE__, __LINE__);
                 }
