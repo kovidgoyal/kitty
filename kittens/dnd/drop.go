@@ -432,9 +432,8 @@ func parse_data_uri(uri string) (mime string, data []byte, err error) {
 	if mime == "" {
 		mime = "text/plain"
 	}
-	// Strip parameters for extension lookup but keep original for the field
-	mime_for_ext, _, _ := strings.Cut(mime, ";")
-	mime = strings.TrimSpace(mime_for_ext)
+	// Strip parameters (e.g. ;charset=UTF-8) so the MIME type is clean.
+	mime, _, _ = strings.Cut(mime, ";")
 
 	if is_base64 {
 		payload = strings.NewReplacer("\r", "", "\n", "", " ", "").Replace(payload)
@@ -468,7 +467,9 @@ func parse_uri_list(src string) (ans []parsed_uri, err error) {
 		} else if strings.HasPrefix(line, "data:") {
 			m, d, derr := parse_data_uri(line)
 			if derr != nil {
-				ans = append(ans, parsed_uri{kind: parsed_uri_file}) // treat invalid data URI as empty entry
+				// Invalid data URI: treat as an unrecognised entry (empty path) so the caller
+				// skips it without failing, matching the behaviour for unknown URI schemes.
+				ans = append(ans, parsed_uri{kind: parsed_uri_file})
 			} else {
 				ans = append(ans, parsed_uri{kind: parsed_uri_data, mime: m, data: d})
 			}
