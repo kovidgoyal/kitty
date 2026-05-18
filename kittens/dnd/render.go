@@ -107,8 +107,14 @@ func (dnd *dnd) render_screen() error {
 			next_line()
 		}
 		if dnd.allow_drops {
-			if dnd.data_has_been_dropped {
-				render_paragraph(`Data has been successfully dropped. You can drop more data or press Esc to quit.`)
+			if dnd.num_dropped_files > 0 {
+				verb := "have"
+				noun := "files"
+				if dnd.num_dropped_files == 1 {
+					verb = "has"
+					noun = "file"
+				}
+				render_paragraph(fmt.Sprintf(`%d %s %s been dropped in the last drop event. You can drop more data or press Esc to quit.`, dnd.num_dropped_files, noun, verb))
 			} else {
 				render_paragraph(`Drag some data from another application into this window to transfer the files here.`)
 			}
