@@ -243,7 +243,11 @@ func (dnd *dnd) run_loop() (err error) {
 			case "DROP_IS_REMOTE":
 				dnd.send_test_response(utils.IfElse(dnd.drop_status.is_remote_client, "True", "False"))
 			case "DROP_URI_LIST":
-				dnd.send_test_response(strings.Join(dnd.drop_status.uri_list, "|"))
+				paths := make([]string, len(dnd.drop_status.uri_list))
+				for i, u := range dnd.drop_status.uri_list {
+					paths[i] = u.path
+				}
+				dnd.send_test_response(strings.Join(paths, "|"))
 			case "DRAG_ACTIVE":
 				dnd.send_test_response(utils.IfElse(dnd.drag_status.active, "DRAG_ACTIVE", "DRAG_INACTIVE"))
 			case "DRAG_OK":

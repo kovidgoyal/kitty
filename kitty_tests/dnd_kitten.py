@@ -358,6 +358,33 @@ class TestDnDKitten(BaseTest):
             self.assertFalse(os.path.exists(move_dir), 'local move: source directory must be deleted')
             self.assertFalse(os.path.lexists(move_link), 'local move: source symlink must be deleted')
 
+        # ---- data URI: inline data should be written to data-uri-N.ext in the destination ----
+        data_uri_content_1 = b'data uri plain text content'
+        data_uri_b64 = standard_b64encode(data_uri_content_1).decode()
+        data_uri_content_2 = b'\x89PNG\r\n\x1a\n' + b'\x00' * 8  # fake PNG bytes
+        data_uri_b64_2 = standard_b64encode(data_uri_content_2).decode()
+        data_uri_list = (
+            f'data:text/plain;base64,{data_uri_b64}\r\n'
+            f'data:image/png;base64,{data_uri_b64_2}\r\n'
+        ).encode()
+        dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], copy[0]+1, copy[1]+1)
+        self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
+        dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], copy[0]+1, copy[1]+1)
+        self.wait_for_state('drop_data_requests', ((1, 0, 0),))
+        dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', data_uri_list)
+        self.wait_for_state('last_drop_action', GLFW_DRAG_OPERATION_COPY)
+        self.wait_for_state('drop_action', 0)
+        data_uri_file_1 = jn(self.kitten_wd, 'data-uri-1.txt')
+        data_uri_file_2 = jn(self.kitten_wd, 'data-uri-2.png')
+        self.assertTrue(os.path.exists(data_uri_file_1), f'data URI file 1 should be created at {data_uri_file_1}')
+        self.assertTrue(os.path.exists(data_uri_file_2), f'data URI file 2 should be created at {data_uri_file_2}')
+        with open(data_uri_file_1, 'rb') as f:
+            self.assertEqual(data_uri_content_1, f.read())
+        with open(data_uri_file_2, 'rb') as f:
+            self.assertEqual(data_uri_content_2, f.read())
+        os.unlink(data_uri_file_1)
+        os.unlink(data_uri_file_2)
+
     def assert_files_have_same_content(self, a, b):
         with open(a, 'rb') as fa, open(b, 'rb') as fb:
             self.assertEqual(fa.read(), fb.read(), f'{a} ({os.path.getsize(a)}) != {b} ({os.path.getsize(b)})')

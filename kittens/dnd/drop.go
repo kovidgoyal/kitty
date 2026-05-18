@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"container/list"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -359,21 +360,122 @@ func (d *remote_dir_entry) add_remote_data(data []byte, output_buf []byte, has_m
 	return nil
 }
 
-func parse_uri_list(src string) (ans []string, err error) {
+type parsed_uri_kind int
+
+const (
+	parsed_uri_file parsed_uri_kind = iota
+	parsed_uri_data
+)
+
+type parsed_uri struct {
+	kind parsed_uri_kind
+	path string // for file URIs: the local filesystem path (empty if not a valid file URI)
+	mime string // for data URIs: the MIME type
+	data []byte // for data URIs: the decoded payload
+}
+
+// ext_for_mime returns a file extension (with leading dot) for a MIME type.
+func ext_for_mime(mime string) string {
+	switch mime {
+	case "image/jpeg":
+		return ".jpg"
+	case "image/png":
+		return ".png"
+	case "image/gif":
+		return ".gif"
+	case "image/webp":
+		return ".webp"
+	case "image/svg+xml":
+		return ".svg"
+	case "text/plain":
+		return ".txt"
+	case "text/html":
+		return ".html"
+	case "text/css":
+		return ".css"
+	case "application/pdf":
+		return ".pdf"
+	case "application/json":
+		return ".json"
+	case "application/zip":
+		return ".zip"
+	default:
+		if _, subtype, found := strings.Cut(mime, "/"); found && subtype != "" {
+			subtype, _, _ = strings.Cut(subtype, "+")
+			subtype, _, _ = strings.Cut(subtype, ";")
+			subtype = strings.TrimSpace(subtype)
+			if subtype != "" {
+				return "." + subtype
+			}
+		}
+		return ""
+	}
+}
+
+// parse_data_uri decodes a data: URI and returns the MIME type and raw data.
+func parse_data_uri(uri string) (mime string, data []byte, err error) {
+	rest := strings.TrimPrefix(uri, "data:")
+	comma_idx := strings.Index(rest, ",")
+	if comma_idx < 0 {
+		err = fmt.Errorf("invalid data URI: no comma found")
+		return
+	}
+	header := rest[:comma_idx]
+	payload := rest[comma_idx+1:]
+
+	is_base64 := strings.HasSuffix(header, ";base64")
+	if is_base64 {
+		header = header[:len(header)-7]
+	}
+
+	mime = strings.TrimSpace(header)
+	if mime == "" {
+		mime = "text/plain"
+	}
+	// Strip parameters (e.g. ;charset=UTF-8) so the MIME type is clean.
+	mime, _, _ = strings.Cut(mime, ";")
+
+	if is_base64 {
+		payload = strings.NewReplacer("\r", "", "\n", "", " ", "").Replace(payload)
+		data, err = base64.StdEncoding.DecodeString(payload)
+		if err != nil {
+			data, err = base64.RawURLEncoding.DecodeString(payload)
+		}
+	} else {
+		var unescaped string
+		unescaped, err = url.PathUnescape(payload)
+		if err != nil {
+			return
+		}
+		data = []byte(unescaped)
+	}
+	return
+}
+
+func parse_uri_list(src string) (ans []parsed_uri, err error) {
 	for _, line := range utils.NewSeparatorScanner("", "\r\n").Split(src) {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		if !strings.HasPrefix(line, "file://") {
-			ans = append(ans, "")
-			continue
+		if strings.HasPrefix(line, "file://") {
+			p, err := url.Parse(line)
+			if err != nil {
+				return nil, err
+			}
+			ans = append(ans, parsed_uri{kind: parsed_uri_file, path: filepath.Clean(p.Path)})
+		} else if strings.HasPrefix(line, "data:") {
+			m, d, derr := parse_data_uri(line)
+			if derr != nil {
+				// Invalid data URI: treat as an unrecognised entry (empty path) so the caller
+				// skips it without failing, matching the behaviour for unknown URI schemes.
+				ans = append(ans, parsed_uri{kind: parsed_uri_file})
+			} else {
+				ans = append(ans, parsed_uri{kind: parsed_uri_data, mime: m, data: d})
+			}
+		} else {
+			ans = append(ans, parsed_uri{kind: parsed_uri_file}) // unknown URI scheme: empty entry
 		}
-		p, err := url.Parse(line)
-		if err != nil {
-			return nil, err
-		}
-		ans = append(ans, filepath.Clean(p.Path))
 	}
 	return
 }
@@ -381,7 +483,7 @@ func parse_uri_list(src string) (ans []string, err error) {
 type drop_status struct {
 	offered_mimes      []string
 	accepted_mimes     []string
-	uri_list           []string
+	uri_list           []parsed_uri
 	cell_x, cell_y     int
 	action             int
 	in_window          bool
@@ -455,18 +557,18 @@ func (dnd *dnd) end_drop(success bool) {
 		dnd.lp.QueueDnDData(DC{
 			Type: 'r', Operation: utils.IfElse(success, dnd.drop_status.action, 0)}) // end drop
 		if success && dnd.drop_status.action == move_on_drop && !dnd.drop_status.is_remote_client {
-			for _, path := range dnd.drop_status.uri_list {
-				if path == "" {
+			for _, u := range dnd.drop_status.uri_list {
+				if u.kind != parsed_uri_file || u.path == "" {
 					continue
 				}
-				st, err := os.Lstat(path)
+				st, err := os.Lstat(u.path)
 				if err != nil {
 					continue
 				}
 				if st.IsDir() {
-					os.RemoveAll(path)
+					os.RemoveAll(u.path)
 				} else {
-					os.Remove(path)
+					os.Remove(u.path)
 				}
 			}
 		}
@@ -551,21 +653,34 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 		return err
 	}
 	dnd.drop_status.dropping_to = new_dir_handle(f)
+
+	// Write data URIs directly into the staging directory (applies to both local and remote).
+	data_uri_counter := 0
+	for _, u := range drop_status.uri_list {
+		if u.kind == parsed_uri_data {
+			data_uri_counter++
+			fname := fmt.Sprintf("data-uri-%d%s", data_uri_counter, ext_for_mime(u.mime))
+			if werr := os.WriteFile(filepath.Join(f.Name(), fname), u.data, 0o644); werr != nil {
+				return werr
+			}
+		}
+	}
+
 	if drop_status.is_remote_client {
 		drop_status.root_remote_dir = &remote_dir_entry{}
 		seen := utils.NewSet[string](len(drop_status.uri_list))
 		idx := slices.Index(drop_status.offered_mimes, "text/uri-list")
-		for i, x := range drop_status.uri_list {
+		for i, u := range drop_status.uri_list {
 			var c *remote_dir_entry
-			if x == "" {
+			if u.kind == parsed_uri_data || u.path == "" {
 				c = &remote_dir_entry{}
 				drop_status.root_remote_dir.num_children_finished++
 			} else {
-				name := filepath.Base(x)
+				name := filepath.Base(u.path)
 				if !dnd.is_case_sensitive_filesystem {
 					key := strings.ToLower(name)
 					for q := 0; seen.Has(key); q++ {
-						name = fmt.Sprintf(case_conflict_template, q+1, filepath.Base(x))
+						name = fmt.Sprintf(case_conflict_template, q+1, filepath.Base(u.path))
 						key = strings.ToLower(name)
 					}
 					seen.Add(key)
@@ -575,11 +690,22 @@ func (dnd *dnd) all_mime_data_dropped() (err error) {
 			}
 			drop_status.root_remote_dir.children = append(drop_status.root_remote_dir.children, c)
 		}
+		// If all children were pre-finished (e.g., all data URIs), complete the drop immediately.
+		if drop_status.root_remote_dir.num_children_finished >= len(drop_status.root_remote_dir.children) {
+			return dnd.all_drop_data_received()
+		}
 		drop_status.open_remote_dir = drop_status.root_remote_dir
 	} else {
+		// Build a file-path slice for the goroutine; data URI entries are already written above.
+		file_paths := make([]string, len(drop_status.uri_list))
+		for i, u := range drop_status.uri_list {
+			if u.kind == parsed_uri_file {
+				file_paths[i] = u.path
+			}
+		}
 		drop_status.local_copy.ctx, drop_status.local_copy.cancel_ctx = context.WithCancel(context.Background())
 		drop_status.local_copy.completion = make(chan error, 1)
-		go do_local_copy_in_goroutine(drop_status.local_copy.ctx, f, drop_status.local_copy.completion, slices.Clone(drop_status.uri_list), func() { dnd.lp.WakeupMainThread() })
+		go do_local_copy_in_goroutine(drop_status.local_copy.ctx, f, drop_status.local_copy.completion, file_paths, func() { dnd.lp.WakeupMainThread() })
 	}
 	return
 }
