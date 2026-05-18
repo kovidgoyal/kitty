@@ -1713,6 +1713,7 @@ static void
 drop_start(_GLFWwindow *window, XEvent *event) {
     // A drag operation has entered the window
     if (dnd.version > _GLFW_XDND_VERSION) return;
+    debug_input("Drop start on window: %llu\n", window->id);
     free_dnd_data();
     dnd.source  = event->xclient.data.l[0];
     dnd.version = event->xclient.data.l[1] >> 24;
@@ -1735,6 +1736,7 @@ drop_start(_GLFWwindow *window, XEvent *event) {
 
 static void
 drop_leave(_GLFWwindow *window, XEvent *event UNUSED) {
+    debug_input("Drop has left window: %llu\n", window->id);
     // The drag operation has left the window
     _glfwInputDropEvent(window, GLFW_DROP_LEAVE, 0, 0, NULL, 0, dnd.from_self);
     if (!dnd.dropped) {
@@ -1746,6 +1748,7 @@ static void
 drop_move(_GLFWwindow *window, XEvent *event) {
     // The drag operation has moved over the window
     if (_glfw.x11.xdnd.version > _GLFW_XDND_VERSION) return;
+    debug_input("Drop moving in window: %llu\n", window->id);
 
     const int xabs = (event->xclient.data.l[2] >> 16) & 0xffff;
     const int yabs = (event->xclient.data.l[2]) & 0xffff;
@@ -1777,6 +1780,7 @@ _glfwPlatformRequestDropUpdate(_GLFWwindow* window) {
 
 static void
 drop(_GLFWwindow *window, XEvent *event) {
+    debug_input("Drop dropped on window: %llu\n", window->id);
     // The drag operation has finished by dropping on the window
     if (dnd.version > _GLFW_XDND_VERSION || dnd.version < 2) return;
     dnd.dropped = true;
@@ -4376,6 +4380,7 @@ handle_drag_button_release(Time timestamp) {
 // Handle XdndStatus message from drop target
 static void
 handle_xdnd_status(const XClientMessageEvent *event) {
+    debug_input("XdndStatus received\n");
     if (!_glfw.x11.drag.active) return;
     if (event->data.l[0] != (long)_glfw.x11.drag.current_target) return;
 
@@ -4385,11 +4390,13 @@ handle_xdnd_status(const XClientMessageEvent *event) {
     if (_glfw.x11.drag.accepted && event->data.l[4] != None) {
         _glfw.x11.drag.accepted_action = event->data.l[4];
     }
+    debug_input("XdndStatus accepted: %d action: %lu\n", _glfw.x11.drag.accepted, _glfw.x11.drag.accepted_action);
 }
 
 // Handle XdndFinished message from drop target
 static void
 handle_xdnd_finished(const XClientMessageEvent *event) {
+    debug_input("XdndFinished received\n");
     if (!_glfw.x11.drag.active) return;
     if (event->data.l[0] != (long)_glfw.x11.drag.current_target) return;
 
