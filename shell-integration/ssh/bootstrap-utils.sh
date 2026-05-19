@@ -87,14 +87,14 @@ using_shell_env() {
 
 execute_with_python() {
     if detect_python; then
-        exec "$python" "-c" "import os; os.execlp('$login_shell', '-' '$shell_name')"
+        exec "$python" "-c" 'import os, sys; os.execlp(sys.argv[1], "-" + sys.argv[2])' "$login_shell" "$shell_name"
     fi
     return 1
 }
 
 execute_with_perl() {
     if detect_perl; then
-        exec "$perl" "-e" "exec {'$login_shell'} '-$shell_name'"
+        exec "$perl" "-e" 'exec {$ARGV[0]} ("-" . $ARGV[1])' "$login_shell" "$shell_name"
     fi
     return 1
 }
@@ -215,7 +215,7 @@ prepare_for_exec() {
             fi
             ;;
     esac
-    shell_name=$(command basename $login_shell)
+    shell_name=$(command basename "$login_shell")
     [ -n "$login_cwd" ] && cd "$login_cwd"
 }
 
