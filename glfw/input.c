@@ -37,6 +37,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define NAME mime_dedup_set
+#define KEY_TY const char *
+#include "../3rdparty/verstable.h"
+
 // Internal key state used for sticky keys
 #define _GLFW_STICK 3
 
@@ -411,6 +415,25 @@ void _glfwInputCursorEnter(_GLFWwindow* window, bool entered)
 // mimes[0].
 size_t _glfwInputDropEvent(_GLFWwindow *window, GLFWDropEventType type, double xpos, double ypos, const char** mimes, size_t num_mimes, bool from_self) {
     if (!window->callbacks.drop_event) return 0;
+    if (num_mimes > 1) {
+        mime_dedup_set seen;
+        mime_dedup_set_init(&seen);
+        size_t write_pos = 0;
+        for (size_t i = 0; i < num_mimes; i++) {
+            if (mime_dedup_set_is_end(mime_dedup_set_get(&seen, mimes[i]))) {
+                if (!mime_dedup_set_is_end(mime_dedup_set_insert(&seen, mimes[i])))
+                    mimes[write_pos++] = mimes[i];
+                else {
+                    // OOM: keep remaining entries without further deduplication
+                    mimes[write_pos++] = mimes[i];
+                    for (size_t j = i + 1; j < num_mimes; j++) mimes[write_pos++] = mimes[j];
+                    break;
+                }
+            }
+        }
+        num_mimes = write_pos;
+        mime_dedup_set_cleanup(&seen);
+    }
     GLFWDropEvent ev = {
         .mimes=mimes, .type=type, .xpos=xpos, .ypos=ypos, .num_mimes=num_mimes, .from_self=from_self,
         .read_data=type == GLFW_DROP_DATA_AVAILABLE ? _glfwPlatformReadAvailableDropData : NULL,
