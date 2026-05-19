@@ -692,7 +692,8 @@ func run_ssh(ssh_args, server_args, found_extra_args []string, ssh_config_channe
 			return master_is_alive
 		}
 		master_checked = true
-		check_cmd := slices.Insert(cmd, 1, "-O", "check")
+		// slices.Insert can mutate cmd's backing array in place; clone so cmd stays intact
+		check_cmd := slices.Insert(slices.Clone(cmd), 1, "-O", "check")
 		master_is_alive = exec.Command(check_cmd[0], check_cmd[1:]...).Run() == nil
 		return master_is_alive
 	}
