@@ -81,6 +81,9 @@ print(' '.join(map(str, buf)))'''), lines=13, cols=77)
                 os.mkdir(f'{local_home}/d1/r')
                 touch('d1/r/noooo')
                 os.symlink('d2/x', f'{local_home}/d1/y')
+                bad_link_name = '$(touch SHOULD_NOT_EXIST)'
+                os.symlink('d2/x', os.path.join(local_home, 'd1', bad_link_name))
+                os.symlink('-dash-target', os.path.join(local_home, 'd1', 'dash-target-link'))
                 os.symlink('simple-file', f'{local_home}/s1')
                 os.symlink('simple-file', f'{local_home}/s2')
 
@@ -108,6 +111,9 @@ copy --exclude **/w.* --exclude **/r d1
                 self.assertTrue(os.path.lexists(f'{remote_home}/d1/y'))
                 self.assertTrue(os.path.exists(f'{remote_home}/d1/y'))
                 self.ae(os.readlink(f'{remote_home}/d1/y'), 'd2/x')
+                self.assertTrue(os.path.lexists(os.path.join(remote_home, 'd1', bad_link_name)))
+                self.assertFalse(os.path.exists(os.path.join(remote_home, 'SHOULD_NOT_EXIST')))
+                self.ae(os.readlink(f'{remote_home}/d1/dash-target-link'), '-dash-target')
                 self.ae(os.readlink(f'{remote_home}/s1'), 'simple-file')
                 contents = set(files_in(remote_home))
                 contents.discard('.zshrc')  # added by check_bootstrap()
@@ -116,7 +122,8 @@ copy --exclude **/w.* --exclude **/r d1
                 contents.discard(f'{tname}/x/xterm-kitty')
                 contents.discard(f'{tname}/78/xterm-kitty')
                 self.ae(contents, {
-                    'g.1', 'g.2', f'{tname}/kitty.terminfo', 'simple-file', 'd1/d2/x', 'd1/y', 'a/sfa', 's1', 's2',
+                    'g.1', 'g.2', f'{tname}/kitty.terminfo', 'simple-file', 'd1/d2/x', 'd1/y',
+                    f'd1/{bad_link_name}', 'd1/dash-target-link', 'a/sfa', 's1', 's2',
                     '.local/share/kitty-ssh-kitten/kitty/version', '.local/share/kitty-ssh-kitten/kitty/bin/kitty',
                     '.local/share/kitty-ssh-kitten/kitty/bin/kitten'
                 })
