@@ -44,6 +44,12 @@ def create_font_map(all_fonts: tuple[FontConfigPattern, ...]) -> FontMap:
     return ans
 
 
+def clear_caches() -> None:
+    all_fonts_map.cache_clear()
+    fc_match.cache_clear()
+    weight_range_for_family.cache_clear()
+
+
 @lru_cache(maxsize=2)
 def all_fonts_map(monospaced: bool = True) -> FontMap:
     if monospaced:

@@ -3200,6 +3200,8 @@ class Boss:
         opts = load_config(*paths, overrides=final_overrides or None, accumulate_bad_lines=bad_lines)
         if bad_lines:
             self.show_bad_config_lines(bad_lines)
+        from .fonts.render import clear_font_caches
+        clear_font_caches()
         self.apply_new_options(opts)
         from .open_actions import clear_caches
         clear_caches()
