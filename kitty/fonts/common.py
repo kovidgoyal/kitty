@@ -65,6 +65,13 @@ else:
 
 
 cache_for_variable_data_by_path: dict[str, VariableData] = {}
+
+
+def clear_caches() -> None:
+    cache_for_variable_data_by_path.clear()
+    actually_variable_cache.clear()
+
+
 attr_map = {(False, False): 'font_family', (True, False): 'bold_font', (False, True): 'italic_font', (True, True): 'bold_italic_font'}
 
 

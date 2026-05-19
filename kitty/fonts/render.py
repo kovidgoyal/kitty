@@ -187,6 +187,16 @@ def dump_font_debug() -> None:
             log_error('  ' + s.identify_for_debug())
 
 
+def clear_font_caches() -> None:
+    from .common import clear_caches as clear_common_caches
+    clear_common_caches()
+    if is_macos:
+        from .core_text import clear_caches as clear_platform_caches
+    else:
+        from .fontconfig import clear_caches as clear_platform_caches
+    clear_platform_caches()
+
+
 def set_font_family(opts: Options | None = None, override_font_size: float | None = None, add_builtin_nerd_font: bool = False) -> None:
     global current_faces, builtin_nerd_font_descriptor
     opts = opts or defaults
