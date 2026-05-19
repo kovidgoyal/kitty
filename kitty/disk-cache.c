@@ -48,6 +48,8 @@ static bool keys_are_equal(CacheKey a, CacheKey b) { return a.hash_keylen == b.h
 static void free_cache_value(CacheValue *cv) {
 #ifdef __APPLE__
     memset_s(cv->encryption_key, sizeof(cv->encryption_key), 0, sizeof(cv->encryption_key));
+#elif defined(__NetBSD__)
+    explicit_memset(cv->encryption_key, 0, sizeof(cv->encryption_key));
 #else
     explicit_bzero(cv->encryption_key, sizeof(cv->encryption_key));
 #endif
