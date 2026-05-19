@@ -173,7 +173,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.47.0 [future]
+0.47.0 [2026-05-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - A new :doc:`Drag and drop kitten </kittens/dnd>` to allow drag and drop of files from your shell to any GUI program even across SSH (:iss:`9984`)
