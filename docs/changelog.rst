@@ -173,6 +173,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.47.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Fix a regression in the previous release that caused :ac:`copy_or_noop` to stop working correctly (:pull:`10041`)
+
 0.47.0 [2026-05-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
