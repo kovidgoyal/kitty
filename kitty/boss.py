@@ -3737,6 +3737,6 @@ class Boss:
         if w := self.active_window:
             w.search_scrollback()
 
-    def copy_or_noop(self) -> None:
+    def copy_or_noop(self) -> bool | None:
         if w := self.active_window:
-            w.copy_or_noop()
+            return w.copy_or_noop()

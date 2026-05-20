@@ -2,6 +2,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from functools import partial
+from types import SimpleNamespace
 
 import kitty.fast_data_types as defines
 from kitty.key_encoding import EventType, KeyEvent, decode_key_event, encode_key_event
@@ -655,6 +656,42 @@ class TestKeys(BaseTest):
         self.ae(tm('m', 'a'), [True, True])
         self.ae(tm.actions, ['push_keyboard_mode mw', 'new_window'])
         af(tm.ignore_os_keyboard_processing)
+
+    def test_copy_or_noop_passthrough(self):
+        from kitty.boss import Boss
+        from kitty.conf.utils import KeyAction
+
+        class Window:
+            def __init__(self, passthrough: bool):
+                self.passthrough = passthrough
+                self.calls = 0
+
+            def copy_or_noop(self) -> bool:
+                self.calls += 1
+                return self.passthrough
+
+        class TestBoss(Boss):
+            window: Window
+
+            @property
+            def active_window(self):
+                return self.window
+
+            @property
+            def active_tab(self):
+                return None
+
+        boss = TestBoss.__new__(TestBoss)
+        boss.args = SimpleNamespace(debug_keyboard=False)
+        boss.window_for_dispatch = None
+
+        boss.window = Window(True)
+        self.assertFalse(boss.dispatch_action(KeyAction('copy_or_noop')))
+        self.ae(boss.window.calls, 1)
+
+        boss.window = Window(False)
+        self.assertTrue(boss.dispatch_action(KeyAction('copy_or_noop')))
+        self.ae(boss.window.calls, 1)
 
     def test_match_physical_keys_removed(self):
         # match_physical_keys global option has been removed in favor of per-mapping --allow-fallback
