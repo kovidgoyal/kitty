@@ -379,9 +379,6 @@ def window_for_session_name(boss: BossType, session_name: str) -> WindowType | N
     if not windows:
         tabs = (t for t in boss.all_tabs if t.created_in_session_name == session_name)
         windows = [t.active_window for t in tabs if t.active_window]
-        if not windows:
-            os_windows = (tm for tm in boss.all_tab_managers if tm.created_in_session_name == session_name)
-            windows = [tm.active_window for tm in os_windows if tm.active_window]
     if windows:
         def skey(w: WindowType) -> float:
             return w.last_focused_at
