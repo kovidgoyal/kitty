@@ -374,9 +374,9 @@ def create_sessions(
     yield ans
 
 
-def window_for_session_name(boss: BossType, session_name: str) -> WindowType | None:
+def window_for_session_name(boss: BossType, session_name: str, allow_fallback: bool = True) -> WindowType | None:
     windows = [w for w in boss.all_windows if w.created_in_session_name == session_name]
-    if not windows:
+    if allow_fallback and not windows:
         tabs = (t for t in boss.all_tabs if t.created_in_session_name == session_name)
         windows = [t.active_window for t in tabs if t.active_window]
         if not windows:
@@ -429,8 +429,8 @@ def most_recent_session() -> str:
     return goto_session_history[-1] if goto_session_history else ''
 
 
-def switch_to_session(boss: BossType, session_name: str) -> bool:
-    w = window_for_session_name(boss, session_name)
+def switch_to_session(boss: BossType, session_name: str, only_if_actual_windows_present: bool = False) -> bool:
+    w = window_for_session_name(boss, session_name, allow_fallback=not only_if_actual_windows_present)
     if w is not None:
         append_to_session_history(session_name)
         boss.set_active_window(w, switch_os_window_if_needed=True)
@@ -628,7 +628,7 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
     if not session_name:
         boss.show_error(_('Invalid session'), _('{} is not a valid path for a session').format(path))
         return
-    if switch_to_session(boss, session_name):
+    if switch_to_session(boss, session_name, only_if_actual_windows_present=True):
         return
     try:
         session_name, created_new_os_window = create_session(boss, path)
