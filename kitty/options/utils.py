@@ -861,7 +861,7 @@ def background_images(x: str) -> tuple[str, ...]:
     from glob import glob
     x = resolve_abs_or_config_path(x, None)
     return tuple(x for x in sorted(glob(x)) if x.rpartition('.')[-1].lower() in (
-        'jpeg', 'jpg', 'png', 'webp', 'tiff', 'bmp', 'gif'))
+        'jpeg', 'jpg', 'png', 'webp', 'tif', 'tiff', 'bmp', 'gif')) or (x,)
 
 
 def filter_notification(val: str, current_val: dict[str, str]) -> Iterable[tuple[str, str]]:
