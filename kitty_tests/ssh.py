@@ -12,7 +12,7 @@ from contextlib import suppress
 from functools import lru_cache
 
 from kittens.ssh.utils import get_connection_data
-from kitty.constants import is_macos, kitten_exe, runtime_dir
+from kitty.constants import is_macos, kitten_exe, kitty_base_dir, runtime_dir
 from kitty.fast_data_types import CURSOR_BEAM, shm_unlink
 from kitty.utils import SSHConnectionData
 
@@ -200,6 +200,38 @@ env COLORTERM
                 with tempfile.TemporaryDirectory() as tdir:
                     pty = self.check_bootstrap(sh, tdir, test_script=f'{m}; echo "$login_shell"; exit 0', SHELL_INTEGRATION_VALUE='')
                     self.assertIn(expected_login_shell, pty.screen_contents())
+
+    def test_ssh_login_shell_fallback_quoting(self):
+        bootstrap_utils = os.path.join(kitty_base_dir, 'shell-integration', 'ssh', 'bootstrap-utils.sh')
+        python = shutil.which('python3') or shutil.which('python2') or shutil.which('python')
+        if python is None:
+            self.skipTest('Python executable not found')
+        runners = [('execute_with_python', python, 'PYTHON_FOR_TEST')]
+        if perl := shutil.which('perl'):
+            runners.append(('execute_with_perl', perl, 'PERL_FOR_TEST'))
+        script = '''\
+. "$BOOTSTRAP_UTILS"
+detect_python() { python="$PYTHON_FOR_TEST"; return 0; }
+detect_perl() { perl="$PERL_FOR_TEST"; return 0; }
+login_shell=$LOGIN_SHELL
+shell_name=$(command basename "$login_shell")
+"$EXEC_FUNC"
+'''
+        for func, executable, env_key in runners:
+            with tempfile.TemporaryDirectory() as tdir:
+                login_shell = os.path.join(tdir, "login shell's python")
+                os.symlink(python, login_shell)
+                env = {
+                    'PATH': os.environ.get('PATH', '/usr/bin:/bin'),
+                    'BOOTSTRAP_UTILS': bootstrap_utils,
+                    'EXEC_FUNC': func,
+                    'LOGIN_SHELL': login_shell,
+                    env_key: executable,
+                }
+                cp = subprocess.run(
+                    ['sh', '-c', script], env=env, stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                self.assertEqual(cp.returncode, 0, cp.stderr + cp.stdout)
 
     @retry_on_failure()
     def test_ssh_shell_integration(self):
