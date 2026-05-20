@@ -3740,4 +3740,4 @@ class Boss:
     def copy_or_noop(self) -> bool | None:
         if w := self.active_window:
             return w.copy_or_noop()
-        return None
+        return True
