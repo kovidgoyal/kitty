@@ -1958,9 +1958,13 @@ this option by reloading the config is not supported.
 
 opt('background_image', 'none',
     option_type='background_images', ctype='!background_images',
-    long_text='Glob pattern matching one or more background images. Must be in PNG/JPEG/WEBP/TIFF/GIF/BMP format.'
-    ' The first one is used as the default image.'
-    ' Multiple images are stored in GPU VRAM (on demand) so that transitioning between them is instant.'
+    long_text='A path to a background image or a glob pattern matching one or more background images.'
+    ' Must be in PNG/JPEG/WEBP/TIFF/GIF/BMP format.'
+    ' When the value contains :code:`*` or :code:`?` wildcard characters it is treated as a glob pattern'
+    ' and all matching images are pre-loaded into GPU VRAM so that transitioning between them is instant.'
+    ' Otherwise it is treated as a literal file path (so that filenames containing'
+    ' special glob characters such as :code:`[` and :code:`]` work correctly).'
+    ' The first matching image is used as the default.'
     ' In order to move between images in the list of background images, use the remote control command'
     ' :code:`set-background-image`, see `kitten set-background-image --help` for details. You can map the command'
     ' to a key like this: :code:`map f1 remote_control set-background-image +1`.'

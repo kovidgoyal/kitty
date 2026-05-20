@@ -178,6 +178,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that caused :ac:`copy_or_noop` to stop working correctly (:pull:`10041`)
 
+- Fix :opt:`background_image` not working when the image file path contains characters such as ``[`` and ``]`` that are special in glob patterns (:iss:`10047`)
+
 0.47.0 [2026-05-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

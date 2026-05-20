@@ -860,8 +860,13 @@ def background_images(x: str) -> tuple[str, ...]:
         return ()
     from glob import glob
     x = resolve_abs_or_config_path(x, None)
+    # If no glob wildcards are present, treat as a literal file path. Using glob() on a
+    # literal path can fail silently when the path contains characters like [ ] that glob
+    # interprets as pattern syntax. Backward compat: the old code never checked existence.
+    if not any(c in x for c in '*?'):
+        return (x,)
     return tuple(x for x in sorted(glob(x)) if x.rpartition('.')[-1].lower() in (
-        'jpeg', 'jpg', 'png', 'webp', 'tiff', 'bmp', 'gif'))
+        'jpeg', 'jpg', 'png', 'webp', 'tiff', 'tif', 'bmp', 'gif'))
 
 
 def filter_notification(val: str, current_val: dict[str, str]) -> Iterable[tuple[str, str]]:
