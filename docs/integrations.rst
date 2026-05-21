@@ -136,6 +136,7 @@ plays videos. Fast multi-threaded loading, JPEG exif rotation, grid view and
 connecting to the webcam make it a versatile terminal utility.
 
 
+
 File managers
 -------------------
 .. _tool_ranger:
@@ -280,6 +281,14 @@ features such a split windows, previews, REPLs etc.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Integrates with kitty to use native kitty windows for its windows/panels and
 REPLs.
+
+.. _tool_orbiton:
+
+`orbiton <https://github.com/xyproto/orbiton/>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A terminal text editor that uses kitty's graphics protocol to render Markdown
+documents with fonts and images inline (use the ``-B`` flag for a word
+processor-like book mode), and to preview images in its built-in file browser.
 
 .. tool_vim_slime:
 
