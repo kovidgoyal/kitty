@@ -178,6 +178,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that caused :ac:`copy_or_noop` to stop working correctly (:pull:`10041`)
 
+- macOS: Fix a regression in the previous release that caused URLs to be quoted when dropping into shells (:iss:`10054`)
+
 0.47.0 [2026-05-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
