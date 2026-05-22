@@ -22,7 +22,7 @@ Colors = tuple[ColorsSpec, TransparentBackgroundColors]
 
 
 class BackgroundImageOptions(TypedDict, total=False):
-    background_image: str | None
+    background_image: Sequence[str] | None
     background_image_layout: str | None
     background_image_linear: bool | None
     background_tint: float | None
@@ -292,8 +292,9 @@ def patch_colors(
     notify_bg = notify_on_bg_change and default_bg_changed
     boss = get_boss()
     if background_image_options is not None:
+        bg = background_image_options.get('background_image')
         boss.set_background_image(
-            background_image_options.get('background_image'), tuple(os_window_ids), configured,
+            bg[0] if bg else None, tuple(os_window_ids), configured,
             layout=background_image_options.get('background_image_layout'),
             linear_interpolation=background_image_options.get('background_image_linear'), tint=background_image_options.get('background_tint'),
             tint_gaps=background_image_options.get('background_tint_gaps'))

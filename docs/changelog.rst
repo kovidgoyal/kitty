@@ -180,6 +180,8 @@ Detailed list of changes
 
 - macOS: Fix a regression in the previous release that caused URLs to be quoted when dropping into shells (:iss:`10054`)
 
+- Fix a regression in the previous release that broke automatic color scheme changes when using a background image (:iss:`10058`)
+
 0.47.0 [2026-05-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
