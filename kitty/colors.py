@@ -292,8 +292,11 @@ def patch_colors(
     notify_bg = notify_on_bg_change and default_bg_changed
     boss = get_boss()
     if background_image_options is not None:
+        bg = background_image_options.get('background_image')
+        if isinstance(bg, (tuple, list)):
+            bg = bg[0] if bg else None
         boss.set_background_image(
-            background_image_options.get('background_image'), tuple(os_window_ids), configured,
+            bg, tuple(os_window_ids), configured,
             layout=background_image_options.get('background_image_layout'),
             linear_interpolation=background_image_options.get('background_image_linear'), tint=background_image_options.get('background_tint'),
             tint_gaps=background_image_options.get('background_tint_gaps'))
