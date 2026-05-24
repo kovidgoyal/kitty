@@ -156,6 +156,7 @@ func watch_for_kitty_config_changes(action func() error, debounce_time time.Dura
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 		}
+		_ = scanner.Err()
 		cancel()
 	}()
 	return watch_for_config_changes(ctx, action, debounce_time, config_paths)
