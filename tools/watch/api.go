@@ -94,6 +94,13 @@ func resolve_path(path string) string {
 	return filepath.Clean(path)
 }
 
+func safe_eval_symlinks(path string) string {
+	if q, err := filepath.EvalSymlinks(path); err == nil {
+		path = q
+	}
+	return path
+}
+
 func get_set_of_config_files(config_paths []string) *utils.Set[string] {
 	cp := config.ConfigParser{
 		AllIncludedFiles: utils.NewSet[string](), LineHandler: func(k, v string) error { return nil }}
@@ -102,14 +109,14 @@ func get_set_of_config_files(config_paths []string) *utils.Set[string] {
 	// where /tmp -> /private/tmp causes mismatches with FSEvents-reported paths).
 	result := utils.NewSet[string](cp.AllIncludedFiles.Len() + len(config_paths)*4)
 	for _, p := range cp.AllIncludedFiles.AsSlice() {
-		result.Add(resolve_path(p))
+		result.Add(safe_eval_symlinks(resolve_path(p)))
 	}
 	for _, path := range config_paths {
 		path = resolve_path(path)
-		result.Add(path)
 		dir := filepath.Dir(path)
+		result.Add(safe_eval_symlinks(path))
 		for _, q := range []string{"dark-theme.auto.conf", "light-theme.auto.conf", "no-preference-theme.auto.conf"} {
-			result.Add(resolve_path(filepath.Join(dir, q)))
+			result.Add(safe_eval_symlinks(resolve_path(filepath.Join(dir, q))))
 		}
 	}
 	return result

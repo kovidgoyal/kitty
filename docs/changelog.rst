@@ -182,6 +182,8 @@ Detailed list of changes
 
 - Fix a regression in the previous release that broke automatic color scheme changes when using a background image (:iss:`10058`)
 
+- Fix :opt:`auto_reload_config` not working when :file:`kitty.conf` is a symlink (:iss:`10066`)
+
 0.47.0 [2026-05-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
