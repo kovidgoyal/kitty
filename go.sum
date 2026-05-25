@@ -42,8 +42,8 @@ github.com/kovidgoyal/imaging v1.8.21 h1:95S2+dowTeKJJHNpf6lnScvIennTr2H0zQotu+p
 github.com/kovidgoyal/imaging v1.8.21/go.mod h1:976F+zjiQeZ7sd87Pxlm0a64S/w9bImSIWg3sSk1rdQ=
 github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a h1:N9zuLhTvBSRt0gWSiJswwQ2HqDmtX/ZCDJURnKUt1Ik=
 github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a/go.mod h1:JKx41uQRwqlTZabZc+kILPrO/3jlKnQ2Z8b7YiVw5cE=
-github.com/nwaples/rardecode/v2 v2.2.2 h1:/5oL8dzYivRM/tqX9VcTSWfbpwcbwKG1QtSJr3b3KcU=
-github.com/nwaples/rardecode/v2 v2.2.2/go.mod h1:7uz379lSxPe6j9nvzxUZ+n7mnJNgjsRNb6IbvGVHRmw=
+github.com/nwaples/rardecode/v2 v2.2.3 h1:qaVuy3ChZDbAQZshPLjHeNJKF3Cru8uo9jmgveKIy2A=
+github.com/nwaples/rardecode/v2 v2.2.3/go.mod h1:7uz379lSxPe6j9nvzxUZ+n7mnJNgjsRNb6IbvGVHRmw=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 h1:o4JXh1EVt9k/+g42oCprj/FisM4qX9L3sZB3upGN2ZU=
