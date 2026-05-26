@@ -833,7 +833,7 @@ drop_dest_callback(GLFWwindow *window, GLFWDropEvent *ev) {
                     ev->operation.allowed = GLFW_DRAG_OPERATION_MOVE;
                 } else {
                     ev->operation.preferred = GLFW_DRAG_OPERATION_MOVE;
-                    ev->operation.allowed = GLFW_DRAG_OPERATION_MOVE;
+                    ev->operation.allowed = GLFW_DRAG_OPERATION_MOVE | GLFW_DRAG_OPERATION_COPY;
                 }
             }
             break;

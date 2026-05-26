@@ -184,6 +184,8 @@ Detailed list of changes
 
 - Fix :opt:`auto_reload_config` not working when :file:`kitty.conf` is a symlink (:iss:`10066`)
 
+- Fix a regression in the previous release that broke dragging of URLs to the shell prompt from programs that dont support MOVE drag operations
+
 0.47.0 [2026-05-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
