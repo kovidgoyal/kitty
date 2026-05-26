@@ -531,6 +531,34 @@ class TestScreen(BaseTest):
         s.draw('aaaX\tbbbb')
         self.ae(str(s.line(0)) + str(s.line(1)), 'aaaXbbbb')
 
+        # Custom tab stops survive a window resize
+        s = self.create_screen(cols=20, lines=2)
+        s.clear_tab_stop(3)  # clear all
+        s.cursor_position(1, 5)
+        s.set_tab_stop()  # stop at column index 4
+        s.cursor_position(1, 13)
+        s.set_tab_stop()  # stop at column index 12
+        # Grow: existing stops preserved, new columns get default every-8 stops
+        s.resize(s.lines, 30)
+        s.cursor_position(1, 1)
+        s.tab(); self.ae(s.cursor.x, 4)
+        s.tab(); self.ae(s.cursor.x, 12)
+        s.tab(); self.ae(s.cursor.x, 24)  # default stop in newly added columns
+        # Shrink: stops within new width are preserved
+        s.resize(s.lines, 15)
+        s.cursor_position(1, 1)
+        s.tab(); self.ae(s.cursor.x, 4)
+        s.tab(); self.ae(s.cursor.x, 12)
+        # Resize on alt screen also preserves alt-screen tab stops
+        s = self.create_screen(cols=20, lines=2)
+        parse_bytes(s, b'\x1b[?1049h')  # switch to alt screen
+        s.clear_tab_stop(3)
+        s.cursor_position(1, 5)
+        s.set_tab_stop()
+        s.resize(s.lines, 30)
+        s.cursor_position(1, 1)
+        s.tab(); self.ae(s.cursor.x, 4)
+
     def test_backspace(self):
         s = self.create_screen()
         q = 'a'*s.columns
