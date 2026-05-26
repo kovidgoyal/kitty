@@ -1246,6 +1246,14 @@ dispatch_csi(PS *self) {
             }
             REPORT_ERROR("Unknown CSI R sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
             break;
+        case 'W':
+            if (start_modifier == '?' && !end_modifier && num_params == 1 && params[0] == 5) {
+                REPORT_COMMAND(screen_reset_tab_stops);
+                screen_reset_tab_stops(self->screen);
+                break;
+            }
+            REPORT_ERROR("Unknown CSI W sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
+            break;
         case ECH:
             CALL_CSI_HANDLER1(screen_erase_characters, 1);
         case DA:

@@ -530,6 +530,22 @@ class TestScreen(BaseTest):
         s = self.create_screen(cols=4, lines=2)
         s.draw('aaaX\tbbbb')
         self.ae(str(s.line(0)) + str(s.line(1)), 'aaaXbbbb')
+        # DECST8C: reset tab stops to every 8 columns
+        s = self.create_screen(cols=20, lines=2)
+        s.clear_tab_stop(3)
+        s.reset_tab_stops()
+        s.cursor_position(1, 1)
+        s.tab()
+        self.ae(s.cursor.x, 8)
+        s.tab()
+        self.ae(s.cursor.x, 16)
+        # Verify the DECST8C escape sequence
+        s = self.create_screen(cols=20, lines=2)
+        s.clear_tab_stop(3)
+        parse_bytes(s, b'\x1b[?5W')
+        s.cursor_position(1, 1)
+        s.tab()
+        self.ae(s.cursor.x, 8)
 
         # Custom tab stops survive a window resize
         s = self.create_screen(cols=20, lines=2)

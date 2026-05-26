@@ -176,6 +176,8 @@ Detailed list of changes
 0.47.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Add support for the DECST8C escape sequence (``CSI ? 5 W``) to reset tab stops to every 8 columns
+
 - Preserve user-set tab stops across window resizes (previously they were reset to every 8 columns on every resize)
 
 - Fix a regression in the previous release that caused :ac:`copy_or_noop` to stop working correctly (:pull:`10041`)
