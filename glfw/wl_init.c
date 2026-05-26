@@ -325,7 +325,7 @@ static void keyboardHandleKeymap(void* data UNUSED,
 }
 
 static bool
-needs_synthetic_key_repeat(void) { return _glfw.wl.keyboardRepeatRate > 0 && !_glfw.wl.has_key_repeat_events; }
+needs_synthetic_key_repeat(void) { return _glfw.wl.keyboardRepeatRate > 0; }
 
 static void
 start_key_repeat_timer(bool initial) {
@@ -416,7 +416,10 @@ static void keyboardHandleKey(void* data UNUSED,
         case WL_KEYBOARD_KEY_STATE_PRESSED: action = GLFW_PRESS; break;
         case WL_KEYBOARD_KEY_STATE_RELEASED: action = GLFW_RELEASE; break;
 #ifdef WL_KEYBOARD_KEY_STATE_REPEATED_SINCE_VERSION
-        case WL_KEYBOARD_KEY_STATE_REPEATED: action = GLFW_REPEAT; break;
+        case WL_KEYBOARD_KEY_STATE_REPEATED:
+            if (needs_synthetic_key_repeat()) return;
+            action = GLFW_REPEAT;
+            break;
 #endif
     }
 
