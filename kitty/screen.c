@@ -2076,6 +2076,11 @@ screen_set_tab_stop(Screen *self) {
 }
 
 void
+screen_reset_tab_stops(Screen *self) {
+    init_tabstops(self->tabstops, self->columns);
+}
+
+void
 screen_cursor_move(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/, bool allow_move_to_previous_line) {
     if (count == 0) count = 1;
     bool in_margins = cursor_within_margins(self);
@@ -4978,6 +4983,7 @@ WRAP0(reverse_index)
 WRAP0(reset)
 WRAP0(set_tab_stop)
 WRAP1(clear_tab_stop, 0)
+WRAP0(reset_tab_stops)
 WRAP0(backspace)
 WRAP0(tab)
 WRAP0(linefeed)
@@ -6260,6 +6266,7 @@ static PyMethodDef methods[] = {
     MND(carriage_return, METH_NOARGS)
     MND(set_tab_stop, METH_NOARGS)
     MND(clear_tab_stop, METH_VARARGS)
+    MND(reset_tab_stops, METH_NOARGS)
     MND(start_selection, METH_VARARGS)
     MND(update_selection, METH_VARARGS)
     {"clear_selection", (PyCFunction)clear_selection_, METH_NOARGS, ""},

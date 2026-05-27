@@ -245,6 +245,7 @@ void screen_set_tab_stop(Screen *self);
 void screen_tab(Screen *self);
 void screen_backtab(Screen *self, unsigned int);
 void screen_clear_tab_stop(Screen *self, unsigned int how);
+void screen_reset_tab_stops(Screen *self);
 void screen_set_mode(Screen *self, unsigned int mode);
 void screen_reset_mode(Screen *self, unsigned int mode);
 void screen_decsace(Screen *self, unsigned int);

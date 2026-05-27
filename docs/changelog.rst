@@ -188,6 +188,8 @@ Detailed list of changes
 
 - Preserve user-set tab stops across window resizes instead of resetting to 8 column default
 
+- Add support for the DECST8C escape sequence (``CSI ? 5 W``) to reset tab stops to every 8 columns
+
 0.47.0 [2026-05-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
