@@ -541,23 +541,29 @@ class TestScreen(BaseTest):
         # Grow: existing stops preserved, new columns get default every-8 stops
         s.resize(s.lines, 30)
         s.cursor_position(1, 1)
-        s.tab(); self.ae(s.cursor.x, 4)
-        s.tab(); self.ae(s.cursor.x, 12)
-        s.tab(); self.ae(s.cursor.x, 24)  # default stop in newly added columns
+        s.tab()
+        self.ae(s.cursor.x, 4)
+        s.tab()
+        self.ae(s.cursor.x, 12)
+        s.tab()
+        self.ae(s.cursor.x, 24)  # default stop in newly added columns
         # Shrink: stops within new width are preserved
         s.resize(s.lines, 15)
         s.cursor_position(1, 1)
-        s.tab(); self.ae(s.cursor.x, 4)
-        s.tab(); self.ae(s.cursor.x, 12)
+        s.tab()
+        self.ae(s.cursor.x, 4)
+        s.tab()
+        self.ae(s.cursor.x, 12)
         # Resize on alt screen also preserves alt-screen tab stops
         s = self.create_screen(cols=20, lines=2)
-        parse_bytes(s, b'\x1b[?1049h')  # switch to alt screen
+        parse_bytes(s, b'\x1b[?1049h')  # switch to alt screen ]
         s.clear_tab_stop(3)
         s.cursor_position(1, 5)
         s.set_tab_stop()
         s.resize(s.lines, 30)
         s.cursor_position(1, 1)
-        s.tab(); self.ae(s.cursor.x, 4)
+        s.tab()
+        self.ae(s.cursor.x, 4)
 
     def test_backspace(self):
         s = self.create_screen()

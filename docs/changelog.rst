@@ -176,8 +176,6 @@ Detailed list of changes
 0.47.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Preserve user-set tab stops across window resizes (previously they were reset to every 8 columns on every resize)
-
 - Fix a regression in the previous release that caused :ac:`copy_or_noop` to stop working correctly (:pull:`10041`)
 
 - macOS: Fix a regression in the previous release that caused URLs to be quoted when dropping into shells (:iss:`10054`)
@@ -187,6 +185,8 @@ Detailed list of changes
 - Fix :opt:`auto_reload_config` not working when :file:`kitty.conf` is a symlink (:iss:`10066`)
 
 - Fix a regression in the previous release that broke dragging of URLs to the shell prompt from programs that dont support MOVE drag operations
+
+- Preserve user-set tab stops across window resizes instead of resetting to 8 column default
 
 0.47.0 [2026-05-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
