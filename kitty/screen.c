@@ -575,16 +575,26 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     grman_resize(self->alt_grman, self->lines, lines, self->columns, columns, num_content_lines_before, num_content_lines_after);
 #undef setup_cursor
     /* printf("\nold_size: (%u, %u) new_size: (%u, %u)\n", self->columns, self->lines, columns, lines); */
+    index_type old_columns_for_tabs = self->columns;
     self->lines = lines; self->columns = columns;
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
 
-    PyMem_Free(self->main_tabstops);
-    self->main_tabstops = PyMem_Calloc(2*self->columns, sizeof(bool));
-    if (self->main_tabstops == NULL) { PyErr_NoMemory(); return false; }
-    self->alt_tabstops = self->main_tabstops + self->columns;
-    self->tabstops = self->main_tabstops;
-    init_tabstops(self->main_tabstops, self->columns);
-    init_tabstops(self->alt_tabstops, self->columns);
+    bool *old_tabstops = self->main_tabstops;
+    bool *new_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
+    if (new_tabstops == NULL) { PyErr_NoMemory(); return false; }
+    bool *new_main = new_tabstops;
+    bool *new_alt = new_tabstops + self->columns;
+    init_tabstops(new_main, self->columns);
+    init_tabstops(new_alt, self->columns);
+    if (old_tabstops && old_columns_for_tabs) {
+        index_type to_copy = MIN(old_columns_for_tabs, self->columns);
+        memcpy(new_main, old_tabstops, to_copy * sizeof(bool));
+        memcpy(new_alt, old_tabstops + old_columns_for_tabs, to_copy * sizeof(bool));
+    }
+    PyMem_Free(old_tabstops);
+    self->main_tabstops = new_main;
+    self->alt_tabstops = new_alt;
+    self->tabstops = is_main ? self->main_tabstops : self->alt_tabstops;
     self->is_dirty = true;
     clear_all_selections(self);
     self->last_visited_prompt.is_set = false;
