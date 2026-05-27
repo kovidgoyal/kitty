@@ -642,8 +642,12 @@ class Boss:
         return True
 
     def set_active_window(
-        self, window: Window, switch_os_window_if_needed: bool = False, for_keep_focus: bool = False, activation_token: str = ''
+        self, window: Window | int, switch_os_window_if_needed: bool = False, for_keep_focus: bool = False, activation_token: str = ''
     ) -> int | None:
+        if isinstance(window, int):
+            window = self.window_id_map.get(window, 0)
+            if isinstance(window, int):
+                return None
         for os_window_id, tm in self.os_window_map.items():
             for tab in tm:
                 for w in tab:
