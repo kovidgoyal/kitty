@@ -552,3 +552,12 @@ changed. If the terminal sees a version it does not understand, it must assume
 that the machine id does not match, aka the source and destination machines are
 different. This assumption means that remote drag and drop will still work, just with
 reduced performance in case of version mismatch.
+
+
+Support in other software
+------------------------------
+
+Currently this protocol is supported in:
+
+  * The kitty terminal emulator and the :doc:`dnd kitten </kittens/dnd>`
+  * The `yazi <https://github.com/sxyazi/yazi/pull/4005>`__ terminal file manager
