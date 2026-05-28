@@ -465,7 +465,7 @@ terminal does not support this protocol.
 Multiplexers
 -----------------
 
-To support multiplexers, the ``i`` key exists. When the terminal receives and
+To support multiplexers, the ``i`` key exists. When the terminal receives a
 ``t=a`` or ``t=o`` escape code that has the ``i`` key set, all escape codes it
 sends to the terminal program must include the ``i`` key with the same value.
 This allows terminal multiplexers to direct the response codes to the correct
