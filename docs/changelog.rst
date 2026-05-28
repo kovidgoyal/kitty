@@ -190,6 +190,8 @@ Detailed list of changes
 
 - Add support for the DECST8C escape sequence (``CSI ? 5 W``) to reset tab stops to every 8 columns
 
+- X11: Fix panel/quick-access-terminal windows not staying on top under KDE after they are hidden once (:iss:`10082`)
+
 0.47.0 [2026-05-19]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
