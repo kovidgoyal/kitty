@@ -3021,11 +3021,18 @@ void _glfwPlatformShowWindow(_GLFWwindow* window, bool move_to_active_screen UNU
     if (_glfwPlatformWindowVisible(window))
         return;
 
-    XMapWindow(_glfw.x11.display, window->x11.handle);
-    // without this floating window position is incorrect on KDE
     if (window->x11.layer_shell.is_active) {
         WindowGeometry wg = calculate_layer_geometry(window);
+        // Re-apply WM hints before mapping because some window managers (e.g.
+        // kwin_x11) clear _NET_WM_STATE when a window is unmapped/withdrawn,
+        // causing _NET_WM_STATE_ABOVE, _NET_WM_STATE_SKIP_TASKBAR and other
+        // states to be lost on the next map.
+        update_wm_hints(window, &wg, NULL);
+        XMapWindow(_glfw.x11.display, window->x11.handle);
+        // without this floating window position is incorrect on KDE
         _glfwPlatformSetWindowPos(window, wg.x, wg.y);
+    } else {
+        XMapWindow(_glfw.x11.display, window->x11.handle);
     }
     waitForVisibilityNotify(window);
 }
