@@ -645,6 +645,11 @@ handle_scrollbar_mouse(Window *w, int button, MouseAction action, int modifiers 
                 start_scrollbar_drag(w, mouse_y);
                 global_state.active_drag_in_window = w->id;
                 global_state.active_drag_button = button;
+            } else if (hit_type == SCROLLBAR_HIT_TRACK && OPT(scrollbar_jump_on_click)) {
+                handle_scrollbar_track_click(w, mouse_y);
+                start_scrollbar_drag(w, mouse_y);
+                global_state.active_drag_in_window = w->id;
+                global_state.active_drag_button = button;
             }
         }
     }
