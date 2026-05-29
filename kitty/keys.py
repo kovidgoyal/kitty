@@ -221,9 +221,9 @@ class Mappings:
                 # On macOS copy_or_noop is mapped to Cmd+C by default and gets
                 # disabled when there is no copyable text so special case it
                 # and pass it on.
-                if is_macos:
+                if is_macos and (w := get_boss().active_window):
                     for action in global_key_action:
-                        if action.definition == 'copy_or_noop':
+                        if action.definition == 'copy_or_noop' and not w.screen.has_selection():
                             return False
                 return True
         if key_action is None:
