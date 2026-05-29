@@ -180,6 +180,8 @@ Detailed list of changes
 
 - macOS: Fix regression in 0.47.0 that broke passing :kbd:`Cmd+C` on to terminal applications when no text is selected (:iss:`10087`)
 
+- ``kitten @ set-background-image``: Fix ``--layout=configured`` changing layout to centered instead (:iss:`10089`)
+
 0.47.1 [2026-05-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

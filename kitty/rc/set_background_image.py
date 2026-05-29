@@ -144,6 +144,8 @@ failed, the command will exit with a success code.
         windows = self.windows_for_payload(boss, window, payload_get, window_match_name='match')
         os_windows = tuple({w.os_window_id for w in windows if w})
         layout = payload_get('layout')
+        if layout == 'configured':
+            layout = None
         try:
             boss.set_background_image(
                 path, os_windows, payload_get('configured'), layout, tfile.getvalue(),
