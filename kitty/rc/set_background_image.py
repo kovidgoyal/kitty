@@ -33,7 +33,7 @@ layout_choices = 'tiled,scaled,mirror-tiled,clamped,centered,cscaled,configured'
 
 class SetBackgroundImage(RemoteCommand):
 
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = f'''
     data+/str: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
     Or the special value - to indicate image must be removed. Or the value index:idx to change image.
     match/str: Window to change opacity in
