@@ -173,6 +173,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.47.2 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Allow dragging to move scrollbar after clicking on track when :opt:`scrollbar_jump_on_click` is enabled (:pull:`10085`)
+
 0.47.1 [2026-05-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
