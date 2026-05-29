@@ -218,6 +218,13 @@ class Mappings:
                 # the shortcuts in the global menubar will have been bypassed so trigger them here
                 key_action = global_key_action
             else:
+                # On macOS copy_or_noop is mapped to Cmd+C by default and gets
+                # disabled when there is no copyable text so special case it
+                # and pass it on.
+                if is_macos:
+                    for action in global_key_action:
+                        if action.definition == 'copy_or_noop':
+                            return False
                 return True
         if key_action is None:
             if is_modifier_key(ev.key):

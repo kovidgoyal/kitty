@@ -178,6 +178,8 @@ Detailed list of changes
 
 - Allow dragging to move scrollbar after clicking on track when :opt:`scrollbar_jump_on_click` is enabled (:pull:`10085`)
 
+- macOS: Fix regression in 0.47.0 that broke passing :kbd:`Cmd+C` on to terminal applications when no text is selected (:iss:`10087`)
+
 0.47.1 [2026-05-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
