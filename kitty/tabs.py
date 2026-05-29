@@ -841,7 +841,10 @@ class Tab:  # {{{
 
     def post_window_removal_update(self) -> None:
         self.mark_tab_bar_dirty()
-        self.relayout()
+        self.relayout()  # prunes the closed window from the layout's internal tree
+        # equalize_on_close rebalances the pruned tree, requiring a second relayout
+        if self.current_layout.on_window_removed(self.windows):
+            self.relayout()
         active_window = self.active_window
         if active_window:
             self.title_changed(active_window)

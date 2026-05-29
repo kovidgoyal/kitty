@@ -5,12 +5,19 @@ from collections.abc import Collection, Generator, Iterator, Sequence
 from typing import Any, Optional, TypedDict, Union
 
 from kitty.borders import BorderColor
+from kitty.conf.utils import to_bool
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE
 from kitty.types import Edges, NeighborsMap, WindowGeometry, WindowMapper, WindowResizeDragData
 from kitty.typing_compat import EdgeLiteral, WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 from .base import BorderLine, DragOverlayMode, Layout, LayoutOpts, blank_rects_for_window, lgd, window_geometry_from_layouts
+
+
+def child_axis_units(child: 'Pair | int | None', horizontal: bool) -> int:
+    if isinstance(child, Pair):
+        return child.count_axis_units(horizontal)
+    return 1 if child is not None else 0
 
 
 class SerializedPair(TypedDict, total=False):
@@ -81,6 +88,11 @@ class Pair:
             yield from self.one.self_and_descendants()
         if isinstance(self.two, Pair):
             yield from self.two.self_and_descendants()
+
+    def count_axis_units(self, horizontal: bool) -> int:
+        if self.horizontal != horizontal:
+            return 1
+        return child_axis_units(self.one, horizontal) + child_axis_units(self.two, horizontal)
 
     def pair_for_window(self, window_id: int) -> Optional['Pair']:
         if self.one == window_id or self.two == window_id:
@@ -544,6 +556,7 @@ class Pair:
 class SplitsLayoutOpts(LayoutOpts):
 
     default_axis_is_horizontal: bool | None = True
+    equalize_on_close: bool = False
 
     def __init__(self, data: dict[str, str]):
         q = data.get('split_axis', 'horizontal')
@@ -551,9 +564,10 @@ class SplitsLayoutOpts(LayoutOpts):
             self.default_axis_is_horizontal = None
         else:
             self.default_axis_is_horizontal = q == 'horizontal'
+        self.equalize_on_close = to_bool(data.get('equalize_on_close', 'false'))
 
     def serialized(self) -> dict[str, Any]:
-        return {'default_axis_is_horizontal': self.default_axis_is_horizontal}
+        return {'default_axis_is_horizontal': self.default_axis_is_horizontal, 'equalize_on_close': self.equalize_on_close}
 
 
 class Splits(Layout):
@@ -668,6 +682,20 @@ class Splits(Layout):
         for pair in self.pairs_root.self_and_descendants():
             pair.bias = 0.5
         return True
+
+    def equalize_biases(self) -> bool:
+        for pair in self.pairs_root.self_and_descendants():
+            left = child_axis_units(pair.one, pair.horizontal)
+            right = child_axis_units(pair.two, pair.horizontal)
+            total = left + right
+            if total > 0:
+                pair.bias = left / total
+        return True
+
+    def on_window_removed(self, all_windows: WindowList) -> bool:
+        if self.layout_opts.equalize_on_close:
+            return self.equalize_biases()
+        return False
 
     def minimal_borders(self, all_windows: WindowList) -> Iterator[BorderLine]:
         groups = tuple(all_windows.iter_all_layoutable_groups())
@@ -850,6 +878,8 @@ class Splits(Layout):
                             maximized_biases[key] = saved_biases
                             self._maximized_biases = maximized_biases
                     return True
+        elif action_name == 'equalize':
+            return self.equalize_biases()
 
         return None
 

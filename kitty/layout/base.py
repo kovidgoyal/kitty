@@ -492,6 +492,9 @@ class Layout:
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> bool | None:
         pass
 
+    def on_window_removed(self, all_windows: WindowList) -> bool:
+        return False
+
     def layout_state(self) -> dict[str, Any]:
         return {}
 
