@@ -194,6 +194,9 @@ define a few extra key bindings in :file:`kitty.conf`::
     # to restore the original layout.
     map ctrl+shift+up layout_action maximize vertical
 
+    # Equalize all splits so that windows share available space proportionally.
+    map ctrl+shift+e layout_action equalize
+
 
 Windows can be resized using :ref:`window_resizing`. You can swap the windows
 in a split using the ``rotate`` action with an argument of ``180`` and rotate
@@ -201,9 +204,16 @@ and swap with an argument of ``270``. The ``maximize`` action expands the active
 window to fill the maximum available space along a single axis while keeping
 the rest of the layout intact. Use ``maximize horizontal`` to fill the full
 width and ``maximize vertical`` to fill the full height. Calling it again
-restores the original split sizes.
+restores the original split sizes. The ``equalize`` action redistributes space
+so that all windows along each split axis receive an equal share.
 
-This layout takes one option, ``split_axis`` that controls whether new windows
+This layout takes two options. ``equalize_on_close`` automatically equalizes
+split sizes whenever a window is closed, keeping remaining windows balanced
+without needing an explicit keybinding::
+
+    enabled_layouts splits:equalize_on_close=true
+
+``split_axis`` controls whether new windows
 are placed into vertical or horizontal splits when a :option:`--location
 <launch --location>` is not specified. A value of ``horizontal`` (same as
 ``--location=vsplit``) means when a new split is created the two windows will

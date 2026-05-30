@@ -5,7 +5,7 @@ from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
 from kitty.layout.base import layout_dimension, lgd
 from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
-from kitty.layout.splits import Pair
+from kitty.layout.splits import Pair, SplitsLayoutOpts
 from kitty.types import WindowGeometry
 from kitty.window import EdgeWidths
 from kitty.window_list import WindowList, reset_group_id_counter
@@ -324,6 +324,132 @@ class TestLayout(BaseTest):
         result = q.layout_action('maximize', ('horizontal',), all_windows)
         self.assertTrue(result)
         self.ae(root.bias, root_bias_before)
+
+    def test_splits_equalize(self):
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        w1 = Window(1)
+        q.add_window(all_windows, w1)
+        w2 = Window(2)
+        q.add_window(all_windows, w2, location='vsplit')
+        w3 = Window(3)
+        q.add_window(all_windows, w3, location='vsplit')
+        # Tree: root(H) -> w1, Pair(H) -> w2, w3
+        # Proportional equalize: root.bias=1/3, inner.bias=0.5
+        root = q.pairs_root
+        inner = root.two if isinstance(root.two, Pair) else root.one
+        self.assertIsInstance(inner, Pair)
+
+        # Skew biases so equalize has something to fix
+        root.bias = 0.8
+        inner.bias = 0.8
+
+        result = q.layout_action('equalize', (), all_windows)
+        self.assertTrue(result)
+        self.assertAlmostEqual(root.bias, 1 / 3, places=5)
+        self.assertAlmostEqual(inner.bias, 0.5, places=5)
+
+        # Single window — equalize should still succeed
+        q2 = create_layout(Splits)
+        aw2 = create_windows(q2, num=0)
+        q2.add_window(aw2, Window(10))
+        result = q2.layout_action('equalize', (), aw2)
+        self.assertTrue(result)
+
+    def test_splits_equalize_mixed(self):
+        # One vsplit then three hsplits, each from the freshly added window:
+        #   root(H) -> w1, inner1(V) -> w2, inner2(V) -> w3, inner3(V) -> w4, w5
+        # Equalize should give each of w2-w5 an equal share of the right column.
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        q.add_window(all_windows, Window(1))
+        q.add_window(all_windows, Window(2), location='vsplit')
+        q.add_window(all_windows, Window(3), location='hsplit')
+        q.add_window(all_windows, Window(4), location='hsplit')
+        q.add_window(all_windows, Window(5), location='hsplit')
+
+        root = q.pairs_root
+        inner1 = root.two
+        self.assertIsInstance(inner1, Pair)
+        inner2 = inner1.two
+        self.assertIsInstance(inner2, Pair)
+        inner3 = inner2.two
+        self.assertIsInstance(inner3, Pair)
+
+        for pair in root.self_and_descendants():
+            pair.bias = 0.9
+
+        result = q.layout_action('equalize', (), all_windows)
+        self.assertTrue(result)
+        self.assertAlmostEqual(root.bias, 0.5, places=5)   # w1 vs right column: 1:1
+        self.assertAlmostEqual(inner1.bias, 1/4, places=5)  # w2 vs [w3,w4,w5]: 1:3
+        self.assertAlmostEqual(inner2.bias, 1/3, places=5)  # w3 vs [w4,w5]: 1:2
+        self.assertAlmostEqual(inner3.bias, 0.5, places=5)  # w4 vs w5: 1:1
+
+    def test_splits_equalize_after_remove(self):
+        # 1 vsplit + 2 hsplits: root(H) -> w1, inner1(V) -> w2, inner2(V) -> w3, w4
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        w1, w2, w3, w4 = Window(1), Window(2), Window(3), Window(4)
+        q.add_window(all_windows, w1)
+        q.add_window(all_windows, w2, location='vsplit')
+        q.add_window(all_windows, w3, location='hsplit')
+        q.add_window(all_windows, w4, location='hsplit')
+
+        root = q.pairs_root
+        inner1 = root.two
+        inner2 = inner1.two
+        self.assertIsInstance(inner1, Pair)
+        self.assertIsInstance(inner2, Pair)
+
+        result = q.layout_action('equalize', (), all_windows)
+        self.assertTrue(result)
+        self.assertAlmostEqual(root.bias, 0.5, places=5)    # w1 vs right column: 1:1
+        self.assertAlmostEqual(inner1.bias, 1/3, places=5)  # w2 vs [w3,w4]: 1:2 → RHS in thirds
+        self.assertAlmostEqual(inner2.bias, 0.5, places=5)  # w3 vs w4: 1:1
+
+        # Remove w4 — inner2 collapses: inner1.two becomes grp_w3 leaf
+        g4 = all_windows.group_for_window(w4)
+        q.remove_windows(g4.id)
+
+        self.assertNotIsInstance(inner1.two, Pair)  # collapsed to a leaf
+
+        result = q.layout_action('equalize', (), all_windows)
+        self.assertTrue(result)
+        self.assertAlmostEqual(root.bias, 0.5, places=5)    # w1 vs right column: 1:1
+        self.assertAlmostEqual(inner1.bias, 0.5, places=5)  # w2 vs w3 top/bottom: 1:1
+
+    def test_splits_equalize_on_close(self):
+        q = create_layout(Splits)
+        q.layout_opts = SplitsLayoutOpts({'equalize_on_close': 'true'})
+        all_windows = create_windows(q, num=0)
+        w1, w2, w3 = Window(1), Window(2), Window(3)
+        q.add_window(all_windows, w1)
+        q.add_window(all_windows, w2, location='vsplit')
+        q.add_window(all_windows, w3, location='vsplit')
+
+        root = q.pairs_root
+        root.bias = 0.9
+        inner = root.two if isinstance(root.two, Pair) else root.one
+        self.assertIsInstance(inner, Pair)
+        inner.bias = 0.9
+
+        g3 = all_windows.group_for_window(w3)
+        q.remove_windows(g3.id)
+
+        result = q.on_window_removed(all_windows)
+        self.assertTrue(result)
+        self.assertAlmostEqual(root.bias, 0.5, places=5)
+
+        # equalize_on_close=false (default) must not trigger equalization
+        q2 = create_layout(Splits)
+        aw2 = create_windows(q2, num=0)
+        q2.add_window(aw2, Window(10))
+        q2.add_window(aw2, Window(11), location='vsplit')
+        q2.pairs_root.bias = 0.9
+        result = q2.on_window_removed(aw2)
+        self.assertFalse(result)
+        self.assertAlmostEqual(q2.pairs_root.bias, 0.9, places=5)
 
     def test_layout_dimension_no_negative_cells(self):
         # Regression test for issue #9946: when window padding exceeds the
