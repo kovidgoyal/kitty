@@ -41,9 +41,9 @@ cache_key(const ImageAndFrame x, char *key) {
 #define CK(x) key, cache_key(x, key)
 
 static bool
-add_to_cache(GraphicsManager *self, const ImageAndFrame x, const void *data, const size_t sz) {
+add_to_cache(GraphicsManager *self, const ImageAndFrame x, const void *data, const size_t sz, bool memory_only) {
     char key[CACHE_KEY_BUFFER_SIZE];
-    return add_to_disk_cache(self->disk_cache, CK(x), data, sz);
+    return add_to_disk_cache(self->disk_cache, CK(x), data, sz, memory_only);
 }
 
 static bool
@@ -768,11 +768,12 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             .is_opaque = self->currently_loading.is_opaque,
             .is_4byte_aligned = self->currently_loading.is_4byte_aligned,
             .width = img->width, .height = img->height,
+            .memory_only = !!g->no_disk_cache,
         };
         if (!is_query) {
-            if (!add_to_cache(self, (const ImageAndFrame){.image_id = img->internal_id, .frame_id=img->root_frame.id}, self->currently_loading.data, self->currently_loading.data_sz)) {
+            if (!add_to_cache(self, (const ImageAndFrame){.image_id = img->internal_id, .frame_id=img->root_frame.id}, self->currently_loading.data, self->currently_loading.data_sz, img->root_frame.memory_only)) {
                 if (PyErr_Occurred()) PyErr_Print();
-                ABRT("ENOSPC", "Failed to store image data in disk cache");
+                ABRT("ENOSPC", "Failed to store image data in cache");
             }
             upload_to_gpu(self, img, img->root_frame.is_opaque, img->root_frame.is_4byte_aligned, self->currently_loading.data);
             self->used_storage += required_sz;
@@ -1595,6 +1596,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         .alpha_blend = g->compose_mode != 1 && !load_data->is_opaque,
         .gap = g->gap > 0 ? g->gap : (g->gap < 0) ? 0 : DEFAULT_GAP,
         .bgcolor = g->bgcolor,
+        .memory_only = !!g->no_disk_cache,
     };
     Frame *frame;
     if (is_new_frame) {
@@ -1635,7 +1637,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             }
         }
         *frame = transmitted_frame;
-        if (!add_to_cache(self, key, load_data->data, load_data->data_sz)) {
+        if (!add_to_cache(self, key, load_data->data, load_data->data_sz, frame->memory_only)) {
             img->extra_framecnt--;
             if (PyErr_Occurred()) PyErr_Print();
             ABRT("ENOSPC", "Failed to cache data for image frame");
@@ -1651,6 +1653,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         if (g->gap != 0) change_gap(img, frame, transmitted_frame.gap);
         CoalescedFrameData cfd = get_coalesced_frame_data(self, img, frame);
         if (!cfd.buf) ABRT("EINVAL", "No data associated with frame number: %u", frame_number);
+        frame->memory_only = transmitted_frame.memory_only;
         frame->alpha_blend = false; frame->base_frame_id = 0; frame->bgcolor = 0;
         frame->is_opaque = cfd.is_opaque; frame->is_4byte_aligned = cfd.is_4byte_aligned;
         frame->x = 0; frame->y = 0; frame->width = img->width; frame->height = img->height;
@@ -1664,7 +1667,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         };
         compose(d, cfd.buf, load_data->data);
         const ImageAndFrame key = { .image_id = img->internal_id, .frame_id = frame->id };
-        bool added = add_to_cache(self, key, cfd.buf, (size_t)bytes_per_pixel * frame->width * frame->height);
+        bool added = add_to_cache(self, key, cfd.buf, (size_t)bytes_per_pixel * frame->width * frame->height, frame->memory_only);
         if (added && frame == current_frame(img)) {
             update_current_frame(self, img, &cfd);
             *is_dirty = true;
@@ -1868,9 +1871,9 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
     };
     compose_rectangles(d, dest_data.buf, src_data.buf);
     const ImageAndFrame key = { .image_id = img->internal_id, .frame_id = dest_frame->id };
-    if (!add_to_cache(self, key, dest_data.buf, ((size_t)(dest_data.is_opaque ? 3 : 4)) * img->width * img->height)) {
+    if (!add_to_cache(self, key, dest_data.buf, ((size_t)(dest_data.is_opaque ? 3 : 4)) * img->width * img->height, dest_frame->memory_only)) {
         if (PyErr_Occurred()) PyErr_Print();
-        set_command_failed_response("ENOSPC", "Failed to store image data in disk cache");
+        set_command_failed_response("ENOSPC", "Failed to store image data in cache");
     }
     // frame is now a fully coalesced frame
     dest_frame->x = 0; dest_frame->y = 0; dest_frame->width = img->width; dest_frame->height = img->height;
