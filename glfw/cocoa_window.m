@@ -1015,7 +1015,7 @@ static void _glfwUpdateNotchCover(_GLFWwindow*);
 - (BOOL)acceptsFirstMouse:(NSEvent *)event
 {
     (void)event;
-    return NO;  // changed by Kovid, to follow cocoa platform conventions
+    return YES;  // follow cocoa platform conventions
 }
 
 - (void)mouseDown:(NSEvent *)event
