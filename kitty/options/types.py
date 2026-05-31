@@ -32,7 +32,7 @@ choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
 choices_for_progress_bar = typing.Literal['left', 'right', 'top', 'bottom', 'hidden']
 choices_for_scrollbar = typing.Literal['scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered']
 choices_for_strip_trailing_spaces = typing.Literal['always', 'never', 'smart']
-choices_for_tab_bar_align = typing.Literal['left', 'center', 'right']
+choices_for_tab_bar_align = typing.Literal['start', 'center', 'end', 'left', 'right']
 choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant', 'custom']
 choices_for_tab_powerline_style = typing.Literal['angled', 'round', 'slanted']
 choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
@@ -41,7 +41,7 @@ choices_for_undercurl_style = typing.Literal['thin-sparse', 'thin-dense', 'thick
 choices_for_underline_hyperlinks = typing.Literal['hover', 'always', 'never']
 choices_for_window_logo_position = choices_for_placement_strategy
 choices_for_window_title_bar = typing.Literal['top', 'bottom']
-choices_for_window_title_bar_align = choices_for_tab_bar_align
+choices_for_window_title_bar_align = typing.Literal['left', 'center', 'right']
 
 option_names = (
     'action_alias',
@@ -666,7 +666,7 @@ class Options:
     strip_trailing_spaces: choices_for_strip_trailing_spaces = 'never'
     sync_to_monitor: bool = True
     tab_activity_symbol: str = ''
-    tab_bar_align: choices_for_tab_bar_align = 'left'
+    tab_bar_align: choices_for_tab_bar_align = 'start'
     tab_bar_background: kitty.fast_data_types.Color | None = None
     tab_bar_edge: int = 8
     tab_bar_filter: str = ''
