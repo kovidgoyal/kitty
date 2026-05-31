@@ -476,7 +476,9 @@ inform_compositor_of_window_geometry(_GLFWwindow *window, const char *event) {
 #define geometry window->wl.decorations.geometry
     debug("Setting window %llu \"visible area\" geometry in %s event: x=%d y=%d %dx%d viewport: %dx%d\n",
             window->id, event, geometry.x, geometry.y, geometry.width, geometry.height, window->wl.width, window->wl.height);
-    xdg_surface_set_window_geometry(window->wl.xdg.surface, geometry.x, geometry.y, geometry.width, geometry.height);
+    // Layer-shell surfaces have no xdg_surface; geometry is managed via the
+    // layer surface, so skip the xdg call to avoid a NULL proxy dereference.
+    if (window->wl.xdg.surface) xdg_surface_set_window_geometry(window->wl.xdg.surface, geometry.x, geometry.y, geometry.width, geometry.height);
     if (window->wl.wp_viewport) wp_viewport_set_destination(window->wl.wp_viewport, window->wl.width, window->wl.height);
 #undef geometry
 }
