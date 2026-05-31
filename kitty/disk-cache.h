@@ -9,7 +9,7 @@
 #include "data-types.h"
 
 PyObject* create_disk_cache(void);
-bool add_to_disk_cache(PyObject *self, const void *key, size_t key_sz, const void *data, size_t data_sz);
+bool add_to_disk_cache(PyObject *self, const void *key, size_t key_sz, const void *data, size_t data_sz, bool memory_only);
 bool remove_from_disk_cache(PyObject *self_, const void *key, size_t key_sz);
 void* read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void*(allocator)(void*, size_t), void*, bool);
 PyObject* read_from_disk_cache_python(PyObject *self_, const void *key, size_t key_sz, bool);

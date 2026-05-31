@@ -1051,6 +1051,8 @@ Key      Value                 Default    Description
 ``o``    Single character.     ``null``   The type of data compression.
          ``only z``
 ``m``    zero or one           ``0``      Whether there is more chunked data available.
+``N``    zero or one           ``0``      If set to ``1``, keep the transmitted image or frame data in memory only,
+                                          without writing it to the graphics disk cache.
 
 **Keys for image display**
 -----------------------------------------------------------
