@@ -44,6 +44,7 @@ static struct {PyObject *face, *descriptor;} builtin_nerd_font = {0};
 #define FcPatternGetMatrix dynamically_loaded_fc_symbol.PatternGetMatrix
 #define FcPatternAddCharSet dynamically_loaded_fc_symbol.PatternAddCharSet
 #define FcConfigAppFontAddFile dynamically_loaded_fc_symbol.ConfigAppFontAddFile
+#define FcFontRenderPrepare dynamically_loaded_fc_symbol.FontRenderPrepare
 
 static struct {
     FcBool(*Init)(void);
@@ -70,6 +71,7 @@ static struct {
     FcResult (*PatternGetMatrix) (const FcPattern *p, const char *object, int n, FcMatrix **m);
     FcBool (*PatternAddCharSet) (FcPattern *p, const char *object, const FcCharSet *c);
     FcBool (*ConfigAppFontAddFile) (FcConfig *config, const FcChar8 *file);
+    FcPattern * (*FontRenderPrepare) (FcConfig *config, FcPattern *pat, FcPattern *font);
 } dynamically_loaded_fc_symbol = {0};
 #define LOAD_FUNC(name) {\
     *(void **) (&dynamically_loaded_fc_symbol.name) = dlsym(libfontconfig_handle, "Fc" #name); \
@@ -122,6 +124,7 @@ load_fontconfig_lib(void) {
         LOAD_FUNC(PatternGetMatrix);
         LOAD_FUNC(PatternAddCharSet);
         LOAD_FUNC(ConfigAppFontAddFile);
+        LOAD_FUNC(FontRenderPrepare);
 }
 #undef LOAD_FUNC
 
@@ -614,6 +617,104 @@ add_font_file(PyObject UNUSED *self, PyObject *args) {
 }
 
 
+static FcPattern*
+dict_to_font_pattern(PyObject *d) {
+    // Rebuild an FcPattern from a descriptor dict produced by pattern_as_dict().
+    // Only intrinsic file-level properties are reattached. User-config fields
+    // (hinting, hint_style, subpixel, lcdfilter) are omitted on purpose:
+    // pattern_as_dict() defaults missing booleans to False and missing ints
+    // to 0, so we cannot distinguish "fontconfig set this" from "the default
+    // leaked through." Forwarding them would let stale defaults preempt
+    // MatchFont substitution for rules using mode="add" or mode="append".
+    FcPattern *pat = FcPatternCreate();
+    if (!pat) { PyErr_NoMemory(); return NULL; }
+#define ADD_S(key, prop) do { \
+    PyObject *_v = PyDict_GetItemString(d, key); \
+    if (_v && PyUnicode_Check(_v)) { \
+        const char *_s = PyUnicode_AsUTF8(_v); \
+        if (_s && *_s) FcPatternAddString(pat, prop, (const FcChar8*)_s); \
+    } \
+} while (0)
+#define ADD_I(key, prop) do { \
+    PyObject *_v = PyDict_GetItemString(d, key); \
+    if (_v && PyLong_Check(_v)) FcPatternAddInteger(pat, prop, (int)PyLong_AsLong(_v)); \
+} while (0)
+#define ADD_B(key, prop) do { \
+    PyObject *_v = PyDict_GetItemString(d, key); \
+    if (_v) FcPatternAddBool(pat, prop, PyObject_IsTrue(_v) ? FcTrue : FcFalse); \
+} while (0)
+    ADD_S("path", FC_FILE);
+    ADD_S("family", FC_FAMILY);
+    ADD_S("full_name", FC_FULLNAME);
+    ADD_S("postscript_name", FC_POSTSCRIPT_NAME);
+    ADD_S("style", FC_STYLE);
+    ADD_I("weight", FC_WEIGHT);
+    ADD_I("width", FC_WIDTH);
+    ADD_I("slant", FC_SLANT);
+    ADD_I("index", FC_INDEX);
+    ADD_B("scalable", FC_SCALABLE);
+    ADD_B("outline", FC_OUTLINE);
+    ADD_B("color", FC_COLOR);
+    {
+        PyObject *sp = PyDict_GetItemString(d, "spacing");
+        if (sp && PyUnicode_Check(sp)) {
+            const char *s = PyUnicode_AsUTF8(sp);
+            int spacing = -1;
+            if (s) {
+                if (strcmp(s, "MONO") == 0) spacing = FC_MONO;
+                else if (strcmp(s, "DUAL") == 0) spacing = FC_DUAL;
+                else if (strcmp(s, "PROPORTIONAL") == 0) spacing = FC_PROPORTIONAL;
+                else if (strcmp(s, "CHARCELL") == 0) spacing = FC_CHARCELL;
+            }
+            if (spacing >= 0) FcPatternAddInteger(pat, FC_SPACING, spacing);
+        }
+    }
+#undef ADD_S
+#undef ADD_I
+#undef ADD_B
+    return pat;
+}
+
+
+static PyObject*
+fc_render_prepare(PyObject UNUSED *self, PyObject *args) {
+    // Apply fontconfig's target="font" substitution to a candidate already
+    // picked from the FcFontList cache. FcFontList skips both substitution
+    // phases, so users selecting a font via font_family= never see per-font
+    // edits (notably FC_MATRIX from 90-synthetic.conf). FcFontRenderPrepare()
+    // is the same call FcFontMatch() makes internally to combine a request
+    // pattern with a font pattern, including the MatchFont substitution pass.
+    ensure_initialized();
+    const char *family = NULL;
+    int bold = 0, italic = 0, spacing = -1;
+    PyObject *candidate = NULL;
+    if (!PyArg_ParseTuple(args, "sppiO!", &family, &bold, &italic, &spacing, &PyDict_Type, &candidate)) return NULL;
+
+    FcPattern *req = FcPatternCreate();
+    FcPattern *font = NULL, *prep = NULL;
+    PyObject *ans = NULL;
+    if (!req) return PyErr_NoMemory();
+    if (family && family[0]) FcPatternAddString(req, FC_FAMILY, (const FcChar8*)family);
+    if (bold) FcPatternAddInteger(req, FC_WEIGHT, FC_WEIGHT_BOLD);
+    if (italic) FcPatternAddInteger(req, FC_SLANT, FC_SLANT_ITALIC);
+    if (spacing >= 0) FcPatternAddInteger(req, FC_SPACING, spacing);
+    FcConfigSubstitute(NULL, req, FcMatchPattern);
+    FcDefaultSubstitute(req);
+
+    font = dict_to_font_pattern(candidate);
+    if (!font) goto end;
+
+    prep = FcFontRenderPrepare(NULL, req, font);
+    if (!prep) { PyErr_SetString(PyExc_RuntimeError, "FcFontRenderPrepare() failed"); goto end; }
+    ans = pattern_as_dict(prep);
+end:
+    if (req) FcPatternDestroy(req);
+    if (font) FcPatternDestroy(font);
+    if (prep) FcPatternDestroy(prep);
+    return ans;
+}
+
+
 #undef AP
 
 static PyMethodDef module_methods[] = {
@@ -622,6 +723,7 @@ static PyMethodDef module_methods[] = {
     METHODB(fc_match_postscript_name, METH_VARARGS),
     METHODB(add_font_file, METH_VARARGS),
     METHODB(set_builtin_nerd_font, METH_O),
+    METHODB(fc_render_prepare, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
