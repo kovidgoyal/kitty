@@ -51,6 +51,7 @@ extern CGSConnectionID _CGSDefaultConnection(void);
 CFArrayRef CGSCopySpacesForWindows(CGSConnectionID Connection, CGSSpaceSelector Type, CFArrayRef Windows);
 
 static NSMenuItem* title_menu = NULL;
+static NSMenuItem* secure_input_title_menu = NULL;
 static bool application_has_finished_launching = false;
 
 
@@ -217,6 +218,25 @@ find_app_name(void) {
 @end
 // }}}
 
+static void
+update_secure_input_menu_bar_indicator(BOOL enabled) {
+    if (enabled) {
+        if (secure_input_title_menu == NULL) {
+            NSMenu *bar = [NSApp mainMenu];
+            secure_input_title_menu = [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
+            NSMenu *m = [[NSMenu alloc] initWithTitle:@"[Secure input]"];
+            [secure_input_title_menu setSubmenu:m];
+            [m release];
+        }
+    } else {
+        if (secure_input_title_menu != NULL) {
+            NSMenu *bar = [NSApp mainMenu];
+            [bar removeItem:secure_input_title_menu];
+            secure_input_title_menu = NULL;
+        }
+    }
+}
+
 @interface UserMenuItem : NSMenuItem
 @property (nonatomic) size_t action_index;
 @end
@@ -323,6 +343,7 @@ PENDING(copy_or_noop, COPY_OR_NOOP)
             sharedGlobalMenuTarget = [[GlobalMenuTarget alloc] init];
             SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
             if (!k.isDesired && [[NSUserDefaults standardUserDefaults] boolForKey:@"SecureKeyboardEntry"]) [k toggle];
+            update_secure_input_menu_bar_indicator(k.isDesired);
         }
         return sharedGlobalMenuTarget;
     }
@@ -932,7 +953,14 @@ cocoa_recreate_global_menu(void) {
         [bar removeItem:title_menu];
     }
     title_menu = NULL;
+    if (secure_input_title_menu != NULL) {
+        NSMenu *bar = [NSApp mainMenu];
+        [bar removeItem:secure_input_title_menu];
+    }
+    secure_input_title_menu = NULL;
     cocoa_create_global_menu();
+    SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
+    update_secure_input_menu_bar_indicator(k.isDesired);
 }
 
 
@@ -952,6 +980,7 @@ cocoa_toggle_secure_keyboard_entry(void) {
     SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
     [k toggle];
     [[NSUserDefaults standardUserDefaults] setBool:k.isDesired forKey:@"SecureKeyboardEntry"];
+    update_secure_input_menu_bar_indicator(k.isDesired);
 }
 
 void
