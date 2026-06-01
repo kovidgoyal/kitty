@@ -1084,6 +1084,11 @@ class Tab:  # {{{
                     if w.matches_query(field, query):
                         return True
                 return False
+            case 'var' | 'env':
+                for w in self:
+                    if w.matches_query(field, query):
+                        return True
+                return False
             case 'index':
                 if active_tab_manager and len(active_tab_manager.tabs):
                     idx = (int(query) + len(active_tab_manager.tabs)) % len(active_tab_manager.tabs)

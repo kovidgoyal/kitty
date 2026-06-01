@@ -184,6 +184,8 @@ Detailed list of changes
 
 - Splits layout: add an ``equalize`` action and an ``equalize_on_close`` option to redistribute split space proportionally (:iss:`3489`)
 
+- Fix matching var/env on tabs not working as expected (:iss:`10095`)
+
 0.47.1 [2026-05-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
