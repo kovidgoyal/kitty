@@ -1073,49 +1073,52 @@ class Tab:  # {{{
         self, field: str, query: str, active_tab_manager: Optional['TabManager'] = None,
         active_session: str = '', most_recent_session: str = ''
     ) -> bool:
-        if field == 'title':
-            return re.search(query, self.effective_title) is not None
-        if field == 'id':
-            return query == str(self.id)
-        if field in ('window_id', 'window_title'):
-            field = field.partition('_')[-1]
-            for w in self:
-                if w.matches_query(field, query):
-                    return True
-            return False
-        if field == 'index':
-            if active_tab_manager and len(active_tab_manager.tabs):
-                idx = (int(query) + len(active_tab_manager.tabs)) % len(active_tab_manager.tabs)
-                return active_tab_manager.tabs[idx] is self
-            return False
-        if field == 'recent':
-            if active_tab_manager and len(active_tab_manager.tabs):
-                return self is active_tab_manager.nth_active_tab(int(query))
-            return False
-        if field == 'state':
-            if query == 'active':
-                tm = self.tab_manager_ref()
-                return tm is not None and self is tm.active_tab
-            if query == 'focused':
-                return active_tab_manager is not None and self is active_tab_manager.active_tab and self.os_window_id == last_focused_os_window_id()
-            if query == 'needs_attention':
+        match field:
+            case 'title':
+                return re.search(query, self.effective_title) is not None
+            case 'id':
+                return query == str(self.id)
+            case 'window_id' | 'window_title':
+                field = field.partition('_')[-1]
                 for w in self:
-                    if w.needs_attention:
+                    if w.matches_query(field, query):
                         return True
-            if query == 'parent_active':
-                return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager
-            if query == 'parent_focused':
-                return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager and self.os_window_id == last_focused_os_window_id()
-            if query == 'focused_os_window':
-                return self.os_window_id == last_focused_os_window_id()
-            return False
-        if field == 'session':
-            match query:
-                case '.':
-                    return self.created_in_session_name == active_session
-                case '~':
-                    return self.created_in_session_name == active_session or self.created_in_session_name == most_recent_session
-            return re.search(query, self.created_in_session_name) is not None
+                return False
+            case 'index':
+                if active_tab_manager and len(active_tab_manager.tabs):
+                    idx = (int(query) + len(active_tab_manager.tabs)) % len(active_tab_manager.tabs)
+                    return active_tab_manager.tabs[idx] is self
+                return False
+            case 'recent':
+                if active_tab_manager and len(active_tab_manager.tabs):
+                    return self is active_tab_manager.nth_active_tab(int(query))
+                return False
+            case 'state':
+                match query:
+                    case 'active':
+                        tm = self.tab_manager_ref()
+                        return tm is not None and self is tm.active_tab
+                    case 'focused':
+                        return active_tab_manager is not None and self is active_tab_manager.active_tab and self.os_window_id == last_focused_os_window_id()
+                    case 'needs_attention':
+                        for w in self:
+                            if w.needs_attention:
+                                return True
+                    case 'parent_active':
+                        return active_tab_manager is not None and self.tab_manager_ref() is active_tab_manager
+                    case 'parent_focused':
+                        return active_tab_manager is not None and \
+                                self.tab_manager_ref() is active_tab_manager and self.os_window_id == last_focused_os_window_id()
+                    case 'focused_os_window':
+                        return self.os_window_id == last_focused_os_window_id()
+                return False
+            case 'session':
+                match query:
+                    case '.':
+                        return self.created_in_session_name == active_session
+                    case '~':
+                        return self.created_in_session_name == active_session or self.created_in_session_name == most_recent_session
+                return re.search(query, self.created_in_session_name) is not None
         return False
 
     def __iter__(self) -> Iterator[Window]:
