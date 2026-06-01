@@ -1083,6 +1083,11 @@ class Tab:  # {{{
                 if w.matches_query(field, query):
                     return True
             return False
+        if field in ('var', 'env', 'pid', 'cwd', 'cmdline'):
+            for w in self:
+                if w.matches_query(field, query):
+                    return True
+            return False
         if field == 'index':
             if active_tab_manager and len(active_tab_manager.tabs):
                 idx = (int(query) + len(active_tab_manager.tabs)) % len(active_tab_manager.tabs)
