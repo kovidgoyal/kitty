@@ -186,6 +186,7 @@ Detailed list of changes
 
 - Fix matching var/env on tabs not working as expected (:iss:`10095`)
 
+
 0.47.1 [2026-05-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
