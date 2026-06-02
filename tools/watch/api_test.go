@@ -223,8 +223,9 @@ func wait_for_count(counter *atomic.Int32, target int32, timeout time.Duration) 
 
 // TestWatchForConfigChanges consolidates all watcher integration tests into a single
 // function that starts the watcher once and confirms readiness via prime_watcher
-// instead of a blind time.Sleep.  All include-watching scenarios (basic, added,
-// removed, and added via an already-included file) run as sequential subtests.
+// instead of a blind time.Sleep.  Include-watching scenarios (file changes, include
+// added/removed from main config, include added to an already-included file) run as
+// sequential subtests.
 func TestWatchForConfigChanges(t *testing.T) {
 	tdir := resolve_path(t.TempDir())
 	subdir := filepath.Join(tdir, "sub")
@@ -406,17 +407,17 @@ func TestWatchForConfigChangesDebounce(t *testing.T) {
 
 	// Wait for up to one full debounce period for the first action to fire.
 	count_after_burst := wait_for_count(&action_count, before_burst+1, debounce+500*time.Millisecond)
-	burst_actions := count_after_burst - before_burst
+	action_calls_in_burst := count_after_burst - before_burst
 
 	// Debouncing should have collapsed the burst into at most 2 calls.
 	// The fswatcher debouncer uses leading-edge logic: the first event fires
 	// immediately and subsequent events within the cooldown window are dropped.
 	// A trailing event may fire at the end of the cooldown window, giving at most 2.
-	if burst_actions == 0 {
+	if action_calls_in_burst == 0 {
 		t.Fatalf("Expected at least one action call after burst of writes, got 0")
 	}
-	if burst_actions > 2 {
-		t.Fatalf("Expected debouncing to collapse burst: want ≤2 calls, got %d", burst_actions)
+	if action_calls_in_burst > 2 {
+		t.Fatalf("Expected debouncing to collapse burst: want ≤2 calls, got %d", action_calls_in_burst)
 	}
 
 	// After waiting well past the debounce window, a new write should trigger exactly one more call.
