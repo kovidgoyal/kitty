@@ -21,27 +21,16 @@ import (
 
 var _ = fmt.Print
 
-// watch_dir starts fswatcher in a background goroutine and pipes events to a custom channel.
-func watch_dirs(ctx context.Context, paths []string, debounce time.Duration, eventChan chan<- fswatcher.WatchEvent) error {
-	opts := []fswatcher.WatcherOpt{
-		fswatcher.WithCooldown(debounce),
+// get_parent_dirs returns a deduplicated list of the immediate parent directory for each path.
+// Unlike get_unique_directories it does not filter out subdirectories, so every unique
+// parent is returned even when some are descendants of others.  This is the correct
+// set of directories to pass to a non-recursive (top-level) file-system watcher.
+func get_parent_dirs(paths []string) []string {
+	dirSet := utils.NewSet[string](len(paths))
+	for _, p := range paths {
+		dirSet.Add(filepath.Dir(p))
 	}
-	for _, path := range paths {
-		if unix.Access(path, unix.R_OK|unix.X_OK) == nil {
-			opts = append(opts, fswatcher.WithPath(path))
-		}
-	}
-	w, err := fswatcher.New(opts...)
-	if err != nil {
-		return err
-	}
-	go w.Watch(ctx)
-	go func() {
-		for event := range w.Events() {
-			eventChan <- event
-		}
-	}()
-	return nil
+	return dirSet.AsSlice()
 }
 
 // returns the closest unique parent directories for a list of paths.
@@ -122,33 +111,91 @@ func get_set_of_config_files(config_paths []string) *utils.Set[string] {
 	return result
 }
 
-// watch_for_config_changes watches the directories derived from config_paths and calls action
-// whenever a watched config file (including includes and auto color scheme files) changes.
+// watch_for_config_changes watches the parent directories of every conf file (main configs,
+// includes, and auto color-scheme files) and calls action whenever one of those files changes.
+// Watching is non-recursive (top-level only): only the immediate parent directories are added.
+// When a conf file change is detected the full set of conf files is re-scanned so that newly
+// added or removed include directives are reflected in the watched-directory set.
 // It runs until ctx is cancelled.
 func watch_for_config_changes(ctx context.Context, action func() error, debounce_time time.Duration, config_paths []string) error {
 	event_chan := make(chan fswatcher.WatchEvent)
+
 	all_paths := get_set_of_config_files(config_paths)
-	dirs_to_watch := get_unique_directories(all_paths.AsSlice())
-	if len(dirs_to_watch) == 0 {
+
+	// desired_dirs is the full set of parent directories we want to watch
+	// (one per conf file, including files that may not yet exist).
+	desired_dirs := utils.NewSet[string]()
+	for _, p := range all_paths.AsSlice() {
+		desired_dirs.Add(filepath.Dir(p))
+	}
+	if desired_dirs.Len() == 0 {
 		return fmt.Errorf("No directories to watch provided")
 	}
 
-	filtered_action := func(ev fswatcher.WatchEvent) error {
-		all_paths := get_set_of_config_files(config_paths)
-		if all_paths.Has(resolve_path(ev.Path)) {
-			return action()
+	// Create the watcher with top-level (non-recursive) depth.
+	opts := []fswatcher.WatcherOpt{fswatcher.WithCooldown(debounce_time)}
+	watched_dirs := utils.NewSet[string]()
+	for _, dir := range desired_dirs.AsSlice() {
+		if unix.Access(dir, unix.R_OK|unix.X_OK) == nil {
+			opts = append(opts, fswatcher.WithPath(dir, fswatcher.WithDepth(fswatcher.WatchTopLevel)))
+			watched_dirs.Add(dir)
 		}
-		return nil
+	}
+	if watched_dirs.Len() == 0 {
+		return fmt.Errorf("No directories to watch provided")
 	}
 
-	if err := watch_dirs(ctx, dirs_to_watch, debounce_time, event_chan); err != nil {
+	w, err := fswatcher.New(opts...)
+	if err != nil {
 		return err
 	}
+	go w.Watch(ctx)
+	go func() {
+		for event := range w.Events() {
+			event_chan <- event
+		}
+	}()
+
+	// sync_watched_dirs reconciles watched_dirs with desired_dirs: any desired directory
+	// that now exists is added to the watcher, and any watched directory that is no longer
+	// desired is dropped.
+	sync_watched_dirs := func() {
+		desired_dirs.ForEach(func(d string) {
+			if !watched_dirs.Has(d) && unix.Access(d, unix.R_OK|unix.X_OK) == nil {
+				if err := w.AddPath(d, fswatcher.WithDepth(fswatcher.WatchTopLevel)); err == nil {
+					watched_dirs.Add(d)
+				}
+			}
+		})
+		watched_dirs.ForEach(func(d string) {
+			if !desired_dirs.Has(d) {
+				_ = w.DropPath(d)
+				watched_dirs.Discard(d)
+			}
+		})
+	}
+
 	for {
 		select {
 		case event := <-event_chan:
-			if err := filtered_action(event); err != nil {
-				fmt.Fprintf(os.Stderr, "failed to signal kitty in event: %s with error: %s\n", event, err)
+			// On every event try to activate any desired directories that may have been
+			// created since the last check (e.g. a new include directory was mkdir'd).
+			sync_watched_dirs()
+
+			new_all_paths := get_set_of_config_files(config_paths)
+			if new_all_paths.Has(resolve_path(event.Path)) {
+				// A conf file changed: rebuild desired_dirs from the new include set and
+				// sync the watcher so new include directories are watched and stale ones dropped.
+				new_desired := utils.NewSet[string]()
+				for _, p := range new_all_paths.AsSlice() {
+					new_desired.Add(filepath.Dir(p))
+				}
+				desired_dirs = new_desired
+				sync_watched_dirs()
+
+				if err := action(); err != nil {
+					fmt.Fprintf(os.Stderr, "failed to signal kitty in event: %s with error: %s\n", event, err)
+				}
 			}
 		case <-ctx.Done():
 			return nil

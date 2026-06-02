@@ -22,6 +22,68 @@ func write_file(t *testing.T, path string, data string) {
 	}
 }
 
+func TestGetParentDirs(t *testing.T) {
+	type tc struct {
+		name   string
+		input  []string
+		expect []string
+	}
+	cases := []tc{
+		{
+			name:   "nil input",
+			input:  nil,
+			expect: nil,
+		},
+		{
+			name:   "single file",
+			input:  []string{"/a/b/file.conf"},
+			expect: []string{"/a/b"},
+		},
+		{
+			name:   "files in same directory",
+			input:  []string{"/a/b/file1.conf", "/a/b/file2.conf"},
+			expect: []string{"/a/b"},
+		},
+		{
+			name:   "sibling directories",
+			input:  []string{"/a/b/file.conf", "/a/c/file.conf"},
+			expect: []string{"/a/b", "/a/c"},
+		},
+		{
+			name: "parent and child directory both returned",
+			// Unlike get_unique_directories, subdirectories are NOT filtered out.
+			input:  []string{"/a/file.conf", "/a/b/file.conf"},
+			expect: []string{"/a", "/a/b"},
+		},
+		{
+			name: "deeply nested all returned",
+			input: []string{
+				"/a/file.conf",
+				"/a/b/file.conf",
+				"/a/b/c/file.conf",
+			},
+			expect: []string{"/a", "/a/b", "/a/b/c"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := get_parent_dirs(tc.input)
+			sort.Strings(result)
+			sort.Strings(tc.expect)
+			if tc.expect == nil {
+				if len(result) != 0 {
+					t.Fatalf("expected empty result, got %v", result)
+				}
+				return
+			}
+			if diff := cmp.Diff(tc.expect, result); diff != "" {
+				t.Fatalf("get_parent_dirs mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
 func TestGetUniqueDirectories(t *testing.T) {
 	// Empty input
 	if result := get_unique_directories(nil); result != nil {
@@ -271,6 +333,144 @@ func TestWatchForConfigChangesDebounce(t *testing.T) {
 	count_new := wait_for_count(&action_count, before_new+1, 2*time.Second)
 	if count_new <= before_new {
 		t.Fatalf("Expected action after post-debounce write, count went from %d to %d", before_new, count_new)
+	}
+
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("watch_for_config_changes returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("watch_for_config_changes did not exit after context cancel")
+	}
+}
+
+// TestWatchForConfigChangesIncludeAdded verifies that when the main config gains a new
+// include directive the parent directory of the new include file is added to the watcher,
+// and subsequent changes to that include file trigger the action.
+func TestWatchForConfigChangesIncludeAdded(t *testing.T) {
+	tdir := resolve_path(t.TempDir())
+	extradir := filepath.Join(tdir, "extra")
+	if err := os.Mkdir(extradir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	main_conf := filepath.Join(tdir, "kitty.conf")
+	extra_conf := filepath.Join(extradir, "custom.conf")
+
+	// Start with no includes so extradir is NOT initially watched.
+	write_file(t, main_conf, "font_size 12\n")
+	// Create the include file before modifying kitty.conf so the re-scan can find it.
+	write_file(t, extra_conf, "background black\n")
+
+	var action_count atomic.Int32
+	action := func() error {
+		action_count.Add(1)
+		return nil
+	}
+
+	const debounce = 50 * time.Millisecond
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- watch_for_config_changes(ctx, action, debounce, []string{main_conf})
+	}()
+
+	// Give the watcher time to start.
+	time.Sleep(200 * time.Millisecond)
+
+	// Step 1: add the include directive to kitty.conf.
+	before_add := action_count.Load()
+	write_file(t, main_conf, "font_size 12\ninclude extra/custom.conf\n")
+	count := wait_for_count(&action_count, before_add+1, 2*time.Second)
+	if count <= before_add {
+		t.Fatalf("Expected action after kitty.conf gained include directive, count=%d", count)
+	}
+
+	// Give the watcher a moment to register the new directory.
+	time.Sleep(200 * time.Millisecond)
+
+	// Step 2: modify the newly included file; it should now be watched.
+	before_extra := action_count.Load()
+	write_file(t, extra_conf, "background white\n")
+	count = wait_for_count(&action_count, before_extra+1, 2*time.Second)
+	if count <= before_extra {
+		t.Fatalf("Expected action after modifying newly included file, count=%d", count)
+	}
+
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("watch_for_config_changes returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("watch_for_config_changes did not exit after context cancel")
+	}
+}
+
+// TestWatchForConfigChangesIncludeRemoved verifies that when the main config loses an
+// include directive the parent directory of the removed include file is dropped from the
+// watcher, and subsequent changes to that file no longer trigger the action.
+func TestWatchForConfigChangesIncludeRemoved(t *testing.T) {
+	tdir := resolve_path(t.TempDir())
+	subdir := filepath.Join(tdir, "sub")
+	if err := os.Mkdir(subdir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	main_conf := filepath.Join(tdir, "kitty.conf")
+	sub_conf := filepath.Join(subdir, "extra.conf")
+
+	// Start with an include so subdir IS initially watched.
+	write_file(t, main_conf, "font_size 12\ninclude sub/extra.conf\n")
+	write_file(t, sub_conf, "background black\n")
+
+	var action_count atomic.Int32
+	action := func() error {
+		action_count.Add(1)
+		return nil
+	}
+
+	const debounce = 50 * time.Millisecond
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- watch_for_config_changes(ctx, action, debounce, []string{main_conf})
+	}()
+
+	// Give the watcher time to start.
+	time.Sleep(200 * time.Millisecond)
+
+	// Confirm sub_conf is currently watched by verifying a change triggers action.
+	before_verify := action_count.Load()
+	write_file(t, sub_conf, "background blue\n")
+	if wait_for_count(&action_count, before_verify+1, 2*time.Second) <= before_verify {
+		t.Fatal("sub_conf changes should trigger action before include is removed")
+	}
+
+	// Step 1: remove the include directive from kitty.conf.
+	before_remove := action_count.Load()
+	write_file(t, main_conf, "font_size 12\n")
+	if wait_for_count(&action_count, before_remove+1, 2*time.Second) <= before_remove {
+		t.Fatal("Expected action after kitty.conf lost include directive")
+	}
+
+	// Give the watcher a moment to drop the old directory.
+	time.Sleep(200 * time.Millisecond)
+
+	// Step 2: modify the no-longer-included file; the watch should have been removed.
+	before_after := action_count.Load()
+	write_file(t, sub_conf, "background green\n")
+	time.Sleep(debounce + 200*time.Millisecond)
+	after := action_count.Load()
+	if after != before_after {
+		t.Fatalf("Expected NO action after modifying removed-include file, count went from %d to %d", before_after, after)
 	}
 
 	cancel()
