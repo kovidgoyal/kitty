@@ -93,6 +93,10 @@ func safe_eval_symlinks(path string) string {
 func get_set_of_config_files(config_paths []string) *utils.Set[string] {
 	cp := config.ConfigParser{
 		AllIncludedFiles: utils.NewSet[string](), LineHandler: func(k, v string) error { return nil }}
+	config_paths = utils.Filter(config_paths, func(path string) bool {
+		_, err := os.Stat(path)
+		return err == nil
+	})
 	cp.ParseFiles(config_paths...)
 	// Resolve symlinks in all paths collected by the parser (important on macOS
 	// where /tmp -> /private/tmp causes mismatches with FSEvents-reported paths).
