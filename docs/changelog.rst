@@ -188,6 +188,8 @@ Detailed list of changes
 
 - When watching for changed config files do not recursively watch all sub directories of the directory containing the config file (:iss:`10102`)
 
+- File transfer protocol: use O_NOFOLLOW when opening regular files
+
 
 0.47.1 [2026-05-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

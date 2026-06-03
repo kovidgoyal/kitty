@@ -547,7 +547,7 @@ class DestFile:
             if self.actual_file is None:
                 self.make_parent_dirs()
                 self.unlink_existing_if_needed()
-                flags = os.O_RDWR | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_BINARY', 0)
+                flags = os.O_RDWR | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
                 self.actual_file = open(os.open(self.name, flags, self.permissions), mode='r+b', closefd=True)
             af = self.actual_file
             if decompressed or is_last:
