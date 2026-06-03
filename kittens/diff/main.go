@@ -88,7 +88,7 @@ func get_ssh_file(hostname, rpath string) (string, error) {
 		return "", fmt.Errorf("Failed to ssh into remote host %s to get file %s with error: %w", hostname, rpath, err)
 	}
 	tf := tar.NewReader(bytes.NewReader(stdout))
-	count, err := utils.ExtractAllFromTar(tf, tdir)
+	count, err := utils.ExtractAllFromTar(tf, tdir, utils.TarExtractOptions{DontPreserveSuidAndSgid: true})
 	if err != nil {
 		return "", fmt.Errorf("Failed to untar data from remote host %s to get file %s with error: %w", hostname, rpath, err)
 	}

@@ -18,6 +18,7 @@ var _ = fmt.Print
 
 type TarExtractOptions struct {
 	DontPreservePermissions bool
+	DontPreserveSuidAndSgid bool
 }
 
 func volnamelen(path string) int {
@@ -189,6 +190,9 @@ func ExtractAllFromTar(tr *tar.Reader, dest_path string, optss ...TarExtractOpti
 	set_metadata := func(chmod func(mode fs.FileMode) error, hdr_mode int64) (err error) {
 		if !opts.DontPreservePermissions && chmod != nil {
 			perms := mode(hdr_mode)
+			if opts.DontPreserveSuidAndSgid {
+				perms = perms &^ (os.ModeSetuid | os.ModeSetgid)
+			}
 			if err = chmod(perms); err != nil {
 				return err
 			}
