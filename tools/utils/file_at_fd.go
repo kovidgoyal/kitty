@@ -79,6 +79,12 @@ func CreateAt(dirFile *os.File, name string, permissions os.FileMode) (*os.File,
 	return openAt(dirFile, name, unix.O_RDWR|unix.O_CREAT|unix.O_TRUNC, permissions)
 }
 
+// CreateExclusiveAt creates a file relative to the directory pointed to by
+// dirFile. Fails if a directory entry with the same name already exists.
+func CreateExclusiveAt(dirFile *os.File, name string, permissions os.FileMode) (*os.File, error) {
+	return openAt(dirFile, name, unix.O_RDWR|unix.O_CREAT|unix.O_EXCL, permissions)
+}
+
 // Create the specified directory, open it and return the file object. If the
 // directory already exists, it is opened and returned, without changing its
 // permissions, matching the behavior of CreateAt().

@@ -823,7 +823,7 @@ func (dnd *dnd) on_remote_drop_data(cmd DC) (err error) {
 		e.item_type = cmd.Xp
 		switch cmd.Xp {
 		case 0:
-			f, err := utils.CreateAt(e.base_dir.handle, e.name, 0o666)
+			f, err := utils.CreateExclusiveAt(e.base_dir.handle, e.name, 0o666)
 			if err != nil {
 				return err
 			}
