@@ -322,6 +322,13 @@ Various image viewing plugins for editors
 Scrollback manipulation
 -------------------------
 
+.. tool_kitty_search_incremental:
+
+`kitty-search <https://github.com/Mobinshahidi/kitty-search>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Incremental scrollback search with live results, regex and literal modes,
+case-sensitivity toggle, match counter, and auto-scroll to the matching line.
+
 .. tool_kitty_scrollback_nvim:
 
 `kitty-scrollback.nvim <https://github.com/mikesmithgh/kitty-scrollback.nvim>`_
