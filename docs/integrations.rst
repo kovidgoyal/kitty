@@ -324,7 +324,7 @@ Scrollback manipulation
 
 .. tool_kitty_search_incremental:
 
-`kitty-search <https://github.com/Mobinshahidi/kitty-search>`_
+`kitty-search-incremental <https://github.com/Mobinshahidi/kitty-search>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Incremental scrollback search with live results, regex and literal modes,
 case-sensitivity toggle, match counter, and auto-scroll to the matching line.
