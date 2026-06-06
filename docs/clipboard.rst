@@ -15,7 +15,7 @@ of the escape code is::
     <OSC>5522;metadata;payload<ST>
 
 Here, *metadata* is a colon separated list of key-value pairs and payload is
-base64 encoded data. :code:`OSC` is :code:`<ESC>[`.
+base64 encoded data. :code:`OSC` is :code:`<ESC>]`.
 :code:`ST` is the string terminator, :code:`<ESC>\\`.
 
 Reading data from the system clipboard
@@ -29,11 +29,11 @@ For example, to read plain text and PNG data, the payload would be::
 
     text/plain image/png
 
-encoded as base64. To read from the primary selection instead of the
+encoded as :rfc:`base64 <4648>`. To read from the primary selection instead of the
 clipboard, add the key ``loc=primary`` to the metadata section.
 
 To get the list of MIME types available on the clipboard the payload must be
-just a period (``.``), encoded as base64.
+just a period (``.``), encoded as :rfc:`base64 <4648>`.
 
 The terminal emulator will reply with a sequence of escape codes of the form::
 
@@ -51,7 +51,8 @@ for an individual type, into chunks of size **no more** than 4096 bytes (4096
 is the size of a chunk *before* base64 encoding). All
 the chunks for a given type must be transmitted sequentially and only once they
 are done the chunks for the next type, if any, should be sent. The end of data
-is indicated by a ``status=DONE`` packet.
+is indicated by a ``status=DONE`` packet. base64 padding bytes are required at
+the end of every base64 encoded chunk when padding is needed.
 
 If an error occurs, instead of the opening ``status=OK`` packet the terminal
 must send a ``status=ERRORCODE`` packet. The error code must be one of:
