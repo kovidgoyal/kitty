@@ -330,7 +330,7 @@ _native_fc_match(FcPattern *pat, FontConfigFace *ans) {
     FcChar8 *out;
 #define g(func, prop, output) if (func(match, prop, 0, &output) != FcResultMatch) { PyErr_SetString(PyExc_ValueError, "No " #prop " found in fontconfig match result"); goto end; }
     g(FcPatternGetString, FC_FILE, out);
-    g(FcPatternGetInteger, FC_INDEX, ans->index);
+    if (FcPatternGetInteger(match, FC_INDEX, 0, &ans->index) != FcResultMatch) ans->index = 0;  // ignore missing index assume it is zero
     g(FcPatternGetInteger, FC_HINT_STYLE, ans->hintstyle);
     g(FcPatternGetBool, FC_HINTING, ans->hinting);
 #undef g
