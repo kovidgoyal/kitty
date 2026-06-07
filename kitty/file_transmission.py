@@ -1172,7 +1172,8 @@ class FileTransmission:
         window = boss.window_id_map.get(self.window_id)
         if window is not None:
             boss.confirm(_(
-                'The remote machine wants to read some files from this computer. Do you want to allow the transfer?'),
+                'The remote machine wants to read some files from this computer.'
+                ' Only allow transfers to computers you trust. Do you want to allow the transfer?'),
                 self.handle_receive_confirmation, asd_id, window=window,
             )
 
@@ -1202,7 +1203,8 @@ class FileTransmission:
         window = boss.window_id_map.get(self.window_id)
         if window is not None:
             boss.confirm(_(
-                'The remote machine wants to send some files to this computer. Do you want to allow the transfer?'),
+                'The remote machine wants to send some files to this computer.'
+                ' Only allow transfers from computers you trust. Do you want to allow the transfer?'),
                 self.handle_send_confirmation, ar_id, window=window,
             )
 
