@@ -190,6 +190,8 @@ Detailed list of changes
 
 - File transfer protocol: use O_NOFOLLOW when opening regular files
 
+- dnd kitten: Protect against drops from malicious sources
+
 
 0.47.1 [2026-05-28]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
