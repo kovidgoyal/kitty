@@ -77,7 +77,10 @@ choices=none,parent,all
 By default, this kitten will signal only the parent kitty instance it is
 running in to reload its config, after making changes. Use this option
 to instead either not reload the config at all or in all running
-kitty instances.
+kitty instances. Note that if you have config autoreload enabled
+in kitty.conf (it is enabled by default) then :code:`parent`
+is the same as :code:`all`, since all kitty instances will detect the config
+file change and reload automatically.
 
 
 --dump-theme
