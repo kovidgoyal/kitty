@@ -573,7 +573,7 @@ panel_defaults = {
     'edge': 'top', 'layer': 'bottom', 'override': '', 'cls': f'{appname}-panel',
     'focus_policy': 'not-allowed', 'exclusive_zone': '-1', 'override_exclusive_zone': 'no',
     'single_instance': 'no', 'instance_group': '', 'toggle_visibility': 'no',
-    'start_as_hidden': 'no', 'detach': 'no', 'detached_log': '',
+    'start_as_hidden': 'no', 'detach': 'no', 'detached_log': '', 'use_physical_screen_frame': 'no',
 }
 
 def build_panel_cli_spec(defaults: dict[str, str]) -> str:
@@ -645,6 +645,13 @@ On a Wayland compositor that supports the wlr layer shell protocol, specifies th
 on which the panel should be drawn. This parameter is ignored and set to
 :code:`background` if :option:`--edge` is set to :code:`background`. On macOS, maps
 these to appropriate NSWindow *levels*.
+
+
+--use-physical-screen-frame
+type=bool-set
+default={use_physical_screen_frame}
+On macOS, use the physical screen frame rather than the visible frame when placing the panel.
+This allows top overlay panels to draw over the native menu bar. Ignored on other platforms.
 
 
 --config -c

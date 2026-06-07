@@ -1642,6 +1642,7 @@ layer_shell_config_to_python(const GLFWLayerShellConfig *c) {
     A(requested_right_margin, fl);
     A(requested_exclusive_zone, fl);
     A(hide_on_focus_loss, b)
+    A(use_physical_screen_frame, b)
     A(override_exclusive_zone, b);
 #undef A
 #undef fl
@@ -1669,6 +1670,7 @@ layer_shell_config_from_python(PyObject *p, GLFWLayerShellConfig *ans) {
     A(requested_exclusive_zone, PyLong_Check, PyLong_AsLong);
     A(override_exclusive_zone, PyBool_Check, PyLong_AsLong);
     A(hide_on_focus_loss, PyBool_Check, PyLong_AsLong);
+    A(use_physical_screen_frame, PyBool_Check, PyLong_AsLong);
 #undef A
 #define A(attr) { \
     RAII_PyObject(attr, PyObject_GetAttrString(p, #attr)); if (attr == NULL) return false; \

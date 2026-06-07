@@ -94,6 +94,7 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
                             requested_exclusive_zone=opts.exclusive_zone,
                             override_exclusive_zone=opts.override_exclusive_zone,
                             hide_on_focus_loss=opts.hide_on_focus_loss,
+                            use_physical_screen_frame=opts.use_physical_screen_frame,
                             output_name=opts.output_name or '')
 
 
@@ -112,7 +113,8 @@ def cli_option_to_lsc_configs_map() -> MappingProxyType[str, tuple[str, ...]]:
         'focus_policy': ('focus_policy',),
         'exclusive_zone': ('requested_exclusive_zone',),
         'override_exclusive_zone': ('override_exclusive_zone',),
-        'hide_on_focus_loss': ('hide_on_focus_loss',)
+        'hide_on_focus_loss': ('hide_on_focus_loss',),
+        'use_physical_screen_frame': ('use_physical_screen_frame',)
     })
 
 
