@@ -173,6 +173,41 @@ class Selection(BaseTest):
             self.ae(face_from_descriptor(ff['medium']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
             self.ae(face_from_descriptor(ff['bold']).applied_features(), {'dlig': 'dlig', 'test': 'test=3'})
 
+    def test_synthetic_italic_matrix(self):
+        # A roman-only font that find_best_match finds (e.g. Fira Code, which ships
+        # no italic face) must get fontconfig's synthetic-italic FC_MATRIX
+        # (90-synthetic.conf) attached, so its italic renders slanted rather than
+        # upright; real-italic faces must not. The shear value is fontconfig's, not
+        # ours, so assert the invariant (a non-identity matrix is present), not the
+        # exact tuple, for cross-config stability.
+        if is_macos:
+            self.skipTest('synthetic-italic FC_MATRIX is a fontconfig feature')
+        from kitty.fonts.fontconfig import FC_MONO, fc_match
+        names = set(all_fonts_map(True)['family_map']) | set(all_fonts_map(True)['variable_map'])
+        if family_name_to_key('fira code') not in names:
+            self.skipTest('Fira Code not installed')
+        # Probe fc_match directly so we can tell "environment lacks the rule" (skip)
+        # from "code did not attach the matrix" (fail).
+        if fc_match('Fira Code', False, True, FC_MONO).get('matrix') is None:
+            self.skipTest('fontconfig 90-synthetic.conf not active; no synthetic-italic matrix')
+        opts = Options()
+        opts.font_family = parse_font_spec('Fira Code')
+        ff = get_font_files(opts)
+        self.assertIsNone(ff['medium'].get('matrix'))      # upright stays upright
+        mi = ff['italic'].get('matrix')
+        self.assertIsNotNone(mi)                            # roman, no italic -> sheared
+        self.assertNotEqual(mi[1], 0.0)                     # actually slanted, not identity
+        # Faces are built from a size-specialized descriptor at render time; the
+        # matrix must survive specialize_font_descriptor or the glyphs render
+        # upright despite the descriptor above being correct.
+        from kitty.fast_data_types import specialize_font_descriptor
+        sd = specialize_font_descriptor(dict(ff['italic']), 12.0, 96.0, 96.0)
+        self.ae(sd.get('matrix'), mi)
+        if family_name_to_key('liberation mono') in names:  # real-italic control
+            opts.font_family = parse_font_spec('Liberation Mono')
+            self.assertIsNone(get_font_files(opts)['italic'].get('matrix'))
+
+
 def block_helpers(s, sprites, cell_width, cell_height):
     mr = {}
     actual = b''
