@@ -539,12 +539,20 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
     glfwGetCursorPos(w, &x, &y);
     monotonic_t now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
-    global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
-    global_state.callback_os_window->mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
+    double new_mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
+    double new_mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
+    // focus_follows_mouse should react to the mouse moving, not to a window
+    // appearing under a stationary cursor (such as when returning to this
+    // desktop/space). Detect genuine motion by comparing against the last
+    // known cursor position so an enter caused by mouse motion still switches
+    // focus, while a stationary reappearance does not.
+    bool cursor_moved = new_mouse_x != global_state.callback_os_window->mouse_x || new_mouse_y != global_state.callback_os_window->mouse_y;
+    global_state.callback_os_window->mouse_x = new_mouse_x;
+    global_state.callback_os_window->mouse_y = new_mouse_y;
     if (entered) {
         debug_input("Mouse cursor entered window: %llu at %fx%f\n", global_state.callback_os_window->id, x, y);
         cursor_active_callback(now);
-        if (is_window_ready_for_callbacks()) enter_event(global_state.mods_at_last_key_or_button_event);
+        if (is_window_ready_for_callbacks()) enter_event(global_state.mods_at_last_key_or_button_event, cursor_moved);
     } else {
         debug_input("Mouse cursor left window: %llu\n", global_state.callback_os_window->id);
         if (is_window_ready_for_callbacks()) leave_event(global_state.mods_at_last_key_or_button_event);

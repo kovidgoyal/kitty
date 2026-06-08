@@ -178,6 +178,8 @@ Detailed list of changes
 
 - macOS: Show a key symbol on the active tab if the macOS Secure Input feature is enabled
 
+- Fix :opt:`focus_follows_mouse` switching the active window when returning to a desktop/space, even though the mouse did not move. Now the window under a stationary cursor is left alone, while moving the mouse across windows still switches focus as before.
+
 0.47.2 [2026-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
