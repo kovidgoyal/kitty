@@ -1413,6 +1413,12 @@ cocoa_clear_dock_badge_if_set(void) {
 // }}}
 
 static PyObject*
+cocoa_is_secure_input_enabled(PyObject *self UNUSED, PyObject *args UNUSED) {
+    SecureKeyboardEntryController *k = [SecureKeyboardEntryController sharedInstance];
+    return Py_NewRef(k.isDesired ? Py_True : Py_False);
+}
+
+static PyObject*
 cocoa_get_machine_id(PyObject *self UNUSED, PyObject *args UNUSED) {
     static char ans[1024] = {0};
     static bool done = false;
@@ -1439,6 +1445,7 @@ static PyMethodDef module_methods[] = {
     {"cocoa_play_system_sound_by_id_async", play_system_sound_by_id_async, METH_O, ""},
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_get_machine_id", (PyCFunction)cocoa_get_machine_id, METH_NOARGS, ""},
+    {"cocoa_is_secure_input_enabled", (PyCFunction)cocoa_is_secure_input_enabled, METH_NOARGS, ""},
     {"cocoa_set_global_shortcut", (PyCFunction)cocoa_set_global_shortcut, METH_VARARGS, ""},
     {"cocoa_send_notification", (PyCFunction)(void(*)(void))cocoa_send_notification, METH_VARARGS | METH_KEYWORDS, ""},
     {"cocoa_remove_delivered_notification", (PyCFunction)cocoa_remove_delivered_notification, METH_O, ""},

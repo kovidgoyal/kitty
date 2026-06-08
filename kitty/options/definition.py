@@ -1753,7 +1753,7 @@ A value of zero means that no limit is applied.
 '''
     )
 
-opt('tab_title_template', '"{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.tab}{tab.last_focused_progress_percent}{title}"',
+opt('tab_title_template', '"{fmt.fg.red}{bell_symbol}{activity_symbol}{secure_input_symbol}{fmt.fg.tab}{tab.last_focused_progress_percent}{title}"',
     option_type='tab_title_template',
     long_text='''
 A template to render the tab title. The default just renders the title with
@@ -1776,6 +1776,8 @@ use :code:`{sup.index}`. All data available is:
     The number of windows in the tab.
 :code:`num_window_groups`
     The number of window groups (a window group is a window and all of its overlay windows) in the tab.
+:code:`secure_input_symbol`
+    A key symbol when secure input is enabled on macOS and the tab is the active tab, empty otherwise.
 :code:`tab.active_wd`
     The working directory of the currently active window in the tab
     (expensive, requires syscall). Use :code:`tab.active_oldest_wd` to get

@@ -12,7 +12,7 @@ from typing import (
 )
 
 from .borders import Border, BorderColor
-from .constants import config_dir
+from .constants import config_dir, is_macos
 from .fast_data_types import (
     BOTTOM_EDGE,
     DECAWM,
@@ -35,6 +35,8 @@ from .types import WindowGeometry, run_once
 from .typing_compat import EdgeLiteral, PowerlineStyle
 from .utils import color_as_int, log_error, sgr_sanitizer_pat
 
+if is_macos:
+    from .fast_data_types import cocoa_is_secure_input_enabled  # type: ignore
 
 class TabBarData(NamedTuple):
     title: str
@@ -268,11 +270,13 @@ def apply_title_template(draw_data: DrawData, tab: TabBarData, index: int, max_t
     if tab.tab_id < 0:
         return tab.title  # synthetic tab — render title literally, skip user template
     ta = TabAccessor(tab.tab_id)
+    si = ('🔑' if cocoa_is_secure_input_enabled() else '') if is_macos and tab.is_active else ''
     data = {
         'index': index,
         'layout_name': tab.layout_name,
         'num_windows': tab.num_windows,
         'num_window_groups': tab.num_window_groups,
+        'secure_input_symbol': si,
         'title': tab.title,
         'tab': ta,
     }
