@@ -551,6 +551,8 @@ def color_control(cp: ColorProfile, code: int, value: str | bytes | memoryview =
     if isinstance(value, (bytes, memoryview)):
         value = str(value, 'utf-8', 'replace')
     responses: dict[str, str] = {}
+    # Only printable ASCII payload allowed as it is echoed back
+    value = re.sub(r'[^ -~]', '', value)
     for rec in value.split(';'):
         key, sep, val = rec.partition('=')
         if key.startswith('transparent_background_color'):
