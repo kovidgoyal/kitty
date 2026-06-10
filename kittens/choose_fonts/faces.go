@@ -52,6 +52,9 @@ func (self *faces) draw_screen() (err error) {
 	previews, found := self.preview_cache[key]
 	if !found {
 		self.preview_cache[key] = make(map[string]RenderedSampleTransmit)
+		if self.handler.text_style.Foreground == "" || self.handler.text_style.Background == "" {
+			return
+		}
 		go func() {
 			var r map[string]RenderedSampleTransmit
 			s := key.settings

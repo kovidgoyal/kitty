@@ -139,9 +139,14 @@ func (h *handler) on_query_response(key, val string, valid bool) error {
 		}
 	case "foreground":
 		h.text_style.Foreground = val
+		if h.text_style.Background != "" {
+			return h.draw_screen()
+		}
 	case "background":
 		h.text_style.Background = val
-		return h.draw_screen()
+		if h.text_style.Foreground != "" {
+			return h.draw_screen()
+		}
 	}
 	return nil
 }
