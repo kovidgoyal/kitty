@@ -122,7 +122,7 @@ func (self *FontList) draw_family_summary(start_x int, sz loop.ScreenSize) (err 
 		lp.QueueWriteString(line)
 		y++
 	}
-	if self.handler.text_style.Background != "" {
+	if self.handler.text_style.Foreground != "" && self.handler.text_style.Background != "" {
 		return self.draw_preview(start_x, y, sz)
 	}
 	return
