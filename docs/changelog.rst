@@ -180,6 +180,8 @@ Detailed list of changes
 
 - Fix regression that broke unserialization of splits layout in previous release (:iss:`10124`)
 
+- Fix :opt:`focus_follows_mouse` switching the active window when returning to a desktop/space, even though the mouse did not move. Now the window under a stationary cursor is left alone, while moving the mouse across windows still switches focus as before.
+
 0.47.2 [2026-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
