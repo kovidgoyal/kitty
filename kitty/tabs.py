@@ -1732,6 +1732,9 @@ class TabManager:  # {{{
         if (td := self.tab_being_dropped) is None:
             return
         if (tab := get_boss().tab_for_id(td.data.tab_id)) is None:
+            self.tab_being_dropped = None
+            set_tab_being_dragged()
+            self.layout_tab_bar()
             return
         if not bypass_move:
             self.on_tab_drop_move(td.data.tab_id, True, x, y)
@@ -1779,7 +1782,12 @@ class TabManager:  # {{{
                 drag_data = {
                     f'application/net.kovidgoyal.kitty-tab-{os.getpid()}': str(tab.id).encode(),
                 }
-                start_drag_with_data(self.os_window_id, drag_data, thumbnails)
+                try:
+                    start_drag_with_data(self.os_window_id, drag_data, thumbnails)
+                except OSError as e:
+                    log_error(f'Failed to start tab drag: {e}')
+                    set_tab_being_dragged()
+                    self.mark_tab_bar_dirty()  # re-render the tab bar in case it was drawn without the dragged tab
                 break
         else:
             set_tab_being_dragged()
@@ -1797,16 +1805,21 @@ class TabManager:  # {{{
 
         tab_id_at_x = self.tab_bar.tab_id_at(int(x))
         self.recent_tab_bar_mouse_events.add(button, modifiers, action, x, y, tab_id_at_x)
+        drag_started = get_tab_being_dragged()[1]
+        is_left_release = button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_RELEASE
         if tab_id_at_x < 0:  # synthetic tab (e.g. "+" new-tab button)
+            if is_left_release and not drag_started:
+                set_tab_being_dragged()  # clear potential drag from a press on a tab
             if self.recent_tab_bar_mouse_events.click_count(GLFW_MOUSE_BUTTON_LEFT) == 1:
                 self.new_tab()
                 self.recent_tab_bar_mouse_events.clear()
             return
-        drag_started = get_tab_being_dragged()[1]
         if drag_started:
             return
         tab = self.tab_for_id(tab_id_at_x)
         if tab is None:
+            if is_left_release:
+                set_tab_being_dragged()  # clear potential drag from a press on a tab
             if self.recent_tab_bar_mouse_events.click_count(GLFW_MOUSE_BUTTON_LEFT) == 2:
                 self.new_tab()
                 self.recent_tab_bar_mouse_events.clear()

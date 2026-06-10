@@ -102,6 +102,11 @@ pointerHandleEnter(
 
 static void
 pointerHandleLeave(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_t serial, struct wl_surface* surface) {
+    // The pointer never leaves the surface during an implicit grab, so a
+    // leave event means any implicit grab is over (e.g. the compositor took
+    // over the pointer for drag-and-drop). The matching button releases will
+    // never be delivered to us.
+    _glfw.wl.pointer_button_count = 0;
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;
     _glfw.wl.serial = serial;
@@ -138,6 +143,9 @@ static void pointerHandleButton(void* data UNUSED,
 {
     glfw_cancel_momentum_scroll();
     _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.pointer_serial = serial;
+    if (state == WL_POINTER_BUTTON_STATE_PRESSED) {
+        if (_glfw.wl.pointer_button_count++ == 0) _glfw.wl.pointer_grab_serial = serial;
+    } else if (_glfw.wl.pointer_button_count > 0) _glfw.wl.pointer_button_count--;
 
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;

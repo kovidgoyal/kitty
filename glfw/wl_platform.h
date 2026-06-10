@@ -374,6 +374,12 @@ typedef struct _GLFWlibraryWayland
     struct wl_surface*          cursorSurface;
     GLFWCursorShape             cursorPreviousShape;
     uint32_t                    serial, input_serial, pointer_serial, pointer_enter_serial, keyboard_enter_serial;
+    // serial of the button press that started the current pointer implicit
+    // grab, and the number of currently pressed pointer buttons. Requests
+    // such as wl_data_device.start_drag are silently ignored by compositors
+    // unless made with the serial of an active implicit grab.
+    uint32_t                    pointer_grab_serial;
+    unsigned                    pointer_button_count;
 
     int32_t                     keyboardRepeatRate;
     monotonic_t                 keyboardRepeatDelay;

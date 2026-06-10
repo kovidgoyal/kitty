@@ -2046,8 +2046,9 @@ class Boss:
                             self._move_window_to(window, target_os_window_id='new')
             return
         if (tab_id := int((data or {}).get(f'application/net.kovidgoyal.kitty-tab-{os.getpid()}', b'0').decode())
-        ) and get_tab_being_dragged()[0] == tab_id and (tab := self.tab_for_id(tab_id)):
-            if needs_toplevel_on_wayland:
+        ) and get_tab_being_dragged()[0] == tab_id:
+            tab = self.tab_for_id(tab_id)
+            if tab is not None and needs_toplevel_on_wayland:
                 for tm in self.all_tab_managers:
                     if tm.tab_being_dropped:
                         tm.on_tab_drop(0, 0, bypass_move=True)
@@ -2055,7 +2056,7 @@ class Boss:
             set_tab_being_dragged()
             for tm in self.all_tab_managers:
                 tm.on_tab_drop_move()
-            if was_dropped:  # detach tab into new OS Window
+            if was_dropped and tab is not None:  # detach tab into new OS Window
                 self._move_tab_to(tab)
 
     @ac('win', '''
