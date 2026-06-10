@@ -564,10 +564,13 @@ class SplitsLayoutOpts(LayoutOpts):
             self.default_axis_is_horizontal = None
         else:
             self.default_axis_is_horizontal = q == 'horizontal'
-        self.equalize_on_close = to_bool(data.get('equalize_on_close', 'false'))
+        self.equalize_on_close = to_bool(data.get('equalize_on_window_close', 'n'))
 
-    def serialized(self) -> dict[str, Any]:
-        return {'default_axis_is_horizontal': self.default_axis_is_horizontal, 'equalize_on_close': self.equalize_on_close}
+    def serialized(self) -> dict[str, str]:
+        return {
+            'split_axis': 'auto' if self.default_axis_is_horizontal is None else ('horizontal' if self.default_axis_is_horizontal else 'vertical'),
+            'equalize_on_window_close': 'y' if self.equalize_on_close else 'n',
+        }
 
 
 class Splits(Layout):

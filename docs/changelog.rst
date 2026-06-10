@@ -178,6 +178,8 @@ Detailed list of changes
 
 - macOS: Show a key symbol on the active tab if the macOS Secure Input feature is enabled
 
+- Fix regression that broke unserialization of splits layout in previous release (:iss:`10124`)
+
 0.47.2 [2026-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
