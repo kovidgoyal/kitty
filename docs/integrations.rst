@@ -70,6 +70,11 @@ kitty graphics protocol.
 Markdown viewer that can render big headers with the text-sizing-protocol, and
 also render images with the kitty graphics protocol.
 
+`kmv <https://github.com/parf/Kitty-Markdown-Viewer>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Markdown viewer that can render big headers with the text-sizing-protocol, and
+also render images with the kitty graphics protocol.
+
 .. _tool_term_image:
 
 `term-image <https://github.com/AnonymouX47/term-image>`__
