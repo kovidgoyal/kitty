@@ -419,9 +419,15 @@ class TestLayout(BaseTest):
         self.assertAlmostEqual(root.bias, 0.5, places=5)    # w1 vs right column: 1:1
         self.assertAlmostEqual(inner1.bias, 0.5, places=5)  # w2 vs w3 top/bottom: 1:1
 
+    def test_layout_opts_serialization(self):
+        opts = SplitsLayoutOpts({})
+        s = opts.serialized()
+        self.ae(s, SplitsLayoutOpts(s).serialized())
+
     def test_splits_equalize_on_close(self):
         q = create_layout(Splits)
-        q.layout_opts = SplitsLayoutOpts({'equalize_on_close': 'true'})
+        q.layout_opts = SplitsLayoutOpts({})
+        q.layout_opts.equalize_on_close = True
         all_windows = create_windows(q, num=0)
         w1, w2, w3 = Window(1), Window(2), Window(3)
         q.add_window(all_windows, w1)
