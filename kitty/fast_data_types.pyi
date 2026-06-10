@@ -423,7 +423,7 @@ class FontConfigPattern(TypedDict):
     scalable: bool
     outline: bool
     color: bool
-    matrix: tuple[float, float, float, float]
+    matrix: NotRequired[tuple[float, float, float, float]]
     variable: bool
     named_instance: bool
 
