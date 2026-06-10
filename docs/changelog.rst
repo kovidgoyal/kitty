@@ -184,6 +184,8 @@ Detailed list of changes
 
 - Sanitise responses to color control escape codes to avoid command injection for shells that dont use the kitty keyboard protocol
 
+- choose fonts kitten: Fix a rare timing based race causing kitten to crash at startup (:pull:`10128`)
+
 0.47.2 [2026-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
