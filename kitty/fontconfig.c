@@ -458,6 +458,10 @@ specialize_font_descriptor(PyObject *base_descriptor, double font_sz_in_pts, dou
     if (axes) {
         if (PyDict_SetItemString(ans, "axes", axes) != 0) return NULL;
     }
+    PyObject *matrix = PyDict_GetItemString(base_descriptor, "matrix");
+    if (matrix) {
+        if (PyDict_SetItemString(ans, "matrix", matrix) != 0) return NULL;
+    }
     PyObject *ff = PyDict_GetItemString(ans, "fontfeatures");
     if (ff && PyList_GET_SIZE(ff)) {
         for (Py_ssize_t i = 0; i < PyList_GET_SIZE(ff); i++) {
