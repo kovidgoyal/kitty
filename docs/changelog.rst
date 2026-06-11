@@ -186,6 +186,7 @@ Detailed list of changes
 
 - choose fonts kitten: Fix a rare timing based race causing kitten to crash at startup (:pull:`10128`)
 
+
 0.47.2 [2026-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
