@@ -2698,12 +2698,10 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
             // See: https://stackoverflow.com/questions/4982584/how-do-i-draw-the-desktop-on-mac-os-x/4982619#4982619
             level = kCGDesktopWindowLevel;
             break;
+        case GLFW_LAYER_SHELL_DESKTOP_SHELL: level = kCGBackstopMenuLevel; break;
         case GLFW_LAYER_SHELL_OVERLAY: case GLFW_LAYER_SHELL_NONE: break;
         case GLFW_LAYER_SHELL_PANEL: level = NSNormalWindowLevel - 1; break;
         case GLFW_LAYER_SHELL_TOP: level--; break;
-    }
-    if (config.use_physical_screen_frame && config.type == GLFW_LAYER_SHELL_OVERLAY && config.edge == GLFW_EDGE_TOP) {
-        level = NSMainMenuWindowLevel + 1;
     }
     if (config.type != GLFW_LAYER_SHELL_BACKGROUND && config.edge != GLFW_EDGE_CENTER) {
         double panel_height = spacing_y + ysz / yscale, panel_width = spacing_x + xsz / xscale;
