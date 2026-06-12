@@ -1616,18 +1616,22 @@ agr('tabbar', 'Tab bar')
 
 opt('tab_bar_edge', 'bottom',
     option_type='tab_bar_edge', ctype='int',
-    long_text='The edge to show the tab bar on, :code:`top` or :code:`bottom`.'
+    long_text='The edge to show the tab bar on, :code:`top`, :code:`bottom`, :code:`left` or :code:`right`.'
     )
 
 opt('tab_bar_margin_width', '0.0',
     option_type='positive_float',
-    long_text='The margin to the left and right of the tab bar (in pts).'
+    long_text='''
+The margin perpendicular to the tab bar edge (in pts). For tab bars on the
+top or bottom this is the margin to the left and right. For tab bars on the
+left or right this is the margin above and below.
+'''
     )
 
 opt('tab_bar_margin_height', '0.0 0.0',
     option_type='tab_bar_margin_height', ctype='!tab_bar_margin_height',
     long_text='''
-The margin above and below the tab bar (in pts). The first number is the margin
+The margin along the tab bar edge (in pts). The first number is the margin
 between the edge of the OS Window and the tab bar. The second number is the
 margin between the tab bar and the contents of the current tab.
 '''
@@ -1675,11 +1679,12 @@ tab navigation actions such as :ac:`goto_tab`, :ac:`next_tab`, :ac:`previous_tab
 are automatically restricted to work only on matching tabs.
 ''')
 
-opt('tab_bar_align', 'left',
-    choices=('left', 'center', 'right'),
+opt('tab_bar_align', 'start',
+    choices=('start', 'center', 'end', 'left', 'right'),
     long_text='''
-The horizontal alignment of the tab bar, can be one of: :code:`left`,
-:code:`center`, :code:`right`.
+The alignment of the tab bar, can be one of: :code:`start`, :code:`center`,
+:code:`end`, :code:`left`, :code:`right`. The values :code:`left` and
+:code:`right` are aliases for :code:`start` and :code:`end` respectively.
 '''
     )
 
@@ -1746,10 +1751,12 @@ this is rendered.
     )
 
 opt('tab_title_max_length', '0',
-    option_type='positive_int',
+    option_type='positive_int', ctype='int',
     long_text='''
 The maximum number of cells that can be used to render the text in a tab.
-A value of zero means that no limit is applied.
+A value of zero means that no limit is applied. For vertical tab bars, kitty
+uses a default sidebar width sized for about twenty title cells when this is
+left unset.
 '''
     )
 
