@@ -173,7 +173,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.50.0 [future]
+0.47.3 [2026-06-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - macOS: Show a key symbol on the active tab if the macOS Secure Input feature is enabled
