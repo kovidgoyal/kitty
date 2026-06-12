@@ -2561,6 +2561,8 @@ update_drop_source_actions(_GLFWwindow *window, _GLFWWaylandDataOffer *offer) {
 static void
 drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
     debug_input("Drop entered\n");
+    // an enter for a drag we started means the DND session is live
+    _glfwWaylandConfirmDragSession();
     _GLFWWaylandDataOffer *offer = &_glfw.wl.drop_data_offer;
     mark_data_offer(offer, id);
     if (!offer->id) return;
@@ -3164,9 +3166,7 @@ GLFWAPI bool glfwWaylandBeep(GLFWwindow *handle) {
 // Drag source {{{
 
 static void
-drag_toplevel_xdg_surface_configure(void *data UNUSED, struct xdg_surface *surface, uint32_t serial) {
-    debug_input("Drag toplevel surface configured\n");
-    xdg_surface_ack_configure(surface, serial);
+map_drag_toplevel(void) {
     struct wl_buffer *buf = _glfw.wl.drag.toplevel_buffer;
     if (buf) {
         wl_surface_attach(_glfw.wl.drag.drag_icon, buf, 0, 0);
@@ -3176,6 +3176,23 @@ drag_toplevel_xdg_surface_configure(void *data UNUSED, struct xdg_surface *surfa
     }
     if (_glfw.wl.drag.drag_icon) wl_surface_commit(_glfw.wl.drag.drag_icon);
     if (buf) wl_buffer_destroy(buf);
+}
+
+static void
+drag_toplevel_xdg_surface_configure(void *data UNUSED, struct xdg_surface *surface, uint32_t serial) {
+    debug_input("Drag toplevel surface configured\n");
+    xdg_surface_ack_configure(surface, serial);
+    if (_glfw.wl.drag.start_confirmation && !_glfw.wl.drag.session_confirmed) {
+        // The compositor has not yet proven that it accepted start_drag. If
+        // it silently ignored it (stale implicit grab serial), committing a
+        // buffer now would map the toplevel as a stray regular window that
+        // nothing ever destroys. Defer mapping until the session is
+        // confirmed; if it never is, the toplevel is destroyed unmapped.
+        debug_input("Deferring drag toplevel map until drag session is confirmed\n");
+        _glfw.wl.drag.toplevel_map_deferred = true;
+        return;
+    }
+    map_drag_toplevel();
 }
 
 static const struct xdg_surface_listener drag_toplevel_xdg_surface_listener = {
@@ -3212,6 +3229,46 @@ cancel_drag2(GLFWDragEventType type, bool maybe_a_cancel) {
 }
 
 static void cancel_drag(GLFWDragEventType type) { cancel_drag2(type, false); }
+
+void
+_glfwWaylandConfirmDragSession(void) {
+    // Called on receipt of any compositor event that can only happen when a
+    // DND session is actually live: the start_drag was not silently dropped.
+    if (!_glfw.wl.drag.source || _glfw.wl.drag.session_confirmed) return;
+    _glfw.wl.drag.session_confirmed = true;
+    debug_input("Drag session confirmed as started by compositor\n");
+    if (_glfw.wl.drag.toplevel_map_deferred) {
+        _glfw.wl.drag.toplevel_map_deferred = false;
+        map_drag_toplevel();
+    }
+}
+
+static void
+drag_start_confirmation_handle_done(void *data UNUSED, struct wl_callback *callback, uint32_t cb_data UNUSED) {
+    if (callback != _glfw.wl.drag.start_confirmation) {
+        // stale callback from a drag that was already cleaned up
+        wl_callback_destroy(callback);
+        return;
+    }
+    _glfw.wl.drag.start_confirmation = NULL;
+    wl_callback_destroy(callback);
+    if (!_glfw.wl.drag.session_confirmed) {
+        // The compositor processed start_drag before this sync callback, and
+        // an accepted start_drag synchronously produces events (pointer
+        // leave, data device enter, data source events) that are ordered
+        // before it. None arrived, so the compositor silently ignored
+        // start_drag (no active implicit grab matching the serial). Without
+        // this, the data source would never receive any event, leaking the
+        // drag state forever and orphaning the drag toplevel as a stray
+        // window.
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: start_drag was silently ignored by the compositor, cancelling drag");
+        cancel_drag(GLFW_DRAG_CANCELLED);
+    }
+}
+
+static const struct wl_callback_listener drag_start_confirmation_listener = {
+    .done = drag_start_confirmation_handle_done,
+};
 
 #define dr _glfw.wl.drag.data_requests[i]
 
@@ -3387,6 +3444,7 @@ drag_source_send(void *data UNUSED, struct wl_data_source *source UNUSED, const 
 static void
 drag_source_target(void *data UNUSED, struct wl_data_source *source UNUSED, const char *mime_type) {
     debug_input("Drag source accepted MIME type: %s\n", mime_type);
+    _glfwWaylandConfirmDragSession();
     _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
     if (window) {
         GLFWDragEvent ev = {.type=GLFW_DRAG_ACCEPTED, .mime_type=mime_type};
@@ -3397,6 +3455,7 @@ drag_source_target(void *data UNUSED, struct wl_data_source *source UNUSED, cons
 static void
 drag_source_action(void *data UNUSED, struct wl_data_source *source UNUSED, uint32_t dnd_action) {
     debug_input("Drag source action changed: %d\n", dnd_action);
+    _glfwWaylandConfirmDragSession();
     _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
     if (window) {
         GLFWDragOperationType op = GLFW_DRAG_OPERATION_GENERIC;
@@ -3414,6 +3473,7 @@ drag_source_action(void *data UNUSED, struct wl_data_source *source UNUSED, uint
 static void
 drag_source_dnd_drop_performed(void *data UNUSED, struct wl_data_source *source UNUSED) {
     debug_input("Drag source drop performed\n");
+    _glfwWaylandConfirmDragSession();
     _GLFWwindow *window = _glfwWindowForId(_glfw.drag.window_id);
     if (window) {
         GLFWDragEvent ev = {.type=GLFW_DRAG_DROPPED};
@@ -3465,6 +3525,7 @@ _glfwPlatformCancelDrag(_GLFWwindow* window UNUSED) {
 
 void
 _glfwPlatformFreeDragSourceData(void) {
+    if (_glfw.wl.drag.start_confirmation) wl_callback_destroy(_glfw.wl.drag.start_confirmation);
     if (_glfw.wl.drag.drag_viewport) wp_viewport_destroy(_glfw.wl.drag.drag_viewport);
     if (_glfw.wl.drag.toplevel_drag) xdg_toplevel_drag_v1_destroy(_glfw.wl.drag.toplevel_drag);
     if (_glfw.wl.drag.toplevel_buffer) wl_buffer_destroy(_glfw.wl.drag.toplevel_buffer);
@@ -3593,6 +3654,17 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
     }
 
     if (icon_buffer) wl_buffer_destroy(icon_buffer);
+
+    // The pointer_button_count check above uses the client side view of the
+    // implicit grab, which can be stale: the button may already be released
+    // with the release event still in flight, in which case the compositor
+    // silently ignores start_drag and the data source never receives any
+    // event. Detect that with a sync: an accepted start_drag synchronously
+    // produces events ordered before the sync callback.
+    _glfw.wl.drag.session_confirmed = false;
+    _glfw.wl.drag.start_confirmation = wl_display_sync(_glfw.wl.display);
+    if (_glfw.wl.drag.start_confirmation)
+        wl_callback_add_listener(_glfw.wl.drag.start_confirmation, &drag_start_confirmation_listener, NULL);
 
     return 0;
 }

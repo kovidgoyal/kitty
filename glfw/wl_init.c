@@ -107,6 +107,9 @@ pointerHandleLeave(void* data UNUSED, struct wl_pointer* pointer UNUSED, uint32_
     // over the pointer for drag-and-drop). The matching button releases will
     // never be delivered to us.
     _glfw.wl.pointer_button_count = 0;
+    // A DND grab taking over the pointer sends a leave, making this the
+    // earliest proof that a just requested start_drag was accepted.
+    _glfwWaylandConfirmDragSession();
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     if (!window) return;
     _glfw.wl.serial = serial;
