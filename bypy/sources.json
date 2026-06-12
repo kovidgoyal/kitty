@@ -78,11 +78,11 @@
     },
 
     {
-        "name": "sqlite 3.53.0",
+        "name": "sqlite 3.53.2",
         "unix": {
             "file_extension": "tar.gz",
-            "hash": "sha256:851e9b38192fe2ceaa65e0baa665e7fa06230c3d9bd1a6a9662d02380d73365a",
-            "urls": ["https://www.sqlite.org/2026/{name}-autoconf-3530000.{file_extension}"]
+            "hash": "sha256:588ad51949419a56ebe81fe56193d510c559eb94c9a57748387860b5d3069316",
+            "urls": ["https://www.sqlite.org/2026/{name}-autoconf-3530200.{file_extension}"]
         }
     },
 
