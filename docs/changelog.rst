@@ -182,7 +182,7 @@ Detailed list of changes
 
 - Fix :opt:`focus_follows_mouse` switching the active window when returning to a desktop/space, even though the mouse did not move. Now the window under a stationary cursor is left alone, while moving the mouse across windows still switches focus as before.
 
-- Sanitise responses to color control escape codes to avoid command injection for shells that dont use the kitty keyboard protocol
+- Sanitise responses to color control escape codes to avoid command injection for shells that do not use the kitty keyboard protocol (:cve:`2026-54057`)
 
 - choose fonts kitten: Fix a rare timing based race causing kitten to crash at startup (:pull:`10128`)
 
@@ -202,9 +202,9 @@ Detailed list of changes
 
 - When watching for changed config files do not recursively watch all sub directories of the directory containing the config file (:iss:`10102`)
 
-- File transfer protocol: use O_NOFOLLOW when opening regular files
+- File transfer protocol: use O_NOFOLLOW when opening regular files (:cve:`2026-54055`)
 
-- dnd kitten: Protect against drops from malicious sources
+- dnd kitten: Protect against drops from malicious sources (:cve:`2026-54056`)
 
 
 0.47.1 [2026-05-28]
