@@ -957,6 +957,19 @@ static void
 handle_tab_bar_mouse(int button, int modifiers, int action) {
     set_currently_hovered_window(0, modifiers, false);
     OSWindow *w = global_state.callback_os_window;
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_RELEASE && global_state.tab_being_dragged.id
+            && global_state.tab_being_dragged.drag_started && !global_state.drag_source.is_active) {
+        // Once a system drag and drop is active the release is consumed by it
+        // and never delivered to us, so getting one here means the drag never
+        // became a system DND: either glfwStartDrag failed/was not called yet
+        // or the compositor silently ignored it (Wayland with a stale serial).
+        // Clear the drag state so mouse handling is not redirected to the tab
+        // bar forever, and swallow the release as it ended an aborted drag.
+        zero_at_ptr(&global_state.tab_being_dragged);
+        // re-render the tab bar in case it was drawn without the dragged tab
+        if (w) w->tab_bar_data_updated = false;
+        return;
+    }
     // dont report motion events, as they are expensive and useless
     if (w && (button > -1 || global_state.tab_being_dragged.id)) {
         call_boss(handle_tab_bar_mouse, "Kddiii", w->id, w->mouse_x, w->mouse_y, button, modifiers, action);
