@@ -186,6 +186,8 @@ Detailed list of changes
 
 - choose fonts kitten: Fix a rare timing based race causing kitten to crash at startup (:pull:`10128`)
 
+- Wayland: Fix mouse input getting broken when starting a tab drag and releasing the mouse button before the drag is actually registered (:pull:`10136`)
+
 
 0.47.2 [2026-06-07]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
