@@ -173,6 +173,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.50.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Linux: Allow fake italics defined via a matrix in fontconfig settings to work for fonts like Fira Code that do not ship with an italic face (:pull:`10120`)
+
 0.47.3 [2026-06-12]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
