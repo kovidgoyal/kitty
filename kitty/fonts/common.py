@@ -401,7 +401,38 @@ def get_font_files(opts: Options) -> FontFiles:
             font = medium_font
         key = kd[(bold, italic)]
         ans[key] = font
-    return {'medium': ans['medium'], 'bold': ans['bold'], 'italic': ans['italic'], 'bi': ans['bi']}
+
+    def apply_synthetic_matrix(font: Descriptor, bold: bool, italic: bool) -> Descriptor:
+        # fontconfig's FcFontList (used by find_best_match) omits FC_MATRIX from
+        # its object set, so a roman font found there carries no synthetic-italic
+        # shear and its "italic" renders upright. Fira Code is the case (it ships
+        # no italic), in both its static and variable builds. The italic intent
+        # exists only here at selection finalize, not at face construction, so
+        # recover the matrix now: for an italic slot whose chosen face is upright
+        # (no slant) and has no matrix yet, ask fc_match what fontconfig would do.
+        # fc_match returns a synthetic matrix only when there is no real italic to
+        # use (no italic face and no slanted named instance or variable slant
+        # axis); when a real italic exists it returns no matrix, so a font that is
+        # already italic, static or variable, is never double-slanted. Face construction applies the matrix
+        # via FT_Set_Transform; specialize_font_descriptor preserves it when the
+        # descriptor is sized for rendering. Only the matrix is taken, so
+        # selection is unchanged. Covers the four configured faces; fc_match
+        # re-matches by family name (see commit message).
+        if (italic and font['descriptor_type'] == 'fontconfig'
+                and not font.get('matrix') and not font.get('slant')):
+            from kitty.fast_data_types import FC_MONO
+            from kitty.fonts.fontconfig import fc_match
+            mtx = fc_match(font['family'], bold, italic, FC_MONO if is_monospace(font) else -1).get('matrix')
+            if mtx:
+                new_font = font.copy()
+                new_font['matrix'] = mtx
+                return new_font
+        return font
+    return {
+        'medium': ans['medium'], 'bold': ans['bold'],
+        'italic': apply_synthetic_matrix(ans['italic'], False, True),
+        'bi': apply_synthetic_matrix(ans['bi'], True, True),
+    }
 
 
 def axis_values_are_equal(defaults: dict[str, float], a: dict[str, float], b: dict[str, float]) -> bool:
