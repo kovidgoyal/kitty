@@ -173,8 +173,10 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.50.0 [future]
+0.47.4 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Linux: Fix a regression in the previous release that broke rendering of bitmap color fonts (:pull:`10145`)
 
 - Linux: Allow fake italics defined via a matrix in fontconfig settings to work for fonts like Fira Code that do not ship with an italic face (:pull:`10120`)
 
