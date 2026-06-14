@@ -390,6 +390,30 @@ class Rendering(FontBaseTest):
             self.assertGreater(w, 64)
             self.assertGreater(h, 64)
 
+    def test_color_emoji_not_shrunk(self):
+        # Regression test for https://github.com/kovidgoyal/kitty/issues/10144.
+        # fontconfig encodes the pixel-size fixup of fixed-size color faces (such
+        # as Noto Color Emoji, a ~109px bitmap strike) as FC_MATRIX. That scale
+        # must not reach the cairo font matrix, where glyph size is owned by
+        # cairo_set_font_size() + fit_cairo_glyph(); applying it there shrinks the
+        # glyph by the fixup factor (requested_px / strike_px), and fit_cairo_glyph()
+        # only shrinks so it never grows it back (ee937bdd1b). The shrink ranges
+        # from ~9x at tiny cells to ~1x near the strike; at 48pt/96dpi (~64px) the
+        # bug gives ~0.28 coverage versus ~0.84 when correct.
+        if is_macos:
+            self.skipTest('this is a fontconfig FC_MATRIX issue, not present on macOS')
+        from kitty.fonts.fontconfig import fc_match
+        emoji = fc_match('emoji', False, False, 0)
+        if not (emoji.get('color') and emoji.get('matrix')):
+            # Only a fixed-size color face that fontconfig gives a fixup matrix can
+            # trigger this. A scalable COLR emoji font has none, so a pass there
+            # would be a false negative rather than a real check.
+            self.skipTest('no fixed-size color emoji font with a fontconfig fixup matrix')
+        cells = render_string('\U0001F40D', 'monospace', 48.0, 96.0)[2]
+        pixels = array.array('I', b''.join(cells))
+        coverage = sum(1 for p in pixels if p) / max(len(pixels), 1)
+        self.assertGreater(coverage, 0.5, f'color emoji coverage {coverage:.2f} too low, likely shrunk (#10144)')
+
     def test_shaping(self):
 
         def ss(text, font=None):
