@@ -878,18 +878,26 @@ apply_cairo_font_size(Face *self, unsigned sz_px) {
     // on self->face in face_from_descriptor. cairo owns FT_Set_Transform on
     // its face and derives it from the font matrix on every render
     // (_cairo_ft_unscaled_font_set_scale in cairo-ft-font.c), so the only
-    // channel that reaches glyph rasterization is the cairo font matrix
-    // itself. Encode FC_MATRIX there.
-    // FT_Matrix is xx,xy,yx,yy (row-major); cairo_matrix_init takes
-    // xx,yx,xy,yy. Same matrix, transposed argument order.
-    if (!self->has_matrix) { cairo_set_font_size(self->cairo.cr, sz_px); return; }
+    // channel that reaches glyph rasterization is the cairo font matrix.
+    //
+    // FC_MATRIX is overloaded. Besides synthetic slant, fontconfig also encodes
+    // the pixel size fixup of fixed-size faces here, as a pure diagonal scale
+    // (Noto Color Emoji is matched with [0.1147 0; 0 0.1147]). The color path
+    // already sizes glyphs with cairo_set_font_size() + fit_cairo_glyph(), and
+    // fit_cairo_glyph() only shrinks, so feeding the fixup scale in here shrinks
+    // color emoji with no way to recover (#10144). Honor only the shear that
+    // carries synthetic slant and leave the size to cairo_set_font_size().
+    if (!self->has_matrix || self->matrix.xx == 0 || self->matrix.yy == 0) {
+        cairo_set_font_size(self->cairo.cr, sz_px); return;
+    }
+    double shear_xy = (double)self->matrix.xy / (double)self->matrix.xx;
+    double shear_yx = (double)self->matrix.yx / (double)self->matrix.yy;
+    if (shear_xy == 0 && shear_yx == 0) { cairo_set_font_size(self->cairo.cr, sz_px); return; }
+    // FT_Matrix is xx,xy,yx,yy (row-major); cairo_matrix_init takes xx,yx,xy,yy.
+    // The diagonal is unit scale (size is handled above); apply only the shear.
     double s = (double)sz_px;
-    double xx = self->matrix.xx / 65536.0;
-    double xy = self->matrix.xy / 65536.0;
-    double yx = self->matrix.yx / 65536.0;
-    double yy = self->matrix.yy / 65536.0;
     cairo_matrix_t m;
-    cairo_matrix_init(&m, xx * s, yx * s, xy * s, yy * s, 0, 0);
+    cairo_matrix_init(&m, s, shear_yx * s, shear_xy * s, s, 0, 0);
     cairo_set_font_matrix(self->cairo.cr, &m);
 }
 
