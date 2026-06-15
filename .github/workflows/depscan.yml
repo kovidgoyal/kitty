@@ -22,13 +22,13 @@ jobs:
             KITTY_BUNDLE: 1
         steps:
           - name: Checkout source code
-            uses: actions/checkout@v6.0.2
+            uses: actions/checkout@v6.0.3
             with:
               fetch-depth: 10
               persist-credentials: false
 
           - name: Checkout bypy
-            uses: actions/checkout@v6.0.2
+            uses: actions/checkout@v6.0.3
             with:
               fetch-depth: 1
               persist-credentials: false
