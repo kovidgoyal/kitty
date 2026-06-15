@@ -2023,6 +2023,10 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (void)insertText:(id)string replacementRange:(NSRange)replacementRange
 {
+    if (!string) {
+        debug_input("\n\tinsertText: nil replacementRange: (%lu, %lu)\n", replacementRange.location, replacementRange.length);
+        return;
+    }
     const char *utf8 = polymorphic_string_as_utf8(string);
     debug_input("\n\tinsertText: %s replacementRange: (%lu, %lu)\n", utf8, replacementRange.location, replacementRange.length);
     if ([self hasMarkedText] && !is_ascii_control_char(utf8[0])) {
