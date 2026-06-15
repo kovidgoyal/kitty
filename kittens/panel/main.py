@@ -26,6 +26,7 @@ from kitty.fast_data_types import (
     GLFW_LAYER_SHELL_BACKGROUND,
     GLFW_LAYER_SHELL_OVERLAY,
     GLFW_LAYER_SHELL_PANEL,
+    GLFW_LAYER_SHELL_DESKTOP_SHELL,
     GLFW_LAYER_SHELL_TOP,
     layer_shell_config_for_os_window,
     set_layer_shell_config,
@@ -69,6 +70,7 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
         'background': GLFW_LAYER_SHELL_BACKGROUND,
         'bottom': GLFW_LAYER_SHELL_PANEL,
         'top': GLFW_LAYER_SHELL_TOP,
+        'shell': GLFW_LAYER_SHELL_DESKTOP_SHELL,
         'overlay': GLFW_LAYER_SHELL_OVERLAY
     }.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
     ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else ltype
@@ -94,6 +96,7 @@ def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
                             requested_exclusive_zone=opts.exclusive_zone,
                             override_exclusive_zone=opts.override_exclusive_zone,
                             hide_on_focus_loss=opts.hide_on_focus_loss,
+                            use_physical_screen_frame=opts.use_physical_screen_frame,
                             output_name=opts.output_name or '')
 
 
@@ -112,7 +115,8 @@ def cli_option_to_lsc_configs_map() -> MappingProxyType[str, tuple[str, ...]]:
         'focus_policy': ('focus_policy',),
         'exclusive_zone': ('requested_exclusive_zone',),
         'override_exclusive_zone': ('override_exclusive_zone',),
-        'hide_on_focus_loss': ('hide_on_focus_loss',)
+        'hide_on_focus_loss': ('hide_on_focus_loss',),
+        'use_physical_screen_frame': ('use_physical_screen_frame',)
     })
 
 

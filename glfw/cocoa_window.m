@@ -2681,9 +2681,10 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
     double spacing_y = top_edge_spacing + bottom_edge_spacing;
     const unsigned xsz = config.x_size_in_pixels ? (unsigned)(config.x_size_in_pixels * xscale) : (cell_width * config.x_size_in_cells);
     const unsigned ysz = config.y_size_in_pixels ? (unsigned)(config.y_size_in_pixels * yscale) : (cell_height * config.y_size_in_cells);
+    NSRect placement_frame = config.use_physical_screen_frame ? screen.frame : screen.visibleFrame;
     CGFloat dock_height = NSMinY(screen.visibleFrame) - NSMinY(screen.frame);
-    CGFloat menubar_height = NSHeight(screen.frame) - NSHeight(screen.visibleFrame) - dock_height;
-    CGFloat x = NSMinX(screen.visibleFrame), y = NSMinY(screen.visibleFrame) - 1, width = NSWidth(screen.visibleFrame), height = NSHeight(screen.visibleFrame) + 2;
+    CGFloat menubar_height = config.use_physical_screen_frame ? 0 : NSHeight(screen.frame) - NSHeight(screen.visibleFrame) - dock_height;
+    CGFloat x = NSMinX(placement_frame), y = NSMinY(placement_frame) - 1, width = NSWidth(placement_frame), height = NSHeight(placement_frame) + 2;
     if (config.type == GLFW_LAYER_SHELL_BACKGROUND || config.edge == GLFW_EDGE_CENTER) {
         x = NSMinX(screen.frame); height = NSHeight(screen.frame) - menubar_height + 1; y = NSMinY(screen.frame); width = NSWidth(screen.frame);
     }
@@ -2697,6 +2698,7 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
             // See: https://stackoverflow.com/questions/4982584/how-do-i-draw-the-desktop-on-mac-os-x/4982619#4982619
             level = kCGDesktopWindowLevel;
             break;
+        case GLFW_LAYER_SHELL_DESKTOP_SHELL: level = kCGBackstopMenuLevel; break;
         case GLFW_LAYER_SHELL_OVERLAY: case GLFW_LAYER_SHELL_NONE: break;
         case GLFW_LAYER_SHELL_PANEL: level = NSNormalWindowLevel - 1; break;
         case GLFW_LAYER_SHELL_TOP: level--; break;
@@ -2724,8 +2726,8 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
                 height = panel_height; width = panel_width;
                 break;
         }
-        if (width < 1.) width = NSWidth(screen.visibleFrame);
-        if (height < 1.) height = NSWidth(screen.visibleFrame);
+        if (width < 1.) width = NSWidth(placement_frame);
+        if (height < 1.) height = NSHeight(placement_frame);
     }
 
     if (config.edge != GLFW_EDGE_CENTER_SIZED) {

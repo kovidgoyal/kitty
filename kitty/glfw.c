@@ -1380,7 +1380,7 @@ toggle_fullscreen_for_os_window(OSWindow *w) {
     if (!prev) return false;
     GLFWLayerShellConfig lsc;
     memcpy(&lsc, prev, sizeof(lsc));
-    if (prev->type == GLFW_LAYER_SHELL_OVERLAY || prev->type == GLFW_LAYER_SHELL_TOP) {
+    if (prev->type == GLFW_LAYER_SHELL_OVERLAY || prev->type == GLFW_LAYER_SHELL_DESKTOP_SHELL || prev->type == GLFW_LAYER_SHELL_TOP) {
         if (prev->was_toggled_to_fullscreen) {
             lsc.edge = prev->previous.edge;
             lsc.requested_bottom_margin = prev->previous.requested_bottom_margin;
@@ -1650,6 +1650,7 @@ layer_shell_config_to_python(const GLFWLayerShellConfig *c) {
     A(requested_right_margin, fl);
     A(requested_exclusive_zone, fl);
     A(hide_on_focus_loss, b)
+    A(use_physical_screen_frame, b)
     A(override_exclusive_zone, b);
 #undef A
 #undef fl
@@ -1677,6 +1678,7 @@ layer_shell_config_from_python(PyObject *p, GLFWLayerShellConfig *ans) {
     A(requested_exclusive_zone, PyLong_Check, PyLong_AsLong);
     A(override_exclusive_zone, PyBool_Check, PyLong_AsLong);
     A(hide_on_focus_loss, PyBool_Check, PyLong_AsLong);
+    A(use_physical_screen_frame, PyBool_Check, PyLong_AsLong);
 #undef A
 #define A(attr) { \
     RAII_PyObject(attr, PyObject_GetAttrString(p, #attr)); if (attr == NULL) return false; \
@@ -3268,7 +3270,7 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_REPEAT);
     ADDC(true); ADDC(false);
     ADDC(GLFW_PRIMARY_SELECTION); ADDC(GLFW_CLIPBOARD);
-    ADDC(GLFW_LAYER_SHELL_NONE); ADDC(GLFW_LAYER_SHELL_PANEL); ADDC(GLFW_LAYER_SHELL_BACKGROUND); ADDC(GLFW_LAYER_SHELL_TOP); ADDC(GLFW_LAYER_SHELL_OVERLAY);
+    ADDC(GLFW_LAYER_SHELL_NONE); ADDC(GLFW_LAYER_SHELL_PANEL); ADDC(GLFW_LAYER_SHELL_BACKGROUND); ADDC(GLFW_LAYER_SHELL_TOP); ADDC(GLFW_LAYER_SHELL_DESKTOP_SHELL); ADDC(GLFW_LAYER_SHELL_OVERLAY);
     ADDC(GLFW_FOCUS_NOT_ALLOWED); ADDC(GLFW_FOCUS_EXCLUSIVE); ADDC(GLFW_FOCUS_ON_DEMAND);
     ADDC(GLFW_EDGE_TOP); ADDC(GLFW_EDGE_BOTTOM); ADDC(GLFW_EDGE_LEFT); ADDC(GLFW_EDGE_RIGHT); ADDC(GLFW_EDGE_CENTER); ADDC(GLFW_EDGE_NONE);
     ADDC(GLFW_EDGE_CENTER_SIZED);
