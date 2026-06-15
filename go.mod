@@ -27,7 +27,7 @@ require (
 	github.com/zeebo/xxh3 v1.1.0
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	golang.org/x/image v0.42.0
-	golang.org/x/sys v0.45.0
+	golang.org/x/sys v0.46.0
 	golang.org/x/text v0.38.0
 	howett.net/plist v1.0.1
 )
