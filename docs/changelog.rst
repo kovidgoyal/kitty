@@ -173,7 +173,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.47.4 [future]
+0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Linux: Fix a regression in the previous release that broke rendering of bitmap color fonts (:pull:`10145`)
