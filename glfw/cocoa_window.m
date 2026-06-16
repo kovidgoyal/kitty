@@ -96,7 +96,8 @@ polymorphic_string_as_utf8(id string) {
         characters = [string string];
     else
         characters = (NSString*) string;
-    return [characters UTF8String];
+    const char* ans = [characters UTF8String];
+    return ans ? ans : "(nil)";
 }
 
 static bool
