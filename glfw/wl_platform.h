@@ -434,6 +434,20 @@ typedef struct _GLFWlibraryWayland
         struct xdg_surface *toplevel_xdg_surface;
         struct xdg_toplevel *toplevel_xdg_toplevel;
         struct wl_buffer *toplevel_buffer;
+        // wl_data_device.start_drag is silently ignored by compositors when
+        // its serial does not match an active pointer implicit grab, which
+        // can happen as drags are started asynchronously and the client side
+        // view of the grab can be stale. A wl_display.sync issued right after
+        // start_drag detects this: any compositor event proving the DND
+        // session is live (wl_pointer.leave, wl_data_device.enter, any
+        // wl_data_source event) is ordered before the sync callback, so if
+        // the callback fires first the start_drag was dropped.
+        struct wl_callback *start_confirmation;
+        bool session_confirmed;
+        // The drag toplevel was configured before the session was confirmed,
+        // mapping it was deferred so it cannot end up as a stray regular
+        // window if start_drag was silently ignored.
+        bool toplevel_map_deferred;
         struct {
             const char *mime_type;
             int fd;
@@ -487,6 +501,7 @@ void animateCursorImage(id_type timer_id, void *data);
 struct wl_cursor* _glfwLoadCursor(GLFWCursorShape, struct wl_cursor_theme*);
 void destroy_data_offer(_GLFWWaylandDataOffer*);
 const char* _glfwWaylandCompositorName(void);
+void _glfwWaylandConfirmDragSession(void);
 
 typedef struct wayland_cursor_shape {
     int which; const char *name;
