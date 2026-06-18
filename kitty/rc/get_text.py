@@ -38,8 +38,9 @@ the output of the last command that was run in the window. :code:`last_visited_c
 the first command output below the last scrolled position via scroll_to_prompt.
 :code:`last_non_empty_output` is the output from the last command run in the window that had
 some non empty output. The last four require :ref:`shell_integration` to be enabled.
-:code:`alternate` means the text in the alternate screen buffer and :code:`alternate_scrollback`
-means the text in the alternate screen buffer and scrollback (if any).
+:code:`alternate` means the text in the screen that is not currently visible (if the terminal
+is in the main screen this is the secondary/alternate screen and vice versa).
+:code:`alternate_scrollback` is the same but also includes the scrollback buffer (if any).
 
 
 --ansi
