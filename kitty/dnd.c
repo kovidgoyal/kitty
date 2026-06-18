@@ -1325,6 +1325,7 @@ drag_free_offer(Window *w, bool remove_remote_items) {
     free_pending(&ds.pending);
     ds.allowed_operations = 0;
     ds.state = DRAG_SOURCE_NONE;
+    ds.prefetching = false;
     ds.pre_sent_total_sz = 0;
     ds.images_sent_total_sz = 0;
     if (ds.file_promises) {
@@ -1354,6 +1355,21 @@ cancel_drag(Window *w, int error_code, const char *details) {
     if (error_code) drag_send_error(w, error_code, details);
     if (global_state.drag_source.is_active && global_state.drag_source.from_window == w->id) cancel_current_drag_source();
     if (error_code) drag_free_offer(w, true);
+}
+
+// Eager staging (prefetch) status reported back to the client kitten so it can
+// show the user when a remote drag is safe to start (i.e. the data has been
+// downloaded locally and promise-incapable apps like Firefox/Telegram will accept
+// the drop). state: 0 = preparing, 1 = ready, 2 = error.
+typedef enum { STAGING_PREPARING = 0, STAGING_READY = 1, STAGING_ERROR = 2 } StagingState;
+
+static void
+drag_send_staging_status(Window *w, StagingState state, int uri_idx, const char *details) {
+    char buf[256];
+    int header_size = snprintf(buf, sizeof(buf), "\x1b]%d;t=s:x=%d:y=%d", DND_CODE, uri_idx, (int)state);
+    size_t n = details ? strlen(details) : 0;
+    queue_payload_to_child(
+        w->id, w->drag_source.client_id, &w->drag_source.pending, buf, header_size, details, n, false);
 }
 
 #define abrt(code, details) { cancel_drag(w, code, details); return; }
@@ -1553,7 +1569,8 @@ parse_uri_list(Window *w, char *data, const ssize_t sz, size_t *num_uris_out) {
 void
 drag_start(Window *w) {
     if (ds.state != DRAG_SOURCE_BEING_BUILT) abrt(EINVAL, "cannot start drag as drag source is not being built");
-    delete_basedir_for_remote_items(w);
+    // Preserve any eagerly-staged items (their data lives under base_dir_for_remote_items).
+    if (!ds.prefetching) delete_basedir_for_remote_items(w);
     size_t total_size = 0;
     for (size_t idx = 0; idx < arraysz(ds.images); idx++) {
         if (img.sz) {
@@ -1623,13 +1640,24 @@ drag_start(Window *w) {
     last_total_image_size = total_size;
     int err = start_window_drag(w, dnd_is_test_mode());
     if (err != 0) {
-        if (err == EPERM) abrt(err, "permission to start drag denied, this can happen if the user has already released the drag or if the mouse has moved out of the window");
+        if (err == EPERM) {
+            // The user released the button (or moved out of the window) before the OS
+            // drag could be started. If we have already staged the data, keep the offer
+            // intact and tell the client it is ready, so the next drag attempt starts
+            // immediately instead of re-downloading everything.
+            bool have_staged = false;
+            for (size_t i = 0; i < ds.num_mimes; i++) if (ds.items[i].staged) { have_staged = true; break; }
+            if (have_staged) { drag_send_staging_status(w, STAGING_READY, 0, NULL); return; }
+            abrt(err, "permission to start drag denied, this can happen if the user has already released the drag or if the mouse has moved out of the window");
+        }
         abrt(err, "failed to start drag in OS");
     } else {
         // Free images and optional_data but keep the items array for later
         // data requests from the drop target
         for (size_t i = 0; i < ds.num_mimes; i++) {
-            if (ds.is_remote_client && ds.items[i].is_uri_list) {
+            // Staged items already hold local file:// URLs in optional_data and need
+            // no remote parsing; the OS backend was told to use real URLs for them.
+            if (ds.is_remote_client && ds.items[i].is_uri_list && !ds.items[i].staged) {
                 if (ds.items[i].optional_data && ds.items[i].data_size) {
                     ds.items[i].uri_list = parse_uri_list(
                             w, (char*)ds.items[i].optional_data, ds.items[i].data_size, &ds.items[i].num_uris);
@@ -1754,6 +1782,38 @@ request_remote_files(Window *w, size_t i) {
     }
     return true;
 #undef mi
+}
+
+void
+drag_prepare(Window *w) {
+    // Called when the client offers a remote drag, before the OS drag is started.
+    // On macOS we eagerly download (stage) the remote uri-list items into a local
+    // temp dir so that, when the user actually drags, real local file:// URLs can be
+    // placed on the pasteboard and promise-incapable apps (Firefox, Telegram, etc.)
+    // accept the drop. On other platforms the OS streams the data lazily at drop
+    // time which already works everywhere, so we just report ready immediately.
+    if (!ds.can_offer || ds.state != DRAG_SOURCE_BEING_BUILT) return;
+    if (!ds.is_remote_client) { drag_send_staging_status(w, STAGING_READY, 0, NULL); return; }
+#ifndef __APPLE__
+    drag_send_staging_status(w, STAGING_READY, 0, NULL);
+#else
+    for (size_t i = 0; i < ds.num_mimes; i++) {
+        if (ds.items[i].is_uri_list && ds.items[i].optional_data && ds.items[i].data_size) {
+            if (ds.items[i].staged) { drag_send_staging_status(w, STAGING_READY, 0, NULL); return; }
+            if (ds.items[i].requested_remote_files) return;  // staging already in progress
+            ds.items[i].uri_list = parse_uri_list(
+                w, (char*)ds.items[i].optional_data, ds.items[i].data_size, &ds.items[i].num_uris);
+            if (!ds.items[i].uri_list) return;  // parse_uri_list cancelled the drag on error
+            ds.prefetching = true;
+            ds.items[i].requested_remote_files = true;
+            drag_send_staging_status(w, STAGING_PREPARING, 0, NULL);
+            if (!request_remote_files(w, i)) abrt(ENOMEM, "out of memory starting drag prefetch");
+            return;
+        }
+    }
+    // Nothing remote to stage (e.g. only in-memory mimes): ready right away.
+    drag_send_staging_status(w, STAGING_READY, 0, NULL);
+#endif
 }
 
 const char*
@@ -1969,7 +2029,41 @@ write_all(int fd, const void *buf, size_t sz) {
 }
 
 static void
+finish_prefetch_staging(Window *w, size_t item_idx) {
+    // All remote items for this uri-list have been downloaded into
+    // base_dir_for_remote_items and ds.items[item_idx].uri_list now holds local
+    // file:// URLs. Re-assemble them into optional_data so that when the OS drag is
+    // started later, the macOS backend emits real public.file-url drag items
+    // (instead of file promises) and the readiness can be reported to the client.
+#define it ds.items[item_idx]
+    size_t total = 1;
+    for (size_t i = 0; i < it.num_uris; i++) total += (it.uri_list[i] ? strlen(it.uri_list[i]) : 0) + 2;
+    char *buf = malloc(total);
+    if (!buf) abrt(ENOMEM, "out of memory finalizing drag prefetch");
+    size_t pos = 0;
+    for (size_t i = 0; i < it.num_uris; i++) {
+        if (it.uri_list[i]) {
+            size_t l = strlen(it.uri_list[i]);
+            memcpy(buf + pos, it.uri_list[i], l); pos += l;
+            buf[pos++] = '\r'; buf[pos++] = '\n';
+        }
+        free(it.uri_list[i]); it.uri_list[i] = NULL;
+    }
+    buf[pos] = 0;
+    free(it.uri_list); it.uri_list = NULL; it.num_uris = 0;
+    free(it.optional_data);
+    it.optional_data = (uint8_t*)buf;
+    it.data_size = pos;
+    it.data_capacity = pos;
+    it.requested_remote_files = false;
+    it.staged = true;
+    drag_send_staging_status(w, STAGING_READY, 0, NULL);
+#undef it
+}
+
+static void
 finish_remote_data(Window *w, size_t item_idx) {
+    if (ds.prefetching && ds.state < DRAG_SOURCE_STARTED) { finish_prefetch_staging(w, item_idx); return; }
     if (!ds.items[item_idx].fd_plus_one) {
         int fd = open_item_tmpfile();
         if (fd < 0) abrt(EIO, "failed to open temp file to store modified uri list");

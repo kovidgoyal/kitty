@@ -282,6 +282,8 @@ func (dnd *dnd) run_loop() (err error) {
 			return dnd.on_drag_error(cmd)
 		case 'e':
 			return dnd.on_drag_event(cmd.X, cmd.Y, cmd.Operation)
+		case 's':
+			return dnd.on_staging_status(cmd.X, cmd.Y)
 		case 'k':
 			return dnd.on_drag_remote_data_request(cmd.X - 1)
 		}

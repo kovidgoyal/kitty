@@ -438,6 +438,51 @@ inform the client of it with::
 The error code for too many resources is ``EMFILE``,
 for IO errors is ``EIO`` and so on.
 
+Eager staging for platforms without lazy file transfer
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+On some platforms (notably macOS) the native drag and drop machinery requires
+that, by the time a drop happens, the dragged files already exist on the local
+filesystem (it hands the receiving application a real ``file://`` URL that is
+read synchronously). Lazy, on-demand transfer of remote files at drop time
+(as used on X11/Wayland) is therefore not possible for applications that do not
+implement file promises. To make remote drags work with such applications, the
+data must be downloaded (*staged*) into a local temporary directory **before**
+the drag is started.
+
+To request this, the client sends, after building the drag offer (sending the
+MIME types, pre-sending the ``text/uri-list`` data and any drag images) but
+**before** starting the drag::
+
+    OSC _dnd_code ; t=P:x=-2 ST
+
+The terminal then downloads all the ``file://`` entries from the
+``text/uri-list`` into a local temporary directory using the ``t=k`` requests
+described above, exactly as it would at drop time. As staging progresses the
+terminal reports its status to the client using the ``t=s`` escape code:
+
+.. list-table:: Staging status
+
+   * - Code
+     - Description
+   * - ``t=s : x=0 : y=0``
+     - Staging has started; the data is being downloaded.
+   * - ``t=s : x=0 : y=1``
+     - Staging is complete; the data is local and the drag may now be started.
+   * - ``t=s : x=0 : y=2``
+     - An error occurred while staging; the optional payload is a POSIX error name.
+
+A terminal that does not need to stage the data (for example a local drag, or a
+platform that supports lazy transfer) **must** reply with ``t=s : x=0 : y=1``
+immediately so that the client can start the drag without delay. Once the client
+receives the ready status it starts the drag normally with ``t=P:x=-1``. If the
+user has released the mouse button by then the terminal responds with the ready
+status again (rather than ``t=E ; EPERM``) and keeps the staged data, so that a
+subsequent ``t=P:x=-1`` can start the drag without re-downloading.
+
+The ``t=P:x=-2`` step is optional; a client that does not send it gets the
+previous behaviour (lazy transfer where supported, file promises otherwise).
+
 Detecting support for this protocol
 -------------------------------------
 

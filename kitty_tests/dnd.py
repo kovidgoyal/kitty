@@ -4,6 +4,7 @@
 import errno
 import os
 import re
+import sys
 from base64 import standard_b64encode
 from contextlib import contextmanager
 from functools import partial
@@ -2772,6 +2773,42 @@ class TestDnDProtocol(BaseTest):
     def assert_drag_data_complete(self, cap) -> None:
         first_incomplete_entry = dnd_test_probe_state(cap.window_id, 'drag_remote_data_complete')
         self.assertIsNone(first_incomplete_entry)
+
+    def test_remote_drag_prefetch_eager_staging(self) -> None:
+        """drag_prepare (t=P:x=-2) eagerly downloads remote files before the drag.
+
+        On macOS, this is what lets promise-incapable apps (Firefox, Telegram, ...)
+        accept a remote drag: the files are staged locally first, then the OS drag is
+        started with real file:// URLs. Verifies the preparing/ready status messages
+        and that the remote-file requests are issued and complete without error.
+        """
+        if sys.platform != 'darwin':
+            self.skipTest('eager staging prefetch is only active on macOS')
+        mimes = 'text/plain text/uri-list'
+        uri_list = b'file:///home/user/hello.txt\r\n'
+        file_content = b'Hello, eager prefetch world!'
+        with dnd_test_window() as (screen, cap):
+            parse_bytes(screen, _osc(f'{DND_CODE};t=o:x=1;different-machine-id'))
+            parse_bytes(screen, client_drag_offer_mimes(1, mimes))
+            uri_idx = mimes.split().index('text/uri-list')
+            parse_bytes(screen, client_drag_pre_send(uri_idx, standard_b64encode(uri_list).decode()))
+            cap.consume()
+            # Request eager staging
+            parse_bytes(screen, _osc(f'{DND_CODE};t=P:x=-2'))
+            events = self._get_events(cap)
+            s_events = [e for e in events if e['type'] == 's']
+            k_events = [e for e in events if e['type'] == 'k']
+            self.assertTrue(
+                any(e['meta'].get('y') == '0' for e in s_events), f'no preparing status emitted: {events}')
+            self.assertEqual(1, len(k_events), f'expected one remote-file request, got: {events}')
+            # Stream the file content from the (simulated) remote client
+            parse_bytes(screen, client_remote_file(1, standard_b64encode(file_content).decode(), item_type=0))
+            parse_bytes(screen, client_remote_file(1, '', item_type=0))
+            events = self._get_events(cap)
+            s_events = [e for e in events if e['type'] == 's']
+            self.assertTrue(
+                any(e['meta'].get('y') == '1' for e in s_events), f'no ready status emitted: {events}')
+            self.assert_drag_data_complete(cap)
 
     def test_remote_drag_three_level_tree_with_verification(self) -> None:
         """Transfer a 3-level directory tree and verify no errors occur.

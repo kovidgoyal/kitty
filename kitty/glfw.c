@@ -3095,11 +3095,14 @@ start_window_drag(Window *w, bool in_test_mode) {
     if (!items) return ENOMEM;
     for (size_t i = 0; i < w->drag_source.num_mimes; i++) {
         items[i].mime_type = w->drag_source.items[i].mime_type;
-        items[i].is_remote_client = w->drag_source.is_remote_client;
+        // Staged uri-list items have already been downloaded locally and optional_data
+        // holds local file:// URLs, so they are treated as a non-remote (real URL) drag
+        // on macOS instead of using lazy file promises.
+        items[i].is_remote_client = w->drag_source.is_remote_client && !w->drag_source.items[i].staged;
         items[i].optional_data = (char*)w->drag_source.items[i].optional_data;
         items[i].data_size = w->drag_source.items[i].data_size;
 #ifndef __APPLE__
-        if (w->drag_source.is_remote_client && w->drag_source.items[i].is_uri_list) {
+        if (w->drag_source.is_remote_client && !w->drag_source.items[i].staged && w->drag_source.items[i].is_uri_list) {
             // On platforms other than macOS we treat the request for data for
             // this MIME type as a trigger to start remote download. On macOS
             // requests for individual items from this list will come in.

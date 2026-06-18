@@ -40,6 +40,8 @@ type remote_data_item struct {
 
 type drag_status struct {
 	active                 bool
+	preparing              bool // waiting for the terminal to finish staging (downloading) remote data before the OS drag can start
+	staged                 bool // staging finished; data is local and the OS drag can be started safely
 	terminal_accepted_drag bool
 	offered_mimes          []string
 	accepted_mime          int
@@ -155,8 +157,16 @@ func (dnd *dnd) set_drag_image() (err error) {
 }
 
 func (dnd *dnd) on_potential_drag_start(cell_x, cell_y int) (err error) {
-	if !dnd.allow_drags || dnd.drag_status.active {
+	if !dnd.allow_drags || dnd.drag_status.active || dnd.drag_status.preparing {
 		return
+	}
+	// The data has already been staged (e.g. on a previous attempt where the mouse
+	// button was released while files were still transferring). Start the OS drag
+	// immediately using the already-local files.
+	if dnd.drag_status.staged {
+		dnd.lp.QueueDnDData(DC{Type: 'P', X: -1}) // start drag
+		dnd.drag_status.active = true
+		return dnd.render_screen()
 	}
 	mimes := slices.Collect(maps.Keys(dnd.drag_sources))
 	actions := 3
@@ -181,9 +191,48 @@ func (dnd *dnd) on_potential_drag_start(cell_x, cell_y int) (err error) {
 		dnd.finish_drag("EIO")
 		return err
 	}
-	dnd.lp.QueueDnDData(DC{Type: 'P', X: -1}) // start drag
-	dnd.drag_status.active = true
+	// Ask the terminal to stage (download) the data locally before the OS drag is
+	// started. The terminal replies with a staging-status message; only once it
+	// reports "ready" do we actually start the drag (see on_staging_status). This is
+	// what lets remote drags be accepted by apps that do not support file promises
+	// (Firefox, Telegram, ...). For local/non-macOS drags the terminal reports ready
+	// immediately, so the drag starts with no perceptible delay.
+	dnd.lp.QueueDnDData(DC{Type: 'P', X: -2}) // prepare/stage
+	dnd.drag_status.preparing = true
 
+	return dnd.render_screen()
+}
+
+// staging states reported by the terminal via the t=s message
+const (
+	staging_preparing = 0
+	staging_ready     = 1
+	staging_error     = 2
+)
+
+func (dnd *dnd) on_staging_status(uri_idx, state int) (err error) {
+	switch state {
+	case staging_ready:
+		if dnd.drag_status.preparing {
+			// Data is local now: start the OS drag. If the user is still holding the
+			// mouse button this begins the drag immediately; if they released it the
+			// terminal keeps the staged data and reports ready again, and we wait for
+			// the user to drag once more (handled by drag_status.staged).
+			dnd.drag_status.preparing = false
+			dnd.drag_status.staged = true
+			dnd.drag_status.active = true
+			dnd.lp.QueueDnDData(DC{Type: 'P', X: -1})
+		} else {
+			// Ready after the OS drag could not be started (button released). Keep the
+			// staged flag so the next drag attempt starts instantly.
+			dnd.drag_status.staged = true
+			dnd.drag_status.active = false
+		}
+	case staging_error:
+		dnd.finish_drag("EIO")
+		dnd.drag_status.preparing = false
+		dnd.drag_status.staged = false
+	}
 	return dnd.render_screen()
 }
 

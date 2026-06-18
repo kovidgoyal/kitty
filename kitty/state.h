@@ -325,6 +325,7 @@ typedef struct Window {
         struct {
             const char *mime_type; uint8_t *optional_data; size_t data_size, data_capacity; base64_state base64_state;
             bool data_decode_initialized, is_uri_list, requested_remote_files, data_requested_from_client;
+            bool staged;  // remote uri-list item has been fully pre-fetched to base_dir_for_remote_items and uri-list rewritten to local paths
             int fd_plus_one;
             char** uri_list; size_t num_uris;
             DragRemoteItem *remote_items; size_t num_remote_items;
@@ -337,6 +338,7 @@ typedef struct Window {
         unsigned img_idx;
         int allowed_operations;
         DragSourceState state;
+        bool prefetching;  // eager staging of remote items requested before the OS drag is started (macOS, so promise-incapable apps get real file:// URLs)
         PendingData pending;
         uint32_t client_id;
         char *base_dir_for_remote_items;

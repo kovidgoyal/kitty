@@ -60,6 +60,11 @@ func (dnd *dnd) render_screen() error {
 		lp.Println()
 		y++
 	}
+	if dnd.drag_status.preparing {
+		lp.Println("\x1b[33mTransferring files, please wait…\x1b[39m")
+		render_paragraph("The files are being downloaded locally so they can be dropped into any application. Keep the mouse button held down; the drag will begin automatically once the transfer completes.")
+		return nil
+	}
 	if dnd.drag_status.active {
 		lp.Println("Dragging data...")
 		if dnd.drag_status.dropped {
@@ -67,6 +72,11 @@ func (dnd *dnd) render_screen() error {
 		} else if dnd.drag_status.accepted_operation > 0 {
 			render_paragraph("Another window is willing to accept the dragged data")
 		}
+		return nil
+	}
+	if dnd.drag_status.staged {
+		lp.Println("\x1b[32m✓ OK to drag\x1b[39m")
+		render_paragraph("The files are ready. Start dragging again to drop them into another application.")
 		return nil
 	}
 
