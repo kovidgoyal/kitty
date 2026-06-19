@@ -178,10 +178,10 @@ Detailed list of changes
 
 - kitten @ get-text: Add support for :code:`alternate` and :code:`alternate_scrollback` extents to fetch text from the alternate screen buffer (:iss:`10165`)
 
+- Wayland: Fix first OS window being a few cells too small when :opt:`initial_window_width`/:opt:`initial_window_height` are set in cells and a fractional display scale is in use (:iss:`10146`)
+
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- Wayland: Fix first OS window being a few cells too small when :opt:`initial_window_width`/:opt:`initial_window_height` are set in cells and a fractional display scale is in use (:iss:`10146`)
 
 - Linux: Fix a regression in the previous release that broke rendering of bitmap color fonts (:pull:`10145`)
 
