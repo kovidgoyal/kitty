@@ -287,9 +287,12 @@ apply_storage_quota(GraphicsManager *self, size_t storage_limit, id_type current
     if (!sorted) fatal("Out of memory");
     Image **p = sorted;
     iter_images(self) { *p++ = i.data->val; }
-#define oldest_img_first(a, b) ((*a)->atime < (*b)->atime)
-    QSORT(Image*, sorted, num_images, oldest_img_first);
-#undef oldest_img_first
+#define transient_or_older_first(a, b) ( \
+    (*a)->root_frame.transient != (*b)->root_frame.transient ? \
+    (*a)->root_frame.transient > (*b)->root_frame.transient : \
+    (*a)->atime < (*b)->atime)
+    QSORT(Image*, sorted, num_images, transient_or_older_first);
+#undef transient_or_older_first
 
     for (p = sorted; self->used_storage > storage_limit && num_images; p++, num_images--) remove_image(self, *p);
     if (!num_images || !vt_size(&self->images_by_internal_id)) self->used_storage = 0;  // sanity check
