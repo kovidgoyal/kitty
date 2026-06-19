@@ -313,6 +313,7 @@ def parsers() -> None:
         'U': ('unicode_placement', 'uint'),
         'P': ('parent_id', 'uint'),
         'Q': ('parent_placement_id', 'uint'),
+        'N': ('usage_hints', 'uint'),
         'H': ('offset_from_parent_x', 'int'),
         'V': ('offset_from_parent_y', 'int'),
     }

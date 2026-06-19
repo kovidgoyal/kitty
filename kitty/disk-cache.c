@@ -33,7 +33,7 @@ typedef struct CacheKey {
 typedef struct {
     uint8_t *data;
     size_t data_sz;
-    bool written_to_disk, uses_encryption;
+    bool written_to_disk, uses_encryption, memory_only;
     off_t pos_in_cache_file;
     uint8_t encryption_key[64];
 } CacheValue;
@@ -593,7 +593,7 @@ create_cache_entry(void) {
 }
 
 bool
-add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const void *data, size_t data_sz) {
+add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const void *data, size_t data_sz, bool memory_only) {
     DiskCache *self = (DiskCache*)self_;
     if (!ensure_state(self)) return false;
     if (key_sz > MAX_KEY_SIZE) { PyErr_SetString(PyExc_KeyError, "cache key is too long"); return false; }
@@ -618,11 +618,14 @@ add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const void *d
         if (s->data) free(s->data);
     }
     s->data = copied_data; s->data_sz = data_sz; copied_data = NULL;
+    s->memory_only = memory_only;
+    s->written_to_disk = memory_only;
+    if (memory_only) s->pos_in_cache_file = -1;
     self->total_size += s->data_sz;
 end:
     mutex(unlock);
     if (PyErr_Occurred()) return false;
-    wakeup_write_loop(self);
+    if (!memory_only) wakeup_write_loop(self);
     return true;
 }
 
@@ -740,7 +743,7 @@ disk_cache_clear_from_ram(PyObject *self_, bool(matches)(void*, void *key, unsig
     mutex(lock);
     cache_map_for_loop(i) {
         CacheValue *s = i.data->val;
-        if (s->written_to_disk && s->data && matches(data, i.data->key.hash_key, i.data->key.hash_keylen)) {
+        if (s->written_to_disk && !s->memory_only && s->data && matches(data, i.data->key.hash_key, i.data->key.hash_keylen)) {
             free(s->data); s->data = NULL;
             ans++;
         }
@@ -848,7 +851,7 @@ add(PyObject *self, PyObject *args) {
     const char *key, *data;
     Py_ssize_t keylen, datalen;
     PA("y#y#", &key, &keylen, &data, &datalen);
-    if (!add_to_disk_cache(self, key, keylen, data, datalen)) return NULL;
+    if (!add_to_disk_cache(self, key, keylen, data, datalen, false)) return NULL;
     Py_RETURN_NONE;
 }
 

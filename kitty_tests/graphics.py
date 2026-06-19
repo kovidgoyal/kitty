@@ -386,6 +386,20 @@ class TestGraphics(BaseTest):
         self.assertIsNone(li(payload='2' * 12, z=77, m=1, q=2))
         self.assertIsNone(li(payload='2' * 12))
 
+    def test_transient_graphics_image(self):
+        s, g, pl, sl = load_helpers(self)
+        self.assertEqual(g.disk_cache.end_of_data_offset(), 0)
+        self.ae(pl('abc', s=1, v=1, f=24, N=1), 'OK')
+        self.assertTrue(g.disk_cache.wait_for_write())
+        self.assertEqual(g.disk_cache.end_of_data_offset(), 0)
+        img = g.image_for_client_id(1)
+        self.assertIsNotNone(img)
+        self.ae(img['data'], b'abc')
+
+        self.ae(pl('def', s=1, v=1, f=24, i=2), 'OK')
+        self.assertTrue(g.disk_cache.wait_for_write())
+        self.assertGreater(g.disk_cache.end_of_data_offset(), 0)
+
     def test_load_images(self):
         s, g, pl, sl = load_helpers(self)
         self.assertEqual(g.disk_cache.total_size, 0)

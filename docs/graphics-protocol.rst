@@ -1051,6 +1051,16 @@ Key      Value                 Default    Description
 ``o``    Single character.     ``null``   The type of data compression.
          ``only z``
 ``m``    zero or one           ``0``      Whether there is more chunked data available.
+``N``    bitmask               ``0``      Usage hints from the client to the terminal about the intended use of
+                                          the image. Only one hint is currently defined, the ``1`` bit which means
+                                          *transient*. The terminal is free to assume that an image with this hint
+                                          will be used for only a short time, and so may, for example, evict its
+                                          data before other images when the image is soft deleted, has no visible
+                                          placements and the terminal is under storage pressure, or skip writing
+                                          its data to disk. The terminal is also free to ignore the hint. If an
+                                          animation frame with the *transient* hint is composited onto another
+                                          frame, and any of the involved frames have the hint, the resulting
+                                          composited frame also has the hint.
 
 **Keys for image display**
 -----------------------------------------------------------

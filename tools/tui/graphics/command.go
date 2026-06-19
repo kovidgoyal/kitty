@@ -143,7 +143,7 @@ type GraphicsCommand struct {
 	d GRT_d
 	U GRT_U
 
-	s, v, S, O, x, y, w, h, X, Y, c, r uint64
+	s, v, S, O, x, y, w, h, X, Y, c, r, N uint64
 
 	i, I, p uint32
 
@@ -176,6 +176,7 @@ func (self *GraphicsCommand) serialize_non_default_fields() (ans []string) {
 	write_key('U', self.U, null.U)
 	write_key('d', self.d, null.d)
 
+	write_key('N', self.N, null.N)
 	write_key('s', self.s, null.s)
 	write_key('v', self.v, null.v)
 	write_key('S', self.S, null.S)
@@ -376,6 +377,8 @@ func (self *GraphicsCommand) SetString(key byte, value string) (err error) {
 		err = set_val(&self.U, GRT_U_from_string, value)
 	case 'd':
 		err = set_val(&self.d, GRT_d_from_string, value)
+	case 'N':
+		err = set_uval(&self.N, value)
 	case 's':
 		err = set_uval(&self.s, value)
 	case 'v':
@@ -750,6 +753,15 @@ func (self *GraphicsCommand) FrameToMakeCurrent() uint64 {
 
 func (self *GraphicsCommand) SetFrameToMakeCurrent(c uint64) *GraphicsCommand {
 	self.c = c
+	return self
+}
+
+func (self *GraphicsCommand) UsageHints() uint64 {
+	return self.N
+}
+
+func (self *GraphicsCommand) SetUsageHints(hints uint64) *GraphicsCommand {
+	self.N = hints
 	return self
 }
 
