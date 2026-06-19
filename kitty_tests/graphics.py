@@ -1319,6 +1319,25 @@ class TestGraphics(BaseTest):
         self.ae(g.image_count, 0)
         self.assertEqual(g.disk_cache.total_size, 0)
 
+    def test_transient_image_preferential_eviction(self):
+        # Transient images should be evicted before non-transient ones when
+        # the storage quota is exceeded, regardless of insertion order.
+        s = self.create_screen()
+        g = s.grman
+        g.storage_limit = 36 * 2
+        li = make_send_command(s)
+        # Load a non-transient image first (older atime) and a transient image second.
+        self.assertEqual(li(a='T', i=1).code, 'OK')
+        self.assertEqual(li(a='T', i=2, N=1).code, 'OK')
+        self.assertEqual(g.image_count, 2)
+        # Adding a third image triggers the quota; the transient image (i=2) must be
+        # evicted first even though the non-transient image (i=1) is older.
+        self.assertEqual(li(a='T', i=3).code, 'OK')
+        self.assertEqual(g.image_count, 2)
+        self.assertIsNone(g.image_for_client_id(2), 'transient image should have been evicted')
+        self.assertIsNotNone(g.image_for_client_id(1), 'non-transient image should survive')
+        self.assertIsNotNone(g.image_for_client_id(3), 'newly added image should survive')
+
     @unittest.skipIf(Image is None, 'PIL not available, skipping PNG tests')
     def test_cached_rgba_conversion(self):
         from kitty.render_cache import ImageRenderCacheForTesting
