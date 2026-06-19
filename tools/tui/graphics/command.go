@@ -756,16 +756,12 @@ func (self *GraphicsCommand) SetFrameToMakeCurrent(c uint64) *GraphicsCommand {
 	return self
 }
 
-func (self *GraphicsCommand) NoDiskCache() bool {
-	return self.N != 0
+func (self *GraphicsCommand) UsageHints() uint64 {
+	return self.N
 }
 
-func (self *GraphicsCommand) SetNoDiskCache(noDiskCache bool) *GraphicsCommand {
-	if noDiskCache {
-		self.N = 1
-	} else {
-		self.N = 0
-	}
+func (self *GraphicsCommand) SetUsageHints(hints uint64) *GraphicsCommand {
+	self.N = hints
 	return self
 }
 

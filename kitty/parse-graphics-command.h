@@ -46,7 +46,7 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
     unicode_placement = 'U',
     parent_id = 'P',
     parent_placement_id = 'Q',
-    no_disk_cache = 'N',
+    usage_hints = 'N',
     offset_from_parent_x = 'H',
     offset_from_parent_y = 'V'
   };
@@ -142,7 +142,7 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
       case parent_placement_id:
         value_state = UINT;
         break;
-      case no_disk_cache:
+      case usage_hints:
         value_state = UINT;
         break;
       case offset_from_parent_x:
@@ -303,7 +303,7 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
         U(unicode_placement);
         U(parent_id);
         U(parent_placement_id);
-        U(no_disk_cache);
+        U(usage_hints);
       default:
         break;
       }
@@ -383,8 +383,8 @@ static inline void parse_graphics_code(PS *self, uint8_t *parser_buf,
       "cell_y_offset", (unsigned int)g.cell_y_offset, "cursor_movement",
       (unsigned int)g.cursor_movement, "unicode_placement",
       (unsigned int)g.unicode_placement, "parent_id", (unsigned int)g.parent_id,
-      "parent_placement_id", (unsigned int)g.parent_placement_id,
-      "no_disk_cache", (unsigned int)g.no_disk_cache,
+      "parent_placement_id", (unsigned int)g.parent_placement_id, "usage_hints",
+      (unsigned int)g.usage_hints,
 
       "z_index", (int)g.z_index, "offset_from_parent_x",
       (int)g.offset_from_parent_x, "offset_from_parent_y",

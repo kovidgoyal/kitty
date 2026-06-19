@@ -8,9 +8,12 @@
 #include "data-types.h"
 #include "monotonic.h"
 
+// Bitmask values for GraphicsCommand.usage_hints
+#define GRAPHICS_USAGE_HINT_TRANSIENT 1u
+
 typedef struct {
     unsigned char action, transmission_type, compressed, delete_action;
-    uint32_t format, more, id, image_number, data_sz, data_offset, placement_id, quiet, parent_id, parent_placement_id, no_disk_cache;
+    uint32_t format, more, id, image_number, data_sz, data_offset, placement_id, quiet, parent_id, parent_placement_id, usage_hints;
     uint32_t width, height, x_offset, y_offset;
     union { uint32_t cursor_movement, compose_mode; };
     union { uint32_t cell_x_offset; };
@@ -71,7 +74,7 @@ typedef struct {
 
 typedef struct {
     uint32_t gap, id, width, height, x, y, base_frame_id, bgcolor;
-    bool is_opaque, is_4byte_aligned, alpha_blend, memory_only;
+    bool is_opaque, is_4byte_aligned, alpha_blend, transient;
 } Frame;
 
 typedef enum { ANIMATION_STOPPED = 0, ANIMATION_LOADING = 1, ANIMATION_RUNNING = 2} AnimationState;
