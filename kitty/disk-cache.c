@@ -732,7 +732,7 @@ end:
     return data;
 }
 
-size_t
+static size_t
 disk_cache_clear_from_ram(PyObject *self_, bool(matches)(void*, void *key, unsigned keysz), void *data) {
     DiskCache *self = (DiskCache*)self_;
     size_t ans = 0;
