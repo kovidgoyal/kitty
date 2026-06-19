@@ -834,6 +834,27 @@ use the ``i`` key with the image id for all future communication.
    The ability to use image numbers (see :doc:`kittens/query_terminal` to query kitty version)
 
 
+.. _image_usage_hints:
+
+Usage hints
+-----------------------------
+
+Clients can specify *usage hints* when creating images using the ``N`` key.
+These hints allow the terminal to optimise resource consumption such as caching
+strategies. The value of ``N`` is a bitmask.
+
+Currently the only usage hint defined is ``transient (N == 1)``.
+The terminal is free to assume that an image with this hint
+will be used for only a short time, and so may, for example, evict its
+data before other images when the image is soft deleted, has no visible
+placements and the terminal is under storage pressure, or skip writing
+its data to disk. The terminal is also free to ignore the hint. If an
+animation frame with the *transient* hint is composited onto another
+frame, and any of the involved frames have the hint, the resulting
+composited frame also has the hint. This hint must be specified when the
+image or frame data is transmitted. It has no effect on placement commands.
+
+
 .. _animation_protocol:
 
 Animation
@@ -1052,16 +1073,7 @@ Key      Value                 Default    Description
          ``only z``
 ``m``    zero or one           ``0``      Whether there is more chunked data available.
 ``N``    bitmask               ``0``      Usage hints from the client to the terminal about the intended use of
-                                          the image. Only one hint is currently defined, the ``1`` bit which means
-                                          *transient*. The terminal is free to assume that an image with this hint
-                                          will be used for only a short time, and so may, for example, evict its
-                                          data before other images when the image is soft deleted, has no visible
-                                          placements and the terminal is under storage pressure, or skip writing
-                                          its data to disk. The terminal is also free to ignore the hint. If an
-                                          animation frame with the *transient* hint is composited onto another
-                                          frame, and any of the involved frames have the hint, the resulting
-                                          composited frame also has the hint.
-
+                                          the image.
 **Keys for image display**
 -----------------------------------------------------------
 ``x``    Positive integer      ``0``      The left edge (in pixels) of the image area to display
