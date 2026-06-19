@@ -181,6 +181,8 @@ Detailed list of changes
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Wayland: Fix first OS window being a few cells too small when :opt:`initial_window_width`/:opt:`initial_window_height` are set in cells and a fractional display scale is in use (:iss:`10146`)
+
 - Linux: Fix a regression in the previous release that broke rendering of bitmap color fonts (:pull:`10145`)
 
 - Linux: Allow fake italics defined via a matrix in fontconfig settings to work for fonts like Fira Code that do not ship with an italic face (:pull:`10120`)
