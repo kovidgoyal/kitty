@@ -9,6 +9,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+Vertical tabs [0.48]
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+kitty now has support for :pull:`vertical tabs <9855>` along the left or right edge of the OS
+Window. Useful for people that have wide aspect ratio windows.
+
 Drag and drop for terminal programs [0.47]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -173,8 +179,10 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.50.0 [future]
+0.48.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Implement vertical tabs by setting :opt:`tab_bar_edge` to ``left`` or ``right`` (:pull:`9855`)
 
 - Graphics protocol: Add a new :ref:`transient usage hint <image_usage_hints>` that clients can send to terminals to indicate an image is meant for only short duration use (:pull:`10092`)
 

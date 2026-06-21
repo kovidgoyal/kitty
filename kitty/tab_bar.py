@@ -8,6 +8,7 @@ from functools import lru_cache, partial, wraps
 from string import Formatter as StringFormatter
 from typing import (
     Any,
+    Literal,
     NamedTuple,
 )
 
@@ -16,12 +17,12 @@ from .constants import config_dir, is_macos
 from .fast_data_types import (
     BOTTOM_EDGE,
     DECAWM,
-    Color,
     LEFT_EDGE,
-    Region,
     RIGHT_EDGE,
-    Screen,
     TOP_EDGE,
+    Color,
+    Region,
+    Screen,
     background_opacity_of,
     cell_size_for_window,
     get_boss,
@@ -112,21 +113,21 @@ def is_vertical_edge(edge: int) -> bool:
     return edge in VERTICAL_EDGES
 
 
-def edge_name(edge: int) -> EdgeLiteral:
-    return {
-        LEFT_EDGE: 'left',
-        TOP_EDGE: 'top',
-        RIGHT_EDGE: 'right',
-        BOTTOM_EDGE: 'bottom',
-    }.get(edge, 'bottom')
+edge_name_map: dict[int, EdgeLiteral] = {
+    LEFT_EDGE: 'left',
+    TOP_EDGE: 'top',
+    RIGHT_EDGE: 'right',
+    BOTTOM_EDGE: 'bottom',
+}
 
 
-def normalized_tab_bar_align(align: str) -> str:
-    if align == 'left':
-        return 'start'
-    if align == 'right':
-        return 'end'
-    return align
+def normalized_tab_bar_align(align: str) -> Literal['start', 'end', 'center']:
+    match align:
+        case 'left' | 'start':
+            return 'start'
+        case 'right' | 'end':
+            return 'end'
+    return 'center'
 
 
 @lru_cache
@@ -656,7 +657,7 @@ class TabBar:
             opts.active_tab_title_template,
             opts.tab_activity_symbol,
             opts.tab_powerline_style,
-            edge_name(opts.tab_bar_edge),
+            edge_name_map[opts.tab_bar_edge],
             opts.tab_title_max_length, self.os_window_id,
         )
         ts = opts.tab_bar_style
@@ -671,18 +672,13 @@ class TabBar:
         else:
             self.draw_func = draw_tab_with_fade
         self.tab_bar_align = normalized_tab_bar_align(opts.tab_bar_align)
-        if self.tab_bar_align == 'center':
-            self.align_factor = 2
-        elif self.tab_bar_align == 'end':
-            self.align_factor = 1
-        else:
-            self.align_factor = 0
-        if self.tab_bar_align == 'center':
-            self.align: Callable[[], None] = partial(self.align_with_factor, 2)
-        elif self.tab_bar_align == 'end':
-            self.align = self.align_with_factor
-        else:
-            self.align = lambda: None
+        match self.tab_bar_align:
+            case 'center':
+                self.align: Callable[[], None] = partial(self.align_with_factor, 2)
+            case 'end':
+                self.align = self.align_with_factor
+            case 'start':
+                self.align = lambda: None
 
     def patch_colors(self, spec: dict[str, int | None]) -> None:
         opts = get_options()
@@ -946,7 +942,7 @@ class TabBar:
         self.screen.reset_callbacks()
         del self.screen
 
-    def tab_id_at(self, x: int, y: int = 0) -> int:
+    def tab_id_at(self, x: int, y: int) -> int:
         if self.laid_out_once:
             g = self.window_geometry
             if not (g.left <= x < g.right and g.top <= y < g.bottom):
