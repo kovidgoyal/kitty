@@ -691,29 +691,76 @@ pyset_borders_rects(PyObject *self UNUSED, PyObject *args) {
 }
 
 
+static unsigned
+vertical_tab_bar_cols(const OSWindow *os_window, long margin_outer, long margin_inner) {
+    unsigned cell_width = MAX(1u, os_window->fonts_data->fcm.cell_width);
+    long available_width = (long)os_window->viewport_width - margin_outer - margin_inner;
+    if (available_width <= 0) return 0;
+    unsigned available_cols = MAX(1u, (unsigned)available_width / cell_width);
+    unsigned title_cols = OPT(tab_title_max_length) > 0 ? (unsigned)OPT(tab_title_max_length) : 20u;
+    unsigned desired_cols = title_cols + 8u;
+    unsigned soft_max = available_cols / 3u;
+    if (soft_max < 6u) soft_max = available_cols;
+    return MAX(1u, MIN(available_cols, MIN(desired_cols, MAX(1u, soft_max))));
+}
+
 void
 os_window_regions(const OSWindow *os_window, Region *central, Region *tab_bar) {
     if (!OPT(tab_bar_hidden) && os_window->num_tabs && !os_window->has_too_few_tabs) {
         long margin_outer = pt_to_px_for_os_window(OPT(tab_bar_margin_height.outer), os_window);
         long margin_inner = pt_to_px_for_os_window(OPT(tab_bar_margin_height.inner), os_window);
         central->left = 0; central->right = os_window->viewport_width;
-        unsigned tab_bar_height = os_window->fonts_data->fcm.cell_height + margin_inner + margin_outer;
+        central->top = 0; central->bottom = os_window->viewport_height;
         switch(OPT(tab_bar_edge)) {
-            case TOP_EDGE:
+            case TOP_EDGE: {
+                unsigned tab_bar_height = os_window->fonts_data->fcm.cell_height + margin_inner + margin_outer;
                 central->top = tab_bar_height;
                 central->bottom = os_window->viewport_height;
                 central->top = MIN(central->top, central->bottom);
                 tab_bar->top = margin_outer;
+                tab_bar->left = central->left; tab_bar->right = central->right;
+                tab_bar->bottom = tab_bar->top + os_window->fonts_data->fcm.cell_height;
                 break;
-            default:
+            }
+            case LEFT_EDGE: {
+                unsigned left_cols = vertical_tab_bar_cols(os_window, margin_outer, margin_inner);
+                if (!left_cols) {
+                    zero_at_ptr(tab_bar);
+                    return;
+                }
+                unsigned left_width = left_cols * os_window->fonts_data->fcm.cell_width;
+                central->left = MIN((long)(left_width + margin_inner + margin_outer), (long)central->right);
+                tab_bar->left = margin_outer;
+                tab_bar->right = tab_bar->left + left_width;
+                tab_bar->top = central->top;
+                tab_bar->bottom = central->bottom;
+                break;
+            }
+            case RIGHT_EDGE: {
+                unsigned right_cols = vertical_tab_bar_cols(os_window, margin_outer, margin_inner);
+                if (!right_cols) {
+                    zero_at_ptr(tab_bar);
+                    return;
+                }
+                unsigned right_width = right_cols * os_window->fonts_data->fcm.cell_width;
+                central->right = MAX(0, (long)os_window->viewport_width - (long)(right_width + margin_inner + margin_outer));
+                tab_bar->left = central->right + margin_inner;
+                tab_bar->right = tab_bar->left + right_width;
+                tab_bar->top = central->top;
+                tab_bar->bottom = central->bottom;
+                break;
+            }
+            default: {
+                unsigned tab_bar_height = os_window->fonts_data->fcm.cell_height + margin_inner + margin_outer;
                 central->top = 0;
                 long bottom = os_window->viewport_height - tab_bar_height;
                 central->bottom = MAX(0, bottom);
                 tab_bar->top = central->bottom + margin_inner;
+                tab_bar->left = central->left; tab_bar->right = central->right;
+                tab_bar->bottom = tab_bar->top + os_window->fonts_data->fcm.cell_height;
                 break;
+            }
         }
-        tab_bar->left = central->left; tab_bar->right = central->right;
-        tab_bar->bottom = tab_bar->top + os_window->fonts_data->fcm.cell_height;
     } else {
         zero_at_ptr(tab_bar);
         central->left = 0; central->top = 0; central->right = os_window->viewport_width;
