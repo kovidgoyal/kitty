@@ -1020,7 +1020,7 @@ get_layer_shell_layer(const _GLFWwindow *window) {
         case GLFW_LAYER_SHELL_BACKGROUND: case GLFW_LAYER_SHELL_NONE: break;
         case GLFW_LAYER_SHELL_PANEL: which_layer = ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM; break;
         case GLFW_LAYER_SHELL_TOP: which_layer = ZWLR_LAYER_SHELL_V1_LAYER_TOP; break;
-        case GLFW_LAYER_SHELL_DESKTOP_SHELL: case GLFW_LAYER_SHELL_OVERLAY: which_layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY; break;
+        case GLFW_LAYER_SHELL_OVERLAY: which_layer = ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY; break;
     }
     return which_layer;
 }
@@ -1043,7 +1043,6 @@ layer_set_properties(const _GLFWwindow *window, bool during_creation, uint32_t w
         case GLFW_LAYER_SHELL_NONE: break;
         case GLFW_LAYER_SHELL_BACKGROUND: exclusive_zone = -1; break;
         case GLFW_LAYER_SHELL_TOP:
-        case GLFW_LAYER_SHELL_DESKTOP_SHELL:
         case GLFW_LAYER_SHELL_OVERLAY:
         case GLFW_LAYER_SHELL_PANEL:
             switch (config.edge) {

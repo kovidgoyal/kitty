@@ -391,12 +391,14 @@ option_names = (
     'macos_fullscreen_ignore_safe_area_insets',
     'macos_hide_from_tasks',
     'macos_menubar_title_max_length',
+    'macos_ns_window_layer',
     'macos_option_as_alt',
     'macos_quit_when_last_window_closed',
     'macos_show_window_title_in',
     'macos_thicken_font',
     'macos_titlebar_color',
     'macos_traditional_fullscreen',
+    'macos_use_physical_screen_frame',
     'macos_window_resizable',
     'map',
     'map_timeout',
@@ -605,12 +607,14 @@ class Options:
     macos_fullscreen_ignore_safe_area_insets: bool = False
     macos_hide_from_tasks: bool = False
     macos_menubar_title_max_length: int = 0
+    macos_ns_window_layer: str = 'unset'
     macos_option_as_alt: int = 0
     macos_quit_when_last_window_closed: bool = False
     macos_show_window_title_in: choices_for_macos_show_window_title_in = 'all'
     macos_thicken_font: float = 0
     macos_titlebar_color: int = 0
     macos_traditional_fullscreen: bool = False
+    macos_use_physical_screen_frame: bool = False
     macos_window_resizable: bool = True
     map_timeout: float = 0
     mark1_background: Color = Color(152, 211, 203)

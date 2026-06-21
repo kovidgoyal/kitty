@@ -1077,7 +1077,7 @@ typedef struct GLFWkeyevent
     bool fake_event_on_focus_change;
 } GLFWkeyevent;
 
-typedef enum { GLFW_LAYER_SHELL_NONE, GLFW_LAYER_SHELL_BACKGROUND, GLFW_LAYER_SHELL_PANEL, GLFW_LAYER_SHELL_TOP, GLFW_LAYER_SHELL_DESKTOP_SHELL, GLFW_LAYER_SHELL_OVERLAY } GLFWLayerShellType;
+typedef enum { GLFW_LAYER_SHELL_NONE, GLFW_LAYER_SHELL_BACKGROUND, GLFW_LAYER_SHELL_PANEL, GLFW_LAYER_SHELL_TOP, GLFW_LAYER_SHELL_OVERLAY } GLFWLayerShellType;
 
 typedef enum { GLFW_EDGE_TOP, GLFW_EDGE_BOTTOM, GLFW_EDGE_LEFT, GLFW_EDGE_RIGHT, GLFW_EDGE_CENTER, GLFW_EDGE_NONE, GLFW_EDGE_CENTER_SIZED } GLFWEdge;
 
@@ -1096,12 +1096,13 @@ typedef struct GLFWLayerShellConfig {
     unsigned x_size_in_cells, x_size_in_pixels;
     unsigned y_size_in_cells, y_size_in_pixels;
     int requested_top_margin, requested_left_margin, requested_bottom_margin, requested_right_margin;
-    int requested_exclusive_zone, hide_on_focus_loss, use_physical_screen_frame;
+    int requested_exclusive_zone, hide_on_focus_loss;
     unsigned override_exclusive_zone;
     void (*size_callback)(GLFWwindow *window, float xscale, float yscale, unsigned *cell_width, unsigned *cell_height, double *left_edge_spacing, double *top_edge_spacing, double *right_edge_spacing, double *bottom_edge_spacing);
     struct { float xscale, yscale; } expected;
     struct {
-        float background_opacity; int background_blur, color_space;
+        float background_opacity; int background_blur, color_space, use_physical_screen_frame;
+        char ns_window_layer[128];
     } related;
 } GLFWLayerShellConfig;
 
@@ -2477,6 +2478,10 @@ GFW_EXTERN glfwSetPrimarySelectionString_func glfwSetPrimarySelectionString_impl
 typedef void (*glfwCocoaCycleThroughOSWindows_func)(bool);
 GFW_EXTERN glfwCocoaCycleThroughOSWindows_func glfwCocoaCycleThroughOSWindows_impl;
 #define glfwCocoaCycleThroughOSWindows glfwCocoaCycleThroughOSWindows_impl
+
+typedef void (*glfwCocoaSetWindowLevel_func)(GLFWwindow*, const char*);
+GFW_EXTERN glfwCocoaSetWindowLevel_func glfwCocoaSetWindowLevel_impl;
+#define glfwCocoaSetWindowLevel glfwCocoaSetWindowLevel_impl
 
 typedef void (*glfwCocoaSetWindowChrome_func)(GLFWwindow*, unsigned int, bool, unsigned int, int, unsigned int, bool, int, float, bool);
 GFW_EXTERN glfwCocoaSetWindowChrome_func glfwCocoaSetWindowChrome_impl;

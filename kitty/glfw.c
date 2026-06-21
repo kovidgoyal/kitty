@@ -182,6 +182,9 @@ set_layer_shell_config_for(OSWindow *w, GLFWLayerShellConfig *lsc) {
         lsc->related.background_opacity = effective_os_window_alpha(w);
         lsc->related.background_blur = OPT(background_blur);
         lsc->related.color_space = OPT(macos_colorspace);
+        lsc->related.use_physical_screen_frame = OPT(macos_use_physical_screen_frame);
+        if (OPT(macos_ns_window_layer)) snprintf(lsc->related.ns_window_layer, sizeof(lsc->related.ns_window_layer), "%s", OPT(macos_ns_window_layer));
+        else lsc->related.ns_window_layer[0] = '\0';
         w->hide_on_focus_loss = lsc->hide_on_focus_loss;
     }
     return glfwSetLayerShellConfig(w->handle, lsc);
@@ -1372,7 +1375,7 @@ toggle_fullscreen_for_os_window(OSWindow *w) {
     if (!prev) return false;
     GLFWLayerShellConfig lsc;
     memcpy(&lsc, prev, sizeof(lsc));
-    if (prev->type == GLFW_LAYER_SHELL_OVERLAY || prev->type == GLFW_LAYER_SHELL_DESKTOP_SHELL || prev->type == GLFW_LAYER_SHELL_TOP) {
+    if (prev->type == GLFW_LAYER_SHELL_OVERLAY || prev->type == GLFW_LAYER_SHELL_TOP) {
         if (prev->was_toggled_to_fullscreen) {
             lsc.edge = prev->previous.edge;
             lsc.requested_bottom_margin = prev->previous.requested_bottom_margin;
@@ -1642,7 +1645,6 @@ layer_shell_config_to_python(const GLFWLayerShellConfig *c) {
     A(requested_right_margin, fl);
     A(requested_exclusive_zone, fl);
     A(hide_on_focus_loss, b)
-    A(use_physical_screen_frame, b)
     A(override_exclusive_zone, b);
 #undef A
 #undef fl
@@ -1670,7 +1672,6 @@ layer_shell_config_from_python(PyObject *p, GLFWLayerShellConfig *ans) {
     A(requested_exclusive_zone, PyLong_Check, PyLong_AsLong);
     A(override_exclusive_zone, PyBool_Check, PyLong_AsLong);
     A(hide_on_focus_loss, PyBool_Check, PyLong_AsLong);
-    A(use_physical_screen_frame, PyBool_Check, PyLong_AsLong);
 #undef A
 #define A(attr) { \
     RAII_PyObject(attr, PyObject_GetAttrString(p, #attr)); if (attr == NULL) return false; \
@@ -1924,6 +1925,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         if (global_state.is_apple) set_layer_shell_config_for(w, lsc);
     } else apply_window_chrome_state(
             w->handle, w->last_window_chrome, width, height, global_state.is_apple ? OPT(hide_window_decorations) != 0 : false);
+#ifdef __APPLE__
+    if (!w->is_layer_shell) glfwCocoaSetWindowLevel(w->handle, OPT(macos_ns_window_layer));
+#endif
     // Update window state
     // We do not call glfwWindowHint to set GLFW_MAXIMIZED before the window is created.
     // That would cause the window to be set to maximize immediately after creation and use the wrong initial size when restored.
@@ -3262,7 +3266,7 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_REPEAT);
     ADDC(true); ADDC(false);
     ADDC(GLFW_PRIMARY_SELECTION); ADDC(GLFW_CLIPBOARD);
-    ADDC(GLFW_LAYER_SHELL_NONE); ADDC(GLFW_LAYER_SHELL_PANEL); ADDC(GLFW_LAYER_SHELL_BACKGROUND); ADDC(GLFW_LAYER_SHELL_TOP); ADDC(GLFW_LAYER_SHELL_DESKTOP_SHELL); ADDC(GLFW_LAYER_SHELL_OVERLAY);
+    ADDC(GLFW_LAYER_SHELL_NONE); ADDC(GLFW_LAYER_SHELL_PANEL); ADDC(GLFW_LAYER_SHELL_BACKGROUND); ADDC(GLFW_LAYER_SHELL_TOP); ADDC(GLFW_LAYER_SHELL_OVERLAY);
     ADDC(GLFW_FOCUS_NOT_ALLOWED); ADDC(GLFW_FOCUS_EXCLUSIVE); ADDC(GLFW_FOCUS_ON_DEMAND);
     ADDC(GLFW_EDGE_TOP); ADDC(GLFW_EDGE_BOTTOM); ADDC(GLFW_EDGE_LEFT); ADDC(GLFW_EDGE_RIGHT); ADDC(GLFW_EDGE_CENTER); ADDC(GLFW_EDGE_NONE);
     ADDC(GLFW_EDGE_CENTER_SIZED);

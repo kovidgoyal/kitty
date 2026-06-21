@@ -644,7 +644,7 @@ calculate_layer_geometry(_GLFWwindow *window) {
     double xsz = config.x_size_in_pixels ? (unsigned)(config.x_size_in_pixels * xscale) : (cell_width * config.x_size_in_cells);
     double ysz = config.y_size_in_pixels ? (unsigned)(config.y_size_in_pixels * yscale) : (cell_height * config.y_size_in_cells);
     ans.width = (int)(1. + spacing_x + xsz); ans.height = (int)(1. + spacing_y + ysz);
-    GeometryRect m = config.type == GLFW_LAYER_SHELL_TOP || config.type == GLFW_LAYER_SHELL_DESKTOP_SHELL || config.type == GLFW_LAYER_SHELL_OVERLAY ? mg.workarea : mg.full;
+    GeometryRect m = config.type == GLFW_LAYER_SHELL_TOP || config.type == GLFW_LAYER_SHELL_OVERLAY ? mg.workarea : mg.full;
     static const struct {
         unsigned left, right, top, bottom, left_start_y, left_end_y, right_start_y, right_end_y, top_start_x, top_end_x, bottom_start_x, bottom_end_x;
     } s = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
@@ -762,7 +762,7 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
                     // i3 does not support NET_WM_STATE_BELOW but panels work without it
                     if (_glfw.x11.NET_WM_STATE_BELOW) { S(NET_WM_STATE_BELOW); }
                     break;
-                case GLFW_LAYER_SHELL_TOP: case GLFW_LAYER_SHELL_DESKTOP_SHELL: case GLFW_LAYER_SHELL_OVERLAY: S(NET_WM_STATE_ABOVE); break;
+                case GLFW_LAYER_SHELL_TOP: case GLFW_LAYER_SHELL_OVERLAY: S(NET_WM_STATE_ABOVE); break;
             }
 #undef S
         } else if (wndconfig) {
