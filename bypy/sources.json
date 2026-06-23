@@ -280,6 +280,15 @@
     },
 
     {
+        "name": "slang 2026.11",
+        "unix": {
+            "file_extension": "tar.gz",
+            "hash": "sha256:4c0518d8faccbd46a482bef4e6fb4494ff32b757b18f8702d874f8e30da8b7f8",
+            "urls": ["git-submodules://github.com/shader-slang/slang.git"]
+        }
+    },
+
+    {
         "name": "wayland 1.24.0",
         "os": "linux",
         "unix": {
