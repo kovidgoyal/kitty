@@ -190,6 +190,8 @@ Detailed list of changes
 
 - Wayland: Fix first OS window being a few cells too small when ``initial_window_width/initial_window_height`` are set in cells and a fractional display scale is in use (:iss:`10146`)
 
+- kitty binary builds are now built on Ubuntu 22 upgraded from Ubuntu 18 for improved performance from better compilers
+
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

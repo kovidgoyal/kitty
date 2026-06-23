@@ -271,11 +271,10 @@
     },
 
     {
-        "name": "simde 0.7.6",
-        "comment": "Cannot update till gcc in the build VM is updated as simde 0.8 requires newer gcc",
+        "name": "simde 0.8.2",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:703eac1f2af7de1f7e4aea2286130b98e1addcc0559426e78304c92e2b4eb5e1",
+            "hash": "sha256:59068edc3420e75c5ff85ecfd80a77196fb3a151227a666cc20abb313a5360bf",
             "urls": ["https://github.com/simd-everywhere/simde/releases/download/v{version}/simde-amalgamated-{version}.{file_extension}"]
         }
     },
