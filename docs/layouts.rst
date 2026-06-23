@@ -284,6 +284,25 @@ All windows are shown one below the other. This layout has no options::
     └──────────────────────────────┘
 
 
+The Vertical focus layout
+-----------------------------
+
+The ``verticalfocus`` layout is similar to the ``vertical`` layout, but the
+currently focused window is given a larger share of the vertical space. The
+amount of space is controlled by the ``bias`` option, an integer between ``10``
+and ``90`` that defaults to ``60``::
+
+    enabled_layouts verticalfocus:bias=60
+
+With three windows and ``bias=60``, the focused window receives 60 percent of
+the height and the remaining windows share the rest equally. The larger region
+follows the focus when you switch windows.
+
+You can also map a key to cycle the focus bias, for example::
+
+    map ctrl+. layout_action bias 60 70 80
+
+
 .. _window_resizing:
 
 Resizing windows

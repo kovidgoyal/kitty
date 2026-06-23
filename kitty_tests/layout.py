@@ -4,7 +4,7 @@
 from kitty.config import defaults
 from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, Region
 from kitty.layout.base import layout_dimension, lgd
-from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
+from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall, VerticalFocus, all_layouts
 from kitty.layout.splits import Pair, SplitsLayoutOpts
 from kitty.types import WindowGeometry
 from kitty.window import EdgeWidths
@@ -44,10 +44,10 @@ class Window:
         self.geometry = geometry
 
 
-def create_layout(cls, opts=None, border_width=2):
+def create_layout(cls, opts=None, border_width=2, layout_opts=''):
     if opts is None:
         opts = defaults
-    ans = cls(1, 1)
+    ans = cls(1, 1, layout_opts)
     ans.set_active_window_in_os_window = lambda idx: None
     ans.swap_windows_in_os_window = lambda a, b: None
     orig = ans._set_dimensions
@@ -250,6 +250,46 @@ class TestLayout(BaseTest):
         for layout_class in (Stack, Horizontal, Tall, Grid):
             q = create_layout(layout_class)
             self.do_overlay_test(q)
+
+    def test_focus_layouts(self):
+        self.assertIs(all_layouts['verticalfocus'], VerticalFocus)
+        self.ae(create_layout(VerticalFocus, layout_opts='bias=60').layout_opts.bias, 60)
+        self.ae(create_layout(VerticalFocus, layout_opts='bias=1').layout_opts.bias, 10)
+        self.ae(create_layout(VerticalFocus, layout_opts='bias=100').layout_opts.bias, 90)
+        self.ae(create_layout(VerticalFocus, layout_opts='bias=bad').layout_opts.bias, 60)
+
+        def focus_layout(active_idx=1, num=3, opts='bias=60'):
+            q = create_layout(VerticalFocus, layout_opts=opts)
+            def set_dimensions(all_windows):
+                lgd.central = Region((0, 0, 999, 999, 1000, 1000))
+                lgd.cell_width = lgd.cell_height = 10
+            q._set_dimensions = set_dimensions
+            windows = create_windows(q, num=num)
+            windows.set_active_group_idx(active_idx)
+            q(windows)
+            return q, windows
+
+        q, windows = focus_layout()
+        heights = [g.geometry.ynum for g in windows.groups]
+        self.assertGreater(heights[1], heights[0])
+        self.assertLessEqual(abs(heights[0] - heights[2]), 2)
+
+        q, windows = focus_layout(active_idx=0)
+        heights = [g.geometry.ynum for g in windows.groups]
+        self.ae(max(range(len(heights)), key=heights.__getitem__), 0)
+        windows.set_active_group_idx(2)
+        q(windows)
+        heights = [g.geometry.ynum for g in windows.groups]
+        self.ae(max(range(len(heights)), key=heights.__getitem__), 2)
+
+        q, windows = focus_layout(active_idx=0, num=1)
+        self.assertGreater(windows.groups[0].geometry.xnum, 0)
+        self.assertGreater(windows.groups[0].geometry.ynum, 0)
+
+        self.assertTrue(q.layout_action('bias', ('60 70 80',), windows))
+        self.ae(q.layout_opts.bias, 70)
+        self.assertTrue(q.layout_action('bias', ('70',), windows))
+        self.ae(q.layout_opts.bias, 60)
 
     def test_splits(self):
         q = create_layout(Splits)
