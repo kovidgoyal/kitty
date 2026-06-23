@@ -278,9 +278,8 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
                 if (!values) return false;
                 for (uint16_t n = 0; n < axis_count; n++) {
                     uint16_t actual_axis_index = next;
-                    p32 = (uint32_t*)p;
-                    double value = next32;
-                    p = (uint16_t*)p32;
+                    double value = load_fixed((uint32_t*)p);
+                    p += 2;
                     PyObject *e = Py_BuildValue("{sH sd}", "design_index", actual_axis_index, "value", value);
                     if (!e) return false;
                     PyTuple_SET_ITEM(values, n, e);
