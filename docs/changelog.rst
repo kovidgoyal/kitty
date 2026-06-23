@@ -192,6 +192,8 @@ Detailed list of changes
 
 - kitty binary builds are now built on Ubuntu 22 upgraded from Ubuntu 18 for improved performance from better compilers
 
+- macOS: Fix incorrect horizontal alignment when using text sizing protocol (:iss:`10179`)
+
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

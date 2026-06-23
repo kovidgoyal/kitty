@@ -1076,7 +1076,7 @@ do_render(CTFontRef ct_font, unsigned int units_per_em, bool bold, bool italic, 
         Region src = {.bottom=cell_height, .right=canvas_width}, dest = {.bottom=cell_height, .right=canvas_width};
         render_alpha_mask(buffers.render_buf, canvas, &src, &dest, canvas_width, canvas_width, 0xffffff);
     }
-    ri->canvas_width = canvas_width; ri->rendered_width = (unsigned)ceil(br.size.width); ri->x = 0;
+    ri->canvas_width = canvas_width; ri->rendered_width = (unsigned)ceil(x); ri->x = 0;
     // FiraCode ligatures result in negative origins
     if (br.origin.x > 0) ri->x = (int)br.origin.x;
     return true;
