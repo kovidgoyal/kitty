@@ -23,6 +23,7 @@ from .fast_data_types import (
     GLFW_MOUSE_BUTTON_MIDDLE,
     GLFW_PRESS,
     GLFW_RELEASE,
+    add_timer,
     add_tab,
     attach_window,
     buffer_keys_in_window,
@@ -188,6 +189,9 @@ class Tab:  # {{{
     has_indeterminate_progress: bool = False
     last_focused_window_with_progress_id: int = 0
     allow_relayouts: bool = True
+    defer_focus_relayout: bool = False
+    has_deferred_focus_relayout: bool = False
+    deferred_focus_relayout_timer_id: int | None = None
 
     def __init__(
         self,
@@ -442,8 +446,21 @@ class Tab:  # {{{
         w = self.active_window
         set_active_window(self.os_window_id, self.id, 0 if w is None else w.id)
         self.mark_tab_bar_dirty()
-        self.relayout_borders()
-        self.current_layout.update_visibility(self.windows)
+        if self.current_layout.needs_relayout_on_focus_change:
+            if self.defer_focus_relayout:
+                self.has_deferred_focus_relayout = True
+                if self.deferred_focus_relayout_timer_id is None:
+                    def relayout_later(timer_id: int | None) -> None:
+                        self.deferred_focus_relayout_timer_id = None
+                        self.relayout_deferred_focus_change()
+                    self.deferred_focus_relayout_timer_id = add_timer(relayout_later, 0.05, False)
+                self.relayout_borders()
+                self.current_layout.update_visibility(self.windows)
+            else:
+                self.relayout()
+        else:
+            self.relayout_borders()
+            self.current_layout.update_visibility(self.windows)
 
     def mark_tab_bar_dirty(self) -> None:
         tm = self.tab_manager_ref()
@@ -868,10 +885,21 @@ class Tab:  # {{{
             self.attach_window(window, overlay_for)
             overlay_for = window.id
 
-    def set_active_window(self, x: Window | int, for_keep_focus: Window | None = None) -> None:
+    def set_active_window(self, x: Window | int, for_keep_focus: Window | None = None, defer_focus_relayout: bool = False) -> None:
         if (w := self.windows.window_for_id(x) if isinstance(x, int) else x) is not None:
-            self.windows.set_active_window_group_for(w, for_keep_focus=for_keep_focus)
+            old_defer_focus_relayout = self.defer_focus_relayout
+            if defer_focus_relayout:
+                self.defer_focus_relayout = True
+            try:
+                self.windows.set_active_window_group_for(w, for_keep_focus=for_keep_focus)
+            finally:
+                self.defer_focus_relayout = old_defer_focus_relayout
             self.windows.move_window_to_top_of_group(w)
+
+    def relayout_deferred_focus_change(self) -> None:
+        if self.has_deferred_focus_relayout:
+            self.has_deferred_focus_relayout = False
+            self.relayout()
 
     def get_nth_window(self, n: int) -> Window | None:
         if self.windows:

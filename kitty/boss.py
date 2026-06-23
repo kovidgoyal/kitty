@@ -2565,6 +2565,20 @@ class Boss:
         if tab:
             tab.set_active_window(window_id)
 
+    def switch_focus_to_in_active_tab_defer_relayout(self, window_id: int) -> None:
+        tab = self.active_tab
+        if tab:
+            tab.set_active_window(window_id, defer_focus_relayout=True)
+
+    def relayout_deferred_focus_change(self, window_id: int = 0) -> None:
+        tab = None
+        if window_id:
+            w = self.window_id_map.get(window_id)
+            tab = w.tabref() if w is not None else None
+        tab = tab or self.active_tab
+        if tab:
+            tab.relayout_deferred_focus_change()
+
     def drag_resize_start(
         self, edges: int, x: float, y: float, window_id: int, cell_width: int, cell_height: int,
     ) -> bool:
