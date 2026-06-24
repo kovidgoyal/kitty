@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tarfile
 import time
+from typing import Any
 from urllib.request import Request, urlopen
 
 BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
@@ -103,20 +104,22 @@ def install_fonts() -> None:
             tf.extractall(fonts_dir)
 
 
+def make_github_api_request(slug: str, **headers: str) -> dict[str, Any]:
+    headers.update(**{'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'})
+    if gh_token := os.environ.get('GITHUB_TOKEN'):
+        headers['Authorization'] = f'token {gh_token}'
+    api_req = Request(f'https://api.github.com/{slug}', headers=headers)
+    ans = json.loads(download_with_retry(api_req))
+    assert isinstance(ans, dict)
+    return ans
+
+
 def install_slang_compiler() -> None:
     os_name = 'macos' if is_macos else 'linux'
     machine = platform.machine().lower()
     arch = 'aarch64' if machine in ('aarch64', 'arm64') else 'x86_64'
 
-    api_headers: dict[str, str] = {'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'}
-    gh_token = os.environ.get('GITHUB_TOKEN')
-    if gh_token:
-        api_headers['Authorization'] = f'token {gh_token}'
-    api_req = Request(
-        'https://api.github.com/repos/shader-slang/slang/releases/latest',
-        headers=api_headers,
-    )
-    release = json.loads(download_with_retry(api_req))
+    release = make_github_api_request('repos/shader-slang/slang/releases/latest')
     version = release['tag_name'].lstrip('v')
 
     asset_name = f'slang-{version}-{os_name}-{arch}.tar.gz'
