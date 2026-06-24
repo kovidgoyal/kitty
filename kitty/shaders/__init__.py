@@ -7,8 +7,8 @@ from functools import lru_cache, partial
 from itertools import count
 from typing import Any, Literal, NamedTuple, Optional
 
-from .constants import read_kitty_resource
-from .fast_data_types import (
+from kitty.constants import read_kitty_resource
+from kitty.fast_data_types import (
     BGIMAGE_PROGRAM,
     BLINK,
     BLIT_PROGRAM,
