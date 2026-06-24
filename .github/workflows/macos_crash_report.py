@@ -3,15 +3,51 @@
 
 import json
 import posixpath
+import re
+import subprocess
 import sys
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from datetime import datetime
 from enum import Enum
 from functools import cached_property
-from typing import IO, List, Mapping, Optional
+from typing import IO, Dict, List, Mapping, Optional
 
 Frame = namedtuple('Frame', 'image_name image_base image_offset symbol symbol_offset')
 Register = namedtuple('Register', 'name value')
+
+
+def _get_source_locations(frames: List[Frame]) -> Dict[int, str]:
+    """Use atos to look up source file and line number for each frame.
+
+    Returns a mapping of frame index -> 'source_file:line_number' string.
+    Only frames with a known image path and base address are processed.
+    """
+    # Group frames by (image_path, load_address) so we can batch atos calls.
+    by_image: Dict = defaultdict(list)  # (path, base) -> [(address, frame_idx)]
+    for i, frame in enumerate(frames):
+        if frame.image_name and frame.image_base is not None and frame.image_offset is not None:
+            addr = frame.image_base + frame.image_offset
+            by_image[(frame.image_name, frame.image_base)].append((addr, i))
+
+    result: Dict[int, str] = {}
+    for (image_path, load_addr), addr_frame_pairs in by_image.items():
+        addresses = [addr for addr, _ in addr_frame_pairs]
+        frame_indices = [idx for _, idx in addr_frame_pairs]
+        try:
+            cmd = ['atos', '-o', image_path, '-l', hex(load_addr)] + [hex(a) for a in addresses]
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if proc.returncode == 0:
+                lines = proc.stdout.splitlines()
+                for frame_idx, line in zip(frame_indices, lines):
+                    # atos output: "func_name (in binary) (source_file:line)"
+                    # Extract the trailing "(file:line)" part.
+                    m = re.search(r'\(([^()]+:\d+)\)\s*$', line)
+                    if m:
+                        result[frame_idx] = m.group(1)
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+    return result
 
 
 def surround(x: str, start: int, end: int) -> str:
@@ -408,8 +444,9 @@ class UserModeCrashReport(CrashReportBase):
 
         result += '\n\n'
 
+        source_locations = _get_source_locations(self.frames)
         result += bold('Frames:\n')
-        for frame in self.frames:
+        for i, frame in enumerate(self.frames):
             image_base = '_HEADER'
             if frame.image_base is not None:
                 image_base = f'0x{frame.image_base:x}'
@@ -418,6 +455,8 @@ class UserModeCrashReport(CrashReportBase):
                 result += f' + 0x{frame.image_offset:x}'
             if frame.symbol is not None:
                 result += f' ({frame.symbol} + 0x{frame.symbol_offset:x})'
+            if i in source_locations:
+                result += f' [{source_locations[i]}]'
             result += '\n'
 
         return result
