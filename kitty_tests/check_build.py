@@ -35,7 +35,7 @@ class TestBuild(BaseTest):
         del fdt, rsync
 
     def test_loading_shaders(self) -> None:
-        from kitty.shaders import Program
+        from kitty.shaders.legacy import Program
         for name in 'cell border bgimage tint graphics'.split():
             Program(name)
 
