@@ -116,12 +116,12 @@ def install_slang_compiler() -> None:
     version = release['tag_name'].lstrip('v')
 
     asset_name = f'slang-{version}-{os_name}-{arch}.tar.gz'
-    url = ''
+    url = None
     for asset in release['assets']:
         if asset['name'] == asset_name:
             url = asset['browser_download_url']
             break
-    if not url:
+    if url is None:
         raise SystemExit(f'Could not find slang release asset: {asset_name}')
 
     install_dir = '/tmp/slang'
@@ -131,6 +131,7 @@ def install_slang_compiler() -> None:
         try:
             tf.extractall(install_dir, filter='fully_trusted')
         except TypeError:
+            # filter parameter not supported on older Python versions
             tf.extractall(install_dir)
 
     pc_dir = os.path.join(install_dir, 'lib', 'pkgconfig')
