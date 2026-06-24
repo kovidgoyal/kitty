@@ -6,7 +6,17 @@
  */
 
 #include <Python.h>
+#if __has_include("shader-slang/slang.h")
+#include <shader-slang/slang.h>
+#include <shader-slang/slang-com-ptr.h>
+#include <shader-slang/slang-com-helper.h>
+#else
+#include <slang.h>
+#include <slang-com-ptr.h>
+#include <slang-com-helper.h>
+#endif
 
+using namespace slang;
 
 static char doc[] = "Compile shaders";
 static PyMethodDef methods[] = {
