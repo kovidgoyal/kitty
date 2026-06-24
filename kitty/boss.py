@@ -148,7 +148,7 @@ from .session import (
     most_recent_session,
     save_as_session,
 )
-from .shaders import load_shader_programs
+from .shaders.legacy import load_shader_programs
 from .simple_cli_definitions import grab_keyboard_docs
 from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 from .types import _T, AsyncResponse, LayerShellConfig, SingleInstanceData, WindowSystemMouseEvent, ac

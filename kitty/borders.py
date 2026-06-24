@@ -7,7 +7,7 @@ from functools import partial
 from typing import NamedTuple
 
 from .fast_data_types import BORDERS_PROGRAM, current_focused_os_window_id, get_options, init_borders_program, set_borders_rects
-from .shaders import program_for
+from .shaders.legacy import program_for
 from .typing_compat import LayoutType
 from .utils import color_as_int
 from .window_list import WindowGroup, WindowList
