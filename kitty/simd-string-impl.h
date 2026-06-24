@@ -34,7 +34,22 @@ _Pragma("clang diagnostic push")
 _Pragma("clang diagnostic ignored \"-Wbitwise-instead-of-logical\"")
 #endif
 #include <simde/x86/avx2.h>
-#include <simde/arm/neon.h>
+#if defined(__aarch64__) || (defined(__arm64__) && defined(__APPLE__))
+// On ARM64, include native NEON header directly instead of simde/arm/neon.h
+// to avoid a GCC bug triggered by some versions of simde where
+// simde_vcadd_rot270_f16 calls SIMDE_SHUFFLE_VECTOR_(16, 4, ...) with 4
+// indices for a 4-byte (2-element) int16 vector, producing the error:
+// "excess elements in vector initializer"
+#  include <arm_neon.h>
+   typedef uint8x8_t simde_uint8x8_t;
+   typedef uint8x16_t simde_uint8x16_t;
+#  define simde_vshrn_n_u16 vshrn_n_u16
+#  define simde_vreinterpretq_u16_u8 vreinterpretq_u16_u8
+#  define simde_vget_lane_u64 vget_lane_u64
+#  define simde_vreinterpret_u64_u8 vreinterpret_u64_u8
+#else
+#  include <simde/arm/neon.h>
+#endif
 #if  defined(__clang__) && __clang_major__ > 13
 _Pragma("clang diagnostic pop")
 #endif
