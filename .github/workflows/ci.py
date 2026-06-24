@@ -163,7 +163,8 @@ def install_deps() -> None:
         run('sudo apt-get install -y --fix-missing libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev ca-certificates'
             ' libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev libx11-xcb-dev zsh'
             ' libpng-dev liblcms2-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev libxxhash-dev uuid-dev'
-            ' libsimde-dev libsystemd-dev libcairo2-dev zsh bash dash systemd-coredump gdb')
+            ' libsimde-dev libsystemd-dev libcairo2-dev zsh bash dash systemd-coredump gdb'
+            ' libwayland-dev wayland-protocols')
         # for some reason these directories are world writable which causes zsh
         # compinit to break
         run('sudo chmod -R og-w /usr/share/zsh')
@@ -198,6 +199,7 @@ def test_kitty() -> None:
 def package_kitty() -> None:
     python = 'python3' if is_macos else 'python'
     run(f'{python} setup.py linux-package --update-check-interval=0 --verbose')
+    run('make FAIL_WARN=1 docs')
     if is_macos:
         run('python3 setup.py kitty.app --update-check-interval=0 --verbose')
         run('kitty.app/Contents/MacOS/kitty +runpy "from kitty.constants import *; print(kitty_exe())"')
@@ -328,9 +330,9 @@ def main() -> None:
     if action == 'build':
         build_kitty()
     elif action == 'package':
-        package_kitty()
-    elif action == 'test':
+        build_kitty()
         test_kitty()
+        package_kitty()
     elif action == 'test':
         test_kitty()
     elif action == 'govulncheck':
