@@ -256,6 +256,12 @@ class CrashReportBase:
 
 
 class UserModeCrashReport(CrashReportBase):
+    LOCAL_IMAGE_DIRS = (
+        'build/kitty',
+        'kitty/launcher',
+        'kitty.app/Contents/MacOS',
+    )
+
     @cached_property
     def atos(self) -> Optional[str]:
         return shutil.which('atos')
@@ -263,20 +269,22 @@ class UserModeCrashReport(CrashReportBase):
     @cached_property
     def local_images(self) -> Mapping[str, str]:
         result = {}
-        for path in ('build/kitty', 'kitty/launcher', 'kitty.app/Contents/MacOS'):
+        for path in self.LOCAL_IMAGE_DIRS:
             abspath = os.path.abspath(path)
             if not os.path.isdir(abspath):
                 continue
             for entry in os.scandir(abspath):
                 if entry.is_file():
-                    result.setdefault(entry.name, entry.path)
+                    prev = result.get(entry.name)
+                    if prev is None or os.path.getmtime(entry.path) >= os.path.getmtime(prev):
+                        result[entry.name] = entry.path
         return result
 
     @property
-    def symbolication_errors(self) -> List[str]:
+    def symbolication_errors(self) -> set[str]:
         ans = getattr(self, '_symbolication_errors', None)
         if ans is None:
-            ans = self._symbolication_errors = []
+            ans = self._symbolication_errors = set()
         return ans
 
     def _parse_field(self, name: str) -> str:
@@ -294,16 +302,18 @@ class UserModeCrashReport(CrashReportBase):
         if not local_image:
             return None
         address = frame.image_base + frame.image_offset
-        cp = subprocess.run(
-            [self.atos, '-o', local_image, '-l', hex(frame.image_base), hex(address)],
-            capture_output=True, text=True
-        )
+        try:
+            cp = subprocess.run(
+                [self.atos, '-o', local_image, '-l', hex(frame.image_base), hex(address)],
+                capture_output=True, text=True, timeout=10
+            )
+        except subprocess.TimeoutExpired:
+            self.symbolication_errors.add(f'{os.path.basename(local_image)}: atos timed out')
+            return None
         if cp.returncode != 0:
             err = cp.stderr.strip()
             if err:
-                msg = f'{os.path.basename(local_image)}: {err}'
-                if msg not in self.symbolication_errors:
-                    self.symbolication_errors.append(msg)
+                self.symbolication_errors.add(f'{os.path.basename(local_image)}: {err}')
             return None
         line = cp.stdout.strip()
         if not line or line.startswith('0x'):
@@ -473,7 +483,7 @@ class UserModeCrashReport(CrashReportBase):
             result += '\n'
         if self.symbolication_errors:
             result += '\n' + bold('Symbolication errors:\n')
-            for msg in self.symbolication_errors:
+            for msg in sorted(self.symbolication_errors):
                 result += f'\t{msg}\n'
 
         return result
