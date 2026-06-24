@@ -279,7 +279,7 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
                 }
                 RAII_PyObject(values, PyTuple_New(axis_index));
                 if (!values) return false;
-                for (uint16_t n = 0; n < axis_index; n++) {
+                for (Py_ssize_t n = 0; n < PyTuple_GET_SIZE(values); n++) {
                     uint16_t actual_axis_index = next;
                     double value = load_fixed((uint32_t*)p);
                     p += 2;
