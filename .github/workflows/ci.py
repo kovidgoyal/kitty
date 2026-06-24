@@ -100,6 +100,13 @@ def install_fonts() -> None:
             tf.extractall(fonts_dir)
 
 
+def install_slang_compiler() -> None:
+    # TODO: Install the latest slang compiler binary release from https://github.com/shader-slang/slang
+    # It needs to be installed so that we can use the header files and
+    # libraries via pkgconf
+    ...
+
+
 def install_deps() -> None:
     print('Installing kitty dependencies...')
     sys.stdout.flush()
@@ -128,6 +135,7 @@ def install_deps() -> None:
         if sys.version_info[:2] < (3, 7):
             cmd += ' importlib-resources dataclasses'
         run(cmd)
+        install_slang_compiler()
     install_fonts()
 
 
