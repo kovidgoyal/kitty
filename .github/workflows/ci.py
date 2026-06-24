@@ -108,9 +108,13 @@ def install_slang_compiler() -> None:
     machine = platform.machine().lower()
     arch = 'aarch64' if machine in ('aarch64', 'arm64') else 'x86_64'
 
+    api_headers: dict[str, str] = {'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'}
+    gh_token = os.environ.get('GITHUB_TOKEN')
+    if gh_token:
+        api_headers['Authorization'] = f'token {gh_token}'
     api_req = Request(
         'https://api.github.com/repos/shader-slang/slang/releases/latest',
-        headers={'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'},
+        headers=api_headers,
     )
     release = json.loads(download_with_retry(api_req))
     version = release['tag_name'].lstrip('v')
