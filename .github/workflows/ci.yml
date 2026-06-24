@@ -5,6 +5,7 @@ env:
     ASAN_OPTIONS: detect_leaks=0
     LC_ALL: en_US.UTF-8
     LANG: en_US.UTF-8
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 permissions:
   contents: read # to fetch code (actions/checkout)
