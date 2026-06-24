@@ -239,7 +239,7 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     if (_PyTuple_Resize(&design_axes, count) == -1) return false;
     count = 0;
     const uint8_t *start_of_axis_values_offsets_array = table + offset_to_start_of_axis_value_entries;
-    Py_ssize_t i = 0;
+    Py_ssize_t num_of_multi_axis_styles = 0;
     if (_PyTuple_Resize(&multi_axis_styles, count_of_axis_value_entries) == -1) return false;
     for (
         const uint8_t *pos = start_of_axis_values_offsets_array;
@@ -273,10 +273,13 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
                 app("sd sd", "value", value, "linked_value", linked_value);
             } break;
             case 4: if ((uint8_t*)(p) + 6 * axis_index <= table_limit) {
-                const uint16_t axis_count = axis_index;
-                RAII_PyObject(values, PyTuple_New(axis_count));
+                if (num_of_multi_axis_styles >= PyTuple_GET_SIZE(multi_axis_styles)) {
+                    PyErr_Format(PyExc_IndexError, "corrupted STAT table in font too many multi_axis_styles (%d >= %d)", (int)num_of_multi_axis_styles, (int)PyTuple_GET_SIZE(multi_axis_styles));
+                    return false;
+                }
+                RAII_PyObject(values, PyTuple_New(axis_index));
                 if (!values) return false;
-                for (uint16_t n = 0; n < axis_count; n++) {
+                for (uint16_t n = 0; n < axis_index; n++) {
                     uint16_t actual_axis_index = next;
                     double value = load_fixed((uint32_t*)p);
                     p += 2;
@@ -287,15 +290,11 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
                 PyObject *e = Py_BuildValue("{sH sN sO}", "flags", flags,
                         "name", get_best_name(name_lookup_table, value_name_id), "values", values);
                 if (!e) return false;
-                if (i >= PyTuple_GET_SIZE(multi_axis_styles)) {
-                    PyErr_Format(PyExc_IndexError, "corrupted STAT table in font too many multi_axis_styles (%d > %d)", (int)i, (int)PyTuple_GET_SIZE(multi_axis_styles));
-                    return false;
-                }
-                PyTuple_SET_ITEM(multi_axis_styles, i, e); i++;
+                PyTuple_SET_ITEM(multi_axis_styles, num_of_multi_axis_styles, e); num_of_multi_axis_styles++;
             } break;
         }
     }
-    if (_PyTuple_Resize(&multi_axis_styles, i) == -1) return false;
+    if (_PyTuple_Resize(&multi_axis_styles, num_of_multi_axis_styles) == -1) return false;
 ok:
     if (PyDict_SetItemString(output, "design_axes", design_axes) != 0) return false;
     if (PyDict_SetItemString(output, "multi_axis_styles", multi_axis_styles) != 0) return false;
