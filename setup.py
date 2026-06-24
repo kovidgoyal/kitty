@@ -1232,7 +1232,7 @@ def build(args: Options, native_optimizations: bool = True, call_init: bool = Tr
         kitty_env(args), 'kitty/fast_data_types', args.compilation_database, sources, headers,
         build_dsym=args.build_dsym,
     )
-    sources, headers = ['shaders/compiler.cpp'], []
+    sources, headers = ['kitty/shaders/compiler.cpp'], []
     compile_c_extension(
         slang_env(args), 'kitty/slangc', args.compilation_database, sources, headers, build_dsym=args.build_dsym
     )
