@@ -125,9 +125,9 @@ new_gs(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     GlobalSession *self;
     static const char* kw[] = {"enable_glsl_input", NULL};
     int enable_glsl_input = 0;
-    if (args && !PyArg_ParseTupleAndKeywords(args, kwds, "|p", kw, &enable_glsl_input)) return NULL;
-    self = (GlobalSession *)type->tp_alloc(type, 0);
-    ScopedPyObject ans((PyObject*)self);
+    if (args && !PyArg_ParseTupleAndKeywords(args, kwds, "|p", const_cast<char**>(kw), &enable_glsl_input)) return NULL;
+    self = reinterpret_cast<GlobalSession *>(type->tp_alloc(type, 0));
+    ScopedPyObject ans(reinterpret_cast<PyObject*>(self));
     if (self != NULL) {
         self->ptr = nullptr;
         SlangGlobalSessionDesc desc = {.enableGLSL=static_cast<bool>(enable_glsl_input)};
