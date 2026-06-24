@@ -270,7 +270,7 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
                 const double value = next32, linked_value = next32;
                 app("sd sd", "value", value, "linked_value", linked_value);
             } break;
-            case 4: if ((uint8_t*)(p) + 6 * axis_index <= table_limit) {
+            case 4: if ((size_t)(table_limit - (const uint8_t*)p) / 6 >= axis_index) {
                 const uint16_t axis_count = axis_index;
                 RAII_PyObject(values, PyList_New(0));
                 if (!values) return false;
@@ -282,19 +282,17 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
                     }
                     double value = load_fixed((uint32_t*)p);
                     p += 2;
-                    PyObject *e = Py_BuildValue("{sH sd}", "design_index", actual_axis_index, "value", value);
+                    RAII_PyObject(e, Py_BuildValue("{sH sd}", "design_index", actual_axis_index, "value", value));
                     if (!e) return false;
-                    if (PyList_Append(values, e) != 0) { Py_DECREF(e); return false; }
-                    Py_DECREF(e);
+                    if (PyList_Append(values, e) != 0) return false;
                 }
                 if (!values) break;
                 RAII_PyObject(values_tuple, PyList_AsTuple(values));
                 if (!values_tuple) return false;
-                PyObject *e = Py_BuildValue("{sH sN sO}", "flags", flags,
-                        "name", get_best_name(name_lookup_table, value_name_id), "values", values_tuple);
+                RAII_PyObject(e, Py_BuildValue("{sH sN sO}", "flags", flags,
+                        "name", get_best_name(name_lookup_table, value_name_id), "values", values_tuple));
                 if (!e) return false;
-                if (PyList_Append(multi_axis_styles, e) != 0) { Py_DECREF(e); return false; }
-                Py_DECREF(e);
+                if (PyList_Append(multi_axis_styles, e) != 0) return false;
             } break;
         }
     }
