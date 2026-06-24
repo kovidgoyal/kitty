@@ -118,9 +118,6 @@ jobs:
           - name: Build kitty package
             run: python .github/workflows/ci.py package
 
-          - name: Build kitty
-            run: python setup.py build --debug
-
           - name: Run mypy
             run: which python && python -m mypy --version && ./test.py mypy
 
