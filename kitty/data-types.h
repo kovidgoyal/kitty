@@ -315,7 +315,7 @@ const char* cursor_as_sgr(const Cursor *);
 PyObject* cm_thread_write(PyObject *self, PyObject *args);
 bool schedule_write_to_child(id_type id, unsigned int num, ...);
 bool schedule_write_to_child_python(id_type id, const char *prefix, PyObject* tuple_of_str_or_bytes, const char *suffix);
-void schedule_write_to_child_if_possible(id_type id, const char *data, size_t sz, bool *found, bool *too_much_data);
+void schedule_write_to_child_if_possible(id_type id, const char *data, size_t sz, bool *found, bool *too_much_data, size_t keep_space);
 bool set_iutf8(int, bool);
 
 DynamicColor colorprofile_to_color(const ColorProfile *self, DynamicColor entry, DynamicColor defval);

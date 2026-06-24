@@ -370,17 +370,18 @@ static const unsigned write_buf_limit = 100 * 1024 * 1024;
     children_mutex(unlock);
 
 void
-schedule_write_to_child_if_possible(id_type id, const char *data, size_t sz, bool *found, bool *too_much_data) {
+schedule_write_to_child_if_possible(id_type id, const char *data, size_t sz, bool *found, bool *too_much_data, size_t keep_space) {
     children_mutex(lock);
     ChildMonitor *self = the_monitor;
     *found = false; *too_much_data = false;
+    size_t limit = write_buf_limit > keep_space ? write_buf_limit - keep_space : 0;
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].id == id) {
             Screen *screen = children[i].screen;
             screen_mutex(lock, write);
             size_t space_left = screen->write_buf_sz - screen->write_buf_used;
             if (space_left < sz) {
-                if (screen->write_buf_used + sz > write_buf_limit) {
+                if (screen->write_buf_used + sz > limit) {
                     *too_much_data = true;
                     screen_mutex(unlock, write);
                     break;

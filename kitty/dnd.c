@@ -236,6 +236,8 @@ test_write_chunk(id_type id, const char *buf, size_t sz) {
     return true;
 }
 
+static const size_t keep_write_to_child_queue_space = 32 * 1024;
+
 static size_t
 send_payload_to_child(id_type id, uint32_t client_id, const char *header, size_t header_sz, const char *data, const size_t data_sz, bool as_base64) {
     size_t offset = 0;
@@ -246,7 +248,7 @@ send_payload_to_child(id_type id, uint32_t client_id, const char *header, size_t
         buf[header_sz++] = 0x1b; buf[header_sz++] = '\\';
         if (!test_write_chunk(id, buf, header_sz)) {
             bool found, too_much_data;
-            schedule_write_to_child_if_possible(id, buf, header_sz, &found, &too_much_data);
+            schedule_write_to_child_if_possible(id, buf, header_sz, &found, &too_much_data, keep_write_to_child_queue_space);
             if (too_much_data) return 0;
         }
         return 1;
@@ -270,7 +272,7 @@ send_payload_to_child(id_type id, uint32_t client_id, const char *header, size_t
         buf[p++] = 0x1b; buf[p++] = '\\';
         if (!test_write_chunk(id, buf, p)) {
             bool found, too_much_data;
-            schedule_write_to_child_if_possible(id, buf, p, &found, &too_much_data);
+            schedule_write_to_child_if_possible(id, buf, p, &found, &too_much_data, keep_write_to_child_queue_space);
             if (too_much_data) break;
             if (!found) return data_sz;
         }
