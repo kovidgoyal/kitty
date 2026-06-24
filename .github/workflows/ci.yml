@@ -126,11 +126,8 @@ jobs:
           - name: Run go vet
             run: go version && go vet -tags testing ./...
 
-          - name: Build man page
-            run: make FAIL_WARN=1 man
-
-          - name: Build HTML docs
-            run: make FAIL_WARN=1 html
+          - name: Build docs
+            run: make FAIL_WARN=1 docs
 
           - name: Build static kittens
             run: python setup.py build-static-binaries
