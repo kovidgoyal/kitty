@@ -2,7 +2,10 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
+import os
 import posixpath
+import shutil
+import subprocess
 import sys
 from collections import namedtuple
 from datetime import datetime
@@ -253,6 +256,24 @@ class CrashReportBase:
 
 
 class UserModeCrashReport(CrashReportBase):
+    @cached_property
+    def atos(self) -> Optional[str]:
+        return shutil.which('atos')
+
+    @cached_property
+    def local_images(self) -> Mapping[str, str]:
+        result = {}
+        for path in (
+            'build/kitty/fast_data_types.so',
+            'build/kitty/kitten',
+            'kitty/launcher/kitty',
+            'kitty.app/Contents/MacOS/kitty',
+        ):
+            abspath = os.path.abspath(path)
+            if os.path.exists(abspath):
+                result[os.path.basename(abspath)] = abspath
+        return result
+
     def _parse_field(self, name: str) -> str:
         name += ':'
         for line in self._data.split('\n'):
@@ -260,6 +281,24 @@ class UserModeCrashReport(CrashReportBase):
                 field = line.split(name, 1)[1]
                 field = field.strip()
                 return field
+
+    def symbolicate_frame(self, frame: Frame) -> Optional[str]:
+        if self.atos is None or frame.image_base is None or frame.image_offset is None:
+            return None
+        local_image = self.local_images.get(os.path.basename(frame.image_name))
+        if not local_image:
+            return None
+        address = frame.image_base + frame.image_offset
+        cp = subprocess.run(
+            [self.atos, '-o', local_image, '-l', hex(frame.image_base), hex(address)],
+            capture_output=True, text=True
+        )
+        if cp.returncode != 0:
+            return None
+        line = cp.stdout.strip()
+        if not line or line.startswith('0x'):
+            return None
+        return line
 
     @cached_property
     def faulting_thread(self) -> int:
@@ -418,6 +457,9 @@ class UserModeCrashReport(CrashReportBase):
                 result += f' + 0x{frame.image_offset:x}'
             if frame.symbol is not None:
                 result += f' ({frame.symbol} + 0x{frame.symbol_offset:x})'
+            source = self.symbolicate_frame(frame)
+            if source is not None:
+                result += f'\n\t  => {source}'
             result += '\n'
 
         return result
