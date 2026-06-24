@@ -639,9 +639,10 @@ def slang_env(args: Options) -> Env:
         if x.startswith('-std='):
             x = '-std=c++20'
         cflags.append(x)
+    cflags[:0] = pkg_config('slang-compiler', '--cflags-only-I')
     pylib = get_python_flags(args, cflags)
     ans.cflags = cflags
-    ans.ldflags = pylib + ans.ldflags
+    ans.ldflags = pylib + ans.ldflags + pkg_config('slang-compiler', '--libs')
     return ans
 
 
