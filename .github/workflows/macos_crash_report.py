@@ -2,16 +2,98 @@
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
+import os
 import posixpath
+import re
+import subprocess
 import sys
-from collections import namedtuple
+from collections import defaultdict, namedtuple
 from datetime import datetime
 from enum import Enum
 from functools import cached_property
-from typing import IO, List, Mapping, Optional
+from typing import Dict, IO, List, Mapping, Optional
 
 Frame = namedtuple('Frame', 'image_name image_base image_offset symbol symbol_offset')
 Register = namedtuple('Register', 'name value')
+
+# Cache mapping filename (basename) -> absolute path, built once on first use.
+_build_file_cache: Optional[Dict[str, str]] = None
+
+
+def _build_filename_cache() -> Dict[str, str]:
+    """Walk the repo build tree and map each filename to its absolute path.
+
+    The script lives at <repo>/.github/workflows/, so the repo root is two
+    levels up. We scan the whole repo tree so we find both in-tree build
+    artefacts (e.g. kitty/fast_data_types.so) and those under build/.
+    """
+    cache: Dict[str, str] = {}
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    for dirpath, _dirnames, filenames in os.walk(repo_root):
+        for fname in filenames:
+            # Keep the first occurrence (shallowest path wins).
+            if fname not in cache:
+                cache[fname] = os.path.join(dirpath, fname)
+    return cache
+
+
+def _resolve_image_path(image_path: str) -> str:
+    """Return the real filesystem path for *image_path*.
+
+    Crash reports on macOS redact parts of paths for privacy, replacing
+    directory components with ``*`` (e.g. ``/Users/USER/*/fast_data_types.so``).
+    These are *not* glob patterns — the ``*`` is a literal privacy placeholder.
+    When such a path is detected, look up the basename in the build-file cache.
+    """
+    if '*' not in image_path and '?' not in image_path:
+        return image_path
+
+    global _build_file_cache
+    if _build_file_cache is None:
+        _build_file_cache = _build_filename_cache()
+
+    basename = os.path.basename(image_path)
+    return _build_file_cache.get(basename, image_path)
+
+
+def _get_source_locations(frames: List[Frame]) -> Dict[int, str]:
+    """Use atos to look up source file and line number for each frame.
+
+    Returns a mapping of frame index -> 'source_file:line_number' string.
+    Only frames with a known image path and base address are processed.
+    """
+    # Group frames by (image_path, load_address) so we can batch atos calls.
+    by_image: Dict[tuple, List] = defaultdict(list)  # (path, base) -> [(address, frame_idx)]
+    for i, frame in enumerate(frames):
+        if frame.image_name and frame.image_base is not None and frame.image_offset is not None:
+            addr = frame.image_base + frame.image_offset
+            by_image[(frame.image_name, frame.image_base)].append((addr, i))
+
+    result: Dict[int, str] = {}
+    for (image_path, load_addr), addr_frame_pairs in by_image.items():
+        addresses = [addr for addr, _ in addr_frame_pairs]
+        frame_indices = [idx for _, idx in addr_frame_pairs]
+        # Paths in crash reports may have privacy-redacted components (e.g.
+        # /Users/USER/*/fast_data_types.so). Resolve to a real path using the
+        # cached build-file index before passing to atos.
+        resolved_path = _resolve_image_path(image_path)
+        try:
+            cmd = ['atos', '-o', resolved_path, '-l', hex(load_addr)] + [hex(a) for a in addresses]
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            if proc.returncode == 0:
+                lines = proc.stdout.splitlines()
+                for frame_idx, line in zip(frame_indices, lines):
+                    # atos output: "func_name (in binary) (source_file:line)"
+                    # Extract the trailing "(file:line)" part. Use [^:]+ for the
+                    # file portion since colons in filenames are rare/invalid on
+                    # macOS, and this avoids false-matches with parentheses in paths.
+                    m = re.search(r'\(([^:()]+:\d+)\)\s*$', line)
+                    if m:
+                        result[frame_idx] = m.group(1)
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+    return result
 
 
 def surround(x: str, start: int, end: int) -> str:
@@ -408,8 +490,9 @@ class UserModeCrashReport(CrashReportBase):
 
         result += '\n\n'
 
+        source_locations = _get_source_locations(self.frames)
         result += bold('Frames:\n')
-        for frame in self.frames:
+        for i, frame in enumerate(self.frames):
             image_base = '_HEADER'
             if frame.image_base is not None:
                 image_base = f'0x{frame.image_base:x}'
@@ -418,6 +501,8 @@ class UserModeCrashReport(CrashReportBase):
                 result += f' + 0x{frame.image_offset:x}'
             if frame.symbol is not None:
                 result += f' ({frame.symbol} + 0x{frame.symbol_offset:x})'
+            if i in source_locations:
+                result += f' [{source_locations[i]}]'
             result += '\n'
 
         return result
