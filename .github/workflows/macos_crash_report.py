@@ -11,23 +11,23 @@ from collections import defaultdict, namedtuple
 from datetime import datetime
 from enum import Enum
 from functools import cached_property
-from typing import Dict, IO, List, Mapping, Optional
+from typing import IO, Mapping, Optional
 
 Frame = namedtuple('Frame', 'image_name image_base image_offset symbol symbol_offset')
 Register = namedtuple('Register', 'name value')
 
 # Cache mapping filename (basename) -> absolute path, built once on first use.
-_build_file_cache: Optional[Dict[str, str]] = None
+_build_file_cache: Optional[dict[str, str]] = None
 
 
-def _build_filename_cache() -> Dict[str, str]:
+def _build_filename_cache() -> dict[str, str]:
     """Walk the repo build tree and map each filename to its absolute path.
 
     The script lives at <repo>/.github/workflows/, so the repo root is two
     levels up. We scan the whole repo tree so we find both in-tree build
     artefacts (e.g. kitty/fast_data_types.so) and those under build/.
     """
-    cache: Dict[str, str] = {}
+    cache: dict[str, str] = {}
     repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     for dirpath, _dirnames, filenames in os.walk(repo_root):
         for fname in filenames:
@@ -56,20 +56,20 @@ def _resolve_image_path(image_path: str) -> str:
     return _build_file_cache.get(basename, image_path)
 
 
-def _get_source_locations(frames: List[Frame]) -> Dict[int, str]:
+def _get_source_locations(frames: list[Frame]) -> dict[int, str]:
     """Use atos to look up source file and line number for each frame.
 
     Returns a mapping of frame index -> 'source_file:line_number' string.
     Only frames with a known image path and base address are processed.
     """
     # Group frames by (image_path, load_address) so we can batch atos calls.
-    by_image: Dict[tuple, List] = defaultdict(list)  # (path, base) -> [(address, frame_idx)]
+    by_image: dict[tuple[str, int], list[tuple[int, int]]] = defaultdict(list)  # (path, base) -> [(address, frame_idx)]
     for i, frame in enumerate(frames):
         if frame.image_name and frame.image_base is not None and frame.image_offset is not None:
             addr = frame.image_base + frame.image_offset
             by_image[(frame.image_name, frame.image_base)].append((addr, i))
 
-    result: Dict[int, str] = {}
+    result: dict[int, str] = {}
     for (image_path, load_addr), addr_frame_pairs in by_image.items():
         addresses = [addr for addr, _ in addr_frame_pairs]
         frame_indices = [idx for _, idx in addr_frame_pairs]
@@ -351,7 +351,7 @@ class UserModeCrashReport(CrashReportBase):
             return int(self._parse_field('Triggered by Thread'))
 
     @cached_property
-    def frames(self) -> List[Frame]:
+    def frames(self) -> list[Frame]:
         result = []
         if self._is_json:
             thread_index = self.faulting_thread
@@ -386,7 +386,7 @@ class UserModeCrashReport(CrashReportBase):
         return result
 
     @cached_property
-    def registers(self) -> List[Register]:
+    def registers(self) -> list[Register]:
         result = []
         if self._is_json:
             thread_index = self._data['faultingThread']
@@ -508,7 +508,7 @@ class UserModeCrashReport(CrashReportBase):
         return result
 
 
-def get_crash_report_from_file(crash_report_file: IO) -> CrashReportBase:
+def get_crash_report_from_file(crash_report_file: IO[str]) -> CrashReportBase:
     metadata = json.loads(crash_report_file.readline())
 
     try:
