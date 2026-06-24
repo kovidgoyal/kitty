@@ -630,6 +630,21 @@ def init_env(
     return ans
 
 
+def slang_env(args: Options) -> Env:
+    ans = env.copy()
+    cflags = []
+    for x in ans.cflags:
+        if x == '-Wstrict-prototypes':
+            continue
+        if x.startswith('-std='):
+            x = '-std=c++20'
+        cflags.append(x)
+    pylib = get_python_flags(args, cflags)
+    ans.cflags = cflags
+    ans.ldflags = pylib + ans.ldflags
+    return ans
+
+
 def kitty_env(args: Options) -> Env:
     ans = env.copy()
     cflags = ans.cflags
@@ -1215,6 +1230,10 @@ def build(args: Options, native_optimizations: bool = True, call_init: bool = Tr
     compile_c_extension(
         kitty_env(args), 'kitty/fast_data_types', args.compilation_database, sources, headers,
         build_dsym=args.build_dsym,
+    )
+    sources, headers = ['shaders/compiler.cpp'], []
+    compile_c_extension(
+        slang_env(args), 'kitty/slangc', args.compilation_database, sources, headers, build_dsym=args.build_dsym
     )
     compile_glfw(args.compilation_database, args.build_dsym)
     compile_kittens(args)
