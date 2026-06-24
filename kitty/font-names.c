@@ -208,7 +208,7 @@ bool
 read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_lookup_table, PyObject *output) {
     uint16_t elided_fallback_name_id = 0;
     RAII_PyObject(design_axes, PyTuple_New(0));
-    RAII_PyObject(multi_axis_styles, PyTuple_New(0));
+    RAII_PyObject(multi_axis_styles, PyList_New(0));
     if (!design_axes || !multi_axis_styles) return false;
     if (table_len < 20) goto ok;
     const uint16_t *p = (uint16_t*)table;
@@ -239,8 +239,6 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
     if (_PyTuple_Resize(&design_axes, count) == -1) return false;
     count = 0;
     const uint8_t *start_of_axis_values_offsets_array = table + offset_to_start_of_axis_value_entries;
-    Py_ssize_t i = 0;
-    if (_PyTuple_Resize(&multi_axis_styles, count_of_axis_value_entries) == -1) return false;
     for (
         const uint8_t *pos = start_of_axis_values_offsets_array;
         pos + 2 <= table_limit && count < count_of_axis_value_entries;
@@ -249,7 +247,7 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
         p = (uint16_t*)pos;
         uint16_t offset = next;
         const uint8_t *start_of_axis_values_table = start_of_axis_values_offsets_array + offset;
-        if (start_of_axis_values_table + 12 > table_limit) continue;
+        if (start_of_axis_values_table + 8 > table_limit) continue;
         p = (uint16_t*)(start_of_axis_values_table);
         uint16_t format = next, axis_index = next, flags = next, value_name_id = next;
         p32 = (uint32_t*)p;
@@ -274,27 +272,37 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
             } break;
             case 4: if ((uint8_t*)(p) + 6 * axis_index <= table_limit) {
                 const uint16_t axis_count = axis_index;
-                RAII_PyObject(values, PyTuple_New(axis_count));
+                RAII_PyObject(values, PyList_New(0));
                 if (!values) return false;
                 for (uint16_t n = 0; n < axis_count; n++) {
                     uint16_t actual_axis_index = next;
+                    if (actual_axis_index >= PyTuple_GET_SIZE(design_axes)) {
+                        Py_CLEAR(values);
+                        break;
+                    }
                     double value = load_fixed((uint32_t*)p);
                     p += 2;
                     PyObject *e = Py_BuildValue("{sH sd}", "design_index", actual_axis_index, "value", value);
                     if (!e) return false;
-                    PyTuple_SET_ITEM(values, n, e);
+                    if (PyList_Append(values, e) != 0) { Py_DECREF(e); return false; }
+                    Py_DECREF(e);
                 }
+                if (!values) break;
+                RAII_PyObject(values_tuple, PyList_AsTuple(values));
+                if (!values_tuple) return false;
                 PyObject *e = Py_BuildValue("{sH sN sO}", "flags", flags,
-                        "name", get_best_name(name_lookup_table, value_name_id), "values", values);
+                        "name", get_best_name(name_lookup_table, value_name_id), "values", values_tuple);
                 if (!e) return false;
-                PyTuple_SET_ITEM(multi_axis_styles, i++, e);
+                if (PyList_Append(multi_axis_styles, e) != 0) { Py_DECREF(e); return false; }
+                Py_DECREF(e);
             } break;
         }
     }
-    if (_PyTuple_Resize(&multi_axis_styles, i) == -1) return false;
 ok:
     if (PyDict_SetItemString(output, "design_axes", design_axes) != 0) return false;
-    if (PyDict_SetItemString(output, "multi_axis_styles", multi_axis_styles) != 0) return false;
+    RAII_PyObject(multi_axis_styles_tuple, PyList_AsTuple(multi_axis_styles));
+    if (!multi_axis_styles_tuple) return false;
+    if (PyDict_SetItemString(output, "multi_axis_styles", multi_axis_styles_tuple) != 0) return false;
     if (PyDict_SetItemString(output, "elided_fallback_name", elided_fallback_name_id ? get_best_name(name_lookup_table, elided_fallback_name_id) : PyUnicode_FromString("")) != 0) return false;
     return true;
 }
