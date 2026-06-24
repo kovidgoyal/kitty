@@ -120,7 +120,7 @@ Where to launch the child process:
 
 :code:`os-panel`
     Similar to :code:`os-window`, except that it creates the new OS Window as a desktop panel.
-    Only works on platforms that support this, such as Wayand compositors that support the layer
+    Only works on platforms that support this, such as Wayland compositors that support the layer
     shell protocol. Use the :option:`kitten @ launch --os-panel` option to configure the panel.
 
 #placeholder_for_formatting#
@@ -153,7 +153,7 @@ Add the newly created window/tab to the specified session. Use :code:`.` to add
 to the session of the :option:`source window <launch --source-window>`, if any. See :ref:`sessions`
 for what a session is and how to use one. By default, the window is added to the
 session of the :option:`source window <launch --source-window>` when :option:`launch --cwd`
-is set to use the the working directory from that window, otherwise the newly created window
+is set to use the working directory from that window, otherwise the newly created window
 does not belong to any session. To force adding to no session, use the value :code:`!`.
 Adding a newly created window to a session is purely temporary, it does not change the actual
 session file, for that you have to resave the session. Note that using this flag in a launch
