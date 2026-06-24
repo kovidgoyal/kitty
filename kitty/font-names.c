@@ -287,7 +287,11 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
                 PyObject *e = Py_BuildValue("{sH sN sO}", "flags", flags,
                         "name", get_best_name(name_lookup_table, value_name_id), "values", values);
                 if (!e) return false;
-                PyTuple_SET_ITEM(multi_axis_styles, i++, e);
+                if (i >= PyTuple_GET_SIZE(multi_axis_styles)) {
+                    PyErr_Format(PyExc_IndexError, "corrupted STAT table in font too many multi_axis_styles (%d > %d)", (int)i, (int)PyTuple_GET_SIZE(multi_axis_styles));
+                    return false;
+                }
+                PyTuple_SET_ITEM(multi_axis_styles, i, e); i++;
             } break;
         }
     }
