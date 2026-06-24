@@ -143,6 +143,7 @@ jobs:
                 os: [ubuntu-latest, macos-latest]
         env:
             KITTY_BUNDLE: 1
+            KITTY_SANITIZE: 1
         steps:
           - name: Checkout source code
             uses: actions/checkout@v6.0.3

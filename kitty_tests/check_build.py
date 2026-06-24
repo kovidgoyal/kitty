@@ -127,8 +127,10 @@ class TestBuild(BaseTest):
             exe = os.path.join(tdir, 'dictation_probe')
             with open(src, 'w') as f:
                 f.write(probe)
+            nm = subprocess.run(['nm', '-g', cocoa_module], capture_output=True, text=True)
+            asan_flags = ['-fsanitize=address,undefined', '-fno-omit-frame-pointer'] if '__asan_init' in nm.stdout else []
             cp = subprocess.run(
-                ['clang', '-framework', 'AppKit', src, '-o', exe],
+                ['clang', '-framework', 'AppKit'] + asan_flags + [src, '-o', exe],
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
             )
             self.assertEqual(cp.returncode, 0, cp.stdout)
