@@ -256,11 +256,16 @@ class CrashReportBase:
 
 
 class UserModeCrashReport(CrashReportBase):
+    ATOS_TIMEOUT_SECONDS = 10
     LOCAL_IMAGE_DIRS = (
         'build/kitty',
         'kitty/launcher',
         'kitty.app/Contents/MacOS',
     )
+
+    def __init__(self, metadata: Mapping, data: str, filename: str = None):
+        self._symbolication_errors: set[str] = set()
+        super().__init__(metadata, data, filename)
 
     @cached_property
     def atos(self) -> Optional[str]:
@@ -276,16 +281,13 @@ class UserModeCrashReport(CrashReportBase):
             for entry in os.scandir(abspath):
                 if entry.is_file():
                     prev = result.get(entry.name)
-                    if prev is None or os.path.getmtime(entry.path) >= os.path.getmtime(prev):
+                    if prev is None or os.path.getmtime(entry.path) > os.path.getmtime(prev):
                         result[entry.name] = entry.path
         return result
 
     @property
     def symbolication_errors(self) -> set[str]:
-        ans = getattr(self, '_symbolication_errors', None)
-        if ans is None:
-            ans = self._symbolication_errors = set()
-        return ans
+        return self._symbolication_errors
 
     def _parse_field(self, name: str) -> str:
         name += ':'
@@ -305,7 +307,7 @@ class UserModeCrashReport(CrashReportBase):
         try:
             cp = subprocess.run(
                 [self.atos, '-o', local_image, '-l', hex(frame.image_base), hex(address)],
-                capture_output=True, text=True, timeout=10
+                capture_output=True, text=True, timeout=self.ATOS_TIMEOUT_SECONDS
             )
         except subprocess.TimeoutExpired:
             self.symbolication_errors.add(f'{os.path.basename(local_image)}: atos timed out')
