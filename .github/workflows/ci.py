@@ -134,10 +134,8 @@ def install_deps() -> None:
 def build_kitty() -> None:
     python = shutil.which('python3') if is_bundle else sys.executable
     cmd = f'{python} setup.py build --verbose'
-    if os.environ.get('KITTY_SANITIZE') == '1':
+    if os.environ.get('KITTY_SANITIZE') == '1' or is_macos:
         cmd += ' --debug --sanitize'
-    elif is_macos:
-        cmd += ' --debug'  # for better crash report to debug SIGILL issue
     run(cmd)
 
 
@@ -145,6 +143,7 @@ def test_kitty() -> None:
     if is_macos:
         run('ulimit -c unlimited')
         run('sudo chmod -R 777 /cores')
+        os.environ['MallocNanoZone'] = '0'
     run('./test.py', print_crash_reports=True)
 
 
