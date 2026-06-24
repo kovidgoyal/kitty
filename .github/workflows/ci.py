@@ -4,8 +4,10 @@
 
 import glob
 import io
+import json
 import lzma
 import os
+import platform
 import shlex
 import shutil
 import subprocess
@@ -101,10 +103,38 @@ def install_fonts() -> None:
 
 
 def install_slang_compiler() -> None:
-    # TODO: Install the latest slang compiler binary release from https://github.com/shader-slang/slang
-    # It needs to be installed so that we can use the header files and
-    # libraries via pkgconf
-    ...
+    os_name = 'macos' if is_macos else 'linux'
+    machine = platform.machine().lower()
+    arch = 'aarch64' if machine in ('aarch64', 'arm64') else 'x86_64'
+
+    api_req = Request(
+        'https://api.github.com/repos/shader-slang/slang/releases/latest',
+        headers={'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'},
+    )
+    release = json.loads(download_with_retry(api_req))
+    version = release['tag_name'].lstrip('v')
+
+    asset_name = f'slang-{version}-{os_name}-{arch}.tar.gz'
+    url = ''
+    for asset in release['assets']:
+        if asset['name'] == asset_name:
+            url = asset['browser_download_url']
+            break
+    if not url:
+        raise SystemExit(f'Could not find slang release asset: {asset_name}')
+
+    install_dir = '/tmp/slang'
+    os.makedirs(install_dir, exist_ok=True)
+    data = download_with_retry(url)
+    with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as tf:
+        try:
+            tf.extractall(install_dir, filter='fully_trusted')
+        except TypeError:
+            tf.extractall(install_dir)
+
+    pc_dir = os.path.join(install_dir, 'lib', 'pkgconfig')
+    pp = os.environ.get('PKG_CONFIG_PATH', '')
+    os.environ['PKG_CONFIG_PATH'] = f'{pc_dir}:{pp}' if pp else pc_dir
 
 
 def install_deps() -> None:
