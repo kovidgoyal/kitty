@@ -9,7 +9,7 @@ Hyperlinked grep
 
 .. note::
 
-   As of ripgrep versions newer that 13.0 it supports hyperlinks
+   As of ripgrep versions newer than 13.0 it supports hyperlinks
    natively so you can just add the following alias in your shell rc file:
    ``alias rg="rg --hyperlink-format=kitty"`` no need to use this kitten.
    But, see below for instructions on how to customize kitty to have it open
@@ -45,7 +45,7 @@ Now, run a search with::
 Hold down the :kbd:`Ctrl+Shift` keys and click on any of the result lines, to
 open the file in :program:`vim` at the matching line. If you use some editor
 other than :program:`vim`, you should adjust the :file:`open-actions.conf` file
-accordingly. TO open links with the keyboard instead, use
+accordingly. To open links with the keyboard instead, use
 :sc:`open_selected_hyperlink`.
 
 Finally, add an alias to your shell's rc files to invoke the kitten as
@@ -67,7 +67,7 @@ which items are linked with a :code:`--kitten hyperlink` flag. For example,
 :code:`--kitten hyperlink=matching_lines` will only add hyperlinks to the
 match lines. :code:`--kitten hyperlink=file_headers,context_lines` will link
 file headers and context lines but not match lines. :code:`--kitten
-hyperlink=none` will cause the command line to be passed to directly to
+hyperlink=none` will cause the command line to be passed directly to
 :command:`rg` so no hyperlinking will be performed. :code:`--kitten hyperlink`
 may be specified multiple times.
 
