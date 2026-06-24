@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
+import glob as glob_module
 import json
 import posixpath
 import re
@@ -33,8 +34,15 @@ def _get_source_locations(frames: List[Frame]) -> Dict[int, str]:
     for (image_path, load_addr), addr_frame_pairs in by_image.items():
         addresses = [addr for addr, _ in addr_frame_pairs]
         frame_indices = [idx for _, idx in addr_frame_pairs]
+        # The crash report path may contain glob wildcards (e.g. /Users/USER/*/fast_data_types.so)
+        # that don't represent real filesystem paths. Expand to find the actual file.
+        if '*' in image_path or '?' in image_path:
+            matches = glob_module.glob(image_path)
+            resolved_path = matches[0] if matches else image_path
+        else:
+            resolved_path = image_path
         try:
-            cmd = ['atos', '-o', image_path, '-l', hex(load_addr)] + [hex(a) for a in addresses]
+            cmd = ['atos', '-o', resolved_path, '-l', hex(load_addr)] + [hex(a) for a in addresses]
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
             if proc.returncode == 0:
                 lines = proc.stdout.splitlines()
