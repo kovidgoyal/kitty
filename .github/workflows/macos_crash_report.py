@@ -263,16 +263,21 @@ class UserModeCrashReport(CrashReportBase):
     @cached_property
     def local_images(self) -> Mapping[str, str]:
         result = {}
-        for path in (
-            'build/kitty/fast_data_types.so',
-            'build/kitty/kitten',
-            'kitty/launcher/kitty',
-            'kitty.app/Contents/MacOS/kitty',
-        ):
+        for path in ('build/kitty', 'kitty/launcher', 'kitty.app/Contents/MacOS'):
             abspath = os.path.abspath(path)
-            if os.path.exists(abspath):
-                result[os.path.basename(abspath)] = abspath
+            if not os.path.isdir(abspath):
+                continue
+            for entry in os.scandir(abspath):
+                if entry.is_file():
+                    result.setdefault(entry.name, entry.path)
         return result
+
+    @property
+    def symbolication_errors(self) -> List[str]:
+        ans = getattr(self, '_symbolication_errors', None)
+        if ans is None:
+            ans = self._symbolication_errors = []
+        return ans
 
     def _parse_field(self, name: str) -> str:
         name += ':'
@@ -294,6 +299,11 @@ class UserModeCrashReport(CrashReportBase):
             capture_output=True, text=True
         )
         if cp.returncode != 0:
+            err = cp.stderr.strip()
+            if err:
+                msg = f'{os.path.basename(local_image)}: {err}'
+                if msg not in self.symbolication_errors:
+                    self.symbolication_errors.append(msg)
             return None
         line = cp.stdout.strip()
         if not line or line.startswith('0x'):
@@ -461,6 +471,10 @@ class UserModeCrashReport(CrashReportBase):
             if source is not None:
                 result += f'\n\t  => {source}'
             result += '\n'
+        if self.symbolication_errors:
+            result += '\n' + bold('Symbolication errors:\n')
+            for msg in self.symbolication_errors:
+                result += f'\t{msg}\n'
 
         return result
 
