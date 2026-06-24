@@ -23,7 +23,7 @@ def _get_source_locations(frames: List[Frame]) -> Dict[int, str]:
     Only frames with a known image path and base address are processed.
     """
     # Group frames by (image_path, load_address) so we can batch atos calls.
-    by_image: Dict = defaultdict(list)  # (path, base) -> [(address, frame_idx)]
+    by_image: Dict[tuple, List] = defaultdict(list)  # (path, base) -> [(address, frame_idx)]
     for i, frame in enumerate(frames):
         if frame.image_name and frame.image_base is not None and frame.image_offset is not None:
             addr = frame.image_base + frame.image_offset
@@ -40,8 +40,10 @@ def _get_source_locations(frames: List[Frame]) -> Dict[int, str]:
                 lines = proc.stdout.splitlines()
                 for frame_idx, line in zip(frame_indices, lines):
                     # atos output: "func_name (in binary) (source_file:line)"
-                    # Extract the trailing "(file:line)" part.
-                    m = re.search(r'\(([^()]+:\d+)\)\s*$', line)
+                    # Extract the trailing "(file:line)" part. Use [^:]+ for the
+                    # file portion since colons in filenames are rare/invalid on
+                    # macOS, and this avoids false-matches with parentheses in paths.
+                    m = re.search(r'\(([^:()]+:\d+)\)\s*$', line)
                     if m:
                         result[frame_idx] = m.group(1)
         except (OSError, subprocess.SubprocessError):
