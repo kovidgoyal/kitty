@@ -9,7 +9,6 @@ from typing import Union
 from .fast_data_types import set_uint_at_address
 from .utils import resolve_custom_file
 
-
 MarkerFunc = Callable[[str, int, int, int], Generator[None, None, None]]
 
 
