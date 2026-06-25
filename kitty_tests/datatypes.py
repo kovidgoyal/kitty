@@ -940,3 +940,50 @@ class TestDataTypes(BaseTest):
         s.reset()
         s.draw('\0')
         self.ae(str(s.line(0)), '')
+
+    def test_set_uint_at_address(self):
+        import platform
+
+        from kitty.fast_data_types import set_uint_at_address
+        from kitty.marks import marker_from_function, marker_from_multiple_regex, marker_from_regex, marker_from_text
+
+        # Test set_uint_at_address directly (skip on intel macs due to ctypes issues)
+        if not (is_macos and platform.machine() == 'x86_64'):
+            from ctypes import addressof, c_uint
+            val = c_uint(0)
+            addr = addressof(val)
+            set_uint_at_address(addr, 42)
+            self.ae(val.value, 42)
+            set_uint_at_address(addr, 0)
+            self.ae(val.value, 0)
+            set_uint_at_address(addr, 0xFFFF)
+            self.ae(val.value, 0xFFFF)
+
+        # Test marker functions using set_uint_at_address via Screen
+        s = self.create_screen()
+        s.draw('abaa')
+        s.set_marker(marker_from_regex('a', 3))
+        self.ae(s.marked_cells(), [(0, 0, 3), (2, 0, 3), (3, 0, 3)])
+        s.set_marker()
+        self.ae(s.marked_cells(), [])
+
+        s = self.create_screen()
+        s.draw('aXbX')
+        s.set_marker(marker_from_multiple_regex([(1, 'a'), (2, 'X')]))
+        self.ae(s.marked_cells(), [(0, 0, 1), (1, 0, 2), (3, 0, 2)])
+
+        s = self.create_screen(cols=20)
+        s.draw('hello world')
+        s.set_marker(marker_from_text('world', 2))
+        self.ae(s.marked_cells(), [(6, 0, 2), (7, 0, 2), (8, 0, 2), (9, 0, 2), (10, 0, 2)])
+
+        def mark_func(text):
+            for i, ch in enumerate(text):
+                if ch == 'x':
+                    yield i, i, 1
+
+        s = self.create_screen()
+        s.draw('axbxc')
+        s.set_marker(marker_from_function(mark_func))
+        self.ae(s.marked_cells(), [(1, 0, 1), (3, 0, 1)])
+
