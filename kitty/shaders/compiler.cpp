@@ -15,6 +15,7 @@
 #include <slang-com-ptr.h>
 #include <slang-com-helper.h>
 #endif
+#include <string>
 
 using namespace slang;
 
