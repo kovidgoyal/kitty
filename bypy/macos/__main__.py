@@ -125,6 +125,7 @@ def sign_app(app_dir, notarize):
     create_entitlements_file({
         'com.apple.security.automation.apple-events': True,
         'com.apple.security.cs.allow-jit': True,
+        'com.apple.security.cs.disable-executable-page-protection': True,
         'com.apple.security.device.audio-input': True,
         'com.apple.security.device.camera': True,
         'com.apple.security.personal-information.addressbook': True,
