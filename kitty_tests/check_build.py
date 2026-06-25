@@ -32,6 +32,8 @@ class TestBuild(BaseTest):
     def test_loading_extensions(self) -> None:
         import kitty.fast_data_types as fdt
         from kittens.transfer import rsync
+        from kitty.slangc import GlobalSession
+        GlobalSession()
         del fdt, rsync
 
     def test_loading_shaders(self) -> None:
