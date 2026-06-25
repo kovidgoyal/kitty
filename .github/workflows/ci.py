@@ -25,6 +25,7 @@ is_codeql = os.environ.get('KITTY_CODEQL') == '1'
 is_macos = 'darwin' in sys.platform.lower()
 running_under_sanitizer = os.environ.get('KITTY_SANITIZE') == '1'
 SW = ''
+SLANG_INSTALL_DIR = '/tmp/slang'
 
 
 def do_print_crash_reports() -> None:
@@ -131,7 +132,7 @@ def install_slang_compiler() -> None:
     if url is None:
         raise SystemExit(f'Could not find slang release asset: {asset_name}')
 
-    install_dir = '/tmp/slang'
+    install_dir = SLANG_INSTALL_DIR
     os.makedirs(install_dir, exist_ok=True)
     data = download_with_retry(url)
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as tf:
@@ -187,12 +188,27 @@ def build_kitty() -> None:
     run(cmd)
 
 
+def add_to_path(path: str, prepend: bool = False) -> None:
+    if existing := os.environ.get('PATH') or '':
+        parts = existing.split(os.pathsep)
+        parts.insert(0 if prepend else len(parts), path)
+        seen = set()
+        ans = []
+        for x in parts:
+            if x not in seen:
+                seen.add(x)
+                ans.append(x)
+        path = os.pathsep.join(ans)
+    os.environ['PATH'] = path
+
+
 def test_kitty() -> None:
     if is_macos:
         run('ulimit -c unlimited')
         run('sudo chmod -R 777 /cores')
         if running_under_sanitizer:
             os.environ['MallocNanoZone'] = '0'
+    add_to_path(os.path.join(SW if is_bundle else SLANG_INSTALL_DIR, 'bin'))
     run('./test.py', print_crash_reports=True)
 
 
