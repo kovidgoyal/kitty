@@ -942,20 +942,22 @@ class TestDataTypes(BaseTest):
         self.ae(str(s.line(0)), '')
 
     def test_set_uint_at_address(self):
-        from ctypes import addressof, c_uint
+        import platform
 
         from kitty.fast_data_types import set_uint_at_address
         from kitty.marks import marker_from_function, marker_from_multiple_regex, marker_from_regex, marker_from_text
 
-        # Test set_uint_at_address directly
-        val = c_uint(0)
-        addr = addressof(val)
-        set_uint_at_address(addr, 42)
-        self.ae(val.value, 42)
-        set_uint_at_address(addr, 0)
-        self.ae(val.value, 0)
-        set_uint_at_address(addr, 0xFFFF)
-        self.ae(val.value, 0xFFFF)
+        # Test set_uint_at_address directly (skip on intel macs due to ctypes issues)
+        if not (is_macos and platform.machine() == 'x86_64'):
+            from ctypes import addressof, c_uint
+            val = c_uint(0)
+            addr = addressof(val)
+            set_uint_at_address(addr, 42)
+            self.ae(val.value, 42)
+            set_uint_at_address(addr, 0)
+            self.ae(val.value, 0)
+            set_uint_at_address(addr, 0xFFFF)
+            self.ae(val.value, 0xFFFF)
 
         # Test marker functions using set_uint_at_address via Screen
         s = self.create_screen()

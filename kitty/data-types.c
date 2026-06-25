@@ -684,16 +684,16 @@ py_get_config_dir(PyObject *self UNUSED, PyObject *args UNUSED) {
 #include "launcher/cli-parser.h"
 
 static PyObject*
-set_uint_at_address(PyObject *self UNUSED, PyObject *args) {
-    PyObject *address_obj;
-    unsigned int value;
-    if (!PyArg_ParseTuple(args, "OI", &address_obj, &value)) return NULL;
-    void *ptr = PyLong_AsVoidPtr(address_obj);
+set_uint_at_address(PyObject *self UNUSED, PyObject *const *args, Py_ssize_t nargs) {
+    if (nargs != 2) { PyErr_SetString(PyExc_TypeError, "set_uint_at_address() requires exactly 2 arguments"); return NULL; }
+    void *ptr = PyLong_AsVoidPtr(args[0]);
     if (ptr == NULL) {
         if (!PyErr_Occurred()) PyErr_SetString(PyExc_ValueError, "NULL address is not valid");
         return NULL;
     }
-    *((unsigned int*)ptr) = value;
+    unsigned long value = PyLong_AsUnsignedLong(args[1]);
+    if (value == (unsigned long)-1 && PyErr_Occurred()) return NULL;
+    *((unsigned int*)ptr) = (unsigned int)value;
     Py_RETURN_NONE;
 }
 
@@ -730,7 +730,7 @@ static PyMethodDef module_methods[] = {
     {"timed_debug_print", (PyCFunction)py_timed_debug_print, METH_VARARGS, ""},
     {"find_in_memoryview", (PyCFunction)find_in_memoryview, METH_VARARGS, ""},
     {"run_at_exit_cleanup_functions", (PyCFunction)py_run_atexit_cleanup_functions, METH_NOARGS, ""},
-    {"set_uint_at_address", (PyCFunction)set_uint_at_address, METH_VARARGS, "Write an unsigned integer value to a memory address"},
+    {"set_uint_at_address", (PyCFunction)(void (*)(void))set_uint_at_address, METH_FASTCALL, "Write an unsigned integer value to a memory address"},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),
     METHODB(process_group_map, METH_NOARGS),
