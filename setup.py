@@ -642,7 +642,7 @@ def slang_env(args: Options) -> Env:
     cflags[:0] = pkg_config('slang-compiler', '--cflags-only-I')
     pylib = get_python_flags(args, cflags)
     ans.cflags = cflags
-    ans.ldflags = pylib + ans.ldflags + pkg_config('slang-compiler', '--libs')
+    ans.ldflags = ['-lstdc++'] + pylib + ans.ldflags + pkg_config('slang-compiler', '--libs')
     return ans
 
 
