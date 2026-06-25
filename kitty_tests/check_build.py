@@ -19,7 +19,7 @@ from . import BaseTest
 class TestBuild(BaseTest):
 
     def test_exe(self) -> None:
-        from kitty.constants import kitten_exe, kitty_exe, str_version
+        from kitty.constants import kitten_exe, kitty_exe, slangc, str_version
         exe = kitty_exe()
         self.assertTrue(os.access(exe, os.X_OK))
         self.assertTrue(os.path.isfile(exe))
@@ -28,12 +28,11 @@ class TestBuild(BaseTest):
         self.assertTrue(os.access(exe, os.X_OK))
         self.assertTrue(os.path.isfile(exe))
         self.assertIn(str_version, subprocess.check_output([exe, '--version']).decode())
+        self.assertTrue(shutil.which(slangc[0]), f'slang compiler not found on PATH: {slangc[0]}')
 
     def test_loading_extensions(self) -> None:
         import kitty.fast_data_types as fdt
         from kittens.transfer import rsync
-        from kitty.slangc import GlobalSession
-        GlobalSession()
         del fdt, rsync
 
     def test_loading_shaders(self) -> None:
