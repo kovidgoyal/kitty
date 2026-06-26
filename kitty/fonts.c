@@ -1200,7 +1200,13 @@ render_group(
         is_only_filled_boxes = true;
         for (unsigned i = 1; i < num_glyphs && is_only_filled_boxes; i++) if (global_glyph_render_scratch.glyphs[i] != box_glyph_id) is_only_filled_boxes = false;
     }
-    bool was_colored = !is_only_filled_boxes && has_emoji_presentation(cpu_cells, global_glyph_render_scratch.lc);
+    const ListOfChars *lc = global_glyph_render_scratch.lc;
+    // For emoji, honor the text/emoji presentation selectors (VS15/VS16); for a
+    // non-emoji codepoint on a color-capable face (e.g. an icon font mapped via
+    // symbol_map), use the color render path.
+    bool first_is_emoji = lc->count && char_props_for(lc->chars[0]).is_emoji;
+    bool was_colored = !is_only_filled_boxes && (
+        first_is_emoji ? has_emoji_presentation(cpu_cells, lc) : face_has_color(font->face));
     GlyphRenderInfo ri = {0};
     pixel *canvas = rendering_in_smaller_area && canvas_width != scaled_canvas_width ? scratch : fg->canvas.buf;
     if (is_only_filled_boxes) { // special case rendering of █ for tests

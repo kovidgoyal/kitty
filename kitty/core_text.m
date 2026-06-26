@@ -522,6 +522,11 @@ face_apply_scaling(PyObject *f, const FONTS_DATA_HANDLE fg) {
     return set_size_for_face(f, 0, false, fg);
 }
 
+bool
+face_has_color(PyObject *f) {
+    return CTFontSupportsColorGlyphs(((CTFace*)f)->ct_font);
+}
+
 static PyObject*
 set_size(CTFace *self, PyObject *args) {
     double font_sz_in_pts, dpi_x, dpi_y;
