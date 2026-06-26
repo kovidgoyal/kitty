@@ -37,12 +37,12 @@ float4 psMain() : SV_Target {
         # Only line comments and block comments, no code
         check('// just a comment\n/* block comment */', SlangFile('', '', frozenset(), frozenset(), ''))
 
-        # Module and import declarations (note: trailing semicolons are preserved by the parser)
+        # Module and import declarations
         check('''
 module mymodule;
 import utils;
 import helpers;
-''', SlangFile('', '', frozenset({'utils;', 'helpers;'}), frozenset(), 'mymodule;'))
+''', SlangFile('', '', frozenset({'utils', 'helpers'}), frozenset(), 'mymodule'))
 
         # pixel stage maps to Stage.fragment
         check('''
@@ -97,7 +97,7 @@ import common;
 
 [shader("vertex")]
 void vsMain() {}
-''', SlangFile('', '', frozenset({'common;'}), frozenset({EntryPoint(Stage.vertex, 'vsMain')}), 'myshader;'))
+''', SlangFile('', '', frozenset({'common'}), frozenset({EntryPoint(Stage.vertex, 'vsMain')}), 'myshader'))
 
     def test_slang_ordering(self):
         # Test topological_sort with a manually constructed linear chain: a <- b <- c
@@ -145,10 +145,14 @@ void vsMain() {}
             graph2 = build_import_graph(tmpdir)
             self.assertEqual(set(graph2.keys()), {'a', 'b', 'c'})
             self.assertEqual(graph2['a'].imports, frozenset())
-            # The parser preserves trailing semicolons on import names
-            self.assertEqual(graph2['b'].imports, frozenset({'a;'}))
-            self.assertEqual(graph2['c'].imports, frozenset({'b;'}))
-            self.assertEqual(graph2['a'].module, 'a;')
+            self.assertEqual(graph2['b'].imports, frozenset({'a'}))
+            self.assertEqual(graph2['c'].imports, frozenset({'b'}))
+            self.assertEqual(graph2['a'].module, 'a')
+
+            # Topological sort of file-based graph respects import dependencies
+            order3 = topological_sort(graph2)
+            self.assertLess(order3.index('a'), order3.index('b'))
+            self.assertLess(order3.index('b'), order3.index('c'))
 
             # Non-.slang files are ignored
             with open(os.path.join(tmpdir, 'ignored.txt'), 'w') as f:
