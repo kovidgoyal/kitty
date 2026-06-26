@@ -56,9 +56,9 @@ def parse_slang_text(text: str, path: str = '') -> SlangFile:
         else:
             match words[0]:
                 case 'module':
-                    module = words[1]
+                    module = words[1].removesuffix(';')
                 case 'import':
-                    imports.add(words[1])
+                    imports.add(words[1].removesuffix(';'))
                 case _:
                     if words[0].startswith('[shader('):  # ])
                         text = words[0].partition('(')[2].partition(')')[0].strip()
