@@ -7,9 +7,12 @@
 import os
 import re
 import shutil
+import time
+from collections import OrderedDict
+from contextlib import suppress
 from enum import Enum
 from functools import lru_cache
-from typing import NamedTuple
+from typing import Iterator, NamedTuple
 
 
 class Stage(Enum):
@@ -28,6 +31,10 @@ class SlangFile(NamedTuple):
     imports: frozenset[str]
     entry_points: frozenset[EntryPoint]
     module: str
+
+    @property
+    def should_compile_to_ir(self) -> bool:
+        return bool(self.module or self.entry_points)
 
 
 def parse_slang_text(text: str, path: str = '') -> SlangFile:
@@ -102,10 +109,9 @@ def topological_sort(graph: dict[str, SlangFile]) -> list[str]:
     return order
 
 
-def get_ordered_sources_in_tree(dirpath: str) -> dict[str, SlangFile]:
-    ans = build_import_graph(dirpath)
-    topological_sort(ans)
-    return ans
+def get_ordered_sources_in_tree(dirpath: str) -> OrderedDict[str, SlangFile]:
+    g = build_import_graph(dirpath)
+    return OrderedDict({k: g[k] for k in topological_sort(g)})
 
 
 
@@ -118,4 +124,47 @@ def slangc() -> tuple[str, ...]:
         if not ans:
             raise SystemExit('Could not find the slangc shader compiler on PATH')
         slangc = [ans]
-    return tuple(slangc + ['-std', '2026'])
+    return tuple(slangc)
+
+
+def future() -> float:
+    return time.time() + 1000000
+
+
+def safe_mtime(path: str, defval: float = 0) -> float:
+    with suppress(OSError):
+        return os.path.getmtime(path)
+    return defval if defval >= 0 else future()
+
+
+def read_deps_file(path: str) -> Iterator[str]:
+    with open(path) as f:
+        for line in f:
+            line = line.partition(':')[2].strip()
+            yield from line.split()
+
+
+def get_newest_dep_time(path: str) -> float:
+    with suppress(OSError):
+        ans = 0.
+        for deppath in read_deps_file(path):
+            mtime = os.path.getmtime(deppath)
+            ans = max(mtime, ans)
+        return ans
+    return future()
+
+
+def commands_to_compile_dir_to_ir(dirpath: str, output_dirpath: str) -> Iterator[tuple[bool, list[str]]]:
+    cmdbase = list(slangc())
+    for name, sfile in get_ordered_sources_in_tree(dirpath).items():
+        if sfile.should_compile_to_ir:
+            parts = name.split('.')
+            base_dest = os.path.join(output_dirpath, *parts)
+            slang_module = f'{base_dest}.slang-module'
+            deps_file = f'{base_dest}.deps'
+            module_mtime = safe_mtime(slang_module)
+            needs_build = module_mtime < get_newest_dep_time(deps_file)
+            yield needs_build, cmdbase + [
+                sfile.path, '-I', output_dirpath, '-I', dirpath, '-depfile', deps_file,
+                '-target', 'none', '-o', slang_module
+            ]
