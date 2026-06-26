@@ -28,7 +28,7 @@ class TestBuild(BaseTest):
         self.assertTrue(os.access(exe, os.X_OK))
         self.assertTrue(os.path.isfile(exe))
         self.assertIn(str_version, subprocess.check_output([exe, '--version']).decode())
-        self.assertTrue(shutil.which(slangc[0]), f'slang compiler not found on PATH: {slangc[0]}')
+        self.assertTrue(shutil.which(slangc[0]), f'slang compiler: {slangc[0]} not found on PATH: {os.environ["PATH"]}')
 
     def test_loading_extensions(self) -> None:
         import kitty.fast_data_types as fdt
