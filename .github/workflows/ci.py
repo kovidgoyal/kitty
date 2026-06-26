@@ -188,27 +188,14 @@ def build_kitty() -> None:
     run(cmd)
 
 
-def add_to_path(path: str, prepend: bool = False) -> None:
-    if existing := os.environ.get('PATH') or '':
-        parts = existing.split(os.pathsep)
-        parts.insert(0 if prepend else len(parts), path)
-        seen = set()
-        ans = []
-        for x in parts:
-            if x not in seen:
-                seen.add(x)
-                ans.append(x)
-        path = os.pathsep.join(ans)
-    os.environ['PATH'] = path
-
-
 def test_kitty() -> None:
     if is_macos:
         run('ulimit -c unlimited')
         run('sudo chmod -R 777 /cores')
         if running_under_sanitizer:
             os.environ['MallocNanoZone'] = '0'
-    add_to_path(os.path.join(SW if is_bundle else SLANG_INSTALL_DIR, 'bin'))
+    slangc = os.path.join(SW if is_bundle else SLANG_INSTALL_DIR, 'bin', 'slangc')
+    os.environ['SLANGC'] = slangc
     run('./test.py', print_crash_reports=True)
 
 
@@ -230,7 +217,8 @@ def replace_in_file(path: str, src: str, dest: str) -> None:
 
 def setup_bundle_env() -> None:
     global SW
-    os.environ['SW'] = SW = '/Users/Shared/kitty-build/sw/sw' if is_macos else os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
+    os.environ['SW'] = SW = '/Users/Shared/kitty-build/sw/sw' if is_macos else os.path.join(
+            os.environ['GITHUB_WORKSPACE'], 'sw')
     os.environ['PKG_CONFIG_PATH'] = os.path.join(SW, 'lib', 'pkgconfig')
     if is_macos:
         os.environ['PATH'] = '{}:{}'.format('/usr/local/opt/sphinx-doc/bin', os.environ['PATH'])
