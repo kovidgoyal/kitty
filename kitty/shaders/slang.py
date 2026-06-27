@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
-# This file is also run as a standalone module from setup.py to compile shaders
-# so no top level kitty imports are allowed
-
 import os
 import re
 import shutil
@@ -12,7 +9,10 @@ from collections import OrderedDict
 from contextlib import suppress
 from enum import Enum
 from functools import lru_cache
-from typing import Iterator, NamedTuple
+from pathlib import Path
+from typing import Callable, Iterable, Iterator, NamedTuple
+
+from kitty.constants import slangc
 
 
 class Stage(Enum):
@@ -114,19 +114,6 @@ def get_ordered_sources_in_tree(dirpath: str) -> OrderedDict[str, SlangFile]:
     return OrderedDict({k: g[k] for k in topological_sort(g)})
 
 
-
-@lru_cache(2)
-def slangc() -> tuple[str, ...]:
-    try:
-        from kitty.constants import slangc
-    except ImportError:
-        ans = shutil.which('slangc')
-        if not ans:
-            raise SystemExit('Could not find the slangc shader compiler on PATH')
-        slangc = [ans]
-    return tuple(slangc)
-
-
 def future() -> float:
     return time.time() + 1000000
 
@@ -154,9 +141,15 @@ def get_newest_dep_time(path: str) -> float:
     return future()
 
 
-def commands_to_compile_dir_to_ir(dirpath: str, output_dirpath: str) -> Iterator[tuple[bool, list[str]]]:
-    cmdbase = list(slangc())
-    for name, sfile in get_ordered_sources_in_tree(dirpath).items():
+class Command(NamedTuple):
+    needs_build: bool
+    description: str
+    cmd: list[str]
+
+
+def commands_to_compile_dir_to_ir(sources: dict[str, SlangFile], src_dir: str, output_dirpath: str) -> Iterator[Command]:
+    cmdbase = list(slangc)
+    for name, sfile in sources.items():
         if sfile.should_compile_to_ir:
             parts = name.split('.')
             base_dest = os.path.join(output_dirpath, *parts)
@@ -164,7 +157,74 @@ def commands_to_compile_dir_to_ir(dirpath: str, output_dirpath: str) -> Iterator
             deps_file = f'{base_dest}.deps'
             module_mtime = safe_mtime(slang_module)
             needs_build = module_mtime < get_newest_dep_time(deps_file)
-            yield needs_build, cmdbase + [
-                sfile.path, '-I', output_dirpath, '-I', dirpath, '-depfile', deps_file,
+            yield Command(needs_build, f'Compile {name} to slang IR', cmdbase + [
+                sfile.path, '-I', output_dirpath, '-I', src_dir, '-depfile', deps_file,
                 '-target', 'none', '-o', slang_module
-            ]
+            ])
+
+
+def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_glsl_files: list[str]) -> Iterator[Command]:
+    cmdbase = list(slangc)
+    for name, sfile in sources.items():
+        if not sfile.entry_points:
+            continue
+        parts = name.split('.')
+        base_dest = os.path.join(dest_dir, *parts)
+        slang_module = f'{base_dest}.slang-module'
+        output_mtime = future()
+        cmd = cmdbase + ['-I', dest_dir, slang_module]
+        dest_files = []
+        for ep in sfile.entry_points:
+            dest = f'{base_dest}-{ep.stage.name}.glsl'
+            cmd += ['-entry', ep.name, '-stage', ep.stage.name, '-target', 'glsl', '-profile', 'glsl_330', '-o', dest]
+            dest_files.append(dest)
+            output_mtime = min(output_mtime, safe_mtime(dest))
+        module_mtime = os.path.getmtime(slang_module)
+        needs_build = output_mtime < module_mtime
+        if needs_build:
+            built_glsl_files.extend(dest_files)
+        yield Command(needs_build, f'Link slang IR for {name} to GLSL', cmd)
+
+
+def fixup_glsl_files(*paths: str) -> None:
+    ' Convert the GLSL output of slangc to something that will work with OpenGL 3.3 '
+    pass
+
+
+ParallelRun = Callable[[Iterable[tuple[bool, str, list[str]]]], None]
+
+
+def copy_files_preserving_structure(source_dir: str, dest_dir: str, extension: str) -> None:
+    '''
+    Copies all files with a specific extension from a source directory
+    to a destination directory while preserving the subdirectory structure.
+    '''
+    source = Path(source_dir)
+    destination = Path(dest_dir)
+    if not extension.startswith('.'):
+        extension = f".{extension}"
+    # Recursively find all matching files
+    for file_path in source.rglob(f"*{extension}"):
+        if file_path.is_file():
+            # Calculate relative path to maintain folder hierarchy
+            relative_path = file_path.relative_to(source)
+            target_path = destination / relative_path
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            # Copy file while preserving original metadata
+            shutil.copy2(file_path, target_path)
+
+
+def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: ParallelRun) -> None:
+    src_dir = os.path.abspath('kitty/shaders')
+    source_tree = get_ordered_sources_in_tree(src_dir)
+    # First ensure all IR is generated
+    parallel_run(commands_to_compile_dir_to_ir(source_tree, src_dir, build_dir))
+    # Copy IR to dest_dir
+    copy_files_preserving_structure(build_dir, dest_dir, '.slang-module')
+    # Now glsl shaders
+    built_glsl_files: list[str] = []
+    glsl_commands = commands_to_compile_to_glsl(source_tree, build_dir, dest_dir, built_glsl_files)
+
+    # Now run all commands
+    parallel_run(glsl_commands)
+    fixup_glsl_files(*built_glsl_files)
