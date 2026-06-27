@@ -157,7 +157,7 @@ def commands_to_compile_dir_to_ir(sources: dict[str, SlangFile], src_dir: str, o
             deps_file = f'{base_dest}.deps'
             module_mtime = safe_mtime(slang_module)
             needs_build = module_mtime < get_newest_dep_time(deps_file)
-            yield Command(needs_build, f'Compile {name} to slang IR', cmdbase + [
+            yield Command(needs_build, f'Compiling |{name}.slang| ...', cmdbase + [
                 sfile.path, '-I', output_dirpath, '-I', src_dir, '-depfile', deps_file,
                 '-target', 'none', '-o', slang_module
             ])
@@ -183,12 +183,28 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, d
         needs_build = output_mtime < module_mtime
         if needs_build:
             built_glsl_files.extend(dest_files)
-        yield Command(needs_build, f'Link slang IR for {name} to GLSL', cmd)
+        yield Command(needs_build, f'Linking |{name}.slang-module| to GLSL ...', cmd)
 
 
-def fixup_glsl_files(*paths: str) -> None:
+def fixup_opengl_code(glsl_code: str) -> str:
+    lines = []
+    for line in glsl_code.splitlines():
+        if line.startswith('#version '):
+            line = '#version 330 core'
+        elif line.startswith('#extension ') or line in ('layout(row_major) buffer;', 'layout(push_constant)'):
+            line = '// ' + line
+        lines.append(line)
+    return '\n'.join(lines)
+
+
+def fixup_opengl_files(*paths: str) -> None:
     ' Convert the GLSL output of slangc to something that will work with OpenGL 3.3 '
-    pass
+    for path in paths:
+        with open(path, 'r+') as f:
+            glsl_code = f.read()
+            f.seek(0)
+            f.truncate()
+            f.write(fixup_opengl_code(glsl_code))
 
 
 ParallelRun = Callable[[Iterable[tuple[bool, str, list[str]]]], None]
@@ -227,4 +243,4 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
 
     # Now run all commands
     parallel_run(glsl_commands)
-    fixup_glsl_files(*built_glsl_files)
+    fixup_opengl_files(*built_glsl_files)
