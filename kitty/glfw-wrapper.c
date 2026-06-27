@@ -497,6 +497,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwCocoaCycleThroughOSWindows_impl) = dlsym(handle, "glfwCocoaCycleThroughOSWindows");
     if (glfwCocoaCycleThroughOSWindows_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwCocoaSetWindowLevel_impl) = dlsym(handle, "glfwCocoaSetWindowLevel");
+    if (glfwCocoaSetWindowLevel_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwCocoaSetWindowChrome_impl) = dlsym(handle, "glfwCocoaSetWindowChrome");
     if (glfwCocoaSetWindowChrome_impl == NULL) dlerror(); // clear error indicator
 

@@ -1373,7 +1373,8 @@ typedef struct GLFWLayerShellConfig {
     void (*size_callback)(GLFWwindow *window, float xscale, float yscale, unsigned *cell_width, unsigned *cell_height, double *left_edge_spacing, double *top_edge_spacing, double *right_edge_spacing, double *bottom_edge_spacing);
     struct { float xscale, yscale; } expected;
     struct {
-        float background_opacity; int background_blur, color_space;
+        float background_opacity; int background_blur, color_space, use_physical_screen_frame;
+        char ns_window_layer[128];
     } related;
 } GLFWLayerShellConfig;
 

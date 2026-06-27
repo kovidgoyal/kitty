@@ -2582,6 +2582,71 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     window->ns.object = nil;
 }
 
+static bool
+ns_window_level_constant(const char *name, long *val) {
+#define C(x) if (strcmp(name, #x) == 0) { *val = (long)x; return true; }
+    C(NSNormalWindowLevel); C(NSFloatingWindowLevel); C(NSSubmenuWindowLevel); C(NSTornOffMenuWindowLevel);
+    C(NSMainMenuWindowLevel); C(NSStatusWindowLevel); C(NSModalPanelWindowLevel); C(NSPopUpMenuWindowLevel);
+    C(NSScreenSaverWindowLevel);
+    C(kCGBaseWindowLevel); C(kCGMinimumWindowLevel); C(kCGDesktopWindowLevel); C(kCGBackstopMenuLevel);
+    C(kCGNormalWindowLevel); C(kCGFloatingWindowLevel); C(kCGTornOffMenuWindowLevel); C(kCGDockWindowLevel);
+    C(kCGMainMenuWindowLevel); C(kCGStatusWindowLevel); C(kCGModalPanelWindowLevel); C(kCGPopUpMenuWindowLevel);
+    C(kCGDraggingWindowLevel); C(kCGScreenSaverWindowLevel); C(kCGMaximumWindowLevel); C(kCGOverlayWindowLevel);
+    C(kCGHelpWindowLevel); C(kCGUtilityWindowLevel); C(kCGDesktopIconWindowLevel); C(kCGAssistiveTechHighWindowLevel);
+    C(kCGCursorWindowLevel); C(kCGNumberOfWindowLevelKeys);
+#undef C
+    return false;
+}
+
+static bool
+parse_ns_window_level_term(const char **spec, long *val) {
+    const char *s = *spec;
+    while (isspace(*s)) s++;
+    if (!*s) return false;
+    if (*s == '+' || *s == '-' || isdigit(*s)) {
+        errno = 0;
+        char *end = NULL;
+        long v = strtol(s, &end, 0);
+        if (end == s || errno) return false;
+        *val = v; *spec = end;
+        return true;
+    }
+    char name[96]; size_t i = 0;
+    while ((isalnum(*s) || *s == '_') && i + 1 < sizeof(name)) name[i++] = *s++;
+    name[i] = '\0';
+    if (!i || !ns_window_level_constant(name, val)) return false;
+    *spec = s;
+    return true;
+}
+
+static bool
+parse_ns_window_level(const char *spec, NSWindowLevel *level) {
+    const char *original = spec;
+    if (!spec) return false;
+    while (isspace(*spec)) spec++;
+    if (!*spec || strcmp(spec, "unset") == 0) return false;
+    long total = 0;
+    if (!parse_ns_window_level_term(&spec, &total)) goto invalid;
+    while (true) {
+        while (isspace(*spec)) spec++;
+        if (!*spec) { *level = (NSWindowLevel)total; return true; }
+        char op = *spec++;
+        if (op != '+' && op != '-') goto invalid;
+        long term = 0;
+        if (!parse_ns_window_level_term(&spec, &term)) goto invalid;
+        total = op == '+' ? total + term : total - term;
+    }
+invalid:
+    _glfwInputError(GLFW_INVALID_VALUE, "Cocoa: Invalid macOS NSWindow layer expression: %s", original);
+    return false;
+}
+
+static void
+apply_ns_window_layer(_GLFWwindow *window, const char *spec) {
+    NSWindowLevel level = 0;
+    if (parse_ns_window_level(spec, &level)) [window->ns.object setLevel:level];
+}
+
 static NSScreen*
 screen_for_window_center(_GLFWwindow *window) {
     NSRect windowFrame = [window->ns.object frame];
@@ -2686,9 +2751,10 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
     double spacing_y = top_edge_spacing + bottom_edge_spacing;
     const unsigned xsz = config.x_size_in_pixels ? (unsigned)(config.x_size_in_pixels * xscale) : (cell_width * config.x_size_in_cells);
     const unsigned ysz = config.y_size_in_pixels ? (unsigned)(config.y_size_in_pixels * yscale) : (cell_height * config.y_size_in_cells);
+    NSRect placement_frame = config.related.use_physical_screen_frame ? screen.frame : screen.visibleFrame;
     CGFloat dock_height = NSMinY(screen.visibleFrame) - NSMinY(screen.frame);
-    CGFloat menubar_height = NSHeight(screen.frame) - NSHeight(screen.visibleFrame) - dock_height;
-    CGFloat x = NSMinX(screen.visibleFrame), y = NSMinY(screen.visibleFrame) - 1, width = NSWidth(screen.visibleFrame), height = NSHeight(screen.visibleFrame) + 2;
+    CGFloat menubar_height = config.related.use_physical_screen_frame ? 0 : NSHeight(screen.frame) - NSHeight(screen.visibleFrame) - dock_height;
+    CGFloat x = NSMinX(placement_frame), y = NSMinY(placement_frame) - 1, width = NSWidth(placement_frame), height = NSHeight(placement_frame) + 2;
     if (config.type == GLFW_LAYER_SHELL_BACKGROUND || config.edge == GLFW_EDGE_CENTER) {
         x = NSMinX(screen.frame); height = NSHeight(screen.frame) - menubar_height + 1; y = NSMinY(screen.frame); width = NSWidth(screen.frame);
     }
@@ -2729,8 +2795,8 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
                 height = panel_height; width = panel_width;
                 break;
         }
-        if (width < 1.) width = NSWidth(screen.visibleFrame);
-        if (height < 1.) height = NSWidth(screen.visibleFrame);
+        if (width < 1.) width = NSWidth(placement_frame);
+        if (height < 1.) height = NSHeight(placement_frame);
     }
 
     if (config.edge != GLFW_EDGE_CENTER_SIZED) {
@@ -2740,6 +2806,7 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
 
     [nswindow setAnimationBehavior:animation_behavior];
     [nswindow setLevel:level];
+    apply_ns_window_layer(window, config.related.ns_window_layer);
     [nswindow setCollectionBehavior: (NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorStationary | NSWindowCollectionBehaviorIgnoresCycle)];
     [nswindow setFrame:NSMakeRect(x, y, width, height) display:YES];
     return true;
@@ -4037,6 +4104,12 @@ apply_window_corner_curve(_GLFWwindow *window) {
     }
 }
 
+
+
+GLFWAPI void glfwCocoaSetWindowLevel(GLFWwindow *w, const char *level_spec) { @autoreleasepool {
+    _GLFWwindow* window = (_GLFWwindow*)w;
+    apply_ns_window_layer(window, level_spec);
+}}
 
 
 GLFWAPI void glfwCocoaSetWindowChrome(GLFWwindow *w, unsigned int color, bool use_system_color, unsigned int system_color, int background_blur, unsigned int hide_window_decorations, bool show_text_in_titlebar, int color_space, float background_opacity, bool resizable) { @autoreleasepool {
