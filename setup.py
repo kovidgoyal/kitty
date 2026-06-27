@@ -1182,6 +1182,7 @@ def build_uniforms_header(skip_generation: bool = False) -> str:
             a(f'    ans->{n} = get_uniform_location(program, "{n}");')
         a('}')
         a('')
+    # }]]]))
     src = '\n'.join(lines)
     try:
         with open(dest) as f:
@@ -1204,6 +1205,30 @@ def wrapped_kittens() -> str:
     raise Exception('Failed to read wrapped kittens from kitty wrapper script')
 
 
+def build_shaders(args: Options) -> None:
+    if args.skip_code_generation:
+        print('Skipping building of shaders due to command line option', flush=True)
+        return
+    ddir = 'shaders'
+    os.makedirs(ddir, exist_ok=True)
+    bdir = 'build/shaders'
+    os.makedirs(bdir, exist_ok=True)
+
+    def prun(cmds: Iterable[tuple[bool, str, list[str]]]) -> None:
+        needed = []
+        for (needs_build, desc, cmd) in cmds:
+            if needs_build:
+                needed.append(Command(desc, cmd, lambda: True))
+        parallel_run(needed)
+
+    sys.path.insert(0, os.path.abspath('kitty'))
+    try:
+        from kitty.shaders.slang import compile_builtin_shaders
+        compile_builtin_shaders(bdir, ddir, prun)
+    finally:
+        del sys.path[0]
+
+
 def build(args: Options, native_optimizations: bool = True, call_init: bool = True) -> None:
     if call_init:
         init_env_from_args(args, native_optimizations)
@@ -1219,6 +1244,7 @@ def build(args: Options, native_optimizations: bool = True, call_init: bool = Tr
     compile_glfw(args.compilation_database, args.build_dsym)
     compile_kittens(args)
     add_builtin_fonts(args)
+    build_shaders(args)
 
 
 def safe_makedirs(path: str) -> None:
