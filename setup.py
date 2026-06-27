@@ -2323,6 +2323,7 @@ def do_build(args: Options) -> None:
         elif args.action == 'export-ci-bundles':
             cmd = [sys.executable, '../bypy', 'export', 'download.calibre-ebook.com:/srv/download/ci/kitty']
             subprocess.check_call(cmd + ['linux'])
+            subprocess.check_call(cmd + ['linux', '--arch=arm64'])
             subprocess.check_call(cmd + ['macos'])
         elif args.action == 'build-static-binaries':
             build_static_binaries(args, launcher_dir)
