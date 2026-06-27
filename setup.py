@@ -1218,6 +1218,7 @@ def build_shaders(args: Options) -> None:
         needed = []
         for (needs_build, desc, cmd) in cmds:
             if needs_build:
+                desc = re.sub(r'\|(.+?)\|', lambda m: emphasis(m.group(1)), desc)
                 needed.append(Command(desc, cmd, lambda: True))
         parallel_run(needed)
 
