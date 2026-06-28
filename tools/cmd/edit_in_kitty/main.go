@@ -52,6 +52,10 @@ func edit_loop(data_to_send string, kill_if_signaled bool, on_data OnDataCallbac
 				if line == "KITTY_DATA_END" {
 					lp.QueueWriteString(update_type + "\r\n")
 					if update_type == "DONE" {
+						// Parse the editor exit code from the data payload.
+						// Decoding errors are intentionally ignored: if the data is
+						// missing or malformed (e.g. from an older kitty server),
+						// we fall back to exit_code=0 for backward compatibility.
 						if data.Len() > 0 {
 							if b, err2 := base64.StdEncoding.DecodeString(data.String()); err2 == nil {
 								if n, err3 := strconv.Atoi(strings.TrimSpace(string(b))); err3 == nil {

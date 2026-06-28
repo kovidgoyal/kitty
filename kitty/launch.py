@@ -1010,6 +1010,17 @@ class EditCmd:
 
     def on_edit_window_close(self, window: Window) -> None:
         self.check_status()
+        if self.editor_exit_code is None:
+            # The PID death callback fires in the same main-loop tick as the
+            # window-close callback (report_reaped_pids runs after parse_input).
+            # Schedule a short-interval fallback timer in case the PID was not
+            # registered in time (e.g., editor crashed before monitor_pid ran).
+            add_timer(self._fallback_done, 0.1, False)
+
+    def _fallback_done(self, timer_id: int | None = None) -> None:
+        if self.editor_exit_code is None:
+            self.editor_exit_code = 0
+        self.check_status()
 
     def check_status(self, timer_id: int | None = None) -> None:
         if self.abort_signaled:
@@ -1155,7 +1166,9 @@ def remote_edit(msg: str, window: Window) -> None:
             try:
                 get_boss().monitor_pid(editor_pid, on_editor_pid_death)
             except RuntimeError:
-                c.editor_exit_code = 0  # monitoring table full, assume success
+                # PID monitoring table is full. The fallback timer in
+                # on_edit_window_close will set editor_exit_code to 0.
+                log_error('edit-in-kitty: PID monitoring table full, editor exit code will not be tracked')
         else:
             c.editor_exit_code = 0
         c.schedule_check()
