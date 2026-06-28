@@ -89,6 +89,7 @@ Run-time dependencies:
 * ``liblcms2``
 * ``libxxhash``
 * ``openssl``
+* ``shader-slang`` (for the slangc compiler)
 * ``pixman`` (not needed on macOS)
 * ``cairo`` (not needed on macOS)
 * ``freetype`` (not needed on macOS)
