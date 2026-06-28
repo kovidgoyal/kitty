@@ -194,6 +194,8 @@ Detailed list of changes
 
 - macOS: Fix incorrect horizontal alignment when using text sizing protocol (:iss:`10179`)
 
+- ``edit-in-kitty``: Return exit code from underlying editor process on exit (:iss:`10198`)
+
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
