@@ -330,3 +330,6 @@ Kittens created by kitty users
 `weechat-hints <https://github.com/GermainZ/kitty-weechat-hints>`_
     URL hints kitten for WeeChat that works without having to use WeeChat's
     raw-mode.
+
+`pdf-kitten <https://github.com/gelaechter/pdf-kitten>`__
+    Allows you to export kitty's output to PDF, making use of weasyprint.
