@@ -15,6 +15,7 @@ in
           simde
           go
           matplotlib
+          shader-slang
         ]
         ++ optionals stdenv.isDarwin [
           libpng
