@@ -180,11 +180,17 @@ def install_deps() -> None:
     install_fonts()
 
 
+def set_slangc() -> None:
+    slangc = os.path.join(SW if is_bundle else SLANG_INSTALL_DIR, 'bin', 'slangc')
+    os.environ['SLANGC'] = slangc
+
+
 def build_kitty() -> None:
     python = shutil.which('python3') if is_bundle else sys.executable
     cmd = f'{python} setup.py build --verbose'
     if running_under_sanitizer:
         cmd += ' --debug --sanitize'
+    set_slangc()
     run(cmd)
 
 
@@ -194,12 +200,12 @@ def test_kitty() -> None:
         run('sudo chmod -R 777 /cores')
         if running_under_sanitizer:
             os.environ['MallocNanoZone'] = '0'
-    slangc = os.path.join(SW if is_bundle else SLANG_INSTALL_DIR, 'bin', 'slangc')
-    os.environ['SLANGC'] = slangc
+    set_slangc()
     run('./test.py', print_crash_reports=True)
 
 
 def package_kitty() -> None:
+    set_slangc()
     python = 'python3' if is_macos else 'python'
     run(f'{python} setup.py linux-package --update-check-interval=0 --verbose')
     run('make FAIL_WARN=1 docs')
