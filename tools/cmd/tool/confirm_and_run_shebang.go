@@ -4,6 +4,7 @@ package tool
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -120,7 +121,13 @@ func confirm_and_run_shebang(args []string, confirm_policy ConfirmPolicy) (rc in
 			editor.Stdin = os.Stdin
 			editor.Stdout = os.Stdout
 			editor.Stderr = os.Stderr
-			editor.Run()
+			if err = editor.Run(); err != nil {
+				var exitErr *exec.ExitError
+				if errors.As(err, &exitErr) {
+					return exitErr.ExitCode(), nil
+				}
+				return 1, err
+			}
 			return confirm_and_run_shebang(args, ConfirmIfNeeded)
 		case "y":
 		}
