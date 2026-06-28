@@ -1627,8 +1627,8 @@ class TestScreen(BaseTest):
         s.draw('before\r\n')
         draw_prompt('p1'), draw_output(2), mark_prompt(), s.draw('partial')
         x = s.cursor.x
-        s.erase_last_command(False)
-        self.ae('before\n$ p1\npartial', at().rstrip())
+        s.erase_last_command(False)  # include_prompt is now a no-op: the prompt block is the unit erased
+        self.ae('before\npartial', at().rstrip())
         for scroll in (8, 9, 10):
             s.reset()
             s.draw('before'), s.carriage_return(), s.linefeed()
@@ -1640,6 +1640,30 @@ class TestScreen(BaseTest):
         draw_prompt('p1'), draw_output(9), mark_prompt(), s.draw('partial')
         s.erase_last_command()
         self.ae(at().rstrip(), '  a  b\npartial')
+
+        # the most recent command is erased even when it produced no output (an
+        # empty Enter, a comment, cd, ...): such commands emit no OSC 133;C and
+        # must not be skipped in favour of an older command-with-output.
+        s = self.create_screen(cols=10, lines=12, scrollback=30)
+        s.draw('before\r\n')
+        draw_prompt('p1'), draw_output(2), draw_prompt('# note'), mark_prompt(), s.draw('partial')
+        s.erase_last_command()
+        self.ae('before\n$ p1\n0\n1\npartial', at().rstrip())  # the output-less command goes first
+        s.erase_last_command()
+        self.ae('before\npartial', at().rstrip())              # then the command with output
+        # consecutive output-less commands are removed newest-first, one per call
+        s.reset()
+        s.draw('before\r\n')
+        draw_prompt('p1'), draw_output(1), draw_prompt('e1'), draw_prompt('e2'), mark_prompt(), s.draw('partial')
+        s.erase_last_command(); self.ae('before\n$ p1\n0\n$ e1\npartial', at().rstrip())
+        s.erase_last_command(); self.ae('before\n$ p1\n0\npartial', at().rstrip())
+        s.erase_last_command(); self.ae('before\npartial', at().rstrip())
+        # multi-line live prompt: the command region is erased with no residual
+        s.reset()
+        s.draw('before\r\n')
+        draw_prompt('p1'), draw_output(9), mark_prompt(), s.draw('l1'), s.carriage_return(), s.index(), s.draw('partial')
+        s.erase_last_command()
+        self.ae('before\nl1\npartial', at().rstrip())
 
     def test_pointer_shapes(self):
         from kitty.window import set_pointer_shape

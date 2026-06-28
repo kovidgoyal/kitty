@@ -4600,26 +4600,49 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
 
 static PyObject*
 erase_last_command(Screen *self, PyObject *args) {
-    int include_prompt = 1;
+    int include_prompt = 1;  // retained for API compatibility; the prompt block is the unit erased
     if (!PyArg_ParseTuple(args, "|p", &include_prompt)) return NULL;
-    OutputOffset oo = {.screen=self};
-    if (self->linebuf != self->main_linebuf || !find_cmd_output(self, &oo, self->cursor->y + self->scrolled_by, self->scrolled_by, -1, false)) Py_RETURN_FALSE;
-    if (include_prompt) {
-        int y = oo.start - 1; Line *line;
-        while ((line = checked_range_line(self, y))) {
-            oo.start--; oo.num_lines++; y--;
-            if (line->attrs.prompt_kind == PROMPT_START) break;
-        }
+    (void)include_prompt;
+    if (self->linebuf != self->main_linebuf) Py_RETURN_FALSE;
+    Line *line;
+    // Erase the most recent command: the prompt block immediately above the
+    // current (live) prompt, regardless of whether that command produced any
+    // output. Commands without output (an empty Enter, a comment, cd, export,
+    // ...) emit no OSC 133;C, so a search anchored on OUTPUT_START would skip
+    // them and erase an older command instead. Selecting by prompt marks makes
+    // every submitted command one unit, removed newest-first.
+    int y = self->cursor->y + self->scrolled_by;
+    bool found = false;
+    for (; (line = checked_range_line(self, y)); y--) {
+        if (line->attrs.prompt_kind == PROMPT_START) { found = true; break; }
     }
-    index_type num_lines_to_erase_in_screen = oo.start >= 0 ? oo.num_lines : oo.num_lines + oo.start;
+    if (!found) Py_RETURN_FALSE;
+    const int live_prompt_start = y;
+    found = false;
+    for (y = live_prompt_start - 1; (line = checked_range_line(self, y)); y--) {
+        if (line->attrs.prompt_kind == PROMPT_START) { found = true; break; }
+    }
+    if (!found) Py_RETURN_FALSE;  // nothing above the current prompt to erase
+    const int start = y;
+    const index_type num_lines = (index_type)(live_prompt_start - start);
+    index_type num_lines_to_erase_in_screen = start >= 0 ? num_lines : num_lines + start;
     num_lines_to_erase_in_screen = MIN(self->cursor->y, num_lines_to_erase_in_screen);
     if (num_lines_to_erase_in_screen) {
-        screen_delete_lines_impl(self, self->cursor->y - num_lines_to_erase_in_screen, num_lines_to_erase_in_screen, 0, self->lines - 1);
+        // Anchor the on-screen deletion at the top of the region, not at
+        // cursor->y - count: a multi-line prompt or rows skipped above would
+        // otherwise shift the deletion and leave residual lines on screen.
+        index_type screen_erase_start = start >= 0 ? (index_type)start : 0;
+        screen_delete_lines_impl(self, screen_erase_start, num_lines_to_erase_in_screen, 0, self->lines - 1);
         self->cursor->y -= num_lines_to_erase_in_screen;
     }
-    if (oo.num_lines > num_lines_to_erase_in_screen) {
-        index_type num_of_lines_to_erase_from_history = oo.num_lines - num_lines_to_erase_in_screen;
-        historybuf_delete_newest_lines(self->historybuf, num_of_lines_to_erase_from_history);
+    if (num_lines > num_lines_to_erase_in_screen) {
+        historybuf_delete_newest_lines(self->historybuf, num_lines - num_lines_to_erase_in_screen);
+        // The scrollback shrank: clamp the scroll position and signal a redraw,
+        // otherwise the deletion of off-screen lines is not reflected until the
+        // next scroll event forces the history viewport to be recomputed.
+        self->scrolled_by = MIN(self->scrolled_by, self->historybuf->count);
+        self->is_dirty = true;
+        dirty_scroll(self);
     }
     Py_RETURN_TRUE;
 }
