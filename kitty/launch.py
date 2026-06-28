@@ -943,6 +943,7 @@ class EditCmd:
         self.file_size = -1
         self.version = 0
         self.source_window_id = self.editor_window_id = -1
+        self.editor_exit_code: int | None = None
         simple = 'file_inode', 'file_data', 'abort_signaled', 'version'
         for k, v in parse_message(msg, simple):
             if k == 'file_inode':
@@ -1023,9 +1024,13 @@ class EditCmd:
                 self.send_data(source_window, 'UPDATE', data)
         editor_window = boss.window_id_map.get(self.editor_window_id)
         if editor_window is None:
+            if self.editor_exit_code is None:
+                # Wait for the PID death callback to provide the editor's exit code.
+                # It will call check_status() again once the exit code is known.
+                return
             edits_in_flight.pop(self.source_window_id, None)
             if source_window is not None:
-                self.send_data(source_window, 'DONE')
+                self.send_data(source_window, 'DONE', str(self.editor_exit_code).encode())
             self.abort_signaled = self.abort_signaled or 'closed'
         else:
             self.schedule_check()
@@ -1142,6 +1147,17 @@ def remote_edit(msg: str, window: Window) -> None:
             q.abort_signaled = 'replaced'
         edits_in_flight[window.id] = c
         w.actions_on_close.append(c.on_edit_window_close)
+        editor_pid = w.child.pid
+        if editor_pid:
+            def on_editor_pid_death(wait_status: int, err: Exception | None) -> None:
+                c.editor_exit_code = os.waitstatus_to_exitcode(wait_status) if err is None else 1
+                c.check_status()
+            try:
+                get_boss().monitor_pid(editor_pid, on_editor_pid_death)
+            except RuntimeError:
+                c.editor_exit_code = 0  # monitoring table full, assume success
+        else:
+            c.editor_exit_code = 0
         c.schedule_check()
 
 
