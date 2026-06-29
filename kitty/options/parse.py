@@ -1112,6 +1112,9 @@ class Parser:
     def macos_menubar_title_max_length(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_menubar_title_max_length'] = positive_int(val)
 
+    def macos_ns_window_layer(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['macos_ns_window_layer'] = str(val)
+
     def macos_option_as_alt(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_option_as_alt'] = macos_option_as_alt(val)
 
@@ -1134,6 +1137,9 @@ class Parser:
 
     def macos_traditional_fullscreen(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_traditional_fullscreen'] = to_bool(val)
+
+    def macos_use_physical_screen_frame(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['macos_use_physical_screen_frame'] = to_bool(val)
 
     def macos_window_resizable(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['macos_window_resizable'] = to_bool(val)

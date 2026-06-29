@@ -1449,6 +1449,32 @@ convert_from_opts_macos_fullscreen_ignore_safe_area_insets(PyObject *py_opts, Op
 }
 
 static void
+convert_from_python_macos_use_physical_screen_frame(PyObject *val, Options *opts) {
+    opts->macos_use_physical_screen_frame = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_macos_use_physical_screen_frame(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "macos_use_physical_screen_frame");
+    if (ret == NULL) return;
+    convert_from_python_macos_use_physical_screen_frame(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_macos_ns_window_layer(PyObject *val, Options *opts) {
+    macos_ns_window_layer(val, opts);
+}
+
+static void
+convert_from_opts_macos_ns_window_layer(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "macos_ns_window_layer");
+    if (ret == NULL) return;
+    convert_from_python_macos_ns_window_layer(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_macos_show_window_title_in(PyObject *val, Options *opts) {
     opts->macos_show_window_title_in = window_title_in(val);
 }
@@ -1723,6 +1749,10 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_macos_traditional_fullscreen(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_macos_fullscreen_ignore_safe_area_insets(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_macos_use_physical_screen_frame(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_macos_ns_window_layer(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_macos_show_window_title_in(py_opts, opts);
     if (PyErr_Occurred()) return false;
