@@ -6,7 +6,7 @@ toolchain go1.26.4
 
 require (
 	github.com/ALTree/bigfloat v0.2.0
-	github.com/alecthomas/chroma/v2 v2.26.1
+	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/dlclark/regexp2 v1.12.0
 	github.com/ebitengine/purego v0.10.1
@@ -39,7 +39,7 @@ require (
 // replace github.com/kovidgoyal/imaging => ../imaging
 
 require (
-	github.com/dlclark/regexp2/v2 v2.1.1 // indirect
+	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect
