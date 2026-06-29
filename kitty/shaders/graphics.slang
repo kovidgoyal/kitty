@@ -3,6 +3,13 @@
 // Distributed under terms of the GPLv3 license.
 
 import blit;
+import alpha_blend;
+import utils;
+
+extern static const bool is_alpha_mask = false;
+extern static const bool texture_is_not_premultiplied = false;
+// specialize: alpha_mask: is_alpha_mask=true
+// specialize: premult: texture_is_not_premultiplied=true
 
 
 struct VSOutput
@@ -25,9 +32,23 @@ VSOutput vertex_main(
     return output;
 }
 
+uniform Sampler2D image;
+
 [shader("fragment")]
-float4 fragment_main(float2 texcoord : TEXCOORD, uniform Sampler2D image) : SV_Target
-{
+float4 fragment_main(
+    float2 texcoord : TEXCOORD,
+    uniform float3 amask_fg,
+    uniform float4 amask_bg_premult,
+    uniform float extra_alpha
+) : SV_Target {
     float4 color = image.Sample(texcoord);
+    if (is_alpha_mask) {
+        color = float4(amask_fg, color.r);
+        color = vec4_premul(color);
+        color = alpha_blend_premul(color, amask_bg_premult);
+    } else color.a *= extra_alpha;
+
+    if (texture_is_not_premultiplied) color = vec4_premul(color);
+
     return color;
 }
