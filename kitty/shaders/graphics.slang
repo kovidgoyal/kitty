@@ -25,10 +25,8 @@ VSOutput vertex_main(
     return output;
 }
 
-Sampler2D image;
-
 [shader("fragment")]
-float4 fragment_main(float2 texcoord : TEXCOORD) : SV_Target
+float4 fragment_main(float2 texcoord : TEXCOORD, uniform Sampler2D image) : SV_Target
 {
     float4 color = image.Sample(texcoord);
     return color;
