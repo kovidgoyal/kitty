@@ -4599,10 +4599,7 @@ find_cmd_output(Screen *self, OutputOffset *oo, index_type start_screen_y, unsig
 }
 
 static PyObject*
-erase_last_command(Screen *self, PyObject *args) {
-    int include_prompt = 1;  // retained for API compatibility; the prompt block is the unit erased
-    if (!PyArg_ParseTuple(args, "|p", &include_prompt)) return NULL;
-    (void)include_prompt;
+erase_last_command(Screen *self, PyObject *args UNUSED) {
     if (self->linebuf != self->main_linebuf) Py_RETURN_FALSE;
     Line *line;
     // Erase the most recent command: the prompt block immediately above the
@@ -6244,7 +6241,7 @@ static PyMethodDef methods[] = {
     MND(draw, METH_O)
     MND(apply_sgr, METH_O)
     MND(cursor_position, METH_VARARGS)
-    MND(erase_last_command, METH_VARARGS)
+    MND(erase_last_command, METH_NOARGS)
     MND(set_window_char, METH_VARARGS)
     MND(set_progress, METH_VARARGS)
     MND(set_mode, METH_VARARGS)

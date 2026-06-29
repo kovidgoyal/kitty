@@ -1627,7 +1627,7 @@ class TestScreen(BaseTest):
         s.draw('before\r\n')
         draw_prompt('p1'), draw_output(2), mark_prompt(), s.draw('partial')
         x = s.cursor.x
-        s.erase_last_command(False)  # include_prompt is now a no-op: the prompt block is the unit erased
+        s.erase_last_command()
         self.ae('before\npartial', at().rstrip())
         for scroll in (8, 9, 10):
             s.reset()
@@ -1655,9 +1655,12 @@ class TestScreen(BaseTest):
         s.reset()
         s.draw('before\r\n')
         draw_prompt('p1'), draw_output(1), draw_prompt('e1'), draw_prompt('e2'), mark_prompt(), s.draw('partial')
-        s.erase_last_command(); self.ae('before\n$ p1\n0\n$ e1\npartial', at().rstrip())
-        s.erase_last_command(); self.ae('before\n$ p1\n0\npartial', at().rstrip())
-        s.erase_last_command(); self.ae('before\npartial', at().rstrip())
+        s.erase_last_command()
+        self.ae('before\n$ p1\n0\n$ e1\npartial', at().rstrip())
+        s.erase_last_command()
+        self.ae('before\n$ p1\n0\npartial', at().rstrip())
+        s.erase_last_command()
+        self.ae('before\npartial', at().rstrip())
         # multi-line live prompt: the command region is erased with no residual
         s.reset()
         s.draw('before\r\n')
