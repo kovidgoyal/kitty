@@ -29,26 +29,26 @@ void drawTriangle(float4 pos : POSITION) {
 float4 psMain() : SV_Target {
     return float4(1, 0, 0, 1);
 }
-        ''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.vertex, 'drawTriangle'), EntryPoint(Stage.fragment, 'psMain')}), ''))
+        ''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.vertex, 'drawTriangle'), EntryPoint(Stage.fragment, 'psMain')}), '', {}, ()))
 
         # Empty source
-        check('', SlangFile('', '', frozenset(), frozenset(), ''))
+        check('', SlangFile('', '', frozenset(), frozenset(), '', {}, ()))
 
         # Only line comments and block comments, no code
-        check('// just a comment\n/* block comment */', SlangFile('', '', frozenset(), frozenset(), ''))
+        check('// just a comment\n/* block comment */', SlangFile('', '', frozenset(), frozenset(), '', {}, ()))
 
         # Module and import declarations
         check('''
 module mymodule;
 import utils;
 import helpers;
-''', SlangFile('', '', frozenset({'utils', 'helpers'}), frozenset(), 'mymodule'))
+''', SlangFile('', '', frozenset({'utils', 'helpers'}), frozenset(), 'mymodule', {}, ()))
 
         # pixel stage maps to Stage.fragment
         check('''
 [shader("pixel")]
 float4 pixelMain() : SV_Target { return float4(0); }
-''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'pixelMain')}), ''))
+''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'pixelMain')}), '', {}, ()))
 
         # Block comment stripping removes multi-line comments before parsing
         check('''
@@ -56,7 +56,7 @@ float4 pixelMain() : SV_Target { return float4(0); }
    spanning multiple lines */
 [shader("vertex")]
 void vertMain() {}
-''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.vertex, 'vertMain')}), ''))
+''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.vertex, 'vertMain')}), '', {}, ()))
 
         # Block comment containing a shader attribute must not create a false entry point
         check('''
@@ -64,7 +64,7 @@ void vertMain() {}
 void shouldNotBeDetected() {} */
 [shader("fragment")]
 void fragMain() {}
-''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'fragMain')}), ''))
+''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'fragMain')}), '', {}, ()))
 
         # Multiple [attr] lines between [shader(...)] and the function declaration are skipped
         check('''
@@ -72,7 +72,7 @@ void fragMain() {}
 [numthreads(4, 4, 1)]
 [SomeOtherAttribute]
 float4 fragMain() : SV_Target { return float4(0); }
-''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'fragMain')}), ''))
+''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'fragMain')}), '', {}, ()))
 
         # Multiple entry points: vertex, pixel, and fragment stages
         check('''
@@ -88,7 +88,7 @@ float4 fsMain() : SV_Target { return float4(0); }
             EntryPoint(Stage.vertex, 'vsMain'),
             EntryPoint(Stage.fragment, 'psMain'),
             EntryPoint(Stage.fragment, 'fsMain'),
-        }), ''))
+        }), '', {}, ()))
 
         # module, imports and entry points together
         check('''
@@ -97,14 +97,14 @@ import common;
 
 [shader("vertex")]
 void vsMain() {}
-''', SlangFile('', '', frozenset({'common'}), frozenset({EntryPoint(Stage.vertex, 'vsMain')}), 'myshader'))
+''', SlangFile('', '', frozenset({'common'}), frozenset({EntryPoint(Stage.vertex, 'vsMain')}), 'myshader', {}, ()))
 
     def test_slang_ordering(self):
         # Test topological_sort with a manually constructed linear chain: a <- b <- c
         graph: dict[str, SlangFile] = {
-            'a': SlangFile('', '', frozenset(), frozenset(), 'a'),
-            'b': SlangFile('', '', frozenset({'a'}), frozenset(), 'b'),
-            'c': SlangFile('', '', frozenset({'b'}), frozenset(), 'c'),
+            'a': SlangFile('', '', frozenset(), frozenset(), 'a', {}, ()),
+            'b': SlangFile('', '', frozenset({'a'}), frozenset(), 'b', {}, ()),
+            'c': SlangFile('', '', frozenset({'b'}), frozenset(), 'c', {}, ()),
         }
         order = topological_sort(graph)
         self.assertLess(order.index('a'), order.index('b'))
@@ -112,10 +112,10 @@ void vsMain() {}
 
         # Diamond dependency: base <- left, base <- right, left + right <- top
         diamond: dict[str, SlangFile] = {
-            'base': SlangFile('', '', frozenset(), frozenset(), 'base'),
-            'left': SlangFile('', '', frozenset({'base'}), frozenset(), 'left'),
-            'right': SlangFile('', '', frozenset({'base'}), frozenset(), 'right'),
-            'top': SlangFile('', '', frozenset({'left', 'right'}), frozenset(), 'top'),
+            'base': SlangFile('', '', frozenset(), frozenset(), 'base', {}, ()),
+            'left': SlangFile('', '', frozenset({'base'}), frozenset(), 'left', {}, ()),
+            'right': SlangFile('', '', frozenset({'base'}), frozenset(), 'right', {}, ()),
+            'top': SlangFile('', '', frozenset({'left', 'right'}), frozenset(), 'top', {}, ()),
         }
         order2 = topological_sort(diamond)
         self.assertLess(order2.index('base'), order2.index('left'))
@@ -125,7 +125,7 @@ void vsMain() {}
 
         # Node with an import not present in the graph is silently skipped
         partial: dict[str, SlangFile] = {
-            'x': SlangFile('', '', frozenset({'missing'}), frozenset(), 'x'),
+            'x': SlangFile('', '', frozenset({'missing'}), frozenset(), 'x', {}, ()),
         }
         self.assertEqual(topological_sort(partial), ['x'])
 
