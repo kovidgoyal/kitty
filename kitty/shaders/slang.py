@@ -178,7 +178,7 @@ def iter_entry_point_shaders(sources: dict[str, SlangFile], build_dir: str, dest
 def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_files: list[str]) -> Iterator[Command]:
     for base_dest, slang_module, cmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
         dest = f'{base_dest}.spv'
-        cmd += ['-target', 'spirv', '-o', dest]
+        cmd += ['-target', 'spirv', '-capability', 'vk_mem_model', '-fvk-use-entrypoint-name', '-o', dest]
         output_mtime = safe_mtime(dest)
         module_mtime = os.path.getmtime(slang_module)
         needs_build = output_mtime < module_mtime
@@ -189,19 +189,17 @@ def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, 
 
 def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_glsl_files: list[str]) -> Iterator[Command]:
     for base_dest, slang_module, cmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
-        output_mtime = future()
-        dest_files = []
-        cmd.extend(('-line-directive-mode', 'none'))
-        for ep in sfile.entry_points:
-            dest = f'{base_dest}.{ep.stage.name}.glsl'
-            cmd += ['-entry', ep.name, '-stage', ep.stage.name, '-target', 'glsl', '-profile', 'glsl_330', '-o', dest]
-            dest_files.append(dest)
-            output_mtime = min(output_mtime, safe_mtime(dest))
         module_mtime = os.path.getmtime(slang_module)
-        needs_build = output_mtime < module_mtime
-        if needs_build:
-            built_glsl_files.extend(dest_files)
-        yield Command(needs_build, f'Linking |{os.path.basename(slang_module)}| to GLSL ...', cmd)
+        for ep in sfile.entry_points:
+            c = list(cmd)
+            c.extend(('-line-directive-mode', 'none', '-target', 'glsl', '-profile', 'glsl_330'))
+            dest = f'{base_dest}.{ep.stage.name}.glsl'
+            c += ['-entry', ep.name, '-stage', ep.stage.name, '-o', dest]
+            output_mtime = safe_mtime(dest)
+            needs_build = output_mtime < module_mtime
+            if needs_build:
+                built_glsl_files.append(dest)
+            yield Command(needs_build, f'Linking |{os.path.basename(slang_module)}| to GLSL {ep.stage} shader ...', c)
 
 
 def fixup_opengl_code(glsl_code: str) -> str:
@@ -234,7 +232,7 @@ def fixup_opengl_code(glsl_code: str) -> str:
                 line = '#version 330 core'
             elif line.startswith('#extension ') or line in ('layout(row_major) buffer;', 'layout(push_constant)'):
                 line = '// ' + line
-            elif line.startswith('layout(location ='):
+            elif line.startswith('layout(location =') or line.startswith('layout(binding ='):
                 line = '// ' + line
             else:
                 words = line.split()
