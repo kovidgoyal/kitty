@@ -13,7 +13,7 @@ struct VSOutput
 
 
 [shader("vertex")]
-VSOutput main(
+VSOutput vertex_main(
     uint vertex_id : SV_VertexID,
     uniform float4 src_rect,
     uniform float4 dest_rect,
@@ -25,3 +25,11 @@ VSOutput main(
     return output;
 }
 
+Sampler2D image;
+
+[shader("fragment")]
+float4 fragment_main(float2 texcoord : TEXCOORD) : SV_Target
+{
+    float4 color = image.Sample(texcoord);
+    return color;
+}
