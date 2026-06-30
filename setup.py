@@ -87,6 +87,7 @@ class CompilationDatabase:
         self.incremental = incremental
         self.compile_commands: List[Command] = []
         self.link_commands: List[Command] = []
+        self.build_shaders: Callable[[], None] = lambda: None
         self.post_link_commands: List[Command] = []
 
     def add_command(
@@ -127,6 +128,8 @@ class CompilationDatabase:
             if not self.incremental or compile_cmd.is_newer_func():
                 items.append(compile_cmd)
         parallel_run(items)
+
+        self.build_shaders()
 
         items = []
         for compile_cmd in self.post_link_commands:
@@ -1209,25 +1212,27 @@ def build_shaders(args: Options) -> None:
     if args.skip_code_generation:
         print('Skipping building of shaders due to command line option', flush=True)
         return
-    ddir = 'shaders'
-    os.makedirs(ddir, exist_ok=True)
-    bdir = 'build/shaders'
-    os.makedirs(bdir, exist_ok=True)
+    def do_build() -> None:
+        ddir = 'shaders'
+        os.makedirs(ddir, exist_ok=True)
+        bdir = 'build/shaders'
+        os.makedirs(bdir, exist_ok=True)
 
-    def prun(cmds: Iterable[tuple[bool, str, list[str]]]) -> None:
-        needed = []
-        for (needs_build, desc, cmd) in cmds:
-            if needs_build:
-                desc = re.sub(r'\|(.+?)\|', lambda m: emphasis(m.group(1)), desc)
-                needed.append(Command(desc, cmd, lambda: True))
-        parallel_run(needed)
+        def prun(cmds: Iterable[tuple[bool, str, list[str]]]) -> None:
+            needed = []
+            for (needs_build, desc, cmd) in cmds:
+                if needs_build:
+                    desc = re.sub(r'\|(.+?)\|', lambda m: emphasis(m.group(1)), desc)
+                    needed.append(Command(desc, cmd, lambda: True))
+            parallel_run(needed)
 
-    sys.path.insert(0, os.path.abspath('kitty'))
-    try:
-        from kitty.shaders.slang import compile_builtin_shaders
-        compile_builtin_shaders(bdir, ddir, prun)
-    finally:
-        del sys.path[0]
+        sys.path.insert(0, os.path.abspath('kitty'))
+        try:
+            from kitty.shaders.slang import compile_builtin_shaders
+            compile_builtin_shaders(bdir, ddir, prun)
+        finally:
+            del sys.path[0]
+    args.compilation_database.build_shaders = do_build
 
 
 def build(args: Options, native_optimizations: bool = True, call_init: bool = True) -> None:
