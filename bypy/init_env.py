@@ -11,7 +11,7 @@ import sys
 import tempfile
 from contextlib import suppress
 
-from bypy.constants import LIBDIR, PREFIX, PYTHON, ismacos, worker_env
+from bypy.constants import BIN, LIBDIR, PREFIX, PYTHON, ismacos, worker_env
 from bypy.constants import SRC as KITTY_DIR
 from bypy.utils import run_shell, walk
 
@@ -39,6 +39,7 @@ def run(*args, **extra_env):
     env.update(extra_env)
     env['SW'] = PREFIX
     env['LD_LIBRARY_PATH'] = LIBDIR
+    env['SLANGC'] = os.path.join(BIN, 'slangc')
     if ismacos:
         env['PKGCONFIG_EXE'] = os.path.join(PREFIX, 'bin', 'pkg-config')
     cwd = env.pop('cwd', KITTY_DIR)
