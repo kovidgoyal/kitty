@@ -426,6 +426,8 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
 
 
 def main() -> None:
+    if not shutil.which(slangc[0]):
+        raise SystemExit(f'The shader slang compiler ({slangc[0]}) not in PATH: {os.environ.get("PATH")}')
     setup = runpy.run_path('setup.py')
     Command = setup['Command']
     parallel_run = setup['parallel_run']
