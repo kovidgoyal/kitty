@@ -10,7 +10,7 @@ import subprocess
 import tarfile
 import time
 
-from bypy.constants import OUTPUT_DIR, PREFIX, python_major_minor_version
+from bypy.constants import LIBDIR, BIN, OUTPUT_DIR, PREFIX, python_major_minor_version
 from bypy.freeze import extract_extension_modules, freeze_python, path_to_freeze_dir
 from bypy.utils import get_dll_path, mkdtemp, py_compile, walk
 
@@ -90,6 +90,14 @@ def copy_libs(env) -> None:
         shutil.copy2(x, dest)
         dest = os.path.join(dest, os.path.basename(x))
         subprocess.check_call(['chrpath', '-d', dest])
+    # Copy slangc
+    for x in ('compiler', 'rt'):
+        x = f'libslang-{x}.so'
+        shutil.copy2(os.path.join(LIBDIR, f'{x}.0.0.0.0'), env.lib_dir)
+        os.symlink(f'{x}.0.0.0.0', os.path.join(env.lib_dir, x))
+    shutil.copy2(os.path.join(LIBDIR, 'libslang-glsl-module-0.0.0.so'), env.lib_dir)
+    shutil.copy2(os.path.join(LIBDIR, 'libslang-glslang-0.0.0.so'), env.lib_dir)
+    shutil.copy2(os.path.join(BIN, 'slangc'), env.bin_dir)
 
 
 def add_ca_certs(env) -> None:
@@ -136,10 +144,6 @@ def copy_python(env) -> None:
     py_compile(env.py_dir)
     freeze_python(env.py_dir, pdir, env.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM', remove_pyc_files=True)
     shutil.rmtree(env.py_dir)
-
-
-def build_launcher(env) -> None:
-    iv['build_frozen_launcher']([path_to_freeze_dir(), env.obj_dir])
 
 
 def is_elf(path):
@@ -228,7 +232,7 @@ def main() -> None:
     env = Env(os.path.join(ext_dir, kitty_constants['appname']))
     copy_libs(env)
     copy_python(env)
-    build_launcher(env)
+    iv['build_frozen_launcher']([path_to_freeze_dir(), env.obj_dir])
     files = find_binaries(env)
     fix_permissions(files)
     add_ca_certs(env)
