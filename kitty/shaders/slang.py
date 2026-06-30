@@ -16,7 +16,7 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Callable, Iterable, Iterator, NamedTuple
 
-from kitty.constants import slangc
+from kitty.constants import read_kitty_resource, shaders_dir, slangc
 from kitty.fast_data_types import (
     BLINK,
     COLOR_IS_INDEX,
@@ -33,6 +33,11 @@ from kitty.fast_data_types import (
     get_options,
 )
 from kitty.options.types import defaults
+
+
+@lru_cache(maxsize=64)
+def get_shader_src(name: str) -> str:
+    return read_kitty_resource(f'{name}.slang', 'kitty.shaders').decode()
 
 
 class Stage(Enum):
@@ -440,6 +445,26 @@ def main() -> None:
                 needed.append(Command(desc, cmd, lambda: True))
         parallel_run(needed)
     compile_builtin_shaders(sys.argv[-2], sys.argv[-1], prun)
+
+
+def test_slang_build() -> None:
+    import subprocess
+    if shutil.which(slangc[0]) is None:
+        raise AssertionError(f'The shader slang compiler ({slangc[0]}) not in PATH: {os.environ.get("PATH")}')
+    q = os.path.join(shaders_dir, 'graphics.spv')
+    if not os.path.isfile(q):
+        raise AssertionError(f'The compiled graphics shader {q} does not exist')
+    if not get_shader_src('graphics'):
+        raise AssertionError('Could not load graphics.slang shader source')
+    src = b'''
+#language slang 2026
+[shader("vertex")]
+float4 main(uint vertex_id : SV_VertexID) : SV_Position { return float4(vertex_id, 1, 0, 1); }
+'''
+    cp = subprocess.run(slangc + '-lang slang -entry main -stage vertex -target glsl -o /dev/stdout -- -'.split(),
+                        input=src, capture_output=True)
+    if cp.returncode != 0:
+        raise AssertionError(f'Test compile of shader to GLSL failed with returncode: {cp.returncode} and stderr: {cp.stderr.decode()}')
 
 
 if __name__ == '__main__':

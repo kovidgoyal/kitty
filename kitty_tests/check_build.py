@@ -35,6 +35,10 @@ class TestBuild(BaseTest):
         from kittens.transfer import rsync
         del fdt, rsync
 
+    def test_slang_build(self) -> None:
+        from kitty.shaders.slang import test_slang_build
+        test_slang_build()
+
     def test_loading_shaders(self) -> None:
         from kitty.shaders.legacy import Program
         for name in 'cell border bgimage tint graphics'.split():
