@@ -12,7 +12,7 @@ import sys
 import tempfile
 import zipfile
 
-from bypy.constants import PREFIX, PYTHON, SW, python_major_minor_version
+from bypy.constants import BIN, LIBDIR, PREFIX, PYTHON, SW, python_major_minor_version
 from bypy.freeze import extract_extension_modules, freeze_python, path_to_freeze_dir
 from bypy.macos_sign import codesign, create_entitlements_file, make_certificate_useable, notarize_app, verify_signature
 from bypy.utils import current_dir, mkdtemp, py_compile, run_shell, timeit, walk
@@ -301,7 +301,7 @@ class Freeze(object):
         self.fix_dependencies_in_lib(join(self.frameworks_dir, basename(path)))
 
     @flush
-    def add_misc_libraries(self):
+    def add_misc_libraries(self) -> None:
         for x in (
                 'sqlite3.0',
                 'z.1',
@@ -319,6 +319,22 @@ class Freeze(object):
             dest = join(self.frameworks_dir, x)
             self.set_id(dest, f'{self.FID}/{x}')
             self.fix_dependencies_in_lib(dest)
+        # Copy slang
+        x = 'libslang-compiler.0.0.0.0.dylib'
+        shutil.copy2(os.path.join(LIBDIR, x), self.frameworks_dir)
+        os.symlink(x, os.path.join(self.frameworks_dir, 'libslang-compiler.dylib'))
+        dest = join(self.frameworks_dir, x)
+        self.set_id(dest, f'{self.FID}/{x}')
+        self.fix_dependencies_in_lib(dest)
+        for x in ('glsl-module', 'glslang'):
+            x = f'libslang-{x}-0.0.0.dylib'
+            shutil.copy2(os.path.join(LIBDIR, x), self.frameworks_dir)
+            dest = join(self.frameworks_dir, x)
+            self.set_id(dest, f'{self.FID}/{x}')
+        dest = os.path.join(self.contents_dir, 'MacOS')
+        shutil.copy2(os.path.join(BIN, 'slangc'), dest)
+        dest = os.path.join(dest, 'slangc')
+        self.fix_dependencies_in_lib(dest)
 
     @flush
     def add_package_dir(self, x, dest=None):
