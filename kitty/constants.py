@@ -63,7 +63,9 @@ if getattr(sys, 'frozen', False):
         ans = os.path.join(ans, 'kitty')
         return ans
     kitty_base_dir = get_frozen_base()
-    del get_frozen_base
+    if rpath := kitty_run_data.get('bundle_exe_dir'):
+        slangc = [os.path.join(rpath, 'slangc')]
+    del get_frozen_base, rpath
 else:
     kitty_base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     extensions_dir = os.path.join(kitty_base_dir, 'kitty')
