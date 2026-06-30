@@ -120,18 +120,12 @@ def install_slang_compiler() -> None:
     machine = platform.machine().lower()
     arch = 'aarch64' if machine in ('aarch64', 'arm64') else 'x86_64'
 
-    release = make_github_api_request('repos/shader-slang/slang/releases/latest')
-    version = release['tag_name'].lstrip('v')
-
-    asset_name = f'slang-{version}-{os_name}-{arch}.tar.gz'
-    url = None
-    for asset in release['assets']:
-        if asset['name'] == asset_name:
-            url = asset['browser_download_url']
-            break
-    if url is None:
-        raise SystemExit(f'Could not find slang release asset: {asset_name}')
-
+    with open('bypy/sources.json') as f:
+        data = json.loads(f.read())
+    for dep in data:
+        if dep['name'].startswith('slang '):
+            version = dep['name'].split()[-1]
+    url = f'https://github.com/shader-slang/slang/releases/download/v{version}/slang-{version}-{os_name}-{arch}.tar.gz'
     install_dir = SLANG_INSTALL_DIR
     os.makedirs(install_dir, exist_ok=True)
     data = download_with_retry(url)
