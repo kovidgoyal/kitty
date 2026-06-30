@@ -10,7 +10,7 @@ import subprocess
 import tarfile
 import time
 
-from bypy.constants import LIBDIR, BIN, OUTPUT_DIR, PREFIX, python_major_minor_version
+from bypy.constants import BIN, LIBDIR, OUTPUT_DIR, PREFIX, python_major_minor_version
 from bypy.freeze import extract_extension_modules, freeze_python, path_to_freeze_dir
 from bypy.utils import get_dll_path, mkdtemp, py_compile, walk
 
@@ -90,13 +90,13 @@ def copy_libs(env) -> None:
         shutil.copy2(x, dest)
         dest = os.path.join(dest, os.path.basename(x))
         subprocess.check_call(['chrpath', '-d', dest])
-    # Copy slangc
-    for x in ('compiler', 'rt'):
-        x = f'libslang-{x}.so'
-        shutil.copy2(os.path.join(LIBDIR, f'{x}.0.0.0.0'), env.lib_dir)
-        os.symlink(f'{x}.0.0.0.0', os.path.join(env.lib_dir, x))
-    shutil.copy2(os.path.join(LIBDIR, 'libslang-glsl-module-0.0.0.so'), env.lib_dir)
-    shutil.copy2(os.path.join(LIBDIR, 'libslang-glslang-0.0.0.so'), env.lib_dir)
+    # Copy slang
+    x = 'libslang-compiler.so'
+    shutil.copy2(os.path.join(LIBDIR, f'{x}.0.0.0.0'), env.lib_dir)
+    os.symlink(f'{x}.0.0.0.0', os.path.join(env.lib_dir, x))
+    for x in ('glsl-module', 'glslang'):
+        x = f'libslang-{x}-0.0.0.so'
+        shutil.copy2(os.path.join(LIBDIR, x), env.lib_dir)
     shutil.copy2(os.path.join(BIN, 'slangc'), env.bin_dir)
 
 
