@@ -1421,7 +1421,7 @@ def wrapped_kittens() -> str:
     raise Exception('Failed to read wrapped kittens from kitty wrapper script')
 
 
-def build_shaders(args: Options, kitty_exe: str) -> None:
+def build_shaders(args: Options, kitty_exe: str, for_freeze: bool) -> None:
     if args.skip_code_generation:
         print('Skipping building of shaders due to command line option', flush=True)
         return
@@ -1434,6 +1434,9 @@ def build_shaders(args: Options, kitty_exe: str) -> None:
         if os.environ.get('CI') == 'true' and cp.returncode < 0 and shutil.which('coredumpctl'):
             subprocess.run(['sh', '-c', 'echo bt | coredumpctl debug'])
         raise SystemExit(f'Generating shaders failed with exit code: {cp.returncode}')
+    if for_freeze:
+        libdir = os.path.join(os.path.dirname(kitty_exe), '..', 'lib', 'kitty')
+        shutil.copytree('shaders', os.path.join(libdir, 'shaders'), dirs_exist_ok=True)
 
 
 def build(args: Options, native_optimizations: bool = True, call_init: bool = True) -> None:
@@ -1512,7 +1515,8 @@ def build_static_kittens(
         raise SystemExit(f'The version of go on this system ({current_go_version}) is too old. go >= {required_go_version} is needed')
     if not for_platform:
         update_go_generated_files(args, os.path.join(launcher_dir, appname))
-        build_shaders(args, os.path.join(launcher_dir, appname))
+        build_shaders(args, os.path.join(launcher_dir, appname), for_freeze)
+
     if args.skip_building_kitten:
         print('Skipping building of the kitten binary because of a command line option. Build is incomplete', file=sys.stderr)
         return ''
@@ -2157,9 +2161,10 @@ def package(args: Options, bundle_type: str, do_build_all: bool = True) -> None:
         for f_ in files:
             path = os.path.join(root, f_)
             os.chmod(path, 0o755 if should_be_executable(path) else 0o644)
-    if not for_freeze and not bundle_type.startswith('macos-'):
-        build_static_kittens(args, launcher_dir=launcher_dir)
-    shutil.copytree('shaders', os.path.join(libdir, 'shaders'), dirs_exist_ok=True)
+    if not for_freeze:
+        if not bundle_type.startswith('macos-'):
+            build_static_kittens(args, launcher_dir=launcher_dir)
+        shutil.copytree('shaders', os.path.join(libdir, 'shaders'), dirs_exist_ok=True)
     if not is_macos and not is_windows:
         create_linux_bundle_gunk(ddir, args)
 
