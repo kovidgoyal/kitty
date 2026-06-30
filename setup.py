@@ -45,7 +45,6 @@ def check_version_info() -> None:
         exit(f'kitty requires Python {minver}. Current Python version: {".".join(map(str, sys.version_info[:3]))}')
 
 
-check_version_info()
 verbose = False
 build_dir = 'build'
 constants = os.path.join('kitty', 'constants.py')
@@ -87,7 +86,6 @@ class CompilationDatabase:
         self.incremental = incremental
         self.compile_commands: List[Command] = []
         self.link_commands: List[Command] = []
-        self.build_shaders: Callable[[], None] = lambda: None
         self.post_link_commands: List[Command] = []
 
     def add_command(
@@ -128,8 +126,6 @@ class CompilationDatabase:
             if not self.incremental or compile_cmd.is_newer_func():
                 items.append(compile_cmd)
         parallel_run(items)
-
-        self.build_shaders()
 
         items = []
         for compile_cmd in self.post_link_commands:
@@ -1208,31 +1204,19 @@ def wrapped_kittens() -> str:
     raise Exception('Failed to read wrapped kittens from kitty wrapper script')
 
 
-def build_shaders(args: Options) -> None:
+def build_shaders(args: Options, kitty_exe: str) -> None:
     if args.skip_code_generation:
         print('Skipping building of shaders due to command line option', flush=True)
         return
-    def do_build() -> None:
-        ddir = 'shaders'
-        os.makedirs(ddir, exist_ok=True)
-        bdir = 'build/shaders'
-        os.makedirs(bdir, exist_ok=True)
-
-        def prun(cmds: Iterable[tuple[bool, str, list[str]]]) -> None:
-            needed = []
-            for (needs_build, desc, cmd) in cmds:
-                if needs_build:
-                    desc = re.sub(r'\|(.+?)\|', lambda m: emphasis(m.group(1)), desc)
-                    needed.append(Command(desc, cmd, lambda: True))
-            parallel_run(needed)
-
-        sys.path.insert(0, os.path.abspath('kitty'))
-        try:
-            from kitty.shaders.slang import compile_builtin_shaders
-            compile_builtin_shaders(bdir, ddir, prun)
-        finally:
-            del sys.path[0]
-    args.compilation_database.build_shaders = do_build
+    env = os.environ.copy()
+    env['ASAN_OPTIONS'] = 'detect_leaks=0'
+    cp = subprocess.run([
+        kitty_exe, '+launch', os.path.join(src_base, 'kitty/shaders/slang.py'), 'build/shaders', 'shaders',
+    ], env=env)
+    if cp.returncode != 0:
+        if os.environ.get('CI') == 'true' and cp.returncode < 0 and shutil.which('coredumpctl'):
+            subprocess.run(['sh', '-c', 'echo bt | coredumpctl debug'])
+        raise SystemExit(f'Generating shaders failed with exit code: {cp.returncode}')
 
 
 def build(args: Options, native_optimizations: bool = True, call_init: bool = True) -> None:
@@ -1250,7 +1234,6 @@ def build(args: Options, native_optimizations: bool = True, call_init: bool = Tr
     compile_glfw(args.compilation_database, args.build_dsym)
     compile_kittens(args)
     add_builtin_fonts(args)
-    build_shaders(args)
 
 
 def safe_makedirs(path: str) -> None:
@@ -1312,6 +1295,7 @@ def build_static_kittens(
         raise SystemExit(f'The version of go on this system ({current_go_version}) is too old. go >= {required_go_version} is needed')
     if not for_platform:
         update_go_generated_files(args, os.path.join(launcher_dir, appname))
+        build_shaders(args, os.path.join(launcher_dir, appname))
     if args.skip_building_kitten:
         print('Skipping building of the kitten binary because of a command line option. Build is incomplete', file=sys.stderr)
         return ''
@@ -2363,6 +2347,7 @@ def do_build(args: Options) -> None:
 
 
 def main() -> None:
+    check_version_info()
     global verbose, build_dir
     if len(sys.argv) > 1 and sys.argv[1] == 'build-dep':
         return build_dep()
