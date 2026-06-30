@@ -90,7 +90,7 @@ def build_frozen_tools(kitty_exe):
 
 def sanitize_source_folder(path: str) -> None:
     for q in walk(path):
-        if os.path.splitext(q)[1] not in ('.py', '.glsl', '.ttf', '.otf', '.json'):
+        if os.path.splitext(q)[1] not in ('.py', '.glsl', '.slang', '.ttf', '.otf', '.json'):
             os.unlink(q)
 
 
@@ -100,6 +100,7 @@ def build_c_extensions(ext_dir, args):
     shutil.copytree(
         KITTY_DIR, writeable_src_dir, symlinks=True,
         ignore=shutil.ignore_patterns('b', 'build', 'dist', '*_commands.json', '*.o', '*.so', '*.dylib', '*.pyd'))
+    shutil.rmtree(os.path.join(writeable_src_dir, 'shaders'))
 
     with suppress(FileNotFoundError):
         os.unlink(os.path.join(writeable_src_dir, 'kitty', 'launcher', 'kitty'))
