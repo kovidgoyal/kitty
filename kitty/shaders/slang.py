@@ -9,6 +9,7 @@ from collections import OrderedDict
 from contextlib import suppress
 from enum import Enum
 from functools import lru_cache
+from itertools import chain
 from pathlib import Path
 from types import MappingProxyType
 from typing import Callable, Iterable, Iterator, NamedTuple
@@ -292,7 +293,7 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, d
                 needs_build = output_mtime < module_mtime
                 if needs_build:
                     built_glsl_files.append(dest)
-                yield Command(needs_build, f'Linking |{os.path.basename(slang_module)}| to GLSL {ep.stage} shader ...', c)
+                yield Command(needs_build, f'Linking |{os.path.basename(slang_module)}| to GLSL {ep.stage.value} shader ...', c)
 
 
 def fixup_opengl_code(glsl_code: str) -> str:
@@ -396,7 +397,7 @@ def create_specialisations(sources: dict[str, SlangFile], build_dir: str, dest_d
                 if needs_build:
                     with open(dest, 'w') as fw:
                         fw.write(payload)
-                yield Command(needs_build, f'Compiling specialisation |{os.path.basename(dest)}|| ...',
+                yield Command(needs_build, f'Compiling specialisation |{os.path.basename(dest)}| ...',
                               list(slangc) + [dest, '-o', dest + '-module'])
 
 
@@ -412,12 +413,9 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
     # Now Vulkan shaders
     built_spirv_files: list[str] = []
     spirv_commands = commands_to_compile_to_spirv(source_tree, build_dir, dest_dir, built_spirv_files)
-    parallel_run(spirv_commands)
-
     # Now glsl files
     built_glsl_files: list[str] = []
     glsl_commands = commands_to_compile_to_glsl(source_tree, build_dir, dest_dir, built_glsl_files)
-
     # Now run all commands
-    parallel_run(glsl_commands)
+    parallel_run(chain(spirv_commands, glsl_commands))
     fixup_opengl_files(*built_glsl_files)
