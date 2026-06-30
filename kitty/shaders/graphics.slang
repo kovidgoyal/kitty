@@ -8,8 +8,6 @@ import utils;
 
 extern static const bool is_alpha_mask = false;
 extern static const bool texture_is_not_premultiplied = false;
-// specialize: alpha_mask: is_alpha_mask=true
-// specialize: premult: texture_is_not_premultiplied=true
 
 
 struct VSOutput
