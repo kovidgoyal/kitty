@@ -46,6 +46,10 @@ class Specialization(NamedTuple):
     name: str
     variables: MappingProxyType[str, str]
 
+    @property
+    def filename_insert(self) -> str:
+        return f'.{self.name}' if self.name else '.default-specialization'
+
 
 class SlangFile(NamedTuple):
     path: str = ''
@@ -261,7 +265,7 @@ def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, 
             cmd = list(scmd)
             dest = f'{base_dest}.{x.name}.spv' if x.name else f'{base_dest}.spv'
             if x.name:
-                cmd.insert(-1, f'{base_dest}.{x.name}.slang-module')
+                cmd.insert(-1, f'{base_dest}{x.filename_insert}.slang-module')
             cmd += base_cmd + ['-o', dest]
             output_mtime = safe_mtime(dest)
             module_mtime = os.path.getmtime(slang_module)
@@ -281,7 +285,7 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, d
                 dest = f'{base_dest}.{ep.stage.name}.glsl'
                 c = list(cmd)
                 if sp.name:
-                    dest = f'{base_dest}.{sp.name}.{ep.stage.name}.glsl'
+                    dest = f'{base_dest}{sp.filename_insert}.{ep.stage.name}.glsl'
                     c.insert(-1, f'{base_dest}.{sp.name}.slang-module')
                 c += extra_cmd + ['-entry', ep.name, '-stage', ep.stage.name, '-o', dest]
                 output_mtime = safe_mtime(dest)
@@ -379,7 +383,7 @@ def create_specialisations(sources: dict[str, SlangFile], build_dir: str, dest_d
     for base_dest, slang_module, cmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
         if sfile.entry_points and sfile.specializations:
             for sp in sfile.specializations:
-                dest = f'{base_dest}.{sp.name}.slang'
+                dest = f'{base_dest}{sp.filename_insert}.slang'
                 lines = []
                 for key, val in sp.variables.items():
                     declaration = sfile.specializable_variables[key].rpartition('=')[0]
