@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
+import json
 import os
 import re
 import runpy
@@ -274,14 +275,13 @@ def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, 
             dest = f'{base_dest}.{x.name}.spv' if x.name else f'{base_dest}.spv'
             if x.name:
                 cmd.insert(-1, f'{base_dest}{x.filename_insert}.slang-module')
-            cmd += base_cmd + ['-o', dest]
+            cmd += base_cmd + ['-o', dest, '-reflection-json', dest + '.json']
             output_mtime = safe_mtime(dest)
             module_mtime = os.path.getmtime(slang_module)
             needs_build = output_mtime < module_mtime
             if needs_build:
                 built_files.append(dest)
             yield Command(needs_build, f'Linking |{os.path.basename(dest)}| ...', cmd)
-
 
 
 def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_glsl_files: list[str]) -> Iterator[Command]:
@@ -303,7 +303,7 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, d
                 yield Command(needs_build, f'Linking |{os.path.basename(slang_module)}| to GLSL {ep.stage.value} shader ...', c)
 
 
-def fixup_opengl_code(glsl_code: str) -> str:
+def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
     lines = []
     in_uniform_block = False
     in_uniform_block_contents = False
@@ -322,7 +322,10 @@ def fixup_opengl_code(glsl_code: str) -> str:
                     line = line.strip()
                     name = line.split()[-1].rstrip(';')
                     current_uniform_names.append(name)
-                    uniform_names[name] = name.rpartition('_')[0]
+                    uniform_name = name.rpartition('_')[0]
+                    if uniform_name in uniform_names:
+                        raise KeyError(f'The uniform name {uniform_name} is used with multiple suffixes')
+                    uniform_names[uniform_name] = name
                     line = 'uniform ' + line
             elif line.startswith('{'):  # }}
                 line = '// ' + line
@@ -354,7 +357,7 @@ def fixup_opengl_code(glsl_code: str) -> str:
             ans = ans.replace(f'{block_name}.{u}', u)
     ans = ans.replace('gl_VertexIndex', 'gl_VertexID')
     ans = ans.replace('gl_BaseVertex', '0')
-    return ans
+    return ans, uniform_names
 
 
 def fixup_opengl_files(*paths: str) -> None:
@@ -364,7 +367,10 @@ def fixup_opengl_files(*paths: str) -> None:
             glsl_code = f.read()
             f.seek(0)
             f.truncate()
-            f.write(fixup_opengl_code(glsl_code))
+            fixed, uniform_names = fixup_opengl_code(glsl_code)
+            f.write(fixed)
+        with open(path + '.json', 'w') as f:
+            f.write(json.dumps(uniform_names))
 
 
 ParallelRun = Callable[[Iterable[tuple[bool, str, list[str]]]], None]
