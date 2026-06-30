@@ -1435,7 +1435,7 @@ def build_shaders(args: Options, kitty_exe: str, for_freeze: bool) -> None:
             subprocess.run(['sh', '-c', 'echo bt | coredumpctl debug'])
         raise SystemExit(f'Generating shaders failed with exit code: {cp.returncode}')
     if for_freeze:
-        libdir = os.path.join(os.path.dirname(kitty_exe), '..', 'lib', 'kitty')
+        libdir = os.path.join(os.path.dirname(kitty_exe), '..', 'Resources' if is_macos else 'lib', 'kitty')
         shutil.copytree('shaders', os.path.join(libdir, 'shaders'), dirs_exist_ok=True)
 
 
