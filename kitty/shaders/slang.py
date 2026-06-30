@@ -341,8 +341,11 @@ def fixup_opengl_code(glsl_code: str) -> str:
                     in_uniform_block = True
                     in_uniform_block_contents = False
                     line = '// ' + line
-                elif line.startswith('const ') and '] = {' in line:  # }]
-                    line = line.replace('{', f'{words[1]}[](', 1)  # }])
+                elif '] = {' in line:  # }] this is https://github.com/shader-slang/slang/issues/11802
+                    typename = words[0]
+                    if words[0] == 'const':
+                        typename = words[1]
+                    line = line.replace('{', f'{typename}[](', 1)  # }])
                     line = line.removesuffix('};') + ');'
         lines.append(line)
     ans = '\n'.join(lines)
