@@ -404,6 +404,8 @@ def create_specialisations(sources: dict[str, SlangFile], build_dir: str, dest_d
 
 
 def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: ParallelRun) -> None:
+    os.makedirs(build_dir, exist_ok=True)
+    os.makedirs(dest_dir, exist_ok=True)
     src_dir = os.path.abspath('kitty/shaders')
     source_tree = get_ordered_sources_in_tree(src_dir)
     # First ensure all IR is generated
