@@ -3,7 +3,9 @@
 
 import os
 import re
+import runpy
 import shutil
+import sys
 import time
 from collections import OrderedDict
 from contextlib import suppress
@@ -419,3 +421,22 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
     # Now run all commands
     parallel_run(chain(spirv_commands, glsl_commands))
     fixup_opengl_files(*built_glsl_files)
+
+
+def main() -> None:
+    setup = runpy.run_path('setup.py')
+    Command = setup['Command']
+    parallel_run = setup['parallel_run']
+    emphasis = setup['emphasis']
+    def prun(cmds: Iterable[tuple[bool, str, list[str]]]) -> None:
+        needed = []
+        for (needs_build, desc, cmd) in cmds:
+            if needs_build:
+                desc = re.sub(r'\|(.+?)\|', lambda m: emphasis(m.group(1)), desc)
+                needed.append(Command(desc, cmd, lambda: True))
+        parallel_run(needed)
+    compile_builtin_shaders(sys.argv[-2], sys.argv[-1], prun)
+
+
+if __name__ == '__main__':
+    main()
