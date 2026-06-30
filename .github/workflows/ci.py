@@ -14,7 +14,6 @@ import subprocess
 import sys
 import tarfile
 import time
-from typing import Any
 from urllib.request import Request, urlopen
 
 BUNDLE_URL = 'https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'
@@ -105,16 +104,6 @@ def install_fonts() -> None:
             tf.extractall(fonts_dir)
 
 
-def make_github_api_request(slug: str, **headers: str) -> dict[str, Any]:
-    headers.update(**{'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'})
-    if gh_token := os.environ.get('GITHUB_TOKEN'):
-        headers['Authorization'] = f'token {gh_token}'
-    api_req = Request(f'https://api.github.com/{slug}', headers=headers)
-    ans = json.loads(download_with_retry(api_req))
-    assert isinstance(ans, dict)
-    return ans
-
-
 def install_slang_compiler() -> None:
     os_name = 'macos' if is_macos else 'linux'
     machine = platform.machine().lower()
@@ -125,6 +114,7 @@ def install_slang_compiler() -> None:
     for dep in data:
         if dep['name'].startswith('slang '):
             version = dep['name'].split()[-1]
+            break
     url = f'https://github.com/shader-slang/slang/releases/download/v{version}/slang-{version}-{os_name}-{arch}.tar.gz'
     install_dir = SLANG_INSTALL_DIR
     os.makedirs(install_dir, exist_ok=True)
