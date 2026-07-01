@@ -466,6 +466,7 @@ def main() -> None:
         parallel_run(needed)
     compile_builtin_shaders(sys.argv[-2], sys.argv[-1], prun)
 
+
 def test_slang_build() -> None:
     import subprocess
     if shutil.which(slangc[0]) is None:
