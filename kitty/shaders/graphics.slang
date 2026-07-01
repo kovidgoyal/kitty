@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Kovid Goyal <kovid at kovidgoyal.net>
 // Distributed under terms of the GPLv3 license.
 
-import blit;
+import blit_common;
 import alpha_blend;
 import utils;
 
