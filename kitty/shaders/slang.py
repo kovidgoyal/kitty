@@ -330,11 +330,14 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
     lines = []
     in_uniform_block = False
     in_uniform_block_contents = False
+    uniform_block_is_struct = False
+    current_uniform_struct_members: dict[str, str] = {}
     uniform_blocks = {}
     current_uniform_names: list[str] = []
     uniform_names = {}
+    uniform_structs = {}
 
-    def add_uniform_name(name: str) -> str:
+    def add_uniform_name(name: str, uniform_names: dict[str, str] = uniform_names) -> str:
         name = name.rstrip(';')
         uniform_name = name.rpartition('_')[0]
         if uniform_name in uniform_names:
@@ -347,15 +350,24 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
             if in_uniform_block_contents:
                 if line.startswith('}'):
                     in_uniform_block = in_uniform_block_contents = False
-                    uniform_blocks[line.lstrip('}').rstrip(';').strip()] = current_uniform_names
-                    line = '// ' + line
+                    block_name = line.lstrip('}').rstrip(';').strip()
+                    if uniform_block_is_struct:
+                        uniform_structs[block_name.rpartition('_')[0]] = {
+                            'name': block_name, 'members': current_uniform_struct_members}
+                    else:
+                        uniform_blocks[block_name] = current_uniform_names
+                        line = '// ' + line
                     current_uniform_names = []
                 else:
-                    line = line.strip()
-                    current_uniform_names.append(add_uniform_name(line.split()[-1]))
-                    line = 'uniform ' + line
+                    if uniform_block_is_struct:
+                        current_uniform_names.append(add_uniform_name(line.split()[-1], current_uniform_struct_members))
+                    else:
+                        line = line.strip()
+                        current_uniform_names.append(add_uniform_name(line.split()[-1]))
+                        line = 'uniform ' + line
             elif line.startswith('{'):  # }}
-                line = '// ' + line
+                if not uniform_block_is_struct:
+                    line = '// ' + line
                 in_uniform_block_contents = True
                 current_uniform_names = []
         else:
@@ -370,7 +382,11 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
                 if 'uniform' in words and line.startswith('layout('):  # )
                     in_uniform_block = True
                     in_uniform_block_contents = False
-                    line = '// ' + line
+                    uniform_block_is_struct = line.startswith('layout(std140')  # )
+                    if uniform_block_is_struct:
+                        current_uniform_struct_members = {}
+                    else:
+                        line = '// ' + line
                 elif '] = {' in line:  # }] this is https://github.com/shader-slang/slang/issues/11802
                     typename = words[0]
                     if words[0] == 'const':
@@ -387,7 +403,7 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
             ans = ans.replace(f'{block_name}.{u}', u)
     ans = ans.replace('gl_VertexIndex', 'gl_VertexID')
     ans = ans.replace('gl_BaseVertex', '0')
-    return ans, uniform_names
+    return ans, {'loose_uniforms': uniform_names, 'uniform_structs': uniform_structs}
 
 
 def fixup_opengl_files(*paths: str) -> None:
