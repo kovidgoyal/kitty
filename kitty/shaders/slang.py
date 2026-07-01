@@ -383,6 +383,7 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
     ans = '\n'.join(lines)
     for block_name, names in uniform_blocks.items():
         for u in names:
+            u = u.partition('[')[0]
             ans = ans.replace(f'{block_name}.{u}', u)
     ans = ans.replace('gl_VertexIndex', 'gl_VertexID')
     ans = ans.replace('gl_BaseVertex', '0')
