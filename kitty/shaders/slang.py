@@ -295,7 +295,7 @@ def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, 
         for x in sfile.specializations:
             cmd = list(scmd)
             dest = f'{base_dest}.{x.name}.spv' if x.name else f'{base_dest}.spv'
-            if x.name:
+            if x.variables:
                 cmd.insert(-1, f'{base_dest}{x.filename_insert}.slang-module')
             cmd += base_cmd + ['-o', dest, '-reflection-json', dest + '.json']
             output_mtime = safe_mtime(dest)
@@ -430,20 +430,24 @@ def create_specialisations(sources: dict[str, SlangFile], build_dir: str, dest_d
         if sfile.entry_points and sfile.specializations:
             for sp in sfile.specializations:
                 dest = f'{base_dest}{sp.filename_insert}.slang'
-                lines = []
-                for key, val in sp.variables.items():
-                    declaration = sfile.specializable_variables[key].rpartition('=')[0]
-                    if not declaration:
-                        declaration = sfile.specializable_variables[key].rstrip(';')
-                    declaration = declaration.replace('extern ', 'export ', 1)
-                    lines.append(f'{declaration} = {val};')
-                payload = '\n'.join(lines)
-                needs_build = True
+                payload = existing = ''
+                if sp.variables:
+                    lines = []
+                    for key, val in sp.variables.items():
+                        declaration = sfile.specializable_variables[key].rpartition('=')[0]
+                        if not declaration:
+                            declaration = sfile.specializable_variables[key].rstrip(';')
+                        declaration = declaration.replace('extern ', 'export ', 1)
+                        lines.append(f'{declaration} = {val};')
+                    payload = '\n'.join(lines)
                 with suppress(FileNotFoundError), open(dest) as f:
-                    needs_build = f.read() != payload
-                if needs_build:
-                    with open(dest, 'w') as fw:
-                        fw.write(payload)
+                    existing = f.read()
+                if needs_build := payload != existing:
+                    if payload:
+                        with open(dest, 'w') as fw:
+                            fw.write(payload)
+                    else:
+                        os.remove(dest)
                 yield Command(needs_build, f'Compiling specialisation |{os.path.basename(dest)}| ...',
                               list(slangc) + [dest, '-o', dest + '-module'])
 
