@@ -13,17 +13,22 @@ stage_mapping = {
 }
 
 
+def validation_command_for_file(path: str | Path) -> list[str]:
+    file_path = Path(path)
+    matched_ext = next(ext for ext in stage_mapping if file_path.name.endswith(ext))
+    stage = stage_mapping[matched_ext]
+    return ['glslangValidator', '-S', stage, str(file_path)]
+
+
 def validate_glsl_files(shader_files: Iterable[str | Path], verbose: bool = False) -> None:
     error_count = 0
 
     # Process each shader file
     for file_path in sorted(Path(f) for f in shader_files):
         # Identify extension matching suffix
-        matched_ext = next(ext for ext in stage_mapping if file_path.name.endswith(ext))
-        stage = stage_mapping[matched_ext]
         if verbose:
             print(f'Validating: {file_path.name}')
-        result = subprocess.run(['glslangValidator', '-S', stage, str(file_path)],)
+        result = subprocess.run(validation_command_for_file(file_path))
 
         # Check exit code
         if result.returncode != 0:
