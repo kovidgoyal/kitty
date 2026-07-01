@@ -377,6 +377,8 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, Any]]:
                 line = '// ' + line
             elif line.startswith('layout(location =') or line.startswith('layout(binding ='):
                 line = '// ' + line
+            elif line.startswith('flat layout(location ='):
+                line = 'flat'
             elif line:  # ))))
                 words = line.split()
                 if 'uniform' in words and line.startswith('layout('):  # )
