@@ -79,6 +79,17 @@ class SlangFile(NamedTuple):
         match os.path.basename(self.path):
             case 'cell.slang':
                 ans['MARK_MASK'] = str(MARK_MASK)
+                ans['REVERSE_SHIFT'] = str(REVERSE)
+                ans['STRIKE_SHIFT'] = str(STRIKETHROUGH)
+                ans['DIM_SHIFT'] = str(DIM)
+                ans['BLINK_SHIFT'] = str(BLINK)
+                ans['DECORATION_SHIFT'] = str(DECORATION)
+                ans['MARK_SHIFT'] = str(MARK)
+                ans['DECORATION_MASK'] = str(DECORATION_MASK)
+                ans['COLOR_NOT_SET'] = str(COLOR_NOT_SET)
+                ans['COLOR_IS_SPECIAL'] = str(COLOR_IS_SPECIAL)
+                ans['COLOR_IS_INDEX'] = str(COLOR_IS_INDEX)
+                ans['COLOR_IS_RGB'] = str(COLOR_IS_RGB)
         return MappingProxyType(ans)
 
     @property
@@ -104,23 +115,12 @@ class SlangFile(NamedTuple):
                         text_fg_override_threshold = max(0, min(text_fg_override_threshold, 21.0))
                         algo = '2'
                 base = {k:str(v) for k, v in dict(
-                    REVERSE_SHIFT=REVERSE,
-                    STRIKE_SHIFT=STRIKETHROUGH,
-                    DIM_SHIFT=DIM,
-                    BLINK_SHIFT=BLINK,
-                    DECORATION_SHIFT=DECORATION,
-                    MARK_SHIFT=MARK,
-                    DECORATION_MASK=DECORATION_MASK,
-                    COLOR_NOT_SET=COLOR_NOT_SET,
-                    COLOR_IS_SPECIAL=COLOR_IS_SPECIAL,
-                    COLOR_IS_INDEX=COLOR_IS_INDEX,
-                    COLOR_IS_RGB=COLOR_IS_RGB,
-                    ONLY_FOREGROUND='false',
-                    ONLY_BACKGROUND='false',
                     DO_FG_OVERRIDE='true' if text_fg_override_threshold else 'false',
                     FG_OVERRIDE_ALGO=algo,
                     FG_OVERRIDE_THRESHOLD=text_fg_override_threshold,
                     TEXT_NEW_GAMMA='false' if opts.text_composition_strategy == 'legacy' else 'true',
+                    ONLY_FOREGROUND='false',
+                    ONLY_BACKGROUND='false',
                 ).items()}
                 yield s('', **base)
                 base['ONLY_FOREGROUND'] = 'true'
