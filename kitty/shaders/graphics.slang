@@ -24,10 +24,7 @@ VSOutput vertex_main(
     uniform float4 dest_rect,
 ) {
     BlitOutput ans = get_coords_for_blit(vertex_id, src_rect, dest_rect);
-    VSOutput output;
-    output.texcoord = ans.texcoord;
-    output.position = float4(ans.position[0], ans.position[1], 0.0, 1.0);
-    return output;
+    return {ans.texcoord, float4(ans.position[0], ans.position[1], 0.0, 1.0)};
 }
 
 uniform Sampler2D image;
