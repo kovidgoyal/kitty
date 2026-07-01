@@ -33,15 +33,35 @@ float3 safe_unpremult_to_linear(float4 s) {
 }
 
 [shader("fragment")]
-float4 fragment_main(float2 tc : TEXCOORD, uniform float2 src_size) : SV_Target {
-    // Calculate the texel size
+float4 fragment_main(float2 texcoord : TEXCOORD, uniform float2 src_size) : SV_Target {
+    float4 s00, s10, s01, s11;
     float2 texel_size = 1.0 / src_size;
 
-    // Sample a 2x2 grid for better quality downscaling
-    float4 s00 = image.Sample(tc + float2(-0.25, -0.25) * texel_size);
-    float4 s10 = image.Sample(tc + float2( 0.25, -0.25) * texel_size);
-    float4 s01 = image.Sample(tc + float2(-0.25,  0.25) * texel_size);
-    float4 s11 = image.Sample(tc + float2( 0.25,  0.25) * texel_size);
+    // Use Slang target switches to dynamically compile for specific backend features
+    __target_switch
+    {
+        // Modern backends with full texture gathering capabilities
+        case spirv: case hlsl: case metal: {
+            float2 gather_coord = texcoord - (0.5 * texel_size);
+
+            float4 r_gather = image.GatherRed(gather_coord);
+            float4 g_gather = image.GatherGreen(gather_coord);
+            float4 b_gather = image.GatherBlue(gather_coord);
+            float4 a_gather = image.GatherAlpha(gather_coord);
+
+            s00 = float4(r_gather.w, g_gather.w, b_gather.w, a_gather.w); // Bottom-Left
+            s10 = float4(r_gather.z, g_gather.z, b_gather.z, a_gather.z); // Bottom-Right
+            s01 = float4(r_gather.x, g_gather.x, b_gather.x, a_gather.x); // Top-Left
+            s11 = float4(r_gather.y, g_gather.y, b_gather.y, a_gather.y); // Top-Right
+        }
+        // Fallback for older targets or legacy GLSL versions
+        default: {
+            s00 = image.Sample(texcoord + float2(-0.25, -0.25) * texel_size);
+            s10 = image.Sample(texcoord + float2( 0.25, -0.25) * texel_size);
+            s01 = image.Sample(texcoord + float2(-0.25,  0.25) * texel_size);
+            s11 = image.Sample(texcoord + float2( 0.25,  0.25) * texel_size);
+        }
+    }
 
     // Unpremultiply and convert to linear for each sample
     float3 linear00 = safe_unpremult_to_linear(s00);

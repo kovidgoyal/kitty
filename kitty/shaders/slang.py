@@ -268,7 +268,8 @@ def iter_entry_point_shaders(sources: dict[str, SlangFile], build_dir: str, dest
 
 
 def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_files: list[str]) -> Iterator[Command]:
-    base_cmd = ['-target', 'spirv', '-capability', 'vk_mem_model', '-fvk-use-entrypoint-name']
+    # glsl 450 is vulkan 1.1 and spirv 1.3 released 2008
+    base_cmd = ['-target', 'spirv', '-profile', 'glsl_450', '-capability', 'vk_mem_model', '-fvk-use-entrypoint-name']
     for base_dest, slang_module, scmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
         for x in sfile.specializations:
             cmd = list(scmd)
