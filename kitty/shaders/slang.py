@@ -474,8 +474,8 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
     parallel_run(chain(spirv_commands, glsl_commands))
     fixup_opengl_files(*built_glsl_files)
     if shutil.which('glslangValidator'):
-        from kitty.shaders.validate_shaders import validate_glsl_files
-        validate_glsl_files(built_glsl_files)
+        from kitty.shaders.validate_shaders import validation_command_for_file
+        parallel_run((True, f'Validating |{os.path.basename(x)}| ...', validation_command_for_file(x)) for x in built_glsl_files)
 
 
 def main() -> None:
