@@ -396,12 +396,6 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, Any]]:
                         current_uniform_struct_members = {}
                     else:
                         line = '// ' + line
-                elif '] = {' in line:  # }] this is https://github.com/shader-slang/slang/issues/11802
-                    typename = words[0]
-                    if words[0] == 'const':
-                        typename = words[1]
-                    line = line.replace('{', f'{typename}[](', 1)  # }])
-                    line = line.removesuffix('};') + ');'
                 elif words[0] == 'uniform' and len(words) > 2 and words[1].startswith('sampler'):
                     add_uniform_name(words[2])
         lines.append(line)
