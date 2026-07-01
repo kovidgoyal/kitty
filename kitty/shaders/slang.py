@@ -62,6 +62,7 @@ def is_dir_slangc_version_ok(path: str) -> bool:
 
 def ensure_cache_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
+    # slang IR is version dependent and the compiler often crashes when loading .slang-module from another version
     if not is_dir_slangc_version_ok(path):
         shutil.rmtree(path)
         os.makedirs(path, exist_ok=True)
