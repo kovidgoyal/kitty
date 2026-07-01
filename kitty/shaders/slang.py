@@ -41,6 +41,13 @@ def get_shader_src(name: str) -> str:
     return read_kitty_resource(f'{name}.slang', 'kitty.shaders').decode()
 
 
+@lru_cache(maxsize=2)
+def self_mtime() -> float:
+    with suppress(Exception):
+        return os.path.getmtime(__file__)
+    return 0
+
+
 class Stage(Enum):
     vertex = 'vertex'
     fragment = 'fragment'
@@ -246,7 +253,7 @@ def get_newest_dep_time(path: str) -> float:
         for deppath in read_deps_file(path):
             mtime = os.path.getmtime(deppath)
             ans = max(mtime, ans)
-        return ans
+        return max(ans, self_mtime())
     return future()
 
 
