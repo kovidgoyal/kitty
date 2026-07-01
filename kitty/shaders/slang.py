@@ -67,10 +67,19 @@ class SlangFile(NamedTuple):
     entry_points: frozenset[EntryPoint] = frozenset()
     module: str = ''
     specializable_variables: MappingProxyType[str, str] = MappingProxyType({})
+    disable_warnings: frozenset[str] = frozenset()
 
     @property
     def should_compile_to_ir(self) -> bool:
         return bool(self.module or self.entry_points)
+
+    @property
+    def defines(self) -> MappingProxyType[str, str]:
+        ans = {}
+        match os.path.basename(self.path):
+            case 'cell.slang':
+                ans['MARK_MASK'] = str(MARK_MASK)
+        return MappingProxyType(ans)
 
     @property
     def specializations(self) -> Iterator[Specialization]:
@@ -83,7 +92,9 @@ class SlangFile(NamedTuple):
                 yield s('alpha_mask', is_alpha_mask='true')
                 yield s('premult', texture_is_not_premultiplied='true')
             case 'cell.slang':
-                opts = get_options() or defaults
+                opts = defaults
+                with suppress(RuntimeError):
+                    opts = get_options() or defaults
                 text_fg_override_threshold: float = opts.text_fg_override_threshold[0]
                 match opts.text_fg_override_threshold[1]:
                     case '%':
@@ -99,7 +110,6 @@ class SlangFile(NamedTuple):
                     BLINK_SHIFT=BLINK,
                     DECORATION_SHIFT=DECORATION,
                     MARK_SHIFT=MARK,
-                    MARK_MASK=MARK_MASK,
                     DECORATION_MASK=DECORATION_MASK,
                     COLOR_NOT_SET=COLOR_NOT_SET,
                     COLOR_IS_SPECIAL=COLOR_IS_SPECIAL,
@@ -128,11 +138,17 @@ def parse_slang_text(text: str, path: str = '') -> SlangFile:
     module = ''
     found_entry_point = ''
     specializable_variables = {}
+    disable_warnings = []
     for line in text.splitlines():
         line = line.strip()
         if not line:
             continue
         if line.startswith('//'):
+            if line.startswith('// warnings-disable: '):
+                words = line.split()
+                for word in words[2:]:
+                    for w in word.split(','):
+                        disable_warnings.append(w)
             continue
         words = line.split()
         if found_entry_point:
@@ -156,13 +172,14 @@ def parse_slang_text(text: str, path: str = '') -> SlangFile:
                     imports.add(words[1].removesuffix(';'))
                 case 'extern':
                     if len(words) > 3 and words[1:3] == ['static', 'const']:
-                        specializable_variables[line.partition('=')[0].split()[-1]] = line
+                        specializable_variables[line.partition('=')[0].split()[-1].rstrip(';')] = line
                 case _:
                     if words[0].startswith('[shader('):  # ])
                         text = words[0].partition('(')[2].partition(')')[0].strip()
                         found_entry_point = text[1:-1]
     return SlangFile(
-        path, text, frozenset(imports), frozenset(entry_points), module, MappingProxyType(specializable_variables))
+            path, text, frozenset(imports), frozenset(entry_points), module,
+            MappingProxyType(specializable_variables), frozenset(disable_warnings))
 
 
 @lru_cache(4096)
@@ -249,9 +266,10 @@ def commands_to_compile_dir_to_ir(sources: dict[str, SlangFile], src_dir: str, o
             deps_file = f'{base_dest}.deps'
             module_mtime = safe_mtime(slang_module)
             needs_build = module_mtime < get_newest_dep_time(deps_file)
-            yield Command(needs_build, f'Compiling |{name}.slang| ...', cmdbase + [
-                sfile.path, '-I', output_dirpath, '-I', src_dir, '-depfile', deps_file,
-                '-target', 'none', '-o', slang_module
+            defines = [f'-D{k}={v}' for k, v in sfile.defines.items()]
+            yield Command(needs_build, f'Compiling |{name}.slang| ...', cmdbase + defines + [
+                '-I', output_dirpath, '-I', src_dir, '-depfile', deps_file,
+                '-target', 'none', '-o', slang_module, '--', sfile.path,
             ])
 
 
@@ -263,7 +281,10 @@ def iter_entry_point_shaders(sources: dict[str, SlangFile], build_dir: str, dest
         parts = name.split('.')
         base_dest = os.path.join(dest_dir, *parts)
         slang_module = f'{base_dest}.slang-module'
-        cmd = cmdbase + ['-I', dest_dir, slang_module]
+        cmd = list(cmdbase)
+        if sfile.disable_warnings:
+            cmd += ['-warnings-disable', ','.join(sfile.disable_warnings)]
+        cmd += ['-I', dest_dir, slang_module]
         yield base_dest, slang_module, cmd, sfile
 
 
@@ -412,6 +433,8 @@ def create_specialisations(sources: dict[str, SlangFile], build_dir: str, dest_d
                 lines = []
                 for key, val in sp.variables.items():
                     declaration = sfile.specializable_variables[key].rpartition('=')[0]
+                    if not declaration:
+                        declaration = sfile.specializable_variables[key].rstrip(';')
                     declaration = declaration.replace('extern ', 'export ', 1)
                     lines.append(f'{declaration} = {val};')
                 payload = '\n'.join(lines)
