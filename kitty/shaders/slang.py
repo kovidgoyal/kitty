@@ -48,6 +48,27 @@ def self_mtime() -> float:
     return 0
 
 
+@lru_cache(maxsize=2)
+def slangc_version() -> str:
+    import subprocess
+    return subprocess.check_output(slangc + ['-version'], stderr=subprocess.STDOUT).decode().strip()
+
+
+def is_dir_slangc_version_ok(path: str) -> bool:
+    with suppress(OSError), open(os.path.join(path, 'slangc.version')) as f:
+        return f.read().strip() == slangc_version()
+    return False
+
+
+def ensure_cache_dir(path: str) -> None:
+    os.makedirs(path, exist_ok=True)
+    if not is_dir_slangc_version_ok(path):
+        shutil.rmtree(path)
+        os.makedirs(path, exist_ok=True)
+        with open(os.path.join(path, 'slangc.version'), 'w') as f:
+            f.write(slangc_version())
+
+
 class Stage(Enum):
     vertex = 'vertex'
     fragment = 'fragment'
@@ -473,8 +494,8 @@ def create_specialisations(sources: dict[str, SlangFile], build_dir: str, dest_d
 
 
 def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: ParallelRun) -> None:
-    os.makedirs(build_dir, exist_ok=True)
-    os.makedirs(dest_dir, exist_ok=True)
+    ensure_cache_dir(build_dir)
+    ensure_cache_dir(dest_dir)
     src_dir = os.path.abspath('kitty/shaders')
     source_tree = get_ordered_sources_in_tree(src_dir)
     # First ensure all IR is generated
