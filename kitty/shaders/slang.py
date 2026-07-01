@@ -15,7 +15,7 @@ from functools import lru_cache
 from itertools import chain
 from pathlib import Path
 from types import MappingProxyType
-from typing import Callable, Iterable, Iterator, NamedTuple
+from typing import Any, Callable, Iterable, Iterator, NamedTuple
 
 from kitty.constants import read_kitty_resource, shaders_dir, slangc
 from kitty.fast_data_types import (
@@ -326,7 +326,7 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, d
                 yield Command(needs_build, f'Linking |{os.path.basename(slang_module)}| to GLSL {ep.stage.value} shader ...', c)
 
 
-def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
+def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, Any]]:
     lines = []
     in_uniform_block = False
     in_uniform_block_contents = False
@@ -334,7 +334,7 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
     current_uniform_struct_members: dict[str, str] = {}
     uniform_blocks = {}
     current_uniform_names: list[str] = []
-    uniform_names = {}
+    uniform_names: dict[str, str] = {}
     uniform_structs = {}
 
     def add_uniform_name(name: str, uniform_names: dict[str, str] = uniform_names) -> str:
