@@ -295,7 +295,7 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, d
                 dest = f'{base_dest}.{v}.glsl'
                 c = list(cmd)
                 if sp.name:
-                    dest = f'{base_dest}{sp.filename_insert}.{ep.stage.name}.glsl'
+                    dest = f'{base_dest}{sp.filename_insert}.{v}.glsl'
                     c.insert(-1, f'{base_dest}.{sp.name}.slang-module')
                 c += extra_cmd + ['-entry', ep.name, '-stage', ep.stage.name, '-o', dest]
                 output_mtime = safe_mtime(dest)
@@ -445,6 +445,9 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
     # Now run all commands
     parallel_run(chain(spirv_commands, glsl_commands))
     fixup_opengl_files(*built_glsl_files)
+    if shutil.which('glslangValidator'):
+        from kitty.shaders.validate_shaders import validate_glsl_files
+        validate_glsl_files(built_glsl_files)
 
 
 def main() -> None:
@@ -462,10 +465,6 @@ def main() -> None:
                 needed.append(Command(desc, cmd, lambda: True))
         parallel_run(needed)
     compile_builtin_shaders(sys.argv[-2], sys.argv[-1], prun)
-    if shutil.which('glslangValidator'):
-        from kitty.shaders.validate_shaders import validate_glsl
-        validate_glsl('shaders')
-
 
 def test_slang_build() -> None:
     import subprocess
