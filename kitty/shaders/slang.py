@@ -291,7 +291,8 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, d
         extra_cmd = ['-line-directive-mode', 'none', '-target', 'glsl', '-profile', 'glsl_330']
         for ep in sfile.entry_points:
             for sp in sfile.specializations:
-                dest = f'{base_dest}.{ep.stage.name}.glsl'
+                v = {Stage.vertex: 'vert', Stage.fragment: 'frag'}[ep.stage]
+                dest = f'{base_dest}.{v}.glsl'
                 c = list(cmd)
                 if sp.name:
                     dest = f'{base_dest}{sp.filename_insert}.{ep.stage.name}.glsl'
@@ -461,6 +462,9 @@ def main() -> None:
                 needed.append(Command(desc, cmd, lambda: True))
         parallel_run(needed)
     compile_builtin_shaders(sys.argv[-2], sys.argv[-1], prun)
+    if shutil.which('glslangValidator'):
+        from kitty.shaders.validate_shaders import validate_glsl
+        validate_glsl('shaders')
 
 
 def test_slang_build() -> None:
