@@ -310,6 +310,15 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
     uniform_blocks = {}
     current_uniform_names: list[str] = []
     uniform_names = {}
+
+    def add_uniform_name(name: str) -> str:
+        name = name.rstrip(';')
+        uniform_name = name.rpartition('_')[0]
+        if uniform_name in uniform_names:
+            raise KeyError(f'The uniform name {uniform_name} is used with multiple suffixes')
+        uniform_names[uniform_name] = name
+        return name
+
     for line in glsl_code.splitlines():
         if in_uniform_block:
             if in_uniform_block_contents:
@@ -320,12 +329,7 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
                     current_uniform_names = []
                 else:
                     line = line.strip()
-                    name = line.split()[-1].rstrip(';')
-                    current_uniform_names.append(name)
-                    uniform_name = name.rpartition('_')[0]
-                    if uniform_name in uniform_names:
-                        raise KeyError(f'The uniform name {uniform_name} is used with multiple suffixes')
-                    uniform_names[uniform_name] = name
+                    current_uniform_names.append(add_uniform_name(line.split()[-1]))
                     line = 'uniform ' + line
             elif line.startswith('{'):  # }}
                 line = '// ' + line
@@ -338,7 +342,7 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
                 line = '// ' + line
             elif line.startswith('layout(location =') or line.startswith('layout(binding ='):
                 line = '// ' + line
-            else:
+            elif line:  # ))))
                 words = line.split()
                 if 'uniform' in words and line.startswith('layout('):  # )
                     in_uniform_block = True
@@ -350,6 +354,8 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, str]]:
                         typename = words[1]
                     line = line.replace('{', f'{typename}[](', 1)  # }])
                     line = line.removesuffix('};') + ');'
+                elif words[0] == 'uniform' and len(words) > 2 and words[1].startswith('sampler'):
+                    add_uniform_name(words[2])
         lines.append(line)
     ans = '\n'.join(lines)
     for block_name, names in uniform_blocks.items():
