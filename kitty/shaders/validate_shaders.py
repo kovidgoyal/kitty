@@ -2,6 +2,7 @@
 import subprocess
 import sys
 from pathlib import Path
+from typing import Iterable
 
 # Map the custom extensions to the required glslangValidator stage strings
 stage_mapping = {
@@ -12,7 +13,7 @@ stage_mapping = {
 }
 
 
-def validate_glsl_files(shader_files: list[str], verbose: bool = False) -> None:
+def validate_glsl_files(shader_files: Iterable[str | Path], verbose: bool = False) -> None:
     error_count = 0
 
     # Process each shader file
