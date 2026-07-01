@@ -152,7 +152,7 @@ def install_deps() -> None:
             ' libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev libx11-xcb-dev zsh'
             ' libpng-dev liblcms2-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev libxxhash-dev uuid-dev'
             ' libsimde-dev libsystemd-dev libcairo2-dev zsh bash dash systemd-coredump gdb'
-            ' libwayland-dev wayland-protocols'
+            ' libwayland-dev wayland-protocols glslang-tools'
         )
         # for some reason these directories are world writable which causes zsh
         # compinit to break
@@ -211,8 +211,7 @@ def replace_in_file(path: str, src: str, dest: str) -> None:
 
 def setup_bundle_env() -> None:
     global SW
-    os.environ['SW'] = SW = '/Users/Shared/kitty-build/sw/sw' if is_macos else os.path.join(
-            os.environ['GITHUB_WORKSPACE'], 'sw')
+    os.environ['SW'] = SW = '/Users/Shared/kitty-build/sw/sw' if is_macos else os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
     os.environ['PKG_CONFIG_PATH'] = os.path.join(SW, 'lib', 'pkgconfig')
     if is_macos:
         os.environ['PATH'] = '{}:{}'.format('/usr/local/opt/sphinx-doc/bin', os.environ['PATH'])
