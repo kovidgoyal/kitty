@@ -3,7 +3,7 @@
 // Distributed under terms of the GPLv3 license.
 
 // Maps a vertex id to src and destination co-ordinates
-module blit;
+module blit_common;
 
 public struct BlitOutput {
     public float2 texcoord;
