@@ -192,7 +192,12 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 	text_style := fctx.SprintFunc(fmt.Sprintf("fg=%s bg=%s bold", o.HintsTextColor, o.HintsTextBackgroundColor))
 
 	highlight_mark := func(m *Mark, mark_text string) string {
-		hint := encode_hint(m.Index, alphabet)
+		var hint string
+		if o.PrefixFree {
+			hint = generate_prefix_free_hint(m.Index, alphabet)
+		} else {
+			hint = encode_hint(m.Index, alphabet)
+		}
 		if current_input != "" && !strings.HasPrefix(hint, current_input) {
 			return faint(mark_text)
 		}
@@ -311,7 +316,13 @@ func main(_ *cli.Command, o *Options, args []string) (rc int, err error) {
 		if changed {
 			matches := []*Mark{}
 			for idx, m := range index_map {
-				if eh := encode_hint(idx, alphabet); strings.HasPrefix(eh, current_input) {
+				var eh string
+				if o.PrefixFree {
+					eh = generate_prefix_free_hint(idx, alphabet)
+				} else {
+					eh = encode_hint(idx, alphabet)
+				}
+				if strings.HasPrefix(eh, current_input) {
 					matches = append(matches, m)
 				}
 			}
