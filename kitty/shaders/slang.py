@@ -27,6 +27,7 @@ from kitty.fast_data_types import (
     DECORATION,
     DECORATION_MASK,
     DIM,
+    GLSL_VERSION,
     MARK,
     MARK_MASK,
     REVERSE,
@@ -336,9 +337,10 @@ def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, 
 
 
 def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_glsl_files: list[str]) -> Iterator[Command]:
+    glsl_version = max(150, GLSL_VERSION)  # slangc fails with glsl_140 https://github.com/shader-slang/slang/issues/11898
     for base_dest, slang_module, cmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
         module_mtime = os.path.getmtime(slang_module)
-        extra_cmd = ['-line-directive-mode', 'none', '-target', 'glsl', '-profile', 'glsl_330']
+        extra_cmd = ['-line-directive-mode', 'none', '-target', 'glsl', '-profile', f'glsl_{glsl_version}']
         for ep in sfile.entry_points:
             for sp in sfile.specializations:
                 v = {Stage.vertex: 'vert', Stage.fragment: 'frag'}[ep.stage]
@@ -402,7 +404,9 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
                 current_uniform_names = []
         else:
             if line.startswith('#version '):
-                line = '#version 330 core'
+                line = f'#version {GLSL_VERSION}'
+                if not is_fragment_shader:
+                    line += '\n#extension GL_ARB_explicit_attrib_location : require'
             elif line.startswith('#extension ') or line in ('layout(row_major) buffer;', 'layout(push_constant)'):
                 line = '// ' + line
             elif line.startswith('layout(binding ='):
