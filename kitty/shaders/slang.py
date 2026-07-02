@@ -441,11 +441,15 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
 
 
 def fixup_opengl_files(*paths: str) -> None:
-    ' Convert the GLSL output of slangc to something that will work with OpenGL 3.3 '
+    ' Convert the GLSL output of slangc to something that will work with OpenGL 3.1 '
     for path in paths:
         with open(path, 'r+') as f:
             glsl_code = f.read()
-            fixed, metadata = fixup_opengl_code(glsl_code, path)
+            try:
+                fixed, metadata = fixup_opengl_code(glsl_code, path)
+            except Exception:
+                os.unlink(path)
+                raise
             f.seek(0)
             f.truncate()
             f.write(fixed)
