@@ -453,6 +453,19 @@ VertexOutput vertex_main(
         vo.decoration_fg = override_foreground_color(vo.decoration_fg, background_rgb, vo.colored_sprite);
         foreground = override_foreground_color(foreground, background_rgb, vo.colored_sprite);
     }
+
+    if (!ONLY_FOREGROUND) {
+        float4 bgpremul = vec4_premul(background_rgb, bg_alpha);
+        // draw_bg_bitfield has bit 0 set to draw default bg cells and bit 1 set to draw non-default bg cells
+        float cell_has_non_default_bg = 1.f - cell_has_default_bg;
+        uint draw_bg_mask = uint(2.f * cell_has_non_default_bg + cell_has_default_bg); // 1 if has default bg else 2
+        float draw_bg = step(0.5, float(draw_bg_bitfield & draw_bg_mask));
+        bgpremul *= draw_bg;
+        vo.effective_background_premul = bgpremul;
+    }
+
+    if (!ONLY_BACKGROUND) vo.cell_foreground = foreground;
+
     return vo;
 }
 
