@@ -10,7 +10,7 @@ import sys
 import time
 from collections import OrderedDict
 from contextlib import suppress
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 from itertools import chain
 from pathlib import Path
@@ -71,7 +71,7 @@ def ensure_cache_dir(path: str) -> None:
             f.write(slangc_version())
 
 
-class Stage(Enum):
+class Stage(StrEnum):
     vertex = 'vertex'
     fragment = 'fragment'
 
@@ -79,6 +79,13 @@ class Stage(Enum):
 class EntryPoint(NamedTuple):
     stage: Stage
     name: str
+
+    def asdict(self) -> dict[str, str]:
+        return {'stage': str(self.stage), 'name': self.name}
+
+    @classmethod
+    def fromdict(self, s: dict[str, str]) -> 'EntryPoint':
+        return EntryPoint(Stage(s['stage']), s['name'])
 
 
 class Specialization(NamedTuple):
@@ -98,6 +105,24 @@ class SlangFile(NamedTuple):
     module: str = ''
     specializable_variables: MappingProxyType[str, str] = MappingProxyType({})
     disable_warnings: frozenset[str] = frozenset()
+
+    def asdict(self, skip_source: bool = False) -> dict[str, Any]:
+        ' Return a dict useable for serialization to JSON '
+        ans = self._asdict()
+        ans['imports'] = tuple(ans['imports'])
+        ans['entry_points'] = tuple(ep.asdict() for ep in ans['entry_points'])
+        ans['specializable_variables'] = dict(ans['specializable_variables'])
+        ans['disable_warnings'] = tuple(ans['disable_warnings'])
+        if skip_source:
+            ans['path'] = ans['text'] = ''
+        return ans
+
+    @classmethod
+    def fromdict(cls, s: dict[str, Any]) -> 'SlangFile':
+        return SlangFile(
+            s['path'], s['text'], frozenset(s['imports']),
+            frozenset(EntryPoint.fromdict(x) for x in s['entry_points']),
+            s['module'], MappingProxyType(s['specializable_variables']), frozenset(s['disable_warnings']))
 
     @property
     def should_compile_to_ir(self) -> bool:
@@ -162,8 +187,8 @@ class SlangFile(NamedTuple):
                 yield s()
 
 
-def parse_slang_text(text: str, path: str = '') -> SlangFile:
-    text = re.sub(r'/\*[\s\S]*?\*/', '', text)
+def parse_slang_text(src_code: str, path: str = '') -> SlangFile:
+    text = re.sub(r'/\*[\s\S]*?\*/', '', src_code)
     entry_points, imports = [], set()
     module = ''
     found_entry_point = ''
@@ -208,7 +233,7 @@ def parse_slang_text(text: str, path: str = '') -> SlangFile:
                         text = words[0].partition('(')[2].partition(')')[0].strip()
                         found_entry_point = text[1:-1]
     return SlangFile(
-            path, text, frozenset(imports), frozenset(entry_points), module,
+            path, src_code, frozenset(imports), frozenset(entry_points), module,
             MappingProxyType(specializable_variables), frozenset(disable_warnings))
 
 
@@ -303,7 +328,7 @@ def commands_to_compile_dir_to_ir(sources: dict[str, SlangFile], src_dir: str, o
             ])
 
 
-def iter_entry_point_shaders(sources: dict[str, SlangFile], build_dir: str, dest_dir: str) -> Iterator[tuple[str, str, list[str], SlangFile]]:
+def iter_entry_point_shaders(sources: dict[str, SlangFile], dest_dir: str) -> Iterator[tuple[str, str, list[str], SlangFile]]:
     cmdbase = list(slangc) + ['-warnings-as-errors', 'all']
     for name, sfile in sources.items():
         if not sfile.entry_points:
@@ -318,10 +343,17 @@ def iter_entry_point_shaders(sources: dict[str, SlangFile], build_dir: str, dest
         yield base_dest, slang_module, cmd, sfile
 
 
+def serialize_source_metadata(sources: dict[str, SlangFile], dest_dir: str) -> None:
+    for base_dest, slang_module, scmd, sfile in iter_entry_point_shaders(sources, dest_dir):
+        dest = f'{base_dest}.json'
+        with open(dest, 'w') as f:
+            f.write(json.dumps(sfile.asdict(skip_source=True), indent=2, sort_keys=True))
+
+
 def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_files: list[str]) -> Iterator[Command]:
     # glsl 450 is vulkan 1.1 and spirv 1.3 released 2008
     base_cmd = ['-target', 'spirv', '-profile', 'glsl_450', '-capability', 'vk_mem_model', '-fvk-use-entrypoint-name']
-    for base_dest, slang_module, scmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
+    for base_dest, slang_module, scmd, sfile in iter_entry_point_shaders(sources, dest_dir):
         for x in sfile.specializations:
             cmd = list(scmd)
             dest = f'{base_dest}.{x.name}.spv' if x.name else f'{base_dest}.spv'
@@ -336,9 +368,10 @@ def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, 
             yield Command(needs_build, f'Linking |{os.path.basename(dest)}| ...', cmd)
 
 
+# GLSL {{{
 def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_glsl_files: list[str]) -> Iterator[Command]:
     glsl_version = max(150, GLSL_VERSION)  # slangc fails with glsl_140 https://github.com/shader-slang/slang/issues/11898
-    for base_dest, slang_module, cmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
+    for base_dest, slang_module, cmd, sfile in iter_entry_point_shaders(sources, dest_dir):
         module_mtime = os.path.getmtime(slang_module)
         extra_cmd = ['-line-directive-mode', 'none', '-target', 'glsl', '-profile', f'glsl_{glsl_version}']
         for ep in sfile.entry_points:
@@ -455,6 +488,7 @@ def fixup_opengl_files(*paths: str) -> None:
             f.write(fixed)
         with open(path + '.json', 'w') as f:
             f.write(json.dumps(metadata))
+# }}}
 
 
 ParallelRun = Callable[[Iterable[tuple[bool, str, list[str]]]], None]
@@ -481,7 +515,7 @@ def copy_files_preserving_structure(source_dir: str, dest_dir: str, extension: s
 
 
 def create_specialisations(sources: dict[str, SlangFile], build_dir: str, dest_dir: str) -> Iterator[Command]:
-    for base_dest, slang_module, cmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
+    for base_dest, slang_module, cmd, sfile in iter_entry_point_shaders(sources, dest_dir):
         if sfile.entry_points and sfile.specializations:
             for sp in sfile.specializations:
                 dest = f'{base_dest}{sp.filename_insert}.slang'
@@ -512,6 +546,8 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
     ensure_cache_dir(dest_dir)
     src_dir = os.path.abspath('kitty/shaders')
     source_tree = get_ordered_sources_in_tree(src_dir)
+    serialize_source_metadata(source_tree, dest_dir)
+
     # First ensure all IR is generated
     parallel_run(commands_to_compile_dir_to_ir(source_tree, src_dir, build_dir))
     # Copy IR to dest_dir
