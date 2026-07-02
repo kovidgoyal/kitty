@@ -16,6 +16,7 @@ extern static const float FG_OVERRIDE_THRESHOLD;
 extern static const bool TEXT_NEW_GAMMA;
 extern static const bool ONLY_FOREGROUND;
 extern static const bool ONLY_BACKGROUND;
+static const bool OVERRIDE_FG_COLORS = DO_FG_OVERRIDE == 1 && !ONLY_BACKGROUND;
 
 // Inputs {{{
 struct CellRenderDataStruct
@@ -206,16 +207,11 @@ uint to_underline_exclusion_pos(uint2 sprite_idx) {
 
 uint read_sprite_decorations_idx(uint2 sprite_idx) {
     int idx = int(sprite_idx[0] & SPRITE_INDEX_MASK);
-
-    // Slang maps GLSL's textureSize and texelFetch directly using standard vector parameters
-    uint width, height;
+    int width, height;
     sprite_decorations_map.GetDimensions(width, height);
-    int2 sz = int2(int(width), int(height));
-
+    int2 sz = int2(width, height);
     int y = idx / sz[0];
     int x = idx - y * sz[0];
-
-    // texelFetch maps to the bracket coordinate operator in Slang
     return sprite_decorations_map[int2(x, y)].r;
 }
 
@@ -245,7 +241,6 @@ struct CellData {
     ColorPair cursor;
 };
 
-// Structural constants
 struct VertexOutput {
     float4 position : SV_Position;
 
@@ -270,7 +265,8 @@ CellData set_vertex_position(
     uint instance_id,
     uint vertex_id,
     float row_offset,
-    in VertexInput vi,
+    uint2 sprite_idx,
+    uint is_selected,
     inout VertexOutput vo,
 ) {
     CellData cell_out;
@@ -295,14 +291,14 @@ CellData set_vertex_position(
 
     // The character sprite being rendered
     if (!ONLY_BACKGROUND) {
-        vo.sprite_pos = to_sprite_pos(pos, vi.sprite_idx[0] & SPRITE_INDEX_MASK);
-        vo.colored_sprite = float((vi.sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
+        vo.sprite_pos = to_sprite_pos(pos, sprite_idx[0] & SPRITE_INDEX_MASK);
+        vo.colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
     }
 
     // Cursor shape and colors
     float has_main_cursor = float(is_cursor(column, row));
-    float multicursor_shape = float((vi.is_selected >> 2) & 3u);
-    float multicursor_uses_main_cursor_shape = float((vi.is_selected >> 4) & BIT_MASK);
+    float multicursor_shape = float((is_selected >> 2) & 3u);
+    float multicursor_uses_main_cursor_shape = float((is_selected >> 4) & BIT_MASK);
     multicursor_shape = if_one_then(multicursor_uses_main_cursor_shape, crd.cursor_shape, multicursor_shape);
 
     float final_cursor_shape = if_one_then(has_main_cursor, crd.cursor_shape, multicursor_shape);
@@ -343,6 +339,7 @@ float calc_background_opacity(uint bg) {
     );
 }
 
+// Override foreground colors {{{
 float3 fg_override_luminance(float colored_sprite, float under_luminance, float over_lumininace, float3 under, float3 over) {
     // If the difference in luminance is too small,
     // force the foreground color to be black or white.
@@ -374,6 +371,7 @@ float3 override_foreground_color(float3 over, float3 under, float colored_sprite
     if (FG_OVERRIDE_ALGO == 1) return fg_override_luminance(colored_sprite, under_luminance, over_lumininace, under, over);
     return fg_override_contrast(under_luminance, over_lumininace, under, over);
 }
+// }}}
 
 [shader("vertex")]
 VertexOutput vertex_main(
@@ -384,11 +382,77 @@ VertexOutput vertex_main(
     uniform float row_offset,
 ) {
     VertexOutput vo;
-    int width, height;
-    sprite_decorations_map.GetDimensions(width, height);
-    uint4 data = sprite_decorations_map.Load(int3(1,2,0));
-    vo.position = float4(vertex_id + draw_bg_bitfield, data[0] / width * height, row_offset, crd.cursor_opacity);
-    vo.background = float3(color_table[vertex_id], vi.is_selected, 2);
+
+    // set cell color indices {{{
+    uint2 default_colors = uint2(crd.default_fg, crd.bg_colors0);
+    uint text_attrs = vi.sprite_idx[1];
+    uint is_reversed = ((text_attrs >> REVERSE_SHIFT) & BIT_MASK);
+    uint is_inverted = is_reversed + crd.inverted;
+    int fg_index = fg_index_map[is_inverted];
+    int bg_index = 1 - fg_index;
+    int mark = int(text_attrs >> MARK_SHIFT) & MARK_MASK;
+    uint has_mark = uint(step(1, float(mark)));
+    uint bg_as_uint = resolve_color(vi.colors[bg_index], default_colors[bg_index]);
+    bg_as_uint = has_mark * color_table[NUM_COLORS + mark - 1] + (BIT_MASK - has_mark) * bg_as_uint;
+    float cell_has_default_bg = 1.f - step(1.f, abs(float(bg_as_uint - crd.bg_colors0))); // 1 if has default bg else 0
+    float3 bg = color_to_vec(bg_as_uint);
+    uint fg_as_uint = resolve_color(vi.colors[fg_index], default_colors[fg_index]);
+    fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + mark] + (1u - has_mark) * fg_as_uint;
+    float3 foreground = color_to_vec(fg_as_uint);
+    CellData cell_data = set_vertex_position(foreground, bg, instance_id, vertex_id, row_offset, vi.sprite_idx, vi.is_selected, vo);
+    // }}}
+
+
+    // Foreground {{{
+    if (!ONLY_BACKGROUND) { // background does not depend on foreground
+        float has_dim = float((text_attrs >> DIM_SHIFT) & BIT_MASK), has_blink = float((text_attrs >> BLINK_SHIFT) & BIT_MASK);
+        vo.effective_text_alpha = crd.inactive_text_alpha * if_one_then(has_dim, crd.dim_opacity, 1.0) * if_one_then(
+                has_blink, crd.blink_opacity, 1.0);
+        float in_url = float((vi.is_selected >> 1) & BIT_MASK);
+        vo.decoration_fg = if_one_then(in_url, color_to_vec(crd.url_color), to_color(vi.colors[2], fg_as_uint));
+        // Selection
+        float3 selection_color = if_one_then(crd.use_cell_bg_for_selection_fg, bg, color_to_vec(crd.highlight_fg));
+        selection_color = if_one_then(crd.use_cell_fg_for_selection_fg, foreground, selection_color);
+        foreground = if_one_then(float(vi.is_selected & BIT_MASK), selection_color, foreground);
+        vo.decoration_fg = if_one_then(float(vi.is_selected & BIT_MASK), selection_color, vo.decoration_fg);
+        // Underline and strike through (rendered via sprites)
+        uint2 decs = get_decorations_indices(vi.sprite_idx, uint(in_url), text_attrs);
+        vo.strike_pos = to_sprite_pos(cell_data.pos, decs[0]);
+        vo.underline_pos = to_sprite_pos(cell_data.pos, decs[1]);
+        vo.underline_exclusion_pos = to_underline_exclusion_pos(vi.sprite_idx);
+
+        // Cursor
+        vo.cursor_color_premult = float4(cell_data.cursor.bg * crd.cursor_opacity, crd.cursor_opacity);
+        float3 final_cursor_text_color = lerp(foreground, cell_data.cursor.fg, crd.cursor_opacity);
+        foreground = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, foreground);
+        vo.decoration_fg = if_one_then(cell_data.has_block_cursor, final_cursor_text_color, vo.decoration_fg);
+        vo.cursor_pos = to_sprite_pos(cell_data.pos, cell_data.cursor_fg_sprite_idx * uint(cell_data.has_cursor));
+    }
+    // }}}
+
+    // Background {{{
+    float bg_alpha = calc_background_opacity(bg_as_uint);
+    // we use max so that opacity of the block cursor cell background goes from bg_alpha to 1
+    float effective_cursor_opacity = max(crd.cursor_opacity, bg_alpha);
+    // is_special_cell is either 0 or 1
+    float is_special_cell = cell_data.has_block_cursor + float(vi.is_selected & BIT_MASK);
+    is_special_cell += float(is_reversed);  // reverse video cells should be opaque as well
+    is_special_cell = zero_or_one(is_special_cell);
+    cell_has_default_bg = if_one_then(is_special_cell, 0., cell_has_default_bg);
+
+    // special cells must always be fully opaque, otherwise leave bg_alpha untouched
+    bg_alpha = if_one_then(is_special_cell, 1.f, bg_alpha);
+    // Selection and cursor
+    bg_alpha = if_one_then(cell_data.has_block_cursor, effective_cursor_opacity, bg_alpha);
+    bg = if_one_then(float(vi.is_selected & BIT_MASK), if_one_then(crd.use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(crd.highlight_bg)), bg);
+    float3 background_rgb = if_one_then(cell_data.has_block_cursor, lerp(bg, cell_data.cursor.bg, crd.cursor_opacity), bg);
+    vo.background = background_rgb;
+    // }}}
+
+    if (!ONLY_BACKGROUND && OVERRIDE_FG_COLORS) {
+        vo.decoration_fg = override_foreground_color(vo.decoration_fg, background_rgb, vo.colored_sprite);
+        foreground = override_foreground_color(foreground, background_rgb, vo.colored_sprite);
+    }
     return vo;
 }
 
