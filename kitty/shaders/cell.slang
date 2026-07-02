@@ -6,6 +6,7 @@
 // warnings-disable: 41012
 
 import utils;
+import hsluv;
 
 #define NUM_COLORS 256
 
@@ -340,6 +341,38 @@ float calc_background_opacity(uint bg) {
         background_opacity_for(bg, crd.bg_colors6, crd.bg_opacities6) *
         background_opacity_for(bg, crd.bg_colors7, crd.bg_opacities7)
     );
+}
+
+float3 fg_override_luminance(float colored_sprite, float under_luminance, float over_lumininace, float3 under, float3 over) {
+    // If the difference in luminance is too small,
+    // force the foreground color to be black or white.
+    float diff_luminance = abs(under_luminance - over_lumininace);
+	float override_level = (1.f - colored_sprite) * step(diff_luminance, FG_OVERRIDE_THRESHOLD);
+	float original_level = 1.f - override_level;
+	return original_level * over + override_level * float3(step(under_luminance, 0.5f));
+}
+
+float3 fg_override_contrast(float under_luminance, float over_luminance, float3 under, float3 over) {
+    float ratio = contrast_ratio(under_luminance, over_luminance);
+    float3 diff = abs(under - over);
+    float3 over_hsluv = rgbToHsluv(over);
+    const float min_contrast_ratio = FG_OVERRIDE_THRESHOLD;
+    float target_lum_a = clamp((under_luminance + 0.05) * min_contrast_ratio - 0.05, 0.0, 1.0);
+    float target_lum_b = clamp((under_luminance + 0.05) / min_contrast_ratio - 0.05, 0.0, 1.0);
+    float3 result_a = clamp(hsluvToRgb(float3(over_hsluv.x, over_hsluv.y, target_lum_a * 100.0)), 0.0, 1.0);
+    float3 result_b = clamp(hsluvToRgb(float3(over_hsluv.x, over_hsluv.y, target_lum_b * 100.0)), 0.0, 1.0);
+    float result_a_ratio = contrast_ratio(under_luminance, dot(result_a, Y));
+    float result_b_ratio = contrast_ratio(under_luminance, dot(result_b, Y));
+    float3 result = lerp(result_a, result_b, step(result_a_ratio, result_b_ratio));
+    float fallback_condition = max(step(diff.x + diff.y + diff.z, 0.001), step(min_contrast_ratio, ratio));
+    return lerp(result, over, fallback_condition);
+}
+
+float3 override_foreground_color(float3 over, float3 under, float colored_sprite) {
+    float under_luminance = dot(under, Y);
+    float over_lumininace = dot(over.rgb, Y);
+    if (FG_OVERRIDE_ALGO == 1) return fg_override_luminance(colored_sprite, under_luminance, over_lumininace, under, over);
+    return fg_override_contrast(under_luminance, over_lumininace, under, over);
 }
 
 [shader("vertex")]
