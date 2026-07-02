@@ -2,9 +2,10 @@
 # License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import shutil
 import tempfile
 
-from kitty.shaders.slang import EntryPoint, SlangFile, Stage, build_import_graph, parse_slang_text, topological_sort
+from kitty.shaders.slang import EntryPoint, SlangFile, Stage, build_import_graph, parse_slang_text, specialize_cache, topological_sort
 
 from . import BaseTest
 
@@ -159,3 +160,82 @@ void vsMain() {}
                 f.write('not a slang file\n')
             graph3 = build_import_graph(tmpdir)
             self.assertNotIn('ignored', graph3)
+
+    def test_specialize_cell_shader(self):
+        from kitty.constants import slangc
+        from kitty.options.types import Options, defaults
+        from kitty.shaders.slang import specialize_cell_shader
+
+        def make_opts(**kwargs):
+            d = defaults._asdict()
+            d.update(kwargs)
+            return Options(d)
+
+        # No action when opts are the same as defaults
+        self.assertEqual(specialize_cell_shader(opts=defaults), {})
+        self.assertEqual(specialize_cell_shader(opts=None), {})
+        # Explicitly constructed opts equal to defaults must also be a no-op
+        self.assertEqual(specialize_cell_shader(opts=make_opts()), {})
+
+        if not shutil.which(slangc[0]):
+            self.skipTest(f'slangc ({slangc[0]}) not found in PATH')
+
+        # Helper to run specialize_cell_shader with an isolated cache directory.
+        # Returns (result_dict, cache_dir_path, create_cache_dir_callable).
+        def compile_with_new_cache(opts):
+            cache_dir = tempfile.mkdtemp()
+            self.addCleanup(shutil.rmtree, cache_dir, True)
+            # Each call with the same callable returns the same directory so
+            # that the caching logic inside specialize_cell_shader can kick in.
+            def create_cache_dir():
+                return cache_dir
+            # Clear any pre-existing cache entry for this directory so tests
+            # are fully independent of each other.
+            specialize_cache.pop(f'cell-{cache_dir}', None)
+            result = specialize_cell_shader(create_cache_dir=create_cache_dir, opts=opts)
+            return result, cache_dir, create_cache_dir
+
+        # Changing the options must produce non-empty output with compiled shaders.
+        opts_legacy = make_opts(text_composition_strategy='legacy')
+        result_legacy, cache1, ccdir1 = compile_with_new_cache(opts_legacy)
+        self.assertNotEqual(result_legacy, {}, 'Expected non-empty result for non-default opts')
+
+        # Output must include GLSL files whose content is valid GLSL text.
+        glsl_items = {k: v.decode() for k, v in result_legacy.items() if k.endswith('.glsl')}
+        self.assertTrue(glsl_items, 'Expected at least one .glsl file in the result')
+        for name, glsl_text in glsl_items.items():
+            self.assertIn('#version', glsl_text, f'{name} should contain a #version directive')
+
+        # With TEXT_NEW_GAMMA=false the compiler eliminates the new-gamma code
+        # path, so foreground_contrast_new must NOT appear in the fragment shader.
+        frag_glsl = {k: v for k, v in glsl_items.items() if k.endswith('.frag.glsl')}
+        self.assertTrue(frag_glsl, 'Expected at least one fragment GLSL file')
+        for name, glsl_text in frag_glsl.items():
+            self.assertNotIn('foreground_contrast_new', glsl_text,
+                             f'{name}: legacy strategy should not contain foreground_contrast_new')
+
+        # Calling with the same opts and the same cache dir must return the
+        # identical dict object (cached, no recompilation).
+        result_legacy_again = specialize_cell_shader(create_cache_dir=ccdir1, opts=opts_legacy)
+        self.assertIs(result_legacy, result_legacy_again,
+                      'Second call with unchanged opts must return the cached result')
+
+        # Changing options a second time must produce a different result.
+        opts_fg_override = make_opts(text_fg_override_threshold=(0.5, '%'))
+        result_fg, cache2, ccdir2 = compile_with_new_cache(opts_fg_override)
+        self.assertNotEqual(result_fg, {}, 'Expected non-empty result for fg_override opts')
+        self.assertNotEqual(result_legacy, result_fg,
+                            'Different opts must produce different compiled output')
+
+        # Verify that the GLSL content actually differs between the two option sets.
+        frag_glsl2 = {k: v.decode() for k, v in result_fg.items() if k.endswith('.frag.glsl')}
+        for name in frag_glsl:
+            if name in frag_glsl2:
+                self.assertNotEqual(frag_glsl[name], frag_glsl2[name],
+                                    f'{name}: GLSL content must differ between option sets')
+
+        # Calling again with the second option set must also return the cached dict.
+        result_fg_again = specialize_cell_shader(create_cache_dir=ccdir2, opts=opts_fg_override)
+        self.assertIs(result_fg, result_fg_again,
+                      'Second call with unchanged fg_override opts must return the cached result')
+
