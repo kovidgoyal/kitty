@@ -5,7 +5,7 @@ import os
 import shutil
 import tempfile
 
-from kitty.shaders.slang import EntryPoint, SlangFile, Stage, build_import_graph, parse_slang_text, specialize_cache, topological_sort
+from kitty.shaders.slang import EntryPoint, SlangFile, Stage, build_import_graph, parse_slang_text, topological_sort
 
 from . import BaseTest
 
@@ -180,24 +180,27 @@ void vsMain() {}
         if not shutil.which(slangc[0]):
             self.skipTest(f'slangc ({slangc[0]}) not found in PATH')
 
+        # The skip is placed here intentionally: the default-opts assertions above
+        # do not require slangc and should always run.  Everything below invokes
+        # the compiler to produce real GLSL output.
+
         # Helper to run specialize_cell_shader with an isolated cache directory.
-        # Returns (result_dict, cache_dir_path, create_cache_dir_callable).
+        # Returns (result_dict, create_cache_dir_callable).
         def compile_with_new_cache(opts):
             cache_dir = tempfile.mkdtemp()
             self.addCleanup(shutil.rmtree, cache_dir, True)
             # Each call with the same callable returns the same directory so
             # that the caching logic inside specialize_cell_shader can kick in.
+            # Using a fresh mkdtemp() per invocation guarantees that no cached
+            # result from a previous call can interfere with this one.
             def create_cache_dir():
                 return cache_dir
-            # Clear any pre-existing cache entry for this directory so tests
-            # are fully independent of each other.
-            specialize_cache.pop(f'cell-{cache_dir}', None)
             result = specialize_cell_shader(create_cache_dir=create_cache_dir, opts=opts)
-            return result, cache_dir, create_cache_dir
+            return result, create_cache_dir
 
         # Changing the options must produce non-empty output with compiled shaders.
         opts_legacy = make_opts(text_composition_strategy='legacy')
-        result_legacy, cache1, ccdir1 = compile_with_new_cache(opts_legacy)
+        result_legacy, ccdir1 = compile_with_new_cache(opts_legacy)
         self.assertNotEqual(result_legacy, {}, 'Expected non-empty result for non-default opts')
 
         # Output must include GLSL files whose content is valid GLSL text.
@@ -222,7 +225,7 @@ void vsMain() {}
 
         # Changing options a second time must produce a different result.
         opts_fg_override = make_opts(text_fg_override_threshold=(0.5, '%'))
-        result_fg, cache2, ccdir2 = compile_with_new_cache(opts_fg_override)
+        result_fg, ccdir2 = compile_with_new_cache(opts_fg_override)
         self.assertNotEqual(result_fg, {}, 'Expected non-empty result for fg_override opts')
         self.assertNotEqual(result_legacy, result_fg,
                             'Different opts must produce different compiled output')
