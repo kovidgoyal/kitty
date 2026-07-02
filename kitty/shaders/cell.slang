@@ -65,9 +65,9 @@ static const uint cursor_shape_map[] = {  // maps cursor shape to foreground spr
 // Vertex Input Attributes with explicit fixed locations
 struct VertexInput
 {
-    [[vk::location(0)]] uint3 colors       : COLORS;
-    [[vk::location(1)]] uint2 sprite_idx   : SPRITE_IDX;
-    [[vk::location(2)]] uint  is_selected  : IS_SELECTED;
+    [[vk::location(0)]] uint3 colors;
+    [[vk::location(1)]] uint2 sprite_idx;
+    [[vk::location(2)]] uint  is_selected;
 };
 // }}}
 
@@ -80,12 +80,6 @@ static const uint SPRITE_COLORED_SHIFT = 31u;
 static const uint BIT_MASK = 1u;
 // Linear space luminance values
 static const float3 Y = float3(0.2126, 0.7152, 0.0722);
-
-// Forward declarations / Expected externs from the original context
-// (Uncomment these if you do not declare them elsewhere in your Slang shader)
-// cbuffer Uniforms {
-//     uint sprite_idx[1];
-// }
 
 float3 color_to_vec(uint c) {
     uint r, g, b;
@@ -242,7 +236,16 @@ uint is_cursor(uint x, uint y) {
 }
 // }}}
 
-struct VSOutput {
+struct CellData {
+    float has_cursor;
+    float has_block_cursor;
+    uint2 pos;
+    uint cursor_fg_sprite_idx;
+    ColorPair cursor;
+};
+
+// Structural constants
+struct VertexOutput {
     float4 position : SV_Position;
 
     float3 background;
@@ -260,20 +263,100 @@ struct VSOutput {
 };
 
 
+CellData set_vertex_position(
+    float3 cell_fg,
+    float3 cell_bg,
+    uint instance_id,
+    uint vertex_id,
+    float row_offset,
+    in VertexInput vi,
+    inout VertexOutput vo,
+) {
+    CellData cell_out;
+    float dx = 2.0 / float(crd.columns);
+    float dy = 2.0 / float(crd.lines);
+
+    // The current cell being rendered
+    uint row = instance_id / crd.columns;
+    uint column = instance_id - row * crd.columns;
+
+    // The position of this vertex, at a corner of the cell
+    float left = -1.0 + float(column) * dx;
+    float top = 1.0 - (float(row) + row_offset) * dy;
+
+    uint2 pos = cell_pos_map[vertex_id];
+
+    float2 select_x = float2(left, left + dx);
+    float2 select_y = float2(top, top - dy);
+    float posX = select_x[pos.x];
+    float posY = select_y[pos.y];
+    vo.position = float4(posX, posY, 0.0, 1.0);
+
+    // The character sprite being rendered
+    if (!ONLY_BACKGROUND) {
+        vo.sprite_pos = to_sprite_pos(pos, vi.sprite_idx[0] & SPRITE_INDEX_MASK);
+        vo.colored_sprite = float((vi.sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
+    }
+
+    // Cursor shape and colors
+    float has_main_cursor = float(is_cursor(column, row));
+    float multicursor_shape = float((vi.is_selected >> 2) & 3u);
+    float multicursor_uses_main_cursor_shape = float((vi.is_selected >> 4) & BIT_MASK);
+    multicursor_shape = if_one_then(multicursor_uses_main_cursor_shape, crd.cursor_shape, multicursor_shape);
+
+    float final_cursor_shape = if_one_then(has_main_cursor, crd.cursor_shape, multicursor_shape);
+    float has_cursor = zero_or_one(final_cursor_shape);
+    float is_block_cursor = has_cursor * one_if_equal_zero_otherwise(final_cursor_shape, 1.0);
+
+    ColorPair main_cursor;
+    main_cursor.bg = color_to_vec(crd.main_cursor_bg);
+    main_cursor.fg = color_to_vec(crd.main_cursor_fg);
+
+    ColorPair extra_cursor = resolve_extra_cursor_colors(cell_bg, cell_fg, main_cursor);
+    ColorPair cursor = if_one_then_pair(has_main_cursor, main_cursor, extra_cursor);
+
+    cell_out.has_cursor = has_cursor;
+    cell_out.has_block_cursor = is_block_cursor;
+    cell_out.pos = pos;
+    cell_out.cursor_fg_sprite_idx = cursor_shape_map[int(final_cursor_shape)];
+    cell_out.cursor = cursor;
+
+    return cell_out;
+}
+
+float background_opacity_for(uint bg, uint colorval, float opacity_if_matched) {
+    float not_matched = step(1.0, abs(float(colorval) - float(bg)));
+    return not_matched + opacity_if_matched * (1.0 - not_matched);
+}
+
+float calc_background_opacity(uint bg) {
+    return (
+        background_opacity_for(bg, crd.bg_colors0, crd.bg_opacities0) *
+        background_opacity_for(bg, crd.bg_colors1, crd.bg_opacities1) *
+        background_opacity_for(bg, crd.bg_colors2, crd.bg_opacities2) *
+        background_opacity_for(bg, crd.bg_colors3, crd.bg_opacities3) *
+        background_opacity_for(bg, crd.bg_colors4, crd.bg_opacities4) *
+        background_opacity_for(bg, crd.bg_colors5, crd.bg_opacities5) *
+        background_opacity_for(bg, crd.bg_colors6, crd.bg_opacities6) *
+        background_opacity_for(bg, crd.bg_colors7, crd.bg_opacities7)
+    );
+}
+
 [shader("vertex")]
-VSOutput vertex_main(
+VertexOutput vertex_main(
     VertexInput vi,
     uint vertex_id : SV_VertexID,
+    uint instance_id : SV_InstanceID,
     uniform uint draw_bg_bitfield,
     uniform float row_offset,
 ) {
+    VertexOutput vo;
     int width, height;
     sprite_decorations_map.GetDimensions(width, height);
     uint4 data = sprite_decorations_map.Load(int3(1,2,0));
-    VSOutput r;
-    r.position = float4(vertex_id + draw_bg_bitfield, data[0] / width * height, row_offset, crd.cursor_opacity);
-    r.background = float3(color_table[vertex_id], vi.is_selected, 2);
-    return r;
+    vo.position = float4(vertex_id + draw_bg_bitfield, data[0] / width * height, row_offset, crd.cursor_opacity);
+    vo.background = float3(color_table[vertex_id], vi.is_selected, 2);
+    return vo;
 }
 
 
