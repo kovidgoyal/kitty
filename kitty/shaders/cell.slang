@@ -5,6 +5,8 @@
 // https://github.com/shader-slang/slang/issues/11874
 // warnings-disable: 41012
 
+import utils;
+
 #define NUM_COLORS 256
 
 extern static const bool DO_FG_OVERRIDE;
@@ -31,7 +33,7 @@ struct CellRenderDataStruct
 };
 
 // Uniform Blocks (adjust binding slots as needed for your pipeline layout)
-ConstantBuffer<CellRenderDataStruct> CellRenderData;
+ConstantBuffer<CellRenderDataStruct> crd;
 
 struct ColorTableStruct
 {
@@ -39,6 +41,7 @@ struct ColorTableStruct
 };
 
 ConstantBuffer<ColorTableStruct> ColorTable;
+#define color_table ColorTable.color_table
 
 uniform float gamma_lut[256];
 uniform Sampler2D<uint4> sprite_decorations_map;
@@ -66,6 +69,178 @@ struct VertexInput
     [[vk::location(1)]] uint2 sprite_idx   : SPRITE_IDX;
     [[vk::location(2)]] uint  is_selected  : IS_SELECTED;
 };
+// }}}
+
+// Utility functions {{{
+
+static const uint BYTE_MASK = 0xFF;
+static const uint SPRITE_INDEX_MASK = 0x7fffffff;
+static const uint SPRITE_COLORED_MASK = 0x80000000;
+static const uint SPRITE_COLORED_SHIFT = 31u;
+static const uint BIT_MASK = 1u;
+// Linear space luminance values
+static const float3 Y = float3(0.2126, 0.7152, 0.0722);
+
+// Forward declarations / Expected externs from the original context
+// (Uncomment these if you do not declare them elsewhere in your Slang shader)
+// cbuffer Uniforms {
+//     uint sprite_idx[1];
+// }
+
+float3 color_to_vec(uint c) {
+    uint r, g, b;
+    r = (c >> 16) & BYTE_MASK;
+    g = (c >> 8) & BYTE_MASK;
+    b = c & BYTE_MASK;
+    return float3(gamma_lut[r], gamma_lut[g], gamma_lut[b]);
+}
+
+float one_if_equal_zero_otherwise(float a, float b) {
+    return (1.0f - zero_or_one(abs(float(a) - float(b))));
+}
+
+// We need an integer variant to accommodate GPU driver bugs, see
+// https://github.com/kovidgoyal/kitty/issues/9072
+uint one_if_equal_zero_otherwise(int a, int b) {
+    return (1u - uint(zero_or_one(abs(float(a) - float(b)))));
+}
+
+uint one_if_equal_zero_otherwise(uint a, uint b) {
+    return (1u - uint(zero_or_one(abs(float(a) - float(b)))));
+}
+
+uint resolve_color(uint c, uint defval) {
+    int t = int(c & BYTE_MASK);
+    uint is_one = one_if_equal_zero_otherwise(t, 1);
+    uint is_two = one_if_equal_zero_otherwise(t, 2);
+    uint is_neither_one_nor_two = 1u - is_one - is_two;
+    return is_one * color_table[(c >> 8) & BYTE_MASK] + is_two * (c >> 8) + is_neither_one_nor_two * defval;
+}
+
+float3 to_color(uint c, uint defval) {
+    return color_to_vec(resolve_color(c, defval));
+}
+
+[ForceInline]
+float3 q_func(float type_val, uint which, float3 val) {
+    return one_if_equal_zero_otherwise(type_val, float(which)) * val;
+}
+
+float3 resolve_dynamic_color(uint c, float3 special_val, float3 defval) {
+    float type_val = float((c >> 24) & BYTE_MASK);
+    return (
+        q_func(type_val, COLOR_IS_RGB, color_to_vec(c)) +
+        q_func(type_val, COLOR_IS_INDEX, color_to_vec(color_table[c & BYTE_MASK])) +
+        q_func(type_val, COLOR_IS_SPECIAL, special_val) +
+        q_func(type_val, COLOR_NOT_SET, defval)
+    );
+}
+
+float contrast_ratio(float under_luminance, float over_luminance) {
+    return clamp((max(under_luminance, over_luminance) + 0.05f) / (min(under_luminance, over_luminance) + 0.05f), 1.f, 21.f);
+}
+
+float contrast_ratio(float3 a, float3 b) {
+    return contrast_ratio(dot(a, Y), dot(b, Y));
+}
+
+struct ColorPair {
+    float3 bg, fg;
+};
+
+float contrast_ratio(ColorPair a) {
+    return contrast_ratio(a.bg, a.fg);
+}
+
+ColorPair if_less_than_pair(float a, float b, ColorPair thenval, ColorPair elseval) {
+    return ColorPair(
+        if_less_than(a, b, thenval.bg, elseval.bg),
+        if_less_than(a, b, thenval.fg, elseval.fg)
+    );
+}
+
+ColorPair if_one_then_pair(float condition, ColorPair thenval, ColorPair elseval) {
+    return ColorPair(
+        if_one_then(condition, thenval.bg, elseval.bg),
+        if_one_then(condition, thenval.fg, elseval.fg)
+    );
+}
+
+ColorPair resolve_extra_cursor_colors_for_special_cursor(float3 cell_bg, float3 cell_fg) {
+    ColorPair cell = ColorPair(cell_fg, cell_bg);
+    ColorPair base = ColorPair(color_to_vec(crd.default_fg), color_to_vec(crd.bg_colors0));
+    float cr = contrast_ratio(cell);
+    float br = contrast_ratio(base);
+    ColorPair higher_contrast_pair = if_less_than_pair(cr, br, base, cell);
+    return if_less_than_pair(cr, 2.5f, higher_contrast_pair, cell);
+}
+
+ColorPair resolve_extra_cursor_colors(float3 cell_bg, float3 cell_fg, ColorPair main_cursor) {
+    ColorPair ans = ColorPair(
+        resolve_dynamic_color(crd.extra_cursor_bg, main_cursor.bg, main_cursor.bg),
+        resolve_dynamic_color(crd.extra_cursor_fg, cell_bg, main_cursor.fg)
+    );
+    ColorPair special = resolve_extra_cursor_colors_for_special_cursor(cell_bg, cell_fg);
+    return if_one_then_pair(zero_or_one(abs(float(crd.extra_cursor_bg & BYTE_MASK) - float(COLOR_IS_SPECIAL))), ans, special);
+}
+
+uint3 to_sprite_coords(uint idx) {
+    uint sprites_per_page = crd.sprites_xnum * crd.sprites_ynum;
+    uint z = idx / sprites_per_page;
+    uint num_on_last_page = idx - sprites_per_page * z;
+    uint y = num_on_last_page / crd.sprites_xnum;
+    uint x = num_on_last_page - crd.sprites_xnum * y;
+    return uint3(x, y, z);
+}
+
+float3 to_sprite_pos(uint2 pos, uint idx) {
+    uint3 c = to_sprite_coords(idx);
+    float2 s_xpos = float2(float(c.x), float(c.x) + 1.0f) * (1.0f / float(crd.sprites_xnum));
+    float2 s_ypos = float2(float(c.y), float(c.y) + 1.0f) * (1.0f / float(crd.sprites_ynum));
+    uint texture_height_px = (crd.cell_height + 1u) * crd.sprites_ynum;
+    float row_height = 1.0f / float(texture_height_px);
+    s_ypos[1] -= row_height;  // skip the decorations_exclude row
+    return float3(s_xpos[pos.x], s_ypos[pos.y], float(c.z));
+}
+
+uint to_underline_exclusion_pos(uint2 sprite_idx) {
+    uint3 c = to_sprite_coords(sprite_idx[0]);
+    uint cell_top_px = c.y * (crd.cell_height + 1u);
+    return cell_top_px + crd.cell_height;
+}
+
+uint read_sprite_decorations_idx(uint2 sprite_idx) {
+    int idx = int(sprite_idx[0] & SPRITE_INDEX_MASK);
+
+    // Slang maps GLSL's textureSize and texelFetch directly using standard vector parameters
+    uint width, height;
+    sprite_decorations_map.GetDimensions(width, height);
+    int2 sz = int2(int(width), int(height));
+
+    int y = idx / sz[0];
+    int x = idx - y * sz[0];
+
+    // texelFetch maps to the bracket coordinate operator in Slang
+    return sprite_decorations_map[int2(x, y)].r;
+}
+
+uint2 get_decorations_indices(uint2 sprite_idx, uint in_url /* [0, 1] */, uint text_attrs) {
+    uint decorations_idx = read_sprite_decorations_idx(sprite_idx);
+    uint has_decorations = uint(zero_or_one(float(decorations_idx)));
+    uint strike_style = ((text_attrs >> STRIKE_SHIFT) & BIT_MASK); // 0 or 1
+    uint strike_idx = decorations_idx * strike_style;
+    uint underline_style = ((text_attrs >> DECORATION_SHIFT) & DECORATION_MASK);
+    underline_style = in_url * crd.url_style + (1u - in_url) * underline_style; // [0, 5]
+    uint has_underline = uint(step(0.5f, float(underline_style)));  // [0, 1]
+    return has_decorations * uint2(strike_idx, has_underline * (decorations_idx + underline_style));
+}
+
+uint is_cursor(uint x, uint y) {
+    uint clamped_x = clamp(x, crd.cursor_x1, crd.cursor_x2);
+    uint clamped_y = clamp(y, crd.cursor_y1, crd.cursor_y2);
+    return one_if_equal_zero_otherwise(x, clamped_x) * one_if_equal_zero_otherwise(y, clamped_y);
+}
+// }}}
 
 struct VSOutput {
     float4 position : SV_Position;
@@ -96,8 +271,8 @@ VSOutput vertex_main(
     sprite_decorations_map.GetDimensions(width, height);
     uint4 data = sprite_decorations_map.Load(int3(1,2,0));
     VSOutput r;
-    r.position = float4(vertex_id + draw_bg_bitfield, data[0] / width * height, row_offset, CellRenderData.cursor_opacity);
-    r.background = float3(ColorTable.color_table[vertex_id], vi.is_selected, 2);
+    r.position = float4(vertex_id + draw_bg_bitfield, data[0] / width * height, row_offset, crd.cursor_opacity);
+    r.background = float3(color_table[vertex_id], vi.is_selected, 2);
     return r;
 }
 
