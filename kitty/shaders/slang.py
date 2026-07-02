@@ -354,7 +354,8 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, d
                 yield Command(needs_build, f'Linking |{os.path.basename(slang_module)}| to GLSL {ep.stage.value} shader ...', c)
 
 
-def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, Any]]:
+def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
+    is_fragment_shader = 'frag' in os.path.basename(path).split()
     lines = []
     in_uniform_block = False
     in_uniform_block_contents = False
@@ -369,11 +370,12 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, Any]]:
         name = name.rstrip(';')
         uniform_name = name.rpartition('_')[0]
         if uniform_name in uniform_names:
-            raise KeyError(f'The uniform name {uniform_name} is used with multiple suffixes')
+            raise KeyError(f'The uniform name {uniform_name} is used with multiple suffixes in {path}')
         uniform_names[uniform_name] = name
         return name
+    src_lines = glsl_code.splitlines()
 
-    for line in glsl_code.splitlines():
+    for i, line in enumerate(src_lines):
         if in_uniform_block:
             if in_uniform_block_contents:
                 if line.startswith('}'):
@@ -403,7 +405,9 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, Any]]:
                 line = '#version 330 core'
             elif line.startswith('#extension ') or line in ('layout(row_major) buffer;', 'layout(push_constant)'):
                 line = '// ' + line
-            elif line.startswith('layout(location =') or line.startswith('layout(binding ='):
+            elif line.startswith('layout(binding ='):
+                line = '// ' + line
+            elif line.startswith('layout(location =') and not is_fragment_shader:
                 line = '// ' + line
             elif line.startswith('flat layout(location ='):
                 line = 'flat'
@@ -437,12 +441,12 @@ def fixup_opengl_files(*paths: str) -> None:
     for path in paths:
         with open(path, 'r+') as f:
             glsl_code = f.read()
+            fixed, metadata = fixup_opengl_code(glsl_code, path)
             f.seek(0)
             f.truncate()
-            fixed, uniform_names = fixup_opengl_code(glsl_code)
             f.write(fixed)
         with open(path + '.json', 'w') as f:
-            f.write(json.dumps(uniform_names))
+            f.write(json.dumps(metadata))
 
 
 ParallelRun = Callable[[Iterable[tuple[bool, str, list[str]]]], None]

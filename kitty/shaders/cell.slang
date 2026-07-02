@@ -64,7 +64,8 @@ static const uint cursor_shape_map[] = {  // maps cursor shape to foreground spr
    4u   // UNFOCUSED
 };
 
-// Vertex Input Attributes with explicit fixed locations
+// Vertex Input Attributes with explicit fixed locations. We use fixed
+// locations as all variants of the cell program share the same VAOs
 struct VertexInput
 {
     [[vk::location(0)]] uint3 colors;
