@@ -65,7 +65,7 @@ def ensure_cache_dir(path: str) -> None:
     # slang IR is version dependent and the compiler often crashes when loading .slang-module from another version
     if not is_dir_slangc_version_ok(path):
         shutil.rmtree(path)
-        os.makedirs(path, exist_ok=True)
+        os.makedirs(path)
         with open(os.path.join(path, 'slangc.version'), 'w') as f:
             f.write(slangc_version())
 
@@ -342,11 +342,10 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, d
         for ep in sfile.entry_points:
             for sp in sfile.specializations:
                 v = {Stage.vertex: 'vert', Stage.fragment: 'frag'}[ep.stage]
-                dest = f'{base_dest}.{v}.glsl'
                 c = list(cmd)
-                if sp.name:
-                    dest = f'{base_dest}{sp.filename_insert}.{v}.glsl'
-                    c.insert(-1, f'{base_dest}.{sp.name}.slang-module')
+                dest = f'{base_dest}{sp.filename_insert}.{v}.glsl' if sp.name else f'{base_dest}.{v}.glsl'
+                if sp.variables:
+                    c.insert(-1, f'{base_dest}{sp.filename_insert}.slang-module')
                 c += extra_cmd + ['-entry', ep.name, '-stage', ep.stage.name, '-o', dest]
                 output_mtime = safe_mtime(dest)
                 needs_build = output_mtime < module_mtime
@@ -428,6 +427,8 @@ def fixup_opengl_code(glsl_code: str) -> tuple[str, dict[str, Any]]:
             ans = ans.replace(f'{block_name}.{u}', u)
     ans = ans.replace('gl_VertexIndex', 'gl_VertexID')
     ans = ans.replace('gl_BaseVertex', '0')
+    ans = ans.replace('gl_InstanceIndex', 'gl_InstanceID')
+    ans = ans.replace('gl_BaseInstance', '0')
     return ans, {'loose_uniforms': uniform_names, 'uniform_structs': uniform_structs}
 
 
