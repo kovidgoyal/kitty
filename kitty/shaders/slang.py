@@ -409,7 +409,7 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], dest_dir: str, bu
 
 def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
     is_fragment_shader = 'frag' in os.path.basename(path).split('.')
-    lines = []
+    lines: list[str] = []
     in_uniform_block = False
     in_uniform_block_contents = False
     uniform_block_is_struct = False
@@ -418,7 +418,7 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
     current_uniform_names: list[str] = []
     uniform_names: dict[str, str] = {}
     uniform_structs = {}
-    input_attr_names = {}
+    input_locations = {}
 
     def add_uniform_name(name: str, uniform_names: dict[str, str] = uniform_names) -> str:
         name = name.rstrip(';')
@@ -480,9 +480,9 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
                         line = '// ' + line
                 elif words[0] == 'uniform' and len(words) > 2 and words[1].startswith('sampler'):
                     add_uniform_name(words[2])
-                elif words[0] == 'in':
+                elif not is_fragment_shader and words[0] == 'in':
                     name = words[-1].rstrip(';')
-                    input_attr_names[name.rpartition('_')[0]] = name
+                    input_locations[name.rpartition('_')[0]] = int(lines[-1].split()[-1].rstrip(')'))
         lines.append(line)
     ans = '\n'.join(lines)
     for block_name, names in uniform_blocks.items():
@@ -494,7 +494,7 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
     ans = ans.replace('gl_InstanceIndex', 'gl_InstanceID')
     ans = ans.replace('gl_BaseInstance', '0')
     return ans, {
-        'loose_uniforms': uniform_names, 'uniform_structs': uniform_structs, 'input_attr_names': input_attr_names
+        'loose_uniforms': uniform_names, 'uniform_structs': uniform_structs, 'input_locations': input_locations,
     }
 
 
