@@ -40,6 +40,10 @@ embed_exe="$(command dirname "$script_dir")/install/bin/kitten"
     exec_kitty "$@"
 }
 
+# If called for shell completion with no binary available, do nothing to avoid
+# downloading kitten and showing spurious output during tab completion.
+[ "$1" = "__complete__" ] && exit 0
+
 case "$(command uname)" in
     'Linux') OS="linux";;
     'Darwin') OS="darwin";;
