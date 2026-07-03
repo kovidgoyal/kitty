@@ -12,13 +12,10 @@ import linear2srgb;
 
 #define NUM_COLORS 256
 
-extern static const bool DO_FG_OVERRIDE;
 extern static const uint FG_OVERRIDE_ALGO;
-extern static const float FG_OVERRIDE_THRESHOLD;
 extern static const bool TEXT_NEW_GAMMA;
 extern static const bool ONLY_FOREGROUND;
 extern static const bool ONLY_BACKGROUND;
-static const bool OVERRIDE_FG_COLORS = DO_FG_OVERRIDE == 1 && !ONLY_BACKGROUND;
 
 // Inputs {{{
 struct CellRenderDataStruct
@@ -343,20 +340,20 @@ float calc_background_opacity(uint bg) {
 }
 
 // Override foreground colors {{{
-float3 fg_override_luminance(float colored_sprite, float under_luminance, float over_lumininace, float3 under, float3 over) {
+float3 fg_override_luminance(float colored_sprite, float under_luminance, float over_lumininace, float3 under, float3 over, float fg_override_thresold) {
     // If the difference in luminance is too small,
     // force the foreground color to be black or white.
     float diff_luminance = abs(under_luminance - over_lumininace);
-	float override_level = (1.f - colored_sprite) * step(diff_luminance, FG_OVERRIDE_THRESHOLD);
+	float override_level = (1.f - colored_sprite) * step(diff_luminance, fg_override_thresold);
 	float original_level = 1.f - override_level;
 	return original_level * over + override_level * float3(step(under_luminance, 0.5f));
 }
 
-float3 fg_override_contrast(float under_luminance, float over_luminance, float3 under, float3 over) {
+float3 fg_override_contrast(float under_luminance, float over_luminance, float3 under, float3 over, float fg_override_thresold) {
     float ratio = contrast_ratio(under_luminance, over_luminance);
     float3 diff = abs(under - over);
     float3 over_hsluv = rgbToHsluv(over);
-    const float min_contrast_ratio = FG_OVERRIDE_THRESHOLD;
+    const float min_contrast_ratio = fg_override_thresold;
     float target_lum_a = clamp((under_luminance + 0.05) * min_contrast_ratio - 0.05, 0.0, 1.0);
     float target_lum_b = clamp((under_luminance + 0.05) / min_contrast_ratio - 0.05, 0.0, 1.0);
     float3 result_a = clamp(hsluvToRgb(float3(over_hsluv.x, over_hsluv.y, target_lum_a * 100.0)), 0.0, 1.0);
@@ -368,11 +365,11 @@ float3 fg_override_contrast(float under_luminance, float over_luminance, float3 
     return lerp(result, over, fallback_condition);
 }
 
-float3 override_foreground_color(float3 over, float3 under, float colored_sprite) {
+float3 override_foreground_color(float3 over, float3 under, float colored_sprite, float fg_override_thresold) {
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
-    if (FG_OVERRIDE_ALGO == 1) return fg_override_luminance(colored_sprite, under_luminance, over_lumininace, under, over);
-    return fg_override_contrast(under_luminance, over_lumininace, under, over);
+    if (FG_OVERRIDE_ALGO == 1) return fg_override_luminance(colored_sprite, under_luminance, over_lumininace, under, over, fg_override_thresold);
+    return fg_override_contrast(under_luminance, over_lumininace, under, over, fg_override_thresold);
 }
 // }}}
 
@@ -383,6 +380,7 @@ VertexOutput vertex_main(
     uint instance_id : SV_InstanceID,
     uniform uint draw_bg_bitfield,
     uniform float row_offset,
+    uniform float fg_override_thresold,
 ) {
     VertexOutput vo;
 
@@ -452,9 +450,9 @@ VertexOutput vertex_main(
     vo.background = background_rgb;
     // }}}
 
-    if (!ONLY_BACKGROUND && OVERRIDE_FG_COLORS) {
-        vo.decoration_fg = override_foreground_color(vo.decoration_fg, background_rgb, vo.colored_sprite);
-        foreground = override_foreground_color(foreground, background_rgb, vo.colored_sprite);
+    if (!ONLY_BACKGROUND && FG_OVERRIDE_ALGO > 0) {
+        vo.decoration_fg = override_foreground_color(vo.decoration_fg, background_rgb, vo.colored_sprite, fg_override_thresold);
+        foreground = override_foreground_color(foreground, background_rgb, vo.colored_sprite, fg_override_thresold);
     }
 
     if (!ONLY_FOREGROUND) {
