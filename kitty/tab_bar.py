@@ -824,9 +824,9 @@ class TabBar:
         set_tab_bar_render_data(self.os_window_id, self.screen, *g[:4])
 
     def _update_edge_defaults(self, is_vertical: bool) -> bool:
-        """Call update_tab_bar_edge_colors, update cached is-default flags.
-        Returns True when the flags changed and blank_rects need rebuilding."""
-        result = update_tab_bar_edge_colors(self.os_window_id, int(is_vertical))
+        '''Call update_tab_bar_edge_colors, update cached is-default flags.
+        Returns True when the flags changed and blank_rects need rebuilding.'''
+        result = update_tab_bar_edge_colors(self.os_window_id, is_vertical)
         if result is None:
             return False
         left_is_default, right_is_default = result

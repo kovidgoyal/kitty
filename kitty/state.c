@@ -1405,7 +1405,7 @@ PYWRAP1(patch_global_colors) {
 PYWRAP1(update_tab_bar_edge_colors) {
     id_type os_window_id;
     int is_vertical = 0;
-    PA("K|i", &os_window_id, &is_vertical);
+    PA("K|p", &os_window_id, &is_vertical);
     WITH_OS_WINDOW(os_window_id)
         Screen *screen = os_window->tab_bar_render_data.screen;
         if (screen) {
