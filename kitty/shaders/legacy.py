@@ -38,6 +38,7 @@ from kitty.fast_data_types import (
     get_options,
     init_cell_program,
 )
+from kitty.options.types import Options, defaults
 
 
 def identity(x: str) -> str:
@@ -140,10 +141,12 @@ class LoadShaderPrograms:
     text_fg_override_threshold: tuple[float, Literal['%', 'ratio']] = 0, '%'
     text_old_gamma: bool = False
     cell_program_replacer: MultiReplacer = null_replacer
+    opts: Options | None = None
+    compile_programs: bool = True
 
     @property
     def needs_recompile(self) -> bool:
-        opts = get_options()
+        opts = self.opts or get_options()
         return (
             bool(opts.text_fg_override_threshold[0]) != bool(self.text_fg_override_threshold[0]) or
             opts.text_fg_override_threshold[1] != self.text_fg_override_threshold[1] or
@@ -155,7 +158,7 @@ class LoadShaderPrograms:
             self(allow_recompile=True)
 
     def __call__(self, allow_recompile: bool = False) -> None:
-        opts = get_options()
+        opts = self.opts or get_options()
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
         self.text_fg_override_threshold = opts.text_fg_override_threshold
 
@@ -191,7 +194,8 @@ class LoadShaderPrograms:
         }.items():
             fn = partial(resolve_cell_defines, only_fg, only_bg)
             cell.apply_to_sources(vertex=fn, frag=fn)
-            cell.compile(prog, allow_recompile)
+            if self.compile_programs:
+                cell.compile(prog, allow_recompile)
         graphics = program_for('graphics')
 
         def resolve_graphics_fragment_defines(which: str, is_premult: bool, f: str) -> str:
@@ -204,15 +208,35 @@ class LoadShaderPrograms:
             GRAPHICS_PREMULT_PROGRAM: ('IMAGE', True),
         }.items():
             graphics.apply_to_sources(frag=partial(resolve_graphics_fragment_defines, which, is_premult))
-            graphics.compile(p, allow_recompile)
+            if self.compile_programs:
+                graphics.compile(p, allow_recompile)
 
-        program_for('bgimage').compile(BGIMAGE_PROGRAM, allow_recompile)
-        program_for('tint').compile(TINT_PROGRAM, allow_recompile)
-        program_for('trail').compile(TRAIL_PROGRAM, allow_recompile)
-        program_for('blit').compile(BLIT_PROGRAM, allow_recompile)
-        program_for('screenshot').compile(SCREENSHOT_PROGRAM, allow_recompile)
-        program_for('rounded_rect').compile(ROUNDED_RECT_PROGRAM, allow_recompile)
-        init_cell_program()
+        if self.compile_programs:
+            program_for('bgimage').compile(BGIMAGE_PROGRAM, allow_recompile)
+            program_for('tint').compile(TINT_PROGRAM, allow_recompile)
+            program_for('trail').compile(TRAIL_PROGRAM, allow_recompile)
+            program_for('blit').compile(BLIT_PROGRAM, allow_recompile)
+            program_for('screenshot').compile(SCREENSHOT_PROGRAM, allow_recompile)
+            program_for('rounded_rect').compile(ROUNDED_RECT_PROGRAM, allow_recompile)
+            init_cell_program()
 
 
 load_shader_programs = LoadShaderPrograms()
+
+
+def dump_programs(dest_dir: str) -> None:
+    import os
+    load_shader_programs.compile_programs = False
+    load_shader_programs.opts = defaults
+    try:
+        load_shader_programs()
+        os.makedirs(dest_dir, exist_ok=True)
+        for name in 'border bgimage tint trail blit screenshot rounded_rect cell graphics'.split():
+            p = program_for(name)
+            with open(os.path.join(dest_dir, f'{name}.vert.glsl'), 'w') as f:
+                f.write('\n\n'.join(p.vertex_sources))
+            with open(os.path.join(dest_dir, f'{name}.frag.glsl'), 'w') as f:
+                f.write('\n\n'.join(p.fragment_sources))
+    finally:
+        load_shader_programs.compile_programs = True
+        load_shader_programs.opts = None
