@@ -3439,21 +3439,31 @@ effective_cell_edge_color(char_type ch, color_type fg, color_type bg, bool is_le
 
 
 bool
-get_line_edge_colors(Screen *self, color_type *left, color_type *right) {
-    // Return the color at the left and right edges of the line with the cursor on it
-    Line *line = range_line_(self, self->cursor->y);
+get_line_edge_colors_at_row(Screen *self, index_type y, color_type *left, color_type *right, bool *left_is_default, bool *right_is_default) {
+    // Return the color at the left and right edges of the specified row.
+    // Any of the output pointers may be NULL if that value is not needed.
+    Line *line = range_line_(self, y);
     if (!line) return false;
     color_type left_cell_fg = OPT(foreground), left_cell_bg = OPT(background), right_cell_bg = OPT(background), right_cell_fg = OPT(foreground);
     index_type cell_color_x = 0;
     char_type left_char = line_get_char(line, cell_color_x);
     bool reversed = false;
     colors_for_cell(line, self->color_profile, &cell_color_x, &left_cell_fg, &left_cell_bg, &reversed);
+    if (left_is_default) *left_is_default = (line->gpu_cells[cell_color_x].bg & 0xff) == 0;
+    if (left) *left = effective_cell_edge_color(left_char, left_cell_fg, left_cell_bg, true);
     if (line->xnum > 0) cell_color_x = line->xnum - 1;
     char_type right_char = line_get_char(line, cell_color_x);
+    reversed = false;
     colors_for_cell(line, self->color_profile, &cell_color_x, &right_cell_fg, &right_cell_bg, &reversed);
-    *left = effective_cell_edge_color(left_char, left_cell_fg, left_cell_bg, true);
-    *right = effective_cell_edge_color(right_char, right_cell_fg, right_cell_bg, false);
+    if (right_is_default) *right_is_default = (line->gpu_cells[cell_color_x].bg & 0xff) == 0;
+    if (right) *right = effective_cell_edge_color(right_char, right_cell_fg, right_cell_bg, false);
     return true;
+}
+
+bool
+get_line_edge_colors(Screen *self, color_type *left, color_type *right) {
+    // Return the color at the left and right edges of the line with the cursor on it
+    return get_line_edge_colors_at_row(self, self->cursor->y, left, right, NULL, NULL);
 }
 
 

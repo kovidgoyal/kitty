@@ -1404,13 +1404,39 @@ PYWRAP1(patch_global_colors) {
 
 PYWRAP1(update_tab_bar_edge_colors) {
     id_type os_window_id;
-    PA("K", &os_window_id);
+    int is_vertical = 0;
+    PA("K|i", &os_window_id, &is_vertical);
     WITH_OS_WINDOW(os_window_id)
-        if (os_window->tab_bar_render_data.screen) {
-            if (get_line_edge_colors(os_window->tab_bar_render_data.screen, &os_window->tab_bar_edge_color.left, &os_window->tab_bar_edge_color.right)) { Py_RETURN_TRUE; }
+        Screen *screen = os_window->tab_bar_render_data.screen;
+        if (screen) {
+            bool left_is_default = true, right_is_default = true;
+            bool ok;
+            if (!is_vertical) {
+                ok = get_line_edge_colors_at_row(
+                    screen, screen->cursor->y,
+                    &os_window->tab_bar_edge_color.left,
+                    &os_window->tab_bar_edge_color.right,
+                    &left_is_default, &right_is_default);
+            } else {
+                color_type top_color = 0, bottom_color = 0;
+                bool top_is_default = true, bottom_is_default = true;
+                ok = get_line_edge_colors_at_row(screen, 0, &top_color, NULL, &top_is_default, NULL) &&
+                     get_line_edge_colors_at_row(screen, screen->lines - 1, &bottom_color, NULL, &bottom_is_default, NULL);
+                if (ok) {
+                    os_window->tab_bar_edge_color.left = top_color;
+                    os_window->tab_bar_edge_color.right = bottom_color;
+                    left_is_default = top_is_default;
+                    right_is_default = bottom_is_default;
+                }
+            }
+            if (ok) {
+                return Py_BuildValue("OO",
+                    left_is_default ? Py_True : Py_False,
+                    right_is_default ? Py_True : Py_False);
+            }
         }
     END_WITH_OS_WINDOW
-    Py_RETURN_FALSE;
+    Py_RETURN_NONE;
 }
 
 static PyObject*

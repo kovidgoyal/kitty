@@ -619,6 +619,9 @@ class TabBar:
         self.blank_rects: tuple[Border, ...] = ()
         self.tab_extents: Sequence[TabExtent] = ()
         self.laid_out_once = False
+        self.left_edge_is_default = True
+        self.right_edge_is_default = True
+        self._last_viewport: tuple[Region, Region, int, int] | None = None
         self.apply_options()
 
     def apply_options(self) -> None:
@@ -753,18 +756,23 @@ class TabBar:
                     blank_rects.append(Border(0, tab_bar.bottom, vw, central.top, bg))
         g = self.window_geometry
         if self.is_vertical:
+            if opts.tab_bar_margin_color is None:
+                top_bg = bg if self.left_edge_is_default else BorderColor.tab_bar_left_edge_color
+                bottom_bg = bg if self.right_edge_is_default else BorderColor.tab_bar_right_edge_color
+            else:
+                top_bg = bottom_bg = bg
             if g.left > tab_bar.left:
                 blank_rects.append(Border(tab_bar.left, g.top, g.left, g.bottom, bg))
             if g.right < tab_bar.right:
                 blank_rects.append(Border(g.right, g.top, tab_bar.right, g.bottom, bg))
             if g.top > tab_bar.top:
-                blank_rects.append(Border(g.left, tab_bar.top, g.right, g.top, bg))
+                blank_rects.append(Border(g.left, tab_bar.top, g.right, g.top, top_bg))
             if g.bottom < tab_bar.bottom:
-                blank_rects.append(Border(g.left, g.bottom, g.right, tab_bar.bottom, bg))
+                blank_rects.append(Border(g.left, g.bottom, g.right, tab_bar.bottom, bottom_bg))
         else:
             if opts.tab_bar_margin_color is None:
-                left_bg = BorderColor.tab_bar_left_edge_color
-                right_bg = BorderColor.tab_bar_right_edge_color
+                left_bg = bg if self.left_edge_is_default else BorderColor.tab_bar_left_edge_color
+                right_bg = bg if self.right_edge_is_default else BorderColor.tab_bar_right_edge_color
             else:
                 left_bg = right_bg = bg
             if g.left > tab_bar.left:
@@ -811,15 +819,31 @@ class TabBar:
             self.window_geometry = g = WindowGeometry(
                 left_margin, tab_bar.top, left_margin + cell_area_width, tab_bar.bottom, s.columns, s.lines)
         self.laid_out_once = True
+        self._last_viewport = (central, tab_bar, vw, vh)
         self.update_blank_rects(central, tab_bar, vw, vh)
         set_tab_bar_render_data(self.os_window_id, self.screen, *g[:4])
 
-    def update(self, data: Sequence[TabBarData]) -> None:
+    def _update_edge_defaults(self, is_vertical: bool) -> bool:
+        """Call update_tab_bar_edge_colors, update cached is-default flags.
+        Returns True when the flags changed and blank_rects need rebuilding."""
+        result = update_tab_bar_edge_colors(self.os_window_id, int(is_vertical))
+        if result is None:
+            return False
+        left_is_default, right_is_default = result
+        if left_is_default != self.left_edge_is_default or right_is_default != self.right_edge_is_default:
+            self.left_edge_is_default = left_is_default
+            self.right_edge_is_default = right_is_default
+            if self._last_viewport is not None:
+                self.update_blank_rects(*self._last_viewport)
+                return True
+        return False
+
+    def update(self, data: Sequence[TabBarData]) -> bool:
         if not self.laid_out_once:
-            return
+            return False
         if self.is_vertical:
-            self.update_vertical(data)
-            return
+            return self.update_vertical(data)
+
         s = self.screen
         last_tab = data[-1] if data else None
         ed = ExtraData()
@@ -884,16 +908,16 @@ class TabBar:
         self.tab_extents = cr
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         self.align()
-        update_tab_bar_edge_colors(self.os_window_id)
+        return self._update_edge_defaults(False)
 
-    def update_vertical(self, data: Sequence[TabBarData]) -> None:
+    def update_vertical(self, data: Sequence[TabBarData]) -> bool:
         s = self.screen
         self.last_laid_out_tabs = data
         self.tab_extents = ()
         s.cursor.x = s.cursor.y = 0
         s.erase_in_display(2, False)
         if not data:
-            return
+            return self._update_edge_defaults(True)
         max_tab_length = max(1, s.columns - 1)
         tab_line_height = max(1, min(MAX_VERTICAL_TAB_LINES, s.lines // max(1, len(data))))
         rows_to_draw = min(len(data), max(1, s.lines // tab_line_height))
@@ -926,6 +950,7 @@ class TabBar:
             s.cursor.fg = as_rgb(0xff0000)
             s.draw('…')
         self.tab_extents = tuple(cr)
+        return self._update_edge_defaults(True)
 
     def align_with_factor(self, factor: int = 1) -> None:
         if not self.tab_extents:
