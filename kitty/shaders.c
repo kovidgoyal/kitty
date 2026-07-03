@@ -470,7 +470,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, i
 
         GLuint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
         GLuint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
-        GLfloat cursor_opacity, inactive_text_alpha, dim_opacity, blink_opacity;
+        GLfloat cursor_opacity, inactive_text_alpha, fg_override_threshold, row_offset, dim_opacity, blink_opacity;
 
         GLuint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
         GLfloat bg_opacities0, bg_opacities1, bg_opacities2, bg_opacities3, bg_opacities4, bg_opacities5, bg_opacities6, bg_opacities7;
@@ -490,6 +490,8 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, i
     rd->extra_cursor_bg = screen->extra_cursors.color.cursor.val;
     rd->bg_colors0 = COLOR(default_bg);
     rd->bg_opacities0 = bg_alpha;
+    rd->fg_override_threshold = OPT(text_fg_override_threshold);
+    rd->row_offset = row_offset_for_screen(screen);
 #define SETBG(which) { \
     colorprofile_to_transparent_color(cp, which - 1, &rd->bg_colors##which, &rd->bg_opacities##which); }
     SETBG(1); SETBG(2); SETBG(3); SETBG(4); SETBG(5); SETBG(6); SETBG(7);
@@ -1335,8 +1337,6 @@ call_cell_program(int program, const UIRenderData *ui, ssize_t vao_idx, bool for
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, CELL_RENDER_DATA_BINDING_POINT);
     bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
     glUniform1ui(cell_program_layouts[program].uniforms.draw_bg_bitfield, draw_bg_bitfield);
-    glUniform1f(cell_program_layouts[program].uniforms.row_offset, row_offset_for_screen(ui->screen));
-    glUniform1f(cell_program_layouts[program].uniforms.fg_override_threshold, OPT(text_fg_override_threshold));
     if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
     draw_quad(!for_final_output, render_lines_for_screen(ui->screen) * ui->screen->columns);
     if (for_final_output) glDisable(GL_FRAMEBUFFER_SRGB);

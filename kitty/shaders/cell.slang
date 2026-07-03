@@ -26,7 +26,7 @@ struct CellRenderDataStruct
 
     uint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
     uint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
-    float cursor_opacity, inactive_text_alpha, dim_opacity, blink_opacity;
+    float cursor_opacity, inactive_text_alpha, fg_override_threshold, row_offset, dim_opacity, blink_opacity;
 
     // must have unique entries with 0 being default_bg and unset being UINT32_MAX
     uint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
@@ -256,7 +256,6 @@ CellData set_vertex_position(
     float3 cell_bg,
     uint instance_id,
     uint vertex_id,
-    float row_offset,
     uint2 sprite_idx,
     uint is_selected,
     inout VertexOutput vo,
@@ -271,7 +270,7 @@ CellData set_vertex_position(
 
     // The position of this vertex, at a corner of the cell
     float left = -1.0 + float(column) * dx;
-    float top = 1.0 - (float(row) + row_offset) * dy;
+    float top = 1.0 - (float(row) + crd.row_offset) * dy;
 
     uint2 pos = cell_pos_map[vertex_id];
 
@@ -332,20 +331,20 @@ float calc_background_opacity(uint bg) {
 }
 
 // Override foreground colors {{{
-float3 fg_override_luminance(float colored_sprite, float under_luminance, float over_lumininace, float3 under, float3 over, float fg_override_thresold) {
+float3 fg_override_luminance(float colored_sprite, float under_luminance, float over_lumininace, float3 under, float3 over) {
     // If the difference in luminance is too small,
     // force the foreground color to be black or white.
     float diff_luminance = abs(under_luminance - over_lumininace);
-	float override_level = (1.f - colored_sprite) * step(diff_luminance, fg_override_thresold);
+	float override_level = (1.f - colored_sprite) * step(diff_luminance, crd.fg_override_threshold);
 	float original_level = 1.f - override_level;
 	return original_level * over + override_level * float3(step(under_luminance, 0.5f));
 }
 
-float3 fg_override_contrast(float under_luminance, float over_luminance, float3 under, float3 over, float fg_override_thresold) {
+float3 fg_override_contrast(float under_luminance, float over_luminance, float3 under, float3 over) {
     float ratio = contrast_ratio(under_luminance, over_luminance);
     float3 diff = abs(under - over);
     float3 over_hsluv = rgbToHsluv(over);
-    const float min_contrast_ratio = fg_override_thresold;
+    const float min_contrast_ratio = crd.fg_override_threshold;
     float target_lum_a = clamp((under_luminance + 0.05) * min_contrast_ratio - 0.05, 0.0, 1.0);
     float target_lum_b = clamp((under_luminance + 0.05) / min_contrast_ratio - 0.05, 0.0, 1.0);
     float3 result_a = clamp(hsluvToRgb(float3(over_hsluv.x, over_hsluv.y, target_lum_a * 100.0)), 0.0, 1.0);
@@ -357,11 +356,11 @@ float3 fg_override_contrast(float under_luminance, float over_luminance, float3 
     return lerp(result, over, fallback_condition);
 }
 
-float3 override_foreground_color(float3 over, float3 under, float colored_sprite, float fg_override_thresold) {
+float3 override_foreground_color(float3 over, float3 under, float colored_sprite) {
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
-    if (FG_OVERRIDE_ALGO == 1) return fg_override_luminance(colored_sprite, under_luminance, over_lumininace, under, over, fg_override_thresold);
-    return fg_override_contrast(under_luminance, over_lumininace, under, over, fg_override_thresold);
+    if (FG_OVERRIDE_ALGO == 1) return fg_override_luminance(colored_sprite, under_luminance, over_lumininace, under, over);
+    return fg_override_contrast(under_luminance, over_lumininace, under, over);
 }
 // }}}
 
@@ -373,8 +372,6 @@ VertexOutput vertex_main(
     uint vertex_id : SV_VertexID,
     uint instance_id : SV_InstanceID,
     uniform uint draw_bg_bitfield,
-    uniform float row_offset,
-    uniform float fg_override_thresold,
 ) {
     VertexOutput vo;
 
@@ -394,7 +391,7 @@ VertexOutput vertex_main(
     uint fg_as_uint = resolve_color(colors[fg_index], default_colors[fg_index]);
     fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + mark] + (1u - has_mark) * fg_as_uint;
     float3 foreground = color_to_vec(fg_as_uint);
-    CellData cell_data = set_vertex_position(foreground, bg, instance_id, vertex_id, row_offset, sprite_idx, is_selected, vo);
+    CellData cell_data = set_vertex_position(foreground, bg, instance_id, vertex_id, sprite_idx, is_selected, vo);
     // }}}
 
 
@@ -445,8 +442,8 @@ VertexOutput vertex_main(
     // }}}
 
     if (!ONLY_BACKGROUND && FG_OVERRIDE_ALGO > 0) {
-        vo.decoration_fg = override_foreground_color(vo.decoration_fg, background_rgb, vo.colored_sprite, fg_override_thresold);
-        foreground = override_foreground_color(foreground, background_rgb, vo.colored_sprite, fg_override_thresold);
+        vo.decoration_fg = override_foreground_color(vo.decoration_fg, background_rgb, vo.colored_sprite);
+        foreground = override_foreground_color(foreground, background_rgb, vo.colored_sprite);
     }
 
     if (!ONLY_FOREGROUND) {
