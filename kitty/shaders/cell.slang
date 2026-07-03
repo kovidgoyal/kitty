@@ -63,14 +63,6 @@ static const uint cursor_shape_map[] = {  // maps cursor shape to foreground spr
    4u   // UNFOCUSED
 };
 
-// Vertex Input Attributes with explicit fixed locations. We use fixed
-// locations as all variants of the cell program share the same VAOs
-struct VertexInput
-{
-    [[vk::location(0)]] uint3 colors;
-    [[vk::location(1)]] uint2 sprite_idx;
-    [[vk::location(2)]] uint  is_selected;
-};
 // }}}
 
 // Utility functions {{{
@@ -375,7 +367,9 @@ float3 override_foreground_color(float3 over, float3 under, float colored_sprite
 
 [shader("vertex")]
 VertexOutput vertex_main(
-    VertexInput vi,
+    [[vk::location(0)]] uint3 colors,
+    [[vk::location(1)]] uint2 sprite_idx,
+    [[vk::location(2)]] uint  is_selected,
     uint vertex_id : SV_VertexID,
     uint instance_id : SV_InstanceID,
     uniform uint draw_bg_bitfield,
@@ -386,21 +380,21 @@ VertexOutput vertex_main(
 
     // set cell color indices {{{
     uint2 default_colors = uint2(crd.default_fg, crd.bg_colors0);
-    uint text_attrs = vi.sprite_idx[1];
+    uint text_attrs = sprite_idx[1];
     uint is_reversed = ((text_attrs >> REVERSE_SHIFT) & BIT_MASK);
     uint is_inverted = is_reversed + crd.inverted;
     int fg_index = fg_index_map[is_inverted];
     int bg_index = 1 - fg_index;
     int mark = int(text_attrs >> MARK_SHIFT) & MARK_MASK;
     uint has_mark = uint(step(1, float(mark)));
-    uint bg_as_uint = resolve_color(vi.colors[bg_index], default_colors[bg_index]);
+    uint bg_as_uint = resolve_color(colors[bg_index], default_colors[bg_index]);
     bg_as_uint = has_mark * color_table[NUM_COLORS + mark - 1] + (BIT_MASK - has_mark) * bg_as_uint;
     float cell_has_default_bg = 1.f - step(1.f, abs(float(bg_as_uint - crd.bg_colors0))); // 1 if has default bg else 0
     float3 bg = color_to_vec(bg_as_uint);
-    uint fg_as_uint = resolve_color(vi.colors[fg_index], default_colors[fg_index]);
+    uint fg_as_uint = resolve_color(colors[fg_index], default_colors[fg_index]);
     fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + mark] + (1u - has_mark) * fg_as_uint;
     float3 foreground = color_to_vec(fg_as_uint);
-    CellData cell_data = set_vertex_position(foreground, bg, instance_id, vertex_id, row_offset, vi.sprite_idx, vi.is_selected, vo);
+    CellData cell_data = set_vertex_position(foreground, bg, instance_id, vertex_id, row_offset, sprite_idx, is_selected, vo);
     // }}}
 
 
@@ -409,18 +403,18 @@ VertexOutput vertex_main(
         float has_dim = float((text_attrs >> DIM_SHIFT) & BIT_MASK), has_blink = float((text_attrs >> BLINK_SHIFT) & BIT_MASK);
         vo.effective_text_alpha = crd.inactive_text_alpha * if_one_then(has_dim, crd.dim_opacity, 1.0) * if_one_then(
                 has_blink, crd.blink_opacity, 1.0);
-        float in_url = float((vi.is_selected >> 1) & BIT_MASK);
-        vo.decoration_fg = if_one_then(in_url, color_to_vec(crd.url_color), to_color(vi.colors[2], fg_as_uint));
+        float in_url = float((is_selected >> 1) & BIT_MASK);
+        vo.decoration_fg = if_one_then(in_url, color_to_vec(crd.url_color), to_color(colors[2], fg_as_uint));
         // Selection
         float3 selection_color = if_one_then(crd.use_cell_bg_for_selection_fg, bg, color_to_vec(crd.highlight_fg));
         selection_color = if_one_then(crd.use_cell_fg_for_selection_fg, foreground, selection_color);
-        foreground = if_one_then(float(vi.is_selected & BIT_MASK), selection_color, foreground);
-        vo.decoration_fg = if_one_then(float(vi.is_selected & BIT_MASK), selection_color, vo.decoration_fg);
+        foreground = if_one_then(float(is_selected & BIT_MASK), selection_color, foreground);
+        vo.decoration_fg = if_one_then(float(is_selected & BIT_MASK), selection_color, vo.decoration_fg);
         // Underline and strike through (rendered via sprites)
-        uint2 decs = get_decorations_indices(vi.sprite_idx, uint(in_url), text_attrs);
+        uint2 decs = get_decorations_indices(sprite_idx, uint(in_url), text_attrs);
         vo.strike_pos = to_sprite_pos(cell_data.pos, decs[0]);
         vo.underline_pos = to_sprite_pos(cell_data.pos, decs[1]);
-        vo.underline_exclusion_pos = to_underline_exclusion_pos(vi.sprite_idx);
+        vo.underline_exclusion_pos = to_underline_exclusion_pos(sprite_idx);
 
         // Cursor
         vo.cursor_color_premult = float4(cell_data.cursor.bg * crd.cursor_opacity, crd.cursor_opacity);
@@ -436,7 +430,7 @@ VertexOutput vertex_main(
     // we use max so that opacity of the block cursor cell background goes from bg_alpha to 1
     float effective_cursor_opacity = max(crd.cursor_opacity, bg_alpha);
     // is_special_cell is either 0 or 1
-    float is_special_cell = cell_data.has_block_cursor + float(vi.is_selected & BIT_MASK);
+    float is_special_cell = cell_data.has_block_cursor + float(is_selected & BIT_MASK);
     is_special_cell += float(is_reversed);  // reverse video cells should be opaque as well
     is_special_cell = zero_or_one(is_special_cell);
     cell_has_default_bg = if_one_then(is_special_cell, 0., cell_has_default_bg);
@@ -445,7 +439,7 @@ VertexOutput vertex_main(
     bg_alpha = if_one_then(is_special_cell, 1.f, bg_alpha);
     // Selection and cursor
     bg_alpha = if_one_then(cell_data.has_block_cursor, effective_cursor_opacity, bg_alpha);
-    bg = if_one_then(float(vi.is_selected & BIT_MASK), if_one_then(crd.use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(crd.highlight_bg)), bg);
+    bg = if_one_then(float(is_selected & BIT_MASK), if_one_then(crd.use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(crd.highlight_bg)), bg);
     float3 background_rgb = if_one_then(cell_data.has_block_cursor, lerp(bg, cell_data.cursor.bg, crd.cursor_opacity), bg);
     vo.background = background_rgb;
     // }}}
