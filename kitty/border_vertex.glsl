@@ -52,9 +52,10 @@ void main() {
     float is_window_bg = is_integer_value(rc, WINDOW_BACKGROUND_PLACEHOLDER); // used by window padding areas
     float is_default_bg = is_integer_value(rc, DEFAULT_BG);
     color3 = if_one_then(is_window_bg, window_bg, color3);
-    // Actual border quads must be always drawn opaque
+    // Actual border quads and tab bar edge strips must be always drawn opaque
     float is_not_a_border = zero_or_one(abs(
-        (float(rc) - ACTIVE_BORDER_COLOR) * (float(rc) - INACTIVE_BORDER_COLOR) * (float(rc) - BELL_BORDER_COLOR)
+        (float(rc) - ACTIVE_BORDER_COLOR) * (float(rc) - INACTIVE_BORDER_COLOR) * (float(rc) - BELL_BORDER_COLOR) *
+        (float(rc) - TAB_BAR_EDGE_LEFT_COLOR) * (float(rc) - TAB_BAR_EDGE_RIGHT_COLOR)
     ));
     float final_opacity = if_one_then(is_not_a_border, background_opacity, 1.);
     color_premul = vec4_premul(color3, final_opacity);
