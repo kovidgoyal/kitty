@@ -408,7 +408,7 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], dest_dir: str, bu
 
 
 def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
-    is_fragment_shader = 'frag' in os.path.basename(path).split()
+    is_fragment_shader = 'frag' in os.path.basename(path).split('.')
     lines = []
     in_uniform_block = False
     in_uniform_block_contents = False
@@ -430,6 +430,7 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
     src_lines = glsl_code.splitlines()
 
     for i, line in enumerate(src_lines):
+        next_line = src_lines[i+1] if i+1 < len(src_lines) else ''
         if in_uniform_block:
             if in_uniform_block_contents:
                 if line.startswith('}'):
@@ -463,7 +464,7 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
                 line = '// ' + line
             elif line.startswith('layout(binding ='):
                 line = '// ' + line
-            elif line.startswith('layout(location =') and not is_fragment_shader:
+            elif line.startswith('layout(location =') and (is_fragment_shader or next_line.startswith('out ')):
                 line = '// ' + line
             elif line.startswith('flat layout(location ='):
                 line = 'flat'
