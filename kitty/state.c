@@ -1420,6 +1420,8 @@ PYWRAP1(update_tab_bar_edge_colors) {
             } else {
                 color_type top_color = 0, bottom_color = 0;
                 bool top_is_default = true, bottom_is_default = true;
+                // For vertical bars we only need the left-edge color of each row (the
+                // right-edge output is unused since tabs span the full row width).
                 ok = get_line_edge_colors_at_row(screen, 0, &top_color, NULL, &top_is_default, NULL) &&
                      get_line_edge_colors_at_row(screen, screen->lines - 1, &bottom_color, NULL, &bottom_is_default, NULL);
                 if (ok) {

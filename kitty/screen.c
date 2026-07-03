@@ -3453,7 +3453,7 @@ get_line_edge_colors_at_row(Screen *self, index_type y, color_type *left, color_
     if (left) *left = effective_cell_edge_color(left_char, left_cell_fg, left_cell_bg, true);
     if (line->xnum > 0) cell_color_x = line->xnum - 1;
     char_type right_char = line_get_char(line, cell_color_x);
-    reversed = false;
+    reversed = false;  // reset: colors_for_cell only sets this flag, never clears it
     colors_for_cell(line, self->color_profile, &cell_color_x, &right_cell_fg, &right_cell_bg, &reversed);
     if (right_is_default) *right_is_default = (line->gpu_cells[cell_color_x].bg & 0xff) == 0;
     if (right) *right = effective_cell_edge_color(right_char, right_cell_fg, right_cell_bg, false);
