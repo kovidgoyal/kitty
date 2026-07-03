@@ -1330,7 +1330,9 @@ class TabManager:  # {{{
                 watcher(boss, w, data)
 
     def update_tab_bar_data(self) -> None:
-        self.tab_bar.update(self.tab_bar_data)
+        if self.tab_bar.update(self.tab_bar_data):
+            for tab in self.tabs:
+                tab.relayout_borders()
 
     def title_changed(self, tab: Tab) -> None:
         self.mark_tab_bar_dirty()
