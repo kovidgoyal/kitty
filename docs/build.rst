@@ -89,7 +89,7 @@ Run-time dependencies:
 * ``liblcms2``
 * ``libxxhash``
 * ``openssl``
-* ``shader-slang`` (for the slangc compiler)
+* ``shader-slang`` (needed only if you use custom shaders)
 * ``pixman`` (not needed on macOS)
 * ``cairo`` (not needed on macOS)
 * ``freetype`` (not needed on macOS)
@@ -103,6 +103,7 @@ Build-time dependencies:
 
 * ``gcc`` or ``clang``
 * ``simde``
+* ``shader-slang``
 * ``go`` >= _build_go_version (see :file:`go.mod` for go packages used during building)
 * ``pkg-config``
 * Symbols NERD Font Mono either installed system-wide or placed in :file:`fonts/SymbolsNerdFontMono-Regular.ttf`
