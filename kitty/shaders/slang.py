@@ -107,6 +107,8 @@ def cell_variant(opts: Options = defaults, only_fg: bool = False, only_bg: bool 
         case 'ratio':
             text_fg_override_threshold = max(0, min(text_fg_override_threshold, 21.0))
             algo = '2'
+    if not text_fg_override_threshold:
+        algo = '0'
     return {
         'FG_OVERRIDE_ALGO': algo,
         'TEXT_NEW_GAMMA': 'false' if opts.text_composition_strategy == 'legacy' else 'true',
