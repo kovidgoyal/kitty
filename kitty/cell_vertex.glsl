@@ -25,6 +25,7 @@ uniform float gamma_lut[256];
 uniform uint draw_bg_bitfield;
 uniform usampler2D sprite_decorations_map;
 uniform float row_offset;
+uniform float fg_override_threshold;
 
 // Have to use fixed locations here as all variants of the cell program share the same VAOs
 layout(location=0) in uvec3 colors;
@@ -268,7 +269,7 @@ vec3 fg_override(float under_luminance, float over_lumininace, vec3 under, vec3 
     // If the difference in luminance is too small,
     // force the foreground color to be black or white.
     float diff_luminance = abs(under_luminance - over_lumininace);
-	float override_level = (1.f - colored_sprite) * step(diff_luminance, FG_OVERRIDE_THRESHOLD);
+	float override_level = (1.f - colored_sprite) * step(diff_luminance, fg_override_threshold);
 	float original_level = 1.f - override_level;
 	return original_level * over + override_level * vec3(step(under_luminance, 0.5f));
 }
@@ -279,7 +280,7 @@ vec3 fg_override(float under_luminance, float over_luminance, vec3 under, vec3 o
     float ratio = contrast_ratio(under_luminance, over_luminance);
     vec3 diff = abs(under - over);
     vec3 over_hsluv = rgbToHsluv(over);
-    const float min_contrast_ratio = FG_OVERRIDE_THRESHOLD;
+    const float min_contrast_ratio = fg_override_threshold;
     float target_lum_a = clamp((under_luminance + 0.05f) * min_contrast_ratio - 0.05f, 0.f, 1.f);
     float target_lum_b = clamp((under_luminance + 0.05f) / min_contrast_ratio - 0.05f, 0.f, 1.f);
     vec3 result_a = clamp(hsluvToRgb(vec3(over_hsluv.x, over_hsluv.y, target_lum_a * 100.f)), 0.f, 1.f);

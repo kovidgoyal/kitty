@@ -267,7 +267,7 @@ Then adjust the second parameter until it looks good. Then switch to a light the
 and adjust the first parameter until the perceived thickness matches the dark theme.
 ''')
 
-opt('text_fg_override_threshold', '0', option_type='text_fg_override_threshold', long_text='''
+opt('text_fg_override_threshold', '0', option_type='text_fg_override_threshold', ctype='text_fg_override_threshold', long_text='''
 A setting to prevent low contrast between foreground and background colors.
 Useful when working with applications that use colors that do not contrast
 well with your preferred color scheme. The default value is :code:`0`, which means no color overriding is performed.
