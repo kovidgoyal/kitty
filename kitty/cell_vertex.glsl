@@ -11,7 +11,7 @@ layout(std140) uniform CellRenderData {
 
     uint columns, lines, sprites_xnum, sprites_ynum, cursor_shape, cell_width, cell_height;
     uint cursor_x1, cursor_x2, cursor_y1, cursor_y2;
-    float cursor_opacity, inactive_text_alpha, dim_opacity, blink_opacity;
+    float cursor_opacity, inactive_text_alpha, fg_override_threshold, row_offset, dim_opacity, blink_opacity;
 
     // must have unique entries with 0 being default_bg and unset being UINT32_MAX
     uint bg_colors0, bg_colors1, bg_colors2, bg_colors3, bg_colors4, bg_colors5, bg_colors6, bg_colors7;
@@ -24,8 +24,6 @@ layout(std140) uniform ColorTable {
 uniform float gamma_lut[256];
 uniform uint draw_bg_bitfield;
 uniform usampler2D sprite_decorations_map;
-uniform float row_offset;
-uniform float fg_override_threshold;
 
 // Have to use fixed locations here as all variants of the cell program share the same VAOs
 layout(location=0) in uvec3 colors;
