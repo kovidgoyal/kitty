@@ -202,12 +202,12 @@
     },
 
     {
-        "name": "glib 2.86.3",
+        "name": "glib 2.88.1",
         "os": "linux",
         "unix": {
             "file_extension": "tar.xz",
-            "hash": "sha256:b3211d8d34b9df5dca05787ef0ad5d7ca75dec998b970e1aab0001d229977c65",
-            "urls": ["https://download.gnome.org/sources/glib/{version_except_last}/{filename}"]
+            "hash": "sha256:51ab804c56f6eab3e5045c774d1290ac5e4c923d4f9a3d8e33123bee45c1840e",
+            "urls": ["https://ftp.gnome.org/pub/GNOME/sources/glib/{version_except_last}/{filename}"]
         }
     },
 
