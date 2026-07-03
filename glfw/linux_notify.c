@@ -123,7 +123,7 @@ got_capabilities(DBusMessage *msg, const DBusError* err, void* data UNUSED) {
 
 static bool
 get_capabilities(DBusConnection *session_bus) {
-    return glfw_dbus_call_method_with_reply(session_bus, NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "GetCapabilities", 60, got_capabilities, NULL, DBUS_TYPE_INVALID);
+    return glfw_dbus_call_method_with_reply(session_bus, NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "GetCapabilities", 1000, got_capabilities, NULL, DBUS_TYPE_INVALID);
 }
 
 notification_id_type
