@@ -23,7 +23,6 @@ from .fast_data_types import (
     Color,
     Region,
     Screen,
-    background_opacity_of,
     cell_size_for_window,
     get_boss,
     get_options,
@@ -763,11 +762,11 @@ class TabBar:
             if g.bottom < tab_bar.bottom:
                 blank_rects.append(Border(g.left, g.bottom, g.right, tab_bar.bottom, bg))
         else:
-            left_bg = right_bg = bg
-            if opts.tab_bar_margin_color is None and (
-                    opacity := background_opacity_of(self.os_window_id)) is not None and opacity >= 1:
+            if opts.tab_bar_margin_color is None:
                 left_bg = BorderColor.tab_bar_left_edge_color
                 right_bg = BorderColor.tab_bar_right_edge_color
+            else:
+                left_bg = right_bg = bg
             if g.left > tab_bar.left:
                 blank_rects.append(Border(tab_bar.left, g.top, g.left, g.bottom, left_bg))
             if g.right < tab_bar.right:
