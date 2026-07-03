@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
-import fcntl
+import hashlib
 import json
 import os
 import re
@@ -10,10 +10,10 @@ import shutil
 import sys
 import time
 from collections import OrderedDict
-from contextlib import contextmanager, suppress
+from contextlib import suppress
 from enum import StrEnum
 from functools import lru_cache
-from itertools import chain
+from itertools import chain, product
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Iterator, NamedTuple
@@ -33,8 +33,6 @@ from kitty.fast_data_types import (
     MARK_MASK,
     REVERSE,
     STRIKETHROUGH,
-    get_boss,
-    get_options,
 )
 from kitty.options.types import Options, defaults
 
@@ -99,6 +97,40 @@ class Specialization(NamedTuple):
         return f'.{self.name}' if self.name else '.default-specialization'
 
 
+def cell_variant(opts: Options = defaults, only_fg: bool = False, only_bg: bool = False) -> dict[str, str]:
+    text_fg_override_threshold: float = opts.text_fg_override_threshold[0]
+    algo = '0'
+    match opts.text_fg_override_threshold[1]:
+        case '%':
+            text_fg_override_threshold = max(0, min(text_fg_override_threshold, 100.0)) * 0.01
+            algo = '1'
+        case 'ratio':
+            text_fg_override_threshold = max(0, min(text_fg_override_threshold, 21.0))
+            algo = '2'
+    return {
+        'FG_OVERRIDE_ALGO': algo,
+        'TEXT_NEW_GAMMA': 'false' if opts.text_composition_strategy == 'legacy' else 'true',
+        'ONLY_FOREGROUND': 'true' if only_fg else 'false',
+        'ONLY_BACKGROUND': 'true' if only_bg else 'false',
+    }
+
+
+@lru_cache(maxsize=2)
+def cell_variations() -> tuple[MappingProxyType[str, str], ...]:
+    variations = {'FG_OVERRIDE_ALGO': ('0', '1', '2')}
+    bool_variations = 'false', 'true'
+    variants_dict = {k: variations.get(k, bool_variations) for k in cell_variant()}
+    return tuple(MappingProxyType(dict(zip(variants_dict.keys(), comb))) for comb in product(*variants_dict.values()))
+
+
+def variant_name(variant: dict[str, str], default: dict[str, str]) -> str:
+    if variant == default:
+        return ''
+    data = ' '.join(f'{k}={variant[k]}' for k in sorted(default)).encode()
+    key = hashlib.md5(data, usedforsecurity=False)
+    return key.hexdigest()[:5]
+
+
 class SlangFile(NamedTuple):
     path: str = ''
     text: str = ''
@@ -107,8 +139,6 @@ class SlangFile(NamedTuple):
     module: str = ''
     specializable_variables: MappingProxyType[str, str] = MappingProxyType({})
     disable_warnings: frozenset[str] = frozenset()
-
-    opts: Options | None = None
 
     def asdict(self, skip_source: bool = False) -> dict[str, Any]:
         ' Return a dict useable for serialization to JSON '
@@ -120,7 +150,6 @@ class SlangFile(NamedTuple):
         if skip_source:
             ans['text'] = ''
             ans['path'] = os.path.basename(ans['path'])
-        del ans['opts']
         return ans
 
     @classmethod
@@ -153,9 +182,6 @@ class SlangFile(NamedTuple):
                 ans['COLOR_IS_RGB'] = str(COLOR_IS_RGB)
         return MappingProxyType(ans)
 
-    def get_options(self) -> Options:
-        return self.opts or defaults
-
     @property
     def specializations(self) -> Iterator[Specialization]:
         def s(name: str = '', **kwargs: str) -> Specialization:
@@ -167,29 +193,14 @@ class SlangFile(NamedTuple):
                 yield s('alpha_mask', is_alpha_mask='true')
                 yield s('premult', texture_is_not_premultiplied='true')
             case 'cell.slang':
-                opts = self.get_options()
-                text_fg_override_threshold: float = opts.text_fg_override_threshold[0]
-                match opts.text_fg_override_threshold[1]:
-                    case '%':
-                        text_fg_override_threshold = max(0, min(text_fg_override_threshold, 100.0)) * 0.01
-                        algo = '1'
-                    case 'ratio':
-                        text_fg_override_threshold = max(0, min(text_fg_override_threshold, 21.0))
-                        algo = '2'
-                base = {k:str(v) for k, v in dict(
-                    DO_FG_OVERRIDE='true' if text_fg_override_threshold else 'false',
-                    FG_OVERRIDE_ALGO=algo,
-                    FG_OVERRIDE_THRESHOLD=text_fg_override_threshold,
-                    TEXT_NEW_GAMMA='false' if opts.text_composition_strategy == 'legacy' else 'true',
-                    ONLY_FOREGROUND='false',
-                    ONLY_BACKGROUND='false',
-                ).items()}
-                yield s('', **base)
-                base['ONLY_FOREGROUND'] = 'true'
-                yield s('fg', **base)
-                base['ONLY_FOREGROUND'] = 'false'
-                base['ONLY_BACKGROUND'] = 'true'
-                yield s('bg', **base)
+                d = cell_variant()
+                seen = set()
+                for variant in cell_variations():
+                    name = variant_name(dict(variant), d)
+                    if name in seen:
+                        raise Exception('Variant names for cell shader not unique')
+                    seen.add(name)
+                    yield s(name, **variant)
             case _:
                 yield s()
 
@@ -573,106 +584,6 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
     if shutil.which('glslangValidator'):
         from kitty.shaders.validate_shaders import validation_command_for_file
         parallel_run((True, f'Validating |{os.path.basename(x)}| ...', validation_command_for_file(x)) for x in built_glsl_files)
-
-
-@contextmanager
-def lock_directory(target_dir: str) -> Iterator[None]:
-    '''
-    Context manager to exclusively lock a directory using a hidden lock file.
-    Works across all Unix-like operating systems.
-    '''
-    os.makedirs(target_dir, exist_ok=True)
-    lock_file_path = os.path.join(target_dir, '.shaders.lock')
-    lock_fd = os.open(lock_file_path, os.O_CREAT | os.O_WRONLY)
-    try:
-        fcntl.flock(lock_fd, fcntl.LOCK_EX)
-        yield
-    finally:
-        fcntl.flock(lock_fd, fcntl.LOCK_UN)
-        os.close(lock_fd)
-
-
-def run_commands(cmds: Iterable[Command], cwd: str | None = None) -> None:
-    import subprocess
-    workers = []
-    for c in cmds:
-        if c.needs_build:
-            try:
-                p = subprocess.Popen(c.cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, cwd=cwd)
-            except FileNotFoundError:
-                raise Exception(f'Could not find slangc compiler ({slangc}) in PATH: {os.environ.get("PATH")}')
-            workers.append((c, p))
-    errors = []
-    for (c, p) in workers:
-        if p.wait() != 0:
-            assert p.stderr is not None
-            stderr = p.stderr.read().decode('utf-8', 'replace')
-            errors.append((c, stderr))
-    if errors:
-        raise Exception(f'Compiling shader failed. Command that was run: {errors[0][0]}\n{errors[0][1]}')
-
-
-def specialize_shaders_to(sources: dict[str, SlangFile], dest_dir: str) -> None:
-    for name in sources:
-        shutil.copy2(os.path.join(shaders_dir, f'{name}.slang-module'), dest_dir)
-    specialisation_cmds = create_specialisations(sources, dest_dir)
-    run_commands(specialisation_cmds, dest_dir)
-    _ = []
-    spirv = commands_to_compile_to_spirv(sources, dest_dir, _)
-    glsl_built_files: list[str] = []
-    glsl = commands_to_compile_to_glsl(sources, dest_dir, glsl_built_files)
-    run_commands(chain(spirv, glsl), dest_dir)
-    fixup_opengl_files(*glsl_built_files)
-
-
-@lru_cache(maxsize=2)
-def per_process_cache_dir() -> str:
-    ' A dir that has the lifetime of this process '
-    import atexit
-    from tempfile import mkdtemp
-    ans = mkdtemp()
-    boss = get_boss()
-    try:
-        boss.atexit.rmtree(ans)
-    except Exception:  # happens if no boss exists
-        atexit.register(shutil.rmtree, ans)
-    return ans
-
-
-specialize_cache: dict[str, tuple[tuple[Specialization, ...], dict[str, bytes]]] = {}
-
-
-def specialize_cell_shader(
-    create_cache_dir: Callable[[], str] = per_process_cache_dir,
-    opts: Options | None = None
-) -> dict[str, bytes]:
-    ' Specialize the cell shader based on the specified options '
-    with open(os.path.join(shaders_dir, 'cell.json')) as f:
-        builtin_sfile = SlangFile.fromdict(json.load(f))
-    d = builtin_sfile._asdict()
-    if opts is None:
-        with suppress(RuntimeError):
-            opts = get_options()
-    d['opts'] = opts
-    sfile = SlangFile(**d)
-    builtin, current = tuple(builtin_sfile.specializations), tuple(sfile.specializations)
-    if builtin == current:  # options not changed from defaults
-        return {}
-    dest_dir = create_cache_dir()
-    cache_key = f'cell-{dest_dir}'
-    if (cx := specialize_cache.get(cache_key)) and cx[0] == current:
-        return cx[1]
-
-    with lock_directory(dest_dir):
-        ensure_cache_dir(dest_dir)
-        specialize_shaders_to({'cell': sfile}, dest_dir)
-        ans = {}
-        for x in os.listdir(dest_dir):
-            if x.rpartition('.')[2] in ('spv', 'glsl', 'msl'):
-                with open(os.path.join(dest_dir, x), 'rb') as fb:
-                    ans[x] = fb.read()
-    specialize_cache[cache_key] = (current, ans)
-    return ans
 
 
 def main() -> None:
