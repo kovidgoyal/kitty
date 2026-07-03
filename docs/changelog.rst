@@ -198,6 +198,8 @@ Detailed list of changes
 
 - Make erasing last command robust against commands with no output and commands in the scrollback (:pull:`10201`)
 
+- Fix superfluous margin visible to the left and right of the tab bar when :opt:`background_opacity` is less than one and the window width is not a multiple of the cell width (:iss:`10212`)
+
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
