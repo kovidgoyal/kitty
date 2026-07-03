@@ -1336,6 +1336,7 @@ call_cell_program(int program, const UIRenderData *ui, ssize_t vao_idx, bool for
     bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
     glUniform1ui(cell_program_layouts[program].uniforms.draw_bg_bitfield, draw_bg_bitfield);
     glUniform1f(cell_program_layouts[program].uniforms.row_offset, row_offset_for_screen(ui->screen));
+    glUniform1f(cell_program_layouts[program].uniforms.fg_override_threshold, OPT(text_fg_override_threshold));
     if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
     draw_quad(!for_final_output, render_lines_for_screen(ui->screen) * ui->screen->columns);
     if (for_final_output) glDisable(GL_FRAMEBUFFER_SRGB);

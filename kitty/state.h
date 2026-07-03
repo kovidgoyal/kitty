@@ -164,6 +164,7 @@ typedef struct Options {
     double window_drag_tolerance;
     bool generate_256_palette;
     int drag_threshold;
+    float text_fg_override_threshold;
 } Options;
 
 typedef struct WindowLogoRenderData {

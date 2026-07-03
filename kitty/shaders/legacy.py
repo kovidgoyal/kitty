@@ -5,7 +5,7 @@ import re
 from collections.abc import Callable, Iterator
 from functools import lru_cache, partial
 from itertools import count
-from typing import Any, Literal, NamedTuple, Optional
+from typing import Any, Literal, Optional
 
 from kitty.constants import read_kitty_resource
 from kitty.fast_data_types import (
@@ -136,14 +136,8 @@ class MultiReplacer:
 null_replacer = MultiReplacer()
 
 
-class TextFgOverrideThreshold(NamedTuple):
-    value: float = 0
-    unit: Literal['%', 'ratio'] = '%'
-    scaled_value: float = 0
-
-
 class LoadShaderPrograms:
-    text_fg_override_threshold: TextFgOverrideThreshold = TextFgOverrideThreshold()
+    text_fg_override_threshold: tuple[float, Literal['%', 'ratio']] = 0, '%'
     text_old_gamma: bool = False
     cell_program_replacer: MultiReplacer = null_replacer
 
@@ -151,8 +145,9 @@ class LoadShaderPrograms:
     def needs_recompile(self) -> bool:
         opts = get_options()
         return (
-            opts.text_fg_override_threshold != (self.text_fg_override_threshold.value, self.text_fg_override_threshold.unit)
-            or (opts.text_composition_strategy == 'legacy') != self.text_old_gamma
+            bool(opts.text_fg_override_threshold[0]) != bool(self.text_fg_override_threshold[0]) or
+            opts.text_fg_override_threshold[1] != self.text_fg_override_threshold[1] or
+            (opts.text_composition_strategy == 'legacy') != self.text_old_gamma
         )
 
     def recompile_if_needed(self) -> None:
@@ -162,15 +157,7 @@ class LoadShaderPrograms:
     def __call__(self, allow_recompile: bool = False) -> None:
         opts = get_options()
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
-
-        text_fg_override_threshold: float = opts.text_fg_override_threshold[0]
-        match opts.text_fg_override_threshold[1]:
-            case '%':
-                text_fg_override_threshold = max(0, min(text_fg_override_threshold, 100.0)) * 0.01
-            case 'ratio':
-                text_fg_override_threshold = max(0, min(text_fg_override_threshold, 21.0))
-        self.text_fg_override_threshold = TextFgOverrideThreshold(
-                opts.text_fg_override_threshold[0], opts.text_fg_override_threshold[1], text_fg_override_threshold)
+        self.text_fg_override_threshold = opts.text_fg_override_threshold
 
         cell = program_for('cell')
         if self.cell_program_replacer is null_replacer:
@@ -190,14 +177,13 @@ class LoadShaderPrograms:
             )
 
         def resolve_cell_defines(only_fg: int, only_bg: int, src: str) -> str:
-            algo = '1' if self.text_fg_override_threshold.unit == '%' else '2'
-            if not self.text_fg_override_threshold.scaled_value:
+            algo = '1' if self.text_fg_override_threshold[1] == '%' else '2'
+            if not self.text_fg_override_threshold[0]:
                 algo = '0'
             r = self.cell_program_replacer.replacements
             r['ONLY_FOREGROUND'] = str(only_fg)
             r['ONLY_BACKGROUND'] = str(only_bg)
             r['FG_OVERRIDE_ALGO'] = algo
-            r['FG_OVERRIDE_THRESHOLD'] = str(self.text_fg_override_threshold.scaled_value)
             r['TEXT_NEW_GAMMA'] = '0' if self.text_old_gamma else '1'
             return self.cell_program_replacer(src)
         for prog, (only_fg, only_bg) in {
