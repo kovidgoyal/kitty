@@ -45,6 +45,16 @@ parse_ms_long_to_monotonic_t(PyObject *val) {
     return ms_to_monotonic_t(PyLong_AsUnsignedLong(val));
 }
 
+static inline float
+text_fg_override_threshold(PyObject *val) {
+    double ans = PyFloat_AsDouble(PyTuple_GET_ITEM(val, 0));
+    switch (PyUnicode_AsUTF8(PyTuple_GET_ITEM(val, 1))[0]) {
+        case '%': ans = MAX(0, MIN(ans, 100)) * 0.01; break;
+        default: ans = MAX(0, MIN(ans, 21)); break;
+    }
+    return (float)ans;
+}
+
 static inline WindowTitleIn
 window_title_in(PyObject *title_in) {
     const char *in = PyUnicode_AsUTF8(title_in);
