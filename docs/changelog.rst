@@ -200,6 +200,8 @@ Detailed list of changes
 
 - Fix superfluous margin visible to the left and right of the tab bar when :opt:`background_opacity` is less than one and the window width is not a multiple of the cell width (:iss:`10212`)
 
+- choose-files kitten: Add an ``all`` mode to select either an existing file or directory (:iss:`10208`)
+
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
