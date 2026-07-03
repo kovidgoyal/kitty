@@ -190,11 +190,13 @@ class LoadShaderPrograms:
             )
 
         def resolve_cell_defines(only_fg: int, only_bg: int, src: str) -> str:
+            algo = '1' if self.text_fg_override_threshold.unit == '%' else '2'
+            if not self.text_fg_override_threshold.scaled_value:
+                algo = '0'
             r = self.cell_program_replacer.replacements
             r['ONLY_FOREGROUND'] = str(only_fg)
             r['ONLY_BACKGROUND'] = str(only_bg)
-            r['DO_FG_OVERRIDE'] = '1' if self.text_fg_override_threshold.scaled_value else '0'
-            r['FG_OVERRIDE_ALGO'] = '1' if self.text_fg_override_threshold.unit == '%' else '2'
+            r['FG_OVERRIDE_ALGO'] = algo
             r['FG_OVERRIDE_THRESHOLD'] = str(self.text_fg_override_threshold.scaled_value)
             r['TEXT_NEW_GAMMA'] = '0' if self.text_old_gamma else '1'
             return self.cell_program_replacer(src)

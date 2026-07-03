@@ -1,4 +1,3 @@
-#define DO_FG_OVERRIDE {DO_FG_OVERRIDE}
 #define FG_OVERRIDE_THRESHOLD {FG_OVERRIDE_THRESHOLD}
 #define FG_OVERRIDE_ALGO {FG_OVERRIDE_ALGO}
 #define TEXT_NEW_GAMMA {TEXT_NEW_GAMMA}
@@ -23,6 +22,12 @@
 
 #if {ONLY_FOREGROUND} == 1
 #define ONLY_FOREGROUND
+#endif
+
+#if FG_OVERRIDE_ALGO == 0
+#define DO_FG_OVERRIDE 0
+#else
+#define DO_FG_OVERRIDE 1
 #endif
 
 // Linear space luminance values
