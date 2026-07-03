@@ -71,14 +71,6 @@ VertexOutput vertex_main(
 // Global Texture Bindings
 uniform Sampler2D image;
 
-// Helper Functions
-float4 alpha_blend(float4 color, float4 bg) {
-    // Performs standard linear alpha blending: src * src.a + dst * (1 - src.a)
-    float3 blended_rgb = color.rgb * color.a + bg.rgb * (1.0 - color.a);
-    float blended_alpha = color.a + bg.a * (1.0 - color.a);
-    return float4(blended_rgb, blended_alpha);
-}
-
 // Main Fragment Shader Entry Point
 [shader("fragment")]
 float4 fragment_main(float2 texcoord: TEXCOORD, uniform float4 background) : SV_Target {
