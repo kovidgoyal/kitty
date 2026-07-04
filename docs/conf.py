@@ -17,7 +17,11 @@ from functools import lru_cache, partial
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple
 
 from docutils import nodes
-from docutils.parsers.rst.roles import normalize_options
+
+try:
+    from docutils.parsers.rst.roles import normalize_options
+except ImportError:
+    from docutils.parsers.rst.roles import set_classes as normalize_options  # type: ignore
 from pygments.lexer import RegexLexer
 from pygments.lexer import bygroups as untyped_bygroups
 from pygments.token import Comment, Error, Keyword, Literal, Name, Number, String, Whitespace

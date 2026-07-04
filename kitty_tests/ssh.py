@@ -230,7 +230,7 @@ shell_name=$(command basename "$login_shell")
                 }
                 cp = subprocess.run(
                     ['sh', '-c', script], env=env, stdin=subprocess.DEVNULL,
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                    capture_output=True, text=True)
                 self.assertEqual(cp.returncode, 0, cp.stderr + cp.stdout)
 
     @retry_on_failure()
