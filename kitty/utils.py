@@ -588,6 +588,8 @@ def get_editor(opts: Options | None = None, path_to_edit: str = '', line_number:
             if eq in ('code', 'code.exe'):
                 path_to_edit += f':{line_number}'
                 ans.append('--goto')
+            elif eq in ('subl', 'subl.exe', 'sublime_text', 'sublime_text.exe', 'zed', 'zed.exe', 'zeditor'):
+                path_to_edit += f':{line_number}'
             else:
                 ans.append(f'+{line_number}')
         ans.append(path_to_edit)

@@ -212,6 +212,8 @@ Detailed list of changes
 
 - choose-files kitten: Add a ``--mode=all`` to select either an existing file or directory (:iss:`10208`)
 
+- ``edit-in-kitty``: Fix line number not working when the editor is Sublime Text or Zed
+
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
