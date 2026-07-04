@@ -78,11 +78,11 @@ typedef struct Options {
         bool on_cross, on_drop;
     } focus_follows_mouse;
     unsigned int hide_window_decorations;
-    bool macos_hide_from_tasks, macos_quit_when_last_window_closed, macos_window_resizable, macos_traditional_fullscreen, macos_fullscreen_ignore_safe_area_insets;
+    bool macos_hide_from_tasks, macos_quit_when_last_window_closed, macos_window_resizable, macos_traditional_fullscreen, macos_fullscreen_ignore_safe_area_insets, macos_use_physical_screen_frame;
     unsigned int macos_option_as_alt;
     float macos_thicken_font;
     WindowTitleIn macos_show_window_title_in;
-    char *bell_path, *bell_theme;
+    char *bell_path, *bell_theme, *macos_ns_window_layer;
     float background_opacity, dim_opacity;
 
     ScrollbarVisibilityPolicy scrollbar;

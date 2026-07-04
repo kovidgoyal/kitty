@@ -182,6 +182,9 @@ set_layer_shell_config_for(OSWindow *w, GLFWLayerShellConfig *lsc) {
         lsc->related.background_opacity = effective_os_window_alpha(w);
         lsc->related.background_blur = OPT(background_blur);
         lsc->related.color_space = OPT(macos_colorspace);
+        lsc->related.use_physical_screen_frame = OPT(macos_use_physical_screen_frame);
+        if (OPT(macos_ns_window_layer)) snprintf(lsc->related.ns_window_layer, sizeof(lsc->related.ns_window_layer), "%s", OPT(macos_ns_window_layer));
+        else lsc->related.ns_window_layer[0] = '\0';
         w->hide_on_focus_loss = lsc->hide_on_focus_loss;
     }
     return glfwSetLayerShellConfig(w->handle, lsc);
@@ -1943,6 +1946,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         if (global_state.is_apple) set_layer_shell_config_for(w, lsc);
     } else apply_window_chrome_state(
             w->handle, w->last_window_chrome, width, height, global_state.is_apple ? OPT(hide_window_decorations) != 0 : false);
+#ifdef __APPLE__
+    if (!w->is_layer_shell) glfwCocoaSetWindowLevel(w->handle, OPT(macos_ns_window_layer));
+#endif
     // Update window state
     // We do not call glfwWindowHint to set GLFW_MAXIMIZED before the window is created.
     // That would cause the window to be set to maximize immediately after creation and use the wrong initial size when restored.

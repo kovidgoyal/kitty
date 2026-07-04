@@ -207,6 +207,9 @@ static inline void
 bell_theme(PyObject *src, Options *opts) { STR_SETTER(bell_theme); }
 
 static inline void
+macos_ns_window_layer(PyObject *src, Options *opts) { STR_SETTER(macos_ns_window_layer); }
+
+static inline void
 window_logo_path(PyObject *src, Options *opts) { STR_SETTER(default_window_logo); }
 
 #undef STR_SETTER
@@ -604,6 +607,6 @@ free_allocs_in_options(Options *opts) {
     free_background_images(opts);
 #define F(x) free(opts->x); opts->x = NULL;
     F(select_by_word_characters); F(url_excluded_characters); F(select_by_word_characters_forward);
-    F(bell_path); F(bell_theme); F(default_window_logo);
+    F(bell_path); F(bell_theme); F(macos_ns_window_layer); F(default_window_logo);
 #undef F
 }
