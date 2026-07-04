@@ -7,7 +7,7 @@ from kitty.fast_data_types import LEFT_EDGE, Color, Region
 from kitty.options.utils import tab_title_wrap
 from kitty.tab_bar import CellRange, TabBar, TabBarData, truncate_line, wrap_title
 
-from . import BaseTest
+from .base import BaseTest
 
 
 def region(left: int, top: int, right: int, bottom: int) -> Region:

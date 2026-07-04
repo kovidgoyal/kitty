@@ -6,7 +6,7 @@ import tempfile
 
 from kitty.shaders.slang import EntryPoint, SlangFile, Stage, build_import_graph, parse_slang_text, topological_sort
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestSlang(BaseTest):

@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestSQP(BaseTest):

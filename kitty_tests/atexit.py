@@ -12,7 +12,7 @@ import tempfile
 from kitty.constants import kitten_exe, kitty_exe
 from kitty.shm import SharedMemory
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class Atexit(BaseTest):

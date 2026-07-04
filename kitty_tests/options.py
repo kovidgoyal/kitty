@@ -11,7 +11,7 @@ from kitty.fast_data_types import Color, test_cursor_blink_easing_function
 from kitty.options.utils import DELETE_ENV_VAR, EasingFunction, to_color
 from kitty.utils import log_error, shlex_split
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestConfParsing(BaseTest):

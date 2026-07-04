@@ -4,7 +4,7 @@
 
 import os
 
-from . import BaseTest
+from .base import BaseTest
 
 
 def is_rlimit_memlock_too_low() -> bool:

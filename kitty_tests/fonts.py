@@ -28,7 +28,7 @@ from kitty.fonts.common import FontSpec, all_fonts_map, face_from_descriptor, ge
 from kitty.fonts.render import coalesce_symbol_maps, create_face, render_string, setup_for_testing, shape_string
 from kitty.options.types import Options
 
-from . import BaseTest, draw_multicell
+from .base import BaseTest, draw_multicell
 
 
 def parse_font_spec(spec):

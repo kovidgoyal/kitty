@@ -32,7 +32,7 @@ from kitty.fast_data_types import Cursor as C
 from kitty.rgb import to_color
 from kitty.utils import is_ok_to_read_image_file, is_path_in_temp_dir, sanitize_title, sanitize_url_for_display_to_user, shlex_split, shlex_split_with_positions
 
-from . import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
+from .base import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
 
 def create_lbuf(*lines):

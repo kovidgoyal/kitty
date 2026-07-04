@@ -13,7 +13,7 @@ from io import BytesIO
 
 from kitty.fast_data_types import base64_decode, base64_encode, has_avx2, has_sse4_2, load_png_data, shm_unlink, shm_write, test_xor64
 
-from . import BaseTest, parse_bytes
+from .base import BaseTest, parse_bytes
 
 try:
     from PIL import Image

@@ -5,7 +5,7 @@ from kitty.fast_data_types import DECAWM, DECCOLM, DECOM, IRM, VT_PARSER_BUFFER_
 from kitty.marks import marker_from_function, marker_from_regex, marker_from_text
 from kitty.window import pagerhist
 
-from . import BaseTest, draw_multicell, parse_bytes
+from .base import BaseTest, draw_multicell, parse_bytes
 
 
 class TestScreen(BaseTest):

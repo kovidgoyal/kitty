@@ -20,7 +20,7 @@ from typing import (
     Optional,
 )
 
-from . import BaseTest
+from .base import BaseTest
 
 
 def contents(package: str) -> Iterator[str]:

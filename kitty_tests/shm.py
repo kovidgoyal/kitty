@@ -9,7 +9,7 @@ from kitty.constants import kitten_exe
 from kitty.fast_data_types import shm_unlink
 from kitty.shm import SharedMemory
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class SHMTest(BaseTest):
