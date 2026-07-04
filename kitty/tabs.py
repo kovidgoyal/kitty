@@ -2026,6 +2026,12 @@ class TabManager:  # {{{
     def on_window_drop(self, x: int, y: int, window_id: int) -> None:
         from .fast_data_types import cell_size_for_window, viewport_for_window
         boss = get_boss()
+        # A window is being dropped on this tab manager, so the tab bar must have been
+        # visible to the user (showing the "+" button). Ensure it stays visible for the
+        # drop position calculation. This is needed because on_drag_source_finished can
+        # run before the on_drop data transfer completes, clearing window_drag_over_me
+        # and hiding the tab bar for the single-tab case before we get here.
+        self.window_drag_over_me = True
         self._clear_force_show_title_bars()
         w = boss.window_id_map.get(window_id)
         if w is None:
