@@ -298,6 +298,7 @@ def env_vars(**kw: str) -> Iterator[None]:
 @contextmanager
 def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
     gohome = os.path.expanduser('~/go')
+    slangc = os.environ.get('SLANGC') or shutil.which('slangc') or 'slangc'
     current_home = os.path.expanduser('~') + os.sep
     paths = os.environ.get('PATH', '/usr/local/sbin:/usr/local/bin:/usr/bin').split(os.pathsep)
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
@@ -319,6 +320,7 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
         USERPROFILE=tdir,
         PATH=path,
         TERM='xterm-kitty',
+        SLANGC=slangc,
         XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
         XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
         XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
