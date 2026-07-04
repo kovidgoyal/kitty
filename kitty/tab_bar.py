@@ -304,7 +304,6 @@ def apply_title_template(draw_data: DrawData, tab: TabBarData, index: int, max_t
         'layout_name': tab.layout_name,
         'num_windows': tab.num_windows,
         'num_window_groups': tab.num_window_groups,
-        'secure_input_symbol': si,
         'title': tab.title,
         'tab': ta,
     }
@@ -327,6 +326,7 @@ def apply_title_template(draw_data: DrawData, tab: TabBarData, index: int, max_t
         'sup': SupSub(data),
         'sub': SupSub(data, True),
         'bell_symbol': draw_data.bell_on_tab if tab.needs_attention else '',
+        'secure_input_symbol': si,
         'activity_symbol': draw_data.tab_activity_symbol if tab.has_activity_since_last_focus else '',
         'max_title_length': max_title_length,
         'keyboard_mode': boss.mappings.current_keyboard_mode_name,
@@ -335,10 +335,9 @@ def apply_title_template(draw_data: DrawData, tab: TabBarData, index: int, max_t
     if tab.is_active and draw_data.active_title_template is not None:
         template = draw_data.active_title_template
     prefix = ''
-    if eval_locals['bell_symbol'] and not template_has_field(template, 'bell_symbol'):
-        prefix = '{bell_symbol}'
-    if eval_locals['activity_symbol'] and not template_has_field(template, 'activity_symbol'):
-        prefix += '{activity_symbol}'
+    for default_prefix in ('bell_symbol', 'activity_symbol', 'secure_input_symbol'):
+        if eval_locals[default_prefix] and not template_has_field(template, default_prefix):
+            prefix += '{' + default_prefix + '}'
     if prefix:
         template = '{fmt.fg.red}' + prefix + '{fmt.fg.tab}' + template
     eval_locals['custom'] = load_custom_draw_title(eval_locals)
