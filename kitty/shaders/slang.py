@@ -423,6 +423,7 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
     in_uniform_block_contents = False
     uniform_block_is_struct = False
     current_uniform_struct_members: dict[str, str] = {}
+    current_uniform_struct_name: str = ''
     uniform_blocks = {}
     current_uniform_names: list[str] = []
     uniform_names: dict[str, str] = {}
@@ -446,8 +447,7 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
                     in_uniform_block = in_uniform_block_contents = False
                     block_name = line.lstrip('}').rstrip(';').strip()
                     if uniform_block_is_struct:
-                        uniform_structs[block_name.rpartition('_')[0]] = {
-                            'name': block_name, 'members': current_uniform_struct_members}
+                        uniform_structs[current_uniform_struct_name] = current_uniform_struct_members
                     else:
                         uniform_blocks[block_name] = current_uniform_names
                         line = '// ' + line
@@ -484,6 +484,9 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
                     in_uniform_block_contents = False
                     uniform_block_is_struct = line.startswith('layout(std140')  # )
                     if uniform_block_is_struct:
+                        current_uniform_struct_name = words[-1]
+                        assert current_uniform_struct_name.startswith('block_')
+                        current_uniform_struct_name = current_uniform_struct_name[len('block_'):].rpartition('_')[0]
                         current_uniform_struct_members = {}
                     else:
                         line = '// ' + line
@@ -521,7 +524,7 @@ def fixup_opengl_files(*paths: str) -> None:
             f.truncate()
             f.write(fixed)
         with open(path + '.json', 'w') as f:
-            f.write(json.dumps(metadata, indent=2, sort_keys=True))
+            f.write(json.dumps(metadata, indent=2, sort_keys=False))
 # }}}
 
 

@@ -18,7 +18,7 @@ extern static const bool ONLY_FOREGROUND;
 extern static const bool ONLY_BACKGROUND;
 
 // Inputs {{{
-struct CellRenderDataStruct
+struct CellRenderData
 {
     float use_cell_bg_for_selection_fg, use_cell_fg_for_selection_fg, use_cell_for_selection_bg;
 
@@ -34,15 +34,15 @@ struct CellRenderDataStruct
 };
 
 // Uniform Blocks (adjust binding slots as needed for your pipeline layout)
-ConstantBuffer<CellRenderDataStruct> crd;
+ConstantBuffer<CellRenderData> crd;
 
-struct ColorTableStruct
+struct ColorTable
 {
     uint color_table[NUM_COLORS + MARK_MASK + MARK_MASK + 2];
 };
 
-ConstantBuffer<ColorTableStruct> ColorTable;
-#define color_table ColorTable.color_table
+ConstantBuffer<ColorTable> ctb;
+#define color_table ctb.color_table
 
 uniform float gamma_lut[256];
 uniform Sampler2D<uint4> sprite_decorations_map;
