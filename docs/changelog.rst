@@ -190,6 +190,12 @@ Detailed list of changes
 
 - Wayland: Fix first OS window being a few cells too small when ``initial_window_width/initial_window_height`` are set in cells and a fractional display scale is in use (:iss:`10146`)
 
+- macOS: New option :opt:`macos_ns_window_layer` to more precisely control what
+  layer panel OS windows are placed on (:pull:`10116`)
+
+- macOS: New option :opt:`macos_use_physical_screen_frame` to allow panel OS
+  Windows to cover the macOS global dock bar (:pull:`10116`)
+
 - kitty binary builds are now built on Ubuntu 22 upgraded from Ubuntu 18 for improved performance from better compilers
 
 - macOS: Fix incorrect horizontal alignment when using text sizing protocol (:iss:`10179`)

@@ -2733,24 +2733,22 @@ full display frame instead of leaving space for the notch area.
 '''
     )
 
-opt('macos_use_physical_screen_frame', 'no',
-    option_type='to_bool', ctype='bool',
-    long_text='''
+opt('macos_use_physical_screen_frame', 'no', option_type='to_bool', ctype='bool', long_text='''
 Use the physical screen frame instead of the visible frame when placing macOS
 desktop panels such as those created by :code:`kitty +kitten panel`. This allows
 panels to draw in areas normally reserved for the native menu bar or Dock.
+See also :opt:`macos_ns_window_layer`.
 '''
     )
 
-opt('macos_ns_window_layer', 'unset',
-    option_type='str', ctype='!macos_ns_window_layer',
-    long_text='''
-Set the macOS NSWindow level for newly created OS windows. The default value
-:code:`unset` leaves kitty's normal window-level handling unchanged. Values can
+opt('macos_ns_window_layer', 'unset', option_type='str', ctype='!macos_ns_window_layer', long_text='''
+Set the macOS NSWindow level for newly created panel OS windows such
+as with the :doc:`panel kitten </kittens/panel>`. The default value
+:code:`unset` leaves normal level handling unchanged. Values can
 be integer window levels, AppKit/CoreGraphics window-level constant names, or
 simple arithmetic expressions combining them with integers. For example:
 :code:`NSFloatingWindowLevel`, :code:`kCGBackstopMenuLevel`,
-:code:`NSPopUpMenuWindowLevel - 1`.
+:code:`NSPopUpMenuWindowLevel - 1`. See also :macos_use_physical_screen_frame`.
 '''
     )
 
