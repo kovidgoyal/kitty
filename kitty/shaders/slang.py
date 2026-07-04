@@ -435,7 +435,7 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
         uniform_name = name.rpartition('_')[0]
         if uniform_name in uniform_names:
             raise KeyError(f'The uniform name {uniform_name} is used with multiple suffixes in {path}')
-        uniform_names[uniform_name] = name
+        uniform_names[uniform_name] = name.partition('[')[0]  # ]
         return name
     src_lines = glsl_code.splitlines()
 
