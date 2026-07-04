@@ -52,7 +52,7 @@ def self_mtime() -> float:
 @lru_cache(maxsize=2)
 def slangc_version() -> str:
     import subprocess
-    return subprocess.check_output(slangc + ['-version'], stderr=subprocess.STDOUT).decode().strip()
+    return subprocess.check_output(list(slangc()) + ['-version'], stderr=subprocess.STDOUT).decode().strip()
 
 
 def is_dir_slangc_version_ok(path: str) -> bool:
@@ -332,7 +332,7 @@ class Command(NamedTuple):
 
 
 def commands_to_compile_dir_to_ir(sources: dict[str, SlangFile], src_dir: str, output_dirpath: str) -> Iterator[Command]:
-    cmdbase = list(slangc) + ['-warnings-as-errors', 'all']
+    cmdbase = list(slangc()) + ['-warnings-as-errors', 'all']
     for name, sfile in sources.items():
         if sfile.should_compile_to_ir:
             parts = name.split('.')
@@ -351,7 +351,7 @@ def commands_to_compile_dir_to_ir(sources: dict[str, SlangFile], src_dir: str, o
 def iter_entry_point_shaders(
     sources: dict[str, SlangFile], build_dir: str, dest_dir: str
 ) -> Iterator[tuple[str, str, str, list[str], SlangFile]]:
-    cmdbase = list(slangc) + ['-warnings-as-errors', 'all']
+    cmdbase = list(slangc()) + ['-warnings-as-errors', 'all']
     for name, sfile in sources.items():
         if not sfile.entry_points:
             continue
@@ -575,7 +575,7 @@ def create_specialisations(sources: dict[str, SlangFile], build_dir: str) -> Ite
                     else:
                         os.remove(dest)
                 yield Command(needs_build, f'Compiling specialisation |{os.path.basename(dest)}| ...',
-                              list(slangc) + [dest, '-o', dest + '-module'])
+                              list(slangc()) + [dest, '-o', dest + '-module'])
 
 
 def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: ParallelRun) -> None:
@@ -604,8 +604,8 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
 
 
 def main() -> None:
-    if not shutil.which(slangc[0]):
-        raise SystemExit(f'The shader slang compiler ({slangc[0]}) not in PATH: {os.environ.get("PATH")}')
+    if not shutil.which(slangc()[0]):
+        raise SystemExit(f'The shader slang compiler ({slangc()[0]}) not in PATH: {os.environ.get("PATH")}')
     setup = runpy.run_path('setup.py')
     Command = setup['Command']
     parallel_run = setup['parallel_run']
@@ -622,8 +622,8 @@ def main() -> None:
 
 def test_slang_build() -> None:
     import subprocess
-    if shutil.which(slangc[0]) is None:
-        raise AssertionError(f'The shader slang compiler ({slangc[0]}) not in PATH: {os.environ.get("PATH")}')
+    if shutil.which(slangc()[0]) is None:
+        raise AssertionError(f'The shader slang compiler ({slangc()[0]}) not in PATH: {os.environ.get("PATH")}')
     q = os.path.join(shaders_dir, 'graphics.spv')
     if not os.path.isfile(q):
         raise AssertionError(f'The compiled graphics shader {q} does not exist')
@@ -634,7 +634,7 @@ def test_slang_build() -> None:
 [shader("vertex")]
 float4 main(uint vertex_id : SV_VertexID) : SV_Position { return float4(vertex_id, 1, 0, 1); }
 '''
-    cp = subprocess.run(slangc + '-lang slang -entry main -stage vertex -target glsl -o /dev/stdout -- -'.split(),
+    cp = subprocess.run(list(slangc()) + '-lang slang -entry main -stage vertex -target glsl -o /dev/stdout -- -'.split(),
                         input=src, capture_output=True)
     if cp.returncode != 0:
         raise AssertionError(f'Test compile of shader to GLSL failed with returncode: {cp.returncode} and stderr: {cp.stderr.decode()}')

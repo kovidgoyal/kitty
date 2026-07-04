@@ -26,6 +26,8 @@ from kitty.types import MouseEvent
 from kitty.utils import read_screen_size
 from kitty.window import da1, decode_cmdline, process_remote_print, process_title_from_child
 
+from . import is_ci
+
 
 def parse_bytes(screen, data, dump_callback=None):
     data = memoryview(data)
@@ -237,7 +239,6 @@ def filled_history_buf(ynum=5, xnum=5, cursor=Cursor()):
     return ans
 
 
-is_ci = os.environ.get('CI') == 'true'
 max_attempts = 4 if is_ci else 2
 sleep_duration = 4 if is_ci else 2
 

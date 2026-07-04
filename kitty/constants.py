@@ -35,7 +35,15 @@ kitty_run_data: dict[str, Any] = getattr(sys, 'kitty_run_data', {})
 launched_by_launch_services = kitty_run_data.get('launched_by_launch_services', False)
 is_quick_access_terminal_app = kitty_run_data.get('is_quick_access_terminal_app', False)
 unserialize_launch_flag = 'kitty-unserialize-data='
-slangc = os.environ.get('SLANGC', 'slangc').split()
+_slangc: tuple[str, ...] = ()
+
+
+def slangc() -> tuple[str, ...]:
+    global _slangc
+    if not _slangc:
+        from kitty.fast_data_types import Shlex
+        _slangc = tuple(Shlex(os.environ.get('SLANGC', 'slangc'), False))
+    return _slangc
 
 
 if getattr(sys, 'frozen', False):
@@ -64,7 +72,7 @@ if getattr(sys, 'frozen', False):
         return ans
     kitty_base_dir = get_frozen_base()
     if rpath := kitty_run_data.get('bundle_exe_dir'):
-        slangc = [os.path.join(rpath, 'slangc')]
+        _slangc = (os.path.join(rpath, 'slangc'),)
     del get_frozen_base, rpath
 else:
     kitty_base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
