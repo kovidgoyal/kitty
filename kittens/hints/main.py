@@ -201,6 +201,16 @@ The offset (from zero) at which to start hint numbering. Note that only numbers
 greater than or equal to zero are respected.
 
 
+--prefix-free
+type=bool-set
+Generate hints such that no hint is a prefix of another. For example, with
+alphabet "abc" and 4 matches, hints are "b", "c", "aa", "ab", instead of "a",
+"b", "c", "aa" (where "a" prefixes "aa"). This works by applying a dynamic
+offset large enough so that the hints are prefix-free. When combined with a
+:option:`--hints-offset` greater than 0, the effective offset is whichever is
+larger.
+
+
 --alphabet
 The list of characters to use for hints. The default is to use numbers and
 lowercase English alphabets. Specify your preference as a string of characters.
