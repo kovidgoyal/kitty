@@ -44,6 +44,7 @@ const (
 	SELECT_SAVE_DIR
 	SELECT_SINGLE_DIR
 	SELECT_MULTIPLE_DIRS
+	SELECT_ANY
 )
 
 func (m Mode) CanSelectNonExistent() bool {
@@ -94,6 +95,8 @@ func (m Mode) WindowTitle() string {
 		return "Choose one or more directories"
 	case SELECT_SAVE_FILES:
 		return "Choose files to save"
+	case SELECT_ANY:
+		return "Choose an existing file or directory"
 	}
 	return ""
 }
@@ -391,6 +394,9 @@ func (h *Handler) current_abspath() string {
 }
 
 func (s *State) CanSelect(r *ResultItem) bool {
+	if s.mode == SELECT_ANY {
+		return true
+	}
 	return utils.IfElse(s.OnlyDirs(), r.ftype.IsDir(), !r.ftype.IsDir())
 }
 
@@ -585,7 +591,7 @@ func (h *Handler) dispatch_action(name, args string) (err error) {
 		}
 	case "typename":
 		if !h.state.mode.CanSelectNonExistent() {
-			if h.state.mode.OnlyDirs() {
+			if h.state.mode.OnlyDirs() || h.state.mode == SELECT_ANY {
 				h.state.AddSelection(h.state.CurrentDir())
 				return h.finish_selection()
 			}
@@ -730,6 +736,8 @@ func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error)
 		h.state.mode = SELECT_SINGLE_FILE
 	case "files":
 		h.state.mode = SELECT_MULTIPLE_FILES
+	case "all":
+		h.state.mode = SELECT_ANY
 	case "save-file":
 		h.state.mode = SELECT_SAVE_FILE
 	case "dir":

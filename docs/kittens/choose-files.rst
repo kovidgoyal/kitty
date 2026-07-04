@@ -120,6 +120,16 @@ directory you can select a descendant directory by pressing :kbd:`Enter`, the
 same as you would for selecting a file to open.
 
 
+Selecting files or directories
+--------------------------------
+
+To select any existing path, whether it is a file or a directory, use
+:option:`--mode <kitty +kitten choose_files --mode>`:code:`=all`. Press
+:kbd:`Enter` to select the highlighted path. You can still use :kbd:`Tab` to
+change into a highlighted directory and :kbd:`Ctrl+Enter` to select the
+current directory itself.
+
+
 Configuration
 ------------------------
 

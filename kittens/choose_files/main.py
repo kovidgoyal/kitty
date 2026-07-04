@@ -214,7 +214,7 @@ usage = '[directory to start choosing files in]'
 OPTIONS = """
 --mode
 type=choices
-choices=file,files,save-file,dir,save-dir,dirs,save-files
+choices=file,files,all,save-file,dir,save-dir,dirs,save-files
 default=file
 The type of object(s) to select
 

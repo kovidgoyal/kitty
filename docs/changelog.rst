@@ -210,6 +210,8 @@ Detailed list of changes
 
 - Wayland GNOME: Fix dragging a window title bar to the "+" button failing to create a new tab when there is only a single tab (:iss:`10222`)
 
+- choose-files kitten: Add an ``all`` :option:`mode <kitty +kitten hints --mode>` to select either an existing file or directory (:iss:`10208`)
+
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
