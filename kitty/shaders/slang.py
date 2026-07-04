@@ -348,37 +348,42 @@ def commands_to_compile_dir_to_ir(sources: dict[str, SlangFile], src_dir: str, o
             ])
 
 
-def iter_entry_point_shaders(sources: dict[str, SlangFile], dest_dir: str) -> Iterator[tuple[str, str, list[str], SlangFile]]:
+def iter_entry_point_shaders(
+    sources: dict[str, SlangFile], build_dir: str, dest_dir: str
+) -> Iterator[tuple[str, str, str, list[str], SlangFile]]:
     cmdbase = list(slangc) + ['-warnings-as-errors', 'all']
     for name, sfile in sources.items():
         if not sfile.entry_points:
             continue
         parts = name.split('.')
         base_dest = os.path.join(dest_dir, *parts)
-        slang_module = f'{base_dest}.slang-module'
+        base_build = os.path.join(build_dir, *parts)
+        slang_module = f'{base_build}.slang-module'
         cmd = list(cmdbase)
         if sfile.disable_warnings:
             cmd += ['-warnings-disable', ','.join(sfile.disable_warnings)]
-        cmd += ['-I', dest_dir, slang_module]
-        yield base_dest, slang_module, cmd, sfile
+        cmd += ['-I', build_dir, slang_module]
+        yield base_dest, base_build, slang_module, cmd, sfile
 
 
 def serialize_source_metadata(sources: dict[str, SlangFile], dest_dir: str) -> None:
-    for base_dest, slang_module, scmd, sfile in iter_entry_point_shaders(sources, dest_dir):
+    for base_dest, _, _, _, sfile in iter_entry_point_shaders(sources, dest_dir, dest_dir):
         dest = f'{base_dest}.json'
         with open(dest, 'w') as f:
             f.write(json.dumps(sfile.asdict(skip_source=True), indent=2, sort_keys=True))
 
 
-def commands_to_compile_to_spirv(sources: dict[str, SlangFile], dest_dir: str, built_files: list[str]) -> Iterator[Command]:
+def commands_to_compile_to_spirv(
+    sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_files: list[str]
+) -> Iterator[Command]:
     # glsl 450 is vulkan 1.1 and spirv 1.3 released 2008
     base_cmd = ['-target', 'spirv', '-profile', 'glsl_450', '-capability', 'vk_mem_model', '-fvk-use-entrypoint-name']
-    for base_dest, slang_module, scmd, sfile in iter_entry_point_shaders(sources, dest_dir):
+    for base_dest, base_build, slang_module, scmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
         for x in sfile.specializations:
             cmd = list(scmd)
             dest = f'{base_dest}.{x.name}.spv' if x.name else f'{base_dest}.spv'
             if x.variables:
-                cmd.insert(-1, f'{base_dest}{x.filename_insert}.slang-module')
+                cmd.insert(-1, f'{base_build}{x.filename_insert}.slang-module')
             cmd += base_cmd + ['-o', dest, '-reflection-json', dest + '.json']
             output_mtime = safe_mtime(dest)
             module_mtime = os.path.getmtime(slang_module)
@@ -389,9 +394,11 @@ def commands_to_compile_to_spirv(sources: dict[str, SlangFile], dest_dir: str, b
 
 
 # GLSL {{{
-def commands_to_compile_to_glsl(sources: dict[str, SlangFile], dest_dir: str, built_glsl_files: list[str]) -> Iterator[Command]:
+def commands_to_compile_to_glsl(
+    sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_glsl_files: list[str]
+) -> Iterator[Command]:
     glsl_version = max(150, GLSL_VERSION)  # slangc fails with glsl_140 https://github.com/shader-slang/slang/issues/11898
-    for base_dest, slang_module, cmd, sfile in iter_entry_point_shaders(sources, dest_dir):
+    for base_dest, base_build, slang_module, cmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
         module_mtime = os.path.getmtime(slang_module)
         extra_cmd = ['-line-directive-mode', 'none', '-target', 'glsl', '-profile', f'glsl_{glsl_version}']
         for ep in sfile.entry_points:
@@ -400,7 +407,7 @@ def commands_to_compile_to_glsl(sources: dict[str, SlangFile], dest_dir: str, bu
                 c = list(cmd)
                 dest = f'{base_dest}{sp.filename_insert}.{v}.glsl' if sp.name else f'{base_dest}.{v}.glsl'
                 if sp.variables:
-                    c.insert(-1, f'{base_dest}{sp.filename_insert}.slang-module')
+                    c.insert(-1, f'{base_build}{sp.filename_insert}.slang-module')
                 c += extra_cmd + ['-entry', ep.name, '-stage', ep.stage.name, '-o', dest]
                 output_mtime = safe_mtime(dest)
                 needs_build = output_mtime < module_mtime
@@ -541,11 +548,11 @@ def copy_files_preserving_structure(source_dir: str, dest_dir: str, extension: s
             shutil.copy2(file_path, target_path)
 
 
-def create_specialisations(sources: dict[str, SlangFile], dest_dir: str) -> Iterator[Command]:
-    for base_dest, slang_module, cmd, sfile in iter_entry_point_shaders(sources, dest_dir):
+def create_specialisations(sources: dict[str, SlangFile], build_dir: str) -> Iterator[Command]:
+    for _, base_build, slang_module, cmd, sfile in iter_entry_point_shaders(sources, build_dir, build_dir):
         if sfile.entry_points and sfile.specializations:
             for sp in sfile.specializations:
-                dest = f'{base_dest}{sp.filename_insert}.slang'
+                dest = f'{base_build}{sp.filename_insert}.slang'
                 payload = existing = ''
                 if sp.variables:
                     lines = []
@@ -577,16 +584,14 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
 
     # First ensure all IR is generated
     parallel_run(commands_to_compile_dir_to_ir(source_tree, src_dir, build_dir))
-    # Copy IR to dest_dir
-    copy_files_preserving_structure(build_dir, dest_dir, '.slang-module')
     # Create the specializations
-    parallel_run(create_specialisations(source_tree, dest_dir))
+    parallel_run(create_specialisations(source_tree, build_dir))
     # Now Vulkan shaders
     built_spirv_files: list[str] = []
-    spirv_commands = commands_to_compile_to_spirv(source_tree, dest_dir, built_spirv_files)
+    spirv_commands = commands_to_compile_to_spirv(source_tree, build_dir, dest_dir, built_spirv_files)
     # Now glsl files
     built_glsl_files: list[str] = []
-    glsl_commands = commands_to_compile_to_glsl(source_tree, dest_dir, built_glsl_files)
+    glsl_commands = commands_to_compile_to_glsl(source_tree, build_dir, dest_dir, built_glsl_files)
     # Now run all commands
     parallel_run(chain(spirv_commands, glsl_commands))
     fixup_opengl_files(*built_glsl_files)
