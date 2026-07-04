@@ -20,7 +20,7 @@ from typing import (
     Optional,
 )
 
-from .base import BaseTest
+from . import is_ci
 
 
 def contents(package: str) -> Iterator[str]:
@@ -246,7 +246,7 @@ def run_python_tests(args: Any, go_proc: 'Optional[GoProc]' = None) -> None:
 
 
 def run_tests(report_env: bool = False) -> None:
-    report_env = report_env or BaseTest.is_ci
+    report_env = report_env or is_ci
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -304,7 +304,7 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
     launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
     path = f'{launcher_dir}{os.pathsep}{path}'
-    print('Running under CI:', BaseTest.is_ci)
+    print('Running under CI:', is_ci)
     if report_env:
         print('Using PATH in test environment:', path)
         from kitty.fast_data_types import has_avx2, has_sse4_2
