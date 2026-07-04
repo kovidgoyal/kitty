@@ -206,6 +206,8 @@ Detailed list of changes
 
 - Fix superfluous margin visible to the left and right of the tab bar when :opt:`background_opacity` is less than one and the window width is not a multiple of the cell width (:iss:`10212`)
 
+- hints kitten: Add a new flag :option:`kitty +kitten hints --prefix-free` to generate hints without a shared prefix (:pull:`10210`)
+
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

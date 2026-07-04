@@ -38,12 +38,12 @@ func TestPrefixFreeHints(t *testing.T) {
 			total_hints := int(math.Pow(float64(2), float64(n)))
 			skip := hints_to_skip(total_hints, l)
 			hints := make([]string, total_hints)
-			for i := 0; i < total_hints; i++ {
+			for i := range total_hints {
 				hints[i] = generate_prefix_free_hint(skip+1+i, alph)
 			}
 			// Verify that no hint is a prefix of another hint
-			for i := 0; i < total_hints; i++ {
-				for j := 0; j < total_hints; j++ {
+			for i := range total_hints {
+				for j := range total_hints {
 					if i == j {
 						continue
 					}
