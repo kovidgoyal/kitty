@@ -10,7 +10,7 @@ import tempfile
 
 from kitty.constants import kitten_exe as kitten
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestCompletion(BaseTest):

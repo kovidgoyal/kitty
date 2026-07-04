@@ -9,7 +9,7 @@ from base64 import standard_b64encode
 
 from kitty.notifications import Channel, DesktopIntegration, IconDataCache, NotificationManager, UIState, Urgency
 
-from . import BaseTest
+from .base import BaseTest
 
 
 def n(

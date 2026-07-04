@@ -16,7 +16,7 @@ from kitty.constants import kitten_exe
 from kitty.file_transmission import Action, Compression, FileTransmissionCommand, FileType, TransmissionType, ZlibDecompressor
 from kitty.file_transmission import TestFileTransmission as FileTransmission
 
-from . import PTY, BaseTest
+from .base import PTY, BaseTest
 
 
 def response(id='test', msg='', file_id='', name='', action='status', status='', size=-1):

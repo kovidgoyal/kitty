@@ -14,7 +14,7 @@ from kitty.fast_data_types import (
     send_mock_mouse_event_to_window,
 )
 
-from . import BaseTest
+from .base import BaseTest
 
 
 def send_mouse_event(

@@ -16,7 +16,7 @@ from kitty.constants import is_macos, kitten_exe, kitty_base_dir, runtime_dir
 from kitty.fast_data_types import CURSOR_BEAM, shm_unlink
 from kitty.utils import SSHConnectionData
 
-from . import BaseTest, retry_on_failure
+from .base import BaseTest, retry_on_failure
 from .shell_integration import bash_ok, basic_shell_env
 
 

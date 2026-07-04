@@ -15,7 +15,7 @@ from kitty.fast_data_types import (
     test_utf8_decode_to_sentinel,
 )
 
-from . import BaseTest, parse_bytes
+from .base import BaseTest, parse_bytes
 
 
 def cnv(x):

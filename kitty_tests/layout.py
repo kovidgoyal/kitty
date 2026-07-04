@@ -10,7 +10,7 @@ from kitty.types import WindowGeometry
 from kitty.window import EdgeWidths
 from kitty.window_list import WindowList, reset_group_id_counter
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class Window:

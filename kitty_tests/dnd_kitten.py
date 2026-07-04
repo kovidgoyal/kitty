@@ -34,7 +34,7 @@ from kitty.fast_data_types import (
 )
 from kitty.utils import as_file_url
 
-from . import PTY, BaseTest
+from .base import PTY, BaseTest
 from .dnd import WriteCapture
 
 

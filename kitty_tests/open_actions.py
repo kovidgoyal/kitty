@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 from kitty.utils import get_editor
 
-from . import BaseTest
+from .base import BaseTest
 
 
 @contextmanager

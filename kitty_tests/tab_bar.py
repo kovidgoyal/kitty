@@ -6,7 +6,7 @@ from unittest.mock import patch
 from kitty.fast_data_types import LEFT_EDGE, Region
 from kitty.tab_bar import TabBar, TabBarData
 
-from . import BaseTest
+from .base import BaseTest
 
 
 def region(left: int, top: int, right: int, bottom: int) -> Region:

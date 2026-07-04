@@ -13,7 +13,7 @@ import textwrap
 import unittest
 from functools import partial
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestBuild(BaseTest):

@@ -6,7 +6,7 @@ from base64 import standard_b64decode, standard_b64encode
 from kitty.clipboard import WriteRequest
 from kitty.fast_data_types import StreamingBase64Decoder
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestClipboard(BaseTest):
