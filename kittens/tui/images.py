@@ -10,7 +10,7 @@ from collections.abc import Callable, Iterator, Sequence
 from contextlib import suppress
 from enum import IntEnum
 from itertools import count
-from typing import Any, ClassVar, DefaultDict, Deque, Generic, Optional, TypeVar, Union, cast
+from typing import Any, ClassVar, DefaultDict, Deque, Generic, Optional, TypeVar, Union, cast, final
 
 from kitty.conf.utils import positive_float, positive_int
 from kitty.fast_data_types import create_canvas
@@ -343,6 +343,7 @@ class Alias(Generic[T]):
         self.name = Alias.currently_processing
 
 
+@final
 class GraphicsCommand:
     a = action = Alias('t')
     q = quiet = Alias(0)
@@ -467,12 +468,13 @@ class ImageManager:
         gc.t = 'f'
         self.handler.cmd.gr_command(gc, standard_b64encode(f.name.encode(fsenc)))
 
-    def __exit__(self, *a: Any) -> None:
+    def __exit__(self, *a: Any) -> bool | None:
         import shutil
         shutil.rmtree(self.tdir, ignore_errors=True)
         self.handler.cmd.clear_images_on_screen(delete_data=True)
         self.delete_all_sent_images()
         del self.handler
+        return None
 
     def delete_all_sent_images(self) -> None:
         gc = GraphicsCommand()

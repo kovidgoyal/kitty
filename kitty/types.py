@@ -4,7 +4,7 @@
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from enum import Enum
 from functools import update_wrapper
-from typing import TYPE_CHECKING, Any, Generic, NamedTuple, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Generic, Literal, NamedTuple, TypedDict, TypeVar, Union
 
 if TYPE_CHECKING:
     from kitty.fast_data_types import SingleKey
@@ -213,11 +213,7 @@ def modmap() -> dict[str, int]:
             'caps_lock': GLFW_MOD_CAPS_LOCK, 'num_lock': GLFW_MOD_NUM_LOCK}
 
 
-if TYPE_CHECKING:
-    from typing import Literal
-    ActionGroup = Literal['cp', 'sc', 'win', 'tab', 'fs', 'mouse', 'mk', 'lay', 'misc', 'debug', 'session']
-else:
-    ActionGroup = str
+ActionGroup = Literal['cp', 'sc', 'win', 'tab', 'fs', 'mouse', 'mk', 'lay', 'misc', 'debug', 'session']
 
 
 class ActionSpec(NamedTuple):

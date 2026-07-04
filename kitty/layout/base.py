@@ -5,7 +5,7 @@ from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
 from enum import Enum
 from functools import partial
 from itertools import repeat
-from typing import Any, ClassVar, NamedTuple
+from typing import Any, ClassVar, NamedTuple, cast
 
 from kitty.borders import BorderColor
 from kitty.fast_data_types import BOTTOM_EDGE, RIGHT_EDGE, Region, get_options, set_active_window, viewport_for_window
@@ -92,7 +92,8 @@ def calculate_cells_map(
     number_of_windows: int, number_of_cells: int
 ) -> list[int]:
     if isinstance(bias, dict):
-        bias = convert_bias_map(bias, number_of_windows, number_of_cells)
+        b: dict[int, float] = cast(dict[int, float], bias)
+        bias = convert_bias_map(b, number_of_windows, number_of_cells)
     cells_per_window = number_of_cells // number_of_windows
     if bias is not None and number_of_windows > 1 and number_of_windows == len(bias) and cells_per_window > 5:
         cells_map = [int(b * number_of_cells) for b in bias]

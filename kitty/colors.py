@@ -5,7 +5,7 @@ import os
 from collections.abc import Iterable, Sequence
 from contextlib import suppress
 from enum import Enum
-from typing import Any, Literal, Optional, TypedDict
+from typing import Any, Literal, Optional, TypedDict, cast
 
 from .config import parse_config
 from .constants import config_dir
@@ -75,13 +75,14 @@ class ThemeColors:
 
     def refresh(self) -> bool:
         found = False
+        d: BackgroundImageOptions
         with suppress(FileNotFoundError):
             for x in os.scandir(config_dir):
                 if x.name == ThemeFile.dark.value:
                     mtime = x.stat().st_mtime_ns
                     if mtime > self.dark_mtime:
                         with open(x.path) as f:
-                            d: BackgroundImageOptions = {}
+                            d = {}
                             self.dark_spec, self.dark_tbc = self.parse_colors(f, d)
                             self.dark_background_image_options = d
                         self.dark_mtime = mtime
@@ -222,9 +223,10 @@ def parse_colors(
             conf = parse_config(spec)
         transparent_background_colors = conf.pop('transparent_background_colors', ())
         if background_image_options is not None:
+            bio: dict[str, Any] = cast(dict[str, Any], background_image_options)
             for key in BackgroundImageOptions.__optional_keys__:
                 if key in conf:
-                    background_image_options.__setitem__(key, conf[key])
+                    bio[key] = conf[key]
         colors.update(conf)
     for k in nullable_colors:
         q = colors.pop(k, False)

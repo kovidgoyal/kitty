@@ -1,5 +1,5 @@
 [project]
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = "GPL-3.0-only"
 
 [build-system]
@@ -10,30 +10,15 @@ requires = [
     "packaging == 23.1",
 ]
 
-[tool.mypy]
-files = 'kitty,kittens,glfw,*.py,docs/conf.py,gen'
-no_implicit_optional = true
-sqlite_cache = true
-cache_fine_grained = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_return_any = true
-warn_unreachable = true
-warn_unused_configs = true
-check_untyped_defs = true
-disallow_untyped_defs = true
-disallow_untyped_decorators = true
-disallow_untyped_calls = true
-disallow_incomplete_defs = true
-strict = true
-strict_bytes = true
-no_implicit_reexport = true
-
-[tool.pylsp-mypy]
-enabled = true
-dmypy = true
-exclude = ['kitty_tests/*']
-report_progress = true
+[tool.ty.src]
+include = [
+  "kitty",
+  "kittens",
+  "glfw",
+  "*.py",
+  "docs/conf.py",
+  "gen"
+]
 
 [tool.ruff]
 line-length = 160

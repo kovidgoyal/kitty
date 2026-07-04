@@ -456,8 +456,9 @@ class NotificationCommand:
         from .search_query_parser import search
         def get_matches(location: str, query: str, candidates: set['NotificationCommand']) -> set['NotificationCommand']:
             return {x for x in candidates if x.matches_rule_item(location, query)}
+        universal_set: set['NotificationCommand'] = {self}
         try:
-            return self in search(rule, ('title', 'body', 'app', 'type'), {self}, get_matches)
+            return self in search(rule, ('title', 'body', 'app', 'type'), universal_set, get_matches)
         except Exception as e:
             self.log(f'Ignoring invalid filter_notification rule: {rule} with error: {e}')
         return False
@@ -992,7 +993,7 @@ class NotificationManager:
             self.send_closed_response(channel_id, cmd.identifier, untracked=True)
         return desktop_notification_id
 
-    def expire_notification(self, desktop_notification_id: int, command_id: int, timer_id: int) -> None:
+    def expire_notification(self, desktop_notification_id: int, command_id: int, timer_id: int | None) -> None:
         if n := self.in_progress_notification_commands.get(desktop_notification_id):
             if id(n) == command_id:
                 self.desktop_integration.close_notification(desktop_notification_id)

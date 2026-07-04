@@ -123,9 +123,9 @@ class Session:
     def add_window(self, cmd: None | str | list[str], expand: Callable[[str], str] = lambda x: x) -> None:
         from .launch import parse_launch_args
         needs_expandvars = False
-        if isinstance(cmd, str) and cmd:
+        if isinstance(cmd, str):
             needs_expandvars = True
-            cmd = list(shlex_split(cmd))
+            cmd = list(shlex_split(cmd)) if cmd else []
         serialize_data: dict[str, Any] = {'id': 0, 'cmd_at_shell_startup': ()}
         if cmd and cmd[0].startswith(unserialize_launch_flag):
             serialize_data = json.loads(cmd[0][len(unserialize_launch_flag):])

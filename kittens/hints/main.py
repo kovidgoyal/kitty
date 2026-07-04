@@ -297,7 +297,7 @@ def linenum_handle_result(args: list[str], data: dict[str, Any], target_window_i
             def is_copy_action(s: str) -> bool:
                 return s in ('-', '@', '*') or s.startswith('@')
 
-            programs = list(filter(is_copy_action, data['programs'] or ()))
+            programs = list(filter(is_copy_action, data['programs'] or []))
             # keep for backward compatibility, previously option `--program` does not need to be specified to perform copy actions
             if is_copy_action(cmd[0]):
                 programs.append(cmd.pop(0))
@@ -412,7 +412,8 @@ def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, 
                         w = boss.window_id_map.get(target_window_id)
                         boss.call_remote_control(self_window=w, args=tuple(launch_args + ([m] if isinstance(m, str) else m)))
                     else:
-                        boss.open_url(m, program, cwd=cwd)
+                        if isinstance(m, str):
+                            boss.open_url(m, program, cwd=cwd)
 
 
 if __name__ == '__main__':

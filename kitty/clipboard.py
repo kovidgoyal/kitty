@@ -102,7 +102,7 @@ class Clipboard:
 
     def set_mime(self, data: Mapping[str, DataType]) -> None:
         if self.enabled and isinstance(data, dict):
-            self.data = data
+            self.data = dict(data)
             set_clipboard_data_types(self.clipboard_type, tuple(self.data))
 
     def get_text(self) -> str:
@@ -147,7 +147,7 @@ class Clipboard:
     def __call__(self, mime: str) -> Callable[[], bytes]:
         data = self.data.get(mime, b'')
         if isinstance(data, str):
-            data = data.encode('utf-8')  # type: ignore
+            data = data.encode('utf-8')
         if isinstance(data, bytes):
             def chunker() -> bytes:
                 nonlocal data

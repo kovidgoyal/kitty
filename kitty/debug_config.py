@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterator, Sequence
 from contextlib import suppress
 from functools import partial
 from pprint import pformat
-from typing import IO, TypeVar
+from typing import IO, TYPE_CHECKING, Protocol, cast
 
 from kittens.tui.operations import colored, styled
 
@@ -24,12 +24,15 @@ from .options.types import Options as KittyOpts
 from .options.types import defaults, secret_options
 from .options.utils import KeyboardMode, KeyDefinition
 from .rgb import color_as_sharp, color_from_int
-from .types import MouseEvent, Shortcut, mod_to_names
+from .types import Shortcut, mod_to_names
 from .utils import shlex_split
 
-AnyEvent = TypeVar('AnyEvent', MouseEvent, Shortcut)
 Print = Callable[..., None]
 ShortcutMap = dict[Shortcut, str]
+if TYPE_CHECKING:
+    from .fast_data_types import FontFace
+else:
+    FontFace = object
 
 
 def green(x: str) -> str:
@@ -54,9 +57,13 @@ def print_mapping_changes(defns: dict[str, str], changes: set[str], text: str, p
         for k in sorted(changes):
             print_event(k, defns[k], print)
 
+class AnyEvent(Protocol):
+    def human_repr(self, kitty_mod: int = 0) -> str: ...
 
-def compare_maps(
-    final: dict[AnyEvent, str], final_kitty_mod: int, initial: dict[AnyEvent, str], initial_kitty_mod: int, print: Print, mode_name: str = ''
+
+def compare_maps[T: AnyEvent](
+    final: dict[T, str], final_kitty_mod: int, initial: dict[T, str],
+    initial_kitty_mod: int, print: Print, mode_name: str = ''
 ) -> None:
     ei = {k.human_repr(initial_kitty_mod): v for k, v in initial.items()}
     ef = {k.human_repr(final_kitty_mod): v for k, v in final.items()}
@@ -308,7 +315,8 @@ def debug_config(opts: KittyOpts | None = None, global_shortcuts: dict[str, Sing
     p(green('Fonts:'))
     for k, font in current_fonts().items():
         if hasattr(font, 'identify_for_debug'):
-            flines = font.identify_for_debug().splitlines()
+            face: FontFace = cast(FontFace, font)
+            flines = face.identify_for_debug().splitlines()
             p(yellow(f'{k.rjust(8)}:'), flines[0])
             for fl in flines[1:]:
                 p(' ' * 9, fl)

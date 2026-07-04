@@ -576,7 +576,7 @@ class SplitsLayoutOpts(LayoutOpts):
 class Splits(Layout):
     name = 'splits'
     needs_all_windows = True
-    layout_opts = SplitsLayoutOpts({})
+    layout_opts: SplitsLayoutOpts = SplitsLayoutOpts({})
     no_minimal_window_borders = True
     drag_overlay_mode = DragOverlayMode.free
 
@@ -608,8 +608,8 @@ class Splits(Layout):
             if isinstance(q, Pair):
                 self.pairs_root = q
 
-    def do_layout(self, all_windows: WindowList) -> None:
-        groups = tuple(all_windows.iter_all_layoutable_groups())
+    def do_layout(self, windows: WindowList) -> None:
+        groups = tuple(windows.iter_all_layoutable_groups())
         root = self.pairs_root
         all_present_group_ids = {g.id for g in groups}
         already_placed_group_ids = frozenset(root.all_window_ids())
@@ -700,19 +700,19 @@ class Splits(Layout):
             return self.equalize_biases()
         return False
 
-    def minimal_borders(self, all_windows: WindowList) -> Iterator[BorderLine]:
-        groups = tuple(all_windows.iter_all_layoutable_groups())
+    def minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:
+        groups = tuple(windows.iter_all_layoutable_groups())
         window_count = len(groups)
         if not lgd.draw_minimal_borders or window_count < 2:
             return
-        needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
-        ag = all_windows.active_group
+        needs_borders_map = windows.compute_needs_borders_map(lgd.draw_active_borders)
+        ag = windows.active_group
         active_group_id = -1 if ag is None else ag.id
 
         border_color_map = {}
         for grp_id, needs_borders in needs_borders_map.items():
             if needs_borders:
-                wid = g.active_window_id if (g := all_windows.group_for_id(grp_id)) else 0
+                wid = g.active_window_id if (g := windows.group_for_id(grp_id)) else 0
                 if wid:
                     color = BorderColor.active if grp_id is active_group_id else BorderColor.bell
                     border_color_map[wid] = color
@@ -723,13 +723,13 @@ class Splits(Layout):
                     for bb in which:
                         yield bb._replace(color=border_color_map.get(abs(bb.window_id), BorderColor.inactive))
 
-    def neighbors_for_window(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
-        wg = all_windows.group_for_window(window)
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
+        wg = windows.group_for_window(window)
         assert wg is not None
         pair = self.pairs_root.pair_for_window(wg.id)
         ans: NeighborsMap = {}
         if pair is not None:
-            pair.neighbors_for_window(wg.id, ans, self, all_windows)
+            pair.neighbors_for_window(wg.id, ans, self, windows)
         return ans
 
     def move_window(self, all_windows: WindowList, delta: int = 1) -> bool:
@@ -886,9 +886,9 @@ class Splits(Layout):
 
         return None
 
-    def drag_resize_window(self, all_windows: WindowList, pair_id: int, increment: float, is_horizontal: bool = True) -> bool:
+    def drag_resize_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> bool:
         for pair in self.pairs_root.self_and_descendants():
-            if id(pair) == pair_id:
+            if id(pair) == window_id:
                 new_bias = max(0, min(pair.bias + increment, 1))
                 if new_bias != pair.bias:
                     pair.bias = new_bias

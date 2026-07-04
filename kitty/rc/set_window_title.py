@@ -42,14 +42,15 @@ again. If you want to allow other programs to change it afterwards, use this opt
         return ans
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
-        title = payload_get('title')
+        title: str | None = payload_get('title')
+        btitle: memoryview | None = None
         if payload_get('temporary') and title is not None:
-            title = memoryview(title.encode('utf-8'))
+            btitle = memoryview(title.encode('utf-8'))
         for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
                 if payload_get('temporary'):
                     window.override_title = None
-                    window.title_changed(title)
+                    window.title_changed(btitle)
                 else:
                     window.set_title(title)
         return None

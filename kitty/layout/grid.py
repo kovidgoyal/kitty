@@ -93,10 +93,10 @@ class Grid(Layout):
         b[bias_idx] = increment
         return tuple(self.variable_layout(layout_func, num_windows, b)) == before_layout
 
-    def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
+    def apply_bias(self, window_id: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
         num_windows = all_windows.num_groups
         ncols, nrows, special_rows, special_col = calc_grid_size(num_windows)
-        row_num, col_num = self.position_for_window_idx(idx, num_windows, ncols, nrows, special_rows, special_col)
+        row_num, col_num = self.position_for_window_idx(window_id, num_windows, ncols, nrows, special_rows, special_col)
 
         if is_horizontal:
             b = self.biased_cols
@@ -151,13 +151,13 @@ class Grid(Layout):
             pos += rows
             on_col_done(col_windows)
 
-    def do_layout(self, all_windows: WindowList) -> None:
-        n = all_windows.num_groups
+    def do_layout(self, windows: WindowList) -> None:
+        n = windows.num_groups
         if n == 1:
-            self.layout_single_window_group(next(all_windows.iter_all_layoutable_groups()))
+            self.layout_single_window_group(next(windows.iter_all_layoutable_groups()))
             return
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
-        groups = tuple(all_windows.iter_all_layoutable_groups())
+        groups = tuple(windows.iter_all_layoutable_groups())
         win_col_map: list[list[WindowGroup]] = []
 
         def on_col_done(col_windows: list[int]) -> None:
@@ -193,17 +193,17 @@ class Grid(Layout):
                 n, nrows, ncols, special_rows, special_col, on_col_done):
             position_window_in_grid_cell(window_idx, xl, yl)
 
-    def minimal_borders(self, all_windows: WindowList) -> Iterator[BorderLine]:
-        n = all_windows.num_groups
+    def minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:
+        n = windows.num_groups
         if not lgd.draw_minimal_borders or n < 2:
             return
-        needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
+        needs_borders_map = windows.compute_needs_borders_map(lgd.draw_active_borders)
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
         is_first_row: set[int] = set()
         is_last_row: set[int] = set()
         is_first_column: set[int] = set()
         is_last_column: set[int] = set()
-        groups = tuple(all_windows.iter_all_layoutable_groups())
+        groups = tuple(windows.iter_all_layoutable_groups())
         bw = groups[0].effective_border()
         if not bw:
             return
@@ -227,7 +227,7 @@ class Grid(Layout):
             all_groups_in_order.append(wg)
             layout_data_map[wg.id] = xl, yl
         is_last_column = {groups[x].id for x in prev_col_windows}
-        active_group = all_windows.active_group
+        active_group = windows.active_group
 
         def ends(yl: LayoutData) -> tuple[int, int]:
             return yl.content_pos - yl.space_before, yl.content_pos + yl.content_size + yl.space_after
@@ -258,17 +258,17 @@ class Grid(Layout):
             wid = wg.active_window_id
             yield from borders_for_window(wg.id, color, wid)
 
-    def neighbors_for_window(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
-        n = all_windows.num_groups
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
+        n = windows.num_groups
         if n < 4:
-            return neighbors_for_tall_window(1, window, all_windows)
+            return neighbors_for_tall_window(1, window, windows)
 
-        wg = all_windows.group_for_window(window)
+        wg = windows.group_for_window(window)
         assert wg is not None
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
         blank_row: list[int | None] = [None for i in range(ncols)]
         matrix = tuple(blank_row[:] for j in range(max(nrows, special_rows)))
-        wi = all_windows.iter_all_layoutable_groups()
+        wi = windows.iter_all_layoutable_groups()
         pos_map: dict[int, tuple[int, int]] = {}
         col_counts: list[int] = []
         for col in range(ncols):

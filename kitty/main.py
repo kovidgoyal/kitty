@@ -606,7 +606,6 @@ def kitty_main(called_from_panel: bool = False) -> None:
 
 
 def main(called_from_panel: bool = False) -> None:
-    global redirected_for_quick_access
     try:
         if is_macos and launched_by_launch_services and not called_from_panel:
             with suppress(OSError):

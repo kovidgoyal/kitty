@@ -6,6 +6,7 @@ import inspect
 import os
 import re
 import textwrap
+import types
 from collections.abc import Callable, Iterator
 from typing import Any, get_type_hints
 
@@ -56,6 +57,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
     def option_type_data(option: Option | MultiOption) -> tuple[Callable[[Any], Any], str]:
         func = option.parser_func
         if func.__module__ == 'builtins':
+            assert isinstance(func, types.FunctionType)
             return func, func.__name__
         th = get_type_hints(func)
         rettype = th['return']
@@ -86,6 +88,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
         if isinstance(option, MultiOption):
             mval: dict[str, dict[str, Any]] = {'macos': {}, 'linux': {}, '': {}}
             func, typ = option_type_data(option)
+            assert isinstance(func, types.FunctionType)
             for val in option:
                 if val.add_to_default:
                     gr = mval[val.only]
@@ -114,6 +117,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
             func = str
         elif defn.has_color_table and option.is_color_table_color:
             func, typ = option_type_data(option)
+            assert isinstance(func, types.FunctionType)
             t(f'        ans[{option.name!r}] = {func.__name__}(val)')
             tc_imports.add((func.__module__, func.__name__))
             cnum = int(option.name[5:])
@@ -128,6 +132,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
                 params = dict(inspect.signature(func).parameters)
             except Exception:
                 params = {}
+            assert isinstance(func, types.FunctionType)
             if 'dict_with_parse_results' in params:
                 t(f'        {func.__name__}(val, ans)')
             else:
@@ -163,6 +168,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
         a(f'    {option_name}: {typ} = ' '{}')
 
     for parser, aliases in defn.deprecations.items():
+        assert isinstance(parser, types.FunctionType)
         for alias in aliases:
             parser_function_declaration(alias)
             tc_imports.add((parser.__module__, parser.__name__))
@@ -183,6 +189,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
     for aname, action in defn.actions.items():
         option_names.add(aname)
         action_parsers[aname] = func = action.parser_func
+        assert isinstance(func, types.FunctionType)
         th = get_type_hints(func)
         rettype = th['return']
         typ = option_type_as_str(rettype)
@@ -487,6 +494,7 @@ def go_type_data(parser_func: ParserFuncType, ctype: str, is_multiple: bool = Fa
             _, rsep, fsep = ctype.split('_', 2)
             return 'map[string]string', f'config.ParseStrDict(val, `{rsep}`, `{fsep}`)'
         return f'*{ctype}', f'Parse{ctype}(val)'
+    assert isinstance(parser_func, types.FunctionType)
     p = parser_func.__name__
     if p == 'int':
         return 'int64', 'strconv.ParseInt(val, 10, 64)'

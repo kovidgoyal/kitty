@@ -1087,7 +1087,7 @@ class FileTransmission:
         q = self.active_receives.get(receive_id)
         if q is None:
             return
-        ar = q  # for mypy
+        ar = q  # for type check
         while ar.signature_pending_chunks:
             if self.write_ftc_to_child(ar.signature_pending_chunks[0], use_pending=False):
                 ar.signature_pending_chunks.popleft()
@@ -1244,11 +1244,11 @@ class TestFileTransmission(FileTransmission):
         self.test_responses.append(payload.asdict())
         return True
 
-    def start_receive(self, aid: str) -> None:
-        self.handle_send_confirmation(self.allow, aid)
+    def start_receive(self, ar_id: str) -> None:
+        self.handle_send_confirmation(self.allow, ar_id)
 
-    def start_send(self, aid: str) -> None:
-        self.handle_receive_confirmation(self.allow, aid)
+    def start_send(self, asd_id: str) -> None:
+        self.handle_receive_confirmation(self.allow, asd_id)
 
     def callback_after(self, callback: Callable[[int | None], None], timeout: float = 0) -> int | None:
         callback(None)

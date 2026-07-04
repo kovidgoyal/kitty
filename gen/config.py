@@ -6,6 +6,7 @@ import os
 import re
 import subprocess
 import sys
+import types
 
 from kitty.conf.generate import write_output
 
@@ -45,7 +46,7 @@ def main(args: list[str]=sys.argv) -> None:
     all_colors = []
     special_colors = []
     for opt in definition.iter_all_options():
-        if callable(opt.parser_func):
+        if isinstance(opt.parser_func, types.FunctionType):
             match opt.parser_func.__name__:
                 case 'to_color':
                     all_colors.append(opt.name)

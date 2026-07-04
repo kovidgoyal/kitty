@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from .base import MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
@@ -60,13 +60,14 @@ using this option means that you will not be notified of failures.
         return {'match': opts.match, 'amount': amount, 'self': True}
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
-        amt = payload_get('amount')
+        vamt: tuple[int | float | Literal['start', 'end'], str] = payload_get('amount')
         for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
-                if amt[0] in ('start', 'end'):
-                    (window.scroll_home if amt[0] == 'start' else window.scroll_end)()
+                if vamt[0] in ('start', 'end'):
+                    (window.scroll_home if vamt[0] == 'start' else window.scroll_end)()
                 else:
-                    amt, unit = amt
+                    amt, unit = vamt
+                    assert isinstance(amt, (int, float))
                     match unit:
                         case 'u':
                             window.screen.reverse_scroll(int(abs(amt)), True)
@@ -78,6 +79,7 @@ using this option means that you will not be notified of failures.
                             if not isinstance(amt, int) and not amt.is_integer():
                                 amt = round(window.screen.lines * amt)
                                 unit = 'line'
+                            assert isinstance(amt, int)
                             direction = 'up' if amt < 0 else 'down'
                             func = getattr(window, f'scroll_{unit}_{direction}')
                             for i in range(int(abs(amt))):

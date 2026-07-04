@@ -605,7 +605,7 @@ def load_ref_map() -> dict[str, dict[str, str]]:
         raw = f.read()
     raw = raw.split('{', 1)[1].split('}', 1)[0]
     data = json.loads(bytes(bytearray(json.loads(f'[{raw}]'))))
-    return data  # type: ignore
+    return data
 
 
 def generate_constants() -> str:

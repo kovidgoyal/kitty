@@ -51,8 +51,8 @@ class Broadcast(Handler):
         self.cmd.clear_to_end_of_screen()
         self.line_edit.write(self.write, screen_cols=self.screen_size.cols)
 
-    def on_resize(self, screen_size: ScreenSize) -> None:
-        super().on_resize(screen_size)
+    def on_resize(self, new_size: ScreenSize) -> None:
+        super().on_resize(new_size)
         self.commit_line()
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:

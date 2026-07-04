@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING, Any, Literal, TypedDict, Union
+import copy
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, Union, cast
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import ParsedFontFeature
-from kitty.fonts import Descriptor, DescriptorVar, DesignAxis, FontSpec, NamedStyle, Scorer, VariableAxis, VariableData, family_name_to_key
+from kitty.fonts import Descriptor, DesignAxis, FontSpec, NamedStyle, Scorer, VariableAxis, VariableData, family_name_to_key
 from kitty.options.types import Options
 
 if TYPE_CHECKING:
-    from kitty.fast_data_types import CTFace
+    from kitty.fast_data_types import CoreTextFont, CTFace, FontConfigPattern
     from kitty.fast_data_types import Face as FT_Face
 
     FontCollectionMapType = Literal['family_map', 'ps_map', 'full_map', 'variable_map']
@@ -139,9 +140,9 @@ def get_variable_data_for_face(d: Face) -> VariableData:
     return ans
 
 
-def find_best_match_in_candidates(
-    candidates: list[DescriptorVar], scorer: Scorer, is_medium_face: bool, ignore_face: DescriptorVar | None = None
-) -> DescriptorVar | None:
+def find_best_match_in_candidates[T](
+    candidates: list[T], scorer: Scorer[T], is_medium_face: bool, ignore_face: T | None = None
+) -> T | None:
     if candidates:
         for x in scorer.sorted_candidates(candidates):
             if ignore_face is None or x != ignore_face:
@@ -154,8 +155,8 @@ def pprint(*a: Any, **kw: Any) -> None:
     pprint(*a, **kw)
 
 
-def find_medium_variant(font: DescriptorVar) -> DescriptorVar:
-    font = font.copy()
+def find_medium_variant[T: (CoreTextFont | FontConfigPattern)](font: T) -> T:
+    font = copy.copy(font)
     vd = get_variable_data_for_descriptor(font)
     for i, ns in enumerate(vd['named_styles']):
         if ns['name'] == 'Regular':
@@ -452,7 +453,7 @@ def _get_named_style(axis_map: dict[str, float], vd: VariableData) -> NamedStyle
 
 def get_named_style(face_or_descriptor: Face | Descriptor) -> NamedStyle | None:
     if isinstance(face_or_descriptor, dict):
-        d: Descriptor = face_or_descriptor
+        d = cast(Descriptor, face_or_descriptor)
         vd = get_variable_data_for_descriptor(d)
         if d['descriptor_type'] == 'fontconfig':
             ns = d.get('named_style', -1)
@@ -466,7 +467,7 @@ def get_named_style(face_or_descriptor: Face | Descriptor) -> NamedStyle | None:
         else:
             axis_map = d.get('axis_map', {}).copy()
     else:
-        face: Face = face_or_descriptor
+        face = cast(Face, face_or_descriptor)
         vd = get_variable_data_for_face(face)
         q = face.get_variation()
         if q is None:
@@ -479,7 +480,7 @@ def get_axis_map(face_or_descriptor: Face | Descriptor) -> dict[str, float]:
     base_axis_map = {}
     axis_map: dict[str, float] = {}
     if isinstance(face_or_descriptor, dict):
-        d: Descriptor = face_or_descriptor
+        d = cast(Descriptor, face_or_descriptor)
         vd = get_variable_data_for_descriptor(d)
         if d['descriptor_type'] == 'fontconfig':
             ns = d.get('named_style', -1)
@@ -494,7 +495,7 @@ def get_axis_map(face_or_descriptor: Face | Descriptor) -> dict[str, float]:
         else:
             axis_map = d.get('axis_map', {}).copy()
     else:
-        face: Face = face_or_descriptor
+        face = cast(Face, face_or_descriptor)
         q = face.get_variation()
         if q is not None:
             axis_map = q

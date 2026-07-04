@@ -6,31 +6,17 @@
 
 
 import os
-import sys
 from collections.abc import Callable, Sequence
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import context, get_all_start_methods, get_context, spawn, util
-from typing import TYPE_CHECKING, Any, Union
+from typing import Any
 
 from .constants import kitty_exe
 
 orig_spawn_passfds = util.spawnv_passfds
 orig_executable = spawn.get_executable()
 
-if TYPE_CHECKING:
-    from collections.abc import Buffer
-    from typing import SupportsIndex, SupportsInt
-
-    if sys.version_info[:2] >= (3, 14):
-        ArgsType = Sequence[Union[str, Buffer, SupportsInt, SupportsIndex]]
-    else:
-        from _typeshed import ReadableBuffer, SupportsTrunc
-        ArgsType = Sequence[Union[str, ReadableBuffer, SupportsInt, SupportsIndex, SupportsTrunc]]
-else:
-    ArgsType = Sequence[str]
-
-
-def spawnv_passfds(path: bytes, args: ArgsType, passfds: Sequence[int]) -> int:
+def spawnv_passfds(path: bytes, args: list[str], passfds: Sequence[int]) -> int:
     if '-c' in args:
         idx = args.index('-c')
         patched_args = [spawn.get_executable(), '+runpy'] + list(args)[idx + 1:]
@@ -45,7 +31,7 @@ def spawnv_passfds(path: bytes, args: ArgsType, passfds: Sequence[int]) -> int:
 def monkey_patch_multiprocessing() -> None:
     # Use kitty to run the worker process used by multiprocessing
     spawn.set_executable(kitty_exe())
-    util.spawnv_passfds = spawnv_passfds
+    util.spawnv_passfds = spawnv_passfds  # type: ignore
 
 
 def unmonkey_patch_multiprocessing() -> None:

@@ -138,7 +138,7 @@ class Tall(Layout):
     main_is_horizontal = True
     no_minimal_window_borders = True
     drag_overlay_mode = DragOverlayMode.axis_y
-    layout_opts = TallLayoutOpts({})
+    layout_opts: TallLayoutOpts = TallLayoutOpts({})
     main_axis_layout = Layout.xlayout
     perp_axis_layout = Layout.ylayout
 
@@ -167,12 +167,12 @@ class Tall(Layout):
         after_layout = tuple(self.variable_layout(all_windows, self.biased_map))
         return before_layout == after_layout
 
-    def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
+    def apply_bias(self, window_id: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
         num_windows = all_windows.num_groups
         if self.main_is_horizontal == is_horizontal:
             before_main_bias = self.main_bias
             ncols = self.num_full_size_windows + 1
-            biased_col = idx if idx < self.num_full_size_windows else (ncols - 1)
+            biased_col = window_id if window_id < self.num_full_size_windows else (ncols - 1)
             self.main_bias = [
                 safe_increment_bias(self.main_bias[i], increment * (1 if i == biased_col else -1)) for i in range(ncols)
             ]
@@ -180,13 +180,13 @@ class Tall(Layout):
             return self.main_bias != before_main_bias
 
         num_of_short_windows = num_windows - self.num_full_size_windows
-        if idx < self.num_full_size_windows or num_of_short_windows < 2:
+        if window_id < self.num_full_size_windows or num_of_short_windows < 2:
             return False
-        idx -= self.num_full_size_windows
+        window_id -= self.num_full_size_windows
         before_layout = tuple(self.variable_layout(all_windows, self.biased_map))
-        before = self.biased_map.get(idx, 0.)
+        before = self.biased_map.get(window_id, 0.)
         candidate = self.biased_map.copy()
-        candidate[idx] = after = before + increment
+        candidate[window_id] = after = before + increment
         if before_layout == tuple(self.variable_layout(all_windows, candidate)):
             return False
         self.biased_map = candidate
@@ -251,12 +251,12 @@ class Tall(Layout):
                 xl, yl = yl, xl
             yield wg, xl, yl, False
 
-    def do_layout(self, all_windows: WindowList) -> None:
-        num = all_windows.num_groups
+    def do_layout(self, windows: WindowList) -> None:
+        num = windows.num_groups
         if num == 1:
-            self.layout_single_window_group(next(all_windows.iter_all_layoutable_groups()))
+            self.layout_single_window_group(next(windows.iter_all_layoutable_groups()))
             return
-        layouts = (self.simple_layout if num <= self.num_full_size_windows + 1 else self.full_layout)(all_windows)
+        layouts = (self.simple_layout if num <= self.num_full_size_windows + 1 else self.full_layout)(windows)
         for wg, xl, yl, is_full_size in layouts:
             self.set_window_group_geometry(wg, xl, yl)
 
@@ -303,25 +303,25 @@ class Tall(Layout):
                 return False
         return None
 
-    def minimal_borders(self, all_windows: WindowList) -> Iterator[BorderLine]:
-        num = all_windows.num_groups
+    def minimal_borders(self, windows: WindowList) -> Iterator[BorderLine]:
+        num = windows.num_groups
         if num < 2 or not lgd.draw_minimal_borders:
             return
         try:
-            bw = next(all_windows.iter_all_layoutable_groups()).effective_border()
+            bw = next(windows.iter_all_layoutable_groups()).effective_border()
         except StopIteration:
             bw = 0
         if not bw:
             return
         if num <= self.num_full_size_windows + 1:
-            layout = (x[:3] for x in self.simple_layout(all_windows))
-            yield from borders(layout, self.main_is_horizontal, all_windows)
+            layout = (x[:3] for x in self.simple_layout(windows))
+            yield from borders(layout, self.main_is_horizontal, windows)
             return
         main_layouts: list[tuple[WindowGroup, LayoutData, LayoutData]] = []
         perp_borders: list[BorderLine] = []
-        layouts = (self.simple_layout if num <= self.num_full_size_windows else self.full_layout)(all_windows)
-        needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
-        active_group = all_windows.active_group
+        layouts = (self.simple_layout if num <= self.num_full_size_windows else self.full_layout)(windows)
+        needs_borders_map = windows.compute_needs_borders_map(lgd.draw_active_borders)
+        active_group = windows.active_group
         mirrored = self.layout_opts.mirrored
         for wg, xl, yl, is_full_size in layouts:
             if is_full_size:
@@ -356,7 +356,7 @@ class Tall(Layout):
 
         mirrored = self.layout_opts.mirrored
         yield from borders(
-            main_layouts, self.main_is_horizontal, all_windows,
+            main_layouts, self.main_is_horizontal, windows,
             start_offset=int(not mirrored), end_offset=int(mirrored)
         )
         yield from perp_borders[1:-1]

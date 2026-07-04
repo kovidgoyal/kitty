@@ -22,7 +22,7 @@ from kitty.fast_data_types import (
 from kitty.fast_data_types import fc_match as fc_match_impl
 from kitty.typing_compat import FontConfigPattern
 
-from . import Descriptor, DescriptorVar, ListedFont, Score, Scorer, VariableData, family_name_to_key
+from . import Descriptor, ListedFont, Score, Scorer, VariableData, family_name_to_key
 
 FontCollectionMapType = Literal['family_map', 'ps_map', 'full_map', 'variable_map']
 FontMap = dict[FontCollectionMapType, dict[str, list[FontConfigPattern]]]
@@ -130,7 +130,7 @@ def weight_range_for_family(family: str) -> WeightRange:
 
 
 
-class FCScorer(Scorer):
+class FCScorer(Scorer[FontConfigPattern]):
 
     weight_range: WeightRange | None = None
 
@@ -148,7 +148,7 @@ class FCScorer(Scorer):
         width_score = abs(candidate['width'] - FC_WIDTH_NORMAL)
         return Score(variable_score, bold_score / 1000 + italic_score / 110, monospace_match, width_score)
 
-    def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> list[DescriptorVar]:
+    def sorted_candidates(self, candidates: Sequence[FontConfigPattern], dump: bool = False) -> list[FontConfigPattern]:
         self.weight_range = None
         families = {x['family'] for x in candidates}
         if len(families) == 1:

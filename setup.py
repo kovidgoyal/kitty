@@ -1369,8 +1369,11 @@ def read_bool_options(path: str = 'kitty/cli.py') -> Tuple[str, ...]:
 
 
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> str:
-    werror = '' if args.ignore_compiler_warnings else '-pedantic-errors -Werror'
-    cflags = f'-Wall {werror} -fpie {c_std}'.strip().split()
+    cflags = ['-Wall']
+    if not args.ignore_compiler_warnings:
+        cflags.extend(('-pedantic-errors', '-Werror'))
+    if c_std:
+        cflags.append(c_std)
     cppflags = [define(f'WRAPPED_KITTENS=" {wrapped_kittens()} "')]
     ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
     xxhash = xxhash_flags()

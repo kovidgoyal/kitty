@@ -22,6 +22,7 @@ from typing import (
     Literal,
     Optional,
     Union,
+    cast,
 )
 from weakref import WeakValueDictionary
 
@@ -899,7 +900,8 @@ class Boss:
                 for x in payload:
                     c.response_from_kitty(self, self_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
                 return None
-            return c.response_from_kitty(self, self_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
+            pd = cast(dict[str, Any], payload if isinstance(payload, dict) else {})
+            return c.response_from_kitty(self, self_window, PayloadGetter(c, pd))
         except Exception as e:
             if silent:
                 log_error(f'Failed to run remote_control mapping: {aa} with error: {e}')
@@ -3169,7 +3171,7 @@ class Boss:
         if theme_colors.has_applied_theme:
             theme_colors.refresh()
             if theme_colors.has_applied_theme:  # in case the theme file was deleted
-                assert theme_colors.applied_theme  # to make mypy happy
+                assert theme_colors.applied_theme  # to make type check happy
                 theme_colors.apply_theme(theme_colors.applied_theme, notify_on_bg_change=False)
         for w in self.all_windows:
             if w.screen.color_profile.default_bg != bg_colors_before.get(w.id):
@@ -3302,7 +3304,8 @@ class Boss:
         except (Exception, SystemExit) as err:
             self.show_error('Failed to set colors', str(err))
             return
-        c.response_from_kitty(self, self.window_for_dispatch or self.active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
+        pd = cast(dict[str, Any], payload if isinstance(payload, dict) else {})
+        c.response_from_kitty(self, self.window_for_dispatch or self.active_window, PayloadGetter(c, pd))
 
     def _move_window_to(
         self,

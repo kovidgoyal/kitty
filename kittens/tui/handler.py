@@ -102,7 +102,7 @@ class KittenUI:
             raise ValueError('Remote control is not enabled, remember to use allow_remote_control=True')
         prefix = [kitten_exe(), '@']
         r = -1
-        pass_fds = list(kw.get('pass_fds') or ())
+        pass_fds = list(kw.get('pass_fds') or [])
         try:
             if self.rc_fd > -1:
                 pass_fds.append(self.rc_fd)
@@ -200,12 +200,13 @@ class Handler:
         self.debug.fobj = self
         self.initialize()
 
-    def __exit__(self, etype: type, value: Exception, tb: TracebackType) -> None:
+    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, tb: TracebackType | None) -> bool | None:
         del self.debug.fobj
         with suppress(Exception):
             self.finalize()
             if self._image_manager is not None:
-                self._image_manager.__exit__(etype, value, tb)
+                self._image_manager.__exit__(exc_type, exc_val, tb)
+        return None
 
     def initialize(self) -> None:
         pass
@@ -213,8 +214,8 @@ class Handler:
     def finalize(self) -> None:
         pass
 
-    def on_resize(self, screen_size: ScreenSize) -> None:
-        self.screen_size = screen_size
+    def on_resize(self, new_size: ScreenSize) -> None:
+        self.screen_size = new_size
 
     def quit_loop(self, return_code: int | None = None) -> None:
         self._tui_loop.quit(return_code)

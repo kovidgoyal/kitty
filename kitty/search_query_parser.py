@@ -5,7 +5,7 @@ from collections.abc import Callable, Iterator, Sequence
 from enum import Enum
 from functools import lru_cache
 from gettext import gettext as _
-from typing import NamedTuple, TypeVar
+from typing import NamedTuple, TypeVar, cast
 
 from .types import run_once
 
@@ -121,13 +121,13 @@ class Token(NamedTuple):
 
 @run_once
 def lex_scanner() -> Callable[[str], tuple[list[Token], str]]:
-    return getattr(re, 'Scanner')([  # type: ignore
+    return cast(Callable[[str], tuple[list[Token], str]], getattr(re, 'Scanner')([
             (r'[()]', lambda x, t: Token(TokenType.OPCODE, t)),
             (r'@.+?:[^")\s]+', lambda x, t: Token(TokenType.WORD, str(t))),
             (r'[^"()\s]+', lambda x, t: Token(TokenType.WORD, str(t))),
             (r'".*?((?<!\\)")', lambda x, t: Token(TokenType.QUOTED_WORD, t[1:-1])),
             (r'\s+',              None)
-    ], flags=re.DOTALL).scan
+    ], flags=re.DOTALL).scan)
 
 
 @run_once

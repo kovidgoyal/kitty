@@ -4,6 +4,7 @@
 import os
 import re
 import sys
+import types
 from collections.abc import Callable, Iterator, Sequence
 from re import Match
 from typing import Any, NoReturn, TypeVar, cast
@@ -134,6 +135,7 @@ role_map: dict[str, Callable[[str], str]] = {}
 
 
 def role(func: Callable[[str], str]) -> Callable[[str], str]:
+    assert isinstance(func, types.FunctionType)
     role_map[func.__name__] = func
     return func
 

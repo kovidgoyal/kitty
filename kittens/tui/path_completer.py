@@ -84,7 +84,7 @@ class PathCompleter:
         import readline
 
         from .dircolors import Dircolors
-        if 'libedit' in readline.__doc__:
+        if 'libedit' in getattr(readline, '__doc__', '') or '':
             readline.parse_and_bind("bind -e")
             readline.parse_and_bind("bind '\t' rl_complete")
         else:

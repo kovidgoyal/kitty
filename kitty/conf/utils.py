@@ -558,7 +558,7 @@ def uniq(vals: Iterable[T]) -> list[T]:
 
 def save_type_stub(text: str, fpath: str) -> None:
     fpath += 'i'
-    preamble = '# Update this file by running: ./test.py mypy\n\n'
+    preamble = '# Update this file by running: ./test.py type-check\n\n'
     try:
         with open(fpath) as fs:
             existing = fs.read()

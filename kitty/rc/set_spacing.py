@@ -3,7 +3,7 @@
 
 
 from collections.abc import Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, LiteralString
 
 from .base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 
@@ -36,7 +36,7 @@ def patch_configured_edges(opts: 'Options', s: dict[str, float | None]) -> None:
 
 
 def parse_spacing_settings(args: Iterable[str]) -> dict[str, float | None]:
-    mapper: dict[str, list[str]] = {}
+    mapper: dict[str, list[LiteralString]] = {}
     for q in ('margin', 'padding'):
         mapper[q] = f'{q}-left {q}-top {q}-right {q}-bottom'.split()
         mapper[f'{q}-h'] = mapper[f'{q}-horizontal'] = f'{q}-left {q}-right'.split()

@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from enum import Enum, IntEnum, auto
-from typing import TYPE_CHECKING, Literal, NamedTuple, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Literal, NamedTuple, TypedDict, Union
 
 from kitty.fast_data_types import ParsedFontFeature
 from kitty.types import run_once
@@ -205,7 +205,6 @@ class FontSpec(NamedTuple):
 
 
 Descriptor = Union[FontConfigPattern, CoreTextFont]
-DescriptorVar = TypeVar('DescriptorVar', FontConfigPattern, CoreTextFont, Descriptor)
 
 
 class Score(NamedTuple):
@@ -215,7 +214,7 @@ class Score(NamedTuple):
     width_score: int
 
 
-class Scorer:
+class Scorer[T]:
 
     def __init__(self, bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> None:
         self.bold = bold
@@ -223,7 +222,7 @@ class Scorer:
         self.monospaced = monospaced
         self.prefer_variable = prefer_variable
 
-    def sorted_candidates(self, candidates: Sequence[DescriptorVar], dump: bool = False) -> list[DescriptorVar]:
+    def sorted_candidates(self, candidates: Sequence[T], dump: bool = False) -> list[T]:
         raise NotImplementedError()
 
     def __repr__(self) -> str:

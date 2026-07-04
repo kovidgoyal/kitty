@@ -88,11 +88,6 @@ def filter_tests_by_module(suite: unittest.TestSuite, *names: str) -> unittest.T
     return filter_tests(suite, q)
 
 
-@lru_cache
-def python_for_type_check() -> str:
-    return shutil.which('python') or shutil.which('python3') or 'python'
-
-
 def type_check() -> NoReturn:
     from kitty.cli_stub import generate_stub  # type:ignore
 
@@ -100,8 +95,7 @@ def type_check() -> NoReturn:
     from kittens.tui.operations_stub import generate_stub  # type: ignore
 
     generate_stub()
-    py = python_for_type_check()
-    os.execlp(py, py, '-m', 'mypy', '--pretty')
+    os.execlp('ty', 'ty', 'check')
 
 
 def run_cli(suite: unittest.TestSuite, verbosity: int = 4) -> bool:
@@ -309,11 +303,9 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
     launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
     path = f'{launcher_dir}{os.pathsep}{path}'
-    python_for_type_check()
     print('Running under CI:', BaseTest.is_ci)
     if report_env:
         print('Using PATH in test environment:', path)
-        print('Python:', python_for_type_check())
         from kitty.fast_data_types import has_avx2, has_sse4_2
         print(f'Intrinsics: {has_avx2=} {has_sse4_2=}')
     # we need fonts installed in the user home directory as well, so initialize

@@ -82,7 +82,7 @@ def finalize_keys(opts: Options, accumulate_bad_lines: list[BadLine] | None = No
     defns: list[KeyDefinition] = []
     for d in opts.map:
         if d is None:  # clear_all_shortcuts
-            defns = []  # type: ignore
+            defns = []
         else:
             try:
                 defns.append(d.resolve_and_copy(opts.kitty_mod))
@@ -122,7 +122,7 @@ def finalize_mouse_mappings(opts: Options, accumulate_bad_lines: list[BadLine] |
     defns: list[MouseMapping] = []
     for d in opts.mouse_map:
         if d is None:  # clear_all_mouse_actions
-            defns = []  # type: ignore
+            defns = []
         else:
             try:
                 defns.append(d.resolve_and_copy(opts.kitty_mod))
