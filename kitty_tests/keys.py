@@ -9,7 +9,7 @@ from kitty.key_encoding import EventType, KeyEvent, decode_key_event, encode_key
 from kitty.keys import Mappings
 from kitty.options.utils import KeyFallbackType
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestKeys(BaseTest):

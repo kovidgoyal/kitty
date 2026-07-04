@@ -5,8 +5,8 @@ from functools import partial
 
 from kitty.fast_data_types import EXTEND_CELL, TEXT_SIZE_CODE, test_ch_and_idx, wcswidth
 
-from . import BaseTest, parse_bytes
-from . import draw_multicell as multicell
+from .base import BaseTest, parse_bytes
+from .base import draw_multicell as multicell
 
 
 class TestMulticell(BaseTest):

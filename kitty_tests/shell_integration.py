@@ -17,7 +17,7 @@ from kitty.constants import is_macos, kitten_exe, kitty_base_dir, shell_integrat
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from kitty.shell_integration import setup_bash_env, setup_fish_env, setup_zsh_env
 
-from . import BaseTest
+from .base import BaseTest
 
 
 @lru_cache

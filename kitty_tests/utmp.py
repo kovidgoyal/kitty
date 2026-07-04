@@ -2,7 +2,7 @@ import subprocess
 
 from kitty.fast_data_types import num_users
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class UTMPTest(BaseTest):

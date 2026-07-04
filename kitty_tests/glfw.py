@@ -4,7 +4,7 @@
 import sys
 import unittest
 
-from . import BaseTest
+from .base import BaseTest
 
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat

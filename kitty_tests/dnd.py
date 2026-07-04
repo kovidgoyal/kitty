@@ -26,7 +26,7 @@ from kitty.fast_data_types import (
 )
 from kitty.machine_id import machine_id
 
-from . import BaseTest, parse_bytes
+from .base import BaseTest, parse_bytes
 
 # ---- helpers ----------------------------------------------------------------
 
