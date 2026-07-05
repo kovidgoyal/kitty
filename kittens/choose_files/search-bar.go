@@ -71,25 +71,72 @@ func (h *Handler) draw_frame(width, height int, in_progress bool) {
 
 func (h *Handler) draw_search_text(available_width int) {
 	available_width /= 2
+	if available_width > 0 {
+		available_width-- // reserve a cell for the space appended after the text, which hosts the cursor at end of line
+	}
 	all_graphemes := wcswidth.SplitIntoGraphemes(h.state.SearchText())
-	cursor_pos := len(wcswidth.SplitIntoGraphemes(h.search_rl.TextBeforeCursor()))
-	start, end := 0, len(all_graphemes)
+	n := len(all_graphemes)
+	widths := make([]int, n)
+	total_width := 0
+	for i, g := range all_graphemes {
+		widths[i] = wcswidth.Stringwidth(g)
+		total_width += widths[i]
+	}
+	width_between := func(s, e int) (w int) {
+		for _, x := range widths[s:e] {
+			w += x
+		}
+		return
+	}
+	cursor_pos := min(n, len(wcswidth.SplitIntoGraphemes(h.search_rl.TextBeforeCursor())))
+
+	start, end := 0, n
 	left_ellipsis, right_ellipsis := false, false
-	if len(all_graphemes) > available_width && available_width > 0 {
-		start = cursor_pos - available_width/2
-		start = max(0, start)
-		end = min(len(all_graphemes), start+available_width)
-		start = max(0, end-available_width)
+	if total_width > available_width && available_width > 0 {
+		// Grow a window around the cursor, one grapheme at a time on
+		// alternating sides, without exceeding the available display width.
+		start, end = cursor_pos, cursor_pos
+		budget := available_width
+		for {
+			grew := false
+			if start > 0 && widths[start-1] <= budget {
+				budget -= widths[start-1]
+				start--
+				grew = true
+			}
+			if end < n && widths[end] <= budget {
+				budget -= widths[end]
+				end++
+				grew = true
+			}
+			if !grew {
+				break
+			}
+		}
 		left_ellipsis = start > 0
-		right_ellipsis = end < len(all_graphemes)
+		right_ellipsis = end < n
+		ellipsis_width := wcswidth.Stringwidth("…")
+		reserved := 0
 		if left_ellipsis {
-			start++
+			reserved += ellipsis_width
 		}
 		if right_ellipsis {
-			end--
+			reserved += ellipsis_width
 		}
-		end = max(start, end)
+		// Make room for the ellipsis marks by shrinking the window on the
+		// side farther from the cursor first, without ever removing the
+		// grapheme the cursor is on.
+		for start < end && width_between(start, end)+reserved > available_width {
+			if end > cursor_pos && (end-cursor_pos >= cursor_pos-start || start >= cursor_pos) {
+				end--
+			} else if start < cursor_pos {
+				start++
+			} else {
+				break
+			}
+		}
 	}
+
 	visible := make([]string, 0, end-start+2)
 	if left_ellipsis {
 		visible = append(visible, "…")
@@ -98,13 +145,19 @@ func (h *Handler) draw_search_text(available_width int) {
 	if right_ellipsis {
 		visible = append(visible, "…")
 	}
-	cursor_col := cursor_pos - start
+	visible_width_before_cursor := width_between(start, min(cursor_pos, end))
 	if left_ellipsis {
-		cursor_col++
+		visible_width_before_cursor += wcswidth.Stringwidth("…")
 	}
-	cursor_col = max(0, min(cursor_col, len(visible)))
+	visible_width_total := width_between(start, end)
+	if left_ellipsis {
+		visible_width_total += wcswidth.Stringwidth("…")
+	}
+	if right_ellipsis {
+		visible_width_total += wcswidth.Stringwidth("…")
+	}
 	h.lp.DrawSizedText(strings.Join(visible, "")+" ", loop.SizedText{Scale: 2})
-	h.lp.MoveCursorHorizontally(-2 * (len(visible) - cursor_col + 1))
+	h.lp.MoveCursorHorizontally(-2 * (visible_width_total - visible_width_before_cursor + 1))
 }
 
 const SEARCH_BAR_HEIGHT = 4
