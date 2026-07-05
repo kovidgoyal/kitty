@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
 	"github.com/kovidgoyal/kitty/tools/utils"
@@ -117,6 +119,13 @@ func (h *Handler) draw_search_bar(y int) {
 
 func (h *Handler) handle_edit_keys(ev *loop.KeyEvent) bool {
 	switch {
+	case ev.MatchesPressOrRepeat("ctrl+backspace"):
+		if h.state.SearchText() == "" {
+			h.lp.Beep()
+		} else {
+			h.set_query(delete_last_word(h.state.search_text))
+			return true
+		}
 	case ev.MatchesPressOrRepeat("backspace"):
 		if h.state.SearchText() == "" {
 			h.lp.Beep()
@@ -127,4 +136,23 @@ func (h *Handler) handle_edit_keys(ev *loop.KeyEvent) bool {
 		}
 	}
 	return false
+}
+
+func delete_last_word(text string) string {
+	end := len(text)
+	for end > 0 {
+		r, size := utf8.DecodeLastRuneInString(text[:end])
+		if !unicode.IsSpace(r) {
+			break
+		}
+		end -= size
+	}
+	for end > 0 {
+		r, size := utf8.DecodeLastRuneInString(text[:end])
+		if unicode.IsSpace(r) {
+			break
+		}
+		end -= size
+	}
+	return text[:end]
 }
