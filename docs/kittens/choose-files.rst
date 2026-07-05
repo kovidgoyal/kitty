@@ -130,6 +130,80 @@ change into a highlighted directory and :kbd:`Ctrl+Enter` to select the
 current directory itself.
 
 
+Editing the search text
+----------------------------
+
+The search/filter text box uses the same line editing engine as the shell
+prompt kitten, supporting the usual Emacs-style editing shortcuts such as
+:kbd:`Ctrl+A`/:kbd:`Ctrl+E` to move to the start/end of the text,
+:kbd:`Ctrl+Left`/:kbd:`Ctrl+Right` to move by a word, :kbd:`Ctrl+K`/:kbd:`Ctrl+U`
+to delete to the end/start of the line, :kbd:`Ctrl+W`/:kbd:`Alt+D` to delete
+the previous/next word and so on.
+
+However, by default, the arrow keys as well as :kbd:`Home`, :kbd:`End`,
+:kbd:`Ctrl+Home` and :kbd:`Ctrl+End` are bound to actions that navigate the
+list of matched results, rather than moving the cursor within the search
+text, since that is the more frequently needed behavior when quickly
+filtering a list of files. If you prefer these keys to edit the search text
+instead, as in a regular text input, you can rebind them to one of the
+following actions in :file:`choose-files.conf`, which forward the key press
+to the search text editor:
+
+.. list-table::
+    :widths: auto
+    :header-rows: 1
+
+    * - Action
+      - Editing operation it performs
+    * - :code:`edit_cursor_left`
+      - Move the cursor one character to the left
+    * - :code:`edit_cursor_right`
+      - Move the cursor one character to the right
+    * - :code:`edit_start_of_line`
+      - Move the cursor to the start of the search text
+    * - :code:`edit_end_of_line`
+      - Move the cursor to the end of the search text
+    * - :code:`edit_start_of_document`
+      - Same as :code:`edit_start_of_line`, provided for symmetry with the shell prompt's line editor
+    * - :code:`edit_end_of_document`
+      - Same as :code:`edit_end_of_line`, provided for symmetry with the shell prompt's line editor
+    * - :code:`edit_forward_word`
+      - Move the cursor forward by one word
+    * - :code:`edit_backward_word`
+      - Move the cursor backward by one word
+    * - :code:`edit_backspace`
+      - Delete the character before the cursor
+    * - :code:`edit_delete`
+      - Delete the character after the cursor
+    * - :code:`edit_kill_to_start_of_line`
+      - Delete everything from the start of the line to the cursor
+    * - :code:`edit_kill_to_end_of_line`
+      - Delete everything from the cursor to the end of the line
+    * - :code:`edit_kill_word_left`
+      - Delete the word before the cursor
+    * - :code:`edit_kill_word_right`
+      - Delete the word after the cursor
+    * - :code:`edit_yank`
+      - Insert the most recently deleted text
+
+For example, to make the arrow keys, :kbd:`Home` and :kbd:`End` edit the
+search text instead of navigating the results list::
+
+    map left    edit_cursor_left
+    map right   edit_cursor_right
+    map home    edit_start_of_line
+    map end     edit_end_of_line
+    map ctrl+home edit_start_of_document
+    map ctrl+end  edit_end_of_document
+
+Note that :kbd:`Up`, :kbd:`Down` and other keys not listed above continue to
+be usable for navigating the results list even after applying the above
+overrides. Also note that any key not bound to an action at all is
+automatically forwarded to the search text editor, which is why keys such as
+:kbd:`Backspace`, :kbd:`Delete`, :kbd:`Ctrl+K`, :kbd:`Ctrl+W` etc. already
+edit the search text, without needing any of the above actions.
+
+
 Configuration
 ------------------------
 

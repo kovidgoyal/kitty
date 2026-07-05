@@ -6,11 +6,36 @@ import (
 	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/tui/loop"
+	"github.com/kovidgoyal/kitty/tools/tui/readline"
 	"github.com/kovidgoyal/kitty/tools/utils"
 	"github.com/kovidgoyal/kitty/tools/wcswidth"
 )
 
 var _ = fmt.Print
+
+// Actions that, when matched by a keyboard shortcut, are forwarded to the
+// readline instance powering the search/filter text box instead of being
+// dispatched as a normal choose_files action. This lets users who prefer
+// editing text with the arrow keys, Home, End, etc. rebind those keys away
+// from their default job of navigating the list of matches, towards editing
+// the search text instead. See the kitten's documentation for details.
+var edit_actions = map[string]readline.Action{
+	"edit_cursor_left":           readline.ActionCursorLeft,
+	"edit_cursor_right":          readline.ActionCursorRight,
+	"edit_start_of_line":         readline.ActionMoveToStartOfLine,
+	"edit_end_of_line":           readline.ActionMoveToEndOfLine,
+	"edit_start_of_document":     readline.ActionMoveToStartOfDocument,
+	"edit_end_of_document":       readline.ActionMoveToEndOfDocument,
+	"edit_forward_word":          readline.ActionMoveToEndOfWord,
+	"edit_backward_word":         readline.ActionMoveToStartOfWord,
+	"edit_backspace":             readline.ActionBackspace,
+	"edit_delete":                readline.ActionDelete,
+	"edit_kill_to_start_of_line": readline.ActionKillToStartOfLine,
+	"edit_kill_to_end_of_line":   readline.ActionKillToEndOfLine,
+	"edit_kill_word_left":        readline.ActionKillPreviousWord,
+	"edit_kill_word_right":       readline.ActionKillNextWord,
+	"edit_yank":                  readline.ActionYank,
+}
 
 func (h *Handler) draw_frame(width, height int, in_progress bool) {
 	lp := h.lp
@@ -45,16 +70,41 @@ func (h *Handler) draw_frame(width, height int, in_progress bool) {
 }
 
 func (h *Handler) draw_search_text(available_width int) {
-	text := h.state.SearchText()
 	available_width /= 2
-	if wcswidth.Stringwidth(text) > available_width {
-		g := wcswidth.SplitIntoGraphemes(text)
-		available_width -= 2
-		g = g[len(g)-available_width:]
-		text = "…" + strings.Join(g, "")
+	all_graphemes := wcswidth.SplitIntoGraphemes(h.state.SearchText())
+	cursor_pos := len(wcswidth.SplitIntoGraphemes(h.search_rl.TextBeforeCursor()))
+	start, end := 0, len(all_graphemes)
+	left_ellipsis, right_ellipsis := false, false
+	if len(all_graphemes) > available_width && available_width > 0 {
+		start = cursor_pos - available_width/2
+		start = max(0, start)
+		end = min(len(all_graphemes), start+available_width)
+		start = max(0, end-available_width)
+		left_ellipsis = start > 0
+		right_ellipsis = end < len(all_graphemes)
+		if left_ellipsis {
+			start++
+		}
+		if right_ellipsis {
+			end--
+		}
+		end = max(start, end)
 	}
-	h.lp.DrawSizedText(text+" ", loop.SizedText{Scale: 2})
-	h.lp.MoveCursorHorizontally(-2)
+	visible := make([]string, 0, end-start+2)
+	if left_ellipsis {
+		visible = append(visible, "…")
+	}
+	visible = append(visible, all_graphemes[start:end]...)
+	if right_ellipsis {
+		visible = append(visible, "…")
+	}
+	cursor_col := cursor_pos - start
+	if left_ellipsis {
+		cursor_col++
+	}
+	cursor_col = max(0, min(cursor_col, len(visible)))
+	h.lp.DrawSizedText(strings.Join(visible, "")+" ", loop.SizedText{Scale: 2})
+	h.lp.MoveCursorHorizontally(-2 * (len(visible) - cursor_col + 1))
 }
 
 const SEARCH_BAR_HEIGHT = 4
@@ -115,16 +165,22 @@ func (h *Handler) draw_search_bar(y int) {
 	h.draw_search_text(available_width - 2)
 }
 
-func (h *Handler) handle_edit_keys(ev *loop.KeyEvent) bool {
-	switch {
-	case ev.MatchesPressOrRepeat("backspace"):
-		if h.state.SearchText() == "" {
-			h.lp.Beep()
-		} else {
-			g := wcswidth.SplitIntoGraphemes(h.state.search_text)
-			h.set_query(strings.Join(g[:len(g)-1], ""))
-			return true
-		}
+// perform_edit_action runs a readline editing action against the search text
+// box and syncs the resulting text back into the query used to filter results.
+func (h *Handler) perform_edit_action(ac readline.Action) (err error) {
+	if err = h.search_rl.PerformAction(ac, 1); err == nil {
+		h.set_query(h.search_rl.AllText())
 	}
-	return false
+	return
+}
+
+// forward_key_event_to_search_rl is used for keys that are not claimed by any
+// configured keyboard shortcut, so that ordinary readline editing (backspace,
+// delete, ctrl+k, ctrl+w, etc.) works in the search box without needing
+// explicit configuration.
+func (h *Handler) forward_key_event_to_search_rl(ev *loop.KeyEvent) (err error) {
+	if err = h.search_rl.OnKeyEvent(ev); err == nil {
+		h.set_query(h.search_rl.AllText())
+	}
+	return
 }

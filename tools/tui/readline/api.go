@@ -273,6 +273,21 @@ func (self *Readline) MoveCursorToEnd() bool {
 	return self.move_to_end()
 }
 
+// PerformAction runs the specified editing Action directly, without going through
+// key resolution. Useful for callers that want to bind their own keys to a
+// specific line-editing operation, bypassing this package's own default keymap.
+func (self *Readline) PerformAction(ac Action, repeat_count uint) error {
+	if repeat_count == 0 {
+		repeat_count = 1
+	}
+	err := self.perform_action(ac, repeat_count)
+	if err == ErrCouldNotPerformAction {
+		self.loop.Beep()
+		err = nil
+	}
+	return err
+}
+
 func (self *Readline) CursorAtEndOfLine() bool {
 	return self.input_state.cursor.X >= len(self.input_state.lines[self.input_state.cursor.Y])
 }

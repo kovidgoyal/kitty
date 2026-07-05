@@ -214,6 +214,8 @@ Detailed list of changes
 
 - Add support for editing files in sublime text and zed at specified line number (:pull:`10224`)
 
+- choose-file kitten: Use a full readline editor for the search box. Also allow remapping the up/down/home/end keys to use for editing instead of navigating the file list (:pull:`10225`)
+
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
