@@ -13,7 +13,7 @@ This is a multi-language repository. Adhere strictly to the idiomatic styling, p
 You must always use the following custom scripts to build, verify, and test changes. Do not use generic toolchains such as `go test` or `pytest` or `./setup.py test`.
 
 ### 🛠️ Build Commands
-Execute this command to compile all modules and check for syntax or type errors:
+Execute the following command to compile all modules and check for syntax or type errors. Do not try to build go code using `go build` or similar generic commands.
 ```bash
 make debug
 ```
