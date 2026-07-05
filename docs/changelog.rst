@@ -212,6 +212,8 @@ Detailed list of changes
 
 - choose-files kitten: Add a ``--mode=all`` to select either an existing file or directory (:iss:`10208`)
 
+- Add support for editing files in sublime text and zed at specified line number (:pull:`10224`)
+
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
