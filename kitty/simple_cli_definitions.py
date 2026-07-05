@@ -462,7 +462,8 @@ invocations will instead create a new top-level window in the existing
 :italic:`{appname}` instance. This allows :italic:`{appname}` to share a single
 sprite cache on the GPU and also reduces startup time. You can also have
 separate groups of :italic:`{appname}` instances by using the :option:`{appname}
---instance-group` option.
+--instance-group` option. You can use the :option:`{appname} --start-as`=hidden
+flag to start a background kitty instance that acts as a server.
 
 
 --instance-group
