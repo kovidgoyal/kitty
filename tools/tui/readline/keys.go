@@ -64,6 +64,7 @@ func default_shortcuts() *ShortcutMap {
 		sm.AddOrPanic(ActionKillToStartOfLine, "ctrl+u")
 		sm.AddOrPanic(ActionKillNextWord, "alt+d")
 		sm.AddOrPanic(ActionKillPreviousWord, "alt+backspace")
+		sm.AddOrPanic(ActionKillPreviousWord, "ctrl+backspace")
 		sm.AddOrPanic(ActionKillPreviousSpaceDelimitedWord, "ctrl+w")
 		sm.AddOrPanic(ActionYank, "ctrl+y")
 		sm.AddOrPanic(ActionPopYank, "alt+y")
