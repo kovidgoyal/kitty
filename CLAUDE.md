@@ -45,3 +45,5 @@ Before declaring a task complete, you must follow this exact verification lifecy
 1. Run the local **Build Command** to guarantee zero compilation or compilation-stage type errors.
 2. Run the local **Test Command** targeted at the modified module to prevent regressions.
 3. If errors occur, analyze the stdout logs completely before writing a fix. Do not guess.
+4. If the change you have made is user facing, update the docs/changelog.rst
+   file with a brief description of your changes
