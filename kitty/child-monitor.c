@@ -233,6 +233,7 @@ static void* talk_loop(void *data);
 static void send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz, bool is_async_response);
 static void wakeup_talk_loop(bool);
 static bool add_peer_to_injection_queue(int peer_fd, int pipe_fd);
+static int start_talk_thread(ChildMonitor*);
 static bool talk_thread_started = false;
 
 static bool
@@ -253,13 +254,7 @@ inject_peer(PyObject *s, PyObject *a) {
     if (!PyLong_Check(a)) { PyErr_SetString(PyExc_TypeError, "peer fd must be an int"); return NULL; }
     long fd = PyLong_AsLong(a);
     if (fd < 0) { PyErr_Format(PyExc_ValueError, "Invalid peer fd: %ld", fd); return NULL; }
-    if (!talk_thread_started) {
-        int ret;
-        if ((ret = pthread_create(&self->talk_thread, NULL, talk_loop, self)) != 0) {
-            return PyErr_Format(PyExc_OSError, "Failed to start talk thread with error: %s", strerror(ret));
-        }
-        talk_thread_started = true;
-    }
+    if ((errno = start_talk_thread(self)) != 0) return PyErr_SetFromErrno(PyExc_OSError);
     int fds[2] = {0};
     if (!self_pipe(fds, false)) {
         safe_close(fd, __FILE__, __LINE__);
@@ -285,10 +280,7 @@ start(PyObject *s, PyObject *a UNUSED) {
     ChildMonitor *self = (ChildMonitor*)s;
     int ret;
     if (self->talk_fd > -1 || self->listen_fd > -1) {
-        if ((ret = pthread_create(&self->talk_thread, NULL, talk_loop, self)) != 0) {
-            return PyErr_Format(PyExc_OSError, "Failed to start talk thread with error: %s", strerror(ret));
-        }
-        talk_thread_started = true;
+        if ((errno = start_talk_thread(self)) != 0) return PyErr_SetFromErrno(PyExc_OSError);
     }
     ret = pthread_create(&self->io_thread, NULL, io_loop, self);
     if (ret != 0) return PyErr_Format(PyExc_OSError, "Failed to start I/O thread with error: %s", strerror(ret));
@@ -1780,6 +1772,14 @@ typedef struct {
 } TalkData;
 static TalkData talk_data = {0};
 
+static int
+start_talk_thread(ChildMonitor *self) {
+    if (talk_thread_started) return 0;
+    talk_thread_started = true;
+    if (!init_loop_data(&talk_data.loop_data, 0)) return errno;
+    return pthread_create(&self->talk_thread, NULL, talk_loop, self);
+}
+
 typedef struct pollfd PollFD;
 #define PEER_LIMIT 256
 #define nuke_socket(s) { shutdown(s, SHUT_RDWR); safe_close(s, __FILE__, __LINE__); }
@@ -2009,7 +2009,7 @@ talk_loop(void *data) {
     // The talk thread loop
     ChildMonitor *self = (ChildMonitor*)data;
     set_thread_name("KittyPeerMon");
-    if (!init_loop_data(&talk_data.loop_data, 0)) { log_error("Failed to create wakeup fd for talk thread with error: %s", strerror(errno)); }
+    // talk_data.loop_data is initialized by the thread that spawns this one, before it is spawned (see inject_peer() and start())
     PollFD fds[PEER_LIMIT + 8] = {{0}};
     size_t num_listen_fds = 0, num_peer_fds = 0;
 #define add_listener(which) \
