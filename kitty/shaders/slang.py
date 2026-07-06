@@ -416,7 +416,29 @@ def commands_to_compile_to_glsl(
                 yield Command(needs_build, f'Linking |{os.path.basename(slang_module)}| to GLSL {ep.stage.value} shader ...', c)
 
 
-def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
+
+class GLSLMetadata:
+
+    loose_uniforms: dict[str, str]
+    uniform_structs: dict[str, dict[str, str]]
+    input_locations: dict[str, int]
+    uniform_struct_names: dict[str, str]
+
+    def __init__(self) -> None:
+        self.loose_uniforms = {}
+        self.uniform_structs = {}
+        self.input_locations = {}
+        self.uniform_struct_names = {}
+
+    def asdict(self) -> dict[str, Any]:
+        return {
+            'loose_uniforms': self.loose_uniforms,
+            'uniform_structs': self.uniform_structs,
+            'input_locations': self.input_locations,
+            'uniform_struct_names': self.uniform_struct_names}
+
+
+def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, GLSLMetadata]:
     is_fragment_shader = 'frag' in os.path.basename(path).split('.')
     lines: list[str] = []
     in_uniform_block = False
@@ -428,6 +450,7 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
     current_uniform_names: list[str] = []
     uniform_names: dict[str, str] = {}
     uniform_structs = {}
+    uniform_struct_names = {}
     input_locations = {}
 
     def add_uniform_name(name: str, uniform_names: dict[str, str] = uniform_names) -> str:
@@ -488,6 +511,7 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
                         assert current_uniform_struct_name.startswith('block_')
                         current_uniform_struct_name = current_uniform_struct_name[len('block_'):].rpartition('_')[0]
                         current_uniform_struct_members = {}
+                        uniform_struct_names[current_uniform_struct_name] = words[-1]
                     else:
                         line = '// ' + line
                 elif words[0] == 'uniform' and len(words) > 2 and words[1].startswith('sampler'):
@@ -499,18 +523,21 @@ def fixup_opengl_code(glsl_code: str, path: str) -> tuple[str, dict[str, Any]]:
     ans = '\n'.join(lines)
     for block_name, names in uniform_blocks.items():
         for u in names:
-            u = u.partition('[')[0]
+            u = u.partition('[')[0]  # ]
             ans = ans.replace(f'{block_name}.{u}', u)
     ans = ans.replace('gl_VertexIndex', 'gl_VertexID')
     ans = ans.replace('gl_BaseVertex', '0')
     ans = ans.replace('gl_InstanceIndex', 'gl_InstanceID')
     ans = ans.replace('gl_BaseInstance', '0')
-    return ans, {
-        'loose_uniforms': uniform_names, 'uniform_structs': uniform_structs, 'input_locations': input_locations,
-    }
+    m = GLSLMetadata()
+    m.loose_uniforms = uniform_names
+    m.uniform_structs = uniform_structs
+    m.input_locations = input_locations
+    m.uniform_struct_names = uniform_struct_names
+    return ans, m
 
 
-def fixup_opengl_files(*paths: str) -> None:
+def fixup_opengl_files(paths: Iterable[str], metadata_map: dict[str, GLSLMetadata]) -> None:
     ' Convert the GLSL output of slangc to something that will work with OpenGL 3.1 '
     for path in paths:
         with open(path, 'r+') as f:
@@ -520,11 +547,25 @@ def fixup_opengl_files(*paths: str) -> None:
             except Exception:
                 os.unlink(path)
                 raise
+            parts = os.path.basename(path).split('.')
+            if len(parts) == 3:
+                name = parts[0]
+                if name in metadata_map:
+                    metadata_map[name].loose_uniforms.update(metadata.loose_uniforms)
+                    metadata_map[name].uniform_structs.update(metadata.uniform_structs)
+                else:
+                    metadata_map[name] = metadata
             f.seek(0)
             f.truncate()
             f.write(fixed)
-        with open(path + '.json', 'w') as f:
-            f.write(json.dumps(metadata, indent=2, sort_keys=False))
+
+
+def write_glsl_header(metadata_map: dict[str, GLSLMetadata]) -> None:
+    from pprint import pprint
+    for name, m in metadata_map.items():
+        print(name)
+        pprint(m.asdict())
+        print()
 # }}}
 
 
@@ -552,7 +593,7 @@ def copy_files_preserving_structure(source_dir: str, dest_dir: str, extension: s
 
 
 def create_specialisations(sources: dict[str, SlangFile], build_dir: str) -> Iterator[Command]:
-    for _, base_build, slang_module, cmd, sfile in iter_entry_point_shaders(sources, build_dir, build_dir):
+    for _, base_build, _, _, sfile in iter_entry_point_shaders(sources, build_dir, build_dir):
         if sfile.entry_points and sfile.specializations:
             for sp in sfile.specializations:
                 dest = f'{base_build}{sp.filename_insert}.slang'
@@ -597,10 +638,12 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
     glsl_commands = commands_to_compile_to_glsl(source_tree, build_dir, dest_dir, built_glsl_files)
     # Now run all commands
     parallel_run(chain(spirv_commands, glsl_commands))
-    fixup_opengl_files(*built_glsl_files)
+    metadata_map = {}
+    fixup_opengl_files(built_glsl_files, metadata_map=metadata_map)
     if shutil.which('glslangValidator'):
         from kitty.shaders.validate_shaders import validation_command_for_file
         parallel_run((True, f'Validating |{os.path.basename(x)}| ...', validation_command_for_file(x)) for x in built_glsl_files)
+    write_glsl_header(metadata_map)
 
 
 def main() -> None:

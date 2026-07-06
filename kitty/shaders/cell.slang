@@ -36,15 +36,20 @@ struct CellRenderData
 // Uniform Blocks (adjust binding slots as needed for your pipeline layout)
 ConstantBuffer<CellRenderData> crd;
 
-struct ColorTable
-{
+struct ColorTable {
     uint color_table[NUM_COLORS + MARK_MASK + MARK_MASK + 2];
 };
 
 ConstantBuffer<ColorTable> ctb;
 #define color_table ctb.color_table
 
-uniform float gamma_lut[256];
+struct GammaLUT {
+    float gamma_lut[256];
+};
+
+ConstantBuffer<GammaLUT> glt;
+#define gamma_lut glt.gamma_lut
+
 uniform Sampler2D<uint4> sprite_decorations_map;
 //
 
