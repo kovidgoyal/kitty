@@ -1775,9 +1775,10 @@ static TalkData talk_data = {0};
 static int
 start_talk_thread(ChildMonitor *self) {
     if (talk_thread_started) return 0;
-    talk_thread_started = true;
     if (!init_loop_data(&talk_data.loop_data, 0)) return errno;
-    return pthread_create(&self->talk_thread, NULL, talk_loop, self);
+    int ret = pthread_create(&self->talk_thread, NULL, talk_loop, self);
+    talk_thread_started = ret == 0;
+    return ret;
 }
 
 typedef struct pollfd PollFD;
