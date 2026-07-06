@@ -299,6 +299,20 @@ get_uniform_information(int program, const char *name, GLenum information_type) 
     return q;
 }
 
+ArrayInformation
+get_uniform_array_information(int program, const char *name) {
+    ArrayInformation ans;
+    const char* names[] = {""};
+    names[0] = name;
+    GLuint pid = program_id(program);
+    GLuint t;
+    glGetUniformIndices(pid, 1, (void*)names, &t);
+    glGetActiveUniformsiv(pid, 1, &t, GL_UNIFORM_ARRAY_STRIDE, &ans.stride);
+    glGetActiveUniformsiv(pid, 1, &t, GL_UNIFORM_OFFSET, &ans.offset);
+    glGetActiveUniformsiv(pid, 1, &t, GL_UNIFORM_SIZE, &ans.size);
+    return ans;
+}
+
 GLint
 attrib_location(int program, const char *name) {
     GLint ans = glGetAttribLocation(programs[program].id, name);

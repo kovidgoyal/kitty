@@ -14,7 +14,9 @@ typedef struct {
 } UniformBlock;
 
 typedef struct {
-    GLint offset, stride, size;
+    GLint offset;  // byte offset from start of UBO
+    GLint stride;  // element stride in bytes
+    GLint size;    // umber of elements
 } ArrayInformation;
 
 typedef struct {
@@ -47,6 +49,7 @@ GLuint block_index(int program, const char *name);
 GLint block_size(int program, GLuint block_index);
 GLint get_uniform_location(int program, const char *name);
 GLint get_uniform_information(int program, const char *name, GLenum information_type);
+ArrayInformation get_uniform_array_information(int program, const char *name);
 GLint attrib_location(int program, const char *name);
 ssize_t create_vao(void);
 size_t add_buffer_to_vao(ssize_t vao_idx, GLenum usage);
