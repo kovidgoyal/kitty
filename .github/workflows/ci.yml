@@ -51,12 +51,12 @@ jobs:
               persist-credentials: false
 
           - name: Set up Python ${{ matrix.pyver }}
-            uses: actions/setup-python@v6.2.0
+            uses: actions/setup-python@v6.3.0
             with:
               python-version: ${{ matrix.pyver }}
 
           - name: Install Go
-            uses: actions/setup-go@v6.4.0
+            uses: actions/setup-go@v6.5.0
             with:
               go-version-file: go.mod
 
@@ -85,18 +85,18 @@ jobs:
             run: if grep -Inr ':code:`\s' kitty kitty_tests kittens docs *.py *.asciidoc *.rst *.go .gitattributes .gitignore; then echo Space at code block start found, aborting.; exit 1; fi
 
           - name: Set up Python
-            uses: actions/setup-python@v6.2.0
+            uses: actions/setup-python@v6.3.0
             with:
               python-version: "3.14"
 
           - name: Install Go
-            uses: actions/setup-go@v6.4.0
+            uses: actions/setup-go@v6.5.0
             with:
               go-version-file: go.mod
               cache: false
 
           - name: Cache Go build artifacts separately
-            uses: actions/cache@v5.0.5
+            uses: actions/cache@v6.1.0
             with:
               path: |
                 ~/.cache/go-build
@@ -149,7 +149,7 @@ jobs:
               persist-credentials: false
 
           - name: Install Go
-            uses: actions/setup-go@v6.4.0
+            uses: actions/setup-go@v6.5.0
             with:
               go-version-file: go.mod
 
@@ -170,12 +170,12 @@ jobs:
               persist-credentials: false
 
           - name: Set up Python
-            uses: actions/setup-python@v6.2.0
+            uses: actions/setup-python@v6.3.0
             with:
               python-version: "3.14"
 
           - name: Install Go
-            uses: actions/setup-go@v6.4.0
+            uses: actions/setup-go@v6.5.0
             with:
               go-version-file: go.mod
 
@@ -211,7 +211,7 @@ jobs:
             run: sudo apt-get update && sudo apt-get install -y curl xz-utils build-essential git pkg-config libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev libxkbcommon-x11-dev libfontconfig-dev libx11-xcb-dev libdbus-1-dev
 
           - name: Install Go
-            uses: actions/setup-go@v6.4.0
+            uses: actions/setup-go@v6.5.0
             with:
               go-version-file: go.mod
 
