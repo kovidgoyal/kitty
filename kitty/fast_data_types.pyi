@@ -567,9 +567,6 @@ def set_os_window_chrome(os_window_id: int) -> bool:
 def set_borders_rects(os_window_id: int, tab_id: int, rects: list[Border]) -> None: ...
 
 
-def init_borders_program() -> None:
-    pass
-
 def os_window_has_background_image(os_window_id: int) -> bool:
     pass
 
