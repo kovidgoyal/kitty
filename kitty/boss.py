@@ -2897,7 +2897,6 @@ class Boss:
         def doit(activation_token: str = '') -> None:
             nonlocal env
             pass_fds: list[int] = []
-            fds_to_close_on_launch_failure: list[int] = []
             if allow_remote_control:
                 remote = self.add_fd_based_remote_control(remote_control_passwords)
                 pass_fds.append(remote.fileno())
