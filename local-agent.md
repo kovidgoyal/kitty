@@ -1,4 +1,7 @@
-# Claude System Instructions & Project Context
+initialize_command: make debug
+copy_resource: fonts
+
+# System Instructions & Project Context
 
 ## Project Architecture & Stack
 This is a multi-language repository. Adhere strictly to the idiomatic styling, patterns, and type safety of each respective language ecosystem present in the codebase. Do not mix patterns across language boundaries.
@@ -41,9 +44,10 @@ To run a Go test named TestMyFunction, use:
 ```
 
 ## Verification Pipeline
+
 Before declaring a task complete, you must follow this exact verification lifecycle:
 1. Run the local **Build Command** to guarantee zero compilation or compilation-stage type errors.
-2. Run the local **Test Command** targeted at the modified module to prevent regressions.
+2. Run the local **Test Command** to run the full test suite
 3. If errors occur, analyze the stdout logs completely before writing a fix. Do not guess.
 4. If the change you have made is user facing, update the docs/changelog.rst
    file with a brief description of your changes
