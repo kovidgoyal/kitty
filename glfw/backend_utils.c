@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <time.h>
 #include <stdio.h>
+#include <sys/mman.h>
 
 #ifdef __NetBSD__
 #define ppoll pollts
