@@ -1039,11 +1039,13 @@ class Boss:
             for w, val in changes.items():
                 w.ignore_focus_changes = val
 
-    def on_child_death(self, window_id: int) -> None:
+    def on_child_death(self, window_id: int, child_died: bool, exit_status: int) -> None:
         prev_active_window = self.active_window
         window = self.window_id_map.pop(window_id, None)
         if window is None:
             return
+        window.child_died, window.child_exit_status = child_died, exit_status
+        window.child_exit_code = os.waitstatus_to_exitcode(exit_status)
         with self.suppress_focus_change_events():
             for close_action in window.actions_on_close:
                 try:

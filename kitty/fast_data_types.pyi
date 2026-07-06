@@ -1444,7 +1444,7 @@ class ChildMonitor:
 
     def __init__(
         self,
-        death_notify: Callable[[int], None],
+        death_notify: Callable[[int, bool, int], None],
         dump_callback: Optional[Callable[[int, str, Any], None]],
         talk_fd: int = -1,
         listen_fd: int = -1,

@@ -63,10 +63,11 @@ typedef struct {
 
 typedef struct {
     Screen *screen;
-    bool needs_removal;
+    bool needs_removal, child_died;
     int fd;
     unsigned long id;
     pid_t pid;
+    int exit_status;
 } Child;
 
 static const Child EMPTY_CHILD = {0};
@@ -564,7 +565,8 @@ parse_input(ChildMonitor *self) {
         // the python function could call into other functions in this module
         remove_count--;
         if (remove_notify[remove_count].screen) do_parse(self, remove_notify[remove_count].screen, now, true);
-        PyObject *t = PyObject_CallFunction(self->death_notify, "k", remove_notify[remove_count].id);
+        PyObject *t = PyObject_CallFunction(
+            self->death_notify, "kOi", remove_notify[remove_count].id, remove_notify[remove_count].child_died ? Py_True : Py_False, remove_notify[remove_count].exit_status);
         if (t == NULL) PyErr_Print();
         else Py_DECREF(t);
         FREE_CHILD(remove_notify[remove_count]);
@@ -1553,11 +1555,13 @@ handle_signal(const siginfo_t *siginfo, void *data) {
 }
 
 static void
-mark_child_for_removal(ChildMonitor *self, pid_t pid) {
+mark_child_for_removal(ChildMonitor *self, pid_t pid, int exit_status) {
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].pid == pid) {
             children[i].needs_removal = true;
+            children[i].exit_status = exit_status;
+            children[i].child_died = true;
             break;
         }
     }
@@ -1589,7 +1593,7 @@ reap_children(ChildMonitor *self, bool enable_close_on_child_death) {
         if (pid == -1) {
             if (errno != EINTR) break;
         } else if (pid > 0) {
-            if (enable_close_on_child_death) mark_child_for_removal(self, pid);
+            if (enable_close_on_child_death) mark_child_for_removal(self, pid, status);
             mark_monitored_pids(pid, status);
         } else break;
     }

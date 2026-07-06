@@ -692,6 +692,9 @@ class Window:
     serialized_id: int = 0
     show_title_bar: bool = False  # must be set before calling set_geometry
     is_drag_target: bool = False  # highlight this window's title bar as a drop target
+    child_died: bool = False
+    child_exit_status: int = 0
+    child_exit_code: int = 0
 
     @classmethod
     @contextmanager
