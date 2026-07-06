@@ -15,8 +15,17 @@ import utils;
 #define TAB_BAR_EDGE_LEFT_COLOR 7
 #define TAB_BAR_EDGE_RIGHT_COLOR 8
 
-uniform float gamma_lut[256];
-uniform uint colors[9];
+struct GammaLUT {
+    uniform float gamma_lut[256];
+};
+ConstantBuffer<GammaLUT> glt;
+#define gamma_lut glt.gamma_lut
+
+struct Colors {
+    uniform uint colors[9];
+};
+ConstantBuffer<Colors> clrs;
+#define colors clrs.colors
 
 // Vertex attributes matching GLSL input locations
 struct VertexInput {
