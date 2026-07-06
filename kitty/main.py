@@ -10,7 +10,6 @@ from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
 from gettext import gettext as _
 
-from .borders import load_borders_program
 from .boss import Boss
 from .child import set_default_env, set_LANG_in_default_env
 from .cli import create_opts, parse_args
@@ -91,7 +90,6 @@ def set_custom_ibeam_cursor() -> None:
 def load_all_shaders() -> None:
     try:
         load_shader_programs()
-        load_borders_program()
     except CompileError as err:
         raise SystemExit(err)
 

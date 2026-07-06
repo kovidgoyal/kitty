@@ -372,6 +372,11 @@ typedef struct {
 } ScreenshotProgramLayout;
 static ScreenshotProgramLayout screenshot_program_layout;
 
+typedef struct BorderProgramLayout {
+    BorderUniforms uniforms;
+} BorderProgramLayout;
+static BorderProgramLayout border_program_layout;
+
 static void
 init_cell_program(void) {
     for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
@@ -402,6 +407,9 @@ init_cell_program(void) {
     get_uniform_locations_blit(BLIT_PROGRAM, &blit_program_layout.uniforms);
     get_uniform_locations_screenshot(SCREENSHOT_PROGRAM, &screenshot_program_layout.uniforms);
     get_uniform_locations_rounded_rect(ROUNDED_RECT_PROGRAM, &rounded_rect_program_layout.uniforms);
+    bind_program(BORDERS_PROGRAM);
+    get_uniform_locations_border(BORDERS_PROGRAM, &border_program_layout.uniforms);
+    glUniform1fv(border_program_layout.uniforms.gamma_lut, arraysz(srgb_lut), srgb_lut);
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer, color_table_buffer };
@@ -1454,18 +1462,6 @@ draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_wind
 
 // Borders {{{
 
-typedef struct BorderProgramLayout {
-    BorderUniforms uniforms;
-} BorderProgramLayout;
-static BorderProgramLayout border_program_layout;
-
-static void
-init_borders_program(void) {
-    get_uniform_locations_border(BORDERS_PROGRAM, &border_program_layout.uniforms);
-    bind_program(BORDERS_PROGRAM);
-    glUniform1fv(border_program_layout.uniforms.gamma_lut, 256, srgb_lut);
-}
-
 ssize_t
 create_border_vao(void) {
     ssize_t vao_idx = create_vao();
@@ -1859,8 +1855,6 @@ ONE_INT(bind_vertex_array)
 NO_ARG(unbind_vertex_array)
 TWO_INT(unmap_vao_buffer)
 
-NO_ARG(init_borders_program)
-
 NO_ARG(init_cell_program)
 
 static PyObject*
@@ -1884,7 +1878,6 @@ static PyMethodDef module_methods[] = {
     MW(unmap_vao_buffer, METH_VARARGS),
     MW(bind_program, METH_O),
     MW(unbind_program, METH_NOARGS),
-    MW(init_borders_program, METH_NOARGS),
     MW(init_cell_program, METH_NOARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */

@@ -6,8 +6,7 @@ from enum import IntFlag
 from functools import partial
 from typing import NamedTuple
 
-from .fast_data_types import BORDERS_PROGRAM, current_focused_os_window_id, get_options, init_borders_program, set_borders_rects
-from .shaders.legacy import program_for
+from .fast_data_types import current_focused_os_window_id, get_options, set_borders_rects
 from .typing_compat import LayoutType
 from .utils import color_as_int
 from .window_list import WindowGroup, WindowList
@@ -65,11 +64,6 @@ def add_borders(rects: list[Border], color: BorderColor, wg: WindowGroup) -> Non
     h(pb, left, right, bt, wid)
     v(pl, top, bottom, left, -wid)
     v(pr, top, bottom, lr, wid)
-
-
-def load_borders_program() -> None:
-    program_for('border').compile(BORDERS_PROGRAM)
-    init_borders_program()
 
 
 class Borders:

@@ -3,35 +3,22 @@
 
 
 typedef struct BgimageUniforms {
-    int background;
     int image;
-    int positions;
-    int sizes;
-    int tiled;
 } BgimageUniforms;
 
 static inline void get_uniform_locations_bgimage(int program, BgimageUniforms *ans) {
-    ans->background = get_uniform_location(program, "background_0");
     ans->image = get_uniform_location(program, "image_0");
-    ans->positions = get_uniform_location(program, "positions_0");
-    ans->sizes = get_uniform_location(program, "sizes_0");
-    ans->tiled = get_uniform_location(program, "tiled_0");
 }
 
 typedef struct BlitUniforms {
-    int dest_rect;
     int image;
-    int src_rect;
 } BlitUniforms;
 
 static inline void get_uniform_locations_blit(int program, BlitUniforms *ans) {
-    ans->dest_rect = get_uniform_location(program, "dest_rect_0");
     ans->image = get_uniform_location(program, "image_0");
-    ans->src_rect = get_uniform_location(program, "src_rect_0");
 }
 
 typedef struct BorderUniforms {
-    int background_opacity;
     // Vertex Input locations
     int rect;
     int rect_color;
@@ -43,7 +30,6 @@ typedef struct BorderUniforms {
 } BorderUniforms;
 
 static inline void get_uniform_locations_border(int program, BorderUniforms *ans) {
-    ans->background_opacity = get_uniform_location(program, "background_opacity_0");
     ans->rect = 0;
     ans->rect_color = 1;
     ans->Colors.index = block_index(program, "block_Colors_0");
@@ -55,10 +41,7 @@ static inline void get_uniform_locations_border(int program, BorderUniforms *ans
 }
 
 typedef struct CellUniforms {
-    int draw_bg_bitfield;
     int sprites;
-    int text_contrast;
-    int text_gamma_adjustment;
     // Vertex Input locations
     int colors;
     int is_selected;
@@ -72,10 +55,7 @@ typedef struct CellUniforms {
 } CellUniforms;
 
 static inline void get_uniform_locations_cell(int program, CellUniforms *ans) {
-    ans->draw_bg_bitfield = get_uniform_location(program, "draw_bg_bitfield_0");
     ans->sprites = get_uniform_location(program, "sprites_0");
-    ans->text_contrast = get_uniform_location(program, "text_contrast_0");
-    ans->text_gamma_adjustment = get_uniform_location(program, "text_gamma_adjustment_0");
     ans->colors = 0;
     ans->is_selected = 2;
     ans->sprite_idx = 1;
@@ -90,75 +70,35 @@ static inline void get_uniform_locations_cell(int program, CellUniforms *ans) {
 }
 
 typedef struct GraphicsUniforms {
-    int amask_bg_premult;
-    int amask_fg;
-    int dest_rect;
-    int extra_alpha;
     int image;
-    int src_rect;
 } GraphicsUniforms;
 
 static inline void get_uniform_locations_graphics(int program, GraphicsUniforms *ans) {
-    ans->amask_bg_premult = get_uniform_location(program, "amask_bg_premult_0");
-    ans->amask_fg = get_uniform_location(program, "amask_fg_0");
-    ans->dest_rect = get_uniform_location(program, "dest_rect_0");
-    ans->extra_alpha = get_uniform_location(program, "extra_alpha_0");
     ans->image = get_uniform_location(program, "image_0");
-    ans->src_rect = get_uniform_location(program, "src_rect_0");
 }
 
 typedef struct Rounded_rectUniforms {
-    int background_color;
-    int color;
-    int params;
-    int rect;
 } Rounded_rectUniforms;
 
 static inline void get_uniform_locations_rounded_rect(int program, Rounded_rectUniforms *ans) {
-    ans->background_color = get_uniform_location(program, "background_color_0");
-    ans->color = get_uniform_location(program, "color_0");
-    ans->params = get_uniform_location(program, "params_0");
-    ans->rect = get_uniform_location(program, "rect_0");
 }
 
 typedef struct ScreenshotUniforms {
-    int dest_rect;
     int image;
-    int src_rect;
-    int src_size;
 } ScreenshotUniforms;
 
 static inline void get_uniform_locations_screenshot(int program, ScreenshotUniforms *ans) {
-    ans->dest_rect = get_uniform_location(program, "dest_rect_0");
     ans->image = get_uniform_location(program, "image_0");
-    ans->src_rect = get_uniform_location(program, "src_rect_0");
-    ans->src_size = get_uniform_location(program, "src_size_0");
 }
 
 typedef struct TintUniforms {
-    int edges;
-    int tint_color;
 } TintUniforms;
 
 static inline void get_uniform_locations_tint(int program, TintUniforms *ans) {
-    ans->edges = get_uniform_location(program, "edges_0");
-    ans->tint_color = get_uniform_location(program, "tint_color_0");
 }
 
 typedef struct TrailUniforms {
-    int cursor_edge_x;
-    int cursor_edge_y;
-    int trail_color;
-    int trail_opacity;
-    int x_coords;
-    int y_coords;
 } TrailUniforms;
 
 static inline void get_uniform_locations_trail(int program, TrailUniforms *ans) {
-    ans->cursor_edge_x = get_uniform_location(program, "cursor_edge_x_0");
-    ans->cursor_edge_y = get_uniform_location(program, "cursor_edge_y_0");
-    ans->trail_color = get_uniform_location(program, "trail_color_0");
-    ans->trail_opacity = get_uniform_location(program, "trail_opacity_0");
-    ans->x_coords = get_uniform_location(program, "x_coords_0");
-    ans->y_coords = get_uniform_location(program, "y_coords_0");
 }

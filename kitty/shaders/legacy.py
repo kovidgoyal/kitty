@@ -12,6 +12,7 @@ from kitty.fast_data_types import (
     BGIMAGE_PROGRAM,
     BLINK,
     BLIT_PROGRAM,
+    BORDERS_PROGRAM,
     CELL_BG_PROGRAM,
     CELL_FG_PROGRAM,
     CELL_PROGRAM,
@@ -94,7 +95,6 @@ class Program:
         self.fragment_sources = self.original_fragment_sources if frag is identity else tuple(map(frag, self.original_fragment_sources))
 
     def compile(self, program_id: int, allow_recompile: bool = False) -> None:
-        cerr: CompileError = CompileError()
         try:
             compile_program(program_id, self.vertex_sources, self.fragment_sources, allow_recompile)
             return
@@ -109,8 +109,7 @@ class Program:
 
             for line in lines:
                 msg.append(pat.sub(sub, line))
-            cerr = CompileError('\n'.join(msg))
-        raise cerr
+            raise CompileError('\n'.join(msg))
 
 
 @lru_cache(maxsize=64)
@@ -218,6 +217,7 @@ class LoadShaderPrograms:
             program_for('blit').compile(BLIT_PROGRAM, allow_recompile)
             program_for('screenshot').compile(SCREENSHOT_PROGRAM, allow_recompile)
             program_for('rounded_rect').compile(ROUNDED_RECT_PROGRAM, allow_recompile)
+            program_for('border').compile(BORDERS_PROGRAM, allow_recompile)
             init_cell_program()
 
 
