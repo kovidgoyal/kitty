@@ -2902,6 +2902,7 @@ class Boss:
                 remote = self.add_fd_based_remote_control(remote_control_passwords)
                 pass_fds.append(remote.fileno())
                 add_env('KITTY_LISTEN_ON', f'fd:{remote.fileno()}')
+                add_env('KITTY_PUBLIC_KEY', self.encryption_public_key)
             if activation_token:
                 add_env('XDG_ACTIVATION_TOKEN', activation_token)
             fds_to_close_on_launch_failure = list(pass_fds)
