@@ -17,11 +17,17 @@ from functools import lru_cache
 from itertools import chain, product
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Callable, Iterable, Iterator, NamedTuple
+from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple
 
 from kitty.constants import read_kitty_resource, shaders_dir, slangc
 from kitty.fast_data_types import (
+    BGIMAGE_PROGRAM,
     BLINK,
+    BLIT_PROGRAM,
+    BORDERS_PROGRAM,
+    CELL_BG_PROGRAM,
+    CELL_FG_PROGRAM,
+    CELL_PROGRAM,
     COLOR_IS_INDEX,
     COLOR_IS_RGB,
     COLOR_IS_SPECIAL,
@@ -30,10 +36,20 @@ from kitty.fast_data_types import (
     DECORATION_MASK,
     DIM,
     GLSL_VERSION,
+    GRAPHICS_ALPHA_MASK_PROGRAM,
+    GRAPHICS_PREMULT_PROGRAM,
+    GRAPHICS_PROGRAM,
     MARK,
     MARK_MASK,
     REVERSE,
+    ROUNDED_RECT_PROGRAM,
+    SCREENSHOT_PROGRAM,
     STRIKETHROUGH,
+    TINT_PROGRAM,
+    TRAIL_PROGRAM,
+    compile_program,
+    get_options,
+    init_cell_program,
 )
 from kitty.options.types import Options, defaults
 
@@ -132,6 +148,76 @@ def variant_name(variant: dict[str, str], default: dict[str, str]) -> str:
     data = ' '.join(f'{k}={variant[k]}' for k in sorted(default)).encode()
     key = hashlib.md5(data, usedforsecurity=False)
     return key.hexdigest()[:5]
+
+
+def glsl_shaders(name: str, variant_name: str = '') -> tuple[str, str]:
+    if variant_name:
+        variant_name = '.' + variant_name
+    with open(os.path.join(shaders_dir, f'{name}{variant_name}.vert.glsl')) as f:
+        vert = f.read()
+    with open(os.path.join(shaders_dir, f'{name}{variant_name}.frag.glsl')) as f:
+        frag = f.read()
+    return vert, frag
+
+
+class LoadShaderPrograms:
+
+    text_fg_override_threshold: tuple[float, Literal['%', 'ratio']] = 0, '%'
+    text_old_gamma: bool = False
+
+    opts: Options | None = None
+
+    def get_options(self) -> Options:
+        try:
+            return self.opts or get_options()
+        except RuntimeError:
+            return defaults
+
+    @property
+    def needs_recompile(self) -> bool:
+        opts = self.get_options()
+        return (
+            bool(opts.text_fg_override_threshold[0]) != bool(self.text_fg_override_threshold[0]) or
+            opts.text_fg_override_threshold[1] != self.text_fg_override_threshold[1] or
+            (opts.text_composition_strategy == 'legacy') != self.text_old_gamma
+        )
+
+    def recompile_if_needed(self) -> None:
+        if self.needs_recompile:
+            self(allow_recompile=True)
+
+    def __call__(self, allow_recompile: bool = False) -> None:
+        default_cell_variant = cell_variant()
+        opts = self.get_options()
+        self.text_old_gamma = opts.text_composition_strategy == 'legacy'
+        self.text_fg_override_threshold = opts.text_fg_override_threshold
+        for prog, (only_fg, only_bg) in {
+            CELL_PROGRAM: (False, False), CELL_FG_PROGRAM: (True, False), CELL_BG_PROGRAM: (False, True),
+        }.items():
+            v = cell_variant(opts, only_fg=only_fg, only_bg=only_bg)
+            vert, frag = glsl_shaders('cell', variant_name(v, default_cell_variant))
+            compile_program(prog, (vert,), (frag,), allow_recompile)
+        for prog, vname in {
+            GRAPHICS_PROGRAM: '', GRAPHICS_ALPHA_MASK_PROGRAM: 'alpha_mask',
+            GRAPHICS_PREMULT_PROGRAM: 'premult',
+        }.items():
+            vert, frag = glsl_shaders('graphics', vname)
+            compile_program(prog, (vert,), (frag,), allow_recompile)
+        for name, prog in {
+            'bgimage': BGIMAGE_PROGRAM,
+            'tint': TINT_PROGRAM,
+            'trail': TRAIL_PROGRAM,
+            'blit': BLIT_PROGRAM,
+            'screenshot': SCREENSHOT_PROGRAM,
+            'rounded_rect': ROUNDED_RECT_PROGRAM,
+            'border': BORDERS_PROGRAM,
+        }.items():
+            vert, frag = glsl_shaders(name)
+            compile_program(prog, (vert,), (frag,), allow_recompile)
+        init_cell_program()
+
+
+load_shader_programs = LoadShaderPrograms()
 
 
 class SlangFile(NamedTuple):
