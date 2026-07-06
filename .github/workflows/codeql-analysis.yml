@@ -48,7 +48,7 @@ jobs:
 
         - name: Install Go
           if: matrix.language == 'c' || matrix.language == 'go'
-          uses: actions/setup-go@v6.4.0
+          uses: actions/setup-go@v6.5.0
           with:
               go-version-file: go.mod
 
