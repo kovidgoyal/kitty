@@ -58,7 +58,7 @@ from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import edge_spacing, initial_window_size_func
 from .session import create_sessions, get_os_window_sizing_data
-from .shaders.legacy import CompileError, load_shader_programs
+from .shaders.slang import load_shader_programs
 from .types import LayerShellConfig
 from .utils import (
     cleanup_ssh_control_masters,
@@ -90,7 +90,7 @@ def set_custom_ibeam_cursor() -> None:
 def load_all_shaders() -> None:
     try:
         load_shader_programs()
-    except CompileError as err:
+    except ValueError as err:
         raise SystemExit(err)
 
 

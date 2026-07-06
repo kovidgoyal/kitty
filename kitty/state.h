@@ -583,7 +583,6 @@ void os_window_regions(const OSWindow*, Region *main, Region *tab_bar);
 bool drag_scroll(Window *, OSWindow*);
 void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, color_type, unsigned int, bool, OSWindow *w);
 ssize_t create_cell_vao(void);
-ssize_t create_graphics_vao(void);
 ssize_t create_border_vao(void);
 bool send_cell_data_to_gpu(ssize_t, Screen *, OSWindow *);
 void draw_cells(const WindowRenderData*, OSWindow *, bool, bool, bool, Window*);

@@ -39,11 +39,6 @@ class TestBuild(BaseTest):
         from kitty.shaders.slang import test_slang_build
         test_slang_build()
 
-    def test_loading_shaders(self) -> None:
-        from kitty.shaders.legacy import Program
-        for name in 'cell border bgimage tint graphics'.split():
-            Program(name)
-
     def test_macos_dictation_forwarding(self) -> None:
         from kitty.constants import glfw_path, is_macos
         if not is_macos or not shutil.which('clang'):
