@@ -307,6 +307,9 @@ get_uniform_array_information(int program, const char *name) {
     GLuint pid = program_id(program);
     GLuint t;
     glGetUniformIndices(pid, 1, (void*)names, &t);
+    if (t == GL_INVALID_INDEX) {
+        fatal("Could not find the index for uniform array: %s", name);
+    }
     glGetActiveUniformsiv(pid, 1, &t, GL_UNIFORM_ARRAY_STRIDE, &ans.stride);
     glGetActiveUniformsiv(pid, 1, &t, GL_UNIFORM_OFFSET, &ans.offset);
     glGetActiveUniformsiv(pid, 1, &t, GL_UNIFORM_SIZE, &ans.size);
@@ -484,10 +487,8 @@ add_located_attribute_to_vao(ssize_t vao_idx, GLint aloc, GLint size, GLenum dat
 
 
 void
-add_attribute_to_vao(int p, ssize_t vao_idx, const char *name, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
-    GLint aloc = attrib_location(p, name);
-    if (aloc == -1) fatal("No attribute named: %s found in this program", name);
-    add_located_attribute_to_vao(vao_idx, aloc, size, data_type, stride, offset, divisor);
+add_attribute_to_vao(ssize_t vao_idx, int location, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
+    add_located_attribute_to_vao(vao_idx, location, size, data_type, stride, offset, divisor);
 }
 
 void

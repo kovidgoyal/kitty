@@ -14,7 +14,7 @@
 #include "text-cache.h"
 #include "window_logo.h"
 #include "srgb_gamma.h"
-#include "uniforms_generated.h"
+#include "glsl-uniforms.h"
 #include "state.h"
 
 enum {
@@ -332,12 +332,13 @@ draw_rounded_rect(
 
 // Cell {{{
 
-enum { CELL_RENDER_DATA_BINDING_POINT = 0, COLOR_TABLE_BINDING_POINT = 1 };
+enum { CELL_RENDER_DATA_BINDING_POINT = 0, COLOR_TABLE_BINDING_POINT = 1, GAMMA_LUT_BINDING_POINT = 2, BORDER_COLORS_BINDING_POINT = 3 };
+enum { GAMMA_LUT_GLOBAL_BUFFER, BORDER_COLORS_GLOBAL_BUFFER };
+// A VAO used only to hold buffers for UBOs that are shared amongst programs/windows,
+// its vertex attribute/array facilities are unused.
+static ssize_t shader_globals_vao_idx = -1;
 
 typedef struct {
-    UniformBlock render_data;
-    UniformBlock color_table;
-    GLint color_table_stride;
     CellUniforms uniforms;
 } CellProgramLayout;
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
@@ -378,18 +379,28 @@ typedef struct BorderProgramLayout {
 static BorderProgramLayout border_program_layout;
 
 static void
+write_float_array_to_ubo(void *dest, const GLfloat *src, size_t count, const ArrayInformation *ai) {
+    GLint stride = MAX((GLint)sizeof(GLfloat), ai->stride);
+    uint8_t *buf = (uint8_t*)dest + ai->offset;
+    for (size_t i = 0; i < count; i++, buf += stride) memcpy(buf, src + i, sizeof(GLfloat));
+}
+
+static void
+write_uint_array_to_ubo(void *dest, const GLuint *src, size_t count, const ArrayInformation *ai) {
+    GLint stride = MAX((GLint)sizeof(GLuint), ai->stride);
+    uint8_t *buf = (uint8_t*)dest + ai->offset;
+    for (size_t i = 0; i < count; i++, buf += stride) memcpy(buf, src + i, sizeof(GLuint));
+}
+
+static void
 init_cell_program(void) {
+    GLint gamma_lut_buf_size = 0;
     for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
-        cell_program_layouts[i].render_data.index = block_index(i, "CellRenderData");
-        cell_program_layouts[i].render_data.size = block_size(i, cell_program_layouts[i].render_data.index);
-        cell_program_layouts[i].color_table.index = block_index(i, "ColorTable");
-        cell_program_layouts[i].color_table.size = block_size(i, cell_program_layouts[i].color_table.index);
-        cell_program_layouts[i].color_table_stride = get_uniform_information(i, "color_table[0]", GL_UNIFORM_ARRAY_STRIDE);
-        glUniformBlockBinding(program_id(i), cell_program_layouts[i].render_data.index, CELL_RENDER_DATA_BINDING_POINT);
-        glUniformBlockBinding(program_id(i), cell_program_layouts[i].color_table.index, COLOR_TABLE_BINDING_POINT);
         get_uniform_locations_cell(i, &cell_program_layouts[i].uniforms);
-        bind_program(i);
-        glUniform1fv(cell_program_layouts[i].uniforms.gamma_lut, arraysz(srgb_lut), srgb_lut);
+        glUniformBlockBinding(program_id(i), cell_program_layouts[i].uniforms.CellRenderData.index, CELL_RENDER_DATA_BINDING_POINT);
+        glUniformBlockBinding(program_id(i), cell_program_layouts[i].uniforms.ColorTable.index, COLOR_TABLE_BINDING_POINT);
+        glUniformBlockBinding(program_id(i), cell_program_layouts[i].uniforms.GammaLUT.index, GAMMA_LUT_BINDING_POINT);
+        gamma_lut_buf_size = MAX(gamma_lut_buf_size, cell_program_layouts[i].uniforms.GammaLUT.size);
     }
 
     // Sanity check to ensure the attribute location binding worked
@@ -407,9 +418,25 @@ init_cell_program(void) {
     get_uniform_locations_blit(BLIT_PROGRAM, &blit_program_layout.uniforms);
     get_uniform_locations_screenshot(SCREENSHOT_PROGRAM, &screenshot_program_layout.uniforms);
     get_uniform_locations_rounded_rect(ROUNDED_RECT_PROGRAM, &rounded_rect_program_layout.uniforms);
-    bind_program(BORDERS_PROGRAM);
     get_uniform_locations_border(BORDERS_PROGRAM, &border_program_layout.uniforms);
-    glUniform1fv(border_program_layout.uniforms.gamma_lut, arraysz(srgb_lut), srgb_lut);
+    glUniformBlockBinding(program_id(BORDERS_PROGRAM), border_program_layout.uniforms.Colors.index, BORDER_COLORS_BINDING_POINT);
+    glUniformBlockBinding(program_id(BORDERS_PROGRAM), border_program_layout.uniforms.GammaLUT.index, GAMMA_LUT_BINDING_POINT);
+
+    // The gamma LUT is a constant, shared amongst all the programs that use it via a single UBO.
+    if (shader_globals_vao_idx == -1) {
+        shader_globals_vao_idx = create_vao();
+        add_buffer_to_vao(shader_globals_vao_idx, GL_UNIFORM_BUFFER);
+        add_buffer_to_vao(shader_globals_vao_idx, GL_UNIFORM_BUFFER);
+        gamma_lut_buf_size = MAX(gamma_lut_buf_size, border_program_layout.uniforms.GammaLUT.size);
+        void *gamma_lut_buf = alloc_and_map_vao_buffer(shader_globals_vao_idx, gamma_lut_buf_size, GAMMA_LUT_GLOBAL_BUFFER, false);
+        const ArrayInformation *a = &cell_program_layouts[CELL_PROGRAM].uniforms.gamma_lut;
+        write_float_array_to_ubo(gamma_lut_buf, srgb_lut, arraysz(srgb_lut), a);
+        unmap_vao_buffer(shader_globals_vao_idx, GAMMA_LUT_GLOBAL_BUFFER);
+        // The border colors change on every draw, but are shared amongst all border VAOs (only one is ever drawn at a time)
+        alloc_vao_buffer(shader_globals_vao_idx, border_program_layout.uniforms.Colors.size, BORDER_COLORS_GLOBAL_BUFFER, GL_STREAM_DRAW);
+        bind_vao_uniform_buffer(shader_globals_vao_idx, GAMMA_LUT_GLOBAL_BUFFER, GAMMA_LUT_BINDING_POINT);
+        bind_vao_uniform_buffer(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, BORDER_COLORS_BINDING_POINT);
+    }
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer, color_table_buffer };
@@ -417,8 +444,9 @@ init_cell_program(void) {
 ssize_t
 create_cell_vao(void) {
     ssize_t vao_idx = create_vao();
+    const struct CellUniforms *u = &cell_program_layouts[CELL_PROGRAM].uniforms;
 #define A(name, size, dtype, offset, stride) \
-    add_attribute_to_vao(CELL_PROGRAM, vao_idx, #name, \
+    add_attribute_to_vao(vao_idx, u->name, \
             /*size=*/size, /*dtype=*/dtype, /*stride=*/stride, /*offset=*/offset, /*divisor=*/1);
 #define A1(name, size, dtype, offset) A(name, size, dtype, (void*)(offsetof(GPUCell, offset)), sizeof(GPUCell))
 
@@ -430,22 +458,14 @@ create_cell_vao(void) {
     A(is_selected, 1, GL_UNSIGNED_BYTE, NULL, 0);
 
     size_t bufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
-    alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].render_data.size, bufnum, GL_STREAM_DRAW);
+    alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].uniforms.CellRenderData.size, bufnum, GL_STREAM_DRAW);
 
     size_t ctbufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
-    alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].color_table.size, ctbufnum, GL_STATIC_DRAW);
+    alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].uniforms.ColorTable.size, ctbufnum, GL_STATIC_DRAW);
 
     return vao_idx;
 #undef A
 #undef A1
-}
-
-ssize_t
-create_graphics_vao(void) {
-    ssize_t vao_idx = create_vao();
-    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    add_attribute_to_vao(GRAPHICS_PROGRAM, vao_idx, "src", 4, GL_FLOAT, 0, NULL, 0);
-    return vao_idx;
 }
 
 #define IS_SPECIAL_COLOR(name) (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL || (screen->color_profile->overridden.name.type == COLOR_NOT_SET && screen->color_profile->configured.name.type == COLOR_IS_SPECIAL))
@@ -486,11 +506,13 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, i
     // Send the uniform data
     ColorProfile *cp = screen->paused_rendering.expires_at ? &screen->paused_rendering.color_profile : screen->color_profile;
     if (cp->dirty || screen->reload_all_gpu_data) {
-        GLuint *ct_buf = (GLuint*)map_vao_buffer_for_write_only(vao_idx, color_table_buf, 0, cell_program_layouts[CELL_PROGRAM].color_table.size);
-        copy_color_table_to_buffer(cp, ct_buf, 0, cell_program_layouts[CELL_PROGRAM].color_table_stride / sizeof(GLuint));
+        const ArrayInformation *ai = &cell_program_layouts[CELL_PROGRAM].uniforms.color_table;
+        uint8_t *base = (uint8_t*)map_vao_buffer_for_write_only(vao_idx, color_table_buf, 0, cell_program_layouts[CELL_PROGRAM].uniforms.ColorTable.size);
+        GLuint *ct_buf = (GLuint*)(base + ai->offset);
+        copy_color_table_to_buffer(cp, ct_buf, 0, ai->stride / sizeof(GLuint));
         unmap_vao_buffer(vao_idx, color_table_buf);
     }
-    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, cell_program_layouts[CELL_PROGRAM].render_data.size);
+    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, cell_program_layouts[CELL_PROGRAM].uniforms.CellRenderData.size);
 #define COLOR(name) colorprofile_to_color(cp, cp->overridden.name, cp->configured.name).rgb
     rd->default_fg = COLOR(default_fg);
     rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
@@ -1467,9 +1489,10 @@ create_border_vao(void) {
     ssize_t vao_idx = create_vao();
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    add_attribute_to_vao(BORDERS_PROGRAM, vao_idx, "rect",
+    const BorderUniforms *u = &border_program_layout.uniforms;
+    add_attribute_to_vao(vao_idx, u->rect,
             /*size=*/4, /*dtype=*/GL_FLOAT, /*stride=*/sizeof(BorderRect), /*offset=*/(void*)offsetof(BorderRect, left), /*divisor=*/1);
-    add_attribute_to_vao(BORDERS_PROGRAM, vao_idx, "rect_color",
+    add_attribute_to_vao(vao_idx, u->rect_color,
             /*size=*/1, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(BorderRect), /*offset=*/(void*)(offsetof(BorderRect, color)), /*divisor=*/1);
 
     return vao_idx;
@@ -1494,7 +1517,9 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         OPT(bell_border_color), OPT(tab_bar_background), OPT(tab_bar_margin_color),
         w->tab_bar_edge_color.left, w->tab_bar_edge_color.right
     };
-    glUniform1uiv(border_program_layout.uniforms.colors, arraysz(colors), colors);
+    void *colors_buf = map_vao_buffer_for_write_only(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, 0, border_program_layout.uniforms.Colors.size);
+    write_uint_array_to_ubo(colors_buf, colors, arraysz(colors), &border_program_layout.uniforms.colors);
+    unmap_vao_buffer(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER);
     glUniform1f(border_program_layout.uniforms.background_opacity, background_opacity);
     if (!w->needs_layers) glEnable(GL_FRAMEBUFFER_SRGB);
     draw_quad(has_background_image, num_border_rects);

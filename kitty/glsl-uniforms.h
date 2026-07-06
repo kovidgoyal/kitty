@@ -48,14 +48,15 @@ static inline void get_uniform_locations_border(int program, BorderUniforms *ans
     ans->rect_color = 1;
     ans->Colors.index = block_index(program, "block_Colors_0");
     ans->Colors.size = block_size(program, ans->Colors.index);
-    ans->colors = get_uniform_array_information(program, "block_Colors_0.colors_0[0]");
+    ans->colors = get_uniform_array_information(program, "colors_0");
     ans->GammaLUT.index = block_index(program, "block_GammaLUT_0");
     ans->GammaLUT.size = block_size(program, ans->GammaLUT.index);
-    ans->gamma_lut = get_uniform_array_information(program, "block_GammaLUT_0.gamma_lut_0[0]");
+    ans->gamma_lut = get_uniform_array_information(program, "gamma_lut_0");
 }
 
 typedef struct CellUniforms {
     int draw_bg_bitfield;
+    int sprite_decorations_map;
     int sprites;
     int text_contrast;
     int text_gamma_adjustment;
@@ -73,6 +74,7 @@ typedef struct CellUniforms {
 
 static inline void get_uniform_locations_cell(int program, CellUniforms *ans) {
     ans->draw_bg_bitfield = get_uniform_location(program, "draw_bg_bitfield_0");
+    ans->sprite_decorations_map = get_uniform_location(program, "sprite_decorations_map_0");
     ans->sprites = get_uniform_location(program, "sprites_0");
     ans->text_contrast = get_uniform_location(program, "text_contrast_0");
     ans->text_gamma_adjustment = get_uniform_location(program, "text_gamma_adjustment_0");
@@ -83,10 +85,10 @@ static inline void get_uniform_locations_cell(int program, CellUniforms *ans) {
     ans->CellRenderData.size = block_size(program, ans->CellRenderData.index);
     ans->ColorTable.index = block_index(program, "block_ColorTable_0");
     ans->ColorTable.size = block_size(program, ans->ColorTable.index);
-    ans->color_table = get_uniform_array_information(program, "block_ColorTable_0.color_table_0[0]");
+    ans->color_table = get_uniform_array_information(program, "color_table_0");
     ans->GammaLUT.index = block_index(program, "block_GammaLUT_0");
     ans->GammaLUT.size = block_size(program, ans->GammaLUT.index);
-    ans->gamma_lut = get_uniform_array_information(program, "block_GammaLUT_0.gamma_lut_0[0]");
+    ans->gamma_lut = get_uniform_array_information(program, "gamma_lut_0");
 }
 
 typedef struct GraphicsUniforms {
