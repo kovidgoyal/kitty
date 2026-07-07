@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict, TypeVar, 
 if TYPE_CHECKING:
     from kitty.fast_data_types import SingleKey
 
-_T = TypeVar('_T')
-
 
 class SingleInstanceData(TypedDict):
     cmd: str
@@ -188,7 +186,7 @@ class RunOnce[T]:
         self._override = sentinel
 
 
-def run_once(f: Callable[[], _T]) -> 'RunOnce[_T]':
+def run_once[T](f: Callable[[], T]) -> RunOnce[T]:
     return RunOnce(f)
 
 
@@ -219,7 +217,7 @@ class ActionSpec(NamedTuple):
     doc: str
 
 
-def ac(group: ActionGroup, doc: str) -> Callable[[_T], _T]:
+def ac[_T](group: ActionGroup, doc: str) -> Callable[[_T], _T]:
     def w(f: _T) -> _T:
         setattr(f, 'action_spec', ActionSpec(group, doc))
         return f

@@ -25,7 +25,6 @@ from kitty.fast_data_types import (
 )
 from kitty.options.types import Options, defaults
 from kitty.options.utils import parse_font_spec
-from kitty.types import _T
 from kitty.typing_compat import CoreTextFont, FontConfigPattern
 from kitty.utils import log_error
 
@@ -53,7 +52,7 @@ def font_for_family(family: str) -> tuple[FontObject, bool, bool]:
     return font_for_family_fontconfig(family)
 
 
-def merge_ranges(
+def merge_ranges[_T](
     a: tuple[tuple[int, int], _T], b: tuple[tuple[int, int], _T], priority_map: dict[tuple[int, int], int]
 ) -> Generator[tuple[tuple[int, int], _T], None, None]:
     a_start, a_end = a[0]
@@ -119,7 +118,7 @@ def merge_ranges(
     yield from ranges
 
 
-def coalesce_symbol_maps(maps: dict[tuple[int, int], _T]) -> dict[tuple[int, int], _T]:
+def coalesce_symbol_maps[_T](maps: dict[tuple[int, int], _T]) -> dict[tuple[int, int], _T]:
     if not maps:
         return maps
     priority_map = {r: i for i, r in enumerate(maps.keys())}

@@ -14,10 +14,9 @@ from kitty.conf.types import Definition, MultiOption, Option, ParserFuncType, un
 from kitty.fast_data_types import NULL_COLOR_VALUE
 from kitty.options.utils import parse_options_for_map
 from kitty.simple_cli_definitions import serialize_as_go_string
-from kitty.types import _T
 
 
-def chunks(lst: list[_T], n: int) -> Iterator[list[_T]]:
+def chunks[_T](lst: list[_T], n: int) -> Iterator[list[_T]]:
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 

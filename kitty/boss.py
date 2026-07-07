@@ -152,7 +152,7 @@ from .session import (
 from .shaders import load_shader_programs
 from .simple_cli_definitions import grab_keyboard_docs
 from .tabs import SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
-from .types import _T, AsyncResponse, LayerShellConfig, SingleInstanceData, WindowSystemMouseEvent, ac
+from .types import AsyncResponse, LayerShellConfig, SingleInstanceData, WindowSystemMouseEvent, ac
 from .typing_compat import PopenType, TypedDict
 from .utils import (
     cleanup_ssh_control_masters,
@@ -3399,7 +3399,7 @@ class Boss:
         target_tab.make_active()
         return target_tab
 
-    def choose_entry(
+    def choose_entry[_T](
         self, title: str, entries: Iterable[tuple[_T | str | None, str]],
         callback: Callable[[_T | str | None], None],
         subtitle: str = '',
