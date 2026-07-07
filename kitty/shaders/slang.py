@@ -114,7 +114,7 @@ class Specialization(NamedTuple):
         return f'.{self.name}' if self.name else '.default-specialization'
 
 
-def cell_variant(opts: Options = defaults, only_fg: bool = False, only_bg: bool = False) -> dict[str, str]:
+def cell_variant(opts: Options = defaults, program: int = CELL_PROGRAM) -> dict[str, str]:
     text_fg_override_threshold: float = opts.text_fg_override_threshold[0]
     algo = '0'
     match opts.text_fg_override_threshold[1]:
@@ -126,17 +126,17 @@ def cell_variant(opts: Options = defaults, only_fg: bool = False, only_bg: bool 
             algo = '2'
     if not text_fg_override_threshold:
         algo = '0'
+    render_mode = (CELL_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM).index(program)
     return {
         'FG_OVERRIDE_ALGO': algo,
         'TEXT_NEW_GAMMA': 'false' if opts.text_composition_strategy == 'legacy' else 'true',
-        'ONLY_FOREGROUND': 'true' if only_fg else 'false',
-        'ONLY_BACKGROUND': 'true' if only_bg else 'false',
+        'RENDER_MODE': str(render_mode),
     }
 
 
 @lru_cache(maxsize=2)
 def cell_variations() -> tuple[MappingProxyType[str, str], ...]:
-    variations = {'FG_OVERRIDE_ALGO': ('0', '1', '2')}
+    variations = {'FG_OVERRIDE_ALGO': ('0', '1', '2'), 'RENDER_MODE': ('0', '1', '2')}
     bool_variations = 'false', 'true'
     variants_dict = {k: variations.get(k, bool_variations) for k in cell_variant()}
     return tuple(MappingProxyType(dict(zip(variants_dict.keys(), comb))) for comb in product(*variants_dict.values()))
@@ -191,12 +191,11 @@ class LoadShaderPrograms:
         opts = self.get_options()
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
         self.text_fg_override_threshold = opts.text_fg_override_threshold
-        for prog, (only_fg, only_bg) in {
-            CELL_PROGRAM: (False, False), CELL_FG_PROGRAM: (True, False), CELL_BG_PROGRAM: (False, True),
-        }.items():
-            v = cell_variant(opts, only_fg=only_fg, only_bg=only_bg)
+        def cell(prog: int) -> None:
+            v = cell_variant(opts, program=prog)
             vert, frag = glsl_shaders('cell', variant_name(v, default_cell_variant))
             compile_program(prog, (vert,), (frag,), allow_recompile)
+        cell(CELL_PROGRAM), cell(CELL_BG_PROGRAM), cell(CELL_FG_PROGRAM)
         for prog, vname in {
             GRAPHICS_PROGRAM: '', GRAPHICS_ALPHA_MASK_PROGRAM: 'alpha_mask',
             GRAPHICS_PREMULT_PROGRAM: 'premult',
