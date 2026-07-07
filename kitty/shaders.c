@@ -1857,6 +1857,16 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+void
+initialize_gpu(void) {
+    gl_init();
+}
+
+void
+free_vao(ssize_t vao_idx) {
+    remove_vao(vao_idx);
+}
+
 static void
 finalize(void) {
     default_visual_bell_animation = free_animation(default_visual_bell_animation);
