@@ -870,27 +870,10 @@ HANDLER(handle_button_event) {
     Tab *t = osw->tabs + osw->active_tab;
     bool is_release = !osw->mouse_button_pressed[button];
 
-    if (button == GLFW_MOUSE_BUTTON_LEFT && osw->suppress_left_mouse_release) {
-        osw->suppress_left_mouse_release = false;
-        if (is_release) {
-            zero_at_ptr(&w->drag_source.initial_left_press);
-            return;
-        }
-    }
-
     if (handle_scrollbar_mouse(w, button, is_release ? RELEASE : PRESS, modifiers)) return;
 
-    bool suppress_child_forwarding = false;
     if (osw->is_focused && window_idx != t->active_window && !is_release) {
         call_boss(switch_focus_to_in_active_tab, "K", t->windows[window_idx].id);
-        if (button == GLFW_MOUSE_BUTTON_LEFT) {
-            // Treat split-focus transfer clicks as focus-only for child processes:
-            // suppress forwarding the left press and matching release to the child
-            // to avoid release-without-press reports. Still allow kitty to process
-            // the event internally (e.g., start text selection via click-and-drag).
-            osw->suppress_left_mouse_release = true;
-            suppress_child_forwarding = true;
-        }
     }
 
     Screen *screen = w->render_data.screen;
@@ -909,7 +892,7 @@ HANDLER(handle_button_event) {
     }
     id_type wid = w->id;
     if (!dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, screen->modes.mouse_tracking_mode != 0)) {
-        if (!suppress_child_forwarding && screen->modes.mouse_tracking_mode != 0) {
+        if (screen->modes.mouse_tracking_mode != 0) {
             int sz = encode_mouse_button(w, button, is_release ? RELEASE : PRESS, modifiers);
             if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, ESC_CSI, mouse_event_buf); }
         }
@@ -1316,10 +1299,6 @@ mouse_event(const int button, int modifiers, int action) {
             w = window_for_id(global_state.active_drag_in_window);
             if (w) {
                 end_drag(w);
-                // Clear any stale suppress flag that was set during a focus-transfer
-                // press, since the drag release bypasses handle_button_event where
-                // it would normally be cleared.
-                if (osw) osw->suppress_left_mouse_release = false;
                 debug("handled as drag end\n");
                 dispatch_possible_click(w, button, modifiers);
                 return;
