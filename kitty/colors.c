@@ -9,8 +9,8 @@
 #include <structmember.h>
 #include "colors.h"
 #include "color-names.h"
-#ifdef __APPLE__
-// Needed for strod_l
+#if defined(__APPLE__) || defined(__FreeBSD__)
+// Needed for strtod_l
 #include <xlocale.h>
 #endif
 
