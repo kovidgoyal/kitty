@@ -39,7 +39,7 @@ func TestPrefixFreeHints(t *testing.T) {
 			skip := hints_to_skip(total_hints, l)
 			hints := make([]string, total_hints)
 			for i := range total_hints {
-				hints[i] = generate_prefix_free_hint(skip+1+i, alph)
+				hints[i] = encode_hint(skip+1+i, alph)
 			}
 			// Verify that no hint is a prefix of another hint
 			for i := range total_hints {
@@ -82,9 +82,9 @@ func TestPrefixFreeHints(t *testing.T) {
 	}
 	expectedCodes1 := []string{"ab", "aa", "c", "b"}
 	for i, m := range marks1 {
-		hint := generate_prefix_free_hint(m.Index, opts1.Alphabet)
+		hint := encode_hint(m.Index, opts1.Alphabet)
 		if hint != expectedCodes1[i] {
-			t.Errorf("Case 1 - Match %d: got hint %q, expected %q", i, hint, expectedCodes1[i])
+			t.Errorf("Case 1 - Match %d (Index %d): got hint %q, expected %q", i, m.Index, hint, expectedCodes1[i])
 		}
 	}
 
@@ -115,9 +115,43 @@ func TestPrefixFreeHints(t *testing.T) {
 	}
 	expectedCodes2 := []string{"aa", "ab", "ac", "ba"}
 	for i, m := range marks2 {
-		hint := generate_prefix_free_hint(m.Index, opts2.Alphabet)
+		hint := encode_hint(m.Index, opts2.Alphabet)
 		if hint != expectedCodes2[i] {
-			t.Errorf("Case 2 - Match %d: got hint %q, expected %q", i, hint, expectedCodes2[i])
+			t.Errorf("Case 2 - Match %d (Index %d): got hint %q, expected %q", i, m.Index, hint, expectedCodes2[i])
+		}
+	}
+}
+
+func TestEncodeDecodeHint(t *testing.T) {
+	// enchode_hint sample tests
+	tests := []struct {
+		num      int
+		alphabet string
+		expected string
+	}{
+		{0, "abc", "a"},
+		{1, "abc", "b"},
+		{2, "abc", "c"},
+		{3, "abc", "aa"},
+		{11, "abc", "cc"},
+		{12, "abc", "aaa"},
+	}
+	for _, tc := range tests {
+		actual := encode_hint(tc.num, tc.alphabet)
+		if actual != tc.expected {
+			t.Errorf("encode_hint(%d, %q) = %q, expected %q", tc.num, tc.alphabet, actual, tc.expected)
+		}
+	}
+
+	// decode_hint should reverse encode_hint (round-trip test)
+	for _, alph := range []string{"abc", "0123456789", DEFAULT_HINT_ALPHABET} {
+		char_to_index := rune_to_index_map(alph)
+		for num := range 200 {
+			hint := encode_hint(num, alph)
+			decoded := decode_hint(hint, char_to_index)
+			if decoded != num {
+				t.Errorf("decode_hint(encode_hint(%d, %q)) = %d, expected %d", num, alph, decoded, num)
+			}
 		}
 	}
 }
