@@ -14,8 +14,10 @@ import linear2srgb;
 
 extern static const uint FG_OVERRIDE_ALGO;
 extern static const bool TEXT_NEW_GAMMA;
-extern static const bool ONLY_FOREGROUND;
-extern static const bool ONLY_BACKGROUND;
+extern static const uint RENDER_MODE;
+
+static const bool ONLY_FOREGROUND = RENDER_MODE == 2;
+static const bool ONLY_BACKGROUND = RENDER_MODE == 1;
 
 // Inputs {{{
 struct CellRenderData
