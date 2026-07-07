@@ -337,6 +337,110 @@ block_size(int program, GLuint block_index) {
     return ans;
 }
 
+// Program metadata (uniform/attribute locations and UBO/array info, looked up by name) {{{
+#define NAME program_metadata_map
+#define KEY_TY const char*
+#define VAL_TY ProgramMetadataEntry
+#include "kitty-verstable.h"
+
+static program_metadata_map program_layouts[arraysz(programs)];
+static bool program_layouts_initialized[arraysz(programs)] = {0};
+
+static void
+clear_program_layout(int program) {
+    if (!program_layouts_initialized[program]) return;
+    program_metadata_map *m = program_layouts + program;
+    vt_create_for_loop(program_metadata_map_itr, itr, m) free((void*)itr.data->key);
+    vt_cleanup(m);
+    program_layouts_initialized[program] = false;
+}
+
+void
+free_program_layouts(void) {
+    for (size_t i = 0; i < arraysz(program_layouts); i++) clear_program_layout((int)i);
+}
+
+static void
+insert_program_metadata(int program, const char *name, ProgramMetadataEntry entry) {
+    program_metadata_map_itr itr = vt_insert(program_layouts + program, strdup(name), entry);
+    if (vt_is_end(itr)) fatal("Out of memory adding program metadata entry: %s", name);
+}
+
+static ProgramMetadataEntry*
+program_metadata_entry(int program, const char *name, ProgramMetadataKind expected) {
+    program_metadata_map_itr itr = vt_get(program_layouts + program, name);
+    if (vt_is_end(itr)) fatal("No metadata entry named: %s for program: %d", name, program);
+    if (itr.data->val.kind != expected) fatal("The metadata entry named: %s for program: %d is not of the expected kind", name, program);
+    return &itr.data->val;
+}
+
+void
+set_program_layout(int program, PyObject *metadata) {
+    clear_program_layout(program);
+    vt_init(program_layouts + program);
+    program_layouts_initialized[program] = true;
+
+    PyObject *key, *val; Py_ssize_t pos;
+
+    PyObject *loose_uniforms = PyDict_GetItemString(metadata, "loose_uniforms");
+    pos = 0;
+    while (PyDict_Next(loose_uniforms, &pos, &key, &val)) {
+        const char *actual_name = PyUnicode_AsUTF8(val);
+        ProgramMetadataEntry e = {.kind=PROGRAM_UNIFORM, .location=get_uniform_location(program, actual_name)};
+        insert_program_metadata(program, PyUnicode_AsUTF8(key), e);
+    }
+
+    PyObject *input_locations = PyDict_GetItemString(metadata, "input_locations");
+    pos = 0;
+    while (PyDict_Next(input_locations, &pos, &key, &val)) {
+        ProgramMetadataEntry e = {.kind=PROGRAM_ATTRIBUTE, .location=(GLint)PyLong_AsLong(val)};
+        insert_program_metadata(program, PyUnicode_AsUTF8(key), e);
+    }
+
+    PyObject *uniform_structs = PyDict_GetItemString(metadata, "uniform_structs");
+    PyObject *uniform_struct_names = PyDict_GetItemString(metadata, "uniform_struct_names");
+    pos = 0;
+    while (PyDict_Next(uniform_structs, &pos, &key, &val)) {
+        const char *glsl_block_name = PyUnicode_AsUTF8(PyDict_GetItem(uniform_struct_names, key));
+        GLuint index = block_index(program, glsl_block_name);
+        ProgramMetadataEntry be = {.kind=PROGRAM_BLOCK, .block={.size=block_size(program, index), .index=(GLint)index}};
+        insert_program_metadata(program, PyUnicode_AsUTF8(key), be);
+
+        PyObject *mkey, *mval; Py_ssize_t mpos = 0;
+        while (PyDict_Next(val, &mpos, &mkey, &mval)) {
+            const char *decl = PyUnicode_AsUTF8(mval);
+            const char *bracket = strchr(decl, '[');
+            if (!bracket) continue;  // scalar block members are hand-mirrored in C structs, not queried here
+            char actual_name[256];
+            size_t n = MIN(sizeof(actual_name) - 1, (size_t)(bracket - decl));
+            memcpy(actual_name, decl, n); actual_name[n] = 0;
+            ProgramMetadataEntry ae = {.kind=PROGRAM_ARRAY, .array=get_uniform_array_information(program, actual_name)};
+            insert_program_metadata(program, PyUnicode_AsUTF8(mkey), ae);
+        }
+    }
+}
+
+GLint
+program_uniform_location(int program, const char *name) {
+    return program_metadata_entry(program, name, PROGRAM_UNIFORM)->location;
+}
+
+GLint
+program_attribute_location(int program, const char *name) {
+    return program_metadata_entry(program, name, PROGRAM_ATTRIBUTE)->location;
+}
+
+UniformBlock
+program_uniform_block(int program, const char *name) {
+    return program_metadata_entry(program, name, PROGRAM_BLOCK)->block;
+}
+
+ArrayInformation
+program_uniform_array(int program, const char *name) {
+    return program_metadata_entry(program, name, PROGRAM_ARRAY)->array;
+}
+// }}}
+
 void
 bind_program(int program) {
     glUseProgram(programs[program].id);
