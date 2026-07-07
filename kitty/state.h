@@ -554,8 +554,8 @@ sprite_index_to_pos(unsigned idx, unsigned xnum, unsigned ynum, unsigned *x, uns
 }
 
 
-void gl_init(void);
-void remove_vao(ssize_t vao_idx);
+void initialize_gpu(void);
+void free_vao(ssize_t vao_idx);
 bool remove_os_window(id_type os_window_id);
 void* make_os_window_context_current(OSWindow *w);
 void set_os_window_size(OSWindow *os_window, int x, int y);

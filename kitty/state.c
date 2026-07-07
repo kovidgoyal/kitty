@@ -312,9 +312,9 @@ create_gpu_resources_for_window(Window *w) {
 
 static void
 release_gpu_resources_for_window(Window *w) {
-    if (w->render_data.vao_idx > -1) remove_vao(w->render_data.vao_idx);
+    if (w->render_data.vao_idx > -1) free_vao(w->render_data.vao_idx);
     w->render_data.vao_idx = -1;
-    if (w->window_title_render_data.vao_idx > -1) remove_vao(w->window_title_render_data.vao_idx);
+    if (w->window_title_render_data.vao_idx > -1) free_vao(w->window_title_render_data.vao_idx);
     w->window_title_render_data.vao_idx = -1;
     Py_CLEAR(w->window_title_render_data.screen);
 }
@@ -511,7 +511,7 @@ attach_window(id_type os_window_id, id_type tab_id, id_type id) {
 static void
 destroy_tab(Tab *tab) {
     for (size_t i = tab->num_windows; i > 0; i--) remove_window_inner(tab, tab->windows[i - 1].id);
-    remove_vao(tab->border_rects.vao_idx);
+    free_vao(tab->border_rects.vao_idx);
     free(tab->border_rects.rect_buf); tab->border_rects.rect_buf = NULL;
     free(tab->windows); tab->windows = NULL;
 }
@@ -545,7 +545,7 @@ destroy_os_window_item(OSWindow *w) {
         remove_tab_inner(w, tab->id);
     }
     Py_CLEAR(w->window_title); Py_CLEAR(w->tab_bar_render_data.screen);
-    remove_vao(w->tab_bar_render_data.vao_idx);
+    free_vao(w->tab_bar_render_data.vao_idx);
     free(w->tabs); w->tabs = NULL;
     free_bgimage(&w->background_image.override, true);
     zero_at_ptr(&w->background_image);
