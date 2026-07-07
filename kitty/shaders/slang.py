@@ -279,7 +279,7 @@ class SlangFile(NamedTuple):
             case 'graphics.slang':
                 yield s()
                 yield s('alpha_mask', is_alpha_mask='true')
-                yield s('premult', texture_is_not_premultiplied='true')
+                yield s('premult', texture_is_not_premultiplied='false')
             case 'cell.slang':
                 d = cell_variant()
                 seen = set()
