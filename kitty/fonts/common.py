@@ -59,7 +59,7 @@ else:
             set_axis_values,
             set_named_style,
         )
-    def face_from_descriptor(descriptor, font_sz_in_pts = None, dpi_x = None, dpi_y = None):
+    def face_from_descriptor(descriptor: Descriptor, font_sz_in_pts: float | None = None, dpi_x: float | None = None, dpi_y: float | None = None) -> Face:
         if font_sz_in_pts is not None:
             descriptor = specialize_font_descriptor(descriptor, font_sz_in_pts, dpi_x, dpi_y)
         return Face(descriptor=descriptor)

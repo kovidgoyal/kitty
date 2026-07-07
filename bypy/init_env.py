@@ -60,7 +60,7 @@ def build_frozen_launcher(extra_include_dirs):
     return build_frozen_launcher.writeable_src_dir
 
 
-def run_tests(kitty_exe):
+def run_tests(kitty_exe) -> None:
     with tempfile.TemporaryDirectory() as tdir:
         uenv = {
             'KITTY_CONFIG_DIRECTORY': os.path.join(tdir, 'conf'),
@@ -78,7 +78,7 @@ def run_tests(kitty_exe):
             raise SystemExit('Checking of kitty build failed')
 
 
-def build_frozen_tools(kitty_exe):
+def build_frozen_tools(kitty_exe) -> None:
     cmd = SETUP_CMD + ['--prefix', os.path.dirname(kitty_exe)] + ['build-frozen-tools']
     if run(*cmd, cwd=build_frozen_launcher.writeable_src_dir) != 0:
         print('Building of frozen kitten failed', file=sys.stderr)

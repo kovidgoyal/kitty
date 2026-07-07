@@ -40,7 +40,7 @@ def binary_includes():
 
 class Env:
 
-    def __init__(self, package_dir):
+    def __init__(self, package_dir) -> None:
         self.base = package_dir
         self.lib_dir = j(self.base, 'lib')
         self.py_dir = j(self.lib_dir, f'python{py_ver}')
@@ -65,7 +65,7 @@ def ignore_in_lib(base, items, ignored_dirs=None):
     return ans
 
 
-def import_site_packages(srcdir, dest):
+def import_site_packages(srcdir, dest) -> None:
     if not os.path.exists(dest):
         os.mkdir(dest)
     for x in os.listdir(srcdir):
@@ -82,7 +82,7 @@ def import_site_packages(srcdir, dest):
             shutil.copytree(f, j(dest, x), ignore=ignore_in_lib)
 
 
-def copy_libs(env):
+def copy_libs(env) -> None:
     print('Copying libs...')
 
     for x in binary_includes():
@@ -92,7 +92,7 @@ def copy_libs(env):
         subprocess.check_call(['chrpath', '-d', dest])
 
 
-def add_ca_certs(env):
+def add_ca_certs(env) -> None:
     print('Downloading CA certs...')
     from urllib.request import urlopen
     cdata = urlopen(kitty_constants['cacerts_url']).read()
@@ -101,7 +101,7 @@ def add_ca_certs(env):
         f.write(cdata)
 
 
-def copy_python(env):
+def copy_python(env) -> None:
     print('Copying python...')
     srcdir = j(PREFIX, f'lib/python{py_ver}')
 
@@ -138,7 +138,7 @@ def copy_python(env):
     shutil.rmtree(env.py_dir)
 
 
-def build_launcher(env):
+def build_launcher(env) -> None:
     iv['build_frozen_launcher']([path_to_freeze_dir(), env.obj_dir])
 
 
@@ -147,7 +147,7 @@ def is_elf(path):
         return f.read(4) == b'\x7fELF'
 
 
-def fix_permissions(files):
+def fix_permissions(files) -> None:
     for path in files:
         os.chmod(path, 0o755)
 
@@ -166,7 +166,7 @@ def find_binaries(env):
     return files
 
 
-def strip_files(files, argv_max=(256 * 1024)):
+def strip_files(files, argv_max=(256 * 1024)) -> None:
     """ Strip a list of files """
     while files:
         cmd = list(STRIPCMD)
@@ -183,7 +183,7 @@ def strip_files(files, argv_max=(256 * 1024)):
             [os.chmod(x, old_mode) for x, old_mode in unwritable_files]
 
 
-def strip_binaries(files):
+def strip_binaries(files) -> None:
     print(f'Stripping {len(files)} files...')
     before = sum(os.path.getsize(x) for x in files)
     strip_files(files)
@@ -191,7 +191,7 @@ def strip_binaries(files):
     print('Stripped {:.1f} MB'.format((before - after) / (1024 * 1024.)))
 
 
-def create_tarfile(env, compression_level='9'):
+def create_tarfile(env, compression_level='9') -> None:
     print('Creating archive...')
     base = OUTPUT_DIR
     arch = 'arm64' if 'arm64' in os.environ['BYPY_ARCH'] else ('i686' if 'i386' in os.environ['BYPY_ARCH'] else 'x86_64')
@@ -222,7 +222,7 @@ def create_tarfile(env, compression_level='9'):
         os.path.basename(ans), os.stat(ans).st_size / (1024.**2)))
 
 
-def main():
+def main() -> None:
     args = globals()['args']
     ext_dir = globals()['ext_dir']
     env = Env(os.path.join(ext_dir, kitty_constants['appname']))

@@ -25,10 +25,21 @@ line-length = 160
 
 [tool.ruff.lint]
 select = ['E', 'F', 'I', 'RUF100']
+# Select the flake8-annotations ruleset for marking untyped function
+extend-select = ["ANN"]
+ignore = ["ANN401"]  # allow typing.Any
+
+[tool.ruff.lint.flake8-annotations]
+# Allow omitting '-> None' on __init__ if arguments are typed
+mypy-init-return = true
 
 [tool.ruff.lint.per-file-ignores]
 "kitty/options/types.py" = ["E501"]
 "kitty/options/parse.py" = ["E501"]
+"shell-integration/ssh/bootstrap.py" = ["ANN"]
+"kitty_tests/*.py" = ["ANN"]
+"bypy/*" = ["ANN"]
+"3rdparty/*" = ["ANN"]
 
 [tool.ruff.lint.isort]
 detect-same-package = true

@@ -4,7 +4,7 @@
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from enum import Enum
 from functools import update_wrapper
-from typing import TYPE_CHECKING, Any, Generic, Literal, NamedTuple, TypedDict, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict, TypeVar, Union, cast
 
 if TYPE_CHECKING:
     from kitty.fast_data_types import SingleKey
@@ -151,43 +151,41 @@ class WindowSystemMouseEvent(NamedTuple):
 
 
 ConvertibleToNumbers = Union[str, bytes, int, float]
+class sentinel_type:
+    pass
+sentinel = sentinel_type()
 
 
 class AsyncResponse:
     pass
 
 
-if TYPE_CHECKING:
-    class RunOnce(Generic[_T]):
+class RunOnce[T]:
 
-        def __init__(self, func: Callable[[], _T]): ...
-        def __call__(self) -> _T: ...
-        def set_override(self, val: _T) -> None: ...
-        def clear_override(self) -> None: ...
-        def clear_cached(self) -> None: ...
-else:
-    class RunOnce:
+    def __init__(self, f: Callable[[], T]) -> None:
+        self._override: T | sentinel_type = sentinel
+        self._cached_result: T | sentinel_type = sentinel
+        update_wrapper(self, f)
 
-        def __init__(self, f):
-            self._override = RunOnce
-            self._cached_result = RunOnce
-            update_wrapper(self, f)
-
-        def __call__(self):
-            if self._override is not RunOnce:
+    if TYPE_CHECKING:
+        def __call__(self) -> T:
+            return cast(T, 1)
+    else:
+        def __call__(self) -> T:
+            if self._override is not sentinel:
                 return self._override
-            if self._cached_result is RunOnce:
+            if self._cached_result is sentinel:
                 self._cached_result = self.__wrapped__()
             return self._cached_result
 
-        def clear_cached(self):
-            self._cached_result = RunOnce
+    def clear_cached(self) -> None:
+        self._cached_result = sentinel
 
-        def set_override(self, val):
-            self._override = val
+    def set_override(self, val: T) -> None:
+        self._override = val
 
-        def clear_override(self):
-            self._override = RunOnce
+    def clear_override(self) -> None:
+        self._override = sentinel
 
 
 def run_once(f: Callable[[], _T]) -> 'RunOnce[_T]':

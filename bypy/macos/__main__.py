@@ -56,7 +56,7 @@ def flipwritable(fn, mode=None):
 STRIPCMD = ('/usr/bin/strip', '-x', '-S', '-')
 
 
-def strip_files(files, argv_max=(256 * 1024)):
+def strip_files(files, argv_max=(256 * 1024)) -> None:
     """
     Strip a list of files
     """
@@ -120,7 +120,7 @@ def do_sign(app_dir: str) -> None:
     verify_signature(app_dir)
 
 
-def sign_app(app_dir, notarize):
+def sign_app(app_dir, notarize) -> None:
     # Copied from iTerm2: https://github.com/gnachman/iTerm2/blob/master/iTerm2.entitlements
     create_entitlements_file({
         'com.apple.security.automation.apple-events': True,
@@ -142,7 +142,7 @@ class Freeze(object):
 
     FID = '@executable_path/../Frameworks'
 
-    def __init__(self, build_dir, dont_strip=False, sign_installers=False, notarize=False, skip_tests=False):
+    def __init__(self, build_dir, dont_strip=False, sign_installers=False, notarize=False, skip_tests=False) -> None:
         self.build_dir = build_dir
         self.skip_tests = skip_tests
         self.sign_installers = sign_installers
@@ -160,7 +160,7 @@ class Freeze(object):
 
         self.run()
 
-    def run_shell(self):
+    def run_shell(self) -> None:
         with current_dir(self.contents_dir):
             run_shell()
 
@@ -185,7 +185,7 @@ class Freeze(object):
         return ret
 
     @flush
-    def complete_sub_bundles(self):
+    def complete_sub_bundles(self) -> None:
         count = 0
         for qapp in glob.glob(join(self.contents_dir, '*.app')):
             for exe in glob.glob(join(self.contents_dir, 'MacOS', '*')):
@@ -195,7 +195,7 @@ class Freeze(object):
             raise SystemExit(f'Could not complete sub-bundles in {self.contents_dir}')
 
     @flush
-    def add_ca_certs(self):
+    def add_ca_certs(self) -> None:
         print('\nDownloading CA certs...')
         from urllib.request import urlopen
         cdata = None
@@ -213,16 +213,16 @@ class Freeze(object):
             f.write(cdata)
 
     @flush
-    def strip_files(self):
+    def strip_files(self) -> None:
         print('\nStripping files...')
         strip_files(self.to_strip)
 
     @flush
-    def run_tests(self):
+    def run_tests(self) -> None:
         iv['run_tests'](join(self.contents_dir, 'MacOS', 'kitty'))
 
     @flush
-    def set_id(self, path_to_lib, new_id):
+    def set_id(self, path_to_lib, new_id) -> None:
         old_mode = flipwritable(path_to_lib)
         subprocess.check_call(
             ['install_name_tool', '-id', new_id, path_to_lib])
@@ -252,12 +252,12 @@ class Freeze(object):
                     break
 
     @flush
-    def change_dep(self, old_dep, new_dep, is_id, path_to_lib):
+    def change_dep(self, old_dep, new_dep, is_id, path_to_lib) -> None:
         cmd = ['-id', new_dep] if is_id else ['-change', old_dep, new_dep]
         subprocess.check_call(['install_name_tool'] + cmd + [path_to_lib])
 
     @flush
-    def fix_dependencies_in_lib(self, path_to_lib):
+    def fix_dependencies_in_lib(self, path_to_lib) -> None:
         self.to_strip.append(path_to_lib)
         old_mode = flipwritable(path_to_lib)
         for dep, bname, is_id in self.get_local_dependencies(path_to_lib):
@@ -272,7 +272,7 @@ class Freeze(object):
             flipwritable(path_to_lib, old_mode)
 
     @flush
-    def add_python_framework(self):
+    def add_python_framework(self) -> None:
         print('\nAdding Python framework')
         src = join(f'{PREFIX}/python', 'Python.framework')
         x = join(self.frameworks_dir, 'Python.framework')
@@ -292,7 +292,7 @@ class Freeze(object):
                 os.symlink(f'Versions/Current/{y}', y)
 
     @flush
-    def install_dylib(self, path, set_id=True):
+    def install_dylib(self, path, set_id=True) -> None:
         shutil.copy2(path, self.frameworks_dir)
         if set_id:
             self.set_id(
@@ -301,7 +301,7 @@ class Freeze(object):
         self.fix_dependencies_in_lib(join(self.frameworks_dir, basename(path)))
 
     @flush
-    def add_misc_libraries(self):
+    def add_misc_libraries(self) -> None:
         for x in (
                 'sqlite3.0',
                 'z.1',
@@ -321,7 +321,7 @@ class Freeze(object):
             self.fix_dependencies_in_lib(dest)
 
     @flush
-    def add_package_dir(self, x, dest=None):
+    def add_package_dir(self, x, dest=None) -> None:
         def ignore(root, files):
             ans = []
             for y in files:
@@ -341,7 +341,7 @@ class Freeze(object):
                 self.fix_dependencies_in_lib(f)
 
     @flush
-    def add_stdlib(self):
+    def add_stdlib(self) -> None:
         print('\nAdding python stdlib')
         src = f'{PREFIX}/python/Python.framework/Versions/Current/lib/python{self.py_ver}'
         dest = self.python_stdlib
@@ -362,7 +362,7 @@ class Freeze(object):
                     self.fix_dependencies_in_lib(dest2)
 
     @flush
-    def freeze_python(self):
+    def freeze_python(self) -> None:
         print('\nFreezing python')
         kitty_dir = join(self.resources_dir, 'kitty')
         bases = ('kitty', 'kittens', 'kitty_tests')
@@ -395,11 +395,11 @@ class Freeze(object):
                 self.fix_dependencies_in_lib(f)
 
     @flush
-    def build_frozen_tools(self):
+    def build_frozen_tools(self) -> None:
         iv['build_frozen_tools'](join(self.contents_dir, 'MacOS', 'kitty'))
 
     @flush
-    def add_site_packages(self):
+    def add_site_packages(self) -> None:
         print('\nAdding site-packages')
         os.makedirs(self.site_packages)
         sys_path = json.loads(subprocess.check_output([
@@ -426,14 +426,14 @@ class Freeze(object):
         self.remove_bytecode(self.site_packages)
 
     @flush
-    def add_modules_from_dir(self, src):
+    def add_modules_from_dir(self, src) -> None:
         for x in glob.glob(join(src, '*.py')) + glob.glob(join(src, '*.so')):
             shutil.copy2(x, self.site_packages)
             if x.endswith('.so'):
                 self.fix_dependencies_in_lib(x)
 
     @flush
-    def add_packages_from_dir(self, src):
+    def add_packages_from_dir(self, src) -> None:
         for x in os.listdir(src):
             x = join(src, x)
             if os.path.isdir(x) and os.path.exists(join(x, '__init__.py')):
@@ -447,7 +447,7 @@ class Freeze(object):
                         'bdist_mpkg', 'altgraph')
 
     @flush
-    def remove_bytecode(self, dest):
+    def remove_bytecode(self, dest) -> None:
         for x in os.walk(dest):
             root = x[0]
             for f in x[-1]:
@@ -455,7 +455,7 @@ class Freeze(object):
                     os.remove(join(root, f))
 
     @flush
-    def compile_py_modules(self):
+    def compile_py_modules(self) -> None:
         self.remove_bytecode(join(self.resources_dir, 'Python'))
         py_compile(join(self.resources_dir, 'Python'))
 
@@ -503,7 +503,7 @@ class Freeze(object):
         return dmg
 
 
-def main():
+def main() -> None:
     args = globals()['args']
     ext_dir = globals()['ext_dir']
     Freeze(

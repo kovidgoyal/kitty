@@ -285,7 +285,7 @@ class CrashReportBase:
         self._data = data
         self._parse()
 
-    def _parse(self):
+    def _parse(self) -> None:
         self._is_json = False
         try:
             modified_data = self._data
@@ -307,7 +307,7 @@ class CrashReportBase:
         return self._metadata['bug_type']
 
     @cached_property
-    def incident_id(self):
+    def incident_id(self) -> str:
         return self._metadata.get('incident_id')
 
     @cached_property
@@ -428,7 +428,7 @@ class UserModeCrashReport(CrashReportBase):
         return result
 
     @cached_property
-    def exception_type(self):
+    def exception_type(self) -> str:
         if self._is_json:
             return self._data['exception'].get('type')
         else:
