@@ -14,7 +14,6 @@
 #include "text-cache.h"
 #include "window_logo.h"
 #include "srgb_gamma.h"
-#include "glsl-uniforms.h"
 #include "state.h"
 
 enum {
@@ -296,11 +295,6 @@ send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei heigh
 // }}}
 
 // Rounded rect {{{
-typedef struct {
-    Rounded_rectUniforms uniforms;
-} RoundedRectProgramLayout;
-static RoundedRectProgramLayout rounded_rect_program_layout;
-
 static double
 thickness_as_float(const OSWindow *os_window, unsigned level) {
     level = MIN(level, arraysz(OPT(box_drawing_scale)));
@@ -318,12 +312,12 @@ draw_rounded_rect(
 ) {
     float thickness = (float)thickness_as_float(os_window, thickness_level);
     bind_program(ROUNDED_RECT_PROGRAM);
-    color_vec4(rounded_rect_program_layout.uniforms.color, srgb_color, 1.f);
-    color_vec4(rounded_rect_program_layout.uniforms.background_color, srgb_background, bg_alpha);
+    color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "color"), srgb_color, 1.f);
+    color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "background_color"), srgb_background, bg_alpha);
     // y co-ord has to be changed to co-ord system with origin at bottom left
     float y = (float)framebuffer_height - (float)(rect.top + rect.height);
-    glUniform4f(rounded_rect_program_layout.uniforms.rect, rect.left, y, rect.width, rect.height);
-    glUniform2f(rounded_rect_program_layout.uniforms.params, thickness, corner_radius_px);
+    glUniform4f(program_uniform_location(ROUNDED_RECT_PROGRAM, "rect"), rect.left, y, rect.width, rect.height);
+    glUniform2f(program_uniform_location(ROUNDED_RECT_PROGRAM, "params"), thickness, corner_radius_px);
     save_viewport_using_top_left_origin(rect.left, rect.top, rect.width, rect.height, framebuffer_height);
     draw_quad(true, 0);
     restore_viewport();
@@ -337,46 +331,6 @@ enum { GAMMA_LUT_GLOBAL_BUFFER, BORDER_COLORS_GLOBAL_BUFFER };
 // A VAO used only to hold buffers for UBOs that are shared amongst programs/windows,
 // its vertex attribute/array facilities are unused.
 static ssize_t shader_globals_vao_idx = -1;
-
-typedef struct {
-    CellUniforms uniforms;
-} CellProgramLayout;
-static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
-
-typedef struct {
-    GraphicsUniforms uniforms;
-} GraphicsProgramLayout;
-static GraphicsProgramLayout graphics_program_layouts[NUM_PROGRAMS];
-
-typedef struct {
-    BgimageUniforms uniforms;
-} BGImageProgramLayout;
-static BGImageProgramLayout bgimage_program_layout;
-
-typedef struct {
-    TintUniforms uniforms;
-} TintProgramLayout;
-static TintProgramLayout tint_program_layout;
-
-typedef struct {
-    TrailUniforms uniforms;
-} TrailProgramLayout;
-static TrailProgramLayout trail_program_layout;
-
-typedef struct {
-    BlitUniforms uniforms;
-} BlitProgramLayout;
-static BlitProgramLayout blit_program_layout;
-
-typedef struct {
-    ScreenshotUniforms uniforms;
-} ScreenshotProgramLayout;
-static ScreenshotProgramLayout screenshot_program_layout;
-
-typedef struct BorderProgramLayout {
-    BorderUniforms uniforms;
-} BorderProgramLayout;
-static BorderProgramLayout border_program_layout;
 
 static void
 write_float_array_to_ubo(void *dest, const GLfloat *src, size_t count, const ArrayInformation *ai) {
@@ -396,11 +350,13 @@ static void
 init_cell_program(void) {
     GLint gamma_lut_buf_size = 0;
     for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
-        get_uniform_locations_cell(i, &cell_program_layouts[i].uniforms);
-        glUniformBlockBinding(program_id(i), cell_program_layouts[i].uniforms.CellRenderData.index, CELL_RENDER_DATA_BINDING_POINT);
-        glUniformBlockBinding(program_id(i), cell_program_layouts[i].uniforms.ColorTable.index, COLOR_TABLE_BINDING_POINT);
-        glUniformBlockBinding(program_id(i), cell_program_layouts[i].uniforms.GammaLUT.index, GAMMA_LUT_BINDING_POINT);
-        gamma_lut_buf_size = MAX(gamma_lut_buf_size, cell_program_layouts[i].uniforms.GammaLUT.size);
+        UniformBlock crd = program_uniform_block(i, "CellRenderData");
+        glUniformBlockBinding(program_id(i), crd.index, CELL_RENDER_DATA_BINDING_POINT);
+        UniformBlock ct = program_uniform_block(i, "ColorTable");
+        glUniformBlockBinding(program_id(i), ct.index, COLOR_TABLE_BINDING_POINT);
+        UniformBlock glut = program_uniform_block(i, "GammaLUT");
+        glUniformBlockBinding(program_id(i), glut.index, GAMMA_LUT_BINDING_POINT);
+        gamma_lut_buf_size = MAX(gamma_lut_buf_size, glut.size);
     }
 
     // Sanity check to ensure the attribute location binding worked
@@ -409,31 +365,23 @@ init_cell_program(void) {
         C(p, colors, 0); C(p, sprite_idx, 1); C(p, is_selected, 2); C(p, decorations_sprite_map, 3);
     }
 #undef C
-    for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_ALPHA_MASK_PROGRAM; i++) {
-        get_uniform_locations_graphics(i, &graphics_program_layouts[i].uniforms);
-    }
-    get_uniform_locations_bgimage(BGIMAGE_PROGRAM, &bgimage_program_layout.uniforms);
-    get_uniform_locations_tint(TINT_PROGRAM, &tint_program_layout.uniforms);
-    get_uniform_locations_trail(TRAIL_PROGRAM, &trail_program_layout.uniforms);
-    get_uniform_locations_blit(BLIT_PROGRAM, &blit_program_layout.uniforms);
-    get_uniform_locations_screenshot(SCREENSHOT_PROGRAM, &screenshot_program_layout.uniforms);
-    get_uniform_locations_rounded_rect(ROUNDED_RECT_PROGRAM, &rounded_rect_program_layout.uniforms);
-    get_uniform_locations_border(BORDERS_PROGRAM, &border_program_layout.uniforms);
-    glUniformBlockBinding(program_id(BORDERS_PROGRAM), border_program_layout.uniforms.Colors.index, BORDER_COLORS_BINDING_POINT);
-    glUniformBlockBinding(program_id(BORDERS_PROGRAM), border_program_layout.uniforms.GammaLUT.index, GAMMA_LUT_BINDING_POINT);
+    UniformBlock border_colors = program_uniform_block(BORDERS_PROGRAM, "Colors");
+    glUniformBlockBinding(program_id(BORDERS_PROGRAM), border_colors.index, BORDER_COLORS_BINDING_POINT);
+    UniformBlock border_glut = program_uniform_block(BORDERS_PROGRAM, "GammaLUT");
+    glUniformBlockBinding(program_id(BORDERS_PROGRAM), border_glut.index, GAMMA_LUT_BINDING_POINT);
 
     // The gamma LUT is a constant, shared amongst all the programs that use it via a single UBO.
     if (shader_globals_vao_idx == -1) {
         shader_globals_vao_idx = create_vao();
         add_buffer_to_vao(shader_globals_vao_idx, GL_UNIFORM_BUFFER);
         add_buffer_to_vao(shader_globals_vao_idx, GL_UNIFORM_BUFFER);
-        gamma_lut_buf_size = MAX(gamma_lut_buf_size, border_program_layout.uniforms.GammaLUT.size);
+        gamma_lut_buf_size = MAX(gamma_lut_buf_size, border_glut.size);
         void *gamma_lut_buf = alloc_and_map_vao_buffer(shader_globals_vao_idx, gamma_lut_buf_size, GAMMA_LUT_GLOBAL_BUFFER, false);
-        const ArrayInformation *a = &cell_program_layouts[CELL_PROGRAM].uniforms.gamma_lut;
-        write_float_array_to_ubo(gamma_lut_buf, srgb_lut, arraysz(srgb_lut), a);
+        const ArrayInformation a = program_uniform_array(CELL_PROGRAM, "gamma_lut");
+        write_float_array_to_ubo(gamma_lut_buf, srgb_lut, arraysz(srgb_lut), &a);
         unmap_vao_buffer(shader_globals_vao_idx, GAMMA_LUT_GLOBAL_BUFFER);
         // The border colors change on every draw, but are shared amongst all border VAOs (only one is ever drawn at a time)
-        alloc_vao_buffer(shader_globals_vao_idx, border_program_layout.uniforms.Colors.size, BORDER_COLORS_GLOBAL_BUFFER, GL_STREAM_DRAW);
+        alloc_vao_buffer(shader_globals_vao_idx, border_colors.size, BORDER_COLORS_GLOBAL_BUFFER, GL_STREAM_DRAW);
         bind_vao_uniform_buffer(shader_globals_vao_idx, GAMMA_LUT_GLOBAL_BUFFER, GAMMA_LUT_BINDING_POINT);
         bind_vao_uniform_buffer(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, BORDER_COLORS_BINDING_POINT);
     }
@@ -444,24 +392,23 @@ init_cell_program(void) {
 ssize_t
 create_cell_vao(void) {
     ssize_t vao_idx = create_vao();
-    const struct CellUniforms *u = &cell_program_layouts[CELL_PROGRAM].uniforms;
 #define A(name, size, dtype, offset, stride) \
-    add_attribute_to_vao(vao_idx, u->name, \
+    add_attribute_to_vao(vao_idx, program_attribute_location(CELL_PROGRAM, name), \
             /*size=*/size, /*dtype=*/dtype, /*stride=*/stride, /*offset=*/offset, /*divisor=*/1);
 #define A1(name, size, dtype, offset) A(name, size, dtype, (void*)(offsetof(GPUCell, offset)), sizeof(GPUCell))
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    A1(sprite_idx, 2, GL_UNSIGNED_INT, sprite_idx);
-    A1(colors, 3, GL_UNSIGNED_INT, fg);
+    A1("sprite_idx", 2, GL_UNSIGNED_INT, sprite_idx);
+    A1("colors", 3, GL_UNSIGNED_INT, fg);
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    A(is_selected, 1, GL_UNSIGNED_BYTE, NULL, 0);
+    A("is_selected", 1, GL_UNSIGNED_BYTE, NULL, 0);
 
     size_t bufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
-    alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].uniforms.CellRenderData.size, bufnum, GL_STREAM_DRAW);
+    alloc_vao_buffer(vao_idx, program_uniform_block(CELL_PROGRAM, "CellRenderData").size, bufnum, GL_STREAM_DRAW);
 
     size_t ctbufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
-    alloc_vao_buffer(vao_idx, cell_program_layouts[CELL_PROGRAM].uniforms.ColorTable.size, ctbufnum, GL_STATIC_DRAW);
+    alloc_vao_buffer(vao_idx, program_uniform_block(CELL_PROGRAM, "ColorTable").size, ctbufnum, GL_STATIC_DRAW);
 
     return vao_idx;
 #undef A
@@ -506,13 +453,13 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, i
     // Send the uniform data
     ColorProfile *cp = screen->paused_rendering.expires_at ? &screen->paused_rendering.color_profile : screen->color_profile;
     if (cp->dirty || screen->reload_all_gpu_data) {
-        const ArrayInformation *ai = &cell_program_layouts[CELL_PROGRAM].uniforms.color_table;
-        uint8_t *base = (uint8_t*)map_vao_buffer_for_write_only(vao_idx, color_table_buf, 0, cell_program_layouts[CELL_PROGRAM].uniforms.ColorTable.size);
-        GLuint *ct_buf = (GLuint*)(base + ai->offset);
-        copy_color_table_to_buffer(cp, ct_buf, 0, ai->stride / sizeof(GLuint));
+        const ArrayInformation ai = program_uniform_array(CELL_PROGRAM, "color_table");
+        uint8_t *base = (uint8_t*)map_vao_buffer_for_write_only(vao_idx, color_table_buf, 0, program_uniform_block(CELL_PROGRAM, "ColorTable").size);
+        GLuint *ct_buf = (GLuint*)(base + ai.offset);
+        copy_color_table_to_buffer(cp, ct_buf, 0, ai.stride / sizeof(GLuint));
         unmap_vao_buffer(vao_idx, color_table_buf);
     }
-    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, cell_program_layouts[CELL_PROGRAM].uniforms.CellRenderData.size);
+    struct GPUCellRenderData *rd = (struct GPUCellRenderData*)map_vao_buffer_for_write_only(vao_idx, uniform_buffer, 0, program_uniform_block(CELL_PROGRAM, "CellRenderData").size);
 #define COLOR(name) colorprofile_to_color(cp, cp->overridden.name, cp->configured.name).rgb
     rd->default_fg = COLOR(default_fg);
     rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
@@ -682,17 +629,18 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
 static void
 draw_graphics(int program, ImageRenderData *data, GLuint start, GLuint count, float extra_alpha) {
     bind_program(program);
-    if (program != GRAPHICS_ALPHA_MASK_PROGRAM) glUniform1f(graphics_program_layouts[program].uniforms.extra_alpha, extra_alpha);
+    if (program != GRAPHICS_ALPHA_MASK_PROGRAM) glUniform1f(program_uniform_location(program, "extra_alpha"), extra_alpha);
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-    GraphicsUniforms *u = &graphics_program_layouts[program].uniforms;
+    GLint src_rect_loc = program_uniform_location(program, "src_rect");
+    GLint dest_rect_loc = program_uniform_location(program, "dest_rect");
     for (GLuint i=0; i < count;) {
         ImageRenderData *group = data + start + i;
         glBindTexture(GL_TEXTURE_2D, group->texture_id);
         if (group->group_count == 0) { i++; continue; }
         for (GLuint k=0; k < group->group_count; k++, i++) {
             ImageRenderData *rd = data + start + i;
-            glUniform4f(u->src_rect, rd->src_rect.left, rd->src_rect.top, rd->src_rect.right, rd->src_rect.bottom);
-            glUniform4f(u->dest_rect, rd->dest_rect.left, rd->dest_rect.top, rd->dest_rect.right, rd->dest_rect.bottom);
+            glUniform4f(src_rect_loc, rd->src_rect.left, rd->src_rect.top, rd->src_rect.right, rd->src_rect.bottom);
+            glUniform4f(dest_rect_loc, rd->dest_rect.left, rd->dest_rect.top, rd->dest_rect.right, rd->dest_rect.bottom);
             draw_quad(true, 0);
         }
     }
@@ -754,17 +702,17 @@ set_cell_uniforms(bool force) {
         float text_contrast = 1.0f + OPT(text_contrast) * 0.01f;
         float text_gamma_adjustment = OPT(text_gamma_adjustment) < 0.01f ? 1.0f : 1.0f / OPT(text_gamma_adjustment);
         for (int i = GRAPHICS_PROGRAM; i <= GRAPHICS_ALPHA_MASK_PROGRAM; i++) {
-            bind_program(i); glUniform1i(graphics_program_layouts[i].uniforms.image, GRAPHICS_UNIT);
+            bind_program(i); glUniform1i(program_uniform_location(i, "image"), GRAPHICS_UNIT);
         }
         for (int i = CELL_PROGRAM; i < CELL_PROGRAM_SENTINEL; i++) {
-            bind_program(i); const CellUniforms *cu = &cell_program_layouts[i].uniforms;
-            glUniform1i(cu->sprites, SPRITE_MAP_UNIT);
-            glUniform1i(cu->sprite_decorations_map, SPRITE_DECORATIONS_MAP_UNIT);
-            glUniform1f(cu->text_contrast, text_contrast);
-            glUniform1f(cu->text_gamma_adjustment, text_gamma_adjustment);
+            bind_program(i);
+            glUniform1i(program_uniform_location(i, "sprites"), SPRITE_MAP_UNIT);
+            glUniform1i(program_uniform_location(i, "sprite_decorations_map"), SPRITE_DECORATIONS_MAP_UNIT);
+            glUniform1f(program_uniform_location(i, "text_contrast"), text_contrast);
+            glUniform1f(program_uniform_location(i, "text_gamma_adjustment"), text_gamma_adjustment);
         }
-        bind_program(BLIT_PROGRAM); glUniform1i(blit_program_layout.uniforms.image, GRAPHICS_UNIT);
-        bind_program(SCREENSHOT_PROGRAM); glUniform1i(screenshot_program_layout.uniforms.image, GRAPHICS_UNIT);
+        bind_program(BLIT_PROGRAM); glUniform1i(program_uniform_location(BLIT_PROGRAM, "image"), GRAPHICS_UNIT);
+        bind_program(SCREENSHOT_PROGRAM); glUniform1i(program_uniform_location(SCREENSHOT_PROGRAM, "image"), GRAPHICS_UNIT);
         constants_set = true;
     }
 }
@@ -803,9 +751,9 @@ draw_visual_bell_flash(GLfloat intensity, const color_type flash) {
 #undef C
 #define C(x) (x * intensity * attenuation)
     if (max_channel > 0.45) attenuation = 0.6f;  // light color
-    glUniform4f(tint_program_layout.uniforms.tint_color, C(r), C(g), C(b), C(1));
+    glUniform4f(program_uniform_location(TINT_PROGRAM, "tint_color"), C(r), C(g), C(b), C(1));
 #undef C
-    glUniform4f(tint_program_layout.uniforms.edges, -1, 1, 1, -1);
+    glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1, 1, 1, -1);
     draw_quad(true, 0);
 }
 
@@ -846,9 +794,9 @@ draw_drag_preview_overlay(const UIRenderData *ui) {
     float a = intensity * 0.25f;
     color_type hint = get_flash_color(screen);
 #define C(shift) (srgb_color((hint >> shift) & 0xFF) * a)
-    glUniform4f(tint_program_layout.uniforms.tint_color, C(16), C(8), C(0), a);
+    glUniform4f(program_uniform_location(TINT_PROGRAM, "tint_color"), C(16), C(8), C(0), a);
 #undef C
-    glUniform4f(tint_program_layout.uniforms.edges, left, top, right, bottom);
+    glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), left, top, right, bottom);
     draw_quad(true, 0);
 }
 
@@ -992,10 +940,10 @@ draw_window_number(const UIRenderData *ui) {
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
     ImageRenderData *ird = load_alpha_mask_texture(lr.width_px, lr.height_px, lr.canvas);
     gpu_data_for_image(ird, -1, 1, 1, -1);
-    glUniform1i(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.image, GRAPHICS_UNIT);
+    glUniform1i(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "image"), GRAPHICS_UNIT);
     color_type digit_color = colorprofile_to_color_with_fallback(ui->screen->color_profile, ui->screen->color_profile->overridden.highlight_bg, ui->screen->color_profile->configured.highlight_bg, ui->screen->color_profile->overridden.default_fg, ui->screen->color_profile->configured.default_fg);
-    color_vec3(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_fg, digit_color);
-    glUniform4f(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_bg_premult, 0.f, 0.f, 0.f, 0.f);
+    color_vec3(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_fg"), digit_color);
+    glUniform4f(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_bg_premult"), 0.f, 0.f, 0.f, 0.f);
     save_viewport_using_top_left_origin(
         ui->screen_left + letter_x, ui->screen_top + letter_y, lr.width_px, lr.height_px, ui->full_framebuffer_height);
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, ird, 0, 1, 1.f);
@@ -1009,7 +957,7 @@ set_color_uniform_with_opacity(color_type color, float opacity) {
     float r = srgb_color((color >> 16) & 0xFF) * opacity;
     float g = srgb_color((color >> 8) & 0xFF) * opacity;
     float b = srgb_color(color & 0xFF) * opacity;
-    glUniform4f(tint_program_layout.uniforms.tint_color, r, g, b, opacity);
+    glUniform4f(program_uniform_location(TINT_PROGRAM, "tint_color"), r, g, b, opacity);
 }
 
 static color_type
@@ -1080,7 +1028,7 @@ draw_scrollbar(const UIRenderData *ui) {
     if (track_opacity > 0) {
         bind_program(TINT_PROGRAM);
         set_color_uniform_with_opacity(track_color, track_opacity);
-        glUniform4f(tint_program_layout.uniforms.edges, -1.f, 1.f, 1.f, -1.f);
+        glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, 1.f, 1.f, -1.f);
         draw_quad(true, 0);
     }
 
@@ -1093,16 +1041,16 @@ draw_scrollbar(const UIRenderData *ui) {
         restore_viewport();
 
         bind_program(ROUNDED_RECT_PROGRAM);
-        color_vec4(rounded_rect_program_layout.uniforms.color, bar_color, opacity);
-        color_vec4(rounded_rect_program_layout.uniforms.background_color, 0, 0.0f);
+        color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "color"), bar_color, opacity);
+        color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "background_color"), 0, 0.0f);
 
         float y = (float)ui->full_framebuffer_height - (float)(thumb_top_px + thumb_height_px);
-        glUniform4f(rounded_rect_program_layout.uniforms.rect,
+        glUniform4f(program_uniform_location(ROUNDED_RECT_PROGRAM, "rect"),
                     (float)scrollbar_left, y,
                     (float)scrollbar_width_px, (float)thumb_height_px);
 
         float thickness = (float)MAX(scrollbar_width_px, thumb_height_px);
-        glUniform2f(rounded_rect_program_layout.uniforms.params, thickness, (float)scrollbar_radius);
+        glUniform2f(program_uniform_location(ROUNDED_RECT_PROGRAM, "params"), thickness, (float)scrollbar_radius);
 
         save_viewport_using_top_left_origin(scrollbar_left, thumb_top_px,
                                            scrollbar_width_px, thumb_height_px,
@@ -1111,7 +1059,7 @@ draw_scrollbar(const UIRenderData *ui) {
         restore_viewport();
     } else {
         set_color_uniform_with_opacity(bar_color, opacity);
-        glUniform4f(tint_program_layout.uniforms.edges, -1.f, thumb_top_gl, 1.f, thumb_bottom_gl);
+        glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, thumb_top_gl, 1.f, thumb_bottom_gl);
         draw_quad(true, 0);
         restore_viewport();
     }
@@ -1154,16 +1102,16 @@ draw_progress_handle(const UIRenderData *ui, color_type bar_color, float opacity
 
     if (bar_radius > 0) {
         bind_program(ROUNDED_RECT_PROGRAM);
-        color_vec4(rounded_rect_program_layout.uniforms.color, bar_color, opacity);
-        color_vec4(rounded_rect_program_layout.uniforms.background_color, 0, 0.0f);
+        color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "color"), bar_color, opacity);
+        color_vec4(program_uniform_location(ROUNDED_RECT_PROGRAM, "background_color"), 0, 0.0f);
 
         float y = (float)ui->full_framebuffer_height - (float)(handle_top + handle_h);
-        glUniform4f(rounded_rect_program_layout.uniforms.rect,
+        glUniform4f(program_uniform_location(ROUNDED_RECT_PROGRAM, "rect"),
                     (float)handle_left, y,
                     (float)handle_w, (float)handle_h);
 
         float thickness = (float)(is_horizontal ? handle_h : handle_w);
-        glUniform2f(rounded_rect_program_layout.uniforms.params, thickness, (float)bar_radius);
+        glUniform2f(program_uniform_location(ROUNDED_RECT_PROGRAM, "params"), thickness, (float)bar_radius);
 
         save_viewport_using_top_left_origin(handle_left, handle_top, handle_w, handle_h, ui->full_framebuffer_height);
         draw_quad(true, 0);
@@ -1180,11 +1128,11 @@ draw_progress_handle(const UIRenderData *ui, color_type bar_color, float opacity
         if (is_horizontal) {
             // edges: left, top, right, bottom
             save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
-            glUniform4f(tint_program_layout.uniforms.edges, start_gl, 1.f, end_gl, -1.f);
+            glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), start_gl, 1.f, end_gl, -1.f);
         } else {
             save_viewport_using_top_left_origin(track_left, track_top, track_width, track_height, ui->full_framebuffer_height);
             // For vertical: start_gl is top in GL coords (inverted y), so bottom_gl = -end_gl, top_gl = -start_gl
-            glUniform4f(tint_program_layout.uniforms.edges, -1.f, -start_gl, 1.f, -end_gl);
+            glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, -start_gl, 1.f, -end_gl);
         }
         draw_quad(true, 0);
         restore_viewport();
@@ -1269,7 +1217,7 @@ draw_progress_bar(const UIRenderData *ui) {
     if (track_opacity > 0) {
         bind_program(TINT_PROGRAM);
         set_color_uniform_with_opacity(track_color, track_opacity);
-        glUniform4f(tint_program_layout.uniforms.edges, -1.f, 1.f, 1.f, -1.f);
+        glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1.f, 1.f, 1.f, -1.f);
         draw_quad(true, 0);
     }
     restore_viewport();
@@ -1366,7 +1314,7 @@ call_cell_program(int program, const UIRenderData *ui, ssize_t vao_idx, bool for
     CELL_BUFFERS;
     bind_vao_uniform_buffer(vao_idx, uniform_buffer, CELL_RENDER_DATA_BINDING_POINT);
     bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
-    glUniform1ui(cell_program_layouts[program].uniforms.draw_bg_bitfield, draw_bg_bitfield);
+    glUniform1ui(program_uniform_location(program, "draw_bg_bitfield"), draw_bg_bitfield);
     if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
     draw_quad(!for_final_output, render_lines_for_screen(ui->screen) * ui->screen->columns);
     if (for_final_output) glDisable(GL_FRAMEBUFFER_SRGB);
@@ -1380,8 +1328,8 @@ draw_cells_without_layers(const UIRenderData *ui, ssize_t vao_idx) {
 static void
 draw_tint(const UIRenderData *ui) {
     bind_program(TINT_PROGRAM);
-    color_vec4_premult(tint_program_layout.uniforms.tint_color, ui->background_color, OPT(background_tint));
-    glUniform4f(tint_program_layout.uniforms.edges, -1, 1, 1, -1);
+    color_vec4_premult(program_uniform_location(TINT_PROGRAM, "tint_color"), ui->background_color, OPT(background_tint));
+    glUniform4f(program_uniform_location(TINT_PROGRAM, "edges"), -1, 1, 1, -1);
     draw_quad(true, 0);
 }
 
@@ -1489,10 +1437,9 @@ create_border_vao(void) {
     ssize_t vao_idx = create_vao();
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);
-    const BorderUniforms *u = &border_program_layout.uniforms;
-    add_attribute_to_vao(vao_idx, u->rect,
+    add_attribute_to_vao(vao_idx, program_attribute_location(BORDERS_PROGRAM, "rect"),
             /*size=*/4, /*dtype=*/GL_FLOAT, /*stride=*/sizeof(BorderRect), /*offset=*/(void*)offsetof(BorderRect, left), /*divisor=*/1);
-    add_attribute_to_vao(vao_idx, u->rect_color,
+    add_attribute_to_vao(vao_idx, program_attribute_location(BORDERS_PROGRAM, "rect_color"),
             /*size=*/1, /*dtype=*/GL_UNSIGNED_INT, /*stride=*/sizeof(BorderRect), /*offset=*/(void*)(offsetof(BorderRect, color)), /*divisor=*/1);
 
     return vao_idx;
@@ -1517,10 +1464,11 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         OPT(bell_border_color), OPT(tab_bar_background), OPT(tab_bar_margin_color),
         w->tab_bar_edge_color.left, w->tab_bar_edge_color.right
     };
-    void *colors_buf = map_vao_buffer_for_write_only(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, 0, border_program_layout.uniforms.Colors.size);
-    write_uint_array_to_ubo(colors_buf, colors, arraysz(colors), &border_program_layout.uniforms.colors);
+    void *colors_buf = map_vao_buffer_for_write_only(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, 0, program_uniform_block(BORDERS_PROGRAM, "Colors").size);
+    const ArrayInformation border_colors_array = program_uniform_array(BORDERS_PROGRAM, "colors");
+    write_uint_array_to_ubo(colors_buf, colors, arraysz(colors), &border_colors_array);
     unmap_vao_buffer(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER);
-    glUniform1f(border_program_layout.uniforms.background_opacity, background_opacity);
+    glUniform1f(program_uniform_location(BORDERS_PROGRAM, "background_opacity"), background_opacity);
     if (!w->needs_layers) glEnable(GL_FRAMEBUFFER_SRGB);
     draw_quad(has_background_image, num_border_rects);
     if (!w->needs_layers) glDisable(GL_FRAMEBUFFER_SRGB);
@@ -1534,19 +1482,19 @@ void
 draw_cursor_trail(CursorTrail *trail, Window *active_window) {
     bind_program(TRAIL_PROGRAM);
 
-    glUniform4fv(trail_program_layout.uniforms.x_coords, 1, trail->corner_x);
-    glUniform4fv(trail_program_layout.uniforms.y_coords, 1, trail->corner_y);
+    glUniform4fv(program_uniform_location(TRAIL_PROGRAM, "x_coords"), 1, trail->corner_x);
+    glUniform4fv(program_uniform_location(TRAIL_PROGRAM, "y_coords"), 1, trail->corner_y);
 
-    glUniform2fv(trail_program_layout.uniforms.cursor_edge_x, 1, trail->cursor_edge_x);
-    glUniform2fv(trail_program_layout.uniforms.cursor_edge_y, 1, trail->cursor_edge_y);
+    glUniform2fv(program_uniform_location(TRAIL_PROGRAM, "cursor_edge_x"), 1, trail->cursor_edge_x);
+    glUniform2fv(program_uniform_location(TRAIL_PROGRAM, "cursor_edge_y"), 1, trail->cursor_edge_y);
 
     color_type trail_color = OPT(cursor_trail_color);
     if (trail_color == 0) {  // 0 means "none" was specified
         trail_color = active_window ? active_window->render_data.screen->last_rendered.cursor_bg : OPT(foreground);
     }
-    color_vec3(trail_program_layout.uniforms.trail_color, trail_color);
+    color_vec3(program_uniform_location(TRAIL_PROGRAM, "trail_color"), trail_color);
 
-    glUniform1f(trail_program_layout.uniforms.trail_opacity, trail->opacity);
+    glUniform1f(program_uniform_location(TRAIL_PROGRAM, "trail_opacity"), trail->opacity);
 
     draw_quad(true, 0);
     unbind_program();
@@ -1597,11 +1545,11 @@ draw_bg_image(OSWindow *os_window, Tab *tab) {
     bind_program(BGIMAGE_PROGRAM);
     // altough we dont use this VO we need to ensure *some* VAO is bound at this point.
     bind_vertex_array(tab->border_rects.vao_idx);
-    glUniform4f(bgimage_program_layout.uniforms.sizes, vwidth, vheight, iwidth, iheight);
-    glUniform1f(bgimage_program_layout.uniforms.tiled, tiled);
-    glUniform4f(bgimage_program_layout.uniforms.positions, left, top, right, bottom);
-    glUniform1i(bgimage_program_layout.uniforms.image, GRAPHICS_UNIT);
-    color_vec4(bgimage_program_layout.uniforms.background, s.bgcolor, s.opacity);
+    glUniform4f(program_uniform_location(BGIMAGE_PROGRAM, "sizes"), vwidth, vheight, iwidth, iheight);
+    glUniform1f(program_uniform_location(BGIMAGE_PROGRAM, "tiled"), tiled);
+    glUniform4f(program_uniform_location(BGIMAGE_PROGRAM, "positions"), left, top, right, bottom);
+    glUniform1i(program_uniform_location(BGIMAGE_PROGRAM, "image"), GRAPHICS_UNIT);
+    color_vec4(program_uniform_location(BGIMAGE_PROGRAM, "background"), s.bgcolor, s.opacity);
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
     glBindTexture(GL_TEXTURE_2D, bg->texture_id);
     draw_quad(false, 0);
@@ -1621,9 +1569,9 @@ draw_centered_alpha_mask(size_t screen_width, size_t screen_height, size_t width
     ImageRenderData *data = load_alpha_mask_texture(width, height, canvas);
     gpu_data_for_centered_image(data, screen_width, screen_height, width, height);
     bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
-    glUniform1i(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.image, GRAPHICS_UNIT);
-    color_vec3(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_fg, OPT(foreground));
-    color_vec4_premult(graphics_program_layouts[GRAPHICS_ALPHA_MASK_PROGRAM].uniforms.amask_bg_premult, OPT(background), background_opacity);
+    glUniform1i(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "image"), GRAPHICS_UNIT);
+    color_vec3(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_fg"), OPT(foreground));
+    color_vec4_premult(program_uniform_location(GRAPHICS_ALPHA_MASK_PROGRAM, "amask_bg_premult"), OPT(background), background_opacity);
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, data, 0, 1, 1.0);
 }
 
@@ -1700,8 +1648,8 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window) {
         glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
         float sx = global_state.layers_render_texture.width > 0 ? (float)os_window->viewport_width / (float)global_state.layers_render_texture.width : 1.f;
         float sy = global_state.layers_render_texture.height > 0 ? (float)os_window->viewport_height / (float)global_state.layers_render_texture.height : 1.f;
-        glUniform4f(blit_program_layout.uniforms.src_rect, 0, sy, sx, 0);
-        glUniform4f(blit_program_layout.uniforms.dest_rect, -1, 1, 1, -1);
+        glUniform4f(program_uniform_location(BLIT_PROGRAM, "src_rect"), 0, sy, sx, 0);
+        glUniform4f(program_uniform_location(BLIT_PROGRAM, "dest_rect"), -1, 1, 1, -1);
         restore_viewport();
         if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
                 0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
@@ -1776,13 +1724,13 @@ take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsign
     float src_right_norm = (float)region.right / (float)vw;
     float src_bottom_norm = (float)(vh - region.bottom) / (float)vh;
     float src_top_norm = (float)(vh - region.top) / (float)vh;
-    glUniform4f(screenshot_program_layout.uniforms.src_rect, src_left_norm, src_top_norm, src_right_norm, src_bottom_norm);
+    glUniform4f(program_uniform_location(SCREENSHOT_PROGRAM, "src_rect"), src_left_norm, src_top_norm, src_right_norm, src_bottom_norm);
 
     // Set destination rectangle (NDC coordinates: -1 to 1)
-    glUniform4f(screenshot_program_layout.uniforms.dest_rect, -1.0f, -1.0f, 1.0f, 1.0f);
+    glUniform4f(program_uniform_location(SCREENSHOT_PROGRAM, "dest_rect"), -1.0f, -1.0f, 1.0f, 1.0f);
 
     // Set the source texture size for proper downscaling
-    glUniform2f(screenshot_program_layout.uniforms.src_size, (float)vw, (float)vh);
+    glUniform2f(program_uniform_location(SCREENSHOT_PROGRAM, "src_size"), (float)vw, (float)vh);
 
     // Bind the source texture
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
@@ -1831,9 +1779,9 @@ attach_shaders(PyObject *sources, GLuint program_id, GLenum shader_type) {
 
 static PyObject*
 compile_program(PyObject UNUSED *self, PyObject *args) {
-    PyObject *vertex_shaders, *fragment_shaders;
+    PyObject *vertex_shaders, *fragment_shaders, *metadata;
     int which, allow_recompile = 0;
-    if (!PyArg_ParseTuple(args, "iO!O!|p", &which, &PyTuple_Type, &vertex_shaders, &PyTuple_Type, &fragment_shaders, &allow_recompile)) return NULL;
+    if (!PyArg_ParseTuple(args, "iO!O!O!|p", &which, &PyTuple_Type, &vertex_shaders, &PyTuple_Type, &fragment_shaders, &PyDict_Type, &metadata, &allow_recompile)) return NULL;
     if (which < 0 || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
     Program *program = program_ptr(which);
     if (program->id != 0) {
@@ -1856,6 +1804,7 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     }
 #undef fail_compile
     init_uniforms(which);
+    set_program_layout(which, metadata);
     return Py_BuildValue("I", program->id);
 }
 
@@ -1911,6 +1860,7 @@ static PyMethodDef module_methods[] = {
 static void
 finalize(void) {
     default_visual_bell_animation = free_animation(default_visual_bell_animation);
+    free_program_layouts();
 }
 
 bool

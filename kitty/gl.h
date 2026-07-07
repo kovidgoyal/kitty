@@ -33,6 +33,12 @@ typedef struct {
 
 typedef struct Viewport { unsigned left, top, width, height; } Viewport;
 
+typedef enum { PROGRAM_UNIFORM, PROGRAM_ATTRIBUTE, PROGRAM_BLOCK, PROGRAM_ARRAY } ProgramMetadataKind;
+typedef struct ProgramMetadataEntry {
+    ProgramMetadataKind kind;
+    union { GLint location; UniformBlock block; ArrayInformation array; };
+} ProgramMetadataEntry;
+
 void gl_init(void);
 const char* gl_version_string(void);
 void set_gpu_viewport(unsigned w, unsigned h);
@@ -51,6 +57,12 @@ GLint get_uniform_location(int program, const char *name);
 GLint get_uniform_information(int program, const char *name, GLenum information_type);
 ArrayInformation get_uniform_array_information(int program, const char *name);
 GLint attrib_location(int program, const char *name);
+void set_program_layout(int program, PyObject *metadata);
+void free_program_layouts(void);
+GLint program_uniform_location(int program, const char *name);
+GLint program_attribute_location(int program, const char *name);
+UniformBlock program_uniform_block(int program, const char *name);
+ArrayInformation program_uniform_array(int program, const char *name);
 ssize_t create_vao(void);
 size_t add_buffer_to_vao(ssize_t vao_idx, GLenum usage);
 void add_attribute_to_vao(ssize_t vao_idx, int location, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor);
