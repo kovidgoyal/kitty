@@ -1867,6 +1867,14 @@ free_vao(ssize_t vao_idx) {
     remove_vao(vao_idx);
 }
 
+void
+cleanup_shader_resources_on_terminate(void) {
+    if (shader_globals_vao_idx != -1) {
+        remove_vao(shader_globals_vao_idx);
+        shader_globals_vao_idx = -1;
+    }
+}
+
 static void
 finalize(void) {
     default_visual_bell_animation = free_animation(default_visual_bell_animation);

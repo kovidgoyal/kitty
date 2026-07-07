@@ -2176,6 +2176,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
 
 static PyObject*
 glfw_terminate(PYNOARG) {
+    cleanup_shader_resources_on_terminate();
     for (size_t i = 0; i < arraysz(cursors); i++) {
         if (cursors[i].is_custom && cursors[i].glfw) {
             glfwDestroyCursor(cursors[i].glfw);
