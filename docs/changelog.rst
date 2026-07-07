@@ -186,6 +186,8 @@ Detailed list of changes
 
 - Graphics protocol: Add a new :ref:`transient usage hint <image_usage_hints>` that clients can send to terminals to indicate an image is meant for only short duration use (:pull:`10092`)
 
+- On first press in an unfocused OS Window/kitty window give it focus and pass the mouse event through to the clicked element. This is a behavior change but aligns with platform defaults on macOS. Linux has no platform defaults here as far as I can tell, so it gets to follow along. (:pull:`10233`)
+
 - kitten @ get-text: Add support for :code:`alternate` and :code:`alternate_scrollback` extents to fetch text from the alternate screen buffer (:iss:`10165`)
 
 - Wayland: Fix first OS window being a few cells too small when ``initial_window_width/initial_window_height`` are set in cells and a fractional display scale is in use (:iss:`10146`)
@@ -217,6 +219,7 @@ Detailed list of changes
 - choose-file kitten: Use a full readline editor for the search box. Also allow remapping the up/down/home/end keys to use for editing instead of navigating the file list (:pull:`10225`)
 
 - Fix :ac:`remote_control_script` not working in a kitty instance run from inside another kitty instance
+
 
 
 0.47.4 [2026-06-15]
