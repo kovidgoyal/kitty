@@ -716,18 +716,10 @@ process_answer:
 	index_map = make(map[int]*Mark, len(ans))
 	for i := range ans {
 		m := &ans[i]
-		if opts.PrefixFree {
-			if opts.Ascending {
-				m.Index = i + offset + 1
-			} else {
-				m.Index = (largest_index - m.Index) + offset + 1
-			}
+		if opts.Ascending {
+			m.Index += offset
 		} else {
-			if opts.Ascending {
-				m.Index += offset
-			} else {
-				m.Index = largest_index - m.Index + offset
-			}
+			m.Index = largest_index - m.Index + offset
 		}
 		index_map[m.Index] = m
 	}
