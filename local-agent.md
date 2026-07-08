@@ -23,6 +23,14 @@ Execute the following command to compile all modules and check for syntax or typ
 make debug
 ```
 
+### Lint commands
+
+Execute the following two commands to fix any formatting issues in your code:
+```
+ruff check --fix
+gofmt -s -l -w tools kittens
+```
+
 ### 🧪 Test Commands
 Execute this command to run the test suite across all language domains:
 ```bash
@@ -66,10 +74,11 @@ using:
 ## Verification Pipeline
 
 Before declaring a task complete, you must follow this exact verification lifecycle:
-1. Run the local **Build Command** to guarantee zero compilation or compilation-stage type errors.
-2. Run the local **Test Command** to run the full test suite
-3. If errors occur, analyze the stdout logs completely before writing a fix. Do not guess.
-4. If your changes involve rendering changes to kitty manually verify
+1. Run the linting tools above to cleanup any formatting issues in your code
+2. Run the local **Build Command** to guarantee zero compilation or compilation-stage type errors.
+3. Run the local **Test Command** to run the full test suite
+4. If errors occur, analyze the stdout logs completely before writing a fix. Do not guess.
+5. If your changes involve rendering changes to kitty manually verify
    them by running kitty and using the remote control API as described above.
-4. If the change you have made is user facing, update the docs/changelog.rst
+6. If the change you have made is user facing, update the docs/changelog.rst
    file with a brief description of your changes
