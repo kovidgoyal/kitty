@@ -179,6 +179,12 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.49.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Add a new :code:`kitten @ screenshot` remote control command to take a pixel perfect PNG screenshot of an OS Window, tab or window
+
+
 0.48.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

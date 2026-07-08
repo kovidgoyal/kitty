@@ -524,6 +524,7 @@ typedef struct GlobalState {
         char callback[32];
         bool include_tab_bar;
         double scale; unsigned max_width;
+        bool no_scaling;
     } thumbnail_callback;
     struct {
         id_type id; bool drag_started;
@@ -641,7 +642,7 @@ void dispatch_buffered_keys(Window *w);
 bool screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen);
 void setup_os_window_for_rendering(OSWindow*, Tab*, Window*, bool);
 void swap_window_buffers(OSWindow *w);
-void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h);
+void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool no_scaling);
 bool current_framebuffer_is_ok(void);
 void request_drop_status_update(OSWindow *osw);
 void register_mimes_for_drop(OSWindow *w, const char **mimes, size_t sz);

@@ -9,8 +9,10 @@ import re
 import socket
 import subprocess
 import sys
+from collections import deque
 from collections.abc import Callable, Container, Generator, Iterable, Iterator, Sequence
 from contextlib import contextmanager, suppress
+from dataclasses import dataclass
 from functools import partial
 from gettext import gettext as _
 from gettext import ngettext
@@ -110,6 +112,7 @@ from .fast_data_types import (
     os_window_focus_counters,
     os_window_font_size,
     redirect_mouse_handling,
+    request_callback_with_thumbnail,
     ring_bell,
     run_with_activation_token,
     safe_pipe,
@@ -185,6 +188,19 @@ if TYPE_CHECKING:
 # }}}
 
 RCResponse = Union[dict[str, Any], None, AsyncResponse]
+
+ThumbnailCallback = Callable[[int, int, bytes, int, int], None]
+
+
+@dataclass
+class PendingThumbnailRequest:
+    os_window_id: int
+    callback: ThumbnailCallback
+    window_id: int = 0
+    include_tab_bar: bool = False
+    scale: float = 0.25
+    max_width: int = 480
+    no_scaling: bool = False
 
 
 class OSWindowDict(TypedDict):
@@ -413,6 +429,7 @@ class Boss:
         self.cached_values = cached_values
         self.os_window_map: dict[int, TabManager] = {}
         self.os_window_death_actions: dict[int, Callable[[], None]] = {}
+        self.thumbnail_request_queue: deque[PendingThumbnailRequest] = deque()
         self.cursor_blinking = True
         self.shutting_down = False
         self.misc_config_errors: list[str] = []
@@ -1435,6 +1452,43 @@ class Boss:
     def start_window_drag(self, os_window_id: int, window_id: int, pixels: bytes, width: int, height: int) -> None:
         if tm := self.os_window_map.get(os_window_id):
             tm.start_window_drag(pixels, width, height)
+
+    def request_thumbnail(
+        self, os_window_id: int, callback: ThumbnailCallback, window_id: int = 0, include_tab_bar: bool = False,
+        scale: float = 0.25, max_width: int = 480, no_scaling: bool = False,
+    ) -> None:
+        # request_callback_with_thumbnail() only supports a single request being in flight at
+        # a time (it uses a single global slot in the C code), so serialize all
+        # requests (window/tab drag thumbnails as well as screenshot RC command
+        # requests) through this queue.
+        req = PendingThumbnailRequest(os_window_id, callback, window_id, include_tab_bar, scale, max_width, no_scaling)
+        was_idle = not self.thumbnail_request_queue
+        self.thumbnail_request_queue.append(req)
+        if was_idle:
+            self._issue_next_thumbnail_request()
+
+    def _issue_next_thumbnail_request(self) -> None:
+        while self.thumbnail_request_queue:
+            req = self.thumbnail_request_queue[0]
+            if req.os_window_id not in self.os_window_map:
+                # the OS window went away while this request was queued, fail it and move on
+                # rather than leaving every request behind it stuck forever
+                self.thumbnail_request_queue.popleft()
+                req.callback(req.os_window_id, req.window_id, b'', 0, 0)
+                continue
+            request_callback_with_thumbnail(
+                'thumbnail_ready', req.os_window_id, req.window_id, req.include_tab_bar,
+                req.scale, req.max_width, req.no_scaling)
+            break
+
+    def thumbnail_ready(self, os_window_id: int, window_id: int, pixels: bytes, width: int, height: int) -> None:
+        if not self.thumbnail_request_queue:
+            return
+        req = self.thumbnail_request_queue.popleft()
+        try:
+            req.callback(os_window_id, window_id, pixels, width, height)
+        finally:
+            self._issue_next_thumbnail_request()
 
     def on_window_resize(self, os_window_id: int, w: int, h: int, dpi_changed: bool) -> None:
         if dpi_changed:

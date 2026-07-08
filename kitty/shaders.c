@@ -1682,15 +1682,27 @@ setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_wind
 // Scaling is performed on the GPU using the SCREENSHOT_PROGRAM shader for better performance.
 // The shader properly handles sRGB color space conversion and downscaling.
 // Setting the thumbnail dimensions to zero disables scaling.
+// If no_scaling is true, thumb_w/thumb_h are ignored and the region is read
+// back directly from the framebuffer with no GPU resampling, for a pixel
+// perfect capture (the output is in GL's native bottom-up row order, unlike
+// the scaled path below which flips to top-down).
 void
-take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h) {
-    unsigned vw = os_window->viewport_width;
+take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool no_scaling) {
     unsigned vh = os_window->viewport_height;
 
     // Calculate the source region dimensions
     unsigned src_height = region.bottom - region.top;
     unsigned src_width = region.right - region.left;
 
+    if (no_scaling) {
+        *thumb_w = src_width; *thumb_h = src_height;
+        glPixelStorei(GL_PACK_ALIGNMENT, 1);
+        glReadPixels((GLint)region.left, (GLint)(vh - region.bottom), (GLsizei)src_width, (GLsizei)src_height, GL_RGBA, GL_UNSIGNED_BYTE, dst_buf);
+        glPixelStorei(GL_PACK_ALIGNMENT, 4);
+        return;
+    }
+
+    unsigned vw = os_window->viewport_width;
     if (!*thumb_w) *thumb_w = src_width;
     if (!*thumb_h) *thumb_h = src_height;
     *thumb_w = MIN(src_width, *thumb_w);

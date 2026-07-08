@@ -1751,9 +1751,9 @@ get_window_being_dragged(PyObject *self UNUSED, PyObject *args UNUSED) {
 static PyObject*
 request_callback_with_thumbnail(PyObject *self UNUSED, PyObject *args) {
     unsigned long long os_window_id, window_id = 0;
-    const char *callback; int include_tab_bar = 0;
+    const char *callback; int include_tab_bar = 0, no_scaling = 0;
     double scale = 0.25; unsigned max_width = 480;
-    if (!PyArg_ParseTuple(args, "sK|KpdI", &callback, &os_window_id, &window_id, &include_tab_bar, &scale, &max_width)) return NULL;
+    if (!PyArg_ParseTuple(args, "sK|KpdIp", &callback, &os_window_id, &window_id, &include_tab_bar, &scale, &max_width, &no_scaling)) return NULL;
     WITH_OS_WINDOW(os_window_id)
         global_state.thumbnail_callback.os_window = os_window->id;
         global_state.thumbnail_callback.window = window_id;
@@ -1761,6 +1761,7 @@ request_callback_with_thumbnail(PyObject *self UNUSED, PyObject *args) {
         snprintf(global_state.thumbnail_callback.callback, arraysz(global_state.thumbnail_callback.callback), "%s", callback);
         global_state.thumbnail_callback.max_width = max_width;
         global_state.thumbnail_callback.scale = scale;
+        global_state.thumbnail_callback.no_scaling = no_scaling;
         mark_os_window_dirty(os_window_id);
     END_WITH_OS_WINDOW
     Py_RETURN_NONE;
