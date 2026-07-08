@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/emmansun/base64"
+	"github.com/kovidgoyal/kitty/tools/utils"
 )
 
 func screenshot_handle_response(data []byte) error {
@@ -33,7 +34,7 @@ func read_screenshot_args(io_data *rc_io_data, args []string) (func(io_data *rc_
 		// io_data.rc.Payload is only populated after this generator is created,
 		// so the payload field must be set here rather than above.
 		if len(args) == 1 {
-			path, err := filepath.Abs(args[0])
+			path, err := filepath.Abs(utils.Expanduser(args[0]))
 			if err != nil {
 				return false, fmt.Errorf("%s is not a valid path with error: %w", args[0], err)
 			}
