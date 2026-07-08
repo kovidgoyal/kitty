@@ -219,3 +219,9 @@ Compatibility with various platforms
              - 🔴
              - 🔴
              - doesn't support the needed NET_WM protocols
+
+           * - bspwm
+             - 🔴
+             - 🔴
+             - 🔴
+             - doesn't support the needed NET_WM protocols
