@@ -43,7 +43,6 @@ from .fast_data_types import (
     remove_window,
     reorder_tabs,
     replace_c0_codes_except_nl_space_tab,
-    request_callback_with_thumbnail,
     ring_bell,
     set_active_tab,
     set_active_window,
@@ -1803,7 +1802,7 @@ class TabManager:  # {{{
                 threshold = get_options().drag_threshold
                 if threshold and math.sqrt((x-start_x)**2 + (y-start_y)**2) > threshold:
                     set_tab_being_dragged(dragged_tab_id, True, start_x, start_y)
-                    request_callback_with_thumbnail("start_tab_drag", self.os_window_id)
+                    get_boss().request_thumbnail(self.os_window_id, get_boss().start_tab_drag)
                     self.recent_tab_bar_mouse_events.clear()
             return
 
@@ -1859,7 +1858,7 @@ class TabManager:  # {{{
                 dist_sq = (x - start_x)**2 + (y - start_y)**2
                 if threshold and dist_sq > threshold * threshold:
                     set_window_being_dragged(dragged_window_id, True, start_x, start_y)
-                    request_callback_with_thumbnail("start_window_drag", self.os_window_id, dragged_window_id)
+                    boss.request_thumbnail(self.os_window_id, boss.start_window_drag, window_id=dragged_window_id)
                     self.recent_title_bar_mouse_events.clear()
             return
         self.recent_title_bar_mouse_events.add(button, modifiers, action, x, y, window_id)

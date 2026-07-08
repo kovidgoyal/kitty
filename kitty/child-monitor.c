@@ -878,16 +878,20 @@ thumbnail_callback(OSWindow *os_window) {
         }
     }
     unsigned vw = region.right - region.left, vh = region.bottom - region.top;
-    unsigned thumb_w = (unsigned)(vw * tc.scale), thumb_h = (unsigned)(vh * tc.scale);
-    if (thumb_w > tc.max_width) {
-        thumb_w = tc.max_width;
-        double scale = 300. / vw;
-        thumb_h = (unsigned)(vh * scale + 0.5f);
+    unsigned thumb_w, thumb_h;
+    if (tc.no_scaling) { thumb_w = vw; thumb_h = vh; }
+    else {
+        thumb_w = (unsigned)(vw * tc.scale); thumb_h = (unsigned)(vh * tc.scale);
+        if (thumb_w > tc.max_width) {
+            thumb_w = tc.max_width;
+            double scale = 300. / vw;
+            thumb_h = (unsigned)(vh * scale + 0.5f);
+        }
     }
     RAII_PyObject(pixels, PyBytes_FromStringAndSize(NULL, (Py_ssize_t)4 * thumb_w * thumb_h));
     if (pixels && global_state.boss) {
         take_screenshot_of_rectangular_region(
-            os_window, region, (unsigned char*)PyBytes_AS_STRING(pixels), &thumb_w, &thumb_h);
+            os_window, region, (unsigned char*)PyBytes_AS_STRING(pixels), &thumb_w, &thumb_h, tc.no_scaling);
         _PyBytes_Resize(&pixels, (Py_ssize_t)4 * thumb_w * thumb_h);
         PyObject *r = PyObject_CallMethod(
             global_state.boss, tc.callback, "KKOII", os_window->id, tc.window, pixels, thumb_w, thumb_h);
