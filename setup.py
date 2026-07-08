@@ -21,7 +21,7 @@ from contextlib import suppress
 from enum import Enum
 from functools import lru_cache, partial
 from pathlib import Path
-from typing import Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, NamedTuple, Optional, Sequence, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, FrozenSet, Iterable, List, NamedTuple, Optional, Sequence, Set, Tuple, Union, cast
 
 src_base = os.path.dirname(os.path.abspath(__file__))
 glfw_base = os.path.join(src_base, 'glfw')
