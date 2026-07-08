@@ -110,7 +110,7 @@ class Screenshot(RemoteCommand):
                 if output_path:
                     with open(os.path.expanduser(output_path), 'wb') as f:
                         f.write(png_data)
-                    responder.send_data(True)
+                    responder.send_data(f'Screenshot saved to: {os.path.abspath(f.name)}')
                 else:
                     responder.send_data(standard_b64encode(png_data).decode('ascii'))
             except Exception as e:
