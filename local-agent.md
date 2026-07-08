@@ -2,6 +2,7 @@ initialize_command: make debug
 copy_resource: fonts
 copy_resource: bypy/b/linux/64/pkg/slang
 add_to_path: bypy/b/linux/64/pkg/slang/bin
+prepend_to_path: kitty/launcher
 
 # System Instructions & Project Context
 
