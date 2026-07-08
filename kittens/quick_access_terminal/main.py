@@ -40,6 +40,8 @@ opt('columns', '80', long_text=panel_opts['columns'].help)
 
 opt('edge', 'top', choices=panel_opts['edge'].choices, long_text=help_of('edge'))
 
+opt('layer', 'overlay', choices=panel_opts['layer'].choices, long_text=help_of('layer'))
+
 opt('background_opacity', '0.85', option_type='unit_float', long_text='''
 The background opacity of the window. This works the same as the kitty
 option of the same name, it is present here as it has a different
