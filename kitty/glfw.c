@@ -1923,6 +1923,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         }
         is_first_window = false;
     }
+    bind_shader_globals_to_current_context();
     OSWindow *w = add_os_window();
     w->handle = glfw_window;
     w->disallow_title_changes = disallow_override_title;
