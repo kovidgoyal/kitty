@@ -1930,6 +1930,9 @@ class Window:
     def destroy(self) -> None:
         self.call_watchers(self.watchers.on_close, {})
         self.destroyed = True
+        if self.clear_progress_timer:
+            remove_timer(self.clear_progress_timer)
+            self.clear_progress_timer = 0
         self.clipboard_request_manager.close()
         del self.kitten_result_processors
         if hasattr(self, 'screen'):
