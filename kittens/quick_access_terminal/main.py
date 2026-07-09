@@ -40,7 +40,12 @@ opt('columns', '80', long_text=panel_opts['columns'].help)
 
 opt('edge', 'top', choices=panel_opts['edge'].choices, long_text=help_of('edge'))
 
-opt('layer', 'overlay', choices=panel_opts['layer'].choices, long_text=help_of('layer'))
+opt('layer', 'overlay', choices=panel_opts['layer'].choices, long_text='''
+Controls the z-index layer on which the quick access terminal is displayed.
+On Linux, if you want the quick access terminal to inter operate with
+IME systems, you might need to change this to :code:`top`.
+See the documentation of the :option:`kitty +kitten panel --layer` for details.
+''')
 
 opt('background_opacity', '0.85', option_type='unit_float', long_text='''
 The background opacity of the window. This works the same as the kitty

@@ -220,6 +220,8 @@ Detailed list of changes
 
 - Fix :ac:`remote_control_script` not working in a kitty instance run from inside another kitty instance
 
+- quick-access-terminal kitten: Allow configuring the layer on which to display the terminal (:pull:`10242`)
+
 
 
 0.47.4 [2026-06-15]
