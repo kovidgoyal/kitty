@@ -35,6 +35,15 @@ text_input_enter(void *data UNUSED, struct zwp_text_input_v3 *txt_input, struct 
         ime_focused = true;
         zwp_text_input_v3_enable(txt_input);
         zwp_text_input_v3_set_content_type(txt_input, ZWP_TEXT_INPUT_V3_CONTENT_HINT_NONE, ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_TERMINAL);
+	if (last_cursor_width > 0) {
+            zwp_text_input_v3_set_cursor_rectangle(
+                txt_input,
+                last_cursor_left,
+                last_cursor_top,
+                last_cursor_width,
+                last_cursor_height
+            );
+        }
         commit();
     }
 }
