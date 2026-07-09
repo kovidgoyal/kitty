@@ -26,6 +26,7 @@ choices_for_focus_follows_mouse = typing.Literal['no', 'n', 'false', 'y', 'yes',
 choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
 choices_for_macos_colorspace = typing.Literal['srgb', 'default', 'displayp3']
 choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']
+choices_for_padding_fill_strategy = typing.Literal['background', 'neighboring_cell']
 choices_for_palette_generate = typing.Literal['fixed', 'semantic', 'legacy']
 choices_for_placement_strategy = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
@@ -416,6 +417,7 @@ option_names = (
     'narrow_symbols',
     'notify_on_cmd_finish',
     'open_url_with',
+    'padding_fill_strategy',
     'palette_generate',
     'paste_actions',
     'pixel_scroll',
@@ -627,6 +629,7 @@ class Options:
     mouse_hide_wait: MouseHideWait = MouseHideWait(hide_wait=0.0, show_wait=0.0, show_threshold=40, scroll_show=True) if is_macos else MouseHideWait(hide_wait=3.0, show_wait=0.0, show_threshold=40, scroll_show=True)
     notify_on_cmd_finish: NotifyOnCmdFinish = NotifyOnCmdFinish(when='never', duration=5.0, action='notify', cmdline=(), clear_on=('focus', 'next'))
     open_url_with: list[str] = ['default']
+    padding_fill_strategy: choices_for_padding_fill_strategy = 'background'
     palette_generate: choices_for_palette_generate = 'fixed'
     paste_actions: frozenset[str] = frozenset({'confirm', 'quote-urls-at-prompt'})
     pixel_scroll: bool = True

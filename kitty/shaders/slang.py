@@ -41,6 +41,7 @@ from kitty.fast_data_types import (
     GRAPHICS_PROGRAM,
     MARK,
     MARK_MASK,
+    PADDING_PROGRAM,
     REVERSE,
     ROUNDED_RECT_PROGRAM,
     SCREENSHOT_PROGRAM,
@@ -211,6 +212,7 @@ class LoadShaderPrograms:
             'screenshot': SCREENSHOT_PROGRAM,
             'rounded_rect': ROUNDED_RECT_PROGRAM,
             'border': BORDERS_PROGRAM,
+            'padding': PADDING_PROGRAM,
         }.items():
             vert, frag = glsl_shaders(name)
             compile_program(prog, (vert,), (frag,), metadata[name], allow_recompile)

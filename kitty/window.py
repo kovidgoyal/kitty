@@ -1060,7 +1060,8 @@ class Window:
         # Set C-side render data with adjusted top/bottom for content area
         set_window_render_data(self.os_window_id, self.tab_id, self.id, self.screen,
                              g.left, render_top, g.right, render_bottom,
-                             g.spaces.left, g.spaces.top, g.spaces.right, g.spaces.bottom)
+                             g.spaces.left, g.spaces.top, g.spaces.right, g.spaces.bottom,
+                             g.compensatory.left, g.compensatory.top, g.compensatory.right, g.compensatory.bottom)
         self.update_effective_padding()
 
         # Handle title bar screen
@@ -1930,9 +1931,6 @@ class Window:
     def destroy(self) -> None:
         self.call_watchers(self.watchers.on_close, {})
         self.destroyed = True
-        if self.clear_progress_timer:
-            remove_timer(self.clear_progress_timer)
-            self.clear_progress_timer = 0
         self.clipboard_request_manager.close()
         del self.kitten_result_processors
         if hasattr(self, 'screen'):

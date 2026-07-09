@@ -184,6 +184,8 @@ Detailed list of changes
 
 - Add a new :code:`kitten @ screenshot` remote control command to take a pixel perfect PNG screenshot of an OS Window, tab or window
 
+- A new option, :opt:`padding_fill_strategy` to control how the thin padding strips that appear when the window size is not an exact multiple of the cell size are colored. You can choose to have the padding colored to match the background of each neighboring cell, effectively extending the size of the cell or you can continue to use the existing behavior of using the background.
+
 
 0.48.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

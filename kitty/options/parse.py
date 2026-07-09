@@ -1189,6 +1189,14 @@ class Parser:
     def open_url_with(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['open_url_with'] = to_cmdline(val)
 
+    def padding_fill_strategy(self, val: str, ans: dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_padding_fill_strategy:
+            raise ValueError(f"The value {val} is not a valid choice for padding_fill_strategy")
+        ans["padding_fill_strategy"] = val
+
+    choices_for_padding_fill_strategy = frozenset(('background', 'neighboring_cell'))
+
     def palette_generate(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_palette_generate:

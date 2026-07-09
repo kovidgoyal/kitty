@@ -103,6 +103,7 @@ typedef struct Options {
         unsigned generation;
     } background_images;
     BackgroundImageLayout background_image_layout;
+    PaddingFillStrategy padding_fill_strategy;
     ImageAnchorPosition window_logo_position;
     bool background_image_linear;
     float background_tint, background_tint_gaps, window_logo_alpha;
@@ -271,6 +272,14 @@ typedef struct Window {
     struct {
         unsigned int left, top, right, bottom;
     } padding;
+    // Compensatory padding arising from the window size not being an exact
+    // multiple of the cell size. This is the innermost slice of the padding,
+    // adjacent to the cells, and (when padding_fill_strategy is
+    // neighboring_cell) is colored to match the neighboring cell by the padding
+    // shader rather than being drawn in the background color.
+    struct {
+        unsigned int left, top, right, bottom;
+    } size_mismatch_padding;
     ClickQueue click_queues[8];
     monotonic_t last_drag_scroll_at;
     uint32_t last_special_key_pressed;

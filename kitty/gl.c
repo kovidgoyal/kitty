@@ -596,6 +596,32 @@ add_attribute_to_vao(ssize_t vao_idx, int location, GLint size, GLenum data_type
 }
 
 void
+set_vao_attribute(ssize_t vao_idx, size_t buffer_idx, int location, GLint size, GLenum data_type, GLsizei stride, void *offset, GLuint divisor) {
+    // (Re)configure an attribute pointer that reads from a specific buffer of
+    // the VAO (unlike add_attribute_to_vao which always uses the last added
+    // buffer). The VAO must be bound before calling this.
+    VAO *vao = vaos + vao_idx;
+    ssize_t buf = vao->buffers[buffer_idx];
+    bind_buffer(buf);
+    glEnableVertexAttribArray(location);
+    switch(data_type) {
+        case GL_BYTE:
+        case GL_UNSIGNED_BYTE:
+        case GL_SHORT:
+        case GL_UNSIGNED_SHORT:
+        case GL_INT:
+        case GL_UNSIGNED_INT:
+            glVertexAttribIPointer(location, size, data_type, stride, offset);
+            break;
+        default:
+            glVertexAttribPointer(location, size, data_type, GL_FALSE, stride, offset);
+            break;
+    }
+    glVertexAttribDivisorARB(location, divisor);
+    unbind_buffer(buf);
+}
+
+void
 remove_vao(ssize_t vao_idx) {
     VAO *vao = vaos + vao_idx;
     while (vao->num_buffers) {

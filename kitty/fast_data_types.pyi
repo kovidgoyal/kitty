@@ -281,6 +281,7 @@ CURSOR_UNDERLINE: int
 DECAWM: int
 BGIMAGE_PROGRAM: int
 CELL_PROGRAM: int
+PADDING_PROGRAM: int
 CELL_FG_PROGRAM: int
 CELL_BG_PROGRAM: int
 BLIT_PROGRAM: int
@@ -1426,7 +1427,8 @@ def set_window_title_bar_render_data(
 def set_window_render_data(
     os_window_id: int, tab_id: int, window_id: int, screen: Screen,
     left: int, top: int, right: int, bottom: int,
-    spaces_left: int, spaces_top: int, spaces_right: int, spaces_bottom: int
+    spaces_left: int, spaces_top: int, spaces_right: int, spaces_bottom: int,
+    cp_left: int, cp_top: int, cp_right: int, cp_bottom: int,
 ) -> None:
     pass
 

@@ -26,6 +26,7 @@ enum {
     BLIT_PROGRAM,
     SCREENSHOT_PROGRAM,
     ROUNDED_RECT_PROGRAM,
+    PADDING_PROGRAM,
     NUM_PROGRAMS
 };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, SPRITE_DECORATIONS_MAP_UNIT };
@@ -369,6 +370,20 @@ init_cell_program(void) {
     glUniformBlockBinding(program_id(BORDERS_PROGRAM), border_colors.index, BORDER_COLORS_BINDING_POINT);
     UniformBlock border_glut = program_uniform_block(BORDERS_PROGRAM, "GammaLUT");
     glUniformBlockBinding(program_id(BORDERS_PROGRAM), border_glut.index, GAMMA_LUT_BINDING_POINT);
+
+    // The padding program shares the cell background computation and so uses the
+    // same uniform blocks bound to the same binding points as the cell programs.
+    {
+        UniformBlock crd = program_uniform_block(PADDING_PROGRAM, "CellRenderData");
+        glUniformBlockBinding(program_id(PADDING_PROGRAM), crd.index, CELL_RENDER_DATA_BINDING_POINT);
+        UniformBlock ct = program_uniform_block(PADDING_PROGRAM, "ColorTable");
+        glUniformBlockBinding(program_id(PADDING_PROGRAM), ct.index, COLOR_TABLE_BINDING_POINT);
+        UniformBlock glut = program_uniform_block(PADDING_PROGRAM, "GammaLUT");
+        glUniformBlockBinding(program_id(PADDING_PROGRAM), glut.index, GAMMA_LUT_BINDING_POINT);
+    }
+#define C(name, expected) { int aloc = attrib_location(PADDING_PROGRAM, #name); if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in the padding program", #name, aloc, expected); }
+    C(colors, 0); C(sprite_idx, 1); C(is_selected, 2);
+#undef C
 
     // The gamma LUT is a constant, shared amongst all the programs that use it via a single UBO.
     if (shader_globals_vao_idx == -1) {
@@ -1332,6 +1347,98 @@ draw_cells_without_layers(const UIRenderData *ui, ssize_t vao_idx) {
 }
 
 static void
+configure_cell_vao_attributes(ssize_t vao_idx, unsigned int base_cell, unsigned int cell_step) {
+    // (Re)point the instanced cell attributes so that instance i corresponds to
+    // the cell at (base_cell + i*cell_step). Used to draw a single padding strip
+    // from the shared cell VAO, and to restore the canonical layout afterwards
+    // (base_cell=0, cell_step=1). The VAO must be bound before calling this.
+    CELL_BUFFERS;
+    const GLsizei cell_stride = (GLsizei)(cell_step * sizeof(GPUCell));
+    const uintptr_t cell_base = (uintptr_t)base_cell * sizeof(GPUCell);
+    set_vao_attribute(vao_idx, cell_data_buffer, program_attribute_location(CELL_PROGRAM, "sprite_idx"),
+            2, GL_UNSIGNED_INT, cell_stride, (void*)(cell_base + offsetof(GPUCell, sprite_idx)), 1);
+    set_vao_attribute(vao_idx, cell_data_buffer, program_attribute_location(CELL_PROGRAM, "colors"),
+            3, GL_UNSIGNED_INT, cell_stride, (void*)(cell_base + offsetof(GPUCell, fg)), 1);
+    set_vao_attribute(vao_idx, selection_buffer, program_attribute_location(CELL_PROGRAM, "is_selected"),
+            1, GL_UNSIGNED_BYTE, (GLsizei)(cell_step * sizeof(GLubyte)), (void*)((uintptr_t)base_cell * sizeof(GLubyte)), 1);
+}
+
+static void
+draw_padding_strip(
+    ssize_t vao_idx, bool for_final_output, unsigned int is_horizontal, unsigned int count,
+    unsigned int base_cell, unsigned int cell_step, float across0, float across1,
+    float along_start, float along_step, float clamp_lo, float clamp_hi
+) {
+    if (!count) return;
+    configure_cell_vao_attributes(vao_idx, base_cell, cell_step);
+#define L(x) program_uniform_location(PADDING_PROGRAM, #x)
+    glUniform1ui(L(is_horizontal), is_horizontal);
+    glUniform1ui(L(along_count), count);
+    glUniform1ui(L(base_instance), base_cell);
+    glUniform1ui(L(instance_step), cell_step);
+    glUniform2f(L(across), across0, across1);
+    glUniform1f(L(along_start), along_start);
+    glUniform1f(L(along_step), along_step);
+    glUniform2f(L(along_clamp), clamp_lo, clamp_hi);
+#undef L
+    draw_quad(!for_final_output, count);
+}
+
+static void
+draw_window_padding(const UIRenderData *ui, Window *window, ssize_t vao_idx, bool for_final_output) {
+    // Color the compensatory padding strips (the innermost slice of the window
+    // padding, arising from the window size not being an exact multiple of the
+    // cell size) to match their neighboring cell. The strips lie outside the
+    // per-window cell viewport, so this runs with the full framebuffer viewport.
+    if (!window || OPT(padding_fill_strategy) != PADDING_FILL_NEIGHBORING_CELL) return;
+    const unsigned int cl = window->size_mismatch_padding.left, ct = window->size_mismatch_padding.top,
+                       cr = window->size_mismatch_padding.right, cb = window->size_mismatch_padding.bottom;
+    if (!(cl | ct | cr | cb)) return;
+    Screen *screen = ui->screen;
+    const unsigned int columns = screen->columns, lines = screen->lines;
+    if (!columns || !lines) return;
+    const unsigned int render_offset = pixel_scroll_enabled(screen) ? 1u : 0u;
+    const unsigned int top_row = render_offset, bottom_row = render_offset + lines - 1u;
+
+    const float fbw = (float)ui->full_framebuffer_width, fbh = (float)ui->full_framebuffer_height;
+    const float cw = (float)ui->cell_width, ch = (float)ui->cell_height;
+    const float L = (float)ui->screen_left, T = (float)ui->screen_top;
+    const float R = L + (float)ui->screen_width, B = T + (float)ui->screen_height;
+#define NX(px) (2.f * (px) / fbw - 1.f)
+#define NY(px) (1.f - 2.f * (px) / fbh)
+    const float dx = 2.f * cw / fbw, dy = 2.f * ch / fbh;
+
+    bind_program(PADDING_PROGRAM);
+    bind_vertex_array(vao_idx);
+    CELL_BUFFERS;
+    bind_vao_uniform_buffer(vao_idx, uniform_buffer, CELL_RENDER_DATA_BINDING_POINT);
+    bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
+    if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
+
+    // Top strip: spans content width, per top-row cell. across selected by cell
+    // corner: top corner -> outer edge (T-ct), bottom corner -> content edge (T).
+    if (ct) draw_padding_strip(vao_idx, for_final_output, 1u, columns, top_row * columns, 1u,
+            NY(T - ct), NY(T), NX(L), dx, NX(L), NX(R));
+    // Bottom strip: top corner -> content edge (B), bottom corner -> outer (B+cb).
+    if (cb) draw_padding_strip(vao_idx, for_final_output, 1u, columns, bottom_row * columns, 1u,
+            NY(B), NY(B + cb), NX(L), dx, NX(L), NX(R));
+    // Left strip: full comp-frame height (corners via along_clamp), per left-column
+    // cell. left corner -> outer (L-cl), right corner -> content edge (L).
+    if (cl) draw_padding_strip(vao_idx, for_final_output, 0u, lines, top_row * columns, columns,
+            NX(L - cl), NX(L), NY(T), -dy, NY(T - ct), NY(B + cb));
+    // Right strip: left corner -> content edge (R), right corner -> outer (R+cr).
+    if (cr) draw_padding_strip(vao_idx, for_final_output, 0u, lines, top_row * columns + (columns - 1u), columns,
+            NX(R), NX(R + cr), NY(T), -dy, NY(T - ct), NY(B + cb));
+
+    if (for_final_output) glDisable(GL_FRAMEBUFFER_SRGB);
+    // Restore the canonical cell attribute layout so cell rendering is unaffected.
+    configure_cell_vao_attributes(vao_idx, 0u, 1u);
+    unbind_program();
+#undef NX
+#undef NY
+}
+
+static void
 draw_tint(const UIRenderData *ui) {
     bind_program(TINT_PROGRAM);
     color_vec4_premult(program_uniform_location(TINT_PROGRAM, "tint_color"), ui->background_color, OPT(background_tint));
@@ -1433,6 +1540,9 @@ draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_wind
     if (ui.os_window->needs_layers) draw_cells_with_layers(&ui, srd->vao_idx);
     else draw_cells_without_layers(&ui, srd->vao_idx);
     restore_viewport();
+    // The compensatory padding lies outside the per-window cell viewport, so it
+    // is drawn after restoring the full framebuffer viewport.
+    draw_window_padding(&ui, window, srd->vao_idx, !ui.os_window->needs_layers);
 }
 // }}}
 
@@ -1905,6 +2015,7 @@ init_shaders(PyObject *module) {
     C(CELL_PROGRAM); C(CELL_FG_PROGRAM); C(CELL_BG_PROGRAM); C(BORDERS_PROGRAM);
     C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM);
     C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM); C(BLIT_PROGRAM); C(SCREENSHOT_PROGRAM); C(ROUNDED_RECT_PROGRAM);
+    C(PADDING_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

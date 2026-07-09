@@ -54,6 +54,11 @@ class WindowGeometry(NamedTuple):
     xnum: int
     ynum: int
     spaces: Edges = Edges()
+    # The part of spaces that comes from the window size not being an exact
+    # multiple of the cell size (as opposed to intentional margin/border/padding
+    # decoration). This is the innermost slice of the padding, adjacent to the
+    # cells, see layout_dimension().
+    compensatory: Edges = Edges()
 
 
 class SignalInfo(NamedTuple):

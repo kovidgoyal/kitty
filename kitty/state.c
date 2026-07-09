@@ -1183,12 +1183,16 @@ PYWRAP1(set_window_render_data) {
     id_type os_window_id, tab_id, window_id;
     WindowGeometry g = {0};
     Screen *screen;
-    PA("KKKOIIIIIIII", &os_window_id, &tab_id, &window_id, &screen,
+    unsigned int cl, ct, cr, cb;
+    PA("KKKOIIIIIIIIIIII", &os_window_id, &tab_id, &window_id, &screen,
        B(left), B(top), B(right), B(bottom),
-       S(left), S(top), S(right), S(bottom));
+       S(left), S(top), S(right), S(bottom),
+       &cl, &ct, &cr, &cb);
 
     WITH_WINDOW(os_window_id, tab_id, window_id);
         init_window_render_data(&window->render_data, g, screen);
+        window->size_mismatch_padding.left = cl; window->size_mismatch_padding.top = ct;
+        window->size_mismatch_padding.right = cr; window->size_mismatch_padding.bottom = cb;
     END_WITH_WINDOW;
     Py_RETURN_NONE;
 #undef B
