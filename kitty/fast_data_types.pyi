@@ -282,6 +282,7 @@ DECAWM: int
 LNM: int
 BGIMAGE_PROGRAM: int
 CELL_PROGRAM: int
+PADDING_PROGRAM: int
 CELL_FG_PROGRAM: int
 CELL_BG_PROGRAM: int
 BLIT_PROGRAM: int
@@ -1252,6 +1253,10 @@ def set_window_render_data(
     spaces_top: int,
     spaces_right: int,
     spaces_bottom: int,
+    cp_left: int,
+    cp_top: int,
+    cp_right: int,
+    cp_bottom: int,
 ) -> None:
     pass
 

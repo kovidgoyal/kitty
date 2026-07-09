@@ -1742,6 +1742,25 @@ The value can be one of: :code:`top-left`, :code:`top`, :code:`top-right`,
 )
 
 opt(
+    'padding_fill_strategy',
+    'background',
+    choices=('background', 'neighboring_cell'),
+    ctype='padding_fill_strategy',
+    long_text="""
+When the window size is not an exact multiple of the cell size, thin strips of
+compensatory padding are added at the window edges (see
+:opt:`placement_strategy`). This option controls how those strips are colored.
+:code:`neighboring_cell` colors each strip to match the
+background color of the cell adjacent to it, which looks best with full screen
+applications such as editors that have differently colored border cells. A value
+of :code:`background` colors the strips using the window background
+color. Note that this only affects the compensatory padding, the intentional
+padding from :opt:`window_padding_width` is always drawn using the background
+color.
+""",
+)
+
+opt(
     'active_border_color',
     '#00ff00',
     option_type='to_color_or_none',

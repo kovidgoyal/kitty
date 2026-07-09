@@ -37,6 +37,11 @@ class LayoutData(NamedTuple):
     space_before: int = 0
     space_after: int = 0
     content_size: int = 0
+    # The portion of space_before/space_after that is compensatory padding
+    # arising from the window size not being an exact multiple of the cell size
+    # (as opposed to the intentional margin/border/padding decoration).
+    compensatory_before: int = 0
+    compensatory_after: int = 0
 
 
 DecorationPairs = Sequence[tuple[int, int]]
@@ -47,6 +52,7 @@ ListOfWindows = list[WindowType]
 class LayoutGlobalData:
     draw_minimal_borders: bool = True
     draw_active_borders: bool = True
+    fill_padding_with_neighboring_cell: bool = False
     alignment_x: int = 0
     alignment_y: int = 0
 
@@ -75,6 +81,7 @@ def effective_draw_minimal_borders(opts: Options, has_more_than_one_visible_grou
 def set_layout_options(opts: Options) -> None:
     lgd.draw_minimal_borders = effective_draw_minimal_borders(opts)
     lgd.draw_active_borders = opts.active_border_color is not None
+    lgd.fill_padding_with_neighboring_cell = opts.padding_fill_strategy == 'neighboring_cell'
     lgd.alignment_x = -1 if opts.placement_strategy.endswith('left') else 1 if opts.placement_strategy.endswith('right') else 0
     lgd.alignment_y = -1 if opts.placement_strategy.startswith('top') else 1 if opts.placement_strategy.startswith('bottom') else 0
 
@@ -148,7 +155,12 @@ def layout_dimension(
             after_space = (start_at + length) - (pos + content_size)
         else:
             after_space = after_dec
-        yield LayoutData(pos, cells_per_window, before_space, after_space, content_size)
+        # Whatever space is present beyond the intentional decoration is the
+        # compensatory padding from the size mismatch (only ever non-zero for
+        # the first/last windows, which absorb the leading/trailing remainder).
+        yield LayoutData(
+            pos, cells_per_window, before_space, after_space, content_size,
+            before_space - before_dec, after_space - after_dec)
         pos += content_size + after_space
 
 
@@ -160,28 +172,50 @@ class Rect(NamedTuple):
 
 
 def blank_rects_for_window(wg: WindowGeometry) -> Generator[Rect, None, None]:
-    left_width, right_width = wg.spaces.left, wg.spaces.right
-    top_height, bottom_height = wg.spaces.top, wg.spaces.bottom
+    left, top, right, bottom = wg.left, wg.top, wg.right, wg.bottom
+    left_width, top_height, right_width, bottom_height = wg.spaces
+    if lgd.fill_padding_with_neighboring_cell:
+        # The compensatory padding is the innermost slice of the spaces, adjacent
+        # to the cells. It is drawn separately by the padding shader so that it
+        # matches its neighboring cell. Exclude it here by expanding the content
+        # box over it and only painting the remaining outer decoration frame in
+        # the background color.
+        c = wg.compensatory
+        left -= c.left
+        top -= c.top
+        right += c.right
+        bottom += c.bottom
+        left_width -= c.left
+        top_height -= c.top
+        right_width -= c.right
+        bottom_height -= c.bottom
     if left_width > 0:
-        yield Rect(wg.left - left_width, wg.top - top_height, wg.left, wg.bottom + bottom_height)
+        yield Rect(left - left_width, top - top_height, left, bottom + bottom_height)
     if top_height > 0:
-        yield Rect(wg.left, wg.top - top_height, wg.right + right_width, wg.top)
+        yield Rect(left, top - top_height, right + right_width, top)
     if right_width > 0:
-        yield Rect(wg.right, wg.top, wg.right + right_width, wg.bottom + bottom_height)
+        yield Rect(right, top, right + right_width, bottom + bottom_height)
     if bottom_height > 0:
-        yield Rect(wg.left, wg.bottom, wg.right, wg.bottom + bottom_height)
+        yield Rect(left, bottom, right, bottom + bottom_height)
 
 
-def window_geometry(xstart: int, xnum: int, ystart: int, ynum: int, left: int, top: int, right: int, bottom: int) -> WindowGeometry:
+def window_geometry(
+    xstart: int, xnum: int, ystart: int, ynum: int, left: int, top: int, right: int, bottom: int,
+    compensatory: Edges = Edges(),
+) -> WindowGeometry:
     return WindowGeometry(
         left=xstart, top=ystart, xnum=max(0, xnum), ynum=max(0, ynum),
         right=xstart + lgd.cell_width * xnum, bottom=ystart + lgd.cell_height * ynum,
-        spaces=Edges(left, top, right, bottom)
+        spaces=Edges(left, top, right, bottom), compensatory=compensatory,
     )
 
 
 def window_geometry_from_layouts(x: LayoutData, y: LayoutData) -> WindowGeometry:
-    return window_geometry(x.content_pos, x.cells_per_window, y.content_pos, y.cells_per_window, x.space_before, y.space_before, x.space_after, y.space_after)
+    return window_geometry(
+        x.content_pos, x.cells_per_window, y.content_pos, y.cells_per_window,
+        x.space_before, y.space_before, x.space_after, y.space_after,
+        Edges(x.compensatory_before, y.compensatory_before, x.compensatory_after, y.compensatory_after),
+    )
 
 
 def layout_single_window(

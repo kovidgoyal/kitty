@@ -150,6 +150,12 @@ bglayout(PyObject *layout_name) {
     return TILING;
 }
 
+static inline PaddingFillStrategy
+padding_fill_strategy(PyObject *val) {
+    const char *name = PyUnicode_AsUTF8(val);
+    return name[0] == 'n' ? PADDING_FILL_NEIGHBORING_CELL : PADDING_FILL_BACKGROUND;
+}
+
 static inline ImageAnchorPosition
 bganchor(PyObject *anchor_name) {
     const char *name = PyUnicode_AsUTF8(anchor_name);

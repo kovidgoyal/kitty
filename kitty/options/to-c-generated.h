@@ -877,6 +877,19 @@ convert_from_opts_linux_bell_theme(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_padding_fill_strategy(PyObject *val, Options *opts) {
+    opts->padding_fill_strategy = padding_fill_strategy(val);
+}
+
+static void
+convert_from_opts_padding_fill_strategy(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "padding_fill_strategy");
+    if (ret == NULL) return;
+    convert_from_python_padding_fill_strategy(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_active_border_color(PyObject *val, Options *opts) {
     opts->active_border_color = active_border_color(val);
 }
@@ -1674,6 +1687,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_bell_path(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_linux_bell_theme(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_padding_fill_strategy(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_active_border_color(py_opts, opts);
     if (PyErr_Occurred()) return false;

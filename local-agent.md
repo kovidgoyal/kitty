@@ -29,7 +29,12 @@ make debug
 Execute the following two commands to fix any formatting issues in your code:
 ```
 ruff check --fix
-gofmt -s -l -w tools kittens
+git ls-files '*.go' | xargs gofmt -w -s -l
+```
+
+Run the following command to type check python files:
+```
+./test.py type-check
 ```
 
 ### 🧪 Test Commands
