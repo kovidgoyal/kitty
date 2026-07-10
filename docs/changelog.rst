@@ -216,6 +216,8 @@ Detailed list of changes
 
 - choose-file kitten: Use a full readline editor for the search box. Also allow remapping the up/down/home/end keys to use for editing instead of navigating the file list (:pull:`10225`)
 
+- macOS: Prevent verification code AutoFill suggestions from appearing in kitty terminal windows
+
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

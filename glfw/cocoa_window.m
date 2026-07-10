@@ -896,7 +896,11 @@ static void _glfwUpdateNotchCover(_GLFWwindow*);
 
 // Content view class for the GLFW window {{{
 
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= 110000
+@interface GLFWContentView : NSView <NSTextInputClient, NSTextContent>
+#else
 @interface GLFWContentView : NSView <NSTextInputClient>
+#endif
 {
     _GLFWwindow* window;
     NSTrackingArea* trackingArea;
@@ -1198,6 +1202,17 @@ static void _glfwUpdateNotchCover(_GLFWwindow*);
 - (NSTextInputContext *)inputContext
 {
     return input_context;
+}
+
+- (NSString *)contentType
+{
+    // Explicitly opt out of AppKit AutoFill classifiers such as one-time-code suggestions.
+    return nil;
+}
+
+- (void)setContentType:(NSString *)contentType
+{
+    (void)contentType;
 }
 
 static UInt32
