@@ -228,7 +228,7 @@ convert_from_opts_cursor_trail_decay(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_cursor_trail_start_threshold(PyObject *val, Options *opts) {
-    opts->cursor_trail_start_threshold = PyLong_AsLong(val);
+    cursor_trail_start_threshold(val, opts);
 }
 
 static void

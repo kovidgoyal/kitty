@@ -567,7 +567,7 @@ class Options:
     cursor_trail: int = 0
     cursor_trail_color: kitty.fast_data_types.Color | None = None
     cursor_trail_decay: tuple[float, float] = (0.1, 0.4)
-    cursor_trail_start_threshold: int = 2
+    cursor_trail_start_threshold: tuple[int, int] = (2, 2)
     cursor_underline_thickness: float = 2.0
     default_pointer_shape: choices_for_default_pointer_shape = 'beam'
     detect_urls: bool = True

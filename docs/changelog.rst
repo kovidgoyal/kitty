@@ -222,7 +222,7 @@ Detailed list of changes
 
 - quick-access-terminal kitten: Allow configuring the layer on which to display the terminal (:pull:`10242`)
 
-
+- :opt:`cursor_trail_start_threshold` now optionally accepts two values to set x (horizontal) and y (vertical) thresholds independently (:iss:`10246`)
 
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

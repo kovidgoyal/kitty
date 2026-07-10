@@ -55,10 +55,10 @@ should_skip_cursor_trail_update(CursorTrail *ct, ndc_coords g, OSWindow *os_wind
         return true;
     }
 
-    if (OPT(cursor_trail_start_threshold) > 0 && !ct->needs_render) {
+    if ((OPT(cursor_trail_start_threshold_x) > 0 || OPT(cursor_trail_start_threshold_y) > 0) && !ct->needs_render) {
         int dx = (int)round((ct->corner_x[0] - EDGE(x, 1)) / g.dx);
         int dy = (int)round((ct->corner_y[0] - EDGE(y, 0)) / g.dy);
-        if (abs(dx) + abs(dy) <= OPT(cursor_trail_start_threshold)) {
+        if (abs(dx) <= OPT(cursor_trail_start_threshold_x) && abs(dy) <= OPT(cursor_trail_start_threshold_y)) {
             return true;
         }
     }

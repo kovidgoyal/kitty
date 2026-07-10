@@ -406,13 +406,17 @@ Adjust these values to control how quickly the cursor trail fades away.
 ''')
 
 opt('cursor_trail_start_threshold', '2',
-    option_type='positive_int', ctype='int',
+    option_type='cursor_trail_start_threshold',
+    ctype='!cursor_trail_start_threshold',
     long_text='''
-Set the distance threshold for starting the cursor trail. This option accepts a
-positive integer value that represents the minimum number of cells the
-cursor must move before the trail is started. When the cursor moves less than
-this threshold, the trail is skipped, reducing unnecessary cursor trail
-animation.
+Set the distance threshold for starting the cursor trail. This option accepts
+one or two positive integer values. When a single value is specified, it sets
+the threshold for both horizontal (x) and vertical (y) movement. When two
+values are specified, the first sets the x (horizontal) threshold and the
+second sets the y (vertical) threshold. The values represent the minimum
+number of cells the cursor must move in each dimension before the trail is
+started. When the cursor moves less than the threshold in both dimensions,
+the trail is skipped, reducing unnecessary cursor trail animation.
 ''')
 
 opt('cursor_trail_color', 'none',
