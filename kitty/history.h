@@ -14,6 +14,7 @@ typedef struct {
     CPUCell *cpu_cells;
     LineAttrs *line_attrs;
     void *mem;
+    size_t mmap_size;
 } HistoryBufSegment;
 
 typedef struct {

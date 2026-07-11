@@ -10,6 +10,7 @@
 #include "charsets.h"
 #include "resize.h"
 #include <structmember.h>
+#include <sys/mman.h>
 #include "../3rdparty/ringbuf/ringbuf.h"
 
 extern PyTypeObject Line_Type;
@@ -22,22 +23,27 @@ add_segment(HistoryBuf *self, index_type num) {
     const size_t cpu_cells_size = self->xnum * SEGMENT_SIZE * sizeof(CPUCell);
     const size_t gpu_cells_size = self->xnum * SEGMENT_SIZE * sizeof(GPUCell);
     const size_t segment_size = cpu_cells_size + gpu_cells_size + SEGMENT_SIZE * sizeof(LineAttrs);
-    char *mem = calloc(num, segment_size);
-    if (!mem) fatal("Out of memory allocating new history buffer segment");
+    if (num > SIZE_MAX / segment_size) fatal("History buffer segment allocation is too large");
+    const size_t mmap_size = num * segment_size;
+    char *mem = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+    if (mem == MAP_FAILED) fatal("Out of memory allocating new history buffer segment");
     char *needs_free = mem;
     for (HistoryBufSegment *s = self->segments + self->num_segments; s < self->segments + self->num_segments + num; s++, mem += segment_size) {
         s->cpu_cells = (CPUCell*)mem;
         s->gpu_cells = (GPUCell*)(((uint8_t*)s->cpu_cells) + cpu_cells_size);
         s->line_attrs = (LineAttrs*)(((uint8_t*)s->gpu_cells) + gpu_cells_size);
         s->mem = NULL;
+        s->mmap_size = 0;
     }
     self->segments[self->num_segments].mem = needs_free;
+    self->segments[self->num_segments].mmap_size = mmap_size;
     self->num_segments += num;
 }
 
 static void
 free_segment(HistoryBufSegment *s) {
-    free(s->mem); zero_at_ptr(s);
+    if (s->mem && munmap(s->mem, s->mmap_size) != 0) log_error("Failed to unmap history buffer segment: %s", strerror(errno));
+    zero_at_ptr(s);
 }
 
 static index_type
