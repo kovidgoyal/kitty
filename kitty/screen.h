@@ -217,6 +217,7 @@ typedef struct {
 #define render_lines_for_screen(screen) (screen->lines + pixel_scroll_enabled(screen))
 
 void screen_align(Screen*);
+void screen_garbage_collect_text_cache(Screen *screen);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
 void screen_restore_modes(Screen *);

@@ -31,6 +31,7 @@ typedef struct TextCache {
     chars_map map;
     unsigned refcnt;
     CharsMonotonicArena arena;
+    unsigned adds_since_last_gc;
 } TextCache;
 static uint64_t hash_chars(Chars k) { return vt_hash_bytes(k.chars, sizeof(k.chars[0]) * k.count); }
 static bool cmpr_chars(Chars a, Chars b) { return a.count == b.count && memcmp(a.chars, b.chars, sizeof(a.chars[0]) * a.count) == 0; }
@@ -144,6 +145,66 @@ char_type
 tc_get_or_insert_chars(TextCache *self, const ListOfChars *chars) {
     Chars key = {.count=chars->count, .chars=chars->chars};
     chars_map_itr i = vt_get(&self->map, key);
-    if (vt_is_end(i)) return copy_and_insert(self, key);
+    if (vt_is_end(i)) { self->adds_since_last_gc++; return copy_and_insert(self, key); }
     return i.data->val;
+}
+
+char_type
+tc_num_entries(const TextCache *self) { return self->array.count; }
+
+// Interned cell texts are referenced from cells by index, so entries cannot
+// be evicted individually. Instead, periodically garbage collect: the owner
+// of all index-holding cells (Screen) calls tc_gc_begin(), remaps every live
+// cell index via tc_gc_map_index() -- which re-interns just the entries that
+// are still referenced -- and finishes with tc_gc_end(). Entries no longer
+// referenced by any cell (typically unique texts that have scrolled out of
+// the history buffer) are freed. Without this, a stream of unique
+// multi-codepoint cells (for example random combining marks) grows the cache
+// without bound for the lifetime of the window.
+#define TEXT_CACHE_ADDS_BETWEEN_GCS 8192u
+
+bool
+tc_should_gc(const TextCache *self) { return self->adds_since_last_gc > TEXT_CACHE_ADDS_BETWEEN_GCS; }
+
+struct TextCacheGCData {
+    Chars *old_items; char_type old_count;
+    CharsMonotonicArena old_arena;
+    // old index -> new index + 1, 0 means not yet remapped
+    char_type *map;
+};
+
+TextCacheGCData*
+tc_gc_begin(TextCache *self) {
+    TextCacheGCData *gc = calloc(1, sizeof(TextCacheGCData));
+    if (!gc) return NULL;
+    gc->map = calloc(MAX(1u, (size_t)self->array.count), sizeof(gc->map[0]));
+    Chars *fresh = malloc(256 * sizeof(self->array.items[0]));
+    if (!gc->map || !fresh) { free(gc->map); free(fresh); free(gc); return NULL; }
+    gc->old_items = self->array.items; gc->old_count = self->array.count;
+    gc->old_arena = self->arena;
+    self->array.items = fresh; self->array.capacity = 256; self->array.count = 0;
+    zero_at_ptr(&self->arena);
+    vt_cleanup(&self->map); vt_init(&self->map);
+    self->adds_since_last_gc = 0;
+    return gc;
+}
+
+bool
+tc_gc_map_index(TextCache *self, TextCacheGCData *gc, char_type old_idx, char_type *new_idx) {
+    if (old_idx >= gc->old_count) return false;
+    if (!gc->map[old_idx]) {
+        Chars key = gc->old_items[old_idx];
+        chars_map_itr i = vt_get(&self->map, key);
+        char_type nidx = vt_is_end(i) ? copy_and_insert(self, key) : i.data->val;
+        gc->map[old_idx] = nidx + 1;
+    }
+    *new_idx = gc->map[old_idx] - 1;
+    return true;
+}
+
+void
+tc_gc_end(TextCacheGCData *gc) {
+    free(gc->map); free(gc->old_items);
+    Chars_free_all(&gc->old_arena);
+    free(gc);
 }

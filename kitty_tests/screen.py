@@ -1204,6 +1204,43 @@ class TestScreen(BaseTest):
         self.ae('2', s.hyperlink_at(1, 3))
         self.ae(s.current_url_text(), 'Z Z')
 
+    def test_text_cache_garbage_collection(self):
+        # unique multi-codepoint cell texts, single width base + combining mark
+        def unique_text(i):
+            return chr(0x100 + i // 0x70) + chr(0x300 + i % 0x70)
+
+        s = self.create_screen()
+        base = s.text_cache_count()
+        for i in range(10):
+            s.draw(unique_text(i))
+        self.ae(s.text_cache_count(), base + 10)
+        before = tuple(str(s.line(y)) for y in range(s.lines))
+        s.garbage_collect_text_cache()
+        # all entries are still referenced by cells, so all survive
+        self.ae(s.text_cache_count(), base + 10)
+        self.ae(before, tuple(str(s.line(y)) for y in range(s.lines)))
+
+        # scroll all multi-codepoint cells out of the screen and the history
+        # buffer, then intern one more entry, which gets a high index
+        for i in range(s.lines * 3):
+            s.linefeed()
+        s.carriage_return()
+        s.draw(unique_text(10))
+        s.garbage_collect_text_cache()
+        # only the surviving entry remains and its index was remapped
+        # without changing the cell's text
+        self.ae(s.text_cache_count(), base + 1)
+        self.ae(str(s.line(s.cursor.y)).rstrip(), unique_text(10))
+
+        # the periodic GC keeps the cache bounded when unique cell texts
+        # are continuously created and scrolled out, as in the DoS scenario
+        s = self.create_screen()
+        num = 3 * 8192 + 100
+        for i in range(num):
+            s.draw(unique_text(i))
+        self.assertLess(s.text_cache_count(), 8192 + 2 * s.lines * s.columns)
+        self.ae(str(s.line(s.cursor.y)).rstrip()[-2:], unique_text(num - 1))
+
     def test_bottom_margin(self):
         s = self.create_screen(cols=80, lines=6, scrollback=4)
         s.set_margins(0, 5)
