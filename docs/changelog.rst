@@ -228,6 +228,8 @@ Detailed list of changes
 
 - Bypass libc malloc for history buffer to avoid libc pool policies causing apparent memory leak (:pull:`10254`)
 
+- Cursor trail: Do not run the trail shader when the cursor is hidden, saving resources (:pull:`10255`)
+
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
