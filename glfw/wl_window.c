@@ -1509,7 +1509,7 @@ int _glfwPlatformCreateWindow(
     // and only then create the OpenGL context.
     if (window->wl.visible) loop_till_window_fully_created(window);
     debug("Creating OpenGL context and attaching it to window\n");
-    if (ctxconfig->client != GLFW_NO_API) attach_opengl_context_to_window(window, ctxconfig, fbconfig);
+    if (ctxconfig->client != GLFW_NO_API && !attach_opengl_context_to_window(window, ctxconfig, fbconfig)) return false;
     return true;
 }
 
