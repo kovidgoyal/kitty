@@ -50,8 +50,12 @@ update_cursor_trail_target(CursorTrail *ct, Window *w, ndc_coords g) {
 }
 
 static bool
-should_skip_cursor_trail_update(CursorTrail *ct, ndc_coords g, OSWindow *os_window) {
+should_skip_cursor_trail_update(CursorTrail *ct, ndc_coords g, OSWindow *os_window, Window *w) {
     if (os_window->live_resize.in_progress) {
+        return true;
+    }
+
+    if (!WD.screen->modes.mDECTCEM && ct->opacity <= 0.0f) {
         return true;
     }
 
@@ -66,7 +70,7 @@ should_skip_cursor_trail_update(CursorTrail *ct, ndc_coords g, OSWindow *os_wind
 }
 
 static void
-update_cursor_trail_corners(CursorTrail *ct, ndc_coords g, monotonic_t now, OSWindow *os_window) {
+update_cursor_trail_corners(CursorTrail *ct, ndc_coords g, monotonic_t now, OSWindow *os_window, Window *w) {
     // the trail corners move towards the cursor corner at a speed proportional to their distance from the cursor corner.
     // equivalent to exponential ease out animation.
     static const int corner_index[2][4] = {{1, 1, 0, 0}, {0, 1, 1, 0}};
@@ -75,7 +79,7 @@ update_cursor_trail_corners(CursorTrail *ct, ndc_coords g, monotonic_t now, OSWi
     float decay_fast = OPT(cursor_trail_decay_fast);
     float decay_slow = OPT(cursor_trail_decay_slow);
 
-    if (should_skip_cursor_trail_update(ct, g, os_window)) {
+    if (should_skip_cursor_trail_update(ct, g, os_window, w)) {
         for (int i = 0; i < 4; ++i) {
             ct->corner_x[i] = EDGE(x, corner_index[0][i]);
             ct->corner_y[i] = EDGE(y, corner_index[1][i]);
@@ -169,7 +173,7 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
         update_cursor_trail_target(ct, w, g);
     }
 
-    update_cursor_trail_corners(ct, g, now, os_window);
+    update_cursor_trail_corners(ct, g, now, os_window, w);
     update_cursor_trail_opacity(ct, w, now);
 
     bool needs_render_prev = ct->needs_render;
