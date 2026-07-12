@@ -226,6 +226,8 @@ Detailed list of changes
 
 - scroll-window remote control command: Fix a regression that broke scrolling by pages (:iss:`10253`)
 
+- Bypass libc malloc for history buffer to avoid libc pool policies causing apparent memory leak (:pull:`10254`)
+
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

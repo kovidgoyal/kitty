@@ -25,6 +25,8 @@ add_segment(HistoryBuf *self, index_type num) {
     const size_t segment_size = cpu_cells_size + gpu_cells_size + SEGMENT_SIZE * sizeof(LineAttrs);
     if (num > SIZE_MAX / segment_size) fatal("History buffer segment allocation is too large");
     const size_t mmap_size = num * segment_size;
+    // We use mmap to avoid fragmentation in libc malloc pool, see
+    // https://github.com/kovidgoyal/kitty/pull/10254
     char *mem = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
     if (mem == MAP_FAILED) fatal("Out of memory allocating new history buffer segment");
     char *needs_free = mem;
