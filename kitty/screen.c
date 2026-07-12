@@ -941,12 +941,11 @@ screen_garbage_collect_text_cache(Screen *self) {
         self->text_cache, gc, self->overlay_line.cpu_cells, self->overlay_line.xnum);
     if (self->overlay_line.original_line.cpu_cells) text_cache_gc_process_cells(
         self->text_cache, gc, self->overlay_line.original_line.cpu_cells, self->overlay_line.xnum);
-    tc_gc_end(gc);
+    tc_gc_end(self->text_cache, gc);
 }
 
 static bool
 add_combining_char(Screen *self, char_type ch, index_type x, index_type y) {
-    if (tc_should_gc(self->text_cache)) screen_garbage_collect_text_cache(self);
     CPUCell *cpu_cells = linebuf_cpu_cells_for_line(self->linebuf, y);
     CPUCell *cell = cpu_cells + x;
     if (!cell_has_text(cell) || (cell->is_multicell && cell->y)) return false; // don't allow adding combining chars to a null cell
@@ -1252,6 +1251,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
 }
 
 #define PREPARE_FOR_DRAW_TEXT \
+    if (tc_should_gc(self->text_cache)) screen_garbage_collect_text_cache(self); \
     const bool force_underline = OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && self->active_hyperlink_id != 0; \
     CellAttrs attrs = cursor_to_attrs(self->cursor); \
     if (force_underline) attrs.decoration = OPT(url_style); \
@@ -1322,7 +1322,6 @@ handle_fixed_width_multicell_command(Screen *self, CPUCell mcd, ListOfChars *lc)
     lc->count = MIN(lc->count, MAX_NUM_CODEPOINTS_PER_CELL);
     PREPARE_FOR_DRAW_TEXT;
     mcd.hyperlink_id = s.cc.hyperlink_id;
-    if (tc_should_gc(self->text_cache)) screen_garbage_collect_text_cache(self);
     cell_set_chars(&mcd, self->text_cache, lc);
     move_cursor_past_multicell(self, width);
     if (height > 1) {
@@ -2072,7 +2071,6 @@ screen_tab(Screen *self) {
                     cell_set_char(c, ' ');
                 }
                 self->lc->count = 2; self->lc->chars[0] = '\t'; self->lc->chars[1] = diff;
-                if (tc_should_gc(self->text_cache)) screen_garbage_collect_text_cache(self);
                 cell_set_chars(cpu_cell, self->text_cache, self->lc);
             }
         }

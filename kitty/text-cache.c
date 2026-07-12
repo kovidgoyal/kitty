@@ -185,7 +185,6 @@ tc_gc_begin(TextCache *self) {
     self->array.items = fresh; self->array.capacity = 256; self->array.count = 0;
     zero_at_ptr(&self->arena);
     vt_cleanup(&self->map); vt_init(&self->map);
-    self->adds_since_last_gc = 0;
     return gc;
 }
 
@@ -203,7 +202,8 @@ tc_gc_map_index(TextCache *self, TextCacheGCData *gc, char_type old_idx, char_ty
 }
 
 void
-tc_gc_end(TextCacheGCData *gc) {
+tc_gc_end(TextCache *self, TextCacheGCData *gc) {
+    self->adds_since_last_gc = 0;
     free(gc->map); free(gc->old_items);
     Chars_free_all(&gc->old_arena);
     free(gc);
