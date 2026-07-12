@@ -51,6 +51,18 @@ TextCache* tc_decref(TextCache *self);
 void tc_chars_at_index(const TextCache *self, char_type idx, ListOfChars *ans);
 unsigned tc_chars_at_index_ansi(const TextCache *self, char_type idx, ANSIBuf *output);
 char_type tc_get_or_insert_chars(TextCache *self, const ListOfChars *chars);
+char_type tc_num_entries(const TextCache *self);
+
+// Garbage collection: TextCache interns unique cell texts forever, so a
+// stream of unique multi-codepoint cells grows it without bound. The GC
+// mirrors the hyperlink pool design: steal the current entries, then have
+// the owner (Screen) remap every live cell index via tc_gc_map_index(),
+// which re-interns only referenced entries into the fresh cache.
+bool tc_should_gc(const TextCache *self);
+typedef struct TextCacheGCData TextCacheGCData;
+TextCacheGCData* tc_gc_begin(TextCache *self);
+bool tc_gc_map_index(TextCache *self, TextCacheGCData *gc, char_type old_idx, char_type *new_idx);
+void tc_gc_end(TextCache *self, TextCacheGCData *gc);
 char_type tc_first_char_at_index(const TextCache *self, char_type idx);
 char_type tc_last_char_at_index(const TextCache *self, char_type idx);
 bool tc_chars_at_index_without_alloc(const TextCache *self, char_type idx, ListOfChars *ans);
