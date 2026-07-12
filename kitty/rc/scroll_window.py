@@ -76,13 +76,14 @@ using this option means that you will not be notified of failures.
                         case 'l':
                             window.scroll_fractional_lines(amt)
                         case 'p':
+                            unit = 'page'
                             if not isinstance(amt, int) and not amt.is_integer():
                                 amt = round(window.screen.lines * amt)
                                 unit = 'line'
                             assert isinstance(amt, int)
                             direction = 'up' if amt < 0 else 'down'
                             func = getattr(window, f'scroll_{unit}_{direction}')
-                            for i in range(int(abs(amt))):
+                            for _ in range(int(abs(amt))):
                                 func()
         return None
 

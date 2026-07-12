@@ -224,6 +224,8 @@ Detailed list of changes
 
 - :opt:`cursor_trail_start_threshold` now optionally accepts two values to set x (horizontal) and y (vertical) thresholds independently (:iss:`10246`)
 
+- scroll-window remote control command: Fix a regression that broke scrolling by pages (:iss:`10253`)
+
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
