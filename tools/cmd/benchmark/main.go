@@ -150,6 +150,27 @@ func unicode() (r result, err error) {
 	return result{desc, data_sz, duration, reps}, nil
 }
 
+func unique_unicode() (r result, err error) {
+	const cell_count = 256 * 1024
+	const combining_count = 0x70
+	var data strings.Builder
+	data.Grow(cell_count * 10)
+	for i := range cell_count {
+		q := i
+		data.WriteByte('a')
+		for range 3 {
+			data.WriteRune(rune(0x300 + q%combining_count))
+			q /= combining_count
+		}
+	}
+	const desc = "Unique multi-codepoint Unicode cells"
+	duration, data_sz, reps, err := benchmark_data(desc, data.String(), opts)
+	if err != nil {
+		return result{}, err
+	}
+	return result{desc, data_sz, duration, reps}, nil
+}
+
 func ascii_with_csi() (r result, err error) {
 	const sz = 1024*1024 + 17
 	out := make([]byte, 0, sz+48)
@@ -244,7 +265,7 @@ func present_result(r result, col_width int) {
 
 func all_benchamrks() []string {
 	return []string{
-		"ascii", "unicode", "csi", "images", "long_escape_codes",
+		"ascii", "unicode", "unique_unicode", "csi", "images", "long_escape_codes",
 	}
 }
 
@@ -271,6 +292,13 @@ func main(args []string) (err error) {
 
 	if slices.Index(args, "unicode") >= 0 {
 		if r, err = unicode(); err != nil {
+			return err
+		}
+		results = append(results, r)
+	}
+
+	if slices.Index(args, "unique_unicode") >= 0 {
+		if r, err = unique_unicode(); err != nil {
 			return err
 		}
 		results = append(results, r)
