@@ -647,6 +647,13 @@ class TestGraphics(BaseTest):
         self.ae((s.cursor.x, s.cursor.y), (3, 2))
         rect_eq(layers(s)[0]['dest_rect'], -1, 1, -1 + 3 * dx, 1 - 3*dy)
 
+    def test_graphics_put_with_pixel_offsets(self):
+        cw, ch = 10, 20
+        # Image 10x20 placed with 5px X and Y pixel offsets
+        s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
+        self.ae(put_image(s, 10, 20, cell_x_off=5, cell_y_off=5)[1], 'OK')
+        self.ae((s.cursor.x, s.cursor.y), (2, 1))
+
     def test_image_layer_grouping(self):
         cw, ch = 10, 20
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)

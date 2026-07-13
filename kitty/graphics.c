@@ -830,8 +830,9 @@ update_src_rect(ImageRef *ref, Image *img) {
 static void
 update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows, CellPixelSize cell) {
     uint32_t t;
-    if (num_cols == 0) {
-        if (num_rows == 0) {
+    const bool auto_cols = num_cols == 0, auto_rows = num_rows == 0;
+    if (auto_cols) {
+        if (auto_rows) {
             t = (uint32_t)(ref->src_width + ref->cell_x_offset);
             num_cols = t / cell.width;
             if (t > num_cols * cell.width) num_cols += 1;
@@ -841,8 +842,8 @@ update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows, CellPixelS
             num_cols = (uint32_t)ceil(width_px / cell.width);
         }
     }
-    if (num_rows == 0) {
-        if (num_cols == 0) {
+    if (auto_rows) {
+        if (auto_cols) {
             t = (uint32_t)(ref->src_height + ref->cell_y_offset);
             num_rows = t / cell.height;
             if (t > num_rows * cell.height) num_rows += 1;
