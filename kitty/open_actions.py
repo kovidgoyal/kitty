@@ -7,7 +7,7 @@ import posixpath
 import shlex
 from collections.abc import Iterable, Iterator
 from contextlib import suppress
-from typing import Any, NamedTuple, cast
+from typing import Any, NamedTuple
 from urllib.parse import ParseResult, unquote, urlparse
 
 from .conf.utils import KeyAction, to_cmdline_implementation
@@ -56,7 +56,7 @@ def parse(lines: Iterable[str]) -> Iterator[OpenAction]:
         elif key in ('mime', 'ext', 'protocol', 'file', 'path', 'url', 'fragment_matches'):
             if key != 'url':
                 rest = rest.lower()
-            match_criteria.append(MatchCriteria(cast(MatchType, key), rest))
+            match_criteria.append(MatchCriteria(key, rest))
         elif key == 'action_alias':
             try:
                 alias_name, alias_val = rest.split(maxsplit=1)

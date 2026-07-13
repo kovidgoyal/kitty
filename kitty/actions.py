@@ -2,7 +2,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import inspect
-from typing import NamedTuple, cast
+from typing import Any, NamedTuple
 
 from .boss import Boss
 from .tabs import Tab
@@ -39,18 +39,19 @@ def get_all_actions() -> dict[ActionGroup, list[Action]]:
 
     ans: dict[ActionGroup, list[Action]] = {}
 
-    def is_action(x: object) -> bool:
+    def is_action(x: Any) -> bool:
         return isinstance(getattr(x, 'action_spec', None), ActionSpec)
 
-    def as_action(x: object) -> Action:
+    def as_action(x: Any) -> Action:
         spec: ActionSpec = getattr(x, 'action_spec')
         doc = inspect.cleandoc(spec.doc)
         lines = doc.splitlines()
         first = lines.pop(0)
         short_help = first
         long_help = '\n'.join(lines).strip()
-        assert spec.group in groups
-        return Action(getattr(x, '__name__'), cast(ActionGroup, spec.group), short_help, long_help)
+        if spec.group not in groups:
+            raise KeyError(f'Unknown action type: {spec.group}')
+        return Action(getattr(x, '__name__'), spec.group, short_help, long_help)
 
     seen = set()
     for cls in (Window, Tab, Boss):
