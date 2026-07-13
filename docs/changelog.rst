@@ -230,6 +230,8 @@ Detailed list of changes
 
 - Cursor trail: Do not run the trail shader when the cursor is hidden, saving resources (:pull:`10255`)
 
+- Graphics: Fix incorrect calculated cursor position when placing images with X/Y cell offsets (:pull:`10256`)
+
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
