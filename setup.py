@@ -1765,6 +1765,9 @@ def macos_info_plist(for_quake: str = '') -> bytes:
         NSBluetoothAlwaysUsageDescription=access('Bluetooth.'),
         # Speech
         NSSpeechRecognitionUsageDescription=access('speech recognition.'),
+        # One time code autofill popups
+        # see https://github.com/kovidgoyal/kitty/pull/10250
+        NSAutoFillRequiresTextContentTypeForOneTimeCodeOnMac=True,
     )
     if for_quake:
         # exclude from dock and menubar

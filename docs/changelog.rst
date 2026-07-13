@@ -232,6 +232,8 @@ Detailed list of changes
 
 - Graphics: Fix incorrect calculated cursor position when placing images with X/Y cell offsets (:pull:`10256`)
 
+- macOS: Disable macOS one time code autofill popups (:pull:`10250`)
+
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
