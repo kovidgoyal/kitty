@@ -52,6 +52,9 @@ Glossary
       computers, transferring files, inputting unicode characters, etc.
       They can also be written by users in Python and used to customize and
       extend kitty functionality, see :doc:`kittens_intro` for details.
+      The vast majority of kittens that ship with kitty are written in Go,
+      with a small Python shim to handle the in-process part of the
+      interaction.
 
    easing function
       A function that controls how an animation progresses over time. kitty
