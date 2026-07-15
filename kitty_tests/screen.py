@@ -1864,6 +1864,57 @@ class TestScreen(BaseTest):
             sc(2, 1, 2, 3, slot=slot)
             sc(5, 13, slot=slot)
 
+    def test_soft_reset(self):
+        SOFT_RESET = b'\x1b[!p'  # DECSTR sequence
+
+        # Screen content is preserved (unlike hard reset)
+        s = self.create_screen()
+        s.draw('hello')
+        parse_bytes(s, SOFT_RESET)
+        self.ae(str(s.line(0)), 'hello')
+
+        # Hard reset clears screen content; soft reset does not
+        s = self.create_screen()
+        s.draw('hello')
+        s.reset()
+        self.ae(str(s.line(0)), '')
+
+        # Cursor SGR attributes are cleared
+        s = self.create_screen()
+        s.select_graphic_rendition(1)   # bold
+        s.select_graphic_rendition(31)  # red fg
+        self.assertTrue(s.cursor.bold)
+        self.assertNotEqual(s.cursor.fg, 0)
+        parse_bytes(s, SOFT_RESET)
+        self.assertFalse(s.cursor.bold)
+        self.ae(s.cursor.fg, 0)
+
+        # Cursor position is preserved
+        s = self.create_screen()
+        s.cursor_position(3, 4)
+        self.ae((s.cursor.y, s.cursor.x), (2, 3))
+        parse_bytes(s, SOFT_RESET)
+        self.ae((s.cursor.y, s.cursor.x), (2, 3))
+
+        # Insert mode (IRM) is cleared
+        s = self.create_screen()
+        s.draw('abcde')
+        s.set_mode(IRM)
+        parse_bytes(s, SOFT_RESET)
+        # without IRM, drawing overwrites
+        s.cursor.x = 0
+        s.draw('X')
+        self.ae(str(s.line(0)), 'Xbcde')
+
+        # Alternate screen is NOT exited on soft reset
+        s = self.create_screen()
+        parse_bytes(s, b'\x1b[?1049h')  # enter alternate screen
+        self.assertFalse(s.is_main_linebuf())
+        parse_bytes(s, SOFT_RESET)
+        self.assertFalse(s.is_main_linebuf())
+        s.reset()
+        self.assertTrue(s.is_main_linebuf())
+
 
 def detect_url(self, scale=1):
     s = self.create_screen(cols=30 * scale)

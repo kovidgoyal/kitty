@@ -242,6 +242,7 @@ void screen_scroll(Screen *self, unsigned int count);
 void screen_reverse_scroll(Screen *self, unsigned int count);
 void screen_reverse_scroll_and_fill_from_scrollback(Screen *self, unsigned int count);
 void screen_reset(Screen *self);
+void screen_soft_reset(Screen *self);
 void screen_set_tab_stop(Screen *self);
 void screen_tab(Screen *self);
 void screen_backtab(Screen *self, unsigned int);

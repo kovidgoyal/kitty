@@ -1499,7 +1499,7 @@ class Window:
         b |= b << 8
         self.screen.send_escape_code_to_child(ESC_OSC, f'{code};rgb:{r:04x}/{g:04x}/{b:04x}')
 
-    def on_reset(self) -> None:
+    def on_reset(self, is_hard_reset: bool = True) -> None:
         from .progress import ProgressState
         if self.progress.state is not ProgressState.unset:
             self.progress.update(0)  # unset

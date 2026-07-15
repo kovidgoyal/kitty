@@ -173,13 +173,13 @@ new_screen_object(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
 static Line* range_line_(Screen *self, int y);
 
-void
-screen_reset(Screen *self) {
+static void
+do_screen_reset(Screen *self, bool is_hard_reset) {
     screen_pause_rendering(self, false, 0);
     self->dnd_chunking.active = false;
     self->extra_cursors.count = 0; zero_at_ptr(&self->extra_cursors.color); self->extra_cursors.dirty = true;
     self->main_pointer_shape_stack.count = 0; self->alternate_pointer_shape_stack.count = 0;
-    if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
+    if (is_hard_reset && self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
     if (screen_is_overlay_active(self)) {
         deactivate_overlay_line(self);
         // Cancel IME composition
@@ -197,11 +197,13 @@ screen_reset(Screen *self) {
     self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
     self->alt_savepoint.is_valid = false;
-    linebuf_clear(self->linebuf, BLANK_CHAR);
-    historybuf_clear(self->historybuf);
-    clear_hyperlink_pool(self->hyperlink_pool);
-    grman_clear(self->main_grman, false, self->cell_size);  // dont delete images in scrollback
-    grman_clear(self->alt_grman, true, self->cell_size);
+    if (is_hard_reset) {
+        linebuf_clear(self->linebuf, BLANK_CHAR);
+        historybuf_clear(self->historybuf);
+        clear_hyperlink_pool(self->hyperlink_pool);
+        grman_clear(self->main_grman, false, self->cell_size);  // dont delete images in scrollback
+        grman_clear(self->alt_grman, true, self->cell_size);
+    }
     self->modes = empty_modes;
     self->saved_modes = empty_modes;
     self->active_hyperlink_id = 0;
@@ -218,7 +220,17 @@ screen_reset(Screen *self) {
     screen_cursor_position(self, 1, 1);
     set_dynamic_color(self, 111, NULL);  // does default_bg_changed processing
     colorprofile_reset(self->color_profile);
-    CALLBACK("on_reset", NULL)
+    CALLBACK("on_reset", "O", is_hard_reset ? Py_True : Py_False);
+}
+
+void
+screen_reset(Screen *self) { do_screen_reset(self, true); }
+
+void
+screen_soft_reset(Screen *self) {
+    index_type x = self->cursor->x, y = self->cursor->y;
+    do_screen_reset(self, false);
+    self->cursor->x = x; self->cursor->y = y;
 }
 
 void

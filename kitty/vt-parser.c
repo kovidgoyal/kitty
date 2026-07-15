@@ -1380,11 +1380,19 @@ dispatch_csi(PS *self) {
             }
             break;
         case DECSTR:
-            if (end_modifier == '$') {
-                // DECRQM
-                CALL_CSI_HANDLER1P(report_mode_status, 0, '?');
-            } else {
-                REPORT_ERROR("Unknown DECSTR CSI sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
+            switch (end_modifier) {
+                case '$': // DECRQM
+                    CALL_CSI_HANDLER1P(report_mode_status, 0, '?'); break;
+                case '!': // Soft reset
+                    if (num_params) {
+                        REPORT_ERROR("DECSTR escape code with parameters is invalid");
+                    } else {
+                        REPORT_COMMAND(screen_soft_reset);
+                        screen_soft_reset(self->screen);
+                    }
+                    break;
+                default:
+                    REPORT_ERROR("Unknown CSI p sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier); break;
             }
             break;
         case 'm':

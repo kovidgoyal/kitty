@@ -60,7 +60,7 @@ class Callbacks:
     def notify_child_of_resize(self):
         self.num_of_resize_events += 1
 
-    def on_reset(self) -> None:
+    def on_reset(self, is_hard_reset: bool = True) -> None:
         if self.pty is not None:
             self.pty.reset_termios_state()
 

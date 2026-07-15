@@ -234,6 +234,8 @@ Detailed list of changes
 
 - macOS: Disable macOS one time code autofill popups (:pull:`10250`)
 
+- Add support for DECSTR soft screen reset escape code (:iss:`10263`)
+
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
