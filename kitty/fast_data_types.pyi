@@ -1380,7 +1380,7 @@ class Screen:
     def scroll_until_cursor_prompt(self, add_to_scrollback: bool = True) -> None:
         pass
 
-    def reset(self) -> None:
+    def reset(self, hard: bool = True) -> None:
         pass
 
     def erase_in_display(self, how: int = 0, private: bool = False) -> None:

@@ -5068,7 +5068,7 @@ resize(Screen *self, PyObject *args) {
 
 WRAP0x(index)
 WRAP0(reverse_index)
-WRAP0(reset)
+static PyObject* reset(Screen *self, PyObject *args) { int hard = true; if (!PyArg_ParseTuple(args, "|p", &hard)) return NULL; if (hard) screen_reset(self); else screen_soft_reset(self); Py_RETURN_NONE; }
 WRAP0(set_tab_stop)
 WRAP1(clear_tab_stop, 0)
 WRAP0(reset_tab_stops)
@@ -6314,7 +6314,7 @@ static PyMethodDef methods[] = {
     MND(set_progress, METH_VARARGS)
     MND(set_mode, METH_VARARGS)
     MND(reset_mode, METH_VARARGS)
-    MND(reset, METH_NOARGS)
+    MND(reset, METH_VARARGS)
     MND(reset_dirty, METH_NOARGS)
     MND(is_using_alternate_linebuf, METH_NOARGS)
     MND(is_main_linebuf, METH_NOARGS)
