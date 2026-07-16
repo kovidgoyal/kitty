@@ -190,7 +190,7 @@ Detailed list of changes
 
 - kitten @ get-text: Add support for :code:`alternate` and :code:`alternate_scrollback` extents to fetch text from the alternate screen buffer (:iss:`10165`)
 
-- Add a new ``verticalfocus`` layout that gives the focused window a configurable larger share of the vertical space.
+- Add a ``focus_bias`` option to the vertical and horizontal layouts that gives the focused window at least an equal share, or a configurable larger share, of the available space.
 
 - Wayland: Fix first OS window being a few cells too small when ``initial_window_width/initial_window_height`` are set in cells and a fractional display scale is in use (:iss:`10146`)
 

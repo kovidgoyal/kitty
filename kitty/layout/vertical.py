@@ -59,6 +59,21 @@ def borders(
             yield x
 
 
+class VerticalLayoutOpts(LayoutOpts):
+    focus_bias: int = 0
+
+    def __init__(self, data: dict[str, str]):
+        try:
+            self.focus_bias = int(data.get('focus_bias', 0))
+        except Exception:
+            self.focus_bias = 0
+        if self.focus_bias:
+            self.focus_bias = max(10, min(self.focus_bias, 90))
+
+    def serialized(self) -> dict[str, Any]:
+        return {'focus_bias': self.focus_bias}
+
+
 class Vertical(Layout):
 
     name = 'vertical'
@@ -67,10 +82,30 @@ class Vertical(Layout):
     drag_overlay_mode = DragOverlayMode.axis_y
     main_axis_layout = Layout.ylayout
     perp_axis_layout = Layout.xlayout
+    layout_opts = VerticalLayoutOpts({})
+
+    @property
+    def needs_relayout_on_focus_change(self) -> bool:
+        return self.layout_opts.focus_bias > 0
+
+    def focused_bias(self, all_windows: WindowList) -> Sequence[float] | None:
+        groups = tuple(all_windows.iter_all_layoutable_groups())
+        if len(groups) <= 1 or not self.layout_opts.focus_bias:
+            return None
+        active_group = all_windows.active_group
+        if active_group is None:
+            return None
+        try:
+            active_idx = groups.index(active_group)
+        except ValueError:
+            return None
+        focused = max(self.layout_opts.focus_bias / 100.0, 1.0 / len(groups))
+        other = (1.0 - focused) / (len(groups) - 1)
+        return tuple(focused if i == active_idx else other for i in range(len(groups)))
 
     def variable_layout(self, all_windows: WindowList, biased_map: dict[int, float]) -> LayoutDimension:
         num_windows = all_windows.num_groups
-        bias = biased_map if num_windows > 1 else None
+        bias = self.focused_bias(all_windows) or (biased_map if num_windows > 1 else None)
         return self.main_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias)
 
     def fixed_layout(self, wg: WindowGroup) -> LayoutDimension:
@@ -96,6 +131,8 @@ class Vertical(Layout):
         return True
 
     def bias_slot(self, all_windows: WindowList, idx: int, fractional_bias: float, cell_increment_bias_h: float, cell_increment_bias_v: float) -> bool:
+        if self.layout_opts.focus_bias:
+            return False
         before_layout = tuple(self.variable_layout(all_windows, self.biased_map))
         self.biased_map[idx] = cell_increment_bias_h if self.main_is_horizontal else cell_increment_bias_v
         after_layout = tuple(self.variable_layout(all_windows, self.biased_map))
@@ -145,12 +182,32 @@ class Vertical(Layout):
             ans[akey] = after
         return ans
 
+    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> bool | None:
+        if action_name == 'focus_bias':
+            if len(args) == 0:
+                raise ValueError('layout_action focus_bias must contain at least one number between 10 and 90')
+            biases = args[0].split()
+            if len(biases) == 1:
+                biases.append('60')
+            try:
+                i = biases.index(str(self.layout_opts.focus_bias)) + 1
+            except ValueError:
+                i = 0
+            try:
+                self.layout_opts.focus_bias = max(10, min(int(biases[i % len(biases)]), 90))
+                return True
+            except Exception:
+                return False
+        return None
+
     def layout_state(self) -> dict[str, Any]:
         return {'biased_map': self.biased_map}
 
     def set_layout_state(self, layout_state: dict[str, Any], map_group_id: WindowMapper) -> bool:
-        self.biased_map = {int(k): v for k, v in layout_state['biased_map'].items()}
+        self.biased_map = {int(k): v for k, v in layout_state.get('biased_map', {}).items()}
+        self.layout_opts = VerticalLayoutOpts(layout_state.get('opts', {}))
         return True
+
 
 class Horizontal(Vertical):
 
@@ -160,69 +217,3 @@ class Horizontal(Vertical):
     main_axis_layout = Layout.xlayout
     perp_axis_layout = Layout.ylayout
 
-
-class FocusLayoutOpts(LayoutOpts):
-    bias: int = 60
-
-    def __init__(self, data: dict[str, str]):
-        try:
-            self.bias = int(data.get('bias', 60))
-        except Exception:
-            self.bias = 60
-        self.bias = max(10, min(self.bias, 90))
-
-    def serialized(self) -> dict[str, Any]:
-        return {'bias': self.bias}
-
-
-class VerticalFocus(Vertical):
-
-    name = 'verticalfocus'
-    layout_opts = FocusLayoutOpts({})
-    needs_relayout_on_focus_change = True
-
-    def focused_bias(self, all_windows: WindowList) -> Sequence[float] | None:
-        groups = tuple(all_windows.iter_all_layoutable_groups())
-        if len(groups) <= 1:
-            return None
-        active_group = all_windows.active_group
-        if active_group is None:
-            return None
-        try:
-            active_idx = groups.index(active_group)
-        except ValueError:
-            return None
-        focused = self.layout_opts.bias / 100.0
-        other = (1.0 - focused) / (len(groups) - 1)
-        return tuple(focused if i == active_idx else other for i in range(len(groups)))
-
-    def variable_layout(self, all_windows: WindowList, biased_map: dict[int, float]) -> LayoutDimension:
-        return self.main_axis_layout(all_windows.iter_all_layoutable_groups(), bias=self.focused_bias(all_windows))
-
-    def apply_bias(self, idx: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
-        return False
-
-    def bias_slot(self, all_windows: WindowList, idx: int, fractional_bias: float, cell_increment_bias_h: float, cell_increment_bias_v: float) -> bool:
-        return False
-
-    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> bool | None:
-        if action_name == 'bias':
-            if len(args) == 0:
-                raise ValueError('layout_action bias must contain at least one number between 10 and 90')
-            biases = args[0].split()
-            if len(biases) == 1:
-                biases.append('60')
-            try:
-                i = biases.index(str(self.layout_opts.bias)) + 1
-            except ValueError:
-                i = 0
-            try:
-                self.layout_opts.bias = max(10, min(int(biases[i % len(biases)]), 90))
-                return True
-            except Exception:
-                return False
-        return None
-
-    def set_layout_state(self, layout_state: dict[str, Any], map_group_id: WindowMapper) -> bool:
-        self.layout_opts = FocusLayoutOpts(layout_state['opts'])
-        return True
