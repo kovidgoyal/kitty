@@ -236,6 +236,8 @@ Detailed list of changes
 
 - Add support for DECSTR soft screen reset escape code (:iss:`10263`)
 
+- macOS: Fix quick-access-terminal appearing on the wrong space (the fullscreen app's space) when triggered from a different space on macOS Tahoe (:iss:`8740`)
+
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

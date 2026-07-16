@@ -3006,12 +3006,23 @@ void _glfwPlatformShowWindow(_GLFWwindow* window, bool move_to_active_screen)
         // fullscreening an application, the window does not get added
         // to the current space even though it has NSWindowCollectionBehaviorCanJoinAllSpaces
         // probably because it wasnt added to the temp space used for
-        // fullscreen. So to work around that, we change the collection
-        // behavior temporarily to NSWindowCollectionBehaviorMoveToActiveSpace
-        // and then change it back asynchronously.
+        // fullscreen.
         // See https://github.com/kovidgoyal/kitty/issues/8740
+        //
+        // Work around this by explicitly assigning the window
+        // to the current active space via the private CGS API before showing it.
         NSWindowCollectionBehavior old = nw.collectionBehavior;
-        nw.collectionBehavior = (old & !NSWindowCollectionBehaviorCanJoinAllSpaces) | NSWindowCollectionBehaviorMoveToActiveSpace;
+        nw.collectionBehavior = (old & ~NSWindowCollectionBehaviorCanJoinAllSpaces) | NSWindowCollectionBehaviorMoveToActiveSpace;
+        extern int _CGSDefaultConnection(void);
+        extern int CGSGetActiveSpace(int cid);
+        extern void CGSAddWindowsToSpaces(int cid, CFArrayRef windows, CFArrayRef spaces);
+        int cid = _CGSDefaultConnection();
+        int activeSpace = CGSGetActiveSpace(cid);
+        if (activeSpace > 0) {
+            NSArray *windowArray = @[@([nw windowNumber])];
+            NSArray *spaceArray = @[@(activeSpace)];
+            CGSAddWindowsToSpaces(cid, (__bridge CFArrayRef)windowArray, (__bridge CFArrayRef)spaceArray);
+        }
         [nw orderFront:nil];
         __block __typeof__(nw) weakSelf = nw;
         dispatch_async(dispatch_get_main_queue(), ^{
