@@ -179,7 +179,7 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-0.48.0 [future]
+0.48.0 [2026-07-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Implement vertical tabs by setting :opt:`tab_bar_edge` to ``left`` or ``right`` (:pull:`9855`)
