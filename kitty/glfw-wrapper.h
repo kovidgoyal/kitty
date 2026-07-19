@@ -1661,6 +1661,7 @@ typedef void (* GLFWjoystickfun)(int,int);
 typedef void (* GLFWuserdatafun)(unsigned long long, void*);
 typedef void (* GLFWtickcallback)(void*);
 typedef void (* GLFWactivationcallback)(GLFWwindow *window, const char *token, void *data);
+typedef void (* GLFWwaylandinitialsizefun)(GLFWwindow *window, float xscale, float yscale, int *width, int *height);
 typedef bool (* GLFWdrawtextfun)(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin, bool is_single_glyph);
 typedef char* (* GLFWcurrentselectionfun)(void);
 typedef bool (* GLFWhascurrentselectionfun)(void);
@@ -2479,10 +2480,6 @@ typedef void (*glfwCocoaCycleThroughOSWindows_func)(bool);
 GFW_EXTERN glfwCocoaCycleThroughOSWindows_func glfwCocoaCycleThroughOSWindows_impl;
 #define glfwCocoaCycleThroughOSWindows glfwCocoaCycleThroughOSWindows_impl
 
-typedef void (*glfwCocoaSetWindowLevel_func)(GLFWwindow*, const char*);
-GFW_EXTERN glfwCocoaSetWindowLevel_func glfwCocoaSetWindowLevel_impl;
-#define glfwCocoaSetWindowLevel glfwCocoaSetWindowLevel_impl
-
 typedef void (*glfwCocoaSetWindowChrome_func)(GLFWwindow*, unsigned int, bool, unsigned int, int, unsigned int, bool, int, float, bool);
 GFW_EXTERN glfwCocoaSetWindowChrome_func glfwCocoaSetWindowChrome_impl;
 #define glfwCocoaSetWindowChrome glfwCocoaSetWindowChrome_impl
@@ -2490,6 +2487,10 @@ GFW_EXTERN glfwCocoaSetWindowChrome_func glfwCocoaSetWindowChrome_impl;
 typedef void (*glfwCocoaRegisterMIMETypes_func)(GLFWwindow*, const char**, size_t);
 GFW_EXTERN glfwCocoaRegisterMIMETypes_func glfwCocoaRegisterMIMETypes_impl;
 #define glfwCocoaRegisterMIMETypes glfwCocoaRegisterMIMETypes_impl
+
+typedef void (*glfwCocoaSetWindowLevel_func)(GLFWwindow*, const char*);
+GFW_EXTERN glfwCocoaSetWindowLevel_func glfwCocoaSetWindowLevel_impl;
+#define glfwCocoaSetWindowLevel glfwCocoaSetWindowLevel_impl
 
 typedef const char* (*glfwGetPrimarySelectionString_func)(GLFWwindow*);
 GFW_EXTERN glfwGetPrimarySelectionString_func glfwGetPrimarySelectionString_impl;
@@ -2522,6 +2523,10 @@ GFW_EXTERN glfwWaylandSetTitlebarColor_func glfwWaylandSetTitlebarColor_impl;
 typedef void (*glfwWaylandSetTitlebarHidden_func)(GLFWwindow*, bool);
 GFW_EXTERN glfwWaylandSetTitlebarHidden_func glfwWaylandSetTitlebarHidden_impl;
 #define glfwWaylandSetTitlebarHidden glfwWaylandSetTitlebarHidden_impl
+
+typedef void (*glfwWaylandSetInitialWindowSizeCallback_func)(GLFWwaylandinitialsizefun);
+GFW_EXTERN glfwWaylandSetInitialWindowSizeCallback_func glfwWaylandSetInitialWindowSizeCallback_impl;
+#define glfwWaylandSetInitialWindowSizeCallback glfwWaylandSetInitialWindowSizeCallback_impl
 
 typedef void (*glfwWaylandRedrawCSDWindowTitle_func)(GLFWwindow*);
 GFW_EXTERN glfwWaylandRedrawCSDWindowTitle_func glfwWaylandRedrawCSDWindowTitle_impl;
