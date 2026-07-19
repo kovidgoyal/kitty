@@ -1705,6 +1705,32 @@ os_window_update_size_increments(OSWindow *window) {
 }
 
 
+// Borrowed reference to the get_window_size callable, valid only for the
+// duration of a create_os_window() call. Used by the Wayland initial-size hook
+// below, which fires synchronously from inside glfwCreateWindow().
+static PyObject *initial_window_size_py_callback = NULL;
+
+static void
+wayland_initial_size_callback(GLFWwindow *window UNUSED, float xscale, float yscale, int *width, int *height) {
+    // The compositor has told us the real scale before the window is mapped;
+    // recompute the cell-based logical size for that scale so the window is
+    // mapped at the correct size in the first place.
+    if (!initial_window_size_py_callback) return;
+    double xdpi, ydpi;
+    dpi_from_scale(xscale, yscale, &xdpi, &ydpi);
+    FONTS_DATA_HANDLE fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
+    if (!fonts_data) return;
+    PyObject *ret = PyObject_CallFunction(initial_window_size_py_callback, "IIddff",
+            fonts_data->fcm.cell_width, fonts_data->fcm.cell_height,
+            fonts_data->logical_dpi_x, fonts_data->logical_dpi_y, xscale, yscale);
+    if (ret) {
+        int w = PyLong_AsLong(PyTuple_GET_ITEM(ret, 0)), h = PyLong_AsLong(PyTuple_GET_ITEM(ret, 1));
+        if (!PyErr_Occurred() && w > 0 && h > 0) { *width = w; *height = h; }
+        else PyErr_Clear();
+        Py_DECREF(ret);
+    } else PyErr_Clear();
+}
+
 static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     int x = INT_MIN, y = INT_MIN, window_state = WINDOW_NORMAL, disallow_override_title = 0;
@@ -1822,7 +1848,16 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         if (!layer_shell_config_from_python(layer_shell_config, lsc)) return NULL;
         lsc->expected.xscale = xscale; lsc->expected.yscale = yscale;
     }
+    // On Wayland the true (fractional) scale is only known after the surface
+    // exists. Register a hook so the window is mapped at the correct cell-based
+    // size once the compositor reveals the scale, rather than being resized
+    // afterwards (which loses to the compositor's authoritative configure).
+    if (global_state.is_wayland && glfwWaylandSetInitialWindowSizeCallback) {
+        glfwWaylandSetInitialWindowSizeCallback(wayland_initial_size_callback);
+        initial_window_size_py_callback = get_window_size;
+    }
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window ? temp_window : common_context, lsc);
+    initial_window_size_py_callback = NULL;
     if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
     if (glfw_window == NULL) glfw_failure;
 #undef glfw_failure

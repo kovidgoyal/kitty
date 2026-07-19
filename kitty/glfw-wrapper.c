@@ -497,14 +497,14 @@ load_glfw(const char* path) {
     *(void **) (&glfwCocoaCycleThroughOSWindows_impl) = dlsym(handle, "glfwCocoaCycleThroughOSWindows");
     if (glfwCocoaCycleThroughOSWindows_impl == NULL) dlerror(); // clear error indicator
 
-    *(void **) (&glfwCocoaSetWindowLevel_impl) = dlsym(handle, "glfwCocoaSetWindowLevel");
-    if (glfwCocoaSetWindowLevel_impl == NULL) dlerror(); // clear error indicator
-
     *(void **) (&glfwCocoaSetWindowChrome_impl) = dlsym(handle, "glfwCocoaSetWindowChrome");
     if (glfwCocoaSetWindowChrome_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwCocoaRegisterMIMETypes_impl) = dlsym(handle, "glfwCocoaRegisterMIMETypes");
     if (glfwCocoaRegisterMIMETypes_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwCocoaSetWindowLevel_impl) = dlsym(handle, "glfwCocoaSetWindowLevel");
+    if (glfwCocoaSetWindowLevel_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetPrimarySelectionString_impl) = dlsym(handle, "glfwGetPrimarySelectionString");
     if (glfwGetPrimarySelectionString_impl == NULL) dlerror(); // clear error indicator
@@ -529,6 +529,9 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwWaylandSetTitlebarHidden_impl) = dlsym(handle, "glfwWaylandSetTitlebarHidden");
     if (glfwWaylandSetTitlebarHidden_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwWaylandSetInitialWindowSizeCallback_impl) = dlsym(handle, "glfwWaylandSetInitialWindowSizeCallback");
+    if (glfwWaylandSetInitialWindowSizeCallback_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwWaylandRedrawCSDWindowTitle_impl) = dlsym(handle, "glfwWaylandRedrawCSDWindowTitle");
     if (glfwWaylandRedrawCSDWindowTitle_impl == NULL) dlerror(); // clear error indicator

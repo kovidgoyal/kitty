@@ -1933,6 +1933,7 @@ typedef void (* GLFWjoystickfun)(int,int);
 typedef void (* GLFWuserdatafun)(unsigned long long, void*);
 typedef void (* GLFWtickcallback)(void*);
 typedef void (* GLFWactivationcallback)(GLFWwindow *window, const char *token, void *data);
+typedef void (* GLFWwaylandinitialsizefun)(GLFWwindow *window, float xscale, float yscale, int *width, int *height);
 typedef bool (* GLFWdrawtextfun)(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin, bool is_single_glyph);
 typedef char* (* GLFWcurrentselectionfun)(void);
 typedef bool (* GLFWhascurrentselectionfun)(void);

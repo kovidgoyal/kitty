@@ -440,8 +440,41 @@ clipboard_mime(void) {
     return buf;
 }
 
+static GLFWwaylandinitialsizefun initial_window_size_callback = NULL;
+
+GLFWAPI void
+glfwWaylandSetInitialWindowSizeCallback(GLFWwaylandinitialsizefun callback) {
+    initial_window_size_callback = callback;
+}
+
+static void
+maybe_recompute_initial_window_size(_GLFWwindow *window) {
+    // Before the initial window is mapped, the compositor tells us the real
+    // (possibly fractional) scale. For sizes specified in cells this changes
+    // the correct logical window size, because cell metrics are not a linear
+    // function of scale (integer-pixel rounding). Ask the embedder to recompute
+    // the logical size now, while the window is still unmapped, so it is mapped
+    // at the right size and the compositor's authoritative configure agrees.
+    if (window->wl.window_fully_created) return;
+    if (!initial_window_size_callback) return;
+    if (!window->wl.xdg.toplevel) return;  // only ordinary toplevels have cell-based sizes
+    if (window->wl.layer_shell.zwlr_layer_surface_v1) return;  // layer-shell surfaces size themselves
+    double scale = _glfwWaylandWindowScale(window);
+    int w = window->wl.width, h = window->wl.height;
+    initial_window_size_callback((GLFWwindow*)window, (float)scale, (float)scale, &w, &h);
+    if (w > 0 && h > 0 && (w != window->wl.width || h != window->wl.height)) {
+        debug("Recomputed initial size of window %llu for scale %.3f: %dx%d -> %dx%d\n",
+              window->id, scale, window->wl.width, window->wl.height, w, h);
+        window->wl.width = w; window->wl.height = h;
+        window->wl.user_requested_content_size.width = w;
+        window->wl.user_requested_content_size.height = h;
+        update_regions(window);
+    }
+}
+
 static void
 apply_scale_changes(_GLFWwindow *window, bool resize_framebuffer, bool update_csd) {
+    maybe_recompute_initial_window_size(window);
     double scale = _glfwWaylandWindowScale(window);
     if (resize_framebuffer) resizeFramebuffer(window);
     _glfwInputWindowContentScale(window, (float)scale, (float)scale);
