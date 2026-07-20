@@ -46,6 +46,8 @@ class Launch(RemoteCommand):
     stdin_add_line_wrap_markers/bool: Boolean indicating whether to add line wrap markers to stdin
     spacing/list.str: A list of spacing specifications, see the docs for the set-spacing command
     marker/str: Specification for marker for new window, for example: "text 1 ERROR"
+    overlay_width/int: Width of an overlay in terminal columns, or zero to use the parent width
+    overlay_height/int: Height of an overlay in terminal rows, or zero to use the parent height
     logo/str: Path to window logo
     logo_position/str: Window logo position as string or empty string to use default
     logo_alpha/float: Window logo alpha or -1 to use default

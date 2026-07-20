@@ -389,10 +389,15 @@ class Layout:
         return False
 
     def update_visibility(self, all_windows: WindowList) -> None:
-        active_window = all_windows.active_window
-        for window, is_group_leader in all_windows.iter_windows_with_visibility():
-            is_visible = window is active_window or (is_group_leader and not self.only_active_window_visible)
-            window.set_visible_in_layout(is_visible)
+        active_group = all_windows.active_group
+        for group in all_windows.groups:
+            group_is_visible = group is active_group or not self.only_active_window_visible
+            show_overlay_parent = group_is_visible and group.has_sized_overlay
+            active_window_id = group.active_window_id
+            for window in group:
+                window.set_visible_in_layout(
+                    group_is_visible and (show_overlay_parent or window.id == active_window_id)
+                )
 
     def _set_dimensions(self, all_windows: WindowList) -> None:
         lgd.central, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)

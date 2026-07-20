@@ -126,6 +126,20 @@ Where to launch the child process:
 #placeholder_for_formatting#
 
 
+--overlay-width
+type=int
+default=0
+The width of an overlay window in terminal columns. A value of zero uses the
+width of the parent window. Has no effect for non-overlay windows.
+
+
+--overlay-height
+type=int
+default=0
+The height of an overlay window in terminal rows. A value of zero uses the
+height of the parent window. Has no effect for non-overlay windows.
+
+
 --keep-focus --dont-take-focus
 type=bool-set
 Keep the focus on the currently active window instead of switching to the newly
@@ -584,6 +598,8 @@ class LaunchKwds(TypedDict):
     marker: str | None
     cmd: list[str] | None
     overlay_for: int | None
+    overlay_width: int
+    overlay_height: int
     stdin: bytes | None
     hold: bool
     bias: float | None
@@ -649,6 +665,8 @@ def _launch(
     child_death_callback: Callable[[int, Exception | None], None] | None = None,
     startup_command_via_shell_integration: Sequence[str] | str = (),
 ) -> Window | None:
+    if opts.overlay_width < 0 or opts.overlay_height < 0:
+        raise ValueError('Overlay width and height must be non-negative')
     source_window = boss.active_window_for_cwd
     if opts.source_window:
         for qw in boss.match_windows(opts.source_window, rc_from_window):
@@ -686,6 +704,8 @@ def _launch(
         'marker': opts.marker or None,
         'cmd': None,
         'overlay_for': None,
+        'overlay_width': 0,
+        'overlay_height': 0,
         'stdin': None,
         'hold': False,
         'bias': None,
@@ -785,6 +805,8 @@ def _launch(
         base_for_overlay = target_tab.active_window
     if opts.type in ('overlay', 'overlay-main') and base_for_overlay:
         kw['overlay_for'] = base_for_overlay.id
+        kw['overlay_width'] = opts.overlay_width
+        kw['overlay_height'] = opts.overlay_height
     if opts.type == 'background':
         cmd = kw['cmd']
         if not cmd:
@@ -887,7 +909,8 @@ def clone_safe_opts() -> frozenset[str]:
     return frozenset((
         'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'var', 'hold',
         'location', 'os_window_class', 'os_window_name', 'os_window_title', 'os_window_state',
-        'os_window_position', 'logo', 'logo_position', 'logo_alpha', 'spacing', 'next_to', 'hold_after_ssh'
+        'os_window_position', 'logo', 'logo_position', 'logo_alpha', 'spacing', 'next_to', 'hold_after_ssh',
+        'overlay_width', 'overlay_height',
     ))
 
 

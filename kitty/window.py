@@ -398,6 +398,8 @@ class WindowCreationSpec(NamedTuple):
     cwd_from: CwdRequest | None = None
     cwd: str | None = None
     overlay_for: int | None = None
+    overlay_width: int = 0
+    overlay_height: int = 0
     env: tuple[tuple[str, str], ...] | None = None
     location: str | None = None
     copy_colors_from: int | None = None
@@ -769,6 +771,8 @@ class Window:
         self.tabref: Callable[[], TabType | None] = weakref.ref(tab)
         self.destroyed = False
         self.geometry: WindowGeometry = WindowGeometry(0, 0, 0, 0, 0, 0)
+        self.overlay_width = 0
+        self.overlay_height = 0
         self._title_bar_screen: Any = None
         self.needs_layout = True
         self.is_visible_in_layout: bool = True
@@ -2258,6 +2262,10 @@ class Window:
         if is_overlay:
             t = 'overlay-main' if self.overlay_type is OverlayType.main else 'overlay'
             ans.append(f'--type={t}')
+            if self.overlay_width:
+                ans.append(f'--overlay-width={self.overlay_width}')
+            if self.overlay_height:
+                ans.append(f'--overlay-height={self.overlay_height}')
 
         from kittens.ssh.utils import is_kitten_cmdline as is_ssh_kitten_cmdline
         from kittens.ssh.utils import remove_env_var_from_cmdline, set_cwd_in_cmdline, set_single_env_var_in_cmdline

@@ -2014,7 +2014,7 @@ class Boss:
             x -= central.left
             y -= central.top
             if tab := tm.active_tab:
-                for window in tab:
+                for window in reversed(tuple(tab)):
                     if window.is_visible_in_layout:
                         g = window.geometry
                         if g.left <= x < g.right and g.top <= y < g.bottom:
@@ -2563,6 +2563,9 @@ class Boss:
     def switch_focus_to_in_active_tab(self, window_id: int) -> None:
         tab = self.active_tab
         if tab:
+            active_group = tab.windows.active_group
+            if active_group is not None and active_group.has_sized_overlay and active_group.has_window_id(window_id):
+                return
             tab.set_active_window(window_id)
 
     def drag_resize_start(

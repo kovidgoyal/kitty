@@ -1064,7 +1064,7 @@ mouse_region(bool detect_borders, bool detect_title_bar) {
                 ans.window_border = 0;
             }
         }
-        for (unsigned int i = 0; i < t->num_windows; i++) {
+        for (unsigned int i = t->num_windows; i-- > 0;) {
             Window *win = t->windows + i;
             if (contains_mouse(win) && win->render_data.screen) {
                 ans.window_idx = i; ans.window = win; break;
@@ -1083,7 +1083,7 @@ mouse_region(bool detect_borders, bool detect_title_bar) {
         // window's scrollbar hit area. The scrollbar may be drawn in the margin
         // which is outside the area covered by contains_mouse.
         if (!ans.window && OPT(scrollbar_interactive)) {
-            for (unsigned int i = 0; i < t->num_windows; i++) {
+            for (unsigned int i = t->num_windows; i-- > 0;) {
                 Window *win = t->windows + i;
                 if (!win->visible || !win->render_data.screen) continue;
                 if (get_scrollbar_hit_type(win, w->mouse_x, w->mouse_y) != SCROLLBAR_HIT_NONE) {
@@ -1101,7 +1101,7 @@ closest_window_for_event(unsigned int *window_idx) {
     double closest_distance = UINT_MAX;
     if (global_state.callback_os_window->num_tabs > 0) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
-        for (unsigned int i = 0; i < t->num_windows; i++) {
+        for (unsigned int i = t->num_windows; i-- > 0;) {
             Window *w = t->windows + i;
             if (w->visible) {
                 double d = distance_to_window(w);

@@ -36,6 +36,23 @@ class TestConfParsing(BaseTest):
     def test_cli_parsing(self):
         cli_parsing(self)
 
+    def test_launch_overlay_size_options(self):
+        from kitty.launch import _launch, parse_launch_args
+
+        opts, args = parse_launch_args(['--type=overlay', '--overlay-width=80', '--overlay-height=24', 'sh'])
+        self.assertEqual(args, ['sh'])
+        self.assertEqual(opts.overlay_width, 80)
+        self.assertEqual(opts.overlay_height, 24)
+
+        defaults, unused = parse_launch_args()
+        self.assertFalse(unused)
+        self.assertEqual(defaults.overlay_width, 0)
+        self.assertEqual(defaults.overlay_height, 0)
+
+        opts.overlay_width = -1
+        with self.assertRaisesRegex(ValueError, 'non-negative'):
+            _launch(None, opts, [])  # type: ignore[arg-type]
+
 
 def cli_parsing(self):
     from kitty.cli import CLIOptions, Options, parse_cmdline, parse_option_spec

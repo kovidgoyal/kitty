@@ -9,7 +9,7 @@ from itertools import count
 from typing import Any, Deque, Union
 
 from .fast_data_types import Color, get_options
-from .types import OverlayType, WindowGeometry
+from .types import Edges, OverlayType, WindowGeometry
 from .typing_compat import EdgeLiteral, TabType, WindowType
 
 WindowOrId = Union[WindowType, int]
@@ -32,6 +32,7 @@ class WindowGroup:
     def __init__(self) -> None:
         self.windows: list[WindowType] = []
         self.id = next(group_id_counter)
+        self.layout_geometry: WindowGeometry | None = None
 
     def __repr__(self) -> str:
         return f'WindowGroup(id={self.id}, windows={", ".join(str(w.id) for w in self.windows)})'
@@ -139,8 +140,38 @@ class WindowGroup:
         return w.effective_border()
 
     def set_geometry(self, geom: WindowGeometry) -> None:
+        self.layout_geometry = geom
         for w in self.windows:
-            w.set_geometry(geom)
+            width = int(getattr(w, 'overlay_width', 0) or 0)
+            height = int(getattr(w, 'overlay_height', 0) or 0)
+            if len(self.windows) < 2 or not (width or height):
+                w.set_geometry(geom)
+                continue
+
+            xnum = min(width, geom.xnum) if width else geom.xnum
+            title_bar_rows = 1 if getattr(w, 'show_title_bar', False) and geom.ynum > 1 else 0
+            ynum = min(height + title_bar_rows, geom.ynum) if height else geom.ynum
+            cell_width = (geom.right - geom.left) // geom.xnum if geom.xnum else 0
+            cell_height = (geom.bottom - geom.top) // geom.ynum if geom.ynum else 0
+            left = geom.left + (geom.xnum - xnum) // 2 * cell_width
+            top = geom.top + (geom.ynum - ynum) // 2 * cell_height
+            spaces = Edges(
+                geom.spaces.left if not width else 0,
+                geom.spaces.top if not height else 0,
+                geom.spaces.right if not width else 0,
+                geom.spaces.bottom if not height else 0,
+            )
+            w.set_geometry(WindowGeometry(
+                left=left, top=top, right=left + xnum * cell_width, bottom=top + ynum * cell_height,
+                xnum=xnum, ynum=ynum, spaces=spaces,
+            ))
+
+    @property
+    def has_sized_overlay(self) -> bool:
+        if len(self.windows) < 2:
+            return False
+        w = self.windows[-1]
+        return bool(getattr(w, 'overlay_width', 0) or getattr(w, 'overlay_height', 0))
 
     @property
     def default_bg(self) -> Color:
@@ -151,9 +182,10 @@ class WindowGroup:
 
     @property
     def geometry(self) -> WindowGeometry | None:
+        if self.has_sized_overlay and self.layout_geometry is not None:
+            return self.layout_geometry
         if self.windows:
-            w = self.windows[-1]
-            return w.geometry
+            return self.windows[-1].geometry
         return None
 
     @property

@@ -743,6 +743,8 @@ class Tab:  # {{{
         cwd_from: CwdRequest | None = None,
         cwd: str | None = None,
         overlay_for: int | None = None,
+        overlay_width: int = 0,
+        overlay_height: int = 0,
         env: dict[str, str] | None = None,
         location: str | None = None,
         copy_colors_from: Window | None = None,
@@ -762,7 +764,8 @@ class Tab:  # {{{
     ) -> Window:
         cs = WindowCreationSpec(
             use_shell=use_shell, cmd=cmd, has_stdin=bool(stdin), override_title=override_title, cwd_from=cwd_from,
-            cwd=cwd, overlay_for=overlay_for, env=None if env is None else tuple(env.items()), location=location,
+            cwd=cwd, overlay_for=overlay_for, overlay_width=overlay_width, overlay_height=overlay_height,
+            env=None if env is None else tuple(env.items()), location=location,
             copy_colors_from=None if copy_colors_from is None else copy_colors_from.id,
             allow_remote_control=allow_remote_control,
             remote_control_passwords=None if remote_control_passwords is None else remote_control_passwords.copy(),
@@ -780,6 +783,8 @@ class Tab:  # {{{
             copy_colors_from=copy_colors_from, watchers=watchers,
             allow_remote_control=allow_remote_control, remote_control_passwords=remote_control_passwords
         )
+        window.overlay_width = overlay_width
+        window.overlay_height = overlay_height
         window.creation_spec = cs
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
@@ -1867,7 +1872,10 @@ class TabManager:  # {{{
             return
         if action == GLFW_PRESS:
             if (w := boss.window_id_map.get(window_id)) is not None:
-                boss.set_active_window(w, switch_os_window_if_needed=True)
+                tab = w.tabref()
+                active_group = tab.windows.active_group if tab is not None else None
+                if active_group is None or not active_group.has_sized_overlay or w not in active_group:
+                    boss.set_active_window(w, switch_os_window_if_needed=True)
             threshold = get_options().drag_threshold
             if threshold:
                 set_window_being_dragged(window_id, False, x, y)
@@ -1934,7 +1942,7 @@ class TabManager:  # {{{
         rel_y = y - central.top
         if (active_tab := self.active_tab) is None:
             return None
-        for win in active_tab:
+        for win in reversed(tuple(active_tab)):
             g = win.geometry
             if g.left <= rel_x < g.right and g.top <= rel_y < g.bottom:
                 return win
@@ -2063,7 +2071,7 @@ class TabManager:  # {{{
         dest_in_title_bar = False
         opts = get_options()
         cw, ch = cell_size_for_window(self.os_window_id)
-        for win in active_tab:
+        for win in reversed(tuple(active_tab)):
             g = win.geometry
             if opts.window_title_bar == 'top':
                 tb_top, tb_bottom = g.top, g.top + ch

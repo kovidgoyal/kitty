@@ -6,7 +6,7 @@ from kitty.fast_data_types import BOTTOM_EDGE, LEFT_EDGE, RIGHT_EDGE, TOP_EDGE, 
 from kitty.layout.base import layout_dimension, lgd
 from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
 from kitty.layout.splits import Pair, SplitsLayoutOpts
-from kitty.types import WindowGeometry
+from kitty.types import Edges, WindowGeometry
 from kitty.window import EdgeWidths
 from kitty.window_list import WindowList, reset_group_id_counter
 
@@ -24,6 +24,9 @@ class Window:
         self.padding = EdgeWidths()
         self.margin = EdgeWidths()
         self.focused = False
+        self.overlay_width = 0
+        self.overlay_height = 0
+        self.show_title_bar = False
 
     def focus_changed(self, focused):
         self.focused = focused
@@ -250,6 +253,49 @@ class TestLayout(BaseTest):
         for layout_class in (Stack, Horizontal, Tall, Grid):
             q = create_layout(layout_class)
             self.do_overlay_test(q)
+
+    def test_sized_overlay_geometry_and_visibility(self):
+        layout = create_layout(Horizontal)
+        windows = create_windows(layout, num=1)
+        parent = windows.active_window
+        overlay = Window(2)
+        overlay.overlay_width = 40
+        overlay.overlay_height = 10
+        windows.add_window(overlay, group_of=parent)
+        group = windows.active_group
+        self.assertIsNotNone(group)
+        geometry = WindowGeometry(10, 20, 1010, 620, 100, 30, Edges(2, 3, 4, 5))
+
+        group.set_geometry(geometry)
+        self.ae(parent.geometry, geometry)
+        self.ae(group.geometry, geometry)
+        self.ae(overlay.geometry, WindowGeometry(310, 220, 710, 420, 40, 10))
+
+        layout.update_visibility(windows)
+        self.assertTrue(parent.is_visible_in_layout)
+        self.assertTrue(overlay.is_visible_in_layout)
+
+        overlay.overlay_width = 0
+        overlay.overlay_height = 0
+        group.set_geometry(geometry)
+        layout.update_visibility(windows)
+        self.ae(overlay.geometry, geometry)
+        self.assertFalse(parent.is_visible_in_layout)
+        self.assertTrue(overlay.is_visible_in_layout)
+
+        overlay.overlay_width = 200
+        overlay.overlay_height = 50
+        group.set_geometry(geometry)
+        self.ae(overlay.geometry, WindowGeometry(10, 20, 1010, 620, 100, 30))
+
+        overlay.overlay_width = 0
+        overlay.overlay_height = 8
+        group.set_geometry(geometry)
+        self.ae(overlay.geometry, WindowGeometry(10, 240, 1010, 400, 100, 8, Edges(2, 0, 4, 0)))
+
+        overlay.show_title_bar = True
+        group.set_geometry(geometry)
+        self.ae(overlay.geometry.ynum, 9)
 
     def test_splits(self):
         q = create_layout(Splits)
