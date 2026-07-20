@@ -179,6 +179,11 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+0.48.1 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Wayland: fix a regression in the previous release that broke window sizing on Hyprland with fractional scales and an initial specified size (:iss:`10268`)
+
 0.48.0 [2026-07-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
