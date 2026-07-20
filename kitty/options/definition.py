@@ -2151,7 +2151,7 @@ opt('mark2_foreground', 'black',
 
 opt('mark2_background', '#f2dcd3',
     option_type='to_color',
-    long_text='Color for marks of type 1 (beige)'
+    long_text='Color for marks of type 2 (beige)'
     )
 
 opt('mark3_foreground', 'black',
