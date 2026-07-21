@@ -448,6 +448,11 @@ typedef struct _GLFWlibraryWayland
         // mapping it was deferred so it cannot end up as a stray regular
         // window if start_drag was silently ignored.
         bool toplevel_map_deferred;
+        // Number of extra sync roundtrips issued waiting for confirmation;
+        // some compositors (e.g. niri) send the confirmation event (drag icon
+        // wl_surface.enter) after the first sync roundtrip, so we retry once
+        // before concluding that start_drag was silently ignored.
+        uint8_t sync_retries;
         struct {
             const char *mime_type;
             int fd;

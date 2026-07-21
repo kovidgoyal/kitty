@@ -184,6 +184,8 @@ Detailed list of changes
 
 - Wayland: fix a regression in the previous release that broke window sizing on Hyprland with fractional scales and an initial specified size (:iss:`10268`)
 
+- Wayland: Fix a regression in 0.47.3 that broke dragging on the niri compositor (:iss:`10271`)
+
 0.48.0 [2026-07-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

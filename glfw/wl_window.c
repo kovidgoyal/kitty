@@ -3276,6 +3276,8 @@ _glfwWaylandConfirmDragSession(void) {
     }
 }
 
+static const struct wl_callback_listener drag_start_confirmation_listener;
+
 static void
 drag_start_confirmation_handle_done(void *data UNUSED, struct wl_callback *callback, uint32_t cb_data UNUSED) {
     if (callback != _glfw.wl.drag.start_confirmation) {
@@ -3285,22 +3287,51 @@ drag_start_confirmation_handle_done(void *data UNUSED, struct wl_callback *callb
     }
     _glfw.wl.drag.start_confirmation = NULL;
     wl_callback_destroy(callback);
-    if (!_glfw.wl.drag.session_confirmed) {
-        // The compositor processed start_drag before this sync callback, and
-        // an accepted start_drag synchronously produces events (pointer
-        // leave, data device enter, data source events) that are ordered
-        // before it. None arrived, so the compositor silently ignored
-        // start_drag (no active implicit grab matching the serial). Without
-        // this, the data source would never receive any event, leaking the
-        // drag state forever and orphaning the drag toplevel as a stray
-        // window.
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: start_drag was silently ignored by the compositor, cancelling drag");
-        cancel_drag(GLFW_DRAG_CANCELLED);
+    if (_glfw.wl.drag.session_confirmed) return;
+    // The compositor processed start_drag before this sync callback. An
+    // accepted start_drag should produce events that are ordered before this
+    // sync (pointer leave, data device enter, data source events, or drag icon
+    // wl_surface.enter). Some compositors (e.g. niri) send the confirmation
+    // event one roundtrip later than the sync. Use pointer_button_count to
+    // distinguish: if the button is still held the DND implicit grab (which
+    // sends pointer leave, resetting the count to 0) hasn't fired yet, so
+    // retry a few times. If the button has already been released (count == 0)
+    // there is no active grab and the compositor definitely ignored start_drag.
+    if (_glfw.wl.pointer_button_count > 0 && _glfw.wl.drag.sync_retries < 3) {
+        _glfw.wl.drag.sync_retries++;
+        debug_input("Drag session not yet confirmed, button still held; retrying sync (%u/3)\n",
+                    _glfw.wl.drag.sync_retries);
+        _glfw.wl.drag.start_confirmation = wl_display_sync(_glfw.wl.display);
+        if (_glfw.wl.drag.start_confirmation)
+            wl_callback_add_listener(_glfw.wl.drag.start_confirmation, &drag_start_confirmation_listener, NULL);
+        return;
     }
+    // Without this detection the data source would never receive any event,
+    // leaking the drag state forever and orphaning the drag toplevel as a
+    // stray window.
+    _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: start_drag was silently ignored by the compositor, cancelling drag");
+    cancel_drag(GLFW_DRAG_CANCELLED);
 }
 
 static const struct wl_callback_listener drag_start_confirmation_listener = {
     .done = drag_start_confirmation_handle_done,
+};
+
+static void
+drag_icon_surface_handle_enter(void *data UNUSED, struct wl_surface *surface UNUSED, struct wl_output *output UNUSED) {
+    // The compositor maps the drag icon surface to an output only when the
+    // DND session is live. Some compositors (e.g. niri) don't send a pointer
+    // leave or data device enter when accepting start_drag; this enter event
+    // on the drag icon is the only signal they provide.
+    _glfwWaylandConfirmDragSession();
+}
+
+static void
+drag_icon_surface_handle_leave(void *data UNUSED, struct wl_surface *surface UNUSED, struct wl_output *output UNUSED) {}
+
+static const struct wl_surface_listener drag_icon_surface_listener = {
+    .enter = drag_icon_surface_handle_enter,
+    .leave = drag_icon_surface_handle_leave,
 };
 
 #define dr _glfw.wl.drag.data_requests[i]
@@ -3627,6 +3658,7 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
     if (thumbnail && thumbnail->pixels) {
         _glfw.wl.drag.drag_icon = wl_compositor_create_surface(_glfw.wl.compositor);
         if (!_glfw.wl.drag.drag_icon) return ENOMEM;
+        wl_surface_add_listener(_glfw.wl.drag.drag_icon, &drag_icon_surface_listener, NULL);
         icon_buffer = createShmBuffer(thumbnail, false, true);
         if (!icon_buffer) return ENOMEM;
         if (_glfw.wl.wp_viewporter) {
@@ -3695,6 +3727,7 @@ _glfwPlatformStartDrag(_GLFWwindow* window, const GLFWimage* thumbnail) {
     // event. Detect that with a sync: an accepted start_drag synchronously
     // produces events ordered before the sync callback.
     _glfw.wl.drag.session_confirmed = false;
+    _glfw.wl.drag.sync_retries = 0;
     _glfw.wl.drag.start_confirmation = wl_display_sync(_glfw.wl.display);
     if (_glfw.wl.drag.start_confirmation)
         wl_callback_add_listener(_glfw.wl.drag.start_confirmation, &drag_start_confirmation_listener, NULL);
