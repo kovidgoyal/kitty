@@ -1825,21 +1825,31 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         // For the first window, query the xdg-output fractional scale of the primary monitor directly;
         // this blocks until the compositor has sent size information so we get the true fractional scale
         // before creating any window.
-        if (is_first_window && glfwGetWaylandPrimaryMonitorFractionalScale) {
-            debug_rendering("Querying Wayland compositor for primary monitor scale\n");
-            double fscale = glfwGetWaylandPrimaryMonitorFractionalScale();
-            debug_rendering("Primary monitor scale reported as: %.5f\n", fscale);
-            xscale = yscale = (float)fscale;
+#define QUERY_MONITOR \
+            debug_rendering("Querying Wayland compositor for current monitor scale\n"); \
+            double fscale = glfwGetWaylandCurrentMonitorFractionalScale(); \
+            debug_rendering("Current monitor scale reported as: %.5f\n", fscale); \
+            xscale = yscale = (float)fscale; \
             dpi_from_scale(xscale, yscale, &xdpi, &ydpi);
+
+        if (is_first_window && glfwGetWaylandCurrentMonitorFractionalScale) {
+            QUERY_MONITOR
         } else {
+            bool found_window = false;
             get_window_content_scale(NULL, &xscale, &yscale, &xdpi, &ydpi);
             for (unsigned i = 0; i < global_state.num_os_windows; i++) {
                 OSWindow *osw = global_state.os_windows + i;
                 if (osw->handle && glfwGetWindowAttrib(osw->handle, GLFW_FOCUSED)) {
                     get_window_content_scale(osw->handle, &xscale, &yscale, &xdpi, &ydpi);
+                    found_window = false;
                     break;
                 }
             }
+            if (!found_window) {
+                // no focused window use monitor of last focused window
+                QUERY_MONITOR
+            }
+#undef QUERY_MONITOR
         }
     } else {
 #define glfw_failure { \

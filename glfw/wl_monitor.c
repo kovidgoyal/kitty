@@ -335,13 +335,25 @@ GLFWAPI struct wl_output* glfwGetWaylandMonitor(GLFWmonitor* handle)
     return monitor->wl.output;
 }
 
-GLFWAPI double glfwGetWaylandPrimaryMonitorFractionalScale(void)
+GLFWAPI double glfwGetWaylandCurrentMonitorFractionalScale(void)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(1.0);
     if (!_glfw.wl.xdg_output_manager || _glfw.monitorCount == 0)
         return 1.0;
 
-    _GLFWmonitor *monitor = _glfw.monitors[0];
+    // Use the monitor of the currently focused window, then the most recently
+    // focused window, then fall back to the primary monitor.
+    _GLFWmonitor *monitor = NULL;
+    GLFWid focus_ids[2] = { _glfw.wl.keyboardFocusId, _glfw.wl.lastKeyboardFocusId };
+    for (int i = 0; i < 2 && !monitor; i++) {
+        if (!focus_ids[i]) continue;
+        _GLFWwindow *window = _glfwWindowForId(focus_ids[i]);
+        if (window && window->wl.monitorsCount > 0)
+            monitor = window->wl.monitors[0];
+    }
+    if (!monitor)
+        monitor = _glfw.monitors[0];
+
     if (!monitor->wl.xdg_output)
         return monitor->wl.scale > 0 ? (double)monitor->wl.scale : 1.0;
 

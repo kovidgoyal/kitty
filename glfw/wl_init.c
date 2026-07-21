@@ -383,6 +383,7 @@ static void keyboardHandleEnter(void* data UNUSED,
 
     _glfw.wl.serial = serial; _glfw.wl.input_serial = serial; _glfw.wl.keyboard_enter_serial = serial;
     _glfw.wl.keyboardFocusId = window->id;
+    _glfw.wl.lastKeyboardFocusId = window->id;
     _glfwInputWindowFocus(window, true);
     uint32_t* key;
     if (keys && _glfw.wl.keyRepeatInfo.key) {

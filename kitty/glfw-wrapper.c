@@ -545,8 +545,8 @@ load_glfw(const char* path) {
     *(void **) (&glfwWaylandCompositorPID_impl) = dlsym(handle, "glfwWaylandCompositorPID");
     if (glfwWaylandCompositorPID_impl == NULL) dlerror(); // clear error indicator
 
-    *(void **) (&glfwGetWaylandPrimaryMonitorFractionalScale_impl) = dlsym(handle, "glfwGetWaylandPrimaryMonitorFractionalScale");
-    if (glfwGetWaylandPrimaryMonitorFractionalScale_impl == NULL) dlerror(); // clear error indicator
+    *(void **) (&glfwGetWaylandCurrentMonitorFractionalScale_impl) = dlsym(handle, "glfwGetWaylandCurrentMonitorFractionalScale");
+    if (glfwGetWaylandCurrentMonitorFractionalScale_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwConfigureMomentumScroller_impl) = dlsym(handle, "glfwConfigureMomentumScroller");
     if (glfwConfigureMomentumScroller_impl == NULL) dlerror(); // clear error indicator

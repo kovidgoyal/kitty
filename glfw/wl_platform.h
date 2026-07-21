@@ -397,6 +397,7 @@ typedef struct _GLFWlibraryWayland
 
     _GLFWwindow*                pointerFocus;
     GLFWid                      keyboardFocusId;
+    GLFWid                      lastKeyboardFocusId;
 
     struct {
         void*                   handle;
