@@ -182,13 +182,13 @@ Detailed list of changes
 0.48.1 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Wayland: fix a regression in the previous release that broke window sizing on Hyprland with fractional scales and an initial specified size (:iss:`10268`)
+- Wayland: fix a regression in the previous release that broke window sizing for on Hyprland/Sway with fractional scales and an initial specified size (:iss:`10268`)
 
 - Wayland: fix a regression in 0.47.3 that broke dragging on the Niri compositor (:iss:`10271`)
 
-- Wayland: get initial window size in cells working in most cases on hyprland/sway with fractional scaling by using the fractional scale of the primary monitor
+- Wayland: get initial window size in cells working in most cases on Hyprland/Sway with fractional scaling by using the fractional scale of the primary monitor
 
-- Wayland: Fix using remote control to resize OS windows on some tiling compositors leading to broken rendering
+- Wayland: fix using remote control to resize OS windows on some tiling compositors leading to broken rendering
 
 
 0.48.0 [2026-07-18]
