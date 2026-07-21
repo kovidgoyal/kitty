@@ -186,6 +186,9 @@ Detailed list of changes
 
 - Wayland: fix a regression in 0.47.3 that broke dragging on the Niri compositor (:iss:`10271`)
 
+- Wayland: get initial window size in cells working in most cases on hyprland/sway with fractional scaling by using the fractional scale of the primary monitor
+
+
 0.48.0 [2026-07-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

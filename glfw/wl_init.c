@@ -728,6 +728,10 @@ static void registryHandleGlobal(void* data UNUSED,
         _glfw.wl.xdg_toplevel_tag_manager_v1 = wl_registry_bind(registry, name, &xdg_toplevel_tag_manager_v1_interface, 1);
     } else if (is(xdg_toplevel_drag_manager_v1)) {
         _glfw.wl.xdg_toplevel_drag_manager_v1 = wl_registry_bind(registry, name, &xdg_toplevel_drag_manager_v1_interface, 1);
+    } else if (is(zxdg_output_manager_v1)) {
+        _glfw.wl.xdg_output_manager = wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface, MIN(version, 3u));
+        for (int i = 0; i < _glfw.monitorCount; i++)
+            _glfwCreateXdgOutputWayland(_glfw.monitors[i]);
     }
 #undef is
 }
@@ -840,7 +844,7 @@ get_compositor_missing_capabilities(void) {
     C(single_pixel_buffer, wp_single_pixel_buffer_manager_v1); C(preferred_scale, has_preferred_buffer_scale);
     C(idle_inhibit, idle_inhibit_manager); C(icon, xdg_toplevel_icon_manager_v1); C(bell, xdg_system_bell_v1);
     C(window-tag, xdg_toplevel_tag_manager_v1); C(keyboard_shortcuts_inhibit, keyboard_shortcuts_inhibit_manager);
-    C(key-repeat, has_key_repeat_events); C(top_level_drag, xdg_toplevel_drag_manager_v1);
+    C(key-repeat, has_key_repeat_events); C(top_level_drag, xdg_toplevel_drag_manager_v1); C(output_manager, xdg_output_manager);
     C(pointer_gestures, pointer_gestures);
 #define P(x) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", x);
     if (_glfw.wl.xdg_wm_base_version < 6) P("window-state-suspended");
@@ -1031,6 +1035,8 @@ void _glfwPlatformTerminate(void)
         xdg_toplevel_tag_manager_v1_destroy(_glfw.wl.xdg_toplevel_tag_manager_v1);
     if (_glfw.wl.xdg_toplevel_drag_manager_v1)
         xdg_toplevel_drag_manager_v1_destroy(_glfw.wl.xdg_toplevel_drag_manager_v1);
+    if (_glfw.wl.xdg_output_manager)
+        zxdg_output_manager_v1_destroy(_glfw.wl.xdg_output_manager);
     if (_glfw.wl.wp_single_pixel_buffer_manager_v1)
         wp_single_pixel_buffer_manager_v1_destroy(_glfw.wl.wp_single_pixel_buffer_manager_v1);
     if (_glfw.wl.wp_cursor_shape_manager_v1)

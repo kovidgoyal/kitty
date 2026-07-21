@@ -72,6 +72,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wayland-xdg-system-bell-v1-client-protocol.h"
 #include "wayland-xdg-toplevel-tag-v1-client-protocol.h"
 #include "wayland-xdg-toplevel-drag-v1-client-protocol.h"
+#include "wayland-xdg-output-unstable-v1-client-protocol.h"
 
 #define _glfw_dlopen(name) dlopen(name, RTLD_LAZY | RTLD_LOCAL)
 #define _glfw_dlclose(handle) dlclose(handle)
@@ -366,6 +367,7 @@ typedef struct _GLFWlibraryWayland
     struct zwp_keyboard_shortcuts_inhibit_manager_v1 *keyboard_shortcuts_inhibit_manager;
     struct zwp_pointer_gestures_v1* pointer_gestures;
     struct zwp_pointer_gesture_hold_v1* pointer_gesture_hold;
+    struct zxdg_output_manager_v1* xdg_output_manager;
 
     int                         compositorVersion;
     int                         seatVersion;
@@ -470,12 +472,18 @@ typedef struct _GLFWlibraryWayland
 typedef struct _GLFWmonitorWayland
 {
     struct wl_output*           output;
+    struct zxdg_output_v1*      xdg_output;
     uint32_t                    name;
     int                         currentMode;
 
     int                         x;
     int                         y;
     int                         scale;
+    int32_t                     transform;
+
+    int32_t                     xdg_logical_width;
+    int32_t                     xdg_logical_height;
+    double                      fractional_scale;
 
 } _GLFWmonitorWayland;
 
@@ -496,6 +504,7 @@ typedef struct _GLFWcursorWayland
 
 
 void _glfwAddOutputWayland(uint32_t name, uint32_t version);
+void _glfwCreateXdgOutputWayland(_GLFWmonitor* monitor);
 void _glfwWaylandBeforeBufferSwap(_GLFWwindow *window);
 void _glfwWaylandAfterBufferSwap(_GLFWwindow *window);
 void _glfwSetupWaylandDataDevice(void);
