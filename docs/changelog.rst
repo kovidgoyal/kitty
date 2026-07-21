@@ -188,6 +188,8 @@ Detailed list of changes
 
 - Wayland: get initial window size in cells working in most cases on hyprland/sway with fractional scaling by using the fractional scale of the primary monitor
 
+- Wayland: Fix using remote control to resize OS windows on some tiling compositors leading to broken rendering
+
 
 0.48.0 [2026-07-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1716,6 +1716,11 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
         return;
     }
     if (width != window->wl.width || height != window->wl.height) {
+        if (window->wl.current.toplevel_states & TOPLEVEL_STATE_DOCKED) {
+            _glfwInputError(GLFW_FEATURE_UNAVAILABLE,
+                            "Wayland: Resizing of docked windows is not supported");
+            return;
+        }
         window->wl.user_requested_content_size.width = width;
         window->wl.user_requested_content_size.height = height;
         int32_t w = 0, h = 0;
