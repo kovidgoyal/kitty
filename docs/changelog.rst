@@ -190,6 +190,8 @@ Detailed list of changes
 
 - Wayland: fix using remote control to resize OS windows on some tiling compositors leading to broken rendering
 
+- macOS: fix ``edge=none`` panel height shrinking when ``margin_top`` is non-zero in the panel/quick-access-terminal kittens (:iss:`10278`)
+
 
 0.48.0 [2026-07-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

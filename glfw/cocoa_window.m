@@ -2799,7 +2799,11 @@ _glfwPlatformSetLayerShellConfig(_GLFWwindow* window, const GLFWLayerShellConfig
         if (height < 1.) height = NSHeight(placement_frame);
     }
 
-    if (config.edge != GLFW_EDGE_CENTER_SIZED) {
+    if (config.edge == GLFW_EDGE_NONE) {
+        // For edge=none the panel has a fixed size; margins only translate its position
+        x += config.requested_left_margin;
+        y -= config.requested_top_margin;
+    } else if (config.edge != GLFW_EDGE_CENTER_SIZED) {
         x += config.requested_left_margin; width -= config.requested_left_margin + config.requested_right_margin;
         y += config.requested_bottom_margin; height -= config.requested_top_margin + config.requested_bottom_margin;
     }
