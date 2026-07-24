@@ -245,9 +245,12 @@ other. A value of ``auto`` means the axis of the split is chosen automatically
 The Horizontal Layout
 ------------------------
 
-All windows are shown side by side. This layout has no options::
+All windows are shown side by side. This layout can optionally give the
+focused window a larger share of the width with ``focus_bias``, an integer
+between ``10`` and ``90``. Values below an equal share are treated as equal
+share::
 
-    enabled_layouts horizontal
+    enabled_layouts horizontal:focus_bias=60
 
     ┌─────────┬──────────┬─────────┐
     │         │          │         │
@@ -265,9 +268,12 @@ All windows are shown side by side. This layout has no options::
 The Vertical Layout
 -----------------------
 
-All windows are shown one below the other. This layout has no options::
+All windows are shown one below the other. This layout can optionally give the
+focused window a larger share of the height with ``focus_bias``, an integer
+between ``10`` and ``90``. Values below an equal share are treated as equal
+share::
 
-    enabled_layouts vertical
+    enabled_layouts vertical:focus_bias=60
 
     ┌──────────────────────────────┐
     │                              │
@@ -282,6 +288,14 @@ All windows are shown one below the other. This layout has no options::
     │                              │
     │                              │
     └──────────────────────────────┘
+
+With three windows and ``focus_bias=60``, the focused window receives 60
+percent of the main axis and the remaining windows share the rest equally. The
+larger region follows the focus when you switch windows.
+
+You can also map a key to cycle the focus bias, for example::
+
+    map ctrl+. layout_action focus_bias 60 70 80
 
 
 .. _window_resizing:

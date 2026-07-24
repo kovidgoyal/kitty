@@ -242,6 +242,7 @@ class Layout:
     must_draw_borders = False  # can be overridden to customize behavior from kittens
     layout_opts = LayoutOpts({})
     only_active_window_visible = False
+    needs_relayout_on_focus_change = False
     drag_overlay_mode: ClassVar[DragOverlayMode] = DragOverlayMode.full
 
     def __init__(self, os_window_id: int, tab_id: int, layout_opts: str = '') -> None:
