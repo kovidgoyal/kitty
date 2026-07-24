@@ -351,8 +351,31 @@ GLFWAPI double glfwGetWaylandCurrentMonitorFractionalScale(void)
         if (window && window->wl.monitorsCount > 0)
             monitor = window->wl.monitors[0];
     }
-    if (!monitor)
-        monitor = _glfw.monitors[0];
+    if (!monitor) {
+        // No focused window to key off of (typically the first window at
+        // startup). Prefer the output at the logical origin (0, 0): the
+        // compositor's top-left/primary output is a better guess for where a
+        // new window will be placed than registry order. Fall back to the
+        // first output if no output reports position (0, 0).
+        //
+        // xdg_output geometry arrives asynchronously and x/y remain zero until
+        // it does, so wait for every monitor's logical geometry before trusting
+        // the reported positions (otherwise an as-yet-unpositioned output would
+        // spuriously match (0, 0)).
+        for (int i = 0; i < _glfw.monitorCount; i++) {
+            _GLFWmonitor *m = _glfw.monitors[i];
+            while (m->wl.xdg_output && m->wl.xdg_logical_width <= 0) {
+                if (wl_display_roundtrip(_glfw.wl.display) < 0) break;
+            }
+        }
+        for (int i = 0; i < _glfw.monitorCount; i++) {
+            _GLFWmonitor *m = _glfw.monitors[i];
+            if (m->wl.xdg_output && m->wl.xdg_logical_width > 0 &&
+                m->wl.x == 0 && m->wl.y == 0) { monitor = m; break; }
+        }
+        if (!monitor)
+            monitor = _glfw.monitors[0];
+    }
 
     if (!monitor->wl.xdg_output)
         return monitor->wl.scale > 0 ? (double)monitor->wl.scale : 1.0;
