@@ -485,6 +485,8 @@ typedef struct _GLFWmonitorWayland
     int32_t                     xdg_logical_width;
     int32_t                     xdg_logical_height;
     double                      fractional_scale;
+    bool                        xdg_size_received;
+    bool                        xdg_position_received;
 
 } _GLFWmonitorWayland;
 

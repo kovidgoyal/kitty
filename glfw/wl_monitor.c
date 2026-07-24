@@ -135,6 +135,7 @@ static void xdgOutputHandleLogicalPosition(void *data,
     struct _GLFWmonitor *monitor = data;
     monitor->wl.x = x;
     monitor->wl.y = y;
+    monitor->wl.xdg_position_received = true;
 }
 
 static void xdgOutputHandleLogicalSize(void *data,
@@ -145,6 +146,7 @@ static void xdgOutputHandleLogicalSize(void *data,
     struct _GLFWmonitor *monitor = data;
     monitor->wl.xdg_logical_width = width;
     monitor->wl.xdg_logical_height = height;
+    monitor->wl.xdg_size_received = true;
 }
 
 static void computeXdgFractionalScale(struct _GLFWmonitor *monitor)
@@ -364,13 +366,15 @@ GLFWAPI double glfwGetWaylandCurrentMonitorFractionalScale(void)
         // spuriously match (0, 0)).
         for (int i = 0; i < _glfw.monitorCount; i++) {
             _GLFWmonitor *m = _glfw.monitors[i];
-            while (m->wl.xdg_output && m->wl.xdg_logical_width <= 0) {
+            while (m->wl.xdg_output &&
+                   !(m->wl.xdg_size_received && m->wl.xdg_position_received)) {
                 if (wl_display_roundtrip(_glfw.wl.display) < 0) break;
             }
         }
         for (int i = 0; i < _glfw.monitorCount; i++) {
             _GLFWmonitor *m = _glfw.monitors[i];
-            if (m->wl.xdg_output && m->wl.xdg_logical_width > 0 &&
+            if (m->wl.xdg_output && m->wl.xdg_size_received &&
+                m->wl.xdg_position_received &&
                 m->wl.x == 0 && m->wl.y == 0) { monitor = m; break; }
         }
         if (!monitor)
@@ -380,8 +384,8 @@ GLFWAPI double glfwGetWaylandCurrentMonitorFractionalScale(void)
     if (!monitor->wl.xdg_output)
         return monitor->wl.scale > 0 ? (double)monitor->wl.scale : 1.0;
 
-    // Block until the compositor has delivered xdg_output logical_size.
-    while (monitor->wl.xdg_logical_width <= 0 || monitor->wl.xdg_logical_height <= 0)
+    // Block until the compositor has delivered xdg_output logical size and position.
+    while (!(monitor->wl.xdg_size_received && monitor->wl.xdg_position_received))
     {
         if (wl_display_roundtrip(_glfw.wl.display) < 0) break;
     }
