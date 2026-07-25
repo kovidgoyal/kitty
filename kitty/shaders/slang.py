@@ -15,7 +15,6 @@ from contextlib import suppress
 from enum import StrEnum
 from functools import lru_cache
 from itertools import chain, product
-from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple
 
@@ -70,6 +69,7 @@ def self_mtime() -> float:
 @lru_cache(maxsize=2)
 def slangc_version() -> str:
     import subprocess
+
     return subprocess.check_output(list(slangc()) + ['-version'], stderr=subprocess.STDOUT).decode().strip()
 
 
@@ -162,7 +162,6 @@ def glsl_shaders(name: str, variant_name: str = '') -> tuple[str, str]:
 
 
 class LoadShaderPrograms:
-
     text_fg_override_threshold: tuple[float, Literal['%', 'ratio']] = 0, '%'
     text_old_gamma: bool = False
 
@@ -178,9 +177,9 @@ class LoadShaderPrograms:
     def needs_recompile(self) -> bool:
         opts = self.get_options()
         return (
-            bool(opts.text_fg_override_threshold[0]) != bool(self.text_fg_override_threshold[0]) or
-            opts.text_fg_override_threshold[1] != self.text_fg_override_threshold[1] or
-            (opts.text_composition_strategy == 'legacy') != self.text_old_gamma
+            bool(opts.text_fg_override_threshold[0]) != bool(self.text_fg_override_threshold[0])
+            or opts.text_fg_override_threshold[1] != self.text_fg_override_threshold[1]
+            or (opts.text_composition_strategy == 'legacy') != self.text_old_gamma
         )
 
     def recompile_if_needed(self) -> None:
@@ -193,13 +192,16 @@ class LoadShaderPrograms:
         self.text_old_gamma = opts.text_composition_strategy == 'legacy'
         self.text_fg_override_threshold = opts.text_fg_override_threshold
         metadata = load_glsl_metadata()
+
         def cell(prog: int) -> None:
             v = cell_variant(opts, program=prog)
             vert, frag = glsl_shaders('cell', variant_name(v, default_cell_variant))
             compile_program(prog, (vert,), (frag,), metadata['cell'], allow_recompile)
+
         cell(CELL_PROGRAM), cell(CELL_BG_PROGRAM), cell(CELL_FG_PROGRAM)
         for prog, vname in {
-            GRAPHICS_PROGRAM: '', GRAPHICS_ALPHA_MASK_PROGRAM: 'alpha_mask',
+            GRAPHICS_PROGRAM: '',
+            GRAPHICS_ALPHA_MASK_PROGRAM: 'alpha_mask',
             GRAPHICS_PREMULT_PROGRAM: 'premult',
         }.items():
             vert, frag = glsl_shaders('graphics', vname)
@@ -232,7 +234,7 @@ class SlangFile(NamedTuple):
     disable_warnings: frozenset[str] = frozenset()
 
     def asdict(self, skip_source: bool = False) -> dict[str, Any]:
-        ' Return a dict useable for serialization to JSON '
+        "Return a dict useable for serialization to JSON"
         ans = self._asdict()
         ans['imports'] = tuple(ans['imports'])
         ans['entry_points'] = tuple(ep.asdict() for ep in ans['entry_points'])
@@ -246,9 +248,14 @@ class SlangFile(NamedTuple):
     @classmethod
     def fromdict(cls, s: dict[str, Any]) -> 'SlangFile':
         return SlangFile(
-            s['path'], s['text'], frozenset(s['imports']),
+            s['path'],
+            s['text'],
+            frozenset(s['imports']),
             frozenset(EntryPoint.fromdict(x) for x in s['entry_points']),
-            s['module'], MappingProxyType(s['specializable_variables']), frozenset(s['disable_warnings']))
+            s['module'],
+            MappingProxyType(s['specializable_variables']),
+            frozenset(s['disable_warnings']),
+        )
 
     @property
     def should_compile_to_ir(self) -> bool:
@@ -342,8 +349,8 @@ def parse_slang_text(src_code: str, path: str = '') -> SlangFile:
                         text = words[0].partition('(')[2].partition(')')[0].strip()
                         found_entry_point = text[1:-1]
     return SlangFile(
-            path, src_code, frozenset(imports), frozenset(entry_points), module,
-            MappingProxyType(specializable_variables), frozenset(disable_warnings))
+        path, src_code, frozenset(imports), frozenset(entry_points), module, MappingProxyType(specializable_variables), frozenset(disable_warnings)
+    )
 
 
 @lru_cache(4096)
@@ -406,7 +413,7 @@ def read_deps_file(path: str) -> Iterator[str]:
 
 def get_newest_dep_time(path: str) -> float:
     with suppress(OSError):
-        ans = 0.
+        ans = 0.0
         for deppath in read_deps_file(path):
             mtime = os.path.getmtime(deppath)
             ans = max(mtime, ans)
@@ -431,15 +438,29 @@ def commands_to_compile_dir_to_ir(sources: dict[str, SlangFile], src_dir: str, o
             module_mtime = safe_mtime(slang_module)
             needs_build = module_mtime < get_newest_dep_time(deps_file)
             defines = [f'-D{k}={v}' for k, v in sfile.defines.items()]
-            yield Command(needs_build, f'Compiling |{name}.slang| ...', cmdbase + defines + [
-                '-I', output_dirpath, '-I', src_dir, '-depfile', deps_file,
-                '-target', 'none', '-o', slang_module, '--', sfile.path,
-            ])
+            yield Command(
+                needs_build,
+                f'Compiling |{name}.slang| ...',
+                cmdbase
+                + defines
+                + [
+                    '-I',
+                    output_dirpath,
+                    '-I',
+                    src_dir,
+                    '-depfile',
+                    deps_file,
+                    '-target',
+                    'none',
+                    '-o',
+                    slang_module,
+                    '--',
+                    sfile.path,
+                ],
+            )
 
 
-def iter_entry_point_shaders(
-    sources: dict[str, SlangFile], build_dir: str, dest_dir: str
-) -> Iterator[tuple[str, str, str, list[str], SlangFile]]:
+def iter_entry_point_shaders(sources: dict[str, SlangFile], build_dir: str, dest_dir: str) -> Iterator[tuple[str, str, str, list[str], SlangFile]]:
     cmdbase = list(slangc()) + ['-warnings-as-errors', 'all']
     for name, sfile in sources.items():
         if not sfile.entry_points:
@@ -462,9 +483,7 @@ def serialize_source_metadata(sources: dict[str, SlangFile], dest_dir: str) -> N
             f.write(json.dumps(sfile.asdict(skip_source=True), indent=2, sort_keys=True))
 
 
-def commands_to_compile_to_spirv(
-    sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_files: list[str]
-) -> Iterator[Command]:
+def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_files: list[str]) -> Iterator[Command]:
     # glsl 450 is vulkan 1.1 and spirv 1.3 released 2008
     base_cmd = ['-target', 'spirv', '-profile', 'glsl_450', '-capability', 'vk_mem_model', '-fvk-use-entrypoint-name']
     for base_dest, base_build, slang_module, scmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
@@ -483,9 +502,7 @@ def commands_to_compile_to_spirv(
 
 
 # GLSL {{{
-def commands_to_compile_to_glsl(
-    sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_glsl_files: list[str]
-) -> Iterator[Command]:
+def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_glsl_files: list[str]) -> Iterator[Command]:
     glsl_version = max(150, GLSL_VERSION)  # slangc fails with glsl_140 https://github.com/shader-slang/slang/issues/11898
     for base_dest, base_build, slang_module, cmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
         module_mtime = os.path.getmtime(slang_module)
@@ -505,9 +522,7 @@ def commands_to_compile_to_glsl(
                 yield Command(needs_build, f'Linking |{os.path.basename(slang_module)}| to GLSL {ep.stage.value} shader ...', c)
 
 
-
 class GLSLMetadata:
-
     loose_uniforms: dict[str, str]
     uniform_structs: dict[str, dict[str, str]]
     input_locations: dict[str, int]
@@ -590,13 +605,14 @@ def fixup_opengl_code(glsl_code: str, shader_name: str, existing_metadata: GLSLM
         if uniform_name in uniform_names:
             raise KeyError(f'The uniform name {uniform_name} is used with multiple suffixes in {shader_name}')
         if '[' in name:
-             name = name.partition('[')[0] + '[0]'
+            name = name.partition('[')[0] + '[0]'
         uniform_names[uniform_name] = name
         return name
+
     src_lines = glsl_code.splitlines()
 
     for i, line in enumerate(src_lines):
-        next_line = src_lines[i+1] if i+1 < len(src_lines) else ''
+        next_line = src_lines[i + 1] if i + 1 < len(src_lines) else ''
         if in_uniform_block:
             if in_uniform_block_contents:
                 if line.startswith('}'):
@@ -635,7 +651,7 @@ def fixup_opengl_code(glsl_code: str, shader_name: str, existing_metadata: GLSLM
                 register_pipeline_boundary_io(line, next_line)
                 line = '// ' + line
             elif line.startswith('flat layout(location ='):
-                register_pipeline_boundary_io(line[len('flat '):], next_line)
+                register_pipeline_boundary_io(line[len('flat ') :], next_line)
                 line = 'flat'
             elif line:  # ))))
                 words = line.split()
@@ -646,7 +662,7 @@ def fixup_opengl_code(glsl_code: str, shader_name: str, existing_metadata: GLSLM
                     if uniform_block_is_struct:
                         current_uniform_struct_name = words[-1]
                         assert current_uniform_struct_name.startswith('block_')
-                        current_uniform_struct_name = current_uniform_struct_name[len('block_'):].rpartition('_')[0]
+                        current_uniform_struct_name = current_uniform_struct_name[len('block_') :].rpartition('_')[0]
                         current_uniform_struct_members = {}
                         uniform_struct_names[current_uniform_struct_name] = words[-1]
                     else:
@@ -659,7 +675,8 @@ def fixup_opengl_code(glsl_code: str, shader_name: str, existing_metadata: GLSLM
         lines.append(line)
     if fragment_inputs:
         raise ValueError(
-            f'Could not match vertex outputs to fragment inputs for shader: {shader_name}. Leftover fragment inputs: {", ".join(fragment_inputs.values())}')
+            f'Could not match vertex outputs to fragment inputs for shader: {shader_name}. Leftover fragment inputs: {", ".join(fragment_inputs.values())}'
+        )
     ans = '\n'.join(lines)
     for block_name, names in uniform_blocks.items():
         for u in names:
@@ -671,6 +688,7 @@ def fixup_opengl_code(glsl_code: str, shader_name: str, existing_metadata: GLSLM
 
     def sub(m: re.Match[str]) -> str:
         return replacements[m.group(1)]
+
     ans = re.sub(r'\b(' + '|'.join(re.escape(word) for word in replacements) + r')\b', sub, ans)
     m = GLSLMetadata()
     m.loose_uniforms = uniform_names
@@ -690,7 +708,7 @@ def shader_name_from_path(path: str) -> str:
 
 
 def fixup_opengl_files(paths: Iterable[str]) -> None:
-    ' Convert the GLSL output of slangc to something that will work with OpenGL 3.1 '
+    "Convert the GLSL output of slangc to something that will work with OpenGL 3.1"
     metadata_map: dict[str, GLSLMetadata] = {}
     dest_dir = ''
     for path in sorted(paths):
@@ -744,30 +762,12 @@ def write_glsl_metadata(dest_dir: str, dest: str = 'glsl-uniforms.json') -> None
 def load_glsl_metadata() -> dict[str, dict[str, Any]]:
     with open(os.path.join(shaders_dir, 'glsl-uniforms.json')) as f:
         return dict(json.load(f))
+
+
 # }}}
 
 
 ParallelRun = Callable[[Iterable[tuple[bool, str, list[str]]]], None]
-
-
-def copy_files_preserving_structure(source_dir: str, dest_dir: str, extension: str) -> None:
-    '''
-    Copies all files with a specific extension from a source directory
-    to a destination directory while preserving the subdirectory structure.
-    '''
-    source = Path(source_dir)
-    destination = Path(dest_dir)
-    if not extension.startswith('.'):
-        extension = f".{extension}"
-    # Recursively find all matching files
-    for file_path in source.rglob(f"*{extension}"):
-        if file_path.is_file():
-            # Calculate relative path to maintain folder hierarchy
-            relative_path = file_path.relative_to(source)
-            target_path = destination / relative_path
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            # Copy file while preserving original metadata
-            shutil.copy2(file_path, target_path)
 
 
 def create_specialisations(sources: dict[str, SlangFile], build_dir: str) -> Iterator[Command]:
@@ -793,8 +793,7 @@ def create_specialisations(sources: dict[str, SlangFile], build_dir: str) -> Ite
                             fw.write(payload)
                     else:
                         os.remove(dest)
-                yield Command(needs_build, f'Compiling specialisation |{os.path.basename(dest)}| ...',
-                              list(slangc()) + [dest, '-o', dest + '-module'])
+                yield Command(needs_build, f'Compiling specialisation |{os.path.basename(dest)}| ...', list(slangc()) + [dest, '-o', dest + '-module'])
 
 
 def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: ParallelRun) -> None:
@@ -819,6 +818,7 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
     fixup_opengl_files(built_glsl_files)
     if shutil.which('glslangValidator'):
         from kitty.shaders.validate_shaders import validation_command_for_file
+
         parallel_run((True, f'Validating |{os.path.basename(x)}| ...', validation_command_for_file(x)) for x in built_glsl_files)
     write_glsl_metadata(dest_dir)
 
@@ -830,18 +830,21 @@ def main() -> None:
     Command = setup['Command']
     parallel_run = setup['parallel_run']
     emphasis = setup['emphasis']
+
     def prun(cmds: Iterable[tuple[bool, str, list[str]]]) -> None:
         needed = []
-        for (needs_build, desc, cmd) in cmds:
+        for needs_build, desc, cmd in cmds:
             if needs_build:
                 desc = re.sub(r'\|(.+?)\|', lambda m: emphasis(m.group(1)), desc)
                 needed.append(Command(desc, cmd, lambda: True))
         parallel_run(needed)
+
     compile_builtin_shaders(sys.argv[-2], sys.argv[-1], prun)
 
 
 def test_slang_build() -> None:
     import subprocess
+
     if shutil.which(slangc()[0]) is None:
         raise AssertionError(f'The shader slang compiler ({slangc()[0]}) not in PATH: {os.environ.get("PATH")}')
     q = os.path.join(shaders_dir, 'graphics.spv')
@@ -849,13 +852,12 @@ def test_slang_build() -> None:
         raise AssertionError(f'The compiled graphics shader {q} does not exist')
     if not get_shader_src('graphics'):
         raise AssertionError('Could not load graphics.slang shader source')
-    src = b'''
+    src = b"""
 #language slang 2026
 [shader("vertex")]
 float4 main(uint vertex_id : SV_VertexID) : SV_Position { return float4(vertex_id, 1, 0, 1); }
-'''
-    cp = subprocess.run(list(slangc()) + '-lang slang -entry main -stage vertex -target glsl -o /dev/stdout -- -'.split(),
-                        input=src, capture_output=True)
+"""
+    cp = subprocess.run(list(slangc()) + '-lang slang -entry main -stage vertex -target glsl -o /dev/stdout -- -'.split(), input=src, capture_output=True)
     if cp.returncode != 0:
         raise AssertionError(f'Test compile of shader to GLSL failed with returncode: {cp.returncode} and stderr: {cp.stderr.decode()}')
 
