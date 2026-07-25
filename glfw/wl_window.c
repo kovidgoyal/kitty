@@ -3334,9 +3334,21 @@ drag_icon_surface_handle_enter(void *data UNUSED, struct wl_surface *surface UNU
 static void
 drag_icon_surface_handle_leave(void *data UNUSED, struct wl_surface *surface UNUSED, struct wl_output *output UNUSED) {}
 
+#ifdef WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION
+static void
+drag_icon_surface_handle_preferred_buffer_scale(void *data UNUSED, struct wl_surface *surface UNUSED, int32_t scale UNUSED) {}
+
+static void
+drag_icon_surface_handle_preferred_buffer_transform(void *data UNUSED, struct wl_surface *surface UNUSED, uint32_t transform UNUSED) {}
+#endif
+
 static const struct wl_surface_listener drag_icon_surface_listener = {
     .enter = drag_icon_surface_handle_enter,
     .leave = drag_icon_surface_handle_leave,
+#ifdef WL_SURFACE_PREFERRED_BUFFER_SCALE_SINCE_VERSION
+    .preferred_buffer_scale = &drag_icon_surface_handle_preferred_buffer_scale,
+    .preferred_buffer_transform = &drag_icon_surface_handle_preferred_buffer_transform,
+#endif
 };
 
 #define dr _glfw.wl.drag.data_requests[i]
