@@ -13,9 +13,9 @@ from functools import lru_cache
 from re import Match, Pattern
 from types import MappingProxyType
 from typing import (
+    IO,
     TYPE_CHECKING,
     Any,
-    BinaryIO,
     NamedTuple,
     NoReturn,
     Optional,
@@ -60,7 +60,6 @@ else:
 
 
 class Flag:
-
     def __init__(self, initial_val: bool = True) -> None:
         self.val = initial_val
 
@@ -78,9 +77,9 @@ disallow_expand_vars = Flag(False)
 
 
 def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool = True) -> str:
-    '''
+    """
     Expand $VAR and ${VAR} Use $$ for a literal $
-    '''
+    """
 
     def sub(m: 'Match[str]') -> str:
         key = m.group(1) or m.group(2)
@@ -115,10 +114,12 @@ def kitty_ansi_sanitizer_pat() -> 're.Pattern[str]':
 def platform_window_id(os_window_id: int) -> int | None:
     if is_macos:
         from .fast_data_types import cocoa_window_id
+
         with suppress(Exception):
             return cocoa_window_id(os_window_id)
     if not is_wayland():
         from .fast_data_types import x11_window_id
+
         with suppress(Exception):
             return x11_window_id(os_window_id)
     return None
@@ -131,6 +132,7 @@ def safe_print(*a: Any, **k: Any) -> None:
 
 def log_error(*a: Any, **k: str) -> None:
     from .fast_data_types import log_error_string
+
     output = getattr(log_error, 'redirect', log_error_string)
     with suppress(Exception):
         msg = k.get('sep', ' ').join(map(str, a)) + k.get('end', '')
@@ -159,7 +161,7 @@ def sanitize_title(x: str) -> str:
 
 
 def color_as_int(val: Color) -> int:
-    return int(val) & 0xffffff
+    return int(val) & 0xFFFFFF
 
 
 def color_from_int(val: int) -> Color:
@@ -179,6 +181,7 @@ def read_screen_size(fd: int = -1) -> ScreenSize:
     import array
     import fcntl
     import termios
+
     buf = array.array('H', [0, 0, 0, 0])
     if fd < 0:
         fd = sys.stdout.fileno()
@@ -212,6 +215,7 @@ def screen_size_function(fd: int | None = None) -> ScreenSizeGetter:
 
 def fit_image(width: int, height: int, pwidth: int, pheight: int) -> tuple[int, int]:
     from math import floor
+
     if height > pheight:
         corrf = pheight / float(height)
         width, height = floor(corrf * width), pheight
@@ -225,11 +229,7 @@ def fit_image(width: int, height: int, pwidth: int, pheight: int) -> tuple[int, 
     return int(width), int(height)
 
 
-def base64_encode(
-    integer: int,
-    chars: str = string.ascii_uppercase + string.ascii_lowercase + string.digits +
-    '+/'
-) -> str:
+def base64_encode(integer: int, chars: str = string.ascii_uppercase + string.ascii_lowercase + string.digits + '+/') -> str:
     ans = ''
     while True:
         integer, remainder = divmod(integer, 64)
@@ -242,6 +242,7 @@ def base64_encode(
 def command_for_open(program: str | list[str] = 'default') -> list[str]:
     if isinstance(program, str):
         from .conf.utils import to_cmdline
+
         program = to_cmdline(program)
     if program == ['default']:
         cmd = ['open'] if is_macos else ['xdg-open']
@@ -250,9 +251,11 @@ def command_for_open(program: str | list[str] = 'default') -> list[str]:
     return cmd
 
 
-def open_cmd(cmd: Iterable[str] | list[str], arg: None | Iterable[str] | str = None,
-             cwd: str | None = None, extra_env: dict[str, str] | None = None) -> 'PopenType[bytes]':
+def open_cmd(
+    cmd: Iterable[str] | list[str], arg: None | Iterable[str] | str = None, cwd: str | None = None, extra_env: dict[str, str] | None = None
+) -> 'PopenType[bytes]':
     import subprocess
+
     if arg is not None:
         cmd = list(cmd)
         if isinstance(arg, str):
@@ -264,8 +267,8 @@ def open_cmd(cmd: Iterable[str] | list[str], arg: None | Iterable[str] | str = N
         env = os.environ.copy()
         env.update(extra_env)
     return subprocess.Popen(
-        tuple(cmd), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=cwd or None,
-        preexec_fn=clear_handled_signals, env=env)
+        tuple(cmd), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=cwd or None, preexec_fn=clear_handled_signals, env=env
+    )
 
 
 def open_url(url: str, program: str | list[str] = 'default', cwd: str | None = None, extra_env: dict[str, str] | None = None) -> 'PopenType[bytes]':
@@ -275,10 +278,12 @@ def open_url(url: str, program: str | list[str] = 'default', cwd: str | None = N
 def init_startup_notification_x11(window_handle: int, startup_id: str | None = None) -> Optional['StartupCtx']:
     # https://specifications.freedesktop.org/startup-notification-spec/startup-notification-latest.txt
     from kitty.fast_data_types import init_x11_startup_notification
+
     sid = startup_id or os.environ.pop('DESKTOP_STARTUP_ID', None)  # ensure child processes don't get this env var
     if not sid:
         return None
     from .fast_data_types import x11_display
+
     display = x11_display()
     if not display:
         return None
@@ -287,6 +292,7 @@ def init_startup_notification_x11(window_handle: int, startup_id: str | None = N
 
 def end_startup_notification_x11(ctx: 'StartupCtx') -> None:
     from kitty.fast_data_types import end_x11_startup_notification
+
     end_x11_startup_notification(ctx)
 
 
@@ -300,13 +306,15 @@ def init_startup_notification(window_handle: int | None, startup_id: str | None 
         try:
             return init_startup_notification_x11(window_handle, startup_id)
         except OSError as e:
-            if not str(e).startswith("Failed to load libstartup-notification"):
+            if not str(e).startswith('Failed to load libstartup-notification'):
                 raise e
             log_error(
                 f'{e}. This has two main effects:',
-                'There will be no startup feedback and when using --single-instance, kitty windows may start on an incorrect desktop/workspace.')
+                'There will be no startup feedback and when using --single-instance, kitty windows may start on an incorrect desktop/workspace.',
+            )
     except Exception:
         import traceback
+
         traceback.print_exc()
     return None
 
@@ -320,11 +328,11 @@ def end_startup_notification(ctx: Optional['StartupCtx']) -> None:
         end_startup_notification_x11(ctx)
     except Exception:
         import traceback
+
         traceback.print_exc()
 
 
 class startup_notification_handler:
-
     # WARNING: This only works on X11 on other platforms extra_callback will be called
     # after the window is shown, not before, as they do not do two stage window
     # creation.
@@ -352,10 +360,12 @@ class startup_notification_handler:
 
 def unix_socket_directories() -> Iterator[str]:
     import tempfile
+
     home = os.path.expanduser('~')
     candidates = [tempfile.gettempdir(), home]
     if is_macos:
         from .fast_data_types import user_cache_dir
+
         candidates = [user_cache_dir(), '/Library/Caches']
     else:
         if os.environ.get('XDG_RUNTIME_DIR'):
@@ -374,6 +384,7 @@ def unix_socket_paths(name: str, ext: str = '.lock') -> Generator[str, None, Non
 
 def parse_address_spec(spec: str) -> tuple[AddressFamily, tuple[str, int] | str, str | None]:
     import socket
+
     try:
         protocol, rest = spec.split(':', 1)
     except ValueError:
@@ -436,7 +447,6 @@ def write_all(fd: int, data: str | bytes, block_until_written: bool = True) -> N
 
 
 class TTYIO:
-
     def __init__(self, read_with_timeout: bool = True):
         self.read_with_timeout = read_with_timeout
 
@@ -446,12 +456,14 @@ class TTYIO:
 
     def __exit__(self, *a: Any) -> None:
         from .fast_data_types import close_tty
+
         close_tty(self.tty_fd, self.original_termios)
 
     def wait_till_read_available(self) -> bool:
         if self.read_with_timeout:
             raise ValueError('Cannot wait when TTY is set to read with timeout')
         import select
+
         rd = select.select([self.tty_fd], [], [])[0]
         return bool(rd)
 
@@ -478,6 +490,7 @@ class TTYIO:
 
 def set_echo(fd: int = -1, on: bool = False) -> tuple[int, list[int | list[bytes | int]]]:
     import termios
+
     if fd < 0:
         fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
@@ -493,6 +506,7 @@ def set_echo(fd: int = -1, on: bool = False) -> tuple[int, list[int | list[bytes
 @contextmanager
 def no_echo(fd: int = -1) -> Iterator[None]:
     import termios
+
     fd, old = set_echo(fd)
     try:
         yield
@@ -513,6 +527,7 @@ def natsort_ints(iterable: Iterable[str]) -> list[str]:
 
 def get_hostname(fallback: str = '') -> str:
     import socket
+
     try:
         return socket.gethostname() or fallback
     except Exception:
@@ -521,6 +536,7 @@ def get_hostname(fallback: str = '') -> str:
 
 def resolve_editor_cmd(editor: str, shell_env: Mapping[str, str]) -> str | None:
     import shlex
+
     editor_cmd = list(shlex_split(editor))
     editor_exe = (editor_cmd or ('',))[0]
     if editor_exe and os.path.isabs(editor_exe):
@@ -538,6 +554,7 @@ def resolve_editor_cmd(editor: str, shell_env: Mapping[str, str]) -> str | None:
             return patched(q)
     elif 'PATH' in shell_env:
         import shutil
+
         q = shutil.which(editor_exe, path=shell_env['PATH'])
         if q:
             return patched(q)
@@ -556,6 +573,7 @@ def get_editor_from_env(env: Mapping[str, str]) -> str | None:
 
 def get_editor_from_env_vars(opts: Options | None = None) -> list[str]:
     from .child import default_env
+
     editor = get_editor_from_env(default_env())
     if not editor:
         shell_env = read_shell_environment(opts)
@@ -576,6 +594,7 @@ def get_editor(opts: Options | None = None, path_to_edit: str = '', line_number:
         except RuntimeError:
             # we are in a kitten
             from .cli import create_default_opts
+
             opts = create_default_opts()
     if opts.editor == '.':
         ans = get_editor_from_env_vars()
@@ -597,8 +616,9 @@ def get_editor(opts: Options | None = None, path_to_edit: str = '', line_number:
 
 
 def edit_file(path: str = '') -> NoReturn:
-    ' This exists for: map whatever launch kitty +runpy "from kitty.utils import *; edit_file()" to edit kitty config '
+    'This exists for: map whatever launch kitty +runpy "from kitty.utils import *; edit_file()" to edit kitty config'
     from .config import prepare_config_file_for_editing
+
     editor = get_editor()
     path = path or prepare_config_file_for_editing()
     editor.append(path)
@@ -615,6 +635,7 @@ def is_path_in_temp_dir(path: str) -> bool:
         return x or ''
 
     import tempfile
+
     path = abspath(path)
     candidates = frozenset(map(abspath, ('/tmp', '/dev/shm', os.environ.get('TMPDIR', None), tempfile.gettempdir())))
     for q in candidates:
@@ -625,6 +646,7 @@ def is_path_in_temp_dir(path: str) -> bool:
 
 def is_ok_to_read_image_file(path: str, fd: int) -> bool:
     import stat
+
     path = os.path.abspath(os.path.realpath(path))
     try:
         path_stat = os.stat(path, follow_symlinks=True)
@@ -680,9 +702,12 @@ def resolved_shell(opts: Options | None = None) -> list[str]:
             env['HOME'] = os.path.expanduser('~')
         if 'USER' not in os.environ:
             import pwd
+
             env['USER'] = pwd.getpwuid(os.geteuid()).pw_name
+
         def expand(x: str) -> str:
             return expandvars(x, env)
+
         ans = list(map(expand, shlex_split(q)))
     return ans
 
@@ -703,6 +728,7 @@ def system_paths_on_macos() -> tuple[str, ...]:
                     if os.path.isdir(line):
                         seen.add(line)
                         entries.append(line)
+
     try:
         files = os.listdir('/etc/paths.d')
     except (FileNotFoundError, PermissionError):
@@ -773,6 +799,7 @@ def which(name: str, only_system: bool = False) -> str | None:
 @lru_cache(4)
 def read_resolved_shell_environment(shell: tuple[str, ...]) -> MappingProxyType[str, str]:
     import subprocess
+
     cmdline = list(shell)
     if '-l' not in cmdline and '--login' not in cmdline:
         cmdline += ['-l']
@@ -784,18 +811,20 @@ def read_resolved_shell_environment(shell: tuple[str, ...]) -> MappingProxyType[
     ans: MappingProxyType[str, str] = MappingProxyType({})
 
     from .child import openpty
+
     master, slave = openpty()
     os.set_blocking(master, False)
     try:
         p = subprocess.Popen(
-            cmdline + ['-c', cmd], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True,
-            preexec_fn=clear_handled_signals)
+            cmdline + ['-c', cmd], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True, preexec_fn=clear_handled_signals
+        )
     except FileNotFoundError:
         log_error(f'Could not find shell {cmdline[0]} to read environment')
         return ans
     with os.fdopen(master, 'rb') as stdout, os.fdopen(slave, 'wb'):
         raw = b''
         from time import monotonic
+
         start_time = monotonic()
         ret: int | None = None
         while monotonic() - start_time < 1.5:
@@ -837,8 +866,9 @@ def read_shell_environment(opts: Options | None = None) -> MappingProxyType[str,
 
 
 def parse_uri_list(text: str) -> Generator[str, None, None]:
-    ' Get paths from file:// URLs '
+    "Get paths from file:// URLs"
     from urllib.parse import unquote, urlparse
+
     for line in text.splitlines():
         if not line or line.startswith('#'):
             continue
@@ -856,6 +886,7 @@ def parse_uri_list(text: str) -> Generator[str, None, None]:
 
 def edit_config_file() -> None:
     from kitty.config import prepare_config_file_for_editing
+
     p = prepare_config_file_for_editing()
     editor = get_editor()
     os.execvp(editor[0], editor + [p])
@@ -892,6 +923,7 @@ def get_new_os_window_size(
 def get_all_processes() -> Iterable[int]:
     if is_macos:
         from kitty.fast_data_types import get_all_processes as f
+
         yield from f()
     else:
         for c in os.listdir('/proc'):
@@ -943,20 +975,27 @@ def hold_till_enter() -> None:
     import subprocess
 
     from .constants import kitten_exe
+
     subprocess.Popen([kitten_exe(), '__hold_till_enter__']).wait()
 
 
 def cleanup_ssh_control_masters() -> None:
     import glob
     import subprocess
+
     try:
-        files = frozenset(glob.glob(os.path.join(runtime_dir(), ssh_control_master_template.format(
-            kitty_pid=os.getpid(), ssh_placeholder='*'))))
+        files = frozenset(glob.glob(os.path.join(runtime_dir(), ssh_control_master_template.format(kitty_pid=os.getpid(), ssh_placeholder='*'))))
     except OSError:
         return
-    workers = tuple(subprocess.Popen([
-        'ssh', '-o', f'ControlPath={x}', '-O', 'exit', 'kitty-unused-host-name'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        preexec_fn=clear_handled_signals) for x in files)
+    workers = tuple(
+        subprocess.Popen(
+            ['ssh', '-o', f'ControlPath={x}', '-O', 'exit', 'kitty-unused-host-name'],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            preexec_fn=clear_handled_signals,
+        )
+        for x in files
+    )
     for w in workers:
         w.wait()
     for x in files:
@@ -971,6 +1010,7 @@ def path_from_osc7_url(url: str | bytes) -> str:
         return '/' + url.split('/', 3)[-1]
     if url.startswith('file://'):
         from urllib.parse import unquote, urlparse
+
         return unquote(urlparse(url).path)
     return ''
 
@@ -979,6 +1019,7 @@ def path_from_osc7_url(url: str | bytes) -> str:
 def macos_version() -> tuple[int, ...]:
     # platform.mac_ver does not work thanks to Apple's stupid "hardening", so just use sw_vers
     import subprocess
+
     try:
         o = subprocess.check_output(['sw_vers', '-productVersion'], stderr=subprocess.STDOUT).decode()
     except Exception:
@@ -989,6 +1030,7 @@ def macos_version() -> tuple[int, ...]:
 @lru_cache(maxsize=2)
 def less_version(less_exe: str = 'less') -> int:
     import subprocess
+
     o = subprocess.check_output([less_exe, '-V'], stderr=subprocess.STDOUT).decode()
     m = re.match(r'less (\d+)', o)
     if m is None:
@@ -1011,10 +1053,12 @@ def safer_fork() -> int:
     if pid:
         # master
         import ssl
+
         ssl.RAND_add(os.urandom(32), 0.0)
     else:
         # child
         import atexit
+
         atexit._clear()
     return pid
 
@@ -1024,6 +1068,7 @@ def docs_url(which: str = '', local_docs_root: str | None = '') -> str:
 
     from .conf.types import resolve_ref
     from .constants import local_docs, website_url
+
     if local_docs_root is None:
         ld = ''
     else:
@@ -1060,6 +1105,7 @@ def sanitize_for_bracketed_paste(text: bytes) -> bytes:
 @lru_cache(maxsize=64)
 def sanitize_url_for_display_to_user(url: str) -> str:
     from urllib.parse import unquote, urlparse, urlunparse
+
     try:
         purl = urlparse(url)
         if purl.netloc:
@@ -1082,7 +1128,7 @@ def extract_all_from_tarfile_safely(tf: 'tarfile.TarFile', dest: str) -> None:
         prefix = os.path.commonprefix((abs_directory, abs_target))
         return prefix == abs_directory
 
-    def safe_extract(tar: 'tarfile.TarFile', path: str = ".", numeric_owner: bool = False) -> None:
+    def safe_extract(tar: 'tarfile.TarFile', path: str = '.', numeric_owner: bool = False) -> None:
         for member in tar.getmembers():
             member_path = os.path.join(path, member.name)
             if not is_within_directory(path, member_path):
@@ -1106,9 +1152,11 @@ def cmdline_for_hold(cmd: Sequence[str] = (), opts: Optional['Options'] = None) 
             opts = get_options()
     if opts is None:
         from .options.types import defaults
+
         opts = defaults
     ksi = ' '.join(opts.shell_integration)
     import shlex
+
     shell = shlex.join(resolved_shell(opts))
     return [kitten_exe(), 'run-shell', f'--shell={shell}', f'--shell-integration={ksi}', '--env=KITTY_HOLD=1'] + list(cmd)
 
@@ -1135,8 +1183,7 @@ def get_custom_window_icon() -> tuple[float, str] | tuple[None, None]:
 
 def key_val_matcher(items: Iterable[tuple[str, str]], key_pat: 're.Pattern[str]', val_pat: Optional['re.Pattern[str]']) -> bool:
     for key, val in items:
-        if key_pat.search(key) is not None and (
-                val_pat is None or val_pat.search(val) is not None):
+        if key_pat.search(key) is not None and (val_pat is None or val_pat.search(val) is not None):
             return True
     return False
 
@@ -1155,33 +1202,45 @@ def timed_debug_print(*a: Any, sep: str = ' ', end: str = '\n') -> None:
     _timed_debug_print(sep.join(map(str, a)) + end)
 
 
-def lock_file(f: BinaryIO) -> None:
+def lock_file(f: IO[bytes] | IO[str]) -> None:
     if not f.writable():
         raise ValueError('Cannot lock files not opened in writable mode')
     fcntl.lockf(f, fcntl.LOCK_EX)
 
 
-def unlock_file(f: BinaryIO) -> None:
+def unlock_file(f: IO[bytes] | IO[str]) -> None:
     if not f.writable():
         raise ValueError('Cannot unlock files not opened in writable mode')
     fcntl.lockf(f, fcntl.LOCK_UN)
 
 
+@contextmanager
+def lock_with_file(path: str) -> Iterator[None]:
+    os.close(os.open(path, os.O_CREAT | os.O_WRONLY | os.O_EXCL | os.O_CLOEXEC))
+    try:
+        yield
+    finally:
+        os.remove(path)
+
+
 def rmtree_best_effort(relpath: str, dir_fd: int) -> None:
     import shutil
+
     shutil.rmtree(relpath, ignore_errors=True, dir_fd=dir_fd)
 
 
 def mktempdir_in_cache(prefix: str, delete_on_kitty_exit: bool) -> tuple[str, int]:
     import tempfile
+
     ans = os.path.abspath(tempfile.mkdtemp(prefix, dir=cache_dir()))
     try:
         retval = ans, os.open(ans, os.O_DIRECTORY | os.O_RDONLY)
     except OSError as e:
         import errno
         import shutil
+
         shutil.rmtree(ans, ignore_errors=True)
-        return "", -e.errno if e.errno is not None else -errno.EIO
+        return '', -e.errno if e.errno is not None else -errno.EIO
     if delete_on_kitty_exit:
         get_boss().atexit.rmtree(retval[0])
     return retval
@@ -1190,6 +1249,7 @@ def mktempdir_in_cache(prefix: str, delete_on_kitty_exit: bool) -> tuple[str, in
 def sanitized_filename_from_url(url: str) -> str:
     import posixpath
     from urllib.parse import unquote, urlparse
+
     try:
         purl = urlparse(url)
         fpath = purl.path.rstrip('/') or '/'
@@ -1203,4 +1263,5 @@ def as_file_url(wd: str, *components: str) -> str:
     path = os.path.abspath(os.path.join(wd, *components))
     path = path.replace(os.sep, '/')
     from urllib.parse import quote
+
     return 'file://' + quote(path)
