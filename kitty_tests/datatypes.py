@@ -30,7 +30,15 @@ from kitty.fast_data_types import (
 )
 from kitty.fast_data_types import Cursor as C
 from kitty.rgb import to_color
-from kitty.utils import is_ok_to_read_image_file, is_path_in_temp_dir, sanitize_title, sanitize_url_for_display_to_user, shlex_split, shlex_split_with_positions
+from kitty.utils import (
+    is_ok_to_read_image_file,
+    is_path_in_temp_dir,
+    lock_with_file,
+    sanitize_title,
+    sanitize_url_for_display_to_user,
+    shlex_split,
+    shlex_split_with_positions,
+)
 
 from .base import BaseTest, filled_cursor, filled_history_buf, filled_line_buf
 
@@ -698,6 +706,36 @@ class TestDataTypes(BaseTest):
                 os.environ.pop(k, None)
                 if saved[k] is not None:
                     os.environ[k] = saved[k]
+
+    def test_lock_with_file(self):
+        with tempfile.TemporaryDirectory() as tdir:
+            lock_path = os.path.join(tdir, 'test.lock')
+
+            # normal usage: file exists during context and is removed after
+            with lock_with_file(lock_path):
+                self.assertTrue(os.path.exists(lock_path))
+            self.assertFalse(os.path.exists(lock_path))
+
+            # second acquisition of the same path succeeds after the first released it
+            with lock_with_file(lock_path):
+                self.assertTrue(os.path.exists(lock_path))
+            self.assertFalse(os.path.exists(lock_path))
+
+            # file already exists: raises FileExistsError before yielding
+            open(lock_path, 'w').close()
+            with self.assertRaises(FileExistsError):
+                with lock_with_file(lock_path):
+                    pass  # should not be reached
+            # pre-existing file must not be deleted
+            self.assertTrue(os.path.exists(lock_path))
+            os.remove(lock_path)
+
+            # lock file is removed even when the body raises
+            with self.assertRaises(RuntimeError):
+                with lock_with_file(lock_path):
+                    self.assertTrue(os.path.exists(lock_path))
+                    raise RuntimeError('body error')
+            self.assertFalse(os.path.exists(lock_path))
 
     def test_historybuf(self):
         lb = filled_line_buf()
