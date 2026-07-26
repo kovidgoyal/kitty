@@ -1220,6 +1220,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
 
         self->last_graphic_char = ch;
         if (UNLIKELY(self->columns < self->cursor->x + (unsigned int)char_width)) {
+            if ((unsigned)char_width > self->columns) continue;  // discard too wide character
             if (self->modes.mDECAWM) {
                 continue_to_next_line(self);
                 init_text_loop_line(self, s);
