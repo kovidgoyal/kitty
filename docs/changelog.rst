@@ -179,6 +179,13 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
+
+0.48.2 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Wayland: Fix regression in previous release that broke drag and drop on Plasma (:iss:`10284`)
+
+
 0.48.1 [2026-07-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
