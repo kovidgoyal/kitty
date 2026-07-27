@@ -938,6 +938,7 @@ PYWRAP1(set_options) {
     global_state.debug_rendering = debug_rendering ? true : false;
     global_state.debug_font_fallback = debug_font_fallback ? true : false;
     if (!convert_opts_from_python_opts(opts, &global_state.opts)) return NULL;
+    Py_XDECREF(global_state.options_object);
     global_state.options_object = opts;
     Py_INCREF(global_state.options_object);
     Py_RETURN_NONE;
