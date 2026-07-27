@@ -276,7 +276,7 @@ class SlangFile(NamedTuple):
     def defines(self) -> MappingProxyType[str, str]:
         ans = {}
         match os.path.basename(self.path):
-            case 'cell.slang' | 'background.slang':
+            case 'cell.slang' | 'background.slang' | 'padding.slang':
                 ans['MARK_MASK'] = str(MARK_MASK)
                 ans['REVERSE_SHIFT'] = str(REVERSE)
                 ans['STRIKE_SHIFT'] = str(STRIKETHROUGH)
