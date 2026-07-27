@@ -788,6 +788,8 @@ def create_specialisations(sources: dict[str, SlangFile], build_dir: str) -> Ite
     for _, base_build, _, _, sfile in iter_entry_point_shaders(sources, build_dir, build_dir):
         if sfile.entry_points and sfile.specializations:
             for sp in sfile.specializations:
+                if not sp.variables:
+                    continue
                 dest = f'{base_build}{sp.filename_insert}.slang'
                 payload = existing = ''
                 if sp.variables:
@@ -846,6 +848,7 @@ def main() -> None:
     emphasis = setup['emphasis']
 
     def prun(cmds: Iterable[tuple[bool, str, list[str]]]) -> None:
+        cmds = tuple(cmds)
         needed = []
         for needs_build, desc, cmd in cmds:
             if needs_build:
