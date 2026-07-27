@@ -49,19 +49,18 @@ def create_lbuf(*lines):
     for i, l0 in enumerate(lines):
         ans.line(i).set_text(l0, 0, len(l0), C())
         if i > 0:
-            ans.set_continued(i, len(lines[i-1]) == maxw)
+            ans.set_continued(i, len(lines[i - 1]) == maxw)
     return ans
 
 
 class TestDataTypes(BaseTest):
-
-
     def test_replace_c0_codes(self):
         def t(x: str, expected: str):
             q = replace_c0_codes_except_nl_space_tab(x)
             self.ae(expected, q)
             q = replace_c0_codes_except_nl_space_tab(x.encode('utf-8'))
             self.ae(expected.encode('utf-8'), q)
+
         t('abc', 'abc')
         t('a\0\x01b\x03\x04\t\rc', 'a\u2400\u2401b\u2403\u2404\t\u240dc')
         t('a\0\x01😸\x03\x04\t\rc', 'a\u2400\u2401😸\u2403\u2404\t\u240dc')
@@ -76,20 +75,20 @@ class TestDataTypes(BaseTest):
             self.ae(Color(r, g, b, a), c, spec)
             self.ae(Color(r, green=g, alpha=a, blue=b), c, spec)
 
-        c('#eee # comment', 0xee, 0xee, 0xee)
+        c('#eee # comment', 0xEE, 0xEE, 0xEE)
         c('#234567', 0x23, 0x45, 0x67)
-        c('#abCabcdef', 0xab, 0xab, 0xde)
-        c('rgb:e/e/e # comment', 0xee, 0xee, 0xee)
+        c('#abCabcdef', 0xAB, 0xAB, 0xDE)
+        c('rgb:e/e/e # comment', 0xEE, 0xEE, 0xEE)
         c('rgB:23/45/67', 0x23, 0x45, 0x67)
-        c('rgb:abc/abc/def', 0xab, 0xab, 0xde)
-        c('rEd', 0xff, 0, 0)
+        c('rgb:abc/abc/def', 0xAB, 0xAB, 0xDE)
+        c('rEd', 0xFF, 0, 0)
         c('aLice blUe # comment', 240, 248, 255)
         c('oklch(1,0,0)', 255, 255, 255)
         c('oklch(0,0,0)', 0, 0, 0)
         c('oklch(0.5,0.1,180)', 0, 117, 101)
-        c('oklcH(0.7 0.15 140) # comment', 0x68, 0xb4, 0x57)
-        c('oklch(0.9 0.05 265)', 0xce, 0xde, 0xff)
-        c('lAb(70 50 -30)', 0xea, 0x88, 0xe2)
+        c('oklcH(0.7 0.15 140) # comment', 0x68, 0xB4, 0x57)
+        c('oklch(0.9 0.05 265)', 0xCE, 0xDE, 0xFF)
+        c('lAb(70 50 -30)', 0xEA, 0x88, 0xE2)
         c('lab(50,0,0)', 199, 199, 199)
         c('lab(100,0,0)', 255, 255, 255)
         c('lab(0,0,0)', 0, 0, 0)
@@ -106,6 +105,7 @@ class TestDataTypes(BaseTest):
 
     def test_oklch_gamut_mapping(self):
         """Test OKLCH color format with CSS Color 4 gamut mapping"""
+
         def c(spec, r=0, g=0, b=0):
             color = to_color(spec)
             self.assertIsNotNone(color, f'Failed to parse: {spec}')
@@ -131,15 +131,15 @@ class TestDataTypes(BaseTest):
 
         # Edge cases
         c('oklch(0 0 0)', 0x00, 0x00, 0x00)  # Pure black
-        c('oklch(1 0 0)', 0xff, 0xff, 0xff)  # Pure white
+        c('oklch(1 0 0)', 0xFF, 0xFF, 0xFF)  # Pure white
 
         # Achromatic colors (zero chroma)
-        c('oklch(0.5 0 180)', 0xbc, 0xbc, 0xbc)  # Mid gray, hue irrelevant
+        c('oklch(0.5 0 180)', 0xBC, 0xBC, 0xBC)  # Mid gray, hue irrelevant
         c('oklch(0.25 0 90)', 0x89, 0x89, 0x89)  # Dark gray
 
         # Test various hues with moderate chroma
-        in_range('oklch(0.6 0.15 0)')    # Red hue
-        in_range('oklch(0.6 0.15 60)')   # Yellow hue
+        in_range('oklch(0.6 0.15 0)')  # Red hue
+        in_range('oklch(0.6 0.15 60)')  # Yellow hue
         in_range('oklch(0.6 0.15 120)')  # Green hue
         in_range('oklch(0.6 0.15 180)')  # Cyan hue
         in_range('oklch(0.6 0.15 240)')  # Blue hue
@@ -161,6 +161,7 @@ class TestDataTypes(BaseTest):
 
     def test_inline_comments(self):
         """Test inline comments in color values"""
+
         def c(spec, r=0, g=0, b=0):
             color = to_color(spec)
             self.assertIsNotNone(color, f'Failed to parse: {spec}')
@@ -168,25 +169,26 @@ class TestDataTypes(BaseTest):
 
         # OKLCH with inline comment
         c('oklch(0.5 0.1 180) # Cyan color', 0x00, 0x75, 0x65)
-        c('oklch(0.7 0.15 140) # Green', 0x68, 0xb4, 0x57)
+        c('oklch(0.7 0.15 140) # Green', 0x68, 0xB4, 0x57)
 
         # Hex colors with inline comments
-        c('#ff0000 # Red', 0xff, 0x00, 0x00)
-        c('#00ff00 # Green', 0x00, 0xff, 0x00)
-        c('#0000ff # Blue', 0x00, 0x00, 0xff)
+        c('#ff0000 # Red', 0xFF, 0x00, 0x00)
+        c('#00ff00 # Green', 0x00, 0xFF, 0x00)
+        c('#0000ff # Blue', 0x00, 0x00, 0xFF)
 
         # LAB colors with inline comments
-        c('lab(70 50 -30) # Purple-ish', 0xea, 0x88, 0xe2)
+        c('lab(70 50 -30) # Purple-ish', 0xEA, 0x88, 0xE2)
 
         # RGB with inline comments
-        c('rgb:ff/00/00 # RGB Red', 0xff, 0x00, 0x00)
+        c('rgb:ff/00/00 # RGB Red', 0xFF, 0x00, 0x00)
 
         # Named color should not be affected by text after it
         # (not a comment, just ignored)
-        c('red', 0xff, 0x00, 0x00)
+        c('red', 0xFF, 0x00, 0x00)
 
     def test_lab_parsing(self):
         """Test CIE LAB color format parsing"""
+
         def c(spec, r=0, g=0, b=0):
             color = to_color(spec)
             self.assertIsNotNone(color, f'Failed to parse: {spec}')
@@ -196,16 +198,16 @@ class TestDataTypes(BaseTest):
             self.ae(Color(r, g, b), color, spec)
 
         # LAB basic colors
-        c('lab(0 0 0)', 0x00, 0x00, 0x00)      # LAB black
-        c('lab(100 0 0)', 0xff, 0xff, 0xff)    # LAB white
-        c('lab(50 0 0)', 0xc7, 0xc7, 0xc7)     # LAB mid-gray
+        c('lab(0 0 0)', 0x00, 0x00, 0x00)  # LAB black
+        c('lab(100 0 0)', 0xFF, 0xFF, 0xFF)  # LAB white
+        c('lab(50 0 0)', 0xC7, 0xC7, 0xC7)  # LAB mid-gray
 
         # LAB with color components
-        c('lab(70 50 -30)', 0xea, 0x88, 0xe2)  # Purple-ish
-        color = to_color('lab(50 50 50)')      # Orange/red-ish (positive a and b)
+        c('lab(70 50 -30)', 0xEA, 0x88, 0xE2)  # Purple-ish
+        color = to_color('lab(50 50 50)')  # Orange/red-ish (positive a and b)
         self.assertIsNotNone(color)
-        self.assertGreater(color.red, 0xc0)    # Should have high red
-        self.assertLess(color.blue, 0x50)      # Should have low blue
+        self.assertGreater(color.red, 0xC0)  # Should have high red
+        self.assertLess(color.blue, 0x50)  # Should have low blue
 
         # LAB with different separators
         color = to_color('lab(70, 50, -30)')
@@ -441,17 +443,17 @@ class TestDataTypes(BaseTest):
         self.ae(l0.url_start_at(0), 0)
 
         for trail in '.,\\}]>':
-            lx = create("http://xyz.com" + trail)
+            lx = create('http://xyz.com' + trail)
             self.ae(lx.url_end_at(0), len(lx) - 2)
         for trail in ')':
-            turl = "http://xyz.com" + trail
+            turl = 'http://xyz.com' + trail
             lx = create(turl)
             self.ae(len(lx) - 1, lx.url_end_at(0), repr(turl))
-        l0 = create("ftp://abc/")
+        l0 = create('ftp://abc/')
         self.ae(l0.url_end_at(0), len(l0) - 1)
-        l2 = create("http://-abcd] ")
+        l2 = create('http://-abcd] ')
         self.ae(l2.url_end_at(0), len(l2) - 3)
-        l3 = create("http://ab.de           ")
+        l3 = create('http://ab.de           ')
         self.ae(l3.url_start_at(4), 0)
         self.ae(l3.url_start_at(5), 0)
 
@@ -461,6 +463,7 @@ class TestDataTypes(BaseTest):
                 self.ae(lf.url_start_at(i), len(lf))
             for i in range(n, len(lf)):
                 self.ae(lf.url_start_at(i), n)
+
         for i in range(7):
             for scheme in 'http https ftp file'.split():
                 lspace_test(i, scheme)
@@ -474,6 +477,7 @@ class TestDataTypes(BaseTest):
             lf = create(t)
             for s in range(len(lf)):
                 self.ae(lf.url_start_at(s), len(lf))
+
         no_url('https:// testing.me a')
         no_url('h ttp://acme.com')
         no_url('http: //acme.com')
@@ -494,7 +498,7 @@ class TestDataTypes(BaseTest):
         return lb.rewrap(lines, columns)
 
     def test_rewrap_simple(self):
-        ' Same width buffers '
+        "Same width buffers"
         lb = filled_line_buf(5, 5)
         lb2 = LineBuf(lb.ynum, lb.xnum)
         lb2 = self.rewrap(lb, lb.ynum, lb.xnum)[0]
@@ -529,7 +533,7 @@ class TestDataTypes(BaseTest):
         self.ae(list(vals), [lb.is_continued(i) for i in range(len(vals))])
 
     def test_rewrap_wider(self):
-        ' New buffer wider '
+        "New buffer wider"
         lb = create_lbuf('0123 ', '56789')
         lb2 = self.line_comparison_rewrap(lb, '0123 5', '6789', '')
         self.assertContinued(lb2, False, True)
@@ -540,7 +544,7 @@ class TestDataTypes(BaseTest):
         self.assertContinued(lb2, False, False)
 
     def test_rewrap_narrower(self):
-        ' New buffer narrower '
+        "New buffer narrower"
         lb = create_lbuf('123', 'abcde')
         lb2 = self.line_comparison_rewrap(lb, '123', 'abc', 'de')
         self.assertContinued(lb2, False, False, True)
@@ -551,6 +555,7 @@ class TestDataTypes(BaseTest):
     def test_utils(self):
         def w(x):
             return wcwidth(ord(x))
+
         self.ae(wcswidth('\x9c'), 0)
         self.ae(wcswidth('a\033[2mb'), 2)
         self.ae(wcswidth('\033a\033[2mb'), 2)
@@ -561,9 +566,9 @@ class TestDataTypes(BaseTest):
         self.ae(wcswidth('\u25b6\ufe0f'), 2)
         self.ae(wcswidth('\U0001f610\ufe0e'), 1)
         self.ae(wcswidth('\U0001f1e6a'), 3)
-        self.ae(wcswidth('\U0001F1E6a\U0001F1E8a'), 6)
-        self.ae(wcswidth('\U0001F1E6\U0001F1E8a'), 3)
-        self.ae(wcswidth('\U0001F1E6\U0001F1E8\U0001F1E6'), 4)
+        self.ae(wcswidth('\U0001f1e6a\U0001f1e8a'), 6)
+        self.ae(wcswidth('\U0001f1e6\U0001f1e8a'), 3)
+        self.ae(wcswidth('\U0001f1e6\U0001f1e8\U0001f1e6'), 4)
         self.ae(wcswidth('a\u00adb'), 2)
         # Regional indicator symbols (unicode flags) are defined as having
         # Emoji_Presentation so must have width 2 but combined must have
@@ -631,20 +636,44 @@ class TestDataTypes(BaseTest):
         if os.path.isdir('/dev/shm'):
             with tempfile.NamedTemporaryFile(dir='/dev/shm') as tf:
                 self.assertTrue(is_ok_to_read_image_file(tf.name, tf.fileno()), fifo)
-        self.ae(sanitize_url_for_display_to_user(
-            'h://a\u0430b.com/El%20Ni%C3%B1o/'), 'h://xn--ab-7kc.com/El Niño/')
+        self.ae(sanitize_url_for_display_to_user('h://a\u0430b.com/El%20Ni%C3%B1o/'), 'h://xn--ab-7kc.com/El Niño/')
         for x in ('~', '~/', '', '~root', '~root/~', '/~', '/a/b/', '~xx/a', '~~'):
-           self.assertEqual(os.path.expanduser(x), expanduser(x), x)
+            self.assertEqual(os.path.expanduser(x), expanduser(x), x)
         for x in (
-            '/', '', '/a', '/ab', '/ab/', '/ab/c', 'a', 'ab', 'ab/', 'ab///c', 'ab/././..', '.', '..', '../', './', '../..', '../.',
-            '/a/../..', '/a/../../', '/a/..', '/ab/../../../cd/.', '///',
+            '/',
+            '',
+            '/a',
+            '/ab',
+            '/ab/',
+            '/ab/c',
+            'a',
+            'ab',
+            'ab/',
+            'ab///c',
+            'ab/././..',
+            '.',
+            '..',
+            '../',
+            './',
+            '../..',
+            '../.',
+            '/a/../..',
+            '/a/../../',
+            '/a/..',
+            '/ab/../../../cd/.',
+            '///',
         ):
-           self.assertEqual(os.path.abspath(x), abspath(x), repr(x))
+            self.assertEqual(os.path.abspath(x), abspath(x), repr(x))
         self.assertEqual('/', abspath('//'))
         with tempfile.TemporaryDirectory() as tdir:
             for x, ex in {
-                'a': None, 'a/b/c': None, 'a/..': None, 'a/../a': None,
-                'a/f': NotADirectoryError, 'a/f/d': NotADirectoryError, 'a/b/c/f/g': NotADirectoryError,
+                'a': None,
+                'a/b/c': None,
+                'a/..': None,
+                'a/../a': None,
+                'a/f': NotADirectoryError,
+                'a/f/d': NotADirectoryError,
+                'a/b/c/f/g': NotADirectoryError,
             }.items():
                 q = os.path.join(tdir, x)
                 if ex is None:
@@ -766,6 +795,7 @@ class TestDataTypes(BaseTest):
             lines = []
             hb.as_ansi(lines.append)
             return ''.join(lines)
+
         hb = filled_history_buf(5, 5)
         for i in range(hb.ynum):
             hb.line(i).set_wrapped_flag(True)
@@ -803,7 +833,7 @@ class TestDataTypes(BaseTest):
         c.decoration_fg = (5 << 8) | 1
         l2.set_text('1', 0, 1, c)
         self.ae(str(l2), '10000')
-        self.ae(l2.as_ansi(), '\x1b[1;2;3;7;9;34;48:2:1:2:3;58:5:5m' '1' '\x1b[22;23;27;29;39;49;59m' '0000')  # ]]
+        self.ae(l2.as_ansi(), '\x1b[1;2;3;7;9;34;48:2:1:2:3;58:5:5m1\x1b[22;23;27;29;39;49;59m0000')  # ]]
         lb = filled_line_buf()
         for i in range(1, lb.ynum + 1):
             lb.set_continued(i, True)
@@ -818,6 +848,7 @@ class TestDataTypes(BaseTest):
     def test_strip_csi(self):
         def q(x, y=''):
             self.ae(y or x, strip_csi(x))
+
         q('test')
         q('a\x1bbc', 'abc')
         q('a\x1b[bc', 'ac')
@@ -826,6 +857,7 @@ class TestDataTypes(BaseTest):
 
     def test_single_key(self):
         from kitty.fast_data_types import GLFW_MOD_KITTY, GLFW_MOD_SHIFT, SingleKey
+
         for m in (GLFW_MOD_KITTY, GLFW_MOD_SHIFT):
             s = SingleKey(mods=m)
             self.ae(s.mods, m)
@@ -835,7 +867,7 @@ class TestDataTypes(BaseTest):
         self.ae(repr(SingleKey(key=23, mods=2, is_native=True)), 'SingleKey(mods=2, is_native=True, key=23)')
         self.ae(repr(SingleKey(key=23, mods=2)), 'SingleKey(mods=2, key=23)')
         self.ae(repr(SingleKey(key=23)), 'SingleKey(key=23)')
-        self.ae(repr(SingleKey(key=0x1008ff57)), 'SingleKey(key=269025111)')
+        self.ae(repr(SingleKey(key=0x1008FF57)), 'SingleKey(key=269025111)')
         self.ae(repr(SingleKey(key=23)._replace(mods=2)), 'SingleKey(mods=2, key=23)')
         self.ae(repr(SingleKey(key=23)._replace(key=-1, mods=GLFW_MOD_KITTY)), f'SingleKey(mods={GLFW_MOD_KITTY})')
         self.assertEqual(SingleKey(key=1), SingleKey(key=1))
@@ -845,10 +877,12 @@ class TestDataTypes(BaseTest):
 
     def test_notify_identifier_sanitization(self):
         from kitty.notifications import sanitize_identifier_pat
+
         self.ae(sanitize_identifier_pat().sub('', '\x1b\nabc\n[*'), 'abc')
 
     def test_bracketed_paste_sanitizer(self):
         from kitty.utils import sanitize_for_bracketed_paste
+
         for x in ('\x1b[201~ab\x9b201~cd', '\x1b[201\x1b[201~~ab'):  # ]]]
             q = sanitize_for_bracketed_paste(x.encode('utf-8'))
             self.assertNotIn(b'\x1b[201~', q)
@@ -872,14 +906,21 @@ class TestDataTypes(BaseTest):
             r'a\128b': 'a\0128b',
             r'a\u1234e': 'a\u1234e',
             r'a\U1f1eez': 'a\U0001f1eez',
-            r'a\x1\\':    "a\x01\\",
+            r'a\x1\\': 'a\x01\\',
         }.items():
             actual = expand_ansi_c_escapes(src)
             self.ae(expected, actual)
 
     def test_shlex_split(self):
         for bad in (
-            'abc\\', '\\', "'abc", "'", '"', 'asd' + '\\', r'"a\"', '"a\\',
+            'abc\\',
+            '\\',
+            "'abc",
+            "'",
+            '"',
+            'asd' + '\\',
+            r'"a\"',
+            '"a\\',
         ):
             with self.assertRaises(ValueError, msg=f'Failed to raise exception for {bad!r}'):
                 tuple(shlex_split_with_positions(bad))
@@ -895,9 +936,11 @@ class TestDataTypes(BaseTest):
             '""': ((0, ''),),
             '"ab"': ((0, 'ab'),),
             r'x "ab"y \m': ((0, 'x'), (2, 'aby'), (8, 'm')),
-            r'''x'y"\z'1''': ((0, 'xy"\\z1'),),
+            r"""x'y"\z'1""": ((0, 'xy"\\z1'),),
             r'\abc\ d': ((0, 'abc d'),),
-            '': ((0, ''),), '   ': ((0, ''),), ' \tabc\n\t\r ': ((2, 'abc'),),
+            '': ((0, ''),),
+            '   ': ((0, ''),),
+            ' \tabc\n\t\r ': ((2, 'abc'),),
             "$'ab'": ((0, '$ab'),),
             '😀': ((0, '😀'),),
             '"a😀"': ((0, 'a😀'),),
@@ -920,9 +963,9 @@ class TestDataTypes(BaseTest):
             r"$'a\db'": ((0, 'adb'),),
             r"$'a\x1bb'": ((0, 'a\x1bb'),),
             r"$'\u123z'": ((0, '\u0123z'),),
-            r"$'\U0001F1E8'": ((0, '\U0001F1E8'),),
-            r"$'\U1F1E8'": ((0, '\U0001F1E8'),),
-            r"$'a\U1F1E8'b": ((0, 'a\U0001F1E8b'),),
+            r"$'\U0001F1E8'": ((0, '\U0001f1e8'),),
+            r"$'\U1F1E8'": ((0, '\U0001f1e8'),),
+            r"$'a\U1F1E8'b": ((0, 'a\U0001f1e8b'),),
         }.items():
             actual = tuple(shlex_split_with_positions(q, True))
             self.ae(expected, actual, f'Failed for text: {q!r}')
@@ -946,9 +989,8 @@ class TestDataTypes(BaseTest):
                     yield cell
                 else:
                     for i, g in enumerate(gp[:-1]):
-                        if wcswidth(gp[i+1][0]) != 0:
-                            raise AssertionError(
-                                f'cell {cell!r} contains grapheme break point at non zero width character for Test #{i}: {test["comment"]}')
+                        if wcswidth(gp[i + 1][0]) != 0:
+                            raise AssertionError(f'cell {cell!r} contains grapheme break point at non zero width character for Test #{i}: {test["comment"]}')
                     yield from gp
 
         for i, test in enumerate(json.loads(read_kitty_resource('GraphemeBreakTest.json', __name__.rpartition('.')[0]))):
@@ -988,6 +1030,7 @@ class TestDataTypes(BaseTest):
         # Test set_uint_at_address directly (skip on intel macs due to ctypes issues)
         if not (is_macos and platform.machine() == 'x86_64'):
             from ctypes import addressof, c_uint
+
             val = c_uint(0)
             addr = addressof(val)
             set_uint_at_address(addr, 42)
@@ -1024,4 +1067,3 @@ class TestDataTypes(BaseTest):
         s.draw('axbxc')
         s.set_marker(marker_from_function(mark_func))
         self.ae(s.marked_cells(), [(1, 0, 1), (3, 0, 1)])
-

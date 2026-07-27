@@ -32,15 +32,14 @@ layout_choices = 'tiled,scaled,mirror-tiled,clamped,centered,cscaled,configured'
 
 
 class SetBackgroundImage(RemoteCommand):
-
-    protocol_spec = __doc__ = f'''
+    protocol_spec = __doc__ = f"""
     data+/str: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
     Or the special value - to indicate image must be removed. Or the value index:idx to change image.
     match/str: Window to change opacity in
-    layout/choices.{layout_choices.replace(",", ".")}: The image layout
+    layout/choices.{layout_choices.replace(',', '.')}: The image layout
     all/bool: Boolean indicating operate on all windows
     configured/bool: Boolean indicating if the configured value should be changed
-    '''
+    """
 
     short_desc = 'Set the background image'
     desc = (
@@ -54,7 +53,8 @@ class SetBackgroundImage(RemoteCommand):
         ' If the index falls outside the range of configured images, the first configured image is used.'
         ' For example: set-background -- -1 or set-background 3'
     )
-    options_spec = f'''\
+    options_spec = (
+        f"""\
 --all -a
 type=bool-set
 By default, background image is only changed for the currently active OS window. This option will
@@ -79,9 +79,13 @@ type=bool-set
 default=false
 Don't wait for a response from kitty. This means that even if setting the background image
 failed, the command will exit with a success code.
-''' + '\n\n' + MATCH_WINDOW_OPTION
-    args = RemoteCommand.Args(spec='PATH_TO_IMAGE_OR_INDEX', count=1, json_field='data', special_parse='!read_background_image(io_data, args[0])',
-                              completion=ImageCompletion)
+"""
+        + '\n\n'
+        + MATCH_WINDOW_OPTION
+    )
+    args = RemoteCommand.Args(
+        spec='PATH_TO_IMAGE_OR_INDEX', count=1, json_field='data', special_parse='!read_background_image(io_data, args[0])', completion=ImageCompletion
+    )
     reads_streaming_data = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
@@ -89,6 +93,7 @@ failed, the command will exit with a success code.
             self.fatal('Must specify path to exactly one PNG image')
         path = os.path.expanduser(args[0])
         import secrets
+
         ret = {
             'match': opts.match,
             'configured': opts.configured,
@@ -100,6 +105,7 @@ failed, the command will exit with a success code.
             ret['data'] = '-'
             return ret
         import re
+
         if re.match(r'[+-]?\d+$', path) is not None:
             ret['data'] = f'index:{path}'
             return ret
@@ -116,6 +122,7 @@ failed, the command will exit with a success code.
                     yield ret
             ret['data'] = ''
             yield ret
+
         return file_pipe(path)
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
@@ -131,7 +138,7 @@ failed, the command will exit with a success code.
                 ex.hide_traceback = True  # type: ignore
                 raise ex
             tfile = BytesIO()
-            data = data[len('index:'):]
+            data = data[len('index:') :]
             global_index = int(data)
             is_increment = data[0] in '+-'
         else:
@@ -148,8 +155,8 @@ failed, the command will exit with a success code.
             layout = None
         try:
             boss.set_background_image(
-                path, os_windows, payload_get('configured'), layout, tfile.getvalue(),
-                global_index=global_index, is_increment=is_increment)
+                path, os_windows, payload_get('configured'), layout, tfile.getvalue(), global_index=global_index, is_increment=is_increment
+            )
         except ValueError as err:
             err.hide_traceback = True  # type: ignore
             raise

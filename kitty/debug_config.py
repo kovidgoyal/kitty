@@ -57,13 +57,13 @@ def print_mapping_changes(defns: dict[str, str], changes: set[str], text: str, p
         for k in sorted(changes):
             print_event(k, defns[k], print)
 
+
 class AnyEvent(Protocol):
     def human_repr(self, kitty_mod: int = 0) -> str: ...
 
 
 def compare_maps[T: AnyEvent](
-    final: dict[T, str], final_kitty_mod: int, initial: dict[T, str],
-    initial_kitty_mod: int, print: Print, mode_name: str = ''
+    final: dict[T, str], final_kitty_mod: int, initial: dict[T, str], initial_kitty_mod: int, print: Print, mode_name: str = ''
 ) -> None:
     ei = {k.human_repr(initial_kitty_mod): v for k, v in initial.items()}
     ef = {k.human_repr(final_kitty_mod): v for k, v in final.items()}
@@ -78,17 +78,14 @@ def compare_maps[T: AnyEvent](
     print_mapping_changes(ef, changed, f'Changed {which}:', print)
 
 
-
 def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None, print: Print) -> None:
     from .config import load_config
+
     print()
     print('Config options different from defaults:')
     default_opts = load_config()
     ignored = ('keymap', 'sequence_map', 'mousemap', 'map', 'mouse_map')
-    changed_opts = [
-        f for f in sorted(defaults._fields)
-        if f not in ignored and getattr(opts, f) != getattr(defaults, f)
-    ]
+    changed_opts = [f for f in sorted(defaults._fields) if f not in ignored and getattr(opts, f) != getattr(defaults, f)]
     field_len = max(map(len, changed_opts)) if changed_opts else 20
     fmt = f'{{:{field_len:d}s}}'
     colors = []
@@ -174,7 +171,6 @@ def compare_opts(opts: KittyOpts, global_shortcuts: dict[str, SingleKey] | None,
 
 
 class IssueData:
-
     def __init__(self) -> None:
         self.uname = os.uname()
         self.s, self.n, self.r, self.v, self.m = self.uname
@@ -269,6 +265,7 @@ def compositor_name() -> str:
                 exe = cmdline[0]
                 with suppress(Exception):
                     import subprocess
+
                     if exe.lower() == 'hyprland':
                         raw = subprocess.check_output(['hyprctl', 'version']).decode().strip()
                         m = re.search(r'^Tag:\s*(\S+)', raw, flags=re.M)
@@ -294,17 +291,20 @@ def issue_data() -> str:
 def debug_config(opts: KittyOpts | None = None, global_shortcuts: dict[str, SingleKey] | None = None) -> str:
     if opts is None:
         from kitty.cli import create_default_opts
+
         opts = create_default_opts()
     from io import StringIO
+
     out = StringIO()
     p = partial(print, file=out)
     p(version(add_rev=True))
     p(' '.join(os.uname()))
     if is_macos:
         import subprocess
+
         with suppress(Exception):
             p(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())
-    if (idata := issue_data()):
+    if idata := issue_data():
         p(idata)
     with suppress(Exception), open('/etc/lsb-release', encoding='utf-8', errors='replace') as f:
         p(f.read().strip())

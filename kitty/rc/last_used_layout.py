@@ -11,16 +11,15 @@ if TYPE_CHECKING:
 
 
 class LastUsedLayout(RemoteCommand):
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     match/str: Which tab to change the layout of
     all/bool: Boolean to match all tabs
-    '''
+    """
 
     short_desc = 'Switch to the last used layout'
-    desc = (
-        'Switch to the last used window layout in the specified tabs (or the active tab if not specified).'
-    )
-    options_spec = '''\
+    desc = 'Switch to the last used window layout in the specified tabs (or the active tab if not specified).'
+    options_spec = (
+        """\
 --all -a
 type=bool-set
 Change the layout in all tabs.
@@ -31,7 +30,10 @@ type=bool-set
 default=false
 Don't wait for a response from kitty. This means that even if no matching tab is found,
 the command will exit with a success code.
-''' + '\n\n\n' + MATCH_TAB_OPTION
+"""
+        + '\n\n\n'
+        + MATCH_TAB_OPTION
+    )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'all': opts.all, 'no_response': opts.no_response}

@@ -10,10 +10,11 @@ from typing import Any, Union
 
 if __name__ == '__main__' and not __package__:
     import __main__
+
     __main__.__package__ = 'gen'
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-functional_key_defs = '''# {{{
+functional_key_defs = """# {{{
 # kitty                     XKB                         macVK  macU
 escape                      Escape                      0x35   -
 enter                       Return                      0x24   NSCarriageReturnCharacter
@@ -126,20 +127,50 @@ right_hyper                 Hyper_R                     -      -
 right_meta                  Meta_R                      -      -
 iso_level3_shift            ISO_Level3_Shift            -      -
 iso_level5_shift            ISO_Level5_Shift            -      -
-'''  # }}}
+"""  # }}}
 
 shift_map = {x[0]: x[1] for x in '`~ 1! 2@ 3# 4$ 5% 6^ 7& 8* 9( 0) -_ =+ [{ ]} \\| ;: \'" ,< .> /?'.split()}
 shift_map.update({x: x.upper() for x in string.ascii_lowercase})
 functional_encoding_overrides = {
-    'insert': 2, 'delete': 3, 'page_up': 5, 'page_down': 6,
-    'home': 7, 'end': 8, 'tab': 9, 'f1': 11, 'f2': 12, 'f3': 13, 'enter': 13, 'f4': 14,
-    'f5': 15, 'f6': 17, 'f7': 18, 'f8': 19, 'f9': 20, 'f10': 21,
-    'f11': 23, 'f12': 24, 'escape': 27, 'backspace': 127
+    'insert': 2,
+    'delete': 3,
+    'page_up': 5,
+    'page_down': 6,
+    'home': 7,
+    'end': 8,
+    'tab': 9,
+    'f1': 11,
+    'f2': 12,
+    'f3': 13,
+    'enter': 13,
+    'f4': 14,
+    'f5': 15,
+    'f6': 17,
+    'f7': 18,
+    'f8': 19,
+    'f9': 20,
+    'f10': 21,
+    'f11': 23,
+    'f12': 24,
+    'escape': 27,
+    'backspace': 127,
 }
 different_trailer_functionals = {
-    'up': 'A', 'down': 'B', 'right': 'C', 'left': 'D', 'kp_begin': 'E', 'end': 'F', 'home': 'H',
-    'f1': 'P', 'f2': 'Q', 'f3': '~', 'f4': 'S', 'enter': 'u', 'tab': 'u',
-    'backspace': 'u', 'escape': 'u'
+    'up': 'A',
+    'down': 'B',
+    'right': 'C',
+    'left': 'D',
+    'kp_begin': 'E',
+    'end': 'F',
+    'home': 'H',
+    'f1': 'P',
+    'f2': 'Q',
+    'f3': '~',
+    'f4': 'S',
+    'enter': 'u',
+    'tab': 'u',
+    'backspace': 'u',
+    'escape': 'u',
 }
 
 macos_ansi_key_codes = {  # {{{
@@ -179,8 +210,7 @@ macos_ansi_key_codes = {  # {{{
     0x07: ord('x'),
     0x10: ord('y'),
     0x06: ord('z'),
-
-    0x27: ord('\''),
+    0x27: ord("'"),
     0x2A: ord('\\'),
     0x2B: ord(','),
     0x18: ord('='),
@@ -199,7 +229,7 @@ name_to_code: dict[str, int] = {}
 name_to_xkb: dict[str, str] = {}
 name_to_vk: dict[str, int] = {}
 name_to_macu: dict[str, str] = {}
-start_code = 0xe000
+start_code = 0xE000
 for line in functional_key_defs.splitlines():
     line = line.strip()
     if not line or line.startswith('#'):
@@ -219,12 +249,52 @@ for line in functional_key_defs.splitlines():
         name_to_macu[name] = val
 last_code = start_code + len(functional_key_names) - 1
 ctrl_mapping = {
-    ' ': 0, '@': 0, 'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7,
-    'h': 8, 'i': 9, 'j': 10, 'k': 11, 'l': 12, 'm': 13, 'n': 14, 'o': 15, 'p': 16,
-    'q': 17, 'r': 18, 's': 19, 't': 20, 'u': 21, 'v': 22, 'w': 23, 'x': 24,
-    'y': 25, 'z': 26, '[': 27, '\\': 28, ']': 29, '^': 30, '~': 30, '/': 31,
-    '_': 31, '?': 127, '0': 48, '1': 49, '2': 0, '3': 27, '4': 28,
-    '5': 29, '6': 30, '7': 31, '8': 127, '9': 57
+    ' ': 0,
+    '@': 0,
+    'a': 1,
+    'b': 2,
+    'c': 3,
+    'd': 4,
+    'e': 5,
+    'f': 6,
+    'g': 7,
+    'h': 8,
+    'i': 9,
+    'j': 10,
+    'k': 11,
+    'l': 12,
+    'm': 13,
+    'n': 14,
+    'o': 15,
+    'p': 16,
+    'q': 17,
+    'r': 18,
+    's': 19,
+    't': 20,
+    'u': 21,
+    'v': 22,
+    'w': 23,
+    'x': 24,
+    'y': 25,
+    'z': 26,
+    '[': 27,
+    '\\': 28,
+    ']': 29,
+    '^': 30,
+    '~': 30,
+    '/': 31,
+    '_': 31,
+    '?': 127,
+    '0': 48,
+    '1': 49,
+    '2': 0,
+    '3': 27,
+    '4': 28,
+    '5': 29,
+    '6': 30,
+    '7': 31,
+    '8': 127,
+    '9': 57,
 }
 
 
@@ -302,12 +372,7 @@ def generate_xkb_mapping() -> None:
 
 
 def generate_functional_table() -> None:
-    lines = [
-        '',
-        '.. csv-table:: Functional key codes',
-        '   :header: "Name", "CSI", "Name", "CSI"',
-        ''
-    ]
+    lines = ['', '.. csv-table:: Functional key codes', '   :header: "Name", "CSI", "Name", "CSI"', '']
     line_items = []
     enc_lines = []
     tilde_trailers = set()
@@ -333,8 +398,8 @@ def generate_functional_table() -> None:
     code_to_name = {v: k.upper() for k, v in name_to_code.items()}
     csi_map = {v: name_to_code[k] for k, v in functional_encoding_overrides.items()}
     letter_trailer_codes: dict[str, int] = {
-        v: functional_encoding_overrides.get(k, name_to_code.get(k, 0))
-        for k, v in different_trailer_functionals.items() if v in 'ABCDEHFPQRSZ'}
+        v: functional_encoding_overrides.get(k, name_to_code.get(k, 0)) for k, v in different_trailer_functionals.items() if v in 'ABCDEHFPQRSZ'
+    }
     text = f'functional_key_number_to_name_map = {serialize_dict(code_to_name)}'
     text += f'\ncsi_number_to_functional_number_map = {serialize_dict(csi_map)}'
     text += f'\nletter_trailer_to_csi_number_map = {letter_trailer_codes!r}'
@@ -380,15 +445,11 @@ def generate_legacy_text_key_maps() -> None:
 def chunks(lst: list[Any], n: int) -> Any:
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+        yield lst[i : i + n]
 
 
 def generate_ctrl_mapping() -> None:
-    lines = [
-        '.. csv-table:: Emitted bytes when :kbd:`ctrl` is held down and a key is pressed',
-        '   :header: "Key", "Byte", "Key", "Byte", "Key", "Byte"',
-        ''
-    ]
+    lines = ['.. csv-table:: Emitted bytes when :kbd:`ctrl` is held down and a key is pressed', '   :header: "Key", "Byte", "Key", "Byte", "Key", "Byte"', '']
     items = []
     mi = []
     for k in sorted(ctrl_mapping):
@@ -427,7 +488,7 @@ def generate_macos_mapping() -> None:
     patch_file('glfw/cocoa_window.m', 'functional to macu', '\n'.join(lines))
 
 
-def main(args: list[str]=sys.argv) -> None:
+def main(args: list[str] = sys.argv) -> None:
     generate_glfw_header()
     generate_xkb_mapping()
     generate_functional_table()
@@ -438,5 +499,6 @@ def main(args: list[str]=sys.argv) -> None:
 
 if __name__ == '__main__':
     import runpy
+
     m = runpy.run_path(os.path.dirname(os.path.abspath(__file__)))
     m['main']([sys.executable, 'key-constants'])

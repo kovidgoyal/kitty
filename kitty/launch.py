@@ -28,16 +28,16 @@ class LaunchSpec(NamedTuple):
 
 
 # Options definition {{{
-env_docs = '''\
+env_docs = """\
 type=list
 Environment variables to set in the child process. Can be specified multiple
 times to set different environment variables. Syntax: :code:`name=value`. Using
 :code:`name=` will set to empty string and just :code:`name` will remove the
 environment variable.
-'''
+"""
 
 
-remote_control_password_docs = '''\
+remote_control_password_docs = """\
 type=list
 Restrict the actions remote control is allowed to take. This works like
 :opt:`remote_control_password`. You can specify a password and list of actions
@@ -55,7 +55,7 @@ You can also disable all :opt:`remote_control_password` global passwords for thi
 This option only takes effect if :option:`--allow-remote-control`
 is also specified. Can be specified multiple times to create multiple passwords.
 This option was added to kitty in version 0.26.0
-'''
+"""
 
 
 @run_once
@@ -428,6 +428,8 @@ When using :option:`--cwd`:code:`=current` or similar from a window that is runn
 the new window will run a local shell after disconnecting from the remote host, when this option
 is specified.
 """
+
+
 # }}}
 
 
@@ -440,7 +442,7 @@ def parse_launch_args(args: Sequence[str] | None = None) -> LaunchSpec:
     return LaunchSpec(opts, args)
 
 
-def get_env(opts: LaunchCLIOptions, active_child: Child | None = None, base_env: dict[str,str] | None = None) -> dict[str, str]:
+def get_env(opts: LaunchCLIOptions, active_child: Child | None = None, base_env: dict[str, str] | None = None) -> dict[str, str]:
     env: dict[str, str] = {}
     if opts.copy_env and active_child:
         env.update(active_child.foreground_environ)
@@ -454,6 +456,7 @@ def get_env(opts: LaunchCLIOptions, active_child: Child | None = None, base_env:
 
 def layer_shell_config_from_panel_opts(panel_opts: Iterable[str]) -> LayerShellConfig:
     from kittens.panel.main import layer_shell_config, parse_panel_args
+
     args = [('' if x.startswith('--') else '--') + x for x in panel_opts]
     try:
         opts, _ = parse_panel_args(args)
@@ -482,7 +485,9 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Tab | None, n
                     wname=opts.os_window_name,
                     window_state=opts.os_window_state,
                     override_title=opts.os_window_title or None,
-                    x=x, y=y)
+                    x=x,
+                    y=y,
+                )
             tm = boss.os_window_map[oswid]
         tab = tm.new_tab(empty_tab=True, location=opts.location)
         if opts.tab_title:
@@ -517,6 +522,7 @@ def load_watch_modules(watchers: Iterable[str]) -> Watchers | None:
     if not watchers:
         return None
     import runpy
+
     ans = Watchers()
     boss = get_boss()
     for path in watchers:
@@ -527,6 +533,7 @@ def load_watch_modules(watchers: Iterable[str]) -> Watchers | None:
                 m = runpy.run_path(path, run_name='__kitty_watcher__')
             except Exception as err:
                 import traceback
+
                 log_error(traceback.format_exc())
                 log_error(f'Failed to load watcher from {path} with error: {err}')
                 watcher_modules[path] = False
@@ -538,6 +545,7 @@ def load_watch_modules(watchers: Iterable[str]) -> Watchers | None:
                     w(boss, {})
                 except Exception as err:
                     import traceback
+
                     log_error(traceback.format_exc())
                     log_error(f'Failed to call on_load() in watcher from {path} with error: {err}')
         if m is False:
@@ -573,7 +581,6 @@ def load_watch_modules(watchers: Iterable[str]) -> Watchers | None:
 
 
 class LaunchKwds(TypedDict):
-
     allow_remote_control: bool
     remote_control_passwords: dict[str, Sequence[str]] | None
     cwd_from: CwdRequest | None
@@ -592,8 +599,9 @@ class LaunchKwds(TypedDict):
 
 def apply_colors(window: Window, spec: Sequence[str]) -> None:
     from .colors import parse_colors
+
     colors, transparent_background_colors = parse_colors(spec)
-    profiles = window.screen.color_profile,
+    profiles = (window.screen.color_profile,)
     patch_color_profiles(colors, transparent_background_colors, profiles, True)
 
 
@@ -604,7 +612,6 @@ def parse_var(defn: Iterable[str]) -> Iterator[tuple[str, str]]:
 
 
 class ForceWindowLaunch:
-
     def __init__(self) -> None:
         self.force = False
 
@@ -630,6 +637,7 @@ def parse_remote_control_passwords(allow_remote_control: bool, passwords: Sequen
     remote_control_restrictions: dict[str, Sequence[str]] | None = None
     if allow_remote_control and passwords:
         from kitty.options.utils import remote_control_password
+
         remote_control_restrictions = {}
         for rcp in passwords:
             for pw, rcp_items in remote_control_password(rcp, {}):
@@ -689,11 +697,12 @@ def _launch(
         'stdin': None,
         'hold': False,
         'bias': None,
-        'hold_after_ssh': False
+        'hold_after_ssh': False,
     }
     spacing = {}
     if opts.spacing:
         from .rc.set_spacing import parse_spacing_settings, patch_window_edges
+
         spacing = parse_spacing_settings(opts.spacing)
     if opts.bias:
         kw['bias'] = max(-100, min(opts.bias, 100))
@@ -714,7 +723,7 @@ def _launch(
             kw['cwd'] = opts.cwd
     if opts.hold_after_ssh:
         if opts.cwd not in ('current', 'last_reported', 'oldest'):
-            raise ValueError("--hold-after-ssh can only be supplied if --cwd=current or similar is also supplied")
+            raise ValueError('--hold-after-ssh can only be supplied if --cwd=current or similar is also supplied')
         kw['hold_after_ssh'] = True
 
     if opts.location != 'default':
@@ -725,8 +734,15 @@ def _launch(
     if opts.stdin_source != 'none':
         q = str(opts.stdin_source)
         if opts.stdin_add_formatting:
-            if q in ('@screen', '@screen_scrollback', '@alternate', '@alternate_scrollback',
-                     '@first_cmd_output_on_screen', '@last_cmd_output', '@last_visited_cmd_output'):
+            if q in (
+                '@screen',
+                '@screen_scrollback',
+                '@alternate',
+                '@alternate_scrollback',
+                '@first_cmd_output_on_screen',
+                '@last_cmd_output',
+                '@last_visited_cmd_output',
+            ):
                 q = f'@ansi_{q[1:]}'
         if opts.stdin_add_line_wrap_markers:
             q += '_wrap'
@@ -790,8 +806,13 @@ def _launch(
         if not cmd:
             raise ValueError('The cmd to run must be specified when running a background process')
         boss.run_background_process(
-            cmd, cwd=kw['cwd'], cwd_from=kw['cwd_from'], env=env or None, stdin=kw['stdin'],
-            allow_remote_control=kw['allow_remote_control'], remote_control_passwords=kw['remote_control_passwords'],
+            cmd,
+            cwd=kw['cwd'],
+            cwd_from=kw['cwd_from'],
+            env=env or None,
+            stdin=kw['stdin'],
+            allow_remote_control=kw['allow_remote_control'],
+            remote_control_passwords=kw['remote_control_passwords'],
             notify_on_death=child_death_callback,
         )
     elif opts.type in ('clipboard', 'primary'):
@@ -823,8 +844,13 @@ def _launch(
         watchers = load_watch_modules(opts.watcher)
         with Window.set_ignore_focus_changes_for_new_windows(opts.keep_focus):
             new_window: Window = tab.new_window(
-                env=env or None, watchers=watchers or None, is_clone_launch=is_clone_launch, next_to=next_to,
-                startup_command_via_shell_integration=startup_command_via_shell_integration, **kw)
+                env=env or None,
+                watchers=watchers or None,
+                is_clone_launch=is_clone_launch,
+                next_to=next_to,
+                startup_command_via_shell_integration=startup_command_via_shell_integration,
+                **kw,
+            )
             new_window.created_in_session_name = add_to_session
             if child_death_callback is not None:
                 boss.monitor_pid(new_window.child.pid or 0, child_death_callback)
@@ -876,19 +902,47 @@ def launch(
         orig, active.ignore_focus_changes = active.ignore_focus_changes, True
     try:
         return _launch(
-            boss, opts, args, target_tab, force_target_tab, is_clone_launch, rc_from_window, base_env,
-            child_death_callback, startup_command_via_shell_integration)
+            boss,
+            opts,
+            args,
+            target_tab,
+            force_target_tab,
+            is_clone_launch,
+            rc_from_window,
+            base_env,
+            child_death_callback,
+            startup_command_via_shell_integration,
+        )
     finally:
         if opts.keep_focus and active:
             active.ignore_focus_changes = orig
 
+
 @run_once
 def clone_safe_opts() -> frozenset[str]:
-    return frozenset((
-        'window_title', 'tab_title', 'type', 'keep_focus', 'cwd', 'var', 'hold',
-        'location', 'os_window_class', 'os_window_name', 'os_window_title', 'os_window_state',
-        'os_window_position', 'logo', 'logo_position', 'logo_alpha', 'spacing', 'next_to', 'hold_after_ssh'
-    ))
+    return frozenset(
+        (
+            'window_title',
+            'tab_title',
+            'type',
+            'keep_focus',
+            'cwd',
+            'var',
+            'hold',
+            'location',
+            'os_window_class',
+            'os_window_name',
+            'os_window_title',
+            'os_window_state',
+            'os_window_position',
+            'logo',
+            'logo_position',
+            'logo_alpha',
+            'spacing',
+            'next_to',
+            'hold_after_ssh',
+        )
+    )
 
 
 def parse_opts_for_clone(args: list[str], allow_env: bool = False) -> tuple[LaunchCLIOptions, list[str]]:
@@ -920,6 +974,7 @@ def parse_null_env(text: str) -> dict[str, str]:
 
 def parse_message(msg: str, simple: Container[str]) -> Iterator[tuple[str, str]]:
     from base64 import standard_b64decode
+
     for x in msg.split(','):
         try:
             k, v = x.split('=', 1)
@@ -954,6 +1009,7 @@ class EditCmd:
                 self.args.append(v)
             elif k == 'file_data':
                 import base64
+
                 self.file_data = base64.standard_b64decode(v)
             elif k == 'version':
                 self.version = int(v)
@@ -967,6 +1023,7 @@ class EditCmd:
         self.file_spec = extra_args.pop()
         self.line_number = 0
         import re
+
         pat = re.compile(r'\+(-?\d+)')
         for x in extra_args:
             m = pat.match(x)
@@ -980,6 +1037,7 @@ class EditCmd:
             self.is_local_file = (st.st_dev, st.st_ino) == self.file_inode and os.access(self.file_localpath, os.W_OK | os.R_OK)
         if not self.is_local_file:
             import tempfile
+
             self.tdir = tempfile.mkdtemp()
             self.file_localpath = os.path.join(self.tdir, self.file_name)
             with open(self.file_localpath, 'wb') as f:
@@ -1056,6 +1114,7 @@ class EditCmd:
         window.write_to_child(f'KITTY_DATA_START\n{data_type}\n')
         if data:
             import base64
+
             mv = memoryview(base64.standard_b64encode(data))
             while mv:
                 window.write_to_child(bytes(mv[:512]))
@@ -1066,33 +1125,71 @@ class EditCmd:
 
 @run_once
 def excluded_env_vars() -> frozenset[str]:
-    return frozenset({
-        'HOME', 'LOGNAME', 'USER', 'PWD',
-        # some people export these. We want the shell rc files to recreate them
-        'PS0', 'PS1', 'PS2', 'PS3', 'PS4', 'RPS1', 'PROMPT_COMMAND', 'SHLVL',
-        # conda state env vars
-        'CONDA_SHLVL', 'CONDA_PREFIX', 'CONDA_PROMPT_MODIFIER', 'CONDA_EXE', 'CONDA_PYTHON_EXE', '_CE_CONDA', '_CE_M',
-        # skip SSH environment variables
-        'SSH_CLIENT', 'SSH_CONNECTION', 'SSH_ORIGINAL_COMMAND', 'SSH_TTY', 'SSH2_TTY',
-        'SSH_TUNNEL', 'SSH_USER_AUTH', 'SSH_AUTH_SOCK',
-        # Dont clone KITTY_WINDOW_ID
-        'KITTY_WINDOW_ID',
-        # Bash variables from "bind -x" and "complete -C" (needed not to confuse bash-preexec)
-        'READLINE_ARGUMENT', 'READLINE_LINE', 'READLINE_MARK', 'READLINE_POINT',
-        'COMP_LINE', 'COMP_POINT', 'COMP_TYPE',
-        # GPG gpg-agent
-        'GPG_TTY',
-        # Session variables of XDG
-        'XDG_SESSION_CLASS', 'XDG_SESSION_ID', 'XDG_SESSION_TYPE',
-        # Session variables of GNU Screen
-        'STY', 'WINDOW',
-        # Session variables of interactive shell plugins
-        'ATUIN_SESSION', 'ATUIN_HISTORY_ID',
-        'BLE_SESSION_ID', '_ble_util_fdlist_cloexec', '_ble_util_fdvars_export',
-        '_GITSTATUS_CLIENT_PID', '_GITSTATUS_REQ_FD', '_GITSTATUS_RESP_FD', 'GITSTATUS_DAEMON_PID',
-        'MCFLY_SESSION_ID',
-        'STARSHIP_SESSION_KEY',
-    })
+    return frozenset(
+        {
+            'HOME',
+            'LOGNAME',
+            'USER',
+            'PWD',
+            # some people export these. We want the shell rc files to recreate them
+            'PS0',
+            'PS1',
+            'PS2',
+            'PS3',
+            'PS4',
+            'RPS1',
+            'PROMPT_COMMAND',
+            'SHLVL',
+            # conda state env vars
+            'CONDA_SHLVL',
+            'CONDA_PREFIX',
+            'CONDA_PROMPT_MODIFIER',
+            'CONDA_EXE',
+            'CONDA_PYTHON_EXE',
+            '_CE_CONDA',
+            '_CE_M',
+            # skip SSH environment variables
+            'SSH_CLIENT',
+            'SSH_CONNECTION',
+            'SSH_ORIGINAL_COMMAND',
+            'SSH_TTY',
+            'SSH2_TTY',
+            'SSH_TUNNEL',
+            'SSH_USER_AUTH',
+            'SSH_AUTH_SOCK',
+            # Dont clone KITTY_WINDOW_ID
+            'KITTY_WINDOW_ID',
+            # Bash variables from "bind -x" and "complete -C" (needed not to confuse bash-preexec)
+            'READLINE_ARGUMENT',
+            'READLINE_LINE',
+            'READLINE_MARK',
+            'READLINE_POINT',
+            'COMP_LINE',
+            'COMP_POINT',
+            'COMP_TYPE',
+            # GPG gpg-agent
+            'GPG_TTY',
+            # Session variables of XDG
+            'XDG_SESSION_CLASS',
+            'XDG_SESSION_ID',
+            'XDG_SESSION_TYPE',
+            # Session variables of GNU Screen
+            'STY',
+            'WINDOW',
+            # Session variables of interactive shell plugins
+            'ATUIN_SESSION',
+            'ATUIN_HISTORY_ID',
+            'BLE_SESSION_ID',
+            '_ble_util_fdlist_cloexec',
+            '_ble_util_fdvars_export',
+            '_GITSTATUS_CLIENT_PID',
+            '_GITSTATUS_REQ_FD',
+            '_GITSTATUS_RESP_FD',
+            'GITSTATUS_DAEMON_PID',
+            'MCFLY_SESSION_ID',
+            'STARSHIP_SESSION_KEY',
+        }
+    )
 
 
 def is_excluded_env_var(x: str) -> bool:
@@ -1101,7 +1198,6 @@ def is_excluded_env_var(x: str) -> bool:
 
 
 class CloneCmd:
-
     def __init__(self, msg: str) -> None:
         self.args: list[str] = []
         self.env: dict[str, str] | None = None
@@ -1127,6 +1223,7 @@ class CloneCmd:
             elif k == 'env':
                 if self.envfmt == 'bash':
                     from .bash import parse_bash_env
+
                     env = parse_bash_env(v, self.bash_version)
                 else:
                     env = parse_null_env(v)
@@ -1160,9 +1257,11 @@ def remote_edit(msg: str, window: Window) -> None:
         w.actions_on_close.append(c.on_edit_window_close)
         editor_pid = w.child.pid
         if editor_pid:
+
             def on_editor_pid_death(wait_status: int, err: Exception | None) -> None:
                 c.editor_exit_code = os.waitstatus_to_exitcode(wait_status) if err is None else 1
                 c.check_status()
+
             try:
                 get_boss().monitor_pid(editor_pid, on_editor_pid_death)
             except RuntimeError:
@@ -1176,6 +1275,7 @@ def remote_edit(msg: str, window: Window) -> None:
 
 def clone_and_launch(msg: str, window: Window) -> None:
     from .shell_integration import serialize_env
+
     c = CloneCmd(msg)
     if c.cwd and not c.opts.cwd:
         c.opts.cwd = c.cwd
@@ -1186,21 +1286,25 @@ def clone_and_launch(msg: str, window: Window) -> None:
     env_to_serialize = c.env or {}
     if env_to_serialize.get('PATH') and env_to_serialize.get('VIRTUAL_ENV'):
         # only pass VIRTUAL_ENV if it is currently active
-        if f"{env_to_serialize['VIRTUAL_ENV']}/bin" not in env_to_serialize['PATH'].split(os.pathsep):
+        if f'{env_to_serialize["VIRTUAL_ENV"]}/bin' not in env_to_serialize['PATH'].split(os.pathsep):
             del env_to_serialize['VIRTUAL_ENV']
     env_to_serialize['KITTY_CLONE_SOURCE_STRATEGIES'] = ',' + ','.join(get_options().clone_source_strategies) + ','
     is_clone_launch = serialize_env(c.shell, env_to_serialize)
     ssh_kitten_cmdline = window.ssh_kitten_cmdline()
     if ssh_kitten_cmdline:
         from kittens.ssh.utils import patch_cmdline, set_cwd_in_cmdline, set_env_in_cmdline
+
         cmdline = ssh_kitten_cmdline
         if c.opts.cwd:
             set_cwd_in_cmdline(c.opts.cwd, cmdline)
             c.opts.cwd = None
         if c.env:
-            set_env_in_cmdline({
-                'KITTY_IS_CLONE_LAUNCH': is_clone_launch,
-            }, cmdline)
+            set_env_in_cmdline(
+                {
+                    'KITTY_IS_CLONE_LAUNCH': is_clone_launch,
+                },
+                cmdline,
+            )
             c.env = None
         if c.opts.env:
             for entry in reversed(c.opts.env):

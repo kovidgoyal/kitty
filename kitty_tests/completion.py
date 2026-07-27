@@ -14,7 +14,6 @@ from .base import BaseTest
 
 
 class TestCompletion(BaseTest):
-
     def test_completion(self):
         with tempfile.TemporaryDirectory() as tdir:
             completion(self, tdir)
@@ -33,6 +32,7 @@ def has_words(*words):
         q = set(words)
         missing = q - get_all_words(result)
         self.assertFalse(missing, f'Words missing. Command line: {self.current_cmd!r}')
+
     return t
 
 
@@ -41,6 +41,7 @@ def does_not_have_words(*words):
         q = set(words)
         all_words = get_all_words(result)
         self.assertFalse(q & all_words, f'Words unexpectedly present. Command line: {self.current_cmd!r}')
+
     return t
 
 
@@ -49,6 +50,7 @@ def all_words(*words):
         expected = set(words)
         actual = get_all_words(result)
         self.assertEqual(expected, actual, f'Command line: {self.current_cmd!r}')
+
     return t
 
 
@@ -62,6 +64,7 @@ def is_delegate(num_to_remove: int = 0, command: str = ''):
     def t(self, result):
         d = result['delegate']
         self.assertEqual(d, q, f'Command line: {self.current_cmd!r}')
+
     return t
 
 
@@ -85,10 +88,7 @@ def completion(self: TestCompletion, tdir: str):
         env['PATH'] = os.path.join(tdir, 'bin')
         env['HOME'] = os.path.join(tdir, 'sub')
         env['KITTY_CONFIG_DIRECTORY'] = os.path.join(tdir, 'sub')
-        cp = subprocess.run(
-            [kitten(), '__complete__', 'json'],
-            check=True, stdout=subprocess.PIPE, cwd=tdir, input=json.dumps(all_argv).encode(), env=env
-        )
+        cp = subprocess.run([kitten(), '__complete__', 'json'], check=True, stdout=subprocess.PIPE, cwd=tdir, input=json.dumps(all_argv).encode(), env=env)
         self.assertEqual(cp.returncode, 0, f'kitten __complete__ failed with exit code: {cp.returncode}')
         return json.loads(cp.stdout)
 

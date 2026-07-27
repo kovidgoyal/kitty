@@ -10,7 +10,6 @@ from .base import BaseTest
 
 
 class TestSlang(BaseTest):
-
     def test_slang_parser(self):
         def check(src: str, expected: SlangFile) -> None:
             actual = parse_slang_text(src)
@@ -18,7 +17,8 @@ class TestSlang(BaseTest):
             self.assertEqual(expected, actual)
 
         # Basic vertex + fragment entry points
-        check('''
+        check(
+            """
 [shader("vertex")]
 void drawTriangle(float4 pos : POSITION) {
     // vertex code
@@ -29,7 +29,9 @@ void drawTriangle(float4 pos : POSITION) {
 float4 psMain() : SV_Target {
     return float4(1, 0, 0, 1);
 }
-        ''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.vertex, 'drawTriangle'), EntryPoint(Stage.fragment, 'psMain')})))
+        """,
+            SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.vertex, 'drawTriangle'), EntryPoint(Stage.fragment, 'psMain')})),
+        )
 
         # Empty source
         check('', SlangFile())
@@ -38,44 +40,60 @@ float4 psMain() : SV_Target {
         check('// just a comment\n/* block comment */', SlangFile('', '', frozenset(), frozenset()))
 
         # Module and import declarations
-        check('''
+        check(
+            """
 module mymodule;
 import utils;
 import helpers;
-''', SlangFile('', '', frozenset({'utils', 'helpers'}), frozenset(), 'mymodule'))
+""",
+            SlangFile('', '', frozenset({'utils', 'helpers'}), frozenset(), 'mymodule'),
+        )
 
         # pixel stage maps to Stage.fragment
-        check('''
+        check(
+            """
 [shader("pixel")]
 float4 pixelMain() : SV_Target { return float4(0); }
-''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'pixelMain')})))
+""",
+            SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'pixelMain')})),
+        )
 
         # Block comment stripping removes multi-line comments before parsing
-        check('''
+        check(
+            """
 /* This is a block comment
    spanning multiple lines */
 [shader("vertex")]
 void vertMain() {}
-''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.vertex, 'vertMain')})))
+""",
+            SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.vertex, 'vertMain')})),
+        )
 
         # Block comment containing a shader attribute must not create a false entry point
-        check('''
+        check(
+            """
 /* [shader("vertex")]
 void shouldNotBeDetected() {} */
 [shader("fragment")]
 void fragMain() {}
-''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'fragMain')})))
+""",
+            SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'fragMain')})),
+        )
 
         # Multiple [attr] lines between [shader(...)] and the function declaration are skipped
-        check('''
+        check(
+            """
 [shader("fragment")]
 [numthreads(4, 4, 1)]
 [SomeOtherAttribute]
 float4 fragMain() : SV_Target { return float4(0); }
-''', SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'fragMain')})))
+""",
+            SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'fragMain')})),
+        )
 
         # Multiple entry points: vertex, pixel, and fragment stages
-        check('''
+        check(
+            """
 [shader("vertex")]
 void vsMain(float4 pos : POSITION) {}
 
@@ -84,20 +102,32 @@ float4 psMain() : SV_Target { return float4(0); }
 
 [shader("fragment")]
 float4 fsMain() : SV_Target { return float4(0); }
-''', SlangFile('', '', frozenset(), frozenset({
-            EntryPoint(Stage.vertex, 'vsMain'),
-            EntryPoint(Stage.fragment, 'psMain'),
-            EntryPoint(Stage.fragment, 'fsMain'),
-        })))
+""",
+            SlangFile(
+                '',
+                '',
+                frozenset(),
+                frozenset(
+                    {
+                        EntryPoint(Stage.vertex, 'vsMain'),
+                        EntryPoint(Stage.fragment, 'psMain'),
+                        EntryPoint(Stage.fragment, 'fsMain'),
+                    }
+                ),
+            ),
+        )
 
         # module, imports and entry points together
-        check('''
+        check(
+            """
 module myshader;
 import common;
 
 [shader("vertex")]
 void vsMain() {}
-''', SlangFile('', '', frozenset({'common'}), frozenset({EntryPoint(Stage.vertex, 'vsMain')}), 'myshader'))
+""",
+            SlangFile('', '', frozenset({'common'}), frozenset({EntryPoint(Stage.vertex, 'vsMain')}), 'myshader'),
+        )
 
     def test_slang_ordering(self):
         # Test topological_sort with a manually constructed linear chain: a <- b <- c

@@ -7,10 +7,9 @@ from .base import ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, Remote
 
 
 class Env(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     env+/dict.str: Dictionary of environment variables to values. When a env var ends with = it is removed from the environment.
-    '''
+    """
 
     short_desc = 'Change environment variables seen by future children'
     desc = (
@@ -35,6 +34,7 @@ class Env(RemoteCommand):
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         from kitty.child import default_env, set_default_env
         from kitty.utils import expandvars
+
         new_env = payload_get('env') or {}
         env = default_env().copy()
         for k, v in new_env.items():

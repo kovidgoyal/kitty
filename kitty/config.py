@@ -24,6 +24,7 @@ def option_names_for_completion() -> tuple[str, ...]:
 def atomic_save(data: bytes, path: str) -> None:
     import shutil
     import tempfile
+
     path = os.path.realpath(path)
     fd, p = tempfile.mkstemp(dir=os.path.dirname(path), suffix='.tmp')
     try:
@@ -65,6 +66,7 @@ def cached_values_for(name: str) -> Generator[dict[str, Any], None, None]:
 
 def commented_out_default_config() -> str:
     from .options.definition import definition
+
     return '\n'.join(definition.as_conf(commented=True))
 
 
@@ -148,6 +150,7 @@ def parse_config(
     allow_geninclude: bool = True,
 ) -> dict[str, Any]:
     from .options.parse import create_result_dict, parse_conf_item
+
     ans: dict[str, Any] = create_result_dict()
     parse_config_base(
         lines,
@@ -166,6 +169,7 @@ effective_config_lines: list[str] = []
 def load_config(*paths: str, overrides: Iterable[str] | None = None, accumulate_bad_lines: list[BadLine] | None = None) -> Options:
     from .options.parse import merge_result_dicts
     from .options.types import secret_options
+
     del effective_config_lines[:]
 
     def add_effective_config_line(key: str, line: str) -> None:
@@ -175,8 +179,12 @@ def load_config(*paths: str, overrides: Iterable[str] | None = None, accumulate_
     overrides = tuple(overrides) if overrides is not None else ()
 
     opts_dict, found_paths = _load_config(
-        defaults, partial(parse_config, accumulate_bad_lines=accumulate_bad_lines, effective_config_lines=add_effective_config_line),
-        merge_result_dicts, *paths, overrides=overrides)
+        defaults,
+        partial(parse_config, accumulate_bad_lines=accumulate_bad_lines, effective_config_lines=add_effective_config_line),
+        merge_result_dicts,
+        *paths,
+        overrides=overrides,
+    )
     opts = Options(opts_dict)
 
     opts.alias_map = build_action_aliases(opts.kitten_alias, 'kitten')
@@ -198,6 +206,7 @@ def store_effective_config() -> str:
     import os
     import stat
     import tempfile
+
     dest = os.path.join(cache_dir(), 'effective-config')
     os.makedirs(dest, exist_ok=True)
     raw = '\n'.join(effective_config_lines)

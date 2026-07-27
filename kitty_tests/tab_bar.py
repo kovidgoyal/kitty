@@ -23,13 +23,14 @@ class DummyBoss:
 
 
 class TestTabBar(BaseTest):
-
     def test_vertical_tab_bar_hit_testing(self) -> None:
-        self.set_options({
-            'tab_bar_edge': LEFT_EDGE,
-            'tab_bar_style': 'separator',
-            'tab_title_template': '{title}',
-        })
+        self.set_options(
+            {
+                'tab_bar_edge': LEFT_EDGE,
+                'tab_bar_style': 'separator',
+                'tab_title_template': '{title}',
+            }
+        )
         central = region(120, 0, 400, 160)
         tab_bar = region(0, 0, 120, 160)
         geometries: list[tuple[int, int, int, int]] = []
@@ -43,11 +44,13 @@ class TestTabBar(BaseTest):
         ):
             tb = TabBar(1)
             tb.layout()
-            tb.update((
-                TabBarData(title='one', tab_id=1, is_active=True),
-                TabBarData(title='two', tab_id=2),
-                TabBarData(title='three', tab_id=3),
-            ))
+            tb.update(
+                (
+                    TabBarData(title='one', tab_id=1, is_active=True),
+                    TabBarData(title='two', tab_id=2),
+                    TabBarData(title='three', tab_id=3),
+                )
+            )
 
         self.assertTrue(tb.is_vertical)
         self.ae(geometries[-1], (0, 0, 120, 160))
@@ -62,12 +65,14 @@ class TestTabBar(BaseTest):
         self.ae(tb.tab_id_at(180, 10), 0)
 
     def test_vertical_tab_bar_alignment(self) -> None:
-        self.set_options({
-            'tab_bar_align': 'end',
-            'tab_bar_edge': LEFT_EDGE,
-            'tab_bar_style': 'separator',
-            'tab_title_template': '{title}',
-        })
+        self.set_options(
+            {
+                'tab_bar_align': 'end',
+                'tab_bar_edge': LEFT_EDGE,
+                'tab_bar_style': 'separator',
+                'tab_title_template': '{title}',
+            }
+        )
         central = region(120, 0, 400, 160)
         tab_bar = region(0, 0, 120, 160)
         boss = DummyBoss()
@@ -80,10 +85,12 @@ class TestTabBar(BaseTest):
         ):
             tb = TabBar(1)
             tb.layout()
-            tb.update((
-                TabBarData(title='one', tab_id=1, is_active=True),
-                TabBarData(title='two', tab_id=2),
-            ))
+            tb.update(
+                (
+                    TabBarData(title='one', tab_id=1, is_active=True),
+                    TabBarData(title='two', tab_id=2),
+                )
+            )
 
         # 8 lines available, two single line tabs plus a gap, aligned to the end
         self.ae(tuple(te.y for te in tb.tab_extents), (CellRange(5, 5), CellRange(7, 7)))

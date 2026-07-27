@@ -10,8 +10,7 @@ if TYPE_CHECKING:
 
 
 class NewWindow(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     args+/list.str: The command line to run in the new window, as a list, use an empty list to run the default shell
     match/str: The tab to open the new window in
     title/str: Title for the new window
@@ -20,7 +19,7 @@ class NewWindow(RemoteCommand):
     window_type/choices.kitty.os: One of :code:`kitty` or :code:`os`
     new_tab/bool: Boolean indicating whether to open a new tab
     tab_title/str: Title for the new tab
-    '''
+    """
 
     short_desc = 'Open new window'
     desc = (
@@ -33,7 +32,9 @@ class NewWindow(RemoteCommand):
         ' are provided, the default shell is run. For example::\n\n'
         '    kitten @ new-window --title Email mutt'
     )
-    options_spec = MATCH_TAB_OPTION + '''\n
+    options_spec = (
+        MATCH_TAB_OPTION
+        + """\n
 --title
 The title for the new window. By default it will use the title set by the
 program running in it.
@@ -70,7 +71,8 @@ default=false
 Don't wait for a response giving the id of the newly opened window. Note that
 using this option means that you will not be notified of failures and that
 the id of the new window will not be printed out.
-'''
+"""
+    )
     args = RemoteCommand.Args(spec='[CMD ...]', json_field='args')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
@@ -88,6 +90,7 @@ the id of the new window will not be printed out.
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         from .launch import launch
+
         return launch.response_from_kitty(boss, window, payload_get)
 
 

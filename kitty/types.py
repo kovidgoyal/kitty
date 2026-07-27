@@ -101,6 +101,7 @@ def mod_to_names(mods: int, has_kitty_mod: bool = False, kitty_mod: int = 0) -> 
 
 def human_repr_of_single_key(self: 'SingleKey', kitty_mod: int) -> str:
     from .fast_data_types import glfw_get_key_name
+
     names = []
     names = list(mod_to_names(self.mods, self.defined_with_kitty_mod, kitty_mod))
     if self.key > 0:
@@ -128,7 +129,7 @@ class MouseEvent(NamedTuple):
 
         def mouse_button_num_to_name(num: int) -> str:
             button_map = {v: k for k, v in mouse_button_map.items()}
-            name = f'b{num+1}'
+            name = f'b{num + 1}'
             return button_map.get(name, name)
 
         def mouse_trigger_count_to_name(count: int) -> str:
@@ -154,8 +155,12 @@ class WindowSystemMouseEvent(NamedTuple):
 
 
 ConvertibleToNumbers = Union[str, bytes, int, float]
+
+
 class sentinel_type:
     pass
+
+
 sentinel = sentinel_type()
 
 
@@ -164,16 +169,17 @@ class AsyncResponse:
 
 
 class RunOnce[T]:
-
     def __init__(self, f: Callable[[], T]) -> None:
         self._override: T | sentinel_type = sentinel
         self._cached_result: T | sentinel_type = sentinel
         update_wrapper(self, f)
 
     if TYPE_CHECKING:
+
         def __call__(self) -> T:
             return cast(T, 1)
     else:
+
         def __call__(self) -> T:
             if self._override is not sentinel:
                 return self._override
@@ -209,9 +215,16 @@ def modmap() -> dict[str, int]:
         GLFW_MOD_SUPER,
     )
 
-    return {'ctrl': GLFW_MOD_CONTROL, 'shift': GLFW_MOD_SHIFT, ('opt' if is_macos else 'alt'): GLFW_MOD_ALT,
-            ('cmd' if is_macos else 'super'): GLFW_MOD_SUPER, 'hyper': GLFW_MOD_HYPER, 'meta': GLFW_MOD_META,
-            'caps_lock': GLFW_MOD_CAPS_LOCK, 'num_lock': GLFW_MOD_NUM_LOCK}
+    return {
+        'ctrl': GLFW_MOD_CONTROL,
+        'shift': GLFW_MOD_SHIFT,
+        ('opt' if is_macos else 'alt'): GLFW_MOD_ALT,
+        ('cmd' if is_macos else 'super'): GLFW_MOD_SUPER,
+        'hyper': GLFW_MOD_HYPER,
+        'meta': GLFW_MOD_META,
+        'caps_lock': GLFW_MOD_CAPS_LOCK,
+        'num_lock': GLFW_MOD_NUM_LOCK,
+    }
 
 
 ActionGroup = Literal['cp', 'sc', 'win', 'tab', 'fs', 'mouse', 'mk', 'lay', 'misc', 'debug', 'session']
@@ -226,6 +239,7 @@ def ac[_T](group: ActionGroup, doc: str) -> Callable[[_T], _T]:
     def w(f: _T) -> _T:
         setattr(f, 'action_spec', ActionSpec(group, doc))
         return f
+
     return w
 
 

@@ -21,7 +21,6 @@ global_opts = RCOptions()
 
 
 class Resize(Handler):
-
     print_on_fail: str | None = None
 
     def __init__(self, opts: ResizeCLIOptions):
@@ -96,11 +95,10 @@ class Resize(Handler):
         print()
         print(styled('Sizes', bold=True, fg='white', fg_intense=True))
         print(f'Original: {self.original_size.rows} rows {self.original_size.cols} cols')
-        print('Current:  {} rows {} cols'.format(
-            styled(str(self.screen_size.rows), fg='magenta'), styled(str(self.screen_size.cols), fg='magenta')))
+        print('Current:  {} rows {} cols'.format(styled(str(self.screen_size.rows), fg='magenta'), styled(str(self.screen_size.cols), fg='magenta')))
 
 
-OPTIONS = r'''
+OPTIONS = r"""
 --horizontal-increment
 default=2
 type=int
@@ -111,7 +109,7 @@ The base horizontal increment.
 default=2
 type=int
 The base vertical increment.
-'''.format
+""".format
 
 
 def main(args: list[str]) -> None:

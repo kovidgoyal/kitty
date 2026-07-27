@@ -285,19 +285,19 @@ def dnd_command(payload: str) -> None:
     if isinstance(t, (bytes, memoryview)):
         t = str(t, 'utf-8', 'replace')
     m = f't={t}'
-    if (more := c.pop('more', None)):
+    if more := c.pop('more', None):
         m += f':m={more}'
-    if (client_id := c.pop('client_id', None)):
+    if client_id := c.pop('client_id', None):
         m += f':i={client_id}'
-    if (operation := c.pop('operation', None)):
+    if operation := c.pop('operation', None):
         m += f':o={operation}'
-    if (cell_x := c.pop('cell_x', None)):
+    if cell_x := c.pop('cell_x', None):
         m += f':x={cell_x}'
-    if (cell_y := c.pop('cell_y', None)):
+    if cell_y := c.pop('cell_y', None):
         m += f':y={cell_y}'
-    if (pixel_x := c.pop('pixel_x', None)):
+    if pixel_x := c.pop('pixel_x', None):
         m += f':X={pixel_x}'
-    if (pixel_y := c.pop('pixel_y', None)):
+    if pixel_y := c.pop('pixel_y', None):
         m += f':Y={pixel_y}'
     write(f'{OSC}{DND_CODE};{m};{text}\x1b\\')
 
@@ -328,10 +328,22 @@ def screen_multi_cursor(rest: str) -> None:
 
 
 def replay(raw: str) -> None:
-    specials = frozenset({
-        'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color', 'select_graphic_rendition',
-        'process_cwd_notification', 'clipboard_control', 'shell_prompt_marking', 'multicell_command', 'screen_multi_cursor', 'dnd_command',
-    })
+    specials = frozenset(
+        {
+            'draw',
+            'set_title',
+            'set_icon',
+            'set_dynamic_color',
+            'set_color_table_color',
+            'select_graphic_rendition',
+            'process_cwd_notification',
+            'clipboard_control',
+            'shell_prompt_marking',
+            'multicell_command',
+            'screen_multi_cursor',
+            'dnd_command',
+        }
+    )
     for line in raw.splitlines():
         if line.strip() and not line.startswith('#'):
             cmd, rest = line.partition(' ')[::2]

@@ -13,7 +13,6 @@ from .base import BaseTest
 
 
 class SHMTest(BaseTest):
-
     def test_shm_with_kitten(self):
         data = os.urandom(333)
         with SharedMemory(size=363) as shm:

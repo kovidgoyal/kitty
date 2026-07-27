@@ -87,6 +87,7 @@ class KittenMetadata(NamedTuple):
 
 def create_kitten_handler(kitten: str, orig_args: list[str]) -> KittenMetadata:
     from kitty.constants import config_dir
+
     m = import_kitten_main_module(config_dir, kitten)
     kitten = resolved_kitten(kitten)
     main = m['start']
@@ -98,13 +99,15 @@ def create_kitten_handler(kitten: str, orig_args: list[str]) -> KittenMetadata:
         allow_remote_control=getattr(main, 'allow_remote_control', False),
         remote_control_password=getattr(main, 'remote_control_password', True),
         has_ready_notification=getattr(handle_result, 'has_ready_notification', False),
-        open_url_handler=getattr(handle_result, 'open_url_handler', None))
+        open_url_handler=getattr(handle_result, 'open_url_handler', None),
+    )
 
 
 def set_debug(kitten: str) -> None:
     import builtins
 
     from kittens.tui.loop import debug
+
     setattr(builtins, 'debug', debug)
 
 
@@ -124,6 +127,7 @@ def launch(args: list[str]) -> None:
     if result is not None:
         import base64
         import json
+
         data = base64.b85encode(json.dumps(result).encode('utf-8'))
         sys.stdout.buffer.write(b'\x1bP@kitty-kitten-result|')
         sys.stdout.buffer.write(data)
@@ -134,6 +138,7 @@ def launch(args: list[str]) -> None:
 
 def run_kitten(kitten: str, run_name: str = '__main__') -> None:
     import runpy
+
     original_kitten_name = kitten
     kitten = resolved_kitten(kitten)
     set_debug(kitten)
@@ -145,6 +150,7 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
     if not kitten.endswith('.py'):
         kitten += '.py'
     from kitty.constants import config_dir
+
     path = path_to_custom_kitten(config_dir, kitten)
     if not os.path.exists(path):
         path = path_to_custom_kitten(config_dir, resolved_kitten(kitten))
@@ -155,6 +161,7 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
         raise SystemExit(f'No kitten named {original_kitten_name}')
     m = runpy.run_path(path, init_globals={'sys': sys, 'os': os}, run_name='__run_kitten__')
     from kitty.fast_data_types import set_options
+
     try:
         m['main'](sys.argv)
     finally:
@@ -211,7 +218,7 @@ def get_kitten_conf_docs(kitten: str) -> Definition | None:
     return cast(Definition, ans)
 
 
-def get_kitten_extra_cli_parsers(kitten: str) -> dict[str,str]:
+def get_kitten_extra_cli_parsers(kitten: str) -> dict[str, str]:
     setattr(sys, 'extra_cli_parsers', {})
     run_kitten(kitten, run_name='__extra_cli_parsers__')
     ans = getattr(sys, 'extra_cli_parsers')
@@ -226,5 +233,6 @@ def main() -> None:
     except Exception:
         print('Unhandled exception running kitten:')
         import traceback
+
         traceback.print_exc()
         input('Press Enter to quit')

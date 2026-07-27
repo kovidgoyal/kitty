@@ -10,19 +10,18 @@ if TYPE_CHECKING:
 
 
 class ResizeWindow(RemoteCommand):
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     match/str: Which window to resize
     self/bool: Boolean indicating whether to resize the window the command is run in
     increment/int: Integer specifying the resize increment
     axis/choices.horizontal.vertical.reset: One of :code:`horizontal, vertical` or :code:`reset`
-    '''
+    """
 
     short_desc = 'Resize the specified windows'
-    desc = (
-        'Resize the specified windows in the current layout.'
-        ' Note that not all layouts can resize all windows in all directions.'
-    )
-    options_spec = MATCH_WINDOW_OPTION + '''\n
+    desc = 'Resize the specified windows in the current layout. Note that not all layouts can resize all windows in all directions.'
+    options_spec = (
+        MATCH_WINDOW_OPTION
+        + """\n
 --increment -i
 type=int
 default=2
@@ -42,7 +41,8 @@ The special value :code:`reset` will reset the layout to its default configurati
 --self
 type=bool-set
 Resize the window this command is run in, rather than the active window.
-'''
+"""
+    )
     string_return_is_error = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
@@ -53,8 +53,7 @@ Resize the window this command is run in, rather than the active window.
         resized: bool | None | str = False
         if windows and windows[0]:
             resized = boss.resize_layout_window(
-                windows[0], increment=payload_get('increment'), is_horizontal=payload_get('axis') == 'horizontal',
-                reset=payload_get('axis') == 'reset'
+                windows[0], increment=payload_get('increment'), is_horizontal=payload_get('axis') == 'horizontal', reset=payload_get('axis') == 'reset'
             )
         return resized
 

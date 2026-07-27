@@ -36,17 +36,17 @@ class ThemeFile(Enum):
 
 
 class ThemeColors:
-
     dark_mtime: int = -1
     light_mtime: int = -1
     no_preference_mtime: int = -1
     applied_theme: Literal['light', 'dark', 'no_preference', ''] = ''
     default_colors: ColorsSpec | None = None
-    default_background_image_options: BackgroundImageOptions| None = None
+    default_background_image_options: BackgroundImageOptions | None = None
 
     def get_default_colors(self) -> ColorsSpec:
         if self.default_colors is None:
             from kitty.options.types import defaults, option_names
+
             ans: ColorsSpec = dict.fromkeys(nullable_colors)
 
             for name in option_names:
@@ -56,8 +56,7 @@ class ThemeColors:
             for name in special_colors:
                 ans[name] = getattr(defaults, name)
             self.default_colors = ans
-            self.default_background_image_options: BackgroundImageOptions = {
-                    k: getattr(defaults, k) for k in BackgroundImageOptions.__optional_keys__}  # type: ignore
+            self.default_background_image_options: BackgroundImageOptions = {k: getattr(defaults, k) for k in BackgroundImageOptions.__optional_keys__}  # type: ignore
 
         return self.default_colors
 
@@ -133,6 +132,7 @@ class ThemeColors:
 
     def patch_opts(self, opts: Options, debug_rendering: bool = False) -> None:
         from .utils import log_error
+
         if debug_rendering:
             log_error('Querying system for current color scheme')
         which = glfw_get_system_color_theme()
@@ -164,25 +164,32 @@ class ThemeColors:
 
     def apply_theme(self, new_value: ColorSchemes, notify_on_bg_change: bool = True) -> bool:
         from .utils import log_error
+
         boss = get_boss()
         if new_value == 'dark' and self.has_dark_theme:
             patch_colors(
-                self.dark_spec, self.dark_tbc, True, notify_on_bg_change=notify_on_bg_change, background_image_options=self.dark_background_image_options)
+                self.dark_spec, self.dark_tbc, True, notify_on_bg_change=notify_on_bg_change, background_image_options=self.dark_background_image_options
+            )
             self.applied_theme = new_value
             if boss.args.debug_rendering:
                 log_error(f'Applied color theme {new_value}')
             return True
         if new_value == 'light' and self.has_light_theme:
             patch_colors(
-                self.light_spec, self.light_tbc, True, notify_on_bg_change=notify_on_bg_change, background_image_options=self.light_background_image_options)
+                self.light_spec, self.light_tbc, True, notify_on_bg_change=notify_on_bg_change, background_image_options=self.light_background_image_options
+            )
             self.applied_theme = new_value
             if boss.args.debug_rendering:
                 log_error(f'Applied color theme {new_value}')
             return True
         if new_value == 'no_preference' and self.has_no_preference_theme:
             patch_colors(
-                self.no_preference_spec, self.no_preference_tbc, True, notify_on_bg_change=notify_on_bg_change,
-                background_image_options=self.no_preference_background_image_options)
+                self.no_preference_spec,
+                self.no_preference_tbc,
+                True,
+                notify_on_bg_change=notify_on_bg_change,
+                background_image_options=self.no_preference_background_image_options,
+            )
             self.applied_theme = new_value
             if boss.args.debug_rendering:
                 log_error(f'Applied color theme {new_value}')
@@ -199,10 +206,12 @@ def all_color_related_conf_keys() -> frozenset[str]:
 
 
 def parse_colors(
-    args: Iterable[str | Iterable[str]], background_image_options: BackgroundImageOptions | None = None,
+    args: Iterable[str | Iterable[str]],
+    background_image_options: BackgroundImageOptions | None = None,
     allow_reading_conf_files: bool = True,
 ) -> Colors:
     from kitty.options.parse import parse_conf_item
+
     colors: dict[str, Color | None | int] = {}
     nullable_color_map: dict[str, int | None] = {}
     special_color_map: dict[str, int] = {}
@@ -244,8 +253,7 @@ def parse_colors(
 
 
 def patch_options_with_color_spec(
-    opts: Options, spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors,
-    background_image_options: BackgroundImageOptions | None = None
+    opts: Options, spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors, background_image_options: BackgroundImageOptions | None = None
 ) -> None:
     for k, v in spec.items():
         if hasattr(opts, k):
@@ -265,9 +273,12 @@ def patch_options_with_color_spec(
 
 
 def patch_colors(
-    spec: ColorsSpec, transparent_background_colors: TransparentBackgroundColors = (), configured: bool = False,
-    windows: Sequence[WindowType] | None = None, notify_on_bg_change: bool = True,
-    background_image_options: BackgroundImageOptions | None = None
+    spec: ColorsSpec,
+    transparent_background_colors: TransparentBackgroundColors = (),
+    configured: bool = False,
+    windows: Sequence[WindowType] | None = None,
+    notify_on_bg_change: bool = True,
+    background_image_options: BackgroundImageOptions | None = None,
 ) -> None:
     boss = get_boss()
     opts = get_options()
@@ -296,10 +307,14 @@ def patch_colors(
     if background_image_options is not None:
         bg = background_image_options.get('background_image')
         boss.set_background_image(
-            bg[0] if bg else None, tuple(os_window_ids), configured,
+            bg[0] if bg else None,
+            tuple(os_window_ids),
+            configured,
             layout=background_image_options.get('background_image_layout'),
-            linear_interpolation=background_image_options.get('background_image_linear'), tint=background_image_options.get('background_tint'),
-            tint_gaps=background_image_options.get('background_tint_gaps'))
+            linear_interpolation=background_image_options.get('background_image_linear'),
+            tint=background_image_options.get('background_tint'),
+            tint_gaps=background_image_options.get('background_tint_gaps'),
+        )
     for w in windows:
         if w:
             if notify_bg and w.screen.color_profile.default_bg != bg_colors_before.get(w.id):

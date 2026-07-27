@@ -28,7 +28,6 @@ def wrap_increment(val: int, num: int, delta: int) -> int:
 
 
 class WindowGroup:
-
     def __init__(self) -> None:
         self.windows: list[WindowType] = []
         self.id = next(group_id_counter)
@@ -110,8 +109,10 @@ class WindowGroup:
 
     def unserialize_layout_state(self, window_ids: Sequence[int]) -> None:
         order_map = {wid: i for i, wid in enumerate(window_ids)}
+
         def sort_key(w: WindowType) -> int:
             return order_map.get(w.id, -1)
+
         self.windows.sort(key=sort_key)
 
     def as_simple_dict(self) -> dict[str, Any]:
@@ -165,7 +166,6 @@ class WindowGroup:
 
 
 class WindowList:
-
     force_show_title_bars: bool = False
 
     def __init__(self, tab: TabType) -> None:
@@ -193,14 +193,14 @@ class WindowList:
         return {
             'active_group_idx': self.active_group_idx,
             'active_group_history': list(self.active_group_history),
-            'window_groups': [g.serialize_state() for g in self.groups]
+            'window_groups': [g.serialize_state() for g in self.groups],
         }
 
     def serialize_layout_state(self) -> dict[str, Any]:
         return {
             'active_group_idx': self.active_group_idx,
             'active_group_history': list(self.active_group_history),
-            'window_groups': [g.serialize_layout_state() for g in self.groups]
+            'window_groups': [g.serialize_layout_state() for g in self.groups],
         }
 
     def unserialize_layout_state(self, state: dict[str, Any], window_id_map: dict[int, int]) -> dict[int, int] | None:

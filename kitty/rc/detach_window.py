@@ -10,13 +10,12 @@ if TYPE_CHECKING:
 
 
 class DetachWindow(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     match/str: Which window to detach
     target_tab/str: Which tab to move the detached window to
     self/bool: Boolean indicating whether to detach the window the command is run in
     stay_in_tab/bool: Boolean indicating focus should remain in the active tab after windows are moved
-    '''
+    """
 
     short_desc = 'Detach the specified windows and place them in a different/new tab'
     desc = (
@@ -25,8 +24,10 @@ class DetachWindow(RemoteCommand):
         ' to move to a new tab. If no target tab is specified the windows are moved to a new OS window.'
     )
     options_spec = (
-        MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--target-tab -t') +
-        '''Use the special value :code:`new` to move to a new tab.
+        MATCH_WINDOW_OPTION
+        + '\n\n'
+        + MATCH_TAB_OPTION.replace('--match -m', '--target-tab -t')
+        + """Use the special value :code:`new` to move to a new tab.
 
 
 --self
@@ -37,7 +38,8 @@ Detach the window this command is run in, rather than the active window.
 --stay-in-tab
 type=bool-set
 Keep the focus on a window in the currently focused tab after moving the specified windows.
-''')
+"""
+    )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'target_tab': opts.target_tab, 'self': opts.self, 'stay_in_tab': opts.stay_in_tab}

@@ -44,16 +44,16 @@ def validate_glsl_files(shader_files: Iterable[str | Path], verbose: bool = Fals
     # Print execution summary
     if error_count == 0:
         if verbose:
-            print("Success: All shaders validated successfully!")
+            print('Success: All shaders validated successfully!')
     else:
-        raise SystemExit(f"Failure: {error_count} shader(s) failed validation.")
+        raise SystemExit(f'Failure: {error_count} shader(s) failed validation.')
 
 
 def validate_glsl_dir(directory_path: str, verbose: bool = False) -> None:
-    '''
+    """
     Validates all GLSL shaders in the specified directory with names matching
     name.vert.glsl or name.frag.glsl using glslangValidator.
-    '''
+    """
     target_dir = Path(directory_path)
 
     if not target_dir.is_dir():
@@ -71,6 +71,6 @@ def validate_glsl_dir(directory_path: str, verbose: bool = False) -> None:
     validate_glsl_files(shader_files)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     dir_to_scan = sys.argv[1] if len(sys.argv) > 1 else 'shaders'
     validate_glsl_dir(dir_to_scan, verbose=True)

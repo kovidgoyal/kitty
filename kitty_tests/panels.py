@@ -16,9 +16,12 @@ def r(msg: str, cmdline: str) -> None:
     except KeyboardInterrupt:
         raise SystemExit(1)
 
+
 if __name__ == '__main__':
-    r('top panel check transpareny, no input focus, margins and struts',
-    'panel -o background_opacity=0.2 --edge=top --lines=2 --margin-left=50 --margin-right=100')
+    r(
+        'top panel check transpareny, no input focus, margins and struts',
+        'panel -o background_opacity=0.2 --edge=top --lines=2 --margin-left=50 --margin-right=100',
+    )
 
     r('bottom panel, check struts', 'panel -o background_opacity=0.2 --edge=bottom --lines=2 --margin-left=100 --margin-right=50')
 
@@ -26,7 +29,9 @@ if __name__ == '__main__':
 
     r('right panel, check struts', 'panel -o background_opacity=0.2 --edge=right --columns=2 --margin-top=50 --margin-bottom=100')
 
-    r('background, check transparency and margins and no input focus',
-    'panel -o background_opacity=0.2 --edge=background --margin-top=50 --margin-bottom=50 --margin-left=100 --margin-right=100')
+    r(
+        'background, check transparency and margins and no input focus',
+        'panel -o background_opacity=0.2 --edge=background --margin-top=50 --margin-bottom=50 --margin-left=100 --margin-right=100',
+    )
 
     r('quake, check transparency and focus on show/re-show', 'quick-access-terminal')

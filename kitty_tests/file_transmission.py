@@ -59,7 +59,7 @@ def generate_data(block_size, num_blocks, *extra) -> bytes:
     for i in range(num_blocks):
         offset = i * block_size
         p = str(i).encode()
-        ans[offset:offset+len(p)] = p
+        ans[offset : offset + len(p)] = p
     return bytes(ans)
 
 
@@ -71,7 +71,7 @@ def patch_data(data, *patches):
         r = r.encode()
         total_patch_size += len(r)
         offset = int(o)
-        ans[offset:offset+len(r)] = r
+        ans[offset : offset + len(r)] = r
     return bytes(ans), len(patches), total_patch_size
 
 
@@ -96,6 +96,7 @@ def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_p
     del src, signature
     src = memoryview(src_data)
     delta = bytearray(0)
+
     def read_into(b):
         nonlocal src
         n = min(len(b), len(src))
@@ -103,8 +104,10 @@ def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_p
             b[:n] = src[:n]
             src = src[n:]
         return n
+
     def write_delta(b):
         delta.extend(b)
+
     while d.next_op(read_into, write_delta):
         pass
     delta = memoryview(delta)
@@ -123,6 +126,7 @@ def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_p
 
     def debug_msg():
         return f'\n\nsrc:\n{src_data.decode()}\nchanged:\n{changed.decode()}\noutput:\n{output.decode()}'
+
     try:
         while delta:
             p.apply_delta_data(delta[:11], read_at, write_changes)
@@ -133,32 +137,30 @@ def run_roundtrip_test(self: 'TestFileTransmission', src_data, changed, num_of_p
     self.assertEqual(src_data, bytes(output), debug_msg())
     limit = 2 * (p.block_size * num_of_patches)
     if limit > -1:
-        self.assertLessEqual(
-            p.total_data_in_delta, limit, f'Unexpectedly poor delta performance: {total_patch_size=} {p.total_data_in_delta=} {limit=}')
+        self.assertLessEqual(p.total_data_in_delta, limit, f'Unexpectedly poor delta performance: {total_patch_size=} {p.total_data_in_delta=} {limit=}')
 
 
 def test_rsync_roundtrip(self: 'TestFileTransmission') -> None:
     block_size = 16
     src_data = generate_data(block_size, 16)
-    changed, num_of_patches, total_patch_size = patch_data(src_data, "3:patch1", "16:patch2", "130:ptch3", "176:patch4", "222:XXYY")
+    changed, num_of_patches, total_patch_size = patch_data(src_data, '3:patch1', '16:patch2', '130:ptch3', '176:patch4', '222:XXYY')
 
     run_roundtrip_test(self, src_data, src_data[block_size:], 1, block_size)
     run_roundtrip_test(self, src_data, changed, num_of_patches, total_patch_size)
     run_roundtrip_test(self, src_data, b'', -1, 0)
     run_roundtrip_test(self, src_data, src_data, 0, 0)
-    run_roundtrip_test(self, src_data, changed[:len(changed)-3], num_of_patches, total_patch_size)
+    run_roundtrip_test(self, src_data, changed[: len(changed) - 3], num_of_patches, total_patch_size)
     run_roundtrip_test(self, src_data, changed[:37] + changed[81:], num_of_patches, total_patch_size)
 
     block_size = 13
-    src_data = generate_data(block_size, 17, "trailer")
-    changed, num_of_patches, total_patch_size = patch_data(src_data, "0:patch1", "19:patch2")
+    src_data = generate_data(block_size, 17, 'trailer')
+    changed, num_of_patches, total_patch_size = patch_data(src_data, '0:patch1', '19:patch2')
     run_roundtrip_test(self, src_data, changed, num_of_patches, total_patch_size)
-    run_roundtrip_test(self, src_data, changed[:len(changed)-3], num_of_patches, total_patch_size)
-    run_roundtrip_test(self, src_data, changed + b"xyz...", num_of_patches, total_patch_size)
+    run_roundtrip_test(self, src_data, changed[: len(changed) - 3], num_of_patches, total_patch_size)
+    run_roundtrip_test(self, src_data, changed + b'xyz...', num_of_patches, total_patch_size)
 
 
 class PtyFileTransmission(FileTransmission):
-
     def __init__(self, pty, allow=True):
         self.pty = pty
         super().__init__(allow=allow)
@@ -171,14 +173,12 @@ class PtyFileTransmission(FileTransmission):
 
 
 class TransferPTY(PTY):
-
     def __init__(self, cmd, cwd, allow=True, env=None):
         super().__init__(cmd, cwd=cwd, env=env, rows=200, columns=120)
         self.fc = PtyFileTransmission(self, allow=allow)
 
 
 class TestFileTransmission(BaseTest):
-
     def setUp(self):
         self.direction_receive = False
         self.kitty_home = self.kitty_cwd = self.kitten_home = self.kitten_cwd = ''
@@ -209,6 +209,7 @@ class TestFileTransmission(BaseTest):
         def f(r):
             r.pop('size', None)
             return r
+
         a = tuple(f(r) for r in a if r.get('status') != 'PROGRESS')
         b = tuple(f(r) for r in b if r.get('status') != 'PROGRESS')
         self.ae(a, b)
@@ -320,11 +321,11 @@ class TestFileTransmission(BaseTest):
         t('a1=b1;c=d;;;1=1', 'a1', 'b1', 'c', 'd', '1', '1')
 
     def test_rsync_hashers(self):
-        h = Hasher("xxh3-64")
+        h = Hasher('xxh3-64')
         h.update(b'abcd')
         self.assertEqual(h.hexdigest(), '6497a96f53a89890')
         self.assertEqual(h.digest64(), 7248448420886124688)
-        h128 = Hasher("xxh3-128")
+        h128 = Hasher('xxh3-128')
         h128.update(b'abcd')
         self.assertEqual(h128.hexdigest(), '8d6b60383dfa90c21be79eecd1b1353d')
 
@@ -399,9 +400,9 @@ class TestFileTransmission(BaseTest):
             os.link(f.name, b / 'hardlink')
             os.utime(f.name, (1.3, 1.3))
             se(f.name)
-            se(str(b/'hardlink'))
+            se(str(b / 'hardlink'))
             os.mkdir(b / 'empty')
-            se(str(b/'empty'))
+            se(str(b / 'empty'))
             s = b / 'sub'
             os.mkdir(s)
             with open(s / 'reg', 'wb') as f:
@@ -409,17 +410,18 @@ class TestFileTransmission(BaseTest):
             os.utime(f.name, (1171.3, 1171.3))
             se(f.name)
             se(str(s))
-            os.symlink('/', b/'abssym')
-            os.utime(b/'abssym', (1234.5, 1234.5), follow_symlinks=False)
-            se(b/'abssym')
-            os.symlink('sub/reg', b/'sym')
-            os.utime(b/'sym', (6789.1, 6789.1), follow_symlinks=False)
-            se(b/'sym')
+            os.symlink('/', b / 'abssym')
+            os.utime(b / 'abssym', (1234.5, 1234.5), follow_symlinks=False)
+            se(b / 'abssym')
+            os.symlink('sub/reg', b / 'sym')
+            os.utime(b / 'sym', (6789.1, 6789.1), follow_symlinks=False)
+            se(b / 'sym')
 
             with self.run_kitten(list(cmd) + [src, dest]) as pty:
                 pty.wait_till_child_exits(require_exit_code=0)
 
             actual = {}
+
             def de(path):
                 e = entry(path, os.path.join(dest, os.path.basename(src)))
                 if e.relpath != '.':

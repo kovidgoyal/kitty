@@ -39,18 +39,19 @@ from .dnd import WriteCapture
 
 
 class Capture(WriteCapture):
-
     def __call__(self, window_id: int, data: bytes) -> None:
         self.pty.write_to_child(data)
 
 
 def create_fs(base, include_toplevel_working_symlink=True):
     join = partial(os.path.join, base)
+
     def w(sz, *path):
         if sz == 0:
             sz = random.randint(5713, 9879)
         with open(join(*path), 'wb') as f:
             f.write(b'x' * sz)
+
     os.makedirs(join('d1', 'sd', 'ssd'))
     os.mkdir(join('d2'))
     os.symlink('/' + str(uuid.uuid4()), join('s1'))  # non-existent
@@ -67,7 +68,6 @@ def create_fs(base, include_toplevel_working_symlink=True):
 
 
 class TestDnDKitten(BaseTest):
-
     def assert_trees_equal(self, a: str, b: str, ignored='.dnd-kitten-drop-*'):
         a_name = os.path.relpath(a, self.test_dir)
         b_name = os.path.relpath(b, self.test_dir)
@@ -77,8 +77,7 @@ class TestDnDKitten(BaseTest):
         for x in entries_a:
             ca, cb = os.path.join(a, x), os.path.join(b, x)
             sta, stb = os.lstat(ca), os.lstat(cb)
-            self.assertEqual(
-                stat.S_IFMT(sta.st_mode), stat.S_IFMT(stb.st_mode), f'type mismatch for {a_name}/{x} vs {b_name}/{x}')
+            self.assertEqual(stat.S_IFMT(sta.st_mode), stat.S_IFMT(stb.st_mode), f'type mismatch for {a_name}/{x} vs {b_name}/{x}')
             if stat.S_ISDIR(sta.st_mode):
                 self.assert_trees_equal(ca, cb)
             elif stat.S_ISLNK(sta.st_mode):
@@ -116,7 +115,7 @@ class TestDnDKitten(BaseTest):
         for i in range(0, len(payload), 4096):
             end = i + 4096
             is_last = end >= len(payload)
-            chunk = payload[i:min(i+4096, len(payload))]
+            chunk = payload[i : min(i + 4096, len(payload))]
             if i == 0:
                 self.pty.write_to_child(f'm={0 if is_last else 1};'.encode())
             else:
@@ -124,7 +123,7 @@ class TestDnDKitten(BaseTest):
             self.pty.write_to_child(chunk)
             self.pty.write_to_child(b'\x1b\\', flush=is_last and flush)
 
-    def finish_setup(self, remote_client: bool = False, cli_args = ()):
+    def finish_setup(self, remote_client: bool = False, cli_args=()):
         cmd = [kitten_exe(), 'dnd']
         cmd += list(cli_args)
         self.pty = self.enterContext(PTY(argv=cmd, cwd=self.kitten_wd, rows=25, columns=80, window_id=self.capture.window_id))
@@ -151,8 +150,10 @@ class TestDnDKitten(BaseTest):
     def get_button_geometry(self, are_present: bool = True):
         self.send_dnd_command_to_kitten('GEOMETRY')
         self.pty.wait_till(lambda: bool(self.messages_from_kitten))
-        self.assertTrue(self.messages_from_kitten.startswith('GEOMETRY') and self.messages_from_kitten.endswith('\n'),
-                        f'Unexpected messages from kitten: {self.messages_from_kitten!r}')
+        self.assertTrue(
+            self.messages_from_kitten.startswith('GEOMETRY') and self.messages_from_kitten.endswith('\n'),
+            f'Unexpected messages from kitten: {self.messages_from_kitten!r}',
+        )
         q, self.messages_from_kitten = self.messages_from_kitten.rstrip(), ''
         parts = tuple(map(int, q.split(':')[1:]))
         copy, move = parts[:4], parts[4:]
@@ -160,8 +161,8 @@ class TestDnDKitten(BaseTest):
             self.assertGreater(copy[2], 4)
             self.assertGreater(move[2], 4)
         else:
-            self.assertEqual(copy, (0,0,0,0))
-            self.assertEqual(move, (0,0,0,0))
+            self.assertEqual(copy, (0, 0, 0, 0))
+            self.assertEqual(move, (0, 0, 0, 0))
         return copy, move
 
     def append(self, text):
@@ -169,8 +170,10 @@ class TestDnDKitten(BaseTest):
 
     def wait_for_responses(self, *responses, timeout=10):
         q = '\n'.join(responses)
+
         def wait_till():
             return q == self.messages_from_kitten.strip()
+
         try:
             self.pty.wait_till(wait_till, timeout, lambda: f'Responses so far: Expected:\n{q!r}\nActual:\n{self.messages_from_kitten.strip()!r}\n')
         finally:
@@ -237,7 +240,7 @@ class TestDnDKitten(BaseTest):
         self.send_dnd_command_to_kitten('DROP_MIMES')
         self.wait_for_responses(all_mimes)
         self.assertEqual('text/uri-list\x00image/png', self.probe_state('drop_mimes').rstrip('\x00'))
-        self.wait_for_state('drop_data_requests', ((1,0,0), (4,0,0)))
+        self.wait_for_state('drop_data_requests', ((1, 0, 0), (4, 0, 0)))
         self.assertEqual('text/uri-list', self.probe_state('drop_getting_data_for_mime'))
         create_fs(self.src_data_dir)
         uri_list, path_list = [], []
@@ -284,15 +287,16 @@ class TestDnDKitten(BaseTest):
             tf.write(b'edge case blank line test')
             edge_file = tf.name
         blank_line_uri_list = ('\r\n' + as_file_url(self.src_data_dir, os.path.basename(edge_file)) + '\r\n\r\n').encode()
-        dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], copy[0]+1, copy[1]+1)
+        dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], copy[0] + 1, copy[1] + 1)
         self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
-        dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], copy[0]+1, copy[1]+1)
+        dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], copy[0] + 1, copy[1] + 1)
         self.wait_for_state('drop_data_requests', ((1, 0, 0),))
         dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', blank_line_uri_list)
         self.wait_for_state('drop_action', 0)
         # The file should have been copied despite surrounding blank lines in the URI list.
-        self.assertTrue(os.path.exists(jn(self.kitten_wd, os.path.basename(edge_file))),
-                        'File from URI list with surrounding blank lines should be copied to destination')
+        self.assertTrue(
+            os.path.exists(jn(self.kitten_wd, os.path.basename(edge_file))), 'File from URI list with surrounding blank lines should be copied to destination'
+        )
         os.unlink(edge_file)
 
         # ---- overwrite confirmation: Enter key allows the overwrite ----
@@ -309,9 +313,9 @@ class TestDnDKitten(BaseTest):
             with open(path, 'wb') as f:
                 f.write(orig_content)
             expected_dest_content = src_content if action == GLFW_DRAG_OPERATION_COPY else orig_content
-            dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], copy[0]+1, copy[1]+1)
+            dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], copy[0] + 1, copy[1] + 1)
             self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
-            dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], copy[0]+1, copy[1]+1)
+            dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], copy[0] + 1, copy[1] + 1)
             self.wait_for_state('drop_data_requests', ((1, 0, 0),))
             dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', overwrite_uri)
             self.pty.wait_till(lambda: 'overwrite existing' in self.pty.screen_contents())
@@ -335,13 +339,16 @@ class TestDnDKitten(BaseTest):
             f.write(b'move test content')
         os.symlink('nonexistent_target', move_link)
         move_uri = (
-            as_file_url(self.src_data_dir, 'move_test.txt') + '\r\n' +
-            as_file_url(self.src_data_dir, 'move_test_dir') + '\r\n' +
-            as_file_url(self.src_data_dir, 'move_test_link') + '\r\n'
+            as_file_url(self.src_data_dir, 'move_test.txt')
+            + '\r\n'
+            + as_file_url(self.src_data_dir, 'move_test_dir')
+            + '\r\n'
+            + as_file_url(self.src_data_dir, 'move_test_link')
+            + '\r\n'
         ).encode()
-        dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], move[0]+1, move[1]+1)
+        dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], move[0] + 1, move[1] + 1)
         self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_MOVE)
-        dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], move[0]+1, move[1]+1)
+        dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], move[0] + 1, move[1] + 1)
         self.wait_for_state('drop_data_requests', ((1, 0, 0),))
         dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', move_uri)
         self.wait_for_state('last_drop_action', GLFW_DRAG_OPERATION_MOVE)
@@ -363,13 +370,10 @@ class TestDnDKitten(BaseTest):
         data_uri_b64 = standard_b64encode(data_uri_content_1).decode()
         data_uri_content_2 = b'\x89PNG\r\n\x1a\n' + b'\x00' * 8  # fake PNG bytes
         data_uri_b64_2 = standard_b64encode(data_uri_content_2).decode()
-        data_uri_list = (
-            f'data:text/plain;base64,{data_uri_b64}\r\n'
-            f'data:image/png;base64,{data_uri_b64_2}\r\n'
-        ).encode()
-        dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], copy[0]+1, copy[1]+1)
+        data_uri_list = (f'data:text/plain;base64,{data_uri_b64}\r\ndata:image/png;base64,{data_uri_b64_2}\r\n').encode()
+        dnd_test_fake_drop_event(self.capture.window_id, False, ['text/uri-list'], copy[0] + 1, copy[1] + 1)
         self.wait_for_state('drop_action', GLFW_DRAG_OPERATION_COPY)
-        dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], copy[0]+1, copy[1]+1)
+        dnd_test_fake_drop_event(self.capture.window_id, True, ['text/uri-list'], copy[0] + 1, copy[1] + 1)
         self.wait_for_state('drop_data_requests', ((1, 0, 0),))
         dnd_test_fake_drop_data(self.capture.window_id, 'text/uri-list', data_uri_list)
         self.wait_for_state('last_drop_action', GLFW_DRAG_OPERATION_COPY)
@@ -391,18 +395,21 @@ class TestDnDKitten(BaseTest):
 
     def test_dnd_kitten_drag(self):
         from .graphics import png_data
+
         drag_thumbnail = os.path.join(self.test_dir, 'drag.png')
         with open(drag_thumbnail, 'wb') as f:
             f.write(png_data)
         img_drag_path = 'image.png'
+
         def create_files():
             with open(os.path.join(self.kitten_wd, img_drag_path), 'wb') as f:
                 self.img_drag_data = os.urandom(10113)
                 f.write(self.img_drag_data)
             create_fs(self.src_data_dir)
+
         create_files()
         tl = tuple(os.path.join(self.src_data_dir, x) for x in os.listdir(self.src_data_dir))
-        self.finish_setup(cli_args=(f'--drag-thumbnail={drag_thumbnail}', f'--drag=image/png:{img_drag_path}') + tl) # )))
+        self.finish_setup(cli_args=(f'--drag-thumbnail={drag_thumbnail}', f'--drag=image/png:{img_drag_path}') + tl)  # )))
         with self.subTest(remote_client=False):
             self.dnd_kitten_drag(False, img_drag_path)
         self.reset_kitten(True)
@@ -436,21 +443,25 @@ class TestDnDKitten(BaseTest):
         copy, move = self.get_button_geometry()
         self.wait_for_state('can_offer', True)
         self.wait_for_state('drag_operations', 0)
+
         def wait_for_drag_active(active=True):
             self.send_dnd_command_to_kitten('DRAG_ACTIVE')
             self.wait_for_responses('DRAG_ACTIVE' if active else 'DRAG_INACTIVE')
             if active:
                 self.send_dnd_command_to_kitten('DRAG_OK')
                 self.wait_for_responses('DRAG_OK')
+
         def start_drag(x, y, expected):
             dnd_test_start_drag_offer(self.capture.window_id, x, y)
             wait_for_drag_active()
             self.wait_for_state('drag_operations', expected)
             self.wait_for_state('drag_thumbnail_size', 4)
+
         def end_drag(canceled=True):
             dnd_test_drag_finish(self.capture.window_id, canceled)
             wait_for_drag_active(False)
             self.wait_for_state('drag_operations', 0)
+
         start_drag(move[0] + 1, move[1] + 1, 2)
         self.assertEqual(set(self.probe_state('drag_mimes')), {'image/png', 'text/uri-list'})
         end_drag()

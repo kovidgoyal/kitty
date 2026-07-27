@@ -30,7 +30,6 @@ human_alphabet = (string.digits + string.ascii_letters)[2:]
 
 
 class ShortUUID:
-
     def __init__(self, alphabet: str = human_alphabet):
         self.alphabet = tuple(sorted(alphabet))
         self.alphabet_len = len(self.alphabet)

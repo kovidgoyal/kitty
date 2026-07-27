@@ -25,25 +25,27 @@ map = definition.add_map
 # shortcuts {{{
 agr('shortcuts', 'Keyboard shortcuts')
 
-map('Move selection up',
+map(
+    'Move selection up',
     'selection_up --allow-fallback=shifted,ascii ctrl+k selection_up',
-    )
-map('Move selection up',
+)
+map(
+    'Move selection up',
     'selection_up --allow-fallback=shifted,ascii ctrl+p selection_up',
-    )
-map('Move selection down',
+)
+map(
+    'Move selection down',
     'selection_down --allow-fallback=shifted,ascii ctrl+j selection_down',
-    )
-map('Move selection down',
+)
+map(
+    'Move selection down',
     'selection_down --allow-fallback=shifted,ascii ctrl+n selection_down',
-    )
+)
 
 egr()  # }}}
 
 
-def classify_action(
-    definition: str, alias_map: Any, action_to_group: dict[str, str]
-) -> tuple[str, str, str]:
+def classify_action(definition: str, alias_map: Any, action_to_group: dict[str, str]) -> tuple[str, str, str]:
     """Classify a keybinding definition into (action_name, category, alias).
 
     Returns the resolved action name, the category it belongs to, and the alias
@@ -90,8 +92,12 @@ def deduplicate_definitions(defns: list[Any]) -> list[Any]:
 
 
 def build_binding_entry(
-    key_repr: str, action_repr: str, definition: str, alias_map: Any,
-    action_to_group: dict[str, str], action_to_help: dict[str, str],
+    key_repr: str,
+    action_repr: str,
+    definition: str,
+    alias_map: Any,
+    action_to_group: dict[str, str],
+    action_to_help: dict[str, str],
     action_to_long_help: dict[str, str],
 ) -> tuple[dict[str, str], str]:
     """Build a single binding entry dict and return it with its category."""
@@ -109,9 +115,7 @@ def build_binding_entry(
     return entry, category
 
 
-def order_categories(
-    categories: dict[str, list[dict[str, str]]], group_order: list[str]
-) -> dict[str, list[dict[str, str]]]:
+def order_categories(categories: dict[str, list[dict[str, str]]], group_order: list[str]) -> dict[str, list[dict[str, str]]]:
     """Order categories by the groups order, with remaining categories sorted at the end."""
     ordered: dict[str, list[dict[str, str]]] = {}
     for group_title in group_order:
@@ -145,9 +149,8 @@ def collect_keyboard_bindings(
             for d in deduplicate_definitions(defns):
                 sc = as_sc(key, d)
                 entry, category = build_binding_entry(
-                    sc.human_repr(opts.kitty_mod), d.human_repr(),
-                    d.definition or '', opts.alias_map,
-                    action_to_group, action_to_help, action_to_long_help)
+                    sc.human_repr(opts.kitty_mod), d.human_repr(), d.definition or '', opts.alias_map, action_to_group, action_to_help, action_to_long_help
+                )
                 categories.setdefault(category, []).append(entry)
         for cat in categories:
             categories[cat].sort(key=lambda b: b['key'])
@@ -155,9 +158,7 @@ def collect_keyboard_bindings(
     return modes
 
 
-def relocate_mode_entry_bindings(
-    modes: dict[str, dict[str, list[dict[str, str]]]]
-) -> None:
+def relocate_mode_entry_bindings(modes: dict[str, dict[str, list[dict[str, str]]]]) -> None:
     """Move push_keyboard_mode bindings into their target mode's section."""
     if '' not in modes:
         return
@@ -182,9 +183,7 @@ def relocate_mode_entry_bindings(
     modes[''] = new_default_cats
 
 
-def add_unmapped_actions(
-    modes: dict[str, dict[str, list[dict[str, str]]]]
-) -> None:
+def add_unmapped_actions(modes: dict[str, dict[str, list[dict[str, str]]]]) -> None:
     """Add actions with no keyboard shortcut to the default mode."""
     from kitty.actions import get_all_actions, groups
 
@@ -199,14 +198,16 @@ def add_unmapped_actions(
         category = groups[group_key]
         for action in actions:
             if action.name not in mapped_actions:
-                default_mode_cats.setdefault(category, []).append({
-                    'key': '',
-                    'action': action.name,
-                    'action_display': action.name,
-                    'definition': action.name,
-                    'help': action.short_help,
-                    'long_help': action.long_help,
-                })
+                default_mode_cats.setdefault(category, []).append(
+                    {
+                        'key': '',
+                        'action': action.name,
+                        'action_display': action.name,
+                        'definition': action.name,
+                        'help': action.short_help,
+                        'long_help': action.long_help,
+                    }
+                )
 
     # Re-sort: mapped entries (non-empty key) first, then unmapped by action name.
     for cat in default_mode_cats:
@@ -216,9 +217,7 @@ def add_unmapped_actions(
     modes[''] = order_categories(default_mode_cats, list(groups.values()))
 
 
-def collect_bound_aliases(
-    modes: dict[str, dict[str, list[dict[str, str]]]]
-) -> set[str]:
+def collect_bound_aliases(modes: dict[str, dict[str, list[dict[str, str]]]]) -> set[str]:
     """Collect alias names that are already present from keybindings."""
     bound: set[str] = set()
     for mode_cats in modes.values():
@@ -242,10 +241,7 @@ def build_alias_entry(alias_map: Any, display: str, expansion: str) -> dict[str,
     }
 
 
-def add_alias_sections(
-    opts: Any,
-    modes: dict[str, dict[str, list[dict[str, str]]]]
-) -> None:
+def add_alias_sections(opts: Any, modes: dict[str, dict[str, list[dict[str, str]]]]) -> None:
     """Add Action aliases and Kitten aliases sections for unbound aliases."""
     bound_aliases = collect_bound_aliases(modes)
 
@@ -265,6 +261,7 @@ def add_alias_sections(
                 target_list.append(build_alias_entry(opts.alias_map, display, expansion))
 
     default_mode_cats = modes.setdefault('', {})
+
     def sort_key(b: dict[str, str]) -> tuple[bool, str]:
         return (b['key'] == '', b['key'] or b['action_display'])
 
@@ -323,10 +320,11 @@ def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, 
         # run action after event loop tick so command palette overlay is closed
         add_timer(partial(callback, target_window_id, action), 0, False)
 
+
 help_text = 'Browse and trigger keyboard shortcuts and actions'
 usage = ''
-OPTIONS = r'''
-'''.format
+OPTIONS = r"""
+""".format
 
 
 if __name__ == '__main__':

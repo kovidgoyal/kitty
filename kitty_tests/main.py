@@ -30,6 +30,7 @@ def contents(package: str) -> Iterator[str]:
         from importlib.resources import files
     except ImportError:
         from importlib.resources import contents
+
         return iter(contents(package))
     return (path.name for path in files(package).iterdir())
 
@@ -104,6 +105,7 @@ def run_cli(suite: unittest.TestSuite, verbosity: int = 4) -> bool:
     runner = r(verbosity=verbosity)
     runner.tb_locals = True  # type: ignore
     from .base import forwardable_stdio
+
     with forwardable_stdio():
         result = runner.run(suite)
     sys.stdout.flush()
@@ -116,7 +118,7 @@ def find_testable_go_packages() -> tuple[set[str], dict[str, list[str]]]:
     ans = set()
     base = os.getcwd()
     pat = re.compile(r'^func Test([A-Z]\w+)', re.MULTILINE)
-    for (dirpath, dirnames, filenames) in os.walk(base):
+    for dirpath, dirnames, filenames in os.walk(base):
         if 'b' in dirnames and os.path.basename(dirpath) == 'bypy':
             dirnames.remove('b')
         for f in filenames:
@@ -136,10 +138,10 @@ def go_exe() -> str:
 
 
 class GoProc(Thread):
-
     def __init__(self, cmd: list[str]):
         super().__init__(name='GoProc')
         from kitty.constants import kitty_exe
+
         env = os.environ.copy()
         env['KITTY_PATH_TO_KITTY_EXE'] = kitty_exe()
         self.stdout = b''
@@ -194,7 +196,6 @@ def run_go(packages: set[str], names: str) -> GoProc:
     return GoProc(cmd)
 
 
-
 def reduce_go_pkgs(module: str, names: Sequence[str]) -> set[str]:
     if not go_exe():
         raise SystemExit('go executable not found, current path: ' + repr(os.environ.get('PATH', '')))
@@ -241,7 +242,7 @@ def run_python_tests(args: Any, go_proc: 'Optional[GoProc]' = None) -> None:
         if exit_code == 0:
             exit_code = go_proc.returncode
     if exit_code != 0:
-        print("\x1b[31mError\x1b[39m: Some tests failed!")
+        print('\x1b[31mError\x1b[39m: Some tests failed!')
     raise SystemExit(exit_code)
 
 
@@ -261,7 +262,7 @@ def run_tests(report_env: bool = False) -> None:
     parser.add_argument(
         '--module',
         default='',
-        help='Name of a test module to restrict to. For example: ssh.' ' For Go tests this is the name of a package, for example: tools/cli',
+        help='Name of a test module to restrict to. For example: ssh. For Go tests this is the name of a package, for example: tools/cli',
     )
     args = parser.parse_args()
     if args.name and args.name[0] in ('type-check', 'type_check', 'mypy'):
@@ -308,25 +309,30 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
     if report_env:
         print('Using PATH in test environment:', path)
         from kitty.fast_data_types import has_avx2, has_sse4_2
+
         print(f'Intrinsics: {has_avx2=} {has_sse4_2=}')
     # we need fonts installed in the user home directory as well, so initialize
     # fontconfig before nuking $HOME and friends
     from kitty.fonts.common import all_fonts_map
+
     all_fonts_map(True)
 
-    with TemporaryDirectory() as tdir, env_vars(
-        HOME=tdir,
-        KT_ORIGINAL_HOME=os.path.expanduser('~'),
-        USERPROFILE=tdir,
-        PATH=path,
-        TERM='xterm-kitty',
-        SLANGC=slangc,
-        XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
-        XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
-        XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
-        XDG_CACHE_HOME=os.path.join(tdir, '.cache'),
-        XDG_RUNTIME_DIR=os.path.join(tdir, '.cache', 'run'),
-        PYTHONWARNINGS='error',
+    with (
+        TemporaryDirectory() as tdir,
+        env_vars(
+            HOME=tdir,
+            KT_ORIGINAL_HOME=os.path.expanduser('~'),
+            USERPROFILE=tdir,
+            PATH=path,
+            TERM='xterm-kitty',
+            SLANGC=slangc,
+            XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
+            XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
+            XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
+            XDG_CACHE_HOME=os.path.join(tdir, '.cache'),
+            XDG_RUNTIME_DIR=os.path.join(tdir, '.cache', 'run'),
+            PYTHONWARNINGS='error',
+        ),
     ):
         if os.path.isdir(gohome):
             os.symlink(gohome, os.path.join(tdir, os.path.basename(gohome)))

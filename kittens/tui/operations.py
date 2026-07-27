@@ -118,7 +118,7 @@ def without_line_wrap(write: Callable[[str], None]) -> Generator[None, None, Non
 @cmd
 def repeat(char: str, count: int) -> str:
     if count > 5:
-        return f'{char}\x1b[{count-1}b'
+        return f'{char}\x1b[{count - 1}b'
     return char * count
 
 
@@ -189,13 +189,7 @@ def sgr(*parts: str) -> str:
 
 
 @cmd
-def colored(
-    text: str,
-    color: ColorSpec,
-    intense: bool = False,
-    reset_to: ColorSpec | None = None,
-    reset_to_intense: bool = False
-) -> str:
+def colored(text: str, color: ColorSpec, intense: bool = False, reset_to: ColorSpec | None = None, reset_to_intense: bool = False) -> str:
     e = color_code(color, intense)
     return f'\033[{e}m{text}\033[{39 if reset_to is None else color_code(reset_to, reset_to_intense)}m'
 
@@ -257,6 +251,7 @@ def styled(
 
 def serialize_gr_command(cmd: dict[str, int | str], payload: bytes | None = None) -> bytes:
     from .images import GraphicsCommand
+
     gc = GraphicsCommand()
     for k, v in cmd.items():
         setattr(gc, k, v)
@@ -275,6 +270,7 @@ def gr_command(cmd: Union[dict[str, int | str], 'GraphicsCommandType'], payload:
 @cmd
 def clear_images_on_screen(delete_data: bool = False) -> str:
     from .images import GraphicsCommand
+
     gc = GraphicsCommand()
     gc.a = 'd'
     gc.d = 'A' if delete_data else 'a'
@@ -291,14 +287,24 @@ class MouseTracking(Enum):
 def init_state(alternate_screen: bool = True, mouse_tracking: MouseTracking = MouseTracking.none, kitty_keyboard_mode: bool = True) -> str:
     sc = SAVE_CURSOR if alternate_screen else ''
     ans = (
-        sc + SAVE_PRIVATE_MODE_VALUES + reset_mode(Mode.LNM) +
-        reset_mode(Mode.IRM) + reset_mode(Mode.DECKM) + reset_mode(Mode.DECSCNM) +
-        set_mode(Mode.DECARM) + set_mode(Mode.DECAWM) +
-        set_mode(Mode.DECTCEM) + reset_mode(Mode.MOUSE_BUTTON_TRACKING) +
-        reset_mode(Mode.MOUSE_MOTION_TRACKING) + reset_mode(Mode.MOUSE_MOVE_TRACKING) +
-        reset_mode(Mode.FOCUS_TRACKING) + reset_mode(Mode.MOUSE_UTF8_MODE) +
-        reset_mode(Mode.MOUSE_SGR_MODE) + set_mode(Mode.BRACKETED_PASTE) + SAVE_COLORS +
-        '\033[*x'  # reset DECSACE to default region select
+        sc
+        + SAVE_PRIVATE_MODE_VALUES
+        + reset_mode(Mode.LNM)
+        + reset_mode(Mode.IRM)
+        + reset_mode(Mode.DECKM)
+        + reset_mode(Mode.DECSCNM)
+        + set_mode(Mode.DECARM)
+        + set_mode(Mode.DECAWM)
+        + set_mode(Mode.DECTCEM)
+        + reset_mode(Mode.MOUSE_BUTTON_TRACKING)
+        + reset_mode(Mode.MOUSE_MOTION_TRACKING)
+        + reset_mode(Mode.MOUSE_MOVE_TRACKING)
+        + reset_mode(Mode.FOCUS_TRACKING)
+        + reset_mode(Mode.MOUSE_UTF8_MODE)
+        + reset_mode(Mode.MOUSE_SGR_MODE)
+        + set_mode(Mode.BRACKETED_PASTE)
+        + SAVE_COLORS
+        + '\033[*x'  # reset DECSACE to default region select
     )
     if alternate_screen:
         ans += set_mode(Mode.ALTERNATE_SCREEN) + reset_mode(Mode.DECOM)
@@ -362,6 +368,7 @@ def alternate_screen() -> Generator[None, None, None]:
 def raw_mode(fd: int | None = None) -> Generator[None, None, None]:
     import termios
     import tty
+
     if fd is None:
         fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)
@@ -378,7 +385,7 @@ def set_default_colors(
     bg: Color | str | None = None,
     cursor: Color | str | None = None,
     select_bg: Color | str | None = None,
-    select_fg: Color | str | None = None
+    select_fg: Color | str | None = None,
 ) -> str:
     ans = ''
 
@@ -421,6 +428,7 @@ def overlay_ready() -> str:
 @cmd
 def write_to_clipboard(data: str | bytes, use_primary: bool = False) -> str:
     from base64 import standard_b64encode
+
     fmt = 'p' if use_primary else 'c'
     if isinstance(data, str):
         data = data.encode('utf-8')
@@ -440,6 +448,7 @@ def writer(handler: HandlerType, func: Callable[..., bytes | str]) -> Callable[.
     @wraps(func)
     def f(*a: Any, **kw: Any) -> None:
         handler.write(func(*a, **kw))
+
     return f
 
 
@@ -453,6 +462,7 @@ def commander(handler: HandlerType) -> CMD:
 def func_sig(func: Callable[..., Any]) -> Generator[str, None, None]:
     import inspect
     import re
+
     s = inspect.signature(func)
     for val in s.parameters.values():
         yield re.sub(r'ForwardRef\([\'"](\w+?)[\'"]\)', r'\1', str(val).replace('NoneType', 'None'))
@@ -475,4 +485,6 @@ def as_type_stub() -> str:
     ans += ['', '', 'class CMD:'] + methods
 
     return '\n'.join(ans) + '\n\n\n'
+
+
 # }}}

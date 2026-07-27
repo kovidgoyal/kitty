@@ -11,14 +11,16 @@ if TYPE_CHECKING:
 
 
 class CloseWindow(RemoteCommand):
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     match/str: Which window to close
     self/bool: Boolean indicating whether to close the window the command is run in
     ignore_no_match/bool: Boolean indicating whether no matches should be ignored or return an error
-    '''
+    """
 
     short_desc = 'Close the specified windows'
-    options_spec = MATCH_WINDOW_OPTION + '''\n
+    options_spec = (
+        MATCH_WINDOW_OPTION
+        + """\n
 --no-response
 type=bool-set
 default=false
@@ -34,7 +36,8 @@ Close the window this command is run in, rather than the active window.
 --ignore-no-match
 type=bool-set
 Do not return an error if no windows are matched to be closed.
-'''
+"""
+    )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'self': opts.self, 'ignore_no_match': opts.ignore_no_match}

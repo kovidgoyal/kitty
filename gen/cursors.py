@@ -7,6 +7,7 @@ import sys
 
 if __name__ == '__main__' and not __package__:
     import __main__
+
     __main__.__package__ = 'gen'
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -19,7 +20,7 @@ from .key_constants import patch_file
 # Cocoa: https://developer.apple.com/documentation/appkit/nscursor + secret apple selectors + SDL_cocoamouse.m
 
 # kitty_names CSS_name       XCursor_names                             Wayland_name    Cocoa_name
-cursors = '''\
+cursors = """\
 arrow         default        default,!left_ptr                         default         arrowCursor
 beam,text     text           text,!xterm,ibeam                         text            IBeamCursor
 pointer,hand  pointer        pointing_hand,pointer,!hand2,hand         pointer         pointingHandCursor
@@ -54,10 +55,10 @@ not-allowed   not-allowed    not-allowed,forbidden,crossed_circle      not_allow
 no-drop       no-drop        no-drop,dnd-no-drop                       no_drop         operationNotAllowedCursor
 grab          grab           grab,openhand,!hand1                      grab            openHandCursor
 grabbing      grabbing       grabbing,closedhand,dnd-none              grabbing        closedHandCursor
-'''
+"""
 
 
-def main(args: list[str]=sys.argv) -> None:
+def main(args: list[str] = sys.argv) -> None:
     glfw_enum = []
     css_names = []
     glfw_xc_map = {}
@@ -90,7 +91,7 @@ def main(args: list[str]=sys.argv) -> None:
             glfw_xc_map[glfw_name] = ', '.join(f'''"{x.replace('!', '')}"''' for x in xc)
             for x in xc:
                 if x.startswith('!'):
-                    glfw_xfont_map.append(f"case {glfw_name}: return set_cursor_from_font(cursor, {'XC_' + x[1:]});")
+                    glfw_xfont_map.append(f'case {glfw_name}: return set_cursor_from_font(cursor, {"XC_" + x[1:]});')
                     break
             else:
                 items = tuple('"' + x.replace('!', '') + '"' for x in xc)
@@ -118,36 +119,49 @@ def main(args: list[str]=sys.argv) -> None:
     patch_file('glfw/x11_window.c', 'glfw to xc mapping', '\n'.join(f'        {x}' for x in glfw_xfont_map))
     patch_file('kitty/data-types.h', 'mouse shapes', '\n'.join(f'    {x},' for x in enum_to_glfw_map))
     patch_file(
-        'kitty/options/utils.py', 'pointer shape names', '\n'.join(f'    {x!r},' for x in kitty_to_enum_map),
-        start_marker='# ', end_marker='',
+        'kitty/options/utils.py',
+        'pointer shape names',
+        '\n'.join(f'    {x!r},' for x in kitty_to_enum_map),
+        start_marker='# ',
+        end_marker='',
     )
-    patch_file('kitty/options/to-c.h', 'pointer shapes', '\n'.join(
-        f'    else if (strcmp(name, "{k}") == 0) return {v};' for k, v in kitty_to_enum_map.items()))
-    patch_file('kitty/glfw.c', 'enum to glfw', '\n'.join(
-        f'        case {k}: set_glfw_mouse_cursor(w, {v}); break;' for k, v in enum_to_glfw_map.items()))
-    patch_file('kitty/glfw.c', 'name to glfw', '\n'.join(
-        f'    if (strcmp(name, "{k}") == 0) return {enum_to_glfw_map[v]};' for k, v in kitty_to_enum_map.items()))
-    patch_file('kitty/glfw.c', 'glfw to css', '\n'.join(
-        f'        case {g}: return "{c}";' for g, c in glfw_css_map.items()
-    ))
-    patch_file('kitty/screen.c', 'enum to css', '\n'.join(
-        f'        case {e}: ans = "{c}"; break;' for e, c in enum_to_css_map.items()))
-    patch_file('kitty/screen.c', 'css to enum', '\n'.join(
-        f'        else if (strcmp("{c}", css_name) == 0) s = {e};' for c, e in css_to_enum.items()))
+    patch_file('kitty/options/to-c.h', 'pointer shapes', '\n'.join(f'    else if (strcmp(name, "{k}") == 0) return {v};' for k, v in kitty_to_enum_map.items()))
+    patch_file('kitty/glfw.c', 'enum to glfw', '\n'.join(f'        case {k}: set_glfw_mouse_cursor(w, {v}); break;' for k, v in enum_to_glfw_map.items()))
+    patch_file(
+        'kitty/glfw.c', 'name to glfw', '\n'.join(f'    if (strcmp(name, "{k}") == 0) return {enum_to_glfw_map[v]};' for k, v in kitty_to_enum_map.items())
+    )
+    patch_file('kitty/glfw.c', 'glfw to css', '\n'.join(f'        case {g}: return "{c}";' for g, c in glfw_css_map.items()))
+    patch_file('kitty/screen.c', 'enum to css', '\n'.join(f'        case {e}: ans = "{c}"; break;' for e, c in enum_to_css_map.items()))
+    patch_file('kitty/screen.c', 'css to enum', '\n'.join(f'        else if (strcmp("{c}", css_name) == 0) s = {e};' for c, e in css_to_enum.items()))
     patch_file('glfw/cocoa_window.m', 'glfw to cocoa', '\n'.join(f'        {x}' for x in glfw_cocoa_map.values()))
-    patch_file('docs/pointer-shapes.rst', 'list of shape css names', '\n'.join(
-        f'#. {x}' if x else '' for x in [''] + sorted(css_names) + ['']), start_marker='.. ', end_marker='')
-    patch_file('tools/tui/loop/mouse.go', 'pointer shape enum', '\n'.join(
-        f'\t{x} PointerShape = {i}' for i, x in enumerate(enum_to_glfw_map)), start_marker='// ', end_marker='')
-    patch_file('tools/tui/loop/mouse.go', 'pointer shape tostring', '\n'.join(
-        f'''\tcase {x}: return "{x.lower().rpartition('_')[0].replace('_', '-')}"''' for x in enum_to_glfw_map), start_marker='// ', end_marker='')
-    patch_file('tools/cmd/mouse_demo/main.go', 'all pointer shapes', '\n'.join(
-        f'\tloop.{x},' for x in enum_to_glfw_map), start_marker='// ', end_marker='')
+    patch_file(
+        'docs/pointer-shapes.rst',
+        'list of shape css names',
+        '\n'.join(f'#. {x}' if x else '' for x in [''] + sorted(css_names) + ['']),
+        start_marker='.. ',
+        end_marker='',
+    )
+    patch_file(
+        'tools/tui/loop/mouse.go',
+        'pointer shape enum',
+        '\n'.join(f'\t{x} PointerShape = {i}' for i, x in enumerate(enum_to_glfw_map)),
+        start_marker='// ',
+        end_marker='',
+    )
+    patch_file(
+        'tools/tui/loop/mouse.go',
+        'pointer shape tostring',
+        '\n'.join(f'''\tcase {x}: return "{x.lower().rpartition('_')[0].replace('_', '-')}"''' for x in enum_to_glfw_map),
+        start_marker='// ',
+        end_marker='',
+    )
+    patch_file('tools/cmd/mouse_demo/main.go', 'all pointer shapes', '\n'.join(f'\tloop.{x},' for x in enum_to_glfw_map), start_marker='// ', end_marker='')
 
     subprocess.check_call(['glfw/glfw.py'])
 
 
 if __name__ == '__main__':
     import runpy
+
     m = runpy.run_path(os.path.dirname(os.path.abspath(__file__)))
     m['main']([sys.executable, 'cursors'])

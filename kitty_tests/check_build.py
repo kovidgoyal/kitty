@@ -17,9 +17,9 @@ from .base import BaseTest
 
 
 class TestBuild(BaseTest):
-
     def test_exe(self) -> None:
         from kitty.constants import kitten_exe, kitty_exe, slangc, str_version
+
         exe = kitty_exe()
         self.assertTrue(os.access(exe, os.X_OK))
         self.assertTrue(os.path.isfile(exe))
@@ -33,18 +33,21 @@ class TestBuild(BaseTest):
     def test_loading_extensions(self) -> None:
         import kitty.fast_data_types as fdt
         from kittens.transfer import rsync
+
         del fdt, rsync
 
     def test_slang_build(self) -> None:
         from kitty.shaders.slang import test_slang_build
+
         test_slang_build()
 
     def test_macos_dictation_forwarding(self) -> None:
         from kitty.constants import glfw_path, is_macos
+
         if not is_macos or not shutil.which('clang'):
-                self.skipTest('Dictation smoke test is macOS only and requires clang')
+            self.skipTest('Dictation smoke test is macOS only and requires clang')
         cocoa_module = glfw_path('cocoa')
-        probe = textwrap.dedent('''\
+        probe = textwrap.dedent("""\
             #import <AppKit/AppKit.h>
             #import <dlfcn.h>
             #import <objc/runtime.h>
@@ -121,7 +124,7 @@ class TestBuild(BaseTest):
                 }
                 return 0;
             }
-        ''').replace('@@COCOA_MODULE@@', json.dumps(cocoa_module))
+        """).replace('@@COCOA_MODULE@@', json.dumps(cocoa_module))
         with tempfile.TemporaryDirectory() as tdir:
             src = os.path.join(tdir, 'dictation_probe.m')
             exe = os.path.join(tdir, 'dictation_probe')
@@ -129,10 +132,7 @@ class TestBuild(BaseTest):
                 f.write(probe)
             nm = subprocess.run(['nm', '-g', cocoa_module], capture_output=True, text=True)
             asan_flags = ['-fsanitize=address,undefined', '-fno-omit-frame-pointer'] if '__asan_init' in nm.stdout else []
-            cp = subprocess.run(
-                ['clang', '-framework', 'AppKit'] + asan_flags + [src, '-o', exe],
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-            )
+            cp = subprocess.run(['clang', '-framework', 'AppKit'] + asan_flags + [src, '-o', exe], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             self.assertEqual(cp.returncode, 0, cp.stdout)
             cp = subprocess.run([exe], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             self.assertEqual(cp.returncode, 0, cp.stdout)
@@ -140,6 +140,7 @@ class TestBuild(BaseTest):
 
     def test_glfw_modules(self) -> None:
         from kitty.constants import glfw_path, is_macos
+
         linux_backends = ['x11']
         if not self.is_ci:
             linux_backends.append('wayland')
@@ -151,6 +152,7 @@ class TestBuild(BaseTest):
 
     def test_all_kitten_names(self) -> None:
         from kittens.runner import all_kitten_names
+
         names = all_kitten_names()
         self.assertIn('diff', names)
         self.assertIn('hints', names)
@@ -158,6 +160,7 @@ class TestBuild(BaseTest):
 
     def test_filesystem_locations(self) -> None:
         from kitty.constants import fonts_dir, local_docs, logo_png_file, shell_integration_dir, terminfo_dir
+
         zsh = os.path.join(shell_integration_dir, 'zsh')
         self.assertTrue(os.path.isdir(terminfo_dir), f'Terminfo dir: {terminfo_dir}')
         self.assertTrue(os.path.exists(logo_png_file), f'Logo file: {logo_png_file}')
@@ -178,6 +181,7 @@ class TestBuild(BaseTest):
 
     def test_ca_certificates(self):
         import ssl
+
         if not getattr(sys, 'frozen', False):
             self.skipTest('CA certificates are only tested on frozen builds')
         c = ssl.create_default_context()
@@ -190,6 +194,7 @@ class TestBuild(BaseTest):
         def run_tests(p, base, suffix='.html'):
             def t(x, e):
                 self.ae(p(x), base + e)
+
             t('', 'index.html' if suffix == '.html' else '')
             t('conf', f'conf{suffix}')
             t('kittens/ssh#frag', f'kittens/ssh{suffix}#frag')
@@ -210,8 +215,13 @@ class TestBuild(BaseTest):
         import subprocess
 
         from kitty.constants import kitty_exe
+
         exe = kitty_exe()
-        cp = subprocess.run([exe, '+runpy', f'''\
+        cp = subprocess.run(
+            [
+                exe,
+                '+runpy',
+                f"""\
 import os, sys
 if sys.stdin:
     os.close(sys.stdin.fileno())
@@ -220,7 +230,9 @@ if sys.stdout:
 if sys.stderr:
     os.close(sys.stderr.fileno())
 os.execlp({exe!r}, 'kitty', '+runpy', 'import sys; raise SystemExit(1 if sys.stdout is None or sys.stdin is None or sys.stderr is None else 0)')
-'''])
+""",
+            ]
+        )
         self.assertEqual(cp.returncode, 0)
 
 

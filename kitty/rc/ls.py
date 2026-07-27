@@ -14,13 +14,13 @@ if TYPE_CHECKING:
 
 
 class LS(RemoteCommand):
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     all_env_vars/bool: Whether to send all environment variables for every window rather than just differing ones
     match/str: Window to change colors in
     match_tab/str: Tab to change colors in
     self/bool: Boolean indicating whether to list only the window the command is run in
     output_format/str: Output in json or session format
-    '''
+    """
 
     short_desc = 'List tabs/windows'
     desc = (
@@ -33,7 +33,8 @@ class LS(RemoteCommand):
         'You can use these criteria to select windows/tabs for the other commands.\n\n'
         'You can limit the windows/tabs in the output by using the :option:`--match` and :option:`--match-tab` options.'
     )
-    options_spec = '''\
+    options_spec = (
+        """\
 --all-env-vars
 type=bool-set
 Show all environment variables in output, not just differing ones.
@@ -49,7 +50,12 @@ type=choices
 choices=json,session
 default=json
 Output in JSON or kitty session format
-''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t', 1)
+"""
+        + '\n\n'
+        + MATCH_WINDOW_OPTION
+        + '\n\n'
+        + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t', 1)
+    )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'all_env_vars': opts.all_env_vars, 'match': opts.match, 'match_tab': opts.match_tab}
@@ -59,16 +65,20 @@ Output in JSON or kitty session format
         window_filter: Callable[[Window], bool] | None = None
 
         if payload_get('self'):
+
             def wf(w: Window) -> bool:
                 return w is window
+
             window_filter = wf
         elif payload_get('match') is not None or payload_get('match_tab') is not None:
             window_ids = frozenset(w.id for w in self.windows_for_payload(boss, window, payload_get, window_match_name='match'))
+
             def wf(w: Window) -> bool:
                 return w.id in window_ids
+
             window_filter = wf
         elif payload_get('output_format') == 'session':
-            return "\n".join(boss.serialize_state_as_session())
+            return '\n'.join(boss.serialize_state_as_session())
 
         data = list(boss.list_os_windows(window, tab_filter, window_filter))
         if not payload_get('all_env_vars'):

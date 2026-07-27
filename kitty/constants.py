@@ -42,6 +42,7 @@ def slangc() -> tuple[str, ...]:
     global _slangc
     if not _slangc:
         from kitty.fast_data_types import Shlex
+
         _slangc = tuple(Shlex(os.environ.get('SLANGC', 'slangc'), False))
     return _slangc
 

@@ -10,11 +10,10 @@ if TYPE_CHECKING:
 
 
 class SetUserVars(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     var/list.str: List of user variables of the form NAME=VALUE
     match/str: Which windows to change the title in
-    '''
+    """
 
     short_desc = 'Set user variables on a window'
     desc = (

@@ -15,56 +15,31 @@ base = os.path.dirname(os.path.abspath(__file__))
 
 # To generate this template create an icon using Icon Composer on macOS and in
 # the saved .icon (which is a folder) look for icon.js
-icon_settings:dict[str, Any] = {
-  'fill-specializations' : [
-    {
-      'value' : {
-        'automatic-gradient' : 'extended-gray:1.00000,1.00000'
-      }
-    },
-    {
-      'appearance' : 'dark',
-      'value' : {
-        'automatic-gradient' : 'display-p3:0.20500,0.20500,0.20500,1.00000'
-      }
-    }
-  ],
-  'groups' : [
-    {
-      'layers' : [
-        {
-          'blend-mode' : 'normal',
-          'glass' : False,
-          'hidden' : False,
-          'image-name' : 'icon.svg',
-          'name' : 'icon',
-          'opacity' : 1,
-          'position' : {
-            'scale' : 0.9,
-            'translation-in-points' : [
-              0,
-              0
-            ]
-          }
-        }
-      ],
-      'shadow' : {
-        'kind' : 'neutral',
-        'opacity' : 0.5
-      },
-      'translucency' : {
-        'enabled' : True,
-        'value' : 0.5
-      }
-    }
-  ],
-  'supported-platforms' : {
-    'circles' : [
-      'watchOS'
+icon_settings: dict[str, Any] = {
+    'fill-specializations': [
+        {'value': {'automatic-gradient': 'extended-gray:1.00000,1.00000'}},
+        {'appearance': 'dark', 'value': {'automatic-gradient': 'display-p3:0.20500,0.20500,0.20500,1.00000'}},
     ],
-    'squares' : 'shared'
-  }
+    'groups': [
+        {
+            'layers': [
+                {
+                    'blend-mode': 'normal',
+                    'glass': False,
+                    'hidden': False,
+                    'image-name': 'icon.svg',
+                    'name': 'icon',
+                    'opacity': 1,
+                    'position': {'scale': 0.9, 'translation-in-points': [0, 0]},
+                }
+            ],
+            'shadow': {'kind': 'neutral', 'opacity': 0.5},
+            'translucency': {'enabled': True, 'value': 0.5},
+        }
+    ],
+    'supported-platforms': {'circles': ['watchOS'], 'squares': 'shared'},
 }
+
 
 def abspath(x: str) -> str:
     return os.path.abspath(os.path.join(base, x))
@@ -79,6 +54,7 @@ def run(*args: str) -> None:
 
 def get_svg_viewbox(file_path: str) -> tuple[float, ...]:
     import xml.etree.ElementTree as ET
+
     tree = ET.parse(file_path)
     root = tree.getroot()
     viewbox = root.get('viewBox')
@@ -113,8 +89,17 @@ def create_icon(name: str, svg_path: str, output_path: str) -> str:
 
 def create_assets() -> None:
     actool = [
-        'xcrun', 'actool', '--warnings', '--platform', 'macosx', '--compile', base,
-        '--minimum-deployment-target', '15.0', '--output-partial-info-plist', '/dev/stdout',
+        'xcrun',
+        'actool',
+        '--warnings',
+        '--platform',
+        'macosx',
+        '--compile',
+        base,
+        '--minimum-deployment-target',
+        '15.0',
+        '--output-partial-info-plist',
+        '/dev/stdout',
     ]
     icon = create_icon('kitty', abspath(SRC), base)
     run(*(actool + ['--app-icon', 'kitty', icon]))

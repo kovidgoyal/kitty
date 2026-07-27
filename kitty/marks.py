@@ -56,7 +56,7 @@ def marker_from_text(expression: str, color: int) -> MarkerFunc:
 
 def marker_from_function(func: Callable[[str], Iterable[tuple[int, int, int]]]) -> MarkerFunc:
     def marker(text: str, left_address: int, right_address: int, color_address: int) -> Generator[None, None, None]:
-        for (ll, r, c) in func(text):
+        for ll, r, c in func(text):
             set_uint_at_address(left_address, ll)
             set_uint_at_address(right_address, r)
             set_uint_at_address(color_address, c)
@@ -73,7 +73,8 @@ def marker_from_spec(ftype: str, spec: str | Sequence[tuple[int, str]], flags: i
         return marker_from_multiple_regex(spec, flags=flags)
     if ftype == 'function':
         import runpy
+
         assert isinstance(spec, str)
         path = resolve_custom_file(spec)
-        return marker_from_function(runpy.run_path(path, run_name='__marker__')["marker"])
+        return marker_from_function(runpy.run_path(path, run_name='__marker__')['marker'])
     raise ValueError(f'Unknown marker type: {ftype}')

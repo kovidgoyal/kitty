@@ -97,7 +97,7 @@ def run_build(args: Any) -> None:
         run_with_retry(prefix + f'program --non-interactive --extra-program-data "{vcs_rev}"', retry_cmd=retry_cmd)
     run_with_retry(
         f'python ../bypy macos program --sign-installers --notarize --non-interactive --extra-program-data "{vcs_rev}"',
-        retry_cmd='python ../bypy macos shutdown'
+        retry_cmd='python ../bypy macos shutdown',
     )
     call('python ../bypy macos shutdown', echo=True)
     call('make debug')
@@ -185,10 +185,7 @@ def sign_file(path: str) -> None:
     dest = f'{path}.sig'
     with suppress(FileNotFoundError):
         os.remove(dest)
-    subprocess.check_call([
-        os.environ['PENV'] + '/gpg-as-kovid', '--output', f'{path}.sig',
-        '--detach-sig', path
-    ])
+    subprocess.check_call([os.environ['PENV'] + '/gpg-as-kovid', '--output', f'{path}.sig', '--detach-sig', path])
 
 
 def run_sdist(args: Any) -> None:
@@ -243,11 +240,10 @@ class ReadFileWithProgressReporting(io.FileIO):  # {{{
         eta = int((self._total - self.tell()) / bit_rate) + 1
         eta_m, eta_s = divmod(eta, 60)
         if sys.stdout.isatty():
-            write(
-                f'\r\033[K\033[?7h {frac}% {mb_pos:.1f}/{mb_tot:.1f}MB {kb_rate:.1f} KB/sec {eta_m} minutes, {eta_s} seconds left\033[?7l')
+            write(f'\r\033[K\033[?7h {frac}% {mb_pos:.1f}/{mb_tot:.1f}MB {kb_rate:.1f} KB/sec {eta_m} minutes, {eta_s} seconds left\033[?7l')
         if self.tell() >= self._total:
             t = int(time.monotonic() - self.start_time) + 1
-            print(f'\nUpload took {t//60} minutes and {t%60} seconds at {kb_rate:.1f} KB/sec')
+            print(f'\nUpload took {t // 60} minutes and {t % 60} seconds at {kb_rate:.1f} KB/sec')
         sys.stdout.flush()
 
 
@@ -255,20 +251,10 @@ class ReadFileWithProgressReporting(io.FileIO):  # {{{
 
 
 class GitHub:  # {{{
-
     API = 'https://api.github.com'
 
-    def __init__(
-        self,
-        files: Dict[str, str],
-        reponame: str,
-        version: str,
-        username: str,
-        password: str,
-        replace: bool = False
-    ):
-        self.files, self.reponame, self.version, self.username, self.password, self.replace = (
-            files, reponame, version, username, password, replace)
+    def __init__(self, files: Dict[str, str], reponame: str, version: str, username: str, password: str, replace: bool = False):
+        self.files, self.reponame, self.version, self.username, self.password, self.replace = (files, reponame, version, username, password, replace)
         self.current_tag_name = self.version if self.version == 'nightly' else f'v{self.version}'
         self.is_nightly = self.current_tag_name == 'nightly'
         self.auth = 'Basic ' + base64.standard_b64encode(f'{self.username}:{self.password}'.encode()).decode()
@@ -281,11 +267,14 @@ class GitHub:  # {{{
         print(*args, flush=True, file=sys.stderr)
 
     def make_request(
-        self, url: str, data: Optional[Dict[str, Any]] = None, method:str = 'GET',
+        self,
+        url: str,
+        data: Optional[Dict[str, Any]] = None,
+        method: str = 'GET',
         upload_data: Optional[ReadFileWithProgressReporting] = None,
         params: Optional[Dict[str, str]] = None,
     ) -> HTTPSConnection:
-        headers={
+        headers = {
             'Authorization': self.auth,
             'Accept': 'application/vnd.github+json',
             'User-Agent': 'kitty',
@@ -309,8 +298,12 @@ class GitHub:  # {{{
         return conn
 
     def make_request_with_retries(
-        self, url: str, data: Optional[Dict[str, str]] = None, method:str = 'GET',
-        num_tries: int = 2, sleep_between_tries: float = 15,
+        self,
+        url: str,
+        data: Optional[Dict[str, str]] = None,
+        method: str = 'GET',
+        num_tries: int = 2,
+        sleep_between_tries: float = 15,
         success_codes: Tuple[int, ...] = (200,),
         failure_msg: str = 'Request failed',
         return_data: bool = False,
@@ -350,9 +343,10 @@ class GitHub:  # {{{
         now = str(datetime.datetime.now(datetime.timezone.utc)).split('.')[0] + ' UTC'
         commit = subprocess.check_output(['git', 'rev-parse', '--verify', '--end-of-options', 'master^{commit}']).decode('utf-8').strip()
         self.patch(
-            url, 'Failed to update nightly release description',
+            url,
+            'Failed to update nightly release description',
             body=f'Nightly release, generated on: {now} from commit: {commit}.'
-            ' For how to install nightly builds, see: https://sw.kovidgoyal.net/kitty/binary/#customizing-the-installation'
+            ' For how to install nightly builds, see: https://sw.kovidgoyal.net/kitty/binary/#customizing-the-installation',
         )
 
     def __call__(self) -> None:
@@ -360,15 +354,20 @@ class GitHub:  # {{{
         release = self.create_release()
         upload_url = release['upload_url'].partition('{')[0]
         all_assest_for_release = self.existing_assets_for_release(release)
-        assets_by_fname = {a['name']:a for a in all_assest_for_release}
+        assets_by_fname = {a['name']: a for a in all_assest_for_release}
 
         def delete_asset(asset: Dict[str, Any], allow_not_found: bool = True) -> None:
             success_codes = [204]
             if allow_not_found:
                 success_codes.append(404)
             self.make_request_with_retries(
-                asset['url'], method='DELETE', num_tries=5, sleep_between_tries=2, success_codes=tuple(success_codes),
-                failure_msg='Failed to delete asset from GitHub')
+                asset['url'],
+                method='DELETE',
+                num_tries=5,
+                sleep_between_tries=2,
+                success_codes=tuple(success_codes),
+                failure_msg='Failed to delete asset from GitHub',
+            )
 
         def upload_with_retries(path: str, desc: str, num_tries: int = 8, sleep_time: float = 60.0) -> None:
             fname = os.path.basename(path)
@@ -380,8 +379,13 @@ class GitHub:  # {{{
             params = {'name': fname, 'label': desc}
 
             self.make_request_with_retries(
-                upload_url, upload_path=path, params=params, num_tries=num_tries, sleep_between_tries=sleep_time,
-                failure_msg=f'Failed to upload file: {fname}', success_codes=(201,),
+                upload_url,
+                upload_path=path,
+                params=params,
+                num_tries=num_tries,
+                sleep_between_tries=sleep_time,
+                failure_msg=f'Failed to upload file: {fname}',
+                success_codes=(201,),
             )
 
         if self.is_nightly:
@@ -413,11 +417,12 @@ class GitHub:  # {{{
             d: List[Dict[str, Any]] = release['assets']
         else:
             d = self.make_request_with_retries(
-                release['assets_url'], params={'per_page': '64'}, failure_msg='Failed to get assets for release', return_data=True)
+                release['assets_url'], params={'per_page': '64'}, failure_msg='Failed to get assets for release', return_data=True
+            )
         return d
 
     def create_release(self) -> Dict[str, Any]:
-        ' Create a release on GitHub or if it already exists, return the existing release '
+        "Create a release on GitHub or if it already exists, return the existing release"
         # Check for existing release
         url = f'{self.url_base}/tags/{self.current_tag_name}'
         with contextlib.closing(self.make_request(url)) as conn:
@@ -434,13 +439,15 @@ class GitHub:  # {{{
             ' For changelog, see https://sw.kovidgoyal.net/kitty/changelog/#detailed-list-of-changes'
             ' GPG key used for signing tarballs is: https://calibre-ebook.com/signatures/kovid.gpg',
             'draft': False,
-            'prerelease': False
+            'prerelease': False,
         }
         with contextlib.closing(self.make_request(self.url_base, method='POST', data=data)) as conn:
             r = conn.getresponse()
             if r.status != 201:
                 self.fail(r, f'Failed to create release for version: {self.version}')
             return {str(k): v for k, v in json.loads(r.read()).items()}
+
+
 # }}}
 
 
@@ -565,21 +572,10 @@ def main() -> None:
     global building_nightly
     parser = argparse.ArgumentParser(description='Publish kitty')
     parser.add_argument(
-        '--only',
-        default=False,
-        action='store_true',
-        help='Only run the specified action, by default the specified action and all sub-sequent actions are run')
-    parser.add_argument(
-        '--nightly',
-        default=False,
-        action='store_true',
-        help='Upload a nightly release, ignores all other arguments')
-    parser.add_argument(
-        'action',
-        default='all',
-        nargs='?',
-        choices=list(ALL_ACTIONS) + ['all', 'upload_nightly'],
-        help='The action to start with')
+        '--only', default=False, action='store_true', help='Only run the specified action, by default the specified action and all sub-sequent actions are run'
+    )
+    parser.add_argument('--nightly', default=False, action='store_true', help='Upload a nightly release, ignores all other arguments')
+    parser.add_argument('action', default='all', nargs='?', choices=list(ALL_ACTIONS) + ['all', 'upload_nightly'], help='The action to start with')
     args = parser.parse_args()
     require_penv()
     if args.nightly:

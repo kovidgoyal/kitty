@@ -28,7 +28,7 @@ class Query:
         self.pat = re.compile(f'\x1bP([01])\\+r{self.encoded_query_name}(.*?)\x1b\\\\'.encode('ascii'))
 
     def query_code(self) -> str:
-        return f"\x1bP+q{self.encoded_query_name}\x1b\\"
+        return f'\x1bP+q{self.encoded_query_name}\x1b\\'
 
     def decode_response(self, res: bytes | memoryview) -> str:
         return unhexlify(res).decode('utf-8')
@@ -94,11 +94,12 @@ class AllowHyperlinks(Query):
 @query
 class FontFamily(Query):
     name: str = 'font_family'
-    help_text: str = 'The current font\'s PostScript name'
+    help_text: str = "The current font's PostScript name"
 
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
+
         cf = current_fonts(os_window_id)
         return cf['medium'].postscript_name()
 
@@ -106,11 +107,12 @@ class FontFamily(Query):
 @query
 class BoldFont(Query):
     name: str = 'bold_font'
-    help_text: str = 'The current bold font\'s PostScript name'
+    help_text: str = "The current bold font's PostScript name"
 
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
+
         cf = current_fonts(os_window_id)
         return cf['bold'].postscript_name()
 
@@ -118,11 +120,12 @@ class BoldFont(Query):
 @query
 class ItalicFont(Query):
     name: str = 'italic_font'
-    help_text: str = 'The current italic font\'s PostScript name'
+    help_text: str = "The current italic font's PostScript name"
 
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
+
         cf = current_fonts(os_window_id)
         return cf['italic'].postscript_name()
 
@@ -130,11 +133,12 @@ class ItalicFont(Query):
 @query
 class BiFont(Query):
     name: str = 'bold_italic_font'
-    help_text: str = 'The current bold-italic font\'s PostScript name'
+    help_text: str = "The current bold-italic font's PostScript name"
 
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
+
         cf = current_fonts(os_window_id)
         return cf['bi'].postscript_name()
 
@@ -147,8 +151,10 @@ class FontSize(Query):
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
+
         cf = current_fonts(os_window_id)
         return f'{cf["font_sz_in_pts"]:g}'
+
 
 @query
 class DpiX(Query):
@@ -158,8 +164,10 @@ class DpiX(Query):
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
+
         cf = current_fonts(os_window_id)
         return f'{cf["logical_dpi_x"]:g}'
+
 
 @query
 class DpiY(Query):
@@ -169,6 +177,7 @@ class DpiY(Query):
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import current_fonts
+
         cf = current_fonts(os_window_id)
         return f'{cf["logical_dpi_y"]:g}'
 
@@ -181,6 +190,7 @@ class Foreground(Query):
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import get_boss, get_options
+
         boss = get_boss()
         w = boss.window_id_map.get(window_id)
         if w is None:
@@ -196,6 +206,7 @@ class Background(Query):
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import get_boss, get_options
+
         boss = get_boss()
         w = boss.window_id_map.get(window_id)
         if w is None:
@@ -211,6 +222,7 @@ class BackgroundOpacity(Query):
     @staticmethod
     def get_result(opts: Options, window_id: int, os_window_id: int) -> str:
         from kitty.fast_data_types import background_opacity_of
+
         ans = background_opacity_of(os_window_id)
         if ans is None:
             ans = 1.0
@@ -239,6 +251,7 @@ class OSName(Query):
 
 def get_result(name: str, window_id: int, os_window_id: int) -> str | None:
     from kitty.fast_data_types import get_options
+
     q = all_queries.get(name)
     if q is None:
         return None
@@ -246,16 +259,16 @@ def get_result(name: str, window_id: int, os_window_id: int) -> str | None:
 
 
 def options_spec() -> str:
-    return '''\
+    return """\
 --wait-for
 type=float
 default=10
 The amount of time (in seconds) to wait for a response from the terminal, after
 querying it.
-'''
+"""
 
 
-help_text = '''\
+help_text = """\
 Query the terminal this kitten is run in for various capabilities. This sends
 escape codes to the terminal and based on its response prints out data about
 supported capabilities. Note that this is a blocking operation, since it has to
@@ -276,8 +289,7 @@ Available queries are:
 
 {}
 
-'''.format('\n'.join(
-    f':code:`{name}`:\n  {c.help_text}\n' for name, c in all_queries.items()))
+""".format('\n'.join(f':code:`{name}`:\n  {c.help_text}\n' for name, c in all_queries.items()))
 usage = '[query1 query2 ...]'
 
 

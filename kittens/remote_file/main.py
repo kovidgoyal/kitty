@@ -30,7 +30,7 @@ def key(x: str) -> str:
 
 
 def option_text() -> str:
-    return '''\
+    return """\
 --mode -m
 choices=ask,edit
 default=ask
@@ -47,7 +47,7 @@ Hostname of the remote host.
 
 --ssh-connection-data
 The data used to connect over ssh.
-'''
+"""
 
 
 def show_error(msg: str) -> None:
@@ -73,8 +73,7 @@ def ask_action(opts: RemoteFileCLIOptions) -> str:
         return faint(x)
 
     print('{}dit the file'.format(key('E')))
-    print(help_text('The file will be downloaded and opened in an editor. Any changes you save will'
-                    ' be automatically sent back to the remote machine'))
+    print(help_text('The file will be downloaded and opened in an editor. Any changes you save will be automatically sent back to the remote machine'))
     print()
 
     print('{}pen the file'.format(key('O')))
@@ -102,7 +101,6 @@ def hostname_matches(from_hyperlink: str, actual: str) -> bool:
 
 
 class ControlMaster:
-
     def __init__(self, conn_data: SSHConnectionData, remote_path: str, cli_opts: RemoteFileCLIOptions, dest: str = ''):
         self.conn_data = conn_data
         self.cli_opts = cli_opts
@@ -110,10 +108,7 @@ class ControlMaster:
         self.dest = dest
         self.tdir = ''
         self.last_error_log = ''
-        self.cmd_prefix = cmd = [
-            conn_data.binary, '-o', f'ControlPath=~/.ssh/kitty-rf-{os.getpid()}-%C',
-            '-o', 'TCPKeepAlive=yes', '-o', 'ControlPersist=yes'
-        ]
+        self.cmd_prefix = cmd = [conn_data.binary, '-o', f'ControlPath=~/.ssh/kitty-rf-{os.getpid()}-%C', '-o', 'TCPKeepAlive=yes', '-o', 'ControlPersist=yes']
         self.is_ssh_kitten = conn_data.binary is is_ssh_kitten_sentinel
         if self.is_ssh_kitten:
             del cmd[:]
@@ -138,10 +133,8 @@ class ControlMaster:
 
     def __enter__(self) -> 'ControlMaster':
         if not self.is_ssh_kitten:
-            self.check_call(
-                self.cmd_prefix + ['-o', 'ControlMaster=auto', '-fN', self.conn_data.hostname])
-            self.check_call(
-                self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname])
+            self.check_call(self.cmd_prefix + ['-o', 'ControlMaster=auto', '-fN', self.conn_data.hostname])
+            self.check_call(self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname])
         if not self.dest:
             self.tdir = tempfile.mkdtemp()
             self.dest = os.path.join(self.tdir, os.path.basename(self.remote_path))
@@ -150,8 +143,7 @@ class ControlMaster:
     def __exit__(self, *a: Any) -> None:
         if not self.is_ssh_kitten:
             subprocess.Popen(
-                self.batch_cmd_prefix + ['-O', 'exit', self.conn_data.hostname],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
+                self.batch_cmd_prefix + ['-O', 'exit', self.conn_data.hostname], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
             ).wait()
         if self.tdir:
             shutil.rmtree(self.tdir)
@@ -160,16 +152,19 @@ class ControlMaster:
     def is_alive(self) -> bool:
         if self.is_ssh_kitten:
             return True
-        return subprocess.Popen(
-            self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
-        ).wait() == 0
+        return (
+            subprocess.Popen(
+                self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
+            ).wait()
+            == 0
+        )
 
     def check_hostname_matches(self) -> bool:
         if self.is_ssh_kitten:
             return True
-        cp = subprocess.run(self.batch_cmd_prefix + [self.conn_data.hostname, 'hostname', '-f'], stdout=subprocess.PIPE,
-                            stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+        cp = subprocess.run(
+            self.batch_cmd_prefix + [self.conn_data.hostname, 'hostname', '-f'], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
+        )
         if cp.returncode == 0:
             q = tuple(filter(None, cp.stdout.decode('utf-8').strip().splitlines()))[-1]
             if not hostname_matches(self.cli_opts.hostname or '', q):
@@ -184,10 +179,7 @@ class ControlMaster:
                 print()
                 print()
                 print('Do you want to continue anyway?')
-                print(
-                    f'{styled("Y", fg="green")}es',
-                    f'{styled("N", fg="red")}o', sep='\t'
-                )
+                print(f'{styled("Y", fg="green")}es', f'{styled("N", fg="red")}o', sep='\t')
                 sys.stdout.flush()
                 response = get_key_press('yn', 'n')
                 print(reset_terminal(), end='')
@@ -247,6 +239,7 @@ def main(args: list[str]) -> Result:
     except Exception:
         print(reset_terminal(), end='', flush=True)
         import traceback
+
         traceback.print_exc()
         show_error('Failed with unhandled exception')
     return None
@@ -262,13 +255,11 @@ def save_as(conn_data: SSHConnectionData, remote_path: str, cli_opts: RemoteFile
     except FileNotFoundError:
         last_used_path = tempfile.gettempdir()
     last_used_file = os.path.join(last_used_path, os.path.basename(remote_path))
-    print(
-        'Where do you want to save the file? Leaving it blank will save it as:',
-        styled(last_used_file, fg='yellow')
-    )
+    print('Where do you want to save the file? Leaving it blank will save it as:', styled(last_used_file, fg='yellow'))
     print('Relative paths will be resolved from:', styled(os.getcwd(), fg_intense=True, bold=True))
     print()
     from ..tui.path_completer import get_path
+
     try:
         dest = get_path()
     except (KeyboardInterrupt, EOFError):
@@ -358,6 +349,7 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
 def handle_result(args: list[str], data: Result, target_window_id: int, boss: BossType) -> None:
     if data:
         from kitty.fast_data_types import get_options
+
         cmd = command_for_open(get_options().open_url_with)
         open_cmd(cmd, data)
 

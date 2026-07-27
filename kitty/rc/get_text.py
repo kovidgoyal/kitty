@@ -11,8 +11,7 @@ if TYPE_CHECKING:
 
 
 class GetText(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     match/str: The window to get text from
     extent/choices.screen.first_cmd_output_on_screen.last_cmd_output.last_visited_cmd_output.all.selection.alternate.alternate_scrollback: \
         One of :code:`screen`, :code:`first_cmd_output_on_screen`, :code:`last_cmd_output`, \
@@ -23,10 +22,12 @@ class GetText(RemoteCommand):
     wrap_markers/bool: Boolean, if True add wrap markers to output
     clear_selection/bool: Boolean, if True clear the selection in the matched window
     self/bool: Boolean, if True use window the command was run in
-    '''
+    """
 
     short_desc = 'Get text from the specified window'
-    options_spec = MATCH_WINDOW_OPTION + '''\n
+    options_spec = (
+        MATCH_WINDOW_OPTION
+        + """\n
 --extent
 default=screen
 choices=screen, all, selection, first_cmd_output_on_screen, last_cmd_output, last_visited_cmd_output, last_non_empty_output, alternate, alternate_scrollback
@@ -68,7 +69,8 @@ Clear the selection in the matched window, if any.
 --self
 type=bool-set
 Get text from the window this command is run in, rather than the active window.
-'''
+"""
+    )
 
     field_to_option_map = {'wrap_markers': 'add_wrap_markers', 'cursor': 'add_cursor'}
 
@@ -85,6 +87,7 @@ Get text from the window this command is run in, rather than the active window.
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         from kitty.window import CommandOutput
+
         windows = self.windows_for_match_payload(boss, window, payload_get)
         if windows and windows[0]:
             window = windows[0]

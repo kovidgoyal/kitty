@@ -17,29 +17,25 @@ from ..tui.handler import result_handler
 
 DEFAULT_REGEX = r'(?m)^\s*(.+?)\s*$'
 
+
 def load_custom_processor(customize_processing: str) -> Any:
     if customize_processing.startswith('::import::'):
         import importlib
-        m = importlib.import_module(customize_processing[len('::import::'):])
+
+        m = importlib.import_module(customize_processing[len('::import::') :])
         return {k: getattr(m, k) for k in dir(m)}
     if customize_processing == '::linenum::':
         return {'handle_result': linenum_handle_result}
     custom_path = resolve_custom_file(customize_processing)
     import runpy
+
     return runpy.run_path(custom_path, run_name='__main__')
 
-class Mark:
 
+class Mark:
     __slots__ = ('index', 'start', 'end', 'text', 'is_hyperlink', 'group_id', 'groupdict')
 
-    def __init__(
-            self,
-            index: int, start: int, end: int,
-            text: str,
-            groupdict: Any,
-            is_hyperlink: bool = False,
-            group_id: str | None = None
-    ):
+    def __init__(self, index: int, start: int, end: int, text: str, groupdict: Any, is_hyperlink: bool = False, group_id: str | None = None):
         self.index, self.start, self.end = index, start, end
         self.text = text
         self.groupdict = groupdict
@@ -48,19 +44,25 @@ class Mark:
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            'index': self.index, 'start': self.start, 'end': self.end,
-            'text': self.text, 'groupdict': {str(k):v for k, v in (self.groupdict or {}).items()},
-            'group_id': self.group_id or '', 'is_hyperlink': self.is_hyperlink
+            'index': self.index,
+            'start': self.start,
+            'end': self.end,
+            'text': self.text,
+            'groupdict': {str(k): v for k, v in (self.groupdict or {}).items()},
+            'group_id': self.group_id or '',
+            'is_hyperlink': self.is_hyperlink,
         }
 
 
 def parse_hints_args(args: list[str]) -> tuple[HintsCLIOptions, list[str]]:
     from kitty.cli import parse_args
+
     return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten hints', result_class=HintsCLIOptions)
 
 
 def custom_marking() -> None:
     import json
+
     text = sys.stdin.read()
     sys.stdin.close()
     opts, extra_cli_args = parse_hints_args(sys.argv[1:])
@@ -72,7 +74,7 @@ def custom_marking() -> None:
     raise SystemExit(0)
 
 
-OPTIONS = r'''
+OPTIONS = r"""
 --program
 type=list
 What program to use to open matched text. Defaults to the default open program
@@ -269,9 +271,10 @@ elsewhere. See {hints_url} for details.
 --window-title
 The title for the hints window, default title is based on the type of text being
 hinted.
-'''.format(
+""".format(
     default_regex=DEFAULT_REGEX,
-    line='{{line}}', path='{{path}}',
+    line='{{line}}',
+    path='{{path}}',
     hints_url=website_url('kittens/hints'),
 ).format
 help_text = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
@@ -304,6 +307,7 @@ def linenum_handle_result(args: list[str], data: dict[str, Any], target_window_i
 
     if action == 'self':
         if w is not None:
+
             def is_copy_action(s: str) -> bool:
                 return s in ('-', '@', '*') or s.startswith('@')
 
@@ -326,6 +330,7 @@ def linenum_handle_result(args: list[str], data: dict[str, Any], target_window_i
                         boss.set_clipboard_buffer(program[1:], text)
             else:
                 import shlex
+
                 text = shlex.join(cmd)
                 w.paste_bytes(f'{text}\r')
     elif action == 'background':
@@ -333,9 +338,7 @@ def linenum_handle_result(args: list[str], data: dict[str, Any], target_window_i
     elif action == 'remote-control':
         boss.run_background_process(cmd, cwd=data['cwd'], allow_remote_control=True)
     else:
-        getattr(boss, {
-            'window': 'new_window_with_cwd', 'tab': 'new_tab_with_cwd', 'os_window': 'new_os_window_with_cwd'
-            }[action])(*cmd)
+        getattr(boss, {'window': 'new_window_with_cwd', 'tab': 'new_tab_with_cwd', 'os_window': 'new_os_window_with_cwd'}[action])(*cmd)
 
 
 def on_mark_clicked(boss: BossType, window: WindowType, url: str, hyperlink_id: int, cwd: str) -> bool:
@@ -379,6 +382,7 @@ def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, 
                 return matches[-1]
         if joiner == 'json':
             import json
+
             return json.dumps(matches, ensure_ascii=False, indent='\t')
         if joiner == 'auto':
             q = '\n\r' if text_type in ('line', 'url') else ' '
@@ -400,6 +404,7 @@ def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, 
                 boss.set_clipboard_buffer(program[1:], joined_text())
         else:
             from kitty.conf.utils import to_cmdline
+
             cwd = data['cwd']
             is_default_program = program == 'default'
             program = get_options().open_url_with if is_default_program else program

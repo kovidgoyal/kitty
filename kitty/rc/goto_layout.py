@@ -12,15 +12,15 @@ if TYPE_CHECKING:
 
 def layout_names() -> Iterable[str]:
     from kitty.layout.interface import all_layouts
+
     return all_layouts.keys()
 
 
 class GotoLayout(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     layout+/str: The new layout name
     match/str: Which tab to change the layout of
-    '''
+    """
 
     short_desc = 'Set the window layout'
     desc = (
@@ -31,9 +31,11 @@ class GotoLayout(RemoteCommand):
     )
     options_spec = MATCH_TAB_OPTION
     args = RemoteCommand.Args(
-        spec='LAYOUT_NAME', count=1, json_field='layout',
+        spec='LAYOUT_NAME',
+        count=1,
+        json_field='layout',
         completion=RemoteCommand.CompletionSpec.from_string('type:keyword group:"Layout" kwds:' + ','.join(layout_names())),
-        )
+    )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) != 1:

@@ -36,7 +36,7 @@ def parse_modern_bash_env(text: str) -> dict[str, str]:
         if idx < 0:
             break
         key = line[:idx].rpartition(' ')[2]
-        val = line[idx+1:]
+        val = line[idx + 1 :]
         if val.startswith('"'):
             val = decode_double_quoted_string(val, 1)[0]
         else:
@@ -60,7 +60,7 @@ def parse_bash_env(text: str, bash_version: str) -> dict[str, str]:
         i = text.rfind(' ', 0, idx)
         if i < 0:
             break
-        key = text[i+1:idx]
+        key = text[i + 1 : idx]
         pos = idx + 2
         ans[key], pos = decode_double_quoted_string(text, pos)
     return ans

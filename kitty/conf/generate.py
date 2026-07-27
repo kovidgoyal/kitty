@@ -18,7 +18,7 @@ from kitty.simple_cli_definitions import serialize_as_go_string
 
 def chunks[_T](lst: list[_T], n: int) -> Iterator[list[_T]]:
     for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+        yield lst[i : i + n]
 
 
 def atoi(text: str) -> str:
@@ -62,7 +62,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
         rettype = th['return']
         typ = option_type_as_str(rettype)
         if isinstance(option, MultiOption):
-            typ = typ[typ.index('[') + 1:-1]
+            typ = typ[typ.index('[') + 1 : -1]
             typ = typ.replace('tuple', 'dict', 1)
             kq = ki_imports.search(typ)
             if kq is not None:
@@ -164,7 +164,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
             t(f'    {ecname} = {crepr}')
 
     for option_name, (typ, mval) in is_mutiple_vars.items():
-        a(f'    {option_name}: {typ} = ' '{}')
+        a(f'    {option_name}: {typ} = {{}}')
 
     for parser, aliases in defn.deprecations.items():
         assert isinstance(parser, types.FunctionType)
@@ -182,6 +182,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
             fmod = f'{loc}.options.utils'
         imports.add((fmod, ftype))
         return ftype
+
     if loc == 'kitty':
         imports.add(('kitty.options.utils', 'KeyFallbackType'))
 
@@ -192,7 +193,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
         th = get_type_hints(func)
         rettype = th['return']
         typ = option_type_as_str(rettype)
-        typ = typ[typ.index('[') + 1:-1]
+        typ = typ[typ.index('[') + 1 : -1]
         a(f'    {aname}: list[{typ}] = []')
         for imp in action.imports:
             resolve_import(imp)
@@ -331,7 +332,7 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
             for cond, items in only.items():
                 cond = 'is_macos' if cond == 'macos' else 'not is_macos'
                 a(f'if {cond}:')
-                for (text, parser_func) in items:
+                for text, parser_func in items:
                     for val in parser_func(text):
                         a(f'    defaults.{aname}.append({val!r})')
                 a('')
@@ -425,14 +426,19 @@ def generate_class(defn: Definition, loc: str) -> tuple[str, str]:
 def generate_c_conversion(loc: str, ctypes: list[Option | MultiOption]) -> str:
     lines: list[str] = []
     basic_converters = {
-        'int': 'PyLong_AsLong', 'uint': 'PyLong_AsUnsignedLong', 'bool': 'PyObject_IsTrue',
-        'float': 'PyFloat_AsFloat', 'double': 'PyFloat_AsDouble', 'percent': 'percent',
-        'time': 'parse_s_double_to_monotonic_t', 'time-ms': 'parse_ms_long_to_monotonic_t'
+        'int': 'PyLong_AsLong',
+        'uint': 'PyLong_AsUnsignedLong',
+        'bool': 'PyObject_IsTrue',
+        'float': 'PyFloat_AsFloat',
+        'double': 'PyFloat_AsDouble',
+        'percent': 'percent',
+        'time': 'parse_s_double_to_monotonic_t',
+        'time-ms': 'parse_ms_long_to_monotonic_t',
     }
 
     for opt in ctypes:
         lines.append('')
-        lines.append(f'static void\nconvert_from_python_{opt.name}(PyObject *val, Options *opts) ''{')
+        lines.append(f'static void\nconvert_from_python_{opt.name}(PyObject *val, Options *opts) {{')
         is_special = opt.ctype.startswith('!')
         if is_special:
             func = opt.ctype[1:]
@@ -442,7 +448,7 @@ def generate_c_conversion(loc: str, ctypes: list[Option | MultiOption]) -> str:
             lines.append(f'    opts->{opt.name} = {func}(val);')
         lines.append('}')
         lines.append('')
-        lines.append(f'static void\nconvert_from_opts_{opt.name}(PyObject *py_opts, Options *opts) ''{')
+        lines.append(f'static void\nconvert_from_opts_{opt.name}(PyObject *py_opts, Options *opts) {{')
         lines.append(f'    PyObject *ret = PyObject_GetAttrString(py_opts, "{opt.name}");')
         lines.append('    if (ret == NULL) return;')
         lines.append(f'    convert_from_python_{opt.name}(ret, opts);')
@@ -450,7 +456,7 @@ def generate_c_conversion(loc: str, ctypes: list[Option | MultiOption]) -> str:
         lines.append('}')
 
     lines.append('')
-    lines.append('static bool\nconvert_opts_from_python_opts(PyObject *py_opts, Options *opts) ''{')
+    lines.append('static bool\nconvert_opts_from_python_opts(PyObject *py_opts, Options *opts) {')
     for opt in ctypes:
         lines.append(f'    convert_from_opts_{opt.name}(py_opts, opts);')
         lines.append('    if (PyErr_Occurred()) return false;')
@@ -521,24 +527,25 @@ def go_type_data(parser_func: ParserFuncType, ctype: str, is_multiple: bool = Fa
 
 
 mod_map = {
-		"shift":     "shift",
-		"⇧":         "shift",
-		"alt":       "alt",
-		"option":    "alt",
-		"opt":       "alt",
-		"⌥":         "alt",
-		"super":     "super",
-		"command":   "super",
-		"cmd":       "super",
-		"⌘":         "super",
-		"control":   "ctrl",
-		"ctrl":      "ctrl",
-		"⌃":         "ctrl",
-		"hyper":     "hyper",
-		"meta":      "meta",
-		"num_lock":  "num_lock",
-		"caps_lock": "caps_lock",
+    'shift': 'shift',
+    '⇧': 'shift',
+    'alt': 'alt',
+    'option': 'alt',
+    'opt': 'alt',
+    '⌥': 'alt',
+    'super': 'super',
+    'command': 'super',
+    'cmd': 'super',
+    '⌘': 'super',
+    'control': 'ctrl',
+    'ctrl': 'ctrl',
+    '⌃': 'ctrl',
+    'hyper': 'hyper',
+    'meta': 'meta',
+    'num_lock': 'num_lock',
+    'caps_lock': 'caps_lock',
 }
+
 
 def normalize_shortcut(spec: str) -> str:
     if spec.endswith('+'):
@@ -559,9 +566,16 @@ def normalize_shortcuts(spec: str) -> Iterator[str]:
 
 
 def gen_go_code(defn: Definition) -> str:
-    lines = ['import "fmt"', 'import "strconv"', 'import "github.com/kovidgoyal/kitty/tools/config"',
-             'import "github.com/kovidgoyal/kitty/tools/utils/style"',
-             'var _ = fmt.Println', 'var _ = config.StringToBool', 'var _ = strconv.Atoi', 'var _ = style.ParseColor']
+    lines = [
+        'import "fmt"',
+        'import "strconv"',
+        'import "github.com/kovidgoyal/kitty/tools/config"',
+        'import "github.com/kovidgoyal/kitty/tools/utils/style"',
+        'var _ = fmt.Println',
+        'var _ = config.StringToBool',
+        'var _ = strconv.Atoi',
+        'var _ = style.ParseColor',
+    ]
     a = lines.append
     keyboard_shortcuts = tuple(defn.iter_all_maps())
     choices = {}
@@ -644,13 +658,13 @@ def gen_go_code(defn: Definition) -> str:
             aname = serialize_as_go_string(aname)
             aargs = serialize_as_go_string(aargs)
             fb = f', AllowFallback: "{serialize_as_go_string(allow_fallback)}"'
-            a('{'f'Name: "{aname}", Args: "{aargs}"{fb}, Normalized_keys: []string''{')
+            a(f'{{Name: "{aname}", Args: "{aargs}"{fb}, Normalized_keys: []string{{')
             ns = normalize_shortcuts(key_spec)
             a(', '.join(f'"{serialize_as_go_string(x)}"' for x in ns) + ',')
-            a('}''},')
+            a('}},')
         a('},')
 
-    a('}''}')
+    a('}}')
 
     for oname, choice_vals in choices.items():
         a('const (')
@@ -661,19 +675,19 @@ def gen_go_code(defn: Definition) -> str:
             else:
                 a(f'{oname}_{c}')
         a(')')
-        a(f'func (x {oname}_Choice_Type) String() string'' {')
+        a(f'func (x {oname}_Choice_Type) String() string {{')
         a('switch x {')
         a('default: return ""')
         for c in choice_vals:
             a(f'case {oname}_{cval(c)}: return "{c}"')
-        a('}''}')
-        a(f'func {go_parsers[oname].split("(")[0]}(val string) (ans {go_types[oname]}, err error) ''{')
+        a('}}')
+        a(f'func {go_parsers[oname].split("(")[0]}(val string) (ans {go_types[oname]}, err error) {{')
         a('switch val {')
         for c in choice_vals:
             a(f'case "{c}": return {oname}_{cval(c)}, nil')
         vals = ', '.join(choice_vals)
         a(f'default: return ans, fmt.Errorf("%#v is not a valid value for %s. Valid values are: %s", val, "{c}", "{vals}")')
-        a('}''}')
+        a('}}')
 
     has_parsers = bool(go_parsers or keyboard_shortcuts)
     a('func (c *Config) Parse(key, val string) (err error) {')

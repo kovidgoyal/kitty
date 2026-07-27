@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class ResizeOSWindow(RemoteCommand):
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     match/str: Which window to resize
     self/bool: Boolean indicating whether to close the window the command is run in
     incremental/bool: Boolean indicating whether to adjust the size incrementally
@@ -30,7 +30,7 @@ class ResizeOSWindow(RemoteCommand):
     width/int: Integer indicating desired window width
     height/int: Integer indicating desired window height
     os_panel/list.str: Settings for modifying the OS Panel
-    '''
+    """
 
     short_desc = 'Resize/show/hide/etc. the specified OS Windows'
     desc = (
@@ -43,7 +43,9 @@ class ResizeOSWindow(RemoteCommand):
         ' :code:`--action=os-panel --incremental lines=2 edge=bottom`'
     )
     args = RemoteCommand.Args(spec='[OS Panel settings ...]', json_field='os_panel', special_parse='escape_list_of_strings(args), nil')
-    options_spec = MATCH_WINDOW_OPTION + '''\n
+    options_spec = (
+        MATCH_WINDOW_OPTION
+        + """\n
 --action
 default=resize
 choices=resize,toggle-fullscreen,toggle-maximized,toggle-visibility,hide,show,os-panel
@@ -86,13 +88,19 @@ type=bool-set
 default=false
 Don't wait for a response indicating the success of the action. Note that
 using this option means that you will not be notified of failures.
-'''
+"""
+    )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {
-            'match': opts.match, 'action': opts.action, 'unit': opts.unit,
-            'width': opts.width, 'height': opts.height, 'self': opts.self,
-            'incremental': opts.incremental, 'os_panel': args,
+            'match': opts.match,
+            'action': opts.action,
+            'unit': opts.unit,
+            'width': opts.width,
+            'height': opts.height,
+            'self': opts.self,
+            'incremental': opts.incremental,
+            'os_panel': args,
         }
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
@@ -103,6 +111,7 @@ using this option means that you will not be notified of failures.
             toggle_fullscreen,
             toggle_os_window_visibility,
         )
+
         windows = self.windows_for_match_payload(boss, window, payload_get)
         if windows:
             ac = payload_get('action')
@@ -115,26 +124,27 @@ using this option means that you will not be notified of failures.
                 if ac == 'os-panel':
                     if not is_panel:
                         raise RemoteControlErrorWithoutTraceback(
-                            f'The OS Window {os_window_id} is not a panel you should not use the --action=resize option to resize it')
+                            f'The OS Window {os_window_id} is not a panel you should not use the --action=resize option to resize it'
+                        )
                     if not panels:
                         raise RemoteControlErrorWithoutTraceback('Must specify at least one panel setting')
                     if payload_get('incremental'):
                         existing = layer_shell_config_for_os_window(os_window_id)
                         if existing is None:
-                            raise RemoteControlErrorWithoutTraceback(
-                                f'The OS Window {os_window_id} has no panel configuration')
+                            raise RemoteControlErrorWithoutTraceback(f'The OS Window {os_window_id} has no panel configuration')
                         from kittens.panel.main import incrementally_update_layer_shell_config
+
                         try:
                             lsc = incrementally_update_layer_shell_config(existing, panels)
                         except Exception as e:
                             raise RemoteControlErrorWithoutTraceback(str(e))
                     else:
                         from kitty.launch import layer_shell_config_from_panel_opts
+
                         try:
                             lsc = layer_shell_config_from_panel_opts(panels)
                         except Exception as e:
-                            raise RemoteControlErrorWithoutTraceback(
-                                f'Invalid panel options specified: {e}')
+                            raise RemoteControlErrorWithoutTraceback(f'Invalid panel options specified: {e}')
                     if not set_layer_shell_config(os_window_id, lsc):
                         raise RemoteControlErrorWithoutTraceback(f'Failed to change panel configuration for OS Window {os_window_id}')
                 elif ac == 'toggle-visibility':
@@ -145,15 +155,19 @@ using this option means that you will not be notified of failures.
                     toggle_os_window_visibility(os_window_id, True)
                 elif ac == 'toggle-fullscreen':
                     if not toggle_fullscreen(os_window_id):
-                        raise RemoteControlErrorWithoutTraceback(
-                            f'The OS Window {os_window_id} is a desktop panel that cannot be made fullscreen')
+                        raise RemoteControlErrorWithoutTraceback(f'The OS Window {os_window_id} is a desktop panel that cannot be made fullscreen')
                 elif is_panel:
                     raise RemoteControlErrorWithoutTraceback(
-                        f'The OS Window {os_window_id} is a desktop panel, no actions other than resizing are supported for it')
+                        f'The OS Window {os_window_id} is a desktop panel, no actions other than resizing are supported for it'
+                    )
                 elif ac == 'resize':
                     boss.resize_os_window(
-                        os_window_id, width=payload_get('width'), height=payload_get('height'),
-                        unit=payload_get('unit'), incremental=payload_get('incremental'), metrics=metrics,
+                        os_window_id,
+                        width=payload_get('width'),
+                        height=payload_get('height'),
+                        unit=payload_get('unit'),
+                        incremental=payload_get('incremental'),
+                        metrics=metrics,
                     )
                 elif ac == 'toggle-maximized':
                     boss.toggle_maximized(os_window_id)

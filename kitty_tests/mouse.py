@@ -28,19 +28,12 @@ def send_mouse_event(
 ):
     ix = int(x)
     in_left_half_of_cell = x - ix < 0.5
-    send_mock_mouse_event_to_window(
-        window, button, modifiers, is_release, ix, y, clear_click_queue, in_left_half_of_cell
-    )
+    send_mock_mouse_event_to_window(window, button, modifiers, is_release, ix, y, clear_click_queue, in_left_half_of_cell)
 
 
 class TestMouse(BaseTest):
-
     def test_mouse_selection(self):
-        s = self.create_screen(
-            options=dict(
-                rectangle_select_modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL
-            )
-        )
+        s = self.create_screen(options=dict(rectangle_select_modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL))
         w = create_mock_window(s)
         ev = partial(send_mouse_event, w)
 
@@ -69,19 +62,14 @@ class TestMouse(BaseTest):
             ev(button, x=x, y=y, modifiers=modifiers)
 
         def release(x=0, y=0, button=GLFW_MOUSE_BUTTON_LEFT):
-            ev(
-                button,
-                x=x,
-                y=y,
-                is_release=True,
-                clear_click_queue=True
-            )
+            ev(button, x=x, y=y, is_release=True, clear_click_queue=True)
 
         def move(x=0, y=0, button=-1, q=None):
             ev(x=x, y=y, button=button)
             if q is not None:
                 sl = sel()
                 from kitty.window import as_text
+
                 self.ae(sl, q, f'{sl!r} != {q!r} after movement to x={x} y={y}. Screen contents: {as_text(s)!r}')
 
         def multi_click(x=0, y=0, count=2, modifiers=0):
@@ -240,7 +228,7 @@ class TestMouse(BaseTest):
         s.reset()
         s.draw('ABCDE12345')
         s.linefeed(), s.carriage_return()
-        s.draw(('X' * s.columns) * (s.lines-1))
+        s.draw(('X' * s.columns) * (s.lines - 1))
         multi_click(x=1, count=3)
         self.ae(sel(), 'ABCDE12345')
         s.reset()
@@ -248,7 +236,7 @@ class TestMouse(BaseTest):
         s.linefeed(), s.carriage_return()
         s.draw('678')
         s.linefeed(), s.carriage_return()
-        s.draw(('X' * s.columns) * (s.lines-2))
+        s.draw(('X' * s.columns) * (s.lines - 2))
         multi_click(x=1, y=1, count=3)
         self.ae(sel(), '678')
         press(x=2, button=GLFW_MOUSE_BUTTON_RIGHT)
@@ -286,7 +274,7 @@ class TestMouse(BaseTest):
         s.reset()
         s.draw('abcde12345')
         s.linefeed(), s.carriage_return()
-        s.draw(('X' * s.columns) * (s.lines-1))
+        s.draw(('X' * s.columns) * (s.lines - 1))
         multi_click(x=1)
         self.ae(sel(), 'abcde12345')
 

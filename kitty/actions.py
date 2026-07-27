@@ -35,7 +35,7 @@ group_title = groups.__getitem__
 
 @run_once
 def get_all_actions() -> dict[ActionGroup, list[Action]]:
-    ' test docstring '
+    "test docstring"
 
     ans: dict[ActionGroup, list[Action]] = {}
 
@@ -55,26 +55,33 @@ def get_all_actions() -> dict[ActionGroup, list[Action]]:
 
     seen = set()
     for cls in (Window, Tab, Boss):
-        for (name, func) in inspect.getmembers(cls, is_action):
+        for name, func in inspect.getmembers(cls, is_action):
             ac = as_action(func)
             if ac.name not in seen:
                 ans.setdefault(ac.group, []).append(ac)
                 seen.add(ac.name)
 
-    ans['misc'].append(Action('no_op', 'misc', 'Unbind a shortcut',
-                              'Mapping a shortcut to no_op causes kitty to not intercept the key stroke anymore,'
-                              ' instead passing it to the program running inside it.'))
+    ans['misc'].append(
+        Action(
+            'no_op',
+            'misc',
+            'Unbind a shortcut',
+            'Mapping a shortcut to no_op causes kitty to not intercept the key stroke anymore, instead passing it to the program running inside it.',
+        )
+    )
     return ans
 
 
 def dump() -> None:
     from pprint import pprint
+
     pprint(get_all_actions())
 
 
 def as_rst() -> str:
     from .conf.types import Mapping
     from .options.definition import definition
+
     allg = get_all_actions()
     lines: list[str] = []
     a = lines.append

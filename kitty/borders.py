@@ -67,7 +67,6 @@ def add_borders(rects: list[Border], color: BorderColor, wg: WindowGroup) -> Non
 
 
 class Borders:
-
     def __init__(self, os_window_id: int, tab_id: int):
         self.os_window_id = os_window_id
         self.tab_id = tab_id

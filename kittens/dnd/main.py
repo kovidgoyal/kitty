@@ -3,7 +3,7 @@
 
 import sys
 
-OPTIONS = r'''
+OPTIONS = r"""
 --drag
 type=list
 When starting a drag, use the specified file as the data source for the specified
@@ -58,10 +58,10 @@ A comma separated list of events to exit on. Possible events are :code:`drag-fin
 :code:`drop-finish` and :code:`esc-key`. The first two events refer to a successful
 completion of a drag or a drop respectively. :code:`esc-key` means press the :kbd:`Esc`
 key.
-'''.format
+""".format
 
 
-help_text = '''\
+help_text = """\
 Perform drag and drop operations, even over SSH.
 
 Any arguments on the command line are assumed to be files and directories to drag.
@@ -77,13 +77,14 @@ Any text/plain data that is dropped onto this window is output to STDOUT, if STD
 is discarded.
 
 Press the Esc or Ctrl+C keys to quit the kitten at any time, cancelling any in progress drag.
-'''
+"""
 
 usage = '[files to drag]'
 if __name__ == '__main__':
     raise SystemExit('This should be run as kitten dnd')
 elif __name__ == '__doc__':
     from kitty.simple_cli_definitions import CompletionSpec
+
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = OPTIONS

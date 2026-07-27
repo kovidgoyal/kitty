@@ -10,12 +10,12 @@ from .base import BaseTest
 
 
 class TestClipboard(BaseTest):
-
     def test_clipboard_write_request(self):
         def t(data, expected):
             wr = WriteRequest(max_size=64)
             wr.add_base64_data(data)
             self.ae(wr.data_for(), expected)
+
         t('dGl0bGU=', b'title')
         t('dGl0bGU', b'title')
         t('dGl0bG', b'titl')

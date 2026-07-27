@@ -13,10 +13,7 @@ from .base import BorderLine, DragOverlayMode, Layout, LayoutData, LayoutDimensi
 
 
 def borders(
-    data: Iterable[tuple[WindowGroup, LayoutData, LayoutData]],
-    is_horizontal: bool,
-    all_windows: WindowList,
-    start_offset: int = 1, end_offset: int = 1
+    data: Iterable[tuple[WindowGroup, LayoutData, LayoutData]], is_horizontal: bool, all_windows: WindowList, start_offset: int = 1, end_offset: int = 1
 ) -> Generator[BorderLine, None, None]:
     borders: list[BorderLine] = []
     active_group = all_windows.active_group
@@ -31,21 +28,29 @@ def borders(
     for wg, xl, yl in data:
         if is_horizontal:
             e1 = Edges(
-                xl.content_pos - xl.space_before, yl.content_pos - yl.space_before,
-                xl.content_pos - xl.space_before + bw, yl.content_pos + yl.content_size + yl.space_after
+                xl.content_pos - xl.space_before,
+                yl.content_pos - yl.space_before,
+                xl.content_pos - xl.space_before + bw,
+                yl.content_pos + yl.content_size + yl.space_after,
             )
             e2 = Edges(
-                xl.content_pos + xl.content_size + xl.space_after - bw, yl.content_pos - yl.space_before,
-                xl.content_pos + xl.content_size + xl.space_after, yl.content_pos + yl.content_size + yl.space_after
+                xl.content_pos + xl.content_size + xl.space_after - bw,
+                yl.content_pos - yl.space_before,
+                xl.content_pos + xl.content_size + xl.space_after,
+                yl.content_pos + yl.content_size + yl.space_after,
             )
         else:
             e1 = Edges(
-                xl.content_pos - xl.space_before, yl.content_pos - yl.space_before,
-                xl.content_pos + xl.content_size + xl.space_after, yl.content_pos - yl.space_before + bw
+                xl.content_pos - xl.space_before,
+                yl.content_pos - yl.space_before,
+                xl.content_pos + xl.content_size + xl.space_after,
+                yl.content_pos - yl.space_before + bw,
             )
             e2 = Edges(
-                xl.content_pos - xl.space_before, yl.content_pos + yl.content_size + yl.space_after - bw,
-                xl.content_pos + xl.content_size + xl.space_after, yl.content_pos + yl.content_size + yl.space_after
+                xl.content_pos - xl.space_before,
+                yl.content_pos + yl.content_size + yl.space_after - bw,
+                xl.content_pos + xl.content_size + xl.space_after,
+                yl.content_pos + yl.content_size + yl.space_after,
             )
         color = BorderColor.inactive
         if needs_borders_map.get(wg.id):
@@ -60,7 +65,6 @@ def borders(
 
 
 class Vertical(Layout):
-
     name = 'vertical'
     main_is_horizontal = False
     no_minimal_window_borders = True
@@ -152,8 +156,8 @@ class Vertical(Layout):
         self.biased_map = {int(k): v for k, v in layout_state['biased_map'].items()}
         return True
 
-class Horizontal(Vertical):
 
+class Horizontal(Vertical):
     name = 'horizontal'
     main_is_horizontal = True
     drag_overlay_mode = DragOverlayMode.axis_x

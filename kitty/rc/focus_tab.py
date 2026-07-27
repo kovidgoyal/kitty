@@ -11,21 +11,23 @@ if TYPE_CHECKING:
 
 
 class FocusTab(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     match/str: The tab to focus
-    '''
+    """
 
     short_desc = 'Focus the specified tab'
     desc = 'The active window in the specified tab will be focused.'
-    options_spec = MATCH_TAB_OPTION + '''
+    options_spec = (
+        MATCH_TAB_OPTION
+        + """
 
 --no-response
 type=bool-set
 default=false
 Don't wait for a response indicating the success of the action. Note that
 using this option means that you will not be notified of failures.
-'''
+"""
+    )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'no_response': opts.no_response}

@@ -95,7 +95,6 @@ def expand_dirs(items, exclude=lambda x: x.endswith('.so')):
     return items
 
 
-
 def do_sign(app_dir: str) -> None:
     with current_dir(join(app_dir, 'Contents')):
         # Sign all .so files
@@ -122,16 +121,18 @@ def do_sign(app_dir: str) -> None:
 
 def sign_app(app_dir, notarize) -> None:
     # Copied from iTerm2: https://github.com/gnachman/iTerm2/blob/master/iTerm2.entitlements
-    create_entitlements_file({
-        'com.apple.security.automation.apple-events': True,
-        'com.apple.security.cs.allow-jit': True,
-        'com.apple.security.device.audio-input': True,
-        'com.apple.security.device.camera': True,
-        'com.apple.security.personal-information.addressbook': True,
-        'com.apple.security.personal-information.calendars': True,
-        'com.apple.security.personal-information.location': True,
-        'com.apple.security.personal-information.photos-library': True,
-    })
+    create_entitlements_file(
+        {
+            'com.apple.security.automation.apple-events': True,
+            'com.apple.security.cs.allow-jit': True,
+            'com.apple.security.device.audio-input': True,
+            'com.apple.security.device.camera': True,
+            'com.apple.security.personal-information.addressbook': True,
+            'com.apple.security.personal-information.calendars': True,
+            'com.apple.security.personal-information.location': True,
+            'com.apple.security.personal-information.photos-library': True,
+        }
+    )
     with make_certificate_useable():
         do_sign(app_dir)
         if notarize:
@@ -139,7 +140,6 @@ def sign_app(app_dir, notarize) -> None:
 
 
 class Freeze(object):
-
     FID = '@executable_path/../Frameworks'
 
     def __init__(self, build_dir, dont_strip=False, sign_installers=False, notarize=False, skip_tests=False) -> None:
@@ -198,6 +198,7 @@ class Freeze(object):
     def add_ca_certs(self) -> None:
         print('\nDownloading CA certs...')
         from urllib.request import urlopen
+
         cdata = None
         for i in range(5):
             try:
@@ -224,15 +225,13 @@ class Freeze(object):
     @flush
     def set_id(self, path_to_lib, new_id) -> None:
         old_mode = flipwritable(path_to_lib)
-        subprocess.check_call(
-            ['install_name_tool', '-id', new_id, path_to_lib])
+        subprocess.check_call(['install_name_tool', '-id', new_id, path_to_lib])
         if old_mode is not None:
             flipwritable(path_to_lib, old_mode)
 
     @flush
     def get_dependencies(self, path_to_lib):
-        install_name = subprocess.check_output(
-            ['otool', '-D', path_to_lib]).decode('utf-8').splitlines()[-1].strip()
+        install_name = subprocess.check_output(['otool', '-D', path_to_lib]).decode('utf-8').splitlines()[-1].strip()
         raw = subprocess.check_output(['otool', '-L', path_to_lib]).decode('utf-8')
         for line in raw.splitlines():
             if 'compatibility' not in line or line.strip().endswith(':'):
@@ -248,7 +247,7 @@ class Freeze(object):
                 if x.startswith(y):
                     if y == f'{PREFIX}/python/Python.framework/':
                         y = f'{PREFIX}/python/'
-                    yield x, x[len(y):], is_id
+                    yield x, x[len(y) :], is_id
                     break
 
     @flush
@@ -282,9 +281,7 @@ class Freeze(object):
         os.makedirs(rd)
         shutil.copy2(join(curr, 'Resources', 'Info.plist'), rd)
         shutil.copy2(join(curr, 'Python'), currd)
-        self.set_id(
-            join(currd, 'Python'),
-            f'{self.FID}/Python.framework/Versions/{basename(curr)}/Python')
+        self.set_id(join(currd, 'Python'), f'{self.FID}/Python.framework/Versions/{basename(curr)}/Python')
         # The following is needed for codesign
         with current_dir(x):
             os.symlink(basename(curr), 'Versions/Current')
@@ -295,22 +292,20 @@ class Freeze(object):
     def install_dylib(self, path, set_id=True) -> None:
         shutil.copy2(path, self.frameworks_dir)
         if set_id:
-            self.set_id(
-                join(self.frameworks_dir, basename(path)),
-                f'{self.FID}/{basename(path)}')
+            self.set_id(join(self.frameworks_dir, basename(path)), f'{self.FID}/{basename(path)}')
         self.fix_dependencies_in_lib(join(self.frameworks_dir, basename(path)))
 
     @flush
     def add_misc_libraries(self) -> None:
         for x in (
-                'sqlite3.0',
-                'z.1',
-                'harfbuzz.0',
-                'png16.16',
-                'lcms2.2',
-                'crypto.3',
-                'ssl.3',
-                'xxhash.0',
+            'sqlite3.0',
+            'z.1',
+            'harfbuzz.0',
+            'png16.16',
+            'lcms2.2',
+            'crypto.3',
+            'ssl.3',
+            'xxhash.0',
         ):
             print('\nAdding', x)
             x = f'lib{x}.dylib'
@@ -342,8 +337,7 @@ class Freeze(object):
             ans = []
             for y in files:
                 ext = os.path.splitext(y)[1]
-                if ext not in ('', '.py', '.so') or \
-                        (not ext and not os.path.isdir(join(root, y))):
+                if ext not in ('', '.py', '.so') or (not ext and not os.path.isdir(join(root, y))):
                     ans.append(y)
 
             return ans
@@ -364,9 +358,21 @@ class Freeze(object):
         if not os.path.exists(dest):
             os.makedirs(dest)
         for x in os.listdir(src):
-            if x in ('site-packages', 'config', 'test', 'lib2to3', 'lib-tk',
-                     'lib-old', 'idlelib', 'plat-mac', 'plat-darwin',
-                     'site.py', 'distutils', 'turtledemo', 'tkinter'):
+            if x in (
+                'site-packages',
+                'config',
+                'test',
+                'lib2to3',
+                'lib-tk',
+                'lib-old',
+                'idlelib',
+                'plat-mac',
+                'plat-darwin',
+                'site.py',
+                'distutils',
+                'turtledemo',
+                'tkinter',
+            ):
                 continue
             x = join(src, x)
             if os.path.isdir(x):
@@ -418,8 +424,7 @@ class Freeze(object):
     def add_site_packages(self) -> None:
         print('\nAdding site-packages')
         os.makedirs(self.site_packages)
-        sys_path = json.loads(subprocess.check_output([
-            PYTHON, '-c', 'import sys, json; json.dump(sys.path, sys.stdout)']))
+        sys_path = json.loads(subprocess.check_output([PYTHON, '-c', 'import sys, json; json.dump(sys.path, sys.stdout)']))
         paths = reversed(tuple(map(abspath, [x for x in sys_path if x.startswith('/') and not x.startswith('/Library/')])))
         upaths = []
         for x in paths:
@@ -459,8 +464,7 @@ class Freeze(object):
 
     @flush
     def filter_package(self, name):
-        return name in ('Cython', 'modulegraph', 'macholib', 'py2app',
-                        'bdist_mpkg', 'altgraph')
+        return name in ('Cython', 'modulegraph', 'macholib', 'py2app', 'bdist_mpkg', 'altgraph')
 
     @flush
     def remove_bytecode(self, dest) -> None:
@@ -477,7 +481,7 @@ class Freeze(object):
 
     @flush
     def makedmg(self, d, volname, format='ULMO'):
-        ''' Copy a directory d into a dmg named volname '''
+        """Copy a directory d into a dmg named volname"""
         print('\nMaking dmg...')
         sys.stdout.flush()
         destdir = join(SW, 'dist')
@@ -497,13 +501,8 @@ class Freeze(object):
                 sign_app(appdir, self.notarize)
             print('Signing completed in {} minutes {} seconds'.format(*times))
         os.symlink('/Applications', join(tdir, 'Applications'))
-        size_in_mb = int(
-            subprocess.check_output(['du', '-s', '-k', tdir]).decode('utf-8')
-            .split()[0]) / 1024.
-        cmd = [
-            '/usr/bin/hdiutil', 'create', '-srcfolder', tdir, '-volname',
-            volname, '-format', format
-        ]
+        size_in_mb = int(subprocess.check_output(['du', '-s', '-k', tdir]).decode('utf-8').split()[0]) / 1024.0
+        cmd = ['/usr/bin/hdiutil', 'create', '-srcfolder', tdir, '-volname', volname, '-format', format]
         if 190 < size_in_mb < 250:
             # We need -size 255m because of a bug in hdiutil. When the size of
             # srcfolder is close to 200MB hdiutil fails with
@@ -514,7 +513,7 @@ class Freeze(object):
             subprocess.check_call(cmd + [dmg])
         print('dmg created in {} minutes and {} seconds'.format(*times))
         shutil.rmtree(tdir)
-        size = os.stat(dmg).st_size / (1024 * 1024.)
+        size = os.stat(dmg).st_size / (1024 * 1024.0)
         print(f'\nInstaller size: {size:.2f}MB\n')
         return dmg
 
@@ -527,7 +526,7 @@ def main() -> None:
         dont_strip=args.dont_strip,
         sign_installers=args.sign_installers,
         notarize=args.notarize,
-        skip_tests=args.skip_tests
+        skip_tests=args.skip_tests,
     )
 
 

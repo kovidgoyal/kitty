@@ -27,10 +27,11 @@ src_base = os.path.dirname(os.path.abspath(__file__))
 glfw_base = os.path.join(src_base, 'glfw')
 setattr(sys, 'running_from_setup', True)
 
+
 def check_version_info() -> None:
     with open(os.path.join(src_base, 'pyproject.toml')) as f:
         raw = f.read()
-    m = re.search(r'''^requires-python\s*=\s*['"](.+?)['"]''', raw, flags=re.MULTILINE)
+    m = re.search(r"""^requires-python\s*=\s*['"](.+?)['"]""", raw, flags=re.MULTILINE)
     assert m is not None
     minver = m.group(1)
     match = re.match(r'(>=?)(\d+)\.(\d+)', minver)
@@ -54,8 +55,8 @@ version = tuple(
     map(
         int,
         re.search(  # type: ignore
-            r"^version: Version = Version\((\d+), (\d+), (\d+)\)", constants, re.MULTILINE
-        ).group(1, 2, 3)
+            r'^version: Version = Version\((\d+), (\d+), (\d+)\)', constants, re.MULTILINE
+        ).group(1, 2, 3),
     )
 )
 _plat = sys.platform.lower()
@@ -94,8 +95,8 @@ class Command(NamedTuple):
 
 class ISA(Enum):
     X86 = 0x03
-    AMD64 = 0x3e
-    ARM64 = 0xb7
+    AMD64 = 0x3E
+    ARM64 = 0xB7
     Other = 0x0
 
 
@@ -111,7 +112,6 @@ class CompilerType(Enum):
 
 
 class Env:
-
     cc: List[str] = []
     cppflags: List[str] = []
     cflags: List[str] = []
@@ -136,9 +136,16 @@ class Env:
     wayland_protocols: Tuple[str, ...] = ()
 
     def __init__(
-        self, cc: List[str] = [], cppflags: List[str] = [], cflags: List[str] = [], ldflags: List[str] = [],
-        library_paths: Dict[str, List[str]] = {}, ldpaths: Optional[List[str]] = None, ccver: Tuple[int, int] = (0, 0),
-        vcs_rev: str = '', binary_arch: BinaryArch = BinaryArch(),
+        self,
+        cc: List[str] = [],
+        cppflags: List[str] = [],
+        cflags: List[str] = [],
+        ldflags: List[str] = [],
+        library_paths: Dict[str, List[str]] = {},
+        ldpaths: Optional[List[str]] = None,
+        ccver: Tuple[int, int] = (0, 0),
+        vcs_rev: str = '',
+        binary_arch: BinaryArch = BinaryArch(),
         native_optimizations: bool = False,
     ):
         self.cc, self.cppflags, self.cflags, self.ldflags, self.library_paths = cc, cppflags, cflags, ldflags, library_paths
@@ -195,7 +202,6 @@ def LinkKey(output: str) -> CompileKey:
 
 
 class CompilationDatabase:
-
     def __init__(self, incremental: bool = False):
         self.incremental = incremental
         self.compile_commands: List[Command] = []
@@ -268,9 +274,7 @@ class CompilationDatabase:
                 link_database = json.load(f)
         except FileNotFoundError:
             link_database = []
-        compilation_database = {
-            CompileKey(k['file'], k['output']): k['arguments'] for k in compilation_database
-        }
+        compilation_database = {CompileKey(k['file'], k['output']): k['arguments'] for k in compilation_database}
         self.db = compilation_database
         self.linkdb = {tuple(k['output']): k['arguments'] for k in link_database}
         return self
@@ -287,7 +291,6 @@ class CompilationDatabase:
                 json.dump(compilation_database, f, indent=2, sort_keys=True)
             with open(self.linkdbpath, 'w') as f:
                 json.dump([{'output': c.key, 'arguments': c.cmd, 'directory': src_base} for c in self.link_commands], f, indent=2, sort_keys=True)
-
 
 
 class Options:
@@ -324,6 +327,7 @@ class Options:
     compilation_database: CompilationDatabase = CompilationDatabase()
     vcs_rev: str = ''
 
+
 def emphasis(text: str) -> str:
     if sys.stdout.isatty():
         text = f'\033[32m{text}\033[39m'
@@ -345,19 +349,12 @@ def pkg_config(pkg: str, *args: str, extra_pc_dir: str = '', fatal: bool = True)
         env['PKG_CONFIG_PATH'] = f'{pp}{extra_pc_dir}'
     cmd = [PKGCONFIG, pkg] + list(args)
     try:
-        return list(
-            filter(
-                None,
-                shlex.split(
-                    subprocess.check_output(cmd, env=env, stderr=None if fatal else subprocess.DEVNULL).decode('utf-8')
-                )
-            )
-        )
+        return list(filter(None, shlex.split(subprocess.check_output(cmd, env=env, stderr=None if fatal else subprocess.DEVNULL).decode('utf-8'))))
     except FileNotFoundError:
         if is_windows:
             raise SystemExit(
-                f'The command {error(PKGCONFIG)} was not found. You might need to install MSYS2 and its'
-                ' mingw-w64-x86_64-pkg-config package, or use WSL.')
+                f'The command {error(PKGCONFIG)} was not found. You might need to install MSYS2 and its mingw-w64-x86_64-pkg-config package, or use WSL.'
+            )
         raise
     except subprocess.CalledProcessError:
         if fatal:
@@ -366,8 +363,7 @@ def pkg_config(pkg: str, *args: str, extra_pc_dir: str = '', fatal: bool = True)
 
 
 def pkg_version(package: str) -> Tuple[int, int]:
-    ver = subprocess.check_output([
-        PKGCONFIG, package, '--modversion']).decode('utf-8').strip()
+    ver = subprocess.check_output([PKGCONFIG, package, '--modversion']).decode('utf-8').strip()
     m = re.match(r'(\d+).(\d+)', ver)
     if m is not None:
         qmajor, qminor = map(int, m.groups())
@@ -386,6 +382,7 @@ def libcrypto_flags() -> Tuple[List[str], List[str]]:
     except subprocess.CalledProcessError:
         if is_macos:
             import ssl
+
             v = ssl.OPENSSL_VERSION_INFO
             pats = f'{v[0]}.{v[1]}', f'{v[0]}'
             for pat in pats:
@@ -409,15 +406,12 @@ def xxhash_flags() -> tuple[list[str], list[str]]:
     return pkg_config('libxxhash', '--cflags-only-I'), pkg_config('libxxhash', '--libs')
 
 
-
 def at_least_version(package: str, major: int, minor: int = 0) -> None:
     q = f'{major}.{minor}'
-    if subprocess.run([PKGCONFIG, package, f'--atleast-version={q}']
-                      ).returncode != 0:
+    if subprocess.run([PKGCONFIG, package, f'--atleast-version={q}']).returncode != 0:
         qmajor = qminor = 0
         try:
-            ver = subprocess.check_output([PKGCONFIG, package, '--modversion']
-                                          ).decode('utf-8').strip()
+            ver = subprocess.check_output([PKGCONFIG, package, '--modversion']).decode('utf-8').strip()
             m = re.match(r'(\d+).(\d+)', ver)
             if m is not None:
                 qmajor, qminor = map(int, m.groups())
@@ -494,10 +488,8 @@ def get_python_flags(args: Options, cflags: List[str], for_main_executable: bool
         for var in 'data include stdlib'.split():
             val = sysconfig.get_path(var)
             if val and f'/{fw}.framework' in val:
-                fdir = val[:val.index(f'/{fw}.framework')]
-                if os.path.isdir(
-                    os.path.join(fdir, f'{fw}.framework')
-                ):
+                fdir = val[: val.index(f'/{fw}.framework')]
+                if os.path.isdir(os.path.join(fdir, f'{fw}.framework')):
                     framework_dir = fdir
                     break
         else:
@@ -531,20 +523,24 @@ def get_binary_arch(path: str) -> BinaryArch:
     if sig.startswith(b'\x7fELF'):  # ELF
         bits = {1: 32, 2: 64}[sig[4]]
         endian = {1: '<', 2: '>'}[sig[5]]
-        machine, = struct.unpack_from(endian + 'H', sig, 0x12)
-        isa = {i.value:i for i in ISA}.get(machine, ISA.Other)
-    elif sig[:4] in (b'\xcf\xfa\xed\xfe', b'\xce\xfa\xed\xfe'): # Mach-O
-        s, cpu_type, = struct.unpack_from('<II', sig, 0)
-        bits = {0xfeedface: 32, 0xfeedfacf: 64}[s]
-        cpu_type &= 0xff
-        isa = {0x7: ISA.AMD64, 0xc: ISA.ARM64}[cpu_type]
+        (machine,) = struct.unpack_from(endian + 'H', sig, 0x12)
+        isa = {i.value: i for i in ISA}.get(machine, ISA.Other)
+    elif sig[:4] in (b'\xcf\xfa\xed\xfe', b'\xce\xfa\xed\xfe'):  # Mach-O
+        (
+            s,
+            cpu_type,
+        ) = struct.unpack_from('<II', sig, 0)
+        bits = {0xFEEDFACE: 32, 0xFEEDFACF: 64}[s]
+        cpu_type &= 0xFF
+        isa = {0x7: ISA.AMD64, 0xC: ISA.ARM64}[cpu_type]
     else:
         raise SystemExit(f'Unknown binary format with signature: {sig[:4]!r}')
     return BinaryArch(bits=bits, isa=isa)
 
 
 def test_compile(
-    cc: List[str], *cflags: str,
+    cc: List[str],
+    *cflags: str,
     src: str = '',
     source_ext: str = 'c',
     link_also: bool = True,
@@ -559,11 +555,16 @@ def test_compile(
             print(src, file=srcf)
         output = os.path.join(tdir, 'source.output')
         ret = subprocess.Popen(
-            cc + ['-Werror=implicit-function-declaration'] + list(cflags) + ([] if link_also else ['-c']) +
-            ['-o', output, srcf.name] +
-            [f'-l{x}' for x in libraries] + list(ldflags),
-            stdout=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
-            stderr=None if show_stderr else subprocess.DEVNULL
+            cc
+            + ['-Werror=implicit-function-declaration']
+            + list(cflags)
+            + ([] if link_also else ['-c'])
+            + ['-o', output, srcf.name]
+            + [f'-l{x}' for x in libraries]
+            + list(ldflags),
+            stdout=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+            stderr=None if show_stderr else subprocess.DEVNULL,
         ).wait()
         if get_output_arch:
             if ret != 0:
@@ -627,7 +628,8 @@ def init_env(
     optimize = df if debug or sanitize else '-O3'
     sanitize_args = get_sanitize_args(cc, ccver) if sanitize else []
     cppflags_ = os.environ.get(
-        'OVERRIDE_CPPFLAGS', '-D{}DEBUG'.format('' if debug else 'N'),
+        'OVERRIDE_CPPFLAGS',
+        '-D{}DEBUG'.format('' if debug else 'N'),
     )
     cppflags = shlex.split(cppflags_)
     for el in extra_logging:
@@ -642,19 +644,15 @@ def init_env(
     no_plt = '-fno-plt' if test_compile(cc, '-fno-plt', '-Werror') else ''
 
     cflags_ = os.environ.get(
-        'OVERRIDE_CFLAGS', (
+        'OVERRIDE_CFLAGS',
+        (
             f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {c_std}'
             f' {werror} {optimize} {sanitize_flag} -fwrapv {stack_protector} {missing_braces}'
             f' -pipe -fvisibility=hidden {no_plt}'
-        )
+        ),
     )
-    cflags = shlex.split(cflags_) + shlex.split(
-        sysconfig.get_config_var('CCSHARED') or ''
-    )
-    ldflags_ = os.environ.get(
-        'OVERRIDE_LDFLAGS',
-        '-Wall ' + ' '.join(sanitize_args) + ('' if debug else ' -O3')
-    )
+    cflags = shlex.split(cflags_) + shlex.split(sysconfig.get_config_var('CCSHARED') or '')
+    ldflags_ = os.environ.get('OVERRIDE_LDFLAGS', '-Wall ' + ' '.join(sanitize_args) + ('' if debug else ' -O3'))
     ldflags = shlex.split(ldflags_)
     ldflags.append('-shared')
     cppflags += env_cppflags
@@ -703,7 +701,7 @@ def init_env(
     for path in extra_library_dirs:
         ldpaths.append(f'-L{path}')
 
-    if os.environ.get("DEVELOP_ROOT"):
+    if os.environ.get('DEVELOP_ROOT'):
         cflags.insert(0, f'-I{os.environ["DEVELOP_ROOT"]}/include')
         ldpaths.insert(0, f'-L{os.environ["DEVELOP_ROOT"]}/lib')
 
@@ -731,8 +729,16 @@ def init_env(
         cflags.extend('-march=native -mtune=native'.split())
 
     ans = Env(
-        cc, cppflags, cflags, ldflags, library_paths, binary_arch=ba, native_optimizations=native_optimizations,
-        ccver=ccver, ldpaths=ldpaths, vcs_rev=vcs_rev,
+        cc,
+        cppflags,
+        cflags,
+        ldflags,
+        library_paths,
+        binary_arch=ba,
+        native_optimizations=native_optimizations,
+        ccver=ccver,
+        ldpaths=ldpaths,
+        vcs_rev=vcs_rev,
     )
     ans.has_copy_file_range = bool(has_copy_file_range)
     if ans.compiler_type is CompilerType.gcc:
@@ -767,13 +773,20 @@ def kitty_env(args: Options) -> Env:
     cflags.extend(libcrypto_cflags)
     if is_macos:
         platform_libs = [
-            '-framework', 'Carbon', '-framework', 'CoreText', '-framework', 'CoreGraphics',
-            '-framework', 'AudioToolbox', '-framework', 'IOKit',
+            '-framework',
+            'Carbon',
+            '-framework',
+            'CoreText',
+            '-framework',
+            'CoreGraphics',
+            '-framework',
+            'AudioToolbox',
+            '-framework',
+            'IOKit',
         ]
-        test_program_src = '''#include <UserNotifications/UserNotifications.h>
-        int main(void) { return 0; }\n'''
-        user_notifications_framework = first_successful_compile(
-            ans.cc, '-framework UserNotifications', src=test_program_src, source_ext='m')
+        test_program_src = """#include <UserNotifications/UserNotifications.h>
+        int main(void) { return 0; }\n"""
+        user_notifications_framework = first_successful_compile(ans.cc, '-framework UserNotifications', src=test_program_src, source_ext='m')
         if user_notifications_framework:
             platform_libs.extend(shlex.split(user_notifications_framework))
         else:
@@ -824,7 +837,7 @@ def run_tool(cmd: Union[str, List[str]], desc: Optional[str] = None) -> None:
     else:
         # On Unix-like systems, passing a list is generally preferred for security and clarity.
         if isinstance(cmd, str):
-            cmd_to_execute = shlex.split(cmd) # Split the string into a list of arguments
+            cmd_to_execute = shlex.split(cmd)  # Split the string into a list of arguments
         else:
             cmd_to_execute = cmd
         print(desc or ' '.join(cmd_to_execute))
@@ -833,7 +846,7 @@ def run_tool(cmd: Union[str, List[str]], desc: Optional[str] = None) -> None:
     ret = p.wait()
     if ret != 0:
         if desc:
-            print(wcmd_to_execute if is_windows else cmd_to_execute) # Print the actual command that was executed
+            print(wcmd_to_execute if is_windows else cmd_to_execute)  # Print the actual command that was executed
         raise SystemExit(ret)
 
 
@@ -896,7 +909,13 @@ def get_source_specific_defines(env: Env, src: str) -> Tuple[str, List[str], Opt
             env.vcs_rev = get_vcs_rev()
         return src, [], [f'KITTY_VCS_REV="{env.vcs_rev}"', f'WRAPPED_KITTENS="{wrapped_kittens()}"']
     if src.startswith('3rdparty/base64/'):
-        return src, ['3rdparty/base64',], base64_defines(env.binary_arch.isa)
+        return (
+            src,
+            [
+                '3rdparty/base64',
+            ],
+            base64_defines(env.binary_arch.isa),
+        )
     if src == 'kitty/screen.c':
         return src, [], [f'PRIMARY_VERSION={env.primary_version}', f'SECONDARY_VERSION={env.secondary_version}', f'XT_VERSION="{env.xt_version}"']
     if src == 'kitty/fast-file-copy.c':
@@ -959,16 +978,12 @@ def dependecies_for(src: str, obj: str, all_headers: Iterable[str]) -> Iterable[
         yield src
         yield from iter(all_headers)
     else:
-        RE_INC = re.compile(
-            r'^(?P<target>.+?):\s+(?P<deps>.+?)$', re.MULTILINE
-        )
-        SPACE_TOK = '\x1B'
+        RE_INC = re.compile(r'^(?P<target>.+?):\s+(?P<deps>.+?)$', re.MULTILINE)
+        SPACE_TOK = '\x1b'
 
         text = deps.replace('\\\n', ' ').replace('\\ ', SPACE_TOK)
         for match in RE_INC.finditer(text):
-            files = (
-                f.replace(SPACE_TOK, ' ') for f in match.group('deps').split()
-            )
+            files = (f.replace(SPACE_TOK, ' ') for f in match.group('deps').split())
             for path in files:
                 path = os.path.abspath(path)
                 if path.startswith(src_base):
@@ -993,7 +1008,7 @@ def parallel_run(items: List[Command]) -> None:
         compile_cmd, w = workers.pop(pid, (None, None))
         if compile_cmd is None:
             return
-        if ((s & 0xff) != 0 or ((s >> 8) & 0xff) != 0):
+        if (s & 0xFF) != 0 or ((s >> 8) & 0xFF) != 0:
             if failed is None:
                 failed = compile_cmd
         elif compile_cmd.on_success is not None:
@@ -1028,16 +1043,13 @@ def add_builtin_fonts(args: Options) -> None:
     fonts_dir = os.path.join(src_base, 'fonts')
     os.makedirs(fonts_dir, exist_ok=True)
 
-    for psname, (filename, human_name) in {
-        'SymbolsNFM': ('SymbolsNerdFontMono-Regular.ttf', 'Symbols NERD Font Mono')
-    }.items():
+    for psname, (filename, human_name) in {'SymbolsNFM': ('SymbolsNerdFontMono-Regular.ttf', 'Symbols NERD Font Mono')}.items():
         dest = os.path.join(fonts_dir, filename)
         if os.path.exists(dest):
             continue
         font_file = ''
         if is_macos:
-            candidates = (
-                os.path.expanduser('~/Library/Fonts'), '/Library/Fonts', '/System/Library/Fonts', '/Network/Library/Fonts')
+            candidates = (os.path.expanduser('~/Library/Fonts'), '/Library/Fonts', '/System/Library/Fonts', '/Network/Library/Fonts')
             for candidate in candidates:
                 q = os.path.join(candidate, filename)
                 if os.path.exists(q):
@@ -1053,16 +1065,15 @@ def add_builtin_fonts(args: Options) -> None:
                         break
         elif is_windows:
             for candidate in (
-                    os.path.expandvars(r'%userprofile%\AppData\Local\Microsoft\Windows\Fonts'),
-                    os.path.expandvars(r'%windir%\Fonts'),
+                os.path.expandvars(r'%userprofile%\AppData\Local\Microsoft\Windows\Fonts'),
+                os.path.expandvars(r'%windir%\Fonts'),
             ):
                 q = os.path.join(candidate, filename)
                 if os.path.exists(q):
                     font_file = q
                     break
         else:
-            lines = subprocess.check_output([
-                'fc-list', '--format', '%{file}\n%{postscriptname}', f':postscriptname={psname}']).decode().splitlines()
+            lines = subprocess.check_output(['fc-list', '--format', '%{file}\n%{postscriptname}', f':postscriptname={psname}']).decode().splitlines()
             if len(lines) != 2:
                 raise SystemExit(f'fc-list returned unexpected output: {lines} when searching for the Symbols NERD font')
             if lines[1] != psname:
@@ -1085,10 +1096,7 @@ def compile_c_extension(
     build_dsym: bool = False,
 ) -> None:
     prefix = os.path.basename(module)
-    objects = [
-        os.path.join(build_dir, f'{prefix}-{src.replace("/", "-")}.o')
-        for src in sources
-    ]
+    objects = [os.path.join(build_dir, f'{prefix}-{src.replace("/", "-")}.o') for src in sources]
 
     for original_src, dest in zip(sources, objects):
         src = original_src
@@ -1128,11 +1136,9 @@ def compile_c_extension(
 def find_c_files() -> Tuple[List[str], List[str]]:
     ans, headers = [], []
     d = 'kitty'
-    exclude = {
-        'fontconfig.c', 'freetype.c', 'desktop.c', 'freetype_render_ui_text.c'
-    } if is_macos else {
-        'core_text.m', 'cocoa_window.m', 'macos_process_info.c'
-    }
+    exclude = (
+        {'fontconfig.c', 'freetype.c', 'desktop.c', 'freetype_render_ui_text.c'} if is_macos else {'core_text.m', 'cocoa_window.m', 'macos_process_info.c'}
+    )
     for x in sorted(os.listdir(d)):
         ext = os.path.splitext(x)[1]
         if ext in ('.c', '.m') and os.path.basename(x) not in exclude:
@@ -1162,7 +1168,7 @@ def glfw_init_env(
     pkg_version: Callable[[str], Tuple[int, int]],
     at_least_version: Callable[..., None],
     test_compile: Callable[..., Any],
-    module: str = 'x11'
+    module: str = 'x11',
 ) -> Env:
     ans = env.copy()
     ans.cflags.append('-fPIC')
@@ -1213,12 +1219,16 @@ def glfw_init_env(
         for dep in 'wayland-client wayland-cursor xkbcommon dbus-1'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.extend(pkg_config(dep, '--libs'))
-        has_memfd_create = test_compile(env.cc, '-Werror', src='''#define _GNU_SOURCE
+        has_memfd_create = test_compile(
+            env.cc,
+            '-Werror',
+            src="""#define _GNU_SOURCE
     #include <unistd.h>
     #include <sys/syscall.h>
     int main(void) {
         return syscall(__NR_memfd_create, "test", 0);
-    }''')
+    }""",
+        )
         if has_memfd_create:
             ans.cppflags.append('-DHAS_MEMFD_CREATE')
 
@@ -1226,11 +1236,7 @@ def glfw_init_env(
 
 
 def build_wayland_protocols(
-    env: Env,
-    parallel_run: Callable[[List[Command]], None],
-    emphasis: Callable[[str], str],
-    newer: Callable[..., bool],
-    dest_dir: str
+    env: Env, parallel_run: Callable[[List[Command]], None], emphasis: Callable[[str], str], newer: Callable[..., bool], dest_dir: str
 ) -> None:
     items = []
     for protocol in env.wayland_protocols:
@@ -1247,9 +1253,7 @@ def build_wayland_protocols(
             dest = os.path.join(dest_dir, dest)
             if newer(dest, src):
                 q = 'client-header' if ext == 'h' else env.wayland_scanner_code
-                items.append(Command(
-                    f'Generating {emphasis(os.path.basename(dest))} ...',
-                    [env.wayland_scanner, q, src, dest], lambda: True))
+                items.append(Command(f'Generating {emphasis(os.path.basename(dest))} ...', [env.wayland_scanner, q, src, dest], lambda: True))
     if items:
         parallel_run(items)
 
@@ -1274,9 +1278,7 @@ def compile_glfw(compilation_database: CompilationDatabase, build_dsym: bool = F
                 print(err, file=sys.stderr)
                 print(error('Disabling building of wayland backend'), file=sys.stderr)
                 continue
-        compile_c_extension(
-            genv, f'kitty/glfw-{module}', compilation_database,
-            sources, all_headers, desc_prefix=f'[{module}] ', build_dsym=build_dsym)
+        compile_c_extension(genv, f'kitty/glfw-{module}', compilation_database, sources, all_headers, desc_prefix=f'[{module}] ', build_dsym=build_dsym)
 
 
 def kittens_env(args: Options) -> Env:
@@ -1296,35 +1298,46 @@ def compile_kittens(args: Options) -> None:
         return sorted(glob.glob(q))
 
     def files(
-            kitten: str,
-            output: str,
-            extra_headers: Sequence[str] = (),
-            extra_sources: Sequence[str] = (),
-            filter_sources: Optional[Callable[[str], bool]] = None,
-            includes: Sequence[str] = (), libraries: Sequence[str] = (),
+        kitten: str,
+        output: str,
+        extra_headers: Sequence[str] = (),
+        extra_sources: Sequence[str] = (),
+        filter_sources: Optional[Callable[[str], bool]] = None,
+        includes: Sequence[str] = (),
+        libraries: Sequence[str] = (),
     ) -> Tuple[str, List[str], List[str], str, Sequence[str], Sequence[str]]:
         sources = list(filter(filter_sources, list(extra_sources) + list_files(os.path.join('kittens', kitten, '*.c'))))
         headers = list_files(os.path.join('kittens', kitten, '*.h')) + list(extra_headers)
         return kitten, sources, headers, f'kittens/{kitten}/{output}', includes, libraries
 
     xxhash = xxhash_flags()
-    for kitten, sources, all_headers, dest, includes, libraries in (
-        files('transfer', 'rsync', libraries=xxhash[1], includes=xxhash[0]),
-    ):
+    for kitten, sources, all_headers, dest, includes, libraries in (files('transfer', 'rsync', libraries=xxhash[1], includes=xxhash[0]),):
         final_env = kenv.copy()
         final_env.cflags.extend(includes)
         final_env.ldpaths[:0] = list(libraries)
-        compile_c_extension(
-            final_env, dest, args.compilation_database, sources, all_headers + ['kitty/data-types.h'], build_dsym=args.build_dsym)
+        compile_c_extension(final_env, dest, args.compilation_database, sources, all_headers + ['kitty/data-types.h'], build_dsym=args.build_dsym)
 
 
 def init_env_from_args(args: Options, native_optimizations: bool = False) -> None:
     global env
     env = init_env(
-        args.debug, args.sanitize, native_optimizations, args.link_time_optimization, args.profile,
-        args.egl_library, args.startup_notification_library, args.canberra_library, args.systemd_library, args.fontconfig_library,
-        args.extra_logging, args.extra_include_dirs, args.ignore_compiler_warnings,
-        args.building_arch, args.extra_library_dirs, verbose=args.verbose > 0, vcs_rev=args.vcs_rev,
+        args.debug,
+        args.sanitize,
+        native_optimizations,
+        args.link_time_optimization,
+        args.profile,
+        args.egl_library,
+        args.startup_notification_library,
+        args.canberra_library,
+        args.systemd_library,
+        args.fontconfig_library,
+        args.extra_logging,
+        args.extra_include_dirs,
+        args.ignore_compiler_warnings,
+        args.building_arch,
+        args.extra_library_dirs,
+        verbose=args.verbose > 0,
+        vcs_rev=args.vcs_rev,
     )
 
 
@@ -1377,9 +1390,16 @@ def build_shaders(args: Options, kitty_exe: str, for_freeze: bool) -> None:
         return
     env = os.environ.copy()
     env['ASAN_OPTIONS'] = 'detect_leaks=0'
-    cp = subprocess.run([
-        kitty_exe, '+launch', os.path.join(src_base, 'kitty/shaders/slang.py'), 'build/shaders', 'shaders',
-    ], env=env)
+    cp = subprocess.run(
+        [
+            kitty_exe,
+            '+launch',
+            os.path.join(src_base, 'kitty/shaders/slang.py'),
+            'build/shaders',
+            'shaders',
+        ],
+        env=env,
+    )
     if cp.returncode != 0:
         if os.environ.get('CI') == 'true' and cp.returncode < 0 and shutil.which('coredumpctl'):
             subprocess.run(['sh', '-c', 'echo bt | coredumpctl debug'])
@@ -1397,7 +1417,11 @@ def build(args: Options, native_optimizations: bool = True, call_init: bool = Tr
     headers.append(build_ref_map(args.skip_code_generation))
     headers.append(build_cli_parser_specs(args.skip_code_generation))
     compile_c_extension(
-        kitty_env(args), 'kitty/fast_data_types', args.compilation_database, sources, headers,
+        kitty_env(args),
+        'kitty/fast_data_types',
+        args.compilation_database,
+        sources,
+        headers,
         build_dsym=args.build_dsym,
     )
     compile_glfw(args.compilation_database, args.build_dsym)
@@ -1431,6 +1455,7 @@ def parse_go_version(x: str) -> Tuple[int, int, int]:
         with suppress(ValueError):
             return int(x)
         return int(re.split(r'[-a-zA-Z]', x)[0])
+
     ans = list(map(safe_int, x.split('.')))
     while len(ans) < 3:
         ans.append(0)
@@ -1446,17 +1471,16 @@ def go_cmd() -> list[str]:
 
 
 def build_static_kittens(
-    args: Options, launcher_dir: str, destination_dir: str = '', for_freeze: bool = False,
-    for_platform: Optional[Tuple[str, str]] = None
+    args: Options, launcher_dir: str, destination_dir: str = '', for_freeze: bool = False, for_platform: Optional[Tuple[str, str]] = None
 ) -> str:
     sys.stdout.flush()
     sys.stderr.flush()
     go = go_cmd()
     if not go:
         raise SystemExit('The go tool was not found on this system. Install Go')
-    required_go_version = subprocess.check_output(go + 'list -f {{.GoVersion}} -m'.split(), env=dict(os.environ, GO111MODULE="on")).decode().strip()
+    required_go_version = subprocess.check_output(go + 'list -f {{.GoVersion}} -m'.split(), env=dict(os.environ, GO111MODULE='on')).decode().strip()
     go_version_raw = subprocess.check_output(go + ['version']).decode().strip().split()
-    if go_version_raw[2] != "devel":
+    if go_version_raw[2] != 'devel':
         current_go_version = go_version_raw[2][2:]
     else:
         current_go_version = go_version_raw[3][2:]
@@ -1476,11 +1500,11 @@ def build_static_kittens(
         m = re.search(r'^module\s+(\S+)', f.read(), flags=re.M)
         assert m is not None
         modpath = m.group(1).strip()
-    binary_data_flags = [f"-X {modpath}.VCSRevision={vcs_rev}"]
+    binary_data_flags = [f'-X {modpath}.VCSRevision={vcs_rev}']
     if for_freeze:
-        binary_data_flags.append(f"-X {modpath}.IsFrozenBuild=true")
+        binary_data_flags.append(f'-X {modpath}.IsFrozenBuild=true')
     if for_platform:
-        binary_data_flags.append(f"-X {modpath}.IsStandaloneBuild=true")
+        binary_data_flags.append(f'-X {modpath}.IsStandaloneBuild=true')
     if not args.debug:
         ld_flags.append('-s')
         ld_flags.append('-w')
@@ -1523,7 +1547,11 @@ def build_static_kittens(
 def build_static_binaries(args: Options, launcher_dir: str) -> None:
     arches = 'amd64', 'arm64'
     for os_, arches_ in {
-        'darwin': arches, 'linux': arches + ('arm', '386'), 'freebsd': arches, 'netbsd': arches, 'openbsd': arches,
+        'darwin': arches,
+        'linux': arches + ('arm', '386'),
+        'freebsd': arches,
+        'netbsd': arches,
+        'openbsd': arches,
         'dragonfly': ('amd64',),
     }.items():
         for arch in arches_:
@@ -1584,7 +1612,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         cppflags.append('-DFROM_SOURCE')
     elif bundle_type == 'develop':
         cppflags.append('-DFROM_SOURCE')
-        ph = os.path.relpath(os.environ["DEVELOP_ROOT"], '.')
+        ph = os.path.relpath(os.environ['DEVELOP_ROOT'], '.')
         cppflags.append(f'-DSET_PYTHON_HOME="{ph}"')
         if not is_macos:
             ldflags += ['-Wl,--disable-new-dtags', f'-Wl,-rpath,$ORIGIN/../../{ph}/lib']
@@ -1624,7 +1652,8 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         cmd = env.cc + cppflags + cflags + ['-c', src, '-o', obj]
         key = CompileKey(src, os.path.basename(obj))
         args.compilation_database.add_command(
-            f'Compiling {emphasis(src)} ...', cmd, partial(newer, obj, src, *dependecies_for(src, obj, headers)), key=key, keyfile=src)
+            f'Compiling {emphasis(src)} ...', cmd, partial(newer, obj, src, *dependecies_for(src, obj, headers)), key=key, keyfile=src
+        )
     dest = kitty_exe = os.path.join(launcher_dir, 'kitty')
     link_targets.append(os.path.abspath(dest))
     desc = f'Linking {emphasis("launcher")} ...'
@@ -1648,11 +1677,11 @@ def copy_man_pages(ddir: str) -> None:
             shutil.rmtree(os.path.join(mandir, f'man{x}'))
     src = 'docs/_build/man'
     if not os.path.exists(src):
-        raise SystemExit('''\
+        raise SystemExit("""\
 The kitty man pages are missing. If you are building from git then run:
 make && make docs
 (needs the sphinx documentation system to be installed)
-''')
+""")
     for x in man_levels:
         os.makedirs(os.path.join(mandir, f'man{x}'))
         for y in glob.glob(os.path.join(src, f'*.{x}')):
@@ -1666,17 +1695,18 @@ def copy_html_docs(ddir: str) -> None:
         shutil.rmtree(htmldir)
     src = 'docs/_build/html'
     if not os.path.exists(src):
-        raise SystemExit('''\
+        raise SystemExit("""\
 The kitty html docs are missing. If you are building from git then run:
 make && make docs
 (needs the sphinx documentation system to be installed)
-''')
+""")
     shutil.copytree(src, htmldir)
 
 
 def compile_python(base_path: str) -> None:
     import compileall
     import py_compile
+
     for root, dirs, files in os.walk(base_path):
         for f in files:
             if f.rpartition('.')[-1] in ('pyc', 'pyo'):
@@ -1684,8 +1714,15 @@ def compile_python(base_path: str) -> None:
 
     exclude = re.compile('.*/shell-integration/ssh/bootstrap.py')
     compileall.compile_dir(
-        base_path, rx=exclude, force=True, optimize=(0, 1, 2), quiet=1, workers=0,  # type: ignore
-        invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH, ddir='')
+        base_path,
+        rx=exclude,
+        force=True,
+        optimize=(0, 1, 2),  # type: ignore
+        quiet=1,
+        workers=0,
+        invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH,
+        ddir='',
+    )
 
 
 def create_linux_bundle_gunk(ddir: str, args: Options) -> None:
@@ -1703,15 +1740,18 @@ def create_linux_bundle_gunk(ddir: str, args: Options) -> None:
         else:
             if args.skip_building_kitten:
                 skip_docs = True
-                print('WARNING: You have chosen to skip building kitten.'
-                      ' This means docs could not be generated and will not be included in the linux package.'
-                      ' You should build kitten and then re-run this build.', file=sys.stderr)
+                print(
+                    'WARNING: You have chosen to skip building kitten.'
+                    ' This means docs could not be generated and will not be included in the linux package.'
+                    ' You should build kitten and then re-run this build.',
+                    file=sys.stderr,
+                )
             else:
                 raise SystemExit(f'kitten binary not found at: {kitten_exe}')
     if not skip_docs:
         copy_man_pages(ddir)
         copy_html_docs(ddir)
-    for (icdir, ext) in {'256x256': 'png', 'scalable': 'svg'}.items():
+    for icdir, ext in {'256x256': 'png', 'scalable': 'svg'}.items():
         icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', icdir, 'apps')
         safe_makedirs(icdir)
         shutil.copy2(f'logo/kitty.{ext}', icdir)
@@ -1719,7 +1759,7 @@ def create_linux_bundle_gunk(ddir: str, args: Options) -> None:
     safe_makedirs(deskdir)
     with open(os.path.join(deskdir, 'kitty.desktop'), 'w') as f:
         f.write(
-            '''\
+            """\
 [Desktop Entry]
 Version=1.0
 Type=Application
@@ -1736,10 +1776,11 @@ X-TerminalArgTitle=--title
 X-TerminalArgAppId=--class
 X-TerminalArgDir=--working-directory
 X-TerminalArgHold=--hold
-''')
+"""
+        )
     with open(os.path.join(deskdir, 'kitty-open.desktop'), 'w') as f:
         f.write(
-            '''\
+            """\
 [Desktop Entry]
 Version=1.0
 Type=Application
@@ -1753,7 +1794,8 @@ Icon=kitty
 Categories=System;TerminalEmulator;
 NoDisplay=true
 MimeType=image/*;application/x-sh;application/x-shellscript;inode/directory;text/*;x-scheme-handler/kitty;x-scheme-handler/ssh;
-''')
+"""
+        )
 
     if os.path.exists(in_src_launcher):
         os.remove(in_src_launcher)
@@ -1763,128 +1805,141 @@ MimeType=image/*;application/x-sh;application/x-shellscript;inode/directory;text
 
 def macos_info_plist(for_quake: str = '') -> bytes:
     import plistlib
+
     VERSION = '.'.join(map(str, version))
 
     def access(what: str, verb: str = 'would like to access') -> str:
         return f'A program running inside kitty {verb} {what}'
 
-    docs = [] if for_quake else [
-        {
-            'CFBundleTypeName': 'Terminal scripts',
-            'CFBundleTypeExtensions': ['command', 'sh', 'zsh', 'bash', 'fish', 'tool'],
-            'CFBundleTypeIconFile': f'{appname}.icns',
-            'CFBundleTypeRole': 'Editor',
-        },
-        {
-            'CFBundleTypeName': 'Folders',
-            'LSItemContentTypes': ['public.directory'],
-            'CFBundleTypeRole': 'Editor',
-            'LSHandlerRank': 'Alternate',
-        },
-        {
-            'LSItemContentTypes': ['public.unix-executable'],
-            'CFBundleTypeRole': 'Shell',
-        },
-        {
-            'CFBundleTypeName': 'Text files',
-            'LSItemContentTypes': ['public.text'],
-            'CFBundleTypeRole': 'Editor',
-            'LSHandlerRank': 'Alternate',
-        },
-        {
-            'CFBundleTypeName': 'Image files',
-            'LSItemContentTypes': ['public.image'],
-            'CFBundleTypeRole': 'Viewer',
-            'LSHandlerRank': 'Alternate',
-        },
-        # Allows dragging arbitrary files to kitty Dock icon, and list kitty in the Open With context menu.
-        {
-            'CFBundleTypeName': 'All files',
-            'LSItemContentTypes': ['public.archive', 'public.content', 'public.data'],
-            'CFBundleTypeRole': 'Editor',
-            'LSHandlerRank': 'Alternate',
-        },
-    ]
+    docs = (
+        []
+        if for_quake
+        else [
+            {
+                'CFBundleTypeName': 'Terminal scripts',
+                'CFBundleTypeExtensions': ['command', 'sh', 'zsh', 'bash', 'fish', 'tool'],
+                'CFBundleTypeIconFile': f'{appname}.icns',
+                'CFBundleTypeRole': 'Editor',
+            },
+            {
+                'CFBundleTypeName': 'Folders',
+                'LSItemContentTypes': ['public.directory'],
+                'CFBundleTypeRole': 'Editor',
+                'LSHandlerRank': 'Alternate',
+            },
+            {
+                'LSItemContentTypes': ['public.unix-executable'],
+                'CFBundleTypeRole': 'Shell',
+            },
+            {
+                'CFBundleTypeName': 'Text files',
+                'LSItemContentTypes': ['public.text'],
+                'CFBundleTypeRole': 'Editor',
+                'LSHandlerRank': 'Alternate',
+            },
+            {
+                'CFBundleTypeName': 'Image files',
+                'LSItemContentTypes': ['public.image'],
+                'CFBundleTypeRole': 'Viewer',
+                'LSHandlerRank': 'Alternate',
+            },
+            # Allows dragging arbitrary files to kitty Dock icon, and list kitty in the Open With context menu.
+            {
+                'CFBundleTypeName': 'All files',
+                'LSItemContentTypes': ['public.archive', 'public.content', 'public.data'],
+                'CFBundleTypeRole': 'Editor',
+                'LSHandlerRank': 'Alternate',
+            },
+        ]
+    )
 
-    url_schemes = [] if for_quake else [
-        {
-            'CFBundleURLName': 'File URL',
-            'CFBundleURLSchemes': ['file'],
-        },
-        {
-            'CFBundleURLName': 'FTP URL',
-            'CFBundleURLSchemes': ['ftp', 'ftps'],
-        },
-        {
-            'CFBundleURLName': 'Gemini URL',
-            'CFBundleURLSchemes': ['gemini'],
-        },
-        {
-            'CFBundleURLName': 'Git URL',
-            'CFBundleURLSchemes': ['git'],
-        },
-        {
-            'CFBundleURLName': 'Gopher URL',
-            'CFBundleURLSchemes': ['gopher'],
-        },
-        {
-            'CFBundleURLName': 'HTTP URL',
-            'CFBundleURLSchemes': ['http', 'https'],
-        },
-        {
-            'CFBundleURLName': 'IRC URL',
-            'CFBundleURLSchemes': ['irc', 'irc6', 'ircs'],
-        },
-        {
-            'CFBundleURLName': 'kitty URL',
-            'CFBundleURLSchemes': ['kitty'],
-            'LSHandlerRank': 'Owner',
-            'LSIsAppleDefaultForScheme': True,
-        },
-        {
-            'CFBundleURLName': 'Mail Address URL',
-            'CFBundleURLSchemes': ['mailto'],
-        },
-        {
-            'CFBundleURLName': 'News URL',
-            'CFBundleURLSchemes': ['news', 'nntp'],
-        },
-        {
-            'CFBundleURLName': 'SSH and SFTP URL',
-            'CFBundleURLSchemes': ['ssh', 'sftp'],
-        },
-        {
-            'CFBundleURLName': 'Telnet URL',
-            'CFBundleURLSchemes': ['telnet'],
-        },
-    ]
+    url_schemes = (
+        []
+        if for_quake
+        else [
+            {
+                'CFBundleURLName': 'File URL',
+                'CFBundleURLSchemes': ['file'],
+            },
+            {
+                'CFBundleURLName': 'FTP URL',
+                'CFBundleURLSchemes': ['ftp', 'ftps'],
+            },
+            {
+                'CFBundleURLName': 'Gemini URL',
+                'CFBundleURLSchemes': ['gemini'],
+            },
+            {
+                'CFBundleURLName': 'Git URL',
+                'CFBundleURLSchemes': ['git'],
+            },
+            {
+                'CFBundleURLName': 'Gopher URL',
+                'CFBundleURLSchemes': ['gopher'],
+            },
+            {
+                'CFBundleURLName': 'HTTP URL',
+                'CFBundleURLSchemes': ['http', 'https'],
+            },
+            {
+                'CFBundleURLName': 'IRC URL',
+                'CFBundleURLSchemes': ['irc', 'irc6', 'ircs'],
+            },
+            {
+                'CFBundleURLName': 'kitty URL',
+                'CFBundleURLSchemes': ['kitty'],
+                'LSHandlerRank': 'Owner',
+                'LSIsAppleDefaultForScheme': True,
+            },
+            {
+                'CFBundleURLName': 'Mail Address URL',
+                'CFBundleURLSchemes': ['mailto'],
+            },
+            {
+                'CFBundleURLName': 'News URL',
+                'CFBundleURLSchemes': ['news', 'nntp'],
+            },
+            {
+                'CFBundleURLName': 'SSH and SFTP URL',
+                'CFBundleURLSchemes': ['ssh', 'sftp'],
+            },
+            {
+                'CFBundleURLName': 'Telnet URL',
+                'CFBundleURLSchemes': ['telnet'],
+            },
+        ]
+    )
 
-    services = [
-        {
-            'NSMenuItem': {'default': for_quake},
-            'NSMessage': 'quickAccessTerminal',
-            'NSRequiredContext': {'NSServiceCategory': 'None'},
-        },
-    ] if for_quake else [
-        {
-            'NSMenuItem': {'default': f'New {appname} Tab Here'},
-            'NSMessage': 'openTab',
-            'NSRequiredContext': {'NSTextContent': 'FilePath'},
-            'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
-        },
-        {
-            'NSMenuItem': {'default': f'New {appname} Window Here'},
-            'NSMessage': 'openOSWindow',
-            'NSRequiredContext': {'NSTextContent': 'FilePath'},
-            'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
-        },
-        {
-            'NSMenuItem': {'default': f'Open with {appname}'},
-            'NSMessage': 'openFileURLs',
-            'NSRequiredContext': {'NSTextContent': 'FilePath'},
-            'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
-        },
-    ]
+    services = (
+        [
+            {
+                'NSMenuItem': {'default': for_quake},
+                'NSMessage': 'quickAccessTerminal',
+                'NSRequiredContext': {'NSServiceCategory': 'None'},
+            },
+        ]
+        if for_quake
+        else [
+            {
+                'NSMenuItem': {'default': f'New {appname} Tab Here'},
+                'NSMessage': 'openTab',
+                'NSRequiredContext': {'NSTextContent': 'FilePath'},
+                'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
+            },
+            {
+                'NSMenuItem': {'default': f'New {appname} Window Here'},
+                'NSMessage': 'openOSWindow',
+                'NSRequiredContext': {'NSTextContent': 'FilePath'},
+                'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
+            },
+            {
+                'NSMenuItem': {'default': f'Open with {appname}'},
+                'NSMessage': 'openFileURLs',
+                'NSRequiredContext': {'NSTextContent': 'FilePath'},
+                'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
+            },
+        ]
+    )
 
     pl = dict(
         # Naming
@@ -1998,8 +2053,8 @@ def create_minimal_macos_bundle(args: Options, launcher_dir: str, relocate: bool
     with open(os.path.join(kapp, 'Contents/Info.plist'), 'wb') as f:
         f.write(macos_info_plist())
     if relocate:
-        shutil.copy2(os.path.join(launcher_dir, "kitty"), bin_dir)
-        shutil.copy2(os.path.join(launcher_dir, "kitten"), bin_dir)
+        shutil.copy2(os.path.join(launcher_dir, 'kitty'), bin_dir)
+        shutil.copy2(os.path.join(launcher_dir, 'kitten'), bin_dir)
     else:
         build_launcher(args, bin_dir)
         build_static_kittens(args, launcher_dir=bin_dir)
@@ -2033,8 +2088,7 @@ def create_macos_bundle_gunk(dest: str, for_freeze: bool, args: Options) -> str:
         kitten_exe = build_static_kittens(args, launcher_dir=os.path.dirname(kitty_exe))
         if not kitten_exe:
             raise SystemExit('kitten not built cannot create macOS bundle')
-        os.symlink(os.path.relpath(kitten_exe, os.path.dirname(in_src_launcher)),
-                   os.path.join(os.path.dirname(in_src_launcher), os.path.basename(kitten_exe)))
+        os.symlink(os.path.relpath(kitten_exe, os.path.dirname(in_src_launcher)), os.path.join(os.path.dirname(in_src_launcher), os.path.basename(kitten_exe)))
     create_quick_access_bundle(dest)
     return str(kitty_exe)
 
@@ -2072,11 +2126,7 @@ def package(args: Options, bundle_type: str, do_build_all: bool = True) -> None:
     allowed_extensions = frozenset('py slang glsl so'.split())
 
     def src_ignore(parent: str, entries: Iterable[str]) -> List[str]:
-        return [
-            x for x in entries
-            if '.' in x and x.rpartition('.')[2] not in
-            allowed_extensions
-        ]
+        return [x for x in entries if '.' in x and x.rpartition('.')[2] not in allowed_extensions]
 
     shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
     shutil.copytree('kittens', os.path.join(libdir, 'kittens'), ignore=src_ignore)
@@ -2125,6 +2175,8 @@ def package(args: Options, bundle_type: str, do_build_all: bool = True) -> None:
 
     if bundle_type.startswith('macos-'):
         create_macos_bundle_gunk(ddir, for_freeze, args)
+
+
 # }}}
 
 
@@ -2147,9 +2199,8 @@ def clean(for_cross_compile: bool = False) -> None:
                     os.unlink(x)
 
     safe_remove(
-        'build', 'compile_commands.json', 'link_commands.json',
-        'linux-package', 'kitty.app', 'asan-launcher',
-        'kitty-profile')  # no fonts as that is not generated by build
+        'build', 'compile_commands.json', 'link_commands.json', 'linux-package', 'kitty.app', 'asan-launcher', 'kitty-profile'
+    )  # no fonts as that is not generated by build
     if not for_cross_compile:
         safe_remove('docs/generated', 'shaders')
     clean_launcher_dir('kitty/launcher')
@@ -2160,10 +2211,7 @@ def clean(for_cross_compile: bool = False) -> None:
 
     def is_generated(f: str) -> bool:
         e = f.endswith
-        return (
-            e('_generated.h') or e('_generated.go') or e('_generated.bin') or
-            e('_generated.s') or e('_generated_test.s') or e('_generated_test.go')
-        )
+        return e('_generated.h') or e('_generated.go') or e('_generated.bin') or e('_generated.s') or e('_generated_test.s') or e('_generated_test.go')
 
     for root, dirs, files in os.walk(src_base, topdown=True):
         dirs[:] = [d for d in dirs if not excluded(root, d)]
@@ -2190,189 +2238,140 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         'action',
         nargs='?',
         default=Options.action,
-        choices=('build',
-                 'test',
-                 'develop',
-                 'linux-package',
-                 'kitty.app',
-                 'linux-freeze',
-                 'macos-freeze',
-                 'build-launcher',
-                 'build-frozen-launcher',
-                 'build-frozen-tools',
-                 'clean',
-                 'export-ci-bundles',
-                 'build-dep',
-                 'build-static-binaries',
-                 ),
-        help='Action to perform (default is build)'
+        choices=(
+            'build',
+            'test',
+            'develop',
+            'linux-package',
+            'kitty.app',
+            'linux-freeze',
+            'macos-freeze',
+            'build-launcher',
+            'build-frozen-launcher',
+            'build-frozen-tools',
+            'clean',
+            'export-ci-bundles',
+            'build-dep',
+            'build-static-binaries',
+        ),
+        help='Action to perform (default is build)',
     )
-    p.add_argument(
-        '--debug',
-        default=Options.debug,
-        action='store_true',
-        help='Build extension modules with debugging symbols'
-    )
-    p.add_argument(
-        '-v', '--verbose',
-        default=Options.verbose,
-        action='count',
-        help='Be verbose'
-    )
+    p.add_argument('--debug', default=Options.debug, action='store_true', help='Build extension modules with debugging symbols')
+    p.add_argument('-v', '--verbose', default=Options.verbose, action='count', help='Be verbose')
     p.add_argument(
         '--sanitize',
         default=Options.sanitize,
         action='store_true',
-        help='Turn on sanitization to detect memory access errors and undefined behavior. This is a big performance hit.'
+        help='Turn on sanitization to detect memory access errors and undefined behavior. This is a big performance hit.',
     )
-    p.add_argument(
-        '--prefix',
-        default=Options.prefix,
-        help='Where to create the linux package'
-    )
-    p.add_argument(
-        '--dir-for-static-binaries',
-        default=Options.dir_for_static_binaries,
-        help='Where to create the static kitten binary'
-    )
+    p.add_argument('--prefix', default=Options.prefix, help='Where to create the linux package')
+    p.add_argument('--dir-for-static-binaries', default=Options.dir_for_static_binaries, help='Where to create the static kitten binary')
     p.add_argument(
         '--skip-code-generation',
         default=Options.skip_code_generation,
         action='store_true',
         help='Do not create the *_generated.* source files. This is useful if they'
-        ' have already been generated by a previous build, for example during a two-stage cross compilation.'
+        ' have already been generated by a previous build, for example during a two-stage cross compilation.',
     )
     p.add_argument(
         '--skip-building-kitten',
         default=Options.skip_building_kitten,
         action='store_true',
-        help='Do not build the kitten binary. Useful if you want to build it separately.'
+        help='Do not build the kitten binary. Useful if you want to build it separately.',
     )
     p.add_argument(
         '--clean-for-cross-compile',
         default=Options.clean_for_cross_compile,
         action='store_true',
-        help='Do not clean generated Go source files. Useful for cross-compilation.'
+        help='Do not clean generated Go source files. Useful for cross-compilation.',
     )
     p.add_argument(
-        '--python-compiler-flags', default=Options.python_compiler_flags,
-        help='Compiler flags for compiling against Python. Typically include directives. If not set'
-        ' the Python used to run setup.py is queried for these.'
+        '--python-compiler-flags',
+        default=Options.python_compiler_flags,
+        help='Compiler flags for compiling against Python. Typically include directives. If not set the Python used to run setup.py is queried for these.',
     )
     p.add_argument(
-        '--python-linker-flags', default=Options.python_linker_flags,
+        '--python-linker-flags',
+        default=Options.python_linker_flags,
         help='Linker flags for linking against Python. Typically dynamic library names and search paths directives. If not set'
-        ' the Python used to run setup.py is queried for these.'
+        ' the Python used to run setup.py is queried for these.',
     )
+    p.add_argument('--full', dest='incremental', default=Options.incremental, action='store_false', help='Do a full build, even for unchanged files')
+    p.add_argument('--profile', default=Options.profile, action='store_true', help='Use the -pg compile flag to add profiling information')
     p.add_argument(
-        '--full',
-        dest='incremental',
-        default=Options.incremental,
-        action='store_false',
-        help='Do a full build, even for unchanged files'
+        '--libdir-name', default=Options.libdir_name, help='The name of the directory inside --prefix in which to store compiled files. Defaults to "lib"'
     )
-    p.add_argument(
-        '--profile',
-        default=Options.profile,
-        action='store_true',
-        help='Use the -pg compile flag to add profiling information'
-    )
-    p.add_argument(
-        '--libdir-name',
-        default=Options.libdir_name,
-        help='The name of the directory inside --prefix in which to store compiled files. Defaults to "lib"'
-    )
-    p.add_argument(
-        '--vcs-rev', default='',
-        help='The VCS revision to embed in the binary. The default is to read it from the .git directory when present.'
-    )
+    p.add_argument('--vcs-rev', default='', help='The VCS revision to embed in the binary. The default is to read it from the .git directory when present.')
     p.add_argument(
         '--extra-logging',
         action='append',
         default=Options.extra_logging,
         choices=('event-loop',),
-        help='Turn on extra logging for debugging in this build. Can be specified multiple times, to turn'
-        ' on different types of logging.'
+        help='Turn on extra logging for debugging in this build. Can be specified multiple times, to turn on different types of logging.',
     )
-    p.add_argument(
-        '--extra-include-dirs', '-I',
-        action='append',
-        default=Options.extra_include_dirs,
-        help='Extra include directories to use while compiling'
-    )
-    p.add_argument(
-        '--extra-library-dirs', '-L',
-        action='append',
-        default=Options.extra_library_dirs,
-        help='Extra library directories to use while linking'
-    )
+    p.add_argument('--extra-include-dirs', '-I', action='append', default=Options.extra_include_dirs, help='Extra include directories to use while compiling')
+    p.add_argument('--extra-library-dirs', '-L', action='append', default=Options.extra_library_dirs, help='Extra library directories to use while linking')
     p.add_argument(
         '--update-check-interval',
         type=float,
         default=Options.update_check_interval,
         help='When building a package, the default value for the update_check_interval setting will'
-        ' be set to this number. Use zero to disable update checking.'
+        ' be set to this number. Use zero to disable update checking.',
     )
     p.add_argument(
         '--shell-integration',
         type=str,
         default=Options.shell_integration,
         help='When building a package, the default value for the shell_integration setting will'
-        ' be set to this. Use "enabled no-rc" if you intend to install the shell integration scripts system wide.'
+        ' be set to this. Use "enabled no-rc" if you intend to install the shell integration scripts system wide.',
     )
     p.add_argument(
         '--egl-library',
         type=str,
         default=Options.egl_library,
-        help='The filename argument passed to dlopen for libEGL.'
-        ' This can be used to change the name of the loaded library or specify an absolute path.'
+        help='The filename argument passed to dlopen for libEGL. This can be used to change the name of the loaded library or specify an absolute path.',
     )
     p.add_argument(
         '--startup-notification-library',
         type=str,
         default=Options.startup_notification_library,
         help='The filename argument passed to dlopen for libstartup-notification-1.'
-        ' This can be used to change the name of the loaded library or specify an absolute path.'
+        ' This can be used to change the name of the loaded library or specify an absolute path.',
     )
     p.add_argument(
         '--canberra-library',
         type=str,
         default=Options.canberra_library,
-        help='The filename argument passed to dlopen for libcanberra.'
-        ' This can be used to change the name of the loaded library or specify an absolute path.'
+        help='The filename argument passed to dlopen for libcanberra. This can be used to change the name of the loaded library or specify an absolute path.',
     )
     p.add_argument(
         '--systemd-library',
         type=str,
         default=Options.systemd_library,
-        help='The filename argument passed to dlopen for libsystemd.'
-        ' This can be used to change the name of the loaded library or specify an absolute path.'
+        help='The filename argument passed to dlopen for libsystemd. This can be used to change the name of the loaded library or specify an absolute path.',
     )
     p.add_argument(
         '--fontconfig-library',
         type=str,
         default=Options.fontconfig_library,
-        help='The filename argument passed to dlopen for libfontconfig.'
-        ' This can be used to change the name of the loaded library or specify an absolute path.'
+        help='The filename argument passed to dlopen for libfontconfig. This can be used to change the name of the loaded library or specify an absolute path.',
     )
     p.add_argument(
         '--disable-link-time-optimization',
         dest='link_time_optimization',
         default=Options.link_time_optimization,
         action='store_false',
-        help='Turn off Link Time Optimization (LTO).'
+        help='Turn off Link Time Optimization (LTO).',
     )
     p.add_argument(
-        '--ignore-compiler-warnings',
-        default=Options.ignore_compiler_warnings, action='store_true',
-        help='Ignore any warnings from the compiler while building'
+        '--ignore-compiler-warnings', default=Options.ignore_compiler_warnings, action='store_true', help='Ignore any warnings from the compiler while building'
     )
     p.add_argument(
-        '--build-dSYM', dest='build_dsym',
-        default=Options.build_dsym, action='store_true',
-        help='Build the dSYM bundle on macOS, ignored on other platforms'
+        '--build-dSYM', dest='build_dsym', default=Options.build_dsym, action='store_true', help='Build the dSYM bundle on macOS, ignored on other platforms'
     )
     return p
+
+
 # }}}
 
 
@@ -2382,18 +2381,8 @@ def build_dep() -> None:
         deps: List[str] = []
 
     p = argparse.ArgumentParser(prog=f'{sys.argv[0]} build-dep', description='Build dependencies for the kitty binary packages')
-    p.add_argument(
-        '--platform',
-        default=Options.platform,
-        choices='all macos linux linux-arm64 linux-64'.split(),
-        help='Platforms to build the dep for'
-    )
-    p.add_argument(
-        'deps',
-        nargs='*',
-        default=Options.deps,
-        help='Names of the dependencies, if none provided, build all'
-    )
+    p.add_argument('--platform', default=Options.platform, choices='all macos linux linux-arm64 linux-64'.split(), help='Platforms to build the dep for')
+    p.add_argument('deps', nargs='*', default=Options.deps, help='Names of the dependencies, if none provided, build all')
     args = p.parse_args(sys.argv[2:], namespace=Options())
     linux_platforms = [
         ['linux', '--arch=64'],
@@ -2473,7 +2462,7 @@ def do_build(args: Options) -> None:
     if args.action == 'macos-freeze':
         return macos_freeze(args, launcher_dir)
     if args.action == 'build-frozen-launcher' and is_macos:
-        launcher_dir=os.path.join(args.prefix, 'bin')
+        launcher_dir = os.path.join(args.prefix, 'bin')
         return macos_freeze(args, launcher_dir, only_frozen_launcher=True)
 
     with CompilationDatabase(args.incremental) as cdb:

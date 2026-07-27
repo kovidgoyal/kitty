@@ -28,12 +28,11 @@ if TYPE_CHECKING:
 
 
 class Screenshot(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     match/str: The window to screenshot
     match_tab/str: The tab to screenshot
     output_path/str: Path to save the PNG image to, on the computer kitty is running on. Empty to return the image data instead.
-    '''
+    """
 
     short_desc = 'Take a screenshot of a kitty OS window, tab or window'
     desc = (
@@ -41,7 +40,6 @@ class Screenshot(RemoteCommand):
         ' kitty window or tab with :option:`--match`/:option:`--match-tab`. The specified window/tab must be'
         ' currently visible, i.e. it must be in the active tab of its OS window and, in the case of a window,'
         ' not hidden behind another window by the layout, otherwise this command will fail.\n\n'
-
         'By default, the PNG image data is written to STDOUT. If instead a file path is specified, kitty itself'
         ' (rather than this :program:`kitten` process) saves the screenshot to that path. Since kitty and the'
         ' kitten are typically running on the same computer, this avoids copying the (potentially large)'
@@ -49,7 +47,8 @@ class Screenshot(RemoteCommand):
     )
     options_spec = MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
     args = RemoteCommand.Args(
-        spec='[OUTPUT_FILE]', json_field='output_path',
+        spec='[OUTPUT_FILE]',
+        json_field='output_path',
         special_parse='!read_screenshot_args(io_data, args)',
         completion=RemoteCommand.CompletionSpec.from_string('type:file ext:png'),
     )
@@ -59,7 +58,8 @@ class Screenshot(RemoteCommand):
         if len(args) > 1:
             self.fatal('Must specify at most one output file')
         return {
-            'match': opts.match, 'match_tab': opts.match_tab,
+            'match': opts.match,
+            'match_tab': opts.match_tab,
             'output_path': args[0] if args else '',
         }
 
@@ -77,8 +77,7 @@ class Screenshot(RemoteCommand):
             tab = w.tabref()
             tm = tab.tab_manager_ref() if tab is not None else None
             if tab is None or tm is None or tm.active_tab is not tab or not w.is_visible_in_layout:
-                raise RemoteControlErrorWithoutTraceback(
-                    'The matched window is not currently visible, screenshots can only be taken of visible windows')
+                raise RemoteControlErrorWithoutTraceback('The matched window is not currently visible, screenshots can only be taken of visible windows')
             os_window_id = w.os_window_id
             target_window_id = w.id
         elif match_tab:
@@ -88,8 +87,7 @@ class Screenshot(RemoteCommand):
             tab = tabs[0]
             tm = tab.tab_manager_ref()
             if tm is None or tm.active_tab is not tab:
-                raise RemoteControlErrorWithoutTraceback(
-                    'The matched tab is not currently visible, screenshots can only be taken of visible tabs')
+                raise RemoteControlErrorWithoutTraceback('The matched tab is not currently visible, screenshots can only be taken of visible tabs')
             os_window_id = tab.os_window_id
         else:
             atm = boss.active_tab_manager
@@ -116,8 +114,7 @@ class Screenshot(RemoteCommand):
             except Exception as e:
                 responder.send_error(f'Failed to save screenshot: {e}')
 
-        boss.request_thumbnail(
-            os_window_id, callback, window_id=target_window_id, include_tab_bar=include_tab_bar, no_scaling=True)
+        boss.request_thumbnail(os_window_id, callback, window_id=target_window_id, include_tab_bar=include_tab_bar, no_scaling=True)
         return AsyncResponse()
 
 

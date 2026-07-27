@@ -64,14 +64,13 @@ def parse_spacing_settings(args: Iterable[str]) -> dict[str, float | None]:
 
 
 class SetSpacing(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     settings+/dict.spacing: An object mapping margins/paddings using canonical form {'margin-top': 50, 'padding-left': null} etc
     match_window/str: Window to change paddings and margins in
     match_tab/str: Tab to change paddings and margins in
     all/bool: Boolean indicating change paddings and margins everywhere or not
     configured/bool: Boolean indicating whether to change the configured paddings and margins. Must be True if reset is True
-    '''
+    """
 
     short_desc = 'Set window paddings and margins'
     desc = (
@@ -81,7 +80,8 @@ class SetSpacing(RemoteCommand):
         ' The special value :code:`default` resets to using the default value.'
         ' If you specify a tab rather than a window, all windows in that tab are affected.'
     )
-    options_spec = '''\
+    options_spec = (
+        """\
 --all -a
 type=bool-set
 By default, settings are only changed for the currently active window. This option will
@@ -92,7 +92,12 @@ cause paddings and margins to be changed in all windows.
 type=bool-set
 Also change the configured paddings and margins (i.e. the settings kitty will use for new
 windows).
-''' + '\n\n' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
+"""
+        + '\n\n'
+        + MATCH_WINDOW_OPTION
+        + '\n\n'
+        + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
+    )
     args = RemoteCommand.Args(spec='MARGIN_OR_PADDING ...', minimum_count=1, json_field='settings', special_parse='parse_set_spacing(args)')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
@@ -102,11 +107,7 @@ windows).
             settings = parse_spacing_settings(args)
         except Exception as e:
             self.fatal(str(e))
-        ans = {
-            'match_window': opts.match, 'match_tab': opts.match_tab,
-            'all': opts.all, 'configured': opts.configured,
-            'settings': settings
-        }
+        ans = {'match_window': opts.match, 'match_tab': opts.match_tab, 'all': opts.all, 'configured': opts.configured, 'settings': settings}
         return ans
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
@@ -114,6 +115,7 @@ windows).
         settings: dict[str, float | None] = payload_get('settings')
         dirtied_tabs = {}
         from kitty.fast_data_types import get_options
+
         if payload_get('configured'):
             patch_configured_edges(get_options(), settings)
 

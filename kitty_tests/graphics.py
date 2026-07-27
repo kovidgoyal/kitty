@@ -21,6 +21,7 @@ except ImportError:
     Image = None
 png_data = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==')
 
+
 def send_command(screen, cmd, payload=b''):
     cmd = '\033_G' + cmd
     if payload:
@@ -121,9 +122,22 @@ def put_helpers(self, cw, ch, cols=10, lines=5):
         return s, 2 / s.columns, 2 / s.lines
 
     def put_cmd(
-        z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0, height=0, cell_x_off=0,
-        cell_y_off=0, placement_id=0, cursor_movement=0, unicode_placeholder=0, parent_id=0,
-        parent_placement_id=0, offset_from_parent_x=0, offset_from_parent_y=0,
+        z=0,
+        num_cols=0,
+        num_lines=0,
+        x_off=0,
+        y_off=0,
+        width=0,
+        height=0,
+        cell_x_off=0,
+        cell_y_off=0,
+        placement_id=0,
+        cursor_movement=0,
+        unicode_placeholder=0,
+        parent_id=0,
+        parent_placement_id=0,
+        offset_from_parent_x=0,
+        offset_from_parent_y=0,
     ):
         return (
             f'z={z},c={num_cols},r={num_lines},x={x_off},y={y_off},w={width},h={height},'
@@ -165,7 +179,7 @@ def put_helpers(self, cw, ch, cols=10, lines=5):
 
 
 def make_send_command(screen):
-    def li(payload='abcdefghijkl'*3, s=4, v=3, f=24, a='f', i=1, **kw):
+    def li(payload='abcdefghijkl' * 3, s=4, v=3, f=24, a='f', i=1, **kw):
         if s:
             kw['s'] = s
         if v:
@@ -178,11 +192,11 @@ def make_send_command(screen):
         cmd = ','.join(f'{k}={v}' for k, v in kw.items())
         res = send_command(screen, cmd, payload)
         return parse_full_response(res)
+
     return li
 
 
 class TestGraphics(BaseTest):
-
     def test_xor_data(self):
         base_data = b'\x01' * 64
         key = b'\x02' * 64
@@ -347,7 +361,7 @@ class TestGraphics(BaseTest):
         # test hole coalescing
         reset(defrag_factor=20)
         for i in range(1, 6):
-            self.assertIsNone(add(i, str(i)*i))
+            self.assertIsNone(add(i, str(i) * i))
             dc.wait_for_write()
         remove(2)
         remove(4)
@@ -434,22 +448,11 @@ class TestGraphics(BaseTest):
         self.ae(img['data'], b'abcdefghijkl1234')
 
         random_data = byte_block(32 * 1024)
-        sl(
-            random_data,
-            s=1024,
-            v=8,
-            expecting_data=random_data
-        )
+        sl(random_data, s=1024, v=8, expecting_data=random_data)
 
         # Test compression
         compressed_random_data = zlib.compress(random_data)
-        sl(
-            compressed_random_data,
-            s=1024,
-            v=8,
-            o='z',
-            expecting_data=random_data
-        )
+        sl(compressed_random_data, s=1024, v=8, o='z', expecting_data=random_data)
 
         # Test chunked + compressed
         b = len(compressed_random_data) // 2
@@ -480,9 +483,7 @@ class TestGraphics(BaseTest):
         name = '/kitty-test-shm'
         shm_write(name, random_data)
         sl(name, s=1024, v=8, t='s', expecting_data=random_data)
-        self.assertRaises(
-            FileNotFoundError, shm_unlink, name
-        )  # check that file was deleted
+        self.assertRaises(FileNotFoundError, shm_unlink, name)  # check that file was deleted
         s.reset()
         self.assertEqual(g.disk_cache.total_size, 0)
 
@@ -626,13 +627,14 @@ class TestGraphics(BaseTest):
         self.ae(l0[0]['group_count'], 1)
         self.ae(s.cursor.x, 1), self.ae(s.cursor.y, 0)
         src_width, src_height = 3, 5
-        iid, (code, idstr) = put_ref(s, num_cols=s.columns, num_lines=1, x_off=2, y_off=1, width=src_width, height=src_height,
-                                     cell_x_off=3, cell_y_off=1, z=-1, placement_id=17)
+        iid, (code, idstr) = put_ref(
+            s, num_cols=s.columns, num_lines=1, x_off=2, y_off=1, width=src_width, height=src_height, cell_x_off=3, cell_y_off=1, z=-1, placement_id=17
+        )
         self.ae(idstr, f'i={iid},p=17')
         l2 = layers(s)
         self.ae(len(l2), 2)
         self.ae(l2[1], l0[0])
-        rect_eq(l2[0]['src_rect'], 2 / 10, 1 / 20, (2 + 3) / 10, (1 + 5)/20)
+        rect_eq(l2[0]['src_rect'], 2 / 10, 1 / 20, (2 + 3) / 10, (1 + 5) / 20)
         self.ae(l2[0]['group_count'], 2)
         left, top = -1 + dx + 3 * dx / cw, 1 - 1 * dy / ch
         right = -1 + (1 + s.columns) * dx
@@ -643,9 +645,9 @@ class TestGraphics(BaseTest):
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)
         s.reset()
         self.assertEqual(s.grman.disk_cache.total_size, 0)
-        self.ae(put_image(s, 2*cw, 2*ch, num_cols=3)[1], 'OK')
+        self.ae(put_image(s, 2 * cw, 2 * ch, num_cols=3)[1], 'OK')
         self.ae((s.cursor.x, s.cursor.y), (3, 2))
-        rect_eq(layers(s)[0]['dest_rect'], -1, 1, -1 + 3 * dx, 1 - 3*dy)
+        rect_eq(layers(s)[0]['dest_rect'], -1, 1, -1 + 3 * dx, 1 - 3 * dy)
 
     def test_graphics_put_with_pixel_offsets(self):
         cw, ch = 10, 20
@@ -677,10 +679,12 @@ class TestGraphics(BaseTest):
 
         def positions():
             ans = {}
+
             def x(x):
-                return round(((x + 1)/2) * s.columns)
+                return round(((x + 1) / 2) * s.columns)
+
             def y(y):
-                return int(((-y + 1)/2) * s.lines)
+                return int(((-y + 1) / 2) * s.lines)
 
             for i in layers(s):
                 d = i['dest_rect']
@@ -688,7 +692,7 @@ class TestGraphics(BaseTest):
             return ans
 
         def p(x, y=0):
-            return {'x':x, 'y': y}
+            return {'x': x, 'y': y}
 
         self.ae(put_image(s, iw, ih, id=1)[1], 'OK')
         self.ae(put_ref(s, id=1, placement_id=1), (1, ('OK', 'i=1,p=1')))
@@ -701,27 +705,27 @@ class TestGraphics(BaseTest):
         self.ae(put_ref(s, id=1, placement_id=1, parent_id=1, parent_placement_id=1), (1, ('EINVAL', 'i=1,p=1')))
 
         self.ae(put_image(s, iw, ih, id=2)[1], 'OK')
-        pos[(2,1)] = p(2)
+        pos[(2, 1)] = p(2)
         self.ae(positions(), pos)
         # Add two children to the first placement of img2
         before = s.cursor.x, s.cursor.y
         self.ae(put_ref(s, id=1, placement_id=2, parent_id=2, offset_from_parent_y=3), (1, ('OK', 'i=1,p=2')))
         self.ae(before, (s.cursor.x, s.cursor.y), 'Cursor must not move for child image')
-        pos[(1,3)] = p(2, 3)
+        pos[(1, 3)] = p(2, 3)
         self.ae(positions(), pos)
         self.ae(put_ref(s, id=2, placement_id=3, parent_id=2, offset_from_parent_y=4), (2, ('OK', 'i=2,p=3')))
-        pos[(2,2)] = p(2, 4)
+        pos[(2, 2)] = p(2, 4)
         self.ae(positions(), pos)
         # Add a grand child to the second child of img2
         self.ae(put_ref(s, id=2, placement_id=4, parent_id=2, parent_placement_id=3, offset_from_parent_x=-1), (2, ('OK', 'i=2,p=4')))
-        pos[(2,3)] = p(pos[(2,2)]['x']-1, pos[(2,2)]['y'])
+        pos[(2, 3)] = p(pos[(2, 2)]['x'] - 1, pos[(2, 2)]['y'])
         self.ae(positions(), pos)
         # Check that creating a cycle is prevented
         self.ae(put_ref(s, id=2, placement_id=3, parent_id=2, parent_placement_id=4), (2, ('ECYCLE', 'i=2,p=3')))
         self.ae(positions(), pos)
         # Check that depth is limited
         for i in range(5, 12):
-            q = put_ref(s, id=2, placement_id=i, parent_id=2, parent_placement_id=i-1, offset_from_parent_x=-1)[1][0]
+            q = put_ref(s, id=2, placement_id=i, parent_id=2, parent_placement_id=i - 1, offset_from_parent_x=-1)[1][0]
             if q == 'ETOODEEP':
                 break
             self.ae(q, 'OK')
@@ -729,18 +733,18 @@ class TestGraphics(BaseTest):
             self.assertTrue(False, 'Failed to limit reference chain depth')
         # Check that deleting a parent removes all descendants
         send_command(s, 'a=d,d=i,i=2,p=3')
-        pos.pop((2,3)), pos.pop((2,2))
+        pos.pop((2, 3)), pos.pop((2, 2))
         self.ae(positions(), pos)
         # Check that deleting a parent deletes all descendants and also removes
         # images with no remaining placements
         self.ae(put_ref(s, id=2, placement_id=3, parent_id=2, offset_from_parent_y=4), (2, ('OK', 'i=2,p=3')))
-        pos[(2,11)] = p(2, 4)
+        pos[(2, 11)] = p(2, 4)
         self.ae(positions(), pos)
         self.ae(put_image(s, iw, ih, id=3, placement_id=97, parent_id=2, parent_placement_id=3)[1], 'OK')
-        pos[(3,1)] = p(2, 4)
+        pos[(3, 1)] = p(2, 4)
         self.ae(positions(), pos)
         send_command(s, 'a=d,d=i,i=2')
-        pos.pop((3,1)), pos.pop((2,11)), pos.pop((2,1)), pos.pop((1,3))
+        pos.pop((3, 1)), pos.pop((2, 11)), pos.pop((2, 1)), pos.pop((1, 3))
         self.ae(positions(), pos)
         # Check that virtual placements that try to be relative are rejected
         self.ae(put_ref(s, id=1, placement_id=11, parent_id=1, unicode_placeholder=1), (1, ('EINVAL', 'i=1,p=11')))
@@ -751,12 +755,12 @@ class TestGraphics(BaseTest):
         self.assertFalse(positions())  # the reference is virtual
         self.ae(put_ref(s, id=42, placement_id=11, parent_id=42, offset_from_parent_y=2, offset_from_parent_x=1), (42, ('OK', 'i=42,p=11')))
         self.assertFalse(positions())  # the reference is virtual without any cell images so the child is invisible
-        s.apply_sgr("38;5;42")
+        s.apply_sgr('38;5;42')
         # These two characters will become one 2x1 ref.
         s.cursor.x = s.cursor.y = 1
-        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030D")
+        s.draw('\U0010eeee\u0305\u0305\U0010eeee\u0305\u030d')
         s.cursor.x = s.cursor.y = 0
-        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030D")
+        s.draw('\U0010eeee\u0305\u0305\U0010eeee\u0305\u030d')
         s.update_only_line_graphics_data()
         pos = {(1, 2): p(1, 2), (1, 3): p(0), (1, 4): p(1)}
         self.ae(positions(), pos)
@@ -765,7 +769,7 @@ class TestGraphics(BaseTest):
         s.update_only_line_graphics_data()
         self.assertFalse(positions())  # the reference is virtual without any cell images so the child is invisible
         s.cursor.x = s.cursor.y = 2
-        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030D")
+        s.draw('\U0010eeee\u0305\u0305\U0010eeee\u0305\u030d')
         s.update_only_line_graphics_data()
         self.ae(positions(), {(1, 5): {'x': 2, 'y': 2}, (1, 2): {'x': 3, 'y': 4}})
 
@@ -775,7 +779,7 @@ class TestGraphics(BaseTest):
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
         # Upload two images.
         put_image(s, 20, 20, num_cols=4, num_lines=2, unicode_placeholder=1, id=42)
-        put_image(s, 10, 20, num_cols=4, num_lines=2, unicode_placeholder=1, id=(42<<16) + (43<<8) + 44)
+        put_image(s, 10, 20, num_cols=4, num_lines=2, unicode_placeholder=1, id=(42 << 16) + (43 << 8) + 44)
         # The references are virtual, so no visible refs yet.
         s.update_only_line_graphics_data()
         refs = layers(s)
@@ -787,11 +791,11 @@ class TestGraphics(BaseTest):
         # \u0310 -> 3
         # Now print the placeholders for the first image.
         # Encode the id as an 8-bit color.
-        s.apply_sgr("38;5;42")
+        s.apply_sgr('38;5;42')
         # These two characters will become one 2x1 ref.
-        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030D")
+        s.draw('\U0010eeee\u0305\u0305\U0010eeee\u0305\u030d')
         # These two characters will be two separate refs (not contiguous).
-        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\u030E")
+        s.draw('\U0010eeee\u0305\u0305\U0010eeee\u0305\u030e')
         s.cursor_move(4)
         s.update_only_line_graphics_data()
         refs = layers(s)
@@ -807,11 +811,11 @@ class TestGraphics(BaseTest):
         self.ae(len(refs), 0)
         # Now test encoding IDs with the 24-bit color.
         # The first image, 1x1
-        s.apply_sgr("38;2;0;0;42")
-        s.draw("\U0010EEEE\u0305\u0305")
+        s.apply_sgr('38;2;0;0;42')
+        s.draw('\U0010eeee\u0305\u0305')
         # The second image, 2x1
-        s.apply_sgr("38;2;42;43;44")
-        s.draw("\U0010EEEE\u0305\u030D\U0010EEEE\u0305\u030E")
+        s.apply_sgr('38;2;42;43;44')
+        s.draw('\U0010eeee\u0305\u030d\U0010eeee\u0305\u030e')
         s.cursor_move(2)
         s.update_only_line_graphics_data()
         refs = layers(s)
@@ -825,11 +829,11 @@ class TestGraphics(BaseTest):
         # Now test implicit column numbers.
         # We will mix implicit and explicit column/row specifications, but they
         # will be combine into just two references.
-        s.apply_sgr("38;5;42")
+        s.apply_sgr('38;5;42')
         # full row 0 of the first image
-        s.draw("\U0010EEEE\u0305\u0305\U0010EEEE\u0305\U0010EEEE\U0010EEEE\u0305")
+        s.draw('\U0010eeee\u0305\u0305\U0010eeee\u0305\U0010eeee\U0010eeee\u0305')
         # full row 1 of the first image
-        s.draw("\U0010EEEE\u030D\U0010EEEE\U0010EEEE\U0010EEEE\u030D\u0310")
+        s.draw('\U0010eeee\u030d\U0010eeee\U0010eeee\U0010eeee\u030d\u0310')
         s.cursor_move(8)
         s.update_only_line_graphics_data()
         refs = layers(s)
@@ -850,8 +854,8 @@ class TestGraphics(BaseTest):
         put_image(s, 20, 20, num_cols=4, num_lines=2, unicode_placeholder=1, id=42)
         put_image(s, 20, 10, num_cols=4, num_lines=1, unicode_placeholder=1, id=(42 << 24) + 43)
         # This one will have id=43, which does not exist.
-        s.apply_sgr("38;2;0;0;43")
-        s.draw("\U0010EEEE\u0305\U0010EEEE\U0010EEEE\U0010EEEE")
+        s.apply_sgr('38;2;0;0;43')
+        s.draw('\U0010eeee\u0305\U0010eeee\U0010eeee\U0010eeee')
         s.cursor_move(4)
         s.update_only_line_graphics_data()
         refs = layers(s)
@@ -860,14 +864,14 @@ class TestGraphics(BaseTest):
         # This one will have id=42. We explicitly specify that the most
         # significant byte is 0 (third \u305). Specifying the zero byte like
         # this is not necessary but is correct.
-        s.apply_sgr("38;2;0;0;42")
-        s.draw("\U0010EEEE\u0305\u0305\u0305\U0010EEEE\u0305\u030D\u0305")
+        s.apply_sgr('38;2;0;0;42')
+        s.draw('\U0010eeee\u0305\u0305\u0305\U0010eeee\u0305\u030d\u0305')
         # This is the second image.
         # \u059C -> 42
-        s.apply_sgr("38;2;0;0;43")
-        s.draw("\U0010EEEE\u0305\u0305\u059C\U0010EEEE\u0305\u030D\u059C")
+        s.apply_sgr('38;2;0;0;43')
+        s.draw('\U0010eeee\u0305\u0305\u059c\U0010eeee\u0305\u030d\u059c')
         # Check that we can continue by using implicit row/column specification.
-        s.draw("\U0010EEEE\u0305\U0010EEEE")
+        s.draw('\U0010eeee\u0305\U0010eeee')
         s.cursor_move(6)
         s.update_only_line_graphics_data()
         refs = layers(s)
@@ -878,10 +882,10 @@ class TestGraphics(BaseTest):
         # Now test the 8-bit color mode. Using the third diacritic, we can
         # specify 16 bits: the most significant byte and the least significant
         # byte.
-        s.apply_sgr("38;5;42")
-        s.draw("\U0010EEEE\u0305\u0305\u0305\U0010EEEE")
-        s.apply_sgr("38;5;43")
-        s.draw("\U0010EEEE\u0305\u0305\u059C\U0010EEEE\U0010EEEE\u0305\U0010EEEE")
+        s.apply_sgr('38;5;42')
+        s.draw('\U0010eeee\u0305\u0305\u0305\U0010eeee')
+        s.apply_sgr('38;5;43')
+        s.draw('\U0010eeee\u0305\u0305\u059c\U0010eeee\U0010eeee\u0305\U0010eeee')
         s.cursor_move(6)
         s.update_only_line_graphics_data()
         refs = layers(s)
@@ -901,13 +905,13 @@ class TestGraphics(BaseTest):
         refs = layers(s)
         self.ae(len(refs), 0)
         # Draw the first row of each placement.
-        s.apply_sgr("38;5;42")
-        s.apply_sgr("58;5;1")
-        s.draw("\U0010EEEE\u0305")
-        s.apply_sgr("58;5;22")
-        s.draw("\U0010EEEE\u0305\U0010EEEE\u0305")
-        s.apply_sgr("58;5;44")
-        s.draw("\U0010EEEE\u0305\U0010EEEE\u0305\U0010EEEE\u0305\U0010EEEE\u0305")
+        s.apply_sgr('38;5;42')
+        s.apply_sgr('58;5;1')
+        s.draw('\U0010eeee\u0305')
+        s.apply_sgr('58;5;22')
+        s.draw('\U0010eeee\u0305\U0010eeee\u0305')
+        s.apply_sgr('58;5;44')
+        s.draw('\U0010eeee\u0305\U0010eeee\u0305\U0010eeee\u0305\U0010eeee\u0305')
         s.update_only_line_graphics_data()
         refs = layers(s)
         self.ae(len(refs), 3)
@@ -922,31 +926,31 @@ class TestGraphics(BaseTest):
         cw, ch = 5, 10
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch, lines=8)
         put_image(s, 5, 80, num_cols=1, num_lines=8, unicode_placeholder=1, id=42)
-        s.apply_sgr("38;5;42")
+        s.apply_sgr('38;5;42')
         s.cursor_position(1, 0)
-        s.draw("\U0010EEEE\u0305\n")
+        s.draw('\U0010eeee\u0305\n')
         s.cursor_position(2, 0)
-        s.draw("\U0010EEEE\u030D\n")
+        s.draw('\U0010eeee\u030d\n')
         s.cursor_position(3, 0)
-        s.draw("\U0010EEEE\u030E\n")
+        s.draw('\U0010eeee\u030e\n')
         s.cursor_position(4, 0)
-        s.draw("\U0010EEEE\u0310\n")
+        s.draw('\U0010eeee\u0310\n')
         s.cursor_position(5, 0)
-        s.draw("\U0010EEEE\u0312\n")
+        s.draw('\U0010eeee\u0312\n')
         s.cursor_position(6, 0)
-        s.draw("\U0010EEEE\u033D\n")
+        s.draw('\U0010eeee\u033d\n')
         s.cursor_position(7, 0)
-        s.draw("\U0010EEEE\u033E\n")
+        s.draw('\U0010eeee\u033e\n')
         s.cursor_position(8, 0)
-        s.draw("\U0010EEEE\u033F")
+        s.draw('\U0010eeee\u033f')
         # Each line will contain a part of the image.
         s.update_only_line_graphics_data()
         refs = layers(s)
         refs = sorted(refs, key=lambda r: r['src_rect']['top'])
         self.ae(len(refs), 8)
         for i in range(8):
-            self.ae(refs[i]['src_rect'], {'left': 0.0, 'top': 0.125*i, 'right': 1.0, 'bottom': 0.125*(i + 1)})
-            self.ae(refs[i]['dest_rect']['top'], 1 - 0.25*i)
+            self.ae(refs[i]['src_rect'], {'left': 0.0, 'top': 0.125 * i, 'right': 1.0, 'bottom': 0.125 * (i + 1)})
+            self.ae(refs[i]['dest_rect']['top'], 1 - 0.25 * i)
         # Now set margins to lines 3 and 6.
         s.set_margins(3, 6)  # 1-based indexing
         # Scroll two lines down (i.e. move lines 3..6 up).
@@ -961,19 +965,19 @@ class TestGraphics(BaseTest):
         # Lines 1 and 2 are outside of the region, not scrolled.
         self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.125})
         self.ae(refs[0]['dest_rect']['top'], 1.0)
-        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.125*1, 'right': 1.0, 'bottom': 0.125*2})
-        self.ae(refs[1]['dest_rect']['top'], 1.0 - 0.25*1)
+        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.125 * 1, 'right': 1.0, 'bottom': 0.125 * 2})
+        self.ae(refs[1]['dest_rect']['top'], 1.0 - 0.25 * 1)
         # Lines 3 and 4 are erased.
         # Lines 5 and 6 are now higher.
-        self.ae(refs[2]['src_rect'], {'left': 0.0, 'top': 0.125*4, 'right': 1.0, 'bottom': 0.125*5})
-        self.ae(refs[2]['dest_rect']['top'], 1.0 - 0.25*2)
-        self.ae(refs[3]['src_rect'], {'left': 0.0, 'top': 0.125*5, 'right': 1.0, 'bottom': 0.125*6})
-        self.ae(refs[3]['dest_rect']['top'], 1.0 - 0.25*3)
+        self.ae(refs[2]['src_rect'], {'left': 0.0, 'top': 0.125 * 4, 'right': 1.0, 'bottom': 0.125 * 5})
+        self.ae(refs[2]['dest_rect']['top'], 1.0 - 0.25 * 2)
+        self.ae(refs[3]['src_rect'], {'left': 0.0, 'top': 0.125 * 5, 'right': 1.0, 'bottom': 0.125 * 6})
+        self.ae(refs[3]['dest_rect']['top'], 1.0 - 0.25 * 3)
         # Lines 7 and 8 are outside of the region.
-        self.ae(refs[4]['src_rect'], {'left': 0.0, 'top': 0.125*6, 'right': 1.0, 'bottom': 0.125*7})
-        self.ae(refs[4]['dest_rect']['top'], 1.0 - 0.25*6)
-        self.ae(refs[5]['src_rect'], {'left': 0.0, 'top': 0.125*7, 'right': 1.0, 'bottom': 0.125*8})
-        self.ae(refs[5]['dest_rect']['top'], 1.0 - 0.25*7)
+        self.ae(refs[4]['src_rect'], {'left': 0.0, 'top': 0.125 * 6, 'right': 1.0, 'bottom': 0.125 * 7})
+        self.ae(refs[4]['dest_rect']['top'], 1.0 - 0.25 * 6)
+        self.ae(refs[5]['src_rect'], {'left': 0.0, 'top': 0.125 * 7, 'right': 1.0, 'bottom': 0.125 * 8})
+        self.ae(refs[5]['dest_rect']['top'], 1.0 - 0.25 * 7)
         # Now scroll three lines up (i.e. move lines 5..6 down).
         # Line 6 will be erased.
         s.cursor_position(3, 0)
@@ -987,17 +991,17 @@ class TestGraphics(BaseTest):
         # Lines 1 and 2 are outside of the region, not scrolled.
         self.ae(refs[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.125})
         self.ae(refs[0]['dest_rect']['top'], 1.0)
-        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.125*1, 'right': 1.0, 'bottom': 0.125*2})
-        self.ae(refs[1]['dest_rect']['top'], 1.0 - 0.25*1)
+        self.ae(refs[1]['src_rect'], {'left': 0.0, 'top': 0.125 * 1, 'right': 1.0, 'bottom': 0.125 * 2})
+        self.ae(refs[1]['dest_rect']['top'], 1.0 - 0.25 * 1)
         # Lines 3, 4 and 6 are erased.
         # Line 5 is now lower.
-        self.ae(refs[2]['src_rect'], {'left': 0.0, 'top': 0.125*4, 'right': 1.0, 'bottom': 0.125*5})
-        self.ae(refs[2]['dest_rect']['top'], 1.0 - 0.25*5)
+        self.ae(refs[2]['src_rect'], {'left': 0.0, 'top': 0.125 * 4, 'right': 1.0, 'bottom': 0.125 * 5})
+        self.ae(refs[2]['dest_rect']['top'], 1.0 - 0.25 * 5)
         # Lines 7 and 8 are outside of the region.
-        self.ae(refs[3]['src_rect'], {'left': 0.0, 'top': 0.125*6, 'right': 1.0, 'bottom': 0.125*7})
-        self.ae(refs[3]['dest_rect']['top'], 1.0 - 0.25*6)
-        self.ae(refs[4]['src_rect'], {'left': 0.0, 'top': 0.125*7, 'right': 1.0, 'bottom': 0.125*8})
-        self.ae(refs[4]['dest_rect']['top'], 1.0 - 0.25*7)
+        self.ae(refs[3]['src_rect'], {'left': 0.0, 'top': 0.125 * 6, 'right': 1.0, 'bottom': 0.125 * 7})
+        self.ae(refs[3]['dest_rect']['top'], 1.0 - 0.25 * 6)
+        self.ae(refs[4]['src_rect'], {'left': 0.0, 'top': 0.125 * 7, 'right': 1.0, 'bottom': 0.125 * 8})
+        self.ae(refs[4]['dest_rect']['top'], 1.0 - 0.25 * 7)
 
     def test_gr_scroll(self):
         cw, ch = 10, 20
@@ -1028,19 +1032,19 @@ class TestGraphics(BaseTest):
         for i in range(s.lines):  # ensure cursor is at top margin
             s.reverse_index()
         # Test clipped scrolling during index
-        put_image(s, cw, 2*ch, z=-1, no_id=True)  # 1x2 cell image
+        put_image(s, cw, 2 * ch, z=-1, no_id=True)  # 1x2 cell image
         self.ae(s.grman.image_count, 3)
         self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
         s.index(), s.index()
         l0 = layers(s)
         self.ae(len(l0), 3)
-        self.ae(layers(s)[0]['src_rect'],  {'left': 0.0, 'top': 0.5, 'right': 1.0, 'bottom': 1.0})
+        self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.5, 'right': 1.0, 'bottom': 1.0})
         s.index()
         self.ae(s.grman.image_count, 2)
         # Test clipped scrolling during reverse_index
         for i in range(s.lines):
             s.reverse_index()
-        put_image(s, cw, 2*ch, z=-1, no_id=True)  # 1x2 cell image
+        put_image(s, cw, 2 * ch, z=-1, no_id=True)  # 1x2 cell image
         self.ae(s.grman.image_count, 3)
         self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
         while s.cursor.y != 1:
@@ -1151,11 +1155,11 @@ class TestGraphics(BaseTest):
         iid = 9999999
         self.ae(put_image(s, cw, ch, id=iid), (iid, 'OK'))
         self.ae(put_ref(s, id=iid), (iid, ('OK', f'i={iid}')))
-        self.ae(put_image(s, cw, ch, id=iid+1), (iid+1, 'OK'))
-        self.ae(put_ref(s, id=iid+1), (iid+1, ('OK', f'i={iid+1}')))
+        self.ae(put_image(s, cw, ch, id=iid + 1), (iid + 1, 'OK'))
+        self.ae(put_ref(s, id=iid + 1), (iid + 1, ('OK', f'i={iid + 1}')))
         delete('i', i=iid)
         self.ae(s.grman.image_count, 2)
-        delete('I', i=iid+1)
+        delete('I', i=iid + 1)
         self.ae(s.grman.image_count, 1)
 
     def test_animation_frame_loading(self):
@@ -1209,10 +1213,13 @@ class TestGraphics(BaseTest):
         # test loading from previous frame
         t(payload='4' * 12, c=2, s=2, v=2, z=101, frame_number=3)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], (
-            {'gap': 77, 'id': 2, 'data': b'3' * 36},
-            {'gap': 101, 'id': 3, 'data': b'444444333333444444333333333333333333'},
-        ))
+        self.assertEqual(
+            img['extra_frames'],
+            (
+                {'gap': 77, 'id': 2, 'data': b'3' * 36},
+                {'gap': 101, 'id': 3, 'data': b'444444333333444444333333333333333333'},
+            ),
+        )
         # test changing gaps
         img = g.image_for_client_id(1)
         self.assertEqual(img['root_frame_gap'], 0)
@@ -1232,20 +1239,26 @@ class TestGraphics(BaseTest):
         # test delete of frames
         t(payload='5' * 36, frame_number=4)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], (
-            {'gap': 43, 'id': 2, 'data': b'3' * 36},
-            {'gap': 101, 'id': 3, 'data': b'444444333333444444333333333333333333'},
-            {'gap': 40, 'id': 4, 'data': b'5' * 36},
-        ))
+        self.assertEqual(
+            img['extra_frames'],
+            (
+                {'gap': 43, 'id': 2, 'data': b'3' * 36},
+                {'gap': 101, 'id': 3, 'data': b'444444333333444444333333333333333333'},
+                {'gap': 40, 'id': 4, 'data': b'5' * 36},
+            ),
+        )
         self.assertEqual(img['current_frame_index'], 1)
         self.assertIsNone(li(a='d', d='f', i=1, r=1))
         img = g.image_for_client_id(1)
         self.assertEqual(img['current_frame_index'], 0)
         self.assertEqual(img['data'], b'3' * 36)
-        self.assertEqual(img['extra_frames'], (
-            {'gap': 101, 'id': 3, 'data': b'444444333333444444333333333333333333'},
-            {'gap': 40, 'id': 4, 'data': b'5' * 36},
-        ))
+        self.assertEqual(
+            img['extra_frames'],
+            (
+                {'gap': 101, 'id': 3, 'data': b'444444333333444444333333333333333333'},
+                {'gap': 40, 'id': 4, 'data': b'5' * 36},
+            ),
+        )
         self.assertIsNone(li(a='a', i=1, c=3))
         img = g.image_for_client_id(1)
         self.assertEqual(img['current_frame_index'], 2)
@@ -1253,9 +1266,7 @@ class TestGraphics(BaseTest):
         img = g.image_for_client_id(1)
         self.assertEqual(img['current_frame_index'], 1)
         self.assertEqual(img['data'], b'3' * 36)
-        self.assertEqual(img['extra_frames'], (
-            {'gap': 40, 'id': 4, 'data': b'5' * 36},
-        ))
+        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 4, 'data': b'5' * 36},))
         self.assertIsNone(li(a='d', d='f', i=1))
         img = g.image_for_client_id(1)
         self.assertEqual(img['current_frame_index'], 0)
@@ -1275,23 +1286,32 @@ class TestGraphics(BaseTest):
         t(payload='2' * 36)
         t(payload='3' * 36, frame_number=3)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], (
-            {'gap': 40, 'id': 2, 'data': b'2' * 36},
-            {'gap': 40, 'id': 3, 'data': b'3' * 36},
-        ))
+        self.assertEqual(
+            img['extra_frames'],
+            (
+                {'gap': 40, 'id': 2, 'data': b'2' * 36},
+                {'gap': 40, 'id': 3, 'data': b'3' * 36},
+            ),
+        )
         self.assertEqual(li(a='c', i=11).code, 'ENOENT')
         self.assertEqual(li(a='c', i=1, r=1, c=2).code, 'OK')
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], (
-            {'gap': 40, 'id': 2, 'data': b'abcdefghijkl'*3},
-            {'gap': 40, 'id': 3, 'data': b'3' * 36},
-        ))
+        self.assertEqual(
+            img['extra_frames'],
+            (
+                {'gap': 40, 'id': 2, 'data': b'abcdefghijkl' * 3},
+                {'gap': 40, 'id': 3, 'data': b'3' * 36},
+            ),
+        )
         self.assertEqual(li(a='c', i=1, r=2, c=3, w=1, h=2, x=1, y=1).code, 'OK')
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], (
-            {'gap': 40, 'id': 2, 'data': b'abcdefghijkl'*3},
-            {'gap': 40, 'id': 3, 'data': b'3' * 12 + (b'333abc' + b'3' * 6) * 2},
-        ))
+        self.assertEqual(
+            img['extra_frames'],
+            (
+                {'gap': 40, 'id': 2, 'data': b'abcdefghijkl' * 3},
+                {'gap': 40, 'id': 3, 'data': b'3' * 12 + (b'333abc' + b'3' * 6) * 2},
+            ),
+        )
         # Test that compose commands with offset values that would overflow a 32-bit
         # unsigned integer are correctly rejected with EINVAL instead of crashing.
         # In the old code, UINT32_MAX + img->width wrapped around as uint32_t to a
@@ -1299,13 +1319,14 @@ class TestGraphics(BaseTest):
         for offset_param in ('x', 'y', 'X', 'Y'):
             self.assertEqual(
                 li(payload=b'', a='c', i=1, r=1, c=2, s=0, v=0, f=0, **{offset_param: 0xFFFFFFFF}).code,
-                'EINVAL', f'Expected EINVAL for overflow in compose offset parameter {offset_param!r}'
+                'EINVAL',
+                f'Expected EINVAL for overflow in compose offset parameter {offset_param!r}',
             )
 
     def test_graphics_quota_enforcement(self):
         s = self.create_screen()
         g = s.grman
-        g.storage_limit = 36*2
+        g.storage_limit = 36 * 2
         li = make_send_command(s)
         # test quota for simple images
         self.assertEqual(li(a='T').code, 'OK')
@@ -1348,6 +1369,7 @@ class TestGraphics(BaseTest):
     @unittest.skipIf(Image is None, 'PIL not available, skipping PNG tests')
     def test_cached_rgba_conversion(self):
         from kitty.render_cache import ImageRenderCacheForTesting
+
         w, h = 5, 3
         rgba_data = byte_block(w * h * 4)
         img = Image.frombytes('RGBA', (w, h), rgba_data)
@@ -1365,13 +1387,13 @@ class TestGraphics(BaseTest):
                 entries = list(irc.entries())
                 self.assertLessEqual(len(entries), irc.max_entries)
             self.ae(irc.num_of_renders, len(outputs))
-            remaining_outputs = outputs[-irc.max_entries:]
+            remaining_outputs = outputs[-irc.max_entries :]
             for x in remaining_outputs:
                 self.assertTrue(os.path.exists(x))
-            for x in outputs[:-irc.max_entries]:
+            for x in outputs[: -irc.max_entries]:
                 self.assertFalse(os.path.exists(x))
             self.assertLess(os.path.getmtime(remaining_outputs[0]), os.path.getmtime(remaining_outputs[1]))
-            remaining_srcs = srcs[-irc.max_entries:]
+            remaining_srcs = srcs[-irc.max_entries :]
             self.ae(irc.render(remaining_srcs[0]), remaining_outputs[0])
             self.ae(irc.num_of_renders, len(outputs))
             self.assertGreater(os.path.getmtime(remaining_outputs[0]), os.path.getmtime(remaining_outputs[1]))
