@@ -1723,8 +1723,8 @@ class Window:
         data = base64_decode(msg)
         if re.match(rb'\d+$', data) is None:
             log_error(f'Invalid echo message received from client: {data!r}')
-            return
-        self.write_to_child(data)
+        else:
+            self.write_to_child(data)
 
     def handle_remote_ssh(self, msg: memoryview) -> None:
         from kittens.ssh.utils import get_ssh_data

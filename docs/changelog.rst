@@ -185,6 +185,10 @@ Detailed list of changes
 
 - Wayland: Fix regression in previous release that broke drag and drop on Plasma (:iss:`10284`)
 
+- ssh kitten: Fix a rare crash when showing a large diff due to incorrect locking when highlighting
+
+- Allow the private DCS kitty-echo escape code to only echo numbers
+
 
 0.48.1 [2026-07-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
