@@ -408,7 +408,7 @@ bind_shader_globals_to_current_context(void) {
     bind_vao_uniform_buffer(shader_globals_vao_idx, BORDER_COLORS_GLOBAL_BUFFER, BORDER_COLORS_BINDING_POINT);
 }
 
-#define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer, color_table_buffer };
+#define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer, color_table_buffer, padding_cell_data_buffer, padding_selection_buffer };
 
 ssize_t
 create_cell_vao(void) {
@@ -430,6 +430,9 @@ create_cell_vao(void) {
 
     size_t ctbufnum = add_buffer_to_vao(vao_idx, GL_UNIFORM_BUFFER);
     alloc_vao_buffer(vao_idx, program_uniform_block(CELL_PROGRAM, "ColorTable").size, ctbufnum, GL_STATIC_DRAW);
+
+    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);  // padding_cell_data_buffer (slot 4)
+    add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);  // padding_selection_buffer  (slot 5)
 
     return vao_idx;
 #undef A
@@ -1349,9 +1352,9 @@ draw_cells_without_layers(const UIRenderData *ui, ssize_t vao_idx) {
 static void
 configure_cell_vao_attributes(ssize_t vao_idx, unsigned int base_cell, unsigned int cell_step) {
     // (Re)point the instanced cell attributes so that instance i corresponds to
-    // the cell at (base_cell + i*cell_step). Used to draw a single padding strip
-    // from the shared cell VAO, and to restore the canonical layout afterwards
-    // (base_cell=0, cell_step=1). The VAO must be bound before calling this.
+    // the cell at (base_cell + i*cell_step). Used to restore the canonical
+    // layout after padding draws (base_cell=0, cell_step=1). The VAO must be
+    // bound before calling this.
     CELL_BUFFERS;
     const GLsizei cell_stride = (GLsizei)(cell_step * sizeof(GPUCell));
     const uintptr_t cell_base = (uintptr_t)base_cell * sizeof(GPUCell);
@@ -1364,24 +1367,20 @@ configure_cell_vao_attributes(ssize_t vao_idx, unsigned int base_cell, unsigned 
 }
 
 static void
-draw_padding_strip(
-    ssize_t vao_idx, bool for_final_output, unsigned int is_horizontal, unsigned int count,
-    unsigned int base_cell, unsigned int cell_step, float across0, float across1,
-    float along_start, float along_step, float clamp_lo, float clamp_hi
-) {
-    if (!count) return;
-    configure_cell_vao_attributes(vao_idx, base_cell, cell_step);
-#define L(x) program_uniform_location(PADDING_PROGRAM, #x)
-    glUniform1ui(L(is_horizontal), is_horizontal);
-    glUniform1ui(L(along_count), count);
-    glUniform1ui(L(base_instance), base_cell);
-    glUniform1ui(L(instance_step), cell_step);
-    glUniform2f(L(across), across0, across1);
-    glUniform1f(L(along_start), along_start);
-    glUniform1f(L(along_step), along_step);
-    glUniform2f(L(along_clamp), clamp_lo, clamp_hi);
-#undef L
-    draw_quad(!for_final_output, count);
+configure_padding_vao_attributes(ssize_t vao_idx) {
+    // Point the instanced cell attributes at the dedicated padding buffers
+    // (base=0, stride=sizeof(GPUCell)), which are pre-packed before each
+    // combined draw. The VAO must be bound before calling this.
+    CELL_BUFFERS;
+    set_vao_attribute(vao_idx, padding_cell_data_buffer,
+            program_attribute_location(CELL_PROGRAM, "sprite_idx"),
+            2, GL_UNSIGNED_INT, sizeof(GPUCell), (void*)offsetof(GPUCell, sprite_idx), 1);
+    set_vao_attribute(vao_idx, padding_cell_data_buffer,
+            program_attribute_location(CELL_PROGRAM, "colors"),
+            3, GL_UNSIGNED_INT, sizeof(GPUCell), (void*)offsetof(GPUCell, fg), 1);
+    set_vao_attribute(vao_idx, padding_selection_buffer,
+            program_attribute_location(CELL_PROGRAM, "is_selected"),
+            1, GL_UNSIGNED_BYTE, sizeof(GLubyte), NULL, 1);
 }
 
 static void
@@ -1390,6 +1389,11 @@ draw_window_padding(const UIRenderData *ui, Window *window, ssize_t vao_idx, boo
     // padding, arising from the window size not being an exact multiple of the
     // cell size) to match their neighboring cell. The strips lie outside the
     // per-window cell viewport, so this runs with the full framebuffer viewport.
+    //
+    // Two instanced draws are issued: one covers the horizontal pair (top+bottom)
+    // and one the vertical pair (left+right). Each draw packs its strip cells into
+    // a dedicated buffer so the VAO needs no per-strip reconfiguration. The shader
+    // selects per-strip geometry and cell indices branch-free via lerp.
     if (!window || OPT(padding_fill_strategy) != PADDING_FILL_NEIGHBORING_CELL) return;
     const unsigned int cl = window->size_mismatch_padding.left, ct = window->size_mismatch_padding.top,
                        cr = window->size_mismatch_padding.right, cb = window->size_mismatch_padding.bottom;
@@ -1402,8 +1406,8 @@ draw_window_padding(const UIRenderData *ui, Window *window, ssize_t vao_idx, boo
 
     const float fbw = (float)ui->full_framebuffer_width, fbh = (float)ui->full_framebuffer_height;
     const float cw = (float)ui->cell_width, ch = (float)ui->cell_height;
-    const float L = (float)ui->screen_left, T = (float)ui->screen_top;
-    const float R = L + (float)ui->screen_width, B = T + (float)ui->screen_height;
+    const float fL = (float)ui->screen_left, T = (float)ui->screen_top;
+    const float R = fL + (float)ui->screen_width, B = T + (float)ui->screen_height;
 #define NX(px) (2.f * (px) / fbw - 1.f)
 #define NY(px) (1.f - 2.f * (px) / fbh)
     const float dx = 2.f * cw / fbw, dy = 2.f * ch / fbh;
@@ -1415,23 +1419,103 @@ draw_window_padding(const UIRenderData *ui, Window *window, ssize_t vao_idx, boo
     bind_vao_uniform_buffer(vao_idx, color_table_buffer, COLOR_TABLE_BINDING_POINT);
     if (for_final_output) glEnable(GL_FRAMEBUFFER_SRGB);
 
-    // Top strip: spans content width, per top-row cell. across selected by cell
-    // corner: top corner -> outer edge (T-ct), bottom corner -> content edge (T).
-    if (ct) draw_padding_strip(vao_idx, for_final_output, 1u, columns, top_row * columns, 1u,
-            NY(T - ct), NY(T), NX(L), dx, NX(L), NX(R));
-    // Bottom strip: top corner -> content edge (B), bottom corner -> outer (B+cb).
-    if (cb) draw_padding_strip(vao_idx, for_final_output, 1u, columns, bottom_row * columns, 1u,
-            NY(B), NY(B + cb), NX(L), dx, NX(L), NX(R));
-    // Left strip: full comp-frame height (corners via along_clamp), per left-column
-    // cell. left corner -> outer (L-cl), right corner -> content edge (L).
-    if (cl) draw_padding_strip(vao_idx, for_final_output, 0u, lines, top_row * columns, columns,
-            NX(L - cl), NX(L), NY(T), -dy, NY(T - ct), NY(B + cb));
-    // Right strip: left corner -> content edge (R), right corner -> outer (R+cr).
-    if (cr) draw_padding_strip(vao_idx, for_final_output, 0u, lines, top_row * columns + (columns - 1u), columns,
-            NX(R), NX(R + cr), NY(T), -dy, NY(T - ct), NY(B + cb));
+    // Point instanced attributes at the padding-specific buffers once for both draws.
+    configure_padding_vao_attributes(vao_idx);
 
+#define PL(x) program_uniform_location(PADDING_PROGRAM, #x)
+
+    // Horizontal combined draw: top strip (strip 0) + bottom strip (strip 1).
+    // Cell data is packed contiguously via GPU-side copies (no CPU round-trip).
+    if (ct || cb) {
+        const unsigned int nH = (ct ? 1u : 0u) + (cb ? 1u : 0u);
+        alloc_vao_buffer(vao_idx, (GLsizeiptr)(nH * columns * sizeof(GPUCell)), padding_cell_data_buffer, GL_DYNAMIC_DRAW);
+        alloc_vao_buffer(vao_idx, (GLsizeiptr)(nH * columns * sizeof(GLubyte)), padding_selection_buffer, GL_DYNAMIC_DRAW);
+
+        unsigned int sidx = 0u;
+        if (ct) {
+            copy_vao_buffer_region(vao_idx, cell_data_buffer, (GLintptr)(top_row * columns * sizeof(GPUCell)),
+                    padding_cell_data_buffer, (GLintptr)(sidx * columns * sizeof(GPUCell)), (GLsizeiptr)(columns * sizeof(GPUCell)));
+            copy_vao_buffer_region(vao_idx, selection_buffer, (GLintptr)(top_row * columns * sizeof(GLubyte)),
+                    padding_selection_buffer, (GLintptr)(sidx * columns * sizeof(GLubyte)), (GLsizeiptr)(columns * sizeof(GLubyte)));
+            sidx++;
+        }
+        if (cb) {
+            copy_vao_buffer_region(vao_idx, cell_data_buffer, (GLintptr)(bottom_row * columns * sizeof(GPUCell)),
+                    padding_cell_data_buffer, (GLintptr)(sidx * columns * sizeof(GPUCell)), (GLsizeiptr)(columns * sizeof(GPUCell)));
+            copy_vao_buffer_region(vao_idx, selection_buffer, (GLintptr)(bottom_row * columns * sizeof(GLubyte)),
+                    padding_selection_buffer, (GLintptr)(sidx * columns * sizeof(GLubyte)), (GLsizeiptr)(columns * sizeof(GLubyte)));
+        }
+
+        // Strip-0 is top (or bottom when only bottom exists); strip-1 is bottom.
+        // For a single-strip draw base_instance2/across2 equal strip-0 values so
+        // the shader lerp is a no-op for all instances (strip_f is always 0.0).
+        const unsigned int base0 = (ct ? top_row : bottom_row) * columns;
+        const unsigned int base1 = bottom_row * columns;
+        glUniform1ui(PL(is_horizontal), 1u);
+        glUniform1ui(PL(along_count),   columns);
+        glUniform1ui(PL(instance_step), 1u);
+        glUniform1ui(PL(base_instance),  base0);
+        glUniform1ui(PL(base_instance2), base1);
+        glUniform2f(PL(across),  ct ? NY(T - ct) : NY(B), ct ? NY(T) : NY(B + cb));
+        glUniform2f(PL(across2), NY(B), NY(B + cb));
+        glUniform1f(PL(along_start), NX(fL));
+        glUniform1f(PL(along_step),  dx);
+        glUniform2f(PL(along_clamp), NX(fL), NX(R));
+        draw_quad(!for_final_output, nH * columns);
+    }
+
+    // Vertical combined draw: left strip (strip 0) + right strip (strip 1).
+    // Column cells are non-contiguous in the cell buffer so we gather them
+    // CPU-side by mapping the buffer for reading, then upload in one shot.
+    if (cl || cr) {
+        const unsigned int nV = (cl ? 1u : 0u) + (cr ? 1u : 0u);
+        // VLA sizes: lines is bounded by the window height / cell height (~<500).
+        GPUCell gathered_cells[2 * lines];
+        GLubyte gathered_sel[2 * lines];
+
+        const unsigned int strip0_col = cl ? 0u : (columns - 1u);
+        const unsigned int strip1_col = columns - 1u;
+
+        const GPUCell *cells = (const GPUCell*)map_vao_buffer_for_reading(vao_idx, cell_data_buffer);
+        for (unsigned int i = 0; i < lines; i++) {
+            gathered_cells[i] = cells[(top_row + i) * columns + strip0_col];
+            if (nV == 2u) gathered_cells[lines + i] = cells[(top_row + i) * columns + strip1_col];
+        }
+        unmap_vao_buffer(vao_idx, cell_data_buffer);
+
+        const GLubyte *sel = (const GLubyte*)map_vao_buffer_for_reading(vao_idx, selection_buffer);
+        for (unsigned int i = 0; i < lines; i++) {
+            gathered_sel[i] = sel[(top_row + i) * columns + strip0_col];
+            if (nV == 2u) gathered_sel[lines + i] = sel[(top_row + i) * columns + strip1_col];
+        }
+        unmap_vao_buffer(vao_idx, selection_buffer);
+
+        void *dst = alloc_and_map_vao_buffer(vao_idx, (GLsizeiptr)(nV * lines * sizeof(GPUCell)), padding_cell_data_buffer, false);
+        memcpy(dst, gathered_cells, nV * lines * sizeof(GPUCell));
+        unmap_vao_buffer(vao_idx, padding_cell_data_buffer);
+
+        dst = alloc_and_map_vao_buffer(vao_idx, (GLsizeiptr)(nV * lines * sizeof(GLubyte)), padding_selection_buffer, false);
+        memcpy(dst, gathered_sel, nV * lines * sizeof(GLubyte));
+        unmap_vao_buffer(vao_idx, padding_selection_buffer);
+
+        const unsigned int base0 = top_row * columns + (cl ? 0u : (columns - 1u));
+        const unsigned int base1 = top_row * columns + (columns - 1u);
+        glUniform1ui(PL(is_horizontal), 0u);
+        glUniform1ui(PL(along_count),   lines);
+        glUniform1ui(PL(instance_step), columns);
+        glUniform1ui(PL(base_instance),  base0);
+        glUniform1ui(PL(base_instance2), base1);
+        glUniform2f(PL(across),  cl ? NX(fL - cl) : NX(R), cl ? NX(fL) : NX(R + cr));
+        glUniform2f(PL(across2), NX(R), NX(R + cr));
+        glUniform1f(PL(along_start), NY(T));
+        glUniform1f(PL(along_step),  -dy);
+        glUniform2f(PL(along_clamp), NY(T - ct), NY(B + cb));
+        draw_quad(!for_final_output, nV * lines);
+    }
+
+#undef PL
     if (for_final_output) glDisable(GL_FRAMEBUFFER_SRGB);
-    // Restore the canonical cell attribute layout so cell rendering is unaffected.
+    // Restore the canonical cell attribute layout so subsequent cell rendering is unaffected.
     configure_cell_vao_attributes(vao_idx, 0u, 1u);
     unbind_program();
 #undef NX

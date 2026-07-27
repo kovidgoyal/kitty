@@ -75,6 +75,8 @@ void* map_vao_buffer_for_write_only(ssize_t vao_idx, size_t bufnum, int offset, 
 void bind_program(int program);
 void bind_vertex_array(ssize_t vao_idx);
 void bind_vao_uniform_buffer(ssize_t vao_idx, size_t bufnum, GLuint block_index);
+void copy_vao_buffer_region(ssize_t vao_idx, size_t src_bufnum, GLintptr src_off, size_t dst_bufnum, GLintptr dst_off, GLsizeiptr size);
+const void* map_vao_buffer_for_reading(ssize_t vao_idx, size_t bufnum);
 void unbind_vertex_array(void);
 void unbind_program(void);
 GLuint compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * string);

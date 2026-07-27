@@ -676,4 +676,23 @@ unmap_vao_buffer(ssize_t vao_idx, size_t bufnum) {
     unbind_buffer(buf_idx);
 }
 
+void
+copy_vao_buffer_region(ssize_t vao_idx, size_t src_bufnum, GLintptr src_off,
+                        size_t dst_bufnum, GLintptr dst_off, GLsizeiptr size) {
+    ssize_t src_buf = vaos[vao_idx].buffers[src_bufnum];
+    ssize_t dst_buf = vaos[vao_idx].buffers[dst_bufnum];
+    glBindBuffer(GL_COPY_READ_BUFFER, buffers[src_buf].id);
+    glBindBuffer(GL_COPY_WRITE_BUFFER, buffers[dst_buf].id);
+    glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, src_off, dst_off, size);
+    glBindBuffer(GL_COPY_READ_BUFFER, 0);
+    glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
+}
+
+const void*
+map_vao_buffer_for_reading(ssize_t vao_idx, size_t bufnum) {
+    ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
+    bind_buffer(buf_idx);
+    return map_buffer(buf_idx, GL_READ_ONLY);
+}
+
 // }}}
