@@ -990,7 +990,7 @@ def dependecies_for(src: str, obj: str, all_headers: Iterable[str]) -> Iterable[
                     yield path
 
 
-def parallel_run(items: List[Command]) -> None:
+def parallel_run(items: List[Command], verbose: bool = verbose) -> None:
     try:
         num_workers = max(2, os.cpu_count() or 1)
     except Exception:
@@ -1395,6 +1395,7 @@ def build_shaders(args: Options, kitty_exe: str, for_freeze: bool) -> None:
             kitty_exe,
             '+launch',
             os.path.join(src_base, 'kitty/shaders/slang.py'),
+            'verbose' if verbose else '',
             'build/shaders',
             'shaders',
         ],

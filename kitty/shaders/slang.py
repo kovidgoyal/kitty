@@ -843,6 +843,7 @@ def main() -> None:
     if not shutil.which(slangc()[0]):
         raise SystemExit(f'The shader slang compiler ({slangc()[0]}) not in PATH: {os.environ.get("PATH")}')
     setup = runpy.run_path('setup.py')
+    verbose = sys.argv[-3] == 'verbose'
     Command = setup['Command']
     parallel_run = setup['parallel_run']
     emphasis = setup['emphasis']
@@ -854,7 +855,7 @@ def main() -> None:
             if needs_build:
                 desc = re.sub(r'\|(.+?)\|', lambda m: emphasis(m.group(1)), desc)
                 needed.append(Command(desc, cmd, lambda: True))
-        parallel_run(needed)
+        parallel_run(needed, verbose)
 
     compile_builtin_shaders(sys.argv[-2], sys.argv[-1], prun)
 
