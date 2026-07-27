@@ -938,8 +938,9 @@ def build_custom_shader_pipeline_ir(slot: str = 'after-window-background', shade
                 cache_ok = f.read() == content_key
                 mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
             if not cache_ok:
+                inc = ['-I', os.path.dirname(path)] if os.sep in path else []
                 cp = subprocess.run(
-                    bc + ['-module-name', modname, '-o', j(f'{modname}.slang-module'), '--', '-'],
+                    bc + inc + ['-module-name', modname, '-o', j(f'{modname}.slang-module'), '--', '-'],
                     input=src,
                     capture_output=True,
                 )
