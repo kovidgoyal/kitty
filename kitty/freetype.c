@@ -265,7 +265,6 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, long index,
     self->harfbuzz_font = hb_ft_font_create(self->face, NULL);
     if (self->harfbuzz_font == NULL) { PyErr_NoMemory(); return false; }
     hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(self->hinting, self->hintstyle, FT_LOAD_DEFAULT));
-    FT_Reference_Face(self->face);
 
     TT_OS2 *os2 = (TT_OS2*)FT_Get_Sfnt_Table(self->face, FT_SFNT_OS2);
     if (os2 != NULL) {

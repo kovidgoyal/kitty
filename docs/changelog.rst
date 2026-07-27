@@ -189,6 +189,8 @@ Detailed list of changes
 
 - Allow the private DCS kitty-echo escape code to only echo numbers
 
+- Linux: Fix an approx 1MB memory leak when reloading the config introduced in version 0.40.0 (:iss:`10290`)
+
 
 0.48.1 [2026-07-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
