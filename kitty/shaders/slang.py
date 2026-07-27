@@ -968,7 +968,7 @@ def build_custom_shader_pipeline_ir(slot: str = 'after-window-background', shade
             entry_points.append(entry_point)
         mod_src = get_custom_shader_src('pipeline').decode()
         mod_src = mod_src.replace('// IMPORTS', '\n'.join(f'__include "{w}";' for w in wrappers), 1)
-        mod_src = mod_src.replace('// PIPELINE', '\n'.join(f'color = {w}(color, vo.d);' for w in entry_points), 1)
+        mod_src = mod_src.replace('// PIPELINE', '\n'.join(f'color = {w}(color, d);' for w in entry_points), 1)
         # subprocess.run(['bat', '-P', '-l', 'cpp'], input=mod_src.encode())
         slot_key = key(slot, mod_src, shaders_content_key)
 
