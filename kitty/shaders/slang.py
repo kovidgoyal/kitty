@@ -403,6 +403,30 @@ def topological_sort(graph: dict[str, SlangFile]) -> list[str]:
     return order
 
 
+def topological_layers(graph: dict[str, SlangFile]) -> list[list[str]]:
+    layer_of: dict[str, int] = {}
+
+    def compute_layer(node: str) -> int:
+        if node in layer_of:
+            return layer_of[node]
+        if node not in graph:
+            return -1
+        layer = max((compute_layer(dep) + 1 for dep in graph[node].imports), default=0)
+        layer_of[node] = layer
+        return layer
+
+    for node in graph:
+        compute_layer(node)
+
+    if not layer_of:
+        return []
+    max_layer = max(layer_of.values())
+    layers: list[list[str]] = [[] for _ in range(max_layer + 1)]
+    for node, layer in layer_of.items():
+        layers[layer].append(node)
+    return layers
+
+
 def get_ordered_sources_in_tree(dirpath: str) -> OrderedDict[str, SlangFile]:
     g = build_import_graph(dirpath)
     return OrderedDict({k: g[k] for k in topological_sort(g)})
@@ -819,8 +843,10 @@ def compile_builtin_shaders(build_dir: str, dest_dir: str, parallel_run: Paralle
     source_tree = get_ordered_sources_in_tree(src_dir)
     serialize_source_metadata(source_tree, dest_dir)
 
-    # First ensure all IR is generated
-    parallel_run(commands_to_compile_dir_to_ir(source_tree, src_dir, build_dir))
+    # Compile IR layer by layer so each module's dependencies finish before it starts
+    for layer in topological_layers(source_tree):
+        layer_sources = {k: source_tree[k] for k in layer}
+        parallel_run(commands_to_compile_dir_to_ir(layer_sources, src_dir, build_dir))
     # Create the specializations
     parallel_run(create_specialisations(source_tree, build_dir))
     # Now Vulkan shaders

@@ -4,7 +4,7 @@
 import os
 import tempfile
 
-from kitty.shaders.slang import EntryPoint, SlangFile, Stage, build_import_graph, parse_slang_text, topological_sort
+from kitty.shaders.slang import EntryPoint, SlangFile, Stage, build_import_graph, parse_slang_text, topological_layers, topological_sort
 
 from .base import BaseTest
 
@@ -189,3 +189,42 @@ void vsMain() {}
                 f.write('not a slang file\n')
             graph3 = build_import_graph(tmpdir)
             self.assertNotIn('ignored', graph3)
+
+    def test_topological_layers(self):
+        # Linear chain a <- b <- c produces three layers
+        graph: dict[str, SlangFile] = {
+            'a': SlangFile('', '', frozenset(), frozenset(), 'a'),
+            'b': SlangFile('', '', frozenset({'a'}), frozenset(), 'b'),
+            'c': SlangFile('', '', frozenset({'b'}), frozenset(), 'c'),
+        }
+        layers = topological_layers(graph)
+        self.assertEqual(len(layers), 3)
+        self.assertIn('a', layers[0])
+        self.assertIn('b', layers[1])
+        self.assertIn('c', layers[2])
+
+        # Diamond: base <- left, base <- right, left+right <- top
+        # base is layer 0, left and right are layer 1, top is layer 2
+        diamond: dict[str, SlangFile] = {
+            'base': SlangFile('', '', frozenset(), frozenset(), 'base'),
+            'left': SlangFile('', '', frozenset({'base'}), frozenset(), 'left'),
+            'right': SlangFile('', '', frozenset({'base'}), frozenset(), 'right'),
+            'top': SlangFile('', '', frozenset({'left', 'right'}), frozenset(), 'top'),
+        }
+        layers2 = topological_layers(diamond)
+        self.assertEqual(len(layers2), 3)
+        self.assertIn('base', layers2[0])
+        self.assertIn('left', layers2[1])
+        self.assertIn('right', layers2[1])
+        self.assertIn('top', layers2[2])
+
+        # Node with import not in graph is treated as layer 0
+        partial: dict[str, SlangFile] = {
+            'x': SlangFile('', '', frozenset({'missing'}), frozenset(), 'x'),
+        }
+        layers3 = topological_layers(partial)
+        self.assertEqual(len(layers3), 1)
+        self.assertIn('x', layers3[0])
+
+        # Empty graph
+        self.assertEqual(topological_layers({}), [])
