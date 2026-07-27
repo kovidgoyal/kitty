@@ -7,9 +7,12 @@ import json
 import os
 import re
 import runpy
+import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
+import textwrap
 import time
 import zlib
 from collections import OrderedDict
@@ -370,7 +373,10 @@ def parse_slang_file(path: str) -> SlangFile:
 
 def build_import_graph(dirpath: str) -> dict[str, SlangFile]:
     graph: dict[str, SlangFile] = {}
+    exclude = os.path.abspath(os.path.join(dirpath, 'custom'))
     for root, _, files in os.walk(os.path.abspath(dirpath)):
+        if root == exclude:
+            continue
         for file in files:
             if file.endswith('.slang'):
                 full_path = os.path.abspath(os.path.join(root, file))
@@ -851,8 +857,14 @@ def main() -> None:
 
 
 class SlangFailed(Exception):
-    def __init__(self, fname: str, stderr: bytes):
-        super().__init__(f'Failed to compile {fname} with stderr:\n{stderr.decode()}')
+    def __init__(self, fname: str, cp: subprocess.CompletedProcess):
+        args = cp.args
+        stderr = cp.stderr
+        if isinstance(args, str):
+            cmd = args
+        else:
+            cmd = shlex.join(args)
+        super().__init__(f'Failed to compile {fname} with command line:\n{cmd}\nand stderr:\n{stderr.decode()}')
 
 
 def key(*items: str | bytes) -> bytes:
@@ -879,18 +891,22 @@ def custom_shader(name: str = '') -> tuple[str, bytes, bytes]:
     return name, src, key(src)
 
 
-def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir: str = '') -> None:
+def build_custom_shader_pipeline_ir(slot: str = 'after-window-background', shaders: Iterable[str] = ('sample',), cache_dir: str = '') -> str:
     import kitty.constants as kc
 
-    bc = list(slangc()) + ['-warnings-as-errors', 'all', '-lang', 'slang']
     cache_dir = os.path.join(cache_dir or kc.cache_dir(), 'shaders')
     os.makedirs(cache_dir, exist_ok=True)
+    slot_module_name = f'{slot.replace("-", "_")}'
+
     with lock_with_file(os.path.join(cache_dir, 'lock')):
         cache_dir = os.path.join(cache_dir, 'c')
         ensure_cache_dir(cache_dir)
-        _, ct_shader, ct_key = custom_shader()
+        slot_dir = os.path.join(cache_dir, 'slots')
         libdir = os.path.join(cache_dir, 'lib')
+        bc = list(slangc()) + ['-warnings-as-errors', 'all', '-lang', 'slang', '-I', libdir]
+        _, ct_shader, ct_key = custom_shader()
         os.makedirs(libdir, exist_ok=True)
+        os.makedirs(slot_dir, exist_ok=True)
         j = partial(os.path.join, libdir)
         cache_ok = False
         mtime = 0
@@ -899,12 +915,12 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
             mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
         if not cache_ok:
             cp = subprocess.run(
-                bc + ['-module', 'kitty_custom_shader_types', '-o', j('kitty-custom-shader-types.slang-module'), '--', '-'],
+                bc + ['-module-name', 'kitty_custom_shader_types', '-o', j('kitty-custom-shader-types.slang-module'), '--', '-'],
                 input=ct_shader,
                 capture_output=True,
             )
             if cp.returncode != 0:
-                raise SlangFailed('custom-types.slang', cp.stderr)
+                raise SlangFailed('custom-types.slang', cp)
             with open(j('ct.key'), 'wb') as f:
                 f.write(ct_key)
                 mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
@@ -915,32 +931,66 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
             path, src, content_key = custom_shader(name)
             shaders_content_key += b':' + content_key
             path_key = key(path)
+            path_key_file = j(path_key.decode()) + '.key'
             cache_ok = False
             module_names[name] = modname = 'm' + content_key.decode()
-            with suppress(FileNotFoundError), open(j(f'{path_key}.key'), 'rb') as f:
+            with suppress(FileNotFoundError), open(path_key_file, 'rb') as f:
                 cache_ok = f.read() == content_key
                 mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
             if not cache_ok:
                 cp = subprocess.run(
-                    bc + ['-module', modname, '-o', j(f'{modname}.slang-module'), '--', '-'],
+                    bc + ['-module-name', modname, '-o', j(f'{modname}.slang-module'), '--', '-'],
                     input=src,
                     capture_output=True,
                 )
                 if cp.returncode != 0:
-                    raise SlangFailed(name, cp.stderr)
-                with open(j(f'{path_key}.key'), 'wb') as f:
+                    raise SlangFailed(name, cp)
+                with open(path_key_file, 'wb') as f:
                     f.write(content_key)
                     mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
         shaders_content_key += b':' + str(mtime).encode()
-        slot_key = key(slot, shaders_content_key)
-        slot_dir = os.path.join(cache_dir, 'slots')
-        os.makedirs(slot_dir, exist_ok=True)
         j = partial(os.path.join, slot_dir)
         cache_ok = False
+        wrappers = {}
+        entry_points = []
+        for i, name in enumerate(shaders):
+            module_name = module_names[name]
+            entry_point = f'fragment_main{i}'
+            wrapper_src = textwrap.dedent(f"""
+            #language slang 2026
+            implementing {slot_module_name};
+            import kitty_custom_shader_types;
+            import {module_name};
+
+            public float4 {entry_point}(float4 inp, KittyCustomShaderData d) {{ return fragment_main(inp, d); }}
+            """)
+            wrappers[f'wrapper{i}.slang'] = wrapper_src
+            entry_points.append(entry_point)
+        mod_src = get_custom_shader_src('pipeline').decode()
+        mod_src = mod_src.replace('// IMPORTS', '\n'.join(f'__include "{w}";' for w in wrappers), 1)
+        mod_src = mod_src.replace('// PIPELINE', '\n'.join(f'color = {w}(color, vo.d);' for w in entry_points), 1)
+        # subprocess.run(['bat', '-P', '-l', 'cpp'], input=mod_src.encode())
+        slot_key = key(slot, mod_src, shaders_content_key)
+
         with suppress(FileNotFoundError), open(j(f'{slot}.key'), 'rb') as f:
             cache_ok = f.read() == slot_key
         if not cache_ok:
-            pass
+            with tempfile.TemporaryDirectory() as tdir:
+                for wrapper_name, wrapper_src in wrappers.items():
+                    with open(os.path.join(tdir, wrapper_name), 'w') as f:
+                        f.write(wrapper_src)
+                cp = subprocess.run(
+                    bc + ['-I', tdir, '-module-name', slot_module_name, '-o', j(f'{slot}.slang-module'), '--', '-'],
+                    cwd=tdir,
+                    capture_output=True,
+                    input=mod_src.encode(),
+                )
+                if cp.returncode != 0:
+                    raise SlangFailed(f'{slot}.slang', cp)
+
+            with open(j(f'{slot}.key'), 'wb') as f:
+                f.write(slot_key)
+    return os.path.join(slot_dir, f'{slot}.slang-module')
 
 
 def test_slang_build() -> None:
