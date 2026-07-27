@@ -9,7 +9,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/dlclark/regexp2 v1.12.0
-	github.com/ebitengine/purego v0.10.1
+	github.com/ebitengine/purego v0.10.2
 	github.com/emmansun/base64 v0.10.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
