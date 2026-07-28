@@ -2,9 +2,21 @@
 # License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import shutil
+import subprocess
 import tempfile
 
-from kitty.shaders.slang import EntryPoint, SlangFile, Stage, build_import_graph, parse_slang_text, topological_layers, topological_sort
+from kitty.constants import slangc
+from kitty.shaders.slang import (
+    EntryPoint,
+    SlangFile,
+    Stage,
+    build_custom_shader_pipeline_glsl,
+    build_import_graph,
+    parse_slang_text,
+    topological_layers,
+    topological_sort,
+)
 
 from .base import BaseTest
 
@@ -228,3 +240,45 @@ void vsMain() {}
 
         # Empty graph
         self.assertEqual(topological_layers({}), [])
+
+    def test_build_custom_shader_pipeline_glsl(self):
+        if not shutil.which(slangc()[0]):
+            self.skipTest(f'slangc ({slangc()[0]}) not found in PATH')
+
+        with tempfile.TemporaryDirectory() as cache_dir:
+            # Clear the lru_cache so the temp cache_dir is actually used
+            build_custom_shader_pipeline_glsl.cache_clear()
+            try:
+                vert_src, frag_src, metadata = build_custom_shader_pipeline_glsl(
+                    slot='after-window-background',
+                    shaders=('sample', 'sample'),
+                    cache_dir=cache_dir,
+                )
+            finally:
+                build_custom_shader_pipeline_glsl.cache_clear()
+
+        self.assertIsInstance(vert_src, str)
+        self.assertIsInstance(frag_src, str)
+        self.assertTrue(len(vert_src) > 0, 'vertex GLSL is empty')
+        self.assertTrue(len(frag_src) > 0, 'fragment GLSL is empty')
+        self.assertIsInstance(metadata, dict)
+
+        if not shutil.which('glslangValidator'):
+            return
+
+        for src, stage, ext in ((vert_src, 'vert', '.vert.glsl'), (frag_src, 'frag', '.frag.glsl')):
+            with tempfile.NamedTemporaryFile(suffix=ext, mode='w', delete=False) as tf:
+                tf.write(src)
+                tf_path = tf.name
+            try:
+                cp = subprocess.run(
+                    ['glslangValidator', '-S', stage, tf_path],
+                    capture_output=True,
+                )
+                self.assertEqual(
+                    cp.returncode,
+                    0,
+                    f'glslangValidator failed for {stage} shader:\n{cp.stdout.decode()}\n{cp.stderr.decode()}',
+                )
+            finally:
+                os.unlink(tf_path)

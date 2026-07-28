@@ -1092,10 +1092,14 @@ def build_custom_shader_pipeline_glsl(
             assert v.stderr is not None and f.stderr is not None
             v.stdin.write(src), v.stdin.close()
             f.stdin.write(src), f.stdin.close()
-            if (rc := v.wait()) != 0:
-                raise SlangFailed(f'{slot}.vert.glsl', subprocess.CompletedProcess(vcmd, rc, stderr=v.stderr.read()))
-            if (rc := f.wait()) != 0:
-                raise SlangFailed(f'{slot}.frag.glsl', subprocess.CompletedProcess(fcmd, rc, stderr=f.stderr.read()))
+            try:
+                if (rc := v.wait()) != 0:
+                    raise SlangFailed(f'{slot}.vert.glsl', subprocess.CompletedProcess(vcmd, rc, stderr=v.stderr.read()))
+                if (rc := f.wait()) != 0:
+                    raise SlangFailed(f'{slot}.frag.glsl', subprocess.CompletedProcess(fcmd, rc, stderr=f.stderr.read()))
+            finally:
+                v.stderr.close()
+                f.stderr.close()
             fixup_opengl_files((fragment, vertex))
         with open(vertex) as vf, open(fragment) as ff:
             return vf.read(), ff.read(), glsl_metadata_for_shader(metadata)
