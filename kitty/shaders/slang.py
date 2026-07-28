@@ -540,8 +540,10 @@ def commands_to_compile_to_spirv(sources: dict[str, SlangFile], build_dir: str, 
 
 
 # GLSL {{{
+glsl_version = max(150, GLSL_VERSION)  # slangc fails with glsl_140 https://github.com/shader-slang/slang/issues/11898
+
+
 def commands_to_compile_to_glsl(sources: dict[str, SlangFile], build_dir: str, dest_dir: str, built_glsl_files: list[str]) -> Iterator[Command]:
-    glsl_version = max(150, GLSL_VERSION)  # slangc fails with glsl_140 https://github.com/shader-slang/slang/issues/11898
     for base_dest, base_build, slang_module, cmd, sfile in iter_entry_point_shaders(sources, build_dir, dest_dir):
         module_mtime = os.path.getmtime(slang_module)
         extra_cmd = ['-line-directive-mode', 'none', '-target', 'glsl', '-profile', f'glsl_{glsl_version}']
@@ -778,21 +780,25 @@ def write_if_changed(dest: str, text: str) -> None:
         f.write(text)
 
 
+def glsl_metadata_for_shader(path: str) -> dict[str, Any]:
+    with open(path) as f:
+        d = json.load(f)
+    m = GLSLMetadata.fromdict(d)
+    return {
+        'loose_uniforms': m.loose_uniforms,
+        'uniform_structs': m.uniform_structs,
+        'input_locations': m.input_locations,
+        'uniform_struct_names': m.uniform_struct_names,
+    }
+
+
 def write_glsl_metadata(dest_dir: str, dest: str = 'glsl-uniforms.json') -> None:
     metadata_map = {}
     for x in glob.glob(os.path.join(dest_dir, '*.glsl.json')):
         shader_name = shader_name_from_path(x)
         if '.' in shader_name:
             continue
-        with open(x) as f:
-            d = json.load(f)
-        m = GLSLMetadata.fromdict(d)
-        metadata_map[shader_name] = {
-            'loose_uniforms': m.loose_uniforms,
-            'uniform_structs': m.uniform_structs,
-            'input_locations': m.input_locations,
-            'uniform_struct_names': m.uniform_struct_names,
-        }
+        metadata_map[shader_name] = glsl_metadata_for_shader(x)
     write_if_changed(os.path.join(dest_dir, dest), json.dumps(metadata_map, indent=2, sort_keys=True))
 
 
@@ -921,7 +927,7 @@ def custom_shader(name: str = '') -> tuple[str, bytes, bytes]:
     return name, src, key(src)
 
 
-def _build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir: str) -> str:
+def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir: str) -> tuple[str, str, str]:
     slot_module_name = f'{slot.replace("-", "_")}'
     cache_dir = os.path.join(cache_dir, 'c')
     ensure_cache_dir(cache_dir)
@@ -1001,7 +1007,7 @@ def _build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_di
         cache_ok = f.read() == slot_key
     ans = os.path.join(slot_dir, f'{slot}.slang-module')
     if cache_ok:
-        return ans
+        return ans, libdir, slot_dir
     with tempfile.TemporaryDirectory() as tdir:
         for wrapper_name, wrapper_src in wrappers.items():
             with open(os.path.join(tdir, wrapper_name), 'w') as f:
@@ -1017,10 +1023,13 @@ def _build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_di
 
     with open(j(f'{slot}.key'), 'wb') as f:
         f.write(slot_key)
-    return ans
+    return ans, libdir, slot_dir
 
 
-def build_custom_shader_pipeline_ir(slot: str = 'after-window-background', shaders: Iterable[str] = ('sample',), cache_dir: str = '') -> str:
+@lru_cache(maxsize=64)
+def build_custom_shader_pipeline_glsl(
+    slot: str = 'after-window-background', shaders: tuple[str, ...] = ('sample',), cache_dir: str = ''
+) -> tuple[str, str, dict[str, Any]]:
     import kitty.constants as kc
 
     cache_dir = os.path.join(cache_dir or kc.cache_dir(), 'shaders')
@@ -1029,7 +1038,65 @@ def build_custom_shader_pipeline_ir(slot: str = 'after-window-background', shade
     with lock_with_file(
         os.path.join(cache_dir, 'lock'),
     ):
-        return _build_custom_shader_pipeline_ir(slot, shaders, cache_dir)
+        slang_module_path, libdir, slotsdir = build_custom_shader_pipeline_ir(slot, shaders, cache_dir)
+        glsl_dir = os.path.join(os.path.dirname(os.path.dirname(slang_module_path)), 'glsl')
+        os.makedirs(glsl_dir, exist_ok=True)
+        module_mtime = safe_mtime(slang_module_path)
+        vertex = os.path.join(glsl_dir, f'{slot}.vert.glsl')
+        fragment = os.path.join(glsl_dir, f'{slot}.frag.glsl')
+        metadata = os.path.join(glsl_dir, f'{slot}.glsl.json')
+        if module_mtime > safe_mtime(metadata):
+            cmd = list(slangc()) + [
+                '-warnings-as-errors',
+                'all',
+                '-lang',
+                'slang',
+                '-I',
+                slotsdir,
+                '-I',
+                libdir,
+                '-target',
+                'glsl',
+                '-profile',
+                f'glsl_{glsl_version}',
+            ]
+            vcmd = cmd + ['-stage', 'vertex', '-entry', 'vmain_wrap', '-o', vertex, '--', '-']
+            fcmd = cmd + ['-stage', 'fragment', '-entry', 'fmain_wrap', '-o', fragment, '--', '-']
+            src = textwrap.dedent(
+                """
+                #language slang 2026
+                import MODULE;
+
+                struct VertexOutput {
+                    float2 texcoord : TEXCOORD;
+                    float4 position : SV_Position;
+                };
+
+                [shader("vertex")]
+                VertexOutput vmain_wrap(float4 src_rect, float4 dest_rect, uint vertex_id : SV_VertexID) {
+                    float4 c = pipeline_vertex_main(src_rect, dest_rect, vertex_id);
+                    return {float2(c[0], c[1]), float4(c[2], c[3], 0, 1)};
+                }
+
+                [shader("fragment")]
+                float4 fmain_wrap(float2 texcoord : TEXCOORD) : SV_Target {
+                    return pipeline_fragment_main(texcoord);
+                }
+                """.replace('MODULE', slot.replace('-', '_'))
+            ).encode()
+            v = subprocess.Popen(vcmd, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+            f = subprocess.Popen(fcmd, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+            assert v.stdin is not None and f.stdin is not None
+            assert v.stderr is not None and f.stderr is not None
+            v.stdin.write(src), v.stdin.close()
+            f.stdin.write(src), f.stdin.close()
+            if (rc := v.wait()) != 0:
+                raise SlangFailed(f'{slot}.vert.glsl', subprocess.CompletedProcess(vcmd, rc, stderr=v.stderr.read()))
+            if (rc := f.wait()) != 0:
+                raise SlangFailed(f'{slot}.frag.glsl', subprocess.CompletedProcess(fcmd, rc, stderr=f.stderr.read()))
+            fixup_opengl_files((fragment, vertex))
+        with open(vertex) as vf, open(fragment) as ff:
+            return vf.read(), ff.read(), glsl_metadata_for_shader(metadata)
 
 
 def test_slang_build() -> None:

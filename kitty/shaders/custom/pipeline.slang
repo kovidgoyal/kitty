@@ -5,8 +5,8 @@
 // IMPORTS
 
 public struct BlitOutput {
-    public float2 texcoord;
-    public float2 position;
+    float2 texcoord;
+    float2 position;
 };
 
 #define left 0
@@ -22,7 +22,7 @@ static const int2 vertex_pos_map[4] = {
     {left, top}
 };
 
-public BlitOutput get_coords_for_blit(uint vertex_id, float4 src_rect, float4 dest_rect) {
+BlitOutput get_coords_for_blit(uint vertex_id, float4 src_rect, float4 dest_rect) {
     int2 pos = vertex_pos_map[vertex_id];
     BlitOutput output;
     output.texcoord = float2(src_rect[pos.x], src_rect[pos.y]);
@@ -30,22 +30,14 @@ public BlitOutput get_coords_for_blit(uint vertex_id, float4 src_rect, float4 de
     return output;
 }
 
-struct VertexOutput {
-    float2 texcoord : TEXCOORD;
-    float4 position : SV_Position;
-};
-
-
-[shader("vertex")]
-VertexOutput vertex_main(float4 src_rect, float4 dest_rect, uint vertex_id : SV_VertexID) {
+public float4 pipeline_vertex_main(float4 src_rect, float4 dest_rect, uint vertex_id) {
     BlitOutput ans = get_coords_for_blit(vertex_id, src_rect, dest_rect);
-    return {ans.texcoord, float4(ans.position[0], ans.position[1], 0.0, 1.0)};
+    return float4(ans.texcoord[0], ans.texcoord[1], ans.position[0], ans.position[1]);
 }
 
 uniform Sampler2D backbuffer;
 
-[shader("fragment")]
-float4 pipeline_fragment_main(float2 texcoord : TEXCOORD) : SV_Target {
+public float4 pipeline_fragment_main(float2 texcoord) {
     KittyCustomShaderData d;
     d.backbuffer = backbuffer;
     d.texcoord = texcoord;
