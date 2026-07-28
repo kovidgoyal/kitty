@@ -1026,6 +1026,29 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
     return ans, libdir, slot_dir
 
 
+def module_wrapper_for_slot(slot: str) -> bytes:
+    return """
+#language slang 2026
+import MODULE;
+
+struct VertexOutput {
+    float2 texcoord : TEXCOORD;
+    float4 position : SV_Position;
+};
+
+[shader("vertex")]
+VertexOutput vmain_wrap(float4 src_rect, float4 dest_rect, uint vertex_id : SV_VertexID) {
+    float4 c = pipeline_vertex_main(src_rect, dest_rect, vertex_id);
+    return {float2(c[0], c[1]), float4(c[2], c[3], 0, 1)};
+}
+
+[shader("fragment")]
+float4 fmain_wrap(float2 texcoord : TEXCOORD) : SV_Target {
+    return pipeline_fragment_main(texcoord);
+}
+        """.replace('MODULE', slot.replace('-', '_')).encode()
+
+
 @lru_cache(maxsize=64)
 def build_custom_shader_pipeline_glsl(
     slot: str = 'after-window-background', shaders: tuple[str, ...] = ('sample',), cache_dir: str = ''
@@ -1062,30 +1085,9 @@ def build_custom_shader_pipeline_glsl(
             ]
             vcmd = cmd + ['-stage', 'vertex', '-entry', 'vmain_wrap', '-o', vertex, '--', '-']
             fcmd = cmd + ['-stage', 'fragment', '-entry', 'fmain_wrap', '-o', fragment, '--', '-']
-            src = textwrap.dedent(
-                """
-                #language slang 2026
-                import MODULE;
-
-                struct VertexOutput {
-                    float2 texcoord : TEXCOORD;
-                    float4 position : SV_Position;
-                };
-
-                [shader("vertex")]
-                VertexOutput vmain_wrap(float4 src_rect, float4 dest_rect, uint vertex_id : SV_VertexID) {
-                    float4 c = pipeline_vertex_main(src_rect, dest_rect, vertex_id);
-                    return {float2(c[0], c[1]), float4(c[2], c[3], 0, 1)};
-                }
-
-                [shader("fragment")]
-                float4 fmain_wrap(float2 texcoord : TEXCOORD) : SV_Target {
-                    return pipeline_fragment_main(texcoord);
-                }
-                """.replace('MODULE', slot.replace('-', '_'))
-            ).encode()
-            v = subprocess.Popen(vcmd, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
-            f = subprocess.Popen(fcmd, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
+            src = module_wrapper_for_slot(slot)
+            v = subprocess.Popen(vcmd, stderr=subprocess.PIPE, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
+            f = subprocess.Popen(fcmd, stderr=subprocess.PIPE, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
             assert v.stdin is not None and f.stdin is not None
             assert v.stderr is not None and f.stderr is not None
             v.stdin.write(src), v.stdin.close()
