@@ -982,6 +982,9 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 	if default_cwd, err = filepath.Abs(default_cwd); err != nil {
 		return
 	}
+	if st, serr := os.Stat(default_cwd); serr != nil || !st.IsDir() {
+		default_cwd = utils.Expanduser("~")
+	}
 
 	lp.OnInitialize = func() (string, error) {
 		if opts.WritePidTo != "" {
