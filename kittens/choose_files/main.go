@@ -983,7 +983,11 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 		return
 	}
 	if st, serr := os.Stat(default_cwd); serr != nil || !st.IsDir() {
-		default_cwd = utils.Expanduser("~")
+		if home := utils.Expanduser("~"); home != "~" {
+			default_cwd = home
+		} else {
+			default_cwd = "/"
+		}
 	}
 
 	lp.OnInitialize = func() (string, error) {
