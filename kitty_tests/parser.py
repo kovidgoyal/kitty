@@ -799,6 +799,17 @@ class TestParser(BaseTest):
         pb('\033[?2026$p', ('report_mode_status', 2026, 1))
         self.ae(c.wtcbuf, b'\x1b[?2026;2$y')
 
+        c.clear()
+        pb('\033[?998n', ('report_device_status', 998, 1))
+        self.ae(c.wtcbuf, b'\x1b[?999;1n')
+        c.clear()
+        pb('\033[?2033h', ('screen_set_mode', 2033, 1))
+        self.ae(c.wtcbuf, b'\x1b[?999;1n')
+        c.clear()
+        pb('\033[?2033$p', ('report_mode_status', 2033, 1))
+        self.ae(c.wtcbuf, b'\x1b[?2033;1$y')
+        pb('\033[?2033l', ('screen_reset_mode', 2033, 1))
+
     def test_csi_code_rep(self):
         s = self.create_screen(8)
         pb = partial(self.parse_bytes_dump, s)

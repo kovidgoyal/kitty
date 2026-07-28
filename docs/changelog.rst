@@ -193,6 +193,8 @@ Detailed list of changes
 
 - Desktop file chooser integration: when the specified directory does not exist, open file chooser at home directory (:iss:`10292`)
 
+- Add support for `terminal visibility reports <https://rockorager.dev/misc/visibility-reports/>`__
+
 
 0.48.1 [2026-07-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

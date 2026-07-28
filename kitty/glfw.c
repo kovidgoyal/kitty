@@ -334,6 +334,7 @@ window_occlusion_callback(GLFWwindow *window, bool occluded) {
     if (!set_callback_window(window)) return;
     debug("OSWindow %llu occlusion state changed, occluded: %d\n", global_state.callback_os_window->id, occluded);
     if (!occluded) global_state.check_for_active_animated_images = true;
+    update_os_window_visibility_reports(global_state.callback_os_window);
     request_tick_callback();
     global_state.callback_os_window = NULL;
 }
@@ -342,6 +343,7 @@ static void
 window_iconify_callback(GLFWwindow *window, int iconified) {
     if (!set_callback_window(window)) return;
     if (!iconified) global_state.check_for_active_animated_images = true;
+    update_os_window_visibility_reports(global_state.callback_os_window);
     request_tick_callback();
     global_state.callback_os_window = NULL;
 }
@@ -633,6 +635,7 @@ set_os_window_visibility(OSWindow *w, int set_visible, bool move_to_active_scree
         w->keep_rendering_till_swap = 256;  // try this many times
         request_tick_callback();
     } else glfwHideWindow(w->handle);
+    update_os_window_visibility_reports(w);
 }
 
 static void
@@ -1456,6 +1459,7 @@ change_state_for_os_window(OSWindow *w, int state) {
         case WINDOW_HIDDEN:
             glfwHideWindow(w->handle); break;
     }
+    update_os_window_visibility_reports(w);
 }
 
 #ifdef __APPLE__
@@ -2562,13 +2566,17 @@ wakeup_main_loop(void) {
 }
 
 bool
-should_os_window_be_rendered(OSWindow* w) {
+is_os_window_potentially_visible(OSWindow* w) {
     return (
             glfwGetWindowAttrib(w->handle, GLFW_ICONIFIED)
             || !glfwGetWindowAttrib(w->handle, GLFW_VISIBLE)
             || glfwGetWindowAttrib(w->handle, GLFW_OCCLUDED)
-            || !glfwAreSwapsAllowed(w->handle)
        ) ? false : true;
+}
+
+bool
+should_os_window_be_rendered(OSWindow* w) {
+    return is_os_window_potentially_visible(w) && glfwAreSwapsAllowed(w->handle);
 }
 
 static PyObject*

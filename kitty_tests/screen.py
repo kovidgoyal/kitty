@@ -404,6 +404,24 @@ class TestScreen(BaseTest):
         parse_bytes(s, b'\x1b[?2048h')  # ]
         self.ae(c.num_of_resize_events, 2)
 
+    def test_visibility_reports(self):
+        s = self.create_screen()
+        c = s.callbacks
+        parse_bytes(s, b'\x1b[?2033$p')  # ]
+        self.ae(c.wtcbuf, b'\x1b[?2033;2$y')  # ]
+        c.clear()
+        parse_bytes(s, b'\x1b[?998n')  # ]
+        self.ae(c.wtcbuf, b'\x1b[?999;1n')  # ]
+        c.clear()
+        parse_bytes(s, b'\x1b[?2033h\x1b[?2033$p')  # ]]
+        self.ae(c.wtcbuf, b'\x1b[?999;1n\x1b[?2033;1$y')  # ]]
+        c.clear()
+        parse_bytes(s, b'\x1b[?2033h')  # ]
+        self.ae(c.wtcbuf, b'\x1b[?999;1n')  # ]
+        c.clear()
+        parse_bytes(s, b'\x1b[?2033l\x1b[?2033$p')  # ]]
+        self.ae(c.wtcbuf, b'\x1b[?2033;2$y')  # ]
+
     def test_da1(self):
         s = self.create_screen()
         parse_bytes(s, b'\x1b[c\x1b[0c')  # ]]

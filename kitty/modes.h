@@ -88,6 +88,9 @@
 // Notification of color preference change
 #define COLOR_PREFERENCE_NOTIFICATION (2031 << 5)
 
+// Terminal visibility reports
+#define VISIBILITY_REPORTS (2033 << 5)
+
 // In-band resize notification mode
 #define INBAND_RESIZE_NOTIFICATION (2048 << 5)
 

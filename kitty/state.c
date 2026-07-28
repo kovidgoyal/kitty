@@ -165,6 +165,39 @@ window_for_window_id(id_type kitty_window_id) {
     return NULL;
 }
 
+bool
+is_kitty_window_visible(id_type kitty_window_id) {
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *os_window = global_state.os_windows + i;
+        for (size_t t = 0; t < os_window->num_tabs; t++) {
+            Tab *tab = os_window->tabs + t;
+            for (size_t w = 0; w < tab->num_windows; w++) {
+                Window *window = tab->windows + w;
+                if (window->id == kitty_window_id) {
+                    return is_os_window_potentially_visible(os_window) && t == os_window->active_tab && window->visible;
+                }
+            }
+        }
+    }
+    // If the view cannot be found, its visibility is unknown and must be
+    // treated conservatively as potentially visible.
+    return true;
+}
+
+void
+update_os_window_visibility_reports(OSWindow *os_window) {
+    const bool os_window_is_visible = is_os_window_potentially_visible(os_window);
+    for (size_t t = 0; t < os_window->num_tabs; t++) {
+        Tab *tab = os_window->tabs + t;
+        for (size_t w = 0; w < tab->num_windows; w++) {
+            Window *window = tab->windows + w;
+            if (window->render_data.screen) {
+                screen_visibility_changed(window->render_data.screen, os_window_is_visible && t == os_window->active_tab && window->visible);
+            }
+        }
+    }
+}
+
 static void
 free_bgimage_bitmap(BackgroundImage *bgimage) {
     if (!bgimage->bitmap) return;
@@ -502,6 +535,10 @@ attach_window(id_type os_window_id, id_type tab_id, id_type id) {
                 ) resize_screen(osw, w->render_data.screen, true);
                 else screen_dirty_sprite_positions(w->render_data.screen);
                 w->render_data.screen->reload_all_gpu_data = true;
+                screen_visibility_changed(
+                    w->render_data.screen,
+                    is_os_window_potentially_visible(osw) && t == osw->active_tab && w->visible
+                );
                 break;
             }
         }
@@ -585,6 +622,7 @@ set_active_tab(id_type os_window_id, unsigned int idx) {
     WITH_OS_WINDOW(os_window_id)
         os_window->active_tab = idx;
         os_window->needs_render = true;
+        update_os_window_visibility_reports(os_window);
     END_WITH_OS_WINDOW
 }
 
@@ -1203,6 +1241,12 @@ PYWRAP1(update_window_visibility) {
         bool was_visible = window->visible & 1;
         window->visible = visible & 1;
         if (!was_visible && window->visible) global_state.check_for_active_animated_images = true;
+        if (window->render_data.screen) {
+            screen_visibility_changed(
+                window->render_data.screen,
+                is_os_window_potentially_visible(osw) && t == osw->active_tab && window->visible
+            );
+        }
     END_WITH_WINDOW;
     Py_RETURN_NONE;
 }
