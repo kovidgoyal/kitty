@@ -844,7 +844,18 @@ func (self *Portal) run_file_chooser(cfd ChooseFilesData) (response uint32, resu
 			}
 		}
 		args = append(args, "--write-pid-to", pid_path)
-		args = append(args, utils.IfElse(cfd.Cwd == "", "~", cfd.Cwd))
+		target := cfd.Cwd
+		if target == "" {
+			target = "~"
+		} else {
+			if st, err := os.Stat(cfd.Cwd); err == nil && st.IsDir() && unix.Access(cfd.Cwd, unix.R_OK|unix.X_OK) == nil {
+				target = cfd.Cwd
+			} else {
+				target = "~"
+			}
+
+		}
+		args = append(args, target)
 		cmd := exec.Command(utils.KittyExe(), args...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

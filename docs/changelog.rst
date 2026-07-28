@@ -191,6 +191,8 @@ Detailed list of changes
 
 - Linux: Fix an approx 1MB memory leak when reloading the config introduced in version 0.40.0 (:iss:`10290`)
 
+- Desktop file chooser integration: when the specified directory does not exist, open file chooser at home directory (:iss:`10292`)
+
 
 0.48.1 [2026-07-24]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
