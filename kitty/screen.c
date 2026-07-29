@@ -1524,6 +1524,27 @@ write_escape_code_to_child(Screen *self, unsigned char which, const char *data) 
     return written;
 }
 
+static void
+send_visibility_report(Screen *self, bool potentially_visible) {
+    write_escape_code_to_child(self, ESC_CSI, potentially_visible ? "?999;1n" : "?999;2n");
+}
+
+void
+screen_visibility_changed(Screen *self, bool potentially_visible) {
+    const uint8_t state = potentially_visible ? 1 : 2;
+    if (self->visibility_state != state) {
+        self->visibility_state = state;
+        if (self->modes.mVISIBILITY_REPORTS) send_visibility_report(self, potentially_visible);
+    }
+}
+
+static void
+report_current_visibility(Screen *self) {
+    const bool potentially_visible = is_kitty_window_visible(self->window_id);
+    self->visibility_state = potentially_visible ? 1 : 2;
+    send_visibility_report(self, potentially_visible);
+}
+
 static bool
 write_escape_code_to_child_python(Screen *self, unsigned char which, PyObject *data) {
     bool written = false;
@@ -1798,6 +1819,10 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         case INBAND_RESIZE_NOTIFICATION:
             self->modes.mINBAND_RESIZE_NOTIFICATION = val;
             if (val) CALLBACK("notify_child_of_resize", NULL);
+            break;
+        case VISIBILITY_REPORTS:
+            self->modes.mVISIBILITY_REPORTS = val;
+            if (val) report_current_visibility(self);
             break;
         default:
             private = mode >= 1 << 5;
@@ -2341,6 +2366,7 @@ copy_specific_mode(Screen *self, unsigned int mode, const ScreenModes *src, Scre
         SIMPLE_MODE(COLOR_PREFERENCE_NOTIFICATION)
         SIMPLE_MODE(PASTE_EVENTS)
         SIMPLE_MODE(INBAND_RESIZE_NOTIFICATION)
+        SIMPLE_MODE(VISIBILITY_REPORTS)
         SIMPLE_MODE(DECCKM)
         SIMPLE_MODE(DECTCEM)
         SIMPLE_MODE(DECAWM)
@@ -2383,6 +2409,7 @@ copy_specific_modes(Screen *self, const ScreenModes *src, ScreenModes *dest) {
     copy_specific_mode(self, FOCUS_TRACKING, src, dest);
     copy_specific_mode(self, COLOR_PREFERENCE_NOTIFICATION, src, dest);
     copy_specific_mode(self, INBAND_RESIZE_NOTIFICATION, src, dest);
+    copy_specific_mode(self, VISIBILITY_REPORTS, src, dest);
     copy_specific_mode(self, PASTE_EVENTS, src, dest);
     copy_specific_mode(self, DECCKM, src, dest);
     copy_specific_mode(self, DECTCEM, src, dest);
@@ -2937,6 +2964,9 @@ report_device_status(Screen *self, unsigned int which, bool private) {
             if (private) {
                 CALLBACK("report_color_scheme_preference", NULL);
             } break;
+        case 998: // https://rockorager.dev/misc/visibility-reports/
+            if (private) report_current_visibility(self);
+            break;
     }
 }
 
@@ -2961,6 +2991,7 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         KNOWN_MODE(BRACKETED_PASTE);
         KNOWN_MODE(FOCUS_TRACKING);
         KNOWN_MODE(COLOR_PREFERENCE_NOTIFICATION);
+        KNOWN_MODE(VISIBILITY_REPORTS);
         KNOWN_MODE(INBAND_RESIZE_NOTIFICATION);
         KNOWN_MODE(PASTE_EVENTS);
 #undef KNOWN_MODE
