@@ -2258,6 +2258,8 @@ use :code:`{sup.index}`. All data available is:
 :code:`tab.progress_percent`
     If a command running in a window reports the progress for a task, show this progress as a percentage
     from all windows in the tab, averaged. Empty string is no progress is reported.
+:code:`tab.children_mem_usage`
+    The current memory usage of all child process of the tab and their descendants
 :code:`custom`
     This will call a function named :code:`draw_title(data)` from the file :file:`tab_bar.py` placed in
     the kitty config directory. The function will be passed a dictionary of data, the same data that

@@ -285,6 +285,20 @@ class TabAccessor:
         p = int(tab.total_progress / tab.num_of_windows_with_progress)
         return f'{p}% '
 
+    @property
+    def children_mem_usage(self) -> str:
+        from kittens.tui.utils import human_size
+
+        tab = get_boss().tab_for_id(self.tab_id)
+        if not tab:
+            return ''
+        ans = 0
+        for w in tab:
+            if (m := w.child.get_memory_used_by_child()) > 0:
+                ans += m
+
+        return human_size(ans, max_num_of_decimals=0)
+
 
 safe_builtins = {
     'max': max,

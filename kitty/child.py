@@ -703,7 +703,7 @@ class Child:
             except OSError:
                 pass
 
-    def get_memory_used_by_child(self, check_if_cgroup_root: bool = False) -> int:
+    def get_memory_used_by_child(self) -> int:
         if self.pid is None:
             return -1
-        return memory_used_by_process_tree_rooted_at(self.pid, check_if_cgroup_root)
+        return memory_used_by_process_tree_rooted_at(self.pid, check_if_cgroup_root=False)
