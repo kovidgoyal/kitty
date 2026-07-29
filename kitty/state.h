@@ -567,7 +567,6 @@ void mark_os_window_for_close(OSWindow* w, CloseRequest cr);
 void update_os_window_viewport(OSWindow *window, bool notify_boss);
 bool should_os_window_be_rendered(OSWindow* w);
 bool is_os_window_potentially_visible(OSWindow* w);
-bool is_kitty_window_visible(id_type kitty_window_id);
 void update_os_window_visibility_reports(OSWindow *w);
 void wakeup_main_loop(void);
 bool make_window_context_current(id_type);

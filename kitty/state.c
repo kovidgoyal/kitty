@@ -165,25 +165,6 @@ window_for_window_id(id_type kitty_window_id) {
     return NULL;
 }
 
-bool
-is_kitty_window_visible(id_type kitty_window_id) {
-    for (size_t i = 0; i < global_state.num_os_windows; i++) {
-        OSWindow *os_window = global_state.os_windows + i;
-        for (size_t t = 0; t < os_window->num_tabs; t++) {
-            Tab *tab = os_window->tabs + t;
-            for (size_t w = 0; w < tab->num_windows; w++) {
-                Window *window = tab->windows + w;
-                if (window->id == kitty_window_id) {
-                    return is_os_window_potentially_visible(os_window) && t == os_window->active_tab && window->visible;
-                }
-            }
-        }
-    }
-    // If the view cannot be found, its visibility is unknown and must be
-    // treated conservatively as potentially visible.
-    return true;
-}
-
 void
 update_os_window_visibility_reports(OSWindow *os_window) {
     const bool os_window_is_visible = is_os_window_potentially_visible(os_window);

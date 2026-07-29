@@ -1525,8 +1525,8 @@ write_escape_code_to_child(Screen *self, unsigned char which, const char *data) 
 }
 
 static void
-send_visibility_report(Screen *self, bool potentially_visible) {
-    write_escape_code_to_child(self, ESC_CSI, potentially_visible ? "?999;1n" : "?999;2n");
+send_visibility_report(Screen *self) {
+    write_escape_code_to_child(self, ESC_CSI, self->visibility_state != 2 ? "?999;1n" : "?999;2n");
 }
 
 void
@@ -1534,15 +1534,8 @@ screen_visibility_changed(Screen *self, bool potentially_visible) {
     const uint8_t state = potentially_visible ? 1 : 2;
     if (self->visibility_state != state) {
         self->visibility_state = state;
-        if (self->modes.mVISIBILITY_REPORTS) send_visibility_report(self, potentially_visible);
+        if (self->modes.mVISIBILITY_REPORTS) send_visibility_report(self);
     }
-}
-
-static void
-report_current_visibility(Screen *self) {
-    const bool potentially_visible = is_kitty_window_visible(self->window_id);
-    self->visibility_state = potentially_visible ? 1 : 2;
-    send_visibility_report(self, potentially_visible);
 }
 
 static bool
@@ -1822,7 +1815,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             break;
         case VISIBILITY_REPORTS:
             self->modes.mVISIBILITY_REPORTS = val;
-            if (val) report_current_visibility(self);
+            if (val) send_visibility_report(self);
             break;
         default:
             private = mode >= 1 << 5;
@@ -2965,7 +2958,7 @@ report_device_status(Screen *self, unsigned int which, bool private) {
                 CALLBACK("report_color_scheme_preference", NULL);
             } break;
         case 998: // https://rockorager.dev/misc/visibility-reports/
-            if (private) report_current_visibility(self);
+            if (private) send_visibility_report(self);
             break;
     }
 }
