@@ -172,6 +172,7 @@ class GoProc:
     def finish(self) -> None:
         """Reap the process after its stdout has been fully drained."""
         assert self.proc.stdout is not None
+        self.proc.stdout.close()
         self.proc.wait()
         self.end_time = time.monotonic()
         shutil.rmtree(self.tdir, ignore_errors=True)
@@ -398,21 +399,23 @@ def collect_worker_results(
         elapsed = time.monotonic() - start
         parts: list[str] = []
         if total_py_tests > 0 or active_py:
-            parts.append(c(_CYAN + _BOLD, 'Py') + f' {py_run}/{total_py_tests}')
+            py_mark = c(_GREEN, ' ✓') if not active_py else ''
+            parts.append(c(_CYAN + _BOLD, 'Py') + f' {py_run}/{total_py_tests}' + py_mark)
         if go_proc is not None:
             # Go total is omitted: t.Run() sub-tests inflate the count beyond
             # what static analysis of Test* functions can predict.
-            parts.append(c(_YELLOW + _BOLD, 'Go') + f' {go_run}')
+            go_mark = c(_GREEN, ' ✓') if not go_active else ''
+            parts.append(c(_YELLOW + _BOLD, 'Go') + f' {go_run}' + go_mark)
         fail_count = len(py_failures) + len(py_errors) + len(go_failures)
         if fail_count:
             parts.append(c(_RED, f'{fail_count} failed'))
         return '  ' + '  '.join(parts) + '  ' + c(_DIM, f'[{elapsed:.1f}s]')
 
-    def show_progress() -> None:
+    def show_progress(force: bool = False) -> None:
         line = render_progress()
         if use_tty:
             print(f'\r{line}\x1b[K', end='', flush=True)
-        elif total_py_tests > 0 and py_run % max(1, total_py_tests // 10) == 0:
+        elif force or (total_py_tests > 0 and py_run % max(1, total_py_tests // 10) == 0):
             print(line, flush=True)
 
     while active_py or go_active:
@@ -430,6 +433,7 @@ def collect_worker_results(
                 if not chunk:
                     go_active = False
                     go_proc.finish()
+                    show_progress(force=True)
                     continue
                 go_buffer += chunk
                 while b'\n' in go_buffer:
@@ -482,6 +486,7 @@ def collect_worker_results(
                 if not chunk:
                     active_py.remove(fd)
                     os.close(fd)
+                    show_progress(force=True)
                     continue
                 py_buffers[fd] += chunk
                 while b'\n' in py_buffers[fd]:
