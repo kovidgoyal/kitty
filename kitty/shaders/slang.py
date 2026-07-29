@@ -913,7 +913,8 @@ def key(*items: str | bytes) -> bytes:
 
 
 @lru_cache(maxsize=64)
-def custom_shader(name: str = '') -> tuple[str, bytes, bytes]:
+def custom_shader(name: str = '') -> tuple[str, str, bytes, bytes]:
+    import_dir = ''
     if not name:
         src = get_custom_shader_src('types')
     else:
@@ -921,20 +922,23 @@ def custom_shader(name: str = '') -> tuple[str, bytes, bytes]:
         try:
             with open(path, 'rb') as f:
                 src = f.read()
-                name = path
+            path = os.path.abspath(path)
+            name = path
+            import_dir = os.path.dirname(path)
         except FileNotFoundError:
             src = get_custom_shader_src(name)
-    return name, src, key(src)
+    return name, import_dir, src, key(src)
 
 
-def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir: str) -> tuple[str, str, str]:
+def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir: str) -> tuple[tuple[str, ...], str]:
     slot_module_name = f'{slot.replace("-", "_")}'
     cache_dir = os.path.join(cache_dir, 'c')
     ensure_cache_dir(cache_dir)
     slot_dir = os.path.join(cache_dir, 'slots')
     libdir = os.path.join(cache_dir, 'lib')
+    import_dirs = [slot_dir, libdir]
     bc = list(slangc()) + ['-warnings-as-errors', 'all', '-lang', 'slang', '-I', libdir]
-    _, ct_shader, ct_key = custom_shader()
+    _, _, ct_shader, ct_key = custom_shader()
     os.makedirs(libdir, exist_ok=True)
     os.makedirs(slot_dir, exist_ok=True)
     j = partial(os.path.join, libdir)
@@ -958,7 +962,9 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
     module_names = {}
     shaders_content_key = b''
     for name in shaders:
-        path, src, content_key = custom_shader(name)
+        path, import_dir, src, content_key = custom_shader(name)
+        if import_dir and import_dir not in import_dirs:
+            import_dirs.append(import_dir)
         shaders_content_key += b':' + content_key
         path_key = key(path)
         path_key_file = j(path_key.decode()) + '.key'
@@ -968,7 +974,7 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
             cache_ok = f.read() == content_key
             mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
         if not cache_ok:
-            inc = ['-I', os.path.dirname(path)] if os.sep in path else []
+            inc = ['-I', import_dir] if import_dir else []
             cp = subprocess.run(
                 bc + inc + ['-module-name', modname, '-o', j(f'{modname}.slang-module'), '--', '-'],
                 input=src,
@@ -1007,13 +1013,16 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
         cache_ok = f.read() == slot_key
     ans = os.path.join(slot_dir, f'{slot}.slang-module')
     if cache_ok:
-        return ans, libdir, slot_dir
+        return tuple(import_dirs), ans
     with tempfile.TemporaryDirectory() as tdir:
         for wrapper_name, wrapper_src in wrappers.items():
             with open(os.path.join(tdir, wrapper_name), 'w') as f:
                 f.write(wrapper_src)
+        inc = ['-I', tdir]
+        for x in import_dirs:
+            inc.extend(('-I', x))
         cp = subprocess.run(
-            bc + ['-I', tdir, '-module-name', slot_module_name, '-o', ans, '--', '-'],
+            bc + inc + ['-module-name', slot_module_name, '-o', ans, '--', '-'],
             cwd=tdir,
             capture_output=True,
             input=mod_src.encode(),
@@ -1023,7 +1032,7 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
 
     with open(j(f'{slot}.key'), 'wb') as f:
         f.write(slot_key)
-    return ans, libdir, slot_dir
+    return tuple(import_dirs), slot_dir
 
 
 def module_wrapper_for_slot(slot: str) -> bytes:
@@ -1061,7 +1070,7 @@ def build_custom_shader_pipeline_glsl(
     with lock_with_file(
         os.path.join(cache_dir, 'lock'),
     ):
-        slang_module_path, libdir, slotsdir = build_custom_shader_pipeline_ir(slot, shaders, cache_dir)
+        import_dirs, slang_module_path = build_custom_shader_pipeline_ir(slot, shaders, cache_dir)
         glsl_dir = os.path.join(os.path.dirname(os.path.dirname(slang_module_path)), 'glsl')
         os.makedirs(glsl_dir, exist_ok=True)
         module_mtime = safe_mtime(slang_module_path)
@@ -1069,20 +1078,23 @@ def build_custom_shader_pipeline_glsl(
         fragment = os.path.join(glsl_dir, f'{slot}.frag.glsl')
         metadata = os.path.join(glsl_dir, f'{slot}.glsl.json')
         if module_mtime > safe_mtime(metadata):
-            cmd = list(slangc()) + [
-                '-warnings-as-errors',
-                'all',
-                '-lang',
-                'slang',
-                '-I',
-                slotsdir,
-                '-I',
-                libdir,
-                '-target',
-                'glsl',
-                '-profile',
-                f'glsl_{glsl_version}',
-            ]
+            inc = []
+            for x in import_dirs:
+                inc.extend(('-I', x))
+            cmd = (
+                list(slangc())
+                + inc
+                + [
+                    '-warnings-as-errors',
+                    'all',
+                    '-lang',
+                    'slang',
+                    '-target',
+                    'glsl',
+                    '-profile',
+                    f'glsl_{glsl_version}',
+                ]
+            )
             vcmd = cmd + ['-stage', 'vertex', '-entry', 'vmain_wrap', '-o', vertex, '--', '-']
             fcmd = cmd + ['-stage', 'fragment', '-entry', 'fmain_wrap', '-o', fragment, '--', '-']
             src = module_wrapper_for_slot(slot)
