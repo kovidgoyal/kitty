@@ -15,7 +15,6 @@ from collections.abc import Callable, Generator, Iterator, Sequence
 from contextlib import contextmanager
 from functools import lru_cache
 from tempfile import TemporaryDirectory, mkdtemp
-from threading import Thread
 from typing import (
     Any,
     NoReturn,
@@ -141,15 +140,14 @@ def go_exe() -> str:
     return shutil.which('go') or ''
 
 
-class GoProc(Thread):
+class GoProc:
     def __init__(self, cmd: list[str]):
-        super().__init__(name='GoProc')
         from kitty.constants import kitty_exe
 
         env = os.environ.copy()
         env['KITTY_PATH_TO_KITTY_EXE'] = kitty_exe()
-        self.stdout = b''
         self.start_time = time.monotonic()
+        self.end_time: float = 0.0
         self.tdir = mkdtemp(prefix='kitty-go-tests-')
         env['HOME'] = self.tdir
         if not env.get('GOCACHE') and (gop := os.path.expanduser('~/.cache/go-build')) and os.path.isdir(gop):
@@ -161,39 +159,28 @@ class GoProc(Thread):
         env['XDG_CACHE_HOME'] = self.tdir + '/cache'
         os.mkdir(env['XDG_CACHE_HOME'])
         self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
-        self.start()
+        self.stdout_fd = self.proc.stdout.fileno()
 
     @property
-    def runtime(self):
+    def runtime(self) -> float:
         return self.end_time - self.start_time
 
     @property
-    def returncode(self):
+    def returncode(self) -> int:
         return self.proc.returncode
 
-    def run(self) -> None:
-        try:
-            self.stdout, _ = self.proc.communicate()
-            self.proc.stdout.close()
-        finally:
-            shutil.rmtree(self.tdir)
-
-    def wait(self, timeout=None) -> None:
-        try:
-            self.join(timeout)
-        except KeyboardInterrupt:
-            self.proc.terminate()
-            if self.proc.wait(0.1) is None:
-                self.proc.kill()
-        self.join()
+    def finish(self) -> None:
+        """Reap the process after its stdout has been fully drained."""
+        assert self.proc.stdout is not None
+        self.proc.wait()
         self.end_time = time.monotonic()
-        return self.stdout.decode('utf-8', 'replace'), self.proc.returncode
+        shutil.rmtree(self.tdir, ignore_errors=True)
 
 
-def run_go(packages: set[str], names: str) -> GoProc:
+def run_go(packages: set[str], names: Sequence[str]) -> GoProc:
     go = go_exe()
     go_pkg_args = [f'github.com/kovidgoyal/kitty/{x}' for x in packages]
-    cmd = [go, 'test', '--tags', 'testing', '-v']
+    cmd = [go, 'test', '--tags', 'testing', '-v', '-json']
     for name in names:
         cmd.extend(('-run', name))
     cmd += go_pkg_args
@@ -271,6 +258,7 @@ class PipeTestResult(unittest.TestResult):
     def __init__(self, write_fd: int) -> None:
         super().__init__()
         self._wfd = write_fd
+        self._test_start: float = 0.0
 
     def _send(self, record: dict[str, Any]) -> None:
         data = (json.dumps(record) + '\n').encode()
@@ -278,32 +266,36 @@ class PipeTestResult(unittest.TestResult):
             n = os.write(self._wfd, data)
             data = data[n:]
 
+    def _elapsed(self) -> float:
+        return time.monotonic() - self._test_start
+
     def startTest(self, test: unittest.TestCase) -> None:
         super().startTest(test)
+        self._test_start = time.monotonic()
         self._send({'t': 'start', 'id': str(test)})
 
     def addSuccess(self, test: unittest.TestCase) -> None:
-        self._send({'t': 'ok', 'id': str(test)})
+        self._send({'t': 'ok', 'id': str(test), 'e': self._elapsed()})
 
     def addError(self, test: unittest.TestCase, err: Any) -> None:
         super().addError(test, err)
-        self._send({'t': 'error', 'id': str(test), 'msg': self._exc_info_to_string(err, test)})
+        self._send({'t': 'error', 'id': str(test), 'e': self._elapsed(), 'msg': self._exc_info_to_string(err, test)})
 
     def addFailure(self, test: unittest.TestCase, err: Any) -> None:
         super().addFailure(test, err)
-        self._send({'t': 'fail', 'id': str(test), 'msg': self._exc_info_to_string(err, test)})
+        self._send({'t': 'fail', 'id': str(test), 'e': self._elapsed(), 'msg': self._exc_info_to_string(err, test)})
 
     def addSkip(self, test: unittest.TestCase, reason: str) -> None:
         super().addSkip(test, reason)
-        self._send({'t': 'skip', 'id': str(test), 'msg': reason})
+        self._send({'t': 'skip', 'id': str(test), 'e': self._elapsed(), 'msg': reason})
 
     def addExpectedFailure(self, test: unittest.TestCase, err: Any) -> None:
         super().addExpectedFailure(test, err)
-        self._send({'t': 'xfail', 'id': str(test), 'msg': self._exc_info_to_string(err, test)})
+        self._send({'t': 'xfail', 'id': str(test), 'e': self._elapsed(), 'msg': self._exc_info_to_string(err, test)})
 
     def addUnexpectedSuccess(self, test: unittest.TestCase) -> None:
         super().addUnexpectedSuccess(test)
-        self._send({'t': 'xpass', 'id': str(test)})
+        self._send({'t': 'xpass', 'id': str(test), 'e': self._elapsed()})
 
 
 def run_test_worker(tests: list[unittest.TestCase], write_fd: int) -> None:
@@ -349,6 +341,10 @@ def fork_test_workers(tests: list[unittest.TestCase]) -> tuple[list[int], list[i
         pid = os.fork()
         if pid == 0:
             os.close(r)
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, 1)
+            os.dup2(devnull, 2)
+            os.close(devnull)
             run_test_worker(chunk, w)
             # run_test_worker calls os._exit() — never returns
         os.close(w)
@@ -359,87 +355,172 @@ def fork_test_workers(tests: list[unittest.TestCase]) -> tuple[list[int], list[i
 
 _RED = '\x1b[31m'
 _GREEN = '\x1b[32m'
+_YELLOW = '\x1b[33m'
+_CYAN = '\x1b[36m'
 _RESET = '\x1b[0m'
 _BOLD = '\x1b[1m'
+_DIM = '\x1b[2m'
 
 
-def collect_worker_results(pids: list[int], read_fds: list[int], total_tests: int) -> bool:
-    """Read JSON records from worker pipes, show a live progress line, print failures at the end."""
+def collect_worker_results(
+    pids: list[int],
+    read_fds: list[int],
+    total_py_tests: int,
+    go_proc: Optional[GoProc] = None,
+) -> tuple[bool, bool]:
+    """Read JSON from worker pipes and go proc stdout, show live progress, print failures."""
     use_tty = sys.stdout.isatty()
-    buffers: dict[int, bytes] = {fd: b'' for fd in read_fds}
-    active = list(read_fds)
+    py_buffers: dict[int, bytes] = {fd: b'' for fd in read_fds}
+    active_py = list(read_fds)
+    go_buffer = b''
+    go_active = go_proc is not None
     start = time.monotonic()
 
-    total_run = 0
-    failures: list[tuple[str, str]] = []
-    errors: list[tuple[str, str]] = []
-    skipped = 0
-    unexpected_successes: list[str] = []
-    worker_errors: list[str] = []
+    py_run = 0
+    py_failures: list[tuple[str, str]] = []
+    py_errors: list[tuple[str, str]] = []
+    py_skipped = 0
+    py_unexpected_successes: list[str] = []
+    py_worker_errors: list[str] = []
+
+    go_run = 0
+    go_failures: list[tuple[str, str]] = []
+    go_test_output: dict[str, list[str]] = {}
+    go_pkg_output: dict[str, list[str]] = {}
+
+    # (elapsed_seconds, label) for every completed test in both suites
+    all_timings: list[tuple[float, str]] = []
+
+    def c(code: str, text: str) -> str:
+        return (code + text + _RESET) if use_tty else text
 
     def render_progress() -> str:
         elapsed = time.monotonic() - start
-        parts: list[str] = [f'{total_run}/{total_tests} tests']
-        if failures:
-            s = f'{len(failures)} failed'
-            parts.append((_RED + s + _RESET) if use_tty else s)
-        if errors:
-            s = f'{len(errors)} error{"s" if len(errors) != 1 else ""}'
-            parts.append((_RED + s + _RESET) if use_tty else s)
-        if skipped:
-            parts.append(f'{skipped} skipped')
-        return f'Running: {", ".join(parts)}  [{elapsed:.1f}s]'
+        parts: list[str] = []
+        if total_py_tests > 0 or active_py:
+            parts.append(c(_CYAN + _BOLD, 'Py') + f' {py_run}/{total_py_tests}')
+        if go_proc is not None:
+            # Go total is omitted: t.Run() sub-tests inflate the count beyond
+            # what static analysis of Test* functions can predict.
+            parts.append(c(_YELLOW + _BOLD, 'Go') + f' {go_run}')
+        fail_count = len(py_failures) + len(py_errors) + len(go_failures)
+        if fail_count:
+            parts.append(c(_RED, f'{fail_count} failed'))
+        return '  ' + '  '.join(parts) + '  ' + c(_DIM, f'[{elapsed:.1f}s]')
 
     def show_progress() -> None:
         line = render_progress()
         if use_tty:
-            # \r goes to line start; \x1b[K clears to end of line
             print(f'\r{line}\x1b[K', end='', flush=True)
-        elif total_tests > 0 and total_run % max(1, total_tests // 10) == 0:
+        elif total_py_tests > 0 and py_run % max(1, total_py_tests // 10) == 0:
             print(line, flush=True)
 
-    while active:
-        readable, _, _ = select.select(active, [], [])
+    while active_py or go_active:
+        watch = list(active_py)
+        if go_active and go_proc is not None:
+            watch.append(go_proc.stdout_fd)
+        readable, _, _ = select.select(watch, [], [])
+
         for fd in readable:
-            try:
-                chunk = os.read(fd, 65536)
-            except OSError:
-                chunk = b''
-            if not chunk:
-                active.remove(fd)
-                os.close(fd)
-                continue
-            buffers[fd] += chunk
-            while b'\n' in buffers[fd]:
-                raw, buffers[fd] = buffers[fd].split(b'\n', 1)
-                if not raw:
+            if go_proc is not None and fd == go_proc.stdout_fd:
+                try:
+                    chunk = os.read(fd, 65536)
+                except OSError:
+                    chunk = b''
+                if not chunk:
+                    go_active = False
+                    go_proc.finish()
                     continue
-                rec: dict[str, Any] = json.loads(raw)
-                t = rec['t']
-                if t == 'ok':
-                    total_run += 1
-                    show_progress()
-                elif t == 'fail':
-                    total_run += 1
-                    failures.append((rec['id'], rec['msg']))
-                    show_progress()
-                elif t == 'error':
-                    total_run += 1
-                    errors.append((rec['id'], rec['msg']))
-                    show_progress()
-                elif t == 'skip':
-                    total_run += 1
-                    skipped += 1
-                    show_progress()
-                elif t == 'xfail':
-                    total_run += 1
-                    show_progress()
-                elif t == 'xpass':
-                    total_run += 1
-                    unexpected_successes.append(rec['id'])
-                    show_progress()
-                elif t == 'worker_error':
-                    worker_errors.append(rec['msg'])
+                go_buffer += chunk
+                while b'\n' in go_buffer:
+                    raw, go_buffer = go_buffer.split(b'\n', 1)
+                    if not raw:
+                        continue
+                    try:
+                        evt: dict[str, Any] = json.loads(raw)
+                    except json.JSONDecodeError:
+                        continue
+                    action = evt.get('Action', '')
+                    test_name = evt.get('Test', '')
+                    pkg = evt.get('Package', '')
+                    if test_name:
+                        full = f'{pkg}.{test_name}' if pkg else test_name
+                        if action == 'run':
+                            go_test_output[full] = []
+                        elif action == 'output':
+                            go_test_output.setdefault(full, []).append(evt.get('Output', ''))
+                        elif action in ('pass', 'fail', 'skip'):
+                            go_run += 1
+                            elapsed_test = float(evt.get('Elapsed') or 0.0)
+                            if action == 'fail':
+                                output = ''.join(go_test_output.pop(full, []))
+                                go_failures.append((full, output))
+                            else:
+                                go_test_output.pop(full, None)
+                            all_timings.append((elapsed_test, f'[Go] {full}'))
+                            show_progress()
+                    else:
+                        if action == 'output':
+                            go_pkg_output.setdefault(pkg, []).append(evt.get('Output', ''))
+                        elif action == 'fail':
+                            # Package-level failure (e.g. build error): show if no test-level failures from it
+                            pkg_had_test_failure = any(f.startswith(pkg + '.') for f, _ in go_failures)
+                            if not pkg_had_test_failure:
+                                output = ''.join(go_pkg_output.pop(pkg, []))
+                                if output:
+                                    go_failures.append((pkg, output))
+                                    show_progress()
+                            else:
+                                go_pkg_output.pop(pkg, None)
+                        else:
+                            go_pkg_output.pop(pkg, None)
+            else:
+                try:
+                    chunk = os.read(fd, 65536)
+                except OSError:
+                    chunk = b''
+                if not chunk:
+                    active_py.remove(fd)
+                    os.close(fd)
+                    continue
+                py_buffers[fd] += chunk
+                while b'\n' in py_buffers[fd]:
+                    raw_py, py_buffers[fd] = py_buffers[fd].split(b'\n', 1)
+                    if not raw_py:
+                        continue
+                    rec: dict[str, Any] = json.loads(raw_py)
+                    t = rec['t']
+                    elapsed_test = float(rec.get('e') or 0.0)
+                    if t == 'ok':
+                        py_run += 1
+                        all_timings.append((elapsed_test, f'[Py] {rec["id"]}'))
+                        show_progress()
+                    elif t == 'fail':
+                        py_run += 1
+                        py_failures.append((rec['id'], rec['msg']))
+                        all_timings.append((elapsed_test, f'[Py] {rec["id"]}'))
+                        show_progress()
+                    elif t == 'error':
+                        py_run += 1
+                        py_errors.append((rec['id'], rec['msg']))
+                        all_timings.append((elapsed_test, f'[Py] {rec["id"]}'))
+                        show_progress()
+                    elif t == 'skip':
+                        py_run += 1
+                        py_skipped += 1
+                        all_timings.append((elapsed_test, f'[Py] {rec["id"]}'))
+                        show_progress()
+                    elif t == 'xfail':
+                        py_run += 1
+                        all_timings.append((elapsed_test, f'[Py] {rec["id"]}'))
+                        show_progress()
+                    elif t == 'xpass':
+                        py_run += 1
+                        py_unexpected_successes.append(rec['id'])
+                        all_timings.append((elapsed_test, f'[Py] {rec["id"]}'))
+                        show_progress()
+                    elif t == 'worker_error':
+                        py_worker_errors.append(rec['msg'])
 
     for pid in pids:
         os.waitpid(pid, 0)
@@ -452,51 +533,73 @@ def collect_worker_results(pids: list[int], read_fds: list[int], total_tests: in
     sep1 = '=' * 70
     sep2 = '-' * 70
 
-    for msg in worker_errors:
+    for msg in py_worker_errors:
         print(sep1)
-        hdr = (_RED + _BOLD + 'WORKER ERROR' + _RESET) if use_tty else 'WORKER ERROR'
-        print(hdr)
+        print(c(_RED + _BOLD, 'WORKER ERROR'))
         print(sep2)
         print(msg)
 
-    for label_text, items in (('FAIL', failures), ('ERROR', errors)):
+    for label_text, items in (('FAIL', py_failures), ('ERROR', py_errors)):
         for tid, msg in items:
             print(sep1)
-            lbl = (_RED + _BOLD + label_text + _RESET) if use_tty else label_text
-            print(f'{lbl}: {tid}')
+            print(f'{c(_RED + _BOLD, label_text)}: {tid}')
             print(sep2)
             print(msg)
 
-    if unexpected_successes:
+    for go_tid, go_output in go_failures:
+        print(sep1)
+        print(f'{c(_RED + _BOLD, "FAIL")}: {go_tid}')
+        print(sep2)
+        if go_output:
+            print(go_output, end='' if go_output.endswith('\n') else '\n')
+
+    if py_unexpected_successes:
         print(sep1)
         print('Unexpected successes:')
-        for tid in unexpected_successes:
+        for tid in py_unexpected_successes:
             print(f'  {tid}')
 
     print(sep2)
-    count_word = 'test' if total_run == 1 else 'tests'
-    print(f'Ran {total_run} {count_word} in {elapsed:.3f}s')
+    total_ran = py_run + go_run
+    count_word = 'test' if total_ran == 1 else 'tests'
+    print(f'Ran {total_ran} {count_word} in {elapsed:.3f}s')
+
+    all_timings.sort(reverse=True)
+    slowest = all_timings[:5]
+    if slowest:
+        print()
+        print(c(_DIM, 'Slowest tests:'))
+        for t_elapsed, t_name in slowest:
+            print(f'  {c(_DIM, f"{t_elapsed:.3f}s")}  {t_name}')
+
     print()
 
-    if failures or errors or unexpected_successes or worker_errors:
-        parts = []
-        if failures:
-            parts.append(f'failures={len(failures)}')
-        if errors:
-            parts.append(f'errors={len(errors)}')
-        if unexpected_successes:
-            parts.append(f'unexpected successes={len(unexpected_successes)}')
-        if worker_errors:
-            parts.append(f'worker errors={len(worker_errors)}')
-        result = f'FAILED ({", ".join(parts)})'
-        print((_RED + _BOLD + result + _RESET) if use_tty else result)
-        return False
+    python_ok = not (py_failures or py_errors or py_unexpected_successes or py_worker_errors)
+    go_ok = go_proc is None or (go_proc.returncode == 0 and not go_failures)
+
+    if not python_ok or not go_ok:
+        fail_parts: list[str] = []
+        if py_failures:
+            fail_parts.append(f'failures={len(py_failures)}')
+        if py_errors:
+            fail_parts.append(f'errors={len(py_errors)}')
+        if py_unexpected_successes:
+            fail_parts.append(f'unexpected successes={len(py_unexpected_successes)}')
+        if py_worker_errors:
+            fail_parts.append(f'worker errors={len(py_worker_errors)}')
+        if go_failures:
+            fail_parts.append(f'go failures={len(go_failures)}')
+        elif go_proc is not None and go_proc.returncode != 0:
+            fail_parts.append('go failed')
+        result = f'FAILED ({", ".join(fail_parts)})'
+        print(c(_RED + _BOLD, result))
+        return False, go_ok
 
     ok_msg = 'OK'
-    if skipped:
-        ok_msg += f' (skipped={skipped})'
-    print((_GREEN + _BOLD + ok_msg + _RESET) if use_tty else ok_msg)
-    return True
+    if py_skipped:
+        ok_msg += f' (skipped={py_skipped})'
+    print(c(_GREEN + _BOLD, ok_msg))
+    return True, True
 
 
 def run_tests(report_env: bool = False) -> None:
@@ -555,7 +658,7 @@ def run_tests(report_env: bool = False) -> None:
     if has_go:
         if report_env:
             print('Go executable:', go_exe())
-        print('Go packages being tested:', ' '.join(go_pkgs))
+            print('Go packages being tested:', ' '.join(go_pkgs))
         go_proc: Optional[GoProc] = run_go(go_pkgs, args.name)
     else:
         go_proc = None
@@ -569,27 +672,25 @@ def run_tests(report_env: bool = False) -> None:
     with env_for_python_tests(report_env):
         # Module filter with no python tests but go tests present: run go only
         if args.module and not tests_list:
-            stdout, rc = go_proc.wait()  # type: ignore[union-attr]
-            print(stdout, end='', flush=True)
-            raise SystemExit(rc)
+            _, go_ok = collect_worker_results([], [], 0, go_proc=go_proc)
+            raise SystemExit(0 if go_ok else 1)
 
         if use_parallel:
-            python_ok = collect_worker_results(pids, read_fds, len(tests_list))
+            python_ok, go_ok = collect_worker_results(pids, read_fds, len(tests_list), go_proc=go_proc)
         elif tests_list:
             python_ok = run_cli(all_tests, args.verbosity)
+            if go_proc is not None:
+                _, go_ok = collect_worker_results([], [], 0, go_proc=go_proc)
+            else:
+                go_ok = True
         else:
             python_ok = True
-
-        exit_code = 0 if python_ok else 1
-
-        if go_proc:
-            stdout, rc = go_proc.wait()
-            if go_proc.returncode == 0 and tests_list:
-                print(f'All Go tests succeeded, ran in {go_proc.runtime:.1f} seconds', flush=True)
+            if go_proc is not None:
+                _, go_ok = collect_worker_results([], [], 0, go_proc=go_proc)
             else:
-                print(stdout, end='', flush=True)
-            if exit_code == 0:
-                exit_code = go_proc.returncode
+                go_ok = True
+
+        exit_code = 0 if (python_ok and go_ok) else 1
 
     if exit_code != 0:
         print('\x1b[31mError\x1b[39m: Some tests failed!')
