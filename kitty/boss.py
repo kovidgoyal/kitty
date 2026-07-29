@@ -3460,6 +3460,10 @@ class Boss:
 
         clear_caches()
 
+        from .shaders.slang import custom_shader
+
+        custom_shader.cache_clear()
+
     def safe_delete_temp_file(self, path: str) -> None:
         if is_path_in_temp_dir(path):
             with suppress(FileNotFoundError):

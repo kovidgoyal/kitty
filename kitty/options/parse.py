@@ -33,6 +33,7 @@ from kitty.options.utils import (
     cursor_text_color,
     cursor_trail_decay,
     cursor_trail_start_threshold,
+    custom_shader,
     deprecated_adjust_line_height,
     deprecated_hide_window_decorations_aliases,
     deprecated_macos_show_window_title_in_menubar_alias,
@@ -1023,6 +1024,10 @@ class Parser:
     def cursor_underline_thickness(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_underline_thickness'] = positive_float(val)
 
+    def custom_shader(self, val: str, ans: dict[str, typing.Any]) -> None:
+        for k, v in custom_shader(val, ans['custom_shader']):
+            ans['custom_shader'][k] = v
+
     def default_pointer_shape(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_default_pointer_shape:
@@ -1728,6 +1733,7 @@ class Parser:
 def create_result_dict() -> dict[str, typing.Any]:
     return {
         'action_alias': {},
+        'custom_shader': {},
         'env': {},
         'exe_search_path': {},
         'filter_notification': {},

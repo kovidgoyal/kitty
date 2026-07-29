@@ -915,11 +915,11 @@ def background_images(x: str) -> tuple[str, ...]:
     return tuple(x for x in sorted(glob(x)) if x.rpartition('.')[-1].lower() in ('jpeg', 'jpg', 'png', 'webp', 'tif', 'tiff', 'bmp', 'gif')) or (x,)
 
 
-def filter_notification(val: str, current_val: dict[str, str]) -> Iterable[tuple[str, str]]:
+def filter_notification(val: str, current_val: dict[str, str]) -> Iterator[tuple[str, str]]:
     yield val, ''
 
 
-def remote_control_password(val: str, current_val: dict[str, str]) -> Iterable[tuple[str, Sequence[str]]]:
+def remote_control_password(val: str, current_val: dict[str, str]) -> Iterator[tuple[str, Sequence[str]]]:
     val = val.strip()
     if val:
         parts = to_cmdline(val, expand=False)
@@ -931,6 +931,28 @@ def remote_control_password(val: str, current_val: dict[str, str]) -> Iterable[t
             yield parts[0], ()
         else:
             yield parts[0], tuple(parts[1:])
+
+
+CustomShaderSlots = Literal['after-window-background']
+all_custom_shader_slots = get_args(CustomShaderSlots)
+
+
+def custom_shader(val: str, current_val: dict[str, str]) -> Iterator[tuple[CustomShaderSlots, tuple[str, ...]]]:
+    val = val.strip()
+    if val:
+        parts = tuple(shlex_split(val))
+        if parts[0] not in all_custom_shader_slots:
+            raise ValueError(f'The shader slot {parts[0]} is unknown')
+        if len(parts) < 2:
+            raise ValueError(f'No actual shaders specified for {parts[0]}')
+        from kitty.shaders.slang import custom_shader
+
+        for x in parts[1:]:
+            try:
+                custom_shader(x)
+            except Exception as e:
+                raise ValueError(f'Custom shader {x} not found or not readable with error: {e}') from e
+        yield cast(CustomShaderSlots, parts[0]), parts[1:]
 
 
 def clipboard_control(x: str) -> tuple[str, ...]:
