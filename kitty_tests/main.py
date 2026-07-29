@@ -305,8 +305,8 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
     path = os.pathsep.join(x for x in paths if not x.startswith(current_home))
     launcher_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'kitty', 'launcher')
     path = f'{launcher_dir}{os.pathsep}{path}'
-    print('Running under CI:', is_ci)
     if report_env:
+        print('Running under CI:', is_ci)
         print('Using PATH in test environment:', path)
         from kitty.fast_data_types import has_avx2, has_sse4_2
 
