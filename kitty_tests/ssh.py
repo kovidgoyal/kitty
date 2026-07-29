@@ -251,12 +251,20 @@ shell_name=$(command basename "$login_shell")
 
     @retry_on_failure()
     def test_ssh_shell_integration(self):
-        ok_login_shell = ''
-        for sh in self.all_possible_sh:
-            for login_shell in {'fish', 'zsh', 'bash'} & set(self.all_possible_sh):
+        available_login_shells = {'fish', 'zsh', 'bash'} & set(self.all_possible_sh)
+        # Use one POSIX-shell bootstrap and one Python bootstrap as representatives.
+        # Exhaustive bootstrap-shell compatibility is covered by
+        # test_ssh_bootstrap_with_different_launchers; here we only need to verify
+        # that both bootstrap code paths (sh and python) correctly deliver the
+        # shell-integration files.
+        sh_type = next((s for s in self.all_possible_sh if 'python' not in s), None)
+        py_type = next((s for s in self.all_possible_sh if 'python' in s), None)
+        test_interps = [s for s in (sh_type, py_type) if s is not None]
+
+        for sh in test_interps:
+            for login_shell in available_login_shells:
                 if login_shell == 'bash' and not bash_ok():
                     continue
-                ok_login_shell = login_shell
                 with tempfile.TemporaryDirectory() as tdir:
                     pty = self.check_bootstrap(sh, tdir, login_shell)
                     if login_shell == 'bash':
@@ -266,12 +274,18 @@ shell_name=$(command basename "$login_shell")
                         pty.send_cmd_to_child('echo "login_shell=$ZSH_NAME"')
                         pty.wait_till(lambda: 'login_shell=zsh' in pty.screen_contents())
                     self.assertIn(b'\x1b]133;', pty.received_bytes)
-        # check that turning off shell integration works
-        if ok_login_shell in ('bash', 'zsh'):
+
+        # Check that turning off shell integration works.  Disabled integration is
+        # a login-shell concern, so one representative bootstrap shell is enough;
+        # we test all available bash/zsh login shells to cover both integrations.
+        disabled_login_shells = available_login_shells & {'bash', 'zsh'}
+        if disabled_login_shells and sh_type is not None:
             for val in ('', 'no-rc', 'enabled no-rc'):
-                for sh in self.all_possible_sh:
+                for login_shell in disabled_login_shells:
+                    if login_shell == 'bash' and not bash_ok():
+                        continue
                     with tempfile.TemporaryDirectory() as tdir:
-                        pty = self.check_bootstrap(sh, tdir, ok_login_shell, val)
+                        pty = self.check_bootstrap(sh_type, tdir, login_shell, val)
                         num_lines = len(pty.screen_contents().splitlines())
                         pty.send_cmd_to_child('echo "$TERM=fruity"')
                         pty.wait_till(lambda: 'kitty=fruity' in pty.screen_contents(), timeout=30)
