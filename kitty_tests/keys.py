@@ -428,6 +428,14 @@ class TestKeys(BaseTest):
         for mods in (ctrl, alt, ctrl | shift, alt | shift):
             ae(dq(ord('a'), mods=mods), csi(mods, ord('a')))
         ae(dq(ord(' '), mods=ctrl), csi(ctrl, ord(' ')))
+        ae(dq(ord(' '), mods=shift), csi(shift, ord(' ')))
+        ae(dq(ord(' '), mods=alt), csi(alt, ord(' ')))
+        ae(dq(ord(' '), mods=ctrl | shift), csi(ctrl | shift, ord(' ')))
+        ae(dq(ord(' ')), ' ')
+        ae(dq(ord(' '), text=' ', mods=shift), csi(shift, ord(' ')))
+        ae(dq(ord(' '), text=' ', mods=ctrl), csi(ctrl, ord(' ')))
+        ae(dq(ord(' '), text=' ', mods=caps_lock), ' ')
+        ae(dq(ord('/'), text='?', shifted_key=ord('?'), mods=shift), '?')
         for k in (defines.GLFW_FKEY_KP_PAGE_UP, defines.GLFW_FKEY_KP_0):
             ae(dq(k), csi(num=k))
             ae(dq(k, mods=ctrl), csi(ctrl, num=k))

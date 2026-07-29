@@ -443,7 +443,9 @@ encode_glfw_key_event(const GLFWkeyevent *e, const bool cursor_key_mode, const u
         case GLFW_REPEAT: ev.action = REPEAT; break;
         case GLFW_RELEASE: ev.action = RELEASE; break;
     }
-    if (send_text_standalone && ev.has_text && (ev.action == PRESS || ev.action == REPEAT)) return SEND_TEXT_TO_CHILD;
+    bool shift_only_with_shifted_form = (e->mods == GLFW_MOD_SHIFT) && e->shifted_key != 0 && e->shifted_key != e->key;
+    bool force_keycode = ev.disambiguate && (e->mods & ~LOCK_MASK) && !shift_only_with_shifted_form;
+    if (send_text_standalone && ev.has_text && (ev.action == PRESS || ev.action == REPEAT) && !force_keycode) return SEND_TEXT_TO_CHILD;
     convert_glfw_mods(e->mods, &ev, key_encoding_flags);
     return encode_key(&ev, output);
 }
