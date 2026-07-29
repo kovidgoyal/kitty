@@ -26,6 +26,8 @@ if is_macos:
     from kitty.fast_data_types import cmdline_of_process as cmdline_
     from kitty.fast_data_types import cwd_of_process as _cwd
     from kitty.fast_data_types import environ_of_process as _environ_of_process
+    from kitty.fast_data_types import memory_of_process as _memory_of_process
+    from kitty.fast_data_types import ppid_of_process as _ppid_of_process
     from kitty.fast_data_types import process_group_map as _process_group_map
 
     def cwd_of_process(pid: int) -> str:
@@ -44,6 +46,30 @@ if is_macos:
 
     def cmdline_of_pid(pid: int) -> list[str]:
         return cmdline_(pid)
+
+    def _get_descendants_of_macos(pid: int) -> set[int]:
+        children_map: DefaultDict[int, list[int]] = defaultdict(list)
+        for p in fast_data_types.get_all_processes():
+            with suppress(Exception):
+                children_map[_ppid_of_process(p)].append(p)
+        result: set[int] = set()
+        stack = list(children_map.get(pid, []))
+        while stack:
+            child = stack.pop()
+            if child not in result:
+                result.add(child)
+                stack.extend(children_map.get(child, []))
+        return result
+
+    def memory_used_by_process_tree_rooted_at(pid: int, check_if_cgroup_root: bool = False) -> int:
+        with suppress(Exception):
+            pids = _get_descendants_of_macos(pid)
+            total = _memory_of_process(pid)  # raises if pid doesn't exist
+            for p in pids:
+                with suppress(Exception):
+                    total += _memory_of_process(p)
+            return total
+        return -1
 else:
 
     def cmdline_of_pid(pid: int) -> list[str]:
@@ -93,6 +119,63 @@ else:
 
     def abspath_of_exe(pid: int) -> str:
         return os.path.realpath(f'/proc/{pid}/exe', strict=True)
+
+    def _get_descendants_of(pid: int) -> set[int]:
+        result: set[int] = set()
+        stack = [pid]
+        while stack:
+            current = stack.pop()
+            with suppress(OSError):
+                with open(f'/proc/{current}/task/{current}/children') as f:
+                    for child_str in f.read().split():
+                        child = int(child_str)
+                        if child not in result:
+                            result.add(child)
+                            stack.append(child)
+        return result
+
+    def _memory_from_smaps_rollup(pid: int) -> int:
+        with open(f'/proc/{pid}/smaps_rollup') as f:
+            for line in f:
+                if line.startswith('Pss:'):
+                    return int(line.split()[1]) * 1024
+        return 0
+
+    def memory_used_by_process_tree_rooted_at(pid: int, check_if_cgroup_root: bool = False) -> int:
+        with suppress(Exception):
+            with open(f'/proc/{pid}/cgroup') as f:
+                cgroup_line = f.readline().strip()
+            cgroup_path = cgroup_line.split(':')[2].lstrip('/')
+            cgroup_dir = os.path.join('/sys/fs/cgroup', cgroup_path)
+
+            use_cgroup = True
+            if check_if_cgroup_root:
+                with suppress(OSError):
+                    with open(os.path.join(cgroup_dir, 'cgroup.procs')) as f:
+                        cgroup_pids = {int(x) for x in f.read().split() if x}
+                    descendants = _get_descendants_of(pid)
+                    descendants.add(pid)
+                    use_cgroup = cgroup_pids <= descendants
+
+            if use_cgroup:
+                target_keys = {'anon', 'shmem', 'kernel', 'sock', 'zswap'}
+                mem_bytes = 0
+                with open(os.path.join(cgroup_dir, 'memory.stat')) as f:
+                    for line in f:
+                        parts = line.split()
+                        if parts[0] in target_keys:
+                            mem_bytes += int(parts[1])
+                return mem_bytes
+
+            # cgroup contains processes outside our tree; sum PSS per process
+            descendants = _get_descendants_of(pid)
+            descendants.add(pid)
+            mem_bytes = 0
+            for p in descendants:
+                with suppress(OSError):
+                    mem_bytes += _memory_from_smaps_rollup(p)
+            return mem_bytes
+        return -1
 
 
 @run_once
@@ -619,3 +702,8 @@ class Child:
                 termios.tcsetattr(self.child_fd, when, self.initial_termios_state)
             except OSError:
                 pass
+
+    def get_memory_used_by_child(self, check_if_cgroup_root: bool = False) -> int:
+        if self.pid is None:
+            return -1
+        return memory_used_by_process_tree_rooted_at(self.pid, check_if_cgroup_root)

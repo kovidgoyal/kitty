@@ -286,12 +286,36 @@ error:
 }
 
 
+static PyObject*
+memory_of_process(PyObject *self UNUSED, PyObject *pid_) {
+    if (!PyLong_Check(pid_)) { PyErr_SetString(PyExc_TypeError, "pid must be an int"); return NULL; }
+    pid_t pid = (pid_t)PyLong_AsLong(pid_);
+    if (pid < 0) { PyErr_SetString(PyExc_TypeError, "pid cannot be negative"); return NULL; }
+    struct proc_taskinfo ti;
+    int ret = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &ti, sizeof(ti));
+    if (ret <= 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    return PyLong_FromUnsignedLongLong(ti.pti_resident_size);
+}
+
+static PyObject*
+ppid_of_process(PyObject *self UNUSED, PyObject *pid_) {
+    if (!PyLong_Check(pid_)) { PyErr_SetString(PyExc_TypeError, "pid must be an int"); return NULL; }
+    pid_t pid = (pid_t)PyLong_AsLong(pid_);
+    if (pid < 0) { PyErr_SetString(PyExc_TypeError, "pid cannot be negative"); return NULL; }
+    struct proc_bsdshortinfo si;
+    int ret = proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, &si, sizeof(si));
+    if (ret <= 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    return PyLong_FromUnsignedLong(si.pbsi_ppid);
+}
+
 static PyMethodDef module_methods[] = {
     {"cwd_of_process", (PyCFunction)cwd_of_process, METH_O, ""},
     {"abspath_of_process", (PyCFunction)abspath_of_process, METH_O, ""},
     {"cmdline_of_process", (PyCFunction)cmdline_of_process, METH_O, ""},
     {"environ_of_process", (PyCFunction)environ_of_process, METH_O, ""},
     {"get_all_processes", (PyCFunction)get_all_processes, METH_NOARGS, ""},
+    {"memory_of_process", (PyCFunction)memory_of_process, METH_O, ""},
+    {"ppid_of_process", (PyCFunction)ppid_of_process, METH_O, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
