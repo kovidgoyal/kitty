@@ -36,12 +36,14 @@ public float4 pipeline_vertex_main(float4 src_rect, float4 dest_rect, uint verte
 }
 
 uniform Sampler2D backbuffer;
+uniform uint timestamp;
 
 public float4 pipeline_fragment_main(float2 texcoord) {
     KittyCustomShaderData d;
     d.backbuffer = backbuffer;
     d.texcoord = texcoord;
     d.backbuffer = backbuffer;
+    d.timestamp = timestamp;
     float4 color = backbuffer.Sample(texcoord);
     // PIPELINE
     return color;

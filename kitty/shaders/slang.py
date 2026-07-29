@@ -25,6 +25,7 @@ from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple
 
 from kitty.constants import read_kitty_resource, shaders_dir, slangc
 from kitty.fast_data_types import (
+    AFTER_WINDOW_BG_PROGRAM,
     BGIMAGE_PROGRAM,
     BLINK,
     BLIT_PROGRAM,
@@ -54,7 +55,6 @@ from kitty.fast_data_types import (
     TRAIL_PROGRAM,
     compile_program,
     get_options,
-    init_cell_program,
 )
 from kitty.options.types import Options, defaults
 from kitty.utils import lock_with_file, resolve_custom_file
@@ -175,6 +175,7 @@ def glsl_shaders(name: str, variant_name: str = '') -> tuple[str, str]:
 class LoadShaderPrograms:
     text_fg_override_threshold: tuple[float, Literal['%', 'ratio']] = 0, '%'
     text_old_gamma: bool = False
+    custom_shaders: dict[str, tuple[str, ...]] = {}
 
     opts: Options | None = None
 
@@ -196,6 +197,10 @@ class LoadShaderPrograms:
     def recompile_if_needed(self) -> None:
         if self.needs_recompile:
             self(allow_recompile=True)
+        else:
+            opts = self.get_options()
+            if opts.custom_shader != self.custom_shaders:
+                self.compile_custom_shaders(allow_recompile=True)
 
     def __call__(self, allow_recompile: bool = False) -> None:
         default_cell_variant = cell_variant()
@@ -229,7 +234,22 @@ class LoadShaderPrograms:
         }.items():
             vert, frag = glsl_shaders(name)
             compile_program(prog, (vert,), (frag,), metadata[name], allow_recompile)
-        init_cell_program()
+        compile_program(-1, (), (), {})  # initialize programs
+        self.compile_custom_shaders(allow_recompile)
+
+    def compile_custom_shaders(self, allow_recompile: bool = False) -> None:
+        self.custom_shaders = {str(k): v for k, v in self.get_options().custom_shader.items()}
+
+        def do(prog: int, slot: str) -> None:
+            shaders = self.custom_shaders.get(slot, ())
+            if shaders:
+                vert, frag, metadata = build_custom_shader_pipeline_glsl(slot, shaders)
+                compile_program(prog, (vert,), (frag,), metadata, allow_recompile)
+            else:
+                compile_program(prog, (), (), {}, allow_recompile)
+
+        do(AFTER_WINDOW_BG_PROGRAM, 'after-window-background')
+        compile_program(-2, (), (), {})  # initialize programs
 
 
 load_shader_programs = LoadShaderPrograms()
@@ -1115,6 +1135,11 @@ def build_custom_shader_pipeline_glsl(
             fixup_opengl_files((fragment, vertex))
         with open(vertex) as vf, open(fragment) as ff:
             return vf.read(), ff.read(), glsl_metadata_for_shader(metadata)
+
+
+def clear_caches() -> None:
+    custom_shader.cache_clear()
+    build_custom_shader_pipeline_glsl.cache_clear()
 
 
 def test_slang_build() -> None:

@@ -283,6 +283,7 @@ LNM: int
 BGIMAGE_PROGRAM: int
 CELL_PROGRAM: int
 PADDING_PROGRAM: int
+AFTER_WINDOW_BG_PROGRAM: int
 CELL_FG_PROGRAM: int
 CELL_BG_PROGRAM: int
 BLIT_PROGRAM: int
@@ -519,9 +520,6 @@ def add_window(os_window_id: int, tab_id: int, title: str) -> int:
 def compile_program(
     which: int, vertex_shaders: Tuple[str, ...], fragment_shaders: Tuple[str, ...], metadata: Dict[str, Any], allow_recompile: bool = False
 ) -> int:
-    pass
-
-def init_cell_program() -> None:
     pass
 
 def set_os_window_chrome(os_window_id: int) -> bool:

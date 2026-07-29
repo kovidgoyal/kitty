@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <string.h>
 #include "text-cache.h"
+#include "tupleobject.h"
 #include "window_logo.h"
 #include "srgb_gamma.h"
 #include "state.h"
@@ -27,6 +28,7 @@ enum {
     SCREENSHOT_PROGRAM,
     ROUNDED_RECT_PROGRAM,
     PADDING_PROGRAM,
+    AFTER_WINDOW_BG_PROGRAM,
     NUM_PROGRAMS
 };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, SPRITE_DECORATIONS_MAP_UNIT };
@@ -399,6 +401,10 @@ init_cell_program(void) {
         alloc_vao_buffer(shader_globals_vao_idx, border_colors.size, BORDER_COLORS_GLOBAL_BUFFER, GL_STREAM_DRAW);
     }
     bind_shader_globals_to_current_context();
+}
+
+static void
+init_custom_programs(void) {
 }
 
 void
@@ -1994,8 +2000,16 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     PyObject *vertex_shaders, *fragment_shaders, *metadata;
     int which, allow_recompile = 0;
     if (!PyArg_ParseTuple(args, "iO!O!O!|p", &which, &PyTuple_Type, &vertex_shaders, &PyTuple_Type, &fragment_shaders, &PyDict_Type, &metadata, &allow_recompile)) return NULL;
+    if (which == -1) { init_cell_program(); Py_RETURN_NONE; }
+    if (which == -2) { init_custom_programs(); Py_RETURN_NONE; }
     if (which < 0 || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
     Program *program = program_ptr(which);
+    if (!PyTuple_GET_SIZE(vertex_shaders)) {
+        if (program->id != 0) {
+            glDeleteProgram(program->id); program->id = 0;
+        }
+        Py_RETURN_NONE;
+    }
     if (program->id != 0) {
         if (allow_recompile) { glDeleteProgram(program->id); program->id = 0; }
         else { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
@@ -2041,8 +2055,6 @@ ONE_INT(bind_vertex_array)
 NO_ARG(unbind_vertex_array)
 TWO_INT(unmap_vao_buffer)
 
-NO_ARG(init_cell_program)
-
 static PyObject*
 sprite_map_set_limits(PyObject UNUSED *self, PyObject *args) {
     unsigned int w, h;
@@ -2064,7 +2076,6 @@ static PyMethodDef module_methods[] = {
     MW(unmap_vao_buffer, METH_VARARGS),
     MW(bind_program, METH_O),
     MW(unbind_program, METH_NOARGS),
-    MW(init_cell_program, METH_NOARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
@@ -2099,7 +2110,7 @@ init_shaders(PyObject *module) {
     C(CELL_PROGRAM); C(CELL_FG_PROGRAM); C(CELL_BG_PROGRAM); C(BORDERS_PROGRAM);
     C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM);
     C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM); C(BLIT_PROGRAM); C(SCREENSHOT_PROGRAM); C(ROUNDED_RECT_PROGRAM);
-    C(PADDING_PROGRAM);
+    C(PADDING_PROGRAM); C(AFTER_WINDOW_BG_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
