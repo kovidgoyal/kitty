@@ -56,6 +56,7 @@ def run(*a: str, print_crash_reports: bool = False) -> None:
     if ret != 0:
         if ret < 0:
             import signal
+
             try:
                 sig = signal.Signals(-ret)
             except ValueError:
@@ -110,15 +111,18 @@ def install_deps() -> None:
             openssl = 'openssl'
             items.remove('go')  # already installed by ci.yml
             import ssl
+
             if ssl.OPENSSL_VERSION_INFO[0] == 1:
                 openssl += '@1.1'
             run('brew', 'install', 'fish', openssl, *items)
     else:
         run('sudo apt-get update')
-        run('sudo apt-get install -y --fix-missing libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev ca-certificates'
+        run(
+            'sudo apt-get install -y --fix-missing libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev ca-certificates'
             ' libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev libx11-xcb-dev zsh'
             ' libpng-dev liblcms2-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev libxxhash-dev uuid-dev'
-            ' libsimde-dev libsystemd-dev libcairo2-dev zsh bash dash systemd-coredump gdb')
+            ' libsimde-dev libsystemd-dev libcairo2-dev zsh bash dash systemd-coredump gdb'
+        )
         # for some reason these directories are world writable which causes zsh
         # compinit to break
         run('sudo chmod -R og-w /usr/share/zsh')
@@ -212,11 +216,11 @@ def install_grype(exe: str = '/tmp/grype') -> str:
 
 IGNORED_DEPENDENCY_CVES = [
     # Python stdlib
-    'CVE-2025-8194', # DoS in tarfile
-    'CVE-2025-6069', # DoS in HTMLParser
-    'CVE-2025-13836', # DoS in http client reading from malicious server
-    'CVE-2025-12084', # DoS in xml.dom.minidom unused in kitty
-    'CVE-2025-13837', # DoS in plistlib reading plist. We only use plistlib for writing
+    'CVE-2025-8194',  # DoS in tarfile
+    'CVE-2025-6069',  # DoS in HTMLParser
+    'CVE-2025-13836',  # DoS in http client reading from malicious server
+    'CVE-2025-12084',  # DoS in xml.dom.minidom unused in kitty
+    'CVE-2025-13837',  # DoS in plistlib reading plist. We only use plistlib for writing
     'CVE-2025-6075',  # Quadratic complexity in os.path.expandvars()
     # python stdlib all these are erroneously marked as fixed in python 3.15
     # when it hasnt even been released. Sigh.
@@ -238,8 +242,11 @@ IGNORED_DEPENDENCY_CVES = [
     'CVE-2026-7774',  # tarfile.data_filter path traversal bypass
     'CVE-2026-12003',  # bug in release builds irrelevant to us
     'CVE-2026-15308',  # bug in stdlib html parser irrelevant to us
+    'CVE-2026-11940',  # tarfile, unused
+    'CVE-2026-11972',  # tarfile, unused
+    'CVE-2026-0864',  # configparser unused
     # github.com/nwaples/rardecode/v2
-    'CVE-2025-11579', # rardecode is version 2.2.1, not vulnerable
+    'CVE-2025-11579',  # rardecode is version 2.2.1, not vulnerable
     'CVE-2026-2673',  # openssl fix not released
 ]
 
@@ -261,6 +268,7 @@ def check_dependencies() -> None:
         raise SystemExit('grype found problems during filesystem scan')
     # Now test against the SBOM
     import runpy
+
     orig = sys.argv, sys.stdout
     sys.argv = ['bypy', 'sbom', 'kovidgoyal/kitty', '1.0.0']
     buf = io.StringIO()
