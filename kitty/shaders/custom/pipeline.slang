@@ -39,11 +39,7 @@ uniform Sampler2D backbuffer;
 uniform uint timestamp;
 
 public float4 pipeline_fragment_main(float2 texcoord) {
-    KittyCustomShaderData d;
-    d.backbuffer = backbuffer;
-    d.texcoord = texcoord;
-    d.backbuffer = backbuffer;
-    d.timestamp = timestamp;
+    KittyCustomShaderData d = {timestamp, backbuffer, texcoord};
     float4 color = backbuffer.Sample(texcoord);
     // PIPELINE
     return color;

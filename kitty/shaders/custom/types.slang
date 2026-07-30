@@ -5,7 +5,8 @@
 
 
 public struct KittyCustomShaderData {
-    public uint timestamp;
+    public uniform uint timestamp;
+    public uniform Sampler2D backbuffer;
+
     public float2 texcoord;
-    public Sampler2D backbuffer;
 }
