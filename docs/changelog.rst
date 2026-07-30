@@ -180,7 +180,7 @@ Detailed list of changes
 -------------------------------------
 
 
-0.48.2 [future]
+0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Wayland: Fix regression in previous release that broke drag and drop on Plasma (:iss:`10284`)
