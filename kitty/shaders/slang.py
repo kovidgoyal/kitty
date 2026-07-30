@@ -25,7 +25,6 @@ from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple
 
 from kitty.constants import read_kitty_resource, shaders_dir, slangc
 from kitty.fast_data_types import (
-    AFTER_WINDOW_BG_PROGRAM,
     BGIMAGE_PROGRAM,
     BLINK,
     BLIT_PROGRAM,
@@ -37,6 +36,7 @@ from kitty.fast_data_types import (
     COLOR_IS_RGB,
     COLOR_IS_SPECIAL,
     COLOR_NOT_SET,
+    CUSTOM_END_PROGRAM,
     DECORATION,
     DECORATION_MASK,
     DIM,
@@ -248,7 +248,7 @@ class LoadShaderPrograms:
             else:
                 compile_program(prog, (), (), {}, allow_recompile)
 
-        do(AFTER_WINDOW_BG_PROGRAM, 'after-window-background')
+        do(CUSTOM_END_PROGRAM, 'end')
         compile_program(-2, (), (), {})  # initialize programs
 
 
@@ -978,6 +978,7 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
         with open(j('ct.key'), 'wb') as f:
             f.write(ct_key)
             mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
+
     shaders = tuple(shaders)
     module_names = {}
     shaders_content_key = b''
@@ -1019,13 +1020,13 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
         import kitty_custom_shader_types;
         import {module_name};
 
-        public float4 {entry_point}(float4 inp, KittyCustomShaderData d) {{ return fragment_main(inp, d); }}
+        public float4 {entry_point}(float4 inp, KittyTextures t, KittyCustomShaderData d) {{ return fragment_main(inp, t, d); }}
         """)
         wrappers[f'wrapper{i}.slang'] = wrapper_src
         entry_points.append(entry_point)
     mod_src = get_custom_shader_src('pipeline').decode()
     mod_src = mod_src.replace('// IMPORTS', '\n'.join(f'__include "{w}";' for w in wrappers), 1)
-    mod_src = mod_src.replace('// PIPELINE', '\n'.join(f'color = {w}(color, d);' for w in entry_points), 1)
+    mod_src = mod_src.replace('// PIPELINE', '\n'.join(f'color = {w}(color, t, csd);' for w in entry_points), 1)
     # subprocess.run(['bat', '-P', '-l', 'cpp'], input=mod_src.encode())
     slot_key = key(slot, mod_src, shaders_content_key)
 
@@ -1066,8 +1067,8 @@ struct VertexOutput {
 };
 
 [shader("vertex")]
-VertexOutput vmain_wrap(float4 src_rect, float4 dest_rect, uint vertex_id : SV_VertexID) {
-    float4 c = pipeline_vertex_main(src_rect, dest_rect, vertex_id);
+VertexOutput vmain_wrap(uint vertex_id : SV_VertexID) {
+    float4 c = pipeline_vertex_main(vertex_id);
     return {float2(c[0], c[1]), float4(c[2], c[3], 0, 1)};
 }
 
@@ -1079,9 +1080,7 @@ float4 fmain_wrap(float2 texcoord : TEXCOORD) : SV_Target {
 
 
 @lru_cache(maxsize=64)
-def build_custom_shader_pipeline_glsl(
-    slot: str = 'after-window-background', shaders: tuple[str, ...] = ('sample',), cache_dir: str = ''
-) -> tuple[str, str, dict[str, Any]]:
+def build_custom_shader_pipeline_glsl(slot: str = 'end', shaders: tuple[str, ...] = ('sample',), cache_dir: str = '') -> tuple[str, str, dict[str, Any]]:
     import kitty.constants as kc
 
     cache_dir = os.path.join(cache_dir or kc.cache_dir(), 'shaders')

@@ -551,6 +551,10 @@ typedef struct GlobalState {
         uint32_t texture_id, framebuffer_id, texture_generation;
         int width, height;
     } layers_render_texture;
+    struct {
+        unsigned count;
+        bool has_end_shader;
+    } custom_shaders;
 } GlobalState;
 
 extern GlobalState global_state;
@@ -603,7 +607,7 @@ ssize_t create_cell_vao(void);
 ssize_t create_border_vao(void);
 void bind_shader_globals_to_current_context(void);
 bool send_cell_data_to_gpu(ssize_t, Screen *, OSWindow *);
-void draw_cells(const WindowRenderData*, OSWindow *, bool, bool, bool, Window*);
+void draw_cells(const WindowRenderData*, OSWindow *, bool, bool, bool, Window*, monotonic_t);
 bool update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window);
 void set_gpu_viewport(unsigned w, unsigned h);
 void free_texture(uint32_t*);
@@ -655,7 +659,7 @@ void update_mouse_pointer_shape(void);
 void adjust_window_size_for_csd(OSWindow *w, int width, int height, int *adjusted_width, int *adjusted_height);
 void dispatch_buffered_keys(Window *w);
 bool screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen);
-void setup_os_window_for_rendering(OSWindow*, Tab*, Window*, bool);
+void setup_os_window_for_rendering(OSWindow*, Tab*, Window*, bool, monotonic_t);
 void swap_window_buffers(OSWindow *w);
 void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool no_scaling);
 bool current_framebuffer_is_ok(void);

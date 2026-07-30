@@ -735,7 +735,7 @@ class Options:
     window_title_bar_min_windows: int = 0
     window_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.window}{progress_percent}{title}'
     action_alias: dict[str, str] = {}
-    custom_shader: dict[typing.Literal['after-window-background'], tuple[str, ...]] = {}
+    custom_shader: dict[typing.Literal['end'], tuple[str, ...]] = {}
     env: dict[str, str] = {}
     exe_search_path: dict[str, str] = {}
     filter_notification: dict[str, str] = {}

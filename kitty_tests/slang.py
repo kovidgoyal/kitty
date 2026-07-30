@@ -13,6 +13,7 @@ from kitty.shaders.slang import (
     Stage,
     build_custom_shader_pipeline_glsl,
     build_import_graph,
+    clear_caches,
     parse_slang_text,
     topological_layers,
     topological_sort,
@@ -247,15 +248,14 @@ void vsMain() {}
 
         with tempfile.TemporaryDirectory() as cache_dir:
             # Clear the lru_cache so the temp cache_dir is actually used
-            build_custom_shader_pipeline_glsl.cache_clear()
+            clear_caches()
             try:
                 vert_src, frag_src, metadata = build_custom_shader_pipeline_glsl(
-                    slot='after-window-background',
                     shaders=('sample', 'sample'),
                     cache_dir=cache_dir,
                 )
             finally:
-                build_custom_shader_pipeline_glsl.cache_clear()
+                clear_caches()
 
         self.assertIsInstance(vert_src, str)
         self.assertIsInstance(frag_src, str)

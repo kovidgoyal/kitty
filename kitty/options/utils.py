@@ -933,7 +933,7 @@ def remote_control_password(val: str, current_val: dict[str, str]) -> Iterator[t
             yield parts[0], tuple(parts[1:])
 
 
-CustomShaderSlots = Literal['after-window-background']
+CustomShaderSlots = Literal['end']
 all_custom_shader_slots = get_args(CustomShaderSlots)
 
 

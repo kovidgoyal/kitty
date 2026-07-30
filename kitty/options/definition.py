@@ -2912,8 +2912,8 @@ Specify custom shaders to modify rendering. The syntax is::
 
     SLOT shader_name shader_name ...
 
-Can be specified multiple times. Here SLOT is a position in the redering pipeline, such as :code:`after-window-background`,
-or :code:`window-end`. Shader names are shader filenames or paths without
+Can be specified multiple times. Here SLOT is a position in the redering pipeline, such as :code:`end`.
+Shader names are shader filenames or paths without
 the trailing :file:`.slang` suffix. They are looked for in the shaders directory inside the
 kitty config directory and if not found there, they are loaded from the builtin
 kitty custom shaders.

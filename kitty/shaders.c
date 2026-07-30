@@ -28,7 +28,9 @@ enum {
     SCREENSHOT_PROGRAM,
     ROUNDED_RECT_PROGRAM,
     PADDING_PROGRAM,
-    AFTER_WINDOW_BG_PROGRAM,
+
+    CUSTOM_END_PROGRAM,
+
     NUM_PROGRAMS
 };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, SPRITE_DECORATIONS_MAP_UNIT };
@@ -41,6 +43,7 @@ typedef struct UIRenderData {
     float bg_alpha, inactive_text_alpha;
     bool has_background_image;
     color_type background_color; // RGB only
+    monotonic_t now;
 } UIRenderData;
 
 static inline float
@@ -405,6 +408,17 @@ init_cell_program(void) {
 
 static void
 init_custom_programs(void) {
+    zero_at_ptr(&global_state.custom_shaders);
+    for (int i = CUSTOM_END_PROGRAM; i < NUM_PROGRAMS; i++) {
+        Program *p = program_ptr(i);
+        if (p && p->id) {
+            global_state.custom_shaders.count++;
+            if (i == CUSTOM_END_PROGRAM) {
+                global_state.custom_shaders.has_end_shader = true;
+                bind_program(i); glUniform1i(program_uniform_location(i, "backbuffer"), GRAPHICS_UNIT);
+            }
+        }
+    }
 }
 
 void
@@ -1590,7 +1604,7 @@ send_cell_data_to_gpu(ssize_t vao_idx, Screen *screen, OSWindow *os_window) {
 }
 
 void
-draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool is_tab_bar, bool is_single_window, Window *window) {
+draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_window, bool is_tab_bar, bool is_single_window, Window *window, monotonic_t now) {
     Screen *screen = srd->screen;
     CELL_BUFFERS;
     bind_vertex_array(srd->vao_idx);
@@ -1623,6 +1637,7 @@ draw_cells(const WindowRenderData *srd, OSWindow *os_window, bool is_active_wind
         .window = window, .screen = screen, .os_window = os_window, .grd = grman_render_data(grman), .window_logo = wl,
         .inactive_text_alpha = current_inactive_text_alpha, .has_background_image = has_bgimage(os_window),
         .background_color = default_bg, .bg_alpha=effective_os_window_alpha(os_window),
+        .now = now,
     };
     screen->reload_all_gpu_data = false;
     save_viewport_using_top_left_origin(
@@ -1844,21 +1859,26 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
 }
 
 static void
-stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window) {
+stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, monotonic_t now) {
     if (OPT(cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail, active_window);
     if (os_window->needs_layers) {
         set_framebuffer_to_use_for_output(0);
         bind_framebuffer_for_output(0);
-        bind_program(BLIT_PROGRAM);
+        int prog = global_state.custom_shaders.has_end_shader ? CUSTOM_END_PROGRAM : BLIT_PROGRAM;
+        bind_program(prog);
         glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
         glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
         float sx = global_state.layers_render_texture.width > 0 ? (float)os_window->viewport_width / (float)global_state.layers_render_texture.width : 1.f;
         float sy = global_state.layers_render_texture.height > 0 ? (float)os_window->viewport_height / (float)global_state.layers_render_texture.height : 1.f;
-        glUniform4f(program_uniform_location(BLIT_PROGRAM, "src_rect"), 0, sy, sx, 0);
-        glUniform4f(program_uniform_location(BLIT_PROGRAM, "dest_rect"), -1, 1, 1, -1);
+        glUniform4f(program_uniform_location(prog, "src_rect"), 0, sy, sx, 0);
+        glUniform4f(program_uniform_location(prog, "dest_rect"), -1, 1, 1, -1);
         restore_viewport();
         if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
                 0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
+        if (prog == CUSTOM_END_PROGRAM) {
+            glUniform1f(program_uniform_location(CUSTOM_END_PROGRAM, "timestamp"), (GLfloat)monotonic_t_to_s_double(now));
+            glUniform2f(program_uniform_location(CUSTOM_END_PROGRAM, "viewport_size_pixels"), os_window->viewport_width, os_window->viewport_height);
+        }
         draw_quad(false, 0);
         if (os_window->live_resize.in_progress) {
             restore_viewport();
@@ -1868,9 +1888,9 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window) {
 }
 
 void
-setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_window, bool start) {
+setup_os_window_for_rendering(OSWindow *os_window, Tab *tab, Window *active_window, bool start, monotonic_t now) {
     if (start) start_os_window_rendering(os_window, tab);
-    else stop_os_window_rendering(os_window, tab, active_window);
+    else stop_os_window_rendering(os_window, tab, active_window, now);
 }
 
 // Take a screenshot of the OS Window, must be called immediately after
@@ -2110,7 +2130,7 @@ init_shaders(PyObject *module) {
     C(CELL_PROGRAM); C(CELL_FG_PROGRAM); C(CELL_BG_PROGRAM); C(BORDERS_PROGRAM);
     C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM);
     C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(TRAIL_PROGRAM); C(BLIT_PROGRAM); C(SCREENSHOT_PROGRAM); C(ROUNDED_RECT_PROGRAM);
-    C(PADDING_PROGRAM); C(AFTER_WINDOW_BG_PROGRAM);
+    C(PADDING_PROGRAM); C(CUSTOM_END_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

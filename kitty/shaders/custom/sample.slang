@@ -4,6 +4,6 @@
 
 import kitty_custom_shader_types;
 
-public float4 fragment_main(float4 color, KittyCustomShaderData d) {
-    return float4(0, 0, 1, 1);
+public float4 fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
+    return float4(color.r, min(max(0.1, color.g) * 2, 1), color.b, color.a);
 }

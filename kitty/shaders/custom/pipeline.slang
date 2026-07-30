@@ -30,18 +30,40 @@ BlitOutput get_coords_for_blit(uint vertex_id, float4 src_rect, float4 dest_rect
     return output;
 }
 
-public float4 pipeline_vertex_main(float4 src_rect, float4 dest_rect, uint vertex_id) {
-    BlitOutput ans = get_coords_for_blit(vertex_id, src_rect, dest_rect);
+
+public ConstantBuffer<KittyCustomShaderData> csd;
+
+
+public float4 pipeline_vertex_main(uint vertex_id) {
+    BlitOutput ans = get_coords_for_blit(vertex_id, csd.src_rect, csd.dest_rect);
     return float4(ans.texcoord[0], ans.texcoord[1], ans.position[0], ans.position[1]);
 }
 
-uniform Sampler2D backbuffer;
-uniform uint timestamp;
+float4 vec4_premul(float3 rgb, float a) {
+    return float4(rgb * a, a);
+}
 
-public float4 pipeline_fragment_main(float2 texcoord) {
-    KittyCustomShaderData d = {timestamp, backbuffer, texcoord};
-    float4 color = backbuffer.Sample(texcoord);
+float linear2srgb(float x) {  // scalar
+    float lower = 12.92 * x;
+    float upper = 1.055 * pow(x, 1.0f / 2.4f) - 0.055f;
+
+    return lerp(lower, upper, step(0.0031308f, x));
+}
+
+float3 linear2srgb(float3 x) {  // vector
+    float3 lower = 12.92 * x;
+    float3 upper = 1.055 * pow(x, float3(1.0f / 2.4f)) - 0.055f;
+
+    return lerp(lower, upper, step(float3(0.0031308f), x));
+}
+
+uniform Sampler2D backbuffer;
+
+public float4 pipeline_fragment_main(float2 backbuffer_pos) {
+    float4 color = backbuffer.Sample(backbuffer_pos);  // pre multiplied linear RGB
+    color = float4(color.rgb / color.a, color.a);  // un pre multiplied color passed through pipeline
+    KittyTextures t = {backbuffer, backbuffer_pos};
     // PIPELINE
-    return color;
+    return vec4_premul(linear2srgb(color.rgb), color.a);
 }
 
