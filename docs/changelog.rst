@@ -195,7 +195,7 @@ Detailed list of changes
 
 - Add support for `terminal visibility reports <https://rockorager.dev/misc/visibility-reports/>`__
 
-- :opt:`tab_title_template`: Add a field that evaluated to the total memory used by all child processes in the tab (:iss:`10293`)
+- :opt:`tab_title_template`: Add a field that evaluates to the total memory used by all child processes in the tab (:iss:`10293`)
 
 
 0.48.1 [2026-07-24]
