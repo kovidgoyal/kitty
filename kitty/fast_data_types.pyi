@@ -871,6 +871,9 @@ def background_opacity_of(os_window_id: int) -> Optional[float]:
 def read_command_response(fd: int, timeout: float, list: List[bytes]) -> None:
     pass
 
+def split_into_graphemes(string: str) -> List[str]:
+    pass
+
 def wcswidth(string: str) -> int:
     pass
 
@@ -983,6 +986,8 @@ def parse_input_from_terminal(
 
 class Line:
     def sprite_at(self, cell: int) -> int: ...
+
+    def cursor_from(self, x: int, y: int = 0) -> Cursor: ...
 
 def test_shape(line: Line, path: Optional[str] = None, index: int = 0) -> List[Tuple[int, int, int, Tuple[int, ...]]]:
     pass

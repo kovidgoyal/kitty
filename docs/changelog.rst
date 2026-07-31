@@ -193,6 +193,10 @@ Detailed list of changes
 - Vertical tabs: fill each tab's background for the full width of the tab bar, so
   titles shorter than the sidebar no longer leave a ragged edge
 
+- Vertical tabs: add :opt:`tab_title_wrap` to wrap long tab titles over multiple
+  lines instead of truncating them, either at the width of the tab bar or at a
+  specified number of cells (:iss:`10302`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

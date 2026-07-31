@@ -29,6 +29,7 @@ from .fast_data_types import (
     get_options,
     pt_to_px,
     set_tab_bar_render_data,
+    split_into_graphemes,
     update_tab_bar_edge_colors,
     viewport_for_window,
     wcswidth,
@@ -82,6 +83,7 @@ class DrawData(NamedTuple):
     tab_bar_edge: EdgeLiteral
     max_tab_title_length: int
     max_tab_title_lines: int
+    wrap_width: int
     os_window_id: int
 
     def tab_fg(self, tab: TabBarData) -> int:
@@ -370,12 +372,74 @@ def apply_title_template(draw_data: DrawData, tab: TabBarData, index: int, max_t
     return title
 
 
+def wrap_title(title: str, width: int) -> str:
+    '''Insert newlines into title so that no line is wider than width cells.
+
+    SGR escapes are zero width, so they never count towards the width and are
+    left attached to the text that follows them. Splitting happens on grapheme
+    boundaries so that a wrap can never land inside a multi-codepoint grapheme.
+    '''
+    if width < 1:
+        return title
+    lines = []
+    for paragraph in title.split('\n'):
+        cur, cur_width = '', 0
+        for part in sgr_sanitizer_pat(for_splitting=True).split(paragraph):
+            if not part:
+                continue
+            if part.startswith('\x1b'):
+                cur += part
+                continue
+            for grapheme in split_into_graphemes(part):
+                w = max(0, wcswidth(grapheme))
+                if cur_width and cur_width + w > width:
+                    lines.append(cur)
+                    cur, cur_width = '', 0
+                cur += grapheme
+                cur_width += w
+        lines.append(cur)
+    return '\n'.join(lines)
+
+
+def truncate_line(line: str, width: int) -> str:
+    '''Append an ellipsis to line, trimming it so the result fits in width cells.
+
+    Used to mark a title as having had content dropped, so the ellipsis is added
+    even when line already fits.
+    '''
+    if width < 1:
+        return line
+    out, cur_width = '', 0
+    for part in sgr_sanitizer_pat(for_splitting=True).split(line):
+        if not part:
+            continue
+        if part.startswith('\x1b'):
+            out += part
+            continue
+        for grapheme in split_into_graphemes(part):
+            w = max(0, wcswidth(grapheme))
+            if cur_width + w > width - 1:
+                return out + '…'
+            out += grapheme
+            cur_width += w
+    return out + '…'
+
+
 def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int, max_title_length: int = 0) -> None:
     title = apply_title_template(draw_data, tab, index, max_title_length)
+    if draw_data.max_tab_title_lines > 1 and draw_data.wrap_width:
+        title = wrap_title(title, draw_data.wrap_width)
     if '\n' in title:
         # Drop lines that do not fit, so a title cannot bleed into the tab below
         # it. A limit of one also keeps horizontal tab bars on a single row.
-        title = '\n'.join(title.split('\n')[:max(1, draw_data.max_tab_title_lines)])
+        lines = title.split('\n')
+        limit = max(1, draw_data.max_tab_title_lines)
+        if len(lines) > limit:
+            # Mark the truncation, since the caller's ellipsis logic only fires
+            # when the final line reaches the full width of the tab.
+            del lines[limit:]
+            lines[-1] = truncate_line(lines[-1], draw_data.wrap_width or max_title_length)
+        title = '\n'.join(lines)
     before_draw = screen.cursor.x
     draw_attributed_string(title, screen)
     if draw_data.max_tab_title_length > 0:
@@ -643,6 +707,7 @@ class TabBar:
         # Multi-line titles only make sense for vertical tab bars, where each
         # tab gets its own row(s).
         self.max_tab_title_lines = max(1, opts.tab_title_max_lines) if self.is_vertical else 1
+        self.tab_title_wrap = opts.tab_title_wrap if self.is_vertical else 0
         self.margin_width = pt_to_px(opts.tab_bar_margin_width, self.os_window_id)
         self.cell_width, cell_height = cell_size_for_window(self.os_window_id)
         if not hasattr(self, 'screen'):
@@ -683,6 +748,7 @@ class TabBar:
             edge_name_map[opts.tab_bar_edge],
             opts.tab_title_max_length,
             self.max_tab_title_lines,
+            0,  # resolved per-layout, since 'yes' means the tab bar's width
             self.os_window_id,
         )
         ts = opts.tab_bar_style
@@ -948,6 +1014,9 @@ class TabBar:
         # Never allow a title to use more lines than remain below it, otherwise
         # drawing it would scroll the tab bar and lose the tabs already drawn.
         max_tab_lines = max(1, min(self.max_tab_title_lines, s.lines))
+        # tab_title_wrap of -1 ('yes') means wrap at whatever width the tab bar
+        # happens to have, which is only known now that the screen is laid out.
+        wrap_width = max_tab_length if self.tab_title_wrap < 0 else min(self.tab_title_wrap, max_tab_length)
 
         def draw_one(i: int, t: TabBarData, row: int, for_layout: bool, height: int = 0) -> int:
             'Draw tab i at row, returning the number of lines it occupies'
@@ -969,7 +1038,7 @@ class TabBar:
             ed.prev_tab = data[i - 1] if i > 0 else None
             ed.next_tab = data[i + 1] if i + 1 < len(data) else None
             ed.for_layout = for_layout
-            dd = self.draw_data._replace(max_tab_title_lines=min(max_tab_lines, s.lines - row))
+            dd = self.draw_data._replace(max_tab_title_lines=min(max_tab_lines, s.lines - row), wrap_width=wrap_width)
             self.draw_func(dd, s, t, 0, max_tab_length, i + 1, True, ed)
             return min(max_tab_lines, max(1, s.cursor.y - row + 1))
 

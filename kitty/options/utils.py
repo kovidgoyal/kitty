@@ -817,6 +817,16 @@ def active_tab_title_template(x: str) -> str | None:
     return None if x == 'none' else x
 
 
+def tab_title_wrap(x: str) -> int:
+    '''no/0 -> 0 (disabled), yes -> -1 (wrap at the tab bar width), N -> wrap at N cells'''
+    x = x.lower()
+    if x in ('n', 'no', 'false', 'none'):
+        return 0
+    if to_bool(x):
+        return -1
+    return positive_int(x)
+
+
 def text_fg_override_threshold(x: str) -> tuple[float, Literal['%', 'ratio']]:
     val, unit = number_with_unit(x, '%', 'ratio')
     return val, cast(Literal['%', 'ratio'], unit)

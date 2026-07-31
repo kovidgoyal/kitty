@@ -478,6 +478,7 @@ option_names = (
     'tab_title_max_length',
     'tab_title_max_lines',
     'tab_title_template',
+    'tab_title_wrap',
     'term',
     'terminfo_type',
     'text_composition_strategy',
@@ -688,6 +689,7 @@ class Options:
     tab_title_max_length: int = 0
     tab_title_max_lines: int = 1
     tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{secure_input_symbol}{fmt.fg.tab}{tab.last_focused_progress_percent}{title}'
+    tab_title_wrap: int = 0
     term: str = 'xterm-kitty'
     terminfo_type: choices_for_terminfo_type = 'path'
     text_composition_strategy: str = 'platform'
