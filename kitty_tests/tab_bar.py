@@ -193,6 +193,21 @@ class TestTabBar(BaseTest):
         tb = self.vertical_tab_bar(num_tabs=4, height=140)
         self.ae(self.screen_lines(tb), ['t0', '', 't1', '', 't2', '', 't3'])
         self.ae(len(tb.tab_extents), 4)
+    def test_vertical_tab_bar_fills_tab_width(self) -> None:
+        # every line a tab occupies must be padded to the full width of the bar
+        # in that tab's colors, otherwise uneven line lengths leave a ragged edge
+        tb = self.vertical_tab_bar(tab_title_template='{title}\\nlonger-line', tab_title_max_lines=2)
+        s = tb.screen
+        self.ae([len(str(s.line(i))) for i in (0, 1, 3, 4)], [s.columns] * 4)
+
+        def bg_of(line: int, col: int) -> int:
+            return int(s.line(line).cursor_from(col).bg)
+
+        # the padding after a short line uses the tab background, not the bar's
+        for line in (0, 1):
+            self.ae(bg_of(line, s.columns - 1), bg_of(line, 0))
+        # and the two tabs still have distinct backgrounds
+        self.assertNotEqual(bg_of(0, 0), bg_of(3, 0))
 
     def test_vertical_tab_bar_title_taller_than_bar(self) -> None:
         # a title needing more lines than the bar has must be clipped from the

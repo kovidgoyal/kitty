@@ -949,13 +949,22 @@ class TabBar:
         # drawing it would scroll the tab bar and lose the tabs already drawn.
         max_tab_lines = max(1, min(self.max_tab_title_lines, s.lines))
 
-        def draw_one(i: int, t: TabBarData, row: int, for_layout: bool) -> int:
+        def draw_one(i: int, t: TabBarData, row: int, for_layout: bool, height: int = 0) -> int:
             'Draw tab i at row, returning the number of lines it occupies'
-            s.cursor.x = 0
-            s.cursor.y = row
-            s.cursor.bg = as_rgb(self.draw_data.tab_bg(t))
+            bg = as_rgb(self.draw_data.tab_bg(t))
+            s.cursor.bg = bg
             s.cursor.fg = as_rgb(self.draw_data.tab_fg(t))
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
+            if height:
+                # Fill the tab's full width first and draw the title over it, so
+                # that a short line does not leave the rest of the row showing
+                # the tab bar background.
+                for line in range(row, min(s.lines, row + height)):
+                    s.cursor.x = 0
+                    s.cursor.y = line
+                    s.draw(' ' * s.columns)
+            s.cursor.x = 0
+            s.cursor.y = row
             ed = ExtraData()
             ed.prev_tab = data[i - 1] if i > 0 else None
             ed.next_tab = data[i + 1] if i + 1 < len(data) else None
@@ -1009,7 +1018,7 @@ class TabBar:
         for i, t in enumerate(data[:rows_to_draw]):
             if i:
                 row += spacing
-            draw_one(i, t, row, False)
+            draw_one(i, t, row, False, height=heights[i])
             cr.append(TabExtent(tab_id=t.tab_id, x=CellRange(0, s.columns - 1), y=CellRange(row, min(s.lines - 1, row + heights[i] - 1))))
             row += heights[i]
         if draw_ellipsis:

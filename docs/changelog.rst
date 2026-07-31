@@ -190,6 +190,9 @@ Detailed list of changes
 - Vertical tabs: pack tabs according to the number of lines each title actually
   uses, instead of reserving the same number of lines for every tab
 
+- Vertical tabs: fill each tab's background for the full width of the tab bar, so
+  titles shorter than the sidebar no longer leave a ragged edge
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
