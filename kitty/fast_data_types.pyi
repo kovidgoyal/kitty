@@ -279,6 +279,7 @@ CURSOR_HOLLOW: int
 NO_CURSOR_SHAPE: int
 CURSOR_UNDERLINE: int
 DECAWM: int
+LNM: int
 BGIMAGE_PROGRAM: int
 CELL_PROGRAM: int
 CELL_FG_PROGRAM: int
@@ -1167,6 +1168,9 @@ class Screen:
         pass
 
     def clear_selection(self) -> None:
+        pass
+
+    def set_mode(self, mode: int, private: bool = False) -> None:
         pass
 
     def reset_mode(self, mode: int, private: bool = False) -> None:

@@ -476,6 +476,7 @@ option_names = (
     'tab_separator',
     'tab_switch_strategy',
     'tab_title_max_length',
+    'tab_title_max_lines',
     'tab_title_template',
     'term',
     'terminfo_type',
@@ -685,6 +686,7 @@ class Options:
     tab_separator: str = ' ┇'
     tab_switch_strategy: choices_for_tab_switch_strategy = 'previous'
     tab_title_max_length: int = 0
+    tab_title_max_lines: int = 1
     tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{secure_input_symbol}{fmt.fg.tab}{tab.last_focused_progress_percent}{title}'
     term: str = 'xterm-kitty'
     terminfo_type: choices_for_terminfo_type = 'path'

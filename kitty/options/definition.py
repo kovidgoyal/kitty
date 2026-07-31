@@ -2214,6 +2214,27 @@ left unset.
 )
 
 opt(
+    'tab_title_max_lines',
+    '1',
+    option_type='positive_int',
+    long_text="""
+The maximum number of lines each tab may occupy, for vertical tab bars only
+(see :opt:`tab_bar_edge`). Titles containing newlines are rendered over
+multiple lines, up to this limit; any remaining lines are dropped. A value of
+:code:`1` (the default) keeps every tab on a single line, so newlines in
+:opt:`tab_title_template` have no effect. Increase it to make room for
+multi-line titles, for example::
+
+    tab_title_max_lines 2
+    tab_title_template "{index}: {tab.active_exe}\\n{title}"
+
+Note that tabs are packed according to the number of lines each title actually
+uses, so a tab with a single-line title still occupies only one line even when
+this is greater than one.
+""",
+)
+
+opt(
     'tab_title_template',
     '"{fmt.fg.red}{bell_symbol}{activity_symbol}{secure_input_symbol}{fmt.fg.tab}{tab.last_focused_progress_percent}{title}"',
     option_type='tab_title_template',

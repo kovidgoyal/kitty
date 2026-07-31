@@ -180,6 +180,17 @@ Detailed list of changes
 -------------------------------------
 
 
+0.48.3 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Vertical tabs: allow tab titles to span multiple lines, controlled by the new
+  :opt:`tab_title_max_lines` option. Newlines in :opt:`tab_title_template` now
+  start a new line rather than being drawn at an offset (:iss:`10302`)
+
+- Vertical tabs: pack tabs according to the number of lines each title actually
+  uses, instead of reserving the same number of lines for every tab
+
+
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

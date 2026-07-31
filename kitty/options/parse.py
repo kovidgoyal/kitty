@@ -1421,6 +1421,9 @@ class Parser:
     def tab_title_max_length(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_title_max_length'] = positive_int(val)
 
+    def tab_title_max_lines(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['tab_title_max_lines'] = positive_int(val)
+
     def tab_title_template(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_title_template'] = tab_title_template(val)
 
