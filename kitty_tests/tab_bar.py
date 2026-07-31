@@ -290,3 +290,38 @@ class TestTabBar(BaseTest):
         self.ae(tb_with(tab_title_max_lines=1, tab_title_wrap=-1), ['feature/som… h'])
         # when wrapping needs more lines than allowed, the last one is truncated
         self.ae(tb_with(tab_title_max_lines=2, tab_title_wrap=-1), ['feature/some-', 'really-long…'])
+        # a wrap width wider than the bar is clamped to the bar, so the result
+        # matches wrapping at the bar's width
+        self.ae(tb_with(tab_title_max_lines=3, tab_title_wrap=99), ['feature/some-', 'really-long-b', 'ranch'])
+
+    def test_vertical_tab_bar_wrapping_with_newlines(self) -> None:
+        # an explicit newline still breaks the line, and each resulting line is
+        # wrapped independently
+        tb = self.vertical_tab_bar(
+            num_tabs=1, height=200, tab_title_max_lines=4, tab_title_wrap=-1,
+            tab_title_template='a-really-long-first\\nshort')
+        self.ae([line for line in self.screen_lines(tb) if line], ['a-really-lo', 'ng-first', 'short'])
+
+    def test_vertical_tab_bar_wrapping_overflow(self) -> None:
+        # wrapped tabs are packed by the lines they use, and once they stop
+        # fitting the remainder is replaced by the overflow ellipsis
+        long_title = 'feature/really-long-branch-name'
+        self.set_options({
+            'tab_bar_edge': LEFT_EDGE,
+            'tab_bar_style': 'separator',
+            'tab_title_template': '{title}',
+            'tab_title_max_lines': 2,
+            'tab_title_wrap': -1,
+        })
+        central, tab_bar = region(140, 0, 740, 100), region(0, 0, 140, 100)
+        with (
+            patch('kitty.tab_bar.cell_size_for_window', return_value=(10, 20)),
+            patch('kitty.tab_bar.viewport_for_window', return_value=(central, tab_bar, 740, 100, 10, 20)),
+            patch('kitty.tab_bar.set_tab_bar_render_data'),
+            patch('kitty.tab_bar.get_boss', return_value=DummyBoss()),
+        ):
+            tb = TabBar(1)
+            tb.layout()
+            tb.update(tuple(TabBarData(title=long_title, tab_id=i + 1, is_active=i == 0) for i in range(3)))
+        self.ae(self.screen_lines(tb), ['feature/reall', 'y-long-bran…', 'feature/reall', 'y-long-bran…', '…'])
+        self.ae(tuple(te.y for te in tb.tab_extents), (CellRange(0, 1), CellRange(2, 3)))
