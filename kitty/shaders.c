@@ -1859,27 +1859,42 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
 }
 
 static void
+run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) {
+    set_framebuffer_to_use_for_output(0);
+    bind_framebuffer_for_output(0);
+    glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
+    glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
+    glUniform4f(program_uniform_location(CUSTOM_END_PROGRAM, "src_rect"), 0, sy, sx, 0);
+    glUniform4f(program_uniform_location(CUSTOM_END_PROGRAM, "dest_rect"), -1, 1, 1, -1);
+    restore_viewport();
+    if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
+            0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
+    glUniform1f(program_uniform_location(CUSTOM_END_PROGRAM, "timestamp"), (GLfloat)monotonic_t_to_s_double(now));
+    glUniform2f(program_uniform_location(CUSTOM_END_PROGRAM, "viewport_size_pixels"), os_window->viewport_width, os_window->viewport_height);
+    draw_quad(false, 0);
+}
+
+static void
 stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, monotonic_t now) {
     if (OPT(cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail, active_window);
     if (os_window->needs_layers) {
-        set_framebuffer_to_use_for_output(0);
-        bind_framebuffer_for_output(0);
-        int prog = global_state.custom_shaders.has_end_shader ? CUSTOM_END_PROGRAM : BLIT_PROGRAM;
-        bind_program(prog);
-        glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-        glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
         float sx = global_state.layers_render_texture.width > 0 ? (float)os_window->viewport_width / (float)global_state.layers_render_texture.width : 1.f;
         float sy = global_state.layers_render_texture.height > 0 ? (float)os_window->viewport_height / (float)global_state.layers_render_texture.height : 1.f;
-        glUniform4f(program_uniform_location(prog, "src_rect"), 0, sy, sx, 0);
-        glUniform4f(program_uniform_location(prog, "dest_rect"), -1, 1, 1, -1);
-        restore_viewport();
-        if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
-                0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
-        if (prog == CUSTOM_END_PROGRAM) {
-            glUniform1f(program_uniform_location(CUSTOM_END_PROGRAM, "timestamp"), (GLfloat)monotonic_t_to_s_double(now));
-            glUniform2f(program_uniform_location(CUSTOM_END_PROGRAM, "viewport_size_pixels"), os_window->viewport_width, os_window->viewport_height);
+        if (global_state.custom_shaders.has_end_shader) {
+            run_custom_end_shader(os_window, sx, sy, now);
+        } else {
+            set_framebuffer_to_use_for_output(0);
+            bind_framebuffer_for_output(0);
+            bind_program(BLIT_PROGRAM);
+            glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
+            glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
+            glUniform4f(program_uniform_location(BLIT_PROGRAM, "src_rect"), 0, sy, sx, 0);
+            glUniform4f(program_uniform_location(BLIT_PROGRAM, "dest_rect"), -1, 1, 1, -1);
+            restore_viewport();
+            if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
+                    0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
+            draw_quad(false, 0);
         }
-        draw_quad(false, 0);
         if (os_window->live_resize.in_progress) {
             restore_viewport();
             draw_resizing_text(os_window);
