@@ -21,7 +21,7 @@ from kitty.options.utils import (
     resize_debounce_time, scrollback_lines, scrollback_pager_history_size, scrollbar_color,
     shell_integration, show_hyperlink_targets, store_multiple, symbol_map, tab_activity_symbol,
     tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
-    tab_title_template, text_fg_override_threshold, titlebar_color, to_cursor_shape,
+    tab_title_template, tab_title_wrap, text_fg_override_threshold, titlebar_color, to_cursor_shape,
     to_cursor_unfocused_shape, to_font_size, to_layout_names, to_modifiers,
     transparent_background_colors, underline_exclusion, url_prefixes, url_style, visual_bell_duration,
     visual_window_select_characters, window_border_width, window_logo_scale, window_size
@@ -1421,8 +1421,14 @@ class Parser:
     def tab_title_max_length(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_title_max_length'] = positive_int(val)
 
+    def tab_title_max_lines(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['tab_title_max_lines'] = positive_int(val)
+
     def tab_title_template(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['tab_title_template'] = tab_title_template(val)
+
+    def tab_title_wrap(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['tab_title_wrap'] = tab_title_wrap(val)
 
     def term(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['term'] = str(val)

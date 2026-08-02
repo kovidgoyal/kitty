@@ -871,6 +871,7 @@ PyInit_fast_data_types(void) {
     PyModule_AddIntMacro(m, CURSOR_HOLLOW);
     PyModule_AddIntMacro(m, NO_CURSOR_SHAPE);
     PyModule_AddIntMacro(m, DECAWM);
+    PyModule_AddIntMacro(m, LNM);
     PyModule_AddIntMacro(m, DECCOLM);
     PyModule_AddIntMacro(m, DECOM);
     PyModule_AddIntMacro(m, IRM);
