@@ -334,8 +334,8 @@ draw_rounded_rect(
 
 enum { CELL_RENDER_DATA_BINDING_POINT = 0, COLOR_TABLE_BINDING_POINT = 1, GAMMA_LUT_BINDING_POINT = 2, BORDER_COLORS_BINDING_POINT = 3, CUSTOM_END_DATA_BINDING_POINT = 4 };
 enum { GAMMA_LUT_GLOBAL_BUFFER, BORDER_COLORS_GLOBAL_BUFFER };
-// VAO used only to hold buffers for UBOs that are shared amongst programs/windows,
-// its vertex attribute/array facilities are unused.
+// VAOs used only to hold buffers for UBOs that are shared amongst programs/windows,
+// their vertex attribute/array facilities are unused.
 static ssize_t shader_globals_vao_idx = -1;
 static ssize_t custom_end_vao_idx = -1;
 
