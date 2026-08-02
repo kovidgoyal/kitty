@@ -14,6 +14,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import types
 import zlib
 from collections import OrderedDict
 from contextlib import suppress
@@ -57,6 +58,7 @@ from kitty.fast_data_types import (
     get_options,
 )
 from kitty.options.types import Options, defaults
+from kitty.types import run_once
 from kitty.utils import lock_with_file, resolve_custom_file
 
 
@@ -70,34 +72,33 @@ def get_custom_shader_src(name: str) -> bytes:
     return read_kitty_resource(f'{name}.slang', 'kitty.shaders.custom')
 
 
-@lru_cache(maxsize=2)
-def self_mtime() -> float:
-    with suppress(Exception):
-        return os.path.getmtime(__file__)
-    return 0
-
-
-@lru_cache(maxsize=2)
+@run_once
 def slangc_version() -> str:
-    import subprocess
-
     return subprocess.check_output(list(slangc()) + ['-version'], stderr=subprocess.STDOUT).decode().strip()
 
 
-def is_dir_slangc_version_ok(path: str) -> bool:
-    with suppress(OSError), open(os.path.join(path, 'slangc.version')) as f:
-        return f.read().strip() == slangc_version()
-    return False
+def is_dir_ok(path: str, checks: dict[str, str]) -> bool:
+    for fname, expected in checks.items():
+        try:
+            with open(os.path.join(path, fname)) as f:
+                if f.read().strip() != expected:
+                    return False
+        except OSError:
+            return False
+    return True
 
 
 def ensure_cache_dir(path: str) -> None:
+    "Ensure the cache dir is for the current slangc version and slang.py version"
     os.makedirs(path, exist_ok=True)
     # slang IR is version dependent and the compiler often crashes when loading .slang-module from another version
-    if not is_dir_slangc_version_ok(path):
+    checks = {'slangc.version': slangc_version(), 'slangpy.version': get_hash_for_self()}
+    if not is_dir_ok(path, checks):
         shutil.rmtree(path)
         os.makedirs(path)
-        with open(os.path.join(path, 'slangc.version'), 'w') as f:
-            f.write(slangc_version())
+        for fname, expected in checks.items():
+            with open(os.path.join(path, fname), 'w') as f:
+                f.write(expected)
 
 
 class Stage(StrEnum):
@@ -475,8 +476,54 @@ def get_newest_dep_time(path: str) -> float:
         for deppath in read_deps_file(path):
             mtime = os.path.getmtime(deppath)
             ans = max(mtime, ans)
-        return max(ans, self_mtime())
+        return ans
     return future()
+
+
+def sanitize_code_object(code_obj: types.CodeType) -> types.CodeType:
+    """
+    Recursively strips environmental metadata (like file paths and first line numbers)
+    from a code object so the hash remains identical across different machines.
+    """
+    # Recursively process nested constants (inner functions/classes)
+    new_consts = []
+    for const in code_obj.co_consts:
+        if isinstance(const, types.CodeType):
+            new_consts.append(sanitize_code_object(const))
+        else:
+            new_consts.append(const)
+
+    # Rebuild the code object with sanitized file names and line numbers
+    # (Using replace() is safe and fully compatible with Python 3.8+)
+    return code_obj.replace(
+        co_filename='slang.py',  # Forces a uniform mock filename
+        co_firstlineno=1,  # Standardizes the line number offsets
+        co_consts=tuple(new_consts),
+    )
+
+
+@run_once
+def get_hash_for_self() -> str:
+    """
+    Climbs to the module scope, sanitizes it, and returns a unique
+    SHA-256 hash representing the entire executable structure.
+    """
+    import hashlib
+    import importlib.util
+    import marshal
+    from importlib.abc import InspectLoader
+
+    if __name__ == '__main__':
+        with open(__file__, 'rb') as f:
+            serialized_bytes = f.read()
+    else:
+        spec = importlib.util.find_spec(__name__)
+        assert spec is not None and isinstance(spec.loader, InspectLoader)
+        top_code_obj = spec.loader.get_code(__name__)
+        assert top_code_obj is not None
+        clean_code_obj = sanitize_code_object(top_code_obj)
+        serialized_bytes = marshal.dumps(clean_code_obj)
+    return hashlib.md5(serialized_bytes).hexdigest()
 
 
 class Command(NamedTuple):
@@ -971,6 +1018,7 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
     j = partial(os.path.join, libdir)
     cache_ok = False
     mtime = 0
+    get_hash_for_self()
     with suppress(FileNotFoundError), open(j('ct.key'), 'rb') as f:
         cache_ok = f.read() == ct_key
         mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
