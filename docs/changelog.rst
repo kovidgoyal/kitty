@@ -187,6 +187,10 @@ Detailed list of changes
   often not scrolling, with high resolution wheels such as the Logitech MX
   Master 3 (:pull:`10306`)
 
+- Wayland: Fix a single movement of a high resolution scroll wheel sometimes not
+  scrolling at all, when the wheel reports slightly less than one line for the
+  movement (:pull:`10306`)
+
 - Vertical tabs: Improve handling of multi-line tab titles. Controlled via two new options:
   :opt:`tab_title_max_lines` and :opt:`tab_title_template` (:pull:`10303`)
 

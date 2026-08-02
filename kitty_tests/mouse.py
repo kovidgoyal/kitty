@@ -464,3 +464,32 @@ class TestMouse(BaseTest):
 
         # A fragment too small to be a detent does not scroll.
         self.ae(0, sum(run(8)))
+
+    def test_v120_scroll_undersized_detent(self):
+        # Detents do not reliably total 120 units. Truncating the accumulated
+        # remainder means an isolated detent that delivers less than a full line
+        # never scrolls at all, since there is no carry to make it up. Values
+        # below were captured from a Logitech MX Master 3.
+        from kitty.fast_data_types import test_scale_scroll
+        self.set_options()   # scale_scroll reads wheel_scroll_multiplier
+        cell = 40
+
+        def run(*v120):
+            return test_scale_scroll([float(v) for v in v120], cell)
+
+        # An isolated detent scrolls exactly one line whatever it totals.
+        for detent in ((-48, -24, -24), (-48, -24, -24, -16), (-48, -24, -24, -24)):
+            self.ae(-1, sum(run(*detent)), f'detent totalling {abs(sum(detent))} units: {run(*detent)}')
+
+        # Including the detent that reverses direction, which has no carry.
+        res = run(-48, -24, -24, -16, 48, 24, 24, 16)
+        self.ae((-1, 1), (sum(res[:4]), sum(res[4:])), f'reversal: {res}')
+
+        # Movement of less than half a line does not scroll, so brushing the
+        # wheel does nothing.
+        for brush in (8, 16, 24, 56):
+            self.ae(0, sum(run(brush)), f'{brush} units should not scroll')
+
+        # A device streaming many small events still accumulates rather than
+        # scrolling per event.
+        self.ae(1, sum(run(*([8] * 20))))

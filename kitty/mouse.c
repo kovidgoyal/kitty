@@ -1433,13 +1433,14 @@ scale_scroll(MouseTrackingMode mouse_tracking_mode, double offset, GLFWOffsetTyp
             const int dir = offset > 0 ? 1 : -1;
             if (*last_v120_dir && dir != *last_v120_dir) *pending_scroll_pixels = 0;
             *last_v120_dir = dir;
-            const double offset_lines = offset / 120.;
-            const double pixels = *pending_scroll_pixels + offset_lines * cell_size;
-            if (fabs(pixels) < cell_size) {
-                *pending_scroll_pixels = pixels;
-                return 0;
-            }
-            s = (int)round(pixels) / cell_size;
+            // Round to the nearest whole line rather than truncating, so that a
+            // detent delivering 0.93 of a line still scrolls. An isolated one
+            // otherwise never would, as there is no carry to make it up.
+            // Rounding is unbiased and movement of under half a line still does
+            // not scroll, so devices that stream many small events only see
+            // their scrolling fire half a line earlier.
+            const double pixels = *pending_scroll_pixels + (offset / 120.) * cell_size;
+            s = (int)round(pixels / cell_size);
             *pending_scroll_pixels = pixels - s * cell_size;
         } break;
         case GLFW_SCROLL_OFFSET_LINES: {
