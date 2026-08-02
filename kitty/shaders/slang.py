@@ -750,6 +750,13 @@ def fixup_opengl_code(glsl_code: str, shader_name: str, existing_metadata: GLSLM
         return replacements[m.group(1)]
 
     ans = re.sub(r'\b(' + '|'.join(re.escape(word) for word in replacements) + r')\b', sub, ans)
+    # Slang emits `{ }` style struct initializers which aren't valid in GLSL 140;
+    # convert them to GLSL constructor call syntax.
+    ans = re.sub(
+        r'\b([A-Za-z_]\w*)\s+(\w+)\s*=\s*\{([^}]*)\}',
+        lambda m: f'{m.group(1)} {m.group(2)} = {m.group(1)}({m.group(3)})',
+        ans,
+    )
     m = GLSLMetadata()
     m.loose_uniforms = uniform_names
     m.uniform_structs = uniform_structs

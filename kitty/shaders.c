@@ -332,11 +332,12 @@ draw_rounded_rect(
 
 // Cell {{{
 
-enum { CELL_RENDER_DATA_BINDING_POINT = 0, COLOR_TABLE_BINDING_POINT = 1, GAMMA_LUT_BINDING_POINT = 2, BORDER_COLORS_BINDING_POINT = 3 };
+enum { CELL_RENDER_DATA_BINDING_POINT = 0, COLOR_TABLE_BINDING_POINT = 1, GAMMA_LUT_BINDING_POINT = 2, BORDER_COLORS_BINDING_POINT = 3, CUSTOM_END_DATA_BINDING_POINT = 4 };
 enum { GAMMA_LUT_GLOBAL_BUFFER, BORDER_COLORS_GLOBAL_BUFFER };
-// A VAO used only to hold buffers for UBOs that are shared amongst programs/windows,
+// VAO used only to hold buffers for UBOs that are shared amongst programs/windows,
 // its vertex attribute/array facilities are unused.
 static ssize_t shader_globals_vao_idx = -1;
+static ssize_t custom_end_vao_idx = -1;
 
 static void
 write_float_array_to_ubo(void *dest, const GLfloat *src, size_t count, const ArrayInformation *ai) {
@@ -416,6 +417,13 @@ init_custom_programs(void) {
             if (i == CUSTOM_END_PROGRAM) {
                 global_state.custom_shaders.has_end_shader = true;
                 bind_program(i); glUniform1i(program_uniform_location(i, "backbuffer"), GRAPHICS_UNIT);
+                UniformBlock ubd = program_uniform_block(i, "KittyCustomShaderData");
+                glUniformBlockBinding(program_id(i), ubd.index, CUSTOM_END_DATA_BINDING_POINT);
+                if (custom_end_vao_idx == -1) {
+                    custom_end_vao_idx = create_vao();
+                    add_buffer_to_vao(custom_end_vao_idx, GL_UNIFORM_BUFFER);
+                    alloc_vao_buffer(custom_end_vao_idx, ubd.size, 0, GL_STREAM_DRAW);
+                }
             }
         }
     }
@@ -1862,15 +1870,27 @@ static void
 run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) {
     set_framebuffer_to_use_for_output(0);
     bind_framebuffer_for_output(0);
+    bind_program(CUSTOM_END_PROGRAM);
     glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
     glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
-    glUniform4f(program_uniform_location(CUSTOM_END_PROGRAM, "src_rect"), 0, sy, sx, 0);
-    glUniform4f(program_uniform_location(CUSTOM_END_PROGRAM, "dest_rect"), -1, 1, 1, -1);
+    struct GPUCustomEndData {
+        GLfloat src_rect[4];
+        GLfloat dest_rect[4];
+        GLuint viewport_width, viewport_height;
+        GLfloat timestamp;
+    };
+    struct GPUCustomEndData *d = (struct GPUCustomEndData*)map_vao_buffer_for_write_only(
+        custom_end_vao_idx, 0, 0, program_uniform_block(CUSTOM_END_PROGRAM, "KittyCustomShaderData").size);
+    d->src_rect[0] = 0; d->src_rect[1] = sy; d->src_rect[2] = sx; d->src_rect[3] = 0;
+    d->dest_rect[0] = -1; d->dest_rect[1] = 1; d->dest_rect[2] = 1; d->dest_rect[3] = -1;
+    d->viewport_width = (GLuint)os_window->viewport_width;
+    d->viewport_height = (GLuint)os_window->viewport_height;
+    d->timestamp = (GLfloat)monotonic_t_to_s_double(now);
+    unmap_vao_buffer(custom_end_vao_idx, 0);
+    bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);
     restore_viewport();
     if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
             0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
-    glUniform1f(program_uniform_location(CUSTOM_END_PROGRAM, "timestamp"), (GLfloat)monotonic_t_to_s_double(now));
-    glUniform2f(program_uniform_location(CUSTOM_END_PROGRAM, "viewport_size_pixels"), os_window->viewport_width, os_window->viewport_height);
     draw_quad(false, 0);
 }
 

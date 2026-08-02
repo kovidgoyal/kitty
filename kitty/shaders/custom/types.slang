@@ -4,11 +4,11 @@
 
 
 public struct KittyCustomShaderData {
-    public float timestamp;  // time in seconds since kitty was started
+    public float4 src_rect, dest_rect;  // used by the vertex shader internally
 
     public uint2 viewport_size_pixels;  // the size in pixels of the viewport we are rendering too
 
-    public float4 src_rect, dest_rect;  // used by the vertex shader internally
+    public float timestamp;  // time in seconds since kitty was started
 }
 
 public struct KittyTextures {
