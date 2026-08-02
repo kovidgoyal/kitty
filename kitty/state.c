@@ -568,6 +568,7 @@ destroy_os_window_item(OSWindow *w) {
     free_bgimage(&w->background_image.override, true);
     zero_at_ptr(&w->background_image);
     if (w->indirect_output.framebuffer_id) free_framebuffer(&w->indirect_output.framebuffer_id);
+    if (w->indirect_output.extra_fbo_id) free_framebuffer(&w->indirect_output.extra_fbo_id);
 }
 
 bool
@@ -585,6 +586,8 @@ remove_os_window(id_type os_window_id) {
         if (global_state.num_os_windows == 0) {
             if (global_state.layers_render_texture.texture_id) free_texture(&global_state.layers_render_texture.texture_id);
             if (global_state.layers_render_texture.framebuffer_id) free_framebuffer(&global_state.layers_render_texture.framebuffer_id);
+            if (global_state.layers_render_texture.extra_texture_id) free_texture(&global_state.layers_render_texture.extra_texture_id);
+            if (global_state.layers_render_texture.extra_texture_setup_fbo_id) free_framebuffer(&global_state.layers_render_texture.extra_texture_setup_fbo_id);
             global_state.layers_render_texture.width = 0; global_state.layers_render_texture.height = 0;
         }
     }

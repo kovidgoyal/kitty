@@ -952,7 +952,13 @@ def custom_shader(val: str, current_val: dict[str, str]) -> Iterator[tuple[Custo
                 custom_shader(x)
             except Exception as e:
                 raise ValueError(f'Custom shader {x} not found or not readable with error: {e}') from e
-        yield cast(CustomShaderSlots, parts[0]), parts[1:]
+        slot = cast(CustomShaderSlots, parts[0])
+        new_shaders: tuple[str, ...] = parts[1:]
+        existing = cast('tuple[str, ...]|None', current_val.get(slot))
+        if existing:
+            yield slot, existing + ('',) + new_shaders
+        else:
+            yield slot, new_shaders
 
 
 def clipboard_control(x: str) -> tuple[str, ...]:

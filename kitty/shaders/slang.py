@@ -1038,6 +1038,9 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
     module_names = {}
     shaders_content_key = b''
     for name in shaders:
+        if name == '':
+            shaders_content_key += b'::'  # group separator marker in cache key
+            continue
         path, import_dir, src, content_key = custom_shader(name)
         if import_dir and import_dir not in import_dirs:
             import_dirs.append(import_dir)
@@ -1064,9 +1067,25 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
     shaders_content_key += b':' + str(mtime).encode()
     j = partial(os.path.join, slot_dir)
     cache_ok = False
+
+    # Split shaders by '' to build groups; flat_shader_list has non-empty shaders in order
+    groups: list[list[str]] = []
+    current_group: list[str] = []
+    flat_shader_list: list[str] = []
+    for name in shaders:
+        if name == '':
+            if current_group:
+                groups.append(current_group)
+            current_group = []
+        else:
+            current_group.append(name)
+            flat_shader_list.append(name)
+    if current_group:
+        groups.append(current_group)
+
     wrappers = {}
     entry_points = []
-    for i, name in enumerate(shaders):
+    for i, name in enumerate(flat_shader_list):
         module_name = module_names[name]
         entry_point = f'fragment_main{i}'
         wrapper_src = textwrap.dedent(f"""
@@ -1079,9 +1098,30 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
         """)
         wrappers[f'wrapper{i}.slang'] = wrapper_src
         entry_points.append(entry_point)
+
+    # Generate group-branched PIPELINE code
+    # sRGB conversion is emitted only in the last group's branch so intermediate
+    # groups write back premultiplied linear RGB (not sRGB) to the ping-pong texture.
+    pipeline_parts: list[str] = []
+    ep_idx = 0
+    num_groups = len(groups)
+    for g_idx, group in enumerate(groups):
+        n = len(group)
+        calls = '\n'.join(f'        color = fragment_main{ep_idx + j}(color, t, csd);' for j in range(n))
+        is_last = (g_idx == num_groups - 1)
+        if is_last:
+            calls += '\n        color = float4(linear2srgb(color.rgb), color.a);'
+        if g_idx == 0:
+            pipeline_parts.append(f'    if (group == 0) {{\n{calls}')
+        else:
+            pipeline_parts.append(f'    }} else if (group == {g_idx}) {{\n{calls}')
+        ep_idx += n
+    pipeline_parts.append('    }')
+    pipeline_code = '\n'.join(pipeline_parts)
+
     mod_src = get_custom_shader_src('pipeline').decode()
     mod_src = mod_src.replace('// IMPORTS', '\n'.join(f'__include "{w}";' for w in wrappers), 1)
-    mod_src = mod_src.replace('// PIPELINE', '\n'.join(f'color = {w}(color, t, csd);' for w in entry_points), 1)
+    mod_src = mod_src.replace('// PIPELINE', pipeline_code, 1)
     # subprocess.run(['bat', '-P', '-l', 'cpp'], input=mod_src.encode())
     slot_key = key(slot, mod_src, shaders_content_key)
 
@@ -1128,8 +1168,8 @@ VertexOutput vmain_wrap(uint vertex_id : SV_VertexID) {
 }
 
 [shader("fragment")]
-float4 fmain_wrap(float2 texcoord : TEXCOORD) : SV_Target {
-    return pipeline_fragment_main(texcoord);
+float4 fmain_wrap(float2 texcoord : TEXCOORD, uniform int group) : SV_Target {
+    return pipeline_fragment_main(texcoord, group);
 }
         """.replace('MODULE', slot.replace('-', '_')).encode()
 
@@ -1188,7 +1228,9 @@ def build_custom_shader_pipeline_glsl(slot: str = 'end', shaders: tuple[str, ...
                 f.stderr.close()
             fixup_opengl_files((fragment, vertex))
         with open(vertex) as vf, open(fragment) as ff:
-            return vf.read(), ff.read(), glsl_metadata_for_shader(metadata)
+            m = glsl_metadata_for_shader(metadata)
+            m['num_groups'] = shaders.count('') + 1
+            return vf.read(), ff.read(), m
 
 
 def clear_caches() -> None:

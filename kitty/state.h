@@ -441,6 +441,7 @@ typedef struct OSWindow {
     } background_image;
     struct {
         uint32_t framebuffer_id, attached_texture_generation;
+        uint32_t extra_fbo_id, extra_fbo_generation;
     } indirect_output;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
     bool focused_at_last_render, needs_render, needs_layers;
@@ -550,10 +551,12 @@ typedef struct GlobalState {
     struct {
         uint32_t texture_id, framebuffer_id, texture_generation;
         int width, height;
+        uint32_t extra_texture_id, extra_texture_setup_fbo_id;
     } layers_render_texture;
     struct {
         unsigned count;
         bool has_end_shader;
+        unsigned num_end_groups;
     } custom_shaders;
 } GlobalState;
 

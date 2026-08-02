@@ -338,6 +338,7 @@ enum { GAMMA_LUT_GLOBAL_BUFFER, BORDER_COLORS_GLOBAL_BUFFER };
 // their vertex attribute/array facilities are unused.
 static ssize_t shader_globals_vao_idx = -1;
 static ssize_t custom_end_vao_idx = -1;
+static unsigned pending_custom_end_num_groups = 1;
 
 static void
 write_float_array_to_ubo(void *dest, const GLfloat *src, size_t count, const ArrayInformation *ai) {
@@ -416,7 +417,10 @@ init_custom_programs(void) {
             global_state.custom_shaders.count++;
             if (i == CUSTOM_END_PROGRAM) {
                 global_state.custom_shaders.has_end_shader = true;
-                bind_program(i); glUniform1i(program_uniform_location(i, "backbuffer"), GRAPHICS_UNIT);
+                global_state.custom_shaders.num_end_groups = pending_custom_end_num_groups;
+                bind_program(i);
+                glUniform1i(program_uniform_location(i, "backbuffer"), GRAPHICS_UNIT);
+                glUniform1i(program_uniform_location(i, "group"), 0);
                 UniformBlock ubd = program_uniform_block(i, "KittyCustomShaderData");
                 glUniformBlockBinding(program_id(i), ubd.index, CUSTOM_END_DATA_BINDING_POINT);
                 if (custom_end_vao_idx == -1) {
@@ -1844,6 +1848,8 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
                 global_state.layers_render_texture.height < os_window->viewport_height) {
             if (global_state.layers_render_texture.texture_id) free_texture(&global_state.layers_render_texture.texture_id);
             if (global_state.layers_render_texture.framebuffer_id) free_framebuffer(&global_state.layers_render_texture.framebuffer_id);
+            if (global_state.layers_render_texture.extra_texture_id) free_texture(&global_state.layers_render_texture.extra_texture_id);
+            if (global_state.layers_render_texture.extra_texture_setup_fbo_id) free_framebuffer(&global_state.layers_render_texture.extra_texture_setup_fbo_id);
             unsigned new_w = (unsigned)MAX(global_state.layers_render_texture.width, os_window->viewport_width);
             unsigned new_h = (unsigned)MAX(global_state.layers_render_texture.height, os_window->viewport_height);
             setup_texture_as_render_target(new_w, new_h, &global_state.layers_render_texture.texture_id, &global_state.layers_render_texture.framebuffer_id);
@@ -1858,6 +1864,26 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, global_state.layers_render_texture.texture_id, 0);
             os_window->indirect_output.attached_texture_generation = global_state.layers_render_texture.texture_generation;
         }
+        if (global_state.custom_shaders.num_end_groups > 1) {
+            // Lazily create the global shared extra texture (ping-pong target for multi-group end shaders)
+            if (!global_state.layers_render_texture.extra_texture_id) {
+                setup_texture_as_render_target(
+                    (unsigned)global_state.layers_render_texture.width,
+                    (unsigned)global_state.layers_render_texture.height,
+                    &global_state.layers_render_texture.extra_texture_id,
+                    &global_state.layers_render_texture.extra_texture_setup_fbo_id
+                );
+            }
+            // Create/re-attach per-window extra FBO when generation changes
+            if (os_window->indirect_output.extra_fbo_generation != global_state.layers_render_texture.texture_generation) {
+                if (os_window->indirect_output.extra_fbo_id) free_framebuffer(&os_window->indirect_output.extra_fbo_id);
+                glGenFramebuffers(1, &os_window->indirect_output.extra_fbo_id);
+                bind_framebuffer_for_output(os_window->indirect_output.extra_fbo_id);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                    global_state.layers_render_texture.extra_texture_id, 0);
+                os_window->indirect_output.extra_fbo_generation = global_state.layers_render_texture.texture_generation;
+            }
+        }
         set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
         bind_framebuffer_for_output(0);
         save_viewport_using_bottom_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height);
@@ -1868,11 +1894,7 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
 
 static void
 run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) {
-    set_framebuffer_to_use_for_output(0);
-    bind_framebuffer_for_output(0);
     bind_program(CUSTOM_END_PROGRAM);
-    glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-    glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
     struct GPUCustomEndData {
         GLfloat src_rect[4];
         GLfloat dest_rect[4];
@@ -1888,10 +1910,48 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     d->timestamp = (GLfloat)monotonic_t_to_s_double(now);
     unmap_vao_buffer(custom_end_vao_idx, 0);
     bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);
+    GLint group_loc = program_uniform_location(CUSTOM_END_PROGRAM, "group");
+    const unsigned num_groups = global_state.custom_shaders.num_end_groups;
     restore_viewport();
-    if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
-            0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
-    draw_quad(false, 0);
+    if (num_groups <= 1) {
+        set_framebuffer_to_use_for_output(0);
+        bind_framebuffer_for_output(0);
+        glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
+        glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
+        glUniform1i(group_loc, 0);
+        if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
+                0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
+        draw_quad(false, 0);
+    } else {
+        // Multi-group: ping-pong between layers_render_texture and extra_texture
+        // Group i (even): read layers_render_texture, write to extra_fbo
+        // Group i (odd): read extra_texture, write to indirect_output.framebuffer_id (layers_render_texture)
+        // Last group: always write to screen
+        for (unsigned g = 0; g < num_groups; g++) {
+            GLuint input_texture = (g % 2 == 0) ?
+                global_state.layers_render_texture.texture_id :
+                global_state.layers_render_texture.extra_texture_id;
+            bool is_last = (g == num_groups - 1);
+            if (is_last) {
+                set_framebuffer_to_use_for_output(0);
+                bind_framebuffer_for_output(0);
+            } else if (g % 2 == 0) {
+                bind_framebuffer_for_output(os_window->indirect_output.extra_fbo_id);
+            } else {
+                bind_framebuffer_for_output(os_window->indirect_output.framebuffer_id);
+            }
+            glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
+            glBindTexture(GL_TEXTURE_2D, input_texture);
+            glUniform1i(group_loc, (GLint)g);
+            if (is_last && os_window->live_resize.in_progress) {
+                save_viewport_using_top_left_origin(
+                    0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
+            } else {
+                glViewport(0, 0, os_window->viewport_width, os_window->viewport_height);
+            }
+            draw_quad(false, 0);
+        }
+    }
 }
 
 static void
@@ -2060,6 +2120,7 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     if (which < 0 || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
     Program *program = program_ptr(which);
     if (!PyTuple_GET_SIZE(vertex_shaders)) {
+        if (which == CUSTOM_END_PROGRAM) pending_custom_end_num_groups = 1;
         if (program->id != 0) {
             glDeleteProgram(program->id); program->id = 0;
         }
@@ -2084,6 +2145,10 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
         fail_compile();
     }
 #undef fail_compile
+    if (which == CUSTOM_END_PROGRAM) {
+        PyObject *ng = PyDict_GetItemString(metadata, "num_groups");
+        pending_custom_end_num_groups = ng ? (unsigned)PyLong_AsLong(ng) : 1;
+    }
     init_uniforms(which);
     set_program_layout(which, metadata);
     return Py_BuildValue("I", program->id);
