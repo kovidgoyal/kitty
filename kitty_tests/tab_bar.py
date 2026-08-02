@@ -238,6 +238,20 @@ class TestTabBar(BaseTest):
         self.ae(wrap_title('日本語', 4).split('\n'), ['日本', '語'])
         # a width of zero means no wrapping
         self.ae(wrap_title('abc', 0), 'abc')
+        # fast path: a part that fits entirely is taken without grapheme splitting
+        self.ae(wrap_title('abc def', 10).split('\n'), ['abc def'])
+        # fast path: part fits exactly at the boundary
+        self.ae(wrap_title('abcd', 4).split('\n'), ['abcd'])
+        # fast path breaks down correctly when the second part overflows
+        self.ae(wrap_title('abc defgh', 6).split('\n'), ['abc de', 'fgh'])
+        # SGR escape followed by text that fits entirely (fast path with leading escape)
+        self.ae(wrap_title('\x1b[1mhello', 10).split('\n'), ['\x1b[1mhello'])
+        # mixed: first part fits (fast path), second part must be split
+        self.ae(wrap_title('\x1b[1mab\x1b[0m cdefgh', 4).split('\n'), ['\x1b[1mab\x1b[0m c', 'defg', 'h'])
+        # wide chars: part fits entirely (fast path)
+        self.ae(wrap_title('日本', 4).split('\n'), ['日本'])
+        # wide chars: part fits on new line after breaking
+        self.ae(wrap_title('ab日本語', 4).split('\n'), ['ab日', '本語'])
 
     def test_truncate_line(self) -> None:
         self.ae(truncate_line('abcdef', 4), 'abc…')
@@ -246,6 +260,18 @@ class TestTabBar(BaseTest):
         # itself would have fit
         self.ae(truncate_line('ab', 4), 'ab…')
         self.ae(truncate_line('abcd', 4), 'abc…')
+        # fast path: entire part fits within width-1 cells, ellipsis appended
+        self.ae(truncate_line('abc', 6), 'abc…')
+        # fast path: part exactly fills width-1 cells
+        self.ae(truncate_line('abcde', 6), 'abcde…')
+        # fast path taken for first part, overflow detected in second part
+        self.ae(truncate_line('abc' + 'xyz', 5), 'abcx…')
+        # SGR escapes are zero width, so they never consume cells (fast path still taken)
+        self.ae(truncate_line('\x1b[1mabc\x1b[0m', 6), '\x1b[1mabc\x1b[0m…')
+        # wide chars: fast path fits, ellipsis appended
+        self.ae(truncate_line('日本', 6), '日本…')
+        # empty line still gets ellipsis
+        self.ae(truncate_line('', 4), '…')
 
     def test_tab_title_wrap_option(self) -> None:
         for off in ('no', 'No', 'n', 'false', 'none', '0'):

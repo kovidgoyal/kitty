@@ -373,12 +373,12 @@ def apply_title_template(draw_data: DrawData, tab: TabBarData, index: int, max_t
 
 
 def wrap_title(title: str, width: int) -> str:
-    '''Insert newlines into title so that no line is wider than width cells.
+    """Insert newlines into title so that no line is wider than width cells.
 
     SGR escapes are zero width, so they never count towards the width and are
     left attached to the text that follows them. Splitting happens on grapheme
     boundaries so that a wrap can never land inside a multi-codepoint grapheme.
-    '''
+    """
     if width < 1:
         return title
     lines = []
@@ -390,23 +390,42 @@ def wrap_title(title: str, width: int) -> str:
             if part.startswith('\x1b'):
                 cur += part
                 continue
-            for grapheme in split_into_graphemes(part):
-                w = max(0, wcswidth(grapheme))
-                if cur_width and cur_width + w > width:
-                    lines.append(cur)
-                    cur, cur_width = '', 0
-                cur += grapheme
-                cur_width += w
+            part_width = max(0, wcswidth(part))
+            if cur_width + part_width <= width:
+                cur += part
+                cur_width += part_width
+            else:
+                ginfo = tuple((max(0, wcswidth(g)), len(g)) for g in split_into_graphemes(part))
+                n = len(ginfo)
+                i = 0
+                pos = 0
+                while i < n:
+                    j, batch_w, batch_len = i, 0, 0
+                    while j < n:
+                        w, glen = ginfo[j]
+                        if cur_width + batch_w and cur_width + batch_w + w > width:
+                            break
+                        batch_w += w
+                        batch_len += glen
+                        j += 1
+                    if j > i:
+                        cur += part[pos : pos + batch_len]
+                        cur_width += batch_w
+                        pos += batch_len
+                        i = j
+                    if i < n:
+                        lines.append(cur)
+                        cur, cur_width = '', 0
         lines.append(cur)
     return '\n'.join(lines)
 
 
 def truncate_line(line: str, width: int) -> str:
-    '''Append an ellipsis to line, trimming it so the result fits in width cells.
+    """Append an ellipsis to line, trimming it so the result fits in width cells.
 
     Used to mark a title as having had content dropped, so the ellipsis is added
     even when line already fits.
-    '''
+    """
     if width < 1:
         return line
     out, cur_width = '', 0
@@ -416,12 +435,17 @@ def truncate_line(line: str, width: int) -> str:
         if part.startswith('\x1b'):
             out += part
             continue
-        for grapheme in split_into_graphemes(part):
-            w = max(0, wcswidth(grapheme))
-            if cur_width + w > width - 1:
-                return out + '…'
-            out += grapheme
-            cur_width += w
+        part_width = max(0, wcswidth(part))
+        if cur_width + part_width <= width - 1:
+            out += part
+            cur_width += part_width
+        else:
+            for grapheme in split_into_graphemes(part):
+                w = max(0, wcswidth(grapheme))
+                if cur_width + w > width - 1:
+                    return out + '…'
+                out += grapheme
+                cur_width += w
     return out + '…'
 
 
@@ -1019,7 +1043,7 @@ class TabBar:
         wrap_width = max_tab_length if self.tab_title_wrap < 0 else min(self.tab_title_wrap, max_tab_length)
 
         def draw_one(i: int, t: TabBarData, row: int, for_layout: bool, height: int = 0) -> int:
-            'Draw tab i at row, returning the number of lines it occupies'
+            "Draw tab i at row, returning the number of lines it occupies"
             bg = as_rgb(self.draw_data.tab_bg(t))
             s.cursor.bg = bg
             s.cursor.fg = as_rgb(self.draw_data.tab_fg(t))
