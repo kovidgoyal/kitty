@@ -1771,8 +1771,8 @@ class TabManager:  # {{{
                 td = tab.data_for_tab_bar(tab is self.active_tab)
                 title = apply_title_template(self.tab_bar.draw_data, td, i+1)
                 title = re.sub(r'\x1b\[.+?[a-zA-Z]', '', title).strip()  # strip CSI codes ]
+                title = re.sub(r'[\n\r]', ' ', title)
                 title = replace_c0_codes_except_nl_space_tab(title.encode()).decode()
-                title = re.sub(r'\n', ' ', title)
                 opts = get_options()
                 if td.is_active:
                     fg = color_as_int(opts.active_tab_foreground)
