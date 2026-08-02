@@ -1406,7 +1406,7 @@ mouse_event(const int button, int modifiers, int action) {
 }
 
 static int
-scale_scroll(MouseTrackingMode mouse_tracking_mode, double offset, GLFWOffsetType offset_type, double *pending_scroll_pixels, int cell_size) {
+scale_scroll(MouseTrackingMode mouse_tracking_mode, double offset, GLFWOffsetType offset_type, double *pending_scroll_pixels, int cell_size, int *last_v120_dir) {
 // scale the scroll by the multiplier unless the mouse is grabbed. If the mouse is grabbed only change direction.
 #define SCALE_SCROLL(which) { double scale = OPT(which); if (mouse_tracking_mode) scale /= fabs(scale); offset *= scale; }
     int s = 0;
@@ -1423,6 +1423,16 @@ scale_scroll(MouseTrackingMode mouse_tracking_mode, double offset, GLFWOffsetTyp
         } break;
         case GLFW_SCROLL_OFFEST_V120: {
             SCALE_SCROLL(wheel_scroll_multiplier);
+            // One physical detent arrives as several VALUE120 events, so the
+            // fractional remainder is carried to the next event. Detents do not
+            // reliably total 120 units, and that carry is what lets an
+            // undersized detent still scroll a line. On a direction change the
+            // residual has the wrong sign, and would be cancelled out by the
+            // first detent of the new direction rather than scrolling it, so
+            // discard it. Scrolling in a single direction is unaffected.
+            const int dir = offset > 0 ? 1 : -1;
+            if (*last_v120_dir && dir != *last_v120_dir) *pending_scroll_pixels = 0;
+            *last_v120_dir = dir;
             const double offset_lines = offset / 120.;
             const double pixels = *pending_scroll_pixels + offset_lines * cell_size;
             if (fabs(pixels) < cell_size) {
@@ -1543,10 +1553,10 @@ scroll_event(const GLFWScrollEvent *ev) {
                 const double offset_lines = (ev->y_offset / 120.) * OPT(wheel_scroll_multiplier);
                 delta_pixels = offset_lines * global_state.callback_os_window->fonts_data->fcm.cell_height;
             }
-            screen->pending_scroll_pixels_y = 0.0;
+            osw->scroll.pending_pixels_y = 0.0;
             if (screen_apply_pixel_scroll(screen, delta_pixels) && screen->selections.in_progress) update_drag(w);
         } else {
-            int s = scale_scroll(screen->modes.mouse_tracking_mode, ev->y_offset, ev->offset_type, &screen->pending_scroll_pixels_y, global_state.callback_os_window->fonts_data->fcm.cell_height);
+            int s = scale_scroll(screen->modes.mouse_tracking_mode, ev->y_offset, ev->offset_type, &osw->scroll.pending_pixels_y, global_state.callback_os_window->fonts_data->fcm.cell_height, &osw->scroll.last_v120_dir_y);
             if (s) {
                 bool upwards = s > 0;
                 if (screen->modes.mouse_tracking_mode) {
@@ -1568,7 +1578,7 @@ scroll_event(const GLFWScrollEvent *ev) {
         }
     }
     if (ev->x_offset != 0.0) {
-        int s = scale_scroll(screen->modes.mouse_tracking_mode, ev->x_offset, ev->offset_type, &screen->pending_scroll_pixels_x, global_state.callback_os_window->fonts_data->fcm.cell_width);
+        int s = scale_scroll(screen->modes.mouse_tracking_mode, ev->x_offset, ev->offset_type, &osw->scroll.pending_pixels_x, global_state.callback_os_window->fonts_data->fcm.cell_width, &osw->scroll.last_v120_dir_x);
         if (s) {
             if (screen->modes.mouse_tracking_mode) {
                 int sz = encode_mouse_scroll(w, s > 0 ? 6 : 7, ev->keyboard_modifiers);
@@ -1659,9 +1669,29 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+test_scale_scroll(PyObject *self UNUSED, PyObject *args) {
+    PyObject *values; int cell_size;
+    if (!PyArg_ParseTuple(args, "O!i", &PyList_Type, &values, &cell_size)) return NULL;
+    double pending = 0; int last_dir = 0;
+    PyObject *ans = PyList_New(0);
+    if (!ans) return NULL;
+    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(values); i++) {
+        const double v120 = PyFloat_AsDouble(PyList_GET_ITEM(values, i));
+        if (PyErr_Occurred()) { Py_DECREF(ans); return NULL; }
+        // ANY_MODE so that wheel_scroll_multiplier is reduced to its sign
+        const int s = scale_scroll(ANY_MODE, v120, GLFW_SCROLL_OFFEST_V120, &pending, cell_size, &last_dir);
+        PyObject *t = PyLong_FromLong(s);
+        if (!t || PyList_Append(ans, t) != 0) { Py_XDECREF(t); Py_DECREF(ans); return NULL; }
+        Py_DECREF(t);
+    }
+    return ans;
+}
+
 static PyMethodDef module_methods[] = {
     {"send_mouse_event", (PyCFunction)(void (*) (void))(send_mouse_event), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(test_encode_mouse, METH_VARARGS),
+    METHODB(test_scale_scroll, METH_VARARGS),
     METHODB(send_mock_mouse_event_to_window, METH_VARARGS),
     METHODB(mock_mouse_selection, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */

@@ -425,3 +425,42 @@ class TestMouse(BaseTest):
         self.ae(sel(), '')
         multi_click(x=2.4)
         self.ae(sel(), '')
+
+    def test_v120_scroll_direction_reversal(self):
+        # A high resolution wheel delivers one physical detent as several
+        # VALUE120 events, and the fractional remainder is carried between them.
+        # Detents do not reliably total 120 units, so that carry is what lets an
+        # undersized detent still scroll a line. But when the direction changes
+        # the residual has the wrong sign, and the first detent of the new
+        # direction gets spent cancelling it instead of scrolling.
+        # The fragment sequences below were captured from a Logitech MX Master 3.
+        from kitty.fast_data_types import test_scale_scroll
+        self.set_options()   # scale_scroll reads wheel_scroll_multiplier
+        cell = 40
+
+        def run(*v120):
+            # scale_scroll is exercised in mouse tracking mode, which reduces
+            # wheel_scroll_multiplier to its sign, so the result does not depend
+            # on the configured multiplier.
+            return test_scale_scroll([float(v) for v in v120], cell)
+
+        down = (-48, -32, -24, -24)   # 128 units
+        up = (48, 32, 24, 24)
+
+        # Five detents down, then one up. Every detent must scroll, including
+        # the one that reverses direction. Before the residual was discarded on
+        # a reversal, that last detent scrolled nothing.
+        res = run(*(down * 5), *up)
+        self.ae(-5, sum(res[:20]), f'detents before the reversal: {res}')
+        self.ae(1, sum(res[20:]), f'detent that reversed direction: {res}')
+
+        # Repeated reversals keep working.
+        res = run(*(down * 2), *(up * 2), *(down * 2))
+        self.ae([-2, 2, -2], [sum(res[i:i + 8]) for i in range(0, 24, 8)])
+
+        # Scrolling in one direction is unaffected: the carry is retained, so a
+        # run of undersized detents still scrolls about one line each.
+        self.ae(-9, sum(run(*((-48, -24, -24, -16) * 10))))
+
+        # A fragment too small to be a detent does not scroll.
+        self.ae(0, sum(run(8)))
