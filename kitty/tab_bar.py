@@ -560,15 +560,32 @@ def draw_tab_with_fade(
         if extra > 0:
             screen.cursor.x -= extra + 1
             screen.draw('…')
-    for bg in reversed(fade_colors):
-        if extra >= 0:
-            break
-        extra += 1
-        screen.cursor.bg = bg
+    if draw_data.tab_bar_edge in ('left', 'right'):
+        # For vertical tabs the background is pre-filled, so place trailing
+        # fade cells flush with the right edge of the last title line.
+        num_fade = len(fade_colors)
+        fade_start = screen.columns - num_fade
+        text_end = screen.cursor.x
+        last_row = screen.cursor.y
+        if text_end < max_tab_length:
+            fade_to_skip = max(0, text_end - fade_start)
+            screen.cursor.x = max(text_end, fade_start)
+            screen.cursor.y = last_row
+            for bg in list(reversed(fade_colors))[fade_to_skip:]:
+                screen.cursor.bg = bg
+                screen.draw(' ')
+        end = screen.cursor.x
+        screen.cursor.bg = as_rgb(color_as_int(draw_data.default_bg))
+    else:
+        for bg in reversed(fade_colors):
+            if extra >= 0:
+                break
+            extra += 1
+            screen.cursor.bg = bg
+            screen.draw(' ')
+        end = screen.cursor.x
+        screen.cursor.bg = as_rgb(color_as_int(draw_data.default_bg))
         screen.draw(' ')
-    end = screen.cursor.x
-    screen.cursor.bg = as_rgb(color_as_int(draw_data.default_bg))
-    screen.draw(' ')
     return end
 
 

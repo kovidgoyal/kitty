@@ -197,6 +197,11 @@ Detailed list of changes
   lines instead of truncating them, either at the width of the tab bar or at a
   specified number of cells (:iss:`10302`)
 
+- Vertical tabs: with the ``fade`` tab bar style, trailing fade cells are now
+  placed flush with the right edge of the last title line instead of immediately
+  after the title text, and the background-coloured separator cell that followed
+  the fades has been removed
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

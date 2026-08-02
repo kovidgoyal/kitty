@@ -3,7 +3,7 @@
 
 from unittest.mock import patch
 
-from kitty.fast_data_types import LEFT_EDGE, Region
+from kitty.fast_data_types import LEFT_EDGE, Color, Region
 from kitty.options.utils import tab_title_wrap
 from kitty.tab_bar import CellRange, TabBar, TabBarData, truncate_line, wrap_title
 
@@ -351,3 +351,47 @@ class TestTabBar(BaseTest):
             tb.update(tuple(TabBarData(title=long_title, tab_id=i + 1, is_active=i == 0) for i in range(3)))
         self.ae(self.screen_lines(tb), ['feature/reall', 'y-long-bran…', 'feature/reall', 'y-long-bran…', '…'])
         self.ae(tuple(te.y for te in tb.tab_extents), (CellRange(0, 1), CellRange(2, 3)))
+
+    def test_vertical_tab_bar_fade_style(self) -> None:
+        # Use fixed colors so every fade cell blends to the same midpoint
+        # colour, making fade cells easy to identify by background.
+        self.set_options({
+            'tab_bar_edge': LEFT_EDGE,
+            'tab_bar_style': 'fade',
+            'tab_title_template': '{title}',
+            'active_tab_background': Color(200, 0, 0),
+            'tab_bar_background': Color(0, 0, 100),
+            'tab_fade': (0.5, 0.5, 0.5, 0.5),
+        })
+        central = region(120, 0, 400, 160)
+        tab_bar_r = region(0, 0, 120, 160)
+        with (
+            patch('kitty.tab_bar.cell_size_for_window', return_value=(10, 20)),
+            patch('kitty.tab_bar.viewport_for_window', return_value=(central, tab_bar_r, 400, 160, 10, 20)),
+            patch('kitty.tab_bar.set_tab_bar_render_data'),
+            patch('kitty.tab_bar.get_boss', return_value=DummyBoss()),
+        ):
+            tb = TabBar(1)
+            tb.layout()
+            tb.update((TabBarData(title='t0', tab_id=1, is_active=True),))
+
+        s = tb.screen
+        # Screen: 12 columns (120px / 10px), max_tab_length = 11, 4 fade cells.
+        # Title 't0' begins at col 4 (after 4 leading fades) and ends at col 6.
+        # Trailing fades should occupy cols 8–11 (flush with the right edge).
+
+        def bg(col: int) -> int:
+            return int(s.line(0).cursor_from(col).bg)
+
+        tab_bg = bg(4)   # title cell: active_tab_background
+        fade_bg = bg(0)  # leading fade cell: midpoint blend
+
+        # Sanity: fade colour is distinct from plain tab colour.
+        self.assertNotEqual(tab_bg, fade_bg)
+
+        # Issue 1: trailing fades flush with the right edge (cols 8–11), not right after the text.
+        self.ae(bg(6), tab_bg)   # col 6, right after 't0', must be plain tab bg
+        self.ae(bg(8), fade_bg)  # col 8, fade_start = 12 - 4, must be a fade cell
+
+        # Issue 2: no background-coloured separator after the trailing fades.
+        self.ae(bg(11), fade_bg)  # col 11, last trailing fade, must not be default_bg
