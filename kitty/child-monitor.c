@@ -1217,8 +1217,12 @@ close_os_window(ChildMonitor *self, OSWindow *os_window) {
     int x = 0, y = 0;
     if (os_window->handle && !global_state.is_wayland) glfwGetWindowPos(os_window->handle, &x, &y);
     bool is_layer_shell = os_window->is_layer_shell;
+    bool was_maximized = false;
+    if (os_window->handle && !is_layer_shell) {
+        was_maximized = glfwGetWindowAttrib(os_window->handle, GLFW_MAXIMIZED) != 0;
+    }
     destroy_os_window(os_window);
-    call_boss(on_os_window_closed, "KiiiiO", os_window->id, x, y, w, h, is_layer_shell ? Py_True : Py_False);
+    call_boss(on_os_window_closed, "KiiiiOO", os_window->id, x, y, w, h, was_maximized ? Py_True : Py_False, is_layer_shell ? Py_True : Py_False);
     for (size_t t=0; t < os_window->num_tabs; t++) {
         Tab *tab = os_window->tabs + t;
         for (size_t w = 0; w < tab->num_windows; w++) mark_child_for_close(self, tab->windows[w].id);

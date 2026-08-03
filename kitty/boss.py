@@ -2149,7 +2149,9 @@ class Boss:
         else:
             self.mark_os_window_for_close(os_window_id, NO_CLOSE_REQUESTED)
 
-    def on_os_window_closed(self, os_window_id: int, x: int, y: int, viewport_width: int, viewport_height: int, is_layer_shell: bool) -> None:
+    def on_os_window_closed(
+        self, os_window_id: int, x: int, y: int, viewport_width: int, viewport_height: int, was_maximized: bool, is_layer_shell: bool
+    ) -> None:
         tm = self.os_window_map.pop(os_window_id, None)
         opts = get_options()
         if not is_layer_shell:
@@ -2157,6 +2159,7 @@ class Boss:
                 self.cached_values['window-pos'] = x, y
                 self.cached_values['monitor-workarea'] = glfw_get_monitor_workarea()
             self.cached_values['window-size'] = viewport_width, viewport_height
+            self.cached_values['window-state'] = 'maximized' if was_maximized else 'normal'
         if tm is not None:
             tm.destroy()
         for window_id in tuple(w.id for w in self.window_id_map.values() if getattr(w, 'os_window_id', None) == os_window_id):

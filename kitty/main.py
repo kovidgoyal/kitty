@@ -304,6 +304,9 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
         window_state = (args.start_as if args.start_as and args.start_as != 'normal' else None) or (
             getattr(startup_sessions[0], 'os_window_state', None) if startup_sessions else None
         )
+        # Remember the maximized state from the previous session, if enabled.
+        if window_state is None and opts.remember_window_size:
+            window_state = cached_values.get('window-state') or None
         wstate = parse_os_window_state(window_state) if window_state is not None else None
 
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
