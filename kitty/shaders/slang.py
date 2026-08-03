@@ -1124,7 +1124,9 @@ def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
     if not groups:
         raise ValueError('At least one group must be specified')
     if groups[-1]['output_texture'] is not NamedTexture.default:
-        raise ValueError('THe final group cannot output to a named texture')
+        raise ValueError('The final group cannot output to a named texture')
+    if groups[-1]['viewport_pos'] != (0, 0) or groups[-1]['viewport_size'] != (1, 1):
+        raise ValueError('The final group must not specify a viewport')
 
     return {'slot': slot, 'textures': textures, 'groups': tuple(groups)}
 
