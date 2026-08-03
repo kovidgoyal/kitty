@@ -14,6 +14,7 @@ from kitty.shaders.slang import (
     build_custom_shader_pipeline_glsl,
     build_import_graph,
     clear_caches,
+    parse_pipeline_definition,
     parse_slang_text,
     topological_layers,
     topological_sort,
@@ -249,11 +250,13 @@ void vsMain() {}
         with tempfile.TemporaryDirectory() as cache_dir:
             # Clear the lru_cache so the temp cache_dir is actually used
             clear_caches()
+            p = parse_pipeline_definition('''
+            startgroup
+                shaders sample sample
+            endgroup
+            '''.splitlines())
             try:
-                vert_src, frag_src, metadata = build_custom_shader_pipeline_glsl(
-                    shaders=('sample', 'sample'),
-                    cache_dir=cache_dir,
-                )
+                vert_src, frag_src, metadata = build_custom_shader_pipeline_glsl(p, cache_dir=cache_dir)
             finally:
                 clear_caches()
 

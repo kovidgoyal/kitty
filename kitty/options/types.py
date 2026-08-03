@@ -349,7 +349,7 @@ option_names = (
     'cursor_trail_decay',
     'cursor_trail_start_threshold',
     'cursor_underline_thickness',
-    'custom_shader',
+    'custom_shaders',
     'default_pointer_shape',
     'detect_urls',
     'dim_opacity',
@@ -574,6 +574,7 @@ class Options:
     cursor_trail_decay: tuple[float, float] = (0.1, 0.4)
     cursor_trail_start_threshold: tuple[int, int] = (2, 2)
     cursor_underline_thickness: float = 2.0
+    custom_shaders: list[str] = ['']
     default_pointer_shape: choices_for_default_pointer_shape = 'beam'
     detect_urls: bool = True
     dim_opacity: float = 0.4
@@ -735,7 +736,6 @@ class Options:
     window_title_bar_min_windows: int = 0
     window_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{fmt.fg.window}{progress_percent}{title}'
     action_alias: dict[str, str] = {}
-    custom_shader: dict[typing.Literal['end'], tuple[str, ...]] = {}
     env: dict[str, str] = {}
     exe_search_path: dict[str, str] = {}
     filter_notification: dict[str, str] = {}
@@ -865,7 +865,6 @@ class Options:
 defaults = Options()
 
 defaults.action_alias = {}
-defaults.custom_shader = {}
 defaults.env = {}
 defaults.exe_search_path = {}
 defaults.filter_notification = {}

@@ -2903,20 +2903,15 @@ they will override any variables set by other :opt:`env` directives.
 )
 
 opt(
-    '+custom_shader',
+    'custom_shaders',
     '',
-    option_type='custom_shader',
+    option_type='to_cmdline',
     add_to_default=False,
     long_text="""
-Specify custom shaders to modify rendering. The syntax is::
-
-    SLOT shader_name shader_name ...
-
-Can be specified multiple times. Here SLOT is a position in the redering pipeline, such as :code:`end`.
-Shader names are shader filenames or paths without
-the trailing :file:`.slang` suffix. They are looked for in the shaders directory inside the
-kitty config directory and if not found there, they are loaded from the builtin
-kitty custom shaders.
+Space separated list of custom shader pipeline names. They will be loaded from
+the :file:`shaders` directory inside the kitty config directory or if not present there
+the builtin custom shaders kitty ships with. Each name has :file:`.pipeline` append to it
+when searching for the file.
     """,
 )
 

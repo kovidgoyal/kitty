@@ -59,7 +59,7 @@ from kitty.fast_data_types import (
 )
 from kitty.options.types import Options, defaults
 from kitty.types import run_once
-from kitty.utils import lock_with_file, resolve_custom_file
+from kitty.utils import lock_with_file, log_error, resolve_custom_file
 
 
 @lru_cache(maxsize=64)
@@ -70,6 +70,11 @@ def get_shader_src(name: str) -> str:
 @lru_cache(maxsize=64)
 def get_custom_shader_src(name: str) -> bytes:
     return read_kitty_resource(f'{name}.slang', 'kitty.shaders.custom')
+
+
+@lru_cache(maxsize=32)
+def get_custom_pipeline_src(name: str) -> bytes:
+    return read_kitty_resource(f'{name}.pipeline', 'kitty.shaders.custom')
 
 
 @run_once
@@ -176,7 +181,7 @@ def glsl_shaders(name: str, variant_name: str = '') -> tuple[str, str]:
 class LoadShaderPrograms:
     text_fg_override_threshold: tuple[float, Literal['%', 'ratio']] = 0, '%'
     text_old_gamma: bool = False
-    custom_shaders: dict[str, tuple[str, ...]] = {}
+    custom_shaders: tuple[str, ...] = ()
 
     opts: Options | None = None
 
@@ -200,7 +205,7 @@ class LoadShaderPrograms:
             self(allow_recompile=True)
         else:
             opts = self.get_options()
-            if opts.custom_shader != self.custom_shaders:
+            if opts.custom_shaders != self.custom_shaders:
                 self.compile_custom_shaders(allow_recompile=True)
 
     def __call__(self, allow_recompile: bool = False) -> None:
@@ -239,15 +244,33 @@ class LoadShaderPrograms:
         self.compile_custom_shaders(allow_recompile)
 
     def compile_custom_shaders(self, allow_recompile: bool = False) -> None:
-        self.custom_shaders = {str(k): v for k, v in self.get_options().custom_shader.items()}
+        opts = self.get_options()
+        self.custom_shaders = tuple(opts.custom_shaders)
+        pmap = {}
+        for k in self.custom_shaders:
+            try:
+                d = parse_pipeline(k)
+            except Exception as e:
+                log_error(f'Failed to read custom shader pipeline definition from {k} with error: {e}')
+                continue
+            pmap[d['slot']] = d
 
         def do(prog: int, slot: str) -> None:
-            shaders = self.custom_shaders.get(slot, ())
-            if shaders:
-                vert, frag, metadata = build_custom_shader_pipeline_glsl(slot, shaders)
-                compile_program(prog, (vert,), (frag,), metadata, allow_recompile)
-            else:
+            pipeline = pmap.get(slot)
+            if pipeline is None:
                 compile_program(prog, (), (), {}, allow_recompile)
+            else:
+                try:
+                    vert, frag, metadata = build_custom_shader_pipeline_glsl(pipeline)
+                except Exception as e:
+                    log_error(f'Failed to build custom shader for slot {slot} with error: {e}')
+                    compile_program(prog, (), (), {}, allow_recompile)
+                else:
+                    try:
+                        compile_program(prog, (vert,), (frag,), metadata, allow_recompile)
+                    except Exception as e:
+                        log_error(f'Failed to load custom shader for slot {slot} with error: {e}')
+                        compile_program(prog, (), (), {}, allow_recompile)
 
         do(CUSTOM_END_PROGRAM, 'end')
         compile_program(-2, (), (), {})  # initialize programs
@@ -1004,6 +1027,17 @@ def custom_shader(name: str = '') -> tuple[str, str, bytes, bytes]:
     return name, import_dir, src, key(src)
 
 
+@lru_cache(maxsize=64)
+def pipeline_definition(name: str) -> tuple[str, ...]:
+    path = resolve_custom_file(f'{name}.pipeline')
+    try:
+        with open(path, 'rb') as f:
+            src = f.read()
+    except FileNotFoundError:
+        src = get_custom_pipeline_src(name)
+    return tuple(src.decode().splitlines())
+
+
 NamedTexture = Literal['a', 'b', 'persist']
 Slot = Literal['end']
 
@@ -1040,9 +1074,9 @@ def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
 
     def commit_group() -> None:
         nonlocal current_group
-        assert current_group is not None
-        groups.append(current_group)
-        current_group = None
+        if current_group is not None:
+            groups.append(current_group)
+            current_group = None
 
     for line in lines:
         line = line.strip()
@@ -1084,7 +1118,13 @@ def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
     return {'slot': slot, 'textures': textures, 'groups': tuple(groups)}
 
 
-def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir: str) -> tuple[tuple[str, ...], str]:
+@lru_cache(maxsize=32)
+def parse_pipeline(name: str) -> Pipeline:
+    return parse_pipeline_definition(pipeline_definition(name))
+
+
+def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str) -> tuple[tuple[str, ...], str]:
+    slot = pipeline['slot']
     slot_module_name = f'{slot.replace("-", "_")}'
     cache_dir = os.path.join(cache_dir, 'c')
     ensure_cache_dir(cache_dir)
@@ -1114,54 +1154,39 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
             f.write(ct_key)
             mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
 
-    shaders = tuple(shaders)
     module_names = {}
     shaders_content_key = b''
-    for name in shaders:
-        if name == '':
-            shaders_content_key += b'::'  # group separator marker in cache key
-            continue
-        path, import_dir, src, content_key = custom_shader(name)
-        if import_dir and import_dir not in import_dirs:
-            import_dirs.append(import_dir)
-        shaders_content_key += b':' + content_key
-        path_key = key(path)
-        path_key_file = j(path_key.decode()) + '.key'
-        cache_ok = False
-        module_names[name] = modname = 'm' + content_key.decode()
-        with suppress(FileNotFoundError), open(path_key_file, 'rb') as f:
-            cache_ok = f.read() == content_key
-            mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
-        if not cache_ok:
-            inc = ['-I', import_dir] if import_dir else []
-            cp = subprocess.run(
-                bc + inc + ['-module-name', modname, '-o', j(f'{modname}.slang-module'), '--', '-'],
-                input=src,
-                capture_output=True,
-            )
-            if cp.returncode != 0:
-                raise SlangFailed(name, cp)
-            with open(path_key_file, 'wb') as f:
-                f.write(content_key)
+    flat_shader_list = []
+    for group in pipeline['groups']:
+        shaders_content_key += b'::'
+        for name in group['shaders']:
+            flat_shader_list.append(name)
+            path, import_dir, src, content_key = custom_shader(name)
+            if import_dir and import_dir not in import_dirs:
+                import_dirs.append(import_dir)
+            shaders_content_key += b':' + content_key
+            path_key = key(path)
+            path_key_file = j(path_key.decode()) + '.key'
+            cache_ok = False
+            module_names[name] = modname = 'm' + content_key.decode()
+            with suppress(FileNotFoundError), open(path_key_file, 'rb') as f:
+                cache_ok = f.read() == content_key
                 mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
+            if not cache_ok:
+                inc = ['-I', import_dir] if import_dir else []
+                cp = subprocess.run(
+                    bc + inc + ['-module-name', modname, '-o', j(f'{modname}.slang-module'), '--', '-'],
+                    input=src,
+                    capture_output=True,
+                )
+                if cp.returncode != 0:
+                    raise SlangFailed(name, cp)
+                with open(path_key_file, 'wb') as f:
+                    f.write(content_key)
+                    mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
     shaders_content_key += b':' + str(mtime).encode()
     j = partial(os.path.join, slot_dir)
     cache_ok = False
-
-    # Split shaders by '' to build groups; flat_shader_list has non-empty shaders in order
-    groups: list[list[str]] = []
-    current_group: list[str] = []
-    flat_shader_list: list[str] = []
-    for name in shaders:
-        if name == '':
-            if current_group:
-                groups.append(current_group)
-            current_group = []
-        else:
-            current_group.append(name)
-            flat_shader_list.append(name)
-    if current_group:
-        groups.append(current_group)
 
     wrappers = {}
     entry_points = []
@@ -1184,9 +1209,9 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
     # groups write back premultiplied linear RGB (not sRGB) to the ping-pong texture.
     pipeline_parts: list[str] = []
     ep_idx = 0
-    num_groups = len(groups)
-    for g_idx, group in enumerate(groups):
-        n = len(group)
+    num_groups = len(pipeline['groups'])
+    for g_idx, group in enumerate(pipeline['groups']):
+        n = len(group['shaders'])
         calls = '\n'.join(f'        color = fragment_main{ep_idx + j}(color, t, csd);' for j in range(n))
         is_last = g_idx == num_groups - 1
         if is_last:
@@ -1254,8 +1279,7 @@ float4 fmain_wrap(float2 texcoord : TEXCOORD, uniform int group) : SV_Target {
         """.replace('MODULE', slot.replace('-', '_')).encode()
 
 
-@lru_cache(maxsize=64)
-def build_custom_shader_pipeline_glsl(slot: str = 'end', shaders: tuple[str, ...] = ('sample',), cache_dir: str = '') -> tuple[str, str, dict[str, Any]]:
+def build_custom_shader_pipeline_glsl(pipeline: Pipeline, cache_dir: str = '') -> tuple[str, str, dict[str, Any]]:
     import kitty.constants as kc
 
     cache_dir = os.path.join(cache_dir or kc.cache_dir(), 'shaders')
@@ -1264,10 +1288,11 @@ def build_custom_shader_pipeline_glsl(slot: str = 'end', shaders: tuple[str, ...
     with lock_with_file(
         os.path.join(cache_dir, 'lock'),
     ):
-        import_dirs, slang_module_path = build_custom_shader_pipeline_ir(slot, shaders, cache_dir)
+        import_dirs, slang_module_path = build_custom_shader_pipeline_ir(pipeline, cache_dir)
         glsl_dir = os.path.join(os.path.dirname(os.path.dirname(slang_module_path)), 'glsl')
         os.makedirs(glsl_dir, exist_ok=True)
         module_mtime = safe_mtime(slang_module_path)
+        slot = pipeline['slot']
         vertex = os.path.join(glsl_dir, f'{slot}.vert.glsl')
         fragment = os.path.join(glsl_dir, f'{slot}.frag.glsl')
         metadata = os.path.join(glsl_dir, f'{slot}.glsl.json')
@@ -1309,13 +1334,14 @@ def build_custom_shader_pipeline_glsl(slot: str = 'end', shaders: tuple[str, ...
             fixup_opengl_files((fragment, vertex))
         with open(vertex) as vf, open(fragment) as ff:
             m = glsl_metadata_for_shader(metadata)
-            m['num_groups'] = shaders.count('') + 1
+            m['pipeline'] = pipeline
             return vf.read(), ff.read(), m
 
 
 def clear_caches() -> None:
     custom_shader.cache_clear()
-    build_custom_shader_pipeline_glsl.cache_clear()
+    pipeline_definition.cache_clear()
+    parse_pipeline.cache_clear()
 
 
 def test_slang_build() -> None:

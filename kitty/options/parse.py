@@ -4,101 +4,35 @@
 import typing
 import collections.abc  # noqa: F401, RUF100
 from kitty.conf.utils import (
-    merge_dicts,
-    positive_float,
-    positive_int,
-    python_string,
-    signed_unit_float,
-    to_bool,
-    to_cmdline,
-    to_color,
-    to_color_or_none,
-    unit_float,
+    merge_dicts, positive_float, positive_int, python_string, signed_unit_float, to_bool, to_cmdline,
+    to_color, to_color_or_none, unit_float
 )
 from kitty.options.utils import (
-    action_alias,
-    active_tab_title_template,
-    allow_hyperlinks,
-    background_images,
-    bell_on_tab,
-    box_drawing_scale,
-    clear_all_mouse_actions,
-    clear_all_shortcuts,
-    clipboard_control,
-    clone_source_strategies,
-    config_or_absolute_path,
-    confirm_close,
-    copy_on_select,
-    cursor_blink_interval,
-    cursor_text_color,
-    cursor_trail_decay,
-    cursor_trail_start_threshold,
-    custom_shader,
-    deprecated_adjust_line_height,
-    deprecated_hide_window_decorations_aliases,
-    deprecated_macos_show_window_title_in_menubar_alias,
-    deprecated_scrollback_indicator_opacity,
-    deprecated_send_text,
-    disable_ligatures,
-    edge_width,
-    env,
-    filter_notification,
-    font_features,
-    hide_window_decorations,
-    macos_option_as_alt,
-    macos_titlebar_color,
-    menu_map,
-    modify_font,
-    mouse_hide_wait,
-    narrow_symbols,
-    notify_on_cmd_finish,
-    optional_edge_width,
-    parse_font_spec,
-    parse_map,
-    parse_mouse_map,
-    paste_actions,
-    pointer_shape_when_dragging,
-    remote_control_password,
-    resize_debounce_time,
-    scrollback_lines,
-    scrollback_pager_history_size,
-    scrollbar_color,
-    shell_integration,
-    show_hyperlink_targets,
-    store_multiple,
-    symbol_map,
-    tab_activity_symbol,
-    tab_bar_edge,
-    tab_bar_margin_height,
-    tab_bar_min_tabs,
-    tab_fade,
-    tab_font_style,
-    tab_separator,
-    tab_title_template,
-    tab_title_wrap,
-    text_fg_override_threshold,
-    titlebar_color,
-    to_cursor_shape,
-    to_cursor_unfocused_shape,
-    to_font_size,
-    to_layout_names,
-    to_modifiers,
-    transparent_background_colors,
-    underline_exclusion,
-    url_prefixes,
-    url_style,
-    visual_bell_duration,
-    visual_window_select_characters,
-    window_border_width,
-    window_logo_scale,
-    window_size,
+    action_alias, active_tab_title_template, allow_hyperlinks, background_images, bell_on_tab,
+    box_drawing_scale, clear_all_mouse_actions, clear_all_shortcuts, clipboard_control,
+    clone_source_strategies, config_or_absolute_path, confirm_close, copy_on_select,
+    cursor_blink_interval, cursor_text_color, cursor_trail_decay, cursor_trail_start_threshold,
+    deprecated_adjust_line_height, deprecated_hide_window_decorations_aliases,
+    deprecated_macos_show_window_title_in_menubar_alias, deprecated_scrollback_indicator_opacity,
+    deprecated_send_text, disable_ligatures, edge_width, env, filter_notification, font_features,
+    hide_window_decorations, macos_option_as_alt, macos_titlebar_color, menu_map, modify_font,
+    mouse_hide_wait, narrow_symbols, notify_on_cmd_finish, optional_edge_width, parse_font_spec,
+    parse_map, parse_mouse_map, paste_actions, pointer_shape_when_dragging, remote_control_password,
+    resize_debounce_time, scrollback_lines, scrollback_pager_history_size, scrollbar_color,
+    shell_integration, show_hyperlink_targets, store_multiple, symbol_map, tab_activity_symbol,
+    tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
+    tab_title_template, tab_title_wrap, text_fg_override_threshold, titlebar_color, to_cursor_shape,
+    to_cursor_unfocused_shape, to_font_size, to_layout_names, to_modifiers,
+    transparent_background_colors, underline_exclusion, url_prefixes, url_style, visual_bell_duration,
+    visual_window_select_characters, window_border_width, window_logo_scale, window_size
 )
 
 
 class Parser:
+
     def action_alias(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in action_alias(val):
-            ans['action_alias'][k] = v
+            ans["action_alias"][k] = v
 
     def active_border_color(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['active_border_color'] = to_color_or_none(val)
@@ -121,8 +55,8 @@ class Parser:
     def allow_cloning(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_allow_cloning:
-            raise ValueError(f'The value {val} is not a valid choice for allow_cloning')
-        ans['allow_cloning'] = val
+            raise ValueError(f"The value {val} is not a valid choice for allow_cloning")
+        ans["allow_cloning"] = val
 
     choices_for_allow_cloning = frozenset(('yes', 'y', 'true', 'no', 'n', 'false', 'ask'))
 
@@ -132,8 +66,8 @@ class Parser:
     def allow_remote_control(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_allow_remote_control:
-            raise ValueError(f'The value {val} is not a valid choice for allow_remote_control')
-        ans['allow_remote_control'] = val
+            raise ValueError(f"The value {val} is not a valid choice for allow_remote_control")
+        ans["allow_remote_control"] = val
 
     choices_for_allow_remote_control = frozenset(('password', 'socket-only', 'socket', 'no', 'n', 'false', 'yes', 'y', 'true'))
 
@@ -152,8 +86,8 @@ class Parser:
     def background_image_layout(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_background_image_layout:
-            raise ValueError(f'The value {val} is not a valid choice for background_image_layout')
-        ans['background_image_layout'] = val
+            raise ValueError(f"The value {val} is not a valid choice for background_image_layout")
+        ans["background_image_layout"] = val
 
     choices_for_background_image_layout = frozenset(('mirror-tiled', 'scaled', 'tiled', 'clamped', 'centered', 'cscaled'))
 
@@ -1024,52 +958,16 @@ class Parser:
     def cursor_underline_thickness(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_underline_thickness'] = positive_float(val)
 
-    def custom_shader(self, val: str, ans: dict[str, typing.Any]) -> None:
-        for k, v in custom_shader(val, ans['custom_shader']):
-            ans['custom_shader'][k] = v
+    def custom_shaders(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['custom_shaders'] = to_cmdline(val)
 
     def default_pointer_shape(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_default_pointer_shape:
-            raise ValueError(f'The value {val} is not a valid choice for default_pointer_shape')
-        ans['default_pointer_shape'] = val
+            raise ValueError(f"The value {val} is not a valid choice for default_pointer_shape")
+        ans["default_pointer_shape"] = val
 
-    choices_for_default_pointer_shape = frozenset(
-        (
-            'arrow',
-            'beam',
-            'text',
-            'pointer',
-            'hand',
-            'help',
-            'wait',
-            'progress',
-            'crosshair',
-            'cell',
-            'vertical-text',
-            'move',
-            'e-resize',
-            'ne-resize',
-            'nw-resize',
-            'n-resize',
-            'se-resize',
-            'sw-resize',
-            's-resize',
-            'w-resize',
-            'ew-resize',
-            'ns-resize',
-            'nesw-resize',
-            'nwse-resize',
-            'zoom-in',
-            'zoom-out',
-            'alias',
-            'copy',
-            'not-allowed',
-            'no-drop',
-            'grab',
-            'grabbing',
-        )
-    )
+    choices_for_default_pointer_shape = frozenset(('arrow', 'beam', 'text', 'pointer', 'hand', 'help', 'wait', 'progress', 'crosshair', 'cell', 'vertical-text', 'move', 'e-resize', 'ne-resize', 'nw-resize', 'n-resize', 'se-resize', 'sw-resize', 's-resize', 'w-resize', 'ew-resize', 'ns-resize', 'nesw-resize', 'nwse-resize', 'zoom-in', 'zoom-out', 'alias', 'copy', 'not-allowed', 'no-drop', 'grab', 'grabbing'))
 
     def detect_urls(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['detect_urls'] = to_bool(val)
@@ -1102,25 +1000,25 @@ class Parser:
         ans['enabled_layouts'] = to_layout_names(val)
 
     def env(self, val: str, ans: dict[str, typing.Any]) -> None:
-        for k, v in env(val, ans['env']):
-            ans['env'][k] = v
+        for k, v in env(val, ans["env"]):
+            ans["env"][k] = v
 
     def exe_search_path(self, val: str, ans: dict[str, typing.Any]) -> None:
-        for k, v in store_multiple(val, ans['exe_search_path']):
-            ans['exe_search_path'][k] = v
+        for k, v in store_multiple(val, ans["exe_search_path"]):
+            ans["exe_search_path"][k] = v
 
     def file_transfer_confirmation_bypass(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['file_transfer_confirmation_bypass'] = str(val)
 
     def filter_notification(self, val: str, ans: dict[str, typing.Any]) -> None:
-        for k, v in filter_notification(val, ans['filter_notification']):
-            ans['filter_notification'][k] = v
+        for k, v in filter_notification(val, ans["filter_notification"]):
+            ans["filter_notification"][k] = v
 
     def focus_follows_mouse(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_focus_follows_mouse:
-            raise ValueError(f'The value {val} is not a valid choice for focus_follows_mouse')
-        ans['focus_follows_mouse'] = val
+            raise ValueError(f"The value {val} is not a valid choice for focus_follows_mouse")
+        ans["focus_follows_mouse"] = val
 
     choices_for_focus_follows_mouse = frozenset(('no', 'n', 'false', 'y', 'yes', 'true', 'drop'))
 
@@ -1129,7 +1027,7 @@ class Parser:
 
     def font_features(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in font_features(val):
-            ans['font_features'][k] = v
+            ans["font_features"][k] = v
 
     def font_size(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['font_size'] = to_font_size(val)
@@ -1175,7 +1073,7 @@ class Parser:
 
     def kitten_alias(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in action_alias(val):
-            ans['kitten_alias'][k] = v
+            ans["kitten_alias"][k] = v
 
     def kitty_mod(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['kitty_mod'] = to_modifiers(val)
@@ -1186,8 +1084,8 @@ class Parser:
     def linux_display_server(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_linux_display_server:
-            raise ValueError(f'The value {val} is not a valid choice for linux_display_server')
-        ans['linux_display_server'] = val
+            raise ValueError(f"The value {val} is not a valid choice for linux_display_server")
+        ans["linux_display_server"] = val
 
     choices_for_linux_display_server = frozenset(('auto', 'wayland', 'x11'))
 
@@ -1197,8 +1095,8 @@ class Parser:
     def macos_colorspace(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_macos_colorspace:
-            raise ValueError(f'The value {val} is not a valid choice for macos_colorspace')
-        ans['macos_colorspace'] = val
+            raise ValueError(f"The value {val} is not a valid choice for macos_colorspace")
+        ans["macos_colorspace"] = val
 
     choices_for_macos_colorspace = frozenset(('srgb', 'default', 'displayp3'))
 
@@ -1229,8 +1127,8 @@ class Parser:
     def macos_show_window_title_in(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_macos_show_window_title_in:
-            raise ValueError(f'The value {val} is not a valid choice for macos_show_window_title_in')
-        ans['macos_show_window_title_in'] = val
+            raise ValueError(f"The value {val} is not a valid choice for macos_show_window_title_in")
+        ans["macos_show_window_title_in"] = val
 
     choices_for_macos_show_window_title_in = frozenset(('all', 'menubar', 'none', 'window'))
 
@@ -1271,12 +1169,12 @@ class Parser:
         ans['mark3_foreground'] = to_color(val)
 
     def menu_map(self, val: str, ans: dict[str, typing.Any]) -> None:
-        for k, v in menu_map(val, ans['menu_map']):
-            ans['menu_map'][k] = v
+        for k, v in menu_map(val, ans["menu_map"]):
+            ans["menu_map"][k] = v
 
     def modify_font(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in modify_font(val):
-            ans['modify_font'][k] = v
+            ans["modify_font"][k] = v
 
     def momentum_scroll(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['momentum_scroll'] = unit_float(val)
@@ -1286,7 +1184,7 @@ class Parser:
 
     def narrow_symbols(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in narrow_symbols(val):
-            ans['narrow_symbols'][k] = v
+            ans["narrow_symbols"][k] = v
 
     def notify_on_cmd_finish(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['notify_on_cmd_finish'] = notify_on_cmd_finish(val)
@@ -1297,16 +1195,16 @@ class Parser:
     def padding_fill_strategy(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_padding_fill_strategy:
-            raise ValueError(f'The value {val} is not a valid choice for padding_fill_strategy')
-        ans['padding_fill_strategy'] = val
+            raise ValueError(f"The value {val} is not a valid choice for padding_fill_strategy")
+        ans["padding_fill_strategy"] = val
 
     choices_for_padding_fill_strategy = frozenset(('background', 'neighboring_cell'))
 
     def palette_generate(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_palette_generate:
-            raise ValueError(f'The value {val} is not a valid choice for palette_generate')
-        ans['palette_generate'] = val
+            raise ValueError(f"The value {val} is not a valid choice for palette_generate")
+        ans["palette_generate"] = val
 
     choices_for_palette_generate = frozenset(('fixed', 'semantic', 'legacy'))
 
@@ -1319,8 +1217,8 @@ class Parser:
     def placement_strategy(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_placement_strategy:
-            raise ValueError(f'The value {val} is not a valid choice for placement_strategy')
-        ans['placement_strategy'] = val
+            raise ValueError(f"The value {val} is not a valid choice for placement_strategy")
+        ans["placement_strategy"] = val
 
     choices_for_placement_strategy = frozenset(('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'))
 
@@ -1330,16 +1228,16 @@ class Parser:
     def pointer_shape_when_grabbed(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_pointer_shape_when_grabbed:
-            raise ValueError(f'The value {val} is not a valid choice for pointer_shape_when_grabbed')
-        ans['pointer_shape_when_grabbed'] = val
+            raise ValueError(f"The value {val} is not a valid choice for pointer_shape_when_grabbed")
+        ans["pointer_shape_when_grabbed"] = val
 
     choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
 
     def progress_bar(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_progress_bar:
-            raise ValueError(f'The value {val} is not a valid choice for progress_bar')
-        ans['progress_bar'] = val
+            raise ValueError(f"The value {val} is not a valid choice for progress_bar")
+        ans["progress_bar"] = val
 
     choices_for_progress_bar = frozenset(('left', 'right', 'top', 'bottom', 'hidden'))
 
@@ -1350,8 +1248,8 @@ class Parser:
         ans['remember_window_size'] = to_bool(val)
 
     def remote_control_password(self, val: str, ans: dict[str, typing.Any]) -> None:
-        for k, v in remote_control_password(val, ans['remote_control_password']):
-            ans['remote_control_password'][k] = v
+        for k, v in remote_control_password(val, ans["remote_control_password"]):
+            ans["remote_control_password"][k] = v
 
     def repaint_delay(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['repaint_delay'] = positive_int(val)
@@ -1377,8 +1275,8 @@ class Parser:
     def scrollbar(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_scrollbar:
-            raise ValueError(f'The value {val} is not a valid choice for scrollbar')
-        ans['scrollbar'] = val
+            raise ValueError(f"The value {val} is not a valid choice for scrollbar")
+        ans["scrollbar"] = val
 
     choices_for_scrollbar = frozenset(('scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered'))
 
@@ -1454,14 +1352,14 @@ class Parser:
     def strip_trailing_spaces(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_strip_trailing_spaces:
-            raise ValueError(f'The value {val} is not a valid choice for strip_trailing_spaces')
-        ans['strip_trailing_spaces'] = val
+            raise ValueError(f"The value {val} is not a valid choice for strip_trailing_spaces")
+        ans["strip_trailing_spaces"] = val
 
     choices_for_strip_trailing_spaces = frozenset(('always', 'never', 'smart'))
 
     def symbol_map(self, val: str, ans: dict[str, typing.Any]) -> None:
         for k, v in symbol_map(val):
-            ans['symbol_map'][k] = v
+            ans["symbol_map"][k] = v
 
     def sync_to_monitor(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['sync_to_monitor'] = to_bool(val)
@@ -1472,8 +1370,8 @@ class Parser:
     def tab_bar_align(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_tab_bar_align:
-            raise ValueError(f'The value {val} is not a valid choice for tab_bar_align')
-        ans['tab_bar_align'] = val
+            raise ValueError(f"The value {val} is not a valid choice for tab_bar_align")
+        ans["tab_bar_align"] = val
 
     choices_for_tab_bar_align = frozenset(('start', 'center', 'end', 'left', 'right'))
 
@@ -1504,8 +1402,8 @@ class Parser:
     def tab_bar_style(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_tab_bar_style:
-            raise ValueError(f'The value {val} is not a valid choice for tab_bar_style')
-        ans['tab_bar_style'] = val
+            raise ValueError(f"The value {val} is not a valid choice for tab_bar_style")
+        ans["tab_bar_style"] = val
 
     choices_for_tab_bar_style = frozenset(('fade', 'hidden', 'powerline', 'separator', 'slant', 'custom'))
 
@@ -1515,8 +1413,8 @@ class Parser:
     def tab_powerline_style(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_tab_powerline_style:
-            raise ValueError(f'The value {val} is not a valid choice for tab_powerline_style')
-        ans['tab_powerline_style'] = val
+            raise ValueError(f"The value {val} is not a valid choice for tab_powerline_style")
+        ans["tab_powerline_style"] = val
 
     choices_for_tab_powerline_style = frozenset(('angled', 'round', 'slanted'))
 
@@ -1526,8 +1424,8 @@ class Parser:
     def tab_switch_strategy(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_tab_switch_strategy:
-            raise ValueError(f'The value {val} is not a valid choice for tab_switch_strategy')
-        ans['tab_switch_strategy'] = val
+            raise ValueError(f"The value {val} is not a valid choice for tab_switch_strategy")
+        ans["tab_switch_strategy"] = val
 
     choices_for_tab_switch_strategy = frozenset(('last', 'left', 'previous', 'right'))
 
@@ -1549,8 +1447,8 @@ class Parser:
     def terminfo_type(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_terminfo_type:
-            raise ValueError(f'The value {val} is not a valid choice for terminfo_type')
-        ans['terminfo_type'] = val
+            raise ValueError(f"The value {val} is not a valid choice for terminfo_type")
+        ans["terminfo_type"] = val
 
     choices_for_terminfo_type = frozenset(('path', 'direct', 'none'))
 
@@ -1569,8 +1467,8 @@ class Parser:
     def undercurl_style(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_undercurl_style:
-            raise ValueError(f'The value {val} is not a valid choice for undercurl_style')
-        ans['undercurl_style'] = val
+            raise ValueError(f"The value {val} is not a valid choice for undercurl_style")
+        ans["undercurl_style"] = val
 
     choices_for_undercurl_style = frozenset(('thin-sparse', 'thin-dense', 'thick-sparse', 'thick-dense'))
 
@@ -1580,8 +1478,8 @@ class Parser:
     def underline_hyperlinks(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_underline_hyperlinks:
-            raise ValueError(f'The value {val} is not a valid choice for underline_hyperlinks')
-        ans['underline_hyperlinks'] = val
+            raise ValueError(f"The value {val} is not a valid choice for underline_hyperlinks")
+        ans["underline_hyperlinks"] = val
 
     choices_for_underline_hyperlinks = frozenset(('hover', 'always', 'never'))
 
@@ -1610,8 +1508,8 @@ class Parser:
         ans['visual_window_select_characters'] = visual_window_select_characters(val)
 
     def watcher(self, val: str, ans: dict[str, typing.Any]) -> None:
-        for k, v in store_multiple(val, ans['watcher']):
-            ans['watcher'][k] = v
+        for k, v in store_multiple(val, ans["watcher"]):
+            ans["watcher"][k] = v
 
     def wayland_enable_ime(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['wayland_enable_ime'] = to_bool(val)
@@ -1643,8 +1541,8 @@ class Parser:
     def window_logo_position(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_window_logo_position:
-            raise ValueError(f'The value {val} is not a valid choice for window_logo_position')
-        ans['window_logo_position'] = val
+            raise ValueError(f"The value {val} is not a valid choice for window_logo_position")
+        ans["window_logo_position"] = val
 
     choices_for_window_logo_position = choices_for_placement_strategy
 
@@ -1666,8 +1564,8 @@ class Parser:
     def window_title_bar(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_window_title_bar:
-            raise ValueError(f'The value {val} is not a valid choice for window_title_bar')
-        ans['window_title_bar'] = val
+            raise ValueError(f"The value {val} is not a valid choice for window_title_bar")
+        ans["window_title_bar"] = val
 
     choices_for_window_title_bar = frozenset(('top', 'bottom'))
 
@@ -1680,8 +1578,8 @@ class Parser:
     def window_title_bar_align(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_window_title_bar_align:
-            raise ValueError(f'The value {val} is not a valid choice for window_title_bar_align')
-        ans['window_title_bar_align'] = val
+            raise ValueError(f"The value {val} is not a valid choice for window_title_bar_align")
+        ans["window_title_bar_align"] = val
 
     choices_for_window_title_bar_align = frozenset(('left', 'center', 'right'))
 
@@ -1733,7 +1631,6 @@ class Parser:
 def create_result_dict() -> dict[str, typing.Any]:
     return {
         'action_alias': {},
-        'custom_shader': {},
         'env': {},
         'exe_search_path': {},
         'filter_notification': {},
