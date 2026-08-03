@@ -22,7 +22,7 @@ from enum import StrEnum
 from functools import lru_cache, partial
 from itertools import chain, product
 from types import MappingProxyType
-from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple
+from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple, TypedDict, TypeGuard, get_args
 
 from kitty.constants import read_kitty_resource, shaders_dir, slangc
 from kitty.fast_data_types import (
@@ -1004,6 +1004,86 @@ def custom_shader(name: str = '') -> tuple[str, str, bytes, bytes]:
     return name, import_dir, src, key(src)
 
 
+NamedTexture = Literal['a', 'b', 'persist']
+Slot = Literal['end']
+
+
+def is_valid_named_texture(x: str) -> TypeGuard[NamedTexture]:
+    return x in get_args(NamedTexture)
+
+
+def is_valid_slot(x: str) -> TypeGuard[Slot]:
+    return x in get_args(Slot)
+
+
+class Group(TypedDict):
+    viewport_pos: tuple[float, float]
+    viewport_size: tuple[float, float]
+    output_texture: NamedTexture | Literal['']
+    shaders: tuple[str, ...]
+
+
+class Pipeline(TypedDict):
+    slot: Slot
+    textures: tuple[NamedTexture, ...]
+    groups: tuple[Group, ...]
+
+
+def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
+    slot: Slot = 'end'
+    textures: tuple[Literal['a', 'b', 'persist'], ...] = ()
+    groups: list[Group] = []
+    current_group: Group | None = None
+
+    def unit_float(x: str) -> float:
+        return max(0, min(float(x), 1))
+
+    def commit_group() -> None:
+        nonlocal current_group
+        assert current_group is not None
+        groups.append(current_group)
+        current_group = None
+
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        parts = line.split()
+        if current_group is None:
+            match parts[0]:
+                case 'slot':
+                    if not is_valid_slot(parts[1]):
+                        raise ValueError(f'slot {parts[1]} is not valid')
+                    slot = parts[1]
+                case 'textures':
+                    textures = tuple(x for x in parts[1:] if x in ('a', 'b', 'persist'))
+                case 'startgroup':
+                    commit_group()
+                    current_group = {'viewport_pos': (0, 0), 'viewport_size': (1, 1), 'output_texture': '', 'shaders': ()}
+                case _:
+                    raise ValueError(f'Unknown key {parts[0]}')
+        else:
+            match parts[0]:
+                case 'viewport_pos':
+                    current_group['viewport_pos'] = unit_float(parts[1]), unit_float(parts[1 if len(parts) < 3 else 2])
+                case 'viewport_size':
+                    current_group['viewport_size'] = unit_float(parts[1]), unit_float(parts[1 if len(parts) < 3 else 2])
+                case 'output_texture':
+                    if not is_valid_named_texture(parts[1]):
+                        raise ValueError(f'output_texture {parts[1]} does not appear in textures')
+                    current_group['output_texture'] = parts[1]
+                case 'shaders':
+                    current_group['shaders'] += tuple(parts[1:])
+                case 'endgroup':
+                    commit_group()
+                case _:
+                    raise ValueError(f'Unknown key {parts[0]}')
+    if current_group is not None:
+        raise ValueError('Unclosed group present')
+
+    return {'slot': slot, 'textures': textures, 'groups': tuple(groups)}
+
+
 def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir: str) -> tuple[tuple[str, ...], str]:
     slot_module_name = f'{slot.replace("-", "_")}'
     cache_dir = os.path.join(cache_dir, 'c')
@@ -1108,7 +1188,7 @@ def build_custom_shader_pipeline_ir(slot: str, shaders: Iterable[str], cache_dir
     for g_idx, group in enumerate(groups):
         n = len(group)
         calls = '\n'.join(f'        color = fragment_main{ep_idx + j}(color, t, csd);' for j in range(n))
-        is_last = (g_idx == num_groups - 1)
+        is_last = g_idx == num_groups - 1
         if is_last:
             calls += '\n        color = float4(linear2srgb(color.rgb), color.a);'
         if g_idx == 0:
