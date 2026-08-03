@@ -60,6 +60,7 @@ Libraries:
 * `kitty-graphics.el <https://github.com/cashmeredev/kitty-graphics.el>`_ - Images in emacs
 * `term-image <https://github.com/AnonymouX47/term-image>`_  - A Python library, CLI and TUI to display and browse images in the terminal
 * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
+* `malevich <https://github.com/shergin/malevich>`_ - Rust library for terminal plotting that can draw charts with the graphics protocol
 
 Other terminals that have implemented the graphics protocol:
 
