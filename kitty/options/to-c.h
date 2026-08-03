@@ -501,6 +501,25 @@ box_drawing_scale(PyObject *val, Options *opts) {
 }
 
 static inline void
+remap_modifier(PyObject *val, Options *opts) {
+    memset(opts->modifier_remap, 0, sizeof(opts->modifier_remap));
+    opts->modifier_remap_mask = 0;
+    if (!PyDict_Check(val)) { PyErr_SetString(PyExc_TypeError, "remap_modifier must be a dict"); return; }
+    PyObject *key, *value;
+    Py_ssize_t pos = 0;
+    while (PyDict_Next(val, &pos, &key, &value)) {
+        const long src = PyLong_AsLong(key), dest = PyLong_AsLong(value);
+        if (PyErr_Occurred()) { PyErr_Print(); PyErr_Clear(); continue; }
+        // the parser guarantees a single source bit, but do not trust it in C
+        if (src <= 0 || (src & (src - 1)) || dest <= 0) continue;
+        const unsigned idx = (unsigned)__builtin_ctz((unsigned)src);
+        if (idx >= arraysz(opts->modifier_remap)) continue;
+        opts->modifier_remap[idx] = (int)dest;
+        opts->modifier_remap_mask |= (int)src;
+    }
+}
+
+static inline void
 text_composition_strategy(PyObject *val, Options *opts) {
     if (!PyUnicode_Check(val)) { PyErr_SetString(PyExc_TypeError, "text_composition_strategy must be a string"); return; }
     opts->text_old_gamma = false;
