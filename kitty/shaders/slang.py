@@ -1121,6 +1121,10 @@ def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
                     raise ValueError(f'Unknown key {parts[0]}')
     if current_group is not None:
         raise ValueError('Unclosed group present')
+    if not groups:
+        raise ValueError('At least one group must be specified')
+    if groups[-1]['output_texture'] is not NamedTexture.default:
+        raise ValueError('THe final group cannot output to a named texture')
 
     return {'slot': slot, 'textures': textures, 'groups': tuple(groups)}
 
