@@ -33,7 +33,7 @@ enum {
 
     NUM_PROGRAMS
 };
-enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, SPRITE_DECORATIONS_MAP_UNIT };
+enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, SPRITE_DECORATIONS_MAP_UNIT, CUSTOM_END_TEXTURE_A_UNIT, CUSTOM_END_TEXTURE_B_UNIT, CUSTOM_END_TEXTURE_PERSIST_UNIT };
 
 typedef struct UIRenderData {
     unsigned screen_width, screen_height, cell_width, cell_height, screen_left, screen_top, full_framebuffer_width, full_framebuffer_height;
@@ -437,6 +437,9 @@ init_custom_programs(void) {
             if (i == CUSTOM_END_PROGRAM) {
                 bind_program(i);
                 glUniform1i(program_uniform_location(i, "backbuffer"), GRAPHICS_UNIT);
+                glUniform1i(program_uniform_location(i, "a"), CUSTOM_END_TEXTURE_A_UNIT);
+                glUniform1i(program_uniform_location(i, "b"), CUSTOM_END_TEXTURE_B_UNIT);
+                glUniform1i(program_uniform_location(i, "persist"), CUSTOM_END_TEXTURE_PERSIST_UNIT);
                 glUniform1i(program_uniform_location(i, "group"), 0);
                 UniformBlock ubd = program_uniform_block(i, "KittyCustomShaderData");
                 glUniformBlockBinding(program_id(i), ubd.index, CUSTOM_END_DATA_BINDING_POINT);
@@ -448,6 +451,16 @@ init_custom_programs(void) {
             }
         }
     }
+    // Free global named textures that are no longer declared in the pipeline
+    if (!(custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_A))) {
+        if (global_state.layers_render_texture.texture_a_id) free_texture(&global_state.layers_render_texture.texture_a_id);
+        if (global_state.layers_render_texture.texture_a_fbo_id) free_framebuffer(&global_state.layers_render_texture.texture_a_fbo_id);
+    }
+    if (!(custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_B))) {
+        if (global_state.layers_render_texture.texture_b_id) free_texture(&global_state.layers_render_texture.texture_b_id);
+        if (global_state.layers_render_texture.texture_b_fbo_id) free_framebuffer(&global_state.layers_render_texture.texture_b_fbo_id);
+    }
+    // persist is per-window and freed lazily in start_os_window_rendering
     global_state.has_custom_shaders = custom_shaders.count > 0;
 }
 
@@ -1868,6 +1881,10 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
             if (global_state.layers_render_texture.framebuffer_id) free_framebuffer(&global_state.layers_render_texture.framebuffer_id);
             if (global_state.layers_render_texture.extra_texture_id) free_texture(&global_state.layers_render_texture.extra_texture_id);
             if (global_state.layers_render_texture.extra_texture_setup_fbo_id) free_framebuffer(&global_state.layers_render_texture.extra_texture_setup_fbo_id);
+            if (global_state.layers_render_texture.texture_a_id) free_texture(&global_state.layers_render_texture.texture_a_id);
+            if (global_state.layers_render_texture.texture_a_fbo_id) free_framebuffer(&global_state.layers_render_texture.texture_a_fbo_id);
+            if (global_state.layers_render_texture.texture_b_id) free_texture(&global_state.layers_render_texture.texture_b_id);
+            if (global_state.layers_render_texture.texture_b_fbo_id) free_framebuffer(&global_state.layers_render_texture.texture_b_fbo_id);
             unsigned new_w = (unsigned)MAX(global_state.layers_render_texture.width, os_window->viewport_width);
             unsigned new_h = (unsigned)MAX(global_state.layers_render_texture.height, os_window->viewport_height);
             setup_texture_as_render_target(new_w, new_h, &global_state.layers_render_texture.texture_id, &global_state.layers_render_texture.framebuffer_id);
@@ -1902,6 +1919,65 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
                 os_window->indirect_output.extra_fbo_generation = global_state.layers_render_texture.texture_generation;
             }
         }
+        // Named texture A: global shared, per-window FBO
+        if (custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_A)) {
+            if (!global_state.layers_render_texture.texture_a_id) {
+                setup_texture_as_render_target(
+                    (unsigned)global_state.layers_render_texture.width,
+                    (unsigned)global_state.layers_render_texture.height,
+                    &global_state.layers_render_texture.texture_a_id,
+                    &global_state.layers_render_texture.texture_a_fbo_id
+                );
+            }
+            if (os_window->indirect_output.fbo_a_generation != global_state.layers_render_texture.texture_generation) {
+                if (os_window->indirect_output.fbo_a_id) free_framebuffer(&os_window->indirect_output.fbo_a_id);
+                glGenFramebuffers(1, &os_window->indirect_output.fbo_a_id);
+                bind_framebuffer_for_output(os_window->indirect_output.fbo_a_id);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                    global_state.layers_render_texture.texture_a_id, 0);
+                os_window->indirect_output.fbo_a_generation = global_state.layers_render_texture.texture_generation;
+            }
+        } else {
+            if (os_window->indirect_output.fbo_a_id) free_framebuffer(&os_window->indirect_output.fbo_a_id);
+        }
+        // Named texture B: global shared, per-window FBO
+        if (custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_B)) {
+            if (!global_state.layers_render_texture.texture_b_id) {
+                setup_texture_as_render_target(
+                    (unsigned)global_state.layers_render_texture.width,
+                    (unsigned)global_state.layers_render_texture.height,
+                    &global_state.layers_render_texture.texture_b_id,
+                    &global_state.layers_render_texture.texture_b_fbo_id
+                );
+            }
+            if (os_window->indirect_output.fbo_b_generation != global_state.layers_render_texture.texture_generation) {
+                if (os_window->indirect_output.fbo_b_id) free_framebuffer(&os_window->indirect_output.fbo_b_id);
+                glGenFramebuffers(1, &os_window->indirect_output.fbo_b_id);
+                bind_framebuffer_for_output(os_window->indirect_output.fbo_b_id);
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                    global_state.layers_render_texture.texture_b_id, 0);
+                os_window->indirect_output.fbo_b_generation = global_state.layers_render_texture.texture_generation;
+            }
+        } else {
+            if (os_window->indirect_output.fbo_b_id) free_framebuffer(&os_window->indirect_output.fbo_b_id);
+        }
+        // Named texture persist: per-window, recreated when global texture dimensions change
+        if (custom_shaders.end.textures & (1u << CUSTOM_SHADER_TEXTURE_PERSIST)) {
+            if (os_window->persist_texture_generation != global_state.layers_render_texture.texture_generation) {
+                if (os_window->persist_texture_id) free_texture(&os_window->persist_texture_id);
+                if (os_window->persist_fbo_id) free_framebuffer(&os_window->persist_fbo_id);
+                setup_texture_as_render_target(
+                    (unsigned)global_state.layers_render_texture.width,
+                    (unsigned)global_state.layers_render_texture.height,
+                    &os_window->persist_texture_id,
+                    &os_window->persist_fbo_id
+                );
+                os_window->persist_texture_generation = global_state.layers_render_texture.texture_generation;
+            }
+        } else {
+            if (os_window->persist_texture_id) free_texture(&os_window->persist_texture_id);
+            if (os_window->persist_fbo_id) free_framebuffer(&os_window->persist_fbo_id);
+        }
         set_framebuffer_to_use_for_output(os_window->indirect_output.framebuffer_id);
         bind_framebuffer_for_output(0);
         save_viewport_using_bottom_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height);
@@ -1928,47 +2004,100 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     d->timestamp = (GLfloat)monotonic_t_to_s_double(now);
     unmap_vao_buffer(custom_end_vao_idx, 0);
     bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);
+
     GLint group_loc = program_uniform_location(CUSTOM_END_PROGRAM, "group");
-    const unsigned num_groups = custom_shaders.end.num_groups;
-    restore_viewport();
-    if (num_groups <= 1) {
-        set_framebuffer_to_use_for_output(0);
-        bind_framebuffer_for_output(0);
+    const unsigned num_groups = (unsigned)custom_shaders.end.num_groups;
+    const unsigned textures_mask = custom_shaders.end.textures;
+    const int vw = os_window->viewport_width, vh = os_window->viewport_height;
+
+    // Named texture IDs and their render-target FBOs, indexed by NamedTexture enum value
+    const GLuint named_tex_ids[4] = {
+        0,  // DEFAULT — unused
+        global_state.layers_render_texture.texture_a_id,
+        global_state.layers_render_texture.texture_b_id,
+        os_window->persist_texture_id,
+    };
+    const GLuint named_tex_fbos[4] = {
+        0,  // DEFAULT — unused
+        os_window->indirect_output.fbo_a_id,
+        os_window->indirect_output.fbo_b_id,
+        os_window->persist_fbo_id,
+    };
+    static const int named_tex_units[4] = {
+        GRAPHICS_UNIT,              // DEFAULT maps to backbuffer slot
+        CUSTOM_END_TEXTURE_A_UNIT,
+        CUSTOM_END_TEXTURE_B_UNIT,
+        CUSTOM_END_TEXTURE_PERSIST_UNIT,
+    };
+
+    // Ping-pong state: when true, backbuffer = texture_id and the ping-pong
+    // target is extra_texture_id; toggled each time a group outputs to DEFAULT.
+    bool backbuffer_is_main = true;
+
+    for (unsigned g = 0; g < num_groups; g++) {
+        const CustomShaderGroup *cg = &custom_shaders.end.groups[g];
+        const bool is_last = (g == num_groups - 1);
+        const GLuint backbuffer = backbuffer_is_main ?
+            global_state.layers_render_texture.texture_id :
+            global_state.layers_render_texture.extra_texture_id;
+
+        // Bind backbuffer to the backbuffer texture unit
         glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-        glBindTexture(GL_TEXTURE_2D, global_state.layers_render_texture.texture_id);
-        glUniform1i(group_loc, 0);
-        if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
-                0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
-        draw_quad(false, 0);
-    } else {
-        // Multi-group: ping-pong between layers_render_texture and extra_texture
-        // Group i (even): read layers_render_texture, write to extra_fbo
-        // Group i (odd): read extra_texture, write to indirect_output.framebuffer_id (layers_render_texture)
-        // Last group: always write to screen
-        for (unsigned g = 0; g < num_groups; g++) {
-            GLuint input_texture = (g % 2 == 0) ?
-                global_state.layers_render_texture.texture_id :
-                global_state.layers_render_texture.extra_texture_id;
-            bool is_last = (g == num_groups - 1);
-            if (is_last) {
-                set_framebuffer_to_use_for_output(0);
-                bind_framebuffer_for_output(0);
-            } else if (g % 2 == 0) {
-                bind_framebuffer_for_output(os_window->indirect_output.extra_fbo_id);
+        glBindTexture(GL_TEXTURE_2D, backbuffer);
+
+        // Bind each named texture to its own unit.
+        // If the texture is the output for this group, or is not declared in the
+        // pipeline, fall back to backbuffer so the sampler is always valid.
+        for (int t = CUSTOM_SHADER_TEXTURE_A; t <= CUSTOM_SHADER_TEXTURE_PERSIST; t++) {
+            GLuint tex;
+            if (!is_last && cg->output_texture == (NamedTexture)t) {
+                tex = backbuffer;  // can't read from the render target we're writing to
+            } else if (textures_mask & (1u << t)) {
+                tex = named_tex_ids[t];
             } else {
-                bind_framebuffer_for_output(os_window->indirect_output.framebuffer_id);
+                tex = backbuffer;  // not present — fall back to backbuffer
             }
-            glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-            glBindTexture(GL_TEXTURE_2D, input_texture);
-            glUniform1i(group_loc, (GLint)g);
-            if (is_last && os_window->live_resize.in_progress) {
-                save_viewport_using_top_left_origin(
-                    0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
-            } else {
-                glViewport(0, 0, os_window->viewport_width, os_window->viewport_height);
-            }
-            draw_quad(false, 0);
+            glActiveTexture(GL_TEXTURE0 + named_tex_units[t]);
+            glBindTexture(GL_TEXTURE_2D, tex);
         }
+
+        // Set the output framebuffer
+        if (is_last) {
+            set_framebuffer_to_use_for_output(0);
+            bind_framebuffer_for_output(0);
+        } else if (cg->output_texture != CUSTOM_SHADER_TEXTURE_DEFAULT) {
+            // Output to named texture; backbuffer is unchanged for the next group
+            bind_framebuffer_for_output(named_tex_fbos[cg->output_texture]);
+        } else {
+            // Ping-pong: output to the other texture, which becomes the new backbuffer
+            bind_framebuffer_for_output(backbuffer_is_main ?
+                os_window->indirect_output.extra_fbo_id :
+                os_window->indirect_output.framebuffer_id);
+            backbuffer_is_main = !backbuffer_is_main;
+        }
+
+        // Set the viewport
+        if (is_last) {
+            // Last group always covers the full screen region
+            if (os_window->live_resize.in_progress) {
+                glViewport(0, os_window->live_resize.height - vh, vw, vh);
+            } else {
+                glViewport(0, 0, vw, vh);
+            }
+        } else {
+            float px = cg->viewport_pos.x, py = cg->viewport_pos.y;
+            float sw = cg->viewport_size.w, sh = cg->viewport_size.h;
+            // Convert from top-left unit coords to GL bottom-left pixel coords,
+            // clamped so we stay within the overall texture bounds.
+            GLint x0 = MAX(0, (GLint)(px * vw));
+            GLint y0 = MAX(0, (GLint)((1.f - py - sh) * vh));
+            GLint x1 = MIN(vw, (GLint)((px + sw) * vw));
+            GLint y1 = MIN(vh, (GLint)((1.f - py) * vh));
+            glViewport(x0, y0, MAX(0, x1 - x0), MAX(0, y1 - y0));
+        }
+
+        glUniform1i(group_loc, (GLint)g);
+        draw_quad(false, 0);
     }
 }
 
