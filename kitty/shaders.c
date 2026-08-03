@@ -2113,6 +2113,53 @@ pygpu_driver_version_string(PyObject *self UNUSED, PyObject *args UNUSED) {
     return PyUnicode_FromString(global_state.gl_version ? gl_version_string() : "");
 }
 
+static NamedTexture
+named_texture_from_str(const char *s) {
+    if (strcmp(s, "a") == 0) return CUSTOM_SHADER_TEXTURE_A;
+    if (strcmp(s, "b") == 0) return CUSTOM_SHADER_TEXTURE_B;
+    if (strcmp(s, "persist") == 0) return CUSTOM_SHADER_TEXTURE_PERSIST;
+    return CUSTOM_SHADER_TEXTURE_DEFAULT;
+}
+
+static bool
+transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
+#define is_seq(x) (x && (PyList_Check(x) || PyTuple_Check(x)))
+    PyObject *textures = PyDict_GetItemString(pg, "textures");
+    if (is_seq(textures)) {
+        for (Py_ssize_t i = 0; i < PySequence_Fast_GET_SIZE(textures); i++) {
+            PyObject *t = PySequence_Fast_GET_ITEM(textures, i);
+            if (!PyUnicode_Check(t)) { PyErr_SetString(PyExc_TypeError, "pipeline textures must be strings"); return false; }
+            p->textures |= (1u << named_texture_from_str(PyUnicode_AsUTF8(t)));
+        }
+    }
+    PyObject *groups = PyDict_GetItemString(pg, "groups");
+    if (!is_seq(groups)) { PyErr_SetString(PyExc_TypeError, "pipeline groups must be a sequence"); return false; }
+    Py_ssize_t num_groups = PySequence_Fast_GET_SIZE(groups);
+    if ((size_t)num_groups > arraysz(p->groups)) { PyErr_SetString(PyExc_ValueError, "too many pipeline groups"); return false; }
+    p->num_groups = (size_t)num_groups;
+    for (Py_ssize_t i = 0; i < num_groups; i++) {
+        PyObject *g = PySequence_Fast_GET_ITEM(groups, i);
+        if (!PyDict_Check(g)) { PyErr_SetString(PyExc_TypeError, "pipeline group must be a dict"); return false; }
+        CustomShaderGroup *cg = &p->groups[i];
+        PyObject *vp = PyDict_GetItemString(g, "viewport_pos");
+        if (is_seq(vp) && PySequence_Fast_GET_SIZE(vp) == 2) {
+            cg->viewport_pos.x = (float)PyFloat_AsDouble(PySequence_Fast_GET_ITEM(vp, 0));
+            cg->viewport_pos.y = (float)PyFloat_AsDouble(PySequence_Fast_GET_ITEM(vp, 1));
+        }
+        PyObject *vs = PyDict_GetItemString(g, "viewport_size");
+        if (is_seq(vs) && PySequence_Fast_GET_SIZE(vs) == 2) {
+            cg->viewport_size.w = (float)PyFloat_AsDouble(PySequence_Fast_GET_ITEM(vs, 0));
+            cg->viewport_size.h = (float)PyFloat_AsDouble(PySequence_Fast_GET_ITEM(vs, 1));
+        }
+        PyObject *ot = PyDict_GetItemString(g, "output_texture");
+        if (ot && PyUnicode_Check(ot)) {
+            cg->output_texture = named_texture_from_str(PyUnicode_AsUTF8(ot));
+        }
+    }
+#undef is_seq
+    return true;
+}
+
 static bool
 attach_shaders(PyObject *sources, GLuint program_id, GLenum shader_type) {
     RAII_ALLOC(const GLchar*, c_sources, calloc(PyTuple_GET_SIZE(sources), sizeof(GLchar*)));
@@ -2165,9 +2212,9 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
 #undef fail_compile
     if (which == CUSTOM_END_PROGRAM) {
         zero_at_ptr(&custom_shaders.end);
-        custom_shaders.end.active = true;
         PyObject *pg = PyDict_GetItemString(metadata, "pipeline");
-        (void)pg;  // TODO: transfer metadata from pg to custom_shaders.end;
+        if (pg && !transfer_pipeline_to_struct(pg, &custom_shaders.end)) { glDeleteProgram(program->id); return NULL; }
+        custom_shaders.end.active = true;
     }
     init_uniforms(which);
     set_program_layout(which, metadata);
