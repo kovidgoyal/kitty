@@ -3390,7 +3390,7 @@ int screen_cursor_at_a_shell_prompt(const Screen *self)
         switch (self->linebuf->line_attrs[y].prompt_kind)
         {
         case OUTPUT_START:
-            return -1;
+            return -2;
         case PROMPT_START:
         case SECONDARY_PROMPT:
             return y;
