@@ -18,7 +18,7 @@ import types
 import zlib
 from collections import OrderedDict
 from contextlib import suppress
-from enum import StrEnum
+from enum import StrEnum, auto
 from functools import lru_cache, partial
 from itertools import chain, product
 from types import MappingProxyType
@@ -1038,8 +1038,15 @@ def pipeline_definition(name: str) -> tuple[str, ...]:
     return tuple(src.decode().splitlines())
 
 
-NamedTexture = Literal['a', 'b', 'persist']
-Slot = Literal['end']
+class NamedTexture(StrEnum):
+    a = auto()
+    b = auto()
+    persist = auto()
+    default = auto()
+
+
+class Slot(StrEnum):
+    end = auto()
 
 
 def is_valid_named_texture(x: str) -> TypeGuard[NamedTexture]:
@@ -1053,7 +1060,7 @@ def is_valid_slot(x: str) -> TypeGuard[Slot]:
 class Group(TypedDict):
     viewport_pos: tuple[float, float]
     viewport_size: tuple[float, float]
-    output_texture: NamedTexture | Literal['']
+    output_texture: NamedTexture
     shaders: tuple[str, ...]
 
 
@@ -1064,8 +1071,8 @@ class Pipeline(TypedDict):
 
 
 def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
-    slot: Slot = 'end'
-    textures: tuple[Literal['a', 'b', 'persist'], ...] = ()
+    slot = Slot.end
+    textures: tuple[NamedTexture, ...] = ()
     groups: list[Group] = []
     current_group: Group | None = None
 
@@ -1090,10 +1097,10 @@ def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
                         raise ValueError(f'slot {parts[1]} is not valid')
                     slot = parts[1]
                 case 'textures':
-                    textures = tuple(x for x in parts[1:] if x in ('a', 'b', 'persist'))
+                    textures = tuple(map(NamedTexture, parts[1:]))
                 case 'startgroup':
                     commit_group()
-                    current_group = {'viewport_pos': (0, 0), 'viewport_size': (1, 1), 'output_texture': '', 'shaders': ()}
+                    current_group = {'viewport_pos': (0, 0), 'viewport_size': (1, 1), 'output_texture': NamedTexture.default, 'shaders': ()}
                 case _:
                     raise ValueError(f'Unknown key {parts[0]}')
         else:
