@@ -553,11 +553,7 @@ typedef struct GlobalState {
         int width, height;
         uint32_t extra_texture_id, extra_texture_setup_fbo_id;
     } layers_render_texture;
-    struct {
-        unsigned count;
-        bool has_end_shader;
-        unsigned num_end_groups;
-    } custom_shaders;
+    bool has_custom_shaders;
 } GlobalState;
 
 extern GlobalState global_state;

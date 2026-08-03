@@ -338,7 +338,26 @@ enum { GAMMA_LUT_GLOBAL_BUFFER, BORDER_COLORS_GLOBAL_BUFFER };
 // their vertex attribute/array facilities are unused.
 static ssize_t shader_globals_vao_idx = -1;
 static ssize_t custom_end_vao_idx = -1;
-static unsigned pending_custom_end_num_groups = 1;
+
+typedef enum { CUSTOM_SHADER_TEXTURE_DEFAULT, CUSTOM_SHADER_TEXTURE_A, CUSTOM_SHADER_TEXTURE_B, CUSTOM_SHADER_TEXTURE_PERSIST } NamedTexture;
+
+typedef struct CustomShaderGroup {
+    struct { float x, y; } viewport_pos;
+    struct { float w, h; } viewport_size;
+    NamedTexture output_texture;
+} CustomShaderGroup;
+
+typedef struct CustomShaderPipeline {
+    unsigned textures;  // bit mask of named textures from above enum
+    CustomShaderGroup groups[64];
+    size_t num_groups;
+    bool active;
+} CustomShaderPipeline;
+
+static struct {
+    CustomShaderPipeline end;
+    size_t count;
+} custom_shaders;
 
 static void
 write_float_array_to_ubo(void *dest, const GLfloat *src, size_t count, const ArrayInformation *ai) {
@@ -410,14 +429,12 @@ init_cell_program(void) {
 
 static void
 init_custom_programs(void) {
-    zero_at_ptr(&global_state.custom_shaders);
+    custom_shaders.count = 0;
     for (int i = CUSTOM_END_PROGRAM; i < NUM_PROGRAMS; i++) {
         Program *p = program_ptr(i);
         if (p && p->id) {
-            global_state.custom_shaders.count++;
+            custom_shaders.count++;
             if (i == CUSTOM_END_PROGRAM) {
-                global_state.custom_shaders.has_end_shader = true;
-                global_state.custom_shaders.num_end_groups = pending_custom_end_num_groups;
                 bind_program(i);
                 glUniform1i(program_uniform_location(i, "backbuffer"), GRAPHICS_UNIT);
                 glUniform1i(program_uniform_location(i, "group"), 0);
@@ -431,6 +448,7 @@ init_custom_programs(void) {
             }
         }
     }
+    global_state.has_custom_shaders = custom_shaders.count > 0;
 }
 
 void
@@ -1864,7 +1882,7 @@ start_os_window_rendering(OSWindow *os_window, Tab *tab) {
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, global_state.layers_render_texture.texture_id, 0);
             os_window->indirect_output.attached_texture_generation = global_state.layers_render_texture.texture_generation;
         }
-        if (global_state.custom_shaders.num_end_groups > 1) {
+        if (custom_shaders.end.num_groups > 1) {
             // Lazily create the global shared extra texture (ping-pong target for multi-group end shaders)
             if (!global_state.layers_render_texture.extra_texture_id) {
                 setup_texture_as_render_target(
@@ -1911,7 +1929,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     unmap_vao_buffer(custom_end_vao_idx, 0);
     bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);
     GLint group_loc = program_uniform_location(CUSTOM_END_PROGRAM, "group");
-    const unsigned num_groups = global_state.custom_shaders.num_end_groups;
+    const unsigned num_groups = custom_shaders.end.num_groups;
     restore_viewport();
     if (num_groups <= 1) {
         set_framebuffer_to_use_for_output(0);
@@ -1960,7 +1978,7 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, m
     if (os_window->needs_layers) {
         float sx = global_state.layers_render_texture.width > 0 ? (float)os_window->viewport_width / (float)global_state.layers_render_texture.width : 1.f;
         float sy = global_state.layers_render_texture.height > 0 ? (float)os_window->viewport_height / (float)global_state.layers_render_texture.height : 1.f;
-        if (global_state.custom_shaders.has_end_shader) {
+        if (custom_shaders.end.active) {
             run_custom_end_shader(os_window, sx, sy, now);
         } else {
             set_framebuffer_to_use_for_output(0);
@@ -2120,7 +2138,7 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     if (which < 0 || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
     Program *program = program_ptr(which);
     if (!PyTuple_GET_SIZE(vertex_shaders)) {
-        if (which == CUSTOM_END_PROGRAM) pending_custom_end_num_groups = 1;
+        if (which == CUSTOM_END_PROGRAM) { zero_at_ptr(&custom_shaders.end); }
         if (program->id != 0) {
             glDeleteProgram(program->id); program->id = 0;
         }
@@ -2146,8 +2164,10 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     }
 #undef fail_compile
     if (which == CUSTOM_END_PROGRAM) {
-        PyObject *ng = PyDict_GetItemString(metadata, "num_groups");
-        pending_custom_end_num_groups = ng ? (unsigned)PyLong_AsLong(ng) : 1;
+        zero_at_ptr(&custom_shaders.end);
+        custom_shaders.end.active = true;
+        PyObject *pg = PyDict_GetItemString(metadata, "pipeline");
+        (void)pg;  // TODO: transfer metadata from pg to custom_shaders.end;
     }
     init_uniforms(which);
     set_program_layout(which, metadata);

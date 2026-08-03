@@ -757,7 +757,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
     os_window->needs_layers = (
         !global_state.supports_framebuffer_srgb || effective_os_window_alpha(os_window) < 1.f ||
         os_window->live_resize.in_progress || (background_image_for_os_window(os_window) != NULL) ||
-        global_state.custom_shaders.count
+        global_state.has_custom_shaders
     );
     if (TD.screen && os_window->num_tabs && !os_window->has_too_few_tabs) {
         if (!os_window->tab_bar_data_updated) {
