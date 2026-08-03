@@ -57,12 +57,12 @@ float3 linear2srgb(float3 x) {  // vector
     return lerp(lower, upper, step(float3(0.0031308f), x));
 }
 
-uniform Sampler2D backbuffer;
+uniform Sampler2D backbuffer, a, b, persist;
 
 public float4 pipeline_fragment_main(float2 backbuffer_pos, int group) {
     float4 color = backbuffer.Sample(backbuffer_pos);  // pre multiplied linear RGB
     color = float4(color.rgb / color.a, color.a);  // un pre multiplied color passed through pipeline
-    KittyTextures t = {backbuffer, backbuffer_pos};
+    KittyTextures t = {backbuffer, a, b, persist, backbuffer_pos};
     // PIPELINE
     return vec4_premul(color.rgb, color.a);
 }
