@@ -192,6 +192,8 @@ Detailed list of changes
 
 - Vertical tabs: Improve rendering of tabs when using the ``fade`` :opt:`tab_bar_style`
 
+- :opt:`remember_window_size` now also remembers window maximized state (:pull:`10308`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

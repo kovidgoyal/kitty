@@ -1570,7 +1570,7 @@ opt(
     'yes',
     option_type='to_bool',
     long_text="""
-If enabled, the :term:`OS Window <os_window>` size will be remembered so that
+If enabled, the :term:`OS Window <os_window>` size and maximize state will be remembered so that
 new instances of kitty will have the same size as the previous instance.
 If disabled, the :term:`OS Window <os_window>` will initially have size
 configured by initial_window_width/height, in pixels. You can use a suffix of
