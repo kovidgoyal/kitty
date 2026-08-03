@@ -933,36 +933,12 @@ def remote_control_password(val: str, current_val: dict[str, str]) -> Iterator[t
             yield parts[0], tuple(parts[1:])
 
 
-CustomShaderSlots = Literal['end']
-all_custom_shader_slots = get_args(CustomShaderSlots)
-
-
-def custom_shader(val: str, current_val: dict[str, str]) -> Iterator[tuple[CustomShaderSlots, tuple[str, ...]]]:
-    val = val.strip()
-    if val:
-        parts = tuple(shlex_split(val))
-        if parts[0] not in all_custom_shader_slots:
-            raise ValueError(f'The shader slot {parts[0]} is unknown')
-        if len(parts) < 2:
-            raise ValueError(f'No actual shaders specified for {parts[0]}')
-        from kitty.shaders.slang import custom_shader
-
-        for x in parts[1:]:
-            try:
-                custom_shader(x)
-            except Exception as e:
-                raise ValueError(f'Custom shader {x} not found or not readable with error: {e}') from e
-        slot = cast(CustomShaderSlots, parts[0])
-        new_shaders: tuple[str, ...] = parts[1:]
-        existing = cast('tuple[str, ...]|None', current_val.get(slot))
-        if existing:
-            yield slot, existing + ('',) + new_shaders
-        else:
-            yield slot, new_shaders
-
-
 def clipboard_control(x: str) -> tuple[str, ...]:
     return tuple(x.lower().split())
+
+
+def custom_shaders(x: str) -> tuple[str, ...]:
+    return tuple(x.split()) if x else ()
 
 
 def allow_hyperlinks(x: str) -> int:

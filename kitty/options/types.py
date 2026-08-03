@@ -574,7 +574,7 @@ class Options:
     cursor_trail_decay: tuple[float, float] = (0.1, 0.4)
     cursor_trail_start_threshold: tuple[int, int] = (2, 2)
     cursor_underline_thickness: float = 2.0
-    custom_shaders: list[str] = ['']
+    custom_shaders: tuple[str, ...] = ()
     default_pointer_shape: choices_for_default_pointer_shape = 'beam'
     detect_urls: bool = True
     dim_opacity: float = 0.4

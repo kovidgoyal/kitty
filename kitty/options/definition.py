@@ -2905,12 +2905,12 @@ they will override any variables set by other :opt:`env` directives.
 opt(
     'custom_shaders',
     '',
-    option_type='to_cmdline',
+    option_type='custom_shaders',
     add_to_default=False,
     long_text="""
 Space separated list of custom shader pipeline names. They will be loaded from
 the :file:`shaders` directory inside the kitty config directory or if not present there
-the builtin custom shaders kitty ships with. Each name has :file:`.pipeline` append to it
+the builtin custom shaders that kitty ships with. Each name has :file:`.pipeline` append to it
 when searching for the file.
     """,
 )
