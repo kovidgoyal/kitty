@@ -2140,7 +2140,9 @@ class Boss:
         else:
             self.mark_os_window_for_close(os_window_id, NO_CLOSE_REQUESTED)
 
-    def on_os_window_closed(self, os_window_id: int, x: int, y: int, viewport_width: int, viewport_height: int, was_maximized: bool, is_layer_shell: bool) -> None:
+    def on_os_window_closed(
+        self, os_window_id: int, x: int, y: int, viewport_width: int, viewport_height: int, was_maximized: bool, is_layer_shell: bool
+    ) -> None:
         tm = self.os_window_map.pop(os_window_id, None)
         opts = get_options()
         if not is_layer_shell:
