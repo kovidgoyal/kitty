@@ -451,3 +451,32 @@ def conf_parsing(self):
     opts = p(f'include {a.name}', num_err=0, bad_line_num=1)
     self.ae(opts.foreground, to_color('red'))
     self.ae(opts.background, to_color('red'))
+
+    # remap_modifier. NOTE: parsing only. Whether the permutation is applied
+    # simultaneously rather than sequentially is a property of
+    # apply_modifier_remap() in C and is NOT observable from this dict - a
+    # sequential implementation would produce an identical one. That property is
+    # covered end to end by tests/test-remap-e2e.sh, which asserts that the
+    # encoded bytes actually exchange.
+    self.ae(p().remap_modifier, {})
+    ctrl, hyper, sup = to_modifiers('ctrl'), to_modifiers('hyper'), to_modifiers('super')
+    self.ae(p('remap_modifier ctrl hyper').remap_modifier, {ctrl: hyper})
+    # both directions of a swap are recorded
+    self.ae(p('remap_modifier ctrl hyper', 'remap_modifier hyper ctrl').remap_modifier, {ctrl: hyper, hyper: ctrl})
+    # the last declaration for a given source wins, wherever it appears
+    self.ae(p('remap_modifier ctrl hyper', 'kitty_mod ctrl', 'remap_modifier ctrl super').remap_modifier, {ctrl: sup})
+    # unrelated options in between do not disturb it
+    self.ae(p('remap_modifier ctrl hyper', 'font_size 13', 'remap_modifier super alt').remap_modifier,
+            {ctrl: hyper, sup: to_modifiers('alt')})
+    # the destination may name more than one modifier
+    self.ae(p('remap_modifier ctrl ctrl+shift').remap_modifier, {ctrl: to_modifiers('ctrl+shift')})
+    # every rejection must be REPORTED, never silently ignored: wrong arity, unknown
+    # or non-remappable modifier names, a source naming more than one modifier, and
+    # a mapping that does nothing
+    for bad in ('remap_modifier ctrl', 'remap_modifier ctrl hyper super', 'remap_modifier ctrl nosuchmod',
+                'remap_modifier nosuchmod ctrl', 'remap_modifier ctrl+shift hyper',
+                'remap_modifier ctrl none', 'remap_modifier none ctrl',
+                'remap_modifier ctrl kitty_mod', 'remap_modifier kitty_mod ctrl',
+                'remap_modifier caps_lock ctrl', 'remap_modifier ctrl num_lock',
+                'remap_modifier ctrl ctrl'):
+        self.ae(p(bad, num_err=1).remap_modifier, {}, f'not rejected: {bad}')
