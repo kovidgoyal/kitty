@@ -426,6 +426,13 @@ program_uniform_location(int program, const char *name) {
 }
 
 GLint
+try_program_uniform_location(int program, const char *name) {
+    program_metadata_map_itr itr = vt_get(program_layouts + program, name);
+    if (vt_is_end(itr) || itr.data->val.kind != PROGRAM_UNIFORM) return -1;
+    return itr.data->val.location;
+}
+
+GLint
 program_attribute_location(int program, const char *name) {
     return program_metadata_entry(program, name, PROGRAM_ATTRIBUTE)->location;
 }

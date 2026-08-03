@@ -437,9 +437,11 @@ init_custom_programs(void) {
             if (i == CUSTOM_END_PROGRAM) {
                 bind_program(i);
                 glUniform1i(program_uniform_location(i, "backbuffer"), GRAPHICS_UNIT);
-                glUniform1i(program_uniform_location(i, "a"), CUSTOM_END_TEXTURE_A_UNIT);
-                glUniform1i(program_uniform_location(i, "b"), CUSTOM_END_TEXTURE_B_UNIT);
-                glUniform1i(program_uniform_location(i, "persist"), CUSTOM_END_TEXTURE_PERSIST_UNIT);
+#define set_optional_sampler(name, unit) { GLint loc = try_program_uniform_location(i, name); if (loc >= 0) glUniform1i(loc, unit); }
+                set_optional_sampler("a", CUSTOM_END_TEXTURE_A_UNIT);
+                set_optional_sampler("b", CUSTOM_END_TEXTURE_B_UNIT);
+                set_optional_sampler("persist", CUSTOM_END_TEXTURE_PERSIST_UNIT);
+#undef set_optional_sampler
                 glUniform1i(program_uniform_location(i, "group"), 0);
                 UniformBlock ubd = program_uniform_block(i, "KittyCustomShaderData");
                 glUniformBlockBinding(program_id(i), ubd.index, CUSTOM_END_DATA_BINDING_POINT);

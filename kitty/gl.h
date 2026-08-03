@@ -60,6 +60,7 @@ GLint attrib_location(int program, const char *name);
 void set_program_layout(int program, PyObject *metadata);
 void free_program_layouts(void);
 GLint program_uniform_location(int program, const char *name);
+GLint try_program_uniform_location(int program, const char *name);
 GLint program_attribute_location(int program, const char *name);
 UniformBlock program_uniform_block(int program, const char *name);
 ArrayInformation program_uniform_array(int program, const char *name);
