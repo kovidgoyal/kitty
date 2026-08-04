@@ -161,6 +161,12 @@ update_cursor_trail_corners(CursorTrail *ct, ndc_coords g, monotonic_t now, OSWi
 static void
 update_cursor_trail_opacity(CursorTrail *ct, Window *w, monotonic_t now)
 {
+    if (screen_cursor_at_a_shell_prompt(WD.screen) == -2)
+    {
+        ct->opacity = 0.0f;
+        return;
+    }
+
     const bool cursor_trail_always_visible = false;
     if (cursor_trail_always_visible)
     {
