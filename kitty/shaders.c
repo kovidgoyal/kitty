@@ -2025,8 +2025,8 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
 #undef FILL_COLOR
     d->viewport_width = (uint32_t)os_window->viewport_width;
     d->viewport_height = (uint32_t)os_window->viewport_height;
-    d->timestamp = (float)monotonic_t_to_s_double(now);
-    d->last_rendered_at = (float)monotonic_t_to_s_double(os_window->last_rendered_at);
+    d->timestamp = ((float)monotonic_t_to_ms(now)) / 1e3;
+    d->last_rendered_at = ((float)monotonic_t_to_ms(os_window->last_rendered_at)) / 1e3;
     unmap_vao_buffer(custom_end_vao_idx, 0);
     bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);
 

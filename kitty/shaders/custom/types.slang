@@ -20,8 +20,8 @@ public struct KittyCustomShaderData {
     // with origin at top left)
     public uint2 viewport_size_pixels;
 
-    public float timestamp;  // time in seconds since kitty was started
-    public float last_rendered_at;  // time of previous render in seconds since kitty was started
+    public float timestamp;  // time in seconds since kitty was started (millisecond precision)
+    public float last_rendered_at;  // time of previous render in seconds since kitty was started (millisecond precision)
 }
 
 public struct KittyTextures {
