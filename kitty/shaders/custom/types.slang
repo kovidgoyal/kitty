@@ -6,6 +6,11 @@
 public struct KittyCustomShaderData {
     public float4 src_rect, dest_rect;  // used by the vertex shader internally
 
+    // global background/foreground colors from kitty options (linear RGB, alpha=1)
+    public float4 background, foreground;
+    // background color of the active window in the active tab (linear RGB, alpha=1)
+    public float4 active_window_background;
+
     // the size in pixels of the full underlying viewport we are rendering too,
     // before applying any viewport transforms from the current group.
     // You can use the viewport vector passed to fragment_main to derive the

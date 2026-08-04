@@ -1994,6 +1994,9 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     struct GPUCustomEndData {
         float src_rect[4];
         float dest_rect[4];
+        float background[4];
+        float foreground[4];
+        float active_window_background[4];
         uint32_t viewport_width, viewport_height;
         float timestamp, last_rendered_at;
     };
@@ -2001,6 +2004,25 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         custom_end_vao_idx, 0, 0, program_uniform_block(CUSTOM_END_PROGRAM, "KittyCustomShaderData").size);
     d->src_rect[0] = 0; d->src_rect[1] = sy; d->src_rect[2] = sx; d->src_rect[3] = 0;
     d->dest_rect[0] = -1; d->dest_rect[1] = 1; d->dest_rect[2] = 1; d->dest_rect[3] = -1;
+#define FILL_COLOR(dst, c) do { \
+    (dst)[0] = srgb_color(((c) >> 16) & 0xFF); \
+    (dst)[1] = srgb_color(((c) >>  8) & 0xFF); \
+    (dst)[2] = srgb_color( (c)        & 0xFF); \
+    (dst)[3] = 1.f; \
+} while(0)
+    FILL_COLOR(d->background, OPT(background));
+    FILL_COLOR(d->foreground, OPT(foreground));
+    color_type active_bg = OPT(background);
+    if (os_window->num_tabs > 0) {
+        Tab *t = os_window->tabs + os_window->active_tab;
+        if (t->num_windows) {
+            Window *w = t->windows + t->active_window;
+            Screen *s = w->render_data.screen;
+            if (s) active_bg = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg).rgb;
+        }
+    }
+    FILL_COLOR(d->active_window_background, active_bg);
+#undef FILL_COLOR
     d->viewport_width = (uint32_t)os_window->viewport_width;
     d->viewport_height = (uint32_t)os_window->viewport_height;
     d->timestamp = (float)monotonic_t_to_s_double(now);
