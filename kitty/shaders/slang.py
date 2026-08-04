@@ -1156,7 +1156,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str) -> tuple
     j = partial(os.path.join, libdir)
     cache_ok = False
     mtime = 0
-    get_hash_for_self()
+    types_rebuilt = False
     with suppress(FileNotFoundError), open(j('ct.key'), 'rb') as f:
         cache_ok = f.read() == ct_key
         mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
@@ -1171,6 +1171,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str) -> tuple
         with open(j('ct.key'), 'wb') as f:
             f.write(ct_key)
             mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
+        types_rebuilt = True
 
     module_names = {}
     shaders_content_key = b''
@@ -1190,7 +1191,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str) -> tuple
             with suppress(FileNotFoundError), open(path_key_file, 'rb') as f:
                 cache_ok = f.read() == content_key
                 mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
-            if not cache_ok:
+            if not cache_ok or types_rebuilt:
                 inc = ['-I', import_dir] if import_dir else []
                 cp = subprocess.run(
                     bc + inc + ['-module-name', modname, '-o', j(f'{modname}.slang-module'), '--', '-'],
@@ -1251,7 +1252,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str) -> tuple
     with suppress(FileNotFoundError), open(j(f'{slot}.key'), 'rb') as f:
         cache_ok = f.read() == slot_key
     ans = os.path.join(slot_dir, f'{slot}.slang-module')
-    if cache_ok:
+    if cache_ok and not types_rebuilt:
         return tuple(import_dirs), ans
     with tempfile.TemporaryDirectory() as tdir:
         for wrapper_name, wrapper_src in wrappers.items():
