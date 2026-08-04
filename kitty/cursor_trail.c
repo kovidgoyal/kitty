@@ -1,5 +1,6 @@
 #include <float.h>
 #include "state.h"
+#include "screen.h"
 
 #define WD w->render_data
 #define EDGE(axis, index) ct->cursor_edge_##axis[index]
