@@ -1992,18 +1992,19 @@ static void
 run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) {
     bind_program(CUSTOM_END_PROGRAM);
     struct GPUCustomEndData {
-        GLfloat src_rect[4];
-        GLfloat dest_rect[4];
-        GLuint viewport_width, viewport_height;
-        GLfloat timestamp;
+        float src_rect[4];
+        float dest_rect[4];
+        uint32_t viewport_width, viewport_height;
+        float timestamp, last_rendered_at;
     };
     struct GPUCustomEndData *d = (struct GPUCustomEndData*)map_vao_buffer_for_write_only(
         custom_end_vao_idx, 0, 0, program_uniform_block(CUSTOM_END_PROGRAM, "KittyCustomShaderData").size);
     d->src_rect[0] = 0; d->src_rect[1] = sy; d->src_rect[2] = sx; d->src_rect[3] = 0;
     d->dest_rect[0] = -1; d->dest_rect[1] = 1; d->dest_rect[2] = 1; d->dest_rect[3] = -1;
-    d->viewport_width = (GLuint)os_window->viewport_width;
-    d->viewport_height = (GLuint)os_window->viewport_height;
-    d->timestamp = (GLfloat)monotonic_t_to_s_double(now);
+    d->viewport_width = (uint32_t)os_window->viewport_width;
+    d->viewport_height = (uint32_t)os_window->viewport_height;
+    d->timestamp = (float)monotonic_t_to_s_double(now);
+    d->last_rendered_at = (float)monotonic_t_to_s_double(os_window->last_rendered_at);
     unmap_vao_buffer(custom_end_vao_idx, 0);
     bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);
 
@@ -2129,6 +2130,7 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, m
             draw_resizing_text(os_window);
         }
     }
+    os_window->last_rendered_at = now;
 }
 
 void

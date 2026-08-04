@@ -6,9 +6,12 @@
 public struct KittyCustomShaderData {
     public float4 src_rect, dest_rect;  // used by the vertex shader internally
 
-    public uint2 viewport_size_pixels;  // the size in pixels of the viewport we are rendering too
+    // the size in pixels of the full underlying viewport we are rendering too,
+    // before applying any viewport transforms from the current group
+    public uint2 viewport_size_pixels;
 
     public float timestamp;  // time in seconds since kitty was started
+    public float last_rendered_at;  // time of previous render in seconds since kitty was started
 }
 
 public struct KittyTextures {

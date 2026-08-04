@@ -473,7 +473,7 @@ typedef struct OSWindow {
     FONTS_DATA_HANDLE fonts_data;
     id_type temp_font_group_id;
     enum RENDER_STATE render_state;
-    monotonic_t last_render_frame_received_at;
+    monotonic_t last_render_frame_received_at, last_rendered_at;
     uint64_t render_calls;
     id_type last_focused_counter;
     CloseRequest close_request;
