@@ -93,6 +93,7 @@ serialize(const EncodingData *data, char *output, const char csi_trailer) {
         }
     }
 #undef P
+    if (pos > KEY_BUFFER_SIZE - 2) pos = KEY_BUFFER_SIZE - 2;
     output[pos++] = csi_trailer;
     output[pos] = 0;
     return pos;
