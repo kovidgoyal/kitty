@@ -255,7 +255,7 @@ class LoadShaderPrograms:
                 d = parse_pipeline(k)
             except FileNotFoundError as e:
                 try:
-                    get_custom_shader_src(k)
+                    custom_shader(k)
                 except Exception:
                     log_error(f'Failed to read custom shader pipeline definition from {k} with error: {e}')
                     continue
