@@ -2138,6 +2138,9 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, m
         float sx = global_state.layers_render_texture.width > 0 ? (float)os_window->viewport_width / (float)global_state.layers_render_texture.width : 1.f;
         float sy = global_state.layers_render_texture.height > 0 ? (float)os_window->viewport_height / (float)global_state.layers_render_texture.height : 1.f;
         if (custom_shaders.end.active) {
+            restore_viewport();
+            if (os_window->live_resize.in_progress) save_viewport_using_top_left_origin(
+                    0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
             run_custom_end_shader(os_window, sx, sy, now);
         } else {
             set_framebuffer_to_use_for_output(0);
