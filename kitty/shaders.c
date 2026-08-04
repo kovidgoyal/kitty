@@ -2009,6 +2009,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);
 
     GLint group_loc = program_uniform_location(CUSTOM_END_PROGRAM, "group");
+    GLint viewport_loc = program_uniform_location(CUSTOM_END_PROGRAM, "viewport");
     const unsigned num_groups = (unsigned)custom_shaders.end.num_groups;
     const unsigned textures_mask = custom_shaders.end.textures;
     const int vw = os_window->viewport_width, vh = os_window->viewport_height;
@@ -2080,6 +2081,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         }
 
         // Set the viewport
+        float vp_x, vp_y, vp_w, vp_h;
         if (is_last) {
             // Last group always covers the full screen region
             if (os_window->live_resize.in_progress) {
@@ -2087,6 +2089,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             } else {
                 glViewport(0, 0, vw, vh);
             }
+            vp_x = 0.f; vp_y = 0.f; vp_w = 1.f; vp_h = 1.f;
         } else {
             float px = cg->viewport_pos.x, py = cg->viewport_pos.y;
             float sw = cg->viewport_size.w, sh = cg->viewport_size.h;
@@ -2097,9 +2100,11 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             GLint x1 = MIN(vw, (GLint)((px + sw) * vw));
             GLint y1 = MIN(vh, (GLint)((1.f - py) * vh));
             glViewport(x0, y0, MAX(0, x1 - x0), MAX(0, y1 - y0));
+            vp_x = px; vp_y = py; vp_w = sw; vp_h = sh;
         }
 
         glUniform1i(group_loc, (GLint)g);
+        glUniform4f(viewport_loc, vp_x, vp_y, vp_w, vp_h);
         draw_quad(false, 0);
     }
 }

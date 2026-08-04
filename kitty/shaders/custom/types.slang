@@ -7,7 +7,12 @@ public struct KittyCustomShaderData {
     public float4 src_rect, dest_rect;  // used by the vertex shader internally
 
     // the size in pixels of the full underlying viewport we are rendering too,
-    // before applying any viewport transforms from the current group
+    // before applying any viewport transforms from the current group.
+    // You can use the viewport vector passed to fragment_main to derive the
+    // actual size and position of the viewport currently being rendered too.
+    // That vector contains the viewport_pos and viewport_size fields from the
+    // pipeline definition in the format (x, y, width, height) (as unit floats
+    // with origin at top left)
     public uint2 viewport_size_pixels;
 
     public float timestamp;  // time in seconds since kitty was started
