@@ -182,6 +182,8 @@ class LoadShaderPrograms:
     text_fg_override_threshold: tuple[float, Literal['%', 'ratio']] = 0, '%'
     text_old_gamma: bool = False
     custom_shaders: tuple[str, ...] = ()
+    force_recompile_of_custom_shaders: bool = False
+    last_built_custom_shaders: dict[int, Any] = {}
 
     opts: Options | None = None
 
@@ -205,7 +207,7 @@ class LoadShaderPrograms:
             self(allow_recompile=True)
         else:
             opts = self.get_options()
-            if opts.custom_shaders != self.custom_shaders:
+            if opts.custom_shaders != self.custom_shaders or self.force_recompile_of_custom_shaders:
                 self.compile_custom_shaders(allow_recompile=True)
 
     def __call__(self, allow_recompile: bool = False) -> None:
@@ -244,6 +246,7 @@ class LoadShaderPrograms:
         self.compile_custom_shaders(allow_recompile)
 
     def compile_custom_shaders(self, allow_recompile: bool = False) -> None:
+        self.force_recompile_of_custom_shaders = False
         opts = self.get_options()
         self.custom_shaders = tuple(opts.custom_shaders)
         pmap = {}
@@ -267,7 +270,9 @@ class LoadShaderPrograms:
                     compile_program(prog, (), (), {}, allow_recompile)
                 else:
                     try:
-                        compile_program(prog, (vert,), (frag,), metadata, allow_recompile)
+                        if self.last_built_custom_shaders.get(prog) != (vert, frag, metadata):
+                            compile_program(prog, (vert,), (frag,), metadata, allow_recompile)
+                            self.last_built_custom_shaders[prog] = vert, frag, metadata
                     except Exception as e:
                         log_error(f'Failed to load custom shader for slot {slot} with error: {e}')
                         compile_program(prog, (), (), {}, allow_recompile)
@@ -1355,6 +1360,7 @@ def clear_caches() -> None:
     custom_shader.cache_clear()
     pipeline_definition.cache_clear()
     parse_pipeline.cache_clear()
+    load_shader_programs.force_recompile_of_custom_shaders = True
 
 
 def test_slang_build() -> None:
