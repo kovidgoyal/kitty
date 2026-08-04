@@ -3580,6 +3580,13 @@ one modifier maps onto it, or because it maps to hyper or meta, which the macOS
 menu bar cannot express — the accelerator is left off the menu rather than shown
 incorrectly. The shortcut itself continues to work.
 
+On macOS the remap is applied before the key event reaches the text input
+system, so :kbd:`Option`, which produces text natively unless
+:opt:`macos_option_as_alt` is set, behaves consistently with the modifiers it
+reports. A destination of :kbd:`hyper` or :kbd:`meta` cannot be expressed in
+Cocoa's modifier flags, so such a remap is left unapplied there rather than
+silently losing the modifier.
+
 On Wayland, kitty only detects the :kbd:`hyper` and :kbd:`meta` modifiers when
 :envvar:`KITTY_WAYLAND_DETECT_MODIFIERS` is set in the environment. Without it
 those two never appear on key events at all, so remapping to or from them has

@@ -510,23 +510,6 @@ static_assert(GLFW_MOD_LAST < (1 << arraysz(((Options*)NULL)->modifier_remap)),
     "Options.modifier_remap is indexed by modifier bit position, it must cover every GLFW modifier");
 
 #ifdef __APPLE__
-// Apply the remap_modifier permutation. Every source bit is translated in the
-// same pass, so `remap_modifier a b` plus `remap_modifier b a` exchanges the two
-// rather than collapsing to the identity. macOS only: on Linux this happens
-// inside glfw, before libxkbcommon produces the keysym and text.
-static int
-apply_modifier_remap(int mods) {
-    if (!(mods & OPT(modifier_remap_mask))) return mods;
-    int ans = 0;
-    for (unsigned i = 0; i < arraysz(OPT(modifier_remap)); i++) {
-        const int bit = 1 << i;
-        if (mods & bit) ans |= OPT(modifier_remap)[i] ? OPT(modifier_remap)[i] : bit;
-    }
-    return ans;
-}
-#endif
-
-#ifdef __APPLE__
 // Map a modifier named in kitty.conf back to the physical modifier that now
 // produces it (for the macOS menu bar). Unlike apply_modifier_remap() this is not
 // always possible, so it reports failure rather than guessing: false when more
@@ -596,14 +579,10 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
     if (OPT(modifier_remap_mask)) {
         const int physical_mods = ev->mods;
         const uint32_t physical_key = ev->key;
-#ifdef __APPLE__
-        // On Linux the modifiers were already remapped inside glfw, before
-        // libxkbcommon produced the keysym and text, so that text production
-        // follows the remap. Cocoa has no equivalent hook yet, so the mods are
-        // remapped here instead - with the known limitation that Option produces
-        // text natively (see macos_option_as_alt).
-        ev->mods = apply_modifier_remap(physical_mods);
-#endif
+        // The modifiers were already remapped inside glfw, before the platform
+        // produced the keysym and text: in glfw_xkb_update_modifiers() on Linux,
+        // and in remap_cocoa_flags() on macOS. Nothing to do here beyond the key
+        // identity below.
         // A modifier key's own event must have its identity remapped too, else a
         // program reading the keyboard protocol sees a self-contradictory event
         // such as ctrl+LEFT_HYPER: the modifier bits say ctrl, the key says hyper.
@@ -663,10 +642,6 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
 #ifdef __APPLE__
     cocoa_clear_dock_badge_if_set();
 #endif
-#ifdef __APPLE__
-    // Linux mouse modifiers are already remapped inside glfw
-    mods = apply_modifier_remap(mods);
-#endif
     monotonic_t now = monotonic();
     cursor_active_callback(now);
     global_state.mods_at_last_key_or_button_event = mods;
@@ -714,14 +689,6 @@ scroll_callback(GLFWwindow *w, const GLFWScrollEvent *ev) {
     monotonic_t now = monotonic();
     if (OPT(mouse_hide.scroll_unhide)) cursor_active_callback(now);
     global_state.callback_os_window->last_mouse_activity_at = now;
-#ifdef __APPLE__
-    GLFWScrollEvent remapped;
-    if (OPT(modifier_remap_mask)) {
-        remapped = *ev;
-        remapped.keyboard_modifiers = apply_modifier_remap(ev->keyboard_modifiers);
-        ev = &remapped;
-    }
-#endif
     if (is_window_ready_for_callbacks()) scroll_event(ev);
     request_tick_callback();
     global_state.callback_os_window = NULL;
