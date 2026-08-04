@@ -285,6 +285,8 @@ void vsMain() {}
             '''.splitlines())
             try:
                 vert_src, frag_src, metadata = build_custom_shader_pipeline_glsl(p, cache_dir=cache_dir)
+                invocation_tracker = set()
+                build_custom_shader_pipeline_glsl(p, cache_dir=cache_dir, invocation_tracker=invocation_tracker)
             finally:
                 clear_caches()
 
@@ -293,6 +295,7 @@ void vsMain() {}
         self.assertTrue(len(vert_src) > 0, 'vertex GLSL is empty')
         self.assertTrue(len(frag_src) > 0, 'fragment GLSL is empty')
         self.assertIsInstance(metadata, dict)
+        self.assertFalse(invocation_tracker)
 
         if not shutil.which('glslangValidator'):
             return

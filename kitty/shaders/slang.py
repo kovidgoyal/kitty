@@ -1182,7 +1182,7 @@ def parse_pipeline(name: str) -> Pipeline:
     return parse_pipeline_definition(pipeline_definition(name))
 
 
-def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str) -> tuple[tuple[str, ...], str]:
+def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocation_tracker: set[tuple[str, ...]]) -> tuple[tuple[str, ...], str]:
     slot = pipeline['slot']
     slot_module_name = f'{slot.replace("-", "_")}'
     cache_dir = os.path.join(cache_dir, 'c')
@@ -1202,16 +1202,15 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str) -> tuple
         cache_ok = f.read() == ct_key
         mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
     if not cache_ok:
-        cp = subprocess.run(
-            bc + ['-module-name', 'kitty_custom_shader_types', '-o', j('kitty-custom-shader-types.slang-module'), '--', '-'],
-            input=ct_shader,
-            capture_output=True,
-        )
+        cmd = bc + ['-module-name', 'kitty_custom_shader_types', '-o', j('kitty-custom-shader-types.slang-module'), '--', '-']
+        invocation_tracker.add(tuple(cmd))
+        cp = subprocess.run(cmd, input=ct_shader, capture_output=True)
         if cp.returncode != 0:
             raise SlangFailed('custom-types.slang', cp)
-        with open(j('ct.key'), 'wb') as f:
+        ct_key_path = j('ct.key')
+        with open(ct_key_path, 'wb') as f:
             f.write(ct_key)
-            mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
+        mtime = max(mtime, os.stat(ct_key_path).st_mtime_ns)
         types_rebuilt = True
 
     module_names = {}
@@ -1238,16 +1237,14 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str) -> tuple
                 mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
             if not cache_ok or types_rebuilt:
                 inc = ['-I', import_dir] if import_dir else []
-                cp = subprocess.run(
-                    bc + inc + ['-module-name', modname, '-o', j(f'{modname}.slang-module'), '--', '-'],
-                    input=src,
-                    capture_output=True,
-                )
+                cmd = bc + inc + ['-module-name', modname, '-o', j(f'{modname}.slang-module'), '--', '-']
+                invocation_tracker.add(tuple(cmd))
+                cp = subprocess.run(cmd, input=src, capture_output=True)
                 if cp.returncode != 0:
                     raise SlangFailed(name, cp)
                 with open(path_key_file, 'wb') as f:
                     f.write(content_key)
-                    mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
+                mtime = max(mtime, os.stat(path_key_file).st_mtime_ns)
     shaders_content_key += b':' + str(mtime).encode()
     j = partial(os.path.join, slot_dir)
     cache_ok = False
@@ -1311,18 +1308,15 @@ public float4 {entry_point}(float4 inp, KittyTextures t, KittyCustomShaderData d
         inc = ['-I', tdir]
         for x in import_dirs:
             inc.extend(('-I', x))
-        cp = subprocess.run(
-            bc + inc + ['-module-name', slot_module_name, '-o', ans, '--', '-'],
-            cwd=tdir,
-            capture_output=True,
-            input=mod_src.encode(),
-        )
+        cmd = bc + inc + ['-module-name', slot_module_name, '-o', ans, '--', '-']
+        invocation_tracker.add(tuple(cmd))
+        cp = subprocess.run(cmd, cwd=tdir, capture_output=True, input=mod_src.encode())
         if cp.returncode != 0:
             raise SlangFailed(f'{slot}.slang', cp)
 
     with open(j(f'{slot}.key'), 'wb') as f:
         f.write(slot_key)
-    return tuple(import_dirs), slot_dir
+    return tuple(import_dirs), ans
 
 
 def module_wrapper_for_slot(slot: str) -> bytes:
@@ -1348,16 +1342,20 @@ float4 fmain_wrap(float2 texcoord : TEXCOORD, uniform int group, uniform float4 
         """.replace('MODULE', slot.replace('-', '_')).encode()
 
 
-def build_custom_shader_pipeline_glsl(pipeline: Pipeline, cache_dir: str = '') -> tuple[str, str, dict[str, Any]]:
+def build_custom_shader_pipeline_glsl(
+    pipeline: Pipeline, cache_dir: str = '', invocation_tracker: set[tuple[str, ...]] | None = None
+) -> tuple[str, str, dict[str, Any]]:
     import kitty.constants as kc
 
     cache_dir = os.path.join(cache_dir or kc.cache_dir(), 'shaders')
     os.makedirs(cache_dir, exist_ok=True)
+    if invocation_tracker is None:
+        invocation_tracker = set()
 
     with lock_with_file(
         os.path.join(cache_dir, 'lock'),
     ):
-        import_dirs, slang_module_path = build_custom_shader_pipeline_ir(pipeline, cache_dir)
+        import_dirs, slang_module_path = build_custom_shader_pipeline_ir(pipeline, cache_dir, invocation_tracker)
         glsl_dir = os.path.join(os.path.dirname(os.path.dirname(slang_module_path)), 'glsl')
         os.makedirs(glsl_dir, exist_ok=True)
         module_mtime = safe_mtime(slang_module_path)
@@ -1386,6 +1384,8 @@ def build_custom_shader_pipeline_glsl(pipeline: Pipeline, cache_dir: str = '') -
             vcmd = cmd + ['-stage', 'vertex', '-entry', 'vmain_wrap', '-o', vertex, '--', '-']
             fcmd = cmd + ['-stage', 'fragment', '-entry', 'fmain_wrap', '-o', fragment, '--', '-']
             src = module_wrapper_for_slot(slot)
+            invocation_tracker.add(tuple(vcmd))
+            invocation_tracker.add(tuple(fcmd))
             v = subprocess.Popen(vcmd, stderr=subprocess.PIPE, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
             f = subprocess.Popen(fcmd, stderr=subprocess.PIPE, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
             assert v.stdin is not None and f.stdin is not None
