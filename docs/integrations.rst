@@ -429,3 +429,10 @@ raw-mode.
 `glkitty <https://github.com/michaeljclark/glkitty>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 C library to draw OpenGL shaders in the terminal with a glgears demo
+
+.. tool_captain_miao:
+
+`captain-miao <https://github.com/hyperlogue/captain-miao>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TUI to monitor and organize multiple AI coding sessions, by leveraging 
+the kitty remote control protocol
