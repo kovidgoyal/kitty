@@ -16,6 +16,7 @@ from kitty.shaders.slang import (
     clear_caches,
     parse_pipeline_definition,
     parse_slang_text,
+    parse_var_directive,
     topological_layers,
     topological_sort,
 )
@@ -242,6 +243,33 @@ void vsMain() {}
 
         # Empty graph
         self.assertEqual(topological_layers({}), [])
+
+    def test_parse_var_directive(self):
+        self.assertEqual(parse_var_directive(['var', 'uint', 'algo', '=', '1']), ('uint', 'algo', '1'))
+        self.assertEqual(parse_var_directive(['var', 'float', 'intensity', '=', '0.5']), ('float', 'intensity', '0.5'))
+        self.assertEqual(parse_var_directive(['var', 'bool', 'flag', 'true']), ('bool', 'flag', 'true'))
+        self.assertRaises(ValueError, parse_var_directive, ['var', 'badtype', 'x', '=', '1'])
+        self.assertRaises(ValueError, parse_var_directive, ['var', 'uint', '123bad', '=', '1'])
+        self.assertRaises(ValueError, parse_var_directive, ['var', 'uint'])
+
+    def test_parse_pipeline_definition_vars(self):
+        p = parse_pipeline_definition('''
+        var uint algo = 1
+        var float intensity = 0.5
+        startgroup
+            shaders sample
+        endgroup
+        startgroup
+            var uint algo = 2
+            shaders sample
+        endgroup
+        '''.splitlines())
+        self.assertEqual(p['vars'], {'algo': ('uint', '1'), 'intensity': ('float', '0.5')})
+        self.assertEqual(p['groups'][0]['vars'], {})
+        self.assertEqual(p['groups'][1]['vars'], {'algo': ('uint', '2')})
+        # Groups still carry shaders correctly
+        self.assertEqual(p['groups'][0]['shaders'], ('sample',))
+        self.assertEqual(p['groups'][1]['shaders'], ('sample',))
 
     def test_build_custom_shader_pipeline_glsl(self):
         if not shutil.which(slangc()[0]):

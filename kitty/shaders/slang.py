@@ -12,7 +12,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import textwrap
 import time
 import types
 import zlib
@@ -1073,17 +1072,41 @@ def is_valid_slot(x: str) -> TypeGuard[Slot]:
     return x in get_args(Slot)
 
 
+VALID_VAR_TYPES: frozenset[str] = frozenset({'uint', 'int', 'float', 'double', 'bool'})
+_identifier_re = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+
+
+def parse_var_directive(parts: list[str]) -> tuple[str, str, str]:
+    if len(parts) < 4:
+        raise ValueError('var directive requires: var <type> <name> [=] <value>')
+    var_type = parts[1]
+    if var_type not in VALID_VAR_TYPES:
+        raise ValueError(f'var type {var_type!r} must be one of: {", ".join(sorted(VALID_VAR_TYPES))}')
+    var_name = parts[2]
+    if not _identifier_re.match(var_name):
+        raise ValueError(f'var name {var_name!r} is not a valid identifier')
+    if parts[3] == '=':
+        if len(parts) < 5:
+            raise ValueError('var directive missing value after =')
+        value = parts[4]
+    else:
+        value = parts[3]
+    return var_type, var_name, value
+
+
 class Group(TypedDict):
     viewport_pos: tuple[float, float]
     viewport_size: tuple[float, float]
     output_texture: NamedTexture
     shaders: tuple[str, ...]
+    vars: dict[str, tuple[str, str]]
 
 
 class Pipeline(TypedDict):
     slot: Slot
     textures: tuple[NamedTexture, ...]
     groups: tuple[Group, ...]
+    vars: dict[str, tuple[str, str]]
 
 
 def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
@@ -1091,6 +1114,7 @@ def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
     textures: tuple[NamedTexture, ...] = ()
     groups: list[Group] = []
     current_group: Group | None = None
+    pipeline_vars: dict[str, tuple[str, str]] = {}
 
     def unit_float(x: str) -> float:
         return max(0, min(float(x), 1))
@@ -1116,7 +1140,10 @@ def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
                     textures = tuple(map(NamedTexture, parts[1:]))
                 case 'startgroup':
                     commit_group()
-                    current_group = {'viewport_pos': (0, 0), 'viewport_size': (1, 1), 'output_texture': NamedTexture.default, 'shaders': ()}
+                    current_group = {'viewport_pos': (0, 0), 'viewport_size': (1, 1), 'output_texture': NamedTexture.default, 'shaders': (), 'vars': {}}
+                case 'var':
+                    var_type, var_name, value = parse_var_directive(parts)
+                    pipeline_vars[var_name] = (var_type, value)
                 case _:
                     raise ValueError(f'Unknown key {parts[0]}')
         else:
@@ -1131,6 +1158,9 @@ def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
                     current_group['output_texture'] = parts[1]
                 case 'shaders':
                     current_group['shaders'] += tuple(parts[1:])
+                case 'var':
+                    var_type, var_name, value = parse_var_directive(parts)
+                    current_group['vars'][var_name] = (var_type, value)
                 case 'endgroup':
                     commit_group()
                 case _:
@@ -1144,7 +1174,7 @@ def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
     if groups[-1]['viewport_pos'] != (0, 0) or groups[-1]['viewport_size'] != (1, 1):
         raise ValueError('The final group must not specify a viewport')
 
-    return {'slot': slot, 'textures': textures, 'groups': tuple(groups)}
+    return {'slot': slot, 'textures': textures, 'groups': tuple(groups), 'vars': pipeline_vars}
 
 
 @lru_cache(maxsize=32)
@@ -1186,11 +1216,15 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str) -> tuple
 
     module_names = {}
     shaders_content_key = b''
-    flat_shader_list = []
-    for group in pipeline['groups']:
+    for n, (t, v) in pipeline['vars'].items():
+        shaders_content_key += f':pvar:{t}:{n}:{v}'.encode()
+    flat_shader_list: list[tuple[int, str]] = []
+    for g_idx, group in enumerate(pipeline['groups']):
         shaders_content_key += b'::'
+        for n, (t, v) in group['vars'].items():
+            shaders_content_key += f':gvar:{t}:{n}:{v}'.encode()
         for name in group['shaders']:
-            flat_shader_list.append(name)
+            flat_shader_list.append((g_idx, name))
             path, import_dir, src, content_key = custom_shader(name)
             if import_dir and import_dir not in import_dirs:
                 import_dirs.append(import_dir)
@@ -1220,17 +1254,22 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str) -> tuple
 
     wrappers = {}
     entry_points = []
-    for i, name in enumerate(flat_shader_list):
+    for i, (g_idx, name) in enumerate(flat_shader_list):
+        group = pipeline['groups'][g_idx]
+        merged_vars = dict(pipeline['vars'])
+        merged_vars.update(group['vars'])
+        specialization_decls = ''.join(f'\nstatic const {t} {n} = {v};' for n, (t, v) in merged_vars.items())
+        if specialization_decls:
+            specialization_decls += '\n'
         module_name = module_names[name]
         entry_point = f'fragment_main{i}'
-        wrapper_src = textwrap.dedent(f"""
-        #language slang 2026
-        implementing {slot_module_name};
-        import kitty_custom_shader_types;
-        import {module_name};
-
-        public float4 {entry_point}(float4 inp, KittyTextures t, KittyCustomShaderData d, float4 viewport) {{ return fragment_main(inp, t, d, viewport); }}
-        """)
+        wrapper_src = f"""#language slang 2026
+implementing {slot_module_name};
+import kitty_custom_shader_types;
+import {module_name};
+{specialization_decls}
+public float4 {entry_point}(float4 inp, KittyTextures t, KittyCustomShaderData d, float4 viewport) {{ return fragment_main(inp, t, d, viewport); }}
+"""
         wrappers[f'wrapper{i}.slang'] = wrapper_src
         entry_points.append(entry_point)
 
