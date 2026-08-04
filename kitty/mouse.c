@@ -873,7 +873,7 @@ HANDLER(handle_button_event) {
     if (handle_scrollbar_mouse(w, button, is_release ? RELEASE : PRESS, modifiers)) return;
 
     if (osw->is_focused && window_idx != t->active_window && !is_release) {
-        call_boss(switch_focus_to_in_active_tab, "K", t->windows[window_idx].id);
+        call_boss(switch_focus_to_in_active_tab_defer_relayout, "K", t->windows[window_idx].id);
     }
 
     Screen *screen = w->render_data.screen;
@@ -904,6 +904,7 @@ HANDLER(handle_button_event) {
         if (is_release) dispatch_possible_click(w, button, modifiers);
         else add_press(w, button, modifiers);
     }
+    if (is_release) call_boss(relayout_deferred_focus_change, "K", wid);
 }
 
 static int
