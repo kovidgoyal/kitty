@@ -207,11 +207,11 @@ width and ``maximize vertical`` to fill the full height. Calling it again
 restores the original split sizes. The ``equalize`` action redistributes space
 so that all windows along each split axis receive an equal share.
 
-This layout takes two options. ``equalize_on_close`` automatically equalizes
+This layout takes two options. ``equalize_on_window_close`` automatically equalizes
 split sizes whenever a window is closed, keeping remaining windows balanced
 without needing an explicit keybinding::
 
-    enabled_layouts splits:equalize_on_close=true
+    enabled_layouts splits:equalize_on_window_close=true
 
 ``split_axis`` controls whether new windows
 are placed into vertical or horizontal splits when a :option:`--location
