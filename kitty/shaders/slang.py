@@ -253,6 +253,17 @@ class LoadShaderPrograms:
         for k in self.custom_shaders:
             try:
                 d = parse_pipeline(k)
+            except FileNotFoundError as e:
+                try:
+                    get_custom_shader_src(k)
+                except Exception:
+                    log_error(f'Failed to read custom shader pipeline definition from {k} with error: {e}')
+                    continue
+                try:
+                    d = parse_pipeline_definition(['startgroup', f'    shaders {k}', 'endgroup'])
+                except Exception as e2:
+                    log_error(f'Failed to build minimal shader pipeline for {k} with error: {e2}')
+                    continue
             except Exception as e:
                 log_error(f'Failed to read custom shader pipeline definition from {k} with error: {e}')
                 continue
