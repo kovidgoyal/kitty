@@ -4,7 +4,6 @@
 #include "to-c.h"
 
 
-
 static void
 convert_from_python_font_size(PyObject *val, Options *opts) {
     opts->font_size = PyFloat_AsDouble(val);

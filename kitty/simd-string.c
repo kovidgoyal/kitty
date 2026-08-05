@@ -11,13 +11,19 @@
 static bool has_sse4_2 = false, has_avx2 = false;
 
 // xor_data64 {{{
-static void xor_data64_scalar(const uint8_t key[64], uint8_t* data, const size_t data_sz) { for (size_t i = 0; i < data_sz; i++) data[i] ^= key[i & 63]; }
-static void (*xor_data64_impl)(const uint8_t key[64], uint8_t* data, const size_t data_sz) = xor_data64_scalar;
-void xor_data64(const uint8_t key[64], uint8_t* data, const size_t data_sz) { xor_data64_impl(key, data, data_sz); }
+static void
+xor_data64_scalar(const uint8_t key[64], uint8_t *data, const size_t data_sz) {
+    for (size_t i = 0; i < data_sz; i++) data[i] ^= key[i & 63];
+}
+static void (*xor_data64_impl)(const uint8_t key[64], uint8_t *data, const size_t data_sz) = xor_data64_scalar;
+void
+xor_data64(const uint8_t key[64], uint8_t *data, const size_t data_sz) {
+    xor_data64_impl(key, data, data_sz);
+}
 // }}}
 
 // find_either_of_two_bytes {{{
-static const uint8_t*
+static const uint8_t *
 find_either_of_two_bytes_scalar(const uint8_t *haystack, const size_t sz, const uint8_t x, const uint8_t y) {
     for (const uint8_t *limit = haystack + sz; haystack < limit; haystack++) {
         if (*haystack == x || *haystack == y) return haystack;
@@ -25,11 +31,11 @@ find_either_of_two_bytes_scalar(const uint8_t *haystack, const size_t sz, const 
     return NULL;
 }
 
-static const uint8_t* (*find_either_of_two_bytes_impl)(const uint8_t*, const size_t, const uint8_t, const uint8_t) = find_either_of_two_bytes_scalar;
+static const uint8_t *(*find_either_of_two_bytes_impl)(const uint8_t *, const size_t, const uint8_t, const uint8_t) = find_either_of_two_bytes_scalar;
 
-const uint8_t*
+const uint8_t *
 find_either_of_two_bytes(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
-    return (uint8_t*)find_either_of_two_bytes_impl(haystack, sz, a, b);
+    return (uint8_t *)find_either_of_two_bytes_impl(haystack, sz, a, b);
 }
 // }}}
 
@@ -37,7 +43,8 @@ find_either_of_two_bytes(const uint8_t *haystack, const size_t sz, const uint8_t
 
 bool
 utf8_decode_to_esc_scalar(UTF8Decoder *d, const uint8_t *src, const size_t src_sz) {
-    d->output.pos = 0; d->num_consumed = 0;
+    d->output.pos = 0;
+    d->num_consumed = 0;
     utf8_decoder_ensure_capacity(d, src_sz);
     while (d->num_consumed < src_sz) {
         const uint8_t ch = src[d->num_consumed++];
@@ -46,10 +53,8 @@ utf8_decode_to_esc_scalar(UTF8Decoder *d, const uint8_t *src, const size_t src_s
             zero_at_ptr(&d->state);
             return true;
         } else {
-            switch(decode_utf8(&d->state.cur, &d->state.codep, ch)) {
-                case UTF8_ACCEPT:
-                    d->output.storage[d->output.pos++] = d->state.codep;
-                    break;
+            switch (decode_utf8(&d->state.cur, &d->state.codep, ch)) {
+                case UTF8_ACCEPT: d->output.storage[d->output.pos++] = d->state.codep; break;
                 case UTF8_REJECT: {
                     const bool prev_was_accept = d->state.prev == UTF8_ACCEPT;
                     zero_at_ptr(&d->state);
@@ -76,23 +81,20 @@ utf8_decode_to_esc(UTF8Decoder *d, const uint8_t *src, size_t src_sz) {
 // }}}
 
 // Boilerplate {{{
-static PyObject*
+static PyObject *
 test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
-    const uint8_t *src; Py_ssize_t src_sz;
+    const uint8_t *src;
+    Py_ssize_t src_sz;
     int which_function = 0;
     static UTF8Decoder d = {0};
     if (!PyArg_ParseTuple(args, "s#|i", &src, &src_sz, &which_function)) return NULL;
     bool found_sentinel = false;
-    bool(*func)(UTF8Decoder*, const uint8_t*, size_t sz) = utf8_decode_to_esc;
+    bool (*func)(UTF8Decoder *, const uint8_t *, size_t sz) = utf8_decode_to_esc;
     switch (which_function) {
-        case -1:
-            zero_at_ptr(&d); Py_RETURN_NONE;
-        case 1:
-            func = utf8_decode_to_esc_scalar; break;
-        case 2:
-            func = utf8_decode_to_esc_128; break;
-        case 3:
-            func = utf8_decode_to_esc_256; break;
+        case -1: zero_at_ptr(&d); Py_RETURN_NONE;
+        case 1: func = utf8_decode_to_esc_scalar; break;
+        case 2: func = utf8_decode_to_esc_128; break;
+        case 3: func = utf8_decode_to_esc_256; break;
     }
     RAII_PyObject(ans, PyUnicode_FromString(""));
     ssize_t p = 0;
@@ -110,31 +112,25 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
     return Py_BuildValue("OOi", found_sentinel ? Py_True : Py_False, ans, p);
 }
 
-static PyObject*
+static PyObject *
 test_find_either_of_two_bytes(PyObject *self UNUSED, PyObject *args) {
     RAII_PY_BUFFER(buf);
     int which_function = 0, align_offset = 0;
-    const uint8_t*(*func)(const uint8_t*, const size_t sz, const uint8_t, const uint8_t) = find_either_of_two_bytes;
+    const uint8_t *(*func)(const uint8_t *, const size_t sz, const uint8_t, const uint8_t) = find_either_of_two_bytes;
     unsigned char a, b;
     if (!PyArg_ParseTuple(args, "s*BB|ii", &buf, &a, &b, &which_function, &align_offset)) return NULL;
     switch (which_function) {
-        case 1:
-            func = find_either_of_two_bytes_scalar; break;
-        case 2:
-            func = find_either_of_two_bytes_128; break;
-        case 3:
-            func = find_either_of_two_bytes_256; break;
+        case 1: func = find_either_of_two_bytes_scalar; break;
+        case 2: func = find_either_of_two_bytes_128; break;
+        case 3: func = find_either_of_two_bytes_256; break;
         case 0: break;
-        default:
-            PyErr_SetString(PyExc_ValueError, "Unknown which_function");
-            return NULL;
+        default: PyErr_SetString(PyExc_ValueError, "Unknown which_function"); return NULL;
     }
     uint8_t *abuf;
-    if (posix_memalign((void**)&abuf, 64, 256 + buf.len) != 0) {
-        return PyErr_NoMemory();
-    }
+    if (posix_memalign((void **)&abuf, 64, 256 + buf.len) != 0) { return PyErr_NoMemory(); }
     uint8_t *p = abuf;
-    memset(p, '<', 64 + align_offset); p += 64 + align_offset;
+    memset(p, '<', 64 + align_offset);
+    p += 64 + align_offset;
     memcpy(p, buf.buf, buf.len);
     memset(p + buf.len, '>', 64);
     const uint8_t *ans = func(p, buf.len, a, b);
@@ -144,38 +140,34 @@ test_find_either_of_two_bytes(PyObject *self UNUSED, PyObject *args) {
     return PyLong_FromUnsignedLongLong(n);
 }
 
-static PyObject*
+static PyObject *
 test_xor64(PyObject *self UNUSED, PyObject *args) {
     RAII_PY_BUFFER(buf);
     RAII_PY_BUFFER(key);
     int which_function = 0, align_offset = 0;
-    void (*func)(const uint8_t key[64], uint8_t* data, const size_t data_sz) = xor_data64;
+    void (*func)(const uint8_t key[64], uint8_t *data, const size_t data_sz) = xor_data64;
     if (!PyArg_ParseTuple(args, "s*s*|ii", &key, &buf, &which_function, &align_offset)) return NULL;
     switch (which_function) {
-        case 1:
-            func = xor_data64_scalar; break;
-        case 2:
-            func = xor_data64_128; break;
-        case 3:
-            func = xor_data64_256; break;
+        case 1: func = xor_data64_scalar; break;
+        case 2: func = xor_data64_128; break;
+        case 3: func = xor_data64_256; break;
         case 0: break;
-        default:
-            PyErr_SetString(PyExc_ValueError, "Unknown which_function");
-            return NULL;
+        default: PyErr_SetString(PyExc_ValueError, "Unknown which_function"); return NULL;
     }
     uint8_t *abuf;
-    if (posix_memalign((void**)&abuf, 64, 256 + buf.len) != 0) {
-        return PyErr_NoMemory();
-    }
+    if (posix_memalign((void **)&abuf, 64, 256 + buf.len) != 0) { return PyErr_NoMemory(); }
     uint8_t *p = abuf;
-    memset(p, '<', 64 + align_offset); p += 64 + align_offset;
+    memset(p, '<', 64 + align_offset);
+    p += 64 + align_offset;
     memcpy(p, buf.buf, buf.len);
     memset(p + buf.len, '>', 64);
     func(key.buf, p, buf.len);
     PyObject *ans = NULL;
-    for (int i = 0; i < 64 + align_offset; i++) if (abuf[i] != '<') { PyErr_SetString(PyExc_SystemError, "xor wrote before start of data region"); }
-    for (int i = 0; i < 64; i++) if (p[i + buf.len] != '>') { PyErr_SetString(PyExc_SystemError, "xor wrote after end of data region"); }
-    if (!PyErr_Occurred()) ans = PyBytes_FromStringAndSize((const char*)p, buf.len);
+    for (int i = 0; i < 64 + align_offset; i++)
+        if (abuf[i] != '<') { PyErr_SetString(PyExc_SystemError, "xor wrote before start of data region"); }
+    for (int i = 0; i < 64; i++)
+        if (p[i + buf.len] != '>') { PyErr_SetString(PyExc_SystemError, "xor wrote after end of data region"); }
+    if (!PyErr_Occurred()) ans = PyBytes_FromStringAndSize((const char *)p, buf.len);
     free(abuf);
     return ans;
 }
@@ -187,21 +179,30 @@ static PyMethodDef module_methods[] = {
     METHODB(test_utf8_decode_to_sentinel, METH_VARARGS),
     METHODB(test_find_either_of_two_bytes, METH_VARARGS),
     METHODB(test_xor64, METH_VARARGS),
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+    {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 bool
 init_simd(void *x) {
-    PyObject *module = (PyObject*)x;
+    PyObject *module = (PyObject *)x;
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
-#define A(x, val) { Py_INCREF(Py_##val); if (0 != PyModule_AddObject(module, #x, Py_##val)) return false; }
-#define do_check() { has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0; has_avx2 = __builtin_cpu_supports("avx2") != 0; }
+#define A(x, val)                                                                                                                                              \
+    {                                                                                                                                                          \
+        Py_INCREF(Py_##val);                                                                                                                                   \
+        if (0 != PyModule_AddObject(module, #x, Py_##val)) return false;                                                                                       \
+    }
+#define do_check()                                                                                                                                             \
+    {                                                                                                                                                          \
+        has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0;                                                                                                    \
+        has_avx2 = __builtin_cpu_supports("avx2") != 0;                                                                                                        \
+    }
 
 #ifdef __APPLE__
 #ifdef __arm64__
     // simde takes care of NEON on Apple Silicon
     // ARM has only 128 bit registers but using the avx2 code is still slightly faster
-    has_sse4_2 = true; has_avx2 = true;
+    has_sse4_2 = true;
+    has_avx2 = true;
 #else
     do_check();
     // On GitHub actions there are some weird macOS machines which report avx2 not available but sse4.2 is available and then
@@ -216,7 +217,8 @@ init_simd(void *x) {
     // no idea how to probe ARM cpu for NEON support. This file uses pretty
     // basic AVX2 and SSE4.2 intrinsics, so hopefully they work on ARM
     // ARM has only 128 bit registers but using the avx2 code is still slightly faster
-    has_sse4_2 = true; has_avx2 = true;
+    has_sse4_2 = true;
+    has_avx2 = true;
 #elif !defined(KITTY_NO_SIMD)
     do_check();
 #endif

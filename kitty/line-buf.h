@@ -13,7 +13,7 @@
 typedef struct {
     PyObject_HEAD
 
-    GPUCell *gpu_cell_buf;
+        GPUCell *gpu_cell_buf;
     CPUCell *cpu_cell_buf;
     index_type xnum, ynum, *line_map, *scratch;
     LineAttrs *line_attrs;
@@ -22,4 +22,4 @@ typedef struct {
 } LineBuf;
 
 
-LineBuf* alloc_linebuf(unsigned int, unsigned int, TextCache*);
+LineBuf *alloc_linebuf(unsigned int, unsigned int, TextCache *);

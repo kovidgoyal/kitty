@@ -34,15 +34,17 @@ update_fds(EventLoopData *eld) {
 
 
 id_type
-addWatch(EventLoopData *eld, const char* name, int fd, int events, int enabled, watch_callback_func cb, void *cb_data) {
-    if (eld->watches_count >= sizeof(eld->watches)/sizeof(eld->watches[0])) {
+addWatch(EventLoopData *eld, const char *name, int fd, int events, int enabled, watch_callback_func cb, void *cb_data) {
+    if (eld->watches_count >= sizeof(eld->watches) / sizeof(eld->watches[0])) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Too many watches added");
         return 0;
     }
     static id_type watch_counter = 0;
     Watch *w = eld->watches + eld->watches_count++;
     w->name = name;
-    w->fd = fd; w->events = events; w->enabled = enabled;
+    w->fd = fd;
+    w->events = events;
+    w->enabled = enabled;
     w->callback = cb;
     w->callback_data = cb_data;
     w->free = NULL;
@@ -51,19 +53,22 @@ addWatch(EventLoopData *eld, const char* name, int fd, int events, int enabled, 
     return w->id;
 }
 
-#define removeX(which, item_id, update_func) {\
-    for (nfds_t i = 0; i < eld->which##_count; i++) { \
-        if (eld->which[i].id == item_id) { \
-            eld->which##_count--; \
-            if (eld->which[i].callback_data && eld->which[i].free) { \
-                eld->which[i].free(eld->which[i].id, eld->which[i].callback_data); \
-                eld->which[i].callback_data = NULL; eld->which[i].free = NULL; \
-            } \
-            if (i < eld->which##_count) { \
-                memmove(eld->which + i, eld->which + i + 1, sizeof(eld->which[0]) * (eld->which##_count - i)); \
-            } \
-            update_func(eld); break; \
-}}}
+#define removeX(which, item_id, update_func)                                                                                                                   \
+    {                                                                                                                                                          \
+        for (nfds_t i = 0; i < eld->which##_count; i++) {                                                                                                      \
+            if (eld->which[i].id == item_id) {                                                                                                                 \
+                eld->which##_count--;                                                                                                                          \
+                if (eld->which[i].callback_data && eld->which[i].free) {                                                                                       \
+                    eld->which[i].free(eld->which[i].id, eld->which[i].callback_data);                                                                         \
+                    eld->which[i].callback_data = NULL;                                                                                                        \
+                    eld->which[i].free = NULL;                                                                                                                 \
+                }                                                                                                                                              \
+                if (i < eld->which##_count) { memmove(eld->which + i, eld->which + i + 1, sizeof(eld->which[0]) * (eld->which##_count - i)); }                 \
+                update_func(eld);                                                                                                                              \
+                break;                                                                                                                                         \
+            }                                                                                                                                                  \
+        }                                                                                                                                                      \
+    }
 
 void
 removeWatch(EventLoopData *eld, id_type watch_id) {
@@ -87,7 +92,7 @@ static id_type timer_counter = 0;
 
 static int
 compare_timers(const void *a_, const void *b_) {
-    const Timer *a = (const Timer*)a_, *b = (const Timer*)b_;
+    const Timer *a = (const Timer *)a_, *b = (const Timer *)b_;
     return (a->trigger_at > b->trigger_at) ? 1 : (a->trigger_at < b->trigger_at) ? -1 : 0;
 }
 
@@ -97,8 +102,9 @@ update_timers(EventLoopData *eld) {
 }
 
 id_type
-addTimer(EventLoopData *eld, const char *name, monotonic_t interval, int enabled, bool repeats, timer_callback_func cb, void *cb_data, GLFWuserdatafreefun free) {
-    if (eld->timers_count >= sizeof(eld->timers)/sizeof(eld->timers[0])) {
+addTimer(
+    EventLoopData *eld, const char *name, monotonic_t interval, int enabled, bool repeats, timer_callback_func cb, void *cb_data, GLFWuserdatafreefun free) {
+    if (eld->timers_count >= sizeof(eld->timers) / sizeof(eld->timers[0])) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Too many timers added");
         return 0;
     }
@@ -158,16 +164,14 @@ prepareForPoll(EventLoopData *eld, monotonic_t timeout) {
     for (nfds_t i = 0; i < eld->watches_count; i++) eld->fds[i].revents = 0;
     if (!eld->timers_count || eld->timers[0].trigger_at == MONOTONIC_T_MAX) return timeout;
     monotonic_t now = monotonic(), next_repeat_at = eld->timers[0].trigger_at;
-    if (timeout < 0 || now + timeout > next_repeat_at) {
-        timeout = next_repeat_at <= now ? 0 : next_repeat_at - now;
-    }
+    if (timeout < 0 || now + timeout > next_repeat_at) { timeout = next_repeat_at <= now ? 0 : next_repeat_at - now; }
     return timeout;
 }
 
 static struct timespec
 calc_time(monotonic_t nsec) {
     struct timespec result;
-    result.tv_sec  = nsec / (1000LL * 1000LL * 1000LL);
+    result.tv_sec = nsec / (1000LL * 1000LL * 1000LL);
     result.tv_nsec = nsec % (1000LL * 1000LL * 1000LL);
     return result;
 }
@@ -193,7 +197,12 @@ dispatchEvents(EventLoopData *eld) {
 unsigned
 dispatchTimers(EventLoopData *eld) {
     if (!eld->timers_count || eld->timers[0].trigger_at == MONOTONIC_T_MAX) return 0;
-    static struct { timer_callback_func func; id_type id; void* data; bool repeats; } dispatches[sizeof(eld->timers)/sizeof(eld->timers[0])];
+    static struct {
+        timer_callback_func func;
+        id_type id;
+        void *data;
+        bool repeats;
+    } dispatches[sizeof(eld->timers) / sizeof(eld->timers[0])];
     unsigned num_dispatches = 0;
     monotonic_t now = monotonic();
     for (nfds_t i = 0; i < eld->timers_count && eld->timers[i].trigger_at <= now; i++) {
@@ -207,37 +216,38 @@ dispatchTimers(EventLoopData *eld) {
     // we dispatch separately so that the callbacks can modify timers
     for (unsigned i = 0; i < num_dispatches; i++) {
         dispatches[i].func(dispatches[i].id, dispatches[i].data);
-        if (!dispatches[i].repeats) {
-            removeTimer(eld, dispatches[i].id);
-        }
+        if (!dispatches[i].repeats) { removeTimer(eld, dispatches[i].id); }
     }
     if (num_dispatches) update_timers(eld);
     return num_dispatches;
 }
 
 static void
-drain_wakeup_fd(int fd, EventLoopData* eld) {
+drain_wakeup_fd(int fd, EventLoopData *eld) {
     static char drain_buf[64];
     eld->wakeup_data_read = false;
-    while(true) {
+    while (true) {
         ssize_t ret = read(fd, drain_buf, sizeof(drain_buf));
         if (ret < 0) {
             if (errno == EINTR) continue;
             break;
         }
-        if (ret > 0) { eld->wakeup_data_read = true; continue; }
+        if (ret > 0) {
+            eld->wakeup_data_read = true;
+            continue;
+        }
         break;
     }
 }
 
 static void
 mark_wakep_fd_ready(int fd UNUSED, int events UNUSED, void *data) {
-    ((EventLoopData*)(data))->wakeup_fd_ready = true;
+    ((EventLoopData *)(data))->wakeup_fd_ready = true;
 }
 
 static void
 mark_key_repeat_fd_ready(int fd UNUSED, int events UNUSED, void *data) {
-    ((EventLoopData*)(data))->key_repeat_fd_ready = true;
+    ((EventLoopData *)(data))->key_repeat_fd_ready = true;
 }
 
 
@@ -265,7 +275,8 @@ initPollData(EventLoopData *eld, int display_fd) {
 #ifdef _GLFW_WAYLAND
     if (!addWatch(eld, "key_repeat", key_repeat_fd, POLLIN, 1, mark_key_repeat_fd_ready, eld)) return false;
 #else
-    (void)key_repeat_fd; (void)mark_key_repeat_fd_ready;
+    (void)key_repeat_fd;
+    (void)mark_key_repeat_fd_ready;
 #endif
     return true;
 }
@@ -292,7 +303,7 @@ wakeupEventLoop(EventLoopData *eld) {
 
 static void
 closeFds(int *fds, size_t count) {
-    while(count--) {
+    while (count--) {
         if (*fds > 0) {
             close(*fds);
             *fds = -1;
@@ -305,12 +316,14 @@ void
 finalizePollData(EventLoopData *eld) {
     (void)closeFds;
 #ifdef HAS_EVENT_FD
-    close(eld->wakeupFd); eld->wakeupFd = -1;
+    close(eld->wakeupFd);
+    eld->wakeupFd = -1;
 #else
     closeFds(eld->wakeupFds, arraysz(eld->wakeupFds));
 #endif
 #ifdef HAS_TIMER_FD
-    close(eld->key_repeat_fd); eld->key_repeat_fd = -1;
+    close(eld->key_repeat_fd);
+    eld->key_repeat_fd = -1;
 #else
     closeFds(eld->key_repeat_fds, arraysz(eld->key_repeat_fds));
 #endif
@@ -323,9 +336,10 @@ pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func displ
     EVDBG("pollForEvents final timeout: %.3f", monotonic_t_to_s_double(timeout));
     int result;
     monotonic_t end_time = monotonic() + timeout;
-    eld->wakeup_fd_ready = false; eld->key_repeat_fd_ready = false;
+    eld->wakeup_fd_ready = false;
+    eld->key_repeat_fd_ready = false;
 
-    while(1) {
+    while (1) {
         if (timeout >= 0) {
             errno = 0;
             result = pollWithTimeout(eld->fds, eld->watches_count, timeout);
@@ -361,7 +375,8 @@ pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func displ
 // Duplicate a UTF-8 encoded string
 // but cut it so that it has at most max_length bytes plus the null byte.
 // This does not take combining characters into account.
-GLFWAPI char* utf_8_strndup(const char* source, size_t max_length) {
+GLFWAPI char *
+utf_8_strndup(const char *source, size_t max_length) {
     if (!source) return NULL;
     size_t length = strnlen(source, max_length);
     if (length >= max_length) {
@@ -370,7 +385,7 @@ GLFWAPI char* utf_8_strndup(const char* source, size_t max_length) {
         }
     }
 
-    char* result = malloc(length + 1);
+    char *result = malloc(length + 1);
     memcpy(result, source, length);
     result[length] = 0;
     return result;
@@ -396,7 +411,8 @@ GLFWAPI char* utf_8_strndup(const char* source, size_t max_length) {
  * is set to ENOSPC. If posix_fallocate() is not supported, program may
  * receive SIGBUS on accessing mmap()'ed file contents instead.
  */
-int createAnonymousFile(off_t size) {
+int
+createAnonymousFile(off_t size) {
     int ret, fd = -1, shm_anon = 0;
 #ifdef HAS_MEMFD_CREATE
     fd = glfw_memfd_create("glfw-shared", MFD_CLOEXEC | MFD_ALLOW_SEALING);
@@ -413,12 +429,11 @@ int createAnonymousFile(off_t size) {
     shm_anon = 1;
 #else
     static const char template[] = "/glfw-shared-XXXXXX";
-    const char* path;
-    char* name;
+    const char *path;
+    char *name;
 
     path = getenv("XDG_RUNTIME_DIR");
-    if (!path)
-    {
+    if (!path) {
         errno = ENOENT;
         return -1;
     }
@@ -431,13 +446,11 @@ int createAnonymousFile(off_t size) {
 
     free(name);
 
-    if (fd < 0)
-        return -1;
+    if (fd < 0) return -1;
 #endif
     // posix_fallocate does not work on SHM descriptors
     ret = shm_anon ? ftruncate(fd, size) : posix_fallocate(fd, 0, size);
-    if (ret != 0)
-    {
+    if (ret != 0) {
         close(fd);
         errno = ret;
         return -1;

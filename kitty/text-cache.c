@@ -10,7 +10,7 @@ typedef struct Chars {
     const char_type *chars;
     size_t count;
 } Chars;
-static_assert(sizeof(Chars) == sizeof(void*) + sizeof(size_t), "reorder Chars");
+static_assert(sizeof(Chars) == sizeof(void *) + sizeof(size_t), "reorder Chars");
 
 #define NAME chars_map
 #define KEY_TY Chars
@@ -27,25 +27,39 @@ static bool cmpr_chars(Chars a, Chars b);
 #include "arena.h"
 
 typedef struct TextCache {
-    struct { Chars *items; size_t capacity; char_type count; } array;
+    struct {
+        Chars *items;
+        size_t capacity;
+        char_type count;
+    } array;
     chars_map map;
     unsigned refcnt;
     CharsMonotonicArena arena;
     unsigned adds_since_last_gc;
 } TextCache;
-static uint64_t hash_chars(Chars k) { return vt_hash_bytes(k.chars, sizeof(k.chars[0]) * k.count); }
-static bool cmpr_chars(Chars a, Chars b) { return a.count == b.count && memcmp(a.chars, b.chars, sizeof(a.chars[0]) * a.count) == 0; }
+static uint64_t
+hash_chars(Chars k) {
+    return vt_hash_bytes(k.chars, sizeof(k.chars[0]) * k.count);
+}
+static bool
+cmpr_chars(Chars a, Chars b) {
+    return a.count == b.count && memcmp(a.chars, b.chars, sizeof(a.chars[0]) * a.count) == 0;
+}
 
 #define TEXT_CACHE_IMPLEMENTATION
 #include "text-cache.h"
 
-TextCache*
+TextCache *
 tc_alloc(void) {
     TextCache *ans = calloc(1, sizeof(TextCache));
     if (!ans) return NULL;
     ans->array.capacity = 256;
     ans->array.items = malloc(ans->array.capacity * sizeof(ans->array.items[0]));
-    if (!ans->array.items) { free(ans); ans = NULL; return ans; }
+    if (!ans->array.items) {
+        free(ans);
+        ans = NULL;
+        return ans;
+    }
     vt_init(&ans->map);
     ans->refcnt = 1;
     return ans;
@@ -59,10 +73,13 @@ free_text_cache(TextCache *self) {
     free(self);
 }
 
-TextCache*
-tc_incref(TextCache *self) { if (self) { self->refcnt++; } return self; }
+TextCache *
+tc_incref(TextCache *self) {
+    if (self) { self->refcnt++; }
+    return self;
+}
 
-TextCache*
+TextCache *
 tc_decref(TextCache *self) {
     if (self) {
         if (self->refcnt < 2) free_text_cache(self);
@@ -79,7 +96,7 @@ tc_first_char_at_index(const TextCache *self, char_type idx) {
 
 char_type
 tc_last_char_at_index(const TextCache *self, char_type idx) {
-    if (self->array.count > idx) return self->array.items[idx].chars[self->array.items[idx].count-1];
+    if (self->array.count > idx) return self->array.items[idx].chars[self->array.items[idx].count - 1];
     return 0;
 }
 
@@ -110,7 +127,7 @@ tc_chars_at_index_without_alloc(const TextCache *self, char_type idx, ListOfChar
 
 unsigned
 tc_num_codepoints(const TextCache *self, char_type idx) {
-     return self->array.count > idx ? self->array.items[idx].count : 0;
+    return self->array.count > idx ? self->array.items[idx].count : 0;
 }
 
 unsigned
@@ -135,7 +152,8 @@ copy_and_insert(TextCache *self, const Chars key) {
     memcpy(copy, key.chars, key.count * sizeof(key.chars[0]));
     char_type ans = self->array.count;
     Chars *k = self->array.items + self->array.count++;
-    k->count = key.count; k->chars = copy;
+    k->count = key.count;
+    k->chars = copy;
     chars_map_itr i = vt_insert(&self->map, *k, ans);
     if (vt_is_end(i)) fatal("Out of memory");
     return ans;
@@ -143,14 +161,19 @@ copy_and_insert(TextCache *self, const Chars key) {
 
 char_type
 tc_get_or_insert_chars(TextCache *self, const ListOfChars *chars) {
-    Chars key = {.count=chars->count, .chars=chars->chars};
+    Chars key = {.count = chars->count, .chars = chars->chars};
     chars_map_itr i = vt_get(&self->map, key);
-    if (vt_is_end(i)) { self->adds_since_last_gc++; return copy_and_insert(self, key); }
+    if (vt_is_end(i)) {
+        self->adds_since_last_gc++;
+        return copy_and_insert(self, key);
+    }
     return i.data->val;
 }
 
 char_type
-tc_num_entries(const TextCache *self) { return self->array.count; }
+tc_num_entries(const TextCache *self) {
+    return self->array.count;
+}
 
 // Interned cell texts are referenced from cells by index, so entries cannot
 // be evicted individually. Instead, periodically garbage collect: the owner
@@ -164,27 +187,39 @@ tc_num_entries(const TextCache *self) { return self->array.count; }
 #define TEXT_CACHE_ADDS_BETWEEN_GCS 8192u
 
 bool
-tc_should_gc(const TextCache *self) { return self->adds_since_last_gc > TEXT_CACHE_ADDS_BETWEEN_GCS; }
+tc_should_gc(const TextCache *self) {
+    return self->adds_since_last_gc > TEXT_CACHE_ADDS_BETWEEN_GCS;
+}
 
 struct TextCacheGCData {
-    Chars *old_items; char_type old_count;
+    Chars *old_items;
+    char_type old_count;
     CharsMonotonicArena old_arena;
     // old index -> new index + 1, 0 means not yet remapped
     char_type *map;
 };
 
-TextCacheGCData*
+TextCacheGCData *
 tc_gc_begin(TextCache *self) {
     TextCacheGCData *gc = calloc(1, sizeof(TextCacheGCData));
     if (!gc) return NULL;
     gc->map = calloc(MAX(1u, (size_t)self->array.count), sizeof(gc->map[0]));
     Chars *fresh = malloc(256 * sizeof(self->array.items[0]));
-    if (!gc->map || !fresh) { free(gc->map); free(fresh); free(gc); return NULL; }
-    gc->old_items = self->array.items; gc->old_count = self->array.count;
+    if (!gc->map || !fresh) {
+        free(gc->map);
+        free(fresh);
+        free(gc);
+        return NULL;
+    }
+    gc->old_items = self->array.items;
+    gc->old_count = self->array.count;
     gc->old_arena = self->arena;
-    self->array.items = fresh; self->array.capacity = 256; self->array.count = 0;
+    self->array.items = fresh;
+    self->array.capacity = 256;
+    self->array.count = 0;
     zero_at_ptr(&self->arena);
-    vt_cleanup(&self->map); vt_init(&self->map);
+    vt_cleanup(&self->map);
+    vt_init(&self->map);
     return gc;
 }
 
@@ -204,7 +239,8 @@ tc_gc_map_index(TextCache *self, TextCacheGCData *gc, char_type old_idx, char_ty
 void
 tc_gc_end(TextCache *self, TextCacheGCData *gc) {
     self->adds_since_last_gc = 0;
-    free(gc->map); free(gc->old_items);
+    free(gc->map);
+    free(gc->old_items);
     Chars_free_all(&gc->old_arena);
     free(gc);
 }

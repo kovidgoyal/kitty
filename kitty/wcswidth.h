@@ -8,7 +8,7 @@
 
 #include "char-props.h"
 
-typedef enum {NORMAL, IN_ESC, IN_CSI, IN_ST_TERMINATED} WCSParserState;
+typedef enum { NORMAL, IN_ESC, IN_CSI, IN_ST_TERMINATED } WCSParserState;
 
 typedef struct {
     char_type prev_ch;
@@ -21,5 +21,5 @@ typedef struct {
 
 void initialize_wcs_state(WCSState *state);
 int wcswidth_step(WCSState *state, const char_type ch);
-PyObject * wcswidth_std(PyObject UNUSED *self, PyObject *str);
+PyObject *wcswidth_std(PyObject UNUSED *self, PyObject *str);
 size_t wcswidth_string(const char_type *s);

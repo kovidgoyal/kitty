@@ -41,11 +41,11 @@ typedef struct {
     int handled_signals[16];
     size_t num_handled_signals;
 } LoopData;
-typedef bool(*handle_signal_func)(const siginfo_t* siginfo, void *data);
+typedef bool (*handle_signal_func)(const siginfo_t *siginfo, void *data);
 
 bool init_loop_data(LoopData *ld, ...);
 void free_loop_data(LoopData *ld);
-void wakeup_loop(LoopData *ld, bool in_signal_handler, const char*);
+void wakeup_loop(LoopData *ld, bool in_signal_handler, const char *);
 void read_signals(int fd, handle_signal_func callback, void *data);
 
 static inline bool
@@ -56,7 +56,7 @@ self_pipe(int fds[2], bool nonblock) {
     if (flags != 0) return false;
     for (int i = 0; i < 2; i++) {
         flags = fcntl(fds[i], F_GETFD);
-        if (flags == -1) {  return false; }
+        if (flags == -1) { return false; }
         if (fcntl(fds[i], F_SETFD, flags | FD_CLOEXEC) == -1) { return false; }
         if (nonblock) {
             flags = fcntl(fds[i], F_GETFL);
@@ -75,7 +75,7 @@ self_pipe(int fds[2], bool nonblock) {
 static inline void
 drain_fd(int fd) {
     static uint8_t drain_buf[1024];
-    while(true) {
+    while (true) {
         ssize_t len = read(fd, drain_buf, sizeof(drain_buf));
         if (len < 0) {
             if (errno == EINTR) continue;

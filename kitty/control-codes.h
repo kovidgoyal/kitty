@@ -8,7 +8,7 @@
 #pragma once
 
 // Space
-#define SP  ' '
+#define SP ' '
 
 // *Null*: Does nothing.
 #define NUL 0
@@ -103,7 +103,7 @@
 #define ESC_DECKPNM '>'
 
 // Set alternate keypad mode
-#define ESC_DECKPAM  '='
+#define ESC_DECKPAM '='
 
 // ECMA-48 CSI sequences.
 // ---------------------

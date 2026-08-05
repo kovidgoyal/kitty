@@ -8,32 +8,49 @@
 #include "data-types.h"
 
 #include <sys/sysctl.h>
-typedef void* rusage_info_t;  // needed for libproc.h
+typedef void *rusage_info_t; // needed for libproc.h
 #include <libproc.h>
 
-static PyObject*
+static PyObject *
 cwd_of_process(PyObject *self UNUSED, PyObject *pid_) {
-    if (!PyLong_Check(pid_)) { PyErr_SetString(PyExc_TypeError, "pid must be an int"); return NULL; }
+    if (!PyLong_Check(pid_)) {
+        PyErr_SetString(PyExc_TypeError, "pid must be an int");
+        return NULL;
+    }
     long pid = PyLong_AsLong(pid_);
-    if (pid < 0) { PyErr_SetString(PyExc_TypeError, "pid cannot be negative"); return NULL; }
+    if (pid < 0) {
+        PyErr_SetString(PyExc_TypeError, "pid cannot be negative");
+        return NULL;
+    }
     struct proc_vnodepathinfo vpi;
     int ret = proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &vpi, sizeof(vpi));
-    if (ret < 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    if (ret < 0) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        return NULL;
+    }
     return PyUnicode_FromString(vpi.pvi_cdir.vip_path);
 }
 
-static PyObject*
+static PyObject *
 abspath_of_process(PyObject *self UNUSED, PyObject *pid_) {
-    if (!PyLong_Check(pid_)) { PyErr_SetString(PyExc_TypeError, "pid must be an int"); return NULL; }
+    if (!PyLong_Check(pid_)) {
+        PyErr_SetString(PyExc_TypeError, "pid must be an int");
+        return NULL;
+    }
     pid_t pid = PyLong_AsLong(pid_);
-    if (pid < 0) { PyErr_SetString(PyExc_TypeError, "pid cannot be negative"); return NULL; }
+    if (pid < 0) {
+        PyErr_SetString(PyExc_TypeError, "pid cannot be negative");
+        return NULL;
+    }
     char pathbuf[PROC_PIDPATHINFO_MAXSIZE];
     int ret = proc_pidpath(pid, pathbuf, sizeof(pathbuf));
     if (ret < 0) {
-        PyErr_SetFromErrno(PyExc_OSError); return NULL;
+        PyErr_SetFromErrno(PyExc_OSError);
+        return NULL;
     } else if (ret == 0) {
         errno = EINVAL;
-        PyErr_SetFromErrno(PyExc_OSError); return NULL;
+        PyErr_SetFromErrno(PyExc_OSError);
+        return NULL;
     }
     return PyUnicode_FromString(pathbuf);
 }
@@ -42,15 +59,14 @@ abspath_of_process(PyObject *self UNUSED, PyObject *pid_) {
 static int
 get_argmax(void) {
     int argmax;
-    int mib[] = { CTL_KERN, KERN_ARGMAX };
+    int mib[] = {CTL_KERN, KERN_ARGMAX};
     size_t size = sizeof(argmax);
 
-    if (sysctl(mib, 2, &argmax, &size, NULL, 0) == 0)
-        return argmax;
+    if (sysctl(mib, 2, &argmax, &size, NULL, 0) == 0) return argmax;
     return 0;
 }
 
-static PyObject*
+static PyObject *
 get_all_processes(PyObject *self UNUSED, PyObject *args UNUSED) {
     pid_t num = proc_listallpids(NULL, 0);
     if (num <= 0) return PyTuple_New(0);
@@ -58,19 +74,29 @@ get_all_processes(PyObject *self UNUSED, PyObject *args UNUSED) {
     pid_t *buf = malloc(sz);
     if (!buf) return PyErr_NoMemory();
     num = proc_listallpids(buf, sz);
-    if (num <= 0) { free(buf); return PyTuple_New(0); }
+    if (num <= 0) {
+        free(buf);
+        return PyTuple_New(0);
+    }
     PyObject *ans = PyTuple_New(num);
-    if (!ans) { free(buf); return NULL; }
+    if (!ans) {
+        free(buf);
+        return NULL;
+    }
     for (pid_t i = 0; i < num; i++) {
         long long pid = buf[i];
         PyObject *t = PyLong_FromLongLong(pid);
-        if (!t) { free(buf); Py_CLEAR(ans); return NULL; }
+        if (!t) {
+            free(buf);
+            Py_CLEAR(ans);
+            return NULL;
+        }
         PyTuple_SET_ITEM(ans, i, t);
     }
     return ans;
 }
 
-static PyObject*
+static PyObject *
 cmdline_of_process(PyObject *self UNUSED, PyObject *pid_) {
     // Taken from psutil, with thanks (BSD 3-clause license)
     int mib[3];
@@ -84,13 +110,18 @@ cmdline_of_process(PyObject *self UNUSED, PyObject *pid_) {
 
     PyObject *py_arg = NULL;
     PyObject *py_retlist = NULL;
-    if (!PyLong_Check(pid_)) { PyErr_SetString(PyExc_TypeError, "pid must be an int"); goto error; }
+    if (!PyLong_Check(pid_)) {
+        PyErr_SetString(PyExc_TypeError, "pid must be an int");
+        goto error;
+    }
     long pid = PyLong_AsLong(pid_);
-    if (pid < 0) { PyErr_SetString(PyExc_TypeError, "pid cannot be negative"); goto error; }
+    if (pid < 0) {
+        PyErr_SetString(PyExc_TypeError, "pid cannot be negative");
+        goto error;
+    }
 
     // special case for PID 0 (kernel_task) where cmdline cannot be fetched
-    if (pid == 0)
-        return Py_BuildValue("[]");
+    if (pid == 0) return Py_BuildValue("[]");
 
     // read argmax and allocate memory for argument space.
     argmax = get_argmax();
@@ -111,10 +142,8 @@ cmdline_of_process(PyObject *self UNUSED, PyObject *pid_) {
     mib[2] = (pid_t)pid;
     if (sysctl(mib, 3, procargs, &argmax, NULL, 0) < 0) {
         // In case of zombie process or non-existent process we'll get EINVAL.
-        if (errno == EINVAL)
-            PyErr_Format(PyExc_ValueError, "process with pid %ld either does not exist or is a zombie or you dont have permission", pid);
-        else
-            PyErr_SetFromErrno(PyExc_OSError);
+        if (errno == EINVAL) PyErr_Format(PyExc_ValueError, "process with pid %ld either does not exist or is a zombie or you dont have permission", pid);
+        else PyErr_SetFromErrno(PyExc_OSError);
         goto error;
     }
 
@@ -133,22 +162,18 @@ cmdline_of_process(PyObject *self UNUSED, PyObject *pid_) {
 
     // skip ahead to the first argument
     for (; arg_ptr < arg_end; arg_ptr++) {
-        if (*arg_ptr != '\0')
-            break;
+        if (*arg_ptr != '\0') break;
     }
 
     // iterate through arguments
     curr_arg = arg_ptr;
     py_retlist = Py_BuildValue("[]");
-    if (!py_retlist)
-        goto error;
+    if (!py_retlist) goto error;
     while (arg_ptr < arg_end && nargs > 0) {
         if (*arg_ptr++ == '\0') {
             py_arg = PyUnicode_DecodeFSDefault(curr_arg);
-            if (! py_arg)
-                goto error;
-            if (PyList_Append(py_retlist, py_arg))
-                goto error;
+            if (!py_arg) goto error;
+            if (PyList_Append(py_retlist, py_arg)) goto error;
             Py_DECREF(py_arg);
             // iterate to next arg and decrement # of args
             curr_arg = arg_ptr;
@@ -162,10 +187,8 @@ cmdline_of_process(PyObject *self UNUSED, PyObject *pid_) {
 error:
     Py_XDECREF(py_arg);
     Py_XDECREF(py_retlist);
-    if (procargs != NULL)
-        free(procargs);
+    if (procargs != NULL) free(procargs);
     return NULL;
-
 }
 
 PyObject *
@@ -180,17 +203,22 @@ environ_of_process(PyObject *self UNUSED, PyObject *pid_) {
     char *env_start;
     size_t argmax;
     PyObject *py_ret = NULL;
-    if (!PyLong_Check(pid_)) { PyErr_SetString(PyExc_TypeError, "pid must be an int"); goto error; }
+    if (!PyLong_Check(pid_)) {
+        PyErr_SetString(PyExc_TypeError, "pid must be an int");
+        goto error;
+    }
     long pid = PyLong_AsLong(pid_);
-    if (pid < 0) { PyErr_SetString(PyExc_TypeError, "pid cannot be negative"); goto error; }
+    if (pid < 0) {
+        PyErr_SetString(PyExc_TypeError, "pid cannot be negative");
+        goto error;
+    }
 
     // special case for PID 0 (kernel_task) where cmdline cannot be fetched
-    if (pid == 0)
-        goto empty;
+    if (pid == 0) goto empty;
 
     // read argmax and allocate memory for argument space.
     argmax = get_argmax();
-    if (! argmax) {
+    if (!argmax) {
         PyErr_SetFromErrno(PyExc_OSError);
         goto error;
     }
@@ -208,10 +236,8 @@ environ_of_process(PyObject *self UNUSED, PyObject *pid_) {
     if (sysctl(mib, 3, procargs, &argmax, NULL, 0) < 0) {
         // In case of zombie process or a non-existent process we'll get EINVAL
         // to NSP and _psosx.py will translate it to ZP.
-        if (errno == EINVAL)
-            PyErr_Format(PyExc_ValueError, "process with pid %ld either does not exist or is a zombie or you dont have permission", pid);
-        else
-            PyErr_SetFromErrno(PyExc_OSError);
+        if (errno == EINVAL) PyErr_Format(PyExc_ValueError, "process with pid %ld either does not exist or is a zombie or you dont have permission", pid);
+        else PyErr_SetFromErrno(PyExc_OSError);
         goto error;
     }
 
@@ -223,19 +249,16 @@ environ_of_process(PyObject *self UNUSED, PyObject *pid_) {
     arg_ptr = procargs + sizeof(nargs);
     arg_ptr = memchr(arg_ptr, '\0', arg_end - arg_ptr);
 
-    if (arg_ptr == NULL || arg_ptr == arg_end)
-        goto empty;
+    if (arg_ptr == NULL || arg_ptr == arg_end) goto empty;
 
     // skip ahead to the first argument
     for (; arg_ptr < arg_end; arg_ptr++) {
-        if (*arg_ptr != '\0')
-            break;
+        if (*arg_ptr != '\0') break;
     }
 
     // iterate through arguments
     while (arg_ptr < arg_end && nargs > 0) {
-        if (*arg_ptr++ == '\0')
-            nargs--;
+        if (*arg_ptr++ == '\0') nargs--;
     }
 
     // build an environment variable block
@@ -250,16 +273,14 @@ environ_of_process(PyObject *self UNUSED, PyObject *pid_) {
     while (*arg_ptr != '\0' && arg_ptr < arg_end) {
         char *s = memchr(arg_ptr + 1, '\0', arg_end - arg_ptr);
 
-        if (s == NULL)
-            break;
+        if (s == NULL) break;
 
         memcpy(procenv + (arg_ptr - env_start), arg_ptr, s - arg_ptr);
 
         arg_ptr = s + 1;
     }
 
-    py_ret = PyUnicode_DecodeFSDefaultAndSize(
-        procenv, arg_ptr - env_start + 1);
+    py_ret = PyUnicode_DecodeFSDefaultAndSize(procenv, arg_ptr - env_start + 1);
     if (!py_ret) {
         // XXX: don't want to free() this as per:
         // https://github.com/giampaolo/psutil/issues/926
@@ -274,8 +295,7 @@ environ_of_process(PyObject *self UNUSED, PyObject *pid_) {
     return py_ret;
 
 empty:
-    if (procargs != NULL)
-        free(procargs);
+    if (procargs != NULL) free(procargs);
     return Py_BuildValue("s", "");
 
 error:
@@ -286,25 +306,43 @@ error:
 }
 
 
-static PyObject*
+static PyObject *
 memory_of_process(PyObject *self UNUSED, PyObject *pid_) {
-    if (!PyLong_Check(pid_)) { PyErr_SetString(PyExc_TypeError, "pid must be an int"); return NULL; }
+    if (!PyLong_Check(pid_)) {
+        PyErr_SetString(PyExc_TypeError, "pid must be an int");
+        return NULL;
+    }
     pid_t pid = (pid_t)PyLong_AsLong(pid_);
-    if (pid < 0) { PyErr_SetString(PyExc_TypeError, "pid cannot be negative"); return NULL; }
+    if (pid < 0) {
+        PyErr_SetString(PyExc_TypeError, "pid cannot be negative");
+        return NULL;
+    }
     struct proc_taskinfo ti;
     int ret = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &ti, sizeof(ti));
-    if (ret <= 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    if (ret <= 0) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        return NULL;
+    }
     return PyLong_FromUnsignedLongLong(ti.pti_resident_size);
 }
 
-static PyObject*
+static PyObject *
 ppid_of_process(PyObject *self UNUSED, PyObject *pid_) {
-    if (!PyLong_Check(pid_)) { PyErr_SetString(PyExc_TypeError, "pid must be an int"); return NULL; }
+    if (!PyLong_Check(pid_)) {
+        PyErr_SetString(PyExc_TypeError, "pid must be an int");
+        return NULL;
+    }
     pid_t pid = (pid_t)PyLong_AsLong(pid_);
-    if (pid < 0) { PyErr_SetString(PyExc_TypeError, "pid cannot be negative"); return NULL; }
+    if (pid < 0) {
+        PyErr_SetString(PyExc_TypeError, "pid cannot be negative");
+        return NULL;
+    }
     struct proc_bsdshortinfo si;
     int ret = proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, &si, sizeof(si));
-    if (ret <= 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    if (ret <= 0) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        return NULL;
+    }
     return PyLong_FromUnsignedLong(si.pbsi_ppid);
 }
 
@@ -316,7 +354,7 @@ static PyMethodDef module_methods[] = {
     {"get_all_processes", (PyCFunction)get_all_processes, METH_NOARGS, ""},
     {"memory_of_process", (PyCFunction)memory_of_process, METH_O, ""},
     {"ppid_of_process", (PyCFunction)ppid_of_process, METH_O, ""},
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+    {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 

@@ -14,13 +14,13 @@ static GLFWWLCursorThemes cursor_themes;
 static int
 pixels_from_scale(int scale) {
     int factor;
-    const char* name;
+    const char *name;
     glfw_current_cursor_theme(&name, &factor);
     return factor * scale;
 }
 
 
-struct wl_cursor_theme*
+struct wl_cursor_theme *
 glfw_wlc_theme_for_scale(int scale) {
     for (size_t i = 0; i < cursor_themes.count; i++) {
         if (cursor_themes.themes[i].scale == scale) return cursor_themes.themes[i].theme;
@@ -35,14 +35,11 @@ glfw_wlc_theme_for_scale(int scale) {
         cursor_themes.capacity = cursor_themes.count + 16;
     }
     int factor;
-    const char* name;
+    const char *name;
     glfw_current_cursor_theme(&name, &factor);
     struct wl_cursor_theme *ans = wl_cursor_theme_load(name, pixels_from_scale(scale), _glfw.wl.shm);
     if (!ans) {
-        _glfwInputError(
-            GLFW_PLATFORM_ERROR, "Wayland: wl_cursor_theme_load failed at scale: %d pixels: %d",
-            scale, pixels_from_scale(scale)
-        );
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: wl_cursor_theme_load failed at scale: %d pixels: %d", scale, pixels_from_scale(scale));
         return NULL;
     }
     GLFWWLCursorTheme *theme = cursor_themes.themes + cursor_themes.count++;
@@ -53,9 +50,9 @@ glfw_wlc_theme_for_scale(int scale) {
 
 void
 glfw_wlc_destroy(void) {
-    for (size_t i = 0; i < cursor_themes.count; i++) {
-        wl_cursor_theme_destroy(cursor_themes.themes[i].theme);
-    }
+    for (size_t i = 0; i < cursor_themes.count; i++) { wl_cursor_theme_destroy(cursor_themes.themes[i].theme); }
     free(cursor_themes.themes);
-    cursor_themes.themes = NULL; cursor_themes.capacity = 0; cursor_themes.count = 0;
+    cursor_themes.themes = NULL;
+    cursor_themes.capacity = 0;
+    cursor_themes.count = 0;
 }

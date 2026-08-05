@@ -30,7 +30,7 @@ log_error(const char *fmt, ...) {
     RAII_ALLOC(unsigned char, arena, calloc(size, sizeof(char)));
     if (!arena) return;
     va_start(ar, fmt);
-    n = vsnprintf((char*)arena, size, fmt, ar);
+    n = vsnprintf((char *)arena, size, fmt, ar);
     va_end(ar);
     unsigned char *sanbuf = arena + n + 1;
 
@@ -38,24 +38,24 @@ log_error(const char *fmt, ...) {
     START_ALLOW_CASE_RANGE
     size_t j = 0;
     for (unsigned char *x = arena; x < arena + n; x++) {
-        switch(*x) {
+        switch (*x) {
             case C0_EXCEPT_NL_SPACE_TAB_DEL: {
                 const uint32_t ch = 0x2400 + *x;
                 const unsigned sz = encode_utf8(ch, utf8buf);
                 for (unsigned c = 0; c < sz; c++, j++) sanbuf[j] = utf8buf[c];
             } break;
             case 0x7f:
-                sanbuf[j++] = 0xe2; sanbuf[j++] = 0x90; sanbuf[j++] = 0xa1; // U+2421
+                sanbuf[j++] = 0xe2;
+                sanbuf[j++] = 0x90;
+                sanbuf[j++] = 0xa1; // U+2421
                 break;
-            default:
-                sanbuf[j++] = *x;
-                break;
+            default: sanbuf[j++] = *x; break;
         }
     }
     sanbuf[j] = 0;
     END_ALLOW_CASE_RANGE
 
-    if (!use_os_log) {  // Apple's os_log already records timestamps
+    if (!use_os_log) { // Apple's os_log already records timestamps
         fprintf(stderr, "[%.3f] ", monotonic_t_to_s_double(monotonic()));
     }
     // To see os_log messages from kitty, use:
@@ -67,7 +67,7 @@ log_error(const char *fmt, ...) {
 #undef bufprint
 }
 
-static PyObject*
+static PyObject *
 log_error_string(PyObject *self UNUSED, PyObject *args) {
     const char *msg;
     if (!PyArg_ParseTuple(args, "s", &msg)) return NULL;
@@ -75,16 +75,14 @@ log_error_string(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static PyObject*
+static PyObject *
 set_use_os_log(PyObject *self UNUSED, PyObject *args) {
     use_os_log = PyObject_IsTrue(args) ? true : false;
     Py_RETURN_NONE;
 }
 
 static PyMethodDef module_methods[] = {
-    METHODB(log_error_string, METH_VARARGS),
-    METHODB(set_use_os_log, METH_O),
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+    METHODB(log_error_string, METH_VARARGS), METHODB(set_use_os_log, METH_O), {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 bool

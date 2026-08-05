@@ -29,7 +29,7 @@ typedef struct Face {
 } Face;
 
 typedef struct {
-    unsigned char* buf;
+    unsigned char *buf;
     size_t start_x, width, stride;
     size_t rows;
     FT_Pixel_Mode pixel_mode;
@@ -60,7 +60,10 @@ static void
 free_face(Face *face) {
     if (face->freetype) FT_Done_Face(face->freetype);
     if (face->hb) hb_font_destroy(face->hb);
-    for (size_t i = 0; i < face->count; i++) { free_face(face->fallbacks[i]); free(face->fallbacks[i]); }
+    for (size_t i = 0; i < face->count; i++) {
+        free_face(face->fallbacks[i]);
+        free(face->fallbacks[i]);
+    }
     free(face->fallbacks);
     memset(face, 0, sizeof(Face));
 }
@@ -68,7 +71,8 @@ free_face(Face *face) {
 static void
 cleanup(RenderCtx *ctx) {
     free_face(&main_face);
-    free(main_face_information.path); main_face_information.path = NULL;
+    free(main_face_information.path);
+    main_face_information.path = NULL;
     free(main_face_family.name);
     memset(&main_face_family, 0, sizeof(FamilyInformation));
     if (hb_buffer) hb_buffer_destroy(hb_buffer);
@@ -77,14 +81,14 @@ cleanup(RenderCtx *ctx) {
 
 void
 set_main_face_family(FreeTypeRenderCtx ctx_, const char *family, bool bold, bool italic) {
-    RenderCtx *ctx = (RenderCtx*)ctx_;
-    if (
-        (family == main_face_family.name || (main_face_family.name && strcmp(family, main_face_family.name) == 0)) &&
-        main_face_family.bold == bold && main_face_family.italic == italic
-    ) return;
+    RenderCtx *ctx = (RenderCtx *)ctx_;
+    if ((family == main_face_family.name || (main_face_family.name && strcmp(family, main_face_family.name) == 0)) && main_face_family.bold == bold &&
+        main_face_family.italic == italic)
+        return;
     cleanup(ctx);
     main_face_family.name = family ? strdup(family) : NULL;
-    main_face_family.bold = bold; main_face_family.italic = italic;
+    main_face_family.bold = bold;
+    main_face_family.italic = italic;
 }
 
 static int
@@ -102,8 +106,12 @@ load_font(FontConfigFace *info, Face *ans) {
     ans->freetype = native_face_from_path(info->path, info->index);
     if (!ans->freetype || PyErr_Occurred()) return false;
     ans->hb = hb_ft_font_create(ans->freetype, NULL);
-    if (!ans->hb) { PyErr_NoMemory(); return false; }
-    ans->hinting = info->hinting; ans->hintstyle = info->hintstyle;
+    if (!ans->hb) {
+        PyErr_NoMemory();
+        return false;
+    }
+    ans->hinting = info->hinting;
+    ans->hintstyle = info->hintstyle;
     hb_ft_font_set_load_flags(ans->hb, get_load_flags(ans->hinting, ans->hintstyle, FT_LOAD_DEFAULT));
     return true;
 }
@@ -133,7 +141,8 @@ choose_bitmap_size(FT_Face face, FT_UInt desired_height) {
 static void
 set_pixel_size(RenderCtx *ctx, Face *face, FT_UInt sz, bool get_metrics UNUSED) {
     if (sz != face->pixel_size) {
-        if (face->freetype->num_fixed_sizes > 0 && FT_HAS_COLOR(face->freetype)) choose_bitmap_size(face->freetype, font_units_to_pixels_y(main_face.freetype, main_face.freetype->height));
+        if (face->freetype->num_fixed_sizes > 0 && FT_HAS_COLOR(face->freetype))
+            choose_bitmap_size(face->freetype, font_units_to_pixels_y(main_face.freetype, main_face.freetype->height));
         else FT_Set_Pixel_Sizes(face->freetype, sz, sz);
         hb_ft_font_changed(face->hb);
         hb_ft_font_set_load_flags(face->hb, get_load_flags(face->hinting, face->hintstyle, FT_LOAD_DEFAULT));
@@ -157,14 +166,14 @@ typedef struct RenderState {
 
 static void
 setup_regions(ProcessedBitmap *bm, RenderState *rs, int baseline) {
-    rs->src = (Region){ .left = bm->start_x, .bottom = bm->rows, .right = bm->width + bm->start_x };
-    rs->dest = (Region){ .bottom = rs->output_height, .right = rs->output_width };
+    rs->src = (Region){.left = bm->start_x, .bottom = bm->rows, .right = bm->width + bm->start_x};
+    rs->dest = (Region){.bottom = rs->output_height, .right = rs->output_width};
     int xoff = (int)(rs->x + bm->bitmap_left);
     if (xoff < 0) rs->src.left += -xoff;
     else rs->dest.left = xoff;
     if (rs->horizontally_center) {
         int run_width = (int)(rs->output_width - rs->start_pos_for_current_run);
-        rs->dest.left = (int)rs->start_pos_for_current_run + (run_width > (int)bm->width ? (run_width - bm->width)/2 : 0);
+        rs->dest.left = (int)rs->start_pos_for_current_run + (run_width > (int)bm->width ? (run_width - bm->width) / 2 : 0);
     }
     int yoff = (int)(rs->y + bm->bitmap_top);
     if ((yoff > 0 && yoff > baseline)) {
@@ -175,7 +184,7 @@ setup_regions(ProcessedBitmap *bm, RenderState *rs, int baseline) {
     rs->dest.top += rs->y_offset;
 }
 
-#define ARGB(a, r, g, b) ( (a & 0xff) << 24 ) | ( (r & 0xff) << 16) | ( (g & 0xff) << 8 ) | (b & 0xff)
+#define ARGB(a, r, g, b) ((a & 0xff) << 24) | ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff)
 
 static pixel
 premult_pixel(pixel p, uint16_t alpha) {
@@ -225,42 +234,39 @@ static void
 populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBitmap *ans) {
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
     ans->rows = bitmap->rows;
-    ans->start_x = 0; ans->width = bitmap->width;
+    ans->start_x = 0;
+    ans->width = bitmap->width;
     ans->pixel_mode = bitmap->pixel_mode;
-    ans->bitmap_top = slot->bitmap_top; ans->bitmap_left = slot->bitmap_left;
+    ans->bitmap_top = slot->bitmap_top;
+    ans->bitmap_left = slot->bitmap_left;
     ans->buf = bitmap->buffer;
 }
 
 static void
 detect_edges(ProcessedBitmap *ans) {
-#define check const uint8_t *p = ans->buf + x * 4 + y * ans->stride; if (p[3] > 20)
-    ans->right_edge = 0; ans->bottom_edge = 0;
+#define check                                                                                                                                                  \
+    const uint8_t *p = ans->buf + x * 4 + y * ans->stride;                                                                                                     \
+    if (p[3] > 20)
+    ans->right_edge = 0;
+    ans->bottom_edge = 0;
     for (ssize_t x = ans->width - 1; !ans->right_edge && x > -1; x--) {
-        for (size_t y = 0; y < ans->rows && !ans->right_edge; y++) {
-            check ans->right_edge = x;
-        }
+        for (size_t y = 0; y < ans->rows && !ans->right_edge; y++) { check ans->right_edge = x; }
     }
     for (ssize_t y = ans->rows - 1; !ans->bottom_edge && y > -1; y--) {
-        for (size_t x = 0; x < ans->width && !ans->bottom_edge; x++) {
-            check ans->bottom_edge = y;
-        }
+        for (size_t x = 0; x < ans->width && !ans->bottom_edge; x++) { check ans->bottom_edge = y; }
     }
     ans->left_edge = ans->width;
     for (size_t x = 0; ans->left_edge == ans->width && x < ans->width; x++) {
-        for (size_t y = 0; y < ans->rows && ans->left_edge == ans->width; y++) {
-            check ans->left_edge = x;
-        }
+        for (size_t y = 0; y < ans->rows && ans->left_edge == ans->width; y++) { check ans->left_edge = x; }
     }
     ans->top_edge = ans->rows;
     for (size_t y = 0; ans->top_edge == ans->rows && y < ans->rows; y++) {
-        for (size_t x = 0; x < ans->width && ans->top_edge == ans->rows; x++) {
-            check ans->top_edge = y;
-        }
+        for (size_t x = 0; x < ans->width && ans->top_edge == ans->rows; x++) { check ans->top_edge = y; }
     }
 #undef check
 }
 
-static Face*
+static Face *
 find_fallback_font_for(RenderCtx *ctx, char_type codep, char_type next_codep) {
     if (glyph_id_for_codepoint(&main_face, codep) > 0) return &main_face;
     for (size_t i = 0; i < main_face.count; i++) {
@@ -277,7 +283,10 @@ find_fallback_font_for(RenderCtx *ctx, char_type codep, char_type next_codep) {
     bool ok = load_font(&q, ans);
     if (PyErr_Occurred()) PyErr_Print();
     free(q.path);
-    if (!ok) { free(ans); return NULL; }
+    if (!ok) {
+        free(ans);
+        return NULL;
+    }
     main_face.fallbacks[main_face.count] = ans;
     main_face.count++;
     return ans;
@@ -345,7 +354,7 @@ render_run(RenderCtx *ctx, RenderState *rs) {
             continue;
         };
         ProcessedBitmap pbm = {0};
-        switch(face->glyph->bitmap.pixel_mode) {
+        switch (face->glyph->bitmap.pixel_mode) {
             case FT_PIXEL_MODE_BGRA: {
                 uint8_t *buf = NULL;
                 unsigned text_height = font_units_to_pixels_y(main_face.freetype, main_face.freetype->height);
@@ -357,15 +366,20 @@ render_run(RenderCtx *ctx, RenderState *rs) {
                     buf = calloc((size_t)bm_height * bm_width, sizeof(pixel));
                     if (!buf) break;
                     downsample_32bit_image(pbm.buf, pbm.width, pbm.rows, pbm.stride, buf, bm_width, bm_height);
-                    pbm.buf = buf; pbm.stride = 4 * bm_width; pbm.width = bm_width; pbm.rows = bm_height;
+                    pbm.buf = buf;
+                    pbm.stride = 4 * bm_width;
+                    pbm.width = bm_width;
+                    pbm.rows = bm_height;
                     detect_edges(&pbm);
                 }
                 setup_regions(&pbm, rs, baseline);
                 if (bm_width) {
                     /* printf("bottom_edge: %u top_edge: %u left_edge: %u right_edge: %u\n", */
                     /*         pbm.bottom_edge, pbm.top_edge, pbm.left_edge, pbm.right_edge); */
-                    rs->src.top = pbm.top_edge; rs->src.bottom = pbm.bottom_edge + 1;
-                    rs->src.left = pbm.left_edge; rs->src.right = pbm.right_edge + 1;
+                    rs->src.top = pbm.top_edge;
+                    rs->src.bottom = pbm.bottom_edge + 1;
+                    rs->src.left = pbm.left_edge;
+                    rs->src.right = pbm.right_edge + 1;
                     rs->dest.left = (int)(rs->x + 2);
                     positions[i].x_advance = (pbm.right_edge - pbm.left_edge + 2) * 64;
                     unsigned main_baseline = font_units_to_pixels_y(main_face.freetype, main_face.freetype->ascender);
@@ -382,8 +396,7 @@ render_run(RenderCtx *ctx, RenderState *rs) {
                 }
                 render_color_bitmap(&pbm, rs);
                 free(buf);
-            }
-                break;
+            } break;
             case FT_PIXEL_MODE_MONO: {
                 FT_Bitmap bitmap;
                 freetype_convert_mono_bitmap(&face->glyph->bitmap, &bitmap);
@@ -391,8 +404,7 @@ render_run(RenderCtx *ctx, RenderState *rs) {
                 setup_regions(&pbm, rs, baseline);
                 render_gray_bitmap(&pbm, rs);
                 FT_Bitmap_Done(freetype_library(), &bitmap);
-            }
-                break;
+            } break;
             case FT_PIXEL_MODE_GRAY:
                 populate_processed_bitmap(face->glyph, &face->glyph->bitmap, &pbm);
                 setup_regions(&pbm, rs, baseline);
@@ -436,32 +448,57 @@ process_codepoint(RenderCtx *ctx, RenderState *rs, char_type codep, char_type ne
 }
 
 bool
-render_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin, bool horizontally_center_runs) {
-    RenderCtx *ctx = (RenderCtx*)ctx_;
+render_single_line(
+    FreeTypeRenderCtx ctx_,
+    const char *text,
+    unsigned sz_px,
+    pixel fg,
+    pixel bg,
+    uint8_t *output_buf,
+    size_t width,
+    size_t height,
+    float x_offset,
+    float y_offset,
+    size_t right_margin,
+    bool horizontally_center_runs) {
+    RenderCtx *ctx = (RenderCtx *)ctx_;
     if (!ctx->created) return false;
     size_t output_width = right_margin <= width ? width - right_margin : 0;
     bool has_text = text && text[0];
     pixel pbg = premult_pixel(bg, ((bg >> 24) & 0xff));
     for (size_t y = 0; y < height; y++) {
-        pixel *px = (pixel*)(output_buf + 4 * y * width);
+        pixel *px = (pixel *)(output_buf + 4 * y * width);
         for (size_t x = (size_t)x_offset; x < output_width; x++) px[x] = pbg;
     }
     if (!has_text) return true;
     hb_buffer_clear_contents(hb_buffer);
-    if (!hb_buffer_pre_allocate(hb_buffer, 512)) { PyErr_NoMemory(); return false; }
+    if (!hb_buffer_pre_allocate(hb_buffer, 512)) {
+        PyErr_NoMemory();
+        return false;
+    }
 
     size_t text_len = strlen(text);
     char_type *unicode = calloc(text_len + 1, sizeof(char_type));
-    if (!unicode) { PyErr_NoMemory(); return false; }
+    if (!unicode) {
+        PyErr_NoMemory();
+        return false;
+    }
     bool ok = false;
     text_len = decode_utf8_string(text, text_len, unicode);
     set_pixel_size(ctx, &main_face, sz_px, true);
     unsigned text_height = font_units_to_pixels_y(main_face.freetype, main_face.freetype->height);
     RenderState rs = {
-        .current_face = &main_face, .fg = fg, .bg = bg, .horizontally_center = horizontally_center_runs,
-        .output_width = output_width, .output_height = height, .stride = width,
-        .output = (pixel*)output_buf, .x = x_offset, .y = y_offset, .sz_px = sz_px
-    };
+        .current_face = &main_face,
+        .fg = fg,
+        .bg = bg,
+        .horizontally_center = horizontally_center_runs,
+        .output_width = output_width,
+        .output_height = height,
+        .stride = width,
+        .output = (pixel *)output_buf,
+        .x = x_offset,
+        .y = y_offset,
+        .sz_px = sz_px};
     if (text_height < height) rs.y_offset = (height - text_height) / 2;
 
     for (size_t i = 0; i < text_len && rs.x < rs.output_width && !rs.truncated; i++) {
@@ -487,24 +524,37 @@ end:
 
 size_t
 freetype_text_width_for_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px) {
-    RenderCtx *ctx = (RenderCtx*)ctx_;
+    RenderCtx *ctx = (RenderCtx *)ctx_;
     if (!ctx->created) return 0;
     bool has_text = text && text[0];
     if (!has_text) return 0;
     hb_buffer_clear_contents(hb_buffer);
-    if (!hb_buffer_pre_allocate(hb_buffer, 512)) { PyErr_NoMemory(); return 0; }
+    if (!hb_buffer_pre_allocate(hb_buffer, 512)) {
+        PyErr_NoMemory();
+        return 0;
+    }
 
     size_t text_len = strlen(text);
     char_type *unicode = calloc(text_len + 1, sizeof(char_type));
-    if (!unicode) { PyErr_NoMemory(); return 0; }
+    if (!unicode) {
+        PyErr_NoMemory();
+        return 0;
+    }
     text_len = decode_utf8_string(text, text_len, unicode);
     set_pixel_size(ctx, &main_face, sz_px, true);
     // Use a very large output_width so nothing is truncated
     RenderState rs = {
-        .current_face = &main_face, .fg = 0, .bg = 0, .horizontally_center = false,
-        .output_width = SIZE_MAX, .output_height = 0, .stride = 0,
-        .output = NULL, .x = 0, .y = 0, .sz_px = sz_px
-    };
+        .current_face = &main_face,
+        .fg = 0,
+        .bg = 0,
+        .horizontally_center = false,
+        .output_width = SIZE_MAX,
+        .output_height = 0,
+        .stride = 0,
+        .output = NULL,
+        .x = 0,
+        .y = 0,
+        .sz_px = sz_px};
 
     for (size_t i = 0; i < text_len; i++) {
         bool add_to_current_buffer = false;
@@ -529,9 +579,7 @@ freetype_text_width_for_single_line(FreeTypeRenderCtx ctx_, const char *text, un
                 hb_shape(rs.current_face->hb, hb_buffer, NULL, 0);
                 unsigned int len = hb_buffer_get_length(hb_buffer);
                 hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(hb_buffer, NULL);
-                for (unsigned int j = 0; j < len; j++) {
-                    rs.x += (float)positions[j].x_offset / 64.0f + (float)positions[j].x_advance / 64.0f;
-                }
+                for (unsigned int j = 0; j < len; j++) { rs.x += (float)positions[j].x_offset / 64.0f + (float)positions[j].x_advance / 64.0f; }
                 rs.pending_in_buffer = 0;
                 hb_buffer_clear_contents(hb_buffer);
             }
@@ -546,9 +594,7 @@ freetype_text_width_for_single_line(FreeTypeRenderCtx ctx_, const char *text, un
         hb_shape(rs.current_face->hb, hb_buffer, NULL, 0);
         unsigned int len = hb_buffer_get_length(hb_buffer);
         hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(hb_buffer, NULL);
-        for (unsigned int j = 0; j < len; j++) {
-            rs.x += (float)positions[j].x_offset / 64.0f + (float)positions[j].x_advance / 64.0f;
-        }
+        for (unsigned int j = 0; j < len; j++) { rs.x += (float)positions[j].x_offset / 64.0f + (float)positions[j].x_advance / 64.0f; }
         hb_buffer_clear_contents(hb_buffer);
     }
 
@@ -556,11 +602,15 @@ freetype_text_width_for_single_line(FreeTypeRenderCtx ctx_, const char *text, un
     return (size_t)ceilf(rs.x);
 }
 
-static uint8_t*
+static uint8_t *
 render_single_char_bitmap(const FT_Bitmap *bm, size_t *result_width, size_t *result_height) {
-    *result_width = bm->width; *result_height = bm->rows;
+    *result_width = bm->width;
+    *result_height = bm->rows;
     uint8_t *rendered = malloc(*result_width * *result_height);
-    if (!rendered) { PyErr_NoMemory(); return NULL; }
+    if (!rendered) {
+        PyErr_NoMemory();
+        return NULL;
+    }
     for (size_t r = 0; r < bm->rows; r++) {
         uint8_t *src_row = bm->buffer + bm->pitch * r;
         uint8_t *dest_row = rendered + *result_width * r;
@@ -583,7 +633,7 @@ cleanup_resize(TempFontData *f) {
 }
 #define RAII_TempFontData(name) __attribute__((cleanup(cleanup_resize))) TempFontData name = {0}
 
-static void*
+static void *
 report_freetype_error_for_char(int error, char ch, const char *operation) {
     char buf[128];
     snprintf(buf, sizeof(buf), "Failed to %s glyph for character: %c, with error: ", operation, ch);
@@ -591,18 +641,28 @@ report_freetype_error_for_char(int error, char ch, const char *operation) {
     return NULL;
 }
 
-uint8_t*
+uint8_t *
 render_single_ascii_char_as_mask(FreeTypeRenderCtx ctx_, const char ch, size_t *result_width, size_t *result_height) {
-    RenderCtx *ctx = (RenderCtx*)ctx_;
-    if (!ctx->created) { PyErr_SetString(PyExc_RuntimeError, "freetype render ctx not created"); return NULL; }
+    RenderCtx *ctx = (RenderCtx *)ctx_;
+    if (!ctx->created) {
+        PyErr_SetString(PyExc_RuntimeError, "freetype render ctx not created");
+        return NULL;
+    }
     size_t avail_height = *result_height;
-    if (avail_height < 4) { PyErr_Format(PyExc_ValueError, "Invalid available height: %zu", avail_height); return NULL; }
+    if (avail_height < 4) {
+        PyErr_Format(PyExc_ValueError, "Invalid available height: %zu", avail_height);
+        return NULL;
+    }
     Face *face = &main_face;
     RAII_TempFontData(temp);
-    temp.face = face; temp.orig_sz = face->pixel_size;
+    temp.face = face;
+    temp.orig_sz = face->pixel_size;
     set_pixel_size(ctx, face, avail_height, false);
     int glyph_index = FT_Get_Char_Index(face->freetype, ch);
-    if (!glyph_index) { PyErr_Format(PyExc_KeyError, "character %c not found in font", ch); return NULL; }
+    if (!glyph_index) {
+        PyErr_Format(PyExc_KeyError, "character %c not found in font", ch);
+        return NULL;
+    }
     unsigned int height = font_units_to_pixels_y(face->freetype, face->freetype->height);
     float ratio = ((float)height) / avail_height;
     face->pixel_size = (FT_UInt)(face->pixel_size / ratio);
@@ -614,20 +674,15 @@ render_single_ascii_char_as_mask(FreeTypeRenderCtx ctx_, const char ch, size_t *
         if (error) return report_freetype_error_for_char(error, ch, "render");
     }
     uint8_t *rendered = NULL;
-    switch(face->freetype->glyph->bitmap.pixel_mode) {
+    switch (face->freetype->glyph->bitmap.pixel_mode) {
         case FT_PIXEL_MODE_MONO: {
             FT_Bitmap bitmap;
             if (!freetype_convert_mono_bitmap(&face->freetype->glyph->bitmap, &bitmap)) return NULL;
             rendered = render_single_char_bitmap(&bitmap, result_width, result_height);
             FT_Bitmap_Done(freetype_library(), &bitmap);
-        }
-            break;
-        case FT_PIXEL_MODE_GRAY:
-            rendered = render_single_char_bitmap(&face->freetype->glyph->bitmap, result_width, result_height);
-            break;
-        default:
-            PyErr_Format(PyExc_TypeError, "Unknown FreeType bitmap type: 0x%x", face->freetype->glyph->bitmap.pixel_mode);
-            break;
+        } break;
+        case FT_PIXEL_MODE_GRAY: rendered = render_single_char_bitmap(&face->freetype->glyph->bitmap, result_width, result_height); break;
+        default: PyErr_Format(PyExc_TypeError, "Unknown FreeType bitmap type: 0x%x", face->freetype->glyph->bitmap.pixel_mode); break;
     }
     return rendered;
 }
@@ -636,33 +691,45 @@ FreeTypeRenderCtx
 create_freetype_render_context(const char *family, bool bold, bool italic) {
     RenderCtx *ctx = calloc(1, sizeof(RenderCtx));
     main_face_family.name = family ? strdup(family) : NULL;
-    main_face_family.bold = bold; main_face_family.italic = italic;
+    main_face_family.bold = bold;
+    main_face_family.italic = italic;
     if (!information_for_font_family(main_face_family.name, main_face_family.bold, main_face_family.italic, &main_face_information)) return NULL;
     if (!load_font(&main_face_information, &main_face)) return NULL;
     hb_buffer = hb_buffer_create();
-    if (!hb_buffer) { PyErr_NoMemory(); return NULL; }
+    if (!hb_buffer) {
+        PyErr_NoMemory();
+        return NULL;
+    }
     ctx->created = true;
     return (FreeTypeRenderCtx)ctx;
 }
 
 void
-release_freetype_render_context(FreeTypeRenderCtx ctx) { if (ctx) { cleanup((RenderCtx*)ctx); free(ctx); } }
+release_freetype_render_context(FreeTypeRenderCtx ctx) {
+    if (ctx) {
+        cleanup((RenderCtx *)ctx);
+        free(ctx);
+    }
+}
 
-static PyObject*
+static PyObject *
 render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     // use for testing as below
-    // kitty +runpy "from kitty.fast_data_types import *; open('/tmp/test.rgba', 'wb').write(freetype_render_line())" && magick -size 800x60 -depth 8 /tmp/test.rgba /tmp/test.png && icat /tmp/test.png
+    // kitty +runpy "from kitty.fast_data_types import *; open('/tmp/test.rgba', 'wb').write(freetype_render_line())" && magick -size 800x60 -depth 8
+    // /tmp/test.rgba /tmp/test.png && icat /tmp/test.png
     const char *text = "Test 猫 H🐱🚀b r\U000f0320endering with ellipsis for cut off text", *family = NULL;
     unsigned int width = 800, height = 60, right_margin = 0;
     int bold = 0, italic = 0;
     unsigned long fg = 0, bg = 0xfffefefe;
     float x_offset = 0, y_offset = 0;
-    static const char* kwlist[] = {"text", "width", "height", "font_family", "bold", "italic", "fg", "bg", "x_offset", "y_offset", "right_margin", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "|sIIzppkkffI", (char**)kwlist, &text, &width, &height, &family, &bold, &italic, &fg, &bg, &x_offset, &y_offset, &right_margin)) return NULL;
+    static const char *kwlist[] = {"text", "width", "height", "font_family", "bold", "italic", "fg", "bg", "x_offset", "y_offset", "right_margin", NULL};
+    if (!PyArg_ParseTupleAndKeywords(
+            args, kw, "|sIIzppkkffI", (char **)kwlist, &text, &width, &height, &family, &bold, &italic, &fg, &bg, &x_offset, &y_offset, &right_margin))
+        return NULL;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)width * height * 4);
     if (!ans) return NULL;
-    uint8_t *buffer = (uint8_t*) PyBytes_AS_STRING(ans);
-    RenderCtx *ctx = (RenderCtx*)create_freetype_render_context(family, bold, italic);
+    uint8_t *buffer = (uint8_t *)PyBytes_AS_STRING(ans);
+    RenderCtx *ctx = (RenderCtx *)create_freetype_render_context(family, bold, italic);
     if (!ctx) return NULL;
     if (!render_single_line((FreeTypeRenderCtx)ctx, text, 3 * height / 4, 0, 0xffffffff, buffer, width, height, x_offset, y_offset, right_margin, false)) {
         Py_CLEAR(ans);
@@ -670,7 +737,7 @@ render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
         ans = NULL;
     } else {
         // remove pre-multiplication and convert to ABGR which is what the ImageMagick .rgba filetype wants
-        for (pixel *p = (pixel*)buffer, *end = (pixel*)(buffer + PyBytes_GET_SIZE(ans)); p < end; p++) {
+        for (pixel *p = (pixel *)buffer, *end = (pixel *)(buffer + PyBytes_GET_SIZE(ans)); p < end; p++) {
             const uint16_t a = (*p >> 24) & 0xff;
             if (!a) continue;
             uint16_t r = (*p >> 16) & 0xff, g = (*p >> 8) & 0xff, b = *p & 0xff;
@@ -683,9 +750,10 @@ render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     return ans;
 }
 
-static PyObject*
+static PyObject *
 path_for_font(PyObject *self UNUSED, PyObject *args) {
-    const char *family = NULL; int bold = 0, italic = 0;
+    const char *family = NULL;
+    int bold = 0, italic = 0;
     if (!PyArg_ParseTuple(args, "|zpp", &family, &bold, &italic)) return NULL;
     FontConfigFace f;
     if (!information_for_font_family(family, bold, italic, &f)) return NULL;
@@ -694,9 +762,10 @@ path_for_font(PyObject *self UNUSED, PyObject *args) {
     return ret;
 }
 
-static PyObject*
+static PyObject *
 fallback_for_char(PyObject *self UNUSED, PyObject *args) {
-    const char *family = NULL; int bold = 0, italic = 0;
+    const char *family = NULL;
+    int bold = 0, italic = 0;
     unsigned int ch;
     if (!PyArg_ParseTuple(args, "I|zpp", &ch, &family, &bold, &italic)) return NULL;
     FontConfigFace f;
@@ -707,11 +776,11 @@ fallback_for_char(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyMethodDef module_methods[] = {
-    {"fontconfig_path_for_font", (PyCFunction)(void (*) (void))(path_for_font), METH_VARARGS, NULL},
-    {"fontconfig_fallback_for_char", (PyCFunction)(void (*) (void))(fallback_for_char), METH_VARARGS, NULL},
-    {"freetype_render_line", (PyCFunction)(void (*) (void))(render_line), METH_VARARGS | METH_KEYWORDS, NULL},
+    {"fontconfig_path_for_font", (PyCFunction)(void (*)(void))(path_for_font), METH_VARARGS, NULL},
+    {"fontconfig_fallback_for_char", (PyCFunction)(void (*)(void))(fallback_for_char), METH_VARARGS, NULL},
+    {"freetype_render_line", (PyCFunction)(void (*)(void))(render_line), METH_VARARGS | METH_KEYWORDS, NULL},
 
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+    {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 

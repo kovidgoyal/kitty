@@ -24,32 +24,28 @@
 //
 //========================================================================
 
-#define _GLFW_PLATFORM_CONTEXT_STATE            _GLFWcontextNSGL nsgl;
-#define _GLFW_PLATFORM_LIBRARY_CONTEXT_STATE    _GLFWlibraryNSGL nsgl;
+#define _GLFW_PLATFORM_CONTEXT_STATE _GLFWcontextNSGL nsgl;
+#define _GLFW_PLATFORM_LIBRARY_CONTEXT_STATE _GLFWlibraryNSGL nsgl;
 
 
 // NSGL-specific per-context data
 //
-typedef struct _GLFWcontextNSGL
-{
-    id                pixelFormat;
-    id                object;
+typedef struct _GLFWcontextNSGL {
+    id pixelFormat;
+    id object;
 
 } _GLFWcontextNSGL;
 
 // NSGL-specific global data
 //
-typedef struct _GLFWlibraryNSGL
-{
+typedef struct _GLFWlibraryNSGL {
     // dlopen handle for OpenGL.framework (for glfwGetProcAddress)
-    CFBundleRef     framework;
+    CFBundleRef framework;
 
 } _GLFWlibraryNSGL;
 
 
 bool _glfwInitNSGL(void);
 void _glfwTerminateNSGL(void);
-bool _glfwCreateContextNSGL(_GLFWwindow* window,
-                                const _GLFWctxconfig* ctxconfig,
-                                const _GLFWfbconfig* fbconfig);
-void _glfwDestroyContextNSGL(_GLFWwindow* window);
+bool _glfwCreateContextNSGL(_GLFWwindow *window, const _GLFWctxconfig *ctxconfig, const _GLFWfbconfig *fbconfig);
+void _glfwDestroyContextNSGL(_GLFWwindow *window);

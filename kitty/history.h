@@ -27,7 +27,8 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    index_type xnum, ynum, num_segments;
+        index_type xnum,
+        ynum, num_segments;
     HistoryBufSegment *segments;
     PagerHistoryBuf *pagerhist;
     Line *line;
@@ -36,7 +37,7 @@ typedef struct {
 } HistoryBuf;
 
 
-HistoryBuf* alloc_historybuf(unsigned int, unsigned int, unsigned int, TextCache *tc);
+HistoryBuf *alloc_historybuf(unsigned int, unsigned int, unsigned int, TextCache *tc);
 HistoryBuf *historybuf_alloc_for_rewrap(unsigned int columns, HistoryBuf *self);
 void historybuf_finish_rewrap(HistoryBuf *dest, HistoryBuf *src);
 void historybuf_fast_rewrap(HistoryBuf *dest, HistoryBuf *src);

@@ -15,8 +15,7 @@
 #define DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL s_to_monotonic_t(30ll)
 #define MAX_NUM_OF_DISPLAYS 256
 
-typedef struct _GLFWDisplayLinkNS
-{
+typedef struct _GLFWDisplayLinkNS {
     CVDisplayLinkRef displayLink;
     CGDirectDisplayID displayID;
     monotonic_t lastRenderFrameRequestedAt, first_unserviced_render_frame_request_at;
@@ -35,7 +34,7 @@ index_for_entry(_GLFWDisplayLinkNS *entry) {
     return (size_t)(entry - displayLinks.entries);
 }
 
-static inline os_unfair_lock*
+static inline os_unfair_lock *
 lock_for_entry(_GLFWDisplayLinkNS *entry) {
     return &displayLinks.locks[index_for_entry(entry)];
 }
@@ -74,19 +73,21 @@ static void _glfwDispatchRenderFrame(void *);
 
 static CVReturn
 displayLinkCallback(
-        CVDisplayLinkRef displayLink UNUSED,
-        const CVTimeStamp* now UNUSED, const CVTimeStamp* outputTime UNUSED,
-        CVOptionFlags flagsIn UNUSED, CVOptionFlags* flagsOut UNUSED, void* userInfo) {
+    CVDisplayLinkRef displayLink UNUSED,
+    const CVTimeStamp *now UNUSED,
+    const CVTimeStamp *outputTime UNUSED,
+    CVOptionFlags flagsIn UNUSED,
+    CVOptionFlags *flagsOut UNUSED,
+    void *userInfo) {
     _GLFWDisplayLinkNS *entry = (_GLFWDisplayLinkNS *)userInfo;
     if (entry) {
         os_unfair_lock *lock = lock_for_entry(entry);
         os_unfair_lock_lock(lock);
-        const bool should_dispatch = entry->first_unserviced_render_frame_request_at &&
-            !entry->pending_dispatch;
+        const bool should_dispatch = entry->first_unserviced_render_frame_request_at && !entry->pending_dispatch;
         CGDirectDisplayID displayID = entry->displayID;
         if (should_dispatch) entry->pending_dispatch = true;
         os_unfair_lock_unlock(lock);
-        if (should_dispatch) dispatch_async_f(dispatch_get_main_queue(), (void*)(uintptr_t)displayID, _glfwDispatchRenderFrame);
+        if (should_dispatch) dispatch_async_f(dispatch_get_main_queue(), (void *)(uintptr_t)displayID, _glfwDispatchRenderFrame);
     }
     return kCVReturnSuccess;
 }
@@ -213,8 +214,7 @@ _glfwRequestRenderFrame(_GLFWwindow *w) {
                 if (!CVDisplayLinkIsRunning(new_link)) CVDisplayLinkStart(new_link);
                 if (new_link_retained) CVDisplayLinkRelease(new_link);
             }
-            _glfwInputError(GLFW_PLATFORM_ERROR,
-                "CVDisplayLink stuck possibly because of sleep/screensaver + Apple's incompetence, recreating.");
+            _glfwInputError(GLFW_PLATFORM_ERROR, "CVDisplayLink stuck possibly because of sleep/screensaver + Apple's incompetence, recreating.");
         } else {
             if (need_start && link) CVDisplayLinkStart(link);
             else if (need_stop && link) CVDisplayLinkStop(link);
@@ -248,7 +248,7 @@ _glfwDispatchRenderFrame(void *passed_in_data) {
     while (w) {
         if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {
             w->ns.renderFrameRequested = false;
-            w->ns.renderFrameCallback((GLFWwindow*)w);
+            w->ns.renderFrameCallback((GLFWwindow *)w);
         }
         w = w->next;
     }

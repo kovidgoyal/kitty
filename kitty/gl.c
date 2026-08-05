@@ -15,36 +15,29 @@
 // GL setup and error handling {{{
 static void
 check_for_gl_error(void UNUSED *ret, const char *name, GLADapiproc UNUSED funcptr, int UNUSED len_args, ...) {
-#define f(msg) fatal("OpenGL error: %s (calling function: %s)", msg, name); break;
+#define f(msg)                                                                                                                                                 \
+    fatal("OpenGL error: %s (calling function: %s)", msg, name);                                                                                               \
+    break;
     GLenum code = glad_glGetError();
-    switch(code) {
+    switch (code) {
         case GL_NO_ERROR: break;
-        case GL_INVALID_ENUM:
-            f("An enum value is invalid (GL_INVALID_ENUM)");
-        case GL_INVALID_VALUE:
-            f("An numeric value is invalid (GL_INVALID_VALUE)");
-        case GL_INVALID_OPERATION:
-            f("This operation is invalid (GL_INVALID_OPERATION)");
-        case GL_INVALID_FRAMEBUFFER_OPERATION:
-            f("The framebuffer object is not complete (GL_INVALID_FRAMEBUFFER_OPERATION)");
-        case GL_OUT_OF_MEMORY:
-            f("There is not enough memory left to execute the command. (GL_OUT_OF_MEMORY)");
-        case GL_STACK_UNDERFLOW:
-            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_UNDERFLOW)");
-        case GL_STACK_OVERFLOW:
-            f("An attempt has been made to perform an operation that would cause an internal stack to overflow. (GL_STACK_OVERFLOW)");
-        default:
-            fatal("An unknown OpenGL error occurred with code: %d (calling function: %s)", code, name);
-            break;
+        case GL_INVALID_ENUM: f("An enum value is invalid (GL_INVALID_ENUM)");
+        case GL_INVALID_VALUE: f("An numeric value is invalid (GL_INVALID_VALUE)");
+        case GL_INVALID_OPERATION: f("This operation is invalid (GL_INVALID_OPERATION)");
+        case GL_INVALID_FRAMEBUFFER_OPERATION: f("The framebuffer object is not complete (GL_INVALID_FRAMEBUFFER_OPERATION)");
+        case GL_OUT_OF_MEMORY: f("There is not enough memory left to execute the command. (GL_OUT_OF_MEMORY)");
+        case GL_STACK_UNDERFLOW: f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_UNDERFLOW)");
+        case GL_STACK_OVERFLOW: f("An attempt has been made to perform an operation that would cause an internal stack to overflow. (GL_STACK_OVERFLOW)");
+        default: fatal("An unknown OpenGL error occurred with code: %d (calling function: %s)", code, name); break;
     }
 }
 
-const char*
+const char *
 gl_version_string(void) {
     static char buf[256];
     int gl_major = GLAD_VERSION_MAJOR(global_state.gl_version);
     int gl_minor = GLAD_VERSION_MINOR(global_state.gl_version);
-    const char *gvs = (const char*)glGetString(GL_VERSION);
+    const char *gvs = (const char *)glGetString(GL_VERSION);
     snprintf(buf, sizeof(buf), "'%s' Detected version: %d.%d", gvs, gl_major, gl_minor);
     return buf;
 }
@@ -54,17 +47,11 @@ gl_init(void) {
     static bool glad_loaded = false;
     if (!glad_loaded) {
         global_state.gl_version = gladLoadGL(glfwGetProcAddress);
-        if (!global_state.gl_version) {
-            fatal("Loading the OpenGL library failed");
-        }
-        if (!global_state.debug_rendering) {
-            gladUninstallGLDebug();
-        }
+        if (!global_state.gl_version) { fatal("Loading the OpenGL library failed"); }
+        if (!global_state.debug_rendering) { gladUninstallGLDebug(); }
         gladSetGLPostCallback(check_for_gl_error);
-#define ARB_TEST(name) \
-        if (!GLAD_GL_ARB_##name) { \
-            fatal("The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
-        }
+#define ARB_TEST(name)                                                                                                                                         \
+    if (!GLAD_GL_ARB_##name) { fatal("The OpenGL driver on this system is missing the required extension: ARB_%s", #name); }
         ARB_TEST(texture_storage);
 #undef ARB_TEST
 #ifdef __APPLE__
@@ -79,24 +66,29 @@ gl_init(void) {
         int gl_minor = GLAD_VERSION_MINOR(global_state.gl_version);
         if (global_state.debug_rendering) printf("[%.3f] GL version string: %s\n", monotonic_t_to_s_double(monotonic()), gl_version_string());
         if (gl_major < OPENGL_REQUIRED_VERSION_MAJOR || (gl_major == OPENGL_REQUIRED_VERSION_MAJOR && gl_minor < OPENGL_REQUIRED_VERSION_MINOR)) {
-            fatal("OpenGL version is %d.%d, version >= %d.%d required for kitty", gl_major, gl_minor, OPENGL_REQUIRED_VERSION_MAJOR, OPENGL_REQUIRED_VERSION_MINOR);
+            fatal(
+                "OpenGL version is %d.%d, version >= %d.%d required for kitty",
+                gl_major,
+                gl_minor,
+                OPENGL_REQUIRED_VERSION_MAJOR,
+                OPENGL_REQUIRED_VERSION_MINOR);
         }
     }
 }
 
-const char*
+const char *
 check_framebuffer_status(void) {
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     switch (status) {
         case GL_FRAMEBUFFER_COMPLETE: return NULL;
-        case GL_FRAMEBUFFER_UNDEFINED: return("GL_FRAMEBUFFER_UNDEFINED");
-        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT");
-        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");
-        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER");
-        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER");
-        case GL_FRAMEBUFFER_UNSUPPORTED: return("GL_FRAMEBUFFER_UNSUPPORTED");
-        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE");
-        default: return("Unknown error");
+        case GL_FRAMEBUFFER_UNDEFINED: return ("GL_FRAMEBUFFER_UNDEFINED");
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return ("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT");
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return ("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return ("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER");
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return ("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER");
+        case GL_FRAMEBUFFER_UNSUPPORTED: return ("GL_FRAMEBUFFER_UNSUPPORTED");
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return ("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE");
+        default: return ("Unknown error");
     }
 }
 
@@ -126,8 +118,14 @@ set_framebuffer_to_use_for_output(unsigned fbid) {
 
 static void
 set_blending(bool allowed) {
-    if (allowed) { glEnable(GL_BLEND); glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); }  // blending of pre-multiplied colors
-    else { glDisable(GL_BLEND); glBlendFunc(GL_ONE, GL_ZERO); }  // no blending
+    if (allowed) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    } // blending of pre-multiplied colors
+    else {
+        glDisable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ZERO);
+    } // no blending
 }
 
 void
@@ -143,13 +141,15 @@ static struct {
 } saved_viewports;
 
 void
-set_gpu_viewport(unsigned w, unsigned h) { glViewport(0, 0, w, h); }
+set_gpu_viewport(unsigned w, unsigned h) {
+    glViewport(0, 0, w, h);
+}
 
 Viewport
 get_gpu_viewport(void) {
     GLsizei v[4];
     glGetIntegerv(GL_VIEWPORT, v);
-    return (Viewport){.left=v[0], .top=v[1], .width=v[2], .height=v[3]};
+    return (Viewport){.left = v[0], .top = v[1], .width = v[2], .height = v[3]};
 }
 
 void
@@ -188,37 +188,53 @@ enable_scissor_using_top_left_origin(Viewport vp, unsigned full_framebuffer_heig
 }
 
 void
-disable_scissor(void) { glDisable(GL_SCISSOR_TEST); }
+disable_scissor(void) {
+    glDisable(GL_SCISSOR_TEST);
+}
 
 static float
-linear_to_srgb(float c) { return (c <= 0.0031308f) ? 12.92f * c : 1.055f * powf(c, 1.0f / 2.4f) - 0.055f; }
+linear_to_srgb(float c) {
+    return (c <= 0.0031308f) ? 12.92f * c : 1.055f * powf(c, 1.0f / 2.4f) - 0.055f;
+}
 
 void
 save_texture_as_png(uint32_t texture_id, const char *filename) {
-    GLint prev_tex = 0; glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
+    GLint prev_tex = 0;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &prev_tex);
     glBindTexture(GL_TEXTURE_2D, texture_id);
     int width = 0, height = 0;
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
     glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
     size_t sz = sizeof(uint32_t) * width * height;
-    uint32_t* data = malloc(sz);
+    uint32_t *data = malloc(sz);
     glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     // assume data is linear and pre-multiplied
     for (int i = 0; i < width * height; i++) {
         uint32_t px = data[i];
-        uint8_t r = (px >>  0) & 0xFF; uint8_t g = (px >>  8) & 0xFF; uint8_t b = (px >> 16) & 0xFF;
-        uint8_t a = (px >> 24) & 0xFF; float alpha = a / 255.0f;
+        uint8_t r = (px >> 0) & 0xFF;
+        uint8_t g = (px >> 8) & 0xFF;
+        uint8_t b = (px >> 16) & 0xFF;
+        uint8_t a = (px >> 24) & 0xFF;
+        float alpha = a / 255.0f;
         float rf = 0, gf = 0, bf = 0;
-        if (alpha > 0.0f) { rf = (r / 255.0f) / alpha; gf = (g / 255.0f) / alpha; bf = (b / 255.0f) / alpha; }
-        rf = linear_to_srgb(rf); gf = linear_to_srgb(gf); bf = linear_to_srgb(bf);
-        r = (uint8_t)(rf*255); g = (uint8_t)(gf * 255); b = (uint8_t)(bf * 255);
-        data[i] = (r <<  0) | (g << 8) | (b << 16) | (a << 24);
+        if (alpha > 0.0f) {
+            rf = (r / 255.0f) / alpha;
+            gf = (g / 255.0f) / alpha;
+            bf = (b / 255.0f) / alpha;
+        }
+        rf = linear_to_srgb(rf);
+        gf = linear_to_srgb(gf);
+        bf = linear_to_srgb(bf);
+        r = (uint8_t)(rf * 255);
+        g = (uint8_t)(gf * 255);
+        b = (uint8_t)(bf * 255);
+        data[i] = (r << 0) | (g << 8) | (b << 16) | (a << 24);
     }
 
-    const char *png = png_from_32bit_rgba((char*)data, width, height, &sz, true);
+    const char *png = png_from_32bit_rgba((char *)data, width, height, &sz, true);
     if (!sz) fatal("Failed to save PNG to %s with error: %s", filename, png);
     free(data);
-    FILE* file = fopen(filename, "wb");
+    FILE *file = fopen(filename, "wb");
     fwrite(png, 1, sz, file);
     fclose(file);
     glBindTexture(GL_TEXTURE_2D, prev_tex);
@@ -232,7 +248,7 @@ save_texture_as_png(uint32_t texture_id, const char *filename) {
 static Program programs[64] = {{0}};
 
 GLuint
-compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * source) {
+compile_shaders(GLenum shader_type, GLsizei count, const GLchar *const *source) {
     GLuint shader_id = glCreateShader(shader_type);
     glShaderSource(shader_id, count, source, NULL);
     glCompileShader(shader_id);
@@ -244,11 +260,9 @@ compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * source
         glGetShaderInfoLog(shader_id, sizeof(glbuf), &len, glbuf);
         glDeleteShader(shader_id);
         const char *shader_type_name = "unknown_type";
-        switch(shader_type) {
-            case GL_VERTEX_SHADER:
-                shader_type_name = "vertex"; break;
-            case GL_FRAGMENT_SHADER:
-                shader_type_name = "fragment"; break;
+        switch (shader_type) {
+            case GL_VERTEX_SHADER: shader_type_name = "vertex"; break;
+            case GL_FRAGMENT_SHADER: shader_type_name = "fragment"; break;
         }
         PyErr_Format(PyExc_ValueError, "Failed to compile GLSL %s shader:\n%s", shader_type_name, glbuf);
         return 0;
@@ -256,11 +270,15 @@ compile_shaders(GLenum shader_type, GLsizei count, const GLchar * const * source
     return shader_id;
 }
 
-Program*
-program_ptr(int program) { return programs + (size_t)program; }
+Program *
+program_ptr(int program) {
+    return programs + (size_t)program;
+}
 
 GLuint
-program_id(int program) { return programs[program].id; }
+program_id(int program) {
+    return programs[program].id;
+}
 
 
 void
@@ -269,7 +287,7 @@ init_uniforms(int program) {
     glGetProgramiv(p->id, GL_ACTIVE_UNIFORMS, &(p->num_of_uniforms));
     for (GLint i = 0; i < p->num_of_uniforms; i++) {
         Uniform *u = p->uniforms + i;
-        glGetActiveUniform(p->id, (GLuint)i, sizeof(u->name)/sizeof(u->name[0]), NULL, &(u->size), &(u->type), u->name);
+        glGetActiveUniform(p->id, (GLuint)i, sizeof(u->name) / sizeof(u->name[0]), NULL, &(u->size), &(u->type), u->name);
         char *l = strchr(u->name, '[');
         if (l) *l = 0;
         u->location = glGetUniformLocation(p->id, u->name);
@@ -290,11 +308,12 @@ get_uniform_location(int program, const char *name) {
 
 GLint
 get_uniform_information(int program, const char *name, GLenum information_type) {
-    GLint q; GLuint t;
-    const char* names[] = {""};
+    GLint q;
+    GLuint t;
+    const char *names[] = {""};
     names[0] = name;
     GLuint pid = program_id(program);
-    glGetUniformIndices(pid, 1, (void*)names, &t);
+    glGetUniformIndices(pid, 1, (void *)names, &t);
     glGetActiveUniformsiv(pid, 1, &t, information_type, &q);
     return q;
 }
@@ -302,14 +321,12 @@ get_uniform_information(int program, const char *name, GLenum information_type) 
 ArrayInformation
 get_uniform_array_information(int program, const char *name) {
     ArrayInformation ans;
-    const char* names[] = {""};
+    const char *names[] = {""};
     names[0] = name;
     GLuint pid = program_id(program);
     GLuint t;
-    glGetUniformIndices(pid, 1, (void*)names, &t);
-    if (t == GL_INVALID_INDEX) {
-        fatal("Could not find the index for uniform array: %s", name);
-    }
+    glGetUniformIndices(pid, 1, (void *)names, &t);
+    if (t == GL_INVALID_INDEX) { fatal("Could not find the index for uniform array: %s", name); }
     glGetActiveUniformsiv(pid, 1, &t, GL_UNIFORM_ARRAY_STRIDE, &ans.stride);
     glGetActiveUniformsiv(pid, 1, &t, GL_UNIFORM_OFFSET, &ans.offset);
     glGetActiveUniformsiv(pid, 1, &t, GL_UNIFORM_SIZE, &ans.size);
@@ -339,7 +356,7 @@ block_size(int program, GLuint block_index) {
 
 // Program metadata (uniform/attribute locations and UBO/array info, looked up by name) {{{
 #define NAME program_metadata_map
-#define KEY_TY const char*
+#define KEY_TY const char *
 #define VAL_TY ProgramMetadataEntry
 #include "kitty-verstable.h"
 
@@ -350,7 +367,7 @@ static void
 clear_program_layout(int program) {
     if (!program_layouts_initialized[program]) return;
     program_metadata_map *m = program_layouts + program;
-    vt_create_for_loop(program_metadata_map_itr, itr, m) free((void*)itr.data->key);
+    vt_create_for_loop(program_metadata_map_itr, itr, m) free((void *)itr.data->key);
     vt_cleanup(m);
     program_layouts_initialized[program] = false;
 }
@@ -366,7 +383,7 @@ insert_program_metadata(int program, const char *name, ProgramMetadataEntry entr
     if (vt_is_end(itr)) fatal("Out of memory adding program metadata entry: %s", name);
 }
 
-static ProgramMetadataEntry*
+static ProgramMetadataEntry *
 program_metadata_entry(int program, const char *name, ProgramMetadataKind expected) {
     program_metadata_map_itr itr = vt_get(program_layouts + program, name);
     if (vt_is_end(itr)) fatal("No metadata entry named: %s for program: %d", name, program);
@@ -380,20 +397,21 @@ set_program_layout(int program, PyObject *metadata) {
     vt_init(program_layouts + program);
     program_layouts_initialized[program] = true;
 
-    PyObject *key, *val; Py_ssize_t pos;
+    PyObject *key, *val;
+    Py_ssize_t pos;
 
     PyObject *loose_uniforms = PyDict_GetItemString(metadata, "loose_uniforms");
     pos = 0;
     while (PyDict_Next(loose_uniforms, &pos, &key, &val)) {
         const char *actual_name = PyUnicode_AsUTF8(val);
-        ProgramMetadataEntry e = {.kind=PROGRAM_UNIFORM, .location=get_uniform_location(program, actual_name)};
+        ProgramMetadataEntry e = {.kind = PROGRAM_UNIFORM, .location = get_uniform_location(program, actual_name)};
         insert_program_metadata(program, PyUnicode_AsUTF8(key), e);
     }
 
     PyObject *input_locations = PyDict_GetItemString(metadata, "input_locations");
     pos = 0;
     while (PyDict_Next(input_locations, &pos, &key, &val)) {
-        ProgramMetadataEntry e = {.kind=PROGRAM_ATTRIBUTE, .location=(GLint)PyLong_AsLong(val)};
+        ProgramMetadataEntry e = {.kind = PROGRAM_ATTRIBUTE, .location = (GLint)PyLong_AsLong(val)};
         insert_program_metadata(program, PyUnicode_AsUTF8(key), e);
     }
 
@@ -403,18 +421,20 @@ set_program_layout(int program, PyObject *metadata) {
     while (PyDict_Next(uniform_structs, &pos, &key, &val)) {
         const char *glsl_block_name = PyUnicode_AsUTF8(PyDict_GetItem(uniform_struct_names, key));
         GLuint index = block_index(program, glsl_block_name);
-        ProgramMetadataEntry be = {.kind=PROGRAM_BLOCK, .block={.size=block_size(program, index), .index=(GLint)index}};
+        ProgramMetadataEntry be = {.kind = PROGRAM_BLOCK, .block = {.size = block_size(program, index), .index = (GLint)index}};
         insert_program_metadata(program, PyUnicode_AsUTF8(key), be);
 
-        PyObject *mkey, *mval; Py_ssize_t mpos = 0;
+        PyObject *mkey, *mval;
+        Py_ssize_t mpos = 0;
         while (PyDict_Next(val, &mpos, &mkey, &mval)) {
             const char *decl = PyUnicode_AsUTF8(mval);
             const char *bracket = strchr(decl, '[');
-            if (!bracket) continue;  // scalar block members are hand-mirrored in C structs, not queried here
+            if (!bracket) continue; // scalar block members are hand-mirrored in C structs, not queried here
             char actual_name[256];
             size_t n = MIN(sizeof(actual_name) - 1, (size_t)(bracket - decl));
-            memcpy(actual_name, decl, n); actual_name[n] = 0;
-            ProgramMetadataEntry ae = {.kind=PROGRAM_ARRAY, .array=get_uniform_array_information(program, actual_name)};
+            memcpy(actual_name, decl, n);
+            actual_name[n] = 0;
+            ProgramMetadataEntry ae = {.kind = PROGRAM_ARRAY, .array = get_uniform_array_information(program, actual_name)};
             insert_program_metadata(program, PyUnicode_AsUTF8(mkey), ae);
         }
     }
@@ -474,7 +494,7 @@ static ssize_t
 create_buffer(GLenum usage) {
     GLuint buffer_id;
     glGenBuffers(1, &buffer_id);
-    for (size_t i = 0; i < sizeof(buffers)/sizeof(buffers[0]); i++) {
+    for (size_t i = 0; i < sizeof(buffers) / sizeof(buffers[0]); i++) {
         if (buffers[i].id == 0) {
             buffers[i].id = buffer_id;
             buffers[i].size = 0;
@@ -513,13 +533,13 @@ alloc_buffer(ssize_t idx, GLsizeiptr size, GLenum usage) {
     glBufferData(b->usage, size, NULL, usage);
 }
 
-static void*
+static void *
 map_buffer(ssize_t idx, GLenum access) {
     void *ans = glMapBuffer(buffers[idx].usage, access);
     return ans;
 }
 
-static void*
+static void *
 map_buffer_range(ssize_t idx, GLbitfield access, int offset, unsigned size) {
     return glMapBufferRange(buffers[idx].usage, offset, size, access);
 }
@@ -540,13 +560,13 @@ typedef struct {
     ssize_t buffers[10];
 } VAO;
 
-static VAO vaos[4*MAX_CHILDREN + 10] = {{0}};
+static VAO vaos[4 * MAX_CHILDREN + 10] = {{0}};
 
 ssize_t
 create_vao(void) {
     GLuint vao_id;
     glGenVertexArrays(1, &vao_id);
-    for (size_t i = 0; i < sizeof(vaos)/sizeof(vaos[0]); i++) {
+    for (size_t i = 0; i < sizeof(vaos) / sizeof(vaos[0]); i++) {
         if (!vaos[i].id) {
             vaos[i].id = vao_id;
             vaos[i].num_buffers = 0;
@@ -561,10 +581,8 @@ create_vao(void) {
 
 size_t
 add_buffer_to_vao(ssize_t vao_idx, GLenum usage) {
-    VAO* vao = vaos + vao_idx;
-    if (vao->num_buffers >= sizeof(vao->buffers) / sizeof(vao->buffers[0])) {
-        fatal("Too many buffers in a single VAO");
-    }
+    VAO *vao = vaos + vao_idx;
+    if (vao->num_buffers >= sizeof(vao->buffers) / sizeof(vao->buffers[0])) { fatal("Too many buffers in a single VAO"); }
     ssize_t buf = create_buffer(usage);
     vao->buffers[vao->num_buffers++] = buf;
     return vao->num_buffers - 1;
@@ -577,22 +595,16 @@ add_located_attribute_to_vao(ssize_t vao_idx, GLint aloc, GLint size, GLenum dat
     ssize_t buf = vao->buffers[vao->num_buffers - 1];
     bind_buffer(buf);
     glEnableVertexAttribArray(aloc);
-    switch(data_type) {
+    switch (data_type) {
         case GL_BYTE:
         case GL_UNSIGNED_BYTE:
         case GL_SHORT:
         case GL_UNSIGNED_SHORT:
         case GL_INT:
-        case GL_UNSIGNED_INT:
-            glVertexAttribIPointer(aloc, size, data_type, stride, offset);
-            break;
-        default:
-            glVertexAttribPointer(aloc, size, data_type, GL_FALSE, stride, offset);
-            break;
+        case GL_UNSIGNED_INT: glVertexAttribIPointer(aloc, size, data_type, stride, offset); break;
+        default: glVertexAttribPointer(aloc, size, data_type, GL_FALSE, stride, offset); break;
     }
-    if (divisor) {
-        glVertexAttribDivisorARB(aloc, divisor);
-    }
+    if (divisor) { glVertexAttribDivisorARB(aloc, divisor); }
     unbind_buffer(buf);
 }
 
@@ -611,18 +623,14 @@ set_vao_attribute(ssize_t vao_idx, size_t buffer_idx, int location, GLint size, 
     ssize_t buf = vao->buffers[buffer_idx];
     bind_buffer(buf);
     glEnableVertexAttribArray(location);
-    switch(data_type) {
+    switch (data_type) {
         case GL_BYTE:
         case GL_UNSIGNED_BYTE:
         case GL_SHORT:
         case GL_UNSIGNED_SHORT:
         case GL_INT:
-        case GL_UNSIGNED_INT:
-            glVertexAttribIPointer(location, size, data_type, stride, offset);
-            break;
-        default:
-            glVertexAttribPointer(location, size, data_type, GL_FALSE, stride, offset);
-            break;
+        case GL_UNSIGNED_INT: glVertexAttribIPointer(location, size, data_type, stride, offset); break;
+        default: glVertexAttribPointer(location, size, data_type, GL_FALSE, stride, offset); break;
     }
     glVertexAttribDivisorARB(location, divisor);
     unbind_buffer(buf);
@@ -657,14 +665,14 @@ alloc_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum, GLenum usage) 
     return buf_idx;
 }
 
-void*
+void *
 map_vao_buffer_for_write_only(ssize_t vao_idx, size_t bufnum, int offset, unsigned size) {
     ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
     bind_buffer(buf_idx);
     return map_buffer_range(buf_idx, GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT, offset, size);
 }
 
-void*
+void *
 alloc_and_map_vao_buffer(ssize_t vao_idx, GLsizeiptr size, size_t bufnum, bool frequently_updated) {
     ssize_t buf_idx = alloc_vao_buffer(vao_idx, size, bufnum, frequently_updated ? GL_STREAM_DRAW : GL_STATIC_DRAW);
     return map_buffer(buf_idx, GL_WRITE_ONLY);
@@ -684,8 +692,7 @@ unmap_vao_buffer(ssize_t vao_idx, size_t bufnum) {
 }
 
 void
-copy_vao_buffer_region(ssize_t vao_idx, size_t src_bufnum, GLintptr src_off,
-                        size_t dst_bufnum, GLintptr dst_off, GLsizeiptr size) {
+copy_vao_buffer_region(ssize_t vao_idx, size_t src_bufnum, GLintptr src_off, size_t dst_bufnum, GLintptr dst_off, GLsizeiptr size) {
     ssize_t src_buf = vaos[vao_idx].buffers[src_bufnum];
     ssize_t dst_buf = vaos[vao_idx].buffers[dst_bufnum];
     glBindBuffer(GL_COPY_READ_BUFFER, buffers[src_buf].id);
@@ -695,7 +702,7 @@ copy_vao_buffer_region(ssize_t vao_idx, size_t src_bufnum, GLintptr src_off,
     glBindBuffer(GL_COPY_WRITE_BUFFER, 0);
 }
 
-const void*
+const void *
 map_vao_buffer_for_reading(ssize_t vao_idx, size_t bufnum) {
     ssize_t buf_idx = vaos[vao_idx].buffers[bufnum];
     bind_buffer(buf_idx);

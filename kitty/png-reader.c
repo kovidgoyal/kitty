@@ -13,7 +13,10 @@
 
 
 static cmsHPROFILE srgb_profile = NULL;
-struct fake_file { const uint8_t *buf; size_t sz, cur; };
+struct fake_file {
+    const uint8_t *buf;
+    size_t sz, cur;
+};
 
 static void
 read_png_from_buffer(png_structp png, png_bytep out, png_size_t length) {
@@ -35,7 +38,7 @@ read_png_error_handler(png_structp png_ptr, png_const_charp msg) {
     struct custom_error_handler *eh;
     eh = png_get_error_ptr(png_ptr);
     if (eh == NULL) fatal("read_png_error_handler: could not retrieve error handler");
-    if(eh->d->err_handler) eh->d->err_handler(eh->d, "EBADPNG", msg);
+    if (eh->d->err_handler) eh->d->err_handler(eh->d, "EBADPNG", msg);
     longjmp(eh->jb, 1);
 }
 
@@ -44,7 +47,11 @@ read_png_warn_handler(png_structp UNUSED png_ptr, png_const_charp msg) {
     if (global_state.debug_rendering) log_error("libpng WARNING: %s", msg);
 }
 
-#define ABRT(code, msg) { if(d->err_handler) d->err_handler(d, #code, msg); goto err; }
+#define ABRT(code, msg)                                                                                                                                        \
+    {                                                                                                                                                          \
+        if (d->err_handler) d->err_handler(d, #code, msg);                                                                                                     \
+        goto err;                                                                                                                                              \
+    }
 
 void
 inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz, int max_image_dimension) {
@@ -62,14 +69,12 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz, int max_im
     png_set_read_fn(png, &f, read_png_from_buffer);
     png_read_info(png, info);
     png_byte color_type, bit_depth;
-    d->width      = png_get_image_width(png, info);
-    d->height     = png_get_image_height(png, info);
+    d->width = png_get_image_width(png, info);
+    d->height = png_get_image_height(png, info);
     // libpng uses too much memory for overly large images
-    if (d->width > max_image_dimension || d->height > max_image_dimension) {
-        ABRT(ENOMEM, "PNG image is too large");
-    }
+    if (d->width > max_image_dimension || d->height > max_image_dimension) { ABRT(ENOMEM, "PNG image is too large"); }
     color_type = png_get_color_type(png, info);
-    bit_depth  = png_get_bit_depth(png, info);
+    bit_depth = png_get_bit_depth(png, info);
     double image_gamma;
     int intent;
     cmsHPROFILE input_profile = NULL;
@@ -77,7 +82,7 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz, int max_im
     if (png_get_sRGB(png, info, &intent)) {
         // do nothing since we output sRGB
     } else if (png_get_gAMA(png, info, &image_gamma)) {
-        if (image_gamma != 0 && fabs(image_gamma - 1.0/2.2) > 0.0001) png_set_gamma(png, 2.2, image_gamma);
+        if (image_gamma != 0 && fabs(image_gamma - 1.0 / 2.2) > 0.0001) png_set_gamma(png, 2.2, image_gamma);
     } else {
         // Look for an embedded color profile
         png_charp name;
@@ -91,9 +96,7 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz, int max_im
                     srgb_profile = cmsCreate_sRGBProfile();
                     if (!srgb_profile) ABRT(ENOMEM, "Out of memory allocating sRGB colorspace profile");
                 }
-                colorspace_transform = cmsCreateTransform(
-                    input_profile, TYPE_RGBA_8, srgb_profile, TYPE_RGBA_8, INTENT_PERCEPTUAL, 0);
-
+                colorspace_transform = cmsCreateTransform(input_profile, TYPE_RGBA_8, srgb_profile, TYPE_RGBA_8, INTENT_PERCEPTUAL, 0);
             }
         }
     }
@@ -107,7 +110,8 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz, int max_im
     if (png_get_valid(png, info, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png);
 
     // These color_type don't have an alpha channel then fill it with 0xff.
-    if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE) png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
+    if (color_type == PNG_COLOR_TYPE_RGB || color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_PALETTE)
+        png_set_filler(png, 0xFF, PNG_FILLER_AFTER);
 
     if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png);
     png_read_update_info(png, info);
@@ -122,9 +126,7 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz, int max_im
     png_read_image(png, d->row_pointers);
 
     if (colorspace_transform) {
-        for (int i = 0; i < d->height; i++) {
-            cmsDoTransform(colorspace_transform, d->row_pointers[i], d->row_pointers[i], d->width);
-        }
+        for (int i = 0; i < d->height; i++) { cmsDoTransform(colorspace_transform, d->row_pointers[i], d->row_pointers[i], d->width); }
         cmsDeleteTransform(colorspace_transform);
     }
     if (input_profile) cmsCloseProfile(input_profile);
@@ -137,19 +139,19 @@ err:
 
 // Structure to hold memory write state
 typedef struct {
-    unsigned char* buffer;
+    unsigned char *buffer;
     size_t size, capacity;
 } png_memory_write_state;
 
 // Custom write function for writing PNG data to memory
 static void
 png_write_to_memory(png_structp png_ptr, png_bytep data, png_size_t length) {
-    png_memory_write_state* state = (png_memory_write_state*)png_get_io_ptr(png_ptr);
+    png_memory_write_state *state = (png_memory_write_state *)png_get_io_ptr(png_ptr);
     if (state->size + length > state->capacity) {
         // Double the capacity or add enough space for the new data, whichever is larger
         size_t new_capacity = state->capacity * 2;
         if (new_capacity < state->size + length) new_capacity = state->size + length;
-        unsigned char* new_buffer = realloc(state->buffer, new_capacity);
+        unsigned char *new_buffer = realloc(state->buffer, new_capacity);
         if (!new_buffer) {
             png_error(png_ptr, "Failed to allocate memory for PNG buffer");
             return;
@@ -161,65 +163,76 @@ png_write_to_memory(png_structp png_ptr, png_bytep data, png_size_t length) {
     memcpy(state->buffer + state->size, data, length);
     state->size += length;
 }
-static void png_flush_memory(png_structp png_ptr) { (void)png_ptr; }
+static void
+png_flush_memory(png_structp png_ptr) {
+    (void)png_ptr;
+}
 
-static const char*
+static const char *
 create_png_from_data(const char *data, size_t width, size_t height, size_t stride, size_t *out_size, bool flip_vertically, int color_type) {
     *out_size = 0;
-    png_memory_write_state state = {.capacity=width*height * sizeof(uint32_t)};
+    png_memory_write_state state = {.capacity = width * height * sizeof(uint32_t)};
     state.buffer = malloc(state.capacity);
     if (!state.buffer) return "Out of memory";
     png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (!png_ptr) { free(state.buffer); return "Failed to create PNG write struct"; }
+    if (!png_ptr) {
+        free(state.buffer);
+        return "Failed to create PNG write struct";
+    }
     png_infop info_ptr = png_create_info_struct(png_ptr);
     if (!info_ptr) {
-        free(state.buffer); png_destroy_write_struct(&png_ptr, NULL);
+        free(state.buffer);
+        png_destroy_write_struct(&png_ptr, NULL);
         return "Failed to create PNG info struct";
     }
     if (setjmp(png_jmpbuf(png_ptr))) {
-        png_destroy_write_struct(&png_ptr, &info_ptr); free(state.buffer);
-        return("Error during PNG creation\n");
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        free(state.buffer);
+        return ("Error during PNG creation\n");
     }
     png_set_write_fn(png_ptr, &state, png_write_to_memory, png_flush_memory);
-    png_set_IHDR(png_ptr, info_ptr, width, height, 8, color_type,
-                 PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_set_IHDR(png_ptr, info_ptr, width, height, 8, color_type, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     // Allocate memory for row pointers
-    png_bytep *row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
+    png_bytep *row_pointers = (png_bytep *)malloc(sizeof(png_bytep) * height);
     if (!row_pointers) {
         png_destroy_write_struct(&png_ptr, &info_ptr);
         free(state.buffer);
         return ("Failed to allocate memory for row pointers");
     }
-    if (flip_vertically) for (size_t y = 0; y < height; y++) row_pointers[height - 1 - y] = (png_byte*)&data[y * stride];
-    else for (size_t y = 0; y < height; y++) row_pointers[y] = (png_byte*)&data[y * stride];
+    if (flip_vertically)
+        for (size_t y = 0; y < height; y++) row_pointers[height - 1 - y] = (png_byte *)&data[y * stride];
+    else
+        for (size_t y = 0; y < height; y++) row_pointers[y] = (png_byte *)&data[y * stride];
     png_write_info(png_ptr, info_ptr);
     png_write_image(png_ptr, row_pointers);
     png_write_end(png_ptr, NULL);
     png_destroy_write_struct(&png_ptr, &info_ptr);
     free(row_pointers);
     *out_size = state.size;
-    return (char*)state.buffer;
+    return (char *)state.buffer;
 }
 
-const char*
+const char *
 png_from_32bit_rgba(const char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically) {
     return create_png_from_data(data, width, height, 4 * width, out_size, flip_vertically, PNG_COLOR_TYPE_RGBA);
 }
 
-PyObject*
+PyObject *
 png_from_32bit_rgba_data(PyObject *self UNUSED, PyObject *args) {
-    int flip_vertically = 0; const char* data; Py_ssize_t len;
+    int flip_vertically = 0;
+    const char *data;
+    Py_ssize_t len;
     unsigned width, height;
     if (!PyArg_ParseTuple(args, "y#II|p", &data, &len, &width, &height, &flip_vertically)) return NULL;
     size_t out_size;
     const char *out = create_png_from_data(data, width, height, 4 * width, &out_size, flip_vertically, PNG_COLOR_TYPE_RGBA);
     PyObject *ans = PyBytes_FromStringAndSize(out, out_size);
-    free((void*)out);
+    free((void *)out);
     return ans;
 }
 
 
-const char*
+const char *
 png_from_24bit_rgb(const char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically) {
     return create_png_from_data(data, width, height, 3 * width, out_size, flip_vertically, PNG_COLOR_TYPE_RGB);
 }
@@ -230,13 +243,13 @@ png_error_handler(png_read_data *d UNUSED, const char *code, const char *msg) {
     if (!PyErr_Occurred()) PyErr_Format(PyExc_ValueError, "[%s] %s", code, msg);
 }
 
-static PyObject*
+static PyObject *
 load_png_data(PyObject *self UNUSED, PyObject *args) {
     Py_ssize_t sz;
     const char *data;
     if (!PyArg_ParseTuple(args, "s#", &data, &sz)) return NULL;
-    png_read_data d = {.err_handler=png_error_handler};
-    inflate_png_inner(&d, (const uint8_t*)data, sz, 10000);
+    png_read_data d = {.err_handler = png_error_handler};
+    inflate_png_inner(&d, (const uint8_t *)data, sz, 10000);
     PyObject *ans = NULL;
     if (d.ok && !PyErr_Occurred()) {
         ans = Py_BuildValue("y#ii", d.decompressed, (int)d.sz, d.width, d.height);
@@ -249,9 +262,7 @@ load_png_data(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyMethodDef module_methods[] = {
-    METHODB(load_png_data, METH_VARARGS),
-    METHODB(png_from_32bit_rgba_data, METH_VARARGS),
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+    METHODB(load_png_data, METH_VARARGS), METHODB(png_from_32bit_rgba_data, METH_VARARGS), {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 

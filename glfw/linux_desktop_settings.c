@@ -15,7 +15,7 @@
 #define DESKTOP_INTERFACE "org.freedesktop.portal.Settings"
 #define GNOME_DESKTOP_NAMESPACE "org.gnome.desktop.interface"
 #define FDO_DESKTOP_NAMESPACE "org.freedesktop.appearance"
-static const char* supported_namespaces[2] = {FDO_DESKTOP_NAMESPACE, GNOME_DESKTOP_NAMESPACE};
+static const char *supported_namespaces[2] = {FDO_DESKTOP_NAMESPACE, GNOME_DESKTOP_NAMESPACE};
 #define FDO_APPEARANCE_KEY "color-scheme"
 
 
@@ -24,40 +24,55 @@ static int theme_size = -1;
 static GLFWColorScheme appearance = GLFW_COLOR_SCHEME_NO_PREFERENCE;
 static bool cursor_theme_changed = false, appearance_initialized = false;
 
-#define HANDLER(name_) static void name_(DBusMessage *msg, const DBusError* err, void *data) { \
-    (void)data; \
-    if (err) { \
-        _glfwInputError(GLFW_PLATFORM_ERROR, "%s: failed with error: %s: %s", #name_, err->name, err->message); \
-        return; \
-    }
+#define HANDLER(name_)                                                                                                                                         \
+    static void name_(DBusMessage *msg, const DBusError *err, void *data) {                                                                                    \
+        (void)data;                                                                                                                                            \
+        if (err) {                                                                                                                                             \
+            _glfwInputError(GLFW_PLATFORM_ERROR, "%s: failed with error: %s: %s", #name_, err->name, err->message);                                            \
+            return;                                                                                                                                            \
+        }
 
 HANDLER(get_color_scheme_legacy)
-    DBusMessageIter iter, variant_iter, variant_iter2;
-    if (!dbus_message_iter_init(msg, &iter)) return;
-    dbus_message_iter_recurse(&iter, &variant_iter);
-    int type = dbus_message_iter_get_arg_type(&variant_iter);
-    if (type != DBUS_TYPE_VARIANT) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Read for color-scheme did not return a variant"); return;
-    }
-    dbus_message_iter_recurse(&variant_iter, &variant_iter2);
-    if (type != DBUS_TYPE_VARIANT) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Read for color-scheme did not return a nested variant"); return;
-    }
-    uint32_t val;
-    dbus_message_iter_get_basic(&variant_iter2, &val);
-    if (val < 3) appearance = val;
+DBusMessageIter iter, variant_iter, variant_iter2;
+if (!dbus_message_iter_init(msg, &iter)) return;
+dbus_message_iter_recurse(&iter, &variant_iter);
+int type = dbus_message_iter_get_arg_type(&variant_iter);
+if (type != DBUS_TYPE_VARIANT) {
+    _glfwInputError(GLFW_PLATFORM_ERROR, "Read for color-scheme did not return a variant");
+    return;
+}
+dbus_message_iter_recurse(&variant_iter, &variant_iter2);
+if (type != DBUS_TYPE_VARIANT) {
+    _glfwInputError(GLFW_PLATFORM_ERROR, "Read for color-scheme did not return a nested variant");
+    return;
+}
+uint32_t val;
+dbus_message_iter_get_basic(&variant_iter2, &val);
+if (val < 3) appearance = val;
 }
 
 static void
-get_color_scheme(DBusMessage *msg, const DBusError* err, void *data) {
-    (void) data;
+get_color_scheme(DBusMessage *msg, const DBusError *err, void *data) {
+    (void)data;
     if (err) {
         if (strcmp("org.freedesktop.DBus.Error.UnknownMethod", err->name) == 0) {
             DBusConnection *session_bus = glfw_dbus_session_bus();
             if (session_bus) {
                 const char *namespace = FDO_DESKTOP_NAMESPACE, *key = FDO_APPEARANCE_KEY;
-                glfw_dbus_call_blocking_method(session_bus, DESKTOP_SERVICE, DESKTOP_PATH, DESKTOP_INTERFACE, "Read", DBUS_TIMEOUT_USE_DEFAULT,
-                    get_color_scheme_legacy, NULL, DBUS_TYPE_STRING, &namespace, DBUS_TYPE_STRING, &key, DBUS_TYPE_INVALID);
+                glfw_dbus_call_blocking_method(
+                    session_bus,
+                    DESKTOP_SERVICE,
+                    DESKTOP_PATH,
+                    DESKTOP_INTERFACE,
+                    "Read",
+                    DBUS_TIMEOUT_USE_DEFAULT,
+                    get_color_scheme_legacy,
+                    NULL,
+                    DBUS_TYPE_STRING,
+                    &namespace,
+                    DBUS_TYPE_STRING,
+                    &key,
+                    DBUS_TYPE_INVALID);
             }
             return;
         } else {
@@ -71,7 +86,8 @@ get_color_scheme(DBusMessage *msg, const DBusError* err, void *data) {
     dbus_message_iter_recurse(&iter, &variant_iter);
     int type = dbus_message_iter_get_arg_type(&variant_iter);
     if (type != DBUS_TYPE_UINT32) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "ReadOne for color-scheme did not return a uint32"); return;
+        _glfwInputError(GLFW_PLATFORM_ERROR, "ReadOne for color-scheme did not return a uint32");
+        return;
     }
     dbus_message_iter_get_basic(&variant_iter, &val);
     if (val < 3) appearance = val;
@@ -84,8 +100,20 @@ glfw_current_system_color_theme(bool query_if_unintialized) {
         DBusConnection *session_bus = glfw_dbus_session_bus();
         if (session_bus) {
             const char *namespace = FDO_DESKTOP_NAMESPACE, *key = FDO_APPEARANCE_KEY;
-            glfw_dbus_call_blocking_method(session_bus, DESKTOP_SERVICE, DESKTOP_PATH, DESKTOP_INTERFACE, "ReadOne", DBUS_TIMEOUT_USE_DEFAULT,
-                get_color_scheme, NULL, DBUS_TYPE_STRING, &namespace, DBUS_TYPE_STRING, &key, DBUS_TYPE_INVALID);
+            glfw_dbus_call_blocking_method(
+                session_bus,
+                DESKTOP_SERVICE,
+                DESKTOP_PATH,
+                DESKTOP_INTERFACE,
+                "ReadOne",
+                DBUS_TIMEOUT_USE_DEFAULT,
+                get_color_scheme,
+                NULL,
+                DBUS_TYPE_STRING,
+                &namespace,
+                DBUS_TYPE_STRING,
+                &key,
+                DBUS_TYPE_INVALID);
         }
     }
     return appearance;
@@ -133,7 +161,7 @@ process_gnome_setting(const char *key, DBusMessageIter *value) {
 }
 
 static void
-process_settings_dict(DBusMessageIter *array_iter, void(process_setting)(const char *, DBusMessageIter*)) {
+process_settings_dict(DBusMessageIter *array_iter, void(process_setting)(const char *, DBusMessageIter *)) {
     DBusMessageIter item_iter, value_iter;
     while (dbus_message_iter_get_arg_type(array_iter) == DBUS_TYPE_DICT_ENTRY) {
         dbus_message_iter_recurse(array_iter, &item_iter);
@@ -150,31 +178,35 @@ process_settings_dict(DBusMessageIter *array_iter, void(process_setting)(const c
 }
 
 HANDLER(process_desktop_settings)
-    cursor_theme_changed = false;
-    DBusMessageIter root, array, item, settings;
-    dbus_message_iter_init(msg, &root);
-#define die(...) { _glfwInputError(GLFW_PLATFORM_ERROR, __VA_ARGS__); return; }
-    if (dbus_message_iter_get_arg_type(&root) != DBUS_TYPE_ARRAY) die("Reply to request for desktop settings is not an array");
-    dbus_message_iter_recurse(&root, &array);
-    while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
-        dbus_message_iter_recurse(&array, &item);
-        if (dbus_message_iter_get_arg_type(&item) == DBUS_TYPE_STRING) {
-            const char *namespace;
-            dbus_message_iter_get_basic(&item, &namespace);
-            if (dbus_message_iter_next(&item) && dbus_message_iter_get_arg_type(&item) == DBUS_TYPE_ARRAY) {
-                dbus_message_iter_recurse(&item, &settings);
-                if (strcmp(namespace, FDO_DESKTOP_NAMESPACE) == 0) {
-                    process_settings_dict(&settings, process_fdo_setting);
-                } else if (strcmp(namespace, GNOME_DESKTOP_NAMESPACE) == 0) {
-                    process_settings_dict(&settings, process_gnome_setting);
-                }
+cursor_theme_changed = false;
+DBusMessageIter root, array, item, settings;
+dbus_message_iter_init(msg, &root);
+#define die(...)                                                                                                                                               \
+    {                                                                                                                                                          \
+        _glfwInputError(GLFW_PLATFORM_ERROR, __VA_ARGS__);                                                                                                     \
+        return;                                                                                                                                                \
+    }
+if (dbus_message_iter_get_arg_type(&root) != DBUS_TYPE_ARRAY) die("Reply to request for desktop settings is not an array");
+dbus_message_iter_recurse(&root, &array);
+while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
+    dbus_message_iter_recurse(&array, &item);
+    if (dbus_message_iter_get_arg_type(&item) == DBUS_TYPE_STRING) {
+        const char *namespace;
+        dbus_message_iter_get_basic(&item, &namespace);
+        if (dbus_message_iter_next(&item) && dbus_message_iter_get_arg_type(&item) == DBUS_TYPE_ARRAY) {
+            dbus_message_iter_recurse(&item, &settings);
+            if (strcmp(namespace, FDO_DESKTOP_NAMESPACE) == 0) {
+                process_settings_dict(&settings, process_fdo_setting);
+            } else if (strcmp(namespace, GNOME_DESKTOP_NAMESPACE) == 0) {
+                process_settings_dict(&settings, process_gnome_setting);
             }
         }
-        if (!dbus_message_iter_next(&array)) break;
     }
+    if (!dbus_message_iter_next(&array)) break;
+}
 #undef die
 #ifndef _GLFW_X11
-    if (cursor_theme_changed) _glfwPlatformChangeCursorTheme();
+if (cursor_theme_changed) _glfwPlatformChangeCursorTheme();
 #endif
 }
 
@@ -197,13 +229,13 @@ read_desktop_settings(DBusConnection *session_bus) {
 void
 glfw_current_cursor_theme(const char **theme, int *size) {
     *theme = theme_name[0] ? theme_name : NULL;
-    *size =  (theme_size > 0 && theme_size < 2048) ? theme_size : 32;
+    *size = (theme_size > 0 && theme_size < 2048) ? theme_size : 32;
 }
 
 static void
 get_cursor_theme_from_env(void) {
     const char *q = getenv("XCURSOR_THEME");
-    if (q) strncpy(theme_name, q, sizeof(theme_name)-1);
+    if (q) strncpy(theme_name, q, sizeof(theme_name) - 1);
     const char *env = getenv("XCURSOR_SIZE");
     theme_size = 32;
     if (env) {
@@ -215,9 +247,9 @@ get_cursor_theme_from_env(void) {
 static void
 on_color_scheme_change(DBusMessage *message) {
     DBusMessageIter iter[2];
-    dbus_message_iter_init (message, &iter[0]);
+    dbus_message_iter_init(message, &iter[0]);
     int current_type;
-    while ((current_type = dbus_message_iter_get_arg_type (&iter[0])) != DBUS_TYPE_INVALID) {
+    while ((current_type = dbus_message_iter_get_arg_type(&iter[0])) != DBUS_TYPE_INVALID) {
         if (current_type == DBUS_TYPE_VARIANT) {
             dbus_message_iter_recurse(&iter[0], &iter[1]);
             if (dbus_message_iter_get_arg_type(&iter[1]) == DBUS_TYPE_UINT32) {
@@ -241,14 +273,18 @@ setting_changed(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data U
     /* printf("session_bus settings_changed invoked interface: %s member: %s\n", dbus_message_get_interface(msg), dbus_message_get_member(msg)); */
     if (dbus_message_is_signal(msg, DESKTOP_INTERFACE, "SettingChanged")) {
         const char *namespace = NULL, *key = NULL;
-        if (glfw_dbus_get_args(msg, "Failed to get namespace and key from SettingChanged notification signal", DBUS_TYPE_STRING, &namespace, DBUS_TYPE_STRING, &key, DBUS_TYPE_INVALID)) {
+        if (glfw_dbus_get_args(
+                msg,
+                "Failed to get namespace and key from SettingChanged notification signal",
+                DBUS_TYPE_STRING,
+                &namespace,
+                DBUS_TYPE_STRING,
+                &key,
+                DBUS_TYPE_INVALID)) {
             if (strcmp(namespace, FDO_DESKTOP_NAMESPACE) == 0) {
-                if (strcmp(key, FDO_APPEARANCE_KEY) == 0) {
-                    on_color_scheme_change(msg);
-                }
+                if (strcmp(key, FDO_APPEARANCE_KEY) == 0) { on_color_scheme_change(msg); }
             }
         }
-
     }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -259,7 +295,8 @@ glfw_initialize_desktop_settings(void) {
     get_cursor_theme_from_env();
     DBusConnection *session_bus = glfw_dbus_session_bus();
     if (session_bus) {
-        if (!read_desktop_settings(session_bus)) _glfwInputError(GLFW_PLATFORM_ERROR, "WARNING: Failed to read desktop settings, using defaults, make sure you have the desktop portal running.");
+        if (!read_desktop_settings(session_bus))
+            _glfwInputError(GLFW_PLATFORM_ERROR, "WARNING: Failed to read desktop settings, using defaults, make sure you have the desktop portal running.");
         dbus_bus_add_match(session_bus, "type='signal',interface='" DESKTOP_INTERFACE "',member='SettingChanged'", NULL);
         dbus_connection_add_filter(session_bus, setting_changed, NULL, NULL);
     }

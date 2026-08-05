@@ -9,16 +9,20 @@
 #include "cleanup.h"
 #include <dlfcn.h>
 
-#define FUNC(name, restype, ...) typedef restype (*name##_func)(__VA_ARGS__); static name##_func name = NULL
-#define LOAD_FUNC(name) {\
-    *(void **) (&name) = dlsym(systemd.lib, #name); \
-    if (!name) { \
-        const char* error = dlerror(); \
-        if (error != NULL) { \
-            log_error("Failed to load the function %s with error: %s", #name, error); return; \
-        } \
-    } \
-}
+#define FUNC(name, restype, ...)                                                                                                                               \
+    typedef restype (*name##_func)(__VA_ARGS__);                                                                                                               \
+    static name##_func name = NULL
+#define LOAD_FUNC(name)                                                                                                                                        \
+    {                                                                                                                                                          \
+        *(void **)(&name) = dlsym(systemd.lib, #name);                                                                                                         \
+        if (!name) {                                                                                                                                           \
+            const char *error = dlerror();                                                                                                                     \
+            if (error != NULL) {                                                                                                                               \
+                log_error("Failed to load the function %s with error: %s", #name, error);                                                                      \
+                return;                                                                                                                                        \
+            }                                                                                                                                                  \
+        }                                                                                                                                                      \
+    }
 
 typedef struct sd_bus sd_bus;
 
@@ -32,14 +36,14 @@ typedef struct {
     const char *name;
     const char *message;
     int _need_free;
-    int64_t filler;  // just in case systemd ever increases the size of this struct
+    int64_t filler; // just in case systemd ever increases the size of this struct
 } sd_bus_error;
 typedef struct sd_bus_message sd_bus_message;
 
-FUNC(sd_bus_default_user, int, sd_bus**);
-FUNC(sd_bus_message_unref, sd_bus_message*, sd_bus_message*);
-FUNC(sd_bus_error_free, void, sd_bus_error*);
-FUNC(sd_bus_unref, sd_bus*, sd_bus*);
+FUNC(sd_bus_default_user, int, sd_bus **);
+FUNC(sd_bus_message_unref, sd_bus_message *, sd_bus_message *);
+FUNC(sd_bus_error_free, void, sd_bus_error *);
+FUNC(sd_bus_unref, sd_bus *, sd_bus *);
 FUNC(sd_bus_message_new_method_call, int, sd_bus *, sd_bus_message **m, const char *destination, const char *path, const char *interface, const char *member);
 FUNC(sd_bus_message_append, int, sd_bus_message *m, const char *types, ...);
 FUNC(sd_bus_message_open_container, int, sd_bus_message *m, char type, const char *contents);
@@ -52,7 +56,7 @@ ensure_initialized(void) {
     if (systemd.initialized) return;
     systemd.initialized = true;
 
-    const char* libnames[] = {
+    const char *libnames[] = {
 #if defined(_KITTY_SYSTEMD_LIBRARY)
         _KITTY_SYSTEMD_LIBRARY,
 #else
@@ -61,8 +65,7 @@ ensure_initialized(void) {
         "libsystemd.so.0",
         "libsystemd.so.0.38.0",
 #endif
-        NULL
-    };
+        NULL};
     for (int i = 0; libnames[i]; i++) {
         systemd.lib = dlopen(libnames[i], RTLD_LAZY);
         if (systemd.lib) break;
@@ -84,13 +87,22 @@ ensure_initialized(void) {
     systemd.functions_loaded = true;
 
     int ret = sd_bus_default_user(&systemd.user_bus);
-    if (ret < 0) { log_error("Failed to open systemd user bus with error: %s", strerror(-ret)); return; }
+    if (ret < 0) {
+        log_error("Failed to open systemd user bus with error: %s", strerror(-ret));
+        return;
+    }
     systemd.ok = true;
 }
 
-static inline void err_cleanup(sd_bus_error *p) { sd_bus_error_free(p); }
+static inline void
+err_cleanup(sd_bus_error *p) {
+    sd_bus_error_free(p);
+}
 #define RAII_bus_error(name) __attribute__((cleanup(err_cleanup))) sd_bus_error name = {0};
-static inline void msg_cleanup(sd_bus_message **p) { sd_bus_message_unref(*p); }
+static inline void
+msg_cleanup(sd_bus_message **p) {
+    sd_bus_message_unref(*p);
+}
 #define RAII_message(name) __attribute__((cleanup(msg_cleanup))) sd_bus_message *name = NULL;
 
 #define SYSTEMD_DESTINATION "org.freedesktop.systemd1"
@@ -108,7 +120,7 @@ set_systemd_error(int r, const char *msg) {
 }
 
 static bool
-set_reply_error(const char* func_name, int r, const sd_bus_error *err) {
+set_reply_error(const char *func_name, int r, const sd_bus_error *err) {
     RAII_PyObject(m, PyUnicode_FromFormat("Failed to call %s: %s: %s", func_name, err->name, err->message));
     if (m) {
         RAII_PyObject(e, Py_BuildValue("(iO)", -r, m));
@@ -118,18 +130,19 @@ set_reply_error(const char* func_name, int r, const sd_bus_error *err) {
 }
 
 static bool
-move_pid_into_new_scope(pid_t pid, const char* scope_name, const char *description) {
+move_pid_into_new_scope(pid_t pid, const char *scope_name, const char *description) {
     pid_t parent_pid = getpid();
-    RAII_bus_error(err); RAII_message(m); RAII_message(reply);
+    RAII_bus_error(err);
+    RAII_message(m);
+    RAII_message(reply);
     int r;
-#define checked_call(func, ...) if ((r = func(__VA_ARGS__)) < 0) { return set_systemd_error(r, #func); }
+#define checked_call(func, ...)                                                                                                                                \
+    if ((r = func(__VA_ARGS__)) < 0) { return set_systemd_error(r, #func); }
     checked_call(sd_bus_message_new_method_call, systemd.user_bus, &m, SYSTEMD_DESTINATION, SYSTEMD_PATH, SYSTEMD_INTERFACE, "StartTransientUnit");
     // mode is "fail" which means it will fail if a unit with scope_name already exists
     checked_call(sd_bus_message_append, m, "ss", scope_name, "fail");
     checked_call(sd_bus_message_open_container, m, 'a', "(sv)");
-    if (description && description[0]) {
-        checked_call(sd_bus_message_append, m, "(sv)", "Description", "s", description);
-    }
+    if (description && description[0]) { checked_call(sd_bus_message_append, m, "(sv)", "Description", "s", description); }
     RAII_ALLOC(char, slice, NULL);
     if (sd_pid_get_user_slice(parent_pid, &slice) >= 0) {
         checked_call(sd_bus_message_append, m, "(sv)", "Slice", "s", slice);
@@ -162,11 +175,11 @@ move_pid_into_new_scope(pid_t pid, const char* scope_name, const char *descripti
     // Only kill the main process on stop
     checked_call(sd_bus_message_append, m, "(sv)", "KillMode", "s", "process");
 
-    checked_call(sd_bus_message_close_container, m); // End properties a(sv)
-                                                     //
-    checked_call(sd_bus_message_append, m, "a(sa(sv))", 0);  // No auxiliary units
-                                                             //
-    if ((r=sd_bus_call(systemd.user_bus, m, 0 /* timeout default */, &err, &reply)) < 0) return set_reply_error("StartTransientUnit", r, &err);
+    checked_call(sd_bus_message_close_container, m);        // End properties a(sv)
+                                                            //
+    checked_call(sd_bus_message_append, m, "a(sa(sv))", 0); // No auxiliary units
+                                                            //
+    if ((r = sd_bus_call(systemd.user_bus, m, 0 /* timeout default */, &err, &reply)) < 0) return set_reply_error("StartTransientUnit", r, &err);
 
     return true;
 #undef checked_call
@@ -191,12 +204,14 @@ ensure_initialized_and_useable(void) {
     return true;
 }
 
-static PyObject*
+static PyObject *
 systemd_move_pid_into_new_scope(PyObject *self UNUSED, PyObject *args) {
-    long pid; const char *scope_name, *description;
+    long pid;
+    const char *scope_name, *description;
     if (!PyArg_ParseTuple(args, "lss", &pid, &scope_name, &description)) return NULL;
 #ifdef __APPLE__
-    (void)ensure_initialized_and_useable; (void)move_pid_into_new_scope;
+    (void)ensure_initialized_and_useable;
+    (void)move_pid_into_new_scope;
     PyErr_SetString(PyExc_NotImplementedError, "not supported on this platform");
 #else
     if (!ensure_initialized_and_useable()) return NULL;
@@ -208,8 +223,7 @@ systemd_move_pid_into_new_scope(PyObject *self UNUSED, PyObject *args) {
 
 
 static PyMethodDef module_methods[] = {
-    METHODB(systemd_move_pid_into_new_scope, METH_VARARGS),
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+    METHODB(systemd_move_pid_into_new_scope, METH_VARARGS), {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 

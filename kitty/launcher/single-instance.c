@@ -25,7 +25,11 @@
 #define NO_SINGLE_BYTE_CHARSETS
 #include "../charsets.c"
 
-#define fail_on_errno(msg) { perror(msg); do_exit(1); }
+#define fail_on_errno(msg)                                                                                                                                     \
+    {                                                                                                                                                          \
+        perror(msg);                                                                                                                                           \
+        do_exit(1);                                                                                                                                            \
+    }
 
 void
 log_error(const char *fmt, ...) {
@@ -84,15 +88,29 @@ is_ok_tmpdir(const char *x) {
 
 static void
 get_socket_dir(char *output, size_t output_capacity) {
-#define ret_if_ok(x) if (is_ok_tmpdir(x)) { if (snprintf(output, output_capacity, "%s", x) < output_capacity-1); return; }
+#define ret_if_ok(x)                                                                                                                                           \
+    if (is_ok_tmpdir(x)) {                                                                                                                                     \
+        if (snprintf(output, output_capacity, "%s", x) < output_capacity - 1)                                                                                  \
+            ;                                                                                                                                                  \
+        return;                                                                                                                                                \
+    }
 #ifdef __APPLE__
     if (confstr(_CS_DARWIN_USER_CACHE_DIR, output, output_capacity)) return;
     snprintf(output, output_capacity, "%s", "/Library/Caches");
 #else
-#define test_env(x) { const char *e = getenv(#x); ret_if_ok(e); }
-    test_env(XDG_RUNTIME_DIR); test_env(TMPDIR); test_env(TEMP); test_env(TMP);
+#define test_env(x)                                                                                                                                            \
+    {                                                                                                                                                          \
+        const char *e = getenv(#x);                                                                                                                            \
+        ret_if_ok(e);                                                                                                                                          \
+    }
+    test_env(XDG_RUNTIME_DIR);
+    test_env(TMPDIR);
+    test_env(TEMP);
+    test_env(TMP);
 
-    ret_if_ok("/tmp"); ret_if_ok("/var/tmp"); ret_if_ok("/usr/tmp");
+    ret_if_ok("/tmp");
+    ret_if_ok("/var/tmp");
+    ret_if_ok("/usr/tmp");
 
     test_env(HOME);
 
@@ -121,7 +139,8 @@ typedef struct membuf {
 static void
 write_to_membuf(membuf *m, void *data, size_t sz) {
     ensure_space_for(m, data, char, m->used + sz, capacity, 8192, false);
-    memcpy(m->data + m->used, data, sz); m->used += sz;
+    memcpy(m->data + m->used, data, sz);
+    m->used += sz;
 }
 
 static void
@@ -138,18 +157,24 @@ write_json_string(membuf *m, const char *src, size_t src_len) {
     uint32_t codep = 0;
     UTF8State state = 0, prev = UTF8_ACCEPT;
     for (size_t i = 0; i < src_len; i++) {
-        switch(decode_utf8(&state, &codep, src[i])) {
+        switch (decode_utf8(&state, &codep, src[i])) {
             case UTF8_ACCEPT:
-                switch(codep) {
+                switch (codep) {
                     case '"': write_to_membuf(m, "\\\"", 2); break;
                     case '\\': write_to_membuf(m, "\\\\", 2); break;
                     case '\t': write_to_membuf(m, "\\t", 2); break;
                     case '\n': write_to_membuf(m, "\\n", 2); break;
-                    case '\r': write_to_membuf(m, "\\r", 2); break;
-START_ALLOW_CASE_RANGE
-                    case 0 ... 8: case 11: case 12: case 14 ... 31:
-                        write_escaped_char(m, codep); break;
-END_ALLOW_CASE_RANGE
+                    case '\r':
+                        write_to_membuf(m, "\\r", 2);
+                        break;
+                        START_ALLOW_CASE_RANGE
+                    case 0 ... 8:
+                    case 11:
+                    case 12:
+                    case 14 ... 31:
+                        write_escaped_char(m, codep);
+                        break;
+                        END_ALLOW_CASE_RANGE
                     default: m->used += encode_utf8(codep, m->data + m->used);
                 }
                 break;
@@ -176,12 +201,16 @@ write_json_string_array(membuf *m, int argc, char *argv[]) {
 static void
 read_till_eof(FILE *f, membuf *m) {
     while (!feof(f)) {
-        ensure_space_for(m, data, char, m->used + 8192, capacity, 4*8192, false);
+        ensure_space_for(m, data, char, m->used + 8192, capacity, 4 * 8192, false);
         m->used += fread(m->data, 1, m->capacity - m->used, f);
-        if (ferror(f)) { fclose(f); fail_on_errno("Failed to read from session file"); }
+        if (ferror(f)) {
+            fclose(f);
+            fail_on_errno("Failed to read from session file");
+        }
     }
     // ensure NULL termination
-    write_to_membuf(m, "\0", 1); m->used--;
+    write_to_membuf(m, "\0", 1);
+    m->used--;
     fclose(f);
 }
 
@@ -193,12 +222,12 @@ bind_unix_socket(int s, const char *basename, struct sockaddr_un *addr, cleanup_
     // First try abstract socket
     addr->sun_path[0] = 0;
     memcpy(addr->sun_path + 1, basename, blen + 1);
-    if (safe_bind(s, (struct sockaddr*)addr, sizeof(sa_family_t) + 1 + blen) > -1) return true;
+    if (safe_bind(s, (struct sockaddr *)addr, sizeof(sa_family_t) + 1 + blen) > -1) return true;
     if (errno != ENOENT) return false;
     // Try an actual filesystem file
     get_socket_dir(addr->sun_path, sizeof(addr->sun_path) - blen - 2);
     size_t dlen = strlen(addr->sun_path);
-    while (dlen && addr->sun_path[dlen-1] == '/') dlen--;
+    while (dlen && addr->sun_path[dlen - 1] == '/') dlen--;
     if (snprintf(addr->sun_path + dlen, sizeof(addr->sun_path) - dlen, "/%s", basename) < blen + 1) {
         fprintf(stderr, "Socket directory has path too long for single instance socket file %s\n", addr->sun_path);
         do_exit(1);
@@ -208,18 +237,19 @@ bind_unix_socket(int s, const char *basename, struct sockaddr_un *addr, cleanup_
     snprintf(lock_file_path, sizeof(lock_file_path), "%s.lock", addr->sun_path);
     int fd = safe_open(lock_file_path, O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, S_IRUSR | S_IWUSR);
     if (fd == -1) return false;
-    cleanup->close_fd2 = true; cleanup->fd2 = fd;
+    cleanup->close_fd2 = true;
+    cleanup->fd2 = fd;
     snprintf(cleanup->path2, sizeof(cleanup->path2), "%s", lock_file_path);
     if (safe_lockf(fd, F_TLOCK, 0) != 0) {
         int saved_errno = errno;
         safe_close(fd, __FILE__, __LINE__);
         errno = saved_errno;
-        if (errno == EAGAIN || errno == EACCES) errno = EADDRINUSE;  // client
+        if (errno == EAGAIN || errno == EACCES) errno = EADDRINUSE; // client
         return false;
     }
     // First unlink the socket file and then try to bind it.
     if (unlink(addr->sun_path) != 0 && errno != ENOENT) return false;
-    if (safe_bind(s, (struct sockaddr*)addr, sizeof(*addr)) > -1) {
+    if (safe_bind(s, (struct sockaddr *)addr, sizeof(*addr)) > -1) {
         snprintf(cleanup->path1, sizeof(cleanup->path1), "%s", addr->sun_path);
         return true;
     }
@@ -240,19 +270,23 @@ extern char **environ;
 
 static void
 talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[], const CLIOptions *opts) {
-    cleanup_entries.si.path2[0] = 0; cleanup_entries.si.path1[0] = 0;
+    cleanup_entries.si.path2[0] = 0;
+    cleanup_entries.si.path1[0] = 0;
     membuf session_data = {0};
     char *session_path = NULL;
     if (opts->session && opts->session[0]) {
         if (strcmp(opts->session, "none") == 0) {
-            session_data.data = "none"; session_data.used = 4;
+            session_data.data = "none";
+            session_data.used = 4;
         } else if (strcmp(opts->session, "-") == 0) {
             read_till_eof(stdin, &session_data);
             session_path = malloc(PATH_MAX + 8);
             if (!session_path) fail_on_errno("Failed to alloc space for session_path");
             if (getcwd(session_path, PATH_MAX + 1) == NULL) fail_on_errno("Failed to getcwd()");
             char *p = session_path + strlen(session_path);
-            *(p++) = '/'; *(p++) = '-'; *p = 0;
+            *(p++) = '/';
+            *(p++) = '-';
+            *p = 0;
         } else {
             FILE *f = safe_fopen(opts->session, "r");
             if (f == NULL) fail_on_errno("Failed to open session file for reading");
@@ -262,7 +296,7 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
         }
     }
     membuf output = {0};
-#define w(literal) write_to_membuf(&output, literal, sizeof(literal)-1)
+#define w(literal) write_to_membuf(&output, literal, sizeof(literal) - 1)
     w("{\"cmd\":\"new_instance\",\"session_data\":");
     if (session_data.used) write_json_string(&output, session_data.data, session_data.used);
     else write_json_string(&output, "", 0);
@@ -273,10 +307,12 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
     if (session_path && session_path[0]) write_json_string(&output, session_path, strlen(session_path));
     else write_json_string(&output, "", 0);
     free(session_path);
-    w(",\"args\":"); write_json_string_array(&output, argc, argv);
+    w(",\"args\":");
+    write_json_string_array(&output, argc, argv);
     char cwd[4096];
     if (!getcwd(cwd, sizeof(cwd))) fail_on_errno("Failed to get cwd");
-    w(",\"cwd\":"); write_json_string(&output, cwd, strlen(cwd));
+    w(",\"cwd\":");
+    write_json_string(&output, cwd, strlen(cwd));
     w(",\"environ\":{");
     char **e = environ;
     for (; *e; e++) {
@@ -298,13 +334,14 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
     int notify_socket = -1;
     if (opts->wait_for_single_instance_window_close) {
         notify_socket = create_unix_socket();
-        cleanup_entries.notify.fd1 = notify_socket; cleanup_entries.notify.close_fd1 = true;
+        cleanup_entries.notify.fd1 = notify_socket;
+        cleanup_entries.notify.close_fd1 = true;
         struct sockaddr_un server_addr;
         char addr[128];
         snprintf(addr, sizeof(addr), "kitty-os-window-close-notify-%d-%d", getpid(), geteuid());
         if (!bind_unix_socket(notify_socket, addr, &server_addr, &cleanup_entries.notify)) fail_on_errno("Failed to bind notification socket");
         size_t len = strlen(server_addr.sun_path);
-        if (len == 0) len = 1 + strlen(server_addr.sun_path +1);
+        if (len == 0) len = 1 + strlen(server_addr.sun_path + 1);
         if (listen(notify_socket, 5) != 0) fail_on_errno("Failed to listen on notify socket");
         write_json_string(&output, server_addr.sun_path, len);
     } else w("null");
@@ -314,9 +351,7 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
     size_t addr_len = sizeof(sa_family_t);
     if (!server_addr->sun_path[0]) addr_len += 1 + strlen(server_addr->sun_path + 1);
     else addr_len = sizeof(*server_addr);
-    if (safe_connect(s, (struct sockaddr*)server_addr, addr_len) != 0) {
-        fail_on_errno("Failed to connect to single instance socket");
-    }
+    if (safe_connect(s, (struct sockaddr *)server_addr, addr_len) != 0) { fail_on_errno("Failed to connect to single instance socket"); }
     size_t pos = 0;
     while (pos < output.used) {
         errno = 0;
@@ -346,16 +381,22 @@ talk_to_instance(int s, struct sockaddr_un *server_addr, int argc, char *argv[],
 
 void
 single_instance_main(int argc, char *argv[], const CLIOptions *opts) {
-    if (argc == -1) { cleanup(); return; }
+    if (argc == -1) {
+        cleanup();
+        return;
+    }
     struct sockaddr_un server_addr;
-    char addr_buf[sizeof(server_addr.sun_path)-1];
+    char addr_buf[sizeof(server_addr.sun_path) - 1];
     if (opts->instance_group) snprintf(addr_buf, sizeof(addr_buf), "kitty-ipc-%d-%s", geteuid(), opts->instance_group);
     else snprintf(addr_buf, sizeof(addr_buf), "kitty-ipc-%d", geteuid());
 
     int s = create_unix_socket();
-    cleanup_entries.si.fd1 = s; cleanup_entries.si.close_fd1 = true;
+    cleanup_entries.si.fd1 = s;
+    cleanup_entries.si.close_fd1 = true;
     if (!bind_unix_socket(s, addr_buf, &server_addr, &cleanup_entries.si)) {
-        if (errno == EADDRINUSE) { talk_to_instance(s, &server_addr, argc, argv, opts); do_exit(0); }
-        else fail_on_errno("Failed to bind single instance socket");
+        if (errno == EADDRINUSE) {
+            talk_to_instance(s, &server_addr, argc, argv, opts);
+            do_exit(0);
+        } else fail_on_errno("Failed to bind single instance socket");
     } else set_single_instance_socket(s);
 }

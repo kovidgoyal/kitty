@@ -31,32 +31,55 @@
 #endif
 #define GLSL_VERSION 140
 #define GLFW_MOD_KITTY (GLFW_MOD_LAST * 2)
-#define UNUSED __attribute__ ((unused))
+#define UNUSED __attribute__((unused))
 #define PYNOARG PyObject *__a1 UNUSED, PyObject *__a2 UNUSED
-#define EXPORTED __attribute__ ((visibility ("default")))
-#define LIKELY(x)    __builtin_expect (!!(x), 1)
-#define UNLIKELY(x)  __builtin_expect (!!(x), 0)
-#define MAX(x, y) __extension__ ({ \
-    const __typeof__ (x) __a__ = (x); const __typeof__ (y) __b__ = (y); \
-        __a__ > __b__ ? __a__ : __b__;})
-#define MIN(x, y) __extension__ ({ \
-    const __typeof__ (x) __a__ = (x); const __typeof__ (y) __b__ = (y); \
-        __a__ < __b__ ? __a__ : __b__;})
-#define SWAP(x, y) do { __typeof__(x) _sw_ = y; y = x; x = _sw_; } while(0)
+#define EXPORTED __attribute__((visibility("default")))
+#define LIKELY(x) __builtin_expect(!!(x), 1)
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
+#define MAX(x, y)                                                                                                                                              \
+    __extension__({                                                                                                                                            \
+        const __typeof__(x) __a__ = (x);                                                                                                                       \
+        const __typeof__(y) __b__ = (y);                                                                                                                       \
+        __a__ > __b__ ? __a__ : __b__;                                                                                                                         \
+    })
+#define MIN(x, y)                                                                                                                                              \
+    __extension__({                                                                                                                                            \
+        const __typeof__(x) __a__ = (x);                                                                                                                       \
+        const __typeof__(y) __b__ = (y);                                                                                                                       \
+        __a__ < __b__ ? __a__ : __b__;                                                                                                                         \
+    })
+#define SWAP(x, y)                                                                                                                                             \
+    do {                                                                                                                                                       \
+        __typeof__(x) _sw_ = y;                                                                                                                                \
+        y = x;                                                                                                                                                 \
+        x = _sw_;                                                                                                                                              \
+    } while (0)
 #define xstr(s) str(s)
 #define str(s) #s
-#define arraysz(x) (sizeof(x)/sizeof(x[0]))
+#define arraysz(x) (sizeof(x) / sizeof(x[0]))
 #define zero_at_i(array, idx) memset((array) + (idx), 0, sizeof((array)[0]))
 #define zero_at_ptr(p) memset((p), 0, sizeof((p)[0]))
-#define literal_strlen(x) (sizeof(x)-1)
+#define literal_strlen(x) (sizeof(x) - 1)
 #define zero_at_ptr_count(p, count) memset((p), 0, (count) * sizeof((p)[0]))
-#define C0_EXCEPT_NL_SPACE_TAB_DEL 0x0 ... 0x8: case 0xb ... 0x1f
-#define C0_EXCEPT_NL_SPACE_TAB 0x0 ... 0x8: case 0xb ... 0x1f: case 0x7f
-void log_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
-#define fatal(...) { log_error(__VA_ARGS__); exit(EXIT_FAILURE); }
-static inline void cleanup_free(void *p) { free(*(void**)p); }
+#define C0_EXCEPT_NL_SPACE_TAB_DEL 0x0 ... 0x8 : case 0xb ... 0x1f
+#define C0_EXCEPT_NL_SPACE_TAB                                                                                                                                 \
+    0x0 ... 0x8 : case 0xb ... 0x1f:                                                                                                                           \
+    case 0x7f
+void log_error(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+#define fatal(...)                                                                                                                                             \
+    {                                                                                                                                                          \
+        log_error(__VA_ARGS__);                                                                                                                                \
+        exit(EXIT_FAILURE);                                                                                                                                    \
+    }
+static inline void
+cleanup_free(void *p) {
+    free(*(void **)p);
+}
 #define RAII_ALLOC(type, name, initializer) __attribute__((cleanup(cleanup_free))) type *name = initializer
-static inline void cleanup_decref(PyObject **p) { Py_CLEAR(*p); }
+static inline void
+cleanup_decref(PyObject **p) {
+    Py_CLEAR(*p);
+}
 #define RAII_PyObject(name, initializer) __attribute__((cleanup(cleanup_decref))) PyObject *name = initializer
 #define RAII_PY_BUFFER(name) __attribute__((cleanup(PyBuffer_Release))) Py_buffer name = {0}
 
@@ -78,7 +101,7 @@ typedef enum { DISABLE_LIGATURES_NEVER, DISABLE_LIGATURES_CURSOR, DISABLE_LIGATU
 
 #define ERROR_PREFIX "[PARSE ERROR]"
 typedef enum MouseTrackingModes { NO_TRACKING, BUTTON_MODE, MOTION_MODE, ANY_MODE } MouseTrackingMode;
-typedef enum MouseTrackingProtocols { NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL, SGR_PIXEL_PROTOCOL} MouseTrackingProtocol;
+typedef enum MouseTrackingProtocols { NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL, SGR_PIXEL_PROTOCOL } MouseTrackingProtocol;
 typedef enum MouseShapes {
     INVALID_POINTER,
     /* start mouse shapes (auto generated by gen-key-constants.py do not edit) */
@@ -112,7 +135,7 @@ typedef enum MouseShapes {
     NO_DROP_POINTER,
     GRAB_POINTER,
     GRABBING_POINTER,
-/* end mouse shapes */
+    /* end mouse shapes */
 } MouseShape;
 typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
 typedef enum { SCROLLBAR_NEVER, SCROLLBAR_ON_SCROLLED, SCROLLBAR_ON_HOVERED, SCROLLBAR_ON_SCROLL_AND_HOVER, SCROLLBAR_ALWAYS } ScrollbarVisibilityPolicy;
@@ -135,52 +158,63 @@ typedef struct ImageAnchorPosition {
 #define FG 1
 #define BG 2
 
-#define COPY_CELL(src, s, dest, d) \
-    (dest)->cpu_cells[d] = (src)->cpu_cells[s]; (dest)->gpu_cells[d] = (src)->gpu_cells[s];
+#define COPY_CELL(src, s, dest, d)                                                                                                                             \
+    (dest)->cpu_cells[d] = (src)->cpu_cells[s];                                                                                                                \
+    (dest)->gpu_cells[d] = (src)->gpu_cells[s];
 
 #define COPY_SELF_CELL(s, d) COPY_CELL(self, s, self, d)
 
 #define METHOD(name, arg_type) {#name, (PyCFunction)name, arg_type, name##_doc},
 #define METHODB(name, arg_type) {#name, (PyCFunction)name, arg_type, ""}
 
-#define BOOL_GETSET(type, x) \
-    static PyObject* x##_get(type *self, void UNUSED *closure) { PyObject *ans = self->x ? Py_True : Py_False; Py_INCREF(ans); return ans; } \
-    static int x##_set(type *self, PyObject *value, void UNUSED *closure) { if (value == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } self->x = PyObject_IsTrue(value) ? true : false; return 0; }
+#define BOOL_GETSET(type, x)                                                                                                                                   \
+    static PyObject *x##_get(type *self, void UNUSED *closure) {                                                                                               \
+        PyObject *ans = self->x ? Py_True : Py_False;                                                                                                          \
+        Py_INCREF(ans);                                                                                                                                        \
+        return ans;                                                                                                                                            \
+    }                                                                                                                                                          \
+    static int x##_set(type *self, PyObject *value, void UNUSED *closure) {                                                                                    \
+        if (value == NULL) {                                                                                                                                   \
+            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");                                                                                       \
+            return -1;                                                                                                                                         \
+        }                                                                                                                                                      \
+        self->x = PyObject_IsTrue(value) ? true : false;                                                                                                       \
+        return 0;                                                                                                                                              \
+    }
 
-#define GETSET(x) \
-    {#x, (getter) x##_get, (setter) x##_set, #x, NULL},
+#define GETSET(x) {#x, (getter)x##_get, (setter)x##_set, #x, NULL},
 
 #ifndef EXTRA_INIT
 #define EXTRA_INIT
 #endif
-#define INIT_TYPE(type) \
-    int init_##type(PyObject *module) {\
-        if (PyType_Ready(&type##_Type) < 0) return 0; \
-        if (PyModule_AddObject(module, #type, (PyObject *)&type##_Type) != 0) return 0; \
-        Py_INCREF(&type##_Type); \
-        EXTRA_INIT; \
-        return 1; \
+#define INIT_TYPE(type)                                                                                                                                        \
+    int init_##type(PyObject *module) {                                                                                                                        \
+        if (PyType_Ready(&type##_Type) < 0) return 0;                                                                                                          \
+        if (PyModule_AddObject(module, #type, (PyObject *)&type##_Type) != 0) return 0;                                                                        \
+        Py_INCREF(&type##_Type);                                                                                                                               \
+        EXTRA_INIT;                                                                                                                                            \
+        return 1;                                                                                                                                              \
     }
 
-#define RICHCMP(type) \
-    static PyObject * richcmp(PyObject *obj1, PyObject *obj2, int op) { \
-        PyObject *result = NULL; \
-        int eq; \
-        if (op != Py_EQ && op != Py_NE) { Py_RETURN_NOTIMPLEMENTED; } \
-        if (!PyObject_TypeCheck(obj1, &type##_Type)) { Py_RETURN_FALSE; } \
-        if (!PyObject_TypeCheck(obj2, &type##_Type)) { Py_RETURN_FALSE; } \
-        eq = __eq__((type*)obj1, (type*)obj2); \
-        if (op == Py_NE) result = eq ? Py_False : Py_True; \
-        else result = eq ? Py_True : Py_False; \
-        Py_INCREF(result); \
-        return result; \
+#define RICHCMP(type)                                                                                                                                          \
+    static PyObject *richcmp(PyObject *obj1, PyObject *obj2, int op) {                                                                                         \
+        PyObject *result = NULL;                                                                                                                               \
+        int eq;                                                                                                                                                \
+        if (op != Py_EQ && op != Py_NE) { Py_RETURN_NOTIMPLEMENTED; }                                                                                          \
+        if (!PyObject_TypeCheck(obj1, &type##_Type)) { Py_RETURN_FALSE; }                                                                                      \
+        if (!PyObject_TypeCheck(obj2, &type##_Type)) { Py_RETURN_FALSE; }                                                                                      \
+        eq = __eq__((type *)obj1, (type *)obj2);                                                                                                               \
+        if (op == Py_NE) result = eq ? Py_False : Py_True;                                                                                                     \
+        else result = eq ? Py_True : Py_False;                                                                                                                 \
+        Py_INCREF(result);                                                                                                                                     \
+        return result;                                                                                                                                         \
     }
 
 #ifdef __clang__
-#define START_IGNORE_DIAGNOSTIC(diag) _Pragma(xstr(clang diagnostic push))  _Pragma(xstr(clang diagnostic ignored diag))
+#define START_IGNORE_DIAGNOSTIC(diag) _Pragma(xstr(clang diagnostic push)) _Pragma(xstr(clang diagnostic ignored diag))
 #define END_IGNORE_DIAGNOSTIC _Pragma("clang diagnostic pop")
 #else
-#define START_IGNORE_DIAGNOSTIC(diag) _Pragma(xstr(GCC diagnostic push))  _Pragma(xstr(GCC diagnostic ignored diag))
+#define START_IGNORE_DIAGNOSTIC(diag) _Pragma(xstr(GCC diagnostic push)) _Pragma(xstr(GCC diagnostic ignored diag))
 #define END_IGNORE_DIAGNOSTIC _Pragma("GCC diagnostic pop")
 #endif
 
@@ -190,16 +224,14 @@ typedef struct ImageAnchorPosition {
 #define END_ALLOW_UNUSED_RESULT END_IGNORE_DIAGNOSTIC
 #define START_ALLOW_CASE_RANGE IGNORE_PEDANTIC_WARNINGS
 #define END_ALLOW_CASE_RANGE END_IGNORE_PEDANTIC_WARNINGS
-#define BIT_MASK(__TYPE__, __ONE_COUNT__) \
-    (((__TYPE__) (-((__ONE_COUNT__) != 0))) \
-    & (((__TYPE__) -1) >> ((sizeof(__TYPE__) * CHAR_BIT) - (__ONE_COUNT__))))
-#define ADD_TYPE(which) \
-    if (PyType_Ready(&which##_Type) < 0) return false; \
-    if (PyModule_AddObject(module, #which, (PyObject *)&which##_Type) != 0) return false; \
+#define BIT_MASK(__TYPE__, __ONE_COUNT__) (((__TYPE__)(-((__ONE_COUNT__) != 0))) & (((__TYPE__) - 1) >> ((sizeof(__TYPE__) * CHAR_BIT) - (__ONE_COUNT__))))
+#define ADD_TYPE(which)                                                                                                                                        \
+    if (PyType_Ready(&which##_Type) < 0) return false;                                                                                                         \
+    if (PyModule_AddObject(module, #which, (PyObject *)&which##_Type) != 0) return false;                                                                      \
     Py_INCREF(&which##_Type);
 
 
-typedef enum UTF8State { UTF8_ACCEPT = 0, UTF8_REJECT = 1} UTF8State;
+typedef enum UTF8State { UTF8_ACCEPT = 0, UTF8_REJECT = 1 } UTF8State;
 
 typedef struct {
     // right = left + width, bottom = top + height
@@ -207,7 +239,9 @@ typedef struct {
 } Region;
 
 typedef enum { UNKNOWN_PROMPT_KIND = 0, PROMPT_START = 1, SECONDARY_PROMPT = 2, OUTPUT_START = 3 } PromptKind;
-typedef struct {int x;} *HYPERLINK_POOL_HANDLE;
+typedef struct {
+    int x;
+} *HYPERLINK_POOL_HANDLE;
 typedef struct {
     Py_UCS4 *buf;
     size_t len, capacity;
@@ -216,8 +250,7 @@ typedef struct {
 } ANSIBuf;
 
 typedef struct {
-    PyObject_HEAD
-    monotonic_t position_changed_by_client_at;
+    PyObject_HEAD monotonic_t position_changed_by_client_at;
     unsigned int x, y;
     bool non_blinking;
     CursorShape shape;
@@ -236,14 +269,12 @@ typedef struct {
     float cursor_opacity, text_blink_opacity;
 } CursorRenderInfo;
 
-typedef enum DynamicColorType {
-    COLOR_NOT_SET, COLOR_IS_SPECIAL, COLOR_IS_INDEX, COLOR_IS_RGB
-} DynamicColorType;
+typedef enum DynamicColorType { COLOR_NOT_SET, COLOR_IS_SPECIAL, COLOR_IS_INDEX, COLOR_IS_RGB } DynamicColorType;
 
 typedef union DynamicColor {
     struct {
-        color_type rgb: 24;
-        DynamicColorType type: 8;
+        color_type rgb : 24;
+        DynamicColorType type : 8;
     };
     color_type val;
 } DynamicColor;
@@ -253,7 +284,9 @@ typedef struct {
 } DynamicColors;
 
 typedef struct TransparentDynamicColor {
-    color_type color; float opacity; bool is_set;
+    color_type color;
+    float opacity;
+    bool is_set;
 } TransparentDynamicColor;
 
 
@@ -262,72 +295,82 @@ typedef struct TransparentDynamicColor {
 typedef struct {
     PyObject_HEAD
 
-    bool dirty;
+        bool dirty;
     color_type color_table[256], orig_color_table[256];
     TransparentDynamicColor configured_transparent_colors[8], overriden_transparent_colors[8];
-    struct { DynamicColors dynamic_colors; uint32_t color_table[256]; TransparentDynamicColor transparent_colors[8]; } *color_stack;
+    struct {
+        DynamicColors dynamic_colors;
+        uint32_t color_table[256];
+        TransparentDynamicColor transparent_colors[8];
+    } *color_stack;
     unsigned int color_stack_idx, color_stack_sz;
     DynamicColors configured, overridden;
-    color_type mark_foregrounds[MARK_MASK+1], mark_backgrounds[MARK_MASK+1];
+    color_type mark_foregrounds[MARK_MASK + 1], mark_backgrounds[MARK_MASK + 1];
 } ColorProfile;
 
 typedef struct {
     unsigned width, height;
 } CellPixelSize;
 
-typedef struct {int x;} *SPRITE_MAP_HANDLE;
+typedef struct {
+    int x;
+} *SPRITE_MAP_HANDLE;
 
 typedef struct FontCellMetrics {
     unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
 } FontCellMetrics;
-#define FONTS_DATA_HEAD SPRITE_MAP_HANDLE sprite_map; double logical_dpi_x, logical_dpi_y, font_sz_in_pts; FontCellMetrics fcm;
-typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
+#define FONTS_DATA_HEAD                                                                                                                                        \
+    SPRITE_MAP_HANDLE sprite_map;                                                                                                                              \
+    double logical_dpi_x, logical_dpi_y, font_sz_in_pts;                                                                                                       \
+    FontCellMetrics fcm;
+typedef struct {
+    FONTS_DATA_HEAD
+} *FONTS_DATA_HANDLE;
 
 #define clear_sprite_position(cell) (cell).sprite_idx = 0;
 
-#define ensure_space_for(base, array, type, num, capacity, initial_cap, zero_mem) \
-    if ((base)->capacity < num) { \
-        size_t _newcap = MAX((size_t)initial_cap, MAX(2 * (base)->capacity, (size_t)num)); \
-        (base)->array = realloc((base)->array, sizeof(type) * _newcap); \
-        if ((base)->array == NULL) fatal("Out of memory while ensuring space for %zu elements in array of %s", (size_t)num, #type); \
-        if (zero_mem) memset((base)->array + (base)->capacity, 0, sizeof(type) * (_newcap - (base)->capacity)); \
-        (base)->capacity = _newcap; \
+#define ensure_space_for(base, array, type, num, capacity, initial_cap, zero_mem)                                                                              \
+    if ((base)->capacity < num) {                                                                                                                              \
+        size_t _newcap = MAX((size_t)initial_cap, MAX(2 * (base)->capacity, (size_t)num));                                                                     \
+        (base)->array = realloc((base)->array, sizeof(type) * _newcap);                                                                                        \
+        if ((base)->array == NULL) fatal("Out of memory while ensuring space for %zu elements in array of %s", (size_t)num, #type);                            \
+        if (zero_mem) memset((base)->array + (base)->capacity, 0, sizeof(type) * (_newcap - (base)->capacity));                                                \
+        (base)->capacity = _newcap;                                                                                                                            \
     }
 
-#define remove_i_from_array(array, i, count) { \
-    (count)--; \
-    if ((i) < (count)) { \
-        memmove((array) + (i), (array) + (i) + 1, sizeof((array)[0]) * ((count) - (i))); \
-    }}
+#define remove_i_from_array(array, i, count)                                                                                                                   \
+    {                                                                                                                                                          \
+        (count)--;                                                                                                                                             \
+        if ((i) < (count)) { memmove((array) + (i), (array) + (i) + 1, sizeof((array)[0]) * ((count) - (i))); }                                                \
+    }
 
 // Global functions
-Cursor* alloc_cursor(void);
-ColorProfile* alloc_color_profile(void);
-void copy_color_profile(ColorProfile*, ColorProfile*);
-PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
-PyObject* parse_bytes(PyObject UNUSED *, PyObject *);
-void cursor_reset(Cursor*);
-Cursor* cursor_copy(Cursor*);
+Cursor *alloc_cursor(void);
+ColorProfile *alloc_color_profile(void);
+void copy_color_profile(ColorProfile *, ColorProfile *);
+PyObject *parse_bytes_dump(PyObject UNUSED *, PyObject *);
+PyObject *parse_bytes(PyObject UNUSED *, PyObject *);
+void cursor_reset(Cursor *);
+Cursor *cursor_copy(Cursor *);
 void cursor_copy_to(Cursor *src, Cursor *dest);
-void cursor_reset_display_attrs(Cursor*);
+void cursor_reset_display_attrs(Cursor *);
 void cursor_from_sgr(Cursor *self, int *params, unsigned int count, bool is_group);
-const char* cursor_as_sgr(const Cursor *);
+const char *cursor_as_sgr(const Cursor *);
 
-PyObject* cm_thread_write(PyObject *self, PyObject *args);
+PyObject *cm_thread_write(PyObject *self, PyObject *args);
 bool schedule_write_to_child(id_type id, unsigned int num, ...);
-bool schedule_write_to_child_python(id_type id, const char *prefix, PyObject* tuple_of_str_or_bytes, const char *suffix);
+bool schedule_write_to_child_python(id_type id, const char *prefix, PyObject *tuple_of_str_or_bytes, const char *suffix);
 void schedule_write_to_child_if_possible(id_type id, const char *data, size_t sz, bool *found, bool *too_much_data, size_t keep_space);
 bool set_iutf8(int, bool);
 
 DynamicColor colorprofile_to_color(const ColorProfile *self, DynamicColor entry, DynamicColor defval);
 void colorprofile_reset(ColorProfile *self);
 bool colorprofile_to_transparent_color(const ColorProfile *self, unsigned index, color_type *color, float *opacity);
-color_type
-colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, DynamicColor defval, DynamicColor fallback, DynamicColor falback_defval);
+color_type colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, DynamicColor defval, DynamicColor fallback, DynamicColor falback_defval);
 void copy_color_table_to_buffer(ColorProfile *self, color_type *address, int offset, size_t stride);
-bool colorprofile_push_colors(ColorProfile*, unsigned int);
-bool colorprofile_pop_colors(ColorProfile*, unsigned int);
-void colorprofile_report_stack(ColorProfile*, unsigned int*, unsigned int*);
+bool colorprofile_push_colors(ColorProfile *, unsigned int);
+bool colorprofile_pop_colors(ColorProfile *, unsigned int);
+void colorprofile_report_stack(ColorProfile *, unsigned int *, unsigned int *);
 
 void set_mouse_cursor(MouseShape);
 void enter_event(int modifiers, bool cursor_moved);
@@ -344,14 +387,15 @@ void play_canberra_sound(const char *which_sound, const char *event_id, bool is_
 #endif
 SPRITE_MAP_HANDLE alloc_sprite_map(void);
 void free_sprite_data(FONTS_DATA_HANDLE);
-const char* get_hyperlink_for_id(const HYPERLINK_POOL_HANDLE, hyperlink_id_type id, bool only_url);
+const char *get_hyperlink_for_id(const HYPERLINK_POOL_HANDLE, hyperlink_id_type id, bool only_url);
 
-#define memset_array(array, val, count) if ((count) > 0) { \
-    (array)[0] = (val); \
-    size_t __copied__ = 1; \
-    while (__copied__ < (count)) { \
-        const size_t __num__ = MIN(__copied__, (count) - __copied__); \
-        memcpy((array) + __copied__, (array), __num__ * sizeof((val))); \
-        __copied__ += __num__; \
-    } \
-}
+#define memset_array(array, val, count)                                                                                                                        \
+    if ((count) > 0) {                                                                                                                                         \
+        (array)[0] = (val);                                                                                                                                    \
+        size_t __copied__ = 1;                                                                                                                                 \
+        while (__copied__ < (count)) {                                                                                                                         \
+            const size_t __num__ = MIN(__copied__, (count) - __copied__);                                                                                      \
+            memcpy((array) + __copied__, (array), __num__ * sizeof((val)));                                                                                    \
+            __copied__ += __num__;                                                                                                                             \
+        }                                                                                                                                                      \
+    }

@@ -17,7 +17,7 @@ typedef union CellAttrs {
         uint16_t reverse : 1;
         uint16_t strike : 1;
         uint16_t dim : 1;
-        uint16_t blink: 1;
+        uint16_t blink : 1;
         uint16_t mark : 2;
         uint32_t : 21;
     };
@@ -27,7 +27,7 @@ static_assert(sizeof(CellAttrs) == sizeof(uint32_t), "Fix the ordering of CellAt
 
 #define WIDTH_MASK (3u)
 #define DECORATION_MASK (7u)
-#define SGR_MASK (~(((CellAttrs){.mark=MARK_MASK}).val))
+#define SGR_MASK (~(((CellAttrs){.mark = MARK_MASK}).val))
 #define MAX_NUM_CODEPOINTS_PER_CELL 24u
 // Text presentation selector
 #define VS15 0xfe0e
@@ -49,32 +49,32 @@ static_assert(sizeof(GPUCell) == 20, "Fix the ordering of GPUCell");
 
 typedef union CPUCell {
     struct {
-    #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-        char_type ch_or_idx: sizeof(char_type) * 8 - 1;
-        char_type ch_is_idx: 1;
-    #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-        char_type ch_is_idx: 1;
-        char_type ch_or_idx: sizeof(char_type) * 8 - 1;
-    #else
-    #error "Unsupported endianness"
-    #endif
-        char_type hyperlink_id: sizeof(hyperlink_id_type) * 8;
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+        char_type ch_or_idx : sizeof(char_type) * 8 - 1;
+        char_type ch_is_idx : 1;
+#elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        char_type ch_is_idx : 1;
+        char_type ch_or_idx : sizeof(char_type) * 8 - 1;
+#else
+#error "Unsupported endianness"
+#endif
+        char_type hyperlink_id : sizeof(hyperlink_id_type) * 8;
         char_type next_char_was_wrapped : 1;
         char_type is_multicell : 1;
-        char_type natural_width: 1;
-        char_type scale: SCALE_BITS;
-        char_type subscale_n: SUBSCALE_BITS;
-        char_type subscale_d: SUBSCALE_BITS;
+        char_type natural_width : 1;
+        char_type scale : SCALE_BITS;
+        char_type subscale_n : SUBSCALE_BITS;
+        char_type subscale_d : SUBSCALE_BITS;
         char_type x : WIDTH_BITS + SCALE_BITS;
         char_type y : SCALE_BITS;
-        char_type width: WIDTH_BITS;
-        char_type valign: VALIGN_BITS;
-        char_type halign: HALIGN_BITS;
-        char_type temp_flag: 1;
+        char_type width : WIDTH_BITS;
+        char_type valign : VALIGN_BITS;
+        char_type halign : HALIGN_BITS;
+        char_type temp_flag : 1;
         char_type : 15;
     };
     struct {
-        char_type ch_and_idx: sizeof(char_type) * 8;
+        char_type ch_and_idx : sizeof(char_type) * 8;
         char_type : 32;
         char_type : 32;
     };
@@ -89,14 +89,14 @@ typedef union LineAttrs {
         uint8_t : 4;
     };
     uint8_t val;
-} LineAttrs ;
+} LineAttrs;
 static_assert(sizeof(LineAttrs) == sizeof(uint8_t), "Fix the ordering of LineAttrs");
 
 
 typedef struct {
     PyObject_HEAD
 
-    GPUCell *gpu_cells;
+        GPUCell *gpu_cells;
     CPUCell *cpu_cells;
     index_type xnum, ynum;
     bool needs_free;
@@ -117,17 +117,34 @@ typedef struct ANSILineOutput {
     bool escape_code_written;
 } ANSILineState;
 
-static inline void cleanup_ansibuf(ANSIBuf *b) { free(b->buf); zero_at_ptr(b); }
+static inline void
+cleanup_ansibuf(ANSIBuf *b) {
+    free(b->buf);
+    zero_at_ptr(b);
+}
 #define RAII_ANSIBuf(name) __attribute__((cleanup(cleanup_ansibuf))) ANSIBuf name = {0}
 
-Line* alloc_line(TextCache *text_cache);
+Line *alloc_line(TextCache *text_cache);
 void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count, bool is_group);
-const char* cell_as_sgr(const GPUCell *, const GPUCell *);
-static inline bool cell_has_text(const CPUCell *c) { return c->ch_and_idx != 0; }
-static inline void cell_set_char(CPUCell *c, char_type ch) { c->ch_and_idx = ch & 0x7fffffff; }
-static inline bool cell_is_char(const CPUCell *c, char_type ch) { return c->ch_and_idx == ch; }
-static inline index_type cell_scale(const CPUCell *c) { return c->is_multicell ? c->scale : 1; }
-static inline unsigned num_codepoints_in_cell(const CPUCell *c, const TextCache *tc) {
+const char *cell_as_sgr(const GPUCell *, const GPUCell *);
+static inline bool
+cell_has_text(const CPUCell *c) {
+    return c->ch_and_idx != 0;
+}
+static inline void
+cell_set_char(CPUCell *c, char_type ch) {
+    c->ch_and_idx = ch & 0x7fffffff;
+}
+static inline bool
+cell_is_char(const CPUCell *c, char_type ch) {
+    return c->ch_and_idx == ch;
+}
+static inline index_type
+cell_scale(const CPUCell *c) {
+    return c->is_multicell ? c->scale : 1;
+}
+static inline unsigned
+num_codepoints_in_cell(const CPUCell *c, const TextCache *tc) {
     unsigned ans;
     if (c->ch_is_idx) {
         ans = tc_num_codepoints(tc, c->ch_or_idx);
@@ -135,7 +152,10 @@ static inline unsigned num_codepoints_in_cell(const CPUCell *c, const TextCache 
     } else ans = c->ch_or_idx ? 1 : 0;
     return ans;
 }
-static inline unsigned mcd_x_limit(const CPUCell* mcd) { return mcd->scale * mcd->width; }
+static inline unsigned
+mcd_x_limit(const CPUCell *mcd) {
+    return mcd->scale * mcd->width;
+}
 
 static inline void
 text_in_cell(const CPUCell *c, const TextCache *tc, ListOfChars *ans) {
@@ -163,7 +183,7 @@ static inline void
 cell_set_chars(CPUCell *c, TextCache *tc, const ListOfChars *lc) {
     if (lc->count <= 1) cell_set_char(c, lc->chars[0]);
     else {
-        c->ch_or_idx = tc_get_or_insert_chars(tc,  lc);
+        c->ch_or_idx = tc_get_or_insert_chars(tc, lc);
         c->ch_is_idx = true;
     }
 }
@@ -180,18 +200,29 @@ cell_first_char(const CPUCell *c, const TextCache *tc) {
 static inline CellAttrs
 cursor_to_attrs(const Cursor *c) {
     CellAttrs ans = {
-        .decoration=c->sgr.decoration, .bold=c->sgr.bold, .italic=c->sgr.italic, .reverse=c->sgr.reverse,
-        .strike=c->sgr.strikethrough, .dim=c->sgr.dim, .blink=c->sgr.blink};
+        .decoration = c->sgr.decoration,
+        .bold = c->sgr.bold,
+        .italic = c->sgr.italic,
+        .reverse = c->sgr.reverse,
+        .strike = c->sgr.strikethrough,
+        .dim = c->sgr.dim,
+        .blink = c->sgr.blink};
     return ans;
 }
 
 static inline void
 attrs_to_cursor(const CellAttrs attrs, Cursor *c) {
-    c->sgr.decoration = attrs.decoration; c->sgr.bold = attrs.bold;  c->sgr.italic = attrs.italic;
-    c->sgr.reverse = attrs.reverse; c->sgr.strikethrough = attrs.strike; c->sgr.dim = attrs.dim;
+    c->sgr.decoration = attrs.decoration;
+    c->sgr.bold = attrs.bold;
+    c->sgr.italic = attrs.italic;
+    c->sgr.reverse = attrs.reverse;
+    c->sgr.strikethrough = attrs.strike;
+    c->sgr.dim = attrs.dim;
     c->sgr.blink = attrs.blink;
 }
 
-#define cursor_as_gpu_cell(cursor) {.attrs=cursor_to_attrs(cursor), .fg=(cursor->sgr.fg & COL_MASK), .bg=(cursor->sgr.bg & COL_MASK), .decoration_fg=cursor->sgr.decoration_fg & COL_MASK}
-
-
+#define cursor_as_gpu_cell(cursor)                                                                                                                             \
+    {.attrs = cursor_to_attrs(cursor),                                                                                                                         \
+     .fg = (cursor->sgr.fg & COL_MASK),                                                                                                                        \
+     .bg = (cursor->sgr.bg & COL_MASK),                                                                                                                        \
+     .decoration_fg = cursor->sgr.decoration_fg & COL_MASK}

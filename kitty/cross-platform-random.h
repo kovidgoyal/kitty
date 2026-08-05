@@ -15,16 +15,17 @@
 
 static inline bool
 secure_random_bytes(void *buf, size_t nbytes) {
-    unsigned char* p = buf;
+    unsigned char *p = buf;
     ssize_t left = nbytes;
-    while(1) {
+    while (1) {
         ssize_t n = getrandom(p, left, 0);
         if (n >= left) return true;
         if (n < 0) {
-            if (errno != EINTR) return false;  // should never happen but if it does, we fail without any feedback
+            if (errno != EINTR) return false; // should never happen but if it does, we fail without any feedback
             continue;
         }
-        left -= n; p += n;
+        left -= n;
+        p += n;
     }
 }
 #else
@@ -35,7 +36,7 @@ secure_random_bytes(void *buf, size_t nbytes) {
     if (fd < 0) return false;
     size_t bytes_read = 0;
     while (bytes_read < nbytes) {
-        ssize_t n = read(fd, (uint8_t*)buf + bytes_read, nbytes - bytes_read);
+        ssize_t n = read(fd, (uint8_t *)buf + bytes_read, nbytes - bytes_read);
         if (n < 0) {
             if (errno == EINTR) continue;
             break;
