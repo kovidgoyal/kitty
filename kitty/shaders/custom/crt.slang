@@ -1,11 +1,13 @@
 #language slang 2026
 // Original shader: https://www.shadertoy.com/view/WsVSzV (CC BY NC SA 3.0)
 // Ported to slang for kitty
+// Note that this shader does not work with background_opacity < 1
 
 import kitty_custom_shader_types;
 
 extern static const float warp = 0.25f;  // simulates curvature of CRT monitor
 extern static const float scan = 0.50f;  // simulates darkness between scanlines
+extern static const float4 tint = float4(0, 0.8, 0.6, 0);  // tint color set the fourth component to 1 to apply it fully
 
 public float4 fragment_main(
     float4 color,
@@ -33,6 +35,9 @@ public float4 fragment_main(
     // Sample the backbuffer at the warped viewport UV
     float2 sample_uv = viewport.xy + uv * viewport.zw;
     float3 col = t.backbuffer.Sample(sample_uv).rgb;
+    // apply the tint
+    col = lerp(col, col * tint.rgb, tint.a);
 
-    return float4(lerp(col, float3(0.0f), apply), 1.0f);
+    // since this shaders moves pixels around it cannot work with alpha < 1
+    return float4(lerp(col, float3(0.0f), apply), 1);
 }
