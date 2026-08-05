@@ -27,9 +27,6 @@ PointerAlignment: Right
 DerivePointerAlignment: false
 SpaceAroundPointerQualifiers: Default
 
-# Force newline after return type in top level definitions
-AlwaysBreakAfterReturnType: TopLevelDefinitions
-
 # Space after control-flow keywords (if, for, while, switch); not after function calls
 SpaceBeforeParens: ControlStatements
 SpacesInParentheses: false
