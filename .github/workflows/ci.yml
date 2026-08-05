@@ -68,7 +68,7 @@ jobs:
 
     linux-package:
         name: Linux package
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         env:
             CFLAGS: -funsigned-char
         steps:
