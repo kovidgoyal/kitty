@@ -1,6 +1,10 @@
 #language slang 2026
+// Copyright (C) 2026 Kovid Goyal <kovid at kovidgoyal.net>
+// Distributed under terms of the GPLv3 license.
+//
 // Original shader: https://www.shadertoy.com/view/WsVSzV (CC BY NC SA 3.0)
-// Ported to slang for kitty
+// Ported to slang and modified for kitty
+//
 // Note that this shader does not work with background_opacity < 1
 
 import kitty_custom_shader_types;

@@ -248,6 +248,10 @@ void vsMain() {}
         self.assertEqual(parse_var_directive(['var', 'uint', 'algo', '=', '1']), ('uint', 'algo', '1'))
         self.assertEqual(parse_var_directive(['var', 'float', 'intensity', '=', '0.5']), ('float', 'intensity', '0.5'))
         self.assertEqual(parse_var_directive(['var', 'bool', 'flag', 'true']), ('bool', 'flag', 'true'))
+        self.assertEqual(
+            parse_var_directive(['var', 'float4', 'tint', '=', 'float4(0,', '0.6,', '0.8,', '1)']),
+            ('float4', 'tint', 'float4(0, 0.6, 0.8, 1)'),
+        )
         self.assertRaises(ValueError, parse_var_directive, ['var', 'badtype', 'x', '=', '1'])
         self.assertRaises(ValueError, parse_var_directive, ['var', 'uint', '123bad', '=', '1'])
         self.assertRaises(ValueError, parse_var_directive, ['var', 'uint'])
@@ -264,7 +268,8 @@ void vsMain() {}
             var uint algo = 2
             shaders sample
         endgroup
-        """.splitlines(), ''
+        """.splitlines(),
+            'test',
         )
         self.assertEqual(p['vars'], {'algo': ('uint', '1'), 'intensity': ('float', '0.5')})
         self.assertEqual(p['groups'][0]['vars'], {})
@@ -285,7 +290,8 @@ void vsMain() {}
             startgroup
                 shaders sample sample
             endgroup
-            """.splitlines(), ''
+            """.splitlines(),
+                'test',
             )
             try:
                 vert_src, frag_src, metadata = build_custom_shader_pipeline_glsl(p, cache_dir=cache_dir)

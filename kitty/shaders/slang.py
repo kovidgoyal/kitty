@@ -1121,6 +1121,18 @@ def parse_var_directive(parts: list[str]) -> tuple[str, str, str]:
     return var_type, var_name, value.rstrip(';')
 
 
+def _apply_pipeline_specializations(src: bytes, merged_vars: dict[str, tuple[str, str]]) -> bytes:
+    if not merged_vars:
+        return src
+    text = src.decode()
+    for var_name, (var_type, value) in merged_vars.items():
+        # Replace: extern static const <any_type> <name> = <default>; → static const <type> <name> = <value>;
+        # The extern keyword is removed so the value is baked into the compiled shader module.
+        pattern = rf'(?m)^(\s*)extern\s+static\s+const\s+\S+\s+{re.escape(var_name)}\s*=[^;\n]+;'
+        text = re.sub(pattern, rf'\g<1>static const {var_type} {var_name} = {value};', text)
+    return text.encode()
+
+
 class Group(TypedDict):
     viewport_pos: tuple[float, float]
     viewport_size: tuple[float, float]
@@ -1244,7 +1256,10 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
         mtime = max(mtime, os.stat(ct_key_path).st_mtime_ns)
         types_rebuilt = True
 
-    module_names = {}
+    # module_names maps (shader_name, vars_key) → slang module name.
+    # Specializations are baked into the compiled shader module so that
+    # extern static const overrides take effect at the Slang IR level.
+    module_names: dict[tuple[str, tuple[tuple[str, tuple[str, str]], ...]], str] = {}
     shaders_content_key = b''
     for n, (t, v) in pipeline['vars'].items():
         shaders_content_key += f':pvar:{t}:{n}:{v}'.encode()
@@ -1253,29 +1268,33 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
         shaders_content_key += b'::'
         for n, (t, v) in group['vars'].items():
             shaders_content_key += f':gvar:{t}:{n}:{v}'.encode()
+        merged_vars = dict(pipeline['vars'])
+        merged_vars.update(group['vars'])
+        vars_key: tuple[tuple[str, tuple[str, str]], ...] = tuple(sorted(merged_vars.items()))
         for name in group['shaders']:
             flat_shader_list.append((g_idx, name))
             path, import_dir, src, content_key = custom_shader(name, pipeline['pipeline_dir'])
             if import_dir and import_dir not in import_dirs:
                 import_dirs.append(import_dir)
-            shaders_content_key += b':' + content_key
-            path_key = key(path)
-            path_key_file = j(path_key.decode()) + '.key'
-            cache_ok = False
-            module_names[name] = modname = 'm' + content_key.decode()
-            with suppress(FileNotFoundError), open(path_key_file, 'rb') as f:
-                cache_ok = f.read() == content_key
-                mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
-            if not cache_ok or types_rebuilt:
-                inc = ['-I', import_dir] if import_dir else []
-                cmd = bc + inc + ['-module-name', modname, '-o', j(f'{modname}.slang-module'), '--', '-']
-                invocation_tracker.add(tuple(cmd))
-                cp = subprocess.run(cmd, input=src, capture_output=True)
-                if cp.returncode != 0:
-                    raise SlangFailed(name, cp)
-                with open(path_key_file, 'wb') as f:
-                    f.write(content_key)
-                mtime = max(mtime, os.stat(path_key_file).st_mtime_ns)
+            specialized_src = _apply_pipeline_specializations(src, merged_vars)
+            spec_content_key = key(specialized_src) if specialized_src != src else content_key
+            shaders_content_key += b':' + spec_content_key
+            spec_shader_key = (name, vars_key)
+            if spec_shader_key not in module_names:
+                modname = 'm' + spec_content_key.decode()
+                module_names[spec_shader_key] = modname
+                module_file = j(f'{modname}.slang-module')
+                cache_ok = os.path.exists(module_file) and not types_rebuilt
+                if cache_ok:
+                    mtime = max(mtime, os.stat(module_file).st_mtime_ns)
+                else:
+                    inc = ['-I', import_dir] if import_dir else []
+                    cmd = bc + inc + ['-module-name', modname, '-o', module_file, '--', '-']
+                    invocation_tracker.add(tuple(cmd))
+                    cp = subprocess.run(cmd, input=specialized_src, capture_output=True)
+                    if cp.returncode != 0:
+                        raise SlangFailed(name, cp)
+                    mtime = max(mtime, os.stat(module_file).st_mtime_ns)
     shaders_content_key += b':' + str(mtime).encode()
     j = partial(os.path.join, slot_dir)
     cache_ok = False
@@ -1286,16 +1305,13 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
         group = pipeline['groups'][g_idx]
         merged_vars = dict(pipeline['vars'])
         merged_vars.update(group['vars'])
-        specialization_decls = ''.join(f'\nstatic const {t} {n} = {v};' for n, (t, v) in merged_vars.items())
-        if specialization_decls:
-            specialization_decls += '\n'
-        module_name = module_names[name]
+        vars_key = tuple(sorted(merged_vars.items()))
+        module_name = module_names[(name, vars_key)]
         entry_point = f'fragment_main{i}'
         wrapper_src = f"""#language slang 2026
 implementing {slot_module_name};
 import kitty_custom_shader_types;
 import {module_name};
-{specialization_decls}
 public float4 {entry_point}(float4 inp, KittyTextures t, KittyCustomShaderData d, float4 viewport) {{ return fragment_main(inp, t, d, viewport); }}
 """
         wrappers[f'wrapper{i}.slang'] = wrapper_src
