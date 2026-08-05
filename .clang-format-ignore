@@ -1,1 +1,13 @@
-*_generated.h
+*_generated.*
+*-generated.*
+kitty/gl-wrapper.*
+kitty/srgb_gamma.*
+kitty/glfw-wrapper.*
+kitty/rowcolumn-diacritics.c
+kitty/terminfo.h
+kitty/char-props-data.h
+kitty/charsets.c
+kitty/color-names.h
+kitty/parse-graphics-command.h
+kitty/parse-multicell-command.h
+kittens/unicode_input/names.h
