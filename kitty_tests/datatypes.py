@@ -1067,3 +1067,15 @@ class TestDataTypes(BaseTest):
         s.draw('axbxc')
         s.set_marker(marker_from_function(mark_func))
         self.ae(s.marked_cells(), [(1, 0, 1), (3, 0, 1)])
+
+    def test_path_from_osc7(self):
+        from kitty.utils import path_from_osc7_url
+
+        self.ae('/tmp/x', path_from_osc7_url('file://host/tmp/x'))
+        self.ae('/tmp/x', path_from_osc7_url(b'file://host/tmp/x'))
+        self.ae('/tmp/a b', path_from_osc7_url('file://host/tmp/a%20b'))
+        self.ae('/tmp/x', path_from_osc7_url('kitty-shell-cwd://host/tmp/x'))
+        self.ae('', path_from_osc7_url('not-a-url'))
+        self.ae('/tmp/x', path_from_osc7_url('file://host/tmp/x\0'))
+        self.ae('/tmp/xy', path_from_osc7_url('file://host/tmp/x\0y'))
+        self.ae('/tmp/x', path_from_osc7_url('kitty-shell-cwd://host/tmp/x\0'))

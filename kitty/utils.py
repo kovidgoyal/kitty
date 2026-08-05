@@ -1004,15 +1004,17 @@ def cleanup_ssh_control_masters() -> None:
 
 
 def path_from_osc7_url(url: str | bytes) -> str:
+    ans = ''
     if isinstance(url, bytes):
         url = url.decode('utf-8')
     if url.startswith('kitty-shell-cwd://'):
-        return '/' + url.split('/', 3)[-1]
+        ans = '/' + url.split('/', 3)[-1]
     if url.startswith('file://'):
         from urllib.parse import unquote, urlparse
 
-        return unquote(urlparse(url).path)
-    return ''
+        ans = unquote(urlparse(url).path)
+    # We cannot allow NUL in ans as it breaks storing the path in session files
+    return ans.replace('\0', '')
 
 
 @run_once
