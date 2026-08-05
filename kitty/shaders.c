@@ -1997,8 +1997,9 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float background[4];
         float foreground[4];
         float active_window_background[4];
-        uint32_t viewport_width, viewport_height;
+        uint32_t viewport_size_pixels[2];
         float timestamp, last_rendered_at;
+        uint32_t frame_counter;
     };
     struct GPUCustomEndData *d = (struct GPUCustomEndData*)map_vao_buffer_for_write_only(
         custom_end_vao_idx, 0, 0, program_uniform_block(CUSTOM_END_PROGRAM, "KittyCustomShaderData").size);
@@ -2023,10 +2024,11 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     }
     FILL_COLOR(d->active_window_background, active_bg);
 #undef FILL_COLOR
-    d->viewport_width = (uint32_t)os_window->viewport_width;
-    d->viewport_height = (uint32_t)os_window->viewport_height;
+    d->viewport_size_pixels[0] = (uint32_t)os_window->viewport_width;
+    d->viewport_size_pixels[1] = (uint32_t)os_window->viewport_height;
     d->timestamp = ((float)monotonic_t_to_ms(now)) / 1e3f;
     d->last_rendered_at = ((float)monotonic_t_to_ms(os_window->last_rendered_at)) / 1e3f;
+    d->frame_counter = os_window->frame_counter;
     unmap_vao_buffer(custom_end_vao_idx, 0);
     bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);
 
@@ -2161,6 +2163,7 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, m
         }
     }
     os_window->last_rendered_at = now;
+    os_window->frame_counter++;
 }
 
 void

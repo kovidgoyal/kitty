@@ -475,6 +475,7 @@ typedef struct OSWindow {
     enum RENDER_STATE render_state;
     monotonic_t last_render_frame_received_at, last_rendered_at;
     uint64_t render_calls;
+    uint32_t frame_counter;
     id_type last_focused_counter;
     CloseRequest close_request;
     bool is_layer_shell, hide_on_focus_loss;

@@ -22,6 +22,7 @@ public struct KittyCustomShaderData {
 
     public float timestamp;  // time in seconds since kitty was started (millisecond precision)
     public float last_rendered_at;  // time of previous render in seconds since kitty was started (millisecond precision)
+    public uint frame_counter;  // cumulative frame counter increments by one every time a frame is fully rendered, first frame is zero
 }
 
 public struct KittyTextures {
@@ -36,5 +37,5 @@ public struct KittyTextures {
     public Sampler2D b;
     public Sampler2D persist;
 
-    public float2 pos;  // the position of this pixel in the textures
+    public float2 pos;  // the position of this pixel in the textures (UV coordinates)
 }
