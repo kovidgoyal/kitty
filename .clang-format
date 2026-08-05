@@ -48,3 +48,6 @@ IncludeBlocks: Preserve
 # Empty lines
 MaxEmptyLinesToKeep: 2
 KeepEmptyLinesAtTheStartOfBlocks: false
+
+# Dont reformat go:build directives
+CommentPragmas: '^go:build'
