@@ -750,6 +750,19 @@ class TestScreen(BaseTest):
         s.erase_characters(2)
         self.ae(s.linebuf.dirty_lines(), [0, 1, 2])
 
+    def test_cursor_at_prompt_output_detection(self):
+        s = self.create_screen()
+        self.ae(s.raw_cursor_at_prompt_state(), -1)
+
+        parse_bytes(s, b'\033]133;A\007')
+        s.draw('$ ')
+        self.ae(s.raw_cursor_at_prompt_state(), 0)
+
+        s.carriage_return(), s.linefeed()
+        parse_bytes(s, b'\033]133;C\007')  # Output Start
+        s.draw('output')
+        self.ae(s.raw_cursor_at_prompt_state(), -2)
+
     def test_selection_as_text(self):
         s = self.create_screen()
         for i in range(2 * s.lines):
