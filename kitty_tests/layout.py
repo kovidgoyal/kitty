@@ -296,6 +296,123 @@ class TestLayout(BaseTest):
         self.ae(fresh.pairs_root.serialize(), expected)
         self.ae([g.id for g in all_windows.groups], groups_before)
 
+    def test_unserialize_malformed_state(self):
+        # unserialize() must return False gracefully for bad session data rather
+        # than raising KeyError or similar.
+        q = create_layout(Tall)
+        all_windows = create_windows(q, num=3)
+        for w in all_windows.all_windows:
+            w.serialized_id = w.id
+        q(all_windows)
+
+        # Missing 'all_windows' key
+        state = q.serialize(all_windows)
+        del state['all_windows']
+        self.assertFalse(q.unserialize(state, all_windows))
+
+        # Wrong 'class' value
+        state = q.serialize(all_windows)
+        state['class'] = 'NonExistentLayout'
+        self.assertFalse(q.unserialize(state, all_windows))
+
+        # Mismatched layout type (Tall state passed to Splits)
+        state = q.serialize(all_windows)
+        other = create_layout(Splits)
+        self.assertFalse(other.unserialize(state, all_windows))
+
+    def test_unserialize_inactive_layout_non_splits(self):
+        # apply_to_window_list=False must not reorder windows for non-Splits layouts.
+        q = create_layout(Tall)
+        all_windows = create_windows(q, num=3)
+        for w in all_windows.all_windows:
+            w.serialized_id = w.id
+        q(all_windows)
+        state = q.serialize(all_windows)
+        groups_before = [g.id for g in all_windows.groups]
+        active_before = all_windows.active_group_idx
+
+        fresh = create_layout(Tall)
+        self.assertTrue(fresh.unserialize(state, all_windows, apply_to_window_list=False))
+        self.ae([g.id for g in all_windows.groups], groups_before)
+        self.ae(all_windows.active_group_idx, active_before)
+
+    def test_active_group_idx_preserved_after_unserialize(self):
+        # When unserialize reorders the window list, active_group_idx must be
+        # updated so it still points to the same group object.
+        #
+        # Simulate a session restore where windows were created in a different
+        # order than the serialised state expects.  The original session had
+        # windows [1,2,3] in that order with window 3 active.  The fresh list
+        # has windows with the same serialised ids but inserted in reverse
+        # order, so after unserialize the groups array is shuffled.
+        original = create_layout(Stack)
+        orig_windows = create_windows(original, num=0)
+        for wid in (1, 2, 3):
+            win = Window(wid)
+            win.serialized_id = wid
+            orig_windows.add_window(win)
+        original(orig_windows)
+        orig_windows.set_active_group_idx(2)  # window 3 active
+        state = original.serialize(orig_windows)
+
+        # Fresh window list: windows added in reverse serialised-id order so
+        # their group positions differ from the serialised group order.
+        fresh = create_layout(Stack)
+        fresh_windows = create_windows(fresh, num=0)
+        for actual_id, serialized_id in ((10, 3), (20, 2), (30, 1)):
+            win = Window(actual_id)
+            win.serialized_id = serialized_id
+            fresh_windows.add_window(win)
+        fresh(fresh_windows)
+        # Simulate _startup: set active to the window whose serialised id is 3
+        # (i.e. the window with actual_id=10, which is at index 0).
+        fresh_windows.set_active_group_idx(0)
+        active_group = fresh_windows.active_group
+
+        self.assertTrue(fresh.unserialize(state, fresh_windows))
+        # active_group_idx must still point to the same group object after reorder.
+        self.assertIs(fresh_windows.groups[fresh_windows.active_group_idx], active_group)
+
+    def test_unserialize_session_roundtrip_splits(self):
+        # Full serialize → unserialize round-trip for Splits: tree structure and
+        # window ordering are both restored correctly.
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        for wid, loc in ((1, None), (2, 'vsplit'), (3, 'hsplit')):
+            win = Window(wid)
+            win.serialized_id = wid
+            q.add_window(all_windows, win, location=loc)
+        q(all_windows)
+        tree_before = q.pairs_root.serialize()
+        state = q.serialize(all_windows)
+        expected_groups = [g.id for g in all_windows.groups]
+
+        # Restore into the same window list (simulating a session with identical
+        # windows but a fresh layout object, as happens on restart).
+        fresh = create_layout(Splits)
+        self.assertTrue(fresh.unserialize(state, all_windows))
+        self.ae(fresh.pairs_root.serialize(), tree_before)
+        self.ae([g.id for g in all_windows.groups], expected_groups)
+
+    def test_unserialize_session_roundtrip_tall(self):
+        # Full serialize → unserialize round-trip for the Tall layout: custom
+        # bias values and window ordering are preserved.
+        q = create_layout(Tall)
+        all_windows = create_windows(q, num=3)
+        for w in all_windows.all_windows:
+            w.serialized_id = w.id
+        q(all_windows)
+        # Skew the main bias so we have something non-default to verify.
+        q.main_bias = list(q.main_bias)
+        q.main_bias[0] = 0.7
+        state = q.serialize(all_windows)
+        expected_groups = [g.id for g in all_windows.groups]
+
+        fresh = create_layout(Tall)
+        self.assertTrue(fresh.unserialize(state, all_windows))
+        self.ae(fresh.main_bias[0], 0.7)
+        self.ae([g.id for g in all_windows.groups], expected_groups)
+
     def test_splits_maximize(self):
         q = create_layout(Splits)
         all_windows = create_windows(q, num=0)

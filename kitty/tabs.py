@@ -382,13 +382,15 @@ class Tab:  # {{{
         # saved, so that switching to them gives back their saved arrangement
         # rather than a freshly built one.
         for name, state in (layout_state.get('other_layouts') or {}).items():
+            if name == self._current_layout_name:
+                continue
             if name.partition(':')[0] not in all_layouts:
                 continue
             layout = self.create_layout_object(name)
             if layout.unserialize(state, self.windows, apply_to_window_list=False):
                 self._used_layouts[name] = layout
         last_used = layout_state.get('last_used_layout')
-        if last_used and last_used != self._current_layout_name:
+        if last_used and last_used != self._current_layout_name and last_used in self.enabled_layouts:
             self._last_used_layout = last_used
 
     def serialize_state(self) -> dict[str, Any]:

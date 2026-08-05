@@ -584,7 +584,9 @@ class Layout:
         """
         if s.get('class') != self.__class__.__name__:
             return False
-        window_id_map = create_window_id_map_for_unserialize(all_windows)
+        if 'all_windows' not in s:
+            return False
+        window_id_map = window_id_mapper(all_windows)
         m = all_windows.unserialize_layout_state(s['all_windows'], window_id_map, apply=apply_to_window_list)
         if m is None:
             return False

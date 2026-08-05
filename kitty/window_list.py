@@ -251,7 +251,13 @@ class WindowList:
                     if new_window_id := window_id_map.get(old_window_id):
                         new_window_ids.append(new_window_id)
                 g.unserialize_layout_state(new_window_ids)
+        active_group = self.active_group
         self.groups = groups
+        if active_group is not None:
+            for i, g in enumerate(self.groups):
+                if g is active_group:
+                    self._active_group_idx = i
+                    break
         history = []
         for old_wid in state['active_group_history']:
             if new_wid := window_id_map.get(old_wid):
