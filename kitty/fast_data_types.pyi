@@ -984,7 +984,6 @@ def parse_input_from_terminal(
 
 class Line:
     def sprite_at(self, cell: int) -> int: ...
-
     def cursor_from(self, x: int, y: int = 0) -> Cursor: ...
 
 def test_shape(line: Line, path: Optional[str] = None, index: int = 0) -> List[Tuple[int, int, int, Tuple[int, ...]]]:

@@ -842,7 +842,7 @@ def active_tab_title_template(x: str) -> str | None:
 
 
 def tab_title_wrap(x: str) -> int:
-    '''no/0 -> 0 (disabled), yes -> -1 (wrap at the tab bar width), N -> wrap at N cells'''
+    """no/0 -> 0 (disabled), yes -> -1 (wrap at the tab bar width), N -> wrap at N cells"""
     x = x.lower()
     if x in ('n', 'no', 'false', 'none'):
         return 0

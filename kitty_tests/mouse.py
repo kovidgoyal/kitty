@@ -423,7 +423,8 @@ class TestMouse(BaseTest):
         # direction gets spent cancelling it instead of scrolling.
         # The fragment sequences below were captured from a Logitech MX Master 3.
         from kitty.fast_data_types import test_scale_scroll
-        self.set_options()   # scale_scroll reads wheel_scroll_multiplier
+
+        self.set_options()  # scale_scroll reads wheel_scroll_multiplier
         cell = 40
 
         def run(*v120):
@@ -432,7 +433,7 @@ class TestMouse(BaseTest):
             # on the configured multiplier.
             return test_scale_scroll([float(v) for v in v120], cell)
 
-        down = (-48, -32, -24, -24)   # 128 units
+        down = (-48, -32, -24, -24)  # 128 units
         up = (48, 32, 24, 24)
 
         # Five detents down, then one up. Every detent must scroll, including
@@ -444,7 +445,7 @@ class TestMouse(BaseTest):
 
         # Repeated reversals keep working.
         res = run(*(down * 2), *(up * 2), *(down * 2))
-        self.ae([-2, 2, -2], [sum(res[i:i + 8]) for i in range(0, 24, 8)])
+        self.ae([-2, 2, -2], [sum(res[i : i + 8]) for i in range(0, 24, 8)])
 
         # Scrolling in one direction is unaffected: the carry is retained, so a
         # run of undersized detents still scrolls about one line each.

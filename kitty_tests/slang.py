@@ -253,7 +253,8 @@ void vsMain() {}
         self.assertRaises(ValueError, parse_var_directive, ['var', 'uint'])
 
     def test_parse_pipeline_definition_vars(self):
-        p = parse_pipeline_definition('''
+        p = parse_pipeline_definition(
+            """
         var uint algo = 1
         var float intensity = 0.5
         startgroup
@@ -263,7 +264,8 @@ void vsMain() {}
             var uint algo = 2
             shaders sample
         endgroup
-        '''.splitlines())
+        """.splitlines()
+        )
         self.assertEqual(p['vars'], {'algo': ('uint', '1'), 'intensity': ('float', '0.5')})
         self.assertEqual(p['groups'][0]['vars'], {})
         self.assertEqual(p['groups'][1]['vars'], {'algo': ('uint', '2')})
@@ -278,11 +280,13 @@ void vsMain() {}
         with tempfile.TemporaryDirectory() as cache_dir:
             # Clear the lru_cache so the temp cache_dir is actually used
             clear_caches()
-            p = parse_pipeline_definition('''
+            p = parse_pipeline_definition(
+                """
             startgroup
                 shaders sample sample
             endgroup
-            '''.splitlines())
+            """.splitlines()
+            )
             try:
                 vert_src, frag_src, metadata = build_custom_shader_pipeline_glsl(p, cache_dir=cache_dir)
                 invocation_tracker = set()

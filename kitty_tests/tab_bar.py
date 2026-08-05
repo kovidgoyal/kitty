@@ -99,12 +99,14 @@ class TestTabBar(BaseTest):
         self.ae(tb.tab_id_at(5, 150), 2)
 
     def vertical_tab_bar(self, num_tabs: int = 2, height: int = 160, **opts: object) -> TabBar:
-        self.set_options({
-            'tab_bar_edge': LEFT_EDGE,
-            'tab_bar_style': 'separator',
-            'tab_title_template': '{title}',
-            **opts,
-        })
+        self.set_options(
+            {
+                'tab_bar_edge': LEFT_EDGE,
+                'tab_bar_style': 'separator',
+                'tab_title_template': '{title}',
+                **opts,
+            }
+        )
         central = region(120, 0, 400, height)
         tab_bar = region(0, 0, 120, height)
         with (
@@ -143,12 +145,14 @@ class TestTabBar(BaseTest):
     def test_vertical_tab_bar_mixed_title_heights(self) -> None:
         # a tab whose title has no newline stays one line tall even when the
         # limit is higher, so tabs pack according to what they actually use
-        self.set_options({
-            'tab_bar_edge': LEFT_EDGE,
-            'tab_bar_style': 'separator',
-            'tab_title_template': '{title}',
-            'tab_title_max_lines': 3,
-        })
+        self.set_options(
+            {
+                'tab_bar_edge': LEFT_EDGE,
+                'tab_bar_style': 'separator',
+                'tab_title_template': '{title}',
+                'tab_title_max_lines': 3,
+            }
+        )
         central = region(120, 0, 400, 160)
         tab_bar = region(0, 0, 120, 160)
         with (
@@ -159,11 +163,13 @@ class TestTabBar(BaseTest):
         ):
             tb = TabBar(1)
             tb.layout()
-            tb.update((
-                TabBarData(title='one\ntwo', tab_id=1, is_active=True),
-                TabBarData(title='solo', tab_id=2),
-                TabBarData(title='a\nb\nc', tab_id=3),
-            ))
+            tb.update(
+                (
+                    TabBarData(title='one\ntwo', tab_id=1, is_active=True),
+                    TabBarData(title='solo', tab_id=2),
+                    TabBarData(title='a\nb\nc', tab_id=3),
+                )
+            )
         self.ae(self.screen_lines(tb)[:8], ['one', 'two', '', 'solo', '', 'a', 'b', 'c'])
         self.ae(tuple(te.y for te in tb.tab_extents), (CellRange(0, 1), CellRange(3, 3), CellRange(5, 7)))
         self.ae(tb.tab_id_at(5, 10), 1)
@@ -202,6 +208,7 @@ class TestTabBar(BaseTest):
         tb = self.vertical_tab_bar(num_tabs=4, height=140)
         self.ae(self.screen_lines(tb), ['t0', '', 't1', '', 't2', '', 't3'])
         self.ae(len(tb.tab_extents), 4)
+
     def test_vertical_tab_bar_fills_tab_width(self) -> None:
         # every line a tab occupies must be padded to the full width of the bar
         # in that tab's colors, otherwise uneven line lengths leave a ragged edge
@@ -293,12 +300,14 @@ class TestTabBar(BaseTest):
         long_title = 'feature/some-really-long-branch'
 
         def tb_with(**opts: object) -> list[str]:
-            self.set_options({
-                'tab_bar_edge': LEFT_EDGE,
-                'tab_bar_style': 'separator',
-                'tab_title_template': '{title}',
-                **opts,
-            })
+            self.set_options(
+                {
+                    'tab_bar_edge': LEFT_EDGE,
+                    'tab_bar_style': 'separator',
+                    'tab_title_template': '{title}',
+                    **opts,
+                }
+            )
             central, tab_bar = region(140, 0, 740, 240), region(0, 0, 140, 240)
             with (
                 patch('kitty.tab_bar.cell_size_for_window', return_value=(10, 20)),
@@ -330,22 +339,22 @@ class TestTabBar(BaseTest):
     def test_vertical_tab_bar_wrapping_with_newlines(self) -> None:
         # an explicit newline still breaks the line, and each resulting line is
         # wrapped independently
-        tb = self.vertical_tab_bar(
-            num_tabs=1, height=200, tab_title_max_lines=4, tab_title_wrap=-1,
-            tab_title_template='a-really-long-first\\nshort')
+        tb = self.vertical_tab_bar(num_tabs=1, height=200, tab_title_max_lines=4, tab_title_wrap=-1, tab_title_template='a-really-long-first\\nshort')
         self.ae([line for line in self.screen_lines(tb) if line], ['a-really-lo', 'ng-first', 'short'])
 
     def test_vertical_tab_bar_wrapping_overflow(self) -> None:
         # wrapped tabs are packed by the lines they use, and once they stop
         # fitting the remainder is replaced by the overflow ellipsis
         long_title = 'feature/really-long-branch-name'
-        self.set_options({
-            'tab_bar_edge': LEFT_EDGE,
-            'tab_bar_style': 'separator',
-            'tab_title_template': '{title}',
-            'tab_title_max_lines': 2,
-            'tab_title_wrap': -1,
-        })
+        self.set_options(
+            {
+                'tab_bar_edge': LEFT_EDGE,
+                'tab_bar_style': 'separator',
+                'tab_title_template': '{title}',
+                'tab_title_max_lines': 2,
+                'tab_title_wrap': -1,
+            }
+        )
         central, tab_bar = region(140, 0, 740, 100), region(0, 0, 140, 100)
         with (
             patch('kitty.tab_bar.cell_size_for_window', return_value=(10, 20)),
@@ -362,14 +371,16 @@ class TestTabBar(BaseTest):
     def test_vertical_tab_bar_fade_style(self) -> None:
         # Use fixed colors so every fade cell blends to the same midpoint
         # colour, making fade cells easy to identify by background.
-        self.set_options({
-            'tab_bar_edge': LEFT_EDGE,
-            'tab_bar_style': 'fade',
-            'tab_title_template': '{title}',
-            'active_tab_background': Color(200, 0, 0),
-            'tab_bar_background': Color(0, 0, 100),
-            'tab_fade': (0.5, 0.5, 0.5, 0.5),
-        })
+        self.set_options(
+            {
+                'tab_bar_edge': LEFT_EDGE,
+                'tab_bar_style': 'fade',
+                'tab_title_template': '{title}',
+                'active_tab_background': Color(200, 0, 0),
+                'tab_bar_background': Color(0, 0, 100),
+                'tab_fade': (0.5, 0.5, 0.5, 0.5),
+            }
+        )
         central = region(120, 0, 400, 160)
         tab_bar_r = region(0, 0, 120, 160)
         with (
@@ -390,14 +401,14 @@ class TestTabBar(BaseTest):
         def bg(col: int) -> int:
             return int(s.line(0).cursor_from(col).bg)
 
-        tab_bg = bg(4)   # title cell: active_tab_background
+        tab_bg = bg(4)  # title cell: active_tab_background
         fade_bg = bg(0)  # leading fade cell: midpoint blend
 
         # Sanity: fade colour is distinct from plain tab colour.
         self.assertNotEqual(tab_bg, fade_bg)
 
         # Issue 1: trailing fades flush with the right edge (cols 8–11), not right after the text.
-        self.ae(bg(6), tab_bg)   # col 6, right after 't0', must be plain tab bg
+        self.ae(bg(6), tab_bg)  # col 6, right after 't0', must be plain tab bg
         self.ae(bg(8), fade_bg)  # col 8, fade_start = 12 - 4, must be a fade cell
 
         # Issue 2: no background-coloured separator after the trailing fades.
