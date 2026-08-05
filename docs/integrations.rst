@@ -186,6 +186,14 @@ graphics protocol.
 Text-mode dual panel (orthodox) file manager and also terminal emulator, uses
 the kitty graphics and keyboard protocols (both as client and as terminal)
 
+.. _tool_elio:
+
+`elio <https://github.com/elio-fm/elio>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Batteries-included terminal file manager with previews using kitty's Classic
+protocol and Unicode placeholders, and native support for its Drag and Drop
+protocol.
+
 
 System and data visualisation tools
 ---------------------------------------
