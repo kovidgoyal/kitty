@@ -203,7 +203,12 @@ class WindowList:
             'window_groups': [g.serialize_layout_state() for g in self.groups],
         }
 
-    def unserialize_layout_state(self, state: dict[str, Any], window_id_map: dict[int, int]) -> dict[int, int] | None:
+    def unserialize_layout_state(self, state: dict[str, Any], window_id_map: dict[int, int], apply: bool = True) -> dict[int, int] | None:
+        """
+        Returns a map of serialized group id to current group id. With apply=False the
+        map is computed but the window list is left unchanged, so that the state of
+        several layouts can be restored while only one of them orders the windows.
+        """
         if set(window_id_map.values()) != set(self.id_map):
             # some window in this collection does not correspond to a
             # serialized window
@@ -233,6 +238,8 @@ class WindowList:
         # we ignore them.
         if len(ans) != len(self.groups):
             return None
+        if not apply:
+            return ans
         gmap = {g.id: g for g in self.groups}
         groups = []
         for wg in state['window_groups']:

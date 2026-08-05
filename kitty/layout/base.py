@@ -575,11 +575,17 @@ class Layout:
         s: dict[str, Any],
         all_windows: WindowList,
         window_id_mapper: Callable[[WindowList], dict[int, int]] = create_window_id_map_for_unserialize,
+        apply_to_window_list: bool = True,
     ) -> bool:
+        """
+        apply_to_window_list=False computes the group id mapping without changing the
+        window list. Needed when restoring the state of more than one layout, since
+        only the layout being made current should order the windows.
+        """
         if s.get('class') != self.__class__.__name__:
             return False
         window_id_map = create_window_id_map_for_unserialize(all_windows)
-        m = all_windows.unserialize_layout_state(s['all_windows'], window_id_map)
+        m = all_windows.unserialize_layout_state(s['all_windows'], window_id_map, apply=apply_to_window_list)
         if m is None:
             return False
         return self.set_layout_state(s, m.get)
