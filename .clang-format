@@ -1,6 +1,4 @@
----
 BasedOnStyle: LLVM
-Language: C
 
 # Indentation
 IndentWidth: 4
@@ -55,8 +53,3 @@ KeepEmptyLinesAtTheStartOfBlocks: false
 
 # Dont reformat go:build directives
 CommentPragmas: '^go:build'
-
-
----
-Language: ObjC
-BasedOnStyle: InheritParentConfig
