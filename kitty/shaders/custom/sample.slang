@@ -13,9 +13,10 @@ public float4 fragment_main(
     // See types.slang for details on the data in this structure
     KittyCustomShaderData d,
     // The viewport used for this group. In the form (x, y, width, height)
-    // where (x, y) is (0, 0) at the top-left corner and y increases downwards.
-    // All numbers are unit floats. If no viewport is defined for the group
-    // defaults to (0, 0, 1, 1) that is, the full backbuffer.
+    // where (x, y) is the bottom-left corner of the viewport, with (0, 0) at
+    // the bottom-left of the screen and y increasing upwards (standard UV
+    // coordinates). All numbers are unit floats. If no viewport is defined for
+    // the group defaults to (0, 0, 1, 1) that is, the full backbuffer.
     float4 viewport
 ) {
     return float4(color.r, min(max(0.1, color.g) * 2, 1), color.b, color.a);

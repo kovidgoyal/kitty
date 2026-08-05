@@ -2117,12 +2117,12 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         } else {
             float px = cg->viewport_pos.x, py = cg->viewport_pos.y;
             float sw = cg->viewport_size.w, sh = cg->viewport_size.h;
-            // Convert from top-left unit coords to GL bottom-left pixel coords,
-            // clamped so we stay within the overall texture bounds.
+            // viewport_pos/size are standard UV (origin at bottom-left, y increasing
+            // upward), which matches GL pixel coords directly — no y-flip needed.
             GLint x0 = MAX(0, (GLint)(px * vw));
-            GLint y0 = MAX(0, (GLint)((1.f - py - sh) * vh));
+            GLint y0 = MAX(0, (GLint)(py * vh));
             GLint x1 = MIN(vw, (GLint)((px + sw) * vw));
-            GLint y1 = MIN(vh, (GLint)((1.f - py) * vh));
+            GLint y1 = MIN(vh, (GLint)((py + sh) * vh));
             glViewport(x0, y0, MAX(0, x1 - x0), MAX(0, y1 - y0));
             vp_x = px; vp_y = py; vp_w = sw; vp_h = sh;
         }
