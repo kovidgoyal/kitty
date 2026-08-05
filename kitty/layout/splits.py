@@ -964,7 +964,10 @@ class Splits(Layout):
         new_root = Pair()
         new_root.unserialize(layout_state['pairs'], map_group_id)
         before = frozenset(self.pairs_root.all_window_ids())
-        if before == frozenset(new_root.all_window_ids()):
+        # An empty tree means this layout has not laid out any windows yet, which is
+        # the case when restoring the state of a layout that was not the active one.
+        # do_layout() places any groups the restored tree is missing.
+        if not before or before == frozenset(new_root.all_window_ids()):
             self.pairs_root = new_root
             self.layout_opts = SplitsLayoutOpts(layout_state['opts'])
             if 'maximized' in layout_state:

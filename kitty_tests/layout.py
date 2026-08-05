@@ -16,6 +16,7 @@ from .base import BaseTest
 class Window:
     def __init__(self, win_id, overlay_for=None, overlay_window_id=None):
         self.id = win_id
+        self.serialized_id = 0
         self.overlay_for = overlay_for
         self.overlay_window_id = overlay_window_id
         self.is_visible_in_layout = True
@@ -272,6 +273,28 @@ class TestLayout(BaseTest):
         self.ae(q.neighbors_for_window(windows[1], all_windows), {'left': [1], 'bottom': [3, 4]})
         self.ae(q.neighbors_for_window(windows[2], all_windows), {'left': [1], 'right': [4], 'top': [2]})
         self.ae(q.neighbors_for_window(windows[3], all_windows), {'left': [3], 'top': [2]})
+
+    def test_splits_unserialize_into_unused_layout(self):
+        # Restoring the state of a layout that was not the active one when the session
+        # was saved: its pairs tree is empty, and the window list must not be
+        # reordered, since only the layout being made current does that.
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        for wid, loc in ((1, None), (2, 'hsplit'), (3, 'vsplit')):
+            win = Window(wid)
+            win.serialized_id = wid
+            q.add_window(all_windows, win, location=loc)
+        q(all_windows)
+        expected = {'horizontal': False, 'one': 1, 'two': {'one': 2, 'two': 3}}
+        self.ae(q.pairs_root.serialize(), expected)
+        state = q.serialize(all_windows)
+        groups_before = [g.id for g in all_windows.groups]
+
+        fresh = create_layout(Splits)
+        self.ae(fresh.pairs_root.serialize(), {})
+        self.assertTrue(fresh.unserialize(state, all_windows, apply_to_window_list=False))
+        self.ae(fresh.pairs_root.serialize(), expected)
+        self.ae([g.id for g in all_windows.groups], groups_before)
 
     def test_splits_maximize(self):
         q = create_layout(Splits)

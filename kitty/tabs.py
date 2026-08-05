@@ -54,7 +54,7 @@ from .fast_data_types import (
     sync_os_window_title,
 )
 from .layout.base import DragOverlayMode, Layout
-from .layout.interface import create_layout_object_for, evict_cached_layouts
+from .layout.interface import all_layouts, create_layout_object_for, evict_cached_layouts
 from .progress import ProgressState
 from .tab_bar import TabBar, TabBarData, apply_title_template
 from .types import ac
@@ -216,6 +216,9 @@ class Tab:  # {{{
         self.windows: WindowList = WindowList(self)
         self._last_used_layout: str | None = None
         self._current_layout_name: str | None = None
+        # Layouts this tab has used, by name. Their state is preserved when
+        # switching away, so it can be saved to a session as well.
+        self._used_layouts: dict[str, Layout] = {}
         self.cwd = self.args.directory
         if no_initial_window:
             self._set_current_layout(self.enabled_layouts[0])
@@ -302,6 +305,7 @@ class Tab:  # {{{
         self._last_used_layout = self._current_layout_name
         self.current_layout = self.create_layout_object(layout_name)
         self._current_layout_name = layout_name
+        self._used_layouts[layout_name] = self.current_layout
         self.mark_tab_bar_dirty()
 
     def startup(self, session_tab: SessionTab) -> None:
@@ -370,7 +374,22 @@ class Tab:  # {{{
         if active_window_id and not did_focus_matching_spec:
             self.windows.set_active_window_group_for(active_window_id)
         if session_tab.layout_state:
-            self.current_layout.unserialize(session_tab.layout_state, self.windows)
+            self.unserialize_layout_state_from_session(session_tab.layout_state)
+
+    def unserialize_layout_state_from_session(self, layout_state: dict[str, Any]) -> None:
+        self.current_layout.unserialize(layout_state, self.windows)
+        # Restore the state of layouts that were not active when the session was
+        # saved, so that switching to them gives back their saved arrangement
+        # rather than a freshly built one.
+        for name, state in (layout_state.get('other_layouts') or {}).items():
+            if name.partition(':')[0] not in all_layouts:
+                continue
+            layout = self.create_layout_object(name)
+            if layout.unserialize(state, self.windows, apply_to_window_list=False):
+                self._used_layouts[name] = layout
+        last_used = layout_state.get('last_used_layout')
+        if last_used and last_used != self._current_layout_name:
+            self._last_used_layout = last_used
 
     def serialize_state(self) -> dict[str, Any]:
         return {
@@ -426,11 +445,26 @@ class Tab:  # {{{
                 f'new_tab {self.name}'.rstrip(),
                 f'layout {layout}',
                 f'enabled_layouts {",".join(enabled_layouts)}',
-                f'set_layout_state {json.dumps(self.current_layout.serialize(self.windows))}',
+                f'set_layout_state {json.dumps(self.serialize_layout_state_for_session())}',
                 f'cd {most_common_cwd}',
                 '',
             ] + launch_cmds
         return []
+
+    def serialize_layout_state_for_session(self) -> dict[str, Any]:
+        """
+        The state of the current layout, with the state of any other layouts this tab
+        has used nested under other_layouts. Nesting rather than adding new session
+        commands keeps the file readable by older versions of kitty, which ignore
+        unknown keys in this dict but abort on unknown commands.
+        """
+        ans = self.current_layout.serialize(self.windows)
+        others = {name: layout.serialize(self.windows) for name, layout in self._used_layouts.items() if name != self._current_layout_name}
+        if others:
+            ans['other_layouts'] = others
+        if self._last_used_layout:
+            ans['last_used_layout'] = self._last_used_layout
+        return ans
 
     def data_for_tab_bar(self, is_active: bool) -> TabBarData:
         t = self
