@@ -1025,32 +1025,55 @@ def key(*items: str | bytes) -> bytes:
 
 
 @lru_cache(maxsize=64)
-def custom_shader(name: str = '') -> tuple[str, str, bytes, bytes]:
+def custom_shader(name: str = '', pipeline_dir: str = '') -> tuple[str, str, bytes, bytes]:
     import_dir = ''
     if not name:
         src = get_custom_shader_src('types')
-    else:
-        path = resolve_custom_file(f'{name}.slang')
+        return name, import_dir, src, key(src)
+
+    found_path = ''
+    src = b''
+
+    if pipeline_dir:
+        candidate = os.path.join(pipeline_dir, f'{name}.slang')
         try:
-            with open(path, 'rb') as f:
+            with open(candidate, 'rb') as f:
                 src = f.read()
-            path = os.path.abspath(path)
-            name = path
-            import_dir = os.path.dirname(path)
+            found_path = os.path.abspath(candidate)
+            import_dir = os.path.dirname(found_path)
         except FileNotFoundError:
-            src = get_custom_shader_src(name)
-    return name, import_dir, src, key(src)
+            pass
+
+    if not found_path:
+        config_path = resolve_custom_file(f'{name}.slang')
+        config_shader_dir = os.path.dirname(os.path.abspath(config_path))
+        if not pipeline_dir or os.path.normpath(os.path.abspath(pipeline_dir)) != os.path.normpath(config_shader_dir):
+            try:
+                with open(config_path, 'rb') as f:
+                    src = f.read()
+                found_path = os.path.abspath(config_path)
+                import_dir = os.path.dirname(found_path)
+            except FileNotFoundError:
+                pass
+
+    if not found_path:
+        src = get_custom_shader_src(name)
+        return name, import_dir, src, key(src)
+
+    return found_path, import_dir, src, key(src)
 
 
 @lru_cache(maxsize=64)
-def pipeline_definition(name: str) -> tuple[str, ...]:
+def pipeline_definition(name: str) -> tuple[tuple[str, ...], str]:
     path = resolve_custom_file(f'{name}.pipeline')
     try:
         with open(path, 'rb') as f:
             src = f.read()
+        pipeline_dir = os.path.dirname(os.path.abspath(path))
     except FileNotFoundError:
         src = get_custom_pipeline_src(name)
-    return tuple(src.decode().splitlines())
+        pipeline_dir = ''
+    return tuple(src.decode().splitlines()), pipeline_dir
 
 
 class NamedTexture(StrEnum):
@@ -1107,9 +1130,10 @@ class Pipeline(TypedDict):
     textures: tuple[NamedTexture, ...]
     groups: tuple[Group, ...]
     vars: dict[str, tuple[str, str]]
+    pipeline_dir: str
 
 
-def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
+def parse_pipeline_definition(lines: Iterable[str], pipeline_dir: str = '') -> Pipeline:
     slot = Slot.end
     textures: tuple[NamedTexture, ...] = ()
     groups: list[Group] = []
@@ -1174,12 +1198,13 @@ def parse_pipeline_definition(lines: Iterable[str]) -> Pipeline:
     if groups[-1]['viewport_pos'] != (0, 0) or groups[-1]['viewport_size'] != (1, 1):
         raise ValueError('The final group must not specify a viewport')
 
-    return {'slot': slot, 'textures': textures, 'groups': tuple(groups), 'vars': pipeline_vars}
+    return {'slot': slot, 'textures': textures, 'groups': tuple(groups), 'vars': pipeline_vars, 'pipeline_dir': pipeline_dir}
 
 
 @lru_cache(maxsize=32)
 def parse_pipeline(name: str) -> Pipeline:
-    return parse_pipeline_definition(pipeline_definition(name))
+    lines, pipeline_dir = pipeline_definition(name)
+    return parse_pipeline_definition(lines, pipeline_dir)
 
 
 def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocation_tracker: set[tuple[str, ...]]) -> tuple[tuple[str, ...], str]:
@@ -1224,7 +1249,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
             shaders_content_key += f':gvar:{t}:{n}:{v}'.encode()
         for name in group['shaders']:
             flat_shader_list.append((g_idx, name))
-            path, import_dir, src, content_key = custom_shader(name)
+            path, import_dir, src, content_key = custom_shader(name, pipeline['pipeline_dir'])
             if import_dir and import_dir not in import_dirs:
                 import_dirs.append(import_dir)
             shaders_content_key += b':' + content_key
