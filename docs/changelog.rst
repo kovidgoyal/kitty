@@ -186,10 +186,6 @@ Detailed list of changes
 
 - A new option, :opt:`padding_fill_strategy` to control how the thin padding strips that appear when the window size is not an exact multiple of the cell size are colored. You can choose to have the padding colored to match the background of each neighboring cell, effectively extending the size of the cell or you can continue to use the existing behavior of using the background.
 
-
-0.48.3 [future]
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 - Wayland: Fix the first movement of the scroll wheel after reversing direction
   often not scrolling, with high resolution wheels such as the Logitech MX
   Master 3 (:pull:`10306`)
