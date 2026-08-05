@@ -259,7 +259,7 @@ class LoadShaderPrograms:
                     log_error(f'Failed to read custom shader pipeline definition from {k} with error: {e}')
                     continue
                 try:
-                    d = parse_pipeline_definition(['startgroup', f'    shaders {k}', 'endgroup'])
+                    d = parse_pipeline_definition(['startgroup', f'    shaders {k}', 'endgroup'], k)
                 except Exception as e:
                     log_error(f'Failed to build minimal shader pipeline for {k} with error: {e}')
                     continue
@@ -1133,7 +1133,7 @@ class Pipeline(TypedDict):
     pipeline_dir: str
 
 
-def parse_pipeline_definition(lines: Iterable[str], pipeline_dir: str = '') -> Pipeline:
+def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline_dir: str = '') -> Pipeline:
     slot = Slot.end
     textures: tuple[NamedTexture, ...] = ()
     groups: list[Group] = []
@@ -1148,6 +1148,9 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_dir: str = '') -> P
         if current_group is not None:
             groups.append(current_group)
             current_group = None
+
+    def init_group(*shaders: str) -> Group:
+        return {'viewport_pos': (0, 0), 'viewport_size': (1, 1), 'output_texture': NamedTexture.default, 'shaders': shaders, 'vars': {}}
 
     for line in lines:
         line = line.strip()
@@ -1164,7 +1167,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_dir: str = '') -> P
                     textures = tuple(map(NamedTexture, parts[1:]))
                 case 'startgroup':
                     commit_group()
-                    current_group = {'viewport_pos': (0, 0), 'viewport_size': (1, 1), 'output_texture': NamedTexture.default, 'shaders': (), 'vars': {}}
+                    current_group = init_group()
                 case 'var':
                     var_type, var_name, value = parse_var_directive(parts)
                     pipeline_vars[var_name] = (var_type, value)
@@ -1191,8 +1194,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_dir: str = '') -> P
                     raise ValueError(f'Unknown key {parts[0]}')
     if current_group is not None:
         raise ValueError('Unclosed group present')
-    if not groups:
-        raise ValueError('At least one group must be specified')
+    groups = groups or [init_group(pipeline_name)]
     if groups[-1]['output_texture'] is not NamedTexture.default:
         raise ValueError('The final group cannot output to a named texture')
     if groups[-1]['viewport_pos'] != (0, 0) or groups[-1]['viewport_size'] != (1, 1):
@@ -1204,7 +1206,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_dir: str = '') -> P
 @lru_cache(maxsize=32)
 def parse_pipeline(name: str) -> Pipeline:
     lines, pipeline_dir = pipeline_definition(name)
-    return parse_pipeline_definition(lines, pipeline_dir)
+    return parse_pipeline_definition(lines, name, pipeline_dir)
 
 
 def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocation_tracker: set[tuple[str, ...]]) -> tuple[tuple[str, ...], str]:
