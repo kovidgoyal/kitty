@@ -118,6 +118,11 @@ typedef struct Options {
     bool resize_in_steps;
     bool sync_to_monitor;
     bool close_on_child_death;
+    // remap_modifier: modifier_remap[i] is the mask that the modifier at bit i
+    // is presented as, or 0 to leave it alone. modifier_remap_mask is the OR of
+    // all remapped source bits, used as a fast path.
+    int modifier_remap[8];
+    int modifier_remap_mask;
     bool window_alert_on_bell;
     bool macos_dock_badge_on_bell;
     bool debug_keyboard;
@@ -647,6 +652,7 @@ bool mouse_select_cmd_output(Window *w);
 bool move_cursor_to_mouse_if_at_shell_prompt(Window *w);
 void mouse_selection(Window *w, int code, int button);
 const char* format_mods(unsigned mods);
+
 void dispatch_pending_clicks(id_type, void*);
 void send_pending_click_to_window(Window*, int);
 void get_platform_dependent_config_values(void *glfw_window);
@@ -657,6 +663,7 @@ void update_ime_focus(OSWindow* osw, bool focused);
 void update_ime_position(Window* w, Screen *screen);
 bool update_ime_position_for_window(id_type window_id, bool force, int update_focus);
 void set_ignore_os_keyboard_processing(bool enabled);
+void push_modifier_remap_to_glfw(void);
 void update_menu_bar_title(PyObject *title UNUSED);
 void change_live_resize_state(OSWindow*, bool);
 bool render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images);

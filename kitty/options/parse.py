@@ -17,14 +17,15 @@ from kitty.options.utils import (
     deprecated_send_text, disable_ligatures, edge_width, env, filter_notification, font_features,
     hide_window_decorations, macos_option_as_alt, macos_titlebar_color, menu_map, modify_font,
     mouse_hide_wait, narrow_symbols, notify_on_cmd_finish, optional_edge_width, parse_font_spec,
-    parse_map, parse_mouse_map, paste_actions, pointer_shape_when_dragging, remote_control_password,
-    resize_debounce_time, scrollback_lines, scrollback_pager_history_size, scrollbar_color,
-    shell_integration, show_hyperlink_targets, store_multiple, symbol_map, tab_activity_symbol,
-    tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
-    tab_title_template, tab_title_wrap, text_fg_override_threshold, titlebar_color, to_cursor_shape,
-    to_cursor_unfocused_shape, to_font_size, to_layout_names, to_modifiers,
-    transparent_background_colors, underline_exclusion, url_prefixes, url_style, visual_bell_duration,
-    visual_window_select_characters, window_border_width, window_logo_scale, window_size
+    parse_map, parse_mouse_map, paste_actions, pointer_shape_when_dragging, remap_modifier,
+    remote_control_password, resize_debounce_time, scrollback_lines, scrollback_pager_history_size,
+    scrollbar_color, shell_integration, show_hyperlink_targets, store_multiple, symbol_map,
+    tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
+    tab_font_style, tab_separator, tab_title_template, tab_title_wrap, text_fg_override_threshold,
+    titlebar_color, to_cursor_shape, to_cursor_unfocused_shape, to_font_size, to_layout_names,
+    to_modifiers, transparent_background_colors, underline_exclusion, url_prefixes, url_style,
+    visual_bell_duration, visual_window_select_characters, window_border_width, window_logo_scale,
+    window_size
 )
 
 
@@ -1241,6 +1242,10 @@ class Parser:
 
     choices_for_progress_bar = frozenset(('left', 'right', 'top', 'bottom', 'hidden'))
 
+    def remap_modifier(self, val: str, ans: dict[str, typing.Any]) -> None:
+        for k, v in remap_modifier(val):
+            ans["remap_modifier"][k] = v
+
     def remember_window_position(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['remember_window_position'] = to_bool(val)
 
@@ -1639,6 +1644,7 @@ def create_result_dict() -> dict[str, typing.Any]:
         'menu_map': {},
         'modify_font': {},
         'narrow_symbols': {},
+        'remap_modifier': {},
         'remote_control_password': {},
         'symbol_map': {},
         'watcher': {},

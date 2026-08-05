@@ -5,6 +5,8 @@
  */
 
 #include "state.h"
+
+static bool glfw_is_loaded = false;
 #include "cleanup.h"
 #include "monotonic.h"
 #include "dnd.h"
@@ -462,11 +464,6 @@ refresh_callback(GLFWwindow *w) {
     request_tick_callback();
 }
 
-#ifndef __APPLE__
-typedef struct modifier_key_state {
-    bool left, right;
-} modifier_key_state;
-
 static int
 key_to_modifier(uint32_t key, bool *is_left) {
     *is_left = false;
@@ -494,6 +491,51 @@ key_to_modifier(uint32_t key, bool *is_left) {
     }
 }
 
+// The inverse of key_to_modifier(), used to keep a modifier key's own identity
+// consistent with its remapped modifier bit.
+static uint32_t
+modifier_to_key(int modifier, bool is_left) {
+    switch (modifier) {
+        case GLFW_MOD_SHIFT: return is_left ? GLFW_FKEY_LEFT_SHIFT : GLFW_FKEY_RIGHT_SHIFT;
+        case GLFW_MOD_CONTROL: return is_left ? GLFW_FKEY_LEFT_CONTROL : GLFW_FKEY_RIGHT_CONTROL;
+        case GLFW_MOD_ALT: return is_left ? GLFW_FKEY_LEFT_ALT : GLFW_FKEY_RIGHT_ALT;
+        case GLFW_MOD_SUPER: return is_left ? GLFW_FKEY_LEFT_SUPER : GLFW_FKEY_RIGHT_SUPER;
+        case GLFW_MOD_HYPER: return is_left ? GLFW_FKEY_LEFT_HYPER : GLFW_FKEY_RIGHT_HYPER;
+        case GLFW_MOD_META: return is_left ? GLFW_FKEY_LEFT_META : GLFW_FKEY_RIGHT_META;
+        default: return 0;
+    }
+}
+
+static_assert(GLFW_MOD_LAST < (1 << arraysz(((Options*)NULL)->modifier_remap)),
+    "Options.modifier_remap is indexed by modifier bit position, it must cover every GLFW modifier");
+
+#ifdef __APPLE__
+// Map a modifier named in kitty.conf back to the physical modifier that now
+// produces it (for the macOS menu bar). Unlike apply_modifier_remap() this is not
+// always possible, so it reports failure rather than guessing: false when more
+// than one source maps onto these modifiers, or when a requested modifier has
+// been remapped away so nothing physical produces it any more.
+static bool
+invert_modifier_remap(int mods, int *ans) {
+    if (!OPT(modifier_remap_mask)) { *ans = mods; return true; }
+    int consumed = 0, produced = 0;
+    for (unsigned i = 0; i < arraysz(OPT(modifier_remap)); i++) {
+        const int dest = OPT(modifier_remap)[i];
+        if (!dest || (mods & dest) != dest) continue;
+        if (consumed & dest) return false;
+        consumed |= dest; produced |= 1 << i;
+    }
+    const int leftover = mods & ~consumed;
+    if (leftover & OPT(modifier_remap_mask)) return false;
+    *ans = leftover | produced;
+    return true;
+}
+#endif
+
+#ifndef __APPLE__
+typedef struct modifier_key_state {
+    bool left, right;
+} modifier_key_state;
 
 static void
 update_modifier_state_on_modifier_key_event(GLFWkeyevent *ev, int key_modifier, bool is_left) {
@@ -525,11 +567,39 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
 #ifdef __APPLE__
     cocoa_clear_dock_badge_if_set();
 #endif
-#ifndef __APPLE__
     bool is_left;
-    int key_modifier = key_to_modifier(ev->key, &is_left);
+    const int key_modifier = key_to_modifier(ev->key, &is_left);
+#ifndef __APPLE__
     if (key_modifier != -1) update_modifier_state_on_modifier_key_event(ev, key_modifier, is_left);
-    #endif
+#endif
+    // Apply remap_modifier here, once, before anything else sees the event: kitty's
+    // own shortcuts, kitty_mod and the encoding sent to the child all use the
+    // remapped modifiers. Done after the modifier-state fixup above so that the
+    // bits being remapped are the final ones.
+    if (OPT(modifier_remap_mask)) {
+        const int physical_mods = ev->mods;
+        const uint32_t physical_key = ev->key;
+        // The modifiers were already remapped inside glfw, before the platform
+        // produced the keysym and text: in glfw_xkb_update_modifiers() on Linux,
+        // and in remap_cocoa_flags() on macOS. Nothing to do here beyond the key
+        // identity below.
+        // A modifier key's own event must have its identity remapped too, else a
+        // program reading the keyboard protocol sees a self-contradictory event
+        // such as ctrl+LEFT_HYPER: the modifier bits say ctrl, the key says hyper.
+        if (key_modifier > 0 && (OPT(modifier_remap_mask) & key_modifier)) {
+            const int dest = OPT(modifier_remap)[__builtin_ctz((unsigned)key_modifier)];
+            if (dest && !(dest & (dest - 1))) {  // only when the destination is a single modifier
+                const uint32_t remapped_key = modifier_to_key(dest, is_left);
+                if (remapped_key) ev->key = remapped_key;
+            }
+        }
+        if (physical_mods != ev->mods || physical_key != ev->key) {
+            // two calls on purpose: format_mods() returns a single static buffer,
+            // so both arguments of one call would show the same value
+            debug_input("\x1b[35mremap_modifier\x1b[m: %s", format_mods(physical_mods));
+            debug_input("-> %s%s\n", format_mods(ev->mods), physical_key != ev->key ? " (key identity too)" : "");
+        }
+    }
     global_state.mods_at_last_key_or_button_event = ev->mods;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
     if (is_window_ready_for_callbacks() && !ev->fake_event_on_focus_change) on_key_input(ev);
@@ -2151,6 +2221,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
     cocoa_set_uncaught_exception_handler();
 #endif
     const char* err = load_glfw(path);
+    if (!err) { glfw_is_loaded = true; push_modifier_remap_to_glfw(); }
     if (err) { PyErr_SetString(PyExc_RuntimeError, err); return NULL; }
     glfwSetErrorCallback(error_callback);
     glfwInitHint(GLFW_DEBUG_KEYBOARD, debug_keyboard);
@@ -2796,7 +2867,17 @@ set_custom_cursor(PyObject *self UNUSED, PyObject *args) {
 void
 get_cocoa_key_equivalent(uint32_t key, int mods, char *cocoa_key, size_t key_sz, int *cocoa_mods) {
     memset(cocoa_key, 0, key_sz);
-    uint32_t ans = glfwGetCocoaKeyEquivalent(key, mods, cocoa_mods);
+    // Menu accelerators come from kitty.conf, i.e. they are named in post-remap
+    // terms. Invert the remap so the menu bar displays and triggers on the
+    // physical key that now produces that modifier. Leaving cocoa_key empty
+    // makes the caller skip this accelerator, which is what we want whenever the
+    // physical combination cannot be named: Cocoa has no flag for hyper or meta,
+    // so emitting one would silently produce a key equivalent with NO modifiers
+    // at all - e.g. a bare "q" that quits kitty.
+    int physical_mods;
+    if (!invert_modifier_remap(mods, &physical_mods)) return;
+    if (physical_mods & ~(GLFW_MOD_SHIFT | GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER | GLFW_MOD_CAPS_LOCK)) return;
+    uint32_t ans = glfwGetCocoaKeyEquivalent(key, physical_mods, cocoa_mods);
     if (ans) encode_utf8(ans, cocoa_key);
 }
 
@@ -2959,6 +3040,13 @@ strip_csi(PyObject *self UNUSED, PyObject *src) {
 void
 set_ignore_os_keyboard_processing(bool enabled) {
     glfwSetIgnoreOSKeyboardProcessing(enabled);
+}
+
+// set_options() runs before glfw is loaded at startup, and again on every config
+// reload, so push the table from both places and no-op until glfw exists.
+void
+push_modifier_remap_to_glfw(void) {
+    if (glfw_is_loaded) glfwSetModifierRemap(OPT(modifier_remap));
 }
 
 static void

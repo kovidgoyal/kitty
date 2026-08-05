@@ -426,6 +426,7 @@ option_names = (
     'pointer_shape_when_dragging',
     'pointer_shape_when_grabbed',
     'progress_bar',
+    'remap_modifier',
     'remember_window_position',
     'remember_window_size',
     'remote_control_password',
@@ -744,6 +745,7 @@ class Options:
     menu_map: dict[tuple[str, ...], str] = {}
     modify_font: dict[str, kitty.fonts.FontModification] = {}
     narrow_symbols: dict[tuple[int, int], int] = {}
+    remap_modifier: dict[int, int] = {}
     remote_control_password: dict[str, collections.abc.Sequence[str]] = {}
     symbol_map: dict[tuple[int, int], str] = {}
     watcher: dict[str, str] = {}
@@ -873,6 +875,7 @@ defaults.kitten_alias = {}
 defaults.menu_map = {}
 defaults.modify_font = {}
 defaults.narrow_symbols = {}
+defaults.remap_modifier = {}
 defaults.remote_control_password = {}
 defaults.symbol_map = {}
 defaults.watcher = {}

@@ -3565,6 +3565,74 @@ this option to alter all default shortcuts that use :opt:`kitty_mod`.
 )
 
 opt(
+    '+remap_modifier',
+    'ctrl super',
+    option_type='remap_modifier',
+    ctype='!remap_modifier',
+    add_to_default=False,
+    long_text="""
+Present one modifier key to kitty as if it were another. The syntax is::
+
+    remap_modifier <from> <to>
+
+for example :code:`remap_modifier ctrl super` makes every :kbd:`Ctrl+key` press
+arrive as :kbd:`Super+key`. Only :code:`shift`, :code:`alt`, :code:`ctrl`,
+:code:`super`, :code:`hyper` and :code:`meta` can be named. The source must be
+exactly one modifier; the destination may name more than one, in which case
+holding the source is indistinguishable from holding all of them.
+
+This option can be specified multiple times, and the declarations are applied as
+a single simultaneous permutation, once, as each event arrives. So::
+
+    remap_modifier ctrl super
+    remap_modifier super ctrl
+
+exchanges the two rather than collapsing to no change. Ordering among
+:opt:`remap_modifier` declarations matters only in that the last declaration for
+a given source wins; where they sit relative to other options in
+:file:`kitty.conf` makes no difference.
+
+The remapping happens before anything else looks at the event, so it is
+application wide: kitty's own keyboard shortcuts, :opt:`kitty_mod`,
+:opt:`mouse_map` and the keys sent to the program running in the terminal all
+see the remapped modifier. Every mapping in :file:`kitty.conf` is therefore
+written in terms of the modifier a key *becomes*, not the one printed on the
+keycap — including the built-in shortcuts, so :code:`remap_modifier ctrl super`
+moves every default :code:`ctrl+shift+…` binding onto the physical Super key
+unless you also change :opt:`kitty_mod`.
+
+A modifier key's own press and release are remapped too, so that a program using
+the full keyboard protocol does not see, for example, ctrl reported together with
+the Hyper key. That is only possible when the destination is a single modifier;
+with a multi-modifier destination the key itself keeps its original identity.
+
+On macOS, a menu bar accelerator is shown on the physical key that now produces
+the modifier it was declared with. Where no such key exists — because more than
+one modifier maps onto it, or because it maps to hyper or meta, which the macOS
+menu bar cannot express — the accelerator is left off the menu rather than shown
+incorrectly. The shortcut itself continues to work.
+
+On macOS the remap is applied before the key event reaches the text input
+system, so :kbd:`Option`, which produces text natively unless
+:opt:`macos_option_as_alt` is set, behaves consistently with the modifiers it
+reports. A destination of :kbd:`hyper` or :kbd:`meta` cannot be expressed in
+Cocoa's modifier flags, so such a remap is left unapplied there rather than
+silently losing the modifier.
+
+On Wayland, kitty only detects the :kbd:`hyper` and :kbd:`meta` modifiers when
+:envvar:`KITTY_WAYLAND_DETECT_MODIFIERS` is set in the environment. Without it
+those two never appear on key events at all, so remapping to or from them has
+nothing to act on there. This is pre-existing behaviour, not a limitation of
+this option.
+
+This is useful for keyboard layouts that move Control somewhere more comfortable
+— for example placing a Hyper key on Caps Lock to use for readline and TUI
+editing, while leaving the physical Control key free for GUI-style shortcuts.
+Use :code:`kitty --debug-input` to see the remapping applied to each event.
+""",
+)
+
+opt(
     'clear_all_shortcuts',
     'no',
     option_type='clear_all_shortcuts',
