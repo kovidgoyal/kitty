@@ -1,0 +1,48 @@
+---
+BasedOnStyle: LLVM
+Language: C
+
+# Indentation
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+IndentCaseLabels: true
+
+# No enforced line length — the codebase has many intentionally long lines
+ColumnLimit: 0
+
+# Return type on its own line for definitions; forward declarations stay on one line:
+#   static void
+#   foo(...) {
+BreakAfterReturnType: AllDefinitions
+
+# Brace style: K&R — opening brace on same line as function params / control flow
+BreakBeforeBraces: Attach
+
+# Pointer: star next to variable name (char *p, PyObject *src)
+# Note: standalone return-type lines in the code use PyObject* (left style) but
+# that is the minority case; Right is dominant for parameters and local variables.
+PointerAlignment: Right
+DerivePointerAlignment: false
+
+# Space after control-flow keywords (if, for, while, switch); not after function calls
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: false
+SpaceAfterCStyleCast: false
+
+# When arguments wrap, indent by ContinuationIndentWidth rather than aligning to paren
+AlignAfterOpenBracket: AlwaysBreak
+ContinuationIndentWidth: 4
+
+# Allow short function bodies on the same line as the opening brace
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# Do not sort or regroup includes — they are in intentional project order
+SortIncludes: Never
+IncludeBlocks: Preserve
+
+# Empty lines
+MaxEmptyLinesToKeep: 2
+KeepEmptyLinesAtTheStartOfBlocks: false
