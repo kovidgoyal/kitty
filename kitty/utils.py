@@ -967,12 +967,17 @@ def cleanup_ssh_control_masters() -> None:
 def path_from_osc7_url(url: str | bytes) -> str:
     if isinstance(url, bytes):
         url = url.decode('utf-8')
+    ans = ''
     if url.startswith('kitty-shell-cwd://'):
-        return '/' + url.split('/', 3)[-1]
-    if url.startswith('file://'):
+        ans = '/' + url.split('/', 3)[-1]
+    elif url.startswith('file://'):
         from urllib.parse import unquote, urlparse
-        return unquote(urlparse(url).path)
-    return ''
+        ans = unquote(urlparse(url).path)
+    # The URL comes from an escape sequence, so it can contain anything, including
+    # control characters. A NUL in particular cannot be part of a path and makes
+    # os.fork() raise, which is fatal when the path is written to a session file
+    # and used as a --cwd on startup.
+    return control_codes_pat().sub('', ans)
 
 
 @run_once

@@ -59,6 +59,20 @@ class TestDataTypes(BaseTest):
         t('a\0\x01😸\x03\x04\t\rc', 'a\u2400\u2401😸\u2403\u2404\t\u240dc')
         t('a\nb\tc d', 'a\nb\tc d')
 
+    def test_path_from_osc7_url(self):
+        from kitty.utils import path_from_osc7_url
+        self.ae('/tmp/x', path_from_osc7_url('file://host/tmp/x'))
+        self.ae('/tmp/x', path_from_osc7_url(b'file://host/tmp/x'))
+        self.ae('/tmp/a b', path_from_osc7_url('file://host/tmp/a%20b'))
+        self.ae('/tmp/x', path_from_osc7_url('kitty-shell-cwd://host/tmp/x'))
+        self.ae('', path_from_osc7_url('not-a-url'))
+        # the URL comes from an escape sequence, so it can contain control codes. A
+        # NUL in a path makes os.fork() raise, so they must not survive.
+        self.ae('/tmp/x', path_from_osc7_url('file://host/tmp/x\0'))
+        self.ae('/tmp/xy', path_from_osc7_url('file://host/tmp/x\0y'))
+        self.ae('/tmp/x', path_from_osc7_url('kitty-shell-cwd://host/tmp/x\0'))
+        self.ae('/tmp/xy', path_from_osc7_url('file://host/tmp/x\x1by'))
+
     def test_to_color(self):
         for x in 'xxx #12 #1234 rgb:a/b'.split():
             self.assertIsNone(to_color(x))
