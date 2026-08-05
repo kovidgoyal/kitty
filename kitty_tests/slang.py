@@ -264,7 +264,7 @@ void vsMain() {}
             var uint algo = 2
             shaders sample
         endgroup
-        """.splitlines()
+        """.splitlines(), ''
         )
         self.assertEqual(p['vars'], {'algo': ('uint', '1'), 'intensity': ('float', '0.5')})
         self.assertEqual(p['groups'][0]['vars'], {})
@@ -285,7 +285,7 @@ void vsMain() {}
             startgroup
                 shaders sample sample
             endgroup
-            """.splitlines()
+            """.splitlines(), ''
             )
             try:
                 vert_src, frag_src, metadata = build_custom_shader_pipeline_glsl(p, cache_dir=cache_dir)
