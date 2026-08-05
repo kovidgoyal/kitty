@@ -51,3 +51,8 @@ KeepEmptyLinesAtTheStartOfBlocks: false
 
 # Dont reformat go:build directives
 CommentPragmas: '^go:build'
+
+
+---
+Language: ObjC
+BasedOnStyle: InheritParentConfig
