@@ -197,6 +197,8 @@ Detailed list of changes
 
 - :opt:`remember_window_size` now also remembers window maximized state (:pull:`10308`)
 
+- Sessions: Also save/restore layouts other than the currently active layout (:pull:`10324`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
