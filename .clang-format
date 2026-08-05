@@ -6,8 +6,11 @@ TabWidth: 4
 UseTab: Never
 IndentCaseLabels: true
 
-# No enforced line length — the codebase has many intentionally long lines
-ColumnLimit: 0
+# Line length
+ColumnLimit: 160
+# Dont join function args/params that are manually split into lines even if they fit
+BinPackArguments: false
+BinPackParameters: false
 
 # Return type on its own line for definitions; forward declarations stay on one line:
 #   static void
