@@ -350,6 +350,9 @@ def main() -> None:
                 raise SystemExit(q)
         if subprocess.run(['ruff', 'format', '--check']).returncode != 0:
             raise SystemExit('Some Python files are not formatted correctly')
+        c_files = subprocess.check_output(['git', 'ls-files', '*.c', '*.h', '*.m']).decode().split()
+        if c_files and subprocess.run(['clang-format', '--dry-run', '--Werror'] + c_files).returncode != 0:
+            raise SystemExit('Some C/ObjC files are not formatted correctly')
     elif action == 'check-dependencies':
         check_dependencies()
     else:

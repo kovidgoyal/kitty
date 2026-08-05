@@ -111,6 +111,9 @@ jobs:
           - name: Run ruff
             run: ruff check .
 
+          - name: Install clang-format
+            run: sudo apt-get install -y clang-format
+
           - name: Check code formatting
             run: go version && python .github/workflows/ci.py check_code_formatting
 
