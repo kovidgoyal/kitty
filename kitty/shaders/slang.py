@@ -1096,6 +1096,7 @@ def is_valid_slot(x: str) -> TypeGuard[Slot]:
 
 VALID_VAR_TYPES: frozenset[str] = frozenset({'uint', 'int', 'float', 'double', 'bool'})
 
+
 @run_once
 def identifiers_pat() -> re.Pattern[str]:
     return re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')

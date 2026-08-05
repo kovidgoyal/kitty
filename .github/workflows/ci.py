@@ -348,6 +348,8 @@ def main() -> None:
             q = '\n'.join(filter(lambda x: not x.rstrip().endswith('_generated.go'), q.strip().splitlines())).strip()
             if q:
                 raise SystemExit(q)
+        if subprocess.run(['ruff', 'format', '--check']).returncode != 0:
+            raise SystemExit('Some Python files are not formatted correctly')
     elif action == 'check-dependencies':
         check_dependencies()
     else:
