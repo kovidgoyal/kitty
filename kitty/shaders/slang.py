@@ -14,7 +14,6 @@ import sys
 import tempfile
 import time
 import types
-import zlib
 from collections import OrderedDict
 from contextlib import suppress
 from enum import StrEnum, auto
@@ -1016,12 +1015,12 @@ class SlangFailed(Exception):
 
 
 def key(*items: str | bytes) -> bytes:
-    ans = 0
+    h = hashlib.md5(usedforsecurity=False)
     for data in items:
         if isinstance(data, str):
             data = data.encode()
-        ans = zlib.crc32(data, ans)
-    return hex(ans).encode()[2:]
+        h.update(data)
+    return h.hexdigest().encode()
 
 
 @lru_cache(maxsize=64)
