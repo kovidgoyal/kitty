@@ -1065,7 +1065,7 @@ def custom_shader(name: str = '', pipeline_dir: str = '') -> tuple[str, str, byt
 
 @lru_cache(maxsize=64)
 def pipeline_definition(name: str) -> tuple[tuple[str, ...], str]:
-    path = resolve_custom_file(f'{name}.pipeline')
+    path = resolve_custom_file(f'shaders/{name}.pipeline')
     try:
         with open(path, 'rb') as f:
             src = f.read()
@@ -1096,25 +1096,29 @@ def is_valid_slot(x: str) -> TypeGuard[Slot]:
 
 
 VALID_VAR_TYPES: frozenset[str] = frozenset({'uint', 'int', 'float', 'double', 'bool'})
-_identifier_re = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+
+@run_once
+def identifiers_pat() -> re.Pattern[str]:
+    return re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
 
 def parse_var_directive(parts: list[str]) -> tuple[str, str, str]:
     if len(parts) < 4:
         raise ValueError('var directive requires: var <type> <name> [=] <value>')
     var_type = parts[1]
-    if var_type not in VALID_VAR_TYPES:
+    q = var_type[:-1] if var_type and var_type[-1] in '234' else var_type
+    if q not in VALID_VAR_TYPES:
         raise ValueError(f'var type {var_type!r} must be one of: {", ".join(sorted(VALID_VAR_TYPES))}')
     var_name = parts[2]
-    if not _identifier_re.match(var_name):
+    if not identifiers_pat().match(var_name):
         raise ValueError(f'var name {var_name!r} is not a valid identifier')
     if parts[3] == '=':
         if len(parts) < 5:
             raise ValueError('var directive missing value after =')
-        value = parts[4]
+        value = ' '.join(parts[4:])
     else:
-        value = parts[3]
-    return var_type, var_name, value
+        value = ' '.join(parts[3:])
+    return var_type, var_name, value.rstrip(';')
 
 
 class Group(TypedDict):
