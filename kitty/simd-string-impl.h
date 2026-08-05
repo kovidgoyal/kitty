@@ -170,8 +170,8 @@ w(right, one_byte, 1) w(right, two_bytes, 2) w(right, four_bytes, 4) w(right, ei
 #define reverse_numbered_bytes()                                                                                                                               \
     simde_mm256_setr_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 
-static inline int
-FUNC(is_zero)(const integer_t a) {
+    static inline int
+    FUNC(is_zero)(const integer_t a) {
     return simde_mm256_testz_si256(a, a);
 }
 

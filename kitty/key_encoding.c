@@ -108,14 +108,24 @@ serialize(const EncodingData *data, char *output, const char csi_trailer) {
 
 static uint32_t
 convert_kp_key_to_normal_key(uint32_t key_number) {
-    switch (key_number) {
 #define S(x)                                                                                                                                                   \
-    case GLFW_FKEY_KP_##x: key_number = GLFW_FKEY_##x; break;
-    S(ENTER)
-    S(HOME) S(END) S(INSERT) S(DELETE) S(PAGE_UP) S(PAGE_DOWN) S(UP) S(DOWN) S(LEFT) S(RIGHT)
+    case GLFW_FKEY_KP_##x: key_number = GLFW_FKEY_##x; break
+
+    switch (key_number) {
+        S(ENTER);
+        S(HOME);
+        S(END);
+        S(INSERT);
+        S(DELETE);
+        S(PAGE_UP);
+        S(PAGE_DOWN);
+        S(UP);
+        S(DOWN);
+        S(LEFT);
+        S(RIGHT);
 #undef S
         case GLFW_FKEY_KP_0:
-    case GLFW_FKEY_KP_9: key_number = '0' + (key_number - GLFW_FKEY_KP_0); break;
+        case GLFW_FKEY_KP_9: key_number = '0' + (key_number - GLFW_FKEY_KP_0); break;
         case GLFW_FKEY_KP_DECIMAL: key_number = '.'; break;
         case GLFW_FKEY_KP_DIVIDE: key_number = '/'; break;
         case GLFW_FKEY_KP_MULTIPLY: key_number = '*'; break;

@@ -208,8 +208,7 @@ typedef struct {
                 if (_right_ptr - _lo <= _QSORT_MAX_THRESH) {                                                                                                   \
                     if (_hi - _left_ptr <= _QSORT_MAX_THRESH) /* Ignore both small partitions. */                                                              \
                         _QSORT_POP(_lo, _hi, _top);                                                                                                            \
-                    else /* Ignore small left partition. */                                                                                                    \
-                        _lo = _left_ptr;                                                                                                                       \
+                    else /* Ignore small left partition. */ _lo = _left_ptr;                                                                                   \
                 } else if (_hi - _left_ptr <= _QSORT_MAX_THRESH) /* Ignore small right partition. */                                                           \
                     _hi = _right_ptr;                                                                                                                          \
                 else if (_right_ptr - _lo > _hi - _left_ptr) {                                                                                                 \

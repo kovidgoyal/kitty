@@ -99,8 +99,9 @@ detectEWMH(void) {
 
 #define ALL_ATOMS                                                                                                                                              \
     S(NET_WM_STATE)                                                                                                                                            \
-    S(NET_WM_STATE_ABOVE) S(NET_WM_STATE_BELOW) S(NET_WM_STATE_FULLSCREEN) S(NET_WM_STATE_MAXIMIZED_VERT) S(NET_WM_STATE_MAXIMIZED_HORZ)                       \
-        S(NET_WM_STATE_DEMANDS_ATTENTION) S(NET_WM_STATE_SKIP_TASKBAR) S(NET_WM_STATE_SKIP_PAGER) S(NET_WM_STATE_STICKY)                                       \
+    S(NET_WM_STATE_ABOVE)                                                                                                                                      \
+    S(NET_WM_STATE_BELOW) S(NET_WM_STATE_FULLSCREEN) S(NET_WM_STATE_MAXIMIZED_VERT) S(NET_WM_STATE_MAXIMIZED_HORZ) S(NET_WM_STATE_DEMANDS_ATTENTION)           \
+        S(NET_WM_STATE_SKIP_TASKBAR) S(NET_WM_STATE_SKIP_PAGER) S(NET_WM_STATE_STICKY)                                                                         \
                                                                                                                                                                \
             S(NET_WM_FULLSCREEN_MONITORS) S(NET_WM_STRUT_PARTIAL)                                                                                              \
                                                                                                                                                                \
