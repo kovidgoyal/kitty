@@ -1229,11 +1229,11 @@ mouse_selection(Window *w, int code, int button) {
     Screen *screen = w->render_data.screen;
     index_type start, end;
     unsigned int y1, y2;
-#define S(mode)                                                                                                                                                \
-    {                                                                                                                                                          \
-        screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, mode);                              \
-        screen_update_selection(                                                                                                                               \
-            screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, (SelectionUpdate){.start_extended_selection = true});         \
+#define S(mode)                                                                                                                                        \
+    {                                                                                                                                                  \
+        screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, mode);                      \
+        screen_update_selection(                                                                                                                       \
+            screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, (SelectionUpdate){.start_extended_selection = true}); \
     }
 
     switch ((MouseSelectionType)code) {
@@ -1454,11 +1454,11 @@ static int
 scale_scroll(
     MouseTrackingMode mouse_tracking_mode, double offset, GLFWOffsetType offset_type, double *pending_scroll_pixels, int cell_size, int *last_v120_dir) {
 // scale the scroll by the multiplier unless the mouse is grabbed. If the mouse is grabbed only change direction.
-#define SCALE_SCROLL(which)                                                                                                                                    \
-    {                                                                                                                                                          \
-        double scale = OPT(which);                                                                                                                             \
-        if (mouse_tracking_mode) scale /= fabs(scale);                                                                                                         \
-        offset *= scale;                                                                                                                                       \
+#define SCALE_SCROLL(which)                            \
+    {                                                  \
+        double scale = OPT(which);                     \
+        if (mouse_tracking_mode) scale /= fabs(scale); \
+        offset *= scale;                               \
     }
     int s = 0;
     switch (offset_type) {

@@ -51,10 +51,10 @@ static GLXFBConfig *
 choose_fb_config(const _GLFWfbconfig *desired, bool trust_window_bit, int *nelements, bool use_best_color_depth) {
     int attrib_list[64];
     int pos = 0;
-#define ATTR(x, y)                                                                                                                                             \
-    {                                                                                                                                                          \
-        attrib_list[pos++] = x;                                                                                                                                \
-        attrib_list[pos++] = y;                                                                                                                                \
+#define ATTR(x, y)              \
+    {                           \
+        attrib_list[pos++] = x; \
+        attrib_list[pos++] = y; \
     }
 
     ATTR(GLX_DOUBLEBUFFER, desired->doublebuffer ? True : False);
@@ -346,11 +346,11 @@ _glfwTerminateGLX(void) {
     }
 }
 
-#define setAttrib(a, v)                                                                                                                                        \
-    {                                                                                                                                                          \
-        assert(((size_t)index + 1) < sizeof(attribs) / sizeof(attribs[0]));                                                                                    \
-        attribs[index++] = a;                                                                                                                                  \
-        attribs[index++] = v;                                                                                                                                  \
+#define setAttrib(a, v)                                                     \
+    {                                                                       \
+        assert(((size_t)index + 1) < sizeof(attribs) / sizeof(attribs[0])); \
+        attribs[index++] = a;                                               \
+        attribs[index++] = v;                                               \
     }
 
 // Create the OpenGL or OpenGL ES context

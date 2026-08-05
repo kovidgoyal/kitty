@@ -47,10 +47,10 @@ read_png_warn_handler(png_structp UNUSED png_ptr, png_const_charp msg) {
     if (global_state.debug_rendering) log_error("libpng WARNING: %s", msg);
 }
 
-#define ABRT(code, msg)                                                                                                                                        \
-    {                                                                                                                                                          \
-        if (d->err_handler) d->err_handler(d, #code, msg);                                                                                                     \
-        goto err;                                                                                                                                              \
+#define ABRT(code, msg)                                    \
+    {                                                      \
+        if (d->err_handler) d->err_handler(d, #code, msg); \
+        goto err;                                          \
     }
 
 void

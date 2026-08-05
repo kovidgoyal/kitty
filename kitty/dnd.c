@@ -1031,24 +1031,24 @@ drop_send_dir_listing(Window *w, const char *path) {
         return;
     }
 
-#define APPEND(s, n)                                                                                                                                           \
-    do {                                                                                                                                                       \
-        size_t _n = (size_t)(n);                                                                                                                               \
-        size_t _need = payload_sz + _n + 1;                                                                                                                    \
-        if (_need > payload_cap) {                                                                                                                             \
-            while (payload_cap < _need) payload_cap *= 2;                                                                                                      \
-            char *_np = realloc(payload, payload_cap);                                                                                                         \
-            if (!_np) {                                                                                                                                        \
-                free(payload);                                                                                                                                 \
-                closedir(dir);                                                                                                                                 \
-                drop_send_error(w, ENOMEM, "out of memory reading drop data dir");                                                                             \
-                return;                                                                                                                                        \
-            }                                                                                                                                                  \
-            payload = _np;                                                                                                                                     \
-        }                                                                                                                                                      \
-        memcpy(payload + payload_sz, (s), _n);                                                                                                                 \
-        payload_sz += _n;                                                                                                                                      \
-        payload[payload_sz++] = 0;                                                                                                                             \
+#define APPEND(s, n)                                                               \
+    do {                                                                           \
+        size_t _n = (size_t)(n);                                                   \
+        size_t _need = payload_sz + _n + 1;                                        \
+        if (_need > payload_cap) {                                                 \
+            while (payload_cap < _need) payload_cap *= 2;                          \
+            char *_np = realloc(payload, payload_cap);                             \
+            if (!_np) {                                                            \
+                free(payload);                                                     \
+                closedir(dir);                                                     \
+                drop_send_error(w, ENOMEM, "out of memory reading drop data dir"); \
+                return;                                                            \
+            }                                                                      \
+            payload = _np;                                                         \
+        }                                                                          \
+        memcpy(payload + payload_sz, (s), _n);                                     \
+        payload_sz += _n;                                                          \
+        payload[payload_sz++] = 0;                                                 \
     } while (0)
 
     /* Collect directory entries */
@@ -1492,10 +1492,10 @@ cancel_drag(Window *w, int error_code, const char *details) {
     if (error_code) drag_free_offer(w, true);
 }
 
-#define abrt(code, details)                                                                                                                                    \
-    {                                                                                                                                                          \
-        cancel_drag(w, code, details);                                                                                                                         \
-        return;                                                                                                                                                \
+#define abrt(code, details)            \
+    {                                  \
+        cancel_drag(w, code, details); \
+        return;                        \
     }
 
 void
@@ -1617,10 +1617,10 @@ drag_change_image(Window *w, unsigned idx) {
 
 static bool
 expand_rgb_data(Window *w, size_t idx) {
-#define fail(code, details)                                                                                                                                    \
-    {                                                                                                                                                          \
-        cancel_drag(w, code, details);                                                                                                                         \
-        return false;                                                                                                                                          \
+#define fail(code, details)            \
+    {                                  \
+        cancel_drag(w, code, details); \
+        return false;                  \
     }
     if (img.sz != (size_t)img.width * (size_t)img.height * 3) fail(EINVAL, "drag thumbnail RGB data not correct size");
     const size_t sz = (size_t)img.width * (size_t)img.height * 4u;

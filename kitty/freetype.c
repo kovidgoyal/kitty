@@ -82,9 +82,9 @@ set_freetype_error(const char *prefix, int err_code) {
 #undef __FTERRORS_H__
 #define FT_ERRORDEF(e, v, s) {e, s},
 #define FT_ERROR_START_LIST {
-#define FT_ERROR_END_LIST                                                                                                                                      \
-    { 0, NULL }                                                                                                                                                \
-    }                                                                                                                                                          \
+#define FT_ERROR_END_LIST \
+    { 0, NULL }           \
+    }                     \
     ;
 
     static const struct {
@@ -356,15 +356,15 @@ static char *get_variation_as_string(Face *self);
 
 PyObject *
 face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
-#define D(key, conv, missing_ok)                                                                                                                               \
-    {                                                                                                                                                          \
-        PyObject *t = PyDict_GetItemString(descriptor, #key);                                                                                                  \
-        if (t == NULL) {                                                                                                                                       \
-            if (!missing_ok) {                                                                                                                                 \
-                PyErr_SetString(PyExc_KeyError, "font descriptor is missing the key: " #key);                                                                  \
-                return NULL;                                                                                                                                   \
-            }                                                                                                                                                  \
-        } else key = conv(t);                                                                                                                                  \
+#define D(key, conv, missing_ok)                                                              \
+    {                                                                                         \
+        PyObject *t = PyDict_GetItemString(descriptor, #key);                                 \
+        if (t == NULL) {                                                                      \
+            if (!missing_ok) {                                                                \
+                PyErr_SetString(PyExc_KeyError, "font descriptor is missing the key: " #key); \
+                return NULL;                                                                  \
+            }                                                                                 \
+        } else key = conv(t);                                                                 \
     }
     const char *path = NULL;
     long index = 0;
@@ -958,10 +958,10 @@ ensure_cairo_resources(Face *self, size_t width, size_t height) {
         self->cairo.size_in_px = 0;
         cairo_font_options_t *opts = cairo_font_options_create();
         cairo_status_t s;
-#define check(msg)                                                                                                                                             \
-    if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) {                                                                                       \
-        cairo_font_options_destroy(opts);                                                                                                                      \
-        return set_cairo_exception(msg, s);                                                                                                                    \
+#define check(msg)                                                       \
+    if ((s = cairo_font_options_status(opts)) != CAIRO_STATUS_SUCCESS) { \
+        cairo_font_options_destroy(opts);                                \
+        return set_cairo_exception(msg, s);                              \
     }
         check("Failed to create cairo font options");
         cairo_hint_style_t h = CAIRO_HINT_STYLE_NONE;

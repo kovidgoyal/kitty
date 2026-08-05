@@ -173,7 +173,7 @@ is_private_use(CharProps ch) {
 }
 static inline const char *
 char_category(CharProps cp) {
-#define a(x)                                                                                                                                                   \
+#define a(x) \
     case UC_##x: return #x
     switch ((UnicodeCategory)cp.category) {
         a(Cn);

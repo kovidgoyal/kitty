@@ -142,15 +142,15 @@ _glfwCreateContextNSGL(_GLFWwindow *window, const _GLFWctxconfig *ctxconfig, con
     // No-error contexts (GL_KHR_no_error) are not yet supported by macOS but
     // are not a hard constraint, so ignore and continue
 
-#define addAttrib(a)                                                                                                                                           \
-    {                                                                                                                                                          \
-        assert((size_t)index < sizeof(attribs) / sizeof(attribs[0]));                                                                                          \
-        attribs[index++] = a;                                                                                                                                  \
+#define addAttrib(a)                                                  \
+    {                                                                 \
+        assert((size_t)index < sizeof(attribs) / sizeof(attribs[0])); \
+        attribs[index++] = a;                                         \
     }
-#define setAttrib(a, v)                                                                                                                                        \
-    {                                                                                                                                                          \
-        addAttrib(a);                                                                                                                                          \
-        addAttrib(v);                                                                                                                                          \
+#define setAttrib(a, v) \
+    {                   \
+        addAttrib(a);   \
+        addAttrib(v);   \
     }
 
     NSOpenGLPixelFormatAttribute attribs[40];

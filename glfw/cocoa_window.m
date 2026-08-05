@@ -1160,13 +1160,13 @@ is_ascii_control_char(char x) {
 }
 
 - (void)keyDown:(NSEvent *)event {
-#define CLEAR_PRE_EDIT_TEXT                                                                                                                                    \
-    glfw_keyevent.text = NULL;                                                                                                                                 \
-    glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;                                                                                                        \
+#define CLEAR_PRE_EDIT_TEXT                             \
+    glfw_keyevent.text = NULL;                          \
+    glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED; \
     _glfwInputKeyboard(window, &glfw_keyevent);
-#define UPDATE_PRE_EDIT_TEXT                                                                                                                                   \
-    glfw_keyevent.text = [[markedText string] UTF8String];                                                                                                     \
-    glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;                                                                                                        \
+#define UPDATE_PRE_EDIT_TEXT                               \
+    glfw_keyevent.text = [[markedText string] UTF8String]; \
+    glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;    \
     _glfwInputKeyboard(window, &glfw_keyevent);
 
     const bool previous_has_marked_text = [self hasMarkedText];
@@ -1301,9 +1301,9 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     const char *mod_name = "unknown";
 
     // Code for handling modifier key events copied form SDL_cocoakeyboard.m, with thanks. See IsModifierKeyPressedFunction()
-#define action_for(modname, target_mask, other_mask, either_mask)                                                                                              \
-    action = is_modifier_pressed([event modifierFlags], target_mask, other_mask, either_mask) ? GLFW_PRESS : GLFW_RELEASE;                                     \
-    mod_name = #modname;                                                                                                                                       \
+#define action_for(modname, target_mask, other_mask, either_mask)                                                          \
+    action = is_modifier_pressed([event modifierFlags], target_mask, other_mask, either_mask) ? GLFW_PRESS : GLFW_RELEASE; \
+    mod_name = #modname;                                                                                                   \
     break;
     switch (key) {
         case GLFW_FKEY_CAPS_LOCK:
@@ -1486,19 +1486,19 @@ reset_drop_copy_mimes(_GLFWDropData *d) {
         mime_array[mime_count++] = _glfw_strdup("text/uri-list");
     }
     if ([pasteboard canReadObjectForClasses:@[ [NSString class] ] options:nil]) { mime_array[mime_count++] = _glfw_strdup("text/plain"); }
-#define add_mime(uti)                                                                                                                                          \
-    {                                                                                                                                                          \
-        const char *mime = uti_to_mime(uti);                                                                                                                   \
-        if (mime && mime[0]) {                                                                                                                                 \
-            bool duplicate = false;                                                                                                                            \
-            for (size_t i = 0; i < mime_count; i++) {                                                                                                          \
-                if (strcmp(mime_array[i], mime) == 0) {                                                                                                        \
-                    duplicate = true;                                                                                                                          \
-                    break;                                                                                                                                     \
-                }                                                                                                                                              \
-            }                                                                                                                                                  \
-            if (!duplicate) mime_array[mime_count++] = _glfw_strdup(mime);                                                                                     \
-        }                                                                                                                                                      \
+#define add_mime(uti)                                                      \
+    {                                                                      \
+        const char *mime = uti_to_mime(uti);                               \
+        if (mime && mime[0]) {                                             \
+            bool duplicate = false;                                        \
+            for (size_t i = 0; i < mime_count; i++) {                      \
+                if (strcmp(mime_array[i], mime) == 0) {                    \
+                    duplicate = true;                                      \
+                    break;                                                 \
+                }                                                          \
+            }                                                              \
+            if (!duplicate) mime_array[mime_count++] = _glfw_strdup(mime); \
+        }                                                                  \
     }
     // Get file promise based types
     for (NSFilePromiseReceiver *receiver in receivers) {
@@ -2422,10 +2422,10 @@ _glfwPlatformDestroyWindow(_GLFWwindow *window) {
 
 static bool
 ns_window_level_constant(const char *name, long *val) {
-#define C(x)                                                                                                                                                   \
-    if (strcmp(name, #x) == 0) {                                                                                                                               \
-        *val = (long)x;                                                                                                                                        \
-        return true;                                                                                                                                           \
+#define C(x)                     \
+    if (strcmp(name, #x) == 0) { \
+        *val = (long)x;          \
+        return true;             \
     }
     C(NSNormalWindowLevel);
     C(NSFloatingWindowLevel);
@@ -3264,11 +3264,11 @@ load_hidden_system_cursor(NSString *name, SEL fallback) {
 
 int
 _glfwPlatformCreateStandardCursor(_GLFWcursor *cursor, GLFWCursorShape shape) {
-#define C(name, val)                                                                                                                                           \
+#define C(name, val) \
     case name: cursor->ns.object = [NSCursor val]; break;
-#define U(name, val)                                                                                                                                           \
+#define U(name, val) \
     case name: cursor->ns.object = [NSCursor performSelector:@selector(val)]; break;
-#define S(name, val, fallback)                                                                                                                                 \
+#define S(name, val, fallback) \
     case name: cursor->ns.object = load_hidden_system_cursor(@ #val, @selector(val)); break;
     switch (shape) {
         /* start glfw to cocoa (auto generated by gen-key-constants.py do not edit) */
@@ -3477,9 +3477,9 @@ _glfwPlatformToggleFullscreen(_GLFWwindow *w, unsigned int flags) {
 
 static void
 list_clipboard_mimetypes(GLFWclipboardwritedatafun write_data, void *object) {
-#define w(x)                                                                                                                                                   \
-    {                                                                                                                                                          \
-        if (ok) ok = write_data(object, x, strlen(x));                                                                                                         \
+#define w(x)                                           \
+    {                                                  \
+        if (ok) ok = write_data(object, x, strlen(x)); \
     }
     NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
     NSDictionary *options = @{NSPasteboardURLReadingFileURLsOnlyKey : @YES};

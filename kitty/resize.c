@@ -87,8 +87,8 @@ init_src_line(Rewrap *r) {
     return newline_needed;
 }
 
-#define set_dest_line_attrs(dest_y)                                                                                                                            \
-    r->dest.lb->line_attrs[dest_y] = r->src.line.attrs;                                                                                                        \
+#define set_dest_line_attrs(dest_y)                     \
+    r->dest.lb->line_attrs[dest_y] = r->src.line.attrs; \
     r->src.line.attrs.prompt_kind = UNKNOWN_PROMPT_KIND;
 
 static void

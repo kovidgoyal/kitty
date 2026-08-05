@@ -42,12 +42,12 @@ typedef struct MomentumScroller {
     } physical_event;
 } MomentumScroller;
 
-#define DEFAULTS                                                                                                                                               \
-    {                                                                                                                                                          \
-        .friction = 0.96,                                                                                                                                      \
-        .min_velocity = 0.5,                                                                                                                                   \
-        .max_velocity = 100,                                                                                                                                   \
-        .timer_interval = 10,                                                                                                                                  \
+#define DEFAULTS              \
+    {                         \
+        .friction = 0.96,     \
+        .min_velocity = 0.5,  \
+        .max_velocity = 100,  \
+        .timer_interval = 10, \
     }
 static const MomentumScroller defaults = DEFAULTS;
 static MomentumScroller s = DEFAULTS;

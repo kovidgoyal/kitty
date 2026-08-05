@@ -40,9 +40,9 @@ dealloc_shlex_state(ShlexState *s) {
     s->buf = NULL;
     *s = (ShlexState){0};
 }
-#define WHITESPACE                                                                                                                                             \
-    ' ' : case '\n':                                                                                                                                           \
-    case '\t':                                                                                                                                                 \
+#define WHITESPACE   \
+    ' ' : case '\n': \
+    case '\t':       \
     case '\r'
 #define STRING_WITH_ESCAPES_DELIM '"'
 #define STRING_WITHOUT_ESCAPES_DELIM '\''
@@ -213,10 +213,10 @@ set_state(ShlexState *self, ShlexEnum s) {
 
 static ssize_t
 next_word(ShlexState *self) {
-#define write_escaped_or_fail()                                                                                                                                \
-    if (!write_escape_ch(self)) {                                                                                                                              \
-        self->err = "Trailing backslash at end of input data";                                                                                                 \
-        return -1;                                                                                                                                             \
+#define write_escaped_or_fail()                                \
+    if (!write_escape_ch(self)) {                              \
+        self->err = "Trailing backslash at end of input data"; \
+        return -1;                                             \
     }
     char prev_word_ch = 0;
     while (self->src_pos < self->src_sz) {

@@ -874,7 +874,7 @@ disk_cache_num_cached_in_ram(PyObject *self_) {
 
 // The Python interface used only for testing {{{
 #define PYWRAP(name) static PyObject *py##name(DiskCache *self, PyObject *args)
-#define PA(fmt, ...)                                                                                                                                           \
+#define PA(fmt, ...) \
     if (!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 PYWRAP(ensure_state) {
     (void)args;

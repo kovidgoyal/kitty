@@ -62,7 +62,7 @@ read_response(int fd, monotonic_t timeout, PyObject *ans) {
                     return false;
                 }
                 break;
-#define CASE(curr, q, next)                                                                                                                                    \
+#define CASE(curr, q, next) \
     case curr: state = ch == q ? next : START; break;
                 CASE(STARTING_ESC, 'P', P);
                 CASE(P, '@', AT);
@@ -121,22 +121,22 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
     int kind = PyUnicode_KIND(uo);
     void *data = PyUnicode_DATA(uo);
     bool in_bracketed_paste_mode = inbp != 0;
-#define CALL(cb, s_, num_)                                                                                                                                     \
-    {                                                                                                                                                          \
-        PyObject *fcb = cb;                                                                                                                                    \
-        Py_ssize_t s = s_, num = num_;                                                                                                                         \
-        if (in_bracketed_paste_mode && fcb != text_callback) {                                                                                                 \
-            fcb = text_callback;                                                                                                                               \
-            num += 2;                                                                                                                                          \
-            s -= 2;                                                                                                                                            \
-        }                                                                                                                                                      \
-        if (num > 0) {                                                                                                                                         \
-            PyObject *ret = PyObject_CallFunction(fcb, "N", PyUnicode_Substring(uo, s, s + num));                                                              \
-            if (ret == NULL) return NULL;                                                                                                                      \
-            Py_DECREF(ret);                                                                                                                                    \
-        }                                                                                                                                                      \
-        consumed = s_ + num_;                                                                                                                                  \
-        count = 0;                                                                                                                                             \
+#define CALL(cb, s_, num_)                                                                        \
+    {                                                                                             \
+        PyObject *fcb = cb;                                                                       \
+        Py_ssize_t s = s_, num = num_;                                                            \
+        if (in_bracketed_paste_mode && fcb != text_callback) {                                    \
+            fcb = text_callback;                                                                  \
+            num += 2;                                                                             \
+            s -= 2;                                                                               \
+        }                                                                                         \
+        if (num > 0) {                                                                            \
+            PyObject *ret = PyObject_CallFunction(fcb, "N", PyUnicode_Substring(uo, s, s + num)); \
+            if (ret == NULL) return NULL;                                                         \
+            Py_DECREF(ret);                                                                       \
+        }                                                                                         \
+        consumed = s_ + num_;                                                                     \
+        count = 0;                                                                                \
     }
     START_ALLOW_CASE_RANGE;
     while (pos < sz) {
@@ -187,7 +187,7 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                     case '|':
                     case '}':
                     case '~':
-#define IBP(w)                                                                                                                                                 \
+#define IBP(w) \
     ch == '~' && PyUnicode_READ(kind, data, start + 1) == '2' && PyUnicode_READ(kind, data, start + 2) == '0' && PyUnicode_READ(kind, data, start + 3) == w
                         if (IBP('1')) in_bracketed_paste_mode = false;
                         CALL(callback, start + 1, count);

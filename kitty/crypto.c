@@ -143,17 +143,17 @@ new_ec_key(PyTypeObject *type, PyObject *args, PyObject *kwds) {
     }
     EVP_PKEY *key = NULL;
     EVP_PKEY_CTX *pctx = NULL;
-#define cleanup()                                                                                                                                              \
-    {                                                                                                                                                          \
-        if (key) EVP_PKEY_free(key);                                                                                                                           \
-        key = NULL;                                                                                                                                            \
-        if (pctx) EVP_PKEY_CTX_free(pctx);                                                                                                                     \
-        pctx = NULL;                                                                                                                                           \
+#define cleanup()                          \
+    {                                      \
+        if (key) EVP_PKEY_free(key);       \
+        key = NULL;                        \
+        if (pctx) EVP_PKEY_CTX_free(pctx); \
+        pctx = NULL;                       \
     }
-#define ssl_error(text)                                                                                                                                        \
-    {                                                                                                                                                          \
-        cleanup();                                                                                                                                             \
-        return set_error_from_openssl(text);                                                                                                                   \
+#define ssl_error(text)                      \
+    {                                        \
+        cleanup();                           \
+        return set_error_from_openssl(text); \
     }
 
     if (NULL == (pctx = EVP_PKEY_CTX_new_id(nid, NULL))) ssl_error("Failed to create context for key generation");
@@ -182,7 +182,7 @@ dealloc_ec_key(EllipticCurveKey *self) {
 static PyObject *
 hash_data_to_secret(const unsigned char *data, size_t len, int hash_algorithm) {
     size_t hash_size;
-#define H(which)                                                                                                                                               \
+#define H(which) \
     case which##_HASH: hash_size = which##_DIGEST_LENGTH; break;
     switch (hash_algorithm) {
         H(SHA1) H(SHA224) H(SHA256) H(SHA384) H(SHA512) default : PyErr_Format(PyExc_KeyError, "Unknown hash algorithm: %d", hash_algorithm);
@@ -191,12 +191,12 @@ hash_data_to_secret(const unsigned char *data, size_t len, int hash_algorithm) {
 #undef H
     Secret *ans = alloc_secret(hash_size);
     if (!ans) return NULL;
-#define H(which)                                                                                                                                               \
-    case which##_HASH:                                                                                                                                         \
-        if (which(data, len, ans->secret) == NULL) {                                                                                                           \
-            Py_CLEAR(ans);                                                                                                                                     \
-            return set_error_from_openssl("Failed to " #which);                                                                                                \
-        }                                                                                                                                                      \
+#define H(which)                                                \
+    case which##_HASH:                                          \
+        if (which(data, len, ans->secret) == NULL) {            \
+            Py_CLEAR(ans);                                      \
+            return set_error_from_openssl("Failed to " #which); \
+        }                                                       \
         break;
     switch ((HASH_ALGORITHM)hash_algorithm) { H(SHA1) H(SHA224) H(SHA256) H(SHA384) H(SHA512) }
 #undef H
@@ -214,19 +214,19 @@ derive_secret(EllipticCurveKey *self, PyObject *args) {
     unsigned char *secret = NULL;
     size_t secret_len = 0;
     EVP_PKEY *public_key = EVP_PKEY_new_raw_public_key(self->algorithm, NULL, (const unsigned char *)pubkey_raw, pubkey_len);
-#define cleanup()                                                                                                                                              \
-    {                                                                                                                                                          \
-        if (public_key) EVP_PKEY_free(public_key);                                                                                                             \
-        public_key = NULL;                                                                                                                                     \
-        if (ctx) EVP_PKEY_CTX_free(ctx);                                                                                                                       \
-        ctx = NULL;                                                                                                                                            \
-        if (secret) OPENSSL_clear_free(secret, secret_len);                                                                                                    \
-        secret = NULL;                                                                                                                                         \
+#define cleanup()                                           \
+    {                                                       \
+        if (public_key) EVP_PKEY_free(public_key);          \
+        public_key = NULL;                                  \
+        if (ctx) EVP_PKEY_CTX_free(ctx);                    \
+        ctx = NULL;                                         \
+        if (secret) OPENSSL_clear_free(secret, secret_len); \
+        secret = NULL;                                      \
     }
-#define ssl_error(text)                                                                                                                                        \
-    {                                                                                                                                                          \
-        cleanup();                                                                                                                                             \
-        return set_error_from_openssl(text);                                                                                                                   \
+#define ssl_error(text)                      \
+    {                                        \
+        cleanup();                           \
+        return set_error_from_openssl(text); \
     }
     if (!public_key) ssl_error("Failed to create public key");
 
@@ -598,7 +598,7 @@ init_crypto_library(PyObject *module) {
     ADD_TYPE(AES256GCMEncrypt);
     ADD_TYPE(AES256GCMDecrypt);
     if (PyModule_AddIntConstant(module, "X25519", EVP_PKEY_X25519) != 0) return false;
-#define AI(which)                                                                                                                                              \
+#define AI(which) \
     if (PyModule_AddIntMacro(module, which) != 0) return false;
     AI(SHA1_HASH);
     AI(SHA224_HASH);

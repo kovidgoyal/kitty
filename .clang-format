@@ -50,6 +50,9 @@ AllowShortCaseLabelsOnASingleLine: true
 SortIncludes: Never
 IncludeBlocks: Preserve
 
+# Align line continuation char as far left as possible
+AlignEscapedNewlines: Left
+
 # Empty lines
 MaxEmptyLinesToKeep: 2
 KeepEmptyLinesAtTheStartOfBlocks: false

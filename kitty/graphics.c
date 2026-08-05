@@ -25,7 +25,7 @@ PyTypeObject GraphicsManager_Type;
 
 #define MAX_IMAGE_DIMENSION 10000u
 #define DEFAULT_STORAGE_LIMIT 320u * (1024u * 1024u)
-#define REPORT_ERROR(...)                                                                                                                                      \
+#define REPORT_ERROR(...) \
     { log_error(__VA_ARGS__); }
 #define RAII_CoalescedFrameData(name, initializer) __attribute__((cleanup(cfd_free))) CoalescedFrameData name = initializer
 
@@ -299,7 +299,7 @@ apply_storage_quota(GraphicsManager *self, size_t storage_limit, id_type current
     if (!sorted) fatal("Out of memory");
     Image **p = sorted;
     iter_images(self) { *p++ = i.data->val; }
-#define transient_or_older_first(a, b)                                                                                                                         \
+#define transient_or_older_first(a, b) \
     ((*a)->root_frame.transient != (*b)->root_frame.transient ? (*a)->root_frame.transient > (*b)->root_frame.transient : (*a)->atime < (*b)->atime)
     QSORT(Image *, sorted, num_images, transient_or_older_first);
 #undef transient_or_older_first
@@ -321,10 +321,10 @@ set_command_failed_response(const char *code, const char *fmt, ...) {
 }
 
 // Decode formats {{{
-#define ABRT(code, ...)                                                                                                                                        \
-    {                                                                                                                                                          \
-        set_command_failed_response(#code, __VA_ARGS__);                                                                                                       \
-        goto err;                                                                                                                                              \
+#define ABRT(code, ...)                                  \
+    {                                                    \
+        set_command_failed_response(#code, __VA_ARGS__); \
+        goto err;                                        \
     }
 
 static bool
@@ -347,7 +347,7 @@ err:
 
 static const char *
 zlib_strerror(int ret) {
-#define Z(x)                                                                                                                                                   \
+#define Z(x) \
     case x: return #x;
     static char buf[128];
     switch (ret) {
@@ -506,11 +506,11 @@ image_path_to_bitmap(const char *path, uint8_t **data, unsigned int *width, unsi
     *width = 0;
     *height = 0;
     RAII_PyObject(module, PyImport_ImportModule("kitty.render_cache"));
-#define fail_on_python_error                                                                                                                                   \
-    {                                                                                                                                                          \
-        log_error("Failed to convert image at %s to bitmap with python error:", path);                                                                         \
-        PyErr_Print();                                                                                                                                         \
-        return false;                                                                                                                                          \
+#define fail_on_python_error                                                           \
+    {                                                                                  \
+        log_error("Failed to convert image at %s to bitmap with python error:", path); \
+        PyErr_Print();                                                                 \
+        return false;                                                                  \
     }
     if (!module) fail_on_python_error;
     RAII_PyObject(irc, PyObject_GetAttrString(module, "default_image_render_cache"));
@@ -579,12 +579,12 @@ get_free_client_id(const GraphicsManager *self) {
     return ans;
 }
 
-#define ABRT(code, ...)                                                                                                                                        \
-    {                                                                                                                                                          \
-        set_command_failed_response(code, __VA_ARGS__);                                                                                                        \
-        self->currently_loading.loading_completed_successfully = false;                                                                                        \
-        free_load_data(&self->currently_loading);                                                                                                              \
-        return NULL;                                                                                                                                           \
+#define ABRT(code, ...)                                                 \
+    {                                                                   \
+        set_command_failed_response(code, __VA_ARGS__);                 \
+        self->currently_loading.loading_completed_successfully = false; \
+        free_load_data(&self->currently_loading);                       \
+        return NULL;                                                    \
     }
 
 #define MAX_DATA_SZ (4u * 100000000u)
@@ -655,15 +655,15 @@ process_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, 
     if (needs_processing) {
         uint8_t *buf;
         size_t bufsz;
-#define IB                                                                                                                                                     \
-    {                                                                                                                                                          \
-        if (self->currently_loading.buf) {                                                                                                                     \
-            buf = self->currently_loading.buf;                                                                                                                 \
-            bufsz = self->currently_loading.buf_used;                                                                                                          \
-        } else {                                                                                                                                               \
-            buf = self->currently_loading.mapped_file;                                                                                                         \
-            bufsz = self->currently_loading.mapped_file_sz;                                                                                                    \
-        }                                                                                                                                                      \
+#define IB                                                  \
+    {                                                       \
+        if (self->currently_loading.buf) {                  \
+            buf = self->currently_loading.buf;              \
+            bufsz = self->currently_loading.buf_used;       \
+        } else {                                            \
+            buf = self->currently_loading.mapped_file;      \
+            bufsz = self->currently_loading.mapped_file_sz; \
+        }                                                   \
     }
         switch (g->compressed) {
             case 'z':
@@ -750,13 +750,13 @@ initialize_load_data(
     return img;
 }
 
-#define INIT_CHUNKED_LOAD                                                                                                                                      \
-    {                                                                                                                                                          \
-        self->currently_loading.start_command.more = g->more;                                                                                                  \
-        self->currently_loading.start_command.payload_sz = g->payload_sz;                                                                                      \
-        g = &self->currently_loading.start_command;                                                                                                            \
-        tt = g->transmission_type ? g->transmission_type : 'd';                                                                                                \
-        fmt = g->format ? g->format : RGBA;                                                                                                                    \
+#define INIT_CHUNKED_LOAD                                                 \
+    {                                                                     \
+        self->currently_loading.start_command.more = g->more;             \
+        self->currently_loading.start_command.payload_sz = g->payload_sz; \
+        g = &self->currently_loading.start_command;                       \
+        tt = g->transmission_type ? g->transmission_type : 'd';           \
+        fmt = g->format ? g->format : RGBA;                               \
     }
 
 static void
@@ -876,7 +876,7 @@ finish_command_response(const GraphicsCommand *g, bool data_loaded) {
         }
         size_t pos = 0;
         rbuf[pos++] = 'G';
-#define print(fmt, ...)                                                                                                                                        \
+#define print(fmt, ...) \
     if (arraysz(rbuf) - 1 > pos) pos += snprintf(rbuf + pos, arraysz(rbuf) - 1 - pos, fmt, __VA_ARGS__)
         if (g->id) print("i=%u", g->id);
         if (g->image_number) print(",I=%u", g->image_number);
@@ -1422,8 +1422,8 @@ grman_update_layers(
     }
     if (!self->render_data.count) return false;
     // Sort visible refs in draw order (z-index, img, ref)
-#define lt(a, b)                                                                                                                                               \
-    ((a)->z_index < (b)->z_index ||                                                                                                                            \
+#define lt(a, b)                    \
+    ((a)->z_index < (b)->z_index || \
      ((a)->z_index == (b)->z_index && ((a)->image_id < (b)->image_id || ((a)->image_id == (b)->image_id && a->ref_id < b->ref_id))))
     QSORT(ImageRenderData, self->render_data.item, self->render_data.count, lt);
 #undef lt
@@ -1514,31 +1514,31 @@ typedef struct {
     uint32_t stride;
 } ComposeData;
 
-#define COPY_RGB                                                                                                                                               \
-    under_px[0] = over_px[0];                                                                                                                                  \
-    under_px[1] = over_px[1];                                                                                                                                  \
+#define COPY_RGB              \
+    under_px[0] = over_px[0]; \
+    under_px[1] = over_px[1]; \
     under_px[2] = over_px[2];
-#define COPY_PIXELS                                                                                                                                            \
-    if (d.needs_blending) {                                                                                                                                    \
-        if (d.under_px_sz == 3) { ROW_ITER PIX_ITER blend_on_opaque(under_px, over_px); }                                                                      \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
-    else { ROW_ITER PIX_ITER alpha_blend(under_px, over_px); }                                                                                                 \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
-    else {                                                                                                                                                     \
-        if (d.under_px_sz == 4) {                                                                                                                              \
-            if (d.over_px_sz == 4) { ROW_ITER PIX_ITER COPY_RGB under_px[3] = over_px[3]; }                                                                    \
-        }                                                                                                                                                      \
-    }                                                                                                                                                          \
-    else { ROW_ITER PIX_ITER COPY_RGB under_px[3] = 255; }                                                                                                     \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
-    else { ROW_ITER PIX_ITER COPY_RGB }                                                                                                                        \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
+#define COPY_PIXELS                                                                         \
+    if (d.needs_blending) {                                                                 \
+        if (d.under_px_sz == 3) { ROW_ITER PIX_ITER blend_on_opaque(under_px, over_px); }   \
+    }                                                                                       \
+    }                                                                                       \
+    else { ROW_ITER PIX_ITER alpha_blend(under_px, over_px); }                              \
+    }                                                                                       \
+    }                                                                                       \
+    }                                                                                       \
+    else {                                                                                  \
+        if (d.under_px_sz == 4) {                                                           \
+            if (d.over_px_sz == 4) { ROW_ITER PIX_ITER COPY_RGB under_px[3] = over_px[3]; } \
+        }                                                                                   \
+    }                                                                                       \
+    else { ROW_ITER PIX_ITER COPY_RGB under_px[3] = 255; }                                  \
+    }                                                                                       \
+    }                                                                                       \
+    }                                                                                       \
+    else { ROW_ITER PIX_ITER COPY_RGB }                                                     \
+    }                                                                                       \
+    }                                                                                       \
     }
 
 
@@ -1548,16 +1548,16 @@ compose_rectangles(const ComposeData d, uint8_t *under_data, const uint8_t *over
     // does not do bounds checking on the data arrays
     const bool can_copy_rows = !d.needs_blending && d.over_px_sz == d.under_px_sz;
     const unsigned min_width = MIN(d.under_width, d.over_width);
-#define ROW_ITER                                                                                                                                               \
-    for (unsigned y = 0; y < d.under_height && y < d.over_height; y++) {                                                                                       \
-        uint8_t *under_row = under_data + (y + d.under_offset_y) * d.under_px_sz * d.stride + (d.under_offset_x * d.under_px_sz);                              \
+#define ROW_ITER                                                                                                                  \
+    for (unsigned y = 0; y < d.under_height && y < d.over_height; y++) {                                                          \
+        uint8_t *under_row = under_data + (y + d.under_offset_y) * d.under_px_sz * d.stride + (d.under_offset_x * d.under_px_sz); \
         const uint8_t *over_row = over_data + (y + d.over_offset_y) * d.over_px_sz * d.stride + (d.over_offset_x * d.over_px_sz);
     if (can_copy_rows) { ROW_ITER memcpy(under_row, over_row, (size_t)d.over_px_sz * min_width); }
     return;
 }
-#define PIX_ITER                                                                                                                                               \
-    for (unsigned x = 0; x < min_width; x++) {                                                                                                                 \
-        uint8_t *under_px = under_row + (d.under_px_sz * x);                                                                                                   \
+#define PIX_ITER                                             \
+    for (unsigned x = 0; x < min_width; x++) {               \
+        uint8_t *under_px = under_row + (d.under_px_sz * x); \
         const uint8_t *over_px = over_row + (d.over_px_sz * x);
 COPY_PIXELS
 #undef PIX_ITER
@@ -1569,9 +1569,9 @@ compose(const ComposeData d, uint8_t *under_data, const uint8_t *over_data) {
     const bool can_copy_rows = !d.needs_blending && d.over_px_sz == d.under_px_sz;
     unsigned min_row_sz = d.over_offset_x < d.under_width ? d.under_width - d.over_offset_x : 0;
     min_row_sz = MIN(min_row_sz, d.over_width);
-#define ROW_ITER                                                                                                                                               \
-    for (unsigned y = 0; y + d.over_offset_y < d.under_height && y < d.over_height; y++) {                                                                     \
-        uint8_t *under_row = under_data + (y + d.over_offset_y) * d.under_px_sz * d.under_width + d.under_px_sz * d.over_offset_x;                             \
+#define ROW_ITER                                                                                                                   \
+    for (unsigned y = 0; y + d.over_offset_y < d.under_height && y < d.over_height; y++) {                                         \
+        uint8_t *under_row = under_data + (y + d.over_offset_y) * d.under_px_sz * d.under_width + d.under_px_sz * d.over_offset_x; \
         const uint8_t *over_row = over_data + y * d.over_px_sz * d.over_width;
 #define END_ITER }
     if (can_copy_rows) {
@@ -1579,9 +1579,9 @@ compose(const ComposeData d, uint8_t *under_data, const uint8_t *over_data) {
         END_ITER
         return;
     }
-#define PIX_ITER                                                                                                                                               \
-    for (unsigned x = 0; x < min_row_sz; x++) {                                                                                                                \
-        uint8_t *under_px = under_row + (d.under_px_sz * x);                                                                                                   \
+#define PIX_ITER                                             \
+    for (unsigned x = 0; x < min_row_sz; x++) {              \
+        uint8_t *under_px = under_row + (d.under_px_sz * x); \
         const uint8_t *over_px = over_row + (d.over_px_sz * x);
     COPY_PIXELS
 #undef COPY_RGB
@@ -2341,12 +2341,12 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
         }
     }
     switch (g->delete_action) {
-#define I(u, data, func)                                                                                                                                       \
-    filter_refs(self, data, g->delete_action == u, func, cell, false, true);                                                                                   \
-    *is_dirty = true;                                                                                                                                          \
+#define I(u, data, func)                                                     \
+    filter_refs(self, data, g->delete_action == u, func, cell, false, true); \
+    *is_dirty = true;                                                        \
     break
-#define D(l, u, data, func)                                                                                                                                    \
-    case l:                                                                                                                                                    \
+#define D(l, u, data, func) \
+    case l:                 \
     case u: I(u, data, func)
 #define G(l, u, func) D(l, u, g, func)
         case 0:
@@ -2607,7 +2607,7 @@ image_as_dict(GraphicsManager *self, Image *img) {
 }
 
 #define W(x) static PyObject *py##x(GraphicsManager UNUSED *self, PyObject *args)
-#define PA(fmt, ...)                                                                                                                                           \
+#define PA(fmt, ...) \
     if (!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 
 W(image_for_client_id) {

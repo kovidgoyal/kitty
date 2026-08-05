@@ -34,15 +34,15 @@
 #endif
 
 #define arraysz(x) (sizeof(x) / sizeof(x[0]))
-#define MAX(x, y)                                                                                                                                              \
-    __extension__({                                                                                                                                            \
-        __typeof__(x) a = (x);                                                                                                                                 \
-        __typeof__(y) b = (y);                                                                                                                                 \
-        a > b ? a : b;                                                                                                                                         \
+#define MAX(x, y)              \
+    __extension__({            \
+        __typeof__(x) a = (x); \
+        __typeof__(y) b = (y); \
+        a > b ? a : b;         \
     })
 
-#if defined(GLFW_INCLUDE_GLCOREARB) || defined(GLFW_INCLUDE_ES1) || defined(GLFW_INCLUDE_ES2) || defined(GLFW_INCLUDE_ES3) || defined(GLFW_INCLUDE_ES31) ||    \
-    defined(GLFW_INCLUDE_ES32) || defined(GLFW_INCLUDE_NONE) || defined(GLFW_INCLUDE_GLEXT) || defined(GLFW_INCLUDE_GLU) || defined(GLFW_INCLUDE_VULKAN) ||    \
+#if defined(GLFW_INCLUDE_GLCOREARB) || defined(GLFW_INCLUDE_ES1) || defined(GLFW_INCLUDE_ES2) || defined(GLFW_INCLUDE_ES3) || defined(GLFW_INCLUDE_ES31) || \
+    defined(GLFW_INCLUDE_ES32) || defined(GLFW_INCLUDE_NONE) || defined(GLFW_INCLUDE_GLEXT) || defined(GLFW_INCLUDE_GLU) || defined(GLFW_INCLUDE_VULKAN) || \
     defined(GLFW_DLL)
 #error "You must not define any header option macros when compiling GLFW"
 #endif
@@ -106,17 +106,17 @@ typedef void (*_GLFWdestroycontextfun)(_GLFWwindow *);
 #define GL_CONTEXT_RELEASE_BEHAVIOR_FLUSH 0x82fc
 #define GL_CONTEXT_FLAG_NO_ERROR_BIT_KHR 0x00000008
 
-#define MAX(x, y)                                                                                                                                              \
-    __extension__({                                                                                                                                            \
-        __typeof__(x) a = (x);                                                                                                                                 \
-        __typeof__(y) b = (y);                                                                                                                                 \
-        a > b ? a : b;                                                                                                                                         \
+#define MAX(x, y)              \
+    __extension__({            \
+        __typeof__(x) a = (x); \
+        __typeof__(y) b = (y); \
+        a > b ? a : b;         \
     })
-#define MIN(x, y)                                                                                                                                              \
-    __extension__({                                                                                                                                            \
-        __typeof__(x) a = (x);                                                                                                                                 \
-        __typeof__(y) b = (y);                                                                                                                                 \
-        a < b ? a : b;                                                                                                                                         \
+#define MIN(x, y)              \
+    __extension__({            \
+        __typeof__(x) a = (x); \
+        __typeof__(y) b = (y); \
+        a < b ? a : b;         \
     })
 
 typedef int GLint;
@@ -211,10 +211,10 @@ typedef VkResult(APIENTRY *PFN_vkEnumerateInstanceExtensionProperties)(const cha
 #include "egl_context.h"
 #include "osmesa_context.h"
 
-#define remove_i_from_array(array, i, count)                                                                                                                   \
-    {                                                                                                                                                          \
-        (count)--;                                                                                                                                             \
-        if ((i) < (count)) { memmove((array) + (i), (array) + (i) + 1, sizeof((array)[0]) * ((count) - (i))); /* NOLINT(bugprone-sizeof-expression) */ }       \
+#define remove_i_from_array(array, i, count)                                                                                                             \
+    {                                                                                                                                                    \
+        (count)--;                                                                                                                                       \
+        if ((i) < (count)) { memmove((array) + (i), (array) + (i) + 1, sizeof((array)[0]) * ((count) - (i))); /* NOLINT(bugprone-sizeof-expression) */ } \
     }
 
 
@@ -224,24 +224,24 @@ typedef VkResult(APIENTRY *PFN_vkEnumerateInstanceExtensionProperties)(const cha
 #define _GLFW_VERSION_NUMBER _GLFW_MAKE_VERSION(GLFW_VERSION_MAJOR, GLFW_VERSION_MINOR, GLFW_VERSION_REVISION)
 
 // Checks for whether the library has been initialized
-#define _GLFW_REQUIRE_INIT()                                                                                                                                   \
-    if (!_glfw.initialized) {                                                                                                                                  \
-        _glfwInputError(GLFW_NOT_INITIALIZED, NULL);                                                                                                           \
-        return;                                                                                                                                                \
+#define _GLFW_REQUIRE_INIT()                         \
+    if (!_glfw.initialized) {                        \
+        _glfwInputError(GLFW_NOT_INITIALIZED, NULL); \
+        return;                                      \
     }
-#define _GLFW_REQUIRE_INIT_OR_RETURN(x)                                                                                                                        \
-    if (!_glfw.initialized) {                                                                                                                                  \
-        _glfwInputError(GLFW_NOT_INITIALIZED, NULL);                                                                                                           \
-        return x;                                                                                                                                              \
+#define _GLFW_REQUIRE_INIT_OR_RETURN(x)              \
+    if (!_glfw.initialized) {                        \
+        _glfwInputError(GLFW_NOT_INITIALIZED, NULL); \
+        return x;                                    \
     }
 
 // Swaps the provided pointers
-#define _GLFW_SWAP_POINTERS(x, y)                                                                                                                              \
-    do {                                                                                                                                                       \
-        __typeof__(x) t;                                                                                                                                       \
-        t = x;                                                                                                                                                 \
-        x = y;                                                                                                                                                 \
-        y = t;                                                                                                                                                 \
+#define _GLFW_SWAP_POINTERS(x, y) \
+    do {                          \
+        __typeof__(x) t;          \
+        t = x;                    \
+        x = y;                    \
+        y = t;                    \
     } while (0)
 
 
@@ -259,7 +259,7 @@ typedef VkResult(APIENTRY *PFN_vkEnumerateInstanceExtensionProperties)(const cha
 #endif
 
 // dlsym that works with -Wpedantic
-#define glfw_dlsym(dest, handle, name)                                                                                                                         \
+#define glfw_dlsym(dest, handle, name) \
     do { *(void **)&(dest) = _glfw_dlsym(handle, name); } while (0)
 
 // Mark function arguments as unused
@@ -887,12 +887,12 @@ char *_glfw_strdup(const char *source);
 
 void _glfw_free_clipboard_data(_GLFWClipboardData *cd);
 
-#define debug_rendering(...)                                                                                                                                   \
+#define debug_rendering(...) \
     if (_glfw.hints.init.debugRendering) { timed_debug_print(__VA_ARGS__); }
-#define debug_input(...)                                                                                                                                       \
+#define debug_input(...) \
     if (_glfw.hints.init.debugKeyboard) { timed_debug_print(__VA_ARGS__); }
-#define safe_close(fd)                                                                                                                                         \
-    do {                                                                                                                                                       \
-        errno = 0;                                                                                                                                             \
-        close(fd);                                                                                                                                             \
+#define safe_close(fd) \
+    do {               \
+        errno = 0;     \
+        close(fd);     \
     } while (errno == EINTR)

@@ -87,8 +87,8 @@ parse_color(int *params, unsigned int *i, unsigned int count, uint32_t *result) 
 
 void
 cursor_from_sgr(Cursor *self, int *params, unsigned int count, bool is_group) {
-#define SET_COLOR(which)                                                                                                                                       \
-    { parse_color(params, &i, count, &self->which); }                                                                                                          \
+#define SET_COLOR(which)                              \
+    { parse_color(params, &i, count, &self->which); } \
     break;
     START_ALLOW_CASE_RANGE
     unsigned int i = 0, attr;
@@ -144,20 +144,20 @@ cursor_from_sgr(Cursor *self, int *params, unsigned int count, bool is_group) {
 void
 apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count, bool is_group) {
 #define RANGE for (unsigned c = 0; c < cell_count; c++, cell++)
-#define SET_COLOR(which)                                                                                                                                       \
-    {                                                                                                                                                          \
-        color_type color = 0;                                                                                                                                  \
-        parse_color(params, &i, count, &color);                                                                                                                \
-        if (color) {                                                                                                                                           \
-            RANGE { cell->which = color; }                                                                                                                     \
-        }                                                                                                                                                      \
-    }                                                                                                                                                          \
+#define SET_COLOR(which)                        \
+    {                                           \
+        color_type color = 0;                   \
+        parse_color(params, &i, count, &color); \
+        if (color) {                            \
+            RANGE { cell->which = color; }      \
+        }                                       \
+    }                                           \
     break;
-#define SIMPLE(which, val)                                                                                                                                     \
-    RANGE { cell->which = (val); }                                                                                                                             \
+#define SIMPLE(which, val)         \
+    RANGE { cell->which = (val); } \
     break;
-#define S(which, val)                                                                                                                                          \
-    RANGE { cell->attrs.which = (val); }                                                                                                                       \
+#define S(which, val)                    \
+    RANGE { cell->attrs.which = (val); } \
     break;
 
     unsigned int i = 0, attr;
@@ -268,19 +268,19 @@ static PyObject *copy(Cursor *self, PyObject *);
 
 // Boilerplate {{{
 
-#define SGR_BOOL_GETSET(x)                                                                                                                                     \
-    static PyObject *x##_get(Cursor *self, void UNUSED *closure) {                                                                                             \
-        PyObject *ans = self->sgr.x ? Py_True : Py_False;                                                                                                      \
-        Py_INCREF(ans);                                                                                                                                        \
-        return ans;                                                                                                                                            \
-    }                                                                                                                                                          \
-    static int x##_set(Cursor *self, PyObject *value, void UNUSED *closure) {                                                                                  \
-        if (value == NULL) {                                                                                                                                   \
-            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");                                                                                       \
-            return -1;                                                                                                                                         \
-        }                                                                                                                                                      \
-        self->sgr.x = PyObject_IsTrue(value) ? true : false;                                                                                                   \
-        return 0;                                                                                                                                              \
+#define SGR_BOOL_GETSET(x)                                                    \
+    static PyObject *x##_get(Cursor *self, void UNUSED *closure) {            \
+        PyObject *ans = self->sgr.x ? Py_True : Py_False;                     \
+        Py_INCREF(ans);                                                       \
+        return ans;                                                           \
+    }                                                                         \
+    static int x##_set(Cursor *self, PyObject *value, void UNUSED *closure) { \
+        if (value == NULL) {                                                  \
+            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");      \
+            return -1;                                                        \
+        }                                                                     \
+        self->sgr.x = PyObject_IsTrue(value) ? true : false;                  \
+        return 0;                                                             \
     }
 
 SGR_BOOL_GETSET(bold)
@@ -323,19 +323,19 @@ text_blink_set(Cursor *self, PyObject *value, void UNUSED *closure) {
 }
 
 
-#define SGR_UINT_GETSET(x)                                                                                                                                     \
-    static PyObject *x##_get(Cursor *self, void UNUSED *closure) { return PyLong_FromUnsignedLong((unsigned long)self->sgr.x); }                               \
-    static int x##_set(Cursor *self, PyObject *value, void UNUSED *closure) {                                                                                  \
-        if (value == NULL) {                                                                                                                                   \
-            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");                                                                                       \
-            return -1;                                                                                                                                         \
-        }                                                                                                                                                      \
-        if (!PyLong_Check(value)) {                                                                                                                            \
-            PyErr_SetString(PyExc_TypeError, "value must be an int");                                                                                          \
-            return -1;                                                                                                                                         \
-        }                                                                                                                                                      \
-        self->sgr.x = PyLong_AsUnsignedLong(value);                                                                                                            \
-        return 0;                                                                                                                                              \
+#define SGR_UINT_GETSET(x)                                                                                                       \
+    static PyObject *x##_get(Cursor *self, void UNUSED *closure) { return PyLong_FromUnsignedLong((unsigned long)self->sgr.x); } \
+    static int x##_set(Cursor *self, PyObject *value, void UNUSED *closure) {                                                    \
+        if (value == NULL) {                                                                                                     \
+            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");                                                         \
+            return -1;                                                                                                           \
+        }                                                                                                                        \
+        if (!PyLong_Check(value)) {                                                                                              \
+            PyErr_SetString(PyExc_TypeError, "value must be an int");                                                            \
+            return -1;                                                                                                           \
+        }                                                                                                                        \
+        self->sgr.x = PyLong_AsUnsignedLong(value);                                                                              \
+        return 0;                                                                                                                \
     }
 
 SGR_UINT_GETSET(decoration)

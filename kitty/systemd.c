@@ -9,19 +9,19 @@
 #include "cleanup.h"
 #include <dlfcn.h>
 
-#define FUNC(name, restype, ...)                                                                                                                               \
-    typedef restype (*name##_func)(__VA_ARGS__);                                                                                                               \
+#define FUNC(name, restype, ...)                 \
+    typedef restype (*name##_func)(__VA_ARGS__); \
     static name##_func name = NULL
-#define LOAD_FUNC(name)                                                                                                                                        \
-    {                                                                                                                                                          \
-        *(void **)(&name) = dlsym(systemd.lib, #name);                                                                                                         \
-        if (!name) {                                                                                                                                           \
-            const char *error = dlerror();                                                                                                                     \
-            if (error != NULL) {                                                                                                                               \
-                log_error("Failed to load the function %s with error: %s", #name, error);                                                                      \
-                return;                                                                                                                                        \
-            }                                                                                                                                                  \
-        }                                                                                                                                                      \
+#define LOAD_FUNC(name)                                                                   \
+    {                                                                                     \
+        *(void **)(&name) = dlsym(systemd.lib, #name);                                    \
+        if (!name) {                                                                      \
+            const char *error = dlerror();                                                \
+            if (error != NULL) {                                                          \
+                log_error("Failed to load the function %s with error: %s", #name, error); \
+                return;                                                                   \
+            }                                                                             \
+        }                                                                                 \
     }
 
 typedef struct sd_bus sd_bus;
@@ -136,7 +136,7 @@ move_pid_into_new_scope(pid_t pid, const char *scope_name, const char *descripti
     RAII_message(m);
     RAII_message(reply);
     int r;
-#define checked_call(func, ...)                                                                                                                                \
+#define checked_call(func, ...) \
     if ((r = func(__VA_ARGS__)) < 0) { return set_systemd_error(r, #func); }
     checked_call(sd_bus_message_new_method_call, systemd.user_bus, &m, SYSTEMD_DESTINATION, SYSTEMD_PATH, SYSTEMD_INTERFACE, "StartTransientUnit");
     // mode is "fail" which means it will fail if a unit with scope_name already exists

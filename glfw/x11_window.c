@@ -664,8 +664,8 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
         Atom type = 0;
         if (is_layer_shell) {
             const char *name = NULL;
-#define S(which)                                                                                                                                               \
-    type = _glfw.x11.which;                                                                                                                                    \
+#define S(which)            \
+    type = _glfw.x11.which; \
     name = #which
             switch (config.type) {
                 case GLFW_LAYER_SHELL_BACKGROUND: S(NET_WM_WINDOW_TYPE_DESKTOP); break;
@@ -708,12 +708,12 @@ update_wm_hints(_GLFWwindow *window, const WindowGeometry *wg, const _GLFWwndcon
             if (_glfw.x11.NET_WM_STATE_STICKY) states[count++] = _glfw.x11.NET_WM_STATE_STICKY;
             if (_glfw.x11.NET_WM_STATE_SKIP_PAGER) states[count++] = _glfw.x11.NET_WM_STATE_SKIP_PAGER;
             if (_glfw.x11.NET_WM_STATE_SKIP_TASKBAR) states[count++] = _glfw.x11.NET_WM_STATE_SKIP_TASKBAR;
-#define S(x)                                                                                                                                                   \
-    if (_glfw.x11.x) {                                                                                                                                         \
-        states[count++] = _glfw.x11.x;                                                                                                                         \
-    } else {                                                                                                                                                   \
-        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Window manager does not support _%s", #x);                                                                  \
-        ok = false;                                                                                                                                            \
+#define S(x)                                                                                  \
+    if (_glfw.x11.x) {                                                                        \
+        states[count++] = _glfw.x11.x;                                                        \
+    } else {                                                                                  \
+        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Window manager does not support _%s", #x); \
+        ok = false;                                                                           \
     }
             switch (config.type) {
                 case GLFW_LAYER_SHELL_NONE: break;
@@ -1097,10 +1097,10 @@ handleSelectionRequest(XEvent *event) {
 
 static void
 getSelectionString(Atom selection, Atom *targets, size_t num_targets, GLFWclipboardwritedatafun write_data, void *object, bool report_not_found) {
-#define XFREE(x)                                                                                                                                               \
-    {                                                                                                                                                          \
-        if (x) XFree(x);                                                                                                                                       \
-        x = NULL;                                                                                                                                              \
+#define XFREE(x)         \
+    {                    \
+        if (x) XFree(x); \
+        x = NULL;        \
     }
     if (XGetSelectionOwner(_glfw.x11.display, selection) == _glfw.x11.helperWindowHandle) {
         write_data(object, NULL, 1);
@@ -1754,10 +1754,10 @@ drop_selection_notify(_GLFWwindow *window, XEvent *event) { // requested drop da
 static void
 processEvent(XEvent *event) {
     static bool keymap_dirty = false;
-#define UPDATE_KEYMAP_IF_NEEDED                                                                                                                                \
-    if (keymap_dirty) {                                                                                                                                        \
-        keymap_dirty = false;                                                                                                                                  \
-        glfw_xkb_compile_keymap(&_glfw.x11.xkb, NULL);                                                                                                         \
+#define UPDATE_KEYMAP_IF_NEEDED                        \
+    if (keymap_dirty) {                                \
+        keymap_dirty = false;                          \
+        glfw_xkb_compile_keymap(&_glfw.x11.xkb, NULL); \
     }
 
     if (_glfw.x11.randr.available) {
@@ -1929,8 +1929,8 @@ processEvent(XEvent *event) {
         case ButtonPress: {
             const int mods = translateState(event->xbutton.state);
 
-#define cancel_momentum()                                                                                                                                      \
-    x11_cancel_momentum_scroll_timer();                                                                                                                        \
+#define cancel_momentum()               \
+    x11_cancel_momentum_scroll_timer(); \
     glfw_cancel_momentum_scroll()
 
             if (event->xbutton.button == Button1) {

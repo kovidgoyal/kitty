@@ -83,25 +83,25 @@ set_transparent_background_colors(TransparentDynamicColor *dest, PyObject *src) 
 
 static bool
 set_configured_colors(ColorProfile *self, PyObject *opts) {
-#define n(which, attr)                                                                                                                                         \
-    {                                                                                                                                                          \
-        RAII_PyObject(t, PyObject_GetAttrString(opts, #attr));                                                                                                 \
-        if (t == NULL) return false;                                                                                                                           \
-        if (t == Py_None) {                                                                                                                                    \
-            self->configured.which.rgb = 0;                                                                                                                    \
-            self->configured.which.type = COLOR_IS_SPECIAL;                                                                                                    \
-        } else if (PyLong_Check(t)) {                                                                                                                          \
-            unsigned int x = PyLong_AsUnsignedLong(t);                                                                                                         \
-            self->configured.which.rgb = x & 0xffffff;                                                                                                         \
-            self->configured.which.type = COLOR_IS_RGB;                                                                                                        \
-        } else if (PyObject_TypeCheck(t, &Color_Type)) {                                                                                                       \
-            Color *c = (Color *)t;                                                                                                                             \
-            self->configured.which.rgb = c->color.rgb;                                                                                                         \
-            self->configured.which.type = COLOR_IS_RGB;                                                                                                        \
-        } else {                                                                                                                                               \
-            PyErr_SetString(PyExc_TypeError, "colors must be integers or Color objects");                                                                      \
-            return false;                                                                                                                                      \
-        }                                                                                                                                                      \
+#define n(which, attr)                                                                    \
+    {                                                                                     \
+        RAII_PyObject(t, PyObject_GetAttrString(opts, #attr));                            \
+        if (t == NULL) return false;                                                      \
+        if (t == Py_None) {                                                               \
+            self->configured.which.rgb = 0;                                               \
+            self->configured.which.type = COLOR_IS_SPECIAL;                               \
+        } else if (PyLong_Check(t)) {                                                     \
+            unsigned int x = PyLong_AsUnsignedLong(t);                                    \
+            self->configured.which.rgb = x & 0xffffff;                                    \
+            self->configured.which.type = COLOR_IS_RGB;                                   \
+        } else if (PyObject_TypeCheck(t, &Color_Type)) {                                  \
+            Color *c = (Color *)t;                                                        \
+            self->configured.which.rgb = c->color.rgb;                                    \
+            self->configured.which.type = COLOR_IS_RGB;                                   \
+        } else {                                                                          \
+            PyErr_SetString(PyExc_TypeError, "colors must be integers or Color objects"); \
+            return false;                                                                 \
+        }                                                                                 \
     }
 
     n(default_fg, foreground);
@@ -124,20 +124,20 @@ set_configured_colors(ColorProfile *self, PyObject *opts) {
 static bool
 set_mark_colors(ColorProfile *self, PyObject *opts) {
     char fgattr[] = "mark?_foreground", bgattr[] = "mark?_background";
-#define n(i, attr, which)                                                                                                                                      \
-    {                                                                                                                                                          \
-        attr[4] = '1' + i;                                                                                                                                     \
-        RAII_PyObject(t, PyObject_GetAttrString(opts, attr));                                                                                                  \
-        if (t == NULL) return false;                                                                                                                           \
-        if (!PyObject_TypeCheck(t, &Color_Type)) {                                                                                                             \
-            PyErr_SetString(PyExc_TypeError, "mark color is not Color object");                                                                                \
-            return false;                                                                                                                                      \
-        }                                                                                                                                                      \
-        Color *c = (Color *)t;                                                                                                                                 \
-        self->which[i] = c->color.rgb;                                                                                                                         \
+#define n(i, attr, which)                                                       \
+    {                                                                           \
+        attr[4] = '1' + i;                                                      \
+        RAII_PyObject(t, PyObject_GetAttrString(opts, attr));                   \
+        if (t == NULL) return false;                                            \
+        if (!PyObject_TypeCheck(t, &Color_Type)) {                              \
+            PyErr_SetString(PyExc_TypeError, "mark color is not Color object"); \
+            return false;                                                       \
+        }                                                                       \
+        Color *c = (Color *)t;                                                  \
+        self->which[i] = c->color.rgb;                                          \
     }
-#define m(i)                                                                                                                                                   \
-    n(i, fgattr, mark_foregrounds);                                                                                                                            \
+#define m(i)                        \
+    n(i, fgattr, mark_foregrounds); \
     n(i, bgattr, mark_backgrounds);
     m(0);
     m(1);
@@ -409,17 +409,17 @@ patch_color_table(const char *key, PyObject *profiles, PyObject *spec, size_t wh
     }
 }
 
-#define patch_mark_color(key, profiles, spec, array, i)                                                                                                        \
-    {                                                                                                                                                          \
-        PyObject *v = PyDict_GetItemString(spec, key);                                                                                                         \
-        if (v && PyLong_Check(v)) {                                                                                                                            \
-            color_type color = PyLong_AsUnsignedLong(v);                                                                                                       \
-            for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(profiles); j++) {                                                                                      \
-                ColorProfile *self = (ColorProfile *)PyTuple_GET_ITEM(profiles, j);                                                                            \
-                self->array[i] = color;                                                                                                                        \
-                self->dirty = true;                                                                                                                            \
-            }                                                                                                                                                  \
-        }                                                                                                                                                      \
+#define patch_mark_color(key, profiles, spec, array, i)                             \
+    {                                                                               \
+        PyObject *v = PyDict_GetItemString(spec, key);                              \
+        if (v && PyLong_Check(v)) {                                                 \
+            color_type color = PyLong_AsUnsignedLong(v);                            \
+            for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(profiles); j++) {           \
+                ColorProfile *self = (ColorProfile *)PyTuple_GET_ITEM(profiles, j); \
+                self->array[i] = color;                                             \
+                self->dirty = true;                                                 \
+            }                                                                       \
+        }                                                                           \
     }
 
 
@@ -437,35 +437,35 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
         patch_color_table(key, profiles, spec, i, change_configured, &has_null_values);
     }
     for (size_t i = 1; i <= MARK_MASK; i++) {
-#define S(which, i)                                                                                                                                            \
-    snprintf(key, sizeof(key) - 1, "mark%zu_" #which, i);                                                                                                      \
+#define S(which, i)                                       \
+    snprintf(key, sizeof(key) - 1, "mark%zu_" #which, i); \
     patch_mark_color(key, profiles, spec, mark_##which##s, i)
         S(background, i);
         S(foreground, i);
 #undef S
     }
-#define SI(profile_name)                                                                                                                                       \
-    DynamicColor color;                                                                                                                                        \
-    if (PyLong_Check(v)) {                                                                                                                                     \
-        color.rgb = PyLong_AsUnsignedLong(v);                                                                                                                  \
-        color.type = COLOR_IS_RGB;                                                                                                                             \
-    } else {                                                                                                                                                   \
-        color.rgb = 0;                                                                                                                                         \
-        color.type = COLOR_IS_SPECIAL;                                                                                                                         \
-    }                                                                                                                                                          \
-    self->overridden.profile_name = color;                                                                                                                     \
-    if (change_configured) self->configured.profile_name = color;                                                                                              \
+#define SI(profile_name)                                          \
+    DynamicColor color;                                           \
+    if (PyLong_Check(v)) {                                        \
+        color.rgb = PyLong_AsUnsignedLong(v);                     \
+        color.type = COLOR_IS_RGB;                                \
+    } else {                                                      \
+        color.rgb = 0;                                            \
+        color.type = COLOR_IS_SPECIAL;                            \
+    }                                                             \
+    self->overridden.profile_name = color;                        \
+    if (change_configured) self->configured.profile_name = color; \
     self->dirty = true;
 
-#define S(config_name, profile_name)                                                                                                                           \
-    {                                                                                                                                                          \
-        v = PyDict_GetItemString(spec, #config_name);                                                                                                          \
-        if (v) {                                                                                                                                               \
-            for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) {                                                                                      \
-                self = (ColorProfile *)PyTuple_GET_ITEM(profiles, i);                                                                                          \
-                SI(profile_name);                                                                                                                              \
-            }                                                                                                                                                  \
-        }                                                                                                                                                      \
+#define S(config_name, profile_name)                                      \
+    {                                                                     \
+        v = PyDict_GetItemString(spec, #config_name);                     \
+        if (v) {                                                          \
+            for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) { \
+                self = (ColorProfile *)PyTuple_GET_ITEM(profiles, i);     \
+                SI(profile_name);                                         \
+            }                                                             \
+        }                                                                 \
     }
     S(foreground, default_fg);
     S(background, default_bg);
@@ -571,14 +571,14 @@ basic_colors(ColorProfile *self, PyObject *args UNUSED) {
     if (ans == NULL) return NULL;
     if (!colortable_colors_into_dict(self, 0, 16, ans)) return NULL;
 
-#define D(attr, name)                                                                                                                                          \
-    {                                                                                                                                                          \
-        unsigned long c = colorprofile_to_color(self, self->overridden.attr, self->configured.attr).rgb;                                                       \
-        PyObject *val = PyLong_FromUnsignedLong(c);                                                                                                            \
-        if (!val) return NULL;                                                                                                                                 \
-        int ret = PyDict_SetItemString(ans, #name, val);                                                                                                       \
-        Py_DECREF(val);                                                                                                                                        \
-        if (ret != 0) return NULL;                                                                                                                             \
+#define D(attr, name)                                                                                    \
+    {                                                                                                    \
+        unsigned long c = colorprofile_to_color(self, self->overridden.attr, self->configured.attr).rgb; \
+        PyObject *val = PyLong_FromUnsignedLong(c);                                                      \
+        if (!val) return NULL;                                                                           \
+        int ret = PyDict_SetItemString(ans, #name, val);                                                 \
+        Py_DECREF(val);                                                                                  \
+        if (ret != 0) return NULL;                                                                       \
     }
 
     D(default_fg, foreground);
@@ -593,22 +593,22 @@ as_dict(ColorProfile *self, PyObject *args UNUSED) {
     RAII_PyObject(ans, PyDict_New());
     if (ans == NULL) return NULL;
     if (!colortable_colors_into_dict(self, 0, arraysz(self->color_table), ans)) return NULL;
-#define D(attr, name)                                                                                                                                          \
-    {                                                                                                                                                          \
-        if (self->overridden.attr.type != COLOR_NOT_SET) {                                                                                                     \
-            int ret;                                                                                                                                           \
-            PyObject *val;                                                                                                                                     \
-            if (self->overridden.attr.type == COLOR_IS_SPECIAL) {                                                                                              \
-                val = Py_NewRef(Py_None);                                                                                                                      \
-            } else {                                                                                                                                           \
-                unsigned long c = colorprofile_to_color(self, self->overridden.attr, self->configured.attr).rgb;                                               \
-                val = PyLong_FromUnsignedLong(c);                                                                                                              \
-            }                                                                                                                                                  \
-            if (!val) { return NULL; }                                                                                                                         \
-            ret = PyDict_SetItemString(ans, #name, val);                                                                                                       \
-            Py_DECREF(val);                                                                                                                                    \
-            if (ret != 0) { return NULL; }                                                                                                                     \
-        }                                                                                                                                                      \
+#define D(attr, name)                                                                                            \
+    {                                                                                                            \
+        if (self->overridden.attr.type != COLOR_NOT_SET) {                                                       \
+            int ret;                                                                                             \
+            PyObject *val;                                                                                       \
+            if (self->overridden.attr.type == COLOR_IS_SPECIAL) {                                                \
+                val = Py_NewRef(Py_None);                                                                        \
+            } else {                                                                                             \
+                unsigned long c = colorprofile_to_color(self, self->overridden.attr, self->configured.attr).rgb; \
+                val = PyLong_FromUnsignedLong(c);                                                                \
+            }                                                                                                    \
+            if (!val) { return NULL; }                                                                           \
+            ret = PyDict_SetItemString(ans, #name, val);                                                         \
+            Py_DECREF(val);                                                                                      \
+            if (ret != 0) { return NULL; }                                                                       \
+        }                                                                                                        \
     }
     D(default_fg, foreground);
     D(default_bg, background);
@@ -800,38 +800,38 @@ default_color_table(PyObject *self UNUSED, PyObject *args UNUSED) {
 
 // Boilerplate {{{
 
-#define CGETSET(name, nullable)                                                                                                                                \
-    static PyObject *name##_get(ColorProfile *self, void UNUSED *closure) {                                                                                    \
-        DynamicColor ans = colorprofile_to_color(self, self->overridden.name, self->configured.name);                                                          \
-        if (ans.type == COLOR_IS_SPECIAL) {                                                                                                                    \
-            if (nullable) Py_RETURN_NONE;                                                                                                                      \
-            return (PyObject *)alloc_color(0, 0, 0, 0);                                                                                                        \
-        }                                                                                                                                                      \
-        return (PyObject *)alloc_color((ans.rgb >> 16) & 0xff, (ans.rgb >> 8) & 0xff, ans.rgb & 0xff, 0);                                                      \
-    }                                                                                                                                                          \
-    static int name##_set(ColorProfile *self, PyObject *v, void UNUSED *closure) {                                                                             \
-        if (v == NULL) {                                                                                                                                       \
-            self->overridden.name.val = 0;                                                                                                                     \
-            return 0;                                                                                                                                          \
-        }                                                                                                                                                      \
-        if (PyLong_Check(v)) {                                                                                                                                 \
-            unsigned long val = PyLong_AsUnsignedLong(v);                                                                                                      \
-            self->overridden.name.rgb = val & 0xffffff;                                                                                                        \
-            self->overridden.name.type = COLOR_IS_RGB;                                                                                                         \
-        } else if (PyObject_TypeCheck(v, &Color_Type)) {                                                                                                       \
-            Color *c = (Color *)v;                                                                                                                             \
-            self->overridden.name.rgb = c->color.rgb;                                                                                                          \
-            self->overridden.name.type = COLOR_IS_RGB;                                                                                                         \
-        } else if (v == Py_None) {                                                                                                                             \
-            if (!nullable) {                                                                                                                                   \
-                PyErr_SetString(PyExc_TypeError, #name " cannot be set to None");                                                                              \
-                return -1;                                                                                                                                     \
-            }                                                                                                                                                  \
-            self->overridden.name.type = COLOR_IS_SPECIAL;                                                                                                     \
-            self->overridden.name.rgb = 0;                                                                                                                     \
-        }                                                                                                                                                      \
-        self->dirty = true;                                                                                                                                    \
-        return 0;                                                                                                                                              \
+#define CGETSET(name, nullable)                                                                           \
+    static PyObject *name##_get(ColorProfile *self, void UNUSED *closure) {                               \
+        DynamicColor ans = colorprofile_to_color(self, self->overridden.name, self->configured.name);     \
+        if (ans.type == COLOR_IS_SPECIAL) {                                                               \
+            if (nullable) Py_RETURN_NONE;                                                                 \
+            return (PyObject *)alloc_color(0, 0, 0, 0);                                                   \
+        }                                                                                                 \
+        return (PyObject *)alloc_color((ans.rgb >> 16) & 0xff, (ans.rgb >> 8) & 0xff, ans.rgb & 0xff, 0); \
+    }                                                                                                     \
+    static int name##_set(ColorProfile *self, PyObject *v, void UNUSED *closure) {                        \
+        if (v == NULL) {                                                                                  \
+            self->overridden.name.val = 0;                                                                \
+            return 0;                                                                                     \
+        }                                                                                                 \
+        if (PyLong_Check(v)) {                                                                            \
+            unsigned long val = PyLong_AsUnsignedLong(v);                                                 \
+            self->overridden.name.rgb = val & 0xffffff;                                                   \
+            self->overridden.name.type = COLOR_IS_RGB;                                                    \
+        } else if (PyObject_TypeCheck(v, &Color_Type)) {                                                  \
+            Color *c = (Color *)v;                                                                        \
+            self->overridden.name.rgb = c->color.rgb;                                                     \
+            self->overridden.name.type = COLOR_IS_RGB;                                                    \
+        } else if (v == Py_None) {                                                                        \
+            if (!nullable) {                                                                              \
+                PyErr_SetString(PyExc_TypeError, #name " cannot be set to None");                         \
+                return -1;                                                                                \
+            }                                                                                             \
+            self->overridden.name.type = COLOR_IS_SPECIAL;                                                \
+            self->overridden.name.rgb = 0;                                                                \
+        }                                                                                                 \
+        self->dirty = true;                                                                               \
+        return 0;                                                                                         \
     }
 
 CGETSET(default_fg, false)
@@ -991,13 +991,13 @@ color_vectorcall(PyObject *type UNUSED, PyObject *const *args, size_t nargsf, Py
             const char *name = PyUnicode_AsUTF8(PyTuple_GET_ITEM(kwnames, i));
             if (!name) return NULL;
             int idx;
-#define C(ch, i, expected)                                                                                                                                     \
-    case ch:                                                                                                                                                   \
-        idx = i;                                                                                                                                               \
-        if (strcmp(name, expected) != 0) {                                                                                                                     \
-            PyErr_Format(PyExc_TypeError, "Color() got an unexpected keyword argument '%s'", name);                                                            \
-            return NULL;                                                                                                                                       \
-        };                                                                                                                                                     \
+#define C(ch, i, expected)                                                                          \
+    case ch:                                                                                        \
+        idx = i;                                                                                    \
+        if (strcmp(name, expected) != 0) {                                                          \
+            PyErr_Format(PyExc_TypeError, "Color() got an unexpected keyword argument '%s'", name); \
+            return NULL;                                                                            \
+        };                                                                                          \
         break;
             switch (name[0]) {
                 C('r', 0, "red");
@@ -1038,7 +1038,7 @@ static PyNumberMethods color_number_methods = {
     .nb_true_divide = (binaryfunc)color_truediv,
 };
 
-#define CGETSET(name)                                                                                                                                          \
+#define CGETSET(name) \
     static PyObject *name##_get(Color *self, void UNUSED *closure) { return PyLong_FromUnsignedLong(self->color.name); }
 CGETSET(red)
 CGETSET(green)
@@ -1191,7 +1191,7 @@ parse_rgb(const char *spec, size_t len) {
     buf[len] = 0;
     unsigned char r, g, b;
     char *tok;
-#define p(buf, out)                                                                                                                                            \
+#define p(buf, out) \
     if (!(tok = strtok(buf, "/")) || !parse_single_color(tok, strlen(tok), &out)) Py_RETURN_NONE;
     p(buf, r);
     p(NULL, g);
@@ -1221,7 +1221,7 @@ parse_rgbi(const char *spec, size_t len) {
     buf[len] = 0;
     unsigned char r, g, b;
     char *tok;
-#define p(buf, out)                                                                                                                                            \
+#define p(buf, out) \
     if (!(tok = strtok(buf, "/")) || !parse_single_intensity(tok, &out)) Py_RETURN_NONE;
     p(buf, r);
     p(NULL, g);
@@ -1441,7 +1441,7 @@ parse_oklch(const char *spec, size_t len) {
     buf[len] = 0;
     double l, c, h;
     char *tok;
-#define p(buf, out)                                                                                                                                            \
+#define p(buf, out) \
     if (!(tok = strtok(buf, " ,")) || !parse_double_intensity(tok, &out, 100)) Py_RETURN_NONE;
     p(buf, l);
     p(NULL, c);
@@ -1468,7 +1468,7 @@ parse_lab(const char *spec, size_t len) {
     buf[len] = 0;
     double l, a, b;
     char *tok;
-#define p(buf, out)                                                                                                                                            \
+#define p(buf, out) \
     if (!(tok = strtok(buf, " ,")) || !parse_double_intensity(tok, &out, 1)) Py_RETURN_NONE;
     p(buf, l);
     p(NULL, a);

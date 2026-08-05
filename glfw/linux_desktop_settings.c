@@ -24,12 +24,12 @@ static int theme_size = -1;
 static GLFWColorScheme appearance = GLFW_COLOR_SCHEME_NO_PREFERENCE;
 static bool cursor_theme_changed = false, appearance_initialized = false;
 
-#define HANDLER(name_)                                                                                                                                         \
-    static void name_(DBusMessage *msg, const DBusError *err, void *data) {                                                                                    \
-        (void)data;                                                                                                                                            \
-        if (err) {                                                                                                                                             \
-            _glfwInputError(GLFW_PLATFORM_ERROR, "%s: failed with error: %s: %s", #name_, err->name, err->message);                                            \
-            return;                                                                                                                                            \
+#define HANDLER(name_)                                                                                              \
+    static void name_(DBusMessage *msg, const DBusError *err, void *data) {                                         \
+        (void)data;                                                                                                 \
+        if (err) {                                                                                                  \
+            _glfwInputError(GLFW_PLATFORM_ERROR, "%s: failed with error: %s: %s", #name_, err->name, err->message); \
+            return;                                                                                                 \
         }
 
 HANDLER(get_color_scheme_legacy)
@@ -181,10 +181,10 @@ HANDLER(process_desktop_settings)
 cursor_theme_changed = false;
 DBusMessageIter root, array, item, settings;
 dbus_message_iter_init(msg, &root);
-#define die(...)                                                                                                                                               \
-    {                                                                                                                                                          \
-        _glfwInputError(GLFW_PLATFORM_ERROR, __VA_ARGS__);                                                                                                     \
-        return;                                                                                                                                                \
+#define die(...)                                           \
+    {                                                      \
+        _glfwInputError(GLFW_PLATFORM_ERROR, __VA_ARGS__); \
+        return;                                            \
     }
 if (dbus_message_iter_get_arg_type(&root) != DBUS_TYPE_ARRAY) die("Reply to request for desktop settings is not an array");
 dbus_message_iter_recurse(&root, &array);

@@ -26,15 +26,15 @@
 
 #define SET_STATE(x) self->vte_state = VTE_##x;
 
-#define DIGIT                                                                                                                                                  \
-    '0' : case '1':                                                                                                                                            \
-    case '2':                                                                                                                                                  \
-    case '3':                                                                                                                                                  \
-    case '4':                                                                                                                                                  \
-    case '5':                                                                                                                                                  \
-    case '6':                                                                                                                                                  \
-    case '7':                                                                                                                                                  \
-    case '8':                                                                                                                                                  \
+#define DIGIT       \
+    '0' : case '1': \
+    case '2':       \
+    case '3':       \
+    case '4':       \
+    case '5':       \
+    case '6':       \
+    case '7':       \
+    case '8':       \
     case '9'
 
 static void
@@ -106,45 +106,45 @@ _report_params_with_first(PyObject *dump_callback, id_type window_id, const char
 
 #define REPORT_ERROR(...) _report_error(self->dump_callback, self->window_id, __VA_ARGS__);
 
-#define REPORT_COMMAND1(name)                                                                                                                                  \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Ks", self->window_id, #name));                                                                      \
+#define REPORT_COMMAND1(name)                                                             \
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Ks", self->window_id, #name)); \
     PyErr_Clear();
 
-#define REPORT_COMMAND2(name, x)                                                                                                                               \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Ksi", self->window_id, #name, (int)x));                                                             \
+#define REPORT_COMMAND2(name, x)                                                                   \
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Ksi", self->window_id, #name, (int)x)); \
     PyErr_Clear();
 
-#define REPORT_COMMAND3(name, x, y)                                                                                                                            \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Ksii", self->window_id, #name, (int)x, (int)y));                                                    \
+#define REPORT_COMMAND3(name, x, y)                                                                         \
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Ksii", self->window_id, #name, (int)x, (int)y)); \
     PyErr_Clear();
 
 #define GET_MACRO(_1, _2, _3, NAME, ...) NAME
 #define REPORT_COMMAND(...) GET_MACRO(__VA_ARGS__, REPORT_COMMAND3, REPORT_COMMAND2, REPORT_COMMAND1, SENTINEL)(__VA_ARGS__)
-#define REPORT_VA_COMMAND(...)                                                                                                                                 \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, __VA_ARGS__));                                                                                       \
+#define REPORT_VA_COMMAND(...)                                           \
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, __VA_ARGS__)); \
     PyErr_Clear();
 
-#define REPORT_DRAW(chars, num)                                                                                                                                \
-    {                                                                                                                                                          \
-        for (unsigned i = 0; i < (num); i++) {                                                                                                                 \
-            uint32_t rd_ch = (chars)[i];                                                                                                                       \
-            switch (rd_ch) {                                                                                                                                   \
-                case BEL: REPORT_COMMAND(screen_bell); break;                                                                                                  \
-                case BS: REPORT_COMMAND(screen_backspace); break;                                                                                              \
-                case HT: REPORT_COMMAND(screen_tab); break;                                                                                                    \
-                case SI: REPORT_COMMAND(screen_change_charset, 0); break;                                                                                      \
-                case SO: REPORT_COMMAND(screen_change_charset, 1); break;                                                                                      \
-                case LF:                                                                                                                                       \
-                case VT:                                                                                                                                       \
-                case FF: REPORT_COMMAND(screen_linefeed); break;                                                                                               \
-                case CR: REPORT_COMMAND(screen_carriage_return); break;                                                                                        \
-                default:                                                                                                                                       \
-                    if (rd_ch >= ' ') {                                                                                                                        \
-                        RAII_PyObject(t, PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", rd_ch));                                   \
-                        if (t == NULL) PyErr_Clear();                                                                                                          \
-                    }                                                                                                                                          \
-            }                                                                                                                                                  \
-        }                                                                                                                                                      \
+#define REPORT_DRAW(chars, num)                                                                                              \
+    {                                                                                                                        \
+        for (unsigned i = 0; i < (num); i++) {                                                                               \
+            uint32_t rd_ch = (chars)[i];                                                                                     \
+            switch (rd_ch) {                                                                                                 \
+                case BEL: REPORT_COMMAND(screen_bell); break;                                                                \
+                case BS: REPORT_COMMAND(screen_backspace); break;                                                            \
+                case HT: REPORT_COMMAND(screen_tab); break;                                                                  \
+                case SI: REPORT_COMMAND(screen_change_charset, 0); break;                                                    \
+                case SO: REPORT_COMMAND(screen_change_charset, 1); break;                                                    \
+                case LF:                                                                                                     \
+                case VT:                                                                                                     \
+                case FF: REPORT_COMMAND(screen_linefeed); break;                                                             \
+                case CR: REPORT_COMMAND(screen_carriage_return); break;                                                      \
+                default:                                                                                                     \
+                    if (rd_ch >= ' ') {                                                                                      \
+                        RAII_PyObject(t, PyObject_CallFunction(self->dump_callback, "KsC", self->window_id, "draw", rd_ch)); \
+                        if (t == NULL) PyErr_Clear();                                                                        \
+                    }                                                                                                        \
+            }                                                                                                                \
+        }                                                                                                                    \
     }
 
 
@@ -152,16 +152,16 @@ _report_params_with_first(PyObject *dump_callback, id_type window_id, const char
 
 #define REPORT_PARAMS_WITH_FIRST(name, first, params, num) _report_params_with_first(self->dump_callback, self->window_id, name, first, params, num)
 
-#define REPORT_OSC(name, string)                                                                                                                               \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsO", self->window_id, #name, string));                                                             \
+#define REPORT_OSC(name, string)                                                                   \
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsO", self->window_id, #name, string)); \
     PyErr_Clear();
 
-#define REPORT_OSC2(name, code, string)                                                                                                                        \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsiO", self->window_id, #name, code, string));                                                      \
+#define REPORT_OSC2(name, code, string)                                                                   \
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "KsiO", self->window_id, #name, code, string)); \
     PyErr_Clear();
 
-#define REPORT_HYPERLINK(id, url)                                                                                                                              \
-    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Kszz", self->window_id, "set_active_hyperlink", id, url));                                          \
+#define REPORT_HYPERLINK(id, url)                                                                                     \
+    Py_XDECREF(PyObject_CallFunction(self->dump_callback, "Kszz", self->window_id, "set_active_hyperlink", id, url)); \
     PyErr_Clear();
 
 #else
@@ -305,16 +305,16 @@ consume_normal(PS *self) {
 // }}}
 
 // Esc mode {{{
-#define IS_ESCAPED_CHAR                                                                                                                                        \
-    case '%':                                                                                                                                                  \
-    case '(':                                                                                                                                                  \
-    case ')':                                                                                                                                                  \
-    case '*':                                                                                                                                                  \
-    case '+':                                                                                                                                                  \
-    case '-':                                                                                                                                                  \
-    case '.':                                                                                                                                                  \
-    case '/':                                                                                                                                                  \
-    case ' ':                                                                                                                                                  \
+#define IS_ESCAPED_CHAR \
+    case '%':           \
+    case '(':           \
+    case ')':           \
+    case '*':           \
+    case '+':           \
+    case '-':           \
+    case '.':           \
+    case '/':           \
+    case ' ':           \
     case '#'
 
 
@@ -326,17 +326,17 @@ screen_nel(Screen *screen) {
 
 static bool
 consume_esc(PS *self) {
-#define CALL_ED(name)                                                                                                                                          \
-    REPORT_COMMAND(name);                                                                                                                                      \
-    name(self->screen);                                                                                                                                        \
+#define CALL_ED(name)     \
+    REPORT_COMMAND(name); \
+    name(self->screen);   \
     SET_STATE(NORMAL);
-#define CALL_ED1(name, ch)                                                                                                                                     \
-    REPORT_COMMAND(name, ch);                                                                                                                                  \
-    name(self->screen, ch);                                                                                                                                    \
+#define CALL_ED1(name, ch)    \
+    REPORT_COMMAND(name, ch); \
+    name(self->screen, ch);   \
     SET_STATE(NORMAL);
-#define CALL_ED2(name, a, b)                                                                                                                                   \
-    REPORT_COMMAND(name, a, b);                                                                                                                                \
-    name(self->screen, a, b);                                                                                                                                  \
+#define CALL_ED2(name, a, b)    \
+    REPORT_COMMAND(name, a, b); \
+    name(self->screen, a, b);   \
     SET_STATE(NORMAL);
     const uint8_t ch = self->buf[self->read.pos++];
     const bool is_first_char = self->read.pos - self->read.consumed == 1;
@@ -526,26 +526,26 @@ dispatch_hyperlink(PS *self, char *buf) {
 
 static void
 dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
-#define DISPATCH_OSC_WITH_CODE(name)                                                                                                                           \
-    REPORT_OSC2(name, code, mv);                                                                                                                               \
+#define DISPATCH_OSC_WITH_CODE(name) \
+    REPORT_OSC2(name, code, mv);     \
     name(self->screen, code, mv);
-#define DISPATCH_OSC(name)                                                                                                                                     \
-    REPORT_OSC(name, mv);                                                                                                                                      \
+#define DISPATCH_OSC(name) \
+    REPORT_OSC(name, mv);  \
     name(self->screen, mv);
-#define START_DISPATCH                                                                                                                                         \
-    {                                                                                                                                                          \
-        RAII_PyObject(mv, PyMemoryView_FromMemory((char *)buf + i, limit - i, PyBUF_READ));                                                                    \
+#define START_DISPATCH                                                                      \
+    {                                                                                       \
+        RAII_PyObject(mv, PyMemoryView_FromMemory((char *)buf + i, limit - i, PyBUF_READ)); \
         if (mv) {
-#define END_DISPATCH_WITHOUT_BREAK                                                                                                                             \
-    }                                                                                                                                                          \
-    ;                                                                                                                                                          \
-    PyErr_Clear();                                                                                                                                             \
+#define END_DISPATCH_WITHOUT_BREAK \
+    }                              \
+    ;                              \
+    PyErr_Clear();                 \
     }
-#define END_DISPATCH                                                                                                                                           \
-    }                                                                                                                                                          \
-    ;                                                                                                                                                          \
-    PyErr_Clear();                                                                                                                                             \
-    break;                                                                                                                                                     \
+#define END_DISPATCH \
+    }                \
+    ;                \
+    PyErr_Clear();   \
+    break;           \
     }
 
     int64_t accumulator = 0;
@@ -709,23 +709,23 @@ startswith(const uint8_t *string, ssize_t sz, const char *prefix, ssize_t l) {
 static bool
 parse_kitty_dcs(PS *self, uint8_t *buf, size_t bufsz) {
 #define starts_with(x) startswith(buf, bufsz, x, literal_strlen(x))
-#define inc(x)                                                                                                                                                 \
-    buf += literal_strlen(x);                                                                                                                                  \
+#define inc(x)                \
+    buf += literal_strlen(x); \
     bufsz -= literal_strlen(x)
-#define dispatch(prefix, func, delta)                                                                                                                          \
-    {                                                                                                                                                          \
-        if (starts_with(prefix)) {                                                                                                                             \
-            inc(prefix);                                                                                                                                       \
-            buf -= delta;                                                                                                                                      \
-            bufsz += delta;                                                                                                                                    \
-            PyObject *cmd = PyMemoryView_FromMemory((char *)buf, bufsz, PyBUF_READ);                                                                           \
-            if (cmd) {                                                                                                                                         \
-                REPORT_OSC(func, cmd);                                                                                                                         \
-                screen_handle_kitty_dcs(self->screen, #func, cmd);                                                                                             \
-                Py_DECREF(cmd);                                                                                                                                \
-            } else PyErr_Clear();                                                                                                                              \
-            return true;                                                                                                                                       \
-        }                                                                                                                                                      \
+#define dispatch(prefix, func, delta)                                                \
+    {                                                                                \
+        if (starts_with(prefix)) {                                                   \
+            inc(prefix);                                                             \
+            buf -= delta;                                                            \
+            bufsz += delta;                                                          \
+            PyObject *cmd = PyMemoryView_FromMemory((char *)buf, bufsz, PyBUF_READ); \
+            if (cmd) {                                                               \
+                REPORT_OSC(func, cmd);                                               \
+                screen_handle_kitty_dcs(self->screen, #func, cmd);                   \
+                Py_DECREF(cmd);                                                      \
+            } else PyErr_Clear();                                                    \
+            return true;                                                             \
+        }                                                                            \
     }
     if (!starts_with("kitty-")) return false;
     inc("kitty-");
@@ -790,41 +790,41 @@ dispatch_dcs(PS *self, uint8_t *buf, size_t bufsz, bool is_extended UNUSED) {
 
 // CSI {{{
 
-#define CSI_SECONDARY                                                                                                                                          \
-    ' ' : case '!':                                                                                                                                            \
-    case '"':                                                                                                                                                  \
-    case '#':                                                                                                                                                  \
-    case '$':                                                                                                                                                  \
-    case '%':                                                                                                                                                  \
-    case '&':                                                                                                                                                  \
-    case '\'':                                                                                                                                                 \
-    case '(':                                                                                                                                                  \
-    case ')':                                                                                                                                                  \
-    case '*':                                                                                                                                                  \
-    case '+':                                                                                                                                                  \
-    case ',':                                                                                                                                                  \
-    case '-':                                                                                                                                                  \
-    case '.':                                                                                                                                                  \
+#define CSI_SECONDARY \
+    ' ' : case '!':   \
+    case '"':         \
+    case '#':         \
+    case '$':         \
+    case '%':         \
+    case '&':         \
+    case '\'':        \
+    case '(':         \
+    case ')':         \
+    case '*':         \
+    case '+':         \
+    case ',':         \
+    case '-':         \
+    case '.':         \
     case '/'
 
-#define CSI_TRAILER                                                                                                                                            \
-    '@' : START_ALLOW_CASE_RANGE case 'a' ... 'z':                                                                                                             \
-    case 'A' ... 'Z': END_ALLOW_CASE_RANGE                                                                                                                     \
-    case '`':                                                                                                                                                  \
-    case '{':                                                                                                                                                  \
-    case '|':                                                                                                                                                  \
-    case '}':                                                                                                                                                  \
+#define CSI_TRAILER                                \
+    '@' : START_ALLOW_CASE_RANGE case 'a' ... 'z': \
+    case 'A' ... 'Z': END_ALLOW_CASE_RANGE         \
+    case '`':                                      \
+    case '{':                                      \
+    case '|':                                      \
+    case '}':                                      \
     case '~'
 
-#define CSI_NORMAL_MODE_EMBEDDINGS                                                                                                                             \
-    BEL:                                                                                                                                                       \
-    case BS:                                                                                                                                                   \
-    case HT:                                                                                                                                                   \
-    case LF:                                                                                                                                                   \
-    case VT:                                                                                                                                                   \
-    case FF:                                                                                                                                                   \
-    case CR:                                                                                                                                                   \
-    case SO:                                                                                                                                                   \
+#define CSI_NORMAL_MODE_EMBEDDINGS \
+    BEL:                           \
+    case BS:                       \
+    case HT:                       \
+    case LF:                       \
+    case VT:                       \
+    case FF:                       \
+    case CR:                       \
+    case SO:                       \
     case SI
 
 static const char *
@@ -1012,13 +1012,13 @@ parse_region(const ParsedCSI *csi, Region *r) {
 
 static bool
 _parse_sgr(PS *self, ParsedCSI *csi) {
-#define SEND_SGR                                                                                                                                               \
-    if (num_params) {                                                                                                                                          \
-        REPORT_PARAMS(report_name, csi->params + first_param, num_params, state != NORMAL, region);                                                            \
-        select_graphic_rendition(screen, csi->params + first_param, num_params, state != NORMAL, region);                                                      \
-        state = NORMAL;                                                                                                                                        \
-        first_param += num_params;                                                                                                                             \
-        num_params = 0;                                                                                                                                        \
+#define SEND_SGR                                                                                          \
+    if (num_params) {                                                                                     \
+        REPORT_PARAMS(report_name, csi->params + first_param, num_params, state != NORMAL, region);       \
+        select_graphic_rendition(screen, csi->params + first_param, num_params, state != NORMAL, region); \
+        state = NORMAL;                                                                                   \
+        first_param += num_params;                                                                        \
+        num_params = 0;                                                                                   \
     }
     Screen *screen = self->screen;
     size_t pos = 0, first_param, num_params = 0;
@@ -1190,81 +1190,81 @@ dispatch_csi(PS *self) {
 #define start_modifier self->csi.primary
 #define end_modifier self->csi.secondary
 
-#define AT_MOST_ONE_PARAMETER                                                                                                                                  \
-    {                                                                                                                                                          \
-        if (num_params > 1) {                                                                                                                                  \
-            REPORT_ERROR("CSI code %s has %u > 1 parameters", csi_letter(code), num_params);                                                                   \
-            break;                                                                                                                                             \
-        }                                                                                                                                                      \
+#define AT_MOST_ONE_PARAMETER                                                                \
+    {                                                                                        \
+        if (num_params > 1) {                                                                \
+            REPORT_ERROR("CSI code %s has %u > 1 parameters", csi_letter(code), num_params); \
+            break;                                                                           \
+        }                                                                                    \
     }
-#define NON_NEGATIVE_PARAM(x)                                                                                                                                  \
-    {                                                                                                                                                          \
-        if (x < 0) {                                                                                                                                           \
-            REPORT_ERROR("CSI code %s is not allowed to have negative parameter (%d)", csi_letter(code), x);                                                   \
-            break;                                                                                                                                             \
-        }                                                                                                                                                      \
+#define NON_NEGATIVE_PARAM(x)                                                                                \
+    {                                                                                                        \
+        if (x < 0) {                                                                                         \
+            REPORT_ERROR("CSI code %s is not allowed to have negative parameter (%d)", csi_letter(code), x); \
+            break;                                                                                           \
+        }                                                                                                    \
     }
 
-#define CALL_CSI_HANDLER1(name, defval)                                                                                                                        \
-    AT_MOST_ONE_PARAMETER;                                                                                                                                     \
-    p1 = num_params > 0 ? params[0] : defval;                                                                                                                  \
-    NON_NEGATIVE_PARAM(p1);                                                                                                                                    \
-    REPORT_COMMAND(name, p1);                                                                                                                                  \
-    name(self->screen, p1);                                                                                                                                    \
+#define CALL_CSI_HANDLER1(name, defval)       \
+    AT_MOST_ONE_PARAMETER;                    \
+    p1 = num_params > 0 ? params[0] : defval; \
+    NON_NEGATIVE_PARAM(p1);                   \
+    REPORT_COMMAND(name, p1);                 \
+    name(self->screen, p1);                   \
     break;
 
-#define CALL_CSI_HANDLER1P(name, defval, qch)                                                                                                                  \
-    AT_MOST_ONE_PARAMETER;                                                                                                                                     \
-    p1 = num_params > 0 ? params[0] : defval;                                                                                                                  \
-    NON_NEGATIVE_PARAM(p1);                                                                                                                                    \
-    private = start_modifier == qch;                                                                                                                           \
-    REPORT_COMMAND(name, p1, private);                                                                                                                         \
-    name(self->screen, p1, private);                                                                                                                           \
+#define CALL_CSI_HANDLER1P(name, defval, qch) \
+    AT_MOST_ONE_PARAMETER;                    \
+    p1 = num_params > 0 ? params[0] : defval; \
+    NON_NEGATIVE_PARAM(p1);                   \
+    private = start_modifier == qch;          \
+    REPORT_COMMAND(name, p1, private);        \
+    name(self->screen, p1, private);          \
     break;
 
-#define CALL_CSI_HANDLER1S(name, defval)                                                                                                                       \
-    AT_MOST_ONE_PARAMETER;                                                                                                                                     \
-    p1 = num_params > 0 ? params[0] : defval;                                                                                                                  \
-    NON_NEGATIVE_PARAM(p1);                                                                                                                                    \
-    REPORT_COMMAND(name, p1, start_modifier);                                                                                                                  \
-    name(self->screen, p1, start_modifier);                                                                                                                    \
+#define CALL_CSI_HANDLER1S(name, defval)      \
+    AT_MOST_ONE_PARAMETER;                    \
+    p1 = num_params > 0 ? params[0] : defval; \
+    NON_NEGATIVE_PARAM(p1);                   \
+    REPORT_COMMAND(name, p1, start_modifier); \
+    name(self->screen, p1, start_modifier);   \
     break;
 
-#define CALL_CSI_HANDLER1M(name, defval)                                                                                                                       \
-    AT_MOST_ONE_PARAMETER;                                                                                                                                     \
-    p1 = num_params > 0 ? params[0] : defval;                                                                                                                  \
-    NON_NEGATIVE_PARAM(p1);                                                                                                                                    \
-    REPORT_COMMAND(name, p1, end_modifier);                                                                                                                    \
-    name(self->screen, p1, end_modifier);                                                                                                                      \
+#define CALL_CSI_HANDLER1M(name, defval)      \
+    AT_MOST_ONE_PARAMETER;                    \
+    p1 = num_params > 0 ? params[0] : defval; \
+    NON_NEGATIVE_PARAM(p1);                   \
+    REPORT_COMMAND(name, p1, end_modifier);   \
+    name(self->screen, p1, end_modifier);     \
     break;
 
-#define CALL_CSI_HANDLER2(name, defval1, defval2)                                                                                                              \
-    if (num_params > 2) {                                                                                                                                      \
-        REPORT_ERROR("CSI code %s has %u > 2 parameters", csi_letter(code), num_params);                                                                       \
-        break;                                                                                                                                                 \
-    }                                                                                                                                                          \
-    p1 = num_params > 0 ? params[0] : defval1;                                                                                                                 \
-    p2 = num_params > 1 ? params[1] : defval2;                                                                                                                 \
-    NON_NEGATIVE_PARAM(p1);                                                                                                                                    \
-    NON_NEGATIVE_PARAM(p2);                                                                                                                                    \
-    REPORT_COMMAND(name, p1, p2);                                                                                                                              \
-    name(self->screen, p1, p2);                                                                                                                                \
+#define CALL_CSI_HANDLER2(name, defval1, defval2)                                        \
+    if (num_params > 2) {                                                                \
+        REPORT_ERROR("CSI code %s has %u > 2 parameters", csi_letter(code), num_params); \
+        break;                                                                           \
+    }                                                                                    \
+    p1 = num_params > 0 ? params[0] : defval1;                                           \
+    p2 = num_params > 1 ? params[1] : defval2;                                           \
+    NON_NEGATIVE_PARAM(p1);                                                              \
+    NON_NEGATIVE_PARAM(p2);                                                              \
+    REPORT_COMMAND(name, p1, p2);                                                        \
+    name(self->screen, p1, p2);                                                          \
     break;
 
-#define NO_MODIFIERS(modifier, special, special_msg)                                                                                                           \
-    {                                                                                                                                                          \
-        if (self->csi.primary || self->csi.secondary) {                                                                                                        \
-            if (special && modifier == special) {                                                                                                              \
-                REPORT_ERROR(special_msg);                                                                                                                     \
-            } else {                                                                                                                                           \
-                REPORT_ERROR(                                                                                                                                  \
-                    "CSI code %s has unsupported start modifier: %s or end modifier: %s",                                                                      \
-                    csi_letter(self->csi.trailer),                                                                                                             \
-                    csi_letter(self->csi.primary),                                                                                                             \
-                    csi_letter(self->csi.secondary));                                                                                                          \
-            }                                                                                                                                                  \
-            break;                                                                                                                                             \
-        }                                                                                                                                                      \
+#define NO_MODIFIERS(modifier, special, special_msg)                                      \
+    {                                                                                     \
+        if (self->csi.primary || self->csi.secondary) {                                   \
+            if (special && modifier == special) {                                         \
+                REPORT_ERROR(special_msg);                                                \
+            } else {                                                                      \
+                REPORT_ERROR(                                                             \
+                    "CSI code %s has unsupported start modifier: %s or end modifier: %s", \
+                    csi_letter(self->csi.trailer),                                        \
+                    csi_letter(self->csi.primary),                                        \
+                    csi_letter(self->csi.secondary));                                     \
+            }                                                                             \
+            break;                                                                        \
+        }                                                                                 \
     }
 
     int p1, p2;
@@ -1517,11 +1517,11 @@ dispatch_sos(PS *self UNUSED, uint8_t *buf, size_t bufsz, bool is_extended UNUSE
 // Parse loop {{{
 static void
 consume_input(PS *self, PyObject *dump_callback UNUSED, id_type window_id UNUSED) {
-#define consume(x)                                                                                                                                             \
-    if (accumulate_st_terminated_esc_code(self, dispatch_##x)) {                                                                                               \
-        self->read.consumed = self->read.pos;                                                                                                                  \
-        SET_STATE(NORMAL);                                                                                                                                     \
-    }                                                                                                                                                          \
+#define consume(x)                                               \
+    if (accumulate_st_terminated_esc_code(self, dispatch_##x)) { \
+        self->read.consumed = self->read.pos;                    \
+        SET_STATE(NORMAL);                                       \
+    }                                                            \
     break;
 
 #ifdef DUMP_COMMANDS
@@ -1758,9 +1758,9 @@ alloc_vt_parser(id_type window_id) {
 }
 
 #undef EXTRA_INIT
-#define EXTRA_INIT                                                                                                                                             \
-    if (0 != PyModule_AddIntConstant(module, "VT_PARSER_BUFFER_SIZE", BUF_SZ)) return 0;                                                                       \
-    if (0 != PyModule_AddIntConstant(module, "VT_PARSER_MAX_ESCAPE_CODE_SIZE", MAX_ESCAPE_CODE_LENGTH)) return 0;                                              \
+#define EXTRA_INIT                                                                                                \
+    if (0 != PyModule_AddIntConstant(module, "VT_PARSER_BUFFER_SIZE", BUF_SZ)) return 0;                          \
+    if (0 != PyModule_AddIntConstant(module, "VT_PARSER_MAX_ESCAPE_CODE_SIZE", MAX_ESCAPE_CODE_LENGTH)) return 0; \
     if (!init_simd(module)) return 0;
 
 INIT_TYPE(Parser)

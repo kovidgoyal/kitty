@@ -20,9 +20,9 @@ min(uint a, uint b) {
 }
 
 // Decorations {{{
-#define STRAIGHT_UNDERLINE_LOOP                                                                                                                                \
-    unsigned half = fcm.underline_thickness / 2;                                                                                                               \
-    DecorationGeometry ans = {.top = half > fcm.underline_position ? 0 : fcm.underline_position - half};                                                       \
+#define STRAIGHT_UNDERLINE_LOOP                                                                          \
+    unsigned half = fcm.underline_thickness / 2;                                                         \
+    DecorationGeometry ans = {.top = half > fcm.underline_position ? 0 : fcm.underline_position - half}; \
     for (unsigned y = ans.top; fcm.underline_thickness > 0 && y < fcm.cell_height; fcm.underline_thickness--, y++, ans.height++)
 
 DecorationGeometry
@@ -537,17 +537,17 @@ line_y(StraightLine l, int x) {
     return l.m * x + l.c;
 }
 
-#define calc_limits(self, lower_y, upper_y)                                                                                                                    \
-    {                                                                                                                                                          \
-        if (!self->y_limits) {                                                                                                                                 \
-            self->y_limits_count = self->width;                                                                                                                \
-            self->y_limits = malloc(sizeof(self->y_limits[0]) * self->y_limits_count);                                                                         \
-            if (!self->y_limits) fatal("Out of memory");                                                                                                       \
-        }                                                                                                                                                      \
-        for (uint x = 0; x < self->width; x++) {                                                                                                               \
-            self->y_limits[x].lower = lower_y;                                                                                                                 \
-            self->y_limits[x].upper = upper_y;                                                                                                                 \
-        }                                                                                                                                                      \
+#define calc_limits(self, lower_y, upper_y)                                            \
+    {                                                                                  \
+        if (!self->y_limits) {                                                         \
+            self->y_limits_count = self->width;                                        \
+            self->y_limits = malloc(sizeof(self->y_limits[0]) * self->y_limits_count); \
+            if (!self->y_limits) fatal("Out of memory");                               \
+        }                                                                              \
+        for (uint x = 0; x < self->width; x++) {                                       \
+            self->y_limits[x].lower = lower_y;                                         \
+            self->y_limits[x].upper = upper_y;                                         \
+        }                                                                              \
     }
 
 static void
@@ -596,9 +596,9 @@ thick_line(Canvas *self, uint thickness_in_pixels, Point p1, Point p2) {
 static void
 frame(Canvas *self, uint level, Edge edges) {
     uint h = thickness(self, level, true), v = thickness(self, level, false);
-#define line(x1, x2, y1, y2)                                                                                                                                   \
-    {                                                                                                                                                          \
-        for (uint y = y1; y < min(y2, self->height); y++) memset(self->mask + y * self->width + x1, 255, minus(min(x2, self->width), x1));                     \
+#define line(x1, x2, y1, y2)                                                                                                               \
+    {                                                                                                                                      \
+        for (uint y = y1; y < min(y2, self->height); y++) memset(self->mask + y * self->width + x1, 255, minus(min(x2, self->width), x1)); \
     }
 #define hline(y1, y2) line(0, self->width, y1, y2)
 #define vline(x1, x2) line(x1, x2, 0, self->height)
@@ -693,22 +693,22 @@ typedef struct CubicBezier {
     Point start, c1, c2, end;
 } CubicBezier;
 
-#define bezier_eq(which)                                                                                                                                       \
-    {                                                                                                                                                          \
-        const CubicBezier *cb = v;                                                                                                                             \
-        const double u = 1. - t;                                                                                                                               \
-        const double u_3 = u * u * u;                                                                                                                          \
-        const double t_3 = t * t * t;                                                                                                                          \
-        return u_3 * cb->start.which + 3 * t * u * (u * cb->c1.which + t * cb->c2.which) + t_3 * cb->end.which;                                                \
+#define bezier_eq(which)                                                                                        \
+    {                                                                                                           \
+        const CubicBezier *cb = v;                                                                              \
+        const double u = 1. - t;                                                                                \
+        const double u_3 = u * u * u;                                                                           \
+        const double t_3 = t * t * t;                                                                           \
+        return u_3 * cb->start.which + 3 * t * u * (u * cb->c1.which + t * cb->c2.which) + t_3 * cb->end.which; \
     }
 
-#define bezier_prime_eq(which)                                                                                                                                 \
-    {                                                                                                                                                          \
-        const CubicBezier *cb = v;                                                                                                                             \
-        const double u = 1. - t;                                                                                                                               \
-        const double u_2 = u * u;                                                                                                                              \
-        const double t_2 = t * t;                                                                                                                              \
-        return 3 * u_2 * (cb->c1.which - cb->start.which) + 6 * t * u * (cb->c2.which - cb->c1.which) + 3 * t_2 * (cb->end.which - cb->c2.which);              \
+#define bezier_prime_eq(which)                                                                                                                    \
+    {                                                                                                                                             \
+        const CubicBezier *cb = v;                                                                                                                \
+        const double u = 1. - t;                                                                                                                  \
+        const double u_2 = u * u;                                                                                                                 \
+        const double t_2 = t * t;                                                                                                                 \
+        return 3 * u_2 * (cb->c1.which - cb->start.which) + 6 * t * u * (cb->c2.which - cb->c1.which) + 3 * t_2 * (cb->end.which - cb->c2.which); \
     }
 
 static double
@@ -778,21 +778,21 @@ get_bezier_limits(Canvas *self, const CubicBezier *cb) {
     }
 }
 
-#define mirror_horizontally(expr)                                                                                                                              \
-    {                                                                                                                                                          \
-        RAII_ALLOC(uint8_t, mbuf, calloc(self->width, self->height));                                                                                          \
-        if (!mbuf) fatal("Out of memory");                                                                                                                     \
-        uint8_t *buf = self->mask;                                                                                                                             \
-        self->mask = mbuf;                                                                                                                                     \
-        expr;                                                                                                                                                  \
-        self->mask = buf;                                                                                                                                      \
-        for (uint y = 0; y < self->height; y++) {                                                                                                              \
-            uint offset = y * self->width;                                                                                                                     \
-            for (uint src_x = 0; src_x < self->width; src_x++) {                                                                                               \
-                uint dest_x = self->width - 1 - src_x;                                                                                                         \
-                buf[offset + dest_x] = mbuf[offset + src_x];                                                                                                   \
-            }                                                                                                                                                  \
-        }                                                                                                                                                      \
+#define mirror_horizontally(expr)                                     \
+    {                                                                 \
+        RAII_ALLOC(uint8_t, mbuf, calloc(self->width, self->height)); \
+        if (!mbuf) fatal("Out of memory");                            \
+        uint8_t *buf = self->mask;                                    \
+        self->mask = mbuf;                                            \
+        expr;                                                         \
+        self->mask = buf;                                             \
+        for (uint y = 0; y < self->height; y++) {                     \
+            uint offset = y * self->width;                            \
+            for (uint src_x = 0; src_x < self->width; src_x++) {      \
+                uint dest_x = self->width - 1 - src_x;                \
+                buf[offset + dest_x] = mbuf[offset + src_x];          \
+            }                                                         \
+        }                                                             \
     }
 
 static void
@@ -1073,8 +1073,8 @@ fourth_range(uint size, uint which) {
     uint thicknesses[4] = {thickness, thickness, thickness, thickness};
     uint pos = 0;
     if (extra) {
-#define d(i)                                                                                                                                                   \
-    thicknesses[i]++;                                                                                                                                          \
+#define d(i)          \
+    thicknesses[i]++; \
     if (!--extra) goto done;
         // ensures the thickness of first and last are least likely to be changed
         d(1);
@@ -1102,8 +1102,8 @@ eight_range(uint size, uint which) {
     uint thicknesses[8] = {thickness, thickness, thickness, thickness, thickness, thickness, thickness, thickness};
     uint pos = 0;
     if (extra) {
-#define d(i)                                                                                                                                                   \
-    thicknesses[i]++;                                                                                                                                          \
+#define d(i)          \
+    thicknesses[i]++; \
     if (!--extra) goto done;
         // ensures the thickness of first and last are least likely to be changed
         d(3);
@@ -1612,7 +1612,7 @@ half_triangle(Canvas *self, Edge which, bool inverted) {
     uint mid_x = self->width / 2, mid_y = self->height / 2;
     StraightLine u, l;
     append_limit(self, 0, 0); // ensure space for limits
-#define set_limits(startx, endx, a, b)                                                                                                                         \
+#define set_limits(startx, endx, a, b) \
     for (uint x = startx; x < endx; x++) self->y_limits[x] = (Limit){.upper = b, .lower = a};
     switch (which) {
         case LEFT_EDGE:
@@ -2041,8 +2041,8 @@ draw_sextant(Canvas *self, uint row, uint col) {
 
 static void
 sextant(Canvas *self, uint which) {
-#define add_row(q, r)                                                                                                                                          \
-    if (q & 1) { draw_sextant(self, r, 0); }                                                                                                                   \
+#define add_row(q, r)                        \
+    if (q & 1) { draw_sextant(self, r, 0); } \
     if (q & 2) { draw_sextant(self, r, 1); }
     add_row(which % 4, 0) add_row(which / 4, 1) add_row(which / 16, 2)
 #undef add_row
@@ -2369,15 +2369,15 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
     fill_canvas(&canvas, 0);
     Canvas *c = &canvas;
 
-#define SB(ch, ...)                                                                                                                                            \
-    case ch:                                                                                                                                                   \
-        fill_canvas(&ss, 0);                                                                                                                                   \
-        c = &ss, __VA_ARGS__;                                                                                                                                  \
+#define SB(ch, ...)           \
+    case ch:                  \
+        fill_canvas(&ss, 0);  \
+        c = &ss, __VA_ARGS__; \
         downsample(&ss, &canvas);
-#define CC(ch, ...)                                                                                                                                            \
+#define CC(ch, ...) \
     case ch: __VA_ARGS__; break
-#define SS(ch, ...)                                                                                                                                            \
-    SB(ch, __VA_ARGS__);                                                                                                                                       \
+#define SS(ch, ...)      \
+    SB(ch, __VA_ARGS__); \
     break
 #define C(ch, func, ...) CC(ch, func(c, __VA_ARGS__))
 #define S(ch, func, ...) SS(ch, func(c, __VA_ARGS__))
@@ -2527,12 +2527,12 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
             SH(L'🮕', .xnum = 4, .ynum = 4);
             SH(L'🮖', .xnum = 4, .ynum = 4, .invert = true);
             SH(L'🮗', .xnum = 1, .ynum = 4, .invert = true);
-#define M(ch, corner)                                                                                                                                          \
-    SB(ch, corner_triangle(c, corner));                                                                                                                        \
-    memcpy(ss.mask, canvas.mask, sizeof(canvas.mask[0]) * canvas.width * canvas.height);                                                                       \
-    fill_canvas(&canvas, 0);                                                                                                                                   \
-    shade(&canvas, (Shade){.xnum = 12});                                                                                                                       \
-    apply_mask(&canvas, ss.mask);                                                                                                                              \
+#define M(ch, corner)                                                                    \
+    SB(ch, corner_triangle(c, corner));                                                  \
+    memcpy(ss.mask, canvas.mask, sizeof(canvas.mask[0]) * canvas.width * canvas.height); \
+    fill_canvas(&canvas, 0);                                                             \
+    shade(&canvas, (Shade){.xnum = 12});                                                 \
+    apply_mask(&canvas, ss.mask);                                                        \
     break;
             M(L'🮜', TOP_LEFT);
             M(L'🮝', TOP_RIGHT);
@@ -2684,8 +2684,8 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
             CC(L'', hline(c, 1); rounded_corner(c, 1, TOP_LEFT), rounded_corner(c, 1, BOTTOM_RIGHT));
             CC(L'', hline(c, 1); rounded_corner(c, 1, TOP_RIGHT), rounded_corner(c, 1, BOTTOM_LEFT));
 
-#define P(ch, lines)                                                                                                                                           \
-    S(ch, commit, lines, true);                                                                                                                                \
+#define P(ch, lines)            \
+    S(ch, commit, lines, true); \
     S(ch + 1, commit, lines, false);
             P(L'', 0);
             P(L'', RIGHT_EDGE);
@@ -2704,10 +2704,10 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
             P(L'', LEFT_EDGE | RIGHT_EDGE | TOP_EDGE);
             P(L'', LEFT_EDGE | RIGHT_EDGE | TOP_EDGE | BOTTOM_EDGE);
 #undef P
-#define Q(ch, which)                                                                                                                                           \
-    C(ch, corner, t, t, which);                                                                                                                                \
-    C(ch + 1, corner, f, t, which);                                                                                                                            \
-    C(ch + 2, corner, t, f, which);                                                                                                                            \
+#define Q(ch, which)                \
+    C(ch, corner, t, t, which);     \
+    C(ch + 1, corner, f, t, which); \
+    C(ch + 2, corner, t, f, which); \
     C(ch + 3, corner, f, f, which);
             Q(L'┌', BOTTOM_RIGHT);
             Q(L'┐', BOTTOM_LEFT);
@@ -2720,7 +2720,7 @@ render_box_char(char_type ch, uint8_t *buf, unsigned width, unsigned height, dou
             C(L'╯', rounded_corner, 1, BOTTOM_RIGHT);
 
         case L'┼' ... L'┼' + 15: cross(c, ch - L'┼'); break;
-#define T(q, func)                                                                                                                                             \
+#define T(q, func) \
     case q ... q + 7: func(c, q, ch - q); break;
             T(L'├', vert_t);
             T(L'┤', vert_t);

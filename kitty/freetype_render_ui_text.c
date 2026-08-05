@@ -244,8 +244,8 @@ populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBit
 
 static void
 detect_edges(ProcessedBitmap *ans) {
-#define check                                                                                                                                                  \
-    const uint8_t *p = ans->buf + x * 4 + y * ans->stride;                                                                                                     \
+#define check                                              \
+    const uint8_t *p = ans->buf + x * 4 + y * ans->stride; \
     if (p[3] > 20)
     ans->right_edge = 0;
     ans->bottom_edge = 0;

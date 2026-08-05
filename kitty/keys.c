@@ -99,14 +99,14 @@ static PyObject *
 convert_glfw_key_event_to_python(const GLFWkeyevent *ev) {
     PyKeyEvent *self = (PyKeyEvent *)PyKeyEvent_Type.tp_alloc(&PyKeyEvent_Type, 0);
     if (!self) return NULL;
-#define C(x)                                                                                                                                                   \
-    {                                                                                                                                                          \
-        unsigned long t = ev->x;                                                                                                                               \
-        self->x = PyLong_FromUnsignedLong(t);                                                                                                                  \
-        if (self->x == NULL) {                                                                                                                                 \
-            Py_CLEAR(self);                                                                                                                                    \
-            return NULL;                                                                                                                                       \
-        }                                                                                                                                                      \
+#define C(x)                                  \
+    {                                         \
+        unsigned long t = ev->x;              \
+        self->x = PyLong_FromUnsignedLong(t); \
+        if (self->x == NULL) {                \
+            Py_CLEAR(self);                   \
+            return NULL;                      \
+        }                                     \
     }
     C(key);
     C(shifted_key);
@@ -307,24 +307,24 @@ on_key_input(const GLFWkeyevent *ev) {
         default: debug("invalid state, ignoring\n"); return;
     }
     bool dispatch_ok = true, consumed = false;
-#define dispatch_key_event(name)                                                                                                                               \
-    {                                                                                                                                                          \
-        PyObject *ke = NULL, *ret = NULL;                                                                                                                      \
-        ke = convert_glfw_key_event_to_python(ev);                                                                                                             \
-        if (!ke) {                                                                                                                                             \
-            PyErr_Print();                                                                                                                                     \
-            return;                                                                                                                                            \
-        };                                                                                                                                                     \
-        ret = PyObject_CallMethod(global_state.boss, #name, "O", ke);                                                                                          \
-        Py_CLEAR(ke);                                                                                                                                          \
-        if (ret == NULL) {                                                                                                                                     \
-            PyErr_Print();                                                                                                                                     \
-            dispatch_ok = false;                                                                                                                               \
-        } else {                                                                                                                                               \
-            consumed = ret == Py_True;                                                                                                                         \
-            Py_CLEAR(ret);                                                                                                                                     \
-        }                                                                                                                                                      \
-        w = window_for_window_id(active_window_id);                                                                                                            \
+#define dispatch_key_event(name)                                      \
+    {                                                                 \
+        PyObject *ke = NULL, *ret = NULL;                             \
+        ke = convert_glfw_key_event_to_python(ev);                    \
+        if (!ke) {                                                    \
+            PyErr_Print();                                            \
+            return;                                                   \
+        };                                                            \
+        ret = PyObject_CallMethod(global_state.boss, #name, "O", ke); \
+        Py_CLEAR(ke);                                                 \
+        if (ret == NULL) {                                            \
+            PyErr_Print();                                            \
+            dispatch_ok = false;                                      \
+        } else {                                                      \
+            consumed = ret == Py_True;                                \
+            Py_CLEAR(ret);                                            \
+        }                                                             \
+        w = window_for_window_id(active_window_id);                   \
     }
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         w->last_special_key_pressed = 0;
@@ -378,7 +378,7 @@ fake_scroll(Window *w, int amount, bool upwards) {
 }
 
 #define PYWRAP1(name) static PyObject *py##name(PyObject UNUSED *self, PyObject *args)
-#define PA(fmt, ...)                                                                                                                                           \
+#define PA(fmt, ...) \
     if (!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 #define M(name, arg_type) {#name, (PyCFunction)(void (*)(void))(py##name), arg_type, NULL}
 

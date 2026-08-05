@@ -9,18 +9,18 @@
 #include "history.h"
 #include "line-buf.h"
 
-#define set_attribute_on_line(cells, which, val, xnum)                                                                                                         \
-    {                                                                                                                                                          \
-        for (index_type i__ = 0; i__ < xnum; i__++) cells[i__].attrs.which = val;                                                                              \
+#define set_attribute_on_line(cells, which, val, xnum)                            \
+    {                                                                             \
+        for (index_type i__ = 0; i__ < xnum; i__++) cells[i__].attrs.which = val; \
     }
 
 static inline bool
 set_named_attribute_on_line(GPUCell *cells, const char *which, uint16_t val, index_type xnum) {
     // Set a single attribute on all cells in the line
-#define s(q)                                                                                                                                                   \
-    if (strcmp(#q, which) == 0) {                                                                                                                              \
-        set_attribute_on_line(cells, q, val, xnum);                                                                                                            \
-        return true;                                                                                                                                           \
+#define s(q)                                        \
+    if (strcmp(#q, which) == 0) {                   \
+        set_attribute_on_line(cells, q, val, xnum); \
+        return true;                                \
     }
     s(reverse);
     s(strike);

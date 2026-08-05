@@ -67,20 +67,20 @@ set_kitty_run_data(RunData *run_data, bool from_source, wchar_t *extensions_dir)
         Py_CLEAR(ans);
         return false;
     }
-#define S(key, val)                                                                                                                                            \
-    {                                                                                                                                                          \
-        if (!val) {                                                                                                                                            \
-            PyErr_Print();                                                                                                                                     \
-            Py_CLEAR(ans);                                                                                                                                     \
-            return false;                                                                                                                                      \
-        }                                                                                                                                                      \
-        int ret = PyDict_SetItemString(ans, #key, val);                                                                                                        \
-        Py_CLEAR(val);                                                                                                                                         \
-        if (ret != 0) {                                                                                                                                        \
-            PyErr_Print();                                                                                                                                     \
-            Py_CLEAR(ans);                                                                                                                                     \
-            return false;                                                                                                                                      \
-        }                                                                                                                                                      \
+#define S(key, val)                                     \
+    {                                                   \
+        if (!val) {                                     \
+            PyErr_Print();                              \
+            Py_CLEAR(ans);                              \
+            return false;                               \
+        }                                               \
+        int ret = PyDict_SetItemString(ans, #key, val); \
+        Py_CLEAR(val);                                  \
+        if (ret != 0) {                                 \
+            PyErr_Print();                              \
+            Py_CLEAR(ans);                              \
+            return false;                               \
+        }                                               \
     }
     S(bundle_exe_dir, exe_dir);
     if (from_source) {
@@ -323,15 +323,15 @@ reopen_to_null(const char *mode, FILE *stream) {
 
 static bool
 ensure_working_stdio(void) {
-#define C(which, mode)                                                                                                                                         \
-    {                                                                                                                                                          \
-        int fd = fileno(which);                                                                                                                                \
-        if (fd < 0) {                                                                                                                                          \
-            if (!reopen_to_null(mode, which)) return false;                                                                                                    \
-        } else if (!is_valid_fd(fd)) {                                                                                                                         \
-            close(fd);                                                                                                                                         \
-            if (!reopen_to_null(mode, which)) return false;                                                                                                    \
-        }                                                                                                                                                      \
+#define C(which, mode)                                      \
+    {                                                       \
+        int fd = fileno(which);                             \
+        if (fd < 0) {                                       \
+            if (!reopen_to_null(mode, which)) return false; \
+        } else if (!is_valid_fd(fd)) {                      \
+            close(fd);                                      \
+            if (!reopen_to_null(mode, which)) return false; \
+        }                                                   \
     }
     C(stdin, "r") C(stdout, "w") C(stderr, "w") return true;
 #undef C
@@ -403,9 +403,9 @@ static void
 handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
     CLIOptions opts = {0};
     RAII_CLISpec(subcommand_cli_spec);
-#define swap_cli_spec                                                                                                                                          \
-    subcommand_cli_spec.original_argc = cli_spec->original_argc;                                                                                               \
-    subcommand_cli_spec.original_argv = cli_spec->original_argv;                                                                                               \
+#define swap_cli_spec                                            \
+    subcommand_cli_spec.original_argc = cli_spec->original_argc; \
+    subcommand_cli_spec.original_argv = cli_spec->original_argv; \
     cli_spec = &subcommand_cli_spec;
     if (instance_group_prefix == NULL) {
         // Look for +open
@@ -453,17 +453,17 @@ handle_fast_commandline(CLISpec *cli_spec, const char *instance_group_prefix) {
                 exit(1);
             }
 
-#define reopen_or_fail(path, mode, which)                                                                                                                      \
-    {                                                                                                                                                          \
-        errno = 0;                                                                                                                                             \
-        if (freopen(path, mode, which) == NULL) {                                                                                                              \
-            int s = errno;                                                                                                                                     \
-            fprintf(stderr, "Failed to redirect %s to %s with error: ", #which, path);                                                                         \
-            errno = s;                                                                                                                                         \
-            perror(NULL);                                                                                                                                      \
-            exit(1);                                                                                                                                           \
-        }                                                                                                                                                      \
-        setlinebuf(which);                                                                                                                                     \
+#define reopen_or_fail(path, mode, which)                                              \
+    {                                                                                  \
+        errno = 0;                                                                     \
+        if (freopen(path, mode, which) == NULL) {                                      \
+            int s = errno;                                                             \
+            fprintf(stderr, "Failed to redirect %s to %s with error: ", #which, path); \
+            errno = s;                                                                 \
+            perror(NULL);                                                              \
+            exit(1);                                                                   \
+        }                                                                              \
+        setlinebuf(which);                                                             \
     }
             if (!(opts.session && ((opts.session[0] == '-' && opts.session[1] == 0) || strcmp(opts.session, "/dev/stdin") == 0)))
                 reopen_or_fail("/dev/null", "rb", stdin);

@@ -72,25 +72,25 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
                 break;
 
             case INT:
-#define READ_UINT                                                                                                                                              \
-    for (i = pos, accumulator = 0; i < MIN(parser_buf_pos, pos + 10); i++) {                                                                                   \
-        int64_t n = parser_buf[i] - '0';                                                                                                                       \
-        if (n < 0 || n > 9) break;                                                                                                                             \
-        accumulator += n * digit_multipliers[i - pos];                                                                                                         \
-    }                                                                                                                                                          \
-    if (i == pos) {                                                                                                                                            \
-        REPORT_ERROR(                                                                                                                                          \
-            "Malformed DnDCommand control block, expecting an integer "                                                                                        \
-            "value for key: %c",                                                                                                                               \
-            key & 0xFF);                                                                                                                                       \
-        return;                                                                                                                                                \
-    }                                                                                                                                                          \
-    lcode = accumulator / digit_multipliers[i - pos - 1];                                                                                                      \
-    pos = i;                                                                                                                                                   \
-    if (lcode > UINT32_MAX) {                                                                                                                                  \
-        REPORT_ERROR("Malformed DnDCommand control block, number is too large");                                                                               \
-        return;                                                                                                                                                \
-    }                                                                                                                                                          \
+#define READ_UINT                                                                \
+    for (i = pos, accumulator = 0; i < MIN(parser_buf_pos, pos + 10); i++) {     \
+        int64_t n = parser_buf[i] - '0';                                         \
+        if (n < 0 || n > 9) break;                                               \
+        accumulator += n * digit_multipliers[i - pos];                           \
+    }                                                                            \
+    if (i == pos) {                                                              \
+        REPORT_ERROR(                                                            \
+            "Malformed DnDCommand control block, expecting an integer "          \
+            "value for key: %c",                                                 \
+            key & 0xFF);                                                         \
+        return;                                                                  \
+    }                                                                            \
+    lcode = accumulator / digit_multipliers[i - pos - 1];                        \
+    pos = i;                                                                     \
+    if (lcode > UINT32_MAX) {                                                    \
+        REPORT_ERROR("Malformed DnDCommand control block, number is too large"); \
+        return;                                                                  \
+    }                                                                            \
     code = lcode;
 
                 is_negative = false;
@@ -98,7 +98,7 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
                     is_negative = true;
                     pos++;
                 }
-#define I(x)                                                                                                                                                   \
+#define I(x) \
     case x: g.x = is_negative ? 0 - (int32_t)code : (int32_t)code; break
                 READ_UINT;
                 switch (key) {
@@ -112,7 +112,7 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
                 break;
 #undef I
             case UINT: READ_UINT;
-#define U(x)                                                                                                                                                   \
+#define U(x) \
     case x: g.x = code; break
                 switch (key) {
                     U(more);

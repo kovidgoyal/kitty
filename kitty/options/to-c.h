@@ -181,15 +181,15 @@ bganchor(PyObject *anchor_name) {
     return anchor;
 }
 
-#define STR_SETTER(name)                                                                                                                                       \
-    {                                                                                                                                                          \
-        free(opts->name);                                                                                                                                      \
-        opts->name = NULL;                                                                                                                                     \
-        if (src == Py_None || !PyUnicode_Check(src)) return;                                                                                                   \
-        Py_ssize_t sz;                                                                                                                                         \
-        const char *s = PyUnicode_AsUTF8AndSize(src, &sz);                                                                                                     \
-        opts->name = calloc(sz + 1, sizeof(s[0]));                                                                                                             \
-        if (opts->name) memcpy(opts->name, s, sz);                                                                                                             \
+#define STR_SETTER(name)                                     \
+    {                                                        \
+        free(opts->name);                                    \
+        opts->name = NULL;                                   \
+        if (src == Py_None || !PyUnicode_Check(src)) return; \
+        Py_ssize_t sz;                                       \
+        const char *s = PyUnicode_AsUTF8AndSize(src, &sz);   \
+        opts->name = calloc(sz + 1, sizeof(s[0]));           \
+        if (opts->name) memcpy(opts->name, s, sz);           \
     }
 
 static inline void
@@ -286,16 +286,16 @@ add_easing_function(Animation *a, PyObject *e, double y_at_start, double y_at_en
 #undef G
 }
 
-#define parse_animation(duration, name, start, end)                                                                                                            \
-    opts->duration = parse_s_double_to_monotonic_t(PyTuple_GET_ITEM(src, 0));                                                                                  \
-    opts->animation.name = free_animation(opts->animation.name);                                                                                               \
-    if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 1)) && (opts->animation.name = alloc_animation()) != NULL) {                                                     \
-        add_easing_function(opts->animation.name, PyTuple_GET_ITEM(src, 1), start, end);                                                                       \
-        if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 2))) {                                                                                                       \
-            add_easing_function(opts->animation.name, PyTuple_GET_ITEM(src, 2), end, start);                                                                   \
-        } else {                                                                                                                                               \
-            add_easing_function(opts->animation.name, PyTuple_GET_ITEM(src, 1), end, start);                                                                   \
-        }                                                                                                                                                      \
+#define parse_animation(duration, name, start, end)                                                        \
+    opts->duration = parse_s_double_to_monotonic_t(PyTuple_GET_ITEM(src, 0));                              \
+    opts->animation.name = free_animation(opts->animation.name);                                           \
+    if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 1)) && (opts->animation.name = alloc_animation()) != NULL) { \
+        add_easing_function(opts->animation.name, PyTuple_GET_ITEM(src, 1), start, end);                   \
+        if (PyObject_IsTrue(PyTuple_GET_ITEM(src, 2))) {                                                   \
+            add_easing_function(opts->animation.name, PyTuple_GET_ITEM(src, 2), end, start);               \
+        } else {                                                                                           \
+            add_easing_function(opts->animation.name, PyTuple_GET_ITEM(src, 1), end, start);               \
+        }                                                                                                  \
     }
 
 static inline void
@@ -355,11 +355,11 @@ parse_font_mod_size(PyObject *val, float *sz, AdjustmentUnit *unit) {
 
 static inline void
 modify_font(PyObject *mf, Options *opts) {
-#define S(which)                                                                                                                                               \
-    {                                                                                                                                                          \
-        PyObject *v = PyDict_GetItemString(mf, #which);                                                                                                        \
-        if (v) parse_font_mod_size(v, &opts->which.val, &opts->which.unit);                                                                                    \
-        else zero_at_ptr(&opts->which);                                                                                                                        \
+#define S(which)                                                            \
+    {                                                                       \
+        PyObject *v = PyDict_GetItemString(mf, #which);                     \
+        if (v) parse_font_mod_size(v, &opts->which.val, &opts->which.unit); \
+        else zero_at_ptr(&opts->which);                                     \
     }
     S(underline_position);
     S(underline_thickness);
@@ -708,8 +708,8 @@ free_allocs_in_options(Options *opts) {
     free_url_prefixes(opts);
     free_font_features(opts);
     free_background_images(opts);
-#define F(x)                                                                                                                                                   \
-    free(opts->x);                                                                                                                                             \
+#define F(x)       \
+    free(opts->x); \
     opts->x = NULL;
     F(select_by_word_characters);
     F(url_excluded_characters);

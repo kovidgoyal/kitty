@@ -79,10 +79,10 @@ init_loop_data(LoopData *ld, ...) {
     return init_signal_handlers(ld);
 }
 
-#define CLOSE(which, idx)                                                                                                                                      \
-    if (ld->which[idx] > -1) {                                                                                                                                 \
-        safe_close(ld->which[idx], __FILE__, __LINE__);                                                                                                        \
-        ld->which[idx] = -1;                                                                                                                                   \
+#define CLOSE(which, idx)                               \
+    if (ld->which[idx] > -1) {                          \
+        safe_close(ld->which[idx], __FILE__, __LINE__); \
+        ld->which[idx] = -1;                            \
     }
 
 static void
@@ -232,16 +232,16 @@ handle_signal_callback_py(const siginfo_t *siginfo, void *data) {
     PyObject *callback = data;
     PyObject *ans = PyStructSequence_New(&SigInfoType);
     int pos = 0;
-#define S(x)                                                                                                                                                   \
-    {                                                                                                                                                          \
-        PyObject *t = x;                                                                                                                                       \
-        if (t) {                                                                                                                                               \
-            PyStructSequence_SET_ITEM(ans, pos, x);                                                                                                            \
-        } else {                                                                                                                                               \
-            Py_CLEAR(ans);                                                                                                                                     \
-            return false;                                                                                                                                      \
-        }                                                                                                                                                      \
-        pos++;                                                                                                                                                 \
+#define S(x)                                        \
+    {                                               \
+        PyObject *t = x;                            \
+        if (t) {                                    \
+            PyStructSequence_SET_ITEM(ans, pos, x); \
+        } else {                                    \
+            Py_CLEAR(ans);                          \
+            return false;                           \
+        }                                           \
+        pos++;                                      \
     }
     if (ans) {
         S(PyLong_FromLong((long)siginfo->si_signo));

@@ -36,13 +36,13 @@ ensure_home_path(void) {
     }
 }
 
-#define safe_snprintf(buf, sz, fmt, ...)                                                                                                                       \
-    {                                                                                                                                                          \
-        int n = snprintf(buf, sz, fmt, __VA_ARGS__);                                                                                                           \
-        if (n < 0 || (size_t)n >= sz) {                                                                                                                        \
-            fprintf(stderr, "Out of buffer space calling sprintf for format: %s at line: %d\n", fmt, __LINE__);                                                \
-            exit(1);                                                                                                                                           \
-        }                                                                                                                                                      \
+#define safe_snprintf(buf, sz, fmt, ...)                                                                        \
+    {                                                                                                           \
+        int n = snprintf(buf, sz, fmt, __VA_ARGS__);                                                            \
+        if (n < 0 || (size_t)n >= sz) {                                                                         \
+            fprintf(stderr, "Out of buffer space calling sprintf for format: %s at line: %d\n", fmt, __LINE__); \
+            exit(1);                                                                                            \
+        }                                                                                                       \
     }
 
 static const char *
@@ -129,10 +129,10 @@ lexical_absolute_path(const char *relative, char *output, size_t outsz) {
     size_t rlen = strlen(relative);
     char *limit = output + outsz;
     char *write_ptr = output; // Points to the location to write normalized characters
-#define _ensure_space(n)                                                                                                                                       \
-    if (write_ptr + n + 1 >= limit) {                                                                                                                          \
-        fprintf(stderr, "Out of buffer space making absolute path for: %s with cwd: %s\n", relative, output);                                                  \
-        exit(1);                                                                                                                                               \
+#define _ensure_space(n)                                                                                      \
+    if (write_ptr + n + 1 >= limit) {                                                                         \
+        fprintf(stderr, "Out of buffer space making absolute path for: %s with cwd: %s\n", relative, output); \
+        exit(1);                                                                                              \
     }
     if (relative[0] != '/') {
         if (!getcwd(output, outsz)) {
@@ -202,20 +202,20 @@ static bool
 get_config_dir(char *output, size_t outputsz) {
     const char *q;
     char buf1[PATH_MAX], buf2[PATH_MAX];
-#define expand(x, dest, sz)                                                                                                                                    \
-    {                                                                                                                                                          \
-        expand_tilde(x, buf1, sizeof(buf1));                                                                                                                   \
-        lexical_absolute_path(buf1, dest, sz);                                                                                                                 \
+#define expand(x, dest, sz)                    \
+    {                                          \
+        expand_tilde(x, buf1, sizeof(buf1));   \
+        lexical_absolute_path(buf1, dest, sz); \
     }
     q = getenv("KITTY_CONFIG_DIRECTORY");
     if (q && q[0]) {
         expand(q, output, outputsz);
         return true;
     }
-#define check_and_ret(x)                                                                                                                                       \
-    if (x && x[0]) {                                                                                                                                           \
-        expand(x, output, outputsz);                                                                                                                           \
-        if (is_dir_ok_for_config(output)) return true;                                                                                                         \
+#define check_and_ret(x)                               \
+    if (x && x[0]) {                                   \
+        expand(x, output, outputsz);                   \
+        if (is_dir_ok_for_config(output)) return true; \
     }
     q = getenv("XDG_CONFIG_HOME");
     check_and_ret(q);

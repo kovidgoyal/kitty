@@ -99,8 +99,8 @@ static size_t reaped_pids_count = 0;
 
 // Main thread functions {{{
 
-#define FREE_CHILD(x)                                                                                                                                          \
-    Py_CLEAR((x).screen);                                                                                                                                      \
+#define FREE_CHILD(x)     \
+    Py_CLEAR((x).screen); \
     x = EMPTY_CHILD;
 
 #define XREF_CHILD(x, OP) OP(x.screen);
@@ -336,50 +336,50 @@ add_child(ChildMonitor *self, PyObject *args) {
 
 static const unsigned write_buf_limit = 100 * 1024 * 1024;
 
-#define schedule_write_to_child_generic(id, num, va_start, get_next_arg, va_end, found, too_much_data)                                                         \
-    ChildMonitor *self = the_monitor;                                                                                                                          \
-    const char *data;                                                                                                                                          \
-    size_t szval, sz = 0;                                                                                                                                      \
-    va_start(ap, num);                                                                                                                                         \
-    for (unsigned int i = 0; i < num; i++) {                                                                                                                   \
-        get_next_arg(ap);                                                                                                                                      \
-        sz += szval;                                                                                                                                           \
-    }                                                                                                                                                          \
-    va_end(ap);                                                                                                                                                \
-    children_mutex(lock);                                                                                                                                      \
-    for (size_t i = 0; i < self->count; i++) {                                                                                                                 \
-        if (children[i].id == id) {                                                                                                                            \
-            Screen *screen = children[i].screen;                                                                                                               \
-            screen_mutex(lock, write);                                                                                                                         \
-            size_t space_left = screen->write_buf_sz - screen->write_buf_used;                                                                                 \
-            if (space_left < sz) {                                                                                                                             \
-                if (screen->write_buf_used + sz > write_buf_limit) {                                                                                           \
-                    too_much_data = true;                                                                                                                      \
-                    screen_mutex(unlock, write);                                                                                                               \
-                    break;                                                                                                                                     \
-                }                                                                                                                                              \
-                screen->write_buf_sz = screen->write_buf_used + sz;                                                                                            \
-                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);                                                                 \
-                if (screen->write_buf == NULL) { fatal("Out of memory."); }                                                                                    \
-            }                                                                                                                                                  \
-            found = true;                                                                                                                                      \
-            va_start(ap, num);                                                                                                                                 \
-            for (unsigned int i = 0; i < num; i++) {                                                                                                           \
-                get_next_arg(ap);                                                                                                                              \
-                memcpy(screen->write_buf + screen->write_buf_used, data, szval);                                                                               \
-                screen->write_buf_used += szval;                                                                                                               \
-            }                                                                                                                                                  \
-            va_end(ap);                                                                                                                                        \
-            if (screen->write_buf_sz > BUFSIZ && screen->write_buf_used < BUFSIZ) {                                                                            \
-                screen->write_buf_sz = BUFSIZ;                                                                                                                 \
-                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);                                                                 \
-                if (screen->write_buf == NULL) { fatal("Out of memory."); }                                                                                    \
-            }                                                                                                                                                  \
-            if (screen->write_buf_used) wakeup_io_loop(self, false);                                                                                           \
-            screen_mutex(unlock, write);                                                                                                                       \
-            break;                                                                                                                                             \
-        }                                                                                                                                                      \
-    }                                                                                                                                                          \
+#define schedule_write_to_child_generic(id, num, va_start, get_next_arg, va_end, found, too_much_data) \
+    ChildMonitor *self = the_monitor;                                                                  \
+    const char *data;                                                                                  \
+    size_t szval, sz = 0;                                                                              \
+    va_start(ap, num);                                                                                 \
+    for (unsigned int i = 0; i < num; i++) {                                                           \
+        get_next_arg(ap);                                                                              \
+        sz += szval;                                                                                   \
+    }                                                                                                  \
+    va_end(ap);                                                                                        \
+    children_mutex(lock);                                                                              \
+    for (size_t i = 0; i < self->count; i++) {                                                         \
+        if (children[i].id == id) {                                                                    \
+            Screen *screen = children[i].screen;                                                       \
+            screen_mutex(lock, write);                                                                 \
+            size_t space_left = screen->write_buf_sz - screen->write_buf_used;                         \
+            if (space_left < sz) {                                                                     \
+                if (screen->write_buf_used + sz > write_buf_limit) {                                   \
+                    too_much_data = true;                                                              \
+                    screen_mutex(unlock, write);                                                       \
+                    break;                                                                             \
+                }                                                                                      \
+                screen->write_buf_sz = screen->write_buf_used + sz;                                    \
+                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);         \
+                if (screen->write_buf == NULL) { fatal("Out of memory."); }                            \
+            }                                                                                          \
+            found = true;                                                                              \
+            va_start(ap, num);                                                                         \
+            for (unsigned int i = 0; i < num; i++) {                                                   \
+                get_next_arg(ap);                                                                      \
+                memcpy(screen->write_buf + screen->write_buf_used, data, szval);                       \
+                screen->write_buf_used += szval;                                                       \
+            }                                                                                          \
+            va_end(ap);                                                                                \
+            if (screen->write_buf_sz > BUFSIZ && screen->write_buf_used < BUFSIZ) {                    \
+                screen->write_buf_sz = BUFSIZ;                                                         \
+                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);         \
+                if (screen->write_buf == NULL) { fatal("Out of memory."); }                            \
+            }                                                                                          \
+            if (screen->write_buf_used) wakeup_io_loop(self, false);                                   \
+            screen_mutex(unlock, write);                                                               \
+            break;                                                                                     \
+        }                                                                                              \
+    }                                                                                                  \
     children_mutex(unlock);
 
 void
@@ -424,8 +424,8 @@ bool
 schedule_write_to_child(id_type id, unsigned num, ...) {
     va_list ap;
     bool too_much_data = false, found = false;
-#define get_next_arg(ap)                                                                                                                                       \
-    data = va_arg(ap, const char *);                                                                                                                           \
+#define get_next_arg(ap)             \
+    data = va_arg(ap, const char *); \
     szval = va_arg(ap, size_t);
     schedule_write_to_child_generic(id, num, va_start, get_next_arg, va_end, found, too_much_data);
 #undef get_next_arg
@@ -442,30 +442,30 @@ schedule_write_to_child_python(id_type id, const char *prefix, PyObject *ap, con
     Py_ssize_t pidx;
 #define py_start(ap, num) pidx = 0;
 #define py_end(ap) pidx = 0;
-#define get_next_arg(ap)                                                                                                                                       \
-    {                                                                                                                                                          \
-        size_t pidxf = pidx++;                                                                                                                                 \
-        if (pidxf == 0 && has_prefix) {                                                                                                                        \
-            data = prefix;                                                                                                                                     \
-            szval = strlen(prefix);                                                                                                                            \
-        } else {                                                                                                                                               \
-            if (has_prefix) pidxf--;                                                                                                                           \
-            if (has_suffix && pidxf >= (size_t)PyTuple_GET_SIZE(ap)) {                                                                                         \
-                data = suffix;                                                                                                                                 \
-                szval = strlen(suffix);                                                                                                                        \
-            } else {                                                                                                                                           \
-                PyObject *t = PyTuple_GET_ITEM(ap, pidxf);                                                                                                     \
-                if (PyBytes_Check(t)) {                                                                                                                        \
-                    data = PyBytes_AS_STRING(t);                                                                                                               \
-                    szval = PyBytes_GET_SIZE(t);                                                                                                               \
-                } else {                                                                                                                                       \
-                    Py_ssize_t usz;                                                                                                                            \
-                    data = PyUnicode_AsUTF8AndSize(t, &usz);                                                                                                   \
-                    szval = usz;                                                                                                                               \
-                    if (!data) fatal("Failed to convert object to bytes in schedule_write_to_child_python");                                                   \
-                }                                                                                                                                              \
-            }                                                                                                                                                  \
-        }                                                                                                                                                      \
+#define get_next_arg(ap)                                                                                     \
+    {                                                                                                        \
+        size_t pidxf = pidx++;                                                                               \
+        if (pidxf == 0 && has_prefix) {                                                                      \
+            data = prefix;                                                                                   \
+            szval = strlen(prefix);                                                                          \
+        } else {                                                                                             \
+            if (has_prefix) pidxf--;                                                                         \
+            if (has_suffix && pidxf >= (size_t)PyTuple_GET_SIZE(ap)) {                                       \
+                data = suffix;                                                                               \
+                szval = strlen(suffix);                                                                      \
+            } else {                                                                                         \
+                PyObject *t = PyTuple_GET_ITEM(ap, pidxf);                                                   \
+                if (PyBytes_Check(t)) {                                                                      \
+                    data = PyBytes_AS_STRING(t);                                                             \
+                    szval = PyBytes_GET_SIZE(t);                                                             \
+                } else {                                                                                     \
+                    Py_ssize_t usz;                                                                          \
+                    data = PyUnicode_AsUTF8AndSize(t, &usz);                                                 \
+                    szval = usz;                                                                             \
+                    if (!data) fatal("Failed to convert object to bytes in schedule_write_to_child_python"); \
+                }                                                                                            \
+            }                                                                                                \
+        }                                                                                                    \
     }
     bool found = false, too_much_data = false;
     schedule_write_to_child_generic(id, num, py_start, get_next_arg, py_end, found, too_much_data);
@@ -674,14 +674,14 @@ resize_pty(ChildMonitor *self, PyObject *args) {
     int fd = -1;
     if (!PyArg_ParseTuple(args, "kHHHH", &window_id, &dim.ws_row, &dim.ws_col, &dim.ws_xpixel, &dim.ws_ypixel)) return NULL;
     children_mutex(lock);
-#define FIND(queue, count)                                                                                                                                     \
-    {                                                                                                                                                          \
-        for (size_t i = 0; i < count; i++) {                                                                                                                   \
-            if (queue[i].id == window_id) {                                                                                                                    \
-                fd = queue[i].fd;                                                                                                                              \
-                break;                                                                                                                                         \
-            }                                                                                                                                                  \
-        }                                                                                                                                                      \
+#define FIND(queue, count)                   \
+    {                                        \
+        for (size_t i = 0; i < count; i++) { \
+            if (queue[i].id == window_id) {  \
+                fd = queue[i].fd;            \
+                break;                       \
+            }                                \
+        }                                    \
     }
     FIND(children, self->count);
     if (fd == -1) FIND(add_queue, add_queue_count);
@@ -1796,7 +1796,7 @@ io_loop(void *data) {
             }
 #ifdef DEBUG_POLL_EVENTS
             for (i = 0; i < self->count + EXTRA_FDS; i++) {
-#define P(w)                                                                                                                                                   \
+#define P(w) \
     if (children_fds[i].revents & w) printf("i:%lu %s\n", i, #w);
                 P(POLLIN);
                 P(POLLPRI);
@@ -1810,11 +1810,11 @@ io_loop(void *data) {
         } else if (ret < 0) {
             if (errno != EAGAIN && errno != EINTR) { perror("Call to poll() failed"); }
         }
-#define WAKEUP                                                                                                                                                 \
-    {                                                                                                                                                          \
-        wakeup_main_loop();                                                                                                                                    \
-        last_main_loop_wakeup_at = now;                                                                                                                        \
-        has_pending_wakeups = false;                                                                                                                           \
+#define WAKEUP                          \
+    {                                   \
+        wakeup_main_loop();             \
+        last_main_loop_wakeup_at = now; \
+        has_pending_wakeups = false;    \
     }
         // we only wakeup the main loop after input_delay as wakeup is an expensive operation
         // on some platforms, such as cocoa
@@ -1873,10 +1873,10 @@ start_talk_thread(ChildMonitor *self) {
 
 typedef struct pollfd PollFD;
 #define PEER_LIMIT 256
-#define nuke_socket(s)                                                                                                                                         \
-    {                                                                                                                                                          \
-        shutdown(s, SHUT_RDWR);                                                                                                                                \
-        safe_close(s, __FILE__, __LINE__);                                                                                                                     \
+#define nuke_socket(s)                     \
+    {                                      \
+        shutdown(s, SHUT_RDWR);            \
+        safe_close(s, __FILE__, __LINE__); \
     }
 
 static id_type
@@ -2018,12 +2018,12 @@ dispatch_peer_command(ChildMonitor *self, Peer *peer) {
 
 static void
 read_from_peer(ChildMonitor *self, Peer *peer) {
-#define failed(msg)                                                                                                                                            \
-    {                                                                                                                                                          \
-        log_error("Reading from peer failed: %s", msg);                                                                                                        \
-        shutdown(peer->fd, SHUT_RD);                                                                                                                           \
-        peer->read.finished = true;                                                                                                                            \
-        return;                                                                                                                                                \
+#define failed(msg)                                     \
+    {                                                   \
+        log_error("Reading from peer failed: %s", msg); \
+        shutdown(peer->fd, SHUT_RD);                    \
+        peer->read.finished = true;                     \
+        return;                                         \
     }
     if (peer->read.used >= peer->read.capacity) {
         if (peer->read.capacity >= 64 * 1024) failed("Ignoring too large message from peer");
@@ -2132,10 +2132,10 @@ talk_loop(void *data) {
     // talk_data.loop_data is initialized by the thread that spawns this one, before it is spawned (see inject_peer() and start())
     PollFD fds[PEER_LIMIT + 8] = {{0}};
     size_t num_listen_fds = 0, num_peer_fds = 0;
-#define add_listener(which)                                                                                                                                    \
-    if (self->which > -1) {                                                                                                                                    \
-        fds[num_listen_fds].fd = self->which;                                                                                                                  \
-        fds[num_listen_fds++].events = POLLIN;                                                                                                                 \
+#define add_listener(which)                    \
+    if (self->which > -1) {                    \
+        fds[num_listen_fds].fd = self->which;  \
+        fds[num_listen_fds++].events = POLLIN; \
     }
     add_listener(talk_fd);
     add_listener(listen_fd);

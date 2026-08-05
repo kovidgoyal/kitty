@@ -930,10 +930,10 @@ apply_scale_to_font_group(FontGroup *fg, RunFont *rf) {
     float scale = rf ? scaled_cell_dimensions(*rf, &scaled_cell_width, &scaled_cell_height) : 1.f;
     scaled_font_map_t_itr i = vt_get(&fg->scaled_font_map, scale);
     ScaledFontData sfd;
-#define apply_scaling(which_fg)                                                                                                                                \
-    if (!face_apply_scaling(medium_font->face, (FONTS_DATA_HANDLE)(which_fg))) {                                                                               \
-        if (PyErr_Occurred()) PyErr_Print();                                                                                                                   \
-        fatal("Could not apply scale of %f to font group at size: %f", scale, (which_fg)->font_sz_in_pts);                                                     \
+#define apply_scaling(which_fg)                                                                            \
+    if (!face_apply_scaling(medium_font->face, (FONTS_DATA_HANDLE)(which_fg))) {                           \
+        if (PyErr_Occurred()) PyErr_Print();                                                               \
+        fatal("Could not apply scale of %f to font group at size: %f", scale, (which_fg)->font_sz_in_pts); \
     }
 
     if (vt_is_end(i)) {
@@ -1072,18 +1072,18 @@ render_decorations(FontGroup *fg, Region src, Region dest, FontCellMetrics scale
     sprite_index ans = 0;
     bool is_underline = false;
     uint32_t underline_top = unscaled_metrics.cell_height, underline_bottom = 0;
-#define do_one(call)                                                                                                                                           \
-    {                                                                                                                                                          \
-        memset(alpha_mask, 0, sizeof(alpha_mask[0]) * scaled_metrics.cell_width * scaled_metrics.cell_height);                                                 \
-        DecorationGeometry sdg = call;                                                                                                                         \
-        render_scaled_decoration(unscaled_metrics, scaled_metrics, alpha_mask, buf, src, dest);                                                                \
-        sprite_index q = current_send_sprite_to_gpu(fg, buf, (DecorationMetadata){0}, scaled_metrics);                                                         \
-        if (!ans) ans = q;                                                                                                                                     \
-        if (is_underline) {                                                                                                                                    \
-            Region r = map_scaled_decoration_geometry(sdg, src, dest);                                                                                         \
-            if (r.top < underline_top) underline_top = r.top;                                                                                                  \
-            if (r.bottom > underline_bottom) underline_bottom = r.bottom;                                                                                      \
-        };                                                                                                                                                     \
+#define do_one(call)                                                                                           \
+    {                                                                                                          \
+        memset(alpha_mask, 0, sizeof(alpha_mask[0]) * scaled_metrics.cell_width * scaled_metrics.cell_height); \
+        DecorationGeometry sdg = call;                                                                         \
+        render_scaled_decoration(unscaled_metrics, scaled_metrics, alpha_mask, buf, src, dest);                \
+        sprite_index q = current_send_sprite_to_gpu(fg, buf, (DecorationMetadata){0}, scaled_metrics);         \
+        if (!ans) ans = q;                                                                                     \
+        if (is_underline) {                                                                                    \
+            Region r = map_scaled_decoration_geometry(sdg, src, dest);                                         \
+            if (r.top < underline_top) underline_top = r.top;                                                  \
+            if (r.bottom > underline_bottom) underline_bottom = r.bottom;                                      \
+        };                                                                                                     \
     }
 
     do_one(add_strikethrough(alpha_mask, scaled_metrics));
@@ -1133,11 +1133,11 @@ render_box_cell(FontGroup *fg, RunFont rf, CPUCell *cpu_cell, GPUCell *gpu_cell,
         if (glyph != 0xffff) global_glyph_render_scratch.glyphs[num_glyphs++] = glyph;
         else global_glyph_render_scratch.lc->chars[i] = 0;
     }
-#define failed                                                                                                                                                 \
-    {                                                                                                                                                          \
-        if (PyErr_Occurred()) PyErr_Print();                                                                                                                   \
-        for (unsigned i = 0; i < num_cells; i++) gpu_cell[i].sprite_idx = 0;                                                                                   \
-        return;                                                                                                                                                \
+#define failed                                                               \
+    {                                                                        \
+        if (PyErr_Occurred()) PyErr_Print();                                 \
+        for (unsigned i = 0; i < num_cells; i++) gpu_cell[i].sprite_idx = 0; \
+        return;                                                              \
     }
     if (!num_glyphs) failed;
     bool all_rendered = true;
@@ -1293,11 +1293,11 @@ render_group(
     }
     unsigned scaled_canvas_width = num_scaled_cells * scaled_metrics.cell_width;
 
-#define failed                                                                                                                                                 \
-    {                                                                                                                                                          \
-        if (PyErr_Occurred()) PyErr_Print();                                                                                                                   \
-        for (unsigned i = 0; i < num_cells; i++) gpu_cells[i].sprite_idx = 0;                                                                                  \
-        return;                                                                                                                                                \
+#define failed                                                                \
+    {                                                                         \
+        if (PyErr_Occurred()) PyErr_Print();                                  \
+        for (unsigned i = 0; i < num_cells; i++) gpu_cells[i].sprite_idx = 0; \
+        return;                                                               \
     }
 
     // One can have infinite ligatures with repeated groups of sprites when scaled size is an exact multiple or
@@ -2072,24 +2072,24 @@ multicell_intersects_cursor(const Line *line, index_type lnum, const Cursor *cur
 
 void
 render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, DisableLigature disable_ligature_strategy, ListOfChars *lc) {
-#define RENDER                                                                                                                                                 \
-    if (run_font.font_idx != NO_FONT && i > first_cell_in_run) {                                                                                               \
-        int cursor_offset = -1;                                                                                                                                \
-        if (disable_ligature_at_cursor && first_cell_in_run <= cursor->x && cursor->x <= i && cursor->x < line->xnum &&                                        \
-            multicell_intersects_cursor(line, lnum, cursor))                                                                                                   \
-            cursor_offset = cursor->x - first_cell_in_run;                                                                                                     \
-        render_run(                                                                                                                                            \
-            fg,                                                                                                                                                \
-            line->cpu_cells + first_cell_in_run,                                                                                                               \
-            line->gpu_cells + first_cell_in_run,                                                                                                               \
-            i - first_cell_in_run,                                                                                                                             \
-            run_font,                                                                                                                                          \
-            false,                                                                                                                                             \
-            center_glyph,                                                                                                                                      \
-            cursor_offset,                                                                                                                                     \
-            disable_ligature_strategy,                                                                                                                         \
-            line->text_cache,                                                                                                                                  \
-            lc);                                                                                                                                               \
+#define RENDER                                                                                                          \
+    if (run_font.font_idx != NO_FONT && i > first_cell_in_run) {                                                        \
+        int cursor_offset = -1;                                                                                         \
+        if (disable_ligature_at_cursor && first_cell_in_run <= cursor->x && cursor->x <= i && cursor->x < line->xnum && \
+            multicell_intersects_cursor(line, lnum, cursor))                                                            \
+            cursor_offset = cursor->x - first_cell_in_run;                                                              \
+        render_run(                                                                                                     \
+            fg,                                                                                                         \
+            line->cpu_cells + first_cell_in_run,                                                                        \
+            line->gpu_cells + first_cell_in_run,                                                                        \
+            i - first_cell_in_run,                                                                                      \
+            run_font,                                                                                                   \
+            false,                                                                                                      \
+            center_glyph,                                                                                               \
+            cursor_offset,                                                                                              \
+            disable_ligature_strategy,                                                                                  \
+            line->text_cache,                                                                                           \
+            lc);                                                                                                        \
     }
     FontGroup *fg = (FontGroup *)fg_;
     RunFont basic_font = {.scale = 1, .font_idx = NO_FONT}, run_font = basic_font, cell_font = basic_font;
@@ -2258,11 +2258,11 @@ send_prerendered_sprites(FontGroup *fg) {
     RAII_ALLOC(uint8_t, alpha_mask, malloc(cell_area));
     if (!alpha_mask) fatal("Out of memory");
     Region r = {.right = fg->fcm.cell_width, .bottom = fg->fcm.cell_height};
-#define do_one(call)                                                                                                                                           \
-    memset(alpha_mask, 0, cell_area);                                                                                                                          \
-    call;                                                                                                                                                      \
-    ensure_canvas_can_fit(fg, 1, 1); /* clear canvas */                                                                                                        \
-    render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->fcm.cell_width, fg->fcm.cell_width, 0xffffff);                                                   \
+#define do_one(call)                                                                                         \
+    memset(alpha_mask, 0, cell_area);                                                                        \
+    call;                                                                                                    \
+    ensure_canvas_can_fit(fg, 1, 1); /* clear canvas */                                                      \
+    render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->fcm.cell_width, fg->fcm.cell_width, 0xffffff); \
     current_send_sprite_to_gpu(fg, fg->canvas.buf, dm, fg->fcm);
 
     // If you change the mapping of these cells you will need to change
@@ -2316,8 +2316,8 @@ initialize_font_group(FontGroup *fg) {
     vt_init(&fg->fallback_font_map);
     vt_init(&fg->scaled_font_map);
     vt_init(&fg->decorations_index_map);
-#define I(attr)                                                                                                                                                \
-    if (descriptor_indices.attr) fg->attr##_font_idx = initialize_font(fg, descriptor_indices.attr, #attr);                                                    \
+#define I(attr)                                                                                             \
+    if (descriptor_indices.attr) fg->attr##_font_idx = initialize_font(fg, descriptor_indices.attr, #attr); \
     else fg->attr##_font_idx = -1;
     fg->medium_font_idx = initialize_font(fg, 0, "medium");
     I(bold);
@@ -2457,7 +2457,7 @@ render_decoration(PyObject *self UNUSED, PyObject *args) {
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)fcm.cell_width * fcm.cell_height);
     if (!ans) return NULL;
     memset(PyBytes_AS_STRING(ans), 0, PyBytes_GET_SIZE(ans));
-#define u(x)                                                                                                                                                   \
+#define u(x) \
     if (strcmp(which, #x) == 0) add_##x##_underline((uint8_t *)PyBytes_AS_STRING(ans), fcm)
     u(curl);
     u(dashed);
@@ -2522,9 +2522,9 @@ current_fonts(PyObject *self UNUSED, PyObject *args) {
     }
     RAII_PyObject(ans, PyDict_New());
     if (!ans) return NULL;
-#define SET(key, val)                                                                                                                                          \
-    {                                                                                                                                                          \
-        if (PyDict_SetItemString(ans, #key, fg->fonts[val].face) != 0) { return NULL; }                                                                        \
+#define SET(key, val)                                                                   \
+    {                                                                                   \
+        if (PyDict_SetItemString(ans, #key, fg->fonts[val].face) != 0) { return NULL; } \
     }
     SET(medium, fg->medium_font_idx);
     if (fg->bold_font_idx > 0) SET(bold, fg->bold_font_idx);
@@ -2545,11 +2545,11 @@ current_fonts(PyObject *self UNUSED, PyObject *args) {
         PyTuple_SET_ITEM(ff, i, fg->fonts[fg->first_fallback_font_idx + i].face);
     }
     if (PyDict_SetItemString(ans, "fallback", ff) != 0) return NULL;
-#define p(x)                                                                                                                                                   \
-    {                                                                                                                                                          \
-        RAII_PyObject(t, PyFloat_FromDouble(fg->x));                                                                                                           \
-        if (!t) return NULL;                                                                                                                                   \
-        if (PyDict_SetItemString(ans, #x, t) != 0) return NULL;                                                                                                \
+#define p(x)                                                    \
+    {                                                           \
+        RAII_PyObject(t, PyFloat_FromDouble(fg->x));            \
+        if (!t) return NULL;                                    \
+        if (PyDict_SetItemString(ans, #x, t) != 0) return NULL; \
     }
     p(font_sz_in_pts);
     p(logical_dpi_x);
@@ -2752,12 +2752,12 @@ init_fonts(PyObject *module) {
         return false;
     }
     hb_buffer_set_cluster_level(harfbuzz_buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
-#define create_feature(feature, where)                                                                                                                         \
-    {                                                                                                                                                          \
-        if (!hb_feature_from_string(feature, sizeof(feature) - 1, &hb_features[where])) {                                                                      \
-            PyErr_SetString(PyExc_RuntimeError, "Failed to create " feature " harfbuzz feature");                                                              \
-            return false;                                                                                                                                      \
-        }                                                                                                                                                      \
+#define create_feature(feature, where)                                                            \
+    {                                                                                             \
+        if (!hb_feature_from_string(feature, sizeof(feature) - 1, &hb_features[where])) {         \
+            PyErr_SetString(PyExc_RuntimeError, "Failed to create " feature " harfbuzz feature"); \
+            return false;                                                                         \
+        }                                                                                         \
     }
     create_feature("-liga", LIGA_FEATURE);
     create_feature("-dlig", DLIG_FEATURE);

@@ -1109,9 +1109,9 @@ exec_module(PyObject *m) {
     RsyncError = PyErr_NewException("rsync.RsyncError", NULL, NULL);
     if (RsyncError == NULL) return -1;
     PyModule_AddObject(m, "RsyncError", RsyncError);
-#define T(which)                                                                                                                                               \
-    if (PyType_Ready(&which##_Type) < 0) return -1;                                                                                                            \
-    Py_INCREF(&which##_Type);                                                                                                                                  \
+#define T(which)                                    \
+    if (PyType_Ready(&which##_Type) < 0) return -1; \
+    Py_INCREF(&which##_Type);                       \
     if (PyModule_AddObject(m, #which, (PyObject *)&which##_Type) < 0) return -1;
     T(Hasher);
     T(Patcher);

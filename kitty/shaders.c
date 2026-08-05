@@ -436,10 +436,10 @@ init_cell_program(void) {
     }
 
     // Sanity check to ensure the attribute location binding worked
-#define C(p, name, expected)                                                                                                                                   \
-    {                                                                                                                                                          \
-        int aloc = attrib_location(p, #name);                                                                                                                  \
-        if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in program: %d", #name, aloc, expected, p);                       \
+#define C(p, name, expected)                                                                                                             \
+    {                                                                                                                                    \
+        int aloc = attrib_location(p, #name);                                                                                            \
+        if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in program: %d", #name, aloc, expected, p); \
     }
     for (int p = CELL_PROGRAM; p < CELL_PROGRAM_SENTINEL; p++) {
         C(p, colors, 0);
@@ -463,10 +463,10 @@ init_cell_program(void) {
         UniformBlock glut = program_uniform_block(PADDING_PROGRAM, "GammaLUT");
         glUniformBlockBinding(program_id(PADDING_PROGRAM), glut.index, GAMMA_LUT_BINDING_POINT);
     }
-#define C(name, expected)                                                                                                                                      \
-    {                                                                                                                                                          \
-        int aloc = attrib_location(PADDING_PROGRAM, #name);                                                                                                    \
-        if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in the padding program", #name, aloc, expected);                  \
+#define C(name, expected)                                                                                                                     \
+    {                                                                                                                                         \
+        int aloc = attrib_location(PADDING_PROGRAM, #name);                                                                                   \
+        if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in the padding program", #name, aloc, expected); \
     }
     C(colors, 0);
     C(sprite_idx, 1);
@@ -499,10 +499,10 @@ init_custom_programs(void) {
             if (i == CUSTOM_END_PROGRAM) {
                 bind_program(i);
                 glUniform1i(program_uniform_location(i, "backbuffer"), GRAPHICS_UNIT);
-#define set_optional_sampler(name, unit)                                                                                                                       \
-    {                                                                                                                                                          \
-        GLint loc = try_program_uniform_location(i, name);                                                                                                     \
-        if (loc >= 0) glUniform1i(loc, unit);                                                                                                                  \
+#define set_optional_sampler(name, unit)                   \
+    {                                                      \
+        GLint loc = try_program_uniform_location(i, name); \
+        if (loc >= 0) glUniform1i(loc, unit);              \
     }
                 set_optional_sampler("a", CUSTOM_END_TEXTURE_A_UNIT);
                 set_optional_sampler("b", CUSTOM_END_TEXTURE_B_UNIT);
@@ -544,8 +544,8 @@ bind_shader_globals_to_current_context(void) {
 ssize_t
 create_cell_vao(void) {
     ssize_t vao_idx = create_vao();
-#define A(name, size, dtype, offset, stride)                                                                                                                   \
-    add_attribute_to_vao(                                                                                                                                      \
+#define A(name, size, dtype, offset, stride) \
+    add_attribute_to_vao(                    \
         vao_idx, program_attribute_location(CELL_PROGRAM, name), /*size=*/size, /*dtype=*/dtype, /*stride=*/stride, /*offset=*/offset, /*divisor=*/1);
 #define A1(name, size, dtype, offset) A(name, size, dtype, (void *)(offsetof(GPUCell, offset)), sizeof(GPUCell))
 
@@ -570,8 +570,8 @@ create_cell_vao(void) {
 #undef A1
 }
 
-#define IS_SPECIAL_COLOR(name)                                                                                                                                 \
-    (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL ||                                                                                        \
+#define IS_SPECIAL_COLOR(name)                                          \
+    (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL || \
      (screen->color_profile->overridden.name.type == COLOR_NOT_SET && screen->color_profile->configured.name.type == COLOR_IS_SPECIAL))
 
 static void
@@ -640,7 +640,7 @@ cell_update_uniform_block(
     rd->bg_opacities0 = bg_alpha;
     rd->fg_override_threshold = OPT(text_fg_override_threshold);
     rd->row_offset = row_offset_for_screen(screen);
-#define SETBG(which)                                                                                                                                           \
+#define SETBG(which) \
     { colorprofile_to_transparent_color(cp, which - 1, &rd->bg_colors##which, &rd->bg_opacities##which); }
     SETBG(1);
     SETBG(2);
@@ -776,15 +776,15 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     bool disable_ligatures = screen->disable_ligatures == DISABLE_LIGATURES_CURSOR;
     bool screen_resized = screen->last_rendered.columns != screen->columns || screen->last_rendered.lines != screen->lines;
 
-#define update_cell_data                                                                                                                                       \
-    {                                                                                                                                                          \
-        const unsigned int render_lines = render_lines_for_screen(screen);                                                                                     \
-        sz = sizeof(GPUCell) * render_lines * screen->columns;                                                                                                 \
-        address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, true);                                                                               \
-        screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed);                                                         \
-        unmap_vao_buffer(vao_idx, cell_data_buffer);                                                                                                           \
-        address = NULL;                                                                                                                                        \
-        changed = true;                                                                                                                                        \
+#define update_cell_data                                                                               \
+    {                                                                                                  \
+        const unsigned int render_lines = render_lines_for_screen(screen);                             \
+        sz = sizeof(GPUCell) * render_lines * screen->columns;                                         \
+        address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, true);                       \
+        screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed); \
+        unmap_vao_buffer(vao_idx, cell_data_buffer);                                                   \
+        address = NULL;                                                                                \
+        changed = true;                                                                                \
     }
 
     if (screen->paused_rendering.expires_at) {
@@ -792,28 +792,28 @@ cell_prepare_to_render(ssize_t vao_idx, Screen *screen, FONTS_DATA_HANDLE fonts_
     } else if (screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || screen_resized || (disable_ligatures && cursor_pos_changed))
         update_cell_data;
 
-#define update_selection_data                                                                                                                                  \
-    {                                                                                                                                                          \
-        const unsigned int render_lines = render_lines_for_screen(screen);                                                                                     \
-        sz = (size_t)render_lines * screen->columns;                                                                                                           \
-        address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, true);                                                                               \
-        screen_apply_selection(screen, address, sz);                                                                                                           \
-        unmap_vao_buffer(vao_idx, selection_buffer);                                                                                                           \
-        address = NULL;                                                                                                                                        \
-        changed = true;                                                                                                                                        \
+#define update_selection_data                                                    \
+    {                                                                            \
+        const unsigned int render_lines = render_lines_for_screen(screen);       \
+        sz = (size_t)render_lines * screen->columns;                             \
+        address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, true); \
+        screen_apply_selection(screen, address, sz);                             \
+        unmap_vao_buffer(vao_idx, selection_buffer);                             \
+        address = NULL;                                                          \
+        changed = true;                                                          \
     }
 
-#define update_graphics_data(grman)                                                                                                                            \
-    grman_update_layers(                                                                                                                                       \
-        grman,                                                                                                                                                 \
-        screen->scrolled_by,                                                                                                                                   \
-        scroll_offset_lines_for_screen(screen),                                                                                                                \
-        -1.f,                                                                                                                                                  \
-        1.f,                                                                                                                                                   \
-        2.f / screen->columns,                                                                                                                                 \
-        2.f / screen->lines,                                                                                                                                   \
-        screen->columns,                                                                                                                                       \
-        screen->lines,                                                                                                                                         \
+#define update_graphics_data(grman)             \
+    grman_update_layers(                        \
+        grman,                                  \
+        screen->scrolled_by,                    \
+        scroll_offset_lines_for_screen(screen), \
+        -1.f,                                   \
+        1.f,                                    \
+        2.f / screen->columns,                  \
+        2.f / screen->lines,                    \
+        screen->columns,                        \
+        screen->lines,                          \
         screen->cell_size)
 
     if (screen->paused_rendering.expires_at) {
@@ -980,12 +980,12 @@ draw_visual_bell_flash(GLfloat intensity, const color_type flash) {
 
 static color_type
 get_flash_color(const Screen *screen) {
-#define COLOR(name, fallback)                                                                                                                                  \
-    colorprofile_to_color_with_fallback(                                                                                                                       \
-        screen->color_profile,                                                                                                                                 \
-        screen->color_profile->overridden.name,                                                                                                                \
-        screen->color_profile->configured.name,                                                                                                                \
-        screen->color_profile->overridden.fallback,                                                                                                            \
+#define COLOR(name, fallback)                       \
+    colorprofile_to_color_with_fallback(            \
+        screen->color_profile,                      \
+        screen->color_profile->overridden.name,     \
+        screen->color_profile->configured.name,     \
+        screen->color_profile->overridden.fallback, \
         screen->color_profile->configured.fallback)
     return !IS_SPECIAL_COLOR(highlight_bg) ? COLOR(visual_bell_color, highlight_bg) : COLOR(visual_bell_color, default_fg);
 #undef COLOR
@@ -1053,12 +1053,12 @@ render_a_bar(const UIRenderData *ui, WindowBarData *bar, PyObject *title, bool a
         bar->width = bar_width;
         bar->needs_render = true;
     }
-#define RGBCOL(which, fallback)                                                                                                                                \
-    (0xff000000 | colorprofile_to_color_with_fallback(                                                                                                         \
-                      ui->screen->color_profile,                                                                                                               \
-                      ui->screen->color_profile->overridden.which,                                                                                             \
-                      ui->screen->color_profile->configured.which,                                                                                             \
-                      ui->screen->color_profile->overridden.fallback,                                                                                          \
+#define RGBCOL(which, fallback)                                       \
+    (0xff000000 | colorprofile_to_color_with_fallback(                \
+                      ui->screen->color_profile,                      \
+                      ui->screen->color_profile->overridden.which,    \
+                      ui->screen->color_profile->configured.which,    \
+                      ui->screen->color_profile->overridden.fallback, \
                       ui->screen->color_profile->configured.fallback))
     color_type fg = RGBCOL(default_fg, default_fg), bg = RGBCOL(default_bg, default_bg);
 #undef RGBCOL
@@ -2238,12 +2238,12 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     d->dest_rect[1] = 1;
     d->dest_rect[2] = 1;
     d->dest_rect[3] = -1;
-#define FILL_COLOR(dst, c)                                                                                                                                     \
-    do {                                                                                                                                                       \
-        (dst)[0] = srgb_color(((c) >> 16) & 0xFF);                                                                                                             \
-        (dst)[1] = srgb_color(((c) >> 8) & 0xFF);                                                                                                              \
-        (dst)[2] = srgb_color((c) & 0xFF);                                                                                                                     \
-        (dst)[3] = 1.f;                                                                                                                                        \
+#define FILL_COLOR(dst, c)                         \
+    do {                                           \
+        (dst)[0] = srgb_color(((c) >> 16) & 0xFF); \
+        (dst)[1] = srgb_color(((c) >> 8) & 0xFF);  \
+        (dst)[2] = srgb_color((c) & 0xFF);         \
+        (dst)[3] = 1.f;                            \
     } while (0)
     FILL_COLOR(d->background, OPT(background));
     FILL_COLOR(d->foreground, OPT(foreground));
@@ -2628,10 +2628,10 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
             return NULL;
         }
     }
-#define fail_compile()                                                                                                                                         \
-    {                                                                                                                                                          \
-        glDeleteProgram(program->id);                                                                                                                          \
-        return NULL;                                                                                                                                           \
+#define fail_compile()                \
+    {                                 \
+        glDeleteProgram(program->id); \
+        return NULL;                  \
     }
     program->id = glCreateProgram();
     if (!attach_shaders(vertex_shaders, program->id, GL_VERTEX_SHADER)) fail_compile();
@@ -2663,26 +2663,26 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
 
 #define PYWRAP0(name) static PyObject *py##name(PYNOARG)
 #define PYWRAP1(name) static PyObject *py##name(PyObject UNUSED *self, PyObject *args)
-#define PA(fmt, ...)                                                                                                                                           \
+#define PA(fmt, ...) \
     if (!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
-#define ONE_INT(name)                                                                                                                                          \
-    PYWRAP1(name) {                                                                                                                                            \
-        name(PyLong_AsSsize_t(args));                                                                                                                          \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define ONE_INT(name)                 \
+    PYWRAP1(name) {                   \
+        name(PyLong_AsSsize_t(args)); \
+        Py_RETURN_NONE;               \
     }
-#define TWO_INT(name)                                                                                                                                          \
-    PYWRAP1(name) {                                                                                                                                            \
-        int a, b;                                                                                                                                              \
-        PA("ii", &a, &b);                                                                                                                                      \
-        name(a, b);                                                                                                                                            \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define TWO_INT(name)     \
+    PYWRAP1(name) {       \
+        int a, b;         \
+        PA("ii", &a, &b); \
+        name(a, b);       \
+        Py_RETURN_NONE;   \
     }
-#define NO_ARG(name)                                                                                                                                           \
-    PYWRAP0(name) {                                                                                                                                            \
-        name();                                                                                                                                                \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define NO_ARG(name)    \
+    PYWRAP0(name) {     \
+        name();         \
+        Py_RETURN_NONE; \
     }
-#define NO_ARG_INT(name)                                                                                                                                       \
+#define NO_ARG_INT(name) \
     PYWRAP0(name) { return PyLong_FromSsize_t(name()); }
 
 ONE_INT(bind_program)
@@ -2750,10 +2750,10 @@ finalize(void) {
 
 bool
 init_shaders(PyObject *module) {
-#define C(x)                                                                                                                                                   \
-    if (PyModule_AddIntConstant(module, #x, x) != 0) {                                                                                                         \
-        PyErr_NoMemory();                                                                                                                                      \
-        return false;                                                                                                                                          \
+#define C(x)                                           \
+    if (PyModule_AddIntConstant(module, #x, x) != 0) { \
+        PyErr_NoMemory();                              \
+        return false;                                  \
     }
     C(CELL_PROGRAM);
     C(CELL_FG_PROGRAM);

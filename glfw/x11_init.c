@@ -97,23 +97,51 @@ detectEWMH(void) {
 
     // See which of the atoms we support that are supported by the WM
 
-#define ALL_ATOMS                                                                                                                                              \
-    S(NET_WM_STATE)                                                                                                                                            \
-    S(NET_WM_STATE_ABOVE)                                                                                                                                      \
-    S(NET_WM_STATE_BELOW) S(NET_WM_STATE_FULLSCREEN) S(NET_WM_STATE_MAXIMIZED_VERT) S(NET_WM_STATE_MAXIMIZED_HORZ) S(NET_WM_STATE_DEMANDS_ATTENTION)           \
-        S(NET_WM_STATE_SKIP_TASKBAR) S(NET_WM_STATE_SKIP_PAGER) S(NET_WM_STATE_STICKY)                                                                         \
-                                                                                                                                                               \
-            S(NET_WM_FULLSCREEN_MONITORS) S(NET_WM_STRUT_PARTIAL)                                                                                              \
-                                                                                                                                                               \
-                S(NET_WM_WINDOW_TYPE) S(NET_WM_WINDOW_TYPE_NORMAL) S(NET_WM_WINDOW_TYPE_DOCK) S(NET_WM_WINDOW_TYPE_DESKTOP) S(NET_WM_WINDOW_TYPE_UTILITY)      \
-                    S(NET_WM_WINDOW_TYPE_SPLASH) S(NET_WM_WINDOW_TYPE_DIALOG) S(NET_WM_WINDOW_TYPE_MENU) S(NET_WM_WINDOW_TYPE_NOTIFICATION)                    \
-                                                                                                                                                               \
-                        S(NET_WORKAREA) S(NET_CURRENT_DESKTOP) S(NET_ACTIVE_WINDOW) S(NET_FRAME_EXTENTS) S(NET_REQUEST_FRAME_EXTENTS)                          \
-                                                                                                                                                               \
-                            S(NET_WM_ALLOWED_ACTIONS) S(NET_WM_ACTION_MOVE) S(NET_WM_ACTION_RESIZE) S(NET_WM_ACTION_MINIMIZE) S(NET_WM_ACTION_SHADE)           \
-                                S(NET_WM_ACTION_STICK) S(NET_WM_ACTION_MAXIMIZE_HORZ) S(NET_WM_ACTION_MAXIMIZE_VERT) S(NET_WM_ACTION_FULLSCREEN)               \
-                                    S(NET_WM_ACTION_CHANGE_DESKTOP) S(NET_WM_ACTION_CLOSE) S(NET_WM_ACTION_ABOVE) S(NET_WM_ACTION_BELOW)                       \
-                                        S(NET_WM_ACTION_ABOVE_BELOW)
+#define ALL_ATOMS                      \
+    S(NET_WM_STATE)                    \
+    S(NET_WM_STATE_ABOVE)              \
+    S(NET_WM_STATE_BELOW)              \
+    S(NET_WM_STATE_FULLSCREEN)         \
+    S(NET_WM_STATE_MAXIMIZED_VERT)     \
+    S(NET_WM_STATE_MAXIMIZED_HORZ)     \
+    S(NET_WM_STATE_DEMANDS_ATTENTION)  \
+    S(NET_WM_STATE_SKIP_TASKBAR)       \
+    S(NET_WM_STATE_SKIP_PAGER)         \
+    S(NET_WM_STATE_STICKY)             \
+                                       \
+    S(NET_WM_FULLSCREEN_MONITORS)      \
+    S(NET_WM_STRUT_PARTIAL)            \
+                                       \
+    S(NET_WM_WINDOW_TYPE)              \
+    S(NET_WM_WINDOW_TYPE_NORMAL)       \
+    S(NET_WM_WINDOW_TYPE_DOCK)         \
+    S(NET_WM_WINDOW_TYPE_DESKTOP)      \
+    S(NET_WM_WINDOW_TYPE_UTILITY)      \
+    S(NET_WM_WINDOW_TYPE_SPLASH)       \
+    S(NET_WM_WINDOW_TYPE_DIALOG)       \
+    S(NET_WM_WINDOW_TYPE_MENU)         \
+    S(NET_WM_WINDOW_TYPE_NOTIFICATION) \
+                                       \
+    S(NET_WORKAREA)                    \
+    S(NET_CURRENT_DESKTOP)             \
+    S(NET_ACTIVE_WINDOW)               \
+    S(NET_FRAME_EXTENTS)               \
+    S(NET_REQUEST_FRAME_EXTENTS)       \
+                                       \
+    S(NET_WM_ALLOWED_ACTIONS)          \
+    S(NET_WM_ACTION_MOVE)              \
+    S(NET_WM_ACTION_RESIZE)            \
+    S(NET_WM_ACTION_MINIMIZE)          \
+    S(NET_WM_ACTION_SHADE)             \
+    S(NET_WM_ACTION_STICK)             \
+    S(NET_WM_ACTION_MAXIMIZE_HORZ)     \
+    S(NET_WM_ACTION_MAXIMIZE_VERT)     \
+    S(NET_WM_ACTION_FULLSCREEN)        \
+    S(NET_WM_ACTION_CHANGE_DESKTOP)    \
+    S(NET_WM_ACTION_CLOSE)             \
+    S(NET_WM_ACTION_ABOVE)             \
+    S(NET_WM_ACTION_BELOW)             \
+    S(NET_WM_ACTION_ABOVE_BELOW)
 
     static const char *atom_names[40] = {
 #define S(x) "_" #x,

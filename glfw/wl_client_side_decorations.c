@@ -31,11 +31,11 @@
 #define R(x) (((x) >> 16) & 0xff)
 #define G(x) (((x) >> 8) & 0xff)
 #define B(x) ((x) & 0xff)
-#define SWAP(x, y)                                                                                                                                             \
-    do {                                                                                                                                                       \
-        __typeof__(x) SWAP = x;                                                                                                                                \
-        x = y;                                                                                                                                                 \
-        y = SWAP;                                                                                                                                              \
+#define SWAP(x, y)              \
+    do {                        \
+        __typeof__(x) SWAP = x; \
+        x = y;                  \
+        y = SWAP;               \
     } while (0)
 
 // shadow tile  {{{
@@ -153,29 +153,29 @@ init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, doub
     return 2 * pair->size_in_bytes;
 }
 
-#define all_shadow_surfaces(Q)                                                                                                                                 \
-    Q(shadow_left);                                                                                                                                            \
-    Q(shadow_top);                                                                                                                                             \
-    Q(shadow_right);                                                                                                                                           \
-    Q(shadow_bottom);                                                                                                                                          \
-    Q(shadow_upper_left);                                                                                                                                      \
-    Q(shadow_upper_right);                                                                                                                                     \
-    Q(shadow_lower_left);                                                                                                                                      \
+#define all_shadow_surfaces(Q) \
+    Q(shadow_left);            \
+    Q(shadow_top);             \
+    Q(shadow_right);           \
+    Q(shadow_bottom);          \
+    Q(shadow_upper_left);      \
+    Q(shadow_upper_right);     \
+    Q(shadow_lower_left);      \
     Q(shadow_lower_right);
-#define all_surfaces(Q)                                                                                                                                        \
-    Q(titlebar);                                                                                                                                               \
+#define all_surfaces(Q) \
+    Q(titlebar);        \
     all_shadow_surfaces(Q);
 
 static bool
 window_has_buffer(_GLFWwindow *window, struct wl_buffer *q) {
-#define Q(which)                                                                                                                                               \
-    if (decs.which.buffer.a == q) {                                                                                                                            \
-        decs.which.buffer.a_needs_to_be_destroyed = false;                                                                                                     \
-        return true;                                                                                                                                           \
-    }                                                                                                                                                          \
-    if (decs.which.buffer.b == q) {                                                                                                                            \
-        decs.which.buffer.b_needs_to_be_destroyed = false;                                                                                                     \
-        return true;                                                                                                                                           \
+#define Q(which)                                           \
+    if (decs.which.buffer.a == q) {                        \
+        decs.which.buffer.a_needs_to_be_destroyed = false; \
+        return true;                                       \
+    }                                                      \
+    if (decs.which.buffer.b == q) {                        \
+        decs.which.buffer.b_needs_to_be_destroyed = false; \
+        return true;                                       \
     }
     all_surfaces(Q);
 #undef Q
@@ -444,22 +444,22 @@ render_buttons:
     uint8_t *alpha_mask = malloc(button_size * button_size);
     int left = decs.titlebar.buffer.width - num_buttons * button_size;
     if (!alpha_mask || left <= 0) return;
-#define drawb(which, antialias, func, hover_bg)                                                                                                                \
-    {                                                                                                                                                          \
-        render_button(                                                                                                                                         \
-            func,                                                                                                                                              \
-            antialias,                                                                                                                                         \
-            (uint32_t *)output,                                                                                                                                \
-            alpha_mask,                                                                                                                                        \
-            button_size,                                                                                                                                       \
-            decs.titlebar.buffer.width,                                                                                                                        \
-            button_size,                                                                                                                                       \
-            left,                                                                                                                                              \
-            decs.which.hovered ? hover_bg : bg_color,                                                                                                          \
-            fg_color);                                                                                                                                         \
-        decs.which.left = left;                                                                                                                                \
-        decs.which.width = button_size;                                                                                                                        \
-        left += button_size;                                                                                                                                   \
+#define drawb(which, antialias, func, hover_bg)       \
+    {                                                 \
+        render_button(                                \
+            func,                                     \
+            antialias,                                \
+            (uint32_t *)output,                       \
+            alpha_mask,                               \
+            button_size,                              \
+            decs.titlebar.buffer.width,               \
+            button_size,                              \
+            left,                                     \
+            decs.which.hovered ? hover_bg : bg_color, \
+            fg_color);                                \
+        decs.which.left = left;                       \
+        decs.which.width = button_size;               \
+        left += button_size;                          \
     }
 
     if (window->wl.wm_capabilities.minimize) drawb(minimize, false, render_minimize, hover_bg);
@@ -544,10 +544,10 @@ render_shadows(_GLFWwindow *window) {
     const ssize_t src_leftover_corner = st.corner_size - scaled_shadow_size;
     ssize_t y_start = 0, y_end = decs.shadow_left.buffer.height, top_end = MIN(y_end, src_leftover_corner);
     ssize_t right_src_start = st.stride - scaled_shadow_size;
-#define c(src_y_start, src_y_limit, dest_y_start, dest_y_limit)                                                                                                \
-    {                                                                                                                                                          \
-        copy_vertical_region(window, src_y_start, src_y_limit, dest_y_start, dest_y_limit, 0, &decs.shadow_left.buffer);                                       \
-        copy_vertical_region(window, src_y_start, src_y_limit, dest_y_start, dest_y_limit, right_src_start, &decs.shadow_right.buffer);                        \
+#define c(src_y_start, src_y_limit, dest_y_start, dest_y_limit)                                                                         \
+    {                                                                                                                                   \
+        copy_vertical_region(window, src_y_start, src_y_limit, dest_y_start, dest_y_limit, 0, &decs.shadow_left.buffer);                \
+        copy_vertical_region(window, src_y_start, src_y_limit, dest_y_start, dest_y_limit, right_src_start, &decs.shadow_right.buffer); \
     }
     c(scaled_shadow_size, st.corner_size, y_start, top_end);
     // bottom region
@@ -558,10 +558,10 @@ render_shadows(_GLFWwindow *window) {
         c(st.corner_size, st.corner_size + scaled_shadow_size, dest_y, MIN(dest_y + scaled_shadow_size, bottom_start));
 #undef c
 
-#define copy(which)                                                                                                                                            \
-    for (uint32_t *src = (uint32_t *)decs.which.buffer.data.front, *dest = (uint32_t *)decs.which.buffer.data.back;                                            \
-         src < (uint32_t *)(decs.which.buffer.data.front + decs.which.buffer.size_in_bytes);                                                                   \
-         src++, dest++)                                                                                                                                        \
+#define copy(which)                                                                                                 \
+    for (uint32_t *src = (uint32_t *)decs.which.buffer.data.front, *dest = (uint32_t *)decs.which.buffer.data.back; \
+         src < (uint32_t *)(decs.which.buffer.data.front + decs.which.buffer.size_in_bytes);                        \
+         src++, dest++)                                                                                             \
         *dest = (A(*src) / 2) << 24;
     all_shadow_surfaces(copy);
 #undef copy
@@ -629,11 +629,11 @@ free_csd_surfaces(_GLFWwindow *window) {
 
 static void
 free_csd_buffers(_GLFWwindow *window) {
-#define Q(which)                                                                                                                                               \
-    {                                                                                                                                                          \
-        if (decs.which.buffer.a_needs_to_be_destroyed && decs.which.buffer.a) wl_buffer_destroy(decs.which.buffer.a);                                          \
-        if (decs.which.buffer.b_needs_to_be_destroyed && decs.which.buffer.b) wl_buffer_destroy(decs.which.buffer.b);                                          \
-        memset(&decs.which.buffer, 0, sizeof(_GLFWWaylandBufferPair));                                                                                         \
+#define Q(which)                                                                                                      \
+    {                                                                                                                 \
+        if (decs.which.buffer.a_needs_to_be_destroyed && decs.which.buffer.a) wl_buffer_destroy(decs.which.buffer.a); \
+        if (decs.which.buffer.b_needs_to_be_destroyed && decs.which.buffer.b) wl_buffer_destroy(decs.which.buffer.b); \
+        memset(&decs.which.buffer, 0, sizeof(_GLFWWaylandBufferPair));                                                \
     }
     all_surfaces(Q);
 #undef Q
@@ -665,17 +665,17 @@ create_csd_surfaces(_GLFWwindow *window, _GLFWWaylandCSDSurface *s) {
     }
 }
 
-#define damage_csd(which, xbuffer)                                                                                                                             \
-    if (decs.which.surface) {                                                                                                                                  \
-        wl_surface_attach(decs.which.surface, (xbuffer), 0, 0);                                                                                                \
-        if (decs.which.wp_viewport) wp_viewport_set_destination(decs.which.wp_viewport, decs.which.buffer.viewport_width, decs.which.buffer.viewport_height);  \
-        wl_surface_damage(decs.which.surface, 0, 0, decs.which.buffer.width, decs.which.buffer.height);                                                        \
-        wl_surface_commit(decs.which.surface);                                                                                                                 \
-        if (decs.which.buffer.a == (xbuffer)) {                                                                                                                \
-            decs.which.buffer.a_needs_to_be_destroyed = false;                                                                                                 \
-        } else {                                                                                                                                               \
-            decs.which.buffer.b_needs_to_be_destroyed = false;                                                                                                 \
-        }                                                                                                                                                      \
+#define damage_csd(which, xbuffer)                                                                                                                            \
+    if (decs.which.surface) {                                                                                                                                 \
+        wl_surface_attach(decs.which.surface, (xbuffer), 0, 0);                                                                                               \
+        if (decs.which.wp_viewport) wp_viewport_set_destination(decs.which.wp_viewport, decs.which.buffer.viewport_width, decs.which.buffer.viewport_height); \
+        wl_surface_damage(decs.which.surface, 0, 0, decs.which.buffer.width, decs.which.buffer.height);                                                       \
+        wl_surface_commit(decs.which.surface);                                                                                                                \
+        if (decs.which.buffer.a == (xbuffer)) {                                                                                                               \
+            decs.which.buffer.a_needs_to_be_destroyed = false;                                                                                                \
+        } else {                                                                                                                                              \
+            decs.which.buffer.b_needs_to_be_destroyed = false;                                                                                                \
+        }                                                                                                                                                     \
     }
 
 static bool
@@ -721,8 +721,8 @@ ensure_csd_resources(_GLFWwindow *window) {
 
     const int top_y = has_titlebar ? -(int)decs.metrics.visible_titlebar_height : 0;
 
-#define setup_surface(which, x, y)                                                                                                                             \
-    if (!decs.which.surface) create_csd_surfaces(window, &decs.which);                                                                                         \
+#define setup_surface(which, x, y)                                     \
+    if (!decs.which.surface) create_csd_surfaces(window, &decs.which); \
     position_csd_surface(&decs.which, x, y);
 
     if (has_titlebar) {
@@ -881,16 +881,16 @@ static bool
 update_hovered_button(_GLFWwindow *window) {
     bool has_hovered_button = false;
     int scaled_x = (int)round(decs.for_window_state.fscale * x);
-#define c(which)                                                                                                                                               \
-    if (decs.which.left <= scaled_x && scaled_x < decs.which.left + decs.which.width) {                                                                        \
-        has_hovered_button = true;                                                                                                                             \
-        if (!decs.which.hovered) {                                                                                                                             \
-            decs.titlebar_needs_update = true;                                                                                                                 \
-            decs.which.hovered = true;                                                                                                                         \
-        }                                                                                                                                                      \
-    } else if (decs.which.hovered) {                                                                                                                           \
-        decs.titlebar_needs_update = true;                                                                                                                     \
-        decs.which.hovered = false;                                                                                                                            \
+#define c(which)                                                                        \
+    if (decs.which.left <= scaled_x && scaled_x < decs.which.left + decs.which.width) { \
+        has_hovered_button = true;                                                      \
+        if (!decs.which.hovered) {                                                      \
+            decs.titlebar_needs_update = true;                                          \
+            decs.which.hovered = true;                                                  \
+        }                                                                               \
+    } else if (decs.which.hovered) {                                                    \
+        decs.titlebar_needs_update = true;                                              \
+        decs.which.hovered = false;                                                     \
     }
 
     c(minimize);
@@ -908,10 +908,10 @@ has_hovered_button(_GLFWwindow *window) {
 
 static void
 handle_pointer_leave(_GLFWwindow *window, struct wl_surface *surface) {
-#define c(which)                                                                                                                                               \
-    if (decs.which.hovered) {                                                                                                                                  \
-        decs.titlebar_needs_update = true;                                                                                                                     \
-        decs.which.hovered = false;                                                                                                                            \
+#define c(which)                           \
+    if (decs.which.hovered) {              \
+        decs.titlebar_needs_update = true; \
+        decs.which.hovered = false;        \
     }
     if (surface == decs.titlebar.surface) {
         c(minimize);
@@ -948,11 +948,11 @@ handle_pointer_move(_GLFWwindow *window) {
 
 static void
 handle_pointer_enter(_GLFWwindow *window, struct wl_surface *surface) {
-#define Q(which)                                                                                                                                               \
-    if (decs.which.surface == surface) {                                                                                                                       \
-        decs.focus = CSD_##which;                                                                                                                              \
-        handle_pointer_move(window);                                                                                                                           \
-        return;                                                                                                                                                \
+#define Q(which)                         \
+    if (decs.which.surface == surface) { \
+        decs.focus = CSD_##which;        \
+        handle_pointer_move(window);     \
+        return;                          \
     } // enter is also a move
 
     all_surfaces(Q)

@@ -36,23 +36,23 @@
 #define EXPORTED __attribute__((visibility("default")))
 #define LIKELY(x) __builtin_expect(!!(x), 1)
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
-#define MAX(x, y)                                                                                                                                              \
-    __extension__({                                                                                                                                            \
-        const __typeof__(x) __a__ = (x);                                                                                                                       \
-        const __typeof__(y) __b__ = (y);                                                                                                                       \
-        __a__ > __b__ ? __a__ : __b__;                                                                                                                         \
+#define MAX(x, y)                        \
+    __extension__({                      \
+        const __typeof__(x) __a__ = (x); \
+        const __typeof__(y) __b__ = (y); \
+        __a__ > __b__ ? __a__ : __b__;   \
     })
-#define MIN(x, y)                                                                                                                                              \
-    __extension__({                                                                                                                                            \
-        const __typeof__(x) __a__ = (x);                                                                                                                       \
-        const __typeof__(y) __b__ = (y);                                                                                                                       \
-        __a__ < __b__ ? __a__ : __b__;                                                                                                                         \
+#define MIN(x, y)                        \
+    __extension__({                      \
+        const __typeof__(x) __a__ = (x); \
+        const __typeof__(y) __b__ = (y); \
+        __a__ < __b__ ? __a__ : __b__;   \
     })
-#define SWAP(x, y)                                                                                                                                             \
-    do {                                                                                                                                                       \
-        __typeof__(x) _sw_ = y;                                                                                                                                \
-        y = x;                                                                                                                                                 \
-        x = _sw_;                                                                                                                                              \
+#define SWAP(x, y)              \
+    do {                        \
+        __typeof__(x) _sw_ = y; \
+        y = x;                  \
+        x = _sw_;               \
     } while (0)
 #define xstr(s) str(s)
 #define str(s) #s
@@ -62,14 +62,14 @@
 #define literal_strlen(x) (sizeof(x) - 1)
 #define zero_at_ptr_count(p, count) memset((p), 0, (count) * sizeof((p)[0]))
 #define C0_EXCEPT_NL_SPACE_TAB_DEL 0x0 ... 0x8 : case 0xb ... 0x1f
-#define C0_EXCEPT_NL_SPACE_TAB                                                                                                                                 \
-    0x0 ... 0x8 : case 0xb ... 0x1f:                                                                                                                           \
+#define C0_EXCEPT_NL_SPACE_TAB       \
+    0x0 ... 0x8 : case 0xb ... 0x1f: \
     case 0x7f
 void log_error(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
-#define fatal(...)                                                                                                                                             \
-    {                                                                                                                                                          \
-        log_error(__VA_ARGS__);                                                                                                                                \
-        exit(EXIT_FAILURE);                                                                                                                                    \
+#define fatal(...)              \
+    {                           \
+        log_error(__VA_ARGS__); \
+        exit(EXIT_FAILURE);     \
     }
 static inline void
 cleanup_free(void *p) {
@@ -158,8 +158,8 @@ typedef struct ImageAnchorPosition {
 #define FG 1
 #define BG 2
 
-#define COPY_CELL(src, s, dest, d)                                                                                                                             \
-    (dest)->cpu_cells[d] = (src)->cpu_cells[s];                                                                                                                \
+#define COPY_CELL(src, s, dest, d)              \
+    (dest)->cpu_cells[d] = (src)->cpu_cells[s]; \
     (dest)->gpu_cells[d] = (src)->gpu_cells[s];
 
 #define COPY_SELF_CELL(s, d) COPY_CELL(self, s, self, d)
@@ -167,19 +167,19 @@ typedef struct ImageAnchorPosition {
 #define METHOD(name, arg_type) {#name, (PyCFunction)name, arg_type, name##_doc},
 #define METHODB(name, arg_type) {#name, (PyCFunction)name, arg_type, ""}
 
-#define BOOL_GETSET(type, x)                                                                                                                                   \
-    static PyObject *x##_get(type *self, void UNUSED *closure) {                                                                                               \
-        PyObject *ans = self->x ? Py_True : Py_False;                                                                                                          \
-        Py_INCREF(ans);                                                                                                                                        \
-        return ans;                                                                                                                                            \
-    }                                                                                                                                                          \
-    static int x##_set(type *self, PyObject *value, void UNUSED *closure) {                                                                                    \
-        if (value == NULL) {                                                                                                                                   \
-            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");                                                                                       \
-            return -1;                                                                                                                                         \
-        }                                                                                                                                                      \
-        self->x = PyObject_IsTrue(value) ? true : false;                                                                                                       \
-        return 0;                                                                                                                                              \
+#define BOOL_GETSET(type, x)                                                \
+    static PyObject *x##_get(type *self, void UNUSED *closure) {            \
+        PyObject *ans = self->x ? Py_True : Py_False;                       \
+        Py_INCREF(ans);                                                     \
+        return ans;                                                         \
+    }                                                                       \
+    static int x##_set(type *self, PyObject *value, void UNUSED *closure) { \
+        if (value == NULL) {                                                \
+            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");    \
+            return -1;                                                      \
+        }                                                                   \
+        self->x = PyObject_IsTrue(value) ? true : false;                    \
+        return 0;                                                           \
     }
 
 #define GETSET(x) {#x, (getter)x##_get, (setter)x##_set, #x, NULL},
@@ -187,27 +187,27 @@ typedef struct ImageAnchorPosition {
 #ifndef EXTRA_INIT
 #define EXTRA_INIT
 #endif
-#define INIT_TYPE(type)                                                                                                                                        \
-    int init_##type(PyObject *module) {                                                                                                                        \
-        if (PyType_Ready(&type##_Type) < 0) return 0;                                                                                                          \
-        if (PyModule_AddObject(module, #type, (PyObject *)&type##_Type) != 0) return 0;                                                                        \
-        Py_INCREF(&type##_Type);                                                                                                                               \
-        EXTRA_INIT;                                                                                                                                            \
-        return 1;                                                                                                                                              \
+#define INIT_TYPE(type)                                                                 \
+    int init_##type(PyObject *module) {                                                 \
+        if (PyType_Ready(&type##_Type) < 0) return 0;                                   \
+        if (PyModule_AddObject(module, #type, (PyObject *)&type##_Type) != 0) return 0; \
+        Py_INCREF(&type##_Type);                                                        \
+        EXTRA_INIT;                                                                     \
+        return 1;                                                                       \
     }
 
-#define RICHCMP(type)                                                                                                                                          \
-    static PyObject *richcmp(PyObject *obj1, PyObject *obj2, int op) {                                                                                         \
-        PyObject *result = NULL;                                                                                                                               \
-        int eq;                                                                                                                                                \
-        if (op != Py_EQ && op != Py_NE) { Py_RETURN_NOTIMPLEMENTED; }                                                                                          \
-        if (!PyObject_TypeCheck(obj1, &type##_Type)) { Py_RETURN_FALSE; }                                                                                      \
-        if (!PyObject_TypeCheck(obj2, &type##_Type)) { Py_RETURN_FALSE; }                                                                                      \
-        eq = __eq__((type *)obj1, (type *)obj2);                                                                                                               \
-        if (op == Py_NE) result = eq ? Py_False : Py_True;                                                                                                     \
-        else result = eq ? Py_True : Py_False;                                                                                                                 \
-        Py_INCREF(result);                                                                                                                                     \
-        return result;                                                                                                                                         \
+#define RICHCMP(type)                                                     \
+    static PyObject *richcmp(PyObject *obj1, PyObject *obj2, int op) {    \
+        PyObject *result = NULL;                                          \
+        int eq;                                                           \
+        if (op != Py_EQ && op != Py_NE) { Py_RETURN_NOTIMPLEMENTED; }     \
+        if (!PyObject_TypeCheck(obj1, &type##_Type)) { Py_RETURN_FALSE; } \
+        if (!PyObject_TypeCheck(obj2, &type##_Type)) { Py_RETURN_FALSE; } \
+        eq = __eq__((type *)obj1, (type *)obj2);                          \
+        if (op == Py_NE) result = eq ? Py_False : Py_True;                \
+        else result = eq ? Py_True : Py_False;                            \
+        Py_INCREF(result);                                                \
+        return result;                                                    \
     }
 
 #ifdef __clang__
@@ -225,9 +225,9 @@ typedef struct ImageAnchorPosition {
 #define START_ALLOW_CASE_RANGE IGNORE_PEDANTIC_WARNINGS
 #define END_ALLOW_CASE_RANGE END_IGNORE_PEDANTIC_WARNINGS
 #define BIT_MASK(__TYPE__, __ONE_COUNT__) (((__TYPE__)(-((__ONE_COUNT__) != 0))) & (((__TYPE__) - 1) >> ((sizeof(__TYPE__) * CHAR_BIT) - (__ONE_COUNT__))))
-#define ADD_TYPE(which)                                                                                                                                        \
-    if (PyType_Ready(&which##_Type) < 0) return false;                                                                                                         \
-    if (PyModule_AddObject(module, #which, (PyObject *)&which##_Type) != 0) return false;                                                                      \
+#define ADD_TYPE(which)                                                                   \
+    if (PyType_Ready(&which##_Type) < 0) return false;                                    \
+    if (PyModule_AddObject(module, #which, (PyObject *)&which##_Type) != 0) return false; \
     Py_INCREF(&which##_Type);
 
 
@@ -319,9 +319,9 @@ typedef struct {
 typedef struct FontCellMetrics {
     unsigned int cell_width, cell_height, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
 } FontCellMetrics;
-#define FONTS_DATA_HEAD                                                                                                                                        \
-    SPRITE_MAP_HANDLE sprite_map;                                                                                                                              \
-    double logical_dpi_x, logical_dpi_y, font_sz_in_pts;                                                                                                       \
+#define FONTS_DATA_HEAD                                  \
+    SPRITE_MAP_HANDLE sprite_map;                        \
+    double logical_dpi_x, logical_dpi_y, font_sz_in_pts; \
     FontCellMetrics fcm;
 typedef struct {
     FONTS_DATA_HEAD
@@ -329,19 +329,19 @@ typedef struct {
 
 #define clear_sprite_position(cell) (cell).sprite_idx = 0;
 
-#define ensure_space_for(base, array, type, num, capacity, initial_cap, zero_mem)                                                                              \
-    if ((base)->capacity < num) {                                                                                                                              \
-        size_t _newcap = MAX((size_t)initial_cap, MAX(2 * (base)->capacity, (size_t)num));                                                                     \
-        (base)->array = realloc((base)->array, sizeof(type) * _newcap);                                                                                        \
-        if ((base)->array == NULL) fatal("Out of memory while ensuring space for %zu elements in array of %s", (size_t)num, #type);                            \
-        if (zero_mem) memset((base)->array + (base)->capacity, 0, sizeof(type) * (_newcap - (base)->capacity));                                                \
-        (base)->capacity = _newcap;                                                                                                                            \
+#define ensure_space_for(base, array, type, num, capacity, initial_cap, zero_mem)                                                   \
+    if ((base)->capacity < num) {                                                                                                   \
+        size_t _newcap = MAX((size_t)initial_cap, MAX(2 * (base)->capacity, (size_t)num));                                          \
+        (base)->array = realloc((base)->array, sizeof(type) * _newcap);                                                             \
+        if ((base)->array == NULL) fatal("Out of memory while ensuring space for %zu elements in array of %s", (size_t)num, #type); \
+        if (zero_mem) memset((base)->array + (base)->capacity, 0, sizeof(type) * (_newcap - (base)->capacity));                     \
+        (base)->capacity = _newcap;                                                                                                 \
     }
 
-#define remove_i_from_array(array, i, count)                                                                                                                   \
-    {                                                                                                                                                          \
-        (count)--;                                                                                                                                             \
-        if ((i) < (count)) { memmove((array) + (i), (array) + (i) + 1, sizeof((array)[0]) * ((count) - (i))); }                                                \
+#define remove_i_from_array(array, i, count)                                                                    \
+    {                                                                                                           \
+        (count)--;                                                                                              \
+        if ((i) < (count)) { memmove((array) + (i), (array) + (i) + 1, sizeof((array)[0]) * ((count) - (i))); } \
     }
 
 // Global functions
@@ -389,13 +389,13 @@ SPRITE_MAP_HANDLE alloc_sprite_map(void);
 void free_sprite_data(FONTS_DATA_HANDLE);
 const char *get_hyperlink_for_id(const HYPERLINK_POOL_HANDLE, hyperlink_id_type id, bool only_url);
 
-#define memset_array(array, val, count)                                                                                                                        \
-    if ((count) > 0) {                                                                                                                                         \
-        (array)[0] = (val);                                                                                                                                    \
-        size_t __copied__ = 1;                                                                                                                                 \
-        while (__copied__ < (count)) {                                                                                                                         \
-            const size_t __num__ = MIN(__copied__, (count) - __copied__);                                                                                      \
-            memcpy((array) + __copied__, (array), __num__ * sizeof((val)));                                                                                    \
-            __copied__ += __num__;                                                                                                                             \
-        }                                                                                                                                                      \
+#define memset_array(array, val, count)                                     \
+    if ((count) > 0) {                                                      \
+        (array)[0] = (val);                                                 \
+        size_t __copied__ = 1;                                              \
+        while (__copied__ < (count)) {                                      \
+            const size_t __num__ = MIN(__copied__, (count) - __copied__);   \
+            memcpy((array) + __copied__, (array), __num__ * sizeof((val))); \
+            __copied__ += __num__;                                          \
+        }                                                                   \
     }

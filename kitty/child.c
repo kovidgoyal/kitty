@@ -60,12 +60,12 @@ write_to_stderr(const char *text) {
     }
 }
 
-#define exit_on_err(m)                                                                                                                                         \
-    {                                                                                                                                                          \
-        write_to_stderr(m);                                                                                                                                    \
-        write_to_stderr(": ");                                                                                                                                 \
-        write_to_stderr(strerror(errno));                                                                                                                      \
-        exit(EXIT_FAILURE);                                                                                                                                    \
+#define exit_on_err(m)                    \
+    {                                     \
+        write_to_stderr(m);               \
+        write_to_stderr(": ");            \
+        write_to_stderr(strerror(errno)); \
+        exit(EXIT_FAILURE);               \
     }
 
 static void
@@ -133,7 +133,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
 #endif
             const struct sigaction act = {.sa_handler = SIG_DFL};
 
-#define SA(which)                                                                                                                                              \
+#define SA(which) \
     if (sigaction(which, &act, NULL) != 0) exit_on_err("sigaction() in child process failed");
             for (int si = 0; si < num_handled_signals; si++) { SA(handled_signals[si]); }
             // See _Py_RestoreSignals in signalmodule.c for a list of signals python nukes

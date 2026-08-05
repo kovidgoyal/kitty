@@ -97,7 +97,7 @@ typedef enum {
 static uint32_t
 ibus_key_state_from_glfw(unsigned int glfw_modifiers, int action) {
     uint32_t ans = action == GLFW_RELEASE ? IBUS_RELEASE_MASK : 0;
-#define M(g, i)                                                                                                                                                \
+#define M(g, i) \
     if (glfw_modifiers & GLFW_MOD_##g) ans |= i
     M(SHIFT, IBUS_SHIFT_MASK);
     M(CAPS_LOCK, IBUS_LOCK_MASK);
@@ -113,7 +113,7 @@ ibus_key_state_from_glfw(unsigned int glfw_modifiers, int action) {
 static unsigned int
 glfw_modifiers_from_ibus_state(uint32_t ibus_key_state) {
     unsigned int ans = 0;
-#define M(g, i)                                                                                                                                                \
+#define M(g, i) \
     if (ibus_key_state & i) ans |= GLFW_MOD_##g
     M(SHIFT, IBUS_SHIFT_MASK);
     M(CAPS_LOCK, IBUS_LOCK_MASK);
@@ -447,10 +447,10 @@ glfw_ibus_terminate(_GLFWIBUSData *ibus) {
         glfw_dbus_close_connection(ibus->conn);
         ibus->conn = NULL;
     }
-#define F(x)                                                                                                                                                   \
-    if (ibus->x) {                                                                                                                                             \
-        free((void *)ibus->x);                                                                                                                                 \
-        ibus->x = NULL;                                                                                                                                        \
+#define F(x)                   \
+    if (ibus->x) {             \
+        free((void *)ibus->x); \
+        ibus->x = NULL;        \
     }
     F(input_ctx_path);
     F(address);

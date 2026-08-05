@@ -757,9 +757,9 @@ update_allowed_mimes_for_drop(GLFWDropEvent *ev) {
 static void
 read_drop_data(GLFWwindow *window, GLFWDropEvent *ev) {
     RAII_PyObject(chunk, PyBytes_FromStringAndSize(NULL, 8192));
-#define finish(ok)                                                                                                                                             \
-    ev->finish_drop(window, ok ? GLFW_DRAG_OPERATION_COPY : GLFW_DRAG_OPERATION_GENERIC);                                                                      \
-    Py_CLEAR(global_state.drop_dest.data);                                                                                                                     \
+#define finish(ok)                                                                        \
+    ev->finish_drop(window, ok ? GLFW_DRAG_OPERATION_COPY : GLFW_DRAG_OPERATION_GENERIC); \
+    Py_CLEAR(global_state.drop_dest.data);                                                \
     if (PyErr_Occurred()) PyErr_Print()
     if (!chunk) {
         finish(false);
@@ -975,18 +975,18 @@ cancel_current_drag_source(void) {
 
 static void
 drag_source_callback(GLFWwindow *window UNUSED, GLFWDragEvent *ev) {
-#define finish                                                                                                                                                 \
-    {                                                                                                                                                          \
-        call_boss(                                                                                                                                             \
-            on_drag_source_finished,                                                                                                                           \
-            "OOsiOO",                                                                                                                                          \
-            ds.was_dropped && !global_state.drop_dest.os_window_id ? Py_True : Py_False,                                                                       \
-            ds.was_canceled ? Py_True : Py_False,                                                                                                              \
-            ds.accepted_mime_type ? ds.accepted_mime_type : "",                                                                                                \
-            ds.action,                                                                                                                                         \
-            ds.drag_data ? ds.drag_data : Py_None,                                                                                                             \
-            ds.needs_toplevel_on_wayland ? Py_True : Py_False);                                                                                                \
-        free_drag_source();                                                                                                                                    \
+#define finish                                                                           \
+    {                                                                                    \
+        call_boss(                                                                       \
+            on_drag_source_finished,                                                     \
+            "OOsiOO",                                                                    \
+            ds.was_dropped && !global_state.drop_dest.os_window_id ? Py_True : Py_False, \
+            ds.was_canceled ? Py_True : Py_False,                                        \
+            ds.accepted_mime_type ? ds.accepted_mime_type : "",                          \
+            ds.action,                                                                   \
+            ds.drag_data ? ds.drag_data : Py_None,                                       \
+            ds.needs_toplevel_on_wayland ? Py_True : Py_False);                          \
+        free_drag_source();                                                              \
     }
     Window *w = NULL;
     bool is_client_drag = false;
@@ -1575,15 +1575,15 @@ static void
 init_window_chrome_state(WindowChromeState *s, color_type active_window_bg, float background_opacity) {
     zero_at_ptr(s);
     const bool should_blur = background_opacity < 1.f && OPT(background_blur) > 0;
-#define SET_TCOL(val)                                                                                                                                          \
-    s->use_system_color = false;                                                                                                                               \
-    switch (val & 0xff) {                                                                                                                                      \
-        case 0:                                                                                                                                                \
-            s->use_system_color = true;                                                                                                                        \
-            s->color = active_window_bg;                                                                                                                       \
-            break;                                                                                                                                             \
-        case 1: s->color = active_window_bg; break;                                                                                                            \
-        default: s->color = val >> 8; break;                                                                                                                   \
+#define SET_TCOL(val)                               \
+    s->use_system_color = false;                    \
+    switch (val & 0xff) {                           \
+        case 0:                                     \
+            s->use_system_color = true;             \
+            s->color = active_window_bg;            \
+            break;                                  \
+        case 1: s->color = active_window_bg; break; \
+        default: s->color = val >> 8; break;        \
     }
 
 #ifdef __APPLE__
@@ -1735,9 +1735,9 @@ layer_shell_config_to_python(const GLFWLayerShellConfig *c) {
 #define fl(x) PyLong_FromLong((long)x)
 #define fu(x) PyLong_FromUnsignedLong((unsigned long)x)
 #define b(x) Py_NewRef(x ? Py_True : Py_False)
-#define A(attr, convert)                                                                                                                                       \
-    RAII_PyObject(attr, convert(c->attr));                                                                                                                     \
-    if (!attr) return NULL;                                                                                                                                    \
+#define A(attr, convert)                   \
+    RAII_PyObject(attr, convert(c->attr)); \
+    if (!attr) return NULL;                \
     if (PyDict_SetItemString(ans, #attr, attr) != 0) return NULL;
     A(type, fl);
     A(output_name, PyUnicode_FromString);
@@ -1765,13 +1765,13 @@ static bool
 layer_shell_config_from_python(PyObject *p, GLFWLayerShellConfig *ans) {
     memset(ans, 0, sizeof(GLFWLayerShellConfig));
     ans->size_callback = calculate_layer_shell_window_size;
-#define A(attr, type_check, convert)                                                                                                                           \
-    RAII_PyObject(attr, PyObject_GetAttrString(p, #attr));                                                                                                     \
-    if (attr == NULL) return false;                                                                                                                            \
-    if (!type_check(attr)) {                                                                                                                                   \
-        PyErr_SetString(PyExc_TypeError, #attr " not of the correct type");                                                                                    \
-        return false;                                                                                                                                          \
-    };                                                                                                                                                         \
+#define A(attr, type_check, convert)                                        \
+    RAII_PyObject(attr, PyObject_GetAttrString(p, #attr));                  \
+    if (attr == NULL) return false;                                         \
+    if (!type_check(attr)) {                                                \
+        PyErr_SetString(PyExc_TypeError, #attr " not of the correct type"); \
+        return false;                                                       \
+    };                                                                      \
     ans->attr = convert(attr);
     A(type, PyLong_Check, PyLong_AsLong);
     A(edge, PyLong_Check, PyLong_AsLong);
@@ -1788,21 +1788,21 @@ layer_shell_config_from_python(PyObject *p, GLFWLayerShellConfig *ans) {
     A(override_exclusive_zone, PyBool_Check, PyLong_AsLong);
     A(hide_on_focus_loss, PyBool_Check, PyLong_AsLong);
 #undef A
-#define A(attr)                                                                                                                                                \
-    {                                                                                                                                                          \
-        RAII_PyObject(attr, PyObject_GetAttrString(p, #attr));                                                                                                 \
-        if (attr == NULL) return false;                                                                                                                        \
-        if (!PyUnicode_Check(attr)) {                                                                                                                          \
-            PyErr_SetString(PyExc_TypeError, #attr " not a string");                                                                                           \
-            return false;                                                                                                                                      \
-        };                                                                                                                                                     \
-        Py_ssize_t sz;                                                                                                                                         \
-        const char *t = PyUnicode_AsUTF8AndSize(attr, &sz);                                                                                                    \
-        if (sz > (ssize_t)sizeof(ans->attr) - 1) {                                                                                                             \
-            PyErr_Format(PyExc_ValueError, "%s: %s is too long", #attr, t);                                                                                    \
-            return false;                                                                                                                                      \
-        }                                                                                                                                                      \
-        memcpy(ans->attr, t, sz);                                                                                                                              \
+#define A(attr)                                                             \
+    {                                                                       \
+        RAII_PyObject(attr, PyObject_GetAttrString(p, #attr));              \
+        if (attr == NULL) return false;                                     \
+        if (!PyUnicode_Check(attr)) {                                       \
+            PyErr_SetString(PyExc_TypeError, #attr " not a string");        \
+            return false;                                                   \
+        };                                                                  \
+        Py_ssize_t sz;                                                      \
+        const char *t = PyUnicode_AsUTF8AndSize(attr, &sz);                 \
+        if (sz > (ssize_t)sizeof(ans->attr) - 1) {                          \
+            PyErr_Format(PyExc_ValueError, "%s: %s is too long", #attr, t); \
+            return false;                                                   \
+        }                                                                   \
+        memcpy(ans->attr, t, sz);                                           \
     }
 
     A(output_name);
@@ -1992,11 +1992,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
         // For the first window, query the xdg-output fractional scale of the primary monitor directly;
         // this blocks until the compositor has sent size information so we get the true fractional scale
         // before creating any window.
-#define QUERY_MONITOR                                                                                                                                          \
-    debug_rendering("Querying Wayland compositor for current monitor scale\n");                                                                                \
-    double fscale = glfwGetWaylandCurrentMonitorFractionalScale();                                                                                             \
-    debug_rendering("Current monitor scale reported as: %.5f\n", fscale);                                                                                      \
-    xscale = yscale = (float)fscale;                                                                                                                           \
+#define QUERY_MONITOR                                                           \
+    debug_rendering("Querying Wayland compositor for current monitor scale\n"); \
+    double fscale = glfwGetWaylandCurrentMonitorFractionalScale();              \
+    debug_rendering("Current monitor scale reported as: %.5f\n", fscale);       \
+    xscale = yscale = (float)fscale;                                            \
     dpi_from_scale(xscale, yscale, &xdpi, &ydpi);
 
         if (is_first_window && glfwGetWaylandCurrentMonitorFractionalScale) {
@@ -2019,14 +2019,14 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
 #undef QUERY_MONITOR
         }
     } else {
-#define glfw_failure                                                                                                                                           \
-    {                                                                                                                                                          \
-        PyErr_Format(                                                                                                                                          \
-            PyExc_OSError,                                                                                                                                     \
-            "Failed to create GLFWwindow. This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL %d.%d drivers.",            \
-            OPENGL_REQUIRED_VERSION_MAJOR,                                                                                                                     \
-            OPENGL_REQUIRED_VERSION_MINOR);                                                                                                                    \
-        return NULL;                                                                                                                                           \
+#define glfw_failure                                                                                                                                \
+    {                                                                                                                                               \
+        PyErr_Format(                                                                                                                               \
+            PyExc_OSError,                                                                                                                          \
+            "Failed to create GLFWwindow. This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL %d.%d drivers.", \
+            OPENGL_REQUIRED_VERSION_MAJOR,                                                                                                          \
+            OPENGL_REQUIRED_VERSION_MINOR);                                                                                                         \
+        return NULL;                                                                                                                                \
     }
 
         temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context, NULL);
@@ -2295,14 +2295,14 @@ dbus_set_notification_callback(PyObject *self UNUSED, PyObject *callback) {
     Py_RETURN_NONE;
 }
 
-#define send_dbus_notification_event_to_python(event_type, a, b)                                                                                               \
-    {                                                                                                                                                          \
-        if (dbus_notification_callback) {                                                                                                                      \
-            const char call_args_fmt[] = {                                                                                                                     \
-                's', _Generic((a), unsigned long: 'k', unsigned long long: 'K'), _Generic((b), unsigned long: 'k', const char *: 's'), '\0'};                  \
-            RAII_PyObject(ret, PyObject_CallFunction(dbus_notification_callback, call_args_fmt, event_type, a, b));                                            \
-            if (!ret) PyErr_Print();                                                                                                                           \
-        }                                                                                                                                                      \
+#define send_dbus_notification_event_to_python(event_type, a, b)                                                                              \
+    {                                                                                                                                         \
+        if (dbus_notification_callback) {                                                                                                     \
+            const char call_args_fmt[] = {                                                                                                    \
+                's', _Generic((a), unsigned long: 'k', unsigned long long: 'K'), _Generic((b), unsigned long: 'k', const char *: 's'), '\0'}; \
+            RAII_PyObject(ret, PyObject_CallFunction(dbus_notification_callback, call_args_fmt, event_type, a, b));                           \
+            if (!ret) PyErr_Print();                                                                                                          \
+        }                                                                                                                                     \
     }
 
 
@@ -3631,7 +3631,7 @@ init_glfw(PyObject *m) {
     register_at_exit_cleanup_func(GLFW_CLEANUP_FUNC, cleanup_glfw);
 
 // constants {{{
-#define ADDC(n)                                                                                                                                                \
+#define ADDC(n) \
     if (PyModule_AddIntConstant(m, #n, n) != 0) return false;
     ADDC(GLFW_DRAG_OPERATION_MOVE);
     ADDC(GLFW_DRAG_OPERATION_COPY);

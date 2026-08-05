@@ -17,7 +17,7 @@
 #define FUNC(name) CONCAT_EXPAND(name##_, KITTY_SIMD_LEVEL)
 
 #ifdef KITTY_NO_SIMD
-#define NOSIMD                                                                                                                                                 \
+#define NOSIMD \
     { fatal("No SIMD implementations for this CPU"); }
 bool
 FUNC(utf8_decode_to_esc)(UTF8Decoder *d UNUSED, const uint8_t *src UNUSED, size_t src_sz UNUSED) NOSIMD const uint8_t *FUNC(find_either_of_two_bytes)(
@@ -100,21 +100,21 @@ _Pragma("clang diagnostic pop")
 }
 
 #define GA(LA) LA(1) LA(2) LA(3) LA(4) LA(5) LA(6) LA(7) LA(8) LA(9) LA(10) LA(11) LA(12) LA(13) LA(14) LA(15)
-#define L(n)                                                                                                                                                   \
+#define L(n) \
     case n: return simde_mm_srli_si128(A, n);
-#define R(n)                                                                                                                                                   \
+#define R(n) \
     case n: return simde_mm_slli_si128(A, n);
-#define shift_left_by_bytes_macro(A, n)                                                                                                                        \
-    {                                                                                                                                                          \
-        switch (n) {                                                                                                                                           \
-            default: return A; GA(L)                                                                                                                           \
-        }                                                                                                                                                      \
+#define shift_left_by_bytes_macro(A, n) \
+    {                                   \
+        switch (n) {                    \
+            default: return A; GA(L)    \
+        }                               \
     }
-#define shift_right_by_bytes_macro(A, n)                                                                                                                       \
-    {                                                                                                                                                          \
-        switch (n) {                                                                                                                                           \
-            default: return A; GA(R)                                                                                                                           \
-        }                                                                                                                                                      \
+#define shift_right_by_bytes_macro(A, n) \
+    {                                    \
+        switch (n) {                     \
+            default: return A; GA(R)     \
+        }                                \
     }
 
 static inline integer_t
@@ -124,7 +124,7 @@ shift_right_by_bytes(const integer_t A, unsigned n) {
 static inline integer_t
 shift_left_by_bytes(const integer_t A, unsigned n){shift_left_by_bytes_macro(A, n)}
 
-#define w(dir, word, num)                                                                                                                                      \
+#define w(dir, word, num) \
     static inline integer_t shift_##dir##_by_##word(const integer_t A) { shift_##dir##_by_bytes_macro(A, num); }
 
 w(right, one_byte, 1) w(right, two_bytes, 2) w(right, four_bytes, 4) w(right, eight_bytes, 8) w(right, sixteen_bytes, 16) w(left, one_byte, 1)
@@ -167,7 +167,7 @@ w(right, one_byte, 1) w(right, two_bytes, 2) w(right, four_bytes, 4) w(right, ei
 #define create_zero_integer simde_mm256_setzero_si256
 #define create_all_ones_integer() simde_mm256_set1_epi64x(-1)
 #define numbered_bytes() set_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-#define reverse_numbered_bytes()                                                                                                                               \
+#define reverse_numbered_bytes() \
     simde_mm256_setr_epi8(31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 
     static inline int
@@ -177,29 +177,29 @@ w(right, one_byte, 1) w(right, two_bytes, 2) w(right, four_bytes, 4) w(right, ei
 
 #define GA(LA) LA(1) LA(2) LA(3) LA(4) LA(5) LA(6) LA(7) LA(8) LA(9) LA(10) LA(11) LA(12) LA(13) LA(14) LA(15)
 #define GB(LA) LA(17) LA(18) LA(19) LA(20) LA(21) LA(22) LA(23) LA(24) LA(25) LA(26) LA(27) LA(28) LA(29) LA(30) LA(31)
-#define RA(n)                                                                                                                                                  \
+#define RA(n) \
     case n: return simde_mm256_alignr_epi8(A, simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), 16 - n);
-#define RB(n)                                                                                                                                                  \
+#define RB(n) \
     case n: return simde_mm256_slli_si256(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)), n - 16);
 
-#define shift_right_by_bytes_macro(A, n)                                                                                                                       \
-    {                                                                                                                                                          \
-        switch (n) {                                                                                                                                           \
-            default: return A; GA(RA)                                                                                                                          \
-            case 16: return simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)); GB(RB)                                                              \
-        }                                                                                                                                                      \
+#define shift_right_by_bytes_macro(A, n)                                                          \
+    {                                                                                             \
+        switch (n) {                                                                              \
+            default: return A; GA(RA)                                                             \
+            case 16: return simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(0, 0, 2, 0)); GB(RB) \
+        }                                                                                         \
     }
 
-#define LA(n)                                                                                                                                                  \
+#define LA(n) \
     case n: return simde_mm256_alignr_epi8(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), A, n);
-#define LB(n)                                                                                                                                                  \
+#define LB(n) \
     case n: return simde_mm256_srli_si256(simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)), n - 16);
-#define shift_left_by_bytes_macro(A, n)                                                                                                                        \
-    {                                                                                                                                                          \
-        switch (n) {                                                                                                                                           \
-            default: return A; GA(LA)                                                                                                                          \
-            case 16: return simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)); GB(LB)                                                              \
-        }                                                                                                                                                      \
+#define shift_left_by_bytes_macro(A, n)                                                           \
+    {                                                                                             \
+        switch (n) {                                                                              \
+            default: return A; GA(LA)                                                             \
+            case 16: return simde_mm256_permute2x128_si256(A, A, _MM_SHUFFLE(2, 0, 0, 1)); GB(LB) \
+        }                                                                                         \
     }
 
 
@@ -210,7 +210,7 @@ shift_right_by_bytes(const integer_t A, unsigned n) {
 static inline integer_t
 shift_left_by_bytes(const integer_t A, unsigned n){shift_left_by_bytes_macro(A, n)}
 
-#define w(dir, word, num)                                                                                                                                      \
+#define w(dir, word, num) \
     static inline integer_t shift_##dir##_by_##word(const integer_t A) { shift_##dir##_by_bytes_macro(A, num); }
 
 w(right, one_byte, 1) w(right, two_bytes, 2) w(right, four_bytes, 4) w(right, eight_bytes, 8) w(right, sixteen_bytes, 16) w(left, one_byte, 1)
@@ -226,74 +226,74 @@ w(right, one_byte, 1) w(right, two_bytes, 2) w(right, four_bytes, 4) w(right, ei
 #undef shift_left_by_bytes_macro
 
         static inline integer_t shuffle_impl256(const integer_t value, const integer_t shuffle) {
-#define K0                                                                                                                                                     \
-    simde_mm256_setr_epi8(                                                                                                                                     \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
+#define K0                 \
+    simde_mm256_setr_epi8( \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
         -16)
 
-#define K1                                                                                                                                                     \
-    simde_mm256_setr_epi8(                                                                                                                                     \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        -16,                                                                                                                                                   \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
-        0x70,                                                                                                                                                  \
+#define K1                 \
+    simde_mm256_setr_epi8( \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        -16,               \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
+        0x70,              \
         0x70)
 
     return or_si(
@@ -307,17 +307,17 @@ w(right, one_byte, 1) w(right, two_bytes, 2) w(right, four_bytes, 4) w(right, ei
 #define sum_bytes(x) (sum_bytes_128(simde_mm256_extracti128_si256(x, 0)) + sum_bytes_128(simde_mm256_extracti128_si256(x, 1)))
 #endif
 
-#define print_register_as_bytes(r)                                                                                                                             \
-    {                                                                                                                                                          \
-        printf("%s:\n", #r);                                                                                                                                   \
-        alignas(64) uint8_t data[sizeof(r)];                                                                                                                   \
-        store_unaligned((integer_t *)data, r);                                                                                                                 \
-        for (unsigned i = 0; i < sizeof(integer_t); i++) {                                                                                                     \
-            uint8_t ch = data[i];                                                                                                                              \
-            if (' ' <= ch && ch < 0x7f) printf("_%c ", ch);                                                                                                    \
-            else printf("%.2x ", ch);                                                                                                                          \
-        }                                                                                                                                                      \
-        printf("\n");                                                                                                                                          \
+#define print_register_as_bytes(r)                          \
+    {                                                       \
+        printf("%s:\n", #r);                                \
+        alignas(64) uint8_t data[sizeof(r)];                \
+        store_unaligned((integer_t *)data, r);              \
+        for (unsigned i = 0; i < sizeof(integer_t); i++) {  \
+            uint8_t ch = data[i];                           \
+            if (' ' <= ch && ch < 0x7f) printf("_%c ", ch); \
+            else printf("%.2x ", ch);                       \
+        }                                                   \
+        printf("\n");                                       \
     }
 
 #if 0
@@ -433,9 +433,9 @@ FUNC(xor_data64)(const uint8_t key[KEY_SIZE], uint8_t *data, const size_t data_s
     const uintptr_t trailing_bytes = (uintptr_t)limit & (KEY_SIZE - 1);
     limit -= trailing_bytes;
     // p is aligned to first KEY_SIZE boundary >= data and limit is aligned to first KEY_SIZE boundary <= (data + data_sz)
-#define do_one(which)                                                                                                                                          \
-    d = load_aligned(p);                                                                                                                                       \
-    store_aligned(p, xor_si(which, d));                                                                                                                        \
+#define do_one(which)                   \
+    d = load_aligned(p);                \
+    store_aligned(p, xor_si(which, d)); \
     p += sizeof(integer_t);
     while (p < limit) {
         do_one(v1);
@@ -453,36 +453,36 @@ FUNC(xor_data64)(const uint8_t key[KEY_SIZE], uint8_t *data, const size_t data_s
 }
 #undef KEY_SIZE
 
-#define check_chunk()                                                                                                                                          \
-    if (n > -1) {                                                                                                                                              \
-        const uint8_t *ans = haystack + n;                                                                                                                     \
-        zero_upper();                                                                                                                                          \
-        return ans < limit ? ans : NULL;                                                                                                                       \
+#define check_chunk()                      \
+    if (n > -1) {                          \
+        const uint8_t *ans = haystack + n; \
+        zero_upper();                      \
+        return ans < limit ? ans : NULL;   \
     }
 
-#define find_match(haystack, sz, get_test_vec)                                                                                                                 \
-    {                                                                                                                                                          \
-        const uint8_t *limit = haystack + sz;                                                                                                                  \
-        integer_t chunk;                                                                                                                                       \
-        int n;                                                                                                                                                 \
-                                                                                                                                                               \
-        { /* first chunk which is possibly unaligned */                                                                                                        \
-            const uintptr_t addr = (uintptr_t)haystack;                                                                                                        \
-            const uintptr_t unaligned_bytes = addr & (sizeof(integer_t) - 1);                                                                                  \
-            chunk = load_aligned(haystack - unaligned_bytes); /* this is an aligned load from the first aligned pos before haystack */                         \
-            n = bytes_to_first_match_ignoring_leading_n(get_test_vec(chunk), unaligned_bytes);                                                                 \
-            check_chunk();                                                                                                                                     \
-            haystack += sizeof(integer_t) - unaligned_bytes;                                                                                                   \
-        }                                                                                                                                                      \
-                                                                                                                                                               \
-        /* Iterate over aligned chunks */                                                                                                                      \
-        for (; haystack < limit; haystack += sizeof(integer_t)) {                                                                                              \
-            chunk = load_aligned(haystack);                                                                                                                    \
-            n = bytes_to_first_match(get_test_vec(chunk));                                                                                                     \
-            check_chunk();                                                                                                                                     \
-        }                                                                                                                                                      \
-        zero_upper();                                                                                                                                          \
-        return NULL;                                                                                                                                           \
+#define find_match(haystack, sz, get_test_vec)                                                                                         \
+    {                                                                                                                                  \
+        const uint8_t *limit = haystack + sz;                                                                                          \
+        integer_t chunk;                                                                                                               \
+        int n;                                                                                                                         \
+                                                                                                                                       \
+        { /* first chunk which is possibly unaligned */                                                                                \
+            const uintptr_t addr = (uintptr_t)haystack;                                                                                \
+            const uintptr_t unaligned_bytes = addr & (sizeof(integer_t) - 1);                                                          \
+            chunk = load_aligned(haystack - unaligned_bytes); /* this is an aligned load from the first aligned pos before haystack */ \
+            n = bytes_to_first_match_ignoring_leading_n(get_test_vec(chunk), unaligned_bytes);                                         \
+            check_chunk();                                                                                                             \
+            haystack += sizeof(integer_t) - unaligned_bytes;                                                                           \
+        }                                                                                                                              \
+                                                                                                                                       \
+        /* Iterate over aligned chunks */                                                                                              \
+        for (; haystack < limit; haystack += sizeof(integer_t)) {                                                                      \
+            chunk = load_aligned(haystack);                                                                                            \
+            n = bytes_to_first_match(get_test_vec(chunk));                                                                             \
+            check_chunk();                                                                                                             \
+        }                                                                                                                              \
+        zero_upper();                                                                                                                  \
+        return NULL;                                                                                                                   \
     }
 
 const uint8_t *
@@ -553,21 +553,21 @@ FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integ
     uint32_t *p = d->output.storage + d->output.pos;
     const uint32_t *limit = p + num_codepoints;
     simde__m128i x1, x2, x3;
-#define chunk()                                                                                                                                                \
-    {                                                                                                                                                          \
-        const integer_t unpacked1 = extract_lower_half_as_chars(x1);                                                                                           \
-        const integer_t unpacked2 = shift_right_by_one_byte(extract_lower_half_as_chars(x2));                                                                  \
-        const integer_t unpacked3 = shift_right_by_two_bytes(extract_lower_half_as_chars(x3));                                                                 \
-        store_unaligned((integer_t *)p, or_si(or_si(unpacked1, unpacked2), unpacked3));                                                                        \
-        p += output_increment;                                                                                                                                 \
+#define chunk()                                                                                \
+    {                                                                                          \
+        const integer_t unpacked1 = extract_lower_half_as_chars(x1);                           \
+        const integer_t unpacked2 = shift_right_by_one_byte(extract_lower_half_as_chars(x2));  \
+        const integer_t unpacked3 = shift_right_by_two_bytes(extract_lower_half_as_chars(x3)); \
+        store_unaligned((integer_t *)p, or_si(or_si(unpacked1, unpacked2), unpacked3));        \
+        p += output_increment;                                                                 \
     }
-#define extract(which)                                                                                                                                         \
-    x1 = simde_mm256_extracti128_si256(output1, which);                                                                                                        \
-    x2 = simde_mm256_extracti128_si256(output2, which);                                                                                                        \
+#define extract(which)                                  \
+    x1 = simde_mm256_extracti128_si256(output1, which); \
+    x2 = simde_mm256_extracti128_si256(output2, which); \
     x3 = simde_mm256_extracti128_si256(output3, which);
-#define shift()                                                                                                                                                \
-    x1 = shift_right_by_bytes128(x1, output_increment);                                                                                                        \
-    x2 = shift_right_by_bytes128(x2, output_increment);                                                                                                        \
+#define shift()                                         \
+    x1 = shift_right_by_bytes128(x1, output_increment); \
+    x2 = shift_right_by_bytes128(x2, output_increment); \
     x3 = shift_right_by_bytes128(x3, output_increment);
     extract(0);
     chunk();
@@ -605,20 +605,20 @@ sum_bytes_128(simde__m128i v) {
     return lower_sum + upper_sum; // Final sum of all bytes
 }
 
-#define do_one_byte                                                                                                                                            \
-    const uint8_t ch = src[pos++];                                                                                                                             \
-    switch (decode_utf8(&d->state.cur, &d->state.codep, ch)) {                                                                                                 \
-        case UTF8_ACCEPT: d->output.storage[d->output.pos++] = d->state.codep; break;                                                                          \
-        case UTF8_REJECT: {                                                                                                                                    \
-            const bool prev_was_accept = d->state.prev == UTF8_ACCEPT;                                                                                         \
-            zero_at_ptr(&d->state);                                                                                                                            \
-            d->output.storage[d->output.pos++] = 0xfffd;                                                                                                       \
-            if (!prev_was_accept) {                                                                                                                            \
-                pos--;                                                                                                                                         \
-                continue; /* so that prev is correct */                                                                                                        \
-            }                                                                                                                                                  \
-        } break;                                                                                                                                               \
-    }                                                                                                                                                          \
+#define do_one_byte                                                                   \
+    const uint8_t ch = src[pos++];                                                    \
+    switch (decode_utf8(&d->state.cur, &d->state.codep, ch)) {                        \
+        case UTF8_ACCEPT: d->output.storage[d->output.pos++] = d->state.codep; break; \
+        case UTF8_REJECT: {                                                           \
+            const bool prev_was_accept = d->state.prev == UTF8_ACCEPT;                \
+            zero_at_ptr(&d->state);                                                   \
+            d->output.storage[d->output.pos++] = 0xfffd;                              \
+            if (!prev_was_accept) {                                                   \
+                pos--;                                                                \
+                continue; /* so that prev is correct */                               \
+            }                                                                         \
+        } break;                                                                      \
+    }                                                                                 \
     d->state.prev = d->state.cur;
 
 static inline size_t
@@ -686,21 +686,21 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
         debug_register(vec);
         int32_t ascii_mask;
 
-#define abort_with_invalid_utf8()                                                                                                                              \
-    {                                                                                                                                                          \
-        scalar_decode_all(d, start_of_current_chunk, chunk_src_sz + num_of_trailing_bytes);                                                                    \
-        d->num_consumed += num_of_trailing_bytes;                                                                                                              \
-        break;                                                                                                                                                 \
+#define abort_with_invalid_utf8()                                                           \
+    {                                                                                       \
+        scalar_decode_all(d, start_of_current_chunk, chunk_src_sz + num_of_trailing_bytes); \
+        d->num_consumed += num_of_trailing_bytes;                                           \
+        break;                                                                              \
     }
 
-#define handle_trailing_bytes()                                                                                                                                \
-    if (num_of_trailing_bytes) {                                                                                                                               \
-        if (p >= limit) {                                                                                                                                      \
-            scalar_decode_all(d, p - num_of_trailing_bytes, num_of_trailing_bytes);                                                                            \
-            d->num_consumed += num_of_trailing_bytes;                                                                                                          \
-            break;                                                                                                                                             \
-        }                                                                                                                                                      \
-        p -= num_of_trailing_bytes;                                                                                                                            \
+#define handle_trailing_bytes()                                                     \
+    if (num_of_trailing_bytes) {                                                    \
+        if (p >= limit) {                                                           \
+            scalar_decode_all(d, p - num_of_trailing_bytes, num_of_trailing_bytes); \
+            d->num_consumed += num_of_trailing_bytes;                               \
+            break;                                                                  \
+        }                                                                           \
+        p -= num_of_trailing_bytes;                                                 \
     }
 
     start_classification:

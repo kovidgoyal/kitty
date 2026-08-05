@@ -25,10 +25,10 @@
 #define NO_SINGLE_BYTE_CHARSETS
 #include "../charsets.c"
 
-#define fail_on_errno(msg)                                                                                                                                     \
-    {                                                                                                                                                          \
-        perror(msg);                                                                                                                                           \
-        do_exit(1);                                                                                                                                            \
+#define fail_on_errno(msg) \
+    {                      \
+        perror(msg);       \
+        do_exit(1);        \
     }
 
 void
@@ -88,20 +88,20 @@ is_ok_tmpdir(const char *x) {
 
 static void
 get_socket_dir(char *output, size_t output_capacity) {
-#define ret_if_ok(x)                                                                                                                                           \
-    if (is_ok_tmpdir(x)) {                                                                                                                                     \
-        if (snprintf(output, output_capacity, "%s", x) < output_capacity - 1)                                                                                  \
-            ;                                                                                                                                                  \
-        return;                                                                                                                                                \
+#define ret_if_ok(x)                                                          \
+    if (is_ok_tmpdir(x)) {                                                    \
+        if (snprintf(output, output_capacity, "%s", x) < output_capacity - 1) \
+            ;                                                                 \
+        return;                                                               \
     }
 #ifdef __APPLE__
     if (confstr(_CS_DARWIN_USER_CACHE_DIR, output, output_capacity)) return;
     snprintf(output, output_capacity, "%s", "/Library/Caches");
 #else
-#define test_env(x)                                                                                                                                            \
-    {                                                                                                                                                          \
-        const char *e = getenv(#x);                                                                                                                            \
-        ret_if_ok(e);                                                                                                                                          \
+#define test_env(x)                 \
+    {                               \
+        const char *e = getenv(#x); \
+        ret_if_ok(e);               \
     }
     test_env(XDG_RUNTIME_DIR);
     test_env(TMPDIR);

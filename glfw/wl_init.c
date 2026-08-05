@@ -169,13 +169,13 @@ pointer_handle_axis_common(enum _GLFWWaylandAxisEvent type, uint32_t axis, wl_fi
     if (!window || window->wl.decorations.focus != CENTRAL_WINDOW) return;
     float fval = (float)wl_fixed_to_double(value);
 
-#define CASE(type, type_const, axis, fval)                                                                                                                     \
-    case type_const:                                                                                                                                           \
-        if (info.type.axis##_axis_type == AXIS_EVENT_UNKNOWN) {                                                                                                \
-            info.type.axis##_axis_type = type_const;                                                                                                           \
-            info.type.axis = 0.f;                                                                                                                              \
-        }                                                                                                                                                      \
-        info.type.axis += fval;                                                                                                                                \
+#define CASE(type, type_const, axis, fval)                      \
+    case type_const:                                            \
+        if (info.type.axis##_axis_type == AXIS_EVENT_UNKNOWN) { \
+            info.type.axis##_axis_type = type_const;            \
+            info.type.axis = 0.f;                               \
+        }                                                       \
+        info.type.axis += fval;                                 \
         break;
 
     if (window) {
@@ -738,7 +738,7 @@ _glfwWaylandCompositorName(void) {
 
 static const char *
 get_compositor_missing_capabilities(void) {
-#define C(title, x)                                                                                                                                            \
+#define C(title, x) \
     if (!_glfw.wl.x) p += snprintf(p, sizeof(buf) - (p - buf), "%s ", #title);
     static char buf[512];
     char *p = buf;

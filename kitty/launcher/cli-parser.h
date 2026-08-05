@@ -23,11 +23,11 @@ cleanup_decref2(PyObject **p) {
 #define RAII_PyObject(name, initializer) __attribute__((cleanup(cleanup_decref2))) PyObject *name = initializer
 
 #undef MAX
-#define MAX(x, y)                                                                                                                                              \
-    __extension__({                                                                                                                                            \
-        const __typeof__(x) __a__ = (x);                                                                                                                       \
-        const __typeof__(y) __b__ = (y);                                                                                                                       \
-        __a__ > __b__ ? __a__ : __b__;                                                                                                                         \
+#define MAX(x, y)                        \
+    __extension__({                      \
+        const __typeof__(x) __a__ = (x); \
+        const __typeof__(y) __b__ = (y); \
+        __a__ > __b__ ? __a__ : __b__;   \
     })
 #endif
 
@@ -127,13 +127,13 @@ alloc_for_cli(CLISpec *spec, size_t sz) {
 #undef block
 }
 
-#define set_err(fmt, ...)                                                                                                                                      \
-    {                                                                                                                                                          \
-        int sz = snprintf(NULL, 0, fmt, __VA_ARGS__);                                                                                                          \
-        char *buf = alloc_for_cli(spec, sz + 4);                                                                                                               \
-        if (!buf) OOM;                                                                                                                                         \
-        snprintf(buf, sz + 4, fmt, __VA_ARGS__);                                                                                                               \
-        spec->errmsg = buf;                                                                                                                                    \
+#define set_err(fmt, ...)                             \
+    {                                                 \
+        int sz = snprintf(NULL, 0, fmt, __VA_ARGS__); \
+        char *buf = alloc_for_cli(spec, sz + 4);      \
+        if (!buf) OOM;                                \
+        snprintf(buf, sz + 4, fmt, __VA_ARGS__);      \
+        spec->errmsg = buf;                           \
     }
 
 static ssize_t
@@ -378,8 +378,8 @@ dealloc_cli_spec(void *v) {
     vt_cleanup(&spec->disabled_map);
 }
 
-#define RAII_CLISpec(name)                                                                                                                                     \
-    __attribute__((cleanup(dealloc_cli_spec))) CLISpec name = {0};                                                                                             \
+#define RAII_CLISpec(name)                                         \
+    __attribute__((cleanup(dealloc_cli_spec))) CLISpec name = {0}; \
     alloc_cli_spec(&name)
 
 static bool
@@ -524,11 +524,11 @@ get_string_cli_val(CLISpec *spec, const char *name) {
 
 static bool
 clival_as_python(const CLIValue *v, PyObject *is_seen, const char *dest, PyObject *ans) {
-#define S(fv)                                                                                                                                                  \
-    {                                                                                                                                                          \
-        RAII_PyObject(temp, Py_BuildValue("NO", fv, is_seen));                                                                                                 \
-        if (!temp) return false;                                                                                                                               \
-        if (PyDict_SetItemString(ans, dest, temp) != 0) return false;                                                                                          \
+#define S(fv)                                                         \
+    {                                                                 \
+        RAII_PyObject(temp, Py_BuildValue("NO", fv, is_seen));        \
+        if (!temp) return false;                                      \
+        if (PyDict_SetItemString(ans, dest, temp) != 0) return false; \
     }
     switch (v->type) {
         case CLI_VALUE_BOOL: S(PyBool_FromLong((long)v->boolval)); break;

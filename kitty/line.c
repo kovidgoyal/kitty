@@ -225,7 +225,7 @@ find_colon_slash(Line *self, index_type x, index_type limit, ListOfChars *lc, in
     if (pos < limit) return 0;
     const CPUCell *c = self->cpu_cells + pos;
     index_type n;
-#define next_char_is(num, ch)                                                                                                                                  \
+#define next_char_is(num, ch) \
     ((n = next_char_pos(self, pos, num)) < self->xnum && cell_is_char(self->cpu_cells + n, ch) && cell_scale(self->cpu_cells + n) == scale)
     if (cell_is_char(c, ':')) {
         if (next_char_is(1, '/') && next_char_is(2, '/')) state = SECOND_SLASH;
@@ -787,8 +787,8 @@ set_text(Line *self, PyObject *args) {
 
 static PyObject *
 cursor_from(Line *self, PyObject *args) {
-#define cursor_from_doc                                                                                                                                        \
-    "cursor_from(x, y=0) -> Create a cursor object based on the formatting attributes at the specified x position. The y value of the cursor is set as "       \
+#define cursor_from_doc                                                                                                                                  \
+    "cursor_from(x, y=0) -> Create a cursor object based on the formatting attributes at the specified x position. The y value of the cursor is set as " \
     "specified."
     unsigned int x, y = 0;
     Cursor *ans;
@@ -850,7 +850,7 @@ line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned in
 
 static PyObject *
 apply_cursor(Line *self, PyObject *args) {
-#define apply_cursor_doc                                                                                                                                       \
+#define apply_cursor_doc \
     "apply_cursor(cursor, at=0, num=1, clear_char=False) -> Apply the formatting attributes from cursor to the specified characters in this line."
     Cursor *cursor;
     unsigned int at = 0, num = 1;
@@ -979,13 +979,13 @@ const char *
 cell_as_sgr(const GPUCell *cell, const GPUCell *prev) {
     static char buf[128];
 #define SZ sizeof(buf) - (p - buf) - 2
-#define P(s)                                                                                                                                                   \
-    {                                                                                                                                                          \
-        size_t len = strlen(s);                                                                                                                                \
-        if (SZ > len) {                                                                                                                                        \
-            memcpy(p, s, len);                                                                                                                                 \
-            p += len;                                                                                                                                          \
-        }                                                                                                                                                      \
+#define P(s)                    \
+    {                           \
+        size_t len = strlen(s); \
+        if (SZ > len) {         \
+            memcpy(p, s, len);  \
+            p += len;           \
+        }                       \
     }
     char *p = buf;
 #define CA cell->attrs
@@ -1049,7 +1049,7 @@ report_marker_error(PyObject *marker) {
 
 static void
 apply_mark(Line *line, const uint16_t mark, index_type *cell_pos, unsigned int *match_pos) {
-#define MARK                                                                                                                                                   \
+#define MARK \
     { line->gpu_cells[x].attrs.mark = mark; }
     index_type x = *cell_pos;
     MARK;
@@ -1124,22 +1124,22 @@ mark_text_in_line(PyObject *marker, Line *line, ANSIBuf *buf) {
 
 PyObject *
 as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf, bool add_trailing_newline) {
-#define APPEND(x)                                                                                                                                              \
-    {                                                                                                                                                          \
-        PyObject *retval = PyObject_CallFunctionObjArgs(callback, x, NULL);                                                                                    \
-        if (!retval) return NULL;                                                                                                                              \
-        Py_DECREF(retval);                                                                                                                                     \
+#define APPEND(x)                                                           \
+    {                                                                       \
+        PyObject *retval = PyObject_CallFunctionObjArgs(callback, x, NULL); \
+        if (!retval) return NULL;                                           \
+        Py_DECREF(retval);                                                  \
     }
-#define APPEND_AND_DECREF(x)                                                                                                                                   \
-    {                                                                                                                                                          \
-        if (x == NULL) {                                                                                                                                       \
-            if (PyErr_Occurred()) return NULL;                                                                                                                 \
-            Py_RETURN_NONE;                                                                                                                                    \
-        }                                                                                                                                                      \
-        PyObject *retval = PyObject_CallFunctionObjArgs(callback, x, NULL);                                                                                    \
-        Py_CLEAR(x);                                                                                                                                           \
-        if (!retval) return NULL;                                                                                                                              \
-        Py_DECREF(retval);                                                                                                                                     \
+#define APPEND_AND_DECREF(x)                                                \
+    {                                                                       \
+        if (x == NULL) {                                                    \
+            if (PyErr_Occurred()) return NULL;                              \
+            Py_RETURN_NONE;                                                 \
+        }                                                                   \
+        PyObject *retval = PyObject_CallFunctionObjArgs(callback, x, NULL); \
+        Py_CLEAR(x);                                                        \
+        if (!retval) return NULL;                                           \
+        Py_DECREF(retval);                                                  \
     }
     PyObject *callback;
     int as_ansi = 0, insert_wrap_markers = 0;

@@ -17,11 +17,11 @@
 #pragma GCC diagnostic pop
 
 #define OPT(name) global_state.opts.name
-#define debug_rendering(...)                                                                                                                                   \
+#define debug_rendering(...) \
     if (global_state.debug_rendering) { timed_debug_print(__VA_ARGS__); }
-#define debug_input(...)                                                                                                                                       \
+#define debug_input(...) \
     if (OPT(debug_keyboard)) { timed_debug_print(__VA_ARGS__); }
-#define debug_fonts(...)                                                                                                                                       \
+#define debug_fonts(...) \
     if (global_state.debug_font_fallback) { timed_debug_print(__VA_ARGS__); }
 
 typedef enum { LEFT_EDGE = 1, TOP_EDGE = 2, RIGHT_EDGE = 4, BOTTOM_EDGE = 8 } Edge;
@@ -622,12 +622,12 @@ typedef struct GlobalState {
 
 extern GlobalState global_state;
 
-#define call_boss(name, ...)                                                                                                                                   \
-    if (global_state.boss) {                                                                                                                                   \
-        PyObject *cret_ = PyObject_CallMethod(global_state.boss, #name, __VA_ARGS__);                                                                          \
-        if (cret_ == NULL) {                                                                                                                                   \
-            PyErr_Print();                                                                                                                                     \
-        } else Py_DECREF(cret_);                                                                                                                               \
+#define call_boss(name, ...)                                                          \
+    if (global_state.boss) {                                                          \
+        PyObject *cret_ = PyObject_CallMethod(global_state.boss, #name, __VA_ARGS__); \
+        if (cret_ == NULL) {                                                          \
+            PyErr_Print();                                                            \
+        } else Py_DECREF(cret_);                                                      \
     }
 
 static inline void

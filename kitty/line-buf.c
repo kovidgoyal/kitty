@@ -185,8 +185,8 @@ linebuf_clear_lines(LineBuf *self, const Cursor *cursor, index_type start, index
 
 static PyObject *
 line(LineBuf *self, PyObject *y) {
-#define line_doc                                                                                                                                               \
-    "Return the specified line as a Line object. Note the Line Object is a live view into the underlying buffer. And only a single line object can be used "   \
+#define line_doc                                                                                                                                             \
+    "Return the specified line as a Line object. Note the Line Object is a live view into the underlying buffer. And only a single line object can be used " \
     "at a time."
     unsigned long idx = PyLong_AsUnsignedLong(y);
     if (idx >= self->ynum) {
@@ -296,8 +296,8 @@ create_line_copy_inner(LineBuf *self, index_type y) {
 
 static PyObject *
 create_line_copy(LineBuf *self, PyObject *ynum) {
-#define create_line_copy_doc                                                                                                                                   \
-    "Create a new Line object that is a copy of the line at ynum. Note that this line has its own copy of the data and does not refer to the data in the "     \
+#define create_line_copy_doc                                                                                                                               \
+    "Create a new Line object that is a copy of the line at ynum. Note that this line has its own copy of the data and does not refer to the data in the " \
     "LineBuf."
     index_type y = (index_type)PyLong_AsUnsignedLong(ynum);
     if (y >= self->ynum) {
@@ -559,8 +559,8 @@ __str__(LineBuf *self) {
 
 // Boilerplate {{{
 static PyObject *copy_old(LineBuf *self, PyObject *y);
-#define copy_old_doc                                                                                                                                           \
-    "Copy the contents of the specified LineBuf to this LineBuf. Both must have the same number of columns, but the number of lines can be different, in "     \
+#define copy_old_doc                                                                                                                                       \
+    "Copy the contents of the specified LineBuf to this LineBuf. Both must have the same number of columns, but the number of lines can be different, in " \
     "which case the bottom lines are copied."
 
 static PyObject *rewrap(LineBuf *self, PyObject *args);

@@ -13,74 +13,74 @@
 
 GlobalState global_state = {{0}};
 
-#define REMOVER(array, qid, count, destroy, capacity)                                                                                                          \
-    {                                                                                                                                                          \
-        for (size_t i = 0; i < count; i++) {                                                                                                                   \
-            if (array[i].id == qid) {                                                                                                                          \
-                destroy(array + i);                                                                                                                            \
-                zero_at_i(array, i);                                                                                                                           \
-                remove_i_from_array(array, i, count);                                                                                                          \
-                break;                                                                                                                                         \
-            }                                                                                                                                                  \
-        }                                                                                                                                                      \
+#define REMOVER(array, qid, count, destroy, capacity) \
+    {                                                 \
+        for (size_t i = 0; i < count; i++) {          \
+            if (array[i].id == qid) {                 \
+                destroy(array + i);                   \
+                zero_at_i(array, i);                  \
+                remove_i_from_array(array, i, count); \
+                break;                                \
+            }                                         \
+        }                                             \
     }
 
-#define WITH_OS_WINDOW(os_window_id)                                                                                                                           \
-    for (size_t o = 0; o < global_state.num_os_windows; o++) {                                                                                                 \
-        OSWindow *os_window = global_state.os_windows + o;                                                                                                     \
+#define WITH_OS_WINDOW(os_window_id)                           \
+    for (size_t o = 0; o < global_state.num_os_windows; o++) { \
+        OSWindow *os_window = global_state.os_windows + o;     \
         if (os_window->id == os_window_id) {
-#define END_WITH_OS_WINDOW                                                                                                                                     \
-    break;                                                                                                                                                     \
-    }                                                                                                                                                          \
+#define END_WITH_OS_WINDOW \
+    break;                 \
+    }                      \
     }
 
-#define WITH_TAB(os_window_id, tab_id)                                                                                                                         \
-    for (size_t o = 0, tab_found = 0; o < global_state.num_os_windows && !tab_found; o++) {                                                                    \
-        OSWindow *osw = global_state.os_windows + o;                                                                                                           \
-        if (osw->id == os_window_id) {                                                                                                                         \
-            for (size_t t = 0; t < osw->num_tabs; t++) {                                                                                                       \
-                if (osw->tabs[t].id == tab_id) {                                                                                                               \
+#define WITH_TAB(os_window_id, tab_id)                                                      \
+    for (size_t o = 0, tab_found = 0; o < global_state.num_os_windows && !tab_found; o++) { \
+        OSWindow *osw = global_state.os_windows + o;                                        \
+        if (osw->id == os_window_id) {                                                      \
+            for (size_t t = 0; t < osw->num_tabs; t++) {                                    \
+                if (osw->tabs[t].id == tab_id) {                                            \
                     Tab *tab = osw->tabs + t;
-#define END_WITH_TAB                                                                                                                                           \
-    tab_found = 1;                                                                                                                                             \
-    break;                                                                                                                                                     \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
+#define END_WITH_TAB \
+    tab_found = 1;   \
+    break;           \
+    }                \
+    }                \
+    }                \
     }
 
-#define WITH_WINDOW(os_window_id, tab_id, window_id)                                                                                                           \
-    for (size_t o = 0, window_found = 0; o < global_state.num_os_windows && !window_found; o++) {                                                              \
-        OSWindow *osw = global_state.os_windows + o;                                                                                                           \
-        if (osw->id == os_window_id) {                                                                                                                         \
-            for (size_t t = 0; t < osw->num_tabs && !window_found; t++) {                                                                                      \
-                if (osw->tabs[t].id == tab_id) {                                                                                                               \
-                    Tab *tab = osw->tabs + t;                                                                                                                  \
-                    for (size_t w = 0; w < tab->num_windows; w++) {                                                                                            \
-                        if (tab->windows[w].id == window_id) {                                                                                                 \
+#define WITH_WINDOW(os_window_id, tab_id, window_id)                                              \
+    for (size_t o = 0, window_found = 0; o < global_state.num_os_windows && !window_found; o++) { \
+        OSWindow *osw = global_state.os_windows + o;                                              \
+        if (osw->id == os_window_id) {                                                            \
+            for (size_t t = 0; t < osw->num_tabs && !window_found; t++) {                         \
+                if (osw->tabs[t].id == tab_id) {                                                  \
+                    Tab *tab = osw->tabs + t;                                                     \
+                    for (size_t w = 0; w < tab->num_windows; w++) {                               \
+                        if (tab->windows[w].id == window_id) {                                    \
                             Window *window = tab->windows + w;
-#define END_WITH_WINDOW                                                                                                                                        \
-    window_found = 1;                                                                                                                                          \
-    break;                                                                                                                                                     \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
-    }                                                                                                                                                          \
+#define END_WITH_WINDOW \
+    window_found = 1;   \
+    break;              \
+    }                   \
+    }                   \
+    }                   \
+    }                   \
+    }                   \
     }
 
 
-#define WITH_OS_WINDOW_REFS                                                                                                                                    \
-    id_type cb_window_id = 0, focused_window_id = 0;                                                                                                           \
+#define WITH_OS_WINDOW_REFS                          \
+    id_type cb_window_id = 0, focused_window_id = 0; \
     if (global_state.callback_os_window) cb_window_id = global_state.callback_os_window->id;
 
-#define END_WITH_OS_WINDOW_REFS                                                                                                                                \
-    if (cb_window_id || focused_window_id) {                                                                                                                   \
-        global_state.callback_os_window = NULL;                                                                                                                \
-        for (size_t wn = 0; wn < global_state.num_os_windows; wn++) {                                                                                          \
-            OSWindow *wp = global_state.os_windows + wn;                                                                                                       \
-            if (wp->id == cb_window_id && cb_window_id) global_state.callback_os_window = wp;                                                                  \
-        }                                                                                                                                                      \
+#define END_WITH_OS_WINDOW_REFS                                                               \
+    if (cb_window_id || focused_window_id) {                                                  \
+        global_state.callback_os_window = NULL;                                               \
+        for (size_t wn = 0; wn < global_state.num_os_windows; wn++) {                         \
+            OSWindow *wp = global_state.os_windows + wn;                                      \
+            if (wp->id == cb_window_id && cb_window_id) global_state.callback_os_window = wp; \
+        }                                                                                     \
     }
 
 static double
@@ -925,119 +925,119 @@ update_ime_position_for_window(id_type window_id, bool force, int update_focus) 
 // Python API {{{
 #define PYWRAP0(name) static PyObject *py##name(PYNOARG)
 #define PYWRAP1(name) static PyObject *py##name(PyObject UNUSED *self, PyObject *args)
-#define PA(fmt, ...)                                                                                                                                           \
+#define PA(fmt, ...) \
     if (!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
-#define ONE_UINT(name)                                                                                                                                         \
-    PYWRAP1(name) {                                                                                                                                            \
-        name((unsigned int)PyLong_AsUnsignedLong(args));                                                                                                       \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define ONE_UINT(name)                                   \
+    PYWRAP1(name) {                                      \
+        name((unsigned int)PyLong_AsUnsignedLong(args)); \
+        Py_RETURN_NONE;                                  \
     }
-#define TWO_UINT(name)                                                                                                                                         \
-    PYWRAP1(name) {                                                                                                                                            \
-        unsigned int a, b;                                                                                                                                     \
-        PA("II", &a, &b);                                                                                                                                      \
-        name(a, b);                                                                                                                                            \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define TWO_UINT(name)     \
+    PYWRAP1(name) {        \
+        unsigned int a, b; \
+        PA("II", &a, &b);  \
+        name(a, b);        \
+        Py_RETURN_NONE;    \
     }
-#define THREE_UINT(name)                                                                                                                                       \
-    PYWRAP1(name) {                                                                                                                                            \
-        unsigned int a, b, c;                                                                                                                                  \
-        PA("III", &a, &b, &c);                                                                                                                                 \
-        name(a, b, c);                                                                                                                                         \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define THREE_UINT(name)       \
+    PYWRAP1(name) {            \
+        unsigned int a, b, c;  \
+        PA("III", &a, &b, &c); \
+        name(a, b, c);         \
+        Py_RETURN_NONE;        \
     }
-#define TWO_ID(name)                                                                                                                                           \
-    PYWRAP1(name) {                                                                                                                                            \
-        id_type a, b;                                                                                                                                          \
-        PA("KK", &a, &b);                                                                                                                                      \
-        name(a, b);                                                                                                                                            \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define TWO_ID(name)      \
+    PYWRAP1(name) {       \
+        id_type a, b;     \
+        PA("KK", &a, &b); \
+        name(a, b);       \
+        Py_RETURN_NONE;   \
     }
-#define THREE_ID(name)                                                                                                                                         \
-    PYWRAP1(name) {                                                                                                                                            \
-        id_type a, b, c;                                                                                                                                       \
-        PA("KKK", &a, &b, &c);                                                                                                                                 \
-        name(a, b, c);                                                                                                                                         \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define THREE_ID(name)         \
+    PYWRAP1(name) {            \
+        id_type a, b, c;       \
+        PA("KKK", &a, &b, &c); \
+        name(a, b, c);         \
+        Py_RETURN_NONE;        \
     }
-#define THREE_ID_OBJ(name)                                                                                                                                     \
-    PYWRAP1(name) {                                                                                                                                            \
-        id_type a, b, c;                                                                                                                                       \
-        PyObject *o;                                                                                                                                           \
-        PA("KKKO", &a, &b, &c, &o);                                                                                                                            \
-        name(a, b, c, o);                                                                                                                                      \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define THREE_ID_OBJ(name)          \
+    PYWRAP1(name) {                 \
+        id_type a, b, c;            \
+        PyObject *o;                \
+        PA("KKKO", &a, &b, &c, &o); \
+        name(a, b, c, o);           \
+        Py_RETURN_NONE;             \
     }
-#define K(name)                                                                                                                                                \
-    PYWRAP1(name) {                                                                                                                                            \
-        id_type a;                                                                                                                                             \
-        PA("K", &a);                                                                                                                                           \
-        name(a);                                                                                                                                               \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define K(name)         \
+    PYWRAP1(name) {     \
+        id_type a;      \
+        PA("K", &a);    \
+        name(a);        \
+        Py_RETURN_NONE; \
     }
-#define KI(name)                                                                                                                                               \
-    PYWRAP1(name) {                                                                                                                                            \
-        id_type a;                                                                                                                                             \
-        unsigned int b;                                                                                                                                        \
-        PA("KI", &a, &b);                                                                                                                                      \
-        name(a, b);                                                                                                                                            \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define KI(name)          \
+    PYWRAP1(name) {       \
+        id_type a;        \
+        unsigned int b;   \
+        PA("KI", &a, &b); \
+        name(a, b);       \
+        Py_RETURN_NONE;   \
     }
-#define KII(name)                                                                                                                                              \
-    PYWRAP1(name) {                                                                                                                                            \
-        id_type a;                                                                                                                                             \
-        unsigned int b, c;                                                                                                                                     \
-        PA("KII", &a, &b, &c);                                                                                                                                 \
-        name(a, b, c);                                                                                                                                         \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define KII(name)              \
+    PYWRAP1(name) {            \
+        id_type a;             \
+        unsigned int b, c;     \
+        PA("KII", &a, &b, &c); \
+        name(a, b, c);         \
+        Py_RETURN_NONE;        \
     }
-#define KKI(name)                                                                                                                                              \
-    PYWRAP1(name) {                                                                                                                                            \
-        id_type a, b;                                                                                                                                          \
-        unsigned int c;                                                                                                                                        \
-        PA("KKI", &a, &b, &c);                                                                                                                                 \
-        name(a, b, c);                                                                                                                                         \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define KKI(name)              \
+    PYWRAP1(name) {            \
+        id_type a, b;          \
+        unsigned int c;        \
+        PA("KKI", &a, &b, &c); \
+        name(a, b, c);         \
+        Py_RETURN_NONE;        \
     }
-#define KKK(name)                                                                                                                                              \
-    PYWRAP1(name) {                                                                                                                                            \
-        id_type a, b, c;                                                                                                                                       \
-        PA("KKK", &a, &b, &c);                                                                                                                                 \
-        name(a, b, c);                                                                                                                                         \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define KKK(name)              \
+    PYWRAP1(name) {            \
+        id_type a, b, c;       \
+        PA("KKK", &a, &b, &c); \
+        name(a, b, c);         \
+        Py_RETURN_NONE;        \
     }
-#define KKII(name)                                                                                                                                             \
-    PYWRAP1(name) {                                                                                                                                            \
-        id_type a, b;                                                                                                                                          \
-        unsigned int c, d;                                                                                                                                     \
-        PA("KKII", &a, &b, &c, &d);                                                                                                                            \
-        name(a, b, c, d);                                                                                                                                      \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define KKII(name)                  \
+    PYWRAP1(name) {                 \
+        id_type a, b;               \
+        unsigned int c, d;          \
+        PA("KKII", &a, &b, &c, &d); \
+        name(a, b, c, d);           \
+        Py_RETURN_NONE;             \
     }
-#define KKKK(name)                                                                                                                                             \
-    PYWRAP1(name) {                                                                                                                                            \
-        id_type a, b, c, d;                                                                                                                                    \
-        PA("KKKK", &a, &b, &c, &d);                                                                                                                            \
-        name(a, b, c, d);                                                                                                                                      \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define KKKK(name)                  \
+    PYWRAP1(name) {                 \
+        id_type a, b, c, d;         \
+        PA("KKKK", &a, &b, &c, &d); \
+        name(a, b, c, d);           \
+        Py_RETURN_NONE;             \
     }
-#define KK5I(name)                                                                                                                                             \
-    PYWRAP1(name) {                                                                                                                                            \
-        id_type a, b;                                                                                                                                          \
-        unsigned int c, d, e, f, g;                                                                                                                            \
-        PA("KKIIIII", &a, &b, &c, &d, &e, &f, &g);                                                                                                             \
-        name(a, b, c, d, e, f, g);                                                                                                                             \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define KK5I(name)                                 \
+    PYWRAP1(name) {                                \
+        id_type a, b;                              \
+        unsigned int c, d, e, f, g;                \
+        PA("KKIIIII", &a, &b, &c, &d, &e, &f, &g); \
+        name(a, b, c, d, e, f, g);                 \
+        Py_RETURN_NONE;                            \
     }
-#define BOOL_SET(name)                                                                                                                                         \
-    PYWRAP1(set_##name) {                                                                                                                                      \
-        global_state.name = PyObject_IsTrue(args);                                                                                                             \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define BOOL_SET(name)                             \
+    PYWRAP1(set_##name) {                          \
+        global_state.name = PyObject_IsTrue(args); \
+        Py_RETURN_NONE;                            \
     }
-#define dict_iter(d)                                                                                                                                           \
-    {                                                                                                                                                          \
-        PyObject *key, *value;                                                                                                                                 \
-        Py_ssize_t pos = 0;                                                                                                                                    \
+#define dict_iter(d)           \
+    {                          \
+        PyObject *key, *value; \
+        Py_ssize_t pos = 0;    \
         while (PyDict_Next(d, &pos, &key, &value))
 
 PYWRAP1(update_ime_position_for_window) {
@@ -1586,13 +1586,13 @@ PYWRAP1(patch_global_colors) {
     PyObject *spec;
     int configured;
     if (!PyArg_ParseTuple(args, "Op", &spec, &configured)) return NULL;
-#define P(name)                                                                                                                                                \
-    {                                                                                                                                                          \
-        PyObject *val = PyDict_GetItemString(spec, #name);                                                                                                     \
-        if (val) {                                                                                                                                             \
-            if (val == Py_None) OPT(name) = 0;                                                                                                                 \
-            else if (PyLong_Check(val)) OPT(name) = PyLong_AsLong(val);                                                                                        \
-        }                                                                                                                                                      \
+#define P(name)                                                         \
+    {                                                                   \
+        PyObject *val = PyDict_GetItemString(spec, #name);              \
+        if (val) {                                                      \
+            if (val == Py_None) OPT(name) = 0;                          \
+            else if (PyLong_Check(val)) OPT(name) = PyLong_AsLong(val); \
+        }                                                               \
     }
     P(active_border_color);
     P(inactive_border_color);

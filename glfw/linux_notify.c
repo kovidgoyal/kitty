@@ -101,10 +101,10 @@ got_capabilities(DBusMessage *msg, const DBusError *err, void *data UNUSED) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: Failed to get server capabilities error: %s: %s", err->name, err->message);
         return;
     }
-#define check_call(func, err, ...)                                                                                                                             \
-    if (!func(__VA_ARGS__)) {                                                                                                                                  \
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: GetCapabilities: %s", err);                                                                              \
-        return;                                                                                                                                                \
+#define check_call(func, err, ...)                                                \
+    if (!func(__VA_ARGS__)) {                                                     \
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: GetCapabilities: %s", err); \
+        return;                                                                   \
     }
     DBusMessageIter iter, array_iter;
     check_call(dbus_message_iter_init, "message has no parameters", msg, &iter);
@@ -160,10 +160,10 @@ glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnoti
     if (!msg) { return 0; }
     DBusMessageIter args, array, variant, dict;
     dbus_message_iter_init_append(msg, &args);
-#define check_call(func, ...)                                                                                                                                  \
-    if (!func(__VA_ARGS__)) {                                                                                                                                  \
-        _glfwInputError(GLFW_PLATFORM_ERROR, "%s", "Out of memory allocating DBUS message for notification\n");                                                \
-        return 0;                                                                                                                                              \
+#define check_call(func, ...)                                                                                   \
+    if (!func(__VA_ARGS__)) {                                                                                   \
+        _glfwInputError(GLFW_PLATFORM_ERROR, "%s", "Out of memory allocating DBUS message for notification\n"); \
+        return 0;                                                                                               \
     }
 #define APPEND(to, type, val) check_call(dbus_message_iter_append_basic, &to, type, &val);
     APPEND(args, DBUS_TYPE_STRING, n->app_name)
@@ -178,15 +178,15 @@ glfw_dbus_send_user_notification(const GLFWDBUSNotificationData *n, GLFWDBusnoti
     check_call(dbus_message_iter_close_container, &args, &array);
     check_call(dbus_message_iter_open_container, &args, DBUS_TYPE_ARRAY, "{sv}", &array);
 
-#define append_sv_dictionary_entry(k, val_type, val)                                                                                                           \
-    {                                                                                                                                                          \
-        check_call(dbus_message_iter_open_container, &array, DBUS_TYPE_DICT_ENTRY, NULL, &dict);                                                               \
-        static const char *key = k;                                                                                                                            \
-        APPEND(dict, DBUS_TYPE_STRING, key);                                                                                                                   \
-        check_call(dbus_message_iter_open_container, &dict, DBUS_TYPE_VARIANT, val_type##_AS_STRING, &variant);                                                \
-        APPEND(variant, val_type, val);                                                                                                                        \
-        check_call(dbus_message_iter_close_container, &dict, &variant);                                                                                        \
-        check_call(dbus_message_iter_close_container, &array, &dict);                                                                                          \
+#define append_sv_dictionary_entry(k, val_type, val)                                                            \
+    {                                                                                                           \
+        check_call(dbus_message_iter_open_container, &array, DBUS_TYPE_DICT_ENTRY, NULL, &dict);                \
+        static const char *key = k;                                                                             \
+        APPEND(dict, DBUS_TYPE_STRING, key);                                                                    \
+        check_call(dbus_message_iter_open_container, &dict, DBUS_TYPE_VARIANT, val_type##_AS_STRING, &variant); \
+        APPEND(variant, val_type, val);                                                                         \
+        check_call(dbus_message_iter_close_container, &dict, &variant);                                         \
+        check_call(dbus_message_iter_close_container, &array, &dict);                                           \
     }
     append_sv_dictionary_entry("urgency", DBUS_TYPE_BYTE, n->urgency);
     if (n->category && n->category[0]) append_sv_dictionary_entry("category", DBUS_TYPE_STRING, n->category);

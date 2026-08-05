@@ -77,10 +77,10 @@ chooseEGLConfig(const _GLFWctxconfig *ctxconfig, const _GLFWfbconfig *desired, E
     EGLConfig configs[512];
     int i = 0, nativeCount = 0, ans_idx = 0;
     EGLint attributes[64];
-#define ATTR(k, v)                                                                                                                                             \
-    {                                                                                                                                                          \
-        attributes[i++] = k;                                                                                                                                   \
-        attributes[i++] = v;                                                                                                                                   \
+#define ATTR(k, v)           \
+    {                        \
+        attributes[i++] = k; \
+        attributes[i++] = v; \
     }
     ATTR(EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER);
     ATTR(EGL_SURFACE_TYPE, EGL_WINDOW_BIT);
@@ -359,11 +359,11 @@ _glfwTerminateEGL(void) {
     }
 }
 
-#define setAttrib(a, v)                                                                                                                                        \
-    {                                                                                                                                                          \
-        assert(((size_t)index + 1) < sizeof(attribs) / sizeof(attribs[0]));                                                                                    \
-        attribs[index++] = a;                                                                                                                                  \
-        attribs[index++] = v;                                                                                                                                  \
+#define setAttrib(a, v)                                                     \
+    {                                                                       \
+        assert(((size_t)index + 1) < sizeof(attribs) / sizeof(attribs[0])); \
+        attribs[index++] = a;                                               \
+        attribs[index++] = v;                                               \
     }
 
 // Create the OpenGL or OpenGL ES context

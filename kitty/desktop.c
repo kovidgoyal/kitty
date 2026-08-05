@@ -12,21 +12,21 @@
 #include "threading.h"
 #include <dlfcn.h>
 
-#define FUNC(name, restype, ...)                                                                                                                               \
-    typedef restype (*name##_func)(__VA_ARGS__);                                                                                                               \
+#define FUNC(name, restype, ...)                 \
+    typedef restype (*name##_func)(__VA_ARGS__); \
     static name##_func name = NULL
-#define LOAD_FUNC(handle, name)                                                                                                                                \
-    {                                                                                                                                                          \
-        *(void **)(&name) = dlsym(handle, #name);                                                                                                              \
-        if (!name) {                                                                                                                                           \
-            const char *error = dlerror();                                                                                                                     \
-            if (error != NULL) {                                                                                                                               \
-                PyErr_Format(PyExc_OSError, "Failed to load the function %s with error: %s", #name, error);                                                    \
-                dlclose(handle);                                                                                                                               \
-                handle = NULL;                                                                                                                                 \
-                return NULL;                                                                                                                                   \
-            }                                                                                                                                                  \
-        }                                                                                                                                                      \
+#define LOAD_FUNC(handle, name)                                                                             \
+    {                                                                                                       \
+        *(void **)(&name) = dlsym(handle, #name);                                                           \
+        if (!name) {                                                                                        \
+            const char *error = dlerror();                                                                  \
+            if (error != NULL) {                                                                            \
+                PyErr_Format(PyExc_OSError, "Failed to load the function %s with error: %s", #name, error); \
+                dlclose(handle);                                                                            \
+                handle = NULL;                                                                              \
+                return NULL;                                                                                \
+            }                                                                                               \
+        }                                                                                                   \
     }
 
 FUNC(sn_display_new, void *, void *, void *, void *);

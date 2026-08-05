@@ -563,7 +563,7 @@ is_shiftable_shortcut(int scv) {
     return scv == kSHKMoveFocusToActiveOrNextWindow || scv == kSHKMoveFocusToNextWindow;
 }
 
-#define USEFUL_MODS(x)                                                                                                                                         \
+#define USEFUL_MODS(x) \
     (x & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl | NSEventModifierFlagFunction))
 
 static void
@@ -626,10 +626,10 @@ build_global_shortcuts_lookup(void) {
     // macOS provides separate configurations for some languages or keyboards.
     // In general, the rules here will not take effect.
     static char buf[64];
-#define S(i, t, m, k)                                                                                                                                          \
-    if ([temp_configured member:@(i)] == nil || [temp_missing_value member:@(i)] != nil) {                                                                     \
-        snprintf(buf, sizeof(buf) - 1, #t ":%lx:%ld", (unsigned long)m, (long)k);                                                                              \
-        temp[@(buf)] = @(i);                                                                                                                                   \
+#define S(i, t, m, k)                                                                      \
+    if ([temp_configured member:@(i)] == nil || [temp_missing_value member:@(i)] != nil) { \
+        snprintf(buf, sizeof(buf) - 1, #t ":%lx:%ld", (unsigned long)m, (long)k);          \
+        temp[@(buf)] = @(i);                                                               \
     }
 
     // launchpad & dock
@@ -662,9 +662,9 @@ is_active_apple_global_shortcut(NSEvent *event) {
     if (global_shortcuts == nil) build_global_shortcuts_lookup();
     NSEventModifierFlags modifierFlags = USEFUL_MODS([event modifierFlags]);
     static char lookup_key[64];
-#define LOOKUP(t, k)                                                                                                                                           \
-    snprintf(lookup_key, sizeof(lookup_key) - 1, #t ":%lx:%ld", (unsigned long)modifierFlags, (long)k);                                                        \
-    NSNumber *sc = global_shortcuts[@(lookup_key)];                                                                                                            \
+#define LOOKUP(t, k)                                                                                    \
+    snprintf(lookup_key, sizeof(lookup_key) - 1, #t ":%lx:%ld", (unsigned long)modifierFlags, (long)k); \
+    NSNumber *sc = global_shortcuts[@(lookup_key)];                                                     \
     if (sc != nil) return [sc intValue];
 
     if ([event.charactersIgnoringModifiers length] == 1) {

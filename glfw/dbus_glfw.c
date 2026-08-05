@@ -229,14 +229,14 @@ method_reply_received(DBusPendingCall *pending, void *user_data) {
 bool
 call_method_with_msg(DBusConnection *conn, DBusMessage *msg, int timeout, dbus_pending_callback callback, void *user_data, bool block) {
     bool retval = false;
-#define REPORT(errs)                                                                                                                                           \
-    _glfwInputError(                                                                                                                                           \
-        GLFW_PLATFORM_ERROR,                                                                                                                                   \
-        "Failed to call DBUS method: node=%s path=%s interface=%s method=%s, with error: %s",                                                                  \
-        dbus_message_get_destination(msg),                                                                                                                     \
-        dbus_message_get_path(msg),                                                                                                                            \
-        dbus_message_get_interface(msg),                                                                                                                       \
-        dbus_message_get_member(msg),                                                                                                                          \
+#define REPORT(errs)                                                                          \
+    _glfwInputError(                                                                          \
+        GLFW_PLATFORM_ERROR,                                                                  \
+        "Failed to call DBUS method: node=%s path=%s interface=%s method=%s, with error: %s", \
+        dbus_message_get_destination(msg),                                                    \
+        dbus_message_get_path(msg),                                                           \
+        dbus_message_get_interface(msg),                                                      \
+        dbus_message_get_member(msg),                                                         \
         errs)
     if (callback) {
         DBusPendingCall *pending = NULL;

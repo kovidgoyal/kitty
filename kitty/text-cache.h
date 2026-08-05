@@ -19,8 +19,8 @@ static inline void
 cleanup_list_of_chars(ListOfChars *lc) {
     if (lc->capacity > LIST_OF_CHARS_STACK_SIZE) free(lc->chars);
 }
-#define RAII_ListOfChars(name)                                                                                                                                 \
-    char_type name##lcbuf[LIST_OF_CHARS_STACK_SIZE];                                                                                                           \
+#define RAII_ListOfChars(name)                       \
+    char_type name##lcbuf[LIST_OF_CHARS_STACK_SIZE]; \
     __attribute__((cleanup(cleanup_list_of_chars))) ListOfChars name = {.chars = name##lcbuf, .capacity = LIST_OF_CHARS_STACK_SIZE};
 static inline ListOfChars *
 alloc_list_of_chars(void) {

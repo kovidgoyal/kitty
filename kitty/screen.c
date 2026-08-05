@@ -5,18 +5,18 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#define EXTRA_INIT                                                                                                                                             \
-    {                                                                                                                                                          \
-        PyModule_AddIntMacro(module, SCROLL_LINE);                                                                                                             \
-        PyModule_AddIntMacro(module, SCROLL_PAGE);                                                                                                             \
-        PyModule_AddIntMacro(module, SCROLL_FULL);                                                                                                             \
-        PyModule_AddIntMacro(module, EXTEND_CELL);                                                                                                             \
-        PyModule_AddIntMacro(module, EXTEND_WORD);                                                                                                             \
-        PyModule_AddIntMacro(module, EXTEND_LINE);                                                                                                             \
-        PyModule_AddIntMacro(module, SCALE_BITS);                                                                                                              \
-        PyModule_AddIntMacro(module, WIDTH_BITS);                                                                                                              \
-        PyModule_AddIntMacro(module, SUBSCALE_BITS);                                                                                                           \
-        if (PyModule_AddFunctions(module, module_methods) != 0) return false;                                                                                  \
+#define EXTRA_INIT                                                            \
+    {                                                                         \
+        PyModule_AddIntMacro(module, SCROLL_LINE);                            \
+        PyModule_AddIntMacro(module, SCROLL_PAGE);                            \
+        PyModule_AddIntMacro(module, SCROLL_FULL);                            \
+        PyModule_AddIntMacro(module, EXTEND_CELL);                            \
+        PyModule_AddIntMacro(module, EXTEND_WORD);                            \
+        PyModule_AddIntMacro(module, EXTEND_LINE);                            \
+        PyModule_AddIntMacro(module, SCALE_BITS);                             \
+        PyModule_AddIntMacro(module, WIDTH_BITS);                             \
+        PyModule_AddIntMacro(module, SUBSCALE_BITS);                          \
+        if (PyModule_AddFunctions(module, module_methods) != 0) return false; \
     }
 
 #include "data-types.h"
@@ -105,11 +105,11 @@ static void update_overlay_position(Screen *self);
 static void render_overlay_line(Screen *self, Line *line, FONTS_DATA_HANDLE fonts_data);
 static void update_overlay_line_data(Screen *self, uint8_t *data);
 
-#define CALLBACK(...)                                                                                                                                          \
-    if (self->callbacks != Py_None) {                                                                                                                          \
-        PyObject *callback_ret = PyObject_CallMethod(self->callbacks, __VA_ARGS__);                                                                            \
-        if (callback_ret == NULL) PyErr_Print();                                                                                                               \
-        else Py_DECREF(callback_ret);                                                                                                                          \
+#define CALLBACK(...)                                                               \
+    if (self->callbacks != Py_None) {                                               \
+        PyObject *callback_ret = PyObject_CallMethod(self->callbacks, __VA_ARGS__); \
+        if (callback_ret == NULL) PyErr_Print();                                    \
+        else Py_DECREF(callback_ret);                                               \
     }
 
 static PyObject *
@@ -426,30 +426,30 @@ index_selection(const Screen *self, Selections *selections, bool up, index_type 
 }
 
 
-#define INDEX_GRAPHICS(amtv)                                                                                                                                   \
-    {                                                                                                                                                          \
-        bool is_main = self->linebuf == self->main_linebuf;                                                                                                    \
-        static ScrollData s;                                                                                                                                   \
-        s.amt = amtv;                                                                                                                                          \
-        s.limit = is_main ? -self->historybuf->ynum : 0;                                                                                                       \
-        s.has_margins = self->margin_top != 0 || self->margin_bottom != self->lines - 1;                                                                       \
-        s.margin_top = top;                                                                                                                                    \
-        s.margin_bottom = bottom;                                                                                                                              \
-        grman_scroll_images(self->grman, &s, self->cell_size);                                                                                                 \
+#define INDEX_GRAPHICS(amtv)                                                             \
+    {                                                                                    \
+        bool is_main = self->linebuf == self->main_linebuf;                              \
+        static ScrollData s;                                                             \
+        s.amt = amtv;                                                                    \
+        s.limit = is_main ? -self->historybuf->ynum : 0;                                 \
+        s.has_margins = self->margin_top != 0 || self->margin_bottom != self->lines - 1; \
+        s.margin_top = top;                                                              \
+        s.margin_bottom = bottom;                                                        \
+        grman_scroll_images(self->grman, &s, self->cell_size);                           \
     }
 
 
-#define INDEX_DOWN                                                                                                                                             \
-    linebuf_reverse_index(self->linebuf, top, bottom);                                                                                                         \
-    linebuf_clear_line(self->linebuf, top, true);                                                                                                              \
-    if (self->linebuf == self->main_linebuf && self->last_visited_prompt.is_set) {                                                                             \
-        if (self->last_visited_prompt.scrolled_by > 0) self->last_visited_prompt.scrolled_by--;                                                                \
-        else if (self->last_visited_prompt.y < self->lines - 1) self->last_visited_prompt.y++;                                                                 \
-        else self->last_visited_prompt.is_set = false;                                                                                                         \
-    }                                                                                                                                                          \
-    INDEX_GRAPHICS(1)                                                                                                                                          \
-    self->is_dirty = true;                                                                                                                                     \
-    index_selection(self, &self->selections, false, top, bottom);                                                                                              \
+#define INDEX_DOWN                                                                              \
+    linebuf_reverse_index(self->linebuf, top, bottom);                                          \
+    linebuf_clear_line(self->linebuf, top, true);                                               \
+    if (self->linebuf == self->main_linebuf && self->last_visited_prompt.is_set) {              \
+        if (self->last_visited_prompt.scrolled_by > 0) self->last_visited_prompt.scrolled_by--; \
+        else if (self->last_visited_prompt.y < self->lines - 1) self->last_visited_prompt.y++;  \
+        else self->last_visited_prompt.is_set = false;                                          \
+    }                                                                                           \
+    INDEX_GRAPHICS(1)                                                                           \
+    self->is_dirty = true;                                                                      \
+    index_selection(self, &self->selections, false, top, bottom);                               \
     clear_selection(&self->url_ranges);
 
 
@@ -643,12 +643,12 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     CursorTrack cursor = {.before = {self->cursor->x, self->cursor->y}};
     CursorTrack main_saved_cursor = {.before = {self->main_savepoint.cursor.x, self->main_savepoint.cursor.y}};
     CursorTrack alt_saved_cursor = {.before = {self->alt_savepoint.cursor.x, self->alt_savepoint.cursor.y}};
-#define setup_cursor(which)                                                                                                                                    \
-    {                                                                                                                                                          \
-        which.after.x = which.temp.x;                                                                                                                          \
-        which.after.y = which.temp.y;                                                                                                                          \
-        which.is_beyond_content = num_content_lines_before > 0 && self->cursor->y >= num_content_lines_before;                                                 \
-        which.num_content_lines = num_content_lines_after;                                                                                                     \
+#define setup_cursor(which)                                                                                    \
+    {                                                                                                          \
+        which.after.x = which.temp.x;                                                                          \
+        which.after.y = which.temp.y;                                                                          \
+        which.is_beyond_content = num_content_lines_before > 0 && self->cursor->y >= num_content_lines_before; \
+        which.num_content_lines = num_content_lines_after;                                                     \
     }
     // Resize overlay and blank lines
     if (!init_overlay_line(self, columns, true)) return false;
@@ -701,8 +701,8 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     self->is_dirty = true;
     clear_all_selections(self);
     self->last_visited_prompt.is_set = false;
-#define S(c, w)                                                                                                                                                \
-    c->x = MIN(w.after.x, self->columns - 1);                                                                                                                  \
+#define S(c, w)                               \
+    c->x = MIN(w.after.x, self->columns - 1); \
     c->y = MIN(w.after.y, self->lines - 1);
     S(self->cursor, cursor);
     S((&(self->main_savepoint.cursor)), main_saved_cursor);
@@ -1391,18 +1391,18 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
 #undef init_line
 }
 
-#define PREPARE_FOR_DRAW_TEXT                                                                                                                                  \
-    if (tc_should_gc(self->text_cache)) screen_garbage_collect_text_cache(self);                                                                               \
-    const bool force_underline = OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && self->active_hyperlink_id != 0;                                              \
-    CellAttrs attrs = cursor_to_attrs(self->cursor);                                                                                                           \
-    if (force_underline) attrs.decoration = OPT(url_style);                                                                                                    \
-    text_loop_state s = {                                                                                                                                      \
-        .cc = (CPUCell){.hyperlink_id = self->active_hyperlink_id},                                                                                            \
-        .g = (GPUCell){                                                                                                                                        \
-            .attrs = attrs,                                                                                                                                    \
-            .fg = self->cursor->sgr.fg & COL_MASK,                                                                                                             \
-            .bg = self->cursor->sgr.bg & COL_MASK,                                                                                                             \
-            .decoration_fg = force_underline ? ((OPT(url_color) & COL_MASK) << 8) | 2 : self->cursor->sgr.decoration_fg & COL_MASK,                            \
+#define PREPARE_FOR_DRAW_TEXT                                                                                                       \
+    if (tc_should_gc(self->text_cache)) screen_garbage_collect_text_cache(self);                                                    \
+    const bool force_underline = OPT(underline_hyperlinks) == UNDERLINE_ALWAYS && self->active_hyperlink_id != 0;                   \
+    CellAttrs attrs = cursor_to_attrs(self->cursor);                                                                                \
+    if (force_underline) attrs.decoration = OPT(url_style);                                                                         \
+    text_loop_state s = {                                                                                                           \
+        .cc = (CPUCell){.hyperlink_id = self->active_hyperlink_id},                                                                 \
+        .g = (GPUCell){                                                                                                             \
+            .attrs = attrs,                                                                                                         \
+            .fg = self->cursor->sgr.fg & COL_MASK,                                                                                  \
+            .bg = self->cursor->sgr.bg & COL_MASK,                                                                                  \
+            .decoration_fg = force_underline ? ((OPT(url_color) & COL_MASK) << 8) | 2 : self->cursor->sgr.decoration_fg & COL_MASK, \
         }};
 
 static void
@@ -1882,10 +1882,10 @@ screen_alternate_keypad_mode(Screen UNUSED *self) {} // Not implemented as this 
 
 static void
 set_mode_from_const(Screen *self, unsigned int mode, bool val) {
-#define SIMPLE_MODE(name)                                                                                                                                      \
+#define SIMPLE_MODE(name) \
     case name: self->modes.m##name = val; break;
 
-#define MOUSE_MODE(name, attr, value)                                                                                                                          \
+#define MOUSE_MODE(name, attr, value) \
     case name: self->modes.attr = val ? value : 0; break;
 
     bool private;
@@ -2382,22 +2382,22 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     }
 }
 
-#define INDEX_UP(add_to_history)                                                                                                                               \
-    linebuf_index(self->linebuf, top, bottom);                                                                                                                 \
-    INDEX_GRAPHICS(-1)                                                                                                                                         \
-    if (add_to_history) {                                                                                                                                      \
-        /* Only add to history when no top margin has been set */                                                                                              \
-        linebuf_init_line(self->linebuf, bottom);                                                                                                              \
-        historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf);                                                                        \
-        self->history_line_added_count++;                                                                                                                      \
-        if (self->last_visited_prompt.is_set) {                                                                                                                \
-            if (self->last_visited_prompt.scrolled_by < self->historybuf->count) self->last_visited_prompt.scrolled_by++;                                      \
-            else self->last_visited_prompt.is_set = false;                                                                                                     \
-        }                                                                                                                                                      \
-    }                                                                                                                                                          \
-    linebuf_clear_line(self->linebuf, bottom, true);                                                                                                           \
-    self->is_dirty = true;                                                                                                                                     \
-    index_selection(self, &self->selections, true, top, bottom);                                                                                               \
+#define INDEX_UP(add_to_history)                                                                                          \
+    linebuf_index(self->linebuf, top, bottom);                                                                            \
+    INDEX_GRAPHICS(-1)                                                                                                    \
+    if (add_to_history) {                                                                                                 \
+        /* Only add to history when no top margin has been set */                                                         \
+        linebuf_init_line(self->linebuf, bottom);                                                                         \
+        historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf);                                   \
+        self->history_line_added_count++;                                                                                 \
+        if (self->last_visited_prompt.is_set) {                                                                           \
+            if (self->last_visited_prompt.scrolled_by < self->historybuf->count) self->last_visited_prompt.scrolled_by++; \
+            else self->last_visited_prompt.is_set = false;                                                                \
+        }                                                                                                                 \
+    }                                                                                                                     \
+    linebuf_clear_line(self->linebuf, bottom, true);                                                                      \
+    self->is_dirty = true;                                                                                                \
+    index_selection(self, &self->selections, true, top, bottom);                                                          \
     clear_selection(&self->url_ranges);
 
 void
@@ -2481,20 +2481,20 @@ screen_linefeed(Screen *self) {
     screen_ensure_bounds(self, false, in_margins);
 }
 
-#define buffer_push(self, ans)                                                                                                                                 \
-    {                                                                                                                                                          \
-        ans = (self)->buf + (((self)->start_of_data + (self)->count) % SAVEPOINTS_SZ);                                                                         \
-        if ((self)->count == SAVEPOINTS_SZ) (self)->start_of_data = ((self)->start_of_data + 1) % SAVEPOINTS_SZ;                                               \
-        else (self)->count++;                                                                                                                                  \
+#define buffer_push(self, ans)                                                                                   \
+    {                                                                                                            \
+        ans = (self)->buf + (((self)->start_of_data + (self)->count) % SAVEPOINTS_SZ);                           \
+        if ((self)->count == SAVEPOINTS_SZ) (self)->start_of_data = ((self)->start_of_data + 1) % SAVEPOINTS_SZ; \
+        else (self)->count++;                                                                                    \
     }
 
-#define buffer_pop(self, ans)                                                                                                                                  \
-    {                                                                                                                                                          \
-        if ((self)->count == 0) ans = NULL;                                                                                                                    \
-        else {                                                                                                                                                 \
-            (self)->count--;                                                                                                                                   \
-            ans = (self)->buf + (((self)->start_of_data + (self)->count) % SAVEPOINTS_SZ);                                                                     \
-        }                                                                                                                                                      \
+#define buffer_pop(self, ans)                                                              \
+    {                                                                                      \
+        if ((self)->count == 0) ans = NULL;                                                \
+        else {                                                                             \
+            (self)->count--;                                                               \
+            ans = (self)->buf + (((self)->start_of_data + (self)->count) % SAVEPOINTS_SZ); \
+        }                                                                                  \
     }
 
 void
@@ -2510,12 +2510,12 @@ screen_save_cursor(Screen *self) {
 
 static void
 copy_specific_mode(Screen *self, unsigned int mode, const ScreenModes *src, ScreenModes *dest) {
-#define SIMPLE_MODE(name)                                                                                                                                      \
+#define SIMPLE_MODE(name) \
     case name: dest->m##name = src->m##name; break;
-#define SIDE_EFFECTS(name)                                                                                                                                     \
-    case name:                                                                                                                                                 \
-        if (do_side_effects) set_mode_from_const(self, name, src->m##name);                                                                                    \
-        else dest->m##name = src->m##name;                                                                                                                     \
+#define SIDE_EFFECTS(name)                                                  \
+    case name:                                                              \
+        if (do_side_effects) set_mode_from_const(self, name, src->m##name); \
+        else dest->m##name = src->m##name;                                  \
         break;
 
     const bool do_side_effects = dest == &self->modes;
@@ -3156,7 +3156,7 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
     unsigned int ans = 0;
     char buf[50] = {0};
     switch (q) {
-#define KNOWN_MODE(x)                                                                                                                                          \
+#define KNOWN_MODE(x) \
     case x: ans = self->modes.m##x ? 1 : 2; break;
         KNOWN_MODE(LNM);
         KNOWN_MODE(IRM);
@@ -3243,10 +3243,10 @@ void
 screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_params) {
     // printf("%d;", queried_shape); for (unsigned i = 0; i < num_params; i++) {printf("%d:", params[i]);} printf("\n");
     if (!num_params) {
-#define pr(...)                                                                                                                                                \
-    {                                                                                                                                                          \
-        int n = snprintf(p, sz - (p - buf), __VA_ARGS__);                                                                                                      \
-        if (n >= 0 && (unsigned)n <= (sz - (p - buf))) p += n;                                                                                                 \
+#define pr(...)                                                \
+    {                                                          \
+        int n = snprintf(p, sz - (p - buf), __VA_ARGS__);      \
+        if (n >= 0 && (unsigned)n <= (sz - (p - buf))) p += n; \
     }
         if (params == NULL) {
             write_escape_code_to_child(self, ESC_CSI, ">1;2;3;29;30;40;100;101 q");
@@ -3272,12 +3272,12 @@ screen_multi_cursor(Screen *self, int queried_shape, int *params, unsigned num_p
             size_t sz = sizeof(buf);
             pr(">101;30:");
             DynamicColor ecc = self->extra_cursors.color.text;
-#define o()                                                                                                                                                    \
-    switch (ecc.type) {                                                                                                                                        \
-        case COLOR_NOT_SET: pr("0"); break;                                                                                                                    \
-        case COLOR_IS_SPECIAL: pr("1"); break;                                                                                                                 \
-        case COLOR_IS_INDEX: pr("5:%u", ecc.rgb & 0xff); break;                                                                                                \
-        case COLOR_IS_RGB: pr("2:%u:%u:%u", (ecc.rgb >> 16) & 0xff, (ecc.rgb >> 8) & 0xff, ecc.rgb & 0xff); break;                                             \
+#define o()                                                                                                        \
+    switch (ecc.type) {                                                                                            \
+        case COLOR_NOT_SET: pr("0"); break;                                                                        \
+        case COLOR_IS_SPECIAL: pr("1"); break;                                                                     \
+        case COLOR_IS_INDEX: pr("5:%u", ecc.rgb & 0xff); break;                                                    \
+        case COLOR_IS_RGB: pr("2:%u:%u:%u", (ecc.rgb >> 16) & 0xff, (ecc.rgb >> 8) & 0xff, ecc.rgb & 0xff); break; \
     }
 
             o();
@@ -3511,7 +3511,7 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump, int sc
         int delta = num_of_prompts_to_jump < 0 ? -1 : 1;
         num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
         int y = -self->scrolled_by;
-#define ensure_y_ok                                                                                                                                            \
+#define ensure_y_ok \
     if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
         ensure_y_ok;
         y += scroll_offset;
@@ -4794,52 +4794,52 @@ update_overlay_line_data(Screen *self, uint8_t *data) {
 // }}}
 
 // Python interface {{{
-#define WRAP0(name)                                                                                                                                            \
-    static PyObject *name(Screen *self, PyObject *a UNUSED) {                                                                                                  \
-        screen_##name(self);                                                                                                                                   \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define WRAP0(name)                                           \
+    static PyObject *name(Screen *self, PyObject *a UNUSED) { \
+        screen_##name(self);                                  \
+        Py_RETURN_NONE;                                       \
     }
-#define WRAP0x(name)                                                                                                                                           \
-    static PyObject *xxx_##name(Screen *self, PyObject *a UNUSED) {                                                                                            \
-        screen_##name(self);                                                                                                                                   \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define WRAP0x(name)                                                \
+    static PyObject *xxx_##name(Screen *self, PyObject *a UNUSED) { \
+        screen_##name(self);                                        \
+        Py_RETURN_NONE;                                             \
     }
-#define WRAP1(name, defval)                                                                                                                                    \
-    static PyObject *name(Screen *self, PyObject *args) {                                                                                                      \
-        unsigned int v = defval;                                                                                                                               \
-        if (!PyArg_ParseTuple(args, "|I", &v)) return NULL;                                                                                                    \
-        screen_##name(self, v);                                                                                                                                \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define WRAP1(name, defval)                                 \
+    static PyObject *name(Screen *self, PyObject *args) {   \
+        unsigned int v = defval;                            \
+        if (!PyArg_ParseTuple(args, "|I", &v)) return NULL; \
+        screen_##name(self, v);                             \
+        Py_RETURN_NONE;                                     \
     }
-#define WRAP1B(name, defval)                                                                                                                                   \
-    static PyObject *name(Screen *self, PyObject *args) {                                                                                                      \
-        unsigned int v = defval;                                                                                                                               \
-        int b = false;                                                                                                                                         \
-        if (!PyArg_ParseTuple(args, "|Ip", &v, &b)) return NULL;                                                                                               \
-        screen_##name(self, v, b);                                                                                                                             \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define WRAP1B(name, defval)                                     \
+    static PyObject *name(Screen *self, PyObject *args) {        \
+        unsigned int v = defval;                                 \
+        int b = false;                                           \
+        if (!PyArg_ParseTuple(args, "|Ip", &v, &b)) return NULL; \
+        screen_##name(self, v, b);                               \
+        Py_RETURN_NONE;                                          \
     }
-#define WRAP1E(name, defval, ...)                                                                                                                              \
-    static PyObject *name(Screen *self, PyObject *args) {                                                                                                      \
-        unsigned int v = defval;                                                                                                                               \
-        if (!PyArg_ParseTuple(args, "|I", &v)) return NULL;                                                                                                    \
-        screen_##name(self, v, __VA_ARGS__);                                                                                                                   \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define WRAP1E(name, defval, ...)                           \
+    static PyObject *name(Screen *self, PyObject *args) {   \
+        unsigned int v = defval;                            \
+        if (!PyArg_ParseTuple(args, "|I", &v)) return NULL; \
+        screen_##name(self, v, __VA_ARGS__);                \
+        Py_RETURN_NONE;                                     \
     }
-#define WRAP2(name, defval1, defval2)                                                                                                                          \
-    static PyObject *name(Screen *self, PyObject *args) {                                                                                                      \
-        unsigned int a = defval1, b = defval2;                                                                                                                 \
-        if (!PyArg_ParseTuple(args, "|II", &a, &b)) return NULL;                                                                                               \
-        screen_##name(self, a, b);                                                                                                                             \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define WRAP2(name, defval1, defval2)                            \
+    static PyObject *name(Screen *self, PyObject *args) {        \
+        unsigned int a = defval1, b = defval2;                   \
+        if (!PyArg_ParseTuple(args, "|II", &a, &b)) return NULL; \
+        screen_##name(self, a, b);                               \
+        Py_RETURN_NONE;                                          \
     }
-#define WRAP2B(name)                                                                                                                                           \
-    static PyObject *name(Screen *self, PyObject *args) {                                                                                                      \
-        unsigned int a, b;                                                                                                                                     \
-        int p;                                                                                                                                                 \
-        if (!PyArg_ParseTuple(args, "IIp", &a, &b, &p)) return NULL;                                                                                           \
-        screen_##name(self, a, b, (bool)p);                                                                                                                    \
-        Py_RETURN_NONE;                                                                                                                                        \
+#define WRAP2B(name)                                                 \
+    static PyObject *name(Screen *self, PyObject *args) {            \
+        unsigned int a, b;                                           \
+        int p;                                                       \
+        if (!PyArg_ParseTuple(args, "IIp", &a, &b, &p)) return NULL; \
+        screen_##name(self, a, b, (bool)p);                          \
+        Py_RETURN_NONE;                                              \
     }
 
 WRAP0(garbage_collect_hyperlink_pool)
@@ -5150,13 +5150,13 @@ screen_select_cmd_output(Screen *self, index_type y) {
 
     screen_start_selection(self, 0, y, true, false, EXTEND_LINE);
     Selection *s = self->selections.items;
-#define S(which, offset_y, scrolled_by)                                                                                                                        \
-    if (offset_y < 0) {                                                                                                                                        \
-        s->scrolled_by = -(offset_y);                                                                                                                          \
-        s->which.y = 0;                                                                                                                                        \
-    } else {                                                                                                                                                   \
-        s->scrolled_by = 0;                                                                                                                                    \
-        s->which.y = offset_y;                                                                                                                                 \
+#define S(which, offset_y, scrolled_by) \
+    if (offset_y < 0) {                 \
+        s->scrolled_by = -(offset_y);   \
+        s->which.y = 0;                 \
+    } else {                            \
+        s->scrolled_by = 0;             \
+        s->which.y = offset_y;          \
     }
     S(start, oo.start, start_scrolled_by);
     S(end, oo.start + (int)oo.num_lines - 1, end_scrolled_by);
@@ -5356,19 +5356,19 @@ scroll_until_cursor_prompt(Screen *self, PyObject *args) {
 
 WRAP0(clear_scrollback)
 
-#define MODE_GETSET(name, uname)                                                                                                                               \
-    static PyObject *name##_get(Screen *self, void UNUSED *closure) {                                                                                          \
-        PyObject *ans = self->modes.m##uname ? Py_True : Py_False;                                                                                             \
-        Py_INCREF(ans);                                                                                                                                        \
-        return ans;                                                                                                                                            \
-    }                                                                                                                                                          \
-    static int name##_set(Screen *self, PyObject *val, void UNUSED *closure) {                                                                                 \
-        if (val == NULL) {                                                                                                                                     \
-            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");                                                                                       \
-            return -1;                                                                                                                                         \
-        }                                                                                                                                                      \
-        set_mode_from_const(self, uname, PyObject_IsTrue(val) ? true : false);                                                                                 \
-        return 0;                                                                                                                                              \
+#define MODE_GETSET(name, uname)                                               \
+    static PyObject *name##_get(Screen *self, void UNUSED *closure) {          \
+        PyObject *ans = self->modes.m##uname ? Py_True : Py_False;             \
+        Py_INCREF(ans);                                                        \
+        return ans;                                                            \
+    }                                                                          \
+    static int name##_set(Screen *self, PyObject *val, void UNUSED *closure) { \
+        if (val == NULL) {                                                     \
+            PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");       \
+            return -1;                                                         \
+        }                                                                      \
+        set_mode_from_const(self, uname, PyObject_IsTrue(val) ? true : false); \
+        return 0;                                                              \
     }
 
 MODE_GETSET(in_bracketed_paste_mode, BRACKETED_PASTE)
@@ -6032,8 +6032,8 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
     s->input_current.y = y;
     s->input_current.in_left_half_of_cell = in_left_half_of_cell;
     SelectionBoundary start, end, *a = &s->start, *b = &s->end, abs_start, abs_end, abs_current_input;
-#define set_abs(which, initializer, scrolled_by)                                                                                                               \
-    which = initializer;                                                                                                                                       \
+#define set_abs(which, initializer, scrolled_by) \
+    which = initializer;                         \
     which.y = scrolled_by + self->lines - 1 - which.y;
     set_abs(abs_start, s->start, s->start_scrolled_by);
     set_abs(abs_end, s->end, s->end_scrolled_by);
@@ -6166,12 +6166,12 @@ do_update_selection(Screen *self, Selection *s, index_type x, index_type y, bool
                 top_line = s->input_current.y;
                 bottom_line = s->input_current.y;
                 if (screen_selection_range_for_line(self, top_line, &up_start.x, &up_end.x)) {
-#define S                                                                                                                                                      \
-    s->start.y = top_line;                                                                                                                                     \
-    s->end.y = bottom_line;                                                                                                                                    \
-    s->start.in_left_half_of_cell = true;                                                                                                                      \
-    s->end.in_left_half_of_cell = false;                                                                                                                       \
-    s->start.x = up_start.x;                                                                                                                                   \
+#define S                                 \
+    s->start.y = top_line;                \
+    s->end.y = bottom_line;               \
+    s->start.in_left_half_of_cell = true; \
+    s->end.in_left_half_of_cell = false;  \
+    s->start.x = up_start.x;              \
     s->end.x = bottom_line == top_line ? up_end.x : down_end.x;
                     down_start = up_start;
                     down_end = up_end;
@@ -6610,10 +6610,10 @@ dump_line_with_attrs(Screen *self, int y, PyObject *accum) {
     if (!u) return;
     RAII_PyObject(r1, PyObject_CallOneArg(accum, u));
     if (!r1) return;
-#define call_string(s)                                                                                                                                         \
-    {                                                                                                                                                          \
-        RAII_PyObject(ret, PyObject_CallFunction(accum, "s", s));                                                                                              \
-        if (!ret) return;                                                                                                                                      \
+#define call_string(s)                                            \
+    {                                                             \
+        RAII_PyObject(ret, PyObject_CallFunction(accum, "s", s)); \
+        if (!ret) return;                                         \
     }
     switch (line->attrs.prompt_kind) {
         case UNKNOWN_PROMPT_KIND: break;

@@ -81,10 +81,10 @@ find_app_name(void) {
     return @"kitty";
 }
 
-#define debug_key(...)                                                                                                                                         \
-    if (OPT(debug_keyboard)) {                                                                                                                                 \
-        fprintf(stderr, __VA_ARGS__);                                                                                                                          \
-        fflush(stderr);                                                                                                                                        \
+#define debug_key(...)                \
+    if (OPT(debug_keyboard)) {        \
+        fprintf(stderr, __VA_ARGS__); \
+        fflush(stderr);               \
     }
 
 // SecureKeyboardEntryController {{{
@@ -243,10 +243,10 @@ update_secure_input_menu_bar_indicator(BOOL enabled) {
 + (GlobalMenuTarget *)shared_instance;
 @end
 
-#define PENDING(selector, which)                                                                                                                               \
-    -(void)selector : (id)sender {                                                                                                                             \
-        (void)sender;                                                                                                                                          \
-        set_cocoa_pending_action(which, NULL);                                                                                                                 \
+#define PENDING(selector, which)               \
+    -(void)selector : (id)sender {             \
+        (void)sender;                          \
+        set_cocoa_pending_action(which, NULL); \
     }
 
 @implementation GlobalMenuTarget
@@ -360,7 +360,7 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
     const char *name;
     if (!PyArg_ParseTuple(args, "siI", &name, &mods, &key)) return NULL;
     GlobalShortcut *gs = NULL;
-#define Q(x)                                                                                                                                                   \
+#define Q(x) \
     if (strcmp(name, #x) == 0) gs = &global_shortcuts.x
     Q(new_os_window);
     else Q(close_os_window); else Q(close_tab);
@@ -811,11 +811,11 @@ cocoa_create_global_menu(void) {
     GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
     [NSApp setMainMenu:bar];
 
-#define MENU_ITEM(menu, title, name)                                                                                                                           \
-    {                                                                                                                                                          \
-        NSMenuItem *__mi = [menu addItemWithTitle:title action:@selector(name:) keyEquivalent:@(global_shortcuts.name.key)];                                   \
-        [__mi setKeyEquivalentModifierMask:global_shortcuts.name.mods];                                                                                        \
-        [__mi setTarget:global_menu_target];                                                                                                                   \
+#define MENU_ITEM(menu, title, name)                                                                                         \
+    {                                                                                                                        \
+        NSMenuItem *__mi = [menu addItemWithTitle:title action:@selector(name:) keyEquivalent:@(global_shortcuts.name.key)]; \
+        [__mi setKeyEquivalentModifierMask:global_shortcuts.name.mods];                                                      \
+        [__mi setTarget:global_menu_target];                                                                                 \
     }
 
     NSMenuItem *appMenuItem = [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];

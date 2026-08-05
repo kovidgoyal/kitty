@@ -73,13 +73,13 @@ static struct {
     FcBool (*PatternAddCharSet)(FcPattern *p, const char *object, const FcCharSet *c);
     FcBool (*ConfigAppFontAddFile)(FcConfig *config, const FcChar8 *file);
 } dynamically_loaded_fc_symbol = {0};
-#define LOAD_FUNC(name)                                                                                                                                        \
-    {                                                                                                                                                          \
-        *(void **)(&dynamically_loaded_fc_symbol.name) = dlsym(libfontconfig_handle, "Fc" #name);                                                              \
-        if (!dynamically_loaded_fc_symbol.name) {                                                                                                              \
-            const char *error = dlerror();                                                                                                                     \
-            fatal("Failed to load the function Fc" #name " with error: %s", error ? error : "");                                                               \
-        }                                                                                                                                                      \
+#define LOAD_FUNC(name)                                                                           \
+    {                                                                                             \
+        *(void **)(&dynamically_loaded_fc_symbol.name) = dlsym(libfontconfig_handle, "Fc" #name); \
+        if (!dynamically_loaded_fc_symbol.name) {                                                 \
+            const char *error = dlerror();                                                        \
+            fatal("Failed to load the function Fc" #name " with error: %s", error ? error : "");  \
+        }                                                                                         \
     }
 
 
@@ -157,7 +157,7 @@ pybool(FcBool x) {
 
 static PyObject *
 pyspacing(int val) {
-#define S(x)                                                                                                                                                   \
+#define S(x) \
     case FC_##x: return PyUnicode_FromString(#x)
     switch (val) {
         S(PROPORTIONAL);
@@ -182,29 +182,29 @@ pattern_as_dict(FcPattern *pat) {
 
 #define PS(x) PyUnicode_Decode((const char *)x, strlen((const char *)x), "UTF-8", "replace")
 
-#define G(type, get, which, conv, name, default)                                                                                                               \
-    {                                                                                                                                                          \
-        type out;                                                                                                                                              \
-        if (get(pat, which, 0, &out) == FcResultMatch) {                                                                                                       \
-            RAII_PyObject(p, conv(out));                                                                                                                       \
-            if (!p || PyDict_SetItemString(ans, #name, p) != 0) return NULL;                                                                                   \
-        } else {                                                                                                                                               \
-            RAII_PyObject(d, default);                                                                                                                         \
-            if (!d || PyDict_SetItemString(ans, #name, d) != 0) return NULL;                                                                                   \
-        }                                                                                                                                                      \
+#define G(type, get, which, conv, name, default)                             \
+    {                                                                        \
+        type out;                                                            \
+        if (get(pat, which, 0, &out) == FcResultMatch) {                     \
+            RAII_PyObject(p, conv(out));                                     \
+            if (!p || PyDict_SetItemString(ans, #name, p) != 0) return NULL; \
+        } else {                                                             \
+            RAII_PyObject(d, default);                                       \
+            if (!d || PyDict_SetItemString(ans, #name, d) != 0) return NULL; \
+        }                                                                    \
     }
 
-#define L(type, get, which, conv, name)                                                                                                                        \
-    {                                                                                                                                                          \
-        type out;                                                                                                                                              \
-        int n = 0;                                                                                                                                             \
-        RAII_PyObject(list, PyList_New(0));                                                                                                                    \
-        if (!list) return NULL;                                                                                                                                \
-        while (get(pat, which, n++, &out) == FcResultMatch) {                                                                                                  \
-            RAII_PyObject(p, conv(out));                                                                                                                       \
-            if (!p || PyList_Append(list, p) != 0) return NULL;                                                                                                \
-        }                                                                                                                                                      \
-        if (PyDict_SetItemString(ans, #name, list) != 0) return NULL;                                                                                          \
+#define L(type, get, which, conv, name)                               \
+    {                                                                 \
+        type out;                                                     \
+        int n = 0;                                                    \
+        RAII_PyObject(list, PyList_New(0));                           \
+        if (!list) return NULL;                                       \
+        while (get(pat, which, n++, &out) == FcResultMatch) {         \
+            RAII_PyObject(p, conv(out));                              \
+            if (!p || PyList_Append(list, p) != 0) return NULL;       \
+        }                                                             \
+        if (PyDict_SetItemString(ans, #name, list) != 0) return NULL; \
     }
 #define S(which, key) G(FcChar8 *, FcPatternGetString, which, PS, key, PyUnicode_FromString(""))
 #define LS(which, key) L(FcChar8 *, FcPatternGetString, which, PS, key)
@@ -270,10 +270,10 @@ font_set(FcFontSet *fs) {
     return ans;
 }
 
-#define AP(func, which, in, desc)                                                                                                                              \
-    if (!func(pat, which, in)) {                                                                                                                               \
-        PyErr_Format(PyExc_ValueError, "Failed to add %s to fontconfig pattern", desc, NULL);                                                                  \
-        goto end;                                                                                                                                              \
+#define AP(func, which, in, desc)                                                             \
+    if (!func(pat, which, in)) {                                                              \
+        PyErr_Format(PyExc_ValueError, "Failed to add %s to fontconfig pattern", desc, NULL); \
+        goto end;                                                                             \
     }
 
 static PyObject *
@@ -388,10 +388,10 @@ _native_fc_match(FcPattern *pat, FontConfigFace *ans) {
         goto end;
     }
     FcChar8 *out;
-#define g(func, prop, output)                                                                                                                                  \
-    if (func(match, prop, 0, &output) != FcResultMatch) {                                                                                                      \
-        PyErr_SetString(PyExc_ValueError, "No " #prop " found in fontconfig match result");                                                                    \
-        goto end;                                                                                                                                              \
+#define g(func, prop, output)                                                               \
+    if (func(match, prop, 0, &output) != FcResultMatch) {                                   \
+        PyErr_SetString(PyExc_ValueError, "No " #prop " found in fontconfig match result"); \
+        goto end;                                                                           \
     }
     g(FcPatternGetString, FC_FILE, out);
     if (FcPatternGetInteger(match, FC_INDEX, 0, &ans->index) != FcResultMatch) ans->index = 0; // ignore missing index assume it is zero
@@ -693,12 +693,12 @@ set_builtin_nerd_font(PyObject UNUSED *self, PyObject *pypath) {
         if (!d) goto end;
         builtin_nerd_font.descriptor = PyDict_New();
         if (!builtin_nerd_font.descriptor) goto end;
-#define copy(key)                                                                                                                                              \
-    {                                                                                                                                                          \
-        PyObject *t = PyDict_GetItemString(d, #key);                                                                                                           \
-        if (t) {                                                                                                                                               \
-            if (PyDict_SetItemString(builtin_nerd_font.descriptor, #key, t) != 0) goto end;                                                                    \
-        }                                                                                                                                                      \
+#define copy(key)                                                                           \
+    {                                                                                       \
+        PyObject *t = PyDict_GetItemString(d, #key);                                        \
+        if (t) {                                                                            \
+            if (PyDict_SetItemString(builtin_nerd_font.descriptor, #key, t) != 0) goto end; \
+        }                                                                                   \
     }
         copy(hinting);
         copy(hint_style);

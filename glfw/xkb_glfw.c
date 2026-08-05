@@ -311,16 +311,16 @@ glfw_xkb_update_x11_keyboard_id(_GLFWXKBData *xkb) {
     return true;
 }
 
-#define xkb_glfw_load_keymap(keymap, ...)                                                                                                                      \
-    {                                                                                                                                                          \
-        xcb_connection_t *conn = XGetXCBConnection(_glfw.x11.display);                                                                                         \
-        if (conn) keymap = xkb_x11_keymap_new_from_device(xkb->context, conn, xkb->keyboard_device_id, XKB_KEYMAP_COMPILE_NO_FLAGS);                           \
+#define xkb_glfw_load_keymap(keymap, ...)                                                                                            \
+    {                                                                                                                                \
+        xcb_connection_t *conn = XGetXCBConnection(_glfw.x11.display);                                                               \
+        if (conn) keymap = xkb_x11_keymap_new_from_device(xkb->context, conn, xkb->keyboard_device_id, XKB_KEYMAP_COMPILE_NO_FLAGS); \
     }
 
-#define xkb_glfw_load_state(keymap, state)                                                                                                                     \
-    {                                                                                                                                                          \
-        xcb_connection_t *conn = XGetXCBConnection(_glfw.x11.display);                                                                                         \
-        if (conn) state = xkb_x11_state_new_from_device(keymap, conn, xkb->keyboard_device_id);                                                                \
+#define xkb_glfw_load_state(keymap, state)                                                      \
+    {                                                                                           \
+        xcb_connection_t *conn = XGetXCBConnection(_glfw.x11.display);                          \
+        if (conn) state = xkb_x11_state_new_from_device(keymap, conn, xkb->keyboard_device_id); \
     }
 
 static void
@@ -331,16 +331,16 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
     XkbDescPtr xkb_ptr = XkbGetMap(_glfw.x11.display, XkbVirtualModsMask | XkbVirtualModMapMask, XkbUseCoreKbd);
 
     /* shift, control, and capsLock are special; they cannot be identified reliably on X11 */
-#define S(a, n)                                                                                                                                                \
-    xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n);                                                                                                    \
-    xkb->a##Mask = 1 << xkb->a##Idx;                                                                                                                           \
+#define S(a, n)                                             \
+    xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n); \
+    xkb->a##Mask = 1 << xkb->a##Idx;                        \
     used_bits |= xkb->a##Mask;
     S(control, XKB_MOD_NAME_CTRL);
     S(shift, XKB_MOD_NAME_SHIFT);
     S(capsLock, XKB_MOD_NAME_CAPS);
 #undef S
-#define S(a)                                                                                                                                                   \
-    xkb->a##Idx = XKB_MOD_INVALID;                                                                                                                             \
+#define S(a)                       \
+    xkb->a##Idx = XKB_MOD_INVALID; \
     xkb->a##Mask = 0
     S(alt);
     S(super);
@@ -357,7 +357,7 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
                     unsigned mask_rtn = 0;
                     if (XkbVirtualModsToReal(xkb_ptr, 1 << indx, &mask_rtn)) {
                         const char *name = XGetAtomName(_glfw.x11.display, atom);
-#define S(a, s)                                                                                                                                                \
+#define S(a, s) \
     if (!(used_bits & mask_rtn) && strcmp(name, #s) == 0) xkb->a##Mask = mask_rtn, used_bits |= mask_rtn
                         /* Note that the order matters here; earlier is higher priority. */
                         S(alt, Alt);
@@ -377,7 +377,7 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
     if (succeeded) {
         unsigned indx, shifted;
         for (indx = 0, shifted = 1; used_bits; ++indx, shifted <<= 1, used_bits >>= 1) {
-#define S(a)                                                                                                                                                   \
+#define S(a) \
     if ((xkb->a##Mask & shifted) == shifted) xkb->a##Idx = indx
             S(alt);
             S(super);
@@ -387,8 +387,8 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
 #undef S
         }
     }
-#define S(a, n)                                                                                                                                                \
-    xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n);                                                                                                    \
+#define S(a, n)                                             \
+    xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n); \
     xkb->a##Mask = 1 << xkb->a##Idx;
     if (!succeeded) {
         S(numLock, XKB_MOD_NAME_NUM);
@@ -468,14 +468,14 @@ modifier_mapping_algorithm(struct xkb_keymap *keymap UNUSED, xkb_keycode_t key, 
          * for each modifier in case there are some modifiers that are only present in
          * combination with others, but it is not worth the effort. */
         if (num_keysyms == 1 && mods && (mods & (mods - 1)) == 0) {
-#define S2(k, a)                                                                                                                                               \
-    do {                                                                                                                                                       \
-        if (keysyms[0] == XKB_KEY_##k##_L || keysyms[0] == XKB_KEY_##k##_R) {                                                                                  \
-            if (!algorithm->a) algorithm->a = mods;                                                                                                            \
-            else if (algorithm->a != mods) algorithm->failed = 1;                                                                                              \
-        }                                                                                                                                                      \
+#define S2(k, a)                                                              \
+    do {                                                                      \
+        if (keysyms[0] == XKB_KEY_##k##_L || keysyms[0] == XKB_KEY_##k##_R) { \
+            if (!algorithm->a) algorithm->a = mods;                           \
+            else if (algorithm->a != mods) algorithm->failed = 1;             \
+        }                                                                     \
     } while (0)
-#define S1(k, a)                                                                                                                                               \
+#define S1(k, a) \
     if ((keysyms[0] == XKB_KEY_##k) && !algorithm->a) algorithm->a = mods
             S2(Shift, shift);
             S2(Control, control);
@@ -526,8 +526,8 @@ local_modifier_mapping(_GLFWXKBData *xkb) {
     }
 
     if (!algorithm.failed) {
-#define S(a)                                                                                                                                                   \
-    xkb->a##Idx = XKB_MOD_INVALID;                                                                                                                             \
+#define S(a)                       \
+    xkb->a##Idx = XKB_MOD_INVALID; \
     xkb->a##Mask = 0
         S(control);
         S(shift);
@@ -541,7 +541,7 @@ local_modifier_mapping(_GLFWXKBData *xkb) {
 
         unsigned indx, shifted, used_bits = 0;
         for (indx = 0, shifted = 1; indx < 32; ++indx, shifted <<= 1) {
-#define S(a)                                                                                                                                                   \
+#define S(a) \
     if ((xkb->a##Idx == XKB_MOD_INVALID) && !(used_bits & shifted) && algorithm.a == shifted) xkb->a##Idx = indx, xkb->a##Mask = shifted, used_bits |= shifted
             S(control);
             S(shift);
@@ -565,14 +565,14 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
     // See https://github.com/kovidgoyal/kitty/pull/3943 for discussion
 
     if (getenv("KITTY_WAYLAND_DETECT_MODIFIERS") == NULL || !local_modifier_mapping(xkb)) {
-#define S(a)                                                                                                                                                   \
-    xkb->a##Idx = XKB_MOD_INVALID;                                                                                                                             \
+#define S(a)                       \
+    xkb->a##Idx = XKB_MOD_INVALID; \
     xkb->a##Mask = 0
         S(hyper);
         S(meta);
 #undef S
-#define S(a, n)                                                                                                                                                \
-    xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n);                                                                                                    \
+#define S(a, n)                                             \
+    xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n); \
     xkb->a##Mask = 1 << xkb->a##Idx;
         S(control, XKB_MOD_NAME_CTRL);
         S(shift, XKB_MOD_NAME_SHIFT);
@@ -598,15 +598,15 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
 
 static void
 release_keyboard_data(_GLFWXKBData *xkb) {
-#define US(group, state, unref)                                                                                                                                \
-    if (xkb->group.state) {                                                                                                                                    \
-        unref(xkb->group.state);                                                                                                                               \
-        xkb->group.state = NULL;                                                                                                                               \
+#define US(group, state, unref)  \
+    if (xkb->group.state) {      \
+        unref(xkb->group.state); \
+        xkb->group.state = NULL; \
     }
-#define UK(keymap)                                                                                                                                             \
-    if (xkb->keymap) {                                                                                                                                         \
-        xkb_keymap_unref(xkb->keymap);                                                                                                                         \
-        xkb->keymap = NULL;                                                                                                                                    \
+#define UK(keymap)                     \
+    if (xkb->keymap) {                 \
+        xkb_keymap_unref(xkb->keymap); \
+        xkb->keymap = NULL;            \
     }
     US(states, composeState, xkb_compose_state_unref);
     UK(keymap);
@@ -842,12 +842,12 @@ static const char *
 format_xkb_mods(_GLFWXKBData *xkb, const char *name, xkb_mod_mask_t mods) {
     static char buf[512];
     char *p = buf, *s;
-#define pr(x)                                                                                                                                                  \
-    {                                                                                                                                                          \
-        int num_needed = -1;                                                                                                                                   \
-        ssize_t space_left = sizeof(buf) - (p - buf) - 1;                                                                                                      \
-        if (space_left > 0) num_needed = snprintf(p, space_left, "%s", x);                                                                                     \
-        if (num_needed > 0) p += num_needed;                                                                                                                   \
+#define pr(x)                                                              \
+    {                                                                      \
+        int num_needed = -1;                                               \
+        ssize_t space_left = sizeof(buf) - (p - buf) - 1;                  \
+        if (space_left > 0) num_needed = snprintf(p, space_left, "%s", x); \
+        if (num_needed > 0) p += num_needed;                               \
     }
     pr(name);
     pr(": ");

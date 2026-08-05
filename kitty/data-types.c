@@ -411,11 +411,11 @@ open_tty(PyObject *self UNUSED, PyObject *args) {
     return Py_BuildValue("iN", fd, PyLong_FromVoidPtr(termios_p));
 }
 
-#define TTY_ARGS                                                                                                                                               \
-    PyObject *tp;                                                                                                                                              \
-    int fd;                                                                                                                                                    \
-    int optional_actions = TCSAFLUSH;                                                                                                                          \
-    if (!PyArg_ParseTuple(args, "iO!|i", &fd, &PyLong_Type, &tp, &optional_actions)) return NULL;                                                              \
+#define TTY_ARGS                                                                                  \
+    PyObject *tp;                                                                                 \
+    int fd;                                                                                       \
+    int optional_actions = TCSAFLUSH;                                                             \
+    if (!PyArg_ParseTuple(args, "iO!|i", &fd, &PyLong_Type, &tp, &optional_actions)) return NULL; \
     struct termios *termios_p = PyLong_AsVoidPtr(tp);
 
 static PyObject *
@@ -508,22 +508,22 @@ expand_ansi_c_escapes(PyObject *self UNUSED, PyObject *src) {
     if (dest == NULL) return NULL;
     const int kind = PyUnicode_KIND(src), dest_kind = PyUnicode_KIND(dest);
     const void *data = PyUnicode_DATA(src), *dest_data = PyUnicode_DATA(dest);
-#define w(ch)                                                                                                                                                  \
-    {                                                                                                                                                          \
-        PyUnicode_WRITE(dest_kind, dest_data, dest_idx, ch);                                                                                                   \
-        dest_idx++;                                                                                                                                            \
+#define w(ch)                                                \
+    {                                                        \
+        PyUnicode_WRITE(dest_kind, dest_data, dest_idx, ch); \
+        dest_idx++;                                          \
     }
-#define write_digits(base)                                                                                                                                     \
-    {                                                                                                                                                          \
-        hex_digits[hex_digit_idx] = 0;                                                                                                                         \
-        if (hex_digit_idx > 0) w(strtol(hex_digits, NULL, base));                                                                                              \
-        hex_digit_idx = 0;                                                                                                                                     \
-        state = NORMAL;                                                                                                                                        \
+#define write_digits(base)                                        \
+    {                                                             \
+        hex_digits[hex_digit_idx] = 0;                            \
+        if (hex_digit_idx > 0) w(strtol(hex_digits, NULL, base)); \
+        hex_digit_idx = 0;                                        \
+        state = NORMAL;                                           \
     }
-#define add_digit(base)                                                                                                                                        \
-    {                                                                                                                                                          \
-        hex_digits[hex_digit_idx++] = ch;                                                                                                                      \
-        if (idx >= PyUnicode_GET_LENGTH(src)) write_digits(base);                                                                                              \
+#define add_digit(base)                                           \
+    {                                                             \
+        hex_digits[hex_digit_idx++] = ch;                         \
+        if (idx >= PyUnicode_GET_LENGTH(src)) write_digits(base); \
     }
     START_ALLOW_CASE_RANGE
     while (idx < PyUnicode_GET_LENGTH(src)) {
@@ -1001,11 +1001,11 @@ PyInit_fast_data_types(void) {
     if (!init_animations(m)) return NULL;
 
     CellAttrs a;
-#define s(name, attr)                                                                                                                                          \
-    {                                                                                                                                                          \
-        a.val = 0;                                                                                                                                             \
-        a.attr = 1;                                                                                                                                            \
-        PyModule_AddIntConstant(m, #name, shift_to_first_set_bit(a));                                                                                          \
+#define s(name, attr)                                                 \
+    {                                                                 \
+        a.val = 0;                                                    \
+        a.attr = 1;                                                   \
+        PyModule_AddIntConstant(m, #name, shift_to_first_set_bit(a)); \
     }
     s(BOLD, bold);
     s(ITALIC, italic);

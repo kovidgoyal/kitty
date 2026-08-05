@@ -15,8 +15,8 @@
 // GL setup and error handling {{{
 static void
 check_for_gl_error(void UNUSED *ret, const char *name, GLADapiproc UNUSED funcptr, int UNUSED len_args, ...) {
-#define f(msg)                                                                                                                                                 \
-    fatal("OpenGL error: %s (calling function: %s)", msg, name);                                                                                               \
+#define f(msg)                                                   \
+    fatal("OpenGL error: %s (calling function: %s)", msg, name); \
     break;
     GLenum code = glad_glGetError();
     switch (code) {
@@ -50,7 +50,7 @@ gl_init(void) {
         if (!global_state.gl_version) { fatal("Loading the OpenGL library failed"); }
         if (!global_state.debug_rendering) { gladUninstallGLDebug(); }
         gladSetGLPostCallback(check_for_gl_error);
-#define ARB_TEST(name)                                                                                                                                         \
+#define ARB_TEST(name) \
     if (!GLAD_GL_ARB_##name) { fatal("The OpenGL driver on this system is missing the required extension: ARB_%s", #name); }
         ARB_TEST(texture_storage);
 #undef ARB_TEST

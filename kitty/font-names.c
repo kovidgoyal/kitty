@@ -59,10 +59,10 @@ get_best_name_from_name_table(PyObject *table, PyObject *name_id) {
     PyObject *namerecs = PyDict_GetItem(table, name_id);
     if (namerecs == NULL) return PyUnicode_FromString("");
     if (PyList_GET_SIZE(namerecs) == 1) return decode_name_record(PyList_GET_ITEM(namerecs, 0));
-#define d(...)                                                                                                                                                 \
-    {                                                                                                                                                          \
-        PyObject *ans = find_matching_namerec(namerecs, __VA_ARGS__);                                                                                          \
-        if (ans != NULL || PyErr_Occurred()) return ans;                                                                                                       \
+#define d(...)                                                        \
+    {                                                                 \
+        PyObject *ans = find_matching_namerec(namerecs, __VA_ARGS__); \
+        if (ans != NULL || PyErr_Occurred()) return ans;              \
     }
     d(3, 1, 1033); // Microsoft/Windows/US English
     d(1, 0, 0);    // Mac/Roman/English
@@ -271,13 +271,13 @@ read_STAT_font_table(const uint8_t *table, size_t table_len, PyObject *name_look
         p = (uint16_t *)(start_of_axis_values_table);
         uint16_t format = next, axis_index = next, flags = next, value_name_id = next;
         p32 = (uint32_t *)p;
-#define app(fmt, ...)                                                                                                                                          \
-    {                                                                                                                                                          \
-        RAII_PyObject(                                                                                                                                         \
-            v, Py_BuildValue("{sH sH sN " fmt "}", "format", format, "flags", flags, "name", get_best_name(name_lookup_table, value_name_id), __VA_ARGS__));   \
-        if (!v) return false;                                                                                                                                  \
-        PyObject *l = PyDict_GetItemString(PyTuple_GET_ITEM(design_axes, axis_index), "values");                                                               \
-        if (l && PyList_Append(l, v) != 0) return false;                                                                                                       \
+#define app(fmt, ...)                                                                                                                                        \
+    {                                                                                                                                                        \
+        RAII_PyObject(                                                                                                                                       \
+            v, Py_BuildValue("{sH sH sN " fmt "}", "format", format, "flags", flags, "name", get_best_name(name_lookup_table, value_name_id), __VA_ARGS__)); \
+        if (!v) return false;                                                                                                                                \
+        PyObject *l = PyDict_GetItemString(PyTuple_GET_ITEM(design_axes, axis_index), "values");                                                             \
+        if (l && PyList_Append(l, v) != 0) return false;                                                                                                     \
     }
         switch (format) {
             case 1:

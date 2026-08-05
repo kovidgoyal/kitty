@@ -198,10 +198,10 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
     RAII_CoreFoundation(CFDictionaryRef, traits, CTFontDescriptorCopyAttribute(descriptor, kCTFontTraitsAttribute));
     unsigned long symbolic_traits = 0;
     float weight = 0, width = 0, slant = 0;
-#define get_number(d, key, output, type_)                                                                                                                      \
-    {                                                                                                                                                          \
-        CFNumberRef value = (CFNumberRef)CFDictionaryGetValue(d, key);                                                                                         \
-        if (value) CFNumberGetValue(value, type_, &output);                                                                                                    \
+#define get_number(d, key, output, type_)                              \
+    {                                                                  \
+        CFNumberRef value = (CFNumberRef)CFDictionaryGetValue(d, key); \
+        if (value) CFNumberGetValue(value, type_, &output);            \
     }
     get_number(traits, kCTFontSymbolicTrait, symbolic_traits, kCFNumberLongType);
     get_number(traits, kCTFontWeightTrait, weight, kCFNumberFloatType);
@@ -273,10 +273,10 @@ font_descriptor_from_python(PyObject *src) {
     RAII_CoreFoundation(CFDictionaryRef, traits, CFDictionaryCreate(NULL, keys, values, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
     CFDictionaryAddValue(ans, kCTFontTraitsAttribute, traits);
 
-#define SET(x, attr)                                                                                                                                           \
-    if ((t = PyDict_GetItemString(src, #x))) {                                                                                                                 \
-        RAII_CoreFoundation(CFStringRef, cs, CFStringCreateWithCString(NULL, PyUnicode_AsUTF8(t), kCFStringEncodingUTF8));                                     \
-        CFDictionaryAddValue(ans, attr, cs);                                                                                                                   \
+#define SET(x, attr)                                                                                                       \
+    if ((t = PyDict_GetItemString(src, #x))) {                                                                             \
+        RAII_CoreFoundation(CFStringRef, cs, CFStringCreateWithCString(NULL, PyUnicode_AsUTF8(t), kCFStringEncodingUTF8)); \
+        CFDictionaryAddValue(ans, attr, cs);                                                                               \
     }
 
     SET(family, kCTFontFamilyNameAttribute);

@@ -56,11 +56,11 @@ segment_for(HistoryBuf *self, index_type y) {
     return seg_num;
 }
 
-#define seg_ptr(which, stride)                                                                                                                                 \
-    {                                                                                                                                                          \
-        index_type seg_num = segment_for(self, y);                                                                                                             \
-        y -= seg_num * SEGMENT_SIZE;                                                                                                                           \
-        return self->segments[seg_num].which + y * stride;                                                                                                     \
+#define seg_ptr(which, stride)                             \
+    {                                                      \
+        index_type seg_num = segment_for(self, y);         \
+        y -= seg_num * SEGMENT_SIZE;                       \
+        return self->segments[seg_num].which + y * stride; \
     }
 
 static CPUCell *
@@ -489,14 +489,14 @@ pagerhist_rewrap_to(HistoryBuf *self, index_type cells_in_line) {
     WCSState wcs_state;
     initialize_wcs_state(&wcs_state);
 
-#define WRITE_CHAR()                                                                                                                                           \
-    {                                                                                                                                                          \
-        if (num_in_current_line + ch_width > cells_in_line) {                                                                                                  \
-            pagerhist_write_bytes(nph, (const uint8_t *)"\r", 1);                                                                                              \
-            num_in_current_line = 0;                                                                                                                           \
-        }                                                                                                                                                      \
-        if (ch_width >= 0 || (int)num_in_current_line >= -ch_width) num_in_current_line += ch_width;                                                           \
-        pagerhist_write_bytes(nph, record, count);                                                                                                             \
+#define WRITE_CHAR()                                                                                 \
+    {                                                                                                \
+        if (num_in_current_line + ch_width > cells_in_line) {                                        \
+            pagerhist_write_bytes(nph, (const uint8_t *)"\r", 1);                                    \
+            num_in_current_line = 0;                                                                 \
+        }                                                                                            \
+        if (ch_width >= 0 || (int)num_in_current_line >= -ch_width) num_in_current_line += ch_width; \
+        pagerhist_write_bytes(nph, record, count);                                                   \
     }
 
     while (ringbuf_bytes_used(ph->ringbuf)) {

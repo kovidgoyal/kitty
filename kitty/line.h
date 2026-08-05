@@ -221,8 +221,8 @@ attrs_to_cursor(const CellAttrs attrs, Cursor *c) {
     c->sgr.blink = attrs.blink;
 }
 
-#define cursor_as_gpu_cell(cursor)                                                                                                                             \
-    {.attrs = cursor_to_attrs(cursor),                                                                                                                         \
-     .fg = (cursor->sgr.fg & COL_MASK),                                                                                                                        \
-     .bg = (cursor->sgr.bg & COL_MASK),                                                                                                                        \
+#define cursor_as_gpu_cell(cursor)      \
+    {.attrs = cursor_to_attrs(cursor),  \
+     .fg = (cursor->sgr.fg & COL_MASK), \
+     .bg = (cursor->sgr.bg & COL_MASK), \
      .decoration_fg = cursor->sgr.decoration_fg & COL_MASK}
