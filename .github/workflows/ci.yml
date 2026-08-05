@@ -111,8 +111,8 @@ jobs:
           - name: Run ruff
             run: ruff check .
 
-          - name: Run gofmt
-            run: go version && python .github/workflows/ci.py gofmt
+          - name: Check code formatting
+            run: go version && python .github/workflows/ci.py check_code_formatting
 
           - name: Build kitty package
             run: python .github/workflows/ci.py package

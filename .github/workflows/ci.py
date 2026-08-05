@@ -342,7 +342,7 @@ def main() -> None:
         subprocess.check_call(['go', 'install', 'golang.org/x/vuln/cmd/govulncheck@latest'])
         subprocess.check_call(['govulncheck', '-mode=binary', 'kitty/launcher/kitten'])
         subprocess.check_call(['govulncheck', './...'])
-    elif action == 'gofmt':
+    elif action == 'check_code_formatting':
         q = subprocess.check_output('gofmt -s -l tools kittens'.split()).decode()
         if q.strip():
             q = '\n'.join(filter(lambda x: not x.rstrip().endswith('_generated.go'), q.strip().splitlines())).strip()
