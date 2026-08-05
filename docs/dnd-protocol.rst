@@ -559,3 +559,4 @@ Currently this protocol is supported in:
 
   * The kitty terminal emulator and the :doc:`dnd kitten </kittens/dnd>`
   * The `yazi <https://github.com/sxyazi/yazi/pull/4005>`__ terminal file manager
+  * The `elio <https://github.com/elio-fm/elio>`__ terminal file manager
