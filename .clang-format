@@ -36,8 +36,10 @@ ContinuationIndentWidth: 4
 
 # Allow short function bodies on the same line as the opening brace
 AllowShortFunctionsOnASingleLine: All
-AllowShortIfStatementsOnASingleLine: Never
-AllowShortLoopsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortLoopsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Always
+AllowShortCaseLabelsOnASingleLine: true
 
 # Do not sort or regroup includes — they are in intentional project order
 SortIncludes: Never
