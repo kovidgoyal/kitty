@@ -398,7 +398,7 @@ typedef struct CustomShaderGroup {
     NamedTexture output_texture;
     unsigned animation_start_events;    // bitmask of ShaderAnimationEvent values; 0 = no animation
     unsigned animation_end_events;      // bitmask of events that stop the animation; 0 = none
-    monotonic_t animation_end_duration; // nanoseconds; 0 = no time limit
+    monotonic_t animation_end_duration; // nanoseconds; 0 = no time limit, < 0 = use cursor_blink_interval
     monotonic_t animation_step;         // nanoseconds between animation samples
     Animation *animation_curve;         // parsed easing curve; NULL = no animation
     bool animation_curve_is_shared;     // true if animation_curve is owned by an earlier group
@@ -577,10 +577,11 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
             any_active = true;
             continue;
         }
+        monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_blink_interval) : cg->animation_end_duration;
         // Check end conditions before start so simultaneous start+end lets start win
         if (os_window->shader_group_anim[i].active) {
             bool end = (cg->animation_end_events && (event_mask & cg->animation_end_events)) ||
-                       (cg->animation_end_duration > 0 && now - os_window->shader_group_anim[i].started_at >= cg->animation_end_duration);
+                       (eff_dur > 0 && now - os_window->shader_group_anim[i].started_at >= eff_dur);
             if (end) os_window->shader_group_anim[i].active = false;
         }
         if (event_mask & cg->animation_start_events) {
@@ -590,7 +591,7 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
         if (os_window->shader_group_anim[i].active) {
             any_active = true;
             min_step = MIN(min_step, cg->animation_step);
-            if (cg->animation_end_duration > 0) next_end = MIN(next_end, os_window->shader_group_anim[i].started_at + cg->animation_end_duration);
+            if (eff_dur > 0) next_end = MIN(next_end, os_window->shader_group_anim[i].started_at + eff_dur);
         }
     }
     os_window->has_active_custom_shaders = any_active;
@@ -2443,12 +2444,12 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         }
 
         float anim_progress = 0.0f;
-        if (cg->animation_start_events != 0 && cg->animation_end_duration > 0 && os_window->shader_group_anim[g].active) {
+        monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_blink_interval) : cg->animation_end_duration;
+        if (cg->animation_start_events != 0 && eff_dur > 0 && os_window->shader_group_anim[g].active) {
             monotonic_t started_at = os_window->shader_group_anim[g].started_at;
             bool cached = false;
             for (size_t c = 0; c < num_anim_cached; c++) {
-                if (anim_cache[c].curve == cg->animation_curve && anim_cache[c].started_at == started_at &&
-                    anim_cache[c].duration == cg->animation_end_duration) {
+                if (anim_cache[c].curve == cg->animation_curve && anim_cache[c].started_at == started_at && anim_cache[c].duration == eff_dur) {
                     anim_progress = anim_cache[c].progress;
                     cached = true;
                     break;
@@ -2456,11 +2457,11 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             }
             if (!cached) {
                 double elapsed = (double)(now - started_at);
-                double t = elapsed / (double)cg->animation_end_duration;
+                double t = elapsed / (double)eff_dur;
                 if (t < 0.0) t = 0.0;
                 if (t > 1.0) t = 1.0;
-                anim_progress = (float)(cg->animation_curve ? apply_easing_curve(cg->animation_curve, t, cg->animation_end_duration) : t);
-                anim_cache[num_anim_cached++] = (struct AnimCacheEntry){cg->animation_curve, started_at, cg->animation_end_duration, anim_progress};
+                anim_progress = (float)(cg->animation_curve ? apply_easing_curve(cg->animation_curve, t, eff_dur) : t);
+                anim_cache[num_anim_cached++] = (struct AnimCacheEntry){cg->animation_curve, started_at, eff_dur, anim_progress};
             }
         }
         glUniform1i(group_loc, (GLint)g);
@@ -2744,7 +2745,7 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
         if (is_seq(ae_events)) cg->animation_end_events = parse_anim_event_sequence(ae_events);
 
         PyObject *ae_dur = PyDict_GetItemString(g, "animation_end_duration");
-        if (ae_dur && ae_dur != Py_None && PyLong_Check(ae_dur)) cg->animation_end_duration = (monotonic_t)PyLong_AsLong(ae_dur);
+        if (ae_dur && PyLong_Check(ae_dur)) cg->animation_end_duration = (monotonic_t)PyLong_AsLong(ae_dur);
     }
     p->all_animation_start_events = 0;
     for (size_t i = 0; i < p->num_groups; i++) p->all_animation_start_events |= p->groups[i].animation_start_events;

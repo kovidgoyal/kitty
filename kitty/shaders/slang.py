@@ -1198,7 +1198,7 @@ class Group(TypedDict):
     animation_curve: EasingFunction  # parsed easing curve
     animation_step: int  # nanoseconds between animation samples
     animation_end_events: tuple[str, ...]  # events that stop the animation
-    animation_end_duration: int | None  # nanoseconds; None = no time limit
+    animation_end_duration: int  # nanoseconds; 0 = no time limit, negative = use cursor_blink_interval
 
 
 class Pipeline(TypedDict):
@@ -1236,7 +1236,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
             'animation_curve': EasingFunction(),
             'animation_step': ANIMATION_SAMPLE_WAIT,
             'animation_end_events': (),
-            'animation_end_duration': None,
+            'animation_end_duration': -1,
         }
 
     for line in lines:
@@ -1290,10 +1290,10 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                     val = parts[1] if len(parts) > 1 else 'never'
                     if val == 'never':
                         current_group['animation_end_events'] = ()
-                        current_group['animation_end_duration'] = None
+                        current_group['animation_end_duration'] = 0
                     else:
                         end_events: list[str] = []
-                        end_duration: int | None = None
+                        end_duration: int = 0
                         for token in val.split('|'):
                             try:
                                 end_duration = int(token) * 1_000_000
