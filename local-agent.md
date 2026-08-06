@@ -3,6 +3,7 @@ copy_resource: fonts
 copy_resource: bypy/b/linux/64/pkg/slang
 add_to_path: bypy/b/linux/64/pkg/slang/bin
 prepend_to_path: kitty/launcher
+pre_commit: ./autoformat
 
 # System Instructions & Project Context
 
@@ -29,7 +30,6 @@ make debug
 Execute the following two commands to fix any formatting issues in your code:
 ```
 ruff check --fix
-git ls-files '*.go' | xargs gofmt -w -s -l
 ```
 
 Run the following command to type check python files:
@@ -80,7 +80,7 @@ using:
 ## Verification Pipeline
 
 Before declaring a task complete, you must follow this exact verification lifecycle:
-1. Run the linting tools above to cleanup any formatting issues in your code
+1. Run the linting tools above to cleanup any simple issues in your code
 2. Run the local **Build Command** to guarantee zero compilation or compilation-stage type errors.
 3. Run the local **Test Command** to run the full test suite
 4. If errors occur, analyze the stdout logs completely before writing a fix. Do not guess.

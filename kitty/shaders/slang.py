@@ -1097,15 +1097,17 @@ def is_valid_slot(x: str) -> TypeGuard[Slot]:
 
 
 VALID_VAR_TYPES: frozenset[str] = frozenset({'uint', 'int', 'float', 'double', 'bool'})
-SHADER_ANIMATION_EVENTS: frozenset[str] = frozenset({
-    'pointer-left-button-press',
-    'os-window-focus-in',
-    'os-window-focus-out',
-    'window-focus-in',
-    'window-focus-out',
-    'tab-change',
-    'bell-in-window',
-})
+SHADER_ANIMATION_EVENTS: frozenset[str] = frozenset(
+    {
+        'pointer-left-button-press',
+        'os-window-focus-in',
+        'os-window-focus-out',
+        'window-focus-in',
+        'window-focus-out',
+        'tab-change',
+        'bell-in-window',
+    }
+)
 
 
 def is_valid_animation_event(name: str) -> bool:
@@ -1123,12 +1125,12 @@ def parse_animation_events(raw: str) -> tuple[str, ...]:
 def parse_css_animation_curve(spec: str) -> EasingFunction:
     _NAMED: dict[str, tuple[str, str]] = {
         'ease-in-out': ('cubic-bezier', '0.42, 0, 0.58, 1'),
-        'linear':      ('cubic-bezier', '0, 0, 1, 1'),
-        'ease':        ('cubic-bezier', '0.25, 0.1, 0.25, 1'),
-        'ease-out':    ('cubic-bezier', '0, 0, 0.58, 1'),
-        'ease-in':     ('cubic-bezier', '0.42, 0, 1, 1'),
-        'step-start':  ('steps', '1, start'),
-        'step-end':    ('steps', '1, end'),
+        'linear': ('cubic-bezier', '0, 0, 1, 1'),
+        'ease': ('cubic-bezier', '0.25, 0.1, 0.25, 1'),
+        'ease-out': ('cubic-bezier', '0, 0, 0.58, 1'),
+        'ease-in': ('cubic-bezier', '0.42, 0, 1, 1'),
+        'step-start': ('steps', '1, start'),
+        'step-end': ('steps', '1, end'),
     }
 
     def make(func_name: str, params: str) -> EasingFunction:
@@ -1191,11 +1193,11 @@ class Group(TypedDict):
     output_texture: NamedTexture
     shaders: tuple[str, ...]
     vars: dict[str, tuple[str, str]]
-    animation_start: tuple[str, ...]        # empty = no animation
-    animation_curve: EasingFunction         # parsed easing curve
-    animation_step: int                     # nanoseconds between animation samples
-    animation_end_events: tuple[str, ...]   # events that stop the animation
-    animation_end_duration: int | None      # nanoseconds; None = no time limit
+    animation_start: tuple[str, ...]  # empty = no animation
+    animation_curve: EasingFunction  # parsed easing curve
+    animation_step: int  # nanoseconds between animation samples
+    animation_end_events: tuple[str, ...]  # events that stop the animation
+    animation_end_duration: int | None  # nanoseconds; None = no time limit
 
 
 class Pipeline(TypedDict):
@@ -1224,10 +1226,16 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
 
     def init_group(*shaders: str) -> Group:
         return {
-            'viewport_pos': (0, 0), 'viewport_size': (1, 1), 'output_texture': NamedTexture.default,
-            'shaders': shaders, 'vars': {},
-            'animation_start': (), 'animation_curve': EasingFunction(),
-            'animation_step': ANIMATION_SAMPLE_WAIT, 'animation_end_events': (), 'animation_end_duration': None,
+            'viewport_pos': (0, 0),
+            'viewport_size': (1, 1),
+            'output_texture': NamedTexture.default,
+            'shaders': shaders,
+            'vars': {},
+            'animation_start': (),
+            'animation_curve': EasingFunction(),
+            'animation_step': ANIMATION_SAMPLE_WAIT,
+            'animation_end_events': (),
+            'animation_end_duration': None,
         }
 
     for line in lines:
