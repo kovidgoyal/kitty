@@ -554,6 +554,12 @@ init_custom_programs(void) {
         osw->shader_anim_min_step = MONOTONIC_T_MAX;
         osw->shader_anim_next_end_at = MONOTONIC_T_MAX;
     }
+    debug_rendering(
+        "Custom shaders: %zu program(s), %zu group(s), textures_mask=0x%x, initially_active=%d\n",
+        custom_shaders.count,
+        custom_shaders.end.num_groups,
+        custom_shaders.end.textures,
+        initially_active);
 }
 
 monotonic_t
@@ -582,11 +588,15 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
         if (os_window->shader_group_anim[i].active) {
             bool end = (cg->animation_end_events && (event_mask & cg->animation_end_events)) ||
                        (eff_dur > 0 && now - os_window->shader_group_anim[i].started_at >= eff_dur);
-            if (end) os_window->shader_group_anim[i].active = false;
+            if (end) {
+                os_window->shader_group_anim[i].active = false;
+                debug_rendering("Custom shader group %zu animation stopped (event_mask=0x%x)\n", i, event_mask);
+            }
         }
         if (event_mask & cg->animation_start_events) {
             os_window->shader_group_anim[i].active = true;
             os_window->shader_group_anim[i].started_at = now;
+            debug_rendering("Custom shader group %zu animation started (event_mask=0x%x)\n", i, event_mask);
         }
         if (os_window->shader_group_anim[i].active) {
             any_active = true;
@@ -594,7 +604,9 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
             if (eff_dur > 0) next_end = MIN(next_end, os_window->shader_group_anim[i].started_at + eff_dur);
         }
     }
+    bool prev_has_active = os_window->has_active_custom_shaders;
     os_window->has_active_custom_shaders = any_active;
+    if (prev_has_active != any_active) debug_rendering("has_active_custom_shaders: %d -> %d\n", prev_has_active, any_active);
     os_window->shader_anim_min_step = min_step;
     os_window->shader_anim_next_end_at = next_end;
     return min_step;
@@ -2467,6 +2479,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         glUniform1i(group_loc, (GLint)g);
         glUniform4f(viewport_loc, vp_x, vp_y, vp_w, vp_h);
         glUniform1f(anim_progress_loc, anim_progress);
+        debug_rendering("Custom shader draw group %u: anim_progress=%.4f viewport=(%.2f,%.2f,%.2f,%.2f)\n", g, anim_progress, vp_x, vp_y, vp_w, vp_h);
         draw_quad(false, 0);
         if (is_last) last_group_rendered = true;
     }
@@ -2498,11 +2511,13 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, m
         float sx = global_state.layers_render_texture.width > 0 ? (float)os_window->viewport_width / (float)global_state.layers_render_texture.width : 1.f;
         float sy = global_state.layers_render_texture.height > 0 ? (float)os_window->viewport_height / (float)global_state.layers_render_texture.height : 1.f;
         if (custom_shaders.end.active && os_window->has_active_custom_shaders) {
+            debug_rendering("Custom end shader running (groups=%zu)\n", custom_shaders.end.num_groups);
             restore_viewport();
             if (os_window->live_resize.in_progress)
                 save_viewport_using_top_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
             run_custom_end_shader(os_window, sx, sy, now);
         } else {
+            debug_rendering("Custom shaders inactive, falling back to blit\n");
             set_framebuffer_to_use_for_output(0);
             bind_framebuffer_for_output(0);
             bind_program(BLIT_PROGRAM);
