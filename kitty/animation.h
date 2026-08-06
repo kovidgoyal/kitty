@@ -26,3 +26,4 @@ void add_cubic_bezier_animation(Animation *a, double y_at_start, double y_at_end
 void add_linear_animation(Animation *a, double y_at_start, double y_at_end, size_t count, const double *x, const double *y);
 void add_steps_animation(Animation *a, double y_at_start, double y_at_end, size_t count, EasingStep step);
 Animation *free_animation(Animation *a);
+bool animations_equal(const Animation *a, const Animation *b);

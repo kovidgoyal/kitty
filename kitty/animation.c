@@ -182,6 +182,29 @@ identity_easing_curve(void *p_ UNUSED, double t, monotonic_t duration UNUSED) {
     return t;
 }
 
+bool
+animations_equal(const Animation *a, const Animation *b) {
+    if (a == b) return true;
+    if (!a || !b) return false;
+    if (a->count != b->count) return false;
+    for (size_t i = 0; i < a->count; i++) {
+        const animation_function *fa = &a->functions[i];
+        const animation_function *fb = &b->functions[i];
+        if (fa->curve != fb->curve || fa->y_at_start != fb->y_at_start || fa->y_size != fb->y_size) return false;
+        if (fa->curve == cubic_bezier_easing_curve) {
+            if (memcmp(fa->params, fb->params, sizeof(BezierParameters)) != 0) return false;
+        } else if (fa->curve == linear_easing_curve) {
+            const LinearParameters *pa = fa->params, *pb = fb->params;
+            if (pa->count != pb->count) return false;
+            if (memcmp(pa->buf, pb->buf, 2 * pa->count * sizeof(double)) != 0) return false;
+        } else if (fa->curve == step_easing_curve) {
+            if (memcmp(fa->params, fb->params, sizeof(StepsParameters)) != 0) return false;
+        }
+        // identity_easing_curve has no params; function-pointer equality above is sufficient
+    }
+    return true;
+}
+
 double
 apply_easing_curve(const Animation *a, double val, monotonic_t duration) {
     val = unit_value(val);

@@ -401,6 +401,7 @@ typedef struct CustomShaderGroup {
     monotonic_t animation_end_duration; // nanoseconds; 0 = no time limit
     monotonic_t animation_step;         // nanoseconds between animation samples
     Animation *animation_curve;         // parsed easing curve; NULL = no animation
+    bool animation_curve_is_shared;     // true if animation_curve is owned by an earlier group
 } CustomShaderGroup;
 
 typedef struct CustomShaderPipeline {
@@ -2364,6 +2365,13 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     bool backbuffer_is_main = true;
     bool last_group_rendered = false;
 
+    struct AnimCacheEntry {
+        Animation *curve;
+        monotonic_t started_at, duration;
+        float progress;
+    } anim_cache[MAX_CUSTOM_SHADER_GROUPS];
+    size_t num_anim_cached = 0;
+
     for (unsigned g = 0; g < num_groups; g++) {
         const CustomShaderGroup *cg = &custom_shaders.end.groups[g];
         const bool is_last = (g == num_groups - 1);
@@ -2436,11 +2444,24 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
 
         float anim_progress = 0.0f;
         if (cg->animation_start_events != 0 && cg->animation_end_duration > 0 && os_window->shader_group_anim[g].active) {
-            double elapsed = (double)(now - os_window->shader_group_anim[g].started_at);
-            double t = elapsed / (double)cg->animation_end_duration;
-            if (t < 0.0) t = 0.0;
-            if (t > 1.0) t = 1.0;
-            anim_progress = (float)(cg->animation_curve ? apply_easing_curve(cg->animation_curve, t, cg->animation_end_duration) : t);
+            monotonic_t started_at = os_window->shader_group_anim[g].started_at;
+            bool cached = false;
+            for (size_t c = 0; c < num_anim_cached; c++) {
+                if (anim_cache[c].curve == cg->animation_curve && anim_cache[c].started_at == started_at &&
+                    anim_cache[c].duration == cg->animation_end_duration) {
+                    anim_progress = anim_cache[c].progress;
+                    cached = true;
+                    break;
+                }
+            }
+            if (!cached) {
+                double elapsed = (double)(now - started_at);
+                double t = elapsed / (double)cg->animation_end_duration;
+                if (t < 0.0) t = 0.0;
+                if (t > 1.0) t = 1.0;
+                anim_progress = (float)(cg->animation_curve ? apply_easing_curve(cg->animation_curve, t, cg->animation_end_duration) : t);
+                anim_cache[num_anim_cached++] = (struct AnimCacheEntry){cg->animation_curve, started_at, cg->animation_end_duration, anim_progress};
+            }
         }
         glUniform1i(group_loc, (GLint)g);
         glUniform4f(viewport_loc, vp_x, vp_y, vp_w, vp_h);
@@ -2618,7 +2639,10 @@ pygpu_driver_version_string(PyObject *self UNUSED, PyObject *args UNUSED) {
 
 static void
 free_custom_shader_pipeline(CustomShaderPipeline *p) {
-    for (size_t i = 0; i < p->num_groups; i++) p->groups[i].animation_curve = free_animation(p->groups[i].animation_curve);
+    for (size_t i = 0; i < p->num_groups; i++) {
+        if (p->groups[i].animation_curve_is_shared) p->groups[i].animation_curve = NULL;
+        else p->groups[i].animation_curve = free_animation(p->groups[i].animation_curve);
+    }
 }
 
 static NamedTexture
@@ -2702,6 +2726,14 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
         PyObject *acurve = PyDict_GetItemString(g, "animation_curve");
         if (acurve && PyObject_IsTrue(acurve)) {
             if ((cg->animation_curve = alloc_animation()) != NULL) add_easing_function(cg->animation_curve, acurve, 0.0, 1.0);
+            for (Py_ssize_t j = 0; j < i; j++) {
+                if (animations_equal(p->groups[j].animation_curve, cg->animation_curve)) {
+                    free_animation(cg->animation_curve);
+                    cg->animation_curve = p->groups[j].animation_curve;
+                    cg->animation_curve_is_shared = true;
+                    break;
+                }
+            }
         }
 
         PyObject *astep = PyDict_GetItemString(g, "animation_step");
