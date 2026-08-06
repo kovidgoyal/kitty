@@ -35,6 +35,7 @@ Some applications that use the kitty graphics protocol:
 * `chawan <https://chawan.net>`_ - TUI web browser
 * `desktui <https://github.com/mishushakov/desktui>`_ - a VNC client that draws a remote desktop in the terminal, one remote pixel per terminal pixel
 * :doc:`kitty-diff <kittens/diff>` - a side-by-side terminal diff program with support for images
+* `elio <https://github.com/elio-fm/elio>`_ - Batteries-included terminal file manager with rich previews
 * `fzf <https://github.com/junegunn/fzf/commit/d8188fce7b7bea982e7f9050c35e488e49fb8fd0>`_ - A command line fuzzy finder
 * `mpv <https://github.com/mpv-player/mpv/commit/874e28f4a41a916bb567a882063dd2589e9234e1>`_ - A video player that can play videos in the terminal
 * `neofetch <https://github.com/dylanaraps/neofetch>`_ - A command line system information tool
