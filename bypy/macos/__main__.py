@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+from collections.abc import Iterable
 
 from bypy.constants import BIN, LIBDIR, PREFIX, PYTHON, SW, python_major_minor_version
 from bypy.freeze import extract_extension_modules, freeze_python, path_to_freeze_dir
@@ -96,23 +97,33 @@ def expand_dirs(items, exclude=lambda x: x.endswith('.so')):
 
 
 def do_sign(app_dir: str) -> None:
+    seen = set()
+
+    def sign(files: Iterable[str] | str) -> None:
+        nonlocal seen
+        if isinstance(files, str):
+            files = (files,)
+        files = {os.path.abspath(os.path.realpath(x)) for x in files} - seen
+        seen |= files
+        codesign(files)
+
     with current_dir(join(app_dir, 'Contents')):
         # Sign all .so files
         so_files = {x for x in files_in('.') if x.endswith('.so')}
-        codesign(so_files)
+        sign(so_files)
         # Sign everything else in Frameworks
         with current_dir('Frameworks'):
             fw = set(glob.glob('*.framework'))
-            codesign(fw)
+            sign(fw)
             items = set(os.listdir('.')) - fw
-            codesign(expand_dirs(items))
-        # Sign kitten
+            sign(expand_dirs(items))
+        # Sign executables
         with current_dir('MacOS'):
-            codesign('kitten')
+            sign(('kitten', 'slangc'))
         # Sign sub-apps
         for x in os.listdir('.'):
             if x.endswith('.app'):
-                codesign(x)
+                sign(x)
 
     # Now sign the main app
     codesign(app_dir)
