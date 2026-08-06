@@ -46,6 +46,7 @@ from kitty.fast_data_types import (
     GRAPHICS_PROGRAM,
     MARK,
     MARK_MASK,
+    MAX_CUSTOM_SHADER_GROUPS,
     PADDING_PROGRAM,
     REVERSE,
     ROUNDED_RECT_PROGRAM,
@@ -1307,6 +1308,8 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
     if current_group is not None:
         raise ValueError('Unclosed group present')
     groups = groups or [init_group(pipeline_name)]
+    if len(groups) > MAX_CUSTOM_SHADER_GROUPS:
+        raise ValueError(f'Pipeline {pipeline_name!r} has {len(groups)} groups but the maximum is {MAX_CUSTOM_SHADER_GROUPS}')
     if groups[-1]['output_texture'] is not NamedTexture.default:
         raise ValueError('The final group cannot output to a named texture')
     if groups[-1]['viewport_pos'] != (0, 0) or groups[-1]['viewport_size'] != (1, 1):

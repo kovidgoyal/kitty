@@ -470,6 +470,19 @@ typedef struct BackgroundImageRenderSettings {
     float opacity;
 } BackgroundImageRenderSettings;
 
+#define MAX_CUSTOM_SHADER_GROUPS 16
+
+typedef enum {
+    SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS,
+    SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN,
+    SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT,
+    SHADER_ANIM_EVENT_WINDOW_FOCUS_IN,
+    SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT,
+    SHADER_ANIM_EVENT_TAB_CHANGE,
+    SHADER_ANIM_EVENT_BELL_IN_WINDOW,
+    NUM_SHADER_ANIM_EVENTS
+} ShaderAnimationEvent;
+
 typedef struct OSWindow {
     void *handle;
     id_type id;
@@ -538,6 +551,14 @@ typedef struct OSWindow {
         double pending_pixels_x, pending_pixels_y;
         int last_v120_dir_x, last_v120_dir_y;
     } scroll;
+    unsigned shader_anim_event_registry;
+    struct {
+        bool active;
+        monotonic_t started_at;
+    } shader_group_anim[MAX_CUSTOM_SHADER_GROUPS];
+    bool has_active_custom_shaders;
+    monotonic_t shader_anim_min_step;    // cached min animation_step across active animated groups
+    monotonic_t shader_anim_next_end_at; // earliest expiry of a duration-bounded active animation
 } OSWindow;
 
 static inline float
@@ -617,7 +638,6 @@ typedef struct GlobalState {
         uint32_t texture_a_id, texture_a_fbo_id;
         uint32_t texture_b_id, texture_b_fbo_id;
     } layers_render_texture;
-    bool has_custom_shaders;
 } GlobalState;
 
 extern GlobalState global_state;
@@ -727,6 +747,7 @@ void adjust_window_size_for_csd(OSWindow *w, int width, int height, int *adjuste
 void dispatch_buffered_keys(Window *w);
 bool screen_needs_rendering_in_layers(OSWindow *os_window, Window *w, Screen *screen);
 void setup_os_window_for_rendering(OSWindow *, Tab *, Window *, bool, monotonic_t);
+monotonic_t update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *os_window);
 void swap_window_buffers(OSWindow *w);
 void take_screenshot_of_rectangular_region(OSWindow *os_window, Region region, unsigned char *dst_buf, unsigned *thumb_w, unsigned *thumb_h, bool no_scaling);
 bool current_framebuffer_is_ok(void);

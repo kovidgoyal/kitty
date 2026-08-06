@@ -388,17 +388,6 @@ static ssize_t custom_end_vao_idx = -1;
 
 typedef enum { CUSTOM_SHADER_TEXTURE_DEFAULT, CUSTOM_SHADER_TEXTURE_A, CUSTOM_SHADER_TEXTURE_B, CUSTOM_SHADER_TEXTURE_PERSIST } NamedTexture;
 
-typedef enum {
-    SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS,
-    SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN,
-    SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT,
-    SHADER_ANIM_EVENT_WINDOW_FOCUS_IN,
-    SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT,
-    SHADER_ANIM_EVENT_TAB_CHANGE,
-    SHADER_ANIM_EVENT_BELL_IN_WINDOW,
-    NUM_SHADER_ANIM_EVENTS
-} ShaderAnimationEvent;
-
 typedef struct CustomShaderGroup {
     struct {
         float x, y;
@@ -416,7 +405,7 @@ typedef struct CustomShaderGroup {
 
 typedef struct CustomShaderPipeline {
     unsigned textures; // bit mask of named textures from above enum
-    CustomShaderGroup groups[64];
+    CustomShaderGroup groups[MAX_CUSTOM_SHADER_GROUPS];
     size_t num_groups;
     bool active;
     unsigned all_animation_start_events; // union of animation_start_events across all groups
@@ -548,7 +537,65 @@ init_custom_programs(void) {
         if (global_state.layers_render_texture.texture_b_fbo_id) free_framebuffer(&global_state.layers_render_texture.texture_b_fbo_id);
     }
     // persist is per-window and freed lazily in start_os_window_rendering
-    global_state.has_custom_shaders = custom_shaders.count > 0;
+    // Non-animated groups are always active; animated groups start inactive.
+    bool any_non_animated = false;
+    for (size_t i = 0; i < custom_shaders.end.num_groups; i++) {
+        if (custom_shaders.end.groups[i].animation_start_events == 0) {
+            any_non_animated = true;
+            break;
+        }
+    }
+    bool initially_active = custom_shaders.count > 0 && any_non_animated;
+    for (size_t w = 0; w < global_state.num_os_windows; w++) {
+        OSWindow *osw = global_state.os_windows + w;
+        zero_at_ptr_count(osw->shader_group_anim, custom_shaders.end.num_groups);
+        osw->has_active_custom_shaders = initially_active;
+        osw->shader_anim_min_step = MONOTONIC_T_MAX;
+        osw->shader_anim_next_end_at = MONOTONIC_T_MAX;
+    }
+}
+
+monotonic_t
+update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *os_window) {
+    if (!custom_shaders.count) {
+        os_window->has_active_custom_shaders = false;
+        return MONOTONIC_T_MAX;
+    }
+    // Fast path: no events and no duration-bounded animation expiring this frame.
+    // Cached state is still valid — skip group iteration entirely.
+    if (!event_mask && now < os_window->shader_anim_next_end_at) return os_window->shader_anim_min_step;
+
+    // Slow path: update per-group state and recompute cached values in one pass.
+    CustomShaderPipeline *p = &custom_shaders.end;
+    bool any_active = false;
+    monotonic_t min_step = MONOTONIC_T_MAX;
+    monotonic_t next_end = MONOTONIC_T_MAX;
+    for (size_t i = 0; i < p->num_groups; i++) {
+        const CustomShaderGroup *cg = &p->groups[i];
+        if (cg->animation_start_events == 0) {
+            any_active = true;
+            continue;
+        }
+        // Check end conditions before start so simultaneous start+end lets start win
+        if (os_window->shader_group_anim[i].active) {
+            bool end = (cg->animation_end_events && (event_mask & cg->animation_end_events)) ||
+                       (cg->animation_end_duration > 0 && now - os_window->shader_group_anim[i].started_at >= cg->animation_end_duration);
+            if (end) os_window->shader_group_anim[i].active = false;
+        }
+        if (event_mask & cg->animation_start_events) {
+            os_window->shader_group_anim[i].active = true;
+            os_window->shader_group_anim[i].started_at = now;
+        }
+        if (os_window->shader_group_anim[i].active) {
+            any_active = true;
+            min_step = MIN(min_step, cg->animation_step);
+            if (cg->animation_end_duration > 0) next_end = MIN(next_end, os_window->shader_group_anim[i].started_at + cg->animation_end_duration);
+        }
+    }
+    os_window->has_active_custom_shaders = any_active;
+    os_window->shader_anim_min_step = min_step;
+    os_window->shader_anim_next_end_at = next_end;
+    return min_step;
 }
 
 void
@@ -2314,10 +2361,14 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     // Ping-pong state: when true, backbuffer = texture_id and the ping-pong
     // target is extra_texture_id; toggled each time a group outputs to DEFAULT.
     bool backbuffer_is_main = true;
+    bool last_group_rendered = false;
 
     for (unsigned g = 0; g < num_groups; g++) {
         const CustomShaderGroup *cg = &custom_shaders.end.groups[g];
         const bool is_last = (g == num_groups - 1);
+
+        // Skip inactive animated groups; non-animated groups (animation_start_events == 0) always run
+        if (cg->animation_start_events != 0 && !os_window->shader_group_anim[g].active) continue;
         const GLuint backbuffer = backbuffer_is_main ? global_state.layers_render_texture.texture_id : global_state.layers_render_texture.extra_texture_id;
 
         // Bind backbuffer to the backbuffer texture unit
@@ -2385,6 +2436,26 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         glUniform1i(group_loc, (GLint)g);
         glUniform4f(viewport_loc, vp_x, vp_y, vp_w, vp_h);
         draw_quad(false, 0);
+        if (is_last) last_group_rendered = true;
+    }
+
+    // If the last group was skipped (animated and inactive), blit the current
+    // backbuffer directly to the screen so kitty's output is still visible.
+    if (!last_group_rendered) {
+        const GLuint fallback_tex = backbuffer_is_main ? global_state.layers_render_texture.texture_id : global_state.layers_render_texture.extra_texture_id;
+        set_framebuffer_to_use_for_output(0);
+        bind_framebuffer_for_output(0);
+        bind_program(BLIT_PROGRAM);
+        glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
+        glBindTexture(GL_TEXTURE_2D, fallback_tex);
+        glUniform4f(program_uniform_location(BLIT_PROGRAM, "src_rect"), 0, sy, sx, 0);
+        glUniform4f(program_uniform_location(BLIT_PROGRAM, "dest_rect"), -1, 1, 1, -1);
+        if (os_window->live_resize.in_progress) {
+            glViewport(0, os_window->live_resize.height - os_window->viewport_height, os_window->viewport_width, os_window->viewport_height);
+        } else {
+            glViewport(0, 0, os_window->viewport_width, os_window->viewport_height);
+        }
+        draw_quad(false, 0);
     }
 }
 
@@ -2394,7 +2465,7 @@ stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, m
     if (os_window->needs_layers) {
         float sx = global_state.layers_render_texture.width > 0 ? (float)os_window->viewport_width / (float)global_state.layers_render_texture.width : 1.f;
         float sy = global_state.layers_render_texture.height > 0 ? (float)os_window->viewport_height / (float)global_state.layers_render_texture.height : 1.f;
-        if (custom_shaders.end.active) {
+        if (custom_shaders.end.active && os_window->has_active_custom_shaders) {
             restore_viewport();
             if (os_window->live_resize.in_progress)
                 save_viewport_using_top_left_origin(0, 0, os_window->viewport_width, os_window->viewport_height, os_window->live_resize.height);
@@ -2625,6 +2696,7 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
 
         PyObject *astep = PyDict_GetItemString(g, "animation_step");
         cg->animation_step = (astep && PyLong_Check(astep)) ? (monotonic_t)PyLong_AsLong(astep) : ANIMATION_SAMPLE_WAIT;
+        cg->animation_step = MAX(cg->animation_step, OPT(repaint_delay));
 
         PyObject *ae_events = PyDict_GetItemString(g, "animation_end_events");
         if (is_seq(ae_events)) cg->animation_end_events = parse_anim_event_sequence(ae_events);
@@ -2840,6 +2912,7 @@ init_shaders(PyObject *module) {
     C(ROUNDED_RECT_PROGRAM);
     C(PADDING_PROGRAM);
     C(CUSTOM_END_PROGRAM);
+    C(MAX_CUSTOM_SHADER_GROUPS);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

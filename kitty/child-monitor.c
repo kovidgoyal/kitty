@@ -808,7 +808,7 @@ prepare_to_render_os_window(
     bool was_previously_rendered_with_layers = os_window->needs_layers;
     os_window->needs_layers =
         (!global_state.supports_framebuffer_srgb || effective_os_window_alpha(os_window) < 1.f || os_window->live_resize.in_progress ||
-         (background_image_for_os_window(os_window) != NULL) || global_state.has_custom_shaders);
+         (background_image_for_os_window(os_window) != NULL) || os_window->has_active_custom_shaders);
     if (TD.screen && os_window->num_tabs && !os_window->has_too_few_tabs) {
         if (!os_window->tab_bar_data_updated) {
             call_boss(update_tab_bar_data, "K", os_window->id);
@@ -904,6 +904,8 @@ prepare_to_render_os_window(
             }
             if (send_cell_data_to_gpu(WD.vao_idx, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at | WD.screen->start_drag_overlay_at) needs_render = true;
+            if (WD.screen->start_visual_bell_at && WD.screen->start_visual_bell_at > os_window->last_rendered_at)
+                os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_BELL_IN_WINDOW);
             // Prepare window title bar screen data for GPU
             WindowRenderData *trd = &w->window_title_render_data;
             if (trd->screen && trd->geometry.bottom > trd->geometry.top && trd->geometry.right > trd->geometry.left) {
@@ -911,6 +913,17 @@ prepare_to_render_os_window(
                 if (send_cell_data_to_gpu(trd->vao_idx, trd->screen, os_window)) needs_render = true;
             }
         }
+    }
+    {
+        unsigned events = os_window->shader_anim_event_registry;
+        if (os_window->active_tab != os_window->last_active_tab)
+            events |= (1u << SHADER_ANIM_EVENT_TAB_CHANGE) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
+        if (*active_window_id && *active_window_id != os_window->last_active_window_id)
+            events |= (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
+        monotonic_t min_step = update_custom_shader_animations(events, now, os_window);
+        os_window->shader_anim_event_registry = 0;
+        if (os_window->has_active_custom_shaders) os_window->needs_layers = true;
+        if (min_step < MONOTONIC_T_MAX) set_maximum_wait(min_step);
     }
     return needs_render || was_previously_rendered_with_layers != os_window->needs_layers;
 }

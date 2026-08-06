@@ -883,6 +883,7 @@ HANDLER(handle_button_event) {
         if (is_release) {
             zero_at_ptr(&w->drag_source.initial_left_press);
         } else {
+            osw->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS);
             w->drag_source.initial_left_press.x = w->mouse_pos.global_x;
             w->drag_source.initial_left_press.y = w->mouse_pos.global_y;
             w->drag_source.initial_left_press.at = monotonic();
