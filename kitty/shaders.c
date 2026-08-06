@@ -11,6 +11,8 @@
 #include "colors.h"
 #include <stddef.h>
 #include <string.h>
+#include "animation.h"
+#include "animation-parse.h"
 #include "text-cache.h"
 #include "tupleobject.h"
 #include "window_logo.h"
@@ -386,6 +388,17 @@ static ssize_t custom_end_vao_idx = -1;
 
 typedef enum { CUSTOM_SHADER_TEXTURE_DEFAULT, CUSTOM_SHADER_TEXTURE_A, CUSTOM_SHADER_TEXTURE_B, CUSTOM_SHADER_TEXTURE_PERSIST } NamedTexture;
 
+typedef enum {
+    SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS,
+    SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN,
+    SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT,
+    SHADER_ANIM_EVENT_WINDOW_FOCUS_IN,
+    SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT,
+    SHADER_ANIM_EVENT_TAB_CHANGE,
+    SHADER_ANIM_EVENT_BELL_IN_WINDOW,
+    NUM_SHADER_ANIM_EVENTS
+} ShaderAnimationEvent;
+
 typedef struct CustomShaderGroup {
     struct {
         float x, y;
@@ -394,6 +407,11 @@ typedef struct CustomShaderGroup {
         float w, h;
     } viewport_size;
     NamedTexture output_texture;
+    unsigned animation_start_events;    // bitmask of ShaderAnimationEvent values; 0 = no animation
+    unsigned animation_end_events;      // bitmask of events that stop the animation; 0 = none
+    monotonic_t animation_end_duration; // nanoseconds; 0 = no time limit
+    monotonic_t animation_step;         // nanoseconds between animation samples
+    Animation *animation_curve;         // parsed easing curve; NULL = no animation
 } CustomShaderGroup;
 
 typedef struct CustomShaderPipeline {
@@ -401,6 +419,7 @@ typedef struct CustomShaderPipeline {
     CustomShaderGroup groups[64];
     size_t num_groups;
     bool active;
+    unsigned all_animation_start_events; // union of animation_start_events across all groups
 } CustomShaderPipeline;
 
 static struct {
@@ -2516,12 +2535,39 @@ pygpu_driver_version_string(PyObject *self UNUSED, PyObject *args UNUSED) {
     return PyUnicode_FromString(global_state.gl_version ? gl_version_string() : "");
 }
 
+static void
+free_custom_shader_pipeline(CustomShaderPipeline *p) {
+    for (size_t i = 0; i < p->num_groups; i++) p->groups[i].animation_curve = free_animation(p->groups[i].animation_curve);
+}
+
 static NamedTexture
 named_texture_from_str(const char *s) {
     if (strcmp(s, "a") == 0) return CUSTOM_SHADER_TEXTURE_A;
     if (strcmp(s, "b") == 0) return CUSTOM_SHADER_TEXTURE_B;
     if (strcmp(s, "persist") == 0) return CUSTOM_SHADER_TEXTURE_PERSIST;
     return CUSTOM_SHADER_TEXTURE_DEFAULT;
+}
+
+static unsigned
+shader_anim_event_bit(const char *s) {
+    if (strcmp(s, "pointer-left-button-press") == 0) return 1u << SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS;
+    if (strcmp(s, "os-window-focus-in") == 0) return 1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN;
+    if (strcmp(s, "os-window-focus-out") == 0) return 1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT;
+    if (strcmp(s, "window-focus-in") == 0) return 1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN;
+    if (strcmp(s, "window-focus-out") == 0) return 1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT;
+    if (strcmp(s, "tab-change") == 0) return 1u << SHADER_ANIM_EVENT_TAB_CHANGE;
+    if (strcmp(s, "bell-in-window") == 0) return 1u << SHADER_ANIM_EVENT_BELL_IN_WINDOW;
+    return 0;
+}
+
+static unsigned
+parse_anim_event_sequence(PyObject *seq) {
+    unsigned mask = 0;
+    for (Py_ssize_t i = 0; i < PySequence_Fast_GET_SIZE(seq); i++) {
+        PyObject *item = PySequence_Fast_GET_ITEM(seq, i);
+        if (PyUnicode_Check(item)) mask |= shader_anim_event_bit(PyUnicode_AsUTF8(item));
+    }
+    return mask;
 }
 
 static bool
@@ -2568,7 +2614,26 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
         }
         PyObject *ot = PyDict_GetItemString(g, "output_texture");
         if (ot && PyUnicode_Check(ot)) { cg->output_texture = named_texture_from_str(PyUnicode_AsUTF8(ot)); }
+
+        PyObject *astart = PyDict_GetItemString(g, "animation_start");
+        if (is_seq(astart)) cg->animation_start_events = parse_anim_event_sequence(astart);
+
+        PyObject *acurve = PyDict_GetItemString(g, "animation_curve");
+        if (acurve && PyObject_IsTrue(acurve)) {
+            if ((cg->animation_curve = alloc_animation()) != NULL) add_easing_function(cg->animation_curve, acurve, 0.0, 1.0);
+        }
+
+        PyObject *astep = PyDict_GetItemString(g, "animation_step");
+        cg->animation_step = (astep && PyLong_Check(astep)) ? (monotonic_t)PyLong_AsLong(astep) : ANIMATION_SAMPLE_WAIT;
+
+        PyObject *ae_events = PyDict_GetItemString(g, "animation_end_events");
+        if (is_seq(ae_events)) cg->animation_end_events = parse_anim_event_sequence(ae_events);
+
+        PyObject *ae_dur = PyDict_GetItemString(g, "animation_end_duration");
+        if (ae_dur && ae_dur != Py_None && PyLong_Check(ae_dur)) cg->animation_end_duration = (monotonic_t)PyLong_AsLong(ae_dur);
     }
+    p->all_animation_start_events = 0;
+    for (size_t i = 0; i < p->num_groups; i++) p->all_animation_start_events |= p->groups[i].animation_start_events;
 #undef is_seq
     return true;
 }
@@ -2612,7 +2677,10 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     }
     Program *program = program_ptr(which);
     if (!PyTuple_GET_SIZE(vertex_shaders)) {
-        if (which == CUSTOM_END_PROGRAM) { zero_at_ptr(&custom_shaders.end); }
+        if (which == CUSTOM_END_PROGRAM) {
+            free_custom_shader_pipeline(&custom_shaders.end);
+            zero_at_ptr(&custom_shaders.end);
+        }
         if (program->id != 0) {
             glDeleteProgram(program->id);
             program->id = 0;
@@ -2648,6 +2716,7 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     }
 #undef fail_compile
     if (which == CUSTOM_END_PROGRAM) {
+        free_custom_shader_pipeline(&custom_shaders.end);
         zero_at_ptr(&custom_shaders.end);
         PyObject *pg = PyDict_GetItemString(metadata, "pipeline");
         if (pg && !transfer_pipeline_to_struct(pg, &custom_shaders.end)) {
@@ -2745,6 +2814,7 @@ cleanup_shader_resources_on_terminate(void) {
 static void
 finalize(void) {
     default_visual_bell_animation = free_animation(default_visual_bell_animation);
+    free_custom_shader_pipeline(&custom_shaders.end);
     free_program_layouts();
 }
 
@@ -2820,6 +2890,7 @@ init_shaders(PyObject *module) {
     C(GL_UNSIGNED_INT);
     C(GL_ARRAY_BUFFER);
     C(GL_UNIFORM_BUFFER);
+    C(ANIMATION_SAMPLE_WAIT);
 
 #undef C
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;

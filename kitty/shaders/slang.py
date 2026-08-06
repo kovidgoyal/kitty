@@ -24,6 +24,7 @@ from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple, Typed
 
 from kitty.constants import read_kitty_resource, shaders_dir, slangc
 from kitty.fast_data_types import (
+    ANIMATION_SAMPLE_WAIT,
     BGIMAGE_PROGRAM,
     BLINK,
     BLIT_PROGRAM,
@@ -56,6 +57,7 @@ from kitty.fast_data_types import (
     get_options,
 )
 from kitty.options.types import Options, defaults
+from kitty.options.utils import EasingFunction
 from kitty.types import run_once
 from kitty.utils import lock_with_file, log_error, resolve_custom_file
 
@@ -1095,6 +1097,56 @@ def is_valid_slot(x: str) -> TypeGuard[Slot]:
 
 
 VALID_VAR_TYPES: frozenset[str] = frozenset({'uint', 'int', 'float', 'double', 'bool'})
+SHADER_ANIMATION_EVENTS: frozenset[str] = frozenset({
+    'pointer-left-button-press',
+    'os-window-focus-in',
+    'os-window-focus-out',
+    'window-focus-in',
+    'window-focus-out',
+    'tab-change',
+    'bell-in-window',
+})
+
+
+def is_valid_animation_event(name: str) -> bool:
+    return name in SHADER_ANIMATION_EVENTS
+
+
+def parse_animation_events(raw: str) -> tuple[str, ...]:
+    events = raw.split('|')
+    for e in events:
+        if not is_valid_animation_event(e):
+            raise ValueError(f'{e!r} is not a valid animation event name; valid names: {", ".join(sorted(SHADER_ANIMATION_EVENTS))}')
+    return tuple(events)
+
+
+def parse_css_animation_curve(spec: str) -> EasingFunction:
+    _NAMED: dict[str, tuple[str, str]] = {
+        'ease-in-out': ('cubic-bezier', '0.42, 0, 0.58, 1'),
+        'linear':      ('cubic-bezier', '0, 0, 1, 1'),
+        'ease':        ('cubic-bezier', '0.25, 0.1, 0.25, 1'),
+        'ease-out':    ('cubic-bezier', '0, 0, 0.58, 1'),
+        'ease-in':     ('cubic-bezier', '0.42, 0, 1, 1'),
+        'step-start':  ('steps', '1, start'),
+        'step-end':    ('steps', '1, end'),
+    }
+
+    def make(func_name: str, params: str) -> EasingFunction:
+        if func_name == 'cubic-bezier':
+            return EasingFunction.cubic_bezier(params)
+        if func_name == 'linear':
+            return EasingFunction.linear(params)
+        if func_name == 'steps':
+            return EasingFunction.steps(params)
+        raise ValueError(f'{func_name!r} is not a valid easing function type')
+
+    spec = spec.strip()
+    if spec in _NAMED:
+        return make(*_NAMED[spec])
+    m = re.match(r'^([-a-zA-Z]+)\(([^)]+)\)$', spec)
+    if m:
+        return make(m.group(1), m.group(2))
+    raise ValueError(f'{spec!r} is not a recognized CSS animation curve')
 
 
 @run_once
@@ -1139,6 +1191,11 @@ class Group(TypedDict):
     output_texture: NamedTexture
     shaders: tuple[str, ...]
     vars: dict[str, tuple[str, str]]
+    animation_start: tuple[str, ...]        # empty = no animation
+    animation_curve: EasingFunction         # parsed easing curve
+    animation_step: int                     # nanoseconds between animation samples
+    animation_end_events: tuple[str, ...]   # events that stop the animation
+    animation_end_duration: int | None      # nanoseconds; None = no time limit
 
 
 class Pipeline(TypedDict):
@@ -1166,7 +1223,12 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
             current_group = None
 
     def init_group(*shaders: str) -> Group:
-        return {'viewport_pos': (0, 0), 'viewport_size': (1, 1), 'output_texture': NamedTexture.default, 'shaders': shaders, 'vars': {}}
+        return {
+            'viewport_pos': (0, 0), 'viewport_size': (1, 1), 'output_texture': NamedTexture.default,
+            'shaders': shaders, 'vars': {},
+            'animation_start': (), 'animation_curve': EasingFunction(),
+            'animation_step': ANIMATION_SAMPLE_WAIT, 'animation_end_events': (), 'animation_end_duration': None,
+        }
 
     for line in lines:
         line = line.strip()
@@ -1204,6 +1266,32 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                 case 'var':
                     var_type, var_name, value = parse_var_directive(parts)
                     current_group['vars'][var_name] = (var_type, value)
+                case 'animation_start':
+                    val = parts[1] if len(parts) > 1 else 'none'
+                    current_group['animation_start'] = () if val == 'none' else parse_animation_events(val)
+                case 'animation_curve':
+                    if len(parts) < 2:
+                        raise ValueError('animation_curve requires a CSS curve name')
+                    current_group['animation_curve'] = parse_css_animation_curve(' '.join(parts[1:]))
+                case 'animation_step':
+                    if len(parts) < 2:
+                        raise ValueError('animation_step requires a millisecond value')
+                    current_group['animation_step'] = int(parts[1]) * 1_000_000
+                case 'animation_end':
+                    val = parts[1] if len(parts) > 1 else 'never'
+                    if val == 'never':
+                        current_group['animation_end_events'] = ()
+                        current_group['animation_end_duration'] = None
+                    else:
+                        end_events: list[str] = []
+                        end_duration: int | None = None
+                        for token in val.split('|'):
+                            try:
+                                end_duration = int(token) * 1_000_000
+                            except ValueError:
+                                end_events.extend(parse_animation_events(token))
+                        current_group['animation_end_events'] = tuple(end_events)
+                        current_group['animation_end_duration'] = end_duration
                 case 'endgroup':
                     commit_group()
                 case _:
