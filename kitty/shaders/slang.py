@@ -1411,7 +1411,9 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
 implementing {slot_module_name};
 import kitty_custom_shader_types;
 import {module_name};
-public float4 {entry_point}(float4 inp, KittyTextures t, KittyCustomShaderData d, float4 viewport) {{ return fragment_main(inp, t, d, viewport); }}
+public float4 {entry_point}(
+    float4 inp, KittyTextures t, KittyCustomShaderData d, float4 viewport, float animation_progress
+) {{ return fragment_main(inp, t, d, viewport, animation_progress); }}
 """
         wrappers[f'wrapper{i}.slang'] = wrapper_src
         entry_points.append(entry_point)
@@ -1424,7 +1426,7 @@ public float4 {entry_point}(float4 inp, KittyTextures t, KittyCustomShaderData d
     num_groups = len(pipeline['groups'])
     for g_idx, group in enumerate(pipeline['groups']):
         n = len(group['shaders'])
-        calls = '\n'.join(f'        color = fragment_main{ep_idx + j}(color, t, csd, viewport);' for j in range(n))
+        calls = '\n'.join(f'        color = fragment_main{ep_idx + j}(color, t, csd, viewport, animation_progress);' for j in range(n))
         is_last = g_idx == num_groups - 1
         if is_last:
             calls += '\n        color = float4(linear2srgb(color.rgb), color.a);'
@@ -1482,8 +1484,8 @@ VertexOutput vmain_wrap(uint vertex_id : SV_VertexID) {
 }
 
 [shader("fragment")]
-float4 fmain_wrap(float2 texcoord : TEXCOORD, uniform int group, uniform float4 viewport) : SV_Target {
-    return pipeline_fragment_main(texcoord, group, viewport);
+float4 fmain_wrap(float2 texcoord : TEXCOORD, uniform int group, uniform float4 viewport, uniform float animation_progress) : SV_Target {
+    return pipeline_fragment_main(texcoord, group, viewport, animation_progress);
 }
         """.replace('MODULE', slot.replace('-', '_')).encode()
 

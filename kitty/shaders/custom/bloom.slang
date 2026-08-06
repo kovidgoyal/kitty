@@ -49,7 +49,8 @@ public float4 fragment_main(
     float4 color,
     KittyTextures t,
     KittyCustomShaderData d,
-    float4 viewport
+    float4 viewport,
+    float animation_progress
 ) {
     float2 uv = t.pos;
 

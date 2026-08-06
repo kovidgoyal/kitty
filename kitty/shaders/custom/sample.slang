@@ -17,7 +17,10 @@ public float4 fragment_main(
     // the bottom-left of the screen and y increasing upwards (standard UV
     // coordinates). All numbers are unit floats. If no viewport is defined for
     // the group defaults to (0, 0, 1, 1) that is, the full backbuffer.
-    float4 viewport
+    float4 viewport,
+    // The value after applying the animation easing curve to time since
+    // animation start.
+    float animation_progress
 ) {
     return float4(color.r, min(max(0.1, color.g) * 2, 1), color.b, color.a);
 }

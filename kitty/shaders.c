@@ -2334,6 +2334,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
 
     GLint group_loc = program_uniform_location(CUSTOM_END_PROGRAM, "group");
     GLint viewport_loc = program_uniform_location(CUSTOM_END_PROGRAM, "viewport");
+    GLint anim_progress_loc = program_uniform_location(CUSTOM_END_PROGRAM, "animation_progress");
     const unsigned num_groups = (unsigned)custom_shaders.end.num_groups;
     const unsigned textures_mask = custom_shaders.end.textures;
     const int vw = os_window->viewport_width, vh = os_window->viewport_height;
@@ -2433,8 +2434,17 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             vp_h = sh;
         }
 
+        float anim_progress = 0.0f;
+        if (cg->animation_start_events != 0 && cg->animation_end_duration > 0 && os_window->shader_group_anim[g].active) {
+            double elapsed = (double)(now - os_window->shader_group_anim[g].started_at);
+            double t = elapsed / (double)cg->animation_end_duration;
+            if (t < 0.0) t = 0.0;
+            if (t > 1.0) t = 1.0;
+            anim_progress = (float)(cg->animation_curve ? apply_easing_curve(cg->animation_curve, t, cg->animation_end_duration) : t);
+        }
         glUniform1i(group_loc, (GLint)g);
         glUniform4f(viewport_loc, vp_x, vp_y, vp_w, vp_h);
+        glUniform1f(anim_progress_loc, anim_progress);
         draw_quad(false, 0);
         if (is_last) last_group_rendered = true;
     }

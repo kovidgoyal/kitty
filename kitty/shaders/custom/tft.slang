@@ -22,7 +22,8 @@ public float4 fragment_main(
     float4 color,
     KittyTextures t,
     KittyCustomShaderData d,
-    float4 viewport
+    float4 viewport,
+    float animation_progress
 ) {
     float2 pixel_pos = t.pos * float2(d.viewport_size_pixels);
     float3 c = color.rgb;

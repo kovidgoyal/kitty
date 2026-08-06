@@ -17,7 +17,8 @@ public float4 fragment_main(
     float4 color,
     KittyTextures t,
     KittyCustomShaderData d,
-    float4 viewport
+    float4 viewport,
+    float animation_progress
 ) {
     // UV within the current viewport (0..1)
     float2 uv = t.pos;
