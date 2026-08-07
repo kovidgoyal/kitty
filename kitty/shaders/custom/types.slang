@@ -10,12 +10,20 @@ public struct KittyCustomShaderData {
     public float4 background, foreground;
     // background color of the active window in the active tab (linear RGB, alpha=1)
     public float4 active_window_background;
+    // Mouse position in UV coordinates (origin at lower-left).
+    // Values outside [0, 1] indicate the mouse is outside the OS window.
+    // The first two co-ordinates are current position, the last two the
+    // position of the last left mouse press.
+    public float4 mouse_pos;
 
     // the size in pixels of the full underlying viewport we are rendering too,
     // before applying any viewport transforms from the current group.
     // You can use the viewport vector passed to fragment_main to derive the
     // actual size and position of the viewport currently being rendered too.
     public uint2 viewport_size_pixels;
+
+
+    public float mouse_left_button_pressed;  // 1.0 if left mouse button is currently held, 0.0 otherwise
 
     public float timestamp;  // time in seconds since kitty was started (millisecond precision)
     public float last_rendered_at;  // time of previous render in seconds since kitty was started (millisecond precision)

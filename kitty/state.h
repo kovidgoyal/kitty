@@ -524,6 +524,7 @@ typedef struct OSWindow {
     int mouse_show_threshold;
     bool has_received_cursor_pos_event;
     double mouse_x, mouse_y;
+    double mouse_left_press_x, mouse_left_press_y;
     bool mouse_button_pressed[32];
     bool has_too_few_tabs;
     PyObject *window_title;

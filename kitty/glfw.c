@@ -590,6 +590,10 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
             if (is_window_ready_for_callbacks()) mouse_event(-1, mods, -1);
         }
         global_state.callback_os_window->mouse_button_pressed[button] = action == GLFW_PRESS ? true : false;
+        if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+            window->mouse_left_press_x = window->mouse_x;
+            window->mouse_left_press_y = window->mouse_y;
+        }
         if (is_window_ready_for_callbacks()) mouse_event(button, mods, action);
     }
     request_tick_callback();
