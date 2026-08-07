@@ -15,6 +15,9 @@ public struct KittyCustomShaderData {
     // The first two co-ordinates are current position, the last two the
     // position of the last left mouse press.
     public float4 mouse_pos;
+    // Press state of the first four mouse buttons (left, right, middle, button4).
+    // Each component is 1.0 if the button is currently held, 0.0 otherwise.
+    public float4 mouse_button_pressed;
 
     // the size in pixels of the full underlying viewport we are rendering too,
     // before applying any viewport transforms from the current group.
@@ -22,8 +25,7 @@ public struct KittyCustomShaderData {
     // actual size and position of the viewport currently being rendered too.
     public uint2 viewport_size_pixels;
 
-
-    public float mouse_left_button_pressed;  // 1.0 if left mouse button is currently held, 0.0 otherwise
+    public float mouse_pointer_hidden;  // 1.0 if the mouse pointer is currently hidden, 0.0 if visible
 
     public float timestamp;  // time in seconds since kitty was started (millisecond precision)
     public float last_rendered_at;  // time of previous render in seconds since kitty was started (millisecond precision)

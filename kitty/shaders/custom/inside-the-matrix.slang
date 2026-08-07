@@ -320,7 +320,7 @@ public float4 fragment_main(
           - 0.5f * smoothstep1(1.0f - min(1.0f, t1 / (1.0f - turn_time))));
     }
 
-    if (d.mouse_left_button_pressed != 0) {
+    if (d.mouse_button_pressed.x != 0) {
         float2 mouse = 2.0f * d.mouse_pos.xy - 1.0f;
         up_down = -0.7f * mouse.y;
         angle += mouse.x;

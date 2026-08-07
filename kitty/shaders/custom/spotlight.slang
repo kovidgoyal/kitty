@@ -17,6 +17,8 @@ extern static const int   USE_MOUSE          = 1;
 //   0 = fall back to random oscillation
 //   1 = clamp spotlight to the nearest window edge
 extern static const int   MOUSE_CLAMP_TO_EDGE = 0;
+// Set to 1 to pass through unchanged pixels when the mouse pointer is hidden
+extern static const int   HIDE_WHEN_POINTER_HIDDEN = 1;
 
 public float4 fragment_main(
     float4 color,
@@ -25,6 +27,7 @@ public float4 fragment_main(
     float4 viewport,
     float animation_progress
 ) {
+    if (HIDE_WHEN_POINTER_HIDDEN == 1.0 && d.mouse_pointer_hidden != 0.0) return color;
     float2 uv = t.pos;
 
     // Viewport pixel dimensions for aspect-ratio correction

@@ -2354,8 +2354,9 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float foreground[4];
         float active_window_background[4];
         float mouse_pos[4];
+        float mouse_button_pressed[4];
         uint32_t viewport_size_pixels[2];
-        float mouse_left_button_pressed;
+        float mouse_pointer_hidden;
         float timestamp, last_rendered_at;
         uint32_t frame_counter;
     };
@@ -2396,7 +2397,11 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     d->mouse_pos[1] = vph > 0.f ? 1.f - (float)os_window->mouse_y / vph : 0.f;
     d->mouse_pos[2] = vph > 0.f ? (float)os_window->mouse_left_press_x / vpw : 0.f;
     d->mouse_pos[3] = vph > 0.f ? 1.f - (float)os_window->mouse_left_press_y / vph : 0.f;
-    d->mouse_left_button_pressed = os_window->mouse_button_pressed[GLFW_MOUSE_BUTTON_LEFT] ? 1.f : 0.f;
+    d->mouse_button_pressed[0] = os_window->mouse_button_pressed[GLFW_MOUSE_BUTTON_LEFT] ? 1.f : 0.f;
+    d->mouse_button_pressed[1] = os_window->mouse_button_pressed[GLFW_MOUSE_BUTTON_RIGHT] ? 1.f : 0.f;
+    d->mouse_button_pressed[2] = os_window->mouse_button_pressed[GLFW_MOUSE_BUTTON_MIDDLE] ? 1.f : 0.f;
+    d->mouse_button_pressed[3] = os_window->mouse_button_pressed[3] ? 1.f : 0.f;
+    d->mouse_pointer_hidden = is_mouse_hidden(os_window) ? 1.f : 0.f;
     d->timestamp = ((float)monotonic_t_to_ms(now)) / 1e3f;
     d->last_rendered_at = ((float)monotonic_t_to_ms(os_window->last_rendered_at)) / 1e3f;
     d->frame_counter = os_window->frame_counter;
