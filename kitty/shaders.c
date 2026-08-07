@@ -626,7 +626,8 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
             continue;
         }
         monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
-        // Check end conditions before start so simultaneous start+end lets start win
+        // Check end conditions before start so simultaneous start+end lets start win,
+        // except for focus-out events which act as hard stops (see below).
         if (os_window->shader_group_anim[i].active) {
             bool end = (cg->animation_end_events && (event_mask & cg->animation_end_events)) ||
                        (eff_dur > 0 && now - os_window->shader_group_anim[i].started_at >= eff_dur);
@@ -636,9 +637,15 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
             }
         }
         if (event_mask & cg->animation_start_events) {
-            os_window->shader_group_anim[i].active = true;
-            os_window->shader_group_anim[i].started_at = now;
-            debug_rendering("Custom shader group %zu animation started (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
+            // Focus-out events are hard stops: if a focus-out stop condition is present in
+            // the same tick as a start event (e.g. user-activity fired by the click that
+            // moved focus away), the focus-out wins and the animation is not restarted.
+            const unsigned focus_out_mask = (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
+            if (!(cg->animation_end_events & event_mask & focus_out_mask)) {
+                os_window->shader_group_anim[i].active = true;
+                os_window->shader_group_anim[i].started_at = now;
+                debug_rendering("Custom shader group %zu animation started (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
+            }
         }
         if (os_window->shader_group_anim[i].active) {
             any_active = true;
