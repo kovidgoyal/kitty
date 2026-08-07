@@ -16,7 +16,8 @@ extern static const int   USE_MOUSE          = 1;
 // When USE_MOUSE=1 and the mouse leaves the window:
 //   0 = fall back to random oscillation
 //   1 = clamp spotlight to the nearest window edge
-extern static const int   MOUSE_CLAMP_TO_EDGE = 0;
+//   2 = disable spotlight (pass through unchanged pixels)
+extern static const int   MOUSE_LEAVE_BEHAVIOR = 2;
 // Set to 1 to pass through unchanged pixels when the mouse pointer is hidden
 extern static const int   HIDE_WHEN_POINTER_HIDDEN = 1;
 
@@ -45,8 +46,11 @@ public float4 fragment_main(
     float2 mp            = d.mouse_pos.xy;
     float  mouseInWindow = float(all(mp >= float2(0.0)) && all(mp <= float2(1.0)));
 
+    // Disable spotlight entirely when mouse leaves the window
+    if (USE_MOUSE == 1 && MOUSE_LEAVE_BEHAVIOR == 2 && mouseInWindow == 0.0) return color;
+
     // When mouse leaves the window: clamp to nearest edge or fall back to random
-    float2 outsideFallback = lerp(randomCenter, clamp(mp, float2(0.0), float2(1.0)), float(MOUSE_CLAMP_TO_EDGE));
+    float2 outsideFallback = lerp(randomCenter, clamp(mp, float2(0.0), float2(1.0)), float(MOUSE_LEAVE_BEHAVIOR == 1 ? 1 : 0));
 
     // Branchless center selection
     float2 mouseCenter     = lerp(outsideFallback, mp, mouseInWindow);
