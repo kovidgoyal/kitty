@@ -1389,7 +1389,8 @@ class Window:
         if timer_id is not None:  # this is a timer callback
             self.clear_progress_timer = 0
         if self.progress.clear_progress():
-            self.screen.set_progress(0, 0)
+            if hasattr(self, 'screen'):
+                self.screen.set_progress(0, 0)
             if (tab := self.tabref()) is not None:
                 tab.update_progress()
         else:
