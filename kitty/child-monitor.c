@@ -922,7 +922,10 @@ prepare_to_render_os_window(
             events |= (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
         monotonic_t min_step = update_custom_shader_animations(events, now, os_window);
         os_window->shader_anim_event_registry = 0;
-        if (os_window->has_active_custom_shaders) os_window->needs_layers = true;
+        if (os_window->has_active_custom_shaders) {
+            os_window->needs_layers = true;
+            needs_render = true;
+        }
         if (min_step < MONOTONIC_T_MAX) set_maximum_wait(min_step);
     }
     return needs_render || was_previously_rendered_with_layers != os_window->needs_layers;
