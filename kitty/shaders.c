@@ -1756,24 +1756,24 @@ draw_window_padding(const UIRenderData *ui, Window *window, ssize_t vao_idx, boo
     // Cell data is packed contiguously via GPU-side copies (no CPU round-trip).
     if (ct || cb) {
         const unsigned int nH = (ct ? 1u : 0u) + (cb ? 1u : 0u);
-        alloc_vao_buffer(vao_idx, (GLsizeiptr)(nH * columns * sizeof(GPUCell)), padding_cell_data_buffer, GL_DYNAMIC_DRAW);
-        alloc_vao_buffer(vao_idx, (GLsizeiptr)(nH * columns * sizeof(GLubyte)), padding_selection_buffer, GL_DYNAMIC_DRAW);
+        alloc_vao_buffer(vao_idx, (GLsizeiptr)(sizeof(GPUCell) * nH * columns), padding_cell_data_buffer, GL_DYNAMIC_DRAW);
+        alloc_vao_buffer(vao_idx, (GLsizeiptr)(sizeof(GLubyte) * nH * columns), padding_selection_buffer, GL_DYNAMIC_DRAW);
 
         unsigned int sidx = 0u;
         if (ct) {
             copy_vao_buffer_region(
                 vao_idx,
                 cell_data_buffer,
-                (GLintptr)(top_row * columns * sizeof(GPUCell)),
+                (GLintptr)(sizeof(GPUCell) * top_row * columns),
                 padding_cell_data_buffer,
-                (GLintptr)(sidx * columns * sizeof(GPUCell)),
+                (GLintptr)(sizeof(GPUCell) * sidx * columns),
                 (GLsizeiptr)(columns * sizeof(GPUCell)));
             copy_vao_buffer_region(
                 vao_idx,
                 selection_buffer,
-                (GLintptr)(top_row * columns * sizeof(GLubyte)),
+                (GLintptr)(sizeof(GLubyte) * top_row * columns),
                 padding_selection_buffer,
-                (GLintptr)(sidx * columns * sizeof(GLubyte)),
+                (GLintptr)(sizeof(GLubyte) * sidx * columns),
                 (GLsizeiptr)(columns * sizeof(GLubyte)));
             sidx++;
         }
@@ -1781,16 +1781,16 @@ draw_window_padding(const UIRenderData *ui, Window *window, ssize_t vao_idx, boo
             copy_vao_buffer_region(
                 vao_idx,
                 cell_data_buffer,
-                (GLintptr)(bottom_row * columns * sizeof(GPUCell)),
+                (GLintptr)(sizeof(GPUCell) * bottom_row * columns),
                 padding_cell_data_buffer,
-                (GLintptr)(sidx * columns * sizeof(GPUCell)),
-                (GLsizeiptr)(columns * sizeof(GPUCell)));
+                (GLintptr)(sizeof(GPUCell) * sidx * columns),
+                (GLsizeiptr)(sizeof(GPUCell) * columns));
             copy_vao_buffer_region(
                 vao_idx,
                 selection_buffer,
-                (GLintptr)(bottom_row * columns * sizeof(GLubyte)),
+                (GLintptr)(sizeof(GLubyte) * bottom_row * columns),
                 padding_selection_buffer,
-                (GLintptr)(sidx * columns * sizeof(GLubyte)),
+                (GLintptr)(sizeof(GLubyte) * sidx * columns),
                 (GLsizeiptr)(columns * sizeof(GLubyte)));
         }
 
