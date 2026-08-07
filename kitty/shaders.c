@@ -2683,6 +2683,8 @@ shader_anim_event_bit(const char *s) {
     if (strcmp(s, "window-focus-out") == 0) return 1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT;
     if (strcmp(s, "tab-change") == 0) return 1u << SHADER_ANIM_EVENT_TAB_CHANGE;
     if (strcmp(s, "bell-in-window") == 0) return 1u << SHADER_ANIM_EVENT_BELL_IN_WINDOW;
+    if (strcmp(s, "user-activity") == 0) return 1u << SHADER_ANIM_EVENT_USER_ACTIVITY;
+    if (strcmp(s, "user-idle") == 0) return 1u << SHADER_ANIM_EVENT_USER_IDLE;
     return 0;
 }
 

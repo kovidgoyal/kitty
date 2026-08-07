@@ -533,6 +533,8 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
 #endif
     global_state.mods_at_last_key_or_button_event = ev->mods;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
+    global_state.callback_os_window->user_is_idle = false;
+    global_state.callback_os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_USER_ACTIVITY);
     if (is_window_ready_for_callbacks() && !ev->fake_event_on_focus_change) on_key_input(ev);
     global_state.callback_os_window = NULL;
     request_tick_callback();
@@ -600,6 +602,8 @@ on_mouse_position_update(double x, double y) {
     cursor_active_callback(now);
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;
+    global_state.callback_os_window->user_is_idle = false;
+    global_state.callback_os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_USER_ACTIVITY);
     global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
     global_state.callback_os_window->mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
     global_state.callback_os_window->has_received_cursor_pos_event = true;

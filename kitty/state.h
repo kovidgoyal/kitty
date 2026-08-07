@@ -480,6 +480,8 @@ typedef enum {
     SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT,
     SHADER_ANIM_EVENT_TAB_CHANGE,
     SHADER_ANIM_EVENT_BELL_IN_WINDOW,
+    SHADER_ANIM_EVENT_USER_ACTIVITY,
+    SHADER_ANIM_EVENT_USER_IDLE,
     NUM_SHADER_ANIM_EVENTS
 } ShaderAnimationEvent;
 
@@ -518,6 +520,7 @@ typedef struct OSWindow {
     bool tab_bar_data_updated;
     bool is_focused;
     monotonic_t cursor_blink_zero_time, last_mouse_activity_at, mouse_activate_deadline;
+    bool user_is_idle;
     int mouse_show_threshold;
     bool has_received_cursor_pos_event;
     double mouse_x, mouse_y;

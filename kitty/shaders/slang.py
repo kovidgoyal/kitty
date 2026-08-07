@@ -1107,6 +1107,8 @@ SHADER_ANIMATION_EVENTS: frozenset[str] = frozenset(
         'window-focus-out',
         'tab-change',
         'bell-in-window',
+        'user-activity',
+        'user-idle',
     }
 )
 

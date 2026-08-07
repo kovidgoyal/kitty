@@ -914,6 +914,18 @@ prepare_to_render_os_window(
             }
         }
     }
+    if (OPT(cursor_stop_blinking_after) > 0) {
+        monotonic_t time_since_last_activity = now - os_window->cursor_blink_zero_time;
+        bool blink_has_ceased = time_since_last_activity > OPT(cursor_stop_blinking_after);
+        if (blink_has_ceased && !os_window->user_is_idle) {
+            os_window->user_is_idle = true;
+            os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_USER_IDLE);
+        } else if (!blink_has_ceased && OPT(cursor_blink_interval) <= 0 && os_window->has_active_custom_shaders) {
+            // cursor blinking is disabled so collect_cursor_info won't schedule a wakeup for
+            // this deadline; do it here so user-idle fires on time
+            set_maximum_wait(OPT(cursor_stop_blinking_after) - time_since_last_activity);
+        }
+    }
     {
         unsigned events = os_window->shader_anim_event_registry;
         if (os_window->active_tab != os_window->last_active_tab)
