@@ -2161,6 +2161,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     glfwSetDropEventCallback(glfw_window, drop_dest_callback);
     monotonic_t now = monotonic();
     w->is_focused = true;
+    w->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN);
     w->cursor_blink_zero_time = now;
     w->last_mouse_activity_at = now;
     w->mouse_activate_deadline = -1;

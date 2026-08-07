@@ -398,7 +398,7 @@ typedef struct CustomShaderGroup {
     NamedTexture output_texture;
     unsigned animation_start_events;    // bitmask of ShaderAnimationEvent values; 0 = no animation
     unsigned animation_end_events;      // bitmask of events that stop the animation; 0 = none
-    monotonic_t animation_end_duration; // nanoseconds; 0 = no time limit, < 0 = use cursor_blink_interval
+    monotonic_t animation_end_duration; // nanoseconds; 0 = no time limit, < 0 = use cursor_stop_blinking_after
     monotonic_t animation_step;         // nanoseconds between animation samples
     Animation *animation_curve;         // parsed easing curve; NULL = no animation
     bool animation_curve_is_shared;     // true if animation_curve is owned by an earlier group
@@ -553,6 +553,11 @@ init_custom_programs(void) {
         osw->has_active_custom_shaders = initially_active;
         osw->shader_anim_min_step = MONOTONIC_T_MAX;
         osw->shader_anim_next_end_at = MONOTONIC_T_MAX;
+        // Synthesize focus events for windows that already have focus so that
+        // animations triggered by os-window-focus-in start on the first render
+        // after shader compilation (the focus-in event fired before shaders were
+        // compiled and was consumed without being processed).
+        if (osw->is_focused) { osw->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN); }
     }
     debug_rendering(
         "Custom shaders: %zu program(s), %zu group(s), textures_mask=0x%x, initially_active=%d\n",
@@ -583,7 +588,7 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
             any_active = true;
             continue;
         }
-        monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_blink_interval) : cg->animation_end_duration;
+        monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
         // Check end conditions before start so simultaneous start+end lets start win
         if (os_window->shader_group_anim[i].active) {
             bool end = (cg->animation_end_events && (event_mask & cg->animation_end_events)) ||
