@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
+import hashlib
+import importlib.resources as ir
+import json
 import os
 import shutil
 import subprocess
@@ -17,11 +20,14 @@ from kitty.shaders.slang import (
     parse_pipeline_definition,
     parse_slang_text,
     parse_var_directive,
+    slangc_version,
     topological_layers,
     topological_sort,
 )
 
 from .base import BaseTest
+
+_SUPPORT_SHADER_NAMES = frozenset(('types', 'pipeline'))
 
 
 class TestSlang(BaseTest):
@@ -326,3 +332,67 @@ void vsMain() {}
                 )
             finally:
                 os.unlink(tf_path)
+
+    def _content_hash(self) -> str:
+        h = hashlib.md5(usedforsecurity=False)
+        pkg = ir.files('kitty.shaders.custom')
+        for entry in sorted(pkg.iterdir(), key=lambda x: x.name):
+            if entry.name.endswith(('.slang', '.pipeline')):
+                h.update(entry.name.encode())
+                h.update(entry.read_bytes())
+        h.update(slangc_version().encode())
+        return h.hexdigest()
+
+    def test_all_custom_shaders_compile(self) -> None:
+        if __file__ and os.path.isdir((local := os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.cache'))):
+            cache_base = local
+        else:
+            cache_base = tempfile.gettempdir()
+
+        _CACHE_FILE = os.path.join(cache_base, 'kitty-custom-shaders-test.json')
+        if not shutil.which(slangc()[0]):
+            self.skipTest(f'slangc ({slangc()[0]}) not found in PATH')
+
+        current_hash = self._content_hash()
+
+        try:
+            with open(_CACHE_FILE) as f:
+                if json.load(f).get('hash') == current_hash:
+                    return
+        except (OSError, json.JSONDecodeError, KeyError):
+            pass
+
+        pkg = ir.files('kitty.shaders.custom')
+        shader_names = sorted(
+            entry.name[: -len('.slang')]
+            for entry in pkg.iterdir()
+            if entry.name.endswith('.slang') and entry.name[: -len('.slang')] not in _SUPPORT_SHADER_NAMES
+        )
+
+        _CACHE_DIR = os.path.join(cache_base, 'kitty-custom-shaders-slangc-cache')
+        os.makedirs(_CACHE_DIR, exist_ok=True)
+        failures: list[str] = []
+        clear_caches()
+        try:
+            for name in shader_names:
+                pipeline = parse_pipeline_definition(
+                    ['startgroup', f'shaders {name}', 'endgroup'],
+                    name,
+                )
+                try:
+                    vert_src, frag_src, _ = build_custom_shader_pipeline_glsl(pipeline, cache_dir=_CACHE_DIR)
+                except Exception as e:
+                    failures.append(f'{name}: {e}')
+                    continue
+                if not vert_src:
+                    failures.append(f'{name}: empty vertex GLSL')
+                if not frag_src:
+                    failures.append(f'{name}: empty fragment GLSL')
+        finally:
+            clear_caches()
+
+        if failures:
+            self.fail('Custom shader compilation failures:\n' + '\n'.join(failures))
+
+        with open(_CACHE_FILE, 'w') as f:
+            json.dump({'hash': current_hash}, f)
