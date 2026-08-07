@@ -27,7 +27,7 @@ public float4 fragment_main(
     float4 viewport,
     float animation_progress
 ) {
-    if (HIDE_WHEN_POINTER_HIDDEN == 1.0 && d.mouse_pointer_hidden != 0.0) return color;
+    if (HIDE_WHEN_POINTER_HIDDEN == 1 && d.mouse_pointer_hidden != 0.0) return color;
     float2 uv = t.pos;
 
     // Viewport pixel dimensions for aspect-ratio correction
