@@ -1288,7 +1288,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                     if len(parts) < 2:
                         raise ValueError('animation_step requires a millisecond value')
                     current_group['animation_step'] = int(parts[1]) * 1_000_000
-                case 'animation_end':
+                case 'animation_stop':
                     val = parts[1] if len(parts) > 1 else 'never'
                     if val == 'never':
                         current_group['animation_end_events'] = ()
