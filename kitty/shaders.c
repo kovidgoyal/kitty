@@ -1838,12 +1838,12 @@ draw_window_padding(const UIRenderData *ui, Window *window, ssize_t vao_idx, boo
         }
         unmap_vao_buffer(vao_idx, selection_buffer);
 
-        void *dst = alloc_and_map_vao_buffer(vao_idx, (GLsizeiptr)(nV * lines * sizeof(GPUCell)), padding_cell_data_buffer, false);
-        memcpy(dst, gathered_cells, nV * lines * sizeof(GPUCell));
+        void *dst = alloc_and_map_vao_buffer(vao_idx, (GLsizeiptr)(sizeof(GPUCell) * nV * lines), padding_cell_data_buffer, false);
+        memcpy(dst, gathered_cells, sizeof(GPUCell) * nV * lines);
         unmap_vao_buffer(vao_idx, padding_cell_data_buffer);
 
-        dst = alloc_and_map_vao_buffer(vao_idx, (GLsizeiptr)(nV * lines * sizeof(GLubyte)), padding_selection_buffer, false);
-        memcpy(dst, gathered_sel, nV * lines * sizeof(GLubyte));
+        dst = alloc_and_map_vao_buffer(vao_idx, (GLsizeiptr)(sizeof(GLubyte) * nV * lines), padding_selection_buffer, false);
+        memcpy(dst, gathered_sel, sizeof(GLubyte) * nV * lines);
         unmap_vao_buffer(vao_idx, padding_selection_buffer);
 
         const unsigned int base0 = top_row * columns + (cl ? 0u : (columns - 1u));
