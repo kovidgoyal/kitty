@@ -1278,7 +1278,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                     var_type, var_name, value = parse_var_directive(parts)
                     current_group['vars'][var_name] = (var_type, value)
                 case 'animation_start':
-                    val = parts[1] if len(parts) > 1 else 'none'
+                    val = ''.join(parts[1:]) if len(parts) > 1 else 'none'
                     current_group['animation_start'] = () if val == 'none' else parse_animation_events(val)
                 case 'animation_curve':
                     if len(parts) < 2:
@@ -1289,7 +1289,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                         raise ValueError('animation_step requires a millisecond value')
                     current_group['animation_step'] = int(parts[1]) * 1_000_000
                 case 'animation_stop':
-                    val = parts[1] if len(parts) > 1 else 'never'
+                    val = ''.join(parts[1:]) if len(parts) > 1 else 'never'
                     if val == 'never':
                         current_group['animation_end_events'] = ()
                         current_group['animation_end_duration'] = 0
