@@ -1198,7 +1198,7 @@ class Group(TypedDict):
     animation_curve: EasingFunction  # parsed easing curve
     animation_step: int  # nanoseconds between animation samples
     animation_end_events: tuple[str, ...]  # events that stop the animation
-    animation_end_duration: int  # nanoseconds; 0 = no time limit, negative = use cursor_blink_interval
+    animation_end_duration: int  # nanoseconds; 0 = no time limit, negative = use cursor_stop_blinking_after
 
 
 class Pipeline(TypedDict):

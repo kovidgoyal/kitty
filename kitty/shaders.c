@@ -2456,7 +2456,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         }
 
         float anim_progress = 0.0f;
-        monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_blink_interval) : cg->animation_end_duration;
+        monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
         if (cg->animation_start_events != 0 && eff_dur > 0 && os_window->shader_group_anim[g].active) {
             monotonic_t started_at = os_window->shader_group_anim[g].started_at;
             bool cached = false;
