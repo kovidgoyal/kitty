@@ -1109,6 +1109,8 @@ SHADER_ANIMATION_EVENTS: frozenset[str] = frozenset(
         'bell-in-window',
         'user-activity',
         'user-idle',
+        'cursor-trail-move',
+        'cursor-trail-stop',
     }
 )
 

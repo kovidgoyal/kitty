@@ -40,6 +40,7 @@ update_cursor_trail_target(CursorTrail *ct, Window *w, ndc_coords g) {
         default: break;
     }
     if (left != FLT_MAX) {
+        if (EDGE(x, 0) != left || EDGE(x, 1) != right || EDGE(y, 0) != top || EDGE(y, 1) != bottom) ct->target_updated = true;
         EDGE(x, 0) = left;
         EDGE(x, 1) = right;
         EDGE(y, 0) = top;
@@ -72,6 +73,7 @@ update_cursor_trail_corners(CursorTrail *ct, ndc_coords g, monotonic_t now, OSWi
     float decay_slow = OPT(cursor_trail_decay_slow);
 
     if (should_skip_cursor_trail_update(ct, g, os_window, w)) {
+        ct->target_updated = false;
         for (int i = 0; i < 4; ++i) {
             ct->corner_x[i] = EDGE(x, corner_index[0][i]);
             ct->corner_y[i] = EDGE(y, corner_index[1][i]);
@@ -149,6 +151,7 @@ update_cursor_trail_needs_render(CursorTrail *ct, Window *w, ndc_coords g) {
 
 bool
 update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window) {
+    ct->target_updated = false;
     ndc_coords g = {
         .xstart = gl_pos_x(w->render_data.geometry.left, os_window->viewport_width),
         .ystart = gl_pos_y(w->render_data.geometry.top, os_window->viewport_height),

@@ -19,6 +19,19 @@ public struct KittyCustomShaderData {
     // Each component is 1.0 if the button is currently held, 0.0 otherwise.
     public float4 mouse_button_pressed;
 
+    // Cursor trail state (UV coordinates, origin bottom-left, (1,1) top-right).
+    // All fields are zero when the cursor_trail kitty option is disabled or the trail is inactive.
+    // The trail is a morphing quadrilateral whose four corners animate toward the cursor position.
+    // Corner order: 0=top-right, 1=bottom-right, 2=bottom-left, 3=top-left.
+    // Use animation_start cursor-trail-move / animation_stop cursor-trail-stop to activate.
+    // animation_progress is NOT tied to trail duration; use cursor_trail_state.x for opacity instead.
+    public float4 cursor_trail_corners_x;  // UV x-coordinates of the 4 animated trail quad corners
+    public float4 cursor_trail_corners_y;  // UV y-coordinates of the 4 animated trail quad corners
+    // .x=left, .y=right, .z=top, .w=bottom UV edges of the current cursor rectangle
+    public float4 cursor_trail_edge;
+    // .x=trail opacity (0..1), .y=1.0 if trail is actively animating else 0.0, .zw reserved
+    public float4 cursor_trail_state;
+
     // the size in pixels of the full underlying viewport we are rendering too,
     // before applying any viewport transforms from the current group.
     // You can use the viewport vector passed to fragment_main to derive the

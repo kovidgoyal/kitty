@@ -409,6 +409,7 @@ typedef struct CustomShaderPipeline {
     CustomShaderGroup groups[MAX_CUSTOM_SHADER_GROUPS];
     size_t num_groups;
     bool active;
+    bool bypass_builtin_trail;           // true when any group subscribes to cursor-trail-move
     unsigned all_animation_start_events; // union of animation_start_events across all groups
 } CustomShaderPipeline;
 
@@ -585,6 +586,8 @@ shader_anim_event_mask_str(unsigned mask) {
         {1u << SHADER_ANIM_EVENT_BELL_IN_WINDOW, "bell-in-window"},
         {1u << SHADER_ANIM_EVENT_USER_ACTIVITY, "user-activity"},
         {1u << SHADER_ANIM_EVENT_USER_IDLE, "user-idle"},
+        {1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE, "cursor-trail-move"},
+        {1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP, "cursor-trail-stop"},
     };
     bool first = true;
     for (size_t i = 0; i < sizeof(events) / sizeof(events[0]); i++) {
@@ -2355,6 +2358,10 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float active_window_background[4];
         float mouse_pos[4];
         float mouse_button_pressed[4];
+        float cursor_trail_corners_x[4];
+        float cursor_trail_corners_y[4];
+        float cursor_trail_edge[4];
+        float cursor_trail_state[4];
         uint32_t viewport_size_pixels[2];
         float mouse_pointer_hidden;
         float timestamp, last_rendered_at;
@@ -2362,10 +2369,9 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     };
     struct GPUCustomEndData *d = (struct GPUCustomEndData *)map_vao_buffer_for_write_only(
         custom_end_vao_idx, 0, 0, program_uniform_block(CUSTOM_END_PROGRAM, "KittyCustomShaderData").size);
-    d->src_rect[0] = 0;
+    memset(d, 0, sizeof(struct GPUCustomEndData));
     d->src_rect[1] = sy;
     d->src_rect[2] = sx;
-    d->src_rect[3] = 0;
     d->dest_rect[0] = -1;
     d->dest_rect[1] = 1;
     d->dest_rect[2] = 1;
@@ -2390,13 +2396,36 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     }
     FILL_COLOR(d->active_window_background, active_bg);
 #undef FILL_COLOR
+    {
+        CursorTrail *ct = NULL;
+        if (OPT(cursor_trail) && os_window->num_tabs > 0) {
+            CursorTrail *candidate = &os_window->tabs[os_window->active_tab].cursor_trail;
+            if (candidate->needs_render) ct = candidate;
+        }
+        if (ct) {
+#define NDC_TO_UV(v) (((v) + 1.0f) * 0.5f)
+            for (int i = 0; i < 4; i++) {
+                d->cursor_trail_corners_x[i] = NDC_TO_UV(ct->corner_x[i]);
+                d->cursor_trail_corners_y[i] = NDC_TO_UV(ct->corner_y[i]);
+            }
+            d->cursor_trail_edge[0] = NDC_TO_UV(ct->cursor_edge_x[0]); // left
+            d->cursor_trail_edge[1] = NDC_TO_UV(ct->cursor_edge_x[1]); // right
+            d->cursor_trail_edge[2] = NDC_TO_UV(ct->cursor_edge_y[0]); // top
+            d->cursor_trail_edge[3] = NDC_TO_UV(ct->cursor_edge_y[1]); // bottom
+#undef NDC_TO_UV
+            d->cursor_trail_state[0] = ct->opacity;
+            d->cursor_trail_state[1] = 1.0f;
+        }
+    }
     d->viewport_size_pixels[0] = (uint32_t)os_window->viewport_width;
     d->viewport_size_pixels[1] = (uint32_t)os_window->viewport_height;
     const float vpw = (float)os_window->viewport_width, vph = (float)os_window->viewport_height;
-    d->mouse_pos[0] = vph > 0.f ? (float)os_window->mouse_x / vpw : 0.f;
-    d->mouse_pos[1] = vph > 0.f ? 1.f - (float)os_window->mouse_y / vph : 0.f;
-    d->mouse_pos[2] = vph > 0.f ? (float)os_window->mouse_left_press_x / vpw : 0.f;
-    d->mouse_pos[3] = vph > 0.f ? 1.f - (float)os_window->mouse_left_press_y / vph : 0.f;
+    if (vpw > 0 && vph > 0) {
+        d->mouse_pos[0] = (float)os_window->mouse_x / vpw;
+        d->mouse_pos[1] = 1.f - (float)os_window->mouse_y / vph;
+        d->mouse_pos[2] = (float)os_window->mouse_left_press_x / vpw;
+        d->mouse_pos[3] = 1.f - (float)os_window->mouse_left_press_y / vph;
+    }
     d->mouse_button_pressed[0] = os_window->mouse_button_pressed[GLFW_MOUSE_BUTTON_LEFT];
     d->mouse_button_pressed[1] = os_window->mouse_button_pressed[GLFW_MOUSE_BUTTON_RIGHT];
     d->mouse_button_pressed[2] = os_window->mouse_button_pressed[GLFW_MOUSE_BUTTON_MIDDLE];
@@ -2568,7 +2597,8 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
 
 static void
 stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, monotonic_t now) {
-    if (OPT(cursor_trail) && tab->cursor_trail.needs_render) draw_cursor_trail(&tab->cursor_trail, active_window);
+    if (OPT(cursor_trail) && tab->cursor_trail.needs_render && !(custom_shaders.end.active && custom_shaders.end.bypass_builtin_trail))
+        draw_cursor_trail(&tab->cursor_trail, active_window);
     if (os_window->needs_layers) {
         float sx = global_state.layers_render_texture.width > 0 ? (float)os_window->viewport_width / (float)global_state.layers_render_texture.width : 1.f;
         float sy = global_state.layers_render_texture.height > 0 ? (float)os_window->viewport_height / (float)global_state.layers_render_texture.height : 1.f;
@@ -2742,6 +2772,8 @@ shader_anim_event_bit(const char *s) {
     if (strcmp(s, "bell-in-window") == 0) return 1u << SHADER_ANIM_EVENT_BELL_IN_WINDOW;
     if (strcmp(s, "user-activity") == 0) return 1u << SHADER_ANIM_EVENT_USER_ACTIVITY;
     if (strcmp(s, "user-idle") == 0) return 1u << SHADER_ANIM_EVENT_USER_IDLE;
+    if (strcmp(s, "cursor-trail-move") == 0) return 1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE;
+    if (strcmp(s, "cursor-trail-stop") == 0) return 1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP;
     return 0;
 }
 
@@ -2828,6 +2860,7 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
     }
     p->all_animation_start_events = 0;
     for (size_t i = 0; i < p->num_groups; i++) p->all_animation_start_events |= p->groups[i].animation_start_events;
+    p->bypass_builtin_trail = (p->all_animation_start_events & (1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE)) != 0;
 #undef is_seq
     return true;
 }

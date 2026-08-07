@@ -868,6 +868,7 @@ prepare_to_render_os_window(
                         tab->cursor_trail.updated_at = now;
                         os_window->cursor_blink_zero_time = now;
                     }
+                    bool was_rendering = tab->cursor_trail.needs_render;
                     if (update_cursor_trail(&tab->cursor_trail, w, now, os_window)) {
                         needs_render = true;
                         // A max wait of zero causes key input processing to be
@@ -879,6 +880,8 @@ prepare_to_render_os_window(
                         // has passed since the cursor was last moved.
                         set_maximum_wait(OPT(cursor_trail) - now + WD.screen->cursor->position_changed_by_client_at);
                     }
+                    if (tab->cursor_trail.target_updated) os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE);
+                    if (was_rendering && !tab->cursor_trail.needs_render) os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP);
                 }
             } else {
                 if (WD.screen->cursor_render_info.render_even_when_unfocused) {

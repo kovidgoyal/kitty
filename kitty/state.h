@@ -420,6 +420,7 @@ typedef struct BorderRects {
 
 typedef struct CursorTrail {
     bool needs_render;
+    bool target_updated; // set when cursor moves to a new cell; consumed by child-monitor to fire shader events
     monotonic_t updated_at;
     float opacity;
     float corner_x[4];
@@ -482,6 +483,8 @@ typedef enum {
     SHADER_ANIM_EVENT_BELL_IN_WINDOW,
     SHADER_ANIM_EVENT_USER_ACTIVITY,
     SHADER_ANIM_EVENT_USER_IDLE,
+    SHADER_ANIM_EVENT_CURSOR_TRAIL_MOVE,
+    SHADER_ANIM_EVENT_CURSOR_TRAIL_STOP,
     NUM_SHADER_ANIM_EVENTS
 } ShaderAnimationEvent;
 
