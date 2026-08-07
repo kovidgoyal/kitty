@@ -1,4 +1,7 @@
 #language slang 2026
+// Copyright (C) 2026 Kovid Goyal <kovid at kovidgoyal.net>
+// Distributed under terms of the GPLv3 license.
+//
 // Spotlight effect
 // Original GLSL by Paul Robello, ported to Slang for kitty
 

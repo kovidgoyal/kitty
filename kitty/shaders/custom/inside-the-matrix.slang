@@ -1,4 +1,7 @@
 #language slang 2026
+// Copyright (C) 2026 Kovid Goyal <kovid at kovidgoyal.net>
+// Distributed under terms of the GPLv3 license.
+//
 // Inside the Matrix https://www.shadertoy.com/view/4t3BWl
 // runes code by FabriceNeyret2 / otaviogood (https://www.shadertoy.com/view/4ltyDM)
 // Ported to Slang for kitty custom shader system
