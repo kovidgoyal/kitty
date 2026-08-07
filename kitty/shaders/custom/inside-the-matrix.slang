@@ -317,8 +317,15 @@ public float4 fragment_main(
           - 0.5f * smoothstep1(1.0f - min(1.0f, t1 / (1.0f - turn_time))));
     }
 
-    // kitty has no mouse uniforms — always use the scripted camera path
-    angle += add_angel;
+    if (d.mouse_left_button_pressed != 0) {
+        float2 mouse = 2.0f * d.mouse_pos.xy - 1.0f;
+        up_down = -0.7f * mouse.y;
+        angle += mouse.x;
+        rotate_on_turns = 1.0f;
+        roll_on_turns = 0.0f;
+    } else {
+        angle += add_angel;
+    }
 
     rd = rotateX(rd, up_down);
 
