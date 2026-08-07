@@ -13,13 +13,10 @@
 //   endgroup
 //
 // Note: animation_progress is not tied to the trail duration (which is
-// an exponential decay of variable length). Use cursor_trail_state.x
+// an exponential decay of variable length). Use cursor_trail_color.a
 // for opacity and the corner positions for geometry instead.
 
 import kitty_custom_shader_types;
-
-// Trail color. Negative values mean "inherit from active_window_background".
-extern static const float3 TRAIL_COLOR = float3(-1.0, -1.0, -1.0);
 
 // Returns true when uv is inside the convex quad c0→c1→c2→c3 (clockwise, y-up).
 // Corner order from cursor_trail_corners_*: 0=top-right, 1=bottom-right, 2=bottom-left, 3=top-left.
@@ -39,7 +36,7 @@ public float4 fragment_main(
     float4 viewport,
     float animation_progress
 ) {
-    float opacity = d.cursor_trail_state.x;
+    float opacity = d.cursor_trail_color.a;
     if (opacity <= 0.0) return color;
 
     float2 uv = t.pos;
@@ -58,6 +55,5 @@ public float4 fragment_main(
     opacity *= 1.0 - inside_cursor;
     if (opacity <= 0.0) return color;
 
-    float3 tc = all(TRAIL_COLOR >= float3(0.0)) ? TRAIL_COLOR : d.active_window_background.rgb;
-    return float4(lerp(color.rgb, tc, opacity), color.a);
+    return float4(lerp(color.rgb, d.cursor_trail_color.rgb, opacity), color.a);
 }

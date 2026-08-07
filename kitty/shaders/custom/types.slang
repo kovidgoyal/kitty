@@ -29,8 +29,14 @@ public struct KittyCustomShaderData {
     public float4 cursor_trail_corners_y;  // UV y-coordinates of the 4 animated trail quad corners
     // .x=left, .y=right, .z=top, .w=bottom UV edges of the current cursor rectangle
     public float4 cursor_trail_edge;
-    // .x=trail opacity (0..1), .y=1.0 if trail is actively animating else 0.0, .zw reserved
-    public float4 cursor_trail_state;
+    // Effective cursor color (linear RGB) and opacity for the active window.
+    // .rgb = cursor background color, .a = cursor opacity (0..1).
+    // Both are zero when no active window was rendered this frame.
+    public float4 cursor_color;
+    // Effective cursor trail color (linear RGB) and opacity.
+    // .rgb = trail color (falls back to cursor_color.rgb when cursor_trail_color option is "none").
+    // .a = trail opacity (0..1); zero when the trail is inactive.
+    public float4 cursor_trail_color;
 
     // the size in pixels of the full underlying viewport we are rendering too,
     // before applying any viewport transforms from the current group.
@@ -39,6 +45,7 @@ public struct KittyCustomShaderData {
     public uint2 viewport_size_pixels;
 
     public float mouse_pointer_hidden;  // 1.0 if the mouse pointer is currently hidden, 0.0 if visible
+    public float cursor_trail_state;    // 1.0 if the cursor trail is actively animating, 0.0 otherwise
 
     public float timestamp;  // time in seconds since kitty was started (millisecond precision)
     public float last_rendered_at;  // time of previous render in seconds since kitty was started (millisecond precision)

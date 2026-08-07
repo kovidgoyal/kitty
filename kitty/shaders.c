@@ -2361,9 +2361,11 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float cursor_trail_corners_x[4];
         float cursor_trail_corners_y[4];
         float cursor_trail_edge[4];
-        float cursor_trail_state[4];
+        float cursor_color[4];
+        float cursor_trail_color[4];
         uint32_t viewport_size_pixels[2];
         float mouse_pointer_hidden;
+        float cursor_trail_state;
         float timestamp, last_rendered_at;
         uint32_t frame_counter;
     };
@@ -2386,12 +2388,18 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     FILL_COLOR(d->background, OPT(background));
     FILL_COLOR(d->foreground, OPT(foreground));
     color_type active_bg = OPT(background);
+    color_type cursor_color = OPT(foreground);
+    float cursor_opacity = 0.f;
     if (os_window->num_tabs > 0) {
         Tab *t = os_window->tabs + os_window->active_tab;
         if (t->num_windows) {
             Window *w = t->windows + t->active_window;
             Screen *s = w->render_data.screen;
-            if (s) active_bg = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg).rgb;
+            if (s) {
+                active_bg = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg).rgb;
+                cursor_color = s->last_rendered.cursor_bg;
+                cursor_opacity = MAX(0.f, MIN(s->cursor_render_info.cursor_opacity, 1.f));
+            }
         }
     }
     FILL_COLOR(d->active_window_background, active_bg);
@@ -2413,10 +2421,24 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             d->cursor_trail_edge[2] = NDC_TO_UV(ct->cursor_edge_y[0]); // top
             d->cursor_trail_edge[3] = NDC_TO_UV(ct->cursor_edge_y[1]); // bottom
 #undef NDC_TO_UV
-            d->cursor_trail_state[0] = ct->opacity;
-            d->cursor_trail_state[1] = 1.0f;
+            d->cursor_trail_color[3] = ct->opacity;
+            d->cursor_trail_state = 1.0f;
         }
     }
+#define FILL_COLOR3(dst, c)                        \
+    do {                                           \
+        (dst)[0] = srgb_color(((c) >> 16) & 0xFF); \
+        (dst)[1] = srgb_color(((c) >> 8) & 0xFF);  \
+        (dst)[2] = srgb_color((c) & 0xFF);         \
+    } while (0)
+    FILL_COLOR3(d->cursor_color, cursor_color);
+    d->cursor_color[3] = cursor_opacity;
+    {
+        color_type trail_color = OPT(cursor_trail_color);
+        if (trail_color == 0) trail_color = cursor_color;
+        FILL_COLOR3(d->cursor_trail_color, trail_color);
+    }
+#undef FILL_COLOR3
     d->viewport_size_pixels[0] = (uint32_t)os_window->viewport_width;
     d->viewport_size_pixels[1] = (uint32_t)os_window->viewport_height;
     const float vpw = (float)os_window->viewport_width, vph = (float)os_window->viewport_height;
