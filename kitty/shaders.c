@@ -567,6 +567,43 @@ init_custom_programs(void) {
         initially_active);
 }
 
+static const char *
+shader_anim_event_mask_str(unsigned mask) {
+    static char buf[256];
+    char *p = buf;
+    char *const end = buf + sizeof(buf) - 1;
+    static const struct {
+        unsigned bit;
+        const char *name;
+    } events[] = {
+        {1u << SHADER_ANIM_EVENT_POINTER_LEFT_BUTTON_PRESS, "pointer-left-button-press"},
+        {1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_IN, "os-window-focus-in"},
+        {1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT, "os-window-focus-out"},
+        {1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_IN, "window-focus-in"},
+        {1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT, "window-focus-out"},
+        {1u << SHADER_ANIM_EVENT_TAB_CHANGE, "tab-change"},
+        {1u << SHADER_ANIM_EVENT_BELL_IN_WINDOW, "bell-in-window"},
+        {1u << SHADER_ANIM_EVENT_USER_ACTIVITY, "user-activity"},
+        {1u << SHADER_ANIM_EVENT_USER_IDLE, "user-idle"},
+    };
+    bool first = true;
+    for (size_t i = 0; i < sizeof(events) / sizeof(events[0]); i++) {
+        if (!(mask & events[i].bit)) continue;
+        if (!first && p < end) *p++ = '|';
+        size_t len = strlen(events[i].name);
+        if (p + len >= end) break;
+        memcpy(p, events[i].name, len);
+        p += len;
+        first = false;
+    }
+    if (first) {
+        memcpy(buf, "(none)", 7);
+    } else {
+        *p = '\0';
+    }
+    return buf;
+}
+
 monotonic_t
 update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *os_window) {
     if (!custom_shaders.count) {
@@ -595,13 +632,13 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
                        (eff_dur > 0 && now - os_window->shader_group_anim[i].started_at >= eff_dur);
             if (end) {
                 os_window->shader_group_anim[i].active = false;
-                debug_rendering("Custom shader group %zu animation stopped (event_mask=0x%x)\n", i, event_mask);
+                debug_rendering("Custom shader group %zu animation stopped (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
             }
         }
         if (event_mask & cg->animation_start_events) {
             os_window->shader_group_anim[i].active = true;
             os_window->shader_group_anim[i].started_at = now;
-            debug_rendering("Custom shader group %zu animation started (event_mask=0x%x)\n", i, event_mask);
+            debug_rendering("Custom shader group %zu animation started (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
         }
         if (os_window->shader_group_anim[i].active) {
             any_active = true;
