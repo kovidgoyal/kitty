@@ -64,11 +64,11 @@ To run a Go test named TestMyFunction, use:
 kitty has a comprehensive remote control API you can use for manual verification of
 your changes. Run kitty as:
 
-    kitty -o allow_remote_control=y --listen-on=@test-kitty-xxx
+    kitty -o allow_remote_control=y --listen-on=unix:@test-kitty-xxx
 
 Then, you can take a screenshot of kitty and save it to test.png with:
 
-    kitten @ --to=@test-kitty-xxx screenshot test.png
+    kitten @ --to=unix:@test-kitty-xxx screenshot test.png
 
 You can create window and tabs, send key events to kitty, query kitty
 state, etc using the various remote control sub-commands, which you can query
