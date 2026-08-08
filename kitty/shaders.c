@@ -2471,6 +2471,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     GLint group_loc = program_uniform_location(CUSTOM_END_PROGRAM, "group");
     GLint viewport_loc = program_uniform_location(CUSTOM_END_PROGRAM, "viewport");
     GLint anim_progress_loc = program_uniform_location(CUSTOM_END_PROGRAM, "animation_progress");
+    GLint convert_to_srgb_loc = program_uniform_location(CUSTOM_END_PROGRAM, "convert_to_srgb");
     const unsigned num_groups = (unsigned)custom_shaders.end.num_groups;
     const unsigned textures_mask = custom_shaders.end.textures;
     const int vw = os_window->viewport_width, vh = os_window->viewport_height;
@@ -2495,10 +2496,18 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         CUSTOM_END_TEXTURE_PERSIST_UNIT,
     };
 
+    // Pre-scan to find the last group that will actually run this frame.
+    // That group gets convert_to_srgb=true so its draw call replaces the
+    // blit pass; all other groups write premultiplied linear RGB and skip it.
+    int last_active_g = -1;
+    for (unsigned g = 0; g < num_groups; g++) {
+        const CustomShaderGroup *cg = &custom_shaders.end.groups[g];
+        if (cg->animation_start_events == 0 || os_window->shader_group_anim[g].active) last_active_g = (int)g;
+    }
+
     // Ping-pong state: when true, backbuffer = texture_id and the ping-pong
     // target is extra_texture_id; toggled each time a group outputs to DEFAULT.
     bool backbuffer_is_main = true;
-    bool last_group_rendered = false;
 
     struct AnimCacheEntry {
         Animation *curve;
@@ -2509,7 +2518,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
 
     for (unsigned g = 0; g < num_groups; g++) {
         const CustomShaderGroup *cg = &custom_shaders.end.groups[g];
-        const bool is_last = (g == num_groups - 1);
+        const bool is_last = (last_active_g >= 0 && g == (unsigned)last_active_g);
 
         // Skip inactive animated groups; non-animated groups (animation_start_events == 0) always run
         if (cg->animation_start_events != 0 && !os_window->shader_group_anim[g].active) continue;
@@ -2601,27 +2610,8 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         glUniform1i(group_loc, (GLint)g);
         glUniform4f(viewport_loc, vp_x, vp_y, vp_w, vp_h);
         glUniform1f(anim_progress_loc, anim_progress);
+        glUniform1i(convert_to_srgb_loc, is_last ? 1 : 0);
         // debug_rendering("Custom shader draw group %u: anim_progress=%.4f viewport=(%.2f,%.2f,%.2f,%.2f)\n", g, anim_progress, vp_x, vp_y, vp_w, vp_h);
-        draw_quad(false, 0);
-        if (is_last) last_group_rendered = true;
-    }
-
-    // If the last group was skipped (animated and inactive), blit the current
-    // backbuffer directly to the screen so kitty's output is still visible.
-    if (!last_group_rendered) {
-        const GLuint fallback_tex = backbuffer_is_main ? global_state.layers_render_texture.texture_id : global_state.layers_render_texture.extra_texture_id;
-        set_framebuffer_to_use_for_output(0);
-        bind_framebuffer_for_output(0);
-        bind_program(BLIT_PROGRAM);
-        glActiveTexture(GL_TEXTURE0 + GRAPHICS_UNIT);
-        glBindTexture(GL_TEXTURE_2D, fallback_tex);
-        glUniform4f(program_uniform_location(BLIT_PROGRAM, "src_rect"), 0, sy, sx, 0);
-        glUniform4f(program_uniform_location(BLIT_PROGRAM, "dest_rect"), -1, 1, 1, -1);
-        if (os_window->live_resize.in_progress) {
-            glViewport(0, os_window->live_resize.height - os_window->viewport_height, os_window->viewport_width, os_window->viewport_height);
-        } else {
-            glViewport(0, 0, os_window->viewport_width, os_window->viewport_height);
-        }
         draw_quad(false, 0);
     }
 }

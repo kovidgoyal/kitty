@@ -1422,18 +1422,17 @@ public float4 {entry_point}(
         wrappers[f'wrapper{i}.slang'] = wrapper_src
         entry_points.append(entry_point)
 
-    # Generate group-branched PIPELINE code
-    # sRGB conversion is emitted only in the last group's branch so intermediate
-    # groups write back premultiplied linear RGB (not sRGB) to the ping-pong texture.
+    # Generate group-branched PIPELINE code.
+    # sRGB conversion is emitted in every group's branch, gated on the convert_to_srgb
+    # parameter. The C caller sets it to true only for the last active group so that
+    # inactive animated groups do not cause an extra blit draw call.
     pipeline_parts: list[str] = []
     ep_idx = 0
     num_groups = len(pipeline['groups'])
     for g_idx, group in enumerate(pipeline['groups']):
         n = len(group['shaders'])
         calls = '\n'.join(f'        color = fragment_main{ep_idx + j}(color, t, csd, viewport, animation_progress);' for j in range(n))
-        is_last = g_idx == num_groups - 1
-        if is_last:
-            calls += '\n        color = float4(linear2srgb(color.rgb), color.a);'
+        calls += '\n        if (convert_to_srgb) color = float4(linear2srgb(color.rgb), color.a);'
         if g_idx == 0:
             pipeline_parts.append(f'    if (group == 0) {{\n{calls}')
         else:
@@ -1488,8 +1487,8 @@ VertexOutput vmain_wrap(uint vertex_id : SV_VertexID) {
 }
 
 [shader("fragment")]
-float4 fmain_wrap(float2 texcoord : TEXCOORD, uniform int group, uniform float4 viewport, uniform float animation_progress) : SV_Target {
-    return pipeline_fragment_main(texcoord, group, viewport, animation_progress);
+float4 fmain_wrap(float2 texcoord : TEXCOORD, uniform int group, uniform float4 viewport, uniform float animation_progress, uniform bool convert_to_srgb) : SV_Target {
+    return pipeline_fragment_main(texcoord, group, viewport, animation_progress, convert_to_srgb);
 }
         """.replace('MODULE', slot.replace('-', '_')).encode()
 
