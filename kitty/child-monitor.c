@@ -1058,7 +1058,18 @@ render_os_window(OSWindow *w, monotonic_t now, bool scan_for_animated_images) {
         return false;
     }
     if (!w->keep_rendering_till_swap && USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
-        if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, ms_to_monotonic_t(250ll))) request_frame_render(w);
+        if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, ms_to_monotonic_t(250ll))) {
+            if (w->render_state == RENDER_FRAME_REQUESTED) {
+                // The previously registered wl_surface.frame callback was lost (e.g. the
+                // wl_output was removed when the monitor went to sleep). Reset so that
+                // request_frame_render() can re-register it. Update last_render_frame_received_at
+                // so that rapid configure-event ticks don't re-register on every tick —
+                // the next retry will only happen after another 250 ms.
+                w->render_state = RENDER_FRAME_NOT_REQUESTED;
+                w->last_render_frame_received_at = now;
+            }
+            request_frame_render(w);
+        }
         if (w->id != global_state.thumbnail_callback.os_window) {
             // dont respect render frames soon after a resize on Wayland as they cause flicker because
             // we want to fill the newly resized buffer ASAP, not at compositors convenience
