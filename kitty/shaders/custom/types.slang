@@ -18,6 +18,10 @@ public struct KittyCustomShaderData {
     // Press state of the first four mouse buttons (left, right, middle, button4).
     // Each component is 1.0 if the button is currently held, 0.0 otherwise.
     public float4 mouse_button_pressed;
+    // Geometry of the currently active window in UV co-ordinates (origin bottom-left).
+    // .xy = lower-left corner of the window, .zw = width and height.
+    // All components are zero when no active window was rendered this frame.
+    public float4 active_window_geometry;
 
     // Cursor trail state (UV coordinates, origin bottom-left, (1,1) top-right).
     // All fields are zero when the cursor_trail kitty option is disabled or the trail is inactive.

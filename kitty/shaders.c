@@ -2358,6 +2358,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float active_window_background[4];
         float mouse_pos[4];
         float mouse_button_pressed[4];
+        float active_window_geometry[4];
         float cursor_trail_corners_x[4];
         float cursor_trail_corners_y[4];
         float cursor_trail_edge[4];
@@ -2392,10 +2393,12 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     color_type active_bg = OPT(background);
     color_type cursor_color = OPT(foreground);
     float cursor_opacity = 0.f;
+    WindowGeometry active_win_geom = {0};
     if (os_window->num_tabs > 0) {
         Tab *t = os_window->tabs + os_window->active_tab;
         if (t->num_windows) {
             Window *w = t->windows + t->active_window;
+            active_win_geom = w->render_data.geometry;
             Screen *s = w->render_data.screen;
             if (s) {
                 active_bg = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg).rgb;
@@ -2465,6 +2468,12 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     d->timestamp = ((float)monotonic_t_to_ms(now)) / 1e3f;
     d->last_rendered_at = ((float)monotonic_t_to_ms(os_window->last_rendered_at)) / 1e3f;
     d->frame_counter = os_window->frame_counter;
+    if (vpw > 0 && vph > 0 && active_win_geom.right > active_win_geom.left) {
+        d->active_window_geometry[0] = (float)active_win_geom.left / vpw;
+        d->active_window_geometry[1] = 1.f - (float)active_win_geom.bottom / vph;
+        d->active_window_geometry[2] = (float)(active_win_geom.right - active_win_geom.left) / vpw;
+        d->active_window_geometry[3] = (float)(active_win_geom.bottom - active_win_geom.top) / vph;
+    }
     unmap_vao_buffer(custom_end_vao_idx, 0);
     bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);
 
