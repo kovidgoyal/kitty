@@ -420,13 +420,17 @@ typedef struct BorderRects {
 
 typedef struct CursorTrail {
     bool needs_render;
-    bool target_updated; // set when cursor moves to a new cell; consumed by child-monitor to fire shader events
+    bool target_updated;  // set when cursor moves to a new cell; consumed by child-monitor to fire shader events
+    bool prev_edge_valid; // true once cursor_edge_* has been set at least once
     monotonic_t updated_at;
+    monotonic_t cursor_changed_at; // time of most recent cursor position change (for custom shaders)
     float opacity;
     float corner_x[4];
     float corner_y[4];
     float cursor_edge_x[2];
     float cursor_edge_y[2];
+    float prev_cursor_edge_x[2]; // cursor_edge_x before the most recent cursor move
+    float prev_cursor_edge_y[2]; // cursor_edge_y before the most recent cursor move
 } CursorTrail;
 
 typedef struct Tab {

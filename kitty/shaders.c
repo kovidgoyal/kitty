@@ -2361,6 +2361,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float cursor_trail_corners_x[4];
         float cursor_trail_corners_y[4];
         float cursor_trail_edge[4];
+        float cursor_trail_prev_edge[4];
         float cursor_color[4];
         float cursor_trail_color[4];
         uint32_t viewport_size_pixels[2];
@@ -2368,6 +2369,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float cursor_trail_state;
         float timestamp, last_rendered_at;
         uint32_t frame_counter;
+        float cursor_trail_change_time;
     };
     struct GPUCustomEndData *d = (struct GPUCustomEndData *)map_vao_buffer_for_write_only(
         custom_end_vao_idx, 0, 0, program_uniform_block(CUSTOM_END_PROGRAM, "KittyCustomShaderData").size);
@@ -2420,9 +2422,16 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
             d->cursor_trail_edge[1] = NDC_TO_UV(ct->cursor_edge_x[1]); // right
             d->cursor_trail_edge[2] = NDC_TO_UV(ct->cursor_edge_y[0]); // top
             d->cursor_trail_edge[3] = NDC_TO_UV(ct->cursor_edge_y[1]); // bottom
+            if (ct->prev_edge_valid) {
+                d->cursor_trail_prev_edge[0] = NDC_TO_UV(ct->prev_cursor_edge_x[0]); // left
+                d->cursor_trail_prev_edge[1] = NDC_TO_UV(ct->prev_cursor_edge_x[1]); // right
+                d->cursor_trail_prev_edge[2] = NDC_TO_UV(ct->prev_cursor_edge_y[0]); // top
+                d->cursor_trail_prev_edge[3] = NDC_TO_UV(ct->prev_cursor_edge_y[1]); // bottom
+            }
 #undef NDC_TO_UV
             d->cursor_trail_color[3] = ct->opacity;
             d->cursor_trail_state = 1.0f;
+            d->cursor_trail_change_time = ((float)monotonic_t_to_ms(ct->cursor_changed_at)) / 1e3f;
         }
     }
 #define FILL_COLOR3(dst, c)                        \

@@ -29,6 +29,9 @@ public struct KittyCustomShaderData {
     public float4 cursor_trail_corners_y;  // UV y-coordinates of the 4 animated trail quad corners
     // .x=left, .y=right, .z=top, .w=bottom UV edges of the current cursor rectangle
     public float4 cursor_trail_edge;
+    // .x=left, .y=right, .z=top, .w=bottom UV edges of the cursor rectangle before the most recent move.
+    // All zeros until the cursor has moved at least twice (first move establishes current; second move sets this).
+    public float4 cursor_trail_prev_edge;
     // Effective cursor color (linear RGB) and opacity for the active window.
     // .rgb = cursor background color, .a = cursor opacity (0..1).
     // Both are zero when no active window was rendered this frame.
@@ -50,6 +53,9 @@ public struct KittyCustomShaderData {
     public float timestamp;  // time in seconds since kitty was started (millisecond precision)
     public float last_rendered_at;  // time of previous render in seconds since kitty was started (millisecond precision)
     public uint frame_counter;  // cumulative frame counter increments by one every time a frame is fully rendered, first frame is zero
+    // Time (same epoch as `timestamp`) of the most recent cursor position change that triggered a trail.
+    // Zero until the cursor has moved at least twice. Pair with cursor_trail_prev_edge.
+    public float cursor_trail_change_time;
 }
 
 public struct KittyTextures {

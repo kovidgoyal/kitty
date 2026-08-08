@@ -40,7 +40,16 @@ update_cursor_trail_target(CursorTrail *ct, Window *w, ndc_coords g) {
         default: break;
     }
     if (left != FLT_MAX) {
-        if (EDGE(x, 0) != left || EDGE(x, 1) != right || EDGE(y, 0) != top || EDGE(y, 1) != bottom) ct->target_updated = true;
+        if (EDGE(x, 0) != left || EDGE(x, 1) != right || EDGE(y, 0) != top || EDGE(y, 1) != bottom) {
+            ct->target_updated = true;
+            if (ct->prev_edge_valid) {
+                ct->prev_cursor_edge_x[0] = EDGE(x, 0);
+                ct->prev_cursor_edge_x[1] = EDGE(x, 1);
+                ct->prev_cursor_edge_y[0] = EDGE(y, 0);
+                ct->prev_cursor_edge_y[1] = EDGE(y, 1);
+            }
+        }
+        ct->prev_edge_valid = true;
         EDGE(x, 0) = left;
         EDGE(x, 1) = right;
         EDGE(y, 0) = top;
@@ -158,9 +167,11 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
         .dx = gl_size(w->render_data.screen->cell_size.width, os_window->viewport_width),
         .dy = gl_size(w->render_data.screen->cell_size.height, os_window->viewport_height),
     };
+    bool had_prev_edge = ct->prev_edge_valid;
     if (!WD.screen->paused_rendering.expires_at && OPT(cursor_trail) <= now - WD.screen->cursor->position_changed_by_client_at) {
         update_cursor_trail_target(ct, w, g);
     }
+    if (ct->target_updated && had_prev_edge) ct->cursor_changed_at = now;
 
     update_cursor_trail_corners(ct, g, now, os_window, w);
     update_cursor_trail_opacity(ct, w, now);
