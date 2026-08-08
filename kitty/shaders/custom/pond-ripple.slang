@@ -4,19 +4,26 @@
 //
 // Pond ripple effect — concentric expanding rings centered on pointer-left-button-press.
 // animation_progress (0 → 1) drives the wavefront expansion over the pipeline duration.
+// 3D lighting via analytic surface normals and Blinn-Phong specular highlights.
 
 import kitty_custom_shader_types;
 
 // Maximum wavefront radius at animation_progress=1 (aspect-corrected UV units).
-extern static const float WAVE_SPEED     = 0.45;
+extern static const float WAVE_SPEED       = 0.45;
 // Spatial frequency of the rings (cycles per aspect-corrected UV unit).
-extern static const float WAVE_FREQUENCY = 14.0;
+extern static const float WAVE_FREQUENCY   = 14.0;
 // Starting half-width of the Gaussian envelope (expands as animation_progress increases).
-extern static const float WAVE_WIDTH     = 0.055;
+extern static const float WAVE_WIDTH       = 0.055;
 // Peak radial UV displacement at the wavecrest.
-extern static const float AMPLITUDE      = 0.010;
-// Multiplicative brightness modulation at the wave crests (water-surface sheen).
-extern static const float CREST_BRIGHT   = 0.12;
+extern static const float AMPLITUDE        = 0.010;
+// Scale applied to the wave gradient when constructing the surface normal.
+extern static const float NORMAL_SCALE     = 8.0;
+// Blinn-Phong shininess exponent — higher values give a sharper, more mirror-like glint.
+extern static const float SHININESS        = 64.0;
+// Peak specular contribution at the wave crest facing the light.
+extern static const float SPECULAR_STRENGTH = 0.40;
+// Subtle diffuse shading that rounds each ring into a 3D ridge.
+extern static const float DIFFUSE_STRENGTH  = 0.10;
 
 public float4 fragment_main(
     float4 color,
@@ -52,8 +59,28 @@ public float4 fragment_main(
     // Temporal amplitude decay as the wave expands outward.
     float decay = pow(1.0 - animation_progress, 0.7);
 
-    // Traveling sinusoidal wave: phase = k * (dist − front).
-    float wave = sin(behind * WAVE_FREQUENCY * 6.28318530718);
+    float k    = WAVE_FREQUENCY * 6.28318530718;
+    float wave = sin(behind * k);
+
+    // Analytic derivative of wave height h = wave * env * decay w.r.t. dist.
+    // d(wave)/d(behind) = k*cos(k*behind); d(env)/d(behind) = -behind/sigma^2 * env.
+    float dh_ddist = (k * cos(behind * k) - wave * behind / (sigma * sigma)) * env * decay;
+
+    // Surface gradient in aspect-corrected UV space; dir is the unit radial vector.
+    float2 grad = dh_ddist * dir;
+
+    // Surface normal: xy from negated gradient (slope), z pointing out of the screen.
+    float3 N = normalize(float3(-grad * AMPLITUDE * NORMAL_SCALE, 1.0));
+
+    // Directional light from upper-right in screen space (y points up in UV, z out of screen).
+    float3 L = normalize(float3(0.5, 0.7, 1.0));
+    // Viewer looks straight into the screen.
+    float3 V = float3(0.0, 0.0, 1.0);
+    // Blinn-Phong half-vector.
+    float3 H = normalize(L + V);
+
+    float diffuse  = max(dot(N, L), 0.0);
+    float specular = pow(max(dot(N, H), 0.0), SHININESS);
 
     // Radial UV displacement: push pixels away from center at crests, pull inward at troughs.
     float2 warpedUV = clamp(
@@ -64,8 +91,11 @@ public float4 fragment_main(
     // Sample the terminal backbuffer at the displaced position.
     float4 result = t.backbuffer.Sample(warpedUV);
 
-    // Multiplicative brightness sheen at the wave crests (simulates reflected surface light).
-    result.rgb *= 1.0 + abs(wave) * env * decay * CREST_BRIGHT;
+    // 3D lighting: diffuse rounds each ring into a ridge, specular gives directional glints.
+    float lighting = 1.0
+        + diffuse  * DIFFUSE_STRENGTH  * env * decay
+        + specular * SPECULAR_STRENGTH * env * decay;
+    result.rgb *= lighting;
 
     return result;
 }
