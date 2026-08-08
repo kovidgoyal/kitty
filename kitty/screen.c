@@ -2425,6 +2425,11 @@ screen_scroll(Screen *self, unsigned int count) {
     // Scroll the screen up by count lines, not moving the cursor
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     const bool add_to_history = self->linebuf == self->main_linebuf && self->margin_top == 0;
+    // Scrolling up by more than the number of lines on screen blanks the
+    // entire scrolling region, so clamp to avoid a multi-billion iteration
+    // busy-loop when a program emits e.g. CSI 2147483647 S. See _reverse_scroll
+    // which caps count the same way.
+    count = MIN(count, self->lines);
     while (count > 0) {
         count--;
         INDEX_UP(add_to_history);

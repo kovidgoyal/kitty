@@ -120,6 +120,21 @@ class TestScreen(BaseTest):
         parse_bytes(s, b'\x1b[3b')
         self.ae(str(s.line(1)), ' ' * 4)
 
+    def test_scroll_huge_count(self):
+        # CSI Ps S (Scroll Up) with a huge count must not busy-loop for
+        # billions of iterations. Scrolling up by more than the number of
+        # lines blanks the region, so the result is identical to scrolling
+        # by the screen height. Regression test for a hang on e.g. CSI
+        # 2147483647 S.
+        s = self.create_screen()
+        for i in range(s.lines):
+            s.draw(str(i))
+            if i + 1 < s.lines:
+                parse_bytes(s, b'\r\n')
+        parse_bytes(s, b'\x1b[2147483647S')  # INT_MAX scroll up
+        for i in range(s.lines):
+            self.ae(str(s.line(i)).strip(), '')
+
     def test_emoji_skin_tone_modifiers(self):
         s = self.create_screen()
         q = chr(0x1F469) + chr(0x1F3FD)
