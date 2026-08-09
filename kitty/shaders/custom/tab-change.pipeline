@@ -3,5 +3,5 @@ startgroup
     animation_stop 600
     animation_curve ease-out
     animation_step 16
-    shaders tab-focus
+    shaders tab-change
 endgroup

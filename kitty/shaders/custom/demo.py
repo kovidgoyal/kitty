@@ -293,6 +293,13 @@ def window_focus(window_id: str, geometry: tuple[int, int, int, int]) -> None:
     remote_control('focus-window', '-m', 'id:1')
 
 
+def tab_change(window_id: str, geometry: tuple[int, int, int, int]) -> None:
+    time.sleep(0.2)
+    remote_control('focus-tab', '-m', 'id:2')
+    time.sleep(1.5)
+    remote_control('focus-tab', '-m', 'id:1')
+
+
 metadata: dict[str, dict[str, Any]] = {
     # Background
     'inside-the-matrix': {'category': 'background', 'tagline': 'See the bones of reality.'},
@@ -309,8 +316,13 @@ metadata: dict[str, dict[str, Any]] = {
         'animate': window_focus,
         'category': 'navigation',
         'tagline': 'Highlight the active window on focus change.',
-        'duration': 3,
         'session': 'launch kitten run-shell ls -l\nlaunch kitten run-shell bat -P setup.py\nlaunch kitten run-shell echo Hello World',
+    },
+    'tab-change': {
+        'animate': tab_change,
+        'category': 'navigation',
+        'tagline': 'Highlight the active window on focus change.',
+        'session': 'new_tab My Shell\nlaunch kitten run-shell ls\nnew_tab My Code\nlaunch nvim -R {self}',
     },
 }
 
@@ -436,7 +448,7 @@ def do_one(which: str) -> None:
     cmd = m.get('cmd', ['nvim', '-R', '+1', self])
     os.makedirs(destdir, exist_ok=True)
     os.environ.pop('KITTY_PUBLIC_KEY', None)
-    session = m.get('session', '')
+    session = m.get('session', '').format(self=self)
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.conf', delete=False, prefix='sway-demo-') as f:
         f.write(SWAY_CONFIG)
