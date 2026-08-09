@@ -35,6 +35,7 @@ if kitty_src not in sys.path:
 from kitty.conf.types import Definition, expand_opt_references  # noqa
 from kitty.constants import str_version, website_url  # noqa
 from kitty.fast_data_types import DND_CODE, Shlex, TEXT_SIZE_CODE  # noqa
+import kitty.shaders.custom.demo as demo_module  # noqa
 
 # config {{{
 # -- Project information -----------------------------------------------------
@@ -97,7 +98,16 @@ language: str = 'en'
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', 'basic.rst', 'generated/cli-*.rst', 'generated/conf-*.rst', 'generated/actions.rst']
+exclude_patterns = [
+    '_build',
+    'Thumbs.db',
+    '.DS_Store',
+    'basic.rst',
+    'generated/cli-*.rst',
+    'generated/conf-*.rst',
+    'generated/actions.rst',
+    'generated/custom-shaders-*.rst',
+]
 
 rst_prolog = """
 .. |kitty| replace:: *kitty*
@@ -162,7 +172,6 @@ html_theme_options: Dict[str, Any] = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-html_extra_path = ['screenshots']
 html_favicon = html_logo = '../logo/kitty.svg'
 html_css_files = ['custom.css', 'timestamps.css']
 html_js_files = ['custom.js', 'timestamps.js']
@@ -310,7 +319,6 @@ if you specify a program-to-run you can use the special placeholder
 
 
 def write_custom_shader_docs() -> None:  # {{{
-    import kitty.shaders.custom.demo as demo_module
 
     category_slug_map = {
         'cursor-trail': 'cursor-trails',
@@ -334,15 +342,13 @@ def write_custom_shader_docs() -> None:  # {{{
         lines.append('')
         for shader_name in shader_names:
             title = shader_title(shader_name)
-            video_url = f'{shader_name}.webm'
             lines.append(f'   .. grid-item-card:: {title}')
-            lines.append(f'      :link: {video_url}')
-            lines.append(f'      :link-type: url')
-            lines.append(f'      :class-card: shader-demo-card')
+            lines.append(f'      :link: https://download.calibre-ebook.com/videos/{shader_name}.webm')
+            lines.append('      :class-card: shader-demo-card')
             lines.append('')
             lines.append(f'      Preview of the {shader_name} shader effect.')
             lines.append('')
-        with open(f'generated/custom-shaders-{category}', 'w') as f:
+        with open(f'generated/custom-shaders-{category}.rst', 'w') as f:
             f.write('\n'.join(lines))
 
 
@@ -813,7 +819,7 @@ if building_man_pages:
     setup_man_pages()
 
 
-def build_finished(*a: Any, **kw: Any) -> None:
+def build_finished(app: Any, exception: Any) -> None:
     if building_man_pages:
         build_extra_man_pages()
 

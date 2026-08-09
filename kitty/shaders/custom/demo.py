@@ -401,14 +401,20 @@ def drive_loop(kitty: 'subprocess.Popen[bytes]', which: str, m: dict[str, Any], 
         os.remove(lossless_file)
 
 
+def get_destdir() -> str:
+    self = os.path.abspath(__file__)
+    d = os.path.dirname
+    return os.path.join(d(d(d(d(self)))), '.cache', 'custom-shader-demos')
+
+
 def do_one(which: str) -> None:
     global _sway_socket, _wayland_display, _kitty_socket
     print('Generating demo video for custon shader:', which)
     self = os.path.abspath(__file__)
+    destdir = get_destdir()
     m = metadata.get(which) or {}
     cmd = m.get('cmd', ['nvim', '-R', '+1', self])
-    d = os.path.dirname
-    destdir = os.path.join(d(d(d(d(self)))), 'docs', 'screenshots')
+    os.makedirs(destdir, exist_ok=True)
     os.environ.pop('KITTY_PUBLIC_KEY', None)
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.conf', delete=False, prefix='sway-demo-') as f:
@@ -473,6 +479,9 @@ def main() -> None:
         shaders = list(metadata)
     else:
         shaders = sys.argv[1:]
+        if shaders == ['upload']:
+            cmd = ['scp'] + glob.glob(os.path.join(get_destdir(), '*.webm')) + ['dl1:/srv/download/videos/']
+            os.execlp(cmd[0], *cmd)
     try:
         for which in shaders:
             do_one(which)

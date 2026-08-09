@@ -15,15 +15,15 @@ action.
 Cursor trails
 ----------------
 
-.. include:: generated/custom-shaders-cursor-trails
+.. include:: generated/custom-shaders-cursor-trails.rst
 
 Animated backgrounds
 ---------------------
 
-.. include:: generated/custom-shaders-backgrounds
+.. include:: generated/custom-shaders-backgrounds.rst
 
 Mouse effects
 ---------------
 
-.. include:: generated/custom-shaders-mouse
+.. include:: generated/custom-shaders-mouse.rst
 
