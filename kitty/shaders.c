@@ -2359,6 +2359,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float mouse_pos[4];
         float mouse_button_pressed[4];
         float active_window_geometry[4];
+        float central_area[4];
         float cursor_trail_corners_x[4];
         float cursor_trail_corners_y[4];
         float cursor_trail_edge[4];
@@ -2473,6 +2474,17 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         d->active_window_geometry[1] = 1.f - (float)active_win_geom.bottom / vph;
         d->active_window_geometry[2] = (float)(active_win_geom.right - active_win_geom.left) / vpw;
         d->active_window_geometry[3] = (float)(active_win_geom.bottom - active_win_geom.top) / vph;
+    }
+    if (vpw > 0 && vph > 0) {
+        Region central_rgn = {0}, tab_bar_rgn = {0};
+        os_window_regions(os_window, &central_rgn, &tab_bar_rgn);
+        d->central_area[0] = (float)central_rgn.left / vpw;
+        d->central_area[1] = 1.f - (float)central_rgn.bottom / vph;
+        d->central_area[2] = (float)(central_rgn.right - central_rgn.left) / vpw;
+        d->central_area[3] = (float)(central_rgn.bottom - central_rgn.top) / vph;
+    } else {
+        d->central_area[2] = 1.f;
+        d->central_area[3] = 1.f;
     }
     unmap_vao_buffer(custom_end_vao_idx, 0);
     bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);

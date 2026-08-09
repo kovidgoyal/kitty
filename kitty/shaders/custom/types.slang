@@ -22,6 +22,11 @@ public struct KittyCustomShaderData {
     // .xy = lower-left corner of the window, .zw = width and height.
     // All components are zero when no active window was rendered this frame.
     public float4 active_window_geometry;
+    // Geometry of the central content area of the OS window (the tab area, excluding any tab bar)
+    // in UV co-ordinates (origin bottom-left).
+    // .xy = lower-left corner, .zw = width and height.
+    // Equals the full viewport when no tab bar is visible.
+    public float4 central_area;
 
     // Cursor trail state (UV coordinates, origin bottom-left, (1,1) top-right).
     // All fields are zero when the cursor_trail kitty option is disabled or the trail is inactive.
