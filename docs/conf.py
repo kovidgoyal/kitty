@@ -333,21 +333,28 @@ def write_custom_shader_docs() -> None:  # {{{
         by_category.setdefault(cat, []).append(name)
 
     def shader_title(name: str) -> str:
+        if name.startswith('cursor-trail-'):
+            name = name[len('cursor-trail-') :]
         return ' '.join(w.capitalize() for w in name.replace('-', ' ').split())
 
     for category, shader_names in by_category.items():
         lines: List[str] = []
-        lines.append('.. grid:: 1 2 2 3')
-        lines.append('   :gutter: 3')
-        lines.append('')
+        a = lines.append
+        a('.. grid:: 1 2 2 3')
+        a('   :gutter: 3')
+        a('')
         for shader_name in shader_names:
+            tagline = demo_module.metadata[shader_name]['tagline']
             title = shader_title(shader_name)
-            lines.append(f'   .. grid-item-card:: {title}')
-            lines.append(f'      :link: https://download.calibre-ebook.com/videos/{shader_name}.webm')
-            lines.append('      :class-card: shader-demo-card')
-            lines.append('')
-            lines.append(f'      Preview of the {shader_name} shader effect.')
-            lines.append('')
+            a(f'   .. grid-item-card:: {title}')
+            a(f'      :link: https://download.calibre-ebook.com/videos/{shader_name}.webm')
+            a('      :class-card: shader-demo-card')
+            a('      :class-title: sd-text-primary sd-fs-4 sd-font-weight-bold')
+            a('')
+            a(f'      {tagline}')
+            a('')
+            a('')
+            a(f'      :small-dim:`{shader_name}`')
         with open(f'generated/custom-shaders-{category}.rst', 'w') as f:
             f.write('\n'.join(lines))
 
