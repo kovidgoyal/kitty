@@ -17,6 +17,7 @@ The fast, feature-rich, GPU based terminal emulator.
     changelog
     integrations
     protocol-extensions
+    custom-shaders
     press-mentions
 
 
