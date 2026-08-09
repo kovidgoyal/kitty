@@ -79,6 +79,10 @@ function init_shader_modals() {
 
     function open_modal(video_src) {
         video.innerHTML = '<source src="' + video_src + '" type="video/webm">';
+        video.addEventListener('loadedmetadata', function on_meta() {
+            video.style.width = video.videoWidth + 'px';
+            video.removeEventListener('loadedmetadata', on_meta);
+        });
         video.load();
         video.play();
         overlay.classList.add('active');
@@ -89,6 +93,7 @@ function init_shader_modals() {
         overlay.classList.remove('active');
         video.pause();
         video.innerHTML = '';
+        video.style.width = '';
         document.body.classList.remove('shader-modal-open');
     }
 
