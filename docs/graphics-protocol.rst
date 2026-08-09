@@ -85,86 +85,86 @@ per row and column. The cell width is then simply the window size divided by the
 number of rows. This can be done by using the ``TIOCGWINSZ`` ioctl. Some
 code to demonstrate its use
 
-.. tab:: C
+.. tab-set::
 
-    .. code-block:: c
+   .. tab-item:: C
 
-        #include <stdio.h>
-        #include <sys/ioctl.h>
+      .. code-block:: c
 
-        int main(int argc, char **argv) {
-            struct winsize sz;
-            ioctl(0, TIOCGWINSZ, &sz);
-            printf(
-                "number of rows: %i, number of columns: %i, screen width: %i, screen height: %i\n",
-                sz.ws_row, sz.ws_col, sz.ws_xpixel, sz.ws_ypixel);
-            return 0;
-        }
+         #include <stdio.h>
+         #include <sys/ioctl.h>
 
+         int main(int argc, char **argv) {
+             struct winsize sz;
+             ioctl(0, TIOCGWINSZ, &sz);
+             printf(
+                 "number of rows: %i, number of columns: %i, screen width: %i, screen height: %i\n",
+                 sz.ws_row, sz.ws_col, sz.ws_xpixel, sz.ws_ypixel);
+             return 0;
+         }
 
-.. tab:: Python
+   .. tab-item:: Python
 
-    .. code-block:: python
+      .. code-block:: python
 
-        import array, fcntl, sys, termios
-        buf = array.array('H', [0, 0, 0, 0])
-        fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
-        print((
-            'number of rows: {} number of columns: {} '
-            'screen width: {} screen height: {}').format(*buf))
+         import array, fcntl, sys, termios
+         buf = array.array('H', [0, 0, 0, 0])
+         fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
+         print((
+             'number of rows: {} number of columns: {} '
+             'screen width: {} screen height: {}').format(*buf))
 
-.. tab:: Go
+   .. tab-item:: Go
 
-    .. code-block:: go
+      .. code-block:: go
 
-        package main
+         package main
 
-        import (
-            "fmt"
-            "os"
+         import (
+             "fmt"
+             "os"
 
-            "golang.org/x/sys/unix"
-        )
+             "golang.org/x/sys/unix"
+         )
 
-        func main() {
-            var err error
-            var f *os.File
-            if f, err = os.OpenFile("/dev/tty", unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|unix.O_RDWR, 0666); err == nil {
-                var sz *unix.Winsize
-                if sz, err = unix.IoctlGetWinsize(int(f.Fd()), unix.TIOCGWINSZ); err == nil {
-                    fmt.Printf("rows: %v columns: %v width: %v height %v\n", sz.Row, sz.Col, sz.Xpixel, sz.Ypixel)
-                    return
-                }
-            }
-            fmt.Fprintln(os.Stderr, err)
-            os.Exit(1)
-        }
+         func main() {
+             var err error
+             var f *os.File
+             if f, err = os.OpenFile("/dev/tty", unix.O_NOCTTY|unix.O_CLOEXEC|unix.O_NDELAY|unix.O_RDWR, 0666); err == nil {
+                 var sz *unix.Winsize
+                 if sz, err = unix.IoctlGetWinsize(int(f.Fd()), unix.TIOCGWINSZ); err == nil {
+                     fmt.Printf("rows: %v columns: %v width: %v height %v\n", sz.Row, sz.Col, sz.Xpixel, sz.Ypixel)
+                     return
+                 }
+             }
+             fmt.Fprintln(os.Stderr, err)
+             os.Exit(1)
+         }
 
+   .. tab-item:: POSIX sh
 
-.. tab:: POSIX sh
+      .. code-block:: sh
 
-    .. code-block:: sh
+         #!/bin/sh
 
-        #!/bin/sh
+         read rows cols <<EOF
+         $(command stty size)
+         EOF
 
-        read rows cols <<EOF
-        $(command stty size)
-        EOF
-
-        oldstty=$(command stty -g)
-        command stty raw -echo
-        printf "\033[14t"
-        response=""
-        while : ; do
-            char=$(command dd bs=1 count=1 2>/dev/null)
-            [ "$char" = "t" ] && break
-            response="${response}${char}"
-        done
-        command stty "$oldstty"
-        h=$(echo "$response" | cut -d';' -f2)
-        w=$(echo "$response" | cut -d';' -f3)
-        printf "number of rows: %d number of columns: %d" "$rows" "$cols"
-        printf " screen width: %d screen height: %d\n" "$w" "$h"
+         oldstty=$(command stty -g)
+         command stty raw -echo
+         printf "\033[14t"
+         response=""
+         while : ; do
+             char=$(command dd bs=1 count=1 2>/dev/null)
+             [ "$char" = "t" ] && break
+             response="${response}${char}"
+         done
+         command stty "$oldstty"
+         h=$(echo "$response" | cut -d';' -f2)
+         w=$(echo "$response" | cut -d';' -f3)
+         printf "number of rows: %d number of columns: %d" "$rows" "$cols"
+         printf " screen width: %d screen height: %d\n" "$w" "$h"
 
 
 Note that some terminals return ``0`` for the width and height values. Such
@@ -185,55 +185,56 @@ A minimal example
 Some minimal code to display PNG images in kitty, using the most basic
 features of the graphics protocol:
 
-.. tab:: POSIX sh
+.. tab-set::
 
-    .. code-block:: sh
+   .. tab-item:: POSIX sh
 
-        #!/bin/sh
+      .. code-block:: sh
 
-        send_chunked() {
-            first="y"
-            while IFS= read -r chunk; do
-                metadata=""; [ "$first" = "y" ] && { metadata="a=T,f=100,"; first="n"; }
-                printf "\033_G%sm=1;%s\033\\" "${metadata}" "${chunk}"
-            done
-            [ "$first" = "n" ] && { printf "\033_Gm=0;\033\\"; return 0; }
-            return 1
-        }
+         #!/bin/sh
 
-        transmit_png() {
-            # Different systems have different or missing base64 executables.
-            # The sed command below adds a trailing newline which openssl
-            # base64 does not produce and is needed for reading via read -r
-            { command base64 -w 4096 "$1" 2>/dev/null | send_chunked; } || \
-            { command base64 -b 4096 "$1" 2>/dev/null | send_chunked; } || \
-            { command openssl base64 -e -A -in "$1" | command sed '$a\' | command fold -b -w 4096 | send_chunked; }
-        }
+         send_chunked() {
+             first="y"
+             while IFS= read -r chunk; do
+                 metadata=""; [ "$first" = "y" ] && { metadata="a=T,f=100,"; first="n"; }
+                 printf "\033_G%sm=1;%s\033\\" "${metadata}" "${chunk}"
+             done
+             [ "$first" = "n" ] && { printf "\033_Gm=0;\033\\"; return 0; }
+             return 1
+         }
 
-        transmit_png "$1"
+         transmit_png() {
+             # Different systems have different or missing base64 executables.
+             # The sed command below adds a trailing newline which openssl
+             # base64 does not produce and is needed for reading via read -r
+             { command base64 -w 4096 "$1" 2>/dev/null | send_chunked; } || \
+             { command base64 -b 4096 "$1" 2>/dev/null | send_chunked; } || \
+             { command openssl base64 -e -A -in "$1" | command sed '$a\' | command fold -b -w 4096 | send_chunked; }
+         }
 
+         transmit_png "$1"
 
-.. tab:: Python
+   .. tab-item:: Python
 
-    .. code-block:: python
+      .. code-block:: python
 
-        #!/usr/bin/env python
-        import sys
-        from base64 import standard_b64encode
+         #!/usr/bin/env python
+         import sys
+         from base64 import standard_b64encode
 
-        first, eof, buf = True, False, memoryview(bytearray(3 * 4096 // 4))
-        w = sys.stdout.buffer.write
-        with open(sys.argv[-1], 'rb') as f:
-            while not eof:
-                p = buf[:]
-                while p and not eof:
-                    n = f.readinto1(p)
-                    p, eof = p[n:], n == 0
-                encoded = standard_b64encode(buf[:len(buf)-len(p)])
-                metadata, first = "a=T,f=100," if first else "", False
-                w(f'\x1b_G{metadata}m={0 if eof else 1};'.encode('ascii'))
-                w(encoded)
-                w(b'\x1b\\')
+         first, eof, buf = True, False, memoryview(bytearray(3 * 4096 // 4))
+         w = sys.stdout.buffer.write
+         with open(sys.argv[-1], 'rb') as f:
+             while not eof:
+                 p = buf[:]
+                 while p and not eof:
+                     n = f.readinto1(p)
+                     p, eof = p[n:], n == 0
+                 encoded = standard_b64encode(buf[:len(buf)-len(p)])
+                 metadata, first = "a=T,f=100," if first else "", False
+                 w(f'\x1b_G{metadata}m={0 if eof else 1};'.encode('ascii'))
+                 w(encoded)
+                 w(b'\x1b\\')
 
 
 Save this script as :file:`send-png`, then you can use it to display any PNG

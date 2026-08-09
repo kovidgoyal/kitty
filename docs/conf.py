@@ -66,7 +66,7 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.extlinks',
     'sphinx_copybutton',
-    'sphinx_inline_tabs',
+    'sphinx_design',
     'sphinxext.opengraph',
 ]
 

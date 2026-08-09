@@ -136,92 +136,94 @@ Compatibility with various platforms
 
     Generated with the help of the :file:`panels.py` test script.
 
-    .. tab:: Wayland
+    .. tab-set::
 
-        Below is a list of the status of various Wayland compositors. The panel kitten
-        relies on the `wlr layer shell protocol
-        <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__,
-        which is technically supported by almost all Wayland compositors, but the
-        implementation in some of them is quite buggy.
+       .. tab-item:: Wayland
 
-        🟢 **Hyprland**
-           Fully working, no known issues
+          Below is a list of the status of various Wayland compositors. The panel kitten
+          relies on the `wlr layer shell protocol
+          <https://wayland.app/protocols/wlr-layer-shell-unstable-v1#compositor-support>`__,
+          which is technically supported by almost all Wayland compositors, but the
+          implementation in some of them is quite buggy.
 
-        🟢 **labwc**
-           Fully working, no known issues
+          🟢 **Hyprland**
+             Fully working, no known issues
 
-        🟢 **niri**
-           Fully working, no known issues
+          🟢 **labwc**
+             Fully working, no known issues
 
-        🟢 **river**
-           Fully working, no known issues
+          🟢 **niri**
+             Fully working, no known issues
 
-        🟢 **Xfce**
-           Fully working, no known issues
+          🟢 **river**
+             Fully working, no known issues
 
-        🟠 **KDE** (kwin)
-           Mostly working, except that clicks outside background panels cause kwin to :iss:`erroneously hide the panel <8715>`. KDE uses an `undocumented mapping <https://invent.kde.org/plasma/kwin/-/blob/3dc5cee6b34792486b343098e55e7f2b90dfcd00/src/layershellv1window.cpp#L24>`__ under Wayland to set the window type from the :code:`kitten panel --app-id` flag. You might want to use :code:`--app-id=dock` so that KDE treats the window as a dock panel, and disables window appearing/disappearing animations for it.
+          🟢 **Xfce**
+             Fully working, no known issues
 
-        🟠 **Sway**
-           Renders its configured background over the background window instead of
-           under it. This is because it uses the wlr protocol for backgrounds itself.
+          🟠 **KDE** (kwin)
+             Mostly working, except that clicks outside background panels cause kwin to :iss:`erroneously hide the panel <8715>`. KDE uses an `undocumented mapping <https://invent.kde.org/plasma/kwin/-/blob/3dc5cee6b34792486b343098e55e7f2b90dfcd00/src/layershellv1window.cpp#L24>`__ under Wayland to set the window type from the :code:`kitten panel --app-id` flag. You might want to use :code:`--app-id=dock` so that KDE treats the window as a dock panel, and disables window appearing/disappearing animations for it.
 
-        🔴 **GNOME** (mutter)
-           Does not implement the wlr protocol at all, nothing works.
+          🟠 **Sway**
+             Renders its configured background over the background window instead of
+             under it. This is because it uses the wlr protocol for backgrounds itself.
 
-    .. tab:: macOS
+          🔴 **GNOME** (mutter)
+             Does not implement the wlr protocol at all, nothing works.
 
-        Mostly everything works, with the notable exception that dock panels do not
-        prevent other windows from covering them. This is because Apple does not
-        provide and way to do this in their APIs.
+       .. tab-item:: macOS
 
-    .. tab:: X11
+          Mostly everything works, with the notable exception that dock panels do not
+          prevent other windows from covering them. This is because Apple does not
+          provide and way to do this in their APIs.
 
-        Support is highly dependent on the quirks of individual window
-        managers. See the matrix below:
+       .. tab-item:: X11
 
-        .. list-table:: Compatibility matrix
-           :header-rows: 1
-           :stub-columns: 1
+          Support is highly dependent on the quirks of individual window
+          managers. See the matrix below:
 
-           * - WM
-             - Desktop
-             - Dock
-             - Quick
-             - Notes
+          .. list-table:: Compatibility matrix
+             :header-rows: 1
+             :stub-columns: 1
 
-           * - KDE
-             - 🟠
-             - 🟢
-             - 🟢
-             - transparency does not work for :option:`--edge=background <--edge>`
+             * - WM
+               - Desktop
+               - Dock
+               - Quick
+               - Notes
 
-           * - GNOME
-             - 🟢
-             - 🟢
-             - 🟢
-             -
+             * - KDE
+               - 🟠
+               - 🟢
+               - 🟢
+               - transparency does not work for :option:`--edge=background <--edge>`
 
-           * - XFCE
-             - 🟢
-             - 🟢
-             - 🟢
-             -
+             * - GNOME
+               - 🟢
+               - 🟢
+               - 🟢
+               -
 
-           * - i3
-             - 🔴
-             - 🟠
-             - 🔴
-             - only top and bottom dock panels, without transparency
+             * - XFCE
+               - 🟢
+               - 🟢
+               - 🟢
+               -
 
-           * - xmonad
-             - 🔴
-             - 🔴
-             - 🔴
-             - doesn't support the needed NET_WM protocols
+             * - i3
+               - 🔴
+               - 🟠
+               - 🔴
+               - only top and bottom dock panels, without transparency
 
-           * - bspwm
-             - 🔴
-             - 🔴
-             - 🔴
-             - doesn't support the needed NET_WM protocols
+             * - xmonad
+               - 🔴
+               - 🔴
+               - 🔴
+               - doesn't support the needed NET_WM protocols
+
+             * - bspwm
+               - 🔴
+               - 🔴
+               - 🔴
+               - doesn't support the needed NET_WM protocols

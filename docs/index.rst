@@ -21,44 +21,46 @@ The fast, feature-rich, GPU based terminal emulator.
     press-mentions
 
 
-.. tab:: Fast
+.. tab-set::
 
-   * Uses GPU and SIMD vector CPU instructions for :doc:`best in class performance <performance>`
-   * Uses threaded rendering for :iss:`absolutely minimal latency <2701#issuecomment-636497270>`
-   * Performance tradeoffs can be :ref:`tuned <conf-kitty-performance>`
+   .. tab-item:: Fast
 
-.. tab:: Capable
+      * Uses GPU and SIMD vector CPU instructions for :doc:`best in class performance <performance>`
+      * Uses threaded rendering for :iss:`absolutely minimal latency <2701#issuecomment-636497270>`
+      * Performance tradeoffs can be :ref:`tuned <conf-kitty-performance>`
 
-   * Graphics, with :doc:`images and animations <graphics-protocol>`
-   * Ligatures, emoji with :opt:`per glyph font substitution <symbol_map>` and :doc:`variable fonts and font features </kittens/choose-fonts>`
-   * :term:`Hyperlinks<hyperlinks>`, with :doc:`configurable actions <open_actions>`
+   .. tab-item:: Capable
 
-.. tab:: Scriptable
+      * Graphics, with :doc:`images and animations <graphics-protocol>`
+      * Ligatures, emoji with :opt:`per glyph font substitution <symbol_map>` and :doc:`variable fonts and font features </kittens/choose-fonts>`
+      * :term:`Hyperlinks<hyperlinks>`, with :doc:`configurable actions <open_actions>`
 
-   * Control from :doc:`scripts or the shell <remote-control>`
-   * Extend with :ref:`kittens <kittens>` using the Python language
-   * Use :ref:`startup sessions <sessions>` to specify working environments
+   .. tab-item:: Scriptable
 
-.. tab:: Composable
+      * Control from :doc:`scripts or the shell <remote-control>`
+      * Extend with :ref:`kittens <kittens>` using the Python language
+      * Use :ref:`startup sessions <sessions>` to specify working environments
 
-   * Programmable tabs, :ref:`splits <splits_layout>` and multiple :doc:`layouts <layouts>` to manage windows
-   * Browse the :ref:`entire history <scrollback>` or the :sc:`output from the last command <show_last_command_output>`
-     comfortably in pagers and editors
-   * Edit or download :doc:`remote files <kittens/remote_file>` in an existing SSH session
+   .. tab-item:: Composable
 
-.. tab:: Cross-platform
+      * Programmable tabs, :ref:`splits <splits_layout>` and multiple :doc:`layouts <layouts>` to manage windows
+      * Browse the :ref:`entire history <scrollback>` or the :sc:`output from the last command <show_last_command_output>`
+        comfortably in pagers and editors
+      * Edit or download :doc:`remote files <kittens/remote_file>` in an existing SSH session
 
-   * Linux
-   * macOS
-   * Various BSDs
+   .. tab-item:: Cross-platform
 
-.. tab:: Innovative
+      * Linux
+      * macOS
+      * Various BSDs
 
-   Pioneered various extensions to move the entire terminal ecosystem forward
+   .. tab-item:: Innovative
 
-   * :doc:`graphics-protocol`
-   * :doc:`keyboard-protocol`
-   * Lots more in :doc:`protocol-extensions`
+      Pioneered various extensions to move the entire terminal ecosystem forward
+
+      * :doc:`graphics-protocol`
+      * :doc:`keyboard-protocol`
+      * Lots more in :doc:`protocol-extensions`
 
 
 To get started see :doc:`quickstart`.

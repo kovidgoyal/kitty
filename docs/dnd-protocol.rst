@@ -524,18 +524,20 @@ chars``. The leading ``version`` field allows for changing the format or
 semantics of this field in the future. The actual id is the machine id which
 is:
 
-.. tab:: macOS
+.. tab-set::
 
-   The value returned by the ``IOPlatformUUID`` system function.
+   .. tab-item:: macOS
 
-.. tab:: Windows
+      The value returned by the ``IOPlatformUUID`` system function.
 
-   The contents of the :file:`HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\MachineGuid`
-   registry key.
+   .. tab-item:: Windows
 
-.. tab:: Other
+      The contents of the :file:`HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\MachineGuid`
+      registry key.
 
-   The contents of the :file:`/etc/machine-id` file with trailing whitespace removed
+   .. tab-item:: Other
+
+      The contents of the :file:`/etc/machine-id` file with trailing whitespace removed
 
 This machine id is then hashed using a :rfc:`HMAC <2104>` with :rfc:`SHA-256
 <6234>` as the digest algorithm and the key being the ASCII bytes:
