@@ -41,6 +41,12 @@ Mouse effects
 
 .. include:: generated/custom-shaders-mouse.rst
 
+Navigation
+---------------
+
+.. include:: generated/custom-shaders-navigation.rst
+
+
 
 Anatomy of a custom shader
 ----------------------------

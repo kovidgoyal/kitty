@@ -284,6 +284,15 @@ def spotlight(window_id: str, geometry: tuple[int, int, int, int]) -> None:
         t += dt
 
 
+def window_focus(window_id: str, geometry: tuple[int, int, int, int]) -> None:
+    time.sleep(0.2)
+    remote_control('focus-window', '-m', 'id:2')
+    time.sleep(1)
+    remote_control('focus-window', '-m', 'id:3')
+    time.sleep(1)
+    remote_control('focus-window', '-m', 'id:1')
+
+
 metadata: dict[str, dict[str, Any]] = {
     # Background
     'inside-the-matrix': {'category': 'background', 'tagline': 'See the bones of reality.'},
@@ -295,6 +304,14 @@ metadata: dict[str, dict[str, Any]] = {
     # Cursor trail
     'cursor-trail-blaze': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Set your cursor on fire as it moves around.'},
     'cursor-trail-lightning': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Make your cursor shoot lightning as it moves around.'},
+    # Navigation
+    'focus-highlight': {
+        'animate': window_focus,
+        'category': 'navigation',
+        'tagline': 'Highlight the active window on focus change.',
+        'duration': 3,
+        'session': 'launch kitten run-shell ls -l\nlaunch kitten run-shell bat -P setup.py\nlaunch kitten run-shell echo Hello World',
+    },
 }
 
 
@@ -419,6 +436,7 @@ def do_one(which: str) -> None:
     cmd = m.get('cmd', ['nvim', '-R', '+1', self])
     os.makedirs(destdir, exist_ok=True)
     os.environ.pop('KITTY_PUBLIC_KEY', None)
+    session = m.get('session', '')
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.conf', delete=False, prefix='sway-demo-') as f:
         f.write(SWAY_CONFIG)
@@ -452,9 +470,13 @@ def do_one(which: str) -> None:
                 'allow_remote_control=socket-only',
                 f'--listen-on=unix:{kitty_socket_path}',
             ]
+            kcmd += ['--session=-'] if session else cmd
             kitty_env: dict[str, str] = {k: v for k, v in os.environ.items()}
             kitty_env.update(wayland_env)
-            kitty = subprocess.Popen(kcmd + cmd, env=kitty_env, text=False)
+            kitty = subprocess.Popen(kcmd, env=kitty_env, text=False, stdin=subprocess.PIPE)
+            assert kitty.stdin is not None
+            kitty.stdin.write(session.encode())
+            kitty.stdin.close()
             try:
                 drive_loop(kitty, which, m, destdir, wayland_env)
             finally:
