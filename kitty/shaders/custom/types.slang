@@ -76,3 +76,4 @@ public struct KittyTextures {
 
     public float2 pos;  // the position of this pixel in the textures (UV coordinates)
 }
+// END_TYPES_DEFINITION
