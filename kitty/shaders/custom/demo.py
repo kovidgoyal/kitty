@@ -480,7 +480,8 @@ def main() -> None:
     else:
         shaders = sys.argv[1:]
         if shaders == ['upload']:
-            cmd = ['scp'] + glob.glob(os.path.join(get_destdir(), '*.webm')) + ['dl1:/srv/download/videos/']
+            cmd = ['rsync', '--info=progress2', '--checksum', '--compress'] + glob.glob(os.path.join(get_destdir(), '*.webm')) + ['dl1:/srv/download/videos/']
+            print('Uploading changed demo video files...', flush=True)
             os.execlp(cmd[0], *cmd)
     try:
         for which in shaders:
