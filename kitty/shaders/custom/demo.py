@@ -10,7 +10,7 @@ import sys
 import time
 from contextlib import suppress
 from threading import Thread
-from typing import Any
+from typing import Any, Literal
 
 DEFAULT_DURATION = 3
 DEFAULT_INITIAL_SLEEP = 3
@@ -26,6 +26,41 @@ def click_mouse() -> None:
     subprocess.run(['hyprctl', 'dispatch', 'hl.dsp.send_key_state({ key = "mouse:272", state = "down", mods = "" })'], check=True, stdout=subprocess.DEVNULL)
     time.sleep(0.05)
     subprocess.run(['hyprctl', 'dispatch', 'hl.dsp.send_key_state({ key = "mouse:272", state = "up", mods = "" })'], check=True, stdout=subprocess.DEVNULL)
+
+
+def key_event(key: str, mods: str = '', state: Literal['up', 'down'] = 'down') -> None:
+    subprocess.run(
+        ['hyprctl', 'dispatch', f'hl.dsp.send_key_state({{ key = "{key}", state = "{state}", mods = "{mods}" }})'], check=True, stdout=subprocess.DEVNULL
+    )
+
+
+def press_and_release(key: str, mods: str = '') -> None:
+    key_event(key, mods)
+    key_event(key, mods, 'up')
+
+
+def cursor_trail(window_id: str, geomerty: tuple[int, int, int, int]) -> None:
+    press_and_release('g')
+    press_and_release('g')
+    press_and_release('1')
+    press_and_release('0')
+    press_and_release('j')
+    time.sleep(0.2)
+    press_and_release('6', 'SHIFT')
+    time.sleep(0.2)
+    press_and_release('4', 'SHIFT')
+    time.sleep(0.1)
+    press_and_release('6', 'SHIFT')
+    time.sleep(0.1)
+    press_and_release('semicolon', 'SHIFT')
+    for k in 'hello world':
+        if k == ' ':
+            k = 'space'
+        press_and_release(k)
+    time.sleep(0.2)
+    press_and_release('Escape')
+    time.sleep(0.2)
+    press_and_release('4', 'SHIFT')
 
 
 def pond_ripple(window_id: str, geomerty: tuple[int, int, int, int]) -> None:
@@ -59,6 +94,8 @@ metadata: dict[str, dict[str, Any]] = {
     'inside-the-matrix': {},
     'pond-ripple': {'animate': pond_ripple},
     'spotlight': {'animate': spotlight},
+    'cursor-trail-blaze': {'animate': cursor_trail},
+    'cursor-trail-lightning': {'animate': cursor_trail},
 }
 
 
@@ -163,7 +200,7 @@ def main() -> None:
 def do_one(which: str) -> None:
     self = os.path.abspath(__file__)
     m = metadata.get(which) or {}
-    cmd = m.get('cmd', ['nvim', '-R', self])
+    cmd = m.get('cmd', ['nvim', '-R', '+1', self])
     kcmd = [
         'kitty',
         '--class=float',
@@ -176,6 +213,8 @@ def do_one(which: str) -> None:
         'initial_window_width=70c',
         '-o',
         'initial_window_height=20c',
+        '-o',
+        'cursor_trail=1',
         '-o',
         f'custom_shaders={which}',
     ]
