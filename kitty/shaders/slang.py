@@ -20,7 +20,7 @@ from enum import StrEnum, auto
 from functools import lru_cache, partial
 from itertools import chain, product
 from types import MappingProxyType
-from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple, TypedDict, TypeGuard, get_args
+from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple, TypedDict, TypeGuard
 
 from kitty.constants import read_kitty_resource, shaders_dir, slangc
 from kitty.fast_data_types import (
@@ -1090,11 +1090,11 @@ class Slot(StrEnum):
 
 
 def is_valid_named_texture(x: str) -> TypeGuard[NamedTexture]:
-    return x in get_args(NamedTexture)
+    return x in NamedTexture._value2member_map_
 
 
 def is_valid_slot(x: str) -> TypeGuard[Slot]:
-    return x in get_args(Slot)
+    return x in Slot._value2member_map_
 
 
 VALID_VAR_TYPES: frozenset[str] = frozenset({'uint', 'int', 'float', 'double', 'bool'})
@@ -1271,7 +1271,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                 case 'viewport_size':
                     current_group['viewport_size'] = unit_float(parts[1]), unit_float(parts[1 if len(parts) < 3 else 2])
                 case 'output_texture':
-                    if not is_valid_named_texture(parts[1]):
+                    if not is_valid_named_texture(parts[1]) or parts[1] not in textures:
                         raise ValueError(f'output_texture {parts[1]} does not appear in textures')
                     current_group['output_texture'] = parts[1]
                 case 'shaders':
@@ -1394,7 +1394,9 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
                     inc = ['-I', import_dir] if import_dir else []
                     cmd = bc + inc + ['-module-name', modname, '-o', module_file, '--', '-']
                     invocation_tracker.add(tuple(cmd))
-                    cp = subprocess.run(cmd, input=specialized_src, capture_output=True)
+                    # Rename fragment_main to a unique per-module function name to avoid import ambiguity
+                    specialized_text = re.sub(r'\bfragment_main\b', f'fragment_main_{modname}', specialized_src.decode())
+                    cp = subprocess.run(cmd, input=specialized_text.encode(), capture_output=True)
                     if cp.returncode != 0:
                         raise SlangFailed(name, cp)
                     mtime = max(mtime, os.stat(module_file).st_mtime_ns)
@@ -1411,13 +1413,14 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
         vars_key = tuple(sorted(merged_vars.items()))
         module_name = module_names[(name, vars_key)]
         entry_point = f'fragment_main{i}'
+        entry_func = f'fragment_main_{module_name}'
         wrapper_src = f"""#language slang 2026
 implementing {slot_module_name};
 import kitty_custom_shader_types;
 import {module_name};
 public float4 {entry_point}(
     float4 inp, KittyTextures t, KittyCustomShaderData d, float4 viewport, float animation_progress
-) {{ return fragment_main(inp, t, d, viewport, animation_progress); }}
+) {{ return {entry_func}(inp, t, d, viewport, animation_progress); }}
 """
         wrappers[f'wrapper{i}.slang'] = wrapper_src
         entry_points.append(entry_point)
