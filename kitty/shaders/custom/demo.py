@@ -285,11 +285,11 @@ def spotlight(window_id: str, geometry: tuple[int, int, int, int]) -> None:
 
 
 metadata: dict[str, dict[str, Any]] = {
-        'inside-the-matrix': {'category': 'background', 'tagline': 'See the bones of reality.'},
-        'pond-ripple': {'animate': pond_ripple, 'category': 'mouse', 'tagline': 'Clicking is like throwing stones in a pond.'},
-        'spotlight': {'animate': spotlight, 'category': 'mouse', 'tagline': 'Spotlight your mouse pointer as it moves around.'},
-        'cursor-trail-blaze': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Set your cursor on fire as it moves around.'},
-        'cursor-trail-lightning': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Make your cursor shoot lightning as it moves around.'},
+    'inside-the-matrix': {'category': 'background', 'tagline': 'See the bones of reality.'},
+    'pond-ripple': {'animate': pond_ripple, 'category': 'mouse', 'tagline': 'Clicking is like throwing stones in a pond.'},
+    'spotlight': {'animate': spotlight, 'category': 'mouse', 'tagline': 'Spotlight your mouse pointer as it moves around.'},
+    'cursor-trail-blaze': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Set your cursor on fire as it moves around.'},
+    'cursor-trail-lightning': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Make your cursor shoot lightning as it moves around.'},
 }
 
 
@@ -384,9 +384,7 @@ def drive_loop(kitty: 'subprocess.Popen[bytes]', which: str, m: dict[str, Any], 
     kitty.wait()
     print('Transcoding saved recording...')
     try:
-        for fmt, cmd in {
-            'webm': '-r 60 -c:v libsvtav1 -preset 6 -crf 35 -pix_fmt yuv420p -svtav1-params tune=0 -g 99999'
-        }.items():
+        for fmt, cmd in {'webm': '-r 60 -c:v libsvtav1 -preset 6 -crf 35 -pix_fmt yuv420p -svtav1-params tune=0 -g 99999'}.items():
             of = f'{output_file}.{fmt}'
             with suppress(FileNotFoundError):
                 os.remove(of)

@@ -2,7 +2,6 @@ Custom Shaders
 ===================
 
 .. versionadded:: 0.49.0
-   Support for custom shaders
 
 .. highlight:: conf
 
