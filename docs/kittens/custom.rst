@@ -43,8 +43,7 @@ Now in :file:`kitty.conf` add the lines::
 
 Start kitty and press :kbd:`Ctrl+K` and you should see the kitten running.
 The best way to develop your own kittens is to modify one of the built-in
-kittens. Look in the `kittens sub-directory
-<https://github.com/kovidgoyal/kitty/tree/master/kittens>`__ of the kitty source
+kittens. Look in the :repo_folder:`kittens sub-directory <kittens>` of the kitty source
 code for those. Or see below for a list of :ref:`third-party kittens
 <external_kittens>`, that other kitty users have created.
 

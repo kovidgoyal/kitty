@@ -331,5 +331,4 @@ and ``90``.
 
 Writing a new layout only requires about two hundred lines of code, so if there
 is some layout you want, take a look at one of the existing layouts in the
-`layout <https://github.com/kovidgoyal/kitty/tree/master/kitty/layout>`__
-package and submit a pull request!
+:repo_folder:`layout <kitty/layout>` package and submit a pull request!
