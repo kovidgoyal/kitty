@@ -215,6 +215,8 @@ extlinks = {
     'iss': ('https://github.com/kovidgoyal/kitty/issues/%s', '#%s'),
     'pull': ('https://github.com/kovidgoyal/kitty/pull/%s', '#%s'),
     'disc': ('https://github.com/kovidgoyal/kitty/discussions/%s', '#%s'),
+    'repo_folder': ('https://github.com/kovidgoyal/kitty/tree/master/%s', '#%s'),
+    'repo_file': ('https://github.com/kovidgoyal/kitty/blob/master/%s', '#%s'),
 }
 
 

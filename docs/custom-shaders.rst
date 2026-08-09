@@ -14,6 +14,9 @@ for example::
 
     custom_shaders inside-the-matrix
 
+You can see the code for the custom shaders that ship with kitty :repo_folder:`here
+<kitty/shaders/custom>`.
+
 .. role:: small-dim(raw)
    :format: html
    :class: sd-text-muted small code literal
