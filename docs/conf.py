@@ -162,6 +162,7 @@ html_theme_options: Dict[str, Any] = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+html_extra_path = ['screenshots']
 html_favicon = html_logo = '../logo/kitty.svg'
 html_css_files = ['custom.css', 'timestamps.css']
 html_js_files = ['custom.js', 'timestamps.js']
@@ -303,6 +304,46 @@ if you specify a program-to-run you can use the special placeholder
                 if kitten in ('panel', 'broadcast', 'remote_file'):
                     appname = 'kitty +' + appname
                 p('\n\n' + option_spec_as_rst(data['options'], message=data['help_text'], usage=data['usage'], appname=appname, heading_char='^'))
+
+
+# }}}
+
+
+def write_custom_shader_docs() -> None:  # {{{
+    import kitty.shaders.custom.demo as demo_module
+
+    category_slug_map = {
+        'cursor-trail': 'cursor-trails',
+        'background': 'backgrounds',
+        'mouse': 'mouse',
+    }
+
+    by_category: Dict[str, List[str]] = {}
+    for name, meta in demo_module.metadata.items():
+        cat_raw = str(meta.get('category', 'other'))
+        cat = category_slug_map.get(cat_raw, cat_raw)
+        by_category.setdefault(cat, []).append(name)
+
+    def shader_title(name: str) -> str:
+        return ' '.join(w.capitalize() for w in name.replace('-', ' ').split())
+
+    for category, shader_names in by_category.items():
+        lines: List[str] = []
+        lines.append('.. grid:: 1 2 2 3')
+        lines.append('   :gutter: 3')
+        lines.append('')
+        for shader_name in shader_names:
+            title = shader_title(shader_name)
+            video_url = f'{shader_name}.webm'
+            lines.append(f'   .. grid-item-card:: {title}')
+            lines.append(f'      :link: {video_url}')
+            lines.append(f'      :link-type: url')
+            lines.append(f'      :class-card: shader-demo-card')
+            lines.append('')
+            lines.append(f'      Preview of the {shader_name} shader effect.')
+            lines.append('')
+        with open(f'generated/custom-shaders-{category}', 'w') as f:
+            f.write('\n'.join(lines))
 
 
 # }}}
@@ -785,6 +826,7 @@ def setup(app: Any) -> None:
     write_cli_docs(kn)
     write_remote_control_protocol_docs()
     write_color_names_table()
+    write_custom_shader_docs()
     write_conf_docs(app, kn)
     app.connect('source-read', replace_string)
     app.add_config_value('analytics_id', '', 'env')

@@ -60,5 +60,59 @@ function init_sidebar() {
 document.addEventListener("DOMContentLoaded", init_sidebar);
 init_sidebar();
 
+function init_shader_modals() {
+    var cards = document.querySelectorAll('.shader-demo-card');
+    if (!cards.length) return;
+
+    var overlay = document.createElement('div');
+    overlay.id = 'shader-video-modal';
+    overlay.className = 'shader-modal-overlay';
+    overlay.innerHTML =
+        '<div class="shader-modal-container">' +
+        '<button class="shader-modal-close" aria-label="Close">×</button>' +
+        '<video class="shader-modal-video" autoplay loop muted playsinline controls></video>' +
+        '</div>';
+    document.body.appendChild(overlay);
+
+    var video = overlay.querySelector('.shader-modal-video');
+    var close_btn = overlay.querySelector('.shader-modal-close');
+
+    function open_modal(video_src) {
+        video.innerHTML = '<source src="' + video_src + '" type="video/webm">';
+        video.load();
+        video.play();
+        overlay.classList.add('active');
+        document.body.classList.add('shader-modal-open');
+    }
+
+    function close_modal() {
+        overlay.classList.remove('active');
+        video.pause();
+        video.innerHTML = '';
+        document.body.classList.remove('shader-modal-open');
+    }
+
+    cards.forEach(function(card) {
+        var link = card.querySelector('a.sd-stretched-link');
+        if (!link) return;
+        var href = link.getAttribute('href');
+        if (!href || href.slice(-5) !== '.webm') return;
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            open_modal(href);
+        });
+    });
+
+    close_btn.addEventListener('click', close_modal);
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) close_modal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') close_modal();
+    });
+}
+
+document.addEventListener("DOMContentLoaded", init_shader_modals);
+
 }());
 
