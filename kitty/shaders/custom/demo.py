@@ -2,6 +2,7 @@
 # License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
+import math
 import os
 import signal
 import subprocess
@@ -11,11 +12,14 @@ from contextlib import suppress
 from threading import Thread
 from typing import Any
 
+DEFAULT_DURATION = 3
+DEFAULT_INITIAL_SLEEP = 3
+
 
 def move_mouse(geomerty: tuple[int, int, int, int], x: int, y: int) -> None:
     x += geomerty[0]
     y += geomerty[1]
-    subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.cursor.move({{ x = {x}, y = {y} }})'], check=True)
+    subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.cursor.move({{ x = {x}, y = {y} }})'], check=True, stdout=subprocess.DEVNULL)
 
 
 def click_mouse() -> None:
@@ -33,8 +37,28 @@ def pond_ripple(window_id: str, geomerty: tuple[int, int, int, int]) -> None:
     click_mouse()
 
 
+def spotlight(window_id: str, geometry: tuple[int, int, int, int]) -> None:
+    width, height = geometry[2], geometry[3]
+    cx, cy = width // 2, height // 2
+    radius_x = width * 0.35
+    radius_y = height * 0.35
+    duration = 3.0
+    fps = 60
+    dt = 1.0 / fps
+    t = 0.0
+    while t < duration:
+        angle = 2 * math.pi * (t / duration)
+        x = int(cx + radius_x * math.cos(angle))
+        y = int(cy + radius_y * math.sin(angle))
+        move_mouse(geometry, x, y)
+        time.sleep(dt)
+        t += dt
+
+
 metadata: dict[str, dict[str, Any]] = {
-    'pond-ripple': {'animate': pond_ripple, 'duration': 3},
+    'inside-the-matrix': {},
+    'pond-ripple': {'animate': pond_ripple},
+    'spotlight': {'animate': spotlight},
 }
 
 
@@ -66,7 +90,7 @@ def get_window_geometry(window_id: str) -> tuple[int, int, int, int]:
 def record_window_geometry(geometry: tuple[int, int, int, int], m: dict[str, Any], output_filename: str) -> str:
     x, y, width, height = geometry
     geometry_string = f'{x},{y} {width}x{height}'
-    duration_seconds = m.get('duration', 5)
+    duration_seconds = m.get('duration', DEFAULT_DURATION)
     output_filename += '.mkv'
     with suppress(FileNotFoundError):
         os.remove(output_filename)
@@ -91,7 +115,6 @@ def record_window_geometry(geometry: tuple[int, int, int, int], m: dict[str, Any
 
 
 def drive_loop(kitty: subprocess.Popen, which: str, m: dict[str, Any], destdir: str) -> None:
-    time.sleep(m.get('initial_sleep', 1))
     winid = ''
     st = time.monotonic()
     while not winid and time.monotonic() - st < 2:
@@ -101,6 +124,7 @@ def drive_loop(kitty: subprocess.Popen, which: str, m: dict[str, Any], destdir: 
     geom = get_window_geometry(winid)
     output_file = os.path.join(destdir, which)
     animate = m.get('animate')
+    time.sleep(m.get('initial_sleep', DEFAULT_INITIAL_SLEEP))
     if animate is not None:
         t = Thread(target=animate, args=(winid, geom), daemon=True)
         t.start()
@@ -125,10 +149,19 @@ def drive_loop(kitty: subprocess.Popen, which: str, m: dict[str, Any], destdir: 
 
 
 def main() -> None:
-    if len(sys.argv) != 2:
-        raise SystemExit('Must specify exactly one command line argument')
+    if len(sys.argv) < 2:
+        shaders = list(metadata)
+    else:
+        shaders = sys.argv[1:]
+    try:
+        for which in shaders:
+            do_one(which)
+    except KeyboardInterrupt:
+        raise SystemExit('Aborting on user interrupt')
+
+
+def do_one(which: str) -> None:
     self = os.path.abspath(__file__)
-    which = sys.argv[-1]
     m = metadata.get(which) or {}
     cmd = m.get('cmd', ['nvim', '-R', self])
     kcmd = [
