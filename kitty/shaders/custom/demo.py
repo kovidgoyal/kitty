@@ -110,11 +110,11 @@ def spotlight(window_id: str, geometry: tuple[int, int, int, int]) -> None:
 
 
 metadata: dict[str, dict[str, Any]] = {
-    'inside-the-matrix': {},
-    'pond-ripple': {'animate': pond_ripple},
-    'spotlight': {'animate': spotlight},
-    'cursor-trail-blaze': {'animate': cursor_trail},
-    'cursor-trail-lightning': {'animate': cursor_trail},
+    'inside-the-matrix': {'category': 'background'},
+    'pond-ripple': {'animate': pond_ripple, 'category': 'mouse'},
+    'spotlight': {'animate': spotlight, 'category': 'mouse'},
+    'cursor-trail-blaze': {'animate': cursor_trail, 'category': 'cursor-trail'},
+    'cursor-trail-lightning': {'animate': cursor_trail, 'category': 'cursor-trail'},
 }
 
 
