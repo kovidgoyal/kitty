@@ -8,9 +8,34 @@ import subprocess
 import sys
 import time
 from contextlib import suppress
+from threading import Thread
 from typing import Any
 
-metadata: dict[str, dict[str, Any]] = {}
+
+def move_mouse(geomerty: tuple[int, int, int, int], x: int, y: int) -> None:
+    x += geomerty[0]
+    y += geomerty[1]
+    subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.cursor.move({{ x = {x}, y = {y} }})'], check=True)
+
+
+def click_mouse() -> None:
+    subprocess.run(['hyprctl', 'dispatch', 'hl.dsp.send_key_state({ key = "mouse:272", state = "down", mods = "" })'], check=True, stdout=subprocess.DEVNULL)
+    time.sleep(0.05)
+    subprocess.run(['hyprctl', 'dispatch', 'hl.dsp.send_key_state({ key = "mouse:272", state = "up", mods = "" })'], check=True, stdout=subprocess.DEVNULL)
+
+
+def pond_ripple(window_id: str, geomerty: tuple[int, int, int, int]) -> None:
+    time.sleep(0.1)
+    move_mouse(geomerty, 100, 100)
+    click_mouse()
+    time.sleep(1)
+    move_mouse(geomerty, 200, 200)
+    click_mouse()
+
+
+metadata: dict[str, dict[str, Any]] = {
+    'pond-ripple': {'animate': pond_ripple, 'duration': 3},
+}
 
 
 def get_hyprland_window_id(pid: int) -> str:
@@ -75,7 +100,13 @@ def drive_loop(kitty: subprocess.Popen, which: str, m: dict[str, Any], destdir: 
         raise SystemExit('Could not get Hyprland window id for kitty process')
     geom = get_window_geometry(winid)
     output_file = os.path.join(destdir, which)
+    animate = m.get('animate')
+    if animate is not None:
+        t = Thread(target=animate, args=(winid, geom), daemon=True)
+        t.start()
     lossless_file = record_window_geometry(geom, m, output_file)
+    if animate is not None:
+        t.join()
     kitty.terminate()
     kitty.wait()
     print('Transcoding saved recording...')
@@ -88,6 +119,7 @@ def drive_loop(kitty: subprocess.Popen, which: str, m: dict[str, Any], destdir: 
                 os.remove(of)
             subprocess.run(['ffmpeg', '-i', lossless_file] + cmd.split() + [of], check=True, capture_output=True)
             print(f'Recording saved: {of}')
+            subprocess.run(['ls', '-sh', of])
     finally:
         os.remove(lossless_file)
 
