@@ -115,6 +115,12 @@ Now to use kitty-diff to view git diffs, you can simply do::
 
 Once again, creating an alias for this command is useful.
 
+Alternatively, `git-kitten-diff <https://github.com/eureka-cpu/kitty-diff-git>`__
+is a git plugin that forwards ``git diff`` arguments to kitty-diff without
+needing any :file:`~/.gitconfig` changes. Once installed, simply run::
+
+    git kitten diff
+
 
 Why does this work only in kitty?
 ----------------------------------------
