@@ -385,7 +385,7 @@ def drive_loop(kitty: 'subprocess.Popen[bytes]', which: str, m: dict[str, Any], 
     print('Transcoding saved recording...')
     try:
         for fmt, cmd in {
-            'webm': '-r 60 -c:v libsvtav1 -preset 3 -crf 55 -pix_fmt yuv420p -svtav1-params tune=0:scm=1:enable-intrabc=1:scd=0:aq-mode=0 -g 99999'
+            'webm': '-r 60 -c:v libsvtav1 -preset 6 -crf 35 -pix_fmt yuv420p -svtav1-params tune=0 -g 99999'
         }.items():
             of = f'{output_file}.{fmt}'
             with suppress(FileNotFoundError):
