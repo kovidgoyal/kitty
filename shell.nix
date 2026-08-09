@@ -51,7 +51,7 @@ in
           furo
           sphinx-copybutton
           sphinxext-opengraph
-          sphinx-inline-tabs
+          sphinx-design
         ]
         ++ optionals stdenv.isDarwin [
           imagemagick
