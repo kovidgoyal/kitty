@@ -81,6 +81,8 @@ public struct KittyTextures {
 
     public float2 pos;  // the position of this pixel in the textures (UV coordinates)
 
+    // Some group related uniforms
+
     // The viewport for this group in the form (x, y, width, height) where (x, y) is the
     // bottom-left corner, with (0, 0) at the bottom-left of the screen and y increasing upwards
     // (UV coordinates). Defaults to (0, 0, 1, 1) when no viewport is defined for the group.
@@ -88,5 +90,7 @@ public struct KittyTextures {
     // The value after applying the animation easing curve to time since animation start.
     // Zero when no animation is active.
     public float animation_progress;
+    // The index of the current group in the pipeline.
+    public int group;
 }
 // END_TYPES_DEFINITION

@@ -64,7 +64,7 @@ uniform Sampler2D backbuffer, a, b, persist;
 public float4 pipeline_fragment_main(float2 backbuffer_pos, int group, float4 viewport, float animation_progress, bool convert_to_srgb) {
     float4 color = backbuffer.Sample(backbuffer_pos);  // pre multiplied linear RGB
     color = float4(color.rgb / color.a, color.a);  // un pre multiplied color passed through pipeline
-    KittyTextures t = {backbuffer, a, b, persist, backbuffer_pos, viewport, animation_progress};
+    KittyTextures t = {backbuffer, a, b, persist, backbuffer_pos, viewport, animation_progress, group};
     // PIPELINE
     return vec4_premul(color.rgb, color.a);
 }
