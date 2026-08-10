@@ -1,0 +1,15 @@
+textures a persist
+
+startgroup
+    shaders northern_lights
+    output_texture a
+endgroup
+
+startgroup
+    shaders northern_lights
+    output_texture persist
+endgroup
+
+startgroup
+    shaders northern_lights
+endgroup
