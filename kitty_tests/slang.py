@@ -373,18 +373,16 @@ void vsMain() {}
             if entry.name.endswith('.slang') and entry.name[: -len('.slang')] not in _SUPPORT_SHADER_NAMES
         )
 
-        _CACHE_DIR = os.path.join(cache_base, 'custom-shaders-slangc-cache')
-        os.makedirs(_CACHE_DIR, exist_ok=True)
-        failures: list[str] = []
-        clear_caches()
-        try:
+        with tempfile.TemporaryDirectory() as cache_dir:
+            failures: list[str] = []
+            clear_caches()
             for name in shader_names:
                 pipeline = parse_pipeline_definition(
                     ['startgroup', f'shaders {name}', 'endgroup'],
                     name,
                 )
                 try:
-                    vert_src, frag_src, _ = build_custom_shader_pipeline_glsl(pipeline, cache_dir=_CACHE_DIR)
+                    vert_src, frag_src, _ = build_custom_shader_pipeline_glsl(pipeline, cache_dir=cache_dir)
                 except Exception as e:
                     failures.append(f'{name}: {e}')
                     continue
@@ -392,7 +390,6 @@ void vsMain() {}
                     failures.append(f'{name}: empty vertex GLSL')
                 if not frag_src:
                     failures.append(f'{name}: empty fragment GLSL')
-        finally:
             clear_caches()
 
         if failures:
