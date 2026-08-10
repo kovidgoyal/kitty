@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Kovid Goyal <kovid at kovidgoyal.net>
 // Distributed under terms of the GPLv3 license.
 
+import kitty_custom_shader_types;
+
 // IMPORTS
 
 public struct BlitOutput {
