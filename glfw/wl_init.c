@@ -317,6 +317,10 @@ static void
 keyboardHandleKeymap(void *data UNUSED, struct wl_keyboard *keyboard UNUSED, uint32_t format, int fd, uint32_t size) {
     char *mapStr;
 
+    if (format == WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP) {
+        close(fd);
+        return;
+    }
     if (format != WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Unknown keymap format: %u", format);
         close(fd);
