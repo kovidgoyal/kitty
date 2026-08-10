@@ -1787,7 +1787,7 @@ opt(
     option_type='signed_unit_float',
     ctype='float',
     long_text="""
-Fade the text in inactive windows by the specified amount. This must be a
+Fade the content in inactive windows by the specified amount. This must be a
 number between -1 and 1. The absolute value controls the actual
 opacity, with zero being fully faded and one being fully opaque. When a positive number is
 used the text is faded even if only a single window is visible when the OS window
