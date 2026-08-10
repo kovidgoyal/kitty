@@ -139,6 +139,7 @@ def tab_change(window_id: str, geometry: tuple[int, int, int, int]) -> None:
 metadata: dict[str, dict[str, Any]] = {
     # Background
     'inside-the-matrix': {'category': 'background', 'tagline': 'See the bones of reality.'},
+    'northern-lights': {'category': 'background', 'tagline': 'The ethereal Aurora Borealis.', 'cmd': []},
     'fireworks': {'category': 'background', 'tagline': 'Celebrate the sheer awesomeness of your terminal.'},
     'water': {'category': 'background', 'tagline': 'Pretend you are cool enough to code underwater.'},
     # Mouse
