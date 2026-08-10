@@ -1067,13 +1067,21 @@ def custom_shader(name: str = '', pipeline_dir: str = '') -> tuple[str, str, byt
 
 @lru_cache(maxsize=64)
 def pipeline_definition(name: str) -> tuple[tuple[str, ...], str]:
-    path = resolve_custom_file(f'shaders/{name}.pipeline')
+    if os.path.isabs(name):
+        pipeline_path = name if name.endswith('.pipeline') else name + '.pipeline'
+        with open(pipeline_path, 'rb') as f:
+            src = f.read()
+        return tuple(src.decode().splitlines()), os.path.dirname(os.path.abspath(pipeline_path))
+
+    filename = name if name.endswith('.pipeline') else f'{name}.pipeline'
+    path = resolve_custom_file(f'shaders/{filename}')
     try:
         with open(path, 'rb') as f:
             src = f.read()
         pipeline_dir = os.path.dirname(os.path.abspath(path))
     except FileNotFoundError:
-        src = get_custom_pipeline_src(name)
+        base_name = name[: -len('.pipeline')] if name.endswith('.pipeline') else name
+        src = get_custom_pipeline_src(base_name)
         pipeline_dir = ''
     return tuple(src.decode().splitlines()), pipeline_dir
 

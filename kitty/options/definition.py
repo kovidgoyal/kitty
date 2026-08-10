@@ -2911,7 +2911,10 @@ opt(
 Space separated list of custom shader pipeline names. They will be loaded from
 the :file:`shaders` directory inside the kitty config directory or if not present there
 the builtin custom shaders that kitty ships with. Each name has :file:`.pipeline` append to it
-when searching for the file.
+when searching for the file, if not already present. Note that currently only a single pipeline
+file is supported, that may change in the future. If no pipeline file is found then a shader
+with the same name is searched for instead. If an absolute path is specified then shaders renferenced
+by the pipeline are first looked for in the directory of the pipeline file.
     """,
 )
 

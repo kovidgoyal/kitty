@@ -17,9 +17,11 @@ from kitty.shaders.slang import (
     build_custom_shader_pipeline_glsl,
     build_import_graph,
     clear_caches,
+    custom_shader,
     parse_pipeline_definition,
     parse_slang_text,
     parse_var_directive,
+    pipeline_definition,
     slangc_version,
     topological_layers,
     topological_sort,
@@ -396,3 +398,34 @@ void vsMain() {}
 
         with open(_CACHE_FILE, 'w') as f:
             json.dump({'hash': current_hash}, f)
+
+    def test_pipeline_absolute_path(self) -> None:
+        pipeline_content = 'startgroup\n    shaders myshader\nendgroup\n'
+        slang_content = b'// shader in pipeline dir\n'
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            pipeline_path = os.path.join(tmpdir, 'my.pipeline')
+            with open(pipeline_path, 'w') as f:
+                f.write(pipeline_content)
+            with open(os.path.join(tmpdir, 'myshader.slang'), 'wb') as f:
+                f.write(slang_content)
+
+            clear_caches()
+            try:
+                # Absolute path with .pipeline extension - used as-is
+                lines, pipeline_dir = pipeline_definition(pipeline_path)
+                self.assertEqual(pipeline_dir, tmpdir)
+                self.assertIn('startgroup', lines)
+
+                # Absolute path without .pipeline extension - .pipeline is auto-appended
+                clear_caches()
+                lines2, pipeline_dir2 = pipeline_definition(pipeline_path[: -len('.pipeline')])
+                self.assertEqual(pipeline_dir2, tmpdir)
+                self.assertEqual(lines, lines2)
+
+                # Shader lookup finds the file in the pipeline directory first
+                found_path, import_dir, src, _ = custom_shader('myshader', tmpdir)
+                self.assertEqual(src, slang_content)
+                self.assertEqual(import_dir, tmpdir)
+            finally:
+                clear_caches()

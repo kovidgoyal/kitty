@@ -938,7 +938,7 @@ def clipboard_control(x: str) -> tuple[str, ...]:
 
 
 def custom_shaders(x: str) -> tuple[str, ...]:
-    return tuple(x.split()) if x else ()
+    return tuple(shlex_split(x)) if x else ()
 
 
 def allow_hyperlinks(x: str) -> int:
