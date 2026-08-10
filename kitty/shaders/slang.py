@@ -1189,14 +1189,11 @@ def parse_var_directive(parts: list[str]) -> tuple[str, str, str]:
 
 
 def apply_pipeline_specializations(src: bytes, merged_vars: dict[str, tuple[str, str]]) -> bytes:
-    if not merged_vars:
-        return src
-    text = src.decode()
     for var_name, (var_type, value) in merged_vars.items():
         # Replace: static const <any_type> <name> = <default>; → static const <type> <name> = <value>;
         pattern = rf'(?m)^(\s*)static\s+const\s+{re.escape(var_type)}\s+{re.escape(var_name)}\s*=.+'
-        text = re.sub(pattern, rf'\g<1>static const {var_type} {var_name} = {value};', text)
-    return text.encode()
+        src = re.sub(pattern.encode(), rf'\g<1>static const {var_type} {var_name} = {value};'.encode(), src)
+    return src
 
 
 class Group(TypedDict):
