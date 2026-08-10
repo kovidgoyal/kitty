@@ -2908,13 +2908,11 @@ opt(
     option_type='custom_shaders',
     add_to_default=False,
     long_text="""
-Space separated list of custom shader pipeline names. They will be loaded from
-the :file:`shaders` directory inside the kitty config directory or if not present there
-the builtin custom shaders that kitty ships with. Each name has :file:`.pipeline` append to it
-when searching for the file, if not already present. Note that currently only a single pipeline
-file is supported, that may change in the future. If no pipeline file is found then a shader
-with the same name is searched for instead. If an absolute path is specified then shaders renferenced
-by the pipeline are first looked for in the directory of the pipeline file.
+Space separated list of custom shader pipeline names. Currently only a single pipeline is supported,
+that may change in the future. You can use shell syntax to quote or escape space characters.
+The exact loading algorithm is described in :ref:`custom_shader_load_order`.
+See :doc:`/custom-shaders` for details on how custom shaders work. For a quick demo, try setting
+this to :code:`inside-the-matrix`.
     """,
 )
 

@@ -26,7 +26,7 @@ You can see the code for the custom shaders that ship with kitty :repo_folder:`h
 Cursor trails
 ----------------
 
-You must have enable cursor trails with something like ``cursor_trail 1`` in :file:`kitty.conf` for
+You must have enabled cursor trails with something like ``cursor_trail 1`` in :file:`kitty.conf` for
 these shaders to take effect.
 
 .. include:: generated/custom-shaders-cursor-trails.rst
@@ -53,11 +53,11 @@ Anatomy of a custom shader
 
 Shaders in kitty are written in `slang <https://shader-slang.org/>`__
 which is a shading language that compiles down to the actual shading language
-used by the underlying platform. A custom shader consists of two parts, the
-actual shader which is basically a single function that takes an input color
-and some input uniforms and textures and outputs the resulting color. The
-second part is a *pipeline* file, which is responsible for specifying how
-different custom shaders are grouped together, ow they render, what animation
+used by the underlying platform. A custom shader consists of two parts: the
+actual shader, which is basically a single function that takes an input color
+and some input uniforms and textures and outputs the resulting color. Secondly,
+a *pipeline* file, which is responsible for specifying how
+different custom shaders are grouped together, how they render, what animation
 trigger events they respond to, etc. The two parts are described below.
 
 Custom shaders are run at the very end of the kitty rendering pipeline, when
@@ -65,13 +65,25 @@ everything else has already been rendered. Note that all colors are in the
 linear RGB color space and co-ordinates are in the traditional UV co-ordinate
 system with its origin in the lower left corner and Y increasing upwards.
 
+.. _custom_shader_load_order:
+
+How shaders are loaded
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 When you set the :opt:`custom_shaders XXX <custom_shaders>` setting in :file:`kitty.conf` kitty
 tries to load a pipeline file with that name and if no pipeline file is found
 but a shader with that name is found instead, it is loaded with a default
-pipeline file. Loading takes place by first looking in the :file:`shaders`
-sub-directory of the kitty config directory, if not found, among the shaders
-shipped with kitty. So for shader ``XXX`` first ``XXX.pipeline`` and then
-``XXX.slang`` are searched for.
+pipeline file. Loading of pipeline files takes place in the following order:
+
+#. If the specified pipeline file is an absolute path, it is loaded directly
+#. If a relative path it is loaded from the :file:`shaders` sub-directory
+   inside the kitty config directory
+#. It is looked for amongst the custom shaders shipped with kitty
+#. A default pipeline file is constructed
+
+The shaders that a pipeline references are first looked for in the directory
+from which the pipeline file is loaded, then they follow the same order as for
+pipeline files.
 
 The shader part
 ^^^^^^^^^^^^^^^^^
