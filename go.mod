@@ -22,7 +22,7 @@ require (
 	github.com/nwaples/rardecode/v2 v2.3.0
 	github.com/seancfoley/ipaddress-go v1.7.1
 	github.com/sgtdi/fswatcher v1.3.0
-	github.com/shirou/gopsutil/v4 v4.26.6
+	github.com/shirou/gopsutil/v4 v4.26.7
 	github.com/ulikunitz/xz v0.5.16
 	github.com/zeebo/xxh3 v1.1.0
 	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
