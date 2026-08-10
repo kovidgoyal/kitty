@@ -250,7 +250,7 @@ class LoadShaderPrograms:
         self.force_recompile_of_custom_shaders = False
         opts = self.get_options()
         self.custom_shaders = tuple(opts.custom_shaders)
-        pmap = {}
+        pmap: dict[str, list[Pipeline]] = {}
         for k in self.custom_shaders:
             try:
                 d = parse_pipeline(k)
@@ -268,14 +268,15 @@ class LoadShaderPrograms:
             except Exception as e:
                 log_error(f'Failed to read custom shader pipeline definition from {k} with error: {e}')
                 continue
-            pmap[d['slot']] = d
+            pmap.setdefault(d['slot'], []).append(d)
 
         def do(prog: int, slot: str) -> None:
-            pipeline = pmap.get(slot)
-            if pipeline is None:
+            slot_pipelines = pmap.get(slot)
+            if not slot_pipelines:
                 compile_program(prog, (), (), {}, allow_recompile)
             else:
                 try:
+                    pipeline = merge_pipelines(slot_pipelines)
                     vert, frag, metadata = build_custom_shader_pipeline_glsl(pipeline)
                 except Exception as e:
                     log_error(f'Failed to build custom shader for slot {slot} with error: {e}')
@@ -1197,6 +1198,7 @@ def apply_pipeline_specializations(src: bytes, merged_vars: dict[str, tuple[str,
 
 
 class Group(TypedDict):
+    pipeline_dir: str  # directory used to resolve shader names for this group
     viewport_pos: tuple[float, float]
     viewport_size: tuple[float, float]
     output_texture: NamedTexture
@@ -1235,6 +1237,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
 
     def init_group(*shaders: str) -> Group:
         return {
+            'pipeline_dir': pipeline_dir,
             'viewport_pos': (0, 0),
             'viewport_size': (1, 1),
             'output_texture': NamedTexture.default,
@@ -1332,6 +1335,41 @@ def parse_pipeline(name: str) -> Pipeline:
     return parse_pipeline_definition(lines, name, pipeline_dir)
 
 
+def merge_pipelines(pipelines: list[Pipeline]) -> Pipeline:
+    if len(pipelines) == 1:
+        return pipelines[0]
+    slot = pipelines[0]['slot']
+    for p in pipelines[1:]:
+        if p['slot'] != slot:
+            raise ValueError(f'Cannot chain pipelines with different slots: {slot!r} vs {p["slot"]!r}')
+    seen_textures: set[NamedTexture] = set()
+    merged_textures: list[NamedTexture] = []
+    for p in pipelines:
+        for t in p['textures']:
+            if t not in seen_textures:
+                seen_textures.add(t)
+                merged_textures.append(t)
+    all_groups: list[Group] = []
+    for p in pipelines:
+        all_groups.extend(p['groups'])
+    if len(all_groups) > MAX_CUSTOM_SHADER_GROUPS:
+        raise ValueError(f'Chained pipelines have {len(all_groups)} groups combined but the maximum is {MAX_CUSTOM_SHADER_GROUPS}')
+    if all_groups[-1]['output_texture'] is not NamedTexture.default:
+        raise ValueError('The final group of the last pipeline cannot output to a named texture')
+    if all_groups[-1]['viewport_pos'] != (0, 0) or all_groups[-1]['viewport_size'] != (1, 1):
+        raise ValueError('The final group of the last pipeline must not specify a viewport')
+    merged_vars: dict[str, tuple[str, str]] = {}
+    for p in pipelines:
+        merged_vars.update(p['vars'])
+    return {
+        'slot': slot,
+        'textures': tuple(merged_textures),
+        'groups': tuple(all_groups),
+        'vars': merged_vars,
+        'pipeline_dir': pipelines[0]['pipeline_dir'],
+    }
+
+
 def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocation_tracker: set[tuple[str, ...]]) -> tuple[tuple[str, ...], str]:
     slot = pipeline['slot']
     slot_module_name = f'{slot.replace("-", "_")}'
@@ -1371,7 +1409,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
 
     for group in pipeline['groups']:
         for name in group['shaders']:
-            _path, import_dir, _src, content_key = custom_shader(name, pipeline['pipeline_dir'])
+            _path, import_dir, _src, content_key = custom_shader(name, group['pipeline_dir'])
             if import_dir and import_dir not in import_dirs:
                 import_dirs.append(import_dir)
             slot_key_parts.append(content_key)
@@ -1389,7 +1427,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
         merged_vars = pipeline['vars'].copy()
         merged_vars.update(group['vars'])
         for s_idx, name in enumerate(group['shaders']):
-            _path, import_dir, src, _content_key = custom_shader(name, pipeline['pipeline_dir'])
+            _path, import_dir, src, _content_key = custom_shader(name, group['pipeline_dir'])
             if import_dir and import_dir not in import_dirs:
                 import_dirs.append(import_dir)
             src = apply_pipeline_specializations(src, merged_vars)

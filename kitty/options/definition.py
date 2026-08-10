@@ -2908,8 +2908,8 @@ opt(
     option_type='custom_shaders',
     add_to_default=False,
     long_text="""
-Space separated list of custom shader pipeline names. Currently only a single pipeline is supported,
-that may change in the future. You can use shell syntax to quote or escape space characters.
+Space separated list of custom shader pipeline names. If multiple names are specified they are
+loaded in order and concatenated. You can use shell syntax to quote or escape space characters.
 The exact loading algorithm is described in :ref:`custom_shader_load_order`.
 See :doc:`/custom-shaders` for details on how custom shaders work. For a quick demo, try setting
 this to :code:`inside-the-matrix`.
