@@ -16,74 +16,74 @@
 
 import kitty_custom_shader_types;
 
-extern static const float PI = 3.14159265359f;
-extern static const float INITIAL_RANDOM_SEED = 0.12138f;
+static const float PI = 3.14159265359f;
+static const float INITIAL_RANDOM_SEED = 0.12138f;
 
 // === TERMINAL BLENDING CONTROLS ===
-extern static const float BLACK_BLEND_THRESHOLD = 0.15f;
-extern static const float EFFECT_INTENSITY = 0.25f;
-extern static const float TIME_SCALE = 0.25f;
-extern static const float EFFECT_FLOOR = 0.015f;
-extern static const float EFFECT_CEILING = 0.12f;
+static const float BLACK_BLEND_THRESHOLD = 0.15f;
+static const float EFFECT_INTENSITY = 0.25f;
+static const float TIME_SCALE = 0.25f;
+static const float EFFECT_FLOOR = 0.015f;
+static const float EFFECT_CEILING = 0.12f;
 
 // === AURORA TUNING KNOBS ===
-extern static const float AURORA_INTENSITY = 0.2f;
-extern static const float AURORA_ALTITUDE = 0.6f;
-extern static const float AURORA_SCALE = 1.0f;
-extern static const float WAVE_SPEED = 0.55f;
-extern static const float MARCH_STEPS = 50.0f;
-extern static const float CURTAIN_SHARPNESS = 39.0f;
-extern static const float CURTAIN_SOFTNESS = 1.3f;
-extern static const float COLOR_VARIATION = 0.28f;
-extern static const float VERTICAL_FADE = 25.0f;
-extern static const float CAMERA_DISTANCE = 9.7f;
+static const float AURORA_INTENSITY = 0.2f;
+static const float AURORA_ALTITUDE = 0.6f;
+static const float AURORA_SCALE = 1.0f;
+static const float WAVE_SPEED = 0.55f;
+static const float MARCH_STEPS = 50.0f;
+static const float CURTAIN_SHARPNESS = 39.0f;
+static const float CURTAIN_SOFTNESS = 1.3f;
+static const float COLOR_VARIATION = 0.28f;
+static const float VERTICAL_FADE = 25.0f;
+static const float CAMERA_DISTANCE = 9.7f;
 
 // === PERSISTENCE & DECAY CONTROLS ===
-extern static const float ACCUMULATION_DECAY = 0.03f; // Decay per frame: 0.0 = infinite, 0.005 = slow fade
-extern static const float MOUSE_PERSIST_INTENSITY = 1.1f; // Brightness multiplier for persistent rays
+static const float ACCUMULATION_DECAY = 0.03f; // Decay per frame: 0.0 = infinite, 0.005 = slow fade
+static const float MOUSE_PERSIST_INTENSITY = 1.1f; // Brightness multiplier for persistent rays
 
 // === STAR FIELD CONTROLS ===
-extern static const float STAR_FIELD_ROTATIONS_SPEED =
+static const float STAR_FIELD_ROTATIONS_SPEED =
     (2 * PI) / (86400 * TIME_SCALE);
-extern static const float STAR_BRIGHTNESS = 0.7f;
-extern static const float STAR_SIZE = 1.6f;
-extern static const float STAR_TWINKLE_SPEED = 0.05f;
-extern static const float STAR_DENSITY = 6.0f;
-extern static const float STAR_BRIGHTNESS_VARIATION = 6.0f;
+static const float STAR_BRIGHTNESS = 0.7f;
+static const float STAR_SIZE = 1.6f;
+static const float STAR_TWINKLE_SPEED = 0.05f;
+static const float STAR_DENSITY = 6.0f;
+static const float STAR_BRIGHTNESS_VARIATION = 6.0f;
 
 // === TURBULENCE & CHROMATIC TWINKLE TUNING KNOBS ===
-extern static const float STAR_TURBULENCE_SCALE = 8.0f;
-extern static const float3 STAR_WIND_DRIFT_SPEED = float3(0.12f, 0.04f, 0.08f);
-extern static const float STAR_DISPERSION_SCALE = 0.06f;
-extern static const float STAR_DISPERSION_HORIZON_FACTOR = 1.2f;
-extern static const float3 STAR_DISPERSION_DIR = float3(0.3f, 0.8f, 0.2f);
+static const float STAR_TURBULENCE_SCALE = 8.0f;
+static const float3 STAR_WIND_DRIFT_SPEED = float3(0.12f, 0.04f, 0.08f);
+static const float STAR_DISPERSION_SCALE = 0.06f;
+static const float STAR_DISPERSION_HORIZON_FACTOR = 1.2f;
+static const float3 STAR_DISPERSION_DIR = float3(0.3f, 0.8f, 0.2f);
 
-extern static const float STAR_TWINKLE_BASE = 0.7f;
-extern static const float STAR_TWINKLE_AMPLITUDE = 0.2f;
-extern static const float STAR_TWINKLE_WAVE_B_MULT = 0.9f;
-extern static const float STAR_TWINKLE_WAVE_C_MULT = 2.3f;
-extern static const float STAR_TWINKLE_CORRELATION = 0.85f;
+static const float STAR_TWINKLE_BASE = 0.7f;
+static const float STAR_TWINKLE_AMPLITUDE = 0.2f;
+static const float STAR_TWINKLE_WAVE_B_MULT = 0.9f;
+static const float STAR_TWINKLE_WAVE_C_MULT = 2.3f;
+static const float STAR_TWINKLE_CORRELATION = 0.85f;
 
 static const float3 TWINKLE_WAVE_DIR_A = float3(1.618f, 2.718f, 1.414f);
 static const float3 TWINKLE_WAVE_DIR_B = float3(2.414f, 1.732f, 3.141f);
 static const float3 TWINKLE_WAVE_DIR_C = float3(2.236f, 3.302f, 1.732f);
 
 // === RANDOMIZATION CONTROLS ===
-extern static const float RANDOMIZE = 1.0f;
-extern static const float RESEED_INTERVAL = 300.0f;
-extern static const float TRANSITION_DIP = 2.5f;
-extern static const float DIP_LEVEL = 0.30f;
+static const float RANDOMIZE = 1.0f;
+static const float RESEED_INTERVAL = 300.0f;
+static const float TRANSITION_DIP = 2.5f;
+static const float DIP_LEVEL = 0.30f;
 
 // === MOUSE TRAIL & RADIAL RAY SHAPE CONTROLS ===
-extern static const float MOUSE_AURORA_INTENSITY = 0.15f;
-extern static const float MOUSE_TRAIL_WIDTH = 0.06f;
-extern static const float MOUSE_RAY_WIDTH = 0.015f;      // Tangential ray width
-extern static const float MOUSE_RAY_LENGTH = 0.11f;      // Radial ray length along center alignment
-extern static const float MOUSE_RAY_FREQUENCY = 160.0f;  // Fine curtain thread streaking frequency
-extern static const float MOUSE_TRAIL_NOISE_SCALE = 3.0f;
-extern static const float MOUSE_PRESS_BOOST = 0.3f;
-extern static const float MOUSE_IGNORE_WHEN_HIDDEN = 0.0f;
-extern static const float DEBUG_MOUSE_OVERLAY = 0.0f;
+static const float MOUSE_AURORA_INTENSITY = 0.15f;
+static const float MOUSE_TRAIL_WIDTH = 0.06f;
+static const float MOUSE_RAY_WIDTH = 0.015f;      // Tangential ray width
+static const float MOUSE_RAY_LENGTH = 0.11f;      // Radial ray length along center alignment
+static const float MOUSE_RAY_FREQUENCY = 160.0f;  // Fine curtain thread streaking frequency
+static const float MOUSE_TRAIL_NOISE_SCALE = 3.0f;
+static const float MOUSE_PRESS_BOOST = 0.3f;
+static const float MOUSE_IGNORE_WHEN_HIDDEN = 0.0f;
+static const float DEBUG_MOUSE_OVERLAY = 0.0f;
 
 static const float3 SKY_COLOR_TOP = float3(0.05f, 0.1f, 0.2f);
 static const float3 SKY_COLOR_BOTTOM = float3(0.1f, 0.05f, 0.2f);
@@ -101,6 +101,8 @@ static const float STAR_LAYER_DENSITY[STAR_LAYERS] = {0.0005f, 0.0015f, 0.0045f,
 
 static const float TWINKLE_FREQ_A = 1.618034f;
 static const float TWINKLE_FREQ_B = 2.414214f;
+
+static const int STAGE = 0;  // internal use only
 
 // === TRIANGLE WAVE NOISE ===
 
@@ -449,8 +451,8 @@ float4 fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
   if (MOUSE_IGNORE_WHEN_HIDDEN > 0.5f && d.mouse_pointer_hidden > 0.5f)
     mouseValid = 0.0f;
 
-  // Group 0: Accumulate radial aurora rays cast from sky center into scratch texture 'a'
-  if (t.group == 0) {
+  // First group: Accumulate radial aurora rays cast from sky center into scratch texture 'a'
+  if (STAGE == 0) {
     float prev = t.persist.Sample(uv).r;
     float decayed = prev * saturate(1.0f - ACCUMULATION_DECAY);
 
@@ -491,12 +493,12 @@ float4 fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     return float4(saturate(decayed + deposit), 0.0f, 0.0f, 1.0f);
   }
 
-  // Group 1: Copy scratch texture 'a' to 'persist'
-  if (t.group == 1) {
+  // Second group: Copy scratch texture 'a' to 'persist'
+  if (STAGE == 1) {
     return t.a.Sample(uv);
   }
 
-  // Group 2: Main composite pass
+  // Third group: Main composite pass
   AuroraRandParams rp = getAuroraParams(d.timestamp, INITIAL_RANDOM_SEED);
   float epochBrightness = transitionBrightness(d.timestamp);
   float noiseTime = timestamp + rp.timeOffset;

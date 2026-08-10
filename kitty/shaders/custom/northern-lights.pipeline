@@ -1,15 +1,18 @@
 textures a persist
 
 startgroup
+    var int STAGE = 0
     shaders northern-lights
     output_texture a
 endgroup
 
 startgroup
+    var int STAGE = 1
     shaders northern-lights
     output_texture persist
 endgroup
 
 startgroup
+    var int STAGE = 2
     shaders northern-lights
 endgroup
