@@ -29,11 +29,16 @@ class Arg:
 class Function:
     def __init__(self, declaration: str, check_fail: bool = True):
         self.check_fail = check_fail
-        m = re.match(r'(.+?)\s+(glfw[A-Z][a-zA-Z0-9]+)[(](.+)[)]$', declaration)
-        if m is None:
+        m = re.match(r'(.+?)\s+(\**glfw[A-Z][a-zA-Z0-9]+)[(](.+)[)]$', declaration)
+        if m is None:  # ]]]]]}})))
             raise SystemExit('Failed to parse ' + repr(declaration))
         self.restype = m.group(1).strip()
         self.name = m.group(2)
+        if self.name.startswith('*'):
+            name = self.name.lstrip('*')
+            num_of_stars = len(self.name) - len(name)
+            self.name = name
+            self.restype += '*' * num_of_stars
         args = m.group(3).strip().split(',')
         args = [x.strip() for x in args]
         self.args = []
@@ -64,10 +69,10 @@ def generate_wrappers(glfw_header: str) -> None:
         src = f.read()
     functions = []
     first = None
-    for m in re.finditer(r'^GLFWAPI\s+(.+[)]);\s*$', src, flags=re.MULTILINE):
+    for m in re.finditer(r'^GLFWAPI\s+(.+?\));\s*$', src, flags=re.MULTILINE | re.DOTALL):
         if first is None:
             first = m.start()
-        decl = m.group(1)
+        decl = m.group(1).replace('\n', ' ')
         if 'VkInstance' in decl:
             continue
         functions.append(Function(decl))
@@ -110,6 +115,7 @@ def generate_wrappers(glfw_header: str) -> None:
     unsigned long long glfwDBusUserNotify(const GLFWDBUSNotificationData *n, GLFWDBusnotificationcreatedfun callback, void *data)
     void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler)
     int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
+    bool glfwWaylandCreateVirtualDevices(void)
     void glfwWaylandInjectMouseMotionAbsolute(unsigned int x, unsigned int y, unsigned int x_extent, unsigned int y_extent)
     void glfwWaylandInjectMouseButton(int button, int action)
     void glfwWaylandInjectKey(int key, int action, int mods)
@@ -188,8 +194,13 @@ unload_glfw(void) {
 
 
 def main() -> None:
+    import subprocess
+
+    af = os.path.abspath('autoformat')
+
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     generate_wrappers('glfw3.h')
+    subprocess.check_call([af])
 
 
 if __name__ == '__main__':
