@@ -350,8 +350,10 @@ void vsMain() {}
             cache_base = local
         else:
             cache_base = tempfile.gettempdir()
+        cache_base = os.path.join(cache_base, 'kitty-test-cache')
+        os.makedirs(cache_base, exist_ok=True)
 
-        _CACHE_FILE = os.path.join(cache_base, 'kitty-custom-shaders-test.json')
+        _CACHE_FILE = os.path.join(cache_base, 'custom-shaders-test.json')
         if not shutil.which(slangc()[0]):
             self.skipTest(f'slangc ({slangc()[0]}) not found in PATH')
 
@@ -371,7 +373,7 @@ void vsMain() {}
             if entry.name.endswith('.slang') and entry.name[: -len('.slang')] not in _SUPPORT_SHADER_NAMES
         )
 
-        _CACHE_DIR = os.path.join(cache_base, 'kitty-custom-shaders-slangc-cache')
+        _CACHE_DIR = os.path.join(cache_base, 'custom-shaders-slangc-cache')
         os.makedirs(_CACHE_DIR, exist_ok=True)
         failures: list[str] = []
         clear_caches()
