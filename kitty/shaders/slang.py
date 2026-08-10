@@ -1337,7 +1337,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
     slot_module_name = f'{slot.replace("-", "_")}'
     cache_dir = os.path.join(cache_dir, 'c')
     ensure_cache_dir(cache_dir)
-    slot_dir = os.path.join(cache_dir, 'slots')
+    slot_dir = os.path.join(cache_dir, slot)
     libdir = os.path.join(cache_dir, 'lib')
     import_dirs = [slot_dir, libdir]
     bc = list(slangc()) + ['-warnings-as-errors', 'all', '-lang', 'slang', '-I', libdir]
@@ -1367,14 +1367,26 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
         mtime = max(mtime, os.stat(ct_key_path).st_mtime_ns)
         types_rebuilt = True
 
-    shaders_content_key = b''
-    for n, (t, v) in pipeline['vars'].items():
-        shaders_content_key += f':pvar:{t}:{n}:{v}'.encode()
+    slot_key_parts: list[str | bytes] = [json.dumps(pipeline, sort_keys=True), get_custom_shader_src('pipeline')]
+
+    for group in pipeline['groups']:
+        for name in group['shaders']:
+            _path, import_dir, _src, content_key = custom_shader(name, pipeline['pipeline_dir'])
+            if import_dir and import_dir not in import_dirs:
+                import_dirs.append(import_dir)
+            slot_key_parts.append(content_key)
+    slot_key = key(*slot_key_parts)
+    slot_key_file = os.path.join(slot_dir, 'inputs.key')
+    ans = os.path.join(slot_dir, f'{slot}.slang-module')
+    cache_ok = False
+    if not types_rebuilt:
+        with suppress(FileNotFoundError), open(slot_key_file, 'rb') as f:
+            cache_ok = f.read() == slot_key
+    if cache_ok:
+        return tuple(import_dirs), ans
+
     imports = []
     for g_idx, group in enumerate(pipeline['groups']):
-        shaders_content_key += b'::'
-        for n, (t, v) in group['vars'].items():
-            shaders_content_key += f':gvar:{t}:{n}:{v}'.encode()
         merged_vars = pipeline['vars'].copy()
         merged_vars.update(group['vars'])
         for s_idx, name in enumerate(group['shaders']):
@@ -1382,25 +1394,16 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
             if import_dir and import_dir not in import_dirs:
                 import_dirs.append(import_dir)
             src = apply_pipeline_specializations(src, merged_vars)
-            shader_in_pipeline_key = key(src, str(g_idx), str(s_idx))
-            modname = 'm' + shader_in_pipeline_key.decode()
+            modname = f'm_{g_idx}_{s_idx}'
             imports.append(modname)
-            shaders_content_key += b':' + shader_in_pipeline_key
             module_file = j(f'{modname}.slang-module')
-            cache_ok = os.path.exists(module_file) and not types_rebuilt
-            if cache_ok:
-                mtime = max(mtime, os.stat(module_file).st_mtime_ns)
-            else:
-                inc = ['-I', import_dir] if import_dir else []
-                cmd = bc + inc + [f'-Dfragment_main={entry_point(g_idx, s_idx)}', '-module-name', modname, '-o', module_file, '--', '-']
-                invocation_tracker.add(tuple(cmd))
-                cp = subprocess.run(cmd, input=src, capture_output=True)
-                if cp.returncode != 0:
-                    raise SlangFailed(name, cp)
-                mtime = max(mtime, os.stat(module_file).st_mtime_ns)
-    shaders_content_key += b':' + str(mtime).encode()
-    j = partial(os.path.join, slot_dir)
-    cache_ok = False
+            inc = ['-I', import_dir] if import_dir else []
+            cmd = bc + inc + [f'-Dfragment_main={entry_point(g_idx, s_idx)}', '-module-name', modname, '-o', module_file, '--', '-']
+            invocation_tracker.add(tuple(cmd))
+            cp = subprocess.run(cmd, input=src, capture_output=True)
+            if cp.returncode != 0:
+                raise SlangFailed(name, cp)
+            mtime = max(mtime, os.stat(module_file).st_mtime_ns)
     # Generate group-branched PIPELINE code.
     # sRGB conversion is emitted in every group's branch, gated on the convert_to_srgb
     # parameter. The C caller sets it to true only for the last active group so that
@@ -1418,13 +1421,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
     mod_src = mod_src.replace('// IMPORTS', '\n'.join(f'import {imp};' for imp in imports), 1)
     mod_src = mod_src.replace('// PIPELINE', pipeline_code, 1)
     # subprocess.run(['bat', '-P', '-l', 'cpp'], input=mod_src.encode())
-    slot_key = key(slot, mod_src, shaders_content_key)
 
-    with suppress(FileNotFoundError), open(j(f'{slot}.key'), 'rb') as f:
-        cache_ok = f.read() == slot_key
-    ans = os.path.join(slot_dir, f'{slot}.slang-module')
-    if cache_ok and not types_rebuilt:
-        return tuple(import_dirs), ans
     with tempfile.TemporaryDirectory() as tdir:
         for x in import_dirs:
             inc.extend(('-I', x))
@@ -1434,7 +1431,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
         if cp.returncode != 0:
             raise SlangFailed(f'{slot}.slang', cp)
 
-    with open(j(f'{slot}.key'), 'wb') as f:
+    with open(slot_key_file, 'wb') as f:
         f.write(slot_key)
     return tuple(import_dirs), ans
 
