@@ -1344,7 +1344,6 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
     _, _, ct_shader, ct_key = custom_shader()
     os.makedirs(libdir, exist_ok=True)
     os.makedirs(slot_dir, exist_ok=True)
-    j = partial(os.path.join, libdir)
     cache_ok = False
     mtime = 0
     types_rebuilt = False
@@ -1352,6 +1351,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
     def entry_point(g_idx: int, s_idx: int) -> str:
         return f'fragment_main_{g_idx}_{s_idx}'
 
+    j = partial(os.path.join, libdir)
     with suppress(FileNotFoundError), open(j('ct.key'), 'rb') as f:
         cache_ok = f.read() == ct_key
         mtime = max(mtime, os.fstat(f.fileno()).st_mtime_ns)
@@ -1378,13 +1378,12 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
     slot_key = key(*slot_key_parts)
     slot_key_file = os.path.join(slot_dir, 'inputs.key')
     ans = os.path.join(slot_dir, f'{slot}.slang-module')
-    cache_ok = False
     if not types_rebuilt:
         with suppress(FileNotFoundError), open(slot_key_file, 'rb') as f:
-            cache_ok = f.read() == slot_key
-    if cache_ok:
-        return tuple(import_dirs), ans
+            if f.read() == slot_key:
+                return tuple(import_dirs), ans
 
+    j = partial(os.path.join, slot_dir)
     imports = []
     for g_idx, group in enumerate(pipeline['groups']):
         merged_vars = pipeline['vars'].copy()
@@ -1410,7 +1409,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
     # inactive animated groups do not cause an extra blit draw call.
     pipeline_parts: list[str] = []
     for g_idx, group in enumerate(pipeline['groups']):
-        calls = '\n'.join(f'        color = {entry_point(g_idx, j)}(color, t, csd);' for j in range(len(group['shaders'])))
+        calls = '\n'.join(f'        color = {entry_point(g_idx, i)}(color, t, csd);' for i in range(len(group['shaders'])))
         calls += '\n        if (convert_to_srgb) color = float4(linear2srgb(color.rgb), color.a);'
         prefix = '} else ' if g_idx else ''
         pipeline_parts.append(f'    {prefix}if (group == {g_idx}) {{\n{calls}')
