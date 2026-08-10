@@ -112,10 +112,12 @@ default=2
 type=int
 The base vertical increment.
 '''.format
+help_text = 'Resize the current window'
+usage = ''
 
 
 def main(args: list[str]) -> None:
-    msg = 'Resize the current window'
+    msg = help_text
     try:
         cli_opts, items = parse_args(args[1:], OPTIONS, '', msg, 'resize_window', result_class=ResizeCLIOptions)
     except SystemExit as e:
@@ -131,3 +133,13 @@ def main(args: list[str]) -> None:
         print(handler.print_on_fail, file=sys.stderr)
         input('Press Enter to quit')
     raise SystemExit(loop.return_code)
+
+
+if __name__ == '__main__':
+    main(sys.argv)
+elif __name__ == '__doc__':
+    cd = sys.cli_docs  # type: ignore
+    cd['usage'] = usage
+    cd['options'] = OPTIONS
+    cd['help_text'] = help_text
+    cd['short_desc'] = help_text
