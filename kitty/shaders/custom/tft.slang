@@ -7,10 +7,10 @@
 import kitty_custom_shader_types;
 
 // size of the simulated pixels
-extern static const float RESOLUTION = 4.0;
+static const float RESOLUTION = 4.0;
 
 // strength of the effect
-extern static const float STRENGTH = 0.5;
+static const float STRENGTH = 0.5;
 
 void scanline(inout float3 color, float2 pixel_pos) {
     float scanline = step(1.2, fmod(pixel_pos.y, RESOLUTION));

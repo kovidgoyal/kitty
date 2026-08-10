@@ -6,11 +6,11 @@
 
 import kitty_custom_shader_types;
 
-extern static const float  TAU             = 6.28318530718;
-extern static const int    MAX_ITER        = 6;
-extern static const float3 WATER_COLOR     = float3(0.5, 0.5, 0.5);  // water overlay tint
-extern static const float  CAUSTIC_INTEN   = 0.005;                  // caustic ripple intensity
-extern static const float  UV_DISPLACEMENT = 0.04;                   // UV warp magnitude from caustics
+static const float  TAU             = 6.28318530718;
+static const int    MAX_ITER        = 6;
+static const float3 WATER_COLOR     = float3(0.5, 0.5, 0.5);  // water overlay tint
+static const float  CAUSTIC_INTEN   = 0.005;                  // caustic ripple intensity
+static const float  UV_DISPLACEMENT = 0.04;                   // UV warp magnitude from caustics
 
 public float4 fragment_main(
     float4 color,

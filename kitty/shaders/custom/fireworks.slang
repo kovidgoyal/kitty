@@ -8,11 +8,11 @@
 
 import kitty_custom_shader_types;
 
-extern static const int   NUM_EXPLOSIONS        = 3;
-extern static const int   NUM_PARTICLES         = 42;
-extern static const float BLACK_BLEND_THRESHOLD = 0.4f;
-extern static const float TIME_SCALE            = 0.5f;
-extern static const float PI                    = 3.14159265359f;
+static const int   NUM_EXPLOSIONS        = 3;
+static const int   NUM_PARTICLES         = 42;
+static const float BLACK_BLEND_THRESHOLD = 0.4f;
+static const float TIME_SCALE            = 0.5f;
+static const float PI                    = 3.14159265359f;
 
 // Noise constant from Dave Hoskins — not user-tunable so kept as plain static const
 static const float3 MOD3 = float3(0.1031f, 0.11369f, 0.13787f);

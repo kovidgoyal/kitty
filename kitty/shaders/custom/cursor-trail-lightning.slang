@@ -7,18 +7,18 @@
 
 import kitty_custom_shader_types;
 
-extern static const float3 BOLT_COLOR             = float3(1.00, 0.82, 0.72);
-extern static const float3 GLOW_COLOR             = float3(0.74, 0.00, 0.00);
+static const float3 BOLT_COLOR             = float3(1.00, 0.82, 0.72);
+static const float3 GLOW_COLOR             = float3(0.74, 0.00, 0.00);
 // Bolt lifetime in seconds.
-extern static const float  DURATION               = 0.14;
+static const float  DURATION               = 0.14;
 // Sideways displacement relative to bolt length.
-extern static const float  JAGGEDNESS             = 0.085;
+static const float  JAGGEDNESS             = 0.085;
 // Core stroke width in pixels.
-extern static const float  CORE_WIDTH             = 1.15;
+static const float  CORE_WIDTH             = 1.15;
 // Glow radius in pixels.
-extern static const float  GLOW_WIDTH             = 5.5;
+static const float  GLOW_WIDTH             = 5.5;
 // Number of linear segments that make up the main bolt.
-extern static const int    BOLT_SEGMENTS          = 12;
+static const int    BOLT_SEGMENTS          = 12;
 
 static float hash11(float p) {
     p = frac(p * 0.1031);

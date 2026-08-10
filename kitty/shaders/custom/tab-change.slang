@@ -17,13 +17,13 @@
 import kitty_custom_shader_types;
 
 // 0=FADE, 1=WIPE, 2=BLINDS, 3=IRIS
-extern static const int ANIMATION_TYPE = 1;
+static const int ANIMATION_TYPE = 1;
 
 // Number of strips for ANIMATION_TYPE == 2 (BLINDS).
-extern static const int NUM_BLINDS = 8;
+static const int NUM_BLINDS = 8;
 
 // Soft-edge width in UV units used by WIPE and IRIS.
-extern static const float EDGE_SOFTNESS = 0.04;
+static const float EDGE_SOFTNESS = 0.04;
 
 // Returns a value in [0, 1] for this pixel: 0 at the tab-bar edge of the
 // content area, 1 at the opposite edge.  The wipe sweeps from 0 toward 1.

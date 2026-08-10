@@ -9,10 +9,10 @@
 
 import kitty_custom_shader_types;
 
-extern static const float4 TRAIL_COLOR        = float4(1.0, 0.725, 0.161, 1.0);
-extern static const float4 TRAIL_COLOR_ACCENT = float4(1.0, 0.0,   0.0,   1.0);
+static const float4 TRAIL_COLOR        = float4(1.0, 0.725, 0.161, 1.0);
+static const float4 TRAIL_COLOR_ACCENT = float4(1.0, 0.0,   0.0,   1.0);
 // Trail lifetime in seconds.
-extern static const float  DURATION           = 0.5;
+static const float  DURATION           = 0.5;
 
 // pow(1 - x, 10) via repeated squaring — branchless ease-out.
 static float ease_out10(float x) {

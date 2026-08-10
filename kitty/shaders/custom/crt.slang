@@ -9,9 +9,9 @@
 
 import kitty_custom_shader_types;
 
-extern static const float WARP = 0.25f;  // simulates curvature of CRT monitor
-extern static const float SCAN = 0.50f;  // simulates darkness between scanlines
-extern static const float4 TINT = float4(0, 0.8, 0.6, 0);  // tint color set the fourth component to 1 to apply it fully
+static const float WARP = 0.25f;  // simulates curvature of CRT monitor
+static const float SCAN = 0.50f;  // simulates darkness between scanlines
+static const float4 TINT = float4(0, 0.8, 0.6, 0);  // tint color set the fourth component to 1 to apply it fully
 
 public float4 fragment_main(
     float4 color,

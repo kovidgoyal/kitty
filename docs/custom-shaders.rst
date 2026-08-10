@@ -124,7 +124,7 @@ with ``#`` are comments; blank lines are ignored.
     below for their semantics.
 
 ``var <type> <name> <value>``
-    Sets a pipeline-level shader variable. Any ``extern static const``
+    Sets a pipeline-level shader variable. Any ``static const``
     declaration in a shader whose name matches ``<name>`` is replaced with
     ``static const <type> <name> = <value>;`` before compilation, baking the
     value in. This is the mechanism for tuning shader parameters without

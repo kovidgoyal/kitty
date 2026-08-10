@@ -7,10 +7,10 @@
 
 import kitty_custom_shader_types;
 
-extern static const int   NUM_PARTICLES        = 128;
-extern static const float BLACK_BLEND_THRESHOLD = 0.4f;
-extern static const float CYCLE_TIME           = 6.0f;
-extern static const float PARTICLE_PHASE       = 2.0f;
+static const int   NUM_PARTICLES        = 128;
+static const float BLACK_BLEND_THRESHOLD = 0.4f;
+static const float CYCLE_TIME           = 6.0f;
+static const float PARTICLE_PHASE       = 2.0f;
 
 // Pseudo-random in [-1, 1]
 float rand_val(float val, float seed) {

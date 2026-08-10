@@ -8,37 +8,37 @@
 import kitty_custom_shader_types;
 
 // Luminance threshold: pixels darker than this receive the ray overlay
-extern static const float BLACK_BLEND_THRESHOLD = 0.4;
+static const float BLACK_BLEND_THRESHOLD = 0.4;
 
 // Ray 1 source position (as fractions of viewport dimensions)
-extern static const float RAY1_SRC_X  = 0.7;
-extern static const float RAY1_SRC_Y  = 1.1;
+static const float RAY1_SRC_X  = 0.7;
+static const float RAY1_SRC_Y  = 1.1;
 // Y component of ray 1 reference direction (X component is always 1.0)
-extern static const float RAY1_DIR_Y  = 0.116;
-extern static const float RAY1_SEED_A = 36.2214;
-extern static const float RAY1_SEED_B = 21.11349;
-extern static const float RAY1_SPEED  = 1.1;
-extern static const float RAY1_WEIGHT = 0.5;   // contribution weight in final blend
+static const float RAY1_DIR_Y  = 0.116;
+static const float RAY1_SEED_A = 36.2214;
+static const float RAY1_SEED_B = 21.11349;
+static const float RAY1_SPEED  = 1.1;
+static const float RAY1_WEIGHT = 0.5;   // contribution weight in final blend
 
 // Ray 2 source position (as fractions of viewport dimensions)
-extern static const float RAY2_SRC_X  = 0.8;
-extern static const float RAY2_SRC_Y  = 1.2;
-extern static const float RAY2_DIR_Y  = -0.241;
-extern static const float RAY2_SEED_A = 22.39910;
-extern static const float RAY2_SEED_B = 18.0234;
-extern static const float RAY2_SPEED  = 0.9;
-extern static const float RAY2_WEIGHT = 0.4;
+static const float RAY2_SRC_X  = 0.8;
+static const float RAY2_SRC_Y  = 1.2;
+static const float RAY2_DIR_Y  = -0.241;
+static const float RAY2_SEED_A = 22.39910;
+static const float RAY2_SEED_B = 18.0234;
+static const float RAY2_SPEED  = 0.9;
+static const float RAY2_WEIGHT = 0.4;
 
 // Per-channel depth-attenuation: channel *= BASE + brightness * SCALE
-extern static const float DEPTH_R_BASE  = 0.05;
-extern static const float DEPTH_R_SCALE = 0.8;
-extern static const float DEPTH_G_BASE  = 0.15;
-extern static const float DEPTH_G_SCALE = 0.6;
-extern static const float DEPTH_B_BASE  = 0.3;
-extern static const float DEPTH_B_SCALE = 0.5;
+static const float DEPTH_R_BASE  = 0.05;
+static const float DEPTH_R_SCALE = 0.8;
+static const float DEPTH_G_BASE  = 0.15;
+static const float DEPTH_G_SCALE = 0.6;
+static const float DEPTH_B_BASE  = 0.3;
+static const float DEPTH_B_SCALE = 0.5;
 
 // Overall strength of the ray overlay on dark terminal content
-extern static const float OVERLAY_STRENGTH = 0.3;
+static const float OVERLAY_STRENGTH = 0.3;
 
 float hash21(float2 p) {
     p = frac(p * float2(233.34, 851.73));

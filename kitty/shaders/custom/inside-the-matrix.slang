@@ -8,19 +8,19 @@
 
 import kitty_custom_shader_types;
 
-extern static const int   ITERATIONS        = 40;
-extern static const float SPEED             = 0.5f;
-extern static const float STRIP_CHARS_MIN   = 7.0f;
-extern static const float STRIP_CHARS_MAX   = 40.0f;
-extern static const float STRIP_CHAR_HEIGHT = 0.15f;
-extern static const float STRIP_CHAR_WIDTH  = 0.10f;
-extern static const float ZCELL_SIZE        = STRIP_CHAR_HEIGHT * STRIP_CHARS_MAX;
-extern static const float XYCELL_SIZE       = 12.0f * STRIP_CHAR_WIDTH;
-extern static const int   BLOCK_SIZE        = 10;
-extern static const int   BLOCK_GAP         = 2;
-extern static const float WALK_SPEED        = 0.5f * XYCELL_SIZE;
-extern static const float BLOCKS_BEFORE_TURN = 3.0f;
-extern static const float PI                = 3.14159265359f;
+static const int   ITERATIONS        = 40;
+static const float SPEED             = 0.5f;
+static const float STRIP_CHARS_MIN   = 7.0f;
+static const float STRIP_CHARS_MAX   = 40.0f;
+static const float STRIP_CHAR_HEIGHT = 0.15f;
+static const float STRIP_CHAR_WIDTH  = 0.10f;
+static const float ZCELL_SIZE        = STRIP_CHAR_HEIGHT * STRIP_CHARS_MAX;
+static const float XYCELL_SIZE       = 12.0f * STRIP_CHAR_WIDTH;
+static const int   BLOCK_SIZE        = 10;
+static const int   BLOCK_GAP         = 2;
+static const float WALK_SPEED        = 0.5f * XYCELL_SIZE;
+static const float BLOCKS_BEFORE_TURN = 3.0f;
+static const float PI                = 3.14159265359f;
 
 // ---- random ----
 

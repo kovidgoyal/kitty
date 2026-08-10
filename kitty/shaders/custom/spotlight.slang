@@ -7,19 +7,19 @@
 
 import kitty_custom_shader_types;
 
-extern static const float SPOTLIGHT_RADIUS   = 0.25;  // spotlight radius in UV units
-extern static const float SPOTLIGHT_SOFTNESS = 20.0;  // edge sharpness; higher = sharper
-extern static const float AMBIENT_LIGHT      = 0.5;   // minimum brightness outside the spotlight
-extern static const float SPOTLIGHT_SPEED    = 1.0;   // oscillation speed in random-motion mode
+static const float SPOTLIGHT_RADIUS   = 0.25;  // spotlight radius in UV units
+static const float SPOTLIGHT_SOFTNESS = 20.0;  // edge sharpness; higher = sharper
+static const float AMBIENT_LIGHT      = 0.5;   // minimum brightness outside the spotlight
+static const float SPOTLIGHT_SPEED    = 1.0;   // oscillation speed in random-motion mode
 // Set to 1 to follow the mouse, 0 to use random oscillation
-extern static const int   USE_MOUSE          = 1;
+static const int   USE_MOUSE          = 1;
 // When USE_MOUSE=1 and the mouse leaves the window:
 //   0 = fall back to random oscillation
 //   1 = clamp spotlight to the nearest window edge
 //   2 = disable spotlight (pass through unchanged pixels)
-extern static const int   MOUSE_LEAVE_BEHAVIOR = 2;
+static const int   MOUSE_LEAVE_BEHAVIOR = 2;
 // Set to 1 to pass through unchanged pixels when the mouse pointer is hidden
-extern static const int   HIDE_WHEN_POINTER_HIDDEN = 1;
+static const int   HIDE_WHEN_POINTER_HIDDEN = 1;
 
 public float4 fragment_main(
     float4 color,

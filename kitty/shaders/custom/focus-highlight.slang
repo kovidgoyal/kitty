@@ -11,13 +11,13 @@ import kitty_custom_shader_types;
 
 // Brightness multiplier boost applied to content inside the active window.
 // 0.0 = no boost, 0.15 = 15% brighter.
-extern static const float HIGHLIGHT_INTENSITY = 0.30;
+static const float HIGHLIGHT_INTENSITY = 0.30;
 // Width of the inner border glow in UV units.
-extern static const float BORDER_WIDTH = 0.04;
+static const float BORDER_WIDTH = 0.04;
 // Peak additive brightness multiplier at the window border edge.
-extern static const float BORDER_GLOW = 0.55;
+static const float BORDER_GLOW = 0.55;
 // Dim factor applied to pixels outside the active window (1.0 = unchanged, 0.0 = black).
-extern static const float INACTIVE_DIM = 0.3;
+static const float INACTIVE_DIM = 0.3;
 
 public float4 fragment_main(
     float4 color,

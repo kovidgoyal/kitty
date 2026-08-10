@@ -1193,9 +1193,8 @@ def apply_pipeline_specializations(src: bytes, merged_vars: dict[str, tuple[str,
         return src
     text = src.decode()
     for var_name, (var_type, value) in merged_vars.items():
-        # Replace: extern static const <any_type> <name> = <default>; → static const <type> <name> = <value>;
-        # The extern keyword is removed so the value is baked into the compiled shader module.
-        pattern = rf'(?m)^(\s*)extern\s+static\s+const\s+\S+\s+{re.escape(var_name)}\s*=[^;\n]+;'
+        # Replace: static const <any_type> <name> = <default>; → static const <type> <name> = <value>;
+        pattern = rf'(?m)^(\s*)static\s+const\s+{re.escape(var_type)}\s+{re.escape(var_name)}\s*=.+'
         text = re.sub(pattern, rf'\g<1>static const {var_type} {var_name} = {value};', text)
     return text.encode()
 

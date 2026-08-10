@@ -9,21 +9,21 @@
 import kitty_custom_shader_types;
 
 // Maximum wavefront radius at animation_progress=1 (aspect-corrected UV units).
-extern static const float WAVE_SPEED       = 0.45;
+static const float WAVE_SPEED       = 0.45;
 // Spatial frequency of the rings (cycles per aspect-corrected UV unit).
-extern static const float WAVE_FREQUENCY   = 14.0;
+static const float WAVE_FREQUENCY   = 14.0;
 // Starting half-width of the Gaussian envelope (expands as animation_progress increases).
-extern static const float WAVE_WIDTH       = 0.055;
+static const float WAVE_WIDTH       = 0.055;
 // Peak radial UV displacement at the wavecrest.
-extern static const float AMPLITUDE        = 0.010;
+static const float AMPLITUDE        = 0.010;
 // Scale applied to the wave gradient when constructing the surface normal.
-extern static const float NORMAL_SCALE     = 8.0;
+static const float NORMAL_SCALE     = 8.0;
 // Blinn-Phong shininess exponent — higher values give a sharper, more mirror-like glint.
-extern static const float SHININESS        = 64.0;
+static const float SHININESS        = 64.0;
 // Peak specular contribution at the wave crest facing the light.
-extern static const float SPECULAR_STRENGTH = 0.40;
+static const float SPECULAR_STRENGTH = 0.40;
 // Subtle diffuse shading that rounds each ring into a 3D ridge.
-extern static const float DIFFUSE_STRENGTH  = 0.10;
+static const float DIFFUSE_STRENGTH  = 0.10;
 
 public float4 fragment_main(
     float4 color,

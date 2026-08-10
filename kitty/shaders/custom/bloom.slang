@@ -37,9 +37,9 @@ static const float3 samples[24] = {
 };
 
 // minimum luminance for a pixel to contribute bloom
-extern static const float BLOOM_THRESHOLD = 0.2f;
+static const float BLOOM_THRESHOLD = 0.2f;
 // strength of the bloom contribution
-extern static const float BLOOM_STRENGTH = 0.2f;
+static const float BLOOM_STRENGTH = 0.2f;
 
 float lum(float4 c) {
     return 0.299f * c.r + 0.587f * c.g + 0.114f * c.b;
