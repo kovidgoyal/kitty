@@ -12,17 +12,15 @@ static const float RESOLUTION = 4.0;
 // strength of the effect
 static const float STRENGTH = 0.5;
 
-void scanline(inout float3 color, float2 pixel_pos) {
+void
+scanline(inout float3 color, float2 pixel_pos) {
     float scanline = step(1.2, fmod(pixel_pos.y, RESOLUTION));
-    float grille   = step(1.2, fmod(pixel_pos.x, RESOLUTION));
+    float grille = step(1.2, fmod(pixel_pos.x, RESOLUTION));
     color *= max(1.0 - STRENGTH, scanline * grille);
 }
 
-public float4 fragment_main(
-    float4 color,
-    KittyTextures t,
-    KittyCustomShaderData d
-) {
+public float4
+fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     float2 pixel_pos = t.pos * float2(d.viewport_size_pixels);
     float3 c = color.rgb;
     scanline(c, pixel_pos);

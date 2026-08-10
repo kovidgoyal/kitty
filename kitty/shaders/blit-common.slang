@@ -16,18 +16,13 @@ public struct BlitOutput {
 #define bottom 3
 
 // Static constant array mapping vertex IDs
-static const int2 vertex_pos_map[4] = {
-    {right, top},
-    {right, bottom},
-    {left, bottom},
-    {left, top}
-};
+static const int2 vertex_pos_map[4] = { { right, top }, { right, bottom }, { left, bottom }, { left, top } };
 
-public BlitOutput get_coords_for_blit(uint vertex_id, float4 src_rect, float4 dest_rect) {
+public BlitOutput
+get_coords_for_blit(uint vertex_id, float4 src_rect, float4 dest_rect) {
     int2 pos = vertex_pos_map[vertex_id];
     BlitOutput output;
     output.texcoord = float2(src_rect[pos.x], src_rect[pos.y]);
     output.position = float2(dest_rect[pos.x], dest_rect[pos.y]);
     return output;
 }
-

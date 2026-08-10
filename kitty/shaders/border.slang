@@ -34,8 +34,7 @@ struct VertexInput {
 };
 
 // Vertex shader output structure
-struct VertexOutput
-{
+struct VertexOutput {
     float4 color_premul : COLOR_PREMUL;
     float4 position : SV_Position;
 };
@@ -47,28 +46,26 @@ static const int RIGHT = 2;
 static const int BOTTOM = 3;
 static const uint FF = 0xff;
 
-static const uint2 pos_map[4] = {
-    uint2(RIGHT, TOP),
-    uint2(RIGHT, BOTTOM),
-    uint2(LEFT, BOTTOM),
-    uint2(LEFT, TOP)
-};
+static const uint2 pos_map[4] = { uint2(RIGHT, TOP), uint2(RIGHT, BOTTOM), uint2(LEFT, BOTTOM), uint2(LEFT, TOP) };
 
-float to_color(uint c) {
+float
+to_color(uint c) {
     return gamma_lut[c & FF];
 }
 
-float is_integer_value(uint c, int x) {
+float
+is_integer_value(uint c, int x) {
     return 1. - step(0.5, abs(float(c) - float(x)));
 }
 
-float3 as_color_vector(uint c, int shift) {
+float3
+as_color_vector(uint c, int shift) {
     return float3(to_color(c >> shift), to_color(c >> (shift - 8)), to_color(c >> (shift - 16)));
 }
 
 [shader("vertex")]
-VertexOutput vertex_main(float4 rect, uint rect_color, uniform float background_opacity, uint vertex_id : SV_VertexID)
-{
+VertexOutput
+vertex_main(float4 rect, uint rect_color, uniform float background_opacity, uint vertex_id: SV_VertexID) {
     VertexOutput output;
 
     uint2 pos = pos_map[vertex_id];
@@ -83,10 +80,9 @@ VertexOutput vertex_main(float4 rect, uint rect_color, uniform float background_
     color3 = if_one_then(is_window_bg, window_bg, color3);
 
     // Actual border quads and tab bar edge strips must be always drawn opaque
-    float is_not_a_border = zero_or_one(abs(
-        (float(rc) - ACTIVE_BORDER_COLOR) * (float(rc) - INACTIVE_BORDER_COLOR) * (float(rc) - BELL_BORDER_COLOR) *
-        (float(rc) - TAB_BAR_EDGE_LEFT_COLOR) * (float(rc) - TAB_BAR_EDGE_RIGHT_COLOR)
-    ));
+    float is_not_a_border = zero_or_one(
+        abs((float(rc) - ACTIVE_BORDER_COLOR) * (float(rc) - INACTIVE_BORDER_COLOR) * (float(rc) - BELL_BORDER_COLOR) * (float(rc) - TAB_BAR_EDGE_LEFT_COLOR) *
+            (float(rc) - TAB_BAR_EDGE_RIGHT_COLOR)));
 
     float final_opacity = if_one_then(is_not_a_border, background_opacity, 1.);
     output.color_premul = vec4_premul(color3, final_opacity);
@@ -95,6 +91,8 @@ VertexOutput vertex_main(float4 rect, uint rect_color, uniform float background_
 }
 
 [shader("fragment")]
-float4 fragment_main(float4 color_premul : COLOR_PREMUL) : SV_Target {
+float4
+fragment_main(float4 color_premul: COLOR_PREMUL)
+    : SV_Target {
     return color_premul;
 }

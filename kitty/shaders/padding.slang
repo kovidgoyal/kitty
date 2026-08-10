@@ -23,10 +23,10 @@ import background;
 // Corner indicator per quad vertex, matching cell_pos_map in background.slang.
 // .x: 0 -> left, 1 -> right ; .y: 0 -> top, 1 -> bottom
 static const uint2 pad_pos_map[4] = {
-    uint2(1u, 0u),  // right, top
-    uint2(1u, 1u),  // right, bottom
-    uint2(0u, 1u),  // left, bottom
-    uint2(0u, 0u)   // left, top
+    uint2(1u, 0u), // right, top
+    uint2(1u, 1u), // right, bottom
+    uint2(0u, 1u), // left, bottom
+    uint2(0u, 0u)  // left, top
 };
 
 struct VertexOutput {
@@ -35,12 +35,13 @@ struct VertexOutput {
 };
 
 [shader("vertex")]
-VertexOutput vertex_main(
+VertexOutput
+vertex_main(
     [[vk::location(0)]] uint3 colors,
     [[vk::location(1)]] uint2 sprite_idx,
-    [[vk::location(2)]] uint  is_selected,
-    uint vertex_id : SV_VertexID,
-    uint instance_id : SV_InstanceID,
+    [[vk::location(2)]] uint is_selected,
+    uint vertex_id: SV_VertexID,
+    uint instance_id: SV_InstanceID,
     // The true cell index (into the cell grid) for strip 0's first instance.
     uniform uint base_instance,
     uniform uint instance_step,
@@ -62,18 +63,17 @@ VertexOutput vertex_main(
     // Strip-1 parameters. Equal to strip-0 values for single-strip draws so
     // the lerp below is always correct regardless of strip count.
     uniform uint base_instance2,
-    uniform float2 across2,
-) {
+    uniform float2 across2, ) {
     VertexOutput vo;
 
     // Branchless strip selector: 0.0 for strip 0, 1.0 for strip 1.
     float strip_f = float(instance_id / along_count);
-    uint  strip_i = instance_id % along_count;
+    uint strip_i = instance_id % along_count;
 
     // Select the base cell and across extents for whichever strip this
     // instance belongs to, using lerp so no divergent branch is emitted.
-    float fbase        = lerp(float(base_instance), float(base_instance2), strip_f);
-    uint  real_id      = uint(fbase) + strip_i * instance_step;
+    float fbase = lerp(float(base_instance), float(base_instance2), strip_f);
+    uint real_id = uint(fbase) + strip_i * instance_step;
     float2 chosen_across = lerp(across, across2, strip_f);
 
     vo.color_premul = padding_background_premul(colors, sprite_idx, is_selected, real_id);
@@ -89,7 +89,7 @@ VertexOutput vertex_main(
     float a = lerp(float(p.x), float(p.y), h);
     // 1 when this is the first/last instance within its strip, else 0.
     float is_first = 1.0 - min(float(strip_i), 1.0);
-    float is_last  = 1.0 - min(float(along_count - 1u - strip_i), 1.0);
+    float is_last = 1.0 - min(float(along_count - 1u - strip_i), 1.0);
 
     float along = lerp(along_lo, along_hi, s);
     // Extend the first cell's near corner and the last cell's far corner out to
@@ -104,6 +104,8 @@ VertexOutput vertex_main(
 }
 
 [shader("fragment")]
-float4 fragment_main(float4 color_premul : COLOR_PREMUL) : SV_Target {
+float4
+fragment_main(float4 color_premul: COLOR_PREMUL)
+    : SV_Target {
     return color_premul;
 }

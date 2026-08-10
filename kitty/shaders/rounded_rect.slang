@@ -9,23 +9,21 @@ import alpha_blend;
 #define right 2
 #define bottom 3
 
-static const int2 vertex_pos_map[4] = {
-    int2(right, top),
-    int2(right, bottom),
-    int2(left, bottom),
-    int2(left, top)
-};
+static const int2 vertex_pos_map[4] = { int2(right, top), int2(right, bottom), int2(left, bottom), int2(left, top) };
 
 static const float4 dest_rect = float4(-1, 1, 1, -1);
 
 [shader("vertex")]
-float4 vertex_main(uint vertex_id : SV_VertexID) : SV_Position {
+float4
+vertex_main(uint vertex_id: SV_VertexID)
+    : SV_Position {
     int2 pos = vertex_pos_map[vertex_id];
     return float4(dest_rect[pos.x], dest_rect[pos.y], 0, 1);
 }
 
 // Signed distance function for a rounded rectangle
-float rounded_rectangle_sdf(float2 p, float2 b, float r) {
+float
+rounded_rectangle_sdf(float2 p, float2 b, float r) {
     // signed distance field
     // first term is used for points outside the rectangle
     float2 q = abs(p) - b;
@@ -33,13 +31,15 @@ float rounded_rectangle_sdf(float2 p, float2 b, float r) {
 }
 
 [shader("fragment")]
-float4 fragment_main(
+float4
+fragment_main(
     uniform float4 rect,
     uniform float2 params,
     uniform float4 color,
     uniform float4 background_color,
-    float4 frag_coord : SV_Position // SV_Position provides gl_FragCoord equivalent in Slang
-) : SV_Target {
+    float4 frag_coord: SV_Position // SV_Position provides gl_FragCoord equivalent in Slang
+    )
+    : SV_Target {
     float2 size = rect.zw; // GLSL .ba maps to .zw or .ba in Slang (using .zw is typical)
     float2 origin = rect.xy;
     float thickness = params[0];

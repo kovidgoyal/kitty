@@ -406,8 +406,8 @@ def parse_slang_text(src_code: str, path: str = '') -> SlangFile:
                             entry_points.append(EntryPoint(Stage.vertex, name))
                         case 'fragment' | 'pixel':
                             entry_points.append(EntryPoint(Stage.fragment, name))
+                    found_entry_point = ''
                     break
-            found_entry_point = ''
         else:
             match words[0]:
                 case 'module':

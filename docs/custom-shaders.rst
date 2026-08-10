@@ -124,7 +124,7 @@ This is in a :file:`.slang` file. It must define a function called
 ``fragment_main()`` whose signature is:
 
 .. literalinclude:: ../kitty/shaders/custom/sample.slang
-   :start-at: public float4 fragment_main(
+   :start-after: START_FUNCTION_SIGNATURE
    :end-before: END_FUNCTION_SIGNATURE
 
 The two structs passed into this function have the definition shown below:

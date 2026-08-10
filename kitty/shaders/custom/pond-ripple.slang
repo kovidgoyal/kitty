@@ -9,37 +9,34 @@
 import kitty_custom_shader_types;
 
 // Maximum wavefront radius at animation_progress=1 (aspect-corrected UV units).
-static const float WAVE_SPEED       = 0.45;
+static const float WAVE_SPEED = 0.45;
 // Spatial frequency of the rings (cycles per aspect-corrected UV unit).
-static const float WAVE_FREQUENCY   = 14.0;
+static const float WAVE_FREQUENCY = 14.0;
 // Starting half-width of the Gaussian envelope (expands as animation_progress increases).
-static const float WAVE_WIDTH       = 0.055;
+static const float WAVE_WIDTH = 0.055;
 // Peak radial UV displacement at the wavecrest.
-static const float AMPLITUDE        = 0.010;
+static const float AMPLITUDE = 0.010;
 // Scale applied to the wave gradient when constructing the surface normal.
-static const float NORMAL_SCALE     = 8.0;
+static const float NORMAL_SCALE = 8.0;
 // Blinn-Phong shininess exponent — higher values give a sharper, more mirror-like glint.
-static const float SHININESS        = 64.0;
+static const float SHININESS = 64.0;
 // Peak specular contribution at the wave crest facing the light.
 static const float SPECULAR_STRENGTH = 0.40;
 // Subtle diffuse shading that rounds each ring into a 3D ridge.
-static const float DIFFUSE_STRENGTH  = 0.10;
+static const float DIFFUSE_STRENGTH = 0.10;
 
-public float4 fragment_main(
-    float4 color,
-    KittyTextures t,
-    KittyCustomShaderData d
-) {
+public float4
+fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     float2 pixelDims = float2(d.viewport_size_pixels) * t.viewport.zw;
-    float  aspect    = pixelDims.x / pixelDims.y;
+    float aspect = pixelDims.x / pixelDims.y;
 
     // d.mouse_pos.zw is the UV position of the last left-button press (y=0 at bottom).
     float2 center = d.mouse_pos.zw;
 
     // Aspect-corrected vector from the click center to this pixel.
     float2 delta = (t.pos - center) * float2(aspect, 1.0);
-    float  dist  = length(delta);
-    float2 dir   = delta / max(dist, 1e-5);
+    float dist = length(delta);
+    float2 dir = delta / max(dist, 1e-5);
 
     // Wavefront radius advances linearly with animation_progress.
     float front = WAVE_SPEED * t.animation_progress;
@@ -49,7 +46,7 @@ public float4 fragment_main(
 
     // Gaussian spatial envelope centered at the wavefront; grows in width over time.
     float sigma = WAVE_WIDTH * (1.0 + t.animation_progress);
-    float env   = exp(-behind * behind / (2.0 * sigma * sigma));
+    float env = exp(-behind * behind / (2.0 * sigma * sigma));
 
     // Causality: suppress any energy ahead of the wavefront.
     env *= 1.0 - smoothstep(-0.01, 0.02, behind);
@@ -57,7 +54,7 @@ public float4 fragment_main(
     // Temporal amplitude decay as the wave expands outward.
     float decay = pow(1.0 - t.animation_progress, 0.7);
 
-    float k    = WAVE_FREQUENCY * 6.28318530718;
+    float k = WAVE_FREQUENCY * 6.28318530718;
     float wave = sin(behind * k);
 
     // Analytic derivative of wave height h = wave * env * decay w.r.t. dist.
@@ -77,22 +74,17 @@ public float4 fragment_main(
     // Blinn-Phong half-vector.
     float3 H = normalize(L + V);
 
-    float diffuse  = max(dot(N, L), 0.0);
+    float diffuse = max(dot(N, L), 0.0);
     float specular = pow(max(dot(N, H), 0.0), SHININESS);
 
     // Radial UV displacement: push pixels away from center at crests, pull inward at troughs.
-    float2 warpedUV = clamp(
-        t.pos + dir * (wave * env * decay * AMPLITUDE),
-        float2(0.0), float2(1.0)
-    );
+    float2 warpedUV = clamp(t.pos + dir * (wave * env * decay * AMPLITUDE), float2(0.0), float2(1.0));
 
     // Sample the terminal backbuffer at the displaced position.
     float4 result = t.backbuffer.Sample(warpedUV);
 
     // 3D lighting: diffuse rounds each ring into a ridge, specular gives directional glints.
-    float lighting = 1.0
-        + diffuse  * DIFFUSE_STRENGTH  * env * decay
-        + specular * SPECULAR_STRENGTH * env * decay;
+    float lighting = 1.0 + diffuse * DIFFUSE_STRENGTH * env * decay + specular * SPECULAR_STRENGTH * env * decay;
     result.rgb *= lighting;
 
     return result;

@@ -41,7 +41,7 @@ for x in os.listdir(base):
             if file.startswith('wayland-') and os.path.basename(root) == 'glfw':
                 continue
             ext = os.path.splitext(file)[1]
-            if ext in ('.c', '.h', '.m'):
+            if ext in ('.c', '.h', '.m', '.slang'):
                 clang_files.append(os.path.join(root, file))
 
 CACHE_DIR = os.path.join(base, '.cache', 'autoformat')

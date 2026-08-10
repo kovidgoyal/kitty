@@ -19,16 +19,13 @@ static const float BORDER_GLOW = 0.55;
 // Dim factor applied to pixels outside the active window (1.0 = unchanged, 0.0 = black).
 static const float INACTIVE_DIM = 0.3;
 
-public float4 fragment_main(
-    float4 color,
-    KittyTextures t,
-    KittyCustomShaderData d
-) {
+public float4
+fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     float4 g = d.active_window_geometry;
     // Pass through unchanged if no active window geometry is known.
     if (g.z <= 0.0 || g.w <= 0.0) return color;
 
-    float2 uv     = t.pos;
+    float2 uv = t.pos;
     float2 winMin = g.xy;
     float2 winMax = g.xy + g.zw;
 
@@ -39,8 +36,8 @@ public float4 fragment_main(
 
     if (inWindow) {
         // Minimum distance from this pixel to any edge of the active window.
-        float2 edgeDists  = min(uv - winMin, winMax - uv);
-        float  nearestEdge = min(edgeDists.x, edgeDists.y);
+        float2 edgeDists = min(uv - winMin, winMax - uv);
+        float nearestEdge = min(edgeDists.x, edgeDists.y);
 
         // Additive border glow: strongest at the edge, falls off over BORDER_WIDTH.
         float borderGlow = smoothstep(BORDER_WIDTH, 0.0, nearestEdge) * BORDER_GLOW;

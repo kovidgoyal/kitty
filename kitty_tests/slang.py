@@ -152,6 +152,58 @@ void vsMain() {}
             SlangFile('', '', frozenset({'common'}), frozenset({EntryPoint(Stage.vertex, 'vsMain')}), 'myshader'),
         )
 
+        # Autoformat style: return type on its own line before function name
+        check(
+            """
+[shader("vertex")]
+VertexOutput
+vertex_main(uint vertex_id : SV_VertexID) {}
+""",
+            SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.vertex, 'vertex_main')})),
+        )
+
+        # Autoformat style: return type on own line, function name + open-paren on next, params on following lines
+        check(
+            """
+[shader("fragment")]
+float4
+fragment_main(
+    float2 texcoord : TEXCOORD
+) : SV_Target { return float4(0); }
+""",
+            SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'fragment_main')})),
+        )
+
+        # Autoformat style: attribute lines between [shader] and split return-type/name declaration
+        check(
+            """
+[shader("fragment")]
+[numthreads(1, 1, 1)]
+float4
+psMain() : SV_Target { return float4(1, 0, 0, 1); }
+""",
+            SlangFile('', '', frozenset(), frozenset({EntryPoint(Stage.fragment, 'psMain')})),
+        )
+
+        # Autoformat style: vertex and fragment both split across lines
+        check(
+            """
+[shader("vertex")]
+VertexOutput
+vsMain(uint id : SV_VertexID) {}
+
+[shader("fragment")]
+float4
+fsMain(VertexOutput vo) : SV_Target { return float4(0); }
+""",
+            SlangFile(
+                '',
+                '',
+                frozenset(),
+                frozenset({EntryPoint(Stage.vertex, 'vsMain'), EntryPoint(Stage.fragment, 'fsMain')}),
+            ),
+        )
+
     def test_slang_ordering(self):
         # Test topological_sort with a manually constructed linear chain: a <- b <- c
         graph: dict[str, SlangFile] = {

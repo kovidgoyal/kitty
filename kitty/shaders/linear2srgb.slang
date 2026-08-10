@@ -5,7 +5,8 @@
 module linear2srgb;
 
 // Scalar sRGB to Linear conversion
-public float srgb2linear(float x) {
+public float
+srgb2linear(float x) {
     float lower = x / 12.92;
     float upper = pow((x + 0.055f) / 1.055f, 2.4f);
 
@@ -14,7 +15,8 @@ public float srgb2linear(float x) {
 }
 
 // Scalar Linear to sRGB conversion
-public float linear2srgb(float x) {
+public float
+linear2srgb(float x) {
     float lower = 12.92 * x;
     float upper = 1.055 * pow(x, 1.0f / 2.4f) - 0.055f;
 
@@ -22,7 +24,8 @@ public float linear2srgb(float x) {
 }
 
 // Vector Linear to sRGB conversion
-public float3 linear2srgb(float3 x) {
+public float3
+linear2srgb(float3 x) {
     float3 lower = 12.92 * x;
     float3 upper = 1.055 * pow(x, float3(1.0f / 2.4f)) - 0.055f;
 
@@ -30,9 +33,9 @@ public float3 linear2srgb(float3 x) {
 }
 
 // Vector sRGB to Linear conversion
-public float3 srgb2linear(float3 c) {
+public float3
+srgb2linear(float3 c) {
     // You can call the scalar version per-component,
     // or pass the whole vector if you overload it for float3.
     return float3(srgb2linear(c.r), srgb2linear(c.g), srgb2linear(c.b));
 }
-

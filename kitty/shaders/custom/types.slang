@@ -4,7 +4,7 @@
 
 
 public struct KittyCustomShaderData {
-    public float4 src_rect, dest_rect;  // used by the vertex shader internally
+    public float4 src_rect, dest_rect; // used by the vertex shader internally
 
     // global background/foreground colors from kitty options (linear RGB, alpha=1)
     public float4 background, foreground;
@@ -39,8 +39,8 @@ public struct KittyCustomShaderData {
     // Corner order: 0=top-right, 1=bottom-right, 2=bottom-left, 3=top-left.
     // Use animation_start cursor-trail-move / animation_stop cursor-trail-stop to activate.
     // animation_progress is NOT tied to trail duration; use cursor_trail_state.x for opacity instead.
-    public float4 cursor_trail_corners_x;  // UV x-coordinates of the 4 animated trail quad corners
-    public float4 cursor_trail_corners_y;  // UV y-coordinates of the 4 animated trail quad corners
+    public float4 cursor_trail_corners_x; // UV x-coordinates of the 4 animated trail quad corners
+    public float4 cursor_trail_corners_y; // UV y-coordinates of the 4 animated trail quad corners
     // .x=left, .y=right, .z=top, .w=bottom UV edges of the current cursor rectangle
     public float4 cursor_trail_edge;
     // .x=left, .y=right, .z=top, .w=bottom UV edges of the cursor rectangle before the most recent move.
@@ -61,12 +61,12 @@ public struct KittyCustomShaderData {
     // viewport currently being rendered too.
     public uint2 viewport_size_pixels;
 
-    public float mouse_pointer_hidden;  // 1.0 if the mouse pointer is currently hidden, 0.0 if visible
-    public float cursor_trail_state;    // 1.0 if the cursor trail is actively animating, 0.0 otherwise
+    public float mouse_pointer_hidden; // 1.0 if the mouse pointer is currently hidden, 0.0 if visible
+    public float cursor_trail_state;   // 1.0 if the cursor trail is actively animating, 0.0 otherwise
 
-    public float timestamp;  // time in seconds since kitty was started (millisecond precision)
-    public float last_rendered_at;  // time of previous render in seconds since kitty was started (millisecond precision)
-    public uint frame_counter;  // cumulative frame counter increments by one every time a frame is fully rendered, first frame is zero
+    public float timestamp;        // time in seconds since kitty was started (millisecond precision)
+    public float last_rendered_at; // time of previous render in seconds since kitty was started (millisecond precision)
+    public uint frame_counter;     // cumulative frame counter increments by one every time a frame is fully rendered, first frame is zero
     // Time (same epoch as `timestamp`) of the most recent cursor position change that triggered a trail.
     // Zero until the cursor has moved at least twice. Pair with cursor_trail_prev_edge.
     public float cursor_trail_change_time;
@@ -84,7 +84,7 @@ public struct KittyTextures {
     public Sampler2D b;
     public Sampler2D persist;
 
-    public float2 pos;  // the position of this pixel in the textures (UV coordinates)
+    public float2 pos; // the position of this pixel in the textures (UV coordinates)
 
     // Some group related uniforms
 

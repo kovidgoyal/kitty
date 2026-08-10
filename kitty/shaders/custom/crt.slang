@@ -9,15 +9,12 @@
 
 import kitty_custom_shader_types;
 
-static const float WARP = 0.25f;  // simulates curvature of CRT monitor
-static const float SCAN = 0.50f;  // simulates darkness between scanlines
-static const float4 TINT = float4(0, 0.8, 0.6, 0);  // tint color set the fourth component to 1 to apply it fully
+static const float WARP = 0.25f;                   // simulates curvature of CRT monitor
+static const float SCAN = 0.50f;                   // simulates darkness between scanlines
+static const float4 TINT = float4(0, 0.8, 0.6, 0); // tint color set the fourth component to 1 to apply it fully
 
-public float4 fragment_main(
-    float4 color,
-    KittyTextures t,
-    KittyCustomShaderData d
-) {
+public float4
+fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     // UV within the current viewport (0..1)
     float2 uv = t.pos;
 
@@ -26,8 +23,12 @@ public float4 fragment_main(
     dc *= dc;
 
     // Warp UV to simulate CRT screen curvature
-    uv.x -= 0.5f; uv.x *= 1.0f + (dc.y * (0.3f * WARP)); uv.x += 0.5f;
-    uv.y -= 0.5f; uv.y *= 1.0f + (dc.x * (0.4f * WARP)); uv.y += 0.5f;
+    uv.x -= 0.5f;
+    uv.x *= 1.0f + (dc.y * (0.3f * WARP));
+    uv.x += 0.5f;
+    uv.y -= 0.5f;
+    uv.y *= 1.0f + (dc.x * (0.4f * WARP));
+    uv.y += 0.5f;
 
     // Original Y pixel coordinate within the viewport (for scanline phase)
     float fragCoordY = (t.pos.y - t.viewport.y) * float(d.viewport_size_pixels.y);

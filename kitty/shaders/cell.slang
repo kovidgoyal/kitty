@@ -33,7 +33,7 @@ struct VertexOutput {
 
     float3 background;
     float4 effective_background_premul;
-    float  effective_text_alpha;
+    float effective_text_alpha;
     float3 sprite_pos;
     float3 underline_pos;
     float3 cursor_pos;
@@ -42,11 +42,12 @@ struct VertexOutput {
     float3 cell_foreground;
     float4 cursor_color_premult;
     float3 decoration_fg;
-    float  colored_sprite;
+    float colored_sprite;
 };
 
 // Foreground utility functions {{{
-uint3 to_sprite_coords(uint idx) {
+uint3
+to_sprite_coords(uint idx) {
     uint sprites_per_page = crd.sprites_xnum * crd.sprites_ynum;
     uint z = idx / sprites_per_page;
     uint num_on_last_page = idx - sprites_per_page * z;
@@ -55,23 +56,26 @@ uint3 to_sprite_coords(uint idx) {
     return uint3(x, y, z);
 }
 
-float3 to_sprite_pos(uint2 pos, uint idx) {
+float3
+to_sprite_pos(uint2 pos, uint idx) {
     uint3 c = to_sprite_coords(idx);
     float2 s_xpos = float2(float(c.x), float(c.x) + 1.0f) * (1.0f / float(crd.sprites_xnum));
     float2 s_ypos = float2(float(c.y), float(c.y) + 1.0f) * (1.0f / float(crd.sprites_ynum));
     uint texture_height_px = (crd.cell_height + 1u) * crd.sprites_ynum;
     float row_height = 1.0f / float(texture_height_px);
-    s_ypos[1] -= row_height;  // skip the decorations_exclude row
+    s_ypos[1] -= row_height; // skip the decorations_exclude row
     return float3(s_xpos[pos.x], s_ypos[pos.y], float(c.z));
 }
 
-uint to_underline_exclusion_pos(uint2 sprite_idx) {
+uint
+to_underline_exclusion_pos(uint2 sprite_idx) {
     uint3 c = to_sprite_coords(sprite_idx[0]);
     uint cell_top_px = c.y * (crd.cell_height + 1u);
     return cell_top_px + crd.cell_height;
 }
 
-uint read_sprite_decorations_idx(uint2 sprite_idx) {
+uint
+read_sprite_decorations_idx(uint2 sprite_idx) {
     int idx = int(sprite_idx[0] & SPRITE_INDEX_MASK);
     int width, height;
     sprite_decorations_map.GetDimensions(width, height);
@@ -81,29 +85,32 @@ uint read_sprite_decorations_idx(uint2 sprite_idx) {
     return sprite_decorations_map[int2(x, y)].r;
 }
 
-uint2 get_decorations_indices(uint2 sprite_idx, uint in_url /* [0, 1] */, uint text_attrs) {
+uint2
+get_decorations_indices(uint2 sprite_idx, uint in_url /* [0, 1] */, uint text_attrs) {
     uint decorations_idx = read_sprite_decorations_idx(sprite_idx);
     uint has_decorations = uint(zero_or_one(float(decorations_idx)));
     uint strike_style = ((text_attrs >> STRIKE_SHIFT) & BIT_MASK); // 0 or 1
     uint strike_idx = decorations_idx * strike_style;
     uint underline_style = ((text_attrs >> DECORATION_SHIFT) & DECORATION_MASK);
     underline_style = in_url * crd.url_style + (1u - in_url) * underline_style; // [0, 5]
-    uint has_underline = uint(step(0.5f, float(underline_style)));  // [0, 1]
+    uint has_underline = uint(step(0.5f, float(underline_style)));              // [0, 1]
     return has_decorations * uint2(strike_idx, has_underline * (decorations_idx + underline_style));
 }
 // }}}
 
 // Override foreground colors {{{
-float3 fg_override_luminance(float colored_sprite, float under_luminance, float over_lumininace, float3 under, float3 over) {
+float3
+fg_override_luminance(float colored_sprite, float under_luminance, float over_lumininace, float3 under, float3 over) {
     // If the difference in luminance is too small,
     // force the foreground color to be black or white.
     float diff_luminance = abs(under_luminance - over_lumininace);
-	float override_level = (1.f - colored_sprite) * step(diff_luminance, crd.fg_override_threshold);
-	float original_level = 1.f - override_level;
-	return original_level * over + override_level * float3(step(under_luminance, 0.5f));
+    float override_level = (1.f - colored_sprite) * step(diff_luminance, crd.fg_override_threshold);
+    float original_level = 1.f - override_level;
+    return original_level * over + override_level * float3(step(under_luminance, 0.5f));
 }
 
-float3 fg_override_contrast(float under_luminance, float over_luminance, float3 under, float3 over) {
+float3
+fg_override_contrast(float under_luminance, float over_luminance, float3 under, float3 over) {
     float ratio = contrast_ratio(under_luminance, over_luminance);
     float3 diff = abs(under - over);
     float3 over_hsluv = rgbToHsluv(over);
@@ -119,7 +126,8 @@ float3 fg_override_contrast(float under_luminance, float over_luminance, float3 
     return lerp(result, over, fallback_condition);
 }
 
-float3 override_foreground_color(float3 over, float3 under, float colored_sprite) {
+float3
+override_foreground_color(float3 over, float3 under, float colored_sprite) {
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
     if (FG_OVERRIDE_ALGO == 1) return fg_override_luminance(colored_sprite, under_luminance, over_lumininace, under, over);
@@ -128,14 +136,14 @@ float3 override_foreground_color(float3 over, float3 under, float colored_sprite
 // }}}
 
 [shader("vertex")]
-VertexOutput vertex_main(
+VertexOutput
+vertex_main(
     [[vk::location(0)]] uint3 colors,
     [[vk::location(1)]] uint2 sprite_idx,
-    [[vk::location(2)]] uint  is_selected,
-    uint vertex_id : SV_VertexID,
-    uint instance_id : SV_InstanceID,
-    uniform uint draw_bg_bitfield,
-) {
+    [[vk::location(2)]] uint is_selected,
+    uint vertex_id: SV_VertexID,
+    uint instance_id: SV_InstanceID,
+    uniform uint draw_bg_bitfield, ) {
     VertexOutput vo;
 
     BackgroundOutput bo = compute_background(colors, sprite_idx, is_selected, instance_id, vertex_id);
@@ -153,8 +161,7 @@ VertexOutput vertex_main(
         vo.colored_sprite = float((sprite_idx[0] & SPRITE_COLORED_MASK) >> SPRITE_COLORED_SHIFT);
 
         float has_dim = float((text_attrs >> DIM_SHIFT) & BIT_MASK), has_blink = float((text_attrs >> BLINK_SHIFT) & BIT_MASK);
-        vo.effective_text_alpha = crd.inactive_text_alpha * if_one_then(has_dim, crd.dim_opacity, 1.0) * if_one_then(
-                has_blink, crd.blink_opacity, 1.0);
+        vo.effective_text_alpha = crd.inactive_text_alpha * if_one_then(has_dim, crd.dim_opacity, 1.0) * if_one_then(has_blink, crd.blink_opacity, 1.0);
         float in_url = float((is_selected >> 1) & BIT_MASK);
         vo.decoration_fg = if_one_then(in_url, color_to_vec(crd.url_color), to_color(colors[2], fg_as_uint));
         // Selection
@@ -203,21 +210,25 @@ uniform Sampler2DArray sprites;
 // Scaling factor for the extra text-alpha adjustment for luminance-difference.
 static const float text_gamma_scaling = 0.5;
 
-float clamp_to_unit_float(float x) {
+float
+clamp_to_unit_float(float x) {
     // Clamp value to suitable output range
     return clamp(x, 0.0f, 1.0f);
 }
 
-float4 foreground_contrast_new(float4 over, float3 under, float text_contrast, float text_gamma_adjustment) {
+float4
+foreground_contrast_new(float4 over, float3 under, float text_contrast, float text_gamma_adjustment) {
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
     // Apply additional gamma-adjustment scaled by the luminance difference, the darker the foreground the more adjustment we apply.
     // A multiplicative contrast is also available to increase saturation.
-    over.a = clamp_to_unit_float(lerp(over.a, pow(over.a, text_gamma_adjustment), (1 - over_lumininace + under_luminance) * text_gamma_scaling) * text_contrast);
+    over.a =
+        clamp_to_unit_float(lerp(over.a, pow(over.a, text_gamma_adjustment), (1 - over_lumininace + under_luminance) * text_gamma_scaling) * text_contrast);
     return over;
 }
 
-float4 foreground_contrast_old(float4 over, float3 under) {
+float4
+foreground_contrast_old(float4 over, float3 under) {
     // Simulation of gamma-incorrect blending
     float under_luminance = dot(under, Y);
     float over_lumininace = dot(over.rgb, Y);
@@ -225,27 +236,37 @@ float4 foreground_contrast_old(float4 over, float3 under) {
     //
     // linear2srgb(over * overA2 + under * (1 - overA2)) = linear2srgb(over) * over.a + linear2srgb(under) * (1 - over.a)
     // ^ gamma correct blending with new alpha             ^ gamma incorrect blending with old alpha
-    over.a = clamp_to_unit_float((srgb2linear(linear2srgb(over_lumininace) * over.a + linear2srgb(under_luminance) * (1.0f - over.a)) - under_luminance) / (over_lumininace - under_luminance));
+    over.a = clamp_to_unit_float(
+        (srgb2linear(linear2srgb(over_lumininace) * over.a + linear2srgb(under_luminance) * (1.0f - over.a)) - under_luminance) /
+        (over_lumininace - under_luminance));
     return over;
 }
 
-float4 foreground_contrast(float4 over, float3 under, float text_contrast, float text_gamma_adjustment) {
+float4
+foreground_contrast(float4 over, float3 under, float text_contrast, float text_gamma_adjustment) {
     if (TEXT_NEW_GAMMA) return foreground_contrast_new(over, under, text_contrast, text_gamma_adjustment);
     return foreground_contrast_old(over, under);
 }
 
-float4 load_text_foreground_color(float3 sprite_pos, float colored_sprite, float3 cell_foreground) {
+float4
+load_text_foreground_color(float3 sprite_pos, float colored_sprite, float3 cell_foreground) {
     // For colored sprites use the color from the sprite rather than the text foreground
     // Return non-premultiplied foreground color
     float4 text_fg = sprites.Sample(sprite_pos);
     return float4(lerp(cell_foreground, text_fg.xyz, colored_sprite), text_fg.w);
 }
 
-float4 calculate_premul_foreground_from_sprites(
-    float3 sprite_pos, float3 underline_pos, float3 cursor_pos, float3 strike_pos, uint underline_exclusion_pos,
-    float4 text_fg, float3 decoration_fg, float4 cursor_color_premult,
-    float effective_text_alpha,
-) {
+float4
+calculate_premul_foreground_from_sprites(
+    float3 sprite_pos,
+    float3 underline_pos,
+    float3 cursor_pos,
+    float3 strike_pos,
+    uint underline_exclusion_pos,
+    float4 text_fg,
+    float3 decoration_fg,
+    float4 cursor_color_premult,
+    float effective_text_alpha, ) {
     // Return premul foreground color from decorations (cursor, underline, strikethrough)
     int width, height, layer;
     sprites.GetDimensions(width, height, layer);
@@ -261,24 +282,20 @@ float4 calculate_premul_foreground_from_sprites(
 
     float combined_alpha = min(text_fg.w + strike_alpha, 1.0);
 
-    float4 ans = alpha_blend(
-        float4(text_fg.rgb, combined_alpha * effective_text_alpha),
-        float4(decoration_fg, underline_alpha * effective_text_alpha)
-    );
+    float4 ans = alpha_blend(float4(text_fg.rgb, combined_alpha * effective_text_alpha), float4(decoration_fg, underline_alpha * effective_text_alpha));
 
     return lerp(ans, cursor_color_premult, cursor_alpha * cursor_color_premult.w);
 }
 
-float4 adjust_foreground_contrast_with_background(float4 text_fg, float3 bg, float text_contrast, float text_gamma_adjustment) {
+float4
+adjust_foreground_contrast_with_background(float4 text_fg, float3 bg, float text_contrast, float text_gamma_adjustment) {
     return foreground_contrast(text_fg, bg, text_contrast, text_gamma_adjustment);
 }
 
 [shader("fragment")]
-float4 fragment_main(
-    VertexOutput vo,
-    uniform float text_contrast,
-    uniform float text_gamma_adjustment,
-) : SV_Target {
+float4
+fragment_main(VertexOutput vo, uniform float text_contrast, uniform float text_gamma_adjustment, )
+    : SV_Target {
     float4 ans_premul = 0;
     if (!ONLY_FOREGROUND) ans_premul = vo.effective_background_premul;
 
@@ -287,8 +304,15 @@ float4 fragment_main(
         float4 text_fg = load_text_foreground_color(vo.sprite_pos, vo.colored_sprite, vo.cell_foreground);
         text_fg = adjust_foreground_contrast_with_background(text_fg, vo.background, text_contrast, text_gamma_adjustment);
         float4 text_fg_premul = calculate_premul_foreground_from_sprites(
-            vo.sprite_pos, vo.underline_pos, vo.cursor_pos, vo.strike_pos, vo.underline_exclusion_pos,
-            text_fg, vo.decoration_fg, vo.cursor_color_premult, vo.effective_text_alpha);
+            vo.sprite_pos,
+            vo.underline_pos,
+            vo.cursor_pos,
+            vo.strike_pos,
+            vo.underline_exclusion_pos,
+            text_fg,
+            vo.decoration_fg,
+            vo.cursor_color_premult,
+            vo.effective_text_alpha);
         if (ONLY_FOREGROUND) ans_premul = text_fg_premul;
         else ans_premul = alpha_blend_premul(text_fg_premul, ans_premul);
     }
