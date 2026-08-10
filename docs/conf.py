@@ -347,7 +347,7 @@ def write_custom_shader_docs() -> None:  # {{{
         a('')
         for shader_name in shader_names:
             tagline = demo_module.metadata[shader_name]['tagline']
-            title = shader_title(shader_name)
+            title = demo_module.metadata[shader_name].get('title', shader_title(shader_name))
             a(f'   .. grid-item-card:: {title}')
             a(f'      :link: https://download.calibre-ebook.com/videos/{shader_name}.webm')
             a('      :class-card: shader-demo-card')

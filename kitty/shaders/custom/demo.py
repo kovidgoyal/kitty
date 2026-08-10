@@ -161,6 +161,10 @@ metadata: dict[str, dict[str, Any]] = {
         'tagline': 'Highlight the active window on focus change.',
         'session': 'new_tab My Shell\nlaunch kitten run-shell ls\nnew_tab My Code\nlaunch nvim -R {self}',
     },
+    # Retro terminals
+    'crt': {'category': 'retro', 'title': 'Cathode Ray Tube', 'tagline': 'Your terminal deserves to have curves.', 'duration': 2},
+    'crt-blue': {'category': 'retro', 'title': 'CRT Blue', 'tagline': 'Do you have the blues?', 'duration': 2},
+    'tft': {'category': 'retro', 'title': 'Thin Film LCD', 'tagline': 'You are too modern for CRT', 'duration': 2},
 }
 
 

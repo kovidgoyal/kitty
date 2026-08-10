@@ -46,6 +46,10 @@ Navigation
 
 .. include:: generated/custom-shaders-navigation.rst
 
+Retro Terminals
+-----------------
+
+.. include:: generated/custom-shaders-retro.rst
 
 
 Anatomy of a custom shader
