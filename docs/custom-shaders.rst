@@ -321,6 +321,11 @@ be combined with ``|`` — any one of them will trigger the action.
 
    * - ``bell-in-window``
      - A bell (BEL character) is received in any kitty window.
+       The geometry of the window in which the most recent bell occurred is
+       available in ``d.bell_window_geometry`` (UV co-ordinates, origin
+       bottom-left; ``.xy`` = lower-left corner, ``.zw`` = width and height).
+       If that window is not currently visible in the active tab or layout,
+       ``d.bell_window_geometry`` equals ``d.central_area``.
 
    * - ``user-activity``
      - Any keyboard or mouse input is received.

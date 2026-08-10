@@ -563,6 +563,7 @@ typedef struct OSWindow {
         int last_v120_dir_x, last_v120_dir_y;
     } scroll;
     unsigned shader_anim_event_registry;
+    id_type last_bell_window_id; // ID of the most recent window that received a bell event
     struct {
         bool active;
         monotonic_t started_at;

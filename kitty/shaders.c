@@ -2359,6 +2359,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         float mouse_pos[4];
         float mouse_button_pressed[4];
         float active_window_geometry[4];
+        float bell_window_geometry[4];
         float central_area[4];
         float cursor_trail_corners_x[4];
         float cursor_trail_corners_y[4];
@@ -2485,6 +2486,27 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     } else {
         d->central_area[2] = 1.f;
         d->central_area[3] = 1.f;
+    }
+    if (os_window->last_bell_window_id && os_window->num_tabs > 0 && vpw > 0 && vph > 0) {
+        WindowGeometry bell_win_geom = {0};
+        bool bell_win_found = false;
+        Tab *bt = os_window->tabs + os_window->active_tab;
+        for (unsigned i = 0; i < bt->num_windows; i++) {
+            Window *bw = bt->windows + i;
+            if (bw->id == os_window->last_bell_window_id && bw->visible) {
+                bell_win_geom = bw->render_data.geometry;
+                bell_win_found = true;
+                break;
+            }
+        }
+        if (bell_win_found && bell_win_geom.right > bell_win_geom.left) {
+            d->bell_window_geometry[0] = (float)bell_win_geom.left / vpw;
+            d->bell_window_geometry[1] = 1.f - (float)bell_win_geom.bottom / vph;
+            d->bell_window_geometry[2] = (float)(bell_win_geom.right - bell_win_geom.left) / vpw;
+            d->bell_window_geometry[3] = (float)(bell_win_geom.bottom - bell_win_geom.top) / vph;
+        } else {
+            memcpy(d->bell_window_geometry, d->central_area, sizeof(d->bell_window_geometry));
+        }
     }
     unmap_vao_buffer(custom_end_vao_idx, 0);
     bind_vao_uniform_buffer(custom_end_vao_idx, 0, CUSTOM_END_DATA_BINDING_POINT);

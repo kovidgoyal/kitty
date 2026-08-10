@@ -22,6 +22,11 @@ public struct KittyCustomShaderData {
     // .xy = lower-left corner of the window, .zw = width and height.
     // All components are zero when no active window was rendered this frame.
     public float4 active_window_geometry;
+    // Geometry of the most recently belled window in UV co-ordinates (origin bottom-left).
+    // .xy = lower-left corner of the window, .zw = width and height.
+    // If the belled window is not currently visible in the active tab/layout, equals central_area.
+    // All components are zero until the first bell-in-window event occurs.
+    public float4 bell_window_geometry;
     // Geometry of the central content area of the OS window (the tab area, excluding any tab bar)
     // in UV co-ordinates (origin bottom-left).
     // .xy = lower-left corner, .zw = width and height.

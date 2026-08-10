@@ -907,8 +907,10 @@ prepare_to_render_os_window(
             }
             if (send_cell_data_to_gpu(WD.vao_idx, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at | WD.screen->start_drag_overlay_at) needs_render = true;
-            if (WD.screen->start_visual_bell_at && WD.screen->start_visual_bell_at > os_window->last_rendered_at)
+            if (WD.screen->start_visual_bell_at && WD.screen->start_visual_bell_at > os_window->last_rendered_at) {
                 os_window->shader_anim_event_registry |= (1u << SHADER_ANIM_EVENT_BELL_IN_WINDOW);
+                os_window->last_bell_window_id = w->id;
+            }
             // Prepare window title bar screen data for GPU
             WindowRenderData *trd = &w->window_title_render_data;
             if (trd->screen && trd->geometry.bottom > trd->geometry.top && trd->geometry.right > trd->geometry.left) {
