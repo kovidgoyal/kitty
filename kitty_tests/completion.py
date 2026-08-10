@@ -94,6 +94,7 @@ def completion(self: TestCompletion, tdir: str):
 
     add('kitty ', has_words('@', '+', '+open'))
     add('kitty @ l', has_words('ls', 'last-used-layout', 'launch'))
+    add('kitty @ set-o', has_words('set-os-window-title'))
 
     def make_file(path, mode=None):
         with open(os.path.join(tdir, path), mode='x') as f:
