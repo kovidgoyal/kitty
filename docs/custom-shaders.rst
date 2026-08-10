@@ -51,6 +51,34 @@ Retro Terminals
 
 .. include:: generated/custom-shaders-retro.rst
 
+Customising and composing shaders
+-----------------------------------
+
+While you can always customise the shader by editing the shader itself, this is
+overkill. Often shader declare parameters that you can tune to customise their
+appearance. If you open the shader file such parameters are often declared near
+the top as ``static const`` variables. You can customise these using pipeline
+files without needing to edit the shader itself. You can also compose multiple
+shaders to create sophisticated effects via pipeline files. Pipeline files are
+explored in :ref:`full detail below <custom_shader_pipeline>`, here we will see a quick example to get you
+started::
+
+    startgroup
+        var float4 TINT = float4(0, 0.8, 0.6, 1)
+        shaders crt
+    endgroup
+
+    startgroup
+        animation_start os-window-focus-in | user-activity
+        animation_stop os-window-focus-out | user-idle
+        shaders spotlight
+    endgroup
+
+This pipeline combines two shaders, the ``crt`` shader and the ``spotlight`` on
+mouse shader. In the first group we have the crt shader and its color has been
+customised. The second group defines the spotlight shader and specifies exactly
+when the spotlight animation should start and stop.
+
 
 Anatomy of a custom shader
 ----------------------------
@@ -106,6 +134,8 @@ The two structs passed into this function have the definition shown below:
    :end-before: END_TYPES_DEFINITION
 
 Shaders take their inputs and use them to transform the color as they see fit.
+
+.. _custom_shader_pipeline:
 
 The pipeline part
 ^^^^^^^^^^^^^^^^^^^^
