@@ -20,7 +20,7 @@ from enum import StrEnum, auto
 from functools import lru_cache, partial
 from itertools import chain, product
 from types import MappingProxyType
-from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple, TypedDict, TypeGuard, get_args
+from typing import Any, Callable, Iterable, Iterator, Literal, NamedTuple, TypedDict, TypeGuard
 
 from kitty.constants import read_kitty_resource, shaders_dir, slangc
 from kitty.fast_data_types import (
@@ -1090,11 +1090,11 @@ class Slot(StrEnum):
 
 
 def is_valid_named_texture(x: str) -> TypeGuard[NamedTexture]:
-    return x in get_args(NamedTexture)
+    return x in NamedTexture._value2member_map_
 
 
 def is_valid_slot(x: str) -> TypeGuard[Slot]:
-    return x in get_args(Slot)
+    return x in Slot._value2member_map_
 
 
 VALID_VAR_TYPES: frozenset[str] = frozenset({'uint', 'int', 'float', 'double', 'bool'})
