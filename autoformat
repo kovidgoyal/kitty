@@ -48,11 +48,14 @@ CACHE_DIR = os.path.join(base, '.cache', 'autoformat')
 CACHE_FILE = os.path.join(CACHE_DIR, 'clang_format.json')
 
 
-def file_hash(path: str) -> str:
-    h = hashlib.md5()
+def data_hash(src: bytes) -> str:
+    return hashlib.md5(src).hexdigest()
+
+
+def file_hash(path: str) -> tuple[str, bytes]:
     with open(path, 'rb') as f:
-        h.update(f.read())
-    return h.hexdigest()
+        src = f.read()
+    return data_hash(src), src
 
 
 def load_cache() -> dict[str, str]:
@@ -81,18 +84,25 @@ cache_lock = threading.Lock()
 
 def run_clang_format(file_path: str) -> tuple[bool, str, str]:
     rel_path = os.path.relpath(file_path, base)
-    current_hash = file_hash(file_path)
+    current_hash, src = file_hash(file_path)
 
     with cache_lock:
         if cache.get(rel_path) == current_hash:
             return True, '', ''
 
-    cmd = ['clang-format', '-style=file', '-i', file_path]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    fn = file_path
+    sf = '.clang-format'
+    if file_path.endswith('.slang'):
+        fn += '.cs'
+        sf = '.clang-format-for-slang'
+    cmd = ['clang-format', '--style=file:' + sf, '--assume-filename=' + fn]
+    result = subprocess.run(cmd, capture_output=True, input=src)
     if result.returncode != 0:
-        return False, file_path, result.stderr
+        return False, file_path, result.stderr.decode()
+    new_hash = data_hash(result.stdout)
+    with open(file_path, 'wb') as f:
+        f.write(result.stdout)
 
-    new_hash = file_hash(file_path)
     with cache_lock:
         cache[rel_path] = new_hash
 
