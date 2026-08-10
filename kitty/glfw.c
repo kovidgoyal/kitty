@@ -2392,6 +2392,61 @@ glfw_terminate(PYNOARG) {
 }
 
 static PyObject *
+glfw_wayland_inject_init(PyObject UNUSED *self, PyObject *args) {
+    const char *path, *wayland_display;
+    if (!PyArg_ParseTuple(args, "ss", &path, &wayland_display)) return NULL;
+    if (setenv("WAYLAND_DISPLAY", wayland_display, 1) != 0) {
+        PyErr_SetFromErrno(PyExc_OSError);
+        return NULL;
+    }
+    const char *err = load_glfw(path);
+    if (err) {
+        PyErr_SetString(PyExc_RuntimeError, err);
+        return NULL;
+    }
+    bool supports_window_occlusion = false;
+    if (!glfwInit((monotonic_t)0, &supports_window_occlusion)) {
+        PyErr_SetString(PyExc_RuntimeError, "glfwInit failed for wayland input injection");
+        return NULL;
+    }
+    if (glfwWaylandCreateVirtualDevices && !glfwWaylandCreateVirtualDevices()) {
+        PyErr_SetString(PyExc_RuntimeError, "failed to create virtual pointer/keyboard devices");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+glfw_wayland_inject_terminate(PYNOARG) {
+    glfwTerminate();
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+glfw_wayland_inject_mouse_motion_absolute(PyObject UNUSED *self, PyObject *args) {
+    unsigned int x, y, x_extent, y_extent;
+    if (!PyArg_ParseTuple(args, "IIII", &x, &y, &x_extent, &y_extent)) return NULL;
+    if (glfwWaylandInjectMouseMotionAbsolute) glfwWaylandInjectMouseMotionAbsolute(x, y, x_extent, y_extent);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+glfw_wayland_inject_mouse_button(PyObject UNUSED *self, PyObject *args) {
+    int button, action;
+    if (!PyArg_ParseTuple(args, "ii", &button, &action)) return NULL;
+    if (glfwWaylandInjectMouseButton) glfwWaylandInjectMouseButton(button, action);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+glfw_wayland_inject_key(PyObject UNUSED *self, PyObject *args) {
+    int key, action, mods = 0;
+    if (!PyArg_ParseTuple(args, "ii|i", &key, &action, &mods)) return NULL;
+    if (glfwWaylandInjectKey) glfwWaylandInjectKey(key, action, mods);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
 get_physical_dpi(GLFWmonitor *m) {
     int width = 0, height = 0;
     glfwGetMonitorPhysicalSize(m, &width, &height);
@@ -3614,6 +3669,11 @@ static PyMethodDef module_methods[] = {
     METHODB(cocoa_hide_app, METH_NOARGS),
     METHODB(cocoa_hide_other_apps, METH_NOARGS),
     METHODB(cocoa_minimize_os_window, METH_VARARGS),
+    {"glfw_wayland_inject_init", (PyCFunction)glfw_wayland_inject_init, METH_VARARGS, ""},
+    {"glfw_wayland_inject_terminate", (PyCFunction)glfw_wayland_inject_terminate, METH_NOARGS, ""},
+    {"glfw_wayland_inject_mouse_motion_absolute", (PyCFunction)glfw_wayland_inject_mouse_motion_absolute, METH_VARARGS, ""},
+    {"glfw_wayland_inject_mouse_button", (PyCFunction)glfw_wayland_inject_mouse_button, METH_VARARGS, ""},
+    {"glfw_wayland_inject_key", (PyCFunction)glfw_wayland_inject_key, METH_VARARGS, ""},
     {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""},
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""},

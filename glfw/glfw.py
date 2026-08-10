@@ -110,6 +110,9 @@ def generate_wrappers(glfw_header: str) -> None:
     unsigned long long glfwDBusUserNotify(const GLFWDBUSNotificationData *n, GLFWDBusnotificationcreatedfun callback, void *data)
     void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler)
     int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
+    void glfwWaylandInjectMouseMotionAbsolute(unsigned int x, unsigned int y, unsigned int x_extent, unsigned int y_extent)
+    void glfwWaylandInjectMouseButton(int button, int action)
+    void glfwWaylandInjectKey(int key, int action, int mods)
 """.splitlines():
         if line:
             functions.append(Function(line.strip(), check_fail=False))

@@ -72,6 +72,8 @@ typedef VkBool32(APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR)
 #include "wayland-xdg-toplevel-tag-v1-client-protocol.h"
 #include "wayland-xdg-toplevel-drag-v1-client-protocol.h"
 #include "wayland-xdg-output-unstable-v1-client-protocol.h"
+#include "wayland-wlr-virtual-pointer-unstable-v1-client-protocol.h"
+#include "wayland-virtual-keyboard-unstable-v1-client-protocol.h"
 
 #define _glfw_dlopen(name) dlopen(name, RTLD_LAZY | RTLD_LOCAL)
 #define _glfw_dlclose(handle) dlclose(handle)
@@ -371,6 +373,10 @@ typedef struct _GLFWlibraryWayland {
     struct zwp_pointer_gestures_v1 *pointer_gestures;
     struct zwp_pointer_gesture_hold_v1 *pointer_gesture_hold;
     struct zxdg_output_manager_v1 *xdg_output_manager;
+    struct zwlr_virtual_pointer_manager_v1 *virtual_pointer_manager;
+    struct zwlr_virtual_pointer_v1 *virtual_pointer;
+    struct zwp_virtual_keyboard_manager_v1 *virtual_keyboard_manager;
+    struct zwp_virtual_keyboard_v1 *virtual_keyboard;
 
     int compositorVersion;
     int seatVersion;

@@ -2564,4 +2564,20 @@ typedef int (*glfwSetX11LaunchCommand_func)(GLFWwindow*, char**, int);
 GFW_EXTERN glfwSetX11LaunchCommand_func glfwSetX11LaunchCommand_impl;
 #define glfwSetX11LaunchCommand glfwSetX11LaunchCommand_impl
 
+typedef bool (*glfwWaylandCreateVirtualDevices_func)(void);
+GFW_EXTERN glfwWaylandCreateVirtualDevices_func glfwWaylandCreateVirtualDevices_impl;
+#define glfwWaylandCreateVirtualDevices glfwWaylandCreateVirtualDevices_impl
+
+typedef void (*glfwWaylandInjectMouseMotionAbsolute_func)(unsigned int, unsigned int, unsigned int, unsigned int);
+GFW_EXTERN glfwWaylandInjectMouseMotionAbsolute_func glfwWaylandInjectMouseMotionAbsolute_impl;
+#define glfwWaylandInjectMouseMotionAbsolute glfwWaylandInjectMouseMotionAbsolute_impl
+
+typedef void (*glfwWaylandInjectMouseButton_func)(int, int);
+GFW_EXTERN glfwWaylandInjectMouseButton_func glfwWaylandInjectMouseButton_impl;
+#define glfwWaylandInjectMouseButton glfwWaylandInjectMouseButton_impl
+
+typedef void (*glfwWaylandInjectKey_func)(int, int, int);
+GFW_EXTERN glfwWaylandInjectKey_func glfwWaylandInjectKey_impl;
+#define glfwWaylandInjectKey glfwWaylandInjectKey_impl
+
 const char* load_glfw(const char* path);

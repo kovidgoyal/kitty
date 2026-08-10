@@ -1,10 +1,9 @@
-#!/usr/bin/env python
+#!./kitty/launcher/kitty +launch
 # License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
 
 import glob
 import math
 import os
-import shutil
 import signal
 import subprocess
 import sys
@@ -13,6 +12,19 @@ import time
 from contextlib import suppress
 from threading import Thread
 from typing import Any
+
+from kitty.constants import glfw_path
+from kitty.fast_data_types import GLFW_FKEY_ESCAPE as KEY_ESCAPE
+from kitty.fast_data_types import GLFW_MOUSE_BUTTON_LEFT as MOUSE_BUTTON_LEFT
+from kitty.fast_data_types import GLFW_PRESS as PRESS
+from kitty.fast_data_types import GLFW_RELEASE as RELEASE
+from kitty.fast_data_types import (
+    glfw_wayland_inject_init,
+    glfw_wayland_inject_key,
+    glfw_wayland_inject_mouse_button,
+    glfw_wayland_inject_mouse_motion_absolute,
+    glfw_wayland_inject_terminate,
+)
 
 DEFAULT_DURATION = 3
 DEFAULT_INITIAL_SLEEP = 3
@@ -35,208 +47,32 @@ bar {{
 _sway_socket: str = ''
 _wayland_display: str = ''
 _kitty_socket: str = ''
-_virt_mouse: 'subprocess.Popen[bytes] | None' = None
-
-# Protocol XML for zwlr_virtual_pointer_manager_v1 (wlr-protocols)
-_VIRTUAL_POINTER_XML = """\
-<?xml version="1.0" encoding="UTF-8"?>
-<protocol name="wlr_virtual_pointer_unstable_v1">
-  <interface name="zwlr_virtual_pointer_v1" version="2">
-    <enum name="error">
-      <entry name="invalid_axis" value="0"/>
-      <entry name="invalid_axis_source" value="1"/>
-    </enum>
-    <request name="motion">
-      <arg name="time" type="uint"/>
-      <arg name="dx" type="fixed"/>
-      <arg name="dy" type="fixed"/>
-    </request>
-    <request name="motion_absolute">
-      <arg name="time" type="uint"/>
-      <arg name="x" type="uint"/>
-      <arg name="y" type="uint"/>
-      <arg name="x_extent" type="uint"/>
-      <arg name="y_extent" type="uint"/>
-    </request>
-    <request name="button">
-      <arg name="time" type="uint"/>
-      <arg name="button" type="uint"/>
-      <arg name="state" type="uint"/>
-    </request>
-    <request name="axis">
-      <arg name="time" type="uint"/>
-      <arg name="axis" type="uint"/>
-      <arg name="value" type="fixed"/>
-    </request>
-    <request name="frame"/>
-    <request name="axis_source">
-      <arg name="axis_source" type="uint"/>
-    </request>
-    <request name="axis_stop">
-      <arg name="time" type="uint"/>
-      <arg name="axis" type="uint"/>
-    </request>
-    <request name="axis_discrete">
-      <arg name="time" type="uint"/>
-      <arg name="axis" type="uint"/>
-      <arg name="value" type="fixed"/>
-      <arg name="discrete" type="int"/>
-    </request>
-    <request name="destroy" type="destructor"/>
-  </interface>
-  <interface name="zwlr_virtual_pointer_manager_v1" version="2">
-    <request name="create_virtual_pointer">
-      <arg name="seat" type="object" interface="wl_seat" allow-null="true"/>
-      <arg name="id" type="new_id" interface="zwlr_virtual_pointer_v1"/>
-    </request>
-    <request name="create_virtual_pointer_with_output" since="2">
-      <arg name="seat" type="object" interface="wl_seat" allow-null="true"/>
-      <arg name="output" type="object" interface="wl_output" allow-null="true"/>
-      <arg name="id" type="new_id" interface="zwlr_virtual_pointer_v1"/>
-    </request>
-    <request name="destroy" type="destructor"/>
-  </interface>
-</protocol>
-"""
-
-# Daemon that holds a virtual pointer Wayland connection and processes commands on stdin.
-# Commands: "move X Y EX EY\\n", "press BTN\\n", "release BTN\\n"
-_VIRTUAL_POINTER_C = r"""
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <wayland-client-core.h>
-#include "virt-pointer-client.h"
-
-static struct zwlr_virtual_pointer_manager_v1 *g_manager;
-static struct zwlr_virtual_pointer_v1 *g_pointer;
-
-static void on_global(void *data, struct wl_registry *registry, uint32_t name,
-                      const char *interface, uint32_t version)
-{
-    if (!strcmp(interface, "zwlr_virtual_pointer_manager_v1"))
-        g_manager = wl_registry_bind(registry, name,
-                                     &zwlr_virtual_pointer_manager_v1_interface,
-                                     version > 1 ? 1 : version);
-}
-static void on_global_remove(void *d, struct wl_registry *r, uint32_t n) { (void)d; (void)r; (void)n; }
-static const struct wl_registry_listener reg_listener = { on_global, on_global_remove };
-
-static uint32_t ms_now(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
-}
-
-int main(void) {
-    struct wl_display *dpy = wl_display_connect(NULL);
-    if (!dpy) { fputs("Cannot connect to Wayland display\n", stderr); return 1; }
-    struct wl_registry *reg = wl_display_get_registry(dpy);
-    wl_registry_add_listener(reg, &reg_listener, NULL);
-    wl_display_roundtrip(dpy);
-    if (!g_manager) {
-        fputs("zwlr_virtual_pointer_manager_v1 not supported by this compositor\n", stderr);
-        return 1;
-    }
-    g_pointer = zwlr_virtual_pointer_manager_v1_create_virtual_pointer(g_manager, NULL);
-    wl_display_roundtrip(dpy);
-
-    char line[128];
-    while (fgets(line, sizeof(line), stdin)) {
-        uint32_t t = ms_now();
-        uint32_t a, b, c, d;
-        if (sscanf(line, "move %u %u %u %u", &a, &b, &c, &d) == 4) {
-            zwlr_virtual_pointer_v1_motion_absolute(g_pointer, t, a, b, c, d);
-            zwlr_virtual_pointer_v1_frame(g_pointer);
-        } else if (sscanf(line, "press %u", &a) == 1) {
-            zwlr_virtual_pointer_v1_button(g_pointer, t, a, 1);
-            zwlr_virtual_pointer_v1_frame(g_pointer);
-        } else if (sscanf(line, "release %u", &a) == 1) {
-            zwlr_virtual_pointer_v1_button(g_pointer, t, a, 0);
-            zwlr_virtual_pointer_v1_frame(g_pointer);
-        }
-        wl_display_flush(dpy);
-    }
-    zwlr_virtual_pointer_v1_destroy(g_pointer);
-    zwlr_virtual_pointer_manager_v1_destroy(g_manager);
-    wl_display_disconnect(dpy);
-    return 0;
-}
-"""
 
 
 def get_runtime_dir() -> str:
     return os.environ.get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')
 
 
-def build_virt_mouse(build_dir: str) -> str:
-    xml_path = os.path.join(build_dir, 'virt-pointer.xml')
-    header_path = os.path.join(build_dir, 'virt-pointer-client.h')
-    proto_c_path = os.path.join(build_dir, 'virt-pointer-client.c')
-    main_c_path = os.path.join(build_dir, 'virt-pointer-main.c')
-    binary_path = os.path.join(build_dir, 'virt-pointer')
-    with open(xml_path, 'w') as f:
-        f.write(_VIRTUAL_POINTER_XML)
-    with open(main_c_path, 'w') as f:
-        f.write(_VIRTUAL_POINTER_C)
-    subprocess.run(['wayland-scanner', 'client-header', xml_path, header_path], check=True, capture_output=True)
-    subprocess.run(['wayland-scanner', 'private-code', xml_path, proto_c_path], check=True, capture_output=True)
-    result = subprocess.run(
-        ['gcc', '-O2', '-I', build_dir, proto_c_path, main_c_path, '-lwayland-client', '-o', binary_path],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise SystemExit(f'Failed to compile virtual pointer tool:\n{result.stderr}')
-    return binary_path
-
-
-def start_virt_mouse(binary: str, wayland_display: str) -> None:
-    global _virt_mouse
-    env = {**os.environ, 'WAYLAND_DISPLAY': wayland_display}
-    _virt_mouse = subprocess.Popen([binary], stdin=subprocess.PIPE, env=env, text=False)
-    time.sleep(0.2)  # allow the virtual pointer to register with the compositor
-
-
-def stop_virt_mouse() -> None:
-    global _virt_mouse
-    if _virt_mouse is not None:
-        with suppress(Exception):
-            assert _virt_mouse.stdin is not None
-            _virt_mouse.stdin.close()
-        with suppress(subprocess.TimeoutExpired):
-            _virt_mouse.wait(timeout=2)
-        if _virt_mouse.returncode is None:
-            _virt_mouse.kill()
-            _virt_mouse.wait()
-        _virt_mouse = None
-
-
-def send_virt_mouse(cmd: str) -> None:
-    if _virt_mouse is not None and _virt_mouse.stdin is not None:
-        _virt_mouse.stdin.write(cmd.encode())
-        _virt_mouse.stdin.flush()
-
-
 def move_mouse(geometry: tuple[int, int, int, int], x: int, y: int) -> None:
     abs_x = geometry[0] + x
     abs_y = geometry[1] + y
-    send_virt_mouse(f'move {abs_x} {abs_y} {SCREEN_WIDTH} {SCREEN_HEIGHT}\n')
+    glfw_wayland_inject_mouse_motion_absolute(abs_x, abs_y, SCREEN_WIDTH, SCREEN_HEIGHT)
 
 
 def click_mouse() -> None:
-    send_virt_mouse('press 272\n')  # BTN_LEFT = 0x110 = 272
+    glfw_wayland_inject_mouse_button(MOUSE_BUTTON_LEFT, PRESS)
     time.sleep(0.05)
-    send_virt_mouse('release 272\n')
+    glfw_wayland_inject_mouse_button(MOUSE_BUTTON_LEFT, RELEASE)
 
 
 def remote_control(*args: str) -> None:
     subprocess.run(['kitten', '@', '--use-password=never', '--to', f'unix:{_kitty_socket}'] + list(args), check=True, stdout=subprocess.DEVNULL)
 
 
-def key_event(key: str) -> None:
-    remote_control('send-key', key.lower())
+def key_event(key: int) -> None:
+    glfw_wayland_inject_key(key, PRESS)
+    time.sleep(0.02)
+    glfw_wayland_inject_key(key, RELEASE)
 
 
 def send_text(text: str) -> None:
@@ -252,7 +88,7 @@ def cursor_trail(window_id: str, geometry: tuple[int, int, int, int]) -> None:
     time.sleep(0.3)
     send_text(':hello world')
     time.sleep(0.5)
-    key_event('Escape')
+    key_event(KEY_ESCAPE)
     time.sleep(0.2)
     send_text('$')
 
@@ -454,19 +290,19 @@ def do_one(which: str) -> None:
         f.write(SWAY_CONFIG)
         config_file = f.name
 
-    build_dir = tempfile.mkdtemp(prefix='kitty-demo-build-')
     kitty_socket_path = f'@kitty-custom-shader-demo-{os.getpid()}'
 
     try:
-        virt_mouse_binary = build_virt_mouse(build_dir)
         sway_proc, wayland_display, ipc_socket = start_sway(config_file)
         _sway_socket = ipc_socket
         _wayland_display = wayland_display
         _kitty_socket = kitty_socket_path
         wayland_env = {'WAYLAND_DISPLAY': wayland_display}
-        # Start virtual pointer daemon before kitty so the seat has pointer
-        # capability when kitty connects and creates its wl_pointer object.
-        start_virt_mouse(virt_mouse_binary, wayland_display)
+
+        # Connect our virtual pointer and keyboard to the compositor before
+        # starting kitty so the seat advertises pointer and keyboard capability
+        # when kitty creates its wl_pointer and wl_keyboard objects.
+        glfw_wayland_inject_init(glfw_path('wayland'), wayland_display)
         try:
             kcmd = [
                 'kitty',
@@ -496,7 +332,7 @@ def do_one(which: str) -> None:
                     kitty.terminate()
                     kitty.wait()
         finally:
-            stop_virt_mouse()
+            glfw_wayland_inject_terminate()
             sway_proc.terminate()
             with suppress(subprocess.TimeoutExpired):
                 sway_proc.wait(timeout=5)
@@ -508,7 +344,6 @@ def do_one(which: str) -> None:
             os.remove(config_file)
         with suppress(FileNotFoundError):
             os.remove(kitty_socket_path)
-        shutil.rmtree(build_dir, ignore_errors=True)
 
 
 def main() -> None:

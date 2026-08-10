@@ -642,6 +642,10 @@ registryHandleGlobal(void *data UNUSED, struct wl_registry *registry, uint32_t n
     } else if (is(zxdg_output_manager_v1)) {
         _glfw.wl.xdg_output_manager = wl_registry_bind(registry, name, &zxdg_output_manager_v1_interface, MIN(version, 3u));
         for (int i = 0; i < _glfw.monitorCount; i++) _glfwCreateXdgOutputWayland(_glfw.monitors[i]);
+    } else if (is(zwlr_virtual_pointer_manager_v1)) {
+        _glfw.wl.virtual_pointer_manager = wl_registry_bind(registry, name, &zwlr_virtual_pointer_manager_v1_interface, 1);
+    } else if (is(zwp_virtual_keyboard_manager_v1)) {
+        _glfw.wl.virtual_keyboard_manager = wl_registry_bind(registry, name, &zwp_virtual_keyboard_manager_v1_interface, 1);
     }
 #undef is
 }
@@ -892,6 +896,10 @@ _glfwPlatformTerminate(void) {
     if (_glfw.wl.shm) wl_shm_destroy(_glfw.wl.shm);
     if (_glfw.wl.decorationManager) zxdg_decoration_manager_v1_destroy(_glfw.wl.decorationManager);
     if (_glfw.wl.wmBase) xdg_wm_base_destroy(_glfw.wl.wmBase);
+    if (_glfw.wl.virtual_pointer) zwlr_virtual_pointer_v1_destroy(_glfw.wl.virtual_pointer);
+    if (_glfw.wl.virtual_pointer_manager) zwlr_virtual_pointer_manager_v1_destroy(_glfw.wl.virtual_pointer_manager);
+    if (_glfw.wl.virtual_keyboard) zwp_virtual_keyboard_v1_destroy(_glfw.wl.virtual_keyboard);
+    if (_glfw.wl.virtual_keyboard_manager) zwp_virtual_keyboard_manager_v1_destroy(_glfw.wl.virtual_keyboard_manager);
     if (_glfw.wl.pointer) wl_pointer_destroy(_glfw.wl.pointer);
     if (_glfw.wl.keyboard) wl_keyboard_destroy(_glfw.wl.keyboard);
     if (_glfw.wl.seat) wl_seat_destroy(_glfw.wl.seat);

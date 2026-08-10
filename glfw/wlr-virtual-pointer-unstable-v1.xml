@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="wlr_virtual_pointer_unstable_v1">
+  <copyright>
+    Copyright © 2019 Josef Gajdusek
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice (including the next
+    paragraph) shall be included in all copies or substantial portions of the
+    Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+  </copyright>
+
+  <interface name="zwlr_virtual_pointer_v1" version="2">
+    <description summary="virtual pointer">
+      This protocol allows clients to emulate a physical pointer device.
+    </description>
+
+    <enum name="error">
+      <entry name="invalid_axis" value="0" summary="client sent invalid axis enumeration value"/>
+      <entry name="invalid_axis_source" value="1" summary="client sent invalid axis source enumeration value"/>
+    </enum>
+
+    <request name="motion">
+      <description summary="pointer relative motion event"/>
+      <arg name="time" type="uint" summary="timestamp with millisecond granularity"/>
+      <arg name="dx" type="fixed" summary="displacement on the x-axis"/>
+      <arg name="dy" type="fixed" summary="displacement on the y-axis"/>
+    </request>
+
+    <request name="motion_absolute">
+      <description summary="pointer absolute motion event"/>
+      <arg name="time" type="uint" summary="timestamp with millisecond granularity"/>
+      <arg name="x" type="uint" summary="position on the x-axis"/>
+      <arg name="y" type="uint" summary="position on the y-axis"/>
+      <arg name="x_extent" type="uint" summary="extent of the x-axis"/>
+      <arg name="y_extent" type="uint" summary="extent of the y-axis"/>
+    </request>
+
+    <request name="button">
+      <description summary="button event"/>
+      <arg name="time" type="uint" summary="timestamp with millisecond granularity"/>
+      <arg name="button" type="uint" summary="button that produced the event"/>
+      <arg name="state" type="uint" summary="physical state of the button"/>
+    </request>
+
+    <request name="axis">
+      <description summary="axis event"/>
+      <arg name="time" type="uint" summary="timestamp with millisecond granularity"/>
+      <arg name="axis" type="uint" summary="axis type"/>
+      <arg name="value" type="fixed" summary="length of a vector along the specified axis in surface-local coordinates"/>
+    </request>
+
+    <request name="frame">
+      <description summary="end of a pointer event sequence"/>
+    </request>
+
+    <request name="axis_source">
+      <description summary="axis source event"/>
+      <arg name="axis_source" type="uint" summary="source of the axis event"/>
+    </request>
+
+    <request name="axis_stop">
+      <description summary="axis stop event"/>
+      <arg name="time" type="uint" summary="timestamp with millisecond granularity"/>
+      <arg name="axis" type="uint" summary="the axis stopped with this event"/>
+    </request>
+
+    <request name="axis_discrete">
+      <description summary="axis click event"/>
+      <arg name="time" type="uint" summary="timestamp with millisecond granularity"/>
+      <arg name="axis" type="uint" summary="axis type"/>
+      <arg name="value" type="fixed" summary="length of a vector along the specified axis in surface-local coordinates"/>
+      <arg name="discrete" type="int" summary="number of steps"/>
+    </request>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the virtual pointer object"/>
+    </request>
+  </interface>
+
+  <interface name="zwlr_virtual_pointer_manager_v1" version="2">
+    <description summary="virtual pointer manager">
+      This object allows clients to create individual virtual pointer objects.
+    </description>
+
+    <request name="create_virtual_pointer">
+      <description summary="create a virtual pointer"/>
+      <arg name="seat" type="object" interface="wl_seat" allow-null="true" summary="seat for the pointer"/>
+      <arg name="id" type="new_id" interface="zwlr_virtual_pointer_v1"/>
+    </request>
+
+    <request name="create_virtual_pointer_with_output" since="2">
+      <description summary="create a virtual pointer for a given output"/>
+      <arg name="seat" type="object" interface="wl_seat" allow-null="true"/>
+      <arg name="output" type="object" interface="wl_output" allow-null="true"/>
+      <arg name="id" type="new_id" interface="zwlr_virtual_pointer_v1"/>
+    </request>
+
+    <request name="destroy" type="destructor">
+      <description summary="destroy the virtual pointer manager"/>
+    </request>
+  </interface>
+</protocol>
