@@ -77,7 +77,10 @@ function init_shader_modals() {
     var video = overlay.querySelector('.shader-modal-video');
     var close_btn = overlay.querySelector('.shader-modal-close');
 
+    var saved_scroll_y = 0;
+
     function open_modal(video_src) {
+        saved_scroll_y = window.scrollY;
         video.innerHTML = '<source src="' + video_src + '" type="video/webm">';
         video.addEventListener('loadedmetadata', function on_meta() {
             video.style.width = video.videoWidth + 'px';
@@ -86,7 +89,7 @@ function init_shader_modals() {
         video.load();
         video.play();
         overlay.classList.add('active');
-        document.body.classList.add('shader-modal-open');
+        document.documentElement.classList.add('shader-modal-open');
     }
 
     function close_modal() {
@@ -94,7 +97,8 @@ function init_shader_modals() {
         video.pause();
         video.innerHTML = '';
         video.style.width = '';
-        document.body.classList.remove('shader-modal-open');
+        document.documentElement.classList.remove('shader-modal-open');
+        window.scrollTo({top: saved_scroll_y, left: 0, behavior: 'instant'});
     }
 
     cards.forEach(function(card) {

@@ -59,7 +59,7 @@ details > summary {
     display: flex;
 }
 
-body.shader-modal-open {
+html.shader-modal-open {
     overflow: hidden;
 }
 
