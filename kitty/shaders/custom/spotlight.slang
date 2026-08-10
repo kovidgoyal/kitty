@@ -24,15 +24,13 @@ static const int   HIDE_WHEN_POINTER_HIDDEN = 1;
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
     if (HIDE_WHEN_POINTER_HIDDEN == 1 && d.mouse_pointer_hidden != 0.0) return color;
     float2 uv = t.pos;
 
     // Viewport pixel dimensions for aspect-ratio correction
-    float2 pixelDims   = float2(d.viewport_size_pixels) * viewport.zw;
+    float2 pixelDims   = float2(d.viewport_size_pixels) * t.viewport.zw;
     float  aspectRatio = pixelDims.x / pixelDims.y;
 
     // Random oscillating center (different frequencies and phases on each axis)

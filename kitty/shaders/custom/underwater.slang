@@ -65,11 +65,9 @@ float rayStrength(
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
-    float2 iResolution = float2(d.viewport_size_pixels) * viewport.zw;
+    float2 iResolution = float2(d.viewport_size_pixels) * t.viewport.zw;
     float  iTime       = d.timestamp;
 
     // Convert kitty UV (y=0 at bottom) to a top-left-origin pixel coordinate,

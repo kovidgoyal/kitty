@@ -237,9 +237,7 @@ float smoothstep1(float x) { return smoothstep(0.0f, 1.0f, x); }
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
     float2 uv   = t.pos;
     float  time = fmod(d.timestamp, 300.0f) * SPEED;

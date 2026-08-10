@@ -78,11 +78,9 @@ float3 rainbow(float3 c, float time) {
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
-    float2 pixelDims = float2(d.viewport_size_pixels) * viewport.zw;
+    float2 pixelDims = float2(d.viewport_size_pixels) * t.viewport.zw;
     float  aspect    = pixelDims.x / pixelDims.y;
     float  time      = fmod(d.timestamp, 3600.0f) * TIME_SCALE;
 

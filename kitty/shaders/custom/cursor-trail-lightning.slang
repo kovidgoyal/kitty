@@ -87,14 +87,12 @@ static float forkDist(float2 p, float2 a, float2 b, float seed) {
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
     float age = clamp((d.timestamp - d.cursor_trail_change_time) / DURATION, 0.0, 1.0);
     if (age >= 1.0) return color;
 
-    float2 pixelDims = float2(d.viewport_size_pixels) * viewport.zw;
+    float2 pixelDims = float2(d.viewport_size_pixels) * t.viewport.zw;
 
     // Cursor centres in pixel space (edge: .x=left .y=right .z=top .w=bottom, y-up).
     float2 curCenter  = float2(

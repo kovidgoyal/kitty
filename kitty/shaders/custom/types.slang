@@ -52,8 +52,8 @@ public struct KittyCustomShaderData {
 
     // the size in pixels of the full underlying viewport we are rendering too,
     // before applying any viewport transforms from the current group.
-    // You can use the viewport vector passed to fragment_main to derive the
-    // actual size and position of the viewport currently being rendered too.
+    // You can use t.viewport to derive the actual size and position of the
+    // viewport currently being rendered too.
     public uint2 viewport_size_pixels;
 
     public float mouse_pointer_hidden;  // 1.0 if the mouse pointer is currently hidden, 0.0 if visible
@@ -80,5 +80,13 @@ public struct KittyTextures {
     public Sampler2D persist;
 
     public float2 pos;  // the position of this pixel in the textures (UV coordinates)
+
+    // The viewport for this group in the form (x, y, width, height) where (x, y) is the
+    // bottom-left corner, with (0, 0) at the bottom-left of the screen and y increasing upwards
+    // (UV coordinates). Defaults to (0, 0, 1, 1) when no viewport is defined for the group.
+    public float4 viewport;
+    // The value after applying the animation easing curve to time since animation start.
+    // Zero when no animation is active.
+    public float animation_progress;
 }
 // END_TYPES_DEFINITION

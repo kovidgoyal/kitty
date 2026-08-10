@@ -54,14 +54,12 @@ float wipe_pixel_pos(float2 uv, float4 ca) {
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
     float4 ca = d.central_area;
     if (ca.z <= 0.0 || ca.w <= 0.0) return color;
 
-    float p = animation_progress;
+    float p = t.animation_progress;
     float brightness;
 
     if (ANIMATION_TYPE == 0) {

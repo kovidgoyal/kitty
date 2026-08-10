@@ -32,9 +32,7 @@ bool inside_trail_quad(float2 uv, float2 c0, float2 c1, float2 c2, float2 c3) {
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
     float opacity = d.cursor_trail_color.a;
     if (opacity <= 0.0) return color;

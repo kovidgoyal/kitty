@@ -28,11 +28,9 @@ static const float DIFFUSE_STRENGTH  = 0.10;
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
-    float2 pixelDims = float2(d.viewport_size_pixels) * viewport.zw;
+    float2 pixelDims = float2(d.viewport_size_pixels) * t.viewport.zw;
     float  aspect    = pixelDims.x / pixelDims.y;
 
     // d.mouse_pos.zw is the UV position of the last left-button press (y=0 at bottom).
@@ -44,20 +42,20 @@ public float4 fragment_main(
     float2 dir   = delta / max(dist, 1e-5);
 
     // Wavefront radius advances linearly with animation_progress.
-    float front = WAVE_SPEED * animation_progress;
+    float front = WAVE_SPEED * t.animation_progress;
 
     // Signed distance from the wavefront (negative = wave has passed, positive = not yet reached).
     float behind = dist - front;
 
     // Gaussian spatial envelope centered at the wavefront; grows in width over time.
-    float sigma = WAVE_WIDTH * (1.0 + animation_progress);
+    float sigma = WAVE_WIDTH * (1.0 + t.animation_progress);
     float env   = exp(-behind * behind / (2.0 * sigma * sigma));
 
     // Causality: suppress any energy ahead of the wavefront.
     env *= 1.0 - smoothstep(-0.01, 0.02, behind);
 
     // Temporal amplitude decay as the wave expands outward.
-    float decay = pow(1.0 - animation_progress, 0.7);
+    float decay = pow(1.0 - t.animation_progress, 0.7);
 
     float k    = WAVE_FREQUENCY * 6.28318530718;
     float wave = sin(behind * k);

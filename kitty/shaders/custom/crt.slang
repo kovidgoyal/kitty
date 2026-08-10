@@ -16,9 +16,7 @@ static const float4 TINT = float4(0, 0.8, 0.6, 0);  // tint color set the fourth
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
     // UV within the current viewport (0..1)
     float2 uv = t.pos;
@@ -32,13 +30,13 @@ public float4 fragment_main(
     uv.y -= 0.5f; uv.y *= 1.0f + (dc.x * (0.4f * WARP)); uv.y += 0.5f;
 
     // Original Y pixel coordinate within the viewport (for scanline phase)
-    float fragCoordY = (t.pos.y - viewport.y) * float(d.viewport_size_pixels.y);
+    float fragCoordY = (t.pos.y - t.viewport.y) * float(d.viewport_size_pixels.y);
 
     // Scanline darkness at this pixel row
     float apply = abs(sin(fragCoordY) * 0.25f * SCAN);
 
     // Sample the backbuffer at the warped viewport UV
-    float2 sample_uv = viewport.xy + uv * viewport.zw;
+    float2 sample_uv = t.viewport.xy + uv * t.viewport.zw;
     float3 col = t.backbuffer.Sample(sample_uv).rgb;
     // apply the tint
     col = lerp(col, col * TINT.rgb, TINT.a);

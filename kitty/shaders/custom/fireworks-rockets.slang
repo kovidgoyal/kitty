@@ -100,11 +100,9 @@ float3 drawFireworks(float time, float2 uv, float3 particolor, float seed) {
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
-    float2 pixelDims = float2(d.viewport_size_pixels) * viewport.zw;
+    float2 pixelDims = float2(d.viewport_size_pixels) * t.viewport.zw;
     float  aspect    = pixelDims.x / pixelDims.y;
 
     // Map to [-aspect, aspect] × [-1, 1] with y=1 at top (matching the original)

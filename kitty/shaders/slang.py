@@ -1410,7 +1410,7 @@ def build_custom_shader_pipeline_ir(pipeline: Pipeline, cache_dir: str, invocati
     # inactive animated groups do not cause an extra blit draw call.
     pipeline_parts: list[str] = []
     for g_idx, group in enumerate(pipeline['groups']):
-        calls = '\n'.join(f'        color = {entry_point(g_idx, j)}(color, t, csd, viewport, animation_progress);' for j in range(len(group['shaders'])))
+        calls = '\n'.join(f'        color = {entry_point(g_idx, j)}(color, t, csd);' for j in range(len(group['shaders'])))
         calls += '\n        if (convert_to_srgb) color = float4(linear2srgb(color.rgb), color.a);'
         prefix = '} else ' if g_idx else ''
         pipeline_parts.append(f'    {prefix}if (group == {g_idx}) {{\n{calls}')

@@ -72,9 +72,7 @@ static float movementVertexFactor(float2 a, float2 b) {
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
     if (d.cursor_trail_color.a <= 0.0) return color;
 
@@ -85,7 +83,7 @@ public float4 fragment_main(
     if (easedProgress <= 0.0) return color;
 
     // Work in pixel space for correct aspect-ratio distance measurements.
-    float2 pixelDims = float2(d.viewport_size_pixels) * viewport.zw;
+    float2 pixelDims = float2(d.viewport_size_pixels) * t.viewport.zw;
     float2 px        = t.pos * pixelDims;
 
     // Current cursor rect in pixel space (edge: .x=left .y=right .z=top .w=bottom, y-up).

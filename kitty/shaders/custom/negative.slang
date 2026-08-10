@@ -9,9 +9,7 @@ import kitty_custom_shader_types;
 public float4 fragment_main(
     float4 color,
     KittyTextures t,
-    KittyCustomShaderData d,
-    float4 viewport,
-    float animation_progress
+    KittyCustomShaderData d
 ) {
     return float4(1.0 - color.r, 1.0 - color.g, 1.0 - color.b, color.a);
 }
