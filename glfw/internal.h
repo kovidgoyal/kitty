@@ -52,6 +52,7 @@
 
 #define EGL_PRESENT_OPAQUE_EXT 0x31df
 
+#define GLFW_MOD_REMAP_SZ 8
 #define _GLFW_INSERT_FIRST 0
 #define _GLFW_INSERT_LAST 1
 
@@ -603,6 +604,10 @@ struct _GLFWlibrary {
     _GLFWmutex errorLock;
 
     bool ignoreOSKeyboardProcessing, keyboard_grabbed;
+    // remap_modifier: modifierRemap[i] is the GLFW modifier mask that the
+    // modifier at bit i is presented as, or 0 to leave it alone.
+    int modifierRemap[GLFW_MOD_REMAP_SZ];
+    int modifierRemapMask;
 
     struct {
         bool available;
@@ -896,3 +901,5 @@ void _glfw_free_clipboard_data(_GLFWClipboardData *cd);
         errno = 0;     \
         close(fd);     \
     } while (errno == EINTR)
+
+int _glfwApplyModifierRemap(int mods);

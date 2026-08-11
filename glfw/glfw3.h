@@ -4379,6 +4379,7 @@ GLFWAPI void glfwPostEmptyEvent(void);
 
 GLFWAPI bool glfwGetIgnoreOSKeyboardProcessing(void);
 GLFWAPI void glfwSetIgnoreOSKeyboardProcessing(bool enabled);
+GLFWAPI void glfwSetModifierRemap(const int *table);
 GLFWAPI bool glfwGrabKeyboard(int grab);
 GLFWAPI void glfwGetKeyboardRepeatDelay(monotonic_t *delay, monotonic_t *interval);
 

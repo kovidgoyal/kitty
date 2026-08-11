@@ -216,7 +216,10 @@ translateState(int state) {
     if (state & LockMask) mods |= GLFW_MOD_CAPS_LOCK;
     if (state & Mod2Mask) mods |= GLFW_MOD_NUM_LOCK;
 
-    return mods;
+    // Only button/DND events reach here; key events get their modifiers from the
+    // xkb state, which is remapped in glfw_xkb_update_modifiers(). Remap here too
+    // so mouse_map and map agree on X11.
+    return _glfwApplyModifierRemap(mods);
 }
 
 // Sends an EWMH or ICCCM event to the window manager

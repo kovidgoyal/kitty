@@ -490,6 +490,58 @@ translateFlags(NSUInteger flags) {
     return mods;
 }
 
+// Apply remap_modifier to Cocoa modifier flags. This has to happen BEFORE the
+// flags are used to produce text - UCKeyTranslate() below, and Cocoa's own
+// interpretKeyEvents: - for the same reason as on Linux: Option produces text
+// natively (see macos_option_as_alt), so remapping only the finished event's
+// modifier bitmask would leave the modifiers and the text contradicting each
+// other.
+//
+// Only the flags that GLFW models as remappable modifiers are touched; caps
+// lock, function, numeric pad and the device-dependent bits pass through.
+// GLFW_MOD_HYPER and GLFW_MOD_META have no Cocoa flag, so a remap onto them
+// cannot be represented here and is left alone rather than silently dropped.
+static NSUInteger
+remap_cocoa_flags(NSUInteger flags) {
+    if (!_glfw.modifierRemapMask) return flags;
+    int mods = 0;
+    if (flags & NSEventModifierFlagShift) mods |= GLFW_MOD_SHIFT;
+    if (flags & NSEventModifierFlagControl) mods |= GLFW_MOD_CONTROL;
+    if (flags & NSEventModifierFlagOption) mods |= GLFW_MOD_ALT;
+    if (flags & NSEventModifierFlagCommand) mods |= GLFW_MOD_SUPER;
+    const int remapped = _glfwApplyModifierRemap(mods);
+    if (remapped == mods) return flags;
+    if (remapped & (GLFW_MOD_HYPER | GLFW_MOD_META)) return flags;
+    NSUInteger ans = flags & ~(NSUInteger)(NSEventModifierFlagShift | NSEventModifierFlagControl |
+                                           NSEventModifierFlagOption | NSEventModifierFlagCommand);
+    if (remapped & GLFW_MOD_SHIFT) ans |= NSEventModifierFlagShift;
+    if (remapped & GLFW_MOD_CONTROL) ans |= NSEventModifierFlagControl;
+    if (remapped & GLFW_MOD_ALT) ans |= NSEventModifierFlagOption;
+    if (remapped & GLFW_MOD_SUPER) ans |= NSEventModifierFlagCommand;
+    return ans;
+}
+
+// Rebuild a key event carrying the remapped flags, for handing to
+// interpretKeyEvents:. NOTE the characters strings were computed by the OS from
+// the PHYSICAL flags and cannot be recomputed here, so this path is only
+// approximately corrected; the UCKeyTranslate() path above, which is the one
+// normally taken, uses the remapped flags directly and is exact.
+static NSEvent*
+event_with_remapped_flags(NSEvent *event, NSUInteger flags) {
+    if (flags == [event modifierFlags]) return event;
+    NSEvent *ans = [NSEvent keyEventWithType:[event type]
+                                    location:[event locationInWindow]
+                               modifierFlags:flags
+                                   timestamp:[event timestamp]
+                                windowNumber:[event windowNumber]
+                                     context:nil
+                                  characters:[event characters]
+                 charactersIgnoringModifiers:[event charactersIgnoringModifiers]
+                                   isARepeat:[event isARepeat]
+                                     keyCode:[event keyCode]];
+    return ans ? ans : event;
+}
+
 static const char *
 format_mods(int mods) {
     static char buf[128];
@@ -1184,7 +1236,8 @@ is_ascii_control_char(char x) {
     }
 
     const unsigned int keycode = [event keyCode];
-    const NSUInteger flags = [event modifierFlags];
+    const NSUInteger flags = remap_cocoa_flags([event modifierFlags]);
+    event = event_with_remapped_flags(event, flags);
     const int mods = translateFlags(flags);
     const uint32_t key = translateKey(keycode, true);
     const bool process_text =
@@ -1292,7 +1345,7 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
     int action = GLFW_RELEASE;
     const char old_first_char = _glfw.ns.text[0];
     _glfw.ns.text[0] = 0;
-    const NSUInteger modifierFlags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+    const NSUInteger modifierFlags = remap_cocoa_flags([event modifierFlags]) & NSEventModifierFlagDeviceIndependentFlagsMask;
     const uint32_t key = vk_code_to_functional_key_code([event keyCode]);
     const unsigned int keycode = [event keyCode];
     const int mods = translateFlags(modifierFlags);
@@ -1349,7 +1402,7 @@ is_modifier_pressed(NSUInteger flags, NSUInteger target_mask, NSUInteger other_m
 - (void)keyUp:(NSEvent *)event {
     const uint32_t keycode = [event keyCode];
     const uint32_t key = translateKey(keycode, true);
-    const int mods = translateFlags([event modifierFlags]);
+    const int mods = translateFlags(remap_cocoa_flags([event modifierFlags]));
 
     GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .native_key_id = keycode, .action = GLFW_RELEASE, .mods = mods};
     add_alternate_keys(&glfw_keyevent, event);

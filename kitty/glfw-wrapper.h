@@ -2224,6 +2224,10 @@ typedef void (*glfwSetIgnoreOSKeyboardProcessing_func)(bool);
 GFW_EXTERN glfwSetIgnoreOSKeyboardProcessing_func glfwSetIgnoreOSKeyboardProcessing_impl;
 #define glfwSetIgnoreOSKeyboardProcessing glfwSetIgnoreOSKeyboardProcessing_impl
 
+typedef void (*glfwSetModifierRemap_func)(const int*);
+GFW_EXTERN glfwSetModifierRemap_func glfwSetModifierRemap_impl;
+#define glfwSetModifierRemap glfwSetModifierRemap_impl
+
 typedef bool (*glfwGrabKeyboard_func)(int);
 GFW_EXTERN glfwGrabKeyboard_func glfwGrabKeyboard_impl;
 #define glfwGrabKeyboard glfwGrabKeyboard_impl
