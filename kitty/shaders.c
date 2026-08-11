@@ -396,12 +396,13 @@ typedef struct CustomShaderGroup {
         float w, h;
     } viewport_size;
     NamedTexture output_texture;
-    unsigned animation_start_events;    // bitmask of ShaderAnimationEvent values; 0 = no animation
+    unsigned animation_start_events;    // bitmask of ShaderAnimationEvent values; 0 = no own animation
     unsigned animation_end_events;      // bitmask of events that stop the animation; 0 = none
     monotonic_t animation_end_duration; // nanoseconds; 0 = no time limit, < 0 = use cursor_stop_blinking_after
     monotonic_t animation_step;         // nanoseconds between animation samples
     Animation *animation_curve;         // parsed easing curve; NULL = no animation
     bool animation_curve_is_shared;     // true if animation_curve is owned by an earlier group
+    bool attached;                      // true = always active when the preceding group is active
 } CustomShaderGroup;
 
 typedef struct CustomShaderPipeline {
@@ -539,18 +540,30 @@ init_custom_programs(void) {
         if (global_state.layers_render_texture.texture_b_fbo_id) free_framebuffer(&global_state.layers_render_texture.texture_b_fbo_id);
     }
     // persist is per-window and freed lazily in start_os_window_rendering
-    // Non-animated groups are always active; animated groups start inactive.
-    bool any_non_animated = false;
-    for (size_t i = 0; i < custom_shaders.end.num_groups; i++) {
-        if (custom_shaders.end.groups[i].animation_start_events == 0) {
-            any_non_animated = true;
-            break;
+    // Non-animated, non-attached groups are always active; animated groups start inactive.
+    // Attached groups inherit their initial active state from their predecessor.
+    bool any_initially_active = false;
+    {
+        bool prev_init = false;
+        for (size_t i = 0; i < custom_shaders.end.num_groups; i++) {
+            const CustomShaderGroup *cg = &custom_shaders.end.groups[i];
+            bool this_init = cg->attached ? prev_init : (cg->animation_start_events == 0);
+            if (this_init) any_initially_active = true;
+            prev_init = this_init;
         }
     }
-    bool initially_active = custom_shaders.count > 0 && any_non_animated;
+    bool initially_active = custom_shaders.count > 0 && any_initially_active;
     for (size_t w = 0; w < global_state.num_os_windows; w++) {
         OSWindow *osw = global_state.os_windows + w;
         zero_at_ptr_count(osw->shader_group_anim, custom_shaders.end.num_groups);
+        // Initialize active=true for attached groups that follow always-active predecessors
+        bool prev_init = false;
+        for (size_t i = 0; i < custom_shaders.end.num_groups; i++) {
+            const CustomShaderGroup *cg = &custom_shaders.end.groups[i];
+            bool this_init = cg->attached ? prev_init : (cg->animation_start_events == 0);
+            if (cg->attached && this_init) osw->shader_group_anim[i].active = true;
+            prev_init = this_init;
+        }
         osw->has_active_custom_shaders = initially_active;
         osw->shader_anim_min_step = MONOTONIC_T_MAX;
         osw->shader_anim_next_end_at = MONOTONIC_T_MAX;
@@ -622,39 +635,62 @@ update_custom_shader_animations(unsigned event_mask, monotonic_t now, OSWindow *
     bool any_active = false;
     monotonic_t min_step = MONOTONIC_T_MAX;
     monotonic_t next_end = MONOTONIC_T_MAX;
+    bool prev_active = false;
     for (size_t i = 0; i < p->num_groups; i++) {
         const CustomShaderGroup *cg = &p->groups[i];
-        if (cg->animation_start_events == 0) {
+        bool this_active;
+        if (!cg->attached && cg->animation_start_events == 0) {
+            // Always-active, non-attached group — never enters the state machine.
             any_active = true;
-            continue;
-        }
-        monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
-        // Check end conditions before start so simultaneous start+end lets start win,
-        // except for focus-out events which act as hard stops (see below).
-        if (os_window->shader_group_anim[i].active) {
-            bool end = (cg->animation_end_events && (event_mask & cg->animation_end_events)) ||
-                       (eff_dur > 0 && now - os_window->shader_group_anim[i].started_at >= eff_dur);
-            if (end) {
-                os_window->shader_group_anim[i].active = false;
-                debug_rendering("Custom shader group %zu animation stopped (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
+            this_active = true;
+        } else {
+            monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
+            if (cg->animation_start_events != 0) {
+                // Check end conditions before start so simultaneous start+end lets start win,
+                // except for focus-out events which act as hard stops (see below).
+                if (os_window->shader_group_anim[i].active) {
+                    bool end = (cg->animation_end_events && (event_mask & cg->animation_end_events)) ||
+                               (eff_dur > 0 && now - os_window->shader_group_anim[i].started_at >= eff_dur);
+                    if (end) {
+                        os_window->shader_group_anim[i].active = false;
+                        debug_rendering("Custom shader group %zu animation stopped (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
+                    }
+                }
+                if (event_mask & cg->animation_start_events) {
+                    // Focus-out events are hard stops: if a focus-out stop condition is present in
+                    // the same tick as a start event (e.g. user-activity fired by the click that
+                    // moved focus away), the focus-out wins and the animation is not restarted.
+                    const unsigned focus_out_mask = (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
+                    if (!(cg->animation_end_events & event_mask & focus_out_mask)) {
+                        os_window->shader_group_anim[i].active = true;
+                        os_window->shader_group_anim[i].started_at = now;
+                        debug_rendering("Custom shader group %zu animation started (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
+                    }
+                }
+            }
+            // Attach: follow the previous group's effective active state.
+            if (cg->attached) {
+                if (prev_active && !os_window->shader_group_anim[i].active) {
+                    os_window->shader_group_anim[i].active = true;
+                    // Sync animation timing with the previous group when possible.
+                    monotonic_t prev_started = (i > 0) ? os_window->shader_group_anim[i - 1].started_at : 0;
+                    os_window->shader_group_anim[i].started_at = prev_started ? prev_started : now;
+                    debug_rendering("Custom shader group %zu activated via attach\n", i);
+                } else if (!prev_active && cg->animation_start_events == 0 && os_window->shader_group_anim[i].active) {
+                    // No own events: mirror the previous group's deactivation.
+                    os_window->shader_group_anim[i].active = false;
+                }
+            }
+            this_active = os_window->shader_group_anim[i].active;
+            if (this_active) {
+                any_active = true;
+                min_step = MIN(min_step, cg->animation_step);
+                // Only track next_end for groups with own stop conditions; attached-only groups
+                // deactivate when their predecessor does (already tracked by the predecessor).
+                if (cg->animation_start_events != 0 && eff_dur > 0) next_end = MIN(next_end, os_window->shader_group_anim[i].started_at + eff_dur);
             }
         }
-        if (event_mask & cg->animation_start_events) {
-            // Focus-out events are hard stops: if a focus-out stop condition is present in
-            // the same tick as a start event (e.g. user-activity fired by the click that
-            // moved focus away), the focus-out wins and the animation is not restarted.
-            const unsigned focus_out_mask = (1u << SHADER_ANIM_EVENT_OS_WINDOW_FOCUS_OUT) | (1u << SHADER_ANIM_EVENT_WINDOW_FOCUS_OUT);
-            if (!(cg->animation_end_events & event_mask & focus_out_mask)) {
-                os_window->shader_group_anim[i].active = true;
-                os_window->shader_group_anim[i].started_at = now;
-                debug_rendering("Custom shader group %zu animation started (events=%s)\n", i, shader_anim_event_mask_str(event_mask));
-            }
-        }
-        if (os_window->shader_group_anim[i].active) {
-            any_active = true;
-            min_step = MIN(min_step, cg->animation_step);
-            if (eff_dur > 0) next_end = MIN(next_end, os_window->shader_group_anim[i].started_at + eff_dur);
-        }
+        prev_active = this_active;
     }
     bool prev_has_active = os_window->has_active_custom_shaders;
     os_window->has_active_custom_shaders = any_active;
@@ -2545,7 +2581,8 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
     int last_active_g = -1;
     for (unsigned g = 0; g < num_groups; g++) {
         const CustomShaderGroup *cg = &custom_shaders.end.groups[g];
-        if (cg->animation_start_events == 0 || os_window->shader_group_anim[g].active) last_active_g = (int)g;
+        // Non-attached always-active groups always run; attached and animated groups run only when active.
+        if ((!cg->attached && cg->animation_start_events == 0) || os_window->shader_group_anim[g].active) last_active_g = (int)g;
     }
 
     // Ping-pong state: when true, backbuffer = texture_id and the ping-pong
@@ -2563,8 +2600,9 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
         const CustomShaderGroup *cg = &custom_shaders.end.groups[g];
         const bool is_last = (last_active_g >= 0 && g == (unsigned)last_active_g);
 
-        // Skip inactive animated groups; non-animated groups (animation_start_events == 0) always run
-        if (cg->animation_start_events != 0 && !os_window->shader_group_anim[g].active) continue;
+        // Skip inactive groups. Non-attached, non-animated groups always run; all others require
+        // shader_group_anim[g].active (set by update_custom_shader_animations, including attach logic).
+        if ((cg->animation_start_events != 0 || cg->attached) && !os_window->shader_group_anim[g].active) continue;
         const GLuint backbuffer = backbuffer_is_main ? global_state.layers_render_texture.texture_id : global_state.layers_render_texture.extra_texture_id;
 
         // Bind backbuffer to the backbuffer texture unit
@@ -2631,7 +2669,7 @@ run_custom_end_shader(OSWindow *os_window, float sx, float sy, monotonic_t now) 
 
         float anim_progress = 0.0f;
         monotonic_t eff_dur = cg->animation_end_duration < 0 ? OPT(cursor_stop_blinking_after) : cg->animation_end_duration;
-        if (cg->animation_start_events != 0 && eff_dur > 0 && os_window->shader_group_anim[g].active) {
+        if ((cg->animation_start_events != 0 || cg->attached) && eff_dur > 0 && os_window->shader_group_anim[g].active) {
             monotonic_t started_at = os_window->shader_group_anim[g].started_at;
             bool cached = false;
             for (size_t c = 0; c < num_anim_cached; c++) {
@@ -2921,6 +2959,9 @@ transfer_pipeline_to_struct(PyObject *pg, CustomShaderPipeline *p) {
 
         PyObject *ae_dur = PyDict_GetItemString(g, "animation_end_duration");
         if (ae_dur && PyLong_Check(ae_dur)) cg->animation_end_duration = (monotonic_t)PyLong_AsLong(ae_dur);
+
+        PyObject *attached = PyDict_GetItemString(g, "attached");
+        cg->attached = attached && PyObject_IsTrue(attached);
     }
     p->all_animation_start_events = 0;
     for (size_t i = 0; i < p->num_groups; i++) p->all_animation_start_events |= p->groups[i].animation_start_events;

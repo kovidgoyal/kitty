@@ -248,6 +248,21 @@ Directives inside a group:
     (20 fps). The value is clamped to be no smaller than
     :opt:`repaint_delay`.
 
+``attach``
+    Mark this group as *attached* to the preceding group. An attached group
+    is automatically active whenever its preceding group is active, without
+    needing to duplicate the ``animation_start`` / ``animation_stop``
+    directives. This is the primary way to build multi-pass effects where
+    several groups must activate and deactivate together. The first group in
+    a pipeline cannot use ``attach``. An attached group may also carry its
+    own ``animation_start`` — in that case it becomes active when *either*
+    condition is true (its own events or the preceding group being active).
+    If an attached group has no ``animation_start`` of its own, it mirrors
+    the preceding group exactly: it activates when that group activates and
+    deactivates when that group deactivates. ``animation_progress`` for
+    an attached group is computed from the same ``started_at`` timestamp as
+    the preceding group, so both groups animate in perfect sync.
+
 .. _named_textures:
 
 Named textures
@@ -317,6 +332,30 @@ Here the first group renders a glow pre-pass into texture ``a``, and the
 second group reads both the original backbuffer (``t.backbuffer``) and the
 glow data (``t.a``) to composite the final image. Note that these shaders
 aren't shipped with kitty, this is jut an illustrative example.
+
+**A multi-pass event-driven effect** using ``attach``::
+
+    textures a
+
+    startgroup
+        animation_start pointer-left-button-press
+        animation_stop 1500
+        animation_curve ease-out
+        animation_step 16
+        shaders ripple-prepass
+        output_texture a
+    endgroup
+
+    startgroup
+        attach
+        animation_step 16
+        shaders ripple-composite
+    endgroup
+
+The second group uses ``attach`` so it activates and deactivates in lockstep
+with the first group — no need to repeat the ``animation_start`` /
+``animation_stop`` / ``animation_curve`` directives. Both groups also share
+the same ``animation_progress`` value so they animate in perfect sync.
 
 Animation events
 ^^^^^^^^^^^^^^^^^^^

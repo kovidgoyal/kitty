@@ -1209,6 +1209,7 @@ class Group(TypedDict):
     animation_step: int  # nanoseconds between animation samples
     animation_end_events: tuple[str, ...]  # events that stop the animation
     animation_end_duration: int  # nanoseconds; 0 = no time limit, negative = use cursor_stop_blinking_after
+    attached: bool  # if True, this group is always active when the previous group is active
 
 
 class Pipeline(TypedDict):
@@ -1248,6 +1249,7 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
             'animation_step': ANIMATION_SAMPLE_WAIT,
             'animation_end_events': (),
             'animation_end_duration': -1,
+            'attached': False,
         }
 
     for line in lines:
@@ -1312,6 +1314,8 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
                                 end_events.extend(parse_animation_events(token))
                         current_group['animation_end_events'] = tuple(end_events)
                         current_group['animation_end_duration'] = end_duration
+                case 'attach':
+                    current_group['attached'] = True
                 case 'endgroup':
                     commit_group()
                 case _:
@@ -1321,6 +1325,8 @@ def parse_pipeline_definition(lines: Iterable[str], pipeline_name: str, pipeline
     groups = groups or [init_group(pipeline_name)]
     if len(groups) > MAX_CUSTOM_SHADER_GROUPS:
         raise ValueError(f'Pipeline {pipeline_name!r} has {len(groups)} groups but the maximum is {MAX_CUSTOM_SHADER_GROUPS}')
+    if groups[0]['attached']:
+        raise ValueError('The first group in a pipeline cannot use attach (no previous group to attach to)')
     if groups[-1]['output_texture'] is not NamedTexture.default:
         raise ValueError('The final group cannot output to a named texture')
     if groups[-1]['viewport_pos'] != (0, 0) or groups[-1]['viewport_size'] != (1, 1):
