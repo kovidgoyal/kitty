@@ -1,18 +1,22 @@
 textures a persist
 
 startgroup
+    animation_start os-window-focus-in | user-activity
+    animation_stop os-window-focus-out | user-idle
     var int STAGE = 0
     shaders northern-lights
     output_texture a
 endgroup
 
 startgroup
+    attach
     var int STAGE = 1
     shaders northern-lights
     output_texture persist
 endgroup
 
 startgroup
+    attach
     var int STAGE = 2
     shaders northern-lights
 endgroup
