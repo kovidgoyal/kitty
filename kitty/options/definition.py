@@ -456,7 +456,8 @@ trail animation only follows cursors that have stayed in their position for long
 than the specified number of milliseconds. This prevents trails from appearing
 for cursors that rapidly change their positions during UI updates in complex applications.
 See :opt:`cursor_trail_decay` to control the animation speed and :opt:`cursor_trail_start_threshold`
-to control when a cursor trail is started.
+to control when a cursor trail is started. You can also have different styles of trail by
+using the :opt:`custom_shaders` option, for example: :code:`custom_shaders cursor-trail-blaze`.
 """,
 )
 
