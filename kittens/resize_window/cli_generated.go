@@ -7,7 +7,7 @@ var _ = fmt.Sprintf
 func create_cmd(root *cli.Command, run_func func(*cli.Command, *Options, []string)(int, error)) {
 ans := root.AddSubCommand(&cli.Command{
 Name: "resize_window",
-ShortDescription: "Resize the current window",
+ShortDescription: "Resize the current window interactively",
 HelpText: "Resize the current window",
 Run: func(cmd *cli.Command, args []string) (int, error) {
 opts := Options{}
