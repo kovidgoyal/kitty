@@ -211,7 +211,7 @@ Detailed list of changes
 
 - diff kitten: Fix a rare crash when showing a large diff due to incorrect locking when highlighting
 
-- Allow the private DCS kitty-echo escape code to only echo numbers
+- Allow the private DCS kitty-echo escape code to only echo numbers (:cve:`2026-72913`)
 
 - Linux: Fix an approx 1MB memory leak when reloading the config, introduced in version 0.40.0 (:iss:`10290`)
 
