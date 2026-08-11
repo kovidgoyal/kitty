@@ -280,10 +280,10 @@
     },
 
     {
-        "name": "slang 2026.12.2",
+        "name": "slang 2026.14.1",
         "unix": {
             "file_extension": "tar.gz",
-            "hash": "sha256:1ed5ebf7886849ea621d6dabee20248e8551c80134aa8c4433746879cb20dea3",
+            "hash": "sha256:20254026c218ac100ecd118c033f2843e11282152d0d2b6a6b744735674c40ea",
             "urls": ["git-submodules://github.com/shader-slang/slang.git"]
         }
     },
