@@ -149,10 +149,10 @@ metadata: dict[str, dict[str, Any]] = {
     'cursor-trail-blaze': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Set your cursor on fire as it moves around.'},
     'cursor-trail-lightning': {'animate': cursor_trail, 'category': 'cursor-trail', 'tagline': 'Make your cursor shoot lightning as it moves around.'},
     # Navigation
-    'focus-highlight': {
+    'dim-inactive-windows': {
         'animate': window_focus,
         'category': 'navigation',
-        'tagline': 'Highlight the active window on focus change.',
+        'tagline': 'Make the active window standout more.',
         'session': 'launch kitten run-shell ls -l\nlaunch kitten run-shell bat -P setup.py\nlaunch kitten run-shell echo Hello World',
     },
     'tab-change': {
@@ -160,6 +160,12 @@ metadata: dict[str, dict[str, Any]] = {
         'category': 'navigation',
         'tagline': 'Highlight the active window on focus change.',
         'session': 'new_tab My Shell\nlaunch kitten run-shell ls\nnew_tab My Code\nlaunch nvim -R {self}',
+    },
+    'focus-highlight': {
+        'animate': window_focus,
+        'category': 'navigation',
+        'tagline': 'Briefly highlight the active window on focus change.',
+        'session': 'launch kitten run-shell ls -l\nlaunch kitten run-shell bat -P setup.py\nlaunch kitten run-shell echo Hello World',
     },
     # Retro terminals
     'crt': {'category': 'retro', 'title': 'Cathode Ray Tube', 'tagline': 'Your terminal deserves to have curves.', 'duration': 2},

@@ -35,6 +35,7 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     bool inWindow = all(uv >= winMin) && all(uv <= winMax);
 
     if (inWindow) {
+        if (HIGHLIGHT_INTENSITY == 0 && BORDER_WIDTH == 0) return color;
         // Minimum distance from this pixel to any edge of the active window.
         float2 edgeDists = min(uv - winMin, winMax - uv);
         float nearestEdge = min(edgeDists.x, edgeDists.y);
@@ -44,9 +45,8 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
 
         float boost = (HIGHLIGHT_INTENSITY + borderGlow) * strength;
         return float4(color.rgb * (1.0 + boost), color.a);
-    } else {
-        // Slightly dim inactive areas to draw the eye to the focused window.
-        float dim = lerp(1.0, INACTIVE_DIM, strength);
-        return float4(color.rgb * dim, color.a);
     }
+    // Slightly dim inactive areas to draw the eye to the focused window.
+    float dim = lerp(1.0, INACTIVE_DIM, strength);
+    return float4(color.rgb * dim, color.a);
 }

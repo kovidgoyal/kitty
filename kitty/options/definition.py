@@ -1795,7 +1795,8 @@ used the text is faded even if only a single window is visible when the OS windo
 is not focused. Negative numbers means that text is only faded when more than one kitty window
 is visible in an OS Window. Fading happens in all but the active window, even if the OS Window
 is not focused. Thus this is useful if you want to rely on the window manager to indicate OS Window focus
-and this feature to indicate which kitty window is active insidethe OS Window.
+and this feature to indicate which kitty window is active inside the OS Window. For alternate dimming/highlighting
+strategies, you can use :opt:`custom_shaders` for example: :code:`custom_shaders dim-inactive-windows`.
 """,
 )
 
