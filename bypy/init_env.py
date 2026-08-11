@@ -95,7 +95,8 @@ def build_c_extensions(ext_dir, args):
     shutil.copytree(
         KITTY_DIR, writeable_src_dir, symlinks=True, ignore=shutil.ignore_patterns('b', 'build', 'dist', '*_commands.json', '*.o', '*.so', '*.dylib', '*.pyd')
     )
-    shutil.rmtree(os.path.join(writeable_src_dir, 'shaders'))
+    with suppress(FileNotFoundError):
+        shutil.rmtree(os.path.join(writeable_src_dir, 'shaders'))
 
     with suppress(FileNotFoundError):
         os.unlink(os.path.join(writeable_src_dir, 'kitty', 'launcher', 'kitty'))
