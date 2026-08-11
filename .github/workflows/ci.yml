@@ -95,7 +95,7 @@ jobs:
               go-version-file: go.mod
               cache: false
 
-          - name: Cache Go build artifacts separately
+          - name: Cache Go build artifacts for static kittens
             uses: actions/cache@v6.1.0
             with:
               path: |
