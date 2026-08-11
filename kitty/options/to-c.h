@@ -555,7 +555,7 @@ box_drawing_scale(PyObject *val, Options *opts) {
 }
 
 static inline void
-remap_modifier(PyObject *val, Options *opts) {
+remap_modifiers(PyObject *val, Options *opts) {
     memset(opts->modifier_remap, 0, sizeof(opts->modifier_remap));
     opts->modifier_remap_mask = 0;
     if (!PyDict_Check(val)) {

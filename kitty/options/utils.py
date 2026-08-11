@@ -524,44 +524,49 @@ def to_modifiers(val: str) -> int:
     return parse_mods(val.split('+'), val) or 0
 
 
-def remap_modifier(val: str) -> Iterable[tuple[int, int]]:
+def remap_modifiers(val: str) -> dict[int, int]:
     # Only the real modifiers may be remapped. parse_mods() also accepts
     # kitty_mod (a parse-time placeholder resolved out of keymaps before any key
     # event exists) and the lock modifiers, neither of which can be meaningfully
     # carried on an event, so they are rejected here rather than silently
     # mangling events later.
+    ans = {}
+    if not val:
+        return ans
     remappable = (
         defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT | defines.GLFW_MOD_CONTROL | defines.GLFW_MOD_SUPER | defines.GLFW_MOD_HYPER | defines.GLFW_MOD_META
     )
 
     def bad(msg: str) -> None:
-        log_error(f'Ignoring invalid remap_modifier "{val}": {msg}')
+        log_error(f'Ignoring invalid remap_modifiers "{val}": {msg}')
 
-    parts = val.split()
-    if len(parts) != 2:
-        bad('must be two modifier names separated by whitespace')
-        return
-    # parse_mods() returns None both for an unknown name (already logged) and for
-    # "none" (deliberately not logged), so check the names before trusting it
-    for part in parts:
-        for name in part.split('+'):
-            if name.upper() in ('NONE', ''):
-                bad('none is not a modifier')
-                return
-    src = parse_mods(parts[0].split('+'), val)
-    dest = parse_mods(parts[1].split('+'), val)
-    if src is None or dest is None:
-        return  # parse_mods() has already logged the unknown modifier name
-    if src & ~remappable or dest & ~remappable:
-        bad('only shift, alt, ctrl, super, hyper and meta can be remapped')
-        return
-    if src & (src - 1):
-        bad('the source must name exactly one modifier')
-        return
-    if src == dest:
-        bad('the source and destination are the same')
-        return
-    yield src, dest
+    for token in val.split():
+        parts = token.split(':', 1)
+        if len(parts) != 2:
+            bad('must be two modifier names separated by a colon')
+            return {}
+        # parse_mods() returns None both for an unknown name (already logged) and for
+        # "none" (deliberately not logged), so check the names before trusting it
+        for part in parts:
+            for name in part.split('+'):
+                if name.upper() in ('NONE', ''):
+                    bad('none is not a modifier')
+                    return {}
+        src = parse_mods(parts[0].split('+'), val)
+        dest = parse_mods(parts[1].split('+'), val)
+        if src is None or dest is None:
+            return {}  # parse_mods() has already logged the unknown modifier name
+        if src & ~remappable or dest & ~remappable:
+            bad('only shift, alt, ctrl, super, hyper and meta can be remapped')
+            return {}
+        if src & (src - 1):
+            bad('the source must name exactly one modifier')
+            return {}
+        if src == dest:
+            bad('the source and destination are the same')
+            return {}
+        ans[src] = dest
+    return ans
 
 
 def parse_shortcut(sc: str) -> SingleKey:

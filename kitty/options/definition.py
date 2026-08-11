@@ -3568,39 +3568,35 @@ this option to alter all default shortcuts that use :opt:`kitty_mod`.
 )
 
 opt(
-    '+remap_modifier',
-    'ctrl super',
-    option_type='remap_modifier',
-    ctype='!remap_modifier',
+    'remap_modifiers',
+    '',
+    option_type='remap_modifiers',
+    ctype='!remap_modifiers',
     add_to_default=False,
     long_text="""
-Present one modifier key to kitty as if it were another. The syntax is::
+Remap modifiers, making one modifier act as another. The syntax is::
 
-    remap_modifier <from> <to>
+    remap_modifiers <from>:<to> <from>:<to> ...
 
-for example :code:`remap_modifier ctrl super` makes every :kbd:`Ctrl+key` press
+for example :code:`remap_modifiers ctrl:super` makes every :kbd:`Ctrl+key` press
 arrive as :kbd:`Super+key`. Only :code:`shift`, :code:`alt`, :code:`ctrl`,
 :code:`super`, :code:`hyper` and :code:`meta` can be named. The source must be
 exactly one modifier; the destination may name more than one, in which case
 holding the source is indistinguishable from holding all of them.
 
-This option can be specified multiple times, and the declarations are applied as
-a single simultaneous permutation, once, as each event arrives. So::
+To swap two modifiers, specify remap rules for both, for example, to swap ctrl and super::
 
-    remap_modifier ctrl super
-    remap_modifier super ctrl
+    remap_modifiers ctrl:super super:ctrl
 
-exchanges the two rather than collapsing to no change. Ordering among
-:opt:`remap_modifier` declarations matters only in that the last declaration for
-a given source wins; where they sit relative to other options in
-:file:`kitty.conf` makes no difference.
+Ordering among :opt:`remap_modifiers` items matters only in that the last item for
+a given source wins.
 
 The remapping happens before anything else looks at the event, so it is
 application wide: kitty's own keyboard shortcuts, :opt:`kitty_mod`,
 :opt:`mouse_map` and the keys sent to the program running in the terminal all
 see the remapped modifier. Every mapping in :file:`kitty.conf` is therefore
 written in terms of the modifier a key *becomes*, not the one printed on the
-keycap — including the built-in shortcuts, so :code:`remap_modifier ctrl super`
+keycap — including the built-in shortcuts, so :code:`remap_modifiers ctrl super`
 moves every default :code:`ctrl+shift+…` binding onto the physical Super key
 unless you also change :opt:`kitty_mod`.
 
@@ -3625,8 +3621,7 @@ silently losing the modifier.
 On Wayland, kitty only detects the :kbd:`hyper` and :kbd:`meta` modifiers when
 :envvar:`KITTY_WAYLAND_DETECT_MODIFIERS` is set in the environment. Without it
 those two never appear on key events at all, so remapping to or from them has
-nothing to act on there. This is pre-existing behaviour, not a limitation of
-this option.
+nothing to act on there.
 
 This is useful for keyboard layouts that move Control somewhere more comfortable
 — for example placing a Hyper key on Caps Lock to use for readline and TUI

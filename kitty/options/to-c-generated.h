@@ -1539,15 +1539,15 @@ convert_from_opts_wayland_enable_ime(PyObject *py_opts, Options *opts) {
 }
 
 static void
-convert_from_python_remap_modifier(PyObject *val, Options *opts) {
-    remap_modifier(val, opts);
+convert_from_python_remap_modifiers(PyObject *val, Options *opts) {
+    remap_modifiers(val, opts);
 }
 
 static void
-convert_from_opts_remap_modifier(PyObject *py_opts, Options *opts) {
-    PyObject *ret = PyObject_GetAttrString(py_opts, "remap_modifier");
+convert_from_opts_remap_modifiers(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "remap_modifiers");
     if (ret == NULL) return;
-    convert_from_python_remap_modifier(ret, opts);
+    convert_from_python_remap_modifiers(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1789,7 +1789,7 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     if (PyErr_Occurred()) return false;
     convert_from_opts_wayland_enable_ime(py_opts, opts);
     if (PyErr_Occurred()) return false;
-    convert_from_opts_remap_modifier(py_opts, opts);
+    convert_from_opts_remap_modifiers(py_opts, opts);
     if (PyErr_Occurred()) return false;
     return true;
 }
