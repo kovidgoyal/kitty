@@ -3595,7 +3595,7 @@ a given source wins.
 
 The remapping happens before anything else looks at the event, so it is
 application wide: kitty's own keyboard shortcuts, :opt:`kitty_mod`,
-:opt:`mouse_map` and the keys sent to the program running in the terminal all
+:code:`mouse_map` and the keys sent to the program running in the terminal all
 see the remapped modifier. Every mapping in :file:`kitty.conf` is therefore
 written in terms of the modifier a key *becomes*, not the one printed on the
 keycap — including the built-in shortcuts, so :code:`remap_modifiers ctrl super`
