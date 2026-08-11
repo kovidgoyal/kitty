@@ -512,8 +512,7 @@ remap_cocoa_flags(NSUInteger flags) {
     const int remapped = _glfwApplyModifierRemap(mods);
     if (remapped == mods) return flags;
     if (remapped & (GLFW_MOD_HYPER | GLFW_MOD_META)) return flags;
-    NSUInteger ans = flags & ~(NSUInteger)(NSEventModifierFlagShift | NSEventModifierFlagControl |
-                                           NSEventModifierFlagOption | NSEventModifierFlagCommand);
+    NSUInteger ans = flags & ~(NSUInteger)(NSEventModifierFlagShift | NSEventModifierFlagControl | NSEventModifierFlagOption | NSEventModifierFlagCommand);
     if (remapped & GLFW_MOD_SHIFT) ans |= NSEventModifierFlagShift;
     if (remapped & GLFW_MOD_CONTROL) ans |= NSEventModifierFlagControl;
     if (remapped & GLFW_MOD_ALT) ans |= NSEventModifierFlagOption;
@@ -526,7 +525,7 @@ remap_cocoa_flags(NSUInteger flags) {
 // the PHYSICAL flags and cannot be recomputed here, so this path is only
 // approximately corrected; the UCKeyTranslate() path above, which is the one
 // normally taken, uses the remapped flags directly and is exact.
-static NSEvent*
+static NSEvent *
 event_with_remapped_flags(NSEvent *event, NSUInteger flags) {
     if (flags == [event modifierFlags]) return event;
     NSEvent *ans = [NSEvent keyEventWithType:[event type]

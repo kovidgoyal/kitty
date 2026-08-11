@@ -501,7 +501,8 @@ modifier_to_key(int modifier, bool is_left) {
     }
 }
 
-static_assert(GLFW_MOD_LAST < (1 << arraysz(((Options*)NULL)->modifier_remap)),
+static_assert(
+    GLFW_MOD_LAST < (1 << arraysz(((Options *)NULL)->modifier_remap)),
     "Options.modifier_remap is indexed by modifier bit position, it must cover every GLFW modifier");
 
 #ifdef __APPLE__
@@ -512,13 +513,17 @@ static_assert(GLFW_MOD_LAST < (1 << arraysz(((Options*)NULL)->modifier_remap)),
 // been remapped away so nothing physical produces it any more.
 static bool
 invert_modifier_remap(int mods, int *ans) {
-    if (!OPT(modifier_remap_mask)) { *ans = mods; return true; }
+    if (!OPT(modifier_remap_mask)) {
+        *ans = mods;
+        return true;
+    }
     int consumed = 0, produced = 0;
     for (unsigned i = 0; i < arraysz(OPT(modifier_remap)); i++) {
         const int dest = OPT(modifier_remap)[i];
         if (!dest || (mods & dest) != dest) continue;
         if (consumed & dest) return false;
-        consumed |= dest; produced |= 1 << i;
+        consumed |= dest;
+        produced |= 1 << i;
     }
     const int leftover = mods & ~consumed;
     if (leftover & OPT(modifier_remap_mask)) return false;
@@ -581,7 +586,7 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
     // on press and the remapped one on release.
     if (key_modifier > 0 && (OPT(modifier_remap_mask) & key_modifier)) {
         const int dest = OPT(modifier_remap)[__builtin_ctz((unsigned)key_modifier)];
-        if (dest && !(dest & (dest - 1))) {  // only when the destination is a single modifier
+        if (dest && !(dest & (dest - 1))) { // only when the destination is a single modifier
             const uint32_t remapped_key = modifier_to_key(dest, is_left);
             if (remapped_key) {
                 debug_input("\x1b[35mremap_modifier\x1b[m: modifier key 0x%x -> 0x%x\n", ev->key, remapped_key);

@@ -531,8 +531,7 @@ def remap_modifier(val: str) -> Iterable[tuple[int, int]]:
     # carried on an event, so they are rejected here rather than silently
     # mangling events later.
     remappable = (
-        defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT | defines.GLFW_MOD_CONTROL |
-        defines.GLFW_MOD_SUPER | defines.GLFW_MOD_HYPER | defines.GLFW_MOD_META
+        defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT | defines.GLFW_MOD_CONTROL | defines.GLFW_MOD_SUPER | defines.GLFW_MOD_HYPER | defines.GLFW_MOD_META
     )
 
     def bad(msg: str) -> None:

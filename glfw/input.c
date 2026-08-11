@@ -697,7 +697,8 @@ glfwSetIgnoreOSKeyboardProcessing(bool enabled) {
 // Apply the remap_modifier permutation to a GLFW modifier mask. Every source bit
 // is translated in the same pass, so a pair of declarations exchanging two
 // modifiers is a swap rather than the identity.
-int _glfwApplyModifierRemap(int mods) {
+int
+_glfwApplyModifierRemap(int mods) {
     if (!(mods & _glfw.modifierRemapMask)) return mods;
     int ans = 0;
     for (unsigned i = 0; i < GLFW_MOD_REMAP_SZ; i++) {
@@ -707,7 +708,8 @@ int _glfwApplyModifierRemap(int mods) {
     return ans;
 }
 
-GLFWAPI void glfwSetModifierRemap(const int *table) {
+GLFWAPI void
+glfwSetModifierRemap(const int *table) {
     _glfw.modifierRemapMask = 0;
     for (unsigned i = 0; i < GLFW_MOD_REMAP_SZ; i++) {
         _glfw.modifierRemap[i] = table ? table[i] : 0;
