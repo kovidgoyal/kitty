@@ -563,6 +563,18 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetX11LaunchCommand_impl) = dlsym(handle, "glfwSetX11LaunchCommand");
     if (glfwSetX11LaunchCommand_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwWaylandCreateVirtualDevices_impl) = dlsym(handle, "glfwWaylandCreateVirtualDevices");
+    if (glfwWaylandCreateVirtualDevices_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwWaylandInjectMouseMotionAbsolute_impl) = dlsym(handle, "glfwWaylandInjectMouseMotionAbsolute");
+    if (glfwWaylandInjectMouseMotionAbsolute_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwWaylandInjectMouseButton_impl) = dlsym(handle, "glfwWaylandInjectMouseButton");
+    if (glfwWaylandInjectMouseButton_impl == NULL) dlerror(); // clear error indicator
+
+    *(void **) (&glfwWaylandInjectKey_impl) = dlsym(handle, "glfwWaylandInjectKey");
+    if (glfwWaylandInjectKey_impl == NULL) dlerror(); // clear error indicator
+
     return NULL;
 }
 

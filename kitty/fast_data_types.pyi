@@ -47,6 +47,7 @@ CLD_STOPPED: int
 CLD_CONTINUED: int
 CLD_EXITED: int
 SHM_NAME_MAX: int
+MAX_CUSTOM_SHADER_GROUPS: int
 MOUSE_SELECTION_LINE: int
 MOUSE_SELECTION_EXTEND: int
 MOUSE_SELECTION_NORMAL: int
@@ -280,8 +281,11 @@ NO_CURSOR_SHAPE: int
 CURSOR_UNDERLINE: int
 DECAWM: int
 LNM: int
+ANIMATION_SAMPLE_WAIT: int
 BGIMAGE_PROGRAM: int
 CELL_PROGRAM: int
+PADDING_PROGRAM: int
+CUSTOM_END_PROGRAM: int
 CELL_FG_PROGRAM: int
 CELL_BG_PROGRAM: int
 BLIT_PROGRAM: int
@@ -353,6 +357,12 @@ def log_error_string(s: str) -> None:
 
 def glfw_get_key_name(key: int, native_key: int) -> Optional[str]:
     pass
+
+def glfw_wayland_inject_init(path_to_module: str, wayland_display: str) -> None: ...
+def glfw_wayland_inject_terminate() -> None: ...
+def glfw_wayland_inject_mouse_motion_absolute(x: int, y: int, x_extent: int, y_extent: int) -> None: ...
+def glfw_wayland_inject_mouse_button(button: int, action: int) -> None: ...
+def glfw_wayland_inject_key(key: int, action: int, mods: int = 0) -> None: ...
 
 StartupCtx = NewType('StartupCtx', int)
 Display = NewType('Display', int)
@@ -515,19 +525,15 @@ def monitor_pid(pid: int) -> None:
 def add_window(os_window_id: int, tab_id: int, title: str) -> int:
     pass
 
-def compile_program(which: int, vertex_shaders: Tuple[str, ...], fragment_shaders: Tuple[str, ...], allow_recompile: bool = False) -> int:
-    pass
-
-def init_cell_program() -> None:
+def compile_program(
+    which: int, vertex_shaders: Tuple[str, ...], fragment_shaders: Tuple[str, ...], metadata: Dict[str, Any], allow_recompile: bool = False
+) -> int:
     pass
 
 def set_os_window_chrome(os_window_id: int) -> bool:
     pass
 
 def set_borders_rects(os_window_id: int, tab_id: int, rects: list[Border]) -> None: ...
-def init_borders_program() -> None:
-    pass
-
 def os_window_has_background_image(os_window_id: int) -> bool:
     pass
 
@@ -986,7 +992,6 @@ def parse_input_from_terminal(
 
 class Line:
     def sprite_at(self, cell: int) -> int: ...
-
     def cursor_from(self, x: int, y: int = 0) -> Cursor: ...
 
 def test_shape(line: Line, path: Optional[str] = None, index: int = 0) -> List[Tuple[int, int, int, Tuple[int, ...]]]:
@@ -1253,6 +1258,10 @@ def set_window_render_data(
     spaces_top: int,
     spaces_right: int,
     spaces_bottom: int,
+    cp_left: int,
+    cp_top: int,
+    cp_right: int,
+    cp_bottom: int,
 ) -> None:
     pass
 
@@ -1620,7 +1629,7 @@ def get_tab_being_dragged() -> tuple[int, bool, float, float]: ...
 def set_window_being_dragged(window_id: int = 0, drag_started: bool = False, x: float = 0.0, y: float = 0.0) -> None: ...
 def get_window_being_dragged() -> tuple[int, bool, float, float]: ...
 def request_callback_with_thumbnail(
-    callback: str, os_window_id: int, window_id: int = 0, include_tab_bar: bool = False, scale: float = 0.25, max_width: int = 480
+    callback: str, os_window_id: int, window_id: int = 0, include_tab_bar: bool = False, scale: float = 0.25, max_width: int = 480, no_scaling: bool = False
 ) -> None: ...
 def png_from_32bit_rgba_data(data: bytes, width: int, height: int, flip_vertically: bool = False) -> bytes: ...
 def set_uint_at_address(address: int, value: int) -> None: ...

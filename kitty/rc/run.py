@@ -27,13 +27,13 @@ if TYPE_CHECKING:
 
 
 class Run(RemoteCommand):
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     data+/str: Chunk of STDIN data, base64 encoded no more than 4096 bytes. Must send an empty chunk to indicate end of data.
     cmdline+/list.str: The command line to run
     env/list.str: List of environment variables of the form NAME=VALUE
     allow_remote_control/bool: A boolean indicating whether to allow remote control
     remote_control_password/list.str: A list of remote control passwords
-    '''
+    """
 
     short_desc = 'Run a program on the computer in which kitty is running and get the output'
     desc = (
@@ -43,7 +43,7 @@ class Run(RemoteCommand):
         ' use @ launch --type=background instead.'
     )
 
-    options_spec = f'''\n
+    options_spec = f"""\n
 --env
 {env_docs}
 
@@ -55,10 +55,13 @@ The executed program will have privileges to run remote control commands in kitt
 
 --remote-control-password
 {remote_control_password_docs}
-'''
+"""
     args = RemoteCommand.Args(
-        spec='CMD ...', json_field='data', special_parse='+cmdline:!read_run_data(io_data, args, &payload)', minimum_count=1,
-        completion=RemoteCommand.CompletionSpec.from_string('type:special group:cli.CompleteExecutableFirstArg')
+        spec='CMD ...',
+        json_field='data',
+        special_parse='+cmdline:!read_run_data(io_data, args, &payload)',
+        minimum_count=1,
+        completion=RemoteCommand.CompletionSpec.from_string('type:special group:cli.CompleteExecutableFirstArg'),
     )
     reads_streaming_data = True
     is_asynchronous = True
@@ -67,6 +70,7 @@ The executed program will have privileges to run remote control commands in kitt
         if not args:
             self.fatal('Must specify command to run')
         import secrets
+
         ret = {
             'stream_id': secrets.token_urlsafe(),
             'cmdline': args,
@@ -75,6 +79,7 @@ The executed program will have privileges to run remote control commands in kitt
             'remote_control_password': opts.remote_control_password,
             'data': '',
         }
+
         def pipe() -> CmdGenerator:
             if sys.stdin.isatty():
                 yield ret
@@ -84,19 +89,22 @@ The executed program will have privileges to run remote control commands in kitt
                     data = sys.stdin.buffer.read(limit)
                     if not data:
                         break
-                    ret['data'] = standard_b64encode(data).decode("ascii")
+                    ret['data'] = standard_b64encode(data).decode('ascii')
                     yield ret
+
         return pipe()
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         import os
         import tempfile
+
         data = payload_get('data')
         q = self.handle_streamed_data(standard_b64decode(data) if data else b'', payload_get)
         if isinstance(q, AsyncResponse):
             return q
         stdin_data = q.getvalue()
         from kitty.launch import parse_remote_control_passwords
+
         cmdline = payload_get('cmdline')
         allow_remote_control = payload_get('allow_remote_control')
         pw = payload_get('remote_control_password')
@@ -114,11 +122,14 @@ The executed program will have privileges to run remote control commands in kitt
                     exit_code = os.waitstatus_to_exitcode(exit_status)
                     stdout.seek(0)
                     stderr.seek(0)
-                    responder.send_data({
-                        'stdout': standard_b64encode(stdout.read()).decode('ascii'),
-                        'stderr': standard_b64encode(stderr.read()).decode('ascii'),
-                        'exit_code': exit_code, 'exit_status': exit_status,
-                    })
+                    responder.send_data(
+                        {
+                            'stdout': standard_b64encode(stdout.read()).decode('ascii'),
+                            'stderr': standard_b64encode(stderr.read()).decode('ascii'),
+                            'exit_code': exit_code,
+                            'exit_status': exit_status,
+                        }
+                    )
 
         env: dict[str, str] = {}
         for x in payload_get('env') or ():
@@ -126,8 +137,14 @@ The executed program will have privileges to run remote control commands in kitt
                 env[k] = v
 
         boss.run_background_process(
-            cmdline, env=env, stdin=stdin_data, stdout=stdout.fileno(), stderr=stderr.fileno(),
-            notify_on_death=on_death, remote_control_passwords=rcp, allow_remote_control=allow_remote_control
+            cmdline,
+            env=env,
+            stdin=stdin_data,
+            stdout=stdout.fileno(),
+            stderr=stderr.fileno(),
+            notify_on_death=on_death,
+            remote_control_passwords=rcp,
+            allow_remote_control=allow_remote_control,
         )
         return AsyncResponse()
 

@@ -27,17 +27,23 @@ static bool
 alloc_shlex_state(ShlexState *s, const char *src, size_t src_sz, bool support_ansi_c_quoting) {
     *s = (ShlexState){
         // for NULL termination and some safety we add 16 bytes
-        .src=src, .src_sz=src_sz, .support_ansi_c_quoting=support_ansi_c_quoting, .buf=malloc(16 + src_sz)
-    };
+        .src = src,
+        .src_sz = src_sz,
+        .support_ansi_c_quoting = support_ansi_c_quoting,
+        .buf = malloc(16 + src_sz)};
     return s->buf != NULL;
 }
 
 static void
 dealloc_shlex_state(ShlexState *s) {
-    free(s->buf); s->buf = NULL;
+    free(s->buf);
+    s->buf = NULL;
     *s = (ShlexState){0};
 }
-#define WHITESPACE ' ': case '\n': case '\t': case '\r'
+#define WHITESPACE   \
+    ' ' : case '\n': \
+    case '\t':       \
+    case '\r'
 #define STRING_WITH_ESCAPES_DELIM '"'
 #define STRING_WITHOUT_ESCAPES_DELIM '\''
 #define ESCAPE_CHAR '\\'
@@ -54,27 +60,27 @@ write_ch(ShlexState *self, char ch) {
 }
 
 static unsigned
-encode_utf8(unsigned long ch, char* dest) {
-    if (ch < 0x80) { // only lower 7 bits can be 1
-        dest[0] = (char)ch;  // 0xxxxxxx
+encode_utf8(unsigned long ch, char *dest) {
+    if (ch < 0x80) {        // only lower 7 bits can be 1
+        dest[0] = (char)ch; // 0xxxxxxx
         return 1;
     }
-    if (ch < 0x800) { // only lower 11 bits can be 1
-        dest[0] = (ch>>6) | 0xC0; // 110xxxxx
-        dest[1] = (ch & 0x3F) | 0x80;  // 10xxxxxx
+    if (ch < 0x800) {                 // only lower 11 bits can be 1
+        dest[0] = (ch >> 6) | 0xC0;   // 110xxxxx
+        dest[1] = (ch & 0x3F) | 0x80; // 10xxxxxx
         return 2;
     }
-    if (ch < 0x10000) { // only lower 16 bits can be 1
-        dest[0] = (ch>>12) | 0xE0; // 1110xxxx
-        dest[1] = ((ch>>6) & 0x3F) | 0x80;  // 10xxxxxx
-        dest[2] = (ch & 0x3F) | 0x80;       // 10xxxxxx
+    if (ch < 0x10000) {                      // only lower 16 bits can be 1
+        dest[0] = (ch >> 12) | 0xE0;         // 1110xxxx
+        dest[1] = ((ch >> 6) & 0x3F) | 0x80; // 10xxxxxx
+        dest[2] = (ch & 0x3F) | 0x80;        // 10xxxxxx
         return 3;
     }
-    if (ch < 0x110000) { // only lower 21 bits can be 1
-        dest[0] = (ch>>18) | 0xF0; // 11110xxx
-        dest[1] = ((ch>>12) & 0x3F) | 0x80; // 10xxxxxx
-        dest[2] = ((ch>>6) & 0x3F) | 0x80;  // 10xxxxxx
-        dest[3] = (ch & 0x3F) | 0x80; // 10xxxxxx
+    if (ch < 0x110000) {                      // only lower 21 bits can be 1
+        dest[0] = (ch >> 18) | 0xF0;          // 11110xxx
+        dest[1] = ((ch >> 12) & 0x3F) | 0x80; // 10xxxxxx
+        dest[2] = ((ch >> 6) & 0x3F) | 0x80;  // 10xxxxxx
+        dest[3] = (ch & 0x3F) | 0x80;         // 10xxxxxx
         return 4;
     }
     return 0;
@@ -88,7 +94,8 @@ write_unich(ShlexState *self, unsigned long ch) {
 
 static size_t
 get_word(ShlexState *self) {
-    size_t ans = self->buf_pos; self->buf_pos = 0;
+    size_t ans = self->buf_pos;
+    self->buf_pos = 0;
     self->buf[ans] = 0;
     self->allow_empty = false;
     return ans;
@@ -121,19 +128,26 @@ write_control_ch(ShlexState *self) {
 }
 
 static void
-read_valid_digits(ShlexState *self, int max, char *output, bool(*is_valid)(char ch)) {
+read_valid_digits(ShlexState *self, int max, char *output, bool (*is_valid)(char ch)) {
     for (int i = 0; i < max && self->src_pos < self->src_sz; i++, output++) {
         char ch = read_ch(self);
-        if (!is_valid(ch)) { self->src_pos--; break; }
+        if (!is_valid(ch)) {
+            self->src_pos--;
+            break;
+        }
         *output = ch;
     }
 }
 
 static bool
-is_octal_digit(char ch) { return '0' <= ch && ch <= '7'; }
+is_octal_digit(char ch) {
+    return '0' <= ch && ch <= '7';
+}
 
 static bool
-is_hex_digit(char ch) { return ('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'f') || ('A' <= ch && ch <= 'F'); }
+is_hex_digit(char ch) {
+    return ('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'f') || ('A' <= ch && ch <= 'F');
+}
 
 static void
 write_octal_ch(ShlexState *self, char ch) {
@@ -146,19 +160,26 @@ static bool
 write_unicode_ch(ShlexState *self, int max) {
     char chars[16] = {0};
     read_valid_digits(self, max, chars, is_hex_digit);
-    if (!chars[0]) { self->err = "Trailing unicode escape at end of input data"; return false; }
+    if (!chars[0]) {
+        self->err = "Trailing unicode escape at end of input data";
+        return false;
+    }
     write_unich(self, strtol(chars, NULL, 16));
     return true;
 }
 
 static bool
 write_ansi_escape_ch(ShlexState *self) {
-    if (self->src_pos >= self->src_sz) { self->err = "Trailing backslash at end of input data"; return false; }
+    if (self->src_pos >= self->src_sz) {
+        self->err = "Trailing backslash at end of input data";
+        return false;
+    }
     char ch = read_ch(self);
-    switch(ch) {
+    switch (ch) {
         case 'a': write_ch(self, '\a'); return true;
         case 'b': write_ch(self, '\b'); return true;
-        case 'e': case 'E': write_ch(self, 0x1b); return true;
+        case 'e':
+        case 'E': write_ch(self, 0x1b); return true;
         case 'f': write_ch(self, '\f'); return true;
         case 'n': write_ch(self, '\n'); return true;
         case 'r': write_ch(self, '\r'); return true;
@@ -173,9 +194,15 @@ write_ansi_escape_ch(ShlexState *self) {
         case 'x': return write_unicode_ch(self, 2);
         case 'u': return write_unicode_ch(self, 4);
         case 'U': return write_unicode_ch(self, 8);
-        case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': write_octal_ch(self, ch); return true;
-        default:
-            write_ch(self, ch); return true;
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7': write_octal_ch(self, ch); return true;
+        default: write_ch(self, ch); return true;
     }
 }
 
@@ -186,48 +213,90 @@ set_state(ShlexState *self, ShlexEnum s) {
 
 static ssize_t
 next_word(ShlexState *self) {
-#define write_escaped_or_fail() if (!write_escape_ch(self)) { self->err = "Trailing backslash at end of input data"; return -1; }
+#define write_escaped_or_fail()                                \
+    if (!write_escape_ch(self)) {                              \
+        self->err = "Trailing backslash at end of input data"; \
+        return -1;                                             \
+    }
     char prev_word_ch = 0;
     while (self->src_pos < self->src_sz) {
         char ch = read_ch(self);
-        switch(self->state) {
+        switch (self->state) {
             case NORMAL:
-                switch(ch) {
+                switch (ch) {
                     case WHITESPACE: break;
-                    case STRING_WITH_ESCAPES_DELIM: set_state(self, STRING_WITH_ESCAPES); start_word(self); break;
-                    case STRING_WITHOUT_ESCAPES_DELIM: set_state(self, STRING_WITHOUT_ESCAPES); start_word(self); break;
-                    case ESCAPE_CHAR: start_word(self); write_escaped_or_fail(); set_state(self, WORD); break;
-                    default: set_state(self, WORD); start_word(self); write_ch(self, ch); prev_word_ch = ch; break;
+                    case STRING_WITH_ESCAPES_DELIM:
+                        set_state(self, STRING_WITH_ESCAPES);
+                        start_word(self);
+                        break;
+                    case STRING_WITHOUT_ESCAPES_DELIM:
+                        set_state(self, STRING_WITHOUT_ESCAPES);
+                        start_word(self);
+                        break;
+                    case ESCAPE_CHAR:
+                        start_word(self);
+                        write_escaped_or_fail();
+                        set_state(self, WORD);
+                        break;
+                    default:
+                        set_state(self, WORD);
+                        start_word(self);
+                        write_ch(self, ch);
+                        prev_word_ch = ch;
+                        break;
                 }
                 break;
             case WORD:
-                switch(ch) {
-                    case WHITESPACE: set_state(self, NORMAL); if (self->buf_pos || self->allow_empty) return get_word(self); break;
+                switch (ch) {
+                    case WHITESPACE:
+                        set_state(self, NORMAL);
+                        if (self->buf_pos || self->allow_empty) return get_word(self);
+                        break;
                     case STRING_WITH_ESCAPES_DELIM: set_state(self, STRING_WITH_ESCAPES); break;
                     case STRING_WITHOUT_ESCAPES_DELIM:
-                        if (self->support_ansi_c_quoting && prev_word_ch == '$') { self->buf_pos--; set_state(self, ANSI_C_QUOTED); }
-                        else set_state(self, STRING_WITHOUT_ESCAPES);
+                        if (self->support_ansi_c_quoting && prev_word_ch == '$') {
+                            self->buf_pos--;
+                            set_state(self, ANSI_C_QUOTED);
+                        } else set_state(self, STRING_WITHOUT_ESCAPES);
                         break;
                     case ESCAPE_CHAR: write_escaped_or_fail(); break;
-                    default: write_ch(self, ch); prev_word_ch = ch; break;
-                } break;
+                    default:
+                        write_ch(self, ch);
+                        prev_word_ch = ch;
+                        break;
+                }
+                break;
             case STRING_WITHOUT_ESCAPES:
-                switch(ch) {
-                    case STRING_WITHOUT_ESCAPES_DELIM: set_state(self, WORD); self->allow_empty = true; break;
+                switch (ch) {
+                    case STRING_WITHOUT_ESCAPES_DELIM:
+                        set_state(self, WORD);
+                        self->allow_empty = true;
+                        break;
                     default: write_ch(self, ch); break;
-                } break;
+                }
+                break;
             case STRING_WITH_ESCAPES:
-                switch(ch) {
-                    case STRING_WITH_ESCAPES_DELIM: set_state(self, WORD); self->allow_empty = true; break;
+                switch (ch) {
+                    case STRING_WITH_ESCAPES_DELIM:
+                        set_state(self, WORD);
+                        self->allow_empty = true;
+                        break;
                     case ESCAPE_CHAR: write_escaped_or_fail(); break;
                     default: write_ch(self, ch); break;
-                } break;
+                }
+                break;
             case ANSI_C_QUOTED:
-                switch(ch) {
-                    case STRING_WITHOUT_ESCAPES_DELIM: set_state(self, WORD); self->allow_empty = true; break;
-                    case ESCAPE_CHAR: if (!write_ansi_escape_ch(self)) return -1; break;
+                switch (ch) {
+                    case STRING_WITHOUT_ESCAPES_DELIM:
+                        set_state(self, WORD);
+                        self->allow_empty = true;
+                        break;
+                    case ESCAPE_CHAR:
+                        if (!write_ansi_escape_ch(self)) return -1;
+                        break;
                     default: write_ch(self, ch); break;
-                } break;
+                }
+                break;
         }
     }
     switch (self->state) {
@@ -235,15 +304,14 @@ next_word(ShlexState *self) {
             self->state = NORMAL;
             if (self->buf_pos || self->allow_empty) return get_word(self);
             break;
-        case STRING_WITH_ESCAPES: case STRING_WITHOUT_ESCAPES: case ANSI_C_QUOTED:
+        case STRING_WITH_ESCAPES:
+        case STRING_WITHOUT_ESCAPES:
+        case ANSI_C_QUOTED:
             self->err = "Unterminated string at the end of input";
             self->state = NORMAL;
             return -1;
-        case NORMAL:
-            break;
+        case NORMAL: break;
     }
     return -2;
 #undef write_escaped_or_fail
 }
-
-

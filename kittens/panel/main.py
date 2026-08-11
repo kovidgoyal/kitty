@@ -43,15 +43,15 @@ usage = '[cmdline-to-run ...]'
 
 def panel_kitten_options_spec() -> str:
     if not hasattr(panel_kitten_options_spec, 'ans'):
-           setattr(panel_kitten_options_spec, 'ans', panel_options_spec())
+        setattr(panel_kitten_options_spec, 'ans', panel_options_spec())
     ans: str = getattr(panel_kitten_options_spec, 'ans')
     return ans
 
 
 def parse_panel_args(args: list[str], track_seen_options: dict[str, Any] | None = None) -> tuple[PanelCLIOptions, list[str]]:
     return parse_args(
-        args, panel_kitten_options_spec, usage, help_text, 'kitty +kitten panel',
-        result_class=PanelCLIOptions, track_seen_options=track_seen_options)
+        args, panel_kitten_options_spec, usage, help_text, 'kitty +kitten panel', result_class=PanelCLIOptions, track_seen_options=track_seen_options
+    )
 
 
 def dual_distance(spec: str, min_cell_value_if_no_pixels: int = 0) -> tuple[int, int]:
@@ -65,55 +65,63 @@ def dual_distance(spec: str, min_cell_value_if_no_pixels: int = 0) -> tuple[int,
 
 
 def layer_shell_config(opts: PanelCLIOptions) -> LayerShellConfig:
-    ltype = {
-        'background': GLFW_LAYER_SHELL_BACKGROUND,
-        'bottom': GLFW_LAYER_SHELL_PANEL,
-        'top': GLFW_LAYER_SHELL_TOP,
-        'overlay': GLFW_LAYER_SHELL_OVERLAY
-    }.get(opts.layer, GLFW_LAYER_SHELL_PANEL)
+    ltype = {'background': GLFW_LAYER_SHELL_BACKGROUND, 'bottom': GLFW_LAYER_SHELL_PANEL, 'top': GLFW_LAYER_SHELL_TOP, 'overlay': GLFW_LAYER_SHELL_OVERLAY}.get(
+        opts.layer, GLFW_LAYER_SHELL_PANEL
+    )
     ltype = GLFW_LAYER_SHELL_BACKGROUND if opts.edge == 'background' else ltype
     edge = {
-        'top': GLFW_EDGE_TOP, 'bottom': GLFW_EDGE_BOTTOM, 'left': GLFW_EDGE_LEFT, 'right': GLFW_EDGE_RIGHT,
-        'center': GLFW_EDGE_CENTER, 'none': GLFW_EDGE_NONE, 'center-sized': GLFW_EDGE_CENTER_SIZED,
+        'top': GLFW_EDGE_TOP,
+        'bottom': GLFW_EDGE_BOTTOM,
+        'left': GLFW_EDGE_LEFT,
+        'right': GLFW_EDGE_RIGHT,
+        'center': GLFW_EDGE_CENTER,
+        'none': GLFW_EDGE_NONE,
+        'center-sized': GLFW_EDGE_CENTER_SIZED,
     }.get(opts.edge, GLFW_EDGE_TOP)
-    focus_policy = {
-        'not-allowed': GLFW_FOCUS_NOT_ALLOWED, 'exclusive': GLFW_FOCUS_EXCLUSIVE, 'on-demand': GLFW_FOCUS_ON_DEMAND
-    }.get(opts.focus_policy, GLFW_FOCUS_NOT_ALLOWED)
+    focus_policy = {'not-allowed': GLFW_FOCUS_NOT_ALLOWED, 'exclusive': GLFW_FOCUS_EXCLUSIVE, 'on-demand': GLFW_FOCUS_ON_DEMAND}.get(
+        opts.focus_policy, GLFW_FOCUS_NOT_ALLOWED
+    )
     if opts.hide_on_focus_loss:
         focus_policy = GLFW_FOCUS_ON_DEMAND
     x, y = dual_distance(opts.columns, min_cell_value_if_no_pixels=1), dual_distance(opts.lines, min_cell_value_if_no_pixels=1)
-    return LayerShellConfig(type=ltype,
-                            edge=edge,
-                            x_size_in_cells=x[0], x_size_in_pixels=x[1],
-                            y_size_in_cells=y[0], y_size_in_pixels=y[1],
-                            requested_top_margin=max(0, opts.margin_top),
-                            requested_left_margin=max(0, opts.margin_left),
-                            requested_bottom_margin=max(0, opts.margin_bottom),
-                            requested_right_margin=max(0, opts.margin_right),
-                            focus_policy=focus_policy,
-                            requested_exclusive_zone=opts.exclusive_zone,
-                            override_exclusive_zone=opts.override_exclusive_zone,
-                            hide_on_focus_loss=opts.hide_on_focus_loss,
-                            output_name=opts.output_name or '')
+    return LayerShellConfig(
+        type=ltype,
+        edge=edge,
+        x_size_in_cells=x[0],
+        x_size_in_pixels=x[1],
+        y_size_in_cells=y[0],
+        y_size_in_pixels=y[1],
+        requested_top_margin=max(0, opts.margin_top),
+        requested_left_margin=max(0, opts.margin_left),
+        requested_bottom_margin=max(0, opts.margin_bottom),
+        requested_right_margin=max(0, opts.margin_right),
+        focus_policy=focus_policy,
+        requested_exclusive_zone=opts.exclusive_zone,
+        override_exclusive_zone=opts.override_exclusive_zone,
+        hide_on_focus_loss=opts.hide_on_focus_loss,
+        output_name=opts.output_name or '',
+    )
 
 
 @run_once
 def cli_option_to_lsc_configs_map() -> MappingProxyType[str, tuple[str, ...]]:
-    return MappingProxyType({
-        'lines': ('y_size_in_cells', 'y_size_in_pixels'),
-        'columns': ('x_size_in_cells', 'x_size_in_pixels'),
-        'margin_top': ('requested_top_margin',),
-        'margin_left': ('requested_left_margin',),
-        'margin_bottom': ('requested_bottom_margin',),
-        'margin_right': ('requested_right_margin',),
-        'edge': ('edge',),
-        'layer': ('type',),
-        'output_name': ('output_name',),
-        'focus_policy': ('focus_policy',),
-        'exclusive_zone': ('requested_exclusive_zone',),
-        'override_exclusive_zone': ('override_exclusive_zone',),
-        'hide_on_focus_loss': ('hide_on_focus_loss',)
-    })
+    return MappingProxyType(
+        {
+            'lines': ('y_size_in_cells', 'y_size_in_pixels'),
+            'columns': ('x_size_in_cells', 'x_size_in_pixels'),
+            'margin_top': ('requested_top_margin',),
+            'margin_left': ('requested_left_margin',),
+            'margin_bottom': ('requested_bottom_margin',),
+            'margin_right': ('requested_right_margin',),
+            'edge': ('edge',),
+            'layer': ('type',),
+            'output_name': ('output_name',),
+            'focus_policy': ('focus_policy',),
+            'exclusive_zone': ('requested_exclusive_zone',),
+            'override_exclusive_zone': ('override_exclusive_zone',),
+            'hide_on_focus_loss': ('hide_on_focus_loss',),
+        }
+    )
 
 
 def incrementally_update_layer_shell_config(existing: dict[str, Any], cli_options: Iterable[str]) -> LayerShellConfig:
@@ -158,6 +166,7 @@ def handle_single_instance_command(boss: BossType, sys_args: Sequence[str], envi
     global args
     from kitty.cli import parse_override
     from kitty.tabs import SpecialWindow
+
     try:
         new_args, items = parse_panel_args(list(sys_args[1:]))
     except BaseException as e:
@@ -189,6 +198,7 @@ def main(sys_args: list[str]) -> None:
     # sys.modules, which means the module will be re-imported later, causing
     # global variables to be duplicated, so do it now.
     from kittens.panel.main import actual_main
+
     actual_main(sys_args)
     return
 
@@ -228,6 +238,7 @@ def actual_main(sys_args: list[str]) -> None:
     sys.argv.extend(items)
     from kitty.main import main as real_main
     from kitty.main import run_app
+
     run_app.cached_values_name = 'panel'
     run_app.layer_shell_config = layer_shell_config(args)
     real_main(called_from_panel=True)

@@ -10,7 +10,6 @@ from .operations import RESTORE_CURSOR, SAVE_CURSOR, move_cursor_by, set_cursor_
 
 
 class LineEdit:
-
     def __init__(self, is_password: bool = False) -> None:
         self.clear()
         self.is_password = is_password

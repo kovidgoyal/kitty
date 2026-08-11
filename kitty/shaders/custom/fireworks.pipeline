@@ -1,0 +1,5 @@
+startgroup
+    animation_start os-window-focus-in | user-activity
+    animation_stop os-window-focus-out | user-idle
+    shaders fireworks
+endgroup

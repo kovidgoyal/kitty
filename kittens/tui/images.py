@@ -78,10 +78,9 @@ class Frame:
 
 
 class ImageData:
-
     def __init__(self, fmt: str, width: int, height: int, mode: str, frames: list[Frame]):
         self.width, self.height, self.fmt, self.mode = width, height, fmt, mode
-        self.transmit_fmt: GRT_f = (24 if self.mode == 'rgb' else 32)
+        self.transmit_fmt: GRT_f = 24 if self.mode == 'rgb' else 32
         self.frames = frames
 
     def __len__(self) -> int:
@@ -96,20 +95,14 @@ class ImageData:
 
 
 class OpenFailed(ValueError):
-
     def __init__(self, path: str, message: str):
-        ValueError.__init__(
-            self, f'Failed to open image: {path} with error: {message}'
-        )
+        ValueError.__init__(self, f'Failed to open image: {path} with error: {message}')
         self.path = path
 
 
 class ConvertFailed(ValueError):
-
     def __init__(self, path: str, message: str):
-        ValueError.__init__(
-            self, f'Failed to convert image: {path} with error: {message}'
-        )
+        ValueError.__init__(self, f'Failed to convert image: {path} with error: {message}')
         self.path = path
 
 
@@ -118,7 +111,6 @@ class NoImageMagick(Exception):
 
 
 class OutdatedImageMagick(ValueError):
-
     def __init__(self, detailed_error: str):
         super().__init__('ImageMagick on this system is too old ImageMagick 7+ required which was first released in 2016')
         self.detailed_error = detailed_error
@@ -130,6 +122,7 @@ last_imagemagick_cmd: Sequence[str] = ()
 def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> 'CompletedProcess[bytes]':
     global last_imagemagick_cmd
     import subprocess
+
     last_imagemagick_cmd = cmd
     try:
         p = subprocess.run(cmd, stdout=subprocess.PIPE if keep_stdout else subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -142,6 +135,7 @@ def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> 
 
 def identify(path: str) -> ImageData:
     import json
+
     q = (
         '{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h",'
         '"dpi":"%xx%y","dispose":"%D","orientation":"%[EXIF:Orientation]"},'
@@ -174,21 +168,24 @@ def identify(path: str) -> ImageData:
 
 
 class RenderedImage(ImageData):
-
     def __init__(self, fmt: str, width: int, height: int, mode: str):
         super().__init__(fmt, width, height, mode, [])
 
 
 def render_image(
-    path: str, output_prefix: str,
+    path: str,
+    output_prefix: str,
     m: ImageData,
-    available_width: int, available_height: int,
+    available_width: int,
+    available_height: int,
     scale_up: bool,
     only_first_frame: bool = False,
     remove_alpha: str = '',
-    flip: bool = False, flop: bool = False,
+    flip: bool = False,
+    flop: bool = False,
 ) -> RenderedImage:
     import tempfile
+
     has_multiple_frames = len(m) > 1
     get_multiple_frames = has_multiple_frames and not only_first_frame
     exe = which('magick')
@@ -242,9 +239,11 @@ def render_image(
             missing = expected_size - sz
             if missing % (bytes_per_pixel * width) != 0:
                 raise ConvertFailed(
-                    path, 'ImageMagick failed to convert {} correctly,'
-                    ' it generated {} < {} of data (w={}, h={}, bpp={})'.format(
-                        path, sz, expected_size, frame.width, frame.height, bytes_per_pixel))
+                    path,
+                    'ImageMagick failed to convert {} correctly, it generated {} < {} of data (w={}, h={}, bpp={})'.format(
+                        path, sz, expected_size, frame.width, frame.height, bytes_per_pixel
+                    ),
+                )
             frame.height -= missing // (bytes_per_pixel * frame.width)
             if frame.index == 0:
                 ans.height = frame.height
@@ -289,18 +288,21 @@ def render_image(
 
 
 def render_as_single_image(
-    path: str, m: ImageData,
-    available_width: int, available_height: int,
+    path: str,
+    m: ImageData,
+    available_width: int,
+    available_height: int,
     scale_up: bool,
     tdir: str | None = None,
-    remove_alpha: str = '', flip: bool = False, flop: bool = False,
+    remove_alpha: str = '',
+    flip: bool = False,
+    flop: bool = False,
 ) -> tuple[str, int, int]:
     import tempfile
+
     fd, output = tempfile.mkstemp(prefix='tty-graphics-protocol-', suffix=f'.{m.mode}', dir=tdir)
     os.close(fd)
-    result = render_image(
-        path, output, m, available_width, available_height, scale_up,
-        only_first_frame=True, remove_alpha=remove_alpha, flip=flip, flop=flop)
+    result = render_image(path, output, m, available_width, available_height, scale_up, only_first_frame=True, remove_alpha=remove_alpha, flip=flip, flop=flop)
     os.rename(result.frames[0].path, output)
     return output, result.width, result.height
 
@@ -319,7 +321,6 @@ T = TypeVar('T')
 
 
 class Alias(Generic[T]):
-
     currently_processing: ClassVar[str] = ''
 
     def __init__(self, defval: T) -> None:
@@ -386,7 +387,7 @@ class GraphicsCommand:
         for k, val in self._actual_values.items():
             items.append(f'{k}={val}')
 
-        ans: list[bytes|memoryview] = []
+        ans: list[bytes | memoryview] = []
         w = ans.append
         w(b'\033_G')
         w(','.join(items).encode('ascii'))
@@ -409,6 +410,7 @@ class GraphicsCommand:
         gc.S = len(data)
         if level and len(data) >= compression_threshold:
             import zlib
+
             compressed = zlib.compress(data, level)
             if len(compressed) < len(data):
                 gc.o = 'z'
@@ -434,7 +436,6 @@ class Placement:
 
 
 class ImageManager:
-
     def __init__(self, handler: HandlerType):
         self.image_id_counter = count()
         self.handler = handler
@@ -459,6 +460,7 @@ class ImageManager:
 
     def __enter__(self) -> None:
         import tempfile
+
         self.tdir = tempfile.mkdtemp(prefix='kitten-images-')
         with tempfile.NamedTemporaryFile(dir=self.tdir, delete=False) as f:
             f.write(b'abcd')
@@ -470,6 +472,7 @@ class ImageManager:
 
     def __exit__(self, *a: Any) -> bool | None:
         import shutil
+
         shutil.rmtree(self.tdir, ignore_errors=True)
         self.handler.cmd.clear_images_on_screen(delete_data=True)
         self.delete_all_sent_images()
@@ -590,10 +593,10 @@ class ImageManager:
         gc.i = image_id
         if self.filesystem_ok:
             gc.t = 'f'
-            self.handler.cmd.gr_command(
-                gc, standard_b64encode(rgba_path.encode(fsenc)))
+            self.handler.cmd.gr_command(gc, standard_b64encode(rgba_path.encode(fsenc)))
         else:
             import zlib
+
             with open(rgba_path, 'rb') as f:
                 data = f.read()
             gc.S = len(data)

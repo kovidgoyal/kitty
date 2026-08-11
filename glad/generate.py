@@ -24,9 +24,7 @@ def clean(x: str) -> None:
 def regenerate() -> None:
     clean('out')
 
-    subprocess.check_call(
-        shlex.split(cmdline.format(dest='out'))
-    )
+    subprocess.check_call(shlex.split(cmdline.format(dest='out')))
 
 
 def strip_trailing_whitespace(c: str) -> str:

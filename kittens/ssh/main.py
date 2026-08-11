@@ -6,16 +6,16 @@ import sys
 from kitty.conf.types import Definition
 from kitty.types import run_once
 
-copy_message = '''\
+copy_message = """\
 Copy files and directories from local to remote hosts. The specified files are
 assumed to be relative to the HOME directory and copied to the HOME on the
 remote. Directories are copied recursively. If absolute paths are used, they are
-copied as is.'''
+copied as is."""
 
 
 @run_once
 def option_text() -> str:
-    return '''
+    return """
 --glob
 type=bool-set
 Interpret file arguments as glob patterns. Globbing is based on
@@ -54,8 +54,7 @@ The value of :code:`keep-path` is the same as :code:`resolve` except that the re
 file path is derived from the symlink's path instead of the path of the symlink's target.
 Note that this option does not apply to symlinks encountered while recursively copying directories,
 those are always preserved.
-'''
-
+"""
 
 
 definition = Definition(
@@ -68,7 +67,10 @@ opt = definition.add_option
 
 agr('bootstrap', 'Host bootstrap configuration')  # {{{
 
-opt('hostname', '*', long_text='''
+opt(
+    'hostname',
+    '*',
+    long_text="""
 The hostname that the following options apply to. A glob pattern to match
 multiple hosts can be used. Multiple hostnames can also be specified, separated
 by spaces. The hostname can include an optional username in the form
@@ -81,21 +83,35 @@ the behavior of this option was changed slightly, now, when a hostname is encoun
 all its config values are set to defaults instead of being inherited from a previous
 matching hostname block. In particular it means hostnames dont inherit configurations,
 thereby avoiding hard to understand action-at-a-distance.
-''')
+""",
+)
 
-opt('interpreter', 'sh', long_text='''
+opt(
+    'interpreter',
+    'sh',
+    long_text="""
 The interpreter to use on the remote host. Must be either a POSIX complaint
 shell or a :program:`python` executable. If the default :program:`sh` is not
 available or broken, using an alternate interpreter can be useful.
-''')
+""",
+)
 
-opt('remote_dir', '.local/share/kitty-ssh-kitten', long_text='''
+opt(
+    'remote_dir',
+    '.local/share/kitty-ssh-kitten',
+    long_text="""
 The location on the remote host where the files needed for this kitten are
 installed. Relative paths are resolved with respect to :code:`$HOME`. Absolute
 paths have their leading / removed and so are also resolved with respect to $HOME.
-''')
+""",
+)
 
-opt('+copy', '', add_to_default=False, ctype='CopyInstruction', long_text=f'''
+opt(
+    '+copy',
+    '',
+    add_to_default=False,
+    ctype='CopyInstruction',
+    long_text=f"""
 {copy_message} For example::
 
     copy .vimrc .zshrc .config/some-dir
@@ -114,24 +130,38 @@ Files can be excluded when copying with :code:`--exclude`::
 
 Files whose remote name matches the exclude pattern will not be copied.
 For more details, see :ref:`ssh_copy_command`.
-''')
+""",
+)
 egr()  # }}}
 
 agr('shell', 'Login shell environment')  # {{{
 
-opt('shell_integration', 'inherited', long_text='''
+opt(
+    'shell_integration',
+    'inherited',
+    long_text="""
 Control the shell integration on the remote host. See :ref:`shell_integration`
 for details on how this setting works. The special value :code:`inherited` means
 use the setting from :file:`kitty.conf`. This setting is useful for overriding
 integration on a per-host basis.
-''')
+""",
+)
 
-opt('login_shell', '', long_text='''
+opt(
+    'login_shell',
+    '',
+    long_text="""
 The login shell to execute on the remote host. By default, the remote user
 account's login shell is used.
-''')
+""",
+)
 
-opt('+env', '', add_to_default=False, ctype='EnvInstruction', long_text='''
+opt(
+    '+env',
+    '',
+    add_to_default=False,
+    ctype='EnvInstruction',
+    long_text="""
 Specify the environment variables to be set on the remote host. Using the
 name with an equal sign (e.g. :code:`env VAR=`) will set it to the empty string.
 Specifying only the name (e.g. :code:`env VAR`) will remove the variable from
@@ -144,24 +174,37 @@ are expanded recursively, for example::
     env VAR2=${HOME}/${VAR1}/b
 
 The value of :code:`VAR2` will be :code:`<path to home directory>/a/b`.
-''')
+""",
+)
 
-opt('cwd', '', long_text='''
+opt(
+    'cwd',
+    '',
+    long_text="""
 The working directory on the remote host to change to. Environment variables in
 this value are expanded. The default is empty so no changing is done, which
 usually means the HOME directory is used.
-''')
+""",
+)
 
-opt('color_scheme', '', long_text='''
+opt(
+    'color_scheme',
+    '',
+    long_text="""
 Specify a color scheme to use when connecting to the remote host. If this option
 ends with :code:`.conf`, it is assumed to be the name of a config file to load
 from the kitty config directory, otherwise it is assumed to be the name of a
 color theme to load via the :doc:`themes kitten </kittens/themes>`. Note that
 only colors applying to the text/background are changed, other config settings
 in the .conf files/themes are ignored.
-''')
+""",
+)
 
-opt('remote_kitty', 'if-needed', choices=('if-needed', 'no', 'yes'), long_text='''
+opt(
+    'remote_kitty',
+    'if-needed',
+    choices=('if-needed', 'no', 'yes'),
+    long_text="""
 Make :program:`kitten` available on the remote host. Useful to run kittens such
 as the :doc:`icat kitten </kittens/icat>` to display images or the
 :doc:`transfer file kitten </kittens/transfer>` to transfer files. Only works if
@@ -175,21 +218,31 @@ is installed even if already present, and the installed kitten takes precedence.
 Finally, :code:`no` means no kitten is installed on the remote host. The
 installed kitten can be updated by running: :code:`kitten update-self` on the
 remote host.
-''')
+""",
+)
 egr()  # }}}
 
 agr('ssh', 'SSH configuration')  # {{{
 
-opt('share_connections', 'yes', option_type='to_bool', long_text='''
+opt(
+    'share_connections',
+    'yes',
+    option_type='to_bool',
+    long_text="""
 Within a single kitty instance, all connections to a particular server can be
 shared. This reduces startup latency for subsequent connections and means that
 you have to enter the password only once. Under the hood, it uses SSH
 ControlMasters and these are automatically cleaned up by kitty when it quits.
 You can map a shortcut to :ac:`close_shared_ssh_connections` to disconnect all
 active shared connections.
-''')
+""",
+)
 
-opt('askpass', 'unless-set', choices=('unless-set', 'ssh', 'native'), long_text='''
+opt(
+    'askpass',
+    'unless-set',
+    choices=('unless-set', 'ssh', 'native'),
+    long_text="""
 Control the program SSH uses to ask for passwords or confirmation of host keys
 etc. The default is to use kitty's native :program:`askpass`, unless the
 :envvar:`SSH_ASKPASS` environment variable is set. Set this option to
@@ -200,29 +253,42 @@ using the kitty askpass implementation means that SSH might need to use the
 terminal before the connection is established, so the kitten cannot use the
 terminal to send data without an extra roundtrip, adding to initial connection
 latency.
-''')
+""",
+)
 
-opt('delegate', '', long_text='''
+opt(
+    'delegate',
+    '',
+    long_text="""
 Do not use the SSH kitten for this host. Instead run the command specified as the delegate.
 For example using :code:`delegate ssh` will run the ssh command with all arguments passed
 to the kitten, except kitten specific ones. This is useful if some hosts are not capable
 of supporting the ssh kitten.
-''')
+""",
+)
 
-opt('forward_remote_control', 'no', option_type='to_bool', long_text='''
+opt(
+    'forward_remote_control',
+    'no',
+    option_type='to_bool',
+    long_text="""
 Forward the kitty remote control socket to the remote host. This allows using the kitty
 remote control facilities from the remote host. WARNING: This allows any software
 on the remote host full access to the local computer, so only do it for trusted remote hosts.
 Note that this does not work with abstract UNIX sockets such as :file:`@mykitty` because of SSH limitations.
 This option uses SSH socket forwarding to forward the socket pointed to by the :envvar:`KITTY_LISTEN_ON`
 environment variable.
-''')
+""",
+)
 
 egr()  # }}}
 
 agr('askpass', 'Askpass automation')  # {{{
 
-opt('password', '', long_text='''
+opt(
+    'password',
+    '',
+    long_text="""
 Specify a password to use when SSH prompts for a password. The value format is
 "backend:secret". Currently, only the "text" backend is supported, which stores
 the secret in plain text in the config file. For example:
@@ -231,9 +297,13 @@ the secret in plain text in the config file. For example:
 
 If the backend prefix is omitted, it is treated as "text:" for backward
 compatibility. Beware that storing passwords in plain text is insecure.
-''')
+""",
+)
 
-opt('totp_secret', '', long_text='''
+opt(
+    'totp_secret',
+    '',
+    long_text="""
 Specify a TOTP shared secret to auto-fill one-time codes when SSH asks for them.
 The value format is "backend:secret". Currently, only the "text" backend is
 supported. For example:
@@ -242,21 +312,33 @@ supported. For example:
 
 If the backend prefix is omitted, it is treated as "text:" for backward
 compatibility.
-''')
+""",
+)
 
-opt('totp_digits', '6', option_type='int', long_text='''
+opt(
+    'totp_digits',
+    '6',
+    option_type='int',
+    long_text="""
 Number of digits for the generated TOTP codes. Default is 6.
-''')
+""",
+)
 
-opt('totp_period', '30', option_type='int', long_text='''
+opt(
+    'totp_period',
+    '30',
+    option_type='int',
+    long_text="""
 Time period in seconds for the TOTP code validity. Default is 30.
-''')
+""",
+)
 
 egr()  # }}}
 
 
 def main(args: list[str]) -> str | None:
     raise SystemExit('This should be run as kitten ssh')
+
 
 if __name__ == '__main__':
     main([])

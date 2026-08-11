@@ -7,14 +7,16 @@ import subprocess
 from kitty.child import memory_used_by_process_tree_rooted_at
 from kitty.constants import is_macos, kitty_exe
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class ChildMemoryTest(BaseTest):
-
     def _spawn_allocating_child(self, alloc_bytes: int) -> subprocess.Popen:
         p = subprocess.Popen(
-            [kitty_exe(), '+runpy', f'''\
+            [
+                kitty_exe(),
+                '+runpy',
+                f"""\
 import sys, time
 buf = bytearray({alloc_bytes})
 for i in range(0, {alloc_bytes}, 4096):
@@ -22,7 +24,8 @@ for i in range(0, {alloc_bytes}, 4096):
 sys.stdout.write("ready\\n")
 sys.stdout.flush()
 time.sleep(300)
-'''],
+""",
+            ],
             stdout=subprocess.PIPE,
         )
         line = p.stdout.readline().strip()
@@ -55,7 +58,8 @@ time.sleep(300)
         try:
             mem = memory_used_by_process_tree_rooted_at(child.pid, check_if_cgroup_root=True)
             self.assertGreater(
-                mem, alloc // 2,
+                mem,
+                alloc // 2,
                 f'Expected at least {alloc // 2} bytes for a {alloc}-byte allocation, got {mem}',
             )
         finally:
@@ -70,7 +74,8 @@ time.sleep(300)
             mem_child = memory_used_by_process_tree_rooted_at(child.pid, check_if_cgroup_root=True)
             mem_tree = memory_used_by_process_tree_rooted_at(os.getpid(), check_if_cgroup_root=True)
             self.assertGreater(
-                mem_tree, mem_child,
+                mem_tree,
+                mem_child,
                 'Parent tree memory should exceed child-only memory',
             )
         finally:

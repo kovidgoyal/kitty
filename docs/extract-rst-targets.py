@@ -51,4 +51,5 @@ def main() -> Dict[str, Dict[str, str]]:
 
 if __name__ == '__main__':
     import json
+
     print(json.dumps(main(), indent=2))

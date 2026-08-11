@@ -4,8 +4,10 @@
 
 import glob
 import io
+import json
 import lzma
 import os
+import platform
 import shlex
 import shutil
 import subprocess
@@ -22,6 +24,7 @@ is_codeql = os.environ.get('KITTY_CODEQL') == '1'
 is_macos = 'darwin' in sys.platform.lower()
 running_under_sanitizer = os.environ.get('KITTY_SANITIZE') == '1'
 SW = ''
+SLANG_INSTALL_DIR = '/tmp/slang'
 
 
 def do_print_crash_reports() -> None:
@@ -102,6 +105,33 @@ def install_fonts() -> None:
             tf.extractall(fonts_dir)
 
 
+def install_slang_compiler() -> None:
+    os_name = 'macos' if is_macos else 'linux'
+    machine = platform.machine().lower()
+    arch = 'aarch64' if machine in ('aarch64', 'arm64') else 'x86_64'
+
+    with open('bypy/sources.json') as f:
+        data = json.loads(f.read())
+    for dep in data:
+        if dep['name'].startswith('slang '):
+            version = dep['name'].split()[-1]
+            break
+    url = f'https://github.com/shader-slang/slang/releases/download/v{version}/slang-{version}-{os_name}-{arch}.tar.gz'
+    install_dir = SLANG_INSTALL_DIR
+    os.makedirs(install_dir, exist_ok=True)
+    data = download_with_retry(url)
+    with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as tf:
+        try:
+            tf.extractall(install_dir, filter='fully_trusted')
+        except TypeError:
+            # filter parameter not supported on older Python versions
+            tf.extractall(install_dir)
+
+    pc_dir = os.path.join(install_dir, 'lib', 'pkgconfig')
+    pp = os.environ.get('PKG_CONFIG_PATH', '')
+    os.environ['PKG_CONFIG_PATH'] = f'{pc_dir}:{pp}' if pp else pc_dir
+
+
 def install_deps() -> None:
     print('Installing kitty dependencies...')
     sys.stdout.flush()
@@ -122,6 +152,7 @@ def install_deps() -> None:
             ' libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev libx11-xcb-dev zsh'
             ' libpng-dev liblcms2-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev libxxhash-dev uuid-dev'
             ' libsimde-dev libsystemd-dev libcairo2-dev zsh bash dash systemd-coredump gdb'
+            ' libwayland-dev wayland-protocols glslang-tools'
         )
         # for some reason these directories are world writable which causes zsh
         # compinit to break
@@ -133,7 +164,13 @@ def install_deps() -> None:
         if sys.version_info[:2] < (3, 7):
             cmd += ' importlib-resources dataclasses'
         run(cmd)
+        install_slang_compiler()
     install_fonts()
+
+
+def set_slangc() -> None:
+    slangc = os.path.join(SW if is_bundle else SLANG_INSTALL_DIR, 'bin', 'slangc')
+    os.environ['SLANGC'] = slangc
 
 
 def build_kitty() -> None:
@@ -141,6 +178,7 @@ def build_kitty() -> None:
     cmd = f'{python} setup.py build --verbose'
     if running_under_sanitizer:
         cmd += ' --debug --sanitize'
+    set_slangc()
     run(cmd)
 
 
@@ -150,12 +188,15 @@ def test_kitty() -> None:
         run('sudo chmod -R 777 /cores')
         if running_under_sanitizer:
             os.environ['MallocNanoZone'] = '0'
+    set_slangc()
     run('./test.py', print_crash_reports=True)
 
 
 def package_kitty() -> None:
+    set_slangc()
     python = 'python3' if is_macos else 'python'
     run(f'{python} setup.py linux-package --update-check-interval=0 --verbose')
+    run('make FAIL_WARN=1 docs')
     if is_macos:
         run('python3 setup.py kitty.app --update-check-interval=0 --verbose')
         run('kitty.app/Contents/MacOS/kitty +runpy "from kitty.constants import *; print(kitty_exe())"')
@@ -292,21 +333,36 @@ def main() -> None:
     if action == 'build':
         build_kitty()
     elif action == 'package':
-        package_kitty()
-    elif action == 'test':
+        build_kitty()
         test_kitty()
+        package_kitty()
     elif action == 'test':
         test_kitty()
     elif action == 'govulncheck':
         subprocess.check_call(['go', 'install', 'golang.org/x/vuln/cmd/govulncheck@latest'])
         subprocess.check_call(['govulncheck', '-mode=binary', 'kitty/launcher/kitten'])
         subprocess.check_call(['govulncheck', './...'])
-    elif action == 'gofmt':
+    elif action == 'check_code_formatting':
         q = subprocess.check_output('gofmt -s -l tools kittens'.split()).decode()
         if q.strip():
             q = '\n'.join(filter(lambda x: not x.rstrip().endswith('_generated.go'), q.strip().splitlines())).strip()
             if q:
                 raise SystemExit(q)
+        if subprocess.run(['ruff', 'format', '--check']).returncode != 0:
+            raise SystemExit('Some Python files are not formatted correctly')
+        c_files = subprocess.check_output(['git', 'ls-files', '*.c', '*.h', '*.m']).decode().split()
+        if c_files and subprocess.run(['clang-format', '--dry-run', '--Werror'] + c_files).returncode != 0:
+            raise SystemExit('Some C/ObjC files are not formatted correctly')
+        slang_files = subprocess.check_output(['git', 'ls-files', '*.slang']).decode().split()
+        badly_formatted_slang = []
+        for sf in slang_files:
+            assume_name = os.path.basename(sf) + '.cs'
+            with open(sf, 'rb') as f:
+                result = subprocess.run(['clang-format', '--style=file:.clang-format-for-slang', '--Werror', '-n', f'--assume-filename={assume_name}'], stdin=f)
+            if result.returncode != 0:
+                badly_formatted_slang.append(sf)
+        if badly_formatted_slang:
+            raise SystemExit('Some .slang files are not formatted correctly:\n' + '\n'.join(badly_formatted_slang))
     elif action == 'check-dependencies':
         check_dependencies()
     else:

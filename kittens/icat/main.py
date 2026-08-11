@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
-OPTIONS = '''\
+OPTIONS = """\
 --align
 type=choices
 choices=center,left,right
@@ -176,15 +176,15 @@ are used. Valid ids are from 1 to 4294967295. Numbers outside this range are aut
 type=bool-set
 By default, the cursor is moved to the next line after displaying an image. This option, prevents that. Should not be used
 when catting multiple images. Also has no effect when the :option:`--place` option is used.
-'''
+"""
 
 help_text = (
-        'A cat like utility to display images in the terminal.'
-        ' You can specify multiple image files and/or directories.'
-        ' Directories are scanned recursively for image files. If STDIN'
-        ' is not a terminal, image data will be read from it as well.'
-        ' You can also specify HTTP(S) or FTP URLs which will be'
-        ' automatically downloaded and displayed.'
+    'A cat like utility to display images in the terminal.'
+    ' You can specify multiple image files and/or directories.'
+    ' Directories are scanned recursively for image files. If STDIN'
+    ' is not a terminal, image data will be read from it as well.'
+    ' You can also specify HTTP(S) or FTP URLs which will be'
+    ' automatically downloaded and displayed.'
 )
 usage = 'image-file-or-url-or-directory ...'
 
@@ -195,6 +195,7 @@ elif __name__ == '__doc__':
     import sys
 
     from kitty.simple_cli_definitions import CompletionSpec
+
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = lambda: OPTIONS.format()

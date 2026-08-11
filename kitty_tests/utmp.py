@@ -2,11 +2,10 @@ import subprocess
 
 from kitty.fast_data_types import num_users
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class UTMPTest(BaseTest):
-
     def test_num_users(self):
         # who is the control
         try:

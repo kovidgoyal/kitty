@@ -2,13 +2,13 @@
 # License: GPLv3 Copyright: 2022, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestSQP(BaseTest):
-
     def test_search_query_parser(self):
         from kitty.search_query_parser import ParseException, search
+
         locations = 'id'
         universal_set = {1, 2, 3, 4, 5}
 

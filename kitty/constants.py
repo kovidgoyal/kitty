@@ -35,6 +35,17 @@ kitty_run_data: dict[str, Any] = getattr(sys, 'kitty_run_data', {})
 launched_by_launch_services = kitty_run_data.get('launched_by_launch_services', False)
 is_quick_access_terminal_app = kitty_run_data.get('is_quick_access_terminal_app', False)
 unserialize_launch_flag = 'kitty-unserialize-data='
+_slangc: tuple[str, ...] = ()
+
+
+def slangc() -> tuple[str, ...]:
+    global _slangc
+    if not _slangc:
+        from kitty.fast_data_types import Shlex
+
+        _slangc = tuple(Shlex(os.environ.get('SLANGC', 'slangc'), False))
+    return _slangc
+
 
 if getattr(sys, 'frozen', False):
     extensions_dir: str = kitty_run_data['extensions_dir']
@@ -62,7 +73,9 @@ if getattr(sys, 'frozen', False):
         return ans
 
     kitty_base_dir = get_frozen_base()
-    del get_frozen_base
+    if rpath := kitty_run_data.get('bundle_exe_dir'):
+        _slangc = (os.path.join(rpath, 'slangc'),)
+    del get_frozen_base, rpath
 else:
     kitty_base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     extensions_dir = os.path.join(kitty_base_dir, 'kitty')
@@ -162,6 +175,7 @@ logo_png_file = os.path.join(kitty_base_dir, 'logo', 'kitty.png')
 beam_cursor_data_file = os.path.join(kitty_base_dir, 'logo', 'beam-cursor.png')
 shell_integration_dir = os.path.join(kitty_base_dir, 'shell-integration')
 fonts_dir = os.path.join(kitty_base_dir, 'fonts')
+shaders_dir = os.path.join(kitty_base_dir, 'shaders')
 try:
     shell_path = os.environ.get('SHELL') or pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
 except KeyError:

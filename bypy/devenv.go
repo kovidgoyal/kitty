@@ -393,6 +393,7 @@ func build(args []string) {
 	}
 	root := root_dir()
 	os.Setenv("DEVELOP_ROOT", root)
+	os.Setenv("SLANGC", filepath.Join(root, "bin", "slangc"))
 	prepend("PKG_CONFIG_PATH", filepath.Join(root, "lib", "pkgconfig"))
 	if runtime.GOOS == "darwin" {
 		os.Setenv("PKGCONFIG_EXE", filepath.Join(root, "bin", "pkg-config"))

@@ -9,11 +9,10 @@ from kitty.constants import kitten_exe
 from kitty.fast_data_types import shm_unlink
 from kitty.shm import SharedMemory
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class SHMTest(BaseTest):
-
     def test_shm_with_kitten(self):
         data = os.urandom(333)
         with SharedMemory(size=363) as shm:

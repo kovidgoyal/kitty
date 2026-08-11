@@ -123,7 +123,8 @@ functional_key_number_to_name_map = {
     57451: 'RIGHT_HYPER',
     57452: 'RIGHT_META',
     57453: 'ISO_LEVEL3_SHIFT',
-    57454: 'ISO_LEVEL5_SHIFT'}
+    57454: 'ISO_LEVEL5_SHIFT',
+}
 csi_number_to_functional_number_map = {
     2: 57348,
     3: 57349,
@@ -145,7 +146,8 @@ csi_number_to_functional_number_map = {
     23: 57374,
     24: 57375,
     27: 57344,
-    127: 57347}
+    127: 57347,
+}
 letter_trailer_to_csi_number_map = {'A': 57352, 'B': 57353, 'C': 57351, 'D': 57350, 'E': 57427, 'F': 8, 'H': 7, 'P': 11, 'Q': 12, 'S': 14}
 tilde_trailers = {57348, 57349, 57354, 57355, 57366, 57368, 57369, 57370, 57371, 57372, 57373, 57374, 57375}
 # end csi mapping
@@ -284,9 +286,8 @@ class KeyEvent(NamedTuple):
             return (fnm.get(key) or ord(key)) if key else 0
 
         return WindowSystemKeyEvent(
-            key=as_num(self.key), shifted_key=as_num(self.shifted_key),
-            alternate_key=as_num(self.alternate_key), mods=mods,
-            action=action, text=self.text)
+            key=as_num(self.key), shifted_key=as_num(self.shifted_key), alternate_key=as_num(self.alternate_key), mods=mods, action=action, text=self.text
+        )
 
 
 SHIFT, ALT, CTRL, SUPER, HYPER, META, CAPS_LOCK, NUM_LOCK = 1, 2, 4, 8, 16, 32, 64, 128
@@ -341,15 +342,20 @@ def decode_key_event(csi: str, csi_type: str) -> KeyEvent:
         return ans
 
     return KeyEvent(
-        mods=mods, shift=bool(mods & SHIFT), alt=bool(mods & ALT),
-        ctrl=bool(mods & CTRL), super=bool(mods & SUPER),
-        hyper=bool(mods & HYPER), meta=bool(mods & META),
-        caps_lock=bool(mods & CAPS_LOCK), num_lock=bool(mods & NUM_LOCK),
+        mods=mods,
+        shift=bool(mods & SHIFT),
+        alt=bool(mods & ALT),
+        ctrl=bool(mods & CTRL),
+        super=bool(mods & SUPER),
+        hyper=bool(mods & HYPER),
+        meta=bool(mods & META),
+        caps_lock=bool(mods & CAPS_LOCK),
+        num_lock=bool(mods & NUM_LOCK),
         key=key_name(keynum),
         shifted_key=key_name(first_section[1] if len(first_section) > 1 else 0),
         alternate_key=key_name(first_section[2] if len(first_section) > 2 else 0),
         type={1: EventType.PRESS, 2: EventType.REPEAT, 3: EventType.RELEASE}[action],
-        text=''.join(map(chr, third_section))
+        text=''.join(map(chr, third_section)),
     )
 
 
@@ -408,7 +414,7 @@ def encode_key_event(key_event: KeyEvent) -> str:
         if key_event.num_lock:
             m |= 128
         if action > 1 or m:
-            ans += f';{m+1}'
+            ans += f';{m + 1}'
             if action > 1:
                 ans += f':{action}'
         elif text:

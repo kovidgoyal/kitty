@@ -205,13 +205,13 @@ EXEC 01;32
 
 # special file?
 special_types = (
-    (stat.S_IFLNK,  'ln'),  # symlink
-    (stat.S_IFIFO,  'pi'),  # pipe (FIFO)
+    (stat.S_IFLNK, 'ln'),  # symlink
+    (stat.S_IFIFO, 'pi'),  # pipe (FIFO)
     (stat.S_IFSOCK, 'so'),  # socket
-    (stat.S_IFBLK,  'bd'),  # block device
-    (stat.S_IFCHR,  'cd'),  # character device
-    (stat.S_ISUID,  'su'),  # setuid
-    (stat.S_ISGID,  'sg'),  # setgid
+    (stat.S_IFBLK, 'bd'),  # block device
+    (stat.S_IFCHR, 'cd'),  # character device
+    (stat.S_ISUID, 'su'),  # setuid
+    (stat.S_ISGID, 'sg'),  # setgid
 )
 
 CODE_MAP = {
@@ -253,7 +253,6 @@ def stat_at(file: str, cwd: int | str | None = None, follow_symlinks: bool = Fal
 
 
 class Dircolors:
-
     def __init__(self) -> None:
         self.codes: dict[str, str] = {}
         self.extensions: dict[str, str] = {}
@@ -322,7 +321,7 @@ class Dircolors:
         return self.load_from_dircolors(DEFAULT_DIRCOLORS, True)
 
     def generate_lscolors(self) -> str:
-        """ Output the database in the format used by the LS_COLORS environment variable. """
+        """Output the database in the format used by the LS_COLORS environment variable."""
 
         def gen_pairs() -> Generator[tuple[str, str], None, None]:
             for pair in self.codes.items():
@@ -381,4 +380,5 @@ class Dircolors:
 
 def develop() -> None:
     import sys
+
     print(Dircolors()(sys.argv[-1], sys.argv[-1]))

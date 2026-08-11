@@ -162,8 +162,8 @@ graphics protocol.
 
 `Yazi <https://github.com/sxyazi/yazi>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Blazing fast terminal file manager, with built-in kitty graphics protocol support
-(implemented both Classic protocol and Unicode placeholders).
+Blazing fast terminal file manager, with built-in kitty graphics protocol
+support, Drag and Drop protocol and OSC 5522 clipboard protocol support.
 
 .. _tool_clifm:
 
@@ -185,6 +185,13 @@ graphics protocol.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Text-mode dual panel (orthodox) file manager and also terminal emulator, uses
 the kitty graphics and keyboard protocols (both as client and as terminal)
+
+.. _tool_elio:
+
+`elio <https://github.com/elio-fm/elio>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Batteries-included terminal file manager with previews using kitty's graphics
+protocol, and native support for its Drag and Drop protocol.
 
 
 System and data visualisation tools
@@ -353,6 +360,14 @@ Live incremental search of the scrollback buffer.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Keyboard based text selection for the kitty scrollback buffer.
 
+.. tool_kitty_smart_scroll:
+
+`kitty-smart-scroll <https://github.com/yurikhan/kitty-smart-scroll>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Use keys to either scroll or pass them onto running applications if no
+scrollback buffer is present
+
+
 Desktop panels
 -------------------------
 
@@ -378,6 +393,27 @@ Allow injecting passwords from 1Password into kitty.
 
 Inject passwords from BitWarden into kitty
 
+AI
+--------------
+
+
+.. tool_captain_miao:
+
+`captain-miao <https://github.com/hyperlogue/captain-miao>`_
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TUI to monitor and organize multiple AI coding sessions, by leveraging
+the kitty remote control protocol
+
+
+.. tool_gattino:
+
+`gattino <https://github.com/salvozappa/gattino>`__
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Integrate kitty with an LLM to convert plain language prompts into shell
+commands.
+
+
 Miscellaneous
 ------------------
 
@@ -389,13 +425,6 @@ DOOM
 Play the classic shooter DOOM in `kitty <https://github.com/cryptocode/terminal-doom>`__ or even inside `neovim inside kitty
 <https://github.com/seandewar/actually-doom.nvim>`__.
 
-.. tool_gattino:
-
-`gattino <https://github.com/salvozappa/gattino>`__
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Integrate kitty with an LLM to convert plain language prompts into shell
-commands.
 
 .. tool_kitty_smart_tab:
 
@@ -403,13 +432,6 @@ commands.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Use keys to either control tabs or pass them onto running applications if no
 tabs are present
-
-.. tool_kitty_smart_scroll:
-
-`kitty-smart-scroll <https://github.com/yurikhan/kitty-smart-scroll>`_
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Use keys to either scroll or pass them onto running applications if no
-scrollback buffer is present
 
 .. tool_kitti3:
 
@@ -429,3 +451,4 @@ raw-mode.
 `glkitty <https://github.com/michaeljclark/glkitty>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 C library to draw OpenGL shaders in the terminal with a glgears demo
+

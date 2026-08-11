@@ -27,7 +27,6 @@ from .operations import MouseTracking, init_state, reset_state
 
 
 class BinaryWrite(Protocol):
-
     def write(self, data: bytes) -> None:
         pass
 
@@ -37,20 +36,20 @@ class BinaryWrite(Protocol):
 
 def debug_write(*a: Any, **kw: Any) -> None:
     from base64 import standard_b64encode
+
     fobj = kw.pop('file', sys.stderr.buffer)
     buf = io.StringIO()
     kw['file'] = buf
     print(*a, **kw)
     stext = buf.getvalue()
     for i in range(0, len(stext), 256):
-        chunk = stext[i:i + 256]
+        chunk = stext[i : i + 256]
         text = b'\x1bP@kitty-print|' + standard_b64encode(chunk.encode('utf-8')) + b'\x1b\\'
         fobj.write(text)
     fobj.flush()
 
 
 class Debug:
-
     fobj: BinaryWrite | None = None
 
     def __call__(self, *a: Any, **kw: Any) -> None:
@@ -63,11 +62,7 @@ ftc_code = str(FILE_TRANSFER_CODE)
 
 
 class TermManager:
-
-    def __init__(
-        self, optional_actions: int = termios.TCSANOW, use_alternate_screen: bool = True,
-        mouse_tracking: MouseTracking = MouseTracking.none
-    ) -> None:
+    def __init__(self, optional_actions: int = termios.TCSANOW, use_alternate_screen: bool = True, mouse_tracking: MouseTracking = MouseTracking.none) -> None:
         self.extra_finalize: str | None = None
         self.optional_actions = optional_actions
         self.use_alternate_screen = use_alternate_screen
@@ -158,13 +153,11 @@ def decode_sgr_mouse(text: str, screen_size: ScreenSize) -> MouseEvent:
     if cb & CTRL_INDICATOR:
         mods |= CTRL
     return MouseEvent(
-        pixel_to_cell(x, screen_size.width, screen_size.cell_width), pixel_to_cell(y, screen_size.height, screen_size.cell_height),
-        x, y, typ, buttons, mods
+        pixel_to_cell(x, screen_size.width, screen_size.cell_width), pixel_to_cell(y, screen_size.height, screen_size.cell_height), x, y, typ, buttons, mods
     )
 
 
 class UnhandledException(Handler):
-
     def __init__(self, tb: str) -> None:
         self.tb = tb
 
@@ -183,11 +176,11 @@ class UnhandledException(Handler):
 
     def on_interrupt(self) -> None:
         self.quit_loop(1)
+
     on_eot = on_term = on_interrupt
 
 
 class SignalManager:
-
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
@@ -207,20 +200,14 @@ class SignalManager:
         self.asyncio_loop.add_signal_handler(signal.SIGHUP, self.on_hup)
 
     def __exit__(self, *a: Any) -> None:
-        tuple(map(self.asyncio_loop.remove_signal_handler, (
-            signal.SIGWINCH, signal.SIGINT, signal.SIGTERM, signal.SIGHUP)))
+        tuple(map(self.asyncio_loop.remove_signal_handler, (signal.SIGWINCH, signal.SIGINT, signal.SIGTERM, signal.SIGHUP)))
 
 
 sanitize_bracketed_paste: str = '[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'
 
 
 class Loop:
-
-    def __init__(
-        self,
-        sanitize_bracketed_paste: str = sanitize_bracketed_paste,
-        optional_actions: int = termios.TCSADRAIN
-    ):
+    def __init__(self, sanitize_bracketed_paste: str = sanitize_bracketed_paste, optional_actions: int = termios.TCSADRAIN):
         if is_macos:
             # On macOS PTY devices are not supported by the KqueueSelector and
             # the PollSelector is broken, causes 100% CPU usage
@@ -292,9 +279,11 @@ class Loop:
     def _on_dcs(self, dcs: str) -> None:
         if dcs.startswith('@kitty-cmd'):
             import json
-            self.handler.on_kitty_cmd_response(json.loads(dcs[len('@kitty-cmd'):]))
+
+            self.handler.on_kitty_cmd_response(json.loads(dcs[len('@kitty-cmd') :]))
         elif dcs.startswith('1+r'):
             from binascii import unhexlify
+
             vals = dcs[3:].split(';')
             for q in vals:
                 parts = q.split('=', 1)
@@ -345,19 +334,22 @@ class Loop:
                 payload = ''
             else:
                 from base64 import standard_b64decode
-                from_primary = osc.find('p', idx+1, widx) > -1
+
+                from_primary = osc.find('p', idx + 1, widx) > -1
                 data = memoryview(osc.encode('ascii'))
-                payload = standard_b64decode(data[widx+1:]).decode('utf-8')
+                payload = standard_b64decode(data[widx + 1 :]).decode('utf-8')
             self.handler.on_clipboard_response(payload, from_primary)
         elif q == ftc_code:
             from kitty.file_transmission import FileTransmissionCommand
+
             data = memoryview(osc.encode('ascii'))
-            self.handler.on_file_transfer_response(FileTransmissionCommand.deserialize(data[idx+1:]))
+            self.handler.on_file_transfer_response(FileTransmissionCommand.deserialize(data[idx + 1 :]))
 
     def _on_apc(self, apc: str) -> None:
         if apc.startswith('G'):
             if self.handler.image_manager is not None:
                 self.handler.image_manager.handle_response(apc)
+
     # }}}
 
     @property
@@ -366,8 +358,8 @@ class Loop:
 
     def _write_ready(self, handler: Handler, fd: int) -> None:
         if len(self.write_buf) > self.iov_limit:
-            self.write_buf[self.iov_limit - 1] = b''.join(self.write_buf[self.iov_limit - 1:])
-            del self.write_buf[self.iov_limit:]
+            self.write_buf[self.iov_limit - 1] = b''.join(self.write_buf[self.iov_limit - 1 :])
+            del self.write_buf[self.iov_limit :]
         total_size = self.total_pending_bytes_to_write
         if total_size:
             try:
@@ -422,6 +414,7 @@ class Loop:
             exc = context.get('exception')
             if exc is not None:
                 import traceback
+
                 tb += '\n' + ''.join(traceback.format_exception(exc.__class__, exc, exc.__traceback__))
 
         self.asyncio_loop.set_exception_handler(handle_exception)
@@ -429,10 +422,8 @@ class Loop:
         with handler:
             if handler.overlay_ready_report_needed:
                 handler.cmd.overlay_ready()
-            self.asyncio_loop.add_reader(
-                    tty_fd, self._read_ready, handler, tty_fd)
-            self.asyncio_loop.add_writer(
-                    tty_fd, self._write_ready, handler, tty_fd)
+            self.asyncio_loop.add_reader(tty_fd, self._read_ready, handler, tty_fd)
+            self.asyncio_loop.add_writer(tty_fd, self._write_ready, handler, tty_fd)
             self.asyncio_loop.run_forever()
             self.asyncio_loop.remove_reader(tty_fd)
             if self.waiting_for_writes:
@@ -457,6 +448,7 @@ class Loop:
                 tb = self.loop_impl(handler, term_manager, image_manager)
             except Exception:
                 import traceback
+
                 tb = traceback.format_exc()
 
             term_manager.extra_finalize = b''.join(self.write_buf).decode('utf-8')

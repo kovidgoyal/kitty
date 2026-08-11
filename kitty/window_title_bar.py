@@ -92,6 +92,7 @@ class WindowTitleData(NamedTuple):
 def load_custom_window_title_bar_module() -> dict[str, Any]:
     import runpy
     import traceback
+
     try:
         return runpy.run_path(os.path.join(config_dir, 'window_title_bar.py'))
     except FileNotFoundError:

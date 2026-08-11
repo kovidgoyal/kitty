@@ -10,11 +10,10 @@ if TYPE_CHECKING:
 
 
 class SignalChild(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     signals+/list.str: The signals, a list of names, such as :code:`SIGTERM`, :code:`SIGKILL`, :code:`SIGUSR1`, etc.
     match/str: Which windows to send the signals to
-    '''
+    """
 
     short_desc = 'Send a signal to the foreground process in the specified windows'
     desc = (
@@ -25,13 +24,17 @@ class SignalChild(RemoteCommand):
         ' You can also map :ac:`signal_child` to a shortcut in :file:`kitty.conf`, for example::\n\n'
         '    map f1 signal_child SIGTERM'
     )
-    options_spec = '''\
+    options_spec = (
+        """\
 --no-response
 type=bool-set
 default=false
 Don't wait for a response indicating the success of the action. Note that
 using this option means that you will not be notified of failures.
-    ''' + '\n\n' + MATCH_WINDOW_OPTION
+    """
+        + '\n\n'
+        + MATCH_WINDOW_OPTION
+    )
     args = RemoteCommand.Args(json_field='signals', spec='[SIGNAL_NAME ...]', value_if_unspecified=('SIGINT',))
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
@@ -40,6 +43,7 @@ using this option means that you will not be notified of failures.
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
         import signal
+
         signals = tuple(getattr(signal, x) for x in payload_get('signals'))
         for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:

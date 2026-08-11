@@ -28,7 +28,6 @@ def session_command(payload: dict[str, Any], start: bool = True) -> bytes:
 
 
 class Broadcast(Handler):
-
     def __init__(self, opts: BroadcastCLIOptions, initial_strings: list[str]) -> None:
         self.opts = opts
         self.hide_input = False
@@ -111,7 +110,8 @@ class Broadcast(Handler):
         self.write(session_command(self.payload, start))
 
 
-OPTIONS = ('''
+OPTIONS = (
+    """
 --hide-input-toggle
 default=Ctrl+Alt+Esc
 Key to press that will toggle hiding of the input in the broadcast window itself.
@@ -123,7 +123,11 @@ default=Ctrl+Esc
 Key to press to end the broadcast session.
 
 
-''' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')).format
+"""
+    + MATCH_WINDOW_OPTION
+    + '\n\n'
+    + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
+).format
 help_text = 'Broadcast typed text to kitty windows. By default text is sent to all windows, unless one of the matching options is specified'
 usage = '[initial text to send ...]'
 

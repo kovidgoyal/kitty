@@ -12,7 +12,7 @@ from kitty.options.utils import (
     box_drawing_scale, clear_all_mouse_actions, clear_all_shortcuts, clipboard_control,
     clone_source_strategies, config_or_absolute_path, confirm_close, copy_on_select,
     cursor_blink_interval, cursor_text_color, cursor_trail_decay, cursor_trail_start_threshold,
-    deprecated_adjust_line_height, deprecated_hide_window_decorations_aliases,
+    custom_shaders, deprecated_adjust_line_height, deprecated_hide_window_decorations_aliases,
     deprecated_macos_show_window_title_in_menubar_alias, deprecated_scrollback_indicator_opacity,
     deprecated_send_text, disable_ligatures, edge_width, env, filter_notification, font_features,
     hide_window_decorations, macos_option_as_alt, macos_titlebar_color, menu_map, modify_font,
@@ -959,6 +959,9 @@ class Parser:
     def cursor_underline_thickness(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_underline_thickness'] = positive_float(val)
 
+    def custom_shaders(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['custom_shaders'] = custom_shaders(val)
+
     def default_pointer_shape(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_default_pointer_shape:
@@ -1189,6 +1192,14 @@ class Parser:
 
     def open_url_with(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['open_url_with'] = to_cmdline(val)
+
+    def padding_fill_strategy(self, val: str, ans: dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_padding_fill_strategy:
+            raise ValueError(f"The value {val} is not a valid choice for padding_fill_strategy")
+        ans["padding_fill_strategy"] = val
+
+    choices_for_padding_fill_strategy = frozenset(('background', 'neighboring_cell'))
 
     def palette_generate(self, val: str, ans: dict[str, typing.Any]) -> None:
         val = val.lower()

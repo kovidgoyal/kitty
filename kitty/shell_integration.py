@@ -125,8 +125,8 @@ def setup_bash_env(env: dict[str, str], argv: list[str]) -> None:
                 remove_args.add(i)
             elif arg in ('--rcfile', '--init-file') and i + 1 < len(argv):
                 expecting_option_arg = True
-                rcfile = argv[i+1]
-                remove_args |= {i, i+1}
+                rcfile = argv[i + 1]
+                remove_args |= {i, i + 1}
         else:
             file_arg_set = True
             break
@@ -179,14 +179,13 @@ ENV_MODIFIERS = {
 }
 
 ENV_SERIALIZERS: dict[str, Callable[[dict[str, str]], str]] = {
-    'zsh':  posix_serialize_env,
+    'zsh': posix_serialize_env,
     'bash': posix_serialize_env,
     'fish': fish_serialize_env,
 }
 
-QUOTERES =  {
-    'fish': as_fish_str_literal
-}
+QUOTERES = {'fish': as_fish_str_literal}
+
 
 def get_supported_shell_name(path: str) -> str | None:
     name = os.path.basename(path)
@@ -221,8 +220,10 @@ def join(path: str, cmd: Iterable[str]) -> str:
     if not name:
         raise ValueError(f'{path} is not a supported shell')
     q = QUOTERES.get(name, as_str_literal)
+
     def quote(x: str) -> str:
         return x if _find_unsafe(x) is None else q(x)
+
     return ' '.join(map(quote, cmd))
 
 
@@ -250,5 +251,6 @@ def modify_shell_environ(opts: Options, env: dict[str, str], argv: list[str]) ->
             f(env, argv)
         except Exception:
             import traceback
+
             traceback.print_exc()
             log_error(f'Failed to setup shell integration for: {shell}')

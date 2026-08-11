@@ -12,7 +12,6 @@ from .utils import lock_file, unlock_file
 
 
 class ImageRenderCache:
-
     lock_file_name = '.lock'
 
     def __init__(self, subdirname: str = 'rgba', max_entries: int = 32, cache_path: str = ''):
@@ -24,6 +23,7 @@ class ImageRenderCache:
     def ensure_subdir(self) -> None:
         if not self.cache_dir:
             import stat
+
             x = os.path.abspath(os.path.join(self.cache_path or cache_dir(), self.subdirname))
             os.makedirs(x, mode=stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC, exist_ok=True)
             self.cache_dir = x
@@ -50,14 +50,15 @@ class ImageRenderCache:
         entries = list(self.entries())
         if len(entries) <= self.max_entries:
             return
+
         def sort_key(e: 'os.DirEntry[str]') -> float:
             with suppress(OSError):
                 st = e.stat()
                 return st.st_mtime
-            return 0.
+            return 0.0
 
         entries.sort(key=sort_key, reverse=True)
-        for e in entries[self.max_entries:]:
+        for e in entries[self.max_entries :]:
             with suppress(FileNotFoundError):
                 os.remove(e.path)
 
@@ -67,6 +68,7 @@ class ImageRenderCache:
     def render_image(self, src_path: str, output_path: str) -> None:
         import stat
         import subprocess
+
         try:
             with open(src_path, 'rb') as src, open(output_path, 'wb', opener=partial(os.open, mode=stat.S_IREAD | stat.S_IWRITE)) as output:
                 cp = subprocess.run([kitten_exe(), '__convert_image__', 'RGBA'], stdin=src, stdout=output, stderr=subprocess.PIPE)
@@ -83,6 +85,7 @@ class ImageRenderCache:
         with open(output_path, 'rb') as f:
             header = f.read(8)
             import struct
+
             width, height = struct.unpack('<II', header)
             f.seek(0)
             return width, height, os.dup(f.fileno())
@@ -90,6 +93,7 @@ class ImageRenderCache:
     def render(self, src_path: str) -> str:
         import struct
         from hashlib import sha256
+
         src_info = os.stat(src_path)
         output_name = sha256(struct.pack('@qqqq', src_info.st_dev, src_info.st_ino, src_info.st_size, src_info.st_mtime_ns)).hexdigest()
 
@@ -107,7 +111,6 @@ class ImageRenderCache:
 
 
 class ImageRenderCacheForTesting(ImageRenderCache):
-
     def __init__(self, cache_path: str):
         super().__init__(max_entries=2, cache_path=cache_path)
         self.current_time = time.time_ns()
@@ -118,7 +121,7 @@ class ImageRenderCacheForTesting(ImageRenderCache):
         self.touch(output_path)
         self.num_of_renders += 1
 
-    def touch(self, path:str) -> None:
+    def touch(self, path: str) -> None:
         self.current_time += 3 * int(1e9)
         os.utime(path, ns=(self.current_time, self.current_time))
 

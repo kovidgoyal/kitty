@@ -17,23 +17,37 @@ map = definition.add_map
 mma = definition.add_mouse_map
 
 agr('Appearance')
-opt('color_scheme', 'no-preference', choices=('no-preference', 'dark', 'light'), long_text='''\
+opt(
+    'color_scheme',
+    'no-preference',
+    choices=('no-preference', 'dark', 'light'),
+    long_text="""\
 The color scheme for your system. This sets the initial value of the color scheme. It can be changed subsequently
 by using :code:`kitten desktop-ui color-scheme`.
-''')
+""",
+)
 opt('accent_color', 'cyan', long_text='The RGB accent color for your system, can be specified as a color name or in hex a decimal format.')
 opt('contrast', 'normal', choices=('normal', 'high'), long_text='The preferred contrast level.')
-opt('file_chooser_size', '', long_text='''
+opt(
+    'file_chooser_size',
+    '',
+    long_text="""
 The size in lines and columns of the file chooser popup window. By default it is full screen. For example:
 :code:`file_chooser_size 25 80` will cause the popup to be of size 25 lines and 80 columns. Note that if you
 use this option, depending on the compositor you are running, the popup window may not be properly modal.
-''')
-opt('+file_chooser_kitty_conf', '',
-    long_text='Path to config file to use for kitty when drawing the file chooser window. Can be specified multiple times. By default, the'
-    ' normal kitty.conf is used. Relative paths are resolved with respect to the kitty config directory.'
+""",
 )
-opt('+file_chooser_kitty_override', '', long_text='Override individual kitty configuration options, for the file chooser window.'
-    ' Can be specified multiple times. Syntax: :italic:`name=value`. For example: :code:`font_size=20`.'
+opt(
+    '+file_chooser_kitty_conf',
+    '',
+    long_text='Path to config file to use for kitty when drawing the file chooser window. Can be specified multiple times. By default, the'
+    ' normal kitty.conf is used. Relative paths are resolved with respect to the kitty config directory.',
+)
+opt(
+    '+file_chooser_kitty_override',
+    '',
+    long_text='Override individual kitty configuration options, for the file chooser window.'
+    ' Can be specified multiple times. Syntax: :italic:`name=value`. For example: :code:`font_size=20`.',
 )
 
 egr()

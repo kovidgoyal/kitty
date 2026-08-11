@@ -6,16 +6,16 @@ from base64 import standard_b64decode, standard_b64encode
 from kitty.clipboard import WriteRequest
 from kitty.fast_data_types import StreamingBase64Decoder
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestClipboard(BaseTest):
-
     def test_clipboard_write_request(self):
         def t(data, expected):
             wr = WriteRequest(max_size=64)
             wr.add_base64_data(data)
             self.ae(wr.data_for(), expected)
+
         t('dGl0bGU=', b'title')
         t('dGl0bGU', b'title')
         t('dGl0bG', b'titl')

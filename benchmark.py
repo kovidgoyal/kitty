@@ -40,6 +40,7 @@ def run_parsing_benchmark(cell_width: int = 10, cell_height: int = 20, scrollbac
 
     write_buf = b''
     r_pipe, w_pipe = safe_pipe(True)
+
     class ToChild:
         def write(self, x: bytes | str) -> None:
             nonlocal write_buf
@@ -50,14 +51,13 @@ def run_parsing_benchmark(cell_width: int = 10, cell_height: int = 20, scrollbac
 
     screen = Screen(None, rows, columns, scrollback, cell_width, cell_height, 0, ToChild())
 
-    def parse_bytes(data: bytes|memoryview) -> None:
+    def parse_bytes(data: bytes | memoryview) -> None:
         data = memoryview(data)
         while data:
             dest = screen.test_create_write_buffer()
             s = screen.test_commit_write_buffer(data, dest)
             data = data[s:]
             screen.test_parse_written_data()
-
 
     while True:
         rd, wd, _ = select.select([master_fd, r_pipe], [master_fd] if write_buf else [], [])

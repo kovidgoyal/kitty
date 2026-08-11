@@ -1,0 +1,5 @@
+var float4 TINT = float4(0, 0.8, 0.6, 1)
+
+startgroup
+    shaders crt
+endgroup

@@ -33,19 +33,17 @@ def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None
     else:
         sizes = session.os_window_size
     return WindowSizeData(
-        sizes, opts.remember_window_size, opts.single_window_margin_width, opts.window_margin_width,
-        opts.single_window_padding_width, opts.window_padding_width)
+        sizes, opts.remember_window_size, opts.single_window_margin_width, opts.window_margin_width, opts.single_window_padding_width, opts.window_padding_width
+    )
 
 
 ResizeSpec = tuple[str, int]
 
 
 class WindowSpec:
-
     def __init__(
-        self, launch_spec: Union['LaunchSpec', 'SpecialWindowInstance'], serialized_id: int = 0,
-        run_command_at_shell_startup: Sequence[str] | str = ()
-):
+        self, launch_spec: Union['LaunchSpec', 'SpecialWindowInstance'], serialized_id: int = 0, run_command_at_shell_startup: Sequence[str] | str = ()
+    ):
         self.launch_spec = launch_spec
         self.resize_spec: ResizeSpec | None = None
         self.focus_matching_window_spec: str = ''
@@ -54,12 +52,12 @@ class WindowSpec:
         self.run_command_at_shell_startup = run_command_at_shell_startup
         if hasattr(launch_spec, 'opts'):  # LaunchSpec
             from .launch import LaunchSpec
+
             assert isinstance(launch_spec, LaunchSpec)
             self.is_background_process = launch_spec.opts.type == 'background'
 
 
 class Tab:
-
     def __init__(self, opts: Options, name: str):
         self.windows: list[WindowSpec] = []
         self.pending_resize_spec: ResizeSpec | None = None
@@ -81,7 +79,6 @@ class Tab:
 
 
 class Session:
-
     session_name: str = ''
     num_of_windows_in_definition: int = 0
 
@@ -122,13 +119,14 @@ class Session:
 
     def add_window(self, cmd: None | str | list[str], expand: Callable[[str], str] = lambda x: x) -> None:
         from .launch import parse_launch_args
+
         needs_expandvars = False
         if isinstance(cmd, str):
             needs_expandvars = True
             cmd = list(shlex_split(cmd)) if cmd else []
         serialize_data: dict[str, Any] = {'id': 0, 'cmd_at_shell_startup': ()}
         if cmd and cmd[0].startswith(unserialize_launch_flag):
-            serialize_data = json.loads(cmd[0][len(unserialize_launch_flag):])
+            serialize_data = json.loads(cmd[0][len(unserialize_launch_flag) :])
             del cmd[0]
         spec = parse_launch_args(cmd)
         if needs_expandvars:
@@ -144,9 +142,7 @@ class Session:
         if t.next_title and not spec.opts.window_title:
             spec.opts.window_title = t.next_title
         spec.opts.cwd = spec.opts.cwd or t.cwd
-        t.windows.append(WindowSpec(
-            spec, serialized_id=serialize_data['id'],
-            run_command_at_shell_startup=serialize_data.get('cmd_at_shell_startup', ())))
+        t.windows.append(WindowSpec(spec, serialized_id=serialize_data['id'], run_command_at_shell_startup=serialize_data.get('cmd_at_shell_startup', ())))
         t.next_title = None
         if t.pending_resize_spec is not None:
             t.windows[-1].resize_spec = t.pending_resize_spec
@@ -236,6 +232,7 @@ def parse_session(
         ans.session_name = session_name
         ans.num_of_windows_in_definition = sum(len(t.windows) for t in ans.tabs)
         from .tabs import SpecialWindow
+
         for t in ans.tabs:
             if not t.windows:
                 t.windows.append(WindowSpec(SpecialWindow(cmd=resolved_shell(opts))))
@@ -302,7 +299,6 @@ def parse_session(
 
 
 class PreReadSession(str):
-
     associated_environ: Mapping[str, str]
     session_arg: str
     session_path: str
@@ -325,8 +321,8 @@ def create_sessions(
     env_when_no_session: dict[str, str] | None = None,
 ) -> Iterator[Session]:
     if args and args.session:
-        if args.session == "none":
-            default_session = "none"
+        if args.session == 'none':
+            default_session = 'none'
         else:
             session_arg = args.session
             session_path = ''
@@ -368,6 +364,7 @@ def create_sessions(
     if special_window is None:
         cmd = args.args if args and args.args else resolved_shell(opts)
         from kitty.tabs import SpecialWindow
+
         cwd: str | None = args.directory if respect_cwd and args else None
         special_window = SpecialWindow(cmd, cwd_from=cwd_from, cwd=cwd, env=env_when_no_session, hold=bool(args and args.hold))
     ans.add_special_window(special_window)
@@ -383,8 +380,10 @@ def window_for_session_name(boss: BossType, session_name: str, allow_fallback: b
             os_windows = (tm for tm in boss.all_tab_managers if tm.created_in_session_name == session_name)
             windows = [tm.active_window for tm in os_windows if tm.active_window]
     if windows:
+
         def skey(w: WindowType) -> float:
             return w.last_focused_at
+
         windows.sort(key=skey, reverse=True)
         return windows[0]
     return None
@@ -471,11 +470,12 @@ def close_session_with_confirm(boss: BossType, cmdline: Sequence[str]) -> None:
             return
         if len(names) == 1:
             return close_session_with_confirm(boss, names)
+
         def chosen(name: str | None) -> None:
             if name:
                 close_session_with_confirm(boss, (name,))
-        boss.choose_entry(
-            _('Select a session to close'), ((name, name) for name in names), chosen)
+
+        boss.choose_entry(_('Select a session to close'), ((name, name) for name in names), chosen)
         return
     if len(cmdline) != 1:
         boss.show_error(_('Invalid close_session specification'), _('{} is not a valid argument to close_session').format(shlex.join(cmdline)))
@@ -515,23 +515,25 @@ def close_session_with_confirm(boss: BossType, cmdline: Sequence[str]) -> None:
         do_close(True)
 
 
-def choose_session_from_map(
-    boss: BossType, opts: GotoSessionOptions, session_map: Mapping[str, str], title: str
-) -> bool:
+def choose_session_from_map(boss: BossType, opts: GotoSessionOptions, session_map: Mapping[str, str], title: str) -> bool:
     if not session_map:
         return False
-    hmap = {n: len(goto_session_history)-i for i, n in enumerate(goto_session_history)}
+    hmap = {n: len(goto_session_history) - i for i, n in enumerate(goto_session_history)}
     if opts.sort_by == 'alphabetical':
+
         def skey(name: str) -> tuple[int, str]:
             return 0, name.lower()
     else:
+
         def skey(name: str) -> tuple[int, str]:
             return hmap.get(name, len(goto_session_history)), name.lower()
+
     names = sorted(session_map, key=skey)
 
     def chosen(name: str | None) -> None:
         if name:
             goto_session(boss, (session_map[name],))
+
     boss.choose_entry(title, ((name, name) for name in names), chosen)
     return True
 
@@ -547,33 +549,25 @@ def choose_session(boss: BossType, opts: GotoSessionOptions) -> None:
 def choose_session_in_directory(boss: BossType, opts: GotoSessionOptions, directory_path: str) -> None:
     try:
         with os.scandir(directory_path) as entries:
-            session_map = {
-                session_arg_to_name(entry.path): entry.path
-                for entry in entries
-                if entry.is_file() and has_session_extension(entry.name)
-            }
+            session_map = {session_arg_to_name(entry.path): entry.path for entry in entries if entry.is_file() and has_session_extension(entry.name)}
     except OSError as e:
-        boss.show_error(
-            _('Failed to list sessions'),
-            _('Could not list session files in {0} with error: {1}').format(directory_path, e))
+        boss.show_error(_('Failed to list sessions'), _('Could not list session files in {0} with error: {1}').format(directory_path, e))
         return
     session_map = {name: path for name, path in session_map.items() if name}
-    if not choose_session_from_map(
-        boss, opts, session_map, _('Select a session to activate from {0}').format(directory_path)
-    ):
-        boss.show_error(
-            _('No session files found'), _('No session files were found inside {0}').format(directory_path))
+    if not choose_session_from_map(boss, opts, session_map, _('Select a session to activate from {0}').format(directory_path)):
+        boss.show_error(_('No session files found'), _('No session files were found inside {0}').format(directory_path))
 
 
 def parse_goto_session_cmdline(args: list[str]) -> tuple[GotoSessionOptions, list[str]]:
     from kitty.cli import cached_parse_cmdline
+
     ans = GotoSessionOptions()
     leftover_args = cached_parse_cmdline(goto_session_options(), args, ans)
     return ans, leftover_args
 
 
 def goto_session_options() -> str:
-    return '''
+    return """
 --sort-by
 choices=recent,alphabetical
 default=recent
@@ -583,7 +577,7 @@ When interactively choosing sessions from a list, how to sort the list.
 --active-only
 type=bool-set
 Only consider active sessions.
-'''
+"""
 
 
 def goto_previous_session(boss: BossType, idx: int) -> None:
@@ -606,8 +600,7 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
     try:
         opts, cmdline = parse_goto_session_cmdline(list(cmdline))
     except Exception as e:
-        boss.show_error(_('Invalid goto_session command'), _(
-            'The command goto_session {0} is invalid with error: {1}').format(shlex.join(cmdline), e))
+        boss.show_error(_('Invalid goto_session command'), _('The command goto_session {0} is invalid with error: {1}').format(shlex.join(cmdline), e))
         return
     if not cmdline:
         choose_session(boss, opts)
@@ -634,6 +627,7 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
         session_name, created_new_os_window = create_session(boss, path)
     except Exception:
         import traceback
+
         tb = traceback.format_exc()
         boss.show_error(_('Failed to create session'), _('Could not create session from {0} with error:\n{1}').format(path, tb))
     else:
@@ -642,15 +636,15 @@ def goto_session(boss: BossType, cmdline: Sequence[str]) -> None:
             switch_to_session(boss, session_name)
 
 
-save_as_session_message = '''\
+save_as_session_message = """\
 Save the current state of kitty as a session file for easy re-use. If the path at which to save the session
 file is not specified, kitty will prompt you for one. If the path is :code:`.` it will save the session
 to the path of the currently active session, if there is one, otherwise prompt you for a path.
-'''
+"""
 
 
 def save_as_session_options() -> str:
-    return '''
+    return """
 --save-only
 type=bool-set
 Only save the specified session file, dont open it in an editor to review after saving.
@@ -688,13 +682,14 @@ working directory. This is useful when kitty is launched from locations where th
 is not your home directory, such as from system-wide shortcuts. Note that :code:`--relocatable` is
 typically not used with :code:`--base-dir`, since relocatable is meant for session files that are
 co-located with their project directories.
-'''
+"""
 
 
 def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str, path_input_by_user: bool = False) -> None:
     if not path:
         return
     from .config import atomic_save
+
     if opts.base_dir and not os.path.isabs(path):
         base_dir = os.path.abspath(os.path.expanduser(opts.base_dir))
         path = os.path.join(base_dir, path)
@@ -710,6 +705,7 @@ def save_as_session_part2(boss: BossType, opts: SaveAsSessionOptions, path: str,
 
 def parse_save_as_options_spec_args(args: list[str]) -> tuple[SaveAsSessionOptions, list[str]]:
     from kitty.cli import cached_parse_cmdline
+
     ans = SaveAsSessionOptions()
     leftover_args = cached_parse_cmdline(save_as_session_options(), args, ans)
     return ans, leftover_args
@@ -722,8 +718,10 @@ def default_save_as_session_opts() -> SaveAsSessionOptions:
 def save_as_session(boss: BossType, cmdline: Sequence[str]) -> None:
     opts, args = parse_save_as_options_spec_args(list(cmdline))
     if args and len(args) > 1:
-        boss.show_error(_('Invalid save_as_session command line'), _(
-            'save_as_session must have no more than a single path argument. Note that any flags/options should come before the path'))
+        boss.show_error(
+            _('Invalid save_as_session command line'),
+            _('save_as_session must have no more than a single path argument. Note that any flags/options should come before the path'),
+        )
         return
     path = args[0] if args else ''
     if path == '.':
@@ -732,6 +730,7 @@ def save_as_session(boss: BossType, cmdline: Sequence[str]) -> None:
     if path:
         save_as_session_part2(boss, opts, path)
     else:
-        boss.get_save_filepath(_(
-            'Enter the path at which to save the session, usually session files are given the .kitty-session file extension'),
-                               partial(save_as_session_part2, boss, opts, path_input_by_user=True))
+        boss.get_save_filepath(
+            _('Enter the path at which to save the session, usually session files are given the .kitty-session file extension'),
+            partial(save_as_session_part2, boss, opts, path_input_by_user=True),
+        )

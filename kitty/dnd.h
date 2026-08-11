@@ -31,8 +31,8 @@ void drag_add_image(Window *w, unsigned idx_, int fmt, int width, int height, in
 void drag_change_image(Window *w, unsigned idx);
 void drag_start(Window *w);
 void drag_notify(Window *w, DragNotifyType type);
-int drag_free_data(Window *w, const char *mime_type, const char* data, size_t sz);
-const char* drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code);
+int drag_free_data(Window *w, const char *mime_type, const char *data, size_t sz);
+const char *drag_get_data(Window *w, const char *mime_type, size_t *sz, int *err_code);
 void drag_process_item_data(Window *w, size_t idx, int has_more, const uint8_t *payload, size_t payload_sz);
 void drag_remote_file_data(Window *w, int32_t x, int32_t y, int32_t X, int32_t Y, bool has_more, const uint8_t *payload, size_t payload_sz);
 void drag_start_offerring(Window *w, const char *client_machine_id, size_t sz);

@@ -10,13 +10,13 @@ from kitty.types import WindowGeometry
 from kitty.window import EdgeWidths
 from kitty.window_list import WindowList, reset_group_id_counter
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class Window:
-
     def __init__(self, win_id, overlay_for=None, overlay_window_id=None):
         self.id = win_id
+        self.serialized_id = 0
         self.overlay_for = overlay_for
         self.overlay_window_id = overlay_window_id
         self.is_visible_in_layout = True
@@ -51,16 +51,17 @@ def create_layout(cls, opts=None, border_width=2):
     ans.set_active_window_in_os_window = lambda idx: None
     ans.swap_windows_in_os_window = lambda a, b: None
     orig = ans._set_dimensions
+
     def set_dimensions(all_windows):
         orig(all_windows)
         # we need a non-zero width and height for central
         lgd.central = Region((0, 0, 0, 0, 1, 1))
+
     ans._set_dimensions = set_dimensions
     return ans
 
 
 class Tab:
-
     def active_window_changed(self):
         self.current_layout.update_visibility(self.windows)
 
@@ -92,11 +93,11 @@ def utils(self, q, windows):
             self.ae(visible_ids(), {windows.active_group.id})
         else:
             self.ae(visible_ids(), {gr.id for gr in windows.groups})
+
     return ids, visible_ids, expect_ids, check_visible
 
 
 class TestLayout(BaseTest):
-
     def setUp(self):
         super().setUp()
         self.set_options({'tab_bar_style': 'hidden'})
@@ -107,14 +108,14 @@ class TestLayout(BaseTest):
         # Test layout
         q(windows)
         self.ae(windows.active_group_idx, 0)
-        expect_ids(*range(1, len(windows)+1))
+        expect_ids(*range(1, len(windows) + 1))
         check_visible()
 
         # Test nth_window
         for i in range(windows.num_groups):
             q.activate_nth_window(windows, i)
             self.ae(windows.active_group_idx, i)
-            expect_ids(*range(1, len(windows)+1))
+            expect_ids(*range(1, len(windows) + 1))
             check_visible()
 
         # Test next_window
@@ -122,7 +123,7 @@ class TestLayout(BaseTest):
             expected = (windows.active_group_idx + 1) % windows.num_groups
             q.next_window(windows)
             self.ae(windows.active_group_idx, expected)
-            expect_ids(*range(1, len(windows)+1))
+            expect_ids(*range(1, len(windows) + 1))
             check_visible()
 
         # Test move_window
@@ -134,7 +135,7 @@ class TestLayout(BaseTest):
         check_visible()
         windows.set_active_group_idx(0)
         q.move_window(windows, 3)
-        expect_ids(*range(1, len(windows)+1))
+        expect_ids(*range(1, len(windows) + 1))
         check_visible()
 
         # Test add_window
@@ -142,7 +143,7 @@ class TestLayout(BaseTest):
         q.add_window(windows, Window(6))
         self.ae(windows.num_groups, 6)
         self.ae(windows.active_group_idx, 5)
-        expect_ids(*range(1, windows.num_groups+1))
+        expect_ids(*range(1, windows.num_groups + 1))
         check_visible()
 
         # Test remove_window
@@ -273,6 +274,145 @@ class TestLayout(BaseTest):
         self.ae(q.neighbors_for_window(windows[2], all_windows), {'left': [1], 'right': [4], 'top': [2]})
         self.ae(q.neighbors_for_window(windows[3], all_windows), {'left': [3], 'top': [2]})
 
+    def test_splits_unserialize_into_unused_layout(self):
+        # Restoring the state of a layout that was not the active one when the session
+        # was saved: its pairs tree is empty, and the window list must not be
+        # reordered, since only the layout being made current does that.
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        for wid, loc in ((1, None), (2, 'hsplit'), (3, 'vsplit')):
+            win = Window(wid)
+            win.serialized_id = wid
+            q.add_window(all_windows, win, location=loc)
+        q(all_windows)
+        expected = {'horizontal': False, 'one': 1, 'two': {'one': 2, 'two': 3}}
+        self.ae(q.pairs_root.serialize(), expected)
+        state = q.serialize(all_windows)
+        groups_before = [g.id for g in all_windows.groups]
+
+        fresh = create_layout(Splits)
+        self.ae(fresh.pairs_root.serialize(), {})
+        self.assertTrue(fresh.unserialize(state, all_windows, apply_to_window_list=False))
+        self.ae(fresh.pairs_root.serialize(), expected)
+        self.ae([g.id for g in all_windows.groups], groups_before)
+
+    def test_unserialize_malformed_state(self):
+        # unserialize() must return False gracefully for bad session data rather
+        # than raising KeyError or similar.
+        q = create_layout(Tall)
+        all_windows = create_windows(q, num=3)
+        for w in all_windows.all_windows:
+            w.serialized_id = w.id
+        q(all_windows)
+
+        # Missing 'all_windows' key
+        state = q.serialize(all_windows)
+        del state['all_windows']
+        self.assertFalse(q.unserialize(state, all_windows))
+
+        # Wrong 'class' value
+        state = q.serialize(all_windows)
+        state['class'] = 'NonExistentLayout'
+        self.assertFalse(q.unserialize(state, all_windows))
+
+        # Mismatched layout type (Tall state passed to Splits)
+        state = q.serialize(all_windows)
+        other = create_layout(Splits)
+        self.assertFalse(other.unserialize(state, all_windows))
+
+    def test_unserialize_inactive_layout_non_splits(self):
+        # apply_to_window_list=False must not reorder windows for non-Splits layouts.
+        q = create_layout(Tall)
+        all_windows = create_windows(q, num=3)
+        for w in all_windows.all_windows:
+            w.serialized_id = w.id
+        q(all_windows)
+        state = q.serialize(all_windows)
+        groups_before = [g.id for g in all_windows.groups]
+        active_before = all_windows.active_group_idx
+
+        fresh = create_layout(Tall)
+        self.assertTrue(fresh.unserialize(state, all_windows, apply_to_window_list=False))
+        self.ae([g.id for g in all_windows.groups], groups_before)
+        self.ae(all_windows.active_group_idx, active_before)
+
+    def test_active_group_idx_preserved_after_unserialize(self):
+        # When unserialize reorders the window list, active_group_idx must be
+        # updated so it still points to the same group object.
+        #
+        # Simulate a session restore where windows were created in a different
+        # order than the serialised state expects.  The original session had
+        # windows [1,2,3] in that order with window 3 active.  The fresh list
+        # has windows with the same serialised ids but inserted in reverse
+        # order, so after unserialize the groups array is shuffled.
+        original = create_layout(Stack)
+        orig_windows = create_windows(original, num=0)
+        for wid in (1, 2, 3):
+            win = Window(wid)
+            win.serialized_id = wid
+            orig_windows.add_window(win)
+        original(orig_windows)
+        orig_windows.set_active_group_idx(2)  # window 3 active
+        state = original.serialize(orig_windows)
+
+        # Fresh window list: windows added in reverse serialised-id order so
+        # their group positions differ from the serialised group order.
+        fresh = create_layout(Stack)
+        fresh_windows = create_windows(fresh, num=0)
+        for actual_id, serialized_id in ((10, 3), (20, 2), (30, 1)):
+            win = Window(actual_id)
+            win.serialized_id = serialized_id
+            fresh_windows.add_window(win)
+        fresh(fresh_windows)
+        # Simulate _startup: set active to the window whose serialised id is 3
+        # (i.e. the window with actual_id=10, which is at index 0).
+        fresh_windows.set_active_group_idx(0)
+        active_group = fresh_windows.active_group
+
+        self.assertTrue(fresh.unserialize(state, fresh_windows))
+        # active_group_idx must still point to the same group object after reorder.
+        self.assertIs(fresh_windows.groups[fresh_windows.active_group_idx], active_group)
+
+    def test_unserialize_session_roundtrip_splits(self):
+        # Full serialize → unserialize round-trip for Splits: tree structure and
+        # window ordering are both restored correctly.
+        q = create_layout(Splits)
+        all_windows = create_windows(q, num=0)
+        for wid, loc in ((1, None), (2, 'vsplit'), (3, 'hsplit')):
+            win = Window(wid)
+            win.serialized_id = wid
+            q.add_window(all_windows, win, location=loc)
+        q(all_windows)
+        tree_before = q.pairs_root.serialize()
+        state = q.serialize(all_windows)
+        expected_groups = [g.id for g in all_windows.groups]
+
+        # Restore into the same window list (simulating a session with identical
+        # windows but a fresh layout object, as happens on restart).
+        fresh = create_layout(Splits)
+        self.assertTrue(fresh.unserialize(state, all_windows))
+        self.ae(fresh.pairs_root.serialize(), tree_before)
+        self.ae([g.id for g in all_windows.groups], expected_groups)
+
+    def test_unserialize_session_roundtrip_tall(self):
+        # Full serialize → unserialize round-trip for the Tall layout: custom
+        # bias values and window ordering are preserved.
+        q = create_layout(Tall)
+        all_windows = create_windows(q, num=3)
+        for w in all_windows.all_windows:
+            w.serialized_id = w.id
+        q(all_windows)
+        # Skew the main bias so we have something non-default to verify.
+        q.main_bias = list(q.main_bias)
+        q.main_bias[0] = 0.7
+        state = q.serialize(all_windows)
+        expected_groups = [g.id for g in all_windows.groups]
+
+        fresh = create_layout(Tall)
+        self.assertTrue(fresh.unserialize(state, all_windows))
+        self.ae(fresh.main_bias[0], 0.7)
+        self.ae([g.id for g in all_windows.groups], expected_groups)
+
     def test_splits_maximize(self):
         q = create_layout(Splits)
         all_windows = create_windows(q, num=0)
@@ -381,9 +521,9 @@ class TestLayout(BaseTest):
 
         result = q.layout_action('equalize', (), all_windows)
         self.assertTrue(result)
-        self.assertAlmostEqual(root.bias, 0.5, places=5)   # w1 vs right column: 1:1
-        self.assertAlmostEqual(inner1.bias, 1/4, places=5)  # w2 vs [w3,w4,w5]: 1:3
-        self.assertAlmostEqual(inner2.bias, 1/3, places=5)  # w3 vs [w4,w5]: 1:2
+        self.assertAlmostEqual(root.bias, 0.5, places=5)  # w1 vs right column: 1:1
+        self.assertAlmostEqual(inner1.bias, 1 / 4, places=5)  # w2 vs [w3,w4,w5]: 1:3
+        self.assertAlmostEqual(inner2.bias, 1 / 3, places=5)  # w3 vs [w4,w5]: 1:2
         self.assertAlmostEqual(inner3.bias, 0.5, places=5)  # w4 vs w5: 1:1
 
     def test_splits_equalize_after_remove(self):
@@ -404,8 +544,8 @@ class TestLayout(BaseTest):
 
         result = q.layout_action('equalize', (), all_windows)
         self.assertTrue(result)
-        self.assertAlmostEqual(root.bias, 0.5, places=5)    # w1 vs right column: 1:1
-        self.assertAlmostEqual(inner1.bias, 1/3, places=5)  # w2 vs [w3,w4]: 1:2 → RHS in thirds
+        self.assertAlmostEqual(root.bias, 0.5, places=5)  # w1 vs right column: 1:1
+        self.assertAlmostEqual(inner1.bias, 1 / 3, places=5)  # w2 vs [w3,w4]: 1:2 → RHS in thirds
         self.assertAlmostEqual(inner2.bias, 0.5, places=5)  # w3 vs w4: 1:1
 
         # Remove w4 — inner2 collapses: inner1.two becomes grp_w3 leaf
@@ -416,7 +556,7 @@ class TestLayout(BaseTest):
 
         result = q.layout_action('equalize', (), all_windows)
         self.assertTrue(result)
-        self.assertAlmostEqual(root.bias, 0.5, places=5)    # w1 vs right column: 1:1
+        self.assertAlmostEqual(root.bias, 0.5, places=5)  # w1 vs right column: 1:1
         self.assertAlmostEqual(inner1.bias, 0.5, places=5)  # w2 vs w3 top/bottom: 1:1
 
     def test_layout_opts_serialization(self):
@@ -463,23 +603,25 @@ class TestLayout(BaseTest):
         # layout_dimension must not produce a negative cells_per_window value
         # which would cause right < left in the resulting window geometry.
         for length, cell_length, decs in (
-            (8, 8, [(5, 5)]),   # padding (10) > length (8) > cell_length (8)
-            (6, 8, [(4, 4)]),   # length < cell_length
-            (0, 8, [(4, 4)]),   # zero length
-            (4, 8, [(3, 3)]),   # space_needed == length, no room for cells
+            (8, 8, [(5, 5)]),  # padding (10) > length (8) > cell_length (8)
+            (6, 8, [(4, 4)]),  # length < cell_length
+            (0, 8, [(4, 4)]),  # zero length
+            (4, 8, [(3, 3)]),  # space_needed == length, no room for cells
         ):
             result = next(layout_dimension(0, length, cell_length, decs))
-            self.assertGreaterEqual(result.cells_per_window, 0,
-                f'cells_per_window={result.cells_per_window} < 0 for length={length}, '
-                f'cell_length={cell_length}, decs={decs}')
-            self.assertGreaterEqual(result.content_size, 0,
-                f'content_size={result.content_size} < 0 for length={length}, '
-                f'cell_length={cell_length}, decs={decs}')
+            self.assertGreaterEqual(
+                result.cells_per_window, 0, f'cells_per_window={result.cells_per_window} < 0 for length={length}, cell_length={cell_length}, decs={decs}'
+            )
+            self.assertGreaterEqual(
+                result.content_size, 0, f'content_size={result.content_size} < 0 for length={length}, cell_length={cell_length}, decs={decs}'
+            )
             # content_pos must be within [0, length]: right edge = content_pos + content_size <= length
             self.assertGreaterEqual(result.content_pos, 0)
-            self.assertLessEqual(result.content_pos + result.content_size, length,
-                f'right ({result.content_pos + result.content_size}) > length ({length}) for '
-                f'cell_length={cell_length}, decs={decs}')
+            self.assertLessEqual(
+                result.content_pos + result.content_size,
+                length,
+                f'right ({result.content_pos + result.content_size}) > length ({length}) for cell_length={cell_length}, decs={decs}',
+            )
 
     def test_drag_resize_target_windows(self):
         # Helper: call drag_resize_target_windows with given window and edge flags.
@@ -628,13 +770,13 @@ class TestLayout(BaseTest):
         wA = Window(1)
         q.add_window(all_windows, wA)
         wB = Window(2)
-        q.add_window(all_windows, wB, location='vsplit')   # B right of A
+        q.add_window(all_windows, wB, location='vsplit')  # B right of A
         all_windows.set_active_window_group_for(wA)
         wC = Window(3)
-        q.add_window(all_windows, wC, location='hsplit')   # C below A
+        q.add_window(all_windows, wC, location='hsplit')  # C below A
         all_windows.set_active_window_group_for(wB)
         wD = Window(4)
-        q.add_window(all_windows, wD, location='hsplit')   # D below B
+        q.add_window(all_windows, wD, location='hsplit')  # D below B
         q(all_windows)
         root = q.pairs_root
         self.ae(root.horizontal, True)

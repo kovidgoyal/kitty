@@ -21,6 +21,7 @@ def generate_stub() -> None:
     from .cli import as_type_stub
     from .conf.utils import save_type_stub
     from .simple_cli_definitions import parse_option_spec
+
     text = 'import typing\n\n\n'
 
     def do(otext: str | None = None, cls: str = 'CLIOptions', extra_fields: Sequence[str] = ()) -> None:
@@ -30,55 +31,72 @@ def generate_stub() -> None:
     do(extra_fields=('args: typing.List[str]',))
 
     from .launch import options_spec
+
     do(options_spec(), 'LaunchCLIOptions')
 
     from .remote_control import global_options_spec
+
     do(global_options_spec(), 'RCOptions')
 
     from kittens.ask.main import option_text
+
     do(option_text(), 'AskCLIOptions')
 
     from kittens.remote_file.main import option_text
+
     do(option_text(), 'RemoteFileCLIOptions')
 
     from kittens.clipboard.main import OPTIONS
+
     do(OPTIONS(), 'ClipboardCLIOptions')
 
     from kittens.show_key.main import OPTIONS
+
     do(OPTIONS(), 'ShowKeyCLIOptions')
 
     from kittens.diff.main import OPTIONS
+
     do(OPTIONS(), 'DiffCLIOptions')
 
     from kittens.hints.main import OPTIONS
+
     do(OPTIONS(), 'HintsCLIOptions')
 
     from kittens.broadcast.main import OPTIONS
+
     do(OPTIONS(), 'BroadcastCLIOptions')
 
     from kittens.icat.main import OPTIONS as OS
+
     do(OS, 'IcatCLIOptions')
 
     from kittens.panel.main import panel_kitten_options_spec
+
     do(panel_kitten_options_spec(), 'PanelCLIOptions')
 
     from kittens.resize_window.main import OPTIONS
+
     do(OPTIONS(), 'ResizeCLIOptions')
 
     from kittens.unicode_input.main import OPTIONS
+
     do(OPTIONS(), 'UnicodeCLIOptions')
 
     from kittens.themes.main import OPTIONS
+
     do(OPTIONS(), 'ThemesCLIOptions')
 
     from kittens.transfer.main import option_text
+
     do(option_text(), 'TransferCLIOptions')
 
     from kitty.session import goto_session_options, save_as_session_options
+
     do(save_as_session_options(), 'SaveAsSessionOptions')
     do(goto_session_options(), 'GotoSessionOptions')
 
     from kitty.rc.base import all_command_names, command_for_name
+
     for cmd_name in all_command_names():
         cmd = command_for_name(cmd_name)
         if cmd.options_spec:
@@ -89,7 +107,5 @@ def generate_stub() -> None:
 
 if __name__ == '__main__':
     import subprocess
-    subprocess.Popen([
-        'kitty', '+runpy',
-        'from kitty.cli_stub import generate_stub; generate_stub()'
-    ])
+
+    subprocess.Popen(['kitty', '+runpy', 'from kitty.cli_stub import generate_stub; generate_stub()'])

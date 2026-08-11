@@ -25,9 +25,9 @@ def on_notification_activated(nc: NotificationCommand, which: int) -> None:
 
 
 def main(nc: NotificationCommand) -> bool:
-    '''
+    """
     This function should return True to filter out the notification
-    '''
+    """
     log_notification(nc)
 
     # filter out notifications with 'unwanted' in their titles

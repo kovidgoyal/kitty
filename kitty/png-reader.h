@@ -12,7 +12,7 @@
 
 typedef struct png_read_data png_read_data;
 
-typedef void(*png_error_handler_func)(png_read_data *d, const char*, const char*);
+typedef void (*png_error_handler_func)(png_read_data *d, const char *, const char *);
 
 typedef struct png_read_data {
     uint8_t *decompressed;
@@ -28,5 +28,5 @@ typedef struct png_read_data {
 } png_read_data;
 
 void inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz, int max_image_dimension);
-const char* png_from_32bit_rgba(const char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically);
-const char* png_from_24bit_rgb(const char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically);
+const char *png_from_32bit_rgba(const char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically);
+const char *png_from_24bit_rgb(const char *data, size_t width, size_t height, size_t *out_size, bool flip_vertically);

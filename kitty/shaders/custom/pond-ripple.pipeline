@@ -1,0 +1,7 @@
+startgroup
+    animation_start pointer-left-button-press
+    animation_stop 1500
+    animation_curve linear
+    animation_step 16
+    shaders pond-ripple
+endgroup

@@ -94,7 +94,9 @@
       "unstable/xdg-output/xdg-output-unstable-v1.xml",
 
       "kwin-blur-v1.xml",
-      "wlr-layer-shell-unstable-v1.xml"
+      "wlr-layer-shell-unstable-v1.xml",
+      "wlr-virtual-pointer-unstable-v1.xml",
+      "virtual-keyboard-unstable-v1.xml"
     ],
     "sources": [
       "wl_init.c",
@@ -114,7 +116,8 @@
       "linux_desktop_settings.c",
       "null_joystick.c",
       "momentum-scroll.c",
-      "linux_notify.c"
+      "linux_notify.c",
+      "wl_inject.c"
     ]
   },
   "wayland_protocols": [

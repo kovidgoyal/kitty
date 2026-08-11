@@ -5,7 +5,7 @@
 import sys
 
 usage = 'source_files_or_directories destination_path'
-help_text = '''\
+help_text = """\
 Transfer files over the TTY device. Can be used to send files between any two
 computers provided there is a TTY connection between them, such as over SSH.
 Supports copying files, directories (recursively), symlinks and hardlinks.  Can
@@ -61,11 +61,11 @@ paths are resolved with respect to the current directory on the computer
 running the kitten and the home directory on the other computer. It is
 a good idea to use the :option:`--confirm-paths` command line flag to verify
 the kitten will copy the files you expect it to.
-'''
+"""
 
 
 def option_text() -> str:
-    return '''\
+    return """\
 --direction -d
 default=download
 choices=upload,download,send,receive
@@ -117,7 +117,7 @@ If a file on the receiving side already exists, use the rsync algorithm to
 update it to match the file on the sending side, potentially saving lots of
 bandwidth and also automatically resuming partial transfers. Note that this will
 actually degrade performance on fast links or with small files, so use with care.
-'''
+"""
 
 
 def main(args: list[str]) -> None:
@@ -128,6 +128,7 @@ if __name__ == '__main__':
     main(sys.argv)
 elif __name__ == '__doc__':
     from kitty.simple_cli_definitions import CompletionSpec
+
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = option_text

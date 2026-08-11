@@ -28,9 +28,7 @@ def encode_keystring(keybytes: bytes) -> str:
 
 names = Options.term, 'KovIdTTY'
 
-termcap_aliases = {
-    'TN': 'name'
-}
+termcap_aliases = {'TN': 'name'}
 
 bool_capabilities = {
     # auto_right_margin (terminal has automatic margins)
@@ -67,24 +65,25 @@ bool_capabilities = {
     'fullkbd',
     # Terminal supports focus events: https://lists.gnu.org/archive/html/bug-ncurses/2023-10/msg00117.html
     'XF',
-
     # The following are entries that we don't use
     # # background color erase
     # 'bce',
 }
 
-termcap_aliases.update({
-    'am': 'am',
-    'bw': 'bw',
-    'cc': 'ccc',
-    'km': 'km',
-    '5i': 'mc5i',
-    'mi': 'mir',
-    'ms': 'msgr',
-    'NP': 'npc',
-    'xn': 'xenl',
-    'hs': 'hs',
-})
+termcap_aliases.update(
+    {
+        'am': 'am',
+        'bw': 'bw',
+        'cc': 'ccc',
+        'km': 'km',
+        '5i': 'mc5i',
+        'mi': 'mir',
+        'ms': 'msgr',
+        'NP': 'npc',
+        'xn': 'xenl',
+        'hs': 'hs',
+    }
+)
 
 numeric_capabilities = {
     # maximum number of colors on screen
@@ -97,13 +96,15 @@ numeric_capabilities = {
     'pairs': 32767,
 }
 
-termcap_aliases.update({
-    'Co': 'colors',
-    'pa': 'pairs',
-    'li': 'lines',
-    'co': 'cols',
-    'it': 'it',
-})
+termcap_aliases.update(
+    {
+        'Co': 'colors',
+        'pa': 'pairs',
+        'li': 'lines',
+        'co': 'cols',
+        'it': 'it',
+    }
+)
 
 string_capabilities = {
     # graphics charset pairs
@@ -190,14 +191,12 @@ string_capabilities = {
     'kbs': r'\177',
     # Mouse event has occurred
     'kmous': r'\E[M',
-
     # These break mouse events in htop so they are disabled
     # Turn on mouse reporting
     # 'XM': '\E[?1006;1004;1000%?%p1%{1}%=%th%el%;',
     # Expected format for mouse reporting escape codes
     # 'xm': r'\E[<%i%p3%d;%p1%d;%p2%d;%?%p4%tM%em%;',
     # Scroll backwards (reverse index)
-
     'kri': r'\E[1;2A',
     # scroll forwards (index)
     'kind': r'\E[1;2B',
@@ -295,7 +294,6 @@ string_capabilities = {
     # 'Setulc' is equivalent to the 'Su' boolean capability. Until
     # standardized, specify both for application compatibility.
     'Setulc': r'\E[58:2:%p1%{65536}%/%d:%p1%{256}%/%{255}%&%d:%p1%{255}%&%d%;m',
-
     # The following entries are for compatibility with xterm,
     # and shell scripts using e.g. `tput u7` to emit a CPR escape
     # See https://invisible-island.net/ncurses/terminfo.src.html
@@ -304,13 +302,11 @@ string_capabilities = {
     'u7': r'\E[6n',
     'u8': r'\E[?%[;0123456789]c',
     'u9': r'\E[c',
-
     # Bracketed paste, added to ncurses 6.4 in 2023
     'PS': r'\E[200~',
     'PE': r'\E[201~',
     'BE': r'\E[?2004h',
     'BD': r'\E[?2004l',
-
     # XTVERSION
     'XR': r'\E[>0q',
     # OSC 52 clipboard access
@@ -324,7 +320,6 @@ string_capabilities = {
     # Add to ncurses in: https://lists.gnu.org/archive/html/bug-ncurses/2023-10/msg00117.html
     'fe': r'\E[?1004h',
     'fd': r'\E[?1004l',
-
     # The following are entries that we don't use
     # # turn on blank mode, (characters invisible)
     # 'invis': r'\E[8m',
@@ -336,172 +331,176 @@ string_capabilities = {
     # 'rs2': r'\E[!p\E[?3;4l\E[4l\E>',
 }
 
-string_capabilities.update({
-    f'kf{n}':
-        encode_keystring(modify_key_bytes(b'\033' + value, 0))
-    for n, value in zip(range(1, 13),
-                        b'OP OQ OR OS [15~ [17~ [18~ [19~ [20~ [21~ [23~ [24~'.split())
-})
+string_capabilities.update(
+    {
+        f'kf{n}': encode_keystring(modify_key_bytes(b'\033' + value, 0))
+        for n, value in zip(range(1, 13), b'OP OQ OR OS [15~ [17~ [18~ [19~ [20~ [21~ [23~ [24~'.split())
+    }
+)
 
-string_capabilities.update({
-    f'kf{offset + n}':
-        encode_keystring(modify_key_bytes(b'\033' + value, mod))
-    for offset, mod in {12: 2, 24: 5, 36: 6, 48: 3, 60: 4}.items()
-    for n, value in zip(range(1, 13),
-                        b'OP OQ [13~ OS [15~ [17~ [18~ [19~ [20~ [21~ [23~ [24~'.split())
-    if offset + n < 64
-})
+string_capabilities.update(
+    {
+        f'kf{offset + n}': encode_keystring(modify_key_bytes(b'\033' + value, mod))
+        for offset, mod in {12: 2, 24: 5, 36: 6, 48: 3, 60: 4}.items()
+        for n, value in zip(range(1, 13), b'OP OQ [13~ OS [15~ [17~ [18~ [19~ [20~ [21~ [23~ [24~'.split())
+        if offset + n < 64
+    }
+)
 
-string_capabilities.update({
-    name.format(unmod=unmod, key=key):
-        encode_keystring(modify_key_bytes(b'\033' + value, mod))
-    for unmod, key, value in zip(
-        'cuu1 cud1 cuf1 cub1 beg end home ich1 dch1 pp  np'.split(),
-        'UP   DN   RIT  LFT  BEG END HOM  IC   DC   PRV NXT'.split(),
-        b'OA  OB   OC   OD   OE  OF  OH   [2~  [3~  [5~ [6~'.split())
-    for name, mod in {
-        'k{unmod}': 0, 'k{key}': 2, 'k{key}3': 3, 'k{key}4': 4,
-        'k{key}5': 5, 'k{key}6': 6, 'k{key}7': 7}.items()
-})
+string_capabilities.update(
+    {
+        name.format(unmod=unmod, key=key): encode_keystring(modify_key_bytes(b'\033' + value, mod))
+        for unmod, key, value in zip(
+            'cuu1 cud1 cuf1 cub1 beg end home ich1 dch1 pp  np'.split(),
+            'UP   DN   RIT  LFT  BEG END HOM  IC   DC   PRV NXT'.split(),
+            b'OA  OB   OC   OD   OE  OF  OH   [2~  [3~  [5~ [6~'.split(),
+        )
+        for name, mod in {'k{unmod}': 0, 'k{key}': 2, 'k{key}3': 3, 'k{key}4': 4, 'k{key}5': 5, 'k{key}6': 6, 'k{key}7': 7}.items()
+    }
+)
 
-termcap_aliases.update({
-    'ac': 'acsc',
-    'bl': 'bel',
-    'md': 'bold',
-    'mb': 'blink',
-    'bt': 'cbt',
-    'kB': 'kcbt',
-    'cl': 'clear',
-    'vi': 'civis',
-    'vs': 'cvvis',
-    've': 'cnorm',
-    'cr': 'cr',
-    'cs': 'csr',
-    'LE': 'cub',
-    'le': 'cub1',
-    'DO': 'cud',
-    'do': 'cud1',
-    'UP': 'cuu',
-    'up': 'cuu1',
-    'nd': 'cuf1',
-    'RI': 'cuf',
-    'cm': 'cup',
-    'DC': 'dch',
-    'dc': 'dch1',
-    'mh': 'dim',
-    'DL': 'dl',
-    'dl': 'dl1',
-    'ec': 'ech',
-    'cd': 'ed',
-    'ce': 'el',
-    'cb': 'el1',
-    'vb': 'flash',
-    'ho': 'home',
-    'ch': 'hpa',
-    'ta': 'ht',
-    'st': 'hts',
-    'IC': 'ich',
-    'AL': 'il',
-    'al': 'il1',
-    'sf': 'ind',
-    'SF': 'indn',
-    'Ic': 'initc',
-    'oc': 'oc',
-    # 'mk': 'invis',
-    'kb': 'kbs',
-    'kl': 'kcub1',
-    'kd': 'kcud1',
-    'kr': 'kcuf1',
-    'ku': 'kcuu1',
-    'kh': 'khome',
-    '@7': 'kend',
-    'kI': 'kich1',
-    'kD': 'kdch1',
-    'Km': 'kmous',
-    'kN': 'knp',
-    'kP': 'kpp',
-    'kR': 'kri',
-    'kF': 'kind',
-    'rc': 'rc',
-    'rp': 'rep',
-    'mr': 'rev',
-    'sr': 'ri',
-    'SR': 'rin',
-    'RA': 'rmam',
-    'te': 'rmcup',
-    'ei': 'rmir',
-    'se': 'rmso',
-    'ue': 'rmul',
-    'Te': 'rmxx',
-    'r1': 'rs1',
-    'sc': 'sc',
-    'AB': 'setab',
-    'AF': 'setaf',
-    'sa': 'sgr',
-    'me': 'sgr0',
-    'op': 'op',
-    'SA': 'smam',
-    'ti': 'smcup',
-    'im': 'smir',
-    'so': 'smso',
-    'us': 'smul',
-    'Ts': 'smxx',
-    'ct': 'tbc',
-    'cv': 'vpa',
-    'ZH': 'sitm',
-    'ZR': 'ritm',
-    'as': 'smacs',
-    'ae': 'rmacs',
-    'ks': 'smkx',
-    'ke': 'rmkx',
-    '#2': 'kHOM',
-    '#3': 'kIC',
-    '#4': 'kLFT',
-    '*4': 'kDC',
-    '*7': 'kEND',
-    '%c': 'kNXT',
-    '%e': 'kPRV',
-    '%i': 'kRIT',
-    '%1': 'khlp',
-    '&8': 'kund',
-    'K1': 'ka1',
-    'K3': 'ka3',
-    'K4': 'kc1',
-    'K5': 'kc3',
-    'ts': 'tsl',
-    'fs': 'fsl',
-    'ds': 'dsl',
+termcap_aliases.update(
+    {
+        'ac': 'acsc',
+        'bl': 'bel',
+        'md': 'bold',
+        'mb': 'blink',
+        'bt': 'cbt',
+        'kB': 'kcbt',
+        'cl': 'clear',
+        'vi': 'civis',
+        'vs': 'cvvis',
+        've': 'cnorm',
+        'cr': 'cr',
+        'cs': 'csr',
+        'LE': 'cub',
+        'le': 'cub1',
+        'DO': 'cud',
+        'do': 'cud1',
+        'UP': 'cuu',
+        'up': 'cuu1',
+        'nd': 'cuf1',
+        'RI': 'cuf',
+        'cm': 'cup',
+        'DC': 'dch',
+        'dc': 'dch1',
+        'mh': 'dim',
+        'DL': 'dl',
+        'dl': 'dl1',
+        'ec': 'ech',
+        'cd': 'ed',
+        'ce': 'el',
+        'cb': 'el1',
+        'vb': 'flash',
+        'ho': 'home',
+        'ch': 'hpa',
+        'ta': 'ht',
+        'st': 'hts',
+        'IC': 'ich',
+        'AL': 'il',
+        'al': 'il1',
+        'sf': 'ind',
+        'SF': 'indn',
+        'Ic': 'initc',
+        'oc': 'oc',
+        # 'mk': 'invis',
+        'kb': 'kbs',
+        'kl': 'kcub1',
+        'kd': 'kcud1',
+        'kr': 'kcuf1',
+        'ku': 'kcuu1',
+        'kh': 'khome',
+        '@7': 'kend',
+        'kI': 'kich1',
+        'kD': 'kdch1',
+        'Km': 'kmous',
+        'kN': 'knp',
+        'kP': 'kpp',
+        'kR': 'kri',
+        'kF': 'kind',
+        'rc': 'rc',
+        'rp': 'rep',
+        'mr': 'rev',
+        'sr': 'ri',
+        'SR': 'rin',
+        'RA': 'rmam',
+        'te': 'rmcup',
+        'ei': 'rmir',
+        'se': 'rmso',
+        'ue': 'rmul',
+        'Te': 'rmxx',
+        'r1': 'rs1',
+        'sc': 'sc',
+        'AB': 'setab',
+        'AF': 'setaf',
+        'sa': 'sgr',
+        'me': 'sgr0',
+        'op': 'op',
+        'SA': 'smam',
+        'ti': 'smcup',
+        'im': 'smir',
+        'so': 'smso',
+        'us': 'smul',
+        'Ts': 'smxx',
+        'ct': 'tbc',
+        'cv': 'vpa',
+        'ZH': 'sitm',
+        'ZR': 'ritm',
+        'as': 'smacs',
+        'ae': 'rmacs',
+        'ks': 'smkx',
+        'ke': 'rmkx',
+        '#2': 'kHOM',
+        '#3': 'kIC',
+        '#4': 'kLFT',
+        '*4': 'kDC',
+        '*7': 'kEND',
+        '%c': 'kNXT',
+        '%e': 'kPRV',
+        '%i': 'kRIT',
+        '%1': 'khlp',
+        '&8': 'kund',
+        'K1': 'ka1',
+        'K3': 'ka3',
+        'K4': 'kc1',
+        'K5': 'kc3',
+        'ts': 'tsl',
+        'fs': 'fsl',
+        'ds': 'dsl',
+        'u6': 'u6',
+        'u7': 'u7',
+        'u8': 'u8',
+        'u9': 'u9',
+        # 'ut': 'bce',
+        # 'ds': 'dsl',
+        # 'fs': 'fsl',
+        # 'mk': 'invis',
+        # 'is': 'is2',
+        # '@8': 'kent',
+        # 'r2': 'rs2',
+    }
+)
 
-    'u6': 'u6',
-    'u7': 'u7',
-    'u8': 'u8',
-    'u9': 'u9',
-
-    # 'ut': 'bce',
-    # 'ds': 'dsl',
-    # 'fs': 'fsl',
-    # 'mk': 'invis',
-    # 'is': 'is2',
-    # '@8': 'kent',
-    # 'r2': 'rs2',
-})
-
-termcap_aliases.update({
-    tc: f'kf{n}'
-    for n, tc in enumerate(
-        'k1 k2 k3 k4 k5 k6 k7 k8 k9 k; F1 F2 F3 F4 F5 F6 F7 F8 F9 FA '
-        'FB FC FD FE FF FG FH FI FJ FK FL FM FN FO FP FQ FR FS FT FU '
-        'FV FW FX FY FZ Fa Fb Fc Fd Fe Ff Fg Fh Fi Fj Fk Fl Fm Fn Fo '
-        'Fp Fq Fr'.split(), 1)})
+termcap_aliases.update(
+    {
+        tc: f'kf{n}'
+        for n, tc in enumerate(
+            'k1 k2 k3 k4 k5 k6 k7 k8 k9 k; F1 F2 F3 F4 F5 F6 F7 F8 F9 FA '
+            'FB FC FD FE FF FG FH FI FJ FK FL FM FN FO FP FQ FR FS FT FU '
+            'FV FW FX FY FZ Fa Fb Fc Fd Fe Ff Fg Fh Fi Fj Fk Fl Fm Fn Fo '
+            'Fp Fq Fr'.split(),
+            1,
+        )
+    }
+)
 
 queryable_capabilities = cast(dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
-    'XR XM xm Ms RV kxIN kxOUT Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG fe fd XF'.split() + [
-        f'k{key}{mod}'
-        for key in 'UP DN RIT LFT BEG END HOM IC DC PRV NXT'.split()
-        for mod in range(3, 8)])
+    'XR XM xm Ms RV kxIN kxOUT Cr Cs Se Ss Setulc Su Smulx Sync Tc PS PE BE BD setrgbf setrgbb fullkbd kUP kDN kbeg kBEG fe fd XF'.split()
+    + [f'k{key}{mod}' for key in 'UP DN RIT LFT BEG END HOM IC DC PRV NXT'.split() for mod in range(3, 8)]
+)
 if extra - no_termcap_for:
     raise Exception(f'Termcap aliases not complete, missing: {extra - no_termcap_for}')
 del extra
@@ -543,10 +542,12 @@ def get_capabilities(query_string: str, opts: 'Options', window_id: int = 0, os_
             yield result(encoded_query_name, names[0])
         elif name.startswith('kitty-query-'):
             from kittens.query_terminal.main import get_result
-            name = name[len('kitty-query-'):]
+
+            name = name[len('kitty-query-') :]
             rval = get_result(name, window_id, os_window_id)
             if rval is None:
                 from .utils import log_error
+
                 log_error('Unknown kitty terminfo query:', name)
                 yield result(encoded_query_name)
             else:
@@ -566,6 +567,7 @@ def get_capabilities(query_string: str, opts: 'Options', window_id: int = 0, os_
                     val = queryable_capabilities[qname]
                 except Exception:
                     from .utils import log_error
+
                     log_error(ERROR_PREFIX, 'Unknown terminfo property:', name)
                     yield result(encoded_query_name)
                     continue

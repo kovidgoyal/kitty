@@ -44,7 +44,7 @@ current cursor position, press :sc:`insert_chosen_file` for files or
 :sc:`insert_chosen_directory` for directories. Similarly, to have a file
 chosen in a command line, use, for example::
 
-    some-command $(kitten choose-file)
+    some-command $(kitten choose-files)
 
 Note that the above may not work in a complicated pipeline as it performs
 terminal I/O and needs exclusive access to the tty device while choosing a

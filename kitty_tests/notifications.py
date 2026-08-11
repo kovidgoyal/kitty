@@ -9,16 +9,32 @@ from base64 import standard_b64encode
 
 from kitty.notifications import Channel, DesktopIntegration, IconDataCache, NotificationManager, UIState, Urgency
 
-from . import BaseTest
+from .base import BaseTest
 
 
 def n(
-    title='title', body='', urgency=Urgency.Normal, desktop_notification_id=1, icon_names=(), icon_path='',
-    application_name='', notification_types=(), timeout=-1, sound='system',
+    title='title',
+    body='',
+    urgency=Urgency.Normal,
+    desktop_notification_id=1,
+    icon_names=(),
+    icon_path='',
+    application_name='',
+    notification_types=(),
+    timeout=-1,
+    sound='system',
 ):
     return {
-        'title': title, 'body': body, 'urgency': urgency, 'id': desktop_notification_id, 'icon_names': icon_names, 'icon_path': icon_path,
-        'application_name': application_name, 'notification_types': notification_types, 'timeout': timeout, 'sound': sound,
+        'title': title,
+        'body': body,
+        'urgency': urgency,
+        'id': desktop_notification_id,
+        'icon_names': icon_names,
+        'icon_path': icon_path,
+        'application_name': application_name,
+        'notification_types': notification_types,
+        'timeout': timeout,
+        'sound': sound,
     }
 
 
@@ -53,14 +69,23 @@ class DesktopIntegration(DesktopIntegration):
             self.counter += 1
             did = self.counter
         title, body, urgency = cmd.title, cmd.body, (Urgency.Normal if cmd.urgency is None else cmd.urgency)
-        ans = n(title, body, urgency, did, cmd.icon_names, os.path.basename(cmd.icon_path), cmd.application_name,
-                cmd.notification_types, timeout=cmd.timeout, sound=cmd.sound_name)
+        ans = n(
+            title,
+            body,
+            urgency,
+            did,
+            cmd.icon_names,
+            os.path.basename(cmd.icon_path),
+            cmd.application_name,
+            cmd.notification_types,
+            timeout=cmd.timeout,
+            sound=cmd.sound_name,
+        )
         self.notifications.append(ans)
         return self.counter
 
 
 class Channel(Channel):
-
     focused = visible = True
 
     def __init__(self, *a):
@@ -82,7 +107,6 @@ class Channel(Channel):
 
 
 class NotificationManager(NotificationManager):
-
     @property
     def filter_rules(self):
         yield from ('title:filterme',)
@@ -238,7 +262,7 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
 
     # test sounds
     def enc(x):
-      return standard_b64encode(x.encode()).decode()
+        return standard_b64encode(x.encode()).decode()
 
     h(f's={enc("silent")};title')
     self.ae(di.notifications, [n(sound='silent')])
@@ -277,7 +301,18 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
 
     h(f'i=t:d=0:f={e("app")}:t={e("1")};title')
     h(f'i=t:t={e("test")}')
-    self.ae(di.notifications, [n(application_name='app', notification_types=('1', 'test',))])
+    self.ae(
+        di.notifications,
+        [
+            n(
+                application_name='app',
+                notification_types=(
+                    '1',
+                    'test',
+                ),
+            )
+        ],
+    )
     reset()
 
     # Test timeout
@@ -324,8 +359,6 @@ def do_test(self: 'TestNotifications', tdir: str) -> None:
 
 
 class TestNotifications(BaseTest):
-
     def test_desktop_notify(self):
         with tempfile.TemporaryDirectory() as tdir:
             do_test(self, tdir)
-

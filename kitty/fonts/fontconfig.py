@@ -79,8 +79,12 @@ def list_fonts(only_variable: bool = False) -> Generator[ListedFont, None, None]
             else:
                 fn = f'{f} {fd.get("style", "")}'.strip()
             yield {
-                'family': f, 'full_name': fn, 'postscript_name': str(fd.get('postscript_name', '')),
-                'is_monospace': is_monospace(fd), 'descriptor': fd, 'is_variable': is_variable(fd),
+                'family': f,
+                'full_name': fn,
+                'postscript_name': str(fd.get('postscript_name', '')),
+                'is_monospace': is_monospace(fd),
+                'descriptor': fd,
+                'is_variable': is_variable(fd),
                 'style': fd['style'],
             }
 
@@ -99,6 +103,7 @@ class WeightRange(NamedTuple):
     @property
     def is_valid(self) -> bool:
         return self.minimum != wr.minimum and self.maximum != wr.maximum and self.medium != wr.medium and self.bold != wr.bold
+
 
 wr = WeightRange()
 
@@ -129,9 +134,7 @@ def weight_range_for_family(family: str) -> WeightRange:
     return WeightRange(mini, maxi, medium, bold)
 
 
-
 class FCScorer(Scorer[FontConfigPattern]):
-
     weight_range: WeightRange | None = None
 
     def score(self, candidate: Descriptor) -> Score:
@@ -179,10 +182,15 @@ def find_last_resort_text_font(bold: bool = False, italic: bool = False, monospa
 
 
 def find_best_match(
-        family: str, bold: bool = False, italic: bool = False, monospaced: bool = True,
-        ignore_face: FontConfigPattern | None = None, prefer_variable: bool = False,
+    family: str,
+    bold: bool = False,
+    italic: bool = False,
+    monospaced: bool = True,
+    ignore_face: FontConfigPattern | None = None,
+    prefer_variable: bool = False,
 ) -> FontConfigPattern:
     from .common import find_best_match_in_candidates
+
     q = family_name_to_key(family)
     font_map = all_fonts_map(monospaced)
     scorer = create_scorer(bold, italic, monospaced, prefer_variable=prefer_variable)
@@ -240,6 +248,7 @@ def prune_family_group(g: list[ListedFont]) -> list[ListedFont]:
     variable_paths = {descriptor(f)['path'] for f in g if f['is_variable']}
     if not variable_paths:
         return g
+
     def is_ok(d: FontConfigPattern) -> bool:
         return d['variable'] or d['path'] not in variable_paths
 

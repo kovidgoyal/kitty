@@ -11,22 +11,23 @@ if TYPE_CHECKING:
 
 
 class CloseTab(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     match/str: Which tab to close
     self/bool: Boolean indicating whether to close the tab of the window the command is run in
     ignore_no_match/bool: Boolean indicating whether no matches should be ignored or return an error
-    '''
+    """
 
     short_desc = 'Close the specified tabs'
-    desc = '''\
+    desc = """\
 Close an arbitrary set of tabs. The :code:`--match` option can be used to
 specify complex sets of tabs to close. For example, to close all non-focused
 tabs in the currently focused OS window, use::
 
     kitten @ close-tab --match "not state:focused and state:parent_focused"
-'''
-    options_spec = MATCH_TAB_OPTION + '''\n
+"""
+    options_spec = (
+        MATCH_TAB_OPTION
+        + """\n
 --no-response
 type=bool-set
 default=false
@@ -42,7 +43,8 @@ Close the tab of the window this command is run in, rather than the active tab.
 --ignore-no-match
 type=bool-set
 Do not return an error if no tabs are matched to be closed.
-'''
+"""
+    )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'self': opts.self, 'ignore_no_match': opts.ignore_no_match}

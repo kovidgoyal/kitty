@@ -223,41 +223,44 @@ running an editor::
 
 In order to make this work, you need to configure your editor as shown below:
 
-.. tab:: vim
+.. tab-set::
 
-   In :file:`~/.vimrc` add:
-    .. code-block:: vim
+   .. tab-item:: vim
 
-        let &t_ti = &t_ti . "\033]1337;SetUserVar=in_editor=MQ==\007"
-        let &t_te = &t_te . "\033]1337;SetUserVar=in_editor\007"
+      In :file:`~/.vimrc` add:
 
-.. tab:: neovim
+      .. code-block:: vim
 
-   In :file:`~/.config/nvim/init.lua` add:
+         let &t_ti = &t_ti . "\033]1337;SetUserVar=in_editor=MQ==\007"
+         let &t_te = &t_te . "\033]1337;SetUserVar=in_editor\007"
 
-    .. code-block:: lua
+   .. tab-item:: neovim
 
-        vim.api.nvim_create_autocmd({ "VimEnter", "VimResume", "UIEnter" }, {
-            group = vim.api.nvim_create_augroup("KittySetVarVimEnter", { clear = true }),
-            callback = function()
-                if vim.api.nvim_ui_send then
-                    vim.api.nvim_ui_send("\x1b]1337;SetUserVar=in_editor=MQ==\007")
-                else
-                    io.stdout:write("\x1b]1337;SetUserVar=in_editor=MQ==\007")
-                end
-            end,
-        })
+      In :file:`~/.config/nvim/init.lua` add:
 
-        vim.api.nvim_create_autocmd({ "VimLeave", "VimSuspend" }, {
-            group = vim.api.nvim_create_augroup("KittyUnsetVarVimLeave", { clear = true }),
-            callback = function()
-                if vim.api.nvim_ui_send then
-                    vim.api.nvim_ui_send("\x1b]1337;SetUserVar=in_editor\007")
-                else
-                    io.stdout:write("\x1b]1337;SetUserVar=in_editor\007")
-                end
-            end,
-        })
+      .. code-block:: lua
+
+         vim.api.nvim_create_autocmd({ "VimEnter", "VimResume", "UIEnter" }, {
+             group = vim.api.nvim_create_augroup("KittySetVarVimEnter", { clear = true }),
+             callback = function()
+                 if vim.api.nvim_ui_send then
+                     vim.api.nvim_ui_send("\x1b]1337;SetUserVar=in_editor=MQ==\007")
+                 else
+                     io.stdout:write("\x1b]1337;SetUserVar=in_editor=MQ==\007")
+                 end
+             end,
+         })
+
+         vim.api.nvim_create_autocmd({ "VimLeave", "VimSuspend" }, {
+             group = vim.api.nvim_create_augroup("KittyUnsetVarVimLeave", { clear = true }),
+             callback = function()
+                 if vim.api.nvim_ui_send then
+                     vim.api.nvim_ui_send("\x1b]1337;SetUserVar=in_editor\007")
+                 else
+                     io.stdout:write("\x1b]1337;SetUserVar=in_editor\007")
+                 end
+             end,
+         })
 
 These cause the editor to set the :code:`in_editor` variable in kitty and unset it when exiting.
 As a result, the :kbd:`ctrl+shift+c` key will be passed to the editor instead of

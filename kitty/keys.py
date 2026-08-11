@@ -60,6 +60,7 @@ def get_shortcut(keymap: KeyMap, ev: KeyEvent) -> list[KeyDefinition] | None:
                         if key not in priority_map:
                             items.append(d)
                         priority_map[key] = prio
+
         if ev.shifted_key and mods & GLFW_MOD_SHIFT:
             add(keymap.get(SingleKey(mods & (~GLFW_MOD_SHIFT), False, ev.shifted_key)), KeyFallbackType.shifted)
         if ev.alternate_key and 127 < ev.key < 0xE000:
@@ -73,7 +74,7 @@ def get_shortcut(keymap: KeyMap, ev: KeyEvent) -> list[KeyDefinition] | None:
 
 
 def shortcut_matches(s: SingleKey, ev: KeyEvent) -> bool:
-    ' used only for testing '
+    "used only for testing"
     mods = ev.mods & mod_mask
     smods = s.mods & mod_mask
     if s.is_native:
@@ -150,8 +151,7 @@ class Mappings:
             from .fast_data_types import add_timer
 
             self._cancel_mode_timeout()
-            self.mode_timeout_timer_id = mode.timeout_timer_id = add_timer(
-                    self._on_mode_timeout, mode.timeout, False)
+            self.mode_timeout_timer_id = mode.timeout_timer_id = add_timer(self._on_mode_timeout, mode.timeout, False)
 
     def _cancel_mode_timeout(self) -> None:
         if self.mode_timeout_timer_id is not None:

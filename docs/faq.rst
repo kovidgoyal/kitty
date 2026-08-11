@@ -357,20 +357,22 @@ also set it with the following command:
 
 You can also change the icon manually by following the steps:
 
-.. tab:: macOS
+.. tab-set::
 
-    #. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘+I`
-    #. Drag :file:`kitty.icns` onto the application icon in the kitty info pane
-    #. Delete the icon cache and restart Dock::
+   .. tab-item:: macOS
 
-        rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock
+      #. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘+I`
+      #. Drag :file:`kitty.icns` onto the application icon in the kitty info pane
+      #. Delete the icon cache and restart Dock::
 
-.. tab:: Linux
+            rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock
 
-   #. Copy :file:`kitty.desktop` from the installation location (usually
-      :file:`/usr/share/applications` to :file:`~/.local/share/applications`
-   #. Edit the copied desktop file changing the ``Icon`` line to have
-      the absolute path to your desired icon.
+   .. tab-item:: Linux
+
+      #. Copy :file:`kitty.desktop` from the installation location (usually
+         :file:`/usr/share/applications` to :file:`~/.local/share/applications`
+      #. Edit the copied desktop file changing the ``Icon`` line to have
+         the absolute path to your desired icon.
 
 
 How do I map key presses in kitty to different keys in the terminal program?

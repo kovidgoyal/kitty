@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from kitty.boss import Boss as B
     from kitty.tabs import Tab as T
     from kitty.window import Window as W
+
     Window = W
     Boss = B
     Tab = T
@@ -34,12 +35,10 @@ class RemoteControlError(Exception):
 
 
 class RemoteControlErrorWithoutTraceback(Exception):
-
     hide_traceback = True
 
 
 class MatchError(ValueError):
-
     hide_traceback = True
 
     def __init__(self, expression: str, target: str = 'windows'):
@@ -47,22 +46,18 @@ class MatchError(ValueError):
 
 
 class OpacityError(ValueError):
-
     hide_traceback = True
 
 
 class UnknownLayout(ValueError):
-
     hide_traceback = True
 
 
 class StreamError(ValueError):
-
     hide_traceback = True
 
 
 class PayloadGetter:
-
     def __init__(self, cmd: 'RemoteCommand', payload: dict[str, Any]):
         self.payload = payload
         self.cmd = cmd
@@ -86,7 +81,7 @@ ImageCompletion = CompletionSpec.from_string('type:file group:"Images" ext:png,j
 SUPPORTED_IMAGE_FORMATS = tuple(x.upper() for x in ImageCompletion.extensions if x != 'jpg')
 
 
-MATCH_WINDOW_OPTION = '''\
+MATCH_WINDOW_OPTION = """\
 --match -m
 The window to match. Match specifications are of the form: :italic:`field:query`.
 Where :italic:`field` can be one of: :code:`id`, :code:`title`, :code:`pid`, :code:`cwd`, :code:`cmdline`, :code:`num`,
@@ -135,8 +130,8 @@ the window in which the remote control command is run. The value
 window, when the self window is an overlay.
 
 Note that you can use the :ref:`kitten @ ls <at-ls>` command to get a list of windows.
-'''
-MATCH_TAB_OPTION = '''\
+"""
+MATCH_TAB_OPTION = """\
 --match -m
 The tab to match. Match specifications are of the form: :italic:`field:query`.
 Where :italic:`field` can be one of: :code:`id`, :code:`index`, :code:`title`, :code:`window_id`, :code:`window_title`,
@@ -177,7 +172,7 @@ and it is the tab to which keyboard events are delivered. If no tab is focused, 
 The value :code:`focused_os_window` matches all tabs in the currently focused OS window.
 
 Note that you can use the :ref:`kitten @ ls <at-ls>` command to get a list of tabs.
-'''
+"""
 
 
 class ParsingOfArgsFailed(ValueError):
@@ -185,7 +180,6 @@ class ParsingOfArgsFailed(ValueError):
 
 
 class AsyncResponder:
-
     def __init__(self, payload_get: PayloadGetType, window: Window | None) -> None:
         self.async_id: str = payload_get('async_id', missing='')
         self.peer_id: int = payload_get('peer_id', missing=0)
@@ -193,16 +187,17 @@ class AsyncResponder:
 
     def send_data(self, data: Any) -> None:
         from kitty.remote_control import send_response_to_client
+
         send_response_to_client(data=data, peer_id=self.peer_id, window_id=self.window_id, async_id=self.async_id)
 
     def send_error(self, error: str) -> None:
         from kitty.remote_control import send_response_to_client
+
         send_response_to_client(error=error, peer_id=self.peer_id, window_id=self.window_id, async_id=self.async_id)
 
 
 @dataclass(frozen=True)
 class ArgsHandling:
-
     json_field: str = ''
     count: int | None = None
     spec: str = ''
@@ -285,7 +280,7 @@ class ArgsHandling:
                 return
             if jt.startswith('choices.'):
                 yield f'if len(args) != 1 {{ return fmt.Errorf("%s", "Must specify exactly 1 argument for {cmd_name}") }}'
-                choices = ", ".join(f'"{x}"' for x in jt.split('.')[1:])
+                choices = ', '.join(f'"{x}"' for x in jt.split('.')[1:])
                 yield 'switch(args[0]) {'
                 yield f'case {choices}:\n\t{dest} = args[0]'
                 yield f'default: return fmt.Errorf("%s is not a valid choice. Allowed values: %s", args[0], `{choices}`)'
@@ -298,13 +293,13 @@ class ArgsHandling:
 
 
 class StreamInFlight:
-
     def __init__(self) -> None:
         self.stream_id = ''
         self.tempfile: BytesIO | None = None
 
     def handle_data(self, stream_id: str, data: bytes) -> AsyncResponse | BytesIO:
         from ..remote_control import close_active_stream
+
         def abort_stream() -> None:
             close_active_stream(self.stream_id)
             self.stream_id = ''
@@ -340,7 +335,7 @@ class RemoteCommand:
     desc: str = ''
     args: ArgsHandling = ArgsHandling()
     options_spec: str | None = None
-    response_timeout: float = 10.  # seconds
+    response_timeout: float = 10.0  # seconds
     string_return_is_error: bool = False
     defaults: dict[str, Any] | None = None
     is_asynchronous: bool = False
@@ -402,8 +397,12 @@ class RemoteCommand:
         return []
 
     def windows_for_payload(
-        self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType,
-        window_match_name: str = 'match_window', tab_match_name: str = 'match_tab',
+        self,
+        boss: 'Boss',
+        window: Optional['Window'],
+        payload_get: PayloadGetType,
+        window_match_name: str = 'match_window',
+        tab_match_name: str = 'match_tab',
     ) -> list['Window']:
         if payload_get('all'):
             windows = list(boss.all_windows)
@@ -462,6 +461,7 @@ def display_subcommand_help(func: RemoteCommand) -> None:
 
 def command_for_name(cmd_name: str) -> RemoteCommand:
     from importlib import import_module
+
     cmd_name = cmd_name.replace('-', '_')
     try:
         m = import_module(f'kitty.rc.{cmd_name}')

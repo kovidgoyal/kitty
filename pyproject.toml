@@ -46,3 +46,4 @@ detect-same-package = true
 
 [tool.ruff.format]
 quote-style = 'single'
+exclude = ['kitty/options/types.py', 'kitty/options/parse.py']

@@ -23,69 +23,119 @@ mma = definition.add_mouse_map
 
 agr('scanning', 'Filesystem scanning')  # {{{
 
-opt('show_hidden', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
+opt(
+    'show_hidden',
+    'last',
+    choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'),
+    long_text="""
 Whether to show hidden files. The default value of :code:`last` means remember the last
-used value. This setting can be toggled within the program.''')
+used value. This setting can be toggled within the program.""",
+)
 
-opt('sort_by_last_modified', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
+opt(
+    'sort_by_last_modified',
+    'last',
+    choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'),
+    long_text="""
 Whether to sort the list of entries by last modified, instead of name. Note that sorting only applies
 before any query is entered. Once a query is entered entries are sorted by their matching score.
 The default value of :code:`last` means remember the last
-used value. This setting can be toggled within the program.''')
+used value. This setting can be toggled within the program.""",
+)
 
-opt('respect_ignores', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
+opt(
+    'respect_ignores',
+    'last',
+    choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'),
+    long_text="""
 Whether to respect .gitignore and .ignore files and the :opt:`ignore` setting.
 The default value of :code:`last` means remember the last used value.
-This setting can be toggled within the program.''')
+This setting can be toggled within the program.""",
+)
 
-opt('+ignore', '', add_to_default=False, long_text='''
+opt(
+    '+ignore',
+    '',
+    add_to_default=False,
+    long_text="""
 An ignore pattern to ignore matched files. Uses the same sytax as :code:`.gitignore` files (see :code:`man gitignore`).
 Anchored patterns match with respect to whatever directory is currently being displayed.
 Can be specified multiple times to use multiple patterns. Note that every pattern
 has to be checked against every file, so use sparingly.
-''')
+""",
+)
 egr()  # }}}
 
 agr('appearance', 'Appearance')  # {{{
 
-opt('show_preview', 'last', choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'), long_text='''
+opt(
+    'show_preview',
+    'last',
+    choices=('last', 'yes', 'y', 'true', 'no', 'n', 'false'),
+    long_text="""
 Whether to show a preview of the current file/directory. The default value of :code:`last` means remember the last
-used value. This setting can be toggled within the program.''')
+used value. This setting can be toggled within the program.""",
+)
 
-opt('pygments_style', 'default', long_text='''
+opt(
+    'pygments_style',
+    'default',
+    long_text="""
 The pygments color scheme to use for syntax highlighting of file previews. See :link:`pygments
 builtin styles <https://pygments.org/styles/>` for a list of schemes.
 This sets the colors used for light color schemes, use :opt:`dark_pygments_style` to change the
 colors for dark color schemes.
-''')
+""",
+)
 
-opt('dark_pygments_style', 'github-dark', long_text='''
+opt(
+    'dark_pygments_style',
+    'github-dark',
+    long_text="""
 The pygments color scheme to use for syntax highlighting with dark colors. See :link:`pygments
 builtin styles <https://pygments.org/styles/>` for a list of schemes.
 This sets the colors used for dark color schemes, use :opt:`pygments_style` to change the
-colors for light color schemes.''')
+colors for light color schemes.""",
+)
 
-opt('cache_size', '0.5', option_type='positive_float', long_text='''
+opt(
+    'cache_size',
+    '0.5',
+    option_type='positive_float',
+    long_text="""
 The maximum size of the disk cache, in gigabytes, used for previews. Zero or negative values
 mean no limit.
-''')
+""",
+)
 
-opt('syntax_aliases', 'pyj:py pyi:py recipe:py', ctype='strdict_ _:', option_type='syntax_aliases',
-    long_text='''
+opt(
+    'syntax_aliases',
+    'pyj:py pyi:py recipe:py',
+    ctype='strdict_ _:',
+    option_type='syntax_aliases',
+    long_text="""
 File extension aliases for syntax highlight. For example, to syntax highlight
 :file:`file.xyz` as :file:`file.abc` use a setting of :code:`xyz:abc`.
 Multiple aliases must be separated by spaces.
-''')
+""",
+)
 
-opt('video_preview', 'width=480 fps=10 duration=5', long_text='''
+opt(
+    'video_preview',
+    'width=480 fps=10 duration=5',
+    long_text="""
 Control how videos are sampled for previwing. The width controls
 the size of the generated thumbnail from the video. Duration controls
 how long the generated thumbnail plays for, in seconds. Note that when
 changing these you should also use the :code:`--clear-cache` flag
 otherwise it will not affect already cached previews.
-''')
+""",
+)
 
-opt('+previewer', '', long_text='''
+opt(
+    '+previewer',
+    '',
+    long_text="""
 Specify an arbitrary program based preview generator. The syntax is::
 
     pattern program arguments...
@@ -113,7 +163,8 @@ The command must output preview data to STDOUT, as a JSON object:
 The lines can contain SGR formatting escape codes and will be displayed as is at the
 top of the preview panel. The image is optional and must be in one of the JPEG, PNG, GIF, WEBP, APNG
 formats.
-''')
+""",
+)
 egr()  # }}}
 
 agr('shortcuts', 'Keyboard shortcuts')  # {{{
@@ -121,24 +172,36 @@ map('Quit', 'quit esc quit')
 map('Quit', 'quit ctrl+c quit')
 
 map('Accept current result', 'accept enter accept')
-map('Select current result', 'select shift+enter select', long_text='''
+map(
+    'Select current result',
+    'select shift+enter select',
+    long_text="""
 When selecting multiple files, this will add the current file to the list of selected files.
 You can also toggle the selected status of a file by holding down the :kbd:`Ctrl` key and clicking on
 it. Similarly, the :kbd:`Alt` key can be held to click and extend the range of selected files.
-''')
-map('Type file name', 'typename ctrl+enter typename', long_text='''
+""",
+)
+map(
+    'Type file name',
+    'typename ctrl+enter typename',
+    long_text="""
 Type a file name/path rather than filtering the list of existing files.
 Useful when specifying a file or directory name for saving that does not yet exist.
 When choosing existing directories, will accept the directory whoose
 contents are being currently displayed as the choice.
 Does not work when selecting files to open rather than to save.
-''')
-map('Modify file name', 'modifyname alt+enter modifyname', long_text='''
+""",
+)
+map(
+    'Modify file name',
+    'modifyname alt+enter modifyname',
+    long_text="""
 Modify the name of an existing file and select it for saving.
 Useful when specifying a file or directory name for saving that does not yet exist,
 but is based on an existing file name.
 Does not work when selecting files to open rather than to save.
-''')
+""",
+)
 
 
 map('Next result', 'next_result down next 1')
@@ -168,14 +231,17 @@ map('Toggle showing preview', 'toggle_preview --allow-fallback=shifted,ascii alt
 
 egr()  # }}}
 
+
 def main(args: list[str]) -> None:
     raise SystemExit('This must be run as kitten choose-files')
+
 
 def relative_path_if_possible(path: str, base: str) -> str:
     if not base or not path:
         return path
     from contextlib import suppress
     from pathlib import Path
+
     b = Path(base)
     q = Path(path)
     with suppress(ValueError):
@@ -188,6 +254,7 @@ def handle_result(args: list[str], data: dict[str, Any], target_window_id: int, 
     import shlex
 
     from kitty.utils import shlex_split
+
     paths: list[str] = data.get('paths', [])
     if not paths:
         boss.ring_bell_if_allowed()
@@ -284,12 +351,12 @@ Clear the caches used by this kitten.
 """.format(config_help=CONFIG_HELP.format(conf_name='choose-files', appname=appname)).format
 
 
-help_text = '''\
+help_text = """\
 Select one or more files, quickly, using fuzzy finding, by typing just a few characters from
 the file name. Browse matching files, using the arrow keys to navigate matches and press :kbd:`Enter`
 to select. The :kbd:`Tab` key can be used to change to a sub-folder. See the :doc:`online docs </kittens/choose-files>`
 for full details.
-'''
+"""
 
 
 if __name__ == '__main__':

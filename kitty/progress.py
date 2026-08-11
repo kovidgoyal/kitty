@@ -17,10 +17,9 @@ class ProgressState(Enum):
 
 
 class Progress:
-
     state: ProgressState = ProgressState.unset
     percent: int = 0
-    last_update_at: float = 0.
+    last_update_at: float = 0.0
     clear_timeout: float = 60.0
     finished_clear_timeout: float = 5.0
 

@@ -1,0 +1,5 @@
+startgroup
+    animation_start cursor-trail-move
+    animation_stop cursor-trail-stop
+    shaders cursor-trail-lightning
+endgroup

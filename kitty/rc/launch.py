@@ -18,8 +18,7 @@ if TYPE_CHECKING:
 
 
 class Launch(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     args+/list.str: The command line to run in the new window, as a list, use an empty list to run the default shell
     match/str: The tab to open the new window in
     next_to/str: The window next to which to create the new window or empty string to use active window
@@ -60,7 +59,7 @@ class Launch(RemoteCommand):
     bias/float: The bias with which to create the new window in the current layout
     wait_for_child_to_exit/bool: Boolean indicating whether to wait and return child exit code
     hold_after_ssh/bool: Boolean indicating whether to run a local shell after exiting the ssh session cloned via cwd=current or similar
-    '''
+    """
 
     short_desc = 'Run an arbitrary process in a new window/tab'
     desc = (
@@ -69,7 +68,10 @@ class Launch(RemoteCommand):
         ' are provided, the default shell is run. For example::\n\n'
         '    kitten @ launch --title=Email mutt'
     )
-    options_spec = MATCH_TAB_OPTION + '\n\n' + '''\
+    options_spec = (
+        MATCH_TAB_OPTION
+        + '\n\n'
+        + """\
 --wait-for-child-to-exit
 type=bool-set
 Wait until the launched program exits and print out its exit code. The exit code is
@@ -94,9 +96,13 @@ Do not print out the id of the newly created window.
 type=bool-set
 If specified the tab containing the window this command is run in is used
 instead of the active tab
-    ''' + '\n\n' + launch_options_spec().replace(':option:`launch', ':option:`kitten @ launch')
-    args = RemoteCommand.Args(spec='[CMD ...]', json_field='args', completion=RemoteCommand.CompletionSpec.from_string(
-        'type:special group:cli.CompleteExecutableFirstArg'))
+    """
+        + '\n\n'
+        + launch_options_spec().replace(':option:`launch', ':option:`kitten @ launch')
+    )
+    args = RemoteCommand.Args(
+        spec='[CMD ...]', json_field='args', completion=RemoteCommand.CompletionSpec.from_string('type:special group:cli.CompleteExecutableFirstArg')
+    )
     is_asynchronous = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
@@ -144,6 +150,7 @@ instead of the active tab
             if code < 0:
                 try:
                     from signal import Signals
+
                     ans = Signals(-code).name
                 except ValueError:
                     pass
@@ -151,8 +158,14 @@ instead of the active tab
                 responder.send_data(ans)
 
         w = do_launch(
-            boss, opts, payload_get('args') or [], target_tab=target_tab, rc_from_window=window, base_env=base_env,
-            child_death_callback=on_child_death if payload_get('wait_for_child_to_exit') and not payload_get('no_response') else None)
+            boss,
+            opts,
+            payload_get('args') or [],
+            target_tab=target_tab,
+            rc_from_window=window,
+            base_env=base_env,
+            child_death_callback=on_child_death if payload_get('wait_for_child_to_exit') and not payload_get('no_response') else None,
+        )
         if payload_get('no_response'):
             return None
 
@@ -163,5 +176,6 @@ instead of the active tab
 
     def cancel_async_request(self, boss: 'Boss', window: Window | None, payload_get: PayloadGetType) -> None:
         pass
+
 
 launch = Launch()

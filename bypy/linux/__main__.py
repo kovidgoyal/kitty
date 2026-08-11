@@ -10,7 +10,7 @@ import subprocess
 import tarfile
 import time
 
-from bypy.constants import OUTPUT_DIR, PREFIX, python_major_minor_version
+from bypy.constants import BIN, LIBDIR, OUTPUT_DIR, PREFIX, python_major_minor_version
 from bypy.freeze import extract_extension_modules, freeze_python, path_to_freeze_dir
 from bypy.utils import get_dll_path, mkdtemp, py_compile, walk
 
@@ -23,23 +23,50 @@ kitty_constants = iv['kitty_constants']
 
 
 def binary_includes():
-    return tuple(map(get_dll_path, (
-            'expat', 'sqlite3', 'ffi', 'z', 'lzma', 'png16', 'lcms2', 'ssl', 'crypto', 'crypt',
-            'iconv', 'pcre2-8', 'graphite2', 'glib-2.0', 'freetype', 'xxhash',
-            'pixman-1', 'cairo', 'harfbuzz', 'xkbcommon', 'xkbcommon-x11',
-            # fontconfig is not bundled because in typical brain dead Linux
-            # distro fashion, different distros use different default config
-            # paths for fontconfig.
-            'ncursesw', 'readline', 'brotlicommon', 'brotlienc', 'brotlidec',
-            'wayland-client', 'wayland-cursor',
-        ))) + (
-                get_dll_path('bz2', 2),
-                get_dll_path(f'python{py_ver}', 2),
+    return tuple(
+        map(
+            get_dll_path,
+            (
+                'expat',
+                'sqlite3',
+                'ffi',
+                'z',
+                'lzma',
+                'png16',
+                'lcms2',
+                'ssl',
+                'crypto',
+                'crypt',
+                'iconv',
+                'pcre2-8',
+                'graphite2',
+                'glib-2.0',
+                'freetype',
+                'xxhash',
+                'pixman-1',
+                'cairo',
+                'harfbuzz',
+                'xkbcommon',
+                'xkbcommon-x11',
+                # fontconfig is not bundled because in typical brain dead Linux
+                # distro fashion, different distros use different default config
+                # paths for fontconfig.
+                'ncursesw',
+                'readline',
+                'brotlicommon',
+                'brotlienc',
+                'brotlidec',
+                'wayland-client',
+                'wayland-cursor',
+            ),
         )
+    ) + (
+        get_dll_path('bz2', 2),
+        get_dll_path(f'python{py_ver}', 2),
+    )
 
 
 class Env:
-
     def __init__(self, package_dir) -> None:
         self.base = package_dir
         self.lib_dir = j(self.base, 'lib')
@@ -90,11 +117,20 @@ def copy_libs(env) -> None:
         shutil.copy2(x, dest)
         dest = os.path.join(dest, os.path.basename(x))
         subprocess.check_call(['chrpath', '-d', dest])
+    # Copy slang
+    x = 'libslang-compiler.so'
+    shutil.copy2(os.path.join(LIBDIR, f'{x}.0.0.0.0'), env.lib_dir)
+    os.symlink(f'{x}.0.0.0.0', os.path.join(env.lib_dir, x))
+    for x in ('glsl-module', 'glslang'):
+        x = f'libslang-{x}-0.0.0.so'
+        shutil.copy2(os.path.join(LIBDIR, x), env.lib_dir)
+    shutil.copy2(os.path.join(BIN, 'slangc'), env.bin_dir)
 
 
 def add_ca_certs(env) -> None:
     print('Downloading CA certs...')
     from urllib.request import urlopen
+
     cdata = urlopen(kitty_constants['cacerts_url']).read()
     dest = os.path.join(env.lib_dir, 'cacert.pem')
     with open(dest, 'wb') as f:
@@ -108,8 +144,7 @@ def copy_python(env) -> None:
     for x in os.listdir(srcdir):
         y = j(srcdir, x)
         ext = os.path.splitext(x)[1]
-        if os.path.isdir(y) and x not in ('test', 'hotshot', 'distutils', 'tkinter', 'turtledemo',
-                                          'site-packages', 'idlelib', 'lib2to3', 'dist-packages'):
+        if os.path.isdir(y) and x not in ('test', 'hotshot', 'distutils', 'tkinter', 'turtledemo', 'site-packages', 'idlelib', 'lib2to3', 'dist-packages'):
             shutil.copytree(y, j(env.py_dir, x), ignore=ignore_in_lib)
         if os.path.isfile(y) and ext in ('.py', '.so'):
             shutil.copy2(y, env.py_dir)
@@ -138,10 +173,6 @@ def copy_python(env) -> None:
     shutil.rmtree(env.py_dir)
 
 
-def build_launcher(env) -> None:
-    iv['build_frozen_launcher']([path_to_freeze_dir(), env.obj_dir])
-
-
 def is_elf(path):
     with open(path, 'rb') as f:
         return f.read(4) == b'\x7fELF'
@@ -157,8 +188,8 @@ STRIPCMD = ['strip']
 
 def find_binaries(env):
     files = {j(env.bin_dir, x) for x in os.listdir(env.bin_dir)} | {
-        x for x in {
-            j(os.path.dirname(env.bin_dir), x) for x in os.listdir(env.bin_dir)} if os.path.exists(x)}
+        x for x in {j(os.path.dirname(env.bin_dir), x) for x in os.listdir(env.bin_dir)} if os.path.exists(x)
+    }
     for x in walk(env.lib_dir):
         x = os.path.realpath(x)
         if x not in files and is_elf(x):
@@ -167,7 +198,7 @@ def find_binaries(env):
 
 
 def strip_files(files, argv_max=(256 * 1024)) -> None:
-    """ Strip a list of files """
+    """Strip a list of files"""
     while files:
         cmd = list(STRIPCMD)
         pathlen = sum(len(s) + 1 for s in cmd)
@@ -176,7 +207,7 @@ def strip_files(files, argv_max=(256 * 1024)) -> None:
             cmd.append(f)
             pathlen += len(f) + 1
         if len(cmd) > len(STRIPCMD):
-            all_files = cmd[len(STRIPCMD):]
+            all_files = cmd[len(STRIPCMD) :]
             unwritable_files = tuple(filter(None, (None if os.access(x, os.W_OK) else (x, os.stat(x).st_mode) for x in all_files)))
             [os.chmod(x, stat.S_IWRITE | old_mode) for x, old_mode in unwritable_files]
             subprocess.check_call(cmd)
@@ -188,7 +219,7 @@ def strip_binaries(files) -> None:
     before = sum(os.path.getsize(x) for x in files)
     strip_files(files)
     after = sum(os.path.getsize(x) for x in files)
-    print('Stripped {:.1f} MB'.format((before - after) / (1024 * 1024.)))
+    print('Stripped {:.1f} MB'.format((before - after) / (1024 * 1024.0)))
 
 
 def create_tarfile(env, compression_level='9') -> None:
@@ -218,8 +249,7 @@ def create_tarfile(env, compression_level='9') -> None:
     secs = time.time() - start_time
     print('Compressed in {} minutes {} seconds'.format(secs // 60, secs % 60))
     os.rename(f'{dist}.xz', ans)
-    print('Archive {} created: {:.2f} MB'.format(
-        os.path.basename(ans), os.stat(ans).st_size / (1024.**2)))
+    print('Archive {} created: {:.2f} MB'.format(os.path.basename(ans), os.stat(ans).st_size / (1024.0**2)))
 
 
 def main() -> None:
@@ -228,7 +258,7 @@ def main() -> None:
     env = Env(os.path.join(ext_dir, kitty_constants['appname']))
     copy_libs(env)
     copy_python(env)
-    build_launcher(env)
+    iv['build_frozen_launcher']([path_to_freeze_dir(), env.obj_dir])
     files = find_binaries(env)
     fix_permissions(files)
     add_ca_certs(env)

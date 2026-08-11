@@ -156,29 +156,31 @@ kitty injects some shell specific code into the shell, to enable shell
 integration. How it does so varies for different shells.
 
 
-.. tab:: zsh
+.. tab-set::
 
-   For zsh, kitty sets the :envvar:`ZDOTDIR` environment variable to make zsh
-   load kitty's :file:`.zshenv` which restores the original value of
-   :envvar:`ZDOTDIR` and sources the original :file:`.zshenv`. It then loads
-   the shell integration code. The remainder of zsh's startup process proceeds
-   as normal.
+   .. tab-item:: zsh
 
-.. tab:: fish
+      For zsh, kitty sets the :envvar:`ZDOTDIR` environment variable to make zsh
+      load kitty's :file:`.zshenv` which restores the original value of
+      :envvar:`ZDOTDIR` and sources the original :file:`.zshenv`. It then loads
+      the shell integration code. The remainder of zsh's startup process proceeds
+      as normal.
 
-    For fish, to make it automatically load the integration code provided by
-    kitty, the integration script directory path is prepended to the
-    :envvar:`XDG_DATA_DIRS` environment variable. This is only applied to the
-    fish process and will be cleaned up by the integration script after startup.
-    No files are added or modified.
+   .. tab-item:: fish
 
-.. tab:: bash
+      For fish, to make it automatically load the integration code provided by
+      kitty, the integration script directory path is prepended to the
+      :envvar:`XDG_DATA_DIRS` environment variable. This is only applied to the
+      fish process and will be cleaned up by the integration script after startup.
+      No files are added or modified.
 
-    For bash, kitty starts bash in POSIX mode, using the environment variable
-    :envvar:`ENV` to load the shell integration script. This prevents bash from
-    loading any startup files itself. The loading of the startup files is done
-    by the integration script, after disabling POSIX mode. From the perspective
-    of those scripts there should be no difference to running vanilla bash.
+   .. tab-item:: bash
+
+      For bash, kitty starts bash in POSIX mode, using the environment variable
+      :envvar:`ENV` to load the shell integration script. This prevents bash from
+      loading any startup files itself. The loading of the startup files is done
+      by the integration script, after disabling POSIX mode. From the perspective
+      of those scripts there should be no difference to running vanilla bash.
 
 
 Then, when launching the shell, kitty sets the environment variable
@@ -196,22 +198,23 @@ code used for each shell below:
     <details>
     <summary>Click to toggle shell integration code</summary>
 
-.. tab:: zsh
+.. tab-set::
 
-    .. literalinclude:: ../shell-integration/zsh/kitty-integration
-        :language: zsh
+   .. tab-item:: zsh
 
+      .. literalinclude:: ../shell-integration/zsh/kitty-integration
+         :language: zsh
 
-.. tab:: fish
+   .. tab-item:: fish
 
-    .. literalinclude:: ../shell-integration/fish/vendor_conf.d/kitty-shell-integration.fish
-        :language: fish
-        :force:
+      .. literalinclude:: ../shell-integration/fish/vendor_conf.d/kitty-shell-integration.fish
+         :language: fish
+         :force:
 
-.. tab:: bash
+   .. tab-item:: bash
 
-    .. literalinclude:: ../shell-integration/bash/kitty.bash
-        :language: bash
+      .. literalinclude:: ../shell-integration/bash/kitty.bash
+         :language: bash
 
 .. raw:: html
 
@@ -366,36 +369,37 @@ First, in :file:`kitty.conf` set:
 
 Then in your shell's rc file, add the lines:
 
-.. tab:: zsh
+.. tab-set::
 
-    .. code-block:: sh
+   .. tab-item:: zsh
 
-        if test -n "$KITTY_INSTALLATION_DIR"; then
-            export KITTY_SHELL_INTEGRATION="enabled"
-            autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
-            kitty-integration
-            unfunction kitty-integration
-        fi
+      .. code-block:: sh
 
-.. tab:: fish
+         if test -n "$KITTY_INSTALLATION_DIR"; then
+             export KITTY_SHELL_INTEGRATION="enabled"
+             autoload -Uz -- "$KITTY_INSTALLATION_DIR"/shell-integration/zsh/kitty-integration
+             kitty-integration
+             unfunction kitty-integration
+         fi
 
-    .. code-block:: fish
+   .. tab-item:: fish
 
-        if set -q KITTY_INSTALLATION_DIR
-            set --global KITTY_SHELL_INTEGRATION enabled
-            source "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_conf.d/kitty-shell-integration.fish"
-            set --prepend fish_complete_path "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_completions.d"
-        end
+      .. code-block:: fish
 
+         if set -q KITTY_INSTALLATION_DIR
+             set --global KITTY_SHELL_INTEGRATION enabled
+             source "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_conf.d/kitty-shell-integration.fish"
+             set --prepend fish_complete_path "$KITTY_INSTALLATION_DIR/shell-integration/fish/vendor_completions.d"
+         end
 
-.. tab:: bash
+   .. tab-item:: bash
 
-    .. code-block:: sh
+      .. code-block:: sh
 
-        if test -n "$KITTY_INSTALLATION_DIR"; then
-            export KITTY_SHELL_INTEGRATION="enabled"
-            source "$KITTY_INSTALLATION_DIR/shell-integration/bash/kitty.bash"
-        fi
+         if test -n "$KITTY_INSTALLATION_DIR"; then
+             export KITTY_SHELL_INTEGRATION="enabled"
+             source "$KITTY_INSTALLATION_DIR/shell-integration/bash/kitty.bash"
+         fi
 
 The value of :envvar:`KITTY_SHELL_INTEGRATION` is the same as that for
 :opt:`shell_integration`, except if you want to disable shell integration

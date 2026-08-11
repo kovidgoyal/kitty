@@ -81,7 +81,7 @@ safe_openat(int dirfd, const char *path, int flags, mode_t mode) {
 }
 
 
-static inline FILE*
+static inline FILE *
 safe_fopen(const char *path, const char *mode) {
     while (true) {
         FILE *f = fopen(path, mode);
@@ -102,11 +102,11 @@ safe_shm_open(const char *path, int flags, mode_t mode) {
 
 
 static inline void
-safe_close(int fd, const char* file UNUSED, const int line UNUSED) {
+safe_close(int fd, const char *file UNUSED, const int line UNUSED) {
 #if 0
     printf("Closing fd: %d from file: %s line: %d\n", fd, file, line);
 #endif
-    while(close(fd) != 0 && errno == EINTR);
+    while (close(fd) != 0 && errno == EINTR);
 }
 
 static inline int
@@ -126,13 +126,13 @@ safe_write(int fd, const void *buf, size_t nbyte) {
 static inline int
 safe_dup(int a) {
     int ret;
-    while((ret = dup(a)) < 0 && errno == EINTR);
+    while ((ret = dup(a)) < 0 && errno == EINTR);
     return ret;
 }
 
 static inline int
 safe_dup2(int a, int b) {
     int ret;
-    while((ret = dup2(a, b)) < 0 && errno == EINTR);
+    while ((ret = dup2(a, b)) < 0 && errno == EINTR);
     return ret;
 }

@@ -33,8 +33,9 @@ if kitty_src not in sys.path:
     sys.path.insert(0, kitty_src)
 
 from kitty.conf.types import Definition, expand_opt_references  # noqa
-from kitty.constants import str_version, website_url # noqa
-from kitty.fast_data_types import DND_CODE, Shlex, TEXT_SIZE_CODE # noqa
+from kitty.constants import str_version, website_url  # noqa
+from kitty.fast_data_types import DND_CODE, Shlex, TEXT_SIZE_CODE  # noqa
+import kitty.shaders.custom.demo as demo_module  # noqa
 
 # config {{{
 # -- Project information -----------------------------------------------------
@@ -66,16 +67,14 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinx.ext.extlinks',
     'sphinx_copybutton',
-    'sphinx_inline_tabs',
+    'sphinx_design',
     'sphinxext.opengraph',
 ]
 
 # URL for OpenGraph tags
 ogp_site_url = website_url()
 # OGP needs a PNG image because of: https://github.com/wpilibsuite/sphinxext-opengraph/issues/96
-ogp_social_cards = {
-    'image': '../logo/kitty.png'
-}
+ogp_social_cards = {'image': '../logo/kitty.png'}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -100,18 +99,25 @@ language: str = 'en'
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
 exclude_patterns = [
-    '_build', 'Thumbs.db', '.DS_Store', 'basic.rst',
-    'generated/cli-*.rst', 'generated/conf-*.rst', 'generated/actions.rst'
+    '_build',
+    'Thumbs.db',
+    '.DS_Store',
+    'basic.rst',
+    'generated/cli-*.rst',
+    'generated/conf-*.rst',
+    'generated/actions.rst',
+    'generated/custom-shaders-*.rst',
 ]
 
-rst_prolog = '''
+rst_prolog = """
 .. |kitty| replace:: *kitty*
 .. |version| replace:: VERSION
 .. _tarball: https://github.com/kovidgoyal/kitty/releases/download/vVERSION/kitty-VERSION.tar.xz
 .. role:: italic
 
-'''.replace('VERSION', str_version)
+""".replace('VERSION', str_version)
 smartquotes_action = 'qe'  # educate quotes and ellipses but not dashes
+
 
 def go_version(go_mod_path: str) -> str:  # {{{
     with open(go_mod_path) as f:
@@ -119,6 +125,8 @@ def go_version(go_mod_path: str) -> str:  # {{{
             if line.startswith('go '):
                 return line.strip().split()[1]
     raise SystemExit(f'No Go version in {go_mod_path}')
+
+
 # }}}
 
 string_replacements = {
@@ -147,14 +155,14 @@ html_theme_options: Dict[str, Any] = {
     'navigation_with_keys': True,
     'footer_icons': [
         {
-            "name": "GitHub",
-            "url": "https://github.com/kovidgoyal/kitty",
-            "html": f"""
+            'name': 'GitHub',
+            'url': 'https://github.com/kovidgoyal/kitty',
+            'html': f"""
                 <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 16 16">
                     <path fill-rule="evenodd" d="{github_icon_path}"></path>
                 </svg>
             """,
-            "class": "",
+            'class': '',
         },
     ],
 }
@@ -186,7 +194,7 @@ manpages_url = 'https://man7.org/linux/man-pages/man{section}/{page}.{section}.h
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('invocation', 'kitty', 'The fast, feature rich terminal emulator', [author], 1),
-    ('conf', 'kitty.conf', 'Configuration file for kitty', [author], 5)
+    ('conf', 'kitty.conf', 'Configuration file for kitty', [author], 5),
 ]
 
 
@@ -196,9 +204,7 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'kitty', 'kitty Documentation',
-     author, 'kitty', 'Cross-platform, fast, feature-rich, GPU based terminal',
-     'Miscellaneous'),
+    (master_doc, 'kitty', 'kitty Documentation', author, 'kitty', 'Cross-platform, fast, feature-rich, GPU based terminal', 'Miscellaneous'),
 ]
 # }}}
 
@@ -209,27 +215,28 @@ extlinks = {
     'iss': ('https://github.com/kovidgoyal/kitty/issues/%s', '#%s'),
     'pull': ('https://github.com/kovidgoyal/kitty/pull/%s', '#%s'),
     'disc': ('https://github.com/kovidgoyal/kitty/discussions/%s', '#%s'),
+    'repo_folder': ('https://github.com/kovidgoyal/kitty/tree/master/%s', '#%s'),
+    'repo_file': ('https://github.com/kovidgoyal/kitty/blob/master/%s', '#%s'),
 }
 
 
 def commit_role(
     name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []
 ) -> Tuple[List[nodes.reference], List[nodes.problematic]]:
-    ' Link to a github commit '
+    "Link to a github commit"
     try:
-        commit_id = subprocess.check_output(
-            f'git rev-list --max-count=1 {text}'.split()).decode('utf-8').strip()
+        commit_id = subprocess.check_output(f'git rev-list --max-count=1 {text}'.split()).decode('utf-8').strip()
     except Exception:
-        msg = inliner.reporter.error(
-            f'git commit id "{text}" not recognized.', line=lineno)
+        msg = inliner.reporter.error(f'git commit id "{text}" not recognized.', line=lineno)
         prb = inliner.problematic(rawtext, rawtext, msg)
         return [prb], [msg]
     url = f'https://github.com/kovidgoyal/kitty/commit/{commit_id}'
     normalize_options(options)
-    short_id = subprocess.check_output(
-        f'git rev-list --max-count=1 --abbrev-commit {commit_id}'.split()).decode('utf-8').strip()
+    short_id = subprocess.check_output(f'git rev-list --max-count=1 --abbrev-commit {commit_id}'.split()).decode('utf-8').strip()
     node = nodes.reference(rawtext, f'commit: {short_id}', refuri=url, **options)
     return [node], []
+
+
 # }}}
 
 
@@ -237,44 +244,52 @@ def commit_role(
 def write_cli_docs(all_kitten_names: Iterable[str]) -> None:
     from kittens.ssh.main import copy_message, option_text
     from kitty.cli import option_spec_as_rst
+
     with open('generated/ssh-copy.rst', 'w') as f:
-        f.write(option_spec_as_rst(
-            appname='copy', ospec=option_text, heading_char='^',
-            usage='file-or-dir-to-copy ...', message=copy_message
-        ))
+        f.write(option_spec_as_rst(appname='copy', ospec=option_text, heading_char='^', usage='file-or-dir-to-copy ...', message=copy_message))
     del sys.modules['kittens.ssh.main']
     from kitty.session import save_as_session_message, save_as_session_options
+
     with open('generated/save-as-session.rst', 'w') as f:
-        f.write(option_spec_as_rst(
-            appname='save_as_session', ospec=save_as_session_options, heading_char='^',
-            usage='[path-to-save-session-file-at]',
-            message=save_as_session_message,
-        ))
+        f.write(
+            option_spec_as_rst(
+                appname='save_as_session',
+                ospec=save_as_session_options,
+                heading_char='^',
+                usage='[path-to-save-session-file-at]',
+                message=save_as_session_message,
+            )
+        )
 
     from kitty.launch import options_spec as launch_options_spec
+
     with open('generated/launch.rst', 'w') as f:
-        f.write(option_spec_as_rst(
-            appname='launch', ospec=launch_options_spec, heading_char='_',
-            message='''\
+        f.write(
+            option_spec_as_rst(
+                appname='launch',
+                ospec=launch_options_spec,
+                heading_char='_',
+                message="""\
 Launch an arbitrary program in a new kitty window/tab. Note that
 if you specify a program-to-run you can use the special placeholder
 :code:`@selection` which will be replaced by the current selection.
-'''
-        ))
+""",
+            )
+        )
     with open('generated/cli-kitty.rst', 'w') as f:
-        f.write(option_spec_as_rst(appname='kitty').replace(
-            'kitty --to', 'kitty @ --to'))
+        f.write(option_spec_as_rst(appname='kitty').replace('kitty --to', 'kitty @ --to'))
     as_rst = partial(option_spec_as_rst, heading_char='_')
     from kitty.rc.base import all_command_names, command_for_name
     from kitty.remote_control import cli_msg, global_options_spec
+
     with open('generated/cli-kitten-at.rst', 'w') as f:
         p = partial(print, file=f)
         p('kitten @')
         p('-' * 80)
         p('.. program::', 'kitten @')
-        p('\n\n' + as_rst(
-            global_options_spec, message=cli_msg, usage='command ...', appname='kitten @'))
+        p('\n\n' + as_rst(global_options_spec, message=cli_msg, usage='command ...', appname='kitten @'))
         from kitty.rc.base import cli_params_for
+
         for cmd_name in sorted(all_command_names()):
             func = command_for_name(cmd_name)
             p(f'.. _at-{func.name}:\n')
@@ -299,16 +314,62 @@ if you specify a program-to-run you can use the special placeholder
                 appname = f'kitten {kitten}'
                 if kitten in ('panel', 'broadcast', 'remote_file'):
                     appname = 'kitty +' + appname
-                p('\n\n' + option_spec_as_rst(
-                    data['options'], message=data['help_text'], usage=data['usage'], appname=appname, heading_char='^'))
+                p('\n\n' + option_spec_as_rst(data['options'], message=data['help_text'], usage=data['usage'], appname=appname, heading_char='^'))
+
 
 # }}}
 
 
-def write_color_names_table() -> None: # {{{
+def write_custom_shader_docs() -> None:  # {{{
+
+    category_slug_map = {
+        'cursor-trail': 'cursor-trails',
+        'background': 'backgrounds',
+        'mouse': 'mouse',
+    }
+
+    by_category: Dict[str, List[str]] = {}
+    for name, meta in demo_module.metadata.items():
+        cat_raw = str(meta.get('category', 'other'))
+        cat = category_slug_map.get(cat_raw, cat_raw)
+        by_category.setdefault(cat, []).append(name)
+
+    def shader_title(name: str) -> str:
+        if name.startswith('cursor-trail-'):
+            name = name[len('cursor-trail-') :]
+        return ' '.join(w.capitalize() for w in name.replace('-', ' ').split())
+
+    for category, shader_names in by_category.items():
+        lines: List[str] = []
+        a = lines.append
+        a('.. grid:: 1 2 2 3')
+        a('   :gutter: 3')
+        a('')
+        for shader_name in shader_names:
+            tagline = demo_module.metadata[shader_name]['tagline']
+            title = demo_module.metadata[shader_name].get('title', shader_title(shader_name))
+            a(f'   .. grid-item-card:: {title}')
+            a(f'      :link: https://download.calibre-ebook.com/videos/{shader_name}.webm')
+            a('      :class-card: shader-demo-card')
+            a('      :class-title: sd-text-primary sd-fs-4 sd-font-weight-bold')
+            a('')
+            a(f'      {tagline}')
+            a('')
+            a('')
+            a(f'      :small-dim:`{shader_name}`')
+        with open(f'generated/custom-shaders-{category}.rst', 'w') as f:
+            f.write('\n'.join(lines))
+
+
+# }}}
+
+
+def write_color_names_table() -> None:  # {{{
     from kitty.fast_data_types import all_color_names
+
     def s(c: Any) -> str:
         return f'{c.red:02x}/{c.green:02x}/{c.blue:02x}'
+
     with open('generated/color-names.rst', 'w') as f:
         p = partial(print, file=f)
         p('=' * 50, '=' * 20)
@@ -317,10 +378,14 @@ def write_color_names_table() -> None: # {{{
         for name, col in all_color_names():
             p(name.ljust(50), s(col))
         p('=' * 50, '=' * 20)
+
+
 # }}}
+
 
 def write_remote_control_protocol_docs() -> None:  # {{{
     from kitty.rc.base import RemoteCommand, all_command_names, command_for_name
+
     field_pat = re.compile(r'\s*([^:]+?)\s*:\s*(.+)')
 
     def format_cmd(p: Callable[..., None], name: str, cmd: RemoteCommand) -> None:
@@ -336,7 +401,7 @@ def write_remote_control_protocol_docs() -> None:  # {{{
                 fields.append((m.group(1).split('/')[0], m.group(2)))
         if fields:
             p('\nFields are:\n')
-            for (name, desc) in fields:
+            for name, desc in fields:
                 if '+' in name:
                     title = name.replace('+', ' (required)')
                 else:
@@ -360,6 +425,8 @@ def write_remote_control_protocol_docs() -> None:  # {{{
                 continue
             name = name.replace('_', '-')
             format_cmd(p, name, cmd)
+
+
 # }}}
 
 
@@ -368,6 +435,8 @@ def replace_string(app: Any, docname: str, source: List[str]) -> None:  # {{{
     for k, v in string_replacements.items():
         src = src.replace(k, v)
     source[0] = src
+
+
 # }}}
 
 # config file docs {{{
@@ -386,6 +455,7 @@ class ConfLexer(RegexLexer):
         expecting_arg = ''
         s = Shlex(val)
         from kitty.options.utils import allowed_key_map_options
+
         last_pos = 0
         while (tok := s.next_word())[0] > -1:
             x = tok[1]
@@ -417,7 +487,7 @@ class ConfLexer(RegexLexer):
         parts = val.split(maxsplit=1)
         if parts[0].startswith('--'):
             seen = 0
-            for (pos, token, text) in self.map_flags(val, start_pos):
+            for pos, token, text in self.map_flags(val, start_pos):
                 yield pos, token, text
                 seen += len(text)
             start_pos += seen
@@ -430,13 +500,13 @@ class ConfLexer(RegexLexer):
         if len(parts) == 1:
             return
         start_pos += len(parts[0])
-        val = val[len(parts[0]):]
+        val = val[len(parts[0]) :]
         m = re.match(r'(\s+)(\S+)', val)
         if m is None:
             return
         yield start_pos, Whitespace, m.group(1)
         yield start_pos + m.start(2), Name.Function, m.group(2)  # action function
-        yield start_pos + m.end(2), String, val[m.end(2):]
+        yield start_pos + m.end(2), String, val[m.end(2) :]
 
     tokens = {
         'root': [
@@ -444,14 +514,14 @@ class ConfLexer(RegexLexer):
             (r'\s+$', Whitespace),
             (r'\s+', Whitespace),
             (r'(include)(\s+)(.+?)$', bygroups(Comment.Preproc, Whitespace, Name.Namespace)),
-            (r'(map)(\s+)', bygroups(
-                Keyword.Declaration, Whitespace), 'mapargs'),
-            (r'(mouse_map)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)', bygroups(
-                Keyword.Declaration, Whitespace, String, Whitespace, Name.Variable, Whitespace, String, Whitespace), 'action'),
-            (r'(symbol_map)(\s+)(\S+)(\s+)(.+?)$', bygroups(
-                Keyword.Declaration, Whitespace, String, Whitespace, Literal)),
-            (r'([a-zA-Z_0-9]+)(\s+)', bygroups(
-                Name.Variable, Whitespace), 'args'),
+            (r'(map)(\s+)', bygroups(Keyword.Declaration, Whitespace), 'mapargs'),
+            (
+                r'(mouse_map)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)',
+                bygroups(Keyword.Declaration, Whitespace, String, Whitespace, Name.Variable, Whitespace, String, Whitespace),
+                'action',
+            ),
+            (r'(symbol_map)(\s+)(\S+)(\s+)(.+?)$', bygroups(Keyword.Declaration, Whitespace, String, Whitespace, Literal)),
+            (r'([a-zA-Z_0-9]+)(\s+)', bygroups(Name.Variable, Whitespace), 'args'),
         ],
         'action': [
             (r'[a-z_0-9]+$', Name.Function, 'root'),
@@ -487,7 +557,7 @@ class SessionLexer(RegexLexer):
         ],
         'args': [
             (r'.*?$', Literal, 'root'),
-        ]
+        ],
     }
 
 
@@ -576,8 +646,9 @@ def process_shortcut_link(env: Any, refnode: Any, has_explicit_title: bool, titl
 def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
     app.add_lexer('conf', ConfLexer() if version_info[0] < 3 else ConfLexer)
     app.add_object_type(
-        'opt', 'opt',
-        indextemplate="pair: %s; Config Setting",
+        'opt',
+        'opt',
+        indextemplate='pair: %s; Config Setting',
         parse_node=parse_opt_node,
     )
     # Warn about opt references that could not be resolved
@@ -586,8 +657,9 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
     opt_role.process_link = process_opt_link
 
     app.add_object_type(
-        'shortcut', 'sc',
-        indextemplate="pair: %s; Keyboard Shortcut",
+        'shortcut',
+        'sc',
+        indextemplate='pair: %s; Keyboard Shortcut',
         parse_node=parse_shortcut_node,
     )
     sc_role = app.registry.domain_roles['std']['sc']
@@ -596,8 +668,9 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
     shortcut_slugs.clear()
 
     app.add_object_type(
-        'action', 'ac',
-        indextemplate="pair: %s; Action",
+        'action',
+        'ac',
+        indextemplate='pair: %s; Action',
         parse_node=parse_action_node,
     )
     ac_role = app.registry.domain_roles['std']['ac']
@@ -615,28 +688,33 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
             print(text, file=f)
 
     from kitty.options.definition import definition
+
     generate_default_config(definition, 'kitty')
 
     from kittens.runner import get_kitten_conf_docs
+
     for kitten in all_kitten_names:
         defn = get_kitten_conf_docs(kitten)
         if defn is not None:
             generate_default_config(defn, f'kitten-{kitten}')
 
     from kitty.actions import as_rst
+
     with open('generated/actions.rst', 'w', encoding='utf-8') as f:
         f.write(as_rst())
 
     from kitty.rc.base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION
+
     with open('generated/matching.rst', 'w') as f:
         print('Matching windows', file=f)
         print('______________________________', file=f)
-        w = 'm' + MATCH_WINDOW_OPTION[MATCH_WINDOW_OPTION.find('Match') + 1:]
+        w = 'm' + MATCH_WINDOW_OPTION[MATCH_WINDOW_OPTION.find('Match') + 1 :]
         print('When matching windows,', w, file=f)
         print('Matching tabs', file=f)
         print('______________________________', file=f)
-        w = 'm' + MATCH_TAB_OPTION[MATCH_TAB_OPTION.find('Match') + 1:]
+        w = 'm' + MATCH_TAB_OPTION[MATCH_TAB_OPTION.find('Match') + 1 :]
         print('When matching tabs,', w, file=f)
+
 
 # }}}
 
@@ -657,25 +735,22 @@ def add_html_context(app: Any, pagename: str, templatename: str, context: Any, d
 
 @lru_cache
 def monkeypatch_man_writer() -> None:
-    '''
+    """
     Monkeypatch the docutils man translator to be nicer
-    '''
+    """
     from docutils.nodes import figure
     from docutils.writers.manpage import Translator
     from sphinx.writers.manpage import ManualPageTranslator
-
 
     # Improve header generation
     def header(self: ManualPageTranslator) -> str:
         di = getattr(self, '_docinfo')
         di['ktitle'] = di['title'].replace('_', '-')
-        th = (".TH \"%(ktitle)s\" %(manual_section)s"
-              " \"%(date)s\" \"%(version)s\"") % di
-        if di["manual_group"]:
-            th += " \"%(manual_group)s\"" % di
-        th += "\n"
-        sh_tmpl: str = (".SH Name\n"
-                   "%(ktitle)s \\- %(subtitle)s\n")
+        th = ('.TH "%(ktitle)s" %(manual_section)s "%(date)s" "%(version)s"') % di
+        if di['manual_group']:
+            th += ' "%(manual_group)s"' % di
+        th += '\n'
+        sh_tmpl: str = '.SH Name\n%(ktitle)s \\- %(subtitle)s\n'
         return th + sh_tmpl % di
 
     setattr(ManualPageTranslator, 'header', header)
@@ -695,6 +770,7 @@ def monkeypatch_man_writer() -> None:
     setattr(ManualPageTranslator, 'depart_figure', depart_figure)
 
     orig_astext = getattr(ManualPageTranslator, 'astext')
+
     def astext(self: ManualPageTranslator) -> Any:
         b = []
         for line in self.body:
@@ -706,11 +782,13 @@ def monkeypatch_man_writer() -> None:
             b.append(line)
         setattr(self, 'body', b)
         return orig_astext(self)
+
     setattr(ManualPageTranslator, 'astext', astext)
 
 
 def setup_man_pages() -> None:
     from kittens.runner import get_kitten_cli_docs
+
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     for x in glob.glob(os.path.join(base, 'docs/kittens/*.rst')):
         kn = os.path.basename(x).rpartition('.')[0]
@@ -750,7 +828,7 @@ if building_man_pages:
     setup_man_pages()
 
 
-def build_finished(*a: Any, **kw: Any) -> None:
+def build_finished(app: Any, exception: Any) -> None:
     if building_man_pages:
         build_extra_man_pages()
 
@@ -758,10 +836,12 @@ def build_finished(*a: Any, **kw: Any) -> None:
 def setup(app: Any) -> None:
     os.makedirs('generated/conf', exist_ok=True)
     from kittens.runner import all_kitten_names
+
     kn = all_kitten_names()
     write_cli_docs(kn)
     write_remote_control_protocol_docs()
     write_color_names_table()
+    write_custom_shader_docs()
     write_conf_docs(app, kn)
     app.connect('source-read', replace_string)
     app.add_config_value('analytics_id', '', 'env')

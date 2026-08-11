@@ -456,7 +456,8 @@ trail animation only follows cursors that have stayed in their position for long
 than the specified number of milliseconds. This prevents trails from appearing
 for cursors that rapidly change their positions during UI updates in complex applications.
 See :opt:`cursor_trail_decay` to control the animation speed and :opt:`cursor_trail_start_threshold`
-to control when a cursor trail is started.
+to control when a cursor trail is started. You can also have different styles of trail by
+using the :opt:`custom_shaders` option, for example: :code:`custom_shaders cursor-trail-blaze`.
 """,
 )
 
@@ -1742,6 +1743,25 @@ The value can be one of: :code:`top-left`, :code:`top`, :code:`top-right`,
 )
 
 opt(
+    'padding_fill_strategy',
+    'background',
+    choices=('background', 'neighboring_cell'),
+    ctype='padding_fill_strategy',
+    long_text="""
+When the window size is not an exact multiple of the cell size, thin strips of
+compensatory padding are added at the window edges (see
+:opt:`placement_strategy`). This option controls how those strips are colored.
+:code:`neighboring_cell` colors each strip to match the
+background color of the cell adjacent to it, which looks best with full screen
+applications such as editors that have differently colored border cells. A value
+of :code:`background` colors the strips using the window background
+color. Note that this only affects the compensatory padding, the intentional
+padding from :opt:`window_padding_width` is always drawn using the background
+color.
+""",
+)
+
+opt(
     'active_border_color',
     '#00ff00',
     option_type='to_color_or_none',
@@ -1768,14 +1788,15 @@ opt(
     option_type='signed_unit_float',
     ctype='float',
     long_text="""
-Fade the text in inactive windows by the specified amount. This must be a
+Fade the content in inactive windows by the specified amount. This must be a
 number between -1 and 1. The absolute value controls the actual
 opacity, with zero being fully faded and one being fully opaque. When a positive number is
 used the text is faded even if only a single window is visible when the OS window
 is not focused. Negative numbers means that text is only faded when more than one kitty window
 is visible in an OS Window. Fading happens in all but the active window, even if the OS Window
 is not focused. Thus this is useful if you want to rely on the window manager to indicate OS Window focus
-and this feature to indicate which kitty window is active insidethe OS Window.
+and this feature to indicate which kitty window is active inside the OS Window. For alternate dimming/highlighting
+strategies, you can use :opt:`custom_shaders` for example: :code:`custom_shaders dim-inactive-windows`.
 """,
 )
 
@@ -2881,6 +2902,20 @@ in kitty session files. Each variable name is treated as a glob pattern to match
 read after the configuration is fully processed, thus they are not available for recursive expansion and
 they will override any variables set by other :opt:`env` directives.
 """,
+)
+
+opt(
+    'custom_shaders',
+    '',
+    option_type='custom_shaders',
+    add_to_default=False,
+    long_text="""
+Space separated list of custom shader pipeline names. If multiple names are specified they are
+loaded in order and concatenated. You can use shell syntax to quote or escape space characters.
+The exact loading algorithm is described in :ref:`custom_shader_load_order`.
+See :doc:`/custom-shaders` for details on how custom shaders work. For a quick demo, try setting
+this to :code:`inside-the-matrix`.
+    """,
 )
 
 opt(

@@ -6,7 +6,8 @@ import sys
 
 def OPTIONS() -> str:
     from kitty.constants import standard_icon_names
-    return  f'''
+
+    return f"""
 --icon -n
 type=list
 The name of the icon to use for the notification. An icon with this name
@@ -94,9 +95,10 @@ Identifier to use when caching icons in the terminal emulator. Using an identifi
 that icon data needs to be transmitted only once using --icon-path. Subsequent invocations
 will use the cached icon data, at least until the terminal instance is restarted. This is useful
 if this kitten is being used inside a larger application, with --only-print-escape-code.
-'''
+"""
 
-help_text = '''\
+
+help_text = """\
 Send notifications to the user that are displayed to them via the
 desktop environment's notifications service. Works over SSH as well.
 
@@ -107,7 +109,7 @@ the notification you wish to update.
 If no title is specified and an identifier is specified using the --identifier
 option, then instead of creating a new notification, an existing notification
 with the specified identifier is closed.
-'''
+"""
 
 usage = 'TITLE [BODY ...]'
 if __name__ == '__main__':

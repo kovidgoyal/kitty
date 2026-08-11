@@ -8,7 +8,7 @@ from ..tui.handler import result_handler
 
 help_text = 'Input a Unicode character'
 usage = ''
-OPTIONS = '''
+OPTIONS = """
 --emoji-variation
 type=choices
 default=none
@@ -24,7 +24,7 @@ choices=previous,code,name,emoticons,favorites
 The initial tab to display. Defaults to using the tab from the previous kitten invocation.
 
 
-'''.format
+""".format
 
 
 @result_handler(has_ready_notification=True)
@@ -33,13 +33,16 @@ def handle_result(args: list[str], current_char: str, target_window_id: int, bos
     if w is not None:
         w.paste_text(current_char)
 
+
 def main(args: list[str]) -> str | None:
     raise SystemExit('This should be run as kitten unicode_input')
+
 
 if __name__ == '__main__':
     main([])
 elif __name__ == '__doc__':
     import sys
+
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = OPTIONS

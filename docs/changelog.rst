@@ -179,9 +179,16 @@ consumption to do the same tasks.
 Detailed list of changes
 -------------------------------------
 
-
-0.48.3 [future]
+0.49.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Add a new :code:`kitten @ screenshot` remote control command to take a pixel perfect PNG screenshot of an OS Window, tab or window
+
+- Add a new :code:`kitten @ set-os-window-title` remote control command to set
+  the title for an already-open OS Window and optionally restore automatic
+  title tracking when no title is specified
+
+- A new option, :opt:`padding_fill_strategy` to control how the thin padding strips that appear when the window size is not an exact multiple of the cell size are colored. You can choose to have the padding colored to match the background of each neighboring cell, effectively extending the size of the cell or you can continue to use the existing behavior of using the background.
 
 - Wayland: Fix the first movement of the scroll wheel after reversing direction
   often not scrolling, with high resolution wheels such as the Logitech MX
@@ -194,6 +201,8 @@ Detailed list of changes
 
 - :opt:`remember_window_size` now also remembers window maximized state (:pull:`10308`)
 
+- Sessions: Also save/restore layouts other than the currently active layout (:pull:`10324`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -202,7 +211,7 @@ Detailed list of changes
 
 - diff kitten: Fix a rare crash when showing a large diff due to incorrect locking when highlighting
 
-- Allow the private DCS kitty-echo escape code to only echo numbers
+- Allow the private DCS kitty-echo escape code to only echo numbers (:cve:`2026-72913`)
 
 - Linux: Fix an approx 1MB memory leak when reloading the config, introduced in version 0.40.0 (:iss:`10290`)
 
@@ -318,7 +327,7 @@ Detailed list of changes
 
 - ``kitten @ set-background-image``: Fix ``--layout=configured`` changing layout to centered instead (:iss:`10089`)
 
-- Splits layout: add an ``equalize`` action and an ``equalize_on_close`` option to redistribute split space proportionally (:iss:`3489`)
+- Splits layout: add an ``equalize`` action and an ``equalize_on_window_close`` option to redistribute split space proportionally (:iss:`3489`)
 
 - Fix matching var/env on tabs not working as expected (:iss:`10095`)
 

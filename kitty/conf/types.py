@@ -48,6 +48,7 @@ def ref_map() -> dict[str, dict[str, str]]:
     import json
 
     from ..fast_data_types import get_docs_ref_map
+
     ans: dict[str, dict[str, str]] = json.loads(get_docs_ref_map())
     return ans
 
@@ -62,13 +63,13 @@ def resolve_ref(ref: str, website_url: Callable[[str], str] = website_url) -> st
         href = f'conf#{ref}'
     elif ref.startswith('conf-kitten-'):
         parts = ref.split('-')
-        href = "kittens/" + parts[2] + f'/#{ref}'
+        href = 'kittens/' + parts[2] + f'/#{ref}'
     elif ref.startswith('at_'):
         base = ref.split('_', 1)[1]
-        href = "remote-control/#at-" + base.replace('_', '-')
+        href = 'remote-control/#at-' + base.replace('_', '-')
     elif ref.startswith('at-'):
         base = ref.split('-', 1)[1]
-        href = "remote-control/#at-" + base.replace('_', '-')
+        href = 'remote-control/#at-' + base.replace('_', '-')
     elif ref.startswith('action-group-'):
         href = f'actions/#{ref}'
     elif prefix == 'action':
@@ -145,9 +146,7 @@ def iter_blocks(lines: Iterable[str]) -> Iterator[tuple[list[str], int]]:
 
 @lru_cache(maxsize=8)
 def block_wrapper(comment_symbol: str) -> textwrap.TextWrapper:
-    return textwrap.TextWrapper(
-            initial_indent=comment_symbol, subsequent_indent=comment_symbol, width=70, break_long_words=False
-        )
+    return textwrap.TextWrapper(initial_indent=comment_symbol, subsequent_indent=comment_symbol, width=70, break_long_words=False)
 
 
 def wrapped_block(lines: Iterable[str], comment_symbol: str = '#: ') -> Iterator[str]:
@@ -172,7 +171,6 @@ def render_block(text: str, comment_symbol: str = '#: ') -> str:
 
 
 class CoalescedIteratorData:
-
     option_groups: dict[int, list['Option']] = {}
     action_groups: dict[str, list['Mapping']] = {}
     coalesced: set[int] = set()
@@ -219,10 +217,17 @@ class CoalescedIteratorData:
 
 
 class Option:
-
     def __init__(
-        self, name: str, defval: str, macos_default: Unset | str, parser_func: ParserFuncType,
-        long_text: str, documented: bool, group: 'Group', choices: tuple[str, ...], ctype: str,
+        self,
+        name: str,
+        defval: str,
+        macos_default: Unset | str,
+        parser_func: ParserFuncType,
+        long_text: str,
+        documented: bool,
+        group: 'Group',
+        choices: tuple[str, ...],
+        ctype: str,
         has_secret: bool = False,
     ):
         self.name = name
@@ -263,8 +268,7 @@ class Option:
         return ans
 
     def as_rst(
-        self, conf_name: str, shortcut_slugs: dict[str, tuple[str, str]],
-        kitty_mod: str, level: int = 0, option_group: Sequence['Option'] = ()
+        self, conf_name: str, shortcut_slugs: dict[str, tuple[str, str]], kitty_mod: str, level: int = 0, option_group: Sequence['Option'] = ()
     ) -> list[str]:
         ans: list[str] = []
         a = ans.append
@@ -286,7 +290,6 @@ class Option:
 
 
 class MultiVal:
-
     def __init__(self, val_as_str: str, add_to_default: bool, documented: bool, only: Only) -> None:
         self.defval_as_str = val_as_str
         self.documented = documented
@@ -295,7 +298,6 @@ class MultiVal:
 
 
 class MultiOption:
-
     def __init__(self, name: str, parser_func: ParserFuncType, long_text: str, group: 'Group', ctype: str, has_secret: bool = False):
         self.name = name
         self.ctype = ctype
@@ -393,8 +395,7 @@ class Mapping:
         return ans
 
     def as_rst(
-        self, conf_name: str, shortcut_slugs: dict[str, tuple[str, str]],
-        kitty_mod: str, level: int = 0, action_group: list['Mapping'] = []
+        self, conf_name: str, shortcut_slugs: dict[str, tuple[str, str]], kitty_mod: str, level: int = 0, action_group: list['Mapping'] = []
     ) -> list[str]:
         ans: list[str] = []
         a = ans.append
@@ -431,8 +432,15 @@ class ShortcutMapping(Mapping):
     setting_name: str = 'map'
 
     def __init__(
-        self, name: str, raw_definition: str, short_text: str, long_text: str,
-        add_to_default: bool, documented: bool, group: 'Group', only: Only,
+        self,
+        name: str,
+        raw_definition: str,
+        short_text: str,
+        long_text: str,
+        add_to_default: bool,
+        documented: bool,
+        group: 'Group',
+        only: Only,
     ):
         self.name = name
         self.only = only
@@ -443,6 +451,7 @@ class ShortcutMapping(Mapping):
         self.add_to_default = add_to_default
         self.group = group
         from kitty.options.utils import parse_options_for_map
+
         _, remainder = parse_options_for_map(raw_definition)
         parts = remainder.split(maxsplit=1)
         self.key = parts[0]
@@ -461,8 +470,18 @@ class MouseMapping(Mapping):
     setting_name: str = 'mouse_map'
 
     def __init__(
-        self, name: str, button: str, event: str, modes: str, action_def: str,
-        short_text: str, long_text: str, add_to_default: bool, documented: bool, group: 'Group', only: Only
+        self,
+        name: str,
+        button: str,
+        event: str,
+        modes: str,
+        action_def: str,
+        short_text: str,
+        long_text: str,
+        add_to_default: bool,
+        documented: bool,
+        group: 'Group',
+        only: Only,
     ):
         self.name = name
         self.only = only
@@ -490,7 +509,6 @@ GroupItem = Union[NonGroups, 'Group']
 
 
 class Group:
-
     def __init__(self, name: str, title: str, coalesced_iterator_data: CoalescedIteratorData, start_text: str = '', parent: Optional['Group'] = None):
         self.name = name
         self.coalesced_iterator_data = coalesced_iterator_data
@@ -564,7 +582,7 @@ class Group:
         ans: list[str] = []
         a = ans.append
         if level:
-            a('#: ' + self.title + ' {{''{')
+            a('#: ' + self.title + ' {{{')
             a('')
             if self.start_text:
                 a(render_block(self.start_text))
@@ -585,7 +603,7 @@ class Group:
             if self.end_text:
                 a('')
                 a(render_block(self.end_text))
-            a('#: }}''}')
+            a('#: }}}')
             a('')
         else:
             map_groups = []
@@ -638,7 +656,6 @@ def resolve_import(name: str, module: Any = None) -> ParserFuncType:
 
 
 class Action:
-
     def __init__(self, name: str, option_type: str, fields: dict[str, str], imports: Iterable[str]):
         self.name = name
         self._parser_func = option_type
@@ -651,7 +668,6 @@ class Action:
 
 
 class Definition:
-
     def __init__(self, package: str, *actions: Action, has_color_table: bool = False) -> None:
         if package.startswith('!'):
             self.module_for_parsers = import_module(package[1:])
@@ -706,12 +722,18 @@ class Definition:
             self.current_group = self.current_group.parent
 
     def add_option(
-        self, name: str, defval: str | float | int | bool,
-        option_type: str = 'str', long_text: str = '',
-        documented: bool = True, add_to_default: bool = False,
-        only: Only = '', macos_default: Unset | str = unset,
+        self,
+        name: str,
+        defval: str | float | int | bool,
+        option_type: str = 'str',
+        long_text: str = '',
+        documented: bool = True,
+        add_to_default: bool = False,
+        only: Only = '',
+        macos_default: Unset | str = unset,
         choices: tuple[str, ...] = (),
-        ctype: str = '', has_secret: bool = False,
+        ctype: str = '',
+        has_secret: bool = False,
     ) -> None:
         if isinstance(defval, bool):
             defval = 'yes' if defval else 'no'
@@ -735,17 +757,13 @@ class Definition:
         self.current_group.append(opt)
         self.option_map[name] = opt
 
-    def add_map(
-        self, short_text: str, defn: str, long_text: str = '', add_to_default: bool = True, documented: bool = True, only: Only = ''
-    ) -> None:
+    def add_map(self, short_text: str, defn: str, long_text: str = '', add_to_default: bool = True, documented: bool = True, only: Only = '') -> None:
         name, rest = defn.split(maxsplit=1)
         sc = ShortcutMapping(name, rest, short_text, long_text.strip(), add_to_default, documented, self.current_group, only)
         self.current_group.append(sc)
         self.shortcut_map.setdefault(name, []).append(sc)
 
-    def add_mouse_map(
-        self, short_text: str, defn: str, long_text: str = '', add_to_default: bool = True, documented: bool = True, only: Only = ''
-    ) -> None:
+    def add_mouse_map(self, short_text: str, defn: str, long_text: str = '', add_to_default: bool = True, documented: bool = True, only: Only = '') -> None:
         name, button, event, modes, action_def = defn.split(maxsplit=4)
         mm = MouseMapping(name, button, event, modes, action_def, short_text, long_text.strip(), add_to_default, documented, self.current_group, only)
         self.current_group.append(mm)

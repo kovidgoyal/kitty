@@ -36,20 +36,20 @@
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-int _glfwPlatformInit(void)
-{
+int
+_glfwPlatformInit(void) {
     _glfwPollMonitorsNull();
 
     return true;
 }
 
-void _glfwPlatformTerminate(void)
-{
+void
+_glfwPlatformTerminate(void) {
     free(_glfw.null.clipboardString);
     _glfwTerminateOSMesa();
 }
 
-const char* _glfwPlatformGetVersionString(void)
-{
+const char *
+_glfwPlatformGetVersionString(void) {
     return _GLFW_VERSION_NUMBER " null OSMesa";
 }

@@ -15,7 +15,7 @@ from kitty.fast_data_types import (
     test_utf8_decode_to_sentinel,
 )
 
-from . import BaseTest, parse_bytes
+from .base import BaseTest, parse_bytes
 
 
 def cnv(x):
@@ -25,7 +25,6 @@ def cnv(x):
 
 
 class CmdDump(list):
-
     def __call__(self, window_id, *a):
         if a and a[0] == 'bytes':
             return
@@ -50,7 +49,6 @@ class CmdDump(list):
 
 
 class TestParser(BaseTest):
-
     def create_write_buffer(self, screen):
         return screen.test_create_write_buffer()
 
@@ -223,11 +221,11 @@ class TestParser(BaseTest):
         def double_test(x):
             for which in (2, 3):
                 t(x, which=which)
-            t(x*2, which=3)
+            t(x * 2, which=3)
             reset_state()
 
         # incomplete trailer at end of vector
-        t("a"*10 + "😸😸" + "b"*15)
+        t('a' * 10 + '😸😸' + 'b' * 15)
 
         x = double_test
         x('2:α3')
@@ -267,7 +265,7 @@ class TestParser(BaseTest):
             pb('\uf4df', '\uf4df')
             pb('\uffff', '\uffff')
             pb('\0', '\0')
-            pb(chr(0x10ffff), chr(0x10ffff))
+            pb(chr(0x10FFFF), chr(0x10FFFF))
             # Kitty's UTF-8 decoding uses `U+FFFD substitution of maximal subparts
             # <https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G66453>`_,
             # same as in the WHATWG Encoding Standard.
@@ -636,7 +634,6 @@ class TestParser(BaseTest):
             # Boundary case: too large codepoint (> U+10FFFF)
             pb(b'"\xf5\x80\x80\x80"', '"\ufffd\ufffd\ufffd\ufffd"')
 
-
     def test_find_either_of_two_bytes(self):
         sizes = []
         if has_sse4_2:
@@ -665,14 +662,15 @@ class TestParser(BaseTest):
                 buf = (' ' * sz) + buf
                 for align_offset in range(32):
                     test(buf, a, b, align_offset)
-        tests("", '<', '>')
-        tests("a", '\0', '\0')
-        tests("a", '<', '>')
-        tests("dsdfsfa", '1', 'a')
-        tests("xa", 'a', 'a')
-        tests("bbb", 'a', '1')
-        tests("bba", 'a', '<')
-        tests("baa", '>', 'a')
+
+        tests('', '<', '>')
+        tests('a', '\0', '\0')
+        tests('a', '<', '>')
+        tests('dsdfsfa', '1', 'a')
+        tests('xa', 'a', 'a')
+        tests('bbb', 'a', '1')
+        tests('bba', 'a', '<')
+        tests('baa', '>', 'a')
 
     def test_esc_codes(self):
         s = self.create_screen()
@@ -681,7 +679,7 @@ class TestParser(BaseTest):
         self.ae(str(s.line(0)), '12')
         self.ae(str(s.line(1)), '  a')
         pb('\033xa', ('Unknown char after ESC: 0x%x' % ord('x'),), 'a')
-        pb('\033c123', ('screen_reset', ), '123')
+        pb('\033c123', ('screen_reset',), '123')
         self.ae(str(s.line(0)), '123')
         pb('\033.\033a', ('Unhandled charset related escape code: 0x2e 0x1b',), 'a')
 
@@ -741,8 +739,12 @@ class TestParser(BaseTest):
         pb('\033[58;2;1;2;3m', ('select_graphic_rendition', '58:2:1:2:3'))
         pb('\033[38;2;1;2;3m', ('select_graphic_rendition', '38:2:1:2:3'))
         pb('\033[1001:2:1:2:3m', ('select_graphic_rendition', '1001:2:1:2:3'))
-        pb('\033[38:2:1:2:3;48:5:9;58;5;7m', (
-            'select_graphic_rendition', '38:2:1:2:3'), ('select_graphic_rendition', '48:5:9'), ('select_graphic_rendition', '58:5:7'))
+        pb(
+            '\033[38:2:1:2:3;48:5:9;58;5;7m',
+            ('select_graphic_rendition', '38:2:1:2:3'),
+            ('select_graphic_rendition', '48:5:9'),
+            ('select_graphic_rendition', '58:5:7'),
+        )
         s.reset()
         pb('\033[1;2;3;4:5;7;9;34;44m', *sgr('1;2;3', '4:5', '7;9;34;44'))
         for attr in 'bold italic reverse strikethrough dim'.split():
@@ -909,7 +911,6 @@ class TestParser(BaseTest):
         pb('\033[?2026$p', ('report_mode_status', 2026, 1))
         self.ae(c.wtcbuf, b'\x1b[?2026;2$y')
 
-
     def test_oth_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
@@ -929,9 +930,10 @@ class TestParser(BaseTest):
                     k[p] = v.encode('ascii')
             for f in 'action delete_action transmission_type compressed'.split():
                 k.setdefault(f, b'\0')
-            for f in ('format more id data_sz data_offset width height x_offset y_offset data_height data_width cursor_movement'
-                      ' num_cells num_lines cell_x_offset cell_y_offset z_index placement_id image_number quiet unicode_placement'
-                      ' parent_id parent_placement_id usage_hints offset_from_parent_x offset_from_parent_y'
+            for f in (
+                'format more id data_sz data_offset width height x_offset y_offset data_height data_width cursor_movement'
+                ' num_cells num_lines cell_x_offset cell_y_offset z_index placement_id image_number quiet unicode_placement'
+                ' parent_id parent_placement_id usage_hints offset_from_parent_x offset_from_parent_y'
             ).split():
                 k.setdefault(f, 0)
             p = k.pop('payload', '')
@@ -968,8 +970,13 @@ class TestParser(BaseTest):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
         pb('\033[$r', ('deccara', '0;0;0;0;0'))
-        pb('\033[;;;;4:3;38:5:10;48:2:1:2:3;1$r',
-           ('deccara', '0;0;0;0;4:3'), ('deccara', '0;0;0;0;38:5:10'), ('deccara', '0;0;0;0;48:2:1:2:3'), ('deccara', '0;0;0;0;1'))
+        pb(
+            '\033[;;;;4:3;38:5:10;48:2:1:2:3;1$r',
+            ('deccara', '0;0;0;0;4:3'),
+            ('deccara', '0;0;0;0;38:5:10'),
+            ('deccara', '0;0;0;0;48:2:1:2:3'),
+            ('deccara', '0;0;0;0;1'),
+        )
         for y in range(s.lines):
             line = s.line(y)
             for x in range(s.columns):

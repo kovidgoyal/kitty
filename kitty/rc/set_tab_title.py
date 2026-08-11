@@ -11,11 +11,10 @@ if TYPE_CHECKING:
 
 
 class SetTabTitle(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     title+/str: The new title
     match/str: Which tab to change the title of
-    '''
+    """
 
     short_desc = 'Set the tab title'
     desc = (

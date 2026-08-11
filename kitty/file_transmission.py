@@ -51,15 +51,13 @@ def as_unicode(x: str | bytes) -> str:
 
 def encode_bypass(request_id: str, bypass: str) -> str:
     import hashlib
+
     q = request_id + ';' + bypass
     return 'sha256:' + hashlib.sha256(q.encode('utf-8', 'replace')).hexdigest()
 
 
 def split_for_transfer(
-    data: bytes | bytearray | memoryview,
-    session_id: str = '', file_id: str = '',
-    mark_last: bool = False,
-    chunk_size: int = 4096
+    data: bytes | bytearray | memoryview, session_id: str = '', file_id: str = '', mark_last: bool = False, chunk_size: int = 4096
 ) -> Iterator['FileTransmissionCommand']:
     if isinstance(data, (bytes, bytearray)):
         data = memoryview(data)
@@ -90,8 +88,15 @@ def iter_file_metadata(file_specs: Iterable[tuple[str, str]]) -> Iterator[Union[
         else:
             raise ValueError('Not an appropriate file type')
         ans = FileTransmissionCommand(
-            action=Action.file, file_id=spec_id, mtime=sr.st_mtime_ns, permissions=stat.S_IMODE(sr.st_mode),
-            name=path, status=str(next(counter)), size=sr.st_size, ftype=ftype, parent=parent
+            action=Action.file,
+            file_id=spec_id,
+            mtime=sr.st_mtime_ns,
+            permissions=stat.S_IMODE(sr.st_mode),
+            name=path,
+            status=str(next(counter)),
+            size=sr.st_size,
+            ftype=ftype,
+            parent=parent,
         )
         file_map[skey(sr)].append(ans)
         return ans
@@ -162,7 +167,6 @@ def iter_file_metadata(file_specs: Iterable[tuple[str, str]]) -> Iterator[Union[
 
 
 class NameReprEnum(Enum):
-
     def __repr__(self) -> str:
         return f'<{self.__class__.__name__}.{self.name}>'
 
@@ -208,9 +212,9 @@ ErrorCode = Enum('ErrorCode', 'OK STARTED CANCELED PROGRESS EINVAL EPERM EISDIR 
 
 
 class TransmissionError(Exception):
-
     def __init__(
-        self, code: ErrorCode | str = ErrorCode.EINVAL,
+        self,
+        code: ErrorCode | str = ErrorCode.EINVAL,
         msg: str = 'Generic error',
         transmit: bool = True,
         file_id: str = '',
@@ -231,9 +235,7 @@ class TransmissionError(Exception):
         name = self.code if isinstance(self.code, str) else self.code.name
         if self.human_msg:
             name += ':' + self.human_msg
-        return FileTransmissionCommand(
-            action=Action.status, id=request_id, file_id=self.file_id, status=name, name=self.name, size=self.size, ttype=self.ttype
-        )
+        return FileTransmissionCommand(action=Action.status, id=request_id, file_id=self.file_id, status=name, name=self.name, size=self.size, ttype=self.ttype)
 
 
 @run_once
@@ -254,7 +256,6 @@ def serialized_to_field_map() -> dict[bytes | memoryview, 'Field[Any]']:
 
 @dataclass
 class FileTransmissionCommand:
-
     action: Action = field(default=Action.invalid, metadata={'sname': 'ac'})
     compression: Compression = field(default=Compression.none, metadata={'sname': 'zip'})
     ftype: FileType = field(default=FileType.regular, metadata={'sname': 'ft'})
@@ -340,7 +341,7 @@ class FileTransmissionCommand:
             if field is None:
                 return
             if inspect.isclass(field.type) and issubclass(field.type, Enum):
-                setattr(ans, field.name, field.type[str(val, "utf-8")])
+                setattr(ans, field.name, field.type[str(val, 'utf-8')])
             elif field.type == bytes | memoryview:
                 setattr(ans, field.name, base64_decode(val))
             elif field.type is int:
@@ -349,7 +350,7 @@ class FileTransmissionCommand:
                 if field.metadata.get('base64'):
                     sval = base64_decode(val).decode('utf-8')
                 else:
-                    sval = safe_string(str(val, "utf-8"))
+                    sval = safe_string(str(val, 'utf-8'))
                 setattr(ans, field.name, sval)
 
         parse_ftc(data, handle_item)
@@ -360,15 +361,14 @@ class FileTransmissionCommand:
 
 
 class IdentityDecompressor:
-
     def __call__(self, data: bytes | memoryview, is_last: bool = False) -> bytes:
         return bytes(data)
 
 
 class ZlibDecompressor:
-
     def __init__(self) -> None:
         import zlib
+
         self.d = zlib.decompressobj(wbits=0)
 
     def __call__(self, data: bytes | memoryview, is_last: bool = False) -> bytes:
@@ -379,9 +379,9 @@ class ZlibDecompressor:
 
 
 class PatchFile:
-
     def __init__(self, path: str, expected_size: int):
         from kittens.transfer.rsync import Patcher
+
         self.patcher = Patcher(expected_size)
         self.block_buffer = memoryview(bytearray(self.patcher.block_size))
         self.path = path
@@ -443,7 +443,6 @@ class PatchFile:
 
 
 class DestFile:
-
     def __init__(self, ftc: FileTransmissionCommand) -> None:
         self.name = ftc.name
         if not os.path.isabs(self.name):
@@ -649,7 +648,6 @@ class ActiveReceive:
 
 
 class SourceFile:
-
     def __init__(self, ftc: FileTransmissionCommand):
         self.file_id = ftc.file_id
         self.path = ftc.name
@@ -669,12 +667,13 @@ class SourceFile:
             if ftc.compression is Compression.zlib:
                 self.compressor = ZlibCompressor()
         from kittens.transfer import rsync
+
         self.differ = rsync.Differ() if self.waiting_for_signature else None
         self.buf = bytearray()
         self.write_pos = 0
 
     def write(self, b: ReadableBuffer) -> None:
-        self.buf[self.write_pos:self.write_pos+len(b)] = b
+        self.buf[self.write_pos : self.write_pos + len(b)] = b
         self.write_pos += len(b)
 
     @property
@@ -704,7 +703,7 @@ class SourceFile:
                 else:
                     self.write_pos = 0
                     has_more = self.differ.next_op(self.open_file.readinto, self.write)
-                    data = memoryview(self.buf)[:self.write_pos]
+                    data = memoryview(self.buf)[: self.write_pos]
                     if not has_more:
                         self.transmitted = True
         uncompressed_sz = len(data)
@@ -717,7 +716,6 @@ class SourceFile:
 
 
 class ActiveSend:
-
     def __init__(self, request_id: str, quiet: int, bypass: str, num_of_args: int) -> None:
         self.id = request_id
         self.expected_num_of_args = num_of_args
@@ -806,7 +804,6 @@ class ActiveSend:
 
 
 class FileTransmission:
-
     def __init__(self, window_id: int):
         self.window_id = window_id
         self.active_receives: dict[str, ActiveReceive] = {}
@@ -1029,8 +1026,11 @@ class FileTransmission:
                 else:
                     if ar.send_acknowledgements:
                         sz = df.existing_stat.st_size if df.existing_stat is not None else -1
-                        ttype = TransmissionType.rsync \
-                            if sz > -1 and df.ttype is TransmissionType.rsync and df.ftype is FileType.regular else TransmissionType.simple
+                        ttype = (
+                            TransmissionType.rsync
+                            if sz > -1 and df.ttype is TransmissionType.rsync and df.ftype is FileType.regular
+                            else TransmissionType.simple
+                        )
                         self.send_status_response(code=ErrorCode.STARTED, request_id=ar.id, file_id=df.file_id, name=df.name, size=sz, ttype=ttype)
                         df.ttype = ttype
                         if ttype is TransmissionType.rsync:
@@ -1052,16 +1052,15 @@ class FileTransmission:
                     return
                 if ar.send_acknowledgements:
                     if df.closed:
-                        self.send_status_response(
-                            code=ErrorCode.OK, request_id=ar.id, file_id=df.file_id, name=df.name, size=df.bytes_written)
+                        self.send_status_response(code=ErrorCode.OK, request_id=ar.id, file_id=df.file_id, name=df.name, size=df.bytes_written)
                     elif df.bytes_written > before:
-                        self.send_status_response(
-                            code=ErrorCode.PROGRESS, request_id=ar.id, file_id=df.file_id, size=df.bytes_written)
+                        self.send_status_response(code=ErrorCode.PROGRESS, request_id=ar.id, file_id=df.file_id, size=df.bytes_written)
             except TransmissionError as err:
                 if ar.send_errors:
                     self.send_transmission_error(ar.id, err)
             except Exception as err:
                 import traceback
+
                 st = traceback.format_exc()
                 log_error(f'Transmission protocol failed to write data to file with error: {st}')
                 if ar.send_errors:
@@ -1134,9 +1133,13 @@ class FileTransmission:
         self.callback_after(partial(self.transmit_rsync_signature, receive_id))
 
     def send_status_response(
-        self, code: ErrorCode | str = ErrorCode.EINVAL,
-        request_id: str = '', file_id: str = '', msg: str = '',
-        name: str = '', size: int = -1,
+        self,
+        code: ErrorCode | str = ErrorCode.EINVAL,
+        request_id: str = '',
+        file_id: str = '',
+        msg: str = '',
+        name: str = '',
+        size: int = -1,
         ttype: TransmissionType = TransmissionType.simple,
     ) -> bool:
         err = TransmissionError(code=code, msg=msg, file_id=file_id, name=name, size=size, ttype=ttype)
@@ -1171,10 +1174,14 @@ class FileTransmission:
         boss = get_boss()
         window = boss.window_id_map.get(self.window_id)
         if window is not None:
-            boss.confirm(_(
-                'The remote machine wants to read some files from this computer.'
-                ' Only allow transfers to computers you trust. Do you want to allow the transfer?'),
-                self.handle_receive_confirmation, asd_id, window=window,
+            boss.confirm(
+                _(
+                    'The remote machine wants to read some files from this computer.'
+                    ' Only allow transfers to computers you trust. Do you want to allow the transfer?'
+                ),
+                self.handle_receive_confirmation,
+                asd_id,
+                window=window,
             )
 
     def handle_receive_confirmation(self, confirmed: bool, cmd_id: str) -> None:
@@ -1202,10 +1209,14 @@ class FileTransmission:
         boss = get_boss()
         window = boss.window_id_map.get(self.window_id)
         if window is not None:
-            boss.confirm(_(
-                'The remote machine wants to send some files to this computer.'
-                ' Only allow transfers from computers you trust. Do you want to allow the transfer?'),
-                self.handle_send_confirmation, ar_id, window=window,
+            boss.confirm(
+                _(
+                    'The remote machine wants to send some files to this computer.'
+                    ' Only allow transfers from computers you trust. Do you want to allow the transfer?'
+                ),
+                self.handle_send_confirmation,
+                ar_id,
+                window=window,
             )
 
     def handle_send_confirmation(self, confirmed: bool, cmd_id: str) -> None:
@@ -1234,7 +1245,6 @@ class FileTransmission:
 
 
 class TestFileTransmission(FileTransmission):
-
     def __init__(self, allow: bool = True) -> None:
         super().__init__(0)
         self.test_responses: list[dict[str, str | int | bytes]] = []
