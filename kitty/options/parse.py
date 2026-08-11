@@ -1282,7 +1282,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for scrollbar")
         ans["scrollbar"] = val
 
-    choices_for_scrollbar = frozenset(('scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered'))
+    choices_for_scrollbar = frozenset(('scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered', 'scrolled-or-hovered'))
 
     def scrollbar_gap(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['scrollbar_gap'] = positive_float(val)

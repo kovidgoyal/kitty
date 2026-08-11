@@ -79,7 +79,10 @@ scrollbar(PyObject *src) {
         case 'a': return SCROLLBAR_ALWAYS;
         case 'n': return SCROLLBAR_NEVER;
         case 'h': return SCROLLBAR_ON_HOVERED;
-        case 's': return strcmp(q, "scrolled") == 0 ? SCROLLBAR_ON_SCROLLED : SCROLLBAR_ON_SCROLL_AND_HOVER;
+        case 's':
+            if (strcmp(q, "scrolled") == 0) return SCROLLBAR_ON_SCROLLED;
+            if (strcmp(q, "scrolled-or-hovered") == 0) return SCROLLBAR_ON_SCROLL_OR_HOVER;
+            return SCROLLBAR_ON_SCROLL_AND_HOVER;
     }
     return SCROLLBAR_ON_SCROLLED;
 }

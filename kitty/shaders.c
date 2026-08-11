@@ -1204,6 +1204,7 @@ has_scrollbar(Window *w, Screen *screen) {
         case SCROLLBAR_ON_SCROLLED: return screen->scrolled_by > 0;
         case SCROLLBAR_ON_HOVERED: return w->scrollbar.is_hovering;
         case SCROLLBAR_ON_SCROLL_AND_HOVER: return screen->scrolled_by > 0 && w->scrollbar.is_hovering;
+        case SCROLLBAR_ON_SCROLL_OR_HOVER: return screen->scrolled_by > 0 || w->scrollbar.is_hovering;
     }
     return false;
 }

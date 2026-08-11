@@ -531,7 +531,7 @@ opt(
     'scrollbar',
     'scrolled',
     ctype='scrollbar',
-    choices=('scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered'),
+    choices=('scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered', 'scrolled-or-hovered'),
     long_text="""\
 Control when the scrollbar is displayed.
 
@@ -541,6 +541,8 @@ Control when the scrollbar is displayed.
     means when the mouse is hovering on the right edge of the window.
 :code:`scrolled-and-hovered`
     means when the mouse is over the scrollbar region *and* scrolling backwards has started.
+:code:`scrolled-or-hovered`
+    means when the mouse is over the scrollbar region *or* scrolling backwards has started.
 :code:`always`
     means whenever any scrollback is present
 :code:`never`
