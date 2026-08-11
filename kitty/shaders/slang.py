@@ -278,6 +278,8 @@ class LoadShaderPrograms:
                 try:
                     pipeline = merge_pipelines(slot_pipelines)
                     vert, frag, metadata = build_custom_shader_pipeline_glsl(pipeline)
+                    # print(vert, file=open('/tmp/sample.vert', 'w'))
+                    # print(frag, file=open('/tmp/sample.frag', 'w'))
                 except Exception as e:
                     log_error(f'Failed to build custom shader for slot {slot} with error: {e}')
                     compile_program(prog, (), (), {}, allow_recompile)
@@ -1539,6 +1541,8 @@ def build_custom_shader_pipeline_glsl(
                 + [
                     '-warnings-as-errors',
                     'all',
+                    '-line-directive-mode',
+                    'none',
                     '-lang',
                     'slang',
                     '-target',
