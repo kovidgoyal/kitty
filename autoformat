@@ -99,9 +99,12 @@ def run_clang_format(file_path: str) -> tuple[bool, str, str]:
     result = subprocess.run(cmd, capture_output=True, input=src)
     if result.returncode != 0:
         return False, file_path, result.stderr.decode()
-    new_hash = data_hash(result.stdout)
-    with open(file_path, 'wb') as f:
-        f.write(result.stdout)
+    if result.stdout:
+        new_hash = data_hash(result.stdout)
+        with open(file_path, 'wb') as f:
+            f.write(result.stdout)
+    else:
+        new_hash = current_hash
 
     with cache_lock:
         cache[rel_path] = new_hash
