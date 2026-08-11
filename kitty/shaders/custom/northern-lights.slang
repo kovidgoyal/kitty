@@ -1,4 +1,6 @@
 #language slang 2026
+// Copyright (C) 2026 Sami Farin
+// Distributed under terms of the GPLv3 license.
 
 // Northern Lights — Volumetric Aurora Borealis - by Sami Farin
 //
