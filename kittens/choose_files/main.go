@@ -854,18 +854,15 @@ func (h *Handler) set_state_from_config(conf *Config, opts *Options) (err error)
 var default_cwd string
 var use_light_colors bool
 
-func quote_if_needed(x string) string {
-	if s, err := shlex.Split(x); len(s) == 1 && err == nil && !strings.Contains(x, "$") {
-		return x
-	}
-	return utils.QuoteStringForSH(x)
+func shell_output(selections []string) string {
+	return strings.Join(utils.Map(shlex.Quote, selections), " ")
 }
 
 func for_shell_relative(x string) string {
 	if rel, is_under, err := utils.RelativeIfUnder(default_cwd, x, false); err == nil && is_under {
 		x = rel
 	}
-	return quote_if_needed(x)
+	return shlex.Quote(x)
 }
 
 func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
@@ -912,7 +909,7 @@ func main(_ *cli.Command, opts *Options, args []string) (rc int, err error) {
 			var m string
 			switch opts.OutputFormat {
 			case "shell":
-				m = strings.Join(utils.Map(quote_if_needed, selections), " ")
+				m = shell_output(selections)
 			case "shell-relative":
 				m = strings.Join(utils.Map(for_shell_relative, selections), " ")
 			case "text":
