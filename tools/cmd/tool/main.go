@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/kovidgoyal/kitty/kittens/ask"
+	"github.com/kovidgoyal/kitty/kittens/broadcast"
 	"github.com/kovidgoyal/kitty/kittens/choose_files"
 	"github.com/kovidgoyal/kitty/kittens/choose_fonts"
 	"github.com/kovidgoyal/kitty/kittens/clipboard"
@@ -69,6 +70,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	quick_access_terminal.EntryPoint(root)
 	// resize_window
 	resize_window.EntryPoint(root)
+	// broadcast
+	broadcast.EntryPoint(root)
 	// unicode_input
 	unicode_input.EntryPoint(root)
 	// show_key
