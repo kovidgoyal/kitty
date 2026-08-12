@@ -316,7 +316,7 @@ def run_test_worker(tests: list[unittest.TestCase], write_fd: int) -> None:
             with forwardable_stdio():
                 result = PipeTestResult(write_fd)
                 unittest.TestSuite(tests).run(result)
-                exit_code = 0 if not result.failures and not result.errors else 1
+                exit_code = 0
     except Exception:
         import traceback
 
@@ -534,7 +534,9 @@ def collect_worker_results(
                         py_worker_errors.append(rec['msg'])
 
     for pid in pids:
-        os.waitpid(pid, 0)
+        _, status = os.waitpid(pid, 0)
+        if status != 0:
+            py_worker_errors.append(f'Python test worker {pid} exited with status {os.waitstatus_to_exitcode(status)}')
 
     elapsed = time.monotonic() - start
 
