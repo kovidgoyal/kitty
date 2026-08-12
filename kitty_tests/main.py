@@ -360,6 +360,56 @@ def fork_test_workers(tests: list[unittest.TestCase]) -> tuple[list[int], list[i
     return pids, read_fds
 
 
+_WORKER_CODE = (
+    'import importlib, json, os, sys\n'
+    'write_fd = int(os.environ["KITTY_TEST_WRITE_FD"])\n'
+    'test_ids = json.load(sys.stdin)\n'
+    'tests = [\n'
+    '    getattr(importlib.import_module(t["module"]), t["cls"])(t["method"])\n'
+    '    for t in test_ids\n'
+    ']\n'
+    'from kitty_tests.main import run_test_worker\n'
+    'run_test_worker(tests, write_fd)\n'
+)
+
+
+def spawn_test_workers(tests: list[unittest.TestCase]) -> tuple[list[subprocess.Popen[bytes]], list[int]]:
+    """Chunk tests and spawn worker subprocesses via kitty +runpy. Returns (procs, read_fds).
+
+    Used on macOS where fork() + threading is unsafe."""
+    from kitty.constants import kitty_exe
+
+    n = min(os.cpu_count() or 4, 8, len(tests))
+    chunks: list[list[unittest.TestCase]] = [[] for _ in range(n)]
+    for i, test in enumerate(tests):
+        chunks[i % n].append(test)
+
+    procs: list[subprocess.Popen[bytes]] = []
+    read_fds: list[int] = []
+
+    for chunk in chunks:
+        r, w = os.pipe()
+        test_ids = [{'module': t.__class__.__module__, 'cls': t.__class__.__name__, 'method': t._testMethodName} for t in chunk]
+        env = os.environ.copy()
+        env['KITTY_TEST_WRITE_FD'] = str(w)
+        proc: subprocess.Popen[bytes] = subprocess.Popen(
+            [kitty_exe(), '+runpy', _WORKER_CODE],
+            pass_fds=(w,),
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            env=env,
+        )
+        os.close(w)
+        assert proc.stdin is not None
+        proc.stdin.write(json.dumps(test_ids).encode())
+        proc.stdin.close()
+        read_fds.append(r)
+        procs.append(proc)
+
+    return procs, read_fds
+
+
 _RED = '\x1b[31m'
 _GREEN = '\x1b[32m'
 _YELLOW = '\x1b[33m'
@@ -371,6 +421,7 @@ _DIM = '\x1b[2m'
 
 def collect_worker_results(
     pids: list[int],
+    procs: list[subprocess.Popen[bytes]],
     read_fds: list[int],
     total_py_tests: int,
     go_proc: Optional[GoProc] = None,
@@ -538,6 +589,11 @@ def collect_worker_results(
         if status != 0:
             py_worker_errors.append(f'Python test worker {pid} exited with status {os.waitstatus_to_exitcode(status)}')
 
+    for proc in procs:
+        rc = proc.wait()
+        if rc != 0:
+            py_worker_errors.append(f'Python test worker exited with status {rc}')
+
     elapsed = time.monotonic() - start
 
     if use_tty:
@@ -661,11 +717,18 @@ def run_tests(report_env: bool = False) -> None:
 
     all_fonts_map(True)
 
-    # Fork Python workers before modifying the main-process env; each worker
+    # Start Python workers before modifying the main-process env; each worker
     # calls env_for_python_tests independently for full HOME/XDG isolation.
+    # On macOS fork()+threading is unsafe, so use subprocess workers there.
     use_parallel = len(tests_list) > PARALLEL_THRESHOLD
+    worker_pids: list[int] = []
+    worker_procs: list[subprocess.Popen[bytes]] = []
+    read_fds: list[int] = []
     if use_parallel:
-        pids, read_fds = fork_test_workers(tests_list)
+        if sys.platform == 'darwin':
+            worker_procs, read_fds = spawn_test_workers(tests_list)
+        else:
+            worker_pids, read_fds = fork_test_workers(tests_list)
 
     # Launch Go immediately so it runs in parallel with Python env setup and tests.
     if has_go:
@@ -685,21 +748,21 @@ def run_tests(report_env: bool = False) -> None:
     with env_for_python_tests(report_env):
         # Module filter with no python tests but go tests present: run go only
         if args.module and not tests_list:
-            _, go_ok = collect_worker_results([], [], 0, go_proc=go_proc)
+            _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
             raise SystemExit(0 if go_ok else 1)
 
         if use_parallel:
-            python_ok, go_ok = collect_worker_results(pids, read_fds, len(tests_list), go_proc=go_proc)
+            python_ok, go_ok = collect_worker_results(worker_pids, worker_procs, read_fds, len(tests_list), go_proc=go_proc)
         elif tests_list:
             python_ok = run_cli(all_tests, args.verbosity)
             if go_proc is not None:
-                _, go_ok = collect_worker_results([], [], 0, go_proc=go_proc)
+                _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
             else:
                 go_ok = True
         else:
             python_ok = True
             if go_proc is not None:
-                _, go_ok = collect_worker_results([], [], 0, go_proc=go_proc)
+                _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
             else:
                 go_ok = True
 
