@@ -184,7 +184,7 @@ Detailed list of changes
 
 - A new option :opt:`remap_modifiers` to allow having modifier keys behave as different modifier keys (:pull:`10307`)
 
-- The :opt:`scrollbar` option now takes a new value ``scrolled-or-hovered`` to also show th escrollbar when the mouse moves over the region (:pull:`10345`)
+- The :opt:`scrollbar` option now takes a new value ``scrolled-or-hovered`` to also show the scrollbar when the mouse moves over the scrollbar region (:pull:`10345`)
 
 - A new :code:`kitten @ screenshot` remote control command to take a pixel perfect PNG screenshot of an OS Window, tab or window
 
