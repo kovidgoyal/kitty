@@ -12,11 +12,31 @@ import tempfile
 import textwrap
 import unittest
 from functools import partial
+from unittest.mock import patch
 
 from .base import BaseTest
 
 
 class TestBuild(BaseTest):
+    def test_incremental_link_command_changes(self) -> None:
+        import setup
+
+        def scheduled_commands(command: list[str], stored_command: list[str]) -> list[setup.Command]:
+            scheduled: list[setup.Command] = []
+            with tempfile.TemporaryDirectory() as tdir, patch.object(setup, 'build_dir', tdir):
+                linkdb = [{'output': setup.LinkKey('kitty'), 'arguments': stored_command}]
+                with open(os.path.join(tdir, 'link_commands.json'), 'w') as f:
+                    json.dump(linkdb, f)
+                with setup.CompilationDatabase(incremental=True) as database:
+                    database.add_command('Linking launcher', command, lambda: False, key=setup.LinkKey('kitty'))
+                    with patch.object(setup, 'parallel_run', side_effect=lambda items: scheduled.extend(items)):
+                        database.build_all()
+            return scheduled
+
+        self.assertFalse(scheduled_commands(['cc', '-o', 'kitty'], ['cc', '-o', 'kitty']))
+        scheduled = scheduled_commands(['cc', '-lnew', '-o', 'kitty'], ['cc', '-lold', '-o', 'kitty'])
+        self.assertEqual([command.cmd for command in scheduled], [['cc', '-lnew', '-o', 'kitty']])
+
     def test_exe(self) -> None:
         from kitty.constants import kitten_exe, kitty_exe, slangc, str_version
 
