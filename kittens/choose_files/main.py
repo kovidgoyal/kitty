@@ -250,7 +250,7 @@ def relative_path_if_possible(path: str, base: str) -> str:
     return path
 
 
-def format_selection_for_paste(paths: list[str], cwd: str, at_prompt: bool) -> str:
+def format_selection_for_paste(paths: list[str], cwd: str | None, at_prompt: bool) -> str:
     items = []
     for path in paths:
         if cwd:
