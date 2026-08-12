@@ -432,7 +432,7 @@ Path to a log file to store STDOUT/STDERR when using :option:`--detach`
 
 
 --session
-completion=type:file ext:session relative:conf group:"Session files"
+completion=type:file ext:session,kitty-session,kitty_session relative:conf group:"Session files"
 Path to a file containing the startup :italic:`session` (tabs, windows, layout,
 programs). Use - to read from STDIN. See :ref:`sessions` for details and
 an example. Environment variables in the file name are expanded,

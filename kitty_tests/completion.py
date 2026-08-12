@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 
 from kitty.constants import kitten_exe as kitten
+from kitty.session import SESSION_FILE_EXTENSIONS
 
 from .base import BaseTest
 
@@ -109,6 +110,9 @@ def completion(self: TestCompletion, tdir: str):
     make_file('exe-not2.jpeg')
     make_file('sub/exe3', 0o700)
     make_file('sub/exe-not3.png')
+    session_files = tuple(f'project.{ext}' for ext in sorted(SESSION_FILE_EXTENSIONS))
+    for path in session_files:
+        make_file(f'sub/{path}')
 
     add('kitty x', all_words())
     add('kitty e', all_words('exe1', 'exe2'))
@@ -132,6 +136,7 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty -c', all_words('-c'))
     add('kitty --', has_words('--config', '--single-instance', '--'))
     add('kitty --s', has_words('--session', '--start-as'))
+    add('kitty --session ', all_words(*session_files))
     add('kitty --start-as', all_words('--start-as'))
     add('kitty --start-as ', all_words('minimized', 'maximized', 'fullscreen', 'normal', 'hidden'))
     add('kitty -1 ', does_not_have_words('@ls', '@'))
