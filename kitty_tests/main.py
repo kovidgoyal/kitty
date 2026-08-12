@@ -298,10 +298,15 @@ class PipeTestResult(unittest.TestResult):
         super().addUnexpectedSuccess(test)
         self._send({'t': 'xpass', 'id': str(test), 'e': self._elapsed()})
 
+    def addSubTest(self, test: unittest.TestCase, subtest: unittest.TestCase, err: Any) -> None:
+        super().addSubTest(test, subtest, err)
+        if err is not None:
+            record_type = 'fail' if issubclass(err[0], test.failureException) else 'error'
+            self._send({'t': record_type, 'id': str(subtest), 'e': self._elapsed(), 'msg': self._exc_info_to_string(err, test)})
+
 
 def run_test_worker(tests: list[unittest.TestCase], write_fd: int) -> None:
     """Execute in a forked child: run tests, send results over write_fd, then exit."""
-    result: Optional[PipeTestResult] = None
     exit_code = 1
     try:
         with env_for_python_tests():
@@ -310,7 +315,9 @@ def run_test_worker(tests: list[unittest.TestCase], write_fd: int) -> None:
             with forwardable_stdio():
                 result = PipeTestResult(write_fd)
                 unittest.TestSuite(tests).run(result)
-                exit_code = 0 if not result.failures and not result.errors else 1
+                # Test outcomes are part of the pipe protocol. A non-zero
+                # process status is reserved for worker failures.
+                exit_code = 0
     except Exception:
         import traceback
 
@@ -528,7 +535,9 @@ def collect_worker_results(
                         py_worker_errors.append(rec['msg'])
 
     for pid in pids:
-        os.waitpid(pid, 0)
+        _, status = os.waitpid(pid, 0)
+        if status != 0:
+            py_worker_errors.append(f'Python test worker {pid} exited with status {os.waitstatus_to_exitcode(status)}')
 
     elapsed = time.monotonic() - start
 
