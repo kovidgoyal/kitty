@@ -205,6 +205,8 @@ Detailed list of changes
 
 - Sessions: Also save/restore layouts other than the currently active layout (:pull:`10324`)
 
+- Wayland: Fix clipboard sharing between kitty instances in containers with isolated PID namespaces (:iss:`10352`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

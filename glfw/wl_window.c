@@ -440,8 +440,8 @@ _glfwWaylandAfterBufferSwap(_GLFWwindow *window) {
 
 static const char *
 clipboard_mime(void) {
-    static char buf[128] = {0};
-    if (buf[0] == 0) { snprintf(buf, sizeof(buf), "application/glfw+clipboard-%d", getpid()); }
+    static char buf[256] = {0};
+    if (buf[0] == 0) { snprintf(buf, sizeof(buf), "application/glfw+clipboard-%d-%lld", getpid(), (long long)monotonic_start_time); }
     return buf;
 }
 
