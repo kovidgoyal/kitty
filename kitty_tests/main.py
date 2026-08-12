@@ -360,17 +360,10 @@ def fork_test_workers(tests: list[unittest.TestCase]) -> tuple[list[int], list[i
     return pids, read_fds
 
 
-_WORKER_CODE = (
-    'import importlib, json, os, sys\n'
-    'write_fd = int(os.environ["KITTY_TEST_WRITE_FD"])\n'
-    'test_ids = json.load(sys.stdin)\n'
-    'tests = [\n'
-    '    getattr(importlib.import_module(t["module"]), t["cls"])(t["method"])\n'
-    '    for t in test_ids\n'
-    ']\n'
-    'from kitty_tests.main import run_test_worker\n'
-    'run_test_worker(tests, write_fd)\n'
-)
+def worker_main(write_fd: int) -> None:
+    test_ids = json.load(sys.stdin)
+    tests = [getattr(importlib.import_module(t['module']), t['cls'])(t['method']) for t in test_ids]
+    run_test_worker(tests, write_fd)
 
 
 def spawn_test_workers(tests: list[unittest.TestCase]) -> tuple[list[subprocess.Popen[bytes]], list[int]]:
@@ -390,15 +383,12 @@ def spawn_test_workers(tests: list[unittest.TestCase]) -> tuple[list[subprocess.
     for chunk in chunks:
         r, w = os.pipe()
         test_ids = [{'module': t.__class__.__module__, 'cls': t.__class__.__name__, 'method': t._testMethodName} for t in chunk]
-        env = os.environ.copy()
-        env['KITTY_TEST_WRITE_FD'] = str(w)
         proc: subprocess.Popen[bytes] = subprocess.Popen(
-            [kitty_exe(), '+runpy', _WORKER_CODE],
+            [kitty_exe(), '+runpy', f'from kitty_tests.main import *; worker_main({w})'],
             pass_fds=(w,),
             stdin=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            env=env,
         )
         os.close(w)
         assert proc.stdin is not None
