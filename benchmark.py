@@ -2,7 +2,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import fcntl
-import io
 import os
 import select
 import signal
@@ -13,8 +12,10 @@ import time
 from pty import CHILD, fork
 
 from kitty.constants import kitten_exe
-from kitty.fast_data_types import Screen, safe_pipe
+from kitty.fast_data_types import ChildMonitor, Screen, safe_pipe
 from kitty.utils import read_screen_size
+
+BENCHMARK_WINDOW_ID = 1
 
 
 def run_parsing_benchmark(cell_width: int = 10, cell_height: int = 20, scrollback: int = 20000) -> None:
@@ -32,48 +33,42 @@ def run_parsing_benchmark(cell_width: int = 10, cell_height: int = 20, scrollbac
             time.sleep(0.01)
         signal.pthread_sigmask(signal.SIG_SETMASK, ())
         os.execvp(argv[0], argv)
-    # os.set_blocking(master_fd, False)
     x_pixels = columns * cell_width
     y_pixels = rows * cell_height
     s = struct.pack('HHHH', rows, columns, x_pixels, y_pixels)
     fcntl.ioctl(master_fd, termios.TIOCSWINSZ, s)
 
-    write_buf = b''
-    r_pipe, w_pipe = safe_pipe(True)
+    child_died = False
 
-    class ToChild:
-        def write(self, x: bytes | str) -> None:
-            nonlocal write_buf
-            if isinstance(x, str):
-                x = x.encode()
-            write_buf += x
-            os.write(w_pipe, b'1')
+    def on_child_death(window_id: int, died: bool, exit_status: int) -> None:
+        nonlocal child_died
+        child_died = True
 
-    screen = Screen(None, rows, columns, scrollback, cell_width, cell_height, 0, ToChild())
+    child_monitor = ChildMonitor(on_child_death, None)
 
-    def parse_bytes(data: bytes | memoryview) -> None:
-        data = memoryview(data)
-        while data:
-            dest = screen.test_create_write_buffer()
-            s = screen.test_commit_write_buffer(data, dest)
-            data = data[s:]
-            screen.test_parse_written_data()
+    # r_pipe: benchmark polls this; w_pipe: io_thread writes here on data ready
+    r_pipe, w_pipe = safe_pipe(False)
+    child_monitor.set_wakeup_fd(w_pipe)
 
-    while True:
-        rd, wd, _ = select.select([master_fd, r_pipe], [master_fd] if write_buf else [], [])
-        if r_pipe in rd:
-            os.read(r_pipe, 256)
-        if master_fd in rd:
-            try:
-                data = os.read(master_fd, io.DEFAULT_BUFFER_SIZE)
-            except OSError:
-                data = b''
-            if not data:
-                break
-            parse_bytes(data)
-        if master_fd in wd:
-            n = os.write(master_fd, write_buf)
-            write_buf = write_buf[n:]
+    screen = Screen(None, rows, columns, scrollback, cell_width, cell_height, BENCHMARK_WINDOW_ID)
+    child_monitor.add_child(BENCHMARK_WINDOW_ID, child_pid, master_fd, screen)
+    child_monitor.start()
+
+    try:
+        while not child_died:
+            rd, _, _ = select.select([r_pipe], [], [], 1.0)
+            if rd:
+                # drain all accumulated wakeup bytes
+                try:
+                    os.read(r_pipe, 256)
+                except OSError:
+                    pass
+            child_monitor.parse_input_once()
+    finally:
+        child_monitor.shutdown_monitor()  # io_loop closes master_fd via cleanup_child
+        os.close(r_pipe)
+        os.close(w_pipe)
+
     if isatty:
         lines: list[str] = []
         screen.linebuf.as_ansi(lines.append)
