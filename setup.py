@@ -703,6 +703,7 @@ def init_env(
 
     if os.environ.get('DEVELOP_ROOT'):
         cflags.insert(0, f'-I{os.environ["DEVELOP_ROOT"]}/include')
+        cflags.insert(0, f'-DDEVELOP_ROOT="{os.environ["DEVELOP_ROOT"]}"')
         ldpaths.insert(0, f'-L{os.environ["DEVELOP_ROOT"]}/lib')
 
     if building_arch:

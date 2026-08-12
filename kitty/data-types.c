@@ -1022,6 +1022,10 @@ PyInit_fast_data_types(void) {
 #ifdef KITTY_VCS_REV
     PyModule_AddStringMacro(m, KITTY_VCS_REV);
 #endif
+#ifndef DEVELOP_ROOT
+#define DEVELOP_ROOT ""
+#endif
+    PyModule_AddStringMacro(m, DEVELOP_ROOT);
     PyModule_AddIntMacro(m, CURSOR_BLOCK);
     PyModule_AddIntMacro(m, CURSOR_BEAM);
     PyModule_AddIntMacro(m, CURSOR_UNDERLINE);
