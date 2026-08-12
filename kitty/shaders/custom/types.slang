@@ -84,7 +84,7 @@ public struct KittyTextures {
     public Sampler2D b;
     public Sampler2D persist;
 
-    public float2 pos; // the position of this pixel in the textures (UV coordinates)
+    public float2 pos; // the position of this pixel in the viewport (UV coordinates, [0,1] range, origin at bottom-left)
 
     // Some group related uniforms
 

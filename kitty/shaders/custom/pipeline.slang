@@ -65,7 +65,12 @@ public float4
 pipeline_fragment_main(float2 backbuffer_pos, int group, float4 viewport, float animation_progress, bool convert_to_srgb) {
     float4 color = backbuffer.Sample(backbuffer_pos); // pre multiplied linear RGB
     color = float4(color.rgb / color.a, color.a);     // un pre multiplied color passed through pipeline
-    KittyTextures t = { backbuffer, a, b, persist, backbuffer_pos, viewport, animation_progress, group };
+    // src_rect encodes (0, sy, sx, 0) — the fraction of the shared texture occupied by the current
+    // viewport. Normalize backbuffer_pos so that t.pos is always in [0,1] viewport UV regardless of
+    // whether the shared texture is larger than the current viewport (e.g. after a window shrink).
+    float2 src_scale = float2(max(1e-6, csd.src_rect[right]), max(1e-6, csd.src_rect[top]));
+    float2 viewport_pos = backbuffer_pos / src_scale;
+    KittyTextures t = { backbuffer, a, b, persist, viewport_pos, viewport, animation_progress, group };
     // PIPELINE
     return vec4_premul(color.rgb, color.a);
 }
