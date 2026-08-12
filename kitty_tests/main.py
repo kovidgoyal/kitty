@@ -361,6 +361,12 @@ def fork_test_workers(tests: list[unittest.TestCase]) -> tuple[list[int], list[i
 
 
 def worker_main(write_fd: int) -> None:
+    # we need fonts installed in the user home directory as well, so initialize
+    # fontconfig before nuking $HOME and friends
+    from kitty.fonts.common import all_fonts_map
+
+    all_fonts_map(True)
+
     test_ids = json.load(sys.stdin)
     tests = [getattr(importlib.import_module(t['module']), t['cls'])(t['method']) for t in test_ids]
     run_test_worker(tests, write_fd)
@@ -701,12 +707,6 @@ def run_tests(report_env: bool = False) -> None:
     if args.name and not tests_list and not has_go:
         raise SystemExit('No test named %s found' % ' '.join(args.name))
 
-    # Pre-initialize fonts once before forking so all worker processes inherit
-    # the warm C-level fontconfig state and their own all_fonts_map() calls are fast.
-    from kitty.fonts.common import all_fonts_map
-
-    all_fonts_map(True)
-
     # Start Python workers before modifying the main-process env; each worker
     # calls env_for_python_tests independently for full HOME/XDG isolation.
     # On macOS fork()+threading is unsafe, so use subprocess workers there.
@@ -718,6 +718,11 @@ def run_tests(report_env: bool = False) -> None:
         if sys.platform == 'darwin':
             worker_procs, read_fds = spawn_test_workers(tests_list)
         else:
+            # Pre-initialize fonts once before forking so all worker processes inherit
+            # the warm C-level fontconfig state and their own all_fonts_map() calls are fast.
+            from kitty.fonts.common import all_fonts_map
+
+            all_fonts_map(True)
             worker_pids, read_fds = fork_test_workers(tests_list)
 
     # Launch Go immediately so it runs in parallel with Python env setup and tests.
@@ -729,34 +734,27 @@ def run_tests(report_env: bool = False) -> None:
     else:
         go_proc = None
     sys.stdout.flush()
-    # we need fonts installed in the user home directory as well, so initialize
-    # fontconfig before nuking $HOME and friends
-    from kitty.fonts.common import all_fonts_map
+    # Module filter with no python tests but go tests present: run go only
+    if args.module and not tests_list:
+        _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
+        raise SystemExit(0 if go_ok else 1)
 
-    all_fonts_map(True)
-
-    with env_for_python_tests(report_env):
-        # Module filter with no python tests but go tests present: run go only
-        if args.module and not tests_list:
+    if use_parallel:
+        python_ok, go_ok = collect_worker_results(worker_pids, worker_procs, read_fds, len(tests_list), go_proc=go_proc)
+    elif tests_list:
+        python_ok = run_cli(all_tests, args.verbosity)
+        if go_proc is not None:
             _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
-            raise SystemExit(0 if go_ok else 1)
-
-        if use_parallel:
-            python_ok, go_ok = collect_worker_results(worker_pids, worker_procs, read_fds, len(tests_list), go_proc=go_proc)
-        elif tests_list:
-            python_ok = run_cli(all_tests, args.verbosity)
-            if go_proc is not None:
-                _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
-            else:
-                go_ok = True
         else:
-            python_ok = True
-            if go_proc is not None:
-                _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
-            else:
-                go_ok = True
+            go_ok = True
+    else:
+        python_ok = True
+        if go_proc is not None:
+            _, go_ok = collect_worker_results([], [], [], 0, go_proc=go_proc)
+        else:
+            go_ok = True
 
-        exit_code = 0 if (python_ok and go_ok) else 1
+    exit_code = 0 if (python_ok and go_ok) else 1
 
     if exit_code != 0:
         print('\x1b[31mError\x1b[39m: Some tests failed!')
