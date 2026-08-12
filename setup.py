@@ -207,6 +207,8 @@ class CompilationDatabase:
         self.compile_commands: List[Command] = []
         self.link_commands: List[Command] = []
         self.post_link_commands: List[Command] = []
+        self.db: Dict[CompileKey, Sequence[str]] = {}
+        self.linkdb: Dict[CompileKey, Sequence[str]] = {}
 
     def add_command(
         self,
@@ -236,15 +238,15 @@ class CompilationDatabase:
 
         items = []
         for compile_cmd in self.compile_commands:
-            if not self.incremental or self.cmd_changed(compile_cmd) or compile_cmd.is_newer_func():
+            if not self.incremental or self.cmd_changed(compile_cmd, self.db) or compile_cmd.is_newer_func():
                 items.append(compile_cmd)
         items.sort(key=sort_key, reverse=True)
         parallel_run(items)
 
         items = []
-        for compile_cmd in self.link_commands:
-            if not self.incremental or compile_cmd.is_newer_func():
-                items.append(compile_cmd)
+        for link_cmd in self.link_commands:
+            if not self.incremental or self.cmd_changed(link_cmd, self.linkdb) or link_cmd.is_newer_func():
+                items.append(link_cmd)
         parallel_run(items)
 
         items = []
@@ -253,12 +255,10 @@ class CompilationDatabase:
                 items.append(compile_cmd)
         parallel_run(items)
 
-    def cmd_changed(self, compile_cmd: Command) -> bool:
-        key, cmd = compile_cmd.key, compile_cmd.cmd
-        dkey = self.db.get(key)
-        if dkey != cmd:
+    def cmd_changed(self, command: Command, database: Dict[CompileKey, Sequence[str]]) -> bool:
+        if command.key is None:
             return True
-        return False
+        return database.get(command.key) != command.cmd
 
     def __enter__(self) -> 'CompilationDatabase':
         self.all_keys: Set[CompileKey] = set()
@@ -276,7 +276,7 @@ class CompilationDatabase:
             link_database = []
         compilation_database = {CompileKey(k['file'], k['output']): k['arguments'] for k in compilation_database}
         self.db = compilation_database
-        self.linkdb = {tuple(k['output']): k['arguments'] for k in link_database}
+        self.linkdb = {CompileKey(*k['output']): k['arguments'] for k in link_database}
         return self
 
     def __exit__(self, *a: object) -> None:
