@@ -150,10 +150,17 @@ class GoProc:
         self.end_time: float = 0.0
         self.tdir = mkdtemp(prefix='kitty-go-tests-')
         env['HOME'] = self.tdir
-        if not env.get('GOCACHE') and (gop := os.path.expanduser('~/.cache/go-build')) and os.path.isdir(gop):
-            env['GOCACHE'] = gop
-        if not env.get('GOMODCACHE') and (gop := os.path.expanduser('~/go/pkg/mod')) and os.path.isdir(gop):
-            env['GOMODCACHE'] = gop
+        if not env.get('GOCACHE') or not env.get('GOMODCACHE'):
+            try:
+                r = subprocess.run([cmd[0], 'env', 'GOCACHE', 'GOMODCACHE'], capture_output=True, text=True, timeout=10)
+                if r.returncode == 0:
+                    gop, gomodp = r.stdout.strip().splitlines()
+                    if gop and not env.get('GOCACHE') and os.path.isdir(gop):
+                        env['GOCACHE'] = gop
+                    if gomodp and not env.get('GOMODCACHE') and os.path.isdir(gomodp):
+                        env['GOMODCACHE'] = gomodp
+            except (OSError, subprocess.TimeoutExpired):
+                pass
         env['XDG_CONFIG_HOME'] = self.tdir + '/conf'
         os.mkdir(env['XDG_CONFIG_HOME'])
         env['XDG_CACHE_HOME'] = self.tdir + '/cache'
