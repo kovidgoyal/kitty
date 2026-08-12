@@ -298,6 +298,12 @@ class PipeTestResult(unittest.TestResult):
         super().addUnexpectedSuccess(test)
         self._send({'t': 'xpass', 'id': str(test), 'e': self._elapsed()})
 
+    def addSubTest(self, test: unittest.TestCase, subtest: unittest.TestCase, err: Any) -> None:
+        super().addSubTest(test, subtest, err)
+        if err is not None:
+            record_type = 'fail' if issubclass(err[0], test.failureException) else 'error'
+            self._send({'t': record_type, 'id': str(subtest), 'e': self._elapsed(), 'msg': self._exc_info_to_string(err, test)})
+
 
 def run_test_worker(tests: list[unittest.TestCase], write_fd: int) -> None:
     """Execute in a forked child: run tests, send results over write_fd, then exit."""
