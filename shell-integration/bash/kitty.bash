@@ -214,7 +214,7 @@ _ksi_main() {
         _ksi_prompt[ps0_suffix]+="\[\e[0 q\]"  # blinking default cursor
     fi
 
-    if [[ "${_ksi_prompt[title]}" == "y" ||  "${_ksi_prompt[mark]}" ]]; then
+    if [[ "${_ksi_prompt[title]}" == "y" || "${_ksi_prompt[mark]}" == "y" ]]; then
         _ksi_get_current_command() {
             builtin local last_cmd
             last_cmd=$(HISTTIMEFORMAT= builtin history 1)

@@ -158,6 +158,26 @@ class ShellIntegration(BaseTest):
         self.assertIsNotNone(func)
         self.sudo_parser_tests(['bash', '--noprofile', '--norc', '-c'], func)
 
+    @unittest.skipUnless(bash_ok(), 'bash not installed, too old, or debug build')
+    def test_bash_disabled_command_hook(self):
+        if self.with_kitten:
+            return
+        integration_script = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
+        command = 'PS0=original; source "$KITTY_BASH_INTEGRATION"; _ksi_prompt_command; printf %s "$PS0"'
+        common_options = 'enabled no-cursor no-cwd no-complete no-sudo'
+        for options, has_command_hook in (
+            ('no-title no-prompt-mark', False),
+            ('no-prompt-mark', True),
+            ('no-title', True),
+        ):
+            with self.subTest(options=options), tempfile.TemporaryDirectory() as home_dir:
+                env = basic_shell_env(home_dir)
+                env['KITTY_BASH_INTEGRATION'] = integration_script
+                env['KITTY_SHELL_INTEGRATION'] = f'{common_options} {options}'
+                cp = subprocess.run(['bash', '--noprofile', '--norc', '-ic', command], env=env, capture_output=True)
+                self.assertEqual(cp.returncode, 0, cp.stderr.decode())
+                self.assertEqual(cp.stdout.decode() != 'original', has_command_hook)
+
     @unittest.skipUnless(shutil.which('fish'), 'fish not installed')
     def test_fish_sudo_parser(self):
         if self.with_kitten:
