@@ -95,3 +95,35 @@ func TestParseConnDataSSHKittenEdge(t *testing.T) {
 		t.Fatalf("ssh kitten edge case (single item): %+v, SSHKittenCmdline=%v", c, c.SSHKittenCmdline)
 	}
 }
+
+func TestPythonSplitExt(t *testing.T) {
+	// Table-driven test for pythonSplitExt matching os.path.splitext semantics.
+	// Expected values from Python 3: python3 -c "import os; print(os.path.splitext(f))" for each.
+	// Reference run: 2026-08-12
+	for _, tc := range []struct {
+		input    string
+		wantBase string
+		wantExt  string
+	}{
+		// Dotfiles with no extension in remainder (leading dots only)
+		{".bashrc", ".bashrc", ""},
+		{"..bashrc", "..bashrc", ""},
+		{"...", "...", ""},
+		{"..", "..", ""},
+		{"....txt", "....txt", ""}, // 4 leading dots, then "txt" with no dot
+
+		// Dotfiles with extension in remainder
+		{".bashrc.bak", ".bashrc", ".bak"},
+
+		// Normal files
+		{"a.b.c", "a.b", ".c"},
+		{"a.txt", "a", ".txt"},
+		{"plain", "plain", ""},
+	} {
+		base, ext := pythonSplitExt(tc.input)
+		if base != tc.wantBase || ext != tc.wantExt {
+			t.Fatalf("pythonSplitExt(%q):\n  got (%q, %q)\n  want (%q, %q)",
+				tc.input, base, ext, tc.wantBase, tc.wantExt)
+		}
+	}
+}

@@ -99,23 +99,43 @@ func hostname_matches(from_hyperlink, actual string) bool {
 	return fl == al
 }
 
-// pythonSplitExt mirrors Python's os.path.splitext behavior for dotfiles.
-// For a file like "/x/.bashrc" (basename ".bashrc"), Python returns ("/x/.bashrc", "").
-// Go's filepath.Ext would return (".bashrc", "/x/"), losing the filename.
-// Rule: if basename starts with '.' and has no other dots, treat extension as empty.
+// pythonSplitExt mirrors Python's os.path.splitext behavior exactly.
+// Algorithm: skip all leading dots in basename; find last dot in remainder;
+// if found, split at that dot; otherwise no extension.
+// Examples:
+//   "/x/.bashrc" → ("/x/.bashrc", "")          [1 leading dot, no dot in remainder]
+//   "/x/.bashrc.bak" → ("/x/.bashrc", ".bak") [1 leading dot, 1 dot in remainder]
+//   "/x/a.b.c" → ("/x/a.b", ".c")             [0 leading dots, last dot at position 3]
+//   "....txt" → ("....txt", "")                [4 leading dots, no dot in remainder]
 func pythonSplitExt(path string) (string, string) {
-	ext := filepath.Ext(path)
-	if ext == "" {
-		return path, ""
-	}
 	basename := filepath.Base(path)
-	// If basename starts with '.' and has exactly one dot (the leading dot),
-	// then this is a dotfile with no extension.
-	if strings.HasPrefix(basename, ".") && strings.Count(basename, ".") == 1 {
+	dir := filepath.Dir(path)
+
+	// Skip all leading dots in basename
+	i := 0
+	for i < len(basename) && basename[i] == '.' {
+		i++
+	}
+
+	// Find the last dot in the remainder (after leading dots)
+	remainder := basename[i:]
+	idx := strings.LastIndex(remainder, ".")
+
+	if idx == -1 {
+		// No extension found
 		return path, ""
 	}
-	base := strings.TrimSuffix(path, ext)
-	return base, ext
+
+	// Extension starts at position i + idx in the original basename
+	extStart := i + idx
+	baseName := basename[:extStart]
+	ext := basename[extStart:]
+
+	// Reconstruct the full path
+	if dir == "." {
+		return baseName, ext
+	}
+	return filepath.Join(dir, baseName), ext
 }
 
 func auto_rename_dest(dest string, exists func(string) bool) string {
