@@ -26,6 +26,13 @@ from . import is_ci
 PARALLEL_THRESHOLD = 20
 
 
+def should_fork_test_workers(test_count: int, platform: str = sys.platform) -> bool:
+    # CoreFoundation rejects running code in a child forked from a
+    # multi-threaded process. The test launcher initializes native macOS
+    # services before this decision, so macOS tests must remain in-process.
+    return platform != 'darwin' and test_count > PARALLEL_THRESHOLD
+
+
 def contents(package: str) -> Iterator[str]:
     try:
         if sys.version_info[:2] < (3, 10):
@@ -664,7 +671,7 @@ def run_tests(report_env: bool = False) -> None:
 
     # Fork Python workers before modifying the main-process env; each worker
     # calls env_for_python_tests independently for full HOME/XDG isolation.
-    use_parallel = len(tests_list) > PARALLEL_THRESHOLD
+    use_parallel = should_fork_test_workers(len(tests_list))
     if use_parallel:
         pids, read_fds = fork_test_workers(tests_list)
 

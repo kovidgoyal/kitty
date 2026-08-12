@@ -7,10 +7,15 @@ import os
 import unittest
 from contextlib import redirect_stdout
 
-from .main import PipeTestResult, collect_worker_results
+from .main import PipeTestResult, collect_worker_results, should_fork_test_workers
 
 
 class TestParallelTestRunner(unittest.TestCase):
+    def test_parallel_workers_are_disabled_on_macos(self) -> None:
+        self.assertFalse(should_fork_test_workers(100, 'darwin'))
+        self.assertFalse(should_fork_test_workers(20, 'linux'))
+        self.assertTrue(should_fork_test_workers(21, 'linux'))
+
     def test_subtest_failures_are_reported(self) -> None:
         class FailingSubTest(unittest.TestCase):
             def runTest(self) -> None:
