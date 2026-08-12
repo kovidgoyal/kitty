@@ -75,3 +75,23 @@ func TestAutoRenameDest(t *testing.T) {
 		t.Fatalf("auto_rename_dest: %q", got)
 	}
 }
+
+func TestAutoRenameDotfile(t *testing.T) {
+	taken := map[string]bool{"/x/.bashrc": true}
+	got := auto_rename_dest("/x/.bashrc", func(p string) bool { return taken[p] })
+	if got != "/x/.bashrc-1" {
+		t.Fatalf("auto_rename_dest dotfile: got %q, want /x/.bashrc-1", got)
+	}
+}
+
+func TestParseConnDataSSHKittenEdge(t *testing.T) {
+	// ssh-kitten with exactly 1 cmdline item after sentinel should result in empty SSHKittenCmdline
+	raw := fmt.Sprintf(`["%s", "onlyitem"]`, is_ssh_kitten_sentinel)
+	c, err := parse_conn_data(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.IsSSHKitten || c.Hostname != "onlyitem" || len(c.SSHKittenCmdline) != 0 {
+		t.Fatalf("ssh kitten edge case (single item): %+v, SSHKittenCmdline=%v", c, c.SSHKittenCmdline)
+	}
+}

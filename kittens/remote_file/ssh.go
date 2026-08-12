@@ -44,8 +44,11 @@ func parse_conn_data(raw string) (*SSHConnectionData, error) {
 				cmdline = append(cmdline, s)
 			}
 		}
+		// Python: sk_cmdline[:-2] always removes last 2, or returns empty if fewer items
 		if len(cmdline) >= 2 {
 			cmdline = cmdline[:len(cmdline)-2]
+		} else {
+			cmdline = cmdline[:0]
 		}
 		ans.SSHKittenCmdline = cmdline
 		return ans, nil
@@ -96,10 +99,28 @@ func hostname_matches(from_hyperlink, actual string) bool {
 	return fl == al
 }
 
+// pythonSplitExt mirrors Python's os.path.splitext behavior for dotfiles.
+// For a file like "/x/.bashrc" (basename ".bashrc"), Python returns ("/x/.bashrc", "").
+// Go's filepath.Ext would return (".bashrc", "/x/"), losing the filename.
+// Rule: if basename starts with '.' and has no other dots, treat extension as empty.
+func pythonSplitExt(path string) (string, string) {
+	ext := filepath.Ext(path)
+	if ext == "" {
+		return path, ""
+	}
+	basename := filepath.Base(path)
+	// If basename starts with '.' and has exactly one dot (the leading dot),
+	// then this is a dotfile with no extension.
+	if strings.HasPrefix(basename, ".") && strings.Count(basename, ".") == 1 {
+		return path, ""
+	}
+	base := strings.TrimSuffix(path, ext)
+	return base, ext
+}
+
 func auto_rename_dest(dest string, exists func(string) bool) string {
 	q := dest
-	ext := filepath.Ext(dest)
-	base := strings.TrimSuffix(dest, ext)
+	base, ext := pythonSplitExt(dest)
 	for c := 1; exists(q); c++ {
 		q = fmt.Sprintf("%s-%d%s", base, c, ext)
 	}
