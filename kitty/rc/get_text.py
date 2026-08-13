@@ -11,9 +11,11 @@ if TYPE_CHECKING:
 
 
 class GetText(RemoteCommand):
-    protocol_spec = __doc__ = """
+    protocol_spec = __doc__ = (
+        """
     match/str: The window to get text from
-    extent/choices.screen.first_cmd_output_on_screen.last_cmd_output.last_visited_cmd_output.last_non_empty_output.all.selection.alternate.alternate_scrollback: \
+    extent/choices.screen.first_cmd_output_on_screen.last_cmd_output.last_visited_cmd_output.last_non_empty_output."""
+        """all.selection.alternate.alternate_scrollback: \
         One of :code:`screen`, :code:`first_cmd_output_on_screen`, :code:`last_cmd_output`, \
         :code:`last_visited_cmd_output`, :code:`last_non_empty_output`, :code:`all`, \
         :code:`selection`, :code:`alternate`, or :code:`alternate_scrollback`
@@ -23,6 +25,7 @@ class GetText(RemoteCommand):
     clear_selection/bool: Boolean, if True clear the selection in the matched window
     self/bool: Boolean, if True use window the command was run in
     """
+    )
 
     short_desc = 'Get text from the specified window'
     options_spec = (
