@@ -167,6 +167,10 @@ func edit_loop(master *ControlMaster, editor []string) error {
 		return err
 	}
 	mtime := st.ModTime()
+	// Mirrors main.py handle_action's edit branch: reset the terminal (clear
+	// whatever the ask-menu/hostname-prompt phases drew) right before handing
+	// the screen to the user's $EDITOR, and again once it exits.
+	reset_terminal()
 	argv := append(append([]string{}, editor...), master.Dest)
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
@@ -178,6 +182,7 @@ func edit_loop(master *ControlMaster, editor []string) error {
 	for {
 		select {
 		case <-done:
+			reset_terminal()
 			if master.IsAlive() {
 				if err := master.Upload(false); err != nil {
 					return fmt.Errorf("failed to upload %s: %w", master.remote_path, err)

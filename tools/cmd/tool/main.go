@@ -21,6 +21,7 @@ import (
 	"github.com/kovidgoyal/kitty/kittens/panel"
 	"github.com/kovidgoyal/kitty/kittens/query_terminal"
 	"github.com/kovidgoyal/kitty/kittens/quick_access_terminal"
+	"github.com/kovidgoyal/kitty/kittens/remote_file"
 	"github.com/kovidgoyal/kitty/kittens/resize_window"
 	"github.com/kovidgoyal/kitty/kittens/show_key"
 	"github.com/kovidgoyal/kitty/kittens/ssh"
@@ -72,6 +73,8 @@ func KittyToolEntryPoints(root *cli.Command) {
 	resize_window.EntryPoint(root)
 	// broadcast
 	broadcast.EntryPoint(root)
+	// remote_file
+	remote_file.EntryPoint(root)
 	// unicode_input
 	unicode_input.EntryPoint(root)
 	// show_key
