@@ -13,7 +13,8 @@ if TYPE_CHECKING:
 class GetText(RemoteCommand):
     protocol_spec = __doc__ = """
     match/str: The window to get text from
-    extent/choices.screen.first_cmd_output_on_screen.last_cmd_output.last_visited_cmd_output.last_non_empty_output.all.selection.alternate.alternate_scrollback: \
+    extent/choices.screen.first_cmd_output_on_screen.last_cmd_output.last_visited_cmd_output.\
+last_non_empty_output.all.selection.alternate.alternate_scrollback: \
         One of :code:`screen`, :code:`first_cmd_output_on_screen`, :code:`last_cmd_output`, \
         :code:`last_visited_cmd_output`, :code:`last_non_empty_output`, :code:`all`, \
         :code:`selection`, :code:`alternate`, or :code:`alternate_scrollback`
