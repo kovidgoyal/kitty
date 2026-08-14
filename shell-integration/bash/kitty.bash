@@ -236,7 +236,7 @@ _ksi_main() {
                 # connected to most SSH servers
                 # or use ssh kitten to connected to some SSH servers that do not set SSH_TTY
                 _ksi_prompt[hostname_prefix]="\h: "
-            elif [[ -n "$(builtin command -v who)" && "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]]; then
+            elif [[ -n "$(builtin command -v who)" && "$(builtin command who -m 2> /dev/null)" =~ \([a-fA-F.:0-9]+\)$ ]]; then
                 # the shell integration script is installed manually on the remote system
                 # the environment variables are cleared after sudo
                 # OpenSSH's sshd creates entries in utmp for every login so use those

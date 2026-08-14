@@ -178,6 +178,25 @@ class ShellIntegration(BaseTest):
                 self.assertEqual(cp.returncode, 0, cp.stderr.decode())
                 self.assertEqual(cp.stdout.decode() != 'original', has_command_hook)
 
+    @unittest.skipUnless(bash_ok(), 'bash not installed, too old, or debug build')
+    def test_bash_ssh_hostname_fallback(self):
+        if self.with_kitten:
+            return
+        integration_script = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
+        command = 'PS1="prompt> "; source "$KITTY_BASH_INTEGRATION"; _ksi_prompt_command; printf %s "${PS1@P}"'
+        with tempfile.TemporaryDirectory() as home_dir:
+            home_dir = os.path.realpath(home_dir)
+            who = os.path.join(home_dir, 'who')
+            with open(who, 'w') as f:
+                f.write("#!/bin/sh\nprintf '%s\\n' 'user pts/0 (192.0.2.1)'\n")
+            os.chmod(who, 0o755)
+            env = basic_shell_env(home_dir)
+            env['KITTY_BASH_INTEGRATION'] = integration_script
+            env['PATH'] = os.pathsep.join((home_dir, env['PATH']))
+            cp = subprocess.run(['bash', '--noprofile', '--norc', '-ic', command], cwd=home_dir, env=env, capture_output=True)
+            self.assertEqual(cp.returncode, 0, cp.stderr.decode())
+            self.assertIn(': ~\x07', cp.stdout.decode())
+
     @unittest.skipUnless(shutil.which('fish'), 'fish not installed')
     def test_fish_sudo_parser(self):
         if self.with_kitten:
