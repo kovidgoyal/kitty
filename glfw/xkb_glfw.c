@@ -724,6 +724,39 @@ update_modifiers(_GLFWXKBData *xkb) {
     xkb->states.activeUnknownModifiers = active_unknown_modifiers(xkb, xkb->states.state);
 }
 
+#ifdef _GLFW_X11
+static xkb_mod_mask_t remap_xkb_mask(_GLFWXKBData *xkb, xkb_mod_mask_t mask);
+
+// A freshly loaded state is seeded from the server's live modifier state by
+// xkb_x11_state_new_from_device(), which knows nothing about remap_modifiers.
+// Every other way the state changes goes through glfw_xkb_update_modifiers(),
+// where the permutation is applied, so without this the state holds physical
+// modifiers from the reload until the next XkbStateNotify happens to arrive, and
+// key events in that window report the modifier on the keycap rather than the
+// one it was remapped to.
+//
+// X11 only: elsewhere xkb_glfw_load_state() is xkb_state_new(), which starts
+// empty, so there is nothing to re-apply.
+static void
+reapply_modifier_remap_to_state(_GLFWXKBData *xkb) {
+    if (!_glfw.modifierRemapMask || !xkb->states.state) return;
+    const xkb_mod_mask_t depressed = xkb_state_serialize_mods(xkb->states.state, XKB_STATE_MODS_DEPRESSED);
+    const xkb_mod_mask_t latched = xkb_state_serialize_mods(xkb->states.state, XKB_STATE_MODS_LATCHED);
+    const xkb_mod_mask_t locked = xkb_state_serialize_mods(xkb->states.state, XKB_STATE_MODS_LOCKED);
+    const xkb_mod_mask_t remapped = remap_xkb_mask(xkb, depressed);
+    if (remapped == depressed && latched == remap_xkb_mask(xkb, latched) && locked == remap_xkb_mask(xkb, locked)) return;
+    debug("remap_modifier: re-applying to reloaded xkb state, depressed 0x%x -> 0x%x\n", depressed, remapped);
+    xkb_state_update_mask(
+        xkb->states.state,
+        remapped,
+        remap_xkb_mask(xkb, latched),
+        remap_xkb_mask(xkb, locked),
+        xkb_state_serialize_layout(xkb->states.state, XKB_STATE_LAYOUT_DEPRESSED),
+        xkb_state_serialize_layout(xkb->states.state, XKB_STATE_LAYOUT_LATCHED),
+        xkb_state_serialize_layout(xkb->states.state, XKB_STATE_LAYOUT_LOCKED));
+}
+#endif
+
 bool
 glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
     const char *err;
@@ -751,6 +784,11 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
             i != xkb->capsLockIdx && i != xkb->numLockIdx)
             xkb->unknownModifiers[j++] = i;
     }
+#ifdef _GLFW_X11
+    // after glfw_xkb_update_masks(), which computes the modifier indices the
+    // remap is expressed in, and before update_modifiers() reads the state
+    reapply_modifier_remap_to_state(xkb);
+#endif
     xkb->states.modifiers = 0;
     xkb->states.activeUnknownModifiers = 0;
     update_modifiers(xkb);
