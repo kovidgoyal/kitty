@@ -10,7 +10,7 @@ Getting started
 To get started with creating a builtin kitten, one that will become part of kitty
 and be available as ``kitten my-kitten``, create a directory named
 :file:`my_kitten` in the :file:`kittens` directory. Then, in this directory
-add three, files: :file:`__init__.py` (an empty file), :file:`__main__.py` and
+add three files: :file:`__init__.py` (an empty file), :file:`main.py` and
 :file:`main.go`.
 
 Template for `main.py`
@@ -67,7 +67,7 @@ The file :file:`main.py` contains the command line option definitions for your k
 
     # The usage string for your kitten
     usage = 'TITLE [BODY ...]'
-    short_description = 'some short description of your kitten it will show up when running kitten without arguments to list all kittens`
+    short_description = 'A short description of your kitten'
 
     if __name__ == '__main__':
         raise SystemExit('This should be run as kitten my-kitten')
@@ -89,7 +89,7 @@ Template for `main.go`
     import (
         "fmt"
 
-        "kitty/tools/cli"
+        "github.com/kovidgoyal/kitty/tools/cli"
     )
 
     var _ = fmt.Print
@@ -111,7 +111,7 @@ Edit :file:`tools/cmd/tool/main.go`
 
 Add the entry point of the kitten into :file:`tools/cmd/tool/main.go`.
 
-First, import the kitten into this file. To do this, add :code:`"kitty/kittens/my_kitten"` into the :code:`import ( ... )` section at the top.
+First, import the kitten into this file. To do this, add :code:`"github.com/kovidgoyal/kitty/kittens/my_kitten"` into the :code:`import ( ... )` section at the top.
 Then, add ``my_kitten.EntryPoint(root)`` into ``func KittyToolEntryPoints(root *cli.Command)`` and you are done. After running make you should
 be able to test your kitten by running::
 
