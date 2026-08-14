@@ -378,6 +378,7 @@ func main(cmd *cli.Command, opts *Options, args []string) (rc int, err error) {
 	}
 	result, err := handle_action(action, opts)
 	if err != nil {
+		reset_terminal()
 		show_error(err.Error())
 		return 1, nil
 	}
