@@ -459,6 +459,10 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     float timestamp = fmod(d.timestamp, 86400.0f) * TIME_SCALE;
 
     float2 uv = t.pos;
+    // d.src_rect.zy = (sx, sy) = (vw/W, vh/H): fraction of the shared texture used by this viewport.
+    // Named textures (a, persist) and the backbuffer span the full W×H texture, so we must scale
+    // t.pos back to raw texture UV when sampling them, otherwise we read outside the valid region.
+    float2 tex_uv = uv * d.src_rect.zy;
     float aspect = pixelDims.x / max(pixelDims.y, 1.0f);
 
     float2 mouseUV = (d.mouse_pos.xy - t.viewport.xy) / max(t.viewport.zw, float2(1e-5f, 1e-5f));
@@ -468,7 +472,7 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
 
     // First group: Accumulate radial aurora rays cast from sky center into scratch texture 'a'
     if (STAGE == 0) {
-        float prev = t.persist.Sample(uv).r;
+        float prev = t.persist.Sample(tex_uv).r;
         float decayed = prev * saturate(1.0f - ACCUMULATION_DECAY);
 
         float deposit = 0.0f;
@@ -509,7 +513,7 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     }
 
     // Second group: Copy scratch texture 'a' to 'persist'
-    if (STAGE == 1) { return t.a.Sample(uv); }
+    if (STAGE == 1) { return t.a.Sample(tex_uv); }
 
     // Third group: Main composite pass
     AuroraRandParams rp = getAuroraParams(d.timestamp, INITIAL_RANDOM_SEED);
@@ -518,7 +522,7 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
 
     float2 fragCoord = uv * pixelDims;
 
-    float persistentTrail = t.persist.Sample(uv).r * MOUSE_PERSIST_INTENSITY;
+    float persistentTrail = t.persist.Sample(tex_uv).r * MOUSE_PERSIST_INTENSITY;
 
     float3 ro = float3(0.0f, 0.0f, -CAMERA_DISTANCE);
     float2 centeredUV = uv - 0.5f;
@@ -558,7 +562,7 @@ fragment_main(float4 color, KittyTextures t, KittyCustomShaderData d) {
     float gate = smoothCutoff(effectLum, EFFECT_FLOOR, EFFECT_CEILING);
     col *= gate;
 
-    float4 terminalColor = t.backbuffer.Sample(t.pos);
+    float4 terminalColor = t.backbuffer.Sample(tex_uv);
     float termLum = dot(terminalColor.rgb, float3(0.299f, 0.587f, 0.114f));
     float isBlack = step(termLum, 0.001f);
     float textPreserve = 1.0f - smoothstep(BLACK_BLEND_THRESHOLD, BLACK_BLEND_THRESHOLD + 0.2f, termLum);
