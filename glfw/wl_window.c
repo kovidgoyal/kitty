@@ -549,7 +549,15 @@ static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener =
 static void
 surfaceHandleEnter(void *data, struct wl_surface *surface UNUSED, struct wl_output *output) {
     _GLFWwindow *window = data;
+    // output is NULL when the wl_output global it refers to was removed before
+    // this event was dispatched. Wayland delivers destroyed objects as NULL even
+    // for arguments declared non-nullable, so this must be handled.
+    // See https://wayland.freedesktop.org/docs/html/apc.html
+    if (!output) return;
     _GLFWmonitor *monitor = wl_output_get_user_data(output);
+    // never store NULL in window->wl.monitors as checkScaleChange() dereferences
+    // every entry unconditionally
+    if (!monitor) return;
 
     if (window->wl.monitorsCount + 1 > window->wl.monitorsSize) {
         ++window->wl.monitorsSize;
@@ -567,15 +575,17 @@ surfaceHandleEnter(void *data, struct wl_surface *surface UNUSED, struct wl_outp
 static void
 surfaceHandleLeave(void *data, struct wl_surface *surface UNUSED, struct wl_output *output) {
     _GLFWwindow *window = data;
+    // output is NULL when the wl_output global it refers to was removed before
+    // this event was dispatched, see the comment in surfaceHandleEnter(). In that
+    // case registryHandleGlobalRemove() has already dropped the monitor from
+    // window->wl.monitors, so there is nothing left to do here.
+    if (!output) return;
     _GLFWmonitor *monitor = wl_output_get_user_data(output);
-    bool found;
-    int i;
+    if (!monitor) return;
 
-    for (i = 0, found = false; i < window->wl.monitorsCount - 1; ++i) {
-        if (monitor == window->wl.monitors[i]) found = true;
-        if (found) window->wl.monitors[i] = window->wl.monitors[i + 1];
+    for (int i = window->wl.monitorsCount - 1; i >= 0; i--) {
+        if (window->wl.monitors[i] == monitor) { remove_i_from_array(window->wl.monitors, i, window->wl.monitorsCount); }
     }
-    window->wl.monitors[--window->wl.monitorsCount] = NULL;
 
     if (checkScaleChange(window)) {
         debug("Scale changed to %.3f for window %llu in surfaceHandleLeave\n", _glfwWaylandWindowScale(window), window->id);
