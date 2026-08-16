@@ -55,7 +55,7 @@ def run_perf_reports(perf_exe: str) -> None:
         check=False,
     )
 
-    print('\n--- Per-thread CPU breakdown ---\n')
+    print('\n--- Per-process CPU breakdown ---\n')
     subprocess.run(
         [
             perf_exe,
@@ -63,7 +63,7 @@ def run_perf_reports(perf_exe: str) -> None:
             '--stdio',
             '-n',
             '--sort',
-            'overhead,tid,comm,symbol',
+            'overhead,pid,comm,symbol',
             '--percent-limit',
             '1.0',
             '-i',
@@ -81,6 +81,7 @@ def run_parsing_benchmark(
     cell_width: int = 10,
     cell_height: int = 20,
     scrollback: int = 20000,
+    repetitions: int | None = None,
 ) -> None:
     isatty = sys.stdout.isatty()
     if isatty:
@@ -95,6 +96,8 @@ def run_parsing_benchmark(
     argv = [kitten_exe(), '__benchmark__', '--render']
     if with_scrollback:
         argv.append('--with-scrollback')
+    if repetitions is not None:
+        argv.extend(['--repetitions', str(repetitions)])
     argv.extend(benchmarks)
     if is_child:
         while read_screen_size().width != columns * cell_width:
@@ -145,13 +148,13 @@ def run_parsing_benchmark(
         sys.stdout.write(str(screen.linebuf))
 
 
-def exec_under_perf(perf_exe: str) -> None:
+def exec_under_perf(perf_exe: str, print_report: bool = False) -> None:
     """Re-exec this script as a child of perf record.
 
     perf becomes the outer process so it can profile the entire benchmark
     run without any subprocess/SIGCHLD conflicts with ChildMonitor.
-    After the benchmark exits perf finalises its output, then we run
-    perf report to print the results.
+    After the benchmark exits perf finalises its output, then optionally
+    runs perf report to print the results.
     """
     script = os.path.abspath(__file__)
     env = {**os.environ, _UNDER_PERF_ENV: '1'}
@@ -171,7 +174,10 @@ def exec_under_perf(perf_exe: str) -> None:
         script,
     ] + sys.argv[1:]
     subprocess.run(cmd, env=env, check=False)
-    run_perf_reports(perf_exe)
+    if print_report:
+        run_perf_reports(perf_exe)
+    else:
+        print(f'Profile data saved to: {PERF_OUTPUT}')
 
 
 def main() -> None:
@@ -195,10 +201,23 @@ def main() -> None:
         action='store_true',
         default=False,
         help=(
-            'Profile with Linux perf: records at 999 Hz with DWARF call graphs, '
-            'then prints per-thread CPU breakdown and call-graph hotspots before benchmark results. '
+            'Profile with Linux perf: records at 999 Hz with DWARF call graphs '
+            'and saves raw data to ' + PERF_OUTPUT + '. '
             'Requires perf in PATH with setcap cap_sys_admin,cap_sys_ptrace,cap_syslog=ep /usr/bin/perf'
         ),
+    )
+    p.add_argument(
+        '--perf-report',
+        action='store_true',
+        default=False,
+        help='After --perf recording, print call-graph hotspots and per-process CPU breakdown to stdout (default: only print path to raw data)',
+    )
+    p.add_argument(
+        '--repetitions',
+        type=int,
+        default=None,
+        metavar='N',
+        help='Number of repetitions of each benchmark (default: kitten default of 100)',
     )
     args = p.parse_args()
 
@@ -207,11 +226,11 @@ def main() -> None:
         if perf_exe is None:
             print('Warning: perf not found in PATH, running without profiling', file=sys.stderr)
         else:
-            exec_under_perf(perf_exe)
+            exec_under_perf(perf_exe, print_report=args.perf_report)
             return
 
     benchmarks = tuple(args.benchmarks) if args.benchmarks else ALL_BENCHMARKS
-    run_parsing_benchmark(benchmarks=benchmarks, with_scrollback=args.with_scrollback)
+    run_parsing_benchmark(benchmarks=benchmarks, with_scrollback=args.with_scrollback, repetitions=args.repetitions)
 
 
 if __name__ == '__main__':
