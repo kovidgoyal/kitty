@@ -207,6 +207,10 @@ Detailed list of changes
 
 - Wayland: Fix clipboard sharing between kitty instances in containers with isolated PID namespaces (:iss:`10352`)
 
+- When expanding a window in alternate screen mode use the most common
+  background color as the color for the newly created lines leading to less
+  visual flicker until the application can redraw itself (:iss:`10365`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

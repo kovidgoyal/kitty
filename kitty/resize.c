@@ -8,6 +8,13 @@
 #include "resize.h"
 #include "lineops.h"
 
+#define NAME bg_freq_map
+#define KEY_TY uint32_t
+#define VAL_TY uint32_t
+#define HASH_FN vt_hash_integer
+#define CMPR_FN vt_cmpr_integer
+#include "kitty-verstable.h"
+
 typedef struct Rewrap {
     struct {
         LineBuf *lb;
@@ -396,13 +403,35 @@ resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type co
             }
         }
     }
-    // Set bg color for extra lines at bottom
+    // Fill new empty lines at the bottom with the most common background color
+    // from the existing content, so expanding the screen looks visually smooth
+    // without flashing app-specific colors (e.g. a statusline at the last row).
     if (ans.num_content_lines_before < lines) {
-        linebuf_init_line(lb, lb->ynum - 1);
-        GPUCell *g = lb->line->gpu_cells;
-        for (index_type y = ans.num_content_lines_after; y < ans.lb->ynum; y++) {
-            linebuf_init_line(ans.lb, y);
-            for (index_type x = 0; x < ans.lb->xnum; x++) ans.lb->line->gpu_cells[x].bg = g->bg;
+        uint32_t fill_bg = 0;
+        bg_freq_map freq;
+        vt_init(&freq);
+        for (index_type y = 0; y < ans.num_content_lines_after; y++) {
+            CPUCell *cp;
+            GPUCell *gp;
+            linebuf_init_cells(lb, y, &cp, &gp);
+            for (index_type x = 0; x < lb->xnum; x++) {
+                bg_freq_map_itr itr = vt_get_or_insert(&freq, gp[x].bg, 0);
+                if (!vt_is_end(itr)) itr.data->val++;
+            }
+        }
+        uint32_t best_count = 0;
+        vt_create_for_loop(bg_freq_map_itr, itr, &freq) {
+            if (itr.data->val > best_count) {
+                best_count = itr.data->val;
+                fill_bg = itr.data->key;
+            }
+        }
+        vt_cleanup(&freq);
+        if (fill_bg) {
+            for (index_type y = ans.num_content_lines_after; y < ans.lb->ynum; y++) {
+                linebuf_init_line(ans.lb, y);
+                for (index_type x = 0; x < ans.lb->xnum; x++) ans.lb->line->gpu_cells[x].bg = fill_bg;
+            }
         }
     } else if (ans.num_content_lines_after < ans.num_content_lines_before) {
         // delete multicell chars split at the bottom
