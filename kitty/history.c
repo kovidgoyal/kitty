@@ -328,6 +328,21 @@ historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf, bool *needs_clear) {
     return idx;
 }
 
+static void
+prefetch_line_for_write(HistoryBuf *self, index_type y) {
+    // The history buffer is typically much larger than the CPU cache, so the
+    // line copy in historybuf_add_line() stalls acquiring ownership of the
+    // destination cache lines. Prefetching the slot that the next call will
+    // write to overlaps those misses with the parsing/drawing of the next
+    // line, speeding up bulk text throughput by ~35% (see benchmark.py).
+    if (y / SEGMENT_SIZE >= self->num_segments) return; // must not trigger segment allocation
+    const char *cpu = (const char *)cpu_lineptr(self, y);
+    const char *gpu = (const char *)gpu_lineptr(self, y);
+    const size_t cache_line_sz = 64;
+    for (size_t i = 0; i < self->xnum * sizeof(CPUCell); i += cache_line_sz) __builtin_prefetch(cpu + i, 1, 0);
+    for (size_t i = 0; i < self->xnum * sizeof(GPUCell); i += cache_line_sz) __builtin_prefetch(gpu + i, 1, 0);
+}
+
 void
 historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
     bool needs_clear;
@@ -335,6 +350,7 @@ historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
     init_line(self, idx, self->line);
     copy_line(line, self->line);
     *attrptr(self, idx) = line->attrs;
+    prefetch_line_for_write(self, (self->start_of_data + self->count) % self->ynum);
 }
 
 bool
