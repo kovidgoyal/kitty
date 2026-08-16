@@ -214,6 +214,12 @@ typedef struct {
     } paused_rendering;
     CharsetState charset;
     ListOfChars *lc;
+    struct {
+        // Memoized text cache indices for the ('\t', diff) text written by
+        // screen_tab(), keyed by diff. Entries are idx + 1 with 0 meaning
+        // unset. Must be cleared when the text cache is garbage collected.
+        char_type idx_plus_1[16];
+    } tab_cache;
     monotonic_t parsing_at;
     ExtraCursors extra_cursors;
     struct {

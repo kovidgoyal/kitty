@@ -439,18 +439,18 @@ index_selection(const Screen *self, Selections *selections, bool up, index_type 
     }
 
 
-#define INDEX_DOWN                                                                              \
-    linebuf_reverse_index(self->linebuf, top, bottom);                                          \
-    linebuf_clear_line(self->linebuf, top, true);                                               \
-    if (self->linebuf == self->main_linebuf && self->last_visited_prompt.is_set) {              \
-        if (self->last_visited_prompt.scrolled_by > 0) self->last_visited_prompt.scrolled_by--; \
-        else if (self->last_visited_prompt.y < self->lines - 1) self->last_visited_prompt.y++;  \
-        else self->last_visited_prompt.is_set = false;                                          \
-    }                                                                                           \
-    INDEX_GRAPHICS(1)                                                                           \
-    self->is_dirty = true;                                                                      \
-    index_selection(self, &self->selections, false, top, bottom);                               \
-    clear_selection(&self->url_ranges);
+#define INDEX_DOWN                                                                                      \
+    linebuf_reverse_index(self->linebuf, top, bottom);                                                  \
+    linebuf_clear_line(self->linebuf, top, true);                                                       \
+    if (self->linebuf == self->main_linebuf && self->last_visited_prompt.is_set) {                      \
+        if (self->last_visited_prompt.scrolled_by > 0) self->last_visited_prompt.scrolled_by--;         \
+        else if (self->last_visited_prompt.y < self->lines - 1) self->last_visited_prompt.y++;          \
+        else self->last_visited_prompt.is_set = false;                                                  \
+    }                                                                                                   \
+    INDEX_GRAPHICS(1)                                                                                   \
+    self->is_dirty = true;                                                                              \
+    if (UNLIKELY(self->selections.count)) index_selection(self, &self->selections, false, top, bottom); \
+    if (UNLIKELY(self->url_ranges.count || self->url_ranges.in_progress)) clear_selection(&self->url_ranges);
 
 
 static void
@@ -844,8 +844,8 @@ selection_has_screen_line(const Selections *selections, const int y) {
 
 static void
 clear_intersecting_selections(Screen *self, index_type y) {
-    if (selection_has_screen_line(&self->selections, y)) clear_selection(&self->selections);
-    if (selection_has_screen_line(&self->url_ranges, y)) clear_selection(&self->url_ranges);
+    if (UNLIKELY(self->selections.count) && selection_has_screen_line(&self->selections, y)) clear_selection(&self->selections);
+    if (UNLIKELY(self->url_ranges.count) && selection_has_screen_line(&self->url_ranges, y)) clear_selection(&self->url_ranges);
 }
 
 static void
@@ -867,8 +867,13 @@ init_segmentation_state(Screen *self, text_loop_state *s) {
     init_prev_cell(self, s);
     grapheme_segmentation_reset(&s->seg);
     if (s->prev.cc) {
-        text_in_cell(s->prev.cc, self->text_cache, self->lc);
-        for (index_type i = 0; i < self->lc->count; i++) s->seg = grapheme_segmentation_step(s->seg, char_props_for(self->lc->chars[i]));
+        if (LIKELY(!s->prev.cc->ch_is_idx)) {
+            // single codepoint in cell, no need for the ListOfChars machinery
+            s->seg = grapheme_segmentation_step(s->seg, char_props_for(s->prev.cc->ch_or_idx));
+        } else {
+            text_in_cell(s->prev.cc, self->text_cache, self->lc);
+            for (index_type i = 0; i < self->lc->count; i++) s->seg = grapheme_segmentation_step(s->seg, char_props_for(self->lc->chars[i]));
+        }
     }
 }
 
@@ -1064,6 +1069,8 @@ screen_garbage_collect_text_cache(Screen *self) {
     if (self->overlay_line.original_line.cpu_cells)
         text_cache_gc_process_cells(self->text_cache, gc, self->overlay_line.original_line.cpu_cells, self->overlay_line.xnum);
     tc_gc_end(self->text_cache, gc);
+    // the GC remaps all cache indices so the memoized tab indices are stale
+    memset(&self->tab_cache, 0, sizeof(self->tab_cache));
 }
 
 static bool
@@ -1303,6 +1310,35 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
             if (ch < ' ') {
                 draw_control_char(self, s, ch);
                 continue;
+            }
+            if (LIKELY(!self->charset.current && !self->modes.mIRM && self->cursor->x < self->columns)) {
+                // Batched fast path: write a run of printable ASCII chars into the
+                // current line in one go, keeping all state in locals so it is not
+                // reloaded for every char. Stops at the first char needing the
+                // scalar path: non-ASCII, control char or an existing multicell cell.
+                const size_t limit = MIN(num_chars - i, (size_t)(self->columns - self->cursor->x));
+                CPUCell *cp = s->cp + self->cursor->x;
+                size_t n = 0;
+                while (n < limit && (chars[i + n] - 32u) < 95u && !cp[n].is_multicell) n++;
+                if (n) {
+                    GPUCell *gp = s->gp + self->cursor->x;
+                    const CPUCell cc = s->cc;
+                    const GPUCell g = s->g;
+                    for (size_t j = 0; j < n; j++) {
+                        cp[j] = cc;
+                        cell_set_char(cp + j, chars[i + j]);
+                    }
+                    for (size_t j = 0; j < n; j++) gp[j] = g;
+                    self->last_graphic_char = chars[i + n - 1];
+                    s->prev.y = self->cursor->y;
+                    s->prev.x = self->cursor->x + n - 1;
+                    s->prev.cc = cp + n - 1;
+                    self->cursor->x += n;
+                    s->seg = (GraphemeSegmentationResult){.grapheme_break = GBP_None};
+                    i += n - 1;
+                    continue;
+                }
+                // n == 0: the cell under the cursor is a multicell, let the scalar path handle it
             }
             char_width = 1;
             s->seg = (GraphemeSegmentationResult){.grapheme_break = GBP_None};
@@ -2262,10 +2298,17 @@ screen_tab(Screen *self) {
                     CPUCell *c = cpu_cell + i;
                     cell_set_char(c, ' ');
                 }
-                self->lc->count = 2;
-                self->lc->chars[0] = '\t';
-                self->lc->chars[1] = diff;
-                cell_set_chars(cpu_cell, self->text_cache, self->lc);
+                char_type idx;
+                if (diff < arraysz(self->tab_cache.idx_plus_1) && self->tab_cache.idx_plus_1[diff]) idx = self->tab_cache.idx_plus_1[diff] - 1;
+                else {
+                    self->lc->count = 2;
+                    self->lc->chars[0] = '\t';
+                    self->lc->chars[1] = diff;
+                    idx = tc_get_or_insert_chars(self->text_cache, self->lc);
+                    if (diff < arraysz(self->tab_cache.idx_plus_1)) self->tab_cache.idx_plus_1[diff] = idx + 1;
+                }
+                cpu_cell->ch_or_idx = idx;
+                cpu_cell->ch_is_idx = true;
             }
         }
         self->cursor->x = found;
@@ -2397,8 +2440,8 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
     }                                                                                                                     \
     linebuf_clear_line(self->linebuf, bottom, true);                                                                      \
     self->is_dirty = true;                                                                                                \
-    index_selection(self, &self->selections, true, top, bottom);                                                          \
-    clear_selection(&self->url_ranges);
+    if (UNLIKELY(self->selections.count)) index_selection(self, &self->selections, true, top, bottom);                    \
+    if (UNLIKELY(self->url_ranges.count || self->url_ranges.in_progress)) clear_selection(&self->url_ranges);
 
 void
 screen_index(Screen *self) {

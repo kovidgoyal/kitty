@@ -186,6 +186,8 @@ Detailed list of changes
 
 - Improve throughput when processing large amounts of text with a scrollback buffer much larger than the CPU cache by ~35% by prefetching scrollback memory before it is written to
 
+- Improve throughput when processing large amounts of text by ~50% for ASCII and ~15% for Unicode by writing runs of plain ASCII chars to the screen in batches and skipping unnecessary bookkeeping in the scrolling and tab handling hot paths
+
 - The :opt:`scrollbar` option now takes a new value ``scrolled-or-hovered`` to also show the scrollbar when the mouse moves over the scrollbar region (:pull:`10345`)
 
 - A new :code:`kitten @ screenshot` remote control command to take a pixel perfect PNG screenshot of an OS Window, tab or window

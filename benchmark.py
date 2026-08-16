@@ -22,8 +22,10 @@ from kitty.utils import read_screen_size
 BENCHMARK_WINDOW_ID = 1
 ALL_BENCHMARKS = ('ascii', 'unicode', 'unique_unicode', 'csi', 'images', 'long_escape_codes')
 
+
 def perf_output() -> str:
     return os.path.join(tempfile.gettempdir(), 'kitty-benchmark.perf')
+
 
 # Set by the re-exec wrapper so we don't recurse when --perf is in argv.
 _UNDER_PERF_ENV = '_KITTY_BENCHMARK_UNDER_PERF'
