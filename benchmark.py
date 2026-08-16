@@ -1,6 +1,7 @@
 #!./kitty/launcher/kitty +launch
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import argparse
 import fcntl
 import os
 import select
@@ -16,9 +17,16 @@ from kitty.fast_data_types import ChildMonitor, Screen, safe_pipe
 from kitty.utils import read_screen_size
 
 BENCHMARK_WINDOW_ID = 1
+ALL_BENCHMARKS = ('ascii', 'unicode', 'unique_unicode', 'csi', 'images', 'long_escape_codes')
 
 
-def run_parsing_benchmark(cell_width: int = 10, cell_height: int = 20, scrollback: int = 20000) -> None:
+def run_parsing_benchmark(
+    benchmarks: tuple[str, ...] = ALL_BENCHMARKS,
+    with_scrollback: bool = True,
+    cell_width: int = 10,
+    cell_height: int = 20,
+    scrollback: int = 20000,
+) -> None:
     isatty = sys.stdout.isatty()
     if isatty:
         sz = read_screen_size()
@@ -27,7 +35,12 @@ def run_parsing_benchmark(cell_width: int = 10, cell_height: int = 20, scrollbac
         columns, rows = 80, 25
     child_pid, master_fd = fork()
     is_child = child_pid == CHILD
-    argv = [kitten_exe(), '__benchmark__', '--with-scrollback']
+    # we add render as we arent rendering anyway and it means the synchronized
+    # escape codes are no longer needed.
+    argv = [kitten_exe(), '__benchmark__', '--render']
+    if with_scrollback:
+        argv.append('--with-scrollback')
+    argv.extend(benchmarks)
     if is_child:
         while read_screen_size().width != columns * cell_width:
             time.sleep(0.01)
@@ -78,7 +91,24 @@ def run_parsing_benchmark(cell_width: int = 10, cell_height: int = 20, scrollbac
 
 
 def main() -> None:
-    run_parsing_benchmark()
+    p = argparse.ArgumentParser(description='Run kitty parsing benchmarks')
+    p.add_argument(
+        'benchmarks',
+        nargs='*',
+        choices=list(ALL_BENCHMARKS),
+        metavar='BENCHMARK',
+        help=f'Benchmarks to run (default: all). Choose from: {", ".join(ALL_BENCHMARKS)}',
+    )
+    p.add_argument(
+        '--with-scrollback',
+        dest='with_scrollback',
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help='Use the main screen instead of the alt screen so scrollback speed is also tested (default: enabled)',
+    )
+    args = p.parse_args()
+    benchmarks = tuple(args.benchmarks) if args.benchmarks else ALL_BENCHMARKS
+    run_parsing_benchmark(benchmarks=benchmarks, with_scrollback=args.with_scrollback)
 
 
 if __name__ == '__main__':
