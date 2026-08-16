@@ -10,6 +10,7 @@ import signal
 import struct
 import subprocess
 import sys
+import tempfile
 import termios
 import time
 from pty import CHILD, fork
@@ -20,7 +21,9 @@ from kitty.utils import read_screen_size
 
 BENCHMARK_WINDOW_ID = 1
 ALL_BENCHMARKS = ('ascii', 'unicode', 'unique_unicode', 'csi', 'images', 'long_escape_codes')
-PERF_OUTPUT = '/tmp/kitty-benchmark.perf'
+
+def perf_output() -> str:
+    return os.path.join(tempfile.gettempdir(), 'kitty-benchmark.perf')
 
 # Set by the re-exec wrapper so we don't recurse when --perf is in argv.
 _UNDER_PERF_ENV = '_KITTY_BENCHMARK_UNDER_PERF'
@@ -35,8 +38,8 @@ def run_perf_reports(perf_exe: str) -> None:
     print(f'\n{sep}')
     print('PERF PROFILING RESULTS')
     print(sep)
-    print(f'Profile data saved to: {PERF_OUTPUT}')
-    print(f'Re-run interactively:   perf report -i {PERF_OUTPUT}\n')
+    print(f'Profile data saved to: {perf_output()}')
+    print(f'Re-run interactively:   perf report -i {perf_output()}\n')
 
     print('--- Top CPU hotspots (call graph, >=0.5% threshold) ---\n')
     subprocess.run(
@@ -50,7 +53,7 @@ def run_perf_reports(perf_exe: str) -> None:
             '--percent-limit',
             '0.5',
             '-i',
-            PERF_OUTPUT,
+            perf_output(),
         ],
         check=False,
     )
@@ -67,7 +70,7 @@ def run_perf_reports(perf_exe: str) -> None:
             '--percent-limit',
             '1.0',
             '-i',
-            PERF_OUTPUT,
+            perf_output(),
         ],
         check=False,
     )
@@ -167,7 +170,7 @@ def exec_under_perf(perf_exe: str, print_report: bool = False) -> None:
         '--call-graph',
         'dwarf',
         '-o',
-        PERF_OUTPUT,
+        perf_output(),
         '--',
         kitty_exe(),
         '+launch',
@@ -177,7 +180,7 @@ def exec_under_perf(perf_exe: str, print_report: bool = False) -> None:
     if print_report:
         run_perf_reports(perf_exe)
     else:
-        print(f'Profile data saved to: {PERF_OUTPUT}')
+        print(f'Profile data saved to: {perf_output()}')
 
 
 def main() -> None:
@@ -202,7 +205,7 @@ def main() -> None:
         default=False,
         help=(
             'Profile with Linux perf: records at 999 Hz with DWARF call graphs '
-            'and saves raw data to ' + PERF_OUTPUT + '. '
+            'and saves raw data to ' + perf_output() + '. '
             'Requires perf in PATH with setcap cap_sys_admin,cap_sys_ptrace,cap_syslog=ep /usr/bin/perf'
         ),
     )
