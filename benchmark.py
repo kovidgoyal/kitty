@@ -5,19 +5,74 @@ import argparse
 import fcntl
 import os
 import select
+import shutil
 import signal
 import struct
+import subprocess
 import sys
 import termios
 import time
 from pty import CHILD, fork
 
-from kitty.constants import kitten_exe
+from kitty.constants import kitten_exe, kitty_exe
 from kitty.fast_data_types import ChildMonitor, Screen, safe_pipe
 from kitty.utils import read_screen_size
 
 BENCHMARK_WINDOW_ID = 1
 ALL_BENCHMARKS = ('ascii', 'unicode', 'unique_unicode', 'csi', 'images', 'long_escape_codes')
+PERF_OUTPUT = '/tmp/kitty-benchmark.perf'
+
+# Set by the re-exec wrapper so we don't recurse when --perf is in argv.
+_UNDER_PERF_ENV = '_KITTY_BENCHMARK_UNDER_PERF'
+
+
+def find_perf() -> str | None:
+    return shutil.which('perf')
+
+
+def run_perf_reports(perf_exe: str) -> None:
+    sep = '=' * 70
+    print(f'\n{sep}')
+    print('PERF PROFILING RESULTS')
+    print(sep)
+    print(f'Profile data saved to: {PERF_OUTPUT}')
+    print(f'Re-run interactively:   perf report -i {PERF_OUTPUT}\n')
+
+    print('--- Top CPU hotspots (call graph, >=0.5% threshold) ---\n')
+    subprocess.run(
+        [
+            perf_exe,
+            'report',
+            '--stdio',
+            '-n',
+            '--call-graph',
+            'fractal,0.5',
+            '--percent-limit',
+            '0.5',
+            '-i',
+            PERF_OUTPUT,
+        ],
+        check=False,
+    )
+
+    print('\n--- Per-thread CPU breakdown ---\n')
+    subprocess.run(
+        [
+            perf_exe,
+            'report',
+            '--stdio',
+            '-n',
+            '--sort',
+            'overhead,tid,comm,symbol',
+            '--percent-limit',
+            '1.0',
+            '-i',
+            PERF_OUTPUT,
+        ],
+        check=False,
+    )
+
+    print(f'\n{sep}\n')
 
 
 def run_parsing_benchmark(
@@ -90,6 +145,35 @@ def run_parsing_benchmark(
         sys.stdout.write(str(screen.linebuf))
 
 
+def exec_under_perf(perf_exe: str) -> None:
+    """Re-exec this script as a child of perf record.
+
+    perf becomes the outer process so it can profile the entire benchmark
+    run without any subprocess/SIGCHLD conflicts with ChildMonitor.
+    After the benchmark exits perf finalises its output, then we run
+    perf report to print the results.
+    """
+    script = os.path.abspath(__file__)
+    env = {**os.environ, _UNDER_PERF_ENV: '1'}
+    cmd = [
+        perf_exe,
+        'record',
+        '-g',
+        '-F',
+        '999',
+        '--call-graph',
+        'dwarf',
+        '-o',
+        PERF_OUTPUT,
+        '--',
+        kitty_exe(),
+        '+launch',
+        script,
+    ] + sys.argv[1:]
+    subprocess.run(cmd, env=env, check=False)
+    run_perf_reports(perf_exe)
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description='Run kitty parsing benchmarks')
     p.add_argument(
@@ -106,7 +190,26 @@ def main() -> None:
         default=True,
         help='Use the main screen instead of the alt screen so scrollback speed is also tested (default: enabled)',
     )
+    p.add_argument(
+        '--perf',
+        action='store_true',
+        default=False,
+        help=(
+            'Profile with Linux perf: records at 999 Hz with DWARF call graphs, '
+            'then prints per-thread CPU breakdown and call-graph hotspots before benchmark results. '
+            'Requires perf in PATH with setcap cap_sys_admin,cap_sys_ptrace,cap_syslog=ep /usr/bin/perf'
+        ),
+    )
     args = p.parse_args()
+
+    if args.perf and not os.environ.get(_UNDER_PERF_ENV):
+        perf_exe = find_perf()
+        if perf_exe is None:
+            print('Warning: perf not found in PATH, running without profiling', file=sys.stderr)
+        else:
+            exec_under_perf(perf_exe)
+            return
+
     benchmarks = tuple(args.benchmarks) if args.benchmarks else ALL_BENCHMARKS
     run_parsing_benchmark(benchmarks=benchmarks, with_scrollback=args.with_scrollback)
 

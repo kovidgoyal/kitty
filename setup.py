@@ -675,7 +675,6 @@ def init_env(
     if profile:
         cppflags.append('-DWITH_PROFILER')
         cflags.append('-g3')
-        ldflags.append('-lprofiler')
 
     if debug or profile:
         cflags.append('-fno-omit-frame-pointer')
@@ -1602,8 +1601,6 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
             cflags.extend(sanitize_args)
             ldflags.extend(sanitize_args)
             libs += ['-lasan'] if not is_macos and env.compiler_type is not CompilerType.clang else []
-        if args.profile:
-            libs.append('-lprofiler')
     else:
         cflags.append('-g3' if args.debug else '-O3')
     if bundle_type.endswith('-freeze'):
@@ -2299,7 +2296,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         ' the Python used to run setup.py is queried for these.',
     )
     p.add_argument('--full', dest='incremental', default=Options.incremental, action='store_false', help='Do a full build, even for unchanged files')
-    p.add_argument('--profile', default=Options.profile, action='store_true', help='Use the -pg compile flag to add profiling information')
+    p.add_argument('--profile', default=Options.profile, action='store_true', help='Use compile flags to add profiling information')
     p.add_argument(
         '--libdir-name', default=Options.libdir_name, help='The name of the directory inside --prefix in which to store compiled files. Defaults to "lib"'
     )
