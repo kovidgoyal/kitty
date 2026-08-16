@@ -842,17 +842,28 @@ commit_csi_param(PS *self UNUSED, ParsedCSI *csi) {
         REPORT_ERROR("CSI escape code has too many parameters, ignoring it");
         return false;
     }
-    csi->params[csi->num_params++] = csi->mult * (csi->accumulator / digit_multipliers[csi->num_digits - 1]);
+    csi->params[csi->num_params++] = csi->mult * (int64_t)csi->accumulator;
     csi->num_digits = 0;
     csi->mult = 1;
     csi->accumulator = 0;
     return true;
 }
 
+#define MAX_CSI_DIGITS 16u
+
 static void
 csi_add_digit(ParsedCSI *csi, uint8_t ch) {
-    if (UNLIKELY(csi->num_digits >= arraysz(digit_multipliers))) return;
-    csi->accumulator += (ch - '0') * digit_multipliers[csi->num_digits++];
+    if (UNLIKELY(csi->num_digits >= MAX_CSI_DIGITS)) return;
+    csi->num_digits++;
+    csi->accumulator = csi->accumulator * 10 + (ch - '0');
+}
+
+static void
+consume_csi_digit_run(ParsedCSI *csi, const uint8_t *buf, size_t *pos, const size_t sz) {
+    // consume a run of parameter digits without re-entering the per-byte state machine
+    size_t p = *pos;
+    while (p < sz && (uint8_t)(buf[p] - '0') <= 9) csi_add_digit(csi, buf[p++]);
+    *pos = p;
 }
 
 static bool
@@ -870,6 +881,7 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
                         break;
                     case DIGIT:
                         csi_add_digit(csi, ch);
+                        consume_csi_digit_run(csi, buf, pos, sz);
                         csi->state = CSI_BODY;
                         break;
                     case '?':
@@ -937,7 +949,10 @@ csi_parse_loop(PS *self, ParsedCSI *csi, const uint8_t *buf, size_t *pos, const 
                         if (!commit_csi_param(self, csi)) return true;
                         csi->is_sub_param[csi->num_params] = false;
                         break;
-                    case DIGIT: csi_add_digit(csi, ch); break;
+                    case DIGIT:
+                        csi_add_digit(csi, ch);
+                        consume_csi_digit_run(csi, buf, pos, sz);
+                        break;
                     default: REPORT_ERROR("Invalid character in CSI: %s (0x%x), ignoring the sequence", csi_letter(ch), ch); return true;
                 }
                 break;
@@ -1594,7 +1609,10 @@ run_worker(void *p, ParseData *pd, bool flush) {
                 self->read.consumed = 0;
                 do {
                     end_with_lock;
-                    { consume_input(self, pd->dump_callback, screen->window_id); }
+                    // consume all already read input without lock cycling, the
+                    // writer thread only modifies write.pending and buffer space
+                    // beyond read.sz + write.pending
+                    do { consume_input(self, pd->dump_callback, screen->window_id); } while (self->read.pos < self->read.sz);
                     with_lock;
                     self->read.sz += self->write.pending;
                     self->write.pending = 0;
