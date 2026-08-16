@@ -1308,11 +1308,20 @@ handle_xi_motion_event(_GLFWwindow *window, XIDeviceEvent *de) {
             scroll_valuator_found = true;
             if (!v->initialized) {
                 v->initialized = true;
-                v->value = value;
-                continue;
+                if (!v->has_value) {
+                    v->has_value = true;
+                    v->value = value;
+                    continue;
+                }
+                const double max_plausible_delta = 10. * (v->increment != 0. ? fabs(v->increment) : 1.);
+                if (fabs(value - v->value) > max_plausible_delta) {
+                    v->value = value;
+                    continue;
+                }
             }
             double delta = value - v->value;
             v->value = value;
+            v->has_value = true;
             delta *= -1;
             double *off = v->is_vertical ? &yOffset : &xOffset;
             *off = delta;
@@ -2018,7 +2027,7 @@ processEvent(XEvent *event) {
         }
 
         case LeaveNotify: {
-            resetScrollValuators();
+            if (event->xcrossing.mode == NotifyNormal && event->xcrossing.detail != NotifyInferior) resetScrollValuators();
             _glfwInputCursorEnter(window, false);
             return;
         }
