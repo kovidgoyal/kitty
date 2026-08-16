@@ -92,7 +92,6 @@ _Pragma("clang diagnostic pop")
 #define subtract_epi8 simde_mm_sub_epi8
 #define create_zero_integer simde_mm_setzero_si128
 #define create_all_ones_integer() simde_mm_set1_epi64x(-1)
-#define sum_bytes sum_bytes_128
 #define zero_upper()
 
     static inline int FUNC(is_zero)(const integer_t a) {
@@ -225,86 +224,36 @@ w(right, one_byte, 1) w(right, two_bytes, 2) w(right, four_bytes, 4) w(right, ei
 #undef shift_right_by_bytes_macro
 #undef shift_left_by_bytes_macro
 
-        static inline integer_t shuffle_impl256(const integer_t value, const integer_t shuffle) {
-#define K0                 \
-    simde_mm256_setr_epi8( \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16)
+// only used with in-lane shuffle indices (0-15 within each 128-bit lane)
+#define shuffle_epi8 simde_mm256_shuffle_epi8
+#endif
 
-#define K1                 \
-    simde_mm256_setr_epi8( \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        -16,               \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70,              \
-        0x70)
-
-    return or_si(
-        simde_mm256_shuffle_epi8(value, add_epi8(shuffle, K0)),
-        simde_mm256_shuffle_epi8(simde_mm256_permute4x64_epi64(value, 0x4E), simde_mm256_add_epi8(shuffle, K1)));
-#undef K0
-#undef K1
-}
-
-#define shuffle_epi8 shuffle_impl256
-#define sum_bytes(x) (sum_bytes_128(simde_mm256_extracti128_si256(x, 0)) + sum_bytes_128(simde_mm256_extracti128_si256(x, 1)))
+// Byte shifts within each 128-bit lane. These are single instructions on x86
+// and cheap NEON ext ops on ARM, unlike the cross-lane full-register shifts
+// needed at the 256-bit level. Note that in this codebase shift_right means
+// moving bytes to higher memory addresses, which corresponds to the intrinsics
+// named "slli" and vice versa.
+#if KITTY_SIMD_LEVEL == 128
+// for 128-bit registers in-lane and full-register byte shifts are the same thing
+#define shift_right_in_lane_by_one_byte shift_right_by_one_byte
+#define shift_right_in_lane_by_two_bytes shift_right_by_two_bytes
+#define shift_right_in_lane_by_four_bytes shift_right_by_four_bytes
+#define shift_right_in_lane_by_eight_bytes shift_right_by_eight_bytes
+#define shift_left_in_lane_by_one_byte shift_left_by_one_byte
+#define shift_left_in_lane_by_two_bytes shift_left_by_two_bytes
+#define shift_left_in_lane_by_four_bytes shift_left_by_four_bytes
+#define shift_left_in_lane_by_eight_bytes shift_left_by_eight_bytes
+#define numbered_bytes_in_lane numbered_bytes
+#else
+#define shift_right_in_lane_by_one_byte(A) simde_mm256_slli_si256(A, 1)
+#define shift_right_in_lane_by_two_bytes(A) simde_mm256_slli_si256(A, 2)
+#define shift_right_in_lane_by_four_bytes(A) simde_mm256_slli_si256(A, 4)
+#define shift_right_in_lane_by_eight_bytes(A) simde_mm256_slli_si256(A, 8)
+#define shift_left_in_lane_by_one_byte(A) simde_mm256_srli_si256(A, 1)
+#define shift_left_in_lane_by_two_bytes(A) simde_mm256_srli_si256(A, 2)
+#define shift_left_in_lane_by_four_bytes(A) simde_mm256_srli_si256(A, 4)
+#define shift_left_in_lane_by_eight_bytes(A) simde_mm256_srli_si256(A, 8)
+#define numbered_bytes_in_lane() set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 #endif
 
 #define print_register_as_bytes(r)                          \
@@ -382,8 +331,7 @@ bytes_to_first_match_ignoring_leading_n(const integer_t vec, uintptr_t num_ignor
 
 #else
 
-static inline int
-bytes_to_first_match(const integer_t vec) {
+        static inline int bytes_to_first_match(const integer_t vec) {
     return is_zero(vec) ? -1 : __builtin_ctz(movemask_epi8(vec));
 }
 
@@ -498,9 +446,9 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
 
 #define output_increment sizeof(integer_t) / sizeof(uint32_t)
 
+// The caller must ensure output has sufficient capacity
 static inline void
 FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
-    utf8_decoder_ensure_capacity(d, src_sz);
 #if KITTY_SIMD_LEVEL == 128
     for (const uint32_t *p = d->output.storage + d->output.pos, *limit = p + src_sz; p < limit; p += output_increment) {
         const integer_t unpacked = extract_lower_quarter_as_chars(vec);
@@ -535,10 +483,13 @@ FUNC(output_plain_ascii)(UTF8Decoder *d, integer_t vec, size_t src_sz) {
     d->output.pos += src_sz;
 }
 
-static inline void
-FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integer_t output3, const size_t num_codepoints) {
-    utf8_decoder_ensure_capacity(d, 64);
+// The caller must ensure output has sufficient capacity.
+// The outputN vectors must be compacted within each 128-bit lane, the number of
+// codepoints in each lane is passed in separately and the lanes are joined by
+// overlapping stores, relying on the output overwrite slack.
 #if KITTY_SIMD_LEVEL == 128
+static inline void
+FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integer_t output3, const unsigned num_codepoints) {
     for (const uint32_t *p = d->output.storage + d->output.pos, *limit = p + num_codepoints; p < limit; p += output_increment) {
         const integer_t unpacked1 = extract_lower_quarter_as_chars(output1);
         const integer_t unpacked2 = shift_right_by_one_byte(extract_lower_quarter_as_chars(output2));
@@ -549,17 +500,21 @@ FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integ
         output2 = shift_right_by_bytes128(output2, output_increment);
         output3 = shift_right_by_bytes128(output3, output_increment);
     }
+    d->output.pos += num_codepoints;
+}
 #else
+static inline void
+FUNC(output_unicode)(
+    UTF8Decoder *d, integer_t output1, integer_t output2, integer_t output3, const unsigned num_codepoints_lane0, const unsigned num_codepoints_lane1) {
     uint32_t *p = d->output.storage + d->output.pos;
-    const uint32_t *limit = p + num_codepoints;
     simde__m128i x1, x2, x3;
-#define chunk()                                                                                \
-    {                                                                                          \
-        const integer_t unpacked1 = extract_lower_half_as_chars(x1);                           \
-        const integer_t unpacked2 = shift_right_by_one_byte(extract_lower_half_as_chars(x2));  \
-        const integer_t unpacked3 = shift_right_by_two_bytes(extract_lower_half_as_chars(x3)); \
-        store_unaligned((integer_t *)p, or_si(or_si(unpacked1, unpacked2), unpacked3));        \
-        p += output_increment;                                                                 \
+#define chunk()                                                                                        \
+    {                                                                                                  \
+        const integer_t unpacked1 = extract_lower_half_as_chars(x1);                                   \
+        const integer_t unpacked2 = shift_right_in_lane_by_one_byte(extract_lower_half_as_chars(x2));  \
+        const integer_t unpacked3 = shift_right_in_lane_by_two_bytes(extract_lower_half_as_chars(x3)); \
+        store_unaligned((integer_t *)p, or_si(or_si(unpacked1, unpacked2), unpacked3));                \
+        p += output_increment;                                                                         \
     }
 #define extract(which)                                  \
     x1 = simde_mm256_extracti128_si256(output1, which); \
@@ -571,39 +526,24 @@ FUNC(output_unicode)(UTF8Decoder *d, integer_t output1, integer_t output2, integ
     x3 = shift_right_by_bytes128(x3, output_increment);
     extract(0);
     chunk();
-    if (p < limit) {
+    if (num_codepoints_lane0 > output_increment) {
         shift();
         chunk();
-        if (p < limit) {
-            extract(1);
-            chunk();
-            if (p < limit) {
-                shift();
-                chunk();
-            }
-        }
+    }
+    p = d->output.storage + d->output.pos + num_codepoints_lane0;
+    extract(1);
+    chunk();
+    if (num_codepoints_lane1 > output_increment) {
+        shift();
+        chunk();
     }
 #undef chunk
 #undef extract
 #undef shift
+    d->output.pos += num_codepoints_lane0 + num_codepoints_lane1;
+}
 #endif
-    d->output.pos += num_codepoints;
-}
 #undef output_increment
-
-static inline unsigned
-sum_bytes_128(simde__m128i v) {
-    // Use _mm_sad_epu8 to perform a sum of absolute differences against zero
-    // This sums up all 8-bit integers in the 128-bit vector and packs the result into a 64-bit integer
-    simde__m128i sum = simde_mm_sad_epu8(v, simde_mm_setzero_si128());
-
-    // At this point, the sum of the first half is in the lower 64 bits, and the sum of the second half is in the upper 64 bits.
-    // Extract the lower and upper 64-bit sums and add them together.
-    const unsigned lower_sum = simde_mm_cvtsi128_si32(sum);                         // Extracts the lower 32 bits
-    const unsigned upper_sum = simde_mm_cvtsi128_si32(simde_mm_srli_si128(sum, 8)); // Extracts the upper 32 bits
-
-    return lower_sum + upper_sum; // Final sum of all bytes
-}
 
 #define do_one_byte                                                                   \
     const uint8_t ch = src[pos++];                                                    \
@@ -655,36 +595,57 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
         src_data += d->num_consumed;
         src_len -= d->num_consumed;
     }
+    utf8_decoder_ensure_capacity(d, src_len + 64);
     const integer_t esc_vec = set1_epi8(0x1b);
     const integer_t zero = create_zero_integer(), one = set1_epi8(1), two = set1_epi8(2), three = set1_epi8(3), four = set1_epi8(4),
-                    numbered = numbered_bytes();
+                    numbered = numbered_bytes(), numbered_in_lane = numbered_bytes_in_lane();
     const uint8_t *limit = src_data + src_len, *p = src_data, *start_of_current_chunk = src_data;
     bool sentinel_found = false;
     unsigned chunk_src_sz = 0;
     unsigned num_of_trailing_bytes = 0;
 
+    bool prev_chunk_was_all_ascii = true; // avoid paying for the fast path attempt in runs of non-ASCII chunks
+
     while (p < limit && !sentinel_found) {
+        // Fast path: process pairs of full chunks that contain only ASCII and no ESC
+        if (prev_chunk_was_all_ascii) {
+            while ((size_t)(limit - p) >= 2 * sizeof(integer_t)) {
+                const integer_t v1 = load_unaligned((integer_t *)p), v2 = load_unaligned((integer_t *)(p + sizeof(integer_t)));
+                const integer_t esc_or_non_ascii = or_si(or_si(cmpeq_epi8(v1, esc_vec), cmpeq_epi8(v2, esc_vec)), or_si(v1, v2));
+                if (movemask_epi8(esc_or_non_ascii)) break;
+                FUNC(output_plain_ascii)(d, v1, sizeof(integer_t));
+                FUNC(output_plain_ascii)(d, v2, sizeof(integer_t));
+                d->num_consumed += 2 * sizeof(integer_t);
+                p += 2 * sizeof(integer_t);
+            }
+            if (p >= limit) break;
+        }
         chunk_src_sz = MIN((size_t)(limit - p), sizeof(integer_t));
         integer_t vec = load_unaligned((integer_t *)p);
         start_of_current_chunk = p;
         p += chunk_src_sz;
 
-        const integer_t esc_cmp = cmpeq_epi8(vec, esc_vec);
-        int num_of_bytes_to_first_esc = bytes_to_first_match(esc_cmp);
-        if (num_of_bytes_to_first_esc > -1 && (unsigned)num_of_bytes_to_first_esc < chunk_src_sz) {
+        // bit set for every non-ASCII byte and every ESC byte in the chunk
+        uint32_t ascii_mask = movemask_epi8(vec);
+        uint32_t esc_mask = movemask_epi8(cmpeq_epi8(vec, esc_vec));
+        if (chunk_src_sz < sizeof(integer_t)) {
+            // exclude the garbage bytes read from beyond limit
+            const uint32_t chunk_mask = (1u << chunk_src_sz) - 1;
+            ascii_mask &= chunk_mask;
+            esc_mask &= chunk_mask;
+        }
+        if (esc_mask) {
             sentinel_found = true;
-            chunk_src_sz = num_of_bytes_to_first_esc;
+            chunk_src_sz = __builtin_ctz(esc_mask);
+            ascii_mask &= (1u << chunk_src_sz) - 1;
             d->num_consumed += chunk_src_sz + 1; // esc is also consumed
             if (!chunk_src_sz) continue;
         } else d->num_consumed += chunk_src_sz;
-
-        if (chunk_src_sz < sizeof(integer_t)) vec = zero_last_n_bytes(vec, sizeof(integer_t) - chunk_src_sz);
 
         num_of_trailing_bytes = 0;
         bool check_for_trailing_bytes = !sentinel_found;
 
         debug_register(vec);
-        int32_t ascii_mask;
 
 #define abort_with_invalid_utf8()                                                           \
     {                                                                                       \
@@ -704,13 +665,15 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
     }
 
     start_classification:
-        // Check if we have pure ASCII and use fast path
-        ascii_mask = movemask_epi8(vec);
         if (!ascii_mask) { // no bytes with high bit (0x80) set, so just plain ASCII
             FUNC(output_plain_ascii)(d, vec, chunk_src_sz);
+            prev_chunk_was_all_ascii = true;
             handle_trailing_bytes();
             continue;
         }
+        prev_chunk_was_all_ascii = false;
+        // zero the bytes not part of the chunk as they would corrupt classification
+        if (chunk_src_sz < sizeof(integer_t)) vec = zero_last_n_bytes(vec, sizeof(integer_t) - chunk_src_sz);
         // Classify the bytes by whether they may be the start of a 2-byte, 3-byte, or 4-byte sequence.
         // This is only an initial, potential classification.
         // 0xC0 and 0xC1 are initially classified as potential starter bytes of 2-byte sequences.
@@ -749,10 +712,16 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
                 num_of_trailing_bytes = 2; // 3- and 4-byte characters with only 1 byte left
             else if (chunk_src_sz > 2 && start_of_current_chunk[chunk_src_sz - 3] >= 0xf0)
                 num_of_trailing_bytes = 3; // 4-byte characters with only 3 bytes left
-            chunk_src_sz -= num_of_trailing_bytes;
-            d->num_consumed -= num_of_trailing_bytes;
-            if (!chunk_src_sz) { abort_with_invalid_utf8(); }
-            vec = zero_last_n_bytes(vec, sizeof(integer_t) - chunk_src_sz);
+            // num_of_trailing_bytes can be zero, when overlapping sequences near the end
+            // of the chunk make counts[last] > 1 without an actual incomplete trailing
+            // sequence. Reclassification then detects the overlap as invalid.
+            if (num_of_trailing_bytes) {
+                chunk_src_sz -= num_of_trailing_bytes;
+                d->num_consumed -= num_of_trailing_bytes;
+                if (!chunk_src_sz) { abort_with_invalid_utf8(); }
+                ascii_mask &= (1u << chunk_src_sz) - 1;
+                vec = zero_last_n_bytes(vec, sizeof(integer_t) - chunk_src_sz);
+            }
             goto start_classification;
         }
 
@@ -775,7 +744,7 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
         // Therefore there is a count mismatch, indicating that the chunk is ill-formed UTF-8.
         // (If the following "\x01" were absent, and the "\x7f" were the last byte of the chunk,
         // then the `check_for_trailing_bytes` validation above detects the error as a trailing incomplete sequence.)
-        const int ascii_sequence_count_mismatches = ascii_mask ^ movemask_epi8(cmpgt_epi8(counts, zero));
+        const uint32_t ascii_sequence_count_mismatches = ascii_mask ^ (uint32_t)movemask_epi8(cmpgt_epi8(counts, zero));
         chunk_is_invalid = set1_epi8(ascii_sequence_count_mismatches ? 0xff : 0x00);
 
         // Validate 2-byte sequence starter bytes: 0xC0..0xC1 are invalid (overlong encodings for U+0000..U+007F).
@@ -791,32 +760,34 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
         // Without this, "\xf0\x90\xc2\x80" would have overlapping sequences, and it would be incorrectly decoded elsewhere as an empty string.
         chunk_is_invalid = or_si(chunk_is_invalid, andnot_si(cmplt_epi8(vec, set1_epi8(0xc0)), cmpgt_epi8(counts, count)));
 
+        // The second byte checks below all need the previous byte at each position.
+        // Compute the shifted vector once, comparing it for equality with a starter
+        // byte gives the same result as shifting the comparison result, since the
+        // zero byte shifted in at position 0 cannot equal any starter byte.
+        const integer_t prev_bytes = shift_right_by_one_byte(vec);
+
         // Validate second bytes of E0-starting 3-byte sequences.
         // 0xE0 must be followed by 0xA0..0xBF (not 0x80..0x9F) to avoid overlong encodings.
         // Without this, "\xe0\x80\x80" would incorrectly be decoded as a "\x00".
-        const integer_t e0_starter_bytes = cmpeq_epi8(vec, set1_epi8(0xe0));
-        const integer_t e0_first_follower_bytes = shift_right_by_one_byte(e0_starter_bytes);
+        const integer_t e0_first_follower_bytes = cmpeq_epi8(prev_bytes, set1_epi8(0xe0));
         chunk_is_invalid = or_si(chunk_is_invalid, and_si(e0_first_follower_bytes, cmplt_epi8(and_si(e0_first_follower_bytes, vec), set1_epi8(0xa0))));
 
         // Validate second bytes of ED-starting 3-byte sequences.
         // 0xED must be followed by 0x80..0x9F (not 0xA0..0xBF) to avoid UTF-16 surrogates.
         // Without this, "\xed\xa0\x80" would incorrectly be decoded as an isolated surrogate "\uD800".
-        const integer_t ed_starter_bytes = cmpeq_epi8(vec, set1_epi8(0xed));
-        const integer_t ed_first_follower_bytes = shift_right_by_one_byte(ed_starter_bytes);
+        const integer_t ed_first_follower_bytes = cmpeq_epi8(prev_bytes, set1_epi8(0xed));
         chunk_is_invalid = or_si(chunk_is_invalid, and_si(ed_first_follower_bytes, cmpgt_epi8(and_si(ed_first_follower_bytes, vec), set1_epi8(0x9f))));
 
         // Validate second bytes of F0-starting 4-byte sequences.
         // F0 must be followed by 0x90..0xBF (not 0x80..0x8F) to avoid overlong encodings.
         // Without this, "\xf0\x80\x80\x80" would incorrectly be decoded as a "\x0000".
-        const integer_t f0_starter_bytes = cmpeq_epi8(vec, set1_epi8(0xf0));
-        const integer_t f0_first_follower_bytes = shift_right_by_one_byte(f0_starter_bytes);
+        const integer_t f0_first_follower_bytes = cmpeq_epi8(prev_bytes, set1_epi8(0xf0));
         chunk_is_invalid = or_si(chunk_is_invalid, and_si(f0_first_follower_bytes, cmplt_epi8(and_si(f0_first_follower_bytes, vec), set1_epi8(0x90))));
 
         // Validate second bytes of F4-starting 4-byte sequences.
         // F4 must be followed by 0x80..0x8F (not 0x90..0xBF) to stay within the Unicode codespace.
         // Without this, "\xf4\x90\x80\x80" would incorrectly be decoded as an ill-formed "\U00110000".
-        const integer_t f4_starter_bytes = cmpeq_epi8(vec, set1_epi8(0xf4));
-        const integer_t f4_first_follower_bytes = shift_right_by_one_byte(f4_starter_bytes);
+        const integer_t f4_first_follower_bytes = cmpeq_epi8(prev_bytes, set1_epi8(0xf4));
         chunk_is_invalid = or_si(chunk_is_invalid, and_si(f4_first_follower_bytes, cmpgt_epi8(and_si(f4_first_follower_bytes, vec), set1_epi8(0x8f))));
 
         // Check for any accumulated validation errors and, if found,
@@ -863,35 +834,39 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
         output3 = shift_right_by_two_bytes(output3);
         debug_register(output3);
 
-        // Shuffle bytes to remove continuation bytes
-        integer_t shifts = count_subs1; // number of bytes we need to skip for each UTF-8 sequence
-        // propagate the shifts to all subsequent bytes by shift and add
-        shifts = add_epi8(shifts, shift_right_by_one_byte(shifts));
-        shifts = add_epi8(shifts, shift_right_by_two_bytes(shifts));
-        shifts = add_epi8(shifts, shift_right_by_four_bytes(shifts));
-        shifts = add_epi8(shifts, shift_right_by_eight_bytes(shifts));
-#if KITTY_SIMD_LEVEL == 256
-        shifts = add_epi8(shifts, shift_right_by_sixteen_bytes(shifts));
-#endif
+        // Shuffle bytes to remove continuation bytes. The compaction is done
+        // independently within each 128-bit lane, which needs only cheap in-lane
+        // shifts and an in-lane shuffle. The lanes are then joined by output_unicode
+        // using the number of codepoints in each lane. Note that sequences spanning
+        // a lane boundary are fine: their assembled codepoint lives at the position
+        // of the last byte of the sequence, all that matters here is how far
+        // leftwards within its lane that position must move.
+        const integer_t discarded_locations = cmpgt_epi8(counts, one); // bytes that are not ASCII and not the last byte of a sequence
+        // number of discarded bytes at or before each position, within its lane,
+        // computed via prefix sum of ones at discarded locations
+        integer_t shifts = and_si(one, discarded_locations);
+        shifts = add_epi8(shifts, shift_right_in_lane_by_one_byte(shifts));
+        shifts = add_epi8(shifts, shift_right_in_lane_by_two_bytes(shifts));
+        shifts = add_epi8(shifts, shift_right_in_lane_by_four_bytes(shifts));
+        shifts = add_epi8(shifts, shift_right_in_lane_by_eight_bytes(shifts));
         // zero the shifts for discarded continuation bytes
-        shifts = and_si(shifts, cmplt_epi8(counts, two));
+        shifts = andnot_si(discarded_locations, shifts);
         // now we need to convert shifts into a mask for the shuffle. The mask has each byte of the
-        // form 0000xxxx the lower four bits indicating the destination location for the byte. For 256 bit shuffle we use lower 5 bits.
-        // First we move the numbers in shifts to discard the unwanted UTF-8 sequence bytes. We note that the numbers
-        // are bounded by sizeof(integer_t) and so we need at most 4 (for 128 bit) or 5 (for 256 bit) moves. The numbers are
-        // monotonic from left to right and change value only at the end of a UTF-8 sequence. We move them leftwards, accumulating the
+        // form 0000xxxx the lower four bits indicating the source location within the lane for the byte.
+        // First we move the numbers in shifts to discard the unwanted UTF-8 sequence bytes.
+        // Every full lane keeps at least four bytes so the numbers are bounded by 12 and we
+        // need at most 4 moves. The numbers are monotonic from left to right within a lane and
+        // change value only at the end of a UTF-8 sequence. We move them leftwards, accumulating the
         // moves bit-by-bit.
-#define move(shifts, amt, which_bit) blendv_epi8(shifts, shift_left_by_##amt(shifts), shift_left_by_##amt(shift_left_by_bits16(shifts, 8 - which_bit)))
+#define move(shifts, amt, which_bit) \
+    blendv_epi8(shifts, shift_left_in_lane_by_##amt(shifts), shift_left_in_lane_by_##amt(shift_left_by_bits16(shifts, 8 - which_bit)))
         shifts = move(shifts, one_byte, 1);
         shifts = move(shifts, two_bytes, 2);
         shifts = move(shifts, four_bytes, 3);
         shifts = move(shifts, eight_bytes, 4);
-#if KITTY_SIMD_LEVEL == 256
-        shifts = move(shifts, sixteen_bytes, 5);
-#endif
 #undef move
-        // convert the shifts into a suitable mask for shuffle by adding the byte number to each byte
-        shifts = add_epi8(shifts, numbered);
+        // convert the shifts into a suitable mask for the in-lane shuffle by adding the byte number within the lane to each byte
+        shifts = add_epi8(shifts, numbered_in_lane);
         debug_register(shifts);
 
         output1 = shuffle_epi8(output1, shifts);
@@ -901,11 +876,25 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
         debug_register(output2);
         debug_register(output3);
 
-        const unsigned num_of_discarded_bytes = sum_bytes(count_subs1);
-        const unsigned num_codepoints = chunk_src_sz - num_of_discarded_bytes;
-        debug("num_of_discarded_bytes: %u num_codepoints: %u\n", num_of_discarded_bytes, num_codepoints);
+        uint32_t kept_mask = ~(uint32_t)movemask_epi8(discarded_locations);
+        if (chunk_src_sz < 32) kept_mask &= (1u << chunk_src_sz) - 1; // also clears the always zero high bits for the 128-bit case
+#if KITTY_SIMD_LEVEL == 128
+        const unsigned num_codepoints = __builtin_popcount(kept_mask);
+        debug("num_codepoints: %u\n", num_codepoints);
         FUNC(output_unicode)(d, output1, output2, output3, num_codepoints);
+#else
+        const unsigned num_codepoints_lane0 = __builtin_popcount(kept_mask & 0xffff), num_codepoints_lane1 = __builtin_popcount(kept_mask >> 16);
+        debug("num_codepoints: %u\n", num_codepoints_lane0 + num_codepoints_lane1);
+        FUNC(output_unicode)(d, output1, output2, output3, num_codepoints_lane0, num_codepoints_lane1);
+#endif
         handle_trailing_bytes();
+    }
+    if (sentinel_found && d->state.cur != UTF8_ACCEPT) {
+        // an incomplete UTF-8 sequence was cut off by the sentinel, matching
+        // the scalar implementation, emit a replacement char for it
+        utf8_decoder_ensure_capacity(d, 1);
+        d->output.storage[d->output.pos++] = 0xfffd;
+        zero_at_ptr(&d->state);
     }
 #ifdef compare_with_scalar
     if (debugdec.output.pos != d->output.pos || debugdec.num_consumed != d->num_consumed ||
@@ -969,6 +958,15 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
 #undef shift_left_by_four_bytes
 #undef shift_left_by_eight_bytes
 #undef shift_left_by_sixteen_bytes
+#undef shift_right_in_lane_by_one_byte
+#undef shift_right_in_lane_by_two_bytes
+#undef shift_right_in_lane_by_four_bytes
+#undef shift_right_in_lane_by_eight_bytes
+#undef shift_left_in_lane_by_one_byte
+#undef shift_left_in_lane_by_two_bytes
+#undef shift_left_in_lane_by_four_bytes
+#undef shift_left_in_lane_by_eight_bytes
+#undef numbered_bytes_in_lane
 #undef shift_left_by_bits16
 #undef shift_right_by_bits32
 #undef shift_right_by_bytes128
@@ -983,7 +981,6 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
 #undef shuffle_epi8
 #undef numbered_bytes
 #undef reverse_numbered_bytes
-#undef sum_bytes
 #undef is_zero
 #undef zero_upper
 #undef print_register_as_bytes

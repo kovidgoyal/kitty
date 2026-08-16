@@ -235,9 +235,9 @@ def env_for_python_tests(report_env: bool = False) -> Iterator[None]:
     if report_env:
         print('Running under CI:', is_ci)
         print('Using PATH in test environment:', path)
-        from kitty.fast_data_types import has_avx2, has_sse4_2
+        from kitty.fast_data_types import has_avx2, has_avx512, has_sse4_2
 
-        print(f'Intrinsics: {has_avx2=} {has_sse4_2=}')
+        print(f'Intrinsics: {has_avx512=} {has_avx2=} {has_sse4_2=}')
     with (
         TemporaryDirectory() as tdir,
         env_vars(

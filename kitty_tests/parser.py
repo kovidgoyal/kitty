@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import random
 from binascii import hexlify
 from functools import partial
 
@@ -10,6 +11,7 @@ from kitty.fast_data_types import (
     base64_decode,
     base64_encode,
     has_avx2,
+    has_avx512,
     has_sse4_2,
     test_find_either_of_two_bytes,
     test_utf8_decode_to_sentinel,
@@ -185,7 +187,7 @@ class TestParser(BaseTest):
 
     def test_utf8_simd_decode(self):
         def unsupported(which):
-            return (which == 2 and not has_sse4_2) or (which == 3 and not has_avx2)
+            return (which == 2 and not has_sse4_2) or (which == 3 and not has_avx2) or (which == 4 and not has_avx512)
 
         def reset_state():
             test_utf8_decode_to_sentinel(b'', -1)
@@ -219,9 +221,10 @@ class TestParser(BaseTest):
             return actual
 
         def double_test(x):
-            for which in (2, 3):
+            for which in (2, 3, 4):
                 t(x, which=which)
             t(x * 2, which=3)
+            t(x * 4, which=4)
             reset_state()
 
         # incomplete trailer at end of vector
@@ -235,7 +238,7 @@ class TestParser(BaseTest):
         x('abc\x1bd1234efgh5678')
         x('abcd1234efgh5678ijklABCDmnopEFGH')
 
-        for which in (2, 3):
+        for which in (2, 3, 4):
             x = partial(t, which=which)
             x('abcdef', 'ghijk')
             x('2:α3', ':≤4:😸|')
@@ -257,7 +260,7 @@ class TestParser(BaseTest):
             expected = 'filler' + expected
             self.ae(expected, actual, f'Failed for: {src!r} with {which=}')
 
-        for which in (1, 2, 3):
+        for which in (1, 2, 3, 4):
             pb = partial(test_expected, which=which)
             pb('ニチ', 'ニチ')
             pb('\x84\x85', '\x84\x85')
@@ -633,6 +636,105 @@ class TestParser(BaseTest):
 
             # Boundary case: too large codepoint (> U+10FFFF)
             pb(b'"\xf5\x80\x80\x80"', '"\ufffd\ufffd\ufffd\ufffd"')
+
+        # The tests below compare SIMD implementations against the scalar one via t().
+        # SIMD chunks are 16 (SSE), 32 (AVX2) or 64 (AVX-512) bytes and implementations
+        # may compact bytes within 16-byte lanes, so slide multi-byte sequences across
+        # every lane and chunk boundary.
+        simd_impls = 2, 3, 4
+        multibyte = '\xb5'.encode(), 'α'.encode(), '≤'.encode(), '\U0001f638'.encode()
+        for which in simd_impls:
+            for mb in multibyte:
+                for filler_len in range(70):
+                    t(b'a' * filler_len + mb + b'b' * 40, which=which)
+                    t(b'a' * filler_len + mb * 3 + b'b' * 40, which=which)
+
+        # ESC at and around lane/chunk boundaries, adjacent to multi-byte sequences
+        # and cutting off incomplete sequences
+        for which in simd_impls:
+            for esc_pos in (0, 1, 14, 15, 16, 17, 30, 31, 32, 33, 47, 48, 63, 64, 65):
+                buf = bytearray(b'x' * 80)
+                buf[esc_pos] = 0x1B
+                t(bytes(buf), which=which)
+                t(b'y' * esc_pos + '≤'.encode() + b'\x1b' + '\u03c6'.encode(), which=which)
+                t(b'y' * esc_pos + b'\xe2\x89\x1b' + b'z' * 8, which=which)
+                t(b'y' * esc_pos + b'\xf0\x9f\x98\x1b', which=which)
+
+        # Invalid/incomplete sequences sliding across lane/chunk boundaries, both
+        # followed by more data and truncated at the end of input
+        bad_seqs = (
+            b'\x80',
+            b'\xbf\xbf',
+            b'\xc0\x80',
+            b'\xc1\xbf',
+            b'\xe0\x80\x80',
+            b'\xe0\x9f\x80',
+            b'\xed\xa0\x80',
+            b'\xf0\x8f\x80\x80',
+            b'\xf4\x90\x80\x80',
+            b'\xf5\x81\x82\x83',
+            b'\xfe',
+            b'\xff',
+            b'\xc2',
+            b'\xe2\x89',
+            b'\xf0\x9f\x98',
+        )
+        for which in simd_impls:
+            for bad in bad_seqs:
+                for pos in (0, 13, 14, 15, 16, 17, 29, 30, 31, 32, 33, 62, 63, 64):
+                    t(b'k' * pos + bad + b'm' * 9, which=which)
+                    t(b'k' * pos + bad, which=which)
+
+        # Overlapping sequences at the end of a chunk. These make counts[last] > 1,
+        # triggering the incomplete-trailing-sequence check, without there being an
+        # actual incomplete trailing sequence.
+        for which in simd_impls:
+            for sz in (16, 32, 64, 128):
+                for pattern in (b'\xc0\xefh\x7f', b'\xc2\xefh\x7f', b'\xc0\xefhq', b'\xe0\xa0\xc2\xe2\x89'[:4]):
+                    t(b'k' * (sz - 4) + pattern, which=which)
+                    t(b'k' * (sz - 4) + pattern + b'more data', which=which)
+
+        # Dense/alternating sequence widths (maximum compaction churn) and exact
+        # chunk-multiple sizes
+        for which in simd_impls:
+            t(b'\x80' * 32, which=which)
+            t(b'\xbf' * 64, which=which)
+            t(('α' * 32).encode(), which=which)
+            t(('aα' * 24).encode(), which=which)
+            t(('≤' * 22).encode(), which=which)
+            t(('\U0001f638' * 17).encode(), which=which)
+            t(('a\U0001f638' * 13).encode(), which=which)
+            t(('α≤\U0001f638' * 11).encode(), which=which)
+            t(b'a' * 32, which=which)
+            t(b'a' * 33, which=which)
+            t(b'a' * 64, which=which)
+            t(b'a' * 65, which=which)
+            t(b'a' * 128, which=which)
+            t(b'a' * 129, which=which)
+            t(('α' * 16).encode() + b'\x1b[m', which=which)
+            t(('α' * 32).encode() + b'\x1b[m', which=which)
+
+        # Seeded random fuzzing against the scalar implementation, including
+        # split inputs to exercise cross-call state carry-over
+        rng = random.Random(0x1BADF00D)
+        interesting = 0x1B, 0x00, 0x7F, 0x80, 0xBF, 0xC0, 0xC1, 0xC2, 0xDF, 0xE0, 0xED, 0xEE, 0xEF, 0xF0, 0xF4, 0xF5, 0xFF
+        valid_chars = 'a', '\xb5', 'α', '≤', '\U0001f638', '\u07ff', '\u0800', '\ud7ff', '\ue000', '\uffff', '\U00010000', '\U0010ffff'
+        for which in simd_impls:
+            for _ in range(300):
+                parts = []
+                for _ in range(rng.randint(1, 80)):
+                    r = rng.random()
+                    if r < 0.5:
+                        parts.append(rng.choice(valid_chars).encode())
+                    elif r < 0.8:
+                        parts.append(bytes((rng.choice(interesting),)))
+                    else:
+                        parts.append(bytes((rng.randint(0, 255),)))
+                data = b''.join(parts)
+                t(data, which=which)
+                if len(data) > 2:
+                    cut = rng.randint(1, len(data) - 1)
+                    t(data[:cut], data[cut:], which=which)
 
     def test_find_either_of_two_bytes(self):
         sizes = []

@@ -188,6 +188,8 @@ Detailed list of changes
 
 - Improve throughput when processing large amounts of text by ~50% for ASCII and ~15% for Unicode by writing runs of plain ASCII chars to the screen in batches and skipping unnecessary bookkeeping in the scrolling and tab handling hot paths
 
+- Speed up SIMD UTF-8 decoding: ~20% faster for ASCII and ~50% faster for multi-byte text on both x86 and ARM, by processing pairs of vectors of plain ASCII text at a time and compacting decoded codepoints within 128-bit lanes, avoiding expensive cross-lane operations. Also add an AVX-512 based decoder, another ~75% faster for multi-byte text, used automatically on CPUs that support it (Intel Ice Lake+, AMD Zen 4+). Additionally fix the SIMD decoders failing to emit U+FFFD for an incomplete UTF-8 sequence cut off by an escape code
+
 - The :opt:`scrollbar` option now takes a new value ``scrolled-or-hovered`` to also show the scrollbar when the mouse moves over the scrollbar region (:pull:`10345`)
 
 - A new :code:`kitten @ screenshot` remote control command to take a pixel perfect PNG screenshot of an OS Window, tab or window

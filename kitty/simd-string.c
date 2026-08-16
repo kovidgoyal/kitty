@@ -8,7 +8,7 @@
 #include "data-types.h"
 #include "charsets.h"
 #include "simd-string.h"
-static bool has_sse4_2 = false, has_avx2 = false;
+static bool has_sse4_2 = false, has_avx2 = false, has_avx512 = false;
 
 // xor_data64 {{{
 static void
@@ -95,6 +95,7 @@ test_utf8_decode_to_sentinel(PyObject *self UNUSED, PyObject *args) {
         case 1: func = utf8_decode_to_esc_scalar; break;
         case 2: func = utf8_decode_to_esc_128; break;
         case 3: func = utf8_decode_to_esc_256; break;
+        case 4: func = utf8_decode_to_esc_512; break;
     }
     RAII_PyObject(ans, PyUnicode_FromString(""));
     ssize_t p = 0;
@@ -191,10 +192,12 @@ init_simd(void *x) {
         Py_INCREF(Py_##val);                                             \
         if (0 != PyModule_AddObject(module, #x, Py_##val)) return false; \
     }
-#define do_check()                                          \
-    {                                                       \
-        has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0; \
-        has_avx2 = __builtin_cpu_supports("avx2") != 0;     \
+#define do_check()                                                                                                                    \
+    {                                                                                                                                 \
+        has_sse4_2 = __builtin_cpu_supports("sse4.2") != 0;                                                                           \
+        has_avx2 = __builtin_cpu_supports("avx2") != 0;                                                                               \
+        has_avx512 = __builtin_cpu_supports("avx512f") && __builtin_cpu_supports("avx512bw") && __builtin_cpu_supports("avx512vl") && \
+                     __builtin_cpu_supports("avx512vbmi2");                                                                           \
     }
 
 #ifdef __APPLE__
@@ -227,13 +230,20 @@ init_simd(void *x) {
     if (simd_env) {
         has_sse4_2 = strcmp(simd_env, "128") == 0;
         has_avx2 = strcmp(simd_env, "256") == 0;
+        has_avx512 = strcmp(simd_env, "512") == 0;
     }
 
 #undef do_check
+    if (has_avx512) {
+        A(has_avx512, True);
+        utf8_decode_to_esc_impl = utf8_decode_to_esc_512;
+    } else {
+        A(has_avx512, False);
+    }
     if (has_avx2) {
         A(has_avx2, True);
         find_either_of_two_bytes_impl = find_either_of_two_bytes_256;
-        utf8_decode_to_esc_impl = utf8_decode_to_esc_256;
+        if (utf8_decode_to_esc_impl == utf8_decode_to_esc_scalar) utf8_decode_to_esc_impl = utf8_decode_to_esc_256;
         xor_data64_impl = xor_data64_256;
     } else {
         A(has_avx2, False);
