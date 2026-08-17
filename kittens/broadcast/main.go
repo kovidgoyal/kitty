@@ -5,7 +5,6 @@ package broadcast
 import (
 	"encoding/base64"
 	"os"
-	"strings"
 
 	"github.com/kovidgoyal/kitty/tools/cli"
 	"github.com/kovidgoyal/kitty/tools/cli/markup"
@@ -83,7 +82,7 @@ func (h *handler) on_text(text string) error {
 }
 
 func (h *handler) on_key(e *loop.KeyEvent) error {
-	if e.MatchesPressOrRepeat(strings.ToLower(h.opts.HideInputToggle)) {
+	if e.MatchesPressOrRepeat(h.opts.HideInputToggle) {
 		e.Handled = true
 		h.hide_input = !h.hide_input
 		h.lp.SetCursorVisible(!h.hide_input)
@@ -94,7 +93,7 @@ func (h *handler) on_key(e *loop.KeyEvent) error {
 		}
 		return nil
 	}
-	if e.MatchesPressOrRepeat(strings.ToLower(h.opts.EndSession)) {
+	if e.MatchesPressOrRepeat(h.opts.EndSession) {
 		e.Handled = true
 		h.lp.Quit(0)
 		return nil

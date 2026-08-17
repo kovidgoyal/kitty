@@ -26,6 +26,11 @@ Which mode to operate in.
 Path to the remote file.
 
 
+''' + (
+        # The -h short alias was intentionally dropped for --hostname below:
+        # Go's cli reserves -h for --help, and the only caller (internal to
+        # kitty) uses the long --hostname form.
+        '''\
 --hostname
 Hostname of the remote host.
 
@@ -33,6 +38,7 @@ Hostname of the remote host.
 --ssh-connection-data
 The data used to connect over ssh.
 '''
+    )
 
 
 def main(args: list[str]) -> None:
