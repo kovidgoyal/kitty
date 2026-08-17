@@ -248,6 +248,7 @@ bool grman_update_layers(
     unsigned int num_rows,
     CellPixelSize);
 void grman_scroll_images(GraphicsManager *self, const ScrollData *, CellPixelSize fg);
+bool grman_has_any_images(GraphicsManager *self);
 void grman_resize(GraphicsManager *, index_type, index_type, index_type, index_type, index_type, index_type);
 void grman_rescale(GraphicsManager *self, CellPixelSize fg);
 void grman_remove_cell_images(GraphicsManager *self, int32_t top, int32_t bottom);

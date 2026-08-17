@@ -22,7 +22,8 @@
 bool
 FUNC(utf8_decode_to_esc)(UTF8Decoder *d UNUSED, const uint8_t *src UNUSED, size_t src_sz UNUSED) NOSIMD const uint8_t *FUNC(find_either_of_two_bytes)(
     const uint8_t *haystack UNUSED, const size_t sz UNUSED, const uint8_t a UNUSED, const uint8_t b UNUSED) NOSIMD
-    void FUNC(xor_data64)(const uint8_t key[64] UNUSED, uint8_t *data UNUSED, const size_t data_sz UNUSED) NOSIMD
+    void FUNC(xor_data64)(const uint8_t key[64] UNUSED, uint8_t *data UNUSED, const size_t data_sz UNUSED) NOSIMD size_t
+    FUNC(printable_ascii_run_length)(const uint32_t *chars UNUSED, const size_t sz UNUSED) NOSIMD
 #undef NOSIMD
 #else
 
@@ -66,6 +67,8 @@ _Pragma("clang diagnostic pop")
 
 #if KITTY_SIMD_LEVEL == 128
 #define set1_epi8(x) simde_mm_set1_epi8((char)(x))
+#define set1_epi32 simde_mm_set1_epi32
+#define cmpgt_epi32 simde_mm_cmpgt_epi32
 #define set_epi8 simde_mm_set_epi8
 #define add_epi8 simde_mm_add_epi8
 #define load_unaligned simde_mm_loadu_si128
@@ -143,6 +146,8 @@ w(right, one_byte, 1) w(right, two_bytes, 2) w(right, four_bytes, 4) w(right, ei
 #define zero_upper()
 #endif
 #define set1_epi8(x) simde_mm256_set1_epi8((char)(x))
+#define set1_epi32 simde_mm256_set1_epi32
+#define cmpgt_epi32 simde_mm256_cmpgt_epi32
 #define set_epi8 simde_mm256_set_epi8
 #define add_epi8 simde_mm256_add_epi8
 #define load_unaligned simde_mm256_loadu_si256
@@ -440,6 +445,27 @@ FUNC(find_either_of_two_bytes)(const uint8_t *haystack, const size_t sz, const u
 #define get_test_from_chunk(chunk) (or_si(cmpeq_epi8(chunk, a_vec), cmpeq_epi8(chunk, b_vec)))
     find_match(haystack, sz, get_test_from_chunk);
 #undef get_test_from_chunk
+}
+
+size_t
+FUNC(printable_ascii_run_length)(const uint32_t *chars, const size_t sz) {
+    // Length of the prefix of chars that contains only printable ASCII codepoints,
+    // 32 <= ch <= 126. Signed comparisons are safe as codepoints are < 2^31.
+    const integer_t lower = set1_epi32(32), upper = set1_epi32(126);
+    const size_t lanes = sizeof(integer_t) / sizeof(uint32_t);
+    size_t i = 0;
+    for (; i + lanes <= sz; i += lanes) {
+        const integer_t chunk = load_unaligned((const integer_t *)(chars + i));
+        const integer_t non_printable = or_si(cmpgt_epi32(lower, chunk), cmpgt_epi32(chunk, upper));
+        const int n = bytes_to_first_match(non_printable);
+        if (n > -1) {
+            zero_upper();
+            return i + (size_t)n / sizeof(uint32_t);
+        }
+    }
+    zero_upper();
+    while (i < sz && (chars[i] - 32u) < 95u) i++;
+    return i;
 }
 
 #undef check_chunk
@@ -932,6 +958,8 @@ FUNC(utf8_decode_to_esc)(UTF8Decoder *d, const uint8_t *src_data, size_t src_len
 #undef FUNC
 #undef integer_t
 #undef set1_epi8
+#undef set1_epi32
+#undef cmpgt_epi32
 #undef set_epi8
 #undef load_unaligned
 #undef load_aligned

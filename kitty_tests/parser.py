@@ -14,6 +14,7 @@ from kitty.fast_data_types import (
     has_avx512,
     has_sse4_2,
     test_find_either_of_two_bytes,
+    test_printable_ascii_run_length,
     test_utf8_decode_to_sentinel,
 )
 
@@ -773,6 +774,30 @@ class TestParser(BaseTest):
         tests('bbb', 'a', '1')
         tests('bba', 'a', '<')
         tests('baa', '>', 'a')
+
+    def test_printable_ascii_run_length(self):
+        impls = [1]
+        if has_sse4_2:
+            impls.append(2)
+        if has_avx2:
+            impls.append(3)
+        impls.append(0)
+
+        def test(text):
+            expected = 0
+            while expected < len(text) and ' ' <= text[expected] <= '~':
+                expected += 1
+            for impl in impls:
+                actual = test_printable_ascii_run_length(text, impl)
+                self.ae(expected, actual, f'Failed for: {text!r} at {impl=}')
+
+        for prefix_len in (0, 1, 3, 4, 7, 8, 15, 16, 17, 31, 32, 33, 63, 64, 100):
+            prefix = 'a' * prefix_len
+            test(prefix)
+            for bad in ('\x1b', '\n', '\x00', '\x7f', '\x1f', 'ü', '中', '😀', '\U0010ffff'):
+                test(prefix + bad)
+                test(prefix + bad + 'xyz')
+                test(prefix + bad * 3 + prefix)
 
     def test_esc_codes(self):
         s = self.create_screen()

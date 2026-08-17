@@ -2214,6 +2214,11 @@ grman_scroll_images(GraphicsManager *self, const ScrollData *data, CellPixelSize
     }
 }
 
+bool
+grman_has_any_images(GraphicsManager *self) {
+    return vt_size(&self->images_by_internal_id) > 0;
+}
+
 static bool
 cell_image_row_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
     if (ref->is_virtual_ref || !is_cell_image(ref)) return false;

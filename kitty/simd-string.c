@@ -39,6 +39,22 @@ find_either_of_two_bytes(const uint8_t *haystack, const size_t sz, const uint8_t
 }
 // }}}
 
+// printable_ascii_run_length {{{
+static size_t
+printable_ascii_run_length_scalar(const uint32_t *chars, const size_t sz) {
+    size_t n = 0;
+    while (n < sz && (chars[n] - 32u) < 95u) n++;
+    return n;
+}
+
+static size_t (*printable_ascii_run_length_impl)(const uint32_t *, const size_t) = printable_ascii_run_length_scalar;
+
+size_t
+printable_ascii_run_length(const uint32_t *chars, const size_t sz) {
+    return printable_ascii_run_length_impl(chars, sz);
+}
+// }}}
+
 // UTF-8 {{{
 
 bool
@@ -142,6 +158,26 @@ test_find_either_of_two_bytes(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyObject *
+test_printable_ascii_run_length(PyObject *self UNUSED, PyObject *args) {
+    PyObject *text;
+    int which_function = 0;
+    size_t (*func)(const uint32_t *, const size_t) = printable_ascii_run_length;
+    if (!PyArg_ParseTuple(args, "U|i", &text, &which_function)) return NULL;
+    switch (which_function) {
+        case 1: func = printable_ascii_run_length_scalar; break;
+        case 2: func = printable_ascii_run_length_128; break;
+        case 3: func = printable_ascii_run_length_256; break;
+        case 0: break;
+        default: PyErr_SetString(PyExc_ValueError, "Unknown which_function"); return NULL;
+    }
+    Py_UCS4 *chars = PyUnicode_AsUCS4Copy(text);
+    if (!chars) return NULL;
+    const size_t ans = func(chars, PyUnicode_GET_LENGTH(text));
+    PyMem_Free(chars);
+    return PyLong_FromSize_t(ans);
+}
+
+static PyObject *
 test_xor64(PyObject *self UNUSED, PyObject *args) {
     RAII_PY_BUFFER(buf);
     RAII_PY_BUFFER(key);
@@ -179,6 +215,7 @@ test_xor64(PyObject *self UNUSED, PyObject *args) {
 static PyMethodDef module_methods[] = {
     METHODB(test_utf8_decode_to_sentinel, METH_VARARGS),
     METHODB(test_find_either_of_two_bytes, METH_VARARGS),
+    METHODB(test_printable_ascii_run_length, METH_VARARGS),
     METHODB(test_xor64, METH_VARARGS),
     {NULL, NULL, 0, NULL} /* Sentinel */
 };
@@ -245,6 +282,7 @@ init_simd(void *x) {
         find_either_of_two_bytes_impl = find_either_of_two_bytes_256;
         if (utf8_decode_to_esc_impl == utf8_decode_to_esc_scalar) utf8_decode_to_esc_impl = utf8_decode_to_esc_256;
         xor_data64_impl = xor_data64_256;
+        printable_ascii_run_length_impl = printable_ascii_run_length_256;
     } else {
         A(has_avx2, False);
     }
@@ -253,6 +291,7 @@ init_simd(void *x) {
         if (find_either_of_two_bytes_impl == find_either_of_two_bytes_scalar) find_either_of_two_bytes_impl = find_either_of_two_bytes_128;
         if (utf8_decode_to_esc_impl == utf8_decode_to_esc_scalar) utf8_decode_to_esc_impl = utf8_decode_to_esc_128;
         if (xor_data64_impl == xor_data64_scalar) xor_data64_impl = xor_data64_128;
+        if (printable_ascii_run_length_impl == printable_ascii_run_length_scalar) printable_ascii_run_length_impl = printable_ascii_run_length_128;
     } else {
         A(has_sse4_2, False);
     }

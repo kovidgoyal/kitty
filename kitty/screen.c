@@ -37,6 +37,7 @@
 #include "unicode-data.h"
 #include "modes.h"
 #include "char-props.h"
+#include "simd-string.h"
 #include "wcswidth.h"
 #include <stdalign.h>
 #include <stdio.h>
@@ -426,16 +427,18 @@ index_selection(const Screen *self, Selections *selections, bool up, index_type 
 }
 
 
-#define INDEX_GRAPHICS(amtv)                                                             \
-    {                                                                                    \
-        bool is_main = self->linebuf == self->main_linebuf;                              \
-        static ScrollData s;                                                             \
-        s.amt = amtv;                                                                    \
-        s.limit = is_main ? -self->historybuf->ynum : 0;                                 \
-        s.has_margins = self->margin_top != 0 || self->margin_bottom != self->lines - 1; \
-        s.margin_top = top;                                                              \
-        s.margin_bottom = bottom;                                                        \
-        grman_scroll_images(self->grman, &s, self->cell_size);                           \
+#define INDEX_GRAPHICS(amtv)                                                                 \
+    {                                                                                        \
+        if (UNLIKELY(grman_has_any_images(self->grman))) {                                   \
+            bool is_main = self->linebuf == self->main_linebuf;                              \
+            static ScrollData s;                                                             \
+            s.amt = amtv;                                                                    \
+            s.limit = is_main ? -self->historybuf->ynum : 0;                                 \
+            s.has_margins = self->margin_top != 0 || self->margin_bottom != self->lines - 1; \
+            s.margin_top = top;                                                              \
+            s.margin_bottom = bottom;                                                        \
+            grman_scroll_images(self->grman, &s, self->cell_size);                           \
+        }                                                                                    \
     }
 
 
@@ -869,7 +872,21 @@ init_segmentation_state(Screen *self, text_loop_state *s) {
     if (s->prev.cc) {
         if (LIKELY(!s->prev.cc->ch_is_idx)) {
             // single codepoint in cell, no need for the ListOfChars machinery
-            s->seg = grapheme_segmentation_step(s->seg, char_props_for(s->prev.cc->ch_or_idx));
+            const char_type ch = s->prev.cc->ch_or_idx;
+            if (LIKELY(' ' <= ch && ch < DEL)) {
+                // every printable ASCII char steps from the reset state to this
+                // same state, matching what the batched ASCII draw path uses
+                s->seg = (GraphemeSegmentationResult){.grapheme_break = GBP_None};
+            } else if (!ch) {
+                // empty cell, common when the cursor is preceded by unwritten cells
+                static GraphemeSegmentationResult empty_cell_seg;
+                static bool have_empty_cell_seg = false;
+                if (UNLIKELY(!have_empty_cell_seg)) {
+                    empty_cell_seg = grapheme_segmentation_step(s->seg, char_props_for(0));
+                    have_empty_cell_seg = true;
+                }
+                s->seg = empty_cell_seg;
+            } else s->seg = grapheme_segmentation_step(s->seg, char_props_for(ch));
         } else {
             text_in_cell(s->prev.cc, self->text_cache, self->lc);
             for (index_type i = 0; i < self->lc->count; i++) s->seg = grapheme_segmentation_step(s->seg, char_props_for(self->lc->chars[i]));
@@ -1304,6 +1321,10 @@ static void
 draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_state *s) {
     init_text_loop_line(self, s);
     int char_width;
+#define TEMPLATE_CELLS 16
+    CPUCell cpu_template[TEMPLATE_CELLS];
+    GPUCell gpu_template[TEMPLATE_CELLS];
+    bool templates_initialized = false;
     for (size_t i = 0; i < num_chars; i++) {
         uint32_t ch = map_char(self, chars[i]);
         if (ch < DEL && s->seg.grapheme_break <= GBP_None) { // fast path for printable ASCII
@@ -1318,17 +1339,45 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
                 // scalar path: non-ASCII, control char or an existing multicell cell.
                 const size_t limit = MIN(num_chars - i, (size_t)(self->columns - self->cursor->x));
                 CPUCell *cp = s->cp + self->cursor->x;
-                size_t n = 0;
-                while (n < limit && (chars[i + n] - 32u) < 95u && !cp[n].is_multicell) n++;
+                size_t n = printable_ascii_run_length(chars + i, limit);
+                // clamp the run at the first multicell cell, it needs the scalar path
+                size_t m = 0;
+                while (m + 4 <= n && !(cp[m].is_multicell | cp[m + 1].is_multicell | cp[m + 2].is_multicell | cp[m + 3].is_multicell)) m += 4;
+                while (m < n && !cp[m].is_multicell) m++;
+                n = m;
                 if (n) {
                     GPUCell *gp = s->gp + self->cursor->x;
                     const CPUCell cc = s->cc;
                     const GPUCell g = s->g;
-                    for (size_t j = 0; j < n; j++) {
-                        cp[j] = cc;
-                        cell_set_char(cp + j, chars[i + j]);
+                    // fill full blocks of cells from templates, the constant sized
+                    // memcpy is inlined by the compiler as wide stores, the chars
+                    // then need only a single 32-bit store per cell
+                    if (n >= TEMPLATE_CELLS / 4 && !templates_initialized) {
+                        templates_initialized = true;
+                        for (unsigned k = 0; k < TEMPLATE_CELLS; k++) {
+                            cpu_template[k] = cc;
+                            gpu_template[k] = g;
+                        }
                     }
-                    for (size_t j = 0; j < n; j++) gp[j] = g;
+#define copy_template(dest, template, elem)                                                                \
+    {                                                                                                      \
+        j = 0;                                                                                             \
+        for (; j + TEMPLATE_CELLS <= n; j += TEMPLATE_CELLS) memcpy(dest + j, template, sizeof(template)); \
+        if (j + TEMPLATE_CELLS / 2 <= n) {                                                                 \
+            memcpy(dest + j, template, sizeof(template) / 2);                                              \
+            j += TEMPLATE_CELLS / 2;                                                                       \
+        }                                                                                                  \
+        if (j + TEMPLATE_CELLS / 4 <= n) {                                                                 \
+            memcpy(dest + j, template, sizeof(template) / 4);                                              \
+            j += TEMPLATE_CELLS / 4;                                                                       \
+        }                                                                                                  \
+        for (; j < n; j++) dest[j] = elem;                                                                 \
+    }
+                    size_t j;
+                    copy_template(cp, cpu_template, cc);
+                    copy_template(gp, gpu_template, g);
+#undef copy_template
+                    for (j = 0; j < n; j++) cell_set_char(cp + j, chars[i + j]);
                     self->last_graphic_char = chars[i + n - 1];
                     s->prev.y = self->cursor->y;
                     s->prev.x = self->cursor->x + n - 1;
@@ -1425,6 +1474,7 @@ draw_text_loop(Screen *self, const uint32_t *chars, size_t num_chars, text_loop_
         }
     }
 #undef init_line
+#undef TEMPLATE_CELLS
 }
 
 #define PREPARE_FOR_DRAW_TEXT                                                                                                       \

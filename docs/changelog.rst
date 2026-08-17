@@ -192,6 +192,8 @@ Detailed list of changes
 
 - Improve throughput when processing escape code heavy input by ~30% by taking the input buffer lock once per buffer of input rather than once per escape code and using cheaper arithmetic to parse CSI parameters
 
+- Improve throughput when processing large amounts of plain text by another ~10% by finding runs of printable ASCII chars with SIMD, filling cells using wide stores and skipping unnecessary work in the scrolling hot path when there are no images
+
 - The :opt:`scrollbar` option now takes a new value ``scrolled-or-hovered`` to also show the scrollbar when the mouse moves over the scrollbar region (:pull:`10345`)
 
 - A new :code:`kitten @ screenshot` remote control command to take a pixel perfect PNG screenshot of an OS Window, tab or window
