@@ -179,24 +179,6 @@ _report_params_with_first(PyObject *dump_callback, id_type window_id, const char
 // }}}
 
 // Utils {{{
-static const int64_t digit_multipliers[] = {
-    10000000000000000l,
-    1000000000000000l,
-    100000000000000l,
-    10000000000000l,
-    1000000000000l,
-    100000000000l,
-    10000000000l,
-    1000000000l,
-    100000000l,
-    10000000l,
-    1000000l,
-    100000l,
-    10000l,
-    1000l,
-    100l,
-    1l};
-
 // }}}
 
 // Data structures {{{
@@ -548,18 +530,14 @@ dispatch_osc(PS *self, uint8_t *buf, size_t limit, bool is_extended_osc) {
     break;           \
     }
 
-    int64_t accumulator = 0;
     int code = 0;
     unsigned int i;
     for (i = 0; i < MIN(limit, 5u); i++) {
-        int64_t num = buf[i] - '0';
-        if (num < 0 || num > 9) break;
-        accumulator += num * digit_multipliers[i];
+        uint8_t num = buf[i] - '0';
+        if (num > 9) break;
+        code = code * 10 + num;
     }
-    if (i > 0) {
-        code = accumulator / digit_multipliers[i - 1];
-        if (i < limit && buf[i] == ';') i++;
-    }
+    if (i < limit && buf[i] == ';') i++;
 
     switch (code) {
         case 0:

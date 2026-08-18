@@ -2,201 +2,145 @@
 
 #pragma once
 
-#include "base64.h"
+    #include "base64.h"
 
-static inline void parse_multicell_code(PS *self, uint8_t *parser_buf,
-                                        const size_t parser_buf_pos) {
-  unsigned int pos = 0;
-  size_t payload_start = 0;
-  enum PARSER_STATES { KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE, PAYLOAD };
-  enum PARSER_STATES state = KEY, value_state = FLAG;
-  MultiCellCommand g = {0};
-  unsigned int i, code;
-  uint64_t lcode;
-  int64_t accumulator;
-  bool is_negative;
-  (void)is_negative;
-  size_t sz;
+static inline void
+parse_multicell_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
+    unsigned int pos = 0;
+    size_t payload_start = 0;
+    enum PARSER_STATES { KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE , PAYLOAD };
+    enum PARSER_STATES state = KEY, value_state = FLAG;
+    MultiCellCommand g = {0};
+    unsigned int i, code;
+    uint64_t lcode;
+    bool is_negative; (void)is_negative;
+    size_t sz;
+    
+    enum KEYS {
+        width='w',
+scale='s',
+subscale_n='n',
+subscale_d='d',
+vertical_align='v',
+horizontal_align='h'
+    };
+    
+    enum KEYS key = 'a';
+    if (parser_buf[pos] == ';') state = AFTER_VALUE;
 
-  enum KEYS {
-    width = 'w',
-    scale = 's',
-    subscale_n = 'n',
-    subscale_d = 'd',
-    vertical_align = 'v',
-    horizontal_align = 'h'
-  };
+    while (pos < parser_buf_pos) {
+        switch(state) {
+            case KEY:
+                key = parser_buf[pos++];
+                state = EQUAL;
+                switch(key) {
+                    case width: value_state = UINT; break;        
+case scale: value_state = UINT; break;        
+case subscale_n: value_state = UINT; break;        
+case subscale_d: value_state = UINT; break;        
+case vertical_align: value_state = UINT; break;        
+case horizontal_align: value_state = UINT; break;
+                    default:
+                        REPORT_ERROR("Malformed MultiCellCommand control block, invalid key character: 0x%x", key);
+                        return;
+                }
+                break;
 
-  enum KEYS key = 'a';
-  if (parser_buf[pos] == ';')
-    state = AFTER_VALUE;
+            case EQUAL:
+                if (parser_buf[pos++] != '=') {
+                    REPORT_ERROR("Malformed MultiCellCommand control block, no = after key, found: 0x%x instead", parser_buf[pos-1]);
+                    return;
+                }
+                state = value_state;
+                break;
 
-  while (pos < parser_buf_pos) {
-    switch (state) {
-    case KEY:
-      key = parser_buf[pos++];
-      state = EQUAL;
-      switch (key) {
-      case width:
-        value_state = UINT;
-        break;
-      case scale:
-        value_state = UINT;
-        break;
-      case subscale_n:
-        value_state = UINT;
-        break;
-      case subscale_d:
-        value_state = UINT;
-        break;
-      case vertical_align:
-        value_state = UINT;
-        break;
-      case horizontal_align:
-        value_state = UINT;
-        break;
-      default:
-        REPORT_ERROR("Malformed MultiCellCommand control block, invalid key "
-                     "character: 0x%x",
-                     key);
-        return;
-      }
-      break;
+            case FLAG:
+                switch(key) {
+                    
+                    default:
+                        break;
+                }
+                state = AFTER_VALUE;
+                break;
 
-    case EQUAL:
-      if (parser_buf[pos++] != '=') {
-        REPORT_ERROR("Malformed MultiCellCommand control block, no = after "
-                     "key, found: 0x%x instead",
-                     parser_buf[pos - 1]);
-        return;
-      }
-      state = value_state;
-      break;
+            case INT:
+#define READ_UINT \
+                for (i = pos, lcode=0; i < MIN(parser_buf_pos, pos + 10); i++) { \
+                    uint8_t n = parser_buf[i] - '0'; if (n > 9) break; \
+                    lcode = lcode * 10 + n; \
+                } \
+                if (i == pos) { REPORT_ERROR("Malformed MultiCellCommand control block, expecting an integer value for key: %c", key & 0xFF); return; } \
+                pos = i; \
+                if (lcode > UINT32_MAX) { REPORT_ERROR("Malformed MultiCellCommand control block, number is too large"); return; } \
+                code = lcode;
 
-    case FLAG:
-      switch (key) {
-
-      default:
-        break;
-      }
-      state = AFTER_VALUE;
-      break;
-
-    case INT:
-#define READ_UINT                                                              \
-  for (i = pos, accumulator = 0; i < MIN(parser_buf_pos, pos + 10); i++) {     \
-    int64_t n = parser_buf[i] - '0';                                           \
-    if (n < 0 || n > 9)                                                        \
-      break;                                                                   \
-    accumulator += n * digit_multipliers[i - pos];                             \
-  }                                                                            \
-  if (i == pos) {                                                              \
-    REPORT_ERROR("Malformed MultiCellCommand control block, expecting an "     \
-                 "integer value for key: %c",                                  \
-                 key & 0xFF);                                                  \
-    return;                                                                    \
-  }                                                                            \
-  lcode = accumulator / digit_multipliers[i - pos - 1];                        \
-  pos = i;                                                                     \
-  if (lcode > UINT32_MAX) {                                                    \
-    REPORT_ERROR(                                                              \
-        "Malformed MultiCellCommand control block, number is too large");      \
-    return;                                                                    \
-  }                                                                            \
-  code = lcode;
-
-      is_negative = false;
-      if (parser_buf[pos] == '-') {
-        is_negative = true;
-        pos++;
-      }
-#define I(x)                                                                   \
-  case x:                                                                      \
-    g.x = is_negative ? 0 - (int32_t)code : (int32_t)code;                     \
-    break
-      READ_UINT;
-      switch (key) {
-        ;
-      default:
-        break;
-      }
-      state = AFTER_VALUE;
-      break;
+                is_negative = false;
+                if(parser_buf[pos] == '-') { is_negative = true; pos++; }
+#define I(x) case x: g.x = is_negative ? 0 - (int32_t)code : (int32_t)code; break
+                READ_UINT;
+                switch(key) {
+                    ;
+                    default: break;
+                }
+                state = AFTER_VALUE;
+                break;
 #undef I
-    case UINT:
-      READ_UINT;
-#define U(x)                                                                   \
-  case x:                                                                      \
-    g.x = code;                                                                \
-    break
-      switch (key) {
-        U(width);
-        U(scale);
-        U(subscale_n);
-        U(subscale_d);
-        U(vertical_align);
-        U(horizontal_align);
-      default:
-        break;
-      }
-      state = AFTER_VALUE;
-      break;
+            case UINT:
+                READ_UINT;
+#define U(x) case x: g.x = code; break
+                switch(key) {
+                    U(width); U(scale); U(subscale_n); U(subscale_d); U(vertical_align); U(horizontal_align);
+                    default: break;
+                }
+                state = AFTER_VALUE;
+                break;
 #undef U
 #undef READ_UINT
 
-    case AFTER_VALUE:
-      switch (parser_buf[pos++]) {
-      default:
-        REPORT_ERROR("Malformed MultiCellCommand control block, expecting a : "
-                     "or semi-colon after a value, found: 0x%x",
-                     parser_buf[pos - 1]);
-        return;
-      case ':':
-        state = KEY;
-        break;
-      case ';':
-        state = PAYLOAD;
-        break;
-      }
-      break;
+            case AFTER_VALUE:
+                switch (parser_buf[pos++]) {
+                    default:
+                        REPORT_ERROR("Malformed MultiCellCommand control block, expecting a : or semi-colon after a value, found: 0x%x",
+                                     parser_buf[pos - 1]);
+                        return;
+                    case ':':
+                        state = KEY;
+                        break;
+                    case ';': state = PAYLOAD; break;
+                }
+                break;
 
-    case PAYLOAD: {
-      sz = parser_buf_pos - pos;
-      payload_start = pos;
-      g.payload_sz = sz;
-      pos = parser_buf_pos;
-    } break;
+            
+                case PAYLOAD: {
+                    sz = parser_buf_pos - pos;
+                    payload_start = pos;
+                    g.payload_sz = sz;
+                    pos = parser_buf_pos;
+                } break;
+            
 
-    } // end switch
-  } // end while
+        } // end switch
+    } // end while
 
-  switch (state) {
-  case EQUAL:
-    REPORT_ERROR("Malformed MultiCellCommand control block, no = after key");
-    return;
-  case INT:
-  case UINT:
-    REPORT_ERROR(
-        "Malformed MultiCellCommand control block, expecting an integer value");
-    return;
-  case FLAG:
-    REPORT_ERROR(
-        "Malformed MultiCellCommand control block, expecting a flag value");
-    return;
-  default:
-    break;
-  }
+    switch(state) {
+        case EQUAL:
+            REPORT_ERROR("Malformed MultiCellCommand control block, no = after key"); return;
+        case INT:
+        case UINT:
+            REPORT_ERROR("Malformed MultiCellCommand control block, expecting an integer value"); return;
+        case FLAG:
+            REPORT_ERROR("Malformed MultiCellCommand control block, expecting a flag value"); return;
+        default:
+            break;
+    }
 
-  REPORT_VA_COMMAND(
-      "K s { sI sI sI sI sI sI  ss#}", self->window_id, "multicell_command",
+    REPORT_VA_COMMAND("K s { sI sI sI sI sI sI  ss#}", self->window_id, "multicell_command",
 
-      "width", (unsigned int)g.width, "scale", (unsigned int)g.scale,
-      "subscale_n", (unsigned int)g.subscale_n, "subscale_d",
-      (unsigned int)g.subscale_d, "vertical_align",
-      (unsigned int)g.vertical_align, "horizontal_align",
-      (unsigned int)g.horizontal_align,
+"width", (unsigned int)g.width, "scale", (unsigned int)g.scale, "subscale_n", (unsigned int)g.subscale_n, "subscale_d", (unsigned int)g.subscale_d, "vertical_align", (unsigned int)g.vertical_align, "horizontal_align", (unsigned int)g.horizontal_align,
 
-      "", (char *)parser_buf + payload_start, g.payload_sz);
+"", (char*)parser_buf + payload_start, g.payload_sz
+);
 
-  screen_handle_multicell_command(self->screen, &g, parser_buf + payload_start);
+    screen_handle_multicell_command(self->screen, &g, parser_buf + payload_start);
 }
+    

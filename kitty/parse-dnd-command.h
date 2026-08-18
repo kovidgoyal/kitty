@@ -13,7 +13,6 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
     DnDCommand g = {0};
     unsigned int i, code;
     uint64_t lcode;
-    int64_t accumulator;
     bool is_negative;
     (void)is_negative;
     size_t sz;
@@ -43,10 +42,7 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
 
             case EQUAL:
                 if (parser_buf[pos++] != '=') {
-                    REPORT_ERROR(
-                        "Malformed DnDCommand control block, no = after key, "
-                        "found: 0x%x instead",
-                        parser_buf[pos - 1]);
+                    REPORT_ERROR("Malformed DnDCommand control block, no = after key, found: 0x%x instead", parser_buf[pos - 1]);
                     return;
                 }
                 state = value_state;
@@ -58,10 +54,7 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
                         g.type = parser_buf[pos++];
                         if (g.type != 'A' && g.type != 'E' && g.type != 'M' && g.type != 'P' && g.type != 'R' && g.type != 'a' && g.type != 'e' &&
                             g.type != 'k' && g.type != 'm' && g.type != 'o' && g.type != 'p' && g.type != 'q' && g.type != 'r') {
-                            REPORT_ERROR(
-                                "Malformed DnDCommand control block, unknown flag value "
-                                "for type: 0x%x",
-                                g.type);
+                            REPORT_ERROR("Malformed DnDCommand control block, unknown flag value for type: 0x%x", g.type);
                             return;
                         };
                     } break;
@@ -72,25 +65,21 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
                 break;
 
             case INT:
-#define READ_UINT                                                                \
-    for (i = pos, accumulator = 0; i < MIN(parser_buf_pos, pos + 10); i++) {     \
-        int64_t n = parser_buf[i] - '0';                                         \
-        if (n < 0 || n > 9) break;                                               \
-        accumulator += n * digit_multipliers[i - pos];                           \
-    }                                                                            \
-    if (i == pos) {                                                              \
-        REPORT_ERROR(                                                            \
-            "Malformed DnDCommand control block, expecting an integer "          \
-            "value for key: %c",                                                 \
-            key & 0xFF);                                                         \
-        return;                                                                  \
-    }                                                                            \
-    lcode = accumulator / digit_multipliers[i - pos - 1];                        \
-    pos = i;                                                                     \
-    if (lcode > UINT32_MAX) {                                                    \
-        REPORT_ERROR("Malformed DnDCommand control block, number is too large"); \
-        return;                                                                  \
-    }                                                                            \
+#define READ_UINT                                                                                               \
+    for (i = pos, lcode = 0; i < MIN(parser_buf_pos, pos + 10); i++) {                                          \
+        uint8_t n = parser_buf[i] - '0';                                                                        \
+        if (n > 9) break;                                                                                       \
+        lcode = lcode * 10 + n;                                                                                 \
+    }                                                                                                           \
+    if (i == pos) {                                                                                             \
+        REPORT_ERROR("Malformed DnDCommand control block, expecting an integer value for key: %c", key & 0xFF); \
+        return;                                                                                                 \
+    }                                                                                                           \
+    pos = i;                                                                                                    \
+    if (lcode > UINT32_MAX) {                                                                                   \
+        REPORT_ERROR("Malformed DnDCommand control block, number is too large");                                \
+        return;                                                                                                 \
+    }                                                                                                           \
     code = lcode;
 
                 is_negative = false;
@@ -128,15 +117,13 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
             case AFTER_VALUE:
                 switch (parser_buf[pos++]) {
                     default:
-                        REPORT_ERROR(
-                            "Malformed DnDCommand control block, expecting a : or "
-                            "semi-colon after a value, found: 0x%x",
-                            parser_buf[pos - 1]);
+                        REPORT_ERROR("Malformed DnDCommand control block, expecting a : or semi-colon after a value, found: 0x%x", parser_buf[pos - 1]);
                         return;
                     case ':': state = KEY; break;
                     case ';': state = PAYLOAD; break;
                 }
                 break;
+
 
             case PAYLOAD: {
                 sz = parser_buf_pos - pos;
@@ -144,6 +131,7 @@ parse_dnd_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
                 g.payload_sz = sz;
                 pos = parser_buf_pos;
             } break;
+
 
         } // end switch
     } // end while
