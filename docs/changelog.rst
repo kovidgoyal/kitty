@@ -221,6 +221,8 @@ Detailed list of changes
   background color as the color for the newly created lines leading to less
   visual flicker until the application can redraw itself (:iss:`10365`)
 
+- macOS: Allow kitty OS Windows to participate in Split View tiling (:pull:`103701`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
