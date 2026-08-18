@@ -2344,7 +2344,8 @@ createNativeWindow(_GLFWwindow *window, const _GLFWwndconfig *wndconfig, const _
         }
 
         if (wndconfig->resizable) {
-            const NSWindowCollectionBehavior behavior = NSWindowCollectionBehaviorFullScreenPrimary | NSWindowCollectionBehaviorManaged;
+            const NSWindowCollectionBehavior behavior =
+                NSWindowCollectionBehaviorFullScreenPrimary | NSWindowCollectionBehaviorFullScreenAllowsTiling | NSWindowCollectionBehaviorManaged;
             [window->ns.object setCollectionBehavior:behavior];
         }
 
