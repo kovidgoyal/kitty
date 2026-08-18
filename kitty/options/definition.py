@@ -462,6 +462,72 @@ using the :opt:`custom_shaders` option, for example: :code:`custom_shaders curso
 )
 
 opt(
+    'cursor_trail_particles',
+    'no',
+    option_type='to_bool',
+    ctype='bool',
+    long_text="""
+Draw pixie dust particles along the cursor trail. The particles use the same
+motion model as Neovide's ``pixiedust`` cursor effect.
+This option requires :opt:`cursor_trail` to be enabled. The particles use
+:opt:`cursor_trail_color`, falling back to the cursor color when it is unset.
+""",
+)
+
+opt(
+    'cursor_trail_particle_opacity',
+    '235',
+    option_type='positive_float',
+    ctype='float',
+    long_text="""
+Set the maximum particle opacity using Neovide's 0--255 scale. Values above
+255 are treated as 255. Particles fade to transparent over their lifetime.
+""",
+)
+
+opt(
+    'cursor_trail_particle_lifetime',
+    '0.5',
+    option_type='positive_float',
+    ctype='float',
+    long_text="""
+Set how long cursor trail particles survive, in seconds. Set to zero to
+disable particle generation without changing :opt:`cursor_trail_particles`.
+""",
+)
+
+opt(
+    'cursor_trail_particle_density',
+    '1.4',
+    option_type='positive_float',
+    ctype='float',
+    long_text="""
+Set the number of particles generated per line of cursor travel.
+""",
+)
+
+opt(
+    'cursor_trail_particle_speed',
+    '13',
+    option_type='positive_float',
+    ctype='float',
+    long_text="""
+Set the speed of cursor trail particle movement in pixels per second.
+""",
+)
+
+opt(
+    'cursor_trail_particle_curl',
+    '1.0',
+    option_type='positive_float',
+    ctype='float',
+    long_text="""
+Set how quickly particle velocity rotates. Higher values produce curlier,
+more nervous motion; zero makes particles move in straight lines.
+""",
+)
+
+opt(
     'cursor_trail_decay',
     '0.1 0.4',
     option_type='cursor_trail_decay',

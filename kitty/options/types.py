@@ -347,6 +347,12 @@ option_names = (
     'cursor_trail',
     'cursor_trail_color',
     'cursor_trail_decay',
+    'cursor_trail_particle_curl',
+    'cursor_trail_particle_density',
+    'cursor_trail_particle_lifetime',
+    'cursor_trail_particle_opacity',
+    'cursor_trail_particle_speed',
+    'cursor_trail_particles',
     'cursor_trail_start_threshold',
     'cursor_underline_thickness',
     'custom_shaders',
@@ -573,6 +579,12 @@ class Options:
     cursor_trail: int = 0
     cursor_trail_color: kitty.fast_data_types.Color | None = None
     cursor_trail_decay: tuple[float, float] = (0.1, 0.4)
+    cursor_trail_particle_curl: float = 1.0
+    cursor_trail_particle_density: float = 1.4
+    cursor_trail_particle_lifetime: float = 0.5
+    cursor_trail_particle_opacity: float = 235.0
+    cursor_trail_particle_speed: float = 13.0
+    cursor_trail_particles: bool = False
     cursor_trail_start_threshold: tuple[int, int] = (2, 2)
     cursor_underline_thickness: float = 2.0
     custom_shaders: tuple[str, ...] = ()

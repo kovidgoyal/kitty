@@ -65,6 +65,12 @@ typedef struct Options {
     float cursor_beam_thickness;
     float cursor_underline_thickness;
     monotonic_t cursor_trail;
+    bool cursor_trail_particles;
+    float cursor_trail_particle_opacity;
+    float cursor_trail_particle_lifetime;
+    float cursor_trail_particle_density;
+    float cursor_trail_particle_speed;
+    float cursor_trail_particle_curl;
     float cursor_trail_decay_fast;
     float cursor_trail_decay_slow;
     color_type cursor_trail_color;
@@ -423,6 +429,11 @@ typedef struct BorderRects {
     ssize_t vao_idx;
 } BorderRects;
 
+typedef struct CursorParticle {
+    float x, y, speed_x, speed_y, rotation_speed, lifetime;
+    color_type color;
+} CursorParticle;
+
 typedef struct CursorTrail {
     bool needs_render;
     bool target_updated;  // set when cursor moves to a new cell; consumed by child-monitor to fire shader events
@@ -436,6 +447,10 @@ typedef struct CursorTrail {
     float cursor_edge_y[2];
     float prev_cursor_edge_x[2]; // cursor_edge_x before the most recent cursor move
     float prev_cursor_edge_y[2]; // cursor_edge_y before the most recent cursor move
+    CursorParticle particles[512];
+    size_t num_particles;
+    float particle_count_remainder;
+    uint64_t particle_rng_state, particle_rng_inc;
 } CursorTrail;
 
 typedef struct Tab {

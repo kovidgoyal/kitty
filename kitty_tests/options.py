@@ -362,6 +362,21 @@ def conf_parsing(self):
     opts = p('inactive_text_alpha -2')
     self.ae(opts.inactive_text_alpha, -1.0)
 
+    opts = p(
+        'cursor_trail_particles yes',
+        'cursor_trail_particle_opacity 180',
+        'cursor_trail_particle_lifetime 0.8',
+        'cursor_trail_particle_density 2',
+        'cursor_trail_particle_speed 8',
+        'cursor_trail_particle_curl 3',
+    )
+    self.assertTrue(opts.cursor_trail_particles)
+    self.ae(opts.cursor_trail_particle_opacity, 180)
+    self.ae(opts.cursor_trail_particle_lifetime, 0.8)
+    self.ae(opts.cursor_trail_particle_density, 2)
+    self.ae(opts.cursor_trail_particle_speed, 8)
+    self.ae(opts.cursor_trail_particle_curl, 3)
+
     # deprecation handling
     opts = p('clear_all_shortcuts y', 'send_text all f1 hello')
     self.ae(len(opts.keyboard_modes[''].keymap), 1)

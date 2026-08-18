@@ -71,6 +71,85 @@ should_skip_cursor_trail_update(CursorTrail *ct, ndc_coords g, OSWindow *os_wind
     return false;
 }
 
+static uint32_t
+next_particle_random(CursorTrail *ct) {
+    if (!ct->particle_rng_inc) {
+        ct->particle_rng_state = 0x853C49E6748FEA9Bull;
+        ct->particle_rng_inc = (0xDA3E39CB94B95BDBull << 1u) | 1u;
+    }
+    uint64_t old_state = ct->particle_rng_state;
+    ct->particle_rng_state = old_state * 6364136223846793005ull + ct->particle_rng_inc;
+    uint32_t rot = (uint32_t)(old_state >> 59u);
+    uint32_t xsh = (uint32_t)(((old_state >> 18u) ^ old_state) >> 27u);
+    return (xsh >> rot) | (xsh << ((-rot) & 31u));
+}
+
+static float
+next_particle_float(CursorTrail *ct) {
+    return (float)ldexp((double)next_particle_random(ct), -32);
+}
+
+static void
+update_cursor_particles(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_window, bool had_prev_edge) {
+    const float particle_lifetime = OPT(cursor_trail_particle_lifetime);
+    if (particle_lifetime <= 0.f) {
+        ct->num_particles = 0;
+        ct->particle_count_remainder = 0.f;
+        return;
+    }
+    const float dt = ct->updated_at ? (float)monotonic_t_to_s_double(now - ct->updated_at) : 0.f;
+    size_t i = 0;
+    while (i < ct->num_particles) {
+        CursorParticle *p = ct->particles + i;
+        p->lifetime -= dt;
+        if (p->lifetime <= 0.f) {
+            *p = ct->particles[--ct->num_particles];
+            continue;
+        }
+        p->x += p->speed_x * dt;
+        p->y += p->speed_y * dt;
+        const float angle = dt * p->rotation_speed;
+        const float s = sinf(angle), c = cosf(angle);
+        const float speed_x = p->speed_x;
+        p->speed_x = speed_x * c - p->speed_y * s;
+        p->speed_y = speed_x * s + p->speed_y * c;
+        i++;
+    }
+
+    if (!ct->target_updated || !had_prev_edge) return;
+    const float viewport_width = os_window->viewport_width, viewport_height = os_window->viewport_height;
+    const float current_x = (EDGE(x, 0) + EDGE(x, 1) + 2.f) * viewport_width * 0.25f;
+    const float current_y = (2.f - EDGE(y, 0) - EDGE(y, 1)) * viewport_height * 0.25f;
+    const float previous_x = (ct->prev_cursor_edge_x[0] + ct->prev_cursor_edge_x[1] + 2.f) * viewport_width * 0.25f;
+    const float previous_y = (2.f - ct->prev_cursor_edge_y[0] - ct->prev_cursor_edge_y[1]) * viewport_height * 0.25f;
+    const float travel_x = current_x - previous_x, travel_y = current_y - previous_y;
+    const float cursor_height = WD.screen->cell_size.height;
+    const float particle_count_float =
+        hypotf(travel_x, travel_y) / cursor_height * OPT(cursor_trail_particle_density) + ct->particle_count_remainder;
+    const size_t particle_count = (size_t)particle_count_float;
+    ct->particle_count_remainder = particle_count_float - particle_count;
+
+    for (i = 0; i < particle_count && ct->num_particles < arraysz(ct->particles); i++) {
+        const float t = (float)(i + 1u) / particle_count;
+        float dir_x = next_particle_float(ct) * 2.f - 1.f;
+        float dir_y = next_particle_float(ct) * 2.f - 1.f;
+        const float dir_length = hypotf(dir_x, dir_y);
+        if (dir_length > 0.f) {
+            dir_x /= dir_length;
+            dir_y /= dir_length;
+        }
+        CursorParticle *p = ct->particles + ct->num_particles++;
+        const float along_path = next_particle_float(ct);
+        p->x = previous_x + travel_x * along_path;
+        p->y = previous_y + travel_y * along_path + cursor_height * 0.5f;
+        p->speed_x = dir_x * 0.5f * 3.f * OPT(cursor_trail_particle_speed);
+        p->speed_y = (0.4f + fabsf(dir_y)) * 3.f * OPT(cursor_trail_particle_speed);
+        p->rotation_speed = (next_particle_float(ct) - 0.5f) * 1.57079632679f * OPT(cursor_trail_particle_curl);
+        p->lifetime = t * particle_lifetime;
+        p->color = WD.screen->last_rendered.cursor_bg;
+    }
+}
+
 static void
 update_cursor_trail_corners(CursorTrail *ct, ndc_coords g, monotonic_t now, OSWindow *os_window, Window *w) {
     // the trail corners move towards the cursor corner at a speed proportional to their distance from the cursor corner.
@@ -173,6 +252,12 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     }
     if (ct->target_updated && had_prev_edge) ct->cursor_changed_at = now;
 
+    const bool particles_were_rendering = ct->num_particles > 0;
+    if (OPT(cursor_trail_particles)) update_cursor_particles(ct, w, now, os_window, had_prev_edge);
+    else {
+        ct->num_particles = 0;
+        ct->particle_count_remainder = 0.f;
+    }
     update_cursor_trail_corners(ct, g, now, os_window, w);
     update_cursor_trail_opacity(ct, w, now);
 
@@ -182,7 +267,7 @@ update_cursor_trail(CursorTrail *ct, Window *w, monotonic_t now, OSWindow *os_wi
     ct->updated_at = now;
 
     // returning true here will cause the cells to be drawn
-    return ct->needs_render || needs_render_prev;
+    return ct->needs_render || needs_render_prev || ct->num_particles > 0 || particles_were_rendering;
 }
 
 #undef WD

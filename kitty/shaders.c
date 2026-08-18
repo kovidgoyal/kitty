@@ -2167,6 +2167,34 @@ draw_cursor_trail(CursorTrail *trail, Window *active_window) {
     unbind_program();
 }
 
+static void
+draw_cursor_particles(CursorTrail *trail, OSWindow *os_window, Window *active_window) {
+    if (!active_window || !trail->num_particles) return;
+    bind_program(TRAIL_PROGRAM);
+    const float width = os_window->viewport_width, height = os_window->viewport_height;
+    const float particle_size = active_window->render_data.screen->cell_size.width * 0.28f;
+    const float half_size = particle_size * 0.5f;
+    const float cursor_edge[2] = {2.f, 2.f};
+    glUniform2fv(program_uniform_location(TRAIL_PROGRAM, "cursor_edge_x"), 1, cursor_edge);
+    glUniform2fv(program_uniform_location(TRAIL_PROGRAM, "cursor_edge_y"), 1, cursor_edge);
+    const color_type configured_color = OPT(cursor_trail_color);
+    const float particle_lifetime = OPT(cursor_trail_particle_lifetime);
+    const float particle_opacity = fminf(OPT(cursor_trail_particle_opacity), 255.f) / 255.f;
+    for (size_t i = 0; i < trail->num_particles; i++) {
+        const CursorParticle *p = trail->particles + i;
+        const float left = 2.f * (p->x - half_size) / width - 1.f, right = 2.f * (p->x + half_size) / width - 1.f;
+        const float top = 1.f - 2.f * (p->y - half_size) / height, bottom = 1.f - 2.f * (p->y + half_size) / height;
+        const float x_coords[4] = {right, right, left, left};
+        const float y_coords[4] = {top, bottom, bottom, top};
+        glUniform4fv(program_uniform_location(TRAIL_PROGRAM, "x_coords"), 1, x_coords);
+        glUniform4fv(program_uniform_location(TRAIL_PROGRAM, "y_coords"), 1, y_coords);
+        color_vec3(program_uniform_location(TRAIL_PROGRAM, "trail_color"), configured_color ? configured_color : p->color);
+        glUniform1f(program_uniform_location(TRAIL_PROGRAM, "trail_opacity"), fminf(p->lifetime / particle_lifetime * particle_opacity, 1.f));
+        draw_quad(true, 0);
+    }
+    unbind_program();
+}
+
 // }}}
 
 // OSWindow {{{
@@ -2702,6 +2730,7 @@ static void
 stop_os_window_rendering(OSWindow *os_window, Tab *tab, Window *active_window, monotonic_t now) {
     if (OPT(cursor_trail) && tab->cursor_trail.needs_render && !(custom_shaders.end.active && custom_shaders.end.bypass_builtin_trail))
         draw_cursor_trail(&tab->cursor_trail, active_window);
+    if (OPT(cursor_trail_particles)) draw_cursor_particles(&tab->cursor_trail, os_window, active_window);
     if (os_window->needs_layers) {
         float sx = global_state.layers_render_texture.width > 0 ? (float)os_window->viewport_width / (float)global_state.layers_render_texture.width : 1.f;
         float sy = global_state.layers_render_texture.height > 0 ? (float)os_window->viewport_height / (float)global_state.layers_render_texture.height : 1.f;

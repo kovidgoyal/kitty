@@ -4,6 +4,7 @@
 #include "to-c.h"
 
 
+
 static void
 convert_from_python_font_size(PyObject *val, Options *opts) {
     opts->font_size = PyFloat_AsDouble(val);
@@ -209,6 +210,84 @@ convert_from_opts_cursor_trail(PyObject *py_opts, Options *opts) {
     PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail");
     if (ret == NULL) return;
     convert_from_python_cursor_trail(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_particles(PyObject *val, Options *opts) {
+    opts->cursor_trail_particles = PyObject_IsTrue(val);
+}
+
+static void
+convert_from_opts_cursor_trail_particles(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_particles");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_particles(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_particle_opacity(PyObject *val, Options *opts) {
+    opts->cursor_trail_particle_opacity = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_cursor_trail_particle_opacity(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_particle_opacity");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_particle_opacity(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_particle_lifetime(PyObject *val, Options *opts) {
+    opts->cursor_trail_particle_lifetime = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_cursor_trail_particle_lifetime(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_particle_lifetime");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_particle_lifetime(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_particle_density(PyObject *val, Options *opts) {
+    opts->cursor_trail_particle_density = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_cursor_trail_particle_density(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_particle_density");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_particle_density(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_particle_speed(PyObject *val, Options *opts) {
+    opts->cursor_trail_particle_speed = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_cursor_trail_particle_speed(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_particle_speed");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_particle_speed(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
+convert_from_python_cursor_trail_particle_curl(PyObject *val, Options *opts) {
+    opts->cursor_trail_particle_curl = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_cursor_trail_particle_curl(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "cursor_trail_particle_curl");
+    if (ret == NULL) return;
+    convert_from_python_cursor_trail_particle_curl(ret, opts);
     Py_DECREF(ret);
 }
 
@@ -1584,6 +1663,18 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_cursor_stop_blinking_after(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_trail(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_particles(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_particle_opacity(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_particle_lifetime(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_particle_density(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_particle_speed(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_cursor_trail_particle_curl(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_cursor_trail_decay(py_opts, opts);
     if (PyErr_Occurred()) return false;

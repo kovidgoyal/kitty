@@ -953,6 +953,24 @@ class Parser:
     def cursor_trail_decay(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_trail_decay'] = cursor_trail_decay(val)
 
+    def cursor_trail_particle_curl(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_particle_curl'] = positive_float(val)
+
+    def cursor_trail_particle_density(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_particle_density'] = positive_float(val)
+
+    def cursor_trail_particle_lifetime(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_particle_lifetime'] = positive_float(val)
+
+    def cursor_trail_particle_opacity(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_particle_opacity'] = positive_float(val)
+
+    def cursor_trail_particle_speed(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_particle_speed'] = positive_float(val)
+
+    def cursor_trail_particles(self, val: str, ans: dict[str, typing.Any]) -> None:
+        ans['cursor_trail_particles'] = to_bool(val)
+
     def cursor_trail_start_threshold(self, val: str, ans: dict[str, typing.Any]) -> None:
         ans['cursor_trail_start_threshold'] = cursor_trail_start_threshold(val)
 
