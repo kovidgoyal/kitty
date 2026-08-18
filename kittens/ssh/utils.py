@@ -20,13 +20,50 @@ def ssh_options() -> dict[str, str]:
         raw = p.stderr or ''
     except FileNotFoundError:
         return {
-            '4': '', '6': '', 'A': '', 'a': '', 'C': '', 'f': '', 'G': '', 'g': '', 'K': '', 'k': '',
-            'M': '', 'N': '', 'n': '', 'q': '', 's': '', 'T': '', 't': '', 'V': '', 'v': '', 'X': '',
-            'x': '', 'Y': '', 'y': '', 'B': 'bind_interface', 'b': 'bind_address', 'c': 'cipher_spec',
-            'D': '[bind_address:]port', 'E': 'log_file', 'e': 'escape_char', 'F': 'configfile', 'I': 'pkcs11',
-            'i': 'identity_file', 'J': '[user@]host[:port]', 'L': 'address', 'l': 'login_name', 'm': 'mac_spec',
-            'O': 'ctl_cmd', 'o': 'option', 'p': 'port', 'Q': 'query_option', 'R': 'address',
-            'S': 'ctl_path', 'W': 'host:port', 'w': 'local_tun[:remote_tun]'
+            '4': '',
+            '6': '',
+            'A': '',
+            'a': '',
+            'C': '',
+            'f': '',
+            'G': '',
+            'g': '',
+            'K': '',
+            'k': '',
+            'M': '',
+            'N': '',
+            'n': '',
+            'q': '',
+            's': '',
+            'T': '',
+            't': '',
+            'V': '',
+            'v': '',
+            'X': '',
+            'x': '',
+            'Y': '',
+            'y': '',
+            'B': 'bind_interface',
+            'b': 'bind_address',
+            'c': 'cipher_spec',
+            'D': '[bind_address:]port',
+            'E': 'log_file',
+            'e': 'escape_char',
+            'F': 'configfile',
+            'I': 'pkcs11',
+            'i': 'identity_file',
+            'J': '[user@]host[:port]',
+            'L': 'address',
+            'l': 'login_name',
+            'm': 'mac_spec',
+            'O': 'ctl_cmd',
+            'o': 'option',
+            'p': 'port',
+            'Q': 'query_option',
+            'R': 'address',
+            'S': 'ctl_path',
+            'W': 'host:port',
+            'w': 'local_tun[:remote_tun]',
         }
 
     ans: dict[str, str] = {}
@@ -42,7 +79,7 @@ def ssh_options() -> dict[str, str]:
             if raw[epos] not in '[]':
                 continue
             num += 1 if raw[epos] == '[' else -1  # ]
-        q = raw[pos+1:epos]
+        q = raw[pos + 1 : epos]
         pos = epos
         if len(q) < 2 or q[0] != '-':
             continue
@@ -74,7 +111,7 @@ def patch_cmdline(key: str, val: str, argv: list[str]) -> None:
         if arg.startswith(f'--kitten={key}='):
             argv[i] = f'--kitten={key}={val}'
             return
-        elif i > 0 and argv[i-1] == '--kitten' and (arg.startswith(f'{key}=') or arg.startswith(f'{key} ')):
+        elif i > 0 and argv[i - 1] == '--kitten' and (arg.startswith(f'{key}=') or arg.startswith(f'{key} ')):
             argv[i] = f'{key}={val}'
             return
     idx = argv.index('ssh')
@@ -87,8 +124,8 @@ def remove_env_var_from_cmdline(key: str, argv: list[str]) -> None:
             if arg.startswith(f'--kitten=env={key}='):
                 del argv[i]
                 break
-            elif i > 0 and argv[i-1] == '--kitten' and (arg.startswith(f'env={key}=') or arg.startswith(f'env {key}=')):
-                del argv[i-1:i+1]
+            elif i > 0 and argv[i - 1] == '--kitten' and (arg.startswith(f'env={key}=') or arg.startswith(f'env {key}=')):
+                del argv[i - 1 : i + 1]
                 break
         else:
             break
@@ -97,7 +134,7 @@ def remove_env_var_from_cmdline(key: str, argv: list[str]) -> None:
 def set_single_env_var_in_cmdline(key: str, val: str, argv: list[str]) -> None:
     remove_env_var_from_cmdline(key, argv)
     idx = argv.index('ssh')
-    argv.insert(idx+1, f'--kitten=env={key}={val}')
+    argv.insert(idx + 1, f'--kitten=env={key}={val}')
 
 
 def set_cwd_in_cmdline(cwd: str, argv: list[str]) -> None:
@@ -110,6 +147,7 @@ def create_shared_memory(data: Any, prefix: str) -> str:
 
     from kitty.fast_data_types import get_boss
     from kitty.shm import SharedMemory
+
     db = json.dumps(data).encode('utf-8')
     with SharedMemory(size=len(db) + SharedMemory.num_bytes_for_size, prefix=prefix) as shm:
         shm.write_data_with_size(db)
@@ -124,6 +162,7 @@ def read_data_from_shared_memory(shm_name: str) -> Any:
     import stat
 
     from kitty.shm import SharedMemory
+
     with SharedMemory(shm_name, readonly=True) as shm:
         shm.unlink()
         if shm.stats.st_uid != os.geteuid() or shm.stats.st_gid != os.getegid():
@@ -134,8 +173,11 @@ def read_data_from_shared_memory(shm_name: str) -> Any:
         return json.loads(shm.read_data_with_size())
 
 
-def get_ssh_data(msgb: memoryview, request_id: str) -> Iterator[bytes|memoryview]:
+def get_ssh_data(msgb: memoryview, request_id: str) -> Iterator[bytes | memoryview]:
+    # Unfortunately we cannot use EOF (\x04) to flush the kernel line buffer
+    # because ssh with controlmasters mangles EOF replacing it with null bytes
     from base64 import standard_b64decode
+
     yield b'\nKITTY_DATA_START\n'  # to discard leading data
     try:
         msg = standard_b64decode(msgb).decode('utf-8')
@@ -156,6 +198,7 @@ def get_ssh_data(msgb: memoryview, request_id: str) -> Iterator[bytes|memoryview
         except Exception as e:
             traceback.print_exc()
             import re
+
             msg = re.sub(r'[^a-zA-Z0-9 ]+', '_', str(e))
             yield f'{msg}\n'.encode()
         else:
@@ -174,6 +217,7 @@ def get_ssh_data(msgb: memoryview, request_id: str) -> Iterator[bytes|memoryview
 
 def set_env_in_cmdline(env: dict[str, str], argv: list[str], clone: bool = True) -> None:
     from kitty.options.utils import DELETE_ENV_VAR
+
     if clone:
         patch_cmdline('clone_env', create_shared_memory(env, 'ksse-'), argv)
         return
@@ -190,7 +234,7 @@ def set_env_in_cmdline(env: dict[str, str], argv: list[str], clone: bool = True)
         else:
             x = f'--kitten=env={k}={v}'
         env_dirs.append(x)
-    argv[idx+1:idx+1] = env_dirs
+    argv[idx + 1 : idx + 1] = env_dirs
 
 
 def get_ssh_cli() -> tuple[set[str], set[str]]:
@@ -215,11 +259,7 @@ def is_extra_arg(arg: str, extra_args: tuple[str, ...]) -> str:
 passthrough_args = {f'-{x}' for x in 'NnfGT'}
 
 
-def set_server_args_in_cmdline(
-    server_args: list[str], argv: list[str],
-    extra_args: tuple[str, ...] = ('--kitten',),
-    allocate_tty: bool = False
-) -> None:
+def set_server_args_in_cmdline(server_args: list[str], argv: list[str], extra_args: tuple[str, ...] = ('--kitten',), allocate_tty: bool = False) -> None:
     boolean_ssh_args, other_ssh_args = get_ssh_cli()
     ssh_args = []
     expecting_option_val = False
@@ -233,8 +273,8 @@ def set_server_args_in_cmdline(
             continue
         if argument.startswith('-') and not expecting_option_val:
             if argument == '--':
-                del ans[i+2:]
-                if allocate_tty and ans[i-1] != '-t':
+                del ans[i + 2 :]
+                if allocate_tty and ans[i - 1] != '-t':
                     ans.insert(i, '-t')
                 break
             if extra_args:
@@ -256,7 +296,7 @@ def set_server_args_in_cmdline(
                     continue
                 if arg in other_ssh_args:
                     ssh_args.append(arg)
-                    rest = all_args[i+1:]
+                    rest = all_args[i + 1 :]
                     if rest:
                         ssh_args.append(rest)
                     else:
@@ -272,7 +312,7 @@ def set_server_args_in_cmdline(
                 ssh_args.append(argument)
             expecting_option_val = False
             continue
-        del ans[i+1:]
+        del ans[i + 1 :]
         if allocate_tty and ans[i] != '-t':
             ans.insert(i, '-t')
         break
@@ -346,6 +386,7 @@ def get_connection_data(args: list[str], cwd: str = '', extra_args: tuple[str, .
         return None
     if host_name.startswith('ssh://'):
         from urllib.parse import urlparse
+
         purl = urlparse(host_name)
         if purl.hostname:
             host_name = purl.hostname

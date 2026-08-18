@@ -15,6 +15,7 @@ in
           simde
           go
           matplotlib
+          shader-slang
         ]
         ++ optionals stdenv.isDarwin [
           libpng
@@ -50,7 +51,7 @@ in
           furo
           sphinx-copybutton
           sphinxext-opengraph
-          sphinx-inline-tabs
+          sphinx-design
         ]
         ++ optionals stdenv.isDarwin [
           imagemagick

@@ -43,8 +43,7 @@ Now in :file:`kitty.conf` add the lines::
 
 Start kitty and press :kbd:`Ctrl+K` and you should see the kitten running.
 The best way to develop your own kittens is to modify one of the built-in
-kittens. Look in the `kittens sub-directory
-<https://github.com/kovidgoyal/kitty/tree/master/kittens>`__ of the kitty source
+kittens. Look in the :repo_folder:`kittens sub-directory <kittens>` of the kitty source
 code for those. Or see below for a list of :ref:`third-party kittens
 <external_kittens>`, that other kitty users have created.
 
@@ -333,3 +332,7 @@ Kittens created by kitty users
 
 `pdf-kitten <https://github.com/gelaechter/pdf-kitten>`__
     Allows you to export kitty's output to PDF, making use of weasyprint.
+
+`kitty-action-menu <https://github.com/olispeedy/kitty-action-menu>`__
+    A pop-up action menu (copy selection, copy link/path, paste, new tab, split,
+    close) opened by right-click or any mapping.

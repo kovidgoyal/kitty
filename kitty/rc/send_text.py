@@ -42,13 +42,11 @@ sessions_map: dict[str, Session] = {}
 
 
 class SessionAction:
-
     def __init__(self, sid: str):
         self.sid = sid
 
 
 class ClearSession(SessionAction):
-
     def __call__(self, *a: Any) -> None:
         s = sessions_map.pop(self.sid, None)
         if s is not None:
@@ -60,7 +58,6 @@ class ClearSession(SessionAction):
 
 
 class FocusChangedSession(SessionAction):
-
     def __call__(self, window: Window, focused: bool) -> None:
         s = sessions_map.get(self.sid)
         if s is not None:
@@ -73,7 +70,7 @@ class FocusChangedSession(SessionAction):
 
 class SendText(RemoteCommand):
     disallow_responses = True
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     data+/str: The data being sent. Can be either: text: followed by text or base64: followed by standard base64 encoded bytes
     match/str: A string indicating the window to send text to
     match_tab/str: A string indicating the tab to send text to
@@ -81,7 +78,7 @@ class SendText(RemoteCommand):
     exclude_active/bool: A boolean that prevents sending text to the active window
     session_id/str: A string that identifies a "broadcast session"
     bracketed_paste/choices.disable.auto.enable: Whether to wrap the text in bracketed paste escape codes
-    '''
+    """
     short_desc = 'Send arbitrary text to specified windows'
     desc = (
         'Send arbitrary text to specified windows. The text follows Python'
@@ -96,7 +93,11 @@ class SendText(RemoteCommand):
     # since send-text can send data over the tty to the window in which it was
     # run --no-reponse is always in effect for it, hence errors are not
     # reported.
-    options_spec = MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t') + '''\n
+    options_spec = (
+        MATCH_WINDOW_OPTION
+        + '\n\n'
+        + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
+        + """\n
 --all
 type=bool-set
 Match all windows.
@@ -124,13 +125,18 @@ default=disable
 When sending text to a window, wrap the text in bracketed paste escape codes. The default is to not do this.
 A value of :code:`auto` means, bracketed paste will be used only if the program running in the window has turned
 on bracketed paste mode.
-'''
+"""
+    )
     args = RemoteCommand.Args(spec='[TEXT TO SEND]', json_field='data', special_parse='+session_id:parse_send_text(io_data, args)')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         limit = 1024
         ret = {
-            'match': opts.match, 'data': '', 'match_tab': opts.match_tab, 'all': opts.all, 'exclude_active': opts.exclude_active,
+            'match': opts.match,
+            'data': '',
+            'match_tab': opts.match_tab,
+            'all': opts.all,
+            'exclude_active': opts.exclude_active,
             'bracketed_paste': opts.bracketed_paste,
         }
 
@@ -139,6 +145,7 @@ on bracketed paste mode.
                 ret['exclude_active'] = True
                 keep_going = True
                 from kitty.utils import TTYIO
+
                 with TTYIO(read_with_timeout=False) as tty:
                     while keep_going:
                         if not tty.wait_till_read_available():
@@ -148,7 +155,7 @@ on bracketed paste mode.
                             break
                         decoded_data = data.decode('utf-8')
                         if '\x04' in decoded_data:
-                            decoded_data = decoded_data[:decoded_data.index('\x04')]
+                            decoded_data = decoded_data[: decoded_data.index('\x04')]
                             keep_going = False
                         ret['data'] = f'text:{decoded_data}'
                         yield ret
@@ -163,7 +170,7 @@ on bracketed paste mode.
         def chunks(text: str) -> CmdGenerator:
             data = parse_send_text_bytes(text)
             while data:
-                b = base64.standard_b64encode(data[:limit]).decode("ascii")
+                b = base64.standard_b64encode(data[:limit]).decode('ascii')
                 ret['data'] = f'base64:{b}'
                 yield ret
                 data = data[limit:]
@@ -190,6 +197,7 @@ on bracketed paste mode.
         def chain() -> CmdGenerator:
             for src in sources:
                 yield from src
+
         return chain()
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
@@ -218,6 +226,7 @@ on bracketed paste mode.
         def create_or_update_session() -> Session:
             s = sessions_map.setdefault(sid, Session(sid))
             return s
+
         if session == 'end':
             s = create_or_update_session()
             for w in actual_windows:

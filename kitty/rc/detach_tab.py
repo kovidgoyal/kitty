@@ -10,23 +10,27 @@ if TYPE_CHECKING:
 
 
 class DetachTab(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     match/str: Which tab to detach
     target_tab/str: Which tab to move the detached tab to the OS window it is run in
     self/bool: Boolean indicating whether to detach the tab the command is run in
-    '''
+    """
 
     short_desc = 'Detach the specified tabs and place them in a different/new OS window'
     desc = (
         'Detach the specified tabs and either move them into a new OS window'
         ' or add them to the OS window containing the tab specified by :option:`kitten @ detach-tab --target-tab`'
     )
-    options_spec = MATCH_TAB_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--target-tab -t') + '''\n
+    options_spec = (
+        MATCH_TAB_OPTION
+        + '\n\n'
+        + MATCH_TAB_OPTION.replace('--match -m', '--target-tab -t')
+        + """\n
 --self
 type=bool-set
 Detach the tab this command is run in, rather than the active tab.
-'''
+"""
+    )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'target_tab': opts.target_tab, 'self': opts.self}

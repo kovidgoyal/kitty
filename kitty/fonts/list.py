@@ -24,6 +24,7 @@ def create_family_groups(monospaced: bool = True) -> dict[str, list[ListedFont]]
 
 def as_json(indent: int | None = None) -> str:
     import json
+
     groups = create_family_groups()
     for v in groups.values():
         for f in v:
@@ -35,6 +36,7 @@ def main(argv: Sequence[str]) -> None:
     import os
 
     from kitty.constants import kitten_exe, kitty_exe
+
     argv = list(argv)
     if '--psnames' in argv:
         argv.remove('--psnames')

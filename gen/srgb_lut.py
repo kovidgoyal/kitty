@@ -6,6 +6,7 @@ from functools import lru_cache
 
 if __name__ == '__main__' and not __package__:
     import __main__
+
     __main__.__package__ = 'gen'
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -26,7 +27,7 @@ def generate_srgb_lut(line_prefix: str = '    ') -> list[str]:
         values.append(f'{to_linear(i / 255.0):1.8f}f')
 
     for i in range(16):
-        lines.append(line_prefix + ', '.join(values[i * 16:(i + 1) * 16]) + ',')
+        lines.append(line_prefix + ', '.join(values[i * 16 : (i + 1) * 16]) + ',')
 
     lines[-1] = lines[-1].rstrip(',')
     return lines
@@ -42,10 +43,10 @@ def generate_srgb_gamma(declaration: str = 'static const GLfloat srgb_lut[256] =
     lines += generate_srgb_lut()
     a(close)
 
-    return "\n".join(lines)
+    return '\n'.join(lines)
 
 
-def main(args: list[str]=sys.argv) -> None:
+def main(args: list[str] = sys.argv) -> None:
     c = generate_srgb_gamma()
     with open(os.path.join('kitty', 'srgb_gamma.h'), 'w') as f:
         f.write(f'{c}\n')
@@ -53,5 +54,6 @@ def main(args: list[str]=sys.argv) -> None:
 
 if __name__ == '__main__':
     import runpy
+
     m = runpy.run_path(os.path.dirname(os.path.abspath(__file__)))
     m['main']([sys.executable, 'srgb-lut'])

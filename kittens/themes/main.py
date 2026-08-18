@@ -18,50 +18,58 @@ map = definition.add_map
 agr('shortcuts', 'Keyboard shortcuts')
 
 # Browsing mode shortcuts
-map('Quit',
+map(
+    'Quit',
     'quit --allow-fallback=shifted,ascii q quit',
-    )
-map('Scroll down',
+)
+map(
+    'Scroll down',
     'scroll_down --allow-fallback=shifted,ascii j scroll_down',
-    )
-map('Scroll up',
+)
+map(
+    'Scroll up',
     'scroll_up --allow-fallback=shifted,ascii k scroll_up',
-    )
-map('Start search',
+)
+map(
+    'Start search',
     'search --allow-fallback=shifted,ascii s search',
-    )
-map('Accept theme',
+)
+map(
+    'Accept theme',
     'accept --allow-fallback=shifted,ascii c accept',
-    )
+)
 
 # Accepting mode shortcuts
-map('Abort and return to browsing',
+map(
+    'Abort and return to browsing',
     'abort --allow-fallback=shifted,ascii a abort',
-    )
-map('Place theme file',
+)
+map(
+    'Place theme file',
     'place_theme --allow-fallback=shifted,ascii p place_theme',
-    )
-map('Modify config file',
+)
+map(
+    'Modify config file',
     'modify_conf --allow-fallback=shifted,ascii m modify_conf',
-    )
-map('Save as dark scheme',
+)
+map(
+    'Save as dark scheme',
     'dark_scheme --allow-fallback=shifted,ascii d dark_scheme',
-    )
-map('Save as light scheme',
+)
+map(
+    'Save as light scheme',
     'light_scheme --allow-fallback=shifted,ascii l light_scheme',
-    )
-map('Save as no preference scheme',
+)
+map(
+    'Save as no preference scheme',
     'no_preference --allow-fallback=shifted,ascii n no_preference',
-    )
+)
 
 egr()  # }}}
 
-help_text = (
-    'Change the kitty theme. If no theme name is supplied, run interactively, otherwise'
-    ' change the current theme to the specified theme name.'
-)
+help_text = 'Change the kitty theme. If no theme name is supplied, run interactively, otherwise change the current theme to the specified theme name.'
 usage = '[theme name to switch to]'
-OPTIONS = '''
+OPTIONS = """
 --cache-age
 type=float
 default=1
@@ -97,10 +105,12 @@ with respect to the kitty config directory. By default the kitty config file,
 kitty.conf is edited. This is most useful if you add :code:`include themes.conf`
 to your kitty.conf and then have the kitten operate only on :file:`themes.conf`,
 allowing :code:`kitty.conf` to remain unchanged.
-'''.format
+""".format
+
 
 def main(args: list[str]) -> None:
     raise SystemExit('This must be run as kitten themes')
+
 
 if __name__ == '__main__':
     main(sys.argv)

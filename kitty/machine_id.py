@@ -14,6 +14,7 @@ def machine_id(salt: str = '') -> str:
     mid = b''
     if is_macos:
         from kitty.fast_data_types import cocoa_get_machine_id
+
         mid = cocoa_get_machine_id().rstrip().encode()
     else:
         with suppress(OSError), open('/etc/machine-id', 'rb') as f:

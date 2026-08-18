@@ -10,7 +10,6 @@ from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
 from gettext import gettext as _
 
-from .borders import load_borders_program
 from .boss import Boss
 from .child import set_default_env, set_LANG_in_default_env
 from .cli import create_opts, parse_args
@@ -59,7 +58,7 @@ from .options.types import Options
 from .options.utils import DELETE_ENV_VAR
 from .os_window_size import edge_spacing, initial_window_size_func
 from .session import create_sessions, get_os_window_sizing_data
-from .shaders import CompileError, load_shader_programs
+from .shaders.slang import load_shader_programs
 from .types import LayerShellConfig
 from .utils import (
     cleanup_ssh_control_masters,
@@ -83,7 +82,7 @@ def set_custom_ibeam_cursor() -> None:
     rgba_data2, width2, height2 = load_png_data(data)
     images = (rgba_data, width, height), (rgba_data2, width2, height2)
     try:
-        set_custom_cursor("beam", images, 4, 8)
+        set_custom_cursor('beam', images, 4, 8)
     except Exception as e:
         log_error(f'Failed to set custom beam cursor with error: {e}')
 
@@ -91,8 +90,7 @@ def set_custom_ibeam_cursor() -> None:
 def load_all_shaders() -> None:
     try:
         load_shader_programs()
-        load_borders_program()
-    except CompileError as err:
+    except ValueError as err:
         raise SystemExit(err)
 
 
@@ -109,9 +107,7 @@ def init_glfw(opts: Options, debug_keyboard: bool = False, debug_rendering: bool
     return glfw_module
 
 
-def get_macos_shortcut_for(
-    func_map: dict[tuple[str, ...], list[SingleKey]], defn: str = 'new_os_window', lookup_name: str = ''
-) -> SingleKey | None:
+def get_macos_shortcut_for(func_map: dict[tuple[str, ...], list[SingleKey]], defn: str = 'new_os_window', lookup_name: str = '') -> SingleKey | None:
     # for maximum robustness we should use opts.alias_map to resolve
     # aliases however this requires parsing everything on startup which could
     # be potentially slow. Lets just hope the user doesn't alias these
@@ -122,6 +118,7 @@ def get_macos_shortcut_for(
     candidates = func_map[qkey]
     if candidates:
         from .fast_data_types import cocoa_set_global_shortcut
+
         alt_mods = GLFW_MOD_ALT, GLFW_MOD_ALT | GLFW_MOD_SHIFT
         # Reverse list so that later defined keyboard shortcuts take priority over earlier defined ones
         for candidate in reversed(candidates):
@@ -140,6 +137,7 @@ def set_macos_app_custom_icon() -> None:
     custom_icon_mtime, custom_icon_path = get_custom_window_icon()
     if custom_icon_mtime is not None and custom_icon_path is not None:
         from .fast_data_types import cocoa_set_app_icon, cocoa_set_dock_icon
+
         krd = getattr(sys, 'kitty_run_data')
         bundle_path = os.path.dirname(os.path.dirname(krd.get('bundle_exe_dir')))
         icon_sentinel = os.path.join(bundle_path, 'Icon\r')
@@ -184,6 +182,7 @@ def set_cocoa_global_shortcuts(opts: Options) -> dict[str, SingleKey]:
     global_shortcuts: dict[str, SingleKey] = {}
     if is_macos:
         from collections import defaultdict
+
         func_map = defaultdict(list)
         for single_key, v in opts.keyboard_modes[''].keymap.items():
             kd = v[-1]  # the last definition is the active one
@@ -191,10 +190,26 @@ def set_cocoa_global_shortcuts(opts: Options) -> dict[str, SingleKey]:
                 parts = tuple(kd.definition.split())
                 func_map[parts].append(single_key)
 
-        for ac in ('new_os_window', 'close_os_window', 'close_tab', 'edit_config_file', 'previous_tab',
-                   'next_tab', 'new_tab', 'new_window', 'close_window', 'toggle_macos_secure_keyboard_entry',
-                   'toggle_fullscreen', 'macos_cycle_through_os_windows', 'macos_cycle_through_os_windows_backwards',
-                   'hide_macos_app', 'hide_macos_other_apps', 'minimize_macos_window', 'quit', 'search_scrollback'):
+        for ac in (
+            'new_os_window',
+            'close_os_window',
+            'close_tab',
+            'edit_config_file',
+            'previous_tab',
+            'next_tab',
+            'new_tab',
+            'new_window',
+            'close_window',
+            'toggle_macos_secure_keyboard_entry',
+            'toggle_fullscreen',
+            'macos_cycle_through_os_windows',
+            'macos_cycle_through_os_windows_backwards',
+            'hide_macos_app',
+            'hide_macos_other_apps',
+            'minimize_macos_window',
+            'quit',
+            'search_scrollback',
+        ):
             val = get_macos_shortcut_for(func_map, ac)
             if val is not None:
                 global_shortcuts[ac] = val
@@ -238,7 +253,7 @@ def is_panel_kitten() -> bool:
 def list_monitors(json_output: bool = False) -> None:
     monitor_names = glfw_get_monitor_names()
     has_descriptions = False
-    for (name, desc) in monitor_names:
+    for name, desc in monitor_names:
         if desc:
             has_descriptions = True
             break
@@ -253,7 +268,7 @@ def list_monitors(json_output: bool = False) -> None:
         return
 
     isatty = sys.stdout.isatty()
-    for (name, desc) in monitor_names:
+    for name, desc in monitor_names:
         if isatty:
             name = f'\x1b[32m{name}\x1b[39m'  # ]]
         print(name)
@@ -290,6 +305,7 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
                     pos_x, pos_y = cached_values.get('window-pos', (None, None))
             if args.position:
                 from .launch import parse_os_window_position
+
                 pos_x, pos_y = parse_os_window_position(args.position)
         startup_session_error: tuple[Exception, str] | None = None
         try:
@@ -304,14 +320,25 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
         window_state = (args.start_as if args.start_as and args.start_as != 'normal' else None) or (
             getattr(startup_sessions[0], 'os_window_state', None) if startup_sessions else None
         )
+        # Remember the maximized state from the previous session, if enabled.
+        if window_state is None and opts.remember_window_size:
+            window_state = cached_values.get('window-state') or None
         wstate = parse_os_window_state(window_state) if window_state is not None else None
 
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
-                    run_app.initial_window_size_func(get_os_window_sizing_data(opts, startup_sessions[0] if startup_sessions else None), cached_values),
-                    pre_show_callback,
-                    args.title or appname, winname,
-                    wincls, wstate, load_all_shaders, disallow_override_title=bool(args.title), layer_shell_config=run_app.layer_shell_config, x=pos_x, y=pos_y)
+                run_app.initial_window_size_func(get_os_window_sizing_data(opts, startup_sessions[0] if startup_sessions else None), cached_values),
+                pre_show_callback,
+                args.title or appname,
+                winname,
+                wincls,
+                wstate,
+                load_all_shaders,
+                disallow_override_title=bool(args.title),
+                layer_shell_config=run_app.layer_shell_config,
+                x=pos_x,
+                y=pos_y,
+            )
         boss = Boss(opts, args, cached_values, global_shortcuts, talk_fd)
         boss.start(window_id, startup_sessions)
         if args.debug_font_fallback:
@@ -320,8 +347,10 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
             boss.show_bad_config_lines(bad_lines, boss.misc_config_errors)
             boss.misc_config_errors = []
         if startup_session_error:
-            boss.show_error(_('The startup session was invalid'), _(
-                'Loading the start session file {0} failed, with error:\n{1}').format(startup_session_error[1], startup_session_error[0]))
+            boss.show_error(
+                _('The startup session was invalid'),
+                _('Loading the start session file {0} failed, with error:\n{1}').format(startup_session_error[1], startup_session_error[0]),
+            )
         try:
             boss.child_monitor.main_loop()
         finally:
@@ -329,7 +358,6 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = (),
 
 
 class AppRunner:
-
     def __init__(self) -> None:
         self.cached_values_name = 'main'
         self.first_window_callback = lambda window_handle: None
@@ -350,6 +378,7 @@ class AppRunner:
                 from kitty.fast_data_types import (
                     cocoa_set_notification_activated_callback,
                 )
+
                 cocoa_set_notification_activated_callback(None)
 
 
@@ -360,6 +389,7 @@ def ensure_macos_locale() -> None:
     # Ensure the LANG env var is set. See
     # https://github.com/kovidgoyal/kitty/issues/90
     from .fast_data_types import cocoa_get_lang, locale_is_valid
+
     if 'LANG' not in os.environ:
         lang_code, country_code, identifier = cocoa_get_lang()
         lang = 'en_US'
@@ -381,6 +411,7 @@ def ensure_macos_locale() -> None:
 def setup_profiling() -> Generator[None, None, None]:
     try:
         from .fast_data_types import start_profiler, stop_profiler
+
         do_profile = True
     except ImportError:
         do_profile = False
@@ -389,6 +420,7 @@ def setup_profiling() -> Generator[None, None, None]:
     yield
     if do_profile:
         import subprocess
+
         stop_profiler()
         exe = kitty_exe()
         cg = '/tmp/kitty-profile.callgrind'
@@ -410,12 +442,13 @@ def expand_listen_on(listen_on: str, from_config_file: bool, env: dict[str, str]
         listen_on += '-{kitty_pid}'
     listen_on = listen_on.replace('{kitty_pid}', str(os.getpid()))
     if listen_on.startswith('unix:'):
-        path = listen_on[len('unix:'):]
+        path = listen_on[len('unix:') :]
         if not path.startswith('@'):
             if path.startswith('~'):
                 listen_on = f'unix:{os.path.expanduser(path)}'
             elif not os.path.isabs(path):
                 import tempfile
+
                 listen_on = f'unix:{os.path.join(tempfile.gettempdir(), path)}'
     elif listen_on.startswith('tcp:') or listen_on.startswith('tcp6:'):
         if from_config_file:  # use a random port
@@ -469,6 +502,7 @@ def setup_manpath(env: dict[str, str]) -> None:
     if not getattr(sys, 'frozen', False):
         return
     from .constants import local_docs
+
     mp = os.environ.get('MANPATH', env.get('MANPATH', ''))
     d = os.path.dirname
     kitty_man = os.path.join(d(d(d(local_docs()))), 'man')
@@ -488,6 +522,7 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
     if vars := opts.env.pop('read_from_shell', ''):
         import fnmatch
         import re
+
         senv = read_shell_environment(opts)
         patterns = tuple(re.compile(fnmatch.translate(x.strip())) for x in vars.split() if x.strip())
         if patterns:
@@ -546,7 +581,8 @@ def kitty_main(called_from_panel: bool = False) -> None:
         msg: str | None = (
             'Run kitty and open the specified files or URLs in it, using launch-actions.conf. For details'
             ' see https://sw.kovidgoyal.net/kitty/open_actions/#scripting-the-opening-of-files-with-kitty-on-macos'
-            '\n\nAll the normal kitty options can be used.')
+            '\n\nAll the normal kitty options can be used.'
+        )
     else:
         if not called_from_panel:
             cli_flags = getattr(sys, 'kitty_run_data', {}).get('cli_flags', None)
@@ -566,9 +602,11 @@ def kitty_main(called_from_panel: bool = False) -> None:
     if cli_opts.detach:
         if cli_opts.session == '-':
             from .session import PreReadSession
+
             cli_opts.session = PreReadSession(sys.stdin.read(), os.environ, '-', os.path.join(os.getcwd(), '-'))
     if cli_opts.replay_commands:
         from kitty.client import main as client_main
+
         client_main(cli_opts.replay_commands)
         return
     bad_lines: list[BadLine] = []
@@ -588,6 +626,7 @@ def kitty_main(called_from_panel: bool = False) -> None:
 
     if cli_opts.watcher:
         from .window import global_watchers
+
         global_watchers.set_extra(cli_opts.watcher)
         log_error('The --watcher command line option has been deprecated in favor of using the watcher option in kitty.conf')
     # mask the signals now as on some platforms the display backend starts
@@ -604,7 +643,6 @@ def kitty_main(called_from_panel: bool = False) -> None:
         cleanup_ssh_control_masters()
 
 
-
 def main(called_from_panel: bool = False) -> None:
     try:
         if is_macos and launched_by_launch_services and not called_from_panel:
@@ -618,6 +656,7 @@ def main(called_from_panel: bool = False) -> None:
         kitty_main(called_from_panel)
     except Exception:
         import traceback
+
         tb = traceback.format_exc()
         log_error(tb)
         raise SystemExit(1)

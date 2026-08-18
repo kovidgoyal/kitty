@@ -11,11 +11,10 @@ from kitty.fast_data_types import Color, test_cursor_blink_easing_function
 from kitty.options.utils import DELETE_ENV_VAR, EasingFunction, to_color
 from kitty.utils import log_error, shlex_split
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestConfParsing(BaseTest):
-
     def setUp(self):
         super().setUp()
         self.error_messages = []
@@ -39,7 +38,8 @@ class TestConfParsing(BaseTest):
 
 def cli_parsing(self):
     from kitty.cli import CLIOptions, Options, parse_cmdline, parse_option_spec
-    seq, disabled = parse_option_spec('''\
+
+    seq, disabled = parse_option_spec("""\
 --simple-string -s
 a simple string
 
@@ -77,7 +77,7 @@ a float
 --version -v
 type=bool-set
 version
-''')
+""")
     oc = Options(seq, usage='xxx', message='yyy', appname='test')
     oc.do_print = False
 
@@ -128,9 +128,11 @@ def launcher(self):
     import tempfile
 
     from kitty.constants import is_macos
+
     kexe = kitty_exe()
     cfgdir = None
-    def get_report(cmdline: str, launch_services= False, config_dir: str = ''):
+
+    def get_report(cmdline: str, launch_services=False, config_dir: str = ''):
         nonlocal cfgdir
         args = list(shlex_split(cmdline))
         env = dict(os.environ)
@@ -138,7 +140,7 @@ def launcher(self):
             env['KITTY_LAUNCHED_BY_LAUNCH_SERVICES'] = '1'
         if config_dir:
             env['KITTY_CONFIG_DIRECTORY'] = config_dir
-        cp = subprocess.run([kexe, "+testing-launcher-code"] + args, env=env, stdout=subprocess.PIPE)
+        cp = subprocess.run([kexe, '+testing-launcher-code'] + args, env=env, stdout=subprocess.PIPE)
         self.assertEqual(cp.returncode, 0)
         ans = {}
         for line in cp.stdout.decode().split('\n'):
@@ -156,6 +158,7 @@ def launcher(self):
             if key == 'config_dir':
                 cfgdir = val
         return ans, cp.stdout.decode().replace('\x1e', ' ')
+
     def test(cmdline, assertions):
         r, output = get_report(cmdline, launch_services=assertions.get('launched_by_launch_services', '0') != '0')
         for key, expected in assertions.items():
@@ -192,8 +195,14 @@ def launcher(self):
         test(cmdline, assertions)
 
     t('', original_argv=[kexe], argv=[])
-    t('--title=xxx --start-as maximized -c=a -c b cat', title='xxx', start_as='maximized', config=['a', 'b'], original_argv=[
-        kexe, '--title=xxx', '--start-as', 'maximized', '-c=a', '-c', 'b', 'cat'], argv=['cat'])
+    t(
+        '--title=xxx --start-as maximized -c=a -c b cat',
+        title='xxx',
+        start_as='maximized',
+        config=['a', 'b'],
+        original_argv=[kexe, '--title=xxx', '--start-as', 'maximized', '-c=a', '-c', 'b', 'cat'],
+        argv=['cat'],
+    )
     k('icat abc xyz')
     t('+kitten unwrapped xyz', argv=['+kitten', 'unwrapped', 'xyz'])
     t('+ kitten unwrapped xyz', original_argv=[kexe, '+', 'kitten', 'unwrapped', 'xyz'])
@@ -223,6 +232,7 @@ def conf_parsing(self):
     from kitty.fast_data_types import LEFT_EDGE, RIGHT_EDGE
     from kitty.fonts import FontModification, ModificationType, ModificationUnit, ModificationValue
     from kitty.options.utils import to_modifiers
+
     bad_lines = []
 
     def p(*lines, bad_line_num=0, num_err=None):
@@ -277,11 +287,14 @@ def conf_parsing(self):
     opts = p('pointer_shape_when_grabbed XXX', bad_line_num=1)
     self.ae(opts.pointer_shape_when_grabbed, defaults.pointer_shape_when_grabbed)
     opts = p('modify_font underline_position -2', 'modify_font underline_thickness 150%', 'modify_font size Test -1px')
-    self.ae(opts.modify_font, {
-        'underline_position': FontModification(ModificationType.underline_position, ModificationValue(-2., ModificationUnit.pt)),
-        'underline_thickness': FontModification(ModificationType.underline_thickness, ModificationValue(150, ModificationUnit.percent)),
-        'size:Test': FontModification(ModificationType.size, ModificationValue(-1., ModificationUnit.pixel), 'Test'),
-    })
+    self.ae(
+        opts.modify_font,
+        {
+            'underline_position': FontModification(ModificationType.underline_position, ModificationValue(-2.0, ModificationUnit.pt)),
+            'underline_thickness': FontModification(ModificationType.underline_thickness, ModificationValue(150, ModificationUnit.percent)),
+            'size:Test': FontModification(ModificationType.size, ModificationValue(-1.0, ModificationUnit.pixel), 'Test'),
+        },
+    )
 
     # test the aliasing options
     opts = p('env A=1', 'env B=x$A', 'env C=', 'env D', 'clear_all_shortcuts y', 'kitten_alias a b --moo', 'map f1 kitten a arg')
@@ -357,15 +370,7 @@ def conf_parsing(self):
     self.ae(len(self.error_messages), 1)
 
     # line breaks
-    opts = p("    font",
-                " \t  \t    \\_size",
-                "    \\ 12",
-                "\\.35",
-                "col",
-                "\\o",
-                "\t \t\\r",
-                "\\25",
-                " \\ blue")
+    opts = p('    font', ' \t  \t    \\_size', '    \\ 12', '\\.35', 'col', '\\o', '\t \t\\r', '\\25', ' \\ blue')
     self.ae(opts.font_size, 12.35)
     self.ae(opts.color25, Color(0, 0, 255))
 
@@ -373,13 +378,16 @@ def conf_parsing(self):
     def cb(src, interval=-1, first=EasingFunction(), second=EasingFunction()):
         opts = p('cursor_blink_interval ' + src)
         self.ae((float(interval), first, second), (float(opts.cursor_blink_interval[0]), opts.cursor_blink_interval[1], opts.cursor_blink_interval[2]))
+
     cb('3', 3)
     cb('-2.3', -2.3)
     cb('linear', first=EasingFunction('cubic-bezier', cubic_bezier_points=(0, 0.0, 1.0, 1.0)))
     cb('linear 19', 19, EasingFunction('cubic-bezier', cubic_bezier_points=(0, 0.0, 1.0, 1.0)))
-    cb('ease-in-out cubic-bezier(0.1, 0.2, 0.3, 0.4) 11', 11,
+    cb(
+        'ease-in-out cubic-bezier(0.1, 0.2, 0.3, 0.4) 11',
+        11,
         EasingFunction('cubic-bezier', cubic_bezier_points=(0.42, 0, 0.58, 1)),
-        EasingFunction('cubic-bezier', cubic_bezier_points=(0.1, 0.2, 0.3, 0.4))
+        EasingFunction('cubic-bezier', cubic_bezier_points=(0.1, 0.2, 0.3, 0.4)),
     )
     cb('step-start', first=EasingFunction('steps', num_steps=1, jump_type='start'))
     cb('steps(7, jump-none)', first=EasingFunction('steps', num_steps=7, jump_type='none'))
@@ -396,9 +404,9 @@ def conf_parsing(self):
             if abs(actual - expected) > accuracy:
                 self.ae(expected, actual, f'Failed for {spec=} with {t=}: {expected} != {actual}')
 
-    ef('linear', {0:1, 0.25: 0.5, 0.5: 0, 0.75: 0.5, 1: 1}, only_single=False)
+    ef('linear', {0: 1, 0.25: 0.5, 0.5: 0, 0.75: 0.5, 1: 1}, only_single=False)
 
-    ef('linear(0, 0.25 25% 75%, 1)', {0: 0, 0.25: 0.25, 0.3: 0.25, 0.75: 0.25, 1:1})
+    ef('linear(0, 0.25 25% 75%, 1)', {0: 0, 0.25: 0.25, 0.3: 0.25, 0.75: 0.25, 1: 1})
     linear_vals = {0: 0, 1: 1, 0.1234: 0.1234, 0.6453: 0.6453}
     for spec in ('linear', 'linear(0, 1)', 'cubic-bezier(0, 0, 1, 1)', 'cubic-bezier(0.2, 0.2, 0.7, 0.7)'):
         ef(spec, linear_vals)
@@ -406,10 +414,10 @@ def conf_parsing(self):
     ef('cubic-bezier(0.2, 0.2, 0.7, 0.71)', linear_vals, accuracy=0.01)
     ef('cubic-bezier(0.23, 0.2, 0.7, 0.71)', linear_vals, accuracy=0.01)
 
-    ef('steps(5)', {0: 0, 0.1: 0, 0.3: 0.2, 0.9:0.8})
-    ef('steps(5, start)', {0: 0.2, 0.1: 0.2, 0.3: 0.4, 0.9:1})
-    ef('steps(4, jump-both)', {0: 0.2, 0.1: 0.2, 0.3: 0.4, 0.9:1})
-    ef('steps(6, jump-none)', {0: 0, 0.1: 0.0, 0.3: 0.2, 0.9:1})
+    ef('steps(5)', {0: 0, 0.1: 0, 0.3: 0.2, 0.9: 0.8})
+    ef('steps(5, start)', {0: 0.2, 0.1: 0.2, 0.3: 0.4, 0.9: 1})
+    ef('steps(4, jump-both)', {0: 0.2, 0.1: 0.2, 0.3: 0.4, 0.9: 1})
+    ef('steps(6, jump-none)', {0: 0, 0.1: 0.0, 0.3: 0.2, 0.9: 1})
 
     # test various include modes
     base = os.path.join(self.tdir, 'glob')
@@ -438,7 +446,7 @@ def conf_parsing(self):
     self.ae(opts.foreground, to_color('red'))
     self.ae(opts.background, to_color('white'))
     self.ae(opts.cursor, to_color('yellow'))
-    self.ae(opts.background_opacity, .77)
+    self.ae(opts.background_opacity, 0.77)
     self.ae(opts.background_blur, 77)
     self.ae(opts.background_image_linear, True)
     self.ae(opts.background_image_layout, 'clamped')
@@ -451,3 +459,37 @@ def conf_parsing(self):
     opts = p(f'include {a.name}', num_err=0, bad_line_num=1)
     self.ae(opts.foreground, to_color('red'))
     self.ae(opts.background, to_color('red'))
+
+    # remap_modifier. NOTE: parsing only. Whether the permutation is applied
+    # simultaneously rather than sequentially is a property of
+    # apply_modifier_remap() in C and is NOT observable from this dict - a
+    # sequential implementation would produce an identical one. That property is
+    # covered end to end by tests/test-remap-e2e.sh, which asserts that the
+    # encoded bytes actually exchange.
+    self.ae(p().remap_modifiers, {})
+    ctrl, hyper, sup = to_modifiers('ctrl'), to_modifiers('hyper'), to_modifiers('super')
+    self.ae(p('remap_modifiers ctrl:hyper').remap_modifiers, {ctrl: hyper})
+    # both directions of a swap are recorded
+    self.ae(p('remap_modifiers ctrl:hyper hyper:ctrl').remap_modifiers, {ctrl: hyper, hyper: ctrl})
+    # the last declaration for a given source wins, wherever it appears
+    self.ae(p('remap_modifiers ctrl:hyper', 'kitty_mod ctrl', 'remap_modifiers ctrl:super').remap_modifiers, {ctrl: sup})
+    # the destination may name more than one modifier
+    self.ae(p('remap_modifiers ctrl:ctrl+shift').remap_modifiers, {ctrl: to_modifiers('ctrl+shift')})
+    # every rejection must be REPORTED, never silently ignored: wrong arity, unknown
+    # or non-remappable modifier names, a source naming more than one modifier, and
+    # a mapping that does nothing
+    for bad in (
+        'remap_modifiers ctrl',
+        'remap_modifiers ctrl:hyper super',
+        'remap_modifiers ctrl:nosuchmod',
+        'remap_modifiers nosuchmod:ctrl',
+        'remap_modifiers ctrl+shift:hyper',
+        'remap_modifiers ctrl:none',
+        'remap_modifiers none:ctrl',
+        'remap_modifiers ctrl:kitty_mod',
+        'remap_modifiers kitty_mod:ctrl',
+        'remap_modifiers caps_lock:ctrl',
+        'remap_modifiers ctrl:num_lock',
+        'remap_modifiers ctrl:ctrl',
+    ):
+        self.ae(p(bad, num_err=1).remap_modifiers, {}, f'not rejected: {bad}')

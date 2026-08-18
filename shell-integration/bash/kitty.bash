@@ -214,7 +214,7 @@ _ksi_main() {
         _ksi_prompt[ps0_suffix]+="\[\e[0 q\]"  # blinking default cursor
     fi
 
-    if [[ "${_ksi_prompt[title]}" == "y" ||  "${_ksi_prompt[mark]}" ]]; then
+    if [[ "${_ksi_prompt[title]}" == "y" || "${_ksi_prompt[mark]}" == "y" ]]; then
         _ksi_get_current_command() {
             builtin local last_cmd
             last_cmd=$(HISTTIMEFORMAT= builtin history 1)
@@ -236,7 +236,7 @@ _ksi_main() {
                 # connected to most SSH servers
                 # or use ssh kitten to connected to some SSH servers that do not set SSH_TTY
                 _ksi_prompt[hostname_prefix]="\h: "
-            elif [[ -n "$(builtin command -v who)" && "$(builtin command who -m 2> /dev/null)" =~ "\([a-fA-F.:0-9]+\)$" ]]; then
+            elif [[ -n "$(builtin command -v who)" && "$(builtin command who -m 2> /dev/null)" =~ \([a-fA-F.:0-9]+\)$ ]]; then
                 # the shell integration script is installed manually on the remote system
                 # the environment variables are cleared after sudo
                 # OpenSSH's sshd creates entries in utmp for every login so use those

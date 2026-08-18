@@ -128,9 +128,9 @@ MatchPatternType = Union[Pattern[str], tuple[Pattern[str], Optional[Pattern[str]
 
 class ScrollAnimation:
     timer: int = 0
-    start: float = 0.
-    duration: float = 0.
-    total: float = 0.
+    start: float = 0.0
+    duration: float = 0.0
+    total: float = 0.0
     start_scrolled_by: int = 0
     frame_interval: float = 1.0 / 60.0  # Target ~60 fps for scroll animation ticks
 
@@ -151,7 +151,6 @@ class CwdRequestType(Enum):
 
 
 class CwdRequest:
-
     def __init__(self, window: Optional['Window'] = None, request_type: CwdRequestType = CwdRequestType.current) -> None:
         self.window_id = -1 if window is None else window.id
         self.request_type = request_type
@@ -175,7 +174,7 @@ class CwdRequest:
             return window.get_cwd_of_root_child() or ''
         return window.get_cwd_of_child(oldest=self.request_type is CwdRequestType.oldest) or ''
 
-    def modify_argv_for_launch_with_cwd(self, argv: list[str], env: dict[str, str] | None=None, hold_after_ssh: bool = False) -> str:
+    def modify_argv_for_launch_with_cwd(self, argv: list[str], env: dict[str, str] | None = None, hold_after_ssh: bool = False) -> str:
         window = self.window
         if not window:
             return ''
@@ -186,13 +185,14 @@ class CwdRequest:
                 run_shell = argv[0] == resolved_shell(get_options())[0]
                 server_args = [] if run_shell else list(argv)
                 from kittens.ssh.utils import set_cwd_in_cmdline, set_env_in_cmdline, set_server_args_in_cmdline
+
                 if ssh_kitten_cmdline and ssh_kitten_cmdline[0] == 'kitten':
                     ssh_kitten_cmdline[0] = kitten_exe()
                 argv[:] = ssh_kitten_cmdline
                 set_cwd_in_cmdline(reported_cwd, argv)
                 set_server_args_in_cmdline(server_args, argv, allocate_tty=not run_shell)
                 if hold_after_ssh:
-                    argv[:0] = [kitten_exe(), "run-shell"]
+                    argv[:0] = [kitten_exe(), 'run-shell']
                 if env is not None:
                     # Assume env is coming from a local process so drop env
                     # vars that can cause issues when set on the remote host
@@ -200,10 +200,27 @@ class CwdRequest:
                         for k in ('KITTY_KITTEN_RUN_MODULE', 'SSH_ASKPASS', 'SSH_ASKPASS_REQUIRE'):
                             env.pop(k, None)
                     for k in (
-                        'HOME', 'USER', 'TEMP', 'TMP', 'TMPDIR', 'PATH', 'PWD', 'OLDPWD', 'KITTY_INSTALLATION_DIR',
-                        'HOSTNAME', 'SSH_AUTH_SOCK', 'SSH_AGENT_PID', 'KITTY_STDIO_FORWARDED',
-                        'KITTY_PUBLIC_KEY', 'TERMINFO', 'XDG_RUNTIME_DIR', 'XDG_VTNR',
-                        'XDG_DATA_DIRS', 'XAUTHORITY', 'EDITOR', 'VISUAL',
+                        'HOME',
+                        'USER',
+                        'TEMP',
+                        'TMP',
+                        'TMPDIR',
+                        'PATH',
+                        'PWD',
+                        'OLDPWD',
+                        'KITTY_INSTALLATION_DIR',
+                        'HOSTNAME',
+                        'SSH_AUTH_SOCK',
+                        'SSH_AGENT_PID',
+                        'KITTY_STDIO_FORWARDED',
+                        'KITTY_PUBLIC_KEY',
+                        'TERMINFO',
+                        'XDG_RUNTIME_DIR',
+                        'XDG_VTNR',
+                        'XDG_DATA_DIRS',
+                        'XAUTHORITY',
+                        'EDITOR',
+                        'VISUAL',
                     ):
                         env.pop(k, None)
                     set_env_in_cmdline(env, argv, clone=False)
@@ -243,6 +260,7 @@ def decode_cmdline(x: str) -> str:
         return next(shlex_split(val, True))
     elif ctype == 'cmdline_url':
         from urllib.parse import unquote
+
         return unquote(val)
     return ''
 
@@ -305,17 +323,15 @@ DYNAMIC_COLOR_CODES = {
     17: DynamicColor.highlight_bg,
     19: DynamicColor.highlight_fg,
 }
-DYNAMIC_COLOR_CODES.update({k+100: v for k, v in DYNAMIC_COLOR_CODES.items()})
+DYNAMIC_COLOR_CODES.update({k + 100: v for k, v in DYNAMIC_COLOR_CODES.items()})
 
 
 class Watcher:
-
     def __call__(self, boss: BossType, window: 'Window', data: dict[str, Any]) -> None:
         pass
 
 
 class Watchers:
-
     on_resize: list[Watcher]
     on_close: list[Watcher]
     on_focus_change: list[Watcher]
@@ -342,6 +358,7 @@ class Watchers:
             for x in other:
                 if x not in base:
                     base.append(x)
+
         merge(self.on_resize, others.on_resize)
         merge(self.on_close, others.on_close)
         merge(self.on_focus_change, others.on_focus_change)
@@ -374,9 +391,17 @@ class Watchers:
 
     @property
     def has_watchers(self) -> bool:
-        return bool(self.on_close or self.on_resize or self.on_focus_change or self.on_color_scheme_preference_change
-                    or self.on_set_user_var or self.on_title_change or self.on_cmd_startstop or self.on_tab_bar_dirty
-                    or self.on_quit)
+        return bool(
+            self.on_close
+            or self.on_resize
+            or self.on_focus_change
+            or self.on_color_scheme_preference_change
+            or self.on_set_user_var
+            or self.on_title_change
+            or self.on_cmd_startstop
+            or self.on_tab_bar_dirty
+            or self.on_quit
+        )
 
 
 def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: dict[str, Any]) -> None:
@@ -424,12 +449,7 @@ def pagerhist(screen: Screen, as_ansi: bool = False, add_wrap_markers: bool = Tr
 
 
 def as_text(
-    screen: Screen,
-    as_ansi: bool = False,
-    add_history: bool = False,
-    add_wrap_markers: bool = False,
-    alternate_screen: bool = False,
-    add_cursor: bool = False
+    screen: Screen, as_ansi: bool = False, add_history: bool = False, add_wrap_markers: bool = False, alternate_screen: bool = False, add_cursor: bool = False
 ) -> str:
     lines: list[str] = []
     add_history = add_history and not (screen.is_using_alternate_linebuf() ^ alternate_screen)
@@ -468,11 +488,11 @@ def as_text(
     return ans
 
 
-
 @run_once
 def load_paste_filter() -> Callable[[str], str]:
     import runpy
     import traceback
+
     try:
         m = runpy.run_path(os.path.join(config_dir, 'paste-actions.py'))
         func: Callable[[str], str] = m['filter_paste']
@@ -483,6 +503,7 @@ def load_paste_filter() -> Callable[[str], str]:
 
         def func(text: str) -> str:
             return text
+
     return func
 
 
@@ -556,13 +577,16 @@ def color_control(cp: ColorProfile, code: int, value: str | bytes | memoryview =
     for rec in value.split(';'):
         key, sep, val = rec.partition('=')
         if key.startswith('transparent_background_color'):
-            index = int(key[len('transparent_background_color'):])
+            index = int(key[len('transparent_background_color') :])
             transparent_background_color_control(cp, responses, index, key, sep, val)
             continue
         attr = {
-            'foreground': 'default_fg', 'background': 'default_bg',
-            'selection_background': 'highlight_bg', 'selection_foreground': 'highlight_fg',
-            'cursor': 'cursor_color', 'cursor_text': 'cursor_text_color',
+            'foreground': 'default_fg',
+            'background': 'default_bg',
+            'selection_background': 'highlight_bg',
+            'selection_foreground': 'highlight_fg',
+            'cursor': 'cursor_color',
+            'cursor_text': 'cursor_text_color',
             'visual_bell': 'visual_bell_color',
         }.get(key, '')
         colnum = -1
@@ -656,7 +680,6 @@ class EdgeWidths:
 
 
 class GlobalWatchers:
-
     def __init__(self) -> None:
         self.options_spec: dict[str, str] | None = None
         self.ans = Watchers()
@@ -667,6 +690,7 @@ class GlobalWatchers:
         if spec == self.options_spec:
             return self.ans
         from .launch import load_watch_modules
+
         if self.extra:
             spec = spec.copy()
             spec[self.extra] = self.extra
@@ -682,7 +706,6 @@ global_watchers = GlobalWatchers()
 
 
 class Window:
-
     window_custom_type: str = ''
     overlay_type = OverlayType.transient
     initial_ignore_focus_changes: bool = False
@@ -727,17 +750,17 @@ class Window:
         else:
             self.watchers = global_watchers().copy()
         self.keys_redirected_till_ready_from: int = 0
-        self.last_focused_at = 0.
+        self.last_focused_at = 0.0
         self.is_focused: bool = False
         self.progress = Progress()
         self.clear_progress_timer: int = 0
-        self.last_resized_at = 0.
+        self.last_resized_at = 0.0
         self.started_at = monotonic()
         self.created_at = time_ns()
         self.current_remote_data: list[str] = []
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: bool | None = None
-        self.last_cmd_output_start_time = 0.
+        self.last_cmd_output_start_time = 0.0
         self.last_cmd_end_notification: tuple[int, 'OnlyWhen'] | None = None
         self.open_url_handler: 'OpenUrlHandler' = None
         self.last_cmd_cmdline = ''
@@ -786,6 +809,7 @@ class Window:
         if not self.allow_remote_control:
             return False
         from .remote_control import remote_control_allowed
+
         return remote_control_allowed(pcmd, self.remote_control_passwords, self, extra_data)
 
     @property
@@ -793,6 +817,7 @@ class Window:
         ans: Optional['FileTransmission'] = getattr(self, '_file_transmission', None)
         if ans is None:
             from .file_transmission import FileTransmission
+
             ans = self._file_transmission = FileTransmission(self.id)
         return ans
 
@@ -834,9 +859,14 @@ class Window:
 
     def update_effective_padding(self) -> None:
         set_window_padding(
-            self.os_window_id, self.tab_id, self.id,
-            self.effective_padding('left'), self.effective_padding('top'),
-            self.effective_padding('right'), self.effective_padding('bottom'))
+            self.os_window_id,
+            self.tab_id,
+            self.id,
+            self.effective_padding('left'),
+            self.effective_padding('top'),
+            self.effective_padding('right'),
+            self.effective_padding('bottom'),
+        )
 
     def patch_edge_width(self, which: str, edge: EdgeLiteral, val: float | None) -> None:
         q = self.padding if which == 'padding' else self.margin
@@ -914,8 +944,12 @@ class Window:
         return False
 
     def matches_query(
-        self, field: str, query: str, active_tab: TabType | None = None,
-        self_window: Optional['Window'] = None, active_session: str = '',
+        self,
+        field: str,
+        query: str,
+        active_tab: TabType | None = None,
+        self_window: Optional['Window'] = None,
+        active_session: str = '',
         most_recent_session: str = '',
     ) -> bool:
         if field in ('num', 'recent'):
@@ -958,13 +992,13 @@ class Window:
                 return False
             gid: int | None = None
             if query == 'left':
-                gid = t.neighboring_group_id("left")
+                gid = t.neighboring_group_id('left')
             elif query == 'right':
-                gid = t.neighboring_group_id("right")
+                gid = t.neighboring_group_id('right')
             elif query == 'top':
-                gid = t.neighboring_group_id("top")
+                gid = t.neighboring_group_id('top')
             elif query == 'bottom':
-                gid = t.neighboring_group_id("bottom")
+                gid = t.neighboring_group_id('bottom')
             return gid is not None and t.windows.active_window_in_group_id(gid) is self
 
         pat = compile_match_query(query, field not in ('env', 'var'))
@@ -1043,9 +1077,7 @@ class Window:
             self.screen.resize(max(0, render_ynum), max(0, new_geometry.xnum))
             self.needs_layout = False
             call_watchers(weakref.ref(self), 'on_resize', {'old_geometry': self.geometry, 'new_geometry': new_geometry})
-        current_pty_size = (
-            self.screen.lines, self.screen.columns,
-            max(0, new_geometry.right - new_geometry.left), max(0, render_bottom - render_top))
+        current_pty_size = (self.screen.lines, self.screen.columns, max(0, new_geometry.right - new_geometry.left), max(0, render_bottom - render_top))
         update_ime_position = False
         if current_pty_size != self.last_reported_pty_size:
             if self._pause_resize_notifications_to_child is None:
@@ -1058,30 +1090,62 @@ class Window:
         # Store original geometry for borders/padding calculations
         self.geometry = g = new_geometry
         # Set C-side render data with adjusted top/bottom for content area
-        set_window_render_data(self.os_window_id, self.tab_id, self.id, self.screen,
-                             g.left, render_top, g.right, render_bottom,
-                             g.spaces.left, g.spaces.top, g.spaces.right, g.spaces.bottom)
+        set_window_render_data(
+            self.os_window_id,
+            self.tab_id,
+            self.id,
+            self.screen,
+            g.left,
+            render_top,
+            g.right,
+            render_bottom,
+            g.spaces.left,
+            g.spaces.top,
+            g.spaces.right,
+            g.spaces.bottom,
+            g.compensatory.left,
+            g.compensatory.top,
+            g.compensatory.right,
+            g.compensatory.bottom,
+        )
         self.update_effective_padding()
 
         # Handle title bar screen
         if show_tb:
             if self._title_bar_screen is None:
                 from .window_title_bar import WindowTitleBarScreen
+
                 self._title_bar_screen = WindowTitleBarScreen(self.os_window_id, cell_width, cell_height)
             tb_geom = WindowGeometry(
-                left=g.left, top=tb_top, right=g.right, bottom=tb_bottom,
-                xnum=0, ynum=1,
+                left=g.left,
+                top=tb_top,
+                right=g.right,
+                bottom=tb_bottom,
+                xnum=0,
+                ynum=1,
             )
             self._title_bar_screen.layout(tb_geom)
             set_window_title_bar_render_data(
-                self.os_window_id, self.tab_id, self.id, self._title_bar_screen.screen,
-                tb_geom.left, tb_geom.top, tb_geom.right, tb_geom.bottom,
+                self.os_window_id,
+                self.tab_id,
+                self.id,
+                self._title_bar_screen.screen,
+                tb_geom.left,
+                tb_geom.top,
+                tb_geom.right,
+                tb_geom.bottom,
             )
         elif self._title_bar_screen is not None:
             # Clear title bar render data
             set_window_title_bar_render_data(
-                self.os_window_id, self.tab_id, self.id, self._title_bar_screen.screen,
-                0, 0, 0, 0,
+                self.os_window_id,
+                self.tab_id,
+                self.id,
+                self._title_bar_screen.screen,
+                0,
+                0,
+                0,
+                0,
             )
             self._title_bar_screen = None
 
@@ -1115,23 +1179,38 @@ class Window:
         if pts.render(data, progress_percent):
             g = pts.geometry
             set_window_title_bar_render_data(
-                self.os_window_id, self.tab_id, self.id, pts.screen,
-                g.left, g.top, g.right, g.bottom,
+                self.os_window_id,
+                self.tab_id,
+                self.id,
+                pts.screen,
+                g.left,
+                g.top,
+                g.right,
+                g.bottom,
             )
         else:
             set_window_title_bar_render_data(
-                self.os_window_id, self.tab_id, self.id, pts.screen,
-                0, 0, 0, 0,
+                self.os_window_id,
+                self.tab_id,
+                self.id,
+                pts.screen,
+                0,
+                0,
+                0,
+                0,
             )
 
     def close(self) -> None:
         get_boss().mark_window_for_close(self)
 
-    @ac('misc', '''
+    @ac(
+        'misc',
+        """
         Send the specified text to the active window
 
         See :sc:`send_text <send_text>` for details.
-        ''')
+        """,
+    )
     def send_text(self, *args: str) -> bool:
         mode = keyboard_mode_name(self.screen)
         required_mode_, text = args[-2:]
@@ -1144,7 +1223,8 @@ class Window:
         return False
 
     @ac(
-        'misc', '''
+        'misc',
+        """
         Send the specified keys to the active window.
         Note that the key will be sent only if the current keyboard mode of the program running in the terminal supports it.
         Both key press and key release are sent. First presses for all specified keys and then releases in reverse order.
@@ -1152,9 +1232,11 @@ class Window:
 
             map f1 send_key ctrl+x alt+y
             map f1 combine : send_key ctrl+x : send_key alt+y
-    ''')
+    """,
+    )
     def send_key(self, *args: str) -> bool:
         from .options.utils import parse_shortcut
+
         km = get_options().kitty_mod
         passthrough = True
         events = []
@@ -1218,7 +1300,8 @@ class Window:
         self.title_updated()
 
     @ac(
-        'win', '''
+        'win',
+        """
         Change the title of the active window interactively, by typing in the new title.
         If you specify an argument to this action then that is used as the title instead of asking for it.
         Use the empty string ("") to reset the title to default. Use a space (" ") to indicate that the
@@ -1232,7 +1315,7 @@ class Window:
             map f3 set_window_title ""
             # interactive usage without prefilled prompt
             map f3 set_window_title " "
-        '''
+        """,
     )
     def set_window_title(self, title: str | None = None) -> None:
         if title is not None and title not in ('" "', "' '"):
@@ -1245,7 +1328,11 @@ class Window:
             prefilled = ''
         get_boss().get_line(
             _('Enter the new title for this window below. An empty title will cause the default title to be used.'),
-            self.set_title, window=self, initial_value=prefilled, window_title=_('Rename window'))
+            self.set_title,
+            window=self,
+            initial_value=prefilled,
+            window_title=_('Rename window'),
+        )
 
     def set_user_var(self, key: str, val: str | bytes | None) -> None:
         key = sanitize_control_codes(key).replace('\n', ' ')
@@ -1278,7 +1365,7 @@ class Window:
             if not raw_data.startswith('notify;'):
                 log_error(f'Ignoring unknown OSC 777: {raw_data}')
                 return  # unknown OSC 777
-            raw_data = raw_data[len('notify;'):]
+            raw_data = raw_data[len('notify;') :]
         if osc_code == 9 and raw_data.startswith('4;'):
             # This is probably the ConEmu "progress reporting" conflicting
             # implementation which sadly some thoughtless people have
@@ -1302,7 +1389,8 @@ class Window:
         if timer_id is not None:  # this is a timer callback
             self.clear_progress_timer = 0
         if self.progress.clear_progress():
-            self.screen.set_progress(0, 0)
+            if hasattr(self, 'screen'):
+                self.screen.set_progress(0, 0)
             if (tab := self.tabref()) is not None:
                 tab.update_progress()
         else:
@@ -1323,12 +1411,12 @@ class Window:
             return
         if url.startswith('/'):
             from urllib.parse import quote
+
             url = 'file://' + quote(os.path.abspath(url))
         fg = color_as_int(self.screen.color_profile.default_fg)
         bg = color_as_int(self.screen.color_profile.default_bg)
         width = self.geometry.right - self.geometry.left
-        pixels, width = draw_single_line_of_text(
-            self.os_window_id, f' {url} ', 0xff000000 | fg, 0xff000000 | bg, width, max_width=True)
+        pixels, width = draw_single_line_of_text(self.os_window_id, f' {url} ', 0xFF000000 | fg, 0xFF000000 | bg, width, max_width=True)
         height = len(pixels) // (width * 4)
         thumbnails = ((pixels, width, height),)
         drag_data = {'text/uri-list': (url + '\r\n').encode()}
@@ -1344,19 +1432,22 @@ class Window:
                 return
         except Exception:
             import traceback
+
             traceback.print_exc()
         opts = get_options()
         if hyperlink_id:
             if not opts.allow_hyperlinks:
                 return
             from urllib.parse import unquote, urlparse, urlunparse
+
             try:
                 purl = urlparse(url)
             except Exception:
                 return
-            if (not purl.scheme or purl.scheme == 'file'):
+            if not purl.scheme or purl.scheme == 'file':
                 if purl.netloc:
                     from .utils import get_hostname
+
                     hostname = get_hostname()
                     remote_hostname = purl.netloc.partition(':')[0]
                     if remote_hostname and remote_hostname != hostname and remote_hostname != 'localhost':
@@ -1365,11 +1456,16 @@ class Window:
                     url = urlunparse(purl._replace(netloc=''))
             if opts.allow_hyperlinks & 0b10:
                 from kittens.tui.operations import styled
+
                 boss.choose(
                     'What would you like to do with this URL:\n' + styled(sanitize_url_for_display_to_user(url), fg='yellow'),
                     partial(self.hyperlink_open_confirmed, url, cwd),
-                    'o:Open', 'c:Copy to clipboard', 'n;red:Nothing', default='o',
-                    window=self, title=_('Hyperlink activated'),
+                    'o:Open',
+                    'c:Copy to clipboard',
+                    'n;red:Nothing',
+                    default='o',
+                    window=self,
+                    title=_('Hyperlink activated'),
                 )
                 return
         boss.open_url(url, cwd=cwd)
@@ -1385,23 +1481,21 @@ class Window:
         from kittens.ssh.utils import get_connection_data
 
         from .utils import SSHConnectionData
+
         args = self.ssh_kitten_cmdline()
         conn_data: None | list[str] | SSHConnectionData = None
         if args:
             ssh_cmdline = sorted(self.child.foreground_processes, key=lambda p: p['pid'])[-1]['cmdline'] or ['']
             if 'ControlPath=' in ' '.join(ssh_cmdline):
                 idx = ssh_cmdline.index('--')
-                conn_data = [is_ssh_kitten_sentinel] + list(ssh_cmdline[:idx + 2])
+                conn_data = [is_ssh_kitten_sentinel] + list(ssh_cmdline[: idx + 2])
         if conn_data is None:
             args = self.child.foreground_cmdline
             conn_data = get_connection_data(args, self.child.foreground_cwd or self.child.current_cwd or '')
             if conn_data is None:
                 get_boss().show_error('Could not handle remote file', f'No SSH connection data found in: {args}')
                 return
-        get_boss().run_kitten(
-            'remote_file', '--hostname', netloc.partition(':')[0], '--path', remote_path,
-            '--ssh-connection-data', json.dumps(conn_data)
-        )
+        get_boss().run_kitten('remote_file', '--hostname', netloc.partition(':')[0], '--path', remote_path, '--ssh-connection-data', json.dumps(conn_data))
 
     def send_signal_for_key(self, key_num: bytes) -> bool:
         try:
@@ -1420,6 +1514,7 @@ class Window:
                 c(self, focused)
             except Exception:
                 import traceback
+
                 traceback.print_exc()
         self.screen.focus_changed(focused)
         if focused:
@@ -1433,6 +1528,7 @@ class Window:
                     tab.relayout_borders()
             if self.last_cmd_end_notification is not None:
                 from .notifications import OnlyWhen
+
                 opts = get_options()
                 if self.last_cmd_end_notification[1] in (OnlyWhen.unfocused, OnlyWhen.invisible) and 'focus' in opts.notify_on_cmd_finish.clear_on:
                     get_boss().notification_manager.close_notification(self.last_cmd_end_notification[0])
@@ -1476,6 +1572,7 @@ class Window:
         if cb and cb != ['none']:
             import shlex
             import subprocess
+
             env = self.child.foreground_environ
             env['KITTY_CHILD_CMDLINE'] = ' '.join(map(shlex.quote, self.child.cmdline))
             subprocess.Popen(cb, env=env, cwd=self.child.foreground_cwd, preexec_fn=clear_handled_signals)
@@ -1499,8 +1596,9 @@ class Window:
         b |= b << 8
         self.screen.send_escape_code_to_child(ESC_OSC, f'{code};rgb:{r:04x}/{g:04x}/{b:04x}')
 
-    def on_reset(self) -> None:
+    def on_reset(self, is_hard_reset: bool = True) -> None:
         from .progress import ProgressState
+
         if self.progress.state is not ProgressState.unset:
             self.progress.update(0)  # unset
             if (tab := self.tabref()) is not None:
@@ -1526,6 +1624,7 @@ class Window:
             return
 
         dirtied = default_bg_changed = False
+
         def change(which: DynamicColor, val: str) -> None:
             nonlocal dirtied, default_bg_changed
             dirtied = True
@@ -1559,9 +1658,7 @@ class Window:
     def on_color_scheme_preference_change(self, via_escape_code: bool = False) -> None:
         if not via_escape_code:
             self.report_color_scheme_preference_if_wanted()
-        self.call_watchers(self.watchers.on_color_scheme_preference_change, {
-            'is_dark': self.is_dark, 'via_escape_code': via_escape_code
-        })
+        self.call_watchers(self.watchers.on_color_scheme_preference_change, {'is_dark': self.is_dark, 'via_escape_code': via_escape_code})
 
     def report_color_scheme_preference_if_wanted(self) -> None:
         if self.screen.color_preference_notification:
@@ -1580,7 +1677,7 @@ class Window:
             lp = len(parts)
             if lp % 2 != 0:
                 return
-            for c_, spec in [parts[i:i + 2] for i in range(0, len(parts), 2)]:
+            for c_, spec in [parts[i : i + 2] for i in range(0, len(parts), 2)]:
                 try:
                     c = int(c_)
                     if c < 0 or c > 255:
@@ -1627,25 +1724,29 @@ class Window:
         get_boss().handle_remote_cmd(cmd, self)
 
     def handle_remote_echo(self, msg: memoryview) -> None:
+        # This is used by the ssh kitten to flush garbage from the tty on exit
         data = base64_decode(msg)
-        # ensure we are not writing any control char back as this can lead to command injection on shell prompts
-        # Any bytes outside the printable ASCII range are removed.
-        data = re.sub(rb'[^ -~]', b'', data)
-        self.write_to_child(data)
+        if re.match(rb'\d+$', data) is None:
+            log_error(f'Invalid echo message received from client: {data!r}')
+        else:
+            self.write_to_child(data)
 
     def handle_remote_ssh(self, msg: memoryview) -> None:
         from kittens.ssh.utils import get_ssh_data
+
         for line in get_ssh_data(msg, f'{os.getpid()}-{self.id}'):
             self.write_to_child(line)
 
     def handle_kitten_result(self, msg: memoryview) -> None:
         import base64
+
         self.kitten_result = json.loads(base64.b85decode(msg))
         for processor in self.kitten_result_processors:
             try:
                 processor(self, self.kitten_result)
             except Exception:
                 import traceback
+
                 traceback.print_exc()
 
     def add_kitten_result_processor(self, callback: Callable[['Window', Any], None]) -> None:
@@ -1677,6 +1778,7 @@ class Window:
         cdata = self.append_remote_data(msg)
         if cdata:
             from .launch import remote_edit
+
             remote_edit(cdata, self)
 
     def handle_remote_clone(self, msg: memoryview) -> None:
@@ -1684,11 +1786,14 @@ class Window:
         if cdata:
             ac = get_options().allow_cloning
             if ac == 'ask':
-                get_boss().confirm(_(
-                    'A program running in this window wants to clone it into another window.'
-                    ' WARNING: cloning a window is unsafe, as it allows arbitrary code execution,'
-                    ' only accept this request if you trust the environment you are cloning. Allow the clone, once?'),
-                    partial(self.handle_remote_clone_confirmation, cdata), window=self,
+                get_boss().confirm(
+                    _(
+                        'A program running in this window wants to clone it into another window.'
+                        ' WARNING: cloning a window is unsafe, as it allows arbitrary code execution,'
+                        ' only accept this request if you trust the environment you are cloning. Allow the clone, once?'
+                    ),
+                    partial(self.handle_remote_clone_confirmation, cdata),
+                    window=self,
                     title=_('Allow cloning of window?'),
                 )
             elif ac in ('yes', 'y', 'true'):
@@ -1697,10 +1802,12 @@ class Window:
     def handle_remote_clone_confirmation(self, cdata: str, confirmed: bool) -> None:
         if confirmed:
             from .launch import clone_and_launch
+
             clone_and_launch(cdata, self)
 
     def handle_remote_askpass(self, msgb: memoryview) -> None:
         from .shm import SharedMemory
+
         msg = str(msgb, 'utf-8')
         with SharedMemory(name=msg, readonly=True) as shm:
             shm.seek(1)
@@ -1719,17 +1826,21 @@ class Window:
         window_title = 'A program wants your input'
         if data['type'] == 'confirm':
             get_boss().confirm(
-                message, callback, window=self, confirm_on_cancel=bool(data.get('confirm_on_cancel')),
-                confirm_on_accept=bool(data.get('confirm_on_accept', True)), title=window_title)
+                message,
+                callback,
+                window=self,
+                confirm_on_cancel=bool(data.get('confirm_on_cancel')),
+                confirm_on_accept=bool(data.get('confirm_on_accept', True)),
+                title=window_title,
+            )
         elif data['type'] == 'choose':
-            get_boss().choose(
-                message, callback, *data['choices'], window=self, default=data.get('default', ''), title=window_title)
+            get_boss().choose(message, callback, *data['choices'], window=self, default=data.get('default', ''), title=window_title)
         elif data['type'] == 'get_line':
             which = 'password' if data.get('is_password') else 'input'
             message = f'\x1b[33mA program running in this window is asking for your {which}\x1b[m\n\n{message}'
             get_boss().get_line(
-                message, callback, window=self, is_password=bool(data.get('is_password')),
-                prompt=data.get('prompt', '> '), window_title=window_title)
+                message, callback, window=self, is_password=bool(data.get('is_password')), prompt=data.get('prompt', '> '), window_title=window_title
+            )
         else:
             log_error(f'Ignoring ask request with unknown type: {data["type"]}')
 
@@ -1768,7 +1879,7 @@ class Window:
                     self.title_stack.append(self.child_title)
 
     def handle_cmd_end(self, exit_status: str = '') -> None:
-        if self.last_cmd_output_start_time == 0.:
+        if self.last_cmd_output_start_time == 0.0:
             return
         try:
             self.last_cmd_exit_status = int(exit_status)
@@ -1776,16 +1887,18 @@ class Window:
             self.last_cmd_exit_status = 0
         end_time = monotonic()
         last_cmd_output_duration = end_time - self.last_cmd_output_start_time
-        self.last_cmd_output_start_time = 0.
+        self.last_cmd_output_start_time = 0.0
 
-        self.call_watchers(self.watchers.on_cmd_startstop, {
-            "is_start": False, "time": end_time, 'cmdline': self.last_cmd_cmdline, 'exit_status': self.last_cmd_exit_status})
+        self.call_watchers(
+            self.watchers.on_cmd_startstop, {'is_start': False, 'time': end_time, 'cmdline': self.last_cmd_cmdline, 'exit_status': self.last_cmd_exit_status}
+        )
 
         opts = get_options()
         when, duration, action, notify_cmdline, _ = opts.notify_on_cmd_finish
 
         if last_cmd_output_duration >= duration and when != 'never':
             from .notifications import OnlyWhen
+
             nm = get_boss().notification_manager
             cmd = nm.create_notification_cmd()
             cmd.title = 'kitty'
@@ -1822,13 +1935,16 @@ class Window:
             self.last_cmd_output_start_time = start_time
             cmdline = decode_cmdline(cmdline) if cmdline else ''
             self.last_cmd_cmdline = cmdline
-            self.call_watchers(self.watchers.on_cmd_startstop, {"is_start": True, "time": start_time, 'cmdline': cmdline, 'exit_status': 0})
+            self.call_watchers(self.watchers.on_cmd_startstop, {'is_start': True, 'time': start_time, 'cmdline': cmdline, 'exit_status': 0})
         else:
             self.handle_cmd_end(cmdline)
+
     # }}}
 
     # mouse actions {{{
-    @ac('mouse', '''
+    @ac(
+        'mouse',
+        """
         Handle a mouse click
 
         Try to perform the specified actions one after the other till one of them is successful.
@@ -1839,7 +1955,8 @@ class Window:
             prompt - if the mouse click happens at a shell prompt move the cursor to the mouse location
 
         For examples, see :ref:`conf-kitty-mouse.mousemap`
-        ''')
+        """,
+    )
     def mouse_handle_click(self, *actions: str) -> None:
         for a in actions:
             if a == 'selection':
@@ -1867,11 +1984,14 @@ class Window:
     def mouse_click_url_or_select(self) -> None:
         self.mouse_handle_click('selection', 'link')
 
-    @ac('mouse', '''
+    @ac(
+        'mouse',
+        """
         Manipulate the selection based on the current mouse position
 
         For examples, see :ref:`conf-kitty-mouse.mousemap`
-        ''')
+        """,
+    )
     def mouse_selection(self, code: int) -> None:
         if code == MOUSE_SELECTION_NORMAL - 1:
             code = MOUSE_SELECTION_NORMAL
@@ -1891,22 +2011,29 @@ class Window:
         if txt:
             self.paste_with_actions(txt)
 
-    @ac('mouse', '''
+    @ac(
+        'mouse',
+        """
         Select clicked command output
 
         Requires :ref:`shell_integration` to work
-        ''')
+        """,
+    )
     def mouse_select_command_output(self) -> None:
         click_mouse_cmd_output(self.os_window_id, self.tab_id, self.id, True)
 
-    @ac('mouse', '''
+    @ac(
+        'mouse',
+        """
         Show clicked command output in a pager like less
 
         Requires :ref:`shell_integration` to work
-        ''')
+        """,
+    )
     def mouse_show_command_output(self) -> None:
         if click_mouse_cmd_output(self.os_window_id, self.tab_id, self.id, False):
             self.show_cmd_output(CommandOutput.last_visited, 'Clicked command output')
+
     # }}}
 
     def text_for_selection(self, as_ansi: bool = False) -> str:
@@ -1925,6 +2052,7 @@ class Window:
                 w(boss, self, data)
             except Exception:
                 import traceback
+
                 traceback.print_exc()
 
     def destroy(self) -> None:
@@ -1941,12 +2069,7 @@ class Window:
             del self.screen
 
     def as_text(
-        self,
-        as_ansi: bool = False,
-        add_history: bool = False,
-        add_wrap_markers: bool = False,
-        alternate_screen: bool = False,
-        add_cursor: bool = False
+        self, as_ansi: bool = False, add_history: bool = False, add_wrap_markers: bool = False, alternate_screen: bool = False, add_cursor: bool = False
     ) -> str:
         return as_text(self.screen, as_ansi, add_history, add_wrap_markers, alternate_screen, add_cursor)
 
@@ -1984,6 +2107,7 @@ class Window:
 
     def ssh_kitten_cmdline_with_pid(self) -> tuple[int, list[str]]:
         from kittens.ssh.utils import is_kitten_cmdline
+
         for p in self.child.foreground_processes:
             q = list(p['cmdline'] or ())
             if len(q) > 3 and os.path.basename(q[0]) == 'kitten' and q[1] == 'run-shell':
@@ -2000,7 +2124,7 @@ class Window:
         if has_wrap_markers:
             text = text.replace('\r\n', '\n').replace('\r', '\n')
         lines = text.count('\n')
-        input_line_number = (lines - (self.screen.lines - 1) - self.screen.scrolled_by)
+        input_line_number = lines - (self.screen.lines - 1) - self.screen.scrolled_by
         return {
             'input_line_number': input_line_number,
             'scrolled_by': self.screen.scrolled_by,
@@ -2008,7 +2132,7 @@ class Window:
             'cursor_y': self.screen.cursor.y + 1,
             'lines': self.screen.lines,
             'columns': self.screen.columns,
-            'text': text
+            'text': text,
         }
 
     def set_logo(self, path: str, position: str = '', alpha: float = -1, png_data: bytes = b'') -> None:
@@ -2032,6 +2156,7 @@ class Window:
         if 'quote-urls-at-prompt' in opts.paste_actions and self.at_prompt:
             if is_uri_list:
                 import shlex
+
                 urls = text.splitlines(keepends=False)
                 text = ' '.join(map(shlex.quote, urls))
             else:
@@ -2041,6 +2166,7 @@ class Window:
                     scheme, rest = m.group(1), m.group(2)
                     if rest.startswith('//') or scheme in ('mailto', 'irc'):
                         import shlex
+
                         text = shlex.quote(text)
         if 'replace-dangerous-control-codes' in opts.paste_actions:
             text = replace_c0_codes_except_nl_space_tab(text)
@@ -2070,18 +2196,26 @@ class Window:
                     ' \x1b[31mcode execution vulnerabilities\x1b[39m.\n\nHow would you like to proceed?'
                 ).format('dropped' if from_drop else 'pasted', 'dropping' if from_drop else 'pasting')
                 get_boss().choose(
-                    msg, partial(self.handle_dangerous_paste_confirmation, btext, sanitized),
-                    's;green:Sanitize and ' + which, f'a;red:{which.capitalize()} anyway', 'c;yellow:Cancel',
-                    window=self, default='s', title=_('Allow {}?').format(which),
+                    msg,
+                    partial(self.handle_dangerous_paste_confirmation, btext, sanitized),
+                    's;green:Sanitize and ' + which,
+                    f'a;red:{which.capitalize()} anyway',
+                    'c;yellow:Cancel',
+                    window=self,
+                    default='s',
+                    title=_('Allow {}?').format(which),
                 )
                 return
         if 'confirm-if-large' in opts.paste_actions:
             msg = ''
             if len(btext) > 16 * 1024:
-                msg = _('{1} very large amounts of text ({0} bytes) can be slow.').format(
-                    len(btext), 'Dropping' if from_drop else 'Pasting')
-                get_boss().confirm(msg + _(' Are you sure?'), partial(self.handle_large_paste_confirmation, btext),
-                                   window=self, title=_('Allow large {}?').format('drop' if from_drop else 'paste'))
+                msg = _('{1} very large amounts of text ({0} bytes) can be slow.').format(len(btext), 'Dropping' if from_drop else 'Pasting')
+                get_boss().confirm(
+                    msg + _(' Are you sure?'),
+                    partial(self.handle_large_paste_confirmation, btext),
+                    window=self,
+                    title=_('Allow large {}?').format('drop' if from_drop else 'paste'),
+                )
                 return
         self.paste_text(btext)
 
@@ -2122,7 +2256,7 @@ class Window:
             self.screen.erase_in_display(3 if scrollback else 2, False)
 
     def current_mouse_position(self) -> Optional['MousePosition']:
-        ' Return the last position at which a mouse event was received by this window '
+        "Return the last position at which a mouse event was received by this window"
         return get_mouse_data_for_window(self.os_window_id, self.tab_id, self.id)
 
     def on_drop(self, drop: dict[str, bytes]) -> None:
@@ -2139,10 +2273,12 @@ class Window:
         if text:
             self.paste_with_actions(text, from_drop=True, is_uri_list=is_uri_list)
 
-
     # Serialization {{{
     def as_dict(
-        self, is_focused: bool = False, is_self: bool = False, is_active: bool = False,
+        self,
+        is_focused: bool = False,
+        is_self: bool = False,
+        is_active: bool = False,
         neighbors_map: NeighborsMap | None = None,
     ) -> WindowDict:
         if neighbors_map is None:
@@ -2209,7 +2345,7 @@ class Window:
         return cwd
 
     def as_launch_command(self, ser_opts: SaveAsSessionOptions, cwd: str, is_overlay: bool = False) -> list[str]:
-        ' Return a launch command that can be used to serialize this window. Empty list indicates not serializable. '
+        "Return a launch command that can be used to serialize this window. Empty list indicates not serializable."
         if self.actions_on_close or self.actions_on_focus_change or self.actions_on_removal:
             # such windows are typically UI kittens. The actions are not
             # serializable anyway, so skip.
@@ -2221,6 +2357,7 @@ class Window:
             ans.append('--allow-remote-control')
         if self.remote_control_passwords:
             import shlex
+
             for pw, rcp_items in self.remote_control_passwords.items():
                 ans.append(f'--remote-control-password={shlex.join((pw,) + tuple(rcp_items))}')
         if self.creation_spec:
@@ -2261,6 +2398,7 @@ class Window:
 
         from kittens.ssh.utils import is_kitten_cmdline as is_ssh_kitten_cmdline
         from kittens.ssh.utils import remove_env_var_from_cmdline, set_cwd_in_cmdline, set_single_env_var_in_cmdline
+
         cmd: list[str] = []
         if self.creation_spec and self.creation_spec.cmd:
             if self.creation_spec.cmd != resolved_shell(get_options()):
@@ -2271,11 +2409,14 @@ class Window:
                             set_cwd_in_cmdline(path_from_osc7_url(self.screen.last_reported_cwd), cmd)
         unserialize_data: dict[str, int | list[str] | str] = {'id': self.id}
         if not cmd and ser_opts.use_foreground_process:
+
             def make_exe_absolute(cmd: list[str], pid: int) -> None:
                 if cmd and not os.path.isabs(cmd[0]):
                     with suppress(Exception):
                         from .child import abspath_of_exe
+
                         cmd[0] = abspath_of_exe(pid)
+
             kssh_cmdline = self.ssh_kitten_cmdline()
             if kssh_cmdline:
                 remove_env_var_from_cmdline('KITTY_SI_RUN_COMMAND_AT_STARTUP', kssh_cmdline)
@@ -2299,6 +2440,7 @@ class Window:
         ans.insert(1, unserialize_launch_flag + json.dumps(unserialize_data))
         ans.extend(cmd)
         return ans
+
     # }}}
 
     # actions {{{
@@ -2310,11 +2452,14 @@ class Window:
         cursor_on_screen = self.screen.scrolled_by < self.screen.lines - self.screen.cursor.y
         return get_boss().display_scrollback(self, data['text'], data['input_line_number'], report_cursor=cursor_on_screen)
 
-    @ac('sc', '''
+    @ac(
+        'sc',
+        """
         Search scrollback in a pager like less. If there is selected text, it is automatically searched for.
         Note that this assumes that pressing the / key triggers search mode in the page configured as the
         scrollback pager.
-    ''')
+    """,
+    )
     def search_scrollback(self) -> None:
         text = self.text_for_selection()
         w = self.show_scrollback()
@@ -2333,44 +2478,59 @@ class Window:
         text = text.replace('\r\n', '\n').replace('\r', '\n')
         get_boss().display_scrollback(self, text, title=title, report_cursor=False)
 
-    @ac('sc', '''
+    @ac(
+        'sc',
+        """
         Show output from the first shell command on screen in a pager like less
 
         Requires :ref:`shell_integration` to work
-        ''')
+        """,
+    )
     def show_first_command_output_on_screen(self) -> None:
         self.show_cmd_output(CommandOutput.first_on_screen, 'First command output on screen')
 
-    @ac('sc', '''
+    @ac(
+        'sc',
+        """
         Show output from the last shell command in a pager like less
 
         Requires :ref:`shell_integration` to work
-        ''')
+        """,
+    )
     def show_last_command_output(self) -> None:
         self.show_cmd_output(CommandOutput.last_run, 'Last command output')
 
-    @ac('sc', '''
+    @ac(
+        'sc',
+        """
         Show the first command output below the last scrolled position via scroll_to_prompt
         or the last mouse clicked command output in a pager like less
 
         Requires :ref:`shell_integration` to work
-        ''')
+        """,
+    )
     def show_last_visited_command_output(self) -> None:
         self.show_cmd_output(CommandOutput.last_visited, 'Last visited command output')
 
-    @ac('sc', '''
+    @ac(
+        'sc',
+        """
         Show the last non-empty output from a shell command in a pager like less
 
         Requires :ref:`shell_integration` to work
-        ''')
+        """,
+    )
     def show_last_non_empty_command_output(self) -> None:
         self.show_cmd_output(CommandOutput.last_non_empty, 'Last non-empty command output')
 
-    @ac('cp', '''
+    @ac(
+        'cp',
+        """
         Copy the last non-empty output from a shell command to the clipboard
 
         Requires :ref:`shell_integration` to work
-        ''')
+        """,
+    )
     def copy_last_command_output(self) -> None:
         text = self.cmd_output(CommandOutput.last_non_empty, as_ansi=False, add_wrap_markers=False)
         if text:
@@ -2394,8 +2554,12 @@ class Window:
 
     def encoded_key(self, key_event: KeyEvent) -> bytes:
         return encode_key_for_tty(
-            key=key_event.key, shifted_key=key_event.shifted_key, alternate_key=key_event.alternate_key,
-            mods=key_event.mods, action=key_event.action, text=key_event.text,
+            key=key_event.key,
+            shifted_key=key_event.shifted_key,
+            alternate_key=key_event.alternate_key,
+            mods=key_event.mods,
+            action=key_event.action,
+            text=key_event.text,
             key_encoding_flags=self.screen.current_key_encoding_flags(),
             cursor_key_mode=self.screen.cursor_key_mode,
         ).encode('ascii')
@@ -2409,8 +2573,10 @@ class Window:
             self.scroll_end()
             self.write_to_child(self.encoded_key(KeyEvent(key=ord('c'), mods=GLFW_MOD_CONTROL)))
 
-    @ac('cp', 'Copy the selected text from the active window to the clipboard, if no selection,'
-        ' pass the key through to the application running in the terminal.')
+    @ac(
+        'cp',
+        'Copy the selected text from the active window to the clipboard, if no selection, pass the key through to the application running in the terminal.',
+    )
     def copy_or_noop(self) -> bool:
         text = self.text_for_selection()
         if text:
@@ -2423,10 +2589,12 @@ class Window:
         self.copy_or_interrupt()
         self.screen.clear_selection()
 
-    @ac('cp', 'Copy the selected text from the active window to the clipboard,'
-        ' if no selection, copy the last command output (requires shell integration to work)')
+    @ac(
+        'cp',
+        'Copy the selected text from the active window to the clipboard, if no selection, copy the last command output (requires shell integration to work)',
+    )
     def copy_selection_or_last_command_output(self) -> None:
-        if (text := self.text_for_selection() or self.cmd_output(CommandOutput.last_non_empty, as_ansi=False, add_wrap_markers=False)):
+        if text := self.text_for_selection() or self.cmd_output(CommandOutput.last_non_empty, as_ansi=False, add_wrap_markers=False):
             set_clipboard_string(text)
 
     @ac('cp', 'Pass the selected text from the active window to the specified program')
@@ -2444,7 +2612,7 @@ class Window:
         self.screen.clear_selection()
 
     def scroll_fractional_lines(self, amt: float) -> bool | None:
-        ' Scroll fractionally, negative values are up and positive values are down '
+        "Scroll fractionally, negative values are up and positive values are down"
         if self.screen.is_main_linebuf():
             self.finish_scroll_animation()
             self.screen.fractional_scroll(amt)
@@ -2468,7 +2636,7 @@ class Window:
             self.screen.scroll_to_absolute(max(0.0, a.start_scrolled_by - a.total * progress))
 
     def finish_scroll_animation(self) -> None:
-        ' Finish any in-progress scroll animation immediately '
+        "Finish any in-progress scroll animation immediately"
         a = self.scroll_animation
         if a.timer:
             remove_timer(a.timer)
@@ -2477,7 +2645,7 @@ class Window:
             self.screen.scroll_to_absolute(max(0, a.start_scrolled_by - a.total))
 
     def start_scroll_animation(self, lines: float) -> None:
-        ' Start a smooth scroll animation for the given number of lines (negative=up, positive=down) '
+        "Start a smooth scroll animation for the given number of lines (negative=up, positive=down)"
         self.finish_scroll_animation()
         if not self.screen.is_main_linebuf():
             return
@@ -2492,12 +2660,15 @@ class Window:
         a.start_scrolled_by = self.screen.scrolled_by
         a.timer = add_timer(self.scroll_animation_tick, min(ScrollAnimation.frame_interval, duration / 2), True)
 
-    @ac('sc', '''
+    @ac(
+        'sc',
+        """
         Scroll up by one line when in main screen. To scroll by different amounts, you can map the remote_control
         scroll-window action. Pass the ``smooth`` argument to have the scrolling be animated. For example::
 
             map kitty_mod+up scroll_line_up smooth
-        ''')
+        """,
+    )
     def scroll_line_up(self, smooth: bool = False) -> bool | None:
         if self.screen.is_main_linebuf():
             if smooth:
@@ -2508,12 +2679,15 @@ class Window:
             return None
         return True
 
-    @ac('sc', '''
+    @ac(
+        'sc',
+        """
         Scroll down by one line when in main screen. To scroll by different amounts, you can map the remote_control
         scroll-window action. Pass the ``smooth`` argument to have the scrolling be animated. For example::
 
             map kitty_mod+down scroll_line_down smooth
-        ''')
+        """,
+    )
     def scroll_line_down(self, smooth: bool = False) -> bool | None:
         if self.screen.is_main_linebuf():
             if smooth:
@@ -2556,7 +2730,9 @@ class Window:
             return None
         return True
 
-    @ac('sc', '''
+    @ac(
+        'sc',
+        """
         Scroll to the previous/next shell command prompt
         Allows easy jumping from one command to the next. Requires working
         :ref:`shell_integration`. Takes two optional numbers as arguments:
@@ -2574,7 +2750,8 @@ class Window:
             map ctrl+p scroll_to_prompt -1 3  # jump to previous, showing 3 lines prior
             map ctrl+n scroll_to_prompt 1     # jump to next
             map ctrl+o scroll_to_prompt 0     # jump to last visited
-        ''')
+        """,
+    )
     def scroll_to_prompt(self, num_of_prompts: int = -1, scroll_offset: int = 0) -> bool | None:
         if self.screen.is_main_linebuf():
             self.finish_scroll_animation()
@@ -2582,8 +2759,11 @@ class Window:
             return None
         return True
 
-    @ac('sc', 'Scroll prompt to the top of the screen, filling screen with empty lines, when in main screen.'
-        ' To avoid putting the lines above the prompt into the scrollback use scroll_prompt_to_top y')
+    @ac(
+        'sc',
+        'Scroll prompt to the top of the screen, filling screen with empty lines, when in main screen.'
+        ' To avoid putting the lines above the prompt into the scrollback use scroll_prompt_to_top y',
+    )
     def scroll_prompt_to_top(self, clear_scrollback: bool = False) -> bool | None:
         if self.screen.is_main_linebuf():
             self.screen.scroll_until_cursor_prompt(not clear_scrollback)
@@ -2602,6 +2782,7 @@ class Window:
     @ac('mk', 'Toggle the current marker on/off')
     def toggle_marker(self, ftype: str, spec: str | tuple[tuple[int, str], ...], flags: int) -> None:
         from .marks import marker_from_spec
+
         key = ftype, spec
         if key == self.current_marker_spec:
             self.remove_marker()
@@ -2612,6 +2793,7 @@ class Window:
     def set_marker(self, spec: str | Sequence[str]) -> None:
         from .marks import marker_from_spec
         from .options.utils import parse_marker_spec, toggle_marker
+
         if isinstance(spec, str):
             func, (ftype, spec_, flags) = toggle_marker('toggle_marker', spec)
         else:
@@ -2630,20 +2812,25 @@ class Window:
     def scroll_to_mark(self, prev: bool = True, mark: int = 0) -> None:
         self.screen.scroll_to_next_mark(mark, prev)
 
-    @ac('misc', '''
+    @ac(
+        'misc',
+        """
         Send the specified SIGNAL to the foreground process in the active window
 
         For example::
 
             map f1 signal_child SIGTERM
-        ''')
+        """,
+    )
     def signal_child(self, *signals: int) -> None:
         pid = self.child.pid_for_cwd
         if pid is not None:
             for sig in signals:
                 os.kill(pid, sig)
 
-    @ac('misc', '''
+    @ac(
+        'misc',
+        """
     Display the specified kitty documentation, preferring a local copy, if found.
 
     For example::
@@ -2652,10 +2839,12 @@ class Window:
         map f1 show_kitty_doc conf
         # show the ssh kitten docs
         map f1 show_kitty_doc kittens/ssh
-    ''')
+    """,
+    )
     def show_kitty_doc(self, which: str = '') -> None:
         url = docs_url(which)
         get_boss().open_url(url)
+
     # }}}
 
 

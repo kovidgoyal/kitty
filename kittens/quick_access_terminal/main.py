@@ -20,6 +20,7 @@ opt = definition.add_option
 
 panel_opts = get_option_maps(parse_option_spec(panel_options_spec())[0])[0]
 
+
 def migrate_help(x: str) -> str:
     def sub(m: re.Match[str]) -> str:
         return f':opt:`{m.group(1)}`'
@@ -40,23 +41,38 @@ opt('columns', '80', long_text=panel_opts['columns'].help)
 
 opt('edge', 'top', choices=panel_opts['edge'].choices, long_text=help_of('edge'))
 
-opt('layer', 'overlay', choices=panel_opts['layer'].choices, long_text='''
+opt(
+    'layer',
+    'overlay',
+    choices=panel_opts['layer'].choices,
+    long_text="""
 Controls the z-index layer on which the quick access terminal is displayed.
 On Linux, if you want the quick access terminal to inter operate with
 IME systems, you might need to change this to :code:`top`.
 See the documentation of the :option:`kitty +kitten panel --layer` for details.
-''')
+""",
+)
 
-opt('background_opacity', '0.85', option_type='unit_float', long_text='''
+opt(
+    'background_opacity',
+    '0.85',
+    option_type='unit_float',
+    long_text="""
 The background opacity of the window. This works the same as the kitty
 option of the same name, it is present here as it has a different
 default value for the quick access terminal.
-''')
+""",
+)
 
-opt('hide_on_focus_loss', 'no', option_type='to_bool', long_text='''
+opt(
+    'hide_on_focus_loss',
+    'no',
+    option_type='to_bool',
+    long_text="""
 Hide the window when it loses keyboard focus automatically. Using this option
 will force :opt:`focus_policy` to :code:`on-demand`.
-''')
+""",
+)
 
 opt('grab_keyboard', 'no', option_type='to_bool', long_text=grab_keyboard_docs)
 
@@ -68,31 +84,41 @@ opt('margin_top', '0', option_type='int', long_text=help_of('margin_top'))
 
 opt('margin_bottom', '0', option_type='int', long_text=help_of('margin_bottom'))
 
-opt('+kitty_conf', '',
+opt(
+    '+kitty_conf',
+    '',
     long_text='Path to config file to use for kitty when drawing the window. Can be specified multiple times. By default, the'
-    ' normal kitty.conf is used. Relative paths are resolved with respect to the kitty config directory.'
+    ' normal kitty.conf is used. Relative paths are resolved with respect to the kitty config directory.',
 )
 
-opt('+kitty_override', '', long_text='Override individual kitty configuration options, can be specified multiple times.'
-    ' Syntax: :italic:`kitty_override name=value`. For example: :code:`kitty_override font_size=20`.'
+opt(
+    '+kitty_override',
+    '',
+    long_text='Override individual kitty configuration options, can be specified multiple times.'
+    ' Syntax: :italic:`kitty_override name=value`. For example: :code:`kitty_override font_size=20`.',
 )
 
-opt('app_id', f'{appname}-quick-access',
-    long_text='On Wayland set the :italic:`namespace` of the layer shell surface.'
-    ' On X11 set the WM_CLASS assigned to the quick access window. (Linux only)')
+opt(
+    'app_id',
+    f'{appname}-quick-access',
+    long_text='On Wayland set the :italic:`namespace` of the layer shell surface. On X11 set the WM_CLASS assigned to the quick access window. (Linux only)',
+)
 
 
 opt('output_name', '', long_text=help_of('output_name'))
 
-opt('start_as_hidden', 'no', option_type='to_bool',
-    long_text='Whether to start the quick access terminal hidden. Useful if you are starting it as part of system startup.')
+opt(
+    'start_as_hidden',
+    'no',
+    option_type='to_bool',
+    long_text='Whether to start the quick access terminal hidden. Useful if you are starting it as part of system startup.',
+)
 
 opt('focus_policy', 'exclusive', choices=panel_opts['focus_policy'].choices, long_text=help_of('focus_policy'))
 
 
-
 def options_spec() -> str:
-    return f'''
+    return f"""
 --config -c
 type=list
 completion=type:file ext:conf group:"Config files" kwds:none,NONE
@@ -128,7 +154,8 @@ For debugging interactions with the compositor/window manager.
 --debug-input
 type=bool-set
 For debugging interactions with the compositor/window manager.
-'''
+"""
+
 
 def main(args: list[str]) -> None:
     raise SystemExit('This kitten should be run as: kitten quick-access-terminal')

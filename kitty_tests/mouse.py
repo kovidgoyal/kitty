@@ -14,7 +14,7 @@ from kitty.fast_data_types import (
     send_mock_mouse_event_to_window,
 )
 
-from . import BaseTest
+from .base import BaseTest
 
 
 def send_mouse_event(
@@ -28,19 +28,12 @@ def send_mouse_event(
 ):
     ix = int(x)
     in_left_half_of_cell = x - ix < 0.5
-    send_mock_mouse_event_to_window(
-        window, button, modifiers, is_release, ix, y, clear_click_queue, in_left_half_of_cell
-    )
+    send_mock_mouse_event_to_window(window, button, modifiers, is_release, ix, y, clear_click_queue, in_left_half_of_cell)
 
 
 class TestMouse(BaseTest):
-
     def test_mouse_selection(self):
-        s = self.create_screen(
-            options=dict(
-                rectangle_select_modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL
-            )
-        )
+        s = self.create_screen(options=dict(rectangle_select_modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL))
         w = create_mock_window(s)
         ev = partial(send_mouse_event, w)
 
@@ -69,19 +62,14 @@ class TestMouse(BaseTest):
             ev(button, x=x, y=y, modifiers=modifiers)
 
         def release(x=0, y=0, button=GLFW_MOUSE_BUTTON_LEFT):
-            ev(
-                button,
-                x=x,
-                y=y,
-                is_release=True,
-                clear_click_queue=True
-            )
+            ev(button, x=x, y=y, is_release=True, clear_click_queue=True)
 
         def move(x=0, y=0, button=-1, q=None):
             ev(x=x, y=y, button=button)
             if q is not None:
                 sl = sel()
                 from kitty.window import as_text
+
                 self.ae(sl, q, f'{sl!r} != {q!r} after movement to x={x} y={y}. Screen contents: {as_text(s)!r}')
 
         def multi_click(x=0, y=0, count=2, modifiers=0):
@@ -240,7 +228,7 @@ class TestMouse(BaseTest):
         s.reset()
         s.draw('ABCDE12345')
         s.linefeed(), s.carriage_return()
-        s.draw(('X' * s.columns) * (s.lines-1))
+        s.draw(('X' * s.columns) * (s.lines - 1))
         multi_click(x=1, count=3)
         self.ae(sel(), 'ABCDE12345')
         s.reset()
@@ -248,7 +236,7 @@ class TestMouse(BaseTest):
         s.linefeed(), s.carriage_return()
         s.draw('678')
         s.linefeed(), s.carriage_return()
-        s.draw(('X' * s.columns) * (s.lines-2))
+        s.draw(('X' * s.columns) * (s.lines - 2))
         multi_click(x=1, y=1, count=3)
         self.ae(sel(), '678')
         press(x=2, button=GLFW_MOUSE_BUTTON_RIGHT)
@@ -286,7 +274,7 @@ class TestMouse(BaseTest):
         s.reset()
         s.draw('abcde12345')
         s.linefeed(), s.carriage_return()
-        s.draw(('X' * s.columns) * (s.lines-1))
+        s.draw(('X' * s.columns) * (s.lines - 1))
         multi_click(x=1)
         self.ae(sel(), 'abcde12345')
 
@@ -425,3 +413,43 @@ class TestMouse(BaseTest):
         self.ae(sel(), '')
         multi_click(x=2.4)
         self.ae(sel(), '')
+
+    def test_v120_scroll_direction_reversal(self):
+        # A high resolution wheel delivers one physical detent as several
+        # VALUE120 events, and the fractional remainder is carried between them.
+        # Detents do not reliably total 120 units, so that carry is what lets an
+        # undersized detent still scroll a line. But when the direction changes
+        # the residual has the wrong sign, and the first detent of the new
+        # direction gets spent cancelling it instead of scrolling.
+        # The fragment sequences below were captured from a Logitech MX Master 3.
+        from kitty.fast_data_types import test_scale_scroll
+
+        self.set_options()  # scale_scroll reads wheel_scroll_multiplier
+        cell = 40
+
+        def run(*v120):
+            # scale_scroll is exercised in mouse tracking mode, which reduces
+            # wheel_scroll_multiplier to its sign, so the result does not depend
+            # on the configured multiplier.
+            return test_scale_scroll([float(v) for v in v120], cell)
+
+        down = (-48, -32, -24, -24)  # 128 units
+        up = (48, 32, 24, 24)
+
+        # Five detents down, then one up. Every detent must scroll, including
+        # the one that reverses direction. Before the residual was discarded on
+        # a reversal, that last detent scrolled nothing.
+        res = run(*(down * 5), *up)
+        self.ae(-5, sum(res[:20]), f'detents before the reversal: {res}')
+        self.ae(1, sum(res[20:]), f'detent that reversed direction: {res}')
+
+        # Repeated reversals keep working.
+        res = run(*(down * 2), *(up * 2), *(down * 2))
+        self.ae([-2, 2, -2], [sum(res[i : i + 8]) for i in range(0, 24, 8)])
+
+        # Scrolling in one direction is unaffected: the carry is retained, so a
+        # run of undersized detents still scrolls about one line each.
+        self.ae(-9, sum(run(*((-48, -24, -24, -16) * 10))))
+
+        # A fragment too small to be a detent does not scroll.
+        self.ae(0, sum(run(8)))

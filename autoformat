@@ -1,0 +1,134 @@
+#!/usr/bin/env python
+# License: GPLv3 Copyright: 2026, Kovid Goyal <kovid at kovidgoyal.net>
+
+
+import concurrent.futures
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import threading
+
+base = os.path.dirname(os.path.abspath(__file__))
+
+ruff = subprocess.Popen(['ruff', 'format'], cwd=base, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+go = subprocess.Popen('gofmt -s -l -w tools kittens'.split(), cwd=base, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+ruff_output = b''
+go_output = b''
+
+
+def wait_ruff() -> None:
+    global ruff_output
+    ruff_output = ruff.communicate()[0]
+
+
+def wait_go() -> None:
+    global go_output
+    go_output = go.communicate()[0]
+
+
+threading.Thread(target=wait_ruff).start()
+threading.Thread(target=wait_go).start()
+
+clang_files = []
+for x in os.listdir(base):
+    if x in ('dist', 'build', 'bypy', '3rdparty') or x.startswith('.'):
+        continue
+    for root, dirnames, files in os.walk(os.path.join(base, x)):
+        for file in files:
+            if file.startswith('wayland-') and os.path.basename(root) == 'glfw':
+                continue
+            ext = os.path.splitext(file)[1]
+            if ext in ('.c', '.h', '.m', '.slang'):
+                clang_files.append(os.path.join(root, file))
+
+CACHE_DIR = os.path.join(base, '.cache', 'autoformat')
+CACHE_FILE = os.path.join(CACHE_DIR, 'clang_format.json')
+
+
+def data_hash(src: bytes) -> str:
+    return hashlib.md5(src).hexdigest()
+
+
+def file_hash(path: str) -> tuple[str, bytes]:
+    with open(path, 'rb') as f:
+        src = f.read()
+    return data_hash(src), src
+
+
+def load_cache() -> dict[str, str]:
+    try:
+        with open(CACHE_FILE) as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_cache(cache: dict[str, str]) -> None:
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=CACHE_DIR)
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(cache, f, indent=2)
+        os.replace(tmp, CACHE_FILE)
+    except Exception:
+        os.unlink(tmp)
+        raise
+
+
+cache: dict[str, str] = load_cache()
+cache_lock = threading.Lock()
+
+
+def run_clang_format(file_path: str) -> tuple[bool, str, str]:
+    rel_path = os.path.relpath(file_path, base)
+    current_hash, src = file_hash(file_path)
+
+    with cache_lock:
+        if cache.get(rel_path) == current_hash:
+            return True, '', ''
+
+    fn = file_path
+    sf = '.clang-format'
+    if file_path.endswith('.slang'):
+        fn += '.cs'
+        sf = '.clang-format-for-slang'
+    cmd = ['clang-format', '--style=file:' + sf, '--assume-filename=' + fn]
+    result = subprocess.run(cmd, capture_output=True, input=src)
+    if result.returncode != 0:
+        return False, file_path, result.stderr.decode()
+    if result.stdout:
+        new_hash = data_hash(result.stdout)
+        with open(file_path, 'wb') as f:
+            f.write(result.stdout)
+    else:
+        new_hash = current_hash
+
+    with cache_lock:
+        cache[rel_path] = new_hash
+
+    return True, '', ''
+
+
+clang_failed = False
+with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+    futures = {executor.submit(run_clang_format, f): f for f in clang_files}
+    for future in concurrent.futures.wait(futures)[0]:
+        success, file_path, error_msg = future.result()
+        if not success:
+            print(f'[FAILED] {file_path}\n{error_msg}', file=sys.stderr)
+            clang_failed = True
+
+save_cache(cache)
+
+ruff.wait()
+go.wait()
+if ruff.wait() != 0:
+    sys.stderr.buffer.write(ruff_output)
+    raise SystemExit('Formatting of Python code failed')
+if go.wait() != 0:
+    sys.stderr.buffer.write(go_output)
+    raise SystemExit('Formatting of Go code failed')
+raise SystemExit('Formatting of C files failed' if clang_failed else 0)

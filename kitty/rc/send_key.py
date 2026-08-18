@@ -22,13 +22,13 @@ if TYPE_CHECKING:
 
 class SendKey(RemoteCommand):
     disallow_responses = True
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     keys+/list.str: The keys to send
     match/str: A string indicating the window to send text to
     match_tab/str: A string indicating the tab to send text to
     all/bool: A boolean indicating all windows should be matched.
     exclude_active/bool: A boolean that prevents sending text to the active window
-    '''
+    """
     short_desc = 'Send arbitrary key presses to the specified windows'
     desc = (
         'Send arbitrary key presses to specified windows. All specified keys are sent first as press events'
@@ -36,11 +36,15 @@ class SendKey(RemoteCommand):
         ' They are sent only if the current keyboard mode for the program supports the particular key.'
         ' For example: send-key ctrl+a ctrl+b. Note that errors are not reported, for technical reasons,'
         ' so send-key always succeeds, even if no key was sent to any window.'
-   )
+    )
     # since send-key can send data over the tty to the window in which it was
     # run --no-reponse is always in effect for it, hence errors are not
     # reported.
-    options_spec = MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t') + '''\n
+    options_spec = (
+        MATCH_WINDOW_OPTION
+        + '\n\n'
+        + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
+        + """\n
 --all
 type=bool-set
 Match all windows.
@@ -49,7 +53,8 @@ Match all windows.
 --exclude-active
 type=bool-set
 Do not send text to the active window, even if it is one of the matched windows.
-'''
+"""
+    )
     args = RemoteCommand.Args(spec='[KEYS TO SEND ...]', json_field='keys')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:

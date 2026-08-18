@@ -26,7 +26,7 @@ typedef struct BezierParameters {
     double ax, bx, cx, ay, by, cy, start_gradient, end_gradient, spline_samples[11];
 } BezierParameters;
 
-typedef double(*easing_curve)(void*, double, monotonic_t);
+typedef double (*easing_curve)(void *, double, monotonic_t);
 
 typedef struct animation_function {
     void *params;
@@ -44,15 +44,17 @@ typedef struct Animation {
 #include "animation.h"
 #include "state.h"
 
-Animation*
+Animation *
 alloc_animation(void) {
     return calloc(1, sizeof(Animation));
 }
 
 bool
-animation_is_valid(const Animation* a) { return a != NULL && a->count > 0; }
+animation_is_valid(const Animation *a) {
+    return a != NULL && a->count > 0;
+}
 
-Animation*
+Animation *
 free_animation(Animation *a) {
     if (a) {
         for (size_t i = 0; i < a->count; i++) free(a->functions[i].params);
@@ -64,7 +66,9 @@ free_animation(Animation *a) {
 
 
 static double
-unit_value(double x) { return MAX(0., MIN(x, 1.)); }
+unit_value(double x) {
+    return MAX(0., MIN(x, 1.));
+}
 
 static double
 linear_easing_curve(void *p_, double val, monotonic_t duration UNUSED) {
@@ -76,8 +80,8 @@ linear_easing_curve(void *p_, double val, monotonic_t duration UNUSED) {
             stop_pos = x[i];
             stop_val = y[i];
             if (i > 0) {
-                start_val = y[i-1];
-                start_pos = x[i-1];
+                start_val = y[i - 1];
+                start_pos = x[i - 1];
             }
             break;
         }
@@ -174,7 +178,32 @@ step_easing_curve(void *p_, double t, monotonic_t duration UNUSED) {
 }
 
 static double
-identity_easing_curve(void *p_ UNUSED, double t, monotonic_t duration UNUSED) { return t; }
+identity_easing_curve(void *p_ UNUSED, double t, monotonic_t duration UNUSED) {
+    return t;
+}
+
+bool
+animations_equal(const Animation *a, const Animation *b) {
+    if (a == b) return true;
+    if (!a || !b) return false;
+    if (a->count != b->count) return false;
+    for (size_t i = 0; i < a->count; i++) {
+        const animation_function *fa = &a->functions[i];
+        const animation_function *fb = &b->functions[i];
+        if (fa->curve != fb->curve || fa->y_at_start != fb->y_at_start || fa->y_size != fb->y_size) return false;
+        if (fa->curve == cubic_bezier_easing_curve) {
+            if (memcmp(fa->params, fb->params, sizeof(BezierParameters)) != 0) return false;
+        } else if (fa->curve == linear_easing_curve) {
+            const LinearParameters *pa = fa->params, *pb = fb->params;
+            if (pa->count != pb->count) return false;
+            if (memcmp(pa->buf, pb->buf, 2 * pa->count * sizeof(double)) != 0) return false;
+        } else if (fa->curve == step_easing_curve) {
+            if (memcmp(fa->params, fb->params, sizeof(StepsParameters)) != 0) return false;
+        }
+        // identity_easing_curve has no params; function-pointer equality above is sufficient
+    }
+    return true;
+}
 
 double
 apply_easing_curve(const Animation *a, double val, monotonic_t duration) {
@@ -188,12 +217,14 @@ apply_easing_curve(const Animation *a, double val, monotonic_t duration) {
     return f->y_at_start + unit_value(ans) * f->y_size;
 }
 
-static animation_function*
+static animation_function *
 init_function(Animation *a, double y_at_start, double y_at_end, easing_curve curve) {
     ensure_space_for(a, functions, animation_function, a->count + 1, capacity, 4, false);
     animation_function *f = a->functions + a->count++;
     zero_at_ptr(f);
-    f->y_at_start = y_at_start; f->y_size = y_at_end - y_at_start; f->curve = curve;
+    f->y_at_start = y_at_start;
+    f->y_size = y_at_end - y_at_start;
+    f->curve = curve;
     return f;
 }
 
@@ -205,7 +236,8 @@ is_bezier_linear(double p1x, double p1y, double p2x, double p2y) {
 
 void
 add_cubic_bezier_animation(Animation *a, double y_at_start, double y_at_end, double p1x, double p1y, double p2x, double p2y) {
-    p1x = unit_value(p1x); p2x = unit_value(p2x);
+    p1x = unit_value(p1x);
+    p2x = unit_value(p2x);
     if (is_bezier_linear(p1x, p1y, p2x, p2y)) {
         init_function(a, y_at_start, y_at_end, identity_easing_curve);
         return;
@@ -246,7 +278,8 @@ add_linear_animation(Animation *a, double y_at_start, double y_at_end, size_t co
     if (!p) fatal("Out of memory");
     p->count = count;
     double *px = p->buf, *py = px + count;
-    memcpy(px, x, sz); memcpy(py, y, sz);
+    memcpy(px, x, sz);
+    memcpy(py, y, sz);
     animation_function *f = init_function(a, y_at_start, y_at_end, linear_easing_curve);
     f->params = p;
 }
@@ -258,9 +291,7 @@ add_steps_animation(Animation *a, double y_at_start, double y_at_end, size_t cou
     switch (step) {
         case EASING_STEP_START: start_value = jump_size; break;
         case EASING_STEP_END: break;
-        case EASING_STEP_NONE:
-            jump_size = 1. / (num_of_buckets - 1);
-            break;
+        case EASING_STEP_NONE: jump_size = 1. / (num_of_buckets - 1); break;
         case EASING_STEP_BOTH:
             num_of_buckets++;
             jump_size = 1. / num_of_buckets;
@@ -269,19 +300,22 @@ add_steps_animation(Animation *a, double y_at_start, double y_at_end, size_t cou
     }
     StepsParameters *p = malloc(sizeof(StepsParameters));
     if (!p) fatal("Out of memory");
-    p->num_of_buckets = num_of_buckets; p->jump_size = jump_size; p->start_value = start_value;
+    p->num_of_buckets = num_of_buckets;
+    p->jump_size = jump_size;
+    p->start_value = start_value;
     animation_function *f = init_function(a, y_at_start, y_at_end, step_easing_curve);
     f->params = p;
 }
 
-static PyObject*
+static PyObject *
 test_cursor_blink_easing_function(PyObject *self UNUSED, PyObject *args) {
     Animation *a = OPT(animation.cursor);
     if (!animation_is_valid(a)) {
         PyErr_SetString(PyExc_RuntimeError, "must set a cursor blink animation on the global options object first");
         return NULL;
     }
-    double t, duration_s = 0.5; int only_single = 1;
+    double t, duration_s = 0.5;
+    int only_single = 1;
     if (!PyArg_ParseTuple(args, "d|pd", &t, &only_single, &duration_s)) return NULL;
     monotonic_t duration = s_double_to_monotonic_t(duration_s);
     if (only_single) {
@@ -292,12 +326,12 @@ test_cursor_blink_easing_function(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyMethodDef module_methods[] = {
-    METHODB(test_cursor_blink_easing_function, METH_VARARGS),
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+    METHODB(test_cursor_blink_easing_function, METH_VARARGS), {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 
-bool init_animations(PyObject *module) {
+bool
+init_animations(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }

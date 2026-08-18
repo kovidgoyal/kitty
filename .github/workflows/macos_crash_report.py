@@ -359,8 +359,14 @@ class UserModeCrashReport(CrashReportBase):
             for frame in self._data['threads'][thread_index]['frames']:
                 image = images[frame['imageIndex']]
                 result.append(
-                    Frame(image_name=image.get('path'), image_base=image.get('base'), symbol=frame.get('symbol'),
-                          image_offset=frame.get('imageOffset'), symbol_offset=frame.get('symbolLocation')))
+                    Frame(
+                        image_name=image.get('path'),
+                        image_base=image.get('base'),
+                        symbol=frame.get('symbol'),
+                        image_offset=frame.get('imageOffset'),
+                        symbol_offset=frame.get('symbolLocation'),
+                    )
+                )
         else:
             in_frames = False
             for line in self._data.split('\n'):
@@ -373,12 +379,12 @@ class UserModeCrashReport(CrashReportBase):
                     assert splitted[-2] == '+'
                     image_base = splitted[-3]
                     if image_base.startswith('0x'):
-                        result.append(Frame(image_name=splitted[1], image_base=int(image_base, 16), symbol=None,
-                                            image_offset=int(splitted[-1]), symbol_offset=None))
+                        result.append(
+                            Frame(image_name=splitted[1], image_base=int(image_base, 16), symbol=None, image_offset=int(splitted[-1]), symbol_offset=None)
+                        )
                     else:
                         # symbolicated
-                        result.append(Frame(image_name=splitted[1], image_base=None, symbol=image_base,
-                                            image_offset=None, symbol_offset=int(splitted[-1])))
+                        result.append(Frame(image_name=splitted[1], image_base=None, symbol=image_base, image_offset=None, symbol_offset=int(splitted[-1])))
 
                 if line.startswith(f'Thread {self.faulting_thread} Crashed:'):
                     in_frames = True

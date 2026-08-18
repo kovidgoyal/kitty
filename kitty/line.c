@@ -16,13 +16,13 @@ extern PyTypeObject Cursor_Type;
 static_assert(sizeof(char_type) == sizeof(Py_UCS4), "Need to perform conversion to Py_UCS4");
 
 static void
-dealloc(Line* self) {
+dealloc(Line *self) {
     if (self->needs_free) {
         PyMem_Free(self->cpu_cells);
         PyMem_Free(self->gpu_cells);
     }
     tc_decref(self->text_cache);
-    Py_TYPE(self)->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 static unsigned
@@ -63,26 +63,45 @@ write_multicell_ansi_prefix(ANSILineState *s, const CPUCell *mcd) {
     s->escape_code_written = true;
     unsigned pos = s->output_buf->len;
 #define w(x) s->output_buf->buf[s->output_buf->len++] = x
-    w(0x1b); w(']');
+    w(0x1b);
+    w(']');
     for (unsigned i = 0; i < sizeof(xstr(TEXT_SIZE_CODE)) - 1; i++) w(xstr(TEXT_SIZE_CODE)[i]);
     w(';');
     if (!mcd->natural_width) {
-        w('w'); w('='); nonnegative_integer_as_utf32(mcd->width, s->output_buf); w(':');
+        w('w');
+        w('=');
+        nonnegative_integer_as_utf32(mcd->width, s->output_buf);
+        w(':');
     }
     if (mcd->scale > 1) {
-        w('s'); w('='); nonnegative_integer_as_utf32(mcd->scale, s->output_buf); w(':');
+        w('s');
+        w('=');
+        nonnegative_integer_as_utf32(mcd->scale, s->output_buf);
+        w(':');
     }
     if (mcd->subscale_n) {
-        w('n'); w('='); nonnegative_integer_as_utf32(mcd->subscale_n, s->output_buf); w(':');
+        w('n');
+        w('=');
+        nonnegative_integer_as_utf32(mcd->subscale_n, s->output_buf);
+        w(':');
     }
     if (mcd->subscale_d) {
-        w('d'); w('='); nonnegative_integer_as_utf32(mcd->subscale_d, s->output_buf); w(':');
+        w('d');
+        w('=');
+        nonnegative_integer_as_utf32(mcd->subscale_d, s->output_buf);
+        w(':');
     }
     if (mcd->valign) {
-        w('v'); w('='); nonnegative_integer_as_utf32(mcd->valign, s->output_buf); w(':');
+        w('v');
+        w('=');
+        nonnegative_integer_as_utf32(mcd->valign, s->output_buf);
+        w(':');
     }
     if (mcd->halign) {
-        w('h'); w('='); nonnegative_integer_as_utf32(mcd->halign, s->output_buf); w(':');
+        w('h');
+        w('=');
+        nonnegative_integer_as_utf32(mcd->halign, s->output_buf);
+        w(':');
     }
     if (s->output_buf->buf[s->output_buf->len - 1] == ':') s->output_buf->len--;
     w(';');
@@ -106,7 +125,9 @@ start_multicell_if_needed(ANSILineState *s, const CPUCell *c) {
 
 static bool
 multicell_is_continuation_of_previous(const CPUCell *prev, const CPUCell *curr) {
-    if (prev->scale != curr->scale || prev->subscale_n != curr->subscale_n || prev->subscale_d != curr->subscale_d || prev->valign != curr->valign || prev->halign != curr->halign) return false;
+    if (prev->scale != curr->scale || prev->subscale_n != curr->subscale_n || prev->subscale_d != curr->subscale_d || prev->valign != curr->valign ||
+        prev->halign != curr->halign)
+        return false;
     if (prev->natural_width) return curr->natural_width;
     return prev->width == curr->width && !curr->natural_width;
 }
@@ -165,13 +186,15 @@ is_hostname_char(char_type ch) {
 
 static bool
 is_hostname_lc(const ListOfChars *lc) {
-    for (size_t i = 0; i < lc->count; i++) if (!is_hostname_char(lc->chars[i])) return false;
+    for (size_t i = 0; i < lc->count; i++)
+        if (!is_hostname_char(lc->chars[i])) return false;
     return true;
 }
 
 static bool
 is_url_lc(const ListOfChars *lc) {
-    for (size_t i = 0; i < lc->count; i++) if (!is_url_char(lc->chars[i])) return false;
+    for (size_t i = 0; i < lc->count; i++)
+        if (!is_url_char(lc->chars[i])) return false;
     return true;
 }
 
@@ -186,7 +209,8 @@ index_type
 prev_char_pos(const Line *self, index_type x, index_type num) {
     const CPUCell *ans = self->cpu_cells + x, *limit = self->cpu_cells - 1;
     if (ans->is_multicell) ans -= ans->x;
-    while (num-- && --ans > limit) if (ans->is_multicell) ans -= ans->x;
+    while (num-- && --ans > limit)
+        if (ans->is_multicell) ans -= ans->x;
     return ans > limit ? (index_type)(ans - self->cpu_cells) : self->xnum;
 }
 
@@ -195,13 +219,14 @@ static index_type
 find_colon_slash(Line *self, index_type x, index_type limit, ListOfChars *lc, index_type scale) {
     // Find :// at or before x
     index_type pos = MIN(x, self->xnum - 1);
-    enum URL_PARSER_STATES {ANY, FIRST_SLASH, SECOND_SLASH};
+    enum URL_PARSER_STATES { ANY, FIRST_SLASH, SECOND_SLASH };
     enum URL_PARSER_STATES state = ANY;
     limit = MAX(2u, limit);
     if (pos < limit) return 0;
     const CPUCell *c = self->cpu_cells + pos;
     index_type n;
-#define next_char_is(num, ch) ((n = next_char_pos(self, pos, num)) < self->xnum && cell_is_char(self->cpu_cells + n, ch) && cell_scale(self->cpu_cells + n) == scale)
+#define next_char_is(num, ch) \
+    ((n = next_char_pos(self, pos, num)) < self->xnum && cell_is_char(self->cpu_cells + n, ch) && cell_scale(self->cpu_cells + n) == scale)
     if (cell_is_char(c, ':')) {
         if (next_char_is(1, '/') && next_char_is(2, '/')) state = SECOND_SLASH;
     } else if (cell_is_char(c, '/')) {
@@ -212,13 +237,11 @@ find_colon_slash(Line *self, index_type x, index_type limit, ListOfChars *lc, in
     do {
         text_in_cell(c, self->text_cache, lc);
         if (!is_hostname_lc(lc)) return false;
-        switch(state) {
+        switch (state) {
             case ANY:
                 if (cell_is_char(c, '/')) state = FIRST_SLASH;
                 break;
-            case FIRST_SLASH:
-                state = cell_is_char(c, '/') ? SECOND_SLASH : ANY;
-                break;
+            case FIRST_SLASH: state = cell_is_char(c, '/') ? SECOND_SLASH : ANY; break;
             case SECOND_SLASH:
                 if (cell_is_char(c, ':')) return pos;
                 state = cell_is_char(c, '/') ? SECOND_SLASH : ANY;
@@ -228,12 +251,12 @@ find_colon_slash(Line *self, index_type x, index_type limit, ListOfChars *lc, in
         if (pos >= self->xnum) break;
         c = self->cpu_cells + pos;
         if (cell_scale(c) != scale) break;
-    } while(pos >= limit);
+    } while (pos >= limit);
     return 0;
 }
 
 static bool
-prefix_matches(Line *self, index_type at, const char_type* prefix, index_type prefix_len, index_type scale) {
+prefix_matches(Line *self, index_type at, const char_type *prefix, index_type prefix_len, index_type scale) {
     if (prefix_len > at) return false;
     while (prefix_len--) {
         at = prev_char_pos(self, at, 1);
@@ -269,7 +292,8 @@ has_url_beyond_colon_slash(Line *self, const index_type x, ListOfChars *lc, cons
             if (!is_hostname_lc(lc)) return false;
             if (lc->count == 1 && lc->chars[0] == '/') num_of_slashes++;
         } else {
-            for (size_t n = 0; n < lc->count; n++) if (!is_url_char(lc->chars[n])) return false;
+            for (size_t n = 0; n < lc->count; n++)
+                if (!is_url_char(lc->chars[n])) return false;
         }
     }
     return true;
@@ -302,7 +326,15 @@ is_pos_ok_for_url(Line *self, index_type x, bool in_hostname, index_type last_ho
 }
 
 index_type
-line_url_end_at(Line *self, index_type x, bool check_short, char_type sentinel, bool next_line_starts_with_url_chars, bool in_hostname, index_type last_hostname_char_pos, ListOfChars *lc) {
+line_url_end_at(
+    Line *self,
+    index_type x,
+    bool check_short,
+    char_type sentinel,
+    bool next_line_starts_with_url_chars,
+    bool in_hostname,
+    index_type last_hostname_char_pos,
+    ListOfChars *lc) {
     index_type ans = x;
 #define is_not_ok(n) ((sentinel && cell_is_char(self->cpu_cells + n, sentinel)) || !is_pos_ok_for_url(self, n, in_hostname, last_hostname_char_pos, lc))
     if (x >= self->xnum || (check_short && self->xnum <= MIN_URL_LEN + 3) || is_not_ok(x)) return 0;
@@ -344,35 +376,28 @@ get_url_sentinel(Line *line, index_type url_start) {
         index_type n = prev_char_pos(line, url_start, 1);
         if (n < line->xnum) before = cell_first_char(line->cpu_cells + n, line->text_cache);
     }
-    switch(before) {
+    switch (before) {
         case '"':
         case '\'':
-        case '*':
-            sentinel = before; break;
-        case '(':
-            sentinel = ')'; break;
-        case '[':
-            sentinel = ']'; break;
-        case '{':
-            sentinel = '}'; break;
-        case '<':
-            sentinel = '>'; break;
-        default:
-            sentinel = 0; break;
+        case '*': sentinel = before; break;
+        case '(': sentinel = ')'; break;
+        case '[': sentinel = ']'; break;
+        case '{': sentinel = '}'; break;
+        case '<': sentinel = '>'; break;
+        default: sentinel = 0; break;
     }
     return sentinel;
 }
 
 
-
-static PyObject*
+static PyObject *
 url_start_at(Line *self, PyObject *x) {
 #define url_start_at_doc "url_start_at(x) -> Return the start cell number for a URL containing x or self->xnum if not found"
     RAII_ListOfChars(lc);
     return PyLong_FromUnsignedLong((unsigned long)line_url_start_at(self, PyLong_AsUnsignedLong(x), &lc));
 }
 
-static PyObject*
+static PyObject *
 url_end_at(Line *self, PyObject *args) {
 #define url_end_at_doc "url_end_at(x) -> Return the end cell number for a URL containing x or 0 if not found"
     unsigned int x, sentinel = 0;
@@ -384,10 +409,13 @@ url_end_at(Line *self, PyObject *args) {
 
 // }}}
 
-static PyObject*
-text_at(Line* self, Py_ssize_t xval) {
+static PyObject *
+text_at(Line *self, Py_ssize_t xval) {
 #define text_at_doc "[x] -> Return the text in the specified cell"
-    if ((unsigned)xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
+    if ((unsigned)xval >= self->xnum) {
+        PyErr_SetString(PyExc_IndexError, "Column number out of bounds");
+        return NULL;
+    }
     const CPUCell *cell = self->cpu_cells + xval;
     if (cell->ch_is_idx) {
         RAII_ListOfChars(lc);
@@ -418,7 +446,10 @@ size_t
 cell_as_utf8_for_fallback(const ListOfChars *lc, char *buf, size_t sz) {
     char_type ch = lc->chars[0] ? lc->chars[0] : ' ';
     bool include_cc = true;
-    if (ch == '\t') { ch = ' '; include_cc = false; }
+    if (ch == '\t') {
+        ch = ' ';
+        include_cc = false;
+    }
     size_t n = encode_utf8(ch, buf);
     if (include_cc) {
         for (unsigned i = 1; i < lc->count && sz > n + 4; i++) {
@@ -431,7 +462,15 @@ cell_as_utf8_for_fallback(const ListOfChars *lc, char *buf, size_t sz) {
 }
 
 bool
-unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const bool add_trailing_newline, const bool skip_zero_cells, bool skip_multiline_non_zero_lines, ANSIBuf *buf) {
+unicode_in_range(
+    const Line *self,
+    const index_type start,
+    const index_type limit,
+    const bool include_cc,
+    const bool add_trailing_newline,
+    const bool skip_zero_cells,
+    bool skip_multiline_non_zero_lines,
+    ANSIBuf *buf) {
     static const size_t initial_cap = 4096;
     ListOfChars lc;
     if (!buf->buf) {
@@ -440,13 +479,16 @@ unicode_in_range(const Line *self, const index_type start, const index_type limi
         buf->capacity = initial_cap;
     }
     for (index_type i = start; i < limit; i++) {
-        lc.chars = buf->buf + buf->len; lc.capacity = buf->capacity - buf->len;
+        lc.chars = buf->buf + buf->len;
+        lc.capacity = buf->capacity - buf->len;
         while (!text_in_cell_without_alloc(self->cpu_cells + i, self->text_cache, &lc)) {
             size_t ns = MAX(initial_cap, 2 * buf->capacity);
             char_type *np = realloc(buf->buf, ns);
             if (!np) return false;
-            buf->capacity = ns; buf->buf = np;
-            lc.chars = buf->buf + buf->len; lc.capacity = buf->capacity - buf->len;
+            buf->capacity = ns;
+            buf->buf = np;
+            lc.chars = buf->buf + buf->len;
+            lc.capacity = buf->capacity - buf->len;
         }
         if (self->cpu_cells[i].is_multicell && (self->cpu_cells[i].x || (skip_multiline_non_zero_lines && self->cpu_cells[i].y))) continue;
         if (!lc.chars[0]) {
@@ -456,18 +498,18 @@ unicode_in_range(const Line *self, const index_type start, const index_type limi
         if (lc.chars[0] == '\t') {
             buf->len++;
             unsigned num_cells_to_skip_for_tab = lc.count > 1 ? lc.chars[1] : 0;
-            while (num_cells_to_skip_for_tab && i + 1 < limit && cell_is_char(self->cpu_cells+i+1, ' ')) {
+            while (num_cells_to_skip_for_tab && i + 1 < limit && cell_is_char(self->cpu_cells + i + 1, ' ')) {
                 i++;
                 num_cells_to_skip_for_tab--;
             }
         } else buf->len += include_cc ? lc.count : 1;
     }
-    if (add_trailing_newline && !self->cpu_cells[self->xnum-1].next_char_was_wrapped && buf->len < buf->capacity) buf->buf[buf->len++] = '\n';
+    if (add_trailing_newline && !self->cpu_cells[self->xnum - 1].next_char_was_wrapped && buf->len < buf->capacity) buf->buf[buf->len++] = '\n';
     return true;
 }
 
 PyObject *
-line_as_unicode(Line* self, bool skip_zero_cells, ANSIBuf *buf) {
+line_as_unicode(Line *self, bool skip_zero_cells, ANSIBuf *buf) {
     size_t before = buf->len;
     if (!unicode_in_range(self, 0, xlimit_for_line(self), true, false, skip_zero_cells, true, buf)) return PyErr_NoMemory();
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf->buf + before, buf->len - before);
@@ -475,11 +517,14 @@ line_as_unicode(Line* self, bool skip_zero_cells, ANSIBuf *buf) {
     return ans;
 }
 
-static PyObject*
-sprite_at(Line* self, PyObject *x) {
+static PyObject *
+sprite_at(Line *self, PyObject *x) {
 #define sprite_at_doc "[x] -> Return the sprite in the specified cell"
     unsigned long xval = PyLong_AsUnsignedLong(x);
-    if (xval >= self->xnum) { PyErr_SetString(PyExc_IndexError, "Column number out of bounds"); return NULL; }
+    if (xval >= self->xnum) {
+        PyErr_SetString(PyExc_IndexError, "Column number out of bounds");
+        return NULL;
+    }
     GPUCell *c = self->gpu_cells + xval;
     return Py_BuildValue("I", (unsigned int)c->sprite_idx);
 }
@@ -487,7 +532,8 @@ sprite_at(Line* self, PyObject *x) {
 static void
 write_sgr(const char *val, ANSIBuf *output) {
 #define W(c) output->buf[output->len++] = c
-    W(0x1b); W('[');
+    W(0x1b);
+    W('[');
     for (size_t i = 0; val[i] != 0 && i < 122; i++) W(val[i]);
     W('m');
 #undef W
@@ -499,31 +545,42 @@ write_hyperlink(hyperlink_id_type hid, ANSIBuf *output) {
     const char *key = hid ? get_hyperlink_for_id(output->hyperlink_pool, hid, false) : NULL;
     if (!key) hid = 0;
     output->active_hyperlink_id = hid;
-    W(0x1b); W(']'); W('8');
+    W(0x1b);
+    W(']');
+    W('8');
     if (!hid) {
-        W(';'); W(';');
+        W(';');
+        W(';');
     } else {
-        const char* partition = strstr(key, ":");
+        const char *partition = strstr(key, ":");
         W(';');
         if (partition != key) {
-            W('i'); W('d'); W('=');
+            W('i');
+            W('d');
+            W('=');
             while (key != partition) W(*(key++));
         }
         W(';');
-        while(*(++partition))  W(*partition);
+        while (*(++partition)) W(*partition);
     }
-    W(0x1b); W('\\');
+    W(0x1b);
+    W('\\');
 #undef W
 }
 
 static void
 write_mark(const char *mark, ANSIBuf *output) {
 #define W(c) output->buf[output->len++] = c
-    W(0x1b); W(']'); W('1'); W('3'); W('3'); W(';');
+    W(0x1b);
+    W(']');
+    W('1');
+    W('3');
+    W('3');
+    W(';');
     for (size_t i = 0; mark[i] != 0 && i < 32; i++) W(mark[i]);
-    W(0x1b); W('\\');
+    W(0x1b);
+    W('\\');
 #undef W
-
 }
 
 static void
@@ -566,8 +623,7 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
 
     if (start_at == 0) {
         switch (self->attrs.prompt_kind) {
-            case UNKNOWN_PROMPT_KIND:
-                break;
+            case UNKNOWN_PROMPT_KIND: break;
             case PROMPT_START: write_mark_to_ansi_buf(s, "A"); break;
             case SECONDARY_PROMPT: write_mark_to_ansi_buf(s, "A;k=s"); break;
             case OUTPUT_START: write_mark_to_ansi_buf(s, "C"); break;
@@ -578,15 +634,15 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
         return s->escape_code_written;
     }
 
-    static const GPUCell blank_cell = { 0 };
+    static const GPUCell blank_cell = {0};
     GPUCell *cell;
     if (s->prev_gpu_cell == NULL) s->prev_gpu_cell = &blank_cell;
-    const CellAttrs mask_for_sgr = {.val=SGR_MASK};
+    const CellAttrs mask_for_sgr = {.val = SGR_MASK};
 
 #define CMP_ATTRS (cell->attrs.val & mask_for_sgr.val) != (s->prev_gpu_cell->attrs.val & mask_for_sgr.val)
 #define CMP(x) (cell->x != s->prev_gpu_cell->x)
 
-    for (s->pos=start_at; s->pos < s->limit; s->pos++) {
+    for (s->pos = start_at; s->pos < s->limit; s->pos++) {
         if (s->output_buf->hyperlink_pool) {
             hyperlink_id_type hid = self->cpu_cells[s->pos].hyperlink_id;
             if (hid != s->output_buf->active_hyperlink_id) write_hyperlink_to_ansi_buf(s, hid);
@@ -597,65 +653,69 @@ line_as_ansi(Line *self, ANSILineState *s, index_type start_at, index_type stop_
             if (*sgr) write_sgr_to_ansi_buf(s, sgr);
         }
 
-        index_type num_cells_to_skip_for_tab = text_in_cell_ansi(
-            s, self->cpu_cells + s->pos, self->text_cache, skip_multiline_non_zero_lines);
+        index_type num_cells_to_skip_for_tab = text_in_cell_ansi(s, self->cpu_cells + s->pos, self->text_cache, skip_multiline_non_zero_lines);
         s->prev_gpu_cell = cell;
         const CPUCell *next = self->cpu_cells + s->pos + 1;
         while (num_cells_to_skip_for_tab && s->pos + 1 < s->limit && cell_is_char(next, ' ')) {
-            num_cells_to_skip_for_tab--; s->pos++; next++;
+            num_cells_to_skip_for_tab--;
+            s->pos++;
+            next++;
         }
     }
     close_multicell(s);
-    if (s->output_buf->active_hyperlink_id && s->limit < self->xnum && !self->cpu_cells[s->limit].hyperlink_id)
-        write_hyperlink_to_ansi_buf(s, 0);
+    if (s->output_buf->active_hyperlink_id && s->limit < self->xnum && !self->cpu_cells[s->limit].hyperlink_id) write_hyperlink_to_ansi_buf(s, 0);
     return s->escape_code_written;
 #undef CMP_ATTRS
 #undef CMP
 }
 
-static PyObject*
-as_ansi(Line* self, PyObject *a UNUSED) {
+static PyObject *
+as_ansi(Line *self, PyObject *a UNUSED) {
 #define as_ansi_doc "Return the line's contents with ANSI (SGR) escape codes for formatting"
-    ANSIBuf output = {0}; ANSILineState s = {.output_buf=&output};
+    ANSIBuf output = {0};
+    ANSILineState s = {.output_buf = &output};
     line_as_ansi(self, &s, 0, self->xnum, 0, true);
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
     free(output.buf);
     return ans;
 }
 
-static PyObject*
-last_char_has_wrapped_flag(Line* self, PyObject *a UNUSED) {
+static PyObject *
+last_char_has_wrapped_flag(Line *self, PyObject *a UNUSED) {
 #define last_char_has_wrapped_flag_doc "Return True if the last cell of this line has the wrapped flags set"
     if (self->cpu_cells[self->xnum - 1].next_char_was_wrapped) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 
-static PyObject*
-set_wrapped_flag(Line* self, PyObject *is_wrapped) {
-    self->cpu_cells[self->xnum-1].next_char_was_wrapped = PyObject_IsTrue(is_wrapped);
+static PyObject *
+set_wrapped_flag(Line *self, PyObject *is_wrapped) {
+    self->cpu_cells[self->xnum - 1].next_char_was_wrapped = PyObject_IsTrue(is_wrapped);
     Py_RETURN_NONE;
 }
 
-static PyObject*
-__repr__(Line* self) {
+static PyObject *
+__repr__(Line *self) {
     RAII_ANSIBuf(buf);
     RAII_PyObject(s, line_as_unicode(self, false, &buf));
     if (s != NULL) return PyObject_Repr(s);
     return NULL;
 }
 
-static PyObject*
-__str__(Line* self) {
+static PyObject *
+__str__(Line *self) {
     RAII_ANSIBuf(buf);
     return line_as_unicode(self, false, &buf);
 }
 
 
-static PyObject*
+static PyObject *
 width(Line *self, PyObject *val) {
 #define width_doc "width(x) -> the width of the character at x"
     unsigned long x = PyLong_AsUnsignedLong(val);
-    if (x >= self->xnum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
+    if (x >= self->xnum) {
+        PyErr_SetString(PyExc_ValueError, "Out of bounds");
+        return NULL;
+    }
     const CPUCell *c = self->cpu_cells + x;
     if (!cell_has_text(c)) return 0;
     unsigned long ans = 1;
@@ -663,8 +723,8 @@ width(Line *self, PyObject *val) {
     return PyLong_FromUnsignedLong(ans);
 }
 
-static PyObject*
-add_combining_char(Line* self, PyObject *args) {
+static PyObject *
+add_combining_char(Line *self, PyObject *args) {
 #define add_combining_char_doc "add_combining_char(x, ch) -> Add the specified character as a combining char to the specified cell."
     int new_char;
     unsigned int x;
@@ -674,7 +734,10 @@ add_combining_char(Line* self, PyObject *args) {
         return NULL;
     }
     CPUCell *cell = self->cpu_cells + x;
-    if (cell->is_multicell) { PyErr_SetString(PyExc_IndexError, "cannot set combining char in a multicell"); return NULL; }
+    if (cell->is_multicell) {
+        PyErr_SetString(PyExc_IndexError, "cannot set combining char in a multicell");
+        return NULL;
+    }
     RAII_ListOfChars(lc);
     text_in_cell(cell, self->text_cache, &lc);
     ensure_space_for_chars(&lc, lc.count + 1);
@@ -685,8 +748,8 @@ add_combining_char(Line* self, PyObject *args) {
 }
 
 
-static PyObject*
-set_text(Line* self, PyObject *args) {
+static PyObject *
+set_text(Line *self, PyObject *args) {
 #define set_text_doc "set_text(src, offset, sz, cursor) -> Set the characters and attributes from the specified text and cursor"
     PyObject *src;
     Py_ssize_t offset, sz, limit;
@@ -722,35 +785,42 @@ set_text(Line* self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static PyObject*
-cursor_from(Line* self, PyObject *args) {
-#define cursor_from_doc "cursor_from(x, y=0) -> Create a cursor object based on the formatting attributes at the specified x position. The y value of the cursor is set as specified."
+static PyObject *
+cursor_from(Line *self, PyObject *args) {
+#define cursor_from_doc                                                                                                                                  \
+    "cursor_from(x, y=0) -> Create a cursor object based on the formatting attributes at the specified x position. The y value of the cursor is set as " \
+    "specified."
     unsigned int x, y = 0;
-    Cursor* ans;
+    Cursor *ans;
     if (!PyArg_ParseTuple(args, "I|I", &x, &y)) return NULL;
     if (x >= self->xnum) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds x");
         return NULL;
     }
     ans = alloc_cursor();
-    if (ans == NULL) { PyErr_NoMemory(); return NULL; }
-    ans->x = x; ans->y = y;
+    if (ans == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    ans->x = x;
+    ans->y = y;
     attrs_to_cursor(self->gpu_cells[x].attrs, ans);
-    ans->sgr.fg = self->gpu_cells[x].fg; ans->sgr.bg = self->gpu_cells[x].bg;
+    ans->sgr.fg = self->gpu_cells[x].fg;
+    ans->sgr.bg = self->gpu_cells[x].bg;
     ans->sgr.decoration_fg = self->gpu_cells[x].decoration_fg & COL_MASK;
 
-    return (PyObject*)ans;
+    return (PyObject *)ans;
 }
 
 void
 line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch) {
-    const CPUCell cc = {.ch_or_idx=ch};
+    const CPUCell cc = {.ch_or_idx = ch};
     if (at + num > self->xnum) num = self->xnum > at ? self->xnum - at : 0;
     memset_array(self->cpu_cells + at, cc, num);
 }
 
-static PyObject*
-clear_text(Line* self, PyObject *args) {
+static PyObject *
+clear_text(Line *self, PyObject *args) {
 #define clear_text_doc "clear_text(at, num, ch=BLANK_CHAR) -> Clear characters in the specified range, preserving formatting."
     unsigned int at, num;
     int ch = BLANK_CHAR;
@@ -778,11 +848,12 @@ line_apply_cursor(Line *self, const Cursor *cursor, unsigned int at, unsigned in
     }
 }
 
-static PyObject*
-apply_cursor(Line* self, PyObject *args) {
-#define apply_cursor_doc "apply_cursor(cursor, at=0, num=1, clear_char=False) -> Apply the formatting attributes from cursor to the specified characters in this line."
-    Cursor* cursor;
-    unsigned int at=0, num=1;
+static PyObject *
+apply_cursor(Line *self, PyObject *args) {
+#define apply_cursor_doc \
+    "apply_cursor(cursor, at=0, num=1, clear_char=False) -> Apply the formatting attributes from cursor to the specified characters in this line."
+    Cursor *cursor;
+    unsigned int at = 0, num = 1;
     int clear_char = 0;
     if (!PyArg_ParseTuple(args, "O!|IIp", &Cursor_Type, &cursor, &at, &num, &clear_char)) return NULL;
     line_apply_cursor(self, cursor, at, num, clear_char & 1);
@@ -791,13 +862,10 @@ apply_cursor(Line* self, PyObject *args) {
 
 static color_type
 resolve_color(const ColorProfile *cp, color_type val, color_type defval) {
-    switch(val & 0xff) {
-        case 1:
-            return cp->color_table[(val >> 8) & 0xff];
-        case 2:
-            return val >> 8;
-        default:
-            return defval;
+    switch (val & 0xff) {
+        case 1: return cp->color_table[(val >> 8) & 0xff];
+        case 2: return val >> 8;
+        default: return defval;
     }
 }
 
@@ -846,10 +914,12 @@ line_set_char(Line *self, unsigned int at, uint32_t ch, Cursor *cursor, hyperlin
     }
 }
 
-static PyObject*
+static PyObject *
 set_char(Line *self, PyObject *args) {
-#define set_char_doc "set_char(at, ch, width=1, cursor=None, hyperlink_id=0) -> Set the character at the specified cell. If cursor is not None, also set attributes from that cursor."
-    unsigned int at, width=1;
+#define set_char_doc                                                                                                                                           \
+    "set_char(at, ch, width=1, cursor=None, hyperlink_id=0) -> Set the character at the specified cell. If cursor is not None, also set attributes from that " \
+    "cursor."
+    unsigned int at, width = 1;
     int ch;
     Cursor *cursor = NULL;
     unsigned int hyperlink_id = 0;
@@ -860,43 +930,41 @@ set_char(Line *self, PyObject *args) {
         return NULL;
     }
     if (width != 1) {
-        PyErr_SetString(PyExc_NotImplementedError, "TODO: Implement setting wide char"); return NULL;
+        PyErr_SetString(PyExc_NotImplementedError, "TODO: Implement setting wide char");
+        return NULL;
     }
     line_set_char(self, at, ch, cursor, hyperlink_id);
     Py_RETURN_NONE;
 }
 
-static PyObject*
+static PyObject *
 set_attribute(Line *self, PyObject *args) {
 #define set_attribute_doc "set_attribute(which, val) -> Set the attribute on all cells in the line."
     unsigned int val;
     char *which;
     if (!PyArg_ParseTuple(args, "sI", &which, &val)) return NULL;
     if (!set_named_attribute_on_line(self->gpu_cells, which, val, self->xnum)) {
-        PyErr_SetString(PyExc_KeyError, "Unknown cell attribute"); return NULL;
+        PyErr_SetString(PyExc_KeyError, "Unknown cell attribute");
+        return NULL;
     }
     Py_RETURN_NONE;
 }
 
 static int
 color_as_sgr(char *buf, size_t sz, unsigned long val, unsigned simple_code, unsigned aix_code, unsigned complex_code) {
-    switch(val & 0xff) {
+    switch (val & 0xff) {
         case 1:
             val >>= 8;
-            if (val < 16 && simple_code) {
-                return snprintf(buf, sz, "%lu;", (val < 8) ? simple_code + val : aix_code + (val - 8));
-            }
+            if (val < 16 && simple_code) { return snprintf(buf, sz, "%lu;", (val < 8) ? simple_code + val : aix_code + (val - 8)); }
             return snprintf(buf, sz, "%u:5:%lu;", complex_code, val);
-        case 2:
-            return snprintf(buf, sz, "%u:2:%lu:%lu:%lu;", complex_code, (val >> 24) & 0xff, (val >> 16) & 0xff, (val >> 8) & 0xff);
-        default:
-            return snprintf(buf, sz, "%u;", complex_code + 1);  // reset
+        case 2: return snprintf(buf, sz, "%u:2:%lu:%lu:%lu;", complex_code, (val >> 24) & 0xff, (val >> 16) & 0xff, (val >> 8) & 0xff);
+        default: return snprintf(buf, sz, "%u;", complex_code + 1); // reset
     }
 }
 
-static const char*
+static const char *
 decoration_as_sgr(uint8_t decoration) {
-    switch(decoration) {
+    switch (decoration) {
         case 1: return "4;";
         case 2: return "4:2;";
         case 3: return "4:3;";
@@ -907,19 +975,30 @@ decoration_as_sgr(uint8_t decoration) {
 }
 
 
-const char*
+const char *
 cell_as_sgr(const GPUCell *cell, const GPUCell *prev) {
     static char buf[128];
 #define SZ sizeof(buf) - (p - buf) - 2
-#define P(s) { size_t len = strlen(s); if (SZ > len) { memcpy(p, s, len); p += len; } }
+#define P(s)                    \
+    {                           \
+        size_t len = strlen(s); \
+        if (SZ > len) {         \
+            memcpy(p, s, len);  \
+            p += len;           \
+        }                       \
+    }
     char *p = buf;
 #define CA cell->attrs
 #define PA prev->attrs
     bool intensity_differs = CA.bold != PA.bold || CA.dim != PA.dim;
     if (intensity_differs) {
-        if (CA.bold && CA.dim) { if (!PA.bold) P("1;"); if (!PA.dim) P("2;"); }
-        else {
-            P("22;"); if (CA.bold) P("1;"); if (CA.dim) P("2;");
+        if (CA.bold && CA.dim) {
+            if (!PA.bold) P("1;");
+            if (!PA.dim) P("2;");
+        } else {
+            P("22;");
+            if (CA.bold) P("1;");
+            if (CA.dim) P("2;");
         }
     }
     if (CA.italic != PA.italic) P(CA.italic ? "3;" : "23;");
@@ -934,20 +1013,21 @@ cell_as_sgr(const GPUCell *cell, const GPUCell *prev) {
 #undef CA
 #undef P
 #undef SZ
-    if (p > buf) *(p - 1) = 0;  // remove trailing semi-colon
-    *p = 0;  // ensure string is null-terminated
+    if (p > buf) *(p - 1) = 0; // remove trailing semi-colon
+    *p = 0;                    // ensure string is null-terminated
     return buf;
 }
 
 
 static Py_ssize_t
 __len__(PyObject *self) {
-    return (Py_ssize_t)(((Line*)self)->xnum);
+    return (Py_ssize_t)(((Line *)self)->xnum);
 }
 
 static int
 __eq__(Line *a, Line *b) {
-    return a->xnum == b->xnum && memcmp(a->cpu_cells, b->cpu_cells, sizeof(CPUCell) * a->xnum) == 0 && memcmp(a->gpu_cells, b->gpu_cells, sizeof(GPUCell) * a->xnum) == 0;
+    return a->xnum == b->xnum && memcmp(a->cpu_cells, b->cpu_cells, sizeof(CPUCell) * a->xnum) == 0 &&
+           memcmp(a->gpu_cells, b->gpu_cells, sizeof(GPUCell) * a->xnum) == 0;
 }
 
 bool
@@ -969,15 +1049,17 @@ report_marker_error(PyObject *marker) {
 
 static void
 apply_mark(Line *line, const uint16_t mark, index_type *cell_pos, unsigned int *match_pos) {
-#define MARK { line->gpu_cells[x].attrs.mark = mark; }
+#define MARK \
+    { line->gpu_cells[x].attrs.mark = mark; }
     index_type x = *cell_pos;
     MARK;
     (*match_pos)++;
-    RAII_ListOfChars(lc); text_in_cell(line->cpu_cells + x, line->text_cache, &lc);
+    RAII_ListOfChars(lc);
+    text_in_cell(line->cpu_cells + x, line->text_cache, &lc);
     if (lc.chars[0]) {
         if (lc.chars[0] == '\t') {
             unsigned num_cells_to_skip_for_tab = lc.count > 1 ? lc.chars[1] : 0;
-            while (num_cells_to_skip_for_tab && x + 1 < line->xnum && cell_is_char(line->cpu_cells+x+1, ' ')) {
+            while (num_cells_to_skip_for_tab && x + 1 < line->xnum && cell_is_char(line->cpu_cells + x + 1, ' ')) {
                 x++;
                 num_cells_to_skip_for_tab--;
                 MARK;
@@ -997,50 +1079,68 @@ apply_mark(Line *line, const uint16_t mark, index_type *cell_pos, unsigned int *
 
 static void
 apply_marker(PyObject *marker, Line *line, const PyObject *text) {
-    unsigned int l=0, r=0, col=0, match_pos=0;
+    unsigned int l = 0, r = 0, col = 0, match_pos = 0;
     PyObject *pl = PyLong_FromVoidPtr(&l), *pr = PyLong_FromVoidPtr(&r), *pcol = PyLong_FromVoidPtr(&col);
-    if (!pl || !pr || !pcol) { PyErr_Clear(); return; }
+    if (!pl || !pr || !pcol) {
+        PyErr_Clear();
+        return;
+    }
     PyObject *iter = PyObject_CallFunctionObjArgs(marker, text, pl, pr, pcol, NULL);
-    Py_DECREF(pl); Py_DECREF(pr); Py_DECREF(pcol);
+    Py_DECREF(pl);
+    Py_DECREF(pr);
+    Py_DECREF(pcol);
 
-    if (iter == NULL) { report_marker_error(marker); return; }
+    if (iter == NULL) {
+        report_marker_error(marker);
+        return;
+    }
     PyObject *match;
     index_type x = 0;
     while ((match = PyIter_Next(iter)) && x < line->xnum) {
         Py_DECREF(match);
-        while (match_pos < l && x < line->xnum) {
-            apply_mark(line, 0, &x, &match_pos);
-        }
+        while (match_pos < l && x < line->xnum) { apply_mark(line, 0, &x, &match_pos); }
         uint16_t am = (col & MARK_MASK);
-        while(x < line->xnum && match_pos <= r) {
-            apply_mark(line, am, &x, &match_pos);
-        }
-
+        while (x < line->xnum && match_pos <= r) { apply_mark(line, am, &x, &match_pos); }
     }
     Py_DECREF(iter);
-    while(x < line->xnum) line->gpu_cells[x++].attrs.mark = 0;
+    while (x < line->xnum) line->gpu_cells[x++].attrs.mark = 0;
     if (PyErr_Occurred()) report_marker_error(marker);
 }
 
 void
 mark_text_in_line(PyObject *marker, Line *line, ANSIBuf *buf) {
     if (!marker) {
-        for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs.mark = 0;
+        for (index_type i = 0; i < line->xnum; i++) line->gpu_cells[i].attrs.mark = 0;
         return;
     }
     PyObject *text = line_as_unicode(line, false, buf);
     if (PyUnicode_GET_LENGTH(text) > 0) {
         apply_marker(marker, line, text);
     } else {
-        for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs.mark = 0;
+        for (index_type i = 0; i < line->xnum; i++) line->gpu_cells[i].attrs.mark = 0;
     }
     Py_DECREF(text);
 }
 
-PyObject*
+PyObject *
 as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf, bool add_trailing_newline) {
-#define APPEND(x) { PyObject* retval = PyObject_CallFunctionObjArgs(callback, x, NULL); if (!retval) return NULL; Py_DECREF(retval); }
-#define APPEND_AND_DECREF(x) { if (x == NULL) { if (PyErr_Occurred()) return NULL; Py_RETURN_NONE; } PyObject* retval = PyObject_CallFunctionObjArgs(callback, x, NULL); Py_CLEAR(x); if (!retval) return NULL; Py_DECREF(retval); }
+#define APPEND(x)                                                           \
+    {                                                                       \
+        PyObject *retval = PyObject_CallFunctionObjArgs(callback, x, NULL); \
+        if (!retval) return NULL;                                           \
+        Py_DECREF(retval);                                                  \
+    }
+#define APPEND_AND_DECREF(x)                                                \
+    {                                                                       \
+        if (x == NULL) {                                                    \
+            if (PyErr_Occurred()) return NULL;                              \
+            Py_RETURN_NONE;                                                 \
+        }                                                                   \
+        PyObject *retval = PyObject_CallFunctionObjArgs(callback, x, NULL); \
+        Py_CLEAR(x);                                                        \
+        if (!retval) return NULL;                                           \
+        Py_DECREF(retval);                                                  \
+    }
     PyObject *callback;
     int as_ansi = 0, insert_wrap_markers = 0;
     if (!PyArg_ParseTuple(args, "O|pp", &callback, &as_ansi, &insert_wrap_markers)) return NULL;
@@ -1049,12 +1149,15 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
     RAII_PyObject(cr, PyUnicode_FromString("\r"));
     RAII_PyObject(sgr_reset, PyUnicode_FromString("\x1b[m"));
     if (nl == NULL || cr == NULL || sgr_reset == NULL) return NULL;
-    ANSILineState s = {.output_buf=ansibuf};
+    ANSILineState s = {.output_buf = ansibuf};
     ansibuf->active_hyperlink_id = 0;
     bool need_newline = false;
     for (index_type y = 0; y < lines; y++) {
         Line *line = get_line(container, y);
-        if (!line) { if (PyErr_Occurred()) return NULL; break; }
+        if (!line) {
+            if (PyErr_Occurred()) return NULL;
+            break;
+        }
         if (need_newline) APPEND(nl);
         ansibuf->len = 0;
         if (as_ansi) {
@@ -1072,7 +1175,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
         }
         APPEND_AND_DECREF(t);
         if (insert_wrap_markers) APPEND(cr);
-        need_newline = !line->cpu_cells[line->xnum-1].next_char_was_wrapped;
+        need_newline = !line->cpu_cells[line->xnum - 1].next_char_was_wrapped;
     }
     if (need_newline && add_trailing_newline) APPEND(nl);
     if (ansibuf->active_hyperlink_id) {
@@ -1086,53 +1189,33 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
 }
 
 // Boilerplate {{{
-static PyObject*
-copy_char(Line* self, PyObject *args);
+static PyObject *copy_char(Line *self, PyObject *args);
 #define copy_char_doc "copy_char(src, to, dest) -> Copy the character at src to the character dest in the line `to`"
 
 #define hyperlink_ids_doc "hyperlink_ids() -> Tuple of hyper link ids at every cell"
-static PyObject*
+static PyObject *
 hyperlink_ids(Line *self, PyObject *args UNUSED) {
     PyObject *ans = PyTuple_New(self->xnum);
-    for (index_type x = 0; x < self->xnum; x++) {
-        PyTuple_SET_ITEM(ans, x, PyLong_FromUnsignedLong(self->cpu_cells[x].hyperlink_id));
-    }
+    for (index_type x = 0; x < self->xnum; x++) { PyTuple_SET_ITEM(ans, x, PyLong_FromUnsignedLong(self->cpu_cells[x].hyperlink_id)); }
     return ans;
 }
 
-static PyObject *
-richcmp(PyObject *obj1, PyObject *obj2, int op);
+static PyObject *richcmp(PyObject *obj1, PyObject *obj2, int op);
 
 
-static PySequenceMethods sequence_methods = {
-    .sq_length = __len__,
-    .sq_item = (ssizeargfunc)text_at
-};
+static PySequenceMethods sequence_methods = {.sq_length = __len__, .sq_item = (ssizeargfunc)text_at};
 
 static PyMethodDef methods[] = {
-    METHOD(add_combining_char, METH_VARARGS)
-    METHOD(set_text, METH_VARARGS)
-    METHOD(cursor_from, METH_VARARGS)
-    METHOD(apply_cursor, METH_VARARGS)
-    METHOD(clear_text, METH_VARARGS)
-    METHOD(copy_char, METH_VARARGS)
-    METHOD(set_char, METH_VARARGS)
-    METHOD(set_attribute, METH_VARARGS)
-    METHOD(as_ansi, METH_NOARGS)
-    METHOD(last_char_has_wrapped_flag, METH_NOARGS)
-    METHODB(set_wrapped_flag, METH_O),
-    METHOD(hyperlink_ids, METH_NOARGS)
-    METHOD(width, METH_O)
-    METHOD(url_start_at, METH_O)
-    METHOD(url_end_at, METH_VARARGS)
-    METHOD(sprite_at, METH_O)
+    METHOD(add_combining_char, METH_VARARGS) METHOD(set_text, METH_VARARGS) METHOD(cursor_from, METH_VARARGS) METHOD(apply_cursor, METH_VARARGS)
+        METHOD(clear_text, METH_VARARGS) METHOD(copy_char, METH_VARARGS) METHOD(set_char, METH_VARARGS) METHOD(set_attribute, METH_VARARGS)
+            METHOD(as_ansi, METH_NOARGS) METHOD(last_char_has_wrapped_flag, METH_NOARGS) METHODB(set_wrapped_flag, METH_O),
+    METHOD(hyperlink_ids, METH_NOARGS) METHOD(width, METH_O) METHOD(url_start_at, METH_O) METHOD(url_end_at, METH_VARARGS) METHOD(sprite_at, METH_O)
 
-    {NULL}  /* Sentinel */
+        {NULL} /* Sentinel */
 };
 
 PyTypeObject Line_Type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    .tp_name = "fast_data_types.Line",
+    PyVarObject_HEAD_INIT(NULL, 0).tp_name = "fast_data_types.Line",
     .tp_basicsize = sizeof(Line),
     .tp_dealloc = (destructor)dealloc,
     .tp_repr = (reprfunc)__repr__,
@@ -1144,8 +1227,9 @@ PyTypeObject Line_Type = {
     .tp_methods = methods,
 };
 
-Line *alloc_line(TextCache *tc) {
-    Line *ans = (Line*)Line_Type.tp_alloc(&Line_Type, 0);
+Line *
+alloc_line(TextCache *tc) {
+    Line *ans = (Line *)Line_Type.tp_alloc(&Line_Type, 0);
     if (ans) ans->text_cache = tc_incref(tc);
     return ans;
 }
@@ -1154,8 +1238,8 @@ RICHCMP(Line)
 INIT_TYPE(Line)
 // }}}
 
-static PyObject*
-copy_char(Line* self, PyObject *args) {
+static PyObject *
+copy_char(Line *self, PyObject *args) {
     unsigned int src, dest;
     Line *to;
     if (!PyArg_ParseTuple(args, "IO!I", &src, &Line_Type, &to, &dest)) return NULL;

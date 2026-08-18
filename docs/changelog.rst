@@ -9,6 +9,36 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+Custom shaders [0.49]
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+kitty now has official support for :doc:`/custom-shaders`. These can be used for all
+manner of graphical effects, from animated backgrounds to focus highlighting to
+animations that change how cursor movements or mouse clicks are visualised.
+
+See the :doc:`documentation </custom-shaders>` for a video gallery showcasing various custom shaders
+that ship with kitty.
+
+Performance improvements [0.49]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This release saw tons of performance work focused on improving throughput
+making kitty even faster than it already is. Real world effective throughput
+should see a 15-35% improvement depending on workload. Some details:
+
+
+#. Improve throughput when processing large amounts of text with a scrollback buffer much larger than the CPU cache by ~35% by prefetching scrollback memory before it is written to
+
+#. Improve throughput when processing large amounts of text by ~50% for ASCII and ~15% for Unicode by writing runs of plain ASCII chars to the screen in batches and skipping unnecessary bookkeeping in the scrolling and tab handling hot paths
+
+#. Speed up :term:`SIMD` UTF-8 decoding: ~20% faster for ASCII and ~50% faster for multi-byte text on both x86 and ARM, by processing pairs of vectors of plain ASCII text at a time and compacting decoded codepoints within 128-bit lanes, avoiding expensive cross-lane operations. Also add an AVX-512 based decoder, another ~75% faster for multi-byte text, used automatically on CPUs that support it (Intel Ice Lake+, AMD Zen 4+).
+
+#. Improve throughput when processing escape code heavy input by ~30% by taking the input buffer lock once per buffer of input rather than once per escape code and using cheaper arithmetic to parse CSI parameters
+
+#. Improve throughput when processing large amounts of plain text by another ~10% by finding runs of printable ASCII chars with :term:`SIMD`, filling cells using wide stores and skipping unnecessary work in the scrolling hot path when there are no images
+
+
+
 Vertical tabs [0.48]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -161,25 +191,83 @@ quality-of-life improvements:
 With this release kitty's Wayland support is now on par with X11, provided
 you use a decent Wayland compositor.
 
-Cheetah speed 🐆 [0.33]
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-kitty has grown up and become a cheetah. It now parses data it receives in
-parallel :iss:`using SIMD vector CPU instructions <7005>` for a 2x speedup in
-benchmarks and a 10%-50% real world speedup depending on workload. There is a
-new benchmarking kitten ``kitten __benchmark__`` that can be used to measure
-terminal throughput. There is also :ref:`a table <throughput>` showing kitty is
-much faster than other terminal emulators based on the benchmark kitten. While
-kitty was already so fast that its performance was never a bottleneck, this
-improvement makes it even faster and more importantly reduces the energy
-consumption to do the same tasks.
-
 .. }}}
 
 Detailed list of changes
 -------------------------------------
 
-0.48.0 [future]
+0.49.0 [future]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
+
+- Various throughput performance improvements for a 15-35% real world improvement depending on workload
+
+- A new option :opt:`remap_modifiers` to allow having modifier keys behave as different modifier keys (:pull:`10307`)
+
+- A new option, :opt:`padding_fill_strategy` to control how the thin padding strips that appear when the window size is not an exact multiple of the cell size are colored. You can choose to have the padding colored to match the background of each neighboring cell, effectively extending the size of the cell or you can continue to use the existing behavior of using the background.
+
+- The :opt:`scrollbar` option now takes a new value ``scrolled-or-hovered`` to also show the scrollbar when the mouse moves over the scrollbar region (:pull:`10345`)
+
+- A new :code:`kitten @ screenshot` remote control command to take a pixel perfect PNG screenshot of an OS Window, tab or window
+
+- A new :code:`kitten @ set-os-window-title` remote control command to set the title for an already-open OS Window and optionally restore automatic title tracking when no title is specified
+
+- Wayland: Fix the first movement of the scroll wheel after reversing direction
+  often not scrolling, with high resolution wheels such as the Logitech MX
+  Master 3 (:pull:`10306`)
+
+- Vertical tabs: Improve handling of multi-line tab titles. Controlled via two new options:
+  :opt:`tab_title_max_lines` and :opt:`tab_title_template` (:pull:`10303`)
+
+- Vertical tabs: Improve rendering of tabs when using the ``fade`` :opt:`tab_bar_style`
+
+- :opt:`remember_window_size` now also remembers window maximized state (:pull:`10308`)
+
+- Sessions: Also save/restore layouts other than the currently active layout (:pull:`10324`)
+
+- Wayland: Fix clipboard sharing between kitty instances in containers with isolated PID namespaces (:iss:`10352`)
+
+- When expanding a window in alternate screen mode use the most common
+  background color as the color for the newly created lines leading to less
+  visual flicker until the application can redraw itself (:iss:`10365`)
+
+- macOS: Allow kitty OS Windows to participate in Split View tiling (:pull:`103701`)
+
+
+0.48.2 [2026-07-30]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Wayland: Fix regression in previous release that broke drag and drop on Plasma (:iss:`10284`)
+
+- diff kitten: Fix a rare crash when showing a large diff due to incorrect locking when highlighting
+
+- Allow the private DCS kitty-echo escape code to only echo numbers (:cve:`2026-72913`)
+
+- Linux: Fix an approx 1MB memory leak when reloading the config, introduced in version 0.40.0 (:iss:`10290`)
+
+- Desktop file chooser integration: when the specified directory does not exist, open file chooser at home directory (:iss:`10292`)
+
+- Add support for `terminal visibility reports <https://rockorager.dev/misc/visibility-reports/>`__
+
+- :opt:`tab_title_template`: Add a field that evaluates to the total memory used by all child processes in the tab (:iss:`10293`)
+
+
+0.48.1 [2026-07-24]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Wayland: fix a regression in the previous release that broke window sizing for on Hyprland/Sway with fractional scales and an initial specified size (:iss:`10268`)
+
+- Wayland: fix a regression in 0.47.3 that broke dragging on the Niri compositor (:iss:`10271`)
+
+- Wayland: get initial window size in cells working in most cases on Hyprland/Sway with fractional scaling by using the fractional scale of the primary monitor
+
+- Wayland: fix using remote control to resize OS windows on some tiling compositors leading to broken rendering
+
+- macOS: fix ``edge=none`` panel height shrinking when ``margin_top`` is non-zero in the panel/quick-access-terminal kittens (:iss:`10278`)
+
+
+0.48.0 [2026-07-18]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Implement vertical tabs by setting :opt:`tab_bar_edge` to ``left`` or ``right`` (:pull:`9855`)
@@ -224,6 +312,20 @@ Detailed list of changes
 
 - :opt:`cursor_trail_start_threshold` now optionally accepts two values to set x (horizontal) and y (vertical) thresholds independently (:iss:`10246`)
 
+- scroll-window remote control command: Fix a regression that broke scrolling by pages (:iss:`10253`)
+
+- Bypass libc malloc for history buffer to avoid libc pool policies causing apparent memory leak (:pull:`10254`)
+
+- Cursor trail: Do not run the trail shader when the cursor is hidden, saving resources (:pull:`10255`)
+
+- Graphics: Fix incorrect calculated cursor position when placing images with X/Y cell offsets (:pull:`10256`)
+
+- macOS: Disable macOS one time code autofill popups (:pull:`10250`)
+
+- Add support for DECSTR soft screen reset escape code (:iss:`10263`)
+
+- macOS: Fix quick-access-terminal appearing on the wrong space (the fullscreen app's space) when triggered from a different space on macOS Tahoe (:iss:`8740`)
+
 0.47.4 [2026-06-15]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -256,7 +358,7 @@ Detailed list of changes
 
 - ``kitten @ set-background-image``: Fix ``--layout=configured`` changing layout to centered instead (:iss:`10089`)
 
-- Splits layout: add an ``equalize`` action and an ``equalize_on_close`` option to redistribute split space proportionally (:iss:`3489`)
+- Splits layout: add an ``equalize`` action and an ``equalize_on_window_close`` option to redistribute split space proportionally (:iss:`3489`)
 
 - Fix matching var/env on tabs not working as expected (:iss:`10095`)
 

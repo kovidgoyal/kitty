@@ -34,7 +34,7 @@
 #define DECSCLM (4 << 5)
 
 // *Screen Mode*: toggles screen-wide reverse-video mode.
-#define DECSCNM  (5 << 5)
+#define DECSCNM (5 << 5)
 
 // Auto-repeat of keys
 #define DECARM (8 << 5)
@@ -43,7 +43,7 @@
    origin. This mode resets when the terminal is powered up or reset.
    It does not affect the erase in display (ED) function.
 */
-#define DECOM  (6 << 5)
+#define DECOM (6 << 5)
 
 // *Auto Wrap Mode*: selects where received graphic characters appear
 // when the cursor is at the right margin.
@@ -60,7 +60,7 @@
 
 // xterm mouse protocol
 #define MOUSE_BUTTON_TRACKING (1000 << 5)
-#define MOUSE_MOTION_TRACKING  (1002 << 5)
+#define MOUSE_MOTION_TRACKING (1002 << 5)
 #define MOUSE_MOVE_TRACKING (1003 << 5)
 #define FOCUS_TRACKING (1004 << 5)
 #define MOUSE_UTF8_MODE (1005 << 5)
@@ -74,19 +74,22 @@
 // Alternate screen buffer
 #define TOGGLE_ALT_SCREEN_1 (47 << 5)
 #define TOGGLE_ALT_SCREEN_2 (1047 << 5)
-#define ALTERNATE_SCREEN  (1049 << 5)
+#define ALTERNATE_SCREEN (1049 << 5)
 
 // Bracketed paste mode
 // https://cirw.in/blog/bracketed-paste
 #define BRACKETED_PASTE (2004 << 5)
 #define BRACKETED_PASTE_START "200~"
-#define BRACKETED_PASTE_END  "201~"
+#define BRACKETED_PASTE_END "201~"
 
 // Pending updates mode
 #define PENDING_UPDATE (2026 << 5)
 
 // Notification of color preference change
 #define COLOR_PREFERENCE_NOTIFICATION (2031 << 5)
+
+// Terminal visibility reports
+#define VISIBILITY_REPORTS (2033 << 5)
 
 // In-band resize notification mode
 #define INBAND_RESIZE_NOTIFICATION (2048 << 5)

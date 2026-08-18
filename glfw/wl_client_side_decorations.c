@@ -31,7 +31,12 @@
 #define R(x) (((x) >> 16) & 0xff)
 #define G(x) (((x) >> 8) & 0xff)
 #define B(x) ((x) & 0xff)
-#define SWAP(x, y) do { __typeof__(x) SWAP = x; x = y; y = SWAP; } while (0)
+#define SWAP(x, y)              \
+    do {                        \
+        __typeof__(x) SWAP = x; \
+        x = y;                  \
+        y = SWAP;               \
+    } while (0)
 
 // shadow tile  {{{
 typedef float kernel_type;
@@ -43,14 +48,22 @@ build_blur_kernel(kernel_type *blur_kernel, const size_t size, kernel_type sigma
     kernel_type sum = 0;
     for (size_t i = 0; i < size; i++) {
         kernel_type f = (i - half);
-        blur_kernel[i] = (kernel_type)exp(- f * f / sigma);
+        blur_kernel[i] = (kernel_type)exp(-f * f / sigma);
         sum += blur_kernel[i];
     }
     for (size_t i = 0; i < size; i++) blur_kernel[i] /= sum;
 }
 
 static void
-blur_mask(kernel_type *image_data, ssize_t width, ssize_t height, ssize_t kernel_size, kernel_type sigma, kernel_type *scratch, kernel_type *blur_kernel, ssize_t margin) {
+blur_mask(
+    kernel_type *image_data,
+    ssize_t width,
+    ssize_t height,
+    ssize_t kernel_size,
+    kernel_type sigma,
+    kernel_type *scratch,
+    kernel_type *blur_kernel,
+    ssize_t margin) {
     (void)margin;
     build_blur_kernel(blur_kernel, kernel_size, sigma);
     const size_t half = kernel_size / 2;
@@ -83,7 +96,7 @@ blur_mask(kernel_type *image_data, ssize_t width, ssize_t height, ssize_t kernel
     }
 }
 
-static kernel_type*
+static kernel_type *
 create_shadow_mask(size_t width, size_t height, size_t margin, size_t kernel_size, kernel_type base_alpha, kernel_type sigma) {
     kernel_type *mask = calloc(2 * width * height + kernel_size, sizeof(kernel_type));
     if (!mask) return NULL;
@@ -91,7 +104,7 @@ create_shadow_mask(size_t width, size_t height, size_t margin, size_t kernel_siz
         kernel_type *row = mask + y * width;
         for (size_t x = margin; x < width - margin; x++) row[x] = base_alpha;
     }
-    blur_mask(mask, width, height, kernel_size, sigma, mask + width * height, (kernel_type*)(mask + 2 * width * height), margin);
+    blur_mask(mask, width, height, kernel_size, sigma, mask + width * height, (kernel_type *)(mask + 2 * width * height), margin);
     return mask;
 }
 
@@ -105,10 +118,11 @@ create_shadow_tile(_GLFWwindow *window) {
     st.segments = 7;
     st.stride = st.segments * margin;
     st.corner_size = margin * (st.segments - 1) / 2;
-    kernel_type* mask = create_shadow_mask(st.stride, st.stride, margin, 2 * margin + 1, (kernel_type)0.7, 32 * margin);
+    kernel_type *mask = create_shadow_mask(st.stride, st.stride, margin, 2 * margin + 1, (kernel_type)0.7, 32 * margin);
     free(st.data);
     st.data = malloc(sizeof(st.data[0]) * st.stride * st.stride);
-    if (st.data) for (size_t i = 0; i < st.stride * st.stride; i++) st.data[i] = ((uint8_t)(mask[i] * 255)) << 24;
+    if (st.data)
+        for (size_t i = 0; i < st.stride * st.stride; i++) st.data[i] = ((uint8_t)(mask[i] * 255)) << 24;
     free(mask);
     return margin;
 }
@@ -116,7 +130,10 @@ create_shadow_tile(_GLFWwindow *window) {
 
 // }}}
 
-static bool window_needs_shadows(_GLFWwindow *w) { return !(w->wl.current.toplevel_states & TOPLEVEL_STATE_DOCKED); }
+static bool
+window_needs_shadows(_GLFWwindow *w) {
+    return !(w->wl.current.toplevel_states & TOPLEVEL_STATE_DOCKED);
+}
 
 static void
 swap_buffers(_GLFWWaylandBufferPair *pair) {
@@ -129,19 +146,37 @@ init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, doub
     memset(pair, 0, sizeof(_GLFWWaylandBufferPair));
     pair->width = (int)round(width * scale);
     pair->height = (int)round(height * scale);
-    pair->viewport_width = width; pair->viewport_height = height;
+    pair->viewport_width = width;
+    pair->viewport_height = height;
     pair->stride = 4 * pair->width;
     pair->size_in_bytes = pair->stride * pair->height;
     return 2 * pair->size_in_bytes;
 }
 
-#define all_shadow_surfaces(Q) Q(shadow_left); Q(shadow_top); Q(shadow_right); Q(shadow_bottom); \
-    Q(shadow_upper_left); Q(shadow_upper_right); Q(shadow_lower_left); Q(shadow_lower_right);
-#define all_surfaces(Q) Q(titlebar); all_shadow_surfaces(Q);
+#define all_shadow_surfaces(Q) \
+    Q(shadow_left);            \
+    Q(shadow_top);             \
+    Q(shadow_right);           \
+    Q(shadow_bottom);          \
+    Q(shadow_upper_left);      \
+    Q(shadow_upper_right);     \
+    Q(shadow_lower_left);      \
+    Q(shadow_lower_right);
+#define all_surfaces(Q) \
+    Q(titlebar);        \
+    all_shadow_surfaces(Q);
 
 static bool
 window_has_buffer(_GLFWwindow *window, struct wl_buffer *q) {
-#define Q(which) if (decs.which.buffer.a == q) { decs.which.buffer.a_needs_to_be_destroyed = false; return true; } if (decs.which.buffer.b == q) { decs.which.buffer.b_needs_to_be_destroyed = false; return true; }
+#define Q(which)                                           \
+    if (decs.which.buffer.a == q) {                        \
+        decs.which.buffer.a_needs_to_be_destroyed = false; \
+        return true;                                       \
+    }                                                      \
+    if (decs.which.buffer.b == q) {                        \
+        decs.which.buffer.b_needs_to_be_destroyed = false; \
+        return true;                                       \
+    }
     all_surfaces(Q);
 #undef Q
     return false;
@@ -161,15 +196,17 @@ alloc_buffer_pair(uintptr_t window_id, _GLFWWaylandBufferPair *pair, struct wl_s
     pair->data.a = data + *offset;
     pair->a = wl_shm_pool_create_buffer(pool, *offset, pair->width, pair->height, pair->stride, WL_SHM_FORMAT_ARGB8888);
     pair->a_needs_to_be_destroyed = true;
-    wl_buffer_add_listener(pair->a, &handle_buffer_events, (void*)window_id);
+    wl_buffer_add_listener(pair->a, &handle_buffer_events, (void *)window_id);
     *offset += pair->size_in_bytes;
     pair->data.b = data + *offset;
     pair->b = wl_shm_pool_create_buffer(pool, *offset, pair->width, pair->height, pair->stride, WL_SHM_FORMAT_ARGB8888);
     pair->b_needs_to_be_destroyed = true;
-    wl_buffer_add_listener(pair->b, &handle_buffer_events, (void*)window_id);
+    wl_buffer_add_listener(pair->b, &handle_buffer_events, (void *)window_id);
     *offset += pair->size_in_bytes;
-    pair->front = pair->a; pair->back = pair->b;
-    pair->data.front = pair->data.a; pair->data.back = pair->data.b;
+    pair->front = pair->a;
+    pair->back = pair->b;
+    pair->data.front = pair->data.a;
+    pair->data.back = pair->data.b;
 }
 
 void
@@ -182,7 +219,8 @@ csd_initialize_metrics(_GLFWwindow *window) {
 }
 
 static void
-patch_titlebar_with_alpha_mask(uint32_t *dest, uint8_t *src, unsigned height, unsigned dest_stride, unsigned src_width, unsigned dest_left, uint32_t bg, uint32_t fg) {
+patch_titlebar_with_alpha_mask(
+    uint32_t *dest, uint8_t *src, unsigned height, unsigned dest_stride, unsigned src_width, unsigned dest_left, uint32_t bg, uint32_t fg) {
     for (unsigned y = 0; y < height; y++, src += src_width, dest += dest_stride) {
         uint32_t *d = dest + dest_left;
         for (unsigned i = 0; i < src_width; i++) {
@@ -251,7 +289,7 @@ render_restore(uint8_t *out, unsigned width, unsigned height) {
     unsigned top = 4 * thickness;
     if (!half_thickness || width <= side_margin || height < baseline + 2 * thickness || top >= baseline) return;
     unsigned box_height = ((baseline - top) * 3) / 4;
-    if (box_height < 2*thickness) return;
+    if (box_height < 2 * thickness) return;
     unsigned box_width = ((width - 2 * side_margin) * 3) / 4;
     // bottom box
     unsigned box_top = baseline - box_height, left = side_margin, right = side_margin + box_width, bottom = baseline;
@@ -320,7 +358,17 @@ downsample(uint8_t *dest, uint8_t *src, unsigned dest_width, unsigned dest_heigh
 }
 
 static void
-render_button(void(*which)(uint8_t *, unsigned, unsigned), bool antialias, uint32_t *dest, uint8_t *src, unsigned height, unsigned dest_stride, unsigned src_width, unsigned dest_left, uint32_t bg, uint32_t fg) {
+render_button(
+    void (*which)(uint8_t *, unsigned, unsigned),
+    bool antialias,
+    uint32_t *dest,
+    uint8_t *src,
+    unsigned height,
+    unsigned dest_stride,
+    unsigned src_width,
+    unsigned dest_left,
+    uint32_t bg,
+    uint32_t fg) {
     if (antialias) {
         static const unsigned factor = 4;
         uint8_t *big_src = malloc((size_t)factor * factor * height * src_width);
@@ -350,9 +398,18 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
         double green = ((bg_color >> 8) & 0xFF) / 255.0;
         double blue = (bg_color & 0xFF) / 255.0;
         double luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-        if (luma < 0.5) { fg_color = dark_fg; hover_bg = hover_dark_bg; is_dark = true; }
+        if (luma < 0.5) {
+            fg_color = dark_fg;
+            hover_bg = hover_dark_bg;
+            is_dark = true;
+        }
         if (!decs.use_custom_titlebar_color) bg_color = luma < 0.5 ? dark_bg : light_bg;
-    } else if (appearance == GLFW_COLOR_SCHEME_DARK) { bg_color = dark_bg; fg_color = dark_fg; hover_bg = hover_dark_bg; is_dark = true; }
+    } else if (appearance == GLFW_COLOR_SCHEME_DARK) {
+        bg_color = dark_bg;
+        fg_color = dark_fg;
+        hover_bg = hover_dark_bg;
+        is_dark = true;
+    }
     uint8_t *output = to_front_buffer ? decs.titlebar.buffer.data.front : decs.titlebar.buffer.data.back;
 
     // render text part
@@ -361,26 +418,59 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     if (window->wl.wm_capabilities.maximize) num_buttons++;
     if (window->wl.wm_capabilities.minimize) num_buttons++;
     if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text) {
-        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.titlebar.buffer.width, decs.titlebar.buffer.height, 0, 0, num_buttons * button_size, false)) goto render_buttons;
+        if (_glfw.callbacks.draw_text(
+                (GLFWwindow *)window,
+                window->wl.title,
+                fg_color,
+                bg_color,
+                output,
+                decs.titlebar.buffer.width,
+                decs.titlebar.buffer.height,
+                0,
+                0,
+                num_buttons * button_size,
+                false))
+            goto render_buttons;
     }
     // rendering of text failed, blank the buffer
-    for (uint32_t *px = (uint32_t*)output, *end = (uint32_t*)(output + decs.titlebar.buffer.size_in_bytes); px < end; px++) *px = bg_color;
+    for (uint32_t *px = (uint32_t *)output, *end = (uint32_t *)(output + decs.titlebar.buffer.size_in_bytes); px < end; px++) *px = bg_color;
 
 render_buttons:
-    decs.maximize.width = 0; decs.minimize.width = 0; decs.close.width = 0;
+    decs.maximize.width = 0;
+    decs.minimize.width = 0;
+    decs.close.width = 0;
     if (!button_size) return;
 
     uint8_t *alpha_mask = malloc(button_size * button_size);
     int left = decs.titlebar.buffer.width - num_buttons * button_size;
     if (!alpha_mask || left <= 0) return;
-#define drawb(which, antialias, func, hover_bg) { \
-    render_button(func, antialias, (uint32_t*)output, alpha_mask, button_size, decs.titlebar.buffer.width, button_size, left, decs.which.hovered ? hover_bg : bg_color, fg_color); decs.which.left = left; decs.which.width = button_size; left += button_size; }
+#define drawb(which, antialias, func, hover_bg)       \
+    {                                                 \
+        render_button(                                \
+            func,                                     \
+            antialias,                                \
+            (uint32_t *)output,                       \
+            alpha_mask,                               \
+            button_size,                              \
+            decs.titlebar.buffer.width,               \
+            button_size,                              \
+            left,                                     \
+            decs.which.hovered ? hover_bg : bg_color, \
+            fg_color);                                \
+        decs.which.left = left;                       \
+        decs.which.width = button_size;               \
+        left += button_size;                          \
+    }
 
     if (window->wl.wm_capabilities.minimize) drawb(minimize, false, render_minimize, hover_bg);
     if (window->wl.wm_capabilities.maximize) {
-        if (is_maximized) { drawb(maximize, false, render_restore, hover_bg); } else { drawb(maximize, false, render_maximize, hover_bg); }
+        if (is_maximized) {
+            drawb(maximize, false, render_restore, hover_bg);
+        } else {
+            drawb(maximize, false, render_maximize, hover_bg);
+        }
     }
-    drawb(close, true, render_close, is_dark ? 0xff880000: 0xffc80000);
+    drawb(close, true, render_close, is_dark ? 0xff880000 : 0xffc80000);
     free(alpha_mask);
 #undef drawb
 }
@@ -397,13 +487,13 @@ render_horizontal_shadow(_GLFWwindow *window, ssize_t scaled_shadow_size, ssize_
     ssize_t src_y = src_y_offset + y;
     const ssize_t src_leftover_corner = st.corner_size - scaled_shadow_size;
     uint32_t *src = st.data + st.stride * src_y + scaled_shadow_size;
-    uint32_t *d_start = (uint32_t*)(buf->data.front + y * buf->stride);
-    uint32_t *d_end = (uint32_t*)(buf->data.front + (y+1) * buf->stride);
+    uint32_t *d_start = (uint32_t *)(buf->data.front + y * buf->stride);
+    uint32_t *d_end = (uint32_t *)(buf->data.front + (y + 1) * buf->stride);
     uint32_t *left_region_end = d_start + MIN(d_end - d_start, src_leftover_corner);
     memcpy(d_start, src, sizeof(uint32_t) * (left_region_end - d_start));
     // right region
     uint32_t *right_region_start = MAX(d_start, d_end - src_leftover_corner);
-    src = st.data + st.stride * (src_y+1) - st.corner_size;
+    src = st.data + st.stride * (src_y + 1) - st.corner_size;
     memcpy(right_region_start, src, sizeof(uint32_t) * MIN(src_leftover_corner, d_end - right_region_start));
     src = st.data + st.stride * src_y + st.corner_size;
     // middle region
@@ -413,9 +503,7 @@ render_horizontal_shadow(_GLFWwindow *window, ssize_t scaled_shadow_size, ssize_
 
 static void
 copy_vertical_region(
-    _GLFWwindow *window, ssize_t src_y_start, ssize_t src_y_limit,
-    ssize_t y_start, ssize_t y_limit, ssize_t src_x_offset, _GLFWWaylandBufferPair *buf
-) {
+    _GLFWwindow *window, ssize_t src_y_start, ssize_t src_y_limit, ssize_t y_start, ssize_t y_limit, ssize_t src_x_offset, _GLFWWaylandBufferPair *buf) {
     for (ssize_t dy = y_start, sy = src_y_start; dy < y_limit && sy < src_y_limit; dy++, sy++)
         memcpy(buf->data.front + dy * buf->stride, st.data + sy * st.stride + src_x_offset, sizeof(uint32_t) * buf->width);
 }
@@ -424,28 +512,28 @@ static void
 render_shadows(_GLFWwindow *window) {
     if (!window_needs_shadows(window)) return;
     const ssize_t scaled_shadow_size = create_shadow_tile(window);
-    if (!st.data || !scaled_shadow_size) return;  // out of memory
+    if (!st.data || !scaled_shadow_size) return; // out of memory
     // upper and lower shadows
     for (ssize_t y = 0; y < scaled_shadow_size; y++) {
         _GLFWWaylandBufferPair *buf = &decs.shadow_upper_left.buffer;
         uint32_t *src = st.data + st.stride * y;
-        uint32_t *d = (uint32_t*)(buf->data.front + y * buf->stride);
+        uint32_t *d = (uint32_t *)(buf->data.front + y * buf->stride);
         memcpy(d, src, sizeof(uint32_t) * scaled_shadow_size);
 
         buf = &decs.shadow_upper_right.buffer;
         src += st.stride - scaled_shadow_size;
-        d = (uint32_t*)(buf->data.front + y * buf->stride);
+        d = (uint32_t *)(buf->data.front + y * buf->stride);
         memcpy(d, src, sizeof(uint32_t) * scaled_shadow_size);
 
         const size_t tile_bottom_start = st.stride - scaled_shadow_size;
         buf = &decs.shadow_lower_left.buffer;
         src = st.data + (tile_bottom_start + y) * st.stride;
-        d = (uint32_t*)(buf->data.front + y * buf->stride);
+        d = (uint32_t *)(buf->data.front + y * buf->stride);
         memcpy(d, src, sizeof(uint32_t) * scaled_shadow_size);
 
         buf = &decs.shadow_lower_right.buffer;
         src += st.stride - scaled_shadow_size;
-        d = (uint32_t*)(buf->data.front + y * buf->stride);
+        d = (uint32_t *)(buf->data.front + y * buf->stride);
         memcpy(d, src, sizeof(uint32_t) * scaled_shadow_size);
 
         render_horizontal_shadow(window, scaled_shadow_size, 0, y, &decs.shadow_top.buffer);
@@ -456,10 +544,11 @@ render_shadows(_GLFWwindow *window) {
     const ssize_t src_leftover_corner = st.corner_size - scaled_shadow_size;
     ssize_t y_start = 0, y_end = decs.shadow_left.buffer.height, top_end = MIN(y_end, src_leftover_corner);
     ssize_t right_src_start = st.stride - scaled_shadow_size;
-#define c(src_y_start, src_y_limit, dest_y_start, dest_y_limit) { \
-    copy_vertical_region(window, src_y_start, src_y_limit, dest_y_start, dest_y_limit, 0, &decs.shadow_left.buffer); \
-    copy_vertical_region(window, src_y_start, src_y_limit, dest_y_start, dest_y_limit, right_src_start, &decs.shadow_right.buffer); \
-}
+#define c(src_y_start, src_y_limit, dest_y_start, dest_y_limit)                                                                         \
+    {                                                                                                                                   \
+        copy_vertical_region(window, src_y_start, src_y_limit, dest_y_start, dest_y_limit, 0, &decs.shadow_left.buffer);                \
+        copy_vertical_region(window, src_y_start, src_y_limit, dest_y_start, dest_y_limit, right_src_start, &decs.shadow_right.buffer); \
+    }
     c(scaled_shadow_size, st.corner_size, y_start, top_end);
     // bottom region
     ssize_t bottom_start = MAX(0, y_end - src_leftover_corner);
@@ -469,15 +558,18 @@ render_shadows(_GLFWwindow *window) {
         c(st.corner_size, st.corner_size + scaled_shadow_size, dest_y, MIN(dest_y + scaled_shadow_size, bottom_start));
 #undef c
 
-#define copy(which) for (uint32_t *src = (uint32_t*)decs.which.buffer.data.front, *dest = (uint32_t*)decs.which.buffer.data.back; src < (uint32_t*)(decs.which.buffer.data.front + decs.which.buffer.size_in_bytes); src++, dest++) *dest = (A(*src) / 2 ) << 24;
+#define copy(which)                                                                                                 \
+    for (uint32_t *src = (uint32_t *)decs.which.buffer.data.front, *dest = (uint32_t *)decs.which.buffer.data.back; \
+         src < (uint32_t *)(decs.which.buffer.data.front + decs.which.buffer.size_in_bytes);                        \
+         src++, dest++)                                                                                             \
+        *dest = (A(*src) / 2) << 24;
     all_shadow_surfaces(copy);
 #undef copy
-
 }
 #undef st
 
 static bool
-create_shm_buffers(_GLFWwindow* window) {
+create_shm_buffers(_GLFWwindow *window) {
     decs.mapping.size = 0;
     const bool has_titlebar = !decs.titlebar_hidden;
     const int side_height = window->wl.height + (has_titlebar ? decs.metrics.visible_titlebar_height : 0);
@@ -495,8 +587,7 @@ create_shm_buffers(_GLFWwindow* window) {
 
     int fd = createAnonymousFile(decs.mapping.size);
     if (fd < 0) {
-        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Creating a buffer file for %zu B failed: %s",
-                        decs.mapping.size, strerror(errno));
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Creating a buffer file for %zu B failed: %s", decs.mapping.size, strerror(errno));
         return false;
     }
     decs.mapping.data = mmap(NULL, decs.mapping.size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -505,7 +596,7 @@ create_shm_buffers(_GLFWwindow* window) {
         close(fd);
         return false;
     }
-    struct wl_shm_pool* pool = wl_shm_create_pool(_glfw.wl.shm, fd, decs.mapping.size);
+    struct wl_shm_pool *pool = wl_shm_create_pool(_glfw.wl.shm, fd, decs.mapping.size);
     close(fd);
     size_t offset = 0;
 #define Q(which) alloc_buffer_pair(window->id, &decs.which.buffer, pool, decs.mapping.data, &offset)
@@ -538,22 +629,25 @@ free_csd_surfaces(_GLFWwindow *window) {
 
 static void
 free_csd_buffers(_GLFWwindow *window) {
-#define Q(which) { \
-    if (decs.which.buffer.a_needs_to_be_destroyed && decs.which.buffer.a) wl_buffer_destroy(decs.which.buffer.a); \
-    if (decs.which.buffer.b_needs_to_be_destroyed && decs.which.buffer.b) wl_buffer_destroy(decs.which.buffer.b); \
-    memset(&decs.which.buffer, 0, sizeof(_GLFWWaylandBufferPair)); \
-}
+#define Q(which)                                                                                                      \
+    {                                                                                                                 \
+        if (decs.which.buffer.a_needs_to_be_destroyed && decs.which.buffer.a) wl_buffer_destroy(decs.which.buffer.a); \
+        if (decs.which.buffer.b_needs_to_be_destroyed && decs.which.buffer.b) wl_buffer_destroy(decs.which.buffer.b); \
+        memset(&decs.which.buffer, 0, sizeof(_GLFWWaylandBufferPair));                                                \
+    }
     all_surfaces(Q);
 #undef Q
     if (decs.mapping.data) munmap(decs.mapping.data, decs.mapping.size);
-    decs.mapping.data = NULL; decs.mapping.size = 0;
+    decs.mapping.data = NULL;
+    decs.mapping.size = 0;
 }
 
 static void
 position_csd_surface(_GLFWWaylandCSDSurface *s, int x, int y) {
     if (s->surface) {
         wl_surface_set_buffer_scale(s->surface, 1);
-        s->x = x; s->y = y;
+        s->x = x;
+        s->y = y;
         wl_subsurface_set_position(s->subsurface, s->x, s->y);
     }
 }
@@ -571,12 +665,18 @@ create_csd_surfaces(_GLFWwindow *window, _GLFWWaylandCSDSurface *s) {
     }
 }
 
-#define damage_csd(which, xbuffer) if (decs.which.surface) { \
-    wl_surface_attach(decs.which.surface, (xbuffer), 0, 0); \
-    if (decs.which.wp_viewport) wp_viewport_set_destination(decs.which.wp_viewport, decs.which.buffer.viewport_width, decs.which.buffer.viewport_height); \
-    wl_surface_damage(decs.which.surface, 0, 0, decs.which.buffer.width, decs.which.buffer.height); \
-    wl_surface_commit(decs.which.surface); \
-    if (decs.which.buffer.a == (xbuffer)) { decs.which.buffer.a_needs_to_be_destroyed = false; } else { decs.which.buffer.b_needs_to_be_destroyed = false; }}
+#define damage_csd(which, xbuffer)                                                                                                                            \
+    if (decs.which.surface) {                                                                                                                                 \
+        wl_surface_attach(decs.which.surface, (xbuffer), 0, 0);                                                                                               \
+        if (decs.which.wp_viewport) wp_viewport_set_destination(decs.which.wp_viewport, decs.which.buffer.viewport_width, decs.which.buffer.viewport_height); \
+        wl_surface_damage(decs.which.surface, 0, 0, decs.which.buffer.width, decs.which.buffer.height);                                                       \
+        wl_surface_commit(decs.which.surface);                                                                                                                \
+        if (decs.which.buffer.a == (xbuffer)) {                                                                                                               \
+            decs.which.buffer.a_needs_to_be_destroyed = false;                                                                                                \
+        } else {                                                                                                                                              \
+            decs.which.buffer.b_needs_to_be_destroyed = false;                                                                                                \
+        }                                                                                                                                                     \
+    }
 
 static bool
 window_is_csd_capable(_GLFWwindow *window) {
@@ -595,20 +695,24 @@ ensure_csd_resources(_GLFWwindow *window) {
     const bool is_focused = window->id == _glfw.focusedWindowId;
     const bool focus_changed = is_focused != decs.for_window_state.focused;
     const double current_scale = _glfwWaylandWindowScale(window);
-    const bool size_changed = (
-        decs.for_window_state.width != window->wl.width ||
-        decs.for_window_state.height != window->wl.height ||
-        decs.for_window_state.fscale != current_scale ||
-        !decs.mapping.data
-    );
+    const bool size_changed =
+        (decs.for_window_state.width != window->wl.width || decs.for_window_state.height != window->wl.height ||
+         decs.for_window_state.fscale != current_scale || !decs.mapping.data);
     const bool state_changed = decs.for_window_state.toplevel_states != window->wl.current.toplevel_states;
     const bool titlebar_state_changed = (has_titlebar && !decs.titlebar.surface) || (!has_titlebar && decs.titlebar.surface);
     const bool needs_update = focus_changed || size_changed || titlebar_state_changed || decs.buffer_destroyed || state_changed;
-    debug("CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d state_changed: %d buffer_destroyed: %d\n",
-            decs.for_window_state.width, decs.for_window_state.height, window->wl.width, window->wl.height, needs_update,
-            size_changed, state_changed, decs.buffer_destroyed);
+    debug(
+        "CSD: old.size: %dx%d new.size: %dx%d needs_update: %d size_changed: %d state_changed: %d buffer_destroyed: %d\n",
+        decs.for_window_state.width,
+        decs.for_window_state.height,
+        window->wl.width,
+        window->wl.height,
+        needs_update,
+        size_changed,
+        state_changed,
+        decs.buffer_destroyed);
     if (!needs_update) return false;
-    decs.for_window_state.fscale = current_scale;  // used in create_shm_buffers
+    decs.for_window_state.fscale = current_scale; // used in create_shm_buffers
     if (size_changed || decs.buffer_destroyed || titlebar_state_changed) {
         free_csd_buffers(window);
         if (!create_shm_buffers(window)) return false;
@@ -617,9 +721,9 @@ ensure_csd_resources(_GLFWwindow *window) {
 
     const int top_y = has_titlebar ? -(int)decs.metrics.visible_titlebar_height : 0;
 
-#define setup_surface(which, x, y) \
+#define setup_surface(which, x, y)                                     \
     if (!decs.which.surface) create_csd_surfaces(window, &decs.which); \
-        position_csd_surface(&decs.which, x, y);
+    position_csd_surface(&decs.which, x, y);
 
     if (has_titlebar) {
         setup_surface(titlebar, 0, -decs.metrics.visible_titlebar_height);
@@ -644,8 +748,14 @@ ensure_csd_resources(_GLFWwindow *window) {
         damage_csd(titlebar, decs.titlebar.buffer.front);
     }
 #define d(which) damage_csd(which, is_focused ? decs.which.buffer.front : decs.which.buffer.back);
-    d(shadow_left); d(shadow_right); d(shadow_top); d(shadow_bottom);
-    d(shadow_upper_left); d(shadow_upper_right); d(shadow_lower_left); d(shadow_lower_right);
+    d(shadow_left);
+    d(shadow_right);
+    d(shadow_top);
+    d(shadow_bottom);
+    d(shadow_upper_left);
+    d(shadow_upper_right);
+    d(shadow_lower_left);
+    d(shadow_lower_right);
 #undef d
 
     decs.for_window_state.width = window->wl.width;
@@ -660,7 +770,8 @@ csd_set_visible(_GLFWwindow *window, bool visible) {
     // When setting to visible will only take effect if window currently has
     // CSD and will also ensure CSD is of correct size and type for current window.
     // When hiding CSD simply destroys all CSD surfaces.
-    if (visible) ensure_csd_resources(window); else free_csd_surfaces(window);
+    if (visible) ensure_csd_resources(window);
+    else free_csd_surfaces(window);
 }
 
 void
@@ -674,7 +785,7 @@ csd_free_all_resources(_GLFWwindow *window) {
 bool
 csd_change_title(_GLFWwindow *window) {
     if (!window_is_csd_capable(window)) return false;
-    if (ensure_csd_resources(window)) return true;  // CSD were re-rendered for other reasons
+    if (ensure_csd_resources(window)) return true; // CSD were re-rendered for other reasons
     if (decs.titlebar.surface) {
         update_title_bar(window);
         damage_csd(titlebar, decs.titlebar.buffer.front);
@@ -695,8 +806,10 @@ csd_set_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
         if (window->wl.xdg.top_level_bounds.height > 0) *height = MIN(*height, window->wl.xdg.top_level_bounds.height);
         if (has_titlebar) *height += decs.metrics.visible_titlebar_height;
     }
-    decs.geometry.x = 0; decs.geometry.y = 0;
-    decs.geometry.width = *width; decs.geometry.height = *height;
+    decs.geometry.x = 0;
+    decs.geometry.y = 0;
+    decs.geometry.width = *width;
+    decs.geometry.height = *height;
     if (has_titlebar) {
         decs.geometry.y = -decs.metrics.visible_titlebar_height;
         *height -= decs.metrics.visible_titlebar_height;
@@ -715,8 +828,7 @@ csd_set_titlebar_color(_GLFWwindow *window, uint32_t color, bool use_system_colo
 #define y window->wl.allCursorPosY
 
 static void
-set_cursor(GLFWCursorShape shape, _GLFWwindow* window)
-{
+set_cursor(GLFWCursorShape shape, _GLFWwindow *window) {
     if (_glfw.wl.wp_cursor_shape_device_v1) {
         wayland_cursor_shape s = glfw_cursor_shape_to_wayland_cursor_shape(shape);
         if (s.which > -1) {
@@ -726,10 +838,10 @@ set_cursor(GLFWCursorShape shape, _GLFWwindow* window)
         }
     }
 
-    struct wl_buffer* buffer;
-    struct wl_cursor* cursor;
-    struct wl_cursor_image* image;
-    struct wl_surface* surface = _glfw.wl.cursorSurface;
+    struct wl_buffer *buffer;
+    struct wl_cursor *cursor;
+    struct wl_cursor_image *image;
+    struct wl_surface *surface = _glfw.wl.cursorSurface;
     const int scale = _glfwWaylandIntegerWindowScale(window);
 
     struct wl_cursor_theme *theme = glfw_wlc_theme_for_scale(scale);
@@ -741,23 +853,25 @@ set_cursor(GLFWCursorShape shape, _GLFWwindow* window)
     if (image->width % scale || image->height % scale) {
         static uint32_t warned_width = 0, warned_height = 0;
         if (warned_width != image->width || warned_height != image->height) {
-            _glfwInputError(GLFW_PLATFORM_ERROR, "WARNING: Cursor image size: %dx%d is not a multiple of window scale: %d. This will"
-                    " cause some compositors such as GNOME to crash. See https://github.com/kovidgoyal/kitty/issues/4878", image->width, image->height, scale);
-            warned_width = image->width; warned_height = image->height;
+            _glfwInputError(
+                GLFW_PLATFORM_ERROR,
+                "WARNING: Cursor image size: %dx%d is not a multiple of window scale: %d. This will"
+                " cause some compositors such as GNOME to crash. See https://github.com/kovidgoyal/kitty/issues/4878",
+                image->width,
+                image->height,
+                scale);
+            warned_width = image->width;
+            warned_height = image->height;
         }
     }
 
     buffer = wl_cursor_image_get_buffer(image);
     if (!buffer) return;
-    debug("Calling wl_pointer_set_cursor in set_cursor with surface: %p\n", (void*)surface);
-    wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial,
-                          surface,
-                          image->hotspot_x / scale,
-                          image->hotspot_y / scale);
+    debug("Calling wl_pointer_set_cursor in set_cursor with surface: %p\n", (void *)surface);
+    wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial, surface, image->hotspot_x / scale, image->hotspot_y / scale);
     wl_surface_set_buffer_scale(surface, scale);
     wl_surface_attach(surface, buffer, 0, 0);
-    wl_surface_damage(surface, 0, 0,
-                      image->width, image->height);
+    wl_surface_damage(surface, 0, 0, image->width, image->height);
     wl_surface_commit(surface);
     _glfw.wl.cursorPreviousShape = shape;
 }
@@ -767,13 +881,21 @@ static bool
 update_hovered_button(_GLFWwindow *window) {
     bool has_hovered_button = false;
     int scaled_x = (int)round(decs.for_window_state.fscale * x);
-#define c(which) \
+#define c(which)                                                                        \
     if (decs.which.left <= scaled_x && scaled_x < decs.which.left + decs.which.width) { \
-        has_hovered_button = true; \
-        if (!decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = true; } \
-    } else if (decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = false; }
+        has_hovered_button = true;                                                      \
+        if (!decs.which.hovered) {                                                      \
+            decs.titlebar_needs_update = true;                                          \
+            decs.which.hovered = true;                                                  \
+        }                                                                               \
+    } else if (decs.which.hovered) {                                                    \
+        decs.titlebar_needs_update = true;                                              \
+        decs.which.hovered = false;                                                     \
+    }
 
-    c(minimize); c(maximize); c(close);
+    c(minimize);
+    c(maximize);
+    c(close);
 #undef c
     update_title_bar(window);
     return has_hovered_button;
@@ -786,9 +908,15 @@ has_hovered_button(_GLFWwindow *window) {
 
 static void
 handle_pointer_leave(_GLFWwindow *window, struct wl_surface *surface) {
-#define c(which) if (decs.which.hovered) { decs.titlebar_needs_update = true; decs.which.hovered = false; }
+#define c(which)                           \
+    if (decs.which.hovered) {              \
+        decs.titlebar_needs_update = true; \
+        decs.which.hovered = false;        \
+    }
     if (surface == decs.titlebar.surface) {
-        c(minimize); c(maximize); c(close);
+        c(minimize);
+        c(maximize);
+        c(close);
     }
 #undef c
     decs.focus = CENTRAL_WINDOW;
@@ -799,8 +927,7 @@ handle_pointer_leave(_GLFWwindow *window, struct wl_surface *surface) {
 static void
 handle_pointer_move(_GLFWwindow *window) {
     GLFWCursorShape cursorShape = GLFW_DEFAULT_CURSOR;
-    switch (decs.focus)
-    {
+    switch (decs.focus) {
         case CENTRAL_WINDOW: break;
         case CSD_titlebar: {
             if (decs.dragging) {
@@ -821,12 +948,16 @@ handle_pointer_move(_GLFWwindow *window) {
 
 static void
 handle_pointer_enter(_GLFWwindow *window, struct wl_surface *surface) {
-#define Q(which) if (decs.which.surface == surface) { \
-    decs.focus = CSD_##which; handle_pointer_move(window); return; } // enter is also a move
+#define Q(which)                         \
+    if (decs.which.surface == surface) { \
+        decs.focus = CSD_##which;        \
+        handle_pointer_move(window);     \
+        return;                          \
+    } // enter is also a move
 
     all_surfaces(Q)
 #undef Q
-    decs.focus = CENTRAL_WINDOW;
+        decs.focus = CENTRAL_WINDOW;
     decs.dragging = false;
 }
 
@@ -852,7 +983,8 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
                         if (window->wl.current.toplevel_states & TOPLEVEL_STATE_MAXIMIZED) _glfwPlatformRestoreWindow(window);
                         else _glfwPlatformMaximizeWindow(window);
                         // hack otherwise on GNOME maximize button remains hovered sometimes
-                        decs.maximize.hovered = false; decs.titlebar_needs_update = true;
+                        decs.maximize.hovered = false;
+                        decs.titlebar_needs_update = true;
                     } else if (decs.close.hovered) _glfwInputWindowCloseRequest(window);
                 }
                 decs.dragging = !has_hovered_button(window);
@@ -867,14 +999,11 @@ handle_pointer_button(_GLFWwindow *window, uint32_t button, uint32_t state) {
             case CSD_shadow_lower_right: edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT; break;
         }
         if (edges != XDG_TOPLEVEL_RESIZE_EDGE_NONE) xdg_toplevel_resize(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, edges);
-    }
-    else if (button == BTN_RIGHT) {
-        if (decs.focus == CSD_titlebar && window->wl.xdg.toplevel)
-        {
-            if (window->wl.wm_capabilities.window_menu) xdg_toplevel_show_window_menu(
-                    window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, (int32_t)x, (int32_t)y - decs.metrics.top);
-            else
-                _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support showing wndow menu");
+    } else if (button == BTN_RIGHT) {
+        if (decs.focus == CSD_titlebar && window->wl.xdg.toplevel) {
+            if (window->wl.wm_capabilities.window_menu)
+                xdg_toplevel_show_window_menu(window->wl.xdg.toplevel, _glfw.wl.seat, _glfw.wl.pointer_serial, (int32_t)x, (int32_t)y - decs.metrics.top);
+            else _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland compositor does not support showing wndow menu");
             return;
         }
     }

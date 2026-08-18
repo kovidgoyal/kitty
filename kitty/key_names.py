@@ -59,17 +59,21 @@ def null_lookup(name: str, case_sensitive: bool = False) -> int | None:
 
 
 if is_macos:
+
     def get_key_name_lookup() -> LookupFunc:
         return null_lookup
 else:
+
     def load_libxkb_lookup() -> LookupFunc:
         import ctypes
+
         for suffix in ('.0', ''):
             with suppress(Exception):
                 lib = ctypes.CDLL(f'libxkbcommon.so{suffix}')
                 break
         else:
             from ctypes.util import find_library
+
             lname = find_library('xkbcommon')
             if lname is None:
                 raise RuntimeError('Failed to find libxkbcommon')

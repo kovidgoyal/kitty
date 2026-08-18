@@ -562,7 +562,7 @@ func drain_potential_tty_garbage(term *tty.Term) {
 	if err != nil {
 		return
 	}
-	canary, err := secrets.TokenHex()
+	canary, err := secrets.TokenAlphabet(secrets.DEFAULT_NUM_OF_BYTES_FOR_TOKEN, "0123456789")
 	if err != nil {
 		return
 	}

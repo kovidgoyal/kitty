@@ -33,6 +33,7 @@ from kitty.utils import screen_size_function
 if TYPE_CHECKING:
     from kitty.fast_data_types import FeatureData
 
+
 def setup_debug_print() -> bool:
     if 'KITTY_STDIO_FORWARDED' in os.environ:
         try:
@@ -77,10 +78,12 @@ def opts_from_cmd(cmd: dict[str, Any]) -> tuple[Options, FamilyKey, float, float
     opts.foreground = to_color(ts['foreground'])
     opts.background = to_color(ts['background'])
     family_key = []
+
     def d(k: OptNames) -> None:
         if k in cmd:
             setattr(opts, k, parse_font_spec(cmd[k]))
             family_key.append(k)
+
     d('font_family')
     d('bold_font')
     d('italic_font')
@@ -101,7 +104,6 @@ class FD(TypedDict):
     tooltip: NotRequired[str]
     sample: NotRequired[str]
     params: NotRequired[tuple[str, ...]]
-
 
 
 def get_features(features: dict[str, Optional['FeatureData']]) -> dict[str, FD]:
@@ -134,7 +136,10 @@ def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: flo
         'features': get_features(face.get_features()),
         'applied_features': face.applied_features(),
         'spec': spec_for_face(font['family'], face).as_setting,
-        'cell_width': 0, 'cell_height': 0, 'canvas_height': 0, 'canvas_width': width,
+        'cell_width': 0,
+        'cell_height': 0,
+        'canvas_height': 0,
+        'canvas_width': width,
     }
     if is_variable(font):
         ns = get_named_style(face)
@@ -144,13 +149,12 @@ def render_face_sample(font: Descriptor, opts: Options, dpi_x: float, dpi_y: flo
     bitmap, cell_width, cell_height = face.render_sample_text(sample_text or SAMPLE_TEXT, width, height, opts.foreground.rgb)
     metadata['cell_width'] = cell_width
     metadata['cell_height'] = cell_height
-    metadata['canvas_height'] = len(bitmap) // (4 *width)
+    metadata['canvas_height'] = len(bitmap) // (4 * width)
     return bitmap, metadata
 
 
 def render_family_sample(
-    opts: Options, family_key: FamilyKey, dpi_x: float, dpi_y: float, width: int, height: int, output_dir: str,
-    cache: dict[FaceKey, RenderedSampleTransmit]
+    opts: Options, family_key: FamilyKey, dpi_x: float, dpi_y: float, width: int, height: int, output_dir: str, cache: dict[FaceKey, RenderedSampleTransmit]
 ) -> dict[str, RenderedSampleTransmit]:
     base_key: BaseKey = opts.font_family.created_from_string, width, height
     ans: dict[str, RenderedSampleTransmit] = {}
@@ -188,12 +192,15 @@ def spec_for_descriptor(d: Descriptor, font_size: float) -> str:
 def resolved_faces(opts: Options) -> dict[OptNames, ResolvedFace]:
     font_files = get_font_files(opts)
     ans: dict[OptNames, ResolvedFace] = {}
+
     def d(key: Literal['medium', 'bold', 'italic', 'bi'], opt_name: OptNames) -> None:
         descriptor = font_files[key]
         ans[opt_name] = {
-                'family': descriptor['family'], 'spec': spec_for_descriptor(descriptor, opts.font_size),
-                'setting': getattr(opts, opt_name).created_from_string
+            'family': descriptor['family'],
+            'spec': spec_for_descriptor(descriptor, opts.font_size),
+            'setting': getattr(opts, opt_name).created_from_string,
         }
+
     d('medium', 'font_family')
     d('bold', 'bold_font')
     d('italic', 'italic_font')
@@ -224,6 +231,7 @@ def main() -> None:
 
 def query_kitty() -> dict[str, str]:
     import subprocess
+
     ans = {}
     for line in subprocess.check_output([kitten_exe(), 'query-terminal']).decode().splitlines():
         k, sep, v = line.partition(':')

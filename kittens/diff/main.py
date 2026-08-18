@@ -12,6 +12,7 @@ from kitty.simple_cli_definitions import CONFIG_HELP, CompletionSpec
 def main(args: list[str]) -> None:
     raise SystemExit('Must be run as kitten diff')
 
+
 definition = Definition(
     '!kittens.diff',
 )
@@ -25,36 +26,41 @@ mma = definition.add_mouse_map
 # diff {{{
 agr('diff', 'Diffing')
 
-opt('syntax_aliases', 'pyj:py pyi:py recipe:py', ctype='strdict_ _:', option_type='syntax_aliases',
-    long_text='''
+opt(
+    'syntax_aliases',
+    'pyj:py pyi:py recipe:py',
+    ctype='strdict_ _:',
+    option_type='syntax_aliases',
+    long_text="""
 File extension aliases for syntax highlight. For example, to syntax highlight
 :file:`file.xyz` as :file:`file.abc` use a setting of :code:`xyz:abc`.
 Multiple aliases must be separated by spaces.
-'''
-    )
+""",
+)
 
-opt('num_context_lines', '3', option_type='positive_int',
-    long_text='The number of lines of context to show around each change.'
-    )
+opt('num_context_lines', '3', option_type='positive_int', long_text='The number of lines of context to show around each change.')
 
-opt('diff_cmd', 'auto',
-    long_text='''
+opt(
+    'diff_cmd',
+    'auto',
+    long_text="""
 The diff command to use. Must contain the placeholder :code:`_CONTEXT_` which
 will be replaced by the number of lines of context. A few special values are allowed:
 :code:`auto` will automatically pick an available diff implementation. :code:`builtin`
 will use the anchored diff algorithm from the Go standard library. :code:`git` will
 use the git command to do the diffing. :code:`diff` will use the diff command to
 do the diffing.
-'''
-    )
+""",
+)
 
-opt('replace_tab_by', '\\x20\\x20\\x20\\x20', option_type='python_string',
-    long_text='The string to replace tabs with. Default is to use four spaces.'
-    )
+opt('replace_tab_by', '\\x20\\x20\\x20\\x20', option_type='python_string', long_text='The string to replace tabs with. Default is to use four spaces.')
 
-opt('+ignore_name', '', ctype='string',
+opt(
+    '+ignore_name',
+    '',
+    ctype='string',
     add_to_default=False,
-    long_text='''
+    long_text="""
 A glob pattern that is matched against only the filename of files and directories. Matching
 files and directories are ignored when scanning the filesystem to look for files to diff.
 Can be specified multiple times to use multiple patterns. For example::
@@ -62,80 +68,123 @@ Can be specified multiple times to use multiple patterns. For example::
     ignore_name .git
     ignore_name *~
     ignore_name *.pyc
-''',
-    )
+""",
+)
 
-opt('mark_moved_lines', 'yes', option_type='to_bool', long_text='''
+opt(
+    'mark_moved_lines',
+    'yes',
+    option_type='to_bool',
+    long_text="""
 Highlight lines that are moved, that is removed from the left and added to the right
-differently, using the :opt:`moved_bg` color.''')
+differently, using the :opt:`moved_bg` color.""",
+)
 
-opt('word_diff_mode', 'words', choices=('words', 'central'),
-    long_text='''
+opt(
+    'word_diff_mode',
+    'words',
+    choices=('words', 'central'),
+    long_text="""
 The algorithm to use for highlighting which parts of changed lines differ.
 When set to :code:`words`, changed words in each changed line are highlighted.
 When set to :code:`central`, the central changed region of each changed line is
 highlighted at the byte level. The :code:`words` mode is generally more useful
 as it shows exactly which words changed. Note that the :code:`words` mode
 only applies when a changed chunk has equal numbers of added and removed lines.
-'''
-    )
+""",
+)
 
-opt('word_regex', r'[^\s\p{P}]+',
-    long_text='''
+opt(
+    'word_regex',
+    r'[^\s\p{P}]+',
+    long_text="""
 The regular expression used to define a word when :opt:`word_diff_mode` is
 :code:`words`. The default value matches any run of non-whitespace and
 non-punctuation characters. The expression must be a valid Go regular expression.
 If an invalid expression is provided, diff will fail with an error.
-'''
-    )
+""",
+)
 
-opt('sticky_header', 'yes', option_type='to_bool', long_text='''
+opt(
+    'sticky_header',
+    'yes',
+    option_type='to_bool',
+    long_text="""
 When scrolled past the header of a file, keep the file's name and separator
 pinned to the top of the screen.
-''')
+""",
+)
 
 egr()  # }}}
 
 # colors {{{
 agr('colors', 'Colors')
 
-opt('color_scheme', 'auto', choices=('auto', 'light', 'dark'), long_text='''
+opt(
+    'color_scheme',
+    'auto',
+    choices=('auto', 'light', 'dark'),
+    long_text="""
 Whether to use the light or dark colors. The default of :code:`auto` means
 to follow the parent terminal color scheme. Note that the actual colors used
 for dark schemes are set by the :code:`dark_*` settings below and the non-prefixed
 settings are used for light colors.
-''')
+""",
+)
 
-opt('pygments_style', 'default', long_text='''
+opt(
+    'pygments_style',
+    'default',
+    long_text="""
 The pygments color scheme to use for syntax highlighting. See :link:`pygments
 builtin styles <https://pygments.org/styles/>` for a list of schemes. Note that
 this **does not** change the colors used for diffing,
 only the colors used for syntax highlighting. To change the general colors use the settings below.
 This sets the colors used for light color schemes, use :opt:`dark_pygments_style` to change the
 colors for dark color schemes.
-'''
-    )
+""",
+)
 
-opt('dark_pygments_style', 'github-dark', long_text='''
+opt(
+    'dark_pygments_style',
+    'github-dark',
+    long_text="""
 The pygments color scheme to use for syntax highlighting with dark colors. See :link:`pygments
 builtin styles <https://pygments.org/styles/>` for a list of schemes. Note that
 this **does not** change the colors used for diffing,
 only the colors used for syntax highlighting. To change the general colors use the settings below.
 This sets the colors used for dark color schemes, use :opt:`pygments_style` to change the
-colors for light color schemes.''')
+colors for light color schemes.""",
+)
 
 opt('foreground', 'black', option_type='to_color', long_text='Basic colors')
 opt('dark_foreground', '#f8f8f2', option_type='to_color')
 
 dark_bg = '#212830'
-opt('background', 'white', option_type='to_color',)
-opt('dark_background', dark_bg, option_type='to_color',)
+opt(
+    'background',
+    'white',
+    option_type='to_color',
+)
+opt(
+    'dark_background',
+    dark_bg,
+    option_type='to_color',
+)
 
 opt('title_fg', 'black', option_type='to_color', long_text='Title colors')
 opt('dark_title_fg', 'white', option_type='to_color')
 
-opt('title_bg', 'white', option_type='to_color',)
-opt('dark_title_bg', dark_bg, option_type='to_color',)
+opt(
+    'title_bg',
+    'white',
+    option_type='to_color',
+)
+opt(
+    'dark_title_bg',
+    dark_bg,
+    option_type='to_color',
+)
 
 opt('margin_bg', '#fafbfc', option_type='to_color', long_text='Margin colors')
 opt('dark_margin_bg', dark_bg, option_type='to_color')
@@ -196,129 +245,162 @@ egr()  # }}}
 # shortcuts {{{
 agr('shortcuts', 'Keyboard shortcuts')
 
-map('Quit',
+map(
+    'Quit',
     'quit --allow-fallback=shifted,ascii q quit',
-    )
-map('Quit',
+)
+map(
+    'Quit',
     'quit esc quit',
-    )
+)
 
-map('Scroll down',
+map(
+    'Scroll down',
     'scroll_down --allow-fallback=shifted,ascii j scroll_by 1',
-    )
-map('Scroll down',
+)
+map(
+    'Scroll down',
     'scroll_down down scroll_by 1',
-    )
+)
 
-map('Scroll up',
+map(
+    'Scroll up',
     'scroll_up --allow-fallback=shifted,ascii k scroll_by -1',
-    )
-map('Scroll up',
+)
+map(
+    'Scroll up',
     'scroll_up up scroll_by -1',
-    )
+)
 
-map('Scroll to top',
+map(
+    'Scroll to top',
     'scroll_top home scroll_to start',
-    )
+)
 
-map('Scroll to bottom',
+map(
+    'Scroll to bottom',
     'scroll_bottom end scroll_to end',
-    )
+)
 
-map('Scroll to next page',
+map(
+    'Scroll to next page',
     'scroll_page_down page_down scroll_to next-page',
-    )
-map('Scroll to next page',
+)
+map(
+    'Scroll to next page',
     'scroll_page_down space scroll_to next-page',
-    )
-map('Scroll to next page',
+)
+map(
+    'Scroll to next page',
     'scroll_page_down --allow-fallback=shifted,ascii ctrl+f scroll_to next-page',
-    )
+)
 
-map('Scroll to previous page',
+map(
+    'Scroll to previous page',
     'scroll_page_up page_up scroll_to prev-page',
-    )
-map('Scroll to previous page',
+)
+map(
+    'Scroll to previous page',
     'scroll_page_up --allow-fallback=shifted,ascii ctrl+b scroll_to prev-page',
-    )
+)
 
-map('Scroll down half page',
+map(
+    'Scroll down half page',
     'scroll_half_page_down --allow-fallback=shifted,ascii ctrl+d scroll_to next-half-page',
-    )
-map('Scroll up half page',
+)
+map(
+    'Scroll up half page',
     'scroll_half_page_up --allow-fallback=shifted,ascii ctrl+u scroll_to prev-half-page',
-    )
+)
 
-map('Scroll to next change',
+map(
+    'Scroll to next change',
     'next_change --allow-fallback=shifted,ascii n scroll_to next-change',
-    )
+)
 
-map('Scroll to previous change',
+map(
+    'Scroll to previous change',
     'prev_change --allow-fallback=shifted,ascii p scroll_to prev-change',
-    )
+)
 
-map('Scroll to next file',
+map(
+    'Scroll to next file',
     'next_file --allow-fallback=shifted,ascii shift+j scroll_to next-file',
-    )
+)
 
-map('Scroll to previous file',
+map(
+    'Scroll to previous file',
     'prev_file --allow-fallback=shifted,ascii shift+k scroll_to prev-file',
-    )
+)
 
-map('Show all context',
+map(
+    'Show all context',
     'all_context --allow-fallback=shifted,ascii a change_context all',
-    )
+)
 
-map('Show default context',
+map(
+    'Show default context',
     'default_context = change_context default',
-    )
+)
 
-map('Increase context',
+map(
+    'Increase context',
     'increase_context + change_context 5',
-    )
+)
 
-map('Decrease context',
+map(
+    'Decrease context',
     'decrease_context - change_context -5',
-    )
+)
 
-map('Search forward',
+map(
+    'Search forward',
     'search_forward / start_search regex forward',
-    )
+)
 
-map('Search backward',
+map(
+    'Search backward',
     'search_backward ? start_search regex backward',
-    )
+)
 
-map('Scroll to next search match',
+map(
+    'Scroll to next search match',
     'next_match . scroll_to next-match',
-    )
-map('Scroll to next search match',
+)
+map(
+    'Scroll to next search match',
     'next_match > scroll_to next-match',
-    )
+)
 
-map('Scroll to previous search match',
+map(
+    'Scroll to previous search match',
     'prev_match , scroll_to prev-match',
-    )
-map('Scroll to previous search match',
+)
+map(
+    'Scroll to previous search match',
     'prev_match < scroll_to prev-match',
-    )
+)
 
-map('Search forward (no regex)',
+map(
+    'Search forward (no regex)',
     'search_forward_simple --allow-fallback=shifted,ascii f start_search substring forward',
-    )
+)
 
-map('Search backward (no regex)',
+map(
+    'Search backward (no regex)',
     'search_backward_simple --allow-fallback=shifted,ascii b start_search substring backward',
-    )
+)
 
 map('Copy selection to clipboard', 'copy_to_clipboard --allow-fallback=shifted,ascii y copy_to_clipboard')
-map('Copy selection to clipboard or exit if no selection is present',
+map(
+    'Copy selection to clipboard or exit if no selection is present',
     'copy_to_clipboard_or_exit --allow-fallback=shifted,ascii ctrl+c copy_to_clipboard_or_exit',
-    )
+)
 
 egr()  # }}}
 
-OPTIONS = partial('''\
+OPTIONS = partial(
+    """\
 --context
 type=int
 default=-1
@@ -337,16 +419,18 @@ type=list
 Override individual configuration options, can be specified multiple times.
 Syntax: :italic:`name=value`. For example: :italic:`-o background=gray`
 
-'''.format, config_help=CONFIG_HELP.format(conf_name='diff', appname=appname))
+""".format,
+    config_help=CONFIG_HELP.format(conf_name='diff', appname=appname),
+)
 help_text = 'Show a side-by-side diff of the specified files/directories. You can also use :italic:`ssh:hostname:remote-file-path` to diff remote files.'
 usage = 'file_or_directory_left file_or_directory_right'
-
 
 
 if __name__ == '__main__':
     main(sys.argv)
 elif __name__ == '__doc__':
     from kitty.guess_mime_type import text_mimes
+
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = OPTIONS

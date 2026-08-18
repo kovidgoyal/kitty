@@ -20,32 +20,40 @@
 #include <limits.h>
 
 
-static const char* home = NULL;
+static const char *home = NULL;
 
 static void
 ensure_home_path(void) {
     if (home) return;
     home = getenv("HOME");
     if (!home || !home[0]) {
-        struct passwd* pw = getpwuid(geteuid());
+        struct passwd *pw = getpwuid(geteuid());
         if (pw) home = pw->pw_dir;
     }
     if (!home || !home[0]) {
-        fprintf(stderr, "Fatal error: Cannot determine home directory\n"); exit(1);
+        fprintf(stderr, "Fatal error: Cannot determine home directory\n");
+        exit(1);
     }
 }
 
-#define safe_snprintf(buf, sz, fmt, ...) { int n = snprintf(buf, sz, fmt, __VA_ARGS__); if (n < 0 || (size_t)n >= sz) { fprintf(stderr, "Out of buffer space calling sprintf for format: %s at line: %d\n", fmt, __LINE__); exit(1); }}
+#define safe_snprintf(buf, sz, fmt, ...)                                                                        \
+    {                                                                                                           \
+        int n = snprintf(buf, sz, fmt, __VA_ARGS__);                                                            \
+        if (n < 0 || (size_t)n >= sz) {                                                                         \
+            fprintf(stderr, "Out of buffer space calling sprintf for format: %s at line: %d\n", fmt, __LINE__); \
+            exit(1);                                                                                            \
+        }                                                                                                       \
+    }
 
-static const char*
+static const char *
 home_path_for(const char *username) {
-    struct passwd* pw = getpwnam(username);
+    struct passwd *pw = getpwnam(username);
     if (pw) return pw->pw_dir;
     return NULL;
 }
 
 static void
-expand_tilde(const char* path, char *ans, size_t ans_sz) {
+expand_tilde(const char *path, char *ans, size_t ans_sz) {
     if (path[0] != '~') {
         safe_snprintf(ans, ans_sz, "%s", path);
         return;
@@ -57,9 +65,11 @@ expand_tilde(const char* path, char *ans, size_t ans_sz) {
         prefix = home;
     } else {
         // If the path is "~user/something", get the specified user's home directory
-        char *slash = (char*)strchr(path, '/');  // path is temporarily modified here and then restored
+        char *slash = (char *)strchr(path, '/'); // path is temporarily modified here and then restored
         if (slash) {
-            *slash = 0; prefix = home_path_for(path + 1); *slash = '/';
+            *slash = 0;
+            prefix = home_path_for(path + 1);
+            *slash = '/';
         } else prefix = home_path_for(path + 1);
         if (prefix) path = slash ? slash - 1 : "a";
         else {
@@ -74,15 +84,30 @@ expand_tilde(const char* path, char *ans, size_t ans_sz) {
 static size_t
 clean_path(char *path) {
     char *write_ptr = path;
-    char* read_ptr = path;
+    char *read_ptr = path;
     while (*read_ptr) {
-        if (read_ptr[0] != '/') { *write_ptr++ = *read_ptr++; continue; }
+        if (read_ptr[0] != '/') {
+            *write_ptr++ = *read_ptr++;
+            continue;
+        }
         // we have /
-        if (read_ptr[1] == '/') { read_ptr++; continue; } // skip one slash of double slash
-        if (read_ptr[1] != '.') { *write_ptr++ = *read_ptr++; continue; }
+        if (read_ptr[1] == '/') {
+            read_ptr++;
+            continue;
+        } // skip one slash of double slash
+        if (read_ptr[1] != '.') {
+            *write_ptr++ = *read_ptr++;
+            continue;
+        }
         // we have /.
-        if (read_ptr[2] == '/' || !read_ptr[2]) { read_ptr += 2; continue; } // skip /./
-        if (read_ptr[2] != '.') { *write_ptr++ = *read_ptr++; continue; }
+        if (read_ptr[2] == '/' || !read_ptr[2]) {
+            read_ptr += 2;
+            continue;
+        } // skip /./
+        if (read_ptr[2] != '.') {
+            *write_ptr++ = *read_ptr++;
+            continue;
+        }
         // we have /..
         if (read_ptr[3] == '/' || !read_ptr[3]) {
             read_ptr += 3;
@@ -100,11 +125,15 @@ clean_path(char *path) {
 }
 
 static size_t
-lexical_absolute_path(const char* relative, char *output, size_t outsz) {
+lexical_absolute_path(const char *relative, char *output, size_t outsz) {
     size_t rlen = strlen(relative);
     char *limit = output + outsz;
-    char* write_ptr = output;      // Points to the location to write normalized characters
-#define _ensure_space(n) if (write_ptr + n + 1 >= limit) { fprintf(stderr, "Out of buffer space making absolute path for: %s with cwd: %s\n", relative, output); exit(1); }
+    char *write_ptr = output; // Points to the location to write normalized characters
+#define _ensure_space(n)                                                                                      \
+    if (write_ptr + n + 1 >= limit) {                                                                         \
+        fprintf(stderr, "Out of buffer space making absolute path for: %s with cwd: %s\n", relative, output); \
+        exit(1);                                                                                              \
+    }
     if (relative[0] != '/') {
         if (!getcwd(output, outsz)) {
             perror("Getting the current working directory failed with error");
@@ -114,7 +143,9 @@ lexical_absolute_path(const char* relative, char *output, size_t outsz) {
         write_ptr = output + cwdlen;
         _ensure_space(cwdlen + rlen + 2);
         if (rlen && cwdlen && *(write_ptr - 1) != '/') *(write_ptr++) = '/';
-    } else { _ensure_space(rlen + 2); }
+    } else {
+        _ensure_space(rlen + 2);
+    }
 #undef _ensure_space
     // Append the relative path
     memcpy(write_ptr, relative, rlen);
@@ -122,7 +153,8 @@ lexical_absolute_path(const char* relative, char *output, size_t outsz) {
     size_t ans = clean_path(output);
     // Ensure the path is not empty
     if (output[0] == '\0') {
-        output[0] = '/'; output[1] = 0;
+        output[0] = '/';
+        output[1] = 0;
         ans = 1;
     }
     return ans;
@@ -170,10 +202,23 @@ static bool
 get_config_dir(char *output, size_t outputsz) {
     const char *q;
     char buf1[PATH_MAX], buf2[PATH_MAX];
-#define expand(x, dest, sz) { expand_tilde(x, buf1, sizeof(buf1)); lexical_absolute_path(buf1, dest, sz); }
-    q = getenv("KITTY_CONFIG_DIRECTORY"); if (q && q[0]) { expand(q, output, outputsz); return true; }
-#define check_and_ret(x) if (x && x[0]) { expand(x, output, outputsz); if (is_dir_ok_for_config(output)) return true; }
-    q = getenv("XDG_CONFIG_HOME"); check_and_ret(q);
+#define expand(x, dest, sz)                    \
+    {                                          \
+        expand_tilde(x, buf1, sizeof(buf1));   \
+        lexical_absolute_path(buf1, dest, sz); \
+    }
+    q = getenv("KITTY_CONFIG_DIRECTORY");
+    if (q && q[0]) {
+        expand(q, output, outputsz);
+        return true;
+    }
+#define check_and_ret(x)                               \
+    if (x && x[0]) {                                   \
+        expand(x, output, outputsz);                   \
+        if (is_dir_ok_for_config(output)) return true; \
+    }
+    q = getenv("XDG_CONFIG_HOME");
+    check_and_ret(q);
     check_and_ret("~/.config");
 #ifdef __APPLE__
     check_and_ret("~/Library/Preferences");
@@ -199,14 +244,14 @@ get_config_dir(char *output, size_t outputsz) {
 
 
 static ssize_t
-safe_read_stream(void* ptr, size_t size, FILE* stream) {
+safe_read_stream(void *ptr, size_t size, FILE *stream) {
     errno = 0;
     ssize_t total = 0, bytes_to_read = size;
     while (total < bytes_to_read) {
-        size_t n = fread((char*)ptr + total, 1, bytes_to_read - total, stream);
+        size_t n = fread((char *)ptr + total, 1, bytes_to_read - total, stream);
         if (n > 0) total += n;
         else {
-            if (!ferror(stream)) break;  // eof
+            if (!ferror(stream)) break; // eof
             if (errno != EINTR) return -1;
             clearerr(stream);
         }
@@ -214,26 +259,34 @@ safe_read_stream(void* ptr, size_t size, FILE* stream) {
     return total;
 }
 
-static char*
-read_full_file(const char* filename, size_t *sz) {
-    FILE* file = NULL;
+static char *
+read_full_file(const char *filename, size_t *sz) {
+    FILE *file = NULL;
     errno = EINTR;
     while (file == NULL && errno == EINTR) file = fopen(filename, "rb");
     if (!file) return NULL;
     fseek(file, 0, SEEK_END);
     unsigned long file_size = ftell(file);
     rewind(file);
-    char* buffer = (char*)malloc(file_size + 1); // +1 for the null terminator
+    char *buffer = (char *)malloc(file_size + 1); // +1 for the null terminator
     if (!buffer) {
-        errno = EINTR; while (errno == EINTR && fclose(file) != 0);
+        errno = EINTR;
+        while (errno == EINTR && fclose(file) != 0);
         errno = ENOMEM;
         return NULL;
     }
     ssize_t q = safe_read_stream(buffer, file_size, file);
     int saved = errno;
-    errno = EINTR; while (errno == EINTR && fclose(file) != 0);
+    errno = EINTR;
+    while (errno == EINTR && fclose(file) != 0);
     errno = saved;
-    if (q < 0) { free(buffer); buffer = NULL; if (sz) *sz = 0; }
-    else { if (sz) { *sz = q; } buffer[q] = 0; }
+    if (q < 0) {
+        free(buffer);
+        buffer = NULL;
+        if (sz) *sz = 0;
+    } else {
+        if (sz) { *sz = q; }
+        buffer[q] = 0;
+    }
     return buffer;
 }

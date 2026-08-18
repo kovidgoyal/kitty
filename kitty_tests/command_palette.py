@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2024, Kovid Goyal <kovid at kovidgoyal.net>
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestCommandPalette(BaseTest):
-
     def test_collect_keys_data(self):
         from kittens.command_palette.main import collect_keys_data
         from kitty.actions import groups
+
         opts = self.set_options()
         data = collect_keys_data(opts)
         self.assertIn('modes', data)
@@ -45,6 +45,7 @@ class TestCommandPalette(BaseTest):
     def test_collect_keys_categories_ordered(self):
         from kittens.command_palette.main import collect_keys_data
         from kitty.actions import groups
+
         opts = self.set_options()
         data = collect_keys_data(opts)
         default_mode = data['modes']['']
@@ -59,6 +60,7 @@ class TestCommandPalette(BaseTest):
 
     def test_collect_keys_bindings_sorted(self):
         from kittens.command_palette.main import collect_keys_data
+
         opts = self.set_options()
         data = collect_keys_data(opts)
         # Within each category, mapped entries (non-empty key) come first sorted by key,
@@ -69,12 +71,11 @@ class TestCommandPalette(BaseTest):
                 if b['key'] == '':
                     seen_unmapped = True
                 elif seen_unmapped:
-                    self.fail(
-                        f'In category {cat_name!r}, mapped binding {b!r} follows an unmapped one'
-                    )
+                    self.fail(f'In category {cat_name!r}, mapped binding {b!r} follows an unmapped one')
 
     def test_collect_keys_has_help_text(self):
         from kittens.command_palette.main import collect_keys_data
+
         opts = self.set_options()
         data = collect_keys_data(opts)
         # At least some bindings should have help text
@@ -90,6 +91,7 @@ class TestCommandPalette(BaseTest):
 
     def test_ordering_arrays_present(self):
         from kittens.command_palette.main import collect_keys_data
+
         opts = self.set_options()
         data = collect_keys_data(opts)
         # mode_order should list all modes
@@ -109,6 +111,7 @@ class TestCommandPalette(BaseTest):
 
     def test_always_includes_unmapped_actions(self):
         from kittens.command_palette.main import collect_keys_data
+
         opts = self.set_options()
         data = collect_keys_data(opts)
         # Unmapped actions (empty key) are always included
@@ -127,6 +130,7 @@ class TestCommandPalette(BaseTest):
     def test_alias_resolution(self):
         from kittens.command_palette.main import collect_keys_data
         from kitty.options.utils import ActionAlias, AliasMap, parse_map
+
         opts = self.set_options()
         # Set up action aliases: launch_tab (bound) and launch_bg (unbound)
         alias_map = AliasMap()
@@ -142,8 +146,7 @@ class TestCommandPalette(BaseTest):
         data = collect_keys_data(opts)
 
         # Aliases should have their own section
-        self.assertIn('Action aliases', data['modes'][''],
-                       'Aliases should have a dedicated section')
+        self.assertIn('Action aliases', data['modes'][''], 'Aliases should have a dedicated section')
         alias_section = data['modes']['']['Action aliases']
 
         # Bound alias should appear in the alias section with its key
@@ -164,12 +167,12 @@ class TestCommandPalette(BaseTest):
             if cat_name == 'Action aliases':
                 continue
             for b in bindings:
-                self.assertNotEqual(b.get('alias'), 'launch_tab',
-                                    f'Alias binding should not appear in {cat_name!r}')
+                self.assertNotEqual(b.get('alias'), 'launch_tab', f'Alias binding should not appear in {cat_name!r}')
 
     def test_kitten_alias_section(self):
         from kittens.command_palette.main import collect_keys_data
         from kitty.options.utils import ActionAlias, AliasMap
+
         opts = self.set_options()
         # Set up a kitten alias: kitten hints -> kitten hints --hints-offset=0
         alias_map = AliasMap()
@@ -177,8 +180,7 @@ class TestCommandPalette(BaseTest):
         opts.alias_map = alias_map
 
         data = collect_keys_data(opts)
-        self.assertIn('Kitten aliases', data['modes'][''],
-                       'Kitten aliases should have a dedicated section')
+        self.assertIn('Kitten aliases', data['modes'][''], 'Kitten aliases should have a dedicated section')
         kitten_section = data['modes']['']['Kitten aliases']
         found = [b for b in kitten_section if b['action_display'] == 'kitten hints']
         self.ae(len(found), 1, 'Kitten alias should appear exactly once')
@@ -188,6 +190,7 @@ class TestCommandPalette(BaseTest):
     def test_combine_actions_section(self):
         from kittens.command_palette.main import collect_keys_data
         from kitty.options.utils import parse_map
+
         opts = self.set_options()
         # Add a combine keybinding
         for kd in parse_map('f2 combine : new_tab : launch vim'):
@@ -197,8 +200,7 @@ class TestCommandPalette(BaseTest):
 
         data = collect_keys_data(opts)
         # Combine bindings should have their own section
-        self.assertIn('Combined actions', data['modes'][''],
-                       'Combine bindings should have a dedicated section')
+        self.assertIn('Combined actions', data['modes'][''], 'Combine bindings should have a dedicated section')
         combine_section = data['modes']['']['Combined actions']
         found = [b for b in combine_section if b['action'] == 'combine']
         self.assertTrue(len(found) > 0, 'Combine binding should be in the section')
@@ -207,6 +209,7 @@ class TestCommandPalette(BaseTest):
     def test_no_duplicate_alias_entries(self):
         from kittens.command_palette.main import collect_keys_data
         from kitty.options.utils import ActionAlias, AliasMap, parse_map
+
         opts = self.set_options()
         # Set up aliases, some bound to keys and some not
         alias_map = AliasMap()
@@ -228,8 +231,7 @@ class TestCommandPalette(BaseTest):
         # Each alias should appear exactly once
         seen: set[str] = set()
         for cat_name, alias_name in alias_entries:
-            self.assertNotIn(alias_name, seen,
-                             f'Alias {alias_name!r} appears in multiple places')
+            self.assertNotIn(alias_name, seen, f'Alias {alias_name!r} appears in multiple places')
             seen.add(alias_name)
 
     def test_unmapped_actions_sorted_order(self):

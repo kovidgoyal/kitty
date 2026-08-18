@@ -12,6 +12,7 @@ from kitty.types import run_once
 def xdg_data_dirs() -> tuple[str, ...]:
     return tuple(os.environ.get('XDG_DATA_DIRS', '/usr/local/share/:/usr/share/').split(os.pathsep))
 
+
 @run_once
 def xdg_data_home() -> str:
     return os.environ.get('XDG_DATA_HOME', os.path.expanduser('~/.local/share/'))
@@ -20,6 +21,7 @@ def xdg_data_home() -> str:
 @run_once
 def icon_dirs() -> list[str]:
     ans = []
+
     def a(x: str) -> None:
         if os.path.isdir(x):
             ans.append(x)
@@ -32,7 +34,6 @@ def icon_dirs() -> list[str]:
 
 
 class XDGIconCache:
-
     def __init__(self) -> None:
         self.existing_icon_names: set[str] = set()
         self.scanned = False
@@ -70,7 +71,7 @@ class XDGIconCache:
 
     def scan_theme_dir(self, base: str) -> None:
         with suppress(OSError):
-            for (dirpath, dirnames, filenames) in os.walk(base):
+            for dirpath, dirnames, filenames in os.walk(base):
                 for q in filenames:
                     icon_name, sep, ext = q.lower().rpartition('.')
                     if sep == '.' and ext in ('svg', 'png', 'xpm'):
@@ -98,7 +99,7 @@ class AppIconCache:
         for d in xdg_data_dirs():
             d = os.path.join(d, 'applications')
             with suppress(OSError):
-                for (dirpath, dirnames, filenames) in os.walk(d):
+                for dirpath, dirnames, filenames in os.walk(d):
                     for fname in filenames:
                         if fname.endswith('.desktop'):
                             path = os.path.join(dirpath, fname)

@@ -22,12 +22,11 @@ if TYPE_CHECKING:
 
 
 class Action(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     action+/str: The action to perform. Of the form: action [optional args...]
     match_window/str: Window to run the action on
     self/bool: Whether to use the window this command is run in as the active window
-    '''
+    """
 
     short_desc = 'Run the specified mappable action'
     desc = (
@@ -36,7 +35,8 @@ class Action(RemoteCommand):
         ' so for best results specify all arguments as single string on the command line in the same format as you would'
         ' use for that action in kitty.conf.'
     )
-    options_spec = '''\
+    options_spec = (
+        """\
 --self
 type=bool-set
 Run the action on the window this command is run in instead of the active window.
@@ -47,11 +47,16 @@ type=bool-set
 default=false
 Don't wait for a response indicating the success of the action. Note that
 using this option means that you will not be notified of failures.
-''' + '\n\n' + MATCH_WINDOW_OPTION
+"""
+        + '\n\n'
+        + MATCH_WINDOW_OPTION
+    )
 
     args = RemoteCommand.Args(
-        spec='ACTION [ARGS FOR ACTION...]', json_field='action', minimum_count=1,
-        completion=RemoteCommand.CompletionSpec.from_string('type:special group:complete_actions')
+        spec='ACTION [ARGS FOR ACTION...]',
+        json_field='action',
+        minimum_count=1,
+        completion=RemoteCommand.CompletionSpec.from_string('type:special group:complete_actions'),
     )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:

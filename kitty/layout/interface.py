@@ -25,19 +25,12 @@ KeyType = tuple[str, int, int, str]
 class CreateLayoutObjectFor:
     cache: dict[KeyType, Layout] = {}
 
-    def __call__(
-        self,
-        name: str,
-        os_window_id: int,
-        tab_id: int,
-        layout_opts: str = ''
-    ) -> Layout:
+    def __call__(self, name: str, os_window_id: int, tab_id: int, layout_opts: str = '') -> Layout:
         key = name, os_window_id, tab_id, layout_opts
         ans = create_layout_object_for.cache.get(key)
         if ans is None:
             name, layout_opts = name.partition(':')[::2]
-            ans = create_layout_object_for.cache[key] = all_layouts[name](
-                os_window_id, tab_id, layout_opts)
+            ans = create_layout_object_for.cache[key] = all_layouts[name](os_window_id, tab_id, layout_opts)
         return ans
 
 

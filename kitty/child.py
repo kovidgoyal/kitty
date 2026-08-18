@@ -9,7 +9,7 @@ from collections.abc import Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager, suppress
 from itertools import count
 from time import monotonic
-from typing import TYPE_CHECKING, DefaultDict, Optional, TypedDict
+from typing import TYPE_CHECKING, Any, DefaultDict, Optional, TypedDict
 
 import kitty.fast_data_types as fast_data_types
 
@@ -26,6 +26,8 @@ if is_macos:
     from kitty.fast_data_types import cmdline_of_process as cmdline_
     from kitty.fast_data_types import cwd_of_process as _cwd
     from kitty.fast_data_types import environ_of_process as _environ_of_process
+    from kitty.fast_data_types import memory_of_process as _memory_of_process
+    from kitty.fast_data_types import ppid_of_process as _ppid_of_process
     from kitty.fast_data_types import process_group_map as _process_group_map
 
     def cwd_of_process(pid: int) -> str:
@@ -44,6 +46,30 @@ if is_macos:
 
     def cmdline_of_pid(pid: int) -> list[str]:
         return cmdline_(pid)
+
+    def _get_descendants_of_macos(pid: int) -> set[int]:
+        children_map: DefaultDict[int, list[int]] = defaultdict(list)
+        for p in fast_data_types.get_all_processes():
+            with suppress(Exception):
+                children_map[_ppid_of_process(p)].append(p)
+        result: set[int] = set()
+        stack = list(children_map.get(pid, []))
+        while stack:
+            child = stack.pop()
+            if child not in result:
+                result.add(child)
+                stack.extend(children_map.get(child, []))
+        return result
+
+    def memory_used_by_process_tree_rooted_at(pid: int, check_if_cgroup_root: bool = False) -> int:
+        with suppress(Exception):
+            pids = _get_descendants_of_macos(pid)
+            total = _memory_of_process(pid)  # raises if pid doesn't exist
+            for p in pids:
+                with suppress(Exception):
+                    total += _memory_of_process(p)
+            return total
+        return -1
 else:
 
     def cmdline_of_pid(pid: int) -> list[str]:
@@ -51,14 +77,17 @@ else:
             return list(filter(None, f.read().decode('utf-8').split('\0')))
 
     if is_freebsd:
+
         def cwd_of_process(pid: int) -> str:
             import subprocess
+
             cp = subprocess.run(['pwdx', str(pid)], capture_output=True)
             if cp.returncode != 0:
                 raise ValueError(f'Failed to find cwd of process with pid: {pid}')
             ans = cp.stdout.decode('utf-8', 'replace').split()[1]
             return os.path.realpath(ans, strict=True)
     else:
+
         def cwd_of_process(pid: int) -> str:
             # We use realpath instead of readlink to match macOS behavior where
             # the underlying OS API returns real paths.
@@ -91,6 +120,63 @@ else:
     def abspath_of_exe(pid: int) -> str:
         return os.path.realpath(f'/proc/{pid}/exe', strict=True)
 
+    def _get_descendants_of(pid: int) -> set[int]:
+        result: set[int] = set()
+        stack = [pid]
+        while stack:
+            current = stack.pop()
+            with suppress(OSError):
+                with open(f'/proc/{current}/task/{current}/children') as f:
+                    for child_str in f.read().split():
+                        child = int(child_str)
+                        if child not in result:
+                            result.add(child)
+                            stack.append(child)
+        return result
+
+    def _memory_from_smaps_rollup(pid: int) -> int:
+        with open(f'/proc/{pid}/smaps_rollup') as f:
+            for line in f:
+                if line.startswith('Pss:'):
+                    return int(line.split()[1]) * 1024
+        return 0
+
+    def memory_used_by_process_tree_rooted_at(pid: int, check_if_cgroup_root: bool = False) -> int:
+        with suppress(Exception):
+            with open(f'/proc/{pid}/cgroup') as f:
+                cgroup_line = f.readline().strip()
+            cgroup_path = cgroup_line.split(':')[2].lstrip('/')
+            cgroup_dir = os.path.join('/sys/fs/cgroup', cgroup_path)
+
+            use_cgroup = True
+            if check_if_cgroup_root:
+                with suppress(OSError):
+                    with open(os.path.join(cgroup_dir, 'cgroup.procs')) as f:
+                        cgroup_pids = {int(x) for x in f.read().split() if x}
+                    descendants = _get_descendants_of(pid)
+                    descendants.add(pid)
+                    use_cgroup = cgroup_pids <= descendants
+
+            if use_cgroup:
+                target_keys = {'anon', 'shmem', 'kernel', 'sock', 'zswap'}
+                mem_bytes = 0
+                with open(os.path.join(cgroup_dir, 'memory.stat')) as f:
+                    for line in f:
+                        parts = line.split()
+                        if parts[0] in target_keys:
+                            mem_bytes += int(parts[1])
+                return mem_bytes
+
+            # cgroup contains processes outside our tree; sum PSS per process
+            descendants = _get_descendants_of(pid)
+            descendants.add(pid)
+            mem_bytes = 0
+            for p in descendants:
+                with suppress(OSError):
+                    mem_bytes += _memory_from_smaps_rollup(p)
+            return mem_bytes
+        return -1
+
 
 @run_once
 def checked_terminfo_dir() -> str | None:
@@ -98,7 +184,6 @@ def checked_terminfo_dir() -> str | None:
 
 
 class CachedProcessData:
-
     cached_result: DefaultDict[int, list[int]] | None = None
     cache_active: bool = False
     cache_at: float = 0
@@ -150,6 +235,7 @@ def session_id(pids: Iterable[int]) -> int:
                 return sid
     return -1
 
+
 def parse_environ_block(data: str) -> dict[str, str]:
     """Parse a C environ block of environment variables into a dictionary."""
     # The block is usually raw data from the target process.  It might contain
@@ -158,15 +244,15 @@ def parse_environ_block(data: str) -> dict[str, str]:
     pos = 0
 
     while True:
-        next_pos = data.find("\0", pos)
+        next_pos = data.find('\0', pos)
         # nul byte at the beginning or double nul byte means finish
         if next_pos <= pos:
             break
         # there might not be an equals sign
-        equal_pos = data.find("=", pos, next_pos)
+        equal_pos = data.find('=', pos, next_pos)
         if equal_pos > pos:
             key = data[pos:equal_pos]
-            value = data[equal_pos + 1:next_pos]
+            value = data[equal_pos + 1 : next_pos]
             ret[key] = value
         pos = next_pos + 1
 
@@ -237,9 +323,9 @@ child_counter = count()
 
 
 class Child:
-
     child_fd: int | None = None
     pid: int | None = None
+    initial_termios_state: list[Any] | None = None
     forked = False
 
     def __init__(
@@ -274,18 +360,23 @@ class Child:
         self.stdin = stdin
         self.env = env or {}
         self.startup_command_via_shell_integration = startup_command_via_shell_integration
-        self.final_env:dict[str, str] = {}
+        self.final_env: dict[str, str] = {}
         self.is_default_shell = bool(self.argv and self.argv[0] == shell_path)
         self.should_run_via_run_shell_kitten = is_macos and self.is_default_shell
         self.hold = hold
 
     def get_final_env(self) -> tuple[dict[str, str], bool]:
         from kitty.options.utils import DELETE_ENV_VAR
+
         env = default_env().copy()
         opts = fast_data_types.get_options()
         boss = fast_data_types.get_boss()
-        if is_macos and env.get('LC_CTYPE') == 'UTF-8' and not getattr(sys, 'kitty_run_data').get(
-                'lc_ctype_before_python') and not getattr(default_env, 'lc_ctype_set_by_user', False):
+        if (
+            is_macos
+            and env.get('LC_CTYPE') == 'UTF-8'
+            and not getattr(sys, 'kitty_run_data').get('lc_ctype_before_python')
+            and not getattr(default_env, 'lc_ctype_set_by_user', False)
+        ):
             del env['LC_CTYPE']
         env.update(self.env)
         env['TERM'] = opts.term
@@ -314,6 +405,7 @@ class Child:
         self.unmodified_argv = list(self.argv)
         if not self.should_run_via_run_shell_kitten and 'disabled' not in opts.shell_integration:
             from .shell_integration import modify_shell_environ
+
             modify_shell_environ(opts, env, self.argv)
         env = {k: v for k, v in env.items() if v is not DELETE_ENV_VAR}
         if self.is_clone_launch:
@@ -327,6 +419,7 @@ class Child:
                 env['KITTY_SI_RUN_COMMAND_AT_STARTUP'] = self.startup_command_via_shell_integration
             else:
                 from .shell_integration import join
+
                 scmd = self.argv or resolved_shell(fast_data_types.get_options())
                 try:
                     env['KITTY_SI_RUN_COMMAND_AT_STARTUP'] = join(scmd[0], self.startup_command_via_shell_integration)
@@ -356,7 +449,7 @@ class Child:
         cwd = self.cwd
         pass_fds = self.pass_fds
         if self.remote_control_fd > -1:
-            pass_fds += self.remote_control_fd,
+            pass_fds += (self.remote_control_fd,)
         if self.should_run_via_run_shell_kitten or must_run_startup_command_via_kitten:
             # bash will only source ~/.bash_profile if it detects it is a login
             # shell (see the invocation section of the bash man page), which it
@@ -373,6 +466,7 @@ class Child:
             # xterm, urxvt, konsole and gnome-terminal do not do it in my
             # testing.
             import shlex
+
             ksi = ' '.join(opts.shell_integration)
             if ksi == 'invalid':
                 ksi = 'enabled'
@@ -388,6 +482,7 @@ class Child:
                 # login closes inherited file descriptors so dont use it when
                 # forward_stdio or pass_fds are used.
                 import pwd
+
                 user = pwd.getpwuid(os.geteuid()).pw_name
                 if cwd:
                     argv.append('--cwd=' + cwd)
@@ -400,8 +495,21 @@ class Child:
             final_exe = argv[0]
         env = tuple(f'{k}={v}' for k, v in self.final_env.items())
         pid = fast_data_types.spawn(
-            final_exe, cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd,
-            ready_read_fd, ready_write_fd, tuple(handled_signals), kitten_exe(), opts.forward_stdio, pass_fds)
+            final_exe,
+            cwd,
+            tuple(argv),
+            env,
+            master,
+            slave,
+            stdin_read_fd,
+            stdin_write_fd,
+            ready_read_fd,
+            ready_write_fd,
+            tuple(handled_signals),
+            kitten_exe(),
+            opts.forward_stdio,
+            pass_fds,
+        )
         os.close(slave)
         self.pid = pid
         self.child_fd = master
@@ -419,7 +527,7 @@ class Child:
             except NotImplementedError:
                 pass
             except OSError as err:
-                log_error("Could not move child process into a systemd scope: " + str(err))
+                log_error('Could not move child process into a systemd scope: ' + str(err))
         return pid
 
     def __del__(self) -> None:
@@ -569,6 +677,7 @@ class Child:
 
     def send_signal_for_key(self, key_num: bytes) -> bool:
         import signal
+
         if self.child_fd is None:
             return False
         t = termios.tcgetattr(self.child_fd)
@@ -588,8 +697,13 @@ class Child:
         return True
 
     def reset_termios_state(self, when: int = termios.TCSANOW) -> None:
-        if (s := getattr(self, 'initial_termios_state', None)) and self.child_fd is not None:
+        if self.initial_termios_state is not None and self.child_fd is not None:
             try:
-                termios.tcsetattr(self.child_fd, when, s)
+                termios.tcsetattr(self.child_fd, when, self.initial_termios_state)
             except OSError:
                 pass
+
+    def get_memory_used_by_child(self) -> int:
+        if self.pid is None:
+            return -1
+        return memory_used_by_process_tree_rooted_at(self.pid, check_if_cgroup_root=False)

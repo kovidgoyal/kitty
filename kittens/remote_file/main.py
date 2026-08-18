@@ -15,7 +15,10 @@ is_ssh_kitten_sentinel = '!#*&$#($ssh-kitten)(##$'
 
 
 def option_text() -> str:
-    return '''\
+    # The -h short alias was intentionally dropped from --hostname below:
+    # Go's cli reserves -h for --help, and the only caller (internal to
+    # kitty) uses the long --hostname form.
+    return """\
 --mode -m
 choices=ask,edit
 default=ask
@@ -26,19 +29,13 @@ Which mode to operate in.
 Path to the remote file.
 
 
-''' + (
-        # The -h short alias was intentionally dropped for --hostname below:
-        # Go's cli reserves -h for --help, and the only caller (internal to
-        # kitty) uses the long --hostname form.
-        '''\
 --hostname
 Hostname of the remote host.
 
 
 --ssh-connection-data
 The data used to connect over ssh.
-'''
-    )
+"""
 
 
 def main(args: list[str]) -> None:
@@ -49,6 +46,7 @@ def main(args: list[str]) -> None:
 def handle_result(args: list[str], data: str | None, target_window_id: int, boss: BossType) -> None:
     if data:
         from kitty.fast_data_types import get_options
+
         cmd = command_for_open(get_options().open_url_with)
         open_cmd(cmd, data)
 

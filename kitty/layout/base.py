@@ -23,7 +23,6 @@ class BorderLine(NamedTuple):
 
 
 class LayoutOpts:
-
     def __init__(self, data: dict[str, str]):
         pass
 
@@ -37,6 +36,11 @@ class LayoutData(NamedTuple):
     space_before: int = 0
     space_after: int = 0
     content_size: int = 0
+    # The portion of space_before/space_after that is compensatory padding
+    # arising from the window size not being an exact multiple of the cell size
+    # (as opposed to the intentional margin/border/padding decoration).
+    compensatory_before: int = 0
+    compensatory_after: int = 0
 
 
 DecorationPairs = Sequence[tuple[int, int]]
@@ -47,6 +51,7 @@ ListOfWindows = list[WindowType]
 class LayoutGlobalData:
     draw_minimal_borders: bool = True
     draw_active_borders: bool = True
+    fill_padding_with_neighboring_cell: bool = False
     alignment_x: int = 0
     alignment_y: int = 0
 
@@ -75,6 +80,7 @@ def effective_draw_minimal_borders(opts: Options, has_more_than_one_visible_grou
 def set_layout_options(opts: Options) -> None:
     lgd.draw_minimal_borders = effective_draw_minimal_borders(opts)
     lgd.draw_active_borders = opts.active_border_color is not None
+    lgd.fill_padding_with_neighboring_cell = opts.padding_fill_strategy == 'neighboring_cell'
     lgd.alignment_x = -1 if opts.placement_strategy.endswith('left') else 1 if opts.placement_strategy.endswith('right') else 0
     lgd.alignment_y = -1 if opts.placement_strategy.startswith('top') else 1 if opts.placement_strategy.startswith('bottom') else 0
 
@@ -87,10 +93,7 @@ def convert_bias_map(bias: dict[int, float], number_of_windows: int, number_of_c
     return distribute_indexed_bias(base_bias, bias)
 
 
-def calculate_cells_map(
-    bias: None | Sequence[float] | dict[int, float],
-    number_of_windows: int, number_of_cells: int
-) -> list[int]:
+def calculate_cells_map(bias: None | Sequence[float] | dict[int, float], number_of_windows: int, number_of_cells: int) -> list[int]:
     if isinstance(bias, dict):
         b: dict[int, float] = cast(dict[int, float], bias)
         bias = convert_bias_map(b, number_of_windows, number_of_cells)
@@ -112,10 +115,7 @@ def calculate_cells_map(
 
 
 def layout_dimension(
-    start_at: int, length: int, cell_length: int,
-    decoration_pairs: DecorationPairs,
-    alignment: int = 0,
-    bias: None | Sequence[float] | dict[int, float] = None
+    start_at: int, length: int, cell_length: int, decoration_pairs: DecorationPairs, alignment: int = 0, bias: None | Sequence[float] | dict[int, float] = None
 ) -> LayoutDimension:
     number_of_windows = len(decoration_pairs)
     number_of_cells = max(0, length // cell_length)
@@ -148,7 +148,10 @@ def layout_dimension(
             after_space = (start_at + length) - (pos + content_size)
         else:
             after_space = after_dec
-        yield LayoutData(pos, cells_per_window, before_space, after_space, content_size)
+        # Whatever space is present beyond the intentional decoration is the
+        # compensatory padding from the size mismatch (only ever non-zero for
+        # the first/last windows, which absorb the leading/trailing remainder).
+        yield LayoutData(pos, cells_per_window, before_space, after_space, content_size, before_space - before_dec, after_space - after_dec)
         pos += content_size + after_space
 
 
@@ -160,28 +163,68 @@ class Rect(NamedTuple):
 
 
 def blank_rects_for_window(wg: WindowGeometry) -> Generator[Rect, None, None]:
-    left_width, right_width = wg.spaces.left, wg.spaces.right
-    top_height, bottom_height = wg.spaces.top, wg.spaces.bottom
+    left, top, right, bottom = wg.left, wg.top, wg.right, wg.bottom
+    left_width, top_height, right_width, bottom_height = wg.spaces
+    if lgd.fill_padding_with_neighboring_cell:
+        # The compensatory padding is the innermost slice of the spaces, adjacent
+        # to the cells. It is drawn separately by the padding shader so that it
+        # matches its neighboring cell. Exclude it here by expanding the content
+        # box over it and only painting the remaining outer decoration frame in
+        # the background color.
+        c = wg.compensatory
+        left -= c.left
+        top -= c.top
+        right += c.right
+        bottom += c.bottom
+        left_width -= c.left
+        top_height -= c.top
+        right_width -= c.right
+        bottom_height -= c.bottom
     if left_width > 0:
-        yield Rect(wg.left - left_width, wg.top - top_height, wg.left, wg.bottom + bottom_height)
+        yield Rect(left - left_width, top - top_height, left, bottom + bottom_height)
     if top_height > 0:
-        yield Rect(wg.left, wg.top - top_height, wg.right + right_width, wg.top)
+        yield Rect(left, top - top_height, right + right_width, top)
     if right_width > 0:
-        yield Rect(wg.right, wg.top, wg.right + right_width, wg.bottom + bottom_height)
+        yield Rect(right, top, right + right_width, bottom + bottom_height)
     if bottom_height > 0:
-        yield Rect(wg.left, wg.bottom, wg.right, wg.bottom + bottom_height)
+        yield Rect(left, bottom, right, bottom + bottom_height)
 
 
-def window_geometry(xstart: int, xnum: int, ystart: int, ynum: int, left: int, top: int, right: int, bottom: int) -> WindowGeometry:
+def window_geometry(
+    xstart: int,
+    xnum: int,
+    ystart: int,
+    ynum: int,
+    left: int,
+    top: int,
+    right: int,
+    bottom: int,
+    compensatory: Edges = Edges(),
+) -> WindowGeometry:
     return WindowGeometry(
-        left=xstart, top=ystart, xnum=max(0, xnum), ynum=max(0, ynum),
-        right=xstart + lgd.cell_width * xnum, bottom=ystart + lgd.cell_height * ynum,
-        spaces=Edges(left, top, right, bottom)
+        left=xstart,
+        top=ystart,
+        xnum=max(0, xnum),
+        ynum=max(0, ynum),
+        right=xstart + lgd.cell_width * xnum,
+        bottom=ystart + lgd.cell_height * ynum,
+        spaces=Edges(left, top, right, bottom),
+        compensatory=compensatory,
     )
 
 
 def window_geometry_from_layouts(x: LayoutData, y: LayoutData) -> WindowGeometry:
-    return window_geometry(x.content_pos, x.cells_per_window, y.content_pos, y.cells_per_window, x.space_before, y.space_before, x.space_after, y.space_after)
+    return window_geometry(
+        x.content_pos,
+        x.cells_per_window,
+        y.content_pos,
+        y.cells_per_window,
+        x.space_before,
+        y.space_before,
+        x.space_after,
+        y.space_after,
+        Edges(x.compensatory_before, y.compensatory_before, x.compensatory_after, y.compensatory_after),
+    )
 
 
 def layout_single_window(
@@ -203,7 +246,7 @@ def normalize_biases(biases: list[float]) -> list[float]:
     s = sum(biases)
     if s == 1.0:
         return biases
-    return [x/s for x in biases]
+    return [x / s for x in biases]
 
 
 def distribute_indexed_bias(base_bias: Sequence[float], index_bias_map: dict[int, float]) -> Sequence[float]:
@@ -228,7 +271,8 @@ def create_window_id_map_for_unserialize(all_windows: WindowList) -> dict[int, i
 
 
 class DragOverlayMode(Enum):
-    ' Controls drag-and-drop overlay display and valid direction axis for body drops '
+    "Controls drag-and-drop overlay display and valid direction axis for body drops"
+
     full = 'full'  # full-window overlay, positional swap (Stack and any unrecognised layout)
     axis_x = 'axis_x'  # top/bottom halves only (Vertical, Tall, Grid)
     axis_y = 'axis_y'  # left/right halves only (Horizontal, Fat)
@@ -236,7 +280,6 @@ class DragOverlayMode(Enum):
 
 
 class Layout:
-
     name: str = ''
     needs_window_borders = True
     must_draw_borders = False  # can be overridden to customize behavior from kittens
@@ -280,6 +323,7 @@ class Layout:
         if idx is None or not increment:
             return False
         return self.apply_bias(idx, increment, all_windows, is_horizontal)
+
     drag_resize_window = modify_size_of_window
 
     def parse_layout_opts(self, layout_opts: str | None = None) -> LayoutOpts:
@@ -322,13 +366,13 @@ class Layout:
         horizontal: bool,
         after: bool,
     ) -> None:
-        '''
+        """
         Reposition window as a linear neighbour of next_to.
 
         For axis_x/axis_y layouts this performs a positional insert that preserves
         the order of all other groups. For 'full' layouts it falls back to a swap.
         The Splits layout overrides this with tree-based logic.
-        '''
+        """
         src_wg = all_windows.group_for_window(window)
         dest_wg = all_windows.group_for_window(next_to)
         if src_wg is None or dest_wg is None or src_wg.id == dest_wg.id:
@@ -341,8 +385,13 @@ class Layout:
             self.move_window_to_group(all_windows, dest_wg.id)
 
     def add_window(
-        self, all_windows: WindowList, window: WindowType, location: str | None = None,
-        overlay_for: int | None = None, put_overlay_behind: bool = False, bias: float | None = None,
+        self,
+        all_windows: WindowList,
+        window: WindowType,
+        location: str | None = None,
+        overlay_for: int | None = None,
+        put_overlay_behind: bool = False,
+        bias: float | None = None,
         next_to: WindowType | None = None,
     ) -> WindowType | None:
         if overlay_for is not None:
@@ -382,8 +431,8 @@ class Layout:
         fractional_bias = max(10, min(abs(bias), 90)) / 100
         h, v = self.calculate_bias_increment_for_a_single_cell(all_windows, True), self.calculate_bias_increment_for_a_single_cell(all_windows, False)
         nh, nv = lgd.central.width / lgd.cell_width, lgd.central.height / lgd.cell_height
-        f = max(-90, min(bias, 90)) / 100.
-        return self.bias_slot(all_windows, idx, fractional_bias, h * nh *f, v * nv * f)
+        f = max(-90, min(bias, 90)) / 100.0
+        return self.bias_slot(all_windows, idx, fractional_bias, h * nh * f, v * nv * f)
 
     def bias_slot(self, all_windows: WindowList, idx: int, fractional_bias: float, cell_increment_bias_h: float, cell_increment_bias_v: float) -> bool:
         return False
@@ -417,14 +466,18 @@ class Layout:
 
     def layout_single_window_group(self, wg: WindowGroup, add_blank_rects: bool = True) -> None:
         bw = 1 if self.must_draw_borders else 0
-        xdecoration_pairs = ((
-            wg.decoration('left', border_mult=bw, is_single_window=True),
-            wg.decoration('right', border_mult=bw, is_single_window=True),
-        ),)
-        ydecoration_pairs = ((
-            wg.decoration('top', border_mult=bw, is_single_window=True),
-            wg.decoration('bottom', border_mult=bw, is_single_window=True),
-        ),)
+        xdecoration_pairs = (
+            (
+                wg.decoration('left', border_mult=bw, is_single_window=True),
+                wg.decoration('right', border_mult=bw, is_single_window=True),
+            ),
+        )
+        ydecoration_pairs = (
+            (
+                wg.decoration('top', border_mult=bw, is_single_window=True),
+                wg.decoration('bottom', border_mult=bw, is_single_window=True),
+            ),
+        )
         geom = layout_single_window(xdecoration_pairs, ydecoration_pairs, xalignment=lgd.alignment_x, yalignment=lgd.alignment_y)
         wg.set_geometry(geom)
         if add_blank_rects:
@@ -437,11 +490,10 @@ class Layout:
         start: int | None = None,
         size: int | None = None,
         offset: int = 0,
-        border_mult: int = 1
+        border_mult: int = 1,
     ) -> LayoutDimension:
         decoration_pairs = tuple(
-            (g.decoration('left', border_mult=border_mult), g.decoration('right', border_mult=border_mult)) for i, g in
-            enumerate(groups) if i >= offset
+            (g.decoration('left', border_mult=border_mult), g.decoration('right', border_mult=border_mult)) for i, g in enumerate(groups) if i >= offset
         )
         if start is None:
             start = lgd.central.left
@@ -456,11 +508,10 @@ class Layout:
         start: int | None = None,
         size: int | None = None,
         offset: int = 0,
-        border_mult: int = 1
+        border_mult: int = 1,
     ) -> LayoutDimension:
         decoration_pairs = tuple(
-            (g.decoration('top', border_mult=border_mult), g.decoration('bottom', border_mult=border_mult)) for i, g in
-            enumerate(groups) if i >= offset
+            (g.decoration('top', border_mult=border_mult), g.decoration('bottom', border_mult=border_mult)) for i, g in enumerate(groups) if i >= offset
         )
         if start is None:
             start = lgd.central.top
@@ -503,7 +554,12 @@ class Layout:
         return True
 
     def drag_resize_target_windows(
-        self, click_window: WindowType, x: float, y: float, edges: int, all_windows: WindowList,
+        self,
+        click_window: WindowType,
+        x: float,
+        y: float,
+        edges: int,
+        all_windows: WindowList,
     ) -> WindowResizeDragData:
         return WindowResizeDragData(click_window.id, bool(edges & RIGHT_EDGE), click_window.id, bool(edges & BOTTOM_EDGE))
 
@@ -515,13 +571,23 @@ class Layout:
         return ans
 
     def unserialize(
-        self, s: dict[str, Any], all_windows: WindowList,
+        self,
+        s: dict[str, Any],
+        all_windows: WindowList,
         window_id_mapper: Callable[[WindowList], dict[int, int]] = create_window_id_map_for_unserialize,
+        apply_to_window_list: bool = True,
     ) -> bool:
+        """
+        apply_to_window_list=False computes the group id mapping without changing the
+        window list. Needed when restoring the state of more than one layout, since
+        only the layout being made current should order the windows.
+        """
         if s.get('class') != self.__class__.__name__:
             return False
-        window_id_map = create_window_id_map_for_unserialize(all_windows)
-        m = all_windows.unserialize_layout_state(s['all_windows'], window_id_map)
+        if 'all_windows' not in s:
+            return False
+        window_id_map = window_id_mapper(all_windows)
+        m = all_windows.unserialize_layout_state(s['all_windows'], window_id_map, apply=apply_to_window_list)
         if m is None:
             return False
         return self.set_layout_state(s, m.get)

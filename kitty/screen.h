@@ -24,9 +24,8 @@ typedef struct DnDCommand {
 } DnDCommand;
 
 typedef struct {
-    bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM, mCOLOR_PREFERENCE_NOTIFICATION,
-         mBRACKETED_PASTE, mFOCUS_TRACKING, mDECSACE, mHANDLE_TERMIOS_SIGNALS, mINBAND_RESIZE_NOTIFICATION,
-         mPASTE_EVENTS;
+    bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM, mCOLOR_PREFERENCE_NOTIFICATION, mBRACKETED_PASTE, mFOCUS_TRACKING,
+        mDECSACE, mHANDLE_TERMIOS_SIGNALS, mINBAND_RESIZE_NOTIFICATION, mPASTE_EVENTS, mVISIBILITY_REPORTS;
     MouseTrackingMode mouse_tracking_mode;
     MouseTrackingProtocol mouse_tracking_protocol;
 } ScreenModes;
@@ -36,7 +35,14 @@ typedef struct {
     bool in_left_half_of_cell;
 } SelectionBoundary;
 
-typedef enum SelectionExtendModes { EXTEND_CELL, EXTEND_WORD, EXTEND_LINE, EXTEND_LINE_FROM_BEGIN, EXTEND_LINE_FROM_POINT, EXTEND_WORD_AND_LINE_FROM_POINT } SelectionExtendMode;
+typedef enum SelectionExtendModes {
+    EXTEND_CELL,
+    EXTEND_WORD,
+    EXTEND_LINE,
+    EXTEND_LINE_FROM_BEGIN,
+    EXTEND_LINE_FROM_POINT,
+    EXTEND_WORD_AND_LINE_FROM_POINT
+} SelectionExtendMode;
 
 typedef struct {
     index_type x, x_limit;
@@ -105,7 +111,9 @@ typedef struct ExtraCursor {
 typedef struct ExtraCursors {
     ExtraCursor *locations;
     unsigned count, capacity;
-    struct { DynamicColor cursor, text; } color;
+    struct {
+        DynamicColor cursor, text;
+    } color;
     bool dirty;
 } ExtraCursors;
 
@@ -113,8 +121,8 @@ typedef struct ExtraCursors {
 typedef struct {
     PyObject_HEAD
 
-    unsigned int columns, lines, margin_top, margin_bottom, scrolled_by, pixel_scroll_offset_y;
-    double pending_scroll_pixels_x, pending_scroll_pixels_y;
+        unsigned int columns,
+        lines, margin_top, margin_bottom, scrolled_by, pixel_scroll_offset_y;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
     id_type window_id;
@@ -138,8 +146,8 @@ typedef struct {
     ScreenModes modes, saved_modes;
     ColorProfile *color_profile;
     monotonic_t start_visual_bell_at;
-    monotonic_t start_drag_overlay_at;  // 0 = inactive
-    uint8_t drag_overlay_quadrant;      // 1=left 2=right 3=top 4=bottom 0=none
+    monotonic_t start_drag_overlay_at; // 0 = inactive
+    uint8_t drag_overlay_quadrant;     // 1=left 2=right 3=top 4=bottom 0=none
 
     uint8_t *write_buf;
     size_t write_buf_sz, write_buf_used;
@@ -150,6 +158,7 @@ typedef struct {
     DisableLigature disable_ligatures;
     PyObject *marker;
     bool has_focus;
+    uint8_t visibility_state; // 0 = unknown, 1 = potentially visible, 2 = not visible
     bool has_activity_since_last_focus;
     hyperlink_id_type active_hyperlink_id;
     HYPERLINK_POOL_HANDLE hyperlink_pool;
@@ -161,17 +170,17 @@ typedef struct {
     } ignore_bells;
     union {
         struct {
-            unsigned int redraws_prompts_at_all: 1;
-            unsigned int uses_special_keys_for_cursor_movement: 1;
-            unsigned int supports_click_events: 1;
-            unsigned int relative_click_events: 1;
+            unsigned int redraws_prompts_at_all : 1;
+            unsigned int uses_special_keys_for_cursor_movement : 1;
+            unsigned int supports_click_events : 1;
+            unsigned int relative_click_events : 1;
         };
         unsigned int val;
     } prompt_settings;
     char display_window_char;
     ProgressBarState progress_state;
-    uint8_t progress_percent; // 0-100
-    monotonic_t progress_indeterminate_anim_at;  // animation start time for indeterminate progress
+    uint8_t progress_percent;                   // 0-100
+    monotonic_t progress_indeterminate_anim_at; // animation start time for indeterminate progress
     struct {
         char ch;
         uint8_t *canvas;
@@ -205,6 +214,12 @@ typedef struct {
     } paused_rendering;
     CharsetState charset;
     ListOfChars *lc;
+    struct {
+        // Memoized text cache indices for the ('\t', diff) text written by
+        // screen_tab(), keyed by diff. Entries are idx + 1 with 0 meaning
+        // unset. Must be cleared when the text cache is garbage collected.
+        char_type idx_plus_1[16];
+    } tab_cache;
     monotonic_t parsing_at;
     ExtraCursors extra_cursors;
     struct {
@@ -216,7 +231,8 @@ typedef struct {
 #define pixel_scroll_enabled(screen) (OPT(pixel_scroll) && !screen->paused_rendering.expires_at && screen->linebuf == screen->main_linebuf)
 #define render_lines_for_screen(screen) (screen->lines + pixel_scroll_enabled(screen))
 
-void screen_align(Screen*);
+void screen_align(Screen *);
+void screen_garbage_collect_text_cache(Screen *screen);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
 void screen_restore_modes(Screen *);
@@ -224,8 +240,9 @@ void screen_restore_mode(Screen *, unsigned int);
 void screen_save_modes(Screen *);
 void screen_save_mode(Screen *, unsigned int);
 bool write_escape_code_to_child(Screen *self, unsigned char which, const char *data);
-void screen_cursor_position(Screen*, unsigned int, unsigned int);
-void screen_cursor_move(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/, bool allow_move_to_previous_line);
+void screen_visibility_changed(Screen *self, bool potentially_visible);
+void screen_cursor_position(Screen *, unsigned int, unsigned int);
+void screen_cursor_move(Screen *self, unsigned int count /*=1*/, int move_direction /*=-1*/, bool allow_move_to_previous_line);
 void screen_erase_in_line(Screen *, unsigned int, bool);
 void screen_erase_in_display(Screen *, unsigned int, bool);
 void screen_draw_text(Screen *self, const uint32_t *chars, size_t num_chars);
@@ -241,6 +258,7 @@ void screen_scroll(Screen *self, unsigned int count);
 void screen_reverse_scroll(Screen *self, unsigned int count);
 void screen_reverse_scroll_and_fill_from_scrollback(Screen *self, unsigned int count);
 void screen_reset(Screen *self);
+void screen_soft_reset(Screen *self);
 void screen_set_tab_stop(Screen *self);
 void screen_tab(Screen *self);
 void screen_backtab(Screen *self, unsigned int);
@@ -251,17 +269,17 @@ void screen_reset_mode(Screen *self, unsigned int mode);
 void screen_decsace(Screen *self, unsigned int);
 void screen_xtversion(Screen *self, unsigned int);
 void screen_insert_characters(Screen *self, unsigned int count);
-void screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/);
+void screen_cursor_up(Screen *self, unsigned int count /*=1*/, bool do_carriage_return /*=false*/, int move_direction /*=-1*/);
 void screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary);
 void screen_cursor_to_column(Screen *self, unsigned int column);
-void screen_cursor_down(Screen *self, unsigned int count/*=1*/);
-void screen_cursor_forward(Screen *self, unsigned int count/*=1*/);
-void screen_cursor_down1(Screen *self, unsigned int count/*=1*/);
-void screen_cursor_up1(Screen *self, unsigned int count/*=1*/);
+void screen_cursor_down(Screen *self, unsigned int count /*=1*/);
+void screen_cursor_forward(Screen *self, unsigned int count /*=1*/);
+void screen_cursor_down1(Screen *self, unsigned int count /*=1*/);
+void screen_cursor_up1(Screen *self, unsigned int count /*=1*/);
 void screen_cursor_to_line(Screen *screen, unsigned int line);
 MouseShape screen_pointer_shape(Screen *self);
-void screen_insert_lines(Screen *self, unsigned int count/*=1*/);
-void screen_delete_lines(Screen *self, unsigned int count/*=1*/);
+void screen_insert_lines(Screen *self, unsigned int count /*=1*/);
+void screen_delete_lines(Screen *self, unsigned int count /*=1*/);
 void screen_repeat_character(Screen *self, unsigned int count);
 void screen_delete_characters(Screen *self, unsigned int count);
 void screen_erase_characters(Screen *self, unsigned int count);
@@ -270,17 +288,17 @@ void screen_push_colors(Screen *, unsigned int);
 void screen_pop_colors(Screen *, unsigned int);
 void screen_report_color_stack(Screen *);
 void screen_handle_kitty_dcs(Screen *, const char *callback_name, PyObject *cmd);
-void set_title(Screen *self, PyObject*);
+void set_title(Screen *self, PyObject *);
 void osc_context(Screen *self, PyObject *ctx);
-void desktop_notify(Screen *self, unsigned int, PyObject*);
-void set_icon(Screen *self, PyObject*);
-void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
-void color_control(Screen *self, unsigned int code, PyObject*);
-void clipboard_control(Screen *self, int code, PyObject*);
+void desktop_notify(Screen *self, unsigned int, PyObject *);
+void set_icon(Screen *self, PyObject *);
+void set_dynamic_color(Screen *self, unsigned int code, PyObject *);
+void color_control(Screen *self, unsigned int code, PyObject *);
+void clipboard_control(Screen *self, int code, PyObject *);
 void shell_prompt_marking(Screen *self, char *buf);
-void file_transmission(Screen *self, PyObject*);
-void set_color_table_color(Screen *self, unsigned int code, PyObject*);
-void process_cwd_notification(Screen *self, unsigned int code, const char*, size_t);
+void file_transmission(Screen *self, PyObject *);
+void set_color_table_color(Screen *self, unsigned int code, PyObject *);
+void process_cwd_notification(Screen *self, unsigned int code, const char *, size_t);
 void screen_request_capabilities(Screen *, char, const char *);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, char start_modifier);
 void select_graphic_rendition(Screen *self, int *params, unsigned int count, bool is_group, Region *r);
@@ -288,13 +306,14 @@ void report_device_status(Screen *self, unsigned int which, bool UNUSED);
 void report_mode_status(Screen *self, unsigned int which, bool);
 void screen_apply_selection(Screen *self, void *address, size_t size);
 bool screen_is_selection_dirty(Screen *self);
-bool screen_has_selection(Screen*);
+bool screen_has_selection(Screen *);
 bool screen_invert_colors(Screen *self);
 void screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE, bool cursor_has_moved);
 bool screen_is_cursor_visible(const Screen *self);
 unsigned screen_multi_cursor_count(const Screen *self);
 bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);
-bool screen_selection_range_for_word(Screen *self, const index_type x, const index_type y, index_type *, index_type *, index_type *start, index_type *end, bool);
+bool
+screen_selection_range_for_word(Screen *self, const index_type x, const index_type y, index_type *, index_type *, index_type *start, index_type *end, bool);
 void screen_start_selection(Screen *self, index_type x, index_type y, bool, bool, SelectionExtendMode);
 typedef struct SelectionUpdate {
     bool ended, start_extended_selection, set_as_nearest_extend;
@@ -303,17 +322,17 @@ void screen_update_selection(Screen *self, index_type x, index_type y, bool in_l
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
 void screen_history_scroll_to_absolute(Screen *self, double target_scrolled_by);
 bool screen_apply_pixel_scroll(Screen *self, double delta_pixels);
-PyObject* as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output);
-Line* screen_visual_line(Screen *self, index_type y);
+PyObject *as_text_history_buf(HistoryBuf *self, PyObject *args, ANSIBuf *output);
+Line *screen_visual_line(Screen *self, index_type y);
 void screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y);
-void set_active_hyperlink(Screen*, char*, char*);
-hyperlink_id_type screen_mark_hyperlink(Screen*, index_type, index_type);
+void set_active_hyperlink(Screen *, char *, char *);
+hyperlink_id_type screen_mark_hyperlink(Screen *, index_type, index_type);
 void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload);
 void screen_handle_multicell_command(Screen *self, const MultiCellCommand *cmd, const uint8_t *payload);
 void screen_handle_dnd_command(Screen *self, const DnDCommand *cmd, const uint8_t *payload);
-bool screen_open_url(Screen* self, const char* callback);
-bool screen_set_last_visited_prompt(Screen*, index_type);
-bool screen_select_cmd_output(Screen*, index_type);
+bool screen_open_url(Screen *self, const char *callback);
+bool screen_set_last_visited_prompt(Screen *, index_type);
+bool screen_select_cmd_output(Screen *, index_type);
 void screen_dirty_sprite_positions(Screen *self);
 void screen_rescale_images(Screen *self);
 void screen_report_size(Screen *, unsigned which, unsigned modifier);

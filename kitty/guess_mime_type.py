@@ -64,8 +64,10 @@ def initialize_mime_database() -> None:
         return
     setattr(initialize_mime_database, 'inited', True)
     from mimetypes import init
+
     init(None)
     from kitty.constants import config_dir
+
     local_defs = os.path.join(config_dir, 'mime.types')
     if os.path.exists(local_defs):
         init((local_defs,))
@@ -88,6 +90,7 @@ def guess_type(path: str, allow_filesystem_access: bool = False) -> str | None:
     if is_dir:
         return 'inode/directory'
     from mimetypes import guess_type as stdlib_guess_type
+
     initialize_mime_database()
     mt = None
     with suppress(Exception):

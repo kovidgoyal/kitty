@@ -1,4 +1,4 @@
-50949 23472
+51180 23592
 0 null
 1 start of heading
 2 start of text
@@ -15952,6 +15952,9 @@
 59062 chuck
 59063 vitruvian
 59064 css
+59065 zsh
+59066 wireshark
+59067 obsidian
 59136 aarch64
 59137 adonisjs
 59138 git
@@ -16448,6 +16451,111 @@
 59629 yugabytedb
 59630 yunohost
 59631 zig
+59632 nats
+59633 aerospike
+59634 aframe
+59635 almalinux
+59636 ansys
+59637 apex
+59638 apollographql
+59639 artixlinux
+59640 babylonjs
+59641 bazel
+59642 bevyengine
+59643 biome
+59644 chakraui
+59645 chartjs
+59646 clickhouse
+59647 cloudrun
+59648 cobol
+59649 cpanel
+59650 datadog
+59651 datatables
+59652 delphi
+59653 detaspace
+59654 discloud
+59655 dovecot
+59656 duckdb
+59657 dyalog
+59658 dynatrace
+59659 entityframeworkcore
+59660 expo
+59661 fiber
+59662 filamentphp
+59663 firebird
+59664 forgejo
+59665 fusion
+59666 gardener
+59667 gitkraken
+59668 gleam
+59669 glitch
+59670 googlecolab
+59671 harbor
+59672 hoppscotch
+59673 htmx
+59674 hyperv
+59675 inertiajs
+59676 jhipster
+59677 kaldi
+59678 kalilinux
+59679 kubeflow
+59680 laminas
+59681 laraveljetstream
+59682 leetcode
+59683 libgdx
+59684 linuxmint
+59685 love2d
+59686 mapbox
+59687 mattermost
+59688 memcached
+59689 mercurial
+59690 monogame
+59691 netbeans
+59692 netbox
+59693 newrelic
+59694 ngrok
+59695 nodered
+59696 npss
+59697 nuxt
+59698 passport
+59699 pixijs
+59700 pm2
+59701 primeng
+59702 processwire
+59703 proxmox
+59704 pug
+59705 qtest
+59706 racket
+59707 radstudio
+59708 reactnative
+59709 reflex
+59710 remix
+59711 rexx
+59712 sourceengine
+59713 spicedb
+59714 stackblitz
+59715 stenciljs
+59716 styledcomponents
+59717 sulu
+59718 surrealdb
+59719 svgo
+59720 talos
+59721 teleport
+59722 terramate
+59723 thymeleaf
+59724 tmux
+59725 turbo
+59726 twilio
+59727 vaadin
+59728 veevalidate
+59729 vscodium
+59730 vulkan
+59731 waku
+59732 web3js
+59733 webgpu
+59734 wolfram
+59735 zsh
+59736 zustand
 60000 add
 60001 lightbulb
 60002 repo
@@ -16597,6 +16705,7 @@
 60152 gear
 60153 gift
 60154 gist secret
+60155 gist
 60156 git commit
 60157 git compare
 60158 git merge
@@ -16886,6 +16995,107 @@
 60444 mic filled
 60445 git fetch
 60446 copilot
+60447 lightbulb sparkle
+60448 robot
+60449 sparkle filled
+60450 diff single
+60451 diff multiple
+60452 surround with
+60453 share
+60454 git stash
+60455 git stash apply
+60456 git stash pop
+60457 vscode
+60458 vscode insiders
+60459 code oss
+60460 run coverage
+60461 run all coverage
+60462 coverage
+60463 github project
+60464 map vertical
+60465 map vertical filled
+60466 go to search
+60467 percentage
+60468 attach
+60469 go to editing session
+60470 edit session
+60471 code review
+60472 copilot warning
+60473 python
+60474 copilot large
+60475 copilot warning large
+60476 keyboard tab
+60477 copilot blocked
+60478 copilot not connected
+60479 flag
+60480 lightbulb empty
+60481 symbol method arrow
+60482 copilot unavailable
+60483 repo pinned
+60484 keyboard tab above
+60485 keyboard tab below
+60486 git pull request done
+60487 mcp
+60488 extensions large
+60489 layout panel dock
+60490 layout sidebar left dock
+60491 layout sidebar right dock
+60492 copilot in progress
+60493 copilot error
+60494 copilot success
+60495 chat sparkle
+60496 search sparkle
+60497 edit sparkle
+60498 copilot snooze
+60499 send to remote agent
+60500 comment discussion sparkle
+60501 chat sparkle warning
+60502 chat sparkle error
+60503 collection
+60504 new collection
+60505 thinking
+60506 build
+60507 comment discussion quote
+60508 cursor
+60509 eraser
+60510 file text
+60512 quotes
+60513 rename
+60514 run with deps
+60515 debug connected
+60516 strikethrough
+60517 open in product
+60518 index zero
+60519 agent
+60520 edit code
+60521 repo selected
+60522 skip
+60523 merge into
+60524 git branch changes
+60525 git branch staged changes
+60526 git branch conflicts
+60527 git branch
+60528 search large
+60529 terminal git bash
+60530 window active
+60531 forward
+60532 download
+60533 clockface
+60534 unarchive
+60535 session in progress
+60536 collection small
+60537 vm small
+60538 cloud small
+60539 add small
+60540 remove small
+60541 worktree small
+60542 worktree
+60543 screen cut
+60544 ask
+60545 openai
+60546 claude
+60547 open in window
+60548 new session
 60672 location dot
 60673 medapps
 60674 medrt
@@ -17605,6 +17815,7 @@
 61388 palette
 61389 square parking
 61390 diagram project
+61391 volume
 61440 glass
 61441 music
 61442 magnifying glass
@@ -18503,6 +18714,10 @@
 62335 typst
 62336 nobara
 62337 river
+62338 openwrt
+62339 wireguard
+62340 ffmpeg
+62341 cachyos
 62464 light bulb
 62465 repo
 62466 repo forked
@@ -44968,6 +45183,7 @@
 983941 music box outline
 983942 music circle
 983943 music note
+983944 music note 2
 983945 music note half
 983946 music note off
 983947 music note quarter
@@ -45148,6 +45364,7 @@
 984122 radio handheld
 984123 radio tower
 984124 radioactive
+984125 radiobox blank
 984126 radiobox marked
 984127 raspberry pi
 984128 ray end
@@ -45351,6 +45568,7 @@
 984326 temperature kelvin
 984327 tennis ball
 984328 tent
+984329 mountains
 984330 text to speech
 984331 text to speech off
 984332 texture
@@ -45593,6 +45811,7 @@
 984569 incognito
 984570 kettle
 984571 lock plus
+984572 logout variant 2
 984573 logout variant
 984574 music note bluetooth
 984575 music note bluetooth off
@@ -45953,6 +46172,8 @@
 984930 taco
 984931 square outline
 984932 square
+984933 circle
+984934 circle outline
 984935 alert octagram
 984936 atom
 984937 ceiling light
@@ -46314,6 +46535,7 @@
 985293 car limousine
 985294 cards club
 985295 cards diamond
+985296 cards heart
 985297 cards spade
 985298 cellphone text
 985299 cellphone message
@@ -46930,6 +47152,7 @@
 985910 format letter case upper
 985911 language java
 985912 circle multiple
+985913 numeric 0
 985914 numeric 1
 985915 numeric 2
 985916 numeric 3
@@ -47286,6 +47509,8 @@
 986267 network off
 986268 network off outline
 986269 network outline
+986270 numeric 0 circle
+986271 numeric 0 circle outline
 986272 numeric 1 circle
 986273 numeric 1 circle outline
 986274 numeric 2 circle
@@ -48286,13 +48511,16 @@
 987269 math log
 987270 moped
 987271 router network
+987272 roman numeral 1
 987273 roman numeral 2
 987274 roman numeral 3
 987275 roman numeral 4
+987276 roman numeral 5
 987277 roman numeral 6
 987278 roman numeral 7
 987279 roman numeral 8
 987280 roman numeral 9
+987281 roman numeral 10
 987282 soldering iron
 987283 stomach
 987284 table eye
@@ -49081,6 +49309,7 @@
 988067 size xs
 988068 size s
 988069 size m
+988070 size l
 988071 size xl
 988072 size xxl
 988073 size xxxl
@@ -50354,6 +50583,7 @@
 989341 calendar collapse horizontal
 989342 calendar expand horizontal
 989343 cards club outline
+989344 cards heart outline
 989345 cards playing
 989346 cards playing club
 989347 cards playing club multiple
@@ -50433,6 +50663,7 @@
 989421 filter check outline
 989422 flag off
 989423 flag off outline
+989424 navigation variant
 989425 navigation variant outline
 989426 refresh auto
 989427 tilde off

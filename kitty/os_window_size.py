@@ -13,13 +13,11 @@ from .utils import log_error
 
 
 class WindowSize(NamedTuple):
-
     size: int
     unit: str
 
 
 class WindowSizes(NamedTuple):
-
     width: WindowSize
     height: WindowSize
 
@@ -51,7 +49,6 @@ def edge_spacing(which: EdgeLiteral, opts: WindowSizeData | Options | None = Non
     return float(padding + margin)
 
 
-
 def initial_window_size_func(opts: WindowSizeData, cached_values: dict[str, Any]) -> Callable[[int, int, float, float, float, float], tuple[int, int]]:
 
     if 'window-size' in cached_values and opts.remember_window_size:
@@ -61,6 +58,7 @@ def initial_window_size_func(opts: WindowSizeData, cached_values: dict[str, Any]
 
             def initial_window_size(*a: Any) -> tuple[int, int]:
                 return w, h
+
             return initial_window_size
         except Exception:
             log_error('Invalid cached window size, ignoring')

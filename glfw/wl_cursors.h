@@ -14,5 +14,5 @@ typedef struct {
 } GLFWWLCursorThemes;
 
 
-struct wl_cursor_theme* glfw_wlc_theme_for_scale(int scale);
+struct wl_cursor_theme *glfw_wlc_theme_for_scale(int scale);
 void glfw_wlc_destroy(void);

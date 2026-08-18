@@ -8,6 +8,13 @@
 #include "resize.h"
 #include "lineops.h"
 
+#define NAME bg_freq_map
+#define KEY_TY uint32_t
+#define VAL_TY uint32_t
+#define HASH_FN vt_hash_integer
+#define CMPR_FN vt_cmpr_integer
+#include "kitty-verstable.h"
+
 typedef struct Rewrap {
     struct {
         LineBuf *lb;
@@ -44,10 +51,13 @@ exclude_empty_lines_at_bottom(Rewrap *r) {
     do {
         first--;
         CPUCell *cells = linebuf_cpu_cells_for_line(self, first);
-        for(i = 0; i < self->xnum; i++) {
-            if (cells[i].ch_or_idx || cells[i].ch_is_idx) { is_empty = false; break; }
+        for (i = 0; i < self->xnum; i++) {
+            if (cells[i].ch_or_idx || cells[i].ch_is_idx) {
+                is_empty = false;
+                break;
+            }
         }
-    } while(is_empty && first > 0);
+    } while (is_empty && first > 0);
     if (!is_empty) r->num_content_lines_before = first + 1;
 #undef self
 }
@@ -76,14 +86,17 @@ init_src_line(Rewrap *r) {
     while (r->src_x_limit && r->src.line.cpu_cells[r->src_x_limit - 1].ch_and_idx == BLANK_CHAR) r->src_x_limit--;
     r->src.x = 0;
     r->current_src_line_has_multline_cells = false;
-    for (index_type i = 0; i < r->src_x_limit; i++) if (r->src.line.cpu_cells[i].is_multicell && r->src.line.cpu_cells[i].scale > 1) {
-        r->current_src_line_has_multline_cells = true;
-        break;
-    }
+    for (index_type i = 0; i < r->src_x_limit; i++)
+        if (r->src.line.cpu_cells[i].is_multicell && r->src.line.cpu_cells[i].scale > 1) {
+            r->current_src_line_has_multline_cells = true;
+            break;
+        }
     return newline_needed;
 }
 
-#define set_dest_line_attrs(dest_y) r->dest.lb->line_attrs[dest_y] = r->src.line.attrs; r->src.line.attrs.prompt_kind = UNKNOWN_PROMPT_KIND;
+#define set_dest_line_attrs(dest_y)                     \
+    r->dest.lb->line_attrs[dest_y] = r->src.line.attrs; \
+    r->src.line.attrs.prompt_kind = UNKNOWN_PROMPT_KIND;
 
 static void
 first_dest_line(Rewrap *r) {
@@ -131,23 +144,22 @@ next_dest_line(Rewrap *r, bool continued) {
         set_dest_line_attrs(0);
         if (continued && r->dest.hb && r->dest.hb->count) {
             historybuf_init_line(r->dest.hb, 0, r->dest.hb->line);
-            r->dest.hb->line->cpu_cells[dest_xnum-1].next_char_was_wrapped = true;
+            r->dest.hb->line->cpu_cells[dest_xnum - 1].next_char_was_wrapped = true;
         }
     } else {
         r->dest.y = historybuf_next_dest_line(r->dest.hb, r->as_ansi_buf, &r->src.line, r->dest.y, &r->dest.line, continued);
         r->src.line.attrs.prompt_kind = UNKNOWN_PROMPT_KIND;
     }
     if (r->sb->line_attrs[0].has_dirty_text) {
-        CPUCell *cpu_cells; GPUCell *gpu_cells;
+        CPUCell *cpu_cells;
+        GPUCell *gpu_cells;
         linebuf_init_cells(r->sb, 0, &cpu_cells, &gpu_cells);
         memcpy(r->dest.line.cpu_cells, cpu_cells, dest_xnum * sizeof(cpu_cells[0]));
         memcpy(r->dest.line.gpu_cells, gpu_cells, dest_xnum * sizeof(gpu_cells[0]));
         r->current_dest_line_has_multiline_cells = true;
     }
     linebuf_index(r->sb, 0, r->sb->ynum - 1);
-    if (r->sb->line_attrs[r->sb->ynum - 1].has_dirty_text) {
-        linebuf_clear_line(r->sb, r->sb->ynum - 1, true);
-    }
+    if (r->sb->line_attrs[r->sb->ynum - 1].has_dirty_text) { linebuf_clear_line(r->sb, r->sb->ynum - 1, true); }
 }
 
 static void
@@ -184,7 +196,7 @@ find_space_in_dest(Rewrap *r, index_type num_cells) {
 }
 
 static void
-copy_range(Line *src, index_type src_at, Line* dest, index_type dest_at, index_type num) {
+copy_range(Line *src, index_type src_at, Line *dest, index_type dest_at, index_type num) {
     memcpy(dest->cpu_cells + dest_at, src->cpu_cells + src_at, num * sizeof(CPUCell));
     memcpy(dest->gpu_cells + dest_at, src->gpu_cells + src_at, num * sizeof(GPUCell));
 }
@@ -203,7 +215,8 @@ copy_multiline_extra_lines(Rewrap *r, CPUCell *src_cell, index_type mc_width) {
 
 static void
 multiline_copy_src_to_dest(Rewrap *r) {
-    CPUCell *c; index_type mc_width;
+    CPUCell *c;
+    index_type mc_width;
     while (r->src.x < r->src_x_limit) {
         c = &r->src.line.cpu_cells[r->src.x];
         if (c->is_multicell) {
@@ -221,7 +234,8 @@ multiline_copy_src_to_dest(Rewrap *r) {
         copy_range(&r->src.line, r->src.x, &r->dest.line, r->dest.x, mc_width);
         update_tracked_cursors(r, mc_width, r->src.y, r->dest.y, r->src_x_limit);
         if (c->scale > 1) copy_multiline_extra_lines(r, c, mc_width);
-        r->src.x += mc_width; r->dest.x += mc_width;
+        r->src.x += mc_width;
+        r->dest.x += mc_width;
     }
 }
 
@@ -245,7 +259,8 @@ fast_copy_src_to_dest(Rewrap *r) {
         }
         copy_range(&r->src.line, r->src.x, &r->dest.line, r->dest.x, num);
         update_tracked_cursors(r, num, r->src.y, r->dest.y, r->src_x_limit);
-        r->src.x += num; r->dest.x += num;
+        r->src.x += num;
+        r->dest.x += num;
     }
 }
 
@@ -287,27 +302,39 @@ resize_screen_buffers(LineBuf *lb, HistoryBuf *hb, index_type lines, index_type 
     ResizeResult ans = {0};
     ans.lb = alloc_linebuf(lines, columns, lb->text_cache);
     if (!ans.lb) return ans;
-    RAII_PyObject(raii_nlb, (PyObject*)ans.lb); (void) raii_nlb;
+    RAII_PyObject(raii_nlb, (PyObject *)ans.lb);
+    (void)raii_nlb;
     if (hb) {
         ans.hb = historybuf_alloc_for_rewrap(columns, hb);
         if (!ans.hb) return ans;
     }
-    RAII_PyObject(raii_nhb, (PyObject*)ans.hb); (void) raii_nhb;
+    RAII_PyObject(raii_nhb, (PyObject *)ans.hb);
+    (void)raii_nhb;
     Rewrap r = {
-        .src = {.lb=lb, .hb=hb}, .dest = {.lb=ans.lb, .hb=ans.hb},
-        .as_ansi_buf = as_ansi_buf, .cursors = cursors,
+        .src = {.lb = lb, .hb = hb},
+        .dest = {.lb = ans.lb, .hb = ans.hb},
+        .as_ansi_buf = as_ansi_buf,
+        .cursors = cursors,
     };
     r.sb = alloc_linebuf(SCALE_BITS << 1, columns, lb->text_cache);
     if (!r.sb) return ans;
-    RAII_PyObject(scratch, (PyObject*)r.sb); (void)scratch;
-    for (TrackCursor *t = cursors; !t->is_sentinel; t++) { t->dest_x = t->x; t->dest_y = t->y; }
+    RAII_PyObject(scratch, (PyObject *)r.sb);
+    (void)scratch;
+    for (TrackCursor *t = cursors; !t->is_sentinel; t++) {
+        t->dest_x = t->x;
+        t->dest_y = t->y;
+    }
     rewrap(&r);
     ans.num_content_lines_before = r.num_content_lines_before;
     ans.num_content_lines_after = MIN(r.dest.y + 1, ans.lb->ynum);
     if (hb) historybuf_finish_rewrap(ans.hb, hb);
     for (unsigned i = 0; i < ans.num_content_lines_after; i++) linebuf_mark_line_dirty(ans.lb, i);
-    for (TrackCursor *t = cursors; !t->is_sentinel; t++) { t->dest_x = MIN(t->dest_x, columns); t->dest_y = MIN(t->dest_y, lines); }
-    Py_INCREF(raii_nlb); Py_XINCREF(raii_nhb);
+    for (TrackCursor *t = cursors; !t->is_sentinel; t++) {
+        t->dest_x = MIN(t->dest_x, columns);
+        t->dest_y = MIN(t->dest_y, lines);
+    }
+    Py_INCREF(raii_nlb);
+    Py_XINCREF(raii_nhb);
     ans.ok = true;
     return ans;
 }
@@ -315,14 +342,16 @@ resize_screen_buffers(LineBuf *lb, HistoryBuf *hb, index_type lines, index_type 
 static void
 nuke_in_line(CPUCell *cp, GPUCell *gp, index_type start, index_type x_limit) {
     for (index_type x = start; x < x_limit; x++) {
-        cell_set_char(cp + x, 0); cp[x].is_multicell = false;
+        cell_set_char(cp + x, 0);
+        cp[x].is_multicell = false;
         clear_sprite_position(gp[x]);
     }
 }
 
 static void
 nuke_multicell_char_at(LineBuf *lb, index_type x_, index_type y_) {
-    CPUCell *cp; GPUCell *gp;
+    CPUCell *cp;
+    GPUCell *gp;
     linebuf_init_cells(lb, y_, &cp, &gp);
     index_type num_lines_above = cp[x_].y;
     index_type y_max_limit = MIN(lb->ynum, y_ + cp[x_].scale - num_lines_above);
@@ -344,20 +373,25 @@ resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type co
     ResizeResult ans = {0};
     ans.lb = alloc_linebuf(lines, columns, lb->text_cache);
     if (!ans.lb) return ans;
-    Rewrap r = { .src = {.lb=lb},};
+    Rewrap r = {
+        .src = {.lb = lb},
+    };
     exclude_empty_lines_at_bottom(&r);
     ans.num_content_lines_before = r.num_content_lines_before;
     ans.num_content_lines_after = MIN(lines, r.num_content_lines_before);
 
     index_type xcommon = MIN(lb->xnum, ans.lb->xnum);
     for (index_type y = 0; y < ans.num_content_lines_after; y++) {
-        linebuf_init_line(lb, y); linebuf_init_line(ans.lb, y);
-        ans.lb->line_attrs[y] = lb->line_attrs[y]; ans.lb->line_attrs[y].has_dirty_text = true;
+        linebuf_init_line(lb, y);
+        linebuf_init_line(ans.lb, y);
+        ans.lb->line_attrs[y] = lb->line_attrs[y];
+        ans.lb->line_attrs[y].has_dirty_text = true;
         memcpy(ans.lb->line->cpu_cells, lb->line->cpu_cells, xcommon * sizeof(lb->line->cpu_cells[0]));
         memcpy(ans.lb->line->gpu_cells, lb->line->gpu_cells, xcommon * sizeof(lb->line->gpu_cells[0]));
         if (xcommon > lb->line->xnum) {
             // extend the colors/styles of the last cell to edge
-            GPUCell e = lb->line->gpu_cells[xcommon-1]; clear_sprite_position(e);
+            GPUCell e = lb->line->gpu_cells[xcommon - 1];
+            clear_sprite_position(e);
             for (index_type x = xcommon; x < ans.lb->line->xnum; x++) ans.lb->line->gpu_cells[x] = e;
         } else if (xcommon < lb->line->xnum) {
             // remove multicell chars that were split at the right edge
@@ -369,24 +403,47 @@ resize_screen_buffer_without_rewrap(LineBuf *lb, index_type lines, index_type co
             }
         }
     }
-    // Set bg color for extra lines at bottom
+    // Fill new empty lines at the bottom with the most common background color
+    // from the existing content, so expanding the screen looks visually smooth
+    // without flashing app-specific colors (e.g. a statusline at the last row).
     if (ans.num_content_lines_before < lines) {
-        linebuf_init_line(lb, lb->ynum-1); GPUCell *g = lb->line->gpu_cells;
-        for (index_type y = ans.num_content_lines_after; y < ans.lb->ynum; y++) {
-            linebuf_init_line(ans.lb, y);
-            for (index_type x = 0; x < ans.lb->xnum; x++) ans.lb->line->gpu_cells[x].bg = g->bg;
+        uint32_t fill_bg = 0;
+        bg_freq_map freq;
+        vt_init(&freq);
+        for (index_type y = 0; y < ans.num_content_lines_after; y++) {
+            CPUCell *cp;
+            GPUCell *gp;
+            linebuf_init_cells(lb, y, &cp, &gp);
+            for (index_type x = 0; x < lb->xnum; x++) {
+                bg_freq_map_itr itr = vt_get_or_insert(&freq, gp[x].bg, 0);
+                if (!vt_is_end(itr)) itr.data->val++;
+            }
+        }
+        uint32_t best_count = 0;
+        vt_create_for_loop(bg_freq_map_itr, itr, &freq) {
+            if (itr.data->val > best_count) {
+                best_count = itr.data->val;
+                fill_bg = itr.data->key;
+            }
+        }
+        vt_cleanup(&freq);
+        if (fill_bg) {
+            for (index_type y = ans.num_content_lines_after; y < ans.lb->ynum; y++) {
+                linebuf_init_line(ans.lb, y);
+                for (index_type x = 0; x < ans.lb->xnum; x++) ans.lb->line->gpu_cells[x].bg = fill_bg;
+            }
         }
     } else if (ans.num_content_lines_after < ans.num_content_lines_before) {
         // delete multicell chars split at the bottom
-        linebuf_init_line(ans.lb, ans.num_content_lines_after-1);
+        linebuf_init_line(ans.lb, ans.num_content_lines_after - 1);
         for (index_type x = 0; x < ans.lb->xnum; x++) {
             CPUCell *c = ans.lb->line->cpu_cells + x;
-            if (c->is_multicell && c->y < c->scale-1) nuke_multicell_char_at(ans.lb, x, ans.num_content_lines_after-1);
+            if (c->is_multicell && c->y < c->scale - 1) nuke_multicell_char_at(ans.lb, x, ans.num_content_lines_after - 1);
         }
     }
     for (TrackCursor *tc = cursors; !tc->is_sentinel; tc++) {
-        tc->dest_x = MIN(tc->x, ans.lb->xnum-1);
-        tc->dest_y = MIN(tc->y, ans.lb->ynum-1);
+        tc->dest_x = MIN(tc->x, ans.lb->xnum - 1);
+        tc->dest_y = MIN(tc->y, ans.lb->ynum - 1);
     }
     ans.ok = true;
     return ans;

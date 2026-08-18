@@ -10,21 +10,19 @@ pid_exists(pid_t pid) {
     return errno != ESRCH;
 }
 
-static PyObject*
+static PyObject *
 num_users(PyObject *const self UNUSED, PyObject *const args UNUSED) {
     size_t users = 0;
     struct utmpx *ut;
-    Py_BEGIN_ALLOW_THREADS
-    setutxent();
+    Py_BEGIN_ALLOW_THREADS setutxent();
     while ((ut = getutxent())) {
         if (ut->ut_type == USER_PROCESS && ut->ut_user[0] && pid_exists(ut->ut_pid)) users++;
     }
     endutxent();
-    Py_END_ALLOW_THREADS
-    return PyLong_FromSize_t(users);
+    Py_END_ALLOW_THREADS return PyLong_FromSize_t(users);
 }
 #else
-static PyObject*
+static PyObject *
 num_users(PyObject *const self UNUSED, PyObject *const args UNUSED) {
     PyErr_SetString(PyExc_RuntimeError, "Counting the number of users is not supported");
     return NULL;
@@ -32,8 +30,8 @@ num_users(PyObject *const self UNUSED, PyObject *const args UNUSED) {
 #endif
 
 static PyMethodDef methods[] = {
-    {"num_users", num_users, METH_NOARGS, "Get the number of users using UTMP data" },
-    { NULL, NULL, 0, NULL },
+    {"num_users", num_users, METH_NOARGS, "Get the number of users using UTMP data"},
+    {NULL, NULL, 0, NULL},
 };
 
 bool

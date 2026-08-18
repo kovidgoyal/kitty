@@ -35,49 +35,49 @@
 #include "ibus_glfw.h"
 
 typedef struct {
-    struct xkb_state*       state;
-    struct xkb_state*       clean_state;
-    struct xkb_state*       default_state;
-    struct xkb_compose_state* composeState;
-    xkb_mod_mask_t          activeUnknownModifiers;
-    unsigned int            modifiers;
+    struct xkb_state *state;
+    struct xkb_state *clean_state;
+    struct xkb_state *default_state;
+    struct xkb_compose_state *composeState;
+    xkb_mod_mask_t activeUnknownModifiers;
+    unsigned int modifiers;
 } XKBStateGroup;
 
 
 typedef struct {
-    struct xkb_context*     context;
-    struct xkb_keymap*      keymap;
-    struct xkb_keymap*      default_keymap;
-    XKBStateGroup           states;
+    struct xkb_context *context;
+    struct xkb_keymap *keymap;
+    struct xkb_keymap *default_keymap;
+    XKBStateGroup states;
 
-    xkb_mod_index_t         controlIdx;
-    xkb_mod_index_t         altIdx;
-    xkb_mod_index_t         shiftIdx;
-    xkb_mod_index_t         superIdx;
-    xkb_mod_index_t         hyperIdx;
-    xkb_mod_index_t         metaIdx;
-    xkb_mod_index_t         capsLockIdx;
-    xkb_mod_index_t         numLockIdx;
-    xkb_mod_mask_t          controlMask;
-    xkb_mod_mask_t          altMask;
-    xkb_mod_mask_t          shiftMask;
-    xkb_mod_mask_t          superMask;
-    xkb_mod_mask_t          hyperMask;
-    xkb_mod_mask_t          metaMask;
-    xkb_mod_mask_t          capsLockMask;
-    xkb_mod_mask_t          numLockMask;
-    xkb_mod_index_t         unknownModifiers[256];
-    _GLFWIBUSData           ibus;
+    xkb_mod_index_t controlIdx;
+    xkb_mod_index_t altIdx;
+    xkb_mod_index_t shiftIdx;
+    xkb_mod_index_t superIdx;
+    xkb_mod_index_t hyperIdx;
+    xkb_mod_index_t metaIdx;
+    xkb_mod_index_t capsLockIdx;
+    xkb_mod_index_t numLockIdx;
+    xkb_mod_mask_t controlMask;
+    xkb_mod_mask_t altMask;
+    xkb_mod_mask_t shiftMask;
+    xkb_mod_mask_t superMask;
+    xkb_mod_mask_t hyperMask;
+    xkb_mod_mask_t metaMask;
+    xkb_mod_mask_t capsLockMask;
+    xkb_mod_mask_t numLockMask;
+    xkb_mod_index_t unknownModifiers[256];
+    _GLFWIBUSData ibus;
 
 #ifdef _GLFW_X11
-    int32_t                 keyboard_device_id;
-    bool                    available;
-    bool                    detectable;
-    int                     majorOpcode;
-    int                     eventBase;
-    int                     errorBase;
-    int                     major;
-    int                     minor;
+    int32_t keyboard_device_id;
+    bool available;
+    bool detectable;
+    int majorOpcode;
+    int eventBase;
+    int errorBase;
+    int major;
+    int minor;
 #endif
 
 } _GLFWXKBData;
@@ -90,9 +90,16 @@ bool glfw_xkb_update_x11_keyboard_id(_GLFWXKBData *xkb);
 void glfw_xkb_release(_GLFWXKBData *xkb);
 bool glfw_xkb_create_context(_GLFWXKBData *xkb);
 bool glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str);
-void glfw_xkb_update_modifiers(_GLFWXKBData *xkb, xkb_mod_mask_t depressed, xkb_mod_mask_t latched, xkb_mod_mask_t locked, xkb_layout_index_t base_group, xkb_layout_index_t latched_group, xkb_layout_index_t locked_group);
+void glfw_xkb_update_modifiers(
+    _GLFWXKBData *xkb,
+    xkb_mod_mask_t depressed,
+    xkb_mod_mask_t latched,
+    xkb_mod_mask_t locked,
+    xkb_layout_index_t base_group,
+    xkb_layout_index_t latched_group,
+    xkb_layout_index_t locked_group);
 bool glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t keycode);
-const char* glfw_xkb_keysym_name(xkb_keysym_t sym);
+const char *glfw_xkb_keysym_name(xkb_keysym_t sym);
 xkb_keysym_t glfw_xkb_sym_for_key(uint32_t key);
 void glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t keycode, int action);
 int glfw_xkb_keysym_from_name(const char *name, bool case_sensitive);

@@ -3,7 +3,7 @@
 
 import sys
 
-OPTIONS = r'''
+OPTIONS = r"""
 --get-clipboard -g
 type=bool-set
 Output the current contents of the clipboard to STDOUT. Note that by default
@@ -56,8 +56,8 @@ Note that you must also specify a human friendly name using the :option:`--human
 
 --human-name
 A human friendly name to show the user when asking for permission to access the clipboard.
-'''.format
-help_text = '''\
+""".format
+help_text = """\
 Read or write to the system clipboard.
 
 This kitten operates most simply in :italic:`filter mode`.
@@ -88,13 +88,14 @@ the clipboard. Some examples:
 
     # List the formats available on the system clipboard
     kitten clipboard -g -m . /dev/stdout
-'''
+"""
 
 usage = '[files to copy to/from]'
 if __name__ == '__main__':
     raise SystemExit('This should be run as kitten clipboard')
 elif __name__ == '__doc__':
     from kitty.simple_cli_definitions import CompletionSpec
+
     cd = sys.cli_docs  # type: ignore
     cd['usage'] = usage
     cd['options'] = OPTIONS

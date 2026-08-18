@@ -9,7 +9,7 @@ from ..tui.handler import result_handler
 
 
 def option_text() -> str:
-    return '''\
+    return """\
 --type -t
 choices=line,yesno,choices,password,file
 default=line
@@ -61,12 +61,13 @@ The key to be pressed to unhide hidden text
 
 --hidden-text-placeholder
 The text in the message to be replaced by hidden text. The hidden text is read via STDIN.
-'''
+"""
 
 
 class Response(TypedDict):
     items: list[str]
     response: str | None
+
 
 def main(args: list[str]) -> Response:
     raise SystemExit('This must be run as kitten ask')

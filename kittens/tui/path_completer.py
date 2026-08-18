@@ -75,7 +75,6 @@ def print_table(items: Sequence[str], screen_size: ScreenSize, dir_colors: Calla
 
 
 class PathCompleter:
-
     def __init__(self, prompt: str = '> '):
         self.prompt = prompt
         self.prompt_len = wcswidth(self.prompt)
@@ -84,8 +83,9 @@ class PathCompleter:
         import readline
 
         from .dircolors import Dircolors
+
         if 'libedit' in getattr(readline, '__doc__', '') or '':
-            readline.parse_and_bind("bind -e")
+            readline.parse_and_bind('bind -e')
             readline.parse_and_bind("bind '\t' rl_complete")
         else:
             readline.parse_and_bind('tab: complete')
@@ -100,6 +100,7 @@ class PathCompleter:
 
     def format_completions(self, substitution: str, matches: Sequence[str], longest_match_length: int) -> None:
         import readline
+
         print()
         files, dirs = [], []
         for m in matches:
@@ -124,7 +125,7 @@ class PathCompleter:
         print(self.prompt, buf, sep='', end='')
         if x < buflen:
             pos = x + self.prompt_len
-            print(f"\r\033[{pos}C", end='')
+            print(f'\r\033[{pos}C', end='')
         print(sep='', end='', flush=True)
 
     def __call__(self, text: str, state: int) -> str | None:
@@ -137,6 +138,7 @@ class PathCompleter:
 
     def __exit__(self, *a: Any) -> bool:
         import readline
+
         del self.cache
         readline.set_completer(self.original_completer)
         readline.set_completion_display_matches_hook()

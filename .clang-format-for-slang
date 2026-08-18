@@ -1,0 +1,45 @@
+Language: CSharp
+BasedOnStyle: Microsoft
+IndentWidth: 4
+# Line length
+ColumnLimit: 160
+# Dont join function args/params that are manually split into lines even if they fit
+BinPackArguments: false
+BinPackParameters: false
+
+# Return type on its own line for definitions; forward declarations stay on one line:
+#   static void
+#   foo(...) {
+BreakAfterReturnType: AllDefinitions
+
+# Brace style: K&R — opening brace on same line as function params / control flow
+BreakBeforeBraces: Attach
+
+# Space after control-flow keywords (if, for, while, switch); not after function calls
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: false
+SpaceAfterCStyleCast: false
+
+# When arguments wrap, indent by ContinuationIndentWidth rather than aligning to paren
+AlignAfterOpenBracket: AlwaysBreak
+ContinuationIndentWidth: 4
+
+# Allow short function bodies on the same line as the opening brace
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortLoopsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Always
+AllowShortCaseLabelsOnASingleLine: true
+
+# Do not sort or regroup includes — they are in intentional project order
+SortIncludes: Never
+IncludeBlocks: Preserve
+
+# Align line continuation char as far left as possible
+AlignEscapedNewlines: Left
+
+# Empty lines
+MaxEmptyLinesToKeep: 2
+KeepEmptyLinesAtTheStartOfBlocks: false
+
+

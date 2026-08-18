@@ -1,0 +1,7 @@
+startgroup
+    animation_start tab-change
+    animation_stop 600
+    animation_curve ease-out
+    animation_step 16
+    shaders tab-change
+endgroup

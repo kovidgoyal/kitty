@@ -11,18 +11,20 @@ if TYPE_CHECKING:
 
 
 class RemoveMarker(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     match/str: Which window to remove the marker from
     self/bool: Boolean indicating whether to detach the window the command is run in
-    '''
+    """
 
     short_desc = 'Remove the currently set marker, if any.'
-    options_spec = MATCH_WINDOW_OPTION + '''\n
+    options_spec = (
+        MATCH_WINDOW_OPTION
+        + """\n
 --self
 type=bool-set
 Apply marker to the window this command is run in, rather than the active window.
-'''
+"""
+    )
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'self': opts.self}

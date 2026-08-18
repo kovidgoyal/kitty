@@ -11,14 +11,13 @@ if TYPE_CHECKING:
 
 
 class ScrollWindow(RemoteCommand):
-
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     amount+/list.scroll_amount: The amount to scroll, a two item list with the first item being \
              either a number or the keywords, start and end. \
              And the second item being either 'p' for pages or 'l' for lines or 'u'
              for unscrolling by lines, or 'r' for scrolling to prompt.
     match/str: The window to scroll
-    '''
+    """
 
     short_desc = 'Scroll the specified windows'
     desc = (
@@ -32,13 +31,16 @@ class ScrollWindow(RemoteCommand):
         ' scrollback buffer onto the top of the screen. :code:`1r-` will scroll to the previous prompt and :code:`1r` to the next prompt.'
         ' See :ac:`scroll_to_prompt` for details on how scrolling to prompt works.'
     )
-    options_spec = MATCH_WINDOW_OPTION + '''\n
+    options_spec = (
+        MATCH_WINDOW_OPTION
+        + """\n
 --no-response
 type=bool-set
 default=false
 Don't wait for a response indicating the success of the action. Note that
 using this option means that you will not be notified of failures.
-'''
+"""
+    )
     args = RemoteCommand.Args(spec='SCROLL_AMOUNT', count=1, special_parse='parse_scroll_amount(args[0])', json_field='amount')
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
@@ -76,13 +78,14 @@ using this option means that you will not be notified of failures.
                         case 'l':
                             window.scroll_fractional_lines(amt)
                         case 'p':
+                            unit = 'page'
                             if not isinstance(amt, int) and not amt.is_integer():
                                 amt = round(window.screen.lines * amt)
                                 unit = 'line'
                             assert isinstance(amt, int)
                             direction = 'up' if amt < 0 else 'down'
                             func = getattr(window, f'scroll_{unit}_{direction}')
-                            for i in range(int(abs(amt))):
+                            for _ in range(int(abs(amt))):
                                 func()
         return None
 

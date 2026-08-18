@@ -178,6 +178,7 @@ class FontSpec(NamedTuple):
             return self.system
         ans = []
         from shlex import quote
+
         def a(key: str, val: str) -> None:
             ans.append(f'{key}={quote(val)}')
 
@@ -194,7 +195,7 @@ class FontSpec(NamedTuple):
         if self.features:
             a('features', ' '.join(str(f) for f in self.features))
         if self.axes:
-            for (key, val) in self.axes:
+            for key, val in self.axes:
                 a(key, f'{val:g}')
         return ' '.join(ans)
 
@@ -215,7 +216,6 @@ class Score(NamedTuple):
 
 
 class Scorer[T]:
-
     def __init__(self, bold: bool = False, italic: bool = False, monospaced: bool = True, prefer_variable: bool = False) -> None:
         self.bold = bold
         self.italic = italic
@@ -227,12 +227,14 @@ class Scorer[T]:
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}(bold={self.bold}, italic={self.italic}, monospaced={self.monospaced}, prefer_variable={self.prefer_variable})'
+
     __str__ = __repr__
 
 
 @run_once
 def fnname_pat() -> 're.Pattern[str]':
     import re
+
     return re.compile(r'\s+')
 
 

@@ -6,18 +6,18 @@ from typing import NamedTuple
 
 
 class BitField(NamedTuple):
-     name: str
-     bits: int
+    name: str
+    bits: int
 
 
 def typename_for_bitsize(bits: int) -> str:
-     if bits <= 8:
+    if bits <= 8:
         return 'uint8'
-     if bits <= 16:
+    if bits <= 16:
         return 'uint16'
-     if bits <= 32:
+    if bits <= 32:
         return 'uint32'
-     return 'uint64'
+    return 'uint64'
 
 
 def make_bitfield(dest: str, typename: str, *fields_: str, add_package: bool = True) -> tuple[str, str]:

@@ -50,6 +50,7 @@ def display_png_file(path):
 
 def main():
     from kitty.constants import logo_png_file
+
     photo = sys.argv[-1]
     if not photo.lower().endswith('.png'):
         raise SystemExit('Must specify a PNG file to display')

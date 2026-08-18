@@ -26,11 +26,12 @@ choices_for_focus_follows_mouse = typing.Literal['no', 'n', 'false', 'y', 'yes',
 choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
 choices_for_macos_colorspace = typing.Literal['srgb', 'default', 'displayp3']
 choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']
+choices_for_padding_fill_strategy = typing.Literal['background', 'neighboring_cell']
 choices_for_palette_generate = typing.Literal['fixed', 'semantic', 'legacy']
 choices_for_placement_strategy = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
 choices_for_pointer_shape_when_grabbed = choices_for_default_pointer_shape
 choices_for_progress_bar = typing.Literal['left', 'right', 'top', 'bottom', 'hidden']
-choices_for_scrollbar = typing.Literal['scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered']
+choices_for_scrollbar = typing.Literal['scrolled', 'always', 'never', 'hovered', 'scrolled-and-hovered', 'scrolled-or-hovered']
 choices_for_strip_trailing_spaces = typing.Literal['always', 'never', 'smart']
 choices_for_tab_bar_align = typing.Literal['start', 'center', 'end', 'left', 'right']
 choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant', 'custom']
@@ -348,6 +349,7 @@ option_names = (
     'cursor_trail_decay',
     'cursor_trail_start_threshold',
     'cursor_underline_thickness',
+    'custom_shaders',
     'default_pointer_shape',
     'detect_urls',
     'dim_opacity',
@@ -416,6 +418,7 @@ option_names = (
     'narrow_symbols',
     'notify_on_cmd_finish',
     'open_url_with',
+    'padding_fill_strategy',
     'palette_generate',
     'paste_actions',
     'pixel_scroll',
@@ -423,6 +426,7 @@ option_names = (
     'pointer_shape_when_dragging',
     'pointer_shape_when_grabbed',
     'progress_bar',
+    'remap_modifiers',
     'remember_window_position',
     'remember_window_size',
     'remote_control_password',
@@ -476,7 +480,9 @@ option_names = (
     'tab_separator',
     'tab_switch_strategy',
     'tab_title_max_length',
+    'tab_title_max_lines',
     'tab_title_template',
+    'tab_title_wrap',
     'term',
     'terminfo_type',
     'text_composition_strategy',
@@ -569,6 +575,7 @@ class Options:
     cursor_trail_decay: tuple[float, float] = (0.1, 0.4)
     cursor_trail_start_threshold: tuple[int, int] = (2, 2)
     cursor_underline_thickness: float = 2.0
+    custom_shaders: tuple[str, ...] = ()
     default_pointer_shape: choices_for_default_pointer_shape = 'beam'
     detect_urls: bool = True
     dim_opacity: float = 0.4
@@ -627,6 +634,7 @@ class Options:
     mouse_hide_wait: MouseHideWait = MouseHideWait(hide_wait=0.0, show_wait=0.0, show_threshold=40, scroll_show=True) if is_macos else MouseHideWait(hide_wait=3.0, show_wait=0.0, show_threshold=40, scroll_show=True)
     notify_on_cmd_finish: NotifyOnCmdFinish = NotifyOnCmdFinish(when='never', duration=5.0, action='notify', cmdline=(), clear_on=('focus', 'next'))
     open_url_with: list[str] = ['default']
+    padding_fill_strategy: choices_for_padding_fill_strategy = 'background'
     palette_generate: choices_for_palette_generate = 'fixed'
     paste_actions: frozenset[str] = frozenset({'confirm', 'quote-urls-at-prompt'})
     pixel_scroll: bool = True
@@ -634,6 +642,7 @@ class Options:
     pointer_shape_when_dragging: tuple[str, str] = ('beam', 'crosshair')
     pointer_shape_when_grabbed: choices_for_pointer_shape_when_grabbed = 'arrow'
     progress_bar: choices_for_progress_bar = 'top'
+    remap_modifiers: dict[int, int] = {}
     remember_window_position: bool = False
     remember_window_size: bool = True
     repaint_delay: int = 10
@@ -685,7 +694,9 @@ class Options:
     tab_separator: str = ' ┇'
     tab_switch_strategy: choices_for_tab_switch_strategy = 'previous'
     tab_title_max_length: int = 0
+    tab_title_max_lines: int = 1
     tab_title_template: str = '{fmt.fg.red}{bell_symbol}{activity_symbol}{secure_input_symbol}{fmt.fg.tab}{tab.last_focused_progress_percent}{title}'
+    tab_title_wrap: int = 0
     term: str = 'xterm-kitty'
     terminfo_type: choices_for_terminfo_type = 'path'
     text_composition_strategy: str = 'platform'

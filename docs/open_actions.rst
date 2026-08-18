@@ -163,4 +163,4 @@ in the :ref:`kitty config directory <confloc>`, just like the
 .. literalinclude:: ../kitty/open_actions.py
    :language: conf
    :start-at: # Open script files
-   :end-before: '''.splitlines()))
+   :end-before: """.splitlines()

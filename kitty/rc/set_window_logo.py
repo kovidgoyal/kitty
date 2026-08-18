@@ -29,14 +29,14 @@ if TYPE_CHECKING:
 
 
 class SetWindowLogo(RemoteCommand):
-    protocol_spec = __doc__ = '''
+    protocol_spec = __doc__ = """
     data+/str: Chunk of PNG data, base64 encoded no more than 2048 bytes. Must send an empty chunk to indicate end of image. \
     Or the special value :code:`-` to indicate image must be removed.
     position/str: The logo position as a string, empty string means default
     alpha/float: The logo alpha between :code:`0` and :code:`1`. :code:`-1` means use default
     match/str: Which window to change the logo in
     self/bool: Boolean indicating whether to act on the window the command is run in
-    '''
+    """
 
     short_desc = 'Set the window logo'
     desc = (
@@ -45,7 +45,9 @@ class SetWindowLogo(RemoteCommand):
         ' be removed. Supported image formats are: '
     ) + ', '.join(SUPPORTED_IMAGE_FORMATS)
 
-    options_spec = MATCH_WINDOW_OPTION + '''\n
+    options_spec = (
+        MATCH_WINDOW_OPTION
+        + """\n
 --self
 type=bool-set
 Act on the window this command is run in, rather than the active window.
@@ -67,9 +69,11 @@ type=bool-set
 default=false
 Don't wait for a response from kitty. This means that even if setting the image
 failed, the command will exit with a success code.
-'''
-    args = RemoteCommand.Args(spec='PATH_TO_PNG_IMAGE', count=1, json_field='data', special_parse='!read_window_logo(io_data, args[0])',
-                              completion=ImageCompletion)
+"""
+    )
+    args = RemoteCommand.Args(
+        spec='PATH_TO_PNG_IMAGE', count=1, json_field='data', special_parse='!read_window_logo(io_data, args[0])', completion=ImageCompletion
+    )
     reads_streaming_data = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
@@ -77,6 +81,7 @@ failed, the command will exit with a success code.
             self.fatal('Must specify path to exactly one PNG image')
         path = os.path.expanduser(args[0])
         import secrets
+
         ret = {
             'match': opts.match,
             'self': opts.self,
@@ -100,6 +105,7 @@ failed, the command will exit with a success code.
                     yield ret
             ret['data'] = ''
             yield ret
+
         return file_pipe(path)
 
     def response_from_kitty(self, boss: Boss, window: Window | None, payload_get: PayloadGetType) -> ResponseType:
@@ -114,6 +120,7 @@ failed, the command will exit with a success code.
             if isinstance(q, AsyncResponse):
                 return q
             import hashlib
+
             path = '/from/remote/control/' + hashlib.sha1(q.getvalue()).hexdigest()
             tfile = q
 

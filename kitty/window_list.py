@@ -28,7 +28,6 @@ def wrap_increment(val: int, num: int, delta: int) -> int:
 
 
 class WindowGroup:
-
     def __init__(self) -> None:
         self.windows: list[WindowType] = []
         self.id = next(group_id_counter)
@@ -110,8 +109,10 @@ class WindowGroup:
 
     def unserialize_layout_state(self, window_ids: Sequence[int]) -> None:
         order_map = {wid: i for i, wid in enumerate(window_ids)}
+
         def sort_key(w: WindowType) -> int:
             return order_map.get(w.id, -1)
+
         self.windows.sort(key=sort_key)
 
     def as_simple_dict(self) -> dict[str, Any]:
@@ -165,7 +166,6 @@ class WindowGroup:
 
 
 class WindowList:
-
     force_show_title_bars: bool = False
 
     def __init__(self, tab: TabType) -> None:
@@ -193,17 +193,22 @@ class WindowList:
         return {
             'active_group_idx': self.active_group_idx,
             'active_group_history': list(self.active_group_history),
-            'window_groups': [g.serialize_state() for g in self.groups]
+            'window_groups': [g.serialize_state() for g in self.groups],
         }
 
     def serialize_layout_state(self) -> dict[str, Any]:
         return {
             'active_group_idx': self.active_group_idx,
             'active_group_history': list(self.active_group_history),
-            'window_groups': [g.serialize_layout_state() for g in self.groups]
+            'window_groups': [g.serialize_layout_state() for g in self.groups],
         }
 
-    def unserialize_layout_state(self, state: dict[str, Any], window_id_map: dict[int, int]) -> dict[int, int] | None:
+    def unserialize_layout_state(self, state: dict[str, Any], window_id_map: dict[int, int], apply: bool = True) -> dict[int, int] | None:
+        """
+        Returns a map of serialized group id to current group id. With apply=False the
+        map is computed but the window list is left unchanged, so that the state of
+        several layouts can be restored while only one of them orders the windows.
+        """
         if set(window_id_map.values()) != set(self.id_map):
             # some window in this collection does not correspond to a
             # serialized window
@@ -233,6 +238,8 @@ class WindowList:
         # we ignore them.
         if len(ans) != len(self.groups):
             return None
+        if not apply:
+            return ans
         gmap = {g.id: g for g in self.groups}
         groups = []
         for wg in state['window_groups']:
@@ -244,7 +251,13 @@ class WindowList:
                     if new_window_id := window_id_map.get(old_window_id):
                         new_window_ids.append(new_window_id)
                 g.unserialize_layout_state(new_window_ids)
+        active_group = self.active_group
         self.groups = groups
+        if active_group is not None:
+            for i, g in enumerate(self.groups):
+                if g is active_group:
+                    self._active_group_idx = i
+                    break
         history = []
         for old_wid in state['active_group_history']:
             if new_wid := window_id_map.get(old_wid):

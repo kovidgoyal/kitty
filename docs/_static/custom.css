@@ -34,3 +34,62 @@ details > summary {
 .highlight .w {
     text-decoration: none
 }
+
+/* Custom shader demo cards */
+.shader-demo-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.shader-demo-card:hover {
+    transform: translateY(-2px);
+}
+
+/* Video modal overlay */
+.shader-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+}
+
+.shader-modal-overlay.active {
+    display: flex;
+}
+
+html.shader-modal-open {
+    overflow: hidden;
+}
+
+.shader-modal-container {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+.shader-modal-close {
+    position: absolute;
+    top: -2rem;
+    right: 0;
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    opacity: 0.8;
+}
+
+.shader-modal-close:hover {
+    opacity: 1;
+}
+
+.shader-modal-video {
+    display: block;
+    max-width: 90vw;
+    max-height: 85vh;
+    border-radius: 4px;
+}

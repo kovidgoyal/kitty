@@ -15,7 +15,10 @@ static bool
 append_buf(char buf[CMD_BUF_SZ], size_t *pos, PyObject *ans) {
     if (*pos) {
         PyObject *bytes = PyBytes_FromStringAndSize(buf, *pos);
-        if (!bytes) { PyErr_NoMemory(); return false; }
+        if (!bytes) {
+            PyErr_NoMemory();
+            return false;
+        }
         int ret = PyList_Append(ans, bytes);
         Py_CLEAR(bytes);
         if (ret != 0) return false;
@@ -38,11 +41,11 @@ static bool
 read_response(int fd, monotonic_t timeout, PyObject *ans) {
     static char buf[CMD_BUF_SZ];
     size_t pos = 0;
-    enum ReadState {START, STARTING_ESC, P, AT, K, I, T, T2, Y, HYPHEN, C, M, BODY, TRAILING_ESC};
+    enum ReadState { START, STARTING_ESC, P, AT, K, I, T, T2, Y, HYPHEN, C, M, BODY, TRAILING_ESC };
     enum ReadState state = START;
     char ch;
     monotonic_t end_time = monotonic() + timeout;
-    while(monotonic() <= end_time) {
+    while (monotonic() <= end_time) {
         ssize_t len = read(fd, &ch, 1);
         if (len == 0) continue;
         if (len < 0) {
@@ -51,26 +54,31 @@ read_response(int fd, monotonic_t timeout, PyObject *ans) {
             return false;
         }
         end_time = monotonic() + timeout;
-        switch(state) {
+        switch (state) {
             case START:
                 if (ch == 0x1b) state = STARTING_ESC;
-                if (ch == 0x03) { PyErr_SetString(PyExc_KeyboardInterrupt, "User pressed Ctrl+C"); return false; }
+                if (ch == 0x03) {
+                    PyErr_SetString(PyExc_KeyboardInterrupt, "User pressed Ctrl+C");
+                    return false;
+                }
                 break;
-#define CASE(curr, q, next) case curr: state = ch == q ? next : START; break;
-            CASE(STARTING_ESC, 'P', P);
-            CASE(P, '@', AT);
-            CASE(AT, 'k', K);
-            CASE(K, 'i', I);
-            CASE(I, 't', T);
-            CASE(T, 't', T2);
-            CASE(T2, 'y', Y);
-            CASE(Y, '-', HYPHEN);
-            CASE(HYPHEN, 'c', C);
-            CASE(C, 'm', M);
-            CASE(M, 'd', BODY);
+#define CASE(curr, q, next) \
+    case curr: state = ch == q ? next : START; break;
+                CASE(STARTING_ESC, 'P', P);
+                CASE(P, '@', AT);
+                CASE(AT, 'k', K);
+                CASE(K, 'i', I);
+                CASE(I, 't', T);
+                CASE(T, 't', T2);
+                CASE(T2, 'y', Y);
+                CASE(Y, '-', HYPHEN);
+                CASE(HYPHEN, 'c', C);
+                CASE(C, 'm', M);
+                CASE(M, 'd', BODY);
             case BODY:
-                if (ch == 0x1b) { state = TRAILING_ESC; }
-                else {
+                if (ch == 0x1b) {
+                    state = TRAILING_ESC;
+                } else {
                     if (!add_char(buf, &pos, ch, ans)) return false;
                 }
                 break;
@@ -82,15 +90,16 @@ read_response(int fd, monotonic_t timeout, PyObject *ans) {
                 break;
         }
     }
-    PyErr_SetString(PyExc_TimeoutError,
-            "Timed out while waiting to read command response."
-            " Make sure you are running this command from within the kitty terminal."
-            " If you want to run commands from outside, then you have to setup a"
-            " socket with the --listen-on command line flag.");
+    PyErr_SetString(
+        PyExc_TimeoutError,
+        "Timed out while waiting to read command response."
+        " Make sure you are running this command from within the kitty terminal."
+        " If you want to run commands from outside, then you have to setup a"
+        " socket with the --listen-on command line flag.");
     return false;
 }
 
-static PyObject*
+static PyObject *
 read_command_response(PyObject *self UNUSED, PyObject *args) {
     double timeout;
     int fd;
@@ -100,7 +109,7 @@ read_command_response(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static PyObject*
+static PyObject *
 parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
     enum State { NORMAL, ESC, CSI, ST, ESC_ST };
     enum State state = NORMAL;
@@ -112,24 +121,27 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
     int kind = PyUnicode_KIND(uo);
     void *data = PyUnicode_DATA(uo);
     bool in_bracketed_paste_mode = inbp != 0;
-#define CALL(cb, s_, num_) {\
-    PyObject *fcb = cb; \
-    Py_ssize_t s = s_, num = num_; \
-    if (in_bracketed_paste_mode && fcb != text_callback) { \
-        fcb = text_callback; num += 2; s -= 2; \
-    } \
-    if (num > 0) { \
-        PyObject *ret = PyObject_CallFunction(fcb, "N", PyUnicode_Substring(uo, s, s + num));  \
-        if (ret == NULL) return NULL; \
-        Py_DECREF(ret); \
-    } \
-    consumed = s_ + num_; \
-    count = 0; \
-}
+#define CALL(cb, s_, num_)                                                                        \
+    {                                                                                             \
+        PyObject *fcb = cb;                                                                       \
+        Py_ssize_t s = s_, num = num_;                                                            \
+        if (in_bracketed_paste_mode && fcb != text_callback) {                                    \
+            fcb = text_callback;                                                                  \
+            num += 2;                                                                             \
+            s -= 2;                                                                               \
+        }                                                                                         \
+        if (num > 0) {                                                                            \
+            PyObject *ret = PyObject_CallFunction(fcb, "N", PyUnicode_Substring(uo, s, s + num)); \
+            if (ret == NULL) return NULL;                                                         \
+            Py_DECREF(ret);                                                                       \
+        }                                                                                         \
+        consumed = s_ + num_;                                                                     \
+        count = 0;                                                                                \
+    }
     START_ALLOW_CASE_RANGE;
     while (pos < sz) {
         Py_UCS4 ch = PyUnicode_READ(kind, data, pos);
-        switch(state) {
+        switch (state) {
             case NORMAL:
                 if (ch == 0x1b) {
                     state = ESC;
@@ -140,19 +152,28 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
             case ESC:
                 start = pos;
                 count = 0;
-                switch(ch) {
+                switch (ch) {
                     case 'P':
-                        state = ST; callback = dcs_callback; break;
+                        state = ST;
+                        callback = dcs_callback;
+                        break;
                     case '[':
-                        state = CSI; callback = csi_callback; break;
+                        state = CSI;
+                        callback = csi_callback;
+                        break;
                     case ']':
-                        state = ST; callback = osc_callback; break;
+                        state = ST;
+                        callback = osc_callback;
+                        break;
                     case '^':
-                        state = ST; callback = pm_callback; break;
+                        state = ST;
+                        callback = pm_callback;
+                        break;
                     case '_':
-                        state = ST; callback = apc_callback; break;
-                    default:
-                        state = NORMAL; break;
+                        state = ST;
+                        callback = apc_callback;
+                        break;
+                    default: state = NORMAL; break;
                 }
                 break;
             case CSI:
@@ -166,7 +187,8 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
                     case '|':
                     case '}':
                     case '~':
-#define IBP(w)  ch == '~' && PyUnicode_READ(kind, data, start + 1) == '2' && PyUnicode_READ(kind, data, start + 2) == '0' && PyUnicode_READ(kind, data, start + 3) == w
+#define IBP(w) \
+    ch == '~' && PyUnicode_READ(kind, data, start + 1) == '2' && PyUnicode_READ(kind, data, start + 2) == '0' && PyUnicode_READ(kind, data, start + 3) == w
                         if (IBP('1')) in_bracketed_paste_mode = false;
                         CALL(callback, start + 1, count);
                         if (IBP('0')) in_bracketed_paste_mode = true;
@@ -179,13 +201,15 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
             case ESC_ST:
                 if (ch == '\\') {
                     CALL(callback, start + 1, count);
-                    state = NORMAL; start = pos + 1;
+                    state = NORMAL;
+                    start = pos + 1;
                     consumed += 2;
                 } else count += 2;
                 break;
             case ST:
-                if (ch == 0x1b) { state = ESC_ST; }
-                else count++;
+                if (ch == 0x1b) {
+                    state = ESC_ST;
+                } else count++;
                 break;
         }
         pos++;
@@ -197,9 +221,7 @@ parse_input_from_terminal(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyMethodDef module_methods[] = {
-    METHODB(parse_input_from_terminal, METH_VARARGS),
-    METHODB(read_command_response, METH_VARARGS),
-    {NULL, NULL, 0, NULL}        /* Sentinel */
+    METHODB(parse_input_from_terminal, METH_VARARGS), METHODB(read_command_response, METH_VARARGS), {NULL, NULL, 0, NULL} /* Sentinel */
 };
 
 bool

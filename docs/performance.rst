@@ -142,9 +142,15 @@ admittedly biased, eyes).
 Instrumenting kitty
 -----------------------
 
-You can generate detailed per-function performance data using
-`gperftools <https://github.com/gperftools/gperftools>`__. Build |kitty| with
-``make profile``. Run kitty and perform the task you want to analyse, for
-example, scrolling a large file with :program:`less`. After you quit, function
-call statistics will be displayed in *KCachegrind*. Hence, profiling is best done
-on Linux which has these tools easily available.
+To profile kitty performance on Linux, first install ``perf`` and run::
+
+    sudo setcap cap_sys_admin,cap_sys_ptrace,cap_syslog=ep /usr/bin/perf
+
+Then build kitty with::
+
+    make profile
+
+Finally get benchmark and profiling results using::
+
+    ./benchmark.py --perf
+

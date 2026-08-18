@@ -3,7 +3,7 @@
 
 import sys
 
-OPTIONS = r'''
+OPTIONS = r"""
 --horizontal-increment
 default=2
 type=int
@@ -14,7 +14,7 @@ The base horizontal increment.
 default=2
 type=int
 The base vertical increment.
-'''.format
+""".format
 help_text = 'Resize the current window'
 usage = ''
 

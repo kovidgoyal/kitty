@@ -14,7 +14,7 @@ static int signal_write_fd = -1;
 static void
 handle_signal(int sig_num UNUSED, siginfo_t *si, void *ucontext UNUSED) {
     int save_err = errno;
-    char *buf = (char*)si;
+    char *buf = (char *)si;
     size_t sz = sizeof(siginfo_t);
     while (signal_write_fd != -1 && sz) {
         // as long as sz is less than PIPE_BUF write will either write all or return -1 with EAGAIN
@@ -43,13 +43,16 @@ init_signal_handlers(LoopData *ld) {
         if (ld->signal_read_fd == -1) return false;
     }
 #else
-    ld->signal_fds[0] = -1; ld->signal_fds[1] = -1;
+    ld->signal_fds[0] = -1;
+    ld->signal_fds[1] = -1;
     if (ld->num_handled_signals) {
         if (!self_pipe(ld->signal_fds, true)) return false;
         signal_write_fd = ld->signal_fds[1];
         ld->signal_read_fd = ld->signal_fds[0];
-        struct sigaction act = {.sa_sigaction=handle_signal, .sa_flags=SA_SIGINFO | SA_RESTART, .sa_mask = ld->signals};
-        for (size_t i = 0; i < ld->num_handled_signals; i++) { if (sigaction(ld->handled_signals[i], &act, NULL) != 0) return false; }
+        struct sigaction act = {.sa_sigaction = handle_signal, .sa_flags = SA_SIGINFO | SA_RESTART, .sa_mask = ld->signals};
+        for (size_t i = 0; i < ld->num_handled_signals; i++) {
+            if (sigaction(ld->handled_signals[i], &act, NULL) != 0) return false;
+        }
     }
 #endif
     return true;
@@ -76,13 +79,18 @@ init_loop_data(LoopData *ld, ...) {
     return init_signal_handlers(ld);
 }
 
-#define CLOSE(which, idx) if (ld->which[idx] > -1) { safe_close(ld->which[idx], __FILE__, __LINE__); ld->which[idx] = -1; }
+#define CLOSE(which, idx)                               \
+    if (ld->which[idx] > -1) {                          \
+        safe_close(ld->which[idx], __FILE__, __LINE__); \
+        ld->which[idx] = -1;                            \
+    }
 
 static void
 remove_signal_handlers(LoopData *ld) {
 #ifndef HAS_SIGNAL_FD
     signal_write_fd = -1;
-    CLOSE(signal_fds, 0); CLOSE(signal_fds, 1);
+    CLOSE(signal_fds, 0);
+    CLOSE(signal_fds, 1);
 #endif
     if (ld->signal_read_fd > -1) {
 #ifdef HAS_SIGNAL_FD
@@ -98,7 +106,8 @@ remove_signal_handlers(LoopData *ld) {
 void
 free_loop_data(LoopData *ld) {
 #ifndef HAS_EVENT_FD
-    CLOSE(wakeup_fds, 0); CLOSE(wakeup_fds, 1);
+    CLOSE(wakeup_fds, 0);
+    CLOSE(wakeup_fds, 1);
 #endif
 #undef CLOSE
 #ifdef HAS_EVENT_FD
@@ -111,7 +120,7 @@ free_loop_data(LoopData *ld) {
 
 void
 wakeup_loop(LoopData *ld, bool in_signal_handler, const char *loop_name) {
-    while(true) {
+    while (true) {
 #ifdef HAS_EVENT_FD
         static const int64_t value = 1;
         ssize_t ret = write(ld->wakeup_read_fd, &value, sizeof value);
@@ -151,7 +160,7 @@ read_signals(int fd, handle_signal_func callback, void *data) {
             si.si_code = fdsi[i].ssi_code;
             si.si_pid = fdsi[i].ssi_pid;
             si.si_uid = fdsi[i].ssi_uid;
-            si.si_addr = (void*)(uintptr_t)fdsi[i].ssi_addr;
+            si.si_addr = (void *)(uintptr_t)fdsi[i].ssi_addr;
             si.si_status = fdsi[i].ssi_status;
             si.si_value.sival_int = fdsi[i].ssi_int;
             if (!callback(&si, data)) break;
@@ -160,7 +169,7 @@ read_signals(int fd, handle_signal_func callback, void *data) {
 #else
     static char buf[sizeof(siginfo_t) * 8];
     static size_t buf_pos = 0;
-    while(true) {
+    while (true) {
         ssize_t len = read(fd, buf + buf_pos, sizeof(buf) - buf_pos);
         if (len < 0) {
             if (errno == EINTR) continue;
@@ -170,7 +179,7 @@ read_signals(int fd, handle_signal_func callback, void *data) {
         buf_pos += len;
         bool keep_going = true;
         while (keep_going && buf_pos >= sizeof(siginfo_t)) {
-            keep_going = callback((siginfo_t*)buf, data);
+            keep_going = callback((siginfo_t *)buf, data);
             buf_pos -= sizeof(siginfo_t);
             memmove(buf, buf + sizeof(siginfo_t), buf_pos);
         }
@@ -181,11 +190,17 @@ read_signals(int fd, handle_signal_func callback, void *data) {
 
 static LoopData python_loop_data = {0};
 
-static PyObject*
+static PyObject *
 init_signal_handlers_py(PyObject *self UNUSED, PyObject *args) {
-    if (python_loop_data.num_handled_signals) { PyErr_SetString(PyExc_RuntimeError, "signal handlers already initialized"); return NULL; }
+    if (python_loop_data.num_handled_signals) {
+        PyErr_SetString(PyExc_RuntimeError, "signal handlers already initialized");
+        return NULL;
+    }
 #ifndef HAS_SIGNAL_FD
-    if (signal_write_fd > -1) { PyErr_SetString(PyExc_RuntimeError, "signal handlers already initialized"); return NULL; }
+    if (signal_write_fd > -1) {
+        PyErr_SetString(PyExc_RuntimeError, "signal handlers already initialized");
+        return NULL;
+    }
 #endif
     for (Py_ssize_t i = 0; i < MIN(PyTuple_GET_SIZE(args), (Py_ssize_t)arraysz(python_loop_data.handled_signals)); i++) {
         python_loop_data.handled_signals[python_loop_data.num_handled_signals++] = PyLong_AsLong(PyTuple_GET_ITEM(args, i));
@@ -200,20 +215,34 @@ init_signal_handlers_py(PyObject *self UNUSED, PyObject *args) {
 
 static PyTypeObject SigInfoType;
 static PyStructSequence_Field sig_info_fields[] = {
-    {"si_signo", "Signal number"}, {"si_code", "Signal code"}, {"si_pid", "Sending Process id"},
-    {"si_uid", "Real user id of sending process"}, {"si_addr", "Address of faulting instruction as int"},
-    {"si_status", "Exit value or signal"}, {"sival_int", "Signal value as int"}, {"sival_ptr", "Signal value as pointer int"},
-    {NULL, NULL}
-};
+    {"si_signo", "Signal number"},
+    {"si_code", "Signal code"},
+    {"si_pid", "Sending Process id"},
+    {"si_uid", "Real user id of sending process"},
+    {"si_addr", "Address of faulting instruction as int"},
+    {"si_status", "Exit value or signal"},
+    {"sival_int", "Signal value as int"},
+    {"sival_ptr", "Signal value as pointer int"},
+    {NULL, NULL}};
 static PyStructSequence_Desc sig_info_desc = {"SigInfo", NULL, sig_info_fields, 6};
 
 static bool
-handle_signal_callback_py(const siginfo_t* siginfo, void *data) {
+handle_signal_callback_py(const siginfo_t *siginfo, void *data) {
     if (PyErr_Occurred()) return false;
     PyObject *callback = data;
     PyObject *ans = PyStructSequence_New(&SigInfoType);
     int pos = 0;
-#define S(x) { PyObject *t = x; if (t) { PyStructSequence_SET_ITEM(ans, pos, x); } else { Py_CLEAR(ans); return false; } pos++; }
+#define S(x)                                        \
+    {                                               \
+        PyObject *t = x;                            \
+        if (t) {                                    \
+            PyStructSequence_SET_ITEM(ans, pos, x); \
+        } else {                                    \
+            Py_CLEAR(ans);                          \
+            return false;                           \
+        }                                           \
+        pos++;                                      \
+    }
     if (ans) {
         S(PyLong_FromLong((long)siginfo->si_signo));
         S(PyLong_FromLong((long)siginfo->si_code));
@@ -224,43 +253,46 @@ handle_signal_callback_py(const siginfo_t* siginfo, void *data) {
         S(PyLong_FromLong((long)siginfo->si_value.sival_int));
         S(PyLong_FromVoidPtr(siginfo->si_value.sival_ptr));
         PyObject *ret = PyObject_CallFunctionObjArgs(callback, ans, NULL);
-        Py_CLEAR(ans); Py_CLEAR(ret);
+        Py_CLEAR(ans);
+        Py_CLEAR(ret);
     }
     return (PyErr_Occurred()) ? false : true;
 #undef S
 }
 
-static PyObject*
+static PyObject *
 read_signals_py(PyObject *self UNUSED, PyObject *args) {
-    int fd; PyObject *callback;
+    int fd;
+    PyObject *callback;
     if (!PyArg_ParseTuple(args, "iO", &fd, &callback)) return NULL;
-    if (!PyCallable_Check(callback)) { PyErr_SetString(PyExc_TypeError, "callback must be callable"); return NULL; }
+    if (!PyCallable_Check(callback)) {
+        PyErr_SetString(PyExc_TypeError, "callback must be callable");
+        return NULL;
+    }
     read_signals(fd, handle_signal_callback_py, callback);
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
 
 
-static PyObject*
+static PyObject *
 remove_signal_handlers_py(PyObject *self UNUSED, PyObject *args UNUSED) {
-    if (python_loop_data.num_handled_signals) {
-        remove_signal_handlers(&python_loop_data);
-    }
+    if (python_loop_data.num_handled_signals) { remove_signal_handlers(&python_loop_data); }
     Py_RETURN_NONE;
 }
 
 static PyMethodDef methods[] = {
-    {"install_signal_handlers", init_signal_handlers_py, METH_VARARGS, "Initialize an fd to read signals from" },
-    {"read_signals", read_signals_py, METH_VARARGS, "Read pending signals from the specified fd" },
-    {"remove_signal_handlers", remove_signal_handlers_py, METH_NOARGS, "Remove signal handlers" },
-    { NULL, NULL, 0, NULL },
+    {"install_signal_handlers", init_signal_handlers_py, METH_VARARGS, "Initialize an fd to read signals from"},
+    {"read_signals", read_signals_py, METH_VARARGS, "Read pending signals from the specified fd"},
+    {"remove_signal_handlers", remove_signal_handlers_py, METH_NOARGS, "Remove signal handlers"},
+    {NULL, NULL, 0, NULL},
 };
 
 bool
 init_loop_utils(PyObject *module) {
     if (PyStructSequence_InitType2(&SigInfoType, &sig_info_desc) != 0) return false;
-    Py_INCREF((PyObject *) &SigInfoType);
-    PyModule_AddObject(module, "SigInfo", (PyObject *) &SigInfoType);
+    Py_INCREF((PyObject *)&SigInfoType);
+    PyModule_AddObject(module, "SigInfo", (PyObject *)&SigInfoType);
 
     return PyModule_AddFunctions(module, methods) == 0;
 }

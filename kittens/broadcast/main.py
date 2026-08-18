@@ -5,7 +5,8 @@ import sys
 
 from kitty.rc.base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION
 
-OPTIONS = ('''
+OPTIONS = (
+    """
 --hide-input-toggle
 default=Ctrl+Alt+Esc
 Key to press that will toggle hiding of the input in the broadcast window itself.
@@ -17,7 +18,11 @@ default=Ctrl+Esc
 Key to press to end the broadcast session.
 
 
-''' + MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')).format
+"""
+    + MATCH_WINDOW_OPTION
+    + '\n\n'
+    + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')
+).format
 help_text = 'Broadcast typed text to kitty windows. By default text is sent to all windows, unless one of the matching options is specified'
 usage = '[initial text to send ...]'
 

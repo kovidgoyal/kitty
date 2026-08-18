@@ -33,20 +33,26 @@ typedef struct {
 
 // Check if empty
 static inline bool
-deque_is_empty(const DEQUE_NAME* dq) { return dq->count == 0; }
+deque_is_empty(const DEQUE_NAME *dq) {
+    return dq->count == 0;
+}
 
 // Check if full
 static inline bool
-deque_is_full(const DEQUE_NAME* dq) { return dq->count == DEQUE_CAPACITY; }
+deque_is_full(const DEQUE_NAME *dq) {
+    return dq->count == DEQUE_CAPACITY;
+}
 
 // Get current size
 static inline unsigned
-deque_size(const DEQUE_NAME* dq) { return dq->count; }
+deque_size(const DEQUE_NAME *dq) {
+    return dq->count;
+}
 
 // Push to back auto-evicts from front if full.
 // Returns true if an item was evicted, which will be copied to *evicted_item is not NULL.
 static inline bool
-deque_push_back(DEQUE_NAME* dq, DEQUE_DATA_TYPE item, DEQUE_DATA_TYPE *evicted_item) {
+deque_push_back(DEQUE_NAME *dq, DEQUE_DATA_TYPE item, DEQUE_DATA_TYPE *evicted_item) {
     bool evicted = false;
     if (deque_is_full(dq)) {
         // Evict front item
@@ -64,7 +70,7 @@ deque_push_back(DEQUE_NAME* dq, DEQUE_DATA_TYPE item, DEQUE_DATA_TYPE *evicted_i
 // Push to front, auto-evicts from back if full.
 // Returns true if an item was evicted, which will be copied to *evicted_item is not NULL.
 static inline bool
-deque_push_front(DEQUE_NAME* dq, DEQUE_DATA_TYPE item, DEQUE_DATA_TYPE *evicted_item) {
+deque_push_front(DEQUE_NAME *dq, DEQUE_DATA_TYPE item, DEQUE_DATA_TYPE *evicted_item) {
     bool evicted = false;
 
     if (deque_is_full(dq)) {
@@ -84,7 +90,7 @@ deque_push_front(DEQUE_NAME* dq, DEQUE_DATA_TYPE item, DEQUE_DATA_TYPE *evicted_
 
 // Pop from front
 static inline bool
-deque_pop_front(DEQUE_NAME* dq, DEQUE_DATA_TYPE *ans) {
+deque_pop_front(DEQUE_NAME *dq, DEQUE_DATA_TYPE *ans) {
     if (deque_is_empty(dq)) return false;
     if (ans) *ans = dq->items[dq->head];
     dq->head = (dq->head + 1) % DEQUE_CAPACITY;
@@ -94,7 +100,7 @@ deque_pop_front(DEQUE_NAME* dq, DEQUE_DATA_TYPE *ans) {
 
 // Pop from back
 static inline bool
-deque_pop_back(DEQUE_NAME* dq, DEQUE_DATA_TYPE *ans) {
+deque_pop_back(DEQUE_NAME *dq, DEQUE_DATA_TYPE *ans) {
     if (deque_is_empty(dq)) return false;
     dq->tail = (dq->tail - 1 + DEQUE_CAPACITY) % DEQUE_CAPACITY;
     if (ans) *ans = dq->items[dq->tail];
@@ -103,30 +109,30 @@ deque_pop_back(DEQUE_NAME* dq, DEQUE_DATA_TYPE *ans) {
 }
 
 // Peek at front without removing
-static inline const DEQUE_DATA_TYPE*
-deque_peek_front(const DEQUE_NAME* dq) {
+static inline const DEQUE_DATA_TYPE *
+deque_peek_front(const DEQUE_NAME *dq) {
     if (deque_is_empty(dq)) return NULL;
     return &dq->items[dq->head];
 }
 
 // Peek at back without removing
-static inline const DEQUE_DATA_TYPE*
-deque_peek_back(const DEQUE_NAME* dq) {
+static inline const DEQUE_DATA_TYPE *
+deque_peek_back(const DEQUE_NAME *dq) {
     if (deque_is_empty(dq)) return NULL;
     int idx = (dq->tail - 1 + DEQUE_CAPACITY) % DEQUE_CAPACITY;
     return &dq->items[idx];
 }
 
 // Access by index (0 = oldest, count-1 = newest)
-static inline const DEQUE_DATA_TYPE*
-deque_at(const DEQUE_NAME* dq, unsigned index) {
+static inline const DEQUE_DATA_TYPE *
+deque_at(const DEQUE_NAME *dq, unsigned index) {
     if (index >= dq->count) return NULL;
     return &dq->items[(dq->head + index) % DEQUE_CAPACITY];
 }
 
 // Clear all items (doesn't free items)
 static inline void
-deque_clear(DEQUE_NAME* dq) {
+deque_clear(DEQUE_NAME *dq) {
     dq->head = 0;
     dq->tail = 0;
     dq->count = 0;

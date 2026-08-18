@@ -1,0 +1,5 @@
+startgroup
+    var float HIGHLIGHT_INTENSITY = 0
+    var float BORDER_WIDTH = 0
+    shaders focus-highlight
+endgroup

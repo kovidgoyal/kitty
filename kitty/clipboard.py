@@ -29,7 +29,6 @@ READ_RESPONSE_CHUNK_SIZE = 4096
 
 
 class Tempfile:
-
     def __init__(self, max_size: int) -> None:
         self.file: io.BytesIO | IO[bytes] = io.BytesIO()
         self.max_size = max_size
@@ -66,7 +65,9 @@ class Tempfile:
                 ans = self.read(pos, min(io.DEFAULT_BUFFER_SIZE, limit - pos))
                 pos = self.file.tell()
                 return ans
+
             return chunker
+
         return chunk_creator
 
 
@@ -89,7 +90,6 @@ class ClipboardType(IntEnum):
 
 
 class Clipboard:
-
     def __init__(self, clipboard_type: ClipboardType = ClipboardType.clipboard) -> None:
         self.data: dict[str, DataType] = {}
         self.clipboard_type = clipboard_type
@@ -107,7 +107,7 @@ class Clipboard:
 
     def get_text(self) -> str:
         parts: list[bytes] = []
-        self.get_mime("text/plain", parts.append)
+        self.get_mime('text/plain', parts.append)
         return b''.join(parts).decode('utf-8', 'replace')
 
     def get_mime(self, mime: str, output: Callable[[bytes], None]) -> None:
@@ -149,12 +149,14 @@ class Clipboard:
         if isinstance(data, str):
             data = data.encode('utf-8')
         if isinstance(data, bytes):
+
             def chunker() -> bytes:
                 nonlocal data
                 assert isinstance(data, bytes)
                 ans = data
                 data = b''
                 return ans
+
             return chunker
 
         return data()
@@ -180,11 +182,13 @@ def develop() -> tuple[Clipboard, Clipboard]:
     from .constants import detect_if_wayland_ok, is_macos
     from .fast_data_types import set_boss
     from .main import init_glfw_module
+
     glfw_module = 'cocoa' if is_macos else ('wayland' if detect_if_wayland_ok() else 'x11')
 
     class Boss:
         clipboard = Clipboard()
         primary_selection = Clipboard(ClipboardType.primary_selection)
+
     init_glfw_module(glfw_module)
     set_boss(Boss())  # type: ignore
     return Boss.clipboard, Boss.primary_selection
@@ -197,12 +201,14 @@ class ProtocolType(Enum):
 
 def encode_mime(x: str) -> str:
     import base64
+
     return base64.standard_b64encode(x.encode('utf-8')).decode('ascii')
 
 
 def decode_metadata_value(k: str, x: str) -> str:
     if k in ('mime', 'name', 'pw'):
         import base64
+
         x = base64.standard_b64decode(x).decode('utf-8')
     return x
 
@@ -218,8 +224,10 @@ class ReadRequest(NamedTuple):
 
     def encode_response(self, status: str = 'DATA', mime: str = '', payload: bytes | memoryview = b'') -> bytes:
         from base64 import standard_b64encode
+
         def encode_b64(s: str) -> str:
             return standard_b64encode(s.encode()).decode()
+
         ans = f'{self.protocol_type.value};type=read:status={status}'
         if status == 'OK' and self.is_primary_selection:
             ans += ':loc=primary'
@@ -237,8 +245,8 @@ class ReadRequest(NamedTuple):
 
 def encode_osc52(loc: str, response: str) -> str:
     from base64 import standard_b64encode
-    return '52;{};{}'.format(
-        loc, standard_b64encode(response.encode('utf-8')).decode('ascii'))
+
+    return '52;{};{}'.format(loc, standard_b64encode(response.encode('utf-8')).decode('ascii'))
 
 
 class MimePos(NamedTuple):
@@ -247,10 +255,15 @@ class MimePos(NamedTuple):
 
 
 class WriteRequest:
-
     def __init__(
-        self, is_primary_selection: bool = False, protocol_type: ProtocolType = ProtocolType.osc_52, id: str = '',
-        rollover_size: int = 16 * 1024 * 1024, max_size: int = -1, human_name: str = '', password: str = '',
+        self,
+        is_primary_selection: bool = False,
+        protocol_type: ProtocolType = ProtocolType.osc_52,
+        id: str = '',
+        rollover_size: int = 16 * 1024 * 1024,
+        max_size: int = -1,
+        human_name: str = '',
+        password: str = '',
     ) -> None:
         self.decoder = StreamingBase64Decoder()
         self.human_name = human_name
@@ -329,11 +342,10 @@ class WriteRequest:
         start, full_size = self.mime_map[mime]
         if size == -1:
             size = full_size
-        return self.tempfile.read(start+offset, size)
+        return self.tempfile.read(start + offset, size)
 
 
 class GrantedPermission:
-
     one_time: bool = False
     write_ban: bool = False
     read_ban: bool = False
@@ -344,7 +356,6 @@ class GrantedPermission:
 
 
 class ClipboardRequestManager:
-
     def __init__(self, window_id: int) -> None:
         self.window_id = window_id
         self.currently_asking_permission_for: ReadRequest | None = None
@@ -356,13 +367,14 @@ class ClipboardRequestManager:
         import base64
 
         from .notifications import sanitize_id
+
         idx = find_in_memoryview(data, ord(b';'))
         if idx > -1:
-            metadata = str(data[:idx], "utf-8", "replace")
-            epayload = data[idx+1:]
+            metadata = str(data[:idx], 'utf-8', 'replace')
+            epayload = data[idx + 1 :]
         else:
-            metadata = str(data, "utf-8", "replace")
-            epayload = data[len(data):]
+            metadata = str(data, 'utf-8', 'replace')
+            epayload = data[len(data) :]
         m: dict[str, str] = {}
         for record in metadata.split(':'):
             try:
@@ -377,15 +389,19 @@ class ClipboardRequestManager:
             rr = ReadRequest(
                 is_primary_selection=m.get('loc', '') == 'primary',
                 mime_types=tuple(payload.decode('utf-8').split()),
-                protocol_type=ProtocolType.osc_5522, id=sanitize_id(m.get('id', '')),
-                human_name=m.get('name', ''), password=m.get('pw', ''),
+                protocol_type=ProtocolType.osc_5522,
+                id=sanitize_id(m.get('id', '')),
+                human_name=m.get('name', ''),
+                password=m.get('pw', ''),
             )
             self.handle_read_request(rr)
         elif typ == 'write':
             self.in_flight_write_request = WriteRequest(
                 is_primary_selection=m.get('loc', '') == 'primary',
-                protocol_type=ProtocolType.osc_5522, id=sanitize_id(m.get('id', '')),
-                human_name=m.get('name', ''), password=m.get('pw', ''),
+                protocol_type=ProtocolType.osc_5522,
+                id=sanitize_id(m.get('id', '')),
+                human_name=m.get('name', ''),
+                password=m.get('pw', ''),
             )
             self.handle_write_request(self.in_flight_write_request)
         elif typ == 'walias':
@@ -430,11 +446,11 @@ class ClipboardRequestManager:
     def parse_osc_52(self, data: memoryview, is_partial: bool = False) -> None:
         idx = find_in_memoryview(data, ord(b';'))
         if idx > -1:
-            where = str(data[:idx], "utf-8", 'replace')
-            data = data[idx+1:]
+            where = str(data[:idx], 'utf-8', 'replace')
+            data = data[idx + 1 :]
         else:
-            where = str(data, "utf-8", 'replace')
-            data = data[len(data):]
+            where = str(data, 'utf-8', 'replace')
+            data = data[len(data) :]
         destinations = {ClipboardType.from_osc52_where_field(where) for where in where or 's0'}
         destinations.discard(ClipboardType.unknown)
         if len(data) == 1 and data.tobytes() == b'?':
@@ -478,6 +494,7 @@ class ClipboardRequestManager:
                     wr.permission_pending = False
                 else:
                     wid = w.id
+
                     def callback(granted: bool) -> None:
                         if wr is not self.in_flight_write_request:
                             return
@@ -519,6 +536,7 @@ class ClipboardRequestManager:
                     else:
                         p.read = False
                         p.read_ban = True
+
         if for_write:
             msg = _('The program {0} running in this window wants to write to the system clipboard.')
         else:
@@ -526,8 +544,18 @@ class ClipboardRequestManager:
         msg += '\n\n' + ('If you choose "Always" similar requests from this program will be automatically allowed for the rest of this session.')
         msg += '\n\n' + ('If you choose "Ban" similar requests from this program will be automatically dis-allowed for the rest of this session.')
         from kittens.tui.operations import styled
-        get_boss().choose(msg.format(styled(human_name, fg='yellow')), cb, 'a;green:Allow', 'w;yellow:Always', 'd;red:Deny', 'b;red:Ban',
-                          default='d', window=window, title=_('A program wants to access the clipboard'))
+
+        get_boss().choose(
+            msg.format(styled(human_name, fg='yellow')),
+            cb,
+            'a;green:Allow',
+            'w;yellow:Always',
+            'd;red:Deny',
+            'b;red:Ban',
+            default='d',
+            window=window,
+            title=_('A program wants to access the clipboard'),
+        )
 
     def password_is_allowed_already(self, password: str, for_write: bool = False) -> bool:
         q = self.granted_passwords.get(password)
@@ -558,6 +586,7 @@ class ClipboardRequestManager:
 
     def send_paste_event(self, is_primary_selection: bool) -> None:
         from kitty.short_uuid import uuid4
+
         pw = uuid4()
         self.granted_passwords[pw] = GrantedPermission(read=True, one_time=True)
         rr = ReadRequest(is_primary_selection=is_primary_selection, mime_types=(TARGETS_MIME,), protocol_type=ProtocolType.osc_5522)
@@ -639,13 +668,9 @@ class ClipboardRequestManager:
                 self.request_permission(w, rr.human_name, rr.password, self.handle_clipboard_confirmation)
             else:
                 if rr.human_name:
-                    msg = _(
-                    'The program {} running in this window wants to read from the system clipboard.'
-                    ' Allow it to do so, once?').format(rr.human_name)
+                    msg = _('The program {} running in this window wants to read from the system clipboard. Allow it to do so, once?').format(rr.human_name)
                 else:
-                    msg = _(
-                    'A program running in this window wants to read from the system clipboard.'
-                    ' Allow it to do so, once?')
+                    msg = _('A program running in this window wants to read from the system clipboard. Allow it to do so, once?')
                 get_boss().confirm(msg, self.handle_clipboard_confirmation, window=w)
 
     def handle_clipboard_confirmation(self, confirmed: bool) -> None:

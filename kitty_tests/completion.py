@@ -9,12 +9,12 @@ import subprocess
 import tempfile
 
 from kitty.constants import kitten_exe as kitten
+from kitty.session import SESSION_FILE_EXTENSIONS
 
-from . import BaseTest
+from .base import BaseTest
 
 
 class TestCompletion(BaseTest):
-
     def test_completion(self):
         with tempfile.TemporaryDirectory() as tdir:
             completion(self, tdir)
@@ -33,6 +33,7 @@ def has_words(*words):
         q = set(words)
         missing = q - get_all_words(result)
         self.assertFalse(missing, f'Words missing. Command line: {self.current_cmd!r}')
+
     return t
 
 
@@ -41,6 +42,7 @@ def does_not_have_words(*words):
         q = set(words)
         all_words = get_all_words(result)
         self.assertFalse(q & all_words, f'Words unexpectedly present. Command line: {self.current_cmd!r}')
+
     return t
 
 
@@ -49,6 +51,7 @@ def all_words(*words):
         expected = set(words)
         actual = get_all_words(result)
         self.assertEqual(expected, actual, f'Command line: {self.current_cmd!r}')
+
     return t
 
 
@@ -62,6 +65,7 @@ def is_delegate(num_to_remove: int = 0, command: str = ''):
     def t(self, result):
         d = result['delegate']
         self.assertEqual(d, q, f'Command line: {self.current_cmd!r}')
+
     return t
 
 
@@ -85,15 +89,13 @@ def completion(self: TestCompletion, tdir: str):
         env['PATH'] = os.path.join(tdir, 'bin')
         env['HOME'] = os.path.join(tdir, 'sub')
         env['KITTY_CONFIG_DIRECTORY'] = os.path.join(tdir, 'sub')
-        cp = subprocess.run(
-            [kitten(), '__complete__', 'json'],
-            check=True, stdout=subprocess.PIPE, cwd=tdir, input=json.dumps(all_argv).encode(), env=env
-        )
+        cp = subprocess.run([kitten(), '__complete__', 'json'], check=True, stdout=subprocess.PIPE, cwd=tdir, input=json.dumps(all_argv).encode(), env=env)
         self.assertEqual(cp.returncode, 0, f'kitten __complete__ failed with exit code: {cp.returncode}')
         return json.loads(cp.stdout)
 
     add('kitty ', has_words('@', '+', '+open'))
     add('kitty @ l', has_words('ls', 'last-used-layout', 'launch'))
+    add('kitty @ set-o', has_words('set-os-window-title'))
 
     def make_file(path, mode=None):
         with open(os.path.join(tdir, path), mode='x') as f:
@@ -108,6 +110,9 @@ def completion(self: TestCompletion, tdir: str):
     make_file('exe-not2.jpeg')
     make_file('sub/exe3', 0o700)
     make_file('sub/exe-not3.png')
+    session_files = tuple(f'project.{ext}' for ext in sorted(SESSION_FILE_EXTENSIONS))
+    for path in session_files:
+        make_file(f'sub/{path}')
 
     add('kitty x', all_words())
     add('kitty e', all_words('exe1', 'exe2'))
@@ -131,6 +136,7 @@ def completion(self: TestCompletion, tdir: str):
     add('kitty -c', all_words('-c'))
     add('kitty --', has_words('--config', '--single-instance', '--'))
     add('kitty --s', has_words('--session', '--start-as'))
+    add('kitty --session ', all_words(*session_files))
     add('kitty --start-as', all_words('--start-as'))
     add('kitty --start-as ', all_words('minimized', 'maximized', 'fullscreen', 'normal', 'hidden'))
     add('kitty -1 ', does_not_have_words('@ls', '@'))

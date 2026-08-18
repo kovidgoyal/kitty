@@ -17,7 +17,7 @@ from kitty.constants import is_macos, kitten_exe, kitty_base_dir, shell_integrat
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from kitty.shell_integration import setup_bash_env, setup_fish_env, setup_zsh_env
 
-from . import BaseTest
+from .base import BaseTest
 
 
 @lru_cache
@@ -32,10 +32,7 @@ def bash_ok():
     return int(major_ver) >= 5 and relstatus == 'release'
 
 
-def extract_sudo_function(
-    content: str, opening='sudo() {', closing='}',
-    witht='command sudo TERMINFO="$TERMINFO" "$@";', without='command sudo "$@";'
-) -> str:
+def extract_sudo_function(content: str, opening='sudo() {', closing='}', witht='command sudo TERMINFO="$TERMINFO" "$@";', without='command sudo "$@";') -> str:
     """Extract the sudo() function from bash/zsh shell integration content using indentation."""
     lines = content.split('\n')
     start_idx = None
@@ -52,7 +49,7 @@ def extract_sudo_function(
         line = lines[i]
         stripped = line.strip()
         if stripped == closing and (len(line) - len(line.lstrip())) == indent_len:
-            func = '\n'.join(lines[start_idx:i + 1])
+            func = '\n'.join(lines[start_idx : i + 1])
             func = func.replace(witht, 'echo "with_terminfo";')
             func = func.replace(without, 'echo "no_terminfo";')
             return func
@@ -109,7 +106,6 @@ def safe_env_for_running_shell(argv, home_dir, rc='', shell='zsh', with_kitten=F
 
 
 class ShellIntegration(BaseTest):
-
     with_kitten = False
 
     @contextmanager
@@ -162,39 +158,76 @@ class ShellIntegration(BaseTest):
         self.assertIsNotNone(func)
         self.sudo_parser_tests(['bash', '--noprofile', '--norc', '-c'], func)
 
+    @unittest.skipUnless(bash_ok(), 'bash not installed, too old, or debug build')
+    def test_bash_disabled_command_hook(self):
+        if self.with_kitten:
+            return
+        integration_script = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
+        command = 'PS0=original; source "$KITTY_BASH_INTEGRATION"; _ksi_prompt_command; printf %s "$PS0"'
+        common_options = 'enabled no-cursor no-cwd no-complete no-sudo'
+        for options, has_command_hook in (
+            ('no-title no-prompt-mark', False),
+            ('no-prompt-mark', True),
+            ('no-title', True),
+        ):
+            with self.subTest(options=options), tempfile.TemporaryDirectory() as home_dir:
+                env = basic_shell_env(home_dir)
+                env['KITTY_BASH_INTEGRATION'] = integration_script
+                env['KITTY_SHELL_INTEGRATION'] = f'{common_options} {options}'
+                cp = subprocess.run(['bash', '--noprofile', '--norc', '-ic', command], env=env, capture_output=True)
+                self.assertEqual(cp.returncode, 0, cp.stderr.decode())
+                self.assertEqual(cp.stdout.decode() != 'original', has_command_hook)
+
+    @unittest.skipUnless(bash_ok(), 'bash not installed, too old, or debug build')
+    def test_bash_ssh_hostname_fallback(self):
+        if self.with_kitten:
+            return
+        integration_script = os.path.join(shell_integration_dir, 'bash', 'kitty.bash')
+        command = 'PS1="prompt> "; source "$KITTY_BASH_INTEGRATION"; _ksi_prompt_command; printf %s "${PS1@P}"'
+        with tempfile.TemporaryDirectory() as home_dir:
+            home_dir = os.path.realpath(home_dir)
+            who = os.path.join(home_dir, 'who')
+            with open(who, 'w') as f:
+                f.write("#!/bin/sh\nprintf '%s\\n' 'user pts/0 (192.0.2.1)'\n")
+            os.chmod(who, 0o755)
+            env = basic_shell_env(home_dir)
+            env['KITTY_BASH_INTEGRATION'] = integration_script
+            env['PATH'] = os.pathsep.join((home_dir, env['PATH']))
+            cp = subprocess.run(['bash', '--noprofile', '--norc', '-ic', command], cwd=home_dir, env=env, capture_output=True)
+            self.assertEqual(cp.returncode, 0, cp.stderr.decode())
+            self.assertIn(': ~\x07', cp.stdout.decode())
+
     @unittest.skipUnless(shutil.which('fish'), 'fish not installed')
     def test_fish_sudo_parser(self):
         if self.with_kitten:
             return
         src = os.path.join(shell_integration_dir, 'fish', 'vendor_conf.d', 'kitty-shell-integration.fish')
         with open(src) as f:
-            func = extract_sudo_function(
-                f.read(), opening='function sudo', closing='end', witht='sudo TERMINFO="$TERMINFO" $argv',
-                without='sudo $argv')
+            func = extract_sudo_function(f.read(), opening='function sudo', closing='end', witht='sudo TERMINFO="$TERMINFO" $argv', without='sudo $argv')
         self.assertIsNotNone(func)
         self.sudo_parser_tests(['fish', '--no-config', '-c'], func)
 
     def sudo_parser_tests(self, shell: list[str], func: str) -> None:
         test_cases = [
-            (['ls'],                               'with_terminfo', 'simple command'),
-            (['-e', 'file.txt'],                   'no_terminfo',   '-e flag'),
-            (['--edit', 'file.txt'],               'no_terminfo',   '--edit flag'),
-            (['-v'],                               'no_terminfo',   '-v validate flag'),
-            (['--validate'],                       'no_terminfo',   '--validate flag'),
-            (['-nv'],                              'no_terminfo',   '-nv grouped flags'),
-            (['-ne', 'file.txt'],                  'no_terminfo',   '-ne grouped flags'),
-            (['-u', 'root', 'ls'],                 'with_terminfo', '-u takes argument'),
-            (['-u', 'root', '-v'],                 'no_terminfo',   '-u arg then -v'),
-            (['--', '-v'],                         'with_terminfo', '-- ends option processing'),
-            (['TERM=xterm-kitty', 'ls'],           'with_terminfo', 'env var before command'),
-            (['TERM=xterm-kitty', '-v', 'ls'],     'no_terminfo',   'env var before -v'),
-            (['-g', 'wheel', '-v'],                'no_terminfo', '-g takes argument'),
-            (['-D', '/tmp', '-e'],                 'no_terminfo', '-D takes argument'),
-            (['-R', '/chroot', '-e'],              'no_terminfo', '-R takes argument'),
-            (['-h', 'localhost', '-v'],            'no_terminfo', '-h takes argument'),
-            (['-uroot', '-v', 'ls'],               'with_terminfo', '-u with embedded argument'),
-            (['--user', '-v', 'ls'],               'with_terminfo', '--user takes argument'),
-            (['--user=root', '-v', 'ls'],          'no_terminfo', '--user=root self-contained'),
+            (['ls'], 'with_terminfo', 'simple command'),
+            (['-e', 'file.txt'], 'no_terminfo', '-e flag'),
+            (['--edit', 'file.txt'], 'no_terminfo', '--edit flag'),
+            (['-v'], 'no_terminfo', '-v validate flag'),
+            (['--validate'], 'no_terminfo', '--validate flag'),
+            (['-nv'], 'no_terminfo', '-nv grouped flags'),
+            (['-ne', 'file.txt'], 'no_terminfo', '-ne grouped flags'),
+            (['-u', 'root', 'ls'], 'with_terminfo', '-u takes argument'),
+            (['-u', 'root', '-v'], 'no_terminfo', '-u arg then -v'),
+            (['--', '-v'], 'with_terminfo', '-- ends option processing'),
+            (['TERM=xterm-kitty', 'ls'], 'with_terminfo', 'env var before command'),
+            (['TERM=xterm-kitty', '-v', 'ls'], 'no_terminfo', 'env var before -v'),
+            (['-g', 'wheel', '-v'], 'no_terminfo', '-g takes argument'),
+            (['-D', '/tmp', '-e'], 'no_terminfo', '-D takes argument'),
+            (['-R', '/chroot', '-e'], 'no_terminfo', '-R takes argument'),
+            (['-h', 'localhost', '-v'], 'no_terminfo', '-h takes argument'),
+            (['-uroot', '-v', 'ls'], 'with_terminfo', '-u with embedded argument'),
+            (['--user', '-v', 'ls'], 'with_terminfo', '--user takes argument'),
+            (['--user=root', '-v', 'ls'], 'no_terminfo', '--user=root self-contained'),
         ]
         for cmd, expected, _ in test_cases:
             func += f'\n\nsudo {" ".join(cmd)}'
@@ -212,7 +245,8 @@ class ShellIntegration(BaseTest):
             rc=f'''
 PS1="{ps1}"
 RPS1="{rps1}"
-''') as pty:
+'''
+        ) as pty:
             q = ps1 + ' ' * (pty.screen.columns - len(ps1) - len(rps1)) + rps1
             try:
                 pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
@@ -255,7 +289,7 @@ RPS1="{rps1}"
             pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
             self.assert_command(pty)
             # Check escaping of inputs
-            pty.send_cmd_to_child("-f-this-command-must-not-exist")
+            pty.send_cmd_to_child('-f-this-command-must-not-exist')
             self.assert_command(pty, exit_status=127)
         with self.run_shell(rc=f'''PS1="{ps1}"''') as pty:
             pty.callbacks.clear()
@@ -295,7 +329,8 @@ function fish_right_prompt; echo -n "{right_prompt}"; end
 function _test_comp_path; contains "{completions_dir}" $fish_complete_path; and echo ok; end
 function _set_key; set -g fish_key_bindings fish_$argv[1]_key_bindings; end
 function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status {fish_prompt}"; end; end
-''') as pty:
+''',
+        ) as pty:
             q = 'XXX\n' + fish_prompt + ' ' * (pty.screen.columns - len(fish_prompt) - len(right_prompt)) + right_prompt
             pty.wait_till(lambda: pty.screen_contents().count(right_prompt) == 1)
             self.ae(pty.screen_contents(), q)
@@ -381,9 +416,11 @@ function _set_status_prompt; function fish_prompt; echo -n "$pipestatus $status 
     def test_bash_integration(self):
         ps1 = 'prompt> '
         with self.run_shell(
-            shell='bash', rc=f'''
+            shell='bash',
+            rc=f'''
 PS1="{ps1}"
-''') as pty:
+''',
+        ) as pty:
             try:
                 pty.wait_till(lambda: pty.screen.cursor.shape == CURSOR_BEAM)
             except TimeoutError as e:
@@ -443,11 +480,20 @@ PS1="{ps1}"
             pty.send_cmd_to_child(f'cd {q}')
             pty.wait_till(lambda: pty.screen.last_reported_cwd.decode().endswith(q))
 
-        for ps1 in ('line1\\nline\\2\\prompt> ', 'line1\nprompt> ', 'line1\\nprompt> ',):
-            with self.subTest(ps1=ps1), self.run_shell(
-                shell='bash', rc=f'''
+        for ps1 in (
+            'line1\\nline\\2\\prompt> ',
+            'line1\nprompt> ',
+            'line1\\nprompt> ',
+        ):
+            with (
+                self.subTest(ps1=ps1),
+                self.run_shell(
+                    shell='bash',
+                    rc=f'''
     PS1="{ps1}"
-    ''') as pty:
+    ''',
+                ) as pty,
+            ):
                 ps1 = ps1.replace('\\n', '\n')
                 pty.wait_till(lambda: pty.screen_contents().count(ps1) == 1)
                 pty.send_cmd_to_child('echo test')
@@ -509,8 +555,9 @@ PS1="{ps1}"
         run_test('bash -l .bashrc', 'profile', rc='echo ok;read', wait_string='ok', assert_not_in=True)
         run_test('bash -il -- .bashrc', 'profile', rc='echo ok;read', wait_string='ok')
 
-        with self.run_shell(shell='bash', setup_env=partial(setup_env, set()), cmd='bash',
-                            rc=f'''PS1="{ps1}"\nexport ES=$'a\n `b` c\n$d'\nexport ES2="XXX" ''') as pty:
+        with self.run_shell(
+            shell='bash', setup_env=partial(setup_env, set()), cmd='bash', rc=f'''PS1="{ps1}"\nexport ES=$'a\n `b` c\n$d'\nexport ES2="XXX" '''
+        ) as pty:
             pty.callbacks.clear()
             pty.send_cmd_to_child('clone-in-kitty')
             pty.wait_till(lambda: len(pty.callbacks.clone_cmds) == 1)
