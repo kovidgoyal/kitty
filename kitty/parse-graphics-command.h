@@ -7,7 +7,7 @@
 static inline void
 parse_graphics_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) {
     unsigned int pos = 1;
-    
+
     enum PARSER_STATES { KEY, EQUAL, UINT, INT, FLAG, AFTER_VALUE , PAYLOAD };
     enum PARSER_STATES state = KEY, value_state = FLAG;
     GraphicsCommand g = {0};
@@ -15,7 +15,7 @@ parse_graphics_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos) 
     uint64_t lcode;
     bool is_negative; (void)is_negative;
     size_t sz;
-    
+
     enum KEYS {
         action='a',
 delete_action='d',
@@ -48,7 +48,7 @@ usage_hints='N',
 offset_from_parent_x='H',
 offset_from_parent_y='V'
     };
-    
+
     enum KEYS key = 'a';
     if (parser_buf[pos] == ';') state = AFTER_VALUE;
 
@@ -58,35 +58,35 @@ offset_from_parent_y='V'
                 key = parser_buf[pos++];
                 state = EQUAL;
                 switch(key) {
-                    case action: value_state = FLAG; break;        
-case delete_action: value_state = FLAG; break;        
-case transmission_type: value_state = FLAG; break;        
-case compressed: value_state = FLAG; break;        
-case format: value_state = UINT; break;        
-case more: value_state = UINT; break;        
-case id: value_state = UINT; break;        
-case image_number: value_state = UINT; break;        
-case placement_id: value_state = UINT; break;        
-case quiet: value_state = UINT; break;        
-case width: value_state = UINT; break;        
-case height: value_state = UINT; break;        
-case x_offset: value_state = UINT; break;        
-case y_offset: value_state = UINT; break;        
-case data_height: value_state = UINT; break;        
-case data_width: value_state = UINT; break;        
-case data_sz: value_state = UINT; break;        
-case data_offset: value_state = UINT; break;        
-case num_cells: value_state = UINT; break;        
-case num_lines: value_state = UINT; break;        
-case cell_x_offset: value_state = UINT; break;        
-case cell_y_offset: value_state = UINT; break;        
-case z_index: value_state = INT; break;        
-case cursor_movement: value_state = UINT; break;        
-case unicode_placement: value_state = UINT; break;        
-case parent_id: value_state = UINT; break;        
-case parent_placement_id: value_state = UINT; break;        
-case usage_hints: value_state = UINT; break;        
-case offset_from_parent_x: value_state = INT; break;        
+                    case action: value_state = FLAG; break;
+case delete_action: value_state = FLAG; break;
+case transmission_type: value_state = FLAG; break;
+case compressed: value_state = FLAG; break;
+case format: value_state = UINT; break;
+case more: value_state = UINT; break;
+case id: value_state = UINT; break;
+case image_number: value_state = UINT; break;
+case placement_id: value_state = UINT; break;
+case quiet: value_state = UINT; break;
+case width: value_state = UINT; break;
+case height: value_state = UINT; break;
+case x_offset: value_state = UINT; break;
+case y_offset: value_state = UINT; break;
+case data_height: value_state = UINT; break;
+case data_width: value_state = UINT; break;
+case data_sz: value_state = UINT; break;
+case data_offset: value_state = UINT; break;
+case num_cells: value_state = UINT; break;
+case num_lines: value_state = UINT; break;
+case cell_x_offset: value_state = UINT; break;
+case cell_y_offset: value_state = UINT; break;
+case z_index: value_state = INT; break;
+case cursor_movement: value_state = UINT; break;
+case unicode_placement: value_state = UINT; break;
+case parent_id: value_state = UINT; break;
+case parent_placement_id: value_state = UINT; break;
+case usage_hints: value_state = UINT; break;
+case offset_from_parent_x: value_state = INT; break;
 case offset_from_parent_y: value_state = INT; break;
                     default:
                         REPORT_ERROR("Malformed GraphicsCommand control block, invalid key character: 0x%x", key);
@@ -104,7 +104,7 @@ case offset_from_parent_y: value_state = INT; break;
 
             case FLAG:
                 switch(key) {
-                    
+
             case action: {
                 g.action = parser_buf[pos++];
                 if (g.action != 'T' && g.action != 'a' && g.action != 'c' && g.action != 'd' && g.action != 'f' && g.action != 'p' && g.action != 'q' && g.action != 't') {
@@ -113,7 +113,7 @@ case offset_from_parent_y: value_state = INT; break;
                 };
             }
             break;
-                
+
 
             case delete_action: {
                 g.delete_action = parser_buf[pos++];
@@ -123,7 +123,7 @@ case offset_from_parent_y: value_state = INT; break;
                 };
             }
             break;
-                
+
 
             case transmission_type: {
                 g.transmission_type = parser_buf[pos++];
@@ -133,7 +133,7 @@ case offset_from_parent_y: value_state = INT; break;
                 };
             }
             break;
-                
+
 
             case compressed: {
                 g.compressed = parser_buf[pos++];
@@ -143,7 +143,7 @@ case offset_from_parent_y: value_state = INT; break;
                 };
             }
             break;
-        
+
                     default:
                         break;
                 }
@@ -197,7 +197,7 @@ case offset_from_parent_y: value_state = INT; break;
                 }
                 break;
 
-            
+
                 case PAYLOAD: {
                     sz = parser_buf_pos - pos;
                     g.payload_sz = MAX(BUF_EXTRA, sz);
@@ -206,7 +206,7 @@ case offset_from_parent_y: value_state = INT; break;
                         REPORT_ERROR("Failed to parse GraphicsCommand command payload with error:     invalid base64 data in chunk of size: %zu with output buffer size: %zu", sz, g.payload_sz); return; }
                     pos = parser_buf_pos;
                     } break;
-            
+
 
         } // end switch
     } // end while
@@ -236,4 +236,4 @@ case offset_from_parent_y: value_state = INT; break;
 
     screen_handle_graphics_command(self->screen, &g, parser_buf);
 }
-    
+

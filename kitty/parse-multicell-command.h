@@ -15,7 +15,7 @@ parse_multicell_code(PS *self, uint8_t *parser_buf, const size_t parser_buf_pos)
     uint64_t lcode;
     bool is_negative; (void)is_negative;
     size_t sz;
-    
+
     enum KEYS {
         width='w',
 scale='s',
@@ -24,7 +24,7 @@ subscale_d='d',
 vertical_align='v',
 horizontal_align='h'
     };
-    
+
     enum KEYS key = 'a';
     if (parser_buf[pos] == ';') state = AFTER_VALUE;
 
@@ -34,11 +34,11 @@ horizontal_align='h'
                 key = parser_buf[pos++];
                 state = EQUAL;
                 switch(key) {
-                    case width: value_state = UINT; break;        
-case scale: value_state = UINT; break;        
-case subscale_n: value_state = UINT; break;        
-case subscale_d: value_state = UINT; break;        
-case vertical_align: value_state = UINT; break;        
+                    case width: value_state = UINT; break;
+case scale: value_state = UINT; break;
+case subscale_n: value_state = UINT; break;
+case subscale_d: value_state = UINT; break;
+case vertical_align: value_state = UINT; break;
 case horizontal_align: value_state = UINT; break;
                     default:
                         REPORT_ERROR("Malformed MultiCellCommand control block, invalid key character: 0x%x", key);
@@ -56,7 +56,7 @@ case horizontal_align: value_state = UINT; break;
 
             case FLAG:
                 switch(key) {
-                    
+
                     default:
                         break;
                 }
@@ -110,14 +110,14 @@ case horizontal_align: value_state = UINT; break;
                 }
                 break;
 
-            
+
                 case PAYLOAD: {
                     sz = parser_buf_pos - pos;
                     payload_start = pos;
                     g.payload_sz = sz;
                     pos = parser_buf_pos;
                 } break;
-            
+
 
         } // end switch
     } // end while
@@ -143,4 +143,4 @@ case horizontal_align: value_state = UINT; break;
 
     screen_handle_multicell_command(self->screen, &g, parser_buf + payload_start);
 }
-    
+
