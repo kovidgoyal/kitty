@@ -112,6 +112,10 @@ def main(args: list[str] = sys.argv) -> None:
         if x not in css_to_enum:
             css_to_enum[x] = v
 
+    for x, v in kitty_to_enum_map.items():
+        if x not in css_to_enum:
+            css_to_enum[x] = v
+
     glfw_enum.append('GLFW_INVALID_CURSOR')
     patch_file('glfw/glfw3.h', 'mouse cursor shapes', '\n'.join(f'    {x},' for x in glfw_enum))
     patch_file('glfw/wl_window.c', 'glfw to wayland mapping', '\n'.join(f'        C({g}, {x});' for g, x in glfw_wayland.items()))

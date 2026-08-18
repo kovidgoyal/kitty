@@ -2290,6 +2290,8 @@ change_pointer_shape(Screen *self, PyObject *args) {
         else if (strcmp("hand1", css_name) == 0) s = GRAB_POINTER;
         else if (strcmp("closedhand", css_name) == 0) s = GRABBING_POINTER;
         else if (strcmp("dnd-none", css_name) == 0) s = GRABBING_POINTER;
+        else if (strcmp("arrow", css_name) == 0) s = DEFAULT_POINTER;
+        else if (strcmp("beam", css_name) == 0) s = TEXT_POINTER;
         /* end css to enum */
         if (s == INVALID_POINTER && css_name[0] != 0) {
             PyErr_Format(PyExc_KeyError, "Not a known pointer shape: %s", css_name);
