@@ -9,6 +9,36 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 Recent major new features
 ---------------------------
 
+Custom shaders [0.49]
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+kitty now has official support for :doc:`/custom-shaders`. These can be used for all
+manner of graphical effects, from animated backgrounds to focus highlighting to
+animations that change how cursor movements or mouse clicks are visualised.
+
+See the :doc:`documentation </custom-shaders>` for a video gallery showcasing various custom shaders
+that ship with kitty.
+
+Performance improvements [0.49]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This release saw tons of performance work focused on improving throughput
+making kitty even faster than it already is. Real world effective throughput
+should see a 15-35% improvement depending on workload. Some details:
+
+
+#. Improve throughput when processing large amounts of text with a scrollback buffer much larger than the CPU cache by ~35% by prefetching scrollback memory before it is written to
+
+#. Improve throughput when processing large amounts of text by ~50% for ASCII and ~15% for Unicode by writing runs of plain ASCII chars to the screen in batches and skipping unnecessary bookkeeping in the scrolling and tab handling hot paths
+
+#. Speed up :term:`SIMD` UTF-8 decoding: ~20% faster for ASCII and ~50% faster for multi-byte text on both x86 and ARM, by processing pairs of vectors of plain ASCII text at a time and compacting decoded codepoints within 128-bit lanes, avoiding expensive cross-lane operations. Also add an AVX-512 based decoder, another ~75% faster for multi-byte text, used automatically on CPUs that support it (Intel Ice Lake+, AMD Zen 4+).
+
+#. Improve throughput when processing escape code heavy input by ~30% by taking the input buffer lock once per buffer of input rather than once per escape code and using cheaper arithmetic to parse CSI parameters
+
+#. Improve throughput when processing large amounts of plain text by another ~10% by finding runs of printable ASCII chars with :term:`SIMD`, filling cells using wide stores and skipping unnecessary work in the scrolling hot path when there are no images
+
+
+
 Vertical tabs [0.48]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -161,19 +191,6 @@ quality-of-life improvements:
 With this release kitty's Wayland support is now on par with X11, provided
 you use a decent Wayland compositor.
 
-Cheetah speed 🐆 [0.33]
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-kitty has grown up and become a cheetah. It now parses data it receives in
-parallel :iss:`using SIMD vector CPU instructions <7005>` for a 2x speedup in
-benchmarks and a 10%-50% real world speedup depending on workload. There is a
-new benchmarking kitten ``kitten __benchmark__`` that can be used to measure
-terminal throughput. There is also :ref:`a table <throughput>` showing kitty is
-much faster than other terminal emulators based on the benchmark kitten. While
-kitty was already so fast that its performance was never a bottleneck, this
-improvement makes it even faster and more importantly reduces the energy
-consumption to do the same tasks.
-
 .. }}}
 
 Detailed list of changes
@@ -182,25 +199,19 @@ Detailed list of changes
 0.49.0 [future]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+- Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
+
+- Various throughput performance improvements for a 15-35% real world improvement depending on workload
+
 - A new option :opt:`remap_modifiers` to allow having modifier keys behave as different modifier keys (:pull:`10307`)
 
-- Improve throughput when processing large amounts of text with a scrollback buffer much larger than the CPU cache by ~35% by prefetching scrollback memory before it is written to
-
-- Improve throughput when processing large amounts of text by ~50% for ASCII and ~15% for Unicode by writing runs of plain ASCII chars to the screen in batches and skipping unnecessary bookkeeping in the scrolling and tab handling hot paths
-
-- Speed up SIMD UTF-8 decoding: ~20% faster for ASCII and ~50% faster for multi-byte text on both x86 and ARM, by processing pairs of vectors of plain ASCII text at a time and compacting decoded codepoints within 128-bit lanes, avoiding expensive cross-lane operations. Also add an AVX-512 based decoder, another ~75% faster for multi-byte text, used automatically on CPUs that support it (Intel Ice Lake+, AMD Zen 4+). Additionally fix the SIMD decoders failing to emit U+FFFD for an incomplete UTF-8 sequence cut off by an escape code
-
-- Improve throughput when processing escape code heavy input by ~30% by taking the input buffer lock once per buffer of input rather than once per escape code and using cheaper arithmetic to parse CSI parameters
-
-- Improve throughput when processing large amounts of plain text by another ~10% by finding runs of printable ASCII chars with SIMD, filling cells using wide stores and skipping unnecessary work in the scrolling hot path when there are no images
+- A new option, :opt:`padding_fill_strategy` to control how the thin padding strips that appear when the window size is not an exact multiple of the cell size are colored. You can choose to have the padding colored to match the background of each neighboring cell, effectively extending the size of the cell or you can continue to use the existing behavior of using the background.
 
 - The :opt:`scrollbar` option now takes a new value ``scrolled-or-hovered`` to also show the scrollbar when the mouse moves over the scrollbar region (:pull:`10345`)
 
 - A new :code:`kitten @ screenshot` remote control command to take a pixel perfect PNG screenshot of an OS Window, tab or window
 
 - A new :code:`kitten @ set-os-window-title` remote control command to set the title for an already-open OS Window and optionally restore automatic title tracking when no title is specified
-
-- A new option, :opt:`padding_fill_strategy` to control how the thin padding strips that appear when the window size is not an exact multiple of the cell size are colored. You can choose to have the padding colored to match the background of each neighboring cell, effectively extending the size of the cell or you can continue to use the existing behavior of using the background.
 
 - Wayland: Fix the first movement of the scroll wheel after reversing direction
   often not scrolling, with high resolution wheels such as the Logitech MX

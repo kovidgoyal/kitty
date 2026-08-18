@@ -66,6 +66,11 @@ Glossary
       various animations in kitty, such as :opt:`cursor_blink_interval` and
       :opt:`visual_bell_duration`.
 
+   SIMD
+      A programming technique that refers to having a single CPU instruction
+      process multiple units of data, also called vector programming. Leads to
+      large speedups for various data processing tasks.
+
 .. _env_vars:
 
 Environment variables
