@@ -16,6 +16,7 @@ from kitty.fast_data_types import (
     test_find_either_of_two_bytes,
     test_printable_ascii_run_length,
     test_utf8_decode_to_sentinel,
+    test_xor64,
 )
 
 from .base import BaseTest, parse_bytes
@@ -743,6 +744,8 @@ class TestParser(BaseTest):
             sizes.append(2)
         if has_avx2:
             sizes.append(3)
+        if has_avx512:
+            sizes.append(4)
         sizes.append(0)
 
         def test(buf, a, b, align_offset=0):
@@ -753,7 +756,7 @@ class TestParser(BaseTest):
                 self.ae(expected, actual, f'Failed for: {buf!r} {a=} {b=} at {sz=} and {align_offset=}')
 
         q = 'abc'
-        for off in range(32):
+        for off in range(64):
             test(q, '<', '>', off)
             test(q, ' ', 'b', off)
             test(q, '<', 'a', off)
@@ -761,9 +764,9 @@ class TestParser(BaseTest):
             test(q, 'c', '>', off)
 
         def tests(buf, a, b):
-            for sz in (0, 16, 32, 64, 79):
+            for sz in (0, 16, 32, 64, 79, 128, 133):
                 buf = (' ' * sz) + buf
-                for align_offset in range(32):
+                for align_offset in range(64):
                     test(buf, a, b, align_offset)
 
         tests('', '<', '>')
@@ -781,6 +784,8 @@ class TestParser(BaseTest):
             impls.append(2)
         if has_avx2:
             impls.append(3)
+        if has_avx512:
+            impls.append(4)
         impls.append(0)
 
         def test(text):
@@ -798,6 +803,33 @@ class TestParser(BaseTest):
                 test(prefix + bad)
                 test(prefix + bad + 'xyz')
                 test(prefix + bad * 3 + prefix)
+
+    def test_xor_data64(self):
+        # varying bytes in the key and data so that alignment/key rotation bugs are caught
+        base_data = bytes(range(64))
+        key = bytes(range(101, 165))
+        sizes = []
+        if has_sse4_2:
+            sizes.append(2)
+        if has_avx2:
+            sizes.append(3)
+        if has_avx512:
+            sizes.append(4)
+        sizes.append(0)
+
+        def t(key, data, align_offset=0):
+            expected = test_xor64(key, data, 1, 0)
+            for which_function in sizes:
+                actual = test_xor64(key, data, which_function, align_offset)
+                self.ae(expected, actual, f'{align_offset=} {len(data)=}')
+
+        t(key, b'')
+
+        for base in (b'abc', base_data, base_data * 2):
+            for extra in range(len(base_data)):
+                for align_offset in range(64):
+                    data = base + base_data[:extra]
+                    t(key, data, align_offset)
 
     def test_esc_codes(self):
         s = self.create_screen()

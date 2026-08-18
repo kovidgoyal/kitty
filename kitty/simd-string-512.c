@@ -4,12 +4,14 @@
  *
  * Distributed under terms of the GPL3 license.
  *
- * AVX-512 (F, BW, VL, VBMI2) implementation of utf8_decode_to_esc. Unlike the
- * 128/256 bit implementations in simd-string-impl.h this is x86-64 only and
- * uses native intrinsics, since the algorithm is built around mask registers
- * and vpcompressb, which have no efficient equivalents on other platforms.
- * The overall algorithm is the same as the one in simd-string-impl.h, see
- * there for detailed comments, only the differences are commented here.
+ * AVX-512 (F, BW, VL, VBMI2) implementations of utf8_decode_to_esc,
+ * find_either_of_two_bytes, xor_data64 and printable_ascii_run_length. Unlike
+ * the 128/256 bit implementations in simd-string-impl.h these are x86-64 only
+ * and use native intrinsics, since the algorithms are built around mask
+ * registers and masked loads/stores (and vpcompressb for UTF-8 decoding),
+ * which have no efficient equivalents on other platforms. The overall UTF-8
+ * decoding algorithm is the same as the one in simd-string-impl.h, see there
+ * for detailed comments, only the differences are commented here.
  */
 
 #include "data-types.h"
@@ -19,6 +21,63 @@
 
 #include "charsets.h"
 #include <immintrin.h>
+
+// Masked loads and stores fault-suppress the masked out bytes, so unlike the
+// 128/256 bit implementations no alignment gymnastics are needed to avoid
+// reading or writing beyond the ends of buffers.
+
+const uint8_t *
+find_either_of_two_bytes_512(const uint8_t *haystack, const size_t sz, const uint8_t a, const uint8_t b) {
+    const __m512i a_vec = _mm512_set1_epi8((char)a), b_vec = _mm512_set1_epi8((char)b);
+    const uint8_t *ans = NULL;
+    for (size_t i = 0; i < sz; i += 64) {
+        const uint64_t chunk_bits = sz - i >= 64 ? ~0ull : (1ull << (sz - i)) - 1;
+        // the masked load zeroes the bytes beyond the end of the haystack, exclude
+        // them from the matches as a or b could be zero
+        const __m512i chunk = _mm512_maskz_loadu_epi8(chunk_bits, haystack + i);
+        const uint64_t matches = chunk_bits & (_mm512_cmpeq_epi8_mask(chunk, a_vec) | _mm512_cmpeq_epi8_mask(chunk, b_vec));
+        if (matches) {
+            ans = haystack + i + __builtin_ctzll(matches);
+            break;
+        }
+    }
+    _mm256_zeroupper();
+    return ans;
+}
+
+void
+xor_data64_512(const uint8_t key[64], uint8_t *data, const size_t data_sz) {
+    // The key size equals the register width, so unlike the 128/256 bit
+    // implementations no rotation of the key is ever needed.
+    const __m512i key_vec = _mm512_loadu_si512(key);
+    size_t i = 0;
+    for (; i + 64 <= data_sz; i += 64) _mm512_storeu_si512(data + i, _mm512_xor_si512(_mm512_loadu_si512(data + i), key_vec));
+    if (i < data_sz) {
+        const uint64_t tail_bits = (1ull << (data_sz - i)) - 1;
+        _mm512_mask_storeu_epi8(data + i, tail_bits, _mm512_xor_si512(_mm512_maskz_loadu_epi8(tail_bits, data + i), key_vec));
+    }
+    _mm256_zeroupper();
+}
+
+size_t
+printable_ascii_run_length_512(const uint32_t *chars, const size_t sz) {
+    // Length of the prefix of chars that contains only printable ASCII codepoints, 32 <= ch <= 126
+    const __m512i lower = _mm512_set1_epi32(32), upper = _mm512_set1_epi32(126);
+    size_t ans = sz;
+    for (size_t i = 0; i < sz; i += 16) {
+        const uint16_t chunk_bits = sz - i >= 16 ? 0xffff : (uint16_t)((1u << (sz - i)) - 1);
+        // the masked load zeroes the chars beyond the end of the buffer, exclude them
+        // from the non printable chars as zero is itself non printable
+        const __m512i chunk = _mm512_maskz_loadu_epi32(chunk_bits, chars + i);
+        const uint16_t non_printable = chunk_bits & (_mm512_cmplt_epu32_mask(chunk, lower) | _mm512_cmpgt_epu32_mask(chunk, upper));
+        if (non_printable) {
+            ans = i + __builtin_ctz(non_printable);
+            break;
+        }
+    }
+    _mm256_zeroupper();
+    return ans;
+}
 
 #define do_one_byte                                                                   \
     const uint8_t ch = src[pos++];                                                    \
@@ -299,6 +358,21 @@ utf8_decode_to_esc_512(UTF8Decoder *d, const uint8_t *src_data, size_t src_len) 
 
 bool
 utf8_decode_to_esc_512(UTF8Decoder *d UNUSED, const uint8_t *src UNUSED, size_t src_sz UNUSED) {
+    fatal("No AVX-512 implementation for this platform");
+}
+
+const uint8_t *
+find_either_of_two_bytes_512(const uint8_t *haystack UNUSED, const size_t sz UNUSED, const uint8_t a UNUSED, const uint8_t b UNUSED) {
+    fatal("No AVX-512 implementation for this platform");
+}
+
+void
+xor_data64_512(const uint8_t key[64] UNUSED, uint8_t *data UNUSED, const size_t data_sz UNUSED) {
+    fatal("No AVX-512 implementation for this platform");
+}
+
+size_t
+printable_ascii_run_length_512(const uint32_t *chars UNUSED, const size_t sz UNUSED) {
     fatal("No AVX-512 implementation for this platform");
 }
 

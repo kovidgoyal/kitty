@@ -11,7 +11,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 from io import BytesIO
 
-from kitty.fast_data_types import base64_decode, base64_encode, has_avx2, has_sse4_2, load_png_data, shm_unlink, shm_write, test_xor64
+from kitty.fast_data_types import base64_decode, base64_encode, load_png_data, shm_unlink, shm_write
 
 from .base import BaseTest, parse_bytes
 
@@ -197,30 +197,6 @@ def make_send_command(screen):
 
 
 class TestGraphics(BaseTest):
-    def test_xor_data(self):
-        base_data = b'\x01' * 64
-        key = b'\x02' * 64
-        sizes = []
-        if has_sse4_2:
-            sizes.append(2)
-        if has_avx2:
-            sizes.append(3)
-        sizes.append(0)
-
-        def t(key, data, align_offset=0):
-            expected = test_xor64(key, data, 1, 0)
-            for which_function in sizes:
-                actual = test_xor64(key, data, which_function, align_offset)
-                self.ae(expected, actual, f'{align_offset=} {len(data)=}')
-
-        t(key, b'')
-
-        for base in (b'abc', base_data):
-            for extra in range(len(base_data)):
-                for align_offset in range(64):
-                    data = base + base_data[:extra]
-                    t(key, data, align_offset)
-
     def test_disk_cache(self):
         s = self.create_screen()
         dc = s.grman.disk_cache

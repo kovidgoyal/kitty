@@ -140,6 +140,7 @@ test_find_either_of_two_bytes(PyObject *self UNUSED, PyObject *args) {
         case 1: func = find_either_of_two_bytes_scalar; break;
         case 2: func = find_either_of_two_bytes_128; break;
         case 3: func = find_either_of_two_bytes_256; break;
+        case 4: func = find_either_of_two_bytes_512; break;
         case 0: break;
         default: PyErr_SetString(PyExc_ValueError, "Unknown which_function"); return NULL;
     }
@@ -167,6 +168,7 @@ test_printable_ascii_run_length(PyObject *self UNUSED, PyObject *args) {
         case 1: func = printable_ascii_run_length_scalar; break;
         case 2: func = printable_ascii_run_length_128; break;
         case 3: func = printable_ascii_run_length_256; break;
+        case 4: func = printable_ascii_run_length_512; break;
         case 0: break;
         default: PyErr_SetString(PyExc_ValueError, "Unknown which_function"); return NULL;
     }
@@ -188,6 +190,7 @@ test_xor64(PyObject *self UNUSED, PyObject *args) {
         case 1: func = xor_data64_scalar; break;
         case 2: func = xor_data64_128; break;
         case 3: func = xor_data64_256; break;
+        case 4: func = xor_data64_512; break;
         case 0: break;
         default: PyErr_SetString(PyExc_ValueError, "Unknown which_function"); return NULL;
     }
@@ -274,15 +277,18 @@ init_simd(void *x) {
     if (has_avx512) {
         A(has_avx512, True);
         utf8_decode_to_esc_impl = utf8_decode_to_esc_512;
+        find_either_of_two_bytes_impl = find_either_of_two_bytes_512;
+        xor_data64_impl = xor_data64_512;
+        printable_ascii_run_length_impl = printable_ascii_run_length_512;
     } else {
         A(has_avx512, False);
     }
     if (has_avx2) {
         A(has_avx2, True);
-        find_either_of_two_bytes_impl = find_either_of_two_bytes_256;
+        if (find_either_of_two_bytes_impl == find_either_of_two_bytes_scalar) find_either_of_two_bytes_impl = find_either_of_two_bytes_256;
         if (utf8_decode_to_esc_impl == utf8_decode_to_esc_scalar) utf8_decode_to_esc_impl = utf8_decode_to_esc_256;
-        xor_data64_impl = xor_data64_256;
-        printable_ascii_run_length_impl = printable_ascii_run_length_256;
+        if (xor_data64_impl == xor_data64_scalar) xor_data64_impl = xor_data64_256;
+        if (printable_ascii_run_length_impl == printable_ascii_run_length_scalar) printable_ascii_run_length_impl = printable_ascii_run_length_256;
     } else {
         A(has_avx2, False);
     }
