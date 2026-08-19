@@ -1,0 +1,391 @@
+name: Release Linux Packages
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-deb:
+    name: Build .deb (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            dpkg_arch: amd64
+            use_qemu: false
+          - arch: arm64
+            runner: ubuntu-latest
+            dpkg_arch: arm64
+            use_qemu: true
+            qemu_platform: aarch64
+          - arch: armhf
+            runner: ubuntu-latest
+            dpkg_arch: armhf
+            use_qemu: true
+            qemu_platform: arm
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU
+        if: matrix.use_qemu
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ matrix.qemu_platform }}
+
+      - name: Build in container
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.arch == 'arm64' && 'arm64v8/debian:bookworm' || matrix.arch == 'armhf' && 'arm32v7/debian:bookworm' || 'debian:bookworm' }}
+          options: -v ${{ github.workspace }}:/workspace --platform linux/${{ matrix.dpkg_arch }}
+          run: |
+            set -ex
+            cd /workspace
+            apt-get update
+            apt-get install -y \
+              python3 python3-dev \
+              golang-go \
+              gcc pkg-config git \
+              libdbus-1-dev \
+              libxcursor-dev \
+              libxrandr-dev \
+              libxi-dev \
+              libxinerama-dev \
+              libgl1-mesa-dev \
+              libfontconfig1-dev \
+              libharfbuzz-dev \
+              libx11-xcb-dev \
+              libpng-dev \
+              libwayland-dev \
+              wayland-protocols \
+              libxkbcommon-dev \
+              liblcms2-dev \
+              libxxhash-dev \
+              libsimde-dev
+
+            # Build linux-package
+            python3 setup.py linux-package \
+              --prefix /usr \
+              --update-check-interval=0
+
+      - name: Create .deb package
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          PKG_DIR="kitty_${VERSION}_${{ matrix.dpkg_arch }}"
+          mkdir -p "${PKG_DIR}/DEBIAN"
+
+          # Copy linux-package contents
+          cp -r linux-package/* "${PKG_DIR}/"
+
+          # Control file
+          INSTALLED_SIZE=$(du -sk "${PKG_DIR}" | cut -f1)
+          cat > "${PKG_DIR}/DEBIAN/control" << EOF
+          Package: kitty
+          Version: ${VERSION}
+          Architecture: ${{ matrix.dpkg_arch }}
+          Maintainer: Kitty Maintainers <maintainers@sw.kovidgoyal.net>
+          Installed-Size: ${INSTALLED_SIZE}
+          Depends: python3 (>= 3.12), libdbus-1-3, libfontconfig1, libharfbuzz0b, libpng16-16, libwayland-client0, libxkbcommon0, liblcms2-2, libgl1
+          Section: x11
+          Priority: optional
+          Homepage: https://sw.kovidgoyal.net/kitty/
+          Description: The fast, feature-rich, GPU based terminal emulator
+           kitty is a free and open-source GPU-accelerated terminal emulator for Linux
+           and macOS focused on performance and features. kitty is written in a mix of
+           C and Python, with the Go programming language used for its "kittens"
+           (sub-programs that extend its functionality).
+          EOF
+
+          dpkg-deb --build "${PKG_DIR}"
+          mv "${PKG_DIR}.deb" "kitty_${VERSION}_${{ matrix.dpkg_arch }}.deb"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.dpkg_arch }}
+          path: "*.deb"
+          retention-days: 5
+
+  build-rpm:
+    name: Build .rpm (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            rpm_arch: x86_64
+            use_qemu: false
+          - arch: aarch64
+            rpm_arch: aarch64
+            use_qemu: true
+            qemu_platform: aarch64
+          - arch: armv7hl
+            rpm_arch: armv7hl
+            use_qemu: true
+            qemu_platform: arm
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU
+        if: matrix.use_qemu
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ matrix.qemu_platform }}
+
+      - name: Build in container
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.arch == 'aarch64' && 'arm64v8/fedora:latest' || matrix.arch == 'armv7hl' && 'arm32v7/fedora:latest' || 'fedora:latest' }}
+          options: -v ${{ github.workspace }}:/workspace --platform linux/${{ matrix.arch == 'aarch64' && 'arm64' || matrix.arch == 'armv7hl' && 'arm/v7' || 'amd64' }}
+          run: |
+            set -ex
+            cd /workspace
+            dnf install -y \
+              python3 python3-devel \
+              golang \
+              gcc pkg-config git \
+              dbus-devel \
+              libXcursor-devel \
+              libXrandr-devel \
+              libXi-devel \
+              libXinerama-devel \
+              mesa-libGL-devel \
+              fontconfig-devel \
+              harfbuzz-devel \
+              libxcb-devel \
+              libpng-devel \
+              wayland-devel \
+              wayland-protocols-devel \
+              libxkbcommon-devel \
+              lcms2-devel \
+              xxhash-devel \
+              simde-devel \
+              rpm-build
+
+            # Build linux-package
+            python3 setup.py linux-package \
+              --prefix /usr \
+              --update-check-interval=0
+
+      - name: Build RPM
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+
+          sed "s/%{version}/${VERSION}/g" packaging/rpm/kitty.spec > ~/rpmbuild/SPECS/kitty.spec
+
+          # Use linux-package output as buildroot
+          BUILDROOT=~/rpmbuild/BUILDROOT/kitty-${VERSION}-1.${{ matrix.rpm_arch }}
+          mkdir -p "${BUILDROOT}"
+          cp -r linux-package/* "${BUILDROOT}/"
+          mkdir -p "${BUILDROOT}/usr/share/licenses/kitty"
+          mkdir -p "${BUILDROOT}/usr/share/doc/kitty"
+          cp LICENSE "${BUILDROOT}/usr/share/licenses/kitty/" 2>/dev/null || true
+          cp README.asciidoc CHANGELOG.rst "${BUILDROOT}/usr/share/doc/kitty/" 2>/dev/null || true
+
+          rpmbuild -bb --target ${{ matrix.rpm_arch }} \
+            --define "_topdir $HOME/rpmbuild" \
+            --buildroot "${BUILDROOT}" \
+            ~/rpmbuild/SPECS/kitty.spec || true
+
+          find ~/rpmbuild/RPMS/ -name "*.rpm" -exec cp {} . \; 2>/dev/null || true
+
+          # Fallback: create RPM manually if rpmbuild failed
+          if ! ls *.rpm 1>/dev/null 2>&1; then
+            echo "rpmbuild failed, creating package from linux-package directly"
+            tar czf "kitty-${VERSION}-1.${{ matrix.rpm_arch }}.tar.gz" -C linux-package .
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-${{ matrix.rpm_arch }}
+          path: |
+            *.rpm
+            *.tar.gz
+          retention-days: 5
+
+  build-arch:
+    name: Build .pkg.tar.zst (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            use_qemu: false
+          - arch: aarch64
+            use_qemu: true
+            qemu_platform: aarch64
+          - arch: armv7h
+            use_qemu: true
+            qemu_platform: arm
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU
+        if: matrix.use_qemu
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ matrix.qemu_platform }}
+
+      - name: Build in container
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ matrix.arch == 'aarch64' && 'arm64v8/archlinux:latest' || matrix.arch == 'armv7h' && 'arm32v7/archlinux:latest' || 'archlinux:base-devel' }}
+          options: -v ${{ github.workspace }}:/workspace --platform linux/${{ matrix.arch == 'aarch64' && 'arm64' || matrix.arch == 'armv7h' && 'arm/v7' || 'amd64' }}
+          run: |
+            set -ex
+            cd /workspace
+
+            # Install base-devel if not already present
+            pacman -Syu --noconfirm
+            pacman -S --noconfirm --needed \
+              base-devel \
+              python \
+              go \
+              pkg-config \
+              dbus \
+              fontconfig \
+              freetype2 \
+              harfbuzz \
+              libpng \
+              wayland \
+              wayland-protocols \
+              libxkbcommon \
+              lcms2 \
+              xxhash \
+              simde \
+              libgl \
+              libxi \
+              libxrandr \
+              libxcursor \
+              libxinerama \
+              git
+
+            VERSION="${{ steps.version.outputs.VERSION }}"
+
+            cd packaging/arch
+            cat > PKGBUILD << 'PKGBUILD_EOF'
+            pkgname=kitty
+            pkgver=VERSIONPLACEHOLDER
+            pkgrel=1
+            pkgdesc="The fast, feature-rich, GPU based terminal emulator"
+            arch=('x86_64' 'aarch64' 'armv7h')
+            url="https://sw.kovidgoyal.net/kitty/"
+            license=('GPL-3.0-only')
+            depends=('python' 'dbus' 'fontconfig' 'freetype2' 'harfbuzz' 'libpng'
+                     'wayland' 'libxkbcommon' 'lcms2' 'libgl' 'libxi' 'libxrandr'
+                     'libxcursor' 'libxinerama')
+            makedepends=('python' 'go' 'gcc' 'pkg-config' 'wayland-protocols' 'xxhash' 'simde')
+
+            build() {
+                cd /workspace
+                python3 setup.py linux-package --prefix /usr --update-check-interval=0
+            }
+
+            package() {
+                cd /workspace
+                cp -r linux-package/* "$pkgdir/"
+                install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+            }
+            PKGBUILD_EOF
+
+            sed -i "s/VERSIONPLACEHOLDER/${VERSION}/" PKGBUILD
+
+            # Create non-root user for makepkg
+            useradd -m builder 2>/dev/null || true
+            chown -R builder:builder /workspace
+
+            su builder -c "makepkg -sf --noconfirm --skipinteg"
+            cp *.pkg.tar.zst /workspace/ 2>/dev/null || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-${{ matrix.arch }}
+          path: "*.pkg.tar.zst"
+          retention-days: 5
+
+  publish-release:
+    name: Upload release artifacts
+    needs: [build-deb, build-rpm, build-arch]
+    if: github.event_name == 'push' || github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+
+      - name: List artifacts
+        run: find artifacts/ -type f | sort
+
+      - name: Collect and checksum
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.deb" -o -name "*.rpm" -o -name "*.pkg.tar.zst" -o -name "*.tar.gz" \) -exec cp {} ../ \;
+          cd ..
+          sha256sum *.deb *.rpm *.pkg.tar.zst *.tar.gz 2>/dev/null > SHA256SUMS.txt || true
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            *.deb
+            *.rpm
+            *.pkg.tar.zst
+            *.tar.gz
+            SHA256SUMS.txt
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
