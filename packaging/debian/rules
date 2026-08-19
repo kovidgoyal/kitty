@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	python3 setup.py linux-package \
+		--prefix /usr \
+		--update-check-interval=0
+
+override_dh_auto_install:
+	mkdir -p debian/kitty
+	cp -r linux-package/* debian/kitty/
+
+override_dh_auto_test:
+	@echo "Skipping tests during package build"
+
+override_dh_auto_clean:
+	python3 setup.py clean --all || true
+	rm -rf linux-package build

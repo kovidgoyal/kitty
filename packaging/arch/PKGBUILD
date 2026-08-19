@@ -1,0 +1,30 @@
+# Maintainer: Kitty Maintainers <maintainers@sw.kovidgoyal.net>
+pkgname=kitty
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="The fast, feature-rich, GPU based terminal emulator"
+arch=('x86_64' 'aarch64' 'armv7h')
+url="https://sw.kovidgoyal.net/kitty/"
+license=('GPL-3.0-only')
+depends=('python' 'dbus' 'fontconfig' 'freetype2' 'harfbuzz' 'libpng'
+         'wayland' 'libxkbcommon' 'lcms2' 'libgl' 'libxi' 'libxrandr'
+         'libxcursor' 'libxinerama')
+makedepends=('python' 'go' 'gcc' 'pkg-config' 'wayland-protocols'
+             'xxhash' 'simde')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/kovidgoyal/kitty/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "$pkgname-$pkgver"
+    python3 setup.py linux-package \
+        --prefix /usr \
+        --update-check-interval=0
+}
+
+package() {
+    cd "$pkgname-$pkgver"
+    cp -r linux-package/* "$pkgdir/"
+
+    # License
+    install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
