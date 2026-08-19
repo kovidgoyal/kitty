@@ -1,0 +1,46 @@
+Source: kitty
+Section: x11
+Priority: optional
+Maintainer: Kitty Maintainers <maintainers@sw.kovidgoyal.net>
+Build-Depends: debhelper (>= 12),
+               python3 (>= 3.12),
+               python3-dev,
+               golang-go (>= 2:1.22),
+               gcc,
+               pkg-config,
+               libdbus-1-dev,
+               libxcursor-dev,
+               libxrandr-dev,
+               libxi-dev,
+               libxinerama-dev,
+               libgl1-mesa-dev,
+               libfontconfig1-dev,
+               libharfbuzz-dev,
+               libx11-xcb-dev,
+               libpng-dev,
+               libwayland-dev,
+               wayland-protocols,
+               libxkbcommon-dev,
+               liblcms2-dev,
+               libxxhash-dev,
+               libsimde-dev
+Standards-Version: 4.6.0
+Homepage: https://sw.kovidgoyal.net/kitty/
+Vcs-Git: https://github.com/kovidgoyal/kitty.git
+
+Package: kitty
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},
+         python3 (>= 3.12),
+         libdbus-1-3,
+         libfontconfig1,
+         libharfbuzz0b,
+         libpng16-16,
+         libwayland-client0,
+         libxkbcommon0,
+         liblcms2-2
+Description: The fast, feature-rich, GPU based terminal emulator
+ kitty is a free and open-source GPU-accelerated terminal emulator for Linux
+ and macOS focused on performance and features. kitty is written in a mix of
+ C and Python, with the Go programming language used for its "kittens"
+ (sub-programs that extend its functionality).
