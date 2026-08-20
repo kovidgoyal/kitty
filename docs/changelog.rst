@@ -234,6 +234,8 @@ Detailed list of changes
 
 - macOS: Allow kitty OS Windows to participate in Split View tiling (:pull:`103701`)
 
+- Port remaining built in kittens from Python to Go (:pull:`10371`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
