@@ -254,10 +254,12 @@ All graphics escape codes are of the form::
 This is a so-called *Application Programming Command (APC)*. Most terminal
 emulators ignore APC codes, making it safe to use.
 
-The control data is a comma-separated list of ``key=value`` pairs.  The payload
-is arbitrary binary data, :rfc:`base64 <4648>` encoded to prevent interoperation problems
-with legacy terminals that get confused by control codes within an APC code.
-The meaning of the payload is interpreted based on the control data.
+The control data is a comma-separated list of ``key=value`` pairs, trailing or
+leading commas are undefined implementations may ignore them or reject the
+escape code entirely. The payload is arbitrary binary data, :rfc:`base64
+<4648>` encoded to prevent interoperation problems with legacy terminals that
+get confused by control codes within an APC code. The meaning of the payload is
+interpreted based on the control data.
 
 The first step is to transmit the actual image data.
 
