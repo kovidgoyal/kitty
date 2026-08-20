@@ -103,10 +103,11 @@ func hostname_matches(from_hyperlink, actual string) bool {
 // Algorithm: skip all leading dots in basename; find last dot in remainder;
 // if found, split at that dot; otherwise no extension.
 // Examples:
-//   "/x/.bashrc" → ("/x/.bashrc", "")          [1 leading dot, no dot in remainder]
-//   "/x/.bashrc.bak" → ("/x/.bashrc", ".bak") [1 leading dot, 1 dot in remainder]
-//   "/x/a.b.c" → ("/x/a.b", ".c")             [0 leading dots, last dot at position 3]
-//   "....txt" → ("....txt", "")                [4 leading dots, no dot in remainder]
+//
+//	"/x/.bashrc" → ("/x/.bashrc", "")          [1 leading dot, no dot in remainder]
+//	"/x/.bashrc.bak" → ("/x/.bashrc", ".bak") [1 leading dot, 1 dot in remainder]
+//	"/x/a.b.c" → ("/x/a.b", ".c")             [0 leading dots, last dot at position 3]
+//	"....txt" → ("....txt", "")                [4 leading dots, no dot in remainder]
 func pythonSplitExt(path string) (string, string) {
 	basename := filepath.Base(path)
 	dir := filepath.Dir(path)
