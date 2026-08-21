@@ -1029,6 +1029,26 @@ class TestGraphics(BaseTest):
         self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.5})
         s.reverse_index()
         self.ae(s.grman.image_count, 2)
+
+        s.reset()
+        s.cursor_position(2, 0)
+        put_image(s, 32, 256, num_cols=4, num_lines=4, cursor_movement=1)
+        s.set_margins(2, 5)
+        s.cursor_position(5, 0)
+        s.index()
+        scaled = layers(s)[0]
+        self.ae(scaled['src_rect'], {'left': 0.0, 'top': 0.25, 'right': 1.0, 'bottom': 1.0})
+        rect_eq(scaled['dest_rect'], -1, 1 - 1 * dy, -1 + 4 * dx, 1 - 4 * dy)
+        s.index()
+        scaled = layers(s)[0]
+        self.ae(scaled['src_rect'], {'left': 0.0, 'top': 0.5, 'right': 1.0, 'bottom': 1.0})
+        rect_eq(scaled['dest_rect'], -1, 1 - 1 * dy, -1 + 4 * dx, 1 - 3 * dy)
+        s.index()
+        scaled = layers(s)[0]
+        self.ae(scaled['src_rect'], {'left': 0.0, 'top': 0.75, 'right': 1.0, 'bottom': 1.0})
+        rect_eq(scaled['dest_rect'], -1, 1 - 1 * dy, -1 + 4 * dx, 1 - 2 * dy)
+        s.index()
+        self.ae(len(layers(s)), 0)
         s.reset()
         self.assertEqual(s.grman.disk_cache.total_size, 0)
 

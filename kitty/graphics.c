@@ -932,6 +932,17 @@ update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows, CellPixelS
     ref->effective_num_cols = num_cols;
 }
 
+static float
+source_pixels_per_cell_y(const ImageRef *ref, CellPixelSize cell) {
+    if (ref->num_rows) {
+        return ref->src_height / MAX(1u, ref->effective_num_rows);
+    }
+    if (ref->num_cols) {
+        return cell.height * ref->src_width / (ref->num_cols * (float)cell.width);
+    }
+    return cell.height;
+}
+
 static ImageRef *
 create_ref(Image *img, ImageRef *clone_from) {
     ImageRef *ans = calloc(1, sizeof(ImageRef));
@@ -1372,7 +1383,7 @@ grman_update_layers(
             r.top = y0 - start_row * dy - dy * (float)ref->cell_y_offset / (float)cell.height;
             r.left = screen_left + start_column * dx + dx * (float)ref->cell_x_offset / (float)cell.width;
 
-            int32_t nr = ref->num_rows, nc = ref->num_cols;
+            int32_t nr = ref->num_rows ? ref->effective_num_rows : 0, nc = ref->num_cols;
             if (nr) {
                 r.bottom = y0 - (start_row + nr) * dy;
                 if (nc) r.right = screen_left + (start_column + nc) * dx;
@@ -2181,11 +2192,12 @@ scroll_filter_margins_func(ImageRef *ref, Image *img, const void *data, CellPixe
         ref->start_row += d->amt;
         if (ref_outside_region(ref, d->margin_top, d->margin_bottom)) return true;
         // Clip the image if scrolling has resulted in part of it being outside the page area
-        uint32_t clip_amt, clipped_rows;
+        float clip_amt;
+        uint32_t clipped_rows;
         if (ref->start_row < (int32_t)d->margin_top) {
             // image moved up
             clipped_rows = d->margin_top - ref->start_row;
-            clip_amt = cell.height * clipped_rows;
+            clip_amt = source_pixels_per_cell_y(ref, cell) * clipped_rows;
             if (ref->src_height <= clip_amt) return true;
             ref->src_y += clip_amt;
             ref->src_height -= clip_amt;
@@ -2195,7 +2207,7 @@ scroll_filter_margins_func(ImageRef *ref, Image *img, const void *data, CellPixe
         } else if (ref->start_row + (int32_t)ref->effective_num_rows - 1 > (int32_t)d->margin_bottom) {
             // image moved down
             clipped_rows = ref->start_row + ref->effective_num_rows - 1 - d->margin_bottom;
-            clip_amt = cell.height * clipped_rows;
+            clip_amt = source_pixels_per_cell_y(ref, cell) * clipped_rows;
             if (ref->src_height <= clip_amt) return true;
             ref->src_height -= clip_amt;
             ref->effective_num_rows -= clipped_rows;
