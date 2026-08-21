@@ -205,6 +205,11 @@ Detailed list of changes
   composition mode for animation frames (``a=f``) to be controlled by the
   undocumented ``C`` key instead of the documented ``X`` key (:iss:`10379`)
 
+- Graphics protocol: Fix chunked transmission of animation frame data
+  (``a=f``) replacing the image's root frame instead of creating or editing
+  the animation frame, when the continuation chunks contain only the ``m``
+  key, as prescribed by the spec
+
 - Various throughput performance improvements for a 15-35% real world improvement depending on workload
 
 - A new option :opt:`remap_modifiers` to allow having modifier keys behave as different modifier keys (:pull:`10307`)

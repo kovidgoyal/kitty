@@ -1358,6 +1358,32 @@ class TestGraphics(BaseTest):
                 f'Expected EINVAL for overflow in compose offset parameter {offset_param!r}',
             )
 
+    def test_animation_frame_chunked_loading(self):
+        # continuation chunks of a chunked a=f transmission carry only the m key,
+        # they must be routed to the frame load handler, not the add handler
+        s = self.create_screen()
+        g = s.grman
+        li = make_send_command(s)
+        self.assertEqual(li(a='t').code, 'OK')
+
+        def chunked(payload, last_payload, **kw):
+            self.assertIsNone(li(payload=payload, m=1, **kw))
+            self.assertFalse(send_command(s, 'm=1', payload))
+            return parse_full_response(send_command(s, 'm=0', last_payload))
+
+        # create a new frame with continuation chunks
+        res = chunked('2' * 12, '2' * 12, z=77)
+        self.assertEqual((res.code, res.image_id, res.frame_number), ('OK', 1, 2))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['data'], b'abcdefghijkl' * 3)  # root frame must be untouched
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'2' * 36},))
+        # edit an existing frame with continuation chunks, r= is only present
+        # in the start command
+        res = chunked('3' * 12, '3' * 12, r=2)
+        self.assertEqual((res.code, res.image_id, res.frame_number), ('OK', 1, 2))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'3' * 36},))
+
     def test_graphics_quota_enforcement(self):
         s = self.create_screen()
         g = s.grman

@@ -1732,14 +1732,17 @@ frame_chain_is_transient(Image *img, const Frame *frame) {
 
 static Image *
 handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, Image *img, const uint8_t *payload, bool *is_dirty) {
-    uint32_t frame_number = g->frame_number, fmt = g->format ? g->format : RGBA;
+    uint32_t fmt = g->format ? g->format : RGBA;
+    unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
+    const bool is_chunked_continuation = tt == 'd' && self->currently_loading.loading_for.image_id == img->internal_id;
+    if (is_chunked_continuation) {
+        INIT_CHUNKED_LOAD; // g now points to the command that started the chunked load
+    }
+    uint32_t frame_number = g->frame_number;
     if (!frame_number || frame_number > img->extra_framecnt + 2) frame_number = img->extra_framecnt + 2;
     bool is_new_frame = frame_number == img->extra_framecnt + 2;
     g->frame_number = frame_number;
-    unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
-    if (tt == 'd' && self->currently_loading.loading_for.image_id == img->internal_id) {
-        INIT_CHUNKED_LOAD;
-    } else {
+    if (!is_chunked_continuation) {
         self->currently_loading.loading_for = (const ImageAndFrame){0};
         if (g->data_width > MAX_IMAGE_DIMENSION || g->data_height > MAX_IMAGE_DIMENSION)
             ABRT("EINVAL", "Image too large, width or height greater than %u", MAX_IMAGE_DIMENSION);
@@ -2478,7 +2481,14 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
         return finish_command_response(g, false);
     }
 
-    switch (g->action) {
+    unsigned char action = g->action;
+    if (!action && self->currently_loading.loading_for.image_id && self->currently_loading.start_command.action == 'f') {
+        // A continuation chunk carries no action key, so when the chunked
+        // load was started by an a=f command, route it to the frame load
+        // handler rather than the add handler
+        action = 'f';
+    }
+    switch (action) {
         case 0:
         case 't':
         case 'T':
@@ -2518,9 +2528,16 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                 ret = finish_command_response(g, false);
             } else {
                 GraphicsCommand ag = *g;
-                if (ag.action == 'f') {
+                if (action == 'f') {
+                    if (!ag.action) {
+                        // continuation chunk, the response must identify the image from the start command
+                        ag.action = action;
+                        ag.id = self->currently_loading.start_command.id;
+                        ag.image_number = self->currently_loading.start_command.image_number;
+                    }
                     img = handle_animation_frame_load_command(self, &ag, img, payload, is_dirty);
                     if (!self->currently_loading.loading_for.image_id) free_load_data(&self->currently_loading);
+                    if (!ag.frame_number) ag.frame_number = self->currently_loading.start_command.frame_number;
                     if (g->quiet) ag.quiet = g->quiet;
                     else ag.quiet = self->currently_loading.start_command.quiet;
                     ret = finish_command_response(&ag, img != NULL);
