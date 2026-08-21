@@ -439,10 +439,25 @@ _glfwWaylandAfterBufferSwap(_GLFWwindow *window) {
 }
 
 static const char *
-clipboard_mime(void) {
+clipboard_mime_prefix(void) {
     static char buf[256] = {0};
-    if (buf[0] == 0) { snprintf(buf, sizeof(buf), "application/glfw+clipboard-%d-%lld", getpid(), (long long)monotonic_start_time); }
+    if (buf[0] == 0) { snprintf(buf, sizeof(buf), "application/glfw+clipboard-%d-%lld-", getpid(), (long long)monotonic_start_time); }
     return buf;
+}
+
+static bool
+is_our_clipboard_mime(const char *mime) {
+    const char *prefix = clipboard_mime_prefix();
+    return strncmp(mime, prefix, strlen(prefix)) == 0;
+}
+
+static void
+update_copy_mime(GLFWClipboardType t) {
+    static uint64_t copy_id = 0;
+    copy_id++;
+    const char *prefix = clipboard_mime_prefix();
+    char *buf = (t == GLFW_CLIPBOARD) ? _glfw.wl.clipboard_copy_mime : _glfw.wl.primary_selection_copy_mime;
+    snprintf(buf, sizeof(_glfw.wl.clipboard_copy_mime), "%s%llu", prefix, (unsigned long long)copy_id);
 }
 
 static GLFWwaylandinitialsizefun initial_window_size_callback = NULL;
@@ -2267,6 +2282,7 @@ static void
 data_source_canceled(void *data UNUSED, struct wl_data_source *wl_data_source) {
     if (_glfw.wl.dataSourceForClipboard == wl_data_source) {
         _glfw.wl.dataSourceForClipboard = NULL;
+        _glfw.wl.clipboard_copy_mime[0] = 0;
         _glfw_free_clipboard_data(&_glfw.clipboard);
         _glfwInputClipboardLost(GLFW_CLIPBOARD);
     }
@@ -2277,6 +2293,7 @@ static void
 primary_selection_source_canceled(void *data UNUSED, struct zwp_primary_selection_source_v1 *primary_selection_source) {
     if (_glfw.wl.dataSourceForPrimarySelection == primary_selection_source) {
         _glfw.wl.dataSourceForPrimarySelection = NULL;
+        _glfw.wl.primary_selection_copy_mime[0] = 0;
         _glfw_free_clipboard_data(&_glfw.primary);
         _glfwInputClipboardLost(GLFW_PRIMARY_SELECTION);
     }
@@ -2373,8 +2390,7 @@ mark_primary_selection_offer(
 
 static void
 add_offer_mimetype(_GLFWWaylandDataOffer *offer, const char *mime, bool is_self_offer) {
-    if (is_self_offer) offer->is_self_offer = is_self_offer;
-    if (strcmp(mime, clipboard_mime()) == 0) { offer->is_self_offer = true; }
+    if (is_self_offer) offer->is_self_offer = true;
     if (!offer->mimes || offer->mimes_count + 1 >= offer->mimes_capacity) {
         offer->mimes = realloc(offer->mimes, sizeof(char *) * (offer->mimes_capacity + 64));
         if (offer->mimes) offer->mimes_capacity += 64;
@@ -2403,12 +2419,12 @@ add_generic_offer_mimetype(void *id, const char *mime, bool is_self_offer) {
 
 static void
 handle_offer_mimetype(void *data UNUSED, struct wl_data_offer *id, const char *mime) {
-    add_generic_offer_mimetype(id, mime, strcmp(mime, clipboard_mime()) == 0);
+    add_generic_offer_mimetype(id, mime, strcmp(mime, _glfw.wl.clipboard_copy_mime) == 0);
 }
 
 static void
 handle_primary_selection_offer_mimetype(void *data UNUSED, struct zwp_primary_selection_offer_v1 *id, const char *mime) {
-    add_generic_offer_mimetype(id, mime, strcmp(mime, clipboard_mime()) == 0);
+    add_generic_offer_mimetype(id, mime, strcmp(mime, _glfw.wl.primary_selection_copy_mime) == 0);
 }
 
 static void
@@ -2792,7 +2808,8 @@ _glfwPlatformSetClipboard(GLFWClipboardType t) {
         zwp_primary_selection_source_v1_add_listener(_glfw.wl.dataSourceForPrimarySelection, &primary_selection_source_listener, NULL);
         data_source = _glfw.wl.dataSourceForPrimarySelection;
     }
-    f(data_source, clipboard_mime());
+    update_copy_mime(t);
+    f(data_source, (t == GLFW_CLIPBOARD) ? _glfw.wl.clipboard_copy_mime : _glfw.wl.primary_selection_copy_mime);
     for (size_t i = 0; i < cd->num_mime_types; i++) {
         if (strcmp(cd->mime_types[i], "text/plain") == 0) {
             f(data_source, "TEXT");
@@ -2857,7 +2874,7 @@ _glfwPlatformGetClipboard(GLFWClipboardType clipboard_type, const char *mime_typ
         for (size_t o = 0; o < d->mimes_count; o++) {
             const char *q = d->mimes[o];
             if (strchr(d->mimes[0], '/')) {
-                if (strcmp(q, clipboard_mime()) == 0) continue;
+                if (is_our_clipboard_mime(q)) continue;
                 if (strcmp(q, "text/plain;charset=utf-8") == 0) q = "text/plain";
             } else {
                 if (strcmp(q, "UTF8_STRING") == 0 || strcmp(q, "STRING") == 0 || strcmp(q, "TEXT") == 0) q = "text/plain";

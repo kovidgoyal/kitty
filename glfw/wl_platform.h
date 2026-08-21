@@ -353,6 +353,8 @@ typedef struct _GLFWlibraryWayland {
     struct zwp_primary_selection_device_manager_v1 *primarySelectionDeviceManager;
     struct zwp_primary_selection_device_v1 *primarySelectionDevice;
     struct zwp_primary_selection_source_v1 *dataSourceForPrimarySelection;
+    char clipboard_copy_mime[256];
+    char primary_selection_copy_mime[256];
     struct xdg_activation_v1 *xdg_activation_v1;
     struct xdg_toplevel_icon_manager_v1 *xdg_toplevel_icon_manager_v1;
     struct xdg_system_bell_v1 *xdg_system_bell_v1;

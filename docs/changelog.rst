@@ -226,7 +226,7 @@ Detailed list of changes
 
 - Sessions: Also save/restore layouts other than the currently active layout (:pull:`10324`)
 
-- Wayland: Fix clipboard sharing between kitty instances in containers with isolated PID namespaces (:iss:`10352`)
+- Wayland: Fix clipboard sharing between kitty instances in containers with isolated PID namespaces and stale paste data when used with clipboard managers that restore application private MIME types (:iss:`10352`, :iss:`10376`)
 
 - When expanding a window in alternate screen mode use the most common
   background color as the color for the newly created lines leading to less
