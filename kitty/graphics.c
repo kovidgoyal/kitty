@@ -2173,6 +2173,20 @@ ref_outside_region(const ImageRef *ref, index_type margin_top, index_type margin
     return ref->start_row + (int32_t)ref->effective_num_rows <= (int32_t)margin_top || ref->start_row > (int32_t)margin_bottom;
 }
 
+static float
+src_pixels_per_screen_pixel(const ImageRef *ref, CellPixelSize cell) {
+    // The vertical scale factor mapping pixels in the destination rectangle on
+    // the screen to pixels in the source rectangle. Must match the dest rect
+    // calculation used for rendering in grman_update_layers().
+    float dest_height_px;
+    if (ref->num_rows) dest_height_px = (float)(ref->num_rows * cell.height) - (float)ref->cell_y_offset;
+    else if (ref->num_cols && ref->src_width > 0) {
+        float dest_width_px = (float)(ref->num_cols * cell.width) - (float)ref->cell_x_offset;
+        dest_height_px = dest_width_px * ref->src_height / ref->src_width;
+    } else return 1.f; // rendered at native size
+    return dest_height_px > 0 ? ref->src_height / dest_height_px : 1.f;
+}
+
 static bool
 scroll_filter_margins_func(ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
     if (ref->is_virtual_ref) return false;
@@ -2181,24 +2195,33 @@ scroll_filter_margins_func(ImageRef *ref, Image *img, const void *data, CellPixe
         ref->start_row += d->amt;
         if (ref_outside_region(ref, d->margin_top, d->margin_bottom)) return true;
         // Clip the image if scrolling has resulted in part of it being outside the page area
-        uint32_t clip_amt, clipped_rows;
+        uint32_t clipped_rows;
+        float clip_amt;
+        const float scale = src_pixels_per_screen_pixel(ref, cell);
         if (ref->start_row < (int32_t)d->margin_top) {
             // image moved up
             clipped_rows = d->margin_top - ref->start_row;
-            clip_amt = cell.height * clipped_rows;
+            clip_amt = scale * (float)(cell.height * clipped_rows - ref->cell_y_offset);
             if (ref->src_height <= clip_amt) return true;
             ref->src_y += clip_amt;
             ref->src_height -= clip_amt;
             ref->effective_num_rows -= clipped_rows;
+            if (ref->num_rows) ref->num_rows -= clipped_rows;
+            ref->cell_y_offset = 0;
             update_src_rect(ref, img);
             ref->start_row += clipped_rows;
         } else if (ref->start_row + (int32_t)ref->effective_num_rows - 1 > (int32_t)d->margin_bottom) {
             // image moved down
             clipped_rows = ref->start_row + ref->effective_num_rows - 1 - d->margin_bottom;
-            clip_amt = cell.height * clipped_rows;
-            if (ref->src_height <= clip_amt) return true;
-            ref->src_height -= clip_amt;
+            // the last row may be only partially covered by the image,
+            // so calculate the clip amount from the height that remains visible
+            float visible_height_px = (float)(cell.height * (ref->effective_num_rows - clipped_rows)) - (float)ref->cell_y_offset;
+            float new_src_height = scale * visible_height_px;
+            if (new_src_height <= 0) return true;
+            clip_amt = ref->src_height - new_src_height;
+            if (clip_amt > 0) ref->src_height -= clip_amt;
             ref->effective_num_rows -= clipped_rows;
+            if (ref->num_rows) ref->num_rows -= clipped_rows;
             update_src_rect(ref, img);
         }
         return ref_outside_region(ref, d->margin_top, d->margin_bottom);

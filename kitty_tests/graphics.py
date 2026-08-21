@@ -1029,6 +1029,50 @@ class TestGraphics(BaseTest):
         self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.5})
         s.reverse_index()
         self.ae(s.grman.image_count, 2)
+        # Test that scaled images (r=/c=) are clipped rather than distorted
+        # when scrolled against a margin (#10377)
+        s.reset()
+        s.set_margins(1, 3)  # 1-based indexing
+        put_image(s, cw, 4 * ch, num_cols=1, num_lines=2, no_id=True)  # 10x80 px image scaled into 1x2 cells at (0, 0)
+        self.ae(s.grman.image_count, 1)
+        self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
+        rect_eq(layers(s)[0]['dest_rect'], -1, 1, -1 + dx, 1 - 2 * dy)
+        while s.cursor.y != 2:
+            s.index()
+        s.index()  # scroll up, the top row of the image is clipped
+        l0 = layers(s)
+        self.ae(len(l0), 1)
+        self.ae(l0[0]['src_rect'], {'left': 0.0, 'top': 0.5, 'right': 1.0, 'bottom': 1.0})
+        rect_eq(l0[0]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
+        s.index()
+        self.ae(s.grman.image_count, 0)
+        # Now check clipping of a scaled image at the bottom margin
+        s.reset()
+        s.set_margins(1, 3)
+        s.index()
+        put_image(s, cw, 4 * ch, num_cols=1, num_lines=2, no_id=True)  # 1x2 cells at (0, 1)
+        while s.cursor.y != 0:
+            s.reverse_index()
+        s.reverse_index()  # scroll down, the bottom row of the image is clipped
+        l0 = layers(s)
+        self.ae(len(l0), 1)
+        self.ae(l0[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.5})
+        rect_eq(l0[0]['dest_rect'], -1, 1 - 2 * dy, -1 + dx, 1 - 3 * dy)
+        s.reverse_index()
+        self.ae(s.grman.image_count, 0)
+        # Scaling specified via c= only, with the height derived from the aspect ratio
+        s.reset()
+        s.set_margins(1, 3)
+        put_image(s, 2 * cw, 4 * ch, num_cols=1, no_id=True)  # 20x80 px image scaled into 1 col => 10x40 px => 1x2 cells
+        rect_eq(layers(s)[0]['dest_rect'], -1, 1, -1 + dx, 1 - 2 * dy)
+        while s.cursor.y != 2:
+            s.index()
+        s.index()  # scroll up, the top row of the image is clipped
+        l0 = layers(s)
+        self.ae(l0[0]['src_rect'], {'left': 0.0, 'top': 0.5, 'right': 1.0, 'bottom': 1.0})
+        rect_eq(l0[0]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
+        s.index()
+        self.ae(s.grman.image_count, 0)
         s.reset()
         self.assertEqual(s.grman.disk_cache.total_size, 0)
 

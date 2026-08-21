@@ -236,6 +236,10 @@ Detailed list of changes
 
 - Port remaining built in kittens from Python to Go (:pull:`10371`)
 
+- Graphics protocol: Fix scaled images (created with the ``r`` or ``c`` keys)
+  being distorted instead of clipped when scrolled against a margin
+  (:iss:`10377`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
