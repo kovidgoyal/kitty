@@ -201,6 +201,10 @@ Detailed list of changes
 
 - Support for :doc:`/custom-shaders` for adding various graphical effects (:iss:`10344`)
 
+- Graphics protocol: Fix a regression in 0.45.0 that caused the overwrite
+  composition mode for animation frames (``a=f``) to be controlled by the
+  undocumented ``C`` key instead of the documented ``X`` key (:iss:`10379`)
+
 - Various throughput performance improvements for a 15-35% real world improvement depending on workload
 
 - A new option :opt:`remap_modifiers` to allow having modifier keys behave as different modifier keys (:pull:`10307`)

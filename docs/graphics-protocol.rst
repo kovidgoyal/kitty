@@ -1006,8 +1006,8 @@ To achieve this use the ``a=c`` key. The source frame is specified with
 ``r=frame number`` and the destination frame as ``c=frame number``. The size of
 the rectangle is specified as ``w=width,h=height`` pixels. If unspecified, the
 full image width and height are used. The offset of the rectangle from the
-top-left corner for the source frame is specified by the ``x,y`` keys and the
-destination frame by the ``X,Y`` keys. The composition operation is specified
+top-left corner for the source frame is specified by the ``X,Y`` keys and the
+destination frame by the ``x,y`` keys. The composition operation is specified
 by the ``C`` key with the default being to alpha blend the source rectangle
 onto the destination rectangle. With ``C=1`` it will be a simple replacement
 of pixels. For example::
@@ -1119,8 +1119,8 @@ Key      Value                 Default    Description
 **Keys for animation frame composition**
 -----------------------------------------------------------
 
-``c``    Positive integer      ``0``      The 1-based frame number of the frame whose image data serves as the overlaid data
-``r``    Positive integer      ``0``      The 1-based frame number of the frame that is being edited.
+``c``    Positive integer      ``0``      The 1-based frame number of the frame that is being edited
+``r``    Positive integer      ``0``      The 1-based frame number of the frame whose image data serves as the overlaid data
 ``x``    Positive integer      ``0``      The left edge (in pixels) of the destination rectangle
 ``y``    Positive integer      ``0``      The top edge (in pixels) of the destination rectangle
 ``w``    Positive integer      ``0``      The width (in pixels) of the source and destination rectangles. By default, the entire width is used

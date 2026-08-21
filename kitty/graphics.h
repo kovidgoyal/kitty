@@ -19,7 +19,7 @@ typedef struct {
         uint32_t cursor_movement, compose_mode;
     };
     union {
-        uint32_t cell_x_offset;
+        uint32_t cell_x_offset, blend_mode;
     };
     union {
         uint32_t cell_y_offset, bgcolor;

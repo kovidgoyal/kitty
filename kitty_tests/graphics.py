@@ -1230,6 +1230,21 @@ class TestGraphics(BaseTest):
         t(payload='3' * 36, r=2)
         img = g.image_for_client_id(1)
         self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'3' * 36},))
+        # the composition mode for frame edits must be controlled by the X key,
+        # with fully transparent pixels being a no-op unless X=1 (issue #10379)
+        transparent = b'\x00' * 48
+        t(payload=transparent, r=2, f=32)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'3' * 36},))
+        t(payload=transparent, r=2, f=32, C=1)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'3' * 36},))
+        t(payload=transparent, r=2, f=32, X=1)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'\x00' * 36},))
+        t(payload='3' * 36, r=2)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'3' * 36},))
         # test loading from previous frame
         t(payload='4' * 12, c=2, s=2, v=2, z=101, frame_number=3)
         img = g.image_for_client_id(1)
