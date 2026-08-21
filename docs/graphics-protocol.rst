@@ -21,7 +21,7 @@ To see a quick demo, inside a |kitty| terminal run::
 You can also see a screenshot with more sophisticated features such as
 alpha-blending and text over graphics.
 
-.. image:: https://user-images.githubusercontent.com/1308621/31647475-1188ab66-b326-11e7-8d26-24b937f1c3e8.png
+.. image:: https://github.com/user-attachments/assets/78caad22-1798-4ec5-a6ee-2722c51ce875
     :alt: Demo of graphics rendering in kitty
     :align: center
 
