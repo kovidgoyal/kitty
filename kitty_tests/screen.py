@@ -2133,8 +2133,8 @@ class TestScreen(BaseTest):
             self.assertFalse(c.reverse, f'pre-edit cell {x} is in reverse video')
             self.ae(c.decoration, 5, f'pre-edit cell {x} is not dashed-underlined')
             # decoration_fg is packed as (rgb << 8) | type, type 2 being RGB
-            self.ae(c.decoration_fg & 0xff, 2)
-            self.ae(c.decoration_fg >> 8, 0xfffacd)  # default selection_background
+            self.ae(c.decoration_fg & 0xFF, 2)
+            self.ae(c.decoration_fg >> 8, 0xFFFACD)  # default selection_background
 
         # the styling is applied to the overlay's own cursor and must be
         # restored, not leaked into the screen's cursor

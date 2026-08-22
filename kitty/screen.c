@@ -4795,14 +4795,16 @@ screen_draw_overlay_line(Screen *self) {
     const uint8_t orig_decoration = self->cursor->sgr.decoration;
     const color_type orig_decoration_fg = self->cursor->sgr.decoration_fg;
     self->cursor->sgr.italic = true;
-    self->cursor->sgr.decoration = 5;  // dashed
-    self->cursor->sgr.decoration_fg =
-        ((colorprofile_to_color_with_fallback(self->color_profile, self->color_profile->overridden.highlight_bg,
-              self->color_profile->configured.highlight_bg, self->color_profile->overridden.default_fg,
-              self->color_profile->configured.default_fg)
-             & COL_MASK)
-            << 8)
-        | 2;
+    self->cursor->sgr.decoration = 5; // dashed
+    self->cursor->sgr.decoration_fg = ((colorprofile_to_color_with_fallback(
+                                            self->color_profile,
+                                            self->color_profile->overridden.highlight_bg,
+                                            self->color_profile->configured.highlight_bg,
+                                            self->color_profile->overridden.default_fg,
+                                            self->color_profile->configured.default_fg) &
+                                        COL_MASK)
+                                       << 8) |
+                                      2;
     self->cursor->x = xstart;
     self->cursor->y = self->overlay_line.ynum;
     self->overlay_line.xnum = 0;
