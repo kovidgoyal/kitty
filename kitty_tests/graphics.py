@@ -750,7 +750,7 @@ class TestGraphics(BaseTest):
         self.ae(positions(), {(1, 5): {'x': 2, 'y': 2}, (1, 2): {'x': 3, 'y': 4}})
 
     def test_unicode_placeholders(self):
-        # This test tests basic image placement using using unicode placeholders
+        # This test tests basic image placement using unicode placeholders
         cw, ch = 10, 20
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
         # Upload two images.

@@ -269,7 +269,7 @@ over SSH when using :doc:`kittens/ssh`.
 
 The :command:`clone-in-kitty` command takes almost all the same arguments as the
 :doc:`launch <launch>` command, so you can open a new tab instead or a new OS
-window, etc. Arguments of launch that that don't
+window, etc. Arguments of launch that don't
 make sense when cloning are ignored. Most prominently, the following options are
 ignored: :option:`--allow-remote-control <launch --allow-remote-control>`,
 :option:`--copy-cmdline <launch --copy-cmdline>`, :option:`--copy-env <launch
