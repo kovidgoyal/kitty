@@ -2119,6 +2119,29 @@ class TestScreen(BaseTest):
         s.reset()
         self.assertTrue(s.is_main_linebuf())
 
+    def test_ime_preedit_styling(self):
+        # Pre-edit text is marked with italics and a dashed underline in the
+        # highlight color, rather than reverse video.
+        s = self.create_screen(cols=10, lines=3)
+        s.draw('xy')
+        before = s.line(0).cursor_from(0)
+        s.test_draw_overlay_line('ab', 0, 0)
+        line = s.line(0)
+        for x in (0, 1):
+            c = line.cursor_from(x)
+            self.assertTrue(c.italic, f'pre-edit cell {x} is not italic')
+            self.assertFalse(c.reverse, f'pre-edit cell {x} is in reverse video')
+            self.ae(c.decoration, 5, f'pre-edit cell {x} is not dashed-underlined')
+            # decoration_fg is packed as (rgb << 8) | type, type 2 being RGB
+            self.ae(c.decoration_fg & 0xff, 2)
+            self.ae(c.decoration_fg >> 8, 0xfffacd)  # default selection_background
+
+        # the styling is applied to the overlay's own cursor and must be
+        # restored, not leaked into the screen's cursor
+        self.assertFalse(s.cursor.italic)
+        self.ae(s.cursor.decoration, before.decoration)
+        self.ae(s.cursor.decoration_fg, before.decoration_fg)
+
 
 def detect_url(self, scale=1):
     s = self.create_screen(cols=30 * scale)
