@@ -249,6 +249,8 @@ Detailed list of changes
   being distorted instead of clipped when scrolled against a margin
   (:iss:`10377`)
 
+- IME preedit text: use underline rather than reverse video (:pull:`10386`)
+
 
 0.48.2 [2026-07-30]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
