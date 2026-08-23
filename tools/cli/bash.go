@@ -42,7 +42,6 @@ func bash_output_serializer(completions []*Completions, shell_state map[string]s
 		f("fi")
 	} else {
 		for _, mg := range completions[0].Groups {
-			mg.remove_common_prefix()
 			if mg.NoTrailingSpace {
 				f("compopt -o nospace")
 			} else {
