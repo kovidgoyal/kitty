@@ -534,7 +534,8 @@ and `r` the number of rows. The image will be scaled (enlarged/shrunk) as needed
 the specified area. Note that if you specify a start cell offset via the ``X,Y`` keys, it is not
 added to the number of rows/columns. If only one of either ``r`` or ``c`` is
 specified, the other one is computed based on the source image aspect ratio, so
-that the image is displayed without distortion.
+that the image is displayed without distortion. When both are specified the
+image is letterboxed/pillarboxed to prevent distortion.
 
 Finally, you can specify the image *z-index*, i.e. the vertical stacking order. Images
 placed in the same location with different z-index values will be blended if
